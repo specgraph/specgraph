@@ -3,9 +3,9 @@ name: Deploy Site
 on:
   push:
     branches: [main]
-    paths: ["site/**"]
+    paths: ["site/**", "docs/**"]
   pull_request:
-    paths: ["site/**"]
+    paths: ["site/**", "docs/**"]
   workflow_dispatch:
 
 permissions:
@@ -25,6 +25,9 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
+
+      - name: Copy design docs into site
+        run: cp -r docs/initial-design-session site/docs/design
 
       - name: Build site
         working-directory: site
