@@ -1,2 +1,3 @@
 site/build/
 site/.venv/
+site/docs/design/
