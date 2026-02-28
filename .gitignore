@@ -1,3 +1,10 @@
 site/build/
 site/.venv/
 site/docs/design/
+
+# Go
+/specgraph
+*.exe
+
+# Generated protobuf — committed to repo for Go module consumers
+# gen/
