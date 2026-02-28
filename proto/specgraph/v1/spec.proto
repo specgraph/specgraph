@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package specgraph.v1;
+
+option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
+
+import "google/protobuf/timestamp.proto";
+
+// --- Messages ---
+
+message Spec {
+  string id = 1;           // content-addressable, e.g. "spec-k7m3p"
+  string slug = 2;         // human-readable, e.g. "oauth-refresh-rotation"
+  string intent = 3;       // what this spec is about
+  string stage = 4;        // spark | shape | specify | decompose | approved | in_progress | done
+  string priority = 5;     // p0 | p1 | p2 | p3
+  string complexity = 6;   // low | medium | high
+  int32 version = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message CreateSpecRequest {
+  string slug = 1;
+  string intent = 2;
+  string priority = 3;     // optional, defaults to "p2"
+  string complexity = 4;   // optional, defaults to "medium"
+}
+
+message GetSpecRequest {
+  string slug = 1;
+}
+
+message ListSpecsRequest {
+  string stage = 1;        // optional filter
+  string priority = 2;     // optional filter
+  int32 limit = 3;         // optional, defaults to 50
+}
+
+message ListSpecsResponse {
+  repeated Spec specs = 1;
+}
+
+// --- Service ---
+
+service SpecService {
+  rpc CreateSpec(CreateSpecRequest) returns (Spec);
+  rpc GetSpec(GetSpecRequest) returns (Spec);
+  rpc ListSpecs(ListSpecsRequest) returns (ListSpecsResponse);
+}

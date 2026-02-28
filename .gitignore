@@ -6,5 +6,5 @@ site/docs/design/
 /specgraph
 *.exe
 
-# Generated protobuf
-gen/
+# Generated protobuf — committed to repo for Go module consumers
+# gen/
