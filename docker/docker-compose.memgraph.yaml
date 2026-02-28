@@ -1,0 +1,26 @@
+services:
+  specgraph:
+    image: ghcr.io/seanb4t/specgraph:latest
+    ports:
+      - "${SPECGRAPH_PORT:-9090}:9090"
+    depends_on:
+      memgraph:
+        condition: service_healthy
+    environment:
+      - SPECGRAPH_STORAGE_BACKEND=memgraph
+      - SPECGRAPH_STORAGE_BOLT_URI=bolt://memgraph:7687
+
+  memgraph:
+    image: memgraph/memgraph:latest
+    ports:
+      - "${MEMGRAPH_PORT:-7687}:7687"
+    volumes:
+      - specgraph-data:/var/lib/memgraph
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  specgraph-data:
