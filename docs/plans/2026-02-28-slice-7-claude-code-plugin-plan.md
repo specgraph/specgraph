@@ -221,6 +221,8 @@ specgraph list --format=table
 
 ```text
 
+```text
+
 Present the output as a formatted table. If the server is not running, suggest `specgraph serve` or `specgraph init` first.
 
 ```text
@@ -279,6 +281,8 @@ Verify the SpecGraph server is reachable:
 specgraph health
 ```
 ```
+
+```text
 
 
 ```text
@@ -804,6 +808,8 @@ specgraph list --format=table
 
 ```text
 
+```text
+
 If `$ARGUMENTS` contains filter keywords, apply them:
 
 - Status filter: `specgraph list --status=$STATUS`
@@ -1073,6 +1079,8 @@ specgraph health
 specgraph show $SLUG --format=json
 ```
 ```
+
+```text
 
 
 ```text
@@ -1550,6 +1558,8 @@ claude /plugin install specgraph
 ```
 ```
 
+
+```text
 
 ```text
 
