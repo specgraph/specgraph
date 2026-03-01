@@ -1,9 +1,14 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+// Package memgraph implements storage backends using Memgraph via the Bolt protocol.
 package memgraph
 
 import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -134,9 +139,57 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	return specs, nil
 }
 
+// UpdateSpec updates a spec by slug. Only non-nil fields are changed.
+func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, priority, complexity *string) (*specv1.Spec, error) {
+	var setClauses []string
+	params := map[string]any{"slug": slug}
+
+	if intent != nil {
+		setClauses = append(setClauses, "s.intent = $intent")
+		params["intent"] = *intent
+	}
+	if stage != nil {
+		setClauses = append(setClauses, "s.stage = $stage")
+		params["stage"] = *stage
+	}
+	if priority != nil {
+		setClauses = append(setClauses, "s.priority = $priority")
+		params["priority"] = *priority
+	}
+	if complexity != nil {
+		setClauses = append(setClauses, "s.complexity = $complexity")
+		params["complexity"] = *complexity
+	}
+
+	if len(setClauses) == 0 {
+		return s.GetSpec(ctx, slug)
+	}
+
+	nowStr := time.Now().UTC().Format(time.RFC3339)
+	setClauses = append(setClauses, "s.version = s.version + 1", "s.updated_at = $updated_at")
+	params["updated_at"] = nowStr
+
+	query := fmt.Sprintf(`
+		MATCH (s:Spec {slug: $slug})
+		SET %s
+		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
+		       s.version, s.created_at, s.updated_at
+	`, strings.Join(setClauses, ", "))
+
+	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	if err != nil {
+		return nil, fmt.Errorf("memgraph: update spec: %w", err)
+	}
+	if len(result.Records) == 0 {
+		return nil, fmt.Errorf("memgraph: spec %q not found", slug)
+	}
+
+	return recordToSpec(result.Records[0])
+}
+
 // Close releases the driver resources.
 func (s *Store) Close(ctx context.Context) error {
-	return s.driver.Close(ctx)
+	return fmt.Errorf("memgraph: close: %w", s.driver.Close(ctx))
 }
 
 // generateID produces "spec-" + first 7 hex chars of sha256(slug + now).
@@ -145,17 +198,28 @@ func generateID(slug string) string {
 	return fmt.Sprintf("spec-%x", h[:4])[:12] // "spec-" (5) + 7 hex chars = 12
 }
 
+// recordString extracts a string value from a neo4j record at the given index.
+func recordString(rec *neo4j.Record, i int) string {
+	v, ok := rec.Values[i].(string)
+	if !ok {
+		return ""
+	}
+	return v
+}
+
+// recordInt64 extracts an int64 value from a neo4j record at the given index.
+func recordInt64(rec *neo4j.Record, i int) int64 {
+	v, ok := rec.Values[i].(int64)
+	if !ok {
+		return 0
+	}
+	return v
+}
+
 // recordToSpec converts a neo4j record (with positional values) to a *specv1.Spec.
 func recordToSpec(rec *neo4j.Record) (*specv1.Spec, error) {
-	id, _ := rec.Values[0].(string)
-	slug, _ := rec.Values[1].(string)
-	intent, _ := rec.Values[2].(string)
-	stage, _ := rec.Values[3].(string)
-	priority, _ := rec.Values[4].(string)
-	complexity, _ := rec.Values[5].(string)
-	version, _ := rec.Values[6].(int64)
-	createdAtStr, _ := rec.Values[7].(string)
-	updatedAtStr, _ := rec.Values[8].(string)
+	createdAtStr := recordString(rec, 7)
+	updatedAtStr := recordString(rec, 8)
 
 	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
 	if err != nil {
@@ -166,13 +230,18 @@ func recordToSpec(rec *neo4j.Record) (*specv1.Spec, error) {
 		return nil, fmt.Errorf("memgraph: parse updated_at %q: %w", updatedAtStr, err)
 	}
 
+	version := recordInt64(rec, 6)
+	if version > int64(math.MaxInt32) {
+		version = int64(math.MaxInt32)
+	}
+
 	return &specv1.Spec{
-		Id:         id,
-		Slug:       slug,
-		Intent:     intent,
-		Stage:      stage,
-		Priority:   priority,
-		Complexity: complexity,
+		Id:         recordString(rec, 0),
+		Slug:       recordString(rec, 1),
+		Intent:     recordString(rec, 2),
+		Stage:      recordString(rec, 3),
+		Priority:   recordString(rec, 4),
+		Complexity: recordString(rec, 5),
 		Version:    int32(version),
 		CreatedAt:  timestamppb.New(createdAt),
 		UpdatedAt:  timestamppb.New(updatedAt),

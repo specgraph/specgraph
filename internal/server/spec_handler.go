@@ -1,7 +1,11 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
 package server
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -21,6 +25,7 @@ func NewSpecHandler(backend storage.Backend) *SpecHandler {
 	return &SpecHandler{backend: backend}
 }
 
+// CreateSpec handles the CreateSpec RPC.
 func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv1.CreateSpecRequest]) (*connect.Response[specv1.Spec], error) {
 	msg := req.Msg
 	priority := msg.Priority
@@ -39,6 +44,7 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 	return connect.NewResponse(spec), nil
 }
 
+// GetSpec handles the GetSpec RPC.
 func (h *SpecHandler) GetSpec(ctx context.Context, req *connect.Request[specv1.GetSpecRequest]) (*connect.Response[specv1.Spec], error) {
 	spec, err := h.backend.GetSpec(ctx, req.Msg.Slug)
 	if err != nil {
@@ -47,6 +53,7 @@ func (h *SpecHandler) GetSpec(ctx context.Context, req *connect.Request[specv1.G
 	return connect.NewResponse(spec), nil
 }
 
+// ListSpecs handles the ListSpecs RPC.
 func (h *SpecHandler) ListSpecs(ctx context.Context, req *connect.Request[specv1.ListSpecsRequest]) (*connect.Response[specv1.ListSpecsResponse], error) {
 	msg := req.Msg
 	limit := int(msg.Limit)
@@ -59,4 +66,18 @@ func (h *SpecHandler) ListSpecs(ctx context.Context, req *connect.Request[specv1
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&specv1.ListSpecsResponse{Specs: specs}), nil
+}
+
+// UpdateSpec handles the UpdateSpec RPC.
+func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv1.UpdateSpecRequest]) (*connect.Response[specv1.Spec], error) {
+	msg := req.Msg
+	if msg.Slug == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug is required"))
+	}
+
+	spec, err := h.backend.UpdateSpec(ctx, msg.Slug, msg.Intent, msg.Stage, msg.Priority, msg.Complexity)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeNotFound, err)
+	}
+	return connect.NewResponse(spec), nil
 }

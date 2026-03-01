@@ -346,6 +346,82 @@ func (x *ListSpecsResponse) GetSpecs() []*Spec {
 	return nil
 }
 
+type UpdateSpecRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"` // identifies which spec to update (required)
+	Intent        *string                `protobuf:"bytes,2,opt,name=intent,proto3,oneof" json:"intent,omitempty"`
+	Stage         *string                `protobuf:"bytes,3,opt,name=stage,proto3,oneof" json:"stage,omitempty"`
+	Priority      *string                `protobuf:"bytes,4,opt,name=priority,proto3,oneof" json:"priority,omitempty"`
+	Complexity    *string                `protobuf:"bytes,5,opt,name=complexity,proto3,oneof" json:"complexity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateSpecRequest) Reset() {
+	*x = UpdateSpecRequest{}
+	mi := &file_specgraph_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateSpecRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateSpecRequest) ProtoMessage() {}
+
+func (x *UpdateSpecRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateSpecRequest.ProtoReflect.Descriptor instead.
+func (*UpdateSpecRequest) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *UpdateSpecRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *UpdateSpecRequest) GetIntent() string {
+	if x != nil && x.Intent != nil {
+		return *x.Intent
+	}
+	return ""
+}
+
+func (x *UpdateSpecRequest) GetStage() string {
+	if x != nil && x.Stage != nil {
+		return *x.Stage
+	}
+	return ""
+}
+
+func (x *UpdateSpecRequest) GetPriority() string {
+	if x != nil && x.Priority != nil {
+		return *x.Priority
+	}
+	return ""
+}
+
+func (x *UpdateSpecRequest) GetComplexity() string {
+	if x != nil && x.Complexity != nil {
+		return *x.Complexity
+	}
+	return ""
+}
+
 var File_specgraph_v1_spec_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_spec_proto_rawDesc = "" +
@@ -379,12 +455,26 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\bpriority\x18\x02 \x01(\tR\bpriority\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\"=\n" +
 	"\x11ListSpecsResponse\x12(\n" +
-	"\x05specs\x18\x01 \x03(\v2\x12.specgraph.v1.SpecR\x05specs2\xdb\x01\n" +
+	"\x05specs\x18\x01 \x03(\v2\x12.specgraph.v1.SpecR\x05specs\"\xd6\x01\n" +
+	"\x11UpdateSpecRequest\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x1b\n" +
+	"\x06intent\x18\x02 \x01(\tH\x00R\x06intent\x88\x01\x01\x12\x19\n" +
+	"\x05stage\x18\x03 \x01(\tH\x01R\x05stage\x88\x01\x01\x12\x1f\n" +
+	"\bpriority\x18\x04 \x01(\tH\x02R\bpriority\x88\x01\x01\x12#\n" +
+	"\n" +
+	"complexity\x18\x05 \x01(\tH\x03R\n" +
+	"complexity\x88\x01\x01B\t\n" +
+	"\a_intentB\b\n" +
+	"\x06_stageB\v\n" +
+	"\t_priorityB\r\n" +
+	"\v_complexity2\x9e\x02\n" +
 	"\vSpecService\x12A\n" +
 	"\n" +
 	"CreateSpec\x12\x1f.specgraph.v1.CreateSpecRequest\x1a\x12.specgraph.v1.Spec\x12;\n" +
 	"\aGetSpec\x12\x1c.specgraph.v1.GetSpecRequest\x1a\x12.specgraph.v1.Spec\x12L\n" +
-	"\tListSpecs\x12\x1e.specgraph.v1.ListSpecsRequest\x1a\x1f.specgraph.v1.ListSpecsResponseB;Z9github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\tListSpecs\x12\x1e.specgraph.v1.ListSpecsRequest\x1a\x1f.specgraph.v1.ListSpecsResponse\x12A\n" +
+	"\n" +
+	"UpdateSpec\x12\x1f.specgraph.v1.UpdateSpecRequest\x1a\x12.specgraph.v1.SpecB;Z9github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_spec_proto_rawDescOnce sync.Once
@@ -398,27 +488,30 @@ func file_specgraph_v1_spec_proto_rawDescGZIP() []byte {
 	return file_specgraph_v1_spec_proto_rawDescData
 }
 
-var file_specgraph_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_specgraph_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_specgraph_v1_spec_proto_goTypes = []any{
 	(*Spec)(nil),                  // 0: specgraph.v1.Spec
 	(*CreateSpecRequest)(nil),     // 1: specgraph.v1.CreateSpecRequest
 	(*GetSpecRequest)(nil),        // 2: specgraph.v1.GetSpecRequest
 	(*ListSpecsRequest)(nil),      // 3: specgraph.v1.ListSpecsRequest
 	(*ListSpecsResponse)(nil),     // 4: specgraph.v1.ListSpecsResponse
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*UpdateSpecRequest)(nil),     // 5: specgraph.v1.UpdateSpecRequest
+	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
 }
 var file_specgraph_v1_spec_proto_depIdxs = []int32{
-	5, // 0: specgraph.v1.Spec.created_at:type_name -> google.protobuf.Timestamp
-	5, // 1: specgraph.v1.Spec.updated_at:type_name -> google.protobuf.Timestamp
+	6, // 0: specgraph.v1.Spec.created_at:type_name -> google.protobuf.Timestamp
+	6, // 1: specgraph.v1.Spec.updated_at:type_name -> google.protobuf.Timestamp
 	0, // 2: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
 	1, // 3: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
 	2, // 4: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
 	3, // 5: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
-	0, // 6: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.Spec
-	0, // 7: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.Spec
-	4, // 8: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
+	5, // 6: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
+	0, // 7: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.Spec
+	0, // 8: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.Spec
+	4, // 9: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
+	0, // 10: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.Spec
+	7, // [7:11] is the sub-list for method output_type
+	3, // [3:7] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
 	3, // [3:3] is the sub-list for extension extendee
 	0, // [0:3] is the sub-list for field type_name
@@ -429,13 +522,14 @@ func file_specgraph_v1_spec_proto_init() {
 	if File_specgraph_v1_spec_proto != nil {
 		return
 	}
+	file_specgraph_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_spec_proto_rawDesc), len(file_specgraph_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

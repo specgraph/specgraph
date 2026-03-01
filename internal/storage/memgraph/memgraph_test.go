@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
 package memgraph_test
 
 import (
@@ -104,6 +107,44 @@ func TestListSpecs(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, filtered, 1)
 	require.Equal(t, "spec-a", filtered[0].Slug)
+}
+
+func TestUpdateSpec(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := memgraph.New(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	// Create a spec first.
+	orig, err := store.CreateSpec(ctx, "update-me", "Original intent", "p2", "medium")
+	require.NoError(t, err)
+	require.Equal(t, int32(1), orig.Version)
+
+	// Update intent only.
+	newIntent := "Updated intent"
+	updated, err := store.UpdateSpec(ctx, "update-me", &newIntent, nil, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, "Updated intent", updated.Intent)
+	require.Equal(t, int32(2), updated.Version)
+	require.Equal(t, "p2", updated.Priority) // unchanged
+	require.Equal(t, "spark", updated.Stage) // unchanged
+
+	// Update multiple fields.
+	newStage := "shape"
+	newPriority := "p0"
+	updated2, err := store.UpdateSpec(ctx, "update-me", nil, &newStage, &newPriority, nil)
+	require.NoError(t, err)
+	require.Equal(t, "shape", updated2.Stage)
+	require.Equal(t, "p0", updated2.Priority)
+	require.Equal(t, int32(3), updated2.Version)
+	require.Equal(t, "Updated intent", updated2.Intent) // still from previous update
+
+	// Update non-existent spec.
+	_, err = store.UpdateSpec(ctx, "no-such-spec", &newIntent, nil, nil, nil)
+	require.Error(t, err)
 }
 
 func TestGetSpec_NotFound(t *testing.T) {

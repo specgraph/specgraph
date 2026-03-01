@@ -39,6 +39,8 @@ const (
 	SpecServiceGetSpecProcedure = "/specgraph.v1.SpecService/GetSpec"
 	// SpecServiceListSpecsProcedure is the fully-qualified name of the SpecService's ListSpecs RPC.
 	SpecServiceListSpecsProcedure = "/specgraph.v1.SpecService/ListSpecs"
+	// SpecServiceUpdateSpecProcedure is the fully-qualified name of the SpecService's UpdateSpec RPC.
+	SpecServiceUpdateSpecProcedure = "/specgraph.v1.SpecService/UpdateSpec"
 )
 
 // SpecServiceClient is a client for the specgraph.v1.SpecService service.
@@ -46,6 +48,7 @@ type SpecServiceClient interface {
 	CreateSpec(context.Context, *connect.Request[v1.CreateSpecRequest]) (*connect.Response[v1.Spec], error)
 	GetSpec(context.Context, *connect.Request[v1.GetSpecRequest]) (*connect.Response[v1.Spec], error)
 	ListSpecs(context.Context, *connect.Request[v1.ListSpecsRequest]) (*connect.Response[v1.ListSpecsResponse], error)
+	UpdateSpec(context.Context, *connect.Request[v1.UpdateSpecRequest]) (*connect.Response[v1.Spec], error)
 }
 
 // NewSpecServiceClient constructs a client for the specgraph.v1.SpecService service. By default, it
@@ -77,6 +80,12 @@ func NewSpecServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(specServiceMethods.ByName("ListSpecs")),
 			connect.WithClientOptions(opts...),
 		),
+		updateSpec: connect.NewClient[v1.UpdateSpecRequest, v1.Spec](
+			httpClient,
+			baseURL+SpecServiceUpdateSpecProcedure,
+			connect.WithSchema(specServiceMethods.ByName("UpdateSpec")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -85,6 +94,7 @@ type specServiceClient struct {
 	createSpec *connect.Client[v1.CreateSpecRequest, v1.Spec]
 	getSpec    *connect.Client[v1.GetSpecRequest, v1.Spec]
 	listSpecs  *connect.Client[v1.ListSpecsRequest, v1.ListSpecsResponse]
+	updateSpec *connect.Client[v1.UpdateSpecRequest, v1.Spec]
 }
 
 // CreateSpec calls specgraph.v1.SpecService.CreateSpec.
@@ -102,11 +112,17 @@ func (c *specServiceClient) ListSpecs(ctx context.Context, req *connect.Request[
 	return c.listSpecs.CallUnary(ctx, req)
 }
 
+// UpdateSpec calls specgraph.v1.SpecService.UpdateSpec.
+func (c *specServiceClient) UpdateSpec(ctx context.Context, req *connect.Request[v1.UpdateSpecRequest]) (*connect.Response[v1.Spec], error) {
+	return c.updateSpec.CallUnary(ctx, req)
+}
+
 // SpecServiceHandler is an implementation of the specgraph.v1.SpecService service.
 type SpecServiceHandler interface {
 	CreateSpec(context.Context, *connect.Request[v1.CreateSpecRequest]) (*connect.Response[v1.Spec], error)
 	GetSpec(context.Context, *connect.Request[v1.GetSpecRequest]) (*connect.Response[v1.Spec], error)
 	ListSpecs(context.Context, *connect.Request[v1.ListSpecsRequest]) (*connect.Response[v1.ListSpecsResponse], error)
+	UpdateSpec(context.Context, *connect.Request[v1.UpdateSpecRequest]) (*connect.Response[v1.Spec], error)
 }
 
 // NewSpecServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -134,6 +150,12 @@ func NewSpecServiceHandler(svc SpecServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(specServiceMethods.ByName("ListSpecs")),
 		connect.WithHandlerOptions(opts...),
 	)
+	specServiceUpdateSpecHandler := connect.NewUnaryHandler(
+		SpecServiceUpdateSpecProcedure,
+		svc.UpdateSpec,
+		connect.WithSchema(specServiceMethods.ByName("UpdateSpec")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/specgraph.v1.SpecService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SpecServiceCreateSpecProcedure:
@@ -142,6 +164,8 @@ func NewSpecServiceHandler(svc SpecServiceHandler, opts ...connect.HandlerOption
 			specServiceGetSpecHandler.ServeHTTP(w, r)
 		case SpecServiceListSpecsProcedure:
 			specServiceListSpecsHandler.ServeHTTP(w, r)
+		case SpecServiceUpdateSpecProcedure:
+			specServiceUpdateSpecHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -161,4 +185,8 @@ func (UnimplementedSpecServiceHandler) GetSpec(context.Context, *connect.Request
 
 func (UnimplementedSpecServiceHandler) ListSpecs(context.Context, *connect.Request[v1.ListSpecsRequest]) (*connect.Response[v1.ListSpecsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.SpecService.ListSpecs is not implemented"))
+}
+
+func (UnimplementedSpecServiceHandler) UpdateSpec(context.Context, *connect.Request[v1.UpdateSpecRequest]) (*connect.Response[v1.Spec], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.SpecService.UpdateSpec is not implemented"))
 }

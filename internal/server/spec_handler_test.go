@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
 package server_test
 
 import (
@@ -76,6 +79,30 @@ func (m *mockBackend) ListSpecs(_ context.Context, stage, priority string, limit
 	return result, nil
 }
 
+func (m *mockBackend) UpdateSpec(_ context.Context, slug string, intent, stage, priority, complexity *string) (*specv1.Spec, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	spec, ok := m.specs[slug]
+	if !ok {
+		return nil, fmt.Errorf("spec %q not found", slug)
+	}
+	if intent != nil {
+		spec.Intent = *intent
+	}
+	if stage != nil {
+		spec.Stage = *stage
+	}
+	if priority != nil {
+		spec.Priority = *priority
+	}
+	if complexity != nil {
+		spec.Complexity = *complexity
+	}
+	spec.Version++
+	spec.UpdatedAt = timestamppb.Now()
+	return spec, nil
+}
+
 func (m *mockBackend) Close(_ context.Context) error {
 	return nil
 }
@@ -112,6 +139,41 @@ func TestSpecHandler_CreateAndGet(t *testing.T) {
 	// Get non-existent returns not found.
 	_, err = client.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
 		Slug: "does-not-exist",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+}
+
+func TestSpecHandler_UpdateSpec(t *testing.T) {
+	mb := newMockBackend()
+	srv := httptest.NewServer(server.NewMux(mb))
+	t.Cleanup(srv.Close)
+
+	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)
+	ctx := context.Background()
+
+	// Create a spec first.
+	_, err := client.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+		Slug:   "update-test",
+		Intent: "Original intent",
+	}))
+	require.NoError(t, err)
+
+	// Update intent only.
+	newIntent := "Updated intent"
+	updateResp, err := client.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
+		Slug:   "update-test",
+		Intent: &newIntent,
+	}))
+	require.NoError(t, err)
+	require.Equal(t, "Updated intent", updateResp.Msg.Intent)
+	require.Equal(t, int32(2), updateResp.Msg.Version)
+	require.Equal(t, "p2", updateResp.Msg.Priority) // unchanged
+
+	// Update non-existent spec.
+	_, err = client.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
+		Slug:   "no-such-spec",
+		Intent: &newIntent,
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))

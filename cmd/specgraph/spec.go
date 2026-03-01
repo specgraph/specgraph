@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
 package main
 
 import (
@@ -42,11 +45,11 @@ var (
 func init() {
 	createCmd.Flags().StringVar(&createIntent, "intent", "", "intent for the spec (required)")
 	createCmd.Flags().StringVar(&createPriority, "priority", "p2", "priority (p0-p3)")
-	createCmd.MarkFlagRequired("intent")
+	cobra.CheckErr(createCmd.MarkFlagRequired("intent"))
 	rootCmd.AddCommand(createCmd)
 }
 
-func runCreate(cmd *cobra.Command, args []string) error {
+func runCreate(_ *cobra.Command, args []string) error {
 	client, err := specClient()
 	if err != nil {
 		return err
@@ -60,6 +63,57 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("create spec: %w", err)
 	}
 	fmt.Printf("Created: %s (%s)\n", resp.Msg.Slug, resp.Msg.Id)
+	return nil
+}
+
+// --- update ---
+
+var updateCmd = &cobra.Command{
+	Use:   "update <slug>",
+	Short: "Update an existing spec",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runUpdate,
+}
+
+var (
+	updateIntent     string
+	updateStage      string
+	updatePriority   string
+	updateComplexity string
+)
+
+func init() {
+	updateCmd.Flags().StringVar(&updateIntent, "intent", "", "new intent")
+	updateCmd.Flags().StringVar(&updateStage, "stage", "", "new stage")
+	updateCmd.Flags().StringVar(&updatePriority, "priority", "", "new priority")
+	updateCmd.Flags().StringVar(&updateComplexity, "complexity", "", "new complexity")
+	rootCmd.AddCommand(updateCmd)
+}
+
+func runUpdate(cmd *cobra.Command, args []string) error {
+	client, err := specClient()
+	if err != nil {
+		return err
+	}
+	req := &specv1.UpdateSpecRequest{Slug: args[0]}
+	if cmd.Flags().Changed("intent") {
+		req.Intent = &updateIntent
+	}
+	if cmd.Flags().Changed("stage") {
+		req.Stage = &updateStage
+	}
+	if cmd.Flags().Changed("priority") {
+		req.Priority = &updatePriority
+	}
+	if cmd.Flags().Changed("complexity") {
+		req.Complexity = &updateComplexity
+	}
+
+	resp, err := client.UpdateSpec(context.Background(), connect.NewRequest(req))
+	if err != nil {
+		return fmt.Errorf("update spec: %w", err)
+	}
+	fmt.Printf("Updated: %s (version %d)\n", resp.Msg.Slug, resp.Msg.Version)
 	return nil
 }
 
@@ -82,7 +136,7 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 }
 
-func runList(cmd *cobra.Command, args []string) error {
+func runList(cmd *cobra.Command, _ []string) error {
 	client, err := specClient()
 	if err != nil {
 		return err
@@ -100,9 +154,13 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tPRIORITY\tSTAGE\tSLUG")
+	tw := &tableWriter{w: w}
+	tw.println("ID\tPRIORITY\tSTAGE\tSLUG")
 	for _, s := range specs {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", s.Id, s.Priority, s.Stage, s.Slug)
+		tw.printf("%s\t%s\t%s\t%s\n", s.Id, s.Priority, s.Stage, s.Slug)
+	}
+	if tw.err != nil {
+		return tw.err
 	}
 	return w.Flush()
 }
@@ -120,7 +178,7 @@ func init() {
 	rootCmd.AddCommand(showCmd)
 }
 
-func runShow(cmd *cobra.Command, args []string) error {
+func runShow(_ *cobra.Command, args []string) error {
 	client, err := specClient()
 	if err != nil {
 		return err

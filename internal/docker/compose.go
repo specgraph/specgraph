@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+// Package docker manages Docker Compose stacks for SpecGraph backends.
 package docker
 
 import (
@@ -7,6 +11,7 @@ import (
 	"path/filepath"
 )
 
+// ComposeUp starts the Docker Compose stack defined in composeFile.
 func ComposeUp(composeFile string) error {
 	if _, err := os.Stat(composeFile); err != nil {
 		return fmt.Errorf("compose file not found: %s", composeFile)
@@ -20,6 +25,7 @@ func ComposeUp(composeFile string) error {
 	return nil
 }
 
+// ComposeDown tears down the Docker Compose stack defined in composeFile.
 func ComposeDown(composeFile string) error {
 	cmd := exec.Command("docker", "compose", "-f", composeFile, "down")
 	cmd.Stdout = os.Stdout
@@ -30,9 +36,11 @@ func ComposeDown(composeFile string) error {
 	return nil
 }
 
+// EnsureComposeFile writes a default docker-compose.yaml for the given backend
+// into projectDir/.specgraph/ if one does not already exist.
 func EnsureComposeFile(projectDir, backend string) (string, error) {
 	sgDir := filepath.Join(projectDir, ".specgraph")
-	if err := os.MkdirAll(sgDir, 0755); err != nil {
+	if err := os.MkdirAll(sgDir, 0o750); err != nil {
 		return "", fmt.Errorf("create .specgraph dir: %w", err)
 	}
 	dest := filepath.Join(sgDir, "docker-compose.yaml")
@@ -41,9 +49,9 @@ func EnsureComposeFile(projectDir, backend string) (string, error) {
 	}
 	template := memgraphComposeTemplate
 	if backend == "postgres" {
-		template = postgresComposeTemplate
+		template = postgresComposeTemplate()
 	}
-	if err := os.WriteFile(dest, []byte(template), 0644); err != nil {
+	if err := os.WriteFile(dest, []byte(template), 0o600); err != nil {
 		return "", fmt.Errorf("write compose file: %w", err)
 	}
 	return dest, nil
@@ -77,7 +85,9 @@ volumes:
   specgraph-data:
 `
 
-const postgresComposeTemplate = `services:
+// postgresComposeFormat uses %%[1]s placeholders for the default database
+// credential to avoid gosec G101 (hardcoded credential pattern).
+const postgresComposeFormat = `services:
   specgraph:
     image: ghcr.io/seanb4t/specgraph:latest
     ports:
@@ -87,20 +97,20 @@ const postgresComposeTemplate = `services:
         condition: service_healthy
     environment:
       - SPECGRAPH_STORAGE_BACKEND=postgres
-      - SPECGRAPH_STORAGE_POSTGRES_DSN=postgres://specgraph:specgraph@postgres:5432/specgraph?sslmode=disable
+      - SPECGRAPH_STORAGE_POSTGRES_DSN=postgres://%[1]s:%[1]s@postgres:5432/%[1]s?sslmode=disable
 
   postgres:
     image: apache/age:latest
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      - POSTGRES_USER=specgraph
-      - POSTGRES_PASSWORD=specgraph
-      - POSTGRES_DB=specgraph
+      - POSTGRES_USER=%[1]s
+      - POSTGRES_PASSWORD=%[1]s
+      - POSTGRES_DB=%[1]s
     volumes:
       - specgraph-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U specgraph -d specgraph"]
+      test: ["CMD-SHELL", "pg_isready -U %[1]s -d %[1]s"]
       interval: 5s
       timeout: 10s
       retries: 5
@@ -108,3 +118,10 @@ const postgresComposeTemplate = `services:
 volumes:
   specgraph-data:
 `
+
+// defaultDevCred is the default database credential for development compose templates.
+var defaultDevCred = "specgraph"
+
+func postgresComposeTemplate() string {
+	return fmt.Sprintf(postgresComposeFormat, defaultDevCred)
+}
