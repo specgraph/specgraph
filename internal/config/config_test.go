@@ -101,3 +101,130 @@ storage:
 	assert.Equal(t, "bolt://localhost:7687", cfg.Storage.Memgraph.BoltURI)
 	assert.Equal(t, ".specgraph/docker-compose.yaml", cfg.Storage.Docker.ComposeFile)
 }
+
+// --- Constitution YAML tests ---
+
+func TestConstitutionYAML_RoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "constitution.yaml")
+
+	original := &ConstitutionConfig{
+		Name:  "my-project",
+		Layer: "project",
+		Tech: ConstitutionTech{
+			Languages: ConstitutionLangs{
+				Primary: "go",
+				Allowed: []string{"go", "typescript"},
+			},
+			Frameworks:     map[string]string{"web": "echo"},
+			Infrastructure: map[string]string{"db": "memgraph"},
+		},
+		Principles: []ConstitutionPrinciple{
+			{ID: "p1", Statement: "Keep it simple", Rationale: "Reduces bugs"},
+			{Statement: "Test everything", Exceptions: "prototypes"},
+		},
+		Constraints: []string{"no global state"},
+		Antipatterns: []ConstitutionAntipattern{
+			{Pattern: "god object", Why: "hard to test", Instead: "split responsibilities"},
+		},
+		References: []ConstitutionReference{
+			{Type: "adr", Path: "docs/adr/001.md"},
+		},
+	}
+
+	require.NoError(t, WriteConstitutionYAML(path, original))
+
+	loaded, err := LoadConstitutionYAML(path)
+	require.NoError(t, err)
+
+	assert.Equal(t, original.Name, loaded.Name)
+	assert.Equal(t, original.Layer, loaded.Layer)
+	assert.Equal(t, original.Tech.Languages.Primary, loaded.Tech.Languages.Primary)
+	assert.Equal(t, original.Tech.Languages.Allowed, loaded.Tech.Languages.Allowed)
+	assert.Equal(t, original.Tech.Frameworks, loaded.Tech.Frameworks)
+	assert.Equal(t, original.Tech.Infrastructure, loaded.Tech.Infrastructure)
+	assert.Equal(t, original.Principles, loaded.Principles)
+	assert.Equal(t, original.Constraints, loaded.Constraints)
+	assert.Equal(t, original.Antipatterns, loaded.Antipatterns)
+	assert.Equal(t, original.References, loaded.References)
+}
+
+func TestConstitutionYAML_WriteThenLoad_WithStructuredPrinciples(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "constitution.yaml")
+
+	original := &ConstitutionConfig{
+		Name:  "structured",
+		Layer: "org",
+		Principles: []ConstitutionPrinciple{
+			{ID: "p1", Statement: "Prefer composition", Rationale: "More flexible", Exceptions: "value types"},
+		},
+	}
+
+	require.NoError(t, WriteConstitutionYAML(path, original))
+
+	loaded, err := LoadConstitutionYAML(path)
+	require.NoError(t, err)
+
+	require.Len(t, loaded.Principles, 1)
+	assert.Equal(t, "p1", loaded.Principles[0].ID)
+	assert.Equal(t, "Prefer composition", loaded.Principles[0].Statement)
+	assert.Equal(t, "More flexible", loaded.Principles[0].Rationale)
+	assert.Equal(t, "value types", loaded.Principles[0].Exceptions)
+}
+
+func TestConstitutionYAML_LoadStringPrinciples(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "constitution.yaml")
+
+	rawYAML := `name: legacy
+layer: project
+principles:
+  - "Keep it simple"
+  - "Test everything"
+`
+	require.NoError(t, os.WriteFile(path, []byte(rawYAML), 0o600))
+
+	loaded, err := LoadConstitutionYAML(path)
+	require.NoError(t, err)
+
+	require.Len(t, loaded.Principles, 2)
+	assert.Equal(t, "Keep it simple", loaded.Principles[0].Statement)
+	assert.Equal(t, "Test everything", loaded.Principles[1].Statement)
+}
+
+func TestConstitutionYAML_InvalidLayer(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "constitution.yaml")
+
+	rawYAML := `name: bad
+layer: invalid_layer
+`
+	require.NoError(t, os.WriteFile(path, []byte(rawYAML), 0o600))
+
+	_, err := LoadConstitutionYAML(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown constitution layer")
+}
+
+func TestConstitutionYAML_MalformedYAML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "constitution.yaml")
+
+	require.NoError(t, os.WriteFile(path, []byte(":\tinvalid:\t[yaml"), 0o600))
+
+	_, err := LoadConstitutionYAML(path)
+	require.Error(t, err)
+}
+
+func TestConstitutionYAML_WriteCreatesDir(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "nested", "deep", "constitution.yaml")
+
+	c := &ConstitutionConfig{Name: "test", Layer: "user"}
+	require.NoError(t, WriteConstitutionYAML(path, c))
+
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.False(t, info.IsDir())
+}

@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -18,14 +20,10 @@ func constitutionClient() (specgraphv1connect.ConstitutionServiceClient, error) 
 	return newClient(specgraphv1connect.NewConstitutionServiceClient)
 }
 
-// --- constitution parent command ---
-
 var constitutionCmd = &cobra.Command{
 	Use:   "constitution",
 	Short: "Manage the project constitution",
 }
-
-// --- constitution show ---
 
 var constitutionShowCmd = &cobra.Command{
 	Use:   "show",
@@ -76,8 +74,6 @@ func runConstitutionShow(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-// --- constitution check ---
-
 var constitutionCheckCmd = &cobra.Command{
 	Use:   "check <slug>",
 	Short: "Check a spec for constitution violations",
@@ -107,8 +103,6 @@ func runConstitutionCheck(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-// --- constitution emit ---
-
 var constitutionEmitCmd = &cobra.Command{
 	Use:   "emit",
 	Short: "Emit constitution as tool files",
@@ -134,10 +128,21 @@ func runConstitutionEmit(_ *cobra.Command, _ []string) error {
 	content := resp.Msg.Content
 	filename := resp.Msg.Filename
 	if emitOutput != "" {
-		if err := os.WriteFile(emitOutput, []byte(content), 0o600); err != nil {
+		absPath, err := filepath.Abs(emitOutput)
+		if err != nil {
+			return fmt.Errorf("resolve output path: %w", err)
+		}
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("get working directory: %w", err)
+		}
+		if !strings.HasPrefix(absPath, cwd) {
+			fmt.Fprintf(os.Stderr, "warning: output path %s is outside the current directory\n", absPath)
+		}
+		if err := os.WriteFile(absPath, []byte(content), 0o600); err != nil {
 			return fmt.Errorf("write output file: %w", err)
 		}
-		fmt.Printf("Written to %s\n", emitOutput)
+		fmt.Printf("Written to %s\n", absPath)
 		return nil
 	}
 	if filename != "" {
@@ -148,12 +153,11 @@ func runConstitutionEmit(_ *cobra.Command, _ []string) error {
 }
 
 func init() {
-	constitutionCmd.AddCommand(constitutionShowCmd)
-
-	constitutionCmd.AddCommand(constitutionCheckCmd)
-
 	constitutionEmitCmd.Flags().StringVar(&emitFormat, "format", "claude-md", "output format (e.g. claude-md)")
 	constitutionEmitCmd.Flags().StringVarP(&emitOutput, "output", "o", "", "write output to file instead of stdout")
+
+	constitutionCmd.AddCommand(constitutionShowCmd)
+	constitutionCmd.AddCommand(constitutionCheckCmd)
 	constitutionCmd.AddCommand(constitutionEmitCmd)
 
 	rootCmd.AddCommand(constitutionCmd)

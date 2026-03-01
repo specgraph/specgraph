@@ -106,6 +106,38 @@ func TestConstitution_UpdateAndGet(t *testing.T) {
 	require.Equal(t, "specgraph-project-v2", updated.Name)
 }
 
+func TestConstitution_MinimalRoundTrip(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := memgraph.New(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	input := &specv1.Constitution{
+		Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
+		Name:  "minimal",
+	}
+
+	got, err := store.UpdateConstitution(ctx, input)
+	require.NoError(t, err)
+	require.Equal(t, "minimal", got.Name)
+	require.Nil(t, got.Tech)
+	require.Nil(t, got.Process)
+	require.Empty(t, got.Principles)
+	require.Empty(t, got.Constraints)
+	require.Empty(t, got.Antipatterns)
+	require.Empty(t, got.References)
+
+	// Round-trip via Get
+	fetched, err := store.GetConstitution(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "minimal", fetched.Name)
+	require.Nil(t, fetched.Tech)
+	require.Empty(t, fetched.Principles)
+}
+
 func TestConstitution_CheckViolation(t *testing.T) {
 	boltURI, cleanup := setupMemgraph(t)
 	defer cleanup()

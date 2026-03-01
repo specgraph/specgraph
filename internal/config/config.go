@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -35,13 +36,50 @@ type StorageConfig struct {
 	ConstitutionPath string         `yaml:"constitution_path"`
 }
 
+// ConstitutionPrinciple represents a principle in the constitution YAML.
+// It supports both string form ("Keep it simple") and struct form
+// (statement/rationale/exceptions) for backward compatibility.
+type ConstitutionPrinciple struct {
+	ID         string `yaml:"id,omitempty"`
+	Statement  string `yaml:"statement"`
+	Rationale  string `yaml:"rationale,omitempty"`
+	Exceptions string `yaml:"exceptions,omitempty"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler so that ConstitutionPrinciple
+// can be decoded from either a plain scalar string or a full struct node.
+func (p *ConstitutionPrinciple) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		p.Statement = value.Value
+		return nil
+	}
+	// Struct form — use an alias to avoid infinite recursion.
+	type raw ConstitutionPrinciple
+	return value.Decode((*raw)(p))
+}
+
+// ConstitutionAntipattern represents an antipattern in the constitution YAML.
+type ConstitutionAntipattern struct {
+	Pattern string `yaml:"pattern"`
+	Why     string `yaml:"why,omitempty"`
+	Instead string `yaml:"instead,omitempty"`
+}
+
+// ConstitutionReference represents a reference in the constitution YAML.
+type ConstitutionReference struct {
+	Type string `yaml:"type"`
+	Path string `yaml:"path"`
+}
+
 // ConstitutionConfig represents a constitution YAML document.
 type ConstitutionConfig struct {
-	Name        string           `yaml:"name"`
-	Layer       string           `yaml:"layer"`
-	Tech        ConstitutionTech `yaml:"tech,omitempty"`
-	Principles  []string         `yaml:"principles,omitempty"`
-	Constraints []string         `yaml:"constraints,omitempty"`
+	Name         string                    `yaml:"name"`
+	Layer        string                    `yaml:"layer"`
+	Tech         ConstitutionTech          `yaml:"tech,omitempty"`
+	Principles   []ConstitutionPrinciple   `yaml:"principles,omitempty"`
+	Constraints  []string                  `yaml:"constraints,omitempty"`
+	Antipatterns []ConstitutionAntipattern `yaml:"antipatterns,omitempty"`
+	References   []ConstitutionReference   `yaml:"references,omitempty"`
 }
 
 // ConstitutionTech holds technology stack configuration.
@@ -71,6 +109,23 @@ type PostgresConfig struct {
 // DockerConfig holds Docker Compose settings.
 type DockerConfig struct {
 	ComposeFile string `yaml:"compose_file"`
+}
+
+// validLayers are the accepted constitution layer strings in YAML files.
+var validLayers = map[string]bool{
+	"":        true, // maps to UNSPECIFIED
+	"user":    true,
+	"org":     true,
+	"project": true,
+	"domain":  true,
+}
+
+// ValidateLayer checks if a layer string is a valid ConstitutionLayer value.
+func ValidateLayer(layer string) error {
+	if !validLayers[strings.ToLower(layer)] {
+		return fmt.Errorf("unknown constitution layer %q; valid values: user, org, project, domain", layer)
+	}
+	return nil
 }
 
 // IsRemote reports whether the config targets a remote server.
@@ -117,6 +172,9 @@ func LoadConstitutionYAML(path string) (*ConstitutionConfig, error) {
 	c := &ConstitutionConfig{}
 	if err := yaml.Unmarshal(data, c); err != nil {
 		return nil, fmt.Errorf("parse constitution: %w", err)
+	}
+	if err := ValidateLayer(c.Layer); err != nil {
+		return nil, err
 	}
 	return c, nil
 }

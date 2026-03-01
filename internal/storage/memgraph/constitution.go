@@ -122,7 +122,7 @@ func (s *Store) UpdateConstitution(ctx context.Context, constitution *specv1.Con
 }
 
 // CheckViolation checks a spec against constitution constraints.
-// Returns empty violations for now (full implementation in Slice 5).
+// TODO(slice-violations): implement constraint checking; returns empty until then.
 func (s *Store) CheckViolation(ctx context.Context, specSlug string) ([]*specv1.Violation, error) {
 	// Verify the spec exists.
 	_, err := s.GetSpec(ctx, specSlug)
@@ -142,7 +142,6 @@ func (s *Store) CheckViolation(ctx context.Context, specSlug string) ([]*specv1.
 		return nil, fmt.Errorf("memgraph: check violation: %w", err)
 	}
 
-	// Full violation checking comes in Slice 5; return empty for now.
 	return []*specv1.Violation{}, nil
 }
 
@@ -158,54 +157,91 @@ func marshalJSON(v any) (string, error) {
 	return string(b), nil
 }
 
-// recordToConstitution converts a neo4j record (positional) to a *specv1.Constitution.
-// Column order must match the RETURN clause in GetConstitution / UpdateConstitution.
+// recordStringByName extracts a string value from a neo4j record by column name.
+func recordStringByName(rec *neo4j.Record, key string) (string, error) {
+	val, ok := rec.Get(key)
+	if !ok {
+		return "", fmt.Errorf("memgraph: column %q not found in record", key)
+	}
+	s, ok := val.(string)
+	if !ok {
+		return "", fmt.Errorf("memgraph: column %q: expected string, got %T", key, val)
+	}
+	return s, nil
+}
+
+// recordInt64ByName extracts an int64 value from a neo4j record by column name.
+func recordInt64ByName(rec *neo4j.Record, key string) (int64, error) {
+	val, ok := rec.Get(key)
+	if !ok {
+		return 0, fmt.Errorf("memgraph: column %q not found in record", key)
+	}
+	n, ok := val.(int64)
+	if !ok {
+		return 0, fmt.Errorf("memgraph: column %q: expected int64, got %T", key, val)
+	}
+	return n, nil
+}
+
+// unmarshalIfPresent unmarshals jsonStr into dest if it contains meaningful data.
+// Considers "", "{}", and "null" as empty sentinels that should be skipped.
+func unmarshalIfPresent(jsonStr, field string, dest any) error {
+	if jsonStr == "" || jsonStr == "{}" || jsonStr == "null" {
+		return nil
+	}
+	if err := json.Unmarshal([]byte(jsonStr), dest); err != nil {
+		return fmt.Errorf("memgraph: unmarshal %s: %w", field, err)
+	}
+	return nil
+}
+
+// recordToConstitution converts a neo4j record to a *specv1.Constitution using named column access.
 func recordToConstitution(rec *neo4j.Record) (*specv1.Constitution, error) {
-	id, err := recordString(rec, 0, "id")
+	id, err := recordStringByName(rec, "c.id")
 	if err != nil {
 		return nil, err
 	}
-	layerStr, err := recordString(rec, 1, "layer")
+	layerStr, err := recordStringByName(rec, "c.layer")
 	if err != nil {
 		return nil, err
 	}
-	name, err := recordString(rec, 2, "name")
+	name, err := recordStringByName(rec, "c.name")
 	if err != nil {
 		return nil, err
 	}
-	version, err := recordInt64(rec, 3, "version")
+	version, err := recordInt64ByName(rec, "c.version")
 	if err != nil {
 		return nil, err
 	}
-	techJSON, err := recordString(rec, 4, "tech_json")
+	techJSON, err := recordStringByName(rec, "c.tech_json")
 	if err != nil {
 		return nil, err
 	}
-	principlesJSON, err := recordString(rec, 5, "principles_json")
+	principlesJSON, err := recordStringByName(rec, "c.principles_json")
 	if err != nil {
 		return nil, err
 	}
-	processJSON, err := recordString(rec, 6, "process_json")
+	processJSON, err := recordStringByName(rec, "c.process_json")
 	if err != nil {
 		return nil, err
 	}
-	constraintsJSON, err := recordString(rec, 7, "constraints_json")
+	constraintsJSON, err := recordStringByName(rec, "c.constraints_json")
 	if err != nil {
 		return nil, err
 	}
-	antipatternsJSON, err := recordString(rec, 8, "antipatterns_json")
+	antipatternsJSON, err := recordStringByName(rec, "c.antipatterns_json")
 	if err != nil {
 		return nil, err
 	}
-	referencesJSON, err := recordString(rec, 9, "references_json")
+	referencesJSON, err := recordStringByName(rec, "c.references_json")
 	if err != nil {
 		return nil, err
 	}
-	createdAtStr, err := recordString(rec, 10, "created_at")
+	createdAtStr, err := recordStringByName(rec, "c.created_at")
 	if err != nil {
 		return nil, err
 	}
-	updatedAtStr, err := recordString(rec, 11, "updated_at")
+	updatedAtStr, err := recordStringByName(rec, "c.updated_at")
 	if err != nil {
 		return nil, err
 	}
@@ -225,45 +261,33 @@ func recordToConstitution(rec *neo4j.Record) (*specv1.Constitution, error) {
 	}
 
 	var tech specv1.TechConfig
-	if techJSON != "" && techJSON != "{}" {
-		if err := json.Unmarshal([]byte(techJSON), &tech); err != nil {
-			return nil, fmt.Errorf("memgraph: unmarshal tech: %w", err)
-		}
+	if err := unmarshalIfPresent(techJSON, "tech", &tech); err != nil {
+		return nil, err
 	}
 
 	var principles []*specv1.Principle
-	if principlesJSON != "" && principlesJSON != "null" {
-		if err := json.Unmarshal([]byte(principlesJSON), &principles); err != nil {
-			return nil, fmt.Errorf("memgraph: unmarshal principles: %w", err)
-		}
+	if err := unmarshalIfPresent(principlesJSON, "principles", &principles); err != nil {
+		return nil, err
 	}
 
 	var process specv1.ProcessConfig
-	if processJSON != "" && processJSON != "{}" {
-		if err := json.Unmarshal([]byte(processJSON), &process); err != nil {
-			return nil, fmt.Errorf("memgraph: unmarshal process: %w", err)
-		}
+	if err := unmarshalIfPresent(processJSON, "process", &process); err != nil {
+		return nil, err
 	}
 
 	var constraints []string
-	if constraintsJSON != "" && constraintsJSON != "null" {
-		if err := json.Unmarshal([]byte(constraintsJSON), &constraints); err != nil {
-			return nil, fmt.Errorf("memgraph: unmarshal constraints: %w", err)
-		}
+	if err := unmarshalIfPresent(constraintsJSON, "constraints", &constraints); err != nil {
+		return nil, err
 	}
 
 	var antipatterns []*specv1.Antipattern
-	if antipatternsJSON != "" && antipatternsJSON != "null" {
-		if err := json.Unmarshal([]byte(antipatternsJSON), &antipatterns); err != nil {
-			return nil, fmt.Errorf("memgraph: unmarshal antipatterns: %w", err)
-		}
+	if err := unmarshalIfPresent(antipatternsJSON, "antipatterns", &antipatterns); err != nil {
+		return nil, err
 	}
 
 	var references []*specv1.Reference
-	if referencesJSON != "" && referencesJSON != "null" {
-		if err := json.Unmarshal([]byte(referencesJSON), &references); err != nil {
-			return nil, fmt.Errorf("memgraph: unmarshal references: %w", err)
-		}
+	if err := unmarshalIfPresent(referencesJSON, "references", &references); err != nil {
+		return nil, err
 	}
 
 	c := &specv1.Constitution{
