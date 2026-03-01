@@ -8,3 +8,10 @@ site/docs/design/
 
 # Generated protobuf — committed to repo for Go module consumers
 # gen/
+
+# Serena
+.serena/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
