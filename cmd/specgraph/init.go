@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/seanb4t/specgraph/internal/config"
+	"github.com/seanb4t/specgraph/internal/scanner"
 	"github.com/spf13/cobra"
 )
 
@@ -30,9 +31,11 @@ var initCmd = &cobra.Command{
 }
 
 var initYes bool
+var initScan bool
 
 func init() {
 	initCmd.Flags().BoolVar(&initYes, "yes", false, "non-interactive mode with defaults")
+	initCmd.Flags().BoolVar(&initScan, "scan", false, "scan codebase and generate constitution draft")
 	rootCmd.AddCommand(initCmd)
 }
 
@@ -109,5 +112,56 @@ func runInit(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	fmt.Printf("Initialized SpecGraph project at %s\n", configPath)
+
+	doScan := initScan || initYes
+	if doScan {
+		if err := runConstitutionScan(configPath); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("Hint: run 'specgraph init --scan' to auto-generate a constitution draft.")
+	}
+
+	return nil
+}
+
+func runConstitutionScan(configPath string) error {
+	fmt.Println("Scanning codebase for constitution draft...")
+	proto, err := scanner.Scan(".")
+	if err != nil {
+		return fmt.Errorf("scanning codebase: %w", err)
+	}
+
+	c := &config.ConstitutionConfig{
+		Name:  "project",
+		Layer: "project",
+	}
+
+	if proto.Tech != nil {
+		if proto.Tech.Languages != nil {
+			c.Tech.Languages.Primary = proto.Tech.Languages.Primary
+		}
+		if len(proto.Tech.Frameworks) > 0 {
+			c.Tech.Frameworks = proto.Tech.Frameworks
+		}
+		if len(proto.Tech.Infrastructure) > 0 {
+			c.Tech.Infrastructure = proto.Tech.Infrastructure
+		}
+	}
+
+	constitutionPath := filepath.Join(filepath.Dir(configPath), "constitution.yaml")
+
+	fmt.Printf("Detected language: %s\n", c.Tech.Languages.Primary)
+	if len(c.Tech.Frameworks) > 0 {
+		fmt.Printf("Detected frameworks: %v\n", c.Tech.Frameworks)
+	}
+	if len(c.Tech.Infrastructure) > 0 {
+		fmt.Printf("Detected infrastructure: %v\n", c.Tech.Infrastructure)
+	}
+
+	if err := config.WriteConstitutionYAML(constitutionPath, c); err != nil {
+		return err
+	}
+	fmt.Printf("Constitution draft written to %s\n", constitutionPath)
 	return nil
 }

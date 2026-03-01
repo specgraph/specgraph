@@ -28,10 +28,34 @@ type ServerConfig struct {
 
 // StorageConfig describes the storage backend and its options.
 type StorageConfig struct {
-	Backend  string         `yaml:"backend"` // memgraph | postgres
-	Memgraph MemgraphConfig `yaml:"memgraph"`
-	Postgres PostgresConfig `yaml:"postgres"`
-	Docker   DockerConfig   `yaml:"docker"`
+	Backend          string         `yaml:"backend"` // memgraph | postgres
+	Memgraph         MemgraphConfig `yaml:"memgraph"`
+	Postgres         PostgresConfig `yaml:"postgres"`
+	Docker           DockerConfig   `yaml:"docker"`
+	ConstitutionPath string         `yaml:"constitution_path"`
+}
+
+// ConstitutionConfig represents a constitution YAML document.
+type ConstitutionConfig struct {
+	Name        string           `yaml:"name"`
+	Layer       string           `yaml:"layer"`
+	Tech        ConstitutionTech `yaml:"tech,omitempty"`
+	Principles  []string         `yaml:"principles,omitempty"`
+	Constraints []string         `yaml:"constraints,omitempty"`
+}
+
+// ConstitutionTech holds technology stack configuration.
+type ConstitutionTech struct {
+	Languages      ConstitutionLangs `yaml:"languages,omitempty"`
+	Frameworks     map[string]string `yaml:"frameworks,omitempty"`
+	Infrastructure map[string]string `yaml:"infrastructure,omitempty"`
+}
+
+// ConstitutionLangs holds language configuration.
+type ConstitutionLangs struct {
+	Primary   string   `yaml:"primary,omitempty"`
+	Allowed   []string `yaml:"allowed,omitempty"`
+	Forbidden []string `yaml:"forbidden,omitempty"`
 }
 
 // MemgraphConfig holds Memgraph-specific connection settings.
@@ -84,6 +108,35 @@ func (c *Config) Write(path string) error {
 	return nil
 }
 
+// LoadConstitutionYAML reads and parses a constitution YAML file.
+func LoadConstitutionYAML(path string) (*ConstitutionConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read constitution: %w", err)
+	}
+	c := &ConstitutionConfig{}
+	if err := yaml.Unmarshal(data, c); err != nil {
+		return nil, fmt.Errorf("parse constitution: %w", err)
+	}
+	return c, nil
+}
+
+// WriteConstitutionYAML persists a constitution to the given path as YAML.
+func WriteConstitutionYAML(path string, c *ConstitutionConfig) error {
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return fmt.Errorf("marshal constitution: %w", err)
+	}
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return fmt.Errorf("create constitution dir: %w", err)
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return fmt.Errorf("write constitution: %w", err)
+	}
+	return nil
+}
+
 func applyDefaults(cfg *Config) {
 	if cfg.Server.Host == "" {
 		cfg.Server.Host = "0.0.0.0"
@@ -99,5 +152,8 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.Storage.Docker.ComposeFile == "" {
 		cfg.Storage.Docker.ComposeFile = ".specgraph/docker-compose.yaml"
+	}
+	if cfg.Storage.ConstitutionPath == "" {
+		cfg.Storage.ConstitutionPath = ".specgraph/constitution.yaml"
 	}
 }
