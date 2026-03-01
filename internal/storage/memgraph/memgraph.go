@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -234,6 +235,17 @@ func recordInt64(rec *neo4j.Record, pos int, field string) (int64, error) {
 	return v, nil
 }
 
+// safeInt32 clamps an int64 to the int32 range, preventing overflow on conversion.
+func safeInt32(v int64) int32 {
+	if v > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if v < math.MinInt32 {
+		return math.MinInt32
+	}
+	return int32(v)
+}
+
 // recordToSpec converts a neo4j record (with positional values) to a *specv1.Spec.
 func recordToSpec(rec *neo4j.Record) (*specv1.Spec, error) {
 	id, err := recordString(rec, 0, "id")
@@ -289,7 +301,7 @@ func recordToSpec(rec *neo4j.Record) (*specv1.Spec, error) {
 		Stage:      stage,
 		Priority:   priority,
 		Complexity: complexity,
-		Version:    int32(version),
+		Version:    safeInt32(version),
 		CreatedAt:  timestamppb.New(createdAt),
 		UpdatedAt:  timestamppb.New(updatedAt),
 	}, nil
