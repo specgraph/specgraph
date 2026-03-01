@@ -95,7 +95,7 @@ func detectFrameworks(dir string, c *specv1.Constitution) {
 	// Node frameworks
 	if pkgJSON, err := readFile(filepath.Join(dir, "package.json")); err == nil {
 		var pkg map[string]any
-		if err := json.Unmarshal([]byte(pkgJSON), &pkg); err == nil {
+		if unmarshalErr := json.Unmarshal([]byte(pkgJSON), &pkg); unmarshalErr == nil {
 			deps := mergeDeps(pkg)
 			if _, ok := deps["react"]; ok {
 				c.Tech.Frameworks["ui"] = "React"
@@ -110,7 +110,7 @@ func detectFrameworks(dir string, c *specv1.Constitution) {
 				c.Tech.Frameworks["api"] = "Fastify"
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "warning: scanner: failed to parse package.json: %v\n", err)
+			fmt.Fprintf(os.Stderr, "warning: scanner: failed to parse package.json: %v\n", unmarshalErr)
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
 		fmt.Fprintf(os.Stderr, "warning: scanner: %v\n", err)
@@ -150,7 +150,7 @@ func detectInfrastructure(dir string, c *specv1.Constitution) {
 			if !errors.Is(err, os.ErrNotExist) {
 				fmt.Fprintf(os.Stderr, "warning: scanner: %v\n", err)
 			}
-			return nil //nolint:nilerr // skip unreadable files gracefully
+			return nil
 		}
 		if strings.Contains(content, "apiVersion:") && strings.Contains(content, "kind:") {
 			c.Tech.Infrastructure["runtime"] = "Kubernetes"
