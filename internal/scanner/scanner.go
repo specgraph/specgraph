@@ -2,7 +2,7 @@
 // Copyright 2026 Sean Brandt
 
 // Package scanner implements Tier 0 codebase scanning for constitution drafting.
-package scanner //nolint:revive // package-comments: "scanner" is clearer than alternatives for this domain
+package scanner
 
 import (
 	"encoding/json"
