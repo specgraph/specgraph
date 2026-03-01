@@ -23,7 +23,7 @@ var _ specgraphv1connect.ClaimServiceHandler = (*ClaimHandler)(nil)
 // ClaimSpec handles the ClaimSpec RPC.
 func (h *ClaimHandler) ClaimSpec(ctx context.Context, req *connect.Request[specv1.ClaimSpecRequest]) (*connect.Response[specv1.Claim], error) {
 	msg := req.Msg
-	claim, err := h.store.ClaimSpec(ctx, msg.Slug, msg.Agent, msg.LeaseDuration.AsDuration())
+	claim, err := h.store.ClaimSpec(ctx, msg.SpecSlug, msg.Agent, msg.LeaseDuration.AsDuration())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
 	}
@@ -33,7 +33,7 @@ func (h *ClaimHandler) ClaimSpec(ctx context.Context, req *connect.Request[specv
 // UnclaimSpec handles the UnclaimSpec RPC.
 func (h *ClaimHandler) UnclaimSpec(ctx context.Context, req *connect.Request[specv1.UnclaimSpecRequest]) (*connect.Response[specv1.UnclaimSpecResponse], error) {
 	msg := req.Msg
-	err := h.store.UnclaimSpec(ctx, msg.Slug, msg.Agent)
+	err := h.store.UnclaimSpec(ctx, msg.SpecSlug, msg.Agent)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -43,7 +43,7 @@ func (h *ClaimHandler) UnclaimSpec(ctx context.Context, req *connect.Request[spe
 // Heartbeat handles the Heartbeat RPC.
 func (h *ClaimHandler) Heartbeat(ctx context.Context, req *connect.Request[specv1.HeartbeatRequest]) (*connect.Response[specv1.Claim], error) {
 	msg := req.Msg
-	claim, err := h.store.Heartbeat(ctx, msg.Slug, msg.Agent, msg.ExtendBy.AsDuration())
+	claim, err := h.store.Heartbeat(ctx, msg.SpecSlug, msg.Agent, msg.ExtendBy.AsDuration())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}

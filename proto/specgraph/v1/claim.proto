@@ -20,20 +20,20 @@ message Claim {
 }
 
 message ClaimSpecRequest {
-  string slug = 1;
+  string spec_slug = 1;
   string agent = 2;                         // identifier of the claiming agent
   google.protobuf.Duration lease_duration = 3;  // how long the lease lasts (default 15m)
 }
 
 message UnclaimSpecRequest {
-  string slug = 1;
+  string spec_slug = 1;
   string agent = 2;
 }
 
 message UnclaimSpecResponse {}
 
 message HeartbeatRequest {
-  string slug = 1;
+  string spec_slug = 1;
   string agent = 2;
   google.protobuf.Duration extend_by = 3;   // extend lease by this duration (default 15m)
 }

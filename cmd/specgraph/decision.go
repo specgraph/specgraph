@@ -94,8 +94,18 @@ func runDecisionList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+
+	var statusFilter specv1.DecisionStatus
+	if decisionListStatus != "" {
+		val, ok := specv1.DecisionStatus_value[decisionListStatus]
+		if !ok {
+			return fmt.Errorf("unknown status %q; valid values: proposed, accepted, deprecated, superseded", decisionListStatus)
+		}
+		statusFilter = specv1.DecisionStatus(val)
+	}
+
 	resp, err := client.ListDecisions(context.Background(), connect.NewRequest(&specv1.ListDecisionsRequest{
-		Status: decisionListStatus,
+		Status: statusFilter,
 	}))
 	if err != nil {
 		return fmt.Errorf("list decisions: %w", err)

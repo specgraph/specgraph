@@ -9,13 +9,23 @@ option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
 
 import "google/protobuf/timestamp.proto";
 
+// --- Enums ---
+
+enum DecisionStatus {
+  DECISION_STATUS_UNSPECIFIED = 0;
+  DECISION_STATUS_PROPOSED = 1;
+  DECISION_STATUS_ACCEPTED = 2;
+  DECISION_STATUS_DEPRECATED = 3;
+  DECISION_STATUS_SUPERSEDED = 4;
+}
+
 // --- Messages ---
 
 message Decision {
   string id = 1;                             // content-addressable, e.g. "dec-a7f3b2c"
   string slug = 2;                           // human-readable, e.g. "use-memgraph"
   string title = 3;                          // short title
-  string status = 4;                         // proposed | accepted | deprecated | superseded
+  DecisionStatus status = 4;
   string decision = 5;                       // the decision text
   string rationale = 6;                      // why this decision was made
   string superseded_by = 7;                  // slug of superseding decision, if any
@@ -35,8 +45,8 @@ message GetDecisionRequest {
 }
 
 message ListDecisionsRequest {
-  string status = 1;   // optional filter
-  int32 limit = 2;     // optional, defaults to 50
+  DecisionStatus status = 1;  // optional filter; UNSPECIFIED means no filter
+  int32 limit = 2;            // optional, defaults to 50
 }
 
 message ListDecisionsResponse {
@@ -44,9 +54,9 @@ message ListDecisionsResponse {
 }
 
 message UpdateDecisionRequest {
-  string slug = 1;                   // identifies which decision (required)
+  string slug = 1;                         // identifies which decision (required)
   optional string title = 2;
-  optional string status = 3;
+  optional DecisionStatus status = 3;
   optional string decision = 4;
   optional string rationale = 5;
   optional string superseded_by = 6;

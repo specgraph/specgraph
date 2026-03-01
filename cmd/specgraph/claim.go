@@ -50,7 +50,7 @@ func runClaim(_ *cobra.Command, args []string) error {
 		return err
 	}
 	resp, err := client.ClaimSpec(context.Background(), connect.NewRequest(&specv1.ClaimSpecRequest{
-		Slug:          args[0],
+		SpecSlug:      args[0],
 		Agent:         claimAgent,
 		LeaseDuration: durationpb.New(claimDuration),
 	}))
@@ -86,8 +86,8 @@ func runUnclaim(_ *cobra.Command, args []string) error {
 		return err
 	}
 	_, err = client.UnclaimSpec(context.Background(), connect.NewRequest(&specv1.UnclaimSpecRequest{
-		Slug:  args[0],
-		Agent: unclaimAgent,
+		SpecSlug: args[0],
+		Agent:    unclaimAgent,
 	}))
 	if err != nil {
 		return fmt.Errorf("unclaim spec: %w", err)

@@ -39,7 +39,7 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, decision, ratio
 		"id":            id,
 		"slug":          slug,
 		"title":         title,
-		"status":        "proposed",
+		"status":        specv1.DecisionStatus_DECISION_STATUS_PROPOSED.String(),
 		"decision":      decision,
 		"rationale":     rationale,
 		"superseded_by": "",
@@ -79,13 +79,13 @@ func (s *Store) GetDecision(ctx context.Context, slug string) (*specv1.Decision,
 }
 
 // ListDecisions returns decisions matching the given filters.
-func (s *Store) ListDecisions(ctx context.Context, status string, limit int) ([]*specv1.Decision, error) {
+func (s *Store) ListDecisions(ctx context.Context, status specv1.DecisionStatus, limit int) ([]*specv1.Decision, error) {
 	var clauses []string
 	params := map[string]any{}
 
-	if status != "" {
+	if status != specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED {
 		clauses = append(clauses, "d.status = $status")
-		params["status"] = status
+		params["status"] = status.String()
 	}
 
 	query := "MATCH (d:Decision)"
@@ -115,7 +115,7 @@ func (s *Store) ListDecisions(ctx context.Context, status string, limit int) ([]
 }
 
 // UpdateDecision updates a decision by slug. Only non-nil fields are changed.
-func (s *Store) UpdateDecision(ctx context.Context, slug string, title, status, decision, rationale, supersededBy *string) (*specv1.Decision, error) {
+func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, status *specv1.DecisionStatus, decision, rationale, supersededBy *string) (*specv1.Decision, error) {
 	var setClauses []string
 	params := map[string]any{"slug": slug}
 
@@ -125,7 +125,7 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title, status, 
 	}
 	if status != nil {
 		setClauses = append(setClauses, "d.status = $status")
-		params["status"] = *status
+		params["status"] = status.String()
 	}
 	if decision != nil {
 		setClauses = append(setClauses, "d.decision = $decision")
@@ -166,7 +166,6 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title, status, 
 	return recordToDecision(result.Records[0])
 }
 
-
 func recordToDecision(rec *neo4j.Record) (*specv1.Decision, error) {
 	createdAt, err := parseRFC3339("created_at", recordString(rec, 7))
 	if err != nil {
@@ -177,11 +176,17 @@ func recordToDecision(rec *neo4j.Record) (*specv1.Decision, error) {
 		return nil, err
 	}
 
+	statusStr := recordString(rec, 3)
+	statusVal, ok := specv1.DecisionStatus_value[statusStr]
+	if !ok {
+		statusVal = int32(specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED)
+	}
+
 	return &specv1.Decision{
 		Id:           recordString(rec, 0),
 		Slug:         recordString(rec, 1),
 		Title:        recordString(rec, 2),
-		Status:       recordString(rec, 3),
+		Status:       specv1.DecisionStatus(statusVal),
 		Decision:     recordString(rec, 4),
 		Rationale:    recordString(rec, 5),
 		SupersededBy: recordString(rec, 6),
