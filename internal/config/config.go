@@ -94,9 +94,10 @@ type ConstitutionTech struct {
 
 // ConstitutionLangs holds language configuration.
 type ConstitutionLangs struct {
-	Primary   string   `yaml:"primary,omitempty"`
-	Allowed   []string `yaml:"allowed,omitempty"`
-	Forbidden []string `yaml:"forbidden,omitempty"`
+	Primary          string            `yaml:"primary,omitempty"`
+	Allowed          []string          `yaml:"allowed,omitempty"`
+	Forbidden        []string          `yaml:"forbidden,omitempty"`
+	ForbiddenReasons map[string]string `yaml:"forbidden_reasons,omitempty"`
 }
 
 // MemgraphConfig holds Memgraph-specific connection settings.

@@ -127,7 +127,7 @@ func referenceTypeFromString(s string) specv1.ReferenceType {
 	return specv1.ReferenceType_REFERENCE_TYPE_UNSPECIFIED
 }
 
-func bootstrapConstitution(ctx context.Context, store *memgraph.Store, yamlPath string) error {
+func bootstrapConstitution(ctx context.Context, store storage.ConstitutionBackend, yamlPath string) error {
 	// Check if constitution already exists in storage.
 	_, err := store.GetConstitution(ctx)
 	if err == nil {
@@ -201,9 +201,10 @@ func bootstrapConstitution(ctx context.Context, store *memgraph.Store, yamlPath 
 		References:   references,
 		Tech: &specv1.TechConfig{
 			Languages: &specv1.LanguageConfig{
-				Primary:   cy.Tech.Languages.Primary,
-				Allowed:   cy.Tech.Languages.Allowed,
-				Forbidden: cy.Tech.Languages.Forbidden,
+				Primary:          cy.Tech.Languages.Primary,
+				Allowed:          cy.Tech.Languages.Allowed,
+				Forbidden:        cy.Tech.Languages.Forbidden,
+				ForbiddenReasons: cy.Tech.Languages.ForbiddenReasons,
 			},
 			Frameworks:     cy.Tech.Frameworks,
 			Infrastructure: cy.Tech.Infrastructure,

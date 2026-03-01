@@ -66,6 +66,9 @@ func (h *ConstitutionHandler) CheckViolation(ctx context.Context, req *connect.R
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
 		}
+		if errors.Is(err, storage.ErrConstitutionNotFound) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, fmt.Errorf("no constitution has been configured"))
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&specv1.CheckViolationResponse{Violations: violations}), nil
