@@ -12,6 +12,9 @@ coverage.html
 # Generated protobuf (reproducible via buf generate)
 gen/
 
+# Taskfile checksums
+.task/
+
 # Serena
 .serena/
 
