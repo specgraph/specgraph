@@ -6,8 +6,8 @@ site/docs/design/
 /specgraph
 *.exe
 
-# Generated protobuf — committed to repo for Go module consumers
-# gen/
+# Generated protobuf (reproducible via buf generate)
+gen/
 
 # Serena
 .serena/
