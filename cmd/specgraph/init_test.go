@@ -50,7 +50,7 @@ func TestRunConstitutionScanWithGoMod(t *testing.T) {
 	oldWd, err := os.Getwd()
 	require.NoError(t, err)
 	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { os.Chdir(oldWd) }) //nolint:errcheck // best-effort restore in test cleanup
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
 	err = runConstitutionScan(configPath)
 	require.NoError(t, err)
@@ -73,7 +73,7 @@ func TestRunConstitutionScanEmptyDir(t *testing.T) {
 	oldWd, err := os.Getwd()
 	require.NoError(t, err)
 	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { os.Chdir(oldWd) }) //nolint:errcheck // best-effort restore in test cleanup
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
 	err = runConstitutionScan(configPath)
 	require.NoError(t, err)
@@ -100,7 +100,7 @@ func TestInitWithScanFlag(t *testing.T) {
 	oldWd, err := os.Getwd()
 	require.NoError(t, err)
 	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { os.Chdir(oldWd) }) //nolint:errcheck // best-effort restore in test cleanup
+	t.Cleanup(func() { _ = os.Chdir(oldWd) })
 
 	initYes = true
 	initScan = true

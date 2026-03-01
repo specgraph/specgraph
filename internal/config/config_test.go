@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -227,4 +228,91 @@ func TestConstitutionYAML_WriteCreatesDir(t *testing.T) {
 	info, err := os.Stat(path)
 	require.NoError(t, err)
 	assert.False(t, info.IsDir())
+}
+
+func TestReferenceTypeFromString(t *testing.T) {
+	tests := []struct {
+		input string
+		want  specv1.ReferenceType
+	}{
+		{"adr", specv1.ReferenceType_REFERENCE_TYPE_ADR},
+		{"spec", specv1.ReferenceType_REFERENCE_TYPE_SPEC},
+		{"doc", specv1.ReferenceType_REFERENCE_TYPE_DOC},
+		{"url", specv1.ReferenceType_REFERENCE_TYPE_URL},
+		{"ADR", specv1.ReferenceType_REFERENCE_TYPE_ADR},
+		{"Spec", specv1.ReferenceType_REFERENCE_TYPE_SPEC},
+		{"unknown", specv1.ReferenceType_REFERENCE_TYPE_UNSPECIFIED},
+		{"", specv1.ReferenceType_REFERENCE_TYPE_UNSPECIFIED},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			got := ReferenceTypeFromString(tc.input)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestConstitutionConfig_ToProtoRoundTrip(t *testing.T) {
+	original := &ConstitutionConfig{
+		Name:  "round-trip-test",
+		Layer: "project",
+		Tech: ConstitutionTech{
+			Languages: ConstitutionLangs{
+				Primary:          "go",
+				Allowed:          []string{"go", "typescript"},
+				Forbidden:        []string{"php"},
+				ForbiddenReasons: map[string]string{"php": "not in stack"},
+			},
+			Frameworks:     map[string]string{"api": "connectrpc"},
+			Infrastructure: map[string]string{"db": "memgraph"},
+		},
+		Principles: []ConstitutionPrinciple{
+			{ID: "p1", Statement: "Keep it simple", Rationale: "Reduces bugs", Exceptions: "protos"},
+			{ID: "p2", Statement: "Test everything"},
+		},
+		Constraints: []string{"no global state", "no panics in library code"},
+		Antipatterns: []ConstitutionAntipattern{
+			{Pattern: "god object", Why: "hard to test", Instead: "split responsibilities"},
+		},
+		References: []ConstitutionReference{
+			{Type: "adr", Path: "docs/adr/001.md"},
+			{Type: "url", Path: "https://example.com"},
+		},
+	}
+
+	pb := original.ToProto()
+	require.NotNil(t, pb)
+
+	roundTripped := ConstitutionConfigFromProto(pb)
+	require.NotNil(t, roundTripped)
+
+	assert.Equal(t, original.Name, roundTripped.Name)
+	assert.Equal(t, original.Layer, roundTripped.Layer)
+	assert.Equal(t, original.Constraints, roundTripped.Constraints)
+
+	assert.Equal(t, original.Tech.Languages.Primary, roundTripped.Tech.Languages.Primary)
+	assert.Equal(t, original.Tech.Languages.Allowed, roundTripped.Tech.Languages.Allowed)
+	assert.Equal(t, original.Tech.Languages.Forbidden, roundTripped.Tech.Languages.Forbidden)
+	assert.Equal(t, original.Tech.Languages.ForbiddenReasons, roundTripped.Tech.Languages.ForbiddenReasons)
+	assert.Equal(t, original.Tech.Frameworks, roundTripped.Tech.Frameworks)
+	assert.Equal(t, original.Tech.Infrastructure, roundTripped.Tech.Infrastructure)
+
+	require.Len(t, roundTripped.Principles, len(original.Principles))
+	assert.Equal(t, original.Principles[0].ID, roundTripped.Principles[0].ID)
+	assert.Equal(t, original.Principles[0].Statement, roundTripped.Principles[0].Statement)
+	assert.Equal(t, original.Principles[0].Rationale, roundTripped.Principles[0].Rationale)
+	assert.Equal(t, original.Principles[0].Exceptions, roundTripped.Principles[0].Exceptions)
+	assert.Equal(t, original.Principles[1].Statement, roundTripped.Principles[1].Statement)
+
+	require.Len(t, roundTripped.Antipatterns, len(original.Antipatterns))
+	assert.Equal(t, original.Antipatterns[0].Pattern, roundTripped.Antipatterns[0].Pattern)
+	assert.Equal(t, original.Antipatterns[0].Why, roundTripped.Antipatterns[0].Why)
+	assert.Equal(t, original.Antipatterns[0].Instead, roundTripped.Antipatterns[0].Instead)
+
+	require.Len(t, roundTripped.References, len(original.References))
+	assert.Equal(t, original.References[0].Type, roundTripped.References[0].Type)
+	assert.Equal(t, original.References[0].Path, roundTripped.References[0].Path)
+	assert.Equal(t, original.References[1].Type, roundTripped.References[1].Type)
+	assert.Equal(t, original.References[1].Path, roundTripped.References[1].Path)
 }

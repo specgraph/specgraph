@@ -329,11 +329,11 @@ func recordToConstitution(rec *neo4j.Record) (*specv1.Constitution, error) {
 		UpdatedAt:    timestamppb.New(updatedAt),
 	}
 
-	// Only set pointer fields if non-empty to avoid spurious non-nil empty structs.
-	if techJSON != "null" && techJSON != "" {
+	// Only set pointer fields when the struct was actually populated.
+	if tech.Languages != nil || len(tech.Frameworks) > 0 || len(tech.Infrastructure) > 0 {
 		c.Tech = &tech
 	}
-	if processJSON != "null" && processJSON != "" {
+	if process.SpecReview != "" || process.SecurityReview != nil || process.Deployment != nil || process.Documentation != nil {
 		c.Process = &process
 	}
 	if len(principles) > 0 {

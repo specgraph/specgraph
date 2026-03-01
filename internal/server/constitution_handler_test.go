@@ -16,6 +16,7 @@ import (
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/seanb4t/specgraph/internal/server"
 	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -187,4 +188,39 @@ func TestConstitutionHandler_EmitUnspecifiedFormat(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestConstitutionHandler_EmitSuccess(t *testing.T) {
+	client := setupConstitutionServer(t)
+	ctx := context.Background()
+
+	_, err := client.UpdateConstitution(ctx, connect.NewRequest(&specv1.UpdateConstitutionRequest{
+		Constitution: &specv1.Constitution{
+			Name:  "test-project",
+			Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
+			Tech: &specv1.TechConfig{
+				Languages: &specv1.LanguageConfig{
+					Primary: "go",
+				},
+				Frameworks: map[string]string{
+					"api": "ConnectRPC",
+				},
+			},
+			Principles: []*specv1.Principle{
+				{Statement: "Keep it simple"},
+			},
+			Constraints: []string{"no global state"},
+		},
+	}))
+	require.NoError(t, err)
+
+	resp, err := client.EmitToolFiles(ctx, connect.NewRequest(&specv1.EmitToolFilesRequest{
+		Format: specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD,
+	}))
+	require.NoError(t, err)
+	require.Equal(t, "CLAUDE.md", resp.Msg.Filename)
+	assert.NotEmpty(t, resp.Msg.Content)
+	assert.Contains(t, resp.Msg.Content, "Constitution")
+	assert.Contains(t, resp.Msg.Content, "go")
+	assert.Contains(t, resp.Msg.Content, "ConnectRPC")
 }
