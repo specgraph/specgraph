@@ -38,7 +38,7 @@ func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, dec
 		Id:        fmt.Sprintf("dec-%05d", m.seq),
 		Slug:      slug,
 		Title:     title,
-		Status:    "proposed",
+		Status:    specv1.DecisionStatus_DECISION_STATUS_PROPOSED,
 		Decision:  decision,
 		Rationale: rationale,
 		CreatedAt: now,
@@ -58,12 +58,12 @@ func (m *mockDecisionBackend) GetDecision(_ context.Context, slug string) (*spec
 	return d, nil
 }
 
-func (m *mockDecisionBackend) ListDecisions(_ context.Context, status string, limit int) ([]*specv1.Decision, error) {
+func (m *mockDecisionBackend) ListDecisions(_ context.Context, status specv1.DecisionStatus, limit int) ([]*specv1.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	var result []*specv1.Decision
 	for _, d := range m.decisions {
-		if status != "" && d.Status != status {
+		if status != specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED && d.Status != status {
 			continue
 		}
 		result = append(result, d)
@@ -74,7 +74,7 @@ func (m *mockDecisionBackend) ListDecisions(_ context.Context, status string, li
 	return result, nil
 }
 
-func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, title, status, decision, rationale, supersededBy *string) (*specv1.Decision, error) {
+func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, title *string, status *specv1.DecisionStatus, decision, rationale, supersededBy *string) (*specv1.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.decisions[slug]
@@ -122,7 +122,7 @@ func TestDecisionHandler_CreateAndGet(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.Equal(t, "use-memgraph", createResp.Msg.Slug)
-	require.Equal(t, "proposed", createResp.Msg.Status)
+	require.Equal(t, specv1.DecisionStatus_DECISION_STATUS_PROPOSED, createResp.Msg.Status)
 	require.NotEmpty(t, createResp.Msg.Id)
 
 	getResp, err := client.GetDecision(ctx, connect.NewRequest(&specv1.GetDecisionRequest{
@@ -158,11 +158,11 @@ func TestDecisionHandler_ListAndUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, listResp.Msg.Decisions, 2)
 
-	newStatus := "accepted"
+	newStatus := specv1.DecisionStatus_DECISION_STATUS_ACCEPTED
 	updateResp, err := client.UpdateDecision(ctx, connect.NewRequest(&specv1.UpdateDecisionRequest{
 		Slug:   "dec-alpha",
 		Status: &newStatus,
 	}))
 	require.NoError(t, err)
-	require.Equal(t, "accepted", updateResp.Msg.Status)
+	require.Equal(t, specv1.DecisionStatus_DECISION_STATUS_ACCEPTED, updateResp.Msg.Status)
 }

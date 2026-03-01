@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +27,7 @@ func TestCreateAndGetDecision(t *testing.T) {
 	require.Contains(t, d.Id, "dec-")
 	require.Equal(t, "use-memgraph", d.Slug)
 	require.Equal(t, "Use Memgraph", d.Title)
-	require.Equal(t, "proposed", d.Status)
+	require.Equal(t, specv1.DecisionStatus_DECISION_STATUS_PROPOSED, d.Status)
 	require.Equal(t, "Use Memgraph as primary DB", d.Decision)
 	require.Equal(t, "Native Cypher support", d.Rationale)
 	require.NotNil(t, d.CreatedAt)
@@ -51,11 +52,11 @@ func TestListDecisions(t *testing.T) {
 	_, err = store.CreateDecision(ctx, "dec-b", "Second", "Decision B", "Reason B")
 	require.NoError(t, err)
 
-	all, err := store.ListDecisions(ctx, "", 0)
+	all, err := store.ListDecisions(ctx, specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED, 0)
 	require.NoError(t, err)
 	require.Len(t, all, 2)
 
-	filtered, err := store.ListDecisions(ctx, "proposed", 0)
+	filtered, err := store.ListDecisions(ctx, specv1.DecisionStatus_DECISION_STATUS_PROPOSED, 0)
 	require.NoError(t, err)
 	require.Len(t, filtered, 2)
 }
@@ -72,10 +73,10 @@ func TestUpdateDecision(t *testing.T) {
 	_, err = store.CreateDecision(ctx, "update-dec", "Original Title", "Original decision", "Original rationale")
 	require.NoError(t, err)
 
-	newStatus := "accepted"
+	newStatus := specv1.DecisionStatus_DECISION_STATUS_ACCEPTED
 	updated, err := store.UpdateDecision(ctx, "update-dec", nil, &newStatus, nil, nil, nil)
 	require.NoError(t, err)
-	require.Equal(t, "accepted", updated.Status)
+	require.Equal(t, specv1.DecisionStatus_DECISION_STATUS_ACCEPTED, updated.Status)
 	require.Equal(t, "Original Title", updated.Title)
 
 	_, err = store.UpdateDecision(ctx, "nonexistent", nil, &newStatus, nil, nil, nil)

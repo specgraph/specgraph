@@ -89,7 +89,7 @@ func TestClaimHandler_ClaimAndUnclaim(t *testing.T) {
 
 	// Claim
 	claimResp, err := client.ClaimSpec(ctx, connect.NewRequest(&specv1.ClaimSpecRequest{
-		Slug:          "my-spec",
+		SpecSlug:      "my-spec",
 		Agent:         "agent-1",
 		LeaseDuration: durationpb.New(10 * time.Minute),
 	}))
@@ -100,8 +100,8 @@ func TestClaimHandler_ClaimAndUnclaim(t *testing.T) {
 
 	// Unclaim
 	_, err = client.UnclaimSpec(ctx, connect.NewRequest(&specv1.UnclaimSpecRequest{
-		Slug:  "my-spec",
-		Agent: "agent-1",
+		SpecSlug: "my-spec",
+		Agent:    "agent-1",
 	}))
 	require.NoError(t, err)
 }
@@ -112,14 +112,14 @@ func TestClaimHandler_Heartbeat(t *testing.T) {
 
 	// Claim first
 	_, err := client.ClaimSpec(ctx, connect.NewRequest(&specv1.ClaimSpecRequest{
-		Slug:  "hb-spec",
-		Agent: "agent-1",
+		SpecSlug: "hb-spec",
+		Agent:    "agent-1",
 	}))
 	require.NoError(t, err)
 
 	// Heartbeat
 	hbResp, err := client.Heartbeat(ctx, connect.NewRequest(&specv1.HeartbeatRequest{
-		Slug:     "hb-spec",
+		SpecSlug: "hb-spec",
 		Agent:    "agent-1",
 		ExtendBy: durationpb.New(30 * time.Minute),
 	}))
@@ -128,8 +128,8 @@ func TestClaimHandler_Heartbeat(t *testing.T) {
 
 	// Heartbeat on non-existent claim
 	_, err = client.Heartbeat(ctx, connect.NewRequest(&specv1.HeartbeatRequest{
-		Slug:  "no-such-spec",
-		Agent: "agent-1",
+		SpecSlug: "no-such-spec",
+		Agent:    "agent-1",
 	}))
 	require.Error(t, err)
 }

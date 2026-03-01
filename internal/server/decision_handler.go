@@ -48,7 +48,7 @@ func (h *DecisionHandler) ListDecisions(ctx context.Context, req *connect.Reques
 		limit = defaultListLimit
 	}
 
-	decisions, err := h.store.ListDecisions(ctx, msg.Status, limit)
+	decisions, err := h.store.ListDecisions(ctx, msg.GetStatus(), limit)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
