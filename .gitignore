@@ -5,6 +5,9 @@ site/docs/design/
 # Go
 /specgraph
 *.exe
+dist/
+coverage.out
+coverage.html
 
 # Generated protobuf (reproducible via buf generate)
 gen/
