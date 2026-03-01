@@ -1932,6 +1932,79 @@ git commit -m "feat(plugin): specgraph init --tool=claude-code installs hooks an
 
 ---
 
+## Task 11: Final Verification and Cleanup
+
+**Step 1: Run all tests**
+
+```bash
+go test ./... -count=1 -timeout=120s
+```
+
+Expected: all tests pass
+
+**Step 2: Run linter**
+
+```bash
+golangci-lint run ./...
+```
+
+Expected: no issues
+
+**Step 3: Verify full CLI build**
+
+```bash
+go build -o specgraph ./cmd/specgraph
+./specgraph --help
+./specgraph init --help
+```
+
+Expected: clean build, `--tool` flag visible in init help
+
+**Step 4: Verify plugin structure**
+
+```bash
+# Check plugin manifest parses
+python3 -c "import json; json.load(open('plugin/specgraph/plugin.json'))"
+
+# Check all skill files exist
+ls plugin/specgraph/skills/specgraph/SKILL.md
+ls plugin/specgraph/skills/specgraph-spark/SKILL.md
+ls plugin/specgraph/skills/specgraph-shape/SKILL.md
+ls plugin/specgraph/skills/specgraph-specify/SKILL.md
+ls plugin/specgraph/skills/specgraph-decompose/SKILL.md
+ls plugin/specgraph/skills/specgraph-approve/SKILL.md
+ls plugin/specgraph/skills/specgraph-list/SKILL.md
+ls plugin/specgraph/skills/specgraph-show/SKILL.md
+ls plugin/specgraph/skills/specgraph-deps/SKILL.md
+ls plugin/specgraph/skills/specgraph-ready/SKILL.md
+ls plugin/specgraph/skills/specgraph-bundle/SKILL.md
+
+# Check hook script exists
+ls plugin/specgraph/hooks/session-start.sh
+```
+
+Expected: all files present, plugin.json valid
+
+**Step 5: Test full workflow in temp directory**
+
+```bash
+cd $(mktemp -d)
+specgraph init --yes --tool=claude-code
+ls .claude/settings.json
+ls .claude/skills/specgraph/
+```
+
+Expected: settings.json created with hook, skills directory populated
+
+**Step 6: Final commit if any cleanup needed**
+
+```bash
+git add -A
+git commit -m "chore(plugin): cleanup and final verification"
+```
+
+---
+
 ## Summary
 
 | Task | Deliverable | Commit |
@@ -1946,6 +2019,7 @@ git commit -m "feat(plugin): specgraph init --tool=claude-code installs hooks an
 | 8 | Installation script + README | `feat(plugin): installation script and documentation` |
 | 9 | Integration test + CLI wiring | `feat(plugin): integration test script and CLI hook wiring` |
 | 10 | `init --tool=claude-code` support | `feat(plugin): specgraph init --tool=claude-code installs hooks and skill directory` |
+| 11 | Final verification | `chore(plugin): cleanup and final verification` |
 
 ### Dependencies
 
