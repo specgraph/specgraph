@@ -134,22 +134,8 @@ func runConstitutionScan(configPath string) error {
 		return fmt.Errorf("scanning codebase: %w", err)
 	}
 
-	c := &config.ConstitutionConfig{
-		Name:  "project",
-		Layer: "project",
-	}
-
-	if proto.Tech != nil {
-		if proto.Tech.Languages != nil {
-			c.Tech.Languages.Primary = proto.Tech.Languages.Primary
-		}
-		if len(proto.Tech.Frameworks) > 0 {
-			c.Tech.Frameworks = proto.Tech.Frameworks
-		}
-		if len(proto.Tech.Infrastructure) > 0 {
-			c.Tech.Infrastructure = proto.Tech.Infrastructure
-		}
-	}
+	proto.Name = "project"
+	c := config.ConstitutionConfigFromProto(proto)
 
 	constitutionPath := filepath.Join(filepath.Dir(configPath), "constitution.yaml")
 

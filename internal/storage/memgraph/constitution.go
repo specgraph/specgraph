@@ -174,11 +174,8 @@ func (s *Store) CheckViolation(ctx context.Context, specSlug string) ([]*specv1.
 	return violations, nil
 }
 
-// marshalJSON marshals v to a JSON string. Returns "{}" for nil values.
+// marshalJSON marshals v to a JSON string. Nil pointers produce "null"; nil slices produce "null".
 func marshalJSON(v any) (string, error) {
-	if v == nil {
-		return "{}", nil
-	}
 	b, err := json.Marshal(v)
 	if err != nil {
 		return "", fmt.Errorf("marshal json: %w", err)
@@ -213,9 +210,10 @@ func recordInt64ByName(rec *neo4j.Record, key string) (int64, error) {
 }
 
 // unmarshalIfPresent unmarshals jsonStr into dest if it contains meaningful data.
-// Considers "", "{}", and "null" as empty sentinels that should be skipped.
+// Considers "", "{}", "[]", and "null" as empty sentinels that should be skipped.
 func unmarshalIfPresent(jsonStr, field string, dest any) error {
-	if jsonStr == "" || jsonStr == "{}" || jsonStr == "null" {
+	switch jsonStr {
+	case "", "{}", "[]", "null":
 		return nil
 	}
 	if err := json.Unmarshal([]byte(jsonStr), dest); err != nil {
@@ -332,10 +330,10 @@ func recordToConstitution(rec *neo4j.Record) (*specv1.Constitution, error) {
 	}
 
 	// Only set pointer fields if non-empty to avoid spurious non-nil empty structs.
-	if techJSON != "{}" && techJSON != "" {
+	if techJSON != "null" && techJSON != "" {
 		c.Tech = &tech
 	}
-	if processJSON != "{}" && processJSON != "" {
+	if processJSON != "null" && processJSON != "" {
 		c.Process = &process
 	}
 	if len(principles) > 0 {

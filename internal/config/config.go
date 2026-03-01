@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"gopkg.in/yaml.v3"
 )
 
@@ -200,6 +201,139 @@ func WriteConstitutionYAML(path string, c *ConstitutionConfig) error {
 		return fmt.Errorf("write constitution: %w", err)
 	}
 	return nil
+}
+
+// referenceTypeMap maps YAML reference type strings to the proto enum.
+var referenceTypeMap = map[string]specv1.ReferenceType{
+	"adr":  specv1.ReferenceType_REFERENCE_TYPE_ADR,
+	"spec": specv1.ReferenceType_REFERENCE_TYPE_SPEC,
+	"doc":  specv1.ReferenceType_REFERENCE_TYPE_DOC,
+	"url":  specv1.ReferenceType_REFERENCE_TYPE_URL,
+}
+
+// referenceTypeToString maps proto reference type enum values to YAML strings.
+var referenceTypeToString = map[specv1.ReferenceType]string{
+	specv1.ReferenceType_REFERENCE_TYPE_ADR:  "adr",
+	specv1.ReferenceType_REFERENCE_TYPE_SPEC: "spec",
+	specv1.ReferenceType_REFERENCE_TYPE_DOC:  "doc",
+	specv1.ReferenceType_REFERENCE_TYPE_URL:  "url",
+}
+
+// ReferenceTypeFromString maps a YAML reference type string to the proto enum.
+func ReferenceTypeFromString(s string) specv1.ReferenceType {
+	if v, ok := referenceTypeMap[strings.ToLower(s)]; ok {
+		return v
+	}
+	return specv1.ReferenceType_REFERENCE_TYPE_UNSPECIFIED
+}
+
+// ToProto converts a ConstitutionConfig (YAML) to a specv1.Constitution proto message.
+func (c *ConstitutionConfig) ToProto() *specv1.Constitution {
+	layerKey := "CONSTITUTION_LAYER_" + strings.ToUpper(c.Layer)
+	layerVal, ok := specv1.ConstitutionLayer_value[layerKey]
+	if !ok {
+		layerVal = int32(specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED)
+	}
+
+	principles := make([]*specv1.Principle, 0, len(c.Principles))
+	for _, p := range c.Principles {
+		principles = append(principles, &specv1.Principle{
+			Id:         p.ID,
+			Statement:  p.Statement,
+			Rationale:  p.Rationale,
+			Exceptions: p.Exceptions,
+		})
+	}
+
+	antipatterns := make([]*specv1.Antipattern, 0, len(c.Antipatterns))
+	for _, a := range c.Antipatterns {
+		antipatterns = append(antipatterns, &specv1.Antipattern{
+			Pattern: a.Pattern,
+			Why:     a.Why,
+			Instead: a.Instead,
+		})
+	}
+
+	references := make([]*specv1.Reference, 0, len(c.References))
+	for _, r := range c.References {
+		references = append(references, &specv1.Reference{
+			ReferenceType: ReferenceTypeFromString(r.Type),
+			Path:          r.Path,
+		})
+	}
+
+	return &specv1.Constitution{
+		Name:         c.Name,
+		Layer:        specv1.ConstitutionLayer(layerVal),
+		Principles:   principles,
+		Constraints:  c.Constraints,
+		Antipatterns: antipatterns,
+		References:   references,
+		Tech: &specv1.TechConfig{
+			Languages: &specv1.LanguageConfig{
+				Primary:          c.Tech.Languages.Primary,
+				Allowed:          c.Tech.Languages.Allowed,
+				Forbidden:        c.Tech.Languages.Forbidden,
+				ForbiddenReasons: c.Tech.Languages.ForbiddenReasons,
+			},
+			Frameworks:     c.Tech.Frameworks,
+			Infrastructure: c.Tech.Infrastructure,
+		},
+	}
+}
+
+// ConstitutionConfigFromProto converts a specv1.Constitution proto message to a ConstitutionConfig (YAML).
+func ConstitutionConfigFromProto(pb *specv1.Constitution) *ConstitutionConfig {
+	c := &ConstitutionConfig{
+		Name:        pb.GetName(),
+		Constraints: pb.GetConstraints(),
+	}
+
+	layer := pb.GetLayer()
+	if layer != specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED {
+		c.Layer = strings.ToLower(strings.TrimPrefix(layer.String(), "CONSTITUTION_LAYER_"))
+	}
+
+	if tech := pb.GetTech(); tech != nil {
+		if langs := tech.GetLanguages(); langs != nil {
+			c.Tech.Languages.Primary = langs.GetPrimary()
+			c.Tech.Languages.Allowed = langs.GetAllowed()
+			c.Tech.Languages.Forbidden = langs.GetForbidden()
+			c.Tech.Languages.ForbiddenReasons = langs.GetForbiddenReasons()
+		}
+		c.Tech.Frameworks = tech.GetFrameworks()
+		c.Tech.Infrastructure = tech.GetInfrastructure()
+	}
+
+	for _, p := range pb.GetPrinciples() {
+		c.Principles = append(c.Principles, ConstitutionPrinciple{
+			ID:         p.GetId(),
+			Statement:  p.GetStatement(),
+			Rationale:  p.GetRationale(),
+			Exceptions: p.GetExceptions(),
+		})
+	}
+
+	for _, a := range pb.GetAntipatterns() {
+		c.Antipatterns = append(c.Antipatterns, ConstitutionAntipattern{
+			Pattern: a.GetPattern(),
+			Why:     a.GetWhy(),
+			Instead: a.GetInstead(),
+		})
+	}
+
+	for _, r := range pb.GetReferences() {
+		refType := "unspecified"
+		if s, ok := referenceTypeToString[r.GetReferenceType()]; ok {
+			refType = s
+		}
+		c.References = append(c.References, ConstitutionReference{
+			Type: refType,
+			Path: r.GetPath(),
+		})
+	}
+
+	return c
 }
 
 func applyDefaults(cfg *Config) {

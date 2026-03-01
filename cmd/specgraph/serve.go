@@ -10,11 +10,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/config"
 	"github.com/seanb4t/specgraph/internal/docker"
 	"github.com/seanb4t/specgraph/internal/server"
@@ -112,21 +110,6 @@ func runServe(_ *cobra.Command, _ []string) error {
 
 const maxConstitutionSize = 1 << 20 // 1 MiB
 
-// referenceTypeFromString maps a YAML reference type string to the proto enum.
-var referenceTypeMap = map[string]specv1.ReferenceType{
-	"adr":  specv1.ReferenceType_REFERENCE_TYPE_ADR,
-	"spec": specv1.ReferenceType_REFERENCE_TYPE_SPEC,
-	"doc":  specv1.ReferenceType_REFERENCE_TYPE_DOC,
-	"url":  specv1.ReferenceType_REFERENCE_TYPE_URL,
-}
-
-func referenceTypeFromString(s string) specv1.ReferenceType {
-	if v, ok := referenceTypeMap[strings.ToLower(s)]; ok {
-		return v
-	}
-	return specv1.ReferenceType_REFERENCE_TYPE_UNSPECIFIED
-}
-
 func bootstrapConstitution(ctx context.Context, store storage.ConstitutionBackend, yamlPath string) error {
 	// Check if constitution already exists in storage.
 	_, err := store.GetConstitution(ctx)
@@ -154,62 +137,7 @@ func bootstrapConstitution(ctx context.Context, store storage.ConstitutionBacken
 		return fmt.Errorf("load constitution YAML: %w", err)
 	}
 
-	// Map layer string to enum. LoadConstitutionYAML validates the layer, so
-	// the !ok case only occurs for empty string (correctly maps to UNSPECIFIED).
-	layerKey := "CONSTITUTION_LAYER_" + strings.ToUpper(cy.Layer)
-	layerVal, ok := specv1.ConstitutionLayer_value[layerKey]
-	if !ok {
-		layerVal = int32(specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED)
-	}
-
-	// Map structured principles to proto.
-	principles := make([]*specv1.Principle, 0, len(cy.Principles))
-	for _, p := range cy.Principles {
-		principles = append(principles, &specv1.Principle{
-			Id:         p.ID,
-			Statement:  p.Statement,
-			Rationale:  p.Rationale,
-			Exceptions: p.Exceptions,
-		})
-	}
-
-	// Map antipatterns to proto.
-	antipatterns := make([]*specv1.Antipattern, 0, len(cy.Antipatterns))
-	for _, a := range cy.Antipatterns {
-		antipatterns = append(antipatterns, &specv1.Antipattern{
-			Pattern: a.Pattern,
-			Why:     a.Why,
-			Instead: a.Instead,
-		})
-	}
-
-	// Map references to proto.
-	references := make([]*specv1.Reference, 0, len(cy.References))
-	for _, r := range cy.References {
-		references = append(references, &specv1.Reference{
-			ReferenceType: referenceTypeFromString(r.Type),
-			Path:          r.Path,
-		})
-	}
-
-	constitution := &specv1.Constitution{
-		Name:         cy.Name,
-		Layer:        specv1.ConstitutionLayer(layerVal),
-		Principles:   principles,
-		Constraints:  cy.Constraints,
-		Antipatterns: antipatterns,
-		References:   references,
-		Tech: &specv1.TechConfig{
-			Languages: &specv1.LanguageConfig{
-				Primary:          cy.Tech.Languages.Primary,
-				Allowed:          cy.Tech.Languages.Allowed,
-				Forbidden:        cy.Tech.Languages.Forbidden,
-				ForbiddenReasons: cy.Tech.Languages.ForbiddenReasons,
-			},
-			Frameworks:     cy.Tech.Frameworks,
-			Infrastructure: cy.Tech.Infrastructure,
-		},
-	}
+	constitution := cy.ToProto()
 
 	if _, err := store.UpdateConstitution(ctx, constitution); err != nil {
 		return fmt.Errorf("seed constitution: %w", err)
