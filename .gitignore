@@ -5,9 +5,15 @@ site/docs/design/
 # Go
 /specgraph
 *.exe
+dist/
+coverage.out
+coverage.html
 
-# Generated protobuf — committed to repo for Go module consumers
-# gen/
+# Generated protobuf (reproducible via buf generate)
+gen/
+
+# Taskfile checksums
+.task/
 
 # Serena
 .serena/

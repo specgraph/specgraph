@@ -9,7 +9,6 @@ services:
     environment:
       - SPECGRAPH_STORAGE_BACKEND=memgraph
       - SPECGRAPH_STORAGE_BOLT_URI=bolt://memgraph:7687
-
   memgraph:
     image: memgraph/memgraph:latest
     ports:
@@ -21,6 +20,5 @@ services:
       interval: 5s
       timeout: 10s
       retries: 5
-
 volumes:
   specgraph-data:
