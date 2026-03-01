@@ -2,10 +2,11 @@
 // Copyright 2026 Sean Brandt
 
 // Package scanner implements Tier 0 codebase scanning for constitution drafting.
-package scanner //nolint:revive // "scanner" is clearer than alternatives for this domain
+package scanner //nolint:revive // package-comments: "scanner" is clearer than alternatives for this domain
 
 import (
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,8 +14,16 @@ import (
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 )
 
+const maxFileSize = 1 << 20 // 1 MiB
+
 // Scan performs a Tier 0 scan of the given directory, detecting languages,
 // frameworks, infrastructure, and CI configuration.
+// It always returns a non-nil *Constitution with detected fields populated
+// (empty strings/maps if nothing found). The error return is reserved for
+// future use and is currently always nil.
+//
+// Note: Kubernetes detection walks the directory tree but skips hidden
+// directories, vendor, and node_modules.
 func Scan(dir string) (*specv1.Constitution, error) {
 	c := &specv1.Constitution{
 		Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
@@ -34,19 +43,20 @@ func Scan(dir string) (*specv1.Constitution, error) {
 }
 
 func detectLanguage(dir string, c *specv1.Constitution) {
-	langFiles := map[string]string{
-		"go.mod":         "go",
-		"Cargo.toml":     "rust",
-		"pom.xml":        "java",
-		"build.gradle":   "java",
-		"setup.py":       "python",
-		"pyproject.toml": "python",
-		"Gemfile":        "ruby",
+	type langEntry struct{ file, lang string }
+	langFiles := []langEntry{
+		{"go.mod", "go"},
+		{"Cargo.toml", "rust"},
+		{"pom.xml", "java"},
+		{"build.gradle", "java"},
+		{"setup.py", "python"},
+		{"pyproject.toml", "python"},
+		{"Gemfile", "ruby"},
 	}
 
-	for file, lang := range langFiles {
-		if fileExists(filepath.Join(dir, file)) {
-			c.Tech.Languages.Primary = lang
+	for _, entry := range langFiles {
+		if fileExists(filepath.Join(dir, entry.file)) {
+			c.Tech.Languages.Primary = entry.lang
 			return
 		}
 	}
@@ -82,9 +92,9 @@ func detectFrameworks(dir string, c *specv1.Constitution) {
 	}
 
 	// Node frameworks
-	if pkgJSON := readFile(filepath.Join(dir, "package.json")); pkgJSON != "" {
+	if pkgJSON := readFile(filepath.Join(dir, "package.json")); pkgJSON != "" && len(pkgJSON) <= maxFileSize {
 		var pkg map[string]any
-		if json.Unmarshal([]byte(pkgJSON), &pkg) == nil {
+		if err := json.Unmarshal([]byte(pkgJSON), &pkg); err == nil {
 			deps := mergeDeps(pkg)
 			if _, ok := deps["react"]; ok {
 				c.Tech.Frameworks["ui"] = "React"
@@ -99,6 +109,8 @@ func detectFrameworks(dir string, c *specv1.Constitution) {
 				c.Tech.Frameworks["api"] = "Fastify"
 			}
 		}
+		// If unmarshal fails, skip framework detection for this file silently.
+		// TODO(scanner): surface parse warnings when Scan gains a warning accumulator.
 	}
 }
 
@@ -111,17 +123,29 @@ func detectInfrastructure(dir string, c *specv1.Constitution) {
 		c.Tech.Infrastructure["orchestration"] = "Docker Compose"
 	}
 
-	// Kubernetes
-	globs, err := filepath.Glob(filepath.Join(dir, "**", "*.yaml"))
-	if err == nil {
-		for _, f := range globs {
-			content := readFile(f)
-			if strings.Contains(content, "apiVersion:") && strings.Contains(content, "kind:") {
-				c.Tech.Infrastructure["runtime"] = "Kubernetes"
-				break
-			}
+	// Kubernetes: walk directory tree looking for K8s manifests
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
 		}
-	}
+		if d.IsDir() {
+			// Skip hidden dirs and vendor
+			name := d.Name()
+			if strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".yaml") && !strings.HasSuffix(path, ".yml") {
+			return nil
+		}
+		content := readFile(path)
+		if strings.Contains(content, "apiVersion:") && strings.Contains(content, "kind:") {
+			c.Tech.Infrastructure["runtime"] = "Kubernetes"
+			return filepath.SkipAll
+		}
+		return nil
+	})
 }
 
 func detectCI(dir string, c *specv1.Constitution) {
@@ -150,6 +174,10 @@ func dirExists(path string) bool {
 }
 
 func readFile(path string) string {
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() || info.Size() > maxFileSize {
+		return ""
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return ""

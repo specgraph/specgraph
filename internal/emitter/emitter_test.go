@@ -4,6 +4,7 @@
 package emitter_test
 
 import (
+	"strings"
 	"testing"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -85,4 +86,67 @@ func TestEmit_InvalidFormat(t *testing.T) {
 	c := testConstitution()
 	_, _, err := emitter.Emit(c, "invalid")
 	require.Error(t, err)
+}
+
+func TestEmit_NilConstitution(t *testing.T) {
+	for _, format := range []string{"claude-md", "cursorrules", "agents-md"} {
+		content, _, err := emitter.Emit(nil, format)
+		require.NoError(t, err, "format %s should not error with nil constitution", format)
+		require.NotEmpty(t, content, "format %s should return header even for nil constitution", format)
+	}
+}
+
+func TestEmit_EmptyConstitution(t *testing.T) {
+	c := &specv1.Constitution{}
+	content, filename, err := emitter.Emit(c, "claude-md")
+	require.NoError(t, err)
+	require.Equal(t, "CLAUDE.md", filename)
+	require.True(t, strings.HasPrefix(content, "# Project Constitution"), "should start with header")
+	require.NotContains(t, content, "## Tech Stack")
+	require.NotContains(t, content, "## Principles")
+	require.NotContains(t, content, "## Constraints")
+	require.NotContains(t, content, "## Anti-patterns")
+}
+
+func TestEmit_PartialConstitution_TechOnly(t *testing.T) {
+	c := &specv1.Constitution{
+		Tech: &specv1.TechConfig{
+			Languages: &specv1.LanguageConfig{
+				Primary: "go",
+			},
+		},
+	}
+	content, _, err := emitter.Emit(c, "claude-md")
+	require.NoError(t, err)
+	require.Contains(t, content, "## Tech Stack")
+	require.Contains(t, content, "go")
+	require.NotContains(t, content, "## Principles")
+	require.NotContains(t, content, "## Constraints")
+	require.NotContains(t, content, "## Anti-patterns")
+}
+
+func TestEmit_NilTech(t *testing.T) {
+	c := &specv1.Constitution{
+		Tech: nil,
+		Constraints: []string{"No ORMs"},
+	}
+	content, _, err := emitter.Emit(c, "claude-md")
+	require.NoError(t, err)
+	require.NotContains(t, content, "## Tech Stack")
+	require.Contains(t, content, "## Constraints")
+	require.Contains(t, content, "No ORMs")
+}
+
+func TestEmit_MapOrdering(t *testing.T) {
+	// Run multiple times to catch nondeterministic map iteration.
+	c := testConstitution()
+	var prev string
+	for i := 0; i < 20; i++ {
+		content, _, err := emitter.Emit(c, "claude-md")
+		require.NoError(t, err)
+		if prev != "" {
+			require.Equal(t, prev, content, "output must be deterministic across runs")
+		}
+		prev = content
+	}
 }

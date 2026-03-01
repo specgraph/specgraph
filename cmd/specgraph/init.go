@@ -113,7 +113,7 @@ func runInit(_ *cobra.Command, _ []string) error {
 	}
 	fmt.Printf("Initialized SpecGraph project at %s\n", configPath)
 
-	doScan := initScan || initYes
+	doScan := initScan
 	if doScan {
 		if err := runConstitutionScan(configPath); err != nil {
 			return err
@@ -151,7 +151,11 @@ func runConstitutionScan(configPath string) error {
 
 	constitutionPath := filepath.Join(filepath.Dir(configPath), "constitution.yaml")
 
-	fmt.Printf("Detected language: %s\n", c.Tech.Languages.Primary)
+	if c.Tech.Languages.Primary != "" {
+		fmt.Printf("Detected language: %s\n", c.Tech.Languages.Primary)
+	} else {
+		fmt.Println("Warning: could not detect primary language; update constitution.yaml manually.")
+	}
 	if len(c.Tech.Frameworks) > 0 {
 		fmt.Printf("Detected frameworks: %v\n", c.Tech.Frameworks)
 	}
@@ -160,7 +164,7 @@ func runConstitutionScan(configPath string) error {
 	}
 
 	if err := config.WriteConstitutionYAML(constitutionPath, c); err != nil {
-		return err
+		return fmt.Errorf("writing constitution draft: %w", err)
 	}
 	fmt.Printf("Constitution draft written to %s\n", constitutionPath)
 	return nil
