@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+// Package main implements the specgraph CLI, a live spec-driven development framework.
 package main
 
 import (

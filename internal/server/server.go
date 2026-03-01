@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+// Package server implements ConnectRPC service handlers for SpecGraph.
 package server
 
 import (

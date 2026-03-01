@@ -1,28 +1,21 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
 package main
 
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"text/tabwriter"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/config"
 	"github.com/spf13/cobra"
 )
 
 func specClient() (specgraphv1connect.SpecServiceClient, error) {
-	cfg, err := config.Load(cfgFile)
-	if err != nil {
-		return nil, err
-	}
-	baseURL := cfg.Server.Remote
-	if baseURL == "" {
-		baseURL = fmt.Sprintf("http://%s:%d", cfg.Server.Host, cfg.Server.Port)
-	}
-	return specgraphv1connect.NewSpecServiceClient(http.DefaultClient, baseURL), nil
+	return newClient(specgraphv1connect.NewSpecServiceClient)
 }
 
 // --- create ---
@@ -39,14 +32,7 @@ var (
 	createPriority string
 )
 
-func init() {
-	createCmd.Flags().StringVar(&createIntent, "intent", "", "intent for the spec (required)")
-	createCmd.Flags().StringVar(&createPriority, "priority", "p2", "priority (p0-p3)")
-	createCmd.MarkFlagRequired("intent")
-	rootCmd.AddCommand(createCmd)
-}
-
-func runCreate(cmd *cobra.Command, args []string) error {
+func runCreate(_ *cobra.Command, args []string) error {
 	client, err := specClient()
 	if err != nil {
 		return err
@@ -63,6 +49,49 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// --- update ---
+
+var updateCmd = &cobra.Command{
+	Use:   "update <slug>",
+	Short: "Update an existing spec",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runUpdate,
+}
+
+var (
+	updateIntent     string
+	updateStage      string
+	updatePriority   string
+	updateComplexity string
+)
+
+func runUpdate(cmd *cobra.Command, args []string) error {
+	client, err := specClient()
+	if err != nil {
+		return err
+	}
+	req := &specv1.UpdateSpecRequest{Slug: args[0]}
+	if cmd.Flags().Changed("intent") {
+		req.Intent = &updateIntent
+	}
+	if cmd.Flags().Changed("stage") {
+		req.Stage = &updateStage
+	}
+	if cmd.Flags().Changed("priority") {
+		req.Priority = &updatePriority
+	}
+	if cmd.Flags().Changed("complexity") {
+		req.Complexity = &updateComplexity
+	}
+
+	resp, err := client.UpdateSpec(context.Background(), connect.NewRequest(req))
+	if err != nil {
+		return fmt.Errorf("update spec: %w", err)
+	}
+	fmt.Printf("Updated: %s (version %d)\n", resp.Msg.Slug, resp.Msg.Version)
+	return nil
+}
+
 // --- list ---
 
 var listCmd = &cobra.Command{
@@ -76,13 +105,7 @@ var (
 	listPriority string
 )
 
-func init() {
-	listCmd.Flags().StringVar(&listStage, "stage", "", "filter by stage")
-	listCmd.Flags().StringVar(&listPriority, "priority", "", "filter by priority")
-	rootCmd.AddCommand(listCmd)
-}
-
-func runList(cmd *cobra.Command, args []string) error {
+func runList(cmd *cobra.Command, _ []string) error {
 	client, err := specClient()
 	if err != nil {
 		return err
@@ -100,9 +123,13 @@ func runList(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tPRIORITY\tSTAGE\tSLUG")
+	tw := &tableWriter{w: w}
+	tw.println("ID\tPRIORITY\tSTAGE\tSLUG")
 	for _, s := range specs {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", s.Id, s.Priority, s.Stage, s.Slug)
+		tw.printf("%s\t%s\t%s\t%s\n", s.Id, s.Priority, s.Stage, s.Slug)
+	}
+	if tw.err != nil {
+		return tw.err
 	}
 	return w.Flush()
 }
@@ -117,10 +144,25 @@ var showCmd = &cobra.Command{
 }
 
 func init() {
+	createCmd.Flags().StringVar(&createIntent, "intent", "", "intent for the spec (required)")
+	createCmd.Flags().StringVar(&createPriority, "priority", "p2", "priority (p0-p3)")
+	cobra.CheckErr(createCmd.MarkFlagRequired("intent"))
+	rootCmd.AddCommand(createCmd)
+
+	updateCmd.Flags().StringVar(&updateIntent, "intent", "", "new intent")
+	updateCmd.Flags().StringVar(&updateStage, "stage", "", "new stage")
+	updateCmd.Flags().StringVar(&updatePriority, "priority", "", "new priority")
+	updateCmd.Flags().StringVar(&updateComplexity, "complexity", "", "new complexity")
+	rootCmd.AddCommand(updateCmd)
+
+	listCmd.Flags().StringVar(&listStage, "stage", "", "filter by stage")
+	listCmd.Flags().StringVar(&listPriority, "priority", "", "filter by priority")
+	rootCmd.AddCommand(listCmd)
+
 	rootCmd.AddCommand(showCmd)
 }
 
-func runShow(cmd *cobra.Command, args []string) error {
+func runShow(_ *cobra.Command, args []string) error {
 	client, err := specClient()
 	if err != nil {
 		return err
