@@ -38,7 +38,7 @@ type StorageConfig struct {
 
 // ConstitutionPrinciple represents a principle in the constitution YAML.
 // It supports both string form ("Keep it simple") and struct form
-// (statement/rationale/exceptions) for backward compatibility.
+// (statement/rationale/exceptions) for ergonomic flexibility.
 type ConstitutionPrinciple struct {
 	ID         string `yaml:"id,omitempty"`
 	Statement  string `yaml:"statement"`
@@ -184,6 +184,9 @@ func LoadConstitutionYAML(path string) (*ConstitutionConfig, error) {
 
 // WriteConstitutionYAML persists a constitution to the given path as YAML.
 func WriteConstitutionYAML(path string, c *ConstitutionConfig) error {
+	if err := ValidateLayer(c.Layer); err != nil {
+		return fmt.Errorf("write constitution: %w", err)
+	}
 	data, err := yaml.Marshal(c)
 	if err != nil {
 		return fmt.Errorf("marshal constitution: %w", err)

@@ -23,9 +23,6 @@ const maxFileSize = 1 << 20 // 1 MiB
 // It always returns a non-nil *Constitution with detected fields populated
 // (empty strings/maps if nothing found). The error return is reserved for
 // future use and is currently always nil.
-//
-// Note: Kubernetes detection walks the directory tree but skips hidden
-// directories, vendor, and node_modules.
 func Scan(dir string) (*specv1.Constitution, error) {
 	c := &specv1.Constitution{
 		Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
@@ -112,9 +109,9 @@ func detectFrameworks(dir string, c *specv1.Constitution) {
 			if _, ok := deps["fastify"]; ok {
 				c.Tech.Frameworks["api"] = "Fastify"
 			}
+		} else {
+			fmt.Fprintf(os.Stderr, "warning: scanner: failed to parse package.json: %v\n", err)
 		}
-		// If unmarshal fails, skip framework detection for this file silently.
-		// TODO(scanner): surface parse warnings when Scan gains a warning accumulator.
 	} else if !errors.Is(err, os.ErrNotExist) {
 		fmt.Fprintf(os.Stderr, "warning: scanner: %v\n", err)
 	}

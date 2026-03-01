@@ -98,7 +98,8 @@ func runConstitutionCheck(_ *cobra.Command, args []string) error {
 		return nil
 	}
 	for _, v := range violations {
-		fmt.Printf("[%s] %s: %s\n", v.GetSeverity(), v.GetRule(), v.GetMessage())
+		severity := strings.TrimPrefix(v.GetSeverity().String(), "VIOLATION_SEVERITY_")
+		fmt.Printf("[%s] %s: %s\n", severity, v.GetRule(), v.GetMessage())
 	}
 	return nil
 }
@@ -114,7 +115,7 @@ var (
 	emitOutput string
 )
 
-// outputFormatFromString converts a CLI flag string to the OutputFormat enum.
+// outputFormatMap maps CLI flag strings to OutputFormat enum values.
 var outputFormatMap = map[string]specv1.OutputFormat{
 	"claude-md":   specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD,
 	"cursorrules": specv1.OutputFormat_OUTPUT_FORMAT_CURSORRULES,

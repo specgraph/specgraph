@@ -86,7 +86,11 @@ func writePrinciplesSection(b *strings.Builder, c *specv1.Constitution) {
 
 	b.WriteString("## Principles\n\n")
 	for _, p := range c.Principles {
-		fmt.Fprintf(b, "- **%s**: %s", p.Id, p.Statement)
+		if p.Id != "" {
+			fmt.Fprintf(b, "- **%s**: %s", p.Id, p.Statement)
+		} else {
+			fmt.Fprintf(b, "- %s", p.Statement)
+		}
 		if p.Rationale != "" {
 			fmt.Fprintf(b, " (%s)", p.Rationale)
 		}

@@ -12,7 +12,8 @@ import "google/protobuf/timestamp.proto";
 // --- Enums ---
 
 // ConstitutionLayer defines the scope at which a constitution applies.
-// More specific layers override general ones (User < Org < Project < Domain).
+// More specific layers override general ones: User → Org → Project → Domain
+// (Domain is most specific and takes precedence).
 enum ConstitutionLayer {
   CONSTITUTION_LAYER_UNSPECIFIED = 0;
   CONSTITUTION_LAYER_USER = 1;
