@@ -57,8 +57,14 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 		return nil, fmt.Errorf("memgraph: one or both nodes not found (from=%q, to=%q)", fromSlug, toSlug)
 	}
 
-	fromID := recordString(result.Records[0], 0)
-	toID := recordString(result.Records[0], 1)
+	fromID, err := recordString(result.Records[0], 0, "from_id")
+	if err != nil {
+		return nil, err
+	}
+	toID, err := recordString(result.Records[0], 1, "to_id")
+	if err != nil {
+		return nil, err
+	}
 
 	return &specv1.Edge{
 		FromId:   fromID,
@@ -117,9 +123,18 @@ func (s *Store) ListEdges(ctx context.Context, slug string, edgeType specv1.Edge
 
 	edges := make([]*specv1.Edge, 0, len(result.Records))
 	for _, rec := range result.Records {
-		fromID := recordString(rec, 0)
-		toID := recordString(rec, 1)
-		relType := recordString(rec, 2)
+		fromID, err := recordString(rec, 0, "from_id")
+		if err != nil {
+			return nil, err
+		}
+		toID, err := recordString(rec, 1, "to_id")
+		if err != nil {
+			return nil, err
+		}
+		relType, err := recordString(rec, 2, "type")
+		if err != nil {
+			return nil, err
+		}
 		edges = append(edges, &specv1.Edge{
 			FromId:   fromID,
 			ToId:     toID,
@@ -190,10 +205,22 @@ func (s *Store) queryNodeRefs(ctx context.Context, query string, params map[stri
 
 	refs := make([]storage.NodeRef, 0, len(result.Records))
 	for _, rec := range result.Records {
-		id := recordString(rec, 0)
-		slug := recordString(rec, 1)
-		label := recordString(rec, 2)
-		stage := recordString(rec, 3)
+		id, err := recordString(rec, 0, "id")
+		if err != nil {
+			return nil, err
+		}
+		slug, err := recordString(rec, 1, "slug")
+		if err != nil {
+			return nil, err
+		}
+		label, err := recordString(rec, 2, "label")
+		if err != nil {
+			return nil, err
+		}
+		stage, err := recordString(rec, 3, "stage")
+		if err != nil {
+			return nil, err
+		}
 		refs = append(refs, storage.NodeRef{
 			ID:    id,
 			Slug:  slug,

@@ -10,6 +10,7 @@ import (
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/seanb4t/specgraph/internal/storage"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -25,6 +26,17 @@ func (s *Store) ClaimSpec(ctx context.Context, slug, agent string, leaseDuration
 	now := time.Now().UTC()
 	nowStr := now.Format(time.RFC3339)
 	expiresStr := now.Add(leaseDuration).Format(time.RFC3339)
+
+	// First verify the spec exists.
+	existsResult, err := neo4j.ExecuteQuery(ctx, s.driver,
+		`MATCH (s:Spec {slug: $slug}) RETURN s.slug`,
+		map[string]any{"slug": slug}, neo4j.EagerResultTransformer)
+	if err != nil {
+		return nil, fmt.Errorf("memgraph: claim spec existence check: %w", err)
+	}
+	if len(existsResult.Records) == 0 {
+		return nil, fmt.Errorf("memgraph: claim spec %q: %w", slug, storage.ErrSpecNotFound)
+	}
 
 	// Delete any expired claims first, then check for active ones
 	query := `
@@ -53,7 +65,7 @@ func (s *Store) ClaimSpec(ctx context.Context, slug, agent string, leaseDuration
 		return nil, fmt.Errorf("memgraph: claim spec: %w", err)
 	}
 	if len(result.Records) == 0 {
-		return nil, fmt.Errorf("memgraph: spec %q not found or already claimed", slug)
+		return nil, fmt.Errorf("memgraph: claim spec %q: %w", slug, storage.ErrSpecAlreadyClaimed)
 	}
 
 	return recordToClaim(slug, result.Records[0])
@@ -105,9 +117,18 @@ func (s *Store) Heartbeat(ctx context.Context, slug, agent string, extendBy time
 }
 
 func recordToClaim(slug string, rec *neo4j.Record) (*specv1.Claim, error) {
-	agent := recordString(rec, 0)
-	claimedAtStr := recordString(rec, 1)
-	leaseExpiresStr := recordString(rec, 2)
+	agent, err := recordString(rec, 0, "agent")
+	if err != nil {
+		return nil, err
+	}
+	claimedAtStr, err := recordString(rec, 1, "claimed_at")
+	if err != nil {
+		return nil, err
+	}
+	leaseExpiresStr, err := recordString(rec, 2, "lease_expires")
+	if err != nil {
+		return nil, err
+	}
 
 	claimedAt, err := parseRFC3339("claimed_at", claimedAtStr)
 	if err != nil {

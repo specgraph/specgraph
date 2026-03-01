@@ -5,12 +5,19 @@ package server
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"time"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/seanb4t/specgraph/internal/storage"
+)
+
+const (
+	defaultClaimLease  = 15 * time.Minute
+	defaultHeartbeatBy = 5 * time.Minute
 )
 
 // ClaimHandler implements the ConnectRPC ClaimService.
@@ -23,9 +30,21 @@ var _ specgraphv1connect.ClaimServiceHandler = (*ClaimHandler)(nil)
 // ClaimSpec handles the ClaimSpec RPC.
 func (h *ClaimHandler) ClaimSpec(ctx context.Context, req *connect.Request[specv1.ClaimSpecRequest]) (*connect.Response[specv1.Claim], error) {
 	msg := req.Msg
-	claim, err := h.store.ClaimSpec(ctx, msg.SpecSlug, msg.Agent, msg.LeaseDuration.AsDuration())
+
+	leaseDuration := defaultClaimLease
+	if msg.LeaseDuration != nil {
+		leaseDuration = msg.LeaseDuration.AsDuration()
+	}
+
+	claim, err := h.store.ClaimSpec(ctx, msg.SpecSlug, msg.Agent, leaseDuration)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		if errors.Is(err, storage.ErrSpecNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		if errors.Is(err, storage.ErrSpecAlreadyClaimed) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(claim), nil
 }
@@ -43,7 +62,13 @@ func (h *ClaimHandler) UnclaimSpec(ctx context.Context, req *connect.Request[spe
 // Heartbeat handles the Heartbeat RPC.
 func (h *ClaimHandler) Heartbeat(ctx context.Context, req *connect.Request[specv1.HeartbeatRequest]) (*connect.Response[specv1.Claim], error) {
 	msg := req.Msg
-	claim, err := h.store.Heartbeat(ctx, msg.SpecSlug, msg.Agent, msg.ExtendBy.AsDuration())
+
+	extendBy := defaultHeartbeatBy
+	if msg.ExtendBy != nil {
+		extendBy = msg.ExtendBy.AsDuration()
+	}
+
+	claim, err := h.store.Heartbeat(ctx, msg.SpecSlug, msg.Agent, extendBy)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}

@@ -7,8 +7,8 @@ package memgraph
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -197,15 +197,10 @@ func (s *Store) Close(ctx context.Context) error {
 	return nil
 }
 
-// generateID produces a prefixed ID from sha256(slug + now).
-// The result is prefix + "-" + hex chars, truncated to targetLen.
+// generateID produces a prefixed ID: prefix + "-" + first 7 hex chars of sha256(slug + now).
 func generateID(prefix, slug string, now time.Time) string {
 	h := sha256.Sum256([]byte(slug + now.String()))
-	id := fmt.Sprintf("%s-%x", prefix, h[:4])
-	if len(id) > len(prefix)+8 {
-		id = id[:len(prefix)+8]
-	}
-	return id
+	return prefix + "-" + hex.EncodeToString(h[:])[:7]
 }
 
 // parseRFC3339 parses an RFC3339 timestamp string from a memgraph record field.
@@ -217,47 +212,81 @@ func parseRFC3339(field, value string) (time.Time, error) {
 	return t, nil
 }
 
-// recordString extracts a string value from a neo4j record at the given index.
-func recordString(rec *neo4j.Record, i int) string {
-	v, ok := rec.Values[i].(string)
+// recordString extracts a string value from a neo4j record by position.
+// It returns an error if the value is not a string, preventing silent data corruption.
+func recordString(rec *neo4j.Record, pos int, field string) (string, error) {
+	v, ok := rec.Values[pos].(string)
 	if !ok {
-		return ""
+		return "", fmt.Errorf("memgraph: field %q at position %d: expected string, got %T", field, pos, rec.Values[pos])
 	}
-	return v
+	return v, nil
 }
 
-// recordInt64 extracts an int64 value from a neo4j record at the given index.
-func recordInt64(rec *neo4j.Record, i int) int64 {
-	v, ok := rec.Values[i].(int64)
+// recordInt64 extracts an int64 value from a neo4j record by position.
+// It returns an error if the value is not an int64, preventing silent data corruption.
+func recordInt64(rec *neo4j.Record, pos int, field string) (int64, error) {
+	v, ok := rec.Values[pos].(int64)
 	if !ok {
-		return 0
+		return 0, fmt.Errorf("memgraph: field %q at position %d: expected int64, got %T", field, pos, rec.Values[pos])
 	}
-	return v
+	return v, nil
 }
 
 // recordToSpec converts a neo4j record (with positional values) to a *specv1.Spec.
 func recordToSpec(rec *neo4j.Record) (*specv1.Spec, error) {
-	createdAt, err := parseRFC3339("created_at", recordString(rec, 7))
+	id, err := recordString(rec, 0, "id")
 	if err != nil {
 		return nil, err
 	}
-	updatedAt, err := parseRFC3339("updated_at", recordString(rec, 8))
+	slug, err := recordString(rec, 1, "slug")
+	if err != nil {
+		return nil, err
+	}
+	intent, err := recordString(rec, 2, "intent")
+	if err != nil {
+		return nil, err
+	}
+	stage, err := recordString(rec, 3, "stage")
+	if err != nil {
+		return nil, err
+	}
+	priority, err := recordString(rec, 4, "priority")
+	if err != nil {
+		return nil, err
+	}
+	complexity, err := recordString(rec, 5, "complexity")
+	if err != nil {
+		return nil, err
+	}
+	version, err := recordInt64(rec, 6, "version")
+	if err != nil {
+		return nil, err
+	}
+	createdAtStr, err := recordString(rec, 7, "created_at")
+	if err != nil {
+		return nil, err
+	}
+	updatedAtStr, err := recordString(rec, 8, "updated_at")
 	if err != nil {
 		return nil, err
 	}
 
-	version := recordInt64(rec, 6)
-	if version > int64(math.MaxInt32) {
-		version = int64(math.MaxInt32)
+	createdAt, err := parseRFC3339("created_at", createdAtStr)
+	if err != nil {
+		return nil, err
+	}
+	updatedAt, err := parseRFC3339("updated_at", updatedAtStr)
+	if err != nil {
+		return nil, err
 	}
 
 	return &specv1.Spec{
-		Id:         recordString(rec, 0),
-		Slug:       recordString(rec, 1),
-		Intent:     recordString(rec, 2),
-		Stage:      recordString(rec, 3),
-		Priority:   recordString(rec, 4),
-		Complexity: recordString(rec, 5),
+		Id:         id,
+		Slug:       slug,
+		Intent:     intent,
+		Stage:      stage,
+		Priority:   priority,
+		Complexity: complexity,
 		Version:    int32(version),
 		CreatedAt:  timestamppb.New(createdAt),
 		UpdatedAt:  timestamppb.New(updatedAt),

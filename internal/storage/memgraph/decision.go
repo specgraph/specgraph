@@ -167,29 +167,65 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 }
 
 func recordToDecision(rec *neo4j.Record) (*specv1.Decision, error) {
-	createdAt, err := parseRFC3339("created_at", recordString(rec, 7))
+	id, err := recordString(rec, 0, "id")
 	if err != nil {
 		return nil, err
 	}
-	updatedAt, err := parseRFC3339("updated_at", recordString(rec, 8))
+	slug, err := recordString(rec, 1, "slug")
+	if err != nil {
+		return nil, err
+	}
+	title, err := recordString(rec, 2, "title")
+	if err != nil {
+		return nil, err
+	}
+	statusStr, err := recordString(rec, 3, "status")
+	if err != nil {
+		return nil, err
+	}
+	decision, err := recordString(rec, 4, "decision")
+	if err != nil {
+		return nil, err
+	}
+	rationale, err := recordString(rec, 5, "rationale")
+	if err != nil {
+		return nil, err
+	}
+	supersededBy, err := recordString(rec, 6, "superseded_by")
+	if err != nil {
+		return nil, err
+	}
+	createdAtStr, err := recordString(rec, 7, "created_at")
+	if err != nil {
+		return nil, err
+	}
+	updatedAtStr, err := recordString(rec, 8, "updated_at")
 	if err != nil {
 		return nil, err
 	}
 
-	statusStr := recordString(rec, 3)
+	createdAt, err := parseRFC3339("created_at", createdAtStr)
+	if err != nil {
+		return nil, err
+	}
+	updatedAt, err := parseRFC3339("updated_at", updatedAtStr)
+	if err != nil {
+		return nil, err
+	}
+
 	statusVal, ok := specv1.DecisionStatus_value[statusStr]
 	if !ok {
 		statusVal = int32(specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED)
 	}
 
 	return &specv1.Decision{
-		Id:           recordString(rec, 0),
-		Slug:         recordString(rec, 1),
-		Title:        recordString(rec, 2),
+		Id:           id,
+		Slug:         slug,
+		Title:        title,
 		Status:       specv1.DecisionStatus(statusVal),
-		Decision:     recordString(rec, 4),
-		Rationale:    recordString(rec, 5),
-		SupersededBy: recordString(rec, 6),
+		Decision:     decision,
+		Rationale:    rationale,
+		SupersededBy: supersededBy,
 		CreatedAt:    timestamppb.New(createdAt),
 		UpdatedAt:    timestamppb.New(updatedAt),
 	}, nil
