@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 
-package scanner //nolint:revive // package-comments: "scanner" is clearer than alternatives for this domain
+package scanner
 
 import (
 	"fmt"
@@ -49,8 +49,7 @@ func ScanTier2(root string, dirs []string) (*Tier2Result, error) {
 				return nil //nolint:nilerr // skip unreadable entries
 			}
 			if d.IsDir() {
-				name := d.Name()
-				if strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules" {
+				if skipDir(d.Name()) {
 					return filepath.SkipDir
 				}
 				return nil

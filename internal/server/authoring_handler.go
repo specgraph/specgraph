@@ -31,7 +31,7 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
 	}
 	// CreateSpec already sets stage to "spark", so no TransitionStage call needed.
-	_, err := h.backend.CreateSpec(ctx, msg.Slug, msg.Output.GetSeed(), "p2", "medium")
+	_, err := h.backend.CreateSpec(ctx, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -44,14 +44,14 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	return connect.NewResponse(&specv1.SparkResponse{
 		Output:      msg.Output,
 		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts: authoring.PromptsToProto("shape"),
+		NextPrompts: authoring.PromptsToProto(authoring.StageShape),
 	}), nil
 }
 
 // Shape handles the Shape RPC, transitioning from spark to shape stage.
 func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv1.ShapeRequest]) (*connect.Response[specv1.ShapeResponse], error) {
 	msg := req.Msg
-	if err := h.store.TransitionStage(ctx, msg.Slug, "spark", "shape"); err != nil {
+	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageSpark, authoring.StageShape); err != nil {
 		return nil, h.stageError(err)
 	}
 	if msg.Output != nil {
@@ -63,14 +63,14 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	return connect.NewResponse(&specv1.ShapeResponse{
 		Output:      msg.Output,
 		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts: authoring.PromptsToProto("specify"),
+		NextPrompts: authoring.PromptsToProto(authoring.StageSpecify),
 	}), nil
 }
 
 // Specify handles the Specify RPC, transitioning from shape to specify stage.
 func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[specv1.SpecifyRequest]) (*connect.Response[specv1.SpecifyResponse], error) {
 	msg := req.Msg
-	if err := h.store.TransitionStage(ctx, msg.Slug, "shape", "specify"); err != nil {
+	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageShape, authoring.StageSpecify); err != nil {
 		return nil, h.stageError(err)
 	}
 	if msg.Output != nil {
@@ -85,14 +85,14 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	return connect.NewResponse(&specv1.SpecifyResponse{
 		Output:      msg.Output,
 		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts: authoring.PromptsToProto("decompose"),
+		NextPrompts: authoring.PromptsToProto(authoring.StageDecompose),
 	}), nil
 }
 
 // Decompose handles the Decompose RPC, transitioning from specify to decompose stage.
 func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[specv1.DecomposeRequest]) (*connect.Response[specv1.DecomposeResponse], error) {
 	msg := req.Msg
-	if err := h.store.TransitionStage(ctx, msg.Slug, "specify", "decompose"); err != nil {
+	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageSpecify, authoring.StageDecompose); err != nil {
 		return nil, h.stageError(err)
 	}
 	if msg.Output != nil {
@@ -105,12 +105,12 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 
 // Approve handles the Approve RPC, transitioning from decompose to approved stage.
 func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[specv1.ApproveRequest]) (*connect.Response[specv1.ApproveResponse], error) {
-	if err := h.store.TransitionStage(ctx, req.Msg.Slug, "decompose", "approved"); err != nil {
+	if err := h.store.TransitionStage(ctx, req.Msg.Slug, authoring.StageDecompose, authoring.StageApproved); err != nil {
 		return nil, h.stageError(err)
 	}
 	return connect.NewResponse(&specv1.ApproveResponse{
 		Slug:       req.Msg.Slug,
-		Stage:      "approved",
+		Stage:      authoring.StageApproved,
 		ApprovedAt: timestamppb.Now(),
 	}), nil
 }

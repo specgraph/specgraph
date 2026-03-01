@@ -5,16 +5,25 @@ package authoring
 
 import "fmt"
 
+// Stage name constants used across the authoring funnel.
+const (
+	StageSpark     = "spark"
+	StageShape     = "shape"
+	StageSpecify   = "specify"
+	StageDecompose = "decompose"
+	StageApproved  = "approved"
+)
+
 // stages defines the ordered authoring funnel stages.
-var stages = []string{"spark", "shape", "specify", "decompose", "approved"}
+var stages = []string{StageSpark, StageShape, StageSpecify, StageDecompose, StageApproved}
 
 // forwardTransitions maps each stage to its next valid forward stage.
 var forwardTransitions = map[string]string{
-	"":          "spark",
-	"spark":     "shape",
-	"shape":     "specify",
-	"specify":   "decompose",
-	"decompose": "approved",
+	"":             StageSpark,
+	StageSpark:     StageShape,
+	StageShape:     StageSpecify,
+	StageSpecify:   StageDecompose,
+	StageDecompose: StageApproved,
 }
 
 // AllStages returns a copy of the ordered stage list.

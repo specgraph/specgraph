@@ -52,8 +52,7 @@ func ScanTier1(root string) (*Tier1Result, error) {
 			return nil //nolint:nilerr // skip unreadable entries
 		}
 		if d.IsDir() {
-			name := d.Name()
-			if strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules" {
+			if skipDir(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil

@@ -5,9 +5,8 @@ package memgraph
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"time"
+	"slices"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 
@@ -16,12 +15,31 @@ import (
 	"github.com/seanb4t/specgraph/internal/storage"
 )
 
+const (
+	defaultChildPriority   = "p2"
+	defaultChildComplexity = "medium"
+)
+
+// allowedJSONProperties lists the spec node properties that storeJSONProperty may write.
+var allowedJSONProperties = []string{
+	"spark_output",
+	"shape_output",
+	"specify_output",
+	"decompose_output",
+	"red_team_findings",
+	"peripheral_vision",
+	"consistency_issues",
+	"simplicity_findings",
+	"safety_flags",
+	"constitution_violations",
+}
+
 // TransitionStage advances or validates a spec's stage transition.
 func (s *Store) TransitionStage(ctx context.Context, slug, from, to string) error {
 	if err := authoring.ValidateTransition(from, to); err != nil {
 		return fmt.Errorf("memgraph: %w: %w", storage.ErrInvalidStageTransition, err)
 	}
-	nowStr := time.Now().UTC().Format(time.RFC3339)
+	nowStr := nowRFC3339()
 	query := `
 		MATCH (s:Spec {slug: $slug})
 		WHERE s.stage = $from OR ($from = "" AND (s.stage IS NULL OR s.stage = ""))
@@ -62,7 +80,7 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 	}
 	var children []*specv1.Spec
 	for _, sl := range output.Slices {
-		child, err := s.CreateSpec(ctx, sl.Id, sl.Intent, "p2", "medium")
+		child, err := s.CreateSpec(ctx, sl.Id, sl.Intent, defaultChildPriority, defaultChildComplexity)
 		if err != nil {
 			return nil, fmt.Errorf("memgraph: create child spec %q: %w", sl.Id, err)
 		}
@@ -125,7 +143,7 @@ func (s *Store) StoreConstitutionViolations(ctx context.Context, slug string, vi
 
 // SupersedeSpec marks a spec as superseded and creates a SUPERSEDES edge to the replacement.
 func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error {
-	nowStr := time.Now().UTC().Format(time.RFC3339)
+	nowStr := nowRFC3339()
 	query := `
 		MATCH (old:Spec {slug: $old_slug}), (new:Spec {slug: $new_slug})
 		SET old.stage = "superseded", old.updated_at = $updated_at
@@ -153,7 +171,7 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason, targetStage string)
 	if vErr := authoring.ValidateTransition(spec.Stage, targetStage); vErr != nil {
 		return nil, fmt.Errorf("memgraph: amend: %w: %w", storage.ErrInvalidStageTransition, vErr)
 	}
-	nowStr := time.Now().UTC().Format(time.RFC3339)
+	nowStr := nowRFC3339()
 	query := `
 		MATCH (s:Spec {slug: $slug})
 		SET s.stage = $stage, s.amend_reason = $reason,
@@ -174,19 +192,23 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason, targetStage string)
 }
 
 // storeJSONProperty marshals data to JSON and stores it as a string property on the spec node.
+// The property name must be in the allowedJSONProperties allowlist.
 func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, data any) error {
-	jsonBytes, err := json.Marshal(data)
+	if !slices.Contains(allowedJSONProperties, property) {
+		return fmt.Errorf("memgraph: disallowed property name %q", property)
+	}
+	jsonStr, err := marshalJSON(data)
 	if err != nil {
 		return fmt.Errorf("memgraph: marshal %s: %w", property, err)
 	}
-	nowStr := time.Now().UTC().Format(time.RFC3339)
+	nowStr := nowRFC3339()
 	query := fmt.Sprintf(`
 		MATCH (s:Spec {slug: $slug})
 		SET s.%s = $data, s.updated_at = $updated_at
 		RETURN s.slug
 	`, property)
 	result, err := neo4j.ExecuteQuery(ctx, s.driver, query,
-		map[string]any{"slug": slug, "data": string(jsonBytes), "updated_at": nowStr},
+		map[string]any{"slug": slug, "data": jsonStr, "updated_at": nowStr},
 		neo4j.EagerResultTransformer)
 	if err != nil {
 		return fmt.Errorf("memgraph: store %s: %w", property, err)

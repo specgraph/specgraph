@@ -43,7 +43,7 @@ const defaultInitialStage = "spark"
 func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*specv1.Spec, error) {
 	now := time.Now().UTC()
 	id := generateID("spec", slug, now)
-	nowStr := now.Format(time.RFC3339)
+	nowStr := nowRFC3339()
 
 	query := `
 		CREATE (s:Spec {
@@ -170,7 +170,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		return s.GetSpec(ctx, slug)
 	}
 
-	nowStr := time.Now().UTC().Format(time.RFC3339)
+	nowStr := nowRFC3339()
 	setClauses = append(setClauses, "s.version = s.version + 1", "s.updated_at = $updated_at")
 	params["updated_at"] = nowStr
 
@@ -204,6 +204,11 @@ func (s *Store) Close(ctx context.Context) error {
 func generateID(prefix, slug string, now time.Time) string {
 	h := sha256.Sum256([]byte(slug + now.String()))
 	return prefix + "-" + hex.EncodeToString(h[:])[:7]
+}
+
+// nowRFC3339 returns the current UTC time formatted as RFC3339.
+func nowRFC3339() string {
+	return time.Now().UTC().Format(time.RFC3339)
 }
 
 // parseRFC3339 parses an RFC3339 timestamp string from a memgraph record field.

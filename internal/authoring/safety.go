@@ -16,6 +16,12 @@ type SafetyInput struct {
 	Invariants []string
 }
 
+// Safety category constants.
+const (
+	SafetyCategorySecurity = "security"
+	SafetyCategoryDataLoss = "data_loss"
+)
+
 // SafetyFlagResult is the domain-level result of a safety net check.
 type SafetyFlagResult struct {
 	Category    string
@@ -62,7 +68,7 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 	for _, p := range securityPatterns {
 		if strings.Contains(combined, p) {
 			flags = append(flags, SafetyFlagResult{
-				Category:    "security",
+				Category:    SafetyCategorySecurity,
 				Severity:    specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
 				Description: "matched pattern: " + p,
 			})
@@ -72,7 +78,7 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 	for _, p := range dataLossPatterns {
 		if strings.Contains(combined, p) {
 			flags = append(flags, SafetyFlagResult{
-				Category:    "data_loss",
+				Category:    SafetyCategoryDataLoss,
 				Severity:    specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
 				Description: "matched pattern: " + p,
 			})
