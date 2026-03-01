@@ -1,0 +1,108 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+syntax = "proto3";
+
+package specgraph.v1;
+
+option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
+
+// --- Edge Types ---
+
+enum EdgeType {
+  EDGE_TYPE_UNSPECIFIED = 0;
+  EDGE_TYPE_DEPENDS_ON = 1;    // A depends on B (A cannot start until B is done)
+  EDGE_TYPE_BLOCKS = 2;        // A blocks B (inverse of depends_on, stored as DEPENDS_ON from B→A)
+  EDGE_TYPE_COMPOSES = 3;      // A composes B (B is a child/sub-spec of A)
+  EDGE_TYPE_RELATES_TO = 4;    // A relates to B (informational link)
+  EDGE_TYPE_INFORMS = 5;       // Decision A informs Spec B
+}
+
+// --- Messages ---
+
+message Edge {
+  string from_id = 1;
+  string to_id = 2;
+  EdgeType edge_type = 3;
+}
+
+message AddEdgeRequest {
+  string from_slug = 1;
+  string to_slug = 2;
+  EdgeType edge_type = 3;
+}
+
+message RemoveEdgeRequest {
+  string from_slug = 1;
+  string to_slug = 2;
+  EdgeType edge_type = 3;
+}
+
+message RemoveEdgeResponse {}
+
+message ListEdgesRequest {
+  string slug = 1;             // list edges for this node
+  EdgeType edge_type = 2;      // optional filter
+}
+
+message ListEdgesResponse {
+  repeated Edge edges = 1;
+}
+
+message NodeRef {
+  string id = 1;
+  string slug = 2;
+  string label = 3;           // "Spec" or "Decision"
+  string stage = 4;           // stage/status of the node
+}
+
+message GetDependenciesRequest {
+  string slug = 1;
+}
+
+message GetDependenciesResponse {
+  repeated NodeRef dependencies = 1;
+}
+
+message GetTransitiveDepsRequest {
+  string slug = 1;
+}
+
+message GetTransitiveDepsResponse {
+  repeated NodeRef dependencies = 1;
+}
+
+message GetImpactRequest {
+  string slug = 1;
+}
+
+message GetImpactResponse {
+  repeated NodeRef impacted = 1;
+}
+
+message GetReadyRequest {}
+
+message GetReadyResponse {
+  repeated NodeRef ready = 1;
+}
+
+message GetCriticalPathRequest {
+  string slug = 1;
+}
+
+message GetCriticalPathResponse {
+  repeated NodeRef path = 1;
+}
+
+// --- Service ---
+
+service GraphService {
+  rpc AddEdge(AddEdgeRequest) returns (Edge);
+  rpc RemoveEdge(RemoveEdgeRequest) returns (RemoveEdgeResponse);
+  rpc ListEdges(ListEdgesRequest) returns (ListEdgesResponse);
+  rpc GetDependencies(GetDependenciesRequest) returns (GetDependenciesResponse);
+  rpc GetTransitiveDeps(GetTransitiveDepsRequest) returns (GetTransitiveDepsResponse);
+  rpc GetImpact(GetImpactRequest) returns (GetImpactResponse);
+  rpc GetReady(GetReadyRequest) returns (GetReadyResponse);
+  rpc GetCriticalPath(GetCriticalPathRequest) returns (GetCriticalPathResponse);
+}
