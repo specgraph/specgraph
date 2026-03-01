@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
 package main
 
 import (
@@ -7,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/seanb4t/specgraph/internal/config"
 	"github.com/seanb4t/specgraph/internal/docker"
@@ -25,7 +29,7 @@ func init() {
 	rootCmd.AddCommand(serveCmd)
 }
 
-func runServe(cmd *cobra.Command, args []string) error {
+func runServe(_ *cobra.Command, _ []string) error {
 	cfg, err := config.Load(cfgFile)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
@@ -46,7 +50,11 @@ func runServe(cmd *cobra.Command, args []string) error {
 		if err := docker.ComposeUp(composeFile); err != nil {
 			return err
 		}
-		defer docker.ComposeDown(composeFile)
+		defer func() {
+			if err := docker.ComposeDown(composeFile); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: compose down: %v\n", err)
+			}
+		}()
 	}
 
 	switch cfg.Storage.Backend {
@@ -55,18 +63,28 @@ func runServe(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("connect to memgraph: %w", err)
 		}
-		defer store.Close(ctx)
+		defer func() {
+			if err := store.Close(ctx); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: close store: %v\n", err)
+			}
+		}()
 
 		mux := server.NewMux(store)
+		server.RegisterHealthService(mux)
+		server.RegisterDecisionService(mux, store)
+		server.RegisterGraphService(mux, store)
+		server.RegisterClaimService(mux, store)
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
-		srv := &http.Server{Addr: addr, Handler: mux}
+		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 
 		go func() {
 			sigCh := make(chan os.Signal, 1)
 			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 			<-sigCh
 			fmt.Println("\nShutting down...")
-			srv.Close()
+			if err := srv.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: server close: %v\n", err)
+			}
 		}()
 
 		fmt.Printf("SpecGraph server running at http://%s\n", addr)
