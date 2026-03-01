@@ -94,21 +94,21 @@ history:
 
 Decisions connect to specs through two directed edge types:
 
-```
+```text
 spec ──decided_in──▶ decision       # "this spec made this decision"
 spec ──references──▶ decision       # "this spec depends on this decision"
 ```
 
 The reverse traversals are implicit:
 
-```
+```text
 decision.origin_spec                # which spec authored it
 decision.referencing_specs          # which specs depend on it
 ```
 
 **Examples:**
 
-```
+```text
 login-api       ──decided_in──▶  d-a7f3b2c1
 session-mgmt    ──references──▶  d-a7f3b2c1
 audit-logging   ──references──▶  d-a7f3b2c1
@@ -121,7 +121,7 @@ Now when the refresh token storage decision changes, every spec that references 
 
 Decisions have a simpler lifecycle than specs:
 
-```
+```text
 proposed → accepted → (deprecated | superseded)
 ```
 
@@ -152,7 +152,7 @@ This is the same pattern as spec supersession — because it is the same graph o
 
 During authoring, when the agent encounters a decision that already exists in the graph:
 
-```
+```text
 Agent: "For token storage, I see there's an existing decision 
         ('Refresh token storage mechanism') that chose Postgres. 
         Should this spec reference that decision, or do we need 
@@ -164,6 +164,7 @@ Agent: specgraph decision reference mobile-client "refresh token storage"
 ```
 
 During drift detection, referenced decisions are checked:
+
 - Is the referenced decision still `accepted`? (Not deprecated/superseded)
 - Has the decision been amended since this spec last acknowledged it?
 - Does the spec's implementation still align with the decision?
@@ -287,7 +288,7 @@ The skills (`/specgraph-shape`, `/specgraph-specify`) are updated to work with d
 
 ### Constitution Relationship
 
-Constitution entries are NOT decisions in this model. The constitution captures standing constraints, values, and standards ("We use Go", "All APIs backward compatible"). Decisions are specific choices made in the context of a spec ("Use Postgres for token storage"). 
+Constitution entries are NOT decisions in this model. The constitution captures standing constraints, values, and standards ("We use Go", "All APIs backward compatible"). Decisions are specific choices made in the context of a spec ("Use Postgres for token storage").
 
 However, a decision can *reference* a constitution entry as justification: "Chose Postgres because the constitution says 'minimize infrastructure dependencies' and we already run Postgres." This is an informational link, not an edge type — captured in the decision's `rationale` field.
 
@@ -296,6 +297,7 @@ If a constitution entry was *itself* the result of a decision (which it often is
 ## Consequences
 
 **Positive:**
+
 - Decisions become referenceable across specs — no duplication
 - Impact analysis: "which specs are affected if we change this decision?"
 - ADR export becomes a projection, not a transformation
@@ -304,11 +306,11 @@ If a constitution entry was *itself* the result of a decision (which it often is
 - Decision discovery: agents can search existing decisions before proposing new ones
 
 **Negative:**
+
 - Additional entity type in the graph (more schema, more storage, more CLI surface)
 - Authoring flow slightly more complex (create decision nodes, not just fill in arrays)
 
 **Neutral:**
+
 - Red-team findings stay embedded in specs. They're observations about a specific spec, not reusable decisions. A finding might *lead* to a decision, but the finding itself is spec-local.
 - The `references` field on specs (informational links like `arch-decision-017`) is superseded by the decision graph for decision-related references. Plain-text references to external content (incidents, RFCs, etc.) remain as-is.
-
-

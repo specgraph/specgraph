@@ -21,7 +21,7 @@ type Config struct {
 
 // ServerConfig describes how the SpecGraph server runs.
 type ServerConfig struct {
-	Mode   string `yaml:"mode"`   // docker | external
+	Mode   string `yaml:"mode"` // docker | external
 	Host   string `yaml:"host"`
 	Port   int    `yaml:"port"`
 	Remote string `yaml:"remote"` // if set, CLI-only mode

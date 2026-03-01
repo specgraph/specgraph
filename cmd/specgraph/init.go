@@ -30,8 +30,10 @@ var initCmd = &cobra.Command{
 	RunE:  runInit,
 }
 
-var initYes bool
-var initScan bool
+var (
+	initYes  bool
+	initScan bool
+)
 
 func init() {
 	initCmd.Flags().BoolVar(&initYes, "yes", false, "non-interactive mode with defaults")

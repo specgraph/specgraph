@@ -125,7 +125,7 @@ func TestSpecHandler_CreateAndGet(t *testing.T) {
 	require.Equal(t, "oauth-refresh", createResp.Msg.Slug)
 	require.Equal(t, "Implement OAuth refresh token rotation", createResp.Msg.Intent)
 	require.Equal(t, "p2", createResp.Msg.Priority)       // defaulted
-	require.Equal(t, "medium", createResp.Msg.Complexity)  // defaulted
+	require.Equal(t, "medium", createResp.Msg.Complexity) // defaulted
 	require.Equal(t, "spark", createResp.Msg.Stage)
 	require.NotEmpty(t, createResp.Msg.Id)
 

@@ -20,7 +20,7 @@ Redesign SpecGraph from an embedded library with dual storage backends into a **
 
 ## 1. System Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │  CLIENTS                                                     │
 │                                                              │
@@ -223,7 +223,7 @@ service ServerService {
 
 ### CLI Mapping
 
-```
+```text
 specgraph serve              → starts the server (not an RPC)
 specgraph spark <slug>       → AuthoringService/Spark
 specgraph shape <slug>       → AuthoringService/Shape
@@ -242,7 +242,7 @@ specgraph sync beads         → SyncService/SyncBeads
 
 ### Three Deployment Modes
 
-```
+```text
 Solo/local:     specgraph serve (docker mode)  → server + storage in containers
 Contributor:    specgraph serve (external mode) → local server process, existing DB
 Team member:    CLI only (remote mode)          → points to shared server
@@ -428,7 +428,7 @@ Returns tailored orientation for the executing agent:
 
 Bundles can be delivered as files for tool-specific injection:
 
-```
+```text
 .specgraph/bundles/spec-k7m3p/
   PROMPT.md          # bootstrap instructions
   bundle.yaml        # spec + callbacks
@@ -441,7 +441,7 @@ specgraph inject spec-k7m3p --tool=claude-code
 
 ### Callback Flow
 
-```
+```text
 1. Bundle generated → synced to Beads (if enabled) or injected into workspace
 2. Agent reads bundle, sees prime URL
 3. Agent calls prime → gets orientation + context
@@ -566,11 +566,13 @@ These survive as-is:
 ## 10. Relationship to Original Design Documents
 
 This design supersedes the architectural and storage decisions in:
+
 - `specgraph-v1.0-draft-spec.md` — architecture sections
 - `specgraph-v1.0-draft-adr-001-storage.md` — entirely (new storage model)
 - `specgraph-v1.0-draft-adr-002-gastown.md` — integration model (Beads sync adapter replaces native coupling)
 
 The following survive with minor updates:
+
 - `specgraph-v1.0-draft-spec.md` — spec schema, constitution, authoring funnel, agent collaboration
 - `specgraph-v1.0-draft-adr-003-decisions.md` — decisions model unchanged
 - `specgraph-v1.0-draft-roadmap.md` — superseded by revised roadmap above

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

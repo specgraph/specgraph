@@ -1,91 +1,37 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
-SpecGraph is a **Live Spec-Driven Development Framework** — a system for managing software specifications as a queryable graph rather than static markdown files. It provides a constitution (project ground truth), a spec schema, an authoring process with AI collaboration, and a live storage + query layer that feeds execution engines like Gastown.
+SpecGraph is a **Live Spec-Driven Development Framework** — specifications as a queryable graph, not static markdown. Constitution (project ground truth), spec schema, authoring funnel, and storage + query layer feeding execution engines like Gastown.
 
-**Status:** Active implementation. Slices 1 (Spec CRUD) and 2 (Constitution) are implemented.
+**Status:** Phase 1 in progress. Slice 2 (Constitution) is implemented.
 
-## Repository Structure
+## Commands
 
-```text
-specgraph/
-├── cmd/specgraph/          # Cobra CLI (init, serve, spec, constitution, claim, decision, graph)
-├── proto/specgraph/v1/     # Protobuf definitions (buf-managed)
-├── gen/specgraph/v1/       # Generated Go code (protoc-gen-go + connect)
-├── internal/
-│   ├── config/             # YAML config + constitution YAML support
-│   ├── docker/             # Docker Compose lifecycle
-│   ├── emitter/            # Constitution → tool file emitter (CLAUDE.md, .cursorrules, AGENTS.md)
-│   ├── scanner/            # Tier 0 codebase scanner
-│   ├── server/             # ConnectRPC handlers
-│   └── storage/
-│       └── memgraph/       # Memgraph (neo4j-go-driver/v5) backend
-├── docs/
-│   ├── initial-design-session/  # Spec, roadmap, ADRs
-│   └── plans/                   # Implementation plans and tracker
-└── LICENSE  # MIT
-```
+All automation is via Taskfile.dev. Run `task --list` for the full catalog. Key commands: `task build`, `task test`, `task proto`, `task lint`, `task fmt`.
 
-## Build & Test Commands
+## Domain Concepts
 
-### Prerequisites
-
-buf, golangci-lint, Docker, Go 1.25+, lefthook, cog, dprint, yamlfmt, rumdl, addlicense
-
-### Commands
-
-- `buf generate` — regenerate proto Go code after `.proto` changes
-- `go build ./cmd/specgraph/` — build CLI binary
-- `go test ./... -count=1 -timeout=120s` — run all tests (integration tests need Docker)
-- `go test ./internal/scanner/ ./internal/emitter/ ./internal/server/ -count=1` — unit tests only (no Docker)
-- `golangci-lint run ./...` — lint (revive, gosec, gocritic, staticcheck, errcheck, wrapcheck)
-- `lefthook install` — install git hooks (run after clone or worktree creation)
-
-## Code Patterns
-
-- **ConnectRPC handlers**: `RegisterXxxService(mux, store)` in `internal/server/`, implement `specgraphv1connect.XxxServiceHandler`
-- **Storage interfaces**: Define in `internal/storage/`, implement on `*memgraph.Store`
-- **CLI commands**: One file per domain in `cmd/specgraph/`, use `newClient(specgraphv1connect.NewXxxServiceClient)` factory
-- **Proto responses**: buf STANDARD lint requires unique response type per RPC — wrap with `GetXxxResponse`, `UpdateXxxResponse`
-- **Memgraph storage**: Complex fields stored as JSON strings, use `marshalJSON`/`json.Unmarshal` for round-trip
-- **File permissions**: `0o600` for files, `0o750` for directories (gosec G306)
-- **Error wrapping**: Always `fmt.Errorf("context: %w", err)` (wrapcheck)
-- **License header**: `// SPDX-License-Identifier: MIT` + `// Copyright 2026 Sean Brandt` on every file
-- **Integration tests**: Use `setupMemgraph(t)` from `memgraph_test.go` (testcontainers)
+- **Specs are graph nodes** with first-class edges (dependencies, blocks, compositions)
+- **Constitution**: Layered ground truth (User → Org → Project → Domain). More specific layers override general ones.
+- **Authoring funnel**: Spark → Shape → Specify → Decompose → Approve
+- **Decisions are first-class nodes** (ADR-003) with bidirectional edges to specs
+- **SpecGraph is upstream of Gastown** — SpecGraph does design; Gastown does execution via polecats (ephemeral worker agents)
 
 ## Gotchas
 
-- `go test -short` does NOT skip integration tests — `setupMemgraph` doesn't check `testing.Short()`
-- `filepath.Glob` does not support recursive `**` — only matches one directory level
-- Proto `gen/` files are auto-generated — never edit manually (blocked by hook)
-- Map iteration order is nondeterministic in Go — don't depend on key ordering in tests
+- **`gen/` is gitignored** — run `task proto` (or `task build`, which depends on it) after clone. Proto sources are in `proto/`, not `gen/`.
+- **`task proto` is incremental** — fingerprints `.proto` files and skips if unchanged
+- **Memgraph integration tests require Docker** — `internal/storage/memgraph/` uses testcontainers
+- **Lefthook pre-commit hooks**: license headers (addlicense), golangci-lint, yamlfmt, dprint, rumdl, cog (conventional commits). All run in parallel.
+- **Claude Code hooks**: `task fmt` runs after Edit/Write, `task lint` runs after Bash, edits to `gen/` are blocked via PreToolUse
+- **ConnectRPC, not plain gRPC** — handlers are in `internal/server/`, proto services generate both `.pb.go` and `.connect.go` files
+- **Storage interfaces in `internal/storage/`** — implementations are in subdirectories (currently only `memgraph/`). The interfaces use domain types, not protobuf types.
+- **License headers required** — all `.go`, `.sh`, `.py`, `.proto` files need SPDX headers. Run `task license:add` to fix.
 
-## Architecture
+## Roadmap
 
-### Core Concepts
-
-- **Specs are graph nodes**, not files. Dependencies, blocks, and compositions are first-class edges.
-- **Progressive structure**: 3 required fields for solo devs, 30+ for enterprise. Same schema at all scales.
-- **Constitution**: Layered project ground truth (User → Org → Project → Domain). More specific layers override general ones.
-- **Authoring funnel**: Spark → Shape → Specify → Decompose → Approve. Produces specs clear enough for agents to execute without ambiguity.
-- **Execution bundles**: The contract between authoring and execution engines.
-- **Decisions are first-class nodes** (ADR-003) with bidirectional edges to specs.
-
-### Storage
-
-Currently Memgraph-only (neo4j-go-driver/v5). Postgres + AGE planned as alternative backend (ADR-001).
-SpecGraph sits upstream of Gastown (execution engine). See `docs/initial-design-session/` for full design.
-
-## Implementation Roadmap
-
-- **Phase 1 — Foundation**: Spec schema, constitution, storage backends, claim protocol, execution bundles, core CLI, linter (~17-18 weeks)
-- **Phase 2 — Authoring & CLI Integration**: Codebase scanner, authoring flow, Claude Code skills/plugin, constitution sync (~14 weeks, parallel workstreams)
-- **Phase 3 — Coordination & Export**: Multi-agent leasing, MCP server, drift detection, document export, issue tracker sync, Gastown integration
+- **Phase 1 — Foundation**: Spec schema, constitution, storage, claim protocol, execution bundles, CLI, linter
+- **Phase 2 — Authoring & CLI Integration**: Codebase scanner, authoring flow, Claude Code skills/plugin, constitution sync
+- **Phase 3 — Coordination & Export**: Multi-agent leasing, MCP server, drift detection, exports, Gastown integration
 - **Phase 4 — Scale**: Federation, multi-repo, metrics, governance
-
-### Implementation Progress
-
-Work follows vertical slices. See `docs/plans/2026-02-28-implementation-tracker.md` for current status.
