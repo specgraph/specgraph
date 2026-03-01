@@ -7,6 +7,7 @@
 Gas Town is a multi-agent workspace manager that coordinates Claude Code instances (and other agents like Codex, Cursor, Augment, AMP) via tmux, git worktrees, and Beads. It already has:
 
 **Hierarchy:**
+
 - **Town** (`~/gt/`) — workspace root, houses all rigs
 - **Mayor** — AI coordinator (Claude Code instance with full workspace context). You talk to the Mayor; the Mayor orchestrates everything.
 - **Rig** — project container wrapping a git repo. Has its own polecats, witness, refinery, crew.
@@ -17,7 +18,8 @@ Gas Town is a multi-agent workspace manager that coordinates Claude Code instanc
 - **Deacon** — daemon watchdog. Patrols, health checks, ensures the whole system keeps running.
 
 **Work flow:**
-```
+
+```text
 You → Mayor → creates beads + convoy
                     │
               gt sling <bead> <rig>
@@ -43,9 +45,9 @@ This is **exactly** SpecGraph's value proposition. The authoring funnel exists t
 
 SpecGraph sits upstream of Gastown. It does the design work; Gastown does the execution:
 
-```
+```text
 DESIGN TIME (SpecGraph)                    EXECUTION TIME (Gastown)
-                                           
+
   Human + AI authoring agent               Mayor + Polecats + Crew
           │                                        │
     ┌─────▼──────┐                          ┌──────▼──────┐
@@ -144,6 +146,7 @@ bd link <oauth-refresh-id> --relates-to <rate-limiter-id>
 ```
 
 Beads' existing link types map directly:
+
 | SpecGraph Edge | Beads Link |
 |---|---|
 | `depends_on` | `--blocks` (target blocks source) |
@@ -238,7 +241,7 @@ codebase:
       role: "Token persistence — add invalidation + family tracking"
     - path: "internal/model/token.go"
       role: "Token model — may need lineage_parent field"
-  
+
   existing_patterns:
     - name: "Handler structure"
       example_file: "internal/handler/login.go"
@@ -246,7 +249,7 @@ codebase:
     - name: "Service error handling"
       example_file: "internal/service/session.go"
       note: "Wraps store errors, returns domain errors"
-  
+
   test_commands:
     unit: "go test ./internal/service/..."
     integration: "go test -tags=integration ./internal/store/..."
@@ -262,6 +265,7 @@ upstream:
 ```
 
 This bundle is everything a polecat needs to execute without asking questions. It knows:
+
 - What to build (interface contract)
 - How to verify it worked (verification criteria with hints)
 - What decisions were already made (don't re-decide)
@@ -331,7 +335,7 @@ This writes `.specgraph/context.md` into the worktree, which gets picked up by C
 
 The Mayor is not just a dispatcher. It's the AI coordinator with full workspace context. SpecGraph's authoring funnel can run **inside a Mayor session**:
 
-```
+```text
 You → Mayor: "We need OAuth2 refresh token rotation"
 
 Mayor (using SpecGraph):
@@ -352,6 +356,7 @@ Mayor (using Gastown):
 ```
 
 The Mayor is the natural home for SpecGraph's authoring agent. It already has:
+
 - Full workspace context (knows all rigs, all agents, all in-progress work)
 - Beads access (can create, link, query specs)
 - Coordination authority (can sling, convoy, nudge)
@@ -368,7 +373,8 @@ You have access to the specgraph CLI for design-driven development.
 Use it when the user describes features, asks for architecture, or
 wants to plan work before executing.
 
-### Available commands:
+### Available commands
+
 - `specgraph spark <slug>` — capture a vague idea
 - `specgraph shape <slug>` — scope and tradeoff analysis  
 - `specgraph specify <slug>` — interface contract + verification
@@ -378,13 +384,16 @@ wants to plan work before executing.
 - `specgraph constitution show` — view project standards
 - `specgraph ready` — list specs ready for slinging
 
-### Workflow:
+### Workflow
+
 When the user wants to build something:
+
 1. Use specgraph to design it (spark → approve)
 2. Generate bundle
 3. Sling to polecats via gt sling
 
 When a polecat reports a blocker:
+
 1. Check if the blocker is a spec issue (bad interface, missing invariant)
 2. If yes, update the spec and re-bundle
 3. Re-sling to a fresh polecat
@@ -395,12 +404,14 @@ When a polecat reports a blocker:
 Gastown has two kinds of workers that interact with specs differently:
 
 **Polecats** (ephemeral, swarm workers):
+
 - Get fully-spec'd work. Don't make decisions.
 - Read the execution bundle. Follow it. Submit MR.
 - Perfect for: implementing a single, well-defined spec.
 - SpecGraph ensures the spec IS well-defined enough for a polecat.
 
 **Crew** (persistent, thoughtful workers):
+
 - Handle ambiguous, design-heavy work. CAN make decisions.
 - Perfect for: SpecGraph authoring itself (shaping, specifying).
 - A crew member could run the full authoring funnel on a vague idea.
@@ -408,7 +419,7 @@ Gastown has two kinds of workers that interact with specs differently:
 
 This maps cleanly:
 
-```
+```text
 AUTHORING (Crew or Mayor):
   "Design the OAuth refresh token rotation"
   → Crew member runs specgraph shape, specify
@@ -538,7 +549,7 @@ specgraph bundle bd-k7m3p --refresh   # regenerate with updated context
 
 For richer agent ↔ SpecGraph interaction, an MCP server can expose SpecGraph operations. This is useful when the polecat (or crew member) needs to query project context mid-task:
 
-```
+```text
 MCP Tools (for coding agents mid-task):
   specgraph_constitution  → "What are project standards?"
   specgraph_pattern       → "How does this codebase do error handling?"
@@ -575,7 +586,7 @@ SpecGraph's boundary is: **design the work, produce the bundle, write it as a be
 
 ## Revised Architecture Diagram
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                     SPECGRAPH                            │
 │                                                          │
@@ -624,7 +635,7 @@ Teams on the Postgres path (no Beads/Dolt) lose native Gastown integration. They
 
 This is an honest tradeoff. The Beads path gets Gastown for free. The Postgres path gets enterprise Postgres infrastructure but pays with a Gastown adapter or manual execution.
 
-```
+```text
 BEADS PATH:  SpecGraph → Beads → Gastown (native, no adapter)
 POSTGRES PATH:  SpecGraph → Postgres → ??? → Gastown (adapter needed)
                                       └──→ Manual execution (no Gastown)

@@ -14,7 +14,7 @@
 
 ## Project Structure
 
-```
+```text
 specgraph/
 ├── proto/
 │   └── specgraph/v1/
@@ -54,6 +54,7 @@ specgraph/
 ## Task 1: Project Scaffold
 
 **Files:**
+
 - Create: `go.mod`
 - Create: `buf.yaml`
 - Create: `buf.gen.yaml`
@@ -70,6 +71,7 @@ go mod init github.com/seanb4t/specgraph
 **Step 2: Create buf configuration**
 
 `buf.yaml`:
+
 ```yaml
 version: v2
 modules:
@@ -83,6 +85,7 @@ breaking:
 ```
 
 `buf.gen.yaml`:
+
 ```yaml
 version: v2
 plugins:
@@ -97,6 +100,7 @@ plugins:
 **Step 3: Create minimal CLI entrypoint**
 
 `cmd/specgraph/main.go`:
+
 ```go
 package main
 
@@ -114,7 +118,8 @@ func main() {
 **Step 4: Update .gitignore**
 
 Append to existing `.gitignore`:
-```
+
+```text
 # Go
 /specgraph
 *.exe
@@ -144,11 +149,13 @@ git commit -m "feat: project scaffold with go module and buf config"
 ## Task 2: Protobuf Schema — Spec Messages + SpecService
 
 **Files:**
+
 - Create: `proto/specgraph/v1/spec.proto`
 
 **Step 1: Write the proto file**
 
 `proto/specgraph/v1/spec.proto`:
+
 ```protobuf
 syntax = "proto3";
 
@@ -229,11 +236,13 @@ git commit -m "feat: protobuf schema for Spec messages and SpecService"
 ## Task 3: Storage Interface
 
 **Files:**
+
 - Create: `internal/storage/storage.go`
 
 **Step 1: Define the storage interface**
 
 `internal/storage/storage.go`:
+
 ```go
 package storage
 
@@ -280,6 +289,7 @@ git commit -m "feat: storage backend interface for spec CRUD"
 ## Task 4: Memgraph Storage Backend
 
 **Files:**
+
 - Create: `internal/storage/memgraph/memgraph.go`
 - Create: `internal/storage/memgraph/memgraph_test.go`
 
@@ -293,6 +303,7 @@ go get github.com/testcontainers/testcontainers-go
 **Step 2: Write the integration test first**
 
 `internal/storage/memgraph/memgraph_test.go`:
+
 ```go
 package memgraph_test
 
@@ -434,6 +445,7 @@ Expected: FAIL — `memgraph` package doesn't exist yet
 **Step 4: Implement the Memgraph backend**
 
 `internal/storage/memgraph/memgraph.go`:
+
 ```go
 package memgraph
 
@@ -623,6 +635,7 @@ git commit -m "feat: memgraph storage backend with integration tests"
 ## Task 5: ConnectRPC Server
 
 **Files:**
+
 - Create: `internal/server/server.go`
 - Create: `internal/server/spec_handler.go`
 - Create: `internal/server/spec_handler_test.go`
@@ -630,6 +643,7 @@ git commit -m "feat: memgraph storage backend with integration tests"
 **Step 1: Write the handler test first**
 
 `internal/server/spec_handler_test.go`:
+
 ```go
 package server_test
 
@@ -760,6 +774,7 @@ Expected: FAIL — `server` package doesn't exist
 **Step 3: Implement the server and handler**
 
 `internal/server/spec_handler.go`:
+
 ```go
 package server
 
@@ -817,6 +832,7 @@ func (h *SpecHandler) ListSpecs(ctx context.Context, req *connect.Request[specv1
 ```
 
 `internal/server/server.go`:
+
 ```go
 package server
 
@@ -861,12 +877,14 @@ git commit -m "feat: ConnectRPC server with SpecService handler"
 ## Task 6: Configuration
 
 **Files:**
+
 - Create: `internal/config/config.go`
 - Create: `internal/config/config_test.go`
 
 **Step 1: Write the test first**
 
 `internal/config/config_test.go`:
+
 ```go
 package config_test
 
@@ -962,6 +980,7 @@ Expected: FAIL
 **Step 3: Implement config loading**
 
 `internal/config/config.go`:
+
 ```go
 package config
 
@@ -1063,12 +1082,14 @@ git commit -m "feat: YAML config loading with defaults and remote mode"
 ## Task 7: Docker Compose Management
 
 **Files:**
+
 - Create: `internal/docker/compose.go`
 - Create: `docker/docker-compose.memgraph.yaml`
 
 **Step 1: Create the Docker Compose template**
 
 `docker/docker-compose.memgraph.yaml`:
+
 ```yaml
 services:
   specgraph:
@@ -1101,6 +1122,7 @@ volumes:
 **Step 2: Implement compose management**
 
 `internal/docker/compose.go`:
+
 ```go
 package docker
 
@@ -1241,6 +1263,7 @@ git commit -m "feat: docker compose management for specgraph serve"
 ## Task 8: CLI — serve, create, list, show
 
 **Files:**
+
 - Modify: `cmd/specgraph/main.go`
 - Create: `cmd/specgraph/serve.go`
 - Create: `cmd/specgraph/spec.go`
@@ -1254,6 +1277,7 @@ go get github.com/spf13/cobra
 **Step 2: Implement the CLI**
 
 `cmd/specgraph/main.go`:
+
 ```go
 package main
 
@@ -1284,6 +1308,7 @@ func main() {
 ```
 
 `cmd/specgraph/serve.go`:
+
 ```go
 package main
 
@@ -1375,6 +1400,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 ```
 
 `cmd/specgraph/spec.go`:
+
 ```go
 package main
 
@@ -1521,11 +1547,13 @@ git commit -m "feat: CLI with serve, create, list, show commands"
 ## Task 9: Dockerfile
 
 **Files:**
+
 - Create: `Dockerfile`
 
 **Step 1: Write the Dockerfile**
 
 `Dockerfile`:
+
 ```dockerfile
 FROM golang:1.26-alpine AS build
 WORKDIR /src
@@ -1562,11 +1590,13 @@ git commit -m "feat: multi-stage Dockerfile for specgraph server"
 ## Task 10: End-to-End Smoke Test
 
 **Files:**
+
 - Create: `e2e/smoke_test.sh`
 
 **Step 1: Write the smoke test**
 
 `e2e/smoke_test.sh`:
+
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
@@ -1673,6 +1703,7 @@ After completing all 10 tasks, you have a working SpecGraph with:
 | E2E smoke test | Done |
 
 **Not yet built (next vertical slices):**
+
 - `specgraph init` (interactive setup)
 - DecisionService, AuthoringService, ConstitutionService, ExecutionService
 - Postgres+AGE backend

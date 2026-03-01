@@ -4,7 +4,7 @@
 
 SpecGraph has one mandatory core and three optional integrations. Every combination works:
 
-```
+```text
 MANDATORY:
   SpecGraph core (schema, authoring, constitution, bundles, CLI/MCP)
   + ONE storage backend (Beads+Dolt OR Postgres+AGE)
@@ -37,6 +37,7 @@ Every row is a first-class citizen. No configuration is "degraded mode."
 Regardless of backend or integrations, SpecGraph always provides:
 
 ### Spec Schema
+
 Progressive structure. Three required fields minimum, expanding to full schema:
 
 ```yaml
@@ -71,7 +72,9 @@ decisions:
 ```
 
 ### Authoring Funnel
+
 Five stages (enter at any, skip any, go backward):
+
 - **Spark** — vague idea → seed + questions
 - **Shape** — scope, tradeoffs, risks, success criteria
 - **Specify** — interface contract, verification criteria, invariants
@@ -79,6 +82,7 @@ Five stages (enter at any, skip any, go backward):
 - **Approve** — mark ready for execution
 
 ### Constitution
+
 Project-wide ground truth. Layered (User → Org → Project → Domain):
 
 ```yaml
@@ -93,12 +97,15 @@ antipatterns:
 ```
 
 ### Codebase Context
+
 Three tiers of understanding, gathered progressively:
+
 - **Tier 0:** Languages, frameworks, directory structure, build/test commands
 - **Tier 1:** Service boundaries, key interfaces, dependency graph, patterns
 - **Tier 2:** File-level understanding for affected areas
 
 ### Execution Bundles
+
 Self-contained context packages for whoever executes the spec (human, single agent, agent swarm, Gastown polecat):
 
 ```bash
@@ -108,9 +115,11 @@ specgraph bundle <slug>
 Produces: spec + resolved deps + filtered constitution + relevant codebase context + upstream interfaces + test commands. This is the handoff protocol. It works the same whether the consumer is a Gastown polecat, a Claude Code session, a Cursor tab, or a human developer.
 
 ### Agent Collaboration
+
 Three postures (Drive/Partner/Support), five collaboration modes, four analytical passes (Red Team, Peripheral Vision, Consistency Check, Simplicity Check). Always-on safety net for security/data-loss/contradiction issues.
 
 ### CLI + MCP Server
+
 ```bash
 # Core operations (always available, any backend)
 specgraph init [--backend=beads|postgres]
@@ -131,6 +140,7 @@ specgraph context scan
 Beads is a Dolt-backed task/issue management system. Specs are Beads issues with a custom `spec` type. Dolt provides versioning, branching, cell-level merge, sync via remotes.
 
 **What Beads provides (SpecGraph doesn't reimplement):**
+
 - Atomic claims (`bd claim`)
 - Dependency tracking (`bd link --blocks`)
 - Ready detection (`bd ready`)
@@ -141,6 +151,7 @@ Beads is a Dolt-backed task/issue management system. Specs are Beads issues with
 - Embedded or server mode
 
 **What SpecGraph adds on top:**
+
 - Spec schema (structured interface, verify, invariants, decisions)
 - Authoring funnel (spark → approve)
 - Constitution + codebase context
@@ -149,6 +160,7 @@ Beads is a Dolt-backed task/issue management system. Specs are Beads issues with
 - Analytical passes (red team, etc.)
 
 **Graph queries via Dolt SQL (MySQL-compatible):**
+
 ```sql
 -- Transitive dependencies
 WITH RECURSIVE deps AS (
@@ -163,7 +175,8 @@ SELECT i.* FROM beads_issues i JOIN deps d ON i.id = d.target_id;
 ```
 
 **Progression within the Beads path:**
-```
+
+```text
 Solo:        bd init (SQLite default) → zero infra
 With agents: bd init --backend dolt  → branching, atomic claims
 Team:        Dolt server mode        → multi-client, remote sync
@@ -174,6 +187,7 @@ Team:        Dolt server mode        → multi-client, remote sync
 Standard Postgres. Specs in tables. Edges in a join table or AGE graph. LISTEN/NOTIFY for events.
 
 **What Postgres provides:**
+
 - ACID transactions
 - Atomic claims via `SELECT ... FOR UPDATE`
 - LISTEN/NOTIFY for real-time events (no polling)
@@ -184,6 +198,7 @@ Standard Postgres. Specs in tables. Edges in a join table or AGE graph. LISTEN/N
 - DBA-friendly (teams already know it)
 
 **What AGE adds (optional extension, same Postgres instance):**
+
 - Native openCypher graph queries alongside SQL
 - Cleaner syntax for transitive deps, critical path, impact analysis
 - Falls back to recursive CTEs if AGE not available
@@ -208,6 +223,7 @@ SELECT s.* FROM specs s JOIN deps d ON s.slug = d.to_slug;
 **Detection-based fallback:** On init, check if AGE extension is available. Use Cypher if yes, CTEs if no. Same query interface either way.
 
 **Claims with leases:**
+
 ```sql
 -- Atomic claim
 UPDATE specs SET status = 'in-progress', owner = $agent, claimed_at = now(),
@@ -228,27 +244,27 @@ class SpecBackend(Protocol):
     def create(self, spec: Spec) -> str: ...
     def get(self, slug: str) -> Spec: ...
     def update(self, slug: str, spec: Spec, expected_version: int) -> None: ...
-    
+
     # Graph
     def add_edge(self, from_slug: str, to_slug: str, edge_type: EdgeType) -> None: ...
     def deps(self, slug: str) -> list[Spec]: ...
     def transitive_deps(self, slug: str) -> list[Spec]: ...
     def critical_path(self, slug: str) -> list[Spec]: ...
     def impact(self, slug: str) -> list[Spec]: ...
-    
+
     # Coordination
     def ready(self) -> list[Spec]: ...
     def claim(self, slug: str, agent_id: str) -> bool: ...
     def unclaim(self, slug: str) -> None: ...
     def heartbeat(self, slug: str) -> None: ...
-    
+
     # Events
     def subscribe(self, event_types: list[str]) -> EventStream: ...
-    
+
     # Query
     def list(self, filters: Filters) -> list[Spec]: ...
     def search(self, query: str) -> list[Spec]: ...
-    
+
     # Context
     def execution_bundle(self, slug: str) -> Bundle: ...
 ```
@@ -273,6 +289,7 @@ When Gastown is enabled, SpecGraph specs are beads that Gastown natively reads. 
 **Requires Beads backend.** Gastown's data plane IS Beads. The Postgres path does not natively integrate with Gastown. Teams on Postgres who want multi-agent orchestration need to build or adopt a different orchestration layer.
 
 When Gastown is NOT used:
+
 - Execution bundles still work (they're just files/context that any agent reads)
 - Claims still work (backend handles coordination)
 - Specs are still valid work units — they just get executed manually or via simpler tooling
@@ -304,6 +321,7 @@ Bidirectional or push-only sync to GitHub Issues, Linear, ADO, Jira.
 **What doesn't sync:** full interface contracts, invariants, decisions, constitution refs, execution bundles, codebase context.
 
 **Configuration:**
+
 ```yaml
 # .specgraph/integrations.yaml
 integrations:
@@ -311,7 +329,7 @@ integrations:
     repo: org/product
     direction: bidirectional
     conflict: specgraph-wins
-    
+
   - type: linear
     team: ENG
     direction: push    # visibility only
@@ -338,7 +356,7 @@ toolchain:
     - { format: claude-md, path: CLAUDE.md }
     - { format: cursorrules, path: .cursorrules }
     - { format: agents-md, path: AGENTS.md }
-  
+
   sync_direction: push    # constitution → tool files (or pull, or bidirectional)
 ```
 
@@ -354,7 +372,7 @@ specgraph inject <slug> --cleanup    # remove injected context after execution
 
 ## Architecture Diagram (All Layers)
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │  SPECGRAPH CORE (always present)                             │
 │                                                              │

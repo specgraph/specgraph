@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/seanb4t/specgraph/internal/config"
 	"github.com/seanb4t/specgraph/internal/docker"
 	"github.com/seanb4t/specgraph/internal/server"
+	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 	"github.com/spf13/cobra"
 )
@@ -69,11 +71,17 @@ func runServe(_ *cobra.Command, _ []string) error {
 			}
 		}()
 
+		constitutionPath := cfg.Storage.ConstitutionPath
+		if err := bootstrapConstitution(ctx, store, constitutionPath); err != nil {
+			return fmt.Errorf("constitution bootstrap: %w", err)
+		}
+
 		mux := server.NewMux(store)
 		server.RegisterHealthService(mux)
 		server.RegisterDecisionService(mux, store)
 		server.RegisterGraphService(mux, store)
 		server.RegisterClaimService(mux, store)
+		server.RegisterConstitutionService(mux, store)
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 
@@ -97,5 +105,44 @@ func runServe(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("unsupported backend: %s", cfg.Storage.Backend)
 	}
 
+	return nil
+}
+
+const maxConstitutionSize = 1 << 20 // 1 MiB
+
+func bootstrapConstitution(ctx context.Context, store storage.ConstitutionBackend, yamlPath string) error {
+	// Check if constitution already exists in storage.
+	_, err := store.GetConstitution(ctx)
+	if err == nil {
+		return nil // already exists
+	}
+	if !errors.Is(err, storage.ErrConstitutionNotFound) {
+		return fmt.Errorf("check existing constitution: %w", err)
+	}
+
+	// Check file exists and size.
+	info, err := os.Stat(yamlPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // missing constitution.yaml is intentional: server starts without one; callers use UpdateConstitution RPC
+		}
+		return fmt.Errorf("stat constitution YAML %s: %w", yamlPath, err)
+	}
+	if info.Size() > maxConstitutionSize {
+		return fmt.Errorf("constitution YAML %s exceeds 1 MiB size limit", yamlPath)
+	}
+
+	cy, err := config.LoadConstitutionYAML(yamlPath)
+	if err != nil {
+		return fmt.Errorf("load constitution YAML: %w", err)
+	}
+
+	constitution := cy.ToProto()
+
+	if _, err := store.UpdateConstitution(ctx, constitution); err != nil {
+		return fmt.Errorf("seed constitution: %w", err)
+	}
+
+	fmt.Println("Bootstrapped constitution from", yamlPath)
 	return nil
 }

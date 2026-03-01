@@ -46,7 +46,7 @@ The constitution is the ground truth that every spec inherits.
 
 More specific layers override more general ones, but all layers are visible so the agent and human can see where a constraint originates.
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │  User Layer (personal defaults)          │
 │  "I use neovim. I prefer terse specs."  │
@@ -197,7 +197,7 @@ Context is built progressively. Tier 0 at bootstrap. Tier 1 during shaping. Tier
 
 ### 4.2 Greenfield Bootstrap
 
-```
+```text
 specgraph init
 
 Agent: Starting a new project. What are we building? (One sentence.)
@@ -225,7 +225,7 @@ Agent: Here's the constitution I'd set up:
 
 ### 4.3 Existing Codebase Bootstrap
 
-```
+```text
 specgraph init --scan
 
 Agent: I'll examine the codebase. One minute.
@@ -488,7 +488,8 @@ tags: [auth, api, migration]
 Specs are not write-once artifacts. They evolve — during implementation, after completion, and across the lifetime of the system they describe. The design must account for this from the start rather than treating it as an edge case.
 
 **Expanded status model:**
-```
+
+```text
 draft → approved → in-progress → review → done
   ↑                                        │
   └────────────────────────────────────────┘  (reopen)
@@ -534,6 +535,7 @@ supersedes: null                     # or slug of spec this replaced
 ```
 
 **New edge types for evolution:**
+
 ```yaml
 # Existing edges (from §5.2)
 depends_on: [user-model]             # must be done before this
@@ -550,12 +552,14 @@ amends: null                         # links to the version being amended
 **What happens to dependents when a spec changes:**
 
 When a done spec is amended (interface change), SpecGraph:
+
 1. Emits `spec.interface_changed` event with diff of what changed
 2. For each spec that `depends_on` the amended spec: checks whether the dependent's assumptions about the upstream interface still hold
 3. If a dependent spec references the old interface directly (in its own interface contract or verify criteria), emits `spec.dependency_drift` warning
 4. Does not auto-block dependents — that would be too aggressive. Surfaces the drift for human or agent review.
 
 When a spec is superseded:
+
 1. Old spec status → `superseded`, `superseded_by` → new spec slug
 2. New spec gets `supersedes` → old spec slug
 3. All specs that `depends_on` the old spec get notified — they may need to update their dependency to point to the new spec
@@ -578,6 +582,7 @@ invariants:
 ```
 
 Living specs:
+
 - Never reach `done` status — they stay in `approved` as the current version of truth
 - Version history tracks their evolution over time
 - Can be amended (same flow as task specs)
@@ -591,7 +596,7 @@ Living specs:
 
 Every spec passes through a refinement funnel. Stages are not gates — you can enter at any stage, skip stages, and go backward. A solo dev can go spark → execute in one conversation. Enterprise adds review loops.
 
-```
+```text
   spark ──▶ shape ──▶ specify ──▶ decompose ──▶ approve ──▶ execute
     │         │          │            │            │           │
     │         │          │            │            │     implementation
@@ -701,6 +706,7 @@ specgraph supersede legacy-login-api --with login-api-v2
 The old spec remains in the graph as history. Its decisions and rationale are still valuable context — the new spec's authoring conversation can reference them: "The previous approach used Redis for token storage. That was rejected in v1 because of ops complexity. Has anything changed?"
 
 **When to amend vs supersede:**
+
 - Same problem, evolved solution → amend (same slug, version bumps)
 - Different problem or fundamentally different approach → supersede (new slug, old linked)
 - Rule of thumb: if the `intent` is substantially the same, amend. If the `intent` has changed, supersede.
@@ -710,6 +716,7 @@ The old spec remains in the graph as history. Its decisions and rationale are st
 Over time, code evolves independently of the specs that describe it. Interfaces shift, invariants get violated, verify criteria no longer pass. The spec and the system drift apart.
 
 **What drifts:**
+
 - **Interface drift:** The actual API or data model no longer matches what the spec's `interface` field describes. Endpoints added, fields renamed, response shapes changed — without updating the spec.
 - **Invariant drift:** A stated invariant ("no PII in logs", "sessions expire in 24 hours") is no longer true in the code.
 - **Verify drift:** Tests that once passed now fail, or verify criteria that were tested are no longer covered.
@@ -726,25 +733,30 @@ specgraph drift --scope=interfaces       # only interface drift
 ```
 
 Interface drift (for specs with structured interface contracts):
+
 - Parse the spec's `interface` field for API endpoints, types, status codes
 - Compare against actual code (route definitions, handler signatures, OpenAPI specs if available)
 - Report mismatches: "Spec says POST /auth/login returns {session_id, expires_at} but handler returns {token, expires_in, refresh_token}"
 
 Verify drift:
+
 - Re-run verify criteria tests (using `test_path` or inferred test commands)
 - Report: "2 of 5 verify criteria now failing"
 
 Dependency drift:
+
 - For each `depends_on` edge, check if the upstream spec's interface has changed since this spec was last updated
 - Report: "login-api depends on user-model v2, but user-model is now v4 — interface changed in v3"
 
 **Drift response:**
 Drift detection surfaces problems. It doesn't auto-fix. Options:
+
 - **Update the spec** to match reality: `specgraph amend login-api --reason "Sync with actual implementation"`
 - **Fix the code** to match the spec: the spec was right, the implementation drifted
 - **Acknowledge the drift** with a note: `specgraph drift acknowledge login-api --note "Interface changed intentionally, spec update pending"`
 
 **Continuous drift monitoring:**
+
 ```yaml
 drift:
   schedule: weekly                    # or on-demand only
@@ -881,6 +893,7 @@ SpecGraph's job is authoring and managing specs, not supervising the coding agen
 The one hook that genuinely helps is **SessionStart priming**: making the agent aware that SpecGraph exists and what's on the board, without assuming the session is about spec work.
 
 **Claude Code SessionStart hook:**
+
 ```json
 {
   "hooks": {
@@ -893,6 +906,7 @@ The one hook that genuinely helps is **SessionStart priming**: making the agent 
   }
 }
 ```
+
 `specgraph hook session-start` outputs `additionalContext` with a brief status summary: "SpecGraph is configured for this project. You have 1 claimed spec (oauth-refresh-flow, in-progress). 3 specs are ready for claiming. Use /specgraph-next to see them, or /specgraph-verify to check progress on your active spec." This is orientation, not a directive — the user might be here to debug something unrelated. If there's no active spec, the context is even lighter: just a note that SpecGraph is available and what skills exist.
 
 **Cursor equivalent:** A `.cursor/rules/specgraph-awareness.md` rule with `alwaysApply: true` that includes the same orientation text, generated by `specgraph init --tool=cursor`.
@@ -904,7 +918,8 @@ That's it for hooks. Everything else SpecGraph does for the agent is better serv
 Claude Code skills (`.claude/skills/`) are the interactive surface. Each SpecGraph authoring stage and key operation becomes a skill that Claude Code can invoke directly or auto-detect as relevant.
 
 **Skill structure:**
-```
+
+```text
 .claude/skills/specgraph/
 ├── SKILL.md              # Meta-skill: SpecGraph overview, routes to sub-skills
 ├── spark/
@@ -932,6 +947,7 @@ Claude Code skills (`.claude/skills/`) are the interactive surface. Each SpecGra
 ```
 
 **Example skill — `/specgraph-shape`:**
+
 ```markdown
 ---
 name: specgraph-shape
@@ -941,6 +957,7 @@ description: >
   that needs to be turned into a bounded, actionable spec. Also triggered
   when user says "let's design...", "scope this out", or "what's the approach for..."
 ---
+
 ## SpecGraph Shape
 
 You are running the SpecGraph shaping stage. Load the project constitution
@@ -949,7 +966,7 @@ from `.specgraph/constitution.yaml` and codebase context from `.specgraph/contex
 If $ARGUMENTS contains a spec slug, load that spec and continue shaping it.
 If $ARGUMENTS is a new problem description, create a new spec in shape stage.
 
-### Shaping Moves (do all of these):
+### Shaping Moves (do all of these)
 
 1. **Bound the scope** — What's in, what's explicitly out, and why. Estimate size.
 2. **Explore solution space** — 2-3 approaches with tradeoffs. Decide. Capture rejected.
@@ -957,17 +974,19 @@ If $ARGUMENTS is a new problem description, create a new spec in shape stage.
 4. **Surface risks** — Technical, operational, business. Specific, not abstract.
 5. **Define success** — Must-have, should-have, won't-have.
 
-### After shaping:
+### After shaping
 
 Run `specgraph update <slug>` to persist the shaped spec.
 Offer to continue to /specgraph-specify or /specgraph-red-team.
 
-### Constitution constraints to check:
+### Constitution constraints to check
+
 Read and apply all principles, constraints, and antipatterns from the constitution.
 Flag any violations immediately.
 ```
 
 **Example skill — `/specgraph-verify`:**
+
 ```markdown
 ---
 name: specgraph-verify
@@ -976,16 +995,19 @@ description: >
   criteria. Use after implementing a spec or when user asks "does this pass?"
   or "check the spec" or "am I done?"
 ---
+
 ## SpecGraph Verify
 
 Load the active spec (from `.specgraph/active-spec` or $ARGUMENTS).
 
 For each item in `verify`:
+
 1. Determine how to test it (use `test_path` if specified, otherwise infer)
 2. Run the test or check
 3. Report PASS / FAIL / UNTESTED with evidence
 
 Summary format:
+
 - ✅ Criterion text (PASS — evidence)
 - ❌ Criterion text (FAIL — what went wrong)
 - ⬜ Criterion text (UNTESTED — how to test)
@@ -997,12 +1019,14 @@ If failures: suggest specific fixes based on the error.
 Skills are auto-detected by Claude Code based on their `description` frontmatter — when a user says "let's design the auth flow," Claude Code can automatically load the `specgraph-shape` skill without the user typing `/specgraph-shape`. Skills can also reference each other, creating natural flow through the authoring funnel.
 
 **For Cursor:** Skills map to `.cursor/rules/` with `agent-requested` type. SpecGraph generates equivalent rules:
+
 ```markdown
 ---
 description: "Shape a spec — use when designing, scoping, or planning a feature"
 globs: [".specgraph/**"]
 alwaysApply: false
 ---
+
 [same instructions as the Claude Code skill]
 ```
 
@@ -1020,12 +1044,14 @@ claude /plugin install specgraph
 ```
 
 **What the plugin installs:**
+
 - Hook: SessionStart awareness priming (the only hook — see §8.2)
 - Skills: Full authoring funnel (`/specgraph-spark` through `/specgraph-approve`), operational skills (`/specgraph-next`, `/specgraph-verify`, `/specgraph-drift`), export skill (`/specgraph-export`), constitution management
 - MCP server: `specgraph mcp serve` auto-configured for dynamic context
 - CLAUDE.md additions: SpecGraph awareness section injected into project CLAUDE.md
 
 For teams that don't use Claude Code, or prefer manual setup, all components work independently:
+
 ```bash
 # Manual setup (no plugin required)
 specgraph init --tool=claude-code    # generates skills + SessionStart hook + MCP config
@@ -1045,7 +1071,7 @@ This generates task-scoped context (as a nested CLAUDE.md near the affected code
 
 For tools with MCP support, the coding agent can pull context dynamically instead:
 
-```
+```text
 specgraph_get_constitution    — "What are the project standards?"
 specgraph_get_spec           — "What am I supposed to build?"
 specgraph_get_pattern        — "How does this codebase do X?"
@@ -1058,6 +1084,7 @@ Dynamic MCP context is cleaner — context on demand, no file generation, natura
 ### 8.6 Execution Workflow
 
 **Manual (developer with Claude Code, plugin installed):**
+
 ```bash
 claude                                            # start session
 # SessionStart hook primes SpecGraph awareness
@@ -1069,6 +1096,7 @@ specgraph complete oauth-refresh-flow             # report done
 ```
 
 **Agent pool (generic, either backend):**
+
 ```bash
 slug=$(specgraph next --format=slug)
 specgraph claim $slug --agent=$AGENT_ID
@@ -1127,23 +1155,23 @@ class SpecBackend(Protocol):
     def create(self, spec: Spec) -> str: ...
     def get(self, slug: str) -> Spec: ...
     def update(self, slug: str, spec: Spec, expected_version: int) -> None: ...
-    
+
     # Graph
     def add_edge(self, from_slug: str, to_slug: str, edge_type: EdgeType) -> None: ...
     def deps(self, slug: str) -> list[Spec]: ...
     def transitive_deps(self, slug: str) -> list[Spec]: ...
     def critical_path(self, slug: str) -> list[Spec]: ...
     def impact(self, slug: str) -> list[Spec]: ...
-    
+
     # Coordination
     def ready(self) -> list[Spec]: ...
     def claim(self, slug: str, agent_id: str) -> bool: ...
     def unclaim(self, slug: str) -> None: ...
     def heartbeat(self, slug: str) -> None: ...
-    
+
     # Events
     def subscribe(self, event_types: list[str]) -> EventStream: ...
-    
+
     # Query + Context
     def list(self, filters: Filters) -> list[Spec]: ...
     def search(self, query: str) -> list[Spec]: ...
@@ -1155,6 +1183,7 @@ class SpecBackend(Protocol):
 Beads is a Dolt-backed task/issue management system. SpecGraph specs are Beads issues with a custom `spec` type. Dolt provides versioning, branching, cell-level merge, and sync via remotes.
 
 **What Beads already provides (SpecGraph doesn't reimplement):**
+
 - Atomic claims (`bd claim`) — sets assignee + status atomically
 - Dependency tracking (`bd link --blocks`) — typed edges
 - Ready detection (`bd ready`) — lists issues with no open blockers
@@ -1165,6 +1194,7 @@ Beads is a Dolt-backed task/issue management system. SpecGraph specs are Beads i
 - Embedded or server mode — single-process or multi-client
 
 **What SpecGraph adds on top of Beads:**
+
 - Spec schema (structured interface, verify, invariants, decisions)
 - Authoring funnel (spark → approve)
 - Constitution + codebase context
@@ -1174,7 +1204,8 @@ Beads is a Dolt-backed task/issue management system. SpecGraph specs are Beads i
 - Tool integration (CLAUDE.md/.cursorrules generation)
 
 **Progression within the Beads path:**
-```
+
+```text
 Solo, starting:     bd init (SQLite default) → zero infra
 Solo with agents:   bd init --backend dolt   → branching, atomic claims
 Team:               Dolt server mode         → multi-client, remote sync
@@ -1182,6 +1213,7 @@ Federation:         Dolt push/pull           → cross-team dep resolution
 ```
 
 **Graph queries via Dolt SQL (MySQL-compatible):**
+
 ```sql
 -- Transitive dependencies
 WITH RECURSIVE deps AS (
@@ -1200,6 +1232,7 @@ SELECT i.* FROM beads_issues i JOIN deps d ON i.id = d.target_id;
 Standard Postgres. Specs in tables with JSONB columns for structured fields. Optional Apache AGE extension for native graph queries.
 
 **Postgres schema:**
+
 ```sql
 CREATE TABLE specs (
     slug TEXT PRIMARY KEY,
@@ -1255,7 +1288,7 @@ AGE is additive — same Postgres instance, transactions span both relational an
 
 The most critical concurrency operation — an agent claims a spec for execution — must be atomic. Both backends implement this:
 
-```
+```text
 1. Agent: specgraph claim <slug> --agent=agent-1
 2. Backend atomically:
    a. Verify: status="approved" AND deps_met=true AND owner IS NULL
@@ -1338,26 +1371,31 @@ When a spec changes, other specs may be affected. SpecGraph handles this inline 
 ### 10.1 What Happens When
 
 **`specgraph complete <slug>`:**
+
 - Mark spec as done
 - Check all specs that `depends_on` this one: if all their deps are now met, they become claimable (visible in `specgraph next`)
 - If auto_export configured: update changelog
 
 **`specgraph status <slug> abandoned`:**
+
 - Mark spec as abandoned
 - Check all specs that `depends_on` this one: mark them as blocked (with reason: "dependency abandoned")
 
 **`specgraph amend <slug>`:**
+
 - Mark spec as amended, re-enter authoring funnel
 - If interface fields changed: check all specs that `depends_on` this one, flag potential dependency drift in their metadata
 - If auto_export configured: regenerate ADRs and design docs
 
 **`specgraph supersede <slug> --with <new>`:**
+
 - Old spec → superseded, `superseded_by` → new slug
 - New spec gets `supersedes` → old slug
 - Dependents of old spec get a warning: "dependency superseded, may need to re-point to new-slug"
 - Old spec's exported ADRs get status → "Superseded by new-slug"
 
 **`specgraph update <slug>` (when interface fields change):**
+
 - Version bumps
 - Check dependents for assumption drift (their interface expectations vs the updated contract)
 - Flag mismatches in dependent spec metadata
@@ -1458,6 +1496,7 @@ invariants:
 The execution bundle (`specgraph bundle <slug>`) is the universal handoff — it works regardless of who or what executes the spec:
 
 **Manual (developer with Claude Code):**
+
 ```bash
 specgraph next                                    # what's ready?
 specgraph inject oauth-refresh-flow --tool=claude-code  # inject context
@@ -1466,6 +1505,7 @@ specgraph complete oauth-refresh-flow             # report done
 ```
 
 **Single agent (Claude Code, Cursor, Codex):**
+
 ```bash
 slug=$(specgraph next --format=slug)
 specgraph claim $slug --agent=$AGENT_ID
@@ -1478,7 +1518,7 @@ specgraph cleanup $slug --tool=claude-code
 **Gastown (multi-agent orchestration, Beads path only):**
 On the Beads path, specs ARE beads. No adapter needed. The pipeline is native:
 
-```
+```text
 1. Spec authored via SpecGraph → stored as Beads issue (bd create --type spec)
 2. Spec approved, deps met → bd ready surfaces it
 3. Mayor creates convoy → gt convoy create "Sprint" bd-k7m3p
@@ -1541,26 +1581,32 @@ specgraph export adr login-api --output=docs/adrs/
 **Deciders:** @sean, @pat
 
 ## Context
+
 Part of auth-service migration from monolith. Must maintain backward
 compat with v1 /login endpoint. Need revocation + audit trail.
 
 ## Decision
+
 Store refresh tokens in a Postgres table with per-token salt.
 
 ## Rationale
+
 Already have Postgres. Need revocation (can't do with stateless JWT).
 Audit trail comes free with table + triggers.
 
 ## Rejected Alternatives
+
 - **Redis:** Adds ops complexity for a persistence problem
 - **JWT with blocklist:** Revocation requires blocklist anyway, might as well use DB
 
 ## Consequences
+
 - Migration required (new refresh_tokens table)
 - Need token cleanup job for expired tokens
 - Red team finding: bcrypt inappropriate for token hashing → using SHA-256
 
 ## References
+
 - Spec: login-api
 - Red team: RT-001 (bcrypt finding)
 - Constitution principle: backward-compat
@@ -1600,6 +1646,7 @@ specgraph export mermaid release-2.0 --type=critical-path
 ```
 
 Example output (dependency graph):
+
 ```mermaid
 graph LR
     login-api:::approved --> user-model:::done
@@ -1670,6 +1717,7 @@ export:
 **Continuous vs one-shot:** Export can be one-shot (`specgraph export ...`) or continuous via event hooks. When `auto_export.on_approve` is set, approving a spec automatically regenerates its ADRs and design doc. This keeps the docs directory always in sync without manual effort.
 
 **Batch export for existing specs:**
+
 ```bash
 specgraph export all --formats=adr,design,mermaid --output=docs/specgraph/
 # Exports everything. Good for initial setup or periodic refresh.
@@ -1677,7 +1725,7 @@ specgraph export all --formats=adr,design,mermaid --output=docs/specgraph/
 
 ### 12.3 System Flow
 
-```
+```text
   ┌─────────────────────────────────────────────────────────┐
   │  GROUND TRUTH                                            │
   │  Constitution ◄──► CLAUDE.md / .cursorrules / AGENTS.md  │
@@ -1723,18 +1771,21 @@ specgraph export all --formats=adr,design,mermaid --output=docs/specgraph/
 ## 13. Scaling Model
 
 ### Solo Dev
+
 - Backend: Beads (SQLite) or Postgres — either works
 - 3-field specs, minimal constitution, self-approve, skip stages
 - `specgraph next | agent-execute`
 - 2-5 minutes per spec
 
 ### Solo Dev + Agent Swarm
+
 - Backend: Beads (+Dolt) recommended — native Gastown integration
 - Or Postgres — manage agents via claim protocol + scripts
 - Add priority, capability matching, lease/heartbeat
 - 5-15 minutes per spec, parallel execution
 
 ### Small Team (3-8)
+
 - Backend: Beads (+Dolt server mode) or Postgres (+AGE)
 - Add owner, status, priority, edges
 - Issue tracker sync for PM visibility
@@ -1743,6 +1794,7 @@ specgraph export all --formats=adr,design,mermaid --output=docs/specgraph/
 - 10-30 minutes per spec
 
 ### Enterprise (50+)
+
 - Backend: Either path at scale
   - Beads: Dolt federation (push/pull between team instances)
   - Postgres: DB replication or API federation
@@ -1857,7 +1909,7 @@ specgraph integration status
 
 ### MCP Server
 
-```
+```text
 # Spec management
 specgraph_list       — Filter specs by status, owner, team, tags
 specgraph_show       — Full spec details

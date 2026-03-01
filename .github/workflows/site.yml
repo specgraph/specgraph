@@ -1,5 +1,4 @@
 name: Deploy Site
-
 on:
   push:
     branches: [main]
@@ -7,38 +6,30 @@ on:
   pull_request:
     paths: ["site/**", "docs/**"]
   workflow_dispatch:
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
 concurrency:
   group: pages
   cancel-in-progress: false
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Install uv
         uses: astral-sh/setup-uv@v6
-
       - name: Copy design docs into site
         run: cp -r docs/initial-design-session site/docs/design
-
       - name: Build site
         working-directory: site
         run: uv run zensical build
-
       - name: Upload artifact
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site/build
-
   deploy:
     if: github.ref == 'refs/heads/main'
     needs: build
