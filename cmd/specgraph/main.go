@@ -1,6 +1,5 @@
-// Copyright (c) 2026 Sean Bartell. All rights reserved.
-// Use of this source code is governed by the MIT license
-// that can be found in the LICENSE file.
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
 
 // Package main implements the specgraph CLI, a live spec-driven development framework.
 package main

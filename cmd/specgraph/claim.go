@@ -16,11 +16,7 @@ import (
 )
 
 func claimClient() (specgraphv1connect.ClaimServiceClient, error) {
-	baseURL, err := resolveBaseURL()
-	if err != nil {
-		return nil, err
-	}
-	return specgraphv1connect.NewClaimServiceClient(newHTTPClient(), baseURL), nil
+	return newClient(specgraphv1connect.NewClaimServiceClient)
 }
 
 // --- claim ---
@@ -42,6 +38,10 @@ func init() {
 	claimCmd.Flags().DurationVar(&claimDuration, "duration", 15*time.Minute, "lease duration")
 	cobra.CheckErr(claimCmd.MarkFlagRequired("agent"))
 	rootCmd.AddCommand(claimCmd)
+
+	unclaimCmd.Flags().StringVar(&unclaimAgent, "agent", "", "agent identifier (required)")
+	cobra.CheckErr(unclaimCmd.MarkFlagRequired("agent"))
+	rootCmd.AddCommand(unclaimCmd)
 }
 
 func runClaim(_ *cobra.Command, args []string) error {
@@ -73,12 +73,6 @@ var unclaimCmd = &cobra.Command{
 }
 
 var unclaimAgent string
-
-func init() {
-	unclaimCmd.Flags().StringVar(&unclaimAgent, "agent", "", "agent identifier (required)")
-	cobra.CheckErr(unclaimCmd.MarkFlagRequired("agent"))
-	rootCmd.AddCommand(unclaimCmd)
-}
 
 func runUnclaim(_ *cobra.Command, args []string) error {
 	client, err := claimClient()

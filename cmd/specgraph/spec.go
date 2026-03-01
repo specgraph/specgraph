@@ -15,11 +15,7 @@ import (
 )
 
 func specClient() (specgraphv1connect.SpecServiceClient, error) {
-	baseURL, err := resolveBaseURL()
-	if err != nil {
-		return nil, err
-	}
-	return specgraphv1connect.NewSpecServiceClient(newHTTPClient(), baseURL), nil
+	return newClient(specgraphv1connect.NewSpecServiceClient)
 }
 
 // --- create ---
@@ -35,13 +31,6 @@ var (
 	createIntent   string
 	createPriority string
 )
-
-func init() {
-	createCmd.Flags().StringVar(&createIntent, "intent", "", "intent for the spec (required)")
-	createCmd.Flags().StringVar(&createPriority, "priority", "p2", "priority (p0-p3)")
-	cobra.CheckErr(createCmd.MarkFlagRequired("intent"))
-	rootCmd.AddCommand(createCmd)
-}
 
 func runCreate(_ *cobra.Command, args []string) error {
 	client, err := specClient()
@@ -75,14 +64,6 @@ var (
 	updatePriority   string
 	updateComplexity string
 )
-
-func init() {
-	updateCmd.Flags().StringVar(&updateIntent, "intent", "", "new intent")
-	updateCmd.Flags().StringVar(&updateStage, "stage", "", "new stage")
-	updateCmd.Flags().StringVar(&updatePriority, "priority", "", "new priority")
-	updateCmd.Flags().StringVar(&updateComplexity, "complexity", "", "new complexity")
-	rootCmd.AddCommand(updateCmd)
-}
 
 func runUpdate(cmd *cobra.Command, args []string) error {
 	client, err := specClient()
@@ -124,12 +105,6 @@ var (
 	listPriority string
 )
 
-func init() {
-	listCmd.Flags().StringVar(&listStage, "stage", "", "filter by stage")
-	listCmd.Flags().StringVar(&listPriority, "priority", "", "filter by priority")
-	rootCmd.AddCommand(listCmd)
-}
-
 func runList(cmd *cobra.Command, _ []string) error {
 	client, err := specClient()
 	if err != nil {
@@ -169,6 +144,21 @@ var showCmd = &cobra.Command{
 }
 
 func init() {
+	createCmd.Flags().StringVar(&createIntent, "intent", "", "intent for the spec (required)")
+	createCmd.Flags().StringVar(&createPriority, "priority", "p2", "priority (p0-p3)")
+	cobra.CheckErr(createCmd.MarkFlagRequired("intent"))
+	rootCmd.AddCommand(createCmd)
+
+	updateCmd.Flags().StringVar(&updateIntent, "intent", "", "new intent")
+	updateCmd.Flags().StringVar(&updateStage, "stage", "", "new stage")
+	updateCmd.Flags().StringVar(&updatePriority, "priority", "", "new priority")
+	updateCmd.Flags().StringVar(&updateComplexity, "complexity", "", "new complexity")
+	rootCmd.AddCommand(updateCmd)
+
+	listCmd.Flags().StringVar(&listStage, "stage", "", "filter by stage")
+	listCmd.Flags().StringVar(&listPriority, "priority", "", "filter by priority")
+	rootCmd.AddCommand(listCmd)
+
 	rootCmd.AddCommand(showCmd)
 }
 

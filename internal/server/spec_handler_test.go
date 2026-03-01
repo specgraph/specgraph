@@ -15,6 +15,7 @@ import (
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/seanb4t/specgraph/internal/server"
+	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -55,7 +56,7 @@ func (m *mockBackend) GetSpec(_ context.Context, slug string) (*specv1.Spec, err
 	defer m.mu.Unlock()
 	spec, ok := m.specs[slug]
 	if !ok {
-		return nil, fmt.Errorf("spec %q not found", slug)
+		return nil, fmt.Errorf("spec %q: %w", slug, storage.ErrSpecNotFound)
 	}
 	return spec, nil
 }
@@ -84,7 +85,7 @@ func (m *mockBackend) UpdateSpec(_ context.Context, slug string, intent, stage, 
 	defer m.mu.Unlock()
 	spec, ok := m.specs[slug]
 	if !ok {
-		return nil, fmt.Errorf("spec %q not found", slug)
+		return nil, fmt.Errorf("spec %q: %w", slug, storage.ErrSpecNotFound)
 	}
 	if intent != nil {
 		spec.Intent = *intent

@@ -24,11 +24,7 @@ func init() {
 }
 
 func healthClient() (specgraphv1connect.ServerServiceClient, error) {
-	baseURL, err := resolveBaseURL()
-	if err != nil {
-		return nil, err
-	}
-	return specgraphv1connect.NewServerServiceClient(newHTTPClient(), baseURL), nil
+	return newClient(specgraphv1connect.NewServerServiceClient)
 }
 
 func runHealth(_ *cobra.Command, _ []string) error {

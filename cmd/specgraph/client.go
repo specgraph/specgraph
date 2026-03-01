@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"connectrpc.com/connect"
 	"github.com/seanb4t/specgraph/internal/config"
 )
 
@@ -23,4 +24,14 @@ func resolveBaseURL() (string, error) {
 
 func newHTTPClient() *http.Client {
 	return http.DefaultClient
+}
+
+// newClient creates a ConnectRPC client using the configured base URL.
+func newClient[C any](ctor func(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) C) (C, error) {
+	baseURL, err := resolveBaseURL()
+	if err != nil {
+		var zero C
+		return zero, err
+	}
+	return ctor(newHTTPClient(), baseURL), nil
 }

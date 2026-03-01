@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -54,7 +55,10 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 func (h *SpecHandler) GetSpec(ctx context.Context, req *connect.Request[specv1.GetSpecRequest]) (*connect.Response[specv1.Spec], error) {
 	spec, err := h.backend.GetSpec(ctx, req.Msg.Slug)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+		if errors.Is(err, storage.ErrSpecNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(spec), nil
 }
@@ -83,7 +87,10 @@ func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv
 
 	spec, err := h.backend.UpdateSpec(ctx, msg.Slug, msg.Intent, msg.Stage, msg.Priority, msg.Complexity)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+		if errors.Is(err, storage.ErrSpecNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(spec), nil
 }

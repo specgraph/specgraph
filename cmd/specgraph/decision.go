@@ -15,11 +15,7 @@ import (
 )
 
 func decisionClient() (specgraphv1connect.DecisionServiceClient, error) {
-	baseURL, err := resolveBaseURL()
-	if err != nil {
-		return nil, err
-	}
-	return specgraphv1connect.NewDecisionServiceClient(newHTTPClient(), baseURL), nil
+	return newClient(specgraphv1connect.NewDecisionServiceClient)
 }
 
 // --- decision parent command ---
@@ -27,10 +23,6 @@ func decisionClient() (specgraphv1connect.DecisionServiceClient, error) {
 var decisionCmd = &cobra.Command{
 	Use:   "decision",
 	Short: "Manage decisions",
-}
-
-func init() {
-	rootCmd.AddCommand(decisionCmd)
 }
 
 // --- decision create ---
@@ -47,14 +39,6 @@ var (
 	decisionText      string
 	decisionRationale string
 )
-
-func init() {
-	decisionCreateCmd.Flags().StringVar(&decisionTitle, "title", "", "decision title (required)")
-	decisionCreateCmd.Flags().StringVar(&decisionText, "decision", "", "decision text")
-	decisionCreateCmd.Flags().StringVar(&decisionRationale, "rationale", "", "rationale")
-	cobra.CheckErr(decisionCreateCmd.MarkFlagRequired("title"))
-	decisionCmd.AddCommand(decisionCreateCmd)
-}
 
 func runDecisionCreate(_ *cobra.Command, args []string) error {
 	client, err := decisionClient()
@@ -83,11 +67,6 @@ var decisionListCmd = &cobra.Command{
 }
 
 var decisionListStatus string
-
-func init() {
-	decisionListCmd.Flags().StringVar(&decisionListStatus, "status", "", "filter by status")
-	decisionCmd.AddCommand(decisionListCmd)
-}
 
 func runDecisionList(cmd *cobra.Command, _ []string) error {
 	client, err := decisionClient()
@@ -137,6 +116,17 @@ var decisionShowCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.AddCommand(decisionCmd)
+
+	decisionCreateCmd.Flags().StringVar(&decisionTitle, "title", "", "decision title (required)")
+	decisionCreateCmd.Flags().StringVar(&decisionText, "decision", "", "decision text")
+	decisionCreateCmd.Flags().StringVar(&decisionRationale, "rationale", "", "rationale")
+	cobra.CheckErr(decisionCreateCmd.MarkFlagRequired("title"))
+	decisionCmd.AddCommand(decisionCreateCmd)
+
+	decisionListCmd.Flags().StringVar(&decisionListStatus, "status", "", "filter by status")
+	decisionCmd.AddCommand(decisionListCmd)
+
 	decisionCmd.AddCommand(decisionShowCmd)
 }
 

@@ -27,6 +27,9 @@ var depsTransitive bool
 func init() {
 	depsCmd.Flags().BoolVar(&depsTransitive, "transitive", false, "show transitive dependencies")
 	rootCmd.AddCommand(depsCmd)
+	rootCmd.AddCommand(readyCmd)
+	rootCmd.AddCommand(criticalPathCmd)
+	rootCmd.AddCommand(impactCmd)
 }
 
 func runDeps(cmd *cobra.Command, args []string) error {
@@ -59,10 +62,6 @@ var readyCmd = &cobra.Command{
 	RunE:  runReady,
 }
 
-func init() {
-	rootCmd.AddCommand(readyCmd)
-}
-
 func runReady(cmd *cobra.Command, _ []string) error {
 	client, err := graphClient()
 	if err != nil {
@@ -84,10 +83,6 @@ var criticalPathCmd = &cobra.Command{
 	RunE:  runCriticalPath,
 }
 
-func init() {
-	rootCmd.AddCommand(criticalPathCmd)
-}
-
 func runCriticalPath(cmd *cobra.Command, args []string) error {
 	client, err := graphClient()
 	if err != nil {
@@ -107,10 +102,6 @@ var impactCmd = &cobra.Command{
 	Short: "Show specs impacted by changes to a spec",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runImpact,
-}
-
-func init() {
-	rootCmd.AddCommand(impactCmd)
 }
 
 func runImpact(cmd *cobra.Command, args []string) error {

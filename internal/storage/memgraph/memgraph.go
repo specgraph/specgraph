@@ -13,6 +13,7 @@ import (
 	"time"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	"github.com/seanb4t/specgraph/internal/storage"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -95,7 +96,7 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*specv1.Spec, error) 
 		return nil, fmt.Errorf("memgraph: get spec: %w", err)
 	}
 	if len(result.Records) == 0 {
-		return nil, fmt.Errorf("memgraph: spec %q not found", slug)
+		return nil, fmt.Errorf("memgraph: spec %q: %w", slug, storage.ErrSpecNotFound)
 	}
 
 	return recordToSpec(result.Records[0])
@@ -184,7 +185,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		return nil, fmt.Errorf("memgraph: update spec: %w", err)
 	}
 	if len(result.Records) == 0 {
-		return nil, fmt.Errorf("memgraph: spec %q not found", slug)
+		return nil, fmt.Errorf("memgraph: spec %q: %w", slug, storage.ErrSpecNotFound)
 	}
 
 	return recordToSpec(result.Records[0])

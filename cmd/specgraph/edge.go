@@ -15,11 +15,7 @@ import (
 )
 
 func graphClient() (specgraphv1connect.GraphServiceClient, error) {
-	baseURL, err := resolveBaseURL()
-	if err != nil {
-		return nil, err
-	}
-	return specgraphv1connect.NewGraphServiceClient(newHTTPClient(), baseURL), nil
+	return newClient(specgraphv1connect.NewGraphServiceClient)
 }
 
 var edgeTypeMap = map[string]specv1.EdgeType{
@@ -37,10 +33,6 @@ var edgeCmd = &cobra.Command{
 	Short: "Manage graph edges",
 }
 
-func init() {
-	rootCmd.AddCommand(edgeCmd)
-}
-
 // --- edge add ---
 
 var edgeAddCmd = &cobra.Command{
@@ -51,11 +43,6 @@ var edgeAddCmd = &cobra.Command{
 }
 
 var edgeAddType string
-
-func init() {
-	edgeAddCmd.Flags().StringVar(&edgeAddType, "type", "depends_on", "edge type (depends_on, blocks, composes, relates_to, informs)")
-	edgeCmd.AddCommand(edgeAddCmd)
-}
 
 func runEdgeAdd(_ *cobra.Command, args []string) error {
 	client, err := graphClient()
@@ -89,11 +76,6 @@ var edgeRemoveCmd = &cobra.Command{
 }
 
 var edgeRemoveType string
-
-func init() {
-	edgeRemoveCmd.Flags().StringVar(&edgeRemoveType, "type", "depends_on", "edge type")
-	edgeCmd.AddCommand(edgeRemoveCmd)
-}
 
 func runEdgeRemove(_ *cobra.Command, args []string) error {
 	client, err := graphClient()
@@ -129,6 +111,14 @@ var edgeListCmd = &cobra.Command{
 var edgeListType string
 
 func init() {
+	rootCmd.AddCommand(edgeCmd)
+
+	edgeAddCmd.Flags().StringVar(&edgeAddType, "type", "depends_on", "edge type (depends_on, blocks, composes, relates_to, informs)")
+	edgeCmd.AddCommand(edgeAddCmd)
+
+	edgeRemoveCmd.Flags().StringVar(&edgeRemoveType, "type", "depends_on", "edge type")
+	edgeCmd.AddCommand(edgeRemoveCmd)
+
 	edgeListCmd.Flags().StringVar(&edgeListType, "type", "", "filter by edge type")
 	edgeCmd.AddCommand(edgeListCmd)
 }

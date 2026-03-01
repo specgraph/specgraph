@@ -6,19 +6,21 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/seanb4t/specgraph/internal/config"
 	"github.com/spf13/cobra"
 )
 
-func readLine(r *bufio.Reader) string {
+func readLine(r *bufio.Reader) (string, error) {
 	line, err := r.ReadString('\n')
-	if err != nil {
-		return strings.TrimSpace(line) // return partial on EOF
+	if err != nil && err != io.EOF {
+		return strings.TrimSpace(line), fmt.Errorf("reading input: %w", err)
 	}
-	return strings.TrimSpace(line)
+	return strings.TrimSpace(line), nil
 }
 
 var initCmd = &cobra.Command{
@@ -53,7 +55,10 @@ func runInit(_ *cobra.Command, _ []string) error {
 
 		// Backend
 		fmt.Print("Storage backend (memgraph/postgres) [memgraph]: ")
-		backend := readLine(reader)
+		backend, err := readLine(reader)
+		if err != nil {
+			return err
+		}
 		if backend == "" {
 			backend = "memgraph"
 		}
@@ -61,7 +66,10 @@ func runInit(_ *cobra.Command, _ []string) error {
 
 		// Mode
 		fmt.Print("Deployment mode (docker/external) [docker]: ")
-		mode := readLine(reader)
+		mode, err := readLine(reader)
+		if err != nil {
+			return err
+		}
 		if mode == "" {
 			mode = "docker"
 		}
@@ -72,13 +80,28 @@ func runInit(_ *cobra.Command, _ []string) error {
 			switch backend {
 			case "memgraph":
 				fmt.Print("Memgraph bolt URI [bolt://localhost:7687]: ")
-				if uri := readLine(reader); uri != "" {
+				uri, err := readLine(reader)
+				if err != nil {
+					return err
+				}
+				if uri != "" {
 					cfg.Storage.Memgraph.BoltURI = uri
 				}
 			case "postgres":
 				fmt.Print("Postgres URL: ")
-				cfg.Storage.Postgres.URL = readLine(reader)
+				url, err := readLine(reader)
+				if err != nil {
+					return err
+				}
+				cfg.Storage.Postgres.URL = url
 			}
+		}
+	}
+
+	// Ensure parent directory exists
+	if dir := filepath.Dir(configPath); dir != "." {
+		if err := os.MkdirAll(dir, 0o750); err != nil {
+			return fmt.Errorf("creating config directory: %w", err)
 		}
 	}
 
