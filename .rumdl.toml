@@ -11,6 +11,7 @@ disable = [
   "MD044", # Proper names capitalization (too noisy)
   "MD057", # Relative link validation (TODO: re-enable after fixing broken links)
   "MD060", # Table column alignment (too strict for complex tables)
+  "MD070", # Nested code fences — plan docs legitimately embed code with fences
 ]
 
 exclude = [
@@ -22,6 +23,7 @@ exclude = [
   "dist",
   "node_modules",
   "vendor",
+  "docs/plans", # Plan docs embed nested code fences in skill/config examples
 ]
 
 respect-gitignore = true
