@@ -82,8 +82,10 @@ func runServe(_ *cobra.Command, _ []string) error {
 			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 			<-sigCh
 			fmt.Println("\nShutting down...")
-			if err := srv.Close(); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: server close: %v\n", err)
+			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer shutdownCancel()
+			if err := srv.Shutdown(shutdownCtx); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: server shutdown: %v\n", err)
 			}
 		}()
 

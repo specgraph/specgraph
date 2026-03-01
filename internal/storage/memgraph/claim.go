@@ -109,13 +109,13 @@ func recordToClaim(slug string, rec *neo4j.Record) (*specv1.Claim, error) {
 	claimedAtStr := recordString(rec, 1)
 	leaseExpiresStr := recordString(rec, 2)
 
-	claimedAt, err := time.Parse(time.RFC3339, claimedAtStr)
+	claimedAt, err := parseRFC3339("claimed_at", claimedAtStr)
 	if err != nil {
-		return nil, fmt.Errorf("memgraph: parse claimed_at %q: %w", claimedAtStr, err)
+		return nil, err
 	}
-	leaseExpires, err := time.Parse(time.RFC3339, leaseExpiresStr)
+	leaseExpires, err := parseRFC3339("lease_expires", leaseExpiresStr)
 	if err != nil {
-		return nil, fmt.Errorf("memgraph: parse lease_expires %q: %w", leaseExpiresStr, err)
+		return nil, err
 	}
 
 	return &specv1.Claim{

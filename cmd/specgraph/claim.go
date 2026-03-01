@@ -6,27 +6,21 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/config"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 func claimClient() (specgraphv1connect.ClaimServiceClient, error) {
-	cfg, err := config.Load(cfgFile)
+	baseURL, err := resolveBaseURL()
 	if err != nil {
 		return nil, err
 	}
-	baseURL := cfg.Server.Remote
-	if baseURL == "" {
-		baseURL = fmt.Sprintf("http://%s:%d", cfg.Server.Host, cfg.Server.Port)
-	}
-	return specgraphv1connect.NewClaimServiceClient(http.DefaultClient, baseURL), nil
+	return specgraphv1connect.NewClaimServiceClient(newHTTPClient(), baseURL), nil
 }
 
 // --- claim ---

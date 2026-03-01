@@ -13,6 +13,12 @@ import (
 	"github.com/seanb4t/specgraph/internal/storage"
 )
 
+const (
+	defaultListLimit      = 50
+	defaultSpecPriority   = "p2"
+	defaultSpecComplexity = "medium"
+)
+
 // SpecHandler implements the ConnectRPC SpecService using a storage backend.
 type SpecHandler struct {
 	backend storage.Backend
@@ -30,11 +36,11 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 	msg := req.Msg
 	priority := msg.Priority
 	if priority == "" {
-		priority = "p2"
+		priority = defaultSpecPriority
 	}
 	complexity := msg.Complexity
 	if complexity == "" {
-		complexity = "medium"
+		complexity = defaultSpecComplexity
 	}
 
 	spec, err := h.backend.CreateSpec(ctx, msg.Slug, msg.Intent, priority, complexity)
@@ -58,7 +64,7 @@ func (h *SpecHandler) ListSpecs(ctx context.Context, req *connect.Request[specv1
 	msg := req.Msg
 	limit := int(msg.Limit)
 	if limit == 0 {
-		limit = 50
+		limit = defaultListLimit
 	}
 
 	specs, err := h.backend.ListSpecs(ctx, msg.Stage, msg.Priority, limit)

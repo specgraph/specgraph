@@ -45,7 +45,7 @@ func (h *DecisionHandler) ListDecisions(ctx context.Context, req *connect.Reques
 	msg := req.Msg
 	limit := int(msg.Limit)
 	if limit == 0 {
-		limit = 50
+		limit = defaultListLimit
 	}
 
 	decisions, err := h.store.ListDecisions(ctx, msg.Status, limit)

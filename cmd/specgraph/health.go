@@ -6,12 +6,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -26,15 +24,11 @@ func init() {
 }
 
 func healthClient() (specgraphv1connect.ServerServiceClient, error) {
-	cfg, err := config.Load(cfgFile)
+	baseURL, err := resolveBaseURL()
 	if err != nil {
 		return nil, err
 	}
-	baseURL := cfg.Server.Remote
-	if baseURL == "" {
-		baseURL = fmt.Sprintf("http://%s:%d", cfg.Server.Host, cfg.Server.Port)
-	}
-	return specgraphv1connect.NewServerServiceClient(http.DefaultClient, baseURL), nil
+	return specgraphv1connect.NewServerServiceClient(newHTTPClient(), baseURL), nil
 }
 
 func runHealth(_ *cobra.Command, _ []string) error {

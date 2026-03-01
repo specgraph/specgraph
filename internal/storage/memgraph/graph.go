@@ -21,17 +21,25 @@ var edgeTypeToRel = map[specv1.EdgeType]string{
 	specv1.EdgeType_EDGE_TYPE_INFORMS:    "INFORMS",
 }
 
+// resolveEdge maps an edge type to its Cypher relation and resolves direction.
+// BLOCKS is stored as inverse DEPENDS_ON: if A blocks B, then B DEPENDS_ON A.
+func resolveEdge(fromSlug, toSlug string, edgeType specv1.EdgeType) (rel, from, to string, err error) {
+	rel, ok := edgeTypeToRel[edgeType]
+	if !ok {
+		return "", "", "", fmt.Errorf("memgraph: unknown edge type %v", edgeType)
+	}
+	from, to = fromSlug, toSlug
+	if edgeType == specv1.EdgeType_EDGE_TYPE_BLOCKS {
+		from, to = toSlug, fromSlug
+	}
+	return rel, from, to, nil
+}
+
 // AddEdge creates a typed relationship between two nodes.
 func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType specv1.EdgeType) (*specv1.Edge, error) {
-	relType, ok := edgeTypeToRel[edgeType]
-	if !ok {
-		return nil, fmt.Errorf("memgraph: unknown edge type %v", edgeType)
-	}
-
-	// BLOCKS is stored as inverse DEPENDS_ON: if A blocks B, B depends on A
-	actualFrom, actualTo := fromSlug, toSlug
-	if edgeType == specv1.EdgeType_EDGE_TYPE_BLOCKS {
-		actualFrom, actualTo = toSlug, fromSlug
+	relType, actualFrom, actualTo, err := resolveEdge(fromSlug, toSlug, edgeType)
+	if err != nil {
+		return nil, err
 	}
 
 	query := fmt.Sprintf(`
@@ -61,14 +69,9 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 
 // RemoveEdge removes a typed relationship between two nodes.
 func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeType specv1.EdgeType) error {
-	relType, ok := edgeTypeToRel[edgeType]
-	if !ok {
-		return fmt.Errorf("memgraph: unknown edge type %v", edgeType)
-	}
-
-	actualFrom, actualTo := fromSlug, toSlug
-	if edgeType == specv1.EdgeType_EDGE_TYPE_BLOCKS {
-		actualFrom, actualTo = toSlug, fromSlug
+	relType, actualFrom, actualTo, err := resolveEdge(fromSlug, toSlug, edgeType)
+	if err != nil {
+		return err
 	}
 
 	query := fmt.Sprintf(`
@@ -77,8 +80,7 @@ func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeTyp
 	`, relType)
 	params := map[string]any{"from": actualFrom, "to": actualTo}
 
-	_, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
-	if err != nil {
+	if _, err = neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer); err != nil {
 		return fmt.Errorf("memgraph: remove edge: %w", err)
 	}
 	return nil

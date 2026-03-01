@@ -35,10 +35,12 @@ func New(ctx context.Context, boltURI string) (*Store, error) {
 	return &Store{driver: driver}, nil
 }
 
+const defaultInitialStage = "spark"
+
 // CreateSpec stores a new spec node in Memgraph and returns it.
 func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*specv1.Spec, error) {
-	id := generateID(slug)
 	now := time.Now().UTC()
+	id := generateID("spec", slug, now)
 	nowStr := now.Format(time.RFC3339)
 
 	query := `
@@ -60,7 +62,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		"id":         id,
 		"slug":       slug,
 		"intent":     intent,
-		"stage":      "spark",
+		"stage":      defaultInitialStage,
 		"priority":   priority,
 		"complexity": complexity,
 		"version":    int64(1),
@@ -189,13 +191,30 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 
 // Close releases the driver resources.
 func (s *Store) Close(ctx context.Context) error {
-	return fmt.Errorf("memgraph: close: %w", s.driver.Close(ctx))
+	if err := s.driver.Close(ctx); err != nil {
+		return fmt.Errorf("memgraph: close: %w", err)
+	}
+	return nil
 }
 
-// generateID produces "spec-" + first 7 hex chars of sha256(slug + now).
-func generateID(slug string) string {
-	h := sha256.Sum256([]byte(slug + time.Now().String()))
-	return fmt.Sprintf("spec-%x", h[:4])[:12] // "spec-" (5) + 7 hex chars = 12
+// generateID produces a prefixed ID from sha256(slug + now).
+// The result is prefix + "-" + hex chars, truncated to targetLen.
+func generateID(prefix, slug string, now time.Time) string {
+	h := sha256.Sum256([]byte(slug + now.String()))
+	id := fmt.Sprintf("%s-%x", prefix, h[:4])
+	if len(id) > len(prefix)+8 {
+		id = id[:len(prefix)+8]
+	}
+	return id
+}
+
+// parseRFC3339 parses an RFC3339 timestamp string from a memgraph record field.
+func parseRFC3339(field, value string) (time.Time, error) {
+	t, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("memgraph: parse %s %q: %w", field, value, err)
+	}
+	return t, nil
 }
 
 // recordString extracts a string value from a neo4j record at the given index.
@@ -218,16 +237,13 @@ func recordInt64(rec *neo4j.Record, i int) int64 {
 
 // recordToSpec converts a neo4j record (with positional values) to a *specv1.Spec.
 func recordToSpec(rec *neo4j.Record) (*specv1.Spec, error) {
-	createdAtStr := recordString(rec, 7)
-	updatedAtStr := recordString(rec, 8)
-
-	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
+	createdAt, err := parseRFC3339("created_at", recordString(rec, 7))
 	if err != nil {
-		return nil, fmt.Errorf("memgraph: parse created_at %q: %w", createdAtStr, err)
+		return nil, err
 	}
-	updatedAt, err := time.Parse(time.RFC3339, updatedAtStr)
+	updatedAt, err := parseRFC3339("updated_at", recordString(rec, 8))
 	if err != nil {
-		return nil, fmt.Errorf("memgraph: parse updated_at %q: %w", updatedAtStr, err)
+		return nil, err
 	}
 
 	version := recordInt64(rec, 6)

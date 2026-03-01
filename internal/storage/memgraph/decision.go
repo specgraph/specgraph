@@ -5,7 +5,6 @@ package memgraph
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"strings"
 	"time"
@@ -17,8 +16,8 @@ import (
 
 // CreateDecision stores a new decision node in Memgraph.
 func (s *Store) CreateDecision(ctx context.Context, slug, title, decision, rationale string) (*specv1.Decision, error) {
-	id := generateDecisionID(slug)
 	now := time.Now().UTC()
+	id := generateID("dec", slug, now)
 	nowStr := now.Format(time.RFC3339)
 
 	query := `
@@ -167,22 +166,15 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title, status, 
 	return recordToDecision(result.Records[0])
 }
 
-func generateDecisionID(slug string) string {
-	h := sha256.Sum256([]byte(slug + time.Now().String()))
-	return fmt.Sprintf("dec-%x", h[:4])[:11] // "dec-" (4) + 7 hex chars = 11
-}
 
 func recordToDecision(rec *neo4j.Record) (*specv1.Decision, error) {
-	createdAtStr := recordString(rec, 7)
-	updatedAtStr := recordString(rec, 8)
-
-	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
+	createdAt, err := parseRFC3339("created_at", recordString(rec, 7))
 	if err != nil {
-		return nil, fmt.Errorf("memgraph: parse created_at %q: %w", createdAtStr, err)
+		return nil, err
 	}
-	updatedAt, err := time.Parse(time.RFC3339, updatedAtStr)
+	updatedAt, err := parseRFC3339("updated_at", recordString(rec, 8))
 	if err != nil {
-		return nil, fmt.Errorf("memgraph: parse updated_at %q: %w", updatedAtStr, err)
+		return nil, err
 	}
 
 	return &specv1.Decision{
