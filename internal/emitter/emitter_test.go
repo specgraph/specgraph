@@ -36,7 +36,7 @@ func testConstitution() *specv1.Constitution {
 		Principles: []*specv1.Principle{
 			{
 				Id:        "backward-compat",
-				Principle: "All API changes must be backward compatible",
+				Statement: "All API changes must be backward compatible",
 				Rationale: "External consumers",
 			},
 		},
@@ -56,7 +56,7 @@ func testConstitution() *specv1.Constitution {
 
 func TestEmit_ClaudeMD(t *testing.T) {
 	c := testConstitution()
-	content, filename, err := emitter.Emit(c, "claude-md")
+	content, filename, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD)
 	require.NoError(t, err)
 	require.Equal(t, "CLAUDE.md", filename)
 	require.Contains(t, content, "go")
@@ -68,7 +68,7 @@ func TestEmit_ClaudeMD(t *testing.T) {
 
 func TestEmit_Cursorrules(t *testing.T) {
 	c := testConstitution()
-	content, filename, err := emitter.Emit(c, "cursorrules")
+	content, filename, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_CURSORRULES)
 	require.NoError(t, err)
 	require.Equal(t, ".cursorrules", filename)
 	require.Contains(t, content, "go")
@@ -76,7 +76,7 @@ func TestEmit_Cursorrules(t *testing.T) {
 
 func TestEmit_AgentsMD(t *testing.T) {
 	c := testConstitution()
-	content, filename, err := emitter.Emit(c, "agents-md")
+	content, filename, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_AGENTS_MD)
 	require.NoError(t, err)
 	require.Equal(t, "AGENTS.md", filename)
 	require.Contains(t, content, "go")
@@ -84,12 +84,17 @@ func TestEmit_AgentsMD(t *testing.T) {
 
 func TestEmit_InvalidFormat(t *testing.T) {
 	c := testConstitution()
-	_, _, err := emitter.Emit(c, "invalid")
+	_, _, err := emitter.Emit(c, specv1.OutputFormat(99))
 	require.Error(t, err)
 }
 
 func TestEmit_NilConstitution(t *testing.T) {
-	for _, format := range []string{"claude-md", "cursorrules", "agents-md"} {
+	formats := []specv1.OutputFormat{
+		specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD,
+		specv1.OutputFormat_OUTPUT_FORMAT_CURSORRULES,
+		specv1.OutputFormat_OUTPUT_FORMAT_AGENTS_MD,
+	}
+	for _, format := range formats {
 		content, _, err := emitter.Emit(nil, format)
 		require.NoError(t, err, "format %s should not error with nil constitution", format)
 		require.NotEmpty(t, content, "format %s should return header even for nil constitution", format)
@@ -98,7 +103,7 @@ func TestEmit_NilConstitution(t *testing.T) {
 
 func TestEmit_EmptyConstitution(t *testing.T) {
 	c := &specv1.Constitution{}
-	content, filename, err := emitter.Emit(c, "claude-md")
+	content, filename, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD)
 	require.NoError(t, err)
 	require.Equal(t, "CLAUDE.md", filename)
 	require.True(t, strings.HasPrefix(content, "# Project Constitution"), "should start with header")
@@ -116,7 +121,7 @@ func TestEmit_PartialConstitution_TechOnly(t *testing.T) {
 			},
 		},
 	}
-	content, _, err := emitter.Emit(c, "claude-md")
+	content, _, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD)
 	require.NoError(t, err)
 	require.Contains(t, content, "## Tech Stack")
 	require.Contains(t, content, "go")
@@ -127,10 +132,10 @@ func TestEmit_PartialConstitution_TechOnly(t *testing.T) {
 
 func TestEmit_NilTech(t *testing.T) {
 	c := &specv1.Constitution{
-		Tech: nil,
+		Tech:        nil,
 		Constraints: []string{"No ORMs"},
 	}
-	content, _, err := emitter.Emit(c, "claude-md")
+	content, _, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD)
 	require.NoError(t, err)
 	require.NotContains(t, content, "## Tech Stack")
 	require.Contains(t, content, "## Constraints")
@@ -142,7 +147,7 @@ func TestEmit_MapOrdering(t *testing.T) {
 	c := testConstitution()
 	var prev string
 	for i := 0; i < 20; i++ {
-		content, _, err := emitter.Emit(c, "claude-md")
+		content, _, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD)
 		require.NoError(t, err)
 		if prev != "" {
 			require.Equal(t, prev, content, "output must be deterministic across runs")

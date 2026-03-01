@@ -112,6 +112,21 @@ func runServe(_ *cobra.Command, _ []string) error {
 
 const maxConstitutionSize = 1 << 20 // 1 MiB
 
+// referenceTypeFromString maps a YAML reference type string to the proto enum.
+var referenceTypeMap = map[string]specv1.ReferenceType{
+	"adr":  specv1.ReferenceType_REFERENCE_TYPE_ADR,
+	"spec": specv1.ReferenceType_REFERENCE_TYPE_SPEC,
+	"doc":  specv1.ReferenceType_REFERENCE_TYPE_DOC,
+	"url":  specv1.ReferenceType_REFERENCE_TYPE_URL,
+}
+
+func referenceTypeFromString(s string) specv1.ReferenceType {
+	if v, ok := referenceTypeMap[strings.ToLower(s)]; ok {
+		return v
+	}
+	return specv1.ReferenceType_REFERENCE_TYPE_UNSPECIFIED
+}
+
 func bootstrapConstitution(ctx context.Context, store *memgraph.Store, yamlPath string) error {
 	// Check if constitution already exists in storage.
 	_, err := store.GetConstitution(ctx)
@@ -152,7 +167,7 @@ func bootstrapConstitution(ctx context.Context, store *memgraph.Store, yamlPath 
 	for _, p := range cy.Principles {
 		principles = append(principles, &specv1.Principle{
 			Id:         p.ID,
-			Principle:  p.Statement,
+			Statement:  p.Statement,
 			Rationale:  p.Rationale,
 			Exceptions: p.Exceptions,
 		})
@@ -172,8 +187,8 @@ func bootstrapConstitution(ctx context.Context, store *memgraph.Store, yamlPath 
 	references := make([]*specv1.Reference, 0, len(cy.References))
 	for _, r := range cy.References {
 		references = append(references, &specv1.Reference{
-			Type: r.Type,
-			Path: r.Path,
+			ReferenceType: referenceTypeFromString(r.Type),
+			Path:          r.Path,
 		})
 	}
 

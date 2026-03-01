@@ -25,6 +25,8 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// ConstitutionLayer defines the scope at which a constitution applies.
+// More specific layers override general ones (User < Org < Project < Domain).
 type ConstitutionLayer int32
 
 const (
@@ -80,6 +82,7 @@ func (ConstitutionLayer) EnumDescriptor() ([]byte, []int) {
 	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{0}
 }
 
+// ViolationSeverity classifies how critical a constitution violation is.
 type ViolationSeverity int32
 
 const (
@@ -132,19 +135,142 @@ func (ViolationSeverity) EnumDescriptor() ([]byte, []int) {
 	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{1}
 }
 
+// OutputFormat specifies the tool-file format for constitution emission.
+type OutputFormat int32
+
+const (
+	OutputFormat_OUTPUT_FORMAT_UNSPECIFIED OutputFormat = 0
+	OutputFormat_OUTPUT_FORMAT_CLAUDE_MD   OutputFormat = 1
+	OutputFormat_OUTPUT_FORMAT_CURSORRULES OutputFormat = 2
+	OutputFormat_OUTPUT_FORMAT_AGENTS_MD   OutputFormat = 3
+)
+
+// Enum value maps for OutputFormat.
+var (
+	OutputFormat_name = map[int32]string{
+		0: "OUTPUT_FORMAT_UNSPECIFIED",
+		1: "OUTPUT_FORMAT_CLAUDE_MD",
+		2: "OUTPUT_FORMAT_CURSORRULES",
+		3: "OUTPUT_FORMAT_AGENTS_MD",
+	}
+	OutputFormat_value = map[string]int32{
+		"OUTPUT_FORMAT_UNSPECIFIED": 0,
+		"OUTPUT_FORMAT_CLAUDE_MD":   1,
+		"OUTPUT_FORMAT_CURSORRULES": 2,
+		"OUTPUT_FORMAT_AGENTS_MD":   3,
+	}
+)
+
+func (x OutputFormat) Enum() *OutputFormat {
+	p := new(OutputFormat)
+	*p = x
+	return p
+}
+
+func (x OutputFormat) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (OutputFormat) Descriptor() protoreflect.EnumDescriptor {
+	return file_specgraph_v1_constitution_proto_enumTypes[2].Descriptor()
+}
+
+func (OutputFormat) Type() protoreflect.EnumType {
+	return &file_specgraph_v1_constitution_proto_enumTypes[2]
+}
+
+func (x OutputFormat) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use OutputFormat.Descriptor instead.
+func (OutputFormat) EnumDescriptor() ([]byte, []int) {
+	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{2}
+}
+
+// ReferenceType classifies the kind of document a constitution reference points to.
+type ReferenceType int32
+
+const (
+	ReferenceType_REFERENCE_TYPE_UNSPECIFIED ReferenceType = 0
+	ReferenceType_REFERENCE_TYPE_ADR         ReferenceType = 1
+	ReferenceType_REFERENCE_TYPE_SPEC        ReferenceType = 2
+	ReferenceType_REFERENCE_TYPE_DOC         ReferenceType = 3
+	ReferenceType_REFERENCE_TYPE_URL         ReferenceType = 4
+)
+
+// Enum value maps for ReferenceType.
+var (
+	ReferenceType_name = map[int32]string{
+		0: "REFERENCE_TYPE_UNSPECIFIED",
+		1: "REFERENCE_TYPE_ADR",
+		2: "REFERENCE_TYPE_SPEC",
+		3: "REFERENCE_TYPE_DOC",
+		4: "REFERENCE_TYPE_URL",
+	}
+	ReferenceType_value = map[string]int32{
+		"REFERENCE_TYPE_UNSPECIFIED": 0,
+		"REFERENCE_TYPE_ADR":         1,
+		"REFERENCE_TYPE_SPEC":        2,
+		"REFERENCE_TYPE_DOC":         3,
+		"REFERENCE_TYPE_URL":         4,
+	}
+)
+
+func (x ReferenceType) Enum() *ReferenceType {
+	p := new(ReferenceType)
+	*p = x
+	return p
+}
+
+func (x ReferenceType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ReferenceType) Descriptor() protoreflect.EnumDescriptor {
+	return file_specgraph_v1_constitution_proto_enumTypes[3].Descriptor()
+}
+
+func (ReferenceType) Type() protoreflect.EnumType {
+	return &file_specgraph_v1_constitution_proto_enumTypes[3]
+}
+
+func (x ReferenceType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ReferenceType.Descriptor instead.
+func (ReferenceType) EnumDescriptor() ([]byte, []int) {
+	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{3}
+}
+
+// Constitution is the project ground truth — layered rules, tech stack,
+// principles, constraints, and anti-patterns that govern a codebase.
 type Constitution struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Layer         ConstitutionLayer      `protobuf:"varint,2,opt,name=layer,proto3,enum=specgraph.v1.ConstitutionLayer" json:"layer,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Version       int32                  `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
-	Tech          *TechConfig            `protobuf:"bytes,5,opt,name=tech,proto3" json:"tech,omitempty"`
-	Principles    []*Principle           `protobuf:"bytes,6,rep,name=principles,proto3" json:"principles,omitempty"`
-	Process       *ProcessConfig         `protobuf:"bytes,7,opt,name=process,proto3" json:"process,omitempty"`
-	Constraints   []string               `protobuf:"bytes,8,rep,name=constraints,proto3" json:"constraints,omitempty"`
-	Antipatterns  []*Antipattern         `protobuf:"bytes,9,rep,name=antipatterns,proto3" json:"antipatterns,omitempty"`
-	References    []*Reference           `protobuf:"bytes,10,rep,name=references,proto3" json:"references,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Unique identifier, generated on first create.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Scope at which this constitution applies.
+	Layer ConstitutionLayer `protobuf:"varint,2,opt,name=layer,proto3,enum=specgraph.v1.ConstitutionLayer" json:"layer,omitempty"`
+	// Human-readable name for this constitution.
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Monotonically increasing version, bumped on each update.
+	Version int32 `protobuf:"varint,4,opt,name=version,proto3" json:"version,omitempty"`
+	// Technology stack configuration.
+	Tech *TechConfig `protobuf:"bytes,5,opt,name=tech,proto3" json:"tech,omitempty"`
+	// Guiding principles for the project.
+	Principles []*Principle `protobuf:"bytes,6,rep,name=principles,proto3" json:"principles,omitempty"`
+	// Process configuration (review, deployment, docs).
+	Process *ProcessConfig `protobuf:"bytes,7,opt,name=process,proto3" json:"process,omitempty"`
+	// Hard constraints that must not be violated.
+	Constraints []string `protobuf:"bytes,8,rep,name=constraints,proto3" json:"constraints,omitempty"`
+	// Known anti-patterns to avoid.
+	Antipatterns []*Antipattern `protobuf:"bytes,9,rep,name=antipatterns,proto3" json:"antipatterns,omitempty"`
+	// External references (ADRs, specs, docs).
+	References []*Reference `protobuf:"bytes,10,rep,name=references,proto3" json:"references,omitempty"`
+	// Timestamp of initial creation.
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// Timestamp of most recent update.
 	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -264,15 +390,21 @@ func (x *Constitution) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// TechConfig describes the technology stack for a project.
 type TechConfig struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Languages      *LanguageConfig        `protobuf:"bytes,1,opt,name=languages,proto3" json:"languages,omitempty"`
-	Frameworks     map[string]string      `protobuf:"bytes,2,rep,name=frameworks,proto3" json:"frameworks,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Infrastructure map[string]string      `protobuf:"bytes,3,rep,name=infrastructure,proto3" json:"infrastructure,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	ApiStandards   map[string]string      `protobuf:"bytes,4,rep,name=api_standards,json=apiStandards,proto3" json:"api_standards,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Data           map[string]string      `protobuf:"bytes,5,rep,name=data,proto3" json:"data,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Programming language configuration.
+	Languages *LanguageConfig `protobuf:"bytes,1,opt,name=languages,proto3" json:"languages,omitempty"`
+	// Framework choices keyed by area (e.g. "api" -> "ConnectRPC").
+	Frameworks map[string]string `protobuf:"bytes,2,rep,name=frameworks,proto3" json:"frameworks,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Infrastructure choices keyed by area (e.g. "runtime" -> "Docker").
+	Infrastructure map[string]string `protobuf:"bytes,3,rep,name=infrastructure,proto3" json:"infrastructure,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// API standard choices keyed by area.
+	ApiStandards map[string]string `protobuf:"bytes,4,rep,name=api_standards,json=apiStandards,proto3" json:"api_standards,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Data store choices keyed by area.
+	Data          map[string]string `protobuf:"bytes,5,rep,name=data,proto3" json:"data,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TechConfig) Reset() {
@@ -340,12 +472,17 @@ func (x *TechConfig) GetData() map[string]string {
 	return nil
 }
 
+// LanguageConfig specifies which programming languages are permitted.
 type LanguageConfig struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Primary          string                 `protobuf:"bytes,1,opt,name=primary,proto3" json:"primary,omitempty"`
-	Allowed          []string               `protobuf:"bytes,2,rep,name=allowed,proto3" json:"allowed,omitempty"`
-	Forbidden        []string               `protobuf:"bytes,3,rep,name=forbidden,proto3" json:"forbidden,omitempty"`
-	ForbiddenReasons map[string]string      `protobuf:"bytes,4,rep,name=forbidden_reasons,json=forbiddenReasons,proto3" json:"forbidden_reasons,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The primary language for the project.
+	Primary string `protobuf:"bytes,1,opt,name=primary,proto3" json:"primary,omitempty"`
+	// Languages explicitly allowed.
+	Allowed []string `protobuf:"bytes,2,rep,name=allowed,proto3" json:"allowed,omitempty"`
+	// Languages explicitly forbidden.
+	Forbidden []string `protobuf:"bytes,3,rep,name=forbidden,proto3" json:"forbidden,omitempty"`
+	// Reasons why each forbidden language is banned, keyed by language name.
+	ForbiddenReasons map[string]string `protobuf:"bytes,4,rep,name=forbidden_reasons,json=forbiddenReasons,proto3" json:"forbidden_reasons,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -408,12 +545,17 @@ func (x *LanguageConfig) GetForbiddenReasons() map[string]string {
 	return nil
 }
 
+// Principle captures a guiding design or engineering principle.
 type Principle struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Principle     string                 `protobuf:"bytes,2,opt,name=principle,proto3" json:"principle,omitempty"`
-	Rationale     string                 `protobuf:"bytes,3,opt,name=rationale,proto3" json:"rationale,omitempty"`
-	Exceptions    string                 `protobuf:"bytes,4,opt,name=exceptions,proto3" json:"exceptions,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Stable identifier for cross-referencing (e.g. "p1").
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The principle statement itself.
+	Statement string `protobuf:"bytes,2,opt,name=statement,proto3" json:"statement,omitempty"`
+	// Why this principle matters.
+	Rationale string `protobuf:"bytes,3,opt,name=rationale,proto3" json:"rationale,omitempty"`
+	// When this principle may be relaxed.
+	Exceptions    string `protobuf:"bytes,4,opt,name=exceptions,proto3" json:"exceptions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -455,9 +597,9 @@ func (x *Principle) GetId() string {
 	return ""
 }
 
-func (x *Principle) GetPrinciple() string {
+func (x *Principle) GetStatement() string {
 	if x != nil {
-		return x.Principle
+		return x.Statement
 	}
 	return ""
 }
@@ -476,14 +618,19 @@ func (x *Principle) GetExceptions() string {
 	return ""
 }
 
+// ProcessConfig describes the team's review and deployment processes.
 type ProcessConfig struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	SpecReview     string                 `protobuf:"bytes,1,opt,name=spec_review,json=specReview,proto3" json:"spec_review,omitempty"`
-	SecurityReview *SecurityReviewConfig  `protobuf:"bytes,2,opt,name=security_review,json=securityReview,proto3" json:"security_review,omitempty"`
-	Deployment     *DeploymentConfig      `protobuf:"bytes,3,opt,name=deployment,proto3" json:"deployment,omitempty"`
-	Documentation  *DocumentationConfig   `protobuf:"bytes,4,opt,name=documentation,proto3" json:"documentation,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// When/how spec reviews are conducted.
+	SpecReview string `protobuf:"bytes,1,opt,name=spec_review,json=specReview,proto3" json:"spec_review,omitempty"`
+	// Security review configuration.
+	SecurityReview *SecurityReviewConfig `protobuf:"bytes,2,opt,name=security_review,json=securityReview,proto3" json:"security_review,omitempty"`
+	// Deployment strategy configuration.
+	Deployment *DeploymentConfig `protobuf:"bytes,3,opt,name=deployment,proto3" json:"deployment,omitempty"`
+	// Documentation requirements.
+	Documentation *DocumentationConfig `protobuf:"bytes,4,opt,name=documentation,proto3" json:"documentation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProcessConfig) Reset() {
@@ -544,9 +691,11 @@ func (x *ProcessConfig) GetDocumentation() *DocumentationConfig {
 	return nil
 }
 
+// SecurityReviewConfig describes when security reviews are required.
 type SecurityReviewConfig struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	When          string                 `protobuf:"bytes,1,opt,name=when,proto3" json:"when,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Trigger condition (e.g. "auth changes", "data model changes").
+	When          string `protobuf:"bytes,1,opt,name=when,proto3" json:"when,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -588,10 +737,13 @@ func (x *SecurityReviewConfig) GetWhen() string {
 	return ""
 }
 
+// DeploymentConfig describes the deployment strategy.
 type DeploymentConfig struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Strategy      string                 `protobuf:"bytes,1,opt,name=strategy,proto3" json:"strategy,omitempty"`
-	Rollback      string                 `protobuf:"bytes,2,opt,name=rollback,proto3" json:"rollback,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Deployment strategy (e.g. "blue-green", "canary").
+	Strategy string `protobuf:"bytes,1,opt,name=strategy,proto3" json:"strategy,omitempty"`
+	// Rollback policy.
+	Rollback      string `protobuf:"bytes,2,opt,name=rollback,proto3" json:"rollback,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -640,10 +792,13 @@ func (x *DeploymentConfig) GetRollback() string {
 	return ""
 }
 
+// DocumentationConfig describes documentation requirements.
 type DocumentationConfig struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ApiDocs       string                 `protobuf:"bytes,1,opt,name=api_docs,json=apiDocs,proto3" json:"api_docs,omitempty"`
-	Runbook       string                 `protobuf:"bytes,2,opt,name=runbook,proto3" json:"runbook,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// API documentation requirements.
+	ApiDocs string `protobuf:"bytes,1,opt,name=api_docs,json=apiDocs,proto3" json:"api_docs,omitempty"`
+	// Runbook requirements.
+	Runbook       string `protobuf:"bytes,2,opt,name=runbook,proto3" json:"runbook,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -692,11 +847,15 @@ func (x *DocumentationConfig) GetRunbook() string {
 	return ""
 }
 
+// Antipattern describes a known bad practice to avoid.
 type Antipattern struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Pattern       string                 `protobuf:"bytes,1,opt,name=pattern,proto3" json:"pattern,omitempty"`
-	Why           string                 `protobuf:"bytes,2,opt,name=why,proto3" json:"why,omitempty"`
-	Instead       string                 `protobuf:"bytes,3,opt,name=instead,proto3" json:"instead,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The pattern to avoid (e.g. "god object").
+	Pattern string `protobuf:"bytes,1,opt,name=pattern,proto3" json:"pattern,omitempty"`
+	// Why this pattern is harmful.
+	Why string `protobuf:"bytes,2,opt,name=why,proto3" json:"why,omitempty"`
+	// What to do instead.
+	Instead       string `protobuf:"bytes,3,opt,name=instead,proto3" json:"instead,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -752,10 +911,13 @@ func (x *Antipattern) GetInstead() string {
 	return ""
 }
 
+// Reference points to an external document related to the constitution.
 type Reference struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The kind of reference.
+	ReferenceType ReferenceType `protobuf:"varint,1,opt,name=reference_type,json=referenceType,proto3,enum=specgraph.v1.ReferenceType" json:"reference_type,omitempty"`
+	// Path or URL to the referenced document.
+	Path          string `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -790,11 +952,11 @@ func (*Reference) Descriptor() ([]byte, []int) {
 	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *Reference) GetType() string {
+func (x *Reference) GetReferenceType() ReferenceType {
 	if x != nil {
-		return x.Type
+		return x.ReferenceType
 	}
-	return ""
+	return ReferenceType_REFERENCE_TYPE_UNSPECIFIED
 }
 
 func (x *Reference) GetPath() string {
@@ -804,12 +966,17 @@ func (x *Reference) GetPath() string {
 	return ""
 }
 
+// Violation represents a single constitution rule violation found in a spec.
 type Violation struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Rule          string                 `protobuf:"bytes,1,opt,name=rule,proto3" json:"rule,omitempty"`
-	Severity      ViolationSeverity      `protobuf:"varint,2,opt,name=severity,proto3,enum=specgraph.v1.ViolationSeverity" json:"severity,omitempty"`
-	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	SpecSlug      string                 `protobuf:"bytes,4,opt,name=spec_slug,json=specSlug,proto3" json:"spec_slug,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The rule or constraint that was violated.
+	Rule string `protobuf:"bytes,1,opt,name=rule,proto3" json:"rule,omitempty"`
+	// How severe the violation is.
+	Severity ViolationSeverity `protobuf:"varint,2,opt,name=severity,proto3,enum=specgraph.v1.ViolationSeverity" json:"severity,omitempty"`
+	// Human-readable description of the violation.
+	Message string `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	// Slug of the spec that was checked.
+	SpecSlug      string `protobuf:"bytes,4,opt,name=spec_slug,json=specSlug,proto3" json:"spec_slug,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -872,6 +1039,7 @@ func (x *Violation) GetSpecSlug() string {
 	return ""
 }
 
+// GetConstitutionRequest requests the active constitution.
 type GetConstitutionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -908,6 +1076,7 @@ func (*GetConstitutionRequest) Descriptor() ([]byte, []int) {
 	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{11}
 }
 
+// GetConstitutionResponse wraps the active constitution.
 type GetConstitutionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Constitution  *Constitution          `protobuf:"bytes,1,opt,name=constitution,proto3" json:"constitution,omitempty"`
@@ -952,6 +1121,7 @@ func (x *GetConstitutionResponse) GetConstitution() *Constitution {
 	return nil
 }
 
+// UpdateConstitutionRequest provides a new or updated constitution.
 type UpdateConstitutionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Constitution  *Constitution          `protobuf:"bytes,1,opt,name=constitution,proto3" json:"constitution,omitempty"`
@@ -996,6 +1166,7 @@ func (x *UpdateConstitutionRequest) GetConstitution() *Constitution {
 	return nil
 }
 
+// UpdateConstitutionResponse wraps the stored constitution after update.
 type UpdateConstitutionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Constitution  *Constitution          `protobuf:"bytes,1,opt,name=constitution,proto3" json:"constitution,omitempty"`
@@ -1040,9 +1211,11 @@ func (x *UpdateConstitutionResponse) GetConstitution() *Constitution {
 	return nil
 }
 
+// CheckViolationRequest identifies a spec to check against the constitution.
 type CheckViolationRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SpecSlug      string                 `protobuf:"bytes,1,opt,name=spec_slug,json=specSlug,proto3" json:"spec_slug,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Slug of the spec to validate.
+	SpecSlug      string `protobuf:"bytes,1,opt,name=spec_slug,json=specSlug,proto3" json:"spec_slug,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1084,6 +1257,7 @@ func (x *CheckViolationRequest) GetSpecSlug() string {
 	return ""
 }
 
+// CheckViolationResponse contains any violations found.
 type CheckViolationResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Violations    []*Violation           `protobuf:"bytes,1,rep,name=violations,proto3" json:"violations,omitempty"`
@@ -1128,9 +1302,11 @@ func (x *CheckViolationResponse) GetViolations() []*Violation {
 	return nil
 }
 
+// EmitToolFilesRequest specifies which tool-file format to generate.
 type EmitToolFilesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Format        string                 `protobuf:"bytes,1,opt,name=format,proto3" json:"format,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The output format to generate.
+	Format        OutputFormat `protobuf:"varint,1,opt,name=format,proto3,enum=specgraph.v1.OutputFormat" json:"format,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1165,17 +1341,20 @@ func (*EmitToolFilesRequest) Descriptor() ([]byte, []int) {
 	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{17}
 }
 
-func (x *EmitToolFilesRequest) GetFormat() string {
+func (x *EmitToolFilesRequest) GetFormat() OutputFormat {
 	if x != nil {
 		return x.Format
 	}
-	return ""
+	return OutputFormat_OUTPUT_FORMAT_UNSPECIFIED
 }
 
+// EmitToolFilesResponse contains the generated file content and suggested filename.
 type EmitToolFilesResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Content       string                 `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
-	Filename      string                 `protobuf:"bytes,2,opt,name=filename,proto3" json:"filename,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The generated file content.
+	Content string `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	// Suggested filename (e.g. "CLAUDE.md").
+	Filename      string `protobuf:"bytes,2,opt,name=filename,proto3" json:"filename,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1280,7 +1459,7 @@ const file_specgraph_v1_constitution_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"w\n" +
 	"\tPrinciple\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
-	"\tprinciple\x18\x02 \x01(\tR\tprinciple\x12\x1c\n" +
+	"\tstatement\x18\x02 \x01(\tR\tstatement\x12\x1c\n" +
 	"\trationale\x18\x03 \x01(\tR\trationale\x12\x1e\n" +
 	"\n" +
 	"exceptions\x18\x04 \x01(\tR\n" +
@@ -1304,9 +1483,9 @@ const file_specgraph_v1_constitution_proto_rawDesc = "" +
 	"\vAntipattern\x12\x18\n" +
 	"\apattern\x18\x01 \x01(\tR\apattern\x12\x10\n" +
 	"\x03why\x18\x02 \x01(\tR\x03why\x12\x18\n" +
-	"\ainstead\x18\x03 \x01(\tR\ainstead\"3\n" +
-	"\tReference\x12\x12\n" +
-	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
+	"\ainstead\x18\x03 \x01(\tR\ainstead\"c\n" +
+	"\tReference\x12B\n" +
+	"\x0ereference_type\x18\x01 \x01(\x0e2\x1b.specgraph.v1.ReferenceTypeR\rreferenceType\x12\x12\n" +
 	"\x04path\x18\x02 \x01(\tR\x04path\"\x93\x01\n" +
 	"\tViolation\x12\x12\n" +
 	"\x04rule\x18\x01 \x01(\tR\x04rule\x12;\n" +
@@ -1325,9 +1504,9 @@ const file_specgraph_v1_constitution_proto_rawDesc = "" +
 	"\x16CheckViolationResponse\x127\n" +
 	"\n" +
 	"violations\x18\x01 \x03(\v2\x17.specgraph.v1.ViolationR\n" +
-	"violations\".\n" +
-	"\x14EmitToolFilesRequest\x12\x16\n" +
-	"\x06format\x18\x01 \x01(\tR\x06format\"M\n" +
+	"violations\"J\n" +
+	"\x14EmitToolFilesRequest\x122\n" +
+	"\x06format\x18\x01 \x01(\x0e2\x1a.specgraph.v1.OutputFormatR\x06format\"M\n" +
 	"\x15EmitToolFilesResponse\x12\x18\n" +
 	"\acontent\x18\x01 \x01(\tR\acontent\x12\x1a\n" +
 	"\bfilename\x18\x02 \x01(\tR\bfilename*\xaf\x01\n" +
@@ -1341,7 +1520,18 @@ const file_specgraph_v1_constitution_proto_rawDesc = "" +
 	"\x1eVIOLATION_SEVERITY_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18VIOLATION_SEVERITY_ERROR\x10\x01\x12\x1e\n" +
 	"\x1aVIOLATION_SEVERITY_WARNING\x10\x02\x12\x1b\n" +
-	"\x17VIOLATION_SEVERITY_INFO\x10\x032\x95\x03\n" +
+	"\x17VIOLATION_SEVERITY_INFO\x10\x03*\x86\x01\n" +
+	"\fOutputFormat\x12\x1d\n" +
+	"\x19OUTPUT_FORMAT_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17OUTPUT_FORMAT_CLAUDE_MD\x10\x01\x12\x1d\n" +
+	"\x19OUTPUT_FORMAT_CURSORRULES\x10\x02\x12\x1b\n" +
+	"\x17OUTPUT_FORMAT_AGENTS_MD\x10\x03*\x90\x01\n" +
+	"\rReferenceType\x12\x1e\n" +
+	"\x1aREFERENCE_TYPE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12REFERENCE_TYPE_ADR\x10\x01\x12\x17\n" +
+	"\x13REFERENCE_TYPE_SPEC\x10\x02\x12\x16\n" +
+	"\x12REFERENCE_TYPE_DOC\x10\x03\x12\x16\n" +
+	"\x12REFERENCE_TYPE_URL\x10\x042\x95\x03\n" +
 	"\x13ConstitutionService\x12^\n" +
 	"\x0fGetConstitution\x12$.specgraph.v1.GetConstitutionRequest\x1a%.specgraph.v1.GetConstitutionResponse\x12g\n" +
 	"\x12UpdateConstitution\x12'.specgraph.v1.UpdateConstitutionRequest\x1a(.specgraph.v1.UpdateConstitutionResponse\x12[\n" +
@@ -1360,73 +1550,77 @@ func file_specgraph_v1_constitution_proto_rawDescGZIP() []byte {
 	return file_specgraph_v1_constitution_proto_rawDescData
 }
 
-var file_specgraph_v1_constitution_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_specgraph_v1_constitution_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_specgraph_v1_constitution_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_specgraph_v1_constitution_proto_goTypes = []any{
 	(ConstitutionLayer)(0),             // 0: specgraph.v1.ConstitutionLayer
 	(ViolationSeverity)(0),             // 1: specgraph.v1.ViolationSeverity
-	(*Constitution)(nil),               // 2: specgraph.v1.Constitution
-	(*TechConfig)(nil),                 // 3: specgraph.v1.TechConfig
-	(*LanguageConfig)(nil),             // 4: specgraph.v1.LanguageConfig
-	(*Principle)(nil),                  // 5: specgraph.v1.Principle
-	(*ProcessConfig)(nil),              // 6: specgraph.v1.ProcessConfig
-	(*SecurityReviewConfig)(nil),       // 7: specgraph.v1.SecurityReviewConfig
-	(*DeploymentConfig)(nil),           // 8: specgraph.v1.DeploymentConfig
-	(*DocumentationConfig)(nil),        // 9: specgraph.v1.DocumentationConfig
-	(*Antipattern)(nil),                // 10: specgraph.v1.Antipattern
-	(*Reference)(nil),                  // 11: specgraph.v1.Reference
-	(*Violation)(nil),                  // 12: specgraph.v1.Violation
-	(*GetConstitutionRequest)(nil),     // 13: specgraph.v1.GetConstitutionRequest
-	(*GetConstitutionResponse)(nil),    // 14: specgraph.v1.GetConstitutionResponse
-	(*UpdateConstitutionRequest)(nil),  // 15: specgraph.v1.UpdateConstitutionRequest
-	(*UpdateConstitutionResponse)(nil), // 16: specgraph.v1.UpdateConstitutionResponse
-	(*CheckViolationRequest)(nil),      // 17: specgraph.v1.CheckViolationRequest
-	(*CheckViolationResponse)(nil),     // 18: specgraph.v1.CheckViolationResponse
-	(*EmitToolFilesRequest)(nil),       // 19: specgraph.v1.EmitToolFilesRequest
-	(*EmitToolFilesResponse)(nil),      // 20: specgraph.v1.EmitToolFilesResponse
-	nil,                                // 21: specgraph.v1.TechConfig.FrameworksEntry
-	nil,                                // 22: specgraph.v1.TechConfig.InfrastructureEntry
-	nil,                                // 23: specgraph.v1.TechConfig.ApiStandardsEntry
-	nil,                                // 24: specgraph.v1.TechConfig.DataEntry
-	nil,                                // 25: specgraph.v1.LanguageConfig.ForbiddenReasonsEntry
-	(*timestamppb.Timestamp)(nil),      // 26: google.protobuf.Timestamp
+	(OutputFormat)(0),                  // 2: specgraph.v1.OutputFormat
+	(ReferenceType)(0),                 // 3: specgraph.v1.ReferenceType
+	(*Constitution)(nil),               // 4: specgraph.v1.Constitution
+	(*TechConfig)(nil),                 // 5: specgraph.v1.TechConfig
+	(*LanguageConfig)(nil),             // 6: specgraph.v1.LanguageConfig
+	(*Principle)(nil),                  // 7: specgraph.v1.Principle
+	(*ProcessConfig)(nil),              // 8: specgraph.v1.ProcessConfig
+	(*SecurityReviewConfig)(nil),       // 9: specgraph.v1.SecurityReviewConfig
+	(*DeploymentConfig)(nil),           // 10: specgraph.v1.DeploymentConfig
+	(*DocumentationConfig)(nil),        // 11: specgraph.v1.DocumentationConfig
+	(*Antipattern)(nil),                // 12: specgraph.v1.Antipattern
+	(*Reference)(nil),                  // 13: specgraph.v1.Reference
+	(*Violation)(nil),                  // 14: specgraph.v1.Violation
+	(*GetConstitutionRequest)(nil),     // 15: specgraph.v1.GetConstitutionRequest
+	(*GetConstitutionResponse)(nil),    // 16: specgraph.v1.GetConstitutionResponse
+	(*UpdateConstitutionRequest)(nil),  // 17: specgraph.v1.UpdateConstitutionRequest
+	(*UpdateConstitutionResponse)(nil), // 18: specgraph.v1.UpdateConstitutionResponse
+	(*CheckViolationRequest)(nil),      // 19: specgraph.v1.CheckViolationRequest
+	(*CheckViolationResponse)(nil),     // 20: specgraph.v1.CheckViolationResponse
+	(*EmitToolFilesRequest)(nil),       // 21: specgraph.v1.EmitToolFilesRequest
+	(*EmitToolFilesResponse)(nil),      // 22: specgraph.v1.EmitToolFilesResponse
+	nil,                                // 23: specgraph.v1.TechConfig.FrameworksEntry
+	nil,                                // 24: specgraph.v1.TechConfig.InfrastructureEntry
+	nil,                                // 25: specgraph.v1.TechConfig.ApiStandardsEntry
+	nil,                                // 26: specgraph.v1.TechConfig.DataEntry
+	nil,                                // 27: specgraph.v1.LanguageConfig.ForbiddenReasonsEntry
+	(*timestamppb.Timestamp)(nil),      // 28: google.protobuf.Timestamp
 }
 var file_specgraph_v1_constitution_proto_depIdxs = []int32{
 	0,  // 0: specgraph.v1.Constitution.layer:type_name -> specgraph.v1.ConstitutionLayer
-	3,  // 1: specgraph.v1.Constitution.tech:type_name -> specgraph.v1.TechConfig
-	5,  // 2: specgraph.v1.Constitution.principles:type_name -> specgraph.v1.Principle
-	6,  // 3: specgraph.v1.Constitution.process:type_name -> specgraph.v1.ProcessConfig
-	10, // 4: specgraph.v1.Constitution.antipatterns:type_name -> specgraph.v1.Antipattern
-	11, // 5: specgraph.v1.Constitution.references:type_name -> specgraph.v1.Reference
-	26, // 6: specgraph.v1.Constitution.created_at:type_name -> google.protobuf.Timestamp
-	26, // 7: specgraph.v1.Constitution.updated_at:type_name -> google.protobuf.Timestamp
-	4,  // 8: specgraph.v1.TechConfig.languages:type_name -> specgraph.v1.LanguageConfig
-	21, // 9: specgraph.v1.TechConfig.frameworks:type_name -> specgraph.v1.TechConfig.FrameworksEntry
-	22, // 10: specgraph.v1.TechConfig.infrastructure:type_name -> specgraph.v1.TechConfig.InfrastructureEntry
-	23, // 11: specgraph.v1.TechConfig.api_standards:type_name -> specgraph.v1.TechConfig.ApiStandardsEntry
-	24, // 12: specgraph.v1.TechConfig.data:type_name -> specgraph.v1.TechConfig.DataEntry
-	25, // 13: specgraph.v1.LanguageConfig.forbidden_reasons:type_name -> specgraph.v1.LanguageConfig.ForbiddenReasonsEntry
-	7,  // 14: specgraph.v1.ProcessConfig.security_review:type_name -> specgraph.v1.SecurityReviewConfig
-	8,  // 15: specgraph.v1.ProcessConfig.deployment:type_name -> specgraph.v1.DeploymentConfig
-	9,  // 16: specgraph.v1.ProcessConfig.documentation:type_name -> specgraph.v1.DocumentationConfig
-	1,  // 17: specgraph.v1.Violation.severity:type_name -> specgraph.v1.ViolationSeverity
-	2,  // 18: specgraph.v1.GetConstitutionResponse.constitution:type_name -> specgraph.v1.Constitution
-	2,  // 19: specgraph.v1.UpdateConstitutionRequest.constitution:type_name -> specgraph.v1.Constitution
-	2,  // 20: specgraph.v1.UpdateConstitutionResponse.constitution:type_name -> specgraph.v1.Constitution
-	12, // 21: specgraph.v1.CheckViolationResponse.violations:type_name -> specgraph.v1.Violation
-	13, // 22: specgraph.v1.ConstitutionService.GetConstitution:input_type -> specgraph.v1.GetConstitutionRequest
-	15, // 23: specgraph.v1.ConstitutionService.UpdateConstitution:input_type -> specgraph.v1.UpdateConstitutionRequest
-	17, // 24: specgraph.v1.ConstitutionService.CheckViolation:input_type -> specgraph.v1.CheckViolationRequest
-	19, // 25: specgraph.v1.ConstitutionService.EmitToolFiles:input_type -> specgraph.v1.EmitToolFilesRequest
-	14, // 26: specgraph.v1.ConstitutionService.GetConstitution:output_type -> specgraph.v1.GetConstitutionResponse
-	16, // 27: specgraph.v1.ConstitutionService.UpdateConstitution:output_type -> specgraph.v1.UpdateConstitutionResponse
-	18, // 28: specgraph.v1.ConstitutionService.CheckViolation:output_type -> specgraph.v1.CheckViolationResponse
-	20, // 29: specgraph.v1.ConstitutionService.EmitToolFiles:output_type -> specgraph.v1.EmitToolFilesResponse
-	26, // [26:30] is the sub-list for method output_type
-	22, // [22:26] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	5,  // 1: specgraph.v1.Constitution.tech:type_name -> specgraph.v1.TechConfig
+	7,  // 2: specgraph.v1.Constitution.principles:type_name -> specgraph.v1.Principle
+	8,  // 3: specgraph.v1.Constitution.process:type_name -> specgraph.v1.ProcessConfig
+	12, // 4: specgraph.v1.Constitution.antipatterns:type_name -> specgraph.v1.Antipattern
+	13, // 5: specgraph.v1.Constitution.references:type_name -> specgraph.v1.Reference
+	28, // 6: specgraph.v1.Constitution.created_at:type_name -> google.protobuf.Timestamp
+	28, // 7: specgraph.v1.Constitution.updated_at:type_name -> google.protobuf.Timestamp
+	6,  // 8: specgraph.v1.TechConfig.languages:type_name -> specgraph.v1.LanguageConfig
+	23, // 9: specgraph.v1.TechConfig.frameworks:type_name -> specgraph.v1.TechConfig.FrameworksEntry
+	24, // 10: specgraph.v1.TechConfig.infrastructure:type_name -> specgraph.v1.TechConfig.InfrastructureEntry
+	25, // 11: specgraph.v1.TechConfig.api_standards:type_name -> specgraph.v1.TechConfig.ApiStandardsEntry
+	26, // 12: specgraph.v1.TechConfig.data:type_name -> specgraph.v1.TechConfig.DataEntry
+	27, // 13: specgraph.v1.LanguageConfig.forbidden_reasons:type_name -> specgraph.v1.LanguageConfig.ForbiddenReasonsEntry
+	9,  // 14: specgraph.v1.ProcessConfig.security_review:type_name -> specgraph.v1.SecurityReviewConfig
+	10, // 15: specgraph.v1.ProcessConfig.deployment:type_name -> specgraph.v1.DeploymentConfig
+	11, // 16: specgraph.v1.ProcessConfig.documentation:type_name -> specgraph.v1.DocumentationConfig
+	3,  // 17: specgraph.v1.Reference.reference_type:type_name -> specgraph.v1.ReferenceType
+	1,  // 18: specgraph.v1.Violation.severity:type_name -> specgraph.v1.ViolationSeverity
+	4,  // 19: specgraph.v1.GetConstitutionResponse.constitution:type_name -> specgraph.v1.Constitution
+	4,  // 20: specgraph.v1.UpdateConstitutionRequest.constitution:type_name -> specgraph.v1.Constitution
+	4,  // 21: specgraph.v1.UpdateConstitutionResponse.constitution:type_name -> specgraph.v1.Constitution
+	14, // 22: specgraph.v1.CheckViolationResponse.violations:type_name -> specgraph.v1.Violation
+	2,  // 23: specgraph.v1.EmitToolFilesRequest.format:type_name -> specgraph.v1.OutputFormat
+	15, // 24: specgraph.v1.ConstitutionService.GetConstitution:input_type -> specgraph.v1.GetConstitutionRequest
+	17, // 25: specgraph.v1.ConstitutionService.UpdateConstitution:input_type -> specgraph.v1.UpdateConstitutionRequest
+	19, // 26: specgraph.v1.ConstitutionService.CheckViolation:input_type -> specgraph.v1.CheckViolationRequest
+	21, // 27: specgraph.v1.ConstitutionService.EmitToolFiles:input_type -> specgraph.v1.EmitToolFilesRequest
+	16, // 28: specgraph.v1.ConstitutionService.GetConstitution:output_type -> specgraph.v1.GetConstitutionResponse
+	18, // 29: specgraph.v1.ConstitutionService.UpdateConstitution:output_type -> specgraph.v1.UpdateConstitutionResponse
+	20, // 30: specgraph.v1.ConstitutionService.CheckViolation:output_type -> specgraph.v1.CheckViolationResponse
+	22, // 31: specgraph.v1.ConstitutionService.EmitToolFiles:output_type -> specgraph.v1.EmitToolFilesResponse
+	28, // [28:32] is the sub-list for method output_type
+	24, // [24:28] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_constitution_proto_init() }
@@ -1439,7 +1633,7 @@ func file_specgraph_v1_constitution_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_constitution_proto_rawDesc), len(file_specgraph_v1_constitution_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      4,
 			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,

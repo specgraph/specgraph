@@ -50,13 +50,13 @@ func TestConstitution_UpdateAndGet(t *testing.T) {
 		Principles: []*specv1.Principle{
 			{
 				Id:        "p1",
-				Principle: "Keep it simple",
+				Statement: "Keep it simple",
 				Rationale: "Simple is maintainable",
 			},
 		},
 		Constraints:  []string{"no global state", "no shared mutable state"},
 		Antipatterns: []*specv1.Antipattern{{Pattern: "god object", Why: "too complex", Instead: "small focused types"}},
-		References:   []*specv1.Reference{{Type: "adr", Path: "docs/adr-001.md"}},
+		References:   []*specv1.Reference{{ReferenceType: specv1.ReferenceType_REFERENCE_TYPE_ADR, Path: "docs/adr-001.md"}},
 	}
 
 	got, err := store.UpdateConstitution(ctx, input)
@@ -78,7 +78,7 @@ func TestConstitution_UpdateAndGet(t *testing.T) {
 	// Verify Principles.
 	require.Len(t, got.Principles, 1)
 	require.Equal(t, "p1", got.Principles[0].Id)
-	require.Equal(t, "Keep it simple", got.Principles[0].Principle)
+	require.Equal(t, "Keep it simple", got.Principles[0].Statement)
 
 	// Verify Constraints.
 	require.Equal(t, []string{"no global state", "no shared mutable state"}, got.Constraints)
@@ -89,7 +89,7 @@ func TestConstitution_UpdateAndGet(t *testing.T) {
 
 	// Verify References.
 	require.Len(t, got.References, 1)
-	require.Equal(t, "adr", got.References[0].Type)
+	require.Equal(t, specv1.ReferenceType_REFERENCE_TYPE_ADR, got.References[0].ReferenceType)
 
 	// Fetch via GetConstitution and confirm same data.
 	fetched, err := store.GetConstitution(ctx)

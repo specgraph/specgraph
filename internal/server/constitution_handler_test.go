@@ -151,7 +151,7 @@ func TestConstitutionHandler_EmitNotFound(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := client.EmitToolFiles(ctx, connect.NewRequest(&specv1.EmitToolFilesRequest{
-		Format: "claude-md",
+		Format: specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD,
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
@@ -170,20 +170,20 @@ func TestConstitutionHandler_EmitUnsupportedFormat(t *testing.T) {
 	}))
 	require.NoError(t, err)
 
-	// Try to emit with unsupported format
+	// Try to emit with unsupported format (out-of-range enum value)
 	_, err = client.EmitToolFiles(ctx, connect.NewRequest(&specv1.EmitToolFilesRequest{
-		Format: "unknown-format",
+		Format: specv1.OutputFormat(99),
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
-func TestConstitutionHandler_EmitEmptyFormat(t *testing.T) {
+func TestConstitutionHandler_EmitUnspecifiedFormat(t *testing.T) {
 	client := setupConstitutionServer(t)
 	ctx := context.Background()
 
 	_, err := client.EmitToolFiles(ctx, connect.NewRequest(&specv1.EmitToolFilesRequest{
-		Format: "",
+		Format: specv1.OutputFormat_OUTPUT_FORMAT_UNSPECIFIED,
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))

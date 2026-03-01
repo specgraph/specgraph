@@ -52,9 +52,13 @@ const (
 
 // ConstitutionServiceClient is a client for the specgraph.v1.ConstitutionService service.
 type ConstitutionServiceClient interface {
+	// GetConstitution returns the active constitution.
 	GetConstitution(context.Context, *connect.Request[v1.GetConstitutionRequest]) (*connect.Response[v1.GetConstitutionResponse], error)
+	// UpdateConstitution creates or replaces the constitution, bumping its version.
 	UpdateConstitution(context.Context, *connect.Request[v1.UpdateConstitutionRequest]) (*connect.Response[v1.UpdateConstitutionResponse], error)
+	// CheckViolation checks a spec against constitution constraints.
 	CheckViolation(context.Context, *connect.Request[v1.CheckViolationRequest]) (*connect.Response[v1.CheckViolationResponse], error)
+	// EmitToolFiles generates a tool-specific configuration file from the constitution.
 	EmitToolFiles(context.Context, *connect.Request[v1.EmitToolFilesRequest]) (*connect.Response[v1.EmitToolFilesResponse], error)
 }
 
@@ -126,9 +130,13 @@ func (c *constitutionServiceClient) EmitToolFiles(ctx context.Context, req *conn
 
 // ConstitutionServiceHandler is an implementation of the specgraph.v1.ConstitutionService service.
 type ConstitutionServiceHandler interface {
+	// GetConstitution returns the active constitution.
 	GetConstitution(context.Context, *connect.Request[v1.GetConstitutionRequest]) (*connect.Response[v1.GetConstitutionResponse], error)
+	// UpdateConstitution creates or replaces the constitution, bumping its version.
 	UpdateConstitution(context.Context, *connect.Request[v1.UpdateConstitutionRequest]) (*connect.Response[v1.UpdateConstitutionResponse], error)
+	// CheckViolation checks a spec against constitution constraints.
 	CheckViolation(context.Context, *connect.Request[v1.CheckViolationRequest]) (*connect.Response[v1.CheckViolationResponse], error)
+	// EmitToolFiles generates a tool-specific configuration file from the constitution.
 	EmitToolFiles(context.Context, *connect.Request[v1.EmitToolFilesRequest]) (*connect.Response[v1.EmitToolFilesResponse], error)
 }
 

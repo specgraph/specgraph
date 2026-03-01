@@ -56,7 +56,7 @@ func runConstitutionShow(_ *cobra.Command, _ []string) error {
 	if principles := c.GetPrinciples(); len(principles) > 0 {
 		fmt.Println("Principles:")
 		for _, p := range principles {
-			fmt.Printf("  - %s\n", p.GetPrinciple())
+			fmt.Printf("  - %s\n", p.GetStatement())
 		}
 	}
 	if constraints := c.GetConstraints(); len(constraints) > 0 {
@@ -114,13 +114,24 @@ var (
 	emitOutput string
 )
 
+// outputFormatFromString converts a CLI flag string to the OutputFormat enum.
+var outputFormatMap = map[string]specv1.OutputFormat{
+	"claude-md":   specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD,
+	"cursorrules": specv1.OutputFormat_OUTPUT_FORMAT_CURSORRULES,
+	"agents-md":   specv1.OutputFormat_OUTPUT_FORMAT_AGENTS_MD,
+}
+
 func runConstitutionEmit(_ *cobra.Command, _ []string) error {
+	format, ok := outputFormatMap[emitFormat]
+	if !ok {
+		return fmt.Errorf("unsupported format %q; valid values: claude-md, cursorrules, agents-md", emitFormat)
+	}
 	client, err := constitutionClient()
 	if err != nil {
 		return err
 	}
 	resp, err := client.EmitToolFiles(context.Background(), connect.NewRequest(&specv1.EmitToolFilesRequest{
-		Format: emitFormat,
+		Format: format,
 	}))
 	if err != nil {
 		return fmt.Errorf("emit tool files: %w", err)

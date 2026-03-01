@@ -73,7 +73,7 @@ func (h *ConstitutionHandler) CheckViolation(ctx context.Context, req *connect.R
 
 // EmitToolFiles handles the EmitToolFiles RPC.
 func (h *ConstitutionHandler) EmitToolFiles(ctx context.Context, req *connect.Request[specv1.EmitToolFilesRequest]) (*connect.Response[specv1.EmitToolFilesResponse], error) {
-	if req.Msg.Format == "" {
+	if req.Msg.Format == specv1.OutputFormat_OUTPUT_FORMAT_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("format is required"))
 	}
 

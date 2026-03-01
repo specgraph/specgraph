@@ -55,7 +55,10 @@ func (p *ConstitutionPrinciple) UnmarshalYAML(value *yaml.Node) error {
 	}
 	// Struct form — use an alias to avoid infinite recursion.
 	type raw ConstitutionPrinciple
-	return value.Decode((*raw)(p))
+	if err := value.Decode((*raw)(p)); err != nil {
+		return fmt.Errorf("decode principle: %w", err)
+	}
+	return nil
 }
 
 // ConstitutionAntipattern represents an antipattern in the constitution YAML.

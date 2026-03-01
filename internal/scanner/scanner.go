@@ -123,10 +123,13 @@ func detectInfrastructure(dir string, c *specv1.Constitution) {
 		c.Tech.Infrastructure["orchestration"] = "Docker Compose"
 	}
 
-	// Kubernetes: walk directory tree looking for K8s manifests
-	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+	// Kubernetes: walk directory tree looking for K8s manifests.
+	// Errors during the walk (e.g. permission denied) are intentionally
+	// skipped so scanning continues for accessible directories.
+	//nolint:errcheck // WalkDir errors are handled inside the callback
+	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr // skip unreadable entries gracefully
 		}
 		if d.IsDir() {
 			// Skip hidden dirs and vendor
