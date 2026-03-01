@@ -1,0 +1,147 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+syntax = "proto3";
+
+package specgraph.v1;
+
+option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
+
+import "google/protobuf/timestamp.proto";
+
+// --- Enums ---
+
+enum ConstitutionLayer {
+  CONSTITUTION_LAYER_UNSPECIFIED = 0;
+  CONSTITUTION_LAYER_USER = 1;
+  CONSTITUTION_LAYER_ORG = 2;
+  CONSTITUTION_LAYER_PROJECT = 3;
+  CONSTITUTION_LAYER_DOMAIN = 4;
+}
+
+enum ViolationSeverity {
+  VIOLATION_SEVERITY_UNSPECIFIED = 0;
+  VIOLATION_SEVERITY_ERROR = 1;
+  VIOLATION_SEVERITY_WARNING = 2;
+  VIOLATION_SEVERITY_INFO = 3;
+}
+
+// --- Messages ---
+
+message Constitution {
+  string id = 1;
+  ConstitutionLayer layer = 2;
+  string name = 3;
+  int32 version = 4;
+  TechConfig tech = 5;
+  repeated Principle principles = 6;
+  ProcessConfig process = 7;
+  repeated string constraints = 8;
+  repeated Antipattern antipatterns = 9;
+  repeated Reference references = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message TechConfig {
+  LanguageConfig languages = 1;
+  map<string, string> frameworks = 2;
+  map<string, string> infrastructure = 3;
+  map<string, string> api_standards = 4;
+  map<string, string> data = 5;
+}
+
+message LanguageConfig {
+  string primary = 1;
+  repeated string allowed = 2;
+  repeated string forbidden = 3;
+  map<string, string> forbidden_reasons = 4;
+}
+
+message Principle {
+  string id = 1;
+  string principle = 2;
+  string rationale = 3;
+  string exceptions = 4;
+}
+
+message ProcessConfig {
+  string spec_review = 1;
+  SecurityReviewConfig security_review = 2;
+  DeploymentConfig deployment = 3;
+  DocumentationConfig documentation = 4;
+}
+
+message SecurityReviewConfig {
+  string when = 1;
+}
+
+message DeploymentConfig {
+  string strategy = 1;
+  string rollback = 2;
+}
+
+message DocumentationConfig {
+  string api_docs = 1;
+  string runbook = 2;
+}
+
+message Antipattern {
+  string pattern = 1;
+  string why = 2;
+  string instead = 3;
+}
+
+message Reference {
+  string type = 1;
+  string path = 2;
+}
+
+message Violation {
+  string rule = 1;
+  ViolationSeverity severity = 2;
+  string message = 3;
+  string spec_slug = 4;
+}
+
+// --- Requests/Responses ---
+
+message GetConstitutionRequest {}
+
+message GetConstitutionResponse {
+  Constitution constitution = 1;
+}
+
+message UpdateConstitutionRequest {
+  Constitution constitution = 1;
+}
+
+message UpdateConstitutionResponse {
+  Constitution constitution = 1;
+}
+
+message CheckViolationRequest {
+  string spec_slug = 1;
+}
+
+message CheckViolationResponse {
+  repeated Violation violations = 1;
+}
+
+message EmitToolFilesRequest {
+  string format = 1;
+}
+
+message EmitToolFilesResponse {
+  string content = 1;
+  string filename = 2;
+}
+
+// --- Service ---
+
+service ConstitutionService {
+  rpc GetConstitution(GetConstitutionRequest) returns (GetConstitutionResponse);
+  rpc UpdateConstitution(UpdateConstitutionRequest) returns (UpdateConstitutionResponse);
+  rpc CheckViolation(CheckViolationRequest) returns (CheckViolationResponse);
+  rpc EmitToolFiles(EmitToolFilesRequest) returns (EmitToolFilesResponse);
+}
