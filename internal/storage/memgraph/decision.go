@@ -11,6 +11,7 @@ import (
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/seanb4t/specgraph/internal/storage"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -72,7 +73,7 @@ func (s *Store) GetDecision(ctx context.Context, slug string) (*specv1.Decision,
 		return nil, fmt.Errorf("memgraph: get decision: %w", err)
 	}
 	if len(result.Records) == 0 {
-		return nil, fmt.Errorf("memgraph: decision %q not found", slug)
+		return nil, fmt.Errorf("memgraph: decision %q: %w", slug, storage.ErrDecisionNotFound)
 	}
 
 	return recordToDecision(result.Records[0])
@@ -95,7 +96,8 @@ func (s *Store) ListDecisions(ctx context.Context, status specv1.DecisionStatus,
 	query += " RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale, d.superseded_by, d.created_at, d.updated_at"
 	query += " ORDER BY d.created_at"
 	if limit > 0 {
-		query += fmt.Sprintf(" LIMIT %d", limit)
+		query += " LIMIT $limit"
+		params["limit"] = int64(limit)
 	}
 
 	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
@@ -116,6 +118,12 @@ func (s *Store) ListDecisions(ctx context.Context, status specv1.DecisionStatus,
 
 // UpdateDecision updates a decision by slug. Only non-nil fields are changed.
 func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, status *specv1.DecisionStatus, decision, rationale, supersededBy *string) (*specv1.Decision, error) {
+	if status != nil && *status == specv1.DecisionStatus_DECISION_STATUS_SUPERSEDED {
+		if supersededBy == nil || *supersededBy == "" {
+			return nil, storage.ErrSupersededByRequired
+		}
+	}
+
 	var setClauses []string
 	params := map[string]any{"slug": slug}
 
@@ -160,7 +168,7 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 		return nil, fmt.Errorf("memgraph: update decision: %w", err)
 	}
 	if len(result.Records) == 0 {
-		return nil, fmt.Errorf("memgraph: decision %q not found", slug)
+		return nil, fmt.Errorf("memgraph: decision %q: %w", slug, storage.ErrDecisionNotFound)
 	}
 
 	return recordToDecision(result.Records[0])

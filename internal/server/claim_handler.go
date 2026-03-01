@@ -54,6 +54,12 @@ func (h *ClaimHandler) UnclaimSpec(ctx context.Context, req *connect.Request[spe
 	msg := req.Msg
 	err := h.store.UnclaimSpec(ctx, msg.SpecSlug, msg.Agent)
 	if err != nil {
+		if errors.Is(err, storage.ErrNotClaimOwner) {
+			return nil, connect.NewError(connect.CodePermissionDenied, err)
+		}
+		if errors.Is(err, storage.ErrSpecNotClaimed) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&specv1.UnclaimSpecResponse{}), nil

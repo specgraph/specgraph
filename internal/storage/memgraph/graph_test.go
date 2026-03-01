@@ -102,6 +102,45 @@ func TestDiamondDependencies(t *testing.T) {
 	require.Len(t, impact, 3) // a, b, c
 }
 
+func TestBlocksEdgeDirection(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := memgraph.New(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	// Create two specs: A blocks B
+	_, err = store.CreateSpec(ctx, "spec-alpha", "Alpha spec", "p1", "low")
+	require.NoError(t, err)
+	_, err = store.CreateSpec(ctx, "spec-beta", "Beta spec", "p2", "low")
+	require.NoError(t, err)
+
+	// Add BLOCKS edge: spec-alpha blocks spec-beta
+	edge, err := store.AddEdge(ctx, "spec-alpha", "spec-beta", specv1.EdgeType_EDGE_TYPE_BLOCKS)
+	require.NoError(t, err)
+	require.Equal(t, specv1.EdgeType_EDGE_TYPE_BLOCKS, edge.EdgeType)
+
+	// ListEdges for spec-alpha should return the BLOCKS edge
+	edges, err := store.ListEdges(ctx, "spec-alpha", specv1.EdgeType_EDGE_TYPE_UNSPECIFIED)
+	require.NoError(t, err)
+	require.NotEmpty(t, edges)
+
+	var found *specv1.Edge
+	for _, e := range edges {
+		if e.EdgeType == specv1.EdgeType_EDGE_TYPE_BLOCKS {
+			found = e
+			break
+		}
+	}
+	require.NotNil(t, found, "expected a BLOCKS edge in ListEdges result")
+
+	// Direction must be preserved: from=spec-alpha, to=spec-beta
+	require.Equal(t, "spec-alpha", found.FromId)
+	require.Equal(t, "spec-beta", found.ToId)
+}
+
 func TestGetReady(t *testing.T) {
 	boltURI, cleanup := setupMemgraph(t)
 	defer cleanup()

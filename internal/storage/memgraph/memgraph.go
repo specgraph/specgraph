@@ -122,7 +122,8 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	query += " RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity, s.version, s.created_at, s.updated_at"
 	query += " ORDER BY s.created_at"
 	if limit > 0 {
-		query += fmt.Sprintf(" LIMIT %d", limit)
+		query += " LIMIT $limit"
+		params["limit"] = int64(limit)
 	}
 
 	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)

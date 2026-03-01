@@ -15,24 +15,20 @@ import (
 
 var edgeTypeToRel = map[specv1.EdgeType]string{
 	specv1.EdgeType_EDGE_TYPE_DEPENDS_ON: "DEPENDS_ON",
-	specv1.EdgeType_EDGE_TYPE_BLOCKS:     "DEPENDS_ON", // stored as inverse DEPENDS_ON
+	specv1.EdgeType_EDGE_TYPE_BLOCKS:     "BLOCKS",
 	specv1.EdgeType_EDGE_TYPE_COMPOSES:   "COMPOSES",
 	specv1.EdgeType_EDGE_TYPE_RELATES_TO: "RELATES_TO",
 	specv1.EdgeType_EDGE_TYPE_INFORMS:    "INFORMS",
 }
 
-// resolveEdge maps an edge type to its Cypher relation and resolves direction.
-// BLOCKS is stored as inverse DEPENDS_ON: if A blocks B, then B DEPENDS_ON A.
+// resolveEdge maps an edge type to its Cypher relation name.
+// All edge types are stored as-is: (from)-[:REL]->(to).
 func resolveEdge(fromSlug, toSlug string, edgeType specv1.EdgeType) (rel, from, to string, err error) {
 	rel, ok := edgeTypeToRel[edgeType]
 	if !ok {
 		return "", "", "", fmt.Errorf("memgraph: unknown edge type %v", edgeType)
 	}
-	from, to = fromSlug, toSlug
-	if edgeType == specv1.EdgeType_EDGE_TYPE_BLOCKS {
-		from, to = toSlug, fromSlug
-	}
-	return rel, from, to, nil
+	return rel, fromSlug, toSlug, nil
 }
 
 // AddEdge creates a typed relationship between two nodes.
@@ -44,8 +40,8 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 
 	query := fmt.Sprintf(`
 		MATCH (a {slug: $from}), (b {slug: $to})
-		CREATE (a)-[r:%s]->(b)
-		RETURN a.id, b.id
+		MERGE (a)-[r:%s]->(b)
+		RETURN a.slug, b.slug
 	`, relType)
 	params := map[string]any{"from": actualFrom, "to": actualTo}
 
@@ -57,18 +53,18 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 		return nil, fmt.Errorf("memgraph: one or both nodes not found (from=%q, to=%q)", fromSlug, toSlug)
 	}
 
-	fromID, err := recordString(result.Records[0], 0, "from_id")
+	fromSlugVal, err := recordString(result.Records[0], 0, "from_slug")
 	if err != nil {
 		return nil, err
 	}
-	toID, err := recordString(result.Records[0], 1, "to_id")
+	toSlugVal, err := recordString(result.Records[0], 1, "to_slug")
 	if err != nil {
 		return nil, err
 	}
 
 	return &specv1.Edge{
-		FromId:   fromID,
-		ToId:     toID,
+		FromId:   fromSlugVal,
+		ToId:     toSlugVal,
 		EdgeType: edgeType,
 	}, nil
 }
@@ -101,18 +97,18 @@ func (s *Store) ListEdges(ctx context.Context, slug string, edgeType specv1.Edge
 		relType := edgeTypeToRel[edgeType]
 		query = fmt.Sprintf(`
 			MATCH (a {slug: $slug})-[r:%s]->(b)
-			RETURN a.id, b.id, type(r)
+			RETURN a.slug AS from_slug, b.slug AS to_slug, type(r) AS rel_type
 			UNION
 			MATCH (a {slug: $slug})<-[r:%s]-(b)
-			RETURN b.id, a.id, type(r)
+			RETURN b.slug AS from_slug, a.slug AS to_slug, type(r) AS rel_type
 		`, relType, relType)
 	} else {
 		query = `
 			MATCH (a {slug: $slug})-[r]->(b)
-			RETURN a.id, b.id, type(r)
+			RETURN a.slug AS from_slug, b.slug AS to_slug, type(r) AS rel_type
 			UNION
 			MATCH (a {slug: $slug})<-[r]-(b)
-			RETURN b.id, a.id, type(r)
+			RETURN b.slug AS from_slug, a.slug AS to_slug, type(r) AS rel_type
 		`
 	}
 
@@ -123,32 +119,28 @@ func (s *Store) ListEdges(ctx context.Context, slug string, edgeType specv1.Edge
 
 	edges := make([]*specv1.Edge, 0, len(result.Records))
 	for _, rec := range result.Records {
-		fromID, err := recordString(rec, 0, "from_id")
-		if err != nil {
-			return nil, err
-		}
-		toID, err := recordString(rec, 1, "to_id")
-		if err != nil {
-			return nil, err
-		}
-		relType, err := recordString(rec, 2, "type")
-		if err != nil {
-			return nil, err
-		}
+		// Use named access via aliases to avoid Memgraph UNION column reordering.
+		from, _ := rec.Get("from_slug")
+		to, _ := rec.Get("to_slug")
+		rt, _ := rec.Get("rel_type")
 		edges = append(edges, &specv1.Edge{
-			FromId:   fromID,
-			ToId:     toID,
-			EdgeType: relNameToEdgeType(relType),
+			FromId:   stringVal(from),
+			ToId:     stringVal(to),
+			EdgeType: relNameToEdgeType(stringVal(rt)),
 		})
 	}
 	return edges, nil
 }
 
 // GetDependencies returns direct dependencies of a node.
+// A node's dependencies include both nodes it DEPENDS_ON and nodes that BLOCK it.
 func (s *Store) GetDependencies(ctx context.Context, slug string) ([]storage.NodeRef, error) {
 	query := `
-		MATCH (a {slug: $slug})-[:DEPENDS_ON]->(b)
-		RETURN b.id, b.slug, labels(b)[0], COALESCE(b.stage, b.status, "")
+		MATCH (a {slug: $slug})-[:DEPENDS_ON]->(n)
+		RETURN n.id AS id, n.slug AS slug, labels(n)[0] AS label, COALESCE(n.stage, n.status, "") AS stage
+		UNION
+		MATCH (n)-[:BLOCKS]->(a {slug: $slug})
+		RETURN n.id AS id, n.slug AS slug, labels(n)[0] AS label, COALESCE(n.stage, n.status, "") AS stage
 	`
 	return s.queryNodeRefs(ctx, query, map[string]any{"slug": slug})
 }
@@ -157,7 +149,7 @@ func (s *Store) GetDependencies(ctx context.Context, slug string) ([]storage.Nod
 func (s *Store) GetTransitiveDeps(ctx context.Context, slug string) ([]storage.NodeRef, error) {
 	query := `
 		MATCH (a {slug: $slug})-[:DEPENDS_ON*]->(b)
-		RETURN DISTINCT b.id, b.slug, labels(b)[0], COALESCE(b.stage, b.status, "")
+		RETURN DISTINCT b.id AS id, b.slug AS slug, labels(b)[0] AS label, COALESCE(b.stage, b.status, "") AS stage
 	`
 	return s.queryNodeRefs(ctx, query, map[string]any{"slug": slug})
 }
@@ -166,12 +158,13 @@ func (s *Store) GetTransitiveDeps(ctx context.Context, slug string) ([]storage.N
 func (s *Store) GetImpact(ctx context.Context, slug string) ([]storage.NodeRef, error) {
 	query := `
 		MATCH (a {slug: $slug})<-[:DEPENDS_ON*]-(b)
-		RETURN DISTINCT b.id, b.slug, labels(b)[0], COALESCE(b.stage, b.status, "")
+		RETURN DISTINCT b.id AS id, b.slug AS slug, labels(b)[0] AS label, COALESCE(b.stage, b.status, "") AS stage
 	`
 	return s.queryNodeRefs(ctx, query, map[string]any{"slug": slug})
 }
 
 // GetReady returns specs with all dependencies "done" or no dependencies.
+// A spec is blocked if it has unfinished DEPENDS_ON targets or unfinished BLOCKS sources.
 func (s *Store) GetReady(ctx context.Context) ([]storage.NodeRef, error) {
 	query := `
 		MATCH (s:Spec)
@@ -180,7 +173,11 @@ func (s *Store) GetReady(ctx context.Context) ([]storage.NodeRef, error) {
 			MATCH (s)-[:DEPENDS_ON]->(dep:Spec)
 			WHERE dep.stage <> "done"
 		  }
-		RETURN s.id, s.slug, labels(s)[0], s.stage
+		  AND NOT EXISTS {
+			MATCH (blocker:Spec)-[:BLOCKS]->(s)
+			WHERE blocker.stage <> "done"
+		  }
+		RETURN s.id AS id, s.slug AS slug, labels(s)[0] AS label, s.stage AS stage
 	`
 	return s.queryNodeRefs(ctx, query, map[string]any{})
 }
@@ -192,7 +189,7 @@ func (s *Store) GetCriticalPath(ctx context.Context, slug string) ([]storage.Nod
 		WHERE NOT (b)-[:DEPENDS_ON]->()
 		WITH p ORDER BY length(p) DESC LIMIT 1
 		UNWIND nodes(p) AS n
-		RETURN n.id, n.slug, labels(n)[0], COALESCE(n.stage, n.status, "")
+		RETURN n.id AS id, n.slug AS slug, labels(n)[0] AS label, COALESCE(n.stage, n.status, "") AS stage
 	`
 	return s.queryNodeRefs(ctx, query, map[string]any{"slug": slug})
 }
@@ -205,36 +202,36 @@ func (s *Store) queryNodeRefs(ctx context.Context, query string, params map[stri
 
 	refs := make([]storage.NodeRef, 0, len(result.Records))
 	for _, rec := range result.Records {
-		id, err := recordString(rec, 0, "id")
-		if err != nil {
-			return nil, err
-		}
-		slug, err := recordString(rec, 1, "slug")
-		if err != nil {
-			return nil, err
-		}
-		label, err := recordString(rec, 2, "label")
-		if err != nil {
-			return nil, err
-		}
-		stage, err := recordString(rec, 3, "stage")
-		if err != nil {
-			return nil, err
-		}
+		// Use named access via aliases to avoid Memgraph UNION column reordering.
+		id, _ := rec.Get("id")
+		slug, _ := rec.Get("slug")
+		label, _ := rec.Get("label")
+		stage, _ := rec.Get("stage")
 		refs = append(refs, storage.NodeRef{
-			ID:    id,
-			Slug:  slug,
-			Label: label,
-			Stage: stage,
+			ID:    stringVal(id),
+			Slug:  stringVal(slug),
+			Label: stringVal(label),
+			Stage: stringVal(stage),
 		})
 	}
 	return refs, nil
+}
+
+// stringVal safely converts an any value to string, returning "" for non-strings.
+func stringVal(v any) string {
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return s
 }
 
 func relNameToEdgeType(relType string) specv1.EdgeType {
 	switch relType {
 	case "DEPENDS_ON":
 		return specv1.EdgeType_EDGE_TYPE_DEPENDS_ON
+	case "BLOCKS":
+		return specv1.EdgeType_EDGE_TYPE_BLOCKS
 	case "COMPOSES":
 		return specv1.EdgeType_EDGE_TYPE_COMPOSES
 	case "RELATES_TO":

@@ -49,7 +49,8 @@ func (s *Store) ClaimSpec(ctx context.Context, slug, agent string, leaseDuration
 		WHERE active.lease_expires >= $now
 		WITH s, active
 		WHERE active IS NULL
-		CREATE (s)-[r:CLAIMED_BY {agent: $agent, claimed_at: $claimed_at, lease_expires: $lease_expires}]->(a:Agent {name: $agent})
+		MERGE (a:Agent {name: $agent})
+		CREATE (s)-[r:CLAIMED_BY {agent: $agent, claimed_at: $claimed_at, lease_expires: $lease_expires}]->(a)
 		RETURN r.agent, r.claimed_at, r.lease_expires
 	`
 	params := map[string]any{
@@ -72,14 +73,46 @@ func (s *Store) ClaimSpec(ctx context.Context, slug, agent string, leaseDuration
 }
 
 // UnclaimSpec removes the CLAIMED_BY relationship for a specific agent.
+// Returns ErrSpecNotClaimed if no claim exists, ErrNotClaimOwner if another agent owns the claim.
 func (s *Store) UnclaimSpec(ctx context.Context, slug, agent string) error {
-	query := `
-		MATCH (s:Spec {slug: $slug})-[r:CLAIMED_BY {agent: $agent}]->(a)
-		DELETE r, a
+	// First check if any claim exists and who owns it.
+	checkQuery := `
+		MATCH (s:Spec {slug: $slug})
+		OPTIONAL MATCH (s)-[r:CLAIMED_BY]->(a)
+		RETURN r.agent AS claim_agent
 	`
-	params := map[string]any{"slug": slug, "agent": agent}
+	checkResult, err := neo4j.ExecuteQuery(ctx, s.driver, checkQuery,
+		map[string]any{"slug": slug}, neo4j.EagerResultTransformer)
+	if err != nil {
+		return fmt.Errorf("memgraph: unclaim spec check: %w", err)
+	}
 
-	_, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	if len(checkResult.Records) == 0 {
+		return fmt.Errorf("memgraph: unclaim spec %q: %w", slug, storage.ErrSpecNotClaimed)
+	}
+
+	rec := checkResult.Records[0]
+	claimAgentVal, _ := rec.Get("claim_agent")
+	if claimAgentVal == nil {
+		return fmt.Errorf("memgraph: unclaim spec %q: %w", slug, storage.ErrSpecNotClaimed)
+	}
+
+	claimAgent, ok := claimAgentVal.(string)
+	if !ok || claimAgent == "" {
+		return fmt.Errorf("memgraph: unclaim spec %q: %w", slug, storage.ErrSpecNotClaimed)
+	}
+
+	if claimAgent != agent {
+		return fmt.Errorf("memgraph: unclaim spec %q: %w", slug, storage.ErrNotClaimOwner)
+	}
+
+	// Agent matches — delete the claim relationship.
+	deleteQuery := `
+		MATCH (s:Spec {slug: $slug})-[r:CLAIMED_BY {agent: $agent}]->(a)
+		DELETE r
+	`
+	_, err = neo4j.ExecuteQuery(ctx, s.driver, deleteQuery,
+		map[string]any{"slug": slug, "agent": agent}, neo4j.EagerResultTransformer)
 	if err != nil {
 		return fmt.Errorf("memgraph: unclaim spec: %w", err)
 	}

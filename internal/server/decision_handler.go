@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -64,7 +65,13 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 
 	d, err := h.store.UpdateDecision(ctx, msg.Slug, msg.Title, msg.Status, msg.Decision, msg.Rationale, msg.SupersededBy)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+		if errors.Is(err, storage.ErrDecisionNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		if errors.Is(err, storage.ErrSupersededByRequired) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(d), nil
 }

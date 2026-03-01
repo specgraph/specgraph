@@ -13,7 +13,7 @@ import (
 type NodeRef struct {
 	ID    string
 	Slug  string
-	Label string // "Spec" or "Decision"
+	Label string // Valid values: "Spec" or "Decision"
 	Stage string
 }
 
