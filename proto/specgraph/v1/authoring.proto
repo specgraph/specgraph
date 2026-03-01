@@ -1,0 +1,254 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+syntax = "proto3";
+
+package specgraph.v1;
+
+option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
+
+import "google/protobuf/timestamp.proto";
+
+// --- Enums ---
+
+enum AuthoringStage {
+  AUTHORING_STAGE_UNSPECIFIED = 0;
+  AUTHORING_STAGE_SPARK = 1;
+  AUTHORING_STAGE_SHAPE = 2;
+  AUTHORING_STAGE_SPECIFY = 3;
+  AUTHORING_STAGE_DECOMPOSE = 4;
+  AUTHORING_STAGE_APPROVED = 5;
+}
+
+enum Posture {
+  POSTURE_UNSPECIFIED = 0;
+  POSTURE_DRIVE = 1;
+  POSTURE_PARTNER = 2;
+  POSTURE_SUPPORT = 3;
+}
+
+enum FindingSeverity {
+  FINDING_SEVERITY_UNSPECIFIED = 0;
+  FINDING_SEVERITY_CRITICAL = 1;
+  FINDING_SEVERITY_WARNING = 2;
+  FINDING_SEVERITY_NOTE = 3;
+}
+
+enum PeripheralDisposition {
+  PERIPHERAL_DISPOSITION_UNSPECIFIED = 0;
+  PERIPHERAL_DISPOSITION_ADDED_TO_SPEC = 1;
+  PERIPHERAL_DISPOSITION_SEPARATE_SPEC = 2;
+  PERIPHERAL_DISPOSITION_NOTE_FOR_IMPLEMENTER = 3;
+}
+
+enum DecompositionStrategy {
+  DECOMPOSITION_STRATEGY_UNSPECIFIED = 0;
+  DECOMPOSITION_STRATEGY_VERTICAL_SLICE = 1;
+  DECOMPOSITION_STRATEGY_LAYER_CAKE = 2;
+  DECOMPOSITION_STRATEGY_SINGLE_UNIT = 3;
+}
+
+// --- Stage Output Messages ---
+
+message SparkOutput {
+  string seed = 1;
+  string signal = 2;
+  repeated string questions = 3;
+  string scope_sniff = 4;
+  string kill_test = 5;
+}
+
+message ShapeOutput {
+  repeated string scope_in = 1;
+  repeated string scope_out = 2;
+  repeated Approach approaches = 3;
+  string chosen_approach = 4;
+  repeated string risks = 5;
+  repeated string success_must = 6;
+  repeated string success_should = 7;
+  repeated string success_wont = 8;
+  repeated string decisions = 9;
+}
+
+message Approach {
+  string name = 1;
+  string description = 2;
+  repeated string tradeoffs = 3;
+}
+
+message SpecifyOutput {
+  string interface_contract = 1;
+  repeated string verify_criteria = 2;
+  repeated string invariants = 3;
+  repeated string touches = 4;
+}
+
+message DecomposeOutput {
+  DecompositionStrategy strategy = 1;
+  repeated DecompositionSlice slices = 2;
+}
+
+message DecompositionSlice {
+  string id = 1;
+  string intent = 2;
+  repeated string verify = 3;
+  repeated string touches = 4;
+  repeated string depends_on = 5;
+}
+
+// --- Analytical Pass Messages ---
+
+message RedTeamFinding {
+  FindingSeverity severity = 1;
+  string finding = 2;
+  string resolution = 3;
+}
+
+message PeripheralVisionItem {
+  string item = 1;
+  PeripheralDisposition disposition = 2;
+}
+
+message ConsistencyIssue {
+  string type = 1;
+  string description = 2;
+  repeated string affected_specs = 3;
+}
+
+message SimplicityFinding {
+  string area = 1;
+  string suggestion = 2;
+}
+
+message ConstitutionViolation {
+  string constraint = 1;
+  string violation = 2;
+  FindingSeverity severity = 3;
+}
+
+// --- Safety Net ---
+
+message SafetyFlag {
+  string category = 1;
+  FindingSeverity severity = 2;
+  string description = 3;
+}
+
+// --- Prompt Templates ---
+
+message PromptTemplate {
+  string stage = 1;
+  string name = 2;
+  string template = 3;
+}
+
+// --- Requests / Responses ---
+
+message SparkRequest {
+  string slug = 1;
+  SparkOutput output = 2;
+  Posture posture = 3;
+}
+
+message SparkResponse {
+  SparkOutput output = 1;
+  repeated SafetyFlag safety_flags = 2;
+  repeated ConstitutionViolation constitution_violations = 3;
+  repeated PromptTemplate next_prompts = 4;
+}
+
+message ShapeRequest {
+  string slug = 1;
+  ShapeOutput output = 2;
+  Posture posture = 3;
+}
+
+message ShapeResponse {
+  ShapeOutput output = 1;
+  repeated PeripheralVisionItem peripheral_vision = 2;
+  repeated SafetyFlag safety_flags = 3;
+  repeated ConstitutionViolation constitution_violations = 4;
+  repeated PromptTemplate next_prompts = 5;
+}
+
+message SpecifyRequest {
+  string slug = 1;
+  SpecifyOutput output = 2;
+  Posture posture = 3;
+}
+
+message SpecifyResponse {
+  SpecifyOutput output = 1;
+  repeated RedTeamFinding red_team = 2;
+  repeated ConsistencyIssue consistency_issues = 3;
+  repeated SafetyFlag safety_flags = 4;
+  repeated ConstitutionViolation constitution_violations = 5;
+  repeated PromptTemplate next_prompts = 6;
+}
+
+message DecomposeRequest {
+  string slug = 1;
+  DecomposeOutput output = 2;
+  Posture posture = 3;
+}
+
+message DecomposeResponse {
+  DecomposeOutput output = 1;
+  repeated SimplicityFinding simplicity = 2;
+  repeated SafetyFlag safety_flags = 3;
+  repeated ConstitutionViolation constitution_violations = 4;
+}
+
+message ApproveRequest {
+  string slug = 1;
+}
+
+message ApproveResponse {
+  string slug = 1;
+  string stage = 2;
+  google.protobuf.Timestamp approved_at = 3;
+}
+
+message AmendRequest {
+  string slug = 1;
+  string reason = 2;
+  string target_stage = 3;
+}
+
+message AmendResponse {
+  string slug = 1;
+  string stage = 2;
+  int32 version = 3;
+}
+
+message SupersedeRequest {
+  string slug = 1;
+  string superseded_by = 2;
+  string reason = 3;
+}
+
+message SupersedeResponse {
+  string slug = 1;
+  string superseded_by = 2;
+}
+
+message GetPromptsRequest {
+  string stage = 1;
+}
+
+message GetPromptsResponse {
+  repeated PromptTemplate prompts = 1;
+}
+
+// --- Service ---
+
+service AuthoringService {
+  rpc Spark(SparkRequest) returns (SparkResponse);
+  rpc Shape(ShapeRequest) returns (ShapeResponse);
+  rpc Specify(SpecifyRequest) returns (SpecifyResponse);
+  rpc Decompose(DecomposeRequest) returns (DecomposeResponse);
+  rpc Approve(ApproveRequest) returns (ApproveResponse);
+  rpc Amend(AmendRequest) returns (AmendResponse);
+  rpc Supersede(SupersedeRequest) returns (SupersedeResponse);
+  rpc GetPrompts(GetPromptsRequest) returns (GetPromptsResponse);
+}
