@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+syntax = "proto3";
+
+package specgraph.v1;
+
+option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+// --- Messages ---
+
+message Claim {
+  string spec_slug = 1;
+  string agent = 2;
+  google.protobuf.Timestamp claimed_at = 3;
+  google.protobuf.Timestamp lease_expires = 4;
+}
+
+message ClaimSpecRequest {
+  string slug = 1;
+  string agent = 2;                         // identifier of the claiming agent
+  google.protobuf.Duration lease_duration = 3;  // how long the lease lasts (default 15m)
+}
+
+message UnclaimSpecRequest {
+  string slug = 1;
+  string agent = 2;
+}
+
+message UnclaimSpecResponse {}
+
+message HeartbeatRequest {
+  string slug = 1;
+  string agent = 2;
+  google.protobuf.Duration extend_by = 3;   // extend lease by this duration (default 15m)
+}
+
+// --- Service ---
+
+service ClaimService {
+  rpc ClaimSpec(ClaimSpecRequest) returns (Claim);
+  rpc UnclaimSpec(UnclaimSpecRequest) returns (UnclaimSpecResponse);
+  rpc Heartbeat(HeartbeatRequest) returns (Claim);
+}
