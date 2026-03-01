@@ -134,3 +134,57 @@ func TestConstitutionHandler_CheckViolation(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
+
+func TestConstitutionHandler_UpdateNilBody(t *testing.T) {
+	client := setupConstitutionServer(t)
+	ctx := context.Background()
+
+	_, err := client.UpdateConstitution(ctx, connect.NewRequest(&specv1.UpdateConstitutionRequest{
+		Constitution: nil,
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestConstitutionHandler_EmitNotFound(t *testing.T) {
+	client := setupConstitutionServer(t)
+	ctx := context.Background()
+
+	_, err := client.EmitToolFiles(ctx, connect.NewRequest(&specv1.EmitToolFilesRequest{
+		Format: "claude-md",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+}
+
+func TestConstitutionHandler_EmitUnsupportedFormat(t *testing.T) {
+	client := setupConstitutionServer(t)
+	ctx := context.Background()
+
+	// First store a constitution
+	_, err := client.UpdateConstitution(ctx, connect.NewRequest(&specv1.UpdateConstitutionRequest{
+		Constitution: &specv1.Constitution{
+			Name:  "test",
+			Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
+		},
+	}))
+	require.NoError(t, err)
+
+	// Try to emit with unsupported format
+	_, err = client.EmitToolFiles(ctx, connect.NewRequest(&specv1.EmitToolFilesRequest{
+		Format: "unknown-format",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestConstitutionHandler_EmitEmptyFormat(t *testing.T) {
+	client := setupConstitutionServer(t)
+	ctx := context.Background()
+
+	_, err := client.EmitToolFiles(ctx, connect.NewRequest(&specv1.EmitToolFilesRequest{
+		Format: "",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}

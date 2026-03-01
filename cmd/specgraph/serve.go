@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -22,7 +21,6 @@ import (
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 var serveCmd = &cobra.Command{
@@ -75,9 +73,9 @@ func runServe(_ *cobra.Command, _ []string) error {
 			}
 		}()
 
-		constitutionPath := filepath.Join(filepath.Dir(cfgFile), "constitution.yaml")
+		constitutionPath := cfg.Storage.ConstitutionPath
 		if err := bootstrapConstitution(ctx, store, constitutionPath); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: constitution bootstrap: %v\n", err)
+			return fmt.Errorf("constitution bootstrap: %w", err)
 		}
 
 		mux := server.NewMux(store)
@@ -112,23 +110,10 @@ func runServe(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-type constitutionYAML struct {
-	Name  string `yaml:"name"`
-	Layer string `yaml:"layer"`
-	Tech  struct {
-		Languages struct {
-			Primary   string   `yaml:"primary"`
-			Allowed   []string `yaml:"allowed"`
-			Forbidden []string `yaml:"forbidden"`
-		} `yaml:"languages"`
-		Frameworks     map[string]string `yaml:"frameworks"`
-		Infrastructure map[string]string `yaml:"infrastructure"`
-	} `yaml:"tech"`
-	Principles  []string `yaml:"principles"`
-	Constraints []string `yaml:"constraints"`
-}
+const maxConstitutionSize = 1 << 20 // 1 MiB
 
 func bootstrapConstitution(ctx context.Context, store *memgraph.Store, yamlPath string) error {
+	// Check if constitution already exists in storage.
 	_, err := store.GetConstitution(ctx)
 	if err == nil {
 		return nil // already exists
@@ -137,32 +122,68 @@ func bootstrapConstitution(ctx context.Context, store *memgraph.Store, yamlPath 
 		return fmt.Errorf("check existing constitution: %w", err)
 	}
 
-	data, err := os.ReadFile(yamlPath)
+	// Check file exists and size.
+	info, err := os.Stat(yamlPath)
 	if err != nil {
-		return nil //nolint:nilerr // no YAML file is expected and acceptable
+		if os.IsNotExist(err) {
+			return nil // missing constitution.yaml is intentional: server starts without one; callers use UpdateConstitution RPC
+		}
+		return fmt.Errorf("stat constitution YAML %s: %w", yamlPath, err)
+	}
+	if info.Size() > maxConstitutionSize {
+		return fmt.Errorf("constitution YAML %s exceeds 1 MiB size limit", yamlPath)
 	}
 
-	var cy constitutionYAML
-	if err := yaml.Unmarshal(data, &cy); err != nil {
-		return fmt.Errorf("parse constitution YAML: %w", err)
+	cy, err := config.LoadConstitutionYAML(yamlPath)
+	if err != nil {
+		return fmt.Errorf("load constitution YAML: %w", err)
 	}
 
+	// Map layer string to enum. LoadConstitutionYAML validates the layer, so
+	// the !ok case only occurs for empty string (correctly maps to UNSPECIFIED).
 	layerKey := "CONSTITUTION_LAYER_" + strings.ToUpper(cy.Layer)
 	layerVal, ok := specv1.ConstitutionLayer_value[layerKey]
 	if !ok {
 		layerVal = int32(specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED)
 	}
 
+	// Map structured principles to proto.
 	principles := make([]*specv1.Principle, 0, len(cy.Principles))
 	for _, p := range cy.Principles {
-		principles = append(principles, &specv1.Principle{Principle: p})
+		principles = append(principles, &specv1.Principle{
+			Id:         p.ID,
+			Principle:  p.Statement,
+			Rationale:  p.Rationale,
+			Exceptions: p.Exceptions,
+		})
+	}
+
+	// Map antipatterns to proto.
+	antipatterns := make([]*specv1.Antipattern, 0, len(cy.Antipatterns))
+	for _, a := range cy.Antipatterns {
+		antipatterns = append(antipatterns, &specv1.Antipattern{
+			Pattern: a.Pattern,
+			Why:     a.Why,
+			Instead: a.Instead,
+		})
+	}
+
+	// Map references to proto.
+	references := make([]*specv1.Reference, 0, len(cy.References))
+	for _, r := range cy.References {
+		references = append(references, &specv1.Reference{
+			Type: r.Type,
+			Path: r.Path,
+		})
 	}
 
 	constitution := &specv1.Constitution{
-		Name:        cy.Name,
-		Layer:       specv1.ConstitutionLayer(layerVal),
-		Principles:  principles,
-		Constraints: cy.Constraints,
+		Name:         cy.Name,
+		Layer:        specv1.ConstitutionLayer(layerVal),
+		Principles:   principles,
+		Constraints:  cy.Constraints,
+		Antipatterns: antipatterns,
+		References:   references,
 		Tech: &specv1.TechConfig{
 			Languages: &specv1.LanguageConfig{
 				Primary:   cy.Tech.Languages.Primary,
