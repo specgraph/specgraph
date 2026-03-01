@@ -6,6 +6,8 @@ package scanner //nolint:revive // package-comments: "scanner" is clearer than a
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -73,7 +75,7 @@ func detectLanguage(dir string, c *specv1.Constitution) {
 
 func detectFrameworks(dir string, c *specv1.Constitution) {
 	// Go frameworks
-	if gomod := readFile(filepath.Join(dir, "go.mod")); gomod != "" {
+	if gomod, err := readFile(filepath.Join(dir, "go.mod")); err == nil {
 		if strings.Contains(gomod, "connectrpc.com/connect") {
 			c.Tech.Frameworks["api"] = "ConnectRPC"
 		}
@@ -89,10 +91,12 @@ func detectFrameworks(dir string, c *specv1.Constitution) {
 		if strings.Contains(gomod, "github.com/stretchr/testify") {
 			c.Tech.Frameworks["testing"] = "testify"
 		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		fmt.Fprintf(os.Stderr, "warning: scanner: %v\n", err)
 	}
 
 	// Node frameworks
-	if pkgJSON := readFile(filepath.Join(dir, "package.json")); pkgJSON != "" && len(pkgJSON) <= maxFileSize {
+	if pkgJSON, err := readFile(filepath.Join(dir, "package.json")); err == nil {
 		var pkg map[string]any
 		if err := json.Unmarshal([]byte(pkgJSON), &pkg); err == nil {
 			deps := mergeDeps(pkg)
@@ -111,6 +115,8 @@ func detectFrameworks(dir string, c *specv1.Constitution) {
 		}
 		// If unmarshal fails, skip framework detection for this file silently.
 		// TODO(scanner): surface parse warnings when Scan gains a warning accumulator.
+	} else if !errors.Is(err, os.ErrNotExist) {
+		fmt.Fprintf(os.Stderr, "warning: scanner: %v\n", err)
 	}
 }
 
@@ -142,7 +148,13 @@ func detectInfrastructure(dir string, c *specv1.Constitution) {
 		if !strings.HasSuffix(path, ".yaml") && !strings.HasSuffix(path, ".yml") {
 			return nil
 		}
-		content := readFile(path)
+		content, err := readFile(path)
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				fmt.Fprintf(os.Stderr, "warning: scanner: %v\n", err)
+			}
+			return nil //nolint:nilerr // skip unreadable files gracefully
+		}
 		if strings.Contains(content, "apiVersion:") && strings.Contains(content, "kind:") {
 			c.Tech.Infrastructure["runtime"] = "Kubernetes"
 			return filepath.SkipAll
@@ -176,16 +188,25 @@ func dirExists(path string) bool {
 	return err == nil && info.IsDir()
 }
 
-func readFile(path string) string {
+func readFile(path string) (string, error) {
 	info, err := os.Stat(path)
-	if err != nil || info.IsDir() || info.Size() > maxFileSize {
-		return ""
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", fmt.Errorf("readFile %s: %w", path, os.ErrNotExist)
+		}
+		return "", fmt.Errorf("readFile %s: %w", path, err)
+	}
+	if info.IsDir() {
+		return "", fmt.Errorf("readFile %s: %w", path, os.ErrNotExist)
+	}
+	if info.Size() > maxFileSize {
+		return "", fmt.Errorf("readFile %s: file exceeds size limit (%d bytes)", path, maxFileSize)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("readFile %s: %w", path, err)
 	}
-	return string(data)
+	return string(data), nil
 }
 
 func mergeDeps(pkg map[string]any) map[string]any {

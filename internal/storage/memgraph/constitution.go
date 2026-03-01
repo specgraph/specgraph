@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -122,10 +123,11 @@ func (s *Store) UpdateConstitution(ctx context.Context, constitution *specv1.Con
 }
 
 // CheckViolation checks a spec against constitution constraints.
-// TODO(slice-violations): implement constraint checking; returns empty until then.
+// CheckViolation checks a spec against constitution constraints.
+// It checks the spec's intent and slug against forbidden languages declared in the constitution.
 func (s *Store) CheckViolation(ctx context.Context, specSlug string) ([]*specv1.Violation, error) {
 	// Verify the spec exists.
-	_, err := s.GetSpec(ctx, specSlug)
+	spec, err := s.GetSpec(ctx, specSlug)
 	if err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, fmt.Errorf("memgraph: check violation spec %q: %w", specSlug, storage.ErrSpecNotFound)
@@ -134,7 +136,7 @@ func (s *Store) CheckViolation(ctx context.Context, specSlug string) ([]*specv1.
 	}
 
 	// Verify a constitution exists.
-	_, err = s.GetConstitution(ctx)
+	constitution, err := s.GetConstitution(ctx)
 	if err != nil {
 		if errors.Is(err, storage.ErrConstitutionNotFound) {
 			return nil, fmt.Errorf("memgraph: check violation: %w", storage.ErrConstitutionNotFound)
@@ -142,7 +144,34 @@ func (s *Store) CheckViolation(ctx context.Context, specSlug string) ([]*specv1.
 		return nil, fmt.Errorf("memgraph: check violation: %w", err)
 	}
 
-	return []*specv1.Violation{}, nil
+	var violations []*specv1.Violation
+
+	// Check forbidden languages: scan spec intent and slug for mentions of forbidden language names.
+	if constitution.Tech != nil && constitution.Tech.Languages != nil {
+		langs := constitution.Tech.Languages
+		specText := strings.ToLower(spec.Slug + " " + spec.Intent)
+		for _, forbidden := range langs.Forbidden {
+			if forbidden == "" {
+				continue
+			}
+			if strings.Contains(specText, strings.ToLower(forbidden)) {
+				msg := fmt.Sprintf("spec %q references forbidden language %q", spec.Slug, forbidden)
+				if langs.ForbiddenReasons != nil {
+					if reason, ok := langs.ForbiddenReasons[forbidden]; ok && reason != "" {
+						msg = fmt.Sprintf("%s: %s", msg, reason)
+					}
+				}
+				violations = append(violations, &specv1.Violation{
+					Rule:     "forbidden-language",
+					Severity: specv1.ViolationSeverity_VIOLATION_SEVERITY_ERROR,
+					Message:  msg,
+					SpecSlug: spec.Slug,
+				})
+			}
+		}
+	}
+
+	return violations, nil
 }
 
 // marshalJSON marshals v to a JSON string. Returns "{}" for nil values.

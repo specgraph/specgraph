@@ -147,8 +147,9 @@ func runConstitutionEmit(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("get working directory: %w", err)
 		}
-		if !strings.HasPrefix(absPath, cwd) {
-			fmt.Fprintf(os.Stderr, "warning: output path %s is outside the current directory\n", absPath)
+		rel, err := filepath.Rel(cwd, absPath)
+		if err != nil || strings.HasPrefix(rel, "..") {
+			return fmt.Errorf("output path %q is outside current directory %q", emitOutput, cwd)
 		}
 		if err := os.WriteFile(absPath, []byte(content), 0o600); err != nil {
 			return fmt.Errorf("write output file: %w", err)
