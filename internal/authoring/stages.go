@@ -17,15 +17,6 @@ const (
 // stages defines the ordered authoring funnel stages.
 var stages = []string{StageSpark, StageShape, StageSpecify, StageDecompose, StageApproved}
 
-// forwardTransitions maps each stage to its next valid forward stage.
-var forwardTransitions = map[string]string{
-	"":             StageSpark,
-	StageSpark:     StageShape,
-	StageShape:     StageSpecify,
-	StageSpecify:   StageDecompose,
-	StageDecompose: StageApproved,
-}
-
 // AllStages returns a copy of the ordered stage list.
 func AllStages() []string {
 	out := make([]string, len(stages))
@@ -42,15 +33,10 @@ func ValidateTransition(from, to string) error {
 		return fmt.Errorf("transition from %q to %q is a no-op", from, to)
 	}
 
-	// Check forward transition: must be the immediate next stage.
-	if next, ok := forwardTransitions[from]; ok && next == to {
-		return nil
-	}
-
-	// Validate both stages are known before checking backward transitions.
 	fromIdx := indexOf(from)
 	toIdx := indexOf(to)
 
+	// Validate both stages are known.
 	var unknowns []string
 	if fromIdx < 0 && from != "" {
 		unknowns = append(unknowns, from)
@@ -62,7 +48,15 @@ func ValidateTransition(from, to string) error {
 		return fmt.Errorf("unknown stage(s): %v", unknowns)
 	}
 
-	// Check backward (amend) transition: to must be at a lower index than from.
+	// Forward: initial ("" -> first stage) or next stage in sequence.
+	if from == "" && toIdx == 0 {
+		return nil
+	}
+	if fromIdx >= 0 && toIdx == fromIdx+1 {
+		return nil
+	}
+
+	// Backward (amend): to must be at a lower index than from.
 	if fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx {
 		return nil
 	}

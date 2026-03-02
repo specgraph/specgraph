@@ -110,7 +110,7 @@ message PeripheralVisionItem {
 }
 
 message ConsistencyIssue {
-  string type = 1;
+  string issue_kind = 1;
   string description = 2;
   repeated string affected_specs = 3;
 }

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -69,7 +70,13 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 		// TODO: Add transaction support to make this atomic.
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store shape output (spec %q transitioned but output not stored): %w", msg.Slug, err))
 	}
-	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{Scope: msg.Output.GetScopeIn()})
+	scope := make([]string, 0, len(msg.Output.GetScopeIn())+len(msg.Output.GetScopeOut()))
+	scope = append(scope, msg.Output.GetScopeIn()...)
+	scope = append(scope, msg.Output.GetScopeOut()...)
+	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
+		Intent: strings.Join(msg.Output.GetRisks(), " "),
+		Scope:  scope,
+	})
 	return connect.NewResponse(&specv1.ShapeResponse{
 		Output:      msg.Output,
 		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
