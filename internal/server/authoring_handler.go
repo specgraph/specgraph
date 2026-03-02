@@ -58,6 +58,9 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 // Shape handles the Shape RPC, transitioning from spark to shape stage.
 func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv1.ShapeRequest]) (*connect.Response[specv1.ShapeResponse], error) {
 	msg := req.Msg
+	if msg.Slug == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
+	}
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
@@ -87,6 +90,9 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 // Specify handles the Specify RPC, transitioning from shape to specify stage.
 func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[specv1.SpecifyRequest]) (*connect.Response[specv1.SpecifyResponse], error) {
 	msg := req.Msg
+	if msg.Slug == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
+	}
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
@@ -113,6 +119,9 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 // Decompose handles the Decompose RPC, transitioning from specify to decompose stage.
 func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[specv1.DecomposeRequest]) (*connect.Response[specv1.DecomposeResponse], error) {
 	msg := req.Msg
+	if msg.Slug == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
+	}
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
@@ -130,6 +139,9 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 
 // Approve handles the Approve RPC, transitioning from decompose to approved stage.
 func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[specv1.ApproveRequest]) (*connect.Response[specv1.ApproveResponse], error) {
+	if req.Msg.Slug == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
+	}
 	if err := h.store.TransitionStage(ctx, req.Msg.Slug, authoring.StageDecompose, authoring.StageApproved); err != nil {
 		return nil, h.stageError(err)
 	}
@@ -142,6 +154,9 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 
 // Amend handles the Amend RPC, rolling a spec back to an earlier stage.
 func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv1.AmendRequest]) (*connect.Response[specv1.AmendResponse], error) {
+	if req.Msg.Slug == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
+	}
 	spec, err := h.store.AmendSpec(ctx, req.Msg.Slug, req.Msg.Reason, req.Msg.TargetStage)
 	if err != nil {
 		return nil, h.stageError(err)
@@ -155,6 +170,9 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 
 // Supersede handles the Supersede RPC, marking a spec as replaced by another.
 func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[specv1.SupersedeRequest]) (*connect.Response[specv1.SupersedeResponse], error) {
+	if req.Msg.Slug == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
+	}
 	if err := h.store.SupersedeSpec(ctx, req.Msg.Slug, req.Msg.SupersededBy, req.Msg.Reason); err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)

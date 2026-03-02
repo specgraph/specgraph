@@ -205,19 +205,19 @@ message ApproveRequest {
 
 message ApproveResponse {
   string slug = 1;
-  string stage = 2;
+  AuthoringStage stage = 2;
   google.protobuf.Timestamp approved_at = 3;
 }
 
 message AmendRequest {
   string slug = 1;
   string reason = 2;
-  string target_stage = 3;
+  AuthoringStage target_stage = 3;
 }
 
 message AmendResponse {
   string slug = 1;
-  string stage = 2;
+  AuthoringStage stage = 2;
   int32 version = 3;
 }
 
