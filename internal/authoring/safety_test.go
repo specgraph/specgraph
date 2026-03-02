@@ -45,6 +45,54 @@ func TestSafetyNet_DataLossFlags(t *testing.T) {
 	require.True(t, found, "expected a data_loss flag")
 }
 
+func TestSafetyNet_ScopeFlags(t *testing.T) {
+	input := &authoring.SafetyInput{
+		Intent: "Add a new endpoint",
+		Scope:  []string{"skip validation on user input"},
+	}
+	flags := authoring.RunSafetyNet(input)
+	require.NotEmpty(t, flags)
+	require.Equal(t, authoring.SafetyCategorySecurity, flags[0].Category)
+}
+
+func TestSafetyNet_InvariantsFlags(t *testing.T) {
+	input := &authoring.SafetyInput{
+		Intent:     "Update schema",
+		Invariants: []string{"Must allow truncate of stale data"},
+	}
+	flags := authoring.RunSafetyNet(input)
+	require.NotEmpty(t, flags)
+	require.Equal(t, authoring.SafetyCategoryDataLoss, flags[0].Category)
+}
+
+func TestSafetyResultsToProto(t *testing.T) {
+	t.Run("converts domain flags to proto", func(t *testing.T) {
+		flags := []authoring.SafetyFlagResult{
+			{
+				Category:    authoring.SafetyCategorySecurity,
+				Severity:    specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
+				Description: "test security flag",
+			},
+			{
+				Category:    authoring.SafetyCategoryDataLoss,
+				Severity:    specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
+				Description: "test data loss flag",
+			},
+		}
+		protos := authoring.SafetyResultsToProto(flags)
+		require.Len(t, protos, 2)
+		require.Equal(t, "security", protos[0].Category)
+		require.Equal(t, specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL, protos[0].Severity)
+		require.Equal(t, "test security flag", protos[0].Description)
+		require.Equal(t, "data_loss", protos[1].Category)
+	})
+
+	t.Run("empty input returns empty output", func(t *testing.T) {
+		protos := authoring.SafetyResultsToProto(nil)
+		require.Empty(t, protos)
+	})
+}
+
 func TestSafetyNet_Clean(t *testing.T) {
 	input := &authoring.SafetyInput{
 		Intent: "Add a new read-only API endpoint for listing users",

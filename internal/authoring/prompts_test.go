@@ -10,6 +10,44 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPromptsToProto(t *testing.T) {
+	t.Run("spark stage produces correct proto templates", func(t *testing.T) {
+		protos := authoring.PromptsToProto("spark")
+		require.NotEmpty(t, protos)
+		for _, p := range protos {
+			require.Equal(t, "spark", p.Stage)
+			require.NotEmpty(t, p.Name)
+			require.NotEmpty(t, p.Template)
+		}
+		// Verify specific prompt names match GetPrompts.
+		prompts := authoring.GetPrompts("spark")
+		require.Len(t, protos, len(prompts))
+		for i, p := range protos {
+			require.Equal(t, prompts[i].Name, p.Name)
+			require.Equal(t, prompts[i].Template, p.Template)
+		}
+	})
+
+	t.Run("all stages produce non-nil proto", func(t *testing.T) {
+		for _, stage := range authoring.AllStages() {
+			if stage == "approved" {
+				// approved has no prompts
+				continue
+			}
+			protos := authoring.PromptsToProto(stage)
+			require.NotNilf(t, protos, "stage %q should have protos", stage)
+			for _, p := range protos {
+				require.Equal(t, stage, p.Stage)
+			}
+		}
+	})
+
+	t.Run("unknown stage returns nil", func(t *testing.T) {
+		protos := authoring.PromptsToProto("nonexistent")
+		require.Nil(t, protos)
+	})
+}
+
 func TestGetPrompts(t *testing.T) {
 	t.Run("spark prompts exist with expected names", func(t *testing.T) {
 		prompts := authoring.GetPrompts("spark")

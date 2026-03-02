@@ -49,6 +49,40 @@ func TestValidTransitions(t *testing.T) {
 	}
 }
 
+func TestValidateTransition_UnknownStages(t *testing.T) {
+	t.Run("unknown from-stage", func(t *testing.T) {
+		err := authoring.ValidateTransition("nonexistent", "shape")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unknown stage")
+		require.Contains(t, err.Error(), "nonexistent")
+	})
+
+	t.Run("unknown to-stage", func(t *testing.T) {
+		err := authoring.ValidateTransition("spark", "nonexistent")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unknown stage")
+		require.Contains(t, err.Error(), "nonexistent")
+	})
+
+	t.Run("both stages unknown", func(t *testing.T) {
+		err := authoring.ValidateTransition("foo", "bar")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unknown stage")
+		require.Contains(t, err.Error(), "foo")
+		require.Contains(t, err.Error(), "bar")
+	})
+
+	t.Run("empty from with valid to (initial transition)", func(t *testing.T) {
+		err := authoring.ValidateTransition("", "spark")
+		require.NoError(t, err)
+	})
+
+	t.Run("empty from with non-first stage is invalid", func(t *testing.T) {
+		err := authoring.ValidateTransition("", "shape")
+		require.Error(t, err)
+	})
+}
+
 func TestAllStages(t *testing.T) {
 	got := authoring.AllStages()
 	expected := []string{"spark", "shape", "specify", "decompose", "approved"}

@@ -54,6 +54,50 @@ func TestDetectPosture(t *testing.T) {
 	}
 }
 
+func TestDetectPosture_Boundaries(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		messages []string
+		want     specv1.Posture
+	}{
+		{
+			name:     "avg exactly 19 (below driveThreshold) -> Drive",
+			messages: []string{strings.Repeat("x", 19)},
+			want:     specv1.Posture_POSTURE_DRIVE,
+		},
+		{
+			name:     "avg exactly 20 (at driveThreshold) -> Partner",
+			messages: []string{strings.Repeat("x", 20)},
+			want:     specv1.Posture_POSTURE_PARTNER,
+		},
+		{
+			name:     "avg exactly 21 (above driveThreshold) -> Partner",
+			messages: []string{strings.Repeat("x", 21)},
+			want:     specv1.Posture_POSTURE_PARTNER,
+		},
+		{
+			name:     "avg exactly 100 (at supportThreshold) -> Partner",
+			messages: []string{strings.Repeat("x", 100)},
+			want:     specv1.Posture_POSTURE_PARTNER,
+		},
+		{
+			name:     "avg exactly 101 (above supportThreshold) -> Support",
+			messages: []string{strings.Repeat("x", 101)},
+			want:     specv1.Posture_POSTURE_SUPPORT,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := authoring.DetectPosture(tt.messages)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestResolvePosture(t *testing.T) {
 	t.Parallel()
 
