@@ -53,7 +53,18 @@ func (s *Store) TransitionStage(ctx context.Context, slug, from, to string) erro
 		return fmt.Errorf("memgraph: transition stage: %w", err)
 	}
 	if len(result.Records) == 0 {
-		return fmt.Errorf("memgraph: transition stage %q: %w", slug, storage.ErrSpecNotFound)
+		// Distinguish between "spec not found" and "spec at wrong stage".
+		checkQuery := `MATCH (s:Spec {slug: $slug}) RETURN s.stage AS stage`
+		checkResult, checkErr := neo4j.ExecuteQuery(ctx, s.driver, checkQuery,
+			map[string]any{"slug": slug}, neo4j.EagerResultTransformer)
+		if checkErr != nil {
+			return fmt.Errorf("memgraph: check spec stage: %w", checkErr)
+		}
+		if len(checkResult.Records) == 0 {
+			return fmt.Errorf("memgraph: transition stage %q: %w", slug, storage.ErrSpecNotFound)
+		}
+		actualStage, _ := checkResult.Records[0].Get("stage")
+		return fmt.Errorf("memgraph: spec %q at stage %v, expected %q: %w", slug, actualStage, from, storage.ErrInvalidStageTransition)
 	}
 	return nil
 }
@@ -192,10 +203,18 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason, targetStage string)
 }
 
 // storeJSONProperty marshals data to JSON and stores it as a string property on the spec node.
-// The property name must be in the allowedJSONProperties allowlist.
+// The property name is interpolated into the Cypher query via fmt.Sprintf because Memgraph
+// does not support parameterized property names. The allowlist and character validation provide
+// defense-in-depth against Cypher injection.
 func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, data any) error {
 	if !slices.Contains(allowedJSONProperties, property) {
 		return fmt.Errorf("memgraph: disallowed property name %q", property)
+	}
+	// Defense-in-depth: validate property name contains only safe characters.
+	for _, r := range property {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') && r != '_' {
+			return fmt.Errorf("memgraph: unsafe property name character in %q", property)
+		}
 	}
 	jsonStr, err := marshalJSON(data)
 	if err != nil {

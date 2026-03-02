@@ -30,15 +30,16 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	if msg.Slug == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
 	}
+	if msg.Output == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
+	}
 	// CreateSpec already sets stage to "spark", so no TransitionStage call needed.
 	_, err := h.backend.CreateSpec(ctx, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if msg.Output != nil {
-		if err := h.store.StoreSparkOutput(ctx, msg.Slug, msg.Output); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
+	if err := h.store.StoreSparkOutput(ctx, msg.Slug, msg.Output); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{Intent: msg.Output.GetSeed()})
 	return connect.NewResponse(&specv1.SparkResponse{
