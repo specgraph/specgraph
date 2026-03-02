@@ -6,9 +6,7 @@ package scanner
 import (
 	"fmt"
 	"go/ast"
-	"go/parser"
 	"go/token"
-	"io/fs"
 	"path/filepath"
 	"strings"
 )
@@ -46,38 +44,17 @@ func ScanTier2(root string, dirs []string) (*Tier2Result, error) {
 
 	for _, dir := range dirs {
 		absDir := filepath.Join(root, dir)
-		err := filepath.WalkDir(absDir, func(path string, d fs.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return nil //nolint:nilerr // skip unreadable entries
-			}
-			if d.IsDir() {
-				if skipDir(d.Name()) {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			if !strings.HasSuffix(path, ".go") {
-				return nil
-			}
-
+		skipped, err := walkGoFiles(absDir, false, fset, func(path, _ string, f *ast.File) error {
+			// Compute path relative to root (not absDir) for consistent output.
 			relPath, relErr := filepath.Rel(root, path)
 			if relErr != nil {
 				return fmt.Errorf("scanner: relative path for %s: %w", path, relErr)
 			}
 
-			// Track test files separately.
+			// Track test files separately rather than processing them.
 			if strings.HasSuffix(path, "_test.go") {
 				result.TestFiles = append(result.TestFiles, relPath)
 				return nil
-			}
-
-			f, parseErr := parser.ParseFile(fset, path, nil, 0)
-			if parseErr != nil {
-				result.SkippedFiles = append(result.SkippedFiles, SkippedFile{
-					Path:   path,
-					Reason: parseErr.Error(),
-				})
-				return nil //nolint:nilerr // error recorded in SkippedFiles
 			}
 
 			pkgName := f.Name.Name
@@ -87,7 +64,6 @@ func ScanTier2(root string, dirs []string) (*Tier2Result, error) {
 				impPath := strings.Trim(imp.Path.Value, `"`)
 				if !seenImports[impPath] {
 					seenImports[impPath] = true
-					// Derive package name from the last segment of the import path.
 					segments := strings.Split(impPath, "/")
 					result.Imports = append(result.Imports, ImportInfo{
 						Package: segments[len(segments)-1],
@@ -127,6 +103,7 @@ func ScanTier2(root string, dirs []string) (*Tier2Result, error) {
 		if err != nil {
 			return nil, fmt.Errorf("scanner: tier2 walk %s: %w", dir, err)
 		}
+		result.SkippedFiles = append(result.SkippedFiles, skipped...)
 	}
 	return result, nil
 }

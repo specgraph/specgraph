@@ -6,11 +6,8 @@ package scanner
 import (
 	"fmt"
 	"go/ast"
-	"go/parser"
 	"go/token"
-	"io/fs"
 	"path/filepath"
-	"strings"
 )
 
 // PackageInfo describes a discovered Go package.
@@ -54,33 +51,7 @@ func ScanTier1(root string) (*Tier1Result, error) {
 	seenPkgs := map[string]bool{}
 	fset := token.NewFileSet()
 
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil //nolint:nilerr // skip unreadable entries
-		}
-		if d.IsDir() {
-			if skipDir(d.Name()) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(path, ".go") {
-			return nil
-		}
-		// Skip test files.
-		if strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-
-		f, parseErr := parser.ParseFile(fset, path, nil, 0)
-		if parseErr != nil {
-			result.SkippedFiles = append(result.SkippedFiles, SkippedFile{
-				Path:   path,
-				Reason: parseErr.Error(),
-			})
-			return nil //nolint:nilerr // error recorded in SkippedFiles
-		}
-
+	skipped, err := walkGoFiles(root, true, fset, func(path, _ string, f *ast.File) error {
 		pkgName := f.Name.Name
 		relDir, relErr := filepath.Rel(root, filepath.Dir(path))
 		if relErr != nil {
@@ -140,5 +111,6 @@ func ScanTier1(root string) (*Tier1Result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("scanner: tier1 walk: %w", err)
 	}
+	result.SkippedFiles = skipped
 	return result, nil
 }

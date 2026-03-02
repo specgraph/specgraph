@@ -147,7 +147,7 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	}
 	return connect.NewResponse(&specv1.ApproveResponse{
 		Slug:       req.Msg.Slug,
-		Stage:      authoring.StageApproved,
+		Stage:      stageToProto[authoring.StageApproved],
 		ApprovedAt: timestamppb.Now(),
 	}), nil
 }
@@ -157,13 +157,13 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if req.Msg.Slug == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
 	}
-	spec, err := h.store.AmendSpec(ctx, req.Msg.Slug, req.Msg.Reason, req.Msg.TargetStage)
+	spec, err := h.store.AmendSpec(ctx, req.Msg.Slug, req.Msg.Reason, protoToStage[req.Msg.TargetStage])
 	if err != nil {
 		return nil, h.stageError(err)
 	}
 	return connect.NewResponse(&specv1.AmendResponse{
 		Slug:    spec.Slug,
-		Stage:   spec.Stage,
+		Stage:   stageToProto[spec.Stage],
 		Version: spec.Version,
 	}), nil
 }
@@ -187,8 +187,19 @@ func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[s
 
 // GetPrompts handles the GetPrompts RPC, returning prompt templates for a stage.
 func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[specv1.GetPromptsRequest]) (*connect.Response[specv1.GetPromptsResponse], error) {
+	stage := req.Msg.Stage
+	valid := false
+	for _, s := range authoring.AllStages() {
+		if s == stage {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown stage %q", stage))
+	}
 	return connect.NewResponse(&specv1.GetPromptsResponse{
-		Prompts: authoring.PromptsToProto(req.Msg.Stage),
+		Prompts: authoring.PromptsToProto(stage),
 	}), nil
 }
 
@@ -197,6 +208,24 @@ func RegisterAuthoringService(mux *http.ServeMux, authoringStore storage.Authori
 	handler := &AuthoringHandler{store: authoringStore, backend: backend}
 	path, h := specgraphv1connect.NewAuthoringServiceHandler(handler)
 	mux.Handle(path, h)
+}
+
+// stageToProto converts a domain stage string to the proto AuthoringStage enum.
+var stageToProto = map[string]specv1.AuthoringStage{
+	authoring.StageSpark:     specv1.AuthoringStage_AUTHORING_STAGE_SPARK,
+	authoring.StageShape:     specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
+	authoring.StageSpecify:   specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY,
+	authoring.StageDecompose: specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE,
+	authoring.StageApproved:  specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
+}
+
+// protoToStage converts a proto AuthoringStage enum to a domain stage string.
+var protoToStage = map[specv1.AuthoringStage]string{
+	specv1.AuthoringStage_AUTHORING_STAGE_SPARK:     authoring.StageSpark,
+	specv1.AuthoringStage_AUTHORING_STAGE_SHAPE:     authoring.StageShape,
+	specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY:   authoring.StageSpecify,
+	specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE: authoring.StageDecompose,
+	specv1.AuthoringStage_AUTHORING_STAGE_APPROVED:  authoring.StageApproved,
 }
 
 func (h *AuthoringHandler) stageError(err error) error {
