@@ -33,11 +33,18 @@ type StructInfo struct {
 	Fields  []string
 }
 
+// SkippedFile records a file that was skipped during scanning.
+type SkippedFile struct {
+	Path   string
+	Reason string
+}
+
 // Tier1Result holds the output of a Tier 1 scan: packages, interfaces, and structs.
 type Tier1Result struct {
-	Packages   []PackageInfo
-	Interfaces []InterfaceInfo
-	Structs    []StructInfo
+	Packages     []PackageInfo
+	Interfaces   []InterfaceInfo
+	Structs      []StructInfo
+	SkippedFiles []SkippedFile
 }
 
 // ScanTier1 walks Go files under root, parses AST, and extracts packages,
@@ -67,7 +74,11 @@ func ScanTier1(root string) (*Tier1Result, error) {
 
 		f, parseErr := parser.ParseFile(fset, path, nil, 0)
 		if parseErr != nil {
-			return nil //nolint:nilerr // skip unparseable files gracefully
+			result.SkippedFiles = append(result.SkippedFiles, SkippedFile{
+				Path:   path,
+				Reason: parseErr.Error(),
+			})
+			return nil //nolint:nilerr // error recorded in SkippedFiles
 		}
 
 		pkgName := f.Name.Name

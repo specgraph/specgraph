@@ -47,17 +47,22 @@ func ValidateTransition(from, to string) error {
 		return nil
 	}
 
-	// Check backward (amend) transition: to must be at a lower index than from.
+	// Validate both stages are known before checking backward transitions.
 	fromIdx := indexOf(from)
 	toIdx := indexOf(to)
 
+	var unknowns []string
 	if fromIdx < 0 && from != "" {
-		return fmt.Errorf("unknown stage %q", from)
+		unknowns = append(unknowns, from)
 	}
 	if toIdx < 0 {
-		return fmt.Errorf("unknown stage %q", to)
+		unknowns = append(unknowns, to)
+	}
+	if len(unknowns) > 0 {
+		return fmt.Errorf("unknown stage(s): %v", unknowns)
 	}
 
+	// Check backward (amend) transition: to must be at a lower index than from.
 	if fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx {
 		return nil
 	}

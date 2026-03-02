@@ -30,9 +30,10 @@ type ImportInfo struct {
 
 // Tier2Result holds the output of a Tier 2 scan: functions, imports, and test files.
 type Tier2Result struct {
-	Functions []FunctionInfo
-	Imports   []ImportInfo
-	TestFiles []string
+	Functions    []FunctionInfo
+	Imports      []ImportInfo
+	TestFiles    []string
+	SkippedFiles []SkippedFile
 }
 
 // ScanTier2 walks the specified directories under root, parses functions and
@@ -71,7 +72,11 @@ func ScanTier2(root string, dirs []string) (*Tier2Result, error) {
 
 			f, parseErr := parser.ParseFile(fset, path, nil, 0)
 			if parseErr != nil {
-				return nil //nolint:nilerr // skip unparseable files gracefully
+				result.SkippedFiles = append(result.SkippedFiles, SkippedFile{
+					Path:   path,
+					Reason: parseErr.Error(),
+				})
+				return nil //nolint:nilerr // error recorded in SkippedFiles
 			}
 
 			pkgName := f.Name.Name
