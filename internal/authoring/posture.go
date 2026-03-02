@@ -14,8 +14,9 @@ const (
 )
 
 // DetectPosture infers an interaction posture from message lengths.
-// Empty messages default to PARTNER. Short average (<20 chars) maps to DRIVE,
-// long average (>100 chars) maps to SUPPORT, and everything else is PARTNER.
+// Empty messages default to PARTNER. Short average (<driveThreshold chars)
+// maps to DRIVE, long average (>supportThreshold chars) maps to SUPPORT,
+// and everything else is PARTNER.
 func DetectPosture(messages []string) specv1.Posture {
 	if len(messages) == 0 {
 		return specv1.Posture_POSTURE_PARTNER

@@ -34,7 +34,11 @@ var allowedJSONProperties = []string{
 	"constitution_violations",
 }
 
-// TransitionStage advances or validates a spec's stage transition.
+// TransitionStage validates and applies a spec's stage transition.
+// It first checks the transition is valid via authoring.ValidateTransition,
+// then updates the spec's stage in the database. Returns ErrSpecNotFound if
+// the spec doesn't exist, or ErrInvalidStageTransition if the spec is at
+// a different stage than expected.
 func (s *Store) TransitionStage(ctx context.Context, slug, from, to string) error {
 	if err := authoring.ValidateTransition(from, to); err != nil {
 		return fmt.Errorf("memgraph: %w: %w", storage.ErrInvalidStageTransition, err)

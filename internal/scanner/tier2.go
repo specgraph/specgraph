@@ -37,7 +37,8 @@ type Tier2Result struct {
 }
 
 // ScanTier2 walks the specified directories under root, parses functions and
-// imports, and discovers test files.
+// imports, and collects test file paths. Test files are tracked in TestFiles
+// rather than being skipped entirely.
 func ScanTier2(root string, dirs []string) (*Tier2Result, error) {
 	result := &Tier2Result{}
 	fset := token.NewFileSet()

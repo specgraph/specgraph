@@ -33,7 +33,8 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
-	// CreateSpec already sets stage to "spark", so no TransitionStage call needed.
+	// CreateSpec sets stage to "spark" as part of spec creation; no separate
+	// TransitionStage call is needed because the initial stage is set atomically.
 	_, err := h.backend.CreateSpec(ctx, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
