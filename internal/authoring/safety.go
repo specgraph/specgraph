@@ -16,15 +16,18 @@ type SafetyInput struct {
 	Invariants []string
 }
 
+// SafetyCategory identifies a class of safety concern.
+type SafetyCategory string
+
 // Safety category constants.
 const (
-	SafetyCategorySecurity = "security"
-	SafetyCategoryDataLoss = "data_loss"
+	SafetyCategorySecurity SafetyCategory = "security"
+	SafetyCategoryDataLoss SafetyCategory = "data_loss"
 )
 
 // SafetyFlagResult is the domain-level result of a safety net check.
 type SafetyFlagResult struct {
-	Category    string
+	Category    SafetyCategory
 	Severity    specv1.FindingSeverity
 	Description string
 }
@@ -93,7 +96,7 @@ func SafetyResultsToProto(flags []SafetyFlagResult) []*specv1.SafetyFlag {
 	out := make([]*specv1.SafetyFlag, len(flags))
 	for i, f := range flags {
 		out[i] = &specv1.SafetyFlag{
-			Category:    f.Category,
+			Category:    string(f.Category),
 			Severity:    f.Severity,
 			Description: f.Description,
 		}

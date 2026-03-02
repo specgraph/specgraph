@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -40,7 +41,10 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	if err := h.store.StoreSparkOutput(ctx, msg.Slug, msg.Output); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		// NOTE: CreateSpec succeeded but StoreSparkOutput failed. The spec exists
+		// without output data. A retry of Spark will fail due to duplicate slug.
+		// TODO: Add transaction support to make this atomic.
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store spark output (spec %q created but output not stored): %w", msg.Slug, err))
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{Intent: msg.Output.GetSeed()})
 	return connect.NewResponse(&specv1.SparkResponse{
@@ -58,7 +62,10 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	}
 	if msg.Output != nil {
 		if err := h.store.StoreShapeOutput(ctx, msg.Slug, msg.Output); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			// NOTE: TransitionStage succeeded but StoreShapeOutput failed. The spec
+			// is now in the shape stage but has no shape output stored.
+			// TODO: Add transaction support to make this atomic.
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store shape output (spec %q transitioned but output not stored): %w", msg.Slug, err))
 		}
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{Scope: msg.Output.GetScopeIn()})
@@ -77,7 +84,10 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	}
 	if msg.Output != nil {
 		if err := h.store.StoreSpecifyOutput(ctx, msg.Slug, msg.Output); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			// NOTE: TransitionStage succeeded but StoreSpecifyOutput failed. The spec
+			// is now in the specify stage but has no specify output stored.
+			// TODO: Add transaction support to make this atomic.
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store specify output (spec %q transitioned but output not stored): %w", msg.Slug, err))
 		}
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
@@ -99,7 +109,10 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	}
 	if msg.Output != nil {
 		if _, err := h.store.StoreDecomposeOutput(ctx, msg.Slug, msg.Output); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+			// NOTE: TransitionStage succeeded but StoreDecomposeOutput failed. The spec
+			// is now in the decompose stage but has no decompose output stored.
+			// TODO: Add transaction support to make this atomic.
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store decompose output (spec %q transitioned but output not stored): %w", msg.Slug, err))
 		}
 	}
 	return connect.NewResponse(&specv1.DecomposeResponse{Output: msg.Output}), nil

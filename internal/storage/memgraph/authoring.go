@@ -158,6 +158,14 @@ func (s *Store) StoreConstitutionViolations(ctx context.Context, slug string, vi
 
 // SupersedeSpec marks a spec as superseded and creates a SUPERSEDES edge to the replacement.
 func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error {
+	// Validate both specs exist before the combined operation so callers get
+	// a precise error identifying which slug was missing.
+	if _, err := s.GetSpec(ctx, slug); err != nil {
+		return fmt.Errorf("memgraph: supersede spec: old spec %q: %w", slug, err)
+	}
+	if _, err := s.GetSpec(ctx, supersededBy); err != nil {
+		return fmt.Errorf("memgraph: supersede spec: new spec %q: %w", supersededBy, err)
+	}
 	nowStr := nowRFC3339()
 	query := `
 		MATCH (old:Spec {slug: $old_slug}), (new:Spec {slug: $new_slug})
