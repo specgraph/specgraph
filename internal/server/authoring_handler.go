@@ -57,16 +57,17 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 // Shape handles the Shape RPC, transitioning from spark to shape stage.
 func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv1.ShapeRequest]) (*connect.Response[specv1.ShapeResponse], error) {
 	msg := req.Msg
+	if msg.Output == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
+	}
 	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageSpark, authoring.StageShape); err != nil {
 		return nil, h.stageError(err)
 	}
-	if msg.Output != nil {
-		if err := h.store.StoreShapeOutput(ctx, msg.Slug, msg.Output); err != nil {
-			// NOTE: TransitionStage succeeded but StoreShapeOutput failed. The spec
-			// is now in the shape stage but has no shape output stored.
-			// TODO: Add transaction support to make this atomic.
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store shape output (spec %q transitioned but output not stored): %w", msg.Slug, err))
-		}
+	if err := h.store.StoreShapeOutput(ctx, msg.Slug, msg.Output); err != nil {
+		// NOTE: TransitionStage succeeded but StoreShapeOutput failed. The spec
+		// is now in the shape stage but has no shape output stored.
+		// TODO: Add transaction support to make this atomic.
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store shape output (spec %q transitioned but output not stored): %w", msg.Slug, err))
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{Scope: msg.Output.GetScopeIn()})
 	return connect.NewResponse(&specv1.ShapeResponse{
@@ -79,16 +80,17 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 // Specify handles the Specify RPC, transitioning from shape to specify stage.
 func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[specv1.SpecifyRequest]) (*connect.Response[specv1.SpecifyResponse], error) {
 	msg := req.Msg
+	if msg.Output == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
+	}
 	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageShape, authoring.StageSpecify); err != nil {
 		return nil, h.stageError(err)
 	}
-	if msg.Output != nil {
-		if err := h.store.StoreSpecifyOutput(ctx, msg.Slug, msg.Output); err != nil {
-			// NOTE: TransitionStage succeeded but StoreSpecifyOutput failed. The spec
-			// is now in the specify stage but has no specify output stored.
-			// TODO: Add transaction support to make this atomic.
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store specify output (spec %q transitioned but output not stored): %w", msg.Slug, err))
-		}
+	if err := h.store.StoreSpecifyOutput(ctx, msg.Slug, msg.Output); err != nil {
+		// NOTE: TransitionStage succeeded but StoreSpecifyOutput failed. The spec
+		// is now in the specify stage but has no specify output stored.
+		// TODO: Add transaction support to make this atomic.
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store specify output (spec %q transitioned but output not stored): %w", msg.Slug, err))
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
 		Intent:     msg.Output.GetInterfaceContract(),
@@ -104,16 +106,17 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 // Decompose handles the Decompose RPC, transitioning from specify to decompose stage.
 func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[specv1.DecomposeRequest]) (*connect.Response[specv1.DecomposeResponse], error) {
 	msg := req.Msg
+	if msg.Output == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
+	}
 	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageSpecify, authoring.StageDecompose); err != nil {
 		return nil, h.stageError(err)
 	}
-	if msg.Output != nil {
-		if _, err := h.store.StoreDecomposeOutput(ctx, msg.Slug, msg.Output); err != nil {
-			// NOTE: TransitionStage succeeded but StoreDecomposeOutput failed. The spec
-			// is now in the decompose stage but has no decompose output stored.
-			// TODO: Add transaction support to make this atomic.
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store decompose output (spec %q transitioned but output not stored): %w", msg.Slug, err))
-		}
+	if _, err := h.store.StoreDecomposeOutput(ctx, msg.Slug, msg.Output); err != nil {
+		// NOTE: TransitionStage succeeded but StoreDecomposeOutput failed. The spec
+		// is now in the decompose stage but has no decompose output stored.
+		// TODO: Add transaction support to make this atomic.
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store decompose output (spec %q transitioned but output not stored): %w", msg.Slug, err))
 	}
 	return connect.NewResponse(&specv1.DecomposeResponse{Output: msg.Output}), nil
 }

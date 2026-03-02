@@ -68,23 +68,24 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 
 	var flags []SafetyFlagResult
 
-	for _, p := range securityPatterns {
-		if strings.Contains(combined, p) {
-			flags = append(flags, SafetyFlagResult{
-				Category:    SafetyCategorySecurity,
-				Severity:    specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
-				Description: "matched pattern: " + p,
-			})
-		}
+	type patternGroup struct {
+		category SafetyCategory
+		patterns []string
 	}
 
-	for _, p := range dataLossPatterns {
-		if strings.Contains(combined, p) {
-			flags = append(flags, SafetyFlagResult{
-				Category:    SafetyCategoryDataLoss,
-				Severity:    specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
-				Description: "matched pattern: " + p,
-			})
+	groups := []patternGroup{
+		{SafetyCategorySecurity, securityPatterns},
+		{SafetyCategoryDataLoss, dataLossPatterns},
+	}
+	for _, g := range groups {
+		for _, p := range g.patterns {
+			if strings.Contains(combined, p) {
+				flags = append(flags, SafetyFlagResult{
+					Category:    g.category,
+					Severity:    specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
+					Description: "matched pattern: " + p,
+				})
+			}
 		}
 	}
 

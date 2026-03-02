@@ -95,30 +95,38 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 	}
 	var children []*specv1.Spec
 	for _, sl := range output.Slices {
-		child, err := s.CreateSpec(ctx, sl.Id, sl.Intent, defaultChildPriority, defaultChildComplexity)
-		if err != nil {
-			return nil, fmt.Errorf("memgraph: create child spec %q: %w", sl.Id, err)
+		// Check if child spec already exists (idempotency for retries).
+		existing, getErr := s.GetSpec(ctx, sl.Id)
+		var child *specv1.Spec
+		if getErr == nil && existing != nil {
+			child = existing
+		} else {
+			var err error
+			child, err = s.CreateSpec(ctx, sl.Id, sl.Intent, defaultChildPriority, defaultChildComplexity)
+			if err != nil {
+				return nil, fmt.Errorf("memgraph: create child spec %q: %w", sl.Id, err)
+			}
 		}
 		query := `
 			MATCH (child:Spec {slug: $child_slug}), (parent:Spec {slug: $parent_slug})
-			CREATE (child)-[:COMPOSES]->(parent)
+			MERGE (child)-[:COMPOSES]->(parent)
 		`
-		_, err = neo4j.ExecuteQuery(ctx, s.driver, query,
+		_, err := neo4j.ExecuteQuery(ctx, s.driver, query,
 			map[string]any{"child_slug": sl.Id, "parent_slug": slug},
 			neo4j.EagerResultTransformer)
 		if err != nil {
-			return nil, fmt.Errorf("memgraph: create COMPOSES edge: %w", err)
+			return nil, fmt.Errorf("memgraph: merge COMPOSES edge: %w", err)
 		}
 		for _, dep := range sl.DependsOn {
 			depQuery := `
 				MATCH (from:Spec {slug: $from_slug}), (to:Spec {slug: $to_slug})
-				CREATE (from)-[:DEPENDS_ON]->(to)
+				MERGE (from)-[:DEPENDS_ON]->(to)
 			`
 			_, err = neo4j.ExecuteQuery(ctx, s.driver, depQuery,
 				map[string]any{"from_slug": sl.Id, "to_slug": dep},
 				neo4j.EagerResultTransformer)
 			if err != nil {
-				return nil, fmt.Errorf("memgraph: create DEPENDS_ON edge: %w", err)
+				return nil, fmt.Errorf("memgraph: merge DEPENDS_ON edge: %w", err)
 			}
 		}
 		children = append(children, child)
