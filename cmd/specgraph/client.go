@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/seanb4t/specgraph/internal/config"
 )
 
@@ -34,4 +35,8 @@ func newClient[C any](ctor func(httpClient connect.HTTPClient, baseURL string, o
 		return zero, err
 	}
 	return ctor(newHTTPClient(), baseURL), nil
+}
+
+func authoringClient() (specgraphv1connect.AuthoringServiceClient, error) {
+	return newClient(specgraphv1connect.NewAuthoringServiceClient)
 }

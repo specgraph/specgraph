@@ -107,6 +107,7 @@ func TestAmendSpec(t *testing.T) {
 	spec, err := store.AmendSpec(ctx, "amend-test", "need to reconsider scope", "shape")
 	require.NoError(t, err)
 	require.Equal(t, "shape", spec.Stage)
+	require.Equal(t, int32(2), spec.Version, "version should increment after amendment")
 }
 
 func TestSupersedeSpec(t *testing.T) {
@@ -125,4 +126,30 @@ func TestSupersedeSpec(t *testing.T) {
 
 	err = store.SupersedeSpec(ctx, "old-spec", "new-spec", "better approach found")
 	require.NoError(t, err)
+
+	// Verify the old spec is now at stage "superseded".
+	old, err := store.GetSpec(ctx, "old-spec")
+	require.NoError(t, err)
+	require.Equal(t, "superseded", old.Stage)
+}
+
+func TestSupersedeSpec_NotFound(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := memgraph.New(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.CreateSpec(ctx, "existing-spec", "Exists", "p1", "low")
+	require.NoError(t, err)
+
+	// Non-existent old spec.
+	err = store.SupersedeSpec(ctx, "nonexistent", "existing-spec", "reason")
+	require.ErrorIs(t, err, storage.ErrSpecNotFound)
+
+	// Non-existent new spec.
+	err = store.SupersedeSpec(ctx, "existing-spec", "nonexistent", "reason")
+	require.ErrorIs(t, err, storage.ErrSpecNotFound)
 }

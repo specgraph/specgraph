@@ -9,13 +9,8 @@ import (
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/spf13/cobra"
 )
-
-func authoringClient() (specgraphv1connect.AuthoringServiceClient, error) {
-	return newClient(specgraphv1connect.NewAuthoringServiceClient)
-}
 
 var sparkCmd = &cobra.Command{
 	Use:   "spark <slug>",
