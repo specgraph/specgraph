@@ -20,8 +20,9 @@ import (
 
 // AuthoringHandler implements the ConnectRPC AuthoringService.
 type AuthoringHandler struct {
-	store   storage.AuthoringBackend
-	backend storage.Backend
+	store     storage.AuthoringBackend
+	backend   storage.Backend
+	txBackend storage.TransactionalBackend // optional, may be nil
 }
 
 var _ specgraphv1connect.AuthoringServiceHandler = (*AuthoringHandler)(nil)
@@ -37,15 +38,26 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	}
 	// CreateSpec sets stage to "spark" as part of spec creation; no separate
 	// TransitionStage call is needed because the initial stage is set atomically.
-	_, err := h.backend.CreateSpec(ctx, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	if err := h.store.StoreSparkOutput(ctx, msg.Slug, sparkOutputToDomain(msg.Output)); err != nil {
-		// NOTE: CreateSpec succeeded but StoreSparkOutput failed. The spec exists
-		// without output data. A retry of Spark will fail due to duplicate slug.
-		// TODO: Add transaction support to make this atomic.
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store spark output (spec %q created but output not stored): %w", msg.Slug, err))
+	sparkDomain := sparkOutputToDomain(msg.Output)
+	if h.txBackend != nil {
+		if err := h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
+			if _, err := h.backend.CreateSpec(txCtx, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
+				return fmt.Errorf("create spec: %w", err)
+			}
+			if err := h.store.StoreSparkOutput(txCtx, msg.Slug, sparkDomain); err != nil {
+				return fmt.Errorf("store spark output: %w", err)
+			}
+			return nil
+		}); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+	} else {
+		if _, err := h.backend.CreateSpec(ctx, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, err)
+		}
+		if err := h.store.StoreSparkOutput(ctx, msg.Slug, sparkDomain); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store spark output (spec %q created but output not stored): %w", msg.Slug, err))
+		}
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{Intent: msg.Output.GetSeed()})
 	return connect.NewResponse(&specv1.SparkResponse{
@@ -64,14 +76,26 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
-	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageSpark, authoring.StageShape); err != nil {
-		return nil, h.stageError(err)
-	}
-	if err := h.store.StoreShapeOutput(ctx, msg.Slug, shapeOutputToDomain(msg.Output)); err != nil {
-		// NOTE: TransitionStage succeeded but StoreShapeOutput failed. The spec
-		// is now in the shape stage but has no shape output stored.
-		// TODO: Add transaction support to make this atomic.
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store shape output (spec %q transitioned but output not stored): %w", msg.Slug, err))
+	shapeDomain := shapeOutputToDomain(msg.Output)
+	if h.txBackend != nil {
+		if err := h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
+			if err := h.store.TransitionStage(txCtx, msg.Slug, authoring.StageSpark, authoring.StageShape); err != nil {
+				return fmt.Errorf("transition stage: %w", err)
+			}
+			if err := h.store.StoreShapeOutput(txCtx, msg.Slug, shapeDomain); err != nil {
+				return fmt.Errorf("store shape output: %w", err)
+			}
+			return nil
+		}); err != nil {
+			return nil, h.stageError(err)
+		}
+	} else {
+		if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageSpark, authoring.StageShape); err != nil {
+			return nil, h.stageError(err)
+		}
+		if err := h.store.StoreShapeOutput(ctx, msg.Slug, shapeDomain); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store shape output (spec %q transitioned but output not stored): %w", msg.Slug, err))
+		}
 	}
 	scope := append(msg.Output.GetScopeIn(), msg.Output.GetScopeOut()...)
 	// SafetyInput.Intent accepts any text for pattern scanning; in Shape
@@ -96,14 +120,26 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
-	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageShape, authoring.StageSpecify); err != nil {
-		return nil, h.stageError(err)
-	}
-	if err := h.store.StoreSpecifyOutput(ctx, msg.Slug, specifyOutputToDomain(msg.Output)); err != nil {
-		// NOTE: TransitionStage succeeded but StoreSpecifyOutput failed. The spec
-		// is now in the specify stage but has no specify output stored.
-		// TODO: Add transaction support to make this atomic.
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store specify output (spec %q transitioned but output not stored): %w", msg.Slug, err))
+	specifyDomain := specifyOutputToDomain(msg.Output)
+	if h.txBackend != nil {
+		if err := h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
+			if err := h.store.TransitionStage(txCtx, msg.Slug, authoring.StageShape, authoring.StageSpecify); err != nil {
+				return fmt.Errorf("transition stage: %w", err)
+			}
+			if err := h.store.StoreSpecifyOutput(txCtx, msg.Slug, specifyDomain); err != nil {
+				return fmt.Errorf("store specify output: %w", err)
+			}
+			return nil
+		}); err != nil {
+			return nil, h.stageError(err)
+		}
+	} else {
+		if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageShape, authoring.StageSpecify); err != nil {
+			return nil, h.stageError(err)
+		}
+		if err := h.store.StoreSpecifyOutput(ctx, msg.Slug, specifyDomain); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store specify output (spec %q transitioned but output not stored): %w", msg.Slug, err))
+		}
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
 		Intent:     msg.Output.GetInterfaceContract(),
@@ -128,14 +164,26 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	if msg.Output.GetStrategy() == specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("strategy is required"))
 	}
-	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageSpecify, authoring.StageDecompose); err != nil {
-		return nil, h.stageError(err)
-	}
-	if _, err := h.store.StoreDecomposeOutput(ctx, msg.Slug, decomposeOutputToDomain(msg.Output)); err != nil {
-		// NOTE: TransitionStage succeeded but StoreDecomposeOutput failed. The spec
-		// is now in the decompose stage but has no decompose output stored.
-		// TODO: Add transaction support to make this atomic.
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store decompose output (spec %q transitioned but output not stored): %w", msg.Slug, err))
+	decomposeDomain := decomposeOutputToDomain(msg.Output)
+	if h.txBackend != nil {
+		if err := h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
+			if err := h.store.TransitionStage(txCtx, msg.Slug, authoring.StageSpecify, authoring.StageDecompose); err != nil {
+				return fmt.Errorf("transition stage: %w", err)
+			}
+			if _, err := h.store.StoreDecomposeOutput(txCtx, msg.Slug, decomposeDomain); err != nil {
+				return fmt.Errorf("store decompose output: %w", err)
+			}
+			return nil
+		}); err != nil {
+			return nil, h.stageError(err)
+		}
+	} else {
+		if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageSpecify, authoring.StageDecompose); err != nil {
+			return nil, h.stageError(err)
+		}
+		if _, err := h.store.StoreDecomposeOutput(ctx, msg.Slug, decomposeDomain); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store decompose output (spec %q transitioned but output not stored): %w", msg.Slug, err))
+		}
 	}
 	// Collect slice intents for safety scanning.
 	var sliceIntents []string
@@ -228,6 +276,10 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 // RegisterAuthoringService registers the AuthoringService on the given mux.
 func RegisterAuthoringService(mux *http.ServeMux, authoringStore storage.AuthoringBackend, backend storage.Backend) {
 	handler := &AuthoringHandler{store: authoringStore, backend: backend}
+	// If the backend supports transactions, enable atomic multi-operation RPCs.
+	if txb, ok := backend.(storage.TransactionalBackend); ok {
+		handler.txBackend = txb
+	}
 	path, h := specgraphv1connect.NewAuthoringServiceHandler(handler)
 	mux.Handle(path, h)
 }

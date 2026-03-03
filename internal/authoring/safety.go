@@ -107,6 +107,8 @@ var allPatternGroups = []patternGroup{
 }
 
 // RunSafetyNet scans the input for known dangerous patterns and returns flags.
+// Per category, it emits only the highest-severity match (lowest enum value wins)
+// so that a CRITICAL pattern is never suppressed by an earlier WARNING match.
 func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 	parts := make([]string, 0, 1+len(input.Scope)+len(input.Invariants))
 	parts = append(parts, input.Intent)
@@ -114,23 +116,32 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 	parts = append(parts, input.Invariants...)
 	combined := strings.ToLower(strings.Join(parts, " "))
 
-	seen := make(map[SafetyCategory]bool)
-	var flags []SafetyFlagResult
-
+	// Collect every matching pattern across all groups.
+	var allMatches []SafetyFlagResult
 	for _, g := range allPatternGroups {
 		for _, sp := range g.patterns {
 			if sp.re.MatchString(combined) {
-				if seen[g.category] {
-					continue // one flag per category
-				}
-				seen[g.category] = true
-				flags = append(flags, SafetyFlagResult{
+				allMatches = append(allMatches, SafetyFlagResult{
 					Category:    g.category,
 					Severity:    sp.severity,
 					Description: "matched pattern: " + sp.re.String(),
 				})
 			}
 		}
+	}
+
+	// Deduplicate: keep only the highest-severity (lowest enum value) per category.
+	best := make(map[SafetyCategory]SafetyFlagResult)
+	for _, m := range allMatches {
+		existing, ok := best[m.Category]
+		if !ok || m.Severity < existing.Severity {
+			best[m.Category] = m
+		}
+	}
+
+	var flags []SafetyFlagResult
+	for _, f := range best {
+		flags = append(flags, f)
 	}
 
 	return flags

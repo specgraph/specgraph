@@ -72,15 +72,15 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		"updated_at": nowStr,
 	}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: create spec: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: create spec returned no records")
 	}
 
-	return recordToSpec(result.Records[0])
+	return recordToSpec(records[0])
 }
 
 // GetSpec retrieves a spec by slug.
@@ -92,15 +92,15 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*specv1.Spec, error) 
 	`
 	params := map[string]any{"slug": slug}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: get spec: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: spec %q: %w", slug, storage.ErrSpecNotFound)
 	}
 
-	return recordToSpec(result.Records[0])
+	return recordToSpec(records[0])
 }
 
 // ListSpecs returns specs matching the given filters.
@@ -128,13 +128,13 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 		params["limit"] = int64(limit)
 	}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: list specs: %w", err)
 	}
 
-	specs := make([]*specv1.Spec, 0, len(result.Records))
-	for _, rec := range result.Records {
+	specs := make([]*specv1.Spec, 0, len(records))
+	for _, rec := range records {
 		sp, err := recordToSpec(rec)
 		if err != nil {
 			return nil, err
@@ -181,15 +181,15 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		       s.version, s.created_at, s.updated_at
 	`, strings.Join(setClauses, ", "))
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: update spec: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: spec %q: %w", slug, storage.ErrSpecNotFound)
 	}
 
-	return recordToSpec(result.Records[0])
+	return recordToSpec(records[0])
 }
 
 // Close releases the driver resources.

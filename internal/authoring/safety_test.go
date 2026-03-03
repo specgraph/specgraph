@@ -93,6 +93,29 @@ func TestSafetyResultsToProto(t *testing.T) {
 	})
 }
 
+// TestSafetyNet_CriticalWinsOverWarning verifies that when both CRITICAL and WARNING
+// patterns match for the same category, only the CRITICAL finding is returned.
+// The test does not depend on the ordering of allPatternGroups.
+func TestSafetyNet_CriticalWinsOverWarning(t *testing.T) {
+	// "hardcoded secret" triggers security CRITICAL; "plaintext" triggers security WARNING.
+	// Both match the same "security" category; only CRITICAL should be returned.
+	input := &authoring.SafetyInput{
+		Intent: "Store hardcoded secret in plaintext config file",
+	}
+	flags := authoring.RunSafetyNet(input)
+
+	var securityFlags []authoring.SafetyFlagResult
+	for _, f := range flags {
+		if f.Category == authoring.SafetyCategorySecurity {
+			securityFlags = append(securityFlags, f)
+		}
+	}
+
+	require.Len(t, securityFlags, 1, "expected exactly one security flag (dedup by category)")
+	require.Equal(t, specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL, securityFlags[0].Severity,
+		"expected CRITICAL to win over WARNING when both patterns match")
+}
+
 func TestSafetyNet_Clean(t *testing.T) {
 	input := &authoring.SafetyInput{
 		Intent: "Add a new read-only API endpoint for listing users",

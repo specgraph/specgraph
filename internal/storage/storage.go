@@ -10,6 +10,13 @@ import (
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 )
 
+// TransactionalBackend provides atomic multi-operation support.
+// Implementations wrap multiple storage calls in a single transaction so that
+// either all succeed or none take effect.
+type TransactionalBackend interface {
+	RunInTransaction(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
 // Backend is the interface that all storage backends must implement.
 type Backend interface {
 	// CreateSpec stores a new spec and returns it with generated ID and timestamps.

@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/authoring"
 	"github.com/seanb4t/specgraph/internal/storage"
@@ -50,24 +48,23 @@ func (s *Store) TransitionStage(ctx context.Context, slug, from, to string) erro
 		SET s.stage = $to, s.updated_at = $updated_at
 		RETURN s.slug
 	`
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query,
-		map[string]any{"slug": slug, "from": from, "to": to, "updated_at": nowStr},
-		neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query,
+		map[string]any{"slug": slug, "from": from, "to": to, "updated_at": nowStr})
 	if err != nil {
 		return fmt.Errorf("memgraph: transition stage: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		// Distinguish between "spec not found" and "spec at wrong stage".
 		checkQuery := `MATCH (s:Spec {slug: $slug}) RETURN s.stage AS stage`
-		checkResult, checkErr := neo4j.ExecuteQuery(ctx, s.driver, checkQuery,
-			map[string]any{"slug": slug}, neo4j.EagerResultTransformer)
+		checkRecords, checkErr := s.executeQuery(ctx, checkQuery,
+			map[string]any{"slug": slug})
 		if checkErr != nil {
 			return fmt.Errorf("memgraph: check spec stage: %w", checkErr)
 		}
-		if len(checkResult.Records) == 0 {
+		if len(checkRecords) == 0 {
 			return fmt.Errorf("memgraph: transition stage %q: %w", slug, storage.ErrSpecNotFound)
 		}
-		actualStage, _ := checkResult.Records[0].Get("stage")
+		actualStage, _ := checkRecords[0].Get("stage")
 		return fmt.Errorf("memgraph: spec %q at stage %v, expected %q: %w", slug, actualStage, from, storage.ErrInvalidStageTransition)
 	}
 	return nil
@@ -112,9 +109,8 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 			MATCH (child:Spec {slug: $child_slug}), (parent:Spec {slug: $parent_slug})
 			MERGE (child)-[:COMPOSES]->(parent)
 		`
-		_, err := neo4j.ExecuteQuery(ctx, s.driver, query,
-			map[string]any{"child_slug": childSlug, "parent_slug": slug},
-			neo4j.EagerResultTransformer)
+		_, err := s.executeQuery(ctx, query,
+			map[string]any{"child_slug": childSlug, "parent_slug": slug})
 		if err != nil {
 			return nil, fmt.Errorf("memgraph: merge COMPOSES edge: %w", err)
 		}
@@ -124,9 +120,8 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 				MATCH (from:Spec {slug: $from_slug}), (to:Spec {slug: $to_slug})
 				MERGE (from)-[:DEPENDS_ON]->(to)
 			`
-			_, err = neo4j.ExecuteQuery(ctx, s.driver, depQuery,
-				map[string]any{"from_slug": childSlug, "to_slug": depSlug},
-				neo4j.EagerResultTransformer)
+			_, err = s.executeQuery(ctx, depQuery,
+				map[string]any{"from_slug": childSlug, "to_slug": depSlug})
 			if err != nil {
 				return nil, fmt.Errorf("memgraph: merge DEPENDS_ON edge: %w", err)
 			}
@@ -183,13 +178,12 @@ func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason st
 		CREATE (new)-[:SUPERSEDES {reason: $reason}]->(old)
 		RETURN old.slug
 	`
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query,
-		map[string]any{"old_slug": slug, "new_slug": supersededBy, "reason": reason, "updated_at": nowStr},
-		neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query,
+		map[string]any{"old_slug": slug, "new_slug": supersededBy, "reason": reason, "updated_at": nowStr})
 	if err != nil {
 		return fmt.Errorf("memgraph: supersede spec: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return fmt.Errorf("memgraph: supersede spec %q: %w", slug, storage.ErrSpecNotFound)
 	}
 	return nil
@@ -212,16 +206,15 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason, targetStage string)
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity, s.version,
 		       s.created_at, s.updated_at
 	`
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query,
-		map[string]any{"slug": slug, "stage": targetStage, "reason": reason, "updated_at": nowStr},
-		neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query,
+		map[string]any{"slug": slug, "stage": targetStage, "reason": reason, "updated_at": nowStr})
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: amend spec: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: amend spec %q: %w", slug, storage.ErrSpecNotFound)
 	}
-	return recordToSpec(result.Records[0])
+	return recordToSpec(records[0])
 }
 
 // storeJSONProperty marshals data to JSON and stores it as a string property on the spec node.
@@ -251,13 +244,12 @@ func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, da
 		SET s.%s = $data, s.updated_at = $updated_at
 		RETURN s.slug
 	`, property)
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query,
-		map[string]any{"slug": slug, "data": jsonStr, "updated_at": nowStr},
-		neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query,
+		map[string]any{"slug": slug, "data": jsonStr, "updated_at": nowStr})
 	if err != nil {
 		return fmt.Errorf("memgraph: store %s: %w", property, err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return fmt.Errorf("memgraph: store %s for %q: %w", property, slug, storage.ErrSpecNotFound)
 	}
 	return nil
