@@ -124,9 +124,12 @@ type SimplicityFinding struct {
 	Suggestion string `json:"suggestion,omitempty"`
 }
 
+// SafetyCategory is the type for safety flag categories.
+type SafetyCategory string
+
 // SafetyFlag marks a concern that may indicate harmful or risky content.
 type SafetyFlag struct {
-	Category    string          `json:"category,omitempty"`
+	Category    SafetyCategory  `json:"category,omitempty"`
 	Severity    FindingSeverity `json:"severity,omitempty"`
 	Description string          `json:"description,omitempty"`
 }
@@ -138,6 +141,9 @@ type ConstitutionViolation struct {
 	Severity   FindingSeverity `json:"severity,omitempty"`
 }
 
+// AuthoringStage is a typed stage name for use in storage method signatures.
+type AuthoringStage string
+
 // AmendResult holds the minimal fields returned after amending a spec.
 type AmendResult struct {
 	Slug    string
@@ -148,7 +154,7 @@ type AmendResult struct {
 // AuthoringBackend defines storage operations for the authoring funnel.
 // All methods accept domain types defined in this package, not protobuf types.
 type AuthoringBackend interface {
-	TransitionStage(ctx context.Context, slug string, from, to string) error
+	TransitionStage(ctx context.Context, slug string, from, to AuthoringStage) error
 	StoreSparkOutput(ctx context.Context, slug string, output *SparkOutput) error
 	StoreShapeOutput(ctx context.Context, slug string, output *ShapeOutput) error
 	StoreSpecifyOutput(ctx context.Context, slug string, output *SpecifyOutput) error
@@ -160,5 +166,5 @@ type AuthoringBackend interface {
 	StoreSafetyFlags(ctx context.Context, slug string, flags []SafetyFlag) error
 	StoreConstitutionViolations(ctx context.Context, slug string, violations []ConstitutionViolation) error
 	SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error
-	AmendSpec(ctx context.Context, slug, reason, targetStage string) (*AmendResult, error)
+	AmendSpec(ctx context.Context, slug, reason string, targetStage AuthoringStage) (*AmendResult, error)
 }

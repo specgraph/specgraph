@@ -30,7 +30,7 @@ type fakeAuthoringBackend struct {
 	amendResult             *storage.AmendResult
 }
 
-func (f *fakeAuthoringBackend) TransitionStage(_ context.Context, _ string, _, _ string) error {
+func (f *fakeAuthoringBackend) TransitionStage(_ context.Context, _ string, _, _ storage.AuthoringStage) error {
 	return f.transitionStageErr
 }
 
@@ -78,7 +78,7 @@ func (f *fakeAuthoringBackend) SupersedeSpec(_ context.Context, _, _, _ string) 
 	return f.supersedeErr
 }
 
-func (f *fakeAuthoringBackend) AmendSpec(_ context.Context, _, _, _ string) (*storage.AmendResult, error) {
+func (f *fakeAuthoringBackend) AmendSpec(_ context.Context, _, _ string, _ storage.AuthoringStage) (*storage.AmendResult, error) {
 	return f.amendResult, f.amendErr
 }
 
@@ -447,4 +447,36 @@ func TestAuthoringHandler_Decompose_StoreOutputError(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestAuthoringHandler_GetPrompts_UnspecifiedStage(t *testing.T) {
+	mux := http.NewServeMux()
+	server.RegisterAuthoringService(mux, nil, nil)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, srv.URL)
+
+	_, err := client.GetPrompts(context.Background(), connect.NewRequest(&specv1.GetPromptsRequest{
+		Stage: specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED,
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestAuthoringHandler_GetPrompts_ApprovedStage(t *testing.T) {
+	mux := http.NewServeMux()
+	server.RegisterAuthoringService(mux, nil, nil)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, srv.URL)
+
+	_, err := client.GetPrompts(context.Background(), connect.NewRequest(&specv1.GetPromptsRequest{
+		Stage: specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }

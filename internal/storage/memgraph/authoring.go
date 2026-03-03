@@ -35,12 +35,18 @@ var allowedJSONProperties = []string{
 // It first checks the transition is valid via authoring.ValidateTransition,
 // then updates the spec's stage in the database. Returns ErrSpecNotFound if
 // the spec doesn't exist, or ErrInvalidStageTransition if the spec is at
-// a different stage than expected.
-func (s *Store) TransitionStage(ctx context.Context, slug, from, to string) error {
-	if err := authoring.ValidateTransition(from, to); err != nil {
+// a different stage than expected. Returns ErrSpecAlreadyApproved if from
+// is the approved stage.
+func (s *Store) TransitionStage(ctx context.Context, slug string, from, to storage.AuthoringStage) error {
+	if from == authoring.StageApproved {
+		return storage.ErrSpecAlreadyApproved
+	}
+	if err := authoring.ValidateTransition(string(from), string(to)); err != nil {
 		return fmt.Errorf("memgraph: %w: %w", storage.ErrInvalidStageTransition, err)
 	}
 	nowStr := nowRFC3339()
+	fromStr := string(from)
+	toStr := string(to)
 	query := `
 		MATCH (s:Spec {slug: $slug})
 		WHERE s.stage = $from OR ($from = "" AND (s.stage IS NULL OR s.stage = ""))
@@ -48,7 +54,7 @@ func (s *Store) TransitionStage(ctx context.Context, slug, from, to string) erro
 		RETURN s.slug
 	`
 	records, err := s.executeQuery(ctx, query,
-		map[string]any{"slug": slug, "from": from, "to": to, "updated_at": nowStr})
+		map[string]any{"slug": slug, "from": fromStr, "to": toStr, "updated_at": nowStr})
 	if err != nil {
 		return fmt.Errorf("memgraph: transition stage: %w", err)
 	}
@@ -85,6 +91,8 @@ func (s *Store) StoreSpecifyOutput(ctx context.Context, slug string, output *sto
 }
 
 // StoreDecomposeOutput persists the decompose output and creates child spec nodes with edges.
+// When called within a transaction (via RunInTransaction), partial failures roll back automatically.
+// Without a transaction, child spec creation uses MERGE for idempotency on retries.
 // It returns the slugs of the created (or already-existing) child specs.
 func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *storage.DecomposeOutput) ([]string, error) {
 	if err := s.storeJSONProperty(ctx, slug, "decompose_output", output); err != nil {
@@ -125,6 +133,8 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 	}
 	return childSlugs, nil
 }
+
+// --- Analytical pass storage (thin wrappers over storeJSONProperty) ---
 
 // StoreRedTeamFindings persists red team findings as JSON on the spec node.
 func (s *Store) StoreRedTeamFindings(ctx context.Context, slug string, findings []storage.RedTeamFinding) error {
@@ -185,12 +195,15 @@ func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason st
 }
 
 // AmendSpec moves a spec backward to an earlier stage, bumping its version.
-func (s *Store) AmendSpec(ctx context.Context, slug, reason, targetStage string) (*storage.AmendResult, error) {
+func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage storage.AuthoringStage) (*storage.AmendResult, error) {
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
-	if vErr := authoring.ValidateAmendTransition(spec.Stage, targetStage); vErr != nil {
+	if spec.Stage == authoring.StageApproved {
+		return nil, storage.ErrSpecAlreadyApproved
+	}
+	if vErr := authoring.ValidateAmendTransition(spec.Stage, string(targetStage)); vErr != nil {
 		return nil, fmt.Errorf("memgraph: amend: %w: %w", storage.ErrInvalidStageTransition, vErr)
 	}
 	nowStr := nowRFC3339()
@@ -201,7 +214,7 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason, targetStage string)
 		RETURN s.slug, s.stage, s.version
 	`
 	records, err := s.executeQuery(ctx, query,
-		map[string]any{"slug": slug, "stage": targetStage, "reason": reason, "updated_at": nowStr})
+		map[string]any{"slug": slug, "stage": string(targetStage), "reason": reason, "updated_at": nowStr})
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: amend spec: %w", err)
 	}

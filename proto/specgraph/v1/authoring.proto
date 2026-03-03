@@ -308,6 +308,8 @@ message DecomposeResponse {
   repeated SafetyFlag safety_flags = 3;
   // Constitution constraints violated by the current decompose output.
   repeated ConstitutionViolation constitution_violations = 4;
+  // Prompt templates suggested for the next authoring stage.
+  repeated PromptTemplate next_prompts = 5;
 }
 
 // ApproveRequest finalises a spec and advances it to the approved stage.

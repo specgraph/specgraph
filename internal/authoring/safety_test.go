@@ -116,6 +116,17 @@ func TestSafetyNet_CriticalWinsOverWarning(t *testing.T) {
 		"expected CRITICAL to win over WARNING when both patterns match")
 }
 
+func TestSafetyNet_CaseInsensitive(t *testing.T) {
+	// Uppercase input should still match lowercase patterns
+	flags := authoring.RunSafetyNet(&authoring.SafetyInput{Intent: "HARDCODED SECRET in config"})
+	if len(flags) == 0 {
+		t.Fatal("expected safety flag for uppercase input")
+	}
+	if flags[0].Category != authoring.SafetyCategorySecurity {
+		t.Errorf("expected security category, got %q", flags[0].Category)
+	}
+}
+
 func TestSafetyNet_Clean(t *testing.T) {
 	input := &authoring.SafetyInput{
 		Intent: "Add a new read-only API endpoint for listing users",

@@ -6,12 +6,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var shapeCmd = &cobra.Command{
@@ -35,12 +33,8 @@ func runShape(_ *cobra.Command, args []string) error {
 	}
 	output := &specv1.ShapeOutput{}
 	if shapeJSONFile != "" {
-		data, readErr := os.ReadFile(shapeJSONFile)
-		if readErr != nil {
-			return fmt.Errorf("shape: read json-file: %w", readErr)
-		}
-		if unmarshalErr := protojson.Unmarshal(data, output); unmarshalErr != nil {
-			return fmt.Errorf("shape: parse json-file: %w", unmarshalErr)
+		if err := loadJSONFile(shapeJSONFile, output); err != nil {
+			return fmt.Errorf("shape: %w", err)
 		}
 	}
 	resp, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{

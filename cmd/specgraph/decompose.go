@@ -6,12 +6,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var decomposeCmd = &cobra.Command{
@@ -35,12 +33,8 @@ func runDecompose(_ *cobra.Command, args []string) error {
 	}
 	output := &specv1.DecomposeOutput{}
 	if decomposeJSONFile != "" {
-		data, readErr := os.ReadFile(decomposeJSONFile)
-		if readErr != nil {
-			return fmt.Errorf("decompose: read json-file: %w", readErr)
-		}
-		if unmarshalErr := protojson.Unmarshal(data, output); unmarshalErr != nil {
-			return fmt.Errorf("decompose: parse json-file: %w", unmarshalErr)
+		if err := loadJSONFile(decomposeJSONFile, output); err != nil {
+			return fmt.Errorf("decompose: %w", err)
 		}
 	}
 	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{

@@ -6,12 +6,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var specifyCmd = &cobra.Command{
@@ -35,12 +33,8 @@ func runSpecify(_ *cobra.Command, args []string) error {
 	}
 	output := &specv1.SpecifyOutput{}
 	if specifyJSONFile != "" {
-		data, readErr := os.ReadFile(specifyJSONFile)
-		if readErr != nil {
-			return fmt.Errorf("specify: read json-file: %w", readErr)
-		}
-		if unmarshalErr := protojson.Unmarshal(data, output); unmarshalErr != nil {
-			return fmt.Errorf("specify: parse json-file: %w", unmarshalErr)
+		if err := loadJSONFile(specifyJSONFile, output); err != nil {
+			return fmt.Errorf("specify: %w", err)
 		}
 	}
 	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{

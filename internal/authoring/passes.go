@@ -9,10 +9,22 @@ import (
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 )
 
+// PassName is a typed constant for analytical pass identifiers.
+type PassName string
+
+// Known analytical pass names.
+const (
+	PassConstitutionCheck PassName = "constitution_check"
+	PassPeripheralVision  PassName = "peripheral_vision"
+	PassRedTeam           PassName = "red_team"
+	PassConsistencyCheck  PassName = "consistency_check"
+	PassSimplicityCheck   PassName = "simplicity_check"
+)
+
 // passConfig describes a single analytical pass, the postures in which it runs
 // automatically, and the postures in which it is offered but not auto-run.
 type passConfig struct {
-	pass      string
+	pass      PassName
 	autoIn    []specv1.Posture
 	offeredIn []specv1.Posture
 }
@@ -28,20 +40,20 @@ var allPostures = []specv1.Posture{
 // available in that stage, together with posture-aware scheduling rules.
 var passRegistry = map[string][]passConfig{
 	StageSpark: {
-		{pass: "constitution_check", autoIn: allPostures},
+		{pass: PassConstitutionCheck, autoIn: allPostures},
 	},
 	StageShape: {
-		{pass: "peripheral_vision", autoIn: []specv1.Posture{specv1.Posture_POSTURE_DRIVE}, offeredIn: []specv1.Posture{specv1.Posture_POSTURE_PARTNER}},
-		{pass: "constitution_check", autoIn: allPostures},
+		{pass: PassPeripheralVision, autoIn: []specv1.Posture{specv1.Posture_POSTURE_DRIVE}, offeredIn: []specv1.Posture{specv1.Posture_POSTURE_PARTNER}},
+		{pass: PassConstitutionCheck, autoIn: allPostures},
 	},
 	StageSpecify: {
-		{pass: "red_team", autoIn: []specv1.Posture{specv1.Posture_POSTURE_DRIVE}, offeredIn: []specv1.Posture{specv1.Posture_POSTURE_PARTNER, specv1.Posture_POSTURE_SUPPORT}},
-		{pass: "consistency_check", autoIn: []specv1.Posture{specv1.Posture_POSTURE_DRIVE}, offeredIn: []specv1.Posture{specv1.Posture_POSTURE_PARTNER, specv1.Posture_POSTURE_SUPPORT}},
-		{pass: "constitution_check", autoIn: allPostures},
+		{pass: PassRedTeam, autoIn: []specv1.Posture{specv1.Posture_POSTURE_DRIVE}, offeredIn: []specv1.Posture{specv1.Posture_POSTURE_PARTNER, specv1.Posture_POSTURE_SUPPORT}},
+		{pass: PassConsistencyCheck, autoIn: []specv1.Posture{specv1.Posture_POSTURE_DRIVE}, offeredIn: []specv1.Posture{specv1.Posture_POSTURE_PARTNER, specv1.Posture_POSTURE_SUPPORT}},
+		{pass: PassConstitutionCheck, autoIn: allPostures},
 	},
 	StageDecompose: {
-		{pass: "simplicity_check", autoIn: []specv1.Posture{specv1.Posture_POSTURE_DRIVE}, offeredIn: []specv1.Posture{specv1.Posture_POSTURE_PARTNER, specv1.Posture_POSTURE_SUPPORT}},
-		{pass: "constitution_check", autoIn: allPostures},
+		{pass: PassSimplicityCheck, autoIn: []specv1.Posture{specv1.Posture_POSTURE_DRIVE}, offeredIn: []specv1.Posture{specv1.Posture_POSTURE_PARTNER, specv1.Posture_POSTURE_SUPPORT}},
+		{pass: PassConstitutionCheck, autoIn: allPostures},
 	},
 }
 
@@ -66,7 +78,7 @@ func collectPasses(stage string, posture specv1.Posture, selector func(passConfi
 	var result []string
 	for _, cfg := range configs {
 		if slices.Contains(selector(cfg), posture) {
-			result = append(result, cfg.pass)
+			result = append(result, string(cfg.pass))
 		}
 	}
 	return result

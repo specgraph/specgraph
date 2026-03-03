@@ -26,6 +26,7 @@ type ServerConfig struct {
 	Host   string `yaml:"host"`
 	Port   int    `yaml:"port"`
 	Remote string `yaml:"remote"` // if set, CLI-only mode
+	TLS    bool   `yaml:"tls"`    // if true, use HTTPS; default false for local dev
 }
 
 // StorageConfig describes the storage backend and its options.

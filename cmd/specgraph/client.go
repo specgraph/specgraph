@@ -20,7 +20,11 @@ func resolveBaseURL() (string, error) {
 	if cfg.Server.Remote != "" {
 		return cfg.Server.Remote, nil
 	}
-	return fmt.Sprintf("http://%s:%d", cfg.Server.Host, cfg.Server.Port), nil
+	scheme := "http"
+	if cfg.Server.TLS {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s:%d", scheme, cfg.Server.Host, cfg.Server.Port), nil
 }
 
 func newHTTPClient() *http.Client {
