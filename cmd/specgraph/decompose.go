@@ -33,8 +33,8 @@ func runDecompose(_ *cobra.Command, args []string) error {
 	}
 	output := &specv1.DecomposeOutput{}
 	if decomposeJSONFile != "" {
-		if err := loadJSONFile(decomposeJSONFile, output); err != nil {
-			return fmt.Errorf("decompose: %w", err)
+		if loadErr := loadJSONFile(decomposeJSONFile, output); loadErr != nil {
+			return fmt.Errorf("decompose: %w", loadErr)
 		}
 	}
 	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{

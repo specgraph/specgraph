@@ -14,6 +14,7 @@ import (
 // Lower values are more severe.
 type FindingSeverity int
 
+// FindingSeverity constants define the severity levels for safety findings.
 const (
 	SeverityCritical FindingSeverity = 1
 	SeverityWarning  FindingSeverity = 2
@@ -149,7 +150,7 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 		}
 	}
 
-	var flags []SafetyFlagResult
+	flags := make([]SafetyFlagResult, 0, len(best))
 	for _, f := range best {
 		flags = append(flags, f)
 	}

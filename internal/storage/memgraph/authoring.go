@@ -230,7 +230,7 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 		Stage: fmt.Sprintf("%v", retStage),
 	}
 	if v, ok := retVersion.(int64); ok {
-		result.Version = int32(v)
+		result.Version = safeInt32(v)
 	}
 	return result, nil
 }

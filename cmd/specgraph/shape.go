@@ -33,8 +33,8 @@ func runShape(_ *cobra.Command, args []string) error {
 	}
 	output := &specv1.ShapeOutput{}
 	if shapeJSONFile != "" {
-		if err := loadJSONFile(shapeJSONFile, output); err != nil {
-			return fmt.Errorf("shape: %w", err)
+		if loadErr := loadJSONFile(shapeJSONFile, output); loadErr != nil {
+			return fmt.Errorf("shape: %w", loadErr)
 		}
 	}
 	resp, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{

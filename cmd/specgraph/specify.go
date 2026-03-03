@@ -33,8 +33,8 @@ func runSpecify(_ *cobra.Command, args []string) error {
 	}
 	output := &specv1.SpecifyOutput{}
 	if specifyJSONFile != "" {
-		if err := loadJSONFile(specifyJSONFile, output); err != nil {
-			return fmt.Errorf("specify: %w", err)
+		if loadErr := loadJSONFile(specifyJSONFile, output); loadErr != nil {
+			return fmt.Errorf("specify: %w", loadErr)
 		}
 	}
 	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
