@@ -83,8 +83,8 @@ func TestStoreDecomposeOutput(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, children, 2)
-	require.Equal(t, "decomp-parent/slice-1", children[0].Slug)
-	require.Equal(t, "decomp-parent/slice-2", children[1].Slug)
+	require.Equal(t, "decomp-parent/slice-1", children[0])
+	require.Equal(t, "decomp-parent/slice-2", children[1])
 }
 
 func TestAmendSpec(t *testing.T) {

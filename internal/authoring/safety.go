@@ -10,6 +10,16 @@ import (
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 )
 
+// FindingSeverity indicates how severe a safety finding is.
+// Lower values are more severe.
+type FindingSeverity int
+
+const (
+	SeverityCritical FindingSeverity = 1
+	SeverityWarning  FindingSeverity = 2
+	SeverityNote     FindingSeverity = 3
+)
+
 // SafetyInput holds the text to scan for safety concerns.
 // Intent accepts any text for pattern scanning — its name reflects the Spark
 // use case, but other handlers pass stage-appropriate text (e.g., risks in Shape).
@@ -31,20 +41,20 @@ const (
 // SafetyFlagResult is the domain-level result of a safety net check.
 type SafetyFlagResult struct {
 	Category    SafetyCategory
-	Severity    specv1.FindingSeverity
+	Severity    FindingSeverity
 	Description string
 }
 
 // safetyPattern pairs a compiled regex with its severity level.
 type safetyPattern struct {
 	re       *regexp.Regexp
-	severity specv1.FindingSeverity
+	severity FindingSeverity
 }
 
 // buildPatterns compiles pattern strings into word-boundary-aware regexes.
 // Multi-word phrases use substring match (high confidence); single short
 // words use word-boundary anchors to reduce false positives.
-func buildPatterns(patterns []string, severity specv1.FindingSeverity) []safetyPattern {
+func buildPatterns(patterns []string, severity FindingSeverity) []safetyPattern {
 	out := make([]safetyPattern, len(patterns))
 	for i, p := range patterns {
 		var expr string
@@ -68,7 +78,7 @@ var criticalSecurityPatterns = buildPatterns([]string{
 	"skip validation",
 	"no encryption",
 	"rm -rf",
-}, specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL)
+}, SeverityCritical)
 
 // Ambiguous patterns that may appear in legitimate specs — WARNING severity.
 var warningSecurityPatterns = buildPatterns([]string{
@@ -77,7 +87,7 @@ var warningSecurityPatterns = buildPatterns([]string{
 	"eval(",
 	"exec(",
 	"plaintext",
-}, specv1.FindingSeverity_FINDING_SEVERITY_WARNING)
+}, SeverityWarning)
 
 var criticalDataLossPatterns = buildPatterns([]string{
 	"drop table",
@@ -87,12 +97,12 @@ var criticalDataLossPatterns = buildPatterns([]string{
 	"without backup",
 	"no rollback",
 	"force delete",
-}, specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL)
+}, SeverityCritical)
 
 var warningDataLossPatterns = buildPatterns([]string{
 	"truncate",
 	"purge",
-}, specv1.FindingSeverity_FINDING_SEVERITY_WARNING)
+}, SeverityWarning)
 
 type patternGroup struct {
 	category SafetyCategory
@@ -147,13 +157,19 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 	return flags
 }
 
+var severityToProto = map[FindingSeverity]specv1.FindingSeverity{
+	SeverityCritical: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
+	SeverityWarning:  specv1.FindingSeverity_FINDING_SEVERITY_WARNING,
+	SeverityNote:     specv1.FindingSeverity_FINDING_SEVERITY_NOTE,
+}
+
 // SafetyResultsToProto converts domain safety flags to protobuf SafetyFlag messages.
 func SafetyResultsToProto(flags []SafetyFlagResult) []*specv1.SafetyFlag {
 	out := make([]*specv1.SafetyFlag, len(flags))
 	for i, f := range flags {
 		out[i] = &specv1.SafetyFlag{
 			Category:    string(f.Category),
-			Severity:    f.Severity,
+			Severity:    severityToProto[f.Severity],
 			Description: f.Description,
 		}
 	}

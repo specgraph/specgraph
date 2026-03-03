@@ -227,14 +227,14 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown target_stage %v", req.Msg.TargetStage))
 	}
-	spec, err := h.store.AmendSpec(ctx, req.Msg.Slug, req.Msg.Reason, targetStage)
+	result, err := h.store.AmendSpec(ctx, req.Msg.Slug, req.Msg.Reason, targetStage)
 	if err != nil {
 		return nil, h.stageError(err)
 	}
 	return connect.NewResponse(&specv1.AmendResponse{
-		Slug:    spec.Slug,
-		Stage:   stageToProto[spec.Stage],
-		Version: spec.Version,
+		Slug:    result.Slug,
+		Stage:   stageToProto[result.Stage],
+		Version: result.Version,
 	}), nil
 }
 

@@ -6,8 +6,6 @@ package storage
 import (
 	"context"
 	"errors"
-
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 )
 
 // ErrInvalidStageTransition is returned when a stage transition violates funnel rules.
@@ -140,6 +138,13 @@ type ConstitutionViolation struct {
 	Severity   FindingSeverity `json:"severity,omitempty"`
 }
 
+// AmendResult holds the minimal fields returned after amending a spec.
+type AmendResult struct {
+	Slug    string
+	Stage   string
+	Version int32
+}
+
 // AuthoringBackend defines storage operations for the authoring funnel.
 // All methods accept domain types defined in this package, not protobuf types.
 type AuthoringBackend interface {
@@ -147,7 +152,7 @@ type AuthoringBackend interface {
 	StoreSparkOutput(ctx context.Context, slug string, output *SparkOutput) error
 	StoreShapeOutput(ctx context.Context, slug string, output *ShapeOutput) error
 	StoreSpecifyOutput(ctx context.Context, slug string, output *SpecifyOutput) error
-	StoreDecomposeOutput(ctx context.Context, slug string, output *DecomposeOutput) ([]*specv1.Spec, error)
+	StoreDecomposeOutput(ctx context.Context, slug string, output *DecomposeOutput) ([]string, error)
 	StoreRedTeamFindings(ctx context.Context, slug string, findings []RedTeamFinding) error
 	StorePeripheralVision(ctx context.Context, slug string, items []PeripheralVisionItem) error
 	StoreConsistencyIssues(ctx context.Context, slug string, issues []ConsistencyIssue) error
@@ -155,5 +160,5 @@ type AuthoringBackend interface {
 	StoreSafetyFlags(ctx context.Context, slug string, flags []SafetyFlag) error
 	StoreConstitutionViolations(ctx context.Context, slug string, violations []ConstitutionViolation) error
 	SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error
-	AmendSpec(ctx context.Context, slug, reason, targetStage string) (*specv1.Spec, error)
+	AmendSpec(ctx context.Context, slug, reason, targetStage string) (*AmendResult, error)
 }

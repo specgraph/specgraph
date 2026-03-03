@@ -20,13 +20,14 @@ import (
 
 // fakeAuthoringBackend is a minimal fake implementation of storage.AuthoringBackend for testing.
 type fakeAuthoringBackend struct {
-	transitionStageErr    error
-	storeSparkOutputErr   error
-	storeShapeOutputErr   error
-	storeSpecifyOutputErr error
-	supersedeErr          error
-	amendErr              error
-	amendResult           *specv1.Spec
+	transitionStageErr      error
+	storeSparkOutputErr     error
+	storeShapeOutputErr     error
+	storeSpecifyOutputErr   error
+	storeDecomposeOutputErr error
+	supersedeErr            error
+	amendErr                error
+	amendResult             *storage.AmendResult
 }
 
 func (f *fakeAuthoringBackend) TransitionStage(_ context.Context, _ string, _, _ string) error {
@@ -45,8 +46,8 @@ func (f *fakeAuthoringBackend) StoreSpecifyOutput(_ context.Context, _ string, _
 	return f.storeSpecifyOutputErr
 }
 
-func (f *fakeAuthoringBackend) StoreDecomposeOutput(_ context.Context, _ string, _ *storage.DecomposeOutput) ([]*specv1.Spec, error) {
-	return nil, nil
+func (f *fakeAuthoringBackend) StoreDecomposeOutput(_ context.Context, _ string, _ *storage.DecomposeOutput) ([]string, error) {
+	return nil, f.storeDecomposeOutputErr
 }
 
 func (f *fakeAuthoringBackend) StoreRedTeamFindings(_ context.Context, _ string, _ []storage.RedTeamFinding) error {
@@ -77,7 +78,7 @@ func (f *fakeAuthoringBackend) SupersedeSpec(_ context.Context, _, _, _ string) 
 	return f.supersedeErr
 }
 
-func (f *fakeAuthoringBackend) AmendSpec(_ context.Context, _, _, _ string) (*specv1.Spec, error) {
+func (f *fakeAuthoringBackend) AmendSpec(_ context.Context, _, _, _ string) (*storage.AmendResult, error) {
 	return f.amendResult, f.amendErr
 }
 
@@ -230,7 +231,7 @@ func TestAuthoringHandler_Approve_HappyPath(t *testing.T) {
 
 func TestAuthoringHandler_Amend_HappyPath(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
-		amendResult: &specv1.Spec{Slug: "my-spec", Stage: "shape", Version: 2},
+		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: "shape", Version: 2},
 	}, &fakeBackend{})
 	resp, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
 		Slug:        "my-spec",
@@ -385,6 +386,62 @@ func TestAuthoringHandler_Spark_StoreSparkOutputError(t *testing.T) {
 	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
 		Slug:   "my-spec",
 		Output: &specv1.SparkOutput{Seed: "some intent"},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestAuthoringHandler_Spark_NilOutput(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "my-spec",
+		Output: nil,
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestAuthoringHandler_Shape_StoreOutputError(t *testing.T) {
+	authoringStore := &fakeAuthoringBackend{storeShapeOutputErr: errors.New("store failed")}
+	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
+	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug:   "my-spec",
+		Output: &specv1.ShapeOutput{ScopeIn: []string{"auth endpoint"}},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestAuthoringHandler_Specify_StoreOutputError(t *testing.T) {
+	authoringStore := &fakeAuthoringBackend{storeSpecifyOutputErr: errors.New("store failed")}
+	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
+	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+		Slug:   "my-spec",
+		Output: &specv1.SpecifyOutput{InterfaceContract: "POST /api/login"},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestAuthoringHandler_Decompose_StoreOutputError(t *testing.T) {
+	authoringStore := &fakeAuthoringBackend{storeDecomposeOutputErr: errors.New("store failed")}
+	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
+	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug: "my-spec",
+		Output: &specv1.DecomposeOutput{
+			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
+			Slices: []*specv1.DecompositionSlice{
+				{Id: "s1", Intent: "auth endpoint"},
+			},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error

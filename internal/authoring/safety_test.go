@@ -20,7 +20,7 @@ func TestSafetyNet_SecurityFlags(t *testing.T) {
 
 	var found bool
 	for _, f := range flags {
-		if f.Category == "security" && f.Severity == specv1.FindingSeverity_FINDING_SEVERITY_WARNING {
+		if f.Category == "security" && f.Severity == authoring.SeverityWarning {
 			found = true
 			break
 		}
@@ -70,12 +70,12 @@ func TestSafetyResultsToProto(t *testing.T) {
 		flags := []authoring.SafetyFlagResult{
 			{
 				Category:    authoring.SafetyCategorySecurity,
-				Severity:    specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
+				Severity:    authoring.SeverityCritical,
 				Description: "test security flag",
 			},
 			{
 				Category:    authoring.SafetyCategoryDataLoss,
-				Severity:    specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
+				Severity:    authoring.SeverityCritical,
 				Description: "test data loss flag",
 			},
 		}
@@ -112,7 +112,7 @@ func TestSafetyNet_CriticalWinsOverWarning(t *testing.T) {
 	}
 
 	require.Len(t, securityFlags, 1, "expected exactly one security flag (dedup by category)")
-	require.Equal(t, specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL, securityFlags[0].Severity,
+	require.Equal(t, authoring.SeverityCritical, securityFlags[0].Severity,
 		"expected CRITICAL to win over WARNING when both patterns match")
 }
 

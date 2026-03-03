@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"slices"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/authoring"
 	"github.com/seanb4t/specgraph/internal/storage"
 )
@@ -86,22 +85,18 @@ func (s *Store) StoreSpecifyOutput(ctx context.Context, slug string, output *sto
 }
 
 // StoreDecomposeOutput persists the decompose output and creates child spec nodes with edges.
-func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *storage.DecomposeOutput) ([]*specv1.Spec, error) {
+// It returns the slugs of the created (or already-existing) child specs.
+func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *storage.DecomposeOutput) ([]string, error) {
 	if err := s.storeJSONProperty(ctx, slug, "decompose_output", output); err != nil {
 		return nil, err
 	}
-	var children []*specv1.Spec
+	var childSlugs []string
 	for _, sl := range output.Slices {
 		childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
 		// Check if child spec already exists (idempotency for retries).
 		existing, getErr := s.GetSpec(ctx, childSlug)
-		var child *specv1.Spec
-		if getErr == nil && existing != nil {
-			child = existing
-		} else {
-			var err error
-			child, err = s.CreateSpec(ctx, childSlug, sl.Intent, defaultChildPriority, defaultChildComplexity)
-			if err != nil {
+		if getErr != nil || existing == nil {
+			if _, err := s.CreateSpec(ctx, childSlug, sl.Intent, defaultChildPriority, defaultChildComplexity); err != nil {
 				return nil, fmt.Errorf("memgraph: create child spec %q: %w", childSlug, err)
 			}
 		}
@@ -126,9 +121,9 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 				return nil, fmt.Errorf("memgraph: merge DEPENDS_ON edge: %w", err)
 			}
 		}
-		children = append(children, child)
+		childSlugs = append(childSlugs, childSlug)
 	}
-	return children, nil
+	return childSlugs, nil
 }
 
 // StoreRedTeamFindings persists red team findings as JSON on the spec node.
@@ -190,7 +185,7 @@ func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason st
 }
 
 // AmendSpec moves a spec backward to an earlier stage, bumping its version.
-func (s *Store) AmendSpec(ctx context.Context, slug, reason, targetStage string) (*specv1.Spec, error) {
+func (s *Store) AmendSpec(ctx context.Context, slug, reason, targetStage string) (*storage.AmendResult, error) {
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {
 		return nil, err
@@ -203,8 +198,7 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason, targetStage string)
 		MATCH (s:Spec {slug: $slug})
 		SET s.stage = $stage, s.amend_reason = $reason,
 		    s.version = s.version + 1, s.updated_at = $updated_at
-		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity, s.version,
-		       s.created_at, s.updated_at
+		RETURN s.slug, s.stage, s.version
 	`
 	records, err := s.executeQuery(ctx, query,
 		map[string]any{"slug": slug, "stage": targetStage, "reason": reason, "updated_at": nowStr})
@@ -214,7 +208,18 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason, targetStage string)
 	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: amend spec %q: %w", slug, storage.ErrSpecNotFound)
 	}
-	return recordToSpec(records[0])
+	rec := records[0]
+	retSlug, _ := rec.Get("s.slug")
+	retStage, _ := rec.Get("s.stage")
+	retVersion, _ := rec.Get("s.version")
+	result := &storage.AmendResult{
+		Slug:  fmt.Sprintf("%v", retSlug),
+		Stage: fmt.Sprintf("%v", retStage),
+	}
+	if v, ok := retVersion.(int64); ok {
+		result.Version = int32(v)
+	}
+	return result, nil
 }
 
 // storeJSONProperty marshals data to JSON and stores it as a string property on the spec node.
