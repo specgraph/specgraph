@@ -152,3 +152,57 @@ func TestSupersedeSpec_NotFound(t *testing.T) {
 	err = store.SupersedeSpec(ctx, "existing-spec", "nonexistent", "reason")
 	require.ErrorIs(t, err, storage.ErrSpecNotFound)
 }
+
+func TestStoreDecomposeOutput_Idempotent(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := memgraph.New(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.CreateSpec(ctx, "idem-parent", "Idempotency parent", "p1", "medium")
+	require.NoError(t, err)
+
+	output := &storage.DecomposeOutput{
+		Strategy: storage.StrategyVerticalSlice,
+		Slices: []storage.DecomposeSlice{
+			{ID: "slice-a", Intent: "First slice", Verify: []string{"a works"}, Touches: []string{"a.go"}},
+			{ID: "slice-b", Intent: "Second slice", Verify: []string{"b works"}, Touches: []string{"b.go"}, DependsOn: []string{"slice-a"}},
+		},
+	}
+
+	// First call.
+	children1, err := store.StoreDecomposeOutput(ctx, "idem-parent", output)
+	require.NoError(t, err)
+	require.Len(t, children1, 2)
+	require.Equal(t, "idem-parent/slice-a", children1[0])
+	require.Equal(t, "idem-parent/slice-b", children1[1])
+
+	// Second call with identical data — must succeed and return the same slugs.
+	children2, err := store.StoreDecomposeOutput(ctx, "idem-parent", output)
+	require.NoError(t, err)
+	require.Len(t, children2, 2)
+	require.Equal(t, children1[0], children2[0])
+	require.Equal(t, children1[1], children2[1])
+}
+
+func TestStoreDecomposeOutput_MissingParent(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := memgraph.New(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	// Do not create the parent spec — slug does not exist in the database.
+	_, err = store.StoreDecomposeOutput(ctx, "ghost-parent", &storage.DecomposeOutput{
+		Strategy: storage.StrategyVerticalSlice,
+		Slices: []storage.DecomposeSlice{
+			{ID: "slice-x", Intent: "Orphan slice", Verify: []string{"x works"}, Touches: []string{"x.go"}},
+		},
+	})
+	require.ErrorIs(t, err, storage.ErrSpecNotFound)
+}

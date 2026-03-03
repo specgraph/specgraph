@@ -151,20 +151,36 @@ type AmendResult struct {
 	Version int32
 }
 
-// AuthoringBackend defines storage operations for the authoring funnel.
-// All methods accept domain types defined in this package, not protobuf types.
-type AuthoringBackend interface {
+// StageWriter handles stage transitions and output storage.
+type StageWriter interface {
 	TransitionStage(ctx context.Context, slug string, from, to AuthoringStage) error
 	StoreSparkOutput(ctx context.Context, slug string, output *SparkOutput) error
 	StoreShapeOutput(ctx context.Context, slug string, output *ShapeOutput) error
 	StoreSpecifyOutput(ctx context.Context, slug string, output *SpecifyOutput) error
 	StoreDecomposeOutput(ctx context.Context, slug string, output *DecomposeOutput) ([]string, error)
+}
+
+// PassWriter stores analytical pass results.
+type PassWriter interface {
 	StoreRedTeamFindings(ctx context.Context, slug string, findings []RedTeamFinding) error
 	StorePeripheralVision(ctx context.Context, slug string, items []PeripheralVisionItem) error
 	StoreConsistencyIssues(ctx context.Context, slug string, issues []ConsistencyIssue) error
 	StoreSimplicityFindings(ctx context.Context, slug string, findings []SimplicityFinding) error
 	StoreSafetyFlags(ctx context.Context, slug string, flags []SafetyFlag) error
 	StoreConstitutionViolations(ctx context.Context, slug string, violations []ConstitutionViolation) error
+}
+
+// SpecLifecycle handles spec amendments and supersession.
+type SpecLifecycle interface {
 	SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error
 	AmendSpec(ctx context.Context, slug, reason string, targetStage AuthoringStage) (*AmendResult, error)
+}
+
+// AuthoringBackend composes all authoring storage operations.
+// Implementations satisfy all sub-interfaces.
+// All methods accept domain types defined in this package, not protobuf types.
+type AuthoringBackend interface {
+	StageWriter
+	PassWriter
+	SpecLifecycle
 }
