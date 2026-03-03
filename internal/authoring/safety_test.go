@@ -20,12 +20,12 @@ func TestSafetyNet_SecurityFlags(t *testing.T) {
 
 	var found bool
 	for _, f := range flags {
-		if f.Category == "security" && f.Severity == specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL {
+		if f.Category == "security" && f.Severity == specv1.FindingSeverity_FINDING_SEVERITY_WARNING {
 			found = true
 			break
 		}
 	}
-	require.True(t, found, "expected a security flag with CRITICAL severity")
+	require.True(t, found, "expected a security flag with WARNING severity for ambiguous 'plaintext' pattern")
 }
 
 func TestSafetyNet_DataLossFlags(t *testing.T) {

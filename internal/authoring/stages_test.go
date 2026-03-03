@@ -83,6 +83,51 @@ func TestValidateTransition_UnknownStages(t *testing.T) {
 	})
 }
 
+func TestValidateAmendTransition(t *testing.T) {
+	tests := []struct {
+		from  string
+		to    string
+		valid bool
+	}{
+		// Valid backward transitions.
+		{"shape", "spark", true},
+		{"specify", "shape", true},
+		{"specify", "spark", true},
+		{"decompose", "specify", true},
+		{"decompose", "spark", true},
+		{"approved", "decompose", true},
+		{"approved", "spark", true},
+
+		// Invalid: forward transitions must be rejected.
+		{"spark", "shape", false},
+		{"shape", "specify", false},
+		{"specify", "decompose", false},
+		{"decompose", "approved", false},
+
+		// Invalid: same-to-same.
+		{"spark", "spark", false},
+		{"approved", "approved", false},
+
+		// Invalid: initial transition (empty from) is not a backward transition.
+		{"", "spark", false},
+
+		// Invalid: unknown stages.
+		{"nonexistent", "spark", false},
+		{"spark", "nonexistent", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.from+"->"+tt.to, func(t *testing.T) {
+			err := authoring.ValidateAmendTransition(tt.from, tt.to)
+			if tt.valid {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+}
+
 func TestAllStages(t *testing.T) {
 	got := authoring.AllStages()
 	expected := []string{"spark", "shape", "specify", "decompose", "approved"}

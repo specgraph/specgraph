@@ -126,6 +126,6 @@ func exprToString(expr ast.Expr) string {
 	case *ast.Ellipsis:
 		return "..." + exprToString(t.Elt)
 	default:
-		return "unknown"
+		return fmt.Sprintf("<%T>", expr)
 	}
 }

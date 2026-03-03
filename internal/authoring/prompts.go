@@ -44,6 +44,15 @@ func GetPrompts(stage string) []Prompt {
 	return promptRegistry[stage]
 }
 
+// stageToProtoEnum maps domain stage strings to proto AuthoringStage values.
+var stageToProtoEnum = map[string]specv1.AuthoringStage{
+	StageSpark:     specv1.AuthoringStage_AUTHORING_STAGE_SPARK,
+	StageShape:     specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
+	StageSpecify:   specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY,
+	StageDecompose: specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE,
+	StageApproved:  specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
+}
+
 // PromptsToProto converts the prompts for a stage into protobuf PromptTemplate messages.
 // Returns nil if the stage is not found.
 func PromptsToProto(stage string) []*specv1.PromptTemplate {
@@ -51,10 +60,11 @@ func PromptsToProto(stage string) []*specv1.PromptTemplate {
 	if len(prompts) == 0 {
 		return nil
 	}
+	protoStage := stageToProtoEnum[stage]
 	out := make([]*specv1.PromptTemplate, len(prompts))
 	for i, p := range prompts {
 		out[i] = &specv1.PromptTemplate{
-			Stage:    stage,
+			Stage:    protoStage,
 			Name:     p.Name,
 			Template: p.Template,
 		}

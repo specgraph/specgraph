@@ -73,9 +73,9 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 		// TODO: Add transaction support to make this atomic.
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store shape output (spec %q transitioned but output not stored): %w", msg.Slug, err))
 	}
-	scope := make([]string, 0, len(msg.Output.GetScopeIn())+len(msg.Output.GetScopeOut()))
-	scope = append(scope, msg.Output.GetScopeIn()...)
-	scope = append(scope, msg.Output.GetScopeOut()...)
+	scope := append(msg.Output.GetScopeIn(), msg.Output.GetScopeOut()...)
+	// SafetyInput.Intent accepts any text for pattern scanning; in Shape
+	// we scan risks since the spec intent was already checked in Spark.
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
 		Intent: strings.Join(msg.Output.GetRisks(), " "),
 		Scope:  scope,
@@ -125,6 +125,9 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
+	if msg.Output.GetStrategy() == specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_UNSPECIFIED {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("strategy is required"))
+	}
 	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageSpecify, authoring.StageDecompose); err != nil {
 		return nil, h.stageError(err)
 	}
@@ -134,7 +137,19 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 		// TODO: Add transaction support to make this atomic.
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store decompose output (spec %q transitioned but output not stored): %w", msg.Slug, err))
 	}
-	return connect.NewResponse(&specv1.DecomposeResponse{Output: msg.Output}), nil
+	// Collect slice intents for safety scanning.
+	var sliceIntents []string
+	for _, s := range msg.Output.GetSlices() {
+		sliceIntents = append(sliceIntents, s.GetIntent())
+	}
+	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
+		Intent: strings.Join(sliceIntents, " "),
+	})
+	return connect.NewResponse(&specv1.DecomposeResponse{
+		Output:      msg.Output,
+		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
+		// TODO: Wire simplicity_check and constitution_check passes.
+	}), nil
 }
 
 // Approve handles the Approve RPC, transitioning from decompose to approved stage.
@@ -157,7 +172,14 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if req.Msg.Slug == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
 	}
-	spec, err := h.store.AmendSpec(ctx, req.Msg.Slug, req.Msg.Reason, protoToStage[req.Msg.TargetStage])
+	if req.Msg.TargetStage == specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("target_stage is required"))
+	}
+	targetStage, ok := protoToStage[req.Msg.TargetStage]
+	if !ok {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown target_stage %v", req.Msg.TargetStage))
+	}
+	spec, err := h.store.AmendSpec(ctx, req.Msg.Slug, req.Msg.Reason, targetStage)
 	if err != nil {
 		return nil, h.stageError(err)
 	}
@@ -173,6 +195,9 @@ func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[s
 	if req.Msg.Slug == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
 	}
+	if req.Msg.SupersededBy == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("superseded_by is required"))
+	}
 	if err := h.store.SupersedeSpec(ctx, req.Msg.Slug, req.Msg.SupersededBy, req.Msg.Reason); err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
@@ -187,19 +212,16 @@ func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[s
 
 // GetPrompts handles the GetPrompts RPC, returning prompt templates for a stage.
 func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[specv1.GetPromptsRequest]) (*connect.Response[specv1.GetPromptsResponse], error) {
-	stage := req.Msg.Stage
-	valid := false
-	for _, s := range authoring.AllStages() {
-		if s == stage {
-			valid = true
-			break
-		}
+	stage, ok := protoToStage[req.Msg.Stage]
+	if !ok {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown stage %v", req.Msg.Stage))
 	}
-	if !valid {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown stage %q", stage))
+	prompts := authoring.PromptsToProto(stage)
+	if len(prompts) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no prompts defined for stage %q", stage))
 	}
 	return connect.NewResponse(&specv1.GetPromptsResponse{
-		Prompts: authoring.PromptsToProto(stage),
+		Prompts: prompts,
 	}), nil
 }
 

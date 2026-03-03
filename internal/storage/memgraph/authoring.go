@@ -94,8 +94,8 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 		return nil, err
 	}
 	var children []*specv1.Spec
-	for i, sl := range output.Slices {
-		childSlug := fmt.Sprintf("%s/%d", slug, i)
+	for _, sl := range output.Slices {
+		childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
 		// Check if child spec already exists (idempotency for retries).
 		existing, getErr := s.GetSpec(ctx, childSlug)
 		var child *specv1.Spec
@@ -119,12 +119,13 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 			return nil, fmt.Errorf("memgraph: merge COMPOSES edge: %w", err)
 		}
 		for _, dep := range sl.DependsOn {
+			depSlug := fmt.Sprintf("%s/%s", slug, dep)
 			depQuery := `
 				MATCH (from:Spec {slug: $from_slug}), (to:Spec {slug: $to_slug})
 				MERGE (from)-[:DEPENDS_ON]->(to)
 			`
 			_, err = neo4j.ExecuteQuery(ctx, s.driver, depQuery,
-				map[string]any{"from_slug": childSlug, "to_slug": dep},
+				map[string]any{"from_slug": childSlug, "to_slug": depSlug},
 				neo4j.EagerResultTransformer)
 			if err != nil {
 				return nil, fmt.Errorf("memgraph: merge DEPENDS_ON edge: %w", err)
@@ -200,7 +201,7 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason, targetStage string)
 	if err != nil {
 		return nil, err
 	}
-	if vErr := authoring.ValidateTransition(spec.Stage, targetStage); vErr != nil {
+	if vErr := authoring.ValidateAmendTransition(spec.Stage, targetStage); vErr != nil {
 		return nil, fmt.Errorf("memgraph: amend: %w: %w", storage.ErrInvalidStageTransition, vErr)
 	}
 	nowStr := nowRFC3339()
@@ -224,10 +225,13 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason, targetStage string)
 }
 
 // storeJSONProperty marshals data to JSON and stores it as a string property on the spec node.
-// The property name is interpolated into the Cypher query via fmt.Sprintf because Memgraph
-// does not support parameterized property names. The allowlist and character validation provide
-// defense-in-depth against Cypher injection.
+// Property names must be interpolated into the Cypher query (parameterized property names are
+// not supported by Cypher). The allowlist and character validation provide defense-in-depth
+// against Cypher injection.
 func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, data any) error {
+	if data == nil {
+		return fmt.Errorf("memgraph: %s data must not be nil", property)
+	}
 	if !slices.Contains(allowedJSONProperties, property) {
 		return fmt.Errorf("memgraph: disallowed property name %q", property)
 	}

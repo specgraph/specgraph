@@ -5,6 +5,7 @@ package server_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -131,7 +132,7 @@ func TestAuthoringHandler_GetPrompts(t *testing.T) {
 	client := specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, srv.URL)
 
 	resp, err := client.GetPrompts(context.Background(), connect.NewRequest(&specv1.GetPromptsRequest{
-		Stage: "spark",
+		Stage: specv1.AuthoringStage_AUTHORING_STAGE_SPARK,
 	}))
 	require.NoError(t, err)
 	require.NotEmpty(t, resp.Msg.Prompts)
@@ -166,6 +167,80 @@ func TestAuthoringHandler_Spark_HappyPath(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg.Output)
 	require.Equal(t, "some intent", resp.Msg.Output.Seed)
+}
+
+func TestAuthoringHandler_Shape_HappyPath(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug: "my-spec",
+		Output: &specv1.ShapeOutput{
+			ScopeIn:  []string{"auth endpoint"},
+			ScopeOut: []string{"admin panel"},
+			Risks:    []string{"latency"},
+		},
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.Output)
+	require.Equal(t, []string{"auth endpoint"}, resp.Msg.Output.ScopeIn)
+	require.NotEmpty(t, resp.Msg.NextPrompts, "should include next-stage prompts")
+}
+
+func TestAuthoringHandler_Specify_HappyPath(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+		Slug: "my-spec",
+		Output: &specv1.SpecifyOutput{
+			InterfaceContract: "POST /api/login",
+			VerifyCriteria:    []string{"returns 200 on valid credentials"},
+			Invariants:        []string{"session token is opaque"},
+		},
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.Output)
+	require.Equal(t, "POST /api/login", resp.Msg.Output.InterfaceContract)
+	require.NotEmpty(t, resp.Msg.NextPrompts, "should include next-stage prompts")
+}
+
+func TestAuthoringHandler_Decompose_HappyPath(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug: "my-spec",
+		Output: &specv1.DecomposeOutput{
+			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
+			Slices: []*specv1.DecompositionSlice{
+				{Id: "s1", Intent: "auth endpoint"},
+			},
+		},
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.Output)
+	require.Equal(t, specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE, resp.Msg.Output.Strategy)
+}
+
+func TestAuthoringHandler_Approve_HappyPath(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug: "my-spec",
+	}))
+	require.NoError(t, err)
+	require.Equal(t, "my-spec", resp.Msg.Slug)
+	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
+	require.NotNil(t, resp.Msg.ApprovedAt, "approved_at timestamp should be set")
+}
+
+func TestAuthoringHandler_Amend_HappyPath(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{
+		amendResult: &specv1.Spec{Slug: "my-spec", Stage: "shape", Version: 2},
+	}, &fakeBackend{})
+	resp, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
+		Slug:        "my-spec",
+		Reason:      "scope changed",
+		TargetStage: specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
+	}))
+	require.NoError(t, err)
+	require.Equal(t, "my-spec", resp.Msg.Slug)
+	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SHAPE, resp.Msg.Stage)
+	require.Equal(t, int32(2), resp.Msg.Version)
 }
 
 func TestAuthoringHandler_Shape_EmptySlug(t *testing.T) {
@@ -237,6 +312,18 @@ func TestAuthoringHandler_Supersede_EmptySlug(t *testing.T) {
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
+func TestAuthoringHandler_Supersede_EmptySupersedeBy(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.SupersedeRequest{
+		Slug:         "my-spec",
+		SupersededBy: "",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
 func TestAuthoringHandler_Supersede_NotFound(t *testing.T) {
 	authoringStore := &fakeAuthoringBackend{supersedeErr: storage.ErrSpecNotFound}
 	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
@@ -277,4 +364,30 @@ func TestAuthoringHandler_StageError_NotFound(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeNotFound, connErr.Code())
+}
+
+func TestAuthoringHandler_Spark_CreateSpecError(t *testing.T) {
+	backend := &fakeBackend{createSpecErr: errors.New("db error")}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "my-spec",
+		Output: &specv1.SparkOutput{Seed: "some intent"},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestAuthoringHandler_Spark_StoreSparkOutputError(t *testing.T) {
+	authoringStore := &fakeAuthoringBackend{storeSparkOutputErr: errors.New("store failed")}
+	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "my-spec",
+		Output: &specv1.SparkOutput{Seed: "some intent"},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
 }

@@ -54,7 +54,7 @@ enum DecompositionStrategy {
   DECOMPOSITION_STRATEGY_UNSPECIFIED = 0;
   // Deliver end-to-end value in independently shippable vertical slices.
   DECOMPOSITION_STRATEGY_VERTICAL_SLICE = 1;
-  // Split work by architectural layer (e.g. storage, API, UI).
+  // Split work by architectural layer (e.g. storage first, then API, then UI).
   DECOMPOSITION_STRATEGY_LAYER_CAKE = 2;
   // Deliver the entire spec as one unit; no decomposition.
   DECOMPOSITION_STRATEGY_SINGLE_UNIT = 3;
@@ -206,8 +206,8 @@ message SafetyFlag {
 
 // PromptTemplate holds a reusable LLM prompt associated with a specific authoring stage.
 message PromptTemplate {
-  // Authoring stage this template is intended for (e.g. "spark", "shape").
-  string stage = 1;
+  // Authoring stage this template is intended for.
+  AuthoringStage stage = 1;
   // Short identifier for this template within the stage.
   string name = 2;
   // Full prompt text, optionally containing interpolation placeholders.
@@ -366,8 +366,8 @@ message SupersedeResponse {
 
 // GetPromptsRequest retrieves available prompt templates for a given authoring stage.
 message GetPromptsRequest {
-  // Authoring stage name to retrieve prompts for (e.g. "spark", "shape").
-  string stage = 1;
+  // Authoring stage to retrieve prompts for.
+  AuthoringStage stage = 1;
 }
 
 // GetPromptsResponse returns all prompt templates available for the requested stage.

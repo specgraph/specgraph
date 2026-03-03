@@ -6,16 +6,26 @@ package authoring_test
 import (
 	"testing"
 
+	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/authoring"
 	"github.com/stretchr/testify/require"
 )
+
+// stageToEnum maps domain stage strings to proto enum values for test assertions.
+var stageToEnum = map[string]specv1.AuthoringStage{
+	"spark":     specv1.AuthoringStage_AUTHORING_STAGE_SPARK,
+	"shape":     specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
+	"specify":   specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY,
+	"decompose": specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE,
+	"approved":  specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
+}
 
 func TestPromptsToProto(t *testing.T) {
 	t.Run("spark stage produces correct proto templates", func(t *testing.T) {
 		protos := authoring.PromptsToProto("spark")
 		require.NotEmpty(t, protos)
 		for _, p := range protos {
-			require.Equal(t, "spark", p.Stage)
+			require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SPARK, p.Stage)
 			require.NotEmpty(t, p.Name)
 			require.NotEmpty(t, p.Template)
 		}
@@ -36,8 +46,9 @@ func TestPromptsToProto(t *testing.T) {
 			}
 			protos := authoring.PromptsToProto(stage)
 			require.NotNilf(t, protos, "stage %q should have protos", stage)
+			expected := stageToEnum[stage]
 			for _, p := range protos {
-				require.Equal(t, stage, p.Stage)
+				require.Equal(t, expected, p.Stage)
 			}
 		}
 	})

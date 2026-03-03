@@ -6,20 +6,25 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var specifyCmd = &cobra.Command{
 	Use:   "specify <slug>",
-	Short: "Define interface contract, verification criteria, and invariants",
+	Short: "Define interface contract, verification criteria, and invariants (use --json-file to supply output)",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runSpecify,
 }
 
+var specifyJSONFile string
+
 func init() {
+	specifyCmd.Flags().StringVar(&specifyJSONFile, "json-file", "", "path to JSON file containing SpecifyOutput")
 	rootCmd.AddCommand(specifyCmd)
 }
 
@@ -28,9 +33,19 @@ func runSpecify(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	output := &specv1.SpecifyOutput{}
+	if specifyJSONFile != "" {
+		data, readErr := os.ReadFile(specifyJSONFile)
+		if readErr != nil {
+			return fmt.Errorf("specify: read json-file: %w", readErr)
+		}
+		if unmarshalErr := protojson.Unmarshal(data, output); unmarshalErr != nil {
+			return fmt.Errorf("specify: parse json-file: %w", unmarshalErr)
+		}
+	}
 	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug:   args[0],
-		Output: &specv1.SpecifyOutput{},
+		Output: output,
 	}))
 	if err != nil {
 		return fmt.Errorf("specify: %w", err)

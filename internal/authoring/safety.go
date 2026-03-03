@@ -4,12 +4,15 @@
 package authoring
 
 import (
+	"regexp"
 	"strings"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 )
 
 // SafetyInput holds the text to scan for safety concerns.
+// Intent accepts any text for pattern scanning — its name reflects the Spark
+// use case, but other handlers pass stage-appropriate text (e.g., risks in Shape).
 type SafetyInput struct {
 	Intent     string
 	Scope      []string
@@ -32,30 +35,75 @@ type SafetyFlagResult struct {
 	Description string
 }
 
-var securityPatterns = []string{
-	"plaintext",
+// safetyPattern pairs a compiled regex with its severity level.
+type safetyPattern struct {
+	re       *regexp.Regexp
+	severity specv1.FindingSeverity
+}
+
+// buildPatterns compiles pattern strings into word-boundary-aware regexes.
+// Multi-word phrases use substring match (high confidence); single short
+// words use word-boundary anchors to reduce false positives.
+func buildPatterns(patterns []string, severity specv1.FindingSeverity) []safetyPattern {
+	out := make([]safetyPattern, len(patterns))
+	for i, p := range patterns {
+		var expr string
+		if strings.ContainsAny(p, " (-") {
+			// Multi-word or punctuated patterns: substring match is precise enough.
+			expr = regexp.QuoteMeta(p)
+		} else {
+			// Single-word patterns: require word boundary to reduce false positives.
+			expr = `\b` + regexp.QuoteMeta(p) + `\b`
+		}
+		out[i] = safetyPattern{re: regexp.MustCompile(expr), severity: severity}
+	}
+	return out
+}
+
+// High-confidence patterns that warrant CRITICAL severity.
+var criticalSecurityPatterns = buildPatterns([]string{
 	"hardcoded secret",
 	"hardcoded password",
 	"disable auth",
 	"skip validation",
 	"no encryption",
+	"rm -rf",
+}, specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL)
+
+// Ambiguous patterns that may appear in legitimate specs — WARNING severity.
+var warningSecurityPatterns = buildPatterns([]string{
 	"credential",
 	"injection",
 	"eval(",
 	"exec(",
-}
+	"plaintext",
+}, specv1.FindingSeverity_FINDING_SEVERITY_WARNING)
 
-var dataLossPatterns = []string{
+var criticalDataLossPatterns = buildPatterns([]string{
 	"drop table",
 	"drop all",
 	"delete all",
-	"truncate",
 	"without migration",
 	"without backup",
 	"no rollback",
-	"rm -rf",
 	"force delete",
+}, specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL)
+
+var warningDataLossPatterns = buildPatterns([]string{
+	"truncate",
 	"purge",
+}, specv1.FindingSeverity_FINDING_SEVERITY_WARNING)
+
+type patternGroup struct {
+	category SafetyCategory
+	patterns []safetyPattern
+}
+
+var allPatternGroups = []patternGroup{
+	{SafetyCategorySecurity, criticalSecurityPatterns},
+	{SafetyCategorySecurity, warningSecurityPatterns},
+	{SafetyCategoryDataLoss, criticalDataLossPatterns},
+	{SafetyCategoryDataLoss, warningDataLossPatterns},
 }
 
 // RunSafetyNet scans the input for known dangerous patterns and returns flags.
@@ -66,24 +114,20 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 	parts = append(parts, input.Invariants...)
 	combined := strings.ToLower(strings.Join(parts, " "))
 
+	seen := make(map[SafetyCategory]bool)
 	var flags []SafetyFlagResult
 
-	type patternGroup struct {
-		category SafetyCategory
-		patterns []string
-	}
-
-	groups := []patternGroup{
-		{SafetyCategorySecurity, securityPatterns},
-		{SafetyCategoryDataLoss, dataLossPatterns},
-	}
-	for _, g := range groups {
-		for _, p := range g.patterns {
-			if strings.Contains(combined, p) {
+	for _, g := range allPatternGroups {
+		for _, sp := range g.patterns {
+			if sp.re.MatchString(combined) {
+				if seen[g.category] {
+					continue // one flag per category
+				}
+				seen[g.category] = true
 				flags = append(flags, SafetyFlagResult{
 					Category:    g.category,
-					Severity:    specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
-					Description: "matched pattern: " + p,
+					Severity:    sp.severity,
+					Description: "matched pattern: " + sp.re.String(),
 				})
 			}
 		}
