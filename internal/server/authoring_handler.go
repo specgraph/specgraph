@@ -41,7 +41,7 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	if err := h.store.StoreSparkOutput(ctx, msg.Slug, msg.Output); err != nil {
+	if err := h.store.StoreSparkOutput(ctx, msg.Slug, sparkOutputToDomain(msg.Output)); err != nil {
 		// NOTE: CreateSpec succeeded but StoreSparkOutput failed. The spec exists
 		// without output data. A retry of Spark will fail due to duplicate slug.
 		// TODO: Add transaction support to make this atomic.
@@ -67,7 +67,7 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageSpark, authoring.StageShape); err != nil {
 		return nil, h.stageError(err)
 	}
-	if err := h.store.StoreShapeOutput(ctx, msg.Slug, msg.Output); err != nil {
+	if err := h.store.StoreShapeOutput(ctx, msg.Slug, shapeOutputToDomain(msg.Output)); err != nil {
 		// NOTE: TransitionStage succeeded but StoreShapeOutput failed. The spec
 		// is now in the shape stage but has no shape output stored.
 		// TODO: Add transaction support to make this atomic.
@@ -99,7 +99,7 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageShape, authoring.StageSpecify); err != nil {
 		return nil, h.stageError(err)
 	}
-	if err := h.store.StoreSpecifyOutput(ctx, msg.Slug, msg.Output); err != nil {
+	if err := h.store.StoreSpecifyOutput(ctx, msg.Slug, specifyOutputToDomain(msg.Output)); err != nil {
 		// NOTE: TransitionStage succeeded but StoreSpecifyOutput failed. The spec
 		// is now in the specify stage but has no specify output stored.
 		// TODO: Add transaction support to make this atomic.
@@ -128,7 +128,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	if err := h.store.TransitionStage(ctx, msg.Slug, authoring.StageSpecify, authoring.StageDecompose); err != nil {
 		return nil, h.stageError(err)
 	}
-	if _, err := h.store.StoreDecomposeOutput(ctx, msg.Slug, msg.Output); err != nil {
+	if _, err := h.store.StoreDecomposeOutput(ctx, msg.Slug, decomposeOutputToDomain(msg.Output)); err != nil {
 		// NOTE: TransitionStage succeeded but StoreDecomposeOutput failed. The spec
 		// is now in the decompose stage but has no decompose output stored.
 		// TODO: Add transaction support to make this atomic.
@@ -210,7 +210,74 @@ func RegisterAuthoringService(mux *http.ServeMux, authoringStore storage.Authori
 	mux.Handle(path, h)
 }
 
-// stageToProto converts a domain stage string to the proto AuthoringStage enum.
+// --- Proto → Domain mappers ---
+
+func sparkOutputToDomain(p *specv1.SparkOutput) *storage.SparkOutput {
+	return &storage.SparkOutput{
+		Seed:       p.GetSeed(),
+		Signal:     p.GetSignal(),
+		Questions:  p.GetQuestions(),
+		ScopeSniff: p.GetScopeSniff(),
+		KillTest:   p.GetKillTest(),
+	}
+}
+
+func shapeOutputToDomain(p *specv1.ShapeOutput) *storage.ShapeOutput {
+	approaches := make([]storage.Approach, len(p.GetApproaches()))
+	for i, a := range p.GetApproaches() {
+		approaches[i] = storage.Approach{
+			Name:        a.GetName(),
+			Description: a.GetDescription(),
+			Tradeoffs:   a.GetTradeoffs(),
+		}
+	}
+	return &storage.ShapeOutput{
+		ScopeIn:        p.GetScopeIn(),
+		ScopeOut:       p.GetScopeOut(),
+		Approaches:     approaches,
+		ChosenApproach: p.GetChosenApproach(),
+		Risks:          p.GetRisks(),
+		SuccessMust:    p.GetSuccessMust(),
+		SuccessShould:  p.GetSuccessShould(),
+		SuccessWont:    p.GetSuccessWont(),
+		Decisions:      p.GetDecisions(),
+	}
+}
+
+func specifyOutputToDomain(p *specv1.SpecifyOutput) *storage.SpecifyOutput {
+	return &storage.SpecifyOutput{
+		InterfaceContract: p.GetInterfaceContract(),
+		VerifyCriteria:    p.GetVerifyCriteria(),
+		Invariants:        p.GetInvariants(),
+		Touches:           p.GetTouches(),
+	}
+}
+
+var decomposeStrategyMap = map[specv1.DecompositionStrategy]storage.DecompositionStrategy{
+	specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE: storage.StrategyVerticalSlice,
+	specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_LAYER_CAKE:     storage.StrategyLayerCake,
+	specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_SINGLE_UNIT:    storage.StrategySingleUnit,
+}
+
+func decomposeOutputToDomain(p *specv1.DecomposeOutput) *storage.DecomposeOutput {
+	slices := make([]storage.DecomposeSlice, len(p.GetSlices()))
+	for i, s := range p.GetSlices() {
+		slices[i] = storage.DecomposeSlice{
+			ID:        s.GetId(),
+			Intent:    s.GetIntent(),
+			Verify:    s.GetVerify(),
+			Touches:   s.GetTouches(),
+			DependsOn: s.GetDependsOn(),
+		}
+	}
+	return &storage.DecomposeOutput{
+		Strategy: decomposeStrategyMap[p.GetStrategy()],
+		Slices:   slices,
+	}
+}
+
+// --- Stage mapping ---
+
 var stageToProto = map[string]specv1.AuthoringStage{
 	authoring.StageSpark:     specv1.AuthoringStage_AUTHORING_STAGE_SPARK,
 	authoring.StageShape:     specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
@@ -219,7 +286,6 @@ var stageToProto = map[string]specv1.AuthoringStage{
 	authoring.StageApproved:  specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
 }
 
-// protoToStage converts a proto AuthoringStage enum to a domain stage string.
 var protoToStage = map[specv1.AuthoringStage]string{
 	specv1.AuthoringStage_AUTHORING_STAGE_SPARK:     authoring.StageSpark,
 	specv1.AuthoringStage_AUTHORING_STAGE_SHAPE:     authoring.StageShape,

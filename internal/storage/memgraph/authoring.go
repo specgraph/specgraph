@@ -74,22 +74,22 @@ func (s *Store) TransitionStage(ctx context.Context, slug, from, to string) erro
 }
 
 // StoreSparkOutput persists the spark stage output as JSON on the spec node.
-func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *specv1.SparkOutput) error {
+func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *storage.SparkOutput) error {
 	return s.storeJSONProperty(ctx, slug, "spark_output", output)
 }
 
 // StoreShapeOutput persists the shape stage output as JSON on the spec node.
-func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *specv1.ShapeOutput) error {
+func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *storage.ShapeOutput) error {
 	return s.storeJSONProperty(ctx, slug, "shape_output", output)
 }
 
 // StoreSpecifyOutput persists the specify stage output as JSON on the spec node.
-func (s *Store) StoreSpecifyOutput(ctx context.Context, slug string, output *specv1.SpecifyOutput) error {
+func (s *Store) StoreSpecifyOutput(ctx context.Context, slug string, output *storage.SpecifyOutput) error {
 	return s.storeJSONProperty(ctx, slug, "specify_output", output)
 }
 
 // StoreDecomposeOutput persists the decompose output and creates child spec nodes with edges.
-func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *specv1.DecomposeOutput) ([]*specv1.Spec, error) {
+func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *storage.DecomposeOutput) ([]*specv1.Spec, error) {
 	if err := s.storeJSONProperty(ctx, slug, "decompose_output", output); err != nil {
 		return nil, err
 	}
@@ -136,32 +136,32 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 }
 
 // StoreRedTeamFindings persists red team findings as JSON on the spec node.
-func (s *Store) StoreRedTeamFindings(ctx context.Context, slug string, findings []*specv1.RedTeamFinding) error {
+func (s *Store) StoreRedTeamFindings(ctx context.Context, slug string, findings []storage.RedTeamFinding) error {
 	return s.storeJSONProperty(ctx, slug, "red_team_findings", findings)
 }
 
 // StorePeripheralVision persists peripheral vision items as JSON on the spec node.
-func (s *Store) StorePeripheralVision(ctx context.Context, slug string, items []*specv1.PeripheralVisionItem) error {
+func (s *Store) StorePeripheralVision(ctx context.Context, slug string, items []storage.PeripheralVisionItem) error {
 	return s.storeJSONProperty(ctx, slug, "peripheral_vision", items)
 }
 
 // StoreConsistencyIssues persists consistency issues as JSON on the spec node.
-func (s *Store) StoreConsistencyIssues(ctx context.Context, slug string, issues []*specv1.ConsistencyIssue) error {
+func (s *Store) StoreConsistencyIssues(ctx context.Context, slug string, issues []storage.ConsistencyIssue) error {
 	return s.storeJSONProperty(ctx, slug, "consistency_issues", issues)
 }
 
 // StoreSimplicityFindings persists simplicity findings as JSON on the spec node.
-func (s *Store) StoreSimplicityFindings(ctx context.Context, slug string, findings []*specv1.SimplicityFinding) error {
+func (s *Store) StoreSimplicityFindings(ctx context.Context, slug string, findings []storage.SimplicityFinding) error {
 	return s.storeJSONProperty(ctx, slug, "simplicity_findings", findings)
 }
 
 // StoreSafetyFlags persists safety flags as JSON on the spec node.
-func (s *Store) StoreSafetyFlags(ctx context.Context, slug string, flags []*specv1.SafetyFlag) error {
+func (s *Store) StoreSafetyFlags(ctx context.Context, slug string, flags []storage.SafetyFlag) error {
 	return s.storeJSONProperty(ctx, slug, "safety_flags", flags)
 }
 
 // StoreConstitutionViolations persists constitution violations as JSON on the spec node.
-func (s *Store) StoreConstitutionViolations(ctx context.Context, slug string, violations []*specv1.ConstitutionViolation) error {
+func (s *Store) StoreConstitutionViolations(ctx context.Context, slug string, violations []storage.ConstitutionViolation) error {
 	return s.storeJSONProperty(ctx, slug, "constitution_violations", violations)
 }
 

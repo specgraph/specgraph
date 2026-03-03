@@ -32,43 +32,43 @@ func (f *fakeAuthoringBackend) TransitionStage(_ context.Context, _ string, _, _
 	return f.transitionStageErr
 }
 
-func (f *fakeAuthoringBackend) StoreSparkOutput(_ context.Context, _ string, _ *specv1.SparkOutput) error {
+func (f *fakeAuthoringBackend) StoreSparkOutput(_ context.Context, _ string, _ *storage.SparkOutput) error {
 	return f.storeSparkOutputErr
 }
 
-func (f *fakeAuthoringBackend) StoreShapeOutput(_ context.Context, _ string, _ *specv1.ShapeOutput) error {
+func (f *fakeAuthoringBackend) StoreShapeOutput(_ context.Context, _ string, _ *storage.ShapeOutput) error {
 	return f.storeShapeOutputErr
 }
 
-func (f *fakeAuthoringBackend) StoreSpecifyOutput(_ context.Context, _ string, _ *specv1.SpecifyOutput) error {
+func (f *fakeAuthoringBackend) StoreSpecifyOutput(_ context.Context, _ string, _ *storage.SpecifyOutput) error {
 	return f.storeSpecifyOutputErr
 }
 
-func (f *fakeAuthoringBackend) StoreDecomposeOutput(_ context.Context, _ string, _ *specv1.DecomposeOutput) ([]*specv1.Spec, error) {
+func (f *fakeAuthoringBackend) StoreDecomposeOutput(_ context.Context, _ string, _ *storage.DecomposeOutput) ([]*specv1.Spec, error) {
 	return nil, nil
 }
 
-func (f *fakeAuthoringBackend) StoreRedTeamFindings(_ context.Context, _ string, _ []*specv1.RedTeamFinding) error {
+func (f *fakeAuthoringBackend) StoreRedTeamFindings(_ context.Context, _ string, _ []storage.RedTeamFinding) error {
 	return nil
 }
 
-func (f *fakeAuthoringBackend) StorePeripheralVision(_ context.Context, _ string, _ []*specv1.PeripheralVisionItem) error {
+func (f *fakeAuthoringBackend) StorePeripheralVision(_ context.Context, _ string, _ []storage.PeripheralVisionItem) error {
 	return nil
 }
 
-func (f *fakeAuthoringBackend) StoreConsistencyIssues(_ context.Context, _ string, _ []*specv1.ConsistencyIssue) error {
+func (f *fakeAuthoringBackend) StoreConsistencyIssues(_ context.Context, _ string, _ []storage.ConsistencyIssue) error {
 	return nil
 }
 
-func (f *fakeAuthoringBackend) StoreSimplicityFindings(_ context.Context, _ string, _ []*specv1.SimplicityFinding) error {
+func (f *fakeAuthoringBackend) StoreSimplicityFindings(_ context.Context, _ string, _ []storage.SimplicityFinding) error {
 	return nil
 }
 
-func (f *fakeAuthoringBackend) StoreSafetyFlags(_ context.Context, _ string, _ []*specv1.SafetyFlag) error {
+func (f *fakeAuthoringBackend) StoreSafetyFlags(_ context.Context, _ string, _ []storage.SafetyFlag) error {
 	return nil
 }
 
-func (f *fakeAuthoringBackend) StoreConstitutionViolations(_ context.Context, _ string, _ []*specv1.ConstitutionViolation) error {
+func (f *fakeAuthoringBackend) StoreConstitutionViolations(_ context.Context, _ string, _ []storage.ConstitutionViolation) error {
 	return nil
 }
 

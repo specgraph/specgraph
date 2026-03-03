@@ -7,7 +7,6 @@ import (
 	"context"
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/require"
@@ -53,7 +52,7 @@ func TestStoreSparkOutput(t *testing.T) {
 	_, err = store.CreateSpec(ctx, "spark-out", "Spark output test", "p1", "low")
 	require.NoError(t, err)
 
-	err = store.StoreSparkOutput(ctx, "spark-out", &specv1.SparkOutput{
+	err = store.StoreSparkOutput(ctx, "spark-out", &storage.SparkOutput{
 		Seed:       "Build a login system",
 		Signal:     "User request",
 		Questions:  []string{"OAuth or password?", "MFA required?"},
@@ -75,17 +74,17 @@ func TestStoreDecomposeOutput(t *testing.T) {
 	_, err = store.CreateSpec(ctx, "decomp-parent", "Parent spec", "p1", "medium")
 	require.NoError(t, err)
 
-	children, err := store.StoreDecomposeOutput(ctx, "decomp-parent", &specv1.DecomposeOutput{
-		Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
-		Slices: []*specv1.DecompositionSlice{
-			{Id: "slice-1", Intent: "Auth endpoint", Verify: []string{"login works"}, Touches: []string{"auth.go"}},
-			{Id: "slice-2", Intent: "Token refresh", Verify: []string{"refresh works"}, Touches: []string{"token.go"}, DependsOn: []string{"slice-1"}},
+	children, err := store.StoreDecomposeOutput(ctx, "decomp-parent", &storage.DecomposeOutput{
+		Strategy: storage.StrategyVerticalSlice,
+		Slices: []storage.DecomposeSlice{
+			{ID: "slice-1", Intent: "Auth endpoint", Verify: []string{"login works"}, Touches: []string{"auth.go"}},
+			{ID: "slice-2", Intent: "Token refresh", Verify: []string{"refresh works"}, Touches: []string{"token.go"}, DependsOn: []string{"slice-1"}},
 		},
 	})
 	require.NoError(t, err)
 	require.Len(t, children, 2)
-	require.Equal(t, "slice-1", children[0].Slug)
-	require.Equal(t, "slice-2", children[1].Slug)
+	require.Equal(t, "decomp-parent/0", children[0].Slug)
+	require.Equal(t, "decomp-parent/1", children[1].Slug)
 }
 
 func TestAmendSpec(t *testing.T) {
