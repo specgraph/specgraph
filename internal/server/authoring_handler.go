@@ -47,9 +47,11 @@ func validateSlug(slug string) error {
 // wrap their operations in a transaction for atomicity. When nil, operations
 // execute sequentially without rollback on partial failure.
 type AuthoringHandler struct {
-	store     storage.AuthoringBackend
-	backend   storage.Backend
-	txBackend storage.TransactionalBackend // optional, may be nil
+	store           storage.AuthoringBackend
+	backend         storage.Backend
+	txBackend       storage.TransactionalBackend // optional, may be nil
+	decisionBackend storage.DecisionBackend      // optional; when non-nil, Approve transitions linked decisions
+	graphBackend    storage.GraphBackend         // optional; used to discover decision→spec INFORMS edges
 }
 
 var _ specgraphv1connect.AuthoringServiceHandler = (*AuthoringHandler)(nil)
@@ -105,6 +107,10 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 		}
 		return nil, h.stageError(err)
 	}
+	// Output is returned as-is from the client request. The storage layer stores
+	// domain-typed stage outputs (via StoreSparkOutput) but does not provide a
+	// proto-typed round-trip getter. This is acceptable because the output was
+	// just persisted in the same request and has not been enriched server-side.
 	return connect.NewResponse(&specv1.SparkResponse{
 		Output:      msg.Output,
 		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
@@ -155,6 +161,7 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 		return nil, h.stageError(err)
 	}
 	peripheralVision, _, _, _ := runAnalyticalPasses(authoring.StageShape, msg.Posture)
+	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.ShapeResponse{
 		Output:           msg.Output,
 		PeripheralVision: peripheralVision,
@@ -204,6 +211,7 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 		return nil, h.stageError(err)
 	}
 	_, redTeam, consistencyIssues, _ := runAnalyticalPasses(authoring.StageSpecify, msg.Posture)
+	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.SpecifyResponse{
 		Output:            msg.Output,
 		RedTeam:           redTeam,
@@ -269,6 +277,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 		return nil, h.stageError(err)
 	}
 	_, _, _, simplicity := runAnalyticalPasses(authoring.StageDecompose, msg.Posture)
+	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.DecomposeResponse{
 		Output:      msg.Output,
 		Simplicity:  simplicity,
@@ -278,6 +287,8 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 }
 
 // Approve handles the Approve RPC, transitioning from decompose to approved stage.
+// After approval, linked decisions (via INFORMS edges) are transitioned from
+// proposed to accepted per ADR-003 (decisions as first-class graph nodes).
 func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[specv1.ApproveRequest]) (*connect.Response[specv1.ApproveResponse], error) {
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -285,10 +296,23 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	if err := h.store.TransitionStage(ctx, req.Msg.Slug, storage.AuthoringStage(authoring.StageDecompose), storage.AuthoringStage(authoring.StageApproved)); err != nil {
 		return nil, h.stageError(err)
 	}
+	// Read back the spec from storage so approved_at reflects the persisted
+	// updated_at timestamp set during TransitionStage, rather than being
+	// computed at response time.
+	spec, err := h.backend.GetSpec(ctx, req.Msg.Slug)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("approve: read back spec: %w", err))
+	}
+	approvedAt := spec.GetUpdatedAt()
+	if approvedAt == nil {
+		approvedAt = timestamppb.Now()
+	}
+	// ADR-003: transition linked decisions from proposed to accepted.
+	h.acceptLinkedDecisions(ctx, req.Msg.Slug)
 	return connect.NewResponse(&specv1.ApproveResponse{
 		Slug:       req.Msg.Slug,
 		Stage:      stageToProto(authoring.StageApproved),
-		ApprovedAt: timestamppb.Now(),
+		ApprovedAt: approvedAt,
 	}), nil
 }
 
@@ -369,6 +393,42 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 	}), nil
 }
 
+// acceptLinkedDecisions queries for Decision nodes linked to the spec via
+// INFORMS edges and transitions them from proposed to accepted. Errors are
+// logged but do not fail the Approve RPC — decision acceptance is best-effort
+// since the spec approval itself has already succeeded.
+func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug string) {
+	if h.graphBackend == nil || h.decisionBackend == nil {
+		return
+	}
+	edges, err := h.graphBackend.ListEdges(ctx, slug, specv1.EdgeType_EDGE_TYPE_INFORMS)
+	if err != nil {
+		// Best-effort: spec approval succeeded, decision acceptance is secondary.
+		return
+	}
+	acceptedStatus := specv1.DecisionStatus_DECISION_STATUS_ACCEPTED
+	for _, edge := range edges {
+		// INFORMS edges: Decision → Spec. ListEdges returns both directions,
+		// so the decision slug is the from_id when it differs from the spec slug.
+		decisionSlug := edge.GetFromId()
+		if decisionSlug == "" || decisionSlug == slug {
+			// This edge has the spec as the source — try the to side.
+			decisionSlug = edge.GetToId()
+			if decisionSlug == "" || decisionSlug == slug {
+				continue
+			}
+		}
+		dec, err := h.decisionBackend.GetDecision(ctx, decisionSlug)
+		if err != nil {
+			continue
+		}
+		if dec.GetStatus() != specv1.DecisionStatus_DECISION_STATUS_PROPOSED {
+			continue
+		}
+		_, _ = h.decisionBackend.UpdateDecision(ctx, decisionSlug, nil, &acceptedStatus, nil, nil, nil)
+	}
+}
+
 // RegisterAuthoringService registers the AuthoringService on the given mux.
 func RegisterAuthoringService(mux *http.ServeMux, authoringStore storage.AuthoringBackend, backend storage.Backend) {
 	if authoringStore == nil {
@@ -381,6 +441,14 @@ func RegisterAuthoringService(mux *http.ServeMux, authoringStore storage.Authori
 	// If the backend supports transactions, enable atomic multi-operation RPCs.
 	if txb, ok := backend.(storage.TransactionalBackend); ok {
 		handler.txBackend = txb
+	}
+	// If the backend supports decision and graph operations, enable ADR-003
+	// decision acceptance on spec approval.
+	if db, ok := backend.(storage.DecisionBackend); ok {
+		handler.decisionBackend = db
+	}
+	if gb, ok := backend.(storage.GraphBackend); ok {
+		handler.graphBackend = gb
 	}
 	path, h := specgraphv1connect.NewAuthoringServiceHandler(handler)
 	mux.Handle(path, h)

@@ -47,12 +47,18 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 	nowStr := nowRFC3339()
 	fromStr := string(from)
 	toStr := string(to)
-	query := `
+	// When transitioning to approved, also persist approved_at so the
+	// timestamp is stored rather than computed at response time.
+	setClause := "s.stage = $to, s.updated_at = $updated_at"
+	if to == storage.AuthoringStage(authoring.StageApproved) {
+		setClause += ", s.approved_at = $updated_at"
+	}
+	query := fmt.Sprintf(`
 		MATCH (s:Spec {slug: $slug})
 		WHERE s.stage = $from OR ($from = "" AND (s.stage IS NULL OR s.stage = ""))
-		SET s.stage = $to, s.updated_at = $updated_at
+		SET %s
 		RETURN s.slug
-	`
+	`, setClause)
 	records, err := s.executeQuery(ctx, query,
 		map[string]any{"slug": slug, "from": fromStr, "to": toStr, "updated_at": nowStr})
 	if err != nil {

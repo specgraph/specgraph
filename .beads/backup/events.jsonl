@@ -3628,3 +3628,38 @@
 {"actor":"seanb4t","comment":"Added label: pr:8","created_at":"2026-03-03T22:42:14Z","event_type":"label_added","id":3633,"issue_id":"spgr-cmg.66","new_value":null,"old_value":null}
 {"actor":"seanb4t","comment":"Added label: turn:1","created_at":"2026-03-03T22:42:14Z","event_type":"label_added","id":3634,"issue_id":"spgr-cmg.66","new_value":null,"old_value":null}
 {"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:53:16Z","event_type":"closed","id":3635,"issue_id":"spgr-cmg.19","new_value":"Fixed: added type Stage string with typed constants","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:53:19Z","event_type":"closed","id":3636,"issue_id":"spgr-cmg.56","new_value":"Fixed: removed unnecessary float64() casts","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:53:23Z","event_type":"closed","id":3637,"issue_id":"spgr-cmg.54","new_value":"Fixed: corrected doc comment about MERGE vs CreateSpec","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:53:26Z","event_type":"closed","id":3638,"issue_id":"spgr-cmg.3","new_value":"Fixed: rec.Get() errors now checked and returned","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:53:30Z","event_type":"closed","id":3639,"issue_id":"spgr-cmg.63","new_value":"Work complete in batch 14","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:53:33Z","event_type":"closed","id":3640,"issue_id":"spgr-cmg.64","new_value":"Work complete in batch 14","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:53:37Z","event_type":"closed","id":3641,"issue_id":"spgr-cmg.66","new_value":"Work complete in batch 14","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:53:57Z","event_type":"created","id":3642,"issue_id":"spgr-cmg.67","new_value":"","old_value":""}
+{"actor":"seanb4t","comment":"Added label: pr-review","created_at":"2026-03-03T22:53:57Z","event_type":"label_added","id":3643,"issue_id":"spgr-cmg.67","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: pr:8","created_at":"2026-03-03T22:53:57Z","event_type":"label_added","id":3644,"issue_id":"spgr-cmg.67","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: turn:1","created_at":"2026-03-03T22:53:57Z","event_type":"label_added","id":3645,"issue_id":"spgr-cmg.67","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:53:57Z","event_type":"created","id":3646,"issue_id":"spgr-cmg.68","new_value":"","old_value":""}
+{"actor":"seanb4t","comment":"Added label: pr-review","created_at":"2026-03-03T22:53:57Z","event_type":"label_added","id":3647,"issue_id":"spgr-cmg.68","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: pr:8","created_at":"2026-03-03T22:53:57Z","event_type":"label_added","id":3648,"issue_id":"spgr-cmg.68","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: turn:1","created_at":"2026-03-03T22:53:57Z","event_type":"label_added","id":3649,"issue_id":"spgr-cmg.68","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:53:58Z","event_type":"created","id":3650,"issue_id":"spgr-cmg.69","new_value":"","old_value":""}
+{"actor":"seanb4t","comment":"Added label: pr-review","created_at":"2026-03-03T22:53:58Z","event_type":"label_added","id":3651,"issue_id":"spgr-cmg.69","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: pr:8","created_at":"2026-03-03T22:53:58Z","event_type":"label_added","id":3652,"issue_id":"spgr-cmg.69","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: turn:1","created_at":"2026-03-03T22:53:58Z","event_type":"label_added","id":3653,"issue_id":"spgr-cmg.69","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T23:03:14Z","event_type":"closed","id":3654,"issue_id":"spgr-cmg.6","new_value":"Fixed: StoreSafetyFlags now inside transaction","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T23:03:18Z","event_type":"closed","id":3655,"issue_id":"spgr-cmg.25","new_value":"Fixed: SafetyInput.Validate() now called before ComputeSafetyFlags","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T23:03:21Z","event_type":"closed","id":3656,"issue_id":"spgr-cmg.40","new_value":"Fixed: SafetyFlag.category now uses SafetyCategory enum","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T23:03:25Z","event_type":"closed","id":3657,"issue_id":"spgr-cmg.38","new_value":"Fixed: SparkOutput.scope_sniff now uses ScopeSniff enum","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T23:03:29Z","event_type":"closed","id":3658,"issue_id":"spgr-cmg.37","new_value":"Fixed: ConsistencyIssue.issue_kind now uses IssueKind enum","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T23:03:32Z","event_type":"closed","id":3659,"issue_id":"spgr-cmg.67","new_value":"Work complete in batch 15","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T23:03:36Z","event_type":"closed","id":3660,"issue_id":"spgr-cmg.68","new_value":"Work complete in batch 15","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T23:03:40Z","event_type":"closed","id":3661,"issue_id":"spgr-cmg.69","new_value":"Work complete in batch 15","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T23:04:01Z","event_type":"created","id":3662,"issue_id":"spgr-cmg.70","new_value":"","old_value":""}
+{"actor":"seanb4t","comment":"Added label: pr-review","created_at":"2026-03-03T23:04:01Z","event_type":"label_added","id":3663,"issue_id":"spgr-cmg.70","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: pr:8","created_at":"2026-03-03T23:04:01Z","event_type":"label_added","id":3664,"issue_id":"spgr-cmg.70","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: turn:1","created_at":"2026-03-03T23:04:01Z","event_type":"label_added","id":3665,"issue_id":"spgr-cmg.70","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T23:04:01Z","event_type":"created","id":3666,"issue_id":"spgr-cmg.71","new_value":"","old_value":""}
+{"actor":"seanb4t","comment":"Added label: pr-review","created_at":"2026-03-03T23:04:01Z","event_type":"label_added","id":3667,"issue_id":"spgr-cmg.71","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: pr:8","created_at":"2026-03-03T23:04:01Z","event_type":"label_added","id":3668,"issue_id":"spgr-cmg.71","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: turn:1","created_at":"2026-03-03T23:04:01Z","event_type":"label_added","id":3669,"issue_id":"spgr-cmg.71","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T23:08:55Z","event_type":"closed","id":3670,"issue_id":"spgr-cmg.60","new_value":"Fixed: PassesForStage now called in Shape/Specify/Decompose handlers","old_value":""}
