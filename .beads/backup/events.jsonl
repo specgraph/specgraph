@@ -3605,3 +3605,26 @@
 {"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:32:08Z","event_type":"closed","id":3610,"issue_id":"spgr-cmg.1","new_value":"Duplicate of spgr-cmg.6 (same safety-outside-tx issue)","old_value":""}
 {"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:32:13Z","event_type":"closed","id":3611,"issue_id":"spgr-cmg.34","new_value":"Duplicate of spgr-cmg.40 (same SafetyFlag.category string finding)","old_value":""}
 {"actor":"seanb4t","comment":"Added label: deferred","created_at":"2026-03-03T22:37:40Z","event_type":"label_added","id":3612,"issue_id":"spgr-cmg.2","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:37:40Z","event_type":"created","id":3613,"issue_id":"spgr-4r8","new_value":"","old_value":""}
+{"actor":"seanb4t","comment":"Added label: deferred","created_at":"2026-03-03T22:37:40Z","event_type":"label_added","id":3614,"issue_id":"spgr-4r8","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: aspect:security","created_at":"2026-03-03T22:37:40Z","event_type":"label_added","id":3615,"issue_id":"spgr-4r8","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: from-pr:8","created_at":"2026-03-03T22:37:40Z","event_type":"label_added","id":3616,"issue_id":"spgr-4r8","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:37:48Z","event_type":"closed","id":3617,"issue_id":"spgr-cmg.2","new_value":"Deferred to spgr-4r8: auth is Phase 2+ concern, not Slice 3 scope","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:41:32Z","event_type":"closed","id":3618,"issue_id":"spgr-cmg.35","new_value":"Backward transitions are intentional by design; ValidateAmendTransition handles amend-specific rules separately","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:42:13Z","event_type":"created","id":3619,"issue_id":"spgr-cmg.63","new_value":"","old_value":""}
+{"actor":"seanb4t","comment":"Added label: pr-review","created_at":"2026-03-03T22:42:13Z","event_type":"label_added","id":3620,"issue_id":"spgr-cmg.63","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: pr:8","created_at":"2026-03-03T22:42:13Z","event_type":"label_added","id":3621,"issue_id":"spgr-cmg.63","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: turn:1","created_at":"2026-03-03T22:42:13Z","event_type":"label_added","id":3622,"issue_id":"spgr-cmg.63","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:42:13Z","event_type":"created","id":3623,"issue_id":"spgr-cmg.64","new_value":"","old_value":""}
+{"actor":"seanb4t","comment":"Added label: pr-review","created_at":"2026-03-03T22:42:13Z","event_type":"label_added","id":3624,"issue_id":"spgr-cmg.64","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: pr:8","created_at":"2026-03-03T22:42:13Z","event_type":"label_added","id":3625,"issue_id":"spgr-cmg.64","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: turn:1","created_at":"2026-03-03T22:42:13Z","event_type":"label_added","id":3626,"issue_id":"spgr-cmg.64","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:42:14Z","event_type":"created","id":3627,"issue_id":"spgr-cmg.65","new_value":"","old_value":""}
+{"actor":"seanb4t","comment":"Added label: pr-review","created_at":"2026-03-03T22:42:14Z","event_type":"label_added","id":3628,"issue_id":"spgr-cmg.65","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: pr:8","created_at":"2026-03-03T22:42:14Z","event_type":"label_added","id":3629,"issue_id":"spgr-cmg.65","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: turn:1","created_at":"2026-03-03T22:42:14Z","event_type":"label_added","id":3630,"issue_id":"spgr-cmg.65","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:42:14Z","event_type":"created","id":3631,"issue_id":"spgr-cmg.66","new_value":"","old_value":""}
+{"actor":"seanb4t","comment":"Added label: pr-review","created_at":"2026-03-03T22:42:14Z","event_type":"label_added","id":3632,"issue_id":"spgr-cmg.66","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: pr:8","created_at":"2026-03-03T22:42:14Z","event_type":"label_added","id":3633,"issue_id":"spgr-cmg.66","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":"Added label: turn:1","created_at":"2026-03-03T22:42:14Z","event_type":"label_added","id":3634,"issue_id":"spgr-cmg.66","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:53:16Z","event_type":"closed","id":3635,"issue_id":"spgr-cmg.19","new_value":"Fixed: added type Stage string with typed constants","old_value":""}

@@ -20,7 +20,7 @@ func TestSafetyNet_SecurityFlags(t *testing.T) {
 
 	var found bool
 	for _, f := range flags {
-		if f.Category == "security" && f.Severity == authoring.SeverityWarning {
+		if f.Category == authoring.SafetyCategorySecurity && f.Severity == authoring.SeverityWarning {
 			found = true
 			break
 		}
@@ -37,7 +37,7 @@ func TestSafetyNet_DataLossFlags(t *testing.T) {
 
 	var found bool
 	for _, f := range flags {
-		if f.Category == "data_loss" {
+		if f.Category == authoring.SafetyCategoryDataLoss {
 			found = true
 			break
 		}
@@ -81,10 +81,10 @@ func TestSafetyResultsToProto(t *testing.T) {
 		}
 		protos := authoring.SafetyResultsToProto(flags)
 		require.Len(t, protos, 2)
-		require.Equal(t, "security", protos[0].Category)
+		require.Equal(t, specv1.SafetyCategory_SAFETY_CATEGORY_SECURITY, protos[0].Category)
 		require.Equal(t, specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL, protos[0].Severity)
 		require.Equal(t, "test security flag", protos[0].Description)
-		require.Equal(t, "data_loss", protos[1].Category)
+		require.Equal(t, specv1.SafetyCategory_SAFETY_CATEGORY_DATA_LOSS, protos[1].Category)
 	})
 
 	t.Run("empty input returns empty output", func(t *testing.T) {

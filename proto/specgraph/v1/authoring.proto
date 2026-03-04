@@ -66,6 +66,40 @@ enum DecompositionStrategy {
   DECOMPOSITION_STRATEGY_SINGLE_UNIT = 3;
 }
 
+enum SafetyCategory {
+  SAFETY_CATEGORY_UNSPECIFIED = 0;
+  // Flags patterns related to authentication, authorization, or credential handling.
+  SAFETY_CATEGORY_SECURITY = 1;
+  // Flags patterns related to irreversible data destruction or loss.
+  SAFETY_CATEGORY_DATA_LOSS = 2;
+}
+
+enum ScopeSniff {
+  SCOPE_SNIFF_UNSPECIFIED = 0;
+  // Estimated effort: hours to a day.
+  SCOPE_SNIFF_TINY = 1;
+  // Estimated effort: a few days.
+  SCOPE_SNIFF_SMALL = 2;
+  // Estimated effort: one to two weeks.
+  SCOPE_SNIFF_MEDIUM = 3;
+  // Estimated effort: several weeks.
+  SCOPE_SNIFF_LARGE = 4;
+  // Estimated effort: months; may need decomposition.
+  SCOPE_SNIFF_EPIC = 5;
+}
+
+enum IssueKind {
+  ISSUE_KIND_UNSPECIFIED = 0;
+  // Two specs define overlapping responsibilities or scope boundaries.
+  ISSUE_KIND_OVERLAPPING_SCOPE = 1;
+  // Two specs assert invariants that contradict each other.
+  ISSUE_KIND_CONFLICTING_INVARIANT = 2;
+  // Two specs define incompatible interfaces for the same boundary.
+  ISSUE_KIND_CONFLICTING_INTERFACE = 3;
+  // A spec depends on another that does not exist or has been superseded.
+  ISSUE_KIND_MISSING_DEPENDENCY = 4;
+}
+
 // --- Stage Output Messages ---
 
 // SparkOutput captures the initial distillation of a raw idea into a structured seed.
@@ -77,7 +111,7 @@ message SparkOutput {
   // Clarifying questions to sharpen scope before shaping.
   repeated string questions = 3;
   // Early indication of whether the idea is small, medium, or large in scope.
-  string scope_sniff = 4;
+  ScopeSniff scope_sniff = 4;
   // Condition that would make this idea not worth pursuing.
   string kill_test = 5;
 }
@@ -170,8 +204,8 @@ message PeripheralVisionItem {
 
 // ConsistencyIssue records a conflict or inconsistency between this spec and other specs in the graph.
 message ConsistencyIssue {
-  // Category of inconsistency (e.g. "overlapping scope", "conflicting invariant").
-  string issue_kind = 1;
+  // Category of inconsistency (e.g. overlapping scope, conflicting invariant).
+  IssueKind issue_kind = 1;
   // Human-readable explanation of the inconsistency.
   string description = 2;
   // Slugs of other specs that are involved in or affected by this inconsistency.
@@ -200,8 +234,8 @@ message ConstitutionViolation {
 
 // SafetyFlag marks a concern that may indicate harmful, risky, or out-of-policy content.
 message SafetyFlag {
-  // Category of safety concern (e.g. "security", "privacy", "compliance").
-  string category = 1;
+  // Category of safety concern.
+  SafetyCategory category = 1;
   // How severe the concern is and whether it requires immediate action.
   FindingSeverity severity = 2;
   // Human-readable description of the specific concern.

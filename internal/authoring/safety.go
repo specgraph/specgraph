@@ -47,12 +47,12 @@ func (s *SafetyInput) Validate() error {
 }
 
 // SafetyCategory identifies a class of safety concern.
-type SafetyCategory string
+type SafetyCategory int
 
 // Safety category constants.
 const (
-	SafetyCategorySecurity SafetyCategory = "security"
-	SafetyCategoryDataLoss SafetyCategory = "data_loss"
+	SafetyCategorySecurity SafetyCategory = iota + 1
+	SafetyCategoryDataLoss
 )
 
 // SafetyFlagResult is the domain-level result of a safety net check.
@@ -171,7 +171,7 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 				allMatches = append(allMatches, SafetyFlagResult{
 					Category:    g.category,
 					Severity:    sp.severity,
-					Description: fmt.Sprintf("[%s] %s", g.category, sp.label),
+					Description: fmt.Sprintf("[%s] %s", categoryToStorage[g.category], sp.label),
 				})
 			}
 		}
@@ -204,6 +204,11 @@ var severityToProto = map[FindingSeverity]specv1.FindingSeverity{
 	SeverityNote:     specv1.FindingSeverity_FINDING_SEVERITY_NOTE,
 }
 
+var categoryToProto = map[SafetyCategory]specv1.SafetyCategory{
+	SafetyCategorySecurity: specv1.SafetyCategory_SAFETY_CATEGORY_SECURITY,
+	SafetyCategoryDataLoss: specv1.SafetyCategory_SAFETY_CATEGORY_DATA_LOSS,
+}
+
 // SafetyResultsToProto converts domain safety flags to protobuf SafetyFlag messages.
 func SafetyResultsToProto(flags []SafetyFlagResult) []*specv1.SafetyFlag {
 	out := make([]*specv1.SafetyFlag, len(flags))
@@ -212,8 +217,12 @@ func SafetyResultsToProto(flags []SafetyFlagResult) []*specv1.SafetyFlag {
 		if !ok {
 			protoSev = specv1.FindingSeverity_FINDING_SEVERITY_UNSPECIFIED
 		}
+		protoCat, ok := categoryToProto[f.Category]
+		if !ok {
+			protoCat = specv1.SafetyCategory_SAFETY_CATEGORY_UNSPECIFIED
+		}
 		out[i] = &specv1.SafetyFlag{
-			Category:    string(f.Category),
+			Category:    protoCat,
 			Severity:    protoSev,
 			Description: f.Description,
 		}
@@ -237,8 +246,15 @@ func ToStorageSeverity(s FindingSeverity) storage.FindingSeverity {
 	return severityToStorage[s]
 }
 
+// categoryToStorage maps authoring.SafetyCategory (ordered int) to
+// storage.SafetyCategory (string, used for JSON persistence).
+var categoryToStorage = map[SafetyCategory]storage.SafetyCategory{
+	SafetyCategorySecurity: "security",
+	SafetyCategoryDataLoss: "data_loss",
+}
+
 // ToStorageCategory converts an authoring SafetyCategory to the storage
-// representation. The underlying string values are identical.
+// representation. Unknown values map to the empty string.
 func ToStorageCategory(c SafetyCategory) storage.SafetyCategory {
-	return storage.SafetyCategory(c)
+	return categoryToStorage[c]
 }

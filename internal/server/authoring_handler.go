@@ -72,6 +72,8 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	// CreateSpec sets stage to "spark" as part of spec creation; no separate
 	// TransitionStage call is needed because the initial stage is set atomically.
 	sparkDomain := sparkOutputToDomain(msg.Output)
+	safetyInput := &authoring.SafetyInput{Text: msg.Output.GetSeed()}
+	var safetyFlags []authoring.SafetyFlagResult
 	if err := h.runInTxOrSequential(ctx,
 		func(c context.Context) error {
 			if _, err := h.backend.CreateSpec(c, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
@@ -85,17 +87,23 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 			}
 			return nil
 		},
+		func(c context.Context) error {
+			if err := safetyInput.Validate(); err != nil {
+				return connect.NewError(connect.CodeInvalidArgument, err)
+			}
+			safetyFlags = authoring.RunSafetyNet(safetyInput)
+			if len(safetyFlags) > 0 {
+				if err := h.store.StoreSafetyFlags(c, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
+					return fmt.Errorf("store safety flags: %w", err)
+				}
+			}
+			return nil
+		},
 	); err != nil {
 		if errors.Is(err, storage.ErrSpecAlreadyExists) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, err)
 		}
 		return nil, h.stageError(err)
-	}
-	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{Text: msg.Output.GetSeed()})
-	if len(safetyFlags) > 0 {
-		if err := h.store.StoreSafetyFlags(ctx, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store safety flags: %w", err))
-		}
 	}
 	return connect.NewResponse(&specv1.SparkResponse{
 		Output:      msg.Output,
@@ -114,6 +122,16 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
 	shapeDomain := shapeOutputToDomain(msg.Output)
+	scope := make([]string, 0, len(msg.Output.GetScopeIn())+len(msg.Output.GetScopeOut()))
+	scope = append(scope, msg.Output.GetScopeIn()...)
+	scope = append(scope, msg.Output.GetScopeOut()...)
+	// SafetyInput.Text accepts stage-appropriate content; in Shape
+	// we scan risks since the spec seed was already checked in Spark.
+	safetyInput := &authoring.SafetyInput{
+		Text:  strings.Join(msg.Output.GetRisks(), " "),
+		Scope: scope,
+	}
+	var safetyFlags []authoring.SafetyFlagResult
 	if err := h.runInTxOrSequential(ctx,
 		func(c context.Context) error {
 			return h.store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape))
@@ -121,22 +139,20 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 		func(c context.Context) error {
 			return h.store.StoreShapeOutput(c, msg.Slug, shapeDomain)
 		},
+		func(c context.Context) error {
+			if err := safetyInput.Validate(); err != nil {
+				return connect.NewError(connect.CodeInvalidArgument, err)
+			}
+			safetyFlags = authoring.RunSafetyNet(safetyInput)
+			if len(safetyFlags) > 0 {
+				if err := h.store.StoreSafetyFlags(c, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
+					return fmt.Errorf("store safety flags: %w", err)
+				}
+			}
+			return nil
+		},
 	); err != nil {
 		return nil, h.stageError(err)
-	}
-	scope := make([]string, 0, len(msg.Output.GetScopeIn())+len(msg.Output.GetScopeOut()))
-	scope = append(scope, msg.Output.GetScopeIn()...)
-	scope = append(scope, msg.Output.GetScopeOut()...)
-	// SafetyInput.Text accepts stage-appropriate content; in Shape
-	// we scan risks since the spec seed was already checked in Spark.
-	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
-		Text:  strings.Join(msg.Output.GetRisks(), " "),
-		Scope: scope,
-	})
-	if len(safetyFlags) > 0 {
-		if err := h.store.StoreSafetyFlags(ctx, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store safety flags: %w", err))
-		}
 	}
 	return connect.NewResponse(&specv1.ShapeResponse{
 		Output:      msg.Output,
@@ -158,6 +174,11 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("interface_contract exceeds maximum length of %d characters", maxFieldLen))
 	}
 	specifyDomain := specifyOutputToDomain(msg.Output)
+	safetyInput := &authoring.SafetyInput{
+		Text:       msg.Output.GetInterfaceContract(),
+		Invariants: msg.Output.GetInvariants(),
+	}
+	var safetyFlags []authoring.SafetyFlagResult
 	if err := h.runInTxOrSequential(ctx,
 		func(c context.Context) error {
 			return h.store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify))
@@ -165,17 +186,20 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 		func(c context.Context) error {
 			return h.store.StoreSpecifyOutput(c, msg.Slug, specifyDomain)
 		},
+		func(c context.Context) error {
+			if err := safetyInput.Validate(); err != nil {
+				return connect.NewError(connect.CodeInvalidArgument, err)
+			}
+			safetyFlags = authoring.RunSafetyNet(safetyInput)
+			if len(safetyFlags) > 0 {
+				if err := h.store.StoreSafetyFlags(c, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
+					return fmt.Errorf("store safety flags: %w", err)
+				}
+			}
+			return nil
+		},
 	); err != nil {
 		return nil, h.stageError(err)
-	}
-	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
-		Text:       msg.Output.GetInterfaceContract(),
-		Invariants: msg.Output.GetInvariants(),
-	})
-	if len(safetyFlags) > 0 {
-		if err := h.store.StoreSafetyFlags(ctx, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store safety flags: %w", err))
-		}
 	}
 	return connect.NewResponse(&specv1.SpecifyResponse{
 		Output:      msg.Output,
@@ -205,6 +229,15 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	if domainErr != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, domainErr)
 	}
+	// Collect slice intents for safety scanning.
+	var sliceIntents []string
+	for _, s := range msg.Output.GetSlices() {
+		sliceIntents = append(sliceIntents, s.GetIntent())
+	}
+	safetyInput := &authoring.SafetyInput{
+		Text: strings.Join(sliceIntents, " "),
+	}
+	var safetyFlags []authoring.SafetyFlagResult
 	if err := h.runInTxOrSequential(ctx,
 		func(c context.Context) error {
 			return h.store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose))
@@ -215,21 +248,20 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 			}
 			return nil
 		},
+		func(c context.Context) error {
+			if err := safetyInput.Validate(); err != nil {
+				return connect.NewError(connect.CodeInvalidArgument, err)
+			}
+			safetyFlags = authoring.RunSafetyNet(safetyInput)
+			if len(safetyFlags) > 0 {
+				if err := h.store.StoreSafetyFlags(c, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
+					return fmt.Errorf("store safety flags: %w", err)
+				}
+			}
+			return nil
+		},
 	); err != nil {
 		return nil, h.stageError(err)
-	}
-	// Collect slice intents for safety scanning.
-	var sliceIntents []string
-	for _, s := range msg.Output.GetSlices() {
-		sliceIntents = append(sliceIntents, s.GetIntent())
-	}
-	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
-		Text: strings.Join(sliceIntents, " "),
-	})
-	if len(safetyFlags) > 0 {
-		if err := h.store.StoreSafetyFlags(ctx, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store safety flags: %w", err))
-		}
 	}
 	return connect.NewResponse(&specv1.DecomposeResponse{
 		Output:      msg.Output,
@@ -352,12 +384,21 @@ func RegisterAuthoringService(mux *http.ServeMux, authoringStore storage.Authori
 
 // --- Proto → Domain mappers ---
 
+// scopeSniffToStorage maps proto ScopeSniff enum values to their storage string representation.
+var scopeSniffToStorage = map[specv1.ScopeSniff]string{
+	specv1.ScopeSniff_SCOPE_SNIFF_TINY:   "tiny",
+	specv1.ScopeSniff_SCOPE_SNIFF_SMALL:  "small",
+	specv1.ScopeSniff_SCOPE_SNIFF_MEDIUM: "medium",
+	specv1.ScopeSniff_SCOPE_SNIFF_LARGE:  "large",
+	specv1.ScopeSniff_SCOPE_SNIFF_EPIC:   "epic",
+}
+
 func sparkOutputToDomain(p *specv1.SparkOutput) *storage.SparkOutput {
 	return &storage.SparkOutput{
 		Seed:       p.GetSeed(),
 		Signal:     p.GetSignal(),
 		Questions:  p.GetQuestions(),
-		ScopeSniff: p.GetScopeSniff(),
+		ScopeSniff: scopeSniffToStorage[p.GetScopeSniff()],
 		KillTest:   p.GetKillTest(),
 	}
 }
@@ -464,6 +505,13 @@ func (h *AuthoringHandler) runInTxOrSequential(ctx context.Context, ops ...func(
 }
 
 func (h *AuthoringHandler) stageError(err error) error {
+	// If the error is already a connect.Error (e.g. from a safety validation
+	// op inside runInTxOrSequential), unwrap and return it as-is so the
+	// original code is preserved rather than re-wrapped as CodeInternal.
+	var connErr *connect.Error
+	if errors.As(err, &connErr) {
+		return connErr
+	}
 	if errors.Is(err, storage.ErrSpecAlreadyApproved) {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
