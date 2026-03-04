@@ -13,7 +13,7 @@ import (
 
 func TestSafetyNet_SecurityFlags(t *testing.T) {
 	input := &authoring.SafetyInput{
-		Intent: "Store user passwords in plaintext for faster lookup",
+		Text: "Store user passwords in plaintext for faster lookup",
 	}
 	flags := authoring.RunSafetyNet(input)
 	require.NotEmpty(t, flags)
@@ -30,7 +30,7 @@ func TestSafetyNet_SecurityFlags(t *testing.T) {
 
 func TestSafetyNet_DataLossFlags(t *testing.T) {
 	input := &authoring.SafetyInput{
-		Intent: "Drop all tables and recreate schema without migration",
+		Text: "Drop all tables and recreate schema without migration",
 	}
 	flags := authoring.RunSafetyNet(input)
 	require.NotEmpty(t, flags)
@@ -47,7 +47,7 @@ func TestSafetyNet_DataLossFlags(t *testing.T) {
 
 func TestSafetyNet_ScopeFlags(t *testing.T) {
 	input := &authoring.SafetyInput{
-		Intent: "Add a new endpoint",
+		Text: "Add a new endpoint",
 		Scope:  []string{"skip validation on user input"},
 	}
 	flags := authoring.RunSafetyNet(input)
@@ -57,7 +57,7 @@ func TestSafetyNet_ScopeFlags(t *testing.T) {
 
 func TestSafetyNet_InvariantsFlags(t *testing.T) {
 	input := &authoring.SafetyInput{
-		Intent:     "Update schema",
+		Text:     "Update schema",
 		Invariants: []string{"Must allow truncate of stale data"},
 	}
 	flags := authoring.RunSafetyNet(input)
@@ -100,7 +100,7 @@ func TestSafetyNet_CriticalWinsOverWarning(t *testing.T) {
 	// "hardcoded secret" triggers security CRITICAL; "plaintext" triggers security WARNING.
 	// Both match the same "security" category; only CRITICAL should be returned.
 	input := &authoring.SafetyInput{
-		Intent: "Store hardcoded secret in plaintext config file",
+		Text: "Store hardcoded secret in plaintext config file",
 	}
 	flags := authoring.RunSafetyNet(input)
 
@@ -118,7 +118,7 @@ func TestSafetyNet_CriticalWinsOverWarning(t *testing.T) {
 
 func TestSafetyNet_CaseInsensitive(t *testing.T) {
 	// Uppercase input should still match lowercase patterns
-	flags := authoring.RunSafetyNet(&authoring.SafetyInput{Intent: "HARDCODED SECRET in config"})
+	flags := authoring.RunSafetyNet(&authoring.SafetyInput{Text: "HARDCODED SECRET in config"})
 	if len(flags) == 0 {
 		t.Fatal("expected safety flag for uppercase input")
 	}
@@ -129,7 +129,7 @@ func TestSafetyNet_CaseInsensitive(t *testing.T) {
 
 func TestSafetyNet_Clean(t *testing.T) {
 	input := &authoring.SafetyInput{
-		Intent: "Add a new read-only API endpoint for listing users",
+		Text: "Add a new read-only API endpoint for listing users",
 	}
 	flags := authoring.RunSafetyNet(input)
 	require.Empty(t, flags)

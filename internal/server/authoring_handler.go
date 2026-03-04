@@ -75,7 +75,7 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to store spark output for spec %q", msg.Slug))
 		}
 	}
-	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{Intent: msg.Output.GetSeed()})
+	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{Text: msg.Output.GetSeed()})
 	return connect.NewResponse(&specv1.SparkResponse{
 		Output:      msg.Output,
 		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
@@ -116,11 +116,11 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	scope := make([]string, 0, len(msg.Output.GetScopeIn())+len(msg.Output.GetScopeOut()))
 	scope = append(scope, msg.Output.GetScopeIn()...)
 	scope = append(scope, msg.Output.GetScopeOut()...)
-	// SafetyInput.Intent accepts any text for pattern scanning; in Shape
-	// we scan risks since the spec intent was already checked in Spark.
+	// SafetyInput.Text accepts stage-appropriate content; in Shape
+	// we scan risks since the spec seed was already checked in Spark.
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
-		Intent: strings.Join(msg.Output.GetRisks(), " "),
-		Scope:  scope,
+		Text:  strings.Join(msg.Output.GetRisks(), " "),
+		Scope: scope,
 	})
 	return connect.NewResponse(&specv1.ShapeResponse{
 		Output:      msg.Output,
@@ -160,7 +160,7 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 		}
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
-		Intent:     msg.Output.GetInterfaceContract(),
+		Text:       msg.Output.GetInterfaceContract(),
 		Invariants: msg.Output.GetInvariants(),
 	})
 	return connect.NewResponse(&specv1.SpecifyResponse{
@@ -209,7 +209,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 		sliceIntents = append(sliceIntents, s.GetIntent())
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
-		Intent: strings.Join(sliceIntents, " "),
+		Text: strings.Join(sliceIntents, " "),
 	})
 	return connect.NewResponse(&specv1.DecomposeResponse{
 		Output:      msg.Output,

@@ -4,10 +4,12 @@
 package authoring
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	"github.com/seanb4t/specgraph/internal/storage"
 )
 
 // FindingSeverity indicates how severe a safety finding is.
@@ -22,10 +24,13 @@ const (
 )
 
 // SafetyInput holds the text to scan for safety concerns.
-// Intent accepts any text for pattern scanning — its name reflects the Spark
-// use case, but other handlers pass stage-appropriate text (e.g., risks in Shape).
+// Text accepts any stage-appropriate content:
+//   - Spark: seed idea text
+//   - Shape: risks list (joined)
+//   - Specify: interface_contract
+//   - Decompose: slice intents (joined)
 type SafetyInput struct {
-	Intent     string
+	Text       string
 	Scope      []string
 	Invariants []string
 }
@@ -46,16 +51,19 @@ type SafetyFlagResult struct {
 	Description string
 }
 
-// safetyPattern pairs a compiled regex with its severity level.
+// safetyPattern pairs a compiled regex with its severity level and a
+// human-readable label used in API responses (never exposes the raw regex).
 type safetyPattern struct {
 	re       *regexp.Regexp
 	severity FindingSeverity
+	label    string
 }
 
 // buildPatterns compiles pattern strings into word-boundary-aware regexes.
 // Multi-word phrases use substring match (high confidence); single short
 // words use word-boundary anchors to reduce false positives.
-func buildPatterns(patterns []string, severity FindingSeverity) []safetyPattern {
+// label is the human-readable description used in SafetyFlagResult.Description.
+func buildPatterns(label string, patterns []string, severity FindingSeverity) []safetyPattern {
 	out := make([]safetyPattern, len(patterns))
 	for i, p := range patterns {
 		var expr string
@@ -66,44 +74,60 @@ func buildPatterns(patterns []string, severity FindingSeverity) []safetyPattern 
 			// Single-word patterns: require word boundary to reduce false positives.
 			expr = `\b` + regexp.QuoteMeta(p) + `\b`
 		}
-		out[i] = safetyPattern{re: regexp.MustCompile(expr), severity: severity}
+		out[i] = safetyPattern{re: regexp.MustCompile(expr), severity: severity, label: label}
 	}
 	return out
 }
 
 // High-confidence patterns that warrant CRITICAL severity.
-var criticalSecurityPatterns = buildPatterns([]string{
-	"hardcoded secret",
-	"hardcoded password",
-	"disable auth",
-	"skip validation",
-	"no encryption",
-	"rm -rf",
-}, SeverityCritical)
+var criticalSecurityPatterns = buildPatterns(
+	"hardcoded credentials or disabled security control detected",
+	[]string{
+		"hardcoded secret",
+		"hardcoded password",
+		"disable auth",
+		"skip validation",
+		"no encryption",
+		"rm -rf",
+	},
+	SeverityCritical,
+)
 
 // Ambiguous patterns that may appear in legitimate specs — WARNING severity.
-var warningSecurityPatterns = buildPatterns([]string{
-	"credential",
-	"injection",
-	"eval(",
-	"exec(",
-	"plaintext",
-}, SeverityWarning)
+var warningSecurityPatterns = buildPatterns(
+	"potentially sensitive security-related term detected",
+	[]string{
+		"credential",
+		"injection",
+		"eval(",
+		"exec(",
+		"plaintext",
+	},
+	SeverityWarning,
+)
 
-var criticalDataLossPatterns = buildPatterns([]string{
-	"drop table",
-	"drop all",
-	"delete all",
-	"without migration",
-	"without backup",
-	"no rollback",
-	"force delete",
-}, SeverityCritical)
+var criticalDataLossPatterns = buildPatterns(
+	"irreversible data destruction operation detected",
+	[]string{
+		"drop table",
+		"drop all",
+		"delete all",
+		"without migration",
+		"without backup",
+		"no rollback",
+		"force delete",
+	},
+	SeverityCritical,
+)
 
-var warningDataLossPatterns = buildPatterns([]string{
-	"truncate",
-	"purge",
-}, SeverityWarning)
+var warningDataLossPatterns = buildPatterns(
+	"potentially destructive data operation detected",
+	[]string{
+		"truncate",
+		"purge",
+	},
+	SeverityWarning,
+)
 
 type patternGroup struct {
 	category SafetyCategory
@@ -122,7 +146,7 @@ var allPatternGroups = []patternGroup{
 // so that a CRITICAL pattern is never suppressed by an earlier WARNING match.
 func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 	parts := make([]string, 0, 1+len(input.Scope)+len(input.Invariants))
-	parts = append(parts, input.Intent)
+	parts = append(parts, input.Text)
 	parts = append(parts, input.Scope...)
 	parts = append(parts, input.Invariants...)
 	combined := strings.ToLower(strings.Join(parts, " "))
@@ -135,7 +159,7 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 				allMatches = append(allMatches, SafetyFlagResult{
 					Category:    g.category,
 					Severity:    sp.severity,
-					Description: "matched pattern: " + sp.re.String(),
+					Description: fmt.Sprintf("[%s] %s", g.category, sp.label),
 				})
 			}
 		}
@@ -168,11 +192,37 @@ var severityToProto = map[FindingSeverity]specv1.FindingSeverity{
 func SafetyResultsToProto(flags []SafetyFlagResult) []*specv1.SafetyFlag {
 	out := make([]*specv1.SafetyFlag, len(flags))
 	for i, f := range flags {
+		protoSev, ok := severityToProto[f.Severity]
+		if !ok {
+			protoSev = specv1.FindingSeverity_FINDING_SEVERITY_UNSPECIFIED
+		}
 		out[i] = &specv1.SafetyFlag{
 			Category:    string(f.Category),
-			Severity:    severityToProto[f.Severity],
+			Severity:    protoSev,
 			Description: f.Description,
 		}
 	}
 	return out
+}
+
+// severityToStorage maps authoring.FindingSeverity (ordered int) to
+// storage.FindingSeverity (string, used for JSON persistence).
+// The two types are intentionally different: authoring uses ordered ints
+// for severity comparison; storage uses strings for human-readable JSON output.
+var severityToStorage = map[FindingSeverity]storage.FindingSeverity{
+	SeverityCritical: storage.SeverityCritical,
+	SeverityWarning:  storage.SeverityWarning,
+	SeverityNote:     storage.SeverityNote,
+}
+
+// ToStorageSeverity converts an authoring FindingSeverity to the storage
+// representation. Unknown values map to the empty string.
+func ToStorageSeverity(s FindingSeverity) storage.FindingSeverity {
+	return severityToStorage[s]
+}
+
+// ToStorageCategory converts an authoring SafetyCategory to the storage
+// representation. The underlying string values are identical.
+func ToStorageCategory(c SafetyCategory) storage.SafetyCategory {
+	return storage.SafetyCategory(c)
 }

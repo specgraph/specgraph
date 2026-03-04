@@ -17,6 +17,9 @@ func resolveBaseURL() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// When Remote is set, it is used verbatim regardless of the TLS field.
+	// TLS only controls scheme selection (http vs https) when constructing the
+	// URL from Host and Port.
 	if cfg.Server.Remote != "" {
 		return cfg.Server.Remote, nil
 	}
