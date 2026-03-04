@@ -20,8 +20,14 @@ func walkGoFiles(root string, skipTests bool, fset *token.FileSet, fn func(path,
 	var skipped []SkippedFile
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
+			// Design choice: walk errors (e.g. permission denied on a single file or
+			// directory) are recorded in SkippedFiles and the walk continues. Failing
+			// the entire scan because one entry is unreadable would be too disruptive
+			// in real codebases that often contain vendor or generated directories
+			// with restricted permissions. Callers can inspect SkippedFiles to decide
+			// whether any skipped path is significant.
 			skipped = append(skipped, SkippedFile{Path: path, Reason: err.Error()})
-			return nil //nolint:nilerr // intentional: skip unreadable entries gracefully
+			return nil //nolint:nilerr // intentional: unreadable entries are recorded, not fatal
 		}
 		if d.IsDir() {
 			if skipDir(d.Name()) {

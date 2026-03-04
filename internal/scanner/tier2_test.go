@@ -92,3 +92,31 @@ func TestTier2Scan_EmptyDir(t *testing.T) {
 	require.Empty(t, result.TestFiles)
 	require.Empty(t, result.Imports)
 }
+
+func TestTier2Scan_NonExistentDir(t *testing.T) {
+	root := t.TempDir()
+
+	// "missing" does not exist under root; walkGoFiles will receive an error
+	// from WalkDir on the first call and record it in SkippedFiles.
+	result, err := scanner.ScanTier2(root, []string{"missing"})
+	require.NoError(t, err, "non-existent dir should be recorded in SkippedFiles, not return an error")
+	require.Empty(t, result.Functions)
+	require.Empty(t, result.TestFiles)
+	require.Empty(t, result.Imports)
+	require.Len(t, result.SkippedFiles, 1, "expected missing dir to appear in SkippedFiles")
+	require.Contains(t, result.SkippedFiles[0].Path, "missing")
+}
+
+func TestTier2Scan_PathTraversalRejected(t *testing.T) {
+	root := t.TempDir()
+
+	// "../../etc" escapes root; ScanTier2 should return an error.
+	_, err := scanner.ScanTier2(root, []string{"../../etc"})
+	require.Error(t, err, "traversal dir should be rejected")
+	require.Contains(t, err.Error(), "escapes root")
+}
+
+func TestTier2Scan_NonExistentRoot(t *testing.T) {
+	_, err := scanner.ScanTier2(filepath.Join(t.TempDir(), "does-not-exist"), []string{})
+	require.Error(t, err, "non-existent root should return an error")
+}

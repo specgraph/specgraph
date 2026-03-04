@@ -42,9 +42,7 @@ func runSpark(_ *cobra.Command, args []string) error {
 	if resp.Msg.Output != nil && resp.Msg.Output.Seed != "" {
 		fmt.Printf("Seed: %s\n", resp.Msg.Output.Seed)
 	}
-	for _, f := range resp.Msg.SafetyFlags {
-		fmt.Printf("  [%s] %s: %s\n", f.Severity, f.Category, f.Description)
-	}
+	printSafetyFlags(resp.Msg.SafetyFlags)
 	if len(resp.Msg.NextPrompts) > 0 {
 		fmt.Println("\nNext stage prompts (shape):")
 		for _, p := range resp.Msg.NextPrompts {

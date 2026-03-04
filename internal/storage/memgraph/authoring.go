@@ -109,6 +109,10 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 		}
 		sliceIDs[sl.ID] = true
 	}
+	// Pass 1: create all child Spec nodes and COMPOSES edges.
+	// This ensures every node exists before any DEPENDS_ON edge is attempted,
+	// so out-of-order dependencies (slice B depends on slice C listed later)
+	// are handled correctly.
 	var childSlugs []string
 	for _, sl := range output.Slices {
 		childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
@@ -124,15 +128,21 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 			}
 		}
 		// If getErr == nil, child spec already exists (idempotent retry).
-		query := `
+		composeQuery := `
 			MATCH (child:Spec {slug: $child_slug}), (parent:Spec {slug: $parent_slug})
 			MERGE (child)-[:COMPOSES]->(parent)
 		`
-		_, err := s.executeQuery(ctx, query,
+		_, err := s.executeQuery(ctx, composeQuery,
 			map[string]any{"child_slug": childSlug, "parent_slug": slug})
 		if err != nil {
 			return nil, fmt.Errorf("memgraph: merge COMPOSES edge: %w", err)
 		}
+		childSlugs = append(childSlugs, childSlug)
+	}
+
+	// Pass 2: create all DEPENDS_ON edges now that all child nodes exist.
+	for _, sl := range output.Slices {
+		childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
 		for _, dep := range sl.DependsOn {
 			if !sliceIDs[dep] {
 				return nil, fmt.Errorf("memgraph: slice %q depends on unknown sibling %q", sl.ID, dep)
@@ -142,13 +152,12 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 				MATCH (from:Spec {slug: $from_slug}), (to:Spec {slug: $to_slug})
 				MERGE (from)-[:DEPENDS_ON]->(to)
 			`
-			_, err = s.executeQuery(ctx, depQuery,
+			_, err := s.executeQuery(ctx, depQuery,
 				map[string]any{"from_slug": childSlug, "to_slug": depSlug})
 			if err != nil {
 				return nil, fmt.Errorf("memgraph: merge DEPENDS_ON edge: %w", err)
 			}
 		}
-		childSlugs = append(childSlugs, childSlug)
 	}
 	return childSlugs, nil
 }
@@ -217,7 +226,7 @@ func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason st
 func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage storage.AuthoringStage) (*storage.AmendResult, error) {
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("amend spec %q: get current: %w", slug, err)
 	}
 	if spec.Stage == authoring.StageApproved {
 		return nil, storage.ErrSpecAlreadyApproved
@@ -270,7 +279,11 @@ func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, da
 	if !allowedJSONProperties[property] {
 		return fmt.Errorf("memgraph: disallowed property name %q", property)
 	}
-	// Defense-in-depth: validate property name contains only safe characters.
+	// Defense-in-depth: the allowlist above is the primary Cypher injection
+	// guard. This character check is a secondary structural invariant — it
+	// ensures that even if the allowlist were somehow bypassed (e.g., a
+	// future refactor that populates the map from external input), no
+	// property name containing special characters can reach fmt.Sprintf.
 	for _, r := range property {
 		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') && r != '_' {
 			return fmt.Errorf("memgraph: unsafe property name character in %q", property)
@@ -281,6 +294,8 @@ func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, da
 		return fmt.Errorf("memgraph: marshal %s: %w", property, err)
 	}
 	nowStr := nowRFC3339()
+	// property is safe to interpolate: it passed the allowlist check and the
+	// character-validation loop above, so it contains only [a-zA-Z0-9_].
 	query := fmt.Sprintf(`
 		MATCH (s:Spec {slug: $slug})
 		SET s.%s = $data, s.updated_at = $updated_at

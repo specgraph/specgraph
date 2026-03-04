@@ -62,10 +62,7 @@ func TestAuthoringCmds_JSONFileFlag(t *testing.T) {
 }
 
 func TestSparkCmd_SeedFlag(t *testing.T) {
-	// spark has --seed instead of --json-file.
-	sparkCmd.ResetFlags()
-	sparkCmd.Flags().StringVar(&sparkSeed, "seed", "", "seed idea (one sentence)")
-
+	// spark has --seed instead of --json-file; the flag is registered in init().
 	if f := sparkCmd.Flags().Lookup("seed"); f == nil {
 		t.Fatal("expected --seed flag to be registered on spark command")
 	}

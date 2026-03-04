@@ -7,9 +7,17 @@ import (
 	"fmt"
 	"os"
 
+	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
+
+// printSafetyFlags prints each safety flag in a standard format.
+func printSafetyFlags(flags []*specv1.SafetyFlag) {
+	for _, f := range flags {
+		fmt.Printf("  [%s] %s: %s\n", f.Severity, f.Category, f.Description)
+	}
+}
 
 // loadJSONFile reads a JSON file and unmarshals it into a proto message.
 // T must be a proto.Message implementation (e.g. *specv1.ShapeOutput).

@@ -45,8 +45,6 @@ func runShape(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("shape: %w", err)
 	}
 	fmt.Printf("Shaped: %s\n", args[0])
-	for _, f := range resp.Msg.SafetyFlags {
-		fmt.Printf("  [%s] %s: %s\n", f.Severity, f.Category, f.Description)
-	}
+	printSafetyFlags(resp.Msg.SafetyFlags)
 	return nil
 }

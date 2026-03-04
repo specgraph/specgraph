@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -27,7 +28,10 @@ type ImportInfo struct {
 }
 
 // Tier2Result holds the output of a Tier 2 scan: functions, imports, and test files.
-// Callers must not modify the returned slices.
+//
+// Performance note: slice fields are returned directly without defensive copies.
+// Copying every slice on each scan would be wasteful given typical result sizes.
+// Callers must not modify the returned slices; treat them as read-only.
 type Tier2Result struct {
 	Functions    []FunctionInfo
 	Imports      []ImportInfo
@@ -38,16 +42,43 @@ type Tier2Result struct {
 // ScanTier2 walks the specified directories under root, parses functions and
 // imports, and collects test file paths. Test files are tracked in TestFiles
 // rather than being skipped entirely.
+//
+// Returns an error if root does not exist or is not a directory, or if any
+// dir escapes the root via path traversal (e.g. "../../etc").
 func ScanTier2(root string, dirs []string) (*Tier2Result, error) {
+	info, err := os.Stat(root)
+	if err != nil {
+		return nil, fmt.Errorf("scanner: root %s: %w", root, err)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("scanner: root %s is not a directory", root)
+	}
+
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return nil, fmt.Errorf("scanner: abs root %s: %w", root, err)
+	}
+
 	result := &Tier2Result{}
 	fset := token.NewFileSet()
 	seenImports := map[string]bool{}
 
 	for _, dir := range dirs {
-		absDir := filepath.Join(root, dir)
+		absDir := filepath.Join(absRoot, dir)
+		absDir, err = filepath.Abs(absDir)
+		if err != nil {
+			return nil, fmt.Errorf("scanner: abs dir %s: %w", dir, err)
+		}
+		// Reject any dir that escapes the root. filepath.Rel returns a path
+		// starting with ".." when target is outside base.
+		rel, relErr := filepath.Rel(absRoot, absDir)
+		if relErr != nil || strings.HasPrefix(rel, "..") {
+			return nil, fmt.Errorf("scanner: dir %q escapes root %q", dir, root)
+		}
+
 		skipped, err := walkGoFiles(absDir, false, fset, func(path, _ string, f *ast.File) error {
 			// Compute path relative to root (not absDir) for consistent output.
-			relPath, relErr := filepath.Rel(root, path)
+			relPath, relErr := filepath.Rel(absRoot, path)
 			if relErr != nil {
 				return fmt.Errorf("scanner: relative path for %s: %w", path, relErr)
 			}
