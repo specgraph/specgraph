@@ -1,0 +1,54 @@
+# Concepts
+
+SpecGraph is built on a few core concepts. Each page in this section explains
+one in detail — what it is, why it matters, and how it fits into the overall
+framework.
+
+<div class="grid cards" markdown>
+
+- :material-graph: **Specs & the Graph**
+
+    ---
+
+    Specifications are nodes in a queryable graph with first-class dependency
+    edges — not files in a folder.
+
+    [:octicons-arrow-right-24: Specs & the Graph](specs.md)
+
+- :material-shield-check: **Constitution**
+
+    ---
+
+    A layered document that captures project ground truth — stack, constraints,
+    and conventions — so agents and humans never start cold.
+
+    [:octicons-arrow-right-24: Constitution](constitution.md)
+
+- :material-filter: **Authoring Funnel**
+
+    ---
+
+    A five-stage pipeline (Spark through Approve) that transforms rough ideas
+    into execution-ready, machine-readable specifications.
+
+    [:octicons-arrow-right-24: Authoring Funnel](authoring.md)
+
+- :material-gavel: **Decisions**
+
+    ---
+
+    Architectural decisions are first-class graph nodes with bidirectional edges
+    to the specs they influence.
+
+    [:octicons-arrow-right-24: Decisions](decisions.md)
+
+- :material-shield-search: **Analytical Passes & Safety**
+
+    ---
+
+    Automated analysis passes that detect cycles, unreachable specs, missing
+    verify criteria, and other structural problems before execution begins.
+
+    [:octicons-arrow-right-24: Passes & Safety](passes.md)
+
+</div>

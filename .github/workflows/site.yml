@@ -20,8 +20,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v6
-      - name: Copy design docs into site
-        run: cp -r docs/initial-design-session site/docs/design
       - name: Build site
         working-directory: site
         run: uv run zensical build
