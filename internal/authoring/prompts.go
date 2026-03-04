@@ -51,13 +51,20 @@ func GetPrompts(stage Stage) []Prompt {
 	return out
 }
 
-// stageToProtoEnum maps domain stage values to proto AuthoringStage values.
+// stageToProtoEnum is the canonical mapping from domain Stage to proto AuthoringStage.
+// Use StageToProto for external access.
 var stageToProtoEnum = map[Stage]specv1.AuthoringStage{
 	StageSpark:     specv1.AuthoringStage_AUTHORING_STAGE_SPARK,
 	StageShape:     specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
 	StageSpecify:   specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY,
 	StageDecompose: specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE,
 	StageApproved:  specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
+}
+
+// StageToProto converts a domain Stage to its proto AuthoringStage equivalent.
+// Returns AUTHORING_STAGE_UNSPECIFIED if the stage is not recognised.
+func StageToProto(stage Stage) specv1.AuthoringStage {
+	return stageToProtoEnum[stage]
 }
 
 // PromptsToProto converts the prompts for a stage into protobuf PromptTemplate messages.

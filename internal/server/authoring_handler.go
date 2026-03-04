@@ -154,10 +154,12 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	); err != nil {
 		return nil, h.stageError(err)
 	}
+	peripheralVision, _, _, _ := runAnalyticalPasses(authoring.StageShape, msg.Posture)
 	return connect.NewResponse(&specv1.ShapeResponse{
-		Output:      msg.Output,
-		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts: authoring.PromptsToProto(authoring.StageSpecify),
+		Output:           msg.Output,
+		PeripheralVision: peripheralVision,
+		SafetyFlags:      authoring.SafetyResultsToProto(safetyFlags),
+		NextPrompts:      authoring.PromptsToProto(authoring.StageSpecify),
 	}), nil
 }
 
@@ -201,10 +203,13 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	); err != nil {
 		return nil, h.stageError(err)
 	}
+	_, redTeam, consistencyIssues, _ := runAnalyticalPasses(authoring.StageSpecify, msg.Posture)
 	return connect.NewResponse(&specv1.SpecifyResponse{
-		Output:      msg.Output,
-		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts: authoring.PromptsToProto(authoring.StageDecompose),
+		Output:            msg.Output,
+		RedTeam:           redTeam,
+		ConsistencyIssues: consistencyIssues,
+		SafetyFlags:       authoring.SafetyResultsToProto(safetyFlags),
+		NextPrompts:       authoring.PromptsToProto(authoring.StageDecompose),
 	}), nil
 }
 
@@ -263,13 +268,12 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	); err != nil {
 		return nil, h.stageError(err)
 	}
+	_, _, _, simplicity := runAnalyticalPasses(authoring.StageDecompose, msg.Posture)
 	return connect.NewResponse(&specv1.DecomposeResponse{
 		Output:      msg.Output,
+		Simplicity:  simplicity,
 		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
 		NextPrompts: authoring.PromptsToProto(authoring.StageApproved),
-		// TODO(spgr-34l.33): Wire simplicity_check and constitution_check analytical
-		// passes to populate the Decompose response. The constitution subsystem
-		// exists (Slice 2) but handler integration is deferred to a later slice.
 	}), nil
 }
 
@@ -283,7 +287,7 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	}
 	return connect.NewResponse(&specv1.ApproveResponse{
 		Slug:       req.Msg.Slug,
-		Stage:      stageToProto[authoring.StageApproved],
+		Stage:      stageToProto(authoring.StageApproved),
 		ApprovedAt: timestamppb.Now(),
 	}), nil
 }
@@ -310,8 +314,8 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, h.stageError(err)
 	}
-	protoStage, ok := stageToProto[authoring.Stage(result.Stage)]
-	if !ok {
+	protoStage := stageToProto(authoring.Stage(result.Stage))
+	if protoStage == specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("unknown stage %q returned from storage", result.Stage))
 	}
 	return connect.NewResponse(&specv1.AmendResponse{
@@ -463,12 +467,10 @@ func decomposeOutputToDomain(p *specv1.DecomposeOutput) (*storage.DecomposeOutpu
 
 // --- Stage mapping ---
 
-var stageToProto = map[authoring.Stage]specv1.AuthoringStage{
-	authoring.StageSpark:     specv1.AuthoringStage_AUTHORING_STAGE_SPARK,
-	authoring.StageShape:     specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
-	authoring.StageSpecify:   specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY,
-	authoring.StageDecompose: specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE,
-	authoring.StageApproved:  specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
+// stageToProto delegates to the canonical mapping in the authoring package.
+// Kept as a local alias so call sites within this file remain unchanged.
+func stageToProto(stage authoring.Stage) specv1.AuthoringStage {
+	return authoring.StageToProto(stage)
 }
 
 var protoToStage = map[specv1.AuthoringStage]storage.AuthoringStage{
@@ -522,6 +524,43 @@ func (h *AuthoringHandler) stageError(err error) error {
 		return connect.NewError(connect.CodeNotFound, err)
 	}
 	return connect.NewError(connect.CodeInternal, err)
+}
+
+// runAnalyticalPasses executes the passes returned by PassesForStage for the
+// given stage and posture and converts the results into proto finding types.
+// All returned slices contain placeholder data; real LLM-driven pass
+// execution is deferred to a later slice.
+func runAnalyticalPasses(stage authoring.Stage, posture specv1.Posture) (
+	peripheralVision []*specv1.PeripheralVisionItem,
+	redTeam []*specv1.RedTeamFinding,
+	consistencyIssues []*specv1.ConsistencyIssue,
+	simplicity []*specv1.SimplicityFinding,
+) {
+	for _, name := range authoring.PassesForStage(stage, posture) {
+		switch authoring.PassName(name) {
+		case authoring.PassPeripheralVision:
+			peripheralVision = append(peripheralVision, &specv1.PeripheralVisionItem{
+				Item:        "peripheral_vision pass placeholder",
+				Disposition: specv1.PeripheralDisposition_PERIPHERAL_DISPOSITION_UNSPECIFIED,
+			})
+		case authoring.PassRedTeam:
+			redTeam = append(redTeam, &specv1.RedTeamFinding{
+				Severity: specv1.FindingSeverity_FINDING_SEVERITY_NOTE,
+				Finding:  "red_team pass placeholder",
+			})
+		case authoring.PassConsistencyCheck:
+			consistencyIssues = append(consistencyIssues, &specv1.ConsistencyIssue{
+				IssueKind:   specv1.IssueKind_ISSUE_KIND_UNSPECIFIED,
+				Description: "consistency_check pass placeholder",
+			})
+		case authoring.PassSimplicityCheck:
+			simplicity = append(simplicity, &specv1.SimplicityFinding{
+				Area:       "simplicity_check pass placeholder",
+				Suggestion: "",
+			})
+		}
+	}
+	return
 }
 
 // safetyFlagsToStorage converts domain-level safety results to storage types.
