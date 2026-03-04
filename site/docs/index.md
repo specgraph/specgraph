@@ -29,59 +29,43 @@ agents can claim and run without human translation.
 
 - :material-graph: **Specs as Graph Nodes**
 
----
+    ---
 
-```text
-Dependencies, blocks, and compositions are first-class edges in a graph
-database — not fragile filename references. Query relationships, detect
-cycles, and traverse the full dependency tree.
-```
+    Dependencies, blocks, and compositions are first-class edges in a graph
+    database — not fragile filename references. Query relationships, detect
+    cycles, and traverse the full dependency tree.
 
-```text
-[:octicons-arrow-right-24: Learn more](concepts/specs.md)
-```
+    [:octicons-arrow-right-24: Learn more](concepts/specs.md)
 
 - :material-shield-check: **Constitution**
 
----
+    ---
 
-```text
-A layered document that captures project ground truth — tech stack,
-principles, constraints, and patterns. More specific layers (Project,
-Domain) override general ones (User, Org).
-```
+    A layered document that captures project ground truth — tech stack,
+    principles, constraints, and patterns. More specific layers (Project,
+    Domain) override general ones (User, Org).
 
-```text
-[:octicons-arrow-right-24: Learn more](concepts/constitution.md)
-```
+    [:octicons-arrow-right-24: Learn more](concepts/constitution.md)
 
 - :material-filter: **Authoring Funnel**
 
----
+    ---
 
-```text
-An AI-collaborative pipeline that guides ideas from rough spark to
-execution-ready spec: Spark, Shape, Specify, Decompose, Approve. Each
-stage adds structure and validation.
-```
+    An AI-collaborative pipeline that guides ideas from rough spark to
+    execution-ready spec: Spark, Shape, Specify, Decompose, Approve. Each
+    stage adds structure and validation.
 
-```text
-[:octicons-arrow-right-24: Learn more](concepts/authoring.md)
-```
+    [:octicons-arrow-right-24: Learn more](concepts/authoring.md)
 
 - :material-robot: **Agent-Native**
 
----
+    ---
 
-```text
-Every spec is a machine-readable work unit with clear inputs, outputs,
-and acceptance criteria. Agents can claim specs, execute them, and verify
-results without human translation.
-```
+    Every spec is a machine-readable work unit with clear inputs, outputs,
+    and acceptance criteria. Agents can claim specs, execute them, and verify
+    results without human translation.
 
-```text
-[:octicons-arrow-right-24: Learn more](concepts/specs.md)
-```
+    [:octicons-arrow-right-24: Learn more](concepts/specs.md)
 
 </div>
 
@@ -103,8 +87,6 @@ that agents and humans can query, traverse, and act on.
 
 !!! info "Phase 1 — Foundation"
 
-```text
-SpecGraph is in active development. Phase 1 (spec schema, constitution,
-storage, and query layer) is in progress. See the
-[roadmap](roadmap.md) for what's coming next.
-```
+    SpecGraph is in active development. Phase 1 (spec schema, constitution,
+    storage, and query layer) is in progress. See the
+    [roadmap](roadmap.md) for what's coming next.
