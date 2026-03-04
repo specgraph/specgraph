@@ -220,7 +220,8 @@ message PromptTemplate {
 message SparkRequest {
   // Spec slug that uniquely identifies the spec being authored.
   string slug = 1;
-  // Author-provided spark stage output to validate.
+  // Author-provided spark stage output to validate. Required by the server;
+  // omitting this field returns INVALID_ARGUMENT.
   SparkOutput output = 2;
   // AI collaboration posture requested for this authoring session.
   Posture posture = 3;
@@ -328,7 +329,8 @@ message ApproveResponse {
   google.protobuf.Timestamp approved_at = 3;
 }
 
-// AmendRequest reopens an approved spec and returns it to a specified earlier stage.
+// AmendRequest rolls a non-approved spec back to an earlier stage for rework.
+// Approved specs cannot be amended; use Supersede to replace them instead.
 message AmendRequest {
   // Spec slug identifying the spec to amend.
   string slug = 1;
@@ -367,6 +369,7 @@ message SupersedeResponse {
 }
 
 // GetPromptsRequest retrieves available prompt templates for a given authoring stage.
+// The APPROVED stage has no prompts; requesting it returns INVALID_ARGUMENT.
 message GetPromptsRequest {
   // Authoring stage to retrieve prompts for.
   AuthoringStage stage = 1;
