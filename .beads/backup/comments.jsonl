@@ -50,3 +50,20 @@
 {"author":"seanb4t","created_at":"2026-03-04T01:43:03Z","id":50,"issue_id":"spgr-s34.65","text":"Deferred: CLI amend/supersede commands — not in slice 3 plan — out of slice 3 PR scope"}
 {"author":"seanb4t","created_at":"2026-03-04T01:43:03Z","id":51,"issue_id":"spgr-s34.70","text":"Deferred: amend_reason read-back — future query feature — out of slice 3 PR scope"}
 {"author":"seanb4t","created_at":"2026-03-04T01:43:03Z","id":52,"issue_id":"spgr-s34.73","text":"Deferred: Seed vs intent naming — semantic choice not a bug — out of slice 3 PR scope"}
+{"author":"seanb4t","created_at":"2026-03-04T05:07:00Z","id":53,"issue_id":"spgr-34l.17","text":"Closed: stale — stageError helper properly maps storage errors to connect RPC codes"}
+{"author":"seanb4t","created_at":"2026-03-04T05:07:02Z","id":54,"issue_id":"spgr-34l.23","text":"Closed: stale — Spark handler validates output != nil at line 60-62"}
+{"author":"seanb4t","created_at":"2026-03-04T05:07:04Z","id":55,"issue_id":"spgr-34l.30","text":"Closed: stale — Spark handler enforces non-empty seed at lines 63-65"}
+{"author":"seanb4t","created_at":"2026-03-04T05:07:05Z","id":56,"issue_id":"spgr-34l.31","text":"Closed: stale — SupersedeSpec storage method validates superseding spec exists via GetSpec"}
+{"author":"seanb4t","created_at":"2026-03-04T05:07:06Z","id":57,"issue_id":"spgr-34l.37","text":"Closed: stale — TransitionStage Godoc accurately describes the ErrSpecAlreadyApproved condition"}
+{"author":"seanb4t","created_at":"2026-03-04T05:07:08Z","id":58,"issue_id":"spgr-34l.6","text":"Closed: stale — storeJSONProperty wraps ErrSpecNotFound with property name and slug context at line 295"}
+{"author":"seanb4t","created_at":"2026-03-04T05:07:09Z","id":59,"issue_id":"spgr-34l.41","text":"Closed: stale — RegisterAuthoringService has Godoc at line 296; AuthoringHandler has Godoc at lines 42-45"}
+{"author":"seanb4t","created_at":"2026-03-04T05:15:02Z","id":60,"issue_id":"spgr-34l.2","text":"Closed: out of scope for Slice 3 — authentication is a cross-cutting infrastructure concern for a later phase"}
+{"author":"seanb4t","created_at":"2026-03-04T05:15:04Z","id":61,"issue_id":"spgr-34l.13","text":"Closed: out of scope for Slice 3 — changing Spec.stage from string to enum in spec.proto is a core schema change, not authoring-funnel-specific"}
+{"author":"seanb4t","created_at":"2026-03-04T05:15:05Z","id":62,"issue_id":"spgr-34l.34","text":"Closed: out of scope — int32 overflow at 2B amendments is theoretical, not a practical concern for spec version counters"}
+{"author":"seanb4t","created_at":"2026-03-04T05:15:09Z","id":63,"issue_id":"spgr-34l.38","text":"Closed: out of scope for Slice 3 — refactoring shared FindingSeverity enum into per-message enums is proto design work, not a functional bug"}
+{"author":"seanb4t","created_at":"2026-03-04T05:15:10Z","id":64,"issue_id":"spgr-34l.43","text":"Closed: out of scope — transaction boundary design is architectural. Approve does a single operation so atomicity is inherent."}
+{"author":"seanb4t","created_at":"2026-03-04T05:49:15Z","id":65,"issue_id":"spgr-34l.25","text":"Already fixed in batch 9: posture.go uses integer comparison."}
+{"author":"seanb4t","created_at":"2026-03-04T05:49:17Z","id":66,"issue_id":"spgr-34l.19","text":"Already fixed: type Stage string with typed constants exists in stages.go."}
+{"author":"seanb4t","created_at":"2026-03-04T05:49:18Z","id":67,"issue_id":"spgr-34l.14","text":"Already fixed: StageToProtoEnum canonical map in stages.go, stageToProto func in handler reuses it."}
+{"author":"seanb4t","created_at":"2026-03-04T05:50:40Z","id":68,"issue_id":"spgr-34l.12","text":"Already documented: lines 214-217 of safety.go explain the intentional int vs string difference."}
+{"author":"seanb4t","created_at":"2026-03-04T05:50:41Z","id":69,"issue_id":"spgr-34l.39","text":"Closed: the Go for-range loop is idiomatic. strings.Map operates on runes, not slice elements. No collect helper exists in Go stdlib."}
