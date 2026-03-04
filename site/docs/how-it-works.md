@@ -1,11 +1,12 @@
 # How It Works
 
-SpecGraph rests on four pillars: a **constitution** that captures your project's
-ground truth, a **spec schema** that represents work as graph nodes with
-first-class edges, an **AI-collaborative authoring funnel** that guides ideas
-from rough spark to execution-ready specification, and a **storage + query
-layer** that makes every spec live and queryable. This page walks through each
-pillar at a high level and shows how they fit together.
+SpecGraph rests on five pillars: a **constitution** that captures your project's
+ground truth, a **codebase scanner** that grounds specs in what actually exists,
+a **spec schema** that represents work as graph nodes with first-class edges,
+an **AI-collaborative authoring funnel** that guides ideas from rough spark to
+execution-ready specification, and a **storage + query layer** that makes every
+spec live and queryable. This page walks through each pillar at a high level and
+shows how they fit together.
 
 ---
 
@@ -31,6 +32,36 @@ query the constitution to understand what technology to use, what patterns to
 follow, and what constraints to respect.
 
 [:octicons-arrow-right-24: Deep dive into the constitution](concepts/constitution.md)
+
+---
+
+## Codebase Context
+
+The constitution tells SpecGraph what your project *values*. The codebase
+scanner tells it what your project *is*. During authoring, SpecGraph
+progressively gathers context about the actual codebase so that specs are
+grounded in reality — not written in a vacuum.
+
+The scanner operates at three tiers, each deeper than the last:
+
+| Tier | Name | When | What It Gathers |
+|------|------|------|-----------------|
+| **0** | Orientation | On init | Languages, frameworks, directory structure, build and test commands — enough to have a conversation about the project. |
+| **1** | Navigation | During Shape | Module and service boundaries, key interfaces, dependency graph, existing patterns and conventions — enough to author well-scoped specs. |
+| **2** | Deep | During Specify | File-level understanding of the areas a spec touches: existing handlers, data models, test helpers, deployment details — enough to write interface contracts that match what actually exists. |
+
+Each tier builds on the previous one, and context is gathered only when needed.
+Tier 0 runs once during project initialization. Tier 1 activates during the
+Shape stage, when the spec needs to understand how the codebase is organized.
+Tier 2 activates during Specify, focused narrowly on the files and modules the
+spec will actually touch.
+
+This progressive approach keeps the scanner fast and focused. A spec about a new
+API endpoint doesn't need to understand the entire codebase — it needs to know
+the router pattern, the existing middleware stack, the test conventions, and the
+data models it will interact with. Tier 2 gathers exactly that, so the spec's
+interface contract reflects the code that already exists rather than inventing
+new patterns.
 
 ---
 
@@ -133,12 +164,14 @@ execution:
                          SpecGraph Pipeline
   ═══════════════════════════════════════════════════════
 
-  ┌─────────────────┐
-  │   Constitution   │  Ground truth: stack, constraints,
-  │  U → O → P → D  │  principles, patterns
-  └────────┬────────┘
-           │ informs
-           ▼
+  ┌─────────────────┐     ┌─────────────────┐
+  │   Constitution   │     │ Codebase Scanner │
+  │  U → O → P → D  │     │ Tier 0 → 1 → 2  │
+  │  (the rules)     │     │ (the reality)    │
+  └────────┬────────┘     └────────┬────────┘
+           │ informs                │ grounds
+           └──────────┬─────────────┘
+                      ▼
   ┌─────────────────────────────────────────────────┐
   │              Authoring Funnel                    │
   │                                                  │
@@ -165,7 +198,7 @@ execution:
   └─────────────────────────────────────────────────┘
 ```
 
-The constitution feeds context into every authoring session. The funnel produces
-structured specs that land in the graph. The graph serves approved specs to
-executors. Each layer builds on the one before it, and every artifact is
-queryable at every stage.
+The constitution and codebase scanner feed context into every authoring session
+— the rules and the reality. The funnel produces structured specs that land in
+the graph. The graph serves approved specs to executors. Each layer builds on
+the one before it, and every artifact is queryable at every stage.
