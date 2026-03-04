@@ -36,6 +36,16 @@ type SafetyInput struct {
 	Invariants []string
 }
 
+// Validate returns an error if the SafetyInput has no scannable content.
+// An empty Text with populated Scope or Invariants is accepted because
+// those fields contribute to the combined scan text.
+func (s *SafetyInput) Validate() error {
+	if s.Text == "" && len(s.Scope) == 0 && len(s.Invariants) == 0 {
+		return fmt.Errorf("safety input has no scannable content")
+	}
+	return nil
+}
+
 // SafetyCategory identifies a class of safety concern.
 type SafetyCategory string
 

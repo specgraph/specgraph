@@ -23,6 +23,9 @@ var validSlugRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9_/-]*[a-z0-9])?$`)
 
 const maxSlugLength = 256
 
+// maxFieldLen caps free-text RPC fields to prevent unbounded writes to graph storage.
+const maxFieldLen = 10000
+
 func validateSlug(slug string) error {
 	if slug == "" {
 		return errors.New("slug is required")
@@ -63,15 +66,15 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	if msg.Output.GetSeed() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output.seed is required"))
 	}
+	if len(msg.Output.GetSeed()) > maxFieldLen {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("seed exceeds maximum length of %d characters", maxFieldLen))
+	}
 	// CreateSpec sets stage to "spark" as part of spec creation; no separate
 	// TransitionStage call is needed because the initial stage is set atomically.
 	sparkDomain := sparkOutputToDomain(msg.Output)
 	if err := h.runInTxOrSequential(ctx,
 		func(c context.Context) error {
 			if _, err := h.backend.CreateSpec(c, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
-				if errors.Is(err, storage.ErrSpecAlreadyExists) {
-					return err
-				}
 				return fmt.Errorf("create spec: %w", err)
 			}
 			return nil
@@ -89,6 +92,11 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 		return nil, h.stageError(err)
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{Text: msg.Output.GetSeed()})
+	if len(safetyFlags) > 0 {
+		if err := h.store.StoreSafetyFlags(ctx, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store safety flags: %w", err))
+		}
+	}
 	return connect.NewResponse(&specv1.SparkResponse{
 		Output:      msg.Output,
 		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
@@ -125,6 +133,11 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 		Text:  strings.Join(msg.Output.GetRisks(), " "),
 		Scope: scope,
 	})
+	if len(safetyFlags) > 0 {
+		if err := h.store.StoreSafetyFlags(ctx, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store safety flags: %w", err))
+		}
+	}
 	return connect.NewResponse(&specv1.ShapeResponse{
 		Output:      msg.Output,
 		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
@@ -141,6 +154,9 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
+	if len(msg.Output.GetInterfaceContract()) > maxFieldLen {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("interface_contract exceeds maximum length of %d characters", maxFieldLen))
+	}
 	specifyDomain := specifyOutputToDomain(msg.Output)
 	if err := h.runInTxOrSequential(ctx,
 		func(c context.Context) error {
@@ -156,6 +172,11 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 		Text:       msg.Output.GetInterfaceContract(),
 		Invariants: msg.Output.GetInvariants(),
 	})
+	if len(safetyFlags) > 0 {
+		if err := h.store.StoreSafetyFlags(ctx, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store safety flags: %w", err))
+		}
+	}
 	return connect.NewResponse(&specv1.SpecifyResponse{
 		Output:      msg.Output,
 		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
@@ -175,6 +196,11 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	if msg.Output.GetStrategy() == specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("strategy is required"))
 	}
+	for _, s := range msg.Output.GetSlices() {
+		if len(s.GetIntent()) > maxFieldLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slice %q intent exceeds maximum length of %d characters", s.GetId(), maxFieldLen))
+		}
+	}
 	decomposeDomain, domainErr := decomposeOutputToDomain(msg.Output)
 	if domainErr != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, domainErr)
@@ -184,8 +210,10 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 			return h.store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose))
 		},
 		func(c context.Context) error {
-			_, err := h.store.StoreDecomposeOutput(c, msg.Slug, decomposeDomain)
-			return err
+			if _, err := h.store.StoreDecomposeOutput(c, msg.Slug, decomposeDomain); err != nil {
+				return fmt.Errorf("store decompose output: %w", err)
+			}
+			return nil
 		},
 	); err != nil {
 		return nil, h.stageError(err)
@@ -198,11 +226,16 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
 		Text: strings.Join(sliceIntents, " "),
 	})
+	if len(safetyFlags) > 0 {
+		if err := h.store.StoreSafetyFlags(ctx, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store safety flags: %w", err))
+		}
+	}
 	return connect.NewResponse(&specv1.DecomposeResponse{
 		Output:      msg.Output,
 		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
 		NextPrompts: authoring.PromptsToProto(authoring.StageApproved),
-		// TODO(authoring): Wire simplicity_check and constitution_check analytical
+		// TODO(spgr-34l.33): Wire simplicity_check and constitution_check analytical
 		// passes to populate the Decompose response. The constitution subsystem
 		// exists (Slice 2) but handler integration is deferred to a later slice.
 	}), nil
@@ -231,6 +264,9 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if req.Msg.Reason == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reason is required"))
 	}
+	if len(req.Msg.Reason) > maxFieldLen {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("reason exceeds maximum length of %d characters", maxFieldLen))
+	}
 	if req.Msg.TargetStage == specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("target_stage is required"))
 	}
@@ -242,9 +278,13 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, h.stageError(err)
 	}
+	protoStage, ok := stageToProto[string(result.Stage)]
+	if !ok {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("unknown stage %q returned from storage", result.Stage))
+	}
 	return connect.NewResponse(&specv1.AmendResponse{
 		Slug:    result.Slug,
-		Stage:   stageToProto[string(result.Stage)],
+		Stage:   protoStage,
 		Version: result.Version,
 	}), nil
 }
@@ -267,7 +307,7 @@ func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[s
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("supersede: %w", err))
 	}
 	return connect.NewResponse(&specv1.SupersedeResponse{
 		Slug:         req.Msg.Slug,
@@ -286,7 +326,7 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 	}
 	prompts := authoring.PromptsToProto(string(stage))
 	if len(prompts) == 0 {
-		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no prompts defined for stage %q", stage))
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no prompts defined for stage %q", stage))
 	}
 	return connect.NewResponse(&specv1.GetPromptsResponse{
 		Prompts: prompts,
@@ -403,14 +443,17 @@ var protoToStage = map[specv1.AuthoringStage]storage.AuthoringStage{
 // if/else duplication across RPC handlers.
 func (h *AuthoringHandler) runInTxOrSequential(ctx context.Context, ops ...func(context.Context) error) error {
 	if h.txBackend != nil {
-		return h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
+		if err := h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
 			for _, op := range ops {
 				if err := op(txCtx); err != nil {
 					return err
 				}
 			}
 			return nil
-		})
+		}); err != nil {
+			return fmt.Errorf("transaction: %w", err)
+		}
+		return nil
 	}
 	for _, op := range ops {
 		if err := op(ctx); err != nil {
@@ -431,4 +474,17 @@ func (h *AuthoringHandler) stageError(err error) error {
 		return connect.NewError(connect.CodeNotFound, err)
 	}
 	return connect.NewError(connect.CodeInternal, err)
+}
+
+// safetyFlagsToStorage converts domain-level safety results to storage types.
+func safetyFlagsToStorage(flags []authoring.SafetyFlagResult) []storage.SafetyFlag {
+	out := make([]storage.SafetyFlag, len(flags))
+	for i, f := range flags {
+		out[i] = storage.SafetyFlag{
+			Category:    authoring.ToStorageCategory(f.Category),
+			Severity:    authoring.ToStorageSeverity(f.Severity),
+			Description: f.Description,
+		}
+	}
+	return out
 }

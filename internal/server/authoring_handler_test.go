@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -138,13 +139,7 @@ func newAuthoringClient(t *testing.T, authoringStore storage.AuthoringBackend, b
 }
 
 func TestAuthoringHandler_GetPrompts(t *testing.T) {
-	mux := http.NewServeMux()
-	server.RegisterAuthoringService(mux, &fakeAuthoringBackend{}, &fakeBackend{})
-
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	client := specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, srv.URL)
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
 
 	resp, err := client.GetPrompts(context.Background(), connect.NewRequest(&specv1.GetPromptsRequest{
 		Stage: specv1.AuthoringStage_AUTHORING_STAGE_SPARK,
@@ -464,11 +459,7 @@ func TestAuthoringHandler_Decompose_StoreOutputError(t *testing.T) {
 }
 
 func TestAuthoringHandler_GetPrompts_UnspecifiedStage(t *testing.T) {
-	mux := http.NewServeMux()
-	server.RegisterAuthoringService(mux, &fakeAuthoringBackend{}, &fakeBackend{})
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-	client := specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, srv.URL)
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
 
 	_, err := client.GetPrompts(context.Background(), connect.NewRequest(&specv1.GetPromptsRequest{
 		Stage: specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED,
@@ -480,11 +471,7 @@ func TestAuthoringHandler_GetPrompts_UnspecifiedStage(t *testing.T) {
 }
 
 func TestAuthoringHandler_GetPrompts_ApprovedStage(t *testing.T) {
-	mux := http.NewServeMux()
-	server.RegisterAuthoringService(mux, &fakeAuthoringBackend{}, &fakeBackend{})
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-	client := specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, srv.URL)
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
 
 	_, err := client.GetPrompts(context.Background(), connect.NewRequest(&specv1.GetPromptsRequest{
 		Stage: specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
@@ -492,7 +479,7 @@ func TestAuthoringHandler_GetPrompts_ApprovedStage(t *testing.T) {
 	require.Error(t, err)
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeNotFound, connErr.Code())
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
 func TestAuthoringHandler_StageError_AlreadyApproved(t *testing.T) {
@@ -665,4 +652,102 @@ func TestAuthoringHandler_Spark_AlreadyExists(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeAlreadyExists, connErr.Code())
+}
+
+func TestAuthoringHandler_Slug_ExactlyMaxLength(t *testing.T) {
+	// 256 chars is the maximum allowed slug length — should succeed.
+	slug := strings.Repeat("a", 256)
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   slug,
+		Output: &specv1.SparkOutput{Seed: "boundary test"},
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.Output)
+}
+
+func TestAuthoringHandler_Slug_ExceedsMaxLength(t *testing.T) {
+	// 257 chars exceeds the maximum — should fail with InvalidArgument.
+	slug := strings.Repeat("a", 257)
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   slug,
+		Output: &specv1.SparkOutput{Seed: "boundary test"},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestAuthoringHandler_Supersede_HappyPath(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.SupersedeRequest{
+		Slug:         "old-spec",
+		SupersededBy: "new-spec",
+		Reason:       "design evolved",
+	}))
+	require.NoError(t, err)
+	require.Equal(t, "old-spec", resp.Msg.Slug)
+	require.Equal(t, "new-spec", resp.Msg.SupersededBy)
+}
+
+func TestAuthoringHandler_Spark_PostureAccepted(t *testing.T) {
+	// Posture field is accepted without error; currently informational.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:    "posture-spec",
+		Output:  &specv1.SparkOutput{Seed: "test with posture"},
+		Posture: specv1.Posture_POSTURE_DRIVE,
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.Output)
+}
+
+func TestAuthoringHandler_GetPrompts_ShapeStage(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.GetPrompts(context.Background(), connect.NewRequest(&specv1.GetPromptsRequest{
+		Stage: specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
+	}))
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.Msg.Prompts)
+	names := make(map[string]bool)
+	for _, p := range resp.Msg.Prompts {
+		names[p.Name] = true
+		require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SHAPE, p.Stage)
+	}
+	require.True(t, names["bound_scope"])
+	require.True(t, names["define_success"])
+}
+
+func TestAuthoringHandler_GetPrompts_SpecifyStage(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.GetPrompts(context.Background(), connect.NewRequest(&specv1.GetPromptsRequest{
+		Stage: specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY,
+	}))
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.Msg.Prompts)
+	names := make(map[string]bool)
+	for _, p := range resp.Msg.Prompts {
+		names[p.Name] = true
+		require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY, p.Stage)
+	}
+	require.True(t, names["interface_contract"])
+	require.True(t, names["invariants"])
+}
+
+func TestAuthoringHandler_GetPrompts_DecomposeStage(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.GetPrompts(context.Background(), connect.NewRequest(&specv1.GetPromptsRequest{
+		Stage: specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE,
+	}))
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.Msg.Prompts)
+	names := make(map[string]bool)
+	for _, p := range resp.Msg.Prompts {
+		names[p.Name] = true
+		require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE, p.Stage)
+	}
+	require.True(t, names["strategy"])
+	require.True(t, names["slices"])
 }

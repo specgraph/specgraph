@@ -30,7 +30,7 @@ func validateStageNames(from, to string, allowEmptyFrom bool) (fromIdx, toIdx in
 	fromIdx = indexOf(from)
 	toIdx = indexOf(to)
 	var unknowns []string
-	if fromIdx < 0 && !(allowEmptyFrom && from == "") {
+	if fromIdx < 0 && (!allowEmptyFrom || from != "") {
 		unknowns = append(unknowns, from)
 	}
 	if toIdx < 0 {
