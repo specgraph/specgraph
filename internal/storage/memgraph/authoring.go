@@ -98,6 +98,17 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 	if err := s.storeJSONProperty(ctx, slug, "decompose_output", output); err != nil {
 		return nil, err
 	}
+	// Build a set of slice IDs for dependency validation.
+	sliceIDs := make(map[string]bool, len(output.Slices))
+	for _, sl := range output.Slices {
+		if sl.ID == "" {
+			return nil, fmt.Errorf("memgraph: decompose slice ID must not be empty")
+		}
+		if sliceIDs[sl.ID] {
+			return nil, fmt.Errorf("memgraph: duplicate decompose slice ID %q", sl.ID)
+		}
+		sliceIDs[sl.ID] = true
+	}
 	var childSlugs []string
 	for _, sl := range output.Slices {
 		childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
@@ -123,6 +134,9 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 			return nil, fmt.Errorf("memgraph: merge COMPOSES edge: %w", err)
 		}
 		for _, dep := range sl.DependsOn {
+			if !sliceIDs[dep] {
+				return nil, fmt.Errorf("memgraph: slice %q depends on unknown sibling %q", sl.ID, dep)
+			}
 			depSlug := fmt.Sprintf("%s/%s", slug, dep)
 			depQuery := `
 				MATCH (from:Spec {slug: $from_slug}), (to:Spec {slug: $to_slug})
@@ -232,10 +246,15 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 	retVersion, _ := rec.Get("s.version")
 	result := &storage.AmendResult{
 		Slug:  fmt.Sprintf("%v", retSlug),
-		Stage: fmt.Sprintf("%v", retStage),
+		Stage: storage.AuthoringStage(fmt.Sprintf("%v", retStage)),
 	}
-	if v, ok := retVersion.(int64); ok {
+	switch v := retVersion.(type) {
+	case int64:
 		result.Version = safeInt32(v)
+	case nil:
+		// Version not set on node — leave as 0.
+	default:
+		return nil, fmt.Errorf("memgraph: amend spec %q: unexpected version type %T", slug, retVersion)
 	}
 	return result, nil
 }

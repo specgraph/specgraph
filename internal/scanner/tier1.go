@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"os"
 	"path/filepath"
 )
 
@@ -47,7 +48,15 @@ type Tier1Result struct {
 
 // ScanTier1 walks Go files under root, parses AST, and extracts packages,
 // interfaces, and structs. It skips vendor, node_modules, dotfiles, and test files.
+// Returns an error if root does not exist or is not a directory.
 func ScanTier1(root string) (*Tier1Result, error) {
+	info, err := os.Stat(root)
+	if err != nil {
+		return nil, fmt.Errorf("scanner: root %s: %w", root, err)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("scanner: root %s is not a directory", root)
+	}
 	result := &Tier1Result{}
 	seenPkgs := map[string]bool{}
 	fset := token.NewFileSet()

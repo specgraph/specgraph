@@ -245,7 +245,7 @@ func TestAuthoringHandler_Approve_HappyPath(t *testing.T) {
 
 func TestAuthoringHandler_Amend_HappyPath(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
-		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: "shape", Version: 2},
+		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.AuthoringStage("shape"), Version: 2},
 	}, &fakeBackend{})
 	resp, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
 		Slug:        "my-spec",
@@ -492,7 +492,7 @@ func TestAuthoringHandler_GetPrompts_ApprovedStage(t *testing.T) {
 	require.Error(t, err)
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+	require.Equal(t, connect.CodeNotFound, connErr.Code())
 }
 
 func TestAuthoringHandler_StageError_AlreadyApproved(t *testing.T) {
@@ -569,4 +569,85 @@ func TestAuthoringHandler_Spark_TransactionalRollback(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestAuthoringHandler_Decompose_UnspecifiedStrategy(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug: "my-spec",
+		Output: &specv1.DecomposeOutput{
+			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_UNSPECIFIED,
+			Slices: []*specv1.DecompositionSlice{
+				{Id: "s1", Intent: "auth endpoint"},
+			},
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestAuthoringHandler_Spark_HappyPath_SafetyFlags(t *testing.T) {
+	// Spark with dangerous input should return safety flags.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "dangerous-spec",
+		Output: &specv1.SparkOutput{Seed: "hardcoded secret in config"},
+	}))
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.Msg.SafetyFlags, "safety flags should be populated for dangerous input")
+}
+
+func TestAuthoringHandler_Spark_EmptySeed(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "my-spec",
+		Output: &specv1.SparkOutput{Seed: ""},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestAuthoringHandler_Supersede_SelfSupersede(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.SupersedeRequest{
+		Slug:         "my-spec",
+		SupersededBy: "my-spec",
+		Reason:       "oops",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestAuthoringHandler_Amend_EmptyReason(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{
+		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.AuthoringStage("shape"), Version: 2},
+	}, &fakeBackend{})
+	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
+		Slug:        "my-spec",
+		Reason:      "",
+		TargetStage: specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestAuthoringHandler_Spark_AlreadyExists(t *testing.T) {
+	backend := &fakeBackend{createSpecErr: storage.ErrSpecAlreadyExists}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "existing-spec",
+		Output: &specv1.SparkOutput{Seed: "some intent"},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeAlreadyExists, connErr.Code())
 }

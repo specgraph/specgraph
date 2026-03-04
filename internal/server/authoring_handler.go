@@ -19,7 +19,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-var validSlugRe = regexp.MustCompile(`^[a-z0-9][a-z0-9_/-]*[a-z0-9]$`)
+var validSlugRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9_/-]*[a-z0-9])?$`)
 
 func validateSlug(slug string) error {
 	if slug == "" {
@@ -55,32 +55,33 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
+	if msg.Output.GetSeed() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output.seed is required"))
+	}
 	// CreateSpec sets stage to "spark" as part of spec creation; no separate
 	// TransitionStage call is needed because the initial stage is set atomically.
 	sparkDomain := sparkOutputToDomain(msg.Output)
-	if h.txBackend != nil {
-		if err := h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
-			if _, err := h.backend.CreateSpec(txCtx, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
+	if err := h.runInTxOrSequential(ctx,
+		func(c context.Context) error {
+			if _, err := h.backend.CreateSpec(c, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
+				if errors.Is(err, storage.ErrSpecAlreadyExists) {
+					return err
+				}
 				return fmt.Errorf("create spec: %w", err)
 			}
-			if err := h.store.StoreSparkOutput(txCtx, msg.Slug, sparkDomain); err != nil {
+			return nil
+		},
+		func(c context.Context) error {
+			if err := h.store.StoreSparkOutput(c, msg.Slug, sparkDomain); err != nil {
 				return fmt.Errorf("store spark output: %w", err)
 			}
 			return nil
-		}); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
+		},
+	); err != nil {
+		if errors.Is(err, storage.ErrSpecAlreadyExists) {
+			return nil, connect.NewError(connect.CodeAlreadyExists, err)
 		}
-	} else {
-		// Without a transaction, CreateSpec and StoreSparkOutput are not atomic.
-		// If StoreSparkOutput fails after CreateSpec succeeds, the spec node
-		// exists at stage "spark" without a spark_output property. Callers should
-		// enable TransactionalBackend to avoid this edge case.
-		if _, err := h.backend.CreateSpec(ctx, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, err)
-		}
-		if err := h.store.StoreSparkOutput(ctx, msg.Slug, sparkDomain); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store spark output for spec %q: %w", msg.Slug, err))
-		}
+		return nil, h.stageError(err)
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{Text: msg.Output.GetSeed()})
 	return connect.NewResponse(&specv1.SparkResponse{
@@ -100,25 +101,15 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
 	shapeDomain := shapeOutputToDomain(msg.Output)
-	if h.txBackend != nil {
-		if err := h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
-			if err := h.store.TransitionStage(txCtx, msg.Slug, storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape)); err != nil {
-				return fmt.Errorf("transition stage: %w", err)
-			}
-			if err := h.store.StoreShapeOutput(txCtx, msg.Slug, shapeDomain); err != nil {
-				return fmt.Errorf("store shape output: %w", err)
-			}
-			return nil
-		}); err != nil {
-			return nil, h.stageError(err)
-		}
-	} else {
-		if err := h.store.TransitionStage(ctx, msg.Slug, storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape)); err != nil {
-			return nil, h.stageError(err)
-		}
-		if err := h.store.StoreShapeOutput(ctx, msg.Slug, shapeDomain); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store shape output for spec %q: %w", msg.Slug, err))
-		}
+	if err := h.runInTxOrSequential(ctx,
+		func(c context.Context) error {
+			return h.store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape))
+		},
+		func(c context.Context) error {
+			return h.store.StoreShapeOutput(c, msg.Slug, shapeDomain)
+		},
+	); err != nil {
+		return nil, h.stageError(err)
 	}
 	scope := make([]string, 0, len(msg.Output.GetScopeIn())+len(msg.Output.GetScopeOut()))
 	scope = append(scope, msg.Output.GetScopeIn()...)
@@ -146,25 +137,15 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
 	specifyDomain := specifyOutputToDomain(msg.Output)
-	if h.txBackend != nil {
-		if err := h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
-			if err := h.store.TransitionStage(txCtx, msg.Slug, storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify)); err != nil {
-				return fmt.Errorf("transition stage: %w", err)
-			}
-			if err := h.store.StoreSpecifyOutput(txCtx, msg.Slug, specifyDomain); err != nil {
-				return fmt.Errorf("store specify output: %w", err)
-			}
-			return nil
-		}); err != nil {
-			return nil, h.stageError(err)
-		}
-	} else {
-		if err := h.store.TransitionStage(ctx, msg.Slug, storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify)); err != nil {
-			return nil, h.stageError(err)
-		}
-		if err := h.store.StoreSpecifyOutput(ctx, msg.Slug, specifyDomain); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store specify output for spec %q: %w", msg.Slug, err))
-		}
+	if err := h.runInTxOrSequential(ctx,
+		func(c context.Context) error {
+			return h.store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify))
+		},
+		func(c context.Context) error {
+			return h.store.StoreSpecifyOutput(c, msg.Slug, specifyDomain)
+		},
+	); err != nil {
+		return nil, h.stageError(err)
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
 		Text:       msg.Output.GetInterfaceContract(),
@@ -193,25 +174,16 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	if domainErr != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, domainErr)
 	}
-	if h.txBackend != nil {
-		if err := h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
-			if err := h.store.TransitionStage(txCtx, msg.Slug, storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose)); err != nil {
-				return fmt.Errorf("transition stage: %w", err)
-			}
-			if _, err := h.store.StoreDecomposeOutput(txCtx, msg.Slug, decomposeDomain); err != nil {
-				return fmt.Errorf("store decompose output: %w", err)
-			}
-			return nil
-		}); err != nil {
-			return nil, h.stageError(err)
-		}
-	} else {
-		if err := h.store.TransitionStage(ctx, msg.Slug, storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose)); err != nil {
-			return nil, h.stageError(err)
-		}
-		if _, err := h.store.StoreDecomposeOutput(ctx, msg.Slug, decomposeDomain); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store decompose output for spec %q: %w", msg.Slug, err))
-		}
+	if err := h.runInTxOrSequential(ctx,
+		func(c context.Context) error {
+			return h.store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose))
+		},
+		func(c context.Context) error {
+			_, err := h.store.StoreDecomposeOutput(c, msg.Slug, decomposeDomain)
+			return err
+		},
+	); err != nil {
+		return nil, h.stageError(err)
 	}
 	// Collect slice intents for safety scanning.
 	var sliceIntents []string
@@ -226,8 +198,8 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
 		NextPrompts: authoring.PromptsToProto(authoring.StageApproved),
 		// TODO(authoring): Wire simplicity_check and constitution_check analytical
-		// passes to populate the Decompose response. These passes require the
-		// constitution subsystem (tracked in the roadmap as Phase 1 constitution work).
+		// passes to populate the Decompose response. The constitution subsystem
+		// exists (Slice 2) but handler integration is deferred to a later slice.
 	}), nil
 }
 
@@ -251,6 +223,9 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	if req.Msg.Reason == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reason is required"))
+	}
 	if req.Msg.TargetStage == specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("target_stage is required"))
 	}
@@ -264,7 +239,7 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	}
 	return connect.NewResponse(&specv1.AmendResponse{
 		Slug:    result.Slug,
-		Stage:   stageToProto[result.Stage],
+		Stage:   stageToProto[string(result.Stage)],
 		Version: result.Version,
 	}), nil
 }
@@ -279,6 +254,9 @@ func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[s
 	}
 	if err := validateSlug(req.Msg.SupersededBy); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("superseded_by: %w", err))
+	}
+	if req.Msg.Slug == req.Msg.SupersededBy {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a spec cannot supersede itself"))
 	}
 	if err := h.store.SupersedeSpec(ctx, req.Msg.Slug, req.Msg.SupersededBy, req.Msg.Reason); err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
@@ -303,7 +281,7 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 	}
 	prompts := authoring.PromptsToProto(string(stage))
 	if len(prompts) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no prompts defined for stage %q", stage))
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("no prompts defined for stage %q", stage))
 	}
 	return connect.NewResponse(&specv1.GetPromptsResponse{
 		Prompts: prompts,
@@ -413,6 +391,28 @@ var protoToStage = map[specv1.AuthoringStage]storage.AuthoringStage{
 	specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY:   storage.AuthoringStage(authoring.StageSpecify),
 	specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE: storage.AuthoringStage(authoring.StageDecompose),
 	specv1.AuthoringStage_AUTHORING_STAGE_APPROVED:  storage.AuthoringStage(authoring.StageApproved),
+}
+
+// runInTxOrSequential runs the given operations within a transaction if txBackend
+// is available, otherwise runs them sequentially. This eliminates the txBackend
+// if/else duplication across RPC handlers.
+func (h *AuthoringHandler) runInTxOrSequential(ctx context.Context, ops ...func(context.Context) error) error {
+	if h.txBackend != nil {
+		return h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
+			for _, op := range ops {
+				if err := op(txCtx); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	}
+	for _, op := range ops {
+		if err := op(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (h *AuthoringHandler) stageError(err error) error {

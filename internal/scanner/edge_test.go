@@ -57,11 +57,9 @@ func TestTier1Scan_SymlinkToGoFile(t *testing.T) {
 // TestTier1Scan_NonExistentPath verifies that scanning a path that does not
 // exist returns an error rather than silently succeeding.
 func TestTier1Scan_NonExistentPath(t *testing.T) {
-	result, err := scanner.ScanTier1(filepath.Join(t.TempDir(), "does-not-exist"))
-	require.NoError(t, err, "ScanTier1 should not error for a non-existent root (WalkDir returns nil)")
-	require.NotNil(t, result)
-	require.Empty(t, result.Packages, "no packages should be found in a non-existent directory")
-	require.NotEmpty(t, result.SkippedFiles, "the non-existent root should appear in SkippedFiles")
+	_, err := scanner.ScanTier1(filepath.Join(t.TempDir(), "does-not-exist"))
+	require.Error(t, err, "ScanTier1 should error for a non-existent root")
+	require.Contains(t, err.Error(), "scanner: root")
 }
 
 // TestTier1Scan_UnreadableSubdirectory verifies that the scanner skips a

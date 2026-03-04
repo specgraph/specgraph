@@ -15,6 +15,9 @@ var ErrInvalidStageTransition = errors.New("invalid stage transition")
 // ErrSpecAlreadyApproved is returned when attempting to modify an already-approved spec.
 var ErrSpecAlreadyApproved = errors.New("spec is already approved")
 
+// ErrSpecAlreadyExists is returned when creating a spec with a slug that already exists.
+var ErrSpecAlreadyExists = errors.New("spec already exists")
+
 // --- Domain types for authoring stage outputs ---
 
 // SparkOutput captures the initial idea and early scoping from the spark stage.
@@ -163,7 +166,7 @@ type AuthoringStage string
 // AmendResult holds the minimal fields returned after amending a spec.
 type AmendResult struct {
 	Slug    string
-	Stage   string
+	Stage   AuthoringStage
 	Version int32
 }
 

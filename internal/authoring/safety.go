@@ -6,6 +6,7 @@ package authoring
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -143,7 +144,7 @@ var allPatternGroups = []patternGroup{
 
 // RunSafetyNet scans the input for known dangerous patterns and returns flags.
 // Per category, it emits only the highest-severity match (lowest enum value wins)
-// so that a CRITICAL pattern is never suppressed by an earlier WARNING match.
+// so that a CRITICAL pattern is never masked by a co-occurring WARNING match.
 func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 	parts := make([]string, 0, 1+len(input.Scope)+len(input.Invariants))
 	parts = append(parts, input.Text)
@@ -178,6 +179,10 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 	for _, f := range best {
 		flags = append(flags, f)
 	}
+	// Sort by category for deterministic output.
+	sort.Slice(flags, func(i, j int) bool {
+		return flags[i].Category < flags[j].Category
+	})
 
 	return flags
 }

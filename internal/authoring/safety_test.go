@@ -47,8 +47,8 @@ func TestSafetyNet_DataLossFlags(t *testing.T) {
 
 func TestSafetyNet_ScopeFlags(t *testing.T) {
 	input := &authoring.SafetyInput{
-		Text: "Add a new endpoint",
-		Scope:  []string{"skip validation on user input"},
+		Text:  "Add a new endpoint",
+		Scope: []string{"skip validation on user input"},
 	}
 	flags := authoring.RunSafetyNet(input)
 	require.NotEmpty(t, flags)
@@ -57,7 +57,7 @@ func TestSafetyNet_ScopeFlags(t *testing.T) {
 
 func TestSafetyNet_InvariantsFlags(t *testing.T) {
 	input := &authoring.SafetyInput{
-		Text:     "Update schema",
+		Text:       "Update schema",
 		Invariants: []string{"Must allow truncate of stale data"},
 	}
 	flags := authoring.RunSafetyNet(input)
