@@ -39,7 +39,7 @@ var allPostures = []specv1.Posture{
 // passRegistry maps each authoring funnel stage to the analytical passes
 // available in that stage, together with posture-aware scheduling rules.
 // passRegistry is effectively immutable after init; do not modify at runtime.
-var passRegistry = map[string][]passConfig{
+var passRegistry = map[Stage][]passConfig{
 	StageSpark: {
 		{pass: PassConstitutionCheck, autoIn: allPostures},
 	},
@@ -59,19 +59,19 @@ var passRegistry = map[string][]passConfig{
 }
 
 // PassesForStage returns the passes that auto-run for the given stage and posture.
-func PassesForStage(stage string, posture specv1.Posture) []string {
+func PassesForStage(stage Stage, posture specv1.Posture) []string {
 	return collectPasses(stage, posture, func(cfg passConfig) []specv1.Posture { return cfg.autoIn })
 }
 
 // OfferedPasses returns the passes that are offered (but not auto-run) for the
 // given stage and posture.
-func OfferedPasses(stage string, posture specv1.Posture) []string {
+func OfferedPasses(stage Stage, posture specv1.Posture) []string {
 	return collectPasses(stage, posture, func(cfg passConfig) []specv1.Posture { return cfg.offeredIn })
 }
 
 // collectPasses filters pass configs for a stage, returning pass names where
 // the posture appears in the slice selected by the selector function.
-func collectPasses(stage string, posture specv1.Posture, selector func(passConfig) []specv1.Posture) []string {
+func collectPasses(stage Stage, posture specv1.Posture, selector func(passConfig) []specv1.Posture) []string {
 	configs, ok := passRegistry[stage]
 	if !ok {
 		return nil

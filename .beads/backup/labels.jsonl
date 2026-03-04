@@ -868,6 +868,7 @@
 {"issue_id":"spgr-cmg.19","label":"severity:important"}
 {"issue_id":"spgr-cmg.19","label":"turn:1"}
 {"issue_id":"spgr-cmg.2","label":"aspect:security"}
+{"issue_id":"spgr-cmg.2","label":"deferred"}
 {"issue_id":"spgr-cmg.2","label":"pr-review"}
 {"issue_id":"spgr-cmg.2","label":"pr-review-finding"}
 {"issue_id":"spgr-cmg.2","label":"pr:8"}

@@ -12,8 +12,8 @@ import (
 
 func TestValidTransitions(t *testing.T) {
 	tests := []struct {
-		from  string
-		to    string
+		from  authoring.Stage
+		to    authoring.Stage
 		valid bool
 	}{
 		// Valid forward transitions.
@@ -38,7 +38,7 @@ func TestValidTransitions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.from+"->"+tt.to, func(t *testing.T) {
+		t.Run(string(tt.from)+"->"+string(tt.to), func(t *testing.T) {
 			err := authoring.ValidateTransition(tt.from, tt.to)
 			if tt.valid {
 				require.NoError(t, err)
@@ -85,8 +85,8 @@ func TestValidateTransition_UnknownStages(t *testing.T) {
 
 func TestValidateAmendTransition(t *testing.T) {
 	tests := []struct {
-		from  string
-		to    string
+		from  authoring.Stage
+		to    authoring.Stage
 		valid bool
 	}{
 		// Valid backward transitions.
@@ -117,7 +117,7 @@ func TestValidateAmendTransition(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.from+"->"+tt.to, func(t *testing.T) {
+		t.Run(string(tt.from)+"->"+string(tt.to), func(t *testing.T) {
 			err := authoring.ValidateAmendTransition(tt.from, tt.to)
 			if tt.valid {
 				require.NoError(t, err)

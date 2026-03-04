@@ -278,7 +278,7 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, h.stageError(err)
 	}
-	protoStage, ok := stageToProto[string(result.Stage)]
+	protoStage, ok := stageToProto[authoring.Stage(result.Stage)]
 	if !ok {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("unknown stage %q returned from storage", result.Stage))
 	}
@@ -324,7 +324,7 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown stage %v", req.Msg.Stage))
 	}
-	prompts := authoring.PromptsToProto(string(stage))
+	prompts := authoring.PromptsToProto(authoring.Stage(stage))
 	if len(prompts) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no prompts defined for stage %q", stage))
 	}
@@ -422,7 +422,7 @@ func decomposeOutputToDomain(p *specv1.DecomposeOutput) (*storage.DecomposeOutpu
 
 // --- Stage mapping ---
 
-var stageToProto = map[string]specv1.AuthoringStage{
+var stageToProto = map[authoring.Stage]specv1.AuthoringStage{
 	authoring.StageSpark:     specv1.AuthoringStage_AUTHORING_STAGE_SPARK,
 	authoring.StageShape:     specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
 	authoring.StageSpecify:   specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY,
@@ -431,11 +431,11 @@ var stageToProto = map[string]specv1.AuthoringStage{
 }
 
 var protoToStage = map[specv1.AuthoringStage]storage.AuthoringStage{
-	specv1.AuthoringStage_AUTHORING_STAGE_SPARK:     storage.AuthoringStage(authoring.StageSpark),
-	specv1.AuthoringStage_AUTHORING_STAGE_SHAPE:     storage.AuthoringStage(authoring.StageShape),
-	specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY:   storage.AuthoringStage(authoring.StageSpecify),
-	specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE: storage.AuthoringStage(authoring.StageDecompose),
-	specv1.AuthoringStage_AUTHORING_STAGE_APPROVED:  storage.AuthoringStage(authoring.StageApproved),
+	specv1.AuthoringStage_AUTHORING_STAGE_SPARK:     authoring.StageSpark.ToStorage(),
+	specv1.AuthoringStage_AUTHORING_STAGE_SHAPE:     authoring.StageShape.ToStorage(),
+	specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY:   authoring.StageSpecify.ToStorage(),
+	specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE: authoring.StageDecompose.ToStorage(),
+	specv1.AuthoringStage_AUTHORING_STAGE_APPROVED:  authoring.StageApproved.ToStorage(),
 }
 
 // runInTxOrSequential runs the given operations within a transaction if txBackend

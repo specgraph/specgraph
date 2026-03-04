@@ -3,38 +3,52 @@
 
 package authoring
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/seanb4t/specgraph/internal/storage"
+)
+
+// Stage is a typed authoring funnel stage name.
+type Stage string
 
 // Stage name constants used across the authoring funnel.
 const (
-	StageSpark     = "spark"
-	StageShape     = "shape"
-	StageSpecify   = "specify"
-	StageDecompose = "decompose"
-	StageApproved  = "approved"
+	StageSpark     Stage = "spark"
+	StageShape     Stage = "shape"
+	StageSpecify   Stage = "specify"
+	StageDecompose Stage = "decompose"
+	StageApproved  Stage = "approved"
 )
 
-// stages defines the ordered authoring funnel stages.
-var stages = []string{StageSpark, StageShape, StageSpecify, StageDecompose, StageApproved}
+// ToStorage converts a Stage to a storage.AuthoringStage.
+func (s Stage) ToStorage() storage.AuthoringStage {
+	return storage.AuthoringStage(s)
+}
 
-// AllStages returns a copy of the ordered stage list.
+// stages defines the ordered authoring funnel stages.
+var stages = []Stage{StageSpark, StageShape, StageSpecify, StageDecompose, StageApproved}
+
+// AllStages returns a copy of the ordered stage list as strings (for backward compat with callers that need []string).
 func AllStages() []string {
 	out := make([]string, len(stages))
-	copy(out, stages)
+	for i, s := range stages {
+		out[i] = string(s)
+	}
 	return out
 }
 
 // validateStageNames returns an error if from or to are unknown stage names.
 // allowEmptyFrom controls whether from=="" is accepted (used for initial transitions).
-func validateStageNames(from, to string, allowEmptyFrom bool) (fromIdx, toIdx int, err error) {
+func validateStageNames(from, to Stage, allowEmptyFrom bool) (fromIdx, toIdx int, err error) {
 	fromIdx = indexOf(from)
 	toIdx = indexOf(to)
 	var unknowns []string
 	if fromIdx < 0 && (!allowEmptyFrom || from != "") {
-		unknowns = append(unknowns, from)
+		unknowns = append(unknowns, string(from))
 	}
 	if toIdx < 0 {
-		unknowns = append(unknowns, to)
+		unknowns = append(unknowns, string(to))
 	}
 	if len(unknowns) > 0 {
 		return fromIdx, toIdx, fmt.Errorf("unknown stage(s): %v", unknowns)
@@ -46,7 +60,7 @@ func validateStageNames(from, to string, allowEmptyFrom bool) (fromIdx, toIdx in
 // Forward transitions must follow the defined order (no skipping).
 // Backward (amend) transitions are allowed to any earlier stage.
 // Same-to-same transitions are not allowed.
-func ValidateTransition(from, to string) error {
+func ValidateTransition(from, to Stage) error {
 	if from == to {
 		return fmt.Errorf("transition from %q to %q is a no-op", from, to)
 	}
@@ -74,7 +88,7 @@ func ValidateTransition(from, to string) error {
 // ValidateAmendTransition checks whether an amend (backward) transition is valid.
 // It only allows moving to an earlier stage — forward transitions and same-to-same
 // are rejected. This is distinct from ValidateTransition which allows both directions.
-func ValidateAmendTransition(from, to string) error {
+func ValidateAmendTransition(from, to Stage) error {
 	if from == to {
 		return fmt.Errorf("amend transition from %q to %q is a no-op", from, to)
 	}
@@ -92,7 +106,7 @@ func ValidateAmendTransition(from, to string) error {
 }
 
 // indexOf returns the position of a stage in the ordered list, or -1 if not found.
-func indexOf(stage string) int {
+func indexOf(stage Stage) int {
 	for i, s := range stages {
 		if s == stage {
 			return i

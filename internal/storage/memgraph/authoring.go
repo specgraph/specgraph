@@ -38,10 +38,10 @@ var allowedJSONProperties = map[string]bool{
 // a different stage than expected. Returns ErrSpecAlreadyApproved if from
 // is the approved stage.
 func (s *Store) TransitionStage(ctx context.Context, slug string, from, to storage.AuthoringStage) error {
-	if from == authoring.StageApproved {
+	if from == storage.AuthoringStage(authoring.StageApproved) {
 		return storage.ErrSpecAlreadyApproved
 	}
-	if err := authoring.ValidateTransition(string(from), string(to)); err != nil {
+	if err := authoring.ValidateTransition(authoring.Stage(from), authoring.Stage(to)); err != nil {
 		return fmt.Errorf("memgraph: %w: %w", storage.ErrInvalidStageTransition, err)
 	}
 	nowStr := nowRFC3339()
@@ -92,7 +92,8 @@ func (s *Store) StoreSpecifyOutput(ctx context.Context, slug string, output *sto
 
 // StoreDecomposeOutput persists the decompose output and creates child spec nodes with edges.
 // When called within a transaction (via RunInTransaction), partial failures roll back automatically.
-// Without a transaction, child spec creation uses MERGE for idempotency on retries.
+// Child spec creation is idempotent: GetSpec is called first; if the child does not exist,
+// CreateSpec is used to create it. MERGE is used only for the COMPOSES and DEPENDS_ON edges.
 // It returns the slugs of the created (or already-existing) child specs.
 func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *storage.DecomposeOutput) ([]string, error) {
 	if err := s.storeJSONProperty(ctx, slug, "decompose_output", output); err != nil {
@@ -228,10 +229,10 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 	if err != nil {
 		return nil, fmt.Errorf("amend spec %q: get current: %w", slug, err)
 	}
-	if spec.Stage == authoring.StageApproved {
+	if spec.Stage == string(authoring.StageApproved) {
 		return nil, storage.ErrSpecAlreadyApproved
 	}
-	if vErr := authoring.ValidateAmendTransition(spec.Stage, string(targetStage)); vErr != nil {
+	if vErr := authoring.ValidateAmendTransition(authoring.Stage(spec.Stage), authoring.Stage(targetStage)); vErr != nil {
 		return nil, fmt.Errorf("memgraph: amend: %w: %w", storage.ErrInvalidStageTransition, vErr)
 	}
 	nowStr := nowRFC3339()
@@ -250,9 +251,18 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 		return nil, fmt.Errorf("memgraph: amend spec %q: %w", slug, storage.ErrSpecNotFound)
 	}
 	rec := records[0]
-	retSlug, _ := rec.Get("s.slug")
-	retStage, _ := rec.Get("s.stage")
-	retVersion, _ := rec.Get("s.version")
+	retSlug, ok := rec.Get("s.slug")
+	if !ok {
+		return nil, fmt.Errorf("memgraph: amend spec %q: record missing s.slug", slug)
+	}
+	retStage, ok := rec.Get("s.stage")
+	if !ok {
+		return nil, fmt.Errorf("memgraph: amend spec %q: record missing s.stage", slug)
+	}
+	retVersion, ok := rec.Get("s.version")
+	if !ok {
+		return nil, fmt.Errorf("memgraph: amend spec %q: record missing s.version", slug)
+	}
 	result := &storage.AmendResult{
 		Slug:  fmt.Sprintf("%v", retSlug),
 		Stage: storage.AuthoringStage(fmt.Sprintf("%v", retStage)),

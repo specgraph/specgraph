@@ -15,7 +15,7 @@ import (
 func TestPassesForStage(t *testing.T) {
 	tests := []struct {
 		name    string
-		stage   string
+		stage   authoring.Stage
 		posture specv1.Posture
 		want    []string
 	}{
@@ -68,7 +68,7 @@ func TestPassesForStage(t *testing.T) {
 func TestOfferedPasses(t *testing.T) {
 	tests := []struct {
 		name    string
-		stage   string
+		stage   authoring.Stage
 		posture specv1.Posture
 		want    []string
 	}{

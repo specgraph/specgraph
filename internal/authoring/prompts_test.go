@@ -13,7 +13,7 @@ import (
 
 func TestPromptsToProto(t *testing.T) {
 	t.Run("spark stage produces correct proto templates", func(t *testing.T) {
-		protos := authoring.PromptsToProto("spark")
+		protos := authoring.PromptsToProto(authoring.StageSpark)
 		require.NotEmpty(t, protos)
 		for _, p := range protos {
 			require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SPARK, p.Stage)
@@ -21,7 +21,7 @@ func TestPromptsToProto(t *testing.T) {
 			require.NotEmpty(t, p.Template)
 		}
 		// Verify specific prompt names match GetPrompts.
-		prompts := authoring.GetPrompts("spark")
+		prompts := authoring.GetPrompts(authoring.StageSpark)
 		require.Len(t, protos, len(prompts))
 		for i, p := range protos {
 			require.Equal(t, prompts[i].Name, p.Name)
@@ -30,8 +30,9 @@ func TestPromptsToProto(t *testing.T) {
 	})
 
 	t.Run("all stages produce non-nil proto with consistent stage field", func(t *testing.T) {
-		for _, stage := range authoring.AllStages() {
-			if stage == "approved" {
+		for _, stageStr := range authoring.AllStages() {
+			stage := authoring.Stage(stageStr)
+			if stage == authoring.StageApproved {
 				// approved has no prompts
 				continue
 			}
@@ -55,7 +56,7 @@ func TestPromptsToProto(t *testing.T) {
 
 func TestGetPrompts(t *testing.T) {
 	t.Run("spark prompts exist with expected names", func(t *testing.T) {
-		prompts := authoring.GetPrompts("spark")
+		prompts := authoring.GetPrompts(authoring.StageSpark)
 		require.NotEmpty(t, prompts)
 
 		names := make([]string, len(prompts))
@@ -68,15 +69,15 @@ func TestGetPrompts(t *testing.T) {
 	})
 
 	t.Run("shape prompts are non-empty", func(t *testing.T) {
-		require.NotEmpty(t, authoring.GetPrompts("shape"))
+		require.NotEmpty(t, authoring.GetPrompts(authoring.StageShape))
 	})
 
 	t.Run("specify prompts are non-empty", func(t *testing.T) {
-		require.NotEmpty(t, authoring.GetPrompts("specify"))
+		require.NotEmpty(t, authoring.GetPrompts(authoring.StageSpecify))
 	})
 
 	t.Run("decompose prompts are non-empty", func(t *testing.T) {
-		require.NotEmpty(t, authoring.GetPrompts("decompose"))
+		require.NotEmpty(t, authoring.GetPrompts(authoring.StageDecompose))
 	})
 
 	t.Run("nonexistent stage returns empty", func(t *testing.T) {

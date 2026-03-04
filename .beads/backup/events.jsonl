@@ -3588,3 +3588,20 @@
 {"actor":"seanb4t","comment":"Added label: turn:1","created_at":"2026-03-03T22:11:35Z","event_type":"label_added","id":3593,"issue_id":"spgr-cmg.62","new_value":null,"old_value":null}
 {"actor":"seanb4t","comment":"Added label: pr-review","created_at":"2026-03-03T22:11:35Z","event_type":"label_added","id":3594,"issue_id":"spgr-cmg.62","new_value":null,"old_value":null}
 {"actor":"seanb4t","comment":"Added label: pr:8","created_at":"2026-03-03T22:11:35Z","event_type":"label_added","id":3595,"issue_id":"spgr-cmg.62","new_value":null,"old_value":null}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:03Z","event_type":"closed","id":3596,"issue_id":"spgr-cmg.58","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:06Z","event_type":"closed","id":3597,"issue_id":"spgr-cmg.49","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:10Z","event_type":"closed","id":3598,"issue_id":"spgr-cmg.30","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:13Z","event_type":"closed","id":3599,"issue_id":"spgr-cmg.20","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:18Z","event_type":"closed","id":3600,"issue_id":"spgr-cmg.17","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:21Z","event_type":"closed","id":3601,"issue_id":"spgr-cmg.14","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:25Z","event_type":"closed","id":3602,"issue_id":"spgr-cmg.7","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:28Z","event_type":"closed","id":3603,"issue_id":"spgr-cmg.62","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:32Z","event_type":"closed","id":3604,"issue_id":"spgr-cmg.55","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:36Z","event_type":"closed","id":3605,"issue_id":"spgr-cmg.51","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:40Z","event_type":"closed","id":3606,"issue_id":"spgr-cmg.42","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:44Z","event_type":"closed","id":3607,"issue_id":"spgr-cmg.41","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:31:48Z","event_type":"closed","id":3608,"issue_id":"spgr-cmg.28","new_value":"Stale: already addressed in prior fix batches","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:32:04Z","event_type":"closed","id":3609,"issue_id":"spgr-cmg.5","new_value":"Duplicate of spgr-cmg.6 (same safety-outside-tx issue)","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:32:08Z","event_type":"closed","id":3610,"issue_id":"spgr-cmg.1","new_value":"Duplicate of spgr-cmg.6 (same safety-outside-tx issue)","old_value":""}
+{"actor":"seanb4t","comment":null,"created_at":"2026-03-03T22:32:13Z","event_type":"closed","id":3611,"issue_id":"spgr-cmg.34","new_value":"Duplicate of spgr-cmg.40 (same SafetyFlag.category string finding)","old_value":""}
+{"actor":"seanb4t","comment":"Added label: deferred","created_at":"2026-03-03T22:37:40Z","event_type":"label_added","id":3612,"issue_id":"spgr-cmg.2","new_value":null,"old_value":null}

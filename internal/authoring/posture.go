@@ -28,10 +28,10 @@ func DetectPosture(messages []string) specv1.Posture {
 	}
 	avg := float64(total) / float64(len(messages))
 
-	if avg < float64(driveThreshold) {
+	if avg < driveThreshold {
 		return specv1.Posture_POSTURE_DRIVE
 	}
-	if avg > float64(supportThreshold) {
+	if avg > supportThreshold {
 		return specv1.Posture_POSTURE_SUPPORT
 	}
 	return specv1.Posture_POSTURE_PARTNER

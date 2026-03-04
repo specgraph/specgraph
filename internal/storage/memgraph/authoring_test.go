@@ -38,7 +38,7 @@ func TestTransitionStage(t *testing.T) {
 
 	spec, err := store.GetSpec(ctx, "funnel-test")
 	require.NoError(t, err)
-	require.Equal(t, authoring.StageShape, spec.Stage)
+	require.Equal(t, string(authoring.StageShape), spec.Stage)
 
 	err = store.TransitionStage(ctx, "funnel-test", storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify))
 	require.NoError(t, err)
