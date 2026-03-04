@@ -71,6 +71,10 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 	} else {
+		// Without a transaction, CreateSpec and StoreSparkOutput are not atomic.
+		// If StoreSparkOutput fails after CreateSpec succeeds, the spec node
+		// exists at stage "spark" without a spark_output property. Callers should
+		// enable TransactionalBackend to avoid this edge case.
 		if _, err := h.backend.CreateSpec(ctx, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
@@ -223,7 +227,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 		NextPrompts: authoring.PromptsToProto(authoring.StageApproved),
 		// TODO(authoring): Wire simplicity_check and constitution_check analytical
 		// passes to populate the Decompose response. These passes require the
-		// constitution subsystem integration (Slice 4).
+		// constitution subsystem (tracked in the roadmap as Phase 1 constitution work).
 	}), nil
 }
 

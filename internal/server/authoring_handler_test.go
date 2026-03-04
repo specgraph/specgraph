@@ -88,6 +88,20 @@ type fakeBackend struct {
 	createSpecResult *specv1.Spec
 }
 
+// fakeTxBackend embeds fakeBackend and implements TransactionalBackend,
+// enabling tests that exercise the transactional code path.
+type fakeTxBackend struct {
+	fakeBackend
+	runInTxErr error // when non-nil, RunInTransaction returns this instead of calling fn
+}
+
+func (f *fakeTxBackend) RunInTransaction(_ context.Context, fn func(ctx context.Context) error) error {
+	if f.runInTxErr != nil {
+		return f.runInTxErr
+	}
+	return fn(context.Background())
+}
+
 func (f *fakeBackend) CreateSpec(_ context.Context, slug, _, _, _ string) (*specv1.Spec, error) {
 	if f.createSpecErr != nil {
 		return nil, f.createSpecErr
@@ -528,4 +542,31 @@ func TestAuthoringHandler_Spark_InvalidCharSlug(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestAuthoringHandler_Spark_TransactionalPath(t *testing.T) {
+	txBackend := &fakeTxBackend{}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, txBackend)
+	resp, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "tx-spec",
+		Output: &specv1.SparkOutput{Seed: "transactional test"},
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.Output)
+	require.Equal(t, "transactional test", resp.Msg.Output.Seed)
+}
+
+func TestAuthoringHandler_Spark_TransactionalRollback(t *testing.T) {
+	// When the authoring store fails inside a transaction, the error propagates.
+	txBackend := &fakeTxBackend{}
+	authoringStore := &fakeAuthoringBackend{storeSparkOutputErr: errors.New("simulated failure")}
+	client := newAuthoringClient(t, authoringStore, txBackend)
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "tx-spec",
+		Output: &specv1.SparkOutput{Seed: "will fail"},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
 }
