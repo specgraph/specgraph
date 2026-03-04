@@ -38,6 +38,7 @@ var allPostures = []specv1.Posture{
 
 // passRegistry maps each authoring funnel stage to the analytical passes
 // available in that stage, together with posture-aware scheduling rules.
+// passRegistry is effectively immutable after init; do not modify at runtime.
 var passRegistry = map[string][]passConfig{
 	StageSpark: {
 		{pass: PassConstitutionCheck, autoIn: allPostures},

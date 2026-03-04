@@ -35,6 +35,9 @@ func validateSlug(slug string) error {
 }
 
 // AuthoringHandler implements the ConnectRPC AuthoringService.
+// When txBackend is non-nil, multi-step RPCs (Spark, Shape, Specify, Decompose)
+// wrap their operations in a transaction for atomicity. When nil, operations
+// execute sequentially without rollback on partial failure.
 type AuthoringHandler struct {
 	store     storage.AuthoringBackend
 	backend   storage.Backend
@@ -72,7 +75,7 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
 		if err := h.store.StoreSparkOutput(ctx, msg.Slug, sparkDomain); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to store spark output for spec %q", msg.Slug))
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store spark output for spec %q: %w", msg.Slug, err))
 		}
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{Text: msg.Output.GetSeed()})
@@ -110,7 +113,7 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 			return nil, h.stageError(err)
 		}
 		if err := h.store.StoreShapeOutput(ctx, msg.Slug, shapeDomain); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to store shape output for spec %q", msg.Slug))
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store shape output for spec %q: %w", msg.Slug, err))
 		}
 	}
 	scope := make([]string, 0, len(msg.Output.GetScopeIn())+len(msg.Output.GetScopeOut()))
@@ -156,7 +159,7 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 			return nil, h.stageError(err)
 		}
 		if err := h.store.StoreSpecifyOutput(ctx, msg.Slug, specifyDomain); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to store specify output for spec %q", msg.Slug))
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store specify output for spec %q: %w", msg.Slug, err))
 		}
 	}
 	safetyFlags := authoring.RunSafetyNet(&authoring.SafetyInput{
@@ -182,7 +185,10 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	if msg.Output.GetStrategy() == specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("strategy is required"))
 	}
-	decomposeDomain := decomposeOutputToDomain(msg.Output)
+	decomposeDomain, domainErr := decomposeOutputToDomain(msg.Output)
+	if domainErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, domainErr)
+	}
 	if h.txBackend != nil {
 		if err := h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
 			if err := h.store.TransitionStage(txCtx, msg.Slug, storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose)); err != nil {
@@ -200,7 +206,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 			return nil, h.stageError(err)
 		}
 		if _, err := h.store.StoreDecomposeOutput(ctx, msg.Slug, decomposeDomain); err != nil {
-			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to store decompose output for spec %q", msg.Slug))
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("store decompose output for spec %q: %w", msg.Slug, err))
 		}
 	}
 	// Collect slice intents for safety scanning.
@@ -266,6 +272,9 @@ func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[s
 	}
 	if req.Msg.SupersededBy == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("superseded_by is required"))
+	}
+	if err := validateSlug(req.Msg.SupersededBy); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("superseded_by: %w", err))
 	}
 	if err := h.store.SupersedeSpec(ctx, req.Msg.Slug, req.Msg.SupersededBy, req.Msg.Reason); err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
@@ -357,7 +366,7 @@ var decomposeStrategyMap = map[specv1.DecompositionStrategy]storage.Decompositio
 	specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_SINGLE_UNIT:    storage.StrategySingleUnit,
 }
 
-func decomposeOutputToDomain(p *specv1.DecomposeOutput) *storage.DecomposeOutput {
+func decomposeOutputToDomain(p *specv1.DecomposeOutput) (*storage.DecomposeOutput, error) {
 	slices := make([]storage.DecomposeSlice, len(p.GetSlices()))
 	for i, s := range p.GetSlices() {
 		slices[i] = storage.DecomposeSlice{
@@ -370,12 +379,12 @@ func decomposeOutputToDomain(p *specv1.DecomposeOutput) *storage.DecomposeOutput
 	}
 	strategy, ok := decomposeStrategyMap[p.GetStrategy()]
 	if !ok {
-		strategy = storage.DecompositionStrategy(p.GetStrategy().String())
+		return nil, fmt.Errorf("unknown decomposition strategy: %v", p.GetStrategy())
 	}
 	return &storage.DecomposeOutput{
 		Strategy: strategy,
 		Slices:   slices,
-	}
+	}, nil
 }
 
 // --- Stage mapping ---

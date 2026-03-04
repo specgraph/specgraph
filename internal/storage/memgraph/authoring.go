@@ -5,8 +5,8 @@ package memgraph
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/seanb4t/specgraph/internal/authoring"
 	"github.com/seanb4t/specgraph/internal/storage"
@@ -18,17 +18,17 @@ const (
 )
 
 // allowedJSONProperties lists the spec node properties that storeJSONProperty may write.
-var allowedJSONProperties = []string{
-	"spark_output",
-	"shape_output",
-	"specify_output",
-	"decompose_output",
-	"red_team_findings",
-	"peripheral_vision",
-	"consistency_issues",
-	"simplicity_findings",
-	"safety_flags",
-	"constitution_violations",
+var allowedJSONProperties = map[string]bool{
+	"spark_output":            true,
+	"shape_output":            true,
+	"specify_output":          true,
+	"decompose_output":        true,
+	"red_team_findings":       true,
+	"peripheral_vision":       true,
+	"consistency_issues":      true,
+	"simplicity_findings":     true,
+	"safety_flags":            true,
+	"constitution_violations": true,
 }
 
 // TransitionStage validates and applies a spec's stage transition.
@@ -103,7 +103,15 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 		childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
 		// Check if child spec already exists (idempotency for retries).
 		existing, getErr := s.GetSpec(ctx, childSlug)
-		if getErr != nil || existing == nil {
+		if getErr != nil {
+			if !errors.Is(getErr, storage.ErrSpecNotFound) {
+				return nil, fmt.Errorf("memgraph: check child spec %q: %w", childSlug, getErr)
+			}
+			// Not found — proceed to create.
+			if _, err := s.CreateSpec(ctx, childSlug, sl.Intent, defaultChildPriority, defaultChildComplexity); err != nil {
+				return nil, fmt.Errorf("memgraph: create child spec %q: %w", childSlug, err)
+			}
+		} else if existing == nil {
 			if _, err := s.CreateSpec(ctx, childSlug, sl.Intent, defaultChildPriority, defaultChildComplexity); err != nil {
 				return nil, fmt.Errorf("memgraph: create child spec %q: %w", childSlug, err)
 			}
@@ -237,13 +245,13 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 
 // storeJSONProperty marshals data to JSON and stores it as a string property on the spec node.
 // Property names must be interpolated into the Cypher query (parameterized property names are
-// not supported by Cypher). The allowlist and character validation provide defense-in-depth
-// against Cypher injection.
+// not supported by Cypher). The allowlist is the primary defense against Cypher injection;
+// character validation provides a secondary check.
 func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, data any) error {
 	if data == nil {
 		return fmt.Errorf("memgraph: %s data must not be nil", property)
 	}
-	if !slices.Contains(allowedJSONProperties, property) {
+	if !allowedJSONProperties[property] {
 		return fmt.Errorf("memgraph: disallowed property name %q", property)
 	}
 	// Defense-in-depth: validate property name contains only safe characters.

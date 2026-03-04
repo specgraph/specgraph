@@ -12,6 +12,7 @@ type Prompt struct {
 }
 
 // promptRegistry maps funnel stage names to their ordered prompt lists.
+// promptRegistry is effectively immutable after init; do not modify at runtime.
 var promptRegistry = map[string][]Prompt{
 	"spark": {
 		{Name: "seed", Template: "Describe the core idea or need in one sentence."},
@@ -38,10 +39,16 @@ var promptRegistry = map[string][]Prompt{
 	},
 }
 
-// GetPrompts returns the prompts for the given funnel stage.
+// GetPrompts returns a copy of the prompts for the given funnel stage.
 // Returns nil if the stage is not found.
 func GetPrompts(stage string) []Prompt {
-	return promptRegistry[stage]
+	src := promptRegistry[stage]
+	if len(src) == 0 {
+		return nil
+	}
+	out := make([]Prompt, len(src))
+	copy(out, src)
+	return out
 }
 
 // stageToProtoEnum maps domain stage strings to proto AuthoringStage values.

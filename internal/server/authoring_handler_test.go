@@ -480,3 +480,52 @@ func TestAuthoringHandler_GetPrompts_ApprovedStage(t *testing.T) {
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
+
+func TestAuthoringHandler_StageError_AlreadyApproved(t *testing.T) {
+	authoringStore := &fakeAuthoringBackend{transitionStageErr: storage.ErrSpecAlreadyApproved}
+	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
+	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug:   "my-spec",
+		Output: &specv1.ShapeOutput{},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+}
+
+func TestAuthoringHandler_Supersede_InvalidSupersedeBy(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.SupersedeRequest{
+		Slug:         "my-spec",
+		SupersededBy: "../escape",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestAuthoringHandler_Spark_PathTraversalSlug(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "../../etc/passwd",
+		Output: &specv1.SparkOutput{Seed: "test"},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestAuthoringHandler_Spark_InvalidCharSlug(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "my spec!@#",
+		Output: &specv1.SparkOutput{Seed: "test"},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}

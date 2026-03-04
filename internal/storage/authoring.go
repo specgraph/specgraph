@@ -6,6 +6,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"fmt"
 )
 
 // ErrInvalidStageTransition is returned when a stage transition violates funnel rules.
@@ -62,6 +63,21 @@ const (
 	StrategyLayerCake     DecompositionStrategy = "layer_cake"
 	StrategySingleUnit    DecompositionStrategy = "single_unit"
 )
+
+// validStrategies lists the accepted DecompositionStrategy values.
+var validStrategies = map[DecompositionStrategy]bool{
+	StrategyVerticalSlice: true,
+	StrategyLayerCake:     true,
+	StrategySingleUnit:    true,
+}
+
+// ValidateStrategy checks whether a DecompositionStrategy is a known value.
+func ValidateStrategy(s DecompositionStrategy) error {
+	if !validStrategies[s] {
+		return fmt.Errorf("unknown decomposition strategy %q", s)
+	}
+	return nil
+}
 
 // DecomposeSlice represents one independently deliverable unit of work.
 type DecomposeSlice struct {
