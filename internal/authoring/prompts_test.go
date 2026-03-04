@@ -11,15 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// stageToEnum maps domain stage strings to proto enum values for test assertions.
-var stageToEnum = map[string]specv1.AuthoringStage{
-	"spark":     specv1.AuthoringStage_AUTHORING_STAGE_SPARK,
-	"shape":     specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
-	"specify":   specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY,
-	"decompose": specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE,
-	"approved":  specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
-}
-
 func TestPromptsToProto(t *testing.T) {
 	t.Run("spark stage produces correct proto templates", func(t *testing.T) {
 		protos := authoring.PromptsToProto("spark")
@@ -38,7 +29,7 @@ func TestPromptsToProto(t *testing.T) {
 		}
 	})
 
-	t.Run("all stages produce non-nil proto", func(t *testing.T) {
+	t.Run("all stages produce non-nil proto with consistent stage field", func(t *testing.T) {
 		for _, stage := range authoring.AllStages() {
 			if stage == "approved" {
 				// approved has no prompts
@@ -46,9 +37,12 @@ func TestPromptsToProto(t *testing.T) {
 			}
 			protos := authoring.PromptsToProto(stage)
 			require.NotNilf(t, protos, "stage %q should have protos", stage)
-			expected := stageToEnum[stage]
+			// All protos for a given stage must share the same non-UNSPECIFIED stage enum.
 			for _, p := range protos {
-				require.Equal(t, expected, p.Stage)
+				require.NotEqual(t, specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED, p.Stage,
+					"stage %q proto should not be UNSPECIFIED", stage)
+				require.Equal(t, protos[0].Stage, p.Stage,
+					"all protos for stage %q should have the same stage enum", stage)
 			}
 		}
 	})

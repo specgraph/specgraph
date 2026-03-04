@@ -12,16 +12,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTransitionStage(t *testing.T) {
+// newTestStore creates a fresh Memgraph-backed store for a single test,
+// registering cleanup of the container and store connection.
+func newTestStore(t *testing.T) (*memgraph.Store, context.Context) {
+	t.Helper()
 	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
-
+	t.Cleanup(cleanup)
 	ctx := context.Background()
 	store, err := memgraph.New(ctx, boltURI)
 	require.NoError(t, err)
-	defer store.Close(ctx)
+	t.Cleanup(func() { store.Close(ctx) })
+	return store, ctx
+}
 
-	_, err = store.CreateSpec(ctx, "funnel-test", "Test the funnel", "p1", "low")
+func TestTransitionStage(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "funnel-test", "Test the funnel", "p1", "low")
 	require.NoError(t, err)
 
 	// CreateSpec sets stage to "spark", so transition spark → shape.
@@ -40,16 +47,21 @@ func TestTransitionStage(t *testing.T) {
 	require.ErrorIs(t, err, storage.ErrInvalidStageTransition)
 }
 
-func TestStoreSparkOutput(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+func TestTransitionStage_WrongStage(t *testing.T) {
+	store, ctx := newTestStore(t)
 
-	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	_, err := store.CreateSpec(ctx, "wrong-stage", "Wrong stage test", "p1", "low")
 	require.NoError(t, err)
-	defer store.Close(ctx)
 
-	_, err = store.CreateSpec(ctx, "spark-out", "Spark output test", "p1", "low")
+	// Spec is at "spark", but we claim it's at "shape" → should fail.
+	err = store.TransitionStage(ctx, "wrong-stage", "shape", "specify")
+	require.ErrorIs(t, err, storage.ErrInvalidStageTransition)
+}
+
+func TestStoreSparkOutput(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "spark-out", "Spark output test", "p1", "low")
 	require.NoError(t, err)
 
 	err = store.StoreSparkOutput(ctx, "spark-out", &storage.SparkOutput{
@@ -63,15 +75,9 @@ func TestStoreSparkOutput(t *testing.T) {
 }
 
 func TestStoreDecomposeOutput(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	store, ctx := newTestStore(t)
 
-	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
-	require.NoError(t, err)
-	defer store.Close(ctx)
-
-	_, err = store.CreateSpec(ctx, "decomp-parent", "Parent spec", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "decomp-parent", "Parent spec", "p1", "medium")
 	require.NoError(t, err)
 
 	children, err := store.StoreDecomposeOutput(ctx, "decomp-parent", &storage.DecomposeOutput{
@@ -88,15 +94,9 @@ func TestStoreDecomposeOutput(t *testing.T) {
 }
 
 func TestAmendSpec(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	store, ctx := newTestStore(t)
 
-	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
-	require.NoError(t, err)
-	defer store.Close(ctx)
-
-	_, err = store.CreateSpec(ctx, "amend-test", "Amend test", "p1", "low")
+	_, err := store.CreateSpec(ctx, "amend-test", "Amend test", "p1", "low")
 	require.NoError(t, err)
 	// CreateSpec sets stage to "spark". Advance through stages.
 	require.NoError(t, store.TransitionStage(ctx, "amend-test", "spark", "shape"))
@@ -105,20 +105,40 @@ func TestAmendSpec(t *testing.T) {
 	// Amend back to shape (valid backward transition).
 	spec, err := store.AmendSpec(ctx, "amend-test", "need to reconsider scope", "shape")
 	require.NoError(t, err)
-	require.Equal(t, "shape", spec.Stage)
+	require.Equal(t, storage.AuthoringStage("shape"), spec.Stage)
 	require.Equal(t, int32(2), spec.Version, "version should increment after amendment")
 }
 
-func TestSupersedeSpec(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+func TestAmendSpec_AlreadyApproved(t *testing.T) {
+	store, ctx := newTestStore(t)
 
-	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	_, err := store.CreateSpec(ctx, "approved-spec", "Will be approved", "p1", "low")
 	require.NoError(t, err)
-	defer store.Close(ctx)
+	require.NoError(t, store.TransitionStage(ctx, "approved-spec", "spark", "shape"))
+	require.NoError(t, store.TransitionStage(ctx, "approved-spec", "shape", "specify"))
+	require.NoError(t, store.TransitionStage(ctx, "approved-spec", "specify", "decompose"))
+	require.NoError(t, store.TransitionStage(ctx, "approved-spec", "decompose", "approved"))
 
-	_, err = store.CreateSpec(ctx, "old-spec", "Original spec", "p1", "low")
+	_, err = store.AmendSpec(ctx, "approved-spec", "too late", "shape")
+	require.ErrorIs(t, err, storage.ErrSpecAlreadyApproved)
+}
+
+func TestAmendSpec_InvalidTransition(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "amend-invalid", "Invalid amend", "p1", "low")
+	require.NoError(t, err)
+	require.NoError(t, store.TransitionStage(ctx, "amend-invalid", "spark", "shape"))
+
+	// Amend forward (shape → specify) should fail — amend only allows backward.
+	_, err = store.AmendSpec(ctx, "amend-invalid", "forward not allowed", "specify")
+	require.ErrorIs(t, err, storage.ErrInvalidStageTransition)
+}
+
+func TestSupersedeSpec(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "old-spec", "Original spec", "p1", "low")
 	require.NoError(t, err)
 	_, err = store.CreateSpec(ctx, "new-spec", "Replacement spec", "p1", "low")
 	require.NoError(t, err)
@@ -133,15 +153,9 @@ func TestSupersedeSpec(t *testing.T) {
 }
 
 func TestSupersedeSpec_NotFound(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	store, ctx := newTestStore(t)
 
-	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
-	require.NoError(t, err)
-	defer store.Close(ctx)
-
-	_, err = store.CreateSpec(ctx, "existing-spec", "Exists", "p1", "low")
+	_, err := store.CreateSpec(ctx, "existing-spec", "Exists", "p1", "low")
 	require.NoError(t, err)
 
 	// Non-existent old spec.
@@ -154,15 +168,9 @@ func TestSupersedeSpec_NotFound(t *testing.T) {
 }
 
 func TestStoreDecomposeOutput_Idempotent(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	store, ctx := newTestStore(t)
 
-	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
-	require.NoError(t, err)
-	defer store.Close(ctx)
-
-	_, err = store.CreateSpec(ctx, "idem-parent", "Idempotency parent", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "idem-parent", "Idempotency parent", "p1", "medium")
 	require.NoError(t, err)
 
 	output := &storage.DecomposeOutput{
@@ -189,16 +197,10 @@ func TestStoreDecomposeOutput_Idempotent(t *testing.T) {
 }
 
 func TestStoreDecomposeOutput_MissingParent(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
-
-	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
-	require.NoError(t, err)
-	defer store.Close(ctx)
+	store, ctx := newTestStore(t)
 
 	// Do not create the parent spec — slug does not exist in the database.
-	_, err = store.StoreDecomposeOutput(ctx, "ghost-parent", &storage.DecomposeOutput{
+	_, err := store.StoreDecomposeOutput(ctx, "ghost-parent", &storage.DecomposeOutput{
 		Strategy: storage.StrategyVerticalSlice,
 		Slices: []storage.DecomposeSlice{
 			{ID: "slice-x", Intent: "Orphan slice", Verify: []string{"x works"}, Touches: []string{"x.go"}},

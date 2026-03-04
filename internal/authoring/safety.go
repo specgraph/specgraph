@@ -61,9 +61,10 @@ type safetyPattern struct {
 }
 
 // buildPatterns compiles pattern strings into word-boundary-aware regexes.
-// Multi-word phrases use substring match (high confidence); single short
-// words use word-boundary anchors to reduce false positives.
-// label is the human-readable description used in SafetyFlagResult.Description.
+// Patterns containing spaces, parens, or hyphens use substring match (high
+// confidence); single-word patterns use word-boundary anchors to reduce
+// false positives. label is the human-readable description used in
+// SafetyFlagResult.Description.
 func buildPatterns(label string, patterns []string, severity FindingSeverity) []safetyPattern {
 	out := make([]safetyPattern, len(patterns))
 	for i, p := range patterns {

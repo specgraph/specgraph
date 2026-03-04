@@ -24,6 +24,24 @@ func AllStages() []string {
 	return out
 }
 
+// validateStageNames returns an error if from or to are unknown stage names.
+// allowEmptyFrom controls whether from=="" is accepted (used for initial transitions).
+func validateStageNames(from, to string, allowEmptyFrom bool) (fromIdx, toIdx int, err error) {
+	fromIdx = indexOf(from)
+	toIdx = indexOf(to)
+	var unknowns []string
+	if fromIdx < 0 && !(allowEmptyFrom && from == "") {
+		unknowns = append(unknowns, from)
+	}
+	if toIdx < 0 {
+		unknowns = append(unknowns, to)
+	}
+	if len(unknowns) > 0 {
+		return fromIdx, toIdx, fmt.Errorf("unknown stage(s): %v", unknowns)
+	}
+	return fromIdx, toIdx, nil
+}
+
 // ValidateTransition checks whether moving from one stage to another is allowed.
 // Forward transitions must follow the defined order (no skipping).
 // Backward (amend) transitions are allowed to any earlier stage.
@@ -32,20 +50,9 @@ func ValidateTransition(from, to string) error {
 	if from == to {
 		return fmt.Errorf("transition from %q to %q is a no-op", from, to)
 	}
-
-	fromIdx := indexOf(from)
-	toIdx := indexOf(to)
-
-	// Validate both stages are known.
-	var unknowns []string
-	if fromIdx < 0 && from != "" {
-		unknowns = append(unknowns, from)
-	}
-	if toIdx < 0 {
-		unknowns = append(unknowns, to)
-	}
-	if len(unknowns) > 0 {
-		return fmt.Errorf("unknown stage(s): %v", unknowns)
+	fromIdx, toIdx, err := validateStageNames(from, to, true)
+	if err != nil {
+		return err
 	}
 
 	// Forward: initial ("" -> first stage) or next stage in sequence.
@@ -71,20 +78,9 @@ func ValidateAmendTransition(from, to string) error {
 	if from == to {
 		return fmt.Errorf("amend transition from %q to %q is a no-op", from, to)
 	}
-
-	fromIdx := indexOf(from)
-	toIdx := indexOf(to)
-
-	// Validate both stages are known.
-	var unknowns []string
-	if fromIdx < 0 {
-		unknowns = append(unknowns, from)
-	}
-	if toIdx < 0 {
-		unknowns = append(unknowns, to)
-	}
-	if len(unknowns) > 0 {
-		return fmt.Errorf("unknown stage(s): %v", unknowns)
+	fromIdx, toIdx, err := validateStageNames(from, to, false)
+	if err != nil {
+		return err
 	}
 
 	// Only backward transitions are allowed for amend.

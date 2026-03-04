@@ -639,6 +639,21 @@ func TestAuthoringHandler_Amend_EmptyReason(t *testing.T) {
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
+func TestAuthoringHandler_Amend_UnspecifiedTargetStage(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{
+		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.AuthoringStage("shape"), Version: 2},
+	}, &fakeBackend{})
+	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
+		Slug:        "my-spec",
+		Reason:      "scope changed",
+		TargetStage: specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED,
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
 func TestAuthoringHandler_Spark_AlreadyExists(t *testing.T) {
 	backend := &fakeBackend{createSpecErr: storage.ErrSpecAlreadyExists}
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)

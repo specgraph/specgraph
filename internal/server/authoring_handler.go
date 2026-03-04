@@ -21,9 +21,14 @@ import (
 
 var validSlugRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9_/-]*[a-z0-9])?$`)
 
+const maxSlugLength = 256
+
 func validateSlug(slug string) error {
 	if slug == "" {
 		return errors.New("slug is required")
+	}
+	if len(slug) > maxSlugLength {
+		return fmt.Errorf("slug exceeds maximum length of %d characters", maxSlugLength)
 	}
 	if strings.Contains(slug, "..") {
 		return fmt.Errorf("slug %q contains path traversal", slug)
