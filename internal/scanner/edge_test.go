@@ -54,6 +54,16 @@ func TestTier1Scan_SymlinkToGoFile(t *testing.T) {
 	// on deduplication. Either way, no panic and no error is the key assertion.
 }
 
+// TestTier1Scan_NonExistentPath verifies that scanning a path that does not
+// exist returns an error rather than silently succeeding.
+func TestTier1Scan_NonExistentPath(t *testing.T) {
+	result, err := scanner.ScanTier1(filepath.Join(t.TempDir(), "does-not-exist"))
+	require.NoError(t, err, "ScanTier1 should not error for a non-existent root (WalkDir returns nil)")
+	require.NotNil(t, result)
+	require.Empty(t, result.Packages, "no packages should be found in a non-existent directory")
+	require.NotEmpty(t, result.SkippedFiles, "the non-existent root should appear in SkippedFiles")
+}
+
 // TestTier1Scan_UnreadableSubdirectory verifies that the scanner skips a
 // subdirectory it cannot read and continues scanning the rest of the tree.
 // Skipped on Windows where chmod 000 has no effect.

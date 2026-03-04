@@ -20,7 +20,8 @@ func walkGoFiles(root string, skipTests bool, fset *token.FileSet, fn func(path,
 	var skipped []SkippedFile
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil //nolint:nilerr // intentional: skip unreadable entries; error recorded in skipped slice
+			skipped = append(skipped, SkippedFile{Path: path, Reason: err.Error()})
+			return nil //nolint:nilerr // intentional: skip unreadable entries gracefully
 		}
 		if d.IsDir() {
 			if skipDir(d.Name()) {
@@ -41,7 +42,7 @@ func walkGoFiles(root string, skipTests bool, fset *token.FileSet, fn func(path,
 		f, parseErr := parser.ParseFile(fset, path, nil, 0)
 		if parseErr != nil {
 			skipped = append(skipped, SkippedFile{Path: path, Reason: parseErr.Error()})
-			return nil //nolint:nilerr // intentional: skip unreadable entries; error recorded in skipped slice
+			return nil //nolint:nilerr // parse error recorded in skipped slice
 		}
 		return fn(path, relPath, f)
 	})

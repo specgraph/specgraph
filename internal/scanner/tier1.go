@@ -37,6 +37,7 @@ type SkippedFile struct {
 }
 
 // Tier1Result holds the output of a Tier 1 scan: packages, interfaces, and structs.
+// Callers must not modify the returned slices.
 type Tier1Result struct {
 	Packages     []PackageInfo
 	Interfaces   []InterfaceInfo

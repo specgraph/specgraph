@@ -27,6 +27,7 @@ type ImportInfo struct {
 }
 
 // Tier2Result holds the output of a Tier 2 scan: functions, imports, and test files.
+// Callers must not modify the returned slices.
 type Tier2Result struct {
 	Functions    []FunctionInfo
 	Imports      []ImportInfo
