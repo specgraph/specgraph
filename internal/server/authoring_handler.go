@@ -312,6 +312,12 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 
 // RegisterAuthoringService registers the AuthoringService on the given mux.
 func RegisterAuthoringService(mux *http.ServeMux, authoringStore storage.AuthoringBackend, backend storage.Backend) {
+	if authoringStore == nil {
+		panic("RegisterAuthoringService: authoringStore must not be nil")
+	}
+	if backend == nil {
+		panic("RegisterAuthoringService: backend must not be nil")
+	}
 	handler := &AuthoringHandler{store: authoringStore, backend: backend}
 	// If the backend supports transactions, enable atomic multi-operation RPCs.
 	if txb, ok := backend.(storage.TransactionalBackend); ok {

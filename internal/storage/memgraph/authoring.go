@@ -102,7 +102,7 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 	for _, sl := range output.Slices {
 		childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
 		// Check if child spec already exists (idempotency for retries).
-		existing, getErr := s.GetSpec(ctx, childSlug)
+		_, getErr := s.GetSpec(ctx, childSlug)
 		if getErr != nil {
 			if !errors.Is(getErr, storage.ErrSpecNotFound) {
 				return nil, fmt.Errorf("memgraph: check child spec %q: %w", childSlug, getErr)
@@ -111,11 +111,8 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 			if _, err := s.CreateSpec(ctx, childSlug, sl.Intent, defaultChildPriority, defaultChildComplexity); err != nil {
 				return nil, fmt.Errorf("memgraph: create child spec %q: %w", childSlug, err)
 			}
-		} else if existing == nil {
-			if _, err := s.CreateSpec(ctx, childSlug, sl.Intent, defaultChildPriority, defaultChildComplexity); err != nil {
-				return nil, fmt.Errorf("memgraph: create child spec %q: %w", childSlug, err)
-			}
 		}
+		// If getErr == nil, child spec already exists (idempotent retry).
 		query := `
 			MATCH (child:Spec {slug: $child_slug}), (parent:Spec {slug: $parent_slug})
 			MERGE (child)-[:COMPOSES]->(parent)

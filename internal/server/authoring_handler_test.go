@@ -139,7 +139,7 @@ func newAuthoringClient(t *testing.T, authoringStore storage.AuthoringBackend, b
 
 func TestAuthoringHandler_GetPrompts(t *testing.T) {
 	mux := http.NewServeMux()
-	server.RegisterAuthoringService(mux, nil, nil)
+	server.RegisterAuthoringService(mux, &fakeAuthoringBackend{}, &fakeBackend{})
 
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -465,7 +465,7 @@ func TestAuthoringHandler_Decompose_StoreOutputError(t *testing.T) {
 
 func TestAuthoringHandler_GetPrompts_UnspecifiedStage(t *testing.T) {
 	mux := http.NewServeMux()
-	server.RegisterAuthoringService(mux, nil, nil)
+	server.RegisterAuthoringService(mux, &fakeAuthoringBackend{}, &fakeBackend{})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	client := specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, srv.URL)
@@ -481,7 +481,7 @@ func TestAuthoringHandler_GetPrompts_UnspecifiedStage(t *testing.T) {
 
 func TestAuthoringHandler_GetPrompts_ApprovedStage(t *testing.T) {
 	mux := http.NewServeMux()
-	server.RegisterAuthoringService(mux, nil, nil)
+	server.RegisterAuthoringService(mux, &fakeAuthoringBackend{}, &fakeBackend{})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	client := specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, srv.URL)

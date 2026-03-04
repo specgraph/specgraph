@@ -12,11 +12,17 @@ import "google/protobuf/timestamp.proto";
 // --- Enums ---
 
 enum AuthoringStage {
+  // Default value; not a valid stage.
   AUTHORING_STAGE_UNSPECIFIED = 0;
+  // Initial ideation stage where the spec concept is captured.
   AUTHORING_STAGE_SPARK = 1;
+  // Scoping stage where approaches and boundaries are defined.
   AUTHORING_STAGE_SHAPE = 2;
+  // Contract stage where interfaces and invariants are recorded.
   AUTHORING_STAGE_SPECIFY = 3;
+  // Decomposition stage where the spec is broken into implementable slices.
   AUTHORING_STAGE_DECOMPOSE = 4;
+  // Terminal stage indicating the spec is approved for execution.
   AUTHORING_STAGE_APPROVED = 5;
 }
 
@@ -130,7 +136,7 @@ message DecomposeOutput {
 
 // DecompositionSlice represents one independently deliverable unit of work within a spec.
 message DecompositionSlice {
-  // Stable identifier for this slice within the parent spec.
+  // Unique identifier for this slice within the parent spec. Must be non-empty.
   string id = 1;
   // What this slice accomplishes and why it exists.
   string intent = 2;
@@ -384,12 +390,20 @@ message GetPromptsResponse {
 // --- Service ---
 
 service AuthoringService {
+  // Spark creates a new spec and enters the spark stage.
   rpc Spark(SparkRequest) returns (SparkResponse);
+  // Shape transitions from spark to shape, recording scope and approaches.
   rpc Shape(ShapeRequest) returns (ShapeResponse);
+  // Specify transitions from shape to specify, recording contracts and invariants.
   rpc Specify(SpecifyRequest) returns (SpecifyResponse);
+  // Decompose transitions from specify to decompose, breaking the spec into slices.
   rpc Decompose(DecomposeRequest) returns (DecomposeResponse);
+  // Approve transitions from decompose to approved.
   rpc Approve(ApproveRequest) returns (ApproveResponse);
+  // Amend rolls a spec back to an earlier stage.
   rpc Amend(AmendRequest) returns (AmendResponse);
+  // Supersede marks a spec as replaced by another.
   rpc Supersede(SupersedeRequest) returns (SupersedeResponse);
+  // GetPrompts returns prompt templates for a given authoring stage.
   rpc GetPrompts(GetPromptsRequest) returns (GetPromptsResponse);
 }
