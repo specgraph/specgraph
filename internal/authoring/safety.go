@@ -17,7 +17,6 @@ import (
 // Lower values are more severe.
 type FindingSeverity int
 
-// FindingSeverity constants define the severity levels for safety findings.
 const (
 	SeverityCritical FindingSeverity = 1
 	SeverityWarning  FindingSeverity = 2
@@ -48,6 +47,18 @@ func (s *SafetyInput) Validate() error {
 
 // SafetyCategory identifies a class of safety concern.
 type SafetyCategory int
+
+// String returns the human-readable name of the safety category.
+func (c SafetyCategory) String() string {
+	switch c {
+	case SafetyCategorySecurity:
+		return "security"
+	case SafetyCategoryDataLoss:
+		return "data_loss"
+	default:
+		return "unknown"
+	}
+}
 
 // Safety category constants.
 const (
@@ -174,7 +185,7 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 				allMatches = append(allMatches, SafetyFlagResult{
 					Category:    g.category,
 					Severity:    sp.severity,
-					Description: fmt.Sprintf("[%s] %s", categoryToStorage[g.category], sp.label),
+					Description: fmt.Sprintf("[%s] %s", g.category, sp.label),
 				})
 			}
 		}
@@ -247,17 +258,4 @@ var severityToStorage = map[FindingSeverity]storage.FindingSeverity{
 // representation. Unknown values map to the empty string.
 func ToStorageSeverity(s FindingSeverity) storage.FindingSeverity {
 	return severityToStorage[s]
-}
-
-// categoryToStorage maps authoring.SafetyCategory (ordered int) to
-// storage.SafetyCategory (string, used for JSON persistence).
-var categoryToStorage = map[SafetyCategory]storage.SafetyCategory{
-	SafetyCategorySecurity: "security",
-	SafetyCategoryDataLoss: "data_loss",
-}
-
-// ToStorageCategory converts an authoring SafetyCategory to the storage
-// representation. Unknown values map to the empty string.
-func ToStorageCategory(c SafetyCategory) storage.SafetyCategory {
-	return categoryToStorage[c]
 }

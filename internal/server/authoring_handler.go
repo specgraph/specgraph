@@ -129,6 +129,16 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
+	for _, item := range msg.Output.GetScopeIn() {
+		if len(item) > maxFieldLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("scope_in item exceeds maximum length of %d characters", maxFieldLen))
+		}
+	}
+	for _, item := range msg.Output.GetScopeOut() {
+		if len(item) > maxFieldLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("scope_out item exceeds maximum length of %d characters", maxFieldLen))
+		}
+	}
 	shapeDomain := shapeOutputToDomain(msg.Output)
 	scope := make([]string, 0, len(msg.Output.GetScopeIn())+len(msg.Output.GetScopeOut()))
 	scope = append(scope, msg.Output.GetScopeIn()...)
@@ -183,6 +193,16 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	}
 	if len(msg.Output.GetInterfaceContract()) > maxFieldLen {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("interface_contract exceeds maximum length of %d characters", maxFieldLen))
+	}
+	for _, item := range msg.Output.GetVerifyCriteria() {
+		if len(item) > maxFieldLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify_criteria item exceeds maximum length of %d characters", maxFieldLen))
+		}
+	}
+	for _, item := range msg.Output.GetInvariants() {
+		if len(item) > maxFieldLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invariants item exceeds maximum length of %d characters", maxFieldLen))
+		}
 	}
 	specifyDomain := specifyOutputToDomain(msg.Output)
 	safetyInput := &authoring.SafetyInput{
@@ -245,12 +265,15 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 		return nil, connect.NewError(connect.CodeInvalidArgument, domainErr)
 	}
 	// Collect slice intents for safety scanning.
-	var sliceIntents []string
-	for _, s := range msg.Output.GetSlices() {
-		sliceIntents = append(sliceIntents, s.GetIntent())
+	var intentBuilder strings.Builder
+	for i, s := range msg.Output.GetSlices() {
+		if i > 0 {
+			intentBuilder.WriteByte(' ')
+		}
+		intentBuilder.WriteString(s.GetIntent())
 	}
 	safetyInput := &authoring.SafetyInput{
-		Text: strings.Join(sliceIntents, " "),
+		Text: intentBuilder.String(),
 	}
 	var safetyFlags []authoring.SafetyFlagResult
 	if err := h.runInTxOrSequential(ctx,
@@ -647,12 +670,18 @@ func runAnalyticalPasses(stage authoring.Stage, posture specv1.Posture) (
 	return
 }
 
+// categoryToStorage maps authoring.SafetyCategory to the storage string representation.
+var categoryToStorage = map[authoring.SafetyCategory]storage.SafetyCategory{
+	authoring.SafetyCategorySecurity: "security",
+	authoring.SafetyCategoryDataLoss: "data_loss",
+}
+
 // safetyFlagsToStorage converts domain-level safety results to storage types.
 func safetyFlagsToStorage(flags []authoring.SafetyFlagResult) []storage.SafetyFlag {
 	out := make([]storage.SafetyFlag, len(flags))
 	for i, f := range flags {
 		out[i] = storage.SafetyFlag{
-			Category:    authoring.ToStorageCategory(f.Category),
+			Category:    categoryToStorage[f.Category],
 			Severity:    authoring.ToStorageSeverity(f.Severity),
 			Description: f.Description,
 		}

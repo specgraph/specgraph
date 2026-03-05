@@ -24,7 +24,11 @@ func newTestStore(t *testing.T) (*memgraph.Store, context.Context) {
 	ctx := context.Background()
 	store, err := memgraph.New(ctx, boltURI)
 	require.NoError(t, err)
-	t.Cleanup(func() { store.Close(ctx) })
+	t.Cleanup(func() {
+		if err := store.Close(ctx); err != nil {
+			t.Errorf("store.Close: %v", err)
+		}
+	})
 	return store, ctx
 }
 
