@@ -75,7 +75,10 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 		if len(checkRecords) == 0 {
 			return fmt.Errorf("memgraph: transition stage %q: %w", slug, storage.ErrSpecNotFound)
 		}
-		actualStage, _ := checkRecords[0].Get("stage")
+		actualStage, ok := checkRecords[0].Get("stage")
+		if !ok || actualStage == nil {
+			actualStage = "<unknown>"
+		}
 		return fmt.Errorf("memgraph: spec %q at stage %v, expected %q: %w", slug, actualStage, from, storage.ErrInvalidStageTransition)
 	}
 	return nil

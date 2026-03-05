@@ -74,3 +74,4 @@
 {"author":"seanb4t","created_at":"2026-03-05T04:25:20Z","id":74,"issue_id":"spgr-cmg.83","text":"Closed: stale — GetPromptsRequest.stage uses AuthoringStage enum in proto, matching implementation."}
 {"author":"seanb4t","created_at":"2026-03-05T04:25:58Z","id":75,"issue_id":"spgr-cmg.31","text":"Closed: stale — SparkRequest no longer has a posture field in the proto definition."}
 {"author":"seanb4t","created_at":"2026-03-05T04:25:59Z","id":76,"issue_id":"spgr-cmg.77","text":"Closed: duplicate of spgr-cmg.75 which covers the same acceptLinkedDecisions error handling issue."}
+{"author":"seanb4t","created_at":"2026-03-05T14:27:23Z","id":77,"issue_id":"spgr-cmg.61","text":"Closed: by-design — returning nil NextPrompts for the terminal approved stage is correct behavior."}
