@@ -75,3 +75,6 @@
 {"author":"seanb4t","created_at":"2026-03-05T04:25:58Z","id":75,"issue_id":"spgr-cmg.31","text":"Closed: stale — SparkRequest no longer has a posture field in the proto definition."}
 {"author":"seanb4t","created_at":"2026-03-05T04:25:59Z","id":76,"issue_id":"spgr-cmg.77","text":"Closed: duplicate of spgr-cmg.75 which covers the same acceptLinkedDecisions error handling issue."}
 {"author":"seanb4t","created_at":"2026-03-05T14:27:23Z","id":77,"issue_id":"spgr-cmg.61","text":"Closed: by-design — returning nil NextPrompts for the terminal approved stage is correct behavior."}
+{"author":"seanb4t","created_at":"2026-03-05T14:44:56Z","id":78,"issue_id":"spgr-cmg.76","text":"Closed: already fixed — RunSafetyNet already has nil guard at line 160."}
+{"author":"seanb4t","created_at":"2026-03-05T14:56:29Z","id":79,"issue_id":"spgr-cmg.80","text":"Closed: stale — TODO with unresolvable bead ID no longer exists in the code."}
+{"author":"seanb4t","created_at":"2026-03-05T14:56:37Z","id":80,"issue_id":"spgr-cmg.9","text":"Closed: not a bug — defaultSpecPriority/Complexity are defined in spec_handler.go and referenced from authoring_handler.go within the same package (server). No duplication."}
