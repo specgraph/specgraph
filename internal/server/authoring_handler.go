@@ -276,14 +276,17 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 		Text: intentBuilder.String(),
 	}
 	var safetyFlags []authoring.SafetyFlagResult
+	var childSlugs []string
 	if err := h.runInTxOrSequential(ctx,
 		func(c context.Context) error {
 			return h.store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose))
 		},
 		func(c context.Context) error {
-			if _, err := h.store.StoreDecomposeOutput(c, msg.Slug, decomposeDomain); err != nil {
+			slugs, err := h.store.StoreDecomposeOutput(c, msg.Slug, decomposeDomain)
+			if err != nil {
 				return fmt.Errorf("store decompose output: %w", err)
 			}
+			childSlugs = slugs
 			return nil
 		},
 		func(c context.Context) error {
@@ -304,10 +307,11 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	_, _, _, simplicity := runAnalyticalPasses(authoring.StageDecompose, msg.Posture)
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.DecomposeResponse{
-		Output:      msg.Output,
-		Simplicity:  simplicity,
-		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts: authoring.PromptsToProto(authoring.StageApproved),
+		Output:         msg.Output,
+		Simplicity:     simplicity,
+		SafetyFlags:    authoring.SafetyResultsToProto(safetyFlags),
+		NextPrompts:    authoring.PromptsToProto(authoring.StageApproved),
+		ChildSpecSlugs: childSlugs,
 	}), nil
 }
 

@@ -90,6 +90,9 @@ func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *stora
 }
 
 // StoreShapeOutput persists the shape stage output as JSON on the spec node.
+// TODO(ADR-003): ShapeOutput.Decisions are stored as plain strings in the JSON blob.
+// Per ADR-003 they should become Decision graph nodes with [:DECIDED_IN] edges,
+// enabling cross-referencing, impact analysis, and promotion at Approve time.
 func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *storage.ShapeOutput) error {
 	return s.storeJSONProperty(ctx, slug, "shape_output", output)
 }

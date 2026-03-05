@@ -53,8 +53,15 @@ func (f *fakeAuthoringBackend) StoreSpecifyOutput(_ context.Context, _ string, _
 	return f.storeSpecifyOutputErr
 }
 
-func (f *fakeAuthoringBackend) StoreDecomposeOutput(_ context.Context, _ string, _ *storage.DecomposeOutput) ([]string, error) {
-	return nil, f.storeDecomposeOutputErr
+func (f *fakeAuthoringBackend) StoreDecomposeOutput(_ context.Context, slug string, output *storage.DecomposeOutput) ([]string, error) {
+	if f.storeDecomposeOutputErr != nil {
+		return nil, f.storeDecomposeOutputErr
+	}
+	var slugs []string
+	for _, sl := range output.Slices {
+		slugs = append(slugs, slug+"/"+sl.ID)
+	}
+	return slugs, nil
 }
 
 func (f *fakeAuthoringBackend) StoreRedTeamFindings(_ context.Context, _ string, _ []storage.RedTeamFinding) error {
@@ -231,6 +238,7 @@ func TestAuthoringHandler_Decompose_HappyPath(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg.Output)
 	require.Equal(t, specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE, resp.Msg.Output.Strategy)
+	require.Equal(t, []string{"my-spec/s1"}, resp.Msg.ChildSpecSlugs)
 }
 
 func TestAuthoringHandler_Approve_HappyPath(t *testing.T) {

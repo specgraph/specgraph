@@ -351,6 +351,8 @@ message DecomposeResponse {
   repeated ConstitutionViolation constitution_violations = 4;
   // Prompt templates suggested for the next authoring stage.
   repeated PromptTemplate next_prompts = 5;
+  // Canonical slugs of the child specs created (or already existing) during decomposition.
+  repeated string child_spec_slugs = 6;
 }
 
 // ApproveRequest finalises a spec and advances it to the approved stage.
