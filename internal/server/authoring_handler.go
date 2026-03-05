@@ -35,10 +35,10 @@ func validateSlug(slug string) error {
 		return fmt.Errorf("slug exceeds maximum length of %d characters", maxSlugLength)
 	}
 	if strings.Contains(slug, "..") {
-		return fmt.Errorf("slug %q contains path traversal", slug)
+		return errors.New("slug contains path traversal")
 	}
 	if !validSlugRe.MatchString(slug) {
-		return fmt.Errorf("slug %q contains invalid characters", slug)
+		return errors.New("slug contains invalid characters")
 	}
 	return nil
 }
@@ -622,15 +622,16 @@ func (h *AuthoringHandler) stageError(err error) error {
 		return connErr
 	}
 	if errors.Is(err, storage.ErrSpecAlreadyApproved) {
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec is already approved"))
 	}
 	if errors.Is(err, storage.ErrInvalidStageTransition) {
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("invalid stage transition"))
 	}
 	if errors.Is(err, storage.ErrSpecNotFound) {
-		return connect.NewError(connect.CodeNotFound, err)
+		return connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
 	}
-	return connect.NewError(connect.CodeInternal, err)
+	h.logger.Error("stageError: internal error", slog.Any("error", err))
+	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 }
 
 // runAnalyticalPasses executes the passes returned by PassesForStage for the

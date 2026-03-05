@@ -229,10 +229,13 @@ func SafetyResultsToProto(flags []SafetyFlagResult) []*specv1.SafetyFlag {
 	for i, f := range flags {
 		protoSev, ok := severityToProto[f.Severity]
 		if !ok {
+			// Unknown severity values map to UNSPECIFIED so callers always
+			// receive a valid proto enum rather than an out-of-range integer.
 			protoSev = specv1.FindingSeverity_FINDING_SEVERITY_UNSPECIFIED
 		}
 		protoCat, ok := categoryToProto[f.Category]
 		if !ok {
+			// Unknown category values map to UNSPECIFIED for the same reason.
 			protoCat = specv1.SafetyCategory_SAFETY_CATEGORY_UNSPECIFIED
 		}
 		out[i] = &specv1.SafetyFlag{

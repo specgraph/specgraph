@@ -244,6 +244,9 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 	if spec.Stage == string(authoring.StageApproved) {
 		return nil, storage.ErrSpecAlreadyApproved
 	}
+	if spec.Stage == "superseded" {
+		return nil, fmt.Errorf("amend spec %q: %w", slug, storage.ErrSpecSuperseded)
+	}
 	if vErr := authoring.ValidateAmendTransition(authoring.Stage(spec.Stage), authoring.Stage(targetStage)); vErr != nil {
 		return nil, fmt.Errorf("memgraph: amend: %w: %w", storage.ErrInvalidStageTransition, vErr)
 	}

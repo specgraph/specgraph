@@ -813,6 +813,38 @@ func TestAuthoringHandler_Specify_StoreSafetyFlagsError(t *testing.T) {
 	}
 }
 
+func TestAuthoringHandler_Amend_StorageError(t *testing.T) {
+	// When AmendSpec returns a generic error the handler should return CodeInternal.
+	authoringStore := &fakeAuthoringBackend{amendErr: errors.New("db error")}
+	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
+	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
+		Slug:        "my-spec",
+		Reason:      "scope changed",
+		TargetStage: specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestAuthoringHandler_Decompose_EmptySlices(t *testing.T) {
+	// A DecomposeRequest with an empty Slices list produces an InvalidArgument error
+	// because SafetyInput.Validate() rejects inputs with no scannable content.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeTxBackend{})
+	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug: "my-spec",
+		Output: &specv1.DecomposeOutput{
+			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
+			Slices:   []*specv1.DecompositionSlice{},
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
 func TestAuthoringHandler_Decompose_StoreSafetyFlagsError(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
 		storeSafetyFlagsErr: errors.New("db write failed"),

@@ -18,6 +18,9 @@ var ErrSpecAlreadyApproved = errors.New("spec is already approved")
 // ErrSpecAlreadyExists is returned when creating a spec with a slug that already exists.
 var ErrSpecAlreadyExists = errors.New("spec already exists")
 
+// ErrSpecSuperseded is returned when attempting to amend a spec that has been superseded.
+var ErrSpecSuperseded = errors.New("spec has been superseded and cannot be amended")
+
 // --- Domain types for authoring stage outputs ---
 
 // SparkOutput captures the initial idea and early scoping from the spark stage.

@@ -127,6 +127,28 @@ func TestSafetyNet_CaseInsensitive(t *testing.T) {
 	}
 }
 
+func TestSafetyInput_Validate(t *testing.T) {
+	t.Run("empty input returns error", func(t *testing.T) {
+		s := &authoring.SafetyInput{}
+		require.Error(t, s.Validate())
+	})
+
+	t.Run("text only passes", func(t *testing.T) {
+		s := &authoring.SafetyInput{Text: "add login endpoint"}
+		require.NoError(t, s.Validate())
+	})
+
+	t.Run("scope only passes", func(t *testing.T) {
+		s := &authoring.SafetyInput{Scope: []string{"auth service"}}
+		require.NoError(t, s.Validate())
+	})
+
+	t.Run("invariants only passes", func(t *testing.T) {
+		s := &authoring.SafetyInput{Invariants: []string{"session must expire"}}
+		require.NoError(t, s.Validate())
+	})
+}
+
 func TestSafetyNet_Clean(t *testing.T) {
 	input := &authoring.SafetyInput{
 		Text: "Add a new read-only API endpoint for listing users",
