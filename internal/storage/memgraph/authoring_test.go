@@ -5,8 +5,10 @@ package memgraph_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/seanb4t/specgraph/internal/authoring"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
@@ -279,4 +281,69 @@ func TestTransitionStage_ApprovedGuard(t *testing.T) {
 	// Once approved, further forward transitions should fail.
 	err = store.TransitionStage(ctx, "approved-guard", storage.AuthoringStage(authoring.StageApproved), storage.AuthoringStage(authoring.StageSpark))
 	require.Error(t, err)
+}
+
+func TestStoreSafetyFlags(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := memgraph.New(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.CreateSpec(ctx, "safety-flags-spec", "Safety flags test", "p1", "low")
+	require.NoError(t, err)
+
+	flags := []storage.SafetyFlag{
+		{
+			Category:    storage.SafetyCategory("security"),
+			Severity:    storage.SeverityCritical,
+			Description: "Spec requests unrestricted filesystem access",
+		},
+		{
+			Category:    storage.SafetyCategory("privacy"),
+			Severity:    storage.SeverityWarning,
+			Description: "May expose PII without consent mechanism",
+		},
+	}
+
+	err = store.StoreSafetyFlags(ctx, "safety-flags-spec", flags)
+	require.NoError(t, err)
+
+	// Verify the safety_flags property was persisted on the spec node by
+	// querying Memgraph directly with a raw Cypher query.
+	driver, err := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
+	require.NoError(t, err)
+	defer driver.Close(ctx)
+
+	result, err := neo4j.ExecuteQuery(ctx, driver,
+		`MATCH (s:Spec {slug: $slug}) RETURN s.safety_flags`,
+		map[string]any{"slug": "safety-flags-spec"},
+		neo4j.EagerResultTransformer,
+	)
+	require.NoError(t, err)
+	require.Len(t, result.Records, 1, "spec node should exist")
+
+	rawJSON, ok := result.Records[0].Values[0].(string)
+	require.True(t, ok, "safety_flags should be a JSON string on the spec node")
+	require.NotEmpty(t, rawJSON)
+
+	var persisted []storage.SafetyFlag
+	require.NoError(t, json.Unmarshal([]byte(rawJSON), &persisted))
+	require.Len(t, persisted, 2)
+	require.Equal(t, storage.SafetyCategory("security"), persisted[0].Category)
+	require.Equal(t, storage.SeverityCritical, persisted[0].Severity)
+	require.Equal(t, "Spec requests unrestricted filesystem access", persisted[0].Description)
+	require.Equal(t, storage.SafetyCategory("privacy"), persisted[1].Category)
+	require.Equal(t, storage.SeverityWarning, persisted[1].Severity)
+}
+
+func TestStoreSafetyFlags_SpecNotFound(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	err := store.StoreSafetyFlags(ctx, "nonexistent-spec", []storage.SafetyFlag{
+		{Category: storage.SafetyCategory("security"), Severity: storage.SeverityCritical, Description: "test"},
+	})
+	require.ErrorIs(t, err, storage.ErrSpecNotFound)
 }

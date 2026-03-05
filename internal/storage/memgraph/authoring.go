@@ -102,6 +102,9 @@ func (s *Store) StoreSpecifyOutput(ctx context.Context, slug string, output *sto
 // CreateSpec is used to create it. MERGE is used only for the COMPOSES and DEPENDS_ON edges.
 // It returns the slugs of the created (or already-existing) child specs.
 func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *storage.DecomposeOutput) ([]string, error) {
+	if err := storage.ValidateStrategy(output.Strategy); err != nil {
+		return nil, fmt.Errorf("memgraph: invalid decomposition strategy: %w", err)
+	}
 	if err := s.storeJSONProperty(ctx, slug, "decompose_output", output); err != nil {
 		return nil, err
 	}
