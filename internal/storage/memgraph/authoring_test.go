@@ -282,9 +282,27 @@ func TestTransitionStage_ApprovedGuard(t *testing.T) {
 	require.NoError(t, store.TransitionStage(ctx, "approved-guard", storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose)))
 	require.NoError(t, store.TransitionStage(ctx, "approved-guard", storage.AuthoringStage(authoring.StageDecompose), storage.AuthoringStage(authoring.StageApproved)))
 
-	// Once approved, further forward transitions should fail.
+	// Once approved, further forward transitions should fail with ErrSpecAlreadyApproved.
 	err = store.TransitionStage(ctx, "approved-guard", storage.AuthoringStage(authoring.StageApproved), storage.AuthoringStage(authoring.StageSpark))
-	require.Error(t, err)
+	require.ErrorIs(t, err, storage.ErrSpecAlreadyApproved)
+}
+
+func TestTransitionStage_SupersededGuard(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "superseded-old", "Will be superseded", "p1", "low")
+	require.NoError(t, err)
+	_, err = store.CreateSpec(ctx, "superseded-new", "Replacement", "p1", "low")
+	require.NoError(t, err)
+
+	// Mark the old spec as superseded.
+	err = store.SupersedeSpec(ctx, "superseded-old", "superseded-new", "better approach")
+	require.NoError(t, err)
+
+	// Attempting TransitionStage on a superseded spec should fail because
+	// "superseded" is not a valid funnel stage and ValidateTransition rejects it.
+	err = store.TransitionStage(ctx, "superseded-old", storage.AuthoringStage("superseded"), storage.AuthoringStage(authoring.StageShape))
+	require.ErrorIs(t, err, storage.ErrInvalidStageTransition)
 }
 
 func TestStoreSafetyFlags(t *testing.T) {

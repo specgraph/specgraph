@@ -50,6 +50,24 @@ func TestPassesForStage(t *testing.T) {
 			want:    []string{"simplicity_check", "constitution_check"},
 		},
 		{
+			name:    "shape/SUPPORT returns constitution_check only",
+			stage:   "shape",
+			posture: specv1.Posture_POSTURE_SUPPORT,
+			want:    []string{"constitution_check"},
+		},
+		{
+			name:    "specify/SUPPORT returns constitution_check only (red_team and consistency_check are offered)",
+			stage:   "specify",
+			posture: specv1.Posture_POSTURE_SUPPORT,
+			want:    []string{"constitution_check"},
+		},
+		{
+			name:    "decompose/SUPPORT returns constitution_check only (simplicity_check is offered)",
+			stage:   "decompose",
+			posture: specv1.Posture_POSTURE_SUPPORT,
+			want:    []string{"constitution_check"},
+		},
+		{
 			name:    "unknown stage returns nil",
 			stage:   "nonexistent",
 			posture: specv1.Posture_POSTURE_DRIVE,
@@ -89,6 +107,12 @@ func TestOfferedPasses(t *testing.T) {
 			stage:   "specify",
 			posture: specv1.Posture_POSTURE_SUPPORT,
 			want:    []string{"red_team", "consistency_check"},
+		},
+		{
+			name:    "decompose/SUPPORT offers simplicity_check",
+			stage:   "decompose",
+			posture: specv1.Posture_POSTURE_SUPPORT,
+			want:    []string{"simplicity_check"},
 		},
 		{
 			name:    "unknown stage returns nil",

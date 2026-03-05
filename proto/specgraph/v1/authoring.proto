@@ -257,6 +257,8 @@ message PromptTemplate {
 // --- Requests / Responses ---
 
 // SparkRequest submits author-provided spark output for validation and enrichment.
+// The server creates a new Spec node with default priority "p2" and complexity
+// "medium". To override these, use the GraphService UpdateSpec RPC after creation.
 message SparkRequest {
   // Spec slug that uniquely identifies the spec being authored.
   string slug = 1;

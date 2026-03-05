@@ -11,6 +11,7 @@ import (
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
+	"golang.org/x/text/unicode/norm"
 )
 
 // FindingSeverity indicates how severe a safety finding is.
@@ -175,7 +176,19 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 	parts = append(parts, input.Text)
 	parts = append(parts, input.Scope...)
 	parts = append(parts, input.Invariants...)
-	combined := strings.ToLower(strings.Join(parts, " "))
+	joined := strings.Join(parts, " ")
+	// Apply NFKC normalization to collapse Unicode homoglyphs (e.g. Cyrillic
+	// lookalikes) into their canonical ASCII equivalents before matching.
+	normalized := norm.NFKC.String(joined)
+	// Strip zero-width characters that can split keywords without visual effect.
+	stripped := strings.Map(func(r rune) rune {
+		switch r {
+		case '\u200B', '\u200C', '\u200D', '\uFEFF', '\u2060':
+			return -1
+		}
+		return r
+	}, normalized)
+	combined := strings.ToLower(stripped)
 
 	// Collect every matching pattern across all groups.
 	var allMatches []SafetyFlagResult

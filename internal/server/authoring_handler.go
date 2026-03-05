@@ -27,6 +27,9 @@ const maxSlugLength = 256
 // maxFieldLen caps free-text RPC fields to prevent unbounded writes to graph storage.
 const maxFieldLen = 10000
 
+// maxElements caps repeated fields to prevent unbounded writes to graph storage.
+const maxElements = 100
+
 func validateSlug(slug string) error {
 	if slug == "" {
 		return errors.New("slug is required")
@@ -73,6 +76,9 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	if len(msg.Output.GetSeed()) > maxFieldLen {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("seed exceeds maximum length of %d characters", maxFieldLen))
 	}
+	if len(msg.Output.GetQuestions()) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("questions exceeds maximum of %d elements", maxElements))
+	}
 	// CreateSpec sets stage to "spark" as part of spec creation; no separate
 	// TransitionStage call is needed because the initial stage is set atomically.
 	sparkDomain := sparkOutputToDomain(msg.Output)
@@ -92,16 +98,9 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 			return nil
 		},
 		func(c context.Context) error {
-			if err := safetyInput.Validate(); err != nil {
-				return connect.NewError(connect.CodeInvalidArgument, err)
-			}
-			safetyFlags = authoring.RunSafetyNet(safetyInput)
-			if len(safetyFlags) > 0 {
-				if err := h.store.StoreSafetyFlags(c, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
-					return fmt.Errorf("store safety flags: %w", err)
-				}
-			}
-			return nil
+			var err error
+			safetyFlags, err = h.persistSafetyFlags(c, msg.Slug, safetyInput)
+			return err
 		},
 	); err != nil {
 		if errors.Is(err, storage.ErrSpecAlreadyExists) {
@@ -128,6 +127,21 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	}
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
+	}
+	if len(msg.Output.GetScopeIn()) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("scope_in exceeds maximum of %d elements", maxElements))
+	}
+	if len(msg.Output.GetScopeOut()) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("scope_out exceeds maximum of %d elements", maxElements))
+	}
+	if len(msg.Output.GetApproaches()) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("approaches exceeds maximum of %d elements", maxElements))
+	}
+	if len(msg.Output.GetRisks()) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("risks exceeds maximum of %d elements", maxElements))
+	}
+	if len(msg.Output.GetDecisions()) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("decisions exceeds maximum of %d elements", maxElements))
 	}
 	for _, item := range msg.Output.GetScopeIn() {
 		if len(item) > maxFieldLen {
@@ -158,16 +172,9 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 			return h.store.StoreShapeOutput(c, msg.Slug, shapeDomain)
 		},
 		func(c context.Context) error {
-			if err := safetyInput.Validate(); err != nil {
-				return connect.NewError(connect.CodeInvalidArgument, err)
-			}
-			safetyFlags = authoring.RunSafetyNet(safetyInput)
-			if len(safetyFlags) > 0 {
-				if err := h.store.StoreSafetyFlags(c, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
-					return fmt.Errorf("store safety flags: %w", err)
-				}
-			}
-			return nil
+			var err error
+			safetyFlags, err = h.persistSafetyFlags(c, msg.Slug, safetyInput)
+			return err
 		},
 	); err != nil {
 		return nil, h.stageError(err)
@@ -194,6 +201,15 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	if len(msg.Output.GetInterfaceContract()) > maxFieldLen {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("interface_contract exceeds maximum length of %d characters", maxFieldLen))
 	}
+	if len(msg.Output.GetVerifyCriteria()) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify_criteria exceeds maximum of %d elements", maxElements))
+	}
+	if len(msg.Output.GetInvariants()) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invariants exceeds maximum of %d elements", maxElements))
+	}
+	if len(msg.Output.GetTouches()) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("touches exceeds maximum of %d elements", maxElements))
+	}
 	for _, item := range msg.Output.GetVerifyCriteria() {
 		if len(item) > maxFieldLen {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify_criteria item exceeds maximum length of %d characters", maxFieldLen))
@@ -218,16 +234,9 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 			return h.store.StoreSpecifyOutput(c, msg.Slug, specifyDomain)
 		},
 		func(c context.Context) error {
-			if err := safetyInput.Validate(); err != nil {
-				return connect.NewError(connect.CodeInvalidArgument, err)
-			}
-			safetyFlags = authoring.RunSafetyNet(safetyInput)
-			if len(safetyFlags) > 0 {
-				if err := h.store.StoreSafetyFlags(c, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
-					return fmt.Errorf("store safety flags: %w", err)
-				}
-			}
-			return nil
+			var err error
+			safetyFlags, err = h.persistSafetyFlags(c, msg.Slug, safetyInput)
+			return err
 		},
 	); err != nil {
 		return nil, h.stageError(err)
@@ -254,6 +263,9 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	}
 	if msg.Output.GetStrategy() == specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("strategy is required"))
+	}
+	if len(msg.Output.GetSlices()) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slices exceeds maximum of %d elements", maxElements))
 	}
 	for _, s := range msg.Output.GetSlices() {
 		if len(s.GetIntent()) > maxFieldLen {
@@ -290,16 +302,9 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 			return nil
 		},
 		func(c context.Context) error {
-			if err := safetyInput.Validate(); err != nil {
-				return connect.NewError(connect.CodeInvalidArgument, err)
-			}
-			safetyFlags = authoring.RunSafetyNet(safetyInput)
-			if len(safetyFlags) > 0 {
-				if err := h.store.StoreSafetyFlags(c, msg.Slug, safetyFlagsToStorage(safetyFlags)); err != nil {
-					return fmt.Errorf("store safety flags: %w", err)
-				}
-			}
-			return nil
+			var err error
+			safetyFlags, err = h.persistSafetyFlags(c, msg.Slug, safetyInput)
+			return err
 		},
 	); err != nil {
 		return nil, h.stageError(err)
@@ -679,6 +684,21 @@ func runAnalyticalPasses(stage authoring.Stage, posture specv1.Posture) (
 var categoryToStorage = map[authoring.SafetyCategory]storage.SafetyCategory{
 	authoring.SafetyCategorySecurity: "security",
 	authoring.SafetyCategoryDataLoss: "data_loss",
+}
+
+// persistSafetyFlags runs the safety net, stores any resulting flags, and
+// returns the domain-level results for inclusion in the RPC response.
+func (h *AuthoringHandler) persistSafetyFlags(ctx context.Context, slug string, input *authoring.SafetyInput) ([]authoring.SafetyFlagResult, error) {
+	if err := input.Validate(); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	flags := authoring.RunSafetyNet(input)
+	if len(flags) > 0 {
+		if err := h.store.StoreSafetyFlags(ctx, slug, safetyFlagsToStorage(flags)); err != nil {
+			return nil, fmt.Errorf("store safety flags: %w", err)
+		}
+	}
+	return flags, nil
 }
 
 // safetyFlagsToStorage converts domain-level safety results to storage types.
