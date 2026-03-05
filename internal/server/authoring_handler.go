@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strings"
@@ -52,6 +53,7 @@ type AuthoringHandler struct {
 	txBackend       storage.TransactionalBackend // optional, may be nil
 	decisionBackend storage.DecisionBackend      // optional; when non-nil, Approve transitions linked decisions
 	graphBackend    storage.GraphBackend         // optional; used to discover decision→spec INFORMS edges
+	logger          *slog.Logger
 }
 
 var _ specgraphv1connect.AuthoringServiceHandler = (*AuthoringHandler)(nil)
@@ -403,7 +405,10 @@ func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug strin
 	}
 	edges, err := h.graphBackend.ListEdges(ctx, slug, specv1.EdgeType_EDGE_TYPE_INFORMS)
 	if err != nil {
-		// Best-effort: spec approval succeeded, decision acceptance is secondary.
+		h.logger.WarnContext(ctx, "acceptLinkedDecisions: failed to list edges",
+			slog.String("slug", slug),
+			slog.Any("error", err),
+		)
 		return
 	}
 	acceptedStatus := specv1.DecisionStatus_DECISION_STATUS_ACCEPTED
@@ -420,12 +425,23 @@ func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug strin
 		}
 		dec, err := h.decisionBackend.GetDecision(ctx, decisionSlug)
 		if err != nil {
+			h.logger.WarnContext(ctx, "acceptLinkedDecisions: failed to get decision",
+				slog.String("slug", slug),
+				slog.String("decisionSlug", decisionSlug),
+				slog.Any("error", err),
+			)
 			continue
 		}
 		if dec.GetStatus() != specv1.DecisionStatus_DECISION_STATUS_PROPOSED {
 			continue
 		}
-		_, _ = h.decisionBackend.UpdateDecision(ctx, decisionSlug, nil, &acceptedStatus, nil, nil, nil)
+		if _, err := h.decisionBackend.UpdateDecision(ctx, decisionSlug, nil, &acceptedStatus, nil, nil, nil); err != nil {
+			h.logger.WarnContext(ctx, "acceptLinkedDecisions: failed to update decision",
+				slog.String("slug", slug),
+				slog.String("decisionSlug", decisionSlug),
+				slog.Any("error", err),
+			)
+		}
 	}
 }
 
@@ -437,7 +453,7 @@ func RegisterAuthoringService(mux *http.ServeMux, authoringStore storage.Authori
 	if backend == nil {
 		panic("RegisterAuthoringService: backend must not be nil")
 	}
-	handler := &AuthoringHandler{store: authoringStore, backend: backend}
+	handler := &AuthoringHandler{store: authoringStore, backend: backend, logger: slog.Default()}
 	// If the backend supports transactions, enable atomic multi-operation RPCs.
 	if txb, ok := backend.(storage.TransactionalBackend); ok {
 		handler.txBackend = txb
