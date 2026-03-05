@@ -67,3 +67,10 @@
 {"author":"seanb4t","created_at":"2026-03-04T05:49:18Z","id":67,"issue_id":"spgr-34l.14","text":"Already fixed: StageToProtoEnum canonical map in stages.go, stageToProto func in handler reuses it."}
 {"author":"seanb4t","created_at":"2026-03-04T05:50:40Z","id":68,"issue_id":"spgr-34l.12","text":"Already documented: lines 214-217 of safety.go explain the intentional int vs string difference."}
 {"author":"seanb4t","created_at":"2026-03-04T05:50:41Z","id":69,"issue_id":"spgr-34l.39","text":"Closed: the Go for-range loop is idiomatic. strings.Map operates on runes, not slice elements. No collect helper exists in Go stdlib."}
+{"author":"seanb4t","created_at":"2026-03-05T04:25:19Z","id":70,"issue_id":"spgr-cmg.73","text":"Closed: stale — batch 17 (9eb381c) stores approved_at on spec node during TransitionStage to approved."}
+{"author":"seanb4t","created_at":"2026-03-05T04:25:20Z","id":71,"issue_id":"spgr-cmg.82","text":"Closed: stale — batch 17 (9eb381c) persists approved_at via TransitionStage."}
+{"author":"seanb4t","created_at":"2026-03-05T04:25:20Z","id":72,"issue_id":"spgr-cmg.15","text":"Closed: stale — posture is now passed to runAnalyticalPasses in Shape, Specify, and Decompose handlers (batches 14-16)."}
+{"author":"seanb4t","created_at":"2026-03-05T04:25:20Z","id":73,"issue_id":"spgr-cmg.50","text":"Closed: stale — ScanTier1/ScanTier2 functions no longer exist in the codebase."}
+{"author":"seanb4t","created_at":"2026-03-05T04:25:20Z","id":74,"issue_id":"spgr-cmg.83","text":"Closed: stale — GetPromptsRequest.stage uses AuthoringStage enum in proto, matching implementation."}
+{"author":"seanb4t","created_at":"2026-03-05T04:25:58Z","id":75,"issue_id":"spgr-cmg.31","text":"Closed: stale — SparkRequest no longer has a posture field in the proto definition."}
+{"author":"seanb4t","created_at":"2026-03-05T04:25:59Z","id":76,"issue_id":"spgr-cmg.77","text":"Closed: duplicate of spgr-cmg.75 which covers the same acceptLinkedDecisions error handling issue."}
