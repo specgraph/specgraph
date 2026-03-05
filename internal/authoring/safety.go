@@ -157,6 +157,9 @@ var allPatternGroups = []patternGroup{
 // Per category, it emits only the highest-severity match (lowest enum value wins)
 // so that a CRITICAL pattern is never masked by a co-occurring WARNING match.
 func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
+	if input == nil {
+		return nil
+	}
 	parts := make([]string, 0, 1+len(input.Scope)+len(input.Invariants))
 	parts = append(parts, input.Text)
 	parts = append(parts, input.Scope...)
