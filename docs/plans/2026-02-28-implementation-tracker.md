@@ -4,7 +4,7 @@
 
 **Goal:** Complete the SpecGraph implementation through 7 vertical slices, each delivering a usable end-to-end capability.
 
-**Dependency chain:** Slice 1 -> Slice 2 -> Slice 3 -> Slice 3.5 -> Slice 4 -> Slice 5 -> Slice 6 -> Slice 7
+**Dependency chain:** Slice 1 → Slice 2 → Slice 3 → Slice 3.5 → Slice 4 → Slice 5 → Slice 6 → Slice 7
 
 ---
 
@@ -29,60 +29,60 @@
 ## Slice 2: Constitution
 
 **Plan:** `docs/plans/2026-02-28-slice-2-constitution-plan.md`
-**Status:** Not started
+**Status:** Complete (PR #7)
 
-- [ ] Task 1: Protobuf schema -- constitution.proto
-- [ ] Task 2: Storage interface -- ConstitutionBackend
-- [ ] Task 3: Memgraph implementation
-- [ ] Task 4: ConnectRPC handler -- ConstitutionService
+- [x] Task 1: Protobuf schema -- constitution.proto
+- [x] Task 2: Storage interface -- ConstitutionBackend
+- [x] Task 3: Memgraph implementation
+- [x] Task 4: ConnectRPC handler -- ConstitutionService
 - [x] ~~Task 5: Codebase scanner -- Tier 0~~ (Superseded — removed in Slice 3.5)
-- [ ] Task 6: Emitter -- constitution to tool files
-- [ ] Task 7: CLI -- constitution commands
-- [ ] Task 8: Enhanced init -- constitution creation
-- [ ] Task 9: Integration -- wire everything together
-- [ ] Task 10: Final verification and cleanup
+- [x] Task 6: Emitter -- constitution to tool files
+- [x] Task 7: CLI -- constitution commands
+- [x] Task 8: Enhanced init -- constitution creation
+- [x] Task 9: Integration -- wire everything together
+- [x] Task 10: Final verification and cleanup
 
 **Slice Verification Gate:**
 
-- [ ] `go test ./... -count=1 -timeout=120s` -- all pass
-- [ ] `golangci-lint run ./...` -- no issues
-- [ ] `buf lint` -- no proto issues
-- [ ] `go build -o specgraph ./cmd/specgraph` -- clean build
-- [ ] CLI commands work: `specgraph constitution show|emit|check --help`
-- [ ] Integration: constitution is loaded and served via ConstitutionService
+- [x] `go test ./... -count=1 -timeout=120s` -- all pass
+- [x] `golangci-lint run ./...` -- no issues
+- [x] `buf lint` -- no proto issues
+- [x] `go build -o specgraph ./cmd/specgraph` -- clean build
+- [x] CLI commands work: `specgraph constitution show|emit|check --help`
+- [x] Integration: constitution is loaded and served via ConstitutionService
 
 ---
 
 ## Slice 3: Authoring Funnel
 
 **Plan:** `docs/plans/2026-02-28-slice-3-authoring-funnel-plan.md`
-**Status:** Not started
+**Status:** Complete (PR #8)
 **Depends on:** Slice 2
 
-- [ ] Task 1: Protobuf schema -- authoring.proto
-- [ ] Task 2: Stage validation and transition rules
-- [ ] Task 3: Posture types and detection heuristic
-- [ ] Task 4: Prompt templates
-- [ ] Task 5: Safety net checks
-- [ ] Task 6: Analytical pass runner
-- [ ] Task 7: AuthoringBackend interface + Memgraph implementation
-- [ ] Task 8: ConnectRPC AuthoringService handler
-- [ ] Task 9: CLI authoring commands
+- [x] Task 1: Protobuf schema -- authoring.proto
+- [x] Task 2: Stage validation and transition rules
+- [x] Task 3: Posture types and detection heuristic
+- [x] Task 4: Prompt templates
+- [x] Task 5: Safety net checks
+- [x] Task 6: Analytical pass runner
+- [x] Task 7: AuthoringBackend interface + Memgraph implementation
+- [x] Task 8: ConnectRPC AuthoringService handler
+- [x] Task 9: CLI authoring commands
 - [x] ~~Task 10: Codebase scanner Tier 1 and Tier 2~~ (Superseded — removed in Slice 3.5)
-- [ ] Task 11: Wire AuthoringService into server
-- [ ] Task 12: End-to-end verification
+- [x] Task 11: Wire AuthoringService into server
+- [x] Task 12: End-to-end verification
 
 **Slice Verification Gate:**
 
-- [ ] `go test ./internal/authoring/... -v -count=1` -- all pass (stages, posture, prompts, safety, passes)
-- [ ] `go test ./internal/storage/memgraph/... -v -count=1 -timeout=120s` -- all pass (including authoring)
-- [ ] `go test ./internal/server/... -v -count=1` -- all pass (AuthoringHandler)
-- [ ] `golangci-lint run ./...` -- no issues
-- [ ] `buf lint` -- no proto issues
-- [ ] `go build ./...` -- clean build
-- [ ] CLI commands work: `specgraph spark|shape|specify|decompose|approve --help`
-- [ ] Stage transitions enforce correct ordering (forward + backward amend)
-- [ ] Safety net flags security/data-loss concerns regardless of posture
+- [x] `go test ./internal/authoring/... -v -count=1` -- all pass (stages, posture, prompts, safety, passes)
+- [x] `go test ./internal/storage/memgraph/... -v -count=1 -timeout=120s` -- all pass (including authoring)
+- [x] `go test ./internal/server/... -v -count=1` -- all pass (AuthoringHandler)
+- [x] `golangci-lint run ./...` -- no issues
+- [x] `buf lint` -- no proto issues
+- [x] `go build ./...` -- clean build
+- [x] CLI commands work: `specgraph spark|shape|specify|decompose|approve --help`
+- [x] Stage transitions enforce correct ordering (forward + backward amend)
+- [x] Safety net flags security/data-loss concerns regardless of posture
 
 ---
 
