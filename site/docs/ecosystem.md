@@ -9,6 +9,10 @@ integrated with execution and coordination systems.
 
 ## Gastown
 
+!!! note "Status: Planned"
+    Gastown is designed but not yet built. The integration described here
+    is the target architecture.
+
 Gastown is a multi-agent workspace manager that coordinates Claude Code instances
 (and other agents) via tmux, git worktrees, and Beads. It sits downstream of
 SpecGraph in the design-to-execution pipeline: SpecGraph decides **what** to
@@ -40,6 +44,9 @@ handoff.
 
 ## Beads & Dolt
 
+!!! info "Status: In Progress"
+    Beads integration is under development as part of Slice 6.
+
 Beads is a git-backed issue tracker with Dolt for versioned relational storage.
 SpecGraph can sync specs to Beads as issues with a custom `spec` type. Dependency
 edges in the spec graph map to Beads links between issues. Execution bundles —
@@ -57,6 +64,9 @@ eventual-consistency lag between design and execution.
 ---
 
 ## Sync Adapters
+
+!!! note "Status: Planned"
+    Sync adapters are designed for Slice 6. None are implemented yet.
 
 SpecGraph can push specs to external trackers for visibility and coordination
 with teams that do not use SpecGraph directly.
@@ -83,20 +93,20 @@ with teams that do not use SpecGraph directly.
 SpecGraph connects to the outside world through four interfaces. Each serves a
 different audience and use case; all share the same server and data.
 
-- **CLI** — `specgraph` is the primary interface for local use. Author specs,
+- **CLI** (Shipped) — `specgraph` is the primary interface for local use. Author specs,
   query the graph, generate execution bundles, run the linter, and manage the
   constitution from the terminal.
 
-- **Claude Code** — Skills and hooks integrate SpecGraph into the IDE workflow.
+- **Claude Code** (Planned — Slice 7) — Skills and hooks integrate SpecGraph into the IDE workflow.
   Author specs through conversational prompts, inject spec context before
   implementation, and validate changes against verify items — all without
   leaving the editor.
 
-- **MCP Server** — Exposes SpecGraph operations to any MCP-compatible client.
+- **MCP Server** (Planned — Phase 3) — Exposes SpecGraph operations to any MCP-compatible client.
   Authoring tools, coding agents, and custom workflows can read specs, advance
   funnel stages, and query the graph through the Model Context Protocol.
 
-- **ConnectRPC API** — A JSON-over-HTTP API backed by protobuf schemas. Any
+- **ConnectRPC API** (Shipped) — A JSON-over-HTTP API backed by protobuf schemas. Any
   language and any platform can integrate: create specs, query dependencies,
   read execution bundles, and manage constitutions. gRPC-compatible for
   high-throughput use cases.
