@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +16,7 @@ func TestClaimAndUnclaim(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
@@ -51,7 +50,7 @@ func TestHeartbeat(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 

@@ -10,7 +10,6 @@ import (
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
-	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +18,7 @@ func TestConstitution_GetNotFound(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
@@ -33,7 +32,7 @@ func TestConstitution_UpdateAndGet(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
@@ -111,7 +110,7 @@ func TestConstitution_MinimalRoundTrip(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
@@ -143,7 +142,7 @@ func TestConstitution_CheckViolation(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
