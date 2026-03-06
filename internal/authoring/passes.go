@@ -3,11 +3,7 @@
 
 package authoring
 
-import (
-	"slices"
-
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-)
+import "slices"
 
 // PassName is a typed constant for analytical pass identifiers.
 type PassName string
@@ -25,15 +21,15 @@ const (
 // automatically, and the postures in which it is offered but not auto-run.
 type passConfig struct {
 	pass      PassName
-	autoIn    []specv1.Posture
-	offeredIn []specv1.Posture
+	autoIn    []Posture
+	offeredIn []Posture
 }
 
 // allPostures is a convenience slice containing every defined posture.
-var allPostures = []specv1.Posture{
-	specv1.Posture_POSTURE_DRIVE,
-	specv1.Posture_POSTURE_PARTNER,
-	specv1.Posture_POSTURE_SUPPORT,
+var allPostures = []Posture{
+	PostureDrive,
+	PosturePartner,
+	PostureSupport,
 }
 
 // passRegistry maps each authoring funnel stage to the analytical passes
@@ -44,34 +40,34 @@ var passRegistry = map[Stage][]passConfig{
 		{pass: PassConstitutionCheck, autoIn: allPostures},
 	},
 	StageShape: {
-		{pass: PassPeripheralVision, autoIn: []specv1.Posture{specv1.Posture_POSTURE_DRIVE}, offeredIn: []specv1.Posture{specv1.Posture_POSTURE_PARTNER}},
+		{pass: PassPeripheralVision, autoIn: []Posture{PostureDrive}, offeredIn: []Posture{PosturePartner}},
 		{pass: PassConstitutionCheck, autoIn: allPostures},
 	},
 	StageSpecify: {
-		{pass: PassRedTeam, autoIn: []specv1.Posture{specv1.Posture_POSTURE_DRIVE}, offeredIn: []specv1.Posture{specv1.Posture_POSTURE_PARTNER, specv1.Posture_POSTURE_SUPPORT}},
-		{pass: PassConsistencyCheck, autoIn: []specv1.Posture{specv1.Posture_POSTURE_DRIVE}, offeredIn: []specv1.Posture{specv1.Posture_POSTURE_PARTNER, specv1.Posture_POSTURE_SUPPORT}},
+		{pass: PassRedTeam, autoIn: []Posture{PostureDrive}, offeredIn: []Posture{PosturePartner, PostureSupport}},
+		{pass: PassConsistencyCheck, autoIn: []Posture{PostureDrive}, offeredIn: []Posture{PosturePartner, PostureSupport}},
 		{pass: PassConstitutionCheck, autoIn: allPostures},
 	},
 	StageDecompose: {
-		{pass: PassSimplicityCheck, autoIn: []specv1.Posture{specv1.Posture_POSTURE_DRIVE}, offeredIn: []specv1.Posture{specv1.Posture_POSTURE_PARTNER, specv1.Posture_POSTURE_SUPPORT}},
+		{pass: PassSimplicityCheck, autoIn: []Posture{PostureDrive}, offeredIn: []Posture{PosturePartner, PostureSupport}},
 		{pass: PassConstitutionCheck, autoIn: allPostures},
 	},
 }
 
 // PassesForStage returns the passes that auto-run for the given stage and posture.
-func PassesForStage(stage Stage, posture specv1.Posture) []string {
-	return collectPasses(stage, posture, func(cfg passConfig) []specv1.Posture { return cfg.autoIn })
+func PassesForStage(stage Stage, posture Posture) []string {
+	return collectPasses(stage, posture, func(cfg passConfig) []Posture { return cfg.autoIn })
 }
 
 // OfferedPasses returns the passes that are offered (but not auto-run) for the
 // given stage and posture.
-func OfferedPasses(stage Stage, posture specv1.Posture) []string {
-	return collectPasses(stage, posture, func(cfg passConfig) []specv1.Posture { return cfg.offeredIn })
+func OfferedPasses(stage Stage, posture Posture) []string {
+	return collectPasses(stage, posture, func(cfg passConfig) []Posture { return cfg.offeredIn })
 }
 
 // collectPasses filters pass configs for a stage, returning pass names where
 // the posture appears in the slice selected by the selector function.
-func collectPasses(stage Stage, posture specv1.Posture, selector func(passConfig) []specv1.Posture) []string {
+func collectPasses(stage Stage, posture Posture, selector func(passConfig) []Posture) []string {
 	configs, ok := passRegistry[stage]
 	if !ok {
 		return nil

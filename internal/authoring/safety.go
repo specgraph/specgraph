@@ -52,6 +52,8 @@ type SafetyCategory int
 // String returns the human-readable name of the safety category.
 func (c SafetyCategory) String() string {
 	switch c {
+	case SafetyCategoryUnspecified:
+		return "unspecified"
 	case SafetyCategorySecurity:
 		return "security"
 	case SafetyCategoryDataLoss:
@@ -63,7 +65,8 @@ func (c SafetyCategory) String() string {
 
 // Safety category constants.
 const (
-	SafetyCategorySecurity SafetyCategory = iota + 1
+	SafetyCategoryUnspecified SafetyCategory = iota
+	SafetyCategorySecurity
 	SafetyCategoryDataLoss
 )
 

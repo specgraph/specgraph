@@ -179,7 +179,7 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	); err != nil {
 		return nil, h.stageError(err)
 	}
-	peripheralVision, _, _, _ := runAnalyticalPasses(authoring.StageShape, msg.Posture)
+	peripheralVision, _, _, _ := runAnalyticalPasses(authoring.StageShape, authoring.ProtoToPosture(msg.Posture))
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.ShapeResponse{
 		Output:           msg.Output,
@@ -241,7 +241,7 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	); err != nil {
 		return nil, h.stageError(err)
 	}
-	_, redTeam, consistencyIssues, _ := runAnalyticalPasses(authoring.StageSpecify, msg.Posture)
+	_, redTeam, consistencyIssues, _ := runAnalyticalPasses(authoring.StageSpecify, authoring.ProtoToPosture(msg.Posture))
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.SpecifyResponse{
 		Output:            msg.Output,
@@ -309,7 +309,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	); err != nil {
 		return nil, h.stageError(err)
 	}
-	_, _, _, simplicity := runAnalyticalPasses(authoring.StageDecompose, msg.Posture)
+	_, _, _, simplicity := runAnalyticalPasses(authoring.StageDecompose, authoring.ProtoToPosture(msg.Posture))
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.DecomposeResponse{
 		Output:         msg.Output,
@@ -647,7 +647,7 @@ func (h *AuthoringHandler) stageError(err error) error {
 // given stage and posture and converts the results into proto finding types.
 // All returned slices contain placeholder data; real LLM-driven pass
 // execution is deferred to a later slice.
-func runAnalyticalPasses(stage authoring.Stage, posture specv1.Posture) (
+func runAnalyticalPasses(stage authoring.Stage, posture authoring.Posture) (
 	peripheralVision []*specv1.PeripheralVisionItem,
 	redTeam []*specv1.RedTeamFinding,
 	consistencyIssues []*specv1.ConsistencyIssue,
