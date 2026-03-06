@@ -17,17 +17,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
-      - name: Copy design docs into site
-        run: cp -r docs/initial-design-session site/docs/design
+        uses: astral-sh/setup-uv@v7
       - name: Build site
         working-directory: site
         run: uv run zensical build
       - name: Upload artifact
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: site/build
   deploy:

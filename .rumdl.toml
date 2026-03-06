@@ -24,6 +24,7 @@ exclude = [
   "node_modules",
   "vendor",
   "docs/plans", # Plan docs embed nested code fences in skill/config examples
+  "site/docs", # Material for MkDocs uses extended markdown (grid cards, admonitions)
 ]
 
 respect-gitignore = true
