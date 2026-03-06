@@ -11,8 +11,8 @@ The core system: spec schema, storage, authoring, and execution primitives.
 | Slice | Delivers | Status |
 |-------|----------|--------|
 | 1 | Core proto schema, ConnectRPC server, Memgraph backend, CLI basics | Done |
-| 2 | Constitution creation/storage/validation, codebase scanner Tier 0, emitters | Done |
-| 3 | Full authoring funnel (Spark → Approve), AI postures, analytical passes, safety net, CLI commands, Tier 1-2 codebase scanner | In Progress |
+| 2 | Constitution creation/storage/validation, emitters | Done |
+| 3 | Full authoring funnel (Spark → Approve), AI postures, analytical passes, safety net, CLI commands | Done |
 | 4 | Execution bundles, prime endpoint, agent callbacks, claim leasing | Planned |
 | 5 | Spec lifecycle (amend/supersede/abandon), drift detection, spec linter | Planned |
 | 6 | Sync adapters (Beads, GitHub Issues, Linear), tool injection (CLAUDE.md, .cursorrules) | Planned |
@@ -22,7 +22,7 @@ After Phase 1, you have a complete spec-driven development system: author specs 
 
 ## Phase 2 — Authoring & CLI Integration
 
-Polishes the authoring experience. Codebase scanner improvements for deeper code understanding, authoring flow refinements based on Phase 1 feedback, Claude Code skills and plugin for IDE integration, constitution sync with existing project configurations. The goal is to make the spec authoring loop feel natural — fast enough that developers reach for it before writing code, not after.
+Polishes the authoring experience. Authoring flow refinements based on Phase 1 feedback, agent-driven codebase context improvements, Claude Code skills and plugin for IDE integration, constitution sync with existing project configurations. The goal is to make the spec authoring loop feel natural — fast enough that developers reach for it before writing code, not after.
 
 ## Phase 3 — Coordination & Export
 
