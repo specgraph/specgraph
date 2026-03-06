@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,19 +27,19 @@ func TestAddAndListEdges(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add edge: spec-x depends on spec-y
-	edge, err := store.AddEdge(ctx, "spec-x", "spec-y", specv1.EdgeType_EDGE_TYPE_DEPENDS_ON)
+	edge, err := store.AddEdge(ctx, "spec-x", "spec-y", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
-	require.NotEmpty(t, edge.FromId)
-	require.NotEmpty(t, edge.ToId)
-	require.Equal(t, specv1.EdgeType_EDGE_TYPE_DEPENDS_ON, edge.EdgeType)
+	require.NotEmpty(t, edge.FromID)
+	require.NotEmpty(t, edge.ToID)
+	require.Equal(t, storage.EdgeTypeDependsOn, edge.EdgeType)
 
 	// List edges for spec-x
-	edges, err := store.ListEdges(ctx, "spec-x", specv1.EdgeType_EDGE_TYPE_UNSPECIFIED)
+	edges, err := store.ListEdges(ctx, "spec-x", "")
 	require.NoError(t, err)
 	require.NotEmpty(t, edges)
 
 	// Remove edge
-	err = store.RemoveEdge(ctx, "spec-x", "spec-y", specv1.EdgeType_EDGE_TYPE_DEPENDS_ON)
+	err = store.RemoveEdge(ctx, "spec-x", "spec-y", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
 }
 
@@ -57,7 +57,7 @@ func TestGetDependencies(t *testing.T) {
 	_, err = store.CreateSpec(ctx, "child", "Child spec", "p2", "low")
 	require.NoError(t, err)
 
-	_, err = store.AddEdge(ctx, "parent", "child", specv1.EdgeType_EDGE_TYPE_DEPENDS_ON)
+	_, err = store.AddEdge(ctx, "parent", "child", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
 
 	deps, err := store.GetDependencies(ctx, "parent")
@@ -81,13 +81,13 @@ func TestDiamondDependencies(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	_, err = store.AddEdge(ctx, "a", "b", specv1.EdgeType_EDGE_TYPE_DEPENDS_ON)
+	_, err = store.AddEdge(ctx, "a", "b", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
-	_, err = store.AddEdge(ctx, "a", "c", specv1.EdgeType_EDGE_TYPE_DEPENDS_ON)
+	_, err = store.AddEdge(ctx, "a", "c", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
-	_, err = store.AddEdge(ctx, "b", "d", specv1.EdgeType_EDGE_TYPE_DEPENDS_ON)
+	_, err = store.AddEdge(ctx, "b", "d", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
-	_, err = store.AddEdge(ctx, "c", "d", specv1.EdgeType_EDGE_TYPE_DEPENDS_ON)
+	_, err = store.AddEdge(ctx, "c", "d", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
 
 	// Transitive deps of A should include B, C, D (no duplicates)
@@ -117,18 +117,18 @@ func TestBlocksEdgeDirection(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add BLOCKS edge: spec-alpha blocks spec-beta
-	edge, err := store.AddEdge(ctx, "spec-alpha", "spec-beta", specv1.EdgeType_EDGE_TYPE_BLOCKS)
+	edge, err := store.AddEdge(ctx, "spec-alpha", "spec-beta", storage.EdgeTypeBlocks)
 	require.NoError(t, err)
-	require.Equal(t, specv1.EdgeType_EDGE_TYPE_BLOCKS, edge.EdgeType)
+	require.Equal(t, storage.EdgeTypeBlocks, edge.EdgeType)
 
 	// ListEdges for spec-alpha should return the BLOCKS edge
-	edges, err := store.ListEdges(ctx, "spec-alpha", specv1.EdgeType_EDGE_TYPE_UNSPECIFIED)
+	edges, err := store.ListEdges(ctx, "spec-alpha", "")
 	require.NoError(t, err)
 	require.NotEmpty(t, edges)
 
-	var found *specv1.Edge
+	var found *storage.Edge
 	for _, e := range edges {
-		if e.EdgeType == specv1.EdgeType_EDGE_TYPE_BLOCKS {
+		if e.EdgeType == storage.EdgeTypeBlocks {
 			found = e
 			break
 		}
@@ -136,8 +136,8 @@ func TestBlocksEdgeDirection(t *testing.T) {
 	require.NotNil(t, found, "expected a BLOCKS edge in ListEdges result")
 
 	// Direction must be preserved: from=spec-alpha, to=spec-beta
-	require.Equal(t, "spec-alpha", found.FromId)
-	require.Equal(t, "spec-beta", found.ToId)
+	require.Equal(t, "spec-alpha", found.FromID)
+	require.Equal(t, "spec-beta", found.ToID)
 }
 
 func TestGetReady(t *testing.T) {
@@ -157,7 +157,7 @@ func TestGetReady(t *testing.T) {
 	_, err = store.CreateSpec(ctx, "free", "Free spec", "p2", "low")
 	require.NoError(t, err)
 
-	_, err = store.AddEdge(ctx, "blocked", "blocker", specv1.EdgeType_EDGE_TYPE_DEPENDS_ON)
+	_, err = store.AddEdge(ctx, "blocked", "blocker", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
 
 	// "free" has no deps so it's ready; "blocked" depends on "blocker" which is not done

@@ -22,16 +22,16 @@ var _ specgraphv1connect.GraphServiceHandler = (*GraphHandler)(nil)
 
 // AddEdge handles the AddEdge RPC.
 func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.AddEdgeRequest]) (*connect.Response[specv1.Edge], error) {
-	edge, err := h.store.AddEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, req.Msg.EdgeType)
+	edge, err := h.store.AddEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, edgeTypeFromProto(req.Msg.EdgeType))
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(edge), nil
+	return connect.NewResponse(edgeToProto(edge)), nil
 }
 
 // RemoveEdge handles the RemoveEdge RPC.
 func (h *GraphHandler) RemoveEdge(ctx context.Context, req *connect.Request[specv1.RemoveEdgeRequest]) (*connect.Response[specv1.RemoveEdgeResponse], error) {
-	err := h.store.RemoveEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, req.Msg.EdgeType)
+	err := h.store.RemoveEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, edgeTypeFromProto(req.Msg.EdgeType))
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -40,11 +40,11 @@ func (h *GraphHandler) RemoveEdge(ctx context.Context, req *connect.Request[spec
 
 // ListEdges handles the ListEdges RPC.
 func (h *GraphHandler) ListEdges(ctx context.Context, req *connect.Request[specv1.ListEdgesRequest]) (*connect.Response[specv1.ListEdgesResponse], error) {
-	edges, err := h.store.ListEdges(ctx, req.Msg.Slug, req.Msg.EdgeType)
+	edges, err := h.store.ListEdges(ctx, req.Msg.Slug, edgeTypeFromProto(req.Msg.EdgeType))
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.ListEdgesResponse{Edges: edges}), nil
+	return connect.NewResponse(&specv1.ListEdgesResponse{Edges: edgesToProto(edges)}), nil
 }
 
 // GetDependencies handles the GetDependencies RPC.

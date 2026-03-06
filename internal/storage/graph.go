@@ -3,11 +3,7 @@
 
 package storage
 
-import (
-	"context"
-
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-)
+import "context"
 
 // NodeRef is a lightweight reference to a graph node.
 type NodeRef struct {
@@ -39,13 +35,13 @@ type Edge struct {
 // GraphBackend defines storage operations for graph edges and queries.
 type GraphBackend interface {
 	// AddEdge creates a typed relationship between two nodes (by slug).
-	AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType specv1.EdgeType) (*specv1.Edge, error)
+	AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType EdgeType) (*Edge, error)
 
 	// RemoveEdge removes a typed relationship between two nodes.
-	RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeType specv1.EdgeType) error
+	RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeType EdgeType) error
 
 	// ListEdges returns edges for a node, optionally filtered by type.
-	ListEdges(ctx context.Context, slug string, edgeType specv1.EdgeType) ([]*specv1.Edge, error)
+	ListEdges(ctx context.Context, slug string, edgeType EdgeType) ([]*Edge, error)
 
 	// GetDependencies returns direct dependencies of a node.
 	GetDependencies(ctx context.Context, slug string) ([]NodeRef, error)

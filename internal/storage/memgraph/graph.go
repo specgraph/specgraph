@@ -7,23 +7,23 @@ import (
 	"context"
 	"fmt"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
-var edgeTypeToRel = map[specv1.EdgeType]string{
-	specv1.EdgeType_EDGE_TYPE_DEPENDS_ON: "DEPENDS_ON",
-	specv1.EdgeType_EDGE_TYPE_BLOCKS:     "BLOCKS",
-	specv1.EdgeType_EDGE_TYPE_COMPOSES:   "COMPOSES",
-	specv1.EdgeType_EDGE_TYPE_RELATES_TO: "RELATES_TO",
-	specv1.EdgeType_EDGE_TYPE_INFORMS:    "INFORMS",
+var edgeTypeToRel = map[storage.EdgeType]string{
+	storage.EdgeTypeDependsOn: "DEPENDS_ON",
+	storage.EdgeTypeBlocks:    "BLOCKS",
+	storage.EdgeTypeComposes:  "COMPOSES",
+	storage.EdgeTypeRelatesTo: "RELATES_TO",
+	storage.EdgeTypeInforms:   "INFORMS",
+	storage.EdgeTypeDecidedIn: "DECIDED_IN",
 }
 
 // resolveEdge maps an edge type to its Cypher relation name.
 // All edge types are stored as-is: (from)-[:REL]->(to).
-func resolveEdge(fromSlug, toSlug string, edgeType specv1.EdgeType) (rel, from, to string, err error) {
+func resolveEdge(fromSlug, toSlug string, edgeType storage.EdgeType) (rel, from, to string, err error) {
 	rel, ok := edgeTypeToRel[edgeType]
 	if !ok {
 		return "", "", "", fmt.Errorf("memgraph: unknown edge type %v", edgeType)
@@ -32,7 +32,7 @@ func resolveEdge(fromSlug, toSlug string, edgeType specv1.EdgeType) (rel, from, 
 }
 
 // AddEdge creates a typed relationship between two nodes.
-func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType specv1.EdgeType) (*specv1.Edge, error) {
+func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType storage.EdgeType) (*storage.Edge, error) {
 	relType, actualFrom, actualTo, err := resolveEdge(fromSlug, toSlug, edgeType)
 	if err != nil {
 		return nil, err
@@ -62,15 +62,15 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 		return nil, err
 	}
 
-	return &specv1.Edge{
-		FromId:   fromSlugVal,
-		ToId:     toSlugVal,
+	return &storage.Edge{
+		FromID:   fromSlugVal,
+		ToID:     toSlugVal,
 		EdgeType: edgeType,
 	}, nil
 }
 
 // RemoveEdge removes a typed relationship between two nodes.
-func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeType specv1.EdgeType) error {
+func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeType storage.EdgeType) error {
 	relType, actualFrom, actualTo, err := resolveEdge(fromSlug, toSlug, edgeType)
 	if err != nil {
 		return err
@@ -89,11 +89,11 @@ func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeTyp
 }
 
 // ListEdges returns edges for a node, optionally filtered by type.
-func (s *Store) ListEdges(ctx context.Context, slug string, edgeType specv1.EdgeType) ([]*specv1.Edge, error) {
+func (s *Store) ListEdges(ctx context.Context, slug string, edgeType storage.EdgeType) ([]*storage.Edge, error) {
 	var query string
 	params := map[string]any{"slug": slug}
 
-	if edgeType != specv1.EdgeType_EDGE_TYPE_UNSPECIFIED {
+	if edgeType != "" {
 		relType := edgeTypeToRel[edgeType]
 		query = fmt.Sprintf(`
 			MATCH (a {slug: $slug})-[r:%s]->(b)
@@ -117,15 +117,15 @@ func (s *Store) ListEdges(ctx context.Context, slug string, edgeType specv1.Edge
 		return nil, fmt.Errorf("memgraph: list edges: %w", err)
 	}
 
-	edges := make([]*specv1.Edge, 0, len(result.Records))
+	edges := make([]*storage.Edge, 0, len(result.Records))
 	for _, rec := range result.Records {
 		// Use named access via aliases to avoid Memgraph UNION column reordering.
 		from, _ := rec.Get("from_slug")
 		to, _ := rec.Get("to_slug")
 		rt, _ := rec.Get("rel_type")
-		edges = append(edges, &specv1.Edge{
-			FromId:   stringVal(from),
-			ToId:     stringVal(to),
+		edges = append(edges, &storage.Edge{
+			FromID:   stringVal(from),
+			ToID:     stringVal(to),
 			EdgeType: relNameToEdgeType(stringVal(rt)),
 		})
 	}
@@ -226,19 +226,21 @@ func stringVal(v any) string {
 	return s
 }
 
-func relNameToEdgeType(relType string) specv1.EdgeType {
+func relNameToEdgeType(relType string) storage.EdgeType {
 	switch relType {
 	case "DEPENDS_ON":
-		return specv1.EdgeType_EDGE_TYPE_DEPENDS_ON
+		return storage.EdgeTypeDependsOn
 	case "BLOCKS":
-		return specv1.EdgeType_EDGE_TYPE_BLOCKS
+		return storage.EdgeTypeBlocks
 	case "COMPOSES":
-		return specv1.EdgeType_EDGE_TYPE_COMPOSES
+		return storage.EdgeTypeComposes
 	case "RELATES_TO":
-		return specv1.EdgeType_EDGE_TYPE_RELATES_TO
+		return storage.EdgeTypeRelatesTo
 	case "INFORMS":
-		return specv1.EdgeType_EDGE_TYPE_INFORMS
+		return storage.EdgeTypeInforms
+	case "DECIDED_IN":
+		return storage.EdgeTypeDecidedIn
 	default:
-		return specv1.EdgeType_EDGE_TYPE_UNSPECIFIED
+		return storage.EdgeTypeDependsOn
 	}
 }

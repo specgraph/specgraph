@@ -953,21 +953,21 @@ func TestAuthoringHandler_Decompose_StoreSafetyFlagsError(t *testing.T) {
 type fakeFullBackend struct {
 	fakeBackend
 	listEdgesErr      error
-	listEdgesResult   []*specv1.Edge
+	listEdgesResult   []*storage.Edge
 	getDecisionErr    error
 	getDecisionResult *storage.Decision
 	updateDecisionErr error
 }
 
-func (f *fakeFullBackend) AddEdge(_ context.Context, _, _ string, _ specv1.EdgeType) (*specv1.Edge, error) {
+func (f *fakeFullBackend) AddEdge(_ context.Context, _, _ string, _ storage.EdgeType) (*storage.Edge, error) {
 	return nil, nil
 }
 
-func (f *fakeFullBackend) RemoveEdge(_ context.Context, _, _ string, _ specv1.EdgeType) error {
+func (f *fakeFullBackend) RemoveEdge(_ context.Context, _, _ string, _ storage.EdgeType) error {
 	return nil
 }
 
-func (f *fakeFullBackend) ListEdges(_ context.Context, _ string, _ specv1.EdgeType) ([]*specv1.Edge, error) {
+func (f *fakeFullBackend) ListEdges(_ context.Context, _ string, _ storage.EdgeType) ([]*storage.Edge, error) {
 	return f.listEdgesResult, f.listEdgesErr
 }
 
@@ -1050,8 +1050,8 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_EdgeListError(t *testing
 func TestAuthoringHandler_Approve_AcceptLinkedDecisions_HappyPath(t *testing.T) {
 	// When linked decisions exist, they are accepted without error.
 	backend := &fakeFullBackend{
-		listEdgesResult: []*specv1.Edge{
-			{FromId: "decision-1", ToId: "my-spec", EdgeType: specv1.EdgeType_EDGE_TYPE_INFORMS},
+		listEdgesResult: []*storage.Edge{
+			{FromID: "decision-1", ToID: "my-spec", EdgeType: storage.EdgeTypeInforms},
 		},
 		getDecisionResult: &storage.Decision{
 			Slug:   "decision-1",
@@ -1069,8 +1069,8 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_HappyPath(t *testing.T) 
 func TestAuthoringHandler_Approve_AcceptLinkedDecisions_UpdateError(t *testing.T) {
 	// When UpdateDecision fails, Approve returns CodeInternal.
 	backend := &fakeFullBackend{
-		listEdgesResult: []*specv1.Edge{
-			{FromId: "decision-1", ToId: "my-spec", EdgeType: specv1.EdgeType_EDGE_TYPE_INFORMS},
+		listEdgesResult: []*storage.Edge{
+			{FromID: "decision-1", ToID: "my-spec", EdgeType: storage.EdgeTypeInforms},
 		},
 		getDecisionResult: &storage.Decision{
 			Slug:   "decision-1",

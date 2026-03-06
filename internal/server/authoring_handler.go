@@ -473,7 +473,7 @@ func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug strin
 	if h.graphBackend == nil || h.decisionBackend == nil {
 		return nil
 	}
-	edges, err := h.graphBackend.ListEdges(ctx, slug, specv1.EdgeType_EDGE_TYPE_INFORMS)
+	edges, err := h.graphBackend.ListEdges(ctx, slug, storage.EdgeTypeInforms)
 	if err != nil {
 		return fmt.Errorf("list INFORMS edges for %q: %w", slug, err)
 	}
@@ -481,10 +481,10 @@ func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug strin
 	for _, edge := range edges {
 		// The edge direction may be Decision→Spec or Spec→Decision depending on
 		// how it was created. Check both from_id and to_id to find the non-spec node.
-		decisionSlug := edge.GetFromId()
+		decisionSlug := edge.FromID
 		if decisionSlug == "" || decisionSlug == slug {
 			// This edge has the spec as the source — try the to side.
-			decisionSlug = edge.GetToId()
+			decisionSlug = edge.ToID
 			if decisionSlug == "" || decisionSlug == slug {
 				continue
 			}
