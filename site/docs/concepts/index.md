@@ -29,7 +29,7 @@ framework.
     ---
 
     A five-stage pipeline (Spark through Approve) that transforms rough ideas
-    into execution-ready, machine-readable specifications.
+    into execution-ready, structured specifications.
 
     [:octicons-arrow-right-24: Authoring Funnel](authoring.md)
 

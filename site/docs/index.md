@@ -15,7 +15,7 @@ agents can claim and run without human translation.
 - **No live query** — you can't ask "what specs are blocked?" without grepping
   across a folder of markdown files
 - **No addressability** — specs reference each other by filename, not a stable,
-  machine-readable identity
+  structured identity
 - **No execution interface** — AI agents need structured task graphs, not
   directories of prose documents
 - **No ground truth** — every authoring session starts from scratch because
@@ -61,7 +61,7 @@ agents can claim and run without human translation.
 
     ---
 
-    Every spec is a machine-readable work unit with clear inputs, outputs,
+    Every spec is a structured, claimable work unit with clear inputs, outputs,
     and acceptance criteria. Agents can claim specs, execute them, and verify
     results without human translation.
 
@@ -85,8 +85,8 @@ that agents and humans can query, traverse, and act on.
 
 ## Project Status
 
-!!! info "Phase 1 — Foundation"
+!!! info "Phase 2 — Authoring & CLI"
 
-    SpecGraph is in active development. Phase 1 (spec schema, constitution,
-    storage, and query layer) is in progress. See the
-    [roadmap](roadmap.md) for what's coming next.
+    Phase 1 (spec schema, constitution, storage, and query layer) is complete.
+    Phase 2 (authoring flow, codebase scanner, CLI integration) is in progress.
+    See the [roadmap](roadmap.md) for what's coming next.
