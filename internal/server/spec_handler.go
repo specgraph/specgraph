@@ -48,7 +48,7 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(spec), nil
+	return connect.NewResponse(specToProto(spec)), nil
 }
 
 // GetSpec handles the GetSpec RPC.
@@ -60,7 +60,7 @@ func (h *SpecHandler) GetSpec(ctx context.Context, req *connect.Request[specv1.G
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(spec), nil
+	return connect.NewResponse(specToProto(spec)), nil
 }
 
 // ListSpecs handles the ListSpecs RPC.
@@ -75,7 +75,7 @@ func (h *SpecHandler) ListSpecs(ctx context.Context, req *connect.Request[specv1
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.ListSpecsResponse{Specs: specs}), nil
+	return connect.NewResponse(&specv1.ListSpecsResponse{Specs: specsToProto(specs)}), nil
 }
 
 // UpdateSpec handles the UpdateSpec RPC.
@@ -92,5 +92,5 @@ func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(spec), nil
+	return connect.NewResponse(specToProto(spec)), nil
 }

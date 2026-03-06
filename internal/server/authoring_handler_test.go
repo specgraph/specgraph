@@ -99,7 +99,7 @@ func (f *fakeAuthoringBackend) AmendSpec(_ context.Context, _, _ string, _ stora
 // fakeBackend is a minimal fake implementation of storage.Backend for testing.
 type fakeBackend struct {
 	createSpecErr    error
-	createSpecResult *specv1.Spec
+	createSpecResult *storage.Spec
 	getSpecErr       error
 }
 
@@ -117,29 +117,29 @@ func (f *fakeTxBackend) RunInTransaction(_ context.Context, fn func(ctx context.
 	return fn(context.Background())
 }
 
-func (f *fakeBackend) CreateSpec(_ context.Context, slug, _, _, _ string) (*specv1.Spec, error) {
+func (f *fakeBackend) CreateSpec(_ context.Context, slug, _, _, _ string) (*storage.Spec, error) {
 	if f.createSpecErr != nil {
 		return nil, f.createSpecErr
 	}
 	if f.createSpecResult != nil {
 		return f.createSpecResult, nil
 	}
-	return &specv1.Spec{Slug: slug}, nil
+	return &storage.Spec{Slug: slug}, nil
 }
 
-func (f *fakeBackend) GetSpec(_ context.Context, slug string) (*specv1.Spec, error) {
+func (f *fakeBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
 	if f.getSpecErr != nil {
 		return nil, f.getSpecErr
 	}
-	return &specv1.Spec{Slug: slug}, nil
+	return &storage.Spec{Slug: slug}, nil
 }
 
-func (f *fakeBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*specv1.Spec, error) {
+func (f *fakeBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*storage.Spec, error) {
 	return nil, nil
 }
 
-func (f *fakeBackend) UpdateSpec(_ context.Context, slug string, _, _, _, _ *string) (*specv1.Spec, error) {
-	return &specv1.Spec{Slug: slug}, nil
+func (f *fakeBackend) UpdateSpec(_ context.Context, slug string, _, _, _, _ *string) (*storage.Spec, error) {
+	return &storage.Spec{Slug: slug}, nil
 }
 
 func (f *fakeBackend) Close(_ context.Context) error {

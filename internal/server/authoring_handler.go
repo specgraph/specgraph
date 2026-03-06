@@ -359,8 +359,8 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("approve: read back spec: %w", err))
 	}
-	approvedAt := spec.GetUpdatedAt()
-	if approvedAt == nil {
+	approvedAt := timestamppb.New(spec.UpdatedAt)
+	if spec.UpdatedAt.IsZero() {
 		approvedAt = timestamppb.Now()
 	}
 	// ADR-003: transition linked decisions from proposed to accepted.

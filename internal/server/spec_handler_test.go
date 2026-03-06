@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -17,27 +18,26 @@ import (
 	"github.com/seanb4t/specgraph/internal/server"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // mockBackend implements storage.Backend with an in-memory map.
 type mockBackend struct {
 	mu    sync.Mutex
-	specs map[string]*specv1.Spec
+	specs map[string]*storage.Spec
 	seq   int
 }
 
 func newMockBackend() *mockBackend {
-	return &mockBackend{specs: make(map[string]*specv1.Spec)}
+	return &mockBackend{specs: make(map[string]*storage.Spec)}
 }
 
-func (m *mockBackend) CreateSpec(_ context.Context, slug, intent, priority, complexity string) (*specv1.Spec, error) {
+func (m *mockBackend) CreateSpec(_ context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.seq++
-	now := timestamppb.Now()
-	spec := &specv1.Spec{
-		Id:         fmt.Sprintf("spec-%05d", m.seq),
+	now := time.Now().UTC()
+	spec := &storage.Spec{
+		ID:         fmt.Sprintf("spec-%05d", m.seq),
 		Slug:       slug,
 		Intent:     intent,
 		Stage:      "spark",
@@ -51,7 +51,7 @@ func (m *mockBackend) CreateSpec(_ context.Context, slug, intent, priority, comp
 	return spec, nil
 }
 
-func (m *mockBackend) GetSpec(_ context.Context, slug string) (*specv1.Spec, error) {
+func (m *mockBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	spec, ok := m.specs[slug]
@@ -61,10 +61,10 @@ func (m *mockBackend) GetSpec(_ context.Context, slug string) (*specv1.Spec, err
 	return spec, nil
 }
 
-func (m *mockBackend) ListSpecs(_ context.Context, stage, priority string, limit int) ([]*specv1.Spec, error) {
+func (m *mockBackend) ListSpecs(_ context.Context, stage, priority string, limit int) ([]*storage.Spec, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	var result []*specv1.Spec
+	var result []*storage.Spec
 	for _, s := range m.specs {
 		if stage != "" && s.Stage != stage {
 			continue
@@ -80,7 +80,7 @@ func (m *mockBackend) ListSpecs(_ context.Context, stage, priority string, limit
 	return result, nil
 }
 
-func (m *mockBackend) UpdateSpec(_ context.Context, slug string, intent, stage, priority, complexity *string) (*specv1.Spec, error) {
+func (m *mockBackend) UpdateSpec(_ context.Context, slug string, intent, stage, priority, complexity *string) (*storage.Spec, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	spec, ok := m.specs[slug]
@@ -100,7 +100,7 @@ func (m *mockBackend) UpdateSpec(_ context.Context, slug string, intent, stage, 
 		spec.Complexity = *complexity
 	}
 	spec.Version++
-	spec.UpdatedAt = timestamppb.Now()
+	spec.UpdatedAt = time.Now().UTC()
 	return spec, nil
 }
 
