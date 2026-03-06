@@ -33,9 +33,11 @@ jobs:
         run: task build
       - name: Lint
         run: task lint
-      - name: Test
-        run: task test
-  e2e:
+      - name: Unit tests
+        run: go test -race -v ./cmd/... ./internal/server/... ./internal/scanner/... ./internal/storage/...
+      - name: Integration tests
+        run: go test -race -v -p 1 ./internal/storage/memgraph/...
+  e2e-api:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -54,5 +56,5 @@ jobs:
           setup_only: true
       - name: Build
         run: task build
-      - name: Run E2E tests
-        run: go test -tags e2e ./e2e/...
+      - name: Run API E2E tests
+        run: go test -tags e2e -v ./e2e/api/...
