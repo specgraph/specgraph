@@ -17,6 +17,25 @@ type NodeRef struct {
 	Stage string
 }
 
+// EdgeType represents the kind of relationship between nodes.
+type EdgeType string
+
+const (
+	EdgeTypeDependsOn EdgeType = "DEPENDS_ON"
+	EdgeTypeBlocks    EdgeType = "BLOCKS"
+	EdgeTypeComposes  EdgeType = "COMPOSES"
+	EdgeTypeRelatesTo EdgeType = "RELATES_TO"
+	EdgeTypeInforms   EdgeType = "INFORMS"
+	EdgeTypeDecidedIn EdgeType = "DECIDED_IN"
+)
+
+// Edge represents a typed relationship between two graph nodes.
+type Edge struct {
+	FromID   string
+	ToID     string
+	EdgeType EdgeType
+}
+
 // GraphBackend defines storage operations for graph edges and queries.
 type GraphBackend interface {
 	// AddEdge creates a typed relationship between two nodes (by slug).

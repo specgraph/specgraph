@@ -6,6 +6,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"time"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 )
@@ -15,6 +16,29 @@ var ErrDecisionNotFound = errors.New("decision not found")
 
 // ErrSupersededByRequired is returned when status is superseded but superseded_by is not provided.
 var ErrSupersededByRequired = errors.New("superseded_by is required when status is superseded")
+
+// DecisionStatus represents the lifecycle state of a decision.
+type DecisionStatus string
+
+const (
+	DecisionStatusProposed   DecisionStatus = "DECISION_STATUS_PROPOSED"
+	DecisionStatusAccepted   DecisionStatus = "DECISION_STATUS_ACCEPTED"
+	DecisionStatusSuperseded DecisionStatus = "DECISION_STATUS_SUPERSEDED"
+	DecisionStatusDeprecated DecisionStatus = "DECISION_STATUS_DEPRECATED"
+)
+
+// Decision is the storage-layer domain type for architectural decisions.
+type Decision struct {
+	ID           string
+	Slug         string
+	Title        string
+	Status       DecisionStatus
+	Decision     string
+	Rationale    string
+	SupersededBy string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
 
 // DecisionBackend defines storage operations for Decision entities.
 type DecisionBackend interface {
