@@ -10,7 +10,7 @@ These profiles provide pre-sized Docker Compose configurations for different sca
 | **local-dev** | 1-5 | 1-3 | < 500 | 128 MB | 192 MB |
 | **small-org** | 10-50 | 5-20 | 500-5K | 512 MB | 640 MB |
 | **medium-org** | 200-500 | 50-200 | 5K-50K | 2 GB | 2.5 GB |
-| **large-org** | 1K-4K+ | 500-2K+ | 100K-500K | 16 GB | 20 GB |
+| **large-org** | 1K-4K+ | 500-2K+ | 50K-500K+ | 16 GB | 20 GB |
 
 ## Usage
 
@@ -24,6 +24,13 @@ docker compose -f deploy/memgraph/small-org/docker-compose.yaml up -d
 # Tear down and remove data
 docker compose -f deploy/memgraph/<profile>/docker-compose.yaml down -v
 ```
+
+## Image
+
+All profiles use `memgraph/memgraph-platform:latest`, which bundles Memgraph Lab
+(graph visualization on port 7444) and MAGE (graph algorithms library). The image
+is ~800 MB vs ~200 MB for the bare `memgraph/memgraph` image. Pin the tag in
+production (e.g., `memgraph/memgraph-platform:2.x`).
 
 ## Persistence
 

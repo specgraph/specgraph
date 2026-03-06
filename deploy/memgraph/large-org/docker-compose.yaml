@@ -2,35 +2,22 @@
 #
 # Profile: large-org
 # Target:  1,000-4,000+ engineers, 500-2,000+ applications
-# Specs:   100,000 - 500,000+ (50-250 per application)
-# Decisions: 10,000 - 100,000
-# Edges:   500,000 - 2,000,000+
+# Specs:   50,000 - 500,000+
 # Memory:  8-16 GB
 #
-# Sizing estimate (upper bound):
-#   ~500K specs * 10 KB avg = 5 GB data
-#   + ~100K decisions * 1.5 KB = 150 MB
-#   + ~2M edges * 80 bytes = 160 MB
-#   + Memgraph overhead (indexes, query engine, WAL) ~500 MB
-#   + headroom for deep transitive traversals across 2000+ app graphs
-#   = ~6 GB working set, 16 GB limit provides 2.5x headroom
+# See deploy/memgraph/README.md for sizing formula, operational guidance,
+# and sharding recommendations at this scale.
 #
-# IMPORTANT — at this scale you SHOULD:
-#   1. Shard by domain: run separate Memgraph instances per business domain
-#      or application portfolio. A single graph with 500K+ nodes and deep
-#      cross-application dependency chains will hit memory pressure during
-#      transitive queries (GetTransitiveDeps, GetImpact, GetCriticalPath).
-#   2. Archive aggressively: superseded and done specs older than N months
-#      should be exported and purged from the live graph.
-#   3. Add indexes: CREATE INDEX ON :Spec(slug); CREATE INDEX ON :Decision(slug);
-#   4. Monitor: use Memgraph Lab (port 7444) and Prometheus metrics.
-#   5. Consider Memgraph Enterprise for replication and high availability.
+# SECURITY: This config has NO authentication or TLS enabled. For production
+# deployments at this scale you MUST configure Memgraph authentication,
+# TLS on bolt, and network isolation. Memgraph Lab (port 7444) provides
+# full graph access with no login. See Memgraph docs for details.
 #
 # Usage:
 #   docker compose -f deploy/memgraph/large-org/docker-compose.yaml up -d
 services:
   memgraph:
-    image: memgraph/memgraph:latest
+    image: memgraph/memgraph-platform:latest
     ports:
       - "${MEMGRAPH_PORT:-7687}:7687"
       - "${MEMGRAPH_LAB_PORT:-7444}:7444"

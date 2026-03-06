@@ -13,13 +13,18 @@
 #   + 2x safety margin for query-time temporary result sets
 #   = ~300 MB working set, 512 MB limit
 #
+# SECURITY: This is an example config with no authentication or TLS.
+# Bolt is bound to localhost only. For shared-network deployments, add
+# Memgraph authentication and TLS. See Memgraph docs for details.
+#
 # Usage:
 #   docker compose -f deploy/memgraph/small-org/docker-compose.yaml up -d
 services:
   memgraph:
-    image: memgraph/memgraph:latest
+    image: memgraph/memgraph-platform:latest
     ports:
-      - "${MEMGRAPH_PORT:-7687}:7687"
+      - "127.0.0.1:${MEMGRAPH_PORT:-7687}:7687"
+      - "127.0.0.1:${MEMGRAPH_LAB_PORT:-7444}:7444"
     command:
       - --memory-limit=512
       - --storage-wal-enabled=true

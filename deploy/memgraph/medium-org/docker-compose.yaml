@@ -15,6 +15,11 @@
 #   + headroom for transitive traversals and query temp results
 #   = ~1 GB working set, 2 GB limit
 #
+# SECURITY: This config has NO authentication or TLS enabled. For
+# shared-network or production deployments you MUST configure Memgraph
+# authentication and TLS on the bolt endpoint. Memgraph Lab (port 7444)
+# provides full graph access with no login. See Memgraph docs for details.
+#
 # At this scale, consider:
 #   - Archiving superseded/done specs to reduce working set
 #   - Monitoring with Memgraph Lab for query performance
@@ -24,7 +29,7 @@
 #   docker compose -f deploy/memgraph/medium-org/docker-compose.yaml up -d
 services:
   memgraph:
-    image: memgraph/memgraph:latest
+    image: memgraph/memgraph-platform:latest
     ports:
       - "${MEMGRAPH_PORT:-7687}:7687"
       - "${MEMGRAPH_LAB_PORT:-7444}:7444"

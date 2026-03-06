@@ -5,6 +5,10 @@
 # Specs:   < 500
 # Memory:  128 MB (Memgraph base footprint ~60 MB + headroom)
 #
+# SECURITY: This is a development config. Memgraph has no authentication
+# enabled and bolt is bound to localhost only. Do NOT expose to untrusted
+# networks without adding authentication and TLS.
+#
 # Usage:
 #   docker compose -f deploy/memgraph/local-dev/docker-compose.yaml up -d
 #
@@ -13,9 +17,10 @@
 #   docker compose -f deploy/memgraph/local-dev/docker-compose.yaml down -v
 services:
   memgraph:
-    image: memgraph/memgraph:latest
+    image: memgraph/memgraph-platform:latest
     ports:
-      - "${MEMGRAPH_PORT:-7687}:7687"
+      - "127.0.0.1:${MEMGRAPH_PORT:-7687}:7687"
+      - "127.0.0.1:${MEMGRAPH_LAB_PORT:-7444}:7444"
     command:
       - --memory-limit=128
       - --storage-wal-enabled=true
