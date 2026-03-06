@@ -26,7 +26,15 @@ type ServerInfo struct {
 // StartServer launches a specgraph HTTP server connected to the given Memgraph instance.
 // Returns the base URL and a cleanup function that shuts down the server.
 func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), error) {
-	store, err := memgraph.New(ctx, boltURI)
+	var store *memgraph.Store
+	var err error
+	for range 10 {
+		store, err = memgraph.New(ctx, boltURI)
+		if err == nil {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("connect to memgraph: %w", err)
 	}
