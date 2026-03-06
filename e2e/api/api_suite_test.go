@@ -43,6 +43,9 @@ var _ = BeforeSuite(func() {
 
 	serverInfo, cleanupServer, err = testutil.StartServer(ctx, boltURI)
 	Expect(err).NotTo(HaveOccurred())
+
+	// Clear any leftover data from previous test runs.
+	Expect(serverInfo.Store.ClearAll(ctx)).To(Succeed())
 })
 
 var _ = AfterSuite(func() {

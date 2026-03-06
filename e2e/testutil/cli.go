@@ -7,6 +7,8 @@ package testutil
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,7 +38,12 @@ func BuildBinary() (string, func(), error) {
 	cleanup := func() { os.RemoveAll(tmpDir) }
 	binaryPath := filepath.Join(tmpDir, "specgraph")
 	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/specgraph")
-	cmd.Dir = findProjectRoot()
+	root, err := FindProjectRoot()
+	if err != nil {
+		cleanup()
+		return "", nil, err
+	}
+	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
 		cleanup()
 		return "", nil, &BuildError{Output: string(out), Err: err}
@@ -60,10 +67,12 @@ func (c *CLIRunner) Run(args ...string) CLIResult {
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	exitCode := 0
-	if exitErr, ok := err.(*exec.ExitError); ok {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
 		exitCode = exitErr.ExitCode()
 	} else if err != nil {
 		exitCode = -1
+		stderr.WriteString(err.Error())
 	}
 	return CLIResult{Stdout: stdout.String(), Stderr: stderr.String(), ExitCode: exitCode}
 }
@@ -78,15 +87,19 @@ func (e *BuildError) Error() string {
 	return "go build failed: " + e.Output
 }
 
-func findProjectRoot() string {
-	dir, _ := os.Getwd()
+// FindProjectRoot walks up from the working directory to find the go.mod root.
+func FindProjectRoot() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("get working directory: %w", err)
+	}
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
+			return dir, nil
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "."
+			return "", fmt.Errorf("go.mod not found above %s", dir)
 		}
 		dir = parent
 	}

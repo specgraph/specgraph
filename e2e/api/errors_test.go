@@ -38,6 +38,10 @@ var _ = Describe("error handling", func() {
 			Slug: "totally-nonexistent-spec",
 		}))
 		Expect(err).To(HaveOccurred())
+
+		var connectErr *connect.Error
+		Expect(errors.As(err, &connectErr)).To(BeTrue())
+		Expect(connectErr.Code()).To(Equal(connect.CodeNotFound))
 	})
 
 	It("returns not-found when claiming nonexistent spec", func() {
