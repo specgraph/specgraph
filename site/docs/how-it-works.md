@@ -44,8 +44,6 @@ hand-maintained lists:
 - **`blocks`** — this spec prevents another from starting
 - **`composes`** — this spec is a parent that breaks down into child specs
 
-Specs connect to each other via **first-class edges**: `depends_on` (ordering),
-`blocks` (bottleneck surfacing), and `composes` (parent-child decomposition).
 Because relationships are edges in a graph, you can query them directly —
 "show me every spec blocked by this one" is a single traversal.
 

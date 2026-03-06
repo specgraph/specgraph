@@ -95,7 +95,8 @@ message Bundle {
 
 message PrimeResponse {
   string constitution_summary = 1;   // tech stack, constraints, conventions
-  string project_context = 2;       // Constitution summary, architecture patterns
+  string project_context = 2;       // Constitution summary + agent-gathered architecture patterns
+                                     // TODO: proto field is still codebase_context — rename when Slice 4 is implemented
   repeated Decision decisions = 3;   // resolved decisions with rationale
   string coding_conventions = 4;     // from constitution
   string callback_docs = 5;          // how to report progress/blockers/completion

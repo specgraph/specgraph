@@ -10,7 +10,7 @@
 
 ---
 
-## Task 1: Add Ginkgo/Gomega Dependencies and Scaffold
+### Task 1: Add Ginkgo/Gomega Dependencies and Scaffold
 
 **Files:**
 
