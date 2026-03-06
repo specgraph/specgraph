@@ -1,0 +1,51 @@
+# SpecGraph Memgraph — Small Organization
+#
+# Profile: small-org
+# Target:  Team of 10-50 engineers, 5-20 applications
+# Specs:   500 - 5,000
+# Decisions: 100 - 500
+# Edges:   2,000 - 20,000
+# Memory:  512 MB
+#
+# Sizing estimate:
+#   ~5,000 specs * 10 KB avg = 50 MB data
+#   + Memgraph overhead (indexes, query engine, WAL buffer) ~100 MB
+#   + 2x safety margin for query-time temporary result sets
+#   = ~300 MB working set, 512 MB limit
+#
+# SECURITY: This is an example config with no authentication or TLS.
+# Bolt is bound to localhost only. For shared-network deployments, add
+# Memgraph authentication and TLS. See Memgraph docs for details.
+#
+# Usage:
+#   docker compose -f deploy/memgraph/small-org/docker-compose.yaml up -d
+services:
+  memgraph:
+    image: memgraph/memgraph-platform:2.4.0
+    ports:
+      - "127.0.0.1:${MEMGRAPH_PORT:-7687}:7687"
+      - "127.0.0.1:${MEMGRAPH_LAB_PORT:-7444}:7444"
+    command:
+      - --memory-limit=512
+      - --storage-wal-enabled=true
+      - --storage-snapshot-interval-sec=300
+      - --storage-snapshot-on-exit=true
+      - --storage-recover-on-startup=true
+      - --query-execution-timeout-sec=60
+      - --log-level=WARNING
+    volumes:
+      - specgraph-data:/var/lib/memgraph
+    deploy:
+      resources:
+        limits:
+          memory: 640m
+        reservations:
+          memory: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+volumes:
+  specgraph-data:
