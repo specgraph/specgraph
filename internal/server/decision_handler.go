@@ -29,7 +29,7 @@ func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(d), nil
+	return connect.NewResponse(decisionToProto(d)), nil
 }
 
 // GetDecision handles the GetDecision RPC.
@@ -38,7 +38,7 @@ func (h *DecisionHandler) GetDecision(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	return connect.NewResponse(d), nil
+	return connect.NewResponse(decisionToProto(d)), nil
 }
 
 // ListDecisions handles the ListDecisions RPC.
@@ -49,11 +49,11 @@ func (h *DecisionHandler) ListDecisions(ctx context.Context, req *connect.Reques
 		limit = defaultListLimit
 	}
 
-	decisions, err := h.store.ListDecisions(ctx, msg.GetStatus(), limit)
+	decisions, err := h.store.ListDecisions(ctx, decisionStatusFromProto(msg.GetStatus()), limit)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.ListDecisionsResponse{Decisions: decisions}), nil
+	return connect.NewResponse(&specv1.ListDecisionsResponse{Decisions: decisionsToProto(decisions)}), nil
 }
 
 // UpdateDecision handles the UpdateDecision RPC.
@@ -63,7 +63,12 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug is required"))
 	}
 
-	d, err := h.store.UpdateDecision(ctx, msg.Slug, msg.Title, msg.Status, msg.Decision, msg.Rationale, msg.SupersededBy)
+	var domainStatus *storage.DecisionStatus
+	if msg.Status != nil {
+		s := decisionStatusFromProto(*msg.Status)
+		domainStatus = &s
+	}
+	d, err := h.store.UpdateDecision(ctx, msg.Slug, msg.Title, domainStatus, msg.Decision, msg.Rationale, msg.SupersededBy)
 	if err != nil {
 		if errors.Is(err, storage.ErrDecisionNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
@@ -73,7 +78,7 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(d), nil
+	return connect.NewResponse(decisionToProto(d)), nil
 }
 
 // RegisterDecisionService registers the DecisionService on the given mux.

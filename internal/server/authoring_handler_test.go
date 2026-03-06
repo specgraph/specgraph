@@ -955,7 +955,7 @@ type fakeFullBackend struct {
 	listEdgesErr      error
 	listEdgesResult   []*specv1.Edge
 	getDecisionErr    error
-	getDecisionResult *specv1.Decision
+	getDecisionResult *storage.Decision
 	updateDecisionErr error
 }
 
@@ -991,29 +991,29 @@ func (f *fakeFullBackend) GetCriticalPath(_ context.Context, _ string) ([]storag
 	return nil, nil
 }
 
-func (f *fakeFullBackend) CreateDecision(_ context.Context, _, _, _, _ string) (*specv1.Decision, error) {
+func (f *fakeFullBackend) CreateDecision(_ context.Context, _, _, _, _ string) (*storage.Decision, error) {
 	return nil, nil
 }
 
-func (f *fakeFullBackend) GetDecision(_ context.Context, _ string) (*specv1.Decision, error) {
+func (f *fakeFullBackend) GetDecision(_ context.Context, _ string) (*storage.Decision, error) {
 	if f.getDecisionErr != nil {
 		return nil, f.getDecisionErr
 	}
 	if f.getDecisionResult != nil {
 		return f.getDecisionResult, nil
 	}
-	return &specv1.Decision{Status: specv1.DecisionStatus_DECISION_STATUS_PROPOSED}, nil
+	return &storage.Decision{Status: storage.DecisionStatusProposed}, nil
 }
 
-func (f *fakeFullBackend) ListDecisions(_ context.Context, _ specv1.DecisionStatus, _ int) ([]*specv1.Decision, error) {
+func (f *fakeFullBackend) ListDecisions(_ context.Context, _ storage.DecisionStatus, _ int) ([]*storage.Decision, error) {
 	return nil, nil
 }
 
-func (f *fakeFullBackend) UpdateDecision(_ context.Context, slug string, _ *string, _ *specv1.DecisionStatus, _, _, _ *string) (*specv1.Decision, error) {
+func (f *fakeFullBackend) UpdateDecision(_ context.Context, slug string, _ *string, _ *storage.DecisionStatus, _, _, _ *string) (*storage.Decision, error) {
 	if f.updateDecisionErr != nil {
 		return nil, f.updateDecisionErr
 	}
-	return &specv1.Decision{Slug: slug, Status: specv1.DecisionStatus_DECISION_STATUS_ACCEPTED}, nil
+	return &storage.Decision{Slug: slug, Status: storage.DecisionStatusAccepted}, nil
 }
 
 func TestAuthoringHandler_Approve_GetSpecError(t *testing.T) {
@@ -1053,9 +1053,9 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_HappyPath(t *testing.T) 
 		listEdgesResult: []*specv1.Edge{
 			{FromId: "decision-1", ToId: "my-spec", EdgeType: specv1.EdgeType_EDGE_TYPE_INFORMS},
 		},
-		getDecisionResult: &specv1.Decision{
+		getDecisionResult: &storage.Decision{
 			Slug:   "decision-1",
-			Status: specv1.DecisionStatus_DECISION_STATUS_PROPOSED,
+			Status: storage.DecisionStatusProposed,
 		},
 	}
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
@@ -1072,9 +1072,9 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_UpdateError(t *testing.T
 		listEdgesResult: []*specv1.Edge{
 			{FromId: "decision-1", ToId: "my-spec", EdgeType: specv1.EdgeType_EDGE_TYPE_INFORMS},
 		},
-		getDecisionResult: &specv1.Decision{
+		getDecisionResult: &storage.Decision{
 			Slug:   "decision-1",
-			Status: specv1.DecisionStatus_DECISION_STATUS_PROPOSED,
+			Status: storage.DecisionStatusProposed,
 		},
 		updateDecisionErr: errors.New("update failed"),
 	}

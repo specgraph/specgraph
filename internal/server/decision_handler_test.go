@@ -10,35 +10,36 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/seanb4t/specgraph/internal/server"
+	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type mockDecisionBackend struct {
 	mu        sync.Mutex
-	decisions map[string]*specv1.Decision
+	decisions map[string]*storage.Decision
 	seq       int
 }
 
 func newMockDecisionBackend() *mockDecisionBackend {
-	return &mockDecisionBackend{decisions: make(map[string]*specv1.Decision)}
+	return &mockDecisionBackend{decisions: make(map[string]*storage.Decision)}
 }
 
-func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, decision, rationale string) (*specv1.Decision, error) {
+func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, decision, rationale string) (*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.seq++
-	now := timestamppb.Now()
-	d := &specv1.Decision{
-		Id:        fmt.Sprintf("dec-%05d", m.seq),
+	now := time.Now().UTC()
+	d := &storage.Decision{
+		ID:        fmt.Sprintf("dec-%05d", m.seq),
 		Slug:      slug,
 		Title:     title,
-		Status:    specv1.DecisionStatus_DECISION_STATUS_PROPOSED,
+		Status:    storage.DecisionStatusProposed,
 		Decision:  decision,
 		Rationale: rationale,
 		CreatedAt: now,
@@ -48,7 +49,7 @@ func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, dec
 	return d, nil
 }
 
-func (m *mockDecisionBackend) GetDecision(_ context.Context, slug string) (*specv1.Decision, error) {
+func (m *mockDecisionBackend) GetDecision(_ context.Context, slug string) (*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.decisions[slug]
@@ -58,12 +59,12 @@ func (m *mockDecisionBackend) GetDecision(_ context.Context, slug string) (*spec
 	return d, nil
 }
 
-func (m *mockDecisionBackend) ListDecisions(_ context.Context, status specv1.DecisionStatus, limit int) ([]*specv1.Decision, error) {
+func (m *mockDecisionBackend) ListDecisions(_ context.Context, status storage.DecisionStatus, limit int) ([]*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	var result []*specv1.Decision
+	var result []*storage.Decision
 	for _, d := range m.decisions {
-		if status != specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED && d.Status != status {
+		if status != "" && d.Status != status {
 			continue
 		}
 		result = append(result, d)
@@ -74,7 +75,7 @@ func (m *mockDecisionBackend) ListDecisions(_ context.Context, status specv1.Dec
 	return result, nil
 }
 
-func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, title *string, status *specv1.DecisionStatus, decision, rationale, supersededBy *string) (*specv1.Decision, error) {
+func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, title *string, status *storage.DecisionStatus, decision, rationale, supersededBy *string) (*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.decisions[slug]
@@ -96,7 +97,7 @@ func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, tit
 	if supersededBy != nil {
 		d.SupersededBy = *supersededBy
 	}
-	d.UpdatedAt = timestamppb.Now()
+	d.UpdatedAt = time.Now().UTC()
 	return d, nil
 }
 

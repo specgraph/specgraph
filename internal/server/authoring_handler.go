@@ -477,7 +477,7 @@ func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug strin
 	if err != nil {
 		return fmt.Errorf("list INFORMS edges for %q: %w", slug, err)
 	}
-	acceptedStatus := specv1.DecisionStatus_DECISION_STATUS_ACCEPTED
+	acceptedStatus := storage.DecisionStatusAccepted
 	for _, edge := range edges {
 		// The edge direction may be Decision→Spec or Spec→Decision depending on
 		// how it was created. Check both from_id and to_id to find the non-spec node.
@@ -493,7 +493,7 @@ func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug strin
 		if err != nil {
 			return fmt.Errorf("get decision %q: %w", decisionSlug, err)
 		}
-		if dec.GetStatus() != specv1.DecisionStatus_DECISION_STATUS_PROPOSED {
+		if dec.Status != storage.DecisionStatusProposed {
 			continue
 		}
 		if _, err := h.decisionBackend.UpdateDecision(ctx, decisionSlug, nil, &acceptedStatus, nil, nil, nil); err != nil {
