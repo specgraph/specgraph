@@ -762,7 +762,7 @@ func safetyFlagsToStorage(flags []authoring.SafetyFlagResult) ([]storage.SafetyF
 		}
 		sev, err := authoring.ToStorageSeverity(f.Severity)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("convert severity: %w", err)
 		}
 		out[i] = storage.SafetyFlag{
 			Category:    cat,
