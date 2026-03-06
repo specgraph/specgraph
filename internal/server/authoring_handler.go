@@ -703,13 +703,13 @@ func (h *AuthoringHandler) stageError(err error) error {
 // All returned slices contain placeholder data; real LLM-driven pass
 // execution will replace these placeholders.
 // TODO(Slice 4): wire real pass execution for each PassName case.
-func runAnalyticalPasses(stage authoring.Stage, posture authoring.Posture) (
+func runAnalyticalPasses(stage authoring.Stage, posture authoring.Posture) ( //nolint:gocritic // 6 results needed: one per pass type + error
 	peripheralVision []*specv1.PeripheralVisionItem,
 	redTeam []*specv1.RedTeamFinding,
 	consistencyIssues []*specv1.ConsistencyIssue,
 	simplicity []*specv1.SimplicityFinding,
 	constitutionViolations []*specv1.ConstitutionViolation,
-	err error,
+	err error, //nolint:unparam // reserved for Slice 4 real pass execution
 ) {
 	for _, name := range authoring.PassesForStage(stage, posture) {
 		switch authoring.PassName(name) {

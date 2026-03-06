@@ -142,6 +142,29 @@ func TestAmendSpec_InvalidTransition(t *testing.T) {
 	require.ErrorIs(t, err, storage.ErrInvalidStageTransition)
 }
 
+func TestAmendSpec_NotFound(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	// AmendSpec on a non-existent slug should return ErrSpecNotFound.
+	_, err := store.AmendSpec(ctx, "nonexistent-spec", "reason", storage.AuthoringStage(authoring.StageShape))
+	require.ErrorIs(t, err, storage.ErrSpecNotFound)
+}
+
+func TestAmendSpec_EmptyReason(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "empty-reason", "Empty reason test", "p1", "low")
+	require.NoError(t, err)
+	require.NoError(t, store.TransitionStage(ctx, "empty-reason", storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape)))
+	require.NoError(t, store.TransitionStage(ctx, "empty-reason", storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify)))
+
+	// Amend with empty reason should still succeed at the storage layer
+	// (validation is the handler's responsibility), but verify the operation works.
+	result, err := store.AmendSpec(ctx, "empty-reason", "", storage.AuthoringStage(authoring.StageShape))
+	require.NoError(t, err)
+	require.Equal(t, storage.AuthoringStage(authoring.StageShape), result.Stage)
+}
+
 func TestSupersedeSpec(t *testing.T) {
 	store, ctx := newTestStore(t)
 

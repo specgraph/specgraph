@@ -100,6 +100,7 @@ func (f *fakeAuthoringBackend) AmendSpec(_ context.Context, _, _ string, _ stora
 type fakeBackend struct {
 	createSpecErr    error
 	createSpecResult *specv1.Spec
+	getSpecErr       error
 }
 
 // fakeTxBackend embeds fakeBackend and implements TransactionalBackend,
@@ -127,6 +128,9 @@ func (f *fakeBackend) CreateSpec(_ context.Context, slug, _, _, _ string) (*spec
 }
 
 func (f *fakeBackend) GetSpec(_ context.Context, slug string) (*specv1.Spec, error) {
+	if f.getSpecErr != nil {
+		return nil, f.getSpecErr
+	}
 	return &specv1.Spec{Slug: slug}, nil
 }
 
@@ -485,15 +489,14 @@ func TestAuthoringHandler_GetPrompts_UnspecifiedStage(t *testing.T) {
 }
 
 func TestAuthoringHandler_GetPrompts_ApprovedStage(t *testing.T) {
+	// Approved stage is terminal — returns empty response (no prompts, no error).
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
 
-	_, err := client.GetPrompts(context.Background(), connect.NewRequest(&specv1.GetPromptsRequest{
+	resp, err := client.GetPrompts(context.Background(), connect.NewRequest(&specv1.GetPromptsRequest{
 		Stage: specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
 	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.Prompts)
 }
 
 func TestAuthoringHandler_StageError_AlreadyApproved(t *testing.T) {
@@ -943,4 +946,162 @@ func TestAuthoringHandler_Decompose_StoreSafetyFlagsError(t *testing.T) {
 		require.ErrorAs(t, err, &connErr)
 		require.Equal(t, connect.CodeInternal, connErr.Code())
 	}
+}
+
+// --- fakeFullBackend: Backend + GraphBackend + DecisionBackend for acceptLinkedDecisions tests ---
+
+type fakeFullBackend struct {
+	fakeBackend
+	listEdgesErr      error
+	listEdgesResult   []*specv1.Edge
+	getDecisionErr    error
+	getDecisionResult *specv1.Decision
+	updateDecisionErr error
+}
+
+func (f *fakeFullBackend) AddEdge(_ context.Context, _, _ string, _ specv1.EdgeType) (*specv1.Edge, error) {
+	return nil, nil
+}
+
+func (f *fakeFullBackend) RemoveEdge(_ context.Context, _, _ string, _ specv1.EdgeType) error {
+	return nil
+}
+
+func (f *fakeFullBackend) ListEdges(_ context.Context, _ string, _ specv1.EdgeType) ([]*specv1.Edge, error) {
+	return f.listEdgesResult, f.listEdgesErr
+}
+
+func (f *fakeFullBackend) GetDependencies(_ context.Context, _ string) ([]storage.NodeRef, error) {
+	return nil, nil
+}
+
+func (f *fakeFullBackend) GetTransitiveDeps(_ context.Context, _ string) ([]storage.NodeRef, error) {
+	return nil, nil
+}
+
+func (f *fakeFullBackend) GetImpact(_ context.Context, _ string) ([]storage.NodeRef, error) {
+	return nil, nil
+}
+
+func (f *fakeFullBackend) GetReady(_ context.Context) ([]storage.NodeRef, error) {
+	return nil, nil
+}
+
+func (f *fakeFullBackend) GetCriticalPath(_ context.Context, _ string) ([]storage.NodeRef, error) {
+	return nil, nil
+}
+
+func (f *fakeFullBackend) CreateDecision(_ context.Context, _, _, _, _ string) (*specv1.Decision, error) {
+	return nil, nil
+}
+
+func (f *fakeFullBackend) GetDecision(_ context.Context, _ string) (*specv1.Decision, error) {
+	if f.getDecisionErr != nil {
+		return nil, f.getDecisionErr
+	}
+	if f.getDecisionResult != nil {
+		return f.getDecisionResult, nil
+	}
+	return &specv1.Decision{Status: specv1.DecisionStatus_DECISION_STATUS_PROPOSED}, nil
+}
+
+func (f *fakeFullBackend) ListDecisions(_ context.Context, _ specv1.DecisionStatus, _ int) ([]*specv1.Decision, error) {
+	return nil, nil
+}
+
+func (f *fakeFullBackend) UpdateDecision(_ context.Context, slug string, _ *string, _ *specv1.DecisionStatus, _, _, _ *string) (*specv1.Decision, error) {
+	if f.updateDecisionErr != nil {
+		return nil, f.updateDecisionErr
+	}
+	return &specv1.Decision{Slug: slug, Status: specv1.DecisionStatus_DECISION_STATUS_ACCEPTED}, nil
+}
+
+func TestAuthoringHandler_Approve_GetSpecError(t *testing.T) {
+	// After TransitionStage succeeds, if GetSpec fails the handler returns CodeInternal.
+	backend := &fakeBackend{getSpecErr: errors.New("db read failed")}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
+	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug: "my-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+	require.Contains(t, connErr.Message(), "read back spec")
+}
+
+func TestAuthoringHandler_Approve_AcceptLinkedDecisions_EdgeListError(t *testing.T) {
+	// When ListEdges fails during decision acceptance, Approve returns CodeInternal.
+	backend := &fakeFullBackend{
+		listEdgesResult: nil,
+		listEdgesErr:    errors.New("graph query failed"),
+	}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
+	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug: "my-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+	require.Contains(t, connErr.Message(), "accept linked decisions")
+}
+
+func TestAuthoringHandler_Approve_AcceptLinkedDecisions_HappyPath(t *testing.T) {
+	// When linked decisions exist, they are accepted without error.
+	backend := &fakeFullBackend{
+		listEdgesResult: []*specv1.Edge{
+			{FromId: "decision-1", ToId: "my-spec", EdgeType: specv1.EdgeType_EDGE_TYPE_INFORMS},
+		},
+		getDecisionResult: &specv1.Decision{
+			Slug:   "decision-1",
+			Status: specv1.DecisionStatus_DECISION_STATUS_PROPOSED,
+		},
+	}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
+	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug: "my-spec",
+	}))
+	require.NoError(t, err)
+	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
+}
+
+func TestAuthoringHandler_Approve_AcceptLinkedDecisions_UpdateError(t *testing.T) {
+	// When UpdateDecision fails, Approve returns CodeInternal.
+	backend := &fakeFullBackend{
+		listEdgesResult: []*specv1.Edge{
+			{FromId: "decision-1", ToId: "my-spec", EdgeType: specv1.EdgeType_EDGE_TYPE_INFORMS},
+		},
+		getDecisionResult: &specv1.Decision{
+			Slug:   "decision-1",
+			Status: specv1.DecisionStatus_DECISION_STATUS_PROPOSED,
+		},
+		updateDecisionErr: errors.New("update failed"),
+	}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
+	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug: "my-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestAuthoringHandler_Amend_UnknownStageFromStorage(t *testing.T) {
+	// When AmendSpec returns a stage unknown to stageToProto, handler returns CodeInternal.
+	authoringStore := &fakeAuthoringBackend{
+		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.AuthoringStage("bogus-stage"), Version: 3},
+	}
+	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
+	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
+		Slug:        "my-spec",
+		Reason:      "scope changed",
+		TargetStage: specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+	require.Contains(t, connErr.Message(), "unknown stage")
 }

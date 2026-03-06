@@ -18,6 +18,7 @@ import (
 // Lower values are more severe.
 type FindingSeverity int
 
+// FindingSeverity constants ordered by decreasing severity.
 const (
 	SeverityCritical FindingSeverity = 1
 	SeverityWarning  FindingSeverity = 2
