@@ -40,7 +40,8 @@ var promptRegistry = map[Stage][]Prompt{
 }
 
 // GetPrompts returns a copy of the prompts for the given funnel stage.
-// Returns nil if the stage is not found.
+// Returns nil if no prompts are defined for the stage (e.g., the approved
+// stage has no prompts because it is terminal).
 func GetPrompts(stage Stage) []Prompt {
 	src := promptRegistry[stage]
 	if len(src) == 0 {
@@ -68,7 +69,7 @@ func StageToProto(stage Stage) specv1.AuthoringStage {
 }
 
 // PromptsToProto converts the prompts for a stage into protobuf PromptTemplate messages.
-// Returns nil if the stage is not found.
+// Returns nil if no prompts are defined for the stage.
 func PromptsToProto(stage Stage) []*specv1.PromptTemplate {
 	prompts := promptRegistry[stage]
 	if len(prompts) == 0 {

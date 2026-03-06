@@ -49,7 +49,7 @@ type ShapeOutput struct {
 	SuccessMust    []string   `json:"success_must,omitempty"`
 	SuccessShould  []string   `json:"success_should,omitempty"`
 	SuccessWont    []string   `json:"success_wont,omitempty"`
-	Decisions      []string   `json:"decisions,omitempty"` // TODO(ADR-003): promote to Decision graph nodes
+	Decisions      []string   `json:"decisions,omitempty"` // TODO(spgr-bpq): promote to Decision graph nodes per ADR-003
 }
 
 // SpecifyOutput captures the precise contract and verification criteria.

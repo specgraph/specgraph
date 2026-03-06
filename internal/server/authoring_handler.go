@@ -626,7 +626,6 @@ func decomposeOutputToDomain(p *specv1.DecomposeOutput) (*storage.DecomposeOutpu
 // --- Stage mapping ---
 
 // stageToProto delegates to the canonical mapping in the authoring package.
-// Kept as a local alias so call sites within this file remain unchanged.
 func stageToProto(stage authoring.Stage) specv1.AuthoringStage {
 	return authoring.StageToProto(stage)
 }

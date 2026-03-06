@@ -36,7 +36,8 @@ var allowedJSONProperties = map[string]bool{
 // then updates the spec's stage in the database. Returns ErrSpecNotFound if
 // the spec doesn't exist, or ErrInvalidStageTransition if the spec is at
 // a different stage than expected. Returns ErrSpecAlreadyApproved if from
-// is the approved stage.
+// is the approved stage — approved is terminal and cannot be a source stage
+// (AmendSpec handles the approved→X path with its own guard).
 func (s *Store) TransitionStage(ctx context.Context, slug string, from, to storage.AuthoringStage) error {
 	if from == storage.AuthoringStage(authoring.StageApproved) {
 		return storage.ErrSpecAlreadyApproved
@@ -90,7 +91,7 @@ func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *stora
 }
 
 // StoreShapeOutput persists the shape stage output as JSON on the spec node.
-// TODO(ADR-003): ShapeOutput.Decisions are stored as plain strings in the JSON blob.
+// TODO(spgr-bpq): ShapeOutput.Decisions are stored as plain strings in the JSON blob.
 // Per ADR-003 they should become Decision graph nodes with [:DECIDED_IN] edges,
 // enabling cross-referencing, impact analysis, and promotion at Approve time.
 func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *storage.ShapeOutput) error {
