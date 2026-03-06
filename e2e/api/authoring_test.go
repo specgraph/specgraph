@@ -65,12 +65,31 @@ var _ = Describe("Authoring funnel", Ordered, func() {
 				},
 				ChosenApproach: "approach-1",
 				SuccessMust:    []string{"works correctly"},
+				Decisions: []*specv1.DecisionInput{
+					{
+						Slug:      "e2e-decision-1",
+						Title:     "Use approach 1",
+						Decision:  "We chose approach 1",
+						Rationale: "Simplest option",
+					},
+				},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Output).NotTo(BeNil())
 		Expect(resp.Msg.Output.ChosenApproach).To(Equal("approach-1"))
+	})
+
+	It("promoted shape decisions to Decision nodes", func() {
+		decisionClient := newDecisionClient()
+		resp, err := decisionClient.GetDecision(ctx, connect.NewRequest(&specv1.GetDecisionRequest{
+			Slug: "e2e-decision-1",
+		}))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.Msg.Title).To(Equal("Use approach 1"))
+		Expect(resp.Msg.Decision).To(Equal("We chose approach 1"))
+		Expect(resp.Msg.Status).To(Equal(specv1.DecisionStatus_DECISION_STATUS_PROPOSED))
 	})
 
 	It("specifies a shaped spec", func() {
