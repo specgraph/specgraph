@@ -25,6 +25,7 @@ exclude = [
   "node_modules",
   "vendor",
   "site", # MkDocs extended markdown (grid cards, admonitions, icons) — validated by mkdocs build
+  "docs/plans/2026-02-28-slice-7-claude-code-plugin-plan.md", # TODO(spgr-omf): deeply malformed fences cause rumdl fmt loop — remove after cleanup
 ]
 
 respect-gitignore = true

@@ -214,7 +214,6 @@ Run this to get an overview:
 ```bash
 specgraph list --format=table
 ```
-```
 
 ```text
 
@@ -280,7 +279,6 @@ Verify the SpecGraph server is reachable:
 
 ```bash
 specgraph health
-```
 ```
 
 ```text
@@ -803,7 +801,6 @@ description: >
 ```bash
 specgraph list --format=table
 ```
-```
 
 ```text
 
@@ -1080,7 +1077,6 @@ the implementing agent needs.
 ```bash
 specgraph health
 specgraph show $SLUG --format=json
-```
 ```
 
 ```text
@@ -1558,7 +1554,6 @@ Run the full SpecGraph spec-driven development workflow from Claude Code.
 
 ```bash
 claude /plugin install specgraph
-```
 ```
 
 ```text
