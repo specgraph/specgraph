@@ -18,6 +18,7 @@ var ErrSupersededByRequired = errors.New("superseded_by is required when status 
 // DecisionStatus represents the lifecycle state of a decision.
 type DecisionStatus string
 
+// Decision status lifecycle values.
 const (
 	DecisionStatusProposed   DecisionStatus = "DECISION_STATUS_PROPOSED"
 	DecisionStatusAccepted   DecisionStatus = "DECISION_STATUS_ACCEPTED"

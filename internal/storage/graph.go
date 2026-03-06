@@ -16,6 +16,7 @@ type NodeRef struct {
 // EdgeType represents the kind of relationship between nodes.
 type EdgeType string
 
+// Edge type relationship values.
 const (
 	EdgeTypeDependsOn EdgeType = "DEPENDS_ON"
 	EdgeTypeBlocks    EdgeType = "BLOCKS"

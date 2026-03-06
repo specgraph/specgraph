@@ -24,7 +24,13 @@ func TestNewSpec(t *testing.T) {
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
+	assert.Equal(t, "spec-abc1234", spec.ID)
 	assert.Equal(t, "login-api", spec.Slug)
+	assert.Equal(t, "REST endpoint for OAuth2", spec.Intent)
+	assert.Equal(t, "spark", spec.Stage)
+	assert.Equal(t, "p1", spec.Priority)
+	assert.Equal(t, "medium", spec.Complexity)
 	assert.Equal(t, int32(1), spec.Version)
-	assert.False(t, spec.CreatedAt.IsZero())
+	assert.Equal(t, now, spec.CreatedAt)
+	assert.Equal(t, now, spec.UpdatedAt)
 }
