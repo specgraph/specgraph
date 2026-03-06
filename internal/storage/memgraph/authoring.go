@@ -111,10 +111,8 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 	if err := storage.ValidateStrategy(output.Strategy); err != nil {
 		return nil, fmt.Errorf("memgraph: invalid decomposition strategy: %w", err)
 	}
-	if err := s.storeJSONProperty(ctx, slug, "decompose_output", output); err != nil {
-		return nil, err
-	}
-	// Build a set of slice IDs for dependency validation.
+	// Build and validate the set of slice IDs before writing anything to the
+	// database so that validation failures do not leave a partial JSON blob.
 	sliceIDs := make(map[string]bool, len(output.Slices))
 	for _, sl := range output.Slices {
 		if sl.ID == "" {
@@ -124,6 +122,9 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 			return nil, fmt.Errorf("memgraph: duplicate decompose slice ID %q", sl.ID)
 		}
 		sliceIDs[sl.ID] = true
+	}
+	if err := s.storeJSONProperty(ctx, slug, "decompose_output", output); err != nil {
+		return nil, err
 	}
 	// Pass 1: create all child Spec nodes and COMPOSES edges.
 	// This ensures every node exists before any DEPENDS_ON edge is attempted,
