@@ -112,11 +112,15 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 		return nil, h.stageError(err)
 	}
 	resolvedPosture := authoring.ResolvePosture(authoring.ProtoToPosture(msg.Posture), nil)
-	_, _, _, _, constitutionViolations := runAnalyticalPasses(authoring.StageSpark, resolvedPosture)
-	// Output is returned as-is from the client request. The storage layer stores
-	// domain-typed stage outputs (via StoreSparkOutput) but does not provide a
-	// proto-typed round-trip getter. This is acceptable because the output was
-	// just persisted in the same request and has not been enriched server-side.
+	_, _, _, _, constitutionViolations, passErr := runAnalyticalPasses(authoring.StageSpark, resolvedPosture)
+	if passErr != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("analytical passes: %w", passErr))
+	}
+	// Output is echoed from the client request, NOT read back from storage. The
+	// storage layer stores domain-typed outputs (via StoreSparkOutput) but does not
+	// provide a proto-typed round-trip getter. This means the response reflects the
+	// input exactly — any server-side enrichment will require adding a read-back
+	// path. TODO(Slice 4): add read-back when output enrichment is implemented.
 	return connect.NewResponse(&specv1.SparkResponse{
 		Output:                 msg.Output,
 		SafetyFlags:            authoring.SafetyResultsToProto(safetyFlags),
@@ -186,7 +190,10 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 		return nil, h.stageError(err)
 	}
 	resolvedPosture := authoring.ResolvePosture(authoring.ProtoToPosture(msg.Posture), nil)
-	peripheralVision, _, _, _, _ := runAnalyticalPasses(authoring.StageShape, resolvedPosture)
+	peripheralVision, _, _, _, _, passErr := runAnalyticalPasses(authoring.StageShape, resolvedPosture)
+	if passErr != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("analytical passes: %w", passErr))
+	}
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.ShapeResponse{
 		Output:           msg.Output,
@@ -249,7 +256,10 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 		return nil, h.stageError(err)
 	}
 	resolvedPosture := authoring.ResolvePosture(authoring.ProtoToPosture(msg.Posture), nil)
-	_, redTeam, consistencyIssues, _, _ := runAnalyticalPasses(authoring.StageSpecify, resolvedPosture)
+	_, redTeam, consistencyIssues, _, _, passErr := runAnalyticalPasses(authoring.StageSpecify, resolvedPosture)
+	if passErr != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("analytical passes: %w", passErr))
+	}
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.SpecifyResponse{
 		Output:            msg.Output,
@@ -318,7 +328,10 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 		return nil, h.stageError(err)
 	}
 	resolvedPosture := authoring.ResolvePosture(authoring.ProtoToPosture(msg.Posture), nil)
-	_, _, _, simplicity, _ := runAnalyticalPasses(authoring.StageDecompose, resolvedPosture)
+	_, _, _, simplicity, _, passErr := runAnalyticalPasses(authoring.StageDecompose, resolvedPosture)
+	if passErr != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("analytical passes: %w", passErr))
+	}
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.DecomposeResponse{
 		Output:         msg.Output,
@@ -351,7 +364,9 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 		approvedAt = timestamppb.Now()
 	}
 	// ADR-003: transition linked decisions from proposed to accepted.
-	h.acceptLinkedDecisions(ctx, req.Msg.Slug)
+	if err := h.acceptLinkedDecisions(ctx, req.Msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("accept linked decisions: %w", err))
+	}
 	return connect.NewResponse(&specv1.ApproveResponse{
 		Slug:       req.Msg.Slug,
 		Stage:      stageToProto(authoring.StageApproved),
@@ -409,6 +424,9 @@ func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[s
 	if req.Msg.Slug == req.Msg.SupersededBy {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a spec cannot supersede itself"))
 	}
+	if req.Msg.Reason == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reason is required for supersede"))
+	}
 	if len(req.Msg.Reason) > maxFieldLen {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("reason exceeds maximum length of %d", maxFieldLen))
 	}
@@ -434,6 +452,11 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown stage %v", req.Msg.Stage))
 	}
+	// Approved specs have completed the authoring funnel — return empty
+	// prompts, signaling clearly that no further steps exist.
+	if req.Msg.Stage == specv1.AuthoringStage_AUTHORING_STAGE_APPROVED {
+		return connect.NewResponse(&specv1.GetPromptsResponse{}), nil
+	}
 	prompts := authoring.PromptsToProto(authoring.Stage(stage))
 	if len(prompts) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no prompts defined for stage %q", stage))
@@ -444,25 +467,20 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 }
 
 // acceptLinkedDecisions queries for Decision nodes linked to the spec via
-// INFORMS edges and transitions them from proposed to accepted. Errors are
-// logged but do not fail the Approve RPC — decision acceptance is best-effort
-// since the spec approval itself has already succeeded.
-func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug string) {
+// INFORMS edges and transitions them from proposed to accepted. Returns an
+// error if any decision acceptance fails.
+func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug string) error {
 	if h.graphBackend == nil || h.decisionBackend == nil {
-		return
+		return nil
 	}
 	edges, err := h.graphBackend.ListEdges(ctx, slug, specv1.EdgeType_EDGE_TYPE_INFORMS)
 	if err != nil {
-		h.logger.WarnContext(ctx, "acceptLinkedDecisions: failed to list edges",
-			slog.String("slug", slug),
-			slog.Any("error", err),
-		)
-		return
+		return fmt.Errorf("list INFORMS edges for %q: %w", slug, err)
 	}
 	acceptedStatus := specv1.DecisionStatus_DECISION_STATUS_ACCEPTED
 	for _, edge := range edges {
-		// INFORMS edges: Decision → Spec. ListEdges returns both directions,
-		// so the decision slug is the from_id when it differs from the spec slug.
+		// The edge direction may be Decision→Spec or Spec→Decision depending on
+		// how it was created. Check both from_id and to_id to find the non-spec node.
 		decisionSlug := edge.GetFromId()
 		if decisionSlug == "" || decisionSlug == slug {
 			// This edge has the spec as the source — try the to side.
@@ -473,24 +491,16 @@ func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug strin
 		}
 		dec, err := h.decisionBackend.GetDecision(ctx, decisionSlug)
 		if err != nil {
-			h.logger.WarnContext(ctx, "acceptLinkedDecisions: failed to get decision",
-				slog.String("slug", slug),
-				slog.String("decisionSlug", decisionSlug),
-				slog.Any("error", err),
-			)
-			continue
+			return fmt.Errorf("get decision %q: %w", decisionSlug, err)
 		}
 		if dec.GetStatus() != specv1.DecisionStatus_DECISION_STATUS_PROPOSED {
 			continue
 		}
 		if _, err := h.decisionBackend.UpdateDecision(ctx, decisionSlug, nil, &acceptedStatus, nil, nil, nil); err != nil {
-			h.logger.WarnContext(ctx, "acceptLinkedDecisions: failed to update decision",
-				slog.String("slug", slug),
-				slog.String("decisionSlug", decisionSlug),
-				slog.Any("error", err),
-			)
+			return fmt.Errorf("accept decision %q: %w", decisionSlug, err)
 		}
 	}
+	return nil
 }
 
 // RegisterAuthoringService registers the AuthoringService on the given mux.
@@ -692,13 +702,15 @@ func (h *AuthoringHandler) stageError(err error) error {
 // runAnalyticalPasses executes the passes returned by PassesForStage for the
 // given stage and posture and converts the results into proto finding types.
 // All returned slices contain placeholder data; real LLM-driven pass
-// execution is deferred to a later slice.
+// execution will replace these placeholders.
+// TODO(Slice 4): wire real pass execution for each PassName case.
 func runAnalyticalPasses(stage authoring.Stage, posture authoring.Posture) (
 	peripheralVision []*specv1.PeripheralVisionItem,
 	redTeam []*specv1.RedTeamFinding,
 	consistencyIssues []*specv1.ConsistencyIssue,
 	simplicity []*specv1.SimplicityFinding,
 	constitutionViolations []*specv1.ConstitutionViolation,
+	err error,
 ) {
 	for _, name := range authoring.PassesForStage(stage, posture) {
 		switch authoring.PassName(name) {
