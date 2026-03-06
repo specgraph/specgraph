@@ -18,6 +18,9 @@ gen/
 # Serena
 .serena/
 
+# Beads backup (Dolt-managed, not source-controlled)
+.beads/backup/
+
 # Dolt database files (added by bd init)
 .dolt/
 *.db
