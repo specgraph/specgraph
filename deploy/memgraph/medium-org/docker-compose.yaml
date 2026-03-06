@@ -1,0 +1,62 @@
+# SpecGraph Memgraph — Medium Organization
+#
+# Profile: medium-org
+# Target:  200-500 engineers, 50-200 applications
+# Specs:   5,000 - 50,000
+# Decisions: 500 - 5,000
+# Edges:   20,000 - 200,000
+# Memory:  2 GB
+#
+# Sizing estimate:
+#   ~50,000 specs * 10 KB avg = 500 MB data
+#   + ~5,000 decisions * 1.5 KB = 7.5 MB
+#   + ~200K edges * 80 bytes = 16 MB
+#   + Memgraph overhead (indexes, query engine, WAL buffer) ~200 MB
+#   + headroom for transitive traversals and query temp results
+#   = ~1 GB working set, 2 GB limit
+#
+# SECURITY: This config has NO authentication or TLS enabled. For
+# shared-network or production deployments you MUST configure Memgraph
+# authentication and TLS on the bolt endpoint. Memgraph Lab (port 7444)
+# provides full graph access with no login. See Memgraph docs for details.
+#
+# At this scale, consider:
+#   - Archiving superseded/done specs to reduce working set
+#   - Monitoring with Memgraph Lab for query performance
+#   - Separate Memgraph instances per business domain if specs are independent
+#
+# Usage:
+#   docker compose -f deploy/memgraph/medium-org/docker-compose.yaml up -d
+services:
+  memgraph:
+    image: memgraph/memgraph-platform:2.4.0
+    ports:
+      - "${MEMGRAPH_PORT:-7687}:7687"
+      - "${MEMGRAPH_LAB_PORT:-7444}:7444"
+    command:
+      - --memory-limit=2048
+      - --storage-wal-enabled=true
+      - --storage-snapshot-interval-sec=120
+      - --storage-snapshot-on-exit=true
+      - --storage-recover-on-startup=true
+      - --storage-snapshot-retention-count=3
+      - --query-execution-timeout-sec=120
+      - --log-level=WARNING
+    volumes:
+      - specgraph-data:/var/lib/memgraph
+    deploy:
+      resources:
+        limits:
+          memory: 2560m
+          cpus: "2"
+        reservations:
+          memory: 2048m
+          cpus: "1"
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+volumes:
+  specgraph-data:
