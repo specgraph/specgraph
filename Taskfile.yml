@@ -92,7 +92,7 @@ tasks:
   lint:markdown:
     desc: Lint Markdown files
     cmds:
-      - rumdl check --exclude 'site,.git,.beads,.serena,.worktrees,.claude,docs/plans' .
+      - rumdl check .
   lint:yaml:
     desc: Lint YAML files
     cmds:
@@ -141,7 +141,7 @@ tasks:
   fmt:markdown:
     desc: Format Markdown files
     cmds:
-      - rumdl fmt --exclude 'site,.git,.beads,.serena' .
+      - rumdl fmt .
   fmt:dprint:
     desc: Format with dprint
     cmds:

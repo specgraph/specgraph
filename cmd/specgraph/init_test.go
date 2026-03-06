@@ -6,6 +6,8 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/seanb4t/specgraph/internal/config"
@@ -13,127 +15,156 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// withStdin replaces os.Stdin with a pipe containing the given input for the
+// duration of the test.
+func withStdin(t *testing.T, input string) {
+	t.Helper()
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+
+	_, err = w.WriteString(input)
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+
+	oldStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = oldStdin })
+}
+
+func withCfgFile(t *testing.T, path string) {
+	t.Helper()
+	old := cfgFile
+	cfgFile = path
+	t.Cleanup(func() { cfgFile = old })
+}
+
 func TestInitNonInteractive(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, ".specgraph", "config.yaml")
 
-	// Override global cfgFile for this test
-	oldCfgFile := cfgFile
-	cfgFile = configPath
-	t.Cleanup(func() { cfgFile = oldCfgFile })
+	withCfgFile(t, configPath)
 
 	initYes = true
 	err := runInit(nil, nil)
 	require.NoError(t, err)
 
-	// Verify file was created
 	_, err = os.Stat(configPath)
 	require.NoError(t, err)
 
-	// Load and verify contents
 	cfg, err := config.Load(configPath)
 	require.NoError(t, err)
 	assert.Equal(t, "memgraph", cfg.Storage.Backend)
 	assert.Equal(t, "docker", cfg.Server.Mode)
 }
 
-func TestRunConstitutionScanWithGoMod(t *testing.T) {
-	dir := t.TempDir()
-	configDir := filepath.Join(dir, ".specgraph")
-	require.NoError(t, os.MkdirAll(configDir, 0o750))
-	configPath := filepath.Join(configDir, "config.yaml")
-
-	// Create a go.mod so the scanner detects Go as the primary language
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/test\n\ngo 1.21\n"), 0o600))
-
-	// runConstitutionScan uses scanner.Scan(".") so we must chdir
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-
-	err = runConstitutionScan(configPath)
-	require.NoError(t, err)
-
-	constitutionPath := filepath.Join(configDir, "constitution.yaml")
-	c, err := config.LoadConstitutionYAML(constitutionPath)
-	require.NoError(t, err)
-	assert.Equal(t, "project", c.Name)
-	assert.Equal(t, "project", c.Layer)
-	assert.Equal(t, "go", c.Tech.Languages.Primary)
-}
-
-func TestRunConstitutionScanEmptyDir(t *testing.T) {
-	dir := t.TempDir()
-	configDir := filepath.Join(dir, ".specgraph")
-	require.NoError(t, os.MkdirAll(configDir, 0o750))
-	configPath := filepath.Join(configDir, "config.yaml")
-
-	// Empty directory — no language markers
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-
-	err = runConstitutionScan(configPath)
-	require.NoError(t, err)
-
-	constitutionPath := filepath.Join(configDir, "constitution.yaml")
-	c, err := config.LoadConstitutionYAML(constitutionPath)
-	require.NoError(t, err)
-	assert.Equal(t, "project", c.Name)
-	assert.Equal(t, "project", c.Layer)
-	assert.Empty(t, c.Tech.Languages.Primary)
-}
-
-func TestInitWithScanFlag(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".specgraph", "config.yaml")
-
-	// Create a go.mod so the scan has something to detect
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module example.com/test\n\ngo 1.21\n"), 0o600))
-
-	oldCfgFile := cfgFile
-	cfgFile = configPath
-	t.Cleanup(func() { cfgFile = oldCfgFile })
-
-	oldWd, err := os.Getwd()
-	require.NoError(t, err)
-	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { _ = os.Chdir(oldWd) })
-
-	initYes = true
-	initScan = true
-	t.Cleanup(func() { initScan = false; initYes = false })
-
-	err = runInit(nil, nil)
-	require.NoError(t, err)
-
-	// Verify config was created
-	cfg, err := config.Load(configPath)
-	require.NoError(t, err)
-	assert.Equal(t, "memgraph", cfg.Storage.Backend)
-
-	// Verify constitution was created by the scan
-	constitutionPath := filepath.Join(dir, ".specgraph", "constitution.yaml")
-	c, err := config.LoadConstitutionYAML(constitutionPath)
-	require.NoError(t, err)
-	assert.Equal(t, "go", c.Tech.Languages.Primary)
-}
-
 func TestInitAlreadyExists(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.yaml")
 
-	// Create existing file
 	require.NoError(t, os.WriteFile(configPath, []byte("existing"), 0o600))
-
-	oldCfgFile := cfgFile
-	cfgFile = configPath
-	t.Cleanup(func() { cfgFile = oldCfgFile })
+	withCfgFile(t, configPath)
 
 	initYes = true
 	err := runInit(nil, nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "config already exists")
+}
+
+func TestInitInteractiveDefaults(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, ".specgraph", "config.yaml")
+
+	withCfgFile(t, configPath)
+	// All empty lines → accept defaults
+	withStdin(t, "\n\n")
+
+	initYes = false
+	err := runInit(nil, nil)
+	require.NoError(t, err)
+
+	cfg, err := config.Load(configPath)
+	require.NoError(t, err)
+	assert.Equal(t, "memgraph", cfg.Storage.Backend)
+	assert.Equal(t, "docker", cfg.Server.Mode)
+}
+
+func TestInitInteractivePostgresExternal(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, ".specgraph", "config.yaml")
+
+	withCfgFile(t, configPath)
+	// Select postgres backend, external mode, provide URL
+	withStdin(t, "postgres\nexternal\npostgres://user:pass@host/db\n")
+
+	initYes = false
+	err := runInit(nil, nil)
+	require.NoError(t, err)
+
+	cfg, err := config.Load(configPath)
+	require.NoError(t, err)
+	assert.Equal(t, "postgres", cfg.Storage.Backend)
+	assert.Equal(t, "external", cfg.Server.Mode)
+	assert.Equal(t, "postgres://user:pass@host/db", cfg.Storage.Postgres.URL)
+}
+
+func TestInitInteractiveMemgraphExternal(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, ".specgraph", "config.yaml")
+
+	withCfgFile(t, configPath)
+	// Select memgraph backend, external mode, provide custom bolt URI
+	withStdin(t, "memgraph\nexternal\nbolt://custom:7688\n")
+
+	initYes = false
+	err := runInit(nil, nil)
+	require.NoError(t, err)
+
+	cfg, err := config.Load(configPath)
+	require.NoError(t, err)
+	assert.Equal(t, "memgraph", cfg.Storage.Backend)
+	assert.Equal(t, "external", cfg.Server.Mode)
+	assert.Equal(t, "bolt://custom:7688", cfg.Storage.Memgraph.BoltURI)
+}
+
+func TestInitMkdirAllFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod not effective on Windows")
+	}
+
+	dir := t.TempDir()
+	// Create a read-only parent so MkdirAll fails
+	readOnlyDir := filepath.Join(dir, "readonly")
+	require.NoError(t, os.MkdirAll(readOnlyDir, 0o750))
+	require.NoError(t, os.Chmod(readOnlyDir, 0o444))   //nolint:gosec // intentionally restrictive for test
+	t.Cleanup(func() { os.Chmod(readOnlyDir, 0o750) }) //nolint:gosec // restore perms
+
+	configPath := filepath.Join(readOnlyDir, "subdir", "config.yaml")
+	withCfgFile(t, configPath)
+
+	initYes = true
+	err := runInit(nil, nil)
+	require.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "creating config directory"),
+		"expected MkdirAll error, got: %v", err)
+}
+
+func TestInitWriteFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chmod not effective on Windows")
+	}
+
+	dir := t.TempDir()
+	// Create config directory as read-only so Write fails
+	cfgDir := filepath.Join(dir, ".specgraph")
+	require.NoError(t, os.MkdirAll(cfgDir, 0o750))
+	require.NoError(t, os.Chmod(cfgDir, 0o444))   //nolint:gosec // intentionally restrictive for test
+	t.Cleanup(func() { os.Chmod(cfgDir, 0o750) }) //nolint:gosec // restore perms
+
+	configPath := filepath.Join(cfgDir, "config.yaml")
+	withCfgFile(t, configPath)
+
+	initYes = true
+	err := runInit(nil, nil)
+	require.Error(t, err)
 }

@@ -44,20 +44,6 @@ var _ = Describe("init command", func() {
 		Expect(err).NotTo(HaveOccurred(), "config file should exist")
 	})
 
-	It("generates constitution draft with --scan", func() {
-		// Create a go.mod so the scanner detects a Go project.
-		goMod := filepath.Join(tmpDir, "go.mod")
-		Expect(os.WriteFile(goMod, []byte("module example.com/test\n\ngo 1.25\n"), 0o644)).To(Succeed())
-
-		result := cli.Run("init", "--yes", "--scan")
-		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)
-
-		// Verify constitution file was created by the scan.
-		constitutionPath := filepath.Join(tmpDir, ".specgraph", "constitution.yaml")
-		_, err := os.Stat(constitutionPath)
-		Expect(err).NotTo(HaveOccurred(), "constitution file should exist after --scan")
-	})
-
 	It("rejects init when config already exists", func() {
 		// First init should succeed
 		result := cli.Run("init", "--yes")

@@ -214,8 +214,8 @@ Run this to get an overview:
 ```bash
 specgraph list --format=table
 ```
-```
 
+```text
 
 ```text
 
@@ -280,10 +280,10 @@ Verify the SpecGraph server is reachable:
 ```bash
 specgraph health
 ```
-```
 
 ```text
 
+```text
 
 ```text
 
@@ -501,7 +501,7 @@ specgraph show $SLUG --format=json
 specgraph deps $SLUG
 ```
 
-Load Tier 2 codebase context — file-level understanding of affected areas:
+Agent reads relevant source files for file-level context:
 
 ```bash
 specgraph show $SLUG --format=json | jq '.touches'
@@ -801,8 +801,8 @@ description: >
 ```bash
 specgraph list --format=table
 ```
-```
 
+```text
 
 ```text
 
@@ -1078,10 +1078,10 @@ the implementing agent needs.
 specgraph health
 specgraph show $SLUG --format=json
 ```
-```
 
 ```text
 
+```text
 
 ```text
 
@@ -1168,7 +1168,6 @@ As the user works, periodically report progress:
 ```bash
 specgraph progress $SLUG --message="$MESSAGE"
 ```
-
 
 ```text
 
@@ -1556,8 +1555,8 @@ Run the full SpecGraph spec-driven development workflow from Claude Code.
 ```bash
 claude /plugin install specgraph
 ```
-```
 
+```text
 
 ```text
 

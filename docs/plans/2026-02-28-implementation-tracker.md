@@ -4,7 +4,7 @@
 
 **Goal:** Complete the SpecGraph implementation through 7 vertical slices, each delivering a usable end-to-end capability.
 
-**Dependency chain:** Slice 1 -> Slice 2 -> Slice 3 -> Slice 4 -> Slice 5 -> Slice 6 -> Slice 7
+**Dependency chain:** Slice 1 -> Slice 2 -> Slice 3 -> Slice 3.5 -> Slice 4 -> Slice 5 -> Slice 6 -> Slice 7
 
 ---
 
@@ -35,10 +35,10 @@
 - [ ] Task 2: Storage interface -- ConstitutionBackend
 - [ ] Task 3: Memgraph implementation
 - [ ] Task 4: ConnectRPC handler -- ConstitutionService
-- [ ] Task 5: Codebase scanner -- Tier 0
+- [x] ~~Task 5: Codebase scanner -- Tier 0~~ (Superseded — removed in Slice 3.5)
 - [ ] Task 6: Emitter -- constitution to tool files
 - [ ] Task 7: CLI -- constitution commands
-- [ ] Task 8: Enhanced init -- constitution creation with scanner
+- [ ] Task 8: Enhanced init -- constitution creation
 - [ ] Task 9: Integration -- wire everything together
 - [ ] Task 10: Final verification and cleanup
 
@@ -68,14 +68,13 @@
 - [ ] Task 7: AuthoringBackend interface + Memgraph implementation
 - [ ] Task 8: ConnectRPC AuthoringService handler
 - [ ] Task 9: CLI authoring commands
-- [ ] Task 10: Codebase scanner Tier 1 and Tier 2
+- [x] ~~Task 10: Codebase scanner Tier 1 and Tier 2~~ (Superseded — removed in Slice 3.5)
 - [ ] Task 11: Wire AuthoringService into server
 - [ ] Task 12: End-to-end verification
 
 **Slice Verification Gate:**
 
 - [ ] `go test ./internal/authoring/... -v -count=1` -- all pass (stages, posture, prompts, safety, passes)
-- [ ] `go test ./internal/scanner/... -v -count=1` -- all pass (Tier 1, Tier 2)
 - [ ] `go test ./internal/storage/memgraph/... -v -count=1 -timeout=120s` -- all pass (including authoring)
 - [ ] `go test ./internal/server/... -v -count=1` -- all pass (AuthoringHandler)
 - [ ] `golangci-lint run ./...` -- no issues
@@ -84,6 +83,27 @@
 - [ ] CLI commands work: `specgraph spark|shape|specify|decompose|approve --help`
 - [ ] Stage transitions enforce correct ordering (forward + backward amend)
 - [ ] Safety net flags security/data-loss concerns regardless of posture
+
+---
+
+## Slice 3.5: Scanner Removal & Documentation Cleanup
+
+**Plan:** `docs/plans/2026-03-03-slice-3.5-scanner-cleanup-plan.md`
+**Status:** Complete (PR #22)
+**Depends on:** Slice 3
+
+**Tasks:**
+
+- [x] Task 1: Delete scanner package
+- [x] Task 2: Remove --scan CLI flag and E2E test
+- [x] Task 3: Remove scanner from Docker compose template
+- [x] Task 4: Update init.go to remove scanner import and scan logic
+- [x] Task 5: Update CI workflow (remove scanner test glob)
+- [x] Task 6: Reframe plan docs (scanner references → agent-driven context)
+- [x] Task 7: Update site docs (how-it-works, concepts, getting-started)
+- [x] Task 8: Update CLAUDE.md gotchas
+- [x] Task 9: Clean up go.mod (remove unused scanner dependencies)
+- [x] Task 10: Final verification
 
 ---
 
