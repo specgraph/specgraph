@@ -22,8 +22,12 @@ const (
 )
 
 // ToStorage converts a Stage to a storage.AuthoringStage.
-func (s Stage) ToStorage() storage.AuthoringStage {
-	return storage.AuthoringStage(s)
+// Returns an error if the Stage value is not a known constant.
+func (s Stage) ToStorage() (storage.AuthoringStage, error) {
+	if indexOf(s) < 0 {
+		return "", fmt.Errorf("unknown authoring stage %q", s)
+	}
+	return storage.AuthoringStage(s), nil
 }
 
 // stages defines the ordered authoring funnel stages.

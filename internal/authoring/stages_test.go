@@ -128,6 +128,36 @@ func TestValidateAmendTransition(t *testing.T) {
 	}
 }
 
+func TestStageToStorage(t *testing.T) {
+	t.Run("known stages convert without error", func(t *testing.T) {
+		known := []authoring.Stage{
+			authoring.StageSpark,
+			authoring.StageShape,
+			authoring.StageSpecify,
+			authoring.StageDecompose,
+			authoring.StageApproved,
+		}
+		for _, s := range known {
+			v, err := s.ToStorage()
+			require.NoError(t, err)
+			require.Equal(t, string(s), string(v))
+		}
+	})
+
+	t.Run("unknown stage returns error", func(t *testing.T) {
+		_, err := authoring.Stage("typo").ToStorage()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unknown authoring stage")
+		require.Contains(t, err.Error(), "typo")
+	})
+
+	t.Run("empty string returns error", func(t *testing.T) {
+		_, err := authoring.Stage("").ToStorage()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unknown authoring stage")
+	})
+}
+
 func TestAllStages(t *testing.T) {
 	got := authoring.AllStages()
 	expected := []string{"spark", "shape", "specify", "decompose", "approved"}

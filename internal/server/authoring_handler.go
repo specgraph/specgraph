@@ -589,12 +589,23 @@ func stageToProto(stage authoring.Stage) specv1.AuthoringStage {
 	return authoring.StageToProto(stage)
 }
 
-var protoToStage = map[specv1.AuthoringStage]storage.AuthoringStage{
-	specv1.AuthoringStage_AUTHORING_STAGE_SPARK:     authoring.StageSpark.ToStorage(),
-	specv1.AuthoringStage_AUTHORING_STAGE_SHAPE:     authoring.StageShape.ToStorage(),
-	specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY:   authoring.StageSpecify.ToStorage(),
-	specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE: authoring.StageDecompose.ToStorage(),
-	specv1.AuthoringStage_AUTHORING_STAGE_APPROVED:  authoring.StageApproved.ToStorage(),
+var protoToStage map[specv1.AuthoringStage]storage.AuthoringStage
+
+func init() {
+	mustToStorage := func(s authoring.Stage) storage.AuthoringStage {
+		v, err := s.ToStorage()
+		if err != nil {
+			panic(fmt.Sprintf("invalid authoring stage constant: %v", err))
+		}
+		return v
+	}
+	protoToStage = map[specv1.AuthoringStage]storage.AuthoringStage{
+		specv1.AuthoringStage_AUTHORING_STAGE_SPARK:     mustToStorage(authoring.StageSpark),
+		specv1.AuthoringStage_AUTHORING_STAGE_SHAPE:     mustToStorage(authoring.StageShape),
+		specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY:   mustToStorage(authoring.StageSpecify),
+		specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE: mustToStorage(authoring.StageDecompose),
+		specv1.AuthoringStage_AUTHORING_STAGE_APPROVED:  mustToStorage(authoring.StageApproved),
+	}
 }
 
 // runInTxOrSequential runs the given operations within a transaction if txBackend
