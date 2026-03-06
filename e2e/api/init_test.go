@@ -27,8 +27,7 @@ var _ = Describe("init command", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		configPath := filepath.Join(tmpDir, ".specgraph", "config.yaml")
-		cli, err = testutil.NewCLI(configPath)
-		Expect(err).NotTo(HaveOccurred())
+		cli = testutil.NewCLIRunner(cliBinaryPath, configPath)
 	})
 
 	AfterEach(func() {

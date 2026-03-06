@@ -19,6 +19,7 @@ var (
 	serverInfo    *testutil.ServerInfo
 	cleanupServer func()
 	cleanupMG     func()
+	cliBinaryPath string
 )
 
 func TestAPI(t *testing.T) {
@@ -30,6 +31,12 @@ var _ = BeforeSuite(func() {
 	ctx := context.Background()
 
 	var err error
+
+	var cleanupBinary func()
+	cliBinaryPath, cleanupBinary, err = testutil.BuildBinary()
+	Expect(err).NotTo(HaveOccurred())
+	DeferCleanup(cleanupBinary)
+
 	var boltURI string
 	boltURI, cleanupMG, err = testutil.StartMemgraph(ctx)
 	Expect(err).NotTo(HaveOccurred())

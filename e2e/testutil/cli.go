@@ -25,20 +25,30 @@ type CLIResult struct {
 	ExitCode int
 }
 
-// NewCLI builds the specgraph binary into a temp dir and returns a runner
-// configured with the given config file path.
-func NewCLI(configPath string) (*CLIRunner, error) {
+// BuildBinary builds the specgraph binary once into a temp dir.
+// It returns the binary path, a cleanup function, and any error.
+// Callers should invoke cleanup (e.g. via DeferCleanup) after the suite finishes.
+func BuildBinary() (string, func(), error) {
 	tmpDir, err := os.MkdirTemp("", "specgraph-e2e-*")
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
+	cleanup := func() { os.RemoveAll(tmpDir) }
 	binaryPath := filepath.Join(tmpDir, "specgraph")
 	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/specgraph")
 	cmd.Dir = findProjectRoot()
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return nil, &BuildError{Output: string(out), Err: err}
+		cleanup()
+		return "", nil, &BuildError{Output: string(out), Err: err}
 	}
-	return &CLIRunner{BinaryPath: binaryPath, ConfigPath: configPath}, nil
+	return binaryPath, cleanup, nil
+}
+
+// NewCLIRunner creates a CLIRunner from an already-built binary path and a
+// config file path. Use this in BeforeEach after calling BuildBinary once in
+// BeforeSuite.
+func NewCLIRunner(binaryPath, configPath string) *CLIRunner {
+	return &CLIRunner{BinaryPath: binaryPath, ConfigPath: configPath}
 }
 
 // Run executes the specgraph CLI with the given args.

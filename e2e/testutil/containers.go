@@ -8,6 +8,7 @@ package testutil
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
@@ -46,6 +47,12 @@ func StartMemgraph(ctx context.Context) (string, func(), error) {
 	}
 
 	boltURI := fmt.Sprintf("bolt://%s:%s", host, port.Port())
-	cleanup := func() { _ = container.Terminate(ctx) }
+	cleanup := func() {
+		cleanCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := container.Terminate(cleanCtx); err != nil {
+			fmt.Fprintf(os.Stderr, "testutil: container terminate error: %v\n", err)
+		}
+	}
 	return boltURI, cleanup, nil
 }

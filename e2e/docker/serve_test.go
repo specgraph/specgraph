@@ -68,6 +68,13 @@ storage:
 		err := cmd.Start()
 		Expect(err).NotTo(HaveOccurred())
 
+		DeferCleanup(func() {
+			if cmd.Process != nil && cmd.ProcessState == nil {
+				_ = cmd.Process.Kill()
+				_ = cmd.Wait()
+			}
+		})
+
 		// Wait for the compose file to appear (docker compose up may take a while).
 		composePath := filepath.Join(projectDir, ".specgraph", "docker-compose.yaml")
 		Eventually(func() bool {

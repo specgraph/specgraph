@@ -56,8 +56,12 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 	cleanup := func() {
 		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = srv.Shutdown(shutCtx)
-		_ = store.Close(ctx)
+		if err := srv.Shutdown(shutCtx); err != nil {
+			fmt.Fprintf(os.Stderr, "testutil: server shutdown error: %v\n", err)
+		}
+		if err := store.Close(shutCtx); err != nil {
+			fmt.Fprintf(os.Stderr, "testutil: store close error: %v\n", err)
+		}
 	}
 	return &ServerInfo{BaseURL: baseURL, Store: store}, cleanup, nil
 }
