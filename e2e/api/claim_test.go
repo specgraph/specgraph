@@ -7,7 +7,6 @@ package api_test
 
 import (
 	"context"
-	"net/http"
 
 	"connectrpc.com/connect"
 	. "github.com/onsi/ginkgo/v2"
@@ -32,8 +31,8 @@ var _ = Describe("Claim protocol", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		specClient = specgraphv1connect.NewSpecServiceClient(http.DefaultClient, serverInfo.BaseURL)
-		claimClient = specgraphv1connect.NewClaimServiceClient(http.DefaultClient, serverInfo.BaseURL)
+		specClient = newSpecClient()
+		claimClient = newClaimClient()
 		ctx = context.Background()
 	})
 

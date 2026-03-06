@@ -7,7 +7,6 @@ package api_test
 
 import (
 	"context"
-	"net/http"
 
 	"connectrpc.com/connect"
 	. "github.com/onsi/ginkgo/v2"
@@ -27,8 +26,8 @@ var _ = Describe("Authoring funnel", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		authoringClient = specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, serverInfo.BaseURL)
-		specClient = specgraphv1connect.NewSpecServiceClient(http.DefaultClient, serverInfo.BaseURL)
+		authoringClient = newAuthoringClient()
+		specClient = newSpecClient()
 		ctx = context.Background()
 
 		// Seed a spec so the authoring funnel has something to work with.

@@ -8,7 +8,6 @@ package api_test
 import (
 	"context"
 	"errors"
-	"net/http"
 	"time"
 
 	"connectrpc.com/connect"
@@ -28,8 +27,8 @@ var _ = Describe("error handling", func() {
 	)
 
 	BeforeEach(func() {
-		specClient = specgraphv1connect.NewSpecServiceClient(http.DefaultClient, serverInfo.BaseURL)
-		claimClient = specgraphv1connect.NewClaimServiceClient(http.DefaultClient, serverInfo.BaseURL)
+		specClient = newSpecClient()
+		claimClient = newClaimClient()
 		ctx = context.Background()
 	})
 
@@ -95,7 +94,7 @@ var _ = Describe("error handling", func() {
 	})
 
 	It("returns error for invalid stage transition via authoring", func() {
-		authoringClient := specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, serverInfo.BaseURL)
+		authoringClient := newAuthoringClient()
 
 		// Spark a spec.
 		_, err := authoringClient.Spark(ctx, connect.NewRequest(&specv1.SparkRequest{

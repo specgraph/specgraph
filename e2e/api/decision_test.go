@@ -7,7 +7,6 @@ package api_test
 
 import (
 	"context"
-	"net/http"
 
 	"connectrpc.com/connect"
 	. "github.com/onsi/ginkgo/v2"
@@ -24,7 +23,7 @@ var _ = Describe("Decision", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		client = specgraphv1connect.NewDecisionServiceClient(http.DefaultClient, serverInfo.BaseURL)
+		client = newDecisionClient()
 		ctx = context.Background()
 	})
 

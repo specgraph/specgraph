@@ -94,6 +94,10 @@ storage:
 		// Wait for the HTTP server to be ready.
 		healthURL := fmt.Sprintf("http://127.0.0.1:%d/specgraph.v1.ServerService/Health", port)
 		Eventually(func() error {
+			// Check if process crashed before attempting health check.
+			if cmd.ProcessState != nil {
+				return fmt.Errorf("serve process exited unexpectedly")
+			}
 			resp, err := http.Post(healthURL, "application/json", nil)
 			if err != nil {
 				return err
@@ -120,6 +124,11 @@ storage:
 			done <- cmd.Wait()
 		}()
 
-		Eventually(done).WithTimeout(30 * time.Second).Should(Receive())
+		var exitErr error
+		Eventually(done).WithTimeout(30 * time.Second).Should(Receive(&exitErr))
+
+		// Verify clean exit.
+		Expect(cmd.ProcessState).NotTo(BeNil())
+		Expect(cmd.ProcessState.ExitCode()).To(Equal(0), "serve should exit cleanly on SIGTERM")
 	})
 })

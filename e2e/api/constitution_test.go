@@ -7,7 +7,6 @@ package api_test
 
 import (
 	"context"
-	"net/http"
 
 	"connectrpc.com/connect"
 	. "github.com/onsi/ginkgo/v2"
@@ -25,8 +24,8 @@ var _ = Describe("Constitution", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		client = specgraphv1connect.NewConstitutionServiceClient(http.DefaultClient, serverInfo.BaseURL)
-		specClient = specgraphv1connect.NewSpecServiceClient(http.DefaultClient, serverInfo.BaseURL)
+		client = newConstitutionClient()
+		specClient = newSpecClient()
 		ctx = context.Background()
 	})
 

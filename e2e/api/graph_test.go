@@ -7,7 +7,6 @@ package api_test
 
 import (
 	"context"
-	"net/http"
 
 	"connectrpc.com/connect"
 	. "github.com/onsi/ginkgo/v2"
@@ -25,8 +24,8 @@ var _ = Describe("graph queries", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		specClient = specgraphv1connect.NewSpecServiceClient(http.DefaultClient, serverInfo.BaseURL)
-		graphClient = specgraphv1connect.NewGraphServiceClient(http.DefaultClient, serverInfo.BaseURL)
+		specClient = newSpecClient()
+		graphClient = newGraphClient()
 		ctx = context.Background()
 
 		// Create specs for the dependency chain: gq-a -> gq-b -> gq-c (DEPENDS_ON).
