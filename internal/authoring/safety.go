@@ -24,12 +24,11 @@ const (
 	SeverityNote     FindingSeverity = 3
 )
 
-// SafetyInput holds the text to scan for safety concerns.
-// Text accepts any stage-appropriate content:
-//   - Spark: seed idea text
-//   - Shape: risks list (joined)
-//   - Specify: interface_contract
-//   - Decompose: slice intents (joined)
+// SafetyInput holds the content to scan for safety concerns.
+//   - Text: the primary free-text content to scan (stage-appropriate: seed idea,
+//     interface contract, slice intents, etc.)
+//   - Scope: optional list of scope items that are concatenated with Text before scanning.
+//   - Invariants: optional list of invariants that are concatenated with Text before scanning.
 type SafetyInput struct {
 	Text       string
 	Scope      []string

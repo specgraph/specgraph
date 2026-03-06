@@ -206,6 +206,7 @@ func generateID(prefix, slug string, now time.Time) string {
 	return prefix + "-" + hex.EncodeToString(h[:])[:7]
 }
 
+// nowRFC3339 returns the current UTC time formatted as an RFC 3339 string.
 func nowRFC3339() string {
 	return time.Now().UTC().Format(time.RFC3339)
 }
