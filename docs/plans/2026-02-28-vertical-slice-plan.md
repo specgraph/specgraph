@@ -1706,12 +1706,12 @@ After completing all 10 tasks, you have a working SpecGraph with:
 
 - `specgraph init` (interactive setup) — Slice 2
 - ConstitutionService (layered ground truth) — Slice 2
-- DecisionService (ADR-style decisions as graph nodes) — Extended Services (#4)
-- ClaimService (lease-based spec ownership) — Extended Services (#4)
-- GraphService (deps, transitive deps, impact, ready, critical path) — Extended Services (#4)
+- DecisionService (ADR-style decisions as graph nodes) — Slice 1 extended
+- ClaimService (lease-based spec ownership) — Slice 1 extended
+- GraphService (deps, transitive deps, impact, ready, critical path) — Slice 1 extended
 - AuthoringService (Spark → Approve funnel) — Slice 3
-- HealthService — Extended Services (#4)
-- Comprehensive E2E test system (Ginkgo/Gomega, testcontainers) — PR #19
+- HealthService — Slice 1 extended
+- Comprehensive E2E test system (Ginkgo/Gomega, testcontainers) — Slice 3
 
 **Not yet built (future slices):**
 
