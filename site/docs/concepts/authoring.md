@@ -82,7 +82,7 @@ track it as a separate spec, or note it for the implementer.
 ### Specify
 
 **Purpose:** Define the precise interface contract and invariants. After Specify,
-the spec is machine-readable and testable.
+the spec is fully structured and testable.
 
 **Key outputs:**
 

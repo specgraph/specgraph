@@ -87,7 +87,7 @@ pipeline that adds structure and validation at each step:
 |---|---|
 | **Spark** | Capture the raw idea — a sentence, a bug report, a feature request. No structure required. |
 | **Shape** | Scope the work. Identify tradeoffs, surface risks, and decide what's in and out. |
-| **Specify** | Define the interface contract, verify criteria, and invariants. The spec becomes machine-readable. |
+| **Specify** | Define the interface contract, verify criteria, and invariants. The spec becomes structured and claimable. |
 | **Decompose** | Break large specs into smaller, independently-deliverable slices connected by `composes` edges. |
 | **Approve** | Freeze the spec for execution. After approval, the spec is immutable and claimable. |
 

@@ -20,8 +20,8 @@ soft reference, or just "related"? A wiki page can be updated, but nothing force
 consistency between the page and the codebase it describes.
 
 When AI agents enter the picture, these gaps become acute. An agent that receives
-"implement the feature in spec-42.md" faces a wall of prose with no machine-readable
-structure, no way to extract acceptance criteria programmatically, and no connection
+"implement the feature in spec-42.md" faces a wall of prose with no queryable structure, no way to extract
+acceptance criteria programmatically, and no connection
 to the project's architectural constraints. The spec format that was "good enough" for
 human teams actively blocks agent-assisted development.
 
@@ -148,7 +148,7 @@ When specifications live in a graph instead of a folder, every gap closes. Live
 queries replace manual tracing: "what's on the critical path?" is a graph traversal,
 not a grep. Stable identities replace file paths: renaming or reorganizing specs
 doesn't break references because the identity is independent of location. Structured
-nodes replace prose: each spec carries machine-readable fields for dependencies,
+nodes replace prose: each spec carries structured fields for dependencies,
 acceptance criteria, and completion status that agents can consume directly.
 
 A layered constitution anchors every authoring session in project ground truth — the
