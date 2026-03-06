@@ -27,10 +27,9 @@ docker compose -f deploy/memgraph/<profile>/docker-compose.yaml down -v
 
 ## Image
 
-All profiles use `memgraph/memgraph-platform:latest`, which bundles Memgraph Lab
+All profiles use `memgraph/memgraph-platform:2.4.0`, which bundles Memgraph Lab
 (graph visualization on port 7444) and MAGE (graph algorithms library). The image
-is ~800 MB vs ~200 MB for the bare `memgraph/memgraph` image. Pin the tag in
-production (e.g., `memgraph/memgraph-platform:2.x`).
+is ~800 MB vs ~200 MB for the bare `memgraph/memgraph` image.
 
 ## Persistence
 

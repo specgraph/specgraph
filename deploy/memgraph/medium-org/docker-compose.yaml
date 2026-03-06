@@ -29,7 +29,7 @@
 #   docker compose -f deploy/memgraph/medium-org/docker-compose.yaml up -d
 services:
   memgraph:
-    image: memgraph/memgraph-platform:latest
+    image: memgraph/memgraph-platform:2.4.0
     ports:
       - "${MEMGRAPH_PORT:-7687}:7687"
       - "${MEMGRAPH_LAB_PORT:-7444}:7444"
