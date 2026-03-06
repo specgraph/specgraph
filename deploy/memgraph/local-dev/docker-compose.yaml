@@ -1,0 +1,41 @@
+# SpecGraph Memgraph — Local Development
+#
+# Profile: local-dev
+# Target:  Solo developer or small project
+# Specs:   < 500
+# Memory:  128 MB (Memgraph base footprint ~60 MB + headroom)
+#
+# Usage:
+#   docker compose -f deploy/memgraph/local-dev/docker-compose.yaml up -d
+#
+# Persistence is enabled so data survives restarts. The WAL and snapshot
+# files live in the named volume. To start fresh, remove the volume:
+#   docker compose -f deploy/memgraph/local-dev/docker-compose.yaml down -v
+services:
+  memgraph:
+    image: memgraph/memgraph:latest
+    ports:
+      - "${MEMGRAPH_PORT:-7687}:7687"
+    command:
+      - --memory-limit=128
+      - --storage-wal-enabled=true
+      - --storage-snapshot-interval-sec=300
+      - --storage-snapshot-on-exit=true
+      - --storage-recover-on-startup=true
+      - --query-execution-timeout-sec=30
+      - --log-level=WARNING
+    volumes:
+      - specgraph-data:/var/lib/memgraph
+    deploy:
+      resources:
+        limits:
+          memory: 192m
+        reservations:
+          memory: 128m
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+volumes:
+  specgraph-data:
