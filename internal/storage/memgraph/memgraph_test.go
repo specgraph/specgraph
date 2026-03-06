@@ -22,7 +22,10 @@ func setupMemgraph(t *testing.T) (string, func()) {
 	req := testcontainers.ContainerRequest{
 		Image:        "memgraph/memgraph:latest",
 		ExposedPorts: []string{"7687/tcp"},
-		WaitingFor:   wait.ForListeningPort("7687/tcp").WithStartupTimeout(30 * time.Second),
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("7687/tcp"),
+			wait.ForLog("You are running Memgraph"),
+		).WithStartupTimeout(60 * time.Second),
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
