@@ -26,6 +26,11 @@ type ServerConfig struct {
 	Host   string `yaml:"host"`
 	Port   int    `yaml:"port"`
 	Remote string `yaml:"remote"` // if set, CLI-only mode
+	// TLS controls the URL scheme used when constructing the base URL from Host
+	// and Port (i.e. when Remote is not set). When true, "https" is used;
+	// otherwise "http" is used. TLS has no effect when Remote is set directly —
+	// the Remote value is used verbatim and must include the scheme.
+	TLS bool `yaml:"tls"`
 }
 
 // StorageConfig describes the storage backend and its options.
