@@ -141,7 +141,7 @@ tasks:
   fmt:markdown:
     desc: Format Markdown files
     cmds:
-      - rumdl fmt --exclude 'site,.git,.beads,.serena' .
+      - rumdl fmt .
   fmt:dprint:
     desc: Format with dprint
     cmds:
