@@ -31,7 +31,7 @@
 
 ## Slice 2: Constitution
 
-**Goal:** Create, store, query, and validate constitutions. `specgraph init --scan` generates one from an existing codebase.
+**Goal:** Create, store, query, and validate constitutions. `specgraph init` creates one interactively or an agent survey can draft one from an existing codebase.
 
 **What you can do after this slice:**
 

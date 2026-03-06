@@ -528,7 +528,7 @@ Tests: missing required args (via CLI runner), nonexistent slug returns error, c
 
 - Create: `e2e/api/init_test.go`
 
-Tests: `init --yes` creates config, `init --scan` generates constitution draft, running init twice rejects. Uses CLIRunner since init is a local command, not an API call.
+Tests: `init --yes` creates config, running init twice rejects. Uses CLIRunner since init is a local command, not an API call.
 
 **Commit:** `test(e2e): add init command tests`
 
