@@ -44,28 +44,12 @@ hand-maintained lists:
 - **`blocks`** — this spec prevents another from starting
 - **`composes`** — this spec is a parent that breaks down into child specs
 
-Because relationships are edges in a graph, you can query them: "show me every
-spec blocked by this one," "find all leaf specs with no dependencies," or
-"detect cycles in the dependency tree."
+Specs connect to each other via **first-class edges**: `depends_on` (ordering),
+`blocks` (bottleneck surfacing), and `composes` (parent-child decomposition).
+Because relationships are edges in a graph, you can query them directly —
+"show me every spec blocked by this one" is a single traversal.
 
-```text
-┌──────────────┐
-│  auth-api    │
-│  (approved)  │
-└──────┬───────┘
-       │ depends_on
-       ▼
-┌──────────────┐     blocks      ┌──────────────┐
-│  user-store  │ ──────────────▶ │  migration   │
-│  (in-progress)│                │  (pending)   │
-└──────┬───────┘                 └──────────────┘
-       │ composes
-       ▼
-┌──────────────┐
-│  user-cache  │
-│  (draft)     │
-└──────────────┘
-```
+[:octicons-arrow-right-24: See the full graph model with examples](concepts/specs.md)
 
 Specs also support **progressive structure**. A solo developer can start with
 just three fields — title, status, and a description — while a large team can
