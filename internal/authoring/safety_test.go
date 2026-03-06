@@ -199,3 +199,24 @@ func TestSafetyNet_HomoglyphBypass(t *testing.T) {
 			"Cyrillic homoglyph in 'credential' should not match after NFKC (Cyrillic 'е' normalizes to itself, not Latin 'e')")
 	}
 }
+
+func TestToStorageSeverity_KnownValues(t *testing.T) {
+	for _, tc := range []struct {
+		in   authoring.FindingSeverity
+		want string
+	}{
+		{authoring.SeverityCritical, "critical"},
+		{authoring.SeverityWarning, "warning"},
+		{authoring.SeverityNote, "note"},
+	} {
+		got, err := authoring.ToStorageSeverity(tc.in)
+		require.NoError(t, err)
+		require.Equal(t, tc.want, string(got))
+	}
+}
+
+func TestToStorageSeverity_UnknownValue(t *testing.T) {
+	_, err := authoring.ToStorageSeverity(authoring.FindingSeverity(99))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unrecognized FindingSeverity value")
+}

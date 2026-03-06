@@ -909,6 +909,22 @@ func TestAuthoringHandler_Amend_ApprovedTargetStageRejected(t *testing.T) {
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
+func TestAuthoringHandler_Spark_UnrecognizedScopeSniff(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug: "my-spec",
+		Output: &specv1.SparkOutput{
+			Seed:       "some intent",
+			ScopeSniff: specv1.ScopeSniff(999), // unknown numeric value not in the enum
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+	require.Contains(t, connErr.Message(), "unrecognized ScopeSniff value")
+}
+
 func TestAuthoringHandler_Decompose_StoreSafetyFlagsError(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
 		storeSafetyFlagsErr: errors.New("db write failed"),

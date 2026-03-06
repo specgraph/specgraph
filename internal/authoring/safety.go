@@ -273,7 +273,11 @@ var severityToStorage = map[FindingSeverity]storage.FindingSeverity{
 }
 
 // ToStorageSeverity converts an authoring FindingSeverity to the storage
-// representation. Unknown values map to the empty string.
-func ToStorageSeverity(s FindingSeverity) storage.FindingSeverity {
-	return severityToStorage[s]
+// representation. It returns an error for unrecognized severity values.
+func ToStorageSeverity(s FindingSeverity) (storage.FindingSeverity, error) {
+	v, ok := severityToStorage[s]
+	if !ok {
+		return "", fmt.Errorf("unrecognized FindingSeverity value: %d", s)
+	}
+	return v, nil
 }

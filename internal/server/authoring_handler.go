@@ -81,7 +81,10 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	}
 	// CreateSpec sets stage to "spark" as part of spec creation; no separate
 	// TransitionStage call is needed because the initial stage is set atomically.
-	sparkDomain := sparkOutputToDomain(msg.Output)
+	sparkDomain, err := sparkOutputToDomain(msg.Output)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	safetyInput := &authoring.SafetyInput{Text: msg.Output.GetSeed()}
 	var safetyFlags []authoring.SafetyFlagResult
 	if err := h.runInTxOrSequential(ctx,
@@ -513,23 +516,39 @@ func RegisterAuthoringService(mux *http.ServeMux, authoringStore storage.Authori
 
 // --- Proto → Domain mappers ---
 
-// scopeSniffToStorage maps proto ScopeSniff enum values to their storage string representation.
-var scopeSniffToStorage = map[specv1.ScopeSniff]string{
-	specv1.ScopeSniff_SCOPE_SNIFF_TINY:   "tiny",
-	specv1.ScopeSniff_SCOPE_SNIFF_SMALL:  "small",
-	specv1.ScopeSniff_SCOPE_SNIFF_MEDIUM: "medium",
-	specv1.ScopeSniff_SCOPE_SNIFF_LARGE:  "large",
-	specv1.ScopeSniff_SCOPE_SNIFF_EPIC:   "epic",
+// scopeSniffToStorageMap maps proto ScopeSniff enum values to their storage string representation.
+// SCOPE_SNIFF_UNSPECIFIED maps to an empty string (field not provided by caller).
+var scopeSniffToStorageMap = map[specv1.ScopeSniff]string{
+	specv1.ScopeSniff_SCOPE_SNIFF_UNSPECIFIED: "",
+	specv1.ScopeSniff_SCOPE_SNIFF_TINY:        "tiny",
+	specv1.ScopeSniff_SCOPE_SNIFF_SMALL:       "small",
+	specv1.ScopeSniff_SCOPE_SNIFF_MEDIUM:      "medium",
+	specv1.ScopeSniff_SCOPE_SNIFF_LARGE:       "large",
+	specv1.ScopeSniff_SCOPE_SNIFF_EPIC:        "epic",
 }
 
-func sparkOutputToDomain(p *specv1.SparkOutput) *storage.SparkOutput {
+// scopeSniffToStorage converts a proto ScopeSniff enum to its storage string.
+// It returns an error for unrecognized enum values (not in the known set).
+func scopeSniffToStorage(s specv1.ScopeSniff) (string, error) {
+	v, ok := scopeSniffToStorageMap[s]
+	if !ok {
+		return "", fmt.Errorf("unrecognized ScopeSniff value: %v", s)
+	}
+	return v, nil
+}
+
+func sparkOutputToDomain(p *specv1.SparkOutput) (*storage.SparkOutput, error) {
+	scope, err := scopeSniffToStorage(p.GetScopeSniff())
+	if err != nil {
+		return nil, err
+	}
 	return &storage.SparkOutput{
 		Seed:       p.GetSeed(),
 		Signal:     p.GetSignal(),
 		Questions:  p.GetQuestions(),
-		ScopeSniff: scopeSniffToStorage[p.GetScopeSniff()],
+		ScopeSniff: scope,
 		KillTest:   p.GetKillTest(),
-	}
+	}, nil
 }
 
 func shapeOutputToDomain(p *specv1.ShapeOutput) *storage.ShapeOutput {
@@ -707,8 +726,8 @@ func runAnalyticalPasses(stage authoring.Stage, posture authoring.Posture) (
 	return
 }
 
-// categoryToStorage maps authoring.SafetyCategory to the storage string representation.
-var categoryToStorage = map[authoring.SafetyCategory]storage.SafetyCategory{
+// categoryToStorageMap maps authoring.SafetyCategory to the storage string representation.
+var categoryToStorageMap = map[authoring.SafetyCategory]storage.SafetyCategory{
 	authoring.SafetyCategorySecurity: "security",
 	authoring.SafetyCategoryDataLoss: "data_loss",
 }
@@ -721,7 +740,11 @@ func (h *AuthoringHandler) persistSafetyFlags(ctx context.Context, slug string, 
 	}
 	flags := authoring.RunSafetyNet(input)
 	if len(flags) > 0 {
-		if err := h.store.StoreSafetyFlags(ctx, slug, safetyFlagsToStorage(flags)); err != nil {
+		storageFlags, err := safetyFlagsToStorage(flags)
+		if err != nil {
+			return nil, fmt.Errorf("convert safety flags: %w", err)
+		}
+		if err := h.store.StoreSafetyFlags(ctx, slug, storageFlags); err != nil {
 			return nil, fmt.Errorf("store safety flags: %w", err)
 		}
 	}
@@ -729,14 +752,23 @@ func (h *AuthoringHandler) persistSafetyFlags(ctx context.Context, slug string, 
 }
 
 // safetyFlagsToStorage converts domain-level safety results to storage types.
-func safetyFlagsToStorage(flags []authoring.SafetyFlagResult) []storage.SafetyFlag {
+// It returns an error if any flag contains an unrecognized category or severity.
+func safetyFlagsToStorage(flags []authoring.SafetyFlagResult) ([]storage.SafetyFlag, error) {
 	out := make([]storage.SafetyFlag, len(flags))
 	for i, f := range flags {
+		cat, ok := categoryToStorageMap[f.Category]
+		if !ok {
+			return nil, fmt.Errorf("unrecognized SafetyCategory value: %v", f.Category)
+		}
+		sev, err := authoring.ToStorageSeverity(f.Severity)
+		if err != nil {
+			return nil, err
+		}
 		out[i] = storage.SafetyFlag{
-			Category:    categoryToStorage[f.Category],
-			Severity:    authoring.ToStorageSeverity(f.Severity),
+			Category:    cat,
+			Severity:    sev,
 			Description: f.Description,
 		}
 	}
-	return out
+	return out, nil
 }
