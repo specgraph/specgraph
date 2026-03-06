@@ -34,7 +34,7 @@ jobs:
       - name: Lint
         run: task lint
       - name: Unit tests
-        run: go test -race -v ./cmd/... ./internal/server/... ./internal/scanner/... ./internal/storage/...
+        run: go test -race -v ./cmd/... ./internal/server/... ./internal/scanner/... ./internal/storage/
       - name: Integration tests
         run: go test -race -v -p 1 ./internal/storage/memgraph/...
   e2e-api:
