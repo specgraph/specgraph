@@ -14,11 +14,15 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+// MemgraphImage is the container image used for Memgraph in e2e tests.
+// Pin to a specific version here when reproducible builds are required.
+const MemgraphImage = "memgraph/memgraph:latest"
+
 // StartMemgraph launches a Memgraph container and returns the bolt URI.
 // The returned cleanup function terminates the container.
 func StartMemgraph(ctx context.Context) (string, func(), error) {
 	req := testcontainers.ContainerRequest{
-		Image:        "memgraph/memgraph:latest",
+		Image:        MemgraphImage,
 		ExposedPorts: []string{"7687/tcp"},
 		WaitingFor:   wait.ForListeningPort("7687/tcp").WithStartupTimeout(60 * time.Second),
 	}

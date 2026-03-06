@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/seanb4t/specgraph/internal/server"
@@ -45,7 +46,11 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 	}
 
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
-	go func() { _ = srv.Serve(listener) }()
+	go func() {
+		if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
+			fmt.Fprintf(os.Stderr, "testutil: server error: %v\n", err)
+		}
+	}()
 
 	baseURL := fmt.Sprintf("http://%s", listener.Addr().String())
 	cleanup := func() {

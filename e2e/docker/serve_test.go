@@ -7,6 +7,7 @@ package docker_test
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -31,8 +32,11 @@ var _ = Describe("Docker mode serve", Ordered, func() {
 		projectDir, err = os.MkdirTemp("", "specgraph-docker-project-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		// Pick a port unlikely to collide.
-		port = 19090
+		// Find a free port dynamically to avoid collisions when tests run in parallel.
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		Expect(err).NotTo(HaveOccurred())
+		port = listener.Addr().(*net.TCPAddr).Port
+		listener.Close()
 
 		// Write a docker-mode config file.
 		configPath = filepath.Join(projectDir, "specgraph.yaml")
