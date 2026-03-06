@@ -153,7 +153,9 @@ acceptance criteria, and completion status that agents can consume directly.
 
 A layered constitution anchors every authoring session in project ground truth — the
 tech stack, architectural principles, and constraints that should shape every spec.
-Codebase scanning grounds specs in what actually exists, not what the author imagines.
+During authoring, the AI agent reads the actual codebase — exploring
+packages, interfaces, patterns, and conventions — so that specs are grounded
+in what exists, not what the author imagines.
 Governance becomes live enforcement: a spec that violates an architectural decision
 is flagged before it's approved, not after it's implemented. The result is specs
 that are correct by construction — authored with full context, validated against
