@@ -1,0 +1,134 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+package server
+
+import (
+	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	"github.com/seanb4t/specgraph/internal/storage"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+// --- Spec ---
+
+func specToProto(s *storage.Spec) *specv1.Spec {
+	return &specv1.Spec{
+		Id:         s.ID,
+		Slug:       s.Slug,
+		Intent:     s.Intent,
+		Stage:      s.Stage,
+		Priority:   s.Priority,
+		Complexity: s.Complexity,
+		Version:    s.Version,
+		CreatedAt:  timestamppb.New(s.CreatedAt),
+		UpdatedAt:  timestamppb.New(s.UpdatedAt),
+	}
+}
+
+func specsToProto(specs []*storage.Spec) []*specv1.Spec {
+	result := make([]*specv1.Spec, len(specs))
+	for i, s := range specs {
+		result[i] = specToProto(s)
+	}
+	return result
+}
+
+// --- Decision ---
+
+var decisionStatusToProtoMap = map[storage.DecisionStatus]specv1.DecisionStatus{
+	storage.DecisionStatusProposed:   specv1.DecisionStatus_DECISION_STATUS_PROPOSED,
+	storage.DecisionStatusAccepted:   specv1.DecisionStatus_DECISION_STATUS_ACCEPTED,
+	storage.DecisionStatusSuperseded: specv1.DecisionStatus_DECISION_STATUS_SUPERSEDED,
+	storage.DecisionStatusDeprecated: specv1.DecisionStatus_DECISION_STATUS_DEPRECATED,
+}
+
+var decisionStatusFromProtoMap = map[specv1.DecisionStatus]storage.DecisionStatus{
+	specv1.DecisionStatus_DECISION_STATUS_PROPOSED:   storage.DecisionStatusProposed,
+	specv1.DecisionStatus_DECISION_STATUS_ACCEPTED:   storage.DecisionStatusAccepted,
+	specv1.DecisionStatus_DECISION_STATUS_SUPERSEDED: storage.DecisionStatusSuperseded,
+	specv1.DecisionStatus_DECISION_STATUS_DEPRECATED: storage.DecisionStatusDeprecated,
+}
+
+func decisionStatusToProto(s storage.DecisionStatus) specv1.DecisionStatus {
+	if v, ok := decisionStatusToProtoMap[s]; ok {
+		return v
+	}
+	return specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED
+}
+
+func decisionStatusFromProto(s specv1.DecisionStatus) storage.DecisionStatus {
+	if v, ok := decisionStatusFromProtoMap[s]; ok {
+		return v
+	}
+	return storage.DecisionStatusProposed
+}
+
+func decisionToProto(d *storage.Decision) *specv1.Decision {
+	return &specv1.Decision{
+		Id:           d.ID,
+		Slug:         d.Slug,
+		Title:        d.Title,
+		Status:       decisionStatusToProto(d.Status),
+		Decision:     d.Decision,
+		Rationale:    d.Rationale,
+		SupersededBy: d.SupersededBy,
+		CreatedAt:    timestamppb.New(d.CreatedAt),
+		UpdatedAt:    timestamppb.New(d.UpdatedAt),
+	}
+}
+
+func decisionsToProto(decisions []*storage.Decision) []*specv1.Decision {
+	result := make([]*specv1.Decision, len(decisions))
+	for i, d := range decisions {
+		result[i] = decisionToProto(d)
+	}
+	return result
+}
+
+// --- Edge ---
+
+var edgeTypeToProtoMap = map[storage.EdgeType]specv1.EdgeType{
+	storage.EdgeTypeDependsOn: specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
+	storage.EdgeTypeBlocks:    specv1.EdgeType_EDGE_TYPE_BLOCKS,
+	storage.EdgeTypeComposes:  specv1.EdgeType_EDGE_TYPE_COMPOSES,
+	storage.EdgeTypeRelatesTo: specv1.EdgeType_EDGE_TYPE_RELATES_TO,
+	storage.EdgeTypeInforms:   specv1.EdgeType_EDGE_TYPE_INFORMS,
+}
+
+var edgeTypeFromProtoMap = map[specv1.EdgeType]storage.EdgeType{
+	specv1.EdgeType_EDGE_TYPE_DEPENDS_ON: storage.EdgeTypeDependsOn,
+	specv1.EdgeType_EDGE_TYPE_BLOCKS:     storage.EdgeTypeBlocks,
+	specv1.EdgeType_EDGE_TYPE_COMPOSES:   storage.EdgeTypeComposes,
+	specv1.EdgeType_EDGE_TYPE_RELATES_TO: storage.EdgeTypeRelatesTo,
+	specv1.EdgeType_EDGE_TYPE_INFORMS:    storage.EdgeTypeInforms,
+}
+
+func edgeTypeToProto(e storage.EdgeType) specv1.EdgeType {
+	if v, ok := edgeTypeToProtoMap[e]; ok {
+		return v
+	}
+	return specv1.EdgeType_EDGE_TYPE_UNSPECIFIED
+}
+
+func edgeTypeFromProto(e specv1.EdgeType) storage.EdgeType {
+	if v, ok := edgeTypeFromProtoMap[e]; ok {
+		return v
+	}
+	return storage.EdgeTypeDependsOn
+}
+
+func edgeToProto(e *storage.Edge) *specv1.Edge {
+	return &specv1.Edge{
+		FromId:   e.FromID,
+		ToId:     e.ToID,
+		EdgeType: edgeTypeToProto(e.EdgeType),
+	}
+}
+
+func edgesToProto(edges []*storage.Edge) []*specv1.Edge {
+	result := make([]*specv1.Edge, len(edges))
+	for i, e := range edges {
+		result[i] = edgeToProto(e)
+	}
+	return result
+}
