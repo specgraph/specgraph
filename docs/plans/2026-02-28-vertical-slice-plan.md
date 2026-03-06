@@ -1702,12 +1702,20 @@ After completing all 10 tasks, you have a working SpecGraph with:
 | Dockerfile for server image | Done |
 | E2E smoke test | Done |
 
-**Not yet built (next vertical slices):**
+**Built in subsequent slices:**
 
-- `specgraph init` (interactive setup)
-- DecisionService, AuthoringService, ConstitutionService, ExecutionService
+- `specgraph init` (interactive setup) — Slice 2
+- ConstitutionService (layered ground truth) — Slice 2
+- DecisionService (ADR-style decisions as graph nodes) — Extended Services (#4)
+- ClaimService (lease-based spec ownership) — Extended Services (#4)
+- GraphService (deps, transitive deps, impact, ready, critical path) — Extended Services (#4)
+- AuthoringService (Spark → Approve funnel) — Slice 3
+- HealthService — Extended Services (#4)
+- Comprehensive E2E test system (Ginkgo/Gomega, testcontainers) — PR #19
+
+**Not yet built (future slices):**
+
 - Postgres+AGE backend
 - Sync adapters (Beads, GitHub, tool injection)
 - Execution bundles + bootstrap + prime endpoint
-- Graph queries (deps, critical path, impact, ready)
-- Claim/lease protocol
+- ExecutionService

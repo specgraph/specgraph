@@ -95,7 +95,7 @@ message Bundle {
 
 message PrimeResponse {
   string constitution_summary = 1;   // tech stack, constraints, conventions
-  string codebase_context = 2;       // Tier 0-1 architecture, patterns
+  string project_context = 2;       // Constitution summary, architecture patterns
   repeated Decision decisions = 3;   // resolved decisions with rationale
   string coding_conventions = 4;     // from constitution
   string callback_docs = 5;          // how to report progress/blockers/completion

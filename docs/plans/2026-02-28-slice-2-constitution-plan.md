@@ -4,7 +4,7 @@
 
 **Goal:** Add constitution support — create, store, query, validate, and emit constitutions. Extend `specgraph init` to generate constitutions from codebase scanning.
 
-**Architecture:** Constitution is a new proto service (ConstitutionService) with its own storage interface, Memgraph implementation, ConnectRPC handler, and CLI commands. The codebase scanner reads project files (go.mod, Dockerfile, CI configs, etc.) to draft a constitution. Emitters convert the constitution into tool-specific files (CLAUDE.md, .cursorrules, AGENTS.md).
+**Architecture:** Constitution is a new proto service (ConstitutionService) with its own storage interface, Memgraph implementation, ConnectRPC handler, and CLI commands. Constitution can be created interactively via `specgraph init` or manually. Emitters convert the constitution into tool-specific files (CLAUDE.md, .cursorrules, AGENTS.md).
 
 **Tech Stack:** Go, ConnectRPC (buf/connect-go), Memgraph (neo4j-go-driver v5), Cobra (CLI), buf (proto codegen), testcontainers-go (integration tests), gopkg.in/yaml.v3
 
@@ -30,9 +30,6 @@ internal/
   server/
     constitution_handler.go       # ConnectRPC handler
     constitution_handler_test.go  # Handler tests with mock
-  scanner/
-    scanner.go                    # Tier 0 codebase scanner
-    scanner_test.go               # Scanner unit tests
   emitter/
     emitter.go                    # Constitution → tool files
     emitter_test.go               # Emitter unit tests
@@ -1031,6 +1028,8 @@ git commit -m "feat(constitution): ConnectRPC handler with handler tests"
 
 ## Task 5: Codebase Scanner — Tier 0
 
+> **Superseded by Slice 3.5:** The codebase scanner has been removed. Constitution bootstrapping is now interactive/agent-driven. See `docs/plans/2026-03-03-slice-3.5-scanner-cleanup-plan.md`.
+
 **Files:**
 
 - Create: `internal/scanner/scanner.go`
@@ -1858,10 +1857,12 @@ git commit -m "feat(constitution): CLI commands — show, check, emit"
 
 After the existing config creation, add a constitution creation step that optionally scans the codebase:
 
+> **Note:** The `--scan` flag was removed in Slice 3.5. Constitution bootstrapping is now interactive/agent-driven.
+
 Add to `cmd/specgraph/init.go`:
 
-- Add a `--scan` flag
-- After writing config, if `--scan` is set, run the scanner and display the draft constitution
+- ~~Add a `--scan` flag~~ *(removed in Slice 3.5)*
+- ~~After writing config, if `--scan` is set, run the scanner and display the draft constitution~~ *(removed in Slice 3.5)*
 - If not scanning, prompt for minimal constitution fields (project name, primary language)
 - Store the constitution by calling the ConstitutionService (requires server running) OR write a local `.specgraph/constitution.yaml` file
 
@@ -1981,7 +1982,7 @@ git commit -m "chore(constitution): cleanup and final verification"
 | 2 | Storage interface | `internal/storage/constitution.go` | Compile |
 | 3 | Memgraph backend | `internal/storage/memgraph/constitution.go` | Integration (testcontainers) |
 | 4 | ConnectRPC handler | `internal/server/constitution_handler.go` | Unit (mock backend) |
-| 5 | Codebase scanner | `internal/scanner/scanner.go` | Unit (temp dirs) |
+| 5 | ~~Codebase scanner~~ *(superseded by Slice 3.5)* | ~~`internal/scanner/scanner.go`~~ | ~~Unit (temp dirs)~~ |
 | 6 | Emitter | `internal/emitter/emitter.go` | Unit |
 | 7 | CLI commands | `cmd/specgraph/constitution.go` | Build verification |
 | 8 | Enhanced init | `cmd/specgraph/init.go` | Build verification |

@@ -25,7 +25,7 @@ All E2E files use `//go:build e2e` so `go test ./...` skips them. Dedicated Task
 
 #### API Suite (`e2e/api/`)
 
-```
+```text
 Describe("health")
   It("returns healthy when server is running")
 
@@ -82,7 +82,7 @@ Describe("error handling")
 
 #### Docker Suite (`e2e/docker/`)
 
-```
+```text
 Describe("serve with docker mode", Ordered)
   It("writes docker-compose.yaml to .specgraph/")
   It("starts Memgraph via compose and serves API")
@@ -98,7 +98,7 @@ Describe("serve with docker mode", Ordered)
 
 ### File Layout
 
-```
+```text
 e2e/
   testutil/
     containers.go        # Memgraph testcontainer helper

@@ -4,7 +4,7 @@
 
 **Goal:** Author specs through the Spark-Shape-Specify-Decompose-Approve funnel with AI collaboration postures, analytical passes, and an always-on safety net.
 
-**Architecture:** AuthoringService is a new ConnectRPC service with seven RPCs (Spark, Shape, Specify, Decompose, Approve, Amend, Supersede). Each RPC validates stage preconditions, transitions the spec, stores stage-specific output (scope, risks, decisions, analytical pass results), and returns structured data for the CLI. An AuthoringBackend interface abstracts Memgraph persistence. Analytical passes (Red Team, Peripheral Vision, Consistency, Simplicity, Constitution Check) produce typed findings stored on or linked to the spec node. Postures (Drive/Partner/Support) and prompt templates are server-side configuration served via a dedicated RPC. The codebase scanner adds Tier 1 (Shape) and Tier 2 (Specify) context gathering.
+**Architecture:** AuthoringService is a new ConnectRPC service with seven RPCs (Spark, Shape, Specify, Decompose, Approve, Amend, Supersede). Each RPC validates stage preconditions, transitions the spec, stores stage-specific output (scope, risks, decisions, analytical pass results), and returns structured data for the CLI. An AuthoringBackend interface abstracts Memgraph persistence. Analytical passes (Red Team, Peripheral Vision, Consistency, Simplicity, Constitution Check) produce typed findings stored on or linked to the spec node. Postures (Drive/Partner/Support) and prompt templates are server-side configuration served via a dedicated RPC. The authoring agent reads relevant source files for codebase context during Shape and Specify stages.
 
 **Tech Stack:** Go, ConnectRPC (buf/connect-go), Memgraph (neo4j-go-driver/v5), Cobra, buf, testcontainers-go, protobuf
 
@@ -38,11 +38,6 @@ internal/
   storage/memgraph/
     authoring.go                   # Memgraph implementation
     authoring_test.go              # Integration tests
-  scanner/
-    tier1.go                       # Tier 1 scanner (shape-level context)
-    tier1_test.go                  # Tier 1 tests
-    tier2.go                       # Tier 2 scanner (specify-level context)
-    tier2_test.go                  # Tier 2 tests
   server/
     authoring_handler.go           # ConnectRPC handler
     authoring_handler_test.go      # Handler tests with mock
@@ -1969,6 +1964,8 @@ git commit -m "feat(authoring): add CLI commands (spark, shape, specify, decompo
 ---
 
 ## Task 10: Codebase Scanner Tier 1 and Tier 2
+
+> **Superseded by Slice 3.5:** Codebase context during authoring is agent-driven. The agent reads relevant source files during Shape and Specify stages using its built-in code comprehension. No custom scanner code is needed. See `docs/plans/2026-03-03-slice-3.5-scanner-cleanup-plan.md`.
 
 **Files:**
 
