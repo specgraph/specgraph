@@ -28,7 +28,7 @@ func StartMemgraph(ctx context.Context) (string, func(), error) {
 		WaitingFor: wait.ForAll(
 			wait.ForListeningPort("7687/tcp"),
 			wait.ForLog("You are running Memgraph"),
-		).WithStartupTimeout(60 * time.Second),
+		).WithDeadline(60 * time.Second),
 	}
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
