@@ -91,11 +91,30 @@ func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *stora
 }
 
 // StoreShapeOutput persists the shape stage output as JSON on the spec node.
-// TODO(spgr-bpq): ShapeOutput.Decisions are stored as plain strings in the JSON blob.
-// Per ADR-003 they should become Decision graph nodes with [:DECIDED_IN] edges,
-// enabling cross-referencing, impact analysis, and promotion at Approve time.
+// It also promotes any structured decisions to first-class Decision graph nodes
+// with DECIDED_IN edges, enabling cross-referencing and impact analysis (ADR-003).
+// Decision promotion is idempotent: existing decisions are skipped.
 func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *storage.ShapeOutput) error {
-	return s.storeJSONProperty(ctx, slug, "shape_output", output)
+	if err := s.storeJSONProperty(ctx, slug, "shape_output", output); err != nil {
+		return err
+	}
+	// Promote decisions to graph nodes with DECIDED_IN edges.
+	for _, d := range output.Decisions {
+		if d.Slug == "" {
+			continue
+		}
+		// Idempotent: skip if decision already exists.
+		if _, err := s.GetDecision(ctx, d.Slug); err == nil {
+			continue
+		}
+		if _, err := s.CreateDecision(ctx, d.Slug, d.Title, d.Decision, d.Rationale); err != nil {
+			return fmt.Errorf("create decision %q: %w", d.Slug, err)
+		}
+		if _, err := s.AddEdge(ctx, d.Slug, slug, storage.EdgeTypeDecidedIn); err != nil {
+			return fmt.Errorf("add DECIDED_IN edge %q->%q: %w", d.Slug, slug, err)
+		}
+	}
+	return nil
 }
 
 // StoreSpecifyOutput persists the specify stage output as JSON on the spec node.
