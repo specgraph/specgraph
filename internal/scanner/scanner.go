@@ -2,7 +2,7 @@
 // Copyright 2026 Sean Brandt
 
 // Package scanner implements Tier 0 codebase scanning for constitution drafting.
-package scanner //nolint:revive // package-comments: "scanner" is clearer than alternatives for this domain
+package scanner
 
 import (
 	"encoding/json"
@@ -135,9 +135,7 @@ func detectInfrastructure(dir string, c *specv1.Constitution) {
 			return nil //nolint:nilerr // skip unreadable entries gracefully
 		}
 		if d.IsDir() {
-			// Skip hidden dirs and vendor
-			name := d.Name()
-			if strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules" {
+			if skipDir(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -173,6 +171,12 @@ func detectCI(dir string, c *specv1.Constitution) {
 	if fileExists(filepath.Join(dir, ".circleci", "config.yml")) {
 		c.Tech.Infrastructure["ci"] = "CircleCI"
 	}
+}
+
+// skipDir reports whether a directory should be skipped during scanning
+// (hidden dirs, vendor, node_modules).
+func skipDir(name string) bool {
+	return strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules"
 }
 
 func fileExists(path string) bool {

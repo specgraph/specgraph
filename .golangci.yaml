@@ -43,6 +43,11 @@ linters:
       - path: cmd/
         linters:
           - wrapcheck
+      # scanner is the correct domain name despite stdlib conflict (text/scanner)
+      - path: internal/scanner/
+        text: var-naming
+        linters:
+          - revive
   settings:
     errcheck:
       check-type-assertions: true
