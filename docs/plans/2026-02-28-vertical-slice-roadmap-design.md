@@ -31,7 +31,7 @@
 
 ## Slice 2: Constitution
 
-**Goal:** Create, store, query, and validate constitutions. `specgraph init --scan` generates one from an existing codebase.
+**Goal:** Create, store, query, and validate constitutions. `specgraph init` creates one interactively or an agent survey can draft one from an existing codebase.
 
 **What you can do after this slice:**
 
@@ -99,17 +99,9 @@ Standard ConnectRPC handler. `CheckViolation` queries the spec and constitution,
 - `constitution emit --format=claude-md --output=CLAUDE.md` — generates tool file
 - Enhanced `init` — constitution creation step added to the interactive flow
 
-**Codebase Scanner — Tier 0**
+**Constitution Bootstrap**
 
-Reads project signals to draft a constitution:
-
-- `go.mod` / `package.json` / `Cargo.toml` → language + framework detection
-- `Dockerfile` / `docker-compose.yaml` → infrastructure
-- `.github/workflows/` / `.gitlab-ci.yml` → CI system
-- Directory structure → architecture type (monorepo, multi-service, single app)
-- `CLAUDE.md` / `.cursorrules` / `AGENTS.md` → existing conventions (pull mode)
-
-Output: draft `Constitution` object the user can review and approve.
+`specgraph init` creates a constitution interactively or via agent survey — no custom AST scanning. The authoring agent reads project signals (manifests, CI configs, directory structure, existing convention files) and proposes a draft constitution the user can review and approve.
 
 **Emitters**
 
@@ -260,16 +252,16 @@ Always-on, cannot be disabled. Fires at every stage regardless of posture:
 - Constitution violation: hard constraint breached
 - Showstopper: makes spec unimplementable
 
-**Codebase Scanner — Tier 1-2**
+**Agent-Driven Codebase Context**
 
-Extends Tier 0 from Slice 2:
+During authoring, the agent reads relevant code to ground specs in reality — no custom scanner code required:
 
-- **Tier 1 (Shape):** Service/module boundaries, key interfaces and data models, dependency graph, existing patterns and conventions
-- **Tier 2 (Specify):** File-level understanding of affected areas, existing test patterns, deployment details, known tech debt
+- **Tier 1 (Shape):** Agent reads service/module boundaries, key interfaces and data models, dependency graph, existing patterns and conventions
+- **Tier 2 (Specify):** Agent reads file-level details of affected areas, existing test patterns, deployment details, known tech debt
 
 ### Dependencies
 
-Slice 2 (Constitution) — constitution check pass, codebase scanner Tier 0.
+Slice 2 (Constitution) — constitution check pass, constitution creation.
 
 ### Estimated Tasks: 12-15
 
@@ -301,7 +293,7 @@ ExecutionService:
 ```
 
 Bundle message: spec snapshot, bootstrap text, callback config (endpoint, prime URL).
-PrimeResponse: constitution summary, codebase context (Tier 0-1), resolved decisions, coding conventions, callback operation docs.
+PrimeResponse: constitution summary, project context (constitution + agent-gathered), resolved decisions, coding conventions, callback operation docs.
 
 **Storage — `ExecutionBackend` interface**
 
@@ -333,7 +325,7 @@ type ExecutionBackend interface {
 HTTP endpoint (also RPC) composing:
 
 - Constitution summary (tech stack, constraints, conventions)
-- Codebase context (Tier 0-1 — architecture, service boundaries, patterns)
+- Project context (constitution + agent-gathered — architecture, service boundaries, patterns)
 - Resolved decisions for this spec
 - Coding conventions (from constitution + codebase scan)
 - Callback operation documentation (how to report progress/blockers/completion)
@@ -369,7 +361,7 @@ Background goroutine in `serve`:
 
 ### Dependencies
 
-Slice 3 (Authoring) — bundles generated from approved specs. Constitution + scanner from Slices 2-3 feed prime.
+Slice 3 (Authoring) — bundles generated from approved specs. Constitution from Slice 2 feeds prime.
 
 ### Estimated Tasks: 8-10
 

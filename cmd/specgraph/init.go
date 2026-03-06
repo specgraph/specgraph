@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/seanb4t/specgraph/internal/config"
-	"github.com/seanb4t/specgraph/internal/scanner"
 	"github.com/spf13/cobra"
 )
 
@@ -30,14 +29,10 @@ var initCmd = &cobra.Command{
 	RunE:  runInit,
 }
 
-var (
-	initYes  bool
-	initScan bool
-)
+var initYes bool
 
 func init() {
 	initCmd.Flags().BoolVar(&initYes, "yes", false, "non-interactive mode with defaults")
-	initCmd.Flags().BoolVar(&initScan, "scan", false, "scan codebase and generate constitution draft")
 	rootCmd.AddCommand(initCmd)
 }
 
@@ -99,6 +94,7 @@ func runInit(_ *cobra.Command, _ []string) error {
 					return err
 				}
 				cfg.Storage.Postgres.URL = url
+				fmt.Fprintln(os.Stderr, "Warning: credentials will be stored in plaintext in the config file. Ensure .specgraph/config.yaml is excluded from version control.")
 			}
 		}
 	}
@@ -115,45 +111,5 @@ func runInit(_ *cobra.Command, _ []string) error {
 	}
 	fmt.Printf("Initialized SpecGraph project at %s\n", configPath)
 
-	doScan := initScan
-	if doScan {
-		if err := runConstitutionScan(configPath); err != nil {
-			return err
-		}
-	} else {
-		fmt.Println("Hint: run 'specgraph init --scan' to auto-generate a constitution draft.")
-	}
-
-	return nil
-}
-
-func runConstitutionScan(configPath string) error {
-	fmt.Println("Scanning codebase for constitution draft...")
-	proto, err := scanner.Scan(".")
-	if err != nil {
-		return fmt.Errorf("scanning codebase: %w", err)
-	}
-
-	proto.Name = "project"
-	c := config.ConstitutionConfigFromProto(proto)
-
-	constitutionPath := filepath.Join(filepath.Dir(configPath), "constitution.yaml")
-
-	if c.Tech.Languages.Primary != "" {
-		fmt.Printf("Detected language: %s\n", c.Tech.Languages.Primary)
-	} else {
-		fmt.Println("Warning: could not detect primary language; update constitution.yaml manually.")
-	}
-	if len(c.Tech.Frameworks) > 0 {
-		fmt.Printf("Detected frameworks: %v\n", c.Tech.Frameworks)
-	}
-	if len(c.Tech.Infrastructure) > 0 {
-		fmt.Printf("Detected infrastructure: %v\n", c.Tech.Infrastructure)
-	}
-
-	if err := config.WriteConstitutionYAML(constitutionPath, c); err != nil {
-		return fmt.Errorf("writing constitution draft: %w", err)
-	}
-	fmt.Printf("Constitution draft written to %s\n", constitutionPath)
 	return nil
 }

@@ -12,6 +12,7 @@ disable = [
   "MD057", # Relative link validation (TODO: re-enable after fixing broken links)
   "MD060", # Table column alignment (too strict for complex tables)
   "MD070", # Nested code fences — plan docs legitimately embed code with fences
+  "MD024", # Duplicate headings — plan docs reuse heading names across skill templates
 ]
 
 exclude = [
@@ -23,8 +24,8 @@ exclude = [
   "dist",
   "node_modules",
   "vendor",
-  "docs/plans", # Plan docs embed nested code fences in skill/config examples
-  "site/docs", # Material for MkDocs uses extended markdown (grid cards, admonitions)
+  "site", # MkDocs extended markdown (grid cards, admonitions, icons) — validated by mkdocs build
+  "docs/plans/2026-02-28-slice-7-claude-code-plugin-plan.md", # TODO(spgr-omf): deeply malformed fences cause rumdl fmt loop — remove after cleanup
 ]
 
 respect-gitignore = true

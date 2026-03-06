@@ -10,9 +10,10 @@
 
 ---
 
-### Task 1: Add Ginkgo/Gomega Dependencies and Scaffold
+## Task 1: Add Ginkgo/Gomega Dependencies and Scaffold
 
 **Files:**
+
 - Modify: `go.mod`
 - Create: `e2e/testutil/containers.go`
 - Create: `e2e/testutil/server.go`
@@ -21,6 +22,7 @@
 **Step 1: Install ginkgo CLI and add deps**
 
 Run:
+
 ```bash
 go install github.com/onsi/ginkgo/v2/ginkgo@latest
 go get github.com/onsi/ginkgo/v2
@@ -242,9 +244,10 @@ git commit -m "test(e2e): add ginkgo/gomega deps and test helpers"
 
 ---
 
-### Task 2: API Suite Bootstrap and Health Test
+## Task 2: API Suite Bootstrap and Health Test
 
 **Files:**
+
 - Create: `e2e/api/api_suite_test.go`
 - Create: `e2e/api/health_test.go`
 
@@ -347,9 +350,10 @@ git commit -m "test(e2e): add API suite bootstrap and health check test"
 
 ---
 
-### Task 3: Spec Lifecycle Tests
+## Task 3: Spec Lifecycle Tests
 
 **Files:**
+
 - Create: `e2e/api/spec_test.go`
 
 **Step 1: Create `e2e/api/spec_test.go`**
@@ -444,9 +448,10 @@ git commit -m "test(e2e): add spec lifecycle tests"
 
 ---
 
-### Task 4: Decision Lifecycle Tests
+## Task 4: Decision Lifecycle Tests
 
 **Files:**
+
 - Create: `e2e/api/decision_test.go`
 
 Tests: create a decision, list decisions, show decision by slug. Same pattern as spec tests but using `DecisionServiceClient`.
@@ -455,9 +460,10 @@ Tests: create a decision, list decisions, show decision by slug. Same pattern as
 
 ---
 
-### Task 5: Constitution Tests
+## Task 5: Constitution Tests
 
 **Files:**
+
 - Create: `e2e/api/constitution_test.go`
 
 Tests: show constitution (requires bootstrapping one via store in BeforeAll or via YAML file), check a spec against constitution, emit constitution.
@@ -466,9 +472,10 @@ Tests: show constitution (requires bootstrapping one via store in BeforeAll or v
 
 ---
 
-### Task 6: Claim Protocol Tests
+## Task 6: Claim Protocol Tests
 
 **Files:**
+
 - Create: `e2e/api/claim_test.go`
 
 Tests: create a spec, advance it to approved stage, claim it, verify double-claim fails, unclaim it.
@@ -477,9 +484,10 @@ Tests: create a spec, advance it to approved stage, claim it, verify double-clai
 
 ---
 
-### Task 7: Graph Edge and Query Tests
+## Task 7: Graph Edge and Query Tests
 
 **Files:**
+
 - Create: `e2e/api/edge_test.go`
 - Create: `e2e/api/graph_test.go`
 
@@ -490,9 +498,10 @@ Graph query tests: deps traversal, ready command, critical-path, impact analysis
 
 ---
 
-### Task 8: Authoring Funnel Tests
+## Task 8: Authoring Funnel Tests
 
 **Files:**
+
 - Create: `e2e/api/authoring_test.go`
 
 Tests the full funnel: spark → shape → specify → decompose → approve. Uses the AuthoringServiceClient. Each stage advances the spec and validates the stage transition.
@@ -501,9 +510,10 @@ Tests the full funnel: spark → shape → specify → decompose → approve. Us
 
 ---
 
-### Task 9: Error Handling Tests
+## Task 9: Error Handling Tests
 
 **Files:**
+
 - Create: `e2e/api/errors_test.go`
 
 Tests: missing required args (via CLI runner), nonexistent slug returns error, claim on unapproved spec fails, edge cycle detection.
@@ -512,20 +522,22 @@ Tests: missing required args (via CLI runner), nonexistent slug returns error, c
 
 ---
 
-### Task 10: Init Command Tests
+## Task 10: Init Command Tests
 
 **Files:**
+
 - Create: `e2e/api/init_test.go`
 
-Tests: `init --yes` creates config, `init --scan` generates constitution draft, running init twice rejects. Uses CLIRunner since init is a local command, not an API call.
+Tests: `init --yes` creates config, running init twice rejects. Uses CLIRunner since init is a local command, not an API call.
 
 **Commit:** `test(e2e): add init command tests`
 
 ---
 
-### Task 11: Docker Mode Suite
+## Task 11: Docker Mode Suite
 
 **Files:**
+
 - Create: `e2e/docker/docker_suite_test.go`
 - Create: `e2e/docker/serve_test.go`
 
@@ -535,9 +547,10 @@ Bootstrap: builds specgraph binary in BeforeSuite. Tests: creates temp dir, writ
 
 ---
 
-### Task 12: Taskfile and Cleanup
+## Task 12: Taskfile and Cleanup
 
 **Files:**
+
 - Modify: `Taskfile.yml` — add `test:e2e`, `test:e2e:api`, `test:e2e:docker` targets
 - Delete: `e2e/smoke_test.sh` — replaced by Go tests
 - Modify: `Taskfile.yml` — update existing `test:e2e` to use new Go tests
@@ -567,7 +580,7 @@ git commit -m "test(e2e): add Taskfile targets and remove old smoke test"
 
 ---
 
-### Task 13: Verify and License Headers
+## Task 13: Verify and License Headers
 
 **Step 1: Add license headers to any missing files**
 

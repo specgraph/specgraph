@@ -25,13 +25,12 @@ All E2E files use `//go:build e2e` so `go test ./...` skips them. Dedicated Task
 
 #### API Suite (`e2e/api/`)
 
-```
+```text
 Describe("health")
   It("returns healthy when server is running")
 
 Describe("specgraph init")
   It("creates config with defaults in non-interactive mode")
-  It("scans codebase and generates constitution draft with --scan")
   It("rejects init when config already exists")
 
 Describe("spec lifecycle", Ordered)
@@ -82,7 +81,7 @@ Describe("error handling")
 
 #### Docker Suite (`e2e/docker/`)
 
-```
+```text
 Describe("serve with docker mode", Ordered)
   It("writes docker-compose.yaml to .specgraph/")
   It("starts Memgraph via compose and serves API")
@@ -98,7 +97,7 @@ Describe("serve with docker mode", Ordered)
 
 ### File Layout
 
-```
+```text
 e2e/
   testutil/
     containers.go        # Memgraph testcontainer helper
@@ -107,7 +106,7 @@ e2e/
   api/
     api_suite_test.go    # Ginkgo bootstrap, BeforeSuite/AfterSuite
     health_test.go       # health check
-    init_test.go         # init, init --scan
+    init_test.go         # init
     spec_test.go         # spec create/list/show/update
     decision_test.go     # decision create/list/show
     constitution_test.go # constitution show/check/emit

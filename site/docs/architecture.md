@@ -125,7 +125,6 @@ specgraph/
 │   ├── storage/            # Backend interface + implementations
 │   │   └── memgraph/       # Memgraph implementation
 │   ├── authoring/          # Domain logic (stages, postures, passes)
-│   ├── scanner/            # Codebase context gathering
 │   └── config/             # Server configuration
 ├── cmd/specgraph/          # CLI entry point
 ├── docker/                 # Docker Compose for dev
