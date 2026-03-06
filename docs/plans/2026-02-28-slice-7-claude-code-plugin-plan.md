@@ -216,9 +216,6 @@ specgraph list --format=table
 ```
 ```
 
-
-```text
-
 ```text
 
 ```text
@@ -288,11 +285,7 @@ specgraph health
 
 ```text
 
-
 ```text
-
-```text
-
 
 ```text
 
@@ -812,9 +805,6 @@ specgraph list --format=table
 ```
 ```
 
-
-```text
-
 ```text
 
 ```text
@@ -1095,11 +1085,7 @@ specgraph show $SLUG --format=json
 
 ```text
 
-
 ```text
-
-```text
-
 
 ```text
 
@@ -1186,7 +1172,6 @@ As the user works, periodically report progress:
 ```bash
 specgraph progress $SLUG --message="$MESSAGE"
 ```
-
 
 ```text
 
@@ -1575,9 +1560,6 @@ Run the full SpecGraph spec-driven development workflow from Claude Code.
 claude /plugin install specgraph
 ```
 ```
-
-
-```text
 
 ```text
 

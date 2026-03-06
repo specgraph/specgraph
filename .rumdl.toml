@@ -12,6 +12,7 @@ disable = [
   "MD057", # Relative link validation (TODO: re-enable after fixing broken links)
   "MD060", # Table column alignment (too strict for complex tables)
   "MD070", # Nested code fences — plan docs legitimately embed code with fences
+  "MD024", # Duplicate headings — plan docs reuse heading names across skill templates
 ]
 
 exclude = [

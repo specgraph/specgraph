@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Add Ginkgo/Gomega Dependencies and Scaffold
+## Task 1: Add Ginkgo/Gomega Dependencies and Scaffold
 
 **Files:**
 
@@ -244,7 +244,7 @@ git commit -m "test(e2e): add ginkgo/gomega deps and test helpers"
 
 ---
 
-### Task 2: API Suite Bootstrap and Health Test
+## Task 2: API Suite Bootstrap and Health Test
 
 **Files:**
 
@@ -350,7 +350,7 @@ git commit -m "test(e2e): add API suite bootstrap and health check test"
 
 ---
 
-### Task 3: Spec Lifecycle Tests
+## Task 3: Spec Lifecycle Tests
 
 **Files:**
 
@@ -448,7 +448,7 @@ git commit -m "test(e2e): add spec lifecycle tests"
 
 ---
 
-### Task 4: Decision Lifecycle Tests
+## Task 4: Decision Lifecycle Tests
 
 **Files:**
 
@@ -460,7 +460,7 @@ Tests: create a decision, list decisions, show decision by slug. Same pattern as
 
 ---
 
-### Task 5: Constitution Tests
+## Task 5: Constitution Tests
 
 **Files:**
 
@@ -472,7 +472,7 @@ Tests: show constitution (requires bootstrapping one via store in BeforeAll or v
 
 ---
 
-### Task 6: Claim Protocol Tests
+## Task 6: Claim Protocol Tests
 
 **Files:**
 
@@ -484,7 +484,7 @@ Tests: create a spec, advance it to approved stage, claim it, verify double-clai
 
 ---
 
-### Task 7: Graph Edge and Query Tests
+## Task 7: Graph Edge and Query Tests
 
 **Files:**
 
@@ -498,7 +498,7 @@ Graph query tests: deps traversal, ready command, critical-path, impact analysis
 
 ---
 
-### Task 8: Authoring Funnel Tests
+## Task 8: Authoring Funnel Tests
 
 **Files:**
 
@@ -510,7 +510,7 @@ Tests the full funnel: spark → shape → specify → decompose → approve. Us
 
 ---
 
-### Task 9: Error Handling Tests
+## Task 9: Error Handling Tests
 
 **Files:**
 
@@ -522,7 +522,7 @@ Tests: missing required args (via CLI runner), nonexistent slug returns error, c
 
 ---
 
-### Task 10: Init Command Tests
+## Task 10: Init Command Tests
 
 **Files:**
 
@@ -534,7 +534,7 @@ Tests: `init --yes` creates config, running init twice rejects. Uses CLIRunner s
 
 ---
 
-### Task 11: Docker Mode Suite
+## Task 11: Docker Mode Suite
 
 **Files:**
 
@@ -547,7 +547,7 @@ Bootstrap: builds specgraph binary in BeforeSuite. Tests: creates temp dir, writ
 
 ---
 
-### Task 12: Taskfile and Cleanup
+## Task 12: Taskfile and Cleanup
 
 **Files:**
 
@@ -580,7 +580,7 @@ git commit -m "test(e2e): add Taskfile targets and remove old smoke test"
 
 ---
 
-### Task 13: Verify and License Headers
+## Task 13: Verify and License Headers
 
 **Step 1: Add license headers to any missing files**
 
