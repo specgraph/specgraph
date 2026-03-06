@@ -853,6 +853,62 @@ func TestAuthoringHandler_Decompose_EmptySlices(t *testing.T) {
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
+func TestAuthoringHandler_Spark_ConstitutionViolationsReturned(t *testing.T) {
+	// Spark runs PassConstitutionCheck for all postures; response should include violations.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:    "cv-spec",
+		Output:  &specv1.SparkOutput{Seed: "some intent"},
+		Posture: specv1.Posture_POSTURE_DRIVE,
+	}))
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.Msg.ConstitutionViolations, "constitution_violations should be populated for Spark with DRIVE posture")
+}
+
+func TestAuthoringHandler_Spark_ConstitutionViolations_UnspecifiedPosture(t *testing.T) {
+	// PassConstitutionCheck auto-runs for all postures; UNSPECIFIED resolves to Partner which still auto-runs it.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:    "cv-unspecified",
+		Output:  &specv1.SparkOutput{Seed: "some intent"},
+		Posture: specv1.Posture_POSTURE_UNSPECIFIED,
+	}))
+	require.NoError(t, err)
+	// UNSPECIFIED resolves to Partner via ResolvePosture; constitution_check still auto-runs.
+	require.NotEmpty(t, resp.Msg.ConstitutionViolations, "constitution_violations should be populated even for UNSPECIFIED posture")
+}
+
+func TestAuthoringHandler_Shape_UnspecifiedPostureResolved(t *testing.T) {
+	// UNSPECIFIED posture resolves to Partner, which auto-runs constitution_check.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug: "my-spec",
+		Output: &specv1.ShapeOutput{
+			ScopeIn: []string{"auth"},
+			Risks:   []string{"latency"},
+		},
+		Posture: specv1.Posture_POSTURE_UNSPECIFIED,
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.Output)
+}
+
+func TestAuthoringHandler_Amend_ApprovedTargetStageRejected(t *testing.T) {
+	// Amend with target_stage=APPROVED should return CodeInvalidArgument.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{
+		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.AuthoringStage("shape"), Version: 2},
+	}, &fakeBackend{})
+	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
+		Slug:        "my-spec",
+		Reason:      "re-approve",
+		TargetStage: specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
 func TestAuthoringHandler_Decompose_StoreSafetyFlagsError(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
 		storeSafetyFlagsErr: errors.New("db write failed"),

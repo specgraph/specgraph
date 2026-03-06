@@ -108,14 +108,17 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 		}
 		return nil, h.stageError(err)
 	}
+	resolvedPosture := authoring.ResolvePosture(authoring.ProtoToPosture(msg.Posture), nil)
+	_, _, _, _, constitutionViolations := runAnalyticalPasses(authoring.StageSpark, resolvedPosture)
 	// Output is returned as-is from the client request. The storage layer stores
 	// domain-typed stage outputs (via StoreSparkOutput) but does not provide a
 	// proto-typed round-trip getter. This is acceptable because the output was
 	// just persisted in the same request and has not been enriched server-side.
 	return connect.NewResponse(&specv1.SparkResponse{
-		Output:      msg.Output,
-		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts: authoring.PromptsToProto(authoring.StageShape),
+		Output:                 msg.Output,
+		SafetyFlags:            authoring.SafetyResultsToProto(safetyFlags),
+		ConstitutionViolations: constitutionViolations,
+		NextPrompts:            authoring.PromptsToProto(authoring.StageShape),
 	}), nil
 }
 
@@ -179,7 +182,8 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	); err != nil {
 		return nil, h.stageError(err)
 	}
-	peripheralVision, _, _, _ := runAnalyticalPasses(authoring.StageShape, authoring.ProtoToPosture(msg.Posture))
+	resolvedPosture := authoring.ResolvePosture(authoring.ProtoToPosture(msg.Posture), nil)
+	peripheralVision, _, _, _, _ := runAnalyticalPasses(authoring.StageShape, resolvedPosture)
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.ShapeResponse{
 		Output:           msg.Output,
@@ -241,7 +245,8 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	); err != nil {
 		return nil, h.stageError(err)
 	}
-	_, redTeam, consistencyIssues, _ := runAnalyticalPasses(authoring.StageSpecify, authoring.ProtoToPosture(msg.Posture))
+	resolvedPosture := authoring.ResolvePosture(authoring.ProtoToPosture(msg.Posture), nil)
+	_, redTeam, consistencyIssues, _, _ := runAnalyticalPasses(authoring.StageSpecify, resolvedPosture)
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.SpecifyResponse{
 		Output:            msg.Output,
@@ -309,7 +314,8 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	); err != nil {
 		return nil, h.stageError(err)
 	}
-	_, _, _, simplicity := runAnalyticalPasses(authoring.StageDecompose, authoring.ProtoToPosture(msg.Posture))
+	resolvedPosture := authoring.ResolvePosture(authoring.ProtoToPosture(msg.Posture), nil)
+	_, _, _, simplicity, _ := runAnalyticalPasses(authoring.StageDecompose, resolvedPosture)
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.DecomposeResponse{
 		Output:         msg.Output,
@@ -363,6 +369,9 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	}
 	if req.Msg.TargetStage == specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("target_stage is required"))
+	}
+	if req.Msg.TargetStage == specv1.AuthoringStage_AUTHORING_STAGE_APPROVED {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("approved specs cannot be amended to approved; use Approve RPC"))
 	}
 	targetStage, ok := protoToStage[req.Msg.TargetStage]
 	if !ok {
@@ -663,9 +672,16 @@ func runAnalyticalPasses(stage authoring.Stage, posture authoring.Posture) (
 	redTeam []*specv1.RedTeamFinding,
 	consistencyIssues []*specv1.ConsistencyIssue,
 	simplicity []*specv1.SimplicityFinding,
+	constitutionViolations []*specv1.ConstitutionViolation,
 ) {
 	for _, name := range authoring.PassesForStage(stage, posture) {
 		switch authoring.PassName(name) {
+		case authoring.PassConstitutionCheck:
+			constitutionViolations = append(constitutionViolations, &specv1.ConstitutionViolation{
+				Constraint: "constitution_check pass placeholder",
+				Violation:  "",
+				Severity:   specv1.FindingSeverity_FINDING_SEVERITY_NOTE,
+			})
 		case authoring.PassPeripheralVision:
 			peripheralVision = append(peripheralVision, &specv1.PeripheralVisionItem{
 				Item:        "peripheral_vision pass placeholder",
