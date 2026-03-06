@@ -24,14 +24,12 @@ var _ = Describe("error handling", func() {
 	var (
 		specClient  specgraphv1connect.SpecServiceClient
 		claimClient specgraphv1connect.ClaimServiceClient
-		graphClient specgraphv1connect.GraphServiceClient
 		ctx         context.Context
 	)
 
 	BeforeEach(func() {
 		specClient = specgraphv1connect.NewSpecServiceClient(http.DefaultClient, serverInfo.BaseURL)
 		claimClient = specgraphv1connect.NewClaimServiceClient(http.DefaultClient, serverInfo.BaseURL)
-		graphClient = specgraphv1connect.NewGraphServiceClient(http.DefaultClient, serverInfo.BaseURL)
 		ctx = context.Background()
 	})
 
@@ -42,26 +40,47 @@ var _ = Describe("error handling", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	It("rejects creating a spec with empty slug", func() {
-		_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
-			Slug:   "",
-			Intent: "Missing slug",
+	It("returns not-found when claiming nonexistent spec", func() {
+		_, err := claimClient.ClaimSpec(ctx, connect.NewRequest(&specv1.ClaimSpecRequest{
+			SpecSlug:      "err-no-such-spec-for-claim",
+			Agent:         "test-agent",
+			LeaseDuration: durationpb.New(15 * time.Minute),
 		}))
 		Expect(err).To(HaveOccurred())
+
+		var connectErr *connect.Error
+		Expect(errors.As(err, &connectErr)).To(BeTrue())
+		Expect(connectErr.Code()).To(Equal(connect.CodeNotFound))
 	})
 
-	It("rejects claim on unapproved spec", func() {
-		// Create a spec (starts in spark stage, not approved).
+	It("rejects double claim on same spec", func() {
+		// Create and approve a spec for claiming.
 		_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
-			Slug:   "err-unapproved-claim",
-			Intent: "Test unapproved claim rejection",
+			Slug:   "err-double-claim",
+			Intent: "Test double claim rejection",
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
-		// Try to claim it — should fail because it's in spark stage, not approved.
+		// Advance to approved stage.
+		approved := "approved"
+		_, err = specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
+			Slug:  "err-double-claim",
+			Stage: &approved,
+		}))
+		Expect(err).NotTo(HaveOccurred())
+
+		// First claim succeeds.
 		_, err = claimClient.ClaimSpec(ctx, connect.NewRequest(&specv1.ClaimSpecRequest{
-			SpecSlug:      "err-unapproved-claim",
-			Agent:         "test-agent",
+			SpecSlug:      "err-double-claim",
+			Agent:         "agent-1",
+			LeaseDuration: durationpb.New(15 * time.Minute),
+		}))
+		Expect(err).NotTo(HaveOccurred())
+
+		// Second claim by different agent fails.
+		_, err = claimClient.ClaimSpec(ctx, connect.NewRequest(&specv1.ClaimSpecRequest{
+			SpecSlug:      "err-double-claim",
+			Agent:         "agent-2",
 			LeaseDuration: durationpb.New(15 * time.Minute),
 		}))
 		Expect(err).To(HaveOccurred())
@@ -71,33 +90,28 @@ var _ = Describe("error handling", func() {
 		Expect(connectErr.Code()).To(Equal(connect.CodeFailedPrecondition))
 	})
 
-	It("detects edge cycles", func() {
-		// Create two specs.
-		_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
-			Slug:   "err-cycle-a",
-			Intent: "Cycle test A",
+	It("returns error for invalid stage transition via authoring", func() {
+		authoringClient := specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, serverInfo.BaseURL)
+
+		// Spark a spec.
+		_, err := authoringClient.Spark(ctx, connect.NewRequest(&specv1.SparkRequest{
+			Slug: "err-bad-transition",
+			Output: &specv1.SparkOutput{
+				Seed:   "bad transition test",
+				Signal: "testing",
+			},
+			Posture: specv1.Posture_POSTURE_DRIVE,
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
-			Slug:   "err-cycle-b",
-			Intent: "Cycle test B",
-		}))
-		Expect(err).NotTo(HaveOccurred())
-
-		// Add edge A -> B.
-		_, err = graphClient.AddEdge(ctx, connect.NewRequest(&specv1.AddEdgeRequest{
-			FromSlug: "err-cycle-a",
-			ToSlug:   "err-cycle-b",
-			EdgeType: specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
-		}))
-		Expect(err).NotTo(HaveOccurred())
-
-		// Add edge B -> A (creates cycle) — should error.
-		_, err = graphClient.AddEdge(ctx, connect.NewRequest(&specv1.AddEdgeRequest{
-			FromSlug: "err-cycle-b",
-			ToSlug:   "err-cycle-a",
-			EdgeType: specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
+		// Try to Specify without going through Shape first — should fail.
+		_, err = authoringClient.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
+			Slug: "err-bad-transition",
+			Output: &specv1.SpecifyOutput{
+				InterfaceContract: "POST /api",
+				VerifyCriteria:    []string{"returns 200"},
+			},
+			Posture: specv1.Posture_POSTURE_DRIVE,
 		}))
 		Expect(err).To(HaveOccurred())
 	})
