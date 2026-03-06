@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +16,7 @@ func TestCreateAndGetDecision(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
@@ -43,7 +42,7 @@ func TestListDecisions(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
@@ -66,7 +65,7 @@ func TestUpdateDecision(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
@@ -88,7 +87,7 @@ func TestGetDecision_NotFound(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
