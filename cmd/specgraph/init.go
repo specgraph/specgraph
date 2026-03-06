@@ -94,6 +94,7 @@ func runInit(_ *cobra.Command, _ []string) error {
 					return err
 				}
 				cfg.Storage.Postgres.URL = url
+				fmt.Fprintln(os.Stderr, "Warning: credentials will be stored in plaintext in the config file. Ensure .specgraph/config.yaml is excluded from version control.")
 			}
 		}
 	}
