@@ -25,7 +25,10 @@ func StartMemgraph(ctx context.Context) (string, func(), error) {
 	req := testcontainers.ContainerRequest{
 		Image:        MemgraphImage,
 		ExposedPorts: []string{"7687/tcp"},
-		WaitingFor:   wait.ForListeningPort("7687/tcp").WithStartupTimeout(60 * time.Second),
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("7687/tcp"),
+			wait.ForLog("You are running Memgraph"),
+		).WithStartupTimeout(60 * time.Second),
 	}
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
