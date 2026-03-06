@@ -192,6 +192,16 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 	return recordToSpec(records[0])
 }
 
+// ClearAll removes all nodes and relationships from the graph.
+// Intended for test cleanup only.
+func (s *Store) ClearAll(ctx context.Context) error {
+	_, err := s.executeQuery(ctx, "MATCH (n) DETACH DELETE n", nil)
+	if err != nil {
+		return fmt.Errorf("memgraph: clear all: %w", err)
+	}
+	return nil
+}
+
 // Close releases the driver resources.
 func (s *Store) Close(ctx context.Context) error {
 	if err := s.driver.Close(ctx); err != nil {

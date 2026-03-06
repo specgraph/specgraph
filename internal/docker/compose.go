@@ -58,17 +58,6 @@ func EnsureComposeFile(projectDir, backend string) (string, error) {
 }
 
 const memgraphComposeTemplate = `services:
-  specgraph:
-    image: ghcr.io/seanb4t/specgraph:latest
-    ports:
-      - "${SPECGRAPH_PORT:-9090}:9090"
-    depends_on:
-      memgraph:
-        condition: service_healthy
-    environment:
-      - SPECGRAPH_STORAGE_BACKEND=memgraph
-      - SPECGRAPH_STORAGE_BOLT_URI=bolt://memgraph:7687
-
   memgraph:
     image: memgraph/memgraph:latest
     ports:
@@ -88,17 +77,6 @@ volumes:
 // postgresComposeFormat uses %%[1]s placeholders for the default database
 // credential to avoid gosec G101 (hardcoded credential pattern).
 const postgresComposeFormat = `services:
-  specgraph:
-    image: ghcr.io/seanb4t/specgraph:latest
-    ports:
-      - "${SPECGRAPH_PORT:-9090}:9090"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      - SPECGRAPH_STORAGE_BACKEND=postgres
-      - SPECGRAPH_STORAGE_POSTGRES_DSN=postgres://%[1]s:%[1]s@postgres:5432/%[1]s?sslmode=disable
-
   postgres:
     image: apache/age:latest
     ports:

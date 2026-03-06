@@ -22,7 +22,10 @@ func setupMemgraph(t *testing.T) (string, func()) {
 	req := testcontainers.ContainerRequest{
 		Image:        "memgraph/memgraph:latest",
 		ExposedPorts: []string{"7687/tcp"},
-		WaitingFor:   wait.ForListeningPort("7687/tcp").WithStartupTimeout(30 * time.Second),
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("7687/tcp"),
+			wait.ForLog("You are running Memgraph"),
+		).WithDeadline(60 * time.Second),
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -46,12 +49,29 @@ func setupMemgraph(t *testing.T) (string, func()) {
 	return boltURI, cleanup
 }
 
+// newStore creates a Store with retry logic to handle the brief window between
+// the container wait strategy completing and the bolt protocol being fully ready.
+func newStore(ctx context.Context, boltURI string) (*memgraph.Store, error) {
+	var (
+		store *memgraph.Store
+		err   error
+	)
+	for range 10 {
+		store, err = memgraph.New(ctx, boltURI)
+		if err == nil {
+			return store, nil
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	return nil, err
+}
+
 func TestCreateAndGetSpec(t *testing.T) {
 	boltURI, cleanup := setupMemgraph(t)
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
@@ -87,7 +107,7 @@ func TestListSpecs(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
@@ -114,7 +134,7 @@ func TestUpdateSpec(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
@@ -152,7 +172,7 @@ func TestGetSpec_NotFound(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 

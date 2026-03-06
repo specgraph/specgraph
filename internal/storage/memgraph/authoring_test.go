@@ -22,7 +22,7 @@ func newTestStore(t *testing.T) (*memgraph.Store, context.Context) {
 	boltURI, cleanup := setupMemgraph(t)
 	t.Cleanup(cleanup)
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := store.Close(ctx); err != nil {
@@ -333,7 +333,7 @@ func TestStoreSafetyFlags(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	store, err := memgraph.New(ctx, boltURI)
+	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
