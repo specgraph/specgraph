@@ -409,11 +409,15 @@ func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[s
 	if req.Msg.Slug == req.Msg.SupersededBy {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a spec cannot supersede itself"))
 	}
+	if len(req.Msg.Reason) > maxFieldLen {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("reason exceeds maximum length of %d", maxFieldLen))
+	}
 	if err := h.store.SupersedeSpec(ctx, req.Msg.Slug, req.Msg.SupersededBy, req.Msg.Reason); err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("supersede: %w", err))
+		h.logger.Error("supersede failed", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("supersede failed"))
 	}
 	return connect.NewResponse(&specv1.SupersedeResponse{
 		Slug:         req.Msg.Slug,
@@ -677,6 +681,9 @@ func (h *AuthoringHandler) stageError(err error) error {
 	}
 	if errors.Is(err, storage.ErrSpecNotFound) {
 		return connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
+	}
+	if errors.Is(err, storage.ErrSpecSuperseded) {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec has been superseded"))
 	}
 	h.logger.Error("stageError: internal error", slog.Any("error", err))
 	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
