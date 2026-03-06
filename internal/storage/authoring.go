@@ -39,17 +39,25 @@ type Approach struct {
 	Tradeoffs   []string `json:"tradeoffs,omitempty"`
 }
 
+// DecisionInput captures a design decision made during spec shaping.
+type DecisionInput struct {
+	Slug      string `json:"slug"`
+	Title     string `json:"title"`
+	Decision  string `json:"decision"`
+	Rationale string `json:"rationale"`
+}
+
 // ShapeOutput captures scope boundaries, approaches, and success criteria.
 type ShapeOutput struct {
-	ScopeIn        []string   `json:"scope_in,omitempty"`
-	ScopeOut       []string   `json:"scope_out,omitempty"`
-	Approaches     []Approach `json:"approaches,omitempty"`
-	ChosenApproach string     `json:"chosen_approach,omitempty"`
-	Risks          []string   `json:"risks,omitempty"`
-	SuccessMust    []string   `json:"success_must,omitempty"`
-	SuccessShould  []string   `json:"success_should,omitempty"`
-	SuccessWont    []string   `json:"success_wont,omitempty"`
-	Decisions      []string   `json:"decisions,omitempty"` // TODO(spgr-bpq): promote to Decision graph nodes per ADR-003
+	ScopeIn        []string        `json:"scope_in,omitempty"`
+	ScopeOut       []string        `json:"scope_out,omitempty"`
+	Approaches     []Approach      `json:"approaches,omitempty"`
+	ChosenApproach string          `json:"chosen_approach,omitempty"`
+	Risks          []string        `json:"risks,omitempty"`
+	SuccessMust    []string        `json:"success_must,omitempty"`
+	SuccessShould  []string        `json:"success_should,omitempty"`
+	SuccessWont    []string        `json:"success_wont,omitempty"`
+	Decisions      []DecisionInput `json:"decisions,omitempty"`
 }
 
 // SpecifyOutput captures the precise contract and verification criteria.

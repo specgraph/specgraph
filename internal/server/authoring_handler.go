@@ -574,6 +574,15 @@ func shapeOutputToDomain(p *specv1.ShapeOutput) *storage.ShapeOutput {
 			Tradeoffs:   a.GetTradeoffs(),
 		}
 	}
+	decisions := make([]storage.DecisionInput, len(p.GetDecisions()))
+	for i, d := range p.GetDecisions() {
+		decisions[i] = storage.DecisionInput{
+			Slug:      d.GetSlug(),
+			Title:     d.GetTitle(),
+			Decision:  d.GetDecision(),
+			Rationale: d.GetRationale(),
+		}
+	}
 	return &storage.ShapeOutput{
 		ScopeIn:        p.GetScopeIn(),
 		ScopeOut:       p.GetScopeOut(),
@@ -583,7 +592,7 @@ func shapeOutputToDomain(p *specv1.ShapeOutput) *storage.ShapeOutput {
 		SuccessMust:    p.GetSuccessMust(),
 		SuccessShould:  p.GetSuccessShould(),
 		SuccessWont:    p.GetSuccessWont(),
-		Decisions:      p.GetDecisions(),
+		Decisions:      decisions,
 	}
 }
 
