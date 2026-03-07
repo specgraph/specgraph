@@ -10,18 +10,19 @@ type SpecStage string
 
 // Spec stage lifecycle values.
 const (
-	SpecStageSpark     SpecStage = "spark"
-	SpecStageShape     SpecStage = "shape"
-	SpecStageSpecify   SpecStage = "specify"
-	SpecStageDecompose SpecStage = "decompose"
-	SpecStageApproved  SpecStage = "approved"
+	SpecStageSpark      SpecStage = "spark"
+	SpecStageShape      SpecStage = "shape"
+	SpecStageSpecify    SpecStage = "specify"
+	SpecStageDecompose  SpecStage = "decompose"
+	SpecStageApproved   SpecStage = "approved"
+	SpecStageSuperseded SpecStage = "superseded"
 )
 
 // IsValid reports whether s is a known spec stage.
 func (s SpecStage) IsValid() bool {
 	switch s {
 	case SpecStageSpark, SpecStageShape, SpecStageSpecify,
-		SpecStageDecompose, SpecStageApproved:
+		SpecStageDecompose, SpecStageApproved, SpecStageSuperseded:
 		return true
 	default:
 		return false

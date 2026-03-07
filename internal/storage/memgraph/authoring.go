@@ -277,7 +277,7 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 	if string(spec.Stage) == string(authoring.StageApproved) {
 		return nil, storage.ErrSpecAlreadyApproved
 	}
-	if spec.Stage == "superseded" {
+	if spec.Stage == storage.SpecStageSuperseded {
 		return nil, fmt.Errorf("amend spec %q: %w", slug, storage.ErrSpecSuperseded)
 	}
 	if vErr := authoring.ValidateAmendTransition(authoring.Stage(spec.Stage), authoring.Stage(targetStage)); vErr != nil {
