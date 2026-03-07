@@ -29,12 +29,20 @@ jobs:
         run: pip install rumdl
       - name: Install yamlfmt
         run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+      - name: Install dprint
+        run: curl -fsSL https://dprint.dev/install.sh | sh && echo "$HOME/.dprint/bin" >> "$GITHUB_PATH"
+      - name: Install addlicense
+        run: go install github.com/google/addlicense@latest
+      - name: Format check
+        run: task fmt:check
+      - name: License check
+        run: task license:check
       - name: Build
         run: task build
       - name: Lint
         run: task lint
       - name: Unit tests
-        run: go test -race -v ./cmd/... ./internal/server/... ./internal/storage/
+        run: go list ./... | grep -v /storage/memgraph | xargs go test -short -race -v
       - name: Integration tests
         run: go test -race -v -p 1 ./internal/storage/memgraph/...
   e2e-api:
