@@ -33,17 +33,17 @@ jobs:
         with:
           setup_only: true
       - name: Cache Go tools
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/go/bin
           key: go-tools-${{ runner.os }}-${{ env.GOLANGCI_LINT_VERSION }}-${{ env.YAMLFMT_VERSION }}-${{ env.ADDLICENSE_VERSION }}
       - name: Cache dprint
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.dprint
           key: dprint-${{ runner.os }}-${{ env.DPRINT_VERSION }}
       - name: Cache pip
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pip
           key: pip-${{ runner.os }}-rumdl-${{ env.RUMDL_VERSION }}
