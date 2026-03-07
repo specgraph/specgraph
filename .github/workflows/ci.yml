@@ -37,7 +37,7 @@ jobs:
         run: task check
       - name: Integration tests
         run: task test:integration
-  e2e-api:
+  e2e:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -56,5 +56,5 @@ jobs:
           setup_only: true
       - name: Build
         run: task build
-      - name: Run API E2E tests
-        run: task test:e2e:api
+      - name: Run E2E tests
+        run: task test:e2e
