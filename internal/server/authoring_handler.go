@@ -366,7 +366,10 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 		func(txCtx context.Context) error {
 			var err error
 			spec, err = h.backend.GetSpec(txCtx, slug)
-			return err
+			if err != nil {
+				return fmt.Errorf("get spec %q: %w", slug, err)
+			}
+			return nil
 		},
 	); err != nil {
 		return nil, h.stageError(err)
