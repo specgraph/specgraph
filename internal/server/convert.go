@@ -5,11 +5,20 @@ package server
 
 import (
 	"fmt"
+	"time"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+// timeToProto converts a time.Time to a protobuf Timestamp, returning nil for zero values.
+func timeToProto(t time.Time) *timestamppb.Timestamp {
+	if t.IsZero() {
+		return nil
+	}
+	return timestamppb.New(t)
+}
 
 // --- Spec ---
 
@@ -22,8 +31,8 @@ func specToProto(s *storage.Spec) *specv1.Spec {
 		Priority:   s.Priority,
 		Complexity: s.Complexity,
 		Version:    s.Version,
-		CreatedAt:  timestamppb.New(s.CreatedAt),
-		UpdatedAt:  timestamppb.New(s.UpdatedAt),
+		CreatedAt:  timeToProto(s.CreatedAt),
+		UpdatedAt:  timeToProto(s.UpdatedAt),
 	}
 }
 
@@ -78,8 +87,8 @@ func decisionToProto(d *storage.Decision) (*specv1.Decision, error) {
 		Decision:     d.Body,
 		Rationale:    d.Rationale,
 		SupersededBy: d.SupersededBy,
-		CreatedAt:    timestamppb.New(d.CreatedAt),
-		UpdatedAt:    timestamppb.New(d.UpdatedAt),
+		CreatedAt:    timeToProto(d.CreatedAt),
+		UpdatedAt:    timeToProto(d.UpdatedAt),
 	}, nil
 }
 

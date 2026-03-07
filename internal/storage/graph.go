@@ -26,6 +26,17 @@ const (
 	EdgeTypeDecidedIn EdgeType = "DECIDED_IN"
 )
 
+// IsValid reports whether e is a known edge type.
+func (e EdgeType) IsValid() bool {
+	switch e {
+	case EdgeTypeDependsOn, EdgeTypeBlocks, EdgeTypeComposes,
+		EdgeTypeRelatesTo, EdgeTypeInforms, EdgeTypeDecidedIn:
+		return true
+	default:
+		return false
+	}
+}
+
 // Edge represents a typed relationship between two graph nodes.
 type Edge struct {
 	FromID   string

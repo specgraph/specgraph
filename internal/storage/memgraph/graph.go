@@ -221,20 +221,9 @@ func stringVal(v any) string {
 }
 
 func relNameToEdgeType(relType string) (storage.EdgeType, error) {
-	switch relType {
-	case "DEPENDS_ON":
-		return storage.EdgeTypeDependsOn, nil
-	case "BLOCKS":
-		return storage.EdgeTypeBlocks, nil
-	case "COMPOSES":
-		return storage.EdgeTypeComposes, nil
-	case "RELATES_TO":
-		return storage.EdgeTypeRelatesTo, nil
-	case "INFORMS":
-		return storage.EdgeTypeInforms, nil
-	case "DECIDED_IN":
-		return storage.EdgeTypeDecidedIn, nil
-	default:
+	et := storage.EdgeType(relType)
+	if !et.IsValid() {
 		return "", fmt.Errorf("unknown edge relation type: %q", relType)
 	}
+	return et, nil
 }

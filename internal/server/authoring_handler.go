@@ -163,7 +163,10 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("scope_out item exceeds maximum length of %d characters", maxFieldLen))
 		}
 	}
-	shapeDomain := shapeOutputToDomain(msg.Output)
+	shapeDomain, err := shapeOutputToDomain(msg.Output)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	scope := make([]string, 0, len(msg.Output.GetScopeIn())+len(msg.Output.GetScopeOut()))
 	scope = append(scope, msg.Output.GetScopeIn()...)
 	scope = append(scope, msg.Output.GetScopeOut()...)
@@ -565,7 +568,7 @@ func sparkOutputToDomain(p *specv1.SparkOutput) (*storage.SparkOutput, error) {
 	}, nil
 }
 
-func shapeOutputToDomain(p *specv1.ShapeOutput) *storage.ShapeOutput {
+func shapeOutputToDomain(p *specv1.ShapeOutput) (*storage.ShapeOutput, error) {
 	approaches := make([]storage.Approach, len(p.GetApproaches()))
 	for i, a := range p.GetApproaches() {
 		approaches[i] = storage.Approach{
@@ -576,6 +579,9 @@ func shapeOutputToDomain(p *specv1.ShapeOutput) *storage.ShapeOutput {
 	}
 	decisions := make([]storage.DecisionInput, len(p.GetDecisions()))
 	for i, d := range p.GetDecisions() {
+		if err := validateSlug(d.GetSlug()); err != nil {
+			return nil, fmt.Errorf("decision[%d]: %w", i, err)
+		}
 		decisions[i] = storage.DecisionInput{
 			Slug:      d.GetSlug(),
 			Title:     d.GetTitle(),
@@ -593,7 +599,7 @@ func shapeOutputToDomain(p *specv1.ShapeOutput) *storage.ShapeOutput {
 		SuccessShould:  p.GetSuccessShould(),
 		SuccessWont:    p.GetSuccessWont(),
 		Decisions:      decisions,
-	}
+	}, nil
 }
 
 func specifyOutputToDomain(p *specv1.SpecifyOutput) *storage.SpecifyOutput {
