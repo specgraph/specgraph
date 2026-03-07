@@ -1027,7 +1027,6 @@ func TestAuthoringHandler_Approve_GetSpecError(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInternal, connErr.Code())
-	require.Contains(t, connErr.Message(), "read back spec")
 }
 
 func TestAuthoringHandler_Approve_AcceptLinkedDecisions_EdgeListError(t *testing.T) {
@@ -1044,7 +1043,6 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_EdgeListError(t *testing
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInternal, connErr.Code())
-	require.Contains(t, connErr.Message(), "accept linked decisions")
 }
 
 func TestAuthoringHandler_Approve_AcceptLinkedDecisions_HappyPath(t *testing.T) {

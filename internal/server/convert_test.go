@@ -42,6 +42,32 @@ func TestSpecsToProto(t *testing.T) {
 	assert.Equal(t, "a", pbs[0].Id)
 }
 
+func TestTimeToProto_ZeroValue(t *testing.T) {
+	result := timeToProto(time.Time{})
+	assert.Nil(t, result, "zero time should produce nil timestamp")
+}
+
+func TestSpecToProto_ZeroTimes(t *testing.T) {
+	spec := &storage.Spec{
+		ID: "spec-zero", Slug: "zero-time", Intent: "test",
+		Stage: "spark", Priority: "p2", Complexity: "low",
+	}
+	pb := specToProto(spec)
+	assert.Nil(t, pb.CreatedAt, "zero CreatedAt should produce nil timestamp")
+	assert.Nil(t, pb.UpdatedAt, "zero UpdatedAt should produce nil timestamp")
+}
+
+func TestDecisionToProto_ZeroTimes(t *testing.T) {
+	d := &storage.Decision{
+		ID: "dec-zero", Slug: "zero-time", Title: "test",
+		Status: storage.DecisionStatusProposed,
+	}
+	pb, err := decisionToProto(d)
+	require.NoError(t, err)
+	assert.Nil(t, pb.CreatedAt, "zero CreatedAt should produce nil timestamp")
+	assert.Nil(t, pb.UpdatedAt, "zero UpdatedAt should produce nil timestamp")
+}
+
 func TestDecisionToProto(t *testing.T) {
 	now := time.Date(2026, 3, 6, 12, 0, 0, 0, time.UTC)
 	d := &storage.Decision{

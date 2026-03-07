@@ -54,7 +54,7 @@ func (m *mockDecisionBackend) GetDecision(_ context.Context, slug string) (*stor
 	defer m.mu.Unlock()
 	d, ok := m.decisions[slug]
 	if !ok {
-		return nil, fmt.Errorf("decision %q not found", slug)
+		return nil, storage.ErrDecisionNotFound
 	}
 	return d, nil
 }
@@ -80,7 +80,7 @@ func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, tit
 	defer m.mu.Unlock()
 	d, ok := m.decisions[slug]
 	if !ok {
-		return nil, fmt.Errorf("decision %q not found", slug)
+		return nil, storage.ErrDecisionNotFound
 	}
 	if title != nil {
 		d.Title = *title
@@ -137,6 +137,38 @@ func TestDecisionHandler_CreateAndGet(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+}
+
+func TestDecisionHandler_SlugValidation(t *testing.T) {
+	client := setupDecisionServer(t)
+	ctx := context.Background()
+
+	tests := []struct {
+		name string
+		slug string
+	}{
+		{"empty slug", ""},
+		{"path traversal", "../admin"},
+		{"uppercase", "Use-PostgreSQL"},
+		{"too long", string(make([]byte, 257))},
+	}
+	for _, tt := range tests {
+		t.Run("create_"+tt.name, func(t *testing.T) {
+			_, err := client.CreateDecision(ctx, connect.NewRequest(&specv1.CreateDecisionRequest{
+				Slug:  tt.slug,
+				Title: "test",
+			}))
+			require.Error(t, err)
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		})
+		t.Run("update_"+tt.name, func(t *testing.T) {
+			_, err := client.UpdateDecision(ctx, connect.NewRequest(&specv1.UpdateDecisionRequest{
+				Slug: tt.slug,
+			}))
+			require.Error(t, err)
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		})
+	}
 }
 
 func TestDecisionHandler_ListAndUpdate(t *testing.T) {
