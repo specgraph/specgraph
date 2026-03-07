@@ -64,6 +64,10 @@ tasks:
     desc: Run short tests only
     cmds:
       - go test -short -v ./...
+  test:integration:
+    desc: Run integration tests (requires Docker for Memgraph)
+    cmds:
+      - go test -tags integration -race -v -p 1 ./internal/storage/memgraph/...
   test:e2e:
     desc: Run all E2E tests (requires Docker)
     cmds:
@@ -203,13 +207,14 @@ tasks:
       - task: license:check
       - task: lint
       - task: build
-      - go test -short -race $(go list ./... | grep -v /storage/memgraph)
+      - go test -short -race ./...
   pr-prep:
     desc: Full pre-push quality gate (requires Docker)
     cmds:
       - task: clean
       - task: generate
       - task: check
+      - task: test:integration
       - task: test:e2e
   # Cleanup
   clean:

@@ -42,9 +42,9 @@ jobs:
       - name: Lint
         run: task lint
       - name: Unit tests
-        run: go list ./... | grep -v /storage/memgraph | xargs go test -short -race -v
+        run: go test -short -race -v ./...
       - name: Integration tests
-        run: go test -race -v -p 1 ./internal/storage/memgraph/...
+        run: go test -tags integration -race -v -p 1 ./internal/storage/memgraph/...
   e2e-api:
     runs-on: ubuntu-latest
     steps:

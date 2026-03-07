@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 
+//go:build integration
+
 package memgraph_test
 
 import (
