@@ -55,7 +55,7 @@ type AuthoringHandler struct {
 	backend         storage.Backend
 	txBackend       storage.TransactionalBackend // optional, may be nil
 	decisionBackend storage.DecisionBackend      // optional; when non-nil, Approve transitions linked decisions
-	graphBackend    storage.GraphBackend         // optional; used to discover decision→spec INFORMS edges
+	graphBackend    storage.GraphBackend         // optional; used to discover decision→spec DECIDED_IN edges
 	logger          *slog.Logger
 }
 
@@ -346,7 +346,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 }
 
 // Approve handles the Approve RPC, transitioning from decompose to approved stage.
-// After approval, linked decisions (via INFORMS edges) are transitioned from
+// After approval, linked decisions (via DECIDED_IN edges) are transitioned from
 // proposed to accepted per ADR-003 (decisions as first-class graph nodes).
 func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[specv1.ApproveRequest]) (*connect.Response[specv1.ApproveResponse], error) {
 	if err := validateSlug(req.Msg.Slug); err != nil {
