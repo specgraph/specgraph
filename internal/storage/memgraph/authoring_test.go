@@ -115,7 +115,7 @@ func TestAmendSpec(t *testing.T) {
 	// Amend back to shape (valid backward transition).
 	spec, err := store.AmendSpec(ctx, "amend-test", "need to reconsider scope", storage.AuthoringStage(authoring.StageShape))
 	require.NoError(t, err)
-	require.Equal(t, storage.SpecStageShape, spec.Stage)
+	require.Equal(t, storage.AuthoringStage(authoring.StageShape), spec.Stage)
 	require.Equal(t, int32(2), spec.Version, "version should increment after amendment")
 }
 
