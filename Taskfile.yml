@@ -42,30 +42,36 @@ tasks:
       - task: build:darwin
   build:linux:
     desc: Build for Linux
+    deps: [generate]
     cmds:
       - GOOS=linux GOARCH=amd64 go build -o dist/{{.BINARY_NAME}}-linux-amd64 {{.MAIN_PKG}}
       - GOOS=linux GOARCH=arm64 go build -o dist/{{.BINARY_NAME}}-linux-arm64 {{.MAIN_PKG}}
   build:darwin:
     desc: Build for macOS
+    deps: [generate]
     cmds:
       - GOOS=darwin GOARCH=amd64 go build -o dist/{{.BINARY_NAME}}-darwin-amd64 {{.MAIN_PKG}}
       - GOOS=darwin GOARCH=arm64 go build -o dist/{{.BINARY_NAME}}-darwin-arm64 {{.MAIN_PKG}}
   # Testing
   test:
     desc: Run all tests
+    deps: [generate]
     cmds:
       - go test -race -v ./...
   test:coverage:
     desc: Run tests with coverage
+    deps: [generate]
     cmds:
       - go test -race -coverprofile=coverage.out -covermode=atomic ./...
       - go tool cover -html=coverage.out -o coverage.html
   test:short:
     desc: Run short tests only
+    deps: [generate]
     cmds:
       - go test -short -v ./...
   test:integration:
     desc: Run integration tests (requires Docker for Memgraph)
+    deps: [generate]
     cmds:
       - go test -tags integration -race -v -p 1 ./...
   test:e2e:
@@ -75,6 +81,7 @@ tasks:
       - task: test:e2e:docker
   test:e2e:api:
     desc: Run API E2E tests (requires Docker for Memgraph)
+    deps: [generate]
     cmds:
       - go test -tags e2e -v -timeout 5m ./e2e/api/...
   test:e2e:docker:
@@ -91,6 +98,7 @@ tasks:
       - task: lint:yaml
   lint:go:
     desc: Lint Go code
+    deps: [generate]
     cmds:
       - golangci-lint run
   lint:markdown:
@@ -213,7 +221,6 @@ tasks:
     desc: Full pre-push quality gate (requires Docker)
     cmds:
       - task: clean
-      - task: generate
       - task: check
       - task: test:integration
       - task: test:e2e
