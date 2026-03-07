@@ -56,6 +56,7 @@ All automation is via Taskfile.dev. Run `task --list` for the full catalog.
 - **Mock backends must use sentinel errors** — When handler code uses `errors.Is()` checks (e.g., `storage.ErrSpecNotFound`, `storage.ErrDecisionNotFound`), mock/fake backends must return these sentinel errors, not `fmt.Errorf()`.
 - **DECIDED_IN edge direction** — Per ADR-003, DECIDED_IN edges go from spec → decision. In `acceptLinkedDecisions`, `edge.ToID` is the decision slug.
 - **Lefthook pre-commit is file-scoped** — only lints staged files per commit. Cross-scope linters (`govet -shadow`, `wrapcheck`) need full package context. Use `task check` (see Quality Gates above) to catch what pre-commit misses.
+- **Use 4-backtick fences for nested code blocks** — when docs embed files containing ``` fences (e.g., SKILL.md content), use ````markdown for the outer block. Bare ``` nesting creates broken/orphaned fences.
 
 ## Roadmap
 
