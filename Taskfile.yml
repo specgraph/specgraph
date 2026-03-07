@@ -202,6 +202,7 @@ tasks:
   # Quality gates
   check:
     desc: Fast local quality gate (no Docker required)
+    deps: [generate]
     cmds:
       - task: fmt:check
       - task: license:check

@@ -56,5 +56,5 @@ jobs:
           setup_only: true
       - name: Build
         run: task build
-      - name: Run E2E tests
-        run: task test:e2e
+      - name: Run API E2E tests
+        run: task test:e2e:api
