@@ -591,6 +591,7 @@ git commit -m "feat(server): add constitution, claim, and violation converters"
 **Step 1: Rewrite to return domain types**
 
 The key changes:
+
 1. Remove `specv1` and `timestamppb` imports
 2. `GetConstitution` returns `*storage.Constitution`
 3. `UpdateConstitution` accepts/returns `*storage.Constitution`
@@ -600,16 +601,19 @@ The key changes:
 The implementation logic stays the same — only the return types and field mappings change. The Memgraph storage now creates `storage.Constitution` structs instead of `specv1.Constitution` protos.
 
 Key mapping changes in `recordToConstitution`:
+
 - `specv1.ConstitutionLayer(layerVal)` → `storage.ConstitutionLayer` string constant lookup
 - `timestamppb.New(t)` → `time.Time` directly
 - `specv1.Constitution{...}` → `storage.Constitution{...}`
 - Nested proto types → domain types (TechStack, Languages, Principle, etc.)
 
 In `UpdateConstitution`, where it serializes to JSON for Memgraph:
+
 - `constitution.Tech.Languages.Primary` etc. same field access, just different source type
 - JSON marshalling of struct fields works identically
 
 In `CheckViolation`:
+
 - `specv1.Violation{...}` → `storage.Violation{...}`
 - `specv1.ViolationSeverity_VIOLATION_SEVERITY_ERROR` → `storage.ViolationSeverityError`
 
@@ -639,12 +643,14 @@ git commit -m "refactor(memgraph): constitution backend returns domain types"
 **Step 1: Rewrite to return domain types**
 
 Key changes:
+
 1. Remove `specv1` and `timestamppb` imports
 2. `ClaimSpec` returns `*storage.Claim`
 3. `Heartbeat` returns `*storage.Claim`
 4. `recordToClaim` returns `*storage.Claim` (domain)
 
 In `recordToClaim`:
+
 - `specv1.Claim{SpecSlug: slug, Agent: agent, ...}` → `storage.Claim{Slug: slug, Agent: agent, ...}`
 - `timestamppb.New(t)` → `t` (time.Time directly)
 
@@ -667,6 +673,7 @@ git commit -m "refactor(memgraph): claim backend returns domain types"
 **Step 1: Update constitution_test.go**
 
 Key changes:
+
 - Remove `specv1` import
 - `&specv1.Constitution{...}` → `&storage.Constitution{...}`
 - `specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT` → `storage.ConstitutionLayerProject`
@@ -676,6 +683,7 @@ Key changes:
 **Step 2: Update claim_test.go**
 
 Key changes:
+
 - Remove `specv1` import
 - Assertions on returned `*storage.Claim` instead of `*specv1.Claim`
 - `claim.SpecSlug` → `claim.Slug`
@@ -708,6 +716,7 @@ git commit -m "test(memgraph): update constitution and claim tests for domain ty
 **Step 1: Update emitter.go**
 
 Key changes:
+
 1. Replace `specv1` import with `storage` import
 2. `Emit(c *specv1.Constitution, format specv1.OutputFormat)` → `Emit(c *storage.Constitution, format string)`
 3. All internal functions accept `*storage.Constitution`
@@ -721,6 +730,7 @@ Key changes:
 The `format` parameter changes from proto enum to string. The handler will pass the string value.
 
 Format constants:
+
 - `"claude-md"` → CLAUDE.md
 - `"cursorrules"` → .cursorrules
 - `"agents-md"` → AGENTS.md
@@ -728,6 +738,7 @@ Format constants:
 **Step 2: Update emitter_test.go**
 
 Key changes:
+
 - Replace `specv1` import with `storage`
 - `&specv1.Constitution{...}` → `&storage.Constitution{...}`
 - `specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD` → `"claude-md"`
@@ -759,12 +770,14 @@ git commit -m "refactor(emitter): accept domain types instead of proto types"
 **Step 1: Update constitution_handler.go**
 
 Key changes:
+
 1. `GetConstitution`: `h.store.GetConstitution(ctx)` returns `*storage.Constitution` → convert with `constitutionToProto(c)` before returning
 2. `UpdateConstitution`: `msg.Constitution` is `*specv1.Constitution` → convert with `constitutionFromProto(msg.Constitution)` before passing to store, then convert result back
 3. `CheckViolation`: `h.store.CheckViolation(ctx, slug)` returns `[]storage.Violation` → convert with `violationsToProto(violations)` before returning
 4. `EmitToolFiles`: `h.store.GetConstitution(ctx)` returns domain type → pass domain type to `emitter.Emit(c, formatStr)` where `formatStr` is derived from the proto enum
 
 For `EmitToolFiles`, add a format mapping:
+
 ```go
 var outputFormatMap = map[specv1.OutputFormat]string{
 	specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD:   "claude-md",
@@ -776,6 +789,7 @@ var outputFormatMap = map[specv1.OutputFormat]string{
 **Step 2: Update claim_handler.go**
 
 Key changes:
+
 1. `ClaimSpec`: `h.store.ClaimSpec(...)` returns `*storage.Claim` → convert with `claimToProto(claim)` before returning
 2. `Heartbeat`: same conversion pattern
 
@@ -804,6 +818,7 @@ git commit -m "refactor(server): constitution and claim handlers convert at boun
 **Step 1: Update constitution_handler_test.go**
 
 Key changes:
+
 - Mock backend returns `*storage.Constitution` and `[]storage.Violation` instead of proto types
 - Test assertions on RPC responses still use proto types (that's correct — tests are RPC clients)
 - The mock `GetConstitution()` returns `&storage.Constitution{Layer: storage.ConstitutionLayerProject, ...}`
@@ -813,6 +828,7 @@ Key changes:
 **Step 2: Update claim_handler_test.go**
 
 Key changes:
+
 - Mock backend returns `*storage.Claim` instead of `*specv1.Claim`
 - `&specv1.Claim{SpecSlug: slug, ...}` → `&storage.Claim{Slug: slug, ...}`
 
@@ -1225,6 +1241,7 @@ All test assertions use domain types (`*storage.Bundle`, `*storage.ExecutionEven
 **Step 2: Implement the Memgraph execution backend**
 
 Key methods:
+
 - `GenerateBundle`: GetSpec (domain), check executable stages, getSpecDecisions (domain), compose Bundle
 - `getSpecDecisions`: MATCH spec→DECIDED_IN→decision, use recordToDecision (returns domain)
 - `verifyClaimOwner`: MATCH spec CLAIMED_BY agent with valid lease
@@ -1348,6 +1365,7 @@ Tests verify: GenerateBundle (success, not found), GetPrime, ReportProgress (suc
 **Step 2: Implement the handler**
 
 Key patterns:
+
 - `GenerateBundle`: calls store, converts `*storage.Bundle` via `bundleToProto()`, renders YAML, sets endpoint
 - `GetPrime`: calls store.GetPrimeData, composes `PrimeResponse` using constitution/decisions from domain types
 - `ReportProgress/Blocker`: validates fields, calls store, maps ErrAgentNotClaimOwner → CodePermissionDenied
