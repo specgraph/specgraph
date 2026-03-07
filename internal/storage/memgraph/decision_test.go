@@ -27,7 +27,7 @@ func TestCreateAndGetDecision(t *testing.T) {
 	require.Equal(t, "use-memgraph", d.Slug)
 	require.Equal(t, "Use Memgraph", d.Title)
 	require.Equal(t, storage.DecisionStatusProposed, d.Status)
-	require.Equal(t, "Use Memgraph as primary DB", d.Decision)
+	require.Equal(t, "Use Memgraph as primary DB", d.Body)
 	require.Equal(t, "Native Cypher support", d.Rationale)
 	require.NotNil(t, d.CreatedAt)
 

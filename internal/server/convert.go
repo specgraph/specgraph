@@ -4,6 +4,8 @@
 package server
 
 import (
+	"fmt"
+
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -56,11 +58,11 @@ func decisionStatusToProto(s storage.DecisionStatus) specv1.DecisionStatus {
 	return specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED
 }
 
-func decisionStatusFromProto(s specv1.DecisionStatus) storage.DecisionStatus {
+func decisionStatusFromProto(s specv1.DecisionStatus) (storage.DecisionStatus, error) {
 	if v, ok := decisionStatusFromProtoMap[s]; ok {
-		return v
+		return v, nil
 	}
-	return storage.DecisionStatusProposed
+	return "", fmt.Errorf("unknown decision status: %v", s)
 }
 
 func decisionToProto(d *storage.Decision) *specv1.Decision {
@@ -69,7 +71,7 @@ func decisionToProto(d *storage.Decision) *specv1.Decision {
 		Slug:         d.Slug,
 		Title:        d.Title,
 		Status:       decisionStatusToProto(d.Status),
-		Decision:     d.Decision,
+		Decision:     d.Body,
 		Rationale:    d.Rationale,
 		SupersededBy: d.SupersededBy,
 		CreatedAt:    timestamppb.New(d.CreatedAt),
@@ -112,11 +114,11 @@ func edgeTypeToProto(e storage.EdgeType) specv1.EdgeType {
 	return specv1.EdgeType_EDGE_TYPE_UNSPECIFIED
 }
 
-func edgeTypeFromProto(e specv1.EdgeType) storage.EdgeType {
+func edgeTypeFromProto(e specv1.EdgeType) (storage.EdgeType, error) {
 	if v, ok := edgeTypeFromProtoMap[e]; ok {
-		return v
+		return v, nil
 	}
-	return storage.EdgeTypeDependsOn
+	return "", fmt.Errorf("unknown edge type: %v", e)
 }
 
 func edgeToProto(e *storage.Edge) *specv1.Edge {

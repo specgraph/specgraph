@@ -22,7 +22,11 @@ var _ specgraphv1connect.GraphServiceHandler = (*GraphHandler)(nil)
 
 // AddEdge handles the AddEdge RPC.
 func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.AddEdgeRequest]) (*connect.Response[specv1.Edge], error) {
-	edge, err := h.store.AddEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, edgeTypeFromProto(req.Msg.EdgeType))
+	et, err := edgeTypeFromProto(req.Msg.EdgeType)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	edge, err := h.store.AddEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, et)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -31,8 +35,11 @@ func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.
 
 // RemoveEdge handles the RemoveEdge RPC.
 func (h *GraphHandler) RemoveEdge(ctx context.Context, req *connect.Request[specv1.RemoveEdgeRequest]) (*connect.Response[specv1.RemoveEdgeResponse], error) {
-	err := h.store.RemoveEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, edgeTypeFromProto(req.Msg.EdgeType))
+	et, err := edgeTypeFromProto(req.Msg.EdgeType)
 	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if err := h.store.RemoveEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, et); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&specv1.RemoveEdgeResponse{}), nil
@@ -40,7 +47,16 @@ func (h *GraphHandler) RemoveEdge(ctx context.Context, req *connect.Request[spec
 
 // ListEdges handles the ListEdges RPC.
 func (h *GraphHandler) ListEdges(ctx context.Context, req *connect.Request[specv1.ListEdgesRequest]) (*connect.Response[specv1.ListEdgesResponse], error) {
-	edges, err := h.store.ListEdges(ctx, req.Msg.Slug, edgeTypeFromProto(req.Msg.EdgeType))
+	// UNSPECIFIED means "list all edge types" — pass empty string.
+	var et storage.EdgeType
+	if req.Msg.EdgeType != specv1.EdgeType_EDGE_TYPE_UNSPECIFIED {
+		var err error
+		et, err = edgeTypeFromProto(req.Msg.EdgeType)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
+	edges, err := h.store.ListEdges(ctx, req.Msg.Slug, et)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}

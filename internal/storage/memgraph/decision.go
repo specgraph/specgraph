@@ -14,7 +14,7 @@ import (
 )
 
 // CreateDecision stores a new decision node in Memgraph.
-func (s *Store) CreateDecision(ctx context.Context, slug, title, decision, rationale string) (*storage.Decision, error) {
+func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale string) (*storage.Decision, error) {
 	now := time.Now().UTC()
 	id := generateID("dec", slug, now)
 	nowStr := now.Format(time.RFC3339)
@@ -39,7 +39,7 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, decision, ratio
 		"slug":          slug,
 		"title":         title,
 		"status":        string(storage.DecisionStatusProposed),
-		"decision":      decision,
+		"decision":      body,
 		"rationale":     rationale,
 		"superseded_by": "",
 		"created_at":    nowStr,
@@ -115,7 +115,7 @@ func (s *Store) ListDecisions(ctx context.Context, status storage.DecisionStatus
 }
 
 // UpdateDecision updates a decision by slug. Only non-nil fields are changed.
-func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, status *storage.DecisionStatus, decision, rationale, supersededBy *string) (*storage.Decision, error) {
+func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, status *storage.DecisionStatus, body, rationale, supersededBy *string) (*storage.Decision, error) {
 	if status != nil && *status == storage.DecisionStatusSuperseded {
 		if supersededBy == nil || *supersededBy == "" {
 			return nil, storage.ErrSupersededByRequired
@@ -133,9 +133,9 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 		setClauses = append(setClauses, "d.status = $status")
 		params["status"] = string(*status)
 	}
-	if decision != nil {
+	if body != nil {
 		setClauses = append(setClauses, "d.decision = $decision")
-		params["decision"] = *decision
+		params["decision"] = *body
 	}
 	if rationale != nil {
 		setClauses = append(setClauses, "d.rationale = $rationale")
@@ -189,7 +189,7 @@ func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
 	if err != nil {
 		return nil, err
 	}
-	decision, err := recordString(rec, 4, "decision")
+	body, err := recordString(rec, 4, "decision")
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +226,7 @@ func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
 		Slug:         slug,
 		Title:        title,
 		Status:       status,
-		Decision:     decision,
+		Body:         body,
 		Rationale:    rationale,
 		SupersededBy: supersededBy,
 		CreatedAt:    createdAt,

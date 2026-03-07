@@ -123,10 +123,14 @@ func (s *Store) ListEdges(ctx context.Context, slug string, edgeType storage.Edg
 		from, _ := rec.Get("from_slug")
 		to, _ := rec.Get("to_slug")
 		rt, _ := rec.Get("rel_type")
+		edgeType, err := relNameToEdgeType(stringVal(rt))
+		if err != nil {
+			return nil, fmt.Errorf("ListEdges: %w", err)
+		}
 		edges = append(edges, &storage.Edge{
 			FromID:   stringVal(from),
 			ToID:     stringVal(to),
-			EdgeType: relNameToEdgeType(stringVal(rt)),
+			EdgeType: edgeType,
 		})
 	}
 	return edges, nil
@@ -226,21 +230,21 @@ func stringVal(v any) string {
 	return s
 }
 
-func relNameToEdgeType(relType string) storage.EdgeType {
+func relNameToEdgeType(relType string) (storage.EdgeType, error) {
 	switch relType {
 	case "DEPENDS_ON":
-		return storage.EdgeTypeDependsOn
+		return storage.EdgeTypeDependsOn, nil
 	case "BLOCKS":
-		return storage.EdgeTypeBlocks
+		return storage.EdgeTypeBlocks, nil
 	case "COMPOSES":
-		return storage.EdgeTypeComposes
+		return storage.EdgeTypeComposes, nil
 	case "RELATES_TO":
-		return storage.EdgeTypeRelatesTo
+		return storage.EdgeTypeRelatesTo, nil
 	case "INFORMS":
-		return storage.EdgeTypeInforms
+		return storage.EdgeTypeInforms, nil
 	case "DECIDED_IN":
-		return storage.EdgeTypeDecidedIn
+		return storage.EdgeTypeDecidedIn, nil
 	default:
-		return storage.EdgeTypeDependsOn
+		return "", fmt.Errorf("unknown edge relation type: %q", relType)
 	}
 }

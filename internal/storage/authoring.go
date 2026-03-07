@@ -43,7 +43,7 @@ type Approach struct {
 type DecisionInput struct {
 	Slug      string `json:"slug"`
 	Title     string `json:"title"`
-	Decision  string `json:"decision"`
+	Body      string `json:"decision"`
 	Rationale string `json:"rationale"`
 }
 

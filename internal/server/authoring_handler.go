@@ -579,7 +579,7 @@ func shapeOutputToDomain(p *specv1.ShapeOutput) *storage.ShapeOutput {
 		decisions[i] = storage.DecisionInput{
 			Slug:      d.GetSlug(),
 			Title:     d.GetTitle(),
-			Decision:  d.GetDecision(),
+			Body:      d.GetDecision(),
 			Rationale: d.GetRationale(),
 		}
 	}

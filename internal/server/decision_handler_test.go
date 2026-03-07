@@ -40,7 +40,7 @@ func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, dec
 		Slug:      slug,
 		Title:     title,
 		Status:    storage.DecisionStatusProposed,
-		Decision:  decision,
+		Body:      decision,
 		Rationale: rationale,
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -89,7 +89,7 @@ func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, tit
 		d.Status = *status
 	}
 	if decision != nil {
-		d.Decision = *decision
+		d.Body = *decision
 	}
 	if rationale != nil {
 		d.Rationale = *rationale

@@ -32,7 +32,7 @@ type Decision struct {
 	Slug         string
 	Title        string
 	Status       DecisionStatus
-	Decision     string
+	Body         string
 	Rationale    string
 	SupersededBy string
 	CreatedAt    time.Time
@@ -42,11 +42,11 @@ type Decision struct {
 // DecisionBackend defines storage operations for Decision entities.
 type DecisionBackend interface {
 	// CreateDecision stores a new decision.
-	CreateDecision(ctx context.Context, slug, title, decision, rationale string) (*Decision, error)
+	CreateDecision(ctx context.Context, slug, title, body, rationale string) (*Decision, error)
 	// GetDecision retrieves a decision by slug.
 	GetDecision(ctx context.Context, slug string) (*Decision, error)
 	// ListDecisions returns decisions matching the given filters.
 	ListDecisions(ctx context.Context, status DecisionStatus, limit int) ([]*Decision, error)
 	// UpdateDecision updates a decision by slug. Only non-nil fields are changed.
-	UpdateDecision(ctx context.Context, slug string, title *string, status *DecisionStatus, decision, rationale, supersededBy *string) (*Decision, error)
+	UpdateDecision(ctx context.Context, slug string, title *string, status *DecisionStatus, body, rationale, supersededBy *string) (*Decision, error)
 }

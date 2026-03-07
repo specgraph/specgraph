@@ -49,7 +49,16 @@ func (h *DecisionHandler) ListDecisions(ctx context.Context, req *connect.Reques
 		limit = defaultListLimit
 	}
 
-	decisions, err := h.store.ListDecisions(ctx, decisionStatusFromProto(msg.GetStatus()), limit)
+	// UNSPECIFIED means "list all" — pass empty string to skip filtering.
+	var status storage.DecisionStatus
+	if msg.GetStatus() != specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED {
+		s, err := decisionStatusFromProto(msg.GetStatus())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		status = s
+	}
+	decisions, err := h.store.ListDecisions(ctx, status, limit)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -65,7 +74,10 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 
 	var domainStatus *storage.DecisionStatus
 	if msg.Status != nil {
-		s := decisionStatusFromProto(*msg.Status)
+		s, err := decisionStatusFromProto(*msg.Status)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 		domainStatus = &s
 	}
 	d, err := h.store.UpdateDecision(ctx, msg.Slug, msg.Title, domainStatus, msg.Decision, msg.Rationale, msg.SupersededBy)

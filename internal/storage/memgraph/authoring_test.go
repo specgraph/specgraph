@@ -341,7 +341,7 @@ func TestStoreShapeOutput_CreatesDecisionNodes(t *testing.T) {
 			{
 				Slug:      "use-memgraph",
 				Title:     "Use Memgraph",
-				Decision:  "We chose Memgraph for graph storage",
+				Body:      "We chose Memgraph for graph storage",
 				Rationale: "Native graph, Bolt protocol, good Go driver",
 			},
 		},
@@ -353,7 +353,7 @@ func TestStoreShapeOutput_CreatesDecisionNodes(t *testing.T) {
 	decision, err := store.GetDecision(ctx, "use-memgraph")
 	require.NoError(t, err)
 	assert.Equal(t, "Use Memgraph", decision.Title)
-	assert.Equal(t, "We chose Memgraph for graph storage", decision.Decision)
+	assert.Equal(t, "We chose Memgraph for graph storage", decision.Body)
 	assert.Equal(t, storage.DecisionStatusProposed, decision.Status)
 
 	// Verify DECIDED_IN edge exists with correct direction: spec→decision (ADR-003).
@@ -374,7 +374,7 @@ func TestStoreShapeOutput_IdempotentDecisions(t *testing.T) {
 	shapeOut := &storage.ShapeOutput{
 		ScopeIn: []string{"feature"},
 		Decisions: []storage.DecisionInput{
-			{Slug: "reuse-decision", Title: "Reuse", Decision: "Reuse it", Rationale: "Why not"},
+			{Slug: "reuse-decision", Title: "Reuse", Body: "Reuse it", Rationale: "Why not"},
 		},
 	}
 
