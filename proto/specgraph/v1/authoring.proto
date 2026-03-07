@@ -143,6 +143,11 @@ message ShapeOutput {
   // Outcomes explicitly deferred or out of scope for this spec.
   repeated string success_wont = 8;
   // Design decisions made during shaping that should be recorded as ADRs.
+  // WIRE-BREAK NOTE: field 9 was previously `repeated string decisions`.
+  // It was changed to `repeated DecisionInput decisions` — a wire-incompatible
+  // type change at the same field number. This is intentional: there were no
+  // deployed consumers at the time of the change. Future incompatible changes
+  // MUST use a new field number rather than reusing an existing one.
   repeated DecisionInput decisions = 9;
 }
 
