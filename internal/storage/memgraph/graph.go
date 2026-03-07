@@ -163,14 +163,14 @@ func (s *Store) GetReady(ctx context.Context) ([]storage.NodeRef, error) {
 	query := `
 		MATCH (s:Spec)
 		WHERE s.stage <> "done"
-		  AND NOT EXISTS {
-			MATCH (s)-[:DEPENDS_ON]->(dep:Spec)
-			WHERE dep.stage <> "done"
-		  }
-		  AND NOT EXISTS {
-			MATCH (blocker:Spec)-[:BLOCKS]->(s)
-			WHERE blocker.stage <> "done"
-		  }
+		OPTIONAL MATCH (s)-[:DEPENDS_ON]->(dep:Spec)
+		WHERE dep.stage <> "done"
+		WITH s, collect(dep) AS unfinished_deps
+		WHERE size(unfinished_deps) = 0
+		OPTIONAL MATCH (blocker:Spec)-[:BLOCKS]->(s)
+		WHERE blocker.stage <> "done"
+		WITH s, collect(blocker) AS active_blockers
+		WHERE size(active_blockers) = 0
 		RETURN s.id AS id, s.slug AS slug, labels(s)[0] AS label, s.stage AS stage
 	`
 	return s.queryNodeRefs(ctx, query, map[string]any{})
@@ -180,8 +180,10 @@ func (s *Store) GetReady(ctx context.Context) ([]storage.NodeRef, error) {
 func (s *Store) GetCriticalPath(ctx context.Context, slug string) ([]storage.NodeRef, error) {
 	query := `
 		MATCH p = (a {slug: $slug})-[:DEPENDS_ON*]->(b)
-		WHERE NOT (b)-[:DEPENDS_ON]->()
-		WITH p ORDER BY length(p) DESC LIMIT 1
+		OPTIONAL MATCH (b)-[:DEPENDS_ON]->(c)
+		WITH p, b, c
+		WHERE c IS NULL
+		WITH p ORDER BY size(nodes(p)) DESC LIMIT 1
 		UNWIND nodes(p) AS n
 		RETURN n.id AS id, n.slug AS slug, labels(n)[0] AS label, COALESCE(n.stage, n.status, "") AS stage
 	`

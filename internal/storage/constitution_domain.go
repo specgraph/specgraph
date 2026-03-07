@@ -8,6 +8,7 @@ import "time"
 // ConstitutionLayer defines the scope at which a constitution applies.
 type ConstitutionLayer string
 
+// ConstitutionLayer values.
 const (
 	ConstitutionLayerUnspecified ConstitutionLayer = ""
 	ConstitutionLayerUser        ConstitutionLayer = "user"
@@ -19,6 +20,7 @@ const (
 // ViolationSeverity classifies how critical a constitution violation is.
 type ViolationSeverity string
 
+// ViolationSeverity values.
 const (
 	ViolationSeverityError   ViolationSeverity = "error"
 	ViolationSeverityWarning ViolationSeverity = "warning"

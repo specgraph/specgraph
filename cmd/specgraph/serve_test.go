@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,12 +17,12 @@ import (
 
 // mockBootstrapBackend is a test double for storage.ConstitutionBackend.
 type mockBootstrapBackend struct {
-	constitution *specv1.Constitution
+	constitution *storage.Constitution
 	updateCalled bool
-	updatedWith  *specv1.Constitution
+	updatedWith  *storage.Constitution
 }
 
-func (m *mockBootstrapBackend) GetConstitution(_ context.Context) (*specv1.Constitution, error) {
+func (m *mockBootstrapBackend) GetConstitution(_ context.Context) (*storage.Constitution, error) {
 	if m.constitution != nil {
 		return m.constitution, nil
 	}
@@ -31,22 +30,22 @@ func (m *mockBootstrapBackend) GetConstitution(_ context.Context) (*specv1.Const
 	return nil, storage.ErrConstitutionNotFound
 }
 
-func (m *mockBootstrapBackend) UpdateConstitution(_ context.Context, c *specv1.Constitution) (*specv1.Constitution, error) {
+func (m *mockBootstrapBackend) UpdateConstitution(_ context.Context, c *storage.Constitution) (*storage.Constitution, error) {
 	m.updateCalled = true
 	m.updatedWith = c
 
 	return c, nil
 }
 
-func (m *mockBootstrapBackend) CheckViolation(_ context.Context, _ string) ([]*specv1.Violation, error) {
+func (m *mockBootstrapBackend) CheckViolation(_ context.Context, _ string) ([]storage.Violation, error) {
 	return nil, nil
 }
 
 func TestBootstrapConstitution_AlreadyExists(t *testing.T) {
 	mock := &mockBootstrapBackend{
-		constitution: &specv1.Constitution{
+		constitution: &storage.Constitution{
 			Name:  "existing",
-			Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
+			Layer: storage.ConstitutionLayerProject,
 		},
 	}
 
@@ -101,10 +100,10 @@ principles:
 
 	assert.True(t, mock.updateCalled, "UpdateConstitution must be called for a valid YAML file")
 	require.NotNil(t, mock.updatedWith)
-	assert.Equal(t, "test-project", mock.updatedWith.GetName())
-	assert.Equal(t, specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT, mock.updatedWith.GetLayer())
-	require.Len(t, mock.updatedWith.GetPrinciples(), 1)
-	assert.Equal(t, "Keep it simple", mock.updatedWith.GetPrinciples()[0].GetStatement())
+	assert.Equal(t, "test-project", mock.updatedWith.Name)
+	assert.Equal(t, storage.ConstitutionLayerProject, mock.updatedWith.Layer)
+	require.Len(t, mock.updatedWith.Principles, 1)
+	assert.Equal(t, "Keep it simple", mock.updatedWith.Principles[0].Statement)
 }
 
 func TestBootstrapConstitution_MalformedYAML(t *testing.T) {

@@ -109,27 +109,34 @@
 
 ## Slice 4: Execution Bundles and Prime
 
-**Plan:** `docs/plans/2026-02-28-slice-4-execution-bundles-plan.md`
-**Status:** Not started
+**Plan:** `docs/plans/2026-03-07-domain-types-and-slice4-plan.md`
+**Status:** Complete
 **Depends on:** Slice 3
 
-- [ ] Task 1: Protobuf schema -- execution.proto
-- [ ] Task 2: Storage interface -- ExecutionBackend
-- [ ] Task 3: Memgraph implementation
-- [ ] Task 4: ConnectRPC handler -- ExecutionService
-- [ ] Task 5: Bundle YAML rendering
-- [ ] Task 6: Lease sweeper -- background goroutine
-- [ ] Task 7: CLI -- bundle command
-- [ ] Task 8: CLI -- progress command
-- [ ] Task 9: Integration -- wire everything together
-- [ ] Task 10: Final verification and cleanup
+- [x] Task 1: Protobuf schema -- execution.proto
+- [x] Task 2: Storage interface -- ExecutionBackend (domain types)
+- [x] Task 3: Memgraph implementation (domain types)
+- [x] Task 4: ConnectRPC handler -- ExecutionService
+- [x] Task 5: Bundle YAML rendering
+- [x] Task 6: Lease sweeper -- background goroutine
+- [x] Task 7: CLI -- bundle command
+- [x] Task 8: CLI -- progress command
+- [x] Task 9: Integration -- wire everything together
+- [x] Task 10: Final verification and cleanup
+
+**Additional work (domain types refactor):**
+
+- [x] Refactor ConstitutionBackend to domain types
+- [x] Refactor ClaimBackend to domain types
+- [x] Proto↔domain converters in internal/server/convert.go
+- [x] Zero proto imports in internal/storage/
 
 **Slice Verification Gate:**
 
-- [ ] `go test ./... -count=1 -timeout=120s` -- all pass
-- [ ] `golangci-lint run ./...` -- no issues
-- [ ] `buf lint` -- no proto issues
-- [ ] `go build -o specgraph ./cmd/specgraph` -- clean build
+- [x] `go test ./... -count=1 -timeout=120s` -- all pass
+- [x] `golangci-lint run ./...` -- no issues
+- [x] `buf lint` -- pre-existing naming suggestions only (no new issues)
+- [x] `go build -o specgraph ./cmd/specgraph` -- clean build
 - [ ] CLI commands work: `specgraph bundle|progress --help`
 - [ ] Bundle YAML renders with constitution context, spec details, and decisions
 - [ ] Lease sweeper releases expired claims

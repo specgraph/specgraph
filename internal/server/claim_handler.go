@@ -46,7 +46,7 @@ func (h *ClaimHandler) ClaimSpec(ctx context.Context, req *connect.Request[specv
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(claim), nil
+	return connect.NewResponse(claimToProto(claim)), nil
 }
 
 // UnclaimSpec handles the UnclaimSpec RPC.
@@ -78,7 +78,7 @@ func (h *ClaimHandler) Heartbeat(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	return connect.NewResponse(claim), nil
+	return connect.NewResponse(claimToProto(claim)), nil
 }
 
 // RegisterClaimService registers the ClaimService on the given mux.

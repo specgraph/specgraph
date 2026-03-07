@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -230,30 +229,7 @@ func TestConstitutionYAML_WriteCreatesDir(t *testing.T) {
 	assert.False(t, info.IsDir())
 }
 
-func TestReferenceTypeFromString(t *testing.T) {
-	tests := []struct {
-		input string
-		want  specv1.ReferenceType
-	}{
-		{"adr", specv1.ReferenceType_REFERENCE_TYPE_ADR},
-		{"spec", specv1.ReferenceType_REFERENCE_TYPE_SPEC},
-		{"doc", specv1.ReferenceType_REFERENCE_TYPE_DOC},
-		{"url", specv1.ReferenceType_REFERENCE_TYPE_URL},
-		{"ADR", specv1.ReferenceType_REFERENCE_TYPE_ADR},
-		{"Spec", specv1.ReferenceType_REFERENCE_TYPE_SPEC},
-		{"unknown", specv1.ReferenceType_REFERENCE_TYPE_UNSPECIFIED},
-		{"", specv1.ReferenceType_REFERENCE_TYPE_UNSPECIFIED},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.input, func(t *testing.T) {
-			got := ReferenceTypeFromString(tc.input)
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
-func TestConstitutionConfig_ToProtoRoundTrip(t *testing.T) {
+func TestConstitutionConfig_ToDomainRoundTrip(t *testing.T) {
 	original := &ConstitutionConfig{
 		Name:  "round-trip-test",
 		Layer: "project",
@@ -281,10 +257,10 @@ func TestConstitutionConfig_ToProtoRoundTrip(t *testing.T) {
 		},
 	}
 
-	pb := original.ToProto()
-	require.NotNil(t, pb)
+	dom := original.ToDomain()
+	require.NotNil(t, dom)
 
-	roundTripped := ConstitutionConfigFromProto(pb)
+	roundTripped := ConstitutionConfigFromDomain(dom)
 	require.NotNil(t, roundTripped)
 
 	assert.Equal(t, original.Name, roundTripped.Name)

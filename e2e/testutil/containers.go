@@ -11,13 +11,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 // MemgraphImage is the container image used for Memgraph in e2e tests.
 // Pin to a specific version here when reproducible builds are required.
-const MemgraphImage = "memgraph/memgraph:latest"
+const MemgraphImage = "memgraph/memgraph-platform:2.4.0"
 
 // StartMemgraph launches a Memgraph container and returns the bolt URI.
 // The returned cleanup function terminates the container.
@@ -25,10 +26,12 @@ func StartMemgraph(ctx context.Context) (string, func(), error) {
 	req := testcontainers.ContainerRequest{
 		Image:        MemgraphImage,
 		ExposedPorts: []string{"7687/tcp"},
+		Env:          map[string]string{"MEMGRAPH": ""},
+		Cmd:          []string{"/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"},
 		WaitingFor: wait.ForAll(
 			wait.ForListeningPort("7687/tcp"),
-			wait.ForLog("You are running Memgraph"),
-		).WithDeadline(60 * time.Second),
+			wait.ForLog("memgraph entered RUNNING state"),
+		).WithDeadline(120 * time.Second),
 	}
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
@@ -50,6 +53,32 @@ func StartMemgraph(ctx context.Context) (string, func(), error) {
 	}
 
 	boltURI := fmt.Sprintf("bolt://%s:%s", host, port.Port())
+
+	// Retry Bolt connection to handle the window between port/log readiness and
+	// the Bolt protocol being fully available (see CLAUDE.md "Memgraph bolt readiness race").
+	var connErr error
+	for range 10 {
+		driver, dErr := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
+		if dErr != nil {
+			connErr = dErr
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		if vErr := driver.VerifyConnectivity(ctx); vErr != nil {
+			_ = driver.Close(ctx)
+			connErr = vErr
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		_ = driver.Close(ctx)
+		connErr = nil
+		break
+	}
+	if connErr != nil {
+		_ = container.Terminate(ctx)
+		return "", nil, fmt.Errorf("bolt connection retry exhausted: %w", connErr)
+	}
+
 	cleanup := func() {
 		cleanCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()

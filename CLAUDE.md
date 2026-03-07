@@ -70,7 +70,8 @@ task build          # Generate proto + build binary
 - **ConnectRPC, not plain gRPC** — handlers are in `internal/server/`, proto services generate both `.pb.go` and `.connect.go` files
 - **Storage interfaces in `internal/storage/`** — implementations are in subdirectories (currently only `memgraph/`). The interfaces use domain types, not protobuf types.
 - **License headers required** — all `.go`, `.sh`, `.py`, `.proto` files need SPDX headers. Run `task license:add` to fix.
-- **Memgraph bolt readiness race** — `wait.ForListeningPort` alone is insufficient; always pair with `wait.ForLog("You are running Memgraph")` and a connection retry loop (see `newStore` in `memgraph_test.go`)
+- **Memgraph bolt readiness race** — `wait.ForListeningPort` alone is insufficient; always pair with `wait.ForLog("memgraph entered RUNNING state")` (supervisord log — the platform image does NOT emit "You are running Memgraph" to container stdout) and a connection retry loop (see `newStore` in `memgraph_test.go`)
+- **Cypher DELETE + count** — `MATCH ()-[r]->() DELETE r RETURN count(r)` works in Memgraph; `r` was bound pre-deletion. No need to change to `count(*)`.
 - **E2E tests use Ginkgo/Gomega** — `e2e/api/` tests run via `go test -tags e2e`; `e2e/docker/` tests require Docker-in-Docker (skipped in CI)
 - **Go test glob `./pkg/...` vs `./pkg/`** — ellipsis recurses into subdirs. CI uses `./internal/storage/` (no ellipsis) to avoid pulling in `memgraph/` integration tests into the unit test step
 - **Docker compose templates manage DB only** — `internal/docker/compose.go` templates start Memgraph or Postgres containers; the SpecGraph process runs natively and connects to the containerized DB

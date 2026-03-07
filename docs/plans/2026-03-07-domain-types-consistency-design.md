@@ -29,37 +29,40 @@ File: `internal/storage/constitution_domain.go`
 
 ```go
 type Constitution struct {
-    Layer        string
+    ID           string
+    Layer        ConstitutionLayer // type ConstitutionLayer string
     Name         string
     Version      int32
     Tech         *TechStack
     Principles   []Principle
-    Process      *ConstitutionProcess
+    Process      *ProcessConfig
     Constraints  []string
     Antipatterns []Antipattern
     References   []Reference
+    CreatedAt    time.Time
     UpdatedAt    time.Time
 }
 
 type TechStack struct {
     Languages      *Languages
     Frameworks     map[string]string
-    Infrastructure []string
-    APIStandards   []string
-    Data           []string
+    Infrastructure map[string]string
+    APIStandards   map[string]string
+    Data           map[string]string
 }
 
 type Languages struct {
-    Primary   string
-    Allowed   []string
-    Forbidden []string
+    Primary          string
+    Allowed          []string
+    Forbidden        []string
+    ForbiddenReasons map[string]string
 }
 
 type Principle struct {
     ID         string
-    Principle  string
+    Statement  string
     Rationale  string
-    Exceptions []string
+    Exceptions string
 }
 
 type Antipattern struct {
@@ -73,17 +76,18 @@ type Reference struct {
     Path string
 }
 
-type ConstitutionProcess struct {
+type ProcessConfig struct {
     SpecReview     string
-    SecurityReview string
-    Deployment     string
-    Documentation  string
+    SecurityReview *SecurityReviewConfig
+    Deployment     *DeploymentConfig
+    Documentation  *DocumentationConfig
 }
 
 type Violation struct {
-    Constraint string
-    Message    string
-    Severity   string // "error" | "warning"
+    Rule     string
+    Severity ViolationSeverity // "error" | "warning" | "info"
+    Message  string
+    SpecSlug string
 }
 ```
 

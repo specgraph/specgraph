@@ -22,18 +22,18 @@ import (
 
 type mockConstitutionBackend struct {
 	mu           sync.Mutex
-	constitution *specv1.Constitution
+	constitution *storage.Constitution
 	version      int32
-	violations   map[string][]*specv1.Violation
+	violations   map[string][]storage.Violation
 }
 
 func newMockConstitutionBackend() *mockConstitutionBackend {
 	return &mockConstitutionBackend{
-		violations: make(map[string][]*specv1.Violation),
+		violations: make(map[string][]storage.Violation),
 	}
 }
 
-func (m *mockConstitutionBackend) GetConstitution(_ context.Context) (*specv1.Constitution, error) {
+func (m *mockConstitutionBackend) GetConstitution(_ context.Context) (*storage.Constitution, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.constitution == nil {
@@ -42,7 +42,7 @@ func (m *mockConstitutionBackend) GetConstitution(_ context.Context) (*specv1.Co
 	return m.constitution, nil
 }
 
-func (m *mockConstitutionBackend) UpdateConstitution(_ context.Context, c *specv1.Constitution) (*specv1.Constitution, error) {
+func (m *mockConstitutionBackend) UpdateConstitution(_ context.Context, c *storage.Constitution) (*storage.Constitution, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.version++
@@ -51,7 +51,7 @@ func (m *mockConstitutionBackend) UpdateConstitution(_ context.Context, c *specv
 	return c, nil
 }
 
-func (m *mockConstitutionBackend) CheckViolation(_ context.Context, specSlug string) ([]*specv1.Violation, error) {
+func (m *mockConstitutionBackend) CheckViolation(_ context.Context, specSlug string) ([]storage.Violation, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if specSlug == "nonexistent-spec" {

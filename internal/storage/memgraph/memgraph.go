@@ -40,7 +40,6 @@ const defaultInitialStage = "spark"
 
 // CreateSpec stores a new spec node in Memgraph and returns it.
 func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
-	now := time.Now().UTC()
 	id := newID("spec")
 	nowStr := nowRFC3339()
 
@@ -210,7 +209,7 @@ func (s *Store) Close(ctx context.Context) error {
 }
 
 // newID produces a prefixed ULID: prefix + "-" + ULID.
-// ULIDs are 128-bit, lexicographically sortable, and monotonic within a millisecond.
+// ULIDs are 128-bit and lexicographically sortable by timestamp.
 func newID(prefix string) string {
 	return prefix + "-" + ulid.MustNew(ulid.Now(), rand.Reader).String()
 }
@@ -222,7 +221,10 @@ func nowRFC3339() string {
 
 // parseRFC3339 parses an RFC3339 timestamp string from a memgraph record field.
 func parseRFC3339(field, value string) (time.Time, error) {
-	t, err := time.Parse(time.RFC3339, value)
+	t, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		t, err = time.Parse(time.RFC3339, value)
+	}
 	if err != nil {
 		return time.Time{}, fmt.Errorf("memgraph: parse %s %q: %w", field, value, err)
 	}

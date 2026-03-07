@@ -221,7 +221,8 @@ func constitutionToProto(c *storage.Constitution) *specv1.Constitution {
 	}
 	for _, ref := range c.References {
 		pb.References = append(pb.References, &specv1.Reference{
-			Path: ref.Path,
+			ReferenceType: referenceTypeToProto(ref.Type),
+			Path:          ref.Path,
 		})
 	}
 
@@ -308,10 +309,41 @@ func constitutionFromProto(pb *specv1.Constitution) *storage.Constitution {
 	}
 	for _, ref := range pb.References {
 		c.References = append(c.References, storage.Reference{
+			Type: referenceTypeFromProto(ref.ReferenceType),
 			Path: ref.Path,
 		})
 	}
 	return c
+}
+
+func referenceTypeToProto(t string) specv1.ReferenceType {
+	switch t {
+	case "adr":
+		return specv1.ReferenceType_REFERENCE_TYPE_ADR
+	case "spec":
+		return specv1.ReferenceType_REFERENCE_TYPE_SPEC
+	case "doc":
+		return specv1.ReferenceType_REFERENCE_TYPE_DOC
+	case "url":
+		return specv1.ReferenceType_REFERENCE_TYPE_URL
+	default:
+		return specv1.ReferenceType_REFERENCE_TYPE_UNSPECIFIED
+	}
+}
+
+func referenceTypeFromProto(t specv1.ReferenceType) string {
+	switch t {
+	case specv1.ReferenceType_REFERENCE_TYPE_ADR:
+		return "adr"
+	case specv1.ReferenceType_REFERENCE_TYPE_SPEC:
+		return "spec"
+	case specv1.ReferenceType_REFERENCE_TYPE_DOC:
+		return "doc"
+	case specv1.ReferenceType_REFERENCE_TYPE_URL:
+		return "url"
+	default:
+		return ""
+	}
 }
 
 func techStackFromProto(pb *specv1.TechConfig) *storage.TechStack {
@@ -354,6 +386,12 @@ func processConfigFromProto(pb *specv1.ProcessConfig) *storage.ProcessConfig {
 	return p
 }
 
+var outputFormatToString = map[specv1.OutputFormat]string{
+	specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD:   "claude-md",
+	specv1.OutputFormat_OUTPUT_FORMAT_CURSORRULES: "cursorrules",
+	specv1.OutputFormat_OUTPUT_FORMAT_AGENTS_MD:   "agents-md",
+}
+
 func violationsToProto(violations []storage.Violation) []*specv1.Violation {
 	result := make([]*specv1.Violation, len(violations))
 	for i, v := range violations {
@@ -376,4 +414,58 @@ func claimToProto(c *storage.Claim) *specv1.Claim {
 		ClaimedAt:    timeToProto(c.ClaimedAt),
 		LeaseExpires: timeToProto(c.LeaseExpires),
 	}
+}
+
+// --- Execution ---
+
+var executionEventTypeToProtoMap = map[storage.ExecutionEventType]specv1.ExecutionEventType{
+	storage.ExecutionEventTypeProgress:   specv1.ExecutionEventType_EXECUTION_EVENT_TYPE_PROGRESS,
+	storage.ExecutionEventTypeBlocker:    specv1.ExecutionEventType_EXECUTION_EVENT_TYPE_BLOCKER,
+	storage.ExecutionEventTypeCompletion: specv1.ExecutionEventType_EXECUTION_EVENT_TYPE_COMPLETION,
+}
+
+func executionEventToProto(e *storage.ExecutionEvent) *specv1.ExecutionEvent {
+	return &specv1.ExecutionEvent{
+		Id:        e.ID,
+		SpecSlug:  e.SpecSlug,
+		Agent:     e.Agent,
+		Type:      executionEventTypeToProtoMap[e.Type],
+		Message:   e.Message,
+		CreatedAt: timeToProto(e.CreatedAt),
+	}
+}
+
+func executionEventsToProto(events []*storage.ExecutionEvent) []*specv1.ExecutionEvent {
+	result := make([]*specv1.ExecutionEvent, len(events))
+	for i, e := range events {
+		result[i] = executionEventToProto(e)
+	}
+	return result
+}
+
+func bundleToProto(b *storage.Bundle) (*specv1.Bundle, error) {
+	spec := specToProto(b.Spec)
+	decisions, err := decisionsToProto(b.Decisions)
+	if err != nil {
+		return nil, err
+	}
+
+	var callbacks *specv1.CallbackConfig
+	if b.Callbacks != nil {
+		callbacks = &specv1.CallbackConfig{
+			Endpoint:   b.Callbacks.Endpoint,
+			Prime:      b.Callbacks.Prime,
+			Progress:   b.Callbacks.Progress,
+			Blocker:    b.Callbacks.Blocker,
+			Completion: b.Callbacks.Completion,
+		}
+	}
+
+	return &specv1.Bundle{
+		Version:   b.Version,
+		Spec:      spec,
+		Decisions: decisions,
+		Bootstrap: b.Bootstrap,
+		Callbacks: callbacks,
+	}, nil
 }

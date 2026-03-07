@@ -11,15 +11,28 @@ import (
 	"strings"
 	"time"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// layerFromString maps stored layer strings (both legacy proto enum names and
+// new domain-type values) to the corresponding ConstitutionLayer constant.
+var layerFromString = map[string]storage.ConstitutionLayer{
+	// Legacy proto enum format (existing Memgraph data).
+	"CONSTITUTION_LAYER_USER":    storage.ConstitutionLayerUser,
+	"CONSTITUTION_LAYER_ORG":     storage.ConstitutionLayerOrg,
+	"CONSTITUTION_LAYER_PROJECT": storage.ConstitutionLayerProject,
+	"CONSTITUTION_LAYER_DOMAIN":  storage.ConstitutionLayerDomain,
+	// Domain-type format (new data written by this code).
+	"user":    storage.ConstitutionLayerUser,
+	"org":     storage.ConstitutionLayerOrg,
+	"project": storage.ConstitutionLayerProject,
+	"domain":  storage.ConstitutionLayerDomain,
+}
+
 // GetConstitution returns the active constitution node.
-func (s *Store) GetConstitution(ctx context.Context) (*specv1.Constitution, error) {
+func (s *Store) GetConstitution(ctx context.Context) (*storage.Constitution, error) {
 	query := `
 		MATCH (c:Constitution)
 		RETURN c.id, c.layer, c.name, c.version, c.tech_json,
@@ -41,7 +54,7 @@ func (s *Store) GetConstitution(ctx context.Context) (*specv1.Constitution, erro
 
 // UpdateConstitution stores or replaces the constitution, bumping its version.
 // Uses MERGE so there is always at most one Constitution node.
-func (s *Store) UpdateConstitution(ctx context.Context, constitution *specv1.Constitution) (*specv1.Constitution, error) {
+func (s *Store) UpdateConstitution(ctx context.Context, constitution *storage.Constitution) (*storage.Constitution, error) {
 	now := time.Now().UTC()
 	nowStr := now.Format(time.RFC3339)
 
@@ -70,9 +83,9 @@ func (s *Store) UpdateConstitution(ctx context.Context, constitution *specv1.Con
 		return nil, fmt.Errorf("memgraph: marshal references: %w", err)
 	}
 
-	id := constitution.Id
+	id := constitution.ID
 	if id == "" {
-		id = generateID("con", constitution.Name, now)
+		id = newID("con")
 	}
 
 	query := `
@@ -100,7 +113,7 @@ func (s *Store) UpdateConstitution(ctx context.Context, constitution *specv1.Con
 	`
 	params := map[string]any{
 		"id":                id,
-		"layer":             constitution.Layer.String(),
+		"layer":             string(constitution.Layer),
 		"name":              constitution.Name,
 		"tech_json":         techJSON,
 		"principles_json":   principlesJSON,
@@ -123,9 +136,8 @@ func (s *Store) UpdateConstitution(ctx context.Context, constitution *specv1.Con
 }
 
 // CheckViolation checks a spec against constitution constraints.
-// CheckViolation checks a spec against constitution constraints.
 // It checks the spec's intent and slug against forbidden languages declared in the constitution.
-func (s *Store) CheckViolation(ctx context.Context, specSlug string) ([]*specv1.Violation, error) {
+func (s *Store) CheckViolation(ctx context.Context, specSlug string) ([]storage.Violation, error) {
 	// Verify the spec exists.
 	spec, err := s.GetSpec(ctx, specSlug)
 	if err != nil {
@@ -144,7 +156,7 @@ func (s *Store) CheckViolation(ctx context.Context, specSlug string) ([]*specv1.
 		return nil, fmt.Errorf("memgraph: check violation: %w", err)
 	}
 
-	var violations []*specv1.Violation
+	var violations []storage.Violation
 
 	// Check forbidden languages: scan spec intent and slug for mentions of forbidden language names.
 	if constitution.Tech != nil && constitution.Tech.Languages != nil {
@@ -161,9 +173,9 @@ func (s *Store) CheckViolation(ctx context.Context, specSlug string) ([]*specv1.
 						msg = fmt.Sprintf("%s: %s", msg, reason)
 					}
 				}
-				violations = append(violations, &specv1.Violation{
+				violations = append(violations, storage.Violation{
 					Rule:     "forbidden-language",
-					Severity: specv1.ViolationSeverity_VIOLATION_SEVERITY_ERROR,
+					Severity: storage.ViolationSeverityError,
 					Message:  msg,
 					SpecSlug: spec.Slug,
 				})
@@ -222,8 +234,8 @@ func unmarshalIfPresent(jsonStr, field string, dest any) error {
 	return nil
 }
 
-// recordToConstitution converts a neo4j record to a *specv1.Constitution using named column access.
-func recordToConstitution(rec *neo4j.Record) (*specv1.Constitution, error) {
+// recordToConstitution converts a neo4j record to a *storage.Constitution using named column access.
+func recordToConstitution(rec *neo4j.Record) (*storage.Constitution, error) {
 	id, err := recordStringByName(rec, "c.id")
 	if err != nil {
 		return nil, err
@@ -282,22 +294,17 @@ func recordToConstitution(rec *neo4j.Record) (*specv1.Constitution, error) {
 		return nil, err
 	}
 
-	layerVal, ok := specv1.ConstitutionLayer_value[layerStr]
-	if !ok {
-		layerVal = int32(specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED)
-	}
-
-	var tech specv1.TechConfig
+	var tech storage.TechStack
 	if err := unmarshalIfPresent(techJSON, "tech", &tech); err != nil {
 		return nil, err
 	}
 
-	var principles []*specv1.Principle
+	var principles []storage.Principle
 	if err := unmarshalIfPresent(principlesJSON, "principles", &principles); err != nil {
 		return nil, err
 	}
 
-	var process specv1.ProcessConfig
+	var process storage.ProcessConfig
 	if err := unmarshalIfPresent(processJSON, "process", &process); err != nil {
 		return nil, err
 	}
@@ -307,26 +314,24 @@ func recordToConstitution(rec *neo4j.Record) (*specv1.Constitution, error) {
 		return nil, err
 	}
 
-	var antipatterns []*specv1.Antipattern
+	var antipatterns []storage.Antipattern
 	if err := unmarshalIfPresent(antipatternsJSON, "antipatterns", &antipatterns); err != nil {
 		return nil, err
 	}
 
-	var references []*specv1.Reference
+	var references []storage.Reference
 	if err := unmarshalIfPresent(referencesJSON, "references", &references); err != nil {
 		return nil, err
 	}
 
-	c := &specv1.Constitution{
-		Id:           id,
-		Layer:        specv1.ConstitutionLayer(layerVal),
-		Name:         name,
-		Version:      int32(version), //nolint:gosec // version values are small positive integers
-		Constraints:  constraints,
-		Antipatterns: antipatterns,
-		References:   references,
-		CreatedAt:    timestamppb.New(createdAt),
-		UpdatedAt:    timestamppb.New(updatedAt),
+	c := &storage.Constitution{
+		ID:          id,
+		Layer:       layerFromString[layerStr],
+		Name:        name,
+		Version:     int32(version), //nolint:gosec // version values are small positive integers
+		Constraints: constraints,
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
 	}
 
 	// Only set pointer fields when the struct was actually populated.
@@ -338,6 +343,12 @@ func recordToConstitution(rec *neo4j.Record) (*specv1.Constitution, error) {
 	}
 	if len(principles) > 0 {
 		c.Principles = principles
+	}
+	if len(antipatterns) > 0 {
+		c.Antipatterns = antipatterns
+	}
+	if len(references) > 0 {
+		c.References = references
 	}
 
 	return c, nil
