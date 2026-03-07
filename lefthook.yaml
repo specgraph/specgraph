@@ -55,6 +55,10 @@ pre-commit:
       run: actionlint {staged_files}
     format-check:
       run: dprint check
+pre-push:
+  commands:
+    quality-gate:
+      run: task check
 commit-msg:
   commands:
     conventional-commit:

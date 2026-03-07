@@ -195,6 +195,22 @@ tasks:
       - brew install golangci-lint gofumpt lefthook actionlint goreleaser dprint cocogitto rumdl yamlfmt buf
       - brew install steveyegge/beads/bd
       - echo "Tools installed. Run 'task hooks:install' to set up git hooks."
+  # Quality gates
+  check:
+    desc: Fast local quality gate (no Docker required)
+    cmds:
+      - task: fmt:check
+      - task: license:check
+      - task: lint
+      - task: build
+      - go test -short -race $(go list ./... | grep -v /storage/memgraph)
+  pr-prep:
+    desc: Full pre-push quality gate (requires Docker)
+    cmds:
+      - task: clean
+      - task: generate
+      - task: check
+      - task: test:e2e
   # Cleanup
   clean:
     desc: Clean build artifacts

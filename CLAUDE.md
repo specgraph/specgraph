@@ -33,6 +33,7 @@ All automation is via Taskfile.dev. Run `task --list` for the full catalog. Key 
 - **Handler error sanitization** — `stageError` and similar methods sanitize internal errors before returning to clients. Test assertions MUST use error codes (`connect.CodeInternal`, `connect.CodeNotFound`), not error message strings.
 - **Mock backends must use sentinel errors** — When handler code uses `errors.Is()` checks (e.g., `storage.ErrSpecNotFound`, `storage.ErrDecisionNotFound`), mock/fake backends must return these sentinel errors, not `fmt.Errorf()`.
 - **DECIDED_IN edge direction** — Per ADR-003, DECIDED_IN edges go from spec → decision. In `acceptLinkedDecisions`, `edge.ToID` is the decision slug.
+- **Lefthook pre-commit is file-scoped** — only lints staged files per commit. Cross-scope linters (`govet -shadow`, `wrapcheck`) need full package context. Always run `task lint` before `git push` to catch issues the pre-commit hook misses.
 
 ## Roadmap
 
