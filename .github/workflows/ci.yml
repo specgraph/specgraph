@@ -33,18 +33,10 @@ jobs:
         run: curl -fsSL https://dprint.dev/install.sh | sh && echo "$HOME/.dprint/bin" >> "$GITHUB_PATH"
       - name: Install addlicense
         run: go install github.com/google/addlicense@latest
-      - name: Format check
-        run: task fmt:check
-      - name: License check
-        run: task license:check
-      - name: Build
-        run: task build
-      - name: Lint
-        run: task lint
-      - name: Unit tests
-        run: go test -short -race -v ./...
+      - name: Quality check
+        run: task check
       - name: Integration tests
-        run: go test -tags integration -race -v -p 1 ./internal/storage/memgraph/...
+        run: task test:integration
   e2e-api:
     runs-on: ubuntu-latest
     steps:
@@ -65,4 +57,4 @@ jobs:
       - name: Build
         run: task build
       - name: Run API E2E tests
-        run: go test -tags e2e -v ./e2e/api/...
+        run: task test:e2e:api

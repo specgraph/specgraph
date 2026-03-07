@@ -67,7 +67,7 @@ tasks:
   test:integration:
     desc: Run integration tests (requires Docker for Memgraph)
     cmds:
-      - go test -tags integration -race -v -p 1 ./internal/storage/memgraph/...
+      - go test -tags integration -race -v -p 1 ./...
   test:e2e:
     desc: Run all E2E tests (requires Docker)
     cmds:
