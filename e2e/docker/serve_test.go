@@ -54,12 +54,15 @@ storage:
 	})
 
 	AfterAll(func() {
+		if cmd != nil && cmd.Process != nil && cmd.ProcessState == nil {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
 		os.RemoveAll(projectDir)
 	})
 
 	It("writes the compose file into .specgraph/", func() {
-		// Run serve in a goroutine-like fashion: start the process,
-		// verify it writes the compose file, then kill it.
+		// Start the serve process — it persists across ordered specs.
 		cmd = exec.Command(binaryPath, "--config", configPath, "serve")
 		cmd.Dir = projectDir
 		cmd.Stdout = GinkgoWriter
@@ -67,13 +70,6 @@ storage:
 
 		err := cmd.Start()
 		Expect(err).NotTo(HaveOccurred())
-
-		DeferCleanup(func() {
-			if cmd.Process != nil && cmd.ProcessState == nil {
-				_ = cmd.Process.Kill()
-				_ = cmd.Wait()
-			}
-		})
 
 		// Wait for the compose file to appear (docker compose up may take a while).
 		composePath := filepath.Join(projectDir, ".specgraph", "docker-compose.yaml")
