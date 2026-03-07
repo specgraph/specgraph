@@ -98,13 +98,13 @@ func (s *Store) ListDecisions(ctx context.Context, status storage.DecisionStatus
 		params["limit"] = int64(limit)
 	}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: list decisions: %w", err)
 	}
 
-	decisions := make([]*storage.Decision, 0, len(result.Records))
-	for _, rec := range result.Records {
+	decisions := make([]*storage.Decision, 0, len(records))
+	for _, rec := range records {
 		d, err := recordToDecision(rec)
 		if err != nil {
 			return nil, err
@@ -161,15 +161,15 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 		       d.superseded_by, d.created_at, d.updated_at
 	`, strings.Join(setClauses, ", "))
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: update decision: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: decision %q: %w", slug, storage.ErrDecisionNotFound)
 	}
 
-	return recordToDecision(result.Records[0])
+	return recordToDecision(records[0])
 }
 
 func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {

@@ -49,17 +49,32 @@ func TestDecisionToProto(t *testing.T) {
 		Status: storage.DecisionStatusAccepted, Body: "We chose Memgraph",
 		Rationale: "Graph-native", CreatedAt: now, UpdatedAt: now,
 	}
-	pb := decisionToProto(d)
+	pb, err := decisionToProto(d)
+	require.NoError(t, err)
 	assert.Equal(t, "dec-abc", pb.Id)
 	assert.Equal(t, "use-memgraph", pb.Slug)
 	assert.Equal(t, specv1.DecisionStatus_DECISION_STATUS_ACCEPTED, pb.Status)
 }
 
 func TestDecisionStatusToProto(t *testing.T) {
-	assert.Equal(t, specv1.DecisionStatus_DECISION_STATUS_PROPOSED, decisionStatusToProto(storage.DecisionStatusProposed))
-	assert.Equal(t, specv1.DecisionStatus_DECISION_STATUS_ACCEPTED, decisionStatusToProto(storage.DecisionStatusAccepted))
-	assert.Equal(t, specv1.DecisionStatus_DECISION_STATUS_SUPERSEDED, decisionStatusToProto(storage.DecisionStatusSuperseded))
-	assert.Equal(t, specv1.DecisionStatus_DECISION_STATUS_DEPRECATED, decisionStatusToProto(storage.DecisionStatusDeprecated))
+	v, err := decisionStatusToProto(storage.DecisionStatusProposed)
+	require.NoError(t, err)
+	assert.Equal(t, specv1.DecisionStatus_DECISION_STATUS_PROPOSED, v)
+
+	v, err = decisionStatusToProto(storage.DecisionStatusAccepted)
+	require.NoError(t, err)
+	assert.Equal(t, specv1.DecisionStatus_DECISION_STATUS_ACCEPTED, v)
+
+	v, err = decisionStatusToProto(storage.DecisionStatusSuperseded)
+	require.NoError(t, err)
+	assert.Equal(t, specv1.DecisionStatus_DECISION_STATUS_SUPERSEDED, v)
+
+	v, err = decisionStatusToProto(storage.DecisionStatusDeprecated)
+	require.NoError(t, err)
+	assert.Equal(t, specv1.DecisionStatus_DECISION_STATUS_DEPRECATED, v)
+
+	_, err = decisionStatusToProto("unknown")
+	assert.Error(t, err)
 }
 
 func TestDecisionStatusFromProto(t *testing.T) {
@@ -85,7 +100,8 @@ func TestDecisionStatusFromProto(t *testing.T) {
 
 func TestEdgeToProto(t *testing.T) {
 	e := &storage.Edge{FromID: "a", ToID: "b", EdgeType: storage.EdgeTypeDependsOn}
-	pb := edgeToProto(e)
+	pb, err := edgeToProto(e)
+	require.NoError(t, err)
 	assert.Equal(t, "a", pb.FromId)
 	assert.Equal(t, "b", pb.ToId)
 	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_DEPENDS_ON, pb.EdgeType)
@@ -114,10 +130,23 @@ func TestEdgeTypeFromProto(t *testing.T) {
 }
 
 func TestEdgeTypeToProto(t *testing.T) {
-	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_DEPENDS_ON, edgeTypeToProto(storage.EdgeTypeDependsOn))
-	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_BLOCKS, edgeTypeToProto(storage.EdgeTypeBlocks))
-	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_COMPOSES, edgeTypeToProto(storage.EdgeTypeComposes))
-	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_RELATES_TO, edgeTypeToProto(storage.EdgeTypeRelatesTo))
-	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_INFORMS, edgeTypeToProto(storage.EdgeTypeInforms))
-	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_DECIDED_IN, edgeTypeToProto(storage.EdgeTypeDecidedIn))
+	tests := []struct {
+		domain storage.EdgeType
+		proto  specv1.EdgeType
+	}{
+		{storage.EdgeTypeDependsOn, specv1.EdgeType_EDGE_TYPE_DEPENDS_ON},
+		{storage.EdgeTypeBlocks, specv1.EdgeType_EDGE_TYPE_BLOCKS},
+		{storage.EdgeTypeComposes, specv1.EdgeType_EDGE_TYPE_COMPOSES},
+		{storage.EdgeTypeRelatesTo, specv1.EdgeType_EDGE_TYPE_RELATES_TO},
+		{storage.EdgeTypeInforms, specv1.EdgeType_EDGE_TYPE_INFORMS},
+		{storage.EdgeTypeDecidedIn, specv1.EdgeType_EDGE_TYPE_DECIDED_IN},
+	}
+	for _, tt := range tests {
+		got, err := edgeTypeToProto(tt.domain)
+		require.NoError(t, err)
+		assert.Equal(t, tt.proto, got)
+	}
+
+	_, err := edgeTypeToProto("unknown")
+	assert.Error(t, err)
 }

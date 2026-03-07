@@ -30,7 +30,11 @@ func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(edgeToProto(edge)), nil
+	pb, err := edgeToProto(edge)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(pb), nil
 }
 
 // RemoveEdge handles the RemoveEdge RPC.
@@ -60,7 +64,11 @@ func (h *GraphHandler) ListEdges(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.ListEdgesResponse{Edges: edgesToProto(edges)}), nil
+	pbs, err := edgesToProto(edges)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&specv1.ListEdgesResponse{Edges: pbs}), nil
 }
 
 // GetDependencies handles the GetDependencies RPC.

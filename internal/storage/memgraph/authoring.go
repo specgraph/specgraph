@@ -106,10 +106,12 @@ func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *stora
 				continue
 			}
 			// Create decision node only if it does not already exist.
-			if _, err := s.GetDecision(txCtx, d.Slug); err != nil {
+			if _, err := s.GetDecision(txCtx, d.Slug); errors.Is(err, storage.ErrDecisionNotFound) {
 				if _, err := s.CreateDecision(txCtx, d.Slug, d.Title, d.Body, d.Rationale); err != nil {
 					return fmt.Errorf("create decision %q: %w", d.Slug, err)
 				}
+			} else if err != nil {
+				return fmt.Errorf("check decision %q existence: %w", d.Slug, err)
 			}
 			// Always ensure the DECIDED_IN edge exists (spec→decision). AddEdge uses
 			// MERGE so calling it on an existing edge is safe.

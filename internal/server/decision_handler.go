@@ -29,7 +29,11 @@ func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(decisionToProto(d)), nil
+	pb, err := decisionToProto(d)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(pb), nil
 }
 
 // GetDecision handles the GetDecision RPC.
@@ -38,7 +42,11 @@ func (h *DecisionHandler) GetDecision(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	return connect.NewResponse(decisionToProto(d)), nil
+	pb, err := decisionToProto(d)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(pb), nil
 }
 
 // ListDecisions handles the ListDecisions RPC.
@@ -62,7 +70,11 @@ func (h *DecisionHandler) ListDecisions(ctx context.Context, req *connect.Reques
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.ListDecisionsResponse{Decisions: decisionsToProto(decisions)}), nil
+	pbs, err := decisionsToProto(decisions)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&specv1.ListDecisionsResponse{Decisions: pbs}), nil
 }
 
 // UpdateDecision handles the UpdateDecision RPC.
@@ -90,7 +102,11 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(decisionToProto(d)), nil
+	pb, err := decisionToProto(d)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(pb), nil
 }
 
 // RegisterDecisionService registers the DecisionService on the given mux.

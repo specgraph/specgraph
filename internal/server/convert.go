@@ -51,11 +51,11 @@ var decisionStatusFromProtoMap = map[specv1.DecisionStatus]storage.DecisionStatu
 	specv1.DecisionStatus_DECISION_STATUS_DEPRECATED: storage.DecisionStatusDeprecated,
 }
 
-func decisionStatusToProto(s storage.DecisionStatus) specv1.DecisionStatus {
+func decisionStatusToProto(s storage.DecisionStatus) (specv1.DecisionStatus, error) {
 	if v, ok := decisionStatusToProtoMap[s]; ok {
-		return v
+		return v, nil
 	}
-	return specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED
+	return specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED, fmt.Errorf("unknown decision status: %q", s)
 }
 
 func decisionStatusFromProto(s specv1.DecisionStatus) (storage.DecisionStatus, error) {
@@ -65,26 +65,34 @@ func decisionStatusFromProto(s specv1.DecisionStatus) (storage.DecisionStatus, e
 	return "", fmt.Errorf("unknown decision status: %v", s)
 }
 
-func decisionToProto(d *storage.Decision) *specv1.Decision {
+func decisionToProto(d *storage.Decision) (*specv1.Decision, error) {
+	status, err := decisionStatusToProto(d.Status)
+	if err != nil {
+		return nil, err
+	}
 	return &specv1.Decision{
 		Id:           d.ID,
 		Slug:         d.Slug,
 		Title:        d.Title,
-		Status:       decisionStatusToProto(d.Status),
+		Status:       status,
 		Decision:     d.Body,
 		Rationale:    d.Rationale,
 		SupersededBy: d.SupersededBy,
 		CreatedAt:    timestamppb.New(d.CreatedAt),
 		UpdatedAt:    timestamppb.New(d.UpdatedAt),
-	}
+	}, nil
 }
 
-func decisionsToProto(decisions []*storage.Decision) []*specv1.Decision {
+func decisionsToProto(decisions []*storage.Decision) ([]*specv1.Decision, error) {
 	result := make([]*specv1.Decision, len(decisions))
 	for i, d := range decisions {
-		result[i] = decisionToProto(d)
+		pb, err := decisionToProto(d)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = pb
 	}
-	return result
+	return result, nil
 }
 
 // --- Edge ---
@@ -107,11 +115,11 @@ var edgeTypeFromProtoMap = map[specv1.EdgeType]storage.EdgeType{
 	specv1.EdgeType_EDGE_TYPE_DECIDED_IN: storage.EdgeTypeDecidedIn,
 }
 
-func edgeTypeToProto(e storage.EdgeType) specv1.EdgeType {
+func edgeTypeToProto(e storage.EdgeType) (specv1.EdgeType, error) {
 	if v, ok := edgeTypeToProtoMap[e]; ok {
-		return v
+		return v, nil
 	}
-	return specv1.EdgeType_EDGE_TYPE_UNSPECIFIED
+	return specv1.EdgeType_EDGE_TYPE_UNSPECIFIED, fmt.Errorf("unknown edge type: %q", e)
 }
 
 func edgeTypeFromProto(e specv1.EdgeType) (storage.EdgeType, error) {
@@ -121,18 +129,26 @@ func edgeTypeFromProto(e specv1.EdgeType) (storage.EdgeType, error) {
 	return "", fmt.Errorf("unknown edge type: %v", e)
 }
 
-func edgeToProto(e *storage.Edge) *specv1.Edge {
+func edgeToProto(e *storage.Edge) (*specv1.Edge, error) {
+	et, err := edgeTypeToProto(e.EdgeType)
+	if err != nil {
+		return nil, err
+	}
 	return &specv1.Edge{
 		FromId:   e.FromID,
 		ToId:     e.ToID,
-		EdgeType: edgeTypeToProto(e.EdgeType),
-	}
+		EdgeType: et,
+	}, nil
 }
 
-func edgesToProto(edges []*storage.Edge) []*specv1.Edge {
+func edgesToProto(edges []*storage.Edge) ([]*specv1.Edge, error) {
 	result := make([]*specv1.Edge, len(edges))
 	for i, e := range edges {
-		result[i] = edgeToProto(e)
+		pb, err := edgeToProto(e)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = pb
 	}
-	return result
+	return result, nil
 }
