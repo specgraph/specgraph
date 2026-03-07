@@ -45,7 +45,10 @@ func (h *DecisionHandler) GetDecision(ctx context.Context, req *connect.Request[
 	}
 	d, err := h.store.GetDecision(ctx, req.Msg.Slug)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+		if errors.Is(err, storage.ErrDecisionNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	pb, err := decisionToProto(d)
 	if err != nil {
