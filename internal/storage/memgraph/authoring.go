@@ -93,25 +93,27 @@ func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *stora
 // StoreShapeOutput persists the shape stage output as JSON on the spec node.
 // It also promotes any structured decisions to first-class Decision graph nodes
 // with DECIDED_IN edges, enabling cross-referencing and impact analysis (ADR-003).
-// Decision promotion is idempotent: existing decisions are skipped.
+// Decision promotion is idempotent: CreateDecision is skipped if the decision
+// already exists, but AddEdge is always called so a lost edge is recreated.
 func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *storage.ShapeOutput) error {
 	if err := s.storeJSONProperty(ctx, slug, "shape_output", output); err != nil {
 		return err
 	}
-	// Promote decisions to graph nodes with DECIDED_IN edges.
+	// Promote decisions to graph nodes with DECIDED_IN edges (spec→decision per ADR-003).
 	for _, d := range output.Decisions {
 		if d.Slug == "" {
 			continue
 		}
-		// Idempotent: skip if decision already exists.
-		if _, err := s.GetDecision(ctx, d.Slug); err == nil {
-			continue
+		// Create decision node only if it does not already exist.
+		if _, err := s.GetDecision(ctx, d.Slug); err != nil {
+			if _, err := s.CreateDecision(ctx, d.Slug, d.Title, d.Decision, d.Rationale); err != nil {
+				return fmt.Errorf("create decision %q: %w", d.Slug, err)
+			}
 		}
-		if _, err := s.CreateDecision(ctx, d.Slug, d.Title, d.Decision, d.Rationale); err != nil {
-			return fmt.Errorf("create decision %q: %w", d.Slug, err)
-		}
-		if _, err := s.AddEdge(ctx, d.Slug, slug, storage.EdgeTypeDecidedIn); err != nil {
-			return fmt.Errorf("add DECIDED_IN edge %q->%q: %w", d.Slug, slug, err)
+		// Always ensure the DECIDED_IN edge exists (spec→decision). AddEdge uses
+		// MERGE so calling it on an existing edge is safe.
+		if _, err := s.AddEdge(ctx, slug, d.Slug, storage.EdgeTypeDecidedIn); err != nil {
+			return fmt.Errorf("add DECIDED_IN edge %q->%q: %w", slug, d.Slug, err)
 		}
 	}
 	return nil

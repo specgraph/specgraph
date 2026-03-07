@@ -1051,7 +1051,7 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_HappyPath(t *testing.T) 
 	// When linked decisions exist, they are accepted without error.
 	backend := &fakeFullBackend{
 		listEdgesResult: []*storage.Edge{
-			{FromID: "decision-1", ToID: "my-spec", EdgeType: storage.EdgeTypeInforms},
+			{FromID: "decision-1", ToID: "my-spec", EdgeType: storage.EdgeTypeDecidedIn},
 		},
 		getDecisionResult: &storage.Decision{
 			Slug:   "decision-1",
@@ -1070,7 +1070,7 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_UpdateError(t *testing.T
 	// When UpdateDecision fails, Approve returns CodeInternal.
 	backend := &fakeFullBackend{
 		listEdgesResult: []*storage.Edge{
-			{FromID: "decision-1", ToID: "my-spec", EdgeType: storage.EdgeTypeInforms},
+			{FromID: "decision-1", ToID: "my-spec", EdgeType: storage.EdgeTypeDecidedIn},
 		},
 		getDecisionResult: &storage.Decision{
 			Slug:   "decision-1",

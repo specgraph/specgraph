@@ -93,6 +93,7 @@ var edgeTypeToProtoMap = map[storage.EdgeType]specv1.EdgeType{
 	storage.EdgeTypeComposes:  specv1.EdgeType_EDGE_TYPE_COMPOSES,
 	storage.EdgeTypeRelatesTo: specv1.EdgeType_EDGE_TYPE_RELATES_TO,
 	storage.EdgeTypeInforms:   specv1.EdgeType_EDGE_TYPE_INFORMS,
+	storage.EdgeTypeDecidedIn: specv1.EdgeType_EDGE_TYPE_DECIDED_IN,
 }
 
 var edgeTypeFromProtoMap = map[specv1.EdgeType]storage.EdgeType{
@@ -101,6 +102,7 @@ var edgeTypeFromProtoMap = map[specv1.EdgeType]storage.EdgeType{
 	specv1.EdgeType_EDGE_TYPE_COMPOSES:   storage.EdgeTypeComposes,
 	specv1.EdgeType_EDGE_TYPE_RELATES_TO: storage.EdgeTypeRelatesTo,
 	specv1.EdgeType_EDGE_TYPE_INFORMS:    storage.EdgeTypeInforms,
+	specv1.EdgeType_EDGE_TYPE_DECIDED_IN: storage.EdgeTypeDecidedIn,
 }
 
 func edgeTypeToProto(e storage.EdgeType) specv1.EdgeType {

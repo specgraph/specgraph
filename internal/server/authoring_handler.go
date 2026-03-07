@@ -467,15 +467,15 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 }
 
 // acceptLinkedDecisions queries for Decision nodes linked to the spec via
-// INFORMS edges and transitions them from proposed to accepted. Returns an
+// DECIDED_IN edges and transitions them from proposed to accepted. Returns an
 // error if any decision acceptance fails.
 func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug string) error {
 	if h.graphBackend == nil || h.decisionBackend == nil {
 		return nil
 	}
-	edges, err := h.graphBackend.ListEdges(ctx, slug, storage.EdgeTypeInforms)
+	edges, err := h.graphBackend.ListEdges(ctx, slug, storage.EdgeTypeDecidedIn)
 	if err != nil {
-		return fmt.Errorf("list INFORMS edges for %q: %w", slug, err)
+		return fmt.Errorf("list DECIDED_IN edges for %q: %w", slug, err)
 	}
 	acceptedStatus := storage.DecisionStatusAccepted
 	for _, edge := range edges {

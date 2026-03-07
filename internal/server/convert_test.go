@@ -83,9 +83,15 @@ func TestEdgeTypeFromProto(t *testing.T) {
 	assert.Equal(t, storage.EdgeTypeComposes, edgeTypeFromProto(specv1.EdgeType_EDGE_TYPE_COMPOSES))
 	assert.Equal(t, storage.EdgeTypeRelatesTo, edgeTypeFromProto(specv1.EdgeType_EDGE_TYPE_RELATES_TO))
 	assert.Equal(t, storage.EdgeTypeInforms, edgeTypeFromProto(specv1.EdgeType_EDGE_TYPE_INFORMS))
+	assert.Equal(t, storage.EdgeTypeDecidedIn, edgeTypeFromProto(specv1.EdgeType_EDGE_TYPE_DECIDED_IN))
 }
 
 func TestEdgeTypeToProto(t *testing.T) {
 	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_DEPENDS_ON, edgeTypeToProto(storage.EdgeTypeDependsOn))
 	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_BLOCKS, edgeTypeToProto(storage.EdgeTypeBlocks))
+	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_COMPOSES, edgeTypeToProto(storage.EdgeTypeComposes))
+	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_RELATES_TO, edgeTypeToProto(storage.EdgeTypeRelatesTo))
+	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_INFORMS, edgeTypeToProto(storage.EdgeTypeInforms))
+	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_DECIDED_IN, edgeTypeToProto(storage.EdgeTypeDecidedIn))
+	assert.Equal(t, specv1.EdgeType_EDGE_TYPE_DECIDED_IN, edgeTypeToProto(storage.EdgeTypeDecidedIn))
 }

@@ -356,11 +356,13 @@ func TestStoreShapeOutput_CreatesDecisionNodes(t *testing.T) {
 	assert.Equal(t, "We chose Memgraph for graph storage", decision.Decision)
 	assert.Equal(t, storage.DecisionStatusProposed, decision.Status)
 
-	// Verify DECIDED_IN edge exists.
-	edges, err := store.ListEdges(ctx, "use-memgraph", storage.EdgeTypeDecidedIn)
+	// Verify DECIDED_IN edge exists with correct direction: spec→decision (ADR-003).
+	edges, err := store.ListEdges(ctx, "shape-decisions-test", storage.EdgeTypeDecidedIn)
 	require.NoError(t, err)
 	require.Len(t, edges, 1)
 	assert.Equal(t, storage.EdgeTypeDecidedIn, edges[0].EdgeType)
+	assert.Equal(t, "shape-decisions-test", edges[0].FromID)
+	assert.Equal(t, "use-memgraph", edges[0].ToID)
 }
 
 func TestStoreShapeOutput_IdempotentDecisions(t *testing.T) {
