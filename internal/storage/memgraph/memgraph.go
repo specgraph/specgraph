@@ -13,11 +13,9 @@ import (
 	"strings"
 	"time"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Store implements storage.Backend using Memgraph (Bolt protocol).
@@ -40,7 +38,7 @@ func New(ctx context.Context, boltURI string) (*Store, error) {
 const defaultInitialStage = "spark"
 
 // CreateSpec stores a new spec node in Memgraph and returns it.
-func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*specv1.Spec, error) {
+func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
 	now := time.Now().UTC()
 	id := generateID("spec", slug, now)
 	nowStr := nowRFC3339()
@@ -84,7 +82,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 }
 
 // GetSpec retrieves a spec by slug.
-func (s *Store) GetSpec(ctx context.Context, slug string) (*specv1.Spec, error) {
+func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error) {
 	query := `
 		MATCH (s:Spec {slug: $slug})
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
@@ -104,7 +102,7 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*specv1.Spec, error) 
 }
 
 // ListSpecs returns specs matching the given filters.
-func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int) ([]*specv1.Spec, error) {
+func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int) ([]*storage.Spec, error) {
 	var clauses []string
 	params := map[string]any{}
 
@@ -133,7 +131,7 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 		return nil, fmt.Errorf("memgraph: list specs: %w", err)
 	}
 
-	specs := make([]*specv1.Spec, 0, len(records))
+	specs := make([]*storage.Spec, 0, len(records))
 	for _, rec := range records {
 		sp, err := recordToSpec(rec)
 		if err != nil {
@@ -145,7 +143,7 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 }
 
 // UpdateSpec updates a spec by slug. Only non-nil fields are changed.
-func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, priority, complexity *string) (*specv1.Spec, error) {
+func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, priority, complexity *string) (*storage.Spec, error) {
 	var setClauses []string
 	params := map[string]any{"slug": slug}
 
@@ -261,8 +259,8 @@ func safeInt32(v int64) int32 {
 	return int32(v)
 }
 
-// recordToSpec converts a neo4j record (with positional values) to a *specv1.Spec.
-func recordToSpec(rec *neo4j.Record) (*specv1.Spec, error) {
+// recordToSpec converts a neo4j record (with positional values) to a *storage.Spec.
+func recordToSpec(rec *neo4j.Record) (*storage.Spec, error) {
 	id, err := recordString(rec, 0, "id")
 	if err != nil {
 		return nil, err
@@ -309,15 +307,15 @@ func recordToSpec(rec *neo4j.Record) (*specv1.Spec, error) {
 		return nil, err
 	}
 
-	return &specv1.Spec{
-		Id:         id,
+	return &storage.Spec{
+		ID:         id,
 		Slug:       slug,
 		Intent:     intent,
-		Stage:      stage,
-		Priority:   priority,
+		Stage:      storage.SpecStage(stage),
+		Priority:   storage.SpecPriority(priority),
 		Complexity: complexity,
 		Version:    safeInt32(version),
-		CreatedAt:  timestamppb.New(createdAt),
-		UpdatedAt:  timestamppb.New(updatedAt),
+		CreatedAt:  createdAt,
+		UpdatedAt:  updatedAt,
 	}, nil
 }

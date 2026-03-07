@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 
+//go:build integration
+
 package memgraph_test
 
 import (
@@ -12,6 +14,7 @@ import (
 	"github.com/seanb4t/specgraph/internal/authoring"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,7 +47,7 @@ func TestTransitionStage(t *testing.T) {
 
 	spec, err := store.GetSpec(ctx, "funnel-test")
 	require.NoError(t, err)
-	require.Equal(t, string(authoring.StageShape), spec.Stage)
+	require.Equal(t, storage.SpecStageShape, spec.Stage)
 
 	err = store.TransitionStage(ctx, "funnel-test", storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify))
 	require.NoError(t, err)
@@ -179,7 +182,7 @@ func TestSupersedeSpec(t *testing.T) {
 	// Verify the old spec is now at stage "superseded".
 	old, err := store.GetSpec(ctx, "old-spec")
 	require.NoError(t, err)
-	require.Equal(t, "superseded", old.Stage)
+	require.Equal(t, storage.SpecStageSuperseded, old.Stage)
 }
 
 func TestSupersedeSpec_NotFound(t *testing.T) {
@@ -326,6 +329,70 @@ func TestTransitionStage_SupersededGuard(t *testing.T) {
 	// "superseded" is not a valid funnel stage and ValidateTransition rejects it.
 	err = store.TransitionStage(ctx, "superseded-old", storage.AuthoringStage("superseded"), storage.AuthoringStage(authoring.StageShape))
 	require.ErrorIs(t, err, storage.ErrInvalidStageTransition)
+}
+
+func TestStoreShapeOutput_CreatesDecisionNodes(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "shape-decisions-test", "test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	shapeOut := &storage.ShapeOutput{
+		ScopeIn: []string{"feature A"},
+		Decisions: []storage.DecisionInput{
+			{
+				Slug:      "use-memgraph",
+				Title:     "Use Memgraph",
+				Body:      "We chose Memgraph for graph storage",
+				Rationale: "Native graph, Bolt protocol, good Go driver",
+			},
+		},
+	}
+	err = store.StoreShapeOutput(ctx, "shape-decisions-test", shapeOut)
+	require.NoError(t, err)
+
+	// Verify decision node was created.
+	decision, err := store.GetDecision(ctx, "use-memgraph")
+	require.NoError(t, err)
+	assert.Equal(t, "Use Memgraph", decision.Title)
+	assert.Equal(t, "We chose Memgraph for graph storage", decision.Body)
+	assert.Equal(t, storage.DecisionStatusProposed, decision.Status)
+
+	// Verify DECIDED_IN edge exists with correct direction: spec→decision (ADR-003).
+	edges, err := store.ListEdges(ctx, "shape-decisions-test", storage.EdgeTypeDecidedIn)
+	require.NoError(t, err)
+	require.Len(t, edges, 1)
+	assert.Equal(t, storage.EdgeTypeDecidedIn, edges[0].EdgeType)
+	assert.Equal(t, "shape-decisions-test", edges[0].FromID)
+	assert.Equal(t, "use-memgraph", edges[0].ToID)
+}
+
+func TestStoreShapeOutput_IdempotentDecisions(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "idempotent-test", "test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	shapeOut := &storage.ShapeOutput{
+		ScopeIn: []string{"feature"},
+		Decisions: []storage.DecisionInput{
+			{Slug: "reuse-decision", Title: "Reuse", Body: "Reuse it", Rationale: "Why not"},
+		},
+	}
+
+	// Store twice — should not fail or create duplicate.
+	require.NoError(t, store.StoreShapeOutput(ctx, "idempotent-test", shapeOut))
+	require.NoError(t, store.StoreShapeOutput(ctx, "idempotent-test", shapeOut))
+
+	// DECIDED_IN edge should be deduplicated.
+	edges, err := store.ListEdges(ctx, "idempotent-test", storage.EdgeTypeDecidedIn)
+	require.NoError(t, err)
+	require.Len(t, edges, 1, "expected exactly one DECIDED_IN edge after idempotent store")
+
+	// Still just one decision node.
+	decision, err := store.GetDecision(ctx, "reuse-decision")
+	require.NoError(t, err)
+	assert.Equal(t, "Reuse", decision.Title)
 }
 
 func TestStoreSafetyFlags(t *testing.T) {

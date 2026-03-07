@@ -6,7 +6,37 @@ SpecGraph is a **Live Spec-Driven Development Framework** — specifications as 
 
 ## Commands
 
-All automation is via Taskfile.dev. Run `task --list` for the full catalog. Key commands: `task build`, `task test`, `task proto`, `task lint`, `task fmt`.
+All automation is via Taskfile.dev. Run `task --list` for the full catalog.
+
+### Quality Gates (MUST use)
+
+| Task | When to run | What it does |
+|------|-------------|--------------|
+| `task check` | Before every `git push` (also runs automatically via pre-push hook) | fmt:check → license:check → lint → build → unit tests (excludes memgraph/Docker) |
+| `task pr-prep` | Before opening/updating a PR (requires Docker) | check → test:integration → test:e2e |
+
+- **MUST run `task check`** after finishing a batch of changes and before pushing. The pre-push hook enforces this automatically, but run it manually first to catch issues early.
+- **SHOULD run `task pr-prep`** before opening a PR or marking it ready for review. This is the full pipeline including e2e tests.
+- **Do NOT rely solely on lefthook pre-commit** for lint validation — it only checks staged files per commit and misses cross-scope issues like `govet -shadow` and `wrapcheck`.
+
+### Common Commands
+
+| Task | Purpose |
+|------|---------|
+| `task build` | Build the specgraph binary (runs `task proto` first) |
+| `task test` | Default `go test ./...` — skips `//go:build integration` and `//go:build e2e` suites |
+| `task test:short` | Run short tests only |
+| `task proto` | Generate Go code from protobuf (incremental, skips if unchanged) |
+| `task lint` | Run all linters (Go, Markdown, YAML) |
+| `task fmt` | Format all files (Go, YAML, Markdown, dprint) |
+
+### Dev Setup (fresh clone)
+
+```bash
+task tools          # Install all dev tools (golangci-lint, buf, lefthook, etc.)
+task hooks:install  # Install git hooks (pre-commit, pre-push, commit-msg)
+task build          # Generate proto + build binary
+```
 
 ## Domain Concepts
 
@@ -15,6 +45,20 @@ All automation is via Taskfile.dev. Run `task --list` for the full catalog. Key 
 - **Authoring funnel**: Spark → Shape → Specify → Decompose → Approve
 - **Decisions are first-class nodes** (ADR-003) with bidirectional edges to specs
 - **SpecGraph is upstream of Gastown** — SpecGraph does design; Gastown does execution via polecats (ephemeral worker agents)
+
+## Architecture
+
+| Directory | Contents |
+|-----------|----------|
+| `cmd/specgraph/` | CLI entry point |
+| `proto/specgraph/v1/` | Protobuf service definitions (source of truth) |
+| `gen/specgraph/v1/` | Generated Go code from proto (gitignored, run `task proto`) |
+| `internal/server/` | ConnectRPC handlers + proto↔domain converters |
+| `internal/storage/` | Storage interfaces (domain types, not protobuf) |
+| `internal/storage/memgraph/` | Memgraph implementation (Cypher queries, testcontainers) |
+| `internal/authoring/` | Authoring funnel stage logic |
+| `e2e/` | End-to-end tests (Ginkgo/Gomega, require Docker) |
+| `docs/plans/` | Implementation plan documents |
 
 ## Gotchas
 
@@ -30,6 +74,10 @@ All automation is via Taskfile.dev. Run `task --list` for the full catalog. Key 
 - **E2E tests use Ginkgo/Gomega** — `e2e/api/` tests run via `go test -tags e2e`; `e2e/docker/` tests require Docker-in-Docker (skipped in CI)
 - **Go test glob `./pkg/...` vs `./pkg/`** — ellipsis recurses into subdirs. CI uses `./internal/storage/` (no ellipsis) to avoid pulling in `memgraph/` integration tests into the unit test step
 - **Docker compose templates manage DB only** — `internal/docker/compose.go` templates start Memgraph or Postgres containers; the SpecGraph process runs natively and connects to the containerized DB
+- **Handler error sanitization** — `stageError` and similar methods sanitize internal errors before returning to clients. Test assertions MUST use error codes (`connect.CodeInternal`, `connect.CodeNotFound`), not error message strings.
+- **Mock backends must use sentinel errors** — When handler code uses `errors.Is()` checks (e.g., `storage.ErrSpecNotFound`, `storage.ErrDecisionNotFound`), mock/fake backends must return these sentinel errors, not `fmt.Errorf()`.
+- **DECIDED_IN edge direction** — Per ADR-003, DECIDED_IN edges go from spec → decision. In `acceptLinkedDecisions`, `edge.ToID` is the decision slug.
+- **Use 4-backtick fences for nested code blocks** — when docs embed files containing ``` fences (e.g., SKILL.md content), use ````markdown for the outer block. Bare ``` nesting creates broken/orphaned fences.
 
 ## Roadmap
 

@@ -29,7 +29,18 @@ func txFromContext(ctx context.Context) (neo4j.ManagedTransaction, bool) {
 // storage methods called inside fn use it instead of auto-commit queries.
 // If fn returns an error the transaction is rolled back automatically by the
 // neo4j driver; otherwise it is committed.
+//
+// If the context already carries a transaction (from a parent RunInTransaction
+// call), fn is executed directly within that existing transaction — no nested
+// session or transaction is created. This makes it safe for storage methods
+// like StoreShapeOutput to call RunInTransaction internally while also being
+// called from a higher-level transaction via runInTxOrSequential.
 func (s *Store) RunInTransaction(ctx context.Context, fn func(ctx context.Context) error) (retErr error) {
+	// Reuse existing transaction if already in one (prevents nested tx conflicts).
+	if _, ok := txFromContext(ctx); ok {
+		return fn(ctx)
+	}
+
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{})
 	defer func() {
 		if closeErr := session.Close(ctx); closeErr != nil && retErr == nil {

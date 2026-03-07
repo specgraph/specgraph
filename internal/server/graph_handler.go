@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -22,17 +23,40 @@ var _ specgraphv1connect.GraphServiceHandler = (*GraphHandler)(nil)
 
 // AddEdge handles the AddEdge RPC.
 func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.AddEdgeRequest]) (*connect.Response[specv1.Edge], error) {
-	edge, err := h.store.AddEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, req.Msg.EdgeType)
+	if err := validateSlug(req.Msg.FromSlug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("from_slug: %w", err))
+	}
+	if err := validateSlug(req.Msg.ToSlug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("to_slug: %w", err))
+	}
+	et, err := edgeTypeFromProto(req.Msg.EdgeType)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	edge, err := h.store.AddEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, et)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(edge), nil
+	pb, err := edgeToProto(edge)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(pb), nil
 }
 
 // RemoveEdge handles the RemoveEdge RPC.
 func (h *GraphHandler) RemoveEdge(ctx context.Context, req *connect.Request[specv1.RemoveEdgeRequest]) (*connect.Response[specv1.RemoveEdgeResponse], error) {
-	err := h.store.RemoveEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, req.Msg.EdgeType)
+	if err := validateSlug(req.Msg.FromSlug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("from_slug: %w", err))
+	}
+	if err := validateSlug(req.Msg.ToSlug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("to_slug: %w", err))
+	}
+	et, err := edgeTypeFromProto(req.Msg.EdgeType)
 	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if err := h.store.RemoveEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, et); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&specv1.RemoveEdgeResponse{}), nil
@@ -40,15 +64,34 @@ func (h *GraphHandler) RemoveEdge(ctx context.Context, req *connect.Request[spec
 
 // ListEdges handles the ListEdges RPC.
 func (h *GraphHandler) ListEdges(ctx context.Context, req *connect.Request[specv1.ListEdgesRequest]) (*connect.Response[specv1.ListEdgesResponse], error) {
-	edges, err := h.store.ListEdges(ctx, req.Msg.Slug, req.Msg.EdgeType)
+	if err := validateSlug(req.Msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	// UNSPECIFIED means "list all edge types" — pass empty string.
+	var et storage.EdgeType
+	if req.Msg.EdgeType != specv1.EdgeType_EDGE_TYPE_UNSPECIFIED {
+		var err error
+		et, err = edgeTypeFromProto(req.Msg.EdgeType)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
+	edges, err := h.store.ListEdges(ctx, req.Msg.Slug, et)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.ListEdgesResponse{Edges: edges}), nil
+	pbs, err := edgesToProto(edges)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&specv1.ListEdgesResponse{Edges: pbs}), nil
 }
 
 // GetDependencies handles the GetDependencies RPC.
 func (h *GraphHandler) GetDependencies(ctx context.Context, req *connect.Request[specv1.GetDependenciesRequest]) (*connect.Response[specv1.GetDependenciesResponse], error) {
+	if err := validateSlug(req.Msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	refs, err := h.store.GetDependencies(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -58,6 +101,9 @@ func (h *GraphHandler) GetDependencies(ctx context.Context, req *connect.Request
 
 // GetTransitiveDeps handles the GetTransitiveDeps RPC.
 func (h *GraphHandler) GetTransitiveDeps(ctx context.Context, req *connect.Request[specv1.GetTransitiveDepsRequest]) (*connect.Response[specv1.GetTransitiveDepsResponse], error) {
+	if err := validateSlug(req.Msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	refs, err := h.store.GetTransitiveDeps(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -67,6 +113,9 @@ func (h *GraphHandler) GetTransitiveDeps(ctx context.Context, req *connect.Reque
 
 // GetImpact handles the GetImpact RPC.
 func (h *GraphHandler) GetImpact(ctx context.Context, req *connect.Request[specv1.GetImpactRequest]) (*connect.Response[specv1.GetImpactResponse], error) {
+	if err := validateSlug(req.Msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	refs, err := h.store.GetImpact(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -85,6 +134,9 @@ func (h *GraphHandler) GetReady(ctx context.Context, _ *connect.Request[specv1.G
 
 // GetCriticalPath handles the GetCriticalPath RPC.
 func (h *GraphHandler) GetCriticalPath(ctx context.Context, req *connect.Request[specv1.GetCriticalPathRequest]) (*connect.Response[specv1.GetCriticalPathResponse], error) {
+	if err := validateSlug(req.Msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	refs, err := h.store.GetCriticalPath(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -105,7 +157,7 @@ func nodeRefsToProto(refs []storage.NodeRef) []*specv1.NodeRef {
 		result[i] = &specv1.NodeRef{
 			Id:    r.ID,
 			Slug:  r.Slug,
-			Label: r.Label,
+			Label: string(r.Label),
 			Stage: r.Stage,
 		}
 	}

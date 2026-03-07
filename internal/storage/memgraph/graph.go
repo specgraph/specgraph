@@ -7,32 +7,22 @@ import (
 	"context"
 	"fmt"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
-var edgeTypeToRel = map[specv1.EdgeType]string{
-	specv1.EdgeType_EDGE_TYPE_DEPENDS_ON: "DEPENDS_ON",
-	specv1.EdgeType_EDGE_TYPE_BLOCKS:     "BLOCKS",
-	specv1.EdgeType_EDGE_TYPE_COMPOSES:   "COMPOSES",
-	specv1.EdgeType_EDGE_TYPE_RELATES_TO: "RELATES_TO",
-	specv1.EdgeType_EDGE_TYPE_INFORMS:    "INFORMS",
-}
-
 // resolveEdge maps an edge type to its Cypher relation name.
-// All edge types are stored as-is: (from)-[:REL]->(to).
-func resolveEdge(fromSlug, toSlug string, edgeType specv1.EdgeType) (rel, from, to string, err error) {
-	rel, ok := edgeTypeToRel[edgeType]
-	if !ok {
+// EdgeType string values are the Cypher relationship names directly.
+func resolveEdge(fromSlug, toSlug string, edgeType storage.EdgeType) (rel, from, to string, err error) {
+	if !edgeType.IsValid() {
 		return "", "", "", fmt.Errorf("memgraph: unknown edge type %v", edgeType)
 	}
-	return rel, fromSlug, toSlug, nil
+	return string(edgeType), fromSlug, toSlug, nil
 }
 
 // AddEdge creates a typed relationship between two nodes.
-func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType specv1.EdgeType) (*specv1.Edge, error) {
+func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType storage.EdgeType) (*storage.Edge, error) {
 	relType, actualFrom, actualTo, err := resolveEdge(fromSlug, toSlug, edgeType)
 	if err != nil {
 		return nil, err
@@ -45,32 +35,32 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 	`, relType)
 	params := map[string]any{"from": actualFrom, "to": actualTo}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: add edge: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: one or both nodes not found (from=%q, to=%q)", fromSlug, toSlug)
 	}
 
-	fromSlugVal, err := recordString(result.Records[0], 0, "from_slug")
+	fromSlugVal, err := recordString(records[0], 0, "from_slug")
 	if err != nil {
 		return nil, err
 	}
-	toSlugVal, err := recordString(result.Records[0], 1, "to_slug")
+	toSlugVal, err := recordString(records[0], 1, "to_slug")
 	if err != nil {
 		return nil, err
 	}
 
-	return &specv1.Edge{
-		FromId:   fromSlugVal,
-		ToId:     toSlugVal,
+	return &storage.Edge{
+		FromID:   fromSlugVal,
+		ToID:     toSlugVal,
 		EdgeType: edgeType,
 	}, nil
 }
 
 // RemoveEdge removes a typed relationship between two nodes.
-func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeType specv1.EdgeType) error {
+func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeType storage.EdgeType) error {
 	relType, actualFrom, actualTo, err := resolveEdge(fromSlug, toSlug, edgeType)
 	if err != nil {
 		return err
@@ -89,12 +79,12 @@ func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeTyp
 }
 
 // ListEdges returns edges for a node, optionally filtered by type.
-func (s *Store) ListEdges(ctx context.Context, slug string, edgeType specv1.EdgeType) ([]*specv1.Edge, error) {
+func (s *Store) ListEdges(ctx context.Context, slug string, edgeType storage.EdgeType) ([]*storage.Edge, error) {
 	var query string
 	params := map[string]any{"slug": slug}
 
-	if edgeType != specv1.EdgeType_EDGE_TYPE_UNSPECIFIED {
-		relType := edgeTypeToRel[edgeType]
+	if edgeType != "" {
+		relType := string(edgeType)
 		query = fmt.Sprintf(`
 			MATCH (a {slug: $slug})-[r:%s]->(b)
 			RETURN a.slug AS from_slug, b.slug AS to_slug, type(r) AS rel_type
@@ -112,21 +102,25 @@ func (s *Store) ListEdges(ctx context.Context, slug string, edgeType specv1.Edge
 		`
 	}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: list edges: %w", err)
 	}
 
-	edges := make([]*specv1.Edge, 0, len(result.Records))
-	for _, rec := range result.Records {
+	edges := make([]*storage.Edge, 0, len(records))
+	for _, rec := range records {
 		// Use named access via aliases to avoid Memgraph UNION column reordering.
 		from, _ := rec.Get("from_slug")
 		to, _ := rec.Get("to_slug")
 		rt, _ := rec.Get("rel_type")
-		edges = append(edges, &specv1.Edge{
-			FromId:   stringVal(from),
-			ToId:     stringVal(to),
-			EdgeType: relNameToEdgeType(stringVal(rt)),
+		edgeType, err := relNameToEdgeType(stringVal(rt))
+		if err != nil {
+			return nil, fmt.Errorf("ListEdges: %w", err)
+		}
+		edges = append(edges, &storage.Edge{
+			FromID:   stringVal(from),
+			ToID:     stringVal(to),
+			EdgeType: edgeType,
 		})
 	}
 	return edges, nil
@@ -210,7 +204,7 @@ func (s *Store) queryNodeRefs(ctx context.Context, query string, params map[stri
 		refs = append(refs, storage.NodeRef{
 			ID:    stringVal(id),
 			Slug:  stringVal(slug),
-			Label: stringVal(label),
+			Label: storage.NodeLabel(stringVal(label)),
 			Stage: stringVal(stage),
 		})
 	}
@@ -226,19 +220,10 @@ func stringVal(v any) string {
 	return s
 }
 
-func relNameToEdgeType(relType string) specv1.EdgeType {
-	switch relType {
-	case "DEPENDS_ON":
-		return specv1.EdgeType_EDGE_TYPE_DEPENDS_ON
-	case "BLOCKS":
-		return specv1.EdgeType_EDGE_TYPE_BLOCKS
-	case "COMPOSES":
-		return specv1.EdgeType_EDGE_TYPE_COMPOSES
-	case "RELATES_TO":
-		return specv1.EdgeType_EDGE_TYPE_RELATES_TO
-	case "INFORMS":
-		return specv1.EdgeType_EDGE_TYPE_INFORMS
-	default:
-		return specv1.EdgeType_EDGE_TYPE_UNSPECIFIED
+func relNameToEdgeType(relType string) (storage.EdgeType, error) {
+	et := storage.EdgeType(relType)
+	if !et.IsValid() {
+		return "", fmt.Errorf("unknown edge relation type: %q", relType)
 	}
+	return et, nil
 }

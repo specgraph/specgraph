@@ -16,6 +16,7 @@ enum EdgeType {
   EDGE_TYPE_COMPOSES = 3;      // A composes B (B is a child/sub-spec of A)
   EDGE_TYPE_RELATES_TO = 4;    // A relates to B (informational link)
   EDGE_TYPE_INFORMS = 5;       // Decision A informs Spec B
+  EDGE_TYPE_DECIDED_IN = 6;   // Decision A was decided in context of Spec B
 }
 
 // --- Messages ---

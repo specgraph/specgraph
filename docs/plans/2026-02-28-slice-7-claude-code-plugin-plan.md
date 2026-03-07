@@ -164,7 +164,7 @@ git commit -m "feat(plugin): plugin.json manifest with skill and hook declaratio
 
 `plugin/specgraph/skills/specgraph/SKILL.md`:
 
-```markdown
+````markdown
 ---
 name: specgraph
 description: >
@@ -215,17 +215,7 @@ Run this to get an overview:
 specgraph list --format=table
 ```
 
-```text
-
-```text
-
-```text
-
-```text
-
 Present the output as a formatted table. If the server is not running, suggest `specgraph serve` or `specgraph init` first.
-
-```text
 
 **Step 2: Verify the file is valid YAML frontmatter + markdown**
 
@@ -234,6 +224,8 @@ head -5 plugin/specgraph/skills/specgraph/SKILL.md
 ```
 
 Expected: frontmatter block starting with `---`
+
+````
 
 **Step 3: Commit**
 
@@ -258,7 +250,7 @@ git commit -m "feat(plugin): meta-skill for SpecGraph overview and routing"
 
 `plugin/specgraph/skills/specgraph/spark/SKILL.md`:
 
-```markdown
+````markdown
 ---
 name: specgraph-spark
 description: >
@@ -280,14 +272,6 @@ Verify the SpecGraph server is reachable:
 ```bash
 specgraph health
 ```
-
-```text
-
-```text
-
-```text
-
-```text
 
 If not reachable, tell the user to start the server first.
 
@@ -360,13 +344,13 @@ If the user's idea conflicts with constitution constraints, flag it immediately:
 "This might conflict with the constraint: [constraint]. Let's note that and address
 it during Shape."
 
-```text
+````
 
 **Step 2: Write the Shape skill**
 
 `plugin/specgraph/skills/specgraph/shape/SKILL.md`:
 
-```markdown
+````markdown
 ---
 name: specgraph-shape
 description: >
@@ -458,13 +442,13 @@ Read and apply all principles, constraints, and antipatterns from the constituti
 Flag any violations immediately with: "This conflicts with: [constraint]. Options:
 (a) change the approach, (b) request a constitution exception, (c) note it and proceed."
 
-```text
+````
 
 **Step 3: Write the Specify skill**
 
 `plugin/specgraph/skills/specgraph/specify/SKILL.md`:
 
-```markdown
+````markdown
 ---
 name: specgraph-specify
 description: >
@@ -566,13 +550,13 @@ After specify completes, offer:
 - "Continue to **Decompose** (`/specgraph-decompose $SLUG`) if this is large enough to break into sub-specs"
 - "Or **Approve** (`/specgraph-approve $SLUG`) if this is a single implementable unit"
 
-```text
+````
 
 **Step 4: Write the Decompose skill**
 
 `plugin/specgraph/skills/specgraph/decompose/SKILL.md`:
 
-```markdown
+````markdown
 ---
 name: specgraph-decompose
 description: >
@@ -659,13 +643,13 @@ After decompose completes, offer:
 - "**Approve** the parent and all sub-specs (`/specgraph-approve $SLUG`)"
 - "Or review individual sub-specs: `/specgraph-show $CHILD_SLUG`"
 
-```text
+````
 
 **Step 5: Write the Approve skill**
 
 `plugin/specgraph/skills/specgraph/approve/SKILL.md`:
 
-```markdown
+````markdown
 ---
 name: specgraph-approve
 description: >
@@ -743,7 +727,7 @@ The spec is now claimable. Inform the user:
 - "Run `/specgraph-ready` to see all claimable specs."
 - "Run `/specgraph-bundle $SLUG` to generate an execution bundle."
 
-```text
+````
 
 **Step 6: Verify all skill files exist and have valid frontmatter**
 
@@ -783,7 +767,7 @@ git commit -m "feat(plugin): authoring funnel skills — spark, shape, specify, 
 
 `plugin/specgraph/skills/specgraph/list/SKILL.md`:
 
-```markdown
+````markdown
 ---
 name: specgraph-list
 description: >
@@ -801,14 +785,6 @@ description: >
 ```bash
 specgraph list --format=table
 ```
-
-```text
-
-```text
-
-```text
-
-```text
 
 If `$ARGUMENTS` contains filter keywords, apply them:
 
@@ -830,14 +806,13 @@ Based on results:
 - If there are approved specs: "Want to claim one? Use `/specgraph-bundle $SLUG`"
 - If there are blocked specs: "Want to see what's blocking? Use `/specgraph-deps $SLUG`"
 - If there are specs in early stages: "Want to continue authoring? Use `/specgraph-shape $SLUG`"
-
-```text
+````
 
 **Step 2: Write the Show skill**
 
 `plugin/specgraph/skills/specgraph/show/SKILL.md`:
 
-```markdown
+````markdown
 ---
 name: specgraph-show
 description: >
@@ -901,13 +876,13 @@ Based on the spec's stage:
 - Specify: "Continue to `/specgraph-decompose $SLUG` or `/specgraph-approve $SLUG`"
 - Approved: "Generate bundle with `/specgraph-bundle $SLUG`"
 
-```text
+````
 
 **Step 3: Write the Deps skill**
 
 `plugin/specgraph/skills/specgraph/deps/SKILL.md`:
 
-```markdown
+````markdown
 ---
 name: specgraph-deps
 description: >
@@ -966,13 +941,13 @@ Show what would be affected if this spec changes:
 specgraph impact $SLUG
 ```
 
-```text
+````
 
 **Step 4: Write the Ready skill**
 
 `plugin/specgraph/skills/specgraph/ready/SKILL.md`:
 
-```markdown
+````markdown
 ---
 name: specgraph-ready
 description: >
@@ -1020,7 +995,7 @@ When the user picks a spec:
 specgraph claim $SLUG --agent=$(whoami)
 ```
 
-```text
+````
 
 **Step 5: Verify all skill files exist**
 
@@ -1056,7 +1031,7 @@ git commit -m "feat(plugin): query skills — list, show, deps, ready"
 
 `plugin/specgraph/skills/specgraph/bundle/SKILL.md`:
 
-```markdown
+````markdown
 ---
 name: specgraph-bundle
 description: >
@@ -1078,14 +1053,6 @@ the implementing agent needs.
 specgraph health
 specgraph show $SLUG --format=json
 ```
-
-```text
-
-```text
-
-```text
-
-```text
 
 Verify the spec is in `approved` status.
 
@@ -1169,7 +1136,7 @@ As the user works, periodically report progress:
 specgraph progress $SLUG --message="$MESSAGE"
 ```
 
-```text
+````
 
 **Step 2: Commit**
 
@@ -1537,7 +1504,7 @@ echo "Ensure the SpecGraph server is running: specgraph serve"
 
 `plugin/specgraph/README.md`:
 
-```markdown
+````markdown
 # SpecGraph Claude Code Plugin
 
 Run the full SpecGraph spec-driven development workflow from Claude Code.
@@ -1558,13 +1525,9 @@ claude /plugin install specgraph
 
 ```text
 
-```text
-
-```text
-
-```text
-
 ### Manual
+
+```
 
 ```bash
 # From the specgraph repo
@@ -1633,14 +1596,12 @@ export SPECGRAPH_PROGRESS_HOOK=1
 
 ## Architecture
 
-```text
 User <-> Claude Code <-> Skills (SKILL.md) <-> specgraph CLI <-> SpecGraph Server <-> Memgraph
-```
 
 Skills are thin wrappers. No business logic lives in the plugin. The server
 is the single source of truth.
 
-```text
+````
 
 **Step 3: Make install script executable**
 
