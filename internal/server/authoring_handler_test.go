@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -131,7 +132,7 @@ func (f *fakeBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, er
 	if f.getSpecErr != nil {
 		return nil, f.getSpecErr
 	}
-	return &storage.Spec{Slug: slug}, nil
+	return &storage.Spec{Slug: slug, UpdatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}, nil
 }
 
 func (f *fakeBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*storage.Spec, error) {

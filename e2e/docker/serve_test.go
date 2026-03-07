@@ -25,6 +25,7 @@ var _ = Describe("Docker mode serve", Ordered, func() {
 		configPath string
 		cmd        *exec.Cmd
 		port       int
+		done       chan error // receives cmd.Wait() result; detects early crashes
 	)
 
 	BeforeAll(func() {
@@ -54,9 +55,11 @@ storage:
 	})
 
 	AfterAll(func() {
-		if cmd != nil && cmd.Process != nil && cmd.ProcessState == nil {
+		if cmd != nil && cmd.Process != nil {
 			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
+			if done != nil {
+				<-done // wait for goroutine to finish
+			}
 		}
 		os.RemoveAll(projectDir)
 	})
@@ -70,6 +73,12 @@ storage:
 
 		err := cmd.Start()
 		Expect(err).NotTo(HaveOccurred())
+
+		// Monitor the process in the background so other specs can detect crashes.
+		done = make(chan error, 1)
+		go func() {
+			done <- cmd.Wait()
+		}()
 
 		// Wait for the compose file to appear (docker compose up may take a while).
 		composePath := filepath.Join(projectDir, ".specgraph", "docker-compose.yaml")
@@ -91,8 +100,10 @@ storage:
 		healthURL := fmt.Sprintf("http://127.0.0.1:%d/specgraph.v1.ServerService/Health", port)
 		Eventually(func() error {
 			// Check if process crashed before attempting health check.
-			if cmd.ProcessState != nil {
-				return fmt.Errorf("serve process exited unexpectedly")
+			select {
+			case err := <-done:
+				return fmt.Errorf("serve process exited unexpectedly: %v", err)
+			default:
 			}
 			resp, err := http.Post(healthURL, "application/json", nil)
 			if err != nil {
@@ -110,16 +121,18 @@ storage:
 		Expect(cmd).NotTo(BeNil(), "serve process should be running")
 		Expect(cmd.Process).NotTo(BeNil())
 
+		// Check for early crash before sending signal.
+		select {
+		case err := <-done:
+			Fail(fmt.Sprintf("serve process already exited: %v", err))
+		default:
+		}
+
 		// Send SIGTERM.
 		err := cmd.Process.Signal(syscall.SIGTERM)
 		Expect(err).NotTo(HaveOccurred())
 
-		// Wait for the process to exit.
-		done := make(chan error, 1)
-		go func() {
-			done <- cmd.Wait()
-		}()
-
+		// Wait for the process to exit via the shared done channel.
 		var exitErr error
 		Eventually(done).WithTimeout(30 * time.Second).Should(Receive(&exitErr))
 

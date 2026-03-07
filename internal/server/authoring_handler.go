@@ -55,7 +55,7 @@ type AuthoringHandler struct {
 	backend         storage.Backend
 	txBackend       storage.TransactionalBackend // optional, may be nil
 	decisionBackend storage.DecisionBackend      // optional; when non-nil, Approve transitions linked decisions
-	graphBackend    storage.GraphBackend         // optional; used to discover decision→spec DECIDED_IN edges
+	graphBackend    storage.GraphBackend         // optional; used to discover spec→decision DECIDED_IN edges
 	logger          *slog.Logger
 }
 
@@ -374,12 +374,12 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	); err != nil {
 		return nil, h.stageError(err)
 	}
-	approvedAt := timestamppb.New(spec.UpdatedAt)
 	if spec.UpdatedAt.IsZero() {
-		h.logger.DebugContext(ctx, "spec.UpdatedAt is zero after TransitionStage; falling back to now",
+		h.logger.ErrorContext(ctx, "spec.UpdatedAt is zero after TransitionStage",
 			"slug", slug, "specID", spec.ID, "stage", "approved")
-		approvedAt = timestamppb.Now()
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("spec %q has zero UpdatedAt after approval", slug))
 	}
+	approvedAt := timestamppb.New(spec.UpdatedAt)
 	return connect.NewResponse(&specv1.ApproveResponse{
 		Slug:       req.Msg.Slug,
 		Stage:      stageToProto(authoring.StageApproved),
@@ -582,10 +582,42 @@ func sparkOutputToDomain(p *specv1.SparkOutput) (*storage.SparkOutput, error) {
 func shapeOutputToDomain(p *specv1.ShapeOutput) (*storage.ShapeOutput, error) {
 	approaches := make([]storage.Approach, len(p.GetApproaches()))
 	for i, a := range p.GetApproaches() {
+		if len(a.GetName()) > maxFieldLen {
+			return nil, fmt.Errorf("approaches[%d]: name exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+		if len(a.GetDescription()) > maxFieldLen {
+			return nil, fmt.Errorf("approaches[%d]: description exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+		if len(a.GetTradeoffs()) > maxFieldLen {
+			return nil, fmt.Errorf("approaches[%d]: tradeoffs exceeds maximum length of %d characters", i, maxFieldLen)
+		}
 		approaches[i] = storage.Approach{
 			Name:        a.GetName(),
 			Description: a.GetDescription(),
 			Tradeoffs:   a.GetTradeoffs(),
+		}
+	}
+	if len(p.GetChosenApproach()) > maxFieldLen {
+		return nil, fmt.Errorf("chosen_approach exceeds maximum length of %d characters", maxFieldLen)
+	}
+	for i, r := range p.GetRisks() {
+		if len(r) > maxFieldLen {
+			return nil, fmt.Errorf("risks[%d]: exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+	}
+	for i, s := range p.GetSuccessMust() {
+		if len(s) > maxFieldLen {
+			return nil, fmt.Errorf("success_must[%d]: exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+	}
+	for i, s := range p.GetSuccessShould() {
+		if len(s) > maxFieldLen {
+			return nil, fmt.Errorf("success_should[%d]: exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+	}
+	for i, s := range p.GetSuccessWont() {
+		if len(s) > maxFieldLen {
+			return nil, fmt.Errorf("success_wont[%d]: exceeds maximum length of %d characters", i, maxFieldLen)
 		}
 	}
 	decisions := make([]storage.DecisionInput, len(p.GetDecisions()))

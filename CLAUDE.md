@@ -13,7 +13,7 @@ All automation is via Taskfile.dev. Run `task --list` for the full catalog.
 | Task | When to run | What it does |
 |------|-------------|--------------|
 | `task check` | Before every `git push` (also runs automatically via pre-push hook) | fmt:check → license:check → lint → build → unit tests (excludes memgraph/Docker) |
-| `task pr-prep` | Before opening/updating a PR (requires Docker) | clean → generate → check → e2e tests |
+| `task pr-prep` | Before opening/updating a PR (requires Docker) | check → test:integration → test:e2e |
 
 - **MUST run `task check`** after finishing a batch of changes and before pushing. The pre-push hook enforces this automatically, but run it manually first to catch issues early.
 - **SHOULD run `task pr-prep`** before opening a PR or marking it ready for review. This is the full pipeline including e2e tests.
@@ -24,7 +24,7 @@ All automation is via Taskfile.dev. Run `task --list` for the full catalog.
 | Task | Purpose |
 |------|---------|
 | `task build` | Build the specgraph binary (runs `task proto` first) |
-| `task test` | Run all tests including memgraph integration (requires Docker) |
+| `task test` | Default `go test ./...` — skips `//go:build integration` and `//go:build e2e` suites |
 | `task test:short` | Run short tests only |
 | `task proto` | Generate Go code from protobuf (incremental, skips if unchanged) |
 | `task lint` | Run all linters (Go, Markdown, YAML) |

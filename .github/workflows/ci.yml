@@ -5,8 +5,15 @@ on:
   push:
     branches: [main]
   pull_request:
+permissions:
+  contents: read
 env:
   GO_VERSION: "1.26"
+  GOLANGCI_LINT_VERSION: v2.11.1
+  YAMLFMT_VERSION: v0.21.0
+  ADDLICENSE_VERSION: v1.2.0
+  RUMDL_VERSION: 0.1.42
+  DPRINT_VERSION: "0.52.0"
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -29,24 +36,24 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/go/bin
-          key: go-tools-${{ runner.os }}-${{ hashFiles('Taskfile.yml') }}
+          key: go-tools-${{ runner.os }}-${{ env.GOLANGCI_LINT_VERSION }}-${{ env.YAMLFMT_VERSION }}-${{ env.ADDLICENSE_VERSION }}
       - name: Cache dprint
         uses: actions/cache@v4
         with:
           path: ~/.dprint
-          key: dprint-${{ runner.os }}
+          key: dprint-${{ runner.os }}-${{ env.DPRINT_VERSION }}
       - name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-rumdl
+          key: pip-${{ runner.os }}-rumdl-${{ env.RUMDL_VERSION }}
       - name: Install Go tools
         run: |
-          test -f ~/go/bin/golangci-lint || go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-          test -f ~/go/bin/yamlfmt || go install github.com/google/yamlfmt/cmd/yamlfmt@latest
-          test -f ~/go/bin/addlicense || go install github.com/google/addlicense@latest
+          test -f ~/go/bin/golangci-lint || go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${{ env.GOLANGCI_LINT_VERSION }}
+          test -f ~/go/bin/yamlfmt || go install github.com/google/yamlfmt/cmd/yamlfmt@${{ env.YAMLFMT_VERSION }}
+          test -f ~/go/bin/addlicense || go install github.com/google/addlicense@${{ env.ADDLICENSE_VERSION }}
       - name: Install rumdl
-        run: pip install rumdl
+        run: pip install rumdl==${{ env.RUMDL_VERSION }}
       - name: Install dprint
         run: test -f ~/.dprint/bin/dprint || (curl -fsSL https://dprint.dev/install.sh | sh)
       - name: Add dprint to PATH
@@ -56,6 +63,7 @@ jobs:
       - name: Integration tests
         run: task test:integration
   e2e:
+    needs: build-and-test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

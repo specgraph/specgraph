@@ -384,6 +384,11 @@ func TestStoreShapeOutput_IdempotentDecisions(t *testing.T) {
 	require.NoError(t, store.StoreShapeOutput(ctx, "idempotent-test", shapeOut))
 	require.NoError(t, store.StoreShapeOutput(ctx, "idempotent-test", shapeOut))
 
+	// DECIDED_IN edge should be deduplicated.
+	edges, err := store.ListEdges(ctx, "idempotent-test", storage.EdgeTypeDecidedIn)
+	require.NoError(t, err)
+	require.Len(t, edges, 1, "expected exactly one DECIDED_IN edge after idempotent store")
+
 	// Still just one decision node.
 	decision, err := store.GetDecision(ctx, "reuse-decision")
 	require.NoError(t, err)
