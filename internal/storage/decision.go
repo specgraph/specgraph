@@ -26,6 +26,17 @@ const (
 	DecisionStatusDeprecated DecisionStatus = "DECISION_STATUS_DEPRECATED"
 )
 
+// IsValid reports whether s is a known decision status.
+func (s DecisionStatus) IsValid() bool {
+	switch s {
+	case DecisionStatusProposed, DecisionStatusAccepted,
+		DecisionStatusSuperseded, DecisionStatusDeprecated:
+		return true
+	default:
+		return false
+	}
+}
+
 // Decision is the storage-layer domain type for architectural decisions.
 type Decision struct {
 	ID           string
