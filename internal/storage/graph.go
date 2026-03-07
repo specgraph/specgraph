@@ -5,11 +5,30 @@ package storage
 
 import "context"
 
+// NodeLabel represents the type of a graph node.
+type NodeLabel string
+
+// Node label values.
+const (
+	NodeLabelSpec     NodeLabel = "Spec"
+	NodeLabelDecision NodeLabel = "Decision"
+)
+
+// IsValid reports whether l is a known node label.
+func (l NodeLabel) IsValid() bool {
+	switch l {
+	case NodeLabelSpec, NodeLabelDecision:
+		return true
+	default:
+		return false
+	}
+}
+
 // NodeRef is a lightweight reference to a graph node.
 type NodeRef struct {
 	ID    string
 	Slug  string
-	Label string // Valid values: "Spec" or "Decision"
+	Label NodeLabel
 	Stage string
 }
 

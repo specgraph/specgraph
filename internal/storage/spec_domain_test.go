@@ -17,8 +17,8 @@ func TestNewSpec(t *testing.T) {
 		ID:         "spec-abc1234",
 		Slug:       "login-api",
 		Intent:     "REST endpoint for OAuth2",
-		Stage:      "spark",
-		Priority:   "p1",
+		Stage:      storage.SpecStageSpark,
+		Priority:   storage.SpecPriorityP1,
 		Complexity: "medium",
 		Version:    1,
 		CreatedAt:  now,
@@ -27,8 +27,8 @@ func TestNewSpec(t *testing.T) {
 	assert.Equal(t, "spec-abc1234", spec.ID)
 	assert.Equal(t, "login-api", spec.Slug)
 	assert.Equal(t, "REST endpoint for OAuth2", spec.Intent)
-	assert.Equal(t, "spark", spec.Stage)
-	assert.Equal(t, "p1", spec.Priority)
+	assert.Equal(t, storage.SpecStageSpark, spec.Stage)
+	assert.Equal(t, storage.SpecPriorityP1, spec.Priority)
 	assert.Equal(t, "medium", spec.Complexity)
 	assert.Equal(t, int32(1), spec.Version)
 	assert.Equal(t, now, spec.CreatedAt)

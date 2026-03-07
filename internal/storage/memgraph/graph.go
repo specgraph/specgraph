@@ -204,7 +204,7 @@ func (s *Store) queryNodeRefs(ctx context.Context, query string, params map[stri
 		refs = append(refs, storage.NodeRef{
 			ID:    stringVal(id),
 			Slug:  stringVal(slug),
-			Label: stringVal(label),
+			Label: storage.NodeLabel(stringVal(label)),
 			Stage: stringVal(stage),
 		})
 	}

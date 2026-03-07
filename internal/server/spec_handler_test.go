@@ -40,8 +40,8 @@ func (m *mockBackend) CreateSpec(_ context.Context, slug, intent, priority, comp
 		ID:         fmt.Sprintf("spec-%05d", m.seq),
 		Slug:       slug,
 		Intent:     intent,
-		Stage:      "spark",
-		Priority:   priority,
+		Stage:      storage.SpecStageSpark,
+		Priority:   storage.SpecPriority(priority),
 		Complexity: complexity,
 		Version:    1,
 		CreatedAt:  now,
@@ -66,10 +66,10 @@ func (m *mockBackend) ListSpecs(_ context.Context, stage, priority string, limit
 	defer m.mu.Unlock()
 	var result []*storage.Spec
 	for _, s := range m.specs {
-		if stage != "" && s.Stage != stage {
+		if stage != "" && string(s.Stage) != stage {
 			continue
 		}
-		if priority != "" && s.Priority != priority {
+		if priority != "" && string(s.Priority) != priority {
 			continue
 		}
 		result = append(result, s)
@@ -91,10 +91,10 @@ func (m *mockBackend) UpdateSpec(_ context.Context, slug string, intent, stage, 
 		spec.Intent = *intent
 	}
 	if stage != nil {
-		spec.Stage = *stage
+		spec.Stage = storage.SpecStage(*stage)
 	}
 	if priority != nil {
-		spec.Priority = *priority
+		spec.Priority = storage.SpecPriority(*priority)
 	}
 	if complexity != nil {
 		spec.Complexity = *complexity

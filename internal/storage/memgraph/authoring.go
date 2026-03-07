@@ -105,6 +105,9 @@ func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *stora
 			if d.Slug == "" {
 				continue
 			}
+			if d.Title == "" {
+				return fmt.Errorf("decision %q: title is required", d.Slug)
+			}
 			// Create decision node only if it does not already exist.
 			if _, err := s.GetDecision(txCtx, d.Slug); errors.Is(err, storage.ErrDecisionNotFound) {
 				if _, err := s.CreateDecision(txCtx, d.Slug, d.Title, d.Body, d.Rationale); err != nil {
@@ -271,7 +274,7 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 	if err != nil {
 		return nil, fmt.Errorf("amend spec %q: get current: %w", slug, err)
 	}
-	if spec.Stage == string(authoring.StageApproved) {
+	if string(spec.Stage) == string(authoring.StageApproved) {
 		return nil, storage.ErrSpecAlreadyApproved
 	}
 	if spec.Stage == "superseded" {

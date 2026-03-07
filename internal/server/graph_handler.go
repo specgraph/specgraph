@@ -129,7 +129,7 @@ func nodeRefsToProto(refs []storage.NodeRef) []*specv1.NodeRef {
 		result[i] = &specv1.NodeRef{
 			Id:    r.ID,
 			Slug:  r.Slug,
-			Label: r.Label,
+			Label: string(r.Label),
 			Stage: r.Stage,
 		}
 	}

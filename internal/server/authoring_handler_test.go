@@ -1066,6 +1066,25 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_HappyPath(t *testing.T) 
 	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
 }
 
+func TestAuthoringHandler_Approve_AcceptLinkedDecisions_SpecToDecisionDirection(t *testing.T) {
+	// Canonical Spec→Decision edge direction (per ADR-003).
+	backend := &fakeFullBackend{
+		listEdgesResult: []*storage.Edge{
+			{FromID: "my-spec", ToID: "decision-1", EdgeType: storage.EdgeTypeDecidedIn},
+		},
+		getDecisionResult: &storage.Decision{
+			Slug:   "decision-1",
+			Status: storage.DecisionStatusProposed,
+		},
+	}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
+	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug: "my-spec",
+	}))
+	require.NoError(t, err)
+	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
+}
+
 func TestAuthoringHandler_Approve_AcceptLinkedDecisions_UpdateError(t *testing.T) {
 	// When UpdateDecision fails, Approve returns CodeInternal.
 	backend := &fakeFullBackend{
@@ -1086,6 +1105,24 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_UpdateError(t *testing.T
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestAuthoringHandler_Shape_InvalidDecisionSlug(t *testing.T) {
+	// DecisionInput with invalid slug should be rejected.
+	authoringStore := &fakeAuthoringBackend{}
+	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
+	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug: "my-spec",
+		Output: &specv1.ShapeOutput{
+			Decisions: []*specv1.DecisionInput{
+				{Slug: "../bad-slug", Title: "title", Decision: "body", Rationale: "reason"},
+			},
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
 func TestAuthoringHandler_Amend_UnknownStageFromStorage(t *testing.T) {

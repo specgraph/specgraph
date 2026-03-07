@@ -31,15 +31,16 @@ type mockEdge struct {
 }
 
 type mockNode struct {
-	id, slug, label, stage string
+	id, slug, stage string
+	label           storage.NodeLabel
 }
 
 func newMockGraphBackend() *mockGraphBackend {
 	return &mockGraphBackend{
 		nodes: map[string]mockNode{
-			"spec-a": {id: "spec-00001", slug: "spec-a", label: "Spec", stage: "spark"},
-			"spec-b": {id: "spec-00002", slug: "spec-b", label: "Spec", stage: "done"},
-			"spec-c": {id: "spec-00003", slug: "spec-c", label: "Spec", stage: "spark"},
+			"spec-a": {id: "spec-00001", slug: "spec-a", label: storage.NodeLabelSpec, stage: "spark"},
+			"spec-b": {id: "spec-00002", slug: "spec-b", label: storage.NodeLabelSpec, stage: "done"},
+			"spec-c": {id: "spec-00003", slug: "spec-c", label: storage.NodeLabelSpec, stage: "spark"},
 		},
 	}
 }
