@@ -15,7 +15,7 @@ import (
 // resolveEdge maps an edge type to its Cypher relation name.
 // EdgeType string values are the Cypher relationship names directly.
 func resolveEdge(fromSlug, toSlug string, edgeType storage.EdgeType) (rel, from, to string, err error) {
-	if edgeType == "" {
+	if !edgeType.IsValid() {
 		return "", "", "", fmt.Errorf("memgraph: unknown edge type %v", edgeType)
 	}
 	return string(edgeType), fromSlug, toSlug, nil
