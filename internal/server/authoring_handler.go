@@ -352,23 +352,28 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if err := h.store.TransitionStage(ctx, req.Msg.Slug, storage.AuthoringStage(authoring.StageDecompose), storage.AuthoringStage(authoring.StageApproved)); err != nil {
+	// Wrap TransitionStage and acceptLinkedDecisions in a transaction so that
+	// if decision promotion fails, the spec approval is rolled back.
+	var spec *storage.Spec
+	slug := req.Msg.Slug
+	if err := h.runInTxOrSequential(ctx,
+		func(txCtx context.Context) error {
+			return h.store.TransitionStage(txCtx, slug, storage.AuthoringStage(authoring.StageDecompose), storage.AuthoringStage(authoring.StageApproved))
+		},
+		func(txCtx context.Context) error {
+			return h.acceptLinkedDecisions(txCtx, slug)
+		},
+		func(txCtx context.Context) error {
+			var err error
+			spec, err = h.backend.GetSpec(txCtx, slug)
+			return err
+		},
+	); err != nil {
 		return nil, h.stageError(err)
-	}
-	// Read back the spec from storage so approved_at reflects the persisted
-	// updated_at timestamp set during TransitionStage, rather than being
-	// computed at response time.
-	spec, err := h.backend.GetSpec(ctx, req.Msg.Slug)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("approve: read back spec: %w", err))
 	}
 	approvedAt := timestamppb.New(spec.UpdatedAt)
 	if spec.UpdatedAt.IsZero() {
 		approvedAt = timestamppb.Now()
-	}
-	// ADR-003: transition linked decisions from proposed to accepted.
-	if err := h.acceptLinkedDecisions(ctx, req.Msg.Slug); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("accept linked decisions: %w", err))
 	}
 	return connect.NewResponse(&specv1.ApproveResponse{
 		Slug:       req.Msg.Slug,
@@ -482,15 +487,14 @@ func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug strin
 	}
 	acceptedStatus := storage.DecisionStatusAccepted
 	for _, edge := range edges {
-		// The edge direction may be Decision→Spec or Spec→Decision depending on
-		// how it was created. Check both from_id and to_id to find the non-spec node.
-		decisionSlug := edge.FromID
+		// ADR-003 mandates spec→decision direction for DECIDED_IN edges.
+		// Use ToID as the decision slug; FromID should be the spec.
+		decisionSlug := edge.ToID
+		if decisionSlug == slug {
+			decisionSlug = edge.FromID
+		}
 		if decisionSlug == "" || decisionSlug == slug {
-			// This edge has the spec as the source — try the to side.
-			decisionSlug = edge.ToID
-			if decisionSlug == "" || decisionSlug == slug {
-				continue
-			}
+			return fmt.Errorf("DECIDED_IN edge for %q has no valid decision slug (from=%q, to=%q)", slug, edge.FromID, edge.ToID)
 		}
 		dec, err := h.decisionBackend.GetDecision(ctx, decisionSlug)
 		if err != nil {

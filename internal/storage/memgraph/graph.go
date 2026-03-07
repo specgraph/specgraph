@@ -102,13 +102,13 @@ func (s *Store) ListEdges(ctx context.Context, slug string, edgeType storage.Edg
 		`
 	}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: list edges: %w", err)
 	}
 
-	edges := make([]*storage.Edge, 0, len(result.Records))
-	for _, rec := range result.Records {
+	edges := make([]*storage.Edge, 0, len(records))
+	for _, rec := range records {
 		// Use named access via aliases to avoid Memgraph UNION column reordering.
 		from, _ := rec.Get("from_slug")
 		to, _ := rec.Get("to_slug")
