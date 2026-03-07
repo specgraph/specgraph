@@ -45,7 +45,7 @@ func TestTransitionStage(t *testing.T) {
 
 	spec, err := store.GetSpec(ctx, "funnel-test")
 	require.NoError(t, err)
-	require.Equal(t, string(authoring.StageShape), spec.Stage)
+	require.Equal(t, storage.SpecStageShape, spec.Stage)
 
 	err = store.TransitionStage(ctx, "funnel-test", storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify))
 	require.NoError(t, err)
@@ -113,7 +113,7 @@ func TestAmendSpec(t *testing.T) {
 	// Amend back to shape (valid backward transition).
 	spec, err := store.AmendSpec(ctx, "amend-test", "need to reconsider scope", storage.AuthoringStage(authoring.StageShape))
 	require.NoError(t, err)
-	require.Equal(t, storage.AuthoringStage(authoring.StageShape), spec.Stage)
+	require.Equal(t, storage.SpecStageShape, spec.Stage)
 	require.Equal(t, int32(2), spec.Version, "version should increment after amendment")
 }
 
@@ -180,7 +180,7 @@ func TestSupersedeSpec(t *testing.T) {
 	// Verify the old spec is now at stage "superseded".
 	old, err := store.GetSpec(ctx, "old-spec")
 	require.NoError(t, err)
-	require.Equal(t, "superseded", old.Stage)
+	require.Equal(t, storage.SpecStageSuperseded, old.Stage)
 }
 
 func TestSupersedeSpec_NotFound(t *testing.T) {
