@@ -6,7 +6,29 @@ SpecGraph is a **Live Spec-Driven Development Framework** — specifications as 
 
 ## Commands
 
-All automation is via Taskfile.dev. Run `task --list` for the full catalog. Key commands: `task build`, `task test`, `task proto`, `task lint`, `task fmt`.
+All automation is via Taskfile.dev. Run `task --list` for the full catalog.
+
+### Quality Gates (MUST use)
+
+| Task | When to run | What it does |
+|------|-------------|--------------|
+| `task check` | Before every `git push` (also runs automatically via pre-push hook) | fmt:check → license:check → lint → build → unit tests (excludes memgraph/Docker) |
+| `task pr-prep` | Before opening/updating a PR (requires Docker) | clean → generate → check → e2e tests |
+
+- **MUST run `task check`** after finishing a batch of changes and before pushing. The pre-push hook enforces this automatically, but run it manually first to catch issues early.
+- **SHOULD run `task pr-prep`** before opening a PR or marking it ready for review. This is the full pipeline including e2e tests.
+- **Do NOT rely solely on lefthook pre-commit** for lint validation — it only checks staged files per commit and misses cross-scope issues like `govet -shadow` and `wrapcheck`.
+
+### Common Commands
+
+| Task | Purpose |
+|------|---------|
+| `task build` | Build the specgraph binary (runs `task proto` first) |
+| `task test` | Run all tests including memgraph integration (requires Docker) |
+| `task test:short` | Run short tests only |
+| `task proto` | Generate Go code from protobuf (incremental, skips if unchanged) |
+| `task lint` | Run all linters (Go, Markdown, YAML) |
+| `task fmt` | Format all files (Go, YAML, Markdown, dprint) |
 
 ## Domain Concepts
 
@@ -33,7 +55,7 @@ All automation is via Taskfile.dev. Run `task --list` for the full catalog. Key 
 - **Handler error sanitization** — `stageError` and similar methods sanitize internal errors before returning to clients. Test assertions MUST use error codes (`connect.CodeInternal`, `connect.CodeNotFound`), not error message strings.
 - **Mock backends must use sentinel errors** — When handler code uses `errors.Is()` checks (e.g., `storage.ErrSpecNotFound`, `storage.ErrDecisionNotFound`), mock/fake backends must return these sentinel errors, not `fmt.Errorf()`.
 - **DECIDED_IN edge direction** — Per ADR-003, DECIDED_IN edges go from spec → decision. In `acceptLinkedDecisions`, `edge.ToID` is the decision slug.
-- **Lefthook pre-commit is file-scoped** — only lints staged files per commit. Cross-scope linters (`govet -shadow`, `wrapcheck`) need full package context. Always run `task lint` before `git push` to catch issues the pre-commit hook misses.
+- **Lefthook pre-commit is file-scoped** — only lints staged files per commit. Cross-scope linters (`govet -shadow`, `wrapcheck`) need full package context. Use `task check` (see Quality Gates above) to catch what pre-commit misses.
 
 ## Roadmap
 
