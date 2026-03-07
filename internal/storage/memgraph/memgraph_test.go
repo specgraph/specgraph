@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -82,8 +83,8 @@ func TestCreateAndGetSpec(t *testing.T) {
 	require.Len(t, spec.ID, 12) // "spec-" + 7 hex chars
 	require.Equal(t, "login-api", spec.Slug)
 	require.Equal(t, "Implement login API", spec.Intent)
-	require.Equal(t, "spark", spec.Stage)
-	require.Equal(t, "p1", spec.Priority)
+	require.Equal(t, storage.SpecStageSpark, spec.Stage)
+	require.Equal(t, storage.SpecPriorityP1, spec.Priority)
 	require.Equal(t, "medium", spec.Complexity)
 	require.Equal(t, int32(1), spec.Version)
 	require.NotNil(t, spec.CreatedAt)
@@ -149,16 +150,16 @@ func TestUpdateSpec(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "Updated intent", updated.Intent)
 	require.Equal(t, int32(2), updated.Version)
-	require.Equal(t, "p2", updated.Priority) // unchanged
-	require.Equal(t, "spark", updated.Stage) // unchanged
+	require.Equal(t, storage.SpecPriorityP2, updated.Priority) // unchanged
+	require.Equal(t, storage.SpecStageSpark, updated.Stage)    // unchanged
 
 	// Update multiple fields.
 	newStage := "shape"
 	newPriority := "p0"
 	updated2, err := store.UpdateSpec(ctx, "update-me", nil, &newStage, &newPriority, nil)
 	require.NoError(t, err)
-	require.Equal(t, "shape", updated2.Stage)
-	require.Equal(t, "p0", updated2.Priority)
+	require.Equal(t, storage.SpecStageShape, updated2.Stage)
+	require.Equal(t, storage.SpecPriorityP0, updated2.Priority)
 	require.Equal(t, int32(3), updated2.Version)
 	require.Equal(t, "Updated intent", updated2.Intent) // still from previous update
 
