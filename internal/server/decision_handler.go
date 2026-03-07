@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -25,6 +24,9 @@ var _ specgraphv1connect.DecisionServiceHandler = (*DecisionHandler)(nil)
 // CreateDecision handles the CreateDecision RPC.
 func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Request[specv1.CreateDecisionRequest]) (*connect.Response[specv1.Decision], error) {
 	msg := req.Msg
+	if err := validateSlug(msg.GetSlug()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	d, err := h.store.CreateDecision(ctx, msg.Slug, msg.Title, msg.Decision, msg.Rationale)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -38,6 +40,9 @@ func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Reque
 
 // GetDecision handles the GetDecision RPC.
 func (h *DecisionHandler) GetDecision(ctx context.Context, req *connect.Request[specv1.GetDecisionRequest]) (*connect.Response[specv1.Decision], error) {
+	if err := validateSlug(req.Msg.GetSlug()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	d, err := h.store.GetDecision(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
@@ -80,8 +85,8 @@ func (h *DecisionHandler) ListDecisions(ctx context.Context, req *connect.Reques
 // UpdateDecision handles the UpdateDecision RPC.
 func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Request[specv1.UpdateDecisionRequest]) (*connect.Response[specv1.Decision], error) {
 	msg := req.Msg
-	if msg.Slug == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug is required"))
+	if err := validateSlug(msg.GetSlug()); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	var domainStatus *storage.DecisionStatus

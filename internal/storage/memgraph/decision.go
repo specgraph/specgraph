@@ -220,6 +220,13 @@ func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
 	}
 
 	status := storage.DecisionStatus(statusStr)
+	switch status {
+	case storage.DecisionStatusProposed, storage.DecisionStatusAccepted,
+		storage.DecisionStatusSuperseded, storage.DecisionStatusDeprecated:
+		// valid
+	default:
+		return nil, fmt.Errorf("memgraph: unknown decision status %q", statusStr)
+	}
 
 	return &storage.Decision{
 		ID:           id,

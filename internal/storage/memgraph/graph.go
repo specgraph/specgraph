@@ -12,23 +12,13 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
-var edgeTypeToRel = map[storage.EdgeType]string{
-	storage.EdgeTypeDependsOn: "DEPENDS_ON",
-	storage.EdgeTypeBlocks:    "BLOCKS",
-	storage.EdgeTypeComposes:  "COMPOSES",
-	storage.EdgeTypeRelatesTo: "RELATES_TO",
-	storage.EdgeTypeInforms:   "INFORMS",
-	storage.EdgeTypeDecidedIn: "DECIDED_IN",
-}
-
 // resolveEdge maps an edge type to its Cypher relation name.
-// All edge types are stored as-is: (from)-[:REL]->(to).
+// EdgeType string values are the Cypher relationship names directly.
 func resolveEdge(fromSlug, toSlug string, edgeType storage.EdgeType) (rel, from, to string, err error) {
-	rel, ok := edgeTypeToRel[edgeType]
-	if !ok {
+	if edgeType == "" {
 		return "", "", "", fmt.Errorf("memgraph: unknown edge type %v", edgeType)
 	}
-	return rel, fromSlug, toSlug, nil
+	return string(edgeType), fromSlug, toSlug, nil
 }
 
 // AddEdge creates a typed relationship between two nodes.
@@ -94,7 +84,7 @@ func (s *Store) ListEdges(ctx context.Context, slug string, edgeType storage.Edg
 	params := map[string]any{"slug": slug}
 
 	if edgeType != "" {
-		relType := edgeTypeToRel[edgeType]
+		relType := string(edgeType)
 		query = fmt.Sprintf(`
 			MATCH (a {slug: $slug})-[r:%s]->(b)
 			RETURN a.slug AS from_slug, b.slug AS to_slug, type(r) AS rel_type
