@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -35,6 +34,9 @@ func NewSpecHandler(backend storage.Backend) *SpecHandler {
 // CreateSpec handles the CreateSpec RPC.
 func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv1.CreateSpecRequest]) (*connect.Response[specv1.Spec], error) {
 	msg := req.Msg
+	if err := validateSlug(msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	priority := msg.Priority
 	if priority == "" {
 		priority = defaultSpecPriority
@@ -48,11 +50,14 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(spec), nil
+	return connect.NewResponse(specToProto(spec)), nil
 }
 
 // GetSpec handles the GetSpec RPC.
 func (h *SpecHandler) GetSpec(ctx context.Context, req *connect.Request[specv1.GetSpecRequest]) (*connect.Response[specv1.Spec], error) {
+	if err := validateSlug(req.Msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	spec, err := h.backend.GetSpec(ctx, req.Msg.Slug)
 	if err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
@@ -60,7 +65,7 @@ func (h *SpecHandler) GetSpec(ctx context.Context, req *connect.Request[specv1.G
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(spec), nil
+	return connect.NewResponse(specToProto(spec)), nil
 }
 
 // ListSpecs handles the ListSpecs RPC.
@@ -75,14 +80,14 @@ func (h *SpecHandler) ListSpecs(ctx context.Context, req *connect.Request[specv1
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.ListSpecsResponse{Specs: specs}), nil
+	return connect.NewResponse(&specv1.ListSpecsResponse{Specs: specsToProto(specs)}), nil
 }
 
 // UpdateSpec handles the UpdateSpec RPC.
 func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv1.UpdateSpecRequest]) (*connect.Response[specv1.Spec], error) {
 	msg := req.Msg
-	if msg.Slug == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug is required"))
+	if err := validateSlug(msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	spec, err := h.backend.UpdateSpec(ctx, msg.Slug, msg.Intent, msg.Stage, msg.Priority, msg.Complexity)
@@ -92,5 +97,5 @@ func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(spec), nil
+	return connect.NewResponse(specToProto(spec)), nil
 }

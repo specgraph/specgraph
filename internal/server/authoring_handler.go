@@ -55,7 +55,7 @@ type AuthoringHandler struct {
 	backend         storage.Backend
 	txBackend       storage.TransactionalBackend // optional, may be nil
 	decisionBackend storage.DecisionBackend      // optional; when non-nil, Approve transitions linked decisions
-	graphBackend    storage.GraphBackend         // optional; used to discover decision→spec INFORMS edges
+	graphBackend    storage.GraphBackend         // optional; used to discover spec→decision DECIDED_IN edges
 	logger          *slog.Logger
 }
 
@@ -163,7 +163,10 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("scope_out item exceeds maximum length of %d characters", maxFieldLen))
 		}
 	}
-	shapeDomain := shapeOutputToDomain(msg.Output)
+	shapeDomain, err := shapeOutputToDomain(msg.Output)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	scope := make([]string, 0, len(msg.Output.GetScopeIn())+len(msg.Output.GetScopeOut()))
 	scope = append(scope, msg.Output.GetScopeIn()...)
 	scope = append(scope, msg.Output.GetScopeOut()...)
@@ -343,30 +346,40 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 }
 
 // Approve handles the Approve RPC, transitioning from decompose to approved stage.
-// After approval, linked decisions (via INFORMS edges) are transitioned from
+// After approval, linked decisions (via DECIDED_IN edges) are transitioned from
 // proposed to accepted per ADR-003 (decisions as first-class graph nodes).
 func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[specv1.ApproveRequest]) (*connect.Response[specv1.ApproveResponse], error) {
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if err := h.store.TransitionStage(ctx, req.Msg.Slug, storage.AuthoringStage(authoring.StageDecompose), storage.AuthoringStage(authoring.StageApproved)); err != nil {
+	// Wrap TransitionStage and acceptLinkedDecisions in a transaction so that
+	// if decision promotion fails, the spec approval is rolled back.
+	var spec *storage.Spec
+	slug := req.Msg.Slug
+	if err := h.runInTxOrSequential(ctx,
+		func(txCtx context.Context) error {
+			return h.store.TransitionStage(txCtx, slug, storage.AuthoringStage(authoring.StageDecompose), storage.AuthoringStage(authoring.StageApproved))
+		},
+		func(txCtx context.Context) error {
+			return h.acceptLinkedDecisions(txCtx, slug)
+		},
+		func(txCtx context.Context) error {
+			var err error
+			spec, err = h.backend.GetSpec(txCtx, slug)
+			if err != nil {
+				return fmt.Errorf("get spec %q: %w", slug, err)
+			}
+			return nil
+		},
+	); err != nil {
 		return nil, h.stageError(err)
 	}
-	// Read back the spec from storage so approved_at reflects the persisted
-	// updated_at timestamp set during TransitionStage, rather than being
-	// computed at response time.
-	spec, err := h.backend.GetSpec(ctx, req.Msg.Slug)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("approve: read back spec: %w", err))
+	if spec.UpdatedAt.IsZero() {
+		h.logger.ErrorContext(ctx, "spec.UpdatedAt is zero after TransitionStage",
+			"slug", slug, "specID", spec.ID, "stage", "approved")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("spec %q has zero UpdatedAt after approval", slug))
 	}
-	approvedAt := spec.GetUpdatedAt()
-	if approvedAt == nil {
-		approvedAt = timestamppb.Now()
-	}
-	// ADR-003: transition linked decisions from proposed to accepted.
-	if err := h.acceptLinkedDecisions(ctx, req.Msg.Slug); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("accept linked decisions: %w", err))
-	}
+	approvedAt := timestamppb.New(spec.UpdatedAt)
 	return connect.NewResponse(&specv1.ApproveResponse{
 		Slug:       req.Msg.Slug,
 		Stage:      stageToProto(authoring.StageApproved),
@@ -467,33 +480,34 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 }
 
 // acceptLinkedDecisions queries for Decision nodes linked to the spec via
-// INFORMS edges and transitions them from proposed to accepted. Returns an
+// DECIDED_IN edges and transitions them from proposed to accepted. Returns an
 // error if any decision acceptance fails.
 func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug string) error {
 	if h.graphBackend == nil || h.decisionBackend == nil {
 		return nil
 	}
-	edges, err := h.graphBackend.ListEdges(ctx, slug, specv1.EdgeType_EDGE_TYPE_INFORMS)
+	edges, err := h.graphBackend.ListEdges(ctx, slug, storage.EdgeTypeDecidedIn)
 	if err != nil {
-		return fmt.Errorf("list INFORMS edges for %q: %w", slug, err)
+		return fmt.Errorf("list DECIDED_IN edges for %q: %w", slug, err)
 	}
-	acceptedStatus := specv1.DecisionStatus_DECISION_STATUS_ACCEPTED
+	acceptedStatus := storage.DecisionStatusAccepted
 	for _, edge := range edges {
-		// The edge direction may be Decision→Spec or Spec→Decision depending on
-		// how it was created. Check both from_id and to_id to find the non-spec node.
-		decisionSlug := edge.GetFromId()
+		// ADR-003 mandates spec→decision direction for DECIDED_IN edges.
+		// Use ToID as the decision slug; FromID should be the spec.
+		decisionSlug := edge.ToID
+		if decisionSlug == slug {
+			h.logger.WarnContext(ctx, "DECIDED_IN edge has unexpected direction (ToID is spec, not decision)",
+				"slug", slug, "fromID", edge.FromID, "toID", edge.ToID)
+			decisionSlug = edge.FromID
+		}
 		if decisionSlug == "" || decisionSlug == slug {
-			// This edge has the spec as the source — try the to side.
-			decisionSlug = edge.GetToId()
-			if decisionSlug == "" || decisionSlug == slug {
-				continue
-			}
+			return fmt.Errorf("DECIDED_IN edge for %q has no valid decision slug (from=%q, to=%q)", slug, edge.FromID, edge.ToID)
 		}
 		dec, err := h.decisionBackend.GetDecision(ctx, decisionSlug)
 		if err != nil {
 			return fmt.Errorf("get decision %q: %w", decisionSlug, err)
 		}
-		if dec.GetStatus() != specv1.DecisionStatus_DECISION_STATUS_PROPOSED {
+		if dec.Status != storage.DecisionStatusProposed {
 			continue
 		}
 		if _, err := h.decisionBackend.UpdateDecision(ctx, decisionSlug, nil, &acceptedStatus, nil, nil, nil); err != nil {
@@ -565,13 +579,66 @@ func sparkOutputToDomain(p *specv1.SparkOutput) (*storage.SparkOutput, error) {
 	}, nil
 }
 
-func shapeOutputToDomain(p *specv1.ShapeOutput) *storage.ShapeOutput {
+func shapeOutputToDomain(p *specv1.ShapeOutput) (*storage.ShapeOutput, error) {
 	approaches := make([]storage.Approach, len(p.GetApproaches()))
 	for i, a := range p.GetApproaches() {
+		if len(a.GetName()) > maxFieldLen {
+			return nil, fmt.Errorf("approaches[%d]: name exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+		if len(a.GetDescription()) > maxFieldLen {
+			return nil, fmt.Errorf("approaches[%d]: description exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+		if len(a.GetTradeoffs()) > maxFieldLen {
+			return nil, fmt.Errorf("approaches[%d]: tradeoffs exceeds maximum length of %d characters", i, maxFieldLen)
+		}
 		approaches[i] = storage.Approach{
 			Name:        a.GetName(),
 			Description: a.GetDescription(),
 			Tradeoffs:   a.GetTradeoffs(),
+		}
+	}
+	if len(p.GetChosenApproach()) > maxFieldLen {
+		return nil, fmt.Errorf("chosen_approach exceeds maximum length of %d characters", maxFieldLen)
+	}
+	for i, r := range p.GetRisks() {
+		if len(r) > maxFieldLen {
+			return nil, fmt.Errorf("risks[%d]: exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+	}
+	for i, s := range p.GetSuccessMust() {
+		if len(s) > maxFieldLen {
+			return nil, fmt.Errorf("success_must[%d]: exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+	}
+	for i, s := range p.GetSuccessShould() {
+		if len(s) > maxFieldLen {
+			return nil, fmt.Errorf("success_should[%d]: exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+	}
+	for i, s := range p.GetSuccessWont() {
+		if len(s) > maxFieldLen {
+			return nil, fmt.Errorf("success_wont[%d]: exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+	}
+	decisions := make([]storage.DecisionInput, len(p.GetDecisions()))
+	for i, d := range p.GetDecisions() {
+		if err := validateSlug(d.GetSlug()); err != nil {
+			return nil, fmt.Errorf("decision[%d]: %w", i, err)
+		}
+		if len(d.GetTitle()) > maxFieldLen {
+			return nil, fmt.Errorf("decision[%d]: title exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+		if len(d.GetDecision()) > maxFieldLen {
+			return nil, fmt.Errorf("decision[%d]: body exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+		if len(d.GetRationale()) > maxFieldLen {
+			return nil, fmt.Errorf("decision[%d]: rationale exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+		decisions[i] = storage.DecisionInput{
+			Slug:      d.GetSlug(),
+			Title:     d.GetTitle(),
+			Body:      d.GetDecision(),
+			Rationale: d.GetRationale(),
 		}
 	}
 	return &storage.ShapeOutput{
@@ -583,8 +650,8 @@ func shapeOutputToDomain(p *specv1.ShapeOutput) *storage.ShapeOutput {
 		SuccessMust:    p.GetSuccessMust(),
 		SuccessShould:  p.GetSuccessShould(),
 		SuccessWont:    p.GetSuccessWont(),
-		Decisions:      p.GetDecisions(),
-	}
+		Decisions:      decisions,
+	}, nil
 }
 
 func specifyOutputToDomain(p *specv1.SpecifyOutput) *storage.SpecifyOutput {

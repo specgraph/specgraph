@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 
+//go:build integration
+
 package memgraph_test
 
 import (
@@ -9,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -78,12 +81,12 @@ func TestCreateAndGetSpec(t *testing.T) {
 	spec, err := store.CreateSpec(ctx, "login-api", "Implement login API", "p1", "medium")
 	require.NoError(t, err)
 	require.NotNil(t, spec)
-	require.Contains(t, spec.Id, "spec-")
-	require.Len(t, spec.Id, 12) // "spec-" + 7 hex chars
+	require.Contains(t, spec.ID, "spec-")
+	require.Len(t, spec.ID, 12) // "spec-" + 7 hex chars
 	require.Equal(t, "login-api", spec.Slug)
 	require.Equal(t, "Implement login API", spec.Intent)
-	require.Equal(t, "spark", spec.Stage)
-	require.Equal(t, "p1", spec.Priority)
+	require.Equal(t, storage.SpecStageSpark, spec.Stage)
+	require.Equal(t, storage.SpecPriorityP1, spec.Priority)
 	require.Equal(t, "medium", spec.Complexity)
 	require.Equal(t, int32(1), spec.Version)
 	require.NotNil(t, spec.CreatedAt)
@@ -91,15 +94,15 @@ func TestCreateAndGetSpec(t *testing.T) {
 
 	got, err := store.GetSpec(ctx, "login-api")
 	require.NoError(t, err)
-	require.Equal(t, spec.Id, got.Id)
+	require.Equal(t, spec.ID, got.ID)
 	require.Equal(t, spec.Slug, got.Slug)
 	require.Equal(t, spec.Intent, got.Intent)
 	require.Equal(t, spec.Stage, got.Stage)
 	require.Equal(t, spec.Priority, got.Priority)
 	require.Equal(t, spec.Complexity, got.Complexity)
 	require.Equal(t, spec.Version, got.Version)
-	require.Equal(t, spec.CreatedAt.AsTime().Unix(), got.CreatedAt.AsTime().Unix())
-	require.Equal(t, spec.UpdatedAt.AsTime().Unix(), got.UpdatedAt.AsTime().Unix())
+	require.Equal(t, spec.CreatedAt.Unix(), got.CreatedAt.Unix())
+	require.Equal(t, spec.UpdatedAt.Unix(), got.UpdatedAt.Unix())
 }
 
 func TestListSpecs(t *testing.T) {
@@ -149,16 +152,16 @@ func TestUpdateSpec(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "Updated intent", updated.Intent)
 	require.Equal(t, int32(2), updated.Version)
-	require.Equal(t, "p2", updated.Priority) // unchanged
-	require.Equal(t, "spark", updated.Stage) // unchanged
+	require.Equal(t, storage.SpecPriorityP2, updated.Priority) // unchanged
+	require.Equal(t, storage.SpecStageSpark, updated.Stage)    // unchanged
 
 	// Update multiple fields.
 	newStage := "shape"
 	newPriority := "p0"
 	updated2, err := store.UpdateSpec(ctx, "update-me", nil, &newStage, &newPriority, nil)
 	require.NoError(t, err)
-	require.Equal(t, "shape", updated2.Stage)
-	require.Equal(t, "p0", updated2.Priority)
+	require.Equal(t, storage.SpecStageShape, updated2.Stage)
+	require.Equal(t, storage.SpecPriorityP0, updated2.Priority)
 	require.Equal(t, int32(3), updated2.Version)
 	require.Equal(t, "Updated intent", updated2.Intent) // still from previous update
 

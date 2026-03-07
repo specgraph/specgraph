@@ -10,36 +10,37 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/seanb4t/specgraph/internal/server"
+	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type mockDecisionBackend struct {
 	mu        sync.Mutex
-	decisions map[string]*specv1.Decision
+	decisions map[string]*storage.Decision
 	seq       int
 }
 
 func newMockDecisionBackend() *mockDecisionBackend {
-	return &mockDecisionBackend{decisions: make(map[string]*specv1.Decision)}
+	return &mockDecisionBackend{decisions: make(map[string]*storage.Decision)}
 }
 
-func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, decision, rationale string) (*specv1.Decision, error) {
+func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, decision, rationale string) (*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.seq++
-	now := timestamppb.Now()
-	d := &specv1.Decision{
-		Id:        fmt.Sprintf("dec-%05d", m.seq),
+	now := time.Now().UTC()
+	d := &storage.Decision{
+		ID:        fmt.Sprintf("dec-%05d", m.seq),
 		Slug:      slug,
 		Title:     title,
-		Status:    specv1.DecisionStatus_DECISION_STATUS_PROPOSED,
-		Decision:  decision,
+		Status:    storage.DecisionStatusProposed,
+		Body:      decision,
 		Rationale: rationale,
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -48,22 +49,22 @@ func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, dec
 	return d, nil
 }
 
-func (m *mockDecisionBackend) GetDecision(_ context.Context, slug string) (*specv1.Decision, error) {
+func (m *mockDecisionBackend) GetDecision(_ context.Context, slug string) (*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.decisions[slug]
 	if !ok {
-		return nil, fmt.Errorf("decision %q not found", slug)
+		return nil, storage.ErrDecisionNotFound
 	}
 	return d, nil
 }
 
-func (m *mockDecisionBackend) ListDecisions(_ context.Context, status specv1.DecisionStatus, limit int) ([]*specv1.Decision, error) {
+func (m *mockDecisionBackend) ListDecisions(_ context.Context, status storage.DecisionStatus, limit int) ([]*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	var result []*specv1.Decision
+	var result []*storage.Decision
 	for _, d := range m.decisions {
-		if status != specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED && d.Status != status {
+		if status != "" && d.Status != status {
 			continue
 		}
 		result = append(result, d)
@@ -74,12 +75,12 @@ func (m *mockDecisionBackend) ListDecisions(_ context.Context, status specv1.Dec
 	return result, nil
 }
 
-func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, title *string, status *specv1.DecisionStatus, decision, rationale, supersededBy *string) (*specv1.Decision, error) {
+func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, title *string, status *storage.DecisionStatus, decision, rationale, supersededBy *string) (*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.decisions[slug]
 	if !ok {
-		return nil, fmt.Errorf("decision %q not found", slug)
+		return nil, storage.ErrDecisionNotFound
 	}
 	if title != nil {
 		d.Title = *title
@@ -88,7 +89,7 @@ func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, tit
 		d.Status = *status
 	}
 	if decision != nil {
-		d.Decision = *decision
+		d.Body = *decision
 	}
 	if rationale != nil {
 		d.Rationale = *rationale
@@ -96,7 +97,7 @@ func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, tit
 	if supersededBy != nil {
 		d.SupersededBy = *supersededBy
 	}
-	d.UpdatedAt = timestamppb.Now()
+	d.UpdatedAt = time.Now().UTC()
 	return d, nil
 }
 
@@ -136,6 +137,38 @@ func TestDecisionHandler_CreateAndGet(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+}
+
+func TestDecisionHandler_SlugValidation(t *testing.T) {
+	client := setupDecisionServer(t)
+	ctx := context.Background()
+
+	tests := []struct {
+		name string
+		slug string
+	}{
+		{"empty slug", ""},
+		{"path traversal", "../admin"},
+		{"uppercase", "Use-PostgreSQL"},
+		{"too long", string(make([]byte, 257))},
+	}
+	for _, tt := range tests {
+		t.Run("create_"+tt.name, func(t *testing.T) {
+			_, err := client.CreateDecision(ctx, connect.NewRequest(&specv1.CreateDecisionRequest{
+				Slug:  tt.slug,
+				Title: "test",
+			}))
+			require.Error(t, err)
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		})
+		t.Run("update_"+tt.name, func(t *testing.T) {
+			_, err := client.UpdateDecision(ctx, connect.NewRequest(&specv1.UpdateDecisionRequest{
+				Slug: tt.slug,
+			}))
+			require.Error(t, err)
+			require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+		})
+	}
 }
 
 func TestDecisionHandler_ListAndUpdate(t *testing.T) {

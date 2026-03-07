@@ -27,24 +27,25 @@ type mockGraphBackend struct {
 
 type mockEdge struct {
 	from, to string
-	edgeType specv1.EdgeType
+	edgeType storage.EdgeType
 }
 
 type mockNode struct {
-	id, slug, label, stage string
+	id, slug, stage string
+	label           storage.NodeLabel
 }
 
 func newMockGraphBackend() *mockGraphBackend {
 	return &mockGraphBackend{
 		nodes: map[string]mockNode{
-			"spec-a": {id: "spec-00001", slug: "spec-a", label: "Spec", stage: "spark"},
-			"spec-b": {id: "spec-00002", slug: "spec-b", label: "Spec", stage: "done"},
-			"spec-c": {id: "spec-00003", slug: "spec-c", label: "Spec", stage: "spark"},
+			"spec-a": {id: "spec-00001", slug: "spec-a", label: storage.NodeLabelSpec, stage: "spark"},
+			"spec-b": {id: "spec-00002", slug: "spec-b", label: storage.NodeLabelSpec, stage: "done"},
+			"spec-c": {id: "spec-00003", slug: "spec-c", label: storage.NodeLabelSpec, stage: "spark"},
 		},
 	}
 }
 
-func (m *mockGraphBackend) AddEdge(_ context.Context, fromSlug, toSlug string, edgeType specv1.EdgeType) (*specv1.Edge, error) {
+func (m *mockGraphBackend) AddEdge(_ context.Context, fromSlug, toSlug string, edgeType storage.EdgeType) (*storage.Edge, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	from, ok1 := m.nodes[fromSlug]
@@ -53,10 +54,10 @@ func (m *mockGraphBackend) AddEdge(_ context.Context, fromSlug, toSlug string, e
 		return nil, fmt.Errorf("node not found")
 	}
 	m.edges = append(m.edges, mockEdge{from: fromSlug, to: toSlug, edgeType: edgeType})
-	return &specv1.Edge{FromId: from.id, ToId: to.id, EdgeType: edgeType}, nil
+	return &storage.Edge{FromID: from.id, ToID: to.id, EdgeType: edgeType}, nil
 }
 
-func (m *mockGraphBackend) RemoveEdge(_ context.Context, fromSlug, toSlug string, edgeType specv1.EdgeType) error {
+func (m *mockGraphBackend) RemoveEdge(_ context.Context, fromSlug, toSlug string, edgeType storage.EdgeType) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for i, e := range m.edges {
@@ -68,20 +69,20 @@ func (m *mockGraphBackend) RemoveEdge(_ context.Context, fromSlug, toSlug string
 	return nil
 }
 
-func (m *mockGraphBackend) ListEdges(_ context.Context, slug string, edgeType specv1.EdgeType) ([]*specv1.Edge, error) {
+func (m *mockGraphBackend) ListEdges(_ context.Context, slug string, edgeType storage.EdgeType) ([]*storage.Edge, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	var result []*specv1.Edge
+	var result []*storage.Edge
 	for _, e := range m.edges {
 		if e.from != slug && e.to != slug {
 			continue
 		}
-		if edgeType != specv1.EdgeType_EDGE_TYPE_UNSPECIFIED && e.edgeType != edgeType {
+		if edgeType != "" && e.edgeType != edgeType {
 			continue
 		}
 		from := m.nodes[e.from]
 		to := m.nodes[e.to]
-		result = append(result, &specv1.Edge{FromId: from.id, ToId: to.id, EdgeType: e.edgeType})
+		result = append(result, &storage.Edge{FromID: from.id, ToID: to.id, EdgeType: e.edgeType})
 	}
 	return result, nil
 }
@@ -91,7 +92,7 @@ func (m *mockGraphBackend) GetDependencies(_ context.Context, slug string) ([]st
 	defer m.mu.Unlock()
 	var refs []storage.NodeRef
 	for _, e := range m.edges {
-		if e.from == slug && e.edgeType == specv1.EdgeType_EDGE_TYPE_DEPENDS_ON {
+		if e.from == slug && e.edgeType == storage.EdgeTypeDependsOn {
 			n := m.nodes[e.to]
 			refs = append(refs, storage.NodeRef{ID: n.id, Slug: n.slug, Label: n.label, Stage: n.stage})
 		}
@@ -108,7 +109,7 @@ func (m *mockGraphBackend) GetImpact(_ context.Context, slug string) ([]storage.
 	defer m.mu.Unlock()
 	var refs []storage.NodeRef
 	for _, e := range m.edges {
-		if e.to == slug && e.edgeType == specv1.EdgeType_EDGE_TYPE_DEPENDS_ON {
+		if e.to == slug && e.edgeType == storage.EdgeTypeDependsOn {
 			n := m.nodes[e.from]
 			refs = append(refs, storage.NodeRef{ID: n.id, Slug: n.slug, Label: n.label, Stage: n.stage})
 		}

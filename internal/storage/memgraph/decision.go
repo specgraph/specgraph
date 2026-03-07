@@ -10,13 +10,11 @@ import (
 	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // CreateDecision stores a new decision node in Memgraph.
-func (s *Store) CreateDecision(ctx context.Context, slug, title, decision, rationale string) (*specv1.Decision, error) {
+func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale string) (*storage.Decision, error) {
 	now := time.Now().UTC()
 	id := generateID("dec", slug, now)
 	nowStr := now.Format(time.RFC3339)
@@ -40,27 +38,27 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, decision, ratio
 		"id":            id,
 		"slug":          slug,
 		"title":         title,
-		"status":        specv1.DecisionStatus_DECISION_STATUS_PROPOSED.String(),
-		"decision":      decision,
+		"status":        string(storage.DecisionStatusProposed),
+		"decision":      body,
 		"rationale":     rationale,
 		"superseded_by": "",
 		"created_at":    nowStr,
 		"updated_at":    nowStr,
 	}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: create decision: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: create decision returned no records")
 	}
 
-	return recordToDecision(result.Records[0])
+	return recordToDecision(records[0])
 }
 
 // GetDecision retrieves a decision by slug.
-func (s *Store) GetDecision(ctx context.Context, slug string) (*specv1.Decision, error) {
+func (s *Store) GetDecision(ctx context.Context, slug string) (*storage.Decision, error) {
 	query := `
 		MATCH (d:Decision {slug: $slug})
 		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
@@ -68,25 +66,25 @@ func (s *Store) GetDecision(ctx context.Context, slug string) (*specv1.Decision,
 	`
 	params := map[string]any{"slug": slug}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: get decision: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: decision %q: %w", slug, storage.ErrDecisionNotFound)
 	}
 
-	return recordToDecision(result.Records[0])
+	return recordToDecision(records[0])
 }
 
 // ListDecisions returns decisions matching the given filters.
-func (s *Store) ListDecisions(ctx context.Context, status specv1.DecisionStatus, limit int) ([]*specv1.Decision, error) {
+func (s *Store) ListDecisions(ctx context.Context, status storage.DecisionStatus, limit int) ([]*storage.Decision, error) {
 	var clauses []string
 	params := map[string]any{}
 
-	if status != specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED {
+	if status != "" {
 		clauses = append(clauses, "d.status = $status")
-		params["status"] = status.String()
+		params["status"] = string(status)
 	}
 
 	query := "MATCH (d:Decision)"
@@ -100,13 +98,13 @@ func (s *Store) ListDecisions(ctx context.Context, status specv1.DecisionStatus,
 		params["limit"] = int64(limit)
 	}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: list decisions: %w", err)
 	}
 
-	decisions := make([]*specv1.Decision, 0, len(result.Records))
-	for _, rec := range result.Records {
+	decisions := make([]*storage.Decision, 0, len(records))
+	for _, rec := range records {
 		d, err := recordToDecision(rec)
 		if err != nil {
 			return nil, err
@@ -117,8 +115,8 @@ func (s *Store) ListDecisions(ctx context.Context, status specv1.DecisionStatus,
 }
 
 // UpdateDecision updates a decision by slug. Only non-nil fields are changed.
-func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, status *specv1.DecisionStatus, decision, rationale, supersededBy *string) (*specv1.Decision, error) {
-	if status != nil && *status == specv1.DecisionStatus_DECISION_STATUS_SUPERSEDED {
+func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, status *storage.DecisionStatus, body, rationale, supersededBy *string) (*storage.Decision, error) {
+	if status != nil && *status == storage.DecisionStatusSuperseded {
 		if supersededBy == nil || *supersededBy == "" {
 			return nil, storage.ErrSupersededByRequired
 		}
@@ -133,11 +131,11 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 	}
 	if status != nil {
 		setClauses = append(setClauses, "d.status = $status")
-		params["status"] = status.String()
+		params["status"] = string(*status)
 	}
-	if decision != nil {
+	if body != nil {
 		setClauses = append(setClauses, "d.decision = $decision")
-		params["decision"] = *decision
+		params["decision"] = *body
 	}
 	if rationale != nil {
 		setClauses = append(setClauses, "d.rationale = $rationale")
@@ -163,18 +161,18 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 		       d.superseded_by, d.created_at, d.updated_at
 	`, strings.Join(setClauses, ", "))
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: update decision: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: decision %q: %w", slug, storage.ErrDecisionNotFound)
 	}
 
-	return recordToDecision(result.Records[0])
+	return recordToDecision(records[0])
 }
 
-func recordToDecision(rec *neo4j.Record) (*specv1.Decision, error) {
+func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
 	id, err := recordString(rec, 0, "id")
 	if err != nil {
 		return nil, err
@@ -191,7 +189,7 @@ func recordToDecision(rec *neo4j.Record) (*specv1.Decision, error) {
 	if err != nil {
 		return nil, err
 	}
-	decision, err := recordString(rec, 4, "decision")
+	body, err := recordString(rec, 4, "decision")
 	if err != nil {
 		return nil, err
 	}
@@ -221,20 +219,28 @@ func recordToDecision(rec *neo4j.Record) (*specv1.Decision, error) {
 		return nil, err
 	}
 
-	statusVal, ok := specv1.DecisionStatus_value[statusStr]
-	if !ok {
-		statusVal = int32(specv1.DecisionStatus_DECISION_STATUS_UNSPECIFIED)
+	status := storage.DecisionStatus(statusStr)
+	switch status {
+	case storage.DecisionStatusProposed, storage.DecisionStatusAccepted,
+		storage.DecisionStatusSuperseded, storage.DecisionStatusDeprecated:
+		// valid
+	default:
+		if statusStr == "DECISION_STATUS_UNSPECIFIED" || statusStr == "" {
+			status = storage.DecisionStatusProposed
+		} else {
+			return nil, fmt.Errorf("memgraph: unknown decision status %q", statusStr)
+		}
 	}
 
-	return &specv1.Decision{
-		Id:           id,
+	return &storage.Decision{
+		ID:           id,
 		Slug:         slug,
 		Title:        title,
-		Status:       specv1.DecisionStatus(statusVal),
-		Decision:     decision,
+		Status:       status,
+		Body:         body,
 		Rationale:    rationale,
 		SupersededBy: supersededBy,
-		CreatedAt:    timestamppb.New(createdAt),
-		UpdatedAt:    timestamppb.New(updatedAt),
+		CreatedAt:    createdAt,
+		UpdatedAt:    updatedAt,
 	}, nil
 }
