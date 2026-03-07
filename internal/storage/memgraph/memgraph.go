@@ -6,12 +6,13 @@ package memgraph
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
+	"crypto/rand"
 	"fmt"
 	"math"
 	"strings"
 	"time"
+
+	"github.com/oklog/ulid/v2"
 
 	"github.com/seanb4t/specgraph/internal/storage"
 
@@ -40,7 +41,7 @@ const defaultInitialStage = "spark"
 // CreateSpec stores a new spec node in Memgraph and returns it.
 func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
 	now := time.Now().UTC()
-	id := generateID("spec", slug, now)
+	id := newID("spec")
 	nowStr := nowRFC3339()
 
 	query := `
@@ -208,10 +209,10 @@ func (s *Store) Close(ctx context.Context) error {
 	return nil
 }
 
-// generateID produces a prefixed ID: prefix + "-" + first 7 hex chars of sha256(slug + now).
-func generateID(prefix, slug string, now time.Time) string {
-	h := sha256.Sum256([]byte(slug + now.String()))
-	return prefix + "-" + hex.EncodeToString(h[:])[:7]
+// newID produces a prefixed ULID: prefix + "-" + ULID.
+// ULIDs are 128-bit, lexicographically sortable, and monotonic within a millisecond.
+func newID(prefix string) string {
+	return prefix + "-" + ulid.MustNew(ulid.Now(), rand.Reader).String()
 }
 
 // nowRFC3339 returns the current UTC time formatted as an RFC 3339 string.

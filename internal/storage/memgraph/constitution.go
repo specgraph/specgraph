@@ -330,7 +330,7 @@ func recordToConstitution(rec *neo4j.Record) (*specv1.Constitution, error) {
 	}
 
 	// Only set pointer fields when the struct was actually populated.
-	if tech.Languages != nil || len(tech.Frameworks) > 0 || len(tech.Infrastructure) > 0 {
+	if tech.Languages != nil || len(tech.Frameworks) > 0 || len(tech.Infrastructure) > 0 || len(tech.APIStandards) > 0 || len(tech.Data) > 0 {
 		c.Tech = &tech
 	}
 	if process.SpecReview != "" || process.SecurityReview != nil || process.Deployment != nil || process.Documentation != nil {

@@ -7,16 +7,16 @@ import (
 	"strings"
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/emitter"
+	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 
-func testConstitution() *specv1.Constitution {
-	return &specv1.Constitution{
+func testConstitution() *storage.Constitution {
+	return &storage.Constitution{
 		Name: "test-project",
-		Tech: &specv1.TechConfig{
-			Languages: &specv1.LanguageConfig{
+		Tech: &storage.TechStack{
+			Languages: &storage.Languages{
 				Primary:   "go",
 				Allowed:   []string{"go", "python"},
 				Forbidden: []string{"java"},
@@ -33,9 +33,9 @@ func testConstitution() *specv1.Constitution {
 				"ci":      "GitHub Actions",
 			},
 		},
-		Principles: []*specv1.Principle{
+		Principles: []storage.Principle{
 			{
-				Id:        "backward-compat",
+				ID:        "backward-compat",
 				Statement: "All API changes must be backward compatible",
 				Rationale: "External consumers",
 			},
@@ -44,7 +44,7 @@ func testConstitution() *specv1.Constitution {
 			"No ORMs",
 			"All secrets via Secret Manager",
 		},
-		Antipatterns: []*specv1.Antipattern{
+		Antipatterns: []storage.Antipattern{
 			{
 				Pattern: "Shared mutable state",
 				Why:     "Caused cascading failure",
@@ -56,7 +56,7 @@ func testConstitution() *specv1.Constitution {
 
 func TestEmit_ClaudeMD(t *testing.T) {
 	c := testConstitution()
-	content, filename, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD)
+	content, filename, err := emitter.Emit(c, "claude-md")
 	require.NoError(t, err)
 	require.Equal(t, "CLAUDE.md", filename)
 	require.Contains(t, content, "go")
@@ -68,7 +68,7 @@ func TestEmit_ClaudeMD(t *testing.T) {
 
 func TestEmit_Cursorrules(t *testing.T) {
 	c := testConstitution()
-	content, filename, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_CURSORRULES)
+	content, filename, err := emitter.Emit(c, "cursorrules")
 	require.NoError(t, err)
 	require.Equal(t, ".cursorrules", filename)
 	require.Contains(t, content, "go")
@@ -76,7 +76,7 @@ func TestEmit_Cursorrules(t *testing.T) {
 
 func TestEmit_AgentsMD(t *testing.T) {
 	c := testConstitution()
-	content, filename, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_AGENTS_MD)
+	content, filename, err := emitter.Emit(c, "agents-md")
 	require.NoError(t, err)
 	require.Equal(t, "AGENTS.md", filename)
 	require.Contains(t, content, "go")
@@ -84,15 +84,15 @@ func TestEmit_AgentsMD(t *testing.T) {
 
 func TestEmit_InvalidFormat(t *testing.T) {
 	c := testConstitution()
-	_, _, err := emitter.Emit(c, specv1.OutputFormat(99))
+	_, _, err := emitter.Emit(c, "invalid-format")
 	require.Error(t, err)
 }
 
 func TestEmit_NilConstitution(t *testing.T) {
-	formats := []specv1.OutputFormat{
-		specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD,
-		specv1.OutputFormat_OUTPUT_FORMAT_CURSORRULES,
-		specv1.OutputFormat_OUTPUT_FORMAT_AGENTS_MD,
+	formats := []string{
+		"claude-md",
+		"cursorrules",
+		"agents-md",
 	}
 	for _, format := range formats {
 		content, _, err := emitter.Emit(nil, format)
@@ -102,8 +102,8 @@ func TestEmit_NilConstitution(t *testing.T) {
 }
 
 func TestEmit_EmptyConstitution(t *testing.T) {
-	c := &specv1.Constitution{}
-	content, filename, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD)
+	c := &storage.Constitution{}
+	content, filename, err := emitter.Emit(c, "claude-md")
 	require.NoError(t, err)
 	require.Equal(t, "CLAUDE.md", filename)
 	require.True(t, strings.HasPrefix(content, "# Project Constitution"), "should start with header")
@@ -114,14 +114,14 @@ func TestEmit_EmptyConstitution(t *testing.T) {
 }
 
 func TestEmit_PartialConstitution_TechOnly(t *testing.T) {
-	c := &specv1.Constitution{
-		Tech: &specv1.TechConfig{
-			Languages: &specv1.LanguageConfig{
+	c := &storage.Constitution{
+		Tech: &storage.TechStack{
+			Languages: &storage.Languages{
 				Primary: "go",
 			},
 		},
 	}
-	content, _, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD)
+	content, _, err := emitter.Emit(c, "claude-md")
 	require.NoError(t, err)
 	require.Contains(t, content, "## Tech Stack")
 	require.Contains(t, content, "go")
@@ -131,11 +131,11 @@ func TestEmit_PartialConstitution_TechOnly(t *testing.T) {
 }
 
 func TestEmit_NilTech(t *testing.T) {
-	c := &specv1.Constitution{
+	c := &storage.Constitution{
 		Tech:        nil,
 		Constraints: []string{"No ORMs"},
 	}
-	content, _, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD)
+	content, _, err := emitter.Emit(c, "claude-md")
 	require.NoError(t, err)
 	require.NotContains(t, content, "## Tech Stack")
 	require.Contains(t, content, "## Constraints")
@@ -147,7 +147,7 @@ func TestEmit_MapOrdering(t *testing.T) {
 	c := testConstitution()
 	var prev string
 	for i := 0; i < 20; i++ {
-		content, _, err := emitter.Emit(c, specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD)
+		content, _, err := emitter.Emit(c, "claude-md")
 		require.NoError(t, err)
 		if prev != "" {
 			require.Equal(t, prev, content, "output must be deterministic across runs")

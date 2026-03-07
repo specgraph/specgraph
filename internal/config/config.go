@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	"github.com/seanb4t/specgraph/internal/storage"
 	"gopkg.in/yaml.v3"
 )
 
