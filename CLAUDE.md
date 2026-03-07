@@ -30,6 +30,14 @@ All automation is via Taskfile.dev. Run `task --list` for the full catalog.
 | `task lint` | Run all linters (Go, Markdown, YAML) |
 | `task fmt` | Format all files (Go, YAML, Markdown, dprint) |
 
+### Dev Setup (fresh clone)
+
+```bash
+task tools          # Install all dev tools (golangci-lint, buf, lefthook, etc.)
+task hooks:install  # Install git hooks (pre-commit, pre-push, commit-msg)
+task build          # Generate proto + build binary
+```
+
 ## Domain Concepts
 
 - **Specs are graph nodes** with first-class edges (dependencies, blocks, compositions)
@@ -37,6 +45,20 @@ All automation is via Taskfile.dev. Run `task --list` for the full catalog.
 - **Authoring funnel**: Spark → Shape → Specify → Decompose → Approve
 - **Decisions are first-class nodes** (ADR-003) with bidirectional edges to specs
 - **SpecGraph is upstream of Gastown** — SpecGraph does design; Gastown does execution via polecats (ephemeral worker agents)
+
+## Architecture
+
+| Directory | Contents |
+|-----------|----------|
+| `cmd/specgraph/` | CLI entry point |
+| `proto/specgraph/v1/` | Protobuf service definitions (source of truth) |
+| `gen/specgraph/v1/` | Generated Go code from proto (gitignored, run `task proto`) |
+| `internal/server/` | ConnectRPC handlers + proto↔domain converters |
+| `internal/storage/` | Storage interfaces (domain types, not protobuf) |
+| `internal/storage/memgraph/` | Memgraph implementation (Cypher queries, testcontainers) |
+| `internal/authoring/` | Authoring funnel stage logic |
+| `e2e/` | End-to-end tests (Ginkgo/Gomega, require Docker) |
+| `docs/plans/` | Implementation plan documents |
 
 ## Gotchas
 
@@ -55,7 +77,6 @@ All automation is via Taskfile.dev. Run `task --list` for the full catalog.
 - **Handler error sanitization** — `stageError` and similar methods sanitize internal errors before returning to clients. Test assertions MUST use error codes (`connect.CodeInternal`, `connect.CodeNotFound`), not error message strings.
 - **Mock backends must use sentinel errors** — When handler code uses `errors.Is()` checks (e.g., `storage.ErrSpecNotFound`, `storage.ErrDecisionNotFound`), mock/fake backends must return these sentinel errors, not `fmt.Errorf()`.
 - **DECIDED_IN edge direction** — Per ADR-003, DECIDED_IN edges go from spec → decision. In `acceptLinkedDecisions`, `edge.ToID` is the decision slug.
-- **Lefthook pre-commit is file-scoped** — only lints staged files per commit. Cross-scope linters (`govet -shadow`, `wrapcheck`) need full package context. Use `task check` (see Quality Gates above) to catch what pre-commit misses.
 - **Use 4-backtick fences for nested code blocks** — when docs embed files containing ``` fences (e.g., SKILL.md content), use ````markdown for the outer block. Bare ``` nesting creates broken/orphaned fences.
 
 ## Roadmap

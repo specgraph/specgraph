@@ -376,6 +376,8 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	}
 	approvedAt := timestamppb.New(spec.UpdatedAt)
 	if spec.UpdatedAt.IsZero() {
+		h.logger.DebugContext(ctx, "spec.UpdatedAt is zero after TransitionStage; falling back to now",
+			"slug", slug, "specID", spec.ID, "stage", "approved")
 		approvedAt = timestamppb.Now()
 	}
 	return connect.NewResponse(&specv1.ApproveResponse{
@@ -494,6 +496,8 @@ func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug strin
 		// Use ToID as the decision slug; FromID should be the spec.
 		decisionSlug := edge.ToID
 		if decisionSlug == slug {
+			h.logger.WarnContext(ctx, "DECIDED_IN edge has unexpected direction (ToID is spec, not decision)",
+				"slug", slug, "fromID", edge.FromID, "toID", edge.ToID)
 			decisionSlug = edge.FromID
 		}
 		if decisionSlug == "" || decisionSlug == slug {
@@ -588,6 +592,15 @@ func shapeOutputToDomain(p *specv1.ShapeOutput) (*storage.ShapeOutput, error) {
 	for i, d := range p.GetDecisions() {
 		if err := validateSlug(d.GetSlug()); err != nil {
 			return nil, fmt.Errorf("decision[%d]: %w", i, err)
+		}
+		if len(d.GetTitle()) > maxFieldLen {
+			return nil, fmt.Errorf("decision[%d]: title exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+		if len(d.GetDecision()) > maxFieldLen {
+			return nil, fmt.Errorf("decision[%d]: body exceeds maximum length of %d characters", i, maxFieldLen)
+		}
+		if len(d.GetRationale()) > maxFieldLen {
+			return nil, fmt.Errorf("decision[%d]: rationale exceeds maximum length of %d characters", i, maxFieldLen)
 		}
 		decisions[i] = storage.DecisionInput{
 			Slug:      d.GetSlug(),
