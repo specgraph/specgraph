@@ -46,15 +46,15 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale
 		"updated_at":    nowStr,
 	}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: create decision: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: create decision returned no records")
 	}
 
-	return recordToDecision(result.Records[0])
+	return recordToDecision(records[0])
 }
 
 // GetDecision retrieves a decision by slug.
@@ -66,15 +66,15 @@ func (s *Store) GetDecision(ctx context.Context, slug string) (*storage.Decision
 	`
 	params := map[string]any{"slug": slug}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: get decision: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: decision %q: %w", slug, storage.ErrDecisionNotFound)
 	}
 
-	return recordToDecision(result.Records[0])
+	return recordToDecision(records[0])
 }
 
 // ListDecisions returns decisions matching the given filters.

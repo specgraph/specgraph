@@ -45,19 +45,19 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 	`, relType)
 	params := map[string]any{"from": actualFrom, "to": actualTo}
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: add edge: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: one or both nodes not found (from=%q, to=%q)", fromSlug, toSlug)
 	}
 
-	fromSlugVal, err := recordString(result.Records[0], 0, "from_slug")
+	fromSlugVal, err := recordString(records[0], 0, "from_slug")
 	if err != nil {
 		return nil, err
 	}
-	toSlugVal, err := recordString(result.Records[0], 1, "to_slug")
+	toSlugVal, err := recordString(records[0], 1, "to_slug")
 	if err != nil {
 		return nil, err
 	}
