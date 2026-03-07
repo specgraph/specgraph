@@ -101,9 +101,9 @@ func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *stora
 			return err
 		}
 		// Promote decisions to graph nodes with DECIDED_IN edges (spec→decision per ADR-003).
-		for _, d := range output.Decisions {
+		for i, d := range output.Decisions {
 			if d.Slug == "" {
-				continue
+				return fmt.Errorf("decision at index %d: slug is required", i)
 			}
 			if d.Title == "" {
 				return fmt.Errorf("decision %q: title is required", d.Slug)

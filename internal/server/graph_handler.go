@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -22,6 +23,12 @@ var _ specgraphv1connect.GraphServiceHandler = (*GraphHandler)(nil)
 
 // AddEdge handles the AddEdge RPC.
 func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.AddEdgeRequest]) (*connect.Response[specv1.Edge], error) {
+	if err := validateSlug(req.Msg.FromSlug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("from_slug: %w", err))
+	}
+	if err := validateSlug(req.Msg.ToSlug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("to_slug: %w", err))
+	}
 	et, err := edgeTypeFromProto(req.Msg.EdgeType)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -39,6 +46,12 @@ func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.
 
 // RemoveEdge handles the RemoveEdge RPC.
 func (h *GraphHandler) RemoveEdge(ctx context.Context, req *connect.Request[specv1.RemoveEdgeRequest]) (*connect.Response[specv1.RemoveEdgeResponse], error) {
+	if err := validateSlug(req.Msg.FromSlug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("from_slug: %w", err))
+	}
+	if err := validateSlug(req.Msg.ToSlug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("to_slug: %w", err))
+	}
 	et, err := edgeTypeFromProto(req.Msg.EdgeType)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -51,6 +64,9 @@ func (h *GraphHandler) RemoveEdge(ctx context.Context, req *connect.Request[spec
 
 // ListEdges handles the ListEdges RPC.
 func (h *GraphHandler) ListEdges(ctx context.Context, req *connect.Request[specv1.ListEdgesRequest]) (*connect.Response[specv1.ListEdgesResponse], error) {
+	if err := validateSlug(req.Msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	// UNSPECIFIED means "list all edge types" — pass empty string.
 	var et storage.EdgeType
 	if req.Msg.EdgeType != specv1.EdgeType_EDGE_TYPE_UNSPECIFIED {
@@ -73,6 +89,9 @@ func (h *GraphHandler) ListEdges(ctx context.Context, req *connect.Request[specv
 
 // GetDependencies handles the GetDependencies RPC.
 func (h *GraphHandler) GetDependencies(ctx context.Context, req *connect.Request[specv1.GetDependenciesRequest]) (*connect.Response[specv1.GetDependenciesResponse], error) {
+	if err := validateSlug(req.Msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	refs, err := h.store.GetDependencies(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -82,6 +101,9 @@ func (h *GraphHandler) GetDependencies(ctx context.Context, req *connect.Request
 
 // GetTransitiveDeps handles the GetTransitiveDeps RPC.
 func (h *GraphHandler) GetTransitiveDeps(ctx context.Context, req *connect.Request[specv1.GetTransitiveDepsRequest]) (*connect.Response[specv1.GetTransitiveDepsResponse], error) {
+	if err := validateSlug(req.Msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	refs, err := h.store.GetTransitiveDeps(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -91,6 +113,9 @@ func (h *GraphHandler) GetTransitiveDeps(ctx context.Context, req *connect.Reque
 
 // GetImpact handles the GetImpact RPC.
 func (h *GraphHandler) GetImpact(ctx context.Context, req *connect.Request[specv1.GetImpactRequest]) (*connect.Response[specv1.GetImpactResponse], error) {
+	if err := validateSlug(req.Msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	refs, err := h.store.GetImpact(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -109,6 +134,9 @@ func (h *GraphHandler) GetReady(ctx context.Context, _ *connect.Request[specv1.G
 
 // GetCriticalPath handles the GetCriticalPath RPC.
 func (h *GraphHandler) GetCriticalPath(ctx context.Context, req *connect.Request[specv1.GetCriticalPathRequest]) (*connect.Response[specv1.GetCriticalPathResponse], error) {
+	if err := validateSlug(req.Msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	refs, err := h.store.GetCriticalPath(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)

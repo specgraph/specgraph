@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -16,7 +17,8 @@ import (
 
 // DecisionHandler implements the ConnectRPC DecisionService.
 type DecisionHandler struct {
-	store storage.DecisionBackend
+	store  storage.DecisionBackend
+	logger *slog.Logger
 }
 
 var _ specgraphv1connect.DecisionServiceHandler = (*DecisionHandler)(nil)
@@ -29,7 +31,8 @@ func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Reque
 	}
 	d, err := h.store.CreateDecision(ctx, msg.Slug, msg.Title, msg.Decision, msg.Rationale)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		h.logger.ErrorContext(ctx, "create decision failed", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 	pb, err := decisionToProto(d)
 	if err != nil {
@@ -46,9 +49,10 @@ func (h *DecisionHandler) GetDecision(ctx context.Context, req *connect.Request[
 	d, err := h.store.GetDecision(ctx, req.Msg.Slug)
 	if err != nil {
 		if errors.Is(err, storage.ErrDecisionNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("decision not found"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		h.logger.ErrorContext(ctx, "get decision failed", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 	pb, err := decisionToProto(d)
 	if err != nil {
@@ -76,7 +80,8 @@ func (h *DecisionHandler) ListDecisions(ctx context.Context, req *connect.Reques
 	}
 	decisions, err := h.store.ListDecisions(ctx, status, limit)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		h.logger.ErrorContext(ctx, "list decisions failed", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 	pbs, err := decisionsToProto(decisions)
 	if err != nil {
@@ -103,12 +108,13 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 	d, err := h.store.UpdateDecision(ctx, msg.Slug, msg.Title, domainStatus, msg.Decision, msg.Rationale, msg.SupersededBy)
 	if err != nil {
 		if errors.Is(err, storage.ErrDecisionNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("decision not found"))
 		}
 		if errors.Is(err, storage.ErrSupersededByRequired) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("superseded_by is required when status is superseded"))
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		h.logger.ErrorContext(ctx, "update decision failed", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 	pb, err := decisionToProto(d)
 	if err != nil {
@@ -119,7 +125,7 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 
 // RegisterDecisionService registers the DecisionService on the given mux.
 func RegisterDecisionService(mux *http.ServeMux, store storage.DecisionBackend) {
-	handler := &DecisionHandler{store: store}
+	handler := &DecisionHandler{store: store, logger: slog.Default()}
 	path, h := specgraphv1connect.NewDecisionServiceHandler(handler)
 	mux.Handle(path, h)
 }
