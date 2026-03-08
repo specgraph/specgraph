@@ -24,15 +24,19 @@ func timeToProto(t time.Time) *timestamppb.Timestamp {
 
 func specToProto(s *storage.Spec) *specv1.Spec {
 	return &specv1.Spec{
-		Id:         s.ID,
-		Slug:       s.Slug,
-		Intent:     s.Intent,
-		Stage:      string(s.Stage),
-		Priority:   string(s.Priority),
-		Complexity: s.Complexity,
-		Version:    s.Version,
-		CreatedAt:  timeToProto(s.CreatedAt),
-		UpdatedAt:  timeToProto(s.UpdatedAt),
+		Id:           s.ID,
+		Slug:         s.Slug,
+		Intent:       s.Intent,
+		Stage:        string(s.Stage),
+		Priority:     string(s.Priority),
+		Complexity:   s.Complexity,
+		Version:      s.Version,
+		CreatedAt:    timeToProto(s.CreatedAt),
+		UpdatedAt:    timeToProto(s.UpdatedAt),
+		Lifecycle:    s.Lifecycle,
+		SupersededBy: s.SupersededBy,
+		Supersedes:   s.Supersedes,
+		History:      historyToProto(s.History),
 	}
 }
 
@@ -112,7 +116,8 @@ var edgeTypeToProtoMap = map[storage.EdgeType]specv1.EdgeType{
 	storage.EdgeTypeComposes:  specv1.EdgeType_EDGE_TYPE_COMPOSES,
 	storage.EdgeTypeRelatesTo: specv1.EdgeType_EDGE_TYPE_RELATES_TO,
 	storage.EdgeTypeInforms:   specv1.EdgeType_EDGE_TYPE_INFORMS,
-	storage.EdgeTypeDecidedIn: specv1.EdgeType_EDGE_TYPE_DECIDED_IN,
+	storage.EdgeTypeDecidedIn:  specv1.EdgeType_EDGE_TYPE_DECIDED_IN,
+	storage.EdgeTypeSupersedes: specv1.EdgeType_EDGE_TYPE_SUPERSEDES,
 }
 
 var edgeTypeFromProtoMap = map[specv1.EdgeType]storage.EdgeType{
@@ -121,7 +126,8 @@ var edgeTypeFromProtoMap = map[specv1.EdgeType]storage.EdgeType{
 	specv1.EdgeType_EDGE_TYPE_COMPOSES:   storage.EdgeTypeComposes,
 	specv1.EdgeType_EDGE_TYPE_RELATES_TO: storage.EdgeTypeRelatesTo,
 	specv1.EdgeType_EDGE_TYPE_INFORMS:    storage.EdgeTypeInforms,
-	specv1.EdgeType_EDGE_TYPE_DECIDED_IN: storage.EdgeTypeDecidedIn,
+	specv1.EdgeType_EDGE_TYPE_DECIDED_IN:  storage.EdgeTypeDecidedIn,
+	specv1.EdgeType_EDGE_TYPE_SUPERSEDES:  storage.EdgeTypeSupersedes,
 }
 
 func edgeTypeToProto(e storage.EdgeType) (specv1.EdgeType, error) {
@@ -439,6 +445,127 @@ func executionEventsToProto(events []*storage.ExecutionEvent) []*specv1.Executio
 	result := make([]*specv1.ExecutionEvent, len(events))
 	for i, e := range events {
 		result[i] = executionEventToProto(e)
+	}
+	return result
+}
+
+// --- History ---
+
+func historyToProto(entries []storage.HistoryEntry) []*specv1.HistoryEntry {
+	if len(entries) == 0 {
+		return nil
+	}
+	result := make([]*specv1.HistoryEntry, len(entries))
+	for i, e := range entries {
+		result[i] = &specv1.HistoryEntry{
+			Version: e.Version,
+			Stage:   e.Stage,
+			Summary: e.Summary,
+			Reason:  e.Reason,
+			Date:    timeToProto(e.Date),
+		}
+	}
+	return result
+}
+
+func historyFromProto(entries []*specv1.HistoryEntry) []storage.HistoryEntry { //nolint:unused // will be used when Lint RPC reads history from proto
+	if len(entries) == 0 {
+		return nil
+	}
+	result := make([]storage.HistoryEntry, len(entries))
+	for i, e := range entries {
+		var date time.Time
+		if e.Date != nil {
+			date = e.Date.AsTime()
+		}
+		result[i] = storage.HistoryEntry{
+			Version: e.Version,
+			Stage:   e.Stage,
+			Summary: e.Summary,
+			Reason:  e.Reason,
+			Date:    date,
+		}
+	}
+	return result
+}
+
+// --- Drift ---
+
+var driftTypeToProtoMap = map[storage.DriftType]specv1.DriftType{
+	storage.DriftTypeDependency: specv1.DriftType_DRIFT_TYPE_DEPENDENCY,
+	storage.DriftTypeInterface:  specv1.DriftType_DRIFT_TYPE_INTERFACE,
+	storage.DriftTypeVerify:     specv1.DriftType_DRIFT_TYPE_VERIFY,
+}
+
+var driftSeverityToProtoMap = map[storage.DriftSeverity]specv1.DriftSeverity{
+	storage.DriftSeverityHigh:   specv1.DriftSeverity_DRIFT_SEVERITY_HIGH,
+	storage.DriftSeverityMedium: specv1.DriftSeverity_DRIFT_SEVERITY_MEDIUM,
+	storage.DriftSeverityLow:    specv1.DriftSeverity_DRIFT_SEVERITY_LOW,
+	storage.DriftSeverityInfo:   specv1.DriftSeverity_DRIFT_SEVERITY_INFO,
+}
+
+func driftReportToProto(r *storage.DriftReport) *specv1.DriftReport {
+	items := make([]*specv1.DriftItem, len(r.Items))
+	for i, item := range r.Items {
+		items[i] = &specv1.DriftItem{
+			Type:            driftTypeToProtoMap[item.Type],
+			Severity:        driftSeverityToProtoMap[item.Severity],
+			Description:     item.Description,
+			SpecSlug:        item.SpecSlug,
+			UpstreamSlug:    item.UpstreamSlug,
+			ExpectedVersion: item.ExpectedVersion,
+			ActualVersion:   item.ActualVersion,
+		}
+	}
+	return &specv1.DriftReport{
+		SpecSlug:        r.SpecSlug,
+		Items:           items,
+		Acknowledged:    r.Acknowledged,
+		AcknowledgeNote: r.AcknowledgeNote,
+	}
+}
+
+func driftReportsToProto(reports []storage.DriftReport) []*specv1.DriftReport {
+	result := make([]*specv1.DriftReport, len(reports))
+	for i := range reports {
+		result[i] = driftReportToProto(&reports[i])
+	}
+	return result
+}
+
+// --- Lint ---
+
+var lintSeverityToProtoMap = map[storage.LintSeverity]specv1.LintSeverity{ //nolint:unused // will be used when Lint RPC is implemented
+	storage.LintSeverityError:   specv1.LintSeverity_LINT_SEVERITY_ERROR,
+	storage.LintSeverityWarning: specv1.LintSeverity_LINT_SEVERITY_WARNING,
+	storage.LintSeverityInfo:    specv1.LintSeverity_LINT_SEVERITY_INFO,
+}
+
+func lintViolationToProto(v *storage.LintViolation) *specv1.LintViolation { //nolint:unused // will be used when Lint RPC is implemented
+	return &specv1.LintViolation{
+		Rule:     v.Rule,
+		Severity: lintSeverityToProtoMap[v.Severity],
+		Message:  v.Message,
+		Location: v.Location,
+	}
+}
+
+func lintResultToProto(r *storage.LintResult) *specv1.LintResult { //nolint:unused // will be used when Lint RPC is implemented
+	violations := make([]*specv1.LintViolation, len(r.Violations))
+	for i := range r.Violations {
+		violations[i] = lintViolationToProto(&r.Violations[i])
+	}
+	return &specv1.LintResult{
+		SpecSlug:   r.SpecSlug,
+		Violations: violations,
+		Passed:     r.Passed,
+	}
+}
+
+func lintResultsToProto(results []storage.LintResult) []*specv1.LintResult { //nolint:unused // will be used when Lint RPC is implemented
+	result := make([]*specv1.LintResult, len(results))
+	for i := range results {
+		result[i] = lintResultToProto(&results[i])
 	}
 	return result
 }
