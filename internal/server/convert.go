@@ -492,7 +492,7 @@ func driftReportToProto(r *storage.DriftReport) *specv1.DriftReport {
 			Description:     item.Description,
 			SpecSlug:        item.SpecSlug,
 			UpstreamSlug:    item.UpstreamSlug,
-			ExpectedVersion: item.SpecVersion,
+			ExpectedVersion: item.ExpectedVersion,
 			ActualVersion:   item.ActualVersion,
 		}
 	}

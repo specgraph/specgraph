@@ -92,8 +92,8 @@ func runServe(_ *cobra.Command, _ []string) error {
 		server.RegisterAuthoringService(mux, store, store)
 		server.RegisterExecutionService(mux, store)
 		driftEngine := drift.NewEngine(store)
-		lintAdapter := &linterAdapter{backend: store}
-		server.RegisterLifecycleService(mux, store, driftEngine, lintAdapter)
+		lintEngine := linter.NewEngine(store)
+		server.RegisterLifecycleService(mux, store, driftEngine, lintEngine)
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 
@@ -159,13 +159,4 @@ func bootstrapConstitution(ctx context.Context, store storage.ConstitutionBacken
 
 	fmt.Println("Bootstrapped constitution from", yamlPath)
 	return nil
-}
-
-// linterAdapter wraps the linter package function to satisfy server.SpecLinter.
-type linterAdapter struct {
-	backend linter.Backend
-}
-
-func (a *linterAdapter) Lint(ctx context.Context, slug string) ([]storage.LintResult, error) {
-	return linter.Lint(ctx, a.backend, slug)
 }

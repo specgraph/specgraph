@@ -13,6 +13,13 @@ type TransactionalBackend interface {
 	RunInTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
+// SpecReader is the read-only subset of storage used by drift and linter engines.
+type SpecReader interface {
+	GetSpec(ctx context.Context, slug string) (*Spec, error)
+	ListSpecs(ctx context.Context, stage, priority string, limit int) ([]*Spec, error)
+	GetDependencies(ctx context.Context, slug string) ([]NodeRef, error)
+}
+
 // Backend is the interface that all storage backends must implement.
 type Backend interface {
 	// CreateSpec stores a new spec and returns it with generated ID and timestamps.

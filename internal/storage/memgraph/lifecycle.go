@@ -13,6 +13,10 @@ import (
 	"github.com/seanb4t/specgraph/internal/storage"
 )
 
+// maxHistoryEntries caps the number of history entries stored per spec.
+// When exceeded, the oldest entries are trimmed to prevent unbounded growth.
+const maxHistoryEntries = 100
+
 // terminalStages are stages from which no further lifecycle transitions are allowed.
 var terminalStages = map[storage.SpecStage]bool{
 	storage.SpecStageSuperseded: true,
@@ -20,7 +24,11 @@ var terminalStages = map[storage.SpecStage]bool{
 }
 
 // marshalHistory serializes a slice of HistoryEntry to a JSON string for storage.
+// If len(entries) exceeds maxHistoryEntries, the oldest entries are trimmed.
 func marshalHistory(entries []storage.HistoryEntry) (string, error) {
+	if len(entries) > maxHistoryEntries {
+		entries = entries[len(entries)-maxHistoryEntries:]
+	}
 	jsonEntries := make([]historyEntryJSON, len(entries))
 	for i, e := range entries {
 		jsonEntries[i] = historyEntryJSON{
@@ -38,9 +46,10 @@ func marshalHistory(entries []storage.HistoryEntry) (string, error) {
 	return string(data), nil
 }
 
-// LifecycleAmendSpec transitions a done spec back into authoring, appending a history entry
-// and setting the stage to "amended". Returns ErrSpecNotDone if the spec is not
-// at the "done" stage, and ErrSpecNotFound if the spec does not exist.
+// LifecycleAmendSpec transitions a done spec back into an earlier authoring stage,
+// appending a history entry. If reEntryStage is empty, the spec is set to "amended".
+// Returns ErrSpecNotDone if the spec is not at the "done" stage, and ErrSpecNotFound
+// if the spec does not exist.
 //
 // The transition is atomic: a single Cypher query gates on the expected stage
 // and version so concurrent requests cannot overwrite each other.
@@ -57,11 +66,17 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		return nil, fmt.Errorf("amend spec %q (stage=%s): %w", slug, spec.Stage, storage.ErrSpecNotDone)
 	}
 
+	// Determine the target stage: use reEntryStage if provided, default to "amended".
+	targetStage := storage.SpecStageAmended
+	if reEntryStage != "" {
+		targetStage = storage.SpecStage(reEntryStage)
+	}
+
 	newVersion := spec.Version + 1
 	entry := storage.HistoryEntry{
 		Version: newVersion,
-		Stage:   storage.SpecStageAmended,
-		Summary: fmt.Sprintf("Amended from done, re-entry stage: %s", reEntryStage),
+		Stage:   targetStage,
+		Summary: fmt.Sprintf("Amended from done, re-entry stage: %s", targetStage),
 		Reason:  reason,
 		Date:    time.Now().UTC(),
 	}
@@ -91,7 +106,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		"slug":             slug,
 		"expected_stage":   string(storage.SpecStageDone),
 		"expected_version": spec.Version,
-		"stage":            string(storage.SpecStageAmended),
+		"stage":            string(targetStage),
 		"version":          int64(newVersion),
 		"updated_at":       nowStr,
 		"history_json":     historyJSON,
@@ -119,7 +134,7 @@ func (s *Store) amendPreconditionError(ctx context.Context, slug string) error {
 	if current.Stage != storage.SpecStageDone {
 		return fmt.Errorf("amend spec %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecNotDone)
 	}
-	return fmt.Errorf("amend spec %q: concurrent modification detected: %w", slug, storage.ErrSpecNotFound)
+	return fmt.Errorf("amend spec %q: %w", slug, storage.ErrConcurrentModification)
 }
 
 // LifecycleSupersedeSpec marks the old spec as superseded and links it to the new spec via
@@ -184,7 +199,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		if terminalStages[current.Stage] {
 			return nil, nil, fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, current.Stage, storage.ErrSpecTerminal)
 		}
-		return nil, nil, fmt.Errorf("memgraph: supersede spec %q: %w", oldSlug, storage.ErrSpecNotFound)
+		return nil, nil, fmt.Errorf("supersede spec %q: %w", oldSlug, storage.ErrConcurrentModification)
 	}
 
 	rec := records[0]
@@ -268,7 +283,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		if terminalStages[current.Stage] {
 			return nil, fmt.Errorf("abandon spec %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecTerminal)
 		}
-		return nil, fmt.Errorf("abandon spec %q: concurrent modification detected: %w", slug, storage.ErrSpecNotFound)
+		return nil, fmt.Errorf("abandon spec %q: %w", slug, storage.ErrConcurrentModification)
 	}
 	return recordToSpec(records[0])
 }

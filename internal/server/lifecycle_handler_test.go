@@ -220,13 +220,13 @@ func TestLifecycleHandler_CheckDrift(t *testing.T) {
 				SpecSlug: "my-spec",
 				Items: []storage.DriftItem{
 					{
-						Type:          storage.DriftTypeDependency,
-						Severity:      storage.DriftSeverityHigh,
-						Description:   "upstream changed",
-						SpecSlug:      "my-spec",
-						UpstreamSlug:  "upstream-spec",
-						SpecVersion:   2,
-						ActualVersion: 3,
+						Type:            storage.DriftTypeDependency,
+						Severity:        storage.DriftSeverityHigh,
+						Description:     "upstream changed",
+						SpecSlug:        "my-spec",
+						UpstreamSlug:    "upstream-spec",
+						ExpectedVersion: 2,
+						ActualVersion:   3,
 					},
 				},
 			},
@@ -481,6 +481,65 @@ func TestLifecycleHandler_AcknowledgeDrift_EmptyNote(t *testing.T) {
 	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
 		Slug: "my-spec",
 		Note: "",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestLifecycleHandler_Abandon_NotFound(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.abandonSpec = func(_ context.Context, _, _ string) (*storage.Spec, error) {
+		return nil, storage.ErrSpecNotFound
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.Abandon(context.Background(), connect.NewRequest(&specv1.LifecycleAbandonRequest{
+		Slug:   "no-such-spec",
+		Reason: "no longer needed",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeNotFound, connErr.Code())
+}
+
+func TestLifecycleHandler_Supersede_OldNotFound(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+		return nil, nil, storage.ErrSpecNotFound
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.LifecycleSupersedeRequest{
+		Slug:    "missing-old-spec",
+		NewSlug: "new-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeNotFound, connErr.Code())
+}
+
+func TestLifecycleHandler_Amend_EmptyReason(t *testing.T) {
+	client := newLifecycleClient(t, defaultTestDeps())
+	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+		Slug:         "my-spec",
+		Reason:       "",
+		ReEntryStage: "shape",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestLifecycleHandler_Abandon_EmptyReason(t *testing.T) {
+	client := newLifecycleClient(t, defaultTestDeps())
+	_, err := client.Abandon(context.Background(), connect.NewRequest(&specv1.LifecycleAbandonRequest{
+		Slug:   "dead-spec",
+		Reason: "",
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error

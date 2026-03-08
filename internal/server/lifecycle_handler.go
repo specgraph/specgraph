@@ -36,17 +36,15 @@ type LifecycleHandler struct {
 
 var _ specgraphv1connect.LifecycleServiceHandler = (*LifecycleHandler)(nil)
 
-// Amend handles the Amend RPC, transitioning a done spec back into authoring.
+// Amend handles the Amend RPC, transitioning a done spec to an earlier authoring
+// stage (or "amended" if no re-entry stage is specified).
 func (h *LifecycleHandler) Amend(ctx context.Context, req *connect.Request[specv1.LifecycleAmendRequest]) (*connect.Response[specv1.Spec], error) {
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if msg.Reason == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reason is required"))
-	}
-	if len(msg.Reason) > maxFieldLen {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("reason exceeds maximum length of %d characters", maxFieldLen))
+	if err := validateRequiredField("reason", msg.Reason); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if msg.ReEntryStage != "" {
 		if !storage.SpecStage(msg.ReEntryStage).IsValid() {
@@ -93,11 +91,8 @@ func (h *LifecycleHandler) Abandon(ctx context.Context, req *connect.Request[spe
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if msg.Reason == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reason is required"))
-	}
-	if len(msg.Reason) > maxFieldLen {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("reason exceeds maximum length of %d characters", maxFieldLen))
+	if err := validateRequiredField("reason", msg.Reason); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	spec, err := h.store.LifecycleAbandonSpec(ctx, msg.Slug, msg.Reason)
@@ -136,11 +131,8 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if msg.Note == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("note is required"))
-	}
-	if len(msg.Note) > maxFieldLen {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("note exceeds maximum length of %d characters", maxFieldLen))
+	if err := validateRequiredField("note", msg.Note); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	report, err := h.store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.Note)
@@ -188,6 +180,9 @@ func (h *LifecycleHandler) lifecycleError(err error) error {
 	}
 	if errors.Is(err, storage.ErrNewSpecNotFound) {
 		return connect.NewError(connect.CodeNotFound, errors.New("replacement spec not found"))
+	}
+	if errors.Is(err, storage.ErrConcurrentModification) {
+		return connect.NewError(connect.CodeAborted, errors.New("concurrent modification — retry the operation"))
 	}
 	h.logger.Error("lifecycleError: internal error", slog.Any("error", err))
 	return connect.NewError(connect.CodeInternal, errors.New("internal error"))

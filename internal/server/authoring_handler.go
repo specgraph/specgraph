@@ -30,6 +30,17 @@ const maxFieldLen = 10000
 // maxElements caps repeated fields to prevent unbounded writes to graph storage.
 const maxElements = 100
 
+// validateRequiredField checks that a field is non-empty and within maxFieldLen.
+func validateRequiredField(name, value string) error {
+	if value == "" {
+		return fmt.Errorf("%s is required", name)
+	}
+	if len(value) > maxFieldLen {
+		return fmt.Errorf("%s exceeds maximum length of %d characters", name, maxFieldLen)
+	}
+	return nil
+}
+
 func validateSlug(slug string) error {
 	if slug == "" {
 		return errors.New("slug is required")

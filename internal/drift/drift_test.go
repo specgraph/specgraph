@@ -5,6 +5,7 @@ package drift_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -14,11 +15,17 @@ import (
 )
 
 type mockDriftBackend struct {
-	specs map[string]*storage.Spec
-	deps  map[string][]storage.NodeRef
+	specs   map[string]*storage.Spec
+	deps    map[string][]storage.NodeRef
+	listErr error // if non-nil, ListSpecs returns this error
+	depsErr error // if non-nil, GetDependencies returns this error
+	specErr error // if non-nil, GetSpec returns this error for any slug
 }
 
 func (m *mockDriftBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
+	if m.specErr != nil {
+		return nil, m.specErr
+	}
 	spec, ok := m.specs[slug]
 	if !ok {
 		return nil, storage.ErrSpecNotFound
@@ -27,6 +34,9 @@ func (m *mockDriftBackend) GetSpec(_ context.Context, slug string) (*storage.Spe
 }
 
 func (m *mockDriftBackend) ListSpecs(_ context.Context, stage, _ string, _ int) ([]*storage.Spec, error) {
+	if m.listErr != nil {
+		return nil, m.listErr
+	}
 	var result []*storage.Spec
 	for _, s := range m.specs {
 		if string(s.Stage) == stage {
@@ -37,6 +47,9 @@ func (m *mockDriftBackend) ListSpecs(_ context.Context, stage, _ string, _ int) 
 }
 
 func (m *mockDriftBackend) GetDependencies(_ context.Context, slug string) ([]storage.NodeRef, error) {
+	if m.depsErr != nil {
+		return nil, m.depsErr
+	}
 	return m.deps[slug], nil
 }
 
@@ -177,4 +190,78 @@ func TestCheckDrift_ScopeFilter(t *testing.T) {
 	require.Len(t, reports, 1)
 	require.Len(t, reports[0].Items, 1)
 	require.Equal(t, storage.DriftTypeDependency, reports[0].Items[0].Type)
+}
+
+func TestCheck_InvalidScope(t *testing.T) {
+	backend := &mockDriftBackend{specs: map[string]*storage.Spec{}}
+	engine := drift.NewEngine(backend)
+
+	_, err := engine.Check(context.Background(), "", "bogus")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unknown scope")
+}
+
+func TestCheck_ListSpecsError(t *testing.T) {
+	backend := &mockDriftBackend{
+		specs:   map[string]*storage.Spec{},
+		listErr: errors.New("db connection lost"),
+	}
+	engine := drift.NewEngine(backend)
+
+	_, err := engine.Check(context.Background(), "", "")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "db connection lost")
+}
+
+func TestCheckSpec_GetDependenciesError(t *testing.T) {
+	now := time.Now()
+	backend := &mockDriftBackend{
+		specs: map[string]*storage.Spec{
+			"my-spec": {
+				Slug:      "my-spec",
+				Stage:     storage.SpecStageDone,
+				UpdatedAt: now,
+			},
+		},
+		deps:    map[string][]storage.NodeRef{},
+		depsErr: errors.New("graph unavailable"),
+	}
+	engine := drift.NewEngine(backend)
+
+	_, err := engine.Check(context.Background(), "my-spec", "deps")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "graph unavailable")
+}
+
+func TestCheckSpec_MissingDependencyCreatesInfoItem(t *testing.T) {
+	now := time.Now()
+	backend := &mockDriftBackend{
+		specs: map[string]*storage.Spec{
+			"downstream": {
+				Slug:      "downstream",
+				Stage:     storage.SpecStageDone,
+				UpdatedAt: now,
+			},
+			// "gone-dep" intentionally absent
+		},
+		deps: map[string][]storage.NodeRef{
+			"downstream": {
+				{Slug: "gone-dep", Label: storage.NodeLabelSpec},
+			},
+		},
+	}
+	engine := drift.NewEngine(backend)
+
+	reports, err := engine.Check(context.Background(), "downstream", "deps")
+	require.NoError(t, err)
+	require.Len(t, reports, 1)
+	require.Len(t, reports[0].Items, 1)
+
+	item := reports[0].Items[0]
+	require.Equal(t, storage.DriftTypeDependency, item.Type)
+	require.Equal(t, storage.DriftSeverityInfo, item.Severity)
+	require.Contains(t, item.Description, "gone-dep")
+	require.Contains(t, item.Description, "not found")
+	require.Equal(t, "downstream", item.SpecSlug)
+	require.Equal(t, "gone-dep", item.UpstreamSlug)
 }

@@ -8,20 +8,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"github.com/seanb4t/specgraph/internal/storage"
 )
 
 // Backend is the subset of storage needed by the drift engine.
-type Backend interface {
-	GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
-	ListSpecs(ctx context.Context, stage, priority string, limit int) ([]*storage.Spec, error)
-	GetDependencies(ctx context.Context, slug string) ([]storage.NodeRef, error)
-}
+type Backend = storage.SpecReader
 
-// maxSpecsPerCheck limits the number of specs processed in a single drift check
-// to prevent unbounded result sets from overwhelming the engine.
+// maxSpecsPerCheck limits the number of specs returned per ListSpecs call.
+// Note: check-all mode calls ListSpecs twice (done + amended), so the actual
+// ceiling is 2 * maxSpecsPerCheck.
 const maxSpecsPerCheck = 10000
 
 // Engine runs drift detection checks.
@@ -34,9 +30,20 @@ func NewEngine(backend Backend) *Engine {
 	return &Engine{backend: backend}
 }
 
+// validScopes lists the recognized drift scope values.
+var validScopes = map[string]bool{
+	"":           true,
+	"deps":       true,
+	"interfaces": true,
+	"verify":     true,
+}
+
 // Check runs drift detection for a single spec (by slug) or all eligible specs (empty slug).
 // The scope parameter filters which drift checks to run: "deps", "interfaces", "verify", or "" (all).
 func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.DriftReport, error) {
+	if !validScopes[scope] {
+		return nil, fmt.Errorf("drift: unknown scope %q (valid: deps, interfaces, verify)", scope)
+	}
 	var specs []*storage.Spec
 
 	if slug != "" {
@@ -91,12 +98,13 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 			}
 			if upstream.UpdatedAt.After(spec.UpdatedAt) {
 				report.Items = append(report.Items, storage.DriftItem{
-					Type:          storage.DriftTypeDependency,
-					Severity:      storage.DriftSeverityMedium,
-					Description:   fmt.Sprintf("upstream %q updated after %q", upstream.Slug, spec.Slug),
-					SpecSlug:      spec.Slug,
-					UpstreamSlug:  upstream.Slug,
-					ActualVersion: upstream.Version,
+					Type:            storage.DriftTypeDependency,
+					Severity:        storage.DriftSeverityMedium,
+					Description:     fmt.Sprintf("upstream %q updated after %q", upstream.Slug, spec.Slug),
+					SpecSlug:        spec.Slug,
+					UpstreamSlug:    upstream.Slug,
+					ExpectedVersion: spec.Version,
+					ActualVersion:   upstream.Version,
 				})
 			}
 		}

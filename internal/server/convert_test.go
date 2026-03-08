@@ -176,3 +176,194 @@ func TestEdgeTypeToProto(t *testing.T) {
 	_, err := edgeTypeToProto("unknown")
 	assert.Error(t, err)
 }
+
+func TestHistoryToProto(t *testing.T) {
+	t.Run("nil/empty returns nil", func(t *testing.T) {
+		assert.Nil(t, historyToProto(nil))
+		assert.Nil(t, historyToProto([]storage.HistoryEntry{}))
+	})
+
+	t.Run("converts entries", func(t *testing.T) {
+		now := time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC)
+		entries := []storage.HistoryEntry{
+			{Version: 1, Stage: "spark", Summary: "Created", Reason: "init", Date: now},
+			{Version: 2, Stage: "shape", Summary: "Shaped", Reason: "refined", Date: now.Add(time.Hour)},
+		}
+		pbs := historyToProto(entries)
+		require.Len(t, pbs, 2)
+
+		assert.Equal(t, int32(1), pbs[0].Version)
+		assert.Equal(t, "spark", pbs[0].Stage)
+		assert.Equal(t, "Created", pbs[0].Summary)
+		assert.Equal(t, "init", pbs[0].Reason)
+		require.NotNil(t, pbs[0].Date)
+		assert.Equal(t, now.Unix(), pbs[0].Date.AsTime().Unix())
+
+		assert.Equal(t, int32(2), pbs[1].Version)
+		assert.Equal(t, "shape", pbs[1].Stage)
+	})
+
+	t.Run("zero date produces nil timestamp", func(t *testing.T) {
+		entries := []storage.HistoryEntry{
+			{Version: 1, Stage: "spark", Summary: "s"},
+		}
+		pbs := historyToProto(entries)
+		require.Len(t, pbs, 1)
+		assert.Nil(t, pbs[0].Date)
+	})
+}
+
+func TestLifecycleToProto(t *testing.T) {
+	t.Run("task lifecycle", func(t *testing.T) {
+		got := lifecycleToProto(storage.SpecLifecycleTask)
+		assert.Equal(t, specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK, got)
+	})
+
+	t.Run("living lifecycle", func(t *testing.T) {
+		got := lifecycleToProto(storage.SpecLifecycleLiving)
+		assert.Equal(t, specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING, got)
+	})
+
+	t.Run("empty string defaults to task", func(t *testing.T) {
+		got := lifecycleToProto("")
+		assert.Equal(t, specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK, got)
+	})
+}
+
+func TestDriftReportToProto(t *testing.T) {
+	t.Run("full report", func(t *testing.T) {
+		report := &storage.DriftReport{
+			SpecSlug:        "login-api",
+			Acknowledged:    true,
+			AcknowledgeNote: "accepted risk",
+			Items: []storage.DriftItem{
+				{
+					Type:            storage.DriftTypeDependency,
+					Severity:        storage.DriftSeverityHigh,
+					Description:     "version mismatch",
+					SpecSlug:        "login-api",
+					UpstreamSlug:    "auth-core",
+					ExpectedVersion: 2,
+					ActualVersion:   1,
+				},
+			},
+		}
+		pb := driftReportToProto(report)
+		assert.Equal(t, "login-api", pb.SpecSlug)
+		assert.True(t, pb.Acknowledged)
+		assert.Equal(t, "accepted risk", pb.AcknowledgeNote)
+		require.Len(t, pb.Items, 1)
+	})
+
+	t.Run("empty items", func(t *testing.T) {
+		report := &storage.DriftReport{SpecSlug: "s"}
+		pb := driftReportToProto(report)
+		assert.Empty(t, pb.Items)
+	})
+}
+
+func TestDriftItemToProto(t *testing.T) {
+	tests := []struct {
+		name     string
+		item     storage.DriftItem
+		wantType specv1.DriftType
+		wantSev  specv1.DriftSeverity
+	}{
+		{
+			name:     "dependency/high",
+			item:     storage.DriftItem{Type: storage.DriftTypeDependency, Severity: storage.DriftSeverityHigh, Description: "d", SpecSlug: "a", UpstreamSlug: "b", ExpectedVersion: 3, ActualVersion: 1},
+			wantType: specv1.DriftType_DRIFT_TYPE_DEPENDENCY,
+			wantSev:  specv1.DriftSeverity_DRIFT_SEVERITY_HIGH,
+		},
+		{
+			name:     "interface/medium",
+			item:     storage.DriftItem{Type: storage.DriftTypeInterface, Severity: storage.DriftSeverityMedium, Description: "iface changed"},
+			wantType: specv1.DriftType_DRIFT_TYPE_INTERFACE,
+			wantSev:  specv1.DriftSeverity_DRIFT_SEVERITY_MEDIUM,
+		},
+		{
+			name:     "verify/low",
+			item:     storage.DriftItem{Type: storage.DriftTypeVerify, Severity: storage.DriftSeverityLow},
+			wantType: specv1.DriftType_DRIFT_TYPE_VERIFY,
+			wantSev:  specv1.DriftSeverity_DRIFT_SEVERITY_LOW,
+		},
+		{
+			name:    "info severity",
+			item:    storage.DriftItem{Severity: storage.DriftSeverityInfo},
+			wantSev: specv1.DriftSeverity_DRIFT_SEVERITY_INFO,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Use driftReportToProto since driftItemToProto is inline
+			report := &storage.DriftReport{Items: []storage.DriftItem{tt.item}}
+			pb := driftReportToProto(report)
+			require.Len(t, pb.Items, 1)
+			got := pb.Items[0]
+			assert.Equal(t, tt.wantType, got.Type)
+			assert.Equal(t, tt.wantSev, got.Severity)
+			assert.Equal(t, tt.item.Description, got.Description)
+			assert.Equal(t, tt.item.SpecSlug, got.SpecSlug)
+			assert.Equal(t, tt.item.UpstreamSlug, got.UpstreamSlug)
+			assert.Equal(t, tt.item.ExpectedVersion, got.ExpectedVersion)
+			assert.Equal(t, tt.item.ActualVersion, got.ActualVersion)
+		})
+	}
+}
+
+func TestLintResultsToProto(t *testing.T) {
+	t.Run("multiple results with violations", func(t *testing.T) {
+		results := []storage.LintResult{
+			{
+				SpecSlug: "login-api",
+				Passed:   false,
+				Violations: []storage.LintViolation{
+					{Rule: "no-empty-intent", Severity: storage.LintSeverityError, Message: "intent is empty", Location: "spec.intent"},
+					{Rule: "slug-format", Severity: storage.LintSeverityWarning, Message: "slug has uppercase", Location: "spec.slug"},
+				},
+			},
+			{
+				SpecSlug:   "auth-core",
+				Passed:     true,
+				Violations: nil,
+			},
+		}
+		pbs := lintResultsToProto(results)
+		require.Len(t, pbs, 2)
+
+		// First result
+		assert.Equal(t, "login-api", pbs[0].SpecSlug)
+		assert.False(t, pbs[0].Passed)
+		require.Len(t, pbs[0].Violations, 2)
+		assert.Equal(t, "no-empty-intent", pbs[0].Violations[0].Rule)
+		assert.Equal(t, specv1.LintSeverity_LINT_SEVERITY_ERROR, pbs[0].Violations[0].Severity)
+		assert.Equal(t, "intent is empty", pbs[0].Violations[0].Message)
+		assert.Equal(t, "spec.intent", pbs[0].Violations[0].Location)
+		assert.Equal(t, specv1.LintSeverity_LINT_SEVERITY_WARNING, pbs[0].Violations[1].Severity)
+
+		// Second result
+		assert.Equal(t, "auth-core", pbs[1].SpecSlug)
+		assert.True(t, pbs[1].Passed)
+		assert.Empty(t, pbs[1].Violations)
+	})
+
+	t.Run("empty input", func(t *testing.T) {
+		pbs := lintResultsToProto([]storage.LintResult{})
+		assert.Empty(t, pbs)
+	})
+
+	t.Run("info severity maps correctly", func(t *testing.T) {
+		results := []storage.LintResult{
+			{
+				SpecSlug: "s",
+				Violations: []storage.LintViolation{
+					{Rule: "r", Severity: storage.LintSeverityInfo, Message: "m"},
+				},
+			},
+		}
+		pbs := lintResultsToProto(results)
+		require.Len(t, pbs, 1)
+		require.Len(t, pbs[0].Violations, 1)
+		assert.Equal(t, specv1.LintSeverity_LINT_SEVERITY_INFO, pbs[0].Violations[0].Severity)
+	})
+}

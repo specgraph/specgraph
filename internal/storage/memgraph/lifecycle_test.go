@@ -25,7 +25,7 @@ func TestAmendSpec_HappyPath(t *testing.T) {
 
 	amended, err := store.LifecycleAmendSpec(ctx, "amend-me", "Mobile needs offline refresh", "shape")
 	require.NoError(t, err)
-	require.Equal(t, storage.SpecStage("amended"), amended.Stage)
+	require.Equal(t, storage.SpecStage("shape"), amended.Stage)
 	require.Equal(t, int32(3), amended.Version) // create=1, update=2, amend=3
 	require.NotEmpty(t, amended.History)
 	require.Equal(t, "Mobile needs offline refresh", amended.History[len(amended.History)-1].Reason)
@@ -158,6 +158,28 @@ func TestCheckDrift_DependencyDrift(t *testing.T) {
 	require.NotEmpty(t, reports[0].Items)
 	require.Equal(t, storage.DriftTypeDependency, reports[0].Items[0].Type)
 	require.Equal(t, "upstream-spec", reports[0].Items[0].UpstreamSlug)
+}
+
+func TestAbandonSpec_NotFound(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.LifecycleAbandonSpec(ctx, "nonexistent-spec", "reason")
+	require.ErrorIs(t, err, storage.ErrSpecNotFound)
+}
+
+func TestAmendSpec_Terminal(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "amend-terminal", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	// Abandon the spec to make it terminal.
+	_, err = store.LifecycleAbandonSpec(ctx, "amend-terminal", "abandoned")
+	require.NoError(t, err)
+
+	// Amend should fail — spec is in a terminal state.
+	_, err = store.LifecycleAmendSpec(ctx, "amend-terminal", "reason", "shape")
+	require.ErrorIs(t, err, storage.ErrSpecTerminal)
 }
 
 func TestAcknowledgeDrift(t *testing.T) {

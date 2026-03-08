@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 
+// Package linter validates specs against JSON Schema and graph-consistency rules.
 package linter
 
 import (
@@ -12,11 +13,7 @@ import (
 )
 
 // Backend is the subset of storage needed by the linter.
-type Backend interface {
-	GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
-	ListSpecs(ctx context.Context, stage, priority string, limit int) ([]*storage.Spec, error)
-	GetDependencies(ctx context.Context, slug string) ([]storage.NodeRef, error)
-}
+type Backend = storage.SpecReader
 
 // maxSpecsPerLint limits the number of specs processed in a single lint run.
 const maxSpecsPerLint = 10000
@@ -31,7 +28,7 @@ func NewEngine(backend Backend) *Engine {
 	return &Engine{backend: backend}
 }
 
-// Lint delegates to the package-level Lint function.
+// Lint validates one or all specs, returning lint results for each.
 func (e *Engine) Lint(ctx context.Context, slug string) ([]storage.LintResult, error) {
 	return Lint(ctx, e.backend, slug)
 }
@@ -70,6 +67,7 @@ func Lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResu
 func lintSpec(ctx context.Context, backend Backend, spec *storage.Spec) (storage.LintResult, error) {
 	violations := ValidateSchema(spec)
 
+	// Rule 1 is schema validation (ValidateSchema above).
 	// Rule 2: Edge consistency — dangling dependency references.
 	danglingViolations, err := checkDanglingDeps(ctx, backend, spec.Slug)
 	if err != nil {
@@ -161,6 +159,12 @@ func detectCycles(ctx context.Context, backend Backend, slug string) ([]storage.
 		deps, err := backend.GetDependencies(ctx, current)
 		if err != nil {
 			if errors.Is(err, storage.ErrSpecNotFound) {
+				violations = append(violations, storage.LintViolation{
+					Rule:     "graph.missing_node",
+					Severity: storage.LintSeverityWarning,
+					Message:  fmt.Sprintf("spec %q referenced in dependency graph but not found", current),
+					Location: current,
+				})
 				inStack[current] = false
 				return
 			}
