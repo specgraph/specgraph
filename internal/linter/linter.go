@@ -18,7 +18,8 @@ type Backend = storage.SpecReader
 // maxSpecsPerLint limits the number of specs processed in a single lint run.
 const maxSpecsPerLint = 10000
 
-// Engine wraps the linter package functions for use as a server.SpecLinter.
+// Engine provides a storage-backed implementation of server.SpecLinter,
+// delegating lint execution to the package-level Lint function.
 type Engine struct {
 	backend Backend
 }

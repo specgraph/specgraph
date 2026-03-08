@@ -45,7 +45,7 @@ func runAmend(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("amend: %w", err)
 	}
 	s := resp.Msg.GetSpec()
-	fmt.Printf("Amended: %s (stage=%s, lifecycle=%s, version=%d)\n", s.GetSlug(), s.GetStage(), s.GetLifecycle(), s.GetVersion())
+	fmt.Printf("Amended: %s (stage=%s, lifecycle=%s, version=%d)\n", s.GetSlug(), s.GetStage(), s.GetLifecycle().String(), s.GetVersion())
 	return nil
 }
 
@@ -74,8 +74,8 @@ func runSupersede(_ *cobra.Command, args []string) error {
 	}
 	old := resp.Msg.GetOldSpec()
 	newSpec := resp.Msg.GetNewSpec()
-	fmt.Printf("Superseded: %s (lifecycle=%s)\n", old.GetSlug(), old.GetLifecycle())
-	fmt.Printf("Created:    %s (lifecycle=%s, stage=%s)\n", newSpec.GetSlug(), newSpec.GetLifecycle(), newSpec.GetStage())
+	fmt.Printf("Superseded: %s (lifecycle=%s)\n", old.GetSlug(), old.GetLifecycle().String())
+	fmt.Printf("Created:    %s (lifecycle=%s, stage=%s)\n", newSpec.GetSlug(), newSpec.GetLifecycle().String(), newSpec.GetStage())
 	return nil
 }
 
@@ -103,7 +103,7 @@ func runAbandon(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("abandon: %w", err)
 	}
 	s := resp.Msg.GetSpec()
-	fmt.Printf("Abandoned: %s (lifecycle=%s, version=%d)\n", s.GetSlug(), s.GetLifecycle(), s.GetVersion())
+	fmt.Printf("Abandoned: %s (lifecycle=%s, version=%d)\n", s.GetSlug(), s.GetLifecycle().String(), s.GetVersion())
 	return nil
 }
 
@@ -234,7 +234,7 @@ func runLint(_ *cobra.Command, args []string) error {
 func init() {
 	amendCmd.Flags().StringVar(&amendReason, "reason", "", "reason for amendment (required)")
 	cobra.CheckErr(amendCmd.MarkFlagRequired("reason"))
-	amendCmd.Flags().StringVar(&amendReEntry, "re-entry", "", "authoring stage to re-enter (spark|shape|specify|decompose|approved|in_progress|review)")
+	amendCmd.Flags().StringVar(&amendReEntry, "re-entry", "", "authoring stage to re-enter (spark|shape|specify|decompose|approved|in_progress|review|done)")
 	rootCmd.AddCommand(amendCmd)
 
 	supersedeCmd.Flags().StringVar(&supersedeWith, "with", "", "slug for the replacement spec (required)")

@@ -50,7 +50,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(resp.Msg.Stage).To(Equal("done"))
 		})
 
-		It("amends the done spec back into authoring", func() {
+		It("amends the done spec back into authoring with re-entry stage", func() {
 			resp, err := lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
 				Slug:         amendSlug,
 				Reason:       "Requirements changed after implementation",
@@ -59,6 +59,35 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Msg.GetSpec().GetSlug()).To(Equal(amendSlug))
 			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("shape"))
+		})
+	})
+
+	Describe("Amend flow (default stage)", func() {
+		const amendDefaultSlug = "lifecycle-amend-default"
+
+		It("creates a spec and advances to done", func() {
+			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   amendDefaultSlug,
+				Intent: "Test amend with default stage",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			resp, err := specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
+				Slug:  amendDefaultSlug,
+				Stage: proto.String("done"),
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Msg.Stage).To(Equal("done"))
+		})
+
+		It("amends the done spec to amended stage when no re-entry stage specified", func() {
+			resp, err := lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
+				Slug:   amendDefaultSlug,
+				Reason: "Needs revision",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Msg.GetSpec().GetSlug()).To(Equal(amendDefaultSlug))
+			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("amended"))
 		})
 	})
 

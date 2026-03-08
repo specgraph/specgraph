@@ -25,10 +25,7 @@ var terminalStages = map[storage.SpecStage]bool{
 
 // appendHistory appends entry to existing history and marshals the result to JSON.
 func appendHistory(existing []storage.HistoryEntry, entry *storage.HistoryEntry) (string, error) {
-	history := make([]storage.HistoryEntry, len(existing)+1)
-	copy(history, existing)
-	history[len(existing)] = *entry
-	return marshalHistory(history)
+	return marshalHistory(append(existing, *entry))
 }
 
 // marshalHistory serializes a slice of HistoryEntry to a JSON string for storage.

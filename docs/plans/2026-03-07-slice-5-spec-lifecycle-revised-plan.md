@@ -970,11 +970,17 @@ After all tasks:
 
 ## Implementation Deviations
 
-### Task 5: JSON Schema replaced with programmatic validation
+### Task 5: JSON Schema complemented by programmatic validation
 
-**Deviation:** `spec.schema.json` file was not created. Schema validation is implemented directly in Go code (`internal/linter/schema.go`) using programmatic checks for required fields, enum validation, conditional rules, and version minimum.
+**Deviation:** `spec.schema.json` was created as planned, but the linter uses programmatic Go validation (`internal/linter/schema.go`) rather than runtime JSON Schema evaluation. The Go implementation checks required fields, enum validation, conditional rules, and version minimum — all rules from the planned schema.
 
-**Rationale:** Go-based validation avoids a JSON Schema library dependency, provides compile-time type safety, and enables better error messages. All validation rules from the planned schema are covered by the Go implementation. A standalone JSON Schema file would either be dead code or require adding a third-party library with no functional benefit over the current approach.
+**Rationale:** Go-based validation avoids a JSON Schema library dependency, provides compile-time type safety, and enables better error messages. The standalone `spec.schema.json` file serves as a reference schema for external tooling.
+
+### Task 2/4: LifecycleBackend method names prefixed with "Lifecycle"
+
+**Deviation:** The design specifies `AmendSpec`, `SupersedeSpec`, `AbandonSpec`, `AcknowledgeDrift`. The implementation uses `LifecycleAmendSpec`, `LifecycleSupersedeSpec`, `LifecycleAbandonSpec`, `LifecycleAcknowledgeDrift`.
+
+**Rationale:** Disambiguates from `AuthoringSpecLifecycle` methods (`AmendSpec`, `SupersedeSpec`) which operate at the authoring funnel level. Without the prefix, the storage implementation would have two identically-named methods with different signatures and semantics.
 
 ### Task 7: CheckDrift on drift.Engine, not LifecycleBackend
 

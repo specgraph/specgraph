@@ -13,7 +13,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/drift"
+	"github.com/seanb4t/specgraph/internal/driftscope"
 	"github.com/seanb4t/specgraph/internal/storage"
 )
 
@@ -74,11 +74,8 @@ func (h *LifecycleHandler) TransitionSupersede(ctx context.Context, req *connect
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if msg.NewSlug == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("new_slug is required"))
-	}
 	if err := validateSlug(msg.NewSlug); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("new_slug: %w", err))
 	}
 	if msg.Slug == msg.NewSlug {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a spec cannot supersede itself"))
@@ -133,7 +130,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		}
 	}
 
-	if !drift.ValidScopes[msg.Scope] {
+	if !driftscope.IsValid(msg.Scope) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scope %q (valid: deps, interfaces, verify)", msg.Scope))
 	}
 
@@ -155,7 +152,9 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 
 // AcknowledgeDrift handles the AcknowledgeDrift RPC, marking drift as intentional.
 // After persisting the acknowledgment, it re-runs drift detection to return the
-// actual drift items alongside the acknowledgment fields.
+// actual drift items alongside the acknowledgment fields. If drift checking is
+// not configured (driftChecker is nil), the response contains the acknowledgment
+// fields but an empty items slice.
 func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Request[specv1.DriftAcknowledgeRequest]) (*connect.Response[specv1.DriftReport], error) {
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
@@ -176,12 +175,16 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	if h.driftChecker != nil {
 		reports, driftErr := h.driftChecker.Check(ctx, msg.Slug, "")
 		if driftErr != nil {
-			return nil, h.lifecycleError(driftErr)
-		}
-		for _, r := range reports {
-			if r.SpecSlug == msg.Slug {
-				report.Items = r.Items
-				break
+			// Acknowledgment was already persisted — log the re-check error
+			// but return the stored report rather than failing the entire RPC.
+			h.logger.Error("AcknowledgeDrift: drift re-check failed after successful acknowledgment",
+				slog.String("slug", msg.Slug), slog.Any("error", driftErr))
+		} else {
+			for _, r := range reports {
+				if r.SpecSlug == msg.Slug {
+					report.Items = r.Items
+					break
+				}
 			}
 		}
 	}

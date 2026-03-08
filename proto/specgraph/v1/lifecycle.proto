@@ -72,8 +72,9 @@ message LintResult {
 message TransitionAmendRequest {
   string slug = 1;
   string reason = 2;
-  // Valid values: spark, shape, specify, decompose, approved, in_progress, review, done.
-  // Terminal states (amended, superseded, abandoned) are rejected.
+  // Valid non-terminal stages: spark, shape, specify, decompose, approved,
+  // in_progress, review. Terminal states (amended, superseded, abandoned) are
+  // rejected. "done" is accepted but is a no-op re-entry (spec is already done).
   // Empty means the spec enters the "amended" stage directly.
   string re_entry_stage = 3;
 }

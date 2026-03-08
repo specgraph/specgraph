@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/seanb4t/specgraph/internal/driftscope"
 	"github.com/seanb4t/specgraph/internal/storage"
 )
 
@@ -30,18 +31,10 @@ func NewEngine(backend Backend) *Engine {
 	return &Engine{backend: backend}
 }
 
-// ValidScopes lists the recognized drift scope values.
-var ValidScopes = map[string]bool{
-	"":           true,
-	"deps":       true,
-	"interfaces": true,
-	"verify":     true,
-}
-
 // Check runs drift detection for a single spec (by slug) or all eligible specs (empty slug).
 // The scope parameter filters which drift checks to run: "deps", "interfaces", "verify", or "" (all).
 func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.DriftReport, error) {
-	if !ValidScopes[scope] {
+	if !driftscope.IsValid(scope) {
 		return nil, fmt.Errorf("drift: unknown scope %q (valid: deps, interfaces, verify)", scope)
 	}
 	var specs []*storage.Spec

@@ -28,18 +28,30 @@ type fakeLifecycleBackend struct {
 }
 
 func (f *fakeLifecycleBackend) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error) {
+	if f.amendSpec == nil {
+		return nil, errors.New("fakeLifecycleBackend.amendSpec not configured")
+	}
 	return f.amendSpec(ctx, slug, reason, reEntryStage)
 }
 
 func (f *fakeLifecycleBackend) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error) {
+	if f.supersedeSpec == nil {
+		return nil, nil, errors.New("fakeLifecycleBackend.supersedeSpec not configured")
+	}
 	return f.supersedeSpec(ctx, oldSlug, newSlug)
 }
 
 func (f *fakeLifecycleBackend) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (*storage.Spec, error) {
+	if f.abandonSpec == nil {
+		return nil, errors.New("fakeLifecycleBackend.abandonSpec not configured")
+	}
 	return f.abandonSpec(ctx, slug, reason)
 }
 
 func (f *fakeLifecycleBackend) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string) (*storage.DriftReport, error) {
+	if f.acknowledgeDrift == nil {
+		return nil, errors.New("fakeLifecycleBackend.acknowledgeDrift not configured")
+	}
 	return f.acknowledgeDrift(ctx, slug, note)
 }
 
@@ -444,6 +456,23 @@ func TestLifecycleHandler_Amend_TerminalReEntryStage(t *testing.T) {
 		require.ErrorAs(t, err, &connErr)
 		require.Equal(t, connect.CodeInvalidArgument, connErr.Code(), "stage %q should return InvalidArgument", stage)
 	}
+}
+
+func TestLifecycleHandler_Amend_ReEntryDone(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.amendSpec = func(_ context.Context, slug, _, reEntry string) (*storage.Spec, error) {
+		require.Equal(t, "done", reEntry)
+		return &storage.Spec{Slug: slug, Stage: storage.SpecStageDone, Version: 2}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
+		Slug:         "my-spec",
+		Reason:       "re-enter at done",
+		ReEntryStage: "done",
+	}))
+	require.NoError(t, err)
+	require.Equal(t, "done", resp.Msg.GetSpec().GetStage())
 }
 
 func TestLifecycleHandler_CheckDrift_Error(t *testing.T) {
