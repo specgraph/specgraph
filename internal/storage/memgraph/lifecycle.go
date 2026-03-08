@@ -160,16 +160,33 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		return nil, nil, fmt.Errorf("supersede spec: new spec %q: %w", newSlug, newErr)
 	}
 
+	newVersion := oldCheck.Version + 1
+	entry := storage.HistoryEntry{
+		Version: newVersion,
+		Stage:   storage.SpecStageSuperseded,
+		Summary: "Spec superseded",
+		Reason:  fmt.Sprintf("Superseded by %s", newSlug),
+		Date:    time.Now().UTC(),
+	}
+	history := make([]storage.HistoryEntry, len(oldCheck.History)+1)
+	copy(history, oldCheck.History)
+	history[len(oldCheck.History)] = entry
+	historyJSON, err := marshalHistory(history)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	nowStr := nowRFC3339()
 	// Atomic: WHERE guards ensure old spec hasn't entered a terminal state
 	// since our pre-validation read.
 	query := `
 		MATCH (old:Spec {slug: $old_slug}), (new:Spec {slug: $new_slug})
-		WHERE NOT old.stage IN $terminal_stages
+		WHERE NOT old.stage IN $terminal_stages AND old.version = $expected_version
 		SET old.stage = $stage,
 		    old.superseded_by = $new_slug,
-		    old.version = old.version + 1,
+		    old.version = $version,
 		    old.updated_at = $updated_at,
+		    old.history_json = $history_json,
 		    new.supersedes = $old_slug,
 		    new.updated_at = $updated_at
 		MERGE (new)-[:SUPERSEDES]->(old)
@@ -181,11 +198,14 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		       new.lifecycle, new.superseded_by, new.supersedes, new.history_json
 	`
 	records, err := s.executeQuery(ctx, query, map[string]any{
-		"old_slug":        oldSlug,
-		"new_slug":        newSlug,
-		"stage":           string(storage.SpecStageSuperseded),
-		"terminal_stages": terminalStagesList(),
-		"updated_at":      nowStr,
+		"old_slug":         oldSlug,
+		"new_slug":         newSlug,
+		"stage":            string(storage.SpecStageSuperseded),
+		"terminal_stages":  terminalStagesList(),
+		"expected_version": oldCheck.Version,
+		"version":          int64(newVersion),
+		"updated_at":       nowStr,
+		"history_json":     historyJSON,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("memgraph: supersede spec: %w", err)
