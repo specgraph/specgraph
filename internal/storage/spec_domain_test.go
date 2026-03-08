@@ -11,6 +11,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestSpecStage_IsTerminal(t *testing.T) {
+	terminal := []storage.SpecStage{
+		storage.SpecStageAmended,
+		storage.SpecStageSuperseded,
+		storage.SpecStageAbandoned,
+	}
+	for _, s := range terminal {
+		assert.True(t, s.IsTerminal(), "stage %q should be terminal", s)
+	}
+
+	nonTerminal := []storage.SpecStage{
+		storage.SpecStageSpark,
+		storage.SpecStageShape,
+		storage.SpecStageSpecify,
+		storage.SpecStageDecompose,
+		storage.SpecStageApproved,
+		storage.SpecStageInProgress,
+		storage.SpecStageReview,
+		storage.SpecStageDone,
+	}
+	for _, s := range nonTerminal {
+		assert.False(t, s.IsTerminal(), "stage %q should not be terminal", s)
+	}
+}
+
 func TestNewSpec(t *testing.T) {
 	now := time.Now().UTC()
 	spec := &storage.Spec{

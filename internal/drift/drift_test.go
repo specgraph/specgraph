@@ -233,6 +233,37 @@ func TestCheckSpec_GetDependenciesError(t *testing.T) {
 	require.ErrorContains(t, err, "graph unavailable")
 }
 
+func TestCheck_NonDoneStageBySlug(t *testing.T) {
+	now := time.Now()
+	backend := &mockDriftBackend{
+		specs: map[string]*storage.Spec{
+			"in-progress": {
+				Slug:      "in-progress",
+				Stage:     storage.SpecStageShape,
+				UpdatedAt: now.Add(-time.Hour),
+			},
+			"upstream": {
+				Slug:      "upstream",
+				Stage:     storage.SpecStageDone,
+				UpdatedAt: now,
+			},
+		},
+		deps: map[string][]storage.NodeRef{
+			"in-progress": {
+				{Slug: "upstream", Label: storage.NodeLabelSpec},
+			},
+		},
+	}
+
+	engine := drift.NewEngine(backend)
+	// Checking by slug still runs drift even for non-done specs.
+	reports, err := engine.Check(context.Background(), "in-progress", "deps")
+	require.NoError(t, err)
+	require.Len(t, reports, 1)
+	require.Len(t, reports[0].Items, 1)
+	require.Equal(t, "in-progress", reports[0].Items[0].SpecSlug)
+}
+
 func TestCheckSpec_MissingDependencyCreatesInfoItem(t *testing.T) {
 	now := time.Now()
 	backend := &mockDriftBackend{
