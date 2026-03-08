@@ -38,6 +38,7 @@ func New(ctx context.Context, boltURI string) (*Store, error) {
 }
 
 const defaultInitialStage = "spark"
+const defaultLifecycle = "task"
 
 // CreateSpec stores a new spec node in Memgraph and returns it.
 func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
@@ -72,7 +73,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		"version":      int64(1),
 		"created_at":   nowStr,
 		"updated_at":   nowStr,
-		"lifecycle":    "task",
+		"lifecycle":    defaultLifecycle,
 		"history_json": "[]",
 	}
 
@@ -126,7 +127,9 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	if len(clauses) > 0 {
 		query += " WHERE " + strings.Join(clauses, " AND ")
 	}
-	query += " RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity, s.version, s.created_at, s.updated_at, s.lifecycle, s.superseded_by, s.supersedes, s.history_json"
+	query += ` RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
+		       s.version, s.created_at, s.updated_at,
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json`
 	query += " ORDER BY s.created_at"
 	if limit > 0 {
 		query += " LIMIT $limit"
@@ -369,7 +372,7 @@ func recordToSpec(rec *neo4j.Record) (*storage.Spec, error) {
 	// New fields at positions 9-12.
 	lifecycle := recordStringOptional(rec, 9)
 	if lifecycle == "" {
-		lifecycle = "task"
+		lifecycle = defaultLifecycle
 	}
 	supersededBy := recordStringOptional(rec, 10)
 	supersedes := recordStringOptional(rec, 11)
