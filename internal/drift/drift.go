@@ -91,7 +91,13 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 			upstream, err := e.backend.GetSpec(ctx, dep.Slug)
 			if err != nil {
 				if errors.Is(err, storage.ErrSpecNotFound) {
-					slog.Warn("drift: skipping missing dependency", slog.String("spec", spec.Slug), slog.String("dep", dep.Slug))
+					report.Items = append(report.Items, storage.DriftItem{
+						Type:         storage.DriftTypeDependency,
+						Severity:     storage.DriftSeverityInfo,
+						Description:  fmt.Sprintf("dependency %q not found", dep.Slug),
+						SpecSlug:     spec.Slug,
+						UpstreamSlug: dep.Slug,
+					})
 					continue
 				}
 				return report, fmt.Errorf("drift: get upstream spec %q: %w", dep.Slug, err)
