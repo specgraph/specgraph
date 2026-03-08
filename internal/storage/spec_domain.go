@@ -15,14 +15,21 @@ const (
 	SpecStageSpecify    SpecStage = "specify"
 	SpecStageDecompose  SpecStage = "decompose"
 	SpecStageApproved   SpecStage = "approved"
+	SpecStageInProgress SpecStage = "in_progress"
+	SpecStageReview     SpecStage = "review"
+	SpecStageDone       SpecStage = "done"
+	SpecStageAmended    SpecStage = "amended"
 	SpecStageSuperseded SpecStage = "superseded"
+	SpecStageAbandoned  SpecStage = "abandoned"
 )
 
 // IsValid reports whether s is a known spec stage.
 func (s SpecStage) IsValid() bool {
 	switch s {
 	case SpecStageSpark, SpecStageShape, SpecStageSpecify,
-		SpecStageDecompose, SpecStageApproved, SpecStageSuperseded:
+		SpecStageDecompose, SpecStageApproved, SpecStageInProgress,
+		SpecStageReview, SpecStageDone, SpecStageAmended,
+		SpecStageSuperseded, SpecStageAbandoned:
 		return true
 	default:
 		return false
@@ -53,13 +60,26 @@ func (p SpecPriority) IsValid() bool {
 // Spec is the storage-layer domain type for specifications.
 // Handlers convert between this type and the proto Spec message.
 type Spec struct {
-	ID         string
-	Slug       string
-	Intent     string
-	Stage      SpecStage
-	Priority   SpecPriority
-	Complexity string
-	Version    int32
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID           string
+	Slug         string
+	Intent       string
+	Stage        SpecStage
+	Priority     SpecPriority
+	Complexity   string
+	Version      int32
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Lifecycle    string         // "task" (default) or "living"
+	SupersededBy string         // slug of replacement spec
+	Supersedes   string         // slug of spec this replaced
+	History      []HistoryEntry // lifecycle event log
+}
+
+// HistoryEntry records a lifecycle event on a spec.
+type HistoryEntry struct {
+	Version int32
+	Stage   string
+	Summary string
+	Reason  string
+	Date    time.Time
 }
