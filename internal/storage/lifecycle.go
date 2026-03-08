@@ -18,6 +18,7 @@ var (
 // DriftType identifies the category of drift detected.
 type DriftType string
 
+// DriftType values.
 const (
 	DriftTypeDependency DriftType = "dependency"
 	DriftTypeInterface  DriftType = "interface"
@@ -27,6 +28,7 @@ const (
 // DriftSeverity indicates drift urgency.
 type DriftSeverity string
 
+// DriftSeverity values.
 const (
 	DriftSeverityHigh   DriftSeverity = "high"
 	DriftSeverityMedium DriftSeverity = "medium"
@@ -56,6 +58,7 @@ type DriftReport struct {
 // LintSeverity indicates lint violation urgency.
 type LintSeverity string
 
+// LintSeverity values.
 const (
 	LintSeverityError   LintSeverity = "error"
 	LintSeverityWarning LintSeverity = "warning"
