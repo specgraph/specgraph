@@ -84,10 +84,13 @@ func (h *LifecycleHandler) Abandon(ctx context.Context, req *connect.Request[spe
 }
 
 // CheckDrift handles the CheckDrift RPC, returning drift reports for a spec.
+// An empty slug checks all eligible (done/amended) specs.
 func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
 	msg := req.Msg
-	if err := validateSlug(msg.Slug); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	if msg.Slug != "" {
+		if err := validateSlug(msg.Slug); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 	}
 
 	reports, err := h.store.CheckDrift(ctx, msg.Slug, msg.Scope)
@@ -121,6 +124,10 @@ func (h *LifecycleHandler) Lint(_ context.Context, _ *connect.Request[specv1.Lin
 
 // lifecycleError maps storage errors to connect error codes.
 func (h *LifecycleHandler) lifecycleError(err error) error {
+	var connErr *connect.Error
+	if errors.As(err, &connErr) {
+		return connErr
+	}
 	if errors.Is(err, storage.ErrSpecNotFound) {
 		return connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
 	}

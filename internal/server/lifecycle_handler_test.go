@@ -202,6 +202,24 @@ func TestLifecycleHandler_CheckDrift(t *testing.T) {
 	require.Equal(t, specv1.DriftSeverity_DRIFT_SEVERITY_HIGH, resp.Msg.Reports[0].Items[0].Severity)
 }
 
+func TestLifecycleHandler_CheckDrift_AllSpecs(t *testing.T) {
+	client := newLifecycleClient(t, &fakeLifecycleBackend{
+		checkDrift: func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
+			require.Empty(t, slug, "empty slug means check all specs")
+			return []storage.DriftReport{
+				{SpecSlug: "spec-a"},
+				{SpecSlug: "spec-b"},
+			}, nil
+		},
+	})
+
+	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
+		Slug: "",
+	}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Reports, 2)
+}
+
 func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 	client := newLifecycleClient(t, &fakeLifecycleBackend{
 		acknowledgeDrift: func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
