@@ -46,6 +46,7 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 	server.RegisterClaimService(mux, store)
 	server.RegisterConstitutionService(mux, store)
 	server.RegisterAuthoringService(mux, store, store)
+	server.RegisterLifecycleService(mux, store)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
