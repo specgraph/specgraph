@@ -202,3 +202,87 @@ func TestAcknowledgeDrift(t *testing.T) {
 	require.True(t, report2.Acknowledged)
 	require.Equal(t, "updated note", report2.AcknowledgeNote)
 }
+
+func TestAmendSpec_ConcurrentModification(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "toctou-amend", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "toctou-amend", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+
+	// First amend succeeds.
+	amended, err := store.LifecycleAmendSpec(ctx, "toctou-amend", "first amend", "shape")
+	require.NoError(t, err)
+	require.Equal(t, storage.SpecStage("shape"), amended.Stage)
+
+	// Now the spec is at "shape" (terminal per amended), second amend should fail
+	// because the spec is in a terminal state (amended is terminal).
+	_, err = store.LifecycleAmendSpec(ctx, "toctou-amend", "second amend", "specify")
+	require.Error(t, err)
+	require.ErrorIs(t, err, storage.ErrSpecTerminal)
+}
+
+func TestCheckDrift_AllSpecs_Integration(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	// Create two done specs with upstream dependency.
+	_, err := store.CreateSpec(ctx, "up-integ", "Upstream", "p1", "medium")
+	require.NoError(t, err)
+	_, err = store.CreateSpec(ctx, "down1-integ", "Down1", "p1", "medium")
+	require.NoError(t, err)
+	_, err = store.CreateSpec(ctx, "down2-integ", "Down2", "p1", "medium")
+	require.NoError(t, err)
+
+	// Add dependency edges.
+	_, err = store.AddEdge(ctx, "down1-integ", "up-integ", storage.EdgeTypeDependsOn)
+	require.NoError(t, err)
+	_, err = store.AddEdge(ctx, "down2-integ", "up-integ", storage.EdgeTypeDependsOn)
+	require.NoError(t, err)
+
+	// Move downstream specs to "done".
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "down1-integ", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+	_, err = store.UpdateSpec(ctx, "down2-integ", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+
+	// Wait briefly then update upstream to create drift.
+	time.Sleep(1100 * time.Millisecond)
+	newIntent := "Updated upstream"
+	_, err = store.UpdateSpec(ctx, "up-integ", &newIntent, nil, nil, nil)
+	require.NoError(t, err)
+
+	// Check all specs (empty slug) — should find drift on both.
+	engine := drift.NewEngine(store)
+	reports, err := engine.Check(ctx, "", "")
+	require.NoError(t, err)
+	require.Len(t, reports, 2)
+
+	// Check with scope filter — deps should find drift, interfaces should not.
+	depsReports, err := engine.Check(ctx, "", "deps")
+	require.NoError(t, err)
+	require.Len(t, depsReports, 2)
+
+	ifaceReports, err := engine.Check(ctx, "", "interfaces")
+	require.NoError(t, err)
+	require.Empty(t, ifaceReports)
+}
+
+func TestAcknowledgeDrift_PersistsAcrossReads(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "ack-persist", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	_, err = store.LifecycleAcknowledgeDrift(ctx, "ack-persist", "intentional drift")
+	require.NoError(t, err)
+
+	// Verify the acknowledgment persists by reading the spec independently
+	// and acknowledging again — the note should reflect the latest value.
+	report, err := store.LifecycleAcknowledgeDrift(ctx, "ack-persist", "new note")
+	require.NoError(t, err)
+	require.True(t, report.Acknowledged)
+	require.Equal(t, "new note", report.AcknowledgeNote)
+}

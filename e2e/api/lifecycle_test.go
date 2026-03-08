@@ -94,6 +94,23 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(resp.Msg.OldSpec.Stage).To(Equal("superseded"))
 			Expect(resp.Msg.NewSpec.Slug).To(Equal(newSlug))
 		})
+
+		It("creates a SUPERSEDES edge from new to old", func() {
+			edgeResp, err := graphClient.ListEdges(ctx, connect.NewRequest(&specv1.ListEdgesRequest{
+				Slug:     newSlug,
+				EdgeType: specv1.EdgeType_EDGE_TYPE_SUPERSEDES,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(edgeResp.Msg.Edges).NotTo(BeEmpty(), "expected SUPERSEDES edge from new to old")
+			found := false
+			for _, e := range edgeResp.Msg.Edges {
+				if e.EdgeType == specv1.EdgeType_EDGE_TYPE_SUPERSEDES {
+					found = true
+					break
+				}
+			}
+			Expect(found).To(BeTrue(), "SUPERSEDES edge not found")
+		})
 	})
 
 	Describe("Abandon flow", func() {
@@ -183,6 +200,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Msg.Results).NotTo(BeEmpty())
 			Expect(resp.Msg.Results[0].SpecSlug).To(Equal("lifecycle-amend-spec"))
+			Expect(resp.Msg.Results[0].Passed).To(BeTrue(), "valid spec should pass lint")
 		})
 	})
 })
