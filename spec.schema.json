@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/seanb4t/specgraph/spec.schema.json",
+  "title": "SpecGraph Spec",
+  "description": "JSON Schema for SpecGraph specification nodes",
+  "type": "object",
+  "required": ["slug", "intent", "stage"],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for the spec"
+    },
+    "intent": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What the spec aims to achieve"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "spark", "shape", "specify", "decompose", "approved",
+        "in_progress", "review", "done",
+        "amended", "superseded", "abandoned"
+      ],
+      "description": "Current lifecycle stage"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["p0", "p1", "p2", "p3"],
+      "description": "Priority level"
+    },
+    "complexity": {
+      "type": "string",
+      "description": "Complexity estimate"
+    },
+    "lifecycle": {
+      "type": "string",
+      "enum": ["task", "living"],
+      "default": "task",
+      "description": "Spec lifecycle type: task (finite) or living (ongoing)"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Spec version, incremented on updates"
+    },
+    "superseded_by": {
+      "type": "string",
+      "description": "Slug of the spec that replaced this one"
+    },
+    "supersedes": {
+      "type": "string",
+      "description": "Slug of the spec this one replaced"
+    }
+  },
+  "if": {
+    "properties": {
+      "stage": { "const": "superseded" }
+    },
+    "required": ["stage"]
+  },
+  "then": {
+    "required": ["superseded_by"]
+  }
+}
