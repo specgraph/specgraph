@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -282,6 +283,7 @@ func recordStringOptional(rec *neo4j.Record, pos int) string {
 	}
 	s, ok := rec.Values[pos].(string)
 	if !ok {
+		slog.Warn("recordStringOptional: unexpected type", "pos", pos, "type", fmt.Sprintf("%T", rec.Values[pos]))
 		return ""
 	}
 	return s

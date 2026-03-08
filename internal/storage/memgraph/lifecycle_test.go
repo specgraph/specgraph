@@ -171,4 +171,12 @@ func TestAcknowledgeDrift(t *testing.T) {
 	require.Equal(t, "ack-drift", report.SpecSlug)
 	require.True(t, report.Acknowledged)
 	require.Equal(t, "drift is intentional", report.AcknowledgeNote)
+
+	// Verify persistence: a second acknowledgment with a different note should
+	// overwrite the previous value, proving the first was persisted to the node.
+	report2, err := store.LifecycleAcknowledgeDrift(ctx, "ack-drift", "updated note")
+	require.NoError(t, err)
+	require.Equal(t, "ack-drift", report2.SpecSlug)
+	require.True(t, report2.Acknowledged)
+	require.Equal(t, "updated note", report2.AcknowledgeNote)
 }
