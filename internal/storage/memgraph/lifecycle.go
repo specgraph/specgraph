@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-
 	"github.com/seanb4t/specgraph/internal/storage"
 )
 
@@ -109,7 +107,7 @@ func (s *Store) SupersedeSpec(ctx context.Context, oldSlug, newSlug string) (old
 	nowStr := nowRFC3339()
 	query := `
 		MATCH (old:Spec {slug: $old_slug}), (new:Spec {slug: $new_slug})
-		SET old.stage = "superseded",
+		SET old.stage = $stage,
 		    old.superseded_by = $new_slug,
 		    old.version = old.version + 1,
 		    old.updated_at = $updated_at,
@@ -126,6 +124,7 @@ func (s *Store) SupersedeSpec(ctx context.Context, oldSlug, newSlug string) (old
 	records, err := s.executeQuery(ctx, query, map[string]any{
 		"old_slug":   oldSlug,
 		"new_slug":   newSlug,
+		"stage":      string(storage.SpecStageSuperseded),
 		"updated_at": nowStr,
 	})
 	if err != nil {
@@ -285,81 +284,4 @@ func (s *Store) AcknowledgeDrift(ctx context.Context, slug, note string) (*stora
 // parseNowUTC returns the current UTC time.
 func parseNowUTC() time.Time {
 	return time.Now().UTC()
-}
-
-// recordToSpecOffset converts a neo4j record to a *storage.Spec, reading field
-// values starting at the given positional offset. This supports queries that
-// return multiple spec records in a single row (e.g., SupersedeSpec returning
-// both old and new specs).
-func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
-	id, err := recordString(rec, offset+0, "id")
-	if err != nil {
-		return nil, err
-	}
-	slug, err := recordString(rec, offset+1, "slug")
-	if err != nil {
-		return nil, err
-	}
-	intent, err := recordString(rec, offset+2, "intent")
-	if err != nil {
-		return nil, err
-	}
-	stage, err := recordString(rec, offset+3, "stage")
-	if err != nil {
-		return nil, err
-	}
-	priority, err := recordString(rec, offset+4, "priority")
-	if err != nil {
-		return nil, err
-	}
-	complexity, err := recordString(rec, offset+5, "complexity")
-	if err != nil {
-		return nil, err
-	}
-	version, err := recordInt64(rec, offset+6, "version")
-	if err != nil {
-		return nil, err
-	}
-	createdAtStr, err := recordString(rec, offset+7, "created_at")
-	if err != nil {
-		return nil, err
-	}
-	updatedAtStr, err := recordString(rec, offset+8, "updated_at")
-	if err != nil {
-		return nil, err
-	}
-	createdAt, err := parseRFC3339("created_at", createdAtStr)
-	if err != nil {
-		return nil, err
-	}
-	updatedAt, err := parseRFC3339("updated_at", updatedAtStr)
-	if err != nil {
-		return nil, err
-	}
-	lifecycle := recordStringOptional(rec, offset+9)
-	if lifecycle == "" {
-		lifecycle = defaultLifecycle
-	}
-	supersededBy := recordStringOptional(rec, offset+10)
-	supersedes := recordStringOptional(rec, offset+11)
-	historyJSON := recordStringOptional(rec, offset+12)
-	history, err := unmarshalHistory(historyJSON)
-	if err != nil {
-		return nil, err
-	}
-	return &storage.Spec{
-		ID:           id,
-		Slug:         slug,
-		Intent:       intent,
-		Stage:        storage.SpecStage(stage),
-		Priority:     storage.SpecPriority(priority),
-		Complexity:   complexity,
-		Version:      safeInt32(version),
-		CreatedAt:    createdAt,
-		UpdatedAt:    updatedAt,
-		Lifecycle:    lifecycle,
-		SupersededBy: supersededBy,
-		Supersedes:   supersedes,
-		History:      history,
-	}, nil
 }

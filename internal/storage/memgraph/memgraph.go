@@ -321,41 +321,44 @@ func unmarshalHistory(raw string) ([]storage.HistoryEntry, error) {
 	return result, nil
 }
 
-// recordToSpec converts a neo4j record (with positional values) to a *storage.Spec.
-func recordToSpec(rec *neo4j.Record) (*storage.Spec, error) {
-	id, err := recordString(rec, 0, "id")
+// recordToSpecOffset converts a neo4j record to a *storage.Spec, reading field
+// values starting at the given positional offset. This supports queries that
+// return multiple spec records in a single row (e.g., SupersedeSpec returning
+// both old and new specs).
+func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
+	id, err := recordString(rec, offset+0, "id")
 	if err != nil {
 		return nil, err
 	}
-	slug, err := recordString(rec, 1, "slug")
+	slug, err := recordString(rec, offset+1, "slug")
 	if err != nil {
 		return nil, err
 	}
-	intent, err := recordString(rec, 2, "intent")
+	intent, err := recordString(rec, offset+2, "intent")
 	if err != nil {
 		return nil, err
 	}
-	stage, err := recordString(rec, 3, "stage")
+	stage, err := recordString(rec, offset+3, "stage")
 	if err != nil {
 		return nil, err
 	}
-	priority, err := recordString(rec, 4, "priority")
+	priority, err := recordString(rec, offset+4, "priority")
 	if err != nil {
 		return nil, err
 	}
-	complexity, err := recordString(rec, 5, "complexity")
+	complexity, err := recordString(rec, offset+5, "complexity")
 	if err != nil {
 		return nil, err
 	}
-	version, err := recordInt64(rec, 6, "version")
+	version, err := recordInt64(rec, offset+6, "version")
 	if err != nil {
 		return nil, err
 	}
-	createdAtStr, err := recordString(rec, 7, "created_at")
+	createdAtStr, err := recordString(rec, offset+7, "created_at")
 	if err != nil {
 		return nil, err
 	}
-	updatedAtStr, err := recordString(rec, 8, "updated_at")
+	updatedAtStr, err := recordString(rec, offset+8, "updated_at")
 	if err != nil {
 		return nil, err
 	}
@@ -369,14 +372,13 @@ func recordToSpec(rec *neo4j.Record) (*storage.Spec, error) {
 		return nil, err
 	}
 
-	// New fields at positions 9-12.
-	lifecycle := recordStringOptional(rec, 9)
+	lifecycle := recordStringOptional(rec, offset+9)
 	if lifecycle == "" {
 		lifecycle = defaultLifecycle
 	}
-	supersededBy := recordStringOptional(rec, 10)
-	supersedes := recordStringOptional(rec, 11)
-	historyJSON := recordStringOptional(rec, 12)
+	supersededBy := recordStringOptional(rec, offset+10)
+	supersedes := recordStringOptional(rec, offset+11)
+	historyJSON := recordStringOptional(rec, offset+12)
 
 	history, err := unmarshalHistory(historyJSON)
 	if err != nil {
@@ -398,4 +400,9 @@ func recordToSpec(rec *neo4j.Record) (*storage.Spec, error) {
 		Supersedes:   supersedes,
 		History:      history,
 	}, nil
+}
+
+// recordToSpec converts a neo4j record (with positional values) to a *storage.Spec.
+func recordToSpec(rec *neo4j.Record) (*storage.Spec, error) {
+	return recordToSpecOffset(rec, 0)
 }
