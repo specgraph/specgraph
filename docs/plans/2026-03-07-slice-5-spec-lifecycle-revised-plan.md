@@ -116,7 +116,7 @@ Run: `go build ./...`
 
 **Step 6: Commit**
 
-```
+```text
 feat(lifecycle): protobuf schema for lifecycle, drift, and lint messages
 ```
 
@@ -310,7 +310,7 @@ Run: `go build ./internal/storage/...`
 
 **Step 6: Commit**
 
-```
+```text
 feat(lifecycle): domain types and storage interface for lifecycle operations
 ```
 
@@ -330,6 +330,7 @@ Add `lifecycle` (default `"task"`) and `history_json` (default `"[]"`) to the CR
 **Step 2: Update recordToSpec**
 
 Extend `recordToSpec` to extract new fields from positions after the existing ones:
+
 - `lifecycle` (string, may be null → default "task")
 - `superseded_by` (string, may be null → "")
 - `supersedes` (string, may be null → "")
@@ -342,7 +343,8 @@ Important: History is stored as JSON string on the Memgraph node. Unmarshal to `
 **Step 3: Update ALL RETURN clauses**
 
 Every query in `memgraph.go` that returns spec fields must add:
-```
+
+```text
 s.lifecycle, s.superseded_by, s.supersedes, s.history_json
 ```
 
@@ -364,7 +366,7 @@ Expected: PASS (all existing tests, Docker required)
 
 **Step 6: Commit**
 
-```
+```text
 feat(lifecycle): extend memgraph spec storage with lifecycle, history, and supersedes fields
 ```
 
@@ -382,6 +384,7 @@ feat(lifecycle): extend memgraph spec storage with lifecycle, history, and super
 Tests follow the existing pattern from `memgraph_test.go` using `setupMemgraph(t)` and `newStore()`.
 
 Key test cases:
+
 - `TestAmendSpec_HappyPath`: Create spec → update to done → amend → verify stage="amended", version bumped, history entry has reason
 - `TestAmendSpec_NotDone`: Create spec (spark) → amend → expect `storage.ErrSpecNotDone`
 - `TestAmendSpec_NotFound`: Amend nonexistent → expect `storage.ErrSpecNotFound`
@@ -396,6 +399,7 @@ Key test cases:
 **Critical: All test assertions use domain types, not proto types.**
 
 Example test:
+
 ```go
 func TestAmendSpec_HappyPath(t *testing.T) {
 	boltURI, cleanup := setupMemgraph(t)
@@ -432,6 +436,7 @@ Expected: FAIL — `lifecycle.go` doesn't exist
 Create `internal/storage/memgraph/lifecycle.go` implementing `storage.LifecycleBackend`:
 
 **AmendSpec:**
+
 1. `GetSpec` to validate exists and stage is "done"
 2. Read existing history, append new `storage.HistoryEntry`
 3. Marshal history to JSON
@@ -439,6 +444,7 @@ Create `internal/storage/memgraph/lifecycle.go` implementing `storage.LifecycleB
 5. Parse result with `recordToSpec` → returns `*storage.Spec`
 
 **SupersedeSpec:**
+
 1. Get both specs, validate old is not terminal, new exists
 2. Build history entry for old spec
 3. Single Cypher query: SET old.stage='superseded', old.superseded_by=$new, new.supersedes=$old, MERGE SUPERSEDES edge
@@ -446,18 +452,21 @@ Create `internal/storage/memgraph/lifecycle.go` implementing `storage.LifecycleB
 5. Parse with `recordToSpecAtOffset` at positions 0 and 13 → returns `*storage.Spec, *storage.Spec`
 
 **AbandonSpec:**
+
 1. Get spec, validate not terminal
 2. Build history entry
 3. SET stage='abandoned', bump version, set history_json
 4. Return `*storage.Spec`
 
 **CheckDrift:**
+
 1. If slug provided, get single spec; otherwise list "done" + "amended" specs
 2. For each spec, query upstream deps where upstream.updated_at > spec.updated_at
 3. Build `[]storage.DriftItem` with domain types
 4. Return `[]storage.DriftReport`
 
 **AcknowledgeDrift:**
+
 1. Verify spec exists
 2. SET drift_acknowledged=true, drift_acknowledge_note=$note
 3. Return `*storage.DriftReport`
@@ -470,7 +479,7 @@ Expected: PASS
 
 **Step 5: Commit**
 
-```
+```text
 feat(lifecycle): memgraph lifecycle storage with integration tests
 ```
 
@@ -604,7 +613,7 @@ Expected: PASS
 
 **Step 5: Commit**
 
-```
+```text
 feat(lifecycle): spec JSON Schema with progressive validation
 ```
 
@@ -640,6 +649,7 @@ func Lint(ctx context.Context, backend LintBackend, slug string) ([]storage.Lint
 ```
 
 Lint rules:
+
 1. **Schema validation** — calls `ValidateSchema(spec)`
 2. **Edge consistency** — for each dep slug from `GetDependencies`, verify spec exists via `GetSpec`
 3. **Cycle detection** — DFS from spec through dependency graph
@@ -664,7 +674,7 @@ Expected: PASS
 
 **Step 5: Commit**
 
-```
+```text
 feat(lifecycle): spec linter with schema, edge, and cycle checks
 ```
 
@@ -702,6 +712,7 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 ```
 
 Drift checks:
+
 - **Dependency drift** (`scope="" || scope=="deps"`): For each dep, compare upstream.UpdatedAt > spec.UpdatedAt → `storage.DriftItem` with `DriftTypeDependency`
 - **Interface drift** (`scope="" || scope=="interfaces"`): Placeholder — returns nil (requires structured interface fields, deferred)
 - **Verify drift** (`scope="" || scope=="verify"`): Placeholder — returns nil (requires filesystem access, deferred)
@@ -725,7 +736,7 @@ Expected: PASS
 
 **Step 5: Commit**
 
-```
+```text
 feat(lifecycle): drift detection engine with dependency drift checks
 ```
 
@@ -785,6 +796,7 @@ type fakeLifecycleBackend struct {
 Returns domain types (not proto). Handler converts to proto.
 
 Test cases:
+
 - `TestLifecycleHandler_Amend` — happy path → stage="amended"
 - `TestLifecycleHandler_Amend_NotDone` → `connect.CodeFailedPrecondition`
 - `TestLifecycleHandler_Amend_NotFound` → `connect.CodeNotFound`
@@ -806,12 +818,14 @@ type LifecycleHandler struct {
 ```
 
 Each method:
+
 1. Validates input (slug required, etc.)
 2. Calls storage backend (returns domain types)
 3. Converts domain → proto using convert.go functions
 4. Returns proto response
 
 Error mapping:
+
 - `storage.ErrSpecNotFound` → `connect.CodeNotFound`
 - `storage.ErrSpecNotDone` → `connect.CodeFailedPrecondition`
 - `storage.ErrSpecTerminal` → `connect.CodeFailedPrecondition`
@@ -831,7 +845,7 @@ Expected: PASS
 
 **Step 6: Commit**
 
-```
+```text
 feat(lifecycle): ConnectRPC handler with domain→proto conversion and handler tests
 ```
 
@@ -849,6 +863,7 @@ feat(lifecycle): ConnectRPC handler with domain→proto conversion and handler t
 Create `cmd/specgraph/lifecycle.go` with commands following existing patterns from `spark.go`, `decision.go`:
 
 Commands:
+
 - `amend <slug> --reason "..." [--re-entry shape|specify]`
 - `supersede <slug> --with <new-slug>`
 - `abandon <slug> --reason "..."`
@@ -857,6 +872,7 @@ Commands:
 - `lint [slug]`
 
 Each command:
+
 1. Creates `lifecycleClient()` using existing `newClient` pattern
 2. Sends ConnectRPC request
 3. Formats and prints response
@@ -879,7 +895,7 @@ Run: `./specgraph amend --help && ./specgraph supersede --help && ./specgraph ab
 
 **Step 5: Commit**
 
-```
+```text
 feat(lifecycle): CLI commands for amend, supersede, abandon, drift, lint
 ```
 
@@ -910,7 +926,7 @@ Expected: PASS
 
 **Step 3: Commit**
 
-```
+```text
 test(lifecycle): end-to-end lifecycle flow test
 ```
 
