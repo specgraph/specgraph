@@ -1,0 +1,254 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"connectrpc.com/connect"
+	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/spf13/cobra"
+)
+
+func lifecycleClient() (specgraphv1connect.LifecycleServiceClient, error) {
+	return newClient(specgraphv1connect.NewLifecycleServiceClient)
+}
+
+// --- amend ---
+
+var amendCmd = &cobra.Command{
+	Use:   "amend <slug>",
+	Short: "Amend a spec, returning it to an earlier authoring stage",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runAmend,
+}
+
+var (
+	amendReason   string
+	amendReEntry  string
+)
+
+func runAmend(_ *cobra.Command, args []string) error {
+	client, err := lifecycleClient()
+	if err != nil {
+		return err
+	}
+	resp, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+		Slug:         args[0],
+		Reason:       amendReason,
+		ReEntryStage: amendReEntry,
+	}))
+	if err != nil {
+		return fmt.Errorf("amend: %w", err)
+	}
+	s := resp.Msg
+	fmt.Printf("Amended: %s (stage=%s, lifecycle=%s, version=%d)\n", s.GetSlug(), s.GetStage(), s.GetLifecycle(), s.GetVersion())
+	return nil
+}
+
+// --- supersede ---
+
+var supersedeCmd = &cobra.Command{
+	Use:   "supersede <slug>",
+	Short: "Supersede a spec with a new one",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runSupersede,
+}
+
+var supersedeWith string
+
+func runSupersede(_ *cobra.Command, args []string) error {
+	client, err := lifecycleClient()
+	if err != nil {
+		return err
+	}
+	resp, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.LifecycleSupersedeRequest{
+		Slug:    args[0],
+		NewSlug: supersedeWith,
+	}))
+	if err != nil {
+		return fmt.Errorf("supersede: %w", err)
+	}
+	old := resp.Msg.GetOldSpec()
+	newSpec := resp.Msg.GetNewSpec()
+	fmt.Printf("Superseded: %s (lifecycle=%s)\n", old.GetSlug(), old.GetLifecycle())
+	fmt.Printf("Created:    %s (lifecycle=%s, stage=%s)\n", newSpec.GetSlug(), newSpec.GetLifecycle(), newSpec.GetStage())
+	return nil
+}
+
+// --- abandon ---
+
+var abandonCmd = &cobra.Command{
+	Use:   "abandon <slug>",
+	Short: "Abandon a spec",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runAbandon,
+}
+
+var abandonReason string
+
+func runAbandon(_ *cobra.Command, args []string) error {
+	client, err := lifecycleClient()
+	if err != nil {
+		return err
+	}
+	resp, err := client.Abandon(context.Background(), connect.NewRequest(&specv1.LifecycleAbandonRequest{
+		Slug:   args[0],
+		Reason: abandonReason,
+	}))
+	if err != nil {
+		return fmt.Errorf("abandon: %w", err)
+	}
+	s := resp.Msg
+	fmt.Printf("Abandoned: %s (lifecycle=%s, version=%d)\n", s.GetSlug(), s.GetLifecycle(), s.GetVersion())
+	return nil
+}
+
+// --- drift ---
+
+var driftCmd = &cobra.Command{
+	Use:   "drift [slug]",
+	Short: "Check specs for drift",
+	Args:  cobra.MaximumNArgs(1),
+	RunE:  runDrift,
+}
+
+var driftScope string
+
+func runDrift(_ *cobra.Command, args []string) error {
+	client, err := lifecycleClient()
+	if err != nil {
+		return err
+	}
+	req := &specv1.DriftCheckRequest{
+		Scope: driftScope,
+	}
+	if len(args) > 0 {
+		req.Slug = args[0]
+	}
+	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(req))
+	if err != nil {
+		return fmt.Errorf("drift check: %w", err)
+	}
+	reports := resp.Msg.GetReports()
+	if len(reports) == 0 {
+		fmt.Println("No drift detected.")
+		return nil
+	}
+	for _, r := range reports {
+		ack := ""
+		if r.GetAcknowledged() {
+			ack = " (acknowledged)"
+		}
+		fmt.Printf("Spec: %s%s\n", r.GetSpecSlug(), ack)
+		for _, item := range r.GetItems() {
+			fmt.Printf("  [%s] %s: %s\n", item.GetSeverity(), item.GetType(), item.GetDescription())
+		}
+	}
+	return nil
+}
+
+// --- drift acknowledge ---
+
+var driftAckCmd = &cobra.Command{
+	Use:   "acknowledge <slug>",
+	Short: "Acknowledge drift for a spec",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runDriftAck,
+}
+
+var driftAckNote string
+
+func runDriftAck(_ *cobra.Command, args []string) error {
+	client, err := lifecycleClient()
+	if err != nil {
+		return err
+	}
+	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug: args[0],
+		Note: driftAckNote,
+	}))
+	if err != nil {
+		return fmt.Errorf("acknowledge drift: %w", err)
+	}
+	r := resp.Msg
+	fmt.Printf("Acknowledged drift for: %s\n", r.GetSpecSlug())
+	return nil
+}
+
+// --- lint ---
+
+var lintCmd = &cobra.Command{
+	Use:   "lint [slug]",
+	Short: "Lint specs for violations",
+	Args:  cobra.MaximumNArgs(1),
+	RunE:  runLint,
+}
+
+func runLint(_ *cobra.Command, args []string) error {
+	client, err := lifecycleClient()
+	if err != nil {
+		return err
+	}
+	req := &specv1.LintRequest{}
+	if len(args) > 0 {
+		req.Slug = args[0]
+	}
+	resp, err := client.Lint(context.Background(), connect.NewRequest(req))
+	if err != nil {
+		return fmt.Errorf("lint: %w", err)
+	}
+	results := resp.Msg.GetResults()
+	if len(results) == 0 {
+		fmt.Println("No lint results.")
+		return nil
+	}
+	allPassed := true
+	for _, r := range results {
+		if r.GetPassed() {
+			fmt.Printf("Spec: %s — PASSED\n", r.GetSpecSlug())
+			continue
+		}
+		allPassed = false
+		fmt.Printf("Spec: %s — FAILED\n", r.GetSpecSlug())
+		for _, v := range r.GetViolations() {
+			loc := ""
+			if v.GetLocation() != "" {
+				loc = fmt.Sprintf(" (%s)", v.GetLocation())
+			}
+			fmt.Printf("  [%s] %s: %s%s\n", v.GetSeverity(), v.GetRule(), v.GetMessage(), loc)
+		}
+	}
+	if allPassed {
+		fmt.Println("All specs passed lint checks.")
+	}
+	return nil
+}
+
+// --- init ---
+
+func init() {
+	amendCmd.Flags().StringVar(&amendReason, "reason", "", "reason for amendment (required)")
+	cobra.CheckErr(amendCmd.MarkFlagRequired("reason"))
+	amendCmd.Flags().StringVar(&amendReEntry, "re-entry", "", "authoring stage to re-enter (shape|specify)")
+	rootCmd.AddCommand(amendCmd)
+
+	supersedeCmd.Flags().StringVar(&supersedeWith, "with", "", "slug for the replacement spec (required)")
+	cobra.CheckErr(supersedeCmd.MarkFlagRequired("with"))
+	rootCmd.AddCommand(supersedeCmd)
+
+	abandonCmd.Flags().StringVar(&abandonReason, "reason", "", "reason for abandonment (required)")
+	cobra.CheckErr(abandonCmd.MarkFlagRequired("reason"))
+	rootCmd.AddCommand(abandonCmd)
+
+	driftCmd.Flags().StringVar(&driftScope, "scope", "", "drift check scope (interfaces|verify|deps)")
+	driftAckCmd.Flags().StringVar(&driftAckNote, "note", "", "acknowledgement note (required)")
+	cobra.CheckErr(driftAckCmd.MarkFlagRequired("note"))
+	driftCmd.AddCommand(driftAckCmd)
+	rootCmd.AddCommand(driftCmd)
+
+	rootCmd.AddCommand(lintCmd)
+}
