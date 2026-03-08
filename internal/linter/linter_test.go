@@ -1,0 +1,193 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+package linter_test
+
+import (
+	"context"
+	"testing"
+
+	"github.com/seanb4t/specgraph/internal/linter"
+	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/stretchr/testify/require"
+)
+
+// mockLintBackend implements linter.Backend for testing.
+type mockLintBackend struct {
+	specs map[string]*storage.Spec
+	deps  map[string][]storage.NodeRef
+}
+
+func (m *mockLintBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
+	spec, ok := m.specs[slug]
+	if !ok {
+		return nil, storage.ErrSpecNotFound
+	}
+	return spec, nil
+}
+
+func (m *mockLintBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*storage.Spec, error) {
+	specs := make([]*storage.Spec, 0, len(m.specs))
+	for _, s := range m.specs {
+		specs = append(specs, s)
+	}
+	return specs, nil
+}
+
+func (m *mockLintBackend) GetDependencies(_ context.Context, slug string) ([]storage.NodeRef, error) {
+	return m.deps[slug], nil
+}
+
+func TestLint_SchemaViolation(t *testing.T) {
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"bad-spec": {
+				Slug:    "bad-spec",
+				Intent:  "", // missing intent → schema violation
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+		},
+		deps: map[string][]storage.NodeRef{},
+	}
+
+	results, err := linter.Lint(context.Background(), backend, "bad-spec")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.False(t, results[0].Passed)
+	require.Equal(t, "bad-spec", results[0].SpecSlug)
+
+	hasSchemaViolation := false
+	for _, v := range results[0].Violations {
+		if v.Rule == "schema.required" && v.Location == "intent" {
+			hasSchemaViolation = true
+		}
+	}
+	require.True(t, hasSchemaViolation, "expected schema.required violation for intent")
+}
+
+func TestLint_DanglingDependency(t *testing.T) {
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"spec-a": {
+				Slug:    "spec-a",
+				Intent:  "Do something",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+		},
+		deps: map[string][]storage.NodeRef{
+			"spec-a": {
+				{Slug: "nonexistent-spec", Label: storage.NodeLabelSpec},
+			},
+		},
+	}
+
+	results, err := linter.Lint(context.Background(), backend, "spec-a")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.False(t, results[0].Passed)
+
+	hasDangling := false
+	for _, v := range results[0].Violations {
+		if v.Rule == "edge.dangling_ref" {
+			hasDangling = true
+			require.Equal(t, storage.LintSeverityError, v.Severity)
+		}
+	}
+	require.True(t, hasDangling, "expected edge.dangling_ref violation")
+}
+
+func TestLint_CycleDetection(t *testing.T) {
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"spec-a": {
+				Slug:    "spec-a",
+				Intent:  "First spec",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+			"spec-b": {
+				Slug:    "spec-b",
+				Intent:  "Second spec",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+		},
+		deps: map[string][]storage.NodeRef{
+			"spec-a": {{Slug: "spec-b", Label: storage.NodeLabelSpec}},
+			"spec-b": {{Slug: "spec-a", Label: storage.NodeLabelSpec}},
+		},
+	}
+
+	results, err := linter.Lint(context.Background(), backend, "spec-a")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.False(t, results[0].Passed)
+
+	hasCycle := false
+	for _, v := range results[0].Violations {
+		if v.Rule == "graph.cycle" {
+			hasCycle = true
+			require.Equal(t, storage.LintSeverityError, v.Severity)
+		}
+	}
+	require.True(t, hasCycle, "expected graph.cycle violation")
+}
+
+func TestLint_ValidSpec(t *testing.T) {
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"spec-a": {
+				Slug:    "spec-a",
+				Intent:  "Do something",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+			"spec-b": {
+				Slug:    "spec-b",
+				Intent:  "Do something else",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+		},
+		deps: map[string][]storage.NodeRef{
+			"spec-a": {{Slug: "spec-b", Label: storage.NodeLabelSpec}},
+		},
+	}
+
+	results, err := linter.Lint(context.Background(), backend, "spec-a")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.True(t, results[0].Passed)
+	require.Empty(t, results[0].Violations)
+}
+
+func TestLint_AllSpecs(t *testing.T) {
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"spec-a": {
+				Slug:    "spec-a",
+				Intent:  "Do something",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+			"spec-b": {
+				Slug:    "spec-b",
+				Intent:  "Do something else",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+		},
+		deps: map[string][]storage.NodeRef{},
+	}
+
+	results, err := linter.Lint(context.Background(), backend, "")
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+
+	for _, r := range results {
+		require.True(t, r.Passed)
+		require.Empty(t, r.Violations)
+	}
+}
