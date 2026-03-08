@@ -59,7 +59,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			}))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Msg.Slug).To(Equal(amendSlug))
-			Expect(resp.Msg.Stage).To(Equal("shape"))
+			Expect(resp.Msg.Stage).To(Equal("amended"))
 		})
 	})
 
