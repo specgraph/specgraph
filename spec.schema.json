@@ -19,9 +19,17 @@
     "stage": {
       "type": "string",
       "enum": [
-        "spark", "shape", "specify", "decompose", "approved",
-        "in_progress", "review", "done",
-        "amended", "superseded", "abandoned"
+        "spark",
+        "shape",
+        "specify",
+        "decompose",
+        "approved",
+        "in_progress",
+        "review",
+        "done",
+        "amended",
+        "superseded",
+        "abandoned"
       ],
       "description": "Current lifecycle stage"
     },
