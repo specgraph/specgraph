@@ -408,7 +408,7 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown target_stage %v", req.Msg.TargetStage))
 	}
-	result, err := h.store.AmendSpec(ctx, req.Msg.Slug, req.Msg.Reason, targetStage)
+	result, err := h.store.AuthoringAmendSpec(ctx, req.Msg.Slug, req.Msg.Reason, targetStage)
 	if err != nil {
 		return nil, h.stageError(err)
 	}
@@ -443,7 +443,7 @@ func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[s
 	if len(req.Msg.Reason) > maxFieldLen {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("reason exceeds maximum length of %d", maxFieldLen))
 	}
-	if err := h.store.SupersedeSpec(ctx, req.Msg.Slug, req.Msg.SupersededBy, req.Msg.Reason); err != nil {
+	if err := h.store.AuthoringSupersede(ctx, req.Msg.Slug, req.Msg.SupersededBy, req.Msg.Reason); err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
 		}

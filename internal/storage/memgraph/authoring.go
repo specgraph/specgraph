@@ -241,8 +241,9 @@ func (s *Store) StoreConstitutionViolations(ctx context.Context, slug string, vi
 	return s.storeJSONProperty(ctx, slug, "constitution_violations", violations)
 }
 
-// SupersedeSpec marks a spec as superseded and creates a SUPERSEDES edge to the replacement.
-func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error {
+// AuthoringSupersede marks a spec as superseded and creates a SUPERSEDES edge to the replacement.
+// This is the authoring-level supersession; for lifecycle-level supersession see SupersedeSpec.
+func (s *Store) AuthoringSupersede(ctx context.Context, slug, supersededBy, reason string) error {
 	// Validate both specs exist before the combined operation so callers get
 	// a precise error identifying which slug was missing.
 	if _, err := s.GetSpec(ctx, slug); err != nil {
@@ -269,8 +270,9 @@ func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason st
 	return nil
 }
 
-// AmendSpec moves a spec backward to an earlier stage, bumping its version.
-func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage storage.AuthoringStage) (*storage.AmendResult, error) {
+// AuthoringAmendSpec moves a spec backward to an earlier stage, bumping its version.
+// This is the authoring-level amendment; for lifecycle-level amendment see AmendSpec.
+func (s *Store) AuthoringAmendSpec(ctx context.Context, slug, reason string, targetStage storage.AuthoringStage) (*storage.AmendResult, error) {
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {
 		return nil, fmt.Errorf("amend spec %q: get current: %w", slug, err)
