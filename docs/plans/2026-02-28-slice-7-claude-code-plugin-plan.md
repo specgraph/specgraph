@@ -215,6 +215,8 @@ Run this to get an overview:
 specgraph list --format=table
 ```
 
+````
+
 Present the output as a formatted table. If the server is not running, suggest `specgraph serve` or `specgraph init` first.
 
 **Step 2: Verify the file is valid YAML frontmatter + markdown**
@@ -224,8 +226,6 @@ head -5 plugin/specgraph/skills/specgraph/SKILL.md
 ```
 
 Expected: frontmatter block starting with `---`
-
-````
 
 **Step 3: Commit**
 
@@ -273,6 +273,8 @@ Verify the SpecGraph server is reachable:
 specgraph health
 ```
 
+```text
+
 If not reachable, tell the user to start the server first.
 
 ## Workflow
@@ -280,6 +282,8 @@ If not reachable, tell the user to start the server first.
 ### 1. Gather the Seed
 
 If `$ARGUMENTS` contains a slug, load the existing spec:
+
+```
 
 ```bash
 specgraph show $SLUG --format=json
@@ -786,6 +790,8 @@ description: >
 specgraph list --format=table
 ```
 
+```text
+
 If `$ARGUMENTS` contains filter keywords, apply them:
 
 - Status filter: `specgraph list --status=$STATUS`
@@ -806,6 +812,7 @@ Based on results:
 - If there are approved specs: "Want to claim one? Use `/specgraph-bundle $SLUG`"
 - If there are blocked specs: "Want to see what's blocking? Use `/specgraph-deps $SLUG`"
 - If there are specs in early stages: "Want to continue authoring? Use `/specgraph-shape $SLUG`"
+```
 ````
 
 **Step 2: Write the Show skill**
@@ -1054,6 +1061,8 @@ specgraph health
 specgraph show $SLUG --format=json
 ```
 
+```text
+
 Verify the spec is in `approved` status.
 
 ## Workflow
@@ -1061,6 +1070,8 @@ Verify the spec is in `approved` status.
 ### 1. Claim the Spec (if not claimed)
 
 Check if already claimed:
+
+```
 
 ```bash
 specgraph claim list --agent=$(whoami)

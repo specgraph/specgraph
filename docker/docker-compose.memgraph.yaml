@@ -10,9 +10,13 @@ services:
       - SPECGRAPH_STORAGE_BACKEND=memgraph
       - SPECGRAPH_STORAGE_BOLT_URI=bolt://memgraph:7687
   memgraph:
-    image: memgraph/memgraph:latest
+    image: memgraph/memgraph-platform:2.4.0
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
     ports:
       - "${MEMGRAPH_PORT:-7687}:7687"
+      - "${MEMGRAPH_LAB_PORT:-7444}:7444"
+    environment:
+      - MEMGRAPH=--storage-wal-enabled=true --storage-snapshot-interval-sec=300 --storage-snapshot-on-exit=true --storage-recover-on-startup=true --query-execution-timeout-sec=30 --log-level=WARNING
     volumes:
       - specgraph-data:/var/lib/memgraph
     healthcheck:

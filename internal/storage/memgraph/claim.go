@@ -9,16 +9,14 @@ import (
 	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const defaultLeaseDuration = 15 * time.Minute
 
 // ClaimSpec creates a CLAIMED_BY relationship between a spec and an agent.
 // If the spec is already claimed by another agent (with a non-expired lease), it returns an error.
-func (s *Store) ClaimSpec(ctx context.Context, slug, agent string, leaseDuration time.Duration) (*specv1.Claim, error) {
+func (s *Store) ClaimSpec(ctx context.Context, slug, agent string, leaseDuration time.Duration) (*storage.Claim, error) {
 	if leaseDuration == 0 {
 		leaseDuration = defaultLeaseDuration
 	}
@@ -120,7 +118,7 @@ func (s *Store) UnclaimSpec(ctx context.Context, slug, agent string) error {
 }
 
 // Heartbeat extends the lease for a claimed spec.
-func (s *Store) Heartbeat(ctx context.Context, slug, agent string, extendBy time.Duration) (*specv1.Claim, error) {
+func (s *Store) Heartbeat(ctx context.Context, slug, agent string, extendBy time.Duration) (*storage.Claim, error) {
 	if extendBy == 0 {
 		extendBy = defaultLeaseDuration
 	}
@@ -149,7 +147,7 @@ func (s *Store) Heartbeat(ctx context.Context, slug, agent string, extendBy time
 	return recordToClaim(slug, result.Records[0])
 }
 
-func recordToClaim(slug string, rec *neo4j.Record) (*specv1.Claim, error) {
+func recordToClaim(slug string, rec *neo4j.Record) (*storage.Claim, error) {
 	agent, err := recordString(rec, 0, "agent")
 	if err != nil {
 		return nil, err
@@ -172,10 +170,10 @@ func recordToClaim(slug string, rec *neo4j.Record) (*specv1.Claim, error) {
 		return nil, err
 	}
 
-	return &specv1.Claim{
-		SpecSlug:     slug,
+	return &storage.Claim{
+		Slug:         slug,
 		Agent:        agent,
-		ClaimedAt:    timestamppb.New(claimedAt),
-		LeaseExpires: timestamppb.New(leaseExpires),
+		ClaimedAt:    claimedAt,
+		LeaseExpires: leaseExpires,
 	}, nil
 }

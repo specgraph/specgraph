@@ -31,6 +31,12 @@ All profiles use `memgraph/memgraph-platform:2.4.0`, which bundles Memgraph Lab
 (graph visualization on port 7444) and MAGE (graph algorithms library). The image
 is ~800 MB vs ~200 MB for the bare `memgraph/memgraph` image.
 
+The platform image uses supervisord to manage both Memgraph and Lab. Its default
+CMD launches an interactive `mgconsole` after supervisord, which exits immediately
+in detached mode. All profiles override `command:` to run supervisord in the
+foreground directly. Memgraph flags are passed via the `MEMGRAPH` environment
+variable, which supervisord substitutes into the process command.
+
 ## Persistence
 
 All profiles enable WAL (write-ahead log) and periodic snapshots:

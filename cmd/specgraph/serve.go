@@ -65,11 +65,16 @@ func runServe(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("connect to memgraph: %w", err)
 		}
+
+		// Defers run LIFO: stopSweeper runs before store.Close, preventing races
+		// where the sweeper goroutine calls ReleaseExpiredClaims on a closed store.
 		defer func() {
 			if err := store.Close(ctx); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: close store: %v\n", err)
 			}
 		}()
+		sweeperCtx, stopSweeper := context.WithCancel(ctx)
+		defer stopSweeper()
 
 		constitutionPath := cfg.Storage.ConstitutionPath
 		if err := bootstrapConstitution(ctx, store, constitutionPath); err != nil {
@@ -83,6 +88,7 @@ func runServe(_ *cobra.Command, _ []string) error {
 		server.RegisterClaimService(mux, store)
 		server.RegisterConstitutionService(mux, store)
 		server.RegisterAuthoringService(mux, store, store)
+		server.RegisterExecutionService(mux, store)
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 
@@ -91,6 +97,7 @@ func runServe(_ *cobra.Command, _ []string) error {
 			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 			<-sigCh
 			fmt.Println("\nShutting down...")
+			stopSweeper()
 			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer shutdownCancel()
 			if err := srv.Shutdown(shutdownCtx); err != nil {
@@ -98,6 +105,7 @@ func runServe(_ *cobra.Command, _ []string) error {
 			}
 		}()
 
+		server.StartSweeper(sweeperCtx, store, 60*time.Second)
 		fmt.Printf("SpecGraph server running at http://%s\n", addr)
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			return err
@@ -138,7 +146,7 @@ func bootstrapConstitution(ctx context.Context, store storage.ConstitutionBacken
 		return fmt.Errorf("load constitution YAML: %w", err)
 	}
 
-	constitution := cy.ToProto()
+	constitution := cy.ToDomain()
 
 	if _, err := store.UpdateConstitution(ctx, constitution); err != nil {
 		return fmt.Errorf("seed constitution: %w", err)

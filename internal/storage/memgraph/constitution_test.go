@@ -10,7 +10,6 @@ import (
 	"errors"
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
@@ -38,37 +37,37 @@ func TestConstitution_UpdateAndGet(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
-	input := &specv1.Constitution{
-		Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
+	input := &storage.Constitution{
+		Layer: storage.ConstitutionLayerProject,
 		Name:  "specgraph-project",
-		Tech: &specv1.TechConfig{
-			Languages: &specv1.LanguageConfig{
+		Tech: &storage.TechStack{
+			Languages: &storage.Languages{
 				Primary:   "Go",
 				Allowed:   []string{"Go", "TypeScript"},
 				Forbidden: []string{"PHP"},
 			},
 		},
-		Principles: []*specv1.Principle{
+		Principles: []storage.Principle{
 			{
-				Id:        "p1",
+				ID:        "p1",
 				Statement: "Keep it simple",
 				Rationale: "Simple is maintainable",
 			},
 		},
 		Constraints:  []string{"no global state", "no shared mutable state"},
-		Antipatterns: []*specv1.Antipattern{{Pattern: "god object", Why: "too complex", Instead: "small focused types"}},
-		References:   []*specv1.Reference{{ReferenceType: specv1.ReferenceType_REFERENCE_TYPE_ADR, Path: "docs/adr-001.md"}},
+		Antipatterns: []storage.Antipattern{{Pattern: "god object", Why: "too complex", Instead: "small focused types"}},
+		References:   []storage.Reference{{Type: "adr", Path: "docs/adr-001.md"}},
 	}
 
 	got, err := store.UpdateConstitution(ctx, input)
 	require.NoError(t, err)
 	require.NotNil(t, got)
-	require.NotEmpty(t, got.Id)
-	require.Equal(t, specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT, got.Layer)
+	require.NotEmpty(t, got.ID)
+	require.Equal(t, storage.ConstitutionLayerProject, got.Layer)
 	require.Equal(t, "specgraph-project", got.Name)
 	require.Equal(t, int32(1), got.Version)
-	require.NotNil(t, got.CreatedAt)
-	require.NotNil(t, got.UpdatedAt)
+	require.False(t, got.CreatedAt.IsZero())
+	require.False(t, got.UpdatedAt.IsZero())
 
 	// Verify Tech round-trips.
 	require.NotNil(t, got.Tech)
@@ -78,7 +77,7 @@ func TestConstitution_UpdateAndGet(t *testing.T) {
 
 	// Verify Principles.
 	require.Len(t, got.Principles, 1)
-	require.Equal(t, "p1", got.Principles[0].Id)
+	require.Equal(t, "p1", got.Principles[0].ID)
 	require.Equal(t, "Keep it simple", got.Principles[0].Statement)
 
 	// Verify Constraints.
@@ -90,12 +89,12 @@ func TestConstitution_UpdateAndGet(t *testing.T) {
 
 	// Verify References.
 	require.Len(t, got.References, 1)
-	require.Equal(t, specv1.ReferenceType_REFERENCE_TYPE_ADR, got.References[0].ReferenceType)
+	require.Equal(t, "adr", got.References[0].Type)
 
 	// Fetch via GetConstitution and confirm same data.
 	fetched, err := store.GetConstitution(ctx)
 	require.NoError(t, err)
-	require.Equal(t, got.Id, fetched.Id)
+	require.Equal(t, got.ID, fetched.ID)
 	require.Equal(t, got.Name, fetched.Name)
 	require.Equal(t, got.Version, fetched.Version)
 
@@ -116,8 +115,8 @@ func TestConstitution_MinimalRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close(ctx)
 
-	input := &specv1.Constitution{
-		Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
+	input := &storage.Constitution{
+		Layer: storage.ConstitutionLayerProject,
 		Name:  "minimal",
 	}
 
@@ -163,8 +162,8 @@ func TestConstitution_CheckViolation(t *testing.T) {
 	require.True(t, errors.Is(err, storage.ErrConstitutionNotFound))
 
 	// Store a constitution.
-	_, err = store.UpdateConstitution(ctx, &specv1.Constitution{
-		Layer:       specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
+	_, err = store.UpdateConstitution(ctx, &storage.Constitution{
+		Layer:       storage.ConstitutionLayerProject,
 		Name:        "test-project",
 		Constraints: []string{"no globals"},
 	})

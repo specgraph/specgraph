@@ -39,7 +39,7 @@ func (h *ConstitutionHandler) GetConstitution(ctx context.Context, _ *connect.Re
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.GetConstitutionResponse{Constitution: c}), nil
+	return connect.NewResponse(&specv1.GetConstitutionResponse{Constitution: constitutionToProto(c)}), nil
 }
 
 // UpdateConstitution handles the UpdateConstitution RPC.
@@ -48,11 +48,11 @@ func (h *ConstitutionHandler) UpdateConstitution(ctx context.Context, req *conne
 	if msg.Constitution == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("constitution is required"))
 	}
-	c, err := h.store.UpdateConstitution(ctx, msg.Constitution)
+	c, err := h.store.UpdateConstitution(ctx, constitutionFromProto(msg.Constitution))
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.UpdateConstitutionResponse{Constitution: c}), nil
+	return connect.NewResponse(&specv1.UpdateConstitutionResponse{Constitution: constitutionToProto(c)}), nil
 }
 
 // CheckViolation handles the CheckViolation RPC.
@@ -71,7 +71,7 @@ func (h *ConstitutionHandler) CheckViolation(ctx context.Context, req *connect.R
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.CheckViolationResponse{Violations: violations}), nil
+	return connect.NewResponse(&specv1.CheckViolationResponse{Violations: violationsToProto(violations)}), nil
 }
 
 // EmitToolFiles handles the EmitToolFiles RPC.
@@ -88,7 +88,12 @@ func (h *ConstitutionHandler) EmitToolFiles(ctx context.Context, req *connect.Re
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	content, filename, err := emitter.Emit(c, req.Msg.Format)
+	formatStr, ok := outputFormatToString[req.Msg.Format]
+	if !ok {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unsupported format: %s", req.Msg.Format))
+	}
+
+	content, filename, err := emitter.Emit(c, formatStr)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}

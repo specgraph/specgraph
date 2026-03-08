@@ -18,18 +18,12 @@
 services:
   memgraph:
     image: memgraph/memgraph-platform:2.4.0
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
     ports:
       - "${MEMGRAPH_PORT:-7687}:7687"
       - "${MEMGRAPH_LAB_PORT:-7444}:7444"
-    command:
-      - --memory-limit=16384
-      - --storage-wal-enabled=true
-      - --storage-snapshot-interval-sec=60
-      - --storage-snapshot-on-exit=true
-      - --storage-recover-on-startup=true
-      - --storage-snapshot-retention-count=5
-      - --query-execution-timeout-sec=300
-      - --log-level=WARNING
+    environment:
+      - MEMGRAPH=--memory-limit=16384 --storage-wal-enabled=true --storage-snapshot-interval-sec=60 --storage-snapshot-on-exit=true --storage-recover-on-startup=true --storage-snapshot-retention-count=5 --query-execution-timeout-sec=300 --log-level=WARNING
     volumes:
       - specgraph-data:/var/lib/memgraph
     deploy:
