@@ -21,6 +21,21 @@ type Backend interface {
 // maxSpecsPerLint limits the number of specs processed in a single lint run.
 const maxSpecsPerLint = 10000
 
+// Engine wraps the linter package functions for use as a server.SpecLinter.
+type Engine struct {
+	backend Backend
+}
+
+// NewEngine creates a linter engine backed by the given storage.
+func NewEngine(backend Backend) *Engine {
+	return &Engine{backend: backend}
+}
+
+// Lint delegates to the package-level Lint function.
+func (e *Engine) Lint(ctx context.Context, slug string) ([]storage.LintResult, error) {
+	return Lint(ctx, e.backend, slug)
+}
+
 // Lint validates one or all specs. When slug is empty, all specs are linted.
 func Lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResult, error) {
 	var specs []*storage.Spec
@@ -145,6 +160,10 @@ func detectCycles(ctx context.Context, backend Backend, slug string) ([]storage.
 
 		deps, err := backend.GetDependencies(ctx, current)
 		if err != nil {
+			if errors.Is(err, storage.ErrSpecNotFound) {
+				inStack[current] = false
+				return
+			}
 			storageErr = fmt.Errorf("get dependencies for %q: %w", current, err)
 			inStack[current] = false
 			return

@@ -920,7 +920,7 @@ Follow existing E2E test pattern from the project. Test the full lifecycle flow 
 
 **Step 2: Run E2E test**
 
-Run: `go test ./e2e/api/ -run TestLifecycleE2E -v -count=1 -timeout=60s` (requires Docker for Memgraph)
+Run: `go test -tags e2e ./e2e/api/ -v -count=1 -timeout=60s` (requires Docker for Memgraph)
 
 Expected: PASS
 

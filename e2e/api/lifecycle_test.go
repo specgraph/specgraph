@@ -7,7 +7,6 @@ package api_test
 
 import (
 	"context"
-	"errors"
 
 	"connectrpc.com/connect"
 	. "github.com/onsi/ginkgo/v2"
@@ -177,15 +176,13 @@ var _ = Describe("Lifecycle", Ordered, func() {
 	})
 
 	Describe("Lint", func() {
-		It("returns Unimplemented", func() {
-			_, err := lifecycleClient.Lint(ctx, connect.NewRequest(&specv1.LintRequest{
+		It("returns lint results for a valid spec", func() {
+			resp, err := lifecycleClient.Lint(ctx, connect.NewRequest(&specv1.LintRequest{
 				Slug: "lifecycle-amend-spec",
 			}))
-			Expect(err).To(HaveOccurred())
-
-			var connErr *connect.Error
-			Expect(errors.As(err, &connErr)).To(BeTrue())
-			Expect(connErr.Code()).To(Equal(connect.CodeUnimplemented))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Msg.Results).NotTo(BeEmpty())
+			Expect(resp.Msg.Results[0].SpecSlug).To(Equal("lifecycle-amend-spec"))
 		})
 	})
 })

@@ -96,7 +96,6 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 					Description:     fmt.Sprintf("upstream %q updated after %q", upstream.Slug, spec.Slug),
 					SpecSlug:        spec.Slug,
 					UpstreamSlug:    upstream.Slug,
-					SpecVersion: spec.Version,
 					ActualVersion:   upstream.Version,
 				})
 			}

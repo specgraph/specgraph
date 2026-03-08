@@ -33,7 +33,7 @@ func specToProto(s *storage.Spec) *specv1.Spec {
 		Version:      s.Version,
 		CreatedAt:    timeToProto(s.CreatedAt),
 		UpdatedAt:    timeToProto(s.UpdatedAt),
-		Lifecycle:    lifecycleToProtoMap[s.Lifecycle],
+		Lifecycle:    lifecycleToProto(s.Lifecycle),
 		SupersededBy: s.SupersededBy,
 		Supersedes:   s.Supersedes,
 		History:      historyToProto(s.History),
@@ -518,6 +518,13 @@ var lifecycleToProtoMap = map[storage.SpecLifecycle]specv1.SpecLifecycle{
 	"":                          specv1.SpecLifecycle_SPEC_LIFECYCLE_UNSPECIFIED,
 	storage.SpecLifecycleTask:   specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK,
 	storage.SpecLifecycleLiving: specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING,
+}
+
+func lifecycleToProto(l storage.SpecLifecycle) specv1.SpecLifecycle {
+	if l == "" {
+		l = storage.SpecLifecycleTask
+	}
+	return lifecycleToProtoMap[l]
 }
 
 // --- Lint ---

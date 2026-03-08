@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 
-//go:build e2e
+//go:build e2e && !windows
 
 package docker_test
 

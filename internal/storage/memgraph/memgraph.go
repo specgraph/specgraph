@@ -9,7 +9,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -226,10 +225,16 @@ func newID(prefix string) string {
 	return prefix + "-" + ulid.MustNew(ulid.Now(), rand.Reader).String()
 }
 
-// nowRFC3339 returns the current UTC time formatted as an RFC 3339 string
-// with nanosecond precision to avoid same-second comparison ambiguity.
+// sortableRFC3339Nano is a fixed-width RFC 3339 layout with zero-padded nanoseconds.
+// Unlike time.RFC3339Nano (which trims trailing fractional zeros), this format
+// ensures lexicographic string ordering matches chronological ordering — critical
+// for Cypher ORDER BY and timestamp comparison operators on string-typed fields.
+const sortableRFC3339Nano = "2006-01-02T15:04:05.000000000Z07:00"
+
+// nowRFC3339 returns the current UTC time in a fixed-width RFC 3339 layout to
+// ensure lexicographic string ordering matches chronological ordering.
 func nowRFC3339() string {
-	return time.Now().UTC().Format(time.RFC3339Nano)
+	return time.Now().UTC().Format(sortableRFC3339Nano)
 }
 
 // parseRFC3339 parses an RFC3339 timestamp string from a memgraph record field.
@@ -275,18 +280,21 @@ func safeInt32(v int64) int32 {
 	return int32(v)
 }
 
-// recordStringOptional extracts a string value from a neo4j record by position,
-// returning "" for nil/null values. Use for nullable string fields like superseded_by.
-func recordStringOptional(rec *neo4j.Record, pos int) string {
-	if pos >= len(rec.Values) || rec.Values[pos] == nil {
-		return ""
+// recordStringOptional extracts a nullable string value from a neo4j record by
+// position. Returns "" for nil/null values, and fails fast on unexpected types
+// to surface schema/return-shift bugs immediately.
+func recordStringOptional(rec *neo4j.Record, pos int, field string) (string, error) {
+	if pos >= len(rec.Values) {
+		return "", fmt.Errorf("memgraph: field %q at position %d: missing", field, pos)
+	}
+	if rec.Values[pos] == nil {
+		return "", nil
 	}
 	s, ok := rec.Values[pos].(string)
 	if !ok {
-		slog.Warn("recordStringOptional: unexpected type", "pos", pos, "type", fmt.Sprintf("%T", rec.Values[pos]))
-		return ""
+		return "", fmt.Errorf("memgraph: field %q at position %d: expected string or nil, got %T", field, pos, rec.Values[pos])
 	}
-	return s
+	return s, nil
 }
 
 // historyEntryJSON is a JSON-serializable form of storage.HistoryEntry.
@@ -375,14 +383,26 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 		return nil, err
 	}
 
-	lifecycleStr := recordStringOptional(rec, offset+9)
+	lifecycleStr, err := recordStringOptional(rec, offset+9, "lifecycle")
+	if err != nil {
+		return nil, err
+	}
 	lifecycle := storage.SpecLifecycle(lifecycleStr)
 	if lifecycle == "" {
 		lifecycle = defaultLifecycle
 	}
-	supersededBy := recordStringOptional(rec, offset+10)
-	supersedes := recordStringOptional(rec, offset+11)
-	historyJSON := recordStringOptional(rec, offset+12)
+	supersededBy, err := recordStringOptional(rec, offset+10, "superseded_by")
+	if err != nil {
+		return nil, err
+	}
+	supersedes, err := recordStringOptional(rec, offset+11, "supersedes")
+	if err != nil {
+		return nil, err
+	}
+	historyJSON, err := recordStringOptional(rec, offset+12, "history_json")
+	if err != nil {
+		return nil, err
+	}
 
 	history, err := unmarshalHistory(historyJSON)
 	if err != nil {
