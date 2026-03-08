@@ -556,9 +556,13 @@ var lintSeverityToProtoMap = map[storage.LintSeverity]specv1.LintSeverity{
 }
 
 func lintViolationToProto(v *storage.LintViolation) *specv1.LintViolation {
+	sev, ok := lintSeverityToProtoMap[v.Severity]
+	if !ok {
+		sev = specv1.LintSeverity_LINT_SEVERITY_UNSPECIFIED
+	}
 	return &specv1.LintViolation{
 		Rule:     v.Rule,
-		Severity: lintSeverityToProtoMap[v.Severity],
+		Severity: sev,
 		Message:  v.Message,
 		Location: v.Location,
 	}
