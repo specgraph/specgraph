@@ -16,37 +16,37 @@ import (
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/seanb4t/specgraph/internal/server"
+	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/durationpb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type mockClaimBackend struct {
 	mu     sync.Mutex
-	claims map[string]*specv1.Claim
+	claims map[string]*storage.Claim
 }
 
 func newMockClaimBackend() *mockClaimBackend {
-	return &mockClaimBackend{claims: make(map[string]*specv1.Claim)}
+	return &mockClaimBackend{claims: make(map[string]*storage.Claim)}
 }
 
-func (m *mockClaimBackend) ClaimSpec(_ context.Context, slug, agent string, leaseDuration time.Duration) (*specv1.Claim, error) {
+func (m *mockClaimBackend) ClaimSpec(_ context.Context, slug, agent string, leaseDuration time.Duration) (*storage.Claim, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if existing, ok := m.claims[slug]; ok {
-		if existing.LeaseExpires.AsTime().After(time.Now()) {
-			return nil, fmt.Errorf("spec %q already claimed by %s", slug, existing.Agent)
+		if existing.LeaseExpires.After(time.Now()) {
+			return nil, fmt.Errorf("spec %q already claimed by %s: %w", slug, existing.Agent, storage.ErrSpecAlreadyClaimed)
 		}
 	}
 	if leaseDuration == 0 {
 		leaseDuration = 15 * time.Minute
 	}
 	now := time.Now()
-	claim := &specv1.Claim{
-		SpecSlug:     slug,
+	claim := &storage.Claim{
+		Slug:         slug,
 		Agent:        agent,
-		ClaimedAt:    timestamppb.New(now),
-		LeaseExpires: timestamppb.New(now.Add(leaseDuration)),
+		ClaimedAt:    now,
+		LeaseExpires: now.Add(leaseDuration),
 	}
 	m.claims[slug] = claim
 	return claim, nil
@@ -59,7 +59,7 @@ func (m *mockClaimBackend) UnclaimSpec(_ context.Context, slug, _ string) error 
 	return nil
 }
 
-func (m *mockClaimBackend) Heartbeat(_ context.Context, slug, _ string, extendBy time.Duration) (*specv1.Claim, error) {
+func (m *mockClaimBackend) Heartbeat(_ context.Context, slug, _ string, extendBy time.Duration) (*storage.Claim, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	claim, ok := m.claims[slug]
@@ -69,7 +69,7 @@ func (m *mockClaimBackend) Heartbeat(_ context.Context, slug, _ string, extendBy
 	if extendBy == 0 {
 		extendBy = 15 * time.Minute
 	}
-	claim.LeaseExpires = timestamppb.New(time.Now().Add(extendBy))
+	claim.LeaseExpires = time.Now().Add(extendBy)
 	return claim, nil
 }
 

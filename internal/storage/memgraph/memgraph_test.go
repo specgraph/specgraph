@@ -23,12 +23,14 @@ func setupMemgraph(t *testing.T) (string, func()) {
 	ctx := context.Background()
 
 	req := testcontainers.ContainerRequest{
-		Image:        "memgraph/memgraph:latest",
+		Image:        "memgraph/memgraph-platform:2.4.0",
 		ExposedPorts: []string{"7687/tcp"},
+		Env:          map[string]string{"MEMGRAPH": ""},
+		Cmd:          []string{"/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"},
 		WaitingFor: wait.ForAll(
 			wait.ForListeningPort("7687/tcp"),
-			wait.ForLog("You are running Memgraph"),
-		).WithDeadline(60 * time.Second),
+			wait.ForLog("memgraph entered RUNNING state"),
+		).WithDeadline(120 * time.Second),
 	}
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -82,7 +84,7 @@ func TestCreateAndGetSpec(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, spec)
 	require.Contains(t, spec.ID, "spec-")
-	require.Len(t, spec.ID, 12) // "spec-" + 7 hex chars
+	require.Len(t, spec.ID, 31) // "spec-" + 26 ULID chars
 	require.Equal(t, "login-api", spec.Slug)
 	require.Equal(t, "Implement login API", spec.Intent)
 	require.Equal(t, storage.SpecStageSpark, spec.Stage)

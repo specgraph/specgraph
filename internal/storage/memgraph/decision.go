@@ -16,7 +16,7 @@ import (
 // CreateDecision stores a new decision node in Memgraph.
 func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale string) (*storage.Decision, error) {
 	now := time.Now().UTC()
-	id := generateID("dec", slug, now)
+	id := newID("dec")
 	nowStr := now.Format(time.RFC3339)
 
 	query := `

@@ -29,9 +29,9 @@ func TestClaimAndUnclaim(t *testing.T) {
 	// Claim it
 	claim, err := store.ClaimSpec(ctx, "claimable", "agent-1", 10*time.Minute)
 	require.NoError(t, err)
-	require.Equal(t, "claimable", claim.SpecSlug)
+	require.Equal(t, "claimable", claim.Slug)
 	require.Equal(t, "agent-1", claim.Agent)
-	require.True(t, claim.LeaseExpires.AsTime().After(time.Now()))
+	require.True(t, claim.LeaseExpires.After(time.Now()))
 
 	// Claiming again should fail (still claimed)
 	_, err = store.ClaimSpec(ctx, "claimable", "agent-2", 10*time.Minute)
@@ -65,7 +65,7 @@ func TestHeartbeat(t *testing.T) {
 	// Heartbeat extends the lease
 	claim, err := store.Heartbeat(ctx, "hb-spec", "agent-1", 30*time.Minute)
 	require.NoError(t, err)
-	require.True(t, claim.LeaseExpires.AsTime().After(time.Now().Add(29*time.Minute)))
+	require.True(t, claim.LeaseExpires.After(time.Now().Add(29*time.Minute)))
 
 	// Heartbeat on non-existent claim
 	_, err = store.Heartbeat(ctx, "no-such-spec", "agent-1", 10*time.Minute)
