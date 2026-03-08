@@ -373,3 +373,37 @@ func TestLifecycleHandler_Lint_WithViolations(t *testing.T) {
 	require.Len(t, resp.Msg.Results[0].Violations, 1)
 	require.Equal(t, "schema.enum", resp.Msg.Results[0].Violations[0].Rule)
 }
+
+func TestLifecycleHandler_Abandon_Terminal(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.abandonSpec = func(_ context.Context, _, _ string) (*storage.Spec, error) {
+		return nil, storage.ErrSpecTerminal
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.Abandon(context.Background(), connect.NewRequest(&specv1.LifecycleAbandonRequest{
+		Slug:   "already-abandoned",
+		Reason: "try again",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+}
+
+func TestLifecycleHandler_Supersede_Terminal(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+		return nil, nil, storage.ErrSpecTerminal
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.LifecycleSupersedeRequest{
+		Slug:    "terminal-spec",
+		NewSlug: "new-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+}
