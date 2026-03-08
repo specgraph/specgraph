@@ -965,3 +965,19 @@ After all tasks:
 - [ ] Full lifecycle flow: create → done → amend → supersede → abandon
 - [ ] Linter validates specs against JSON Schema
 - [ ] Drift engine detects spec-vs-dependency version mismatches
+
+---
+
+## Implementation Deviations
+
+### Task 5: JSON Schema replaced with programmatic validation
+
+**Deviation:** `spec.schema.json` file was not created. Schema validation is implemented directly in Go code (`internal/linter/schema.go`) using programmatic checks for required fields, enum validation, conditional rules, and version minimum.
+
+**Rationale:** Go-based validation avoids a JSON Schema library dependency, provides compile-time type safety, and enables better error messages. All validation rules from the planned schema are covered by the Go implementation. A standalone JSON Schema file would either be dead code or require adding a third-party library with no functional benefit over the current approach.
+
+### Task 7: CheckDrift on drift.Engine, not LifecycleBackend
+
+**Deviation:** The `CheckDrift` RPC delegates to `drift.Engine.Check()` rather than a storage-level method. The handler validates scope and calls the engine, which queries `SpecReader` (a subset of `SpecBackend`).
+
+**Rationale:** Drift detection is a computation over storage data (compare timestamps, check edges), not a storage operation. Putting it behind `LifecycleBackend` would conflate query logic with storage abstraction. The engine pattern keeps drift logic testable with mock backends and follows the same separation used by the linter.
