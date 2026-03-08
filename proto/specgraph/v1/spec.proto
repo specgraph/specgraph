@@ -21,6 +21,18 @@ message Spec {
   int32 version = 7;
   google.protobuf.Timestamp created_at = 8;
   google.protobuf.Timestamp updated_at = 9;
+  string lifecycle = 10;       // task | living (default: task)
+  string superseded_by = 11;   // slug of replacement spec, if superseded
+  string supersedes = 12;      // slug of spec this replaced
+  repeated HistoryEntry history = 13;
+}
+
+message HistoryEntry {
+  int32 version = 1;
+  string stage = 2;
+  string summary = 3;
+  string reason = 4;
+  google.protobuf.Timestamp date = 5;
 }
 
 message CreateSpecRequest {

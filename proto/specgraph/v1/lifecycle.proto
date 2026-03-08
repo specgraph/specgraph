@@ -1,0 +1,124 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+syntax = "proto3";
+
+package specgraph.v1;
+
+option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
+
+import "specgraph/v1/spec.proto";
+
+// --- Enums ---
+
+enum DriftType {
+  DRIFT_TYPE_UNSPECIFIED = 0;
+  DRIFT_TYPE_INTERFACE = 1;
+  DRIFT_TYPE_VERIFY = 2;
+  DRIFT_TYPE_DEPENDENCY = 3;
+}
+
+enum DriftSeverity {
+  DRIFT_SEVERITY_UNSPECIFIED = 0;
+  DRIFT_SEVERITY_HIGH = 1;
+  DRIFT_SEVERITY_MEDIUM = 2;
+  DRIFT_SEVERITY_LOW = 3;
+  DRIFT_SEVERITY_INFO = 4;
+}
+
+enum LintSeverity {
+  LINT_SEVERITY_UNSPECIFIED = 0;
+  LINT_SEVERITY_ERROR = 1;
+  LINT_SEVERITY_WARNING = 2;
+  LINT_SEVERITY_INFO = 3;
+}
+
+// --- Drift Messages ---
+
+message DriftItem {
+  DriftType type = 1;
+  DriftSeverity severity = 2;
+  string description = 3;
+  string spec_slug = 4;
+  string upstream_slug = 5;
+  int32 expected_version = 6;
+  int32 actual_version = 7;
+}
+
+message DriftReport {
+  string spec_slug = 1;
+  repeated DriftItem items = 2;
+  bool acknowledged = 3;
+  string acknowledge_note = 4;
+}
+
+// --- Lint Messages ---
+
+message LintViolation {
+  string rule = 1;
+  LintSeverity severity = 2;
+  string message = 3;
+  string location = 4;
+}
+
+message LintResult {
+  string spec_slug = 1;
+  repeated LintViolation violations = 2;
+  bool passed = 3;
+}
+
+// --- Requests/Responses ---
+
+message LifecycleAmendRequest {
+  string slug = 1;
+  string reason = 2;
+  string re_entry_stage = 3;
+}
+
+message LifecycleSupersedeRequest {
+  string slug = 1;
+  string new_slug = 2;
+}
+
+message LifecycleSupersedeResponse {
+  Spec old_spec = 1;
+  Spec new_spec = 2;
+}
+
+message LifecycleAbandonRequest {
+  string slug = 1;
+  string reason = 2;
+}
+
+message DriftCheckRequest {
+  string slug = 1;
+  string scope = 2;
+}
+
+message DriftCheckResponse {
+  repeated DriftReport reports = 1;
+}
+
+message DriftAcknowledgeRequest {
+  string slug = 1;
+  string note = 2;
+}
+
+message LintRequest {
+  string slug = 1;
+}
+
+message LintResponse {
+  repeated LintResult results = 1;
+}
+
+// --- Service ---
+
+service LifecycleService {
+  rpc Amend(LifecycleAmendRequest) returns (Spec);
+  rpc Supersede(LifecycleSupersedeRequest) returns (LifecycleSupersedeResponse);
+  rpc Abandon(LifecycleAbandonRequest) returns (Spec);
+  rpc CheckDrift(DriftCheckRequest) returns (DriftCheckResponse);
+  rpc AcknowledgeDrift(DriftAcknowledgeRequest) returns (DriftReport);
+  rpc Lint(LintRequest) returns (LintResponse);
+}

@@ -200,10 +200,12 @@ type PassWriter interface {
 	StoreConstitutionViolations(ctx context.Context, slug string, violations []ConstitutionViolation) error
 }
 
-// SpecLifecycle handles spec amendments and supersession.
-type SpecLifecycle interface {
-	SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error
-	AmendSpec(ctx context.Context, slug, reason string, targetStage AuthoringStage) (*AmendResult, error)
+// AuthoringLifecycle handles authoring-level spec amendments and supersession.
+// These methods operate within the authoring funnel context (stage transitions).
+// For lifecycle-level operations (done→amended, superseded edges), see LifecycleBackend.
+type AuthoringLifecycle interface {
+	AuthoringSupersede(ctx context.Context, slug, supersededBy, reason string) error
+	AuthoringAmendSpec(ctx context.Context, slug, reason string, targetStage AuthoringStage) (*AmendResult, error)
 }
 
 // AuthoringBackend composes all authoring storage operations.
@@ -212,5 +214,5 @@ type SpecLifecycle interface {
 type AuthoringBackend interface {
 	StageWriter
 	PassWriter
-	SpecLifecycle
+	AuthoringLifecycle
 }
