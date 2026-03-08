@@ -217,11 +217,11 @@ func TestAmendSpec_ConcurrentModification(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, storage.SpecStage("shape"), amended.Stage)
 
-	// Now the spec is at "shape" (terminal per amended), second amend should fail
-	// because the spec is in a terminal state (amended is terminal).
+	// Now the spec is at "shape" (not done), second amend should fail
+	// because amend requires the spec to be in the done stage.
 	_, err = store.LifecycleAmendSpec(ctx, "toctou-amend", "second amend", "specify")
 	require.Error(t, err)
-	require.ErrorIs(t, err, storage.ErrSpecTerminal)
+	require.ErrorIs(t, err, storage.ErrSpecNotDone)
 }
 
 func TestCheckDrift_AllSpecs_Integration(t *testing.T) {
