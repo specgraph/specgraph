@@ -259,7 +259,7 @@ func TestCheckSpec_MissingDependencyCreatesInfoItem(t *testing.T) {
 
 	item := reports[0].Items[0]
 	require.Equal(t, storage.DriftTypeDependency, item.Type)
-	require.Equal(t, storage.DriftSeverityInfo, item.Severity)
+	require.Equal(t, storage.DriftSeverityMedium, item.Severity)
 	require.Contains(t, item.Description, "gone-dep")
 	require.Contains(t, item.Description, "not found")
 	require.Equal(t, "downstream", item.SpecSlug)

@@ -93,7 +93,7 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 				if errors.Is(err, storage.ErrSpecNotFound) {
 					report.Items = append(report.Items, storage.DriftItem{
 						Type:         storage.DriftTypeDependency,
-						Severity:     storage.DriftSeverityInfo,
+						Severity:     storage.DriftSeverityMedium,
 						Description:  fmt.Sprintf("dependency %q not found", dep.Slug),
 						SpecSlug:     spec.Slug,
 						UpstreamSlug: dep.Slug,
