@@ -27,7 +27,7 @@ func ComposeUp(composeFile string) error {
 
 // ComposeDown tears down the Docker Compose stack defined in composeFile.
 func ComposeDown(composeFile string) error {
-	cmd := exec.Command("docker", "compose", "-f", composeFile, "down")
+	cmd := exec.Command("docker", "compose", "-f", composeFile, "down", "--timeout", "10")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {

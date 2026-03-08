@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -56,9 +57,18 @@ storage:
 
 	AfterAll(func() {
 		if cmd != nil && cmd.Process != nil {
-			_ = cmd.Process.Kill()
+			// Kill the entire process group so child processes (e.g. docker compose
+			// down) are also terminated; otherwise cmd.Wait blocks on inherited pipes.
+			if runtime.GOOS != "windows" {
+				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			} else {
+				_ = cmd.Process.Kill()
+			}
 			if done != nil {
-				<-done // wait for goroutine to finish
+				select {
+				case <-done:
+				case <-time.After(15 * time.Second):
+				}
 			}
 		}
 		os.RemoveAll(projectDir)
@@ -70,6 +80,9 @@ storage:
 		cmd.Dir = projectDir
 		cmd.Stdout = GinkgoWriter
 		cmd.Stderr = GinkgoWriter
+		// Put the process in its own process group so AfterAll can kill child
+		// processes (e.g. docker compose down) that inherit stdout pipes.
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 		err := cmd.Start()
 		Expect(err).NotTo(HaveOccurred())
