@@ -19,6 +19,7 @@ const maxHistoryEntries = 100
 
 // terminalStages are stages from which no further lifecycle transitions are allowed.
 var terminalStages = map[storage.SpecStage]bool{
+	storage.SpecStageAmended:    true,
 	storage.SpecStageSuperseded: true,
 	storage.SpecStageAbandoned:  true,
 }
