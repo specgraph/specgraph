@@ -111,11 +111,11 @@ func decisionsToProto(decisions []*storage.Decision) ([]*specv1.Decision, error)
 // --- Edge ---
 
 var edgeTypeToProtoMap = map[storage.EdgeType]specv1.EdgeType{
-	storage.EdgeTypeDependsOn: specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
-	storage.EdgeTypeBlocks:    specv1.EdgeType_EDGE_TYPE_BLOCKS,
-	storage.EdgeTypeComposes:  specv1.EdgeType_EDGE_TYPE_COMPOSES,
-	storage.EdgeTypeRelatesTo: specv1.EdgeType_EDGE_TYPE_RELATES_TO,
-	storage.EdgeTypeInforms:   specv1.EdgeType_EDGE_TYPE_INFORMS,
+	storage.EdgeTypeDependsOn:  specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
+	storage.EdgeTypeBlocks:     specv1.EdgeType_EDGE_TYPE_BLOCKS,
+	storage.EdgeTypeComposes:   specv1.EdgeType_EDGE_TYPE_COMPOSES,
+	storage.EdgeTypeRelatesTo:  specv1.EdgeType_EDGE_TYPE_RELATES_TO,
+	storage.EdgeTypeInforms:    specv1.EdgeType_EDGE_TYPE_INFORMS,
 	storage.EdgeTypeDecidedIn:  specv1.EdgeType_EDGE_TYPE_DECIDED_IN,
 	storage.EdgeTypeSupersedes: specv1.EdgeType_EDGE_TYPE_SUPERSEDES,
 }
@@ -126,8 +126,8 @@ var edgeTypeFromProtoMap = map[specv1.EdgeType]storage.EdgeType{
 	specv1.EdgeType_EDGE_TYPE_COMPOSES:   storage.EdgeTypeComposes,
 	specv1.EdgeType_EDGE_TYPE_RELATES_TO: storage.EdgeTypeRelatesTo,
 	specv1.EdgeType_EDGE_TYPE_INFORMS:    storage.EdgeTypeInforms,
-	specv1.EdgeType_EDGE_TYPE_DECIDED_IN:  storage.EdgeTypeDecidedIn,
-	specv1.EdgeType_EDGE_TYPE_SUPERSEDES:  storage.EdgeTypeSupersedes,
+	specv1.EdgeType_EDGE_TYPE_DECIDED_IN: storage.EdgeTypeDecidedIn,
+	specv1.EdgeType_EDGE_TYPE_SUPERSEDES: storage.EdgeTypeSupersedes,
 }
 
 func edgeTypeToProto(e storage.EdgeType) (specv1.EdgeType, error) {

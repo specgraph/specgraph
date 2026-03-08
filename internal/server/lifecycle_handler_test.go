@@ -62,9 +62,9 @@ func (f *fakeLinter) Lint(ctx context.Context, slug string) ([]storage.LintResul
 }
 
 type lifecycleTestDeps struct {
-	store   *fakeLifecycleBackend
-	drift   *fakeDriftChecker
-	linter  *fakeLinter
+	store  *fakeLifecycleBackend
+	drift  *fakeDriftChecker
+	linter *fakeLinter
 }
 
 func defaultTestDeps() *lifecycleTestDeps {
@@ -220,13 +220,13 @@ func TestLifecycleHandler_CheckDrift(t *testing.T) {
 				SpecSlug: "my-spec",
 				Items: []storage.DriftItem{
 					{
-						Type:            storage.DriftTypeDependency,
-						Severity:        storage.DriftSeverityHigh,
-						Description:     "upstream changed",
-						SpecSlug:        "my-spec",
-						UpstreamSlug:    "upstream-spec",
-						SpecVersion: 2,
-						ActualVersion:   3,
+						Type:          storage.DriftTypeDependency,
+						Severity:      storage.DriftSeverityHigh,
+						Description:   "upstream changed",
+						SpecSlug:      "my-spec",
+						UpstreamSlug:  "upstream-spec",
+						SpecVersion:   2,
+						ActualVersion: 3,
 					},
 				},
 			},

@@ -91,12 +91,12 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 			}
 			if upstream.UpdatedAt.After(spec.UpdatedAt) {
 				report.Items = append(report.Items, storage.DriftItem{
-					Type:            storage.DriftTypeDependency,
-					Severity:        storage.DriftSeverityMedium,
-					Description:     fmt.Sprintf("upstream %q updated after %q", upstream.Slug, spec.Slug),
-					SpecSlug:        spec.Slug,
-					UpstreamSlug:    upstream.Slug,
-					ActualVersion:   upstream.Version,
+					Type:          storage.DriftTypeDependency,
+					Severity:      storage.DriftSeverityMedium,
+					Description:   fmt.Sprintf("upstream %q updated after %q", upstream.Slug, spec.Slug),
+					SpecSlug:      spec.Slug,
+					UpstreamSlug:  upstream.Slug,
+					ActualVersion: upstream.Version,
 				})
 			}
 		}

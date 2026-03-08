@@ -37,8 +37,10 @@ func New(ctx context.Context, boltURI string) (*Store, error) {
 	return &Store{driver: driver}, nil
 }
 
-const defaultInitialStage = "spark"
-const defaultLifecycle = storage.SpecLifecycleTask
+const (
+	defaultInitialStage = "spark"
+	defaultLifecycle    = storage.SpecLifecycleTask
+)
 
 // CreateSpec stores a new spec node in Memgraph and returns it.
 func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {

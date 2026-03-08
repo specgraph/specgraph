@@ -37,11 +37,11 @@ type EdgeType string
 
 // Edge type relationship values.
 const (
-	EdgeTypeDependsOn EdgeType = "DEPENDS_ON"
-	EdgeTypeBlocks    EdgeType = "BLOCKS"
-	EdgeTypeComposes  EdgeType = "COMPOSES"
-	EdgeTypeRelatesTo EdgeType = "RELATES_TO"
-	EdgeTypeInforms   EdgeType = "INFORMS"
+	EdgeTypeDependsOn  EdgeType = "DEPENDS_ON"
+	EdgeTypeBlocks     EdgeType = "BLOCKS"
+	EdgeTypeComposes   EdgeType = "COMPOSES"
+	EdgeTypeRelatesTo  EdgeType = "RELATES_TO"
+	EdgeTypeInforms    EdgeType = "INFORMS"
 	EdgeTypeDecidedIn  EdgeType = "DECIDED_IN"
 	EdgeTypeSupersedes EdgeType = "SUPERSEDES"
 )

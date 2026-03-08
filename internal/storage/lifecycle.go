@@ -63,7 +63,7 @@ type DriftItem struct {
 	Description     string
 	SpecSlug        string
 	UpstreamSlug    string
-	SpecVersion int32
+	ExpectedVersion int32
 	ActualVersion   int32
 }
 

@@ -305,4 +305,3 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string
 		AcknowledgeNote: note,
 	}, nil
 }
-

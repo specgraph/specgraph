@@ -27,8 +27,8 @@ var amendCmd = &cobra.Command{
 }
 
 var (
-	amendReason   string
-	amendReEntry  string
+	amendReason  string
+	amendReEntry string
 )
 
 func runAmend(_ *cobra.Command, args []string) error {
@@ -224,8 +224,15 @@ func runLint(_ *cobra.Command, args []string) error {
 	}
 	if allPassed {
 		fmt.Println("All specs passed lint checks.")
+		return nil
 	}
-	return nil
+	failCount := 0
+	for _, r := range results {
+		if !r.GetPassed() {
+			failCount++
+		}
+	}
+	return fmt.Errorf("lint: %d spec(s) failed", failCount)
 }
 
 // --- init ---
