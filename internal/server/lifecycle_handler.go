@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/seanb4t/specgraph/internal/drift"
 	"github.com/seanb4t/specgraph/internal/storage"
 )
 
@@ -132,8 +133,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		}
 	}
 
-	validScopes := map[string]bool{"": true, "deps": true, "interfaces": true, "verify": true}
-	if !validScopes[msg.Scope] {
+	if !drift.ValidScopes[msg.Scope] {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scope %q (valid: deps, interfaces, verify)", msg.Scope))
 	}
 

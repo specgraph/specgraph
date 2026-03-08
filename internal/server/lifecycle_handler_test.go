@@ -272,6 +272,9 @@ func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 			AcknowledgeNote: note,
 		}, nil
 	}
+	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+		return nil, nil
+	}
 	client := newLifecycleClient(t, deps)
 
 	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{

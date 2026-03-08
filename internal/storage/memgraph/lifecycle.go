@@ -24,6 +24,14 @@ var terminalStages = map[storage.SpecStage]bool{
 	storage.SpecStageAbandoned:  true,
 }
 
+// appendHistory appends entry to existing history and marshals the result to JSON.
+func appendHistory(existing []storage.HistoryEntry, entry *storage.HistoryEntry) (string, error) {
+	history := make([]storage.HistoryEntry, len(existing)+1)
+	copy(history, existing)
+	history[len(existing)] = *entry
+	return marshalHistory(history)
+}
+
 // marshalHistory serializes a slice of HistoryEntry to a JSON string for storage.
 // If len(entries) exceeds maxHistoryEntries, the oldest entries are trimmed.
 func marshalHistory(entries []storage.HistoryEntry) (string, error) {
@@ -45,6 +53,26 @@ func marshalHistory(entries []storage.HistoryEntry) (string, error) {
 		return "", fmt.Errorf("memgraph: marshal history: %w", err)
 	}
 	return string(data), nil
+}
+
+// preconditionError re-reads the spec after an atomic WHERE guard failed
+// and returns the appropriate sentinel error. The op parameter names the
+// operation (e.g. "amend spec", "supersede spec") for error messages.
+// extraChecks runs additional validations beyond the terminal-stage check.
+func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChecks func(*storage.Spec) error) error {
+	current, err := s.GetSpec(ctx, slug)
+	if err != nil {
+		return err
+	}
+	if terminalStages[current.Stage] {
+		return fmt.Errorf("%s %q (stage=%s): %w", op, slug, current.Stage, storage.ErrSpecTerminal)
+	}
+	if extraChecks != nil {
+		if err := extraChecks(current); err != nil {
+			return err
+		}
+	}
+	return fmt.Errorf("%s %q: %w", op, slug, storage.ErrConcurrentModification)
 }
 
 // LifecycleAmendSpec transitions a done spec back into an earlier authoring stage,
@@ -81,10 +109,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		Reason:  reason,
 		Date:    time.Now().UTC(),
 	}
-	history := make([]storage.HistoryEntry, len(spec.History)+1)
-	copy(history, spec.History)
-	history[len(spec.History)] = entry
-	historyJSON, err := marshalHistory(history)
+	historyJSON, err := appendHistory(spec.History, &entry)
 	if err != nil {
 		return nil, err
 	}
@@ -116,26 +141,14 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		return nil, fmt.Errorf("memgraph: amend spec: %w", err)
 	}
 	if len(records) == 0 {
-		// Re-read to determine the specific error.
-		return nil, s.amendPreconditionError(ctx, slug)
+		return nil, s.preconditionError(ctx, slug, "amend spec", func(current *storage.Spec) error {
+			if current.Stage != storage.SpecStageDone {
+				return fmt.Errorf("amend spec %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecNotDone)
+			}
+			return nil
+		})
 	}
 	return recordToSpec(records[0])
-}
-
-// amendPreconditionError re-reads the spec to produce the correct error after
-// an atomic amend failed its WHERE guard.
-func (s *Store) amendPreconditionError(ctx context.Context, slug string) error {
-	current, err := s.GetSpec(ctx, slug)
-	if err != nil {
-		return err
-	}
-	if terminalStages[current.Stage] {
-		return fmt.Errorf("amend spec %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecTerminal)
-	}
-	if current.Stage != storage.SpecStageDone {
-		return fmt.Errorf("amend spec %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecNotDone)
-	}
-	return fmt.Errorf("amend spec %q: %w", slug, storage.ErrConcurrentModification)
 }
 
 // LifecycleSupersedeSpec marks the old spec as superseded and links it to the new spec via
@@ -169,10 +182,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		Reason:  fmt.Sprintf("Superseded by %s", newSlug),
 		Date:    time.Now().UTC(),
 	}
-	history := make([]storage.HistoryEntry, len(oldCheck.History)+1)
-	copy(history, oldCheck.History)
-	history[len(oldCheck.History)] = entry
-	historyJSON, err := marshalHistory(history)
+	historyJSON, err := appendHistory(oldCheck.History, &entry)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -212,15 +222,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		return nil, nil, fmt.Errorf("memgraph: supersede spec: %w", err)
 	}
 	if len(records) == 0 {
-		// Re-read to determine the specific error.
-		current, rerr := s.GetSpec(ctx, oldSlug)
-		if rerr != nil {
-			return nil, nil, rerr
-		}
-		if terminalStages[current.Stage] {
-			return nil, nil, fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, current.Stage, storage.ErrSpecTerminal)
-		}
-		return nil, nil, fmt.Errorf("supersede spec %q: %w", oldSlug, storage.ErrConcurrentModification)
+		return nil, nil, s.preconditionError(ctx, oldSlug, "supersede spec", nil)
 	}
 
 	rec := records[0]
@@ -262,10 +264,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		Reason:  reason,
 		Date:    time.Now().UTC(),
 	}
-	history := make([]storage.HistoryEntry, len(spec.History)+1)
-	copy(history, spec.History)
-	history[len(spec.History)] = entry
-	historyJSON, err := marshalHistory(history)
+	historyJSON, err := appendHistory(spec.History, &entry)
 	if err != nil {
 		return nil, err
 	}
@@ -296,15 +295,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		return nil, fmt.Errorf("memgraph: abandon spec: %w", err)
 	}
 	if len(records) == 0 {
-		// Re-read to determine the specific error.
-		current, rerr := s.GetSpec(ctx, slug)
-		if rerr != nil {
-			return nil, rerr
-		}
-		if terminalStages[current.Stage] {
-			return nil, fmt.Errorf("abandon spec %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecTerminal)
-		}
-		return nil, fmt.Errorf("abandon spec %q: %w", slug, storage.ErrConcurrentModification)
+		return nil, s.preconditionError(ctx, slug, "abandon spec", nil)
 	}
 	return recordToSpec(records[0])
 }

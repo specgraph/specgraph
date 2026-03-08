@@ -30,8 +30,8 @@ func NewEngine(backend Backend) *Engine {
 	return &Engine{backend: backend}
 }
 
-// validScopes lists the recognized drift scope values.
-var validScopes = map[string]bool{
+// ValidScopes lists the recognized drift scope values.
+var ValidScopes = map[string]bool{
 	"":           true,
 	"deps":       true,
 	"interfaces": true,
@@ -41,7 +41,7 @@ var validScopes = map[string]bool{
 // Check runs drift detection for a single spec (by slug) or all eligible specs (empty slug).
 // The scope parameter filters which drift checks to run: "deps", "interfaces", "verify", or "" (all).
 func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.DriftReport, error) {
-	if !validScopes[scope] {
+	if !ValidScopes[scope] {
 		return nil, fmt.Errorf("drift: unknown scope %q (valid: deps, interfaces, verify)", scope)
 	}
 	var specs []*storage.Spec
