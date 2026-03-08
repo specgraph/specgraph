@@ -54,8 +54,7 @@ func ValidateSchema(spec *storage.Spec) []storage.LintViolation {
 	}
 
 	// Validate lifecycle enum
-	validLifecycles := map[string]bool{"task": true, "living": true, "": true}
-	if !validLifecycles[spec.Lifecycle] {
+	if spec.Lifecycle != "" && !spec.Lifecycle.IsValid() {
 		violations = append(violations, storage.LintViolation{
 			Rule: "schema.enum", Severity: storage.LintSeverityError,
 			Message:  fmt.Sprintf("invalid lifecycle %q", spec.Lifecycle),

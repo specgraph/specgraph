@@ -36,6 +36,26 @@ const (
 	DriftSeverityInfo   DriftSeverity = "info"
 )
 
+// IsValid reports whether t is a known drift type.
+func (t DriftType) IsValid() bool {
+	switch t {
+	case DriftTypeDependency, DriftTypeInterface, DriftTypeVerify:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsValid reports whether s is a known drift severity.
+func (s DriftSeverity) IsValid() bool {
+	switch s {
+	case DriftSeverityHigh, DriftSeverityMedium, DriftSeverityLow, DriftSeverityInfo:
+		return true
+	default:
+		return false
+	}
+}
+
 // DriftItem is a single drift finding.
 type DriftItem struct {
 	Type            DriftType
@@ -65,6 +85,16 @@ const (
 	LintSeverityInfo    LintSeverity = "info"
 )
 
+// IsValid reports whether s is a known lint severity.
+func (s LintSeverity) IsValid() bool {
+	switch s {
+	case LintSeverityError, LintSeverityWarning, LintSeverityInfo:
+		return true
+	default:
+		return false
+	}
+}
+
 // LintViolation is a single lint finding.
 type LintViolation struct {
 	Rule     string
@@ -82,18 +112,15 @@ type LintResult struct {
 
 // LifecycleBackend defines storage operations for spec lifecycle transitions.
 type LifecycleBackend interface {
-	// AmendSpec transitions a done spec back into authoring.
-	AmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*Spec, error)
+	// LifecycleAmendSpec transitions a done spec back into authoring.
+	LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*Spec, error)
 
-	// SupersedeSpec marks old spec superseded and links to new.
-	SupersedeSpec(ctx context.Context, oldSlug, newSlug string) (*Spec, *Spec, error)
+	// LifecycleSupersedeSpec marks old spec superseded and links to new.
+	LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug string) (*Spec, *Spec, error)
 
-	// AbandonSpec transitions a spec to abandoned (terminal).
-	AbandonSpec(ctx context.Context, slug, reason string) (*Spec, error)
+	// LifecycleAbandonSpec transitions a spec to abandoned (terminal).
+	LifecycleAbandonSpec(ctx context.Context, slug, reason string) (*Spec, error)
 
-	// CheckDrift runs drift detection for a single spec or all eligible specs.
-	CheckDrift(ctx context.Context, slug, scope string) ([]DriftReport, error)
-
-	// AcknowledgeDrift marks drift as intentional.
-	AcknowledgeDrift(ctx context.Context, slug, note string) (*DriftReport, error)
+	// LifecycleAcknowledgeDrift marks drift as intentional.
+	LifecycleAcknowledgeDrift(ctx context.Context, slug, note string) (*DriftReport, error)
 }

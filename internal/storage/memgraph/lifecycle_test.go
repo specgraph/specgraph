@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/seanb4t/specgraph/internal/drift"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +23,7 @@ func TestAmendSpec_HappyPath(t *testing.T) {
 	_, err = store.UpdateSpec(ctx, "amend-me", nil, &doneStage, nil, nil)
 	require.NoError(t, err)
 
-	amended, err := store.AmendSpec(ctx, "amend-me", "Mobile needs offline refresh", "shape")
+	amended, err := store.LifecycleAmendSpec(ctx, "amend-me", "Mobile needs offline refresh", "shape")
 	require.NoError(t, err)
 	require.Equal(t, storage.SpecStage("amended"), amended.Stage)
 	require.Equal(t, int32(3), amended.Version) // create=1, update=2, amend=3
@@ -36,14 +37,14 @@ func TestAmendSpec_NotDone(t *testing.T) {
 	_, err := store.CreateSpec(ctx, "not-done", "Test spec", "p1", "medium")
 	require.NoError(t, err)
 	// Spec is at "spark" — not done, so amend should fail.
-	_, err = store.AmendSpec(ctx, "not-done", "reason", "shape")
+	_, err = store.LifecycleAmendSpec(ctx, "not-done", "reason", "shape")
 	require.ErrorIs(t, err, storage.ErrSpecNotDone)
 }
 
 func TestAmendSpec_LifecycleNotFound(t *testing.T) {
 	store, ctx := newTestStore(t)
 
-	_, err := store.AmendSpec(ctx, "nonexistent", "reason", "shape")
+	_, err := store.LifecycleAmendSpec(ctx, "nonexistent", "reason", "shape")
 	require.ErrorIs(t, err, storage.ErrSpecNotFound)
 }
 
@@ -55,7 +56,7 @@ func TestSupersedeSpec_HappyPath(t *testing.T) {
 	_, err = store.CreateSpec(ctx, "new-lifecycle", "New spec", "p1", "medium")
 	require.NoError(t, err)
 
-	old, newSpec, err := store.SupersedeSpec(ctx, "old-lifecycle", "new-lifecycle")
+	old, newSpec, err := store.LifecycleSupersedeSpec(ctx, "old-lifecycle", "new-lifecycle")
 	require.NoError(t, err)
 	require.Equal(t, storage.SpecStageSuperseded, old.Stage)
 	require.Equal(t, "new-lifecycle", old.SupersededBy)
@@ -68,7 +69,7 @@ func TestSupersedeSpec_OldNotFound(t *testing.T) {
 	_, err := store.CreateSpec(ctx, "exists-new", "New spec", "p1", "medium")
 	require.NoError(t, err)
 
-	_, _, err = store.SupersedeSpec(ctx, "nonexistent-old", "exists-new")
+	_, _, err = store.LifecycleSupersedeSpec(ctx, "nonexistent-old", "exists-new")
 	require.ErrorIs(t, err, storage.ErrSpecNotFound)
 }
 
@@ -78,8 +79,25 @@ func TestSupersedeSpec_NewNotFound(t *testing.T) {
 	_, err := store.CreateSpec(ctx, "exists-old", "Old spec", "p1", "medium")
 	require.NoError(t, err)
 
-	_, _, err = store.SupersedeSpec(ctx, "exists-old", "nonexistent-new")
+	_, _, err = store.LifecycleSupersedeSpec(ctx, "exists-old", "nonexistent-new")
 	require.ErrorIs(t, err, storage.ErrNewSpecNotFound)
+}
+
+func TestSupersedeSpec_TerminalState(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "terminal-old", "Old spec", "p1", "medium")
+	require.NoError(t, err)
+	_, err = store.CreateSpec(ctx, "replacement", "New spec", "p1", "medium")
+	require.NoError(t, err)
+
+	// Abandon the old spec first to make it terminal.
+	_, err = store.LifecycleAbandonSpec(ctx, "terminal-old", "abandoned")
+	require.NoError(t, err)
+
+	// Supersede should fail because old spec is terminal.
+	_, _, err = store.LifecycleSupersedeSpec(ctx, "terminal-old", "replacement")
+	require.ErrorIs(t, err, storage.ErrSpecTerminal)
 }
 
 func TestAbandonSpec_HappyPath(t *testing.T) {
@@ -88,7 +106,7 @@ func TestAbandonSpec_HappyPath(t *testing.T) {
 	_, err := store.CreateSpec(ctx, "abandon-me", "Test spec", "p1", "medium")
 	require.NoError(t, err)
 
-	abandoned, err := store.AbandonSpec(ctx, "abandon-me", "no longer needed")
+	abandoned, err := store.LifecycleAbandonSpec(ctx, "abandon-me", "no longer needed")
 	require.NoError(t, err)
 	require.Equal(t, storage.SpecStageAbandoned, abandoned.Stage)
 	require.Equal(t, int32(2), abandoned.Version) // create=1, abandon=2
@@ -102,11 +120,11 @@ func TestAbandonSpec_Terminal(t *testing.T) {
 	_, err := store.CreateSpec(ctx, "abandon-twice", "Test spec", "p1", "medium")
 	require.NoError(t, err)
 
-	_, err = store.AbandonSpec(ctx, "abandon-twice", "first abandon")
+	_, err = store.LifecycleAbandonSpec(ctx, "abandon-twice", "first abandon")
 	require.NoError(t, err)
 
 	// Second abandon should fail — already terminal.
-	_, err = store.AbandonSpec(ctx, "abandon-twice", "second abandon")
+	_, err = store.LifecycleAbandonSpec(ctx, "abandon-twice", "second abandon")
 	require.ErrorIs(t, err, storage.ErrSpecTerminal)
 }
 
@@ -131,8 +149,9 @@ func TestCheckDrift_DependencyDrift(t *testing.T) {
 	_, err = store.UpdateSpec(ctx, "upstream-spec", &newIntent, nil, nil, nil)
 	require.NoError(t, err)
 
-	// Check drift on downstream — should detect dependency drift.
-	reports, err := store.CheckDrift(ctx, "downstream-spec", "")
+	// Use the drift engine to check drift.
+	engine := drift.NewEngine(store)
+	reports, err := engine.Check(ctx, "downstream-spec", "")
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
 	require.Equal(t, "downstream-spec", reports[0].SpecSlug)
@@ -147,7 +166,7 @@ func TestAcknowledgeDrift(t *testing.T) {
 	_, err := store.CreateSpec(ctx, "ack-drift", "Test spec", "p1", "medium")
 	require.NoError(t, err)
 
-	report, err := store.AcknowledgeDrift(ctx, "ack-drift", "drift is intentional")
+	report, err := store.LifecycleAcknowledgeDrift(ctx, "ack-drift", "drift is intentional")
 	require.NoError(t, err)
 	require.Equal(t, "ack-drift", report.SpecSlug)
 	require.True(t, report.Acknowledged)

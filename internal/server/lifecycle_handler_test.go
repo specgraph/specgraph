@@ -23,34 +23,61 @@ type fakeLifecycleBackend struct {
 	amendSpec        func(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error)
 	supersedeSpec    func(ctx context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error)
 	abandonSpec      func(ctx context.Context, slug, reason string) (*storage.Spec, error)
-	checkDrift       func(ctx context.Context, slug, scope string) ([]storage.DriftReport, error)
 	acknowledgeDrift func(ctx context.Context, slug, note string) (*storage.DriftReport, error)
 }
 
-func (f *fakeLifecycleBackend) AmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error) {
+func (f *fakeLifecycleBackend) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error) {
 	return f.amendSpec(ctx, slug, reason, reEntryStage)
 }
 
-func (f *fakeLifecycleBackend) SupersedeSpec(ctx context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error) {
+func (f *fakeLifecycleBackend) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error) {
 	return f.supersedeSpec(ctx, oldSlug, newSlug)
 }
 
-func (f *fakeLifecycleBackend) AbandonSpec(ctx context.Context, slug, reason string) (*storage.Spec, error) {
+func (f *fakeLifecycleBackend) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (*storage.Spec, error) {
 	return f.abandonSpec(ctx, slug, reason)
 }
 
-func (f *fakeLifecycleBackend) CheckDrift(ctx context.Context, slug, scope string) ([]storage.DriftReport, error) {
-	return f.checkDrift(ctx, slug, scope)
-}
-
-func (f *fakeLifecycleBackend) AcknowledgeDrift(ctx context.Context, slug, note string) (*storage.DriftReport, error) {
+func (f *fakeLifecycleBackend) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string) (*storage.DriftReport, error) {
 	return f.acknowledgeDrift(ctx, slug, note)
 }
 
-func newLifecycleClient(t *testing.T, store storage.LifecycleBackend) specgraphv1connect.LifecycleServiceClient {
+// fakeDriftChecker implements server.DriftChecker for testing.
+type fakeDriftChecker struct {
+	check func(ctx context.Context, slug, scope string) ([]storage.DriftReport, error)
+}
+
+func (f *fakeDriftChecker) Check(ctx context.Context, slug, scope string) ([]storage.DriftReport, error) {
+	return f.check(ctx, slug, scope)
+}
+
+// fakeLinter implements server.SpecLinter for testing.
+type fakeLinter struct {
+	lint func(ctx context.Context, slug string) ([]storage.LintResult, error)
+}
+
+func (f *fakeLinter) Lint(ctx context.Context, slug string) ([]storage.LintResult, error) {
+	return f.lint(ctx, slug)
+}
+
+type lifecycleTestDeps struct {
+	store   *fakeLifecycleBackend
+	drift   *fakeDriftChecker
+	linter  *fakeLinter
+}
+
+func defaultTestDeps() *lifecycleTestDeps {
+	return &lifecycleTestDeps{
+		store:  &fakeLifecycleBackend{},
+		drift:  &fakeDriftChecker{},
+		linter: &fakeLinter{},
+	}
+}
+
+func newLifecycleClient(t *testing.T, deps *lifecycleTestDeps) specgraphv1connect.LifecycleServiceClient {
 	t.Helper()
 	mux := http.NewServeMux()
-	server.RegisterLifecycleService(mux, store)
+	server.RegisterLifecycleService(mux, deps.store, deps.drift, deps.linter)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)
@@ -58,18 +85,18 @@ func newLifecycleClient(t *testing.T, store storage.LifecycleBackend) specgraphv
 
 func TestLifecycleHandler_Amend(t *testing.T) {
 	now := time.Date(2026, 3, 7, 0, 0, 0, 0, time.UTC)
-	client := newLifecycleClient(t, &fakeLifecycleBackend{
-		amendSpec: func(_ context.Context, slug, _, _ string) (*storage.Spec, error) {
-			return &storage.Spec{
-				Slug:    slug,
-				Stage:   storage.SpecStageAmended,
-				Version: 2,
-				History: []storage.HistoryEntry{
-					{Version: 2, Stage: "amended", Summary: "amended", Reason: "needs rework", Date: now},
-				},
-			}, nil
-		},
-	})
+	deps := defaultTestDeps()
+	deps.store.amendSpec = func(_ context.Context, slug, _, _ string) (*storage.Spec, error) {
+		return &storage.Spec{
+			Slug:    slug,
+			Stage:   storage.SpecStageAmended,
+			Version: 2,
+			History: []storage.HistoryEntry{
+				{Version: 2, Stage: storage.SpecStageAmended, Summary: "amended", Reason: "needs rework", Date: now},
+			},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
 
 	resp, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
 		Slug:         "my-spec",
@@ -85,11 +112,11 @@ func TestLifecycleHandler_Amend(t *testing.T) {
 }
 
 func TestLifecycleHandler_Amend_NotFound(t *testing.T) {
-	client := newLifecycleClient(t, &fakeLifecycleBackend{
-		amendSpec: func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
-			return nil, storage.ErrSpecNotFound
-		},
-	})
+	deps := defaultTestDeps()
+	deps.store.amendSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
+		return nil, storage.ErrSpecNotFound
+	}
+	client := newLifecycleClient(t, deps)
 
 	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
 		Slug:         "no-such-spec",
@@ -103,11 +130,11 @@ func TestLifecycleHandler_Amend_NotFound(t *testing.T) {
 }
 
 func TestLifecycleHandler_Amend_NotDone(t *testing.T) {
-	client := newLifecycleClient(t, &fakeLifecycleBackend{
-		amendSpec: func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
-			return nil, storage.ErrSpecNotDone
-		},
-	})
+	deps := defaultTestDeps()
+	deps.store.amendSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
+		return nil, storage.ErrSpecNotDone
+	}
+	client := newLifecycleClient(t, deps)
 
 	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
 		Slug:         "in-progress-spec",
@@ -120,22 +147,37 @@ func TestLifecycleHandler_Amend_NotDone(t *testing.T) {
 	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
 }
 
+func TestLifecycleHandler_Amend_InvalidReEntryStage(t *testing.T) {
+	deps := defaultTestDeps()
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+		Slug:         "my-spec",
+		Reason:       "rework",
+		ReEntryStage: "invalid-stage",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
 func TestLifecycleHandler_Supersede(t *testing.T) {
-	client := newLifecycleClient(t, &fakeLifecycleBackend{
-		supersedeSpec: func(_ context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error) {
-			return &storage.Spec{
-					Slug:         oldSlug,
-					Stage:        storage.SpecStageSuperseded,
-					SupersededBy: newSlug,
-					Version:      3,
-				}, &storage.Spec{
-					Slug:       newSlug,
-					Stage:      storage.SpecStageSpark,
-					Supersedes: oldSlug,
-					Version:    1,
-				}, nil
-		},
-	})
+	deps := defaultTestDeps()
+	deps.store.supersedeSpec = func(_ context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error) {
+		return &storage.Spec{
+				Slug:         oldSlug,
+				Stage:        storage.SpecStageSuperseded,
+				SupersededBy: newSlug,
+				Version:      3,
+			}, &storage.Spec{
+				Slug:       newSlug,
+				Stage:      storage.SpecStageSpark,
+				Supersedes: oldSlug,
+				Version:    1,
+			}, nil
+	}
+	client := newLifecycleClient(t, deps)
 
 	resp, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.LifecycleSupersedeRequest{
 		Slug:    "old-spec",
@@ -150,15 +192,15 @@ func TestLifecycleHandler_Supersede(t *testing.T) {
 }
 
 func TestLifecycleHandler_Abandon(t *testing.T) {
-	client := newLifecycleClient(t, &fakeLifecycleBackend{
-		abandonSpec: func(_ context.Context, slug, _ string) (*storage.Spec, error) {
-			return &storage.Spec{
-				Slug:    slug,
-				Stage:   storage.SpecStageAbandoned,
-				Version: 2,
-			}, nil
-		},
-	})
+	deps := defaultTestDeps()
+	deps.store.abandonSpec = func(_ context.Context, slug, _ string) (*storage.Spec, error) {
+		return &storage.Spec{
+			Slug:    slug,
+			Stage:   storage.SpecStageAbandoned,
+			Version: 2,
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
 
 	resp, err := client.Abandon(context.Background(), connect.NewRequest(&specv1.LifecycleAbandonRequest{
 		Slug:   "dead-spec",
@@ -170,26 +212,26 @@ func TestLifecycleHandler_Abandon(t *testing.T) {
 }
 
 func TestLifecycleHandler_CheckDrift(t *testing.T) {
-	client := newLifecycleClient(t, &fakeLifecycleBackend{
-		checkDrift: func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
-			return []storage.DriftReport{
-				{
-					SpecSlug: "my-spec",
-					Items: []storage.DriftItem{
-						{
-							Type:            storage.DriftTypeDependency,
-							Severity:        storage.DriftSeverityHigh,
-							Description:     "upstream changed",
-							SpecSlug:        "my-spec",
-							UpstreamSlug:    "upstream-spec",
-							ExpectedVersion: 2,
-							ActualVersion:   3,
-						},
+	deps := defaultTestDeps()
+	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+		return []storage.DriftReport{
+			{
+				SpecSlug: "my-spec",
+				Items: []storage.DriftItem{
+					{
+						Type:            storage.DriftTypeDependency,
+						Severity:        storage.DriftSeverityHigh,
+						Description:     "upstream changed",
+						SpecSlug:        "my-spec",
+						UpstreamSlug:    "upstream-spec",
+						ExpectedVersion: 2,
+						ActualVersion:   3,
 					},
 				},
-			}, nil
-		},
-	})
+			},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
 
 	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
 		Slug: "my-spec",
@@ -203,15 +245,15 @@ func TestLifecycleHandler_CheckDrift(t *testing.T) {
 }
 
 func TestLifecycleHandler_CheckDrift_AllSpecs(t *testing.T) {
-	client := newLifecycleClient(t, &fakeLifecycleBackend{
-		checkDrift: func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
-			require.Empty(t, slug, "empty slug means check all specs")
-			return []storage.DriftReport{
-				{SpecSlug: "spec-a"},
-				{SpecSlug: "spec-b"},
-			}, nil
-		},
-	})
+	deps := defaultTestDeps()
+	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
+		require.Empty(t, slug, "empty slug means check all specs")
+		return []storage.DriftReport{
+			{SpecSlug: "spec-a"},
+			{SpecSlug: "spec-b"},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
 
 	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
 		Slug: "",
@@ -221,15 +263,15 @@ func TestLifecycleHandler_CheckDrift_AllSpecs(t *testing.T) {
 }
 
 func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
-	client := newLifecycleClient(t, &fakeLifecycleBackend{
-		acknowledgeDrift: func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
-			return &storage.DriftReport{
-				SpecSlug:        slug,
-				Acknowledged:    true,
-				AcknowledgeNote: note,
-			}, nil
-		},
-	})
+	deps := defaultTestDeps()
+	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
+		return &storage.DriftReport{
+			SpecSlug:        slug,
+			Acknowledged:    true,
+			AcknowledgeNote: note,
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
 
 	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
 		Slug: "my-spec",
@@ -242,7 +284,7 @@ func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 }
 
 func TestLifecycleHandler_Amend_EmptySlug(t *testing.T) {
-	client := newLifecycleClient(t, &fakeLifecycleBackend{})
+	client := newLifecycleClient(t, defaultTestDeps())
 	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
 		Slug:   "",
 		Reason: "rework",
@@ -254,7 +296,7 @@ func TestLifecycleHandler_Amend_EmptySlug(t *testing.T) {
 }
 
 func TestLifecycleHandler_Supersede_SameSlug(t *testing.T) {
-	client := newLifecycleClient(t, &fakeLifecycleBackend{})
+	client := newLifecycleClient(t, defaultTestDeps())
 	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.LifecycleSupersedeRequest{
 		Slug:    "same-spec",
 		NewSlug: "same-spec",
@@ -266,11 +308,11 @@ func TestLifecycleHandler_Supersede_SameSlug(t *testing.T) {
 }
 
 func TestLifecycleHandler_Supersede_NewSpecNotFound(t *testing.T) {
-	client := newLifecycleClient(t, &fakeLifecycleBackend{
-		supersedeSpec: func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
-			return nil, nil, storage.ErrNewSpecNotFound
-		},
-	})
+	deps := defaultTestDeps()
+	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+		return nil, nil, storage.ErrNewSpecNotFound
+	}
+	client := newLifecycleClient(t, deps)
 	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.LifecycleSupersedeRequest{
 		Slug:    "old-spec",
 		NewSlug: "missing-spec",
@@ -281,13 +323,53 @@ func TestLifecycleHandler_Supersede_NewSpecNotFound(t *testing.T) {
 	require.Equal(t, connect.CodeNotFound, connErr.Code())
 }
 
-func TestLifecycleHandler_Lint_Unimplemented(t *testing.T) {
-	client := newLifecycleClient(t, &fakeLifecycleBackend{})
-	_, err := client.Lint(context.Background(), connect.NewRequest(&specv1.LintRequest{
+func TestLifecycleHandler_Lint(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.linter.lint = func(_ context.Context, slug string) ([]storage.LintResult, error) {
+		return []storage.LintResult{
+			{
+				SpecSlug: slug,
+				Passed:   true,
+			},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.Lint(context.Background(), connect.NewRequest(&specv1.LintRequest{
 		Slug: "my-spec",
 	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeUnimplemented, connErr.Code())
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Results, 1)
+	require.Equal(t, "my-spec", resp.Msg.Results[0].SpecSlug)
+	require.True(t, resp.Msg.Results[0].Passed)
+}
+
+func TestLifecycleHandler_Lint_WithViolations(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.linter.lint = func(_ context.Context, _ string) ([]storage.LintResult, error) {
+		return []storage.LintResult{
+			{
+				SpecSlug: "bad-spec",
+				Passed:   false,
+				Violations: []storage.LintViolation{
+					{
+						Rule:     "schema.enum",
+						Severity: storage.LintSeverityError,
+						Message:  "invalid stage",
+						Location: "stage",
+					},
+				},
+			},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.Lint(context.Background(), connect.NewRequest(&specv1.LintRequest{
+		Slug: "bad-spec",
+	}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Results, 1)
+	require.False(t, resp.Msg.Results[0].Passed)
+	require.Len(t, resp.Msg.Results[0].Violations, 1)
+	require.Equal(t, "schema.enum", resp.Msg.Results[0].Violations[0].Rule)
 }

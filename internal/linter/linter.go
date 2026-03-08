@@ -124,10 +124,18 @@ func detectCycles(ctx context.Context, backend Backend, slug string) []storage.L
 		inStack[current] = true
 
 		deps, err := backend.GetDependencies(ctx, current)
-		if err == nil {
-			for _, dep := range deps {
-				dfs(dep.Slug)
-			}
+		if err != nil {
+			violations = append(violations, storage.LintViolation{
+				Rule:     "graph.cycle",
+				Severity: storage.LintSeverityError,
+				Message:  fmt.Sprintf("failed to get dependencies for %q: %v", current, err),
+				Location: current,
+			})
+			inStack[current] = false
+			return
+		}
+		for _, dep := range deps {
+			dfs(dep.Slug)
 		}
 
 		inStack[current] = false

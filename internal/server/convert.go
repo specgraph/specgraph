@@ -33,7 +33,7 @@ func specToProto(s *storage.Spec) *specv1.Spec {
 		Version:      s.Version,
 		CreatedAt:    timeToProto(s.CreatedAt),
 		UpdatedAt:    timeToProto(s.UpdatedAt),
-		Lifecycle:    s.Lifecycle,
+		Lifecycle:    lifecycleToProtoMap[s.Lifecycle],
 		SupersededBy: s.SupersededBy,
 		Supersedes:   s.Supersedes,
 		History:      historyToProto(s.History),
@@ -459,7 +459,7 @@ func historyToProto(entries []storage.HistoryEntry) []*specv1.HistoryEntry {
 	for i, e := range entries {
 		result[i] = &specv1.HistoryEntry{
 			Version: e.Version,
-			Stage:   e.Stage,
+			Stage:   string(e.Stage),
 			Summary: e.Summary,
 			Reason:  e.Reason,
 			Date:    timeToProto(e.Date),
@@ -480,7 +480,7 @@ func historyFromProto(entries []*specv1.HistoryEntry) []storage.HistoryEntry { /
 		}
 		result[i] = storage.HistoryEntry{
 			Version: e.Version,
-			Stage:   e.Stage,
+			Stage:   storage.SpecStage(e.Stage),
 			Summary: e.Summary,
 			Reason:  e.Reason,
 			Date:    date,
@@ -533,15 +533,22 @@ func driftReportsToProto(reports []storage.DriftReport) []*specv1.DriftReport {
 	return result
 }
 
+// --- Lifecycle ---
+
+var lifecycleToProtoMap = map[storage.SpecLifecycle]specv1.SpecLifecycle{
+	storage.SpecLifecycleTask:   specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK,
+	storage.SpecLifecycleLiving: specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING,
+}
+
 // --- Lint ---
 
-var lintSeverityToProtoMap = map[storage.LintSeverity]specv1.LintSeverity{ //nolint:unused // will be used when Lint RPC is implemented
+var lintSeverityToProtoMap = map[storage.LintSeverity]specv1.LintSeverity{
 	storage.LintSeverityError:   specv1.LintSeverity_LINT_SEVERITY_ERROR,
 	storage.LintSeverityWarning: specv1.LintSeverity_LINT_SEVERITY_WARNING,
 	storage.LintSeverityInfo:    specv1.LintSeverity_LINT_SEVERITY_INFO,
 }
 
-func lintViolationToProto(v *storage.LintViolation) *specv1.LintViolation { //nolint:unused // will be used when Lint RPC is implemented
+func lintViolationToProto(v *storage.LintViolation) *specv1.LintViolation {
 	return &specv1.LintViolation{
 		Rule:     v.Rule,
 		Severity: lintSeverityToProtoMap[v.Severity],
@@ -550,7 +557,7 @@ func lintViolationToProto(v *storage.LintViolation) *specv1.LintViolation { //no
 	}
 }
 
-func lintResultToProto(r *storage.LintResult) *specv1.LintResult { //nolint:unused // will be used when Lint RPC is implemented
+func lintResultToProto(r *storage.LintResult) *specv1.LintResult {
 	violations := make([]*specv1.LintViolation, len(r.Violations))
 	for i := range r.Violations {
 		violations[i] = lintViolationToProto(&r.Violations[i])
@@ -562,7 +569,7 @@ func lintResultToProto(r *storage.LintResult) *specv1.LintResult { //nolint:unus
 	}
 }
 
-func lintResultsToProto(results []storage.LintResult) []*specv1.LintResult { //nolint:unused // will be used when Lint RPC is implemented
+func lintResultsToProto(results []storage.LintResult) []*specv1.LintResult {
 	result := make([]*specv1.LintResult, len(results))
 	for i := range results {
 		result[i] = lintResultToProto(&results[i])

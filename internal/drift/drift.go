@@ -6,6 +6,7 @@ package drift
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/seanb4t/specgraph/internal/storage"
@@ -75,7 +76,10 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 		for _, dep := range deps {
 			upstream, err := e.backend.GetSpec(ctx, dep.Slug)
 			if err != nil {
-				continue // skip missing deps
+				if errors.Is(err, storage.ErrSpecNotFound) {
+					continue // skip missing deps
+				}
+				return report, fmt.Errorf("drift: get upstream spec %q: %w", dep.Slug, err)
 			}
 			if upstream.UpdatedAt.After(spec.UpdatedAt) {
 				report.Items = append(report.Items, storage.DriftItem{

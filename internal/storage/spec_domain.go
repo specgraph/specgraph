@@ -57,6 +57,25 @@ func (p SpecPriority) IsValid() bool {
 	}
 }
 
+// SpecLifecycle represents the lifecycle model of a spec.
+type SpecLifecycle string
+
+// Spec lifecycle model values.
+const (
+	SpecLifecycleTask   SpecLifecycle = "task"
+	SpecLifecycleLiving SpecLifecycle = "living"
+)
+
+// IsValid reports whether l is a known spec lifecycle.
+func (l SpecLifecycle) IsValid() bool {
+	switch l {
+	case SpecLifecycleTask, SpecLifecycleLiving:
+		return true
+	default:
+		return false
+	}
+}
+
 // Spec is the storage-layer domain type for specifications.
 // Handlers convert between this type and the proto Spec message.
 type Spec struct {
@@ -69,7 +88,7 @@ type Spec struct {
 	Version      int32
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
-	Lifecycle    string         // "task" (default) or "living"
+	Lifecycle    SpecLifecycle  // "task" (default) or "living"
 	SupersededBy string         // slug of replacement spec
 	Supersedes   string         // slug of spec this replaced
 	History      []HistoryEntry // lifecycle event log
@@ -78,7 +97,7 @@ type Spec struct {
 // HistoryEntry records a lifecycle event on a spec.
 type HistoryEntry struct {
 	Version int32
-	Stage   string
+	Stage   SpecStage
 	Summary string
 	Reason  string
 	Date    time.Time

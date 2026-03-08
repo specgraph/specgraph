@@ -24,7 +24,7 @@ func marshalHistory(entries []storage.HistoryEntry) (string, error) {
 	for i, e := range entries {
 		jsonEntries[i] = historyEntryJSON{
 			Version: e.Version,
-			Stage:   e.Stage,
+			Stage:   string(e.Stage),
 			Summary: e.Summary,
 			Reason:  e.Reason,
 			Date:    e.Date.UTC().Format("2006-01-02T15:04:05Z07:00"),
@@ -37,13 +37,16 @@ func marshalHistory(entries []storage.HistoryEntry) (string, error) {
 	return string(data), nil
 }
 
-// AmendSpec transitions a done spec back into authoring, appending a history entry
+// LifecycleAmendSpec transitions a done spec back into authoring, appending a history entry
 // and setting the stage to "amended". Returns ErrSpecNotDone if the spec is not
 // at the "done" stage, and ErrSpecNotFound if the spec does not exist.
-func (s *Store) AmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error) {
+func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error) {
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {
 		return nil, err
+	}
+	if terminalStages[spec.Stage] {
+		return nil, fmt.Errorf("amend spec %q (stage=%s): %w", slug, spec.Stage, storage.ErrSpecTerminal)
 	}
 	if spec.Stage != storage.SpecStageDone {
 		return nil, fmt.Errorf("amend spec %q (stage=%s): %w", slug, spec.Stage, storage.ErrSpecNotDone)
@@ -52,7 +55,7 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason, reEntryStage string
 	newVersion := spec.Version + 1
 	entry := storage.HistoryEntry{
 		Version: newVersion,
-		Stage:   string(storage.SpecStageAmended),
+		Stage:   storage.SpecStageAmended,
 		Summary: fmt.Sprintf("Amended from done, re-entry stage: %s", reEntryStage),
 		Reason:  reason,
 		Date:    parseNowUTC(),
@@ -92,15 +95,19 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason, reEntryStage string
 	return recordToSpec(records[0])
 }
 
-// SupersedeSpec marks the old spec as superseded and links it to the new spec via
+// LifecycleSupersedeSpec marks the old spec as superseded and links it to the new spec via
 // a SUPERSEDES edge. Both specs are returned with updated fields. Returns
 // ErrSpecNotFound if the old spec doesn't exist, and ErrNewSpecNotFound if the
 // new spec doesn't exist.
-func (s *Store) SupersedeSpec(ctx context.Context, oldSlug, newSlug string) (oldSpec, newSpec *storage.Spec, retErr error) {
-	if _, err := s.GetSpec(ctx, oldSlug); err != nil {
+func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug string) (oldSpec, newSpec *storage.Spec, retErr error) {
+	oldCheck, err := s.GetSpec(ctx, oldSlug)
+	if err != nil {
 		return nil, nil, err
 	}
-	if _, err := s.GetSpec(ctx, newSlug); err != nil {
+	if terminalStages[oldCheck.Stage] {
+		return nil, nil, fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecTerminal)
+	}
+	if _, newErr := s.GetSpec(ctx, newSlug); newErr != nil {
 		return nil, nil, fmt.Errorf("supersede spec: new spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
 	}
 
@@ -150,10 +157,10 @@ func (s *Store) SupersedeSpec(ctx context.Context, oldSlug, newSlug string) (old
 	return oldSpec, newSpec, nil
 }
 
-// AbandonSpec transitions a spec to the abandoned terminal state. Returns
+// LifecycleAbandonSpec transitions a spec to the abandoned terminal state. Returns
 // ErrSpecTerminal if the spec is already in a terminal state, and
 // ErrSpecNotFound if the spec does not exist.
-func (s *Store) AbandonSpec(ctx context.Context, slug, reason string) (*storage.Spec, error) {
+func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (*storage.Spec, error) {
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {
 		return nil, err
@@ -165,7 +172,7 @@ func (s *Store) AbandonSpec(ctx context.Context, slug, reason string) (*storage.
 	newVersion := spec.Version + 1
 	entry := storage.HistoryEntry{
 		Version: newVersion,
-		Stage:   string(storage.SpecStageAbandoned),
+		Stage:   storage.SpecStageAbandoned,
 		Summary: "Spec abandoned",
 		Reason:  reason,
 		Date:    parseNowUTC(),
@@ -205,63 +212,10 @@ func (s *Store) AbandonSpec(ctx context.Context, slug, reason string) (*storage.
 	return recordToSpec(records[0])
 }
 
-// CheckDrift detects dependency drift for a spec by comparing upstream updated_at
-// timestamps. If slug is empty and scope is "all", checks all specs (not yet
-// implemented — currently requires a slug).
-func (s *Store) CheckDrift(ctx context.Context, slug, _ string) ([]storage.DriftReport, error) {
-	if slug == "" {
-		return nil, nil
-	}
-
-	query := `
-		MATCH (s:Spec {slug: $slug})-[:DEPENDS_ON]->(upstream:Spec)
-		WHERE upstream.updated_at > s.updated_at
-		RETURN upstream.slug, upstream.version, s.version
-	`
-	records, err := s.executeQuery(ctx, query, map[string]any{"slug": slug})
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: check drift: %w", err)
-	}
-
-	if len(records) == 0 {
-		return nil, nil
-	}
-
-	var items []storage.DriftItem
-	for _, rec := range records {
-		upstreamSlug, err := recordString(rec, 0, "upstream.slug")
-		if err != nil {
-			return nil, err
-		}
-		upstreamVersion, err := recordInt64(rec, 1, "upstream.version")
-		if err != nil {
-			return nil, err
-		}
-		specVersion, err := recordInt64(rec, 2, "s.version")
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, storage.DriftItem{
-			Type:            storage.DriftTypeDependency,
-			Severity:        storage.DriftSeverityMedium,
-			Description:     fmt.Sprintf("upstream %q updated (v%d) since spec was last updated (v%d)", upstreamSlug, upstreamVersion, specVersion),
-			SpecSlug:        slug,
-			UpstreamSlug:    upstreamSlug,
-			ExpectedVersion: safeInt32(specVersion),
-			ActualVersion:   safeInt32(upstreamVersion),
-		})
-	}
-
-	return []storage.DriftReport{{
-		SpecSlug: slug,
-		Items:    items,
-	}}, nil
-}
-
-// AcknowledgeDrift sets drift as acknowledged on the spec node and returns a
+// LifecycleAcknowledgeDrift sets drift as acknowledged on the spec node and returns a
 // DriftReport reflecting the acknowledgment. Returns ErrSpecNotFound if the
 // spec does not exist.
-func (s *Store) AcknowledgeDrift(ctx context.Context, slug, note string) (*storage.DriftReport, error) {
+func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string) (*storage.DriftReport, error) {
 	query := `
 		MATCH (s:Spec {slug: $slug})
 		SET s.drift_acknowledged = true, s.drift_acknowledge_note = $note

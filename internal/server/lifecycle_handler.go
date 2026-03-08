@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -15,10 +16,22 @@ import (
 	"github.com/seanb4t/specgraph/internal/storage"
 )
 
+// DriftChecker runs drift detection for specs.
+type DriftChecker interface {
+	Check(ctx context.Context, slug, scope string) ([]storage.DriftReport, error)
+}
+
+// SpecLinter runs lint validation for specs.
+type SpecLinter interface {
+	Lint(ctx context.Context, slug string) ([]storage.LintResult, error)
+}
+
 // LifecycleHandler implements the ConnectRPC LifecycleService.
 type LifecycleHandler struct {
-	store  storage.LifecycleBackend
-	logger *slog.Logger
+	store        storage.LifecycleBackend
+	driftChecker DriftChecker
+	linter       SpecLinter
+	logger       *slog.Logger
 }
 
 var _ specgraphv1connect.LifecycleServiceHandler = (*LifecycleHandler)(nil)
@@ -32,8 +45,16 @@ func (h *LifecycleHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if msg.Reason == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reason is required"))
 	}
+	if len(msg.Reason) > maxFieldLen {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("reason exceeds maximum length of %d characters", maxFieldLen))
+	}
+	if msg.ReEntryStage != "" {
+		if !storage.SpecStage(msg.ReEntryStage).IsValid() {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid re_entry_stage %q", msg.ReEntryStage))
+		}
+	}
 
-	spec, err := h.store.AmendSpec(ctx, msg.Slug, msg.Reason, msg.ReEntryStage)
+	spec, err := h.store.LifecycleAmendSpec(ctx, msg.Slug, msg.Reason, msg.ReEntryStage)
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
@@ -56,7 +77,7 @@ func (h *LifecycleHandler) Supersede(ctx context.Context, req *connect.Request[s
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a spec cannot supersede itself"))
 	}
 
-	oldSpec, newSpec, err := h.store.SupersedeSpec(ctx, msg.Slug, msg.NewSlug)
+	oldSpec, newSpec, err := h.store.LifecycleSupersedeSpec(ctx, msg.Slug, msg.NewSlug)
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
@@ -75,8 +96,11 @@ func (h *LifecycleHandler) Abandon(ctx context.Context, req *connect.Request[spe
 	if msg.Reason == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("reason is required"))
 	}
+	if len(msg.Reason) > maxFieldLen {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("reason exceeds maximum length of %d characters", maxFieldLen))
+	}
 
-	spec, err := h.store.AbandonSpec(ctx, msg.Slug, msg.Reason)
+	spec, err := h.store.LifecycleAbandonSpec(ctx, msg.Slug, msg.Reason)
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
@@ -93,7 +117,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		}
 	}
 
-	reports, err := h.store.CheckDrift(ctx, msg.Slug, msg.Scope)
+	reports, err := h.driftChecker.Check(ctx, msg.Slug, msg.Scope)
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
@@ -109,17 +133,33 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	report, err := h.store.AcknowledgeDrift(ctx, msg.Slug, msg.Note)
+	if len(msg.Note) > maxFieldLen {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("note exceeds maximum length of %d characters", maxFieldLen))
+	}
+
+	report, err := h.store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.Note)
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
 	return connect.NewResponse(driftReportToProto(report)), nil
 }
 
-// Lint handles the Lint RPC. Currently returns Unimplemented as the linter
-// engine is not yet wired at the handler level.
-func (h *LifecycleHandler) Lint(_ context.Context, _ *connect.Request[specv1.LintRequest]) (*connect.Response[specv1.LintResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("lint is not yet implemented"))
+// Lint handles the Lint RPC, validating spec schema and graph integrity.
+func (h *LifecycleHandler) Lint(ctx context.Context, req *connect.Request[specv1.LintRequest]) (*connect.Response[specv1.LintResponse], error) {
+	msg := req.Msg
+	if msg.Slug != "" {
+		if err := validateSlug(msg.Slug); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
+
+	results, err := h.linter.Lint(ctx, msg.Slug)
+	if err != nil {
+		return nil, h.lifecycleError(err)
+	}
+	return connect.NewResponse(&specv1.LintResponse{
+		Results: lintResultsToProto(results),
+	}), nil
 }
 
 // lifecycleError maps storage errors to connect error codes.
@@ -145,11 +185,16 @@ func (h *LifecycleHandler) lifecycleError(err error) error {
 }
 
 // RegisterLifecycleService registers the LifecycleService on the given mux.
-func RegisterLifecycleService(mux *http.ServeMux, store storage.LifecycleBackend) {
+func RegisterLifecycleService(mux *http.ServeMux, store storage.LifecycleBackend, dc DriftChecker, l SpecLinter) {
 	if store == nil {
 		panic("RegisterLifecycleService: store must not be nil")
 	}
-	handler := &LifecycleHandler{store: store, logger: slog.Default()}
+	handler := &LifecycleHandler{
+		store:        store,
+		driftChecker: dc,
+		linter:       l,
+		logger:       slog.Default(),
+	}
 	path, h := specgraphv1connect.NewLifecycleServiceHandler(handler)
 	mux.Handle(path, h)
 }

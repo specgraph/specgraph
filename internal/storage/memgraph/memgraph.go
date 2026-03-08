@@ -38,7 +38,7 @@ func New(ctx context.Context, boltURI string) (*Store, error) {
 }
 
 const defaultInitialStage = "spark"
-const defaultLifecycle = "task"
+const defaultLifecycle = storage.SpecLifecycleTask
 
 // CreateSpec stores a new spec node in Memgraph and returns it.
 func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
@@ -73,7 +73,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		"version":      int64(1),
 		"created_at":   nowStr,
 		"updated_at":   nowStr,
-		"lifecycle":    defaultLifecycle,
+		"lifecycle":    string(defaultLifecycle),
 		"history_json": "[]",
 	}
 
@@ -313,7 +313,7 @@ func unmarshalHistory(raw string) ([]storage.HistoryEntry, error) {
 		}
 		result[i] = storage.HistoryEntry{
 			Version: e.Version,
-			Stage:   e.Stage,
+			Stage:   storage.SpecStage(e.Stage),
 			Summary: e.Summary,
 			Reason:  e.Reason,
 			Date:    t,
@@ -373,7 +373,8 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 		return nil, err
 	}
 
-	lifecycle := recordStringOptional(rec, offset+9)
+	lifecycleStr := recordStringOptional(rec, offset+9)
+	lifecycle := storage.SpecLifecycle(lifecycleStr)
 	if lifecycle == "" {
 		lifecycle = defaultLifecycle
 	}
