@@ -20,7 +20,8 @@ func TestSpecToProto(t *testing.T) {
 		Stage: "spark", Priority: "p1", Complexity: "medium",
 		Version: 1, CreatedAt: now, UpdatedAt: now,
 	}
-	pb := specToProto(spec)
+	pb, err := specToProto(spec)
+	require.NoError(t, err)
 	assert.Equal(t, "spec-abc", pb.Id)
 	assert.Equal(t, "login", pb.Slug)
 	assert.Equal(t, "Login API", pb.Intent)
@@ -37,7 +38,8 @@ func TestSpecsToProto(t *testing.T) {
 		{ID: "a", Slug: "a"},
 		{ID: "b", Slug: "b"},
 	}
-	pbs := specsToProto(specs)
+	pbs, err := specsToProto(specs)
+	require.NoError(t, err)
 	assert.Len(t, pbs, 2)
 	assert.Equal(t, "a", pbs[0].Id)
 }
@@ -52,7 +54,8 @@ func TestSpecToProto_ZeroTimes(t *testing.T) {
 		ID: "spec-zero", Slug: "zero-time", Intent: "test",
 		Stage: "spark", Priority: "p2", Complexity: "low",
 	}
-	pb := specToProto(spec)
+	pb, err := specToProto(spec)
+	require.NoError(t, err)
 	assert.Nil(t, pb.CreatedAt, "zero CreatedAt should produce nil timestamp")
 	assert.Nil(t, pb.UpdatedAt, "zero UpdatedAt should produce nil timestamp")
 }
@@ -215,18 +218,27 @@ func TestHistoryToProto(t *testing.T) {
 
 func TestLifecycleToProto(t *testing.T) {
 	t.Run("task lifecycle", func(t *testing.T) {
-		got := lifecycleToProto(storage.SpecLifecycleTask)
+		got, err := lifecycleToProto(storage.SpecLifecycleTask)
+		require.NoError(t, err)
 		assert.Equal(t, specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK, got)
 	})
 
 	t.Run("living lifecycle", func(t *testing.T) {
-		got := lifecycleToProto(storage.SpecLifecycleLiving)
+		got, err := lifecycleToProto(storage.SpecLifecycleLiving)
+		require.NoError(t, err)
 		assert.Equal(t, specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING, got)
 	})
 
-	t.Run("empty string defaults to task", func(t *testing.T) {
-		got := lifecycleToProto("")
-		assert.Equal(t, specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK, got)
+	t.Run("empty string maps to unspecified", func(t *testing.T) {
+		got, err := lifecycleToProto("")
+		require.NoError(t, err)
+		assert.Equal(t, specv1.SpecLifecycle_SPEC_LIFECYCLE_UNSPECIFIED, got)
+	})
+
+	t.Run("unknown lifecycle returns error", func(t *testing.T) {
+		_, err := lifecycleToProto("bogus")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unknown lifecycle")
 	})
 }
 
@@ -248,7 +260,8 @@ func TestDriftReportToProto(t *testing.T) {
 				},
 			},
 		}
-		pb := driftReportToProto(report)
+		pb, err := driftReportToProto(report)
+		require.NoError(t, err)
 		assert.Equal(t, "login-api", pb.SpecSlug)
 		assert.True(t, pb.Acknowledged)
 		assert.Equal(t, "accepted risk", pb.AcknowledgeNote)
@@ -257,7 +270,8 @@ func TestDriftReportToProto(t *testing.T) {
 
 	t.Run("empty items", func(t *testing.T) {
 		report := &storage.DriftReport{SpecSlug: "s"}
-		pb := driftReportToProto(report)
+		pb, err := driftReportToProto(report)
+		require.NoError(t, err)
 		assert.Empty(t, pb.Items)
 	})
 }
@@ -288,16 +302,18 @@ func TestDriftItemToProto(t *testing.T) {
 			wantSev:  specv1.DriftSeverity_DRIFT_SEVERITY_LOW,
 		},
 		{
-			name:    "info severity",
-			item:    storage.DriftItem{Severity: storage.DriftSeverityInfo},
-			wantSev: specv1.DriftSeverity_DRIFT_SEVERITY_INFO,
+			name:     "info severity",
+			item:     storage.DriftItem{Type: storage.DriftTypeDependency, Severity: storage.DriftSeverityInfo},
+			wantType: specv1.DriftType_DRIFT_TYPE_DEPENDENCY,
+			wantSev:  specv1.DriftSeverity_DRIFT_SEVERITY_INFO,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Use driftReportToProto since driftItemToProto is inline
 			report := &storage.DriftReport{Items: []storage.DriftItem{tt.item}}
-			pb := driftReportToProto(report)
+			pb, err := driftReportToProto(report)
+			require.NoError(t, err)
 			require.Len(t, pb.Items, 1)
 			got := pb.Items[0]
 			assert.Equal(t, tt.wantType, got.Type)

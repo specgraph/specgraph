@@ -206,13 +206,13 @@ func runLint(_ *cobra.Command, args []string) error {
 		fmt.Println("No lint results.")
 		return nil
 	}
-	allPassed := true
+	failCount := 0
 	for _, r := range results {
 		if r.GetPassed() {
 			fmt.Printf("Spec: %s — PASSED\n", r.GetSpecSlug())
 			continue
 		}
-		allPassed = false
+		failCount++
 		fmt.Printf("Spec: %s — FAILED\n", r.GetSpecSlug())
 		for _, v := range r.GetViolations() {
 			loc := ""
@@ -222,15 +222,9 @@ func runLint(_ *cobra.Command, args []string) error {
 			fmt.Printf("  [%s] %s: %s%s\n", v.GetSeverity(), v.GetRule(), v.GetMessage(), loc)
 		}
 	}
-	if allPassed {
+	if failCount == 0 {
 		fmt.Println("All specs passed lint checks.")
 		return nil
-	}
-	failCount := 0
-	for _, r := range results {
-		if !r.GetPassed() {
-			failCount++
-		}
 	}
 	return fmt.Errorf("lint: %d spec(s) failed", failCount)
 }

@@ -12,6 +12,7 @@ import (
 )
 
 // NewMux creates an http.ServeMux with the SpecService handler registered.
+// Use RegisterLifecycleService to add the LifecycleService to the same mux.
 func NewMux(backend storage.Backend) *http.ServeMux {
 	mux := http.NewServeMux()
 	specHandler := NewSpecHandler(backend)

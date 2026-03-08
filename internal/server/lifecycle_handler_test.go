@@ -409,6 +409,38 @@ func TestLifecycleHandler_Supersede_Terminal(t *testing.T) {
 	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
 }
 
+func TestLifecycleHandler_Amend_ConcurrentModification(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.amendSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
+		return nil, storage.ErrConcurrentModification
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+		Slug:   "busy-spec",
+		Reason: "rework",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeAborted, connErr.Code())
+}
+
+func TestLifecycleHandler_Amend_TerminalReEntryStage(t *testing.T) {
+	client := newLifecycleClient(t, defaultTestDeps())
+	for _, stage := range []string{"amended", "superseded", "abandoned"} {
+		_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+			Slug:         "my-spec",
+			Reason:       "rework",
+			ReEntryStage: stage,
+		}))
+		require.Error(t, err, "stage %q should be rejected", stage)
+		var connErr *connect.Error
+		require.ErrorAs(t, err, &connErr)
+		require.Equal(t, connect.CodeInvalidArgument, connErr.Code(), "stage %q should return InvalidArgument", stage)
+	}
+}
+
 func TestLifecycleHandler_CheckDrift_Error(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {

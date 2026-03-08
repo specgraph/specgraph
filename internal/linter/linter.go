@@ -182,7 +182,7 @@ func detectCycles(ctx context.Context, backend Backend, slug string) ([]storage.
 	dfs(slug, 0)
 
 	if storageErr != nil {
-		return nil, storageErr
+		return violations, storageErr
 	}
 	return violations, nil
 }

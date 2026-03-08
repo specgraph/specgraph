@@ -318,5 +318,6 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string
 		SpecSlug:        slug,
 		Acknowledged:    true,
 		AcknowledgeNote: note,
+		Items:           []storage.DriftItem{},
 	}, nil
 }

@@ -72,6 +72,9 @@ message LintResult {
 message LifecycleAmendRequest {
   string slug = 1;
   string reason = 2;
+  // Valid values: spark, shape, specify, decompose, approved, in_progress, review, done.
+  // Terminal states (amended, superseded, abandoned) are rejected.
+  // Empty means the spec enters the "amended" stage directly.
   string re_entry_stage = 3;
 }
 
@@ -91,7 +94,10 @@ message LifecycleAbandonRequest {
 }
 
 message DriftCheckRequest {
+  // Empty slug checks all eligible (done/amended) specs.
   string slug = 1;
+  // Valid values: "deps", "interfaces", "verify", or "" (all scopes).
+  // Note: "interfaces" and "verify" are not yet implemented and return empty results.
   string scope = 2;
 }
 

@@ -25,6 +25,17 @@ const (
 	SpecStageAbandoned  SpecStage = "abandoned"
 )
 
+// IsTerminal reports whether s is a terminal lifecycle state
+// (amended, superseded, abandoned) that cannot be used as a re-entry stage.
+func (s SpecStage) IsTerminal() bool {
+	switch s {
+	case SpecStageAmended, SpecStageSuperseded, SpecStageAbandoned:
+		return true
+	default:
+		return false
+	}
+}
+
 // IsValid reports whether s is a known spec stage.
 func (s SpecStage) IsValid() bool {
 	switch s {

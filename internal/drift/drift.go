@@ -79,7 +79,7 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 }
 
 func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string) (storage.DriftReport, error) {
-	report := storage.DriftReport{SpecSlug: spec.Slug}
+	report := storage.DriftReport{SpecSlug: spec.Slug, Items: []storage.DriftItem{}}
 
 	// Dependency drift
 	if scope == "" || scope == "deps" {
@@ -116,8 +116,10 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 		}
 	}
 
-	// Interface drift — placeholder
-	// Verify drift — placeholder
+	// Interface drift — not yet implemented. Scope "interfaces" is accepted
+	// but returns no items until interface tracking is built.
+	// Verify drift — not yet implemented. Scope "verify" is accepted
+	// but returns no items until verification checks are built.
 
 	return report, nil
 }

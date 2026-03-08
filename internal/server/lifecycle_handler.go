@@ -47,8 +47,12 @@ func (h *LifecycleHandler) Amend(ctx context.Context, req *connect.Request[specv
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if msg.ReEntryStage != "" {
-		if !storage.SpecStage(msg.ReEntryStage).IsValid() {
+		stage := storage.SpecStage(msg.ReEntryStage)
+		if !stage.IsValid() {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid re_entry_stage %q", msg.ReEntryStage))
+		}
+		if stage.IsTerminal() {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("re_entry_stage %q is a terminal state and cannot be used as a re-entry point", msg.ReEntryStage))
 		}
 	}
 
@@ -56,7 +60,11 @@ func (h *LifecycleHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
-	return connect.NewResponse(specToProto(spec)), nil
+	pb, err := specToProto(spec)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(pb), nil
 }
 
 // Supersede handles the Supersede RPC, marking a spec as replaced by another.
@@ -79,9 +87,17 @@ func (h *LifecycleHandler) Supersede(ctx context.Context, req *connect.Request[s
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
+	oldPb, err := specToProto(oldSpec)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	newPb, err := specToProto(newSpec)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	return connect.NewResponse(&specv1.LifecycleSupersedeResponse{
-		OldSpec: specToProto(oldSpec),
-		NewSpec: specToProto(newSpec),
+		OldSpec: oldPb,
+		NewSpec: newPb,
 	}), nil
 }
 
@@ -99,7 +115,11 @@ func (h *LifecycleHandler) Abandon(ctx context.Context, req *connect.Request[spe
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
-	return connect.NewResponse(specToProto(spec)), nil
+	pb, err := specToProto(spec)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(pb), nil
 }
 
 // CheckDrift handles the CheckDrift RPC, returning drift reports for a spec.
@@ -112,6 +132,11 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		}
 	}
 
+	validScopes := map[string]bool{"": true, "deps": true, "interfaces": true, "verify": true}
+	if !validScopes[msg.Scope] {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scope %q (valid: deps, interfaces, verify)", msg.Scope))
+	}
+
 	if h.driftChecker == nil {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("drift checking is not configured"))
 	}
@@ -119,8 +144,12 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
+	pbReports, err := driftReportsToProto(reports)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	return connect.NewResponse(&specv1.DriftCheckResponse{
-		Reports: driftReportsToProto(reports),
+		Reports: pbReports,
 	}), nil
 }
 
@@ -139,7 +168,11 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
-	return connect.NewResponse(driftReportToProto(report)), nil
+	pbReport, err := driftReportToProto(report)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(pbReport), nil
 }
 
 // Lint handles the Lint RPC, validating spec schema and graph integrity.

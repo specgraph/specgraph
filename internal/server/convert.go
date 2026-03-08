@@ -22,7 +22,11 @@ func timeToProto(t time.Time) *timestamppb.Timestamp {
 
 // --- Spec ---
 
-func specToProto(s *storage.Spec) *specv1.Spec {
+func specToProto(s *storage.Spec) (*specv1.Spec, error) {
+	lc, err := lifecycleToProto(s.Lifecycle)
+	if err != nil {
+		return nil, fmt.Errorf("spec %q: %w", s.Slug, err)
+	}
 	return &specv1.Spec{
 		Id:           s.ID,
 		Slug:         s.Slug,
@@ -33,19 +37,23 @@ func specToProto(s *storage.Spec) *specv1.Spec {
 		Version:      s.Version,
 		CreatedAt:    timeToProto(s.CreatedAt),
 		UpdatedAt:    timeToProto(s.UpdatedAt),
-		Lifecycle:    lifecycleToProto(s.Lifecycle),
+		Lifecycle:    lc,
 		SupersededBy: s.SupersededBy,
 		Supersedes:   s.Supersedes,
 		History:      historyToProto(s.History),
-	}
+	}, nil
 }
 
-func specsToProto(specs []*storage.Spec) []*specv1.Spec {
+func specsToProto(specs []*storage.Spec) ([]*specv1.Spec, error) {
 	result := make([]*specv1.Spec, len(specs))
 	for i, s := range specs {
-		result[i] = specToProto(s)
+		pb, err := specToProto(s)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = pb
 	}
-	return result
+	return result, nil
 }
 
 // --- Decision ---
@@ -483,12 +491,20 @@ var driftSeverityToProtoMap = map[storage.DriftSeverity]specv1.DriftSeverity{
 	storage.DriftSeverityInfo:   specv1.DriftSeverity_DRIFT_SEVERITY_INFO,
 }
 
-func driftReportToProto(r *storage.DriftReport) *specv1.DriftReport {
+func driftReportToProto(r *storage.DriftReport) (*specv1.DriftReport, error) {
 	items := make([]*specv1.DriftItem, len(r.Items))
 	for i, item := range r.Items {
+		dt, ok := driftTypeToProtoMap[item.Type]
+		if !ok {
+			return nil, fmt.Errorf("unknown drift type: %q", item.Type)
+		}
+		ds, ok := driftSeverityToProtoMap[item.Severity]
+		if !ok {
+			return nil, fmt.Errorf("unknown drift severity: %q", item.Severity)
+		}
 		items[i] = &specv1.DriftItem{
-			Type:            driftTypeToProtoMap[item.Type],
-			Severity:        driftSeverityToProtoMap[item.Severity],
+			Type:            dt,
+			Severity:        ds,
 			Description:     item.Description,
 			SpecSlug:        item.SpecSlug,
 			UpstreamSlug:    item.UpstreamSlug,
@@ -501,15 +517,19 @@ func driftReportToProto(r *storage.DriftReport) *specv1.DriftReport {
 		Items:           items,
 		Acknowledged:    r.Acknowledged,
 		AcknowledgeNote: r.AcknowledgeNote,
-	}
+	}, nil
 }
 
-func driftReportsToProto(reports []storage.DriftReport) []*specv1.DriftReport {
+func driftReportsToProto(reports []storage.DriftReport) ([]*specv1.DriftReport, error) {
 	result := make([]*specv1.DriftReport, len(reports))
 	for i := range reports {
-		result[i] = driftReportToProto(&reports[i])
+		r, err := driftReportToProto(&reports[i])
+		if err != nil {
+			return nil, err
+		}
+		result[i] = r
 	}
-	return result
+	return result, nil
 }
 
 // --- Lifecycle ---
@@ -520,11 +540,11 @@ var lifecycleToProtoMap = map[storage.SpecLifecycle]specv1.SpecLifecycle{
 	storage.SpecLifecycleLiving: specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING,
 }
 
-func lifecycleToProto(l storage.SpecLifecycle) specv1.SpecLifecycle {
-	if l == "" {
-		l = storage.SpecLifecycleTask
+func lifecycleToProto(l storage.SpecLifecycle) (specv1.SpecLifecycle, error) {
+	if v, ok := lifecycleToProtoMap[l]; ok {
+		return v, nil
 	}
-	return lifecycleToProtoMap[l]
+	return specv1.SpecLifecycle_SPEC_LIFECYCLE_UNSPECIFIED, fmt.Errorf("unknown lifecycle: %q", l)
 }
 
 // --- Lint ---
@@ -565,7 +585,10 @@ func lintResultsToProto(results []storage.LintResult) []*specv1.LintResult {
 }
 
 func bundleToProto(b *storage.Bundle) (*specv1.Bundle, error) {
-	spec := specToProto(b.Spec)
+	spec, err := specToProto(b.Spec)
+	if err != nil {
+		return nil, err
+	}
 	decisions, err := decisionsToProto(b.Decisions)
 	if err != nil {
 		return nil, err

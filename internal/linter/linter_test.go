@@ -5,6 +5,7 @@ package linter_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/seanb4t/specgraph/internal/linter"
@@ -14,11 +15,17 @@ import (
 
 // mockLintBackend implements linter.Backend for testing.
 type mockLintBackend struct {
-	specs map[string]*storage.Spec
-	deps  map[string][]storage.NodeRef
+	specs       map[string]*storage.Spec
+	deps        map[string][]storage.NodeRef
+	getSpecErr  error // non-nil overrides GetSpec with this error for all slugs
+	listSpecErr error // non-nil overrides ListSpecs with this error
+	getDepsErr  error // non-nil overrides GetDependencies with this error for all slugs
 }
 
 func (m *mockLintBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
+	if m.getSpecErr != nil {
+		return nil, m.getSpecErr
+	}
 	spec, ok := m.specs[slug]
 	if !ok {
 		return nil, storage.ErrSpecNotFound
@@ -27,6 +34,9 @@ func (m *mockLintBackend) GetSpec(_ context.Context, slug string) (*storage.Spec
 }
 
 func (m *mockLintBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*storage.Spec, error) {
+	if m.listSpecErr != nil {
+		return nil, m.listSpecErr
+	}
 	specs := make([]*storage.Spec, 0, len(m.specs))
 	for _, s := range m.specs {
 		specs = append(specs, s)
@@ -35,6 +45,9 @@ func (m *mockLintBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*s
 }
 
 func (m *mockLintBackend) GetDependencies(_ context.Context, slug string) ([]storage.NodeRef, error) {
+	if m.getDepsErr != nil {
+		return nil, m.getDepsErr
+	}
 	return m.deps[slug], nil
 }
 
@@ -190,4 +203,50 @@ func TestLint_AllSpecs(t *testing.T) {
 		require.True(t, r.Passed)
 		require.Empty(t, r.Violations)
 	}
+}
+
+func TestLint_ListSpecsStorageError(t *testing.T) {
+	dbErr := errors.New("connection refused")
+	backend := &mockLintBackend{
+		specs:       map[string]*storage.Spec{},
+		deps:        map[string][]storage.NodeRef{},
+		listSpecErr: dbErr,
+	}
+
+	_, err := linter.Lint(context.Background(), backend, "")
+	require.Error(t, err)
+	require.ErrorIs(t, err, dbErr)
+}
+
+func TestLint_GetSpecStorageError(t *testing.T) {
+	dbErr := errors.New("connection refused")
+	backend := &mockLintBackend{
+		specs:      map[string]*storage.Spec{},
+		deps:       map[string][]storage.NodeRef{},
+		getSpecErr: dbErr,
+	}
+
+	_, err := linter.Lint(context.Background(), backend, "some-spec")
+	require.Error(t, err)
+	require.ErrorIs(t, err, dbErr)
+}
+
+func TestLint_GetDependenciesStorageError(t *testing.T) {
+	dbErr := errors.New("connection refused")
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"spec-a": {
+				Slug:    "spec-a",
+				Intent:  "Do something",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+		},
+		deps:       map[string][]storage.NodeRef{},
+		getDepsErr: dbErr,
+	}
+
+	_, err := linter.Lint(context.Background(), backend, "spec-a")
+	require.Error(t, err)
+	require.ErrorIs(t, err, dbErr)
 }
