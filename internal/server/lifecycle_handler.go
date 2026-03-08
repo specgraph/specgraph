@@ -154,6 +154,8 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 }
 
 // AcknowledgeDrift handles the AcknowledgeDrift RPC, marking drift as intentional.
+// After persisting the acknowledgment, it re-runs drift detection to return the
+// actual drift items alongside the acknowledgment fields.
 func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Request[specv1.DriftAcknowledgeRequest]) (*connect.Response[specv1.DriftReport], error) {
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
@@ -168,6 +170,22 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
+
+	// Re-run drift detection to populate real drift items in the response.
+	// The storage layer only persists the acknowledgment; it cannot compute drift items.
+	if h.driftChecker != nil {
+		reports, driftErr := h.driftChecker.Check(ctx, msg.Slug, "")
+		if driftErr != nil {
+			return nil, h.lifecycleError(driftErr)
+		}
+		for _, r := range reports {
+			if r.SpecSlug == msg.Slug {
+				report.Items = r.Items
+				break
+			}
+		}
+	}
+
 	pbReport, err := driftReportToProto(report)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
