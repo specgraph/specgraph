@@ -242,7 +242,7 @@ func (s *Store) StoreConstitutionViolations(ctx context.Context, slug string, vi
 }
 
 // AuthoringSupersede marks a spec as superseded and creates a SUPERSEDES edge to the replacement.
-// This is the authoring-level supersession; for lifecycle-level supersession see SupersedeSpec.
+// This is the authoring-level supersession; for lifecycle-level supersession see LifecycleSupersedeSpec.
 func (s *Store) AuthoringSupersede(ctx context.Context, slug, supersededBy, reason string) error {
 	// Validate both specs exist before the combined operation so callers get
 	// a precise error identifying which slug was missing.
@@ -271,7 +271,7 @@ func (s *Store) AuthoringSupersede(ctx context.Context, slug, supersededBy, reas
 }
 
 // AuthoringAmendSpec moves a spec backward to an earlier stage, bumping its version.
-// This is the authoring-level amendment; for lifecycle-level amendment see AmendSpec.
+// This is the authoring-level amendment; for lifecycle-level amendment see LifecycleAmendSpec.
 func (s *Store) AuthoringAmendSpec(ctx context.Context, slug, reason string, targetStage storage.AuthoringStage) (*storage.AmendResult, error) {
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {

@@ -98,8 +98,7 @@ func TestCheckDependencyDrift_NoDrift(t *testing.T) {
 	engine := drift.NewEngine(backend)
 	reports, err := engine.Check(context.Background(), "downstream", "")
 	require.NoError(t, err)
-	require.Len(t, reports, 1)
-	require.Empty(t, reports[0].Items)
+	require.Empty(t, reports, "no-drift specs should be filtered out")
 }
 
 func TestCheckAllSpecs(t *testing.T) {
@@ -167,11 +166,10 @@ func TestCheckDrift_ScopeFilter(t *testing.T) {
 
 	engine := drift.NewEngine(backend)
 
-	// scope="interfaces" → no drift (placeholder).
+	// scope="interfaces" → no drift (placeholder), filtered out.
 	reports, err := engine.Check(context.Background(), "downstream", "interfaces")
 	require.NoError(t, err)
-	require.Len(t, reports, 1)
-	require.Empty(t, reports[0].Items)
+	require.Empty(t, reports)
 
 	// scope="deps" → drift found.
 	reports, err = engine.Check(context.Background(), "downstream", "deps")

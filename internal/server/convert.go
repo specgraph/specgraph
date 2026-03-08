@@ -468,27 +468,6 @@ func historyToProto(entries []storage.HistoryEntry) []*specv1.HistoryEntry {
 	return result
 }
 
-func historyFromProto(entries []*specv1.HistoryEntry) []storage.HistoryEntry { //nolint:unused // will be used when Lint RPC reads history from proto
-	if len(entries) == 0 {
-		return nil
-	}
-	result := make([]storage.HistoryEntry, len(entries))
-	for i, e := range entries {
-		var date time.Time
-		if e.Date != nil {
-			date = e.Date.AsTime()
-		}
-		result[i] = storage.HistoryEntry{
-			Version: e.Version,
-			Stage:   storage.SpecStage(e.Stage),
-			Summary: e.Summary,
-			Reason:  e.Reason,
-			Date:    date,
-		}
-	}
-	return result
-}
-
 // --- Drift ---
 
 var driftTypeToProtoMap = map[storage.DriftType]specv1.DriftType{
@@ -513,7 +492,7 @@ func driftReportToProto(r *storage.DriftReport) *specv1.DriftReport {
 			Description:     item.Description,
 			SpecSlug:        item.SpecSlug,
 			UpstreamSlug:    item.UpstreamSlug,
-			ExpectedVersion: item.ExpectedVersion,
+			ExpectedVersion: item.SpecVersion,
 			ActualVersion:   item.ActualVersion,
 		}
 	}
@@ -536,6 +515,7 @@ func driftReportsToProto(reports []storage.DriftReport) []*specv1.DriftReport {
 // --- Lifecycle ---
 
 var lifecycleToProtoMap = map[storage.SpecLifecycle]specv1.SpecLifecycle{
+	"":                          specv1.SpecLifecycle_SPEC_LIFECYCLE_UNSPECIFIED,
 	storage.SpecLifecycleTask:   specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK,
 	storage.SpecLifecycleLiving: specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING,
 }

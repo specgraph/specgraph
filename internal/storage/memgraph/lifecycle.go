@@ -6,6 +6,7 @@ package memgraph
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -45,6 +46,9 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	if err != nil {
 		return nil, err
 	}
+	// Terminal check before done check: terminal is a subset of non-done,
+	// and returning ErrSpecTerminal gives callers a more specific error for
+	// superseded/abandoned specs than the generic ErrSpecNotDone.
 	if terminalStages[spec.Stage] {
 		return nil, fmt.Errorf("amend spec %q (stage=%s): %w", slug, spec.Stage, storage.ErrSpecTerminal)
 	}
@@ -58,7 +62,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		Stage:   storage.SpecStageAmended,
 		Summary: fmt.Sprintf("Amended from done, re-entry stage: %s", reEntryStage),
 		Reason:  reason,
-		Date:    parseNowUTC(),
+		Date:    time.Now().UTC(),
 	}
 	history := make([]storage.HistoryEntry, len(spec.History)+1)
 	copy(history, spec.History)
@@ -108,7 +112,10 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		return nil, nil, fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecTerminal)
 	}
 	if _, newErr := s.GetSpec(ctx, newSlug); newErr != nil {
-		return nil, nil, fmt.Errorf("supersede spec: new spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
+		if errors.Is(newErr, storage.ErrSpecNotFound) {
+			return nil, nil, fmt.Errorf("supersede spec: new spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
+		}
+		return nil, nil, fmt.Errorf("supersede spec: new spec %q: %w", newSlug, newErr)
 	}
 
 	nowStr := nowRFC3339()
@@ -175,7 +182,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		Stage:   storage.SpecStageAbandoned,
 		Summary: "Spec abandoned",
 		Reason:  reason,
-		Date:    parseNowUTC(),
+		Date:    time.Now().UTC(),
 	}
 	history := make([]storage.HistoryEntry, len(spec.History)+1)
 	copy(history, spec.History)
@@ -235,7 +242,3 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string
 	}, nil
 }
 
-// parseNowUTC returns the current UTC time.
-func parseNowUTC() time.Time {
-	return time.Now().UTC()
-}

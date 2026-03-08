@@ -18,12 +18,15 @@ type Backend interface {
 	GetDependencies(ctx context.Context, slug string) ([]storage.NodeRef, error)
 }
 
+// maxSpecsPerLint limits the number of specs processed in a single lint run.
+const maxSpecsPerLint = 10000
+
 // Lint validates one or all specs. When slug is empty, all specs are linted.
 func Lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResult, error) {
 	var specs []*storage.Spec
 
 	if slug == "" {
-		listed, err := backend.ListSpecs(ctx, "", "", 0)
+		listed, err := backend.ListSpecs(ctx, "", "", maxSpecsPerLint)
 		if err != nil {
 			return nil, fmt.Errorf("linter: list specs: %w", err)
 		}
@@ -38,7 +41,10 @@ func Lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResu
 
 	results := make([]storage.LintResult, 0, len(specs))
 	for _, spec := range specs {
-		result := lintSpec(ctx, backend, spec)
+		result, err := lintSpec(ctx, backend, spec)
+		if err != nil {
+			return nil, err
+		}
 		results = append(results, result)
 	}
 
@@ -46,32 +52,35 @@ func Lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResu
 }
 
 // lintSpec runs all lint rules against a single spec.
-func lintSpec(ctx context.Context, backend Backend, spec *storage.Spec) storage.LintResult {
+func lintSpec(ctx context.Context, backend Backend, spec *storage.Spec) (storage.LintResult, error) {
 	violations := ValidateSchema(spec)
 
 	// Rule 2: Edge consistency — dangling dependency references.
-	violations = append(violations, checkDanglingDeps(ctx, backend, spec.Slug)...)
+	danglingViolations, err := checkDanglingDeps(ctx, backend, spec.Slug)
+	if err != nil {
+		return storage.LintResult{}, fmt.Errorf("linter: %w", err)
+	}
+	violations = append(violations, danglingViolations...)
 
 	// Rule 3: Cycle detection.
-	violations = append(violations, detectCycles(ctx, backend, spec.Slug)...)
+	cycleViolations, err := detectCycles(ctx, backend, spec.Slug)
+	if err != nil {
+		return storage.LintResult{}, fmt.Errorf("linter: %w", err)
+	}
+	violations = append(violations, cycleViolations...)
 
 	return storage.LintResult{
 		SpecSlug:   spec.Slug,
 		Violations: violations,
 		Passed:     len(violations) == 0,
-	}
+	}, nil
 }
 
 // checkDanglingDeps verifies that each dependency target actually exists.
-func checkDanglingDeps(ctx context.Context, backend Backend, slug string) []storage.LintViolation {
+func checkDanglingDeps(ctx context.Context, backend Backend, slug string) ([]storage.LintViolation, error) {
 	deps, err := backend.GetDependencies(ctx, slug)
 	if err != nil {
-		return []storage.LintViolation{{
-			Rule:     "edge.dangling_ref",
-			Severity: storage.LintSeverityError,
-			Message:  fmt.Sprintf("failed to fetch dependencies for %q: %v", slug, err),
-			Location: slug,
-		}}
+		return nil, fmt.Errorf("fetch dependencies for %q: %w", slug, err)
 	}
 
 	var violations []storage.LintViolation
@@ -86,27 +95,38 @@ func checkDanglingDeps(ctx context.Context, backend Backend, slug string) []stor
 					Location: fmt.Sprintf("dependencies[%s]", dep.Slug),
 				})
 			} else {
-				violations = append(violations, storage.LintViolation{
-					Rule:     "edge.dangling_ref",
-					Severity: storage.LintSeverityError,
-					Message:  fmt.Sprintf("failed to verify dependency %q: %v", dep.Slug, err),
-					Location: fmt.Sprintf("dependencies[%s]", dep.Slug),
-				})
+				return nil, fmt.Errorf("verify dependency %q: %w", dep.Slug, err)
 			}
 		}
 	}
 
-	return violations
+	return violations, nil
 }
 
 // detectCycles uses DFS to find back-edges in the dependency graph.
-func detectCycles(ctx context.Context, backend Backend, slug string) []storage.LintViolation {
+// maxDepth guards against stack overflow from deeply nested graphs.
+const maxCycleDepth = 1000
+
+func detectCycles(ctx context.Context, backend Backend, slug string) ([]storage.LintViolation, error) {
 	visited := map[string]bool{}
 	inStack := map[string]bool{}
 	var violations []storage.LintViolation
+	var storageErr error
 
-	var dfs func(current string)
-	dfs = func(current string) {
+	var dfs func(current string, depth int)
+	dfs = func(current string, depth int) {
+		if storageErr != nil {
+			return
+		}
+		if depth > maxCycleDepth {
+			violations = append(violations, storage.LintViolation{
+				Rule:     "graph.cycle",
+				Severity: storage.LintSeverityWarning,
+				Message:  fmt.Sprintf("dependency graph exceeds maximum depth of %d at %q", maxCycleDepth, current),
+				Location: current,
+			})
+			return
+		}
 		if inStack[current] {
 			violations = append(violations, storage.LintViolation{
 				Rule:     "graph.cycle",
@@ -125,23 +145,21 @@ func detectCycles(ctx context.Context, backend Backend, slug string) []storage.L
 
 		deps, err := backend.GetDependencies(ctx, current)
 		if err != nil {
-			violations = append(violations, storage.LintViolation{
-				Rule:     "graph.cycle",
-				Severity: storage.LintSeverityError,
-				Message:  fmt.Sprintf("failed to get dependencies for %q: %v", current, err),
-				Location: current,
-			})
+			storageErr = fmt.Errorf("get dependencies for %q: %w", current, err)
 			inStack[current] = false
 			return
 		}
 		for _, dep := range deps {
-			dfs(dep.Slug)
+			dfs(dep.Slug, depth+1)
 		}
 
 		inStack[current] = false
 	}
 
-	dfs(slug)
+	dfs(slug, 0)
 
-	return violations
+	if storageErr != nil {
+		return nil, storageErr
+	}
+	return violations, nil
 }

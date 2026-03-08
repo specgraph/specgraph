@@ -117,6 +117,9 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		}
 	}
 
+	if h.driftChecker == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("drift checking is not configured"))
+	}
 	reports, err := h.driftChecker.Check(ctx, msg.Slug, msg.Scope)
 	if err != nil {
 		return nil, h.lifecycleError(err)
@@ -133,6 +136,9 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	if msg.Note == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("note is required"))
+	}
 	if len(msg.Note) > maxFieldLen {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("note exceeds maximum length of %d characters", maxFieldLen))
 	}
@@ -153,6 +159,9 @@ func (h *LifecycleHandler) Lint(ctx context.Context, req *connect.Request[specv1
 		}
 	}
 
+	if h.linter == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("linting is not configured"))
+	}
 	results, err := h.linter.Lint(ctx, msg.Slug)
 	if err != nil {
 		return nil, h.lifecycleError(err)

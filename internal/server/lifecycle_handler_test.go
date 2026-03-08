@@ -5,6 +5,7 @@ package server_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -224,7 +225,7 @@ func TestLifecycleHandler_CheckDrift(t *testing.T) {
 						Description:     "upstream changed",
 						SpecSlug:        "my-spec",
 						UpstreamSlug:    "upstream-spec",
-						ExpectedVersion: 2,
+						SpecVersion: 2,
 						ActualVersion:   3,
 					},
 				},
@@ -406,4 +407,83 @@ func TestLifecycleHandler_Supersede_Terminal(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+}
+
+func TestLifecycleHandler_CheckDrift_Error(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+		return nil, errors.New("backend unavailable")
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
+		Slug: "my-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestLifecycleHandler_CheckDrift_NilChecker(t *testing.T) {
+	deps := defaultTestDeps()
+	mux := http.NewServeMux()
+	server.RegisterLifecycleService(mux, deps.store, nil, deps.linter)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	client := specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)
+
+	_, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
+		Slug: "my-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeUnimplemented, connErr.Code())
+}
+
+func TestLifecycleHandler_Lint_NilLinter(t *testing.T) {
+	deps := defaultTestDeps()
+	mux := http.NewServeMux()
+	server.RegisterLifecycleService(mux, deps.store, deps.drift, nil)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	client := specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)
+
+	_, err := client.Lint(context.Background(), connect.NewRequest(&specv1.LintRequest{
+		Slug: "my-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeUnimplemented, connErr.Code())
+}
+
+func TestLifecycleHandler_Amend_TerminalSpec(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.amendSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
+		return nil, storage.ErrSpecTerminal
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+		Slug:   "superseded-spec",
+		Reason: "rework",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+}
+
+func TestLifecycleHandler_AcknowledgeDrift_EmptyNote(t *testing.T) {
+	client := newLifecycleClient(t, defaultTestDeps())
+	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug: "my-spec",
+		Note: "",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }

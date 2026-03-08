@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/seanb4t/specgraph/internal/storage"
 )
@@ -18,6 +19,10 @@ type Backend interface {
 	ListSpecs(ctx context.Context, stage, priority string, limit int) ([]*storage.Spec, error)
 	GetDependencies(ctx context.Context, slug string) ([]storage.NodeRef, error)
 }
+
+// maxSpecsPerCheck limits the number of specs processed in a single drift check
+// to prevent unbounded result sets from overwhelming the engine.
+const maxSpecsPerCheck = 10000
 
 // Engine runs drift detection checks.
 type Engine struct {
@@ -41,11 +46,11 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 		}
 		specs = []*storage.Spec{spec}
 	} else {
-		doneSpecs, err := e.backend.ListSpecs(ctx, string(storage.SpecStageDone), "", 0)
+		doneSpecs, err := e.backend.ListSpecs(ctx, string(storage.SpecStageDone), "", maxSpecsPerCheck)
 		if err != nil {
 			return nil, fmt.Errorf("drift: list done specs: %w", err)
 		}
-		amendedSpecs, err := e.backend.ListSpecs(ctx, string(storage.SpecStageAmended), "", 0)
+		amendedSpecs, err := e.backend.ListSpecs(ctx, string(storage.SpecStageAmended), "", maxSpecsPerCheck)
 		if err != nil {
 			return nil, fmt.Errorf("drift: list amended specs: %w", err)
 		}
@@ -59,7 +64,9 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 		if err != nil {
 			return nil, err
 		}
-		reports = append(reports, report)
+		if len(report.Items) > 0 {
+			reports = append(reports, report)
+		}
 	}
 	return reports, nil
 }
@@ -77,7 +84,8 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 			upstream, err := e.backend.GetSpec(ctx, dep.Slug)
 			if err != nil {
 				if errors.Is(err, storage.ErrSpecNotFound) {
-					continue // skip missing deps
+					slog.Warn("drift: skipping missing dependency", slog.String("spec", spec.Slug), slog.String("dep", dep.Slug))
+					continue
 				}
 				return report, fmt.Errorf("drift: get upstream spec %q: %w", dep.Slug, err)
 			}
@@ -88,7 +96,7 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 					Description:     fmt.Sprintf("upstream %q updated after %q", upstream.Slug, spec.Slug),
 					SpecSlug:        spec.Slug,
 					UpstreamSlug:    upstream.Slug,
-					ExpectedVersion: spec.Version,
+					SpecVersion: spec.Version,
 					ActualVersion:   upstream.Version,
 				})
 			}

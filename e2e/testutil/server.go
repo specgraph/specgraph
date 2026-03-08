@@ -14,9 +14,7 @@ import (
 	"time"
 
 	"github.com/seanb4t/specgraph/internal/drift"
-	"github.com/seanb4t/specgraph/internal/linter"
 	"github.com/seanb4t/specgraph/internal/server"
-	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 )
 
@@ -50,8 +48,7 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 	server.RegisterConstitutionService(mux, store)
 	server.RegisterAuthoringService(mux, store, store)
 	driftEngine := drift.NewEngine(store)
-	lintAdapter := &linterAdapter{backend: store}
-	server.RegisterLifecycleService(mux, store, driftEngine, lintAdapter)
+	server.RegisterLifecycleService(mux, store, driftEngine, nil)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -78,13 +75,4 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 		}
 	}
 	return &ServerInfo{BaseURL: baseURL, Store: store}, cleanup, nil
-}
-
-// linterAdapter wraps the linter package function to satisfy server.SpecLinter.
-type linterAdapter struct {
-	backend linter.Backend
-}
-
-func (a *linterAdapter) Lint(ctx context.Context, slug string) ([]storage.LintResult, error) {
-	return linter.Lint(ctx, a.backend, slug)
 }

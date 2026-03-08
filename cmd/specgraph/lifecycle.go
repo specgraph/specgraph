@@ -233,7 +233,7 @@ func runLint(_ *cobra.Command, args []string) error {
 func init() {
 	amendCmd.Flags().StringVar(&amendReason, "reason", "", "reason for amendment (required)")
 	cobra.CheckErr(amendCmd.MarkFlagRequired("reason"))
-	amendCmd.Flags().StringVar(&amendReEntry, "re-entry", "", "authoring stage to re-enter (shape|specify)")
+	amendCmd.Flags().StringVar(&amendReEntry, "re-entry", "", "authoring stage to re-enter (spark|shape|specify|decompose|approved|in_progress|review)")
 	rootCmd.AddCommand(amendCmd)
 
 	supersedeCmd.Flags().StringVar(&supersedeWith, "with", "", "slug for the replacement spec (required)")

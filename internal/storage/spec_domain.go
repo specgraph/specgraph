@@ -5,7 +5,9 @@ package storage
 
 import "time"
 
-// SpecStage represents the authoring lifecycle stage of a spec.
+// SpecStage represents a spec's stage, covering both authoring funnel stages
+// (spark→shape→specify→decompose→approved→in_progress→review→done) and
+// lifecycle terminal states (amended, superseded, abandoned).
 type SpecStage string
 
 // Spec stage lifecycle values.
