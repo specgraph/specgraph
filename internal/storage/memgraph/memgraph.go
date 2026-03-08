@@ -225,9 +225,10 @@ func newID(prefix string) string {
 	return prefix + "-" + ulid.MustNew(ulid.Now(), rand.Reader).String()
 }
 
-// nowRFC3339 returns the current UTC time formatted as an RFC 3339 string.
+// nowRFC3339 returns the current UTC time formatted as an RFC 3339 string
+// with nanosecond precision to avoid same-second comparison ambiguity.
 func nowRFC3339() string {
-	return time.Now().UTC().Format(time.RFC3339)
+	return time.Now().UTC().Format(time.RFC3339Nano)
 }
 
 // parseRFC3339 parses an RFC3339 timestamp string from a memgraph record field.
