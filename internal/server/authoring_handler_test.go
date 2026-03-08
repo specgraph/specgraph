@@ -89,11 +89,11 @@ func (f *fakeAuthoringBackend) StoreConstitutionViolations(_ context.Context, _ 
 	return f.storeConstitutionViolationsErr
 }
 
-func (f *fakeAuthoringBackend) AuthoringSupersede(_ context.Context, _, _, _ string) error {
+func (f *fakeAuthoringBackend) SupersedeSpec(_ context.Context, _, _, _ string) error {
 	return f.supersedeErr
 }
 
-func (f *fakeAuthoringBackend) AuthoringAmendSpec(_ context.Context, _, _ string, _ storage.AuthoringStage) (*storage.AmendResult, error) {
+func (f *fakeAuthoringBackend) AmendSpec(_ context.Context, _, _ string, _ storage.AuthoringStage) (*storage.AmendResult, error) {
 	return f.amendResult, f.amendErr
 }
 

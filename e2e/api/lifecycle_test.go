@@ -51,14 +51,14 @@ var _ = Describe("Lifecycle", Ordered, func() {
 		})
 
 		It("amends the done spec back into authoring", func() {
-			resp, err := lifecycleClient.Amend(ctx, connect.NewRequest(&specv1.LifecycleAmendRequest{
+			resp, err := lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
 				Slug:         amendSlug,
 				Reason:       "Requirements changed after implementation",
 				ReEntryStage: "shape",
 			}))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Slug).To(Equal(amendSlug))
-			Expect(resp.Msg.Stage).To(Equal("shape"))
+			Expect(resp.Msg.GetSpec().GetSlug()).To(Equal(amendSlug))
+			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("shape"))
 		})
 	})
 
@@ -83,7 +83,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 		})
 
 		It("supersedes old with new", func() {
-			resp, err := lifecycleClient.Supersede(ctx, connect.NewRequest(&specv1.LifecycleSupersedeRequest{
+			resp, err := lifecycleClient.TransitionSupersede(ctx, connect.NewRequest(&specv1.TransitionSupersedeRequest{
 				Slug:    oldSlug,
 				NewSlug: newSlug,
 			}))
@@ -123,13 +123,13 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			}))
 			Expect(err).NotTo(HaveOccurred())
 
-			resp, err := lifecycleClient.Abandon(ctx, connect.NewRequest(&specv1.LifecycleAbandonRequest{
+			resp, err := lifecycleClient.TransitionAbandon(ctx, connect.NewRequest(&specv1.TransitionAbandonRequest{
 				Slug:   abandonSlug,
 				Reason: "No longer needed",
 			}))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Slug).To(Equal(abandonSlug))
-			Expect(resp.Msg.Stage).To(Equal("abandoned"))
+			Expect(resp.Msg.GetSpec().GetSlug()).To(Equal(abandonSlug))
+			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("abandoned"))
 		})
 	})
 

@@ -69,7 +69,7 @@ message LintResult {
 
 // --- Requests/Responses ---
 
-message LifecycleAmendRequest {
+message TransitionAmendRequest {
   string slug = 1;
   string reason = 2;
   // Valid values: spark, shape, specify, decompose, approved, in_progress, review, done.
@@ -78,19 +78,27 @@ message LifecycleAmendRequest {
   string re_entry_stage = 3;
 }
 
-message LifecycleSupersedeRequest {
+message TransitionAmendResponse {
+  Spec spec = 1;
+}
+
+message TransitionSupersedeRequest {
   string slug = 1;
   string new_slug = 2;
 }
 
-message LifecycleSupersedeResponse {
+message TransitionSupersedeResponse {
   Spec old_spec = 1;
   Spec new_spec = 2;
 }
 
-message LifecycleAbandonRequest {
+message TransitionAbandonRequest {
   string slug = 1;
   string reason = 2;
+}
+
+message TransitionAbandonResponse {
+  Spec spec = 1;
 }
 
 message DriftCheckRequest {
@@ -121,9 +129,9 @@ message LintResponse {
 // --- Service ---
 
 service LifecycleService {
-  rpc Amend(LifecycleAmendRequest) returns (Spec);
-  rpc Supersede(LifecycleSupersedeRequest) returns (LifecycleSupersedeResponse);
-  rpc Abandon(LifecycleAbandonRequest) returns (Spec);
+  rpc TransitionAmend(TransitionAmendRequest) returns (TransitionAmendResponse);
+  rpc TransitionSupersede(TransitionSupersedeRequest) returns (TransitionSupersedeResponse);
+  rpc TransitionAbandon(TransitionAbandonRequest) returns (TransitionAbandonResponse);
   rpc CheckDrift(DriftCheckRequest) returns (DriftCheckResponse);
   rpc AcknowledgeDrift(DriftAcknowledgeRequest) returns (DriftReport);
   rpc Lint(LintRequest) returns (LintResponse);

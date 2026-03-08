@@ -36,7 +36,7 @@ func runAmend(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+	resp, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
 		Slug:         args[0],
 		Reason:       amendReason,
 		ReEntryStage: amendReEntry,
@@ -44,7 +44,7 @@ func runAmend(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("amend: %w", err)
 	}
-	s := resp.Msg
+	s := resp.Msg.GetSpec()
 	fmt.Printf("Amended: %s (stage=%s, lifecycle=%s, version=%d)\n", s.GetSlug(), s.GetStage(), s.GetLifecycle(), s.GetVersion())
 	return nil
 }
@@ -65,7 +65,7 @@ func runSupersede(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.LifecycleSupersedeRequest{
+	resp, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
 		Slug:    args[0],
 		NewSlug: supersedeWith,
 	}))
@@ -95,14 +95,14 @@ func runAbandon(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.Abandon(context.Background(), connect.NewRequest(&specv1.LifecycleAbandonRequest{
+	resp, err := client.TransitionAbandon(context.Background(), connect.NewRequest(&specv1.TransitionAbandonRequest{
 		Slug:   args[0],
 		Reason: abandonReason,
 	}))
 	if err != nil {
 		return fmt.Errorf("abandon: %w", err)
 	}
-	s := resp.Msg
+	s := resp.Msg.GetSpec()
 	fmt.Printf("Abandoned: %s (lifecycle=%s, version=%d)\n", s.GetSlug(), s.GetLifecycle(), s.GetVersion())
 	return nil
 }

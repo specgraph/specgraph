@@ -37,9 +37,9 @@ type LifecycleHandler struct {
 
 var _ specgraphv1connect.LifecycleServiceHandler = (*LifecycleHandler)(nil)
 
-// Amend handles the Amend RPC, transitioning a done spec to an earlier authoring
-// stage (or "amended" if no re-entry stage is specified).
-func (h *LifecycleHandler) Amend(ctx context.Context, req *connect.Request[specv1.LifecycleAmendRequest]) (*connect.Response[specv1.Spec], error) {
+// TransitionAmend handles the TransitionAmend RPC, transitioning a done spec to
+// an earlier authoring stage (or "amended" if no re-entry stage is specified).
+func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Request[specv1.TransitionAmendRequest]) (*connect.Response[specv1.TransitionAmendResponse], error) {
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -65,11 +65,11 @@ func (h *LifecycleHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(pb), nil
+	return connect.NewResponse(&specv1.TransitionAmendResponse{Spec: pb}), nil
 }
 
-// Supersede handles the Supersede RPC, marking a spec as replaced by another.
-func (h *LifecycleHandler) Supersede(ctx context.Context, req *connect.Request[specv1.LifecycleSupersedeRequest]) (*connect.Response[specv1.LifecycleSupersedeResponse], error) {
+// TransitionSupersede handles the TransitionSupersede RPC, marking a spec as replaced by another.
+func (h *LifecycleHandler) TransitionSupersede(ctx context.Context, req *connect.Request[specv1.TransitionSupersedeRequest]) (*connect.Response[specv1.TransitionSupersedeResponse], error) {
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -96,14 +96,14 @@ func (h *LifecycleHandler) Supersede(ctx context.Context, req *connect.Request[s
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.LifecycleSupersedeResponse{
+	return connect.NewResponse(&specv1.TransitionSupersedeResponse{
 		OldSpec: oldPb,
 		NewSpec: newPb,
 	}), nil
 }
 
-// Abandon handles the Abandon RPC, transitioning a spec to abandoned (terminal).
-func (h *LifecycleHandler) Abandon(ctx context.Context, req *connect.Request[specv1.LifecycleAbandonRequest]) (*connect.Response[specv1.Spec], error) {
+// TransitionAbandon handles the TransitionAbandon RPC, transitioning a spec to abandoned (terminal).
+func (h *LifecycleHandler) TransitionAbandon(ctx context.Context, req *connect.Request[specv1.TransitionAbandonRequest]) (*connect.Response[specv1.TransitionAbandonResponse], error) {
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -120,7 +120,7 @@ func (h *LifecycleHandler) Abandon(ctx context.Context, req *connect.Request[spe
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(pb), nil
+	return connect.NewResponse(&specv1.TransitionAbandonResponse{Spec: pb}), nil
 }
 
 // CheckDrift handles the CheckDrift RPC, returning drift reports for a spec.

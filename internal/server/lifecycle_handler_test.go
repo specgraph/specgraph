@@ -99,17 +99,18 @@ func TestLifecycleHandler_Amend(t *testing.T) {
 	}
 	client := newLifecycleClient(t, deps)
 
-	resp, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+	resp, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
 		Slug:         "my-spec",
 		Reason:       "needs rework",
 		ReEntryStage: "shape",
 	}))
 	require.NoError(t, err)
-	require.Equal(t, "my-spec", resp.Msg.Slug)
-	require.Equal(t, "amended", resp.Msg.Stage)
-	require.Equal(t, int32(2), resp.Msg.Version)
-	require.Len(t, resp.Msg.History, 1)
-	require.Equal(t, "needs rework", resp.Msg.History[0].Reason)
+	s := resp.Msg.GetSpec()
+	require.Equal(t, "my-spec", s.GetSlug())
+	require.Equal(t, "amended", s.GetStage())
+	require.Equal(t, int32(2), s.GetVersion())
+	require.Len(t, s.GetHistory(), 1)
+	require.Equal(t, "needs rework", s.GetHistory()[0].GetReason())
 }
 
 func TestLifecycleHandler_Amend_NotFound(t *testing.T) {
@@ -119,7 +120,7 @@ func TestLifecycleHandler_Amend_NotFound(t *testing.T) {
 	}
 	client := newLifecycleClient(t, deps)
 
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
 		Slug:         "no-such-spec",
 		Reason:       "rework",
 		ReEntryStage: "shape",
@@ -137,7 +138,7 @@ func TestLifecycleHandler_Amend_NotDone(t *testing.T) {
 	}
 	client := newLifecycleClient(t, deps)
 
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
 		Slug:         "in-progress-spec",
 		Reason:       "rework",
 		ReEntryStage: "shape",
@@ -152,7 +153,7 @@ func TestLifecycleHandler_Amend_InvalidReEntryStage(t *testing.T) {
 	deps := defaultTestDeps()
 	client := newLifecycleClient(t, deps)
 
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
 		Slug:         "my-spec",
 		Reason:       "rework",
 		ReEntryStage: "invalid-stage",
@@ -180,7 +181,7 @@ func TestLifecycleHandler_Supersede(t *testing.T) {
 	}
 	client := newLifecycleClient(t, deps)
 
-	resp, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.LifecycleSupersedeRequest{
+	resp, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
 		Slug:    "old-spec",
 		NewSlug: "new-spec",
 	}))
@@ -203,13 +204,14 @@ func TestLifecycleHandler_Abandon(t *testing.T) {
 	}
 	client := newLifecycleClient(t, deps)
 
-	resp, err := client.Abandon(context.Background(), connect.NewRequest(&specv1.LifecycleAbandonRequest{
+	resp, err := client.TransitionAbandon(context.Background(), connect.NewRequest(&specv1.TransitionAbandonRequest{
 		Slug:   "dead-spec",
 		Reason: "no longer needed",
 	}))
 	require.NoError(t, err)
-	require.Equal(t, "dead-spec", resp.Msg.Slug)
-	require.Equal(t, "abandoned", resp.Msg.Stage)
+	s := resp.Msg.GetSpec()
+	require.Equal(t, "dead-spec", s.GetSlug())
+	require.Equal(t, "abandoned", s.GetStage())
 }
 
 func TestLifecycleHandler_CheckDrift(t *testing.T) {
@@ -289,7 +291,7 @@ func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 
 func TestLifecycleHandler_Amend_EmptySlug(t *testing.T) {
 	client := newLifecycleClient(t, defaultTestDeps())
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
 		Slug:   "",
 		Reason: "rework",
 	}))
@@ -301,7 +303,7 @@ func TestLifecycleHandler_Amend_EmptySlug(t *testing.T) {
 
 func TestLifecycleHandler_Supersede_SameSlug(t *testing.T) {
 	client := newLifecycleClient(t, defaultTestDeps())
-	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.LifecycleSupersedeRequest{
+	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
 		Slug:    "same-spec",
 		NewSlug: "same-spec",
 	}))
@@ -317,7 +319,7 @@ func TestLifecycleHandler_Supersede_NewSpecNotFound(t *testing.T) {
 		return nil, nil, storage.ErrNewSpecNotFound
 	}
 	client := newLifecycleClient(t, deps)
-	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.LifecycleSupersedeRequest{
+	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
 		Slug:    "old-spec",
 		NewSlug: "missing-spec",
 	}))
@@ -385,7 +387,7 @@ func TestLifecycleHandler_Abandon_Terminal(t *testing.T) {
 	}
 	client := newLifecycleClient(t, deps)
 
-	_, err := client.Abandon(context.Background(), connect.NewRequest(&specv1.LifecycleAbandonRequest{
+	_, err := client.TransitionAbandon(context.Background(), connect.NewRequest(&specv1.TransitionAbandonRequest{
 		Slug:   "already-abandoned",
 		Reason: "try again",
 	}))
@@ -402,7 +404,7 @@ func TestLifecycleHandler_Supersede_Terminal(t *testing.T) {
 	}
 	client := newLifecycleClient(t, deps)
 
-	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.LifecycleSupersedeRequest{
+	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
 		Slug:    "terminal-spec",
 		NewSlug: "new-spec",
 	}))
@@ -419,7 +421,7 @@ func TestLifecycleHandler_Amend_ConcurrentModification(t *testing.T) {
 	}
 	client := newLifecycleClient(t, deps)
 
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
 		Slug:   "busy-spec",
 		Reason: "rework",
 	}))
@@ -432,7 +434,7 @@ func TestLifecycleHandler_Amend_ConcurrentModification(t *testing.T) {
 func TestLifecycleHandler_Amend_TerminalReEntryStage(t *testing.T) {
 	client := newLifecycleClient(t, defaultTestDeps())
 	for _, stage := range []string{"amended", "superseded", "abandoned"} {
-		_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+		_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
 			Slug:         "my-spec",
 			Reason:       "rework",
 			ReEntryStage: stage,
@@ -501,7 +503,7 @@ func TestLifecycleHandler_Amend_TerminalSpec(t *testing.T) {
 	}
 	client := newLifecycleClient(t, deps)
 
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
 		Slug:   "superseded-spec",
 		Reason: "rework",
 	}))
@@ -530,7 +532,7 @@ func TestLifecycleHandler_Abandon_NotFound(t *testing.T) {
 	}
 	client := newLifecycleClient(t, deps)
 
-	_, err := client.Abandon(context.Background(), connect.NewRequest(&specv1.LifecycleAbandonRequest{
+	_, err := client.TransitionAbandon(context.Background(), connect.NewRequest(&specv1.TransitionAbandonRequest{
 		Slug:   "no-such-spec",
 		Reason: "no longer needed",
 	}))
@@ -547,7 +549,7 @@ func TestLifecycleHandler_Supersede_OldNotFound(t *testing.T) {
 	}
 	client := newLifecycleClient(t, deps)
 
-	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.LifecycleSupersedeRequest{
+	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
 		Slug:    "missing-old-spec",
 		NewSlug: "new-spec",
 	}))
@@ -559,7 +561,7 @@ func TestLifecycleHandler_Supersede_OldNotFound(t *testing.T) {
 
 func TestLifecycleHandler_Amend_EmptyReason(t *testing.T) {
 	client := newLifecycleClient(t, defaultTestDeps())
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.LifecycleAmendRequest{
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
 		Slug:         "my-spec",
 		Reason:       "",
 		ReEntryStage: "shape",
@@ -572,7 +574,7 @@ func TestLifecycleHandler_Amend_EmptyReason(t *testing.T) {
 
 func TestLifecycleHandler_Abandon_EmptyReason(t *testing.T) {
 	client := newLifecycleClient(t, defaultTestDeps())
-	_, err := client.Abandon(context.Background(), connect.NewRequest(&specv1.LifecycleAbandonRequest{
+	_, err := client.TransitionAbandon(context.Background(), connect.NewRequest(&specv1.TransitionAbandonRequest{
 		Slug:   "dead-spec",
 		Reason: "",
 	}))
