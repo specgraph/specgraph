@@ -132,6 +132,12 @@ var _ = Describe("Lifecycle", Ordered, func() {
 		})
 
 		It("creates a SUPERSEDES edge from new to old", func() {
+			oldSpecResp, err := specClient.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
+				Slug: oldSlug,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			oldSpecID := oldSpecResp.Msg.Id
+
 			edgeResp, err := graphClient.ListEdges(ctx, connect.NewRequest(&specv1.ListEdgesRequest{
 				Slug:     newSlug,
 				EdgeType: specv1.EdgeType_EDGE_TYPE_SUPERSEDES,
@@ -141,6 +147,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			found := false
 			for _, e := range edgeResp.Msg.Edges {
 				if e.EdgeType == specv1.EdgeType_EDGE_TYPE_SUPERSEDES {
+					Expect(e.ToId).To(Equal(oldSpecID), "SUPERSEDES edge should point to old spec")
 					found = true
 					break
 				}
