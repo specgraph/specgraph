@@ -753,6 +753,40 @@ func TestLifecycleHandler_AcknowledgeDrift_IneligibleStage(t *testing.T) {
 	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
 }
 
+func TestLifecycleHandler_AcknowledgeDrift_StorageError(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _ string) (*storage.DriftReport, error) {
+		return nil, errors.New("db write failed")
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug: "my-spec",
+		Note: "intentional divergence",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestLifecycleHandler_AcknowledgeDrift_ConcurrentModification(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _ string) (*storage.DriftReport, error) {
+		return nil, storage.ErrConcurrentModification
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug: "my-spec",
+		Note: "intentional divergence",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeAborted, connErr.Code())
+}
+
 func TestLifecycleHandler_Abandon_NotFound(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.abandonSpec = func(_ context.Context, _, _ string) (*storage.Spec, error) {
