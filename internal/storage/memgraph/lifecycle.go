@@ -165,7 +165,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 //
 // The transition is atomic: a WHERE clause gates on the old spec not being
 // in a terminal stage, preventing TOCTOU races.
-func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug string) (oldSpec, newSpec *storage.Spec, retErr error) {
+func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug string) (oldSpec, newSpec *storage.Spec, err error) {
 	// Pre-validate: check old spec exists and new spec exists.
 	oldCheck, err := s.GetSpec(ctx, oldSlug)
 	if err != nil {
