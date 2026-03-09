@@ -104,6 +104,17 @@ func TestValidateSchema_LivingLifecycle(t *testing.T) {
 	require.Empty(t, violations)
 }
 
+func TestValidateSchema_AbandonedStage(t *testing.T) {
+	spec := &storage.Spec{
+		Slug:    "abandoned-spec",
+		Intent:  "No longer needed",
+		Stage:   storage.SpecStageAbandoned,
+		Version: 1,
+	}
+	violations := linter.ValidateSchema(spec)
+	require.Empty(t, violations, "abandoned stage should pass schema validation without special fields")
+}
+
 func filterByRule(violations []storage.LintViolation, rule string) []storage.LintViolation {
 	var filtered []storage.LintViolation
 	for _, v := range violations {

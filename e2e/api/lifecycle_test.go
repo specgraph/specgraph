@@ -7,6 +7,7 @@ package api_test
 
 import (
 	"context"
+	"time"
 
 	"connectrpc.com/connect"
 	. "github.com/onsi/ginkgo/v2"
@@ -193,6 +194,11 @@ var _ = Describe("Lifecycle", Ordered, func() {
 		})
 
 		It("updates upstream to trigger drift", func() {
+			// Drift detection compares updated_at timestamps. Sleep >1s to
+			// guarantee upstream's timestamp is strictly newer than downstream's,
+			// matching the integration test pattern in lifecycle_test.go.
+			time.Sleep(1100 * time.Millisecond)
+
 			_, err := specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
 				Slug:   upstreamSlug,
 				Intent: proto.String("Updated upstream intent to trigger drift"),

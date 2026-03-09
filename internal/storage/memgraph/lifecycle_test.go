@@ -304,3 +304,49 @@ func TestAcknowledgeDrift_VisibleViaGetSpec(t *testing.T) {
 	require.True(t, spec.DriftAcknowledged)
 	require.Equal(t, "drift accepted", spec.DriftAcknowledgeNote)
 }
+
+func TestAmendedSpec_CanBeAbandoned(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "amend-abandon", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "amend-abandon", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+
+	// Amend with empty reEntryStage → "amended" stage.
+	amended, err := store.LifecycleAmendSpec(ctx, "amend-abandon", "needs rework", "")
+	require.NoError(t, err)
+	require.Equal(t, storage.SpecStageAmended, amended.Stage)
+
+	// Amended is not fully terminal — abandon should succeed.
+	abandoned, err := store.LifecycleAbandonSpec(ctx, "amend-abandon", "no longer needed")
+	require.NoError(t, err)
+	require.Equal(t, storage.SpecStageAbandoned, abandoned.Stage)
+}
+
+func TestAmendedSpec_CanBeSuperseded(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "amend-supersede-old", "Old spec", "p1", "medium")
+	require.NoError(t, err)
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "amend-supersede-old", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+
+	// Amend with empty reEntryStage → "amended" stage.
+	amended, err := store.LifecycleAmendSpec(ctx, "amend-supersede-old", "needs rework", "")
+	require.NoError(t, err)
+	require.Equal(t, storage.SpecStageAmended, amended.Stage)
+
+	// Create a new spec to supersede the old one.
+	_, err = store.CreateSpec(ctx, "amend-supersede-new", "New spec", "p1", "medium")
+	require.NoError(t, err)
+
+	// Amended is not fully terminal — supersede should succeed.
+	oldSpec, newSpec, err := store.LifecycleSupersedeSpec(ctx, "amend-supersede-old", "amend-supersede-new")
+	require.NoError(t, err)
+	require.Equal(t, storage.SpecStageSuperseded, oldSpec.Stage)
+	require.Equal(t, "amend-supersede-new", oldSpec.SupersededBy)
+	require.Equal(t, "amend-supersede-old", newSpec.Supersedes)
+}
