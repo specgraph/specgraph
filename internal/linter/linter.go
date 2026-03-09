@@ -131,6 +131,9 @@ func detectCycles(ctx context.Context, backend Backend, slug string, rootDeps []
 	visited := map[string]bool{}
 	inStack := map[string]bool{}
 	var violations []storage.LintViolation
+	// storageErr is captured by the DFS closure to propagate storage errors out
+	// of the recursive walk. Once set, the guard at the top of dfs
+	// short-circuits remaining branches.
 	var storageErr error
 
 	var dfs func(current string, depth int)
