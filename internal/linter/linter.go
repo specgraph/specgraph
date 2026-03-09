@@ -83,8 +83,19 @@ func lintSpec(ctx context.Context, backend Backend, spec *storage.Spec) (storage
 	}
 	violations = append(violations, danglingViolations...)
 
+	// Build a set of dangling slugs so detectCycles can skip duplicate
+	// graph.missing_node violations for slugs already reported as edge.dangling_ref.
+	danglingSet := make(map[string]bool, len(danglingViolations))
+	for _, v := range danglingViolations {
+		for _, dep := range deps {
+			if v.Rule == "edge.dangling_ref" && v.Location == fmt.Sprintf("dependencies[%s]", dep.Slug) {
+				danglingSet[dep.Slug] = true
+			}
+		}
+	}
+
 	// Rule 3: Cycle detection.
-	cycleViolations, err := detectCycles(ctx, backend, spec.Slug, deps)
+	cycleViolations, err := detectCycles(ctx, backend, spec.Slug, deps, danglingSet)
 	if err != nil {
 		return storage.LintResult{}, fmt.Errorf("linter: %w", err)
 	}
@@ -127,7 +138,7 @@ const maxCycleDepth = 1000
 //
 // On storage error during traversal, (nil, err) is returned immediately.
 // On success, violations contains the full set of detected cycles.
-func detectCycles(ctx context.Context, backend Backend, slug string, rootDeps []storage.NodeRef) ([]storage.LintViolation, error) {
+func detectCycles(ctx context.Context, backend Backend, slug string, rootDeps []storage.NodeRef, danglingSet map[string]bool) ([]storage.LintViolation, error) {
 	visited := map[string]bool{}
 	inStack := map[string]bool{}
 	var violations []storage.LintViolation
@@ -175,12 +186,15 @@ func detectCycles(ctx context.Context, backend Backend, slug string, rootDeps []
 		}
 		if err != nil {
 			if errors.Is(err, storage.ErrSpecNotFound) {
-				violations = append(violations, storage.LintViolation{
-					Rule:     "graph.missing_node",
-					Severity: storage.LintSeverityWarning,
-					Message:  fmt.Sprintf("spec %q referenced in dependency graph but not found", current),
-					Location: current,
-				})
+				// Skip duplicate violation if this slug was already reported as a dangling ref.
+				if !danglingSet[current] {
+					violations = append(violations, storage.LintViolation{
+						Rule:     "graph.missing_node",
+						Severity: storage.LintSeverityWarning,
+						Message:  fmt.Sprintf("spec %q referenced in dependency graph but not found", current),
+						Location: current,
+					})
+				}
 				inStack[current] = false
 				return
 			}
