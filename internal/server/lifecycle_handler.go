@@ -130,9 +130,9 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		}
 	}
 
-	scopeStr := driftScopeFromProto(msg.Scope)
-	if !driftscope.IsValid(scopeStr) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scope %q (valid: deps, interfaces, verify)", scopeStr))
+	scopeStr, ok := driftScopeFromProto(msg.Scope)
+	if !ok || !driftscope.IsValid(scopeStr) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scope %q (valid: deps, interfaces, verify)", msg.Scope.String()))
 	}
 
 	if h.driftChecker == nil {

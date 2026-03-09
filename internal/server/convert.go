@@ -486,11 +486,11 @@ var driftScopeFromProtoMap = map[specv1.DriftScope]string{
 	specv1.DriftScope_DRIFT_SCOPE_VERIFY:      "verify",
 }
 
-func driftScopeFromProto(scope specv1.DriftScope) string {
+func driftScopeFromProto(scope specv1.DriftScope) (string, bool) {
 	if s, ok := driftScopeFromProtoMap[scope]; ok {
-		return s
+		return s, true
 	}
-	return ""
+	return "", false
 }
 
 var driftTypeToProtoMap = map[storage.DriftType]specv1.DriftType{
