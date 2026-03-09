@@ -239,7 +239,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		"old_slug":             oldSlug,
 		"new_slug":             newSlug,
 		"stage":                string(storage.SpecStageSuperseded),
-		"terminal_stages":      terminalStagesList(),
+		"terminal_stages":      terminalStageStrings,
 		"expected_version":     oldCheck.Version,
 		"expected_new_version": newCheck.Version,
 		"version":              int64(newVersion),
@@ -323,7 +323,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 	records, err := s.executeQuery(ctx, query, map[string]any{
 		"slug":             slug,
 		"expected_version": spec.Version,
-		"terminal_stages":  terminalStagesList(),
+		"terminal_stages":  terminalStageStrings,
 		"stage":            string(storage.SpecStageAbandoned),
 		"version":          int64(newVersion),
 		"updated_at":       nowStr,
@@ -338,15 +338,15 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 	return recordToSpec(records[0])
 }
 
-// terminalStagesList returns the terminal stages as a string slice for use in
-// Cypher IN clauses.
-func terminalStagesList() []string {
+// terminalStageStrings contains the terminal stages as a string slice for use
+// in Cypher IN clauses. Computed once at init time.
+var terminalStageStrings = func() []string {
 	stages := make([]string, 0, len(terminalStages))
 	for stage := range terminalStages {
 		stages = append(stages, string(stage))
 	}
 	return stages
-}
+}()
 
 // LifecycleAcknowledgeDrift sets drift as acknowledged on the spec node and returns a
 // DriftReport reflecting the acknowledgment. Returns ErrSpecNotFound if the
