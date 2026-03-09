@@ -560,6 +560,7 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckError(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.True(t, resp.Msg.Acknowledged)
+	require.True(t, resp.Msg.ItemsStale)
 	require.Empty(t, resp.Msg.Items)
 }
 
