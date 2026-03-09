@@ -122,7 +122,9 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(resp.Msg.NewSpec).NotTo(BeNil())
 			Expect(resp.Msg.OldSpec.Slug).To(Equal(oldSlug))
 			Expect(resp.Msg.OldSpec.Stage).To(Equal("superseded"))
+			Expect(resp.Msg.OldSpec.SupersededBy).To(Equal(newSlug))
 			Expect(resp.Msg.NewSpec.Slug).To(Equal(newSlug))
+			Expect(resp.Msg.NewSpec.Supersedes).To(Equal(oldSlug))
 		})
 
 		It("creates a SUPERSEDES edge from new to old", func() {
