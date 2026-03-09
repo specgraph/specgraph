@@ -420,3 +420,27 @@ func TestLintResultsToProto(t *testing.T) {
 		assert.Equal(t, specv1.LintSeverity_LINT_SEVERITY_INFO, pbs[0].Violations[0].Severity)
 	})
 }
+
+func TestDriftScopeFromProto(t *testing.T) {
+	tests := []struct {
+		name  string
+		scope specv1.DriftScope
+		want  string
+		ok    bool
+	}{
+		{"UNSPECIFIED defaults to deps", specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED, "deps", true},
+		{"DEPS maps to deps", specv1.DriftScope_DRIFT_SCOPE_DEPS, "deps", true},
+		{"INTERFACES maps to interfaces", specv1.DriftScope_DRIFT_SCOPE_INTERFACES, "interfaces", true},
+		{"VERIFY maps to verify", specv1.DriftScope_DRIFT_SCOPE_VERIFY, "verify", true},
+		{"unknown scope returns false", specv1.DriftScope(99), "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := driftScopeFromProto(tt.scope)
+			assert.Equal(t, tt.ok, ok)
+			if ok {
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}

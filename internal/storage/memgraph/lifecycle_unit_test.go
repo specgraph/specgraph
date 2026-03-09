@@ -72,10 +72,11 @@ func TestUnmarshalHistory_EmptyAndNil(t *testing.T) {
 	assert.Nil(t, entries)
 }
 
-func TestUnmarshalHistory_InvalidStage(t *testing.T) {
+func TestUnmarshalHistory_UnknownStagePreserved(t *testing.T) {
 	raw := `[{"version":1,"stage":"nonexistent_stage","summary":"test","reason":"r","date":"2026-01-01T00:00:00.000000000Z"}]`
-	_, err := unmarshalHistory(raw)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid stage")
-	assert.Contains(t, err.Error(), "nonexistent_stage")
+	entries, err := unmarshalHistory(raw)
+	require.NoError(t, err, "unknown stage should not cause an error")
+	require.Len(t, entries, 1)
+	assert.Equal(t, storage.SpecStage("nonexistent_stage"), entries[0].Stage,
+		"unknown stage value should be preserved as-is")
 }

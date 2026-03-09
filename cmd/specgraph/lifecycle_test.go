@@ -8,6 +8,7 @@ import (
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDriftScopeToProto(t *testing.T) {
@@ -22,16 +23,18 @@ func TestDriftScopeToProto(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got := driftScopeToProto(tt.input)
+			got, err := driftScopeToProto(tt.input)
+			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
 	}
 }
 
-func TestDriftScopeToProto_UnknownFallback(t *testing.T) {
-	got := driftScopeToProto("bogus")
-	assert.Equal(t, specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED, got,
-		"unknown scope should fall back to UNSPECIFIED")
+func TestDriftScopeToProto_UnknownReturnsError(t *testing.T) {
+	_, err := driftScopeToProto("bogus")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid scope")
+	assert.Contains(t, err.Error(), "bogus")
 }
 
 func TestDriftScopeToProtoMap_Completeness(t *testing.T) {

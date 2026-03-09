@@ -229,14 +229,24 @@ var _ = Describe("Lifecycle", Ordered, func() {
 		})
 	})
 
-	Describe("Lint", func() {
+	Describe("Lint", Ordered, func() {
+		const lintSlug = "lifecycle-lint-spec"
+
+		BeforeAll(func() {
+			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   lintSlug,
+				Intent: "Test lint",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("returns lint results for a valid spec", func() {
 			resp, err := lifecycleClient.Lint(ctx, connect.NewRequest(&specv1.LintRequest{
-				Slug: "lifecycle-amend-spec",
+				Slug: lintSlug,
 			}))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Msg.Results).NotTo(BeEmpty())
-			Expect(resp.Msg.Results[0].SpecSlug).To(Equal("lifecycle-amend-spec"))
+			Expect(resp.Msg.Results[0].SpecSlug).To(Equal(lintSlug))
 			Expect(resp.Msg.Results[0].Passed).To(BeTrue(), "valid spec should pass lint")
 		})
 	})

@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -349,7 +350,8 @@ func unmarshalHistory(raw string) ([]storage.HistoryEntry, error) {
 		}
 		stage := storage.SpecStage(e.Stage)
 		if !stage.IsValid() {
-			return nil, fmt.Errorf("memgraph: unmarshal history_json: invalid stage %q at index %d", e.Stage, i)
+			slog.Warn("unmarshal history_json: unknown stage in history entry",
+				slog.String("stage", e.Stage), slog.Int("index", i))
 		}
 		result[i] = storage.HistoryEntry{
 			Version: e.Version,

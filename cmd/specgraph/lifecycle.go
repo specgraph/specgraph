@@ -125,11 +125,11 @@ var driftScopeToProtoMap = map[string]specv1.DriftScope{
 	"verify":     specv1.DriftScope_DRIFT_SCOPE_VERIFY,
 }
 
-func driftScopeToProto(s string) specv1.DriftScope {
+func driftScopeToProto(s string) (specv1.DriftScope, error) {
 	if v, ok := driftScopeToProtoMap[s]; ok {
-		return v
+		return v, nil
 	}
-	return specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED
+	return 0, fmt.Errorf("invalid scope %q (valid: deps, interfaces, verify)", s)
 }
 
 func runDrift(_ *cobra.Command, args []string) error {
@@ -137,8 +137,12 @@ func runDrift(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	scope, err := driftScopeToProto(driftScope)
+	if err != nil {
+		return err
+	}
 	req := &specv1.DriftCheckRequest{
-		Scope: driftScopeToProto(driftScope),
+		Scope: scope,
 	}
 	if len(args) > 0 {
 		req.Slug = args[0]

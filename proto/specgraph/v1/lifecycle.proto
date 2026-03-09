@@ -124,7 +124,7 @@ message TransitionAbandonResponse {
 message DriftCheckRequest {
   // Empty slug checks all eligible (done/amended) specs.
   string slug = 1;
-  // Scope of drift detection. UNSPECIFIED checks all scopes.
+  // Scope of drift detection. UNSPECIFIED defaults to dependency (deps) scope.
   // Note: INTERFACES and VERIFY are not yet implemented and return empty results.
   DriftScope scope = 2;
 }

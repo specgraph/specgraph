@@ -669,6 +669,23 @@ func TestLifecycleHandler_AcknowledgeDrift_EmptyNote(t *testing.T) {
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
+func TestLifecycleHandler_AcknowledgeDrift_IneligibleStage(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
+		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpark}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug: "my-spec",
+		Note: "should fail",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+}
+
 func TestLifecycleHandler_Abandon_NotFound(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.abandonSpec = func(_ context.Context, _, _ string) (*storage.Spec, error) {
