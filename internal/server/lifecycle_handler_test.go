@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -629,6 +630,52 @@ func TestLifecycleHandler_Abandon_EmptyReason(t *testing.T) {
 	_, err := client.TransitionAbandon(context.Background(), connect.NewRequest(&specv1.TransitionAbandonRequest{
 		Slug:   "dead-spec",
 		Reason: "",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestLifecycleHandler_Lint_EmptySlug(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.linter.lint = func(_ context.Context, slug string) ([]storage.LintResult, error) {
+		require.Empty(t, slug, "empty slug means lint all specs")
+		return []storage.LintResult{
+			{SpecSlug: "spec-a", Passed: true},
+			{SpecSlug: "spec-b", Passed: false, Violations: []storage.LintViolation{
+				{Rule: "schema.enum", Severity: storage.LintSeverityError, Message: "bad stage"},
+			}},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.Lint(context.Background(), connect.NewRequest(&specv1.LintRequest{
+		Slug: "",
+	}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Results, 2)
+}
+
+func TestLifecycleHandler_Amend_ReasonExceedsMaxLen(t *testing.T) {
+	client := newLifecycleClient(t, defaultTestDeps())
+	longReason := strings.Repeat("x", 10001)
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
+		Slug:   "my-spec",
+		Reason: longReason,
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestLifecycleHandler_Abandon_ReasonExceedsMaxLen(t *testing.T) {
+	client := newLifecycleClient(t, defaultTestDeps())
+	longReason := strings.Repeat("x", 10001)
+	_, err := client.TransitionAbandon(context.Background(), connect.NewRequest(&specv1.TransitionAbandonRequest{
+		Slug:   "my-spec",
+		Reason: longReason,
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
