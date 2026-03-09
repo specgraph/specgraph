@@ -342,19 +342,35 @@ func terminalStagesList() []string {
 
 // LifecycleAcknowledgeDrift sets drift as acknowledged on the spec node and returns a
 // DriftReport reflecting the acknowledgment. Returns ErrSpecNotFound if the
-// spec does not exist.
+// spec does not exist, or ErrSpecNotDone if the spec is not in an eligible
+// stage (done or amended).
+//
+// The WHERE guard is atomic: drift can only be acknowledged on specs in the
+// done or amended stages, preventing TOCTOU races between the handler check
+// and the storage write.
 func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string) (*storage.DriftReport, error) {
+	eligibleStages := []string{string(storage.SpecStageDone), string(storage.SpecStageAmended)}
 	query := `
 		MATCH (s:Spec {slug: $slug})
+		WHERE s.stage IN $eligible_stages
 		SET s.drift_acknowledged = true, s.drift_acknowledge_note = $note
 		RETURN s.slug
 	`
-	records, err := s.executeQuery(ctx, query, map[string]any{"slug": slug, "note": note})
+	records, err := s.executeQuery(ctx, query, map[string]any{
+		"slug":            slug,
+		"note":            note,
+		"eligible_stages": eligibleStages,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: acknowledge drift: %w", err)
 	}
 	if len(records) == 0 {
-		return nil, fmt.Errorf("memgraph: acknowledge drift %q: %w", slug, storage.ErrSpecNotFound)
+		return nil, s.preconditionError(ctx, slug, "acknowledge drift", func(current *storage.Spec) error {
+			if current.Stage != storage.SpecStageDone && current.Stage != storage.SpecStageAmended {
+				return fmt.Errorf("acknowledge drift %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecNotDone)
+			}
+			return nil
+		})
 	}
 	return &storage.DriftReport{
 		SpecSlug:        slug,
