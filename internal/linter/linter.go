@@ -77,14 +77,14 @@ func lintSpec(ctx context.Context, backend Backend, spec *storage.Spec) (storage
 
 	// Rule 1 is schema validation (ValidateSchema above).
 	// Rule 2: Edge consistency — dangling dependency references.
-	danglingViolations, err := checkDanglingDepsWithDeps(ctx, backend, spec.Slug, deps)
+	danglingViolations, err := checkDanglingDeps(ctx, backend, spec.Slug, deps)
 	if err != nil {
 		return storage.LintResult{}, fmt.Errorf("linter: %w", err)
 	}
 	violations = append(violations, danglingViolations...)
 
 	// Rule 3: Cycle detection.
-	cycleViolations, err := detectCyclesWithDeps(ctx, backend, spec.Slug, deps)
+	cycleViolations, err := detectCycles(ctx, backend, spec.Slug, deps)
 	if err != nil {
 		return storage.LintResult{}, fmt.Errorf("linter: %w", err)
 	}
@@ -97,17 +97,9 @@ func lintSpec(ctx context.Context, backend Backend, spec *storage.Spec) (storage
 	}, nil
 }
 
-// checkDanglingDeps verifies that each dependency target actually exists.
-func checkDanglingDeps(ctx context.Context, backend Backend, slug string) ([]storage.LintViolation, error) {
-	deps, err := backend.GetDependencies(ctx, slug)
-	if err != nil {
-		return nil, fmt.Errorf("fetch dependencies for %q: %w", slug, err)
-	}
-	return checkDanglingDepsWithDeps(ctx, backend, slug, deps)
-}
-
-// checkDanglingDepsWithDeps is like checkDanglingDeps but accepts pre-fetched dependencies.
-func checkDanglingDepsWithDeps(ctx context.Context, backend Backend, _ string, deps []storage.NodeRef) ([]storage.LintViolation, error) {
+// checkDanglingDeps verifies that each dependency target actually exists,
+// using pre-fetched dependencies to avoid redundant storage calls.
+func checkDanglingDeps(ctx context.Context, backend Backend, _ string, deps []storage.NodeRef) ([]storage.LintViolation, error) {
 	var violations []storage.LintViolation
 	for _, dep := range deps {
 		_, err := backend.GetSpec(ctx, dep.Slug)
@@ -128,16 +120,11 @@ func checkDanglingDepsWithDeps(ctx context.Context, backend Backend, _ string, d
 	return violations, nil
 }
 
-// detectCycles uses DFS to find back-edges in the dependency graph.
-// maxDepth guards against stack overflow from deeply nested graphs.
 const maxCycleDepth = 1000
 
-func detectCycles(ctx context.Context, backend Backend, slug string) ([]storage.LintViolation, error) {
-	return detectCyclesWithDeps(ctx, backend, slug, nil)
-}
-
-// detectCyclesWithDeps is like detectCycles but accepts optional pre-fetched root dependencies.
-func detectCyclesWithDeps(ctx context.Context, backend Backend, slug string, rootDeps []storage.NodeRef) ([]storage.LintViolation, error) {
+// detectCycles uses DFS to find back-edges in the dependency graph.
+// rootDeps, if non-nil, are used for the root node to avoid a redundant fetch.
+func detectCycles(ctx context.Context, backend Backend, slug string, rootDeps []storage.NodeRef) ([]storage.LintViolation, error) {
 	visited := map[string]bool{}
 	inStack := map[string]bool{}
 	var violations []storage.LintViolation
