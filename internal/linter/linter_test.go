@@ -6,6 +6,7 @@ package linter_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/seanb4t/specgraph/internal/linter"
@@ -285,4 +286,36 @@ func TestLint_GetDependenciesMidTraversalStorageError(t *testing.T) {
 	require.ErrorIs(t, err, dbErr)
 	// Violations found before the error are returned (not discarded).
 	_ = violations
+}
+
+func TestLint_MaxCycleDepthExceeded(t *testing.T) {
+	const chainLen = 1002
+	specs := make(map[string]*storage.Spec, chainLen)
+	deps := make(map[string][]storage.NodeRef, chainLen-1)
+	for i := 0; i < chainLen; i++ {
+		slug := fmt.Sprintf("spec-%d", i)
+		specs[slug] = &storage.Spec{
+			Slug:    slug,
+			Intent:  "chain node",
+			Stage:   storage.SpecStageSpark,
+			Version: 1,
+		}
+		if i < chainLen-1 {
+			deps[slug] = []storage.NodeRef{{Slug: fmt.Sprintf("spec-%d", i+1)}}
+		}
+	}
+	backend := &mockLintBackend{specs: specs, deps: deps}
+
+	results, err := linter.Lint(context.Background(), backend, "spec-0")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	var found bool
+	for _, v := range results[0].Violations {
+		if v.Rule == "graph.cycle" && v.Severity == storage.LintSeverityWarning {
+			found = true
+			require.Contains(t, v.Message, "exceeds maximum depth")
+			break
+		}
+	}
+	require.True(t, found, "expected graph.cycle warning for depth exceeded, got violations: %v", results[0].Violations)
 }
