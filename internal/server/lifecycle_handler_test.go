@@ -286,6 +286,32 @@ func TestLifecycleHandler_CheckDrift_AllSpecs(t *testing.T) {
 	require.Len(t, resp.Msg.Reports, 2)
 }
 
+func TestLifecycleHandler_CheckDrift_MergesAcknowledgmentState(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
+		return &storage.Spec{
+			Slug:                 slug,
+			Stage:                storage.SpecStageDone,
+			DriftAcknowledged:    true,
+			DriftAcknowledgeNote: "some note",
+		}, nil
+	}
+	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+		return []storage.DriftReport{
+			{SpecSlug: "my-spec"},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
+		Slug: "my-spec",
+	}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Reports, 1)
+	require.True(t, resp.Msg.Reports[0].Acknowledged)
+	require.Equal(t, "some note", resp.Msg.Reports[0].AcknowledgeNote)
+}
+
 func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
