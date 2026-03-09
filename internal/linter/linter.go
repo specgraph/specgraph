@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 
-// Package linter validates specs against JSON Schema and graph-consistency rules.
+// Package linter validates specs using programmatic field checks and graph-consistency rules.
 package linter
 
 import (
