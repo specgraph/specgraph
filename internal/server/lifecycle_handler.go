@@ -152,6 +152,9 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 					reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
 				}
 			}
+		} else if !errors.Is(specErr, storage.ErrSpecNotFound) {
+			h.logger.Warn("CheckDrift: failed to merge acknowledgment state",
+				slog.String("slug", msg.Slug), slog.Any("error", specErr))
 		}
 	}
 
