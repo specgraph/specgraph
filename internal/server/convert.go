@@ -532,6 +532,7 @@ func driftReportToProto(r *storage.DriftReport) (*specv1.DriftReport, error) {
 		Items:           items,
 		Acknowledged:    r.Acknowledged,
 		AcknowledgeNote: r.AcknowledgeNote,
+		ItemsStale:      r.ItemsStale,
 	}, nil
 }
 

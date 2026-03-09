@@ -141,7 +141,9 @@ func TestCheckDrift_DependencyDrift(t *testing.T) {
 	_, err = store.AddEdge(ctx, "downstream-spec", "upstream-spec", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
 
-	// Wait briefly so updated_at differs.
+	// Drift detection compares updated_at timestamps: upstream must be strictly
+	// newer than downstream. Memgraph's datetime has second-level precision in
+	// practice, so we sleep >1s to guarantee the ordering.
 	time.Sleep(1100 * time.Millisecond)
 
 	// Update upstream to bump its updated_at.
@@ -248,7 +250,7 @@ func TestCheckDrift_AllSpecs_Integration(t *testing.T) {
 	_, err = store.UpdateSpec(ctx, "down2-integ", nil, &doneStage, nil, nil)
 	require.NoError(t, err)
 
-	// Wait briefly then update upstream to create drift.
+	// Same as above: sleep >1s so updated_at(upstream) > updated_at(downstream).
 	time.Sleep(1100 * time.Millisecond)
 	newIntent := "Updated upstream"
 	_, err = store.UpdateSpec(ctx, "up-integ", &newIntent, nil, nil, nil)
@@ -285,4 +287,20 @@ func TestAcknowledgeDrift_PersistsAcrossReads(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, report.Acknowledged)
 	require.Equal(t, "new note", report.AcknowledgeNote)
+}
+
+func TestAcknowledgeDrift_VisibleViaGetSpec(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "ack-getspec", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	_, err = store.LifecycleAcknowledgeDrift(ctx, "ack-getspec", "drift accepted")
+	require.NoError(t, err)
+
+	// GetSpec should reflect the acknowledged flag set by AcknowledgeDrift.
+	spec, err := store.GetSpec(ctx, "ack-getspec")
+	require.NoError(t, err)
+	require.True(t, spec.DriftAcknowledged)
+	require.Equal(t, "drift accepted", spec.DriftAcknowledgeNote)
 }

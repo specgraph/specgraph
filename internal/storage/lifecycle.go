@@ -74,6 +74,7 @@ type DriftReport struct {
 	Items           []DriftItem
 	Acknowledged    bool
 	AcknowledgeNote string
+	ItemsStale      bool
 }
 
 // LintSeverity indicates lint violation urgency.

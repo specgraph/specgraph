@@ -65,6 +65,9 @@ message DriftReport {
   repeated DriftItem items = 2;
   bool acknowledged = 3;
   string acknowledge_note = 4;
+  // True when drift items could not be refreshed (e.g. re-check failed after
+  // acknowledgment). Clients should treat items as potentially stale.
+  bool items_stale = 5;
 }
 
 // --- Lint Messages ---
