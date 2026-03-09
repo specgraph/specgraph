@@ -597,6 +597,7 @@ func lintResultToProto(r *storage.LintResult) (*specv1.LintResult, error) {
 		SpecSlug:   r.SpecSlug,
 		Violations: violations,
 		Passed:     r.Passed,
+		Error:      r.Error,
 	}, nil
 }
 

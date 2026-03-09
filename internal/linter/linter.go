@@ -56,7 +56,11 @@ func Lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResu
 	for _, spec := range specs {
 		result, err := lintSpec(ctx, backend, spec)
 		if err != nil {
-			return nil, err
+			results = append(results, storage.LintResult{
+				SpecSlug: spec.Slug,
+				Error:    err.Error(),
+			})
+			continue
 		}
 		results = append(results, result)
 	}

@@ -91,7 +91,7 @@ func runServe(_ *cobra.Command, _ []string) error {
 		server.RegisterConstitutionService(mux, store)
 		server.RegisterAuthoringService(mux, store, store)
 		server.RegisterExecutionService(mux, store)
-		driftEngine := drift.NewEngine(store)
+		driftEngine := drift.NewEngine(store, nil)
 		lintEngine := linter.NewEngine(store)
 		server.RegisterLifecycleService(mux, store, driftEngine, lintEngine)
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)

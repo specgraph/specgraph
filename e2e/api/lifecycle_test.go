@@ -316,11 +316,10 @@ var _ = Describe("Lifecycle", Ordered, func() {
 		})
 	})
 
+	// Depends on "Drift detection" Describe above (order guaranteed by outer Ordered container).
+	// That block creates two done specs with a dependency and bumps upstream's updated_at.
 	Describe("Drift detection (all specs)", func() {
 		It("detects drift across all eligible specs when slug is empty", func() {
-			// The earlier "Drift detection" Describe block created two done
-			// specs with a dependency and bumped the upstream's updated_at,
-			// so at least one drift report should appear.
 			resp, err := lifecycleClient.CheckDrift(ctx, connect.NewRequest(&specv1.DriftCheckRequest{}))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Msg.Reports).NotTo(BeEmpty(), "drift-all should find at least one drifted spec")

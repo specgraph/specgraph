@@ -166,6 +166,9 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 // The transition is atomic: a WHERE clause gates on the old spec not being
 // in a terminal stage, preventing TOCTOU races.
 func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug string) (oldSpec, newSpec *storage.Spec, err error) {
+	if oldSlug == newSlug {
+		return nil, nil, fmt.Errorf("supersede spec: old and new slugs must differ (%q)", oldSlug)
+	}
 	// Pre-validate: check old spec exists and new spec exists.
 	oldCheck, err := s.GetSpec(ctx, oldSlug)
 	if err != nil {
@@ -183,9 +186,9 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	}
 
 	now := time.Now().UTC()
-	newVersion := oldCheck.Version + 1
+	oldVersion := oldCheck.Version + 1
 	oldEntry := storage.HistoryEntry{
-		Version: newVersion,
+		Version: oldVersion,
 		Stage:   storage.SpecStageSuperseded,
 		Summary: "Spec superseded",
 		Reason:  fmt.Sprintf("Superseded by %s", newSlug),
@@ -196,8 +199,9 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		return nil, nil, err
 	}
 
+	newVersion := newCheck.Version + 1
 	newEntry := storage.HistoryEntry{
-		Version: newCheck.Version + 1,
+		Version: newVersion,
 		Stage:   newCheck.Stage,
 		Summary: "Supersedes predecessor",
 		Reason:  fmt.Sprintf("Supersedes %s", oldSlug),
@@ -222,7 +226,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		    old.updated_at = $updated_at,
 		    old.history_json = $history_json,
 		    new.supersedes = $old_slug,
-		    new.version = new.version + 1,
+		    new.version = $new_version,
 		    new.updated_at = $updated_at,
 		    new.history_json = $new_history_json
 		MERGE (new)-[:SUPERSEDES]->(old)
@@ -242,7 +246,8 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		"terminal_stages":      terminalStageStrings,
 		"expected_version":     oldCheck.Version,
 		"expected_new_version": newCheck.Version,
-		"version":              int64(newVersion),
+		"version":              int64(oldVersion),
+		"new_version":          int64(newVersion),
 		"updated_at":           nowStr,
 		"history_json":         historyJSON,
 		"new_history_json":     newHistoryJSON,

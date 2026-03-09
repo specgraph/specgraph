@@ -113,6 +113,7 @@ type LintResult struct {
 	SpecSlug   string
 	Violations []LintViolation
 	Passed     bool
+	Error      string // non-empty when linting failed for this spec
 }
 
 // LifecycleBackend defines storage operations for spec lifecycle transitions.

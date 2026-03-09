@@ -180,6 +180,30 @@ func TestSpecHandler_UpdateSpec(t *testing.T) {
 	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
 }
 
+func TestSpecHandler_GetSpec_InvalidLifecycle(t *testing.T) {
+	mb := newMockBackend()
+	// Inject a spec with an invalid lifecycle directly.
+	mb.specs["bad-lifecycle"] = &storage.Spec{
+		ID:        "spec-bad",
+		Slug:      "bad-lifecycle",
+		Intent:    "test invalid lifecycle",
+		Stage:     storage.SpecStageSpark,
+		Version:   1,
+		Lifecycle: storage.SpecLifecycle("bogus"),
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	srv := httptest.NewServer(server.NewMux(mb))
+	t.Cleanup(srv.Close)
+
+	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)
+	_, err := client.GetSpec(context.Background(), connect.NewRequest(&specv1.GetSpecRequest{
+		Slug: "bad-lifecycle",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInternal, connect.CodeOf(err))
+}
+
 func TestSpecHandler_ListSpecs(t *testing.T) {
 	mb := newMockBackend()
 	srv := httptest.NewServer(server.NewMux(mb))

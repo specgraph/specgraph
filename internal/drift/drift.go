@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/seanb4t/specgraph/internal/driftscope"
 	"github.com/seanb4t/specgraph/internal/storage"
@@ -24,11 +25,15 @@ const maxSpecsPerCheck = 10000
 // Engine runs drift detection checks.
 type Engine struct {
 	backend Backend
+	logger  *slog.Logger
 }
 
 // NewEngine creates a new drift detection engine.
-func NewEngine(backend Backend) *Engine {
-	return &Engine{backend: backend}
+func NewEngine(backend Backend, logger *slog.Logger) *Engine {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &Engine{backend: backend, logger: logger}
 }
 
 // Check runs drift detection for a single spec (by slug) or all eligible specs (empty slug).
@@ -66,6 +71,9 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 	for _, spec := range specs {
 		report, err := e.checkSpec(ctx, spec, scope)
 		if err != nil {
+			e.logger.Warn("drift check failed for spec",
+				slog.String("slug", spec.Slug),
+				slog.Any("error", err))
 			reports = append(reports, storage.DriftReport{
 				SpecSlug:     spec.Slug,
 				Items:        []storage.DriftItem{},

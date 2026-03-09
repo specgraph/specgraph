@@ -101,6 +101,18 @@ func TestSupersedeSpec_TerminalState(t *testing.T) {
 	require.ErrorIs(t, err, storage.ErrSpecTerminal)
 }
 
+func TestSupersedeSpec_SameSlug(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "same-slug", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	// Superseding a spec with itself must fail at the storage layer.
+	_, _, err = store.LifecycleSupersedeSpec(ctx, "same-slug", "same-slug")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "old and new slugs must differ")
+}
+
 func TestAbandonSpec_HappyPath(t *testing.T) {
 	store, ctx := newTestStore(t)
 
@@ -186,7 +198,7 @@ func TestCheckDrift_DependencyDrift(t *testing.T) {
 	require.NoError(t, err)
 
 	// Use the drift engine to check drift.
-	engine := drift.NewEngine(store)
+	engine := drift.NewEngine(store, nil)
 	reports, err := engine.Check(ctx, "downstream-spec", "")
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
@@ -306,7 +318,7 @@ func TestCheckDrift_AllSpecs_Integration(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check all specs (empty slug) — should find drift on both.
-	engine := drift.NewEngine(store)
+	engine := drift.NewEngine(store, nil)
 	reports, err := engine.Check(ctx, "", "")
 	require.NoError(t, err)
 	require.Len(t, reports, 2)
@@ -451,4 +463,79 @@ func TestSupersedeSpec_ConcurrentModificationOnNewSpec(t *testing.T) {
 	_, _, err = store.LifecycleSupersedeSpec(ctx, "old-supersede", "new-supersede")
 	require.Error(t, err)
 	require.ErrorIs(t, err, storage.ErrConcurrentModification)
+}
+
+func TestCheckDrift_AmendedSpecDrift(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	// Create upstream and downstream specs, move to done.
+	_, err := store.CreateSpec(ctx, "amended-drift-up", "Upstream", "p1", "medium")
+	require.NoError(t, err)
+	_, err = store.CreateSpec(ctx, "amended-drift-down", "Downstream", "p1", "medium")
+	require.NoError(t, err)
+
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "amended-drift-up", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+	_, err = store.UpdateSpec(ctx, "amended-drift-down", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+
+	// Amend the downstream spec (done → amended).
+	amended, err := store.LifecycleAmendSpec(ctx, "amended-drift-down", "rework needed", "")
+	require.NoError(t, err)
+	require.Equal(t, storage.SpecStageAmended, amended.Stage)
+
+	// Create DEPENDS_ON edge: downstream → upstream.
+	_, err = store.AddEdge(ctx, "amended-drift-down", "amended-drift-up", storage.EdgeTypeDependsOn)
+	require.NoError(t, err)
+
+	// Sleep to ensure upstream timestamp is strictly newer.
+	time.Sleep(1100 * time.Millisecond)
+
+	// Update upstream to trigger drift.
+	newIntent := "Updated upstream"
+	_, err = store.UpdateSpec(ctx, "amended-drift-up", &newIntent, nil, nil, nil)
+	require.NoError(t, err)
+
+	// Drift engine should detect drift on the amended downstream spec.
+	engine := drift.NewEngine(store, nil)
+	reports, err := engine.Check(ctx, "amended-drift-down", "")
+	require.NoError(t, err)
+	require.Len(t, reports, 1)
+	require.Equal(t, "amended-drift-down", reports[0].SpecSlug)
+	require.NotEmpty(t, reports[0].Items)
+	require.Equal(t, storage.DriftTypeDependency, reports[0].Items[0].Type)
+}
+
+func TestBatchGetSpecs(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	// Create three specs.
+	_, err := store.CreateSpec(ctx, "batch-a", "Spec A", "p1", "medium")
+	require.NoError(t, err)
+	_, err = store.CreateSpec(ctx, "batch-b", "Spec B", "p2", "low")
+	require.NoError(t, err)
+	_, err = store.CreateSpec(ctx, "batch-c", "Spec C", "p0", "high")
+	require.NoError(t, err)
+
+	// All slugs present.
+	result, err := store.BatchGetSpecs(ctx, []string{"batch-a", "batch-b", "batch-c"})
+	require.NoError(t, err)
+	require.Len(t, result, 3)
+	require.Equal(t, "batch-a", result["batch-a"].Slug)
+	require.Equal(t, "batch-b", result["batch-b"].Slug)
+	require.Equal(t, "batch-c", result["batch-c"].Slug)
+
+	// Partial — some slugs missing.
+	result, err = store.BatchGetSpecs(ctx, []string{"batch-a", "nonexistent", "batch-c"})
+	require.NoError(t, err)
+	require.Len(t, result, 2)
+	require.Contains(t, result, "batch-a")
+	require.Contains(t, result, "batch-c")
+	require.NotContains(t, result, "nonexistent")
+
+	// Empty slug list returns empty map.
+	result, err = store.BatchGetSpecs(ctx, []string{})
+	require.NoError(t, err)
+	require.Empty(t, result)
 }

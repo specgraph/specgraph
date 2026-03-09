@@ -48,7 +48,7 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 	server.RegisterClaimService(mux, store)
 	server.RegisterConstitutionService(mux, store)
 	server.RegisterAuthoringService(mux, store, store)
-	driftEngine := drift.NewEngine(store)
+	driftEngine := drift.NewEngine(store, nil)
 	lintEngine := linter.NewEngine(store)
 	server.RegisterLifecycleService(mux, store, driftEngine, lintEngine)
 

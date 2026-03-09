@@ -79,7 +79,7 @@ func TestCheckDependencyDrift(t *testing.T) {
 		},
 	}
 
-	engine := drift.NewEngine(backend)
+	engine := drift.NewEngine(backend, nil)
 	reports, err := engine.Check(context.Background(), "downstream", "")
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
@@ -112,7 +112,7 @@ func TestCheckDependencyDrift_NoDrift(t *testing.T) {
 		},
 	}
 
-	engine := drift.NewEngine(backend)
+	engine := drift.NewEngine(backend, nil)
 	reports, err := engine.Check(context.Background(), "downstream", "")
 	require.NoError(t, err)
 	require.Empty(t, reports, "no-drift specs should be filtered out")
@@ -140,7 +140,7 @@ func TestCheckDependencyDrift_EqualTimestamps(t *testing.T) {
 		},
 	}
 
-	engine := drift.NewEngine(backend)
+	engine := drift.NewEngine(backend, nil)
 	reports, err := engine.Check(context.Background(), "downstream", "")
 	require.NoError(t, err)
 	require.Empty(t, reports, "equal timestamps should not produce drift")
@@ -176,7 +176,7 @@ func TestCheckAllSpecs(t *testing.T) {
 		},
 	}
 
-	engine := drift.NewEngine(backend)
+	engine := drift.NewEngine(backend, nil)
 	reports, err := engine.Check(context.Background(), "", "")
 	require.NoError(t, err)
 	require.Len(t, reports, 2)
@@ -209,7 +209,7 @@ func TestCheckDrift_ScopeFilter(t *testing.T) {
 		},
 	}
 
-	engine := drift.NewEngine(backend)
+	engine := drift.NewEngine(backend, nil)
 
 	// scope="interfaces" → no drift (placeholder), filtered out.
 	reports, err := engine.Check(context.Background(), "downstream", "interfaces")
@@ -226,7 +226,7 @@ func TestCheckDrift_ScopeFilter(t *testing.T) {
 
 func TestCheck_InvalidScope(t *testing.T) {
 	backend := &mockDriftBackend{specs: map[string]*storage.Spec{}}
-	engine := drift.NewEngine(backend)
+	engine := drift.NewEngine(backend, nil)
 
 	_, err := engine.Check(context.Background(), "", "bogus")
 	require.Error(t, err)
@@ -238,7 +238,7 @@ func TestCheck_ListSpecsError(t *testing.T) {
 		specs:   map[string]*storage.Spec{},
 		listErr: errors.New("db connection lost"),
 	}
-	engine := drift.NewEngine(backend)
+	engine := drift.NewEngine(backend, nil)
 
 	_, err := engine.Check(context.Background(), "", "")
 	require.Error(t, err)
@@ -259,7 +259,7 @@ func TestCheck_ListSpecsError_AmendedStageOnly(t *testing.T) {
 			string(storage.SpecStageAmended): errors.New("amended stage query failed"),
 		},
 	}
-	engine := drift.NewEngine(backend)
+	engine := drift.NewEngine(backend, nil)
 
 	_, err := engine.Check(context.Background(), "", "")
 	require.Error(t, err)
@@ -279,7 +279,7 @@ func TestCheckSpec_GetDependenciesError(t *testing.T) {
 		deps:    map[string][]storage.NodeRef{},
 		depsErr: errors.New("graph unavailable"),
 	}
-	engine := drift.NewEngine(backend)
+	engine := drift.NewEngine(backend, nil)
 
 	reports, err := engine.Check(context.Background(), "my-spec", "deps")
 	require.NoError(t, err)
@@ -311,7 +311,7 @@ func TestCheck_NonDoneStageBySlug(t *testing.T) {
 		},
 	}
 
-	engine := drift.NewEngine(backend)
+	engine := drift.NewEngine(backend, nil)
 	// Non-done/non-amended specs are not eligible for drift detection.
 	_, err := engine.Check(context.Background(), "in-progress", "deps")
 	require.Error(t, err)
@@ -323,7 +323,7 @@ func TestCheck_GetSpecError(t *testing.T) {
 		specs:   map[string]*storage.Spec{},
 		specErr: errors.New("connection timeout"),
 	}
-	engine := drift.NewEngine(backend)
+	engine := drift.NewEngine(backend, nil)
 
 	_, err := engine.Check(context.Background(), "my-spec", "")
 	require.Error(t, err)
@@ -347,7 +347,7 @@ func TestCheckSpec_MissingDependencyCreatesInfoItem(t *testing.T) {
 			},
 		},
 	}
-	engine := drift.NewEngine(backend)
+	engine := drift.NewEngine(backend, nil)
 
 	reports, err := engine.Check(context.Background(), "downstream", "deps")
 	require.NoError(t, err)

@@ -28,7 +28,7 @@ enum DriftSeverity {
 
 // DriftScope defines the valid scopes for drift detection checks.
 enum DriftScope {
-  DRIFT_SCOPE_UNSPECIFIED = 0;
+  DRIFT_SCOPE_UNSPECIFIED = 0; // Default: runs all enabled drift scopes.
   DRIFT_SCOPE_DEPS = 1;
   DRIFT_SCOPE_INTERFACES = 2;
   DRIFT_SCOPE_VERIFY = 3;
@@ -86,6 +86,7 @@ message LintResult {
   string spec_slug = 1;
   repeated LintViolation violations = 2;
   bool passed = 3;
+  string error = 4; // Non-empty when linting failed for this spec.
 }
 
 // --- Requests/Responses ---

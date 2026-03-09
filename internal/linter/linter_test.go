@@ -251,9 +251,11 @@ func TestLint_GetDependenciesStorageError(t *testing.T) {
 		getDepsErr: dbErr,
 	}
 
-	_, err := linter.Lint(context.Background(), backend, "spec-a")
-	require.Error(t, err)
-	require.ErrorIs(t, err, dbErr)
+	results, err := linter.Lint(context.Background(), backend, "spec-a")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
+	require.Contains(t, results[0].Error, "connection refused")
 }
 
 func TestLint_GetDependenciesMidTraversalStorageError(t *testing.T) {
@@ -281,11 +283,11 @@ func TestLint_GetDependenciesMidTraversalStorageError(t *testing.T) {
 		},
 	}
 
-	violations, err := linter.Lint(context.Background(), backend, "root")
-	require.Error(t, err)
-	require.ErrorIs(t, err, dbErr)
-	// Violations found before the error are returned (not discarded).
-	_ = violations
+	results, err := linter.Lint(context.Background(), backend, "root")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
+	require.Contains(t, results[0].Error, "connection reset")
 }
 
 func TestLint_MaxCycleDepthExceeded(t *testing.T) {
@@ -398,7 +400,9 @@ func TestLint_CycleDetection_StorageErrorPropagates(t *testing.T) {
 		},
 	}
 
-	_, err := linter.Lint(context.Background(), backend, "root")
-	require.Error(t, err)
-	require.ErrorIs(t, err, dbErr)
+	results, err := linter.Lint(context.Background(), backend, "root")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
+	require.Contains(t, results[0].Error, "database connection lost")
 }

@@ -139,6 +139,10 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 	}
 	reports, err := h.driftChecker.Check(ctx, msg.Slug, scopeStr)
 	if err != nil {
+		h.logger.Warn("CheckDrift: drift engine error",
+			slog.String("slug", msg.Slug),
+			slog.String("scope", scopeStr),
+			slog.Any("error", err))
 		return nil, h.lifecycleError(err)
 	}
 
@@ -206,16 +210,8 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	// Only done/amended specs are eligible for drift acknowledgment.
-	spec, err := h.store.GetSpec(ctx, msg.Slug)
-	if err != nil {
-		return nil, h.lifecycleError(err)
-	}
-	if spec.Stage != storage.SpecStageDone && spec.Stage != storage.SpecStageAmended {
-		return nil, connect.NewError(connect.CodeFailedPrecondition,
-			fmt.Errorf("spec %q is in stage %q; only done/amended specs support drift acknowledgment", msg.Slug, spec.Stage))
-	}
-
+	// Stage eligibility is enforced atomically by the storage layer's Cypher
+	// WHERE clause (ErrSpecIneligibleStage → CodeFailedPrecondition).
 	report, err := h.store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.Note)
 	if err != nil {
 		return nil, h.lifecycleError(err)
