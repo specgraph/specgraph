@@ -189,6 +189,9 @@ func TestAcknowledgeDrift(t *testing.T) {
 
 	_, err := store.CreateSpec(ctx, "ack-drift", "Test spec", "p1", "medium")
 	require.NoError(t, err)
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "ack-drift", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
 
 	report, err := store.LifecycleAcknowledgeDrift(ctx, "ack-drift", "drift is intentional")
 	require.NoError(t, err)
@@ -277,6 +280,9 @@ func TestAcknowledgeDrift_PersistsAcrossReads(t *testing.T) {
 
 	_, err := store.CreateSpec(ctx, "ack-persist", "Test spec", "p1", "medium")
 	require.NoError(t, err)
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "ack-persist", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
 
 	_, err = store.LifecycleAcknowledgeDrift(ctx, "ack-persist", "intentional drift")
 	require.NoError(t, err)
@@ -293,6 +299,9 @@ func TestAcknowledgeDrift_VisibleViaGetSpec(t *testing.T) {
 	store, ctx := newTestStore(t)
 
 	_, err := store.CreateSpec(ctx, "ack-getspec", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "ack-getspec", nil, &doneStage, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.LifecycleAcknowledgeDrift(ctx, "ack-getspec", "drift accepted")
