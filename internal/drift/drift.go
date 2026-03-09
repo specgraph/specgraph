@@ -44,6 +44,10 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 		if err != nil {
 			return nil, fmt.Errorf("drift: get spec %q: %w", slug, err)
 		}
+		// Only done and amended specs are eligible for drift detection.
+		if spec.Stage != storage.SpecStageDone && spec.Stage != storage.SpecStageAmended {
+			return nil, nil
+		}
 		specs = []*storage.Spec{spec}
 	} else {
 		doneSpecs, err := e.backend.ListSpecs(ctx, string(storage.SpecStageDone), "", maxSpecsPerCheck)

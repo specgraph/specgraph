@@ -256,12 +256,10 @@ func TestCheck_NonDoneStageBySlug(t *testing.T) {
 	}
 
 	engine := drift.NewEngine(backend)
-	// Checking by slug still runs drift even for non-done specs.
+	// Non-done/non-amended specs are not eligible for drift detection.
 	reports, err := engine.Check(context.Background(), "in-progress", "deps")
 	require.NoError(t, err)
-	require.Len(t, reports, 1)
-	require.Len(t, reports[0].Items, 1)
-	require.Equal(t, "in-progress", reports[0].Items[0].SpecSlug)
+	require.Empty(t, reports)
 }
 
 func TestCheckSpec_MissingDependencyCreatesInfoItem(t *testing.T) {
