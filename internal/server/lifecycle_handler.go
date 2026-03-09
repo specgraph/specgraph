@@ -155,6 +155,12 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		} else if !errors.Is(specErr, storage.ErrSpecNotFound) {
 			h.logger.Warn("CheckDrift: failed to merge acknowledgment state",
 				slog.String("slug", msg.Slug), slog.Any("error", specErr))
+			for i := range reports {
+				if reports[i].SpecSlug == msg.Slug {
+					reports[i].ItemsStale = true
+					break
+				}
+			}
 		}
 	}
 
