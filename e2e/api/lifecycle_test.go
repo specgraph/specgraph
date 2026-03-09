@@ -18,10 +18,10 @@ import (
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 )
 
-
 // timestampSkew is the minimum sleep to guarantee Memgraph datetime ordering.
 // Memgraph stores datetime at second precision; sleep >1s ensures updated_at differs.
 const timestampSkew = 1100 * time.Millisecond
+
 var _ = Describe("Lifecycle", Ordered, func() {
 	var (
 		lifecycleClient specgraphv1connect.LifecycleServiceClient

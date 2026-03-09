@@ -114,6 +114,34 @@ func TestCheckDependencyDrift_NoDrift(t *testing.T) {
 	require.Empty(t, reports, "no-drift specs should be filtered out")
 }
 
+func TestCheckDependencyDrift_EqualTimestamps(t *testing.T) {
+	now := time.Now()
+	backend := &mockDriftBackend{
+		specs: map[string]*storage.Spec{
+			"downstream": {
+				Slug:      "downstream",
+				Stage:     storage.SpecStageDone,
+				UpdatedAt: now,
+			},
+			"upstream": {
+				Slug:      "upstream",
+				Stage:     storage.SpecStageDone,
+				UpdatedAt: now,
+			},
+		},
+		deps: map[string][]storage.NodeRef{
+			"downstream": {
+				{Slug: "upstream", Label: storage.NodeLabelSpec},
+			},
+		},
+	}
+
+	engine := drift.NewEngine(backend)
+	reports, err := engine.Check(context.Background(), "downstream", "")
+	require.NoError(t, err)
+	require.Empty(t, reports, "equal timestamps should not produce drift")
+}
+
 func TestCheckAllSpecs(t *testing.T) {
 	now := time.Now()
 	backend := &mockDriftBackend{
