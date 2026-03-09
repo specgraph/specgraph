@@ -329,6 +329,38 @@ func TestDriftItemToProto(t *testing.T) {
 	}
 }
 
+func TestSpecToProto_InvalidLifecycle(t *testing.T) {
+	spec := &storage.Spec{
+		ID: "spec-bad", Slug: "bad-lifecycle", Intent: "test",
+		Stage: "spark", Priority: "p1", Complexity: "low",
+		Lifecycle: storage.SpecLifecycle("bogus"),
+	}
+	_, err := specToProto(spec)
+	assert.Error(t, err)
+}
+
+func TestDriftReportToProto_UnknownType(t *testing.T) {
+	report := &storage.DriftReport{
+		SpecSlug: "s",
+		Items: []storage.DriftItem{
+			{Type: storage.DriftType("unknown-type"), Severity: storage.DriftSeverityHigh},
+		},
+	}
+	_, err := driftReportToProto(report)
+	assert.Error(t, err)
+}
+
+func TestDriftReportToProto_UnknownSeverity(t *testing.T) {
+	report := &storage.DriftReport{
+		SpecSlug: "s",
+		Items: []storage.DriftItem{
+			{Type: storage.DriftTypeDependency, Severity: storage.DriftSeverity("unknown-severity")},
+		},
+	}
+	_, err := driftReportToProto(report)
+	assert.Error(t, err)
+}
+
 func TestLintResultsToProto(t *testing.T) {
 	t.Run("multiple results with violations", func(t *testing.T) {
 		results := []storage.LintResult{
