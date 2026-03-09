@@ -18,6 +18,10 @@ import (
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 )
 
+
+// timestampSkew is the minimum sleep to guarantee Memgraph datetime ordering.
+// Memgraph stores datetime at second precision; sleep >1s ensures updated_at differs.
+const timestampSkew = 1100 * time.Millisecond
 var _ = Describe("Lifecycle", Ordered, func() {
 	var (
 		lifecycleClient specgraphv1connect.LifecycleServiceClient
@@ -199,7 +203,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			// Drift detection compares updated_at timestamps. Sleep >1s to
 			// guarantee upstream's timestamp is strictly newer than downstream's,
 			// matching the integration test pattern in lifecycle_test.go.
-			time.Sleep(1100 * time.Millisecond)
+			time.Sleep(timestampSkew)
 
 			_, err := specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
 				Slug:   upstreamSlug,
