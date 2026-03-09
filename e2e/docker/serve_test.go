@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"syscall"
 	"time"
 
@@ -59,11 +58,7 @@ storage:
 		if cmd != nil && cmd.Process != nil {
 			// Kill the entire process group so child processes (e.g. docker compose
 			// down) are also terminated; otherwise cmd.Wait blocks on inherited pipes.
-			if runtime.GOOS != "windows" {
-				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-			} else {
-				_ = cmd.Process.Kill()
-			}
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 			if done != nil {
 				select {
 				case <-done:
