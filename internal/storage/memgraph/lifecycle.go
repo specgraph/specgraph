@@ -255,13 +255,13 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	}
 
 	rec := records[0]
-	// Parse old spec from positions 0-12.
+	// Parse old spec from positions 0-14 (15 fields).
 	oldSpec, err = recordToSpec(rec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("memgraph: supersede: parse old spec: %w", err)
 	}
 
-	// Parse new spec from positions 13-25 using a shifted record adapter.
+	// Parse new spec from positions 15-29 (15 fields) using a shifted record adapter.
 	newSpec, err = recordToSpecOffset(rec, 15)
 	if err != nil {
 		return nil, nil, fmt.Errorf("memgraph: supersede: parse new spec: %w", err)
