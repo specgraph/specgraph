@@ -375,7 +375,7 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string
 	if len(records) == 0 {
 		return nil, s.preconditionError(ctx, slug, "acknowledge drift", func(current *storage.Spec) error {
 			if current.Stage != storage.SpecStageDone && current.Stage != storage.SpecStageAmended {
-				return fmt.Errorf("acknowledge drift %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecNotDone)
+				return fmt.Errorf("acknowledge drift %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecIneligibleStage)
 			}
 			return nil
 		})

@@ -11,6 +11,7 @@ import (
 // Lifecycle-specific sentinel errors.
 var (
 	ErrSpecNotDone            = errors.New("spec must be in done stage")
+	ErrSpecIneligibleStage    = errors.New("spec is not in an eligible stage for this operation")
 	ErrSpecTerminal           = errors.New("spec is in a terminal state (superseded or abandoned)")
 	ErrNewSpecNotFound        = errors.New("replacement spec not found")
 	ErrConcurrentModification = errors.New("concurrent modification detected — retry the operation")

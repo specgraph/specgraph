@@ -268,6 +268,9 @@ func (h *LifecycleHandler) lifecycleError(err error) error {
 	if errors.Is(err, storage.ErrSpecNotDone) {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec must be in done stage"))
 	}
+	if errors.Is(err, storage.ErrSpecIneligibleStage) {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec is not in an eligible stage for this operation"))
+	}
 	if errors.Is(err, storage.ErrSpecTerminal) {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec is in a terminal state"))
 	}
