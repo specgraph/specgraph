@@ -147,6 +147,7 @@ func TestEdgeTypeFromProto(t *testing.T) {
 		{specv1.EdgeType_EDGE_TYPE_RELATES_TO, storage.EdgeTypeRelatesTo},
 		{specv1.EdgeType_EDGE_TYPE_INFORMS, storage.EdgeTypeInforms},
 		{specv1.EdgeType_EDGE_TYPE_DECIDED_IN, storage.EdgeTypeDecidedIn},
+		{specv1.EdgeType_EDGE_TYPE_SUPERSEDES, storage.EdgeTypeSupersedes},
 	}
 	for _, tt := range tests {
 		got, err := edgeTypeFromProto(tt.proto)
@@ -169,6 +170,7 @@ func TestEdgeTypeToProto(t *testing.T) {
 		{storage.EdgeTypeRelatesTo, specv1.EdgeType_EDGE_TYPE_RELATES_TO},
 		{storage.EdgeTypeInforms, specv1.EdgeType_EDGE_TYPE_INFORMS},
 		{storage.EdgeTypeDecidedIn, specv1.EdgeType_EDGE_TYPE_DECIDED_IN},
+		{storage.EdgeTypeSupersedes, specv1.EdgeType_EDGE_TYPE_SUPERSEDES},
 	}
 	for _, tt := range tests {
 		got, err := edgeTypeToProto(tt.domain)

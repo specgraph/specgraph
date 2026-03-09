@@ -540,6 +540,29 @@ func TestLifecycleHandler_AcknowledgeDrift_NilChecker(t *testing.T) {
 	require.Empty(t, resp.Msg.Items)
 }
 
+func TestLifecycleHandler_AcknowledgeDrift_RecheckError(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
+		return &storage.DriftReport{
+			SpecSlug:        slug,
+			Acknowledged:    true,
+			AcknowledgeNote: note,
+		}, nil
+	}
+	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+		return nil, errors.New("drift engine down")
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug: "my-spec",
+		Note: "intentional divergence",
+	}))
+	require.NoError(t, err)
+	require.True(t, resp.Msg.Acknowledged)
+	require.Empty(t, resp.Msg.Items)
+}
+
 func TestLifecycleHandler_Lint_NilLinter(t *testing.T) {
 	deps := defaultTestDeps()
 	mux := http.NewServeMux()
