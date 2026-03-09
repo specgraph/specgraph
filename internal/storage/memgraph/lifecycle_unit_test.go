@@ -72,6 +72,37 @@ func TestUnmarshalHistory_EmptyAndNil(t *testing.T) {
 	assert.Nil(t, entries)
 }
 
+func TestAppendHistory_TrimsOldestWhenFull(t *testing.T) {
+	existing := make([]storage.HistoryEntry, maxHistoryEntries)
+	for i := range existing {
+		existing[i] = storage.HistoryEntry{
+			Version: int32(i + 1),
+			Stage:   storage.SpecStageSpark,
+			Summary: "old entry",
+			Date:    time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		}
+	}
+
+	newest := &storage.HistoryEntry{
+		Version: int32(maxHistoryEntries + 1),
+		Stage:   storage.SpecStageDone,
+		Summary: "newest entry",
+		Date:    time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC),
+	}
+
+	jsonStr, err := appendHistory(existing, newest)
+	require.NoError(t, err)
+
+	roundTripped, err := unmarshalHistory(jsonStr)
+	require.NoError(t, err)
+	assert.Len(t, roundTripped, maxHistoryEntries)
+	// Oldest entry (version 1) should have been trimmed.
+	assert.Equal(t, int32(2), roundTripped[0].Version)
+	// Newest entry should be present at the end.
+	assert.Equal(t, int32(maxHistoryEntries+1), roundTripped[len(roundTripped)-1].Version)
+	assert.Equal(t, storage.SpecStageDone, roundTripped[len(roundTripped)-1].Stage)
+}
+
 func TestUnmarshalHistory_UnknownStagePreserved(t *testing.T) {
 	raw := `[{"version":1,"stage":"nonexistent_stage","summary":"test","reason":"r","date":"2026-01-01T00:00:00.000000000Z"}]`
 	entries, err := unmarshalHistory(raw)
