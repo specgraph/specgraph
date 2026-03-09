@@ -144,6 +144,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 
 	// Merge persisted acknowledgment state into drift reports.
 	if msg.Slug != "" {
+		// Single-spec path: one GetSpec call for the requested slug.
 		if spec, specErr := h.store.GetSpec(ctx, msg.Slug); specErr == nil {
 			for i := range reports {
 				if reports[i].SpecSlug == msg.Slug {
@@ -158,6 +159,31 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 				if reports[i].SpecSlug == msg.Slug {
 					reports[i].ItemsStale = true
 					break
+				}
+			}
+		}
+	} else {
+		// All-specs path: collect unique slugs from reports and merge each.
+		seen := make(map[string]struct{}, len(reports))
+		for _, r := range reports {
+			seen[r.SpecSlug] = struct{}{}
+		}
+		for slug := range seen {
+			spec, specErr := h.store.GetSpec(ctx, slug)
+			if specErr == nil {
+				for i := range reports {
+					if reports[i].SpecSlug == slug {
+						reports[i].Acknowledged = spec.DriftAcknowledged
+						reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
+					}
+				}
+			} else if !errors.Is(specErr, storage.ErrSpecNotFound) {
+				h.logger.Warn("CheckDrift: failed to merge acknowledgment state",
+					slog.String("slug", slug), slog.Any("error", specErr))
+				for i := range reports {
+					if reports[i].SpecSlug == slug {
+						reports[i].ItemsStale = true
+					}
 				}
 			}
 		}
