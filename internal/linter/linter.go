@@ -125,9 +125,8 @@ const maxCycleDepth = 1000
 // detectCycles uses DFS to find back-edges in the dependency graph.
 // rootDeps, if non-nil, are used for the root node to avoid a redundant fetch.
 //
-// On storage error during traversal, any violations found before the error are
-// returned alongside the error. Callers should treat results as partial and
-// may be incomplete if the traversal was cut short before exploring all branches.
+// On storage error during traversal, (nil, err) is returned immediately.
+// On success, violations contains the full set of detected cycles.
 func detectCycles(ctx context.Context, backend Backend, slug string, rootDeps []storage.NodeRef) ([]storage.LintViolation, error) {
 	visited := map[string]bool{}
 	inStack := map[string]bool{}
