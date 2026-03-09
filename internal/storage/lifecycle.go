@@ -113,6 +113,10 @@ type LintResult struct {
 
 // LifecycleBackend defines storage operations for spec lifecycle transitions.
 type LifecycleBackend interface {
+	// GetSpec retrieves a spec by slug.
+	// Returns ErrSpecNotFound if the spec does not exist.
+	GetSpec(ctx context.Context, slug string) (*Spec, error)
+
 	// LifecycleAmendSpec transitions a done spec back into authoring.
 	// Returns ErrSpecNotFound, ErrSpecNotDone, or ErrSpecTerminal.
 	LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*Spec, error)

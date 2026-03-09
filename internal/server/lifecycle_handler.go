@@ -165,6 +165,16 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	// Only done/amended specs are eligible for drift acknowledgment.
+	spec, err := h.store.GetSpec(ctx, msg.Slug)
+	if err != nil {
+		return nil, h.lifecycleError(err)
+	}
+	if spec.Stage != storage.SpecStageDone && spec.Stage != storage.SpecStageAmended {
+		return nil, connect.NewError(connect.CodeFailedPrecondition,
+			fmt.Errorf("spec %q is in stage %q; only done/amended specs support drift acknowledgment", msg.Slug, spec.Stage))
+	}
+
 	report, err := h.store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.Note)
 	if err != nil {
 		return nil, h.lifecycleError(err)

@@ -22,10 +22,18 @@ import (
 
 // fakeLifecycleBackend is a minimal fake implementation of storage.LifecycleBackend for testing.
 type fakeLifecycleBackend struct {
+	getSpec          func(ctx context.Context, slug string) (*storage.Spec, error)
 	amendSpec        func(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error)
 	supersedeSpec    func(ctx context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error)
 	abandonSpec      func(ctx context.Context, slug, reason string) (*storage.Spec, error)
 	acknowledgeDrift func(ctx context.Context, slug, note string) (*storage.DriftReport, error)
+}
+
+func (f *fakeLifecycleBackend) GetSpec(ctx context.Context, slug string) (*storage.Spec, error) {
+	if f.getSpec == nil {
+		return &storage.Spec{Slug: slug, Stage: storage.SpecStageDone}, nil
+	}
+	return f.getSpec(ctx, slug)
 }
 
 func (f *fakeLifecycleBackend) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error) {
