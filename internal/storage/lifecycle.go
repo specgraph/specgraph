@@ -77,6 +77,7 @@ type DriftReport struct {
 	Acknowledged    bool
 	AcknowledgeNote string
 	ItemsStale      bool
+	ErrorMessage    string // non-empty when drift checking failed for this spec
 }
 
 // LintSeverity indicates lint violation urgency.

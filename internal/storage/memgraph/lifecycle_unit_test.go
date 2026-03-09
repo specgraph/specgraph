@@ -65,11 +65,13 @@ func TestUnmarshalHistory_InvalidJSON(t *testing.T) {
 func TestUnmarshalHistory_EmptyAndNil(t *testing.T) {
 	entries, err := unmarshalHistory("")
 	require.NoError(t, err)
-	assert.Nil(t, entries)
+	assert.Empty(t, entries)
+	assert.NotNil(t, entries, "should return empty slice, not nil")
 
 	entries, err = unmarshalHistory("[]")
 	require.NoError(t, err)
-	assert.Nil(t, entries)
+	assert.Empty(t, entries)
+	assert.NotNil(t, entries, "should return empty slice, not nil")
 }
 
 func TestAppendHistory_TrimsOldestWhenFull(t *testing.T) {

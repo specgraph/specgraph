@@ -68,6 +68,9 @@ message DriftReport {
   // True when drift items could not be refreshed (e.g. re-check failed after
   // acknowledgment). Clients should treat items as potentially stale.
   bool items_stale = 5;
+  // Non-empty when drift checking failed for this spec. Contains the error
+  // message. The report may still contain partial or stale data.
+  string error_message = 6;
 }
 
 // --- Lint Messages ---

@@ -6,6 +6,7 @@
 package memgraph_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -112,6 +113,39 @@ func TestAbandonSpec_HappyPath(t *testing.T) {
 	require.Equal(t, int32(2), abandoned.Version) // create=1, abandon=2
 	require.NotEmpty(t, abandoned.History)
 	require.Equal(t, "no longer needed", abandoned.History[len(abandoned.History)-1].Reason)
+}
+
+func TestAbandonSpec_ConcurrentModification(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "toctou-abandon", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	// Two goroutines race to abandon the same spec. Exactly one should
+	// succeed; the other hits the WHERE guard (version/stage mismatch)
+	// or the Go-level terminal pre-check, validating atomicity.
+	const n = 2
+	errs := make(chan error, n)
+	for i := 0; i < n; i++ {
+		go func() {
+			_, aErr := store.LifecycleAbandonSpec(ctx, "toctou-abandon", "concurrent abandon")
+			errs <- aErr
+		}()
+	}
+
+	var succeeded, failed int
+	for i := 0; i < n; i++ {
+		if e := <-errs; e != nil {
+			failed++
+			require.True(t,
+				errors.Is(e, storage.ErrConcurrentModification) || errors.Is(e, storage.ErrSpecTerminal),
+				"unexpected error: %v", e)
+		} else {
+			succeeded++
+		}
+	}
+	require.Equal(t, 1, succeeded, "exactly one abandon should succeed")
+	require.Equal(t, 1, failed, "exactly one abandon should fail")
 }
 
 func TestAbandonSpec_Terminal(t *testing.T) {

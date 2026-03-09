@@ -66,7 +66,12 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 	for _, spec := range specs {
 		report, err := e.checkSpec(ctx, spec, scope)
 		if err != nil {
-			return nil, err
+			reports = append(reports, storage.DriftReport{
+				SpecSlug:     spec.Slug,
+				Items:        []storage.DriftItem{},
+				ErrorMessage: err.Error(),
+			})
+			continue
 		}
 		if len(report.Items) > 0 {
 			reports = append(reports, report)

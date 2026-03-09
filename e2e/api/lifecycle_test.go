@@ -64,6 +64,13 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Msg.GetSpec().GetSlug()).To(Equal(amendSlug))
 			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("shape"))
+
+			// Finding .16: verify history and version through proto conversion.
+			spec := resp.Msg.GetSpec()
+			Expect(spec.GetVersion()).To(BeNumerically(">=", int32(2)), "version should increment after amend")
+			Expect(spec.GetHistory()).NotTo(BeEmpty(), "history should contain at least one entry")
+			lastEntry := spec.GetHistory()[len(spec.GetHistory())-1]
+			Expect(lastEntry.GetReason()).To(Equal("Requirements changed after implementation"))
 		})
 	})
 
@@ -173,6 +180,13 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Msg.GetSpec().GetSlug()).To(Equal(abandonSlug))
 			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("abandoned"))
+
+			// Finding .16: verify history and version through proto conversion.
+			spec := resp.Msg.GetSpec()
+			Expect(spec.GetVersion()).To(BeNumerically(">=", int32(2)), "version should increment after abandon")
+			Expect(spec.GetHistory()).NotTo(BeEmpty(), "history should contain at least one entry")
+			lastEntry := spec.GetHistory()[len(spec.GetHistory())-1]
+			Expect(lastEntry.GetReason()).To(Equal("No longer needed"))
 		})
 	})
 
@@ -273,7 +287,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			_, err = graphClient.AddEdge(ctx, connect.NewRequest(&specv1.AddEdgeRequest{
 				FromSlug: danglingSlug,
 				ToSlug:   "nonexistent-spec",
-				Label:    "DEPENDS_ON",
+				EdgeType: specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
 			}))
 			Expect(err).NotTo(HaveOccurred())
 
@@ -291,6 +305,25 @@ var _ = Describe("Lifecycle", Ordered, func() {
 				}
 			}
 			Expect(hasDangling).To(BeTrue(), "expected edge.dangling_ref violation")
+		})
+	})
+
+	Describe("Lint all specs", func() {
+		It("returns results for all specs when slug is empty", func() {
+			resp, err := lifecycleClient.Lint(ctx, connect.NewRequest(&specv1.LintRequest{}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Msg.Results).NotTo(BeEmpty(), "lint-all should return results for existing specs")
+		})
+	})
+
+	Describe("Drift detection (all specs)", func() {
+		It("detects drift across all eligible specs when slug is empty", func() {
+			// The earlier "Drift detection" Describe block created two done
+			// specs with a dependency and bumped the upstream's updated_at,
+			// so at least one drift report should appear.
+			resp, err := lifecycleClient.CheckDrift(ctx, connect.NewRequest(&specv1.DriftCheckRequest{}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Msg.Reports).NotTo(BeEmpty(), "drift-all should find at least one drifted spec")
 		})
 	})
 

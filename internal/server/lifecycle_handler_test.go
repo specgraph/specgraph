@@ -332,7 +332,7 @@ func TestLifecycleHandler_CheckDrift_MergesAcknowledgmentState(t *testing.T) {
 	require.Equal(t, "some note", resp.Msg.Reports[0].AcknowledgeNote)
 }
 
-func TestLifecycleHandler_CheckDrift_GetSpecErrorMarksSingleReportStale(t *testing.T) {
+func TestLifecycleHandler_CheckDrift_GetSpecErrorReturnsUnavailable(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.getSpec = func(_ context.Context, _ string) (*storage.Spec, error) {
 		return nil, errors.New("database timeout")
@@ -344,15 +344,16 @@ func TestLifecycleHandler_CheckDrift_GetSpecErrorMarksSingleReportStale(t *testi
 	}
 	client := newLifecycleClient(t, deps)
 
-	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
+	_, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
 		Slug: "my-spec",
 	}))
-	require.NoError(t, err)
-	require.Len(t, resp.Msg.Reports, 1)
-	require.True(t, resp.Msg.Reports[0].ItemsStale)
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeUnavailable, connErr.Code())
 }
 
-func TestLifecycleHandler_CheckDrift_BatchGetSpecsErrorMarksAllStale(t *testing.T) {
+func TestLifecycleHandler_CheckDrift_BatchGetSpecsErrorReturnsUnavailable(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.batchGetSpecs = func(_ context.Context, _ []string) (map[string]*storage.Spec, error) {
 		return nil, errors.New("database timeout")
@@ -365,12 +366,11 @@ func TestLifecycleHandler_CheckDrift_BatchGetSpecsErrorMarksAllStale(t *testing.
 	}
 	client := newLifecycleClient(t, deps)
 
-	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{}))
-	require.NoError(t, err)
-	require.Len(t, resp.Msg.Reports, 2)
-	for _, r := range resp.Msg.Reports {
-		require.True(t, r.ItemsStale, "report for %q should be stale", r.SpecSlug)
-	}
+	_, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeUnavailable, connErr.Code())
 }
 
 func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {

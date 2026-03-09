@@ -281,9 +281,12 @@ func TestCheckSpec_GetDependenciesError(t *testing.T) {
 	}
 	engine := drift.NewEngine(backend)
 
-	_, err := engine.Check(context.Background(), "my-spec", "deps")
-	require.Error(t, err)
-	require.ErrorContains(t, err, "graph unavailable")
+	reports, err := engine.Check(context.Background(), "my-spec", "deps")
+	require.NoError(t, err)
+	require.Len(t, reports, 1)
+	require.Equal(t, "my-spec", reports[0].SpecSlug)
+	require.Contains(t, reports[0].ErrorMessage, "graph unavailable")
+	require.Empty(t, reports[0].Items)
 }
 
 func TestCheck_NonDoneStageBySlug(t *testing.T) {

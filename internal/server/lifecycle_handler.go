@@ -173,12 +173,11 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		if batchErr != nil {
 			return nil, connect.NewError(connect.CodeUnavailable,
 				fmt.Errorf("CheckDrift: batch fetch for ack merge failed: %w", batchErr))
-		} else {
-			for i := range reports {
-				if spec, ok := specMap[reports[i].SpecSlug]; ok {
-					reports[i].Acknowledged = spec.DriftAcknowledged
-					reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
-				}
+		}
+		for i := range reports {
+			if spec, ok := specMap[reports[i].SpecSlug]; ok {
+				reports[i].Acknowledged = spec.DriftAcknowledged
+				reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
 			}
 		}
 	}
