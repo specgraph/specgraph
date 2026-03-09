@@ -38,6 +38,36 @@ func (s SpecStage) IsTerminal() bool {
 	}
 }
 
+// allSpecStages lists every known SpecStage value. It is the single source of
+// truth that TerminalStages iterates over, so IsTerminal and the storage layer
+// never diverge.
+var allSpecStages = []SpecStage{
+	SpecStageSpark,
+	SpecStageShape,
+	SpecStageSpecify,
+	SpecStageDecompose,
+	SpecStageApproved,
+	SpecStageInProgress,
+	SpecStageReview,
+	SpecStageDone,
+	SpecStageAmended,
+	SpecStageSuperseded,
+	SpecStageAbandoned,
+}
+
+// TerminalStages returns all SpecStage values for which IsTerminal reports true.
+// Callers should use this instead of maintaining a parallel set so that
+// IsTerminal remains the single source of truth.
+func TerminalStages() []SpecStage {
+	var out []SpecStage
+	for _, s := range allSpecStages {
+		if s.IsTerminal() {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 // IsValid reports whether s is a known spec stage.
 func (s SpecStage) IsValid() bool {
 	switch s {
