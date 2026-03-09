@@ -477,6 +477,26 @@ func historyToProto(entries []storage.HistoryEntry) []*specv1.HistoryEntry {
 	return result
 }
 
+func historyFromProto(entries []*specv1.HistoryEntry) []storage.HistoryEntry {
+	if len(entries) == 0 {
+		return nil
+	}
+	result := make([]storage.HistoryEntry, len(entries))
+	for i, e := range entries {
+		entry := storage.HistoryEntry{
+			Version: e.Version,
+			Stage:   storage.SpecStage(e.Stage),
+			Summary: e.Summary,
+			Reason:  e.Reason,
+		}
+		if e.Date != nil {
+			entry.Date = e.Date.AsTime()
+		}
+		result[i] = entry
+	}
+	return result
+}
+
 // --- Drift ---
 
 var driftTypeToProtoMap = map[storage.DriftType]specv1.DriftType{
