@@ -132,7 +132,8 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		    s.history_json = $history_json
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.drift_acknowledged, s.drift_acknowledge_note
 	`
 	records, err := s.executeQuery(ctx, query, map[string]any{
 		"slug":             slug,
@@ -211,9 +212,11 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		RETURN old.id, old.slug, old.intent, old.stage, old.priority, old.complexity,
 		       old.version, old.created_at, old.updated_at,
 		       old.lifecycle, old.superseded_by, old.supersedes, old.history_json,
+		       old.drift_acknowledged, old.drift_acknowledge_note,
 		       new.id, new.slug, new.intent, new.stage, new.priority, new.complexity,
 		       new.version, new.created_at, new.updated_at,
-		       new.lifecycle, new.superseded_by, new.supersedes, new.history_json
+		       new.lifecycle, new.superseded_by, new.supersedes, new.history_json,
+		       new.drift_acknowledged, new.drift_acknowledge_note
 	`
 	records, err := s.executeQuery(ctx, query, map[string]any{
 		"old_slug":         oldSlug,
@@ -240,7 +243,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	}
 
 	// Parse new spec from positions 13-25 using a shifted record adapter.
-	newSpec, err = recordToSpecOffset(rec, 13)
+	newSpec, err = recordToSpecOffset(rec, 15)
 	if err != nil {
 		return nil, nil, fmt.Errorf("memgraph: supersede: parse new spec: %w", err)
 	}
@@ -287,7 +290,8 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		    s.history_json = $history_json
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.drift_acknowledged, s.drift_acknowledge_note
 	`
 	records, err := s.executeQuery(ctx, query, map[string]any{
 		"slug":             slug,

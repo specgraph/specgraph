@@ -69,7 +69,8 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		})
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.drift_acknowledged, s.drift_acknowledge_note
 	`
 	params := map[string]any{
 		"id":           id,
@@ -102,7 +103,8 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
 		MATCH (s:Spec {slug: $slug})
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.drift_acknowledged, s.drift_acknowledge_note
 	`
 	params := map[string]any{"slug": slug}
 
@@ -137,7 +139,8 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	}
 	query += ` RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json`
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.drift_acknowledged, s.drift_acknowledge_note`
 	query += " ORDER BY s.created_at"
 	if limit > 0 {
 		query += " LIMIT $limit"
@@ -195,7 +198,8 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		SET %s
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.drift_acknowledged, s.drift_acknowledge_note
 	`, strings.Join(setClauses, ", "))
 
 	records, err := s.executeQuery(ctx, query, params)
@@ -291,6 +295,20 @@ func safeInt32(v int64) int32 {
 // recordStringOptional extracts a nullable string value from a neo4j record by
 // position. Returns "" for nil/null values, and fails fast on unexpected types
 // to surface schema/return-shift bugs immediately.
+func recordBoolOptional(rec *neo4j.Record, pos int, field string) (bool, error) {
+	if pos >= len(rec.Values) {
+		return false, fmt.Errorf("memgraph: field %q at position %d: missing", field, pos)
+	}
+	if rec.Values[pos] == nil {
+		return false, nil
+	}
+	b, ok := rec.Values[pos].(bool)
+	if !ok {
+		return false, fmt.Errorf("memgraph: field %q at position %d: expected bool or nil, got %T", field, pos, rec.Values[pos])
+	}
+	return b, nil
+}
+
 func recordStringOptional(rec *neo4j.Record, pos int, field string) (string, error) {
 	if pos >= len(rec.Values) {
 		return "", fmt.Errorf("memgraph: field %q at position %d: missing", field, pos)
@@ -420,21 +438,31 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
+	driftAck, err := recordBoolOptional(rec, offset+13, "drift_acknowledged")
+	if err != nil {
+		return nil, err
+	}
+	driftAckNote, err := recordStringOptional(rec, offset+14, "drift_acknowledge_note")
+	if err != nil {
+		return nil, err
+	}
 
 	return &storage.Spec{
-		ID:           id,
-		Slug:         slug,
-		Intent:       intent,
-		Stage:        storage.SpecStage(stage),
-		Priority:     storage.SpecPriority(priority),
-		Complexity:   complexity,
-		Version:      safeInt32(version),
-		CreatedAt:    createdAt,
-		UpdatedAt:    updatedAt,
-		Lifecycle:    lifecycle,
-		SupersededBy: supersededBy,
-		Supersedes:   supersedes,
-		History:      history,
+		ID:                   id,
+		Slug:                 slug,
+		Intent:               intent,
+		Stage:                storage.SpecStage(stage),
+		Priority:             storage.SpecPriority(priority),
+		Complexity:           complexity,
+		Version:              safeInt32(version),
+		CreatedAt:            createdAt,
+		UpdatedAt:            updatedAt,
+		Lifecycle:            lifecycle,
+		SupersededBy:         supersededBy,
+		Supersedes:           supersedes,
+		History:              history,
+		DriftAcknowledged:    driftAck,
+		DriftAcknowledgeNote: driftAckNote,
 	}, nil
 }
 

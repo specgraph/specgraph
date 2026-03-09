@@ -141,6 +141,19 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
+
+	// Merge persisted acknowledgment state into drift reports.
+	if msg.Slug != "" {
+		if spec, specErr := h.store.GetSpec(ctx, msg.Slug); specErr == nil {
+			for i := range reports {
+				if reports[i].SpecSlug == msg.Slug {
+					reports[i].Acknowledged = spec.DriftAcknowledged
+					reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
+				}
+			}
+		}
+	}
+
 	pbReports, err := driftReportsToProto(reports)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
