@@ -574,6 +574,23 @@ func TestLifecycleHandler_Amend_TerminalSpec(t *testing.T) {
 	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
 }
 
+func TestLifecycleHandler_AcknowledgeDrift_NotFound(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.getSpec = func(_ context.Context, _ string) (*storage.Spec, error) {
+		return nil, storage.ErrSpecNotFound
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug: "no-such-spec",
+		Note: "intentional divergence",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeNotFound, connErr.Code())
+}
+
 func TestLifecycleHandler_AcknowledgeDrift_EmptyNote(t *testing.T) {
 	client := newLifecycleClient(t, defaultTestDeps())
 	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
