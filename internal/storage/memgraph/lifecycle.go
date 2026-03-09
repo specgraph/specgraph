@@ -54,7 +54,8 @@ func marshalHistory(entries []storage.HistoryEntry) (string, error) {
 // preconditionError re-reads the spec after an atomic WHERE guard failed
 // and returns the appropriate sentinel error. The op parameter names the
 // operation (e.g. "amend spec", "supersede spec") for error messages.
-// extraChecks runs additional validations beyond the terminal-stage check.
+// extraChecks, if non-nil, runs after the terminal-stage check passes,
+// allowing callers to add operation-specific precondition validation.
 func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChecks func(*storage.Spec) error) error {
 	current, err := s.GetSpec(ctx, slug)
 	if err != nil {
