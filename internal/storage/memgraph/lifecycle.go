@@ -41,7 +41,7 @@ func marshalHistory(entries []storage.HistoryEntry) (string, error) {
 			Stage:   string(e.Stage),
 			Summary: e.Summary,
 			Reason:  e.Reason,
-			Date:    e.Date.UTC().Format("2006-01-02T15:04:05Z07:00"),
+			Date:    e.Date.UTC().Format(sortableRFC3339Nano),
 		}
 	}
 	data, err := json.Marshal(jsonEntries)
