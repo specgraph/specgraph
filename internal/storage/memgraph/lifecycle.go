@@ -195,6 +195,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		    old.updated_at = $updated_at,
 		    old.history_json = $history_json,
 		    new.supersedes = $old_slug,
+		    new.version = new.version + 1,
 		    new.updated_at = $updated_at
 		MERGE (new)-[:SUPERSEDES]->(old)
 		RETURN old.id, old.slug, old.intent, old.stage, old.priority, old.complexity,
