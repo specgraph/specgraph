@@ -68,7 +68,7 @@ func marshalHistory(entries []storage.HistoryEntry) (string, error) {
 func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChecks func(*storage.Spec) error) error {
 	current, err := s.GetSpec(ctx, slug)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s %q: atomic guard failed and precondition re-read also failed: %w", op, slug, err)
 	}
 	if terminalStages[current.Stage] {
 		return fmt.Errorf("%s %q (stage=%s): %w", op, slug, current.Stage, storage.ErrSpecTerminal)
