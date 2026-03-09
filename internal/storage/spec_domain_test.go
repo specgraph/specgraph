@@ -11,14 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSpecStage_IsTerminal(t *testing.T) {
+func TestSpecStage_ExcludesReEntry(t *testing.T) {
 	terminal := []storage.SpecStage{
 		storage.SpecStageAmended,
 		storage.SpecStageSuperseded,
 		storage.SpecStageAbandoned,
 	}
 	for _, s := range terminal {
-		assert.True(t, s.IsTerminal(), "stage %q should be terminal", s)
+		assert.True(t, s.ExcludesReEntry(), "stage %q should exclude re-entry", s)
 	}
 
 	nonTerminal := []storage.SpecStage{
@@ -32,7 +32,7 @@ func TestSpecStage_IsTerminal(t *testing.T) {
 		storage.SpecStageDone,
 	}
 	for _, s := range nonTerminal {
-		assert.False(t, s.IsTerminal(), "stage %q should not be terminal", s)
+		assert.False(t, s.ExcludesReEntry(), "stage %q should not exclude re-entry", s)
 	}
 }
 

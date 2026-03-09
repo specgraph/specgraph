@@ -51,7 +51,7 @@ func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Req
 		if !stage.IsValid() {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid re_entry_stage %q", msg.ReEntryStage))
 		}
-		if stage.IsTerminal() {
+		if stage.ExcludesReEntry() {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("re_entry_stage %q is a terminal state and cannot be used as a re-entry point", msg.ReEntryStage))
 		}
 	}

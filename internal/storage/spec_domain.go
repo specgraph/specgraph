@@ -25,11 +25,10 @@ const (
 	SpecStageAbandoned  SpecStage = "abandoned"
 )
 
-// IsTerminal reports whether s is a stage that cannot be used as a re-entry
-// target. Amended, superseded, and abandoned stages are excluded from re-entry:
-// amended because cycling back is semantically invalid, and superseded/abandoned
-// because they are fully terminal states.
-func (s SpecStage) IsTerminal() bool {
+// ExcludesReEntry reports whether s is a stage that cannot be used as a re-entry
+// target. Amended specs cannot cycle back (semantically invalid), and
+// superseded/abandoned specs are fully terminal states.
+func (s SpecStage) ExcludesReEntry() bool {
 	switch s {
 	case SpecStageAmended, SpecStageSuperseded, SpecStageAbandoned:
 		return true
@@ -56,7 +55,7 @@ var allSpecStages = []SpecStage{
 }
 
 // IsFullyTerminal reports whether s is a stage from which no further lifecycle
-// transitions are allowed. Unlike IsTerminal (which also includes Amended),
+// transitions are allowed. Unlike ExcludesReEntry (which also includes Amended),
 // fully terminal stages cannot be superseded or abandoned.
 func (s SpecStage) IsFullyTerminal() bool {
 	switch s {
