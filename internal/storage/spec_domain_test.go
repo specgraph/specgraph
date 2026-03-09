@@ -13,6 +13,7 @@ import (
 
 func TestSpecStage_ExcludesReEntry(t *testing.T) {
 	terminal := []storage.SpecStage{
+		storage.SpecStageDone,
 		storage.SpecStageAmended,
 		storage.SpecStageSuperseded,
 		storage.SpecStageAbandoned,
@@ -29,7 +30,6 @@ func TestSpecStage_ExcludesReEntry(t *testing.T) {
 		storage.SpecStageApproved,
 		storage.SpecStageInProgress,
 		storage.SpecStageReview,
-		storage.SpecStageDone,
 	}
 	for _, s := range nonTerminal {
 		assert.False(t, s.ExcludesReEntry(), "stage %q should not exclude re-entry", s)

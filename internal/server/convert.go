@@ -480,7 +480,7 @@ func historyToProto(entries []storage.HistoryEntry) []*specv1.HistoryEntry {
 // --- Drift ---
 
 var driftScopeFromProtoMap = map[specv1.DriftScope]string{
-	specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED: "deps", // default scope when client omits the field
+	specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED: "", // all scopes when client omits the field
 	specv1.DriftScope_DRIFT_SCOPE_DEPS:        "deps",
 	specv1.DriftScope_DRIFT_SCOPE_INTERFACES:  "interfaces",
 	specv1.DriftScope_DRIFT_SCOPE_VERIFY:      "verify",

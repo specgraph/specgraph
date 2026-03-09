@@ -30,7 +30,7 @@ const (
 // superseded/abandoned specs are fully terminal states.
 func (s SpecStage) ExcludesReEntry() bool {
 	switch s {
-	case SpecStageAmended, SpecStageSuperseded, SpecStageAbandoned:
+	case SpecStageDone, SpecStageAmended, SpecStageSuperseded, SpecStageAbandoned:
 		return true
 	default:
 		return false
