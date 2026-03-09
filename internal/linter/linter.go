@@ -68,16 +68,23 @@ func Lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResu
 func lintSpec(ctx context.Context, backend Backend, spec *storage.Spec) (storage.LintResult, error) {
 	violations := ValidateSchema(spec)
 
+	// Fetch dependencies once for the root spec, reused by both dangling-dep
+	// and cycle-detection rules to avoid a redundant storage roundtrip.
+	deps, err := backend.GetDependencies(ctx, spec.Slug)
+	if err != nil {
+		return storage.LintResult{}, fmt.Errorf("linter: fetch dependencies for %q: %w", spec.Slug, err)
+	}
+
 	// Rule 1 is schema validation (ValidateSchema above).
 	// Rule 2: Edge consistency — dangling dependency references.
-	danglingViolations, err := checkDanglingDeps(ctx, backend, spec.Slug)
+	danglingViolations, err := checkDanglingDepsWithDeps(ctx, backend, spec.Slug, deps)
 	if err != nil {
 		return storage.LintResult{}, fmt.Errorf("linter: %w", err)
 	}
 	violations = append(violations, danglingViolations...)
 
 	// Rule 3: Cycle detection.
-	cycleViolations, err := detectCycles(ctx, backend, spec.Slug)
+	cycleViolations, err := detectCyclesWithDeps(ctx, backend, spec.Slug, deps)
 	if err != nil {
 		return storage.LintResult{}, fmt.Errorf("linter: %w", err)
 	}
@@ -96,7 +103,11 @@ func checkDanglingDeps(ctx context.Context, backend Backend, slug string) ([]sto
 	if err != nil {
 		return nil, fmt.Errorf("fetch dependencies for %q: %w", slug, err)
 	}
+	return checkDanglingDepsWithDeps(ctx, backend, slug, deps)
+}
 
+// checkDanglingDepsWithDeps is like checkDanglingDeps but accepts pre-fetched dependencies.
+func checkDanglingDepsWithDeps(ctx context.Context, backend Backend, _ string, deps []storage.NodeRef) ([]storage.LintViolation, error) {
 	var violations []storage.LintViolation
 	for _, dep := range deps {
 		_, err := backend.GetSpec(ctx, dep.Slug)
@@ -122,6 +133,11 @@ func checkDanglingDeps(ctx context.Context, backend Backend, slug string) ([]sto
 const maxCycleDepth = 1000
 
 func detectCycles(ctx context.Context, backend Backend, slug string) ([]storage.LintViolation, error) {
+	return detectCyclesWithDeps(ctx, backend, slug, nil)
+}
+
+// detectCyclesWithDeps is like detectCycles but accepts optional pre-fetched root dependencies.
+func detectCyclesWithDeps(ctx context.Context, backend Backend, slug string, rootDeps []storage.NodeRef) ([]storage.LintViolation, error) {
 	visited := map[string]bool{}
 	inStack := map[string]bool{}
 	var violations []storage.LintViolation
@@ -157,7 +173,13 @@ func detectCycles(ctx context.Context, backend Backend, slug string) ([]storage.
 		visited[current] = true
 		inStack[current] = true
 
-		deps, err := backend.GetDependencies(ctx, current)
+		var deps []storage.NodeRef
+		var err error
+		if current == slug && rootDeps != nil {
+			deps = rootDeps
+		} else {
+			deps, err = backend.GetDependencies(ctx, current)
+		}
 		if err != nil {
 			if errors.Is(err, storage.ErrSpecNotFound) {
 				violations = append(violations, storage.LintViolation{
