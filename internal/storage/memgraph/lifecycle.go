@@ -17,16 +17,16 @@ import (
 // When exceeded, the oldest entries are trimmed to prevent unbounded growth.
 const maxHistoryEntries = 100
 
-// terminalStages returns stages from which no further lifecycle transitions
+// terminalStages maps stages from which no further lifecycle transitions
 // are allowed. Derived from storage.FullyTerminalStages() to maintain a
-// single source of truth in spec_domain.go.
-func terminalStagesMap() map[storage.SpecStage]bool {
+// single source of truth in spec_domain.go. Computed once at init time.
+var terminalStages = func() map[storage.SpecStage]bool {
 	m := make(map[storage.SpecStage]bool)
 	for _, s := range storage.FullyTerminalStages() {
 		m[s] = true
 	}
 	return m
-}
+}()
 
 // appendHistory appends entry to existing history and marshals the result to JSON.
 // The combined slice is passed directly to marshalHistory which handles trimming.
@@ -70,7 +70,7 @@ func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChe
 	if err != nil {
 		return err
 	}
-	if terminalStagesMap()[current.Stage] {
+	if terminalStages[current.Stage] {
 		return fmt.Errorf("%s %q (stage=%s): %w", op, slug, current.Stage, storage.ErrSpecTerminal)
 	}
 	if extraChecks != nil {
@@ -94,7 +94,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	if err != nil {
 		return nil, err
 	}
-	if terminalStagesMap()[spec.Stage] {
+	if terminalStages[spec.Stage] {
 		return nil, fmt.Errorf("amend spec %q (stage=%s): %w", slug, spec.Stage, storage.ErrSpecTerminal)
 	}
 	if spec.Stage != storage.SpecStageDone {
@@ -171,7 +171,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	if err != nil {
 		return nil, nil, err
 	}
-	if terminalStagesMap()[oldCheck.Stage] {
+	if terminalStages[oldCheck.Stage] {
 		return nil, nil, fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecTerminal)
 	}
 	newCheck, newErr := s.GetSpec(ctx, newSlug)
@@ -289,7 +289,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 	if err != nil {
 		return nil, err
 	}
-	if terminalStagesMap()[spec.Stage] {
+	if terminalStages[spec.Stage] {
 		return nil, fmt.Errorf("abandon spec %q (stage=%s): %w", slug, spec.Stage, storage.ErrSpecTerminal)
 	}
 
@@ -341,8 +341,8 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 // terminalStagesList returns the terminal stages as a string slice for use in
 // Cypher IN clauses.
 func terminalStagesList() []string {
-	stages := make([]string, 0, len(terminalStagesMap()))
-	for stage := range terminalStagesMap() {
+	stages := make([]string, 0, len(terminalStages))
+	for stage := range terminalStages {
 		stages = append(stages, string(stage))
 	}
 	return stages
