@@ -39,8 +39,8 @@ func (s SpecStage) IsTerminal() bool {
 }
 
 // allSpecStages lists every known SpecStage value. It is the single source of
-// truth that TerminalStages iterates over, so IsTerminal and the storage layer
-// never diverge.
+// truth that FullyTerminalStages iterates over, so IsFullyTerminal and the
+// storage layer never diverge.
 var allSpecStages = []SpecStage{
 	SpecStageSpark,
 	SpecStageShape,
@@ -53,19 +53,6 @@ var allSpecStages = []SpecStage{
 	SpecStageAmended,
 	SpecStageSuperseded,
 	SpecStageAbandoned,
-}
-
-// TerminalStages returns all SpecStage values for which IsTerminal reports true.
-// Callers should use this instead of maintaining a parallel set so that
-// IsTerminal remains the single source of truth.
-func TerminalStages() []SpecStage {
-	var out []SpecStage
-	for _, s := range allSpecStages {
-		if s.IsTerminal() {
-			out = append(out, s)
-		}
-	}
-	return out
 }
 
 // IsFullyTerminal reports whether s is a stage from which no further lifecycle
@@ -81,8 +68,7 @@ func (s SpecStage) IsFullyTerminal() bool {
 }
 
 // FullyTerminalStages returns stages from which no lifecycle transitions are
-// possible. This is a subset of TerminalStages() — it excludes Amended, which
-// can still be superseded or abandoned.
+// possible. This excludes Amended, which can still be superseded or abandoned.
 func FullyTerminalStages() []SpecStage {
 	var out []SpecStage
 	for _, s := range allSpecStages {

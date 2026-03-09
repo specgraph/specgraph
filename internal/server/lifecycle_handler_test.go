@@ -580,6 +580,22 @@ func TestLifecycleHandler_Lint_NilLinter(t *testing.T) {
 	require.Equal(t, connect.CodeUnimplemented, connErr.Code())
 }
 
+func TestLifecycleHandler_Lint_Error(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.linter.lint = func(_ context.Context, _ string) ([]storage.LintResult, error) {
+		return nil, errors.New("db unavailable")
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.Lint(context.Background(), connect.NewRequest(&specv1.LintRequest{
+		Slug: "my-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
 func TestLifecycleHandler_Amend_TerminalSpec(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.amendSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, error) {

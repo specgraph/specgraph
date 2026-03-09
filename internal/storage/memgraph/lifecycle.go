@@ -174,22 +174,36 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	if terminalStagesMap()[oldCheck.Stage] {
 		return nil, nil, fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecTerminal)
 	}
-	if _, newErr := s.GetSpec(ctx, newSlug); newErr != nil {
+	newCheck, newErr := s.GetSpec(ctx, newSlug)
+	if newErr != nil {
 		if errors.Is(newErr, storage.ErrSpecNotFound) {
 			return nil, nil, fmt.Errorf("supersede spec: new spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
 		}
 		return nil, nil, fmt.Errorf("supersede spec: new spec %q: %w", newSlug, newErr)
 	}
 
+	now := time.Now().UTC()
 	newVersion := oldCheck.Version + 1
-	entry := storage.HistoryEntry{
+	oldEntry := storage.HistoryEntry{
 		Version: newVersion,
 		Stage:   storage.SpecStageSuperseded,
 		Summary: "Spec superseded",
 		Reason:  fmt.Sprintf("Superseded by %s", newSlug),
-		Date:    time.Now().UTC(),
+		Date:    now,
 	}
-	historyJSON, err := appendHistory(oldCheck.History, &entry)
+	historyJSON, err := appendHistory(oldCheck.History, &oldEntry)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	newEntry := storage.HistoryEntry{
+		Version: newCheck.Version + 1,
+		Stage:   newCheck.Stage,
+		Summary: "Supersedes predecessor",
+		Reason:  fmt.Sprintf("Supersedes %s", oldSlug),
+		Date:    now,
+	}
+	newHistoryJSON, err := appendHistory(newCheck.History, &newEntry)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -207,7 +221,8 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		    old.history_json = $history_json,
 		    new.supersedes = $old_slug,
 		    new.version = new.version + 1,
-		    new.updated_at = $updated_at
+		    new.updated_at = $updated_at,
+		    new.history_json = $new_history_json
 		MERGE (new)-[:SUPERSEDES]->(old)
 		RETURN old.id, old.slug, old.intent, old.stage, old.priority, old.complexity,
 		       old.version, old.created_at, old.updated_at,
@@ -227,6 +242,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		"version":          int64(newVersion),
 		"updated_at":       nowStr,
 		"history_json":     historyJSON,
+		"new_history_json": newHistoryJSON,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("memgraph: supersede spec: %w", err)
