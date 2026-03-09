@@ -13,7 +13,6 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/driftscope"
 	"github.com/seanb4t/specgraph/internal/storage"
 )
 
@@ -131,7 +130,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 	}
 
 	scopeStr, ok := driftScopeFromProto(msg.Scope)
-	if !ok || !driftscope.IsValid(scopeStr) {
+	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scope %q (valid: deps, interfaces, verify)", msg.Scope.String()))
 	}
 
