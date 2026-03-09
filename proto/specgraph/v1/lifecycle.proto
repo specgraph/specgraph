@@ -117,6 +117,7 @@ message DriftCheckResponse {
 
 message DriftAcknowledgeRequest {
   string slug = 1;
+  // Required. Acknowledgment note explaining why drift is accepted.
   string note = 2;
 }
 
