@@ -155,11 +155,18 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		} else if !errors.Is(specErr, storage.ErrSpecNotFound) {
 			h.logger.Warn("CheckDrift: failed to merge acknowledgment state",
 				slog.String("slug", msg.Slug), slog.Any("error", specErr))
+			found := false
 			for i := range reports {
 				if reports[i].SpecSlug == msg.Slug {
 					reports[i].ItemsStale = true
-					break
+					found = true
 				}
+			}
+			if !found {
+				reports = append(reports, storage.DriftReport{
+					SpecSlug:   msg.Slug,
+					ItemsStale: true,
+				})
 			}
 		}
 	} else {
@@ -180,10 +187,18 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 			} else if !errors.Is(specErr, storage.ErrSpecNotFound) {
 				h.logger.Warn("CheckDrift: failed to merge acknowledgment state",
 					slog.String("slug", slug), slog.Any("error", specErr))
+				found := false
 				for i := range reports {
 					if reports[i].SpecSlug == slug {
 						reports[i].ItemsStale = true
+						found = true
 					}
+				}
+				if !found {
+					reports = append(reports, storage.DriftReport{
+						SpecSlug:   slug,
+						ItemsStale: true,
+					})
 				}
 			}
 		}
