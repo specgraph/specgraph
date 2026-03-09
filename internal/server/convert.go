@@ -5,7 +5,6 @@ package server
 
 import (
 	"fmt"
-	"log/slog"
 	"time"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -574,8 +573,6 @@ var lintSeverityToProtoMap = map[storage.LintSeverity]specv1.LintSeverity{
 func lintViolationToProto(v *storage.LintViolation) (*specv1.LintViolation, error) {
 	sev, ok := lintSeverityToProtoMap[v.Severity]
 	if !ok {
-		slog.Warn("lintViolationToProto: unknown severity",
-			slog.String("severity", string(v.Severity)), slog.String("rule", v.Rule))
 		return nil, fmt.Errorf("unknown lint severity: %q", v.Severity)
 	}
 	return &specv1.LintViolation{
