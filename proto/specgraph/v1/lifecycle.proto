@@ -26,6 +26,16 @@ enum DriftSeverity {
   DRIFT_SEVERITY_INFO = 4;
 }
 
+// DriftScope defines the valid scopes for drift detection checks.
+// The DriftCheckRequest.scope field remains a string for backward
+// compatibility; use these values as the canonical set.
+enum DriftScope {
+  DRIFT_SCOPE_UNSPECIFIED = 0;
+  DRIFT_SCOPE_DEPS = 1;
+  DRIFT_SCOPE_INTERFACES = 2;
+  DRIFT_SCOPE_VERIFY = 3;
+}
+
 enum LintSeverity {
   LINT_SEVERITY_UNSPECIFIED = 0;
   LINT_SEVERITY_ERROR = 1;
@@ -36,12 +46,19 @@ enum LintSeverity {
 // --- Drift Messages ---
 
 message DriftItem {
+  // Category of drift detected (dependency, interface, or verify).
   DriftType type = 1;
+  // Impact level of this drift item.
   DriftSeverity severity = 2;
+  // Human-readable explanation of the drift.
   string description = 3;
+  // Slug of the spec being checked for drift.
   string spec_slug = 4;
+  // Slug of the upstream dependency that changed.
   string upstream_slug = 5;
+  // Version of the upstream spec at the time the downstream was last updated.
   int32 expected_version = 6;
+  // Current version of the upstream spec.
   int32 actual_version = 7;
 }
 
