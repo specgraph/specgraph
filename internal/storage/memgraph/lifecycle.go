@@ -29,8 +29,12 @@ func terminalStagesMap() map[storage.SpecStage]bool {
 }
 
 // appendHistory appends entry to existing history and marshals the result to JSON.
+// The combined slice is passed directly to marshalHistory which handles trimming.
 func appendHistory(existing []storage.HistoryEntry, entry *storage.HistoryEntry) (string, error) {
-	return marshalHistory(append(existing, *entry))
+	combined := make([]storage.HistoryEntry, len(existing)+1)
+	copy(combined, existing)
+	combined[len(existing)] = *entry
+	return marshalHistory(combined)
 }
 
 // marshalHistory serializes a slice of HistoryEntry to a JSON string for storage.
