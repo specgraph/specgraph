@@ -479,6 +479,20 @@ func historyToProto(entries []storage.HistoryEntry) []*specv1.HistoryEntry {
 
 // --- Drift ---
 
+var driftScopeFromProtoMap = map[specv1.DriftScope]string{
+	specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED: "",
+	specv1.DriftScope_DRIFT_SCOPE_DEPS:        "deps",
+	specv1.DriftScope_DRIFT_SCOPE_INTERFACES:  "interfaces",
+	specv1.DriftScope_DRIFT_SCOPE_VERIFY:      "verify",
+}
+
+func driftScopeFromProto(scope specv1.DriftScope) string {
+	if s, ok := driftScopeFromProtoMap[scope]; ok {
+		return s
+	}
+	return ""
+}
+
 var driftTypeToProtoMap = map[storage.DriftType]specv1.DriftType{
 	storage.DriftTypeDependency: specv1.DriftType_DRIFT_TYPE_DEPENDENCY,
 	storage.DriftTypeInterface:  specv1.DriftType_DRIFT_TYPE_INTERFACE,

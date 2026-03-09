@@ -27,8 +27,6 @@ enum DriftSeverity {
 }
 
 // DriftScope defines the valid scopes for drift detection checks.
-// The DriftCheckRequest.scope field remains a string for backward
-// compatibility; use these values as the canonical set.
 enum DriftScope {
   DRIFT_SCOPE_UNSPECIFIED = 0;
   DRIFT_SCOPE_DEPS = 1;
@@ -123,9 +121,9 @@ message TransitionAbandonResponse {
 message DriftCheckRequest {
   // Empty slug checks all eligible (done/amended) specs.
   string slug = 1;
-  // Valid values: "deps", "interfaces", "verify", or "" (all scopes).
-  // Note: "interfaces" and "verify" are not yet implemented and return empty results.
-  string scope = 2;
+  // Scope of drift detection. UNSPECIFIED checks all scopes.
+  // Note: INTERFACES and VERIFY are not yet implemented and return empty results.
+  DriftScope scope = 2;
 }
 
 message DriftCheckResponse {

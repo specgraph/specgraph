@@ -118,13 +118,27 @@ var driftCmd = &cobra.Command{
 
 var driftScope string
 
+var driftScopeToProtoMap = map[string]specv1.DriftScope{
+	"":           specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED,
+	"deps":       specv1.DriftScope_DRIFT_SCOPE_DEPS,
+	"interfaces": specv1.DriftScope_DRIFT_SCOPE_INTERFACES,
+	"verify":     specv1.DriftScope_DRIFT_SCOPE_VERIFY,
+}
+
+func driftScopeToProto(s string) specv1.DriftScope {
+	if v, ok := driftScopeToProtoMap[s]; ok {
+		return v
+	}
+	return specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED
+}
+
 func runDrift(_ *cobra.Command, args []string) error {
 	client, err := lifecycleClient()
 	if err != nil {
 		return err
 	}
 	req := &specv1.DriftCheckRequest{
-		Scope: driftScope,
+		Scope: driftScopeToProto(driftScope),
 	}
 	if len(args) > 0 {
 		req.Slug = args[0]

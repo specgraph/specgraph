@@ -213,7 +213,9 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	// since our pre-validation read.
 	query := `
 		MATCH (old:Spec {slug: $old_slug}), (new:Spec {slug: $new_slug})
-		WHERE NOT old.stage IN $terminal_stages AND old.version = $expected_version
+		WHERE NOT old.stage IN $terminal_stages
+		      AND old.version = $expected_version
+		      AND new.version = $expected_new_version
 		SET old.stage = $stage,
 		    old.superseded_by = $new_slug,
 		    old.version = $version,
@@ -234,15 +236,16 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		       new.drift_acknowledged, new.drift_acknowledge_note
 	`
 	records, err := s.executeQuery(ctx, query, map[string]any{
-		"old_slug":         oldSlug,
-		"new_slug":         newSlug,
-		"stage":            string(storage.SpecStageSuperseded),
-		"terminal_stages":  terminalStagesList(),
-		"expected_version": oldCheck.Version,
-		"version":          int64(newVersion),
-		"updated_at":       nowStr,
-		"history_json":     historyJSON,
-		"new_history_json": newHistoryJSON,
+		"old_slug":             oldSlug,
+		"new_slug":             newSlug,
+		"stage":                string(storage.SpecStageSuperseded),
+		"terminal_stages":      terminalStagesList(),
+		"expected_version":     oldCheck.Version,
+		"expected_new_version": newCheck.Version,
+		"version":              int64(newVersion),
+		"updated_at":           nowStr,
+		"history_json":         historyJSON,
+		"new_history_json":     newHistoryJSON,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("memgraph: supersede spec: %w", err)

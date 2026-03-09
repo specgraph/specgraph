@@ -130,14 +130,15 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		}
 	}
 
-	if !driftscope.IsValid(msg.Scope) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scope %q (valid: deps, interfaces, verify)", msg.Scope))
+	scopeStr := driftScopeFromProto(msg.Scope)
+	if !driftscope.IsValid(scopeStr) {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scope %q (valid: deps, interfaces, verify)", scopeStr))
 	}
 
 	if h.driftChecker == nil {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("drift checking is not configured"))
 	}
-	reports, err := h.driftChecker.Check(ctx, msg.Slug, msg.Scope)
+	reports, err := h.driftChecker.Check(ctx, msg.Slug, scopeStr)
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
