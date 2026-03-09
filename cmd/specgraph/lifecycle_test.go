@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	"github.com/seanb4t/specgraph/internal/driftscope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,5 +43,12 @@ func TestDriftScopeToProtoMap_Completeness(t *testing.T) {
 	for _, scope := range expected {
 		_, ok := driftScopeToProtoMap[scope]
 		assert.True(t, ok, "expected scope %q in driftScopeToProtoMap", scope)
+	}
+}
+
+func TestDriftScopeToProtoMap_SyncWithDriftscope(t *testing.T) {
+	for scope := range driftScopeToProtoMap {
+		assert.True(t, driftscope.IsValid(scope),
+			"CLI scope %q not recognized by driftscope.IsValid — tables out of sync", scope)
 	}
 }

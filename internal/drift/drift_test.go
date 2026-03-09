@@ -15,11 +15,12 @@ import (
 )
 
 type mockDriftBackend struct {
-	specs   map[string]*storage.Spec
-	deps    map[string][]storage.NodeRef
-	listErr error // if non-nil, ListSpecs returns this error
-	depsErr error // if non-nil, GetDependencies returns this error
-	specErr error // if non-nil, GetSpec returns this error for any slug
+	specs           map[string]*storage.Spec
+	deps            map[string][]storage.NodeRef
+	listErr         error            // if non-nil, ListSpecs returns this error for all stages
+	listErrForStage map[string]error // per-stage errors; checked before listErr
+	depsErr         error            // if non-nil, GetDependencies returns this error
+	specErr         error            // if non-nil, GetSpec returns this error for any slug
 }
 
 func (m *mockDriftBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
@@ -34,6 +35,9 @@ func (m *mockDriftBackend) GetSpec(_ context.Context, slug string) (*storage.Spe
 }
 
 func (m *mockDriftBackend) ListSpecs(_ context.Context, stage, _ string, _ int) ([]*storage.Spec, error) {
+	if err, ok := m.listErrForStage[stage]; ok {
+		return nil, err
+	}
 	if m.listErr != nil {
 		return nil, m.listErr
 	}
@@ -239,6 +243,27 @@ func TestCheck_ListSpecsError(t *testing.T) {
 	_, err := engine.Check(context.Background(), "", "")
 	require.Error(t, err)
 	require.ErrorContains(t, err, "db connection lost")
+}
+
+func TestCheck_ListSpecsError_AmendedStageOnly(t *testing.T) {
+	now := time.Now()
+	backend := &mockDriftBackend{
+		specs: map[string]*storage.Spec{
+			"done-spec": {
+				Slug:      "done-spec",
+				Stage:     storage.SpecStageDone,
+				UpdatedAt: now,
+			},
+		},
+		listErrForStage: map[string]error{
+			string(storage.SpecStageAmended): errors.New("amended stage query failed"),
+		},
+	}
+	engine := drift.NewEngine(backend)
+
+	_, err := engine.Check(context.Background(), "", "")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "amended stage query failed")
 }
 
 func TestCheckSpec_GetDependenciesError(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	"github.com/seanb4t/specgraph/internal/driftscope"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -442,5 +443,12 @@ func TestDriftScopeFromProto(t *testing.T) {
 				assert.Equal(t, tt.want, got)
 			}
 		})
+	}
+}
+
+func TestDriftScopeFromProtoMap_SyncWithDriftscope(t *testing.T) {
+	for _, scopeStr := range driftScopeFromProtoMap {
+		assert.True(t, driftscope.IsValid(scopeStr),
+			"server scope %q not recognized by driftscope.IsValid — tables out of sync", scopeStr)
 	}
 }
