@@ -46,7 +46,7 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 		}
 		// Only done and amended specs are eligible for drift detection.
 		if spec.Stage != storage.SpecStageDone && spec.Stage != storage.SpecStageAmended {
-			return nil, nil
+			return nil, fmt.Errorf("drift: spec %q stage %q: %w", slug, spec.Stage, storage.ErrSpecIneligibleForDrift)
 		}
 		specs = []*storage.Spec{spec}
 	} else {

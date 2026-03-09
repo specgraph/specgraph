@@ -12,6 +12,7 @@ import (
 var (
 	ErrSpecNotDone            = errors.New("spec must be in done stage")
 	ErrSpecIneligibleStage    = errors.New("spec is not in an eligible stage for this operation")
+	ErrSpecIneligibleForDrift = errors.New("spec is not eligible for drift checking (must be done or amended)")
 	ErrSpecTerminal           = errors.New("spec is in a terminal state (superseded or abandoned)")
 	ErrNewSpecNotFound        = errors.New("replacement spec not found")
 	ErrConcurrentModification = errors.New("concurrent modification detected — retry the operation")
@@ -118,6 +119,10 @@ type LifecycleBackend interface {
 	// GetSpec retrieves a spec by slug.
 	// Returns ErrSpecNotFound if the spec does not exist.
 	GetSpec(ctx context.Context, slug string) (*Spec, error)
+
+	// BatchGetSpecs retrieves multiple specs by slug in a single round-trip.
+	// Missing slugs are silently omitted from the result map.
+	BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*Spec, error)
 
 	// LifecycleAmendSpec transitions a done spec back into authoring.
 	// Returns ErrSpecNotFound, ErrSpecNotDone, or ErrSpecTerminal.

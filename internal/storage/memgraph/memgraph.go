@@ -9,7 +9,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -118,6 +117,34 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
 	}
 
 	return recordToSpec(records[0])
+}
+
+// BatchGetSpecs retrieves multiple specs by slug in a single query.
+// Missing slugs are silently omitted from the result map.
+func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*storage.Spec, error) {
+	if len(slugs) == 0 {
+		return map[string]*storage.Spec{}, nil
+	}
+	query := `
+		MATCH (s:Spec) WHERE s.slug IN $slugs
+		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
+		       s.version, s.created_at, s.updated_at,
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.drift_acknowledged, s.drift_acknowledge_note
+	`
+	records, err := s.executeQuery(ctx, query, map[string]any{"slugs": slugs})
+	if err != nil {
+		return nil, fmt.Errorf("memgraph: batch get specs: %w", err)
+	}
+	result := make(map[string]*storage.Spec, len(records))
+	for _, rec := range records {
+		spec, err := recordToSpec(rec)
+		if err != nil {
+			return nil, fmt.Errorf("memgraph: batch get specs: parse: %w", err)
+		}
+		result[spec.Slug] = spec
+	}
+	return result, nil
 }
 
 // ListSpecs returns specs matching the given filters.
@@ -350,8 +377,7 @@ func unmarshalHistory(raw string) ([]storage.HistoryEntry, error) {
 		}
 		stage := storage.SpecStage(e.Stage)
 		if !stage.IsValid() {
-			slog.Warn("unmarshal history_json: unknown stage in history entry",
-				slog.String("stage", e.Stage), slog.Int("index", i))
+			return nil, fmt.Errorf("memgraph: unmarshal history_json: unknown stage %q at index %d (version %d)", e.Stage, i, e.Version)
 		}
 		result[i] = storage.HistoryEntry{
 			Version: e.Version,

@@ -77,22 +77,11 @@ func lintSpec(ctx context.Context, backend Backend, spec *storage.Spec) (storage
 
 	// Rule 1 is schema validation (ValidateSchema above).
 	// Rule 2: Edge consistency — dangling dependency references.
-	danglingViolations, err := checkDanglingDeps(ctx, backend, spec.Slug, deps)
+	danglingViolations, danglingSet, err := checkDanglingDeps(ctx, backend, spec.Slug, deps)
 	if err != nil {
 		return storage.LintResult{}, fmt.Errorf("linter: %w", err)
 	}
 	violations = append(violations, danglingViolations...)
-
-	// Build a set of dangling slugs so detectCycles can skip duplicate
-	// graph.missing_node violations for slugs already reported as edge.dangling_ref.
-	danglingSet := make(map[string]bool, len(danglingViolations))
-	for _, v := range danglingViolations {
-		for _, dep := range deps {
-			if v.Rule == "edge.dangling_ref" && v.Location == fmt.Sprintf("dependencies[%s]", dep.Slug) {
-				danglingSet[dep.Slug] = true
-			}
-		}
-	}
 
 	// Rule 3: Cycle detection.
 	cycleViolations, err := detectCycles(ctx, backend, spec.Slug, deps, danglingSet)
@@ -110,12 +99,14 @@ func lintSpec(ctx context.Context, backend Backend, spec *storage.Spec) (storage
 
 // checkDanglingDeps verifies that each dependency target actually exists,
 // using pre-fetched dependencies to avoid redundant storage calls.
-func checkDanglingDeps(ctx context.Context, backend Backend, _ string, deps []storage.NodeRef) ([]storage.LintViolation, error) {
+func checkDanglingDeps(ctx context.Context, backend Backend, _ string, deps []storage.NodeRef) ([]storage.LintViolation, map[string]bool, error) {
 	var violations []storage.LintViolation
+	danglingSet := make(map[string]bool)
 	for _, dep := range deps {
 		_, err := backend.GetSpec(ctx, dep.Slug)
 		if err != nil {
 			if errors.Is(err, storage.ErrSpecNotFound) {
+				danglingSet[dep.Slug] = true
 				violations = append(violations, storage.LintViolation{
 					Rule:     "edge.dangling_ref",
 					Severity: storage.LintSeverityError,
@@ -123,12 +114,12 @@ func checkDanglingDeps(ctx context.Context, backend Backend, _ string, deps []st
 					Location: fmt.Sprintf("dependencies[%s]", dep.Slug),
 				})
 			} else {
-				return nil, fmt.Errorf("verify dependency %q: %w", dep.Slug, err)
+				return nil, nil, fmt.Errorf("verify dependency %q: %w", dep.Slug, err)
 			}
 		}
 	}
 
-	return violations, nil
+	return violations, danglingSet, nil
 }
 
 const maxCycleDepth = 1000

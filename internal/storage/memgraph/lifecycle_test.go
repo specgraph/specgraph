@@ -208,6 +208,18 @@ func TestAcknowledgeDrift(t *testing.T) {
 	require.Equal(t, "updated note", report2.AcknowledgeNote)
 }
 
+func TestAcknowledgeDrift_IneligibleStage(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	// Create a spec at spark stage (not eligible for drift acknowledgment).
+	_, err := store.CreateSpec(ctx, "ack-ineligible", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	_, err = store.LifecycleAcknowledgeDrift(ctx, "ack-ineligible", "should fail")
+	require.Error(t, err)
+	require.ErrorIs(t, err, storage.ErrSpecIneligibleStage)
+}
+
 func TestAmendSpec_ConcurrentModification(t *testing.T) {
 	store, ctx := newTestStore(t)
 
@@ -378,4 +390,31 @@ func TestAmendSpec_ReEntryDone(t *testing.T) {
 	require.NotEmpty(t, amended.History)
 	lastEntry := amended.History[len(amended.History)-1]
 	require.Equal(t, "re-enter at done", lastEntry.Reason)
+}
+
+func TestSupersedeSpec_ConcurrentModificationOnNewSpec(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	// Create old spec at done stage.
+	_, err := store.CreateSpec(ctx, "old-supersede", "Old spec", "p1", "medium")
+	require.NoError(t, err)
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "old-supersede", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+
+	// Create new spec at done stage.
+	_, err = store.CreateSpec(ctx, "new-supersede", "New spec", "p1", "medium")
+	require.NoError(t, err)
+	_, err = store.UpdateSpec(ctx, "new-supersede", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+
+	// Modify the new spec behind the scenes to trigger the version guard.
+	sparkStage := "spark"
+	_, err = store.UpdateSpec(ctx, "new-supersede", nil, &sparkStage, nil, nil)
+	require.NoError(t, err)
+
+	// Now supersede should detect the concurrent modification on the new spec.
+	_, _, err = store.LifecycleSupersedeSpec(ctx, "old-supersede", "new-supersede")
+	require.Error(t, err)
+	require.ErrorIs(t, err, storage.ErrConcurrentModification)
 }

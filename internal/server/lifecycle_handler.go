@@ -152,7 +152,10 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 					reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
 				}
 			}
-		} else if !errors.Is(specErr, storage.ErrSpecNotFound) {
+		} else if errors.Is(specErr, storage.ErrSpecNotFound) {
+			h.logger.Debug("CheckDrift: spec deleted between drift check and ack merge",
+				slog.String("slug", msg.Slug))
+		} else {
 			h.logger.Warn("CheckDrift: failed to merge acknowledgment state",
 				slog.String("slug", msg.Slug), slog.Any("error", specErr))
 			found := false
@@ -170,35 +173,27 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 			}
 		}
 	} else {
-		// All-specs path: collect unique slugs from reports and merge each.
+		// All-specs path: batch-fetch specs for acknowledgment state merge.
+		slugs := make([]string, 0, len(reports))
 		seen := make(map[string]struct{}, len(reports))
 		for _, r := range reports {
-			seen[r.SpecSlug] = struct{}{}
+			if _, ok := seen[r.SpecSlug]; !ok {
+				seen[r.SpecSlug] = struct{}{}
+				slugs = append(slugs, r.SpecSlug)
+			}
 		}
-		for slug := range seen {
-			spec, specErr := h.store.GetSpec(ctx, slug)
-			if specErr == nil {
-				for i := range reports {
-					if reports[i].SpecSlug == slug {
-						reports[i].Acknowledged = spec.DriftAcknowledged
-						reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
-					}
-				}
-			} else if !errors.Is(specErr, storage.ErrSpecNotFound) {
-				h.logger.Warn("CheckDrift: failed to merge acknowledgment state",
-					slog.String("slug", slug), slog.Any("error", specErr))
-				found := false
-				for i := range reports {
-					if reports[i].SpecSlug == slug {
-						reports[i].ItemsStale = true
-						found = true
-					}
-				}
-				if !found {
-					reports = append(reports, storage.DriftReport{
-						SpecSlug:   slug,
-						ItemsStale: true,
-					})
+		specMap, batchErr := h.store.BatchGetSpecs(ctx, slugs)
+		if batchErr != nil {
+			h.logger.Warn("CheckDrift: batch fetch for ack merge failed",
+				slog.Any("error", batchErr))
+			for i := range reports {
+				reports[i].ItemsStale = true
+			}
+		} else {
+			for i := range reports {
+				if spec, ok := specMap[reports[i].SpecSlug]; ok {
+					reports[i].Acknowledged = spec.DriftAcknowledged
+					reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
 				}
 			}
 		}
@@ -313,6 +308,9 @@ func (h *LifecycleHandler) lifecycleError(err error) error {
 	}
 	if errors.Is(err, storage.ErrSpecTerminal) {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec is in a terminal state"))
+	}
+	if errors.Is(err, storage.ErrSpecIneligibleForDrift) {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec is not eligible for drift checking (must be done or amended)"))
 	}
 	if errors.Is(err, storage.ErrNewSpecNotFound) {
 		return connect.NewError(connect.CodeNotFound, errors.New("replacement spec not found"))

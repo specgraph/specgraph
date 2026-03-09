@@ -319,3 +319,34 @@ func TestLint_MaxCycleDepthExceeded(t *testing.T) {
 	}
 	require.True(t, found, "expected graph.cycle warning for depth exceeded, got violations: %v", results[0].Violations)
 }
+
+func TestLint_CycleDetection_StorageErrorPropagates(t *testing.T) {
+	dbErr := errors.New("database connection lost")
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"root": {
+				Slug:    "root",
+				Intent:  "Root spec",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+			"child": {
+				Slug:    "child",
+				Intent:  "Child spec",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+		},
+		deps: map[string][]storage.NodeRef{
+			"root": {{Slug: "child", Label: storage.NodeLabelSpec}},
+		},
+		// GetDependencies for "child" returns an error during DFS traversal.
+		getDepsErrMap: map[string]error{
+			"child": dbErr,
+		},
+	}
+
+	_, err := linter.Lint(context.Background(), backend, "root")
+	require.Error(t, err)
+	require.ErrorIs(t, err, dbErr)
+}

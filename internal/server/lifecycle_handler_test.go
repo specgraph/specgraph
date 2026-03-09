@@ -23,6 +23,7 @@ import (
 // fakeLifecycleBackend is a minimal fake implementation of storage.LifecycleBackend for testing.
 type fakeLifecycleBackend struct {
 	getSpec          func(ctx context.Context, slug string) (*storage.Spec, error)
+	batchGetSpecs    func(ctx context.Context, slugs []string) (map[string]*storage.Spec, error)
 	amendSpec        func(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error)
 	supersedeSpec    func(ctx context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error)
 	abandonSpec      func(ctx context.Context, slug, reason string) (*storage.Spec, error)
@@ -34,6 +35,25 @@ func (f *fakeLifecycleBackend) GetSpec(ctx context.Context, slug string) (*stora
 		return &storage.Spec{Slug: slug, Stage: storage.SpecStageDone}, nil
 	}
 	return f.getSpec(ctx, slug)
+}
+
+func (f *fakeLifecycleBackend) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*storage.Spec, error) {
+	if f.batchGetSpecs != nil {
+		return f.batchGetSpecs(ctx, slugs)
+	}
+	// Default: delegate to individual GetSpec calls.
+	result := make(map[string]*storage.Spec, len(slugs))
+	for _, slug := range slugs {
+		spec, err := f.GetSpec(ctx, slug)
+		if err != nil {
+			if errors.Is(err, storage.ErrSpecNotFound) {
+				continue
+			}
+			return nil, err
+		}
+		result[spec.Slug] = spec
+	}
+	return result, nil
 }
 
 func (f *fakeLifecycleBackend) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error) {
@@ -312,6 +332,47 @@ func TestLifecycleHandler_CheckDrift_MergesAcknowledgmentState(t *testing.T) {
 	require.Equal(t, "some note", resp.Msg.Reports[0].AcknowledgeNote)
 }
 
+func TestLifecycleHandler_CheckDrift_GetSpecErrorMarksSingleReportStale(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.getSpec = func(_ context.Context, _ string) (*storage.Spec, error) {
+		return nil, errors.New("database timeout")
+	}
+	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+		return []storage.DriftReport{
+			{SpecSlug: "my-spec"},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
+		Slug: "my-spec",
+	}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Reports, 1)
+	require.True(t, resp.Msg.Reports[0].ItemsStale)
+}
+
+func TestLifecycleHandler_CheckDrift_BatchGetSpecsErrorMarksAllStale(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.batchGetSpecs = func(_ context.Context, _ []string) (map[string]*storage.Spec, error) {
+		return nil, errors.New("database timeout")
+	}
+	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+		return []storage.DriftReport{
+			{SpecSlug: "spec-a"},
+			{SpecSlug: "spec-b"},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Reports, 2)
+	for _, r := range resp.Msg.Reports {
+		require.True(t, r.ItemsStale, "report for %q should be stale", r.SpecSlug)
+	}
+}
+
 func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
@@ -358,6 +419,16 @@ func TestLifecycleHandler_Supersede_SameSlug(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestLifecycleHandler_Supersede_EmptyNewSlug(t *testing.T) {
+	client := newLifecycleClient(t, defaultTestDeps())
+	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
+		Slug:    "my-spec",
+		NewSlug: "",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
 func TestLifecycleHandler_Supersede_NewSpecNotFound(t *testing.T) {
@@ -495,19 +566,15 @@ func TestLifecycleHandler_Amend_TerminalReEntryStage(t *testing.T) {
 
 func TestLifecycleHandler_Amend_ReEntryDone(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.amendSpec = func(_ context.Context, slug, _, reEntry string) (*storage.Spec, error) {
-		require.Equal(t, "done", reEntry)
-		return &storage.Spec{Slug: slug, Stage: storage.SpecStageDone, Version: 2}, nil
-	}
 	client := newLifecycleClient(t, deps)
 
-	resp, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
 		Slug:         "my-spec",
 		Reason:       "re-enter at done",
 		ReEntryStage: "done",
 	}))
-	require.NoError(t, err)
-	require.Equal(t, "done", resp.Msg.GetSpec().GetStage())
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
 func TestLifecycleHandler_CheckDrift_Error(t *testing.T) {

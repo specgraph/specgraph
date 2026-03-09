@@ -263,7 +263,7 @@ func init() {
 	cobra.CheckErr(abandonCmd.MarkFlagRequired("reason"))
 	rootCmd.AddCommand(abandonCmd)
 
-	driftCmd.Flags().StringVar(&driftScope, "scope", "", "drift check scope (interfaces|verify|deps)")
+	driftCmd.Flags().StringVar(&driftScope, "scope", "", "drift check scope (deps|interfaces|verify); omit for all")
 	driftAckCmd.Flags().StringVar(&driftAckNote, "note", "", "acknowledgement note (required)")
 	cobra.CheckErr(driftAckCmd.MarkFlagRequired("note"))
 	driftCmd.AddCommand(driftAckCmd)

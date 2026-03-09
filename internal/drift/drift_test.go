@@ -285,9 +285,9 @@ func TestCheck_NonDoneStageBySlug(t *testing.T) {
 
 	engine := drift.NewEngine(backend)
 	// Non-done/non-amended specs are not eligible for drift detection.
-	reports, err := engine.Check(context.Background(), "in-progress", "deps")
-	require.NoError(t, err)
-	require.Empty(t, reports)
+	_, err := engine.Check(context.Background(), "in-progress", "deps")
+	require.Error(t, err)
+	require.ErrorIs(t, err, storage.ErrSpecIneligibleForDrift)
 }
 
 func TestCheck_GetSpecError(t *testing.T) {

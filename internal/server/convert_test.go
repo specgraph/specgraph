@@ -428,7 +428,7 @@ func TestDriftScopeFromProto(t *testing.T) {
 		want  string
 		ok    bool
 	}{
-		{"UNSPECIFIED defaults to deps", specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED, "deps", true},
+		{"UNSPECIFIED defaults to all scopes", specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED, "", true},
 		{"DEPS maps to deps", specv1.DriftScope_DRIFT_SCOPE_DEPS, "deps", true},
 		{"INTERFACES maps to interfaces", specv1.DriftScope_DRIFT_SCOPE_INTERFACES, "interfaces", true},
 		{"VERIFY maps to verify", specv1.DriftScope_DRIFT_SCOPE_VERIFY, "verify", true},

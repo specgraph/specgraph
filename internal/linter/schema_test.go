@@ -115,6 +115,33 @@ func TestValidateSchema_AbandonedStage(t *testing.T) {
 	require.Empty(t, violations, "abandoned stage should pass schema validation without special fields")
 }
 
+func TestValidateSchema_VersionZero(t *testing.T) {
+	spec := &storage.Spec{
+		Slug:    "zero-ver",
+		Intent:  "Has version zero",
+		Stage:   storage.SpecStageSpark,
+		Version: 0,
+	}
+	violations := linter.ValidateSchema(spec)
+	minViolations := filterByRule(violations, "schema.minimum")
+	require.Len(t, minViolations, 1)
+	require.Contains(t, minViolations[0].Message, "version must be >= 1")
+}
+
+func TestValidateSchema_InvalidLifecycle(t *testing.T) {
+	spec := &storage.Spec{
+		Slug:      "bad-lifecycle",
+		Intent:    "Has invalid lifecycle",
+		Stage:     storage.SpecStageSpark,
+		Version:   1,
+		Lifecycle: storage.SpecLifecycle("bogus"),
+	}
+	violations := linter.ValidateSchema(spec)
+	enumViolations := filterByRule(violations, "schema.enum")
+	require.Len(t, enumViolations, 1)
+	require.Contains(t, enumViolations[0].Message, "invalid lifecycle")
+}
+
 func filterByRule(violations []storage.LintViolation, rule string) []storage.LintViolation {
 	var filtered []storage.LintViolation
 	for _, v := range violations {

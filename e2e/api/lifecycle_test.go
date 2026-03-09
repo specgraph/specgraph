@@ -260,6 +260,38 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(resp.Msg.Results[0].SpecSlug).To(Equal(lintSlug))
 			Expect(resp.Msg.Results[0].Passed).To(BeTrue(), "valid spec should pass lint")
 		})
+
+		It("returns violations for a spec with a dangling dependency", func() {
+			danglingSlug := "lint-dangling-" + time.Now().Format("150405")
+			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   danglingSlug,
+				Intent: "Test lint violations",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			// Add a DEPENDS_ON edge to a nonexistent spec.
+			_, err = graphClient.AddEdge(ctx, connect.NewRequest(&specv1.AddEdgeRequest{
+				FromSlug: danglingSlug,
+				ToSlug:   "nonexistent-spec",
+				Label:    "DEPENDS_ON",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			resp, err := lifecycleClient.Lint(ctx, connect.NewRequest(&specv1.LintRequest{
+				Slug: danglingSlug,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Msg.Results).NotTo(BeEmpty())
+			Expect(resp.Msg.Results[0].Passed).To(BeFalse(), "spec with dangling dep should fail lint")
+
+			hasDangling := false
+			for _, v := range resp.Msg.Results[0].Violations {
+				if v.Rule == "edge.dangling_ref" {
+					hasDangling = true
+				}
+			}
+			Expect(hasDangling).To(BeTrue(), "expected edge.dangling_ref violation")
+		})
 	})
 
 	Describe("Error paths", func() {

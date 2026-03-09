@@ -255,8 +255,14 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		// check new spec to provide a precise error when the conflict is there.
 		oldErr := s.preconditionError(ctx, oldSlug, "supersede spec (old)", nil)
 		if errors.Is(oldErr, storage.ErrConcurrentModification) {
-			if newErr := s.preconditionError(ctx, newSlug, "supersede spec (new)", nil); newErr != nil {
-				return nil, nil, newErr
+			newErr := s.preconditionError(ctx, newSlug, "supersede spec (new)", nil)
+			if newErr != nil {
+				if errors.Is(newErr, storage.ErrSpecNotFound) {
+					return nil, nil, fmt.Errorf("supersede spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
+				}
+				// Both specs have precondition issues; prefer the new-spec
+				// error but include old-spec context for diagnostics.
+				return nil, nil, fmt.Errorf("supersede spec: new %q: %w (old %q also concurrently modified)", newSlug, newErr, oldSlug)
 			}
 		}
 		return nil, nil, oldErr
