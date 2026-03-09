@@ -240,4 +240,60 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(resp.Msg.Results[0].Passed).To(BeTrue(), "valid spec should pass lint")
 		})
 	})
+
+	Describe("Error paths", func() {
+		It("rejects amend on a spark-stage spec with FailedPrecondition", func() {
+			errSlug := "lifecycle-err-amend-" + time.Now().Format("150405")
+			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   errSlug,
+				Intent: "Test amend error path",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
+				Slug:   errSlug,
+				Reason: "should fail",
+			}))
+			Expect(err).To(HaveOccurred())
+			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
+		})
+
+		It("rejects abandon on an already-abandoned spec with FailedPrecondition", func() {
+			errSlug := "lifecycle-err-abandon-" + time.Now().Format("150405")
+			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   errSlug,
+				Intent: "Test abandon error path",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = lifecycleClient.TransitionAbandon(ctx, connect.NewRequest(&specv1.TransitionAbandonRequest{
+				Slug:   errSlug,
+				Reason: "first abandon",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = lifecycleClient.TransitionAbandon(ctx, connect.NewRequest(&specv1.TransitionAbandonRequest{
+				Slug:   errSlug,
+				Reason: "second abandon should fail",
+			}))
+			Expect(err).To(HaveOccurred())
+			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
+		})
+
+		It("rejects supersede with nonexistent new spec with NotFound", func() {
+			errSlug := "lifecycle-err-supersede-" + time.Now().Format("150405")
+			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   errSlug,
+				Intent: "Test supersede error path",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = lifecycleClient.TransitionSupersede(ctx, connect.NewRequest(&specv1.TransitionSupersedeRequest{
+				Slug:    errSlug,
+				NewSlug: "nonexistent-spec-xyz",
+			}))
+			Expect(err).To(HaveOccurred())
+			Expect(connect.CodeOf(err)).To(Equal(connect.CodeNotFound))
+		})
+	})
 })
