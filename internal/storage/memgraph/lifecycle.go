@@ -251,7 +251,15 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		return nil, nil, fmt.Errorf("memgraph: supersede spec: %w", err)
 	}
 	if len(records) == 0 {
-		return nil, nil, s.preconditionError(ctx, oldSlug, "supersede spec", nil)
+		// Check old spec first; if it passes (concurrent modification), also
+		// check new spec to provide a precise error when the conflict is there.
+		oldErr := s.preconditionError(ctx, oldSlug, "supersede spec (old)", nil)
+		if errors.Is(oldErr, storage.ErrConcurrentModification) {
+			if newErr := s.preconditionError(ctx, newSlug, "supersede spec (new)", nil); newErr != nil {
+				return nil, nil, newErr
+			}
+		}
+		return nil, nil, oldErr
 	}
 
 	rec := records[0]
