@@ -21,7 +21,10 @@ import (
 )
 
 // Compile-time interface assertions.
-var _ storage.LifecycleBackend = (*Store)(nil)
+var (
+	_ storage.AuthoringBackend = (*Store)(nil)
+	_ storage.LifecycleBackend = (*Store)(nil)
+)
 
 // Store implements storage.Backend using Memgraph (Bolt protocol).
 type Store struct {
