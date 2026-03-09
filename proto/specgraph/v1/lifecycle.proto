@@ -71,6 +71,7 @@ message LintResult {
 
 message TransitionAmendRequest {
   string slug = 1;
+  // Required. Reason for amending the spec. Maximum 10000 characters.
   string reason = 2;
   // Valid non-terminal stages: spark, shape, specify, decompose, approved,
   // in_progress, review. Terminal states (amended, superseded, abandoned) are
