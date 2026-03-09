@@ -344,7 +344,8 @@ func TestLintResultsToProto(t *testing.T) {
 				Violations: nil,
 			},
 		}
-		pbs := lintResultsToProto(results)
+		pbs, err := lintResultsToProto(results)
+		require.NoError(t, err)
 		require.Len(t, pbs, 2)
 
 		// First result
@@ -364,7 +365,8 @@ func TestLintResultsToProto(t *testing.T) {
 	})
 
 	t.Run("empty input", func(t *testing.T) {
-		pbs := lintResultsToProto([]storage.LintResult{})
+		pbs, err := lintResultsToProto([]storage.LintResult{})
+		require.NoError(t, err)
 		assert.Empty(t, pbs)
 	})
 
@@ -377,7 +379,8 @@ func TestLintResultsToProto(t *testing.T) {
 				},
 			},
 		}
-		pbs := lintResultsToProto(results)
+		pbs, err := lintResultsToProto(results)
+		require.NoError(t, err)
 		require.Len(t, pbs, 1)
 		require.Len(t, pbs[0].Violations, 1)
 		assert.Equal(t, specv1.LintSeverity_LINT_SEVERITY_INFO, pbs[0].Violations[0].Severity)

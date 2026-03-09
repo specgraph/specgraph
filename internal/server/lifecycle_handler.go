@@ -212,8 +212,12 @@ func (h *LifecycleHandler) Lint(ctx context.Context, req *connect.Request[specv1
 	if err != nil {
 		return nil, h.lifecycleError(err)
 	}
+	pbResults, err := lintResultsToProto(results)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	return connect.NewResponse(&specv1.LintResponse{
-		Results: lintResultsToProto(results),
+		Results: pbResults,
 	}), nil
 }
 
