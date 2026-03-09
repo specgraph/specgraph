@@ -508,6 +508,29 @@ func TestLifecycleHandler_CheckDrift_NilChecker(t *testing.T) {
 	require.Equal(t, connect.CodeUnimplemented, connErr.Code())
 }
 
+func TestLifecycleHandler_AcknowledgeDrift_NilChecker(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
+		return &storage.DriftReport{
+			SpecSlug:        slug,
+			Acknowledged:    true,
+			AcknowledgeNote: note,
+		}, nil
+	}
+	mux := http.NewServeMux()
+	server.RegisterLifecycleService(mux, deps.store, nil, deps.linter)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	client := specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)
+
+	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug: "my-spec",
+		Note: "intentional divergence",
+	}))
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.Items)
+}
+
 func TestLifecycleHandler_Lint_NilLinter(t *testing.T) {
 	deps := defaultTestDeps()
 	mux := http.NewServeMux()
