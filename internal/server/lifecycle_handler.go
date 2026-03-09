@@ -156,21 +156,8 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 			h.logger.Debug("CheckDrift: spec deleted between drift check and ack merge",
 				slog.String("slug", msg.Slug))
 		} else {
-			h.logger.Warn("CheckDrift: failed to merge acknowledgment state",
-				slog.String("slug", msg.Slug), slog.Any("error", specErr))
-			found := false
-			for i := range reports {
-				if reports[i].SpecSlug == msg.Slug {
-					reports[i].ItemsStale = true
-					found = true
-				}
-			}
-			if !found {
-				reports = append(reports, storage.DriftReport{
-					SpecSlug:   msg.Slug,
-					ItemsStale: true,
-				})
-			}
+			return nil, connect.NewError(connect.CodeUnavailable,
+				fmt.Errorf("CheckDrift: failed to fetch acknowledgment state for %q: %w", msg.Slug, specErr))
 		}
 	} else {
 		// All-specs path: batch-fetch specs for acknowledgment state merge.
@@ -184,11 +171,8 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		}
 		specMap, batchErr := h.store.BatchGetSpecs(ctx, slugs)
 		if batchErr != nil {
-			h.logger.Warn("CheckDrift: batch fetch for ack merge failed",
-				slog.Any("error", batchErr))
-			for i := range reports {
-				reports[i].ItemsStale = true
-			}
+			return nil, connect.NewError(connect.CodeUnavailable,
+				fmt.Errorf("CheckDrift: batch fetch for ack merge failed: %w", batchErr))
 		} else {
 			for i := range reports {
 				if spec, ok := specMap[reports[i].SpecSlug]; ok {
@@ -246,7 +230,7 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 			// Acknowledgment was already persisted — log the re-check error
 			// but return the stored report rather than failing the entire RPC.
 			// Mark items as stale so clients know the re-check failed.
-			h.logger.Error("AcknowledgeDrift: drift re-check failed after successful acknowledgment",
+			h.logger.Warn("AcknowledgeDrift: drift re-check failed after successful acknowledgment",
 				slog.String("slug", msg.Slug), slog.Any("error", driftErr))
 			report.ItemsStale = true
 		} else {

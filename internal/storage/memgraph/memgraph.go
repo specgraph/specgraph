@@ -363,7 +363,7 @@ type historyEntryJSON struct {
 // unmarshalHistory parses a JSON string into a slice of storage.HistoryEntry.
 func unmarshalHistory(raw string) ([]storage.HistoryEntry, error) {
 	if raw == "" || raw == "[]" {
-		return nil, nil
+		return []storage.HistoryEntry{}, nil
 	}
 	var entries []historyEntryJSON
 	if err := json.Unmarshal([]byte(raw), &entries); err != nil {
