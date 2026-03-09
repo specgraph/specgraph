@@ -67,6 +67,31 @@ func TerminalStages() []SpecStage {
 	}
 	return out
 }
+// IsFullyTerminal reports whether s is a stage from which no further lifecycle
+// transitions are allowed. Unlike IsTerminal (which also includes Amended),
+// fully terminal stages cannot be superseded or abandoned.
+func (s SpecStage) IsFullyTerminal() bool {
+	switch s {
+	case SpecStageSuperseded, SpecStageAbandoned:
+		return true
+	default:
+		return false
+	}
+}
+
+// FullyTerminalStages returns stages from which no lifecycle transitions are
+// possible. This is a subset of TerminalStages() — it excludes Amended, which
+// can still be superseded or abandoned.
+func FullyTerminalStages() []SpecStage {
+	var out []SpecStage
+	for _, s := range allSpecStages {
+		if s.IsFullyTerminal() {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 
 // IsValid reports whether s is a known spec stage.
 func (s SpecStage) IsValid() bool {
