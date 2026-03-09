@@ -36,6 +36,98 @@ func TestSpecStage_IsTerminal(t *testing.T) {
 	}
 }
 
+func TestSpecStage_IsFullyTerminal(t *testing.T) {
+	tests := []struct {
+		stage    storage.SpecStage
+		expected bool
+	}{
+		{storage.SpecStageSuperseded, true},
+		{storage.SpecStageAbandoned, true},
+		{storage.SpecStageAmended, false},
+		{storage.SpecStageDone, false},
+		{storage.SpecStageSpark, false},
+		{storage.SpecStageShape, false},
+		{storage.SpecStageSpecify, false},
+		{storage.SpecStageDecompose, false},
+		{storage.SpecStageApproved, false},
+		{storage.SpecStageInProgress, false},
+		{storage.SpecStageReview, false},
+	}
+	for _, tc := range tests {
+		t.Run(string(tc.stage), func(t *testing.T) {
+			assert.Equal(t, tc.expected, tc.stage.IsFullyTerminal())
+		})
+	}
+}
+
+func TestFullyTerminalStages(t *testing.T) {
+	stages := storage.FullyTerminalStages()
+	assert.ElementsMatch(t, []storage.SpecStage{
+		storage.SpecStageSuperseded,
+		storage.SpecStageAbandoned,
+	}, stages)
+}
+
+func TestSpecStage_IsValid(t *testing.T) {
+	valid := []storage.SpecStage{
+		storage.SpecStageSpark,
+		storage.SpecStageShape,
+		storage.SpecStageSpecify,
+		storage.SpecStageDecompose,
+		storage.SpecStageApproved,
+		storage.SpecStageInProgress,
+		storage.SpecStageReview,
+		storage.SpecStageDone,
+		storage.SpecStageAmended,
+		storage.SpecStageSuperseded,
+		storage.SpecStageAbandoned,
+	}
+	for _, s := range valid {
+		t.Run(string(s), func(t *testing.T) {
+			assert.True(t, s.IsValid(), "stage %q should be valid", s)
+		})
+	}
+	t.Run("invalid", func(t *testing.T) {
+		assert.False(t, storage.SpecStage("bogus").IsValid())
+	})
+}
+
+func TestSpecLifecycle_IsValid(t *testing.T) {
+	tests := []struct {
+		lifecycle storage.SpecLifecycle
+		expected  bool
+	}{
+		{storage.SpecLifecycleTask, true},
+		{storage.SpecLifecycleLiving, true},
+		{storage.SpecLifecycle("bogus"), false},
+		{storage.SpecLifecycle(""), false},
+	}
+	for _, tc := range tests {
+		t.Run(string(tc.lifecycle), func(t *testing.T) {
+			assert.Equal(t, tc.expected, tc.lifecycle.IsValid())
+		})
+	}
+}
+
+func TestSpecPriority_IsValid(t *testing.T) {
+	tests := []struct {
+		priority storage.SpecPriority
+		expected bool
+	}{
+		{storage.SpecPriorityP0, true},
+		{storage.SpecPriorityP1, true},
+		{storage.SpecPriorityP2, true},
+		{storage.SpecPriorityP3, true},
+		{storage.SpecPriority("p4"), false},
+		{storage.SpecPriority(""), false},
+	}
+	for _, tc := range tests {
+		t.Run(string(tc.priority), func(t *testing.T) {
+			assert.Equal(t, tc.expected, tc.priority.IsValid())
+		})
+	}
+}
+
 func TestNewSpec(t *testing.T) {
 	now := time.Now().UTC()
 	spec := &storage.Spec{
