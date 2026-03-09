@@ -329,9 +329,13 @@ func unmarshalHistory(raw string) ([]storage.HistoryEntry, error) {
 		if err != nil {
 			return nil, err
 		}
+		stage := storage.SpecStage(e.Stage)
+		if !stage.IsValid() {
+			return nil, fmt.Errorf("memgraph: unmarshal history_json: invalid stage %q at index %d", e.Stage, i)
+		}
 		result[i] = storage.HistoryEntry{
 			Version: e.Version,
-			Stage:   storage.SpecStage(e.Stage),
+			Stage:   stage,
 			Summary: e.Summary,
 			Reason:  e.Reason,
 			Date:    t,
