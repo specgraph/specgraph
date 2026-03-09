@@ -320,6 +320,58 @@ func TestLint_MaxCycleDepthExceeded(t *testing.T) {
 	require.True(t, found, "expected graph.cycle warning for depth exceeded, got violations: %v", results[0].Violations)
 }
 
+func TestLint_MissingTransitiveDep(t *testing.T) {
+	// spec-A → spec-B → spec-C, but spec-C is missing from storage.
+	// spec-C is a transitive dep (not a direct dep of spec-A), so it must NOT
+	// appear in danglingSet and must trigger the 'graph.missing_node' warning
+	// (not 'edge.dangling_ref').
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"spec-a": {
+				Slug:    "spec-a",
+				Intent:  "Top-level spec",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+			"spec-b": {
+				Slug:    "spec-b",
+				Intent:  "Intermediate spec",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+			// spec-c intentionally absent
+		},
+		deps: map[string][]storage.NodeRef{
+			"spec-a": {{Slug: "spec-b", Label: storage.NodeLabelSpec}},
+			"spec-b": {{Slug: "spec-c", Label: storage.NodeLabelSpec}},
+		},
+		// GetDependencies("spec-c") returns ErrSpecNotFound to simulate a node
+		// that exists as a dep target but has no entry in the graph.
+		getDepsErrMap: map[string]error{
+			"spec-c": storage.ErrSpecNotFound,
+		},
+	}
+
+	results, err := linter.Lint(context.Background(), backend, "spec-a")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.False(t, results[0].Passed)
+
+	var hasMissingNode bool
+	var hasDangling bool
+	for _, v := range results[0].Violations {
+		if v.Rule == "graph.missing_node" && v.Location == "spec-c" {
+			hasMissingNode = true
+			require.Equal(t, storage.LintSeverityWarning, v.Severity)
+		}
+		if v.Rule == "edge.dangling_ref" {
+			hasDangling = true
+		}
+	}
+	require.True(t, hasMissingNode, "expected graph.missing_node violation for spec-c")
+	require.False(t, hasDangling, "must not emit edge.dangling_ref for a transitive dep")
+}
+
 func TestLint_CycleDetection_StorageErrorPropagates(t *testing.T) {
 	dbErr := errors.New("database connection lost")
 	backend := &mockLintBackend{
