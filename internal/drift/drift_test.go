@@ -262,6 +262,18 @@ func TestCheck_NonDoneStageBySlug(t *testing.T) {
 	require.Empty(t, reports)
 }
 
+func TestCheck_GetSpecError(t *testing.T) {
+	backend := &mockDriftBackend{
+		specs:   map[string]*storage.Spec{},
+		specErr: errors.New("connection timeout"),
+	}
+	engine := drift.NewEngine(backend)
+
+	_, err := engine.Check(context.Background(), "my-spec", "")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "connection timeout")
+}
+
 func TestCheckSpec_MissingDependencyCreatesInfoItem(t *testing.T) {
 	now := time.Now()
 	backend := &mockDriftBackend{
