@@ -15,11 +15,12 @@ import (
 
 // mockLintBackend implements linter.Backend for testing.
 type mockLintBackend struct {
-	specs       map[string]*storage.Spec
-	deps        map[string][]storage.NodeRef
-	getSpecErr  error // non-nil overrides GetSpec with this error for all slugs
-	listSpecErr error // non-nil overrides ListSpecs with this error
-	getDepsErr  error // non-nil overrides GetDependencies with this error for all slugs
+	specs         map[string]*storage.Spec
+	deps          map[string][]storage.NodeRef
+	getSpecErr    error            // non-nil overrides GetSpec with this error for all slugs
+	listSpecErr   error            // non-nil overrides ListSpecs with this error
+	getDepsErr    error            // non-nil overrides GetDependencies with this error for all slugs
+	getDepsErrMap map[string]error // per-slug errors checked before getDepsErr
 }
 
 func (m *mockLintBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
@@ -45,6 +46,9 @@ func (m *mockLintBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*s
 }
 
 func (m *mockLintBackend) GetDependencies(_ context.Context, slug string) ([]storage.NodeRef, error) {
+	if err, ok := m.getDepsErrMap[slug]; ok {
+		return nil, err
+	}
 	if m.getDepsErr != nil {
 		return nil, m.getDepsErr
 	}
@@ -249,4 +253,36 @@ func TestLint_GetDependenciesStorageError(t *testing.T) {
 	_, err := linter.Lint(context.Background(), backend, "spec-a")
 	require.Error(t, err)
 	require.ErrorIs(t, err, dbErr)
+}
+
+func TestLint_GetDependenciesMidTraversalStorageError(t *testing.T) {
+	dbErr := errors.New("connection reset")
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"root": {
+				Slug:    "root",
+				Intent:  "Root spec",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+			"child": {
+				Slug:    "child",
+				Intent:  "Child spec",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+		},
+		deps: map[string][]storage.NodeRef{
+			"root": {{Slug: "child"}},
+		},
+		getDepsErrMap: map[string]error{
+			"child": dbErr,
+		},
+	}
+
+	violations, err := linter.Lint(context.Background(), backend, "root")
+	require.Error(t, err)
+	require.ErrorIs(t, err, dbErr)
+	// Violations found before the error are returned (not discarded).
+	_ = violations
 }
