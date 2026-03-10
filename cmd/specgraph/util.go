@@ -12,6 +12,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// exitFunc is the function used to terminate the process. It is a variable so
+// that tests can override it to capture exit codes without terminating the
+// test binary.
+var exitFunc = os.Exit
+
 // printSafetyFlags prints each safety flag in a standard format.
 func printSafetyFlags(flags []*specv1.SafetyFlag) {
 	for _, f := range flags {

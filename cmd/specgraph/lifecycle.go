@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -197,6 +198,10 @@ func runDriftAck(_ *cobra.Command, args []string) error {
 	}
 	r := resp.Msg.GetReport()
 	fmt.Printf("Acknowledged drift for: %s\n", r.GetSpecSlug())
+	if r.GetItemsStale() {
+		fmt.Fprintf(os.Stderr, "Warning: drift items may be stale (re-check failed after acknowledgment)\n")
+		exitFunc(2)
+	}
 	return nil
 }
 
