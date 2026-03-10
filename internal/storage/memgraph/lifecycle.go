@@ -115,9 +115,6 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	if terminalStages[spec.Stage] {
 		return nil, fmt.Errorf("amend spec %q (stage=%s): %w", slug, spec.Stage, storage.ErrSpecTerminal)
 	}
-	if spec.Stage != storage.SpecStageDone {
-		return nil, fmt.Errorf("amend spec %q (stage=%s): %w", slug, spec.Stage, storage.ErrSpecNotDone)
-	}
 
 	// Determine the target stage: use reEntryStage if provided, default to "amended".
 	targetStage := storage.SpecStageAmended
