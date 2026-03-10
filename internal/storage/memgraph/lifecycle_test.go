@@ -275,16 +275,32 @@ func TestAmendSpec_ConcurrentModification(t *testing.T) {
 	_, err = store.UpdateSpec(ctx, "toctou-amend", nil, &doneStage, nil, nil)
 	require.NoError(t, err)
 
-	// First amend succeeds.
-	amended, err := store.LifecycleAmendSpec(ctx, "toctou-amend", "first amend", "shape")
-	require.NoError(t, err)
-	require.Equal(t, storage.SpecStage("shape"), amended.Stage)
+	// Two goroutines race to amend the same spec. Exactly one should
+	// succeed; the other hits the WHERE guard (version/stage mismatch),
+	// validating atomicity. Thanks to the .11 fix, the loser correctly
+	// receives ErrConcurrentModification instead of ErrSpecNotDone.
+	const n = 2
+	errs := make(chan error, n)
+	for i := 0; i < n; i++ {
+		go func() {
+			_, aErr := store.LifecycleAmendSpec(ctx, "toctou-amend", "concurrent amend", "shape")
+			errs <- aErr
+		}()
+	}
 
-	// Now the spec is at "shape" (not done), second amend should fail
-	// because amend requires the spec to be in the done stage.
-	_, err = store.LifecycleAmendSpec(ctx, "toctou-amend", "second amend", "specify")
-	require.Error(t, err)
-	require.ErrorIs(t, err, storage.ErrSpecNotDone)
+	var succeeded, failed int
+	for i := 0; i < n; i++ {
+		if e := <-errs; e != nil {
+			failed++
+			require.True(t,
+				errors.Is(e, storage.ErrConcurrentModification) || errors.Is(e, storage.ErrSpecNotDone),
+				"unexpected error: %v", e)
+		} else {
+			succeeded++
+		}
+	}
+	require.Equal(t, 1, succeeded, "exactly one amend should succeed")
+	require.Equal(t, 1, failed, "exactly one amend should fail")
 }
 
 func TestCheckDrift_AllSpecs_Integration(t *testing.T) {

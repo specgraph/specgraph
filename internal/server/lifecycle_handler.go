@@ -158,7 +158,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 					}
 				}
 			} else if errors.Is(specErr, storage.ErrSpecNotFound) {
-				h.logger.Debug("CheckDrift: spec deleted between drift check and ack merge",
+				h.logger.Warn("CheckDrift: spec deleted between drift check and ack merge; acknowledgment state unavailable",
 					slog.String("slug", msg.Slug))
 			} else {
 				return nil, connect.NewError(connect.CodeUnavailable,

@@ -86,7 +86,10 @@ message LintResult {
   string spec_slug = 1;
   repeated LintViolation violations = 2;
   bool passed = 3;
-  string error = 4; // Non-empty when linting failed for this spec.
+  // Non-empty when linting failed for this spec (e.g. storage error).
+  // Clients MUST check this field — a result with passed=false, empty violations,
+  // and non-empty error indicates infrastructure failure, not a clean pass.
+  string error = 4;
 }
 
 // --- Requests/Responses ---

@@ -152,6 +152,12 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	}
 	if len(records) == 0 {
 		return nil, s.preconditionError(ctx, slug, "amend spec", func(current *storage.Spec) error {
+			// A version mismatch means another operation modified the spec
+			// between our pre-read and the atomic query — report concurrent
+			// modification rather than the misleading ErrSpecNotDone.
+			if current.Version != spec.Version {
+				return fmt.Errorf("amend spec %q: %w", slug, storage.ErrConcurrentModification)
+			}
 			if current.Stage != storage.SpecStageDone {
 				return fmt.Errorf("amend spec %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecNotDone)
 			}

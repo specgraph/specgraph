@@ -52,3 +52,81 @@ func TestDriftScopeToProtoMap_SyncWithDriftscope(t *testing.T) {
 			"CLI scope %q not recognized by driftscope.IsValid — tables out of sync", scope)
 	}
 }
+
+// --- lifecycle CLI run function tests ---
+
+func TestRunAmend_ClientError(t *testing.T) {
+	setMissingConfig(t)
+	err := runAmend(nil, []string{"my-spec"})
+	require.Error(t, err)
+}
+
+func TestRunSupersede_ClientError(t *testing.T) {
+	setMissingConfig(t)
+	err := runSupersede(nil, []string{"my-spec"})
+	require.Error(t, err)
+}
+
+func TestRunAbandon_ClientError(t *testing.T) {
+	setMissingConfig(t)
+	err := runAbandon(nil, []string{"my-spec"})
+	require.Error(t, err)
+}
+
+func TestRunDrift_ClientError(t *testing.T) {
+	setMissingConfig(t)
+	err := runDrift(nil, []string{"my-spec"})
+	require.Error(t, err)
+}
+
+func TestRunDriftAck_ClientError(t *testing.T) {
+	setMissingConfig(t)
+	err := runDriftAck(nil, []string{"my-spec"})
+	require.Error(t, err)
+}
+
+func TestRunLint_ClientError(t *testing.T) {
+	setMissingConfig(t)
+	err := runLint(nil, nil)
+	require.Error(t, err)
+}
+
+func TestAmendCmd_RequiresSlug(t *testing.T) {
+	err := amendCmd.Args(amendCmd, []string{})
+	require.Error(t, err)
+}
+
+func TestSupersedeCmd_RequiresSlug(t *testing.T) {
+	err := supersedeCmd.Args(supersedeCmd, []string{})
+	require.Error(t, err)
+}
+
+func TestAbandonCmd_RequiresSlug(t *testing.T) {
+	err := abandonCmd.Args(abandonCmd, []string{})
+	require.Error(t, err)
+}
+
+func TestDriftCmd_AcceptsNoArgs(t *testing.T) {
+	err := driftCmd.Args(driftCmd, []string{})
+	require.NoError(t, err)
+}
+
+func TestDriftCmd_AcceptsOneArg(t *testing.T) {
+	err := driftCmd.Args(driftCmd, []string{"my-spec"})
+	require.NoError(t, err)
+}
+
+func TestDriftAckCmd_RequiresSlug(t *testing.T) {
+	err := driftAckCmd.Args(driftAckCmd, []string{})
+	require.Error(t, err)
+}
+
+func TestLintCmd_AcceptsNoArgs(t *testing.T) {
+	err := lintCmd.Args(lintCmd, []string{})
+	require.NoError(t, err)
+}
+
+func TestLintCmd_AcceptsOneArg(t *testing.T) {
+	err := lintCmd.Args(lintCmd, []string{"my-spec"})
+	require.NoError(t, err)
+}

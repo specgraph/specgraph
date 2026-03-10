@@ -398,6 +398,43 @@ func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 	require.Equal(t, "intentional divergence", resp.Msg.AcknowledgeNote)
 }
 
+func TestLifecycleHandler_AcknowledgeDrift_RecheckMergesItems(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
+		return &storage.DriftReport{
+			SpecSlug:        slug,
+			Acknowledged:    true,
+			AcknowledgeNote: note,
+		}, nil
+	}
+	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
+		return []storage.DriftReport{
+			{
+				SpecSlug: slug,
+				Items: []storage.DriftItem{
+					{
+						Type:        storage.DriftTypeDependency,
+						Severity:    storage.DriftSeverityHigh,
+						Description: "upstream changed",
+						SpecSlug:    slug,
+					},
+				},
+			},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug: "my-spec",
+		Note: "intentional",
+	}))
+	require.NoError(t, err)
+	require.True(t, resp.Msg.Acknowledged)
+	require.Len(t, resp.Msg.Items, 1)
+	require.Equal(t, specv1.DriftType_DRIFT_TYPE_DEPENDENCY, resp.Msg.Items[0].Type)
+	require.Equal(t, "upstream changed", resp.Msg.Items[0].Description)
+}
+
 func TestLifecycleHandler_Amend_EmptySlug(t *testing.T) {
 	client := newLifecycleClient(t, defaultTestDeps())
 	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
