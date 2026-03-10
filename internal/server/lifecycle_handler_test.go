@@ -1060,3 +1060,19 @@ func TestLifecycleHandler_Abandon_ReasonExceedsMaxLen(t *testing.T) {
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
+
+func TestLifecycleHandler_Lint_SpecNotFound(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.linter.lint = func(_ context.Context, _ string) ([]storage.LintResult, error) {
+		return nil, storage.ErrSpecNotFound
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.Lint(context.Background(), connect.NewRequest(&specv1.LintRequest{
+		Slug: "no-such-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeNotFound, connErr.Code())
+}
