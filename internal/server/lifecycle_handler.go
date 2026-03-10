@@ -58,7 +58,7 @@ func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Req
 
 	spec, err := h.store.LifecycleAmendSpec(ctx, msg.Slug, msg.Reason, msg.ReEntryStage)
 	if err != nil {
-		return nil, h.lifecycleError(err)
+		return nil, h.lifecycleError("TransitionAmend", err)
 	}
 	pb, err := specToProto(spec)
 	if err != nil {
@@ -82,7 +82,7 @@ func (h *LifecycleHandler) TransitionSupersede(ctx context.Context, req *connect
 
 	oldSpec, newSpec, err := h.store.LifecycleSupersedeSpec(ctx, msg.Slug, msg.NewSlug)
 	if err != nil {
-		return nil, h.lifecycleError(err)
+		return nil, h.lifecycleError("TransitionSupersede", err)
 	}
 	oldPb, err := specToProto(oldSpec)
 	if err != nil {
@@ -110,7 +110,7 @@ func (h *LifecycleHandler) TransitionAbandon(ctx context.Context, req *connect.R
 
 	spec, err := h.store.LifecycleAbandonSpec(ctx, msg.Slug, msg.Reason)
 	if err != nil {
-		return nil, h.lifecycleError(err)
+		return nil, h.lifecycleError("TransitionAbandon", err)
 	}
 	pb, err := specToProto(spec)
 	if err != nil {
@@ -143,7 +143,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 			slog.String("slug", msg.Slug),
 			slog.String("scope", scopeStr),
 			slog.Any("error", err))
-		return nil, h.lifecycleError(err)
+		return nil, h.lifecycleError("CheckDrift", err)
 	}
 
 	// Merge persisted acknowledgment state into drift reports.
@@ -221,7 +221,7 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	// WHERE clause (ErrSpecIneligibleStage → CodeFailedPrecondition).
 	report, err := h.store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.Note)
 	if err != nil {
-		return nil, h.lifecycleError(err)
+		return nil, h.lifecycleError("AcknowledgeDrift", err)
 	}
 
 	// Re-run drift detection to populate real drift items in the response.
@@ -268,7 +268,7 @@ func (h *LifecycleHandler) Lint(ctx context.Context, req *connect.Request[specv1
 	}
 	results, err := h.linter.Lint(ctx, msg.Slug)
 	if err != nil {
-		return nil, h.lifecycleError(err)
+		return nil, h.lifecycleError("Lint", err)
 	}
 	pbResults, err := lintResultsToProto(results)
 	if err != nil {
@@ -280,7 +280,7 @@ func (h *LifecycleHandler) Lint(ctx context.Context, req *connect.Request[specv1
 }
 
 // lifecycleError maps storage errors to connect error codes.
-func (h *LifecycleHandler) lifecycleError(err error) error {
+func (h *LifecycleHandler) lifecycleError(op string, err error) error {
 	var connErr *connect.Error
 	if errors.As(err, &connErr) {
 		return connErr
@@ -309,7 +309,7 @@ func (h *LifecycleHandler) lifecycleError(err error) error {
 	if errors.Is(err, storage.ErrInvalidReEntryStage) {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("re-entry stage is not allowed"))
 	}
-	h.logger.Error("lifecycleError: internal error", slog.Any("error", err))
+	h.logger.Error("lifecycleError: internal error", slog.String("op", op), slog.Any("error", err))
 	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 }
 
