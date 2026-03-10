@@ -291,7 +291,7 @@ func TestCheckSpec_GetDependenciesError(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
 	require.Equal(t, "my-spec", reports[0].SpecSlug)
-	require.Contains(t, reports[0].ErrorMessage, "graph unavailable")
+	require.Equal(t, "drift check failed", reports[0].ErrorMessage)
 	require.Empty(t, reports[0].Items)
 }
 
@@ -404,6 +404,6 @@ func TestCheck_UpstreamGetSpecError(t *testing.T) {
 	require.Len(t, reports, 1)
 	require.Equal(t, "downstream", reports[0].SpecSlug)
 	require.NotEmpty(t, reports[0].ErrorMessage, "expected ErrorMessage for mid-traversal failure")
-	require.Contains(t, reports[0].ErrorMessage, "connection reset")
+	require.Equal(t, "drift check failed", reports[0].ErrorMessage)
 	require.Empty(t, reports[0].Items)
 }

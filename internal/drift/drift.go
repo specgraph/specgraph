@@ -77,7 +77,7 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 			reports = append(reports, storage.DriftReport{
 				SpecSlug:     spec.Slug,
 				Items:        []storage.DriftItem{},
-				ErrorMessage: err.Error(),
+				ErrorMessage: sanitizeDriftError(err),
 			})
 			continue
 		}
@@ -132,4 +132,16 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 	// but returns no items until verification checks are built.
 
 	return report, nil
+}
+
+// sanitizeDriftError maps known error types to safe client-facing messages.
+// Unknown errors get a generic message; the real error is already logged.
+func sanitizeDriftError(err error) string {
+	if errors.Is(err, storage.ErrSpecNotFound) {
+		return "dependency not found"
+	}
+	if errors.Is(err, storage.ErrSpecIneligibleForDrift) {
+		return "spec is not eligible for drift checking"
+	}
+	return "drift check failed"
 }
