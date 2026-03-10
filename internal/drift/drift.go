@@ -81,7 +81,7 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 			})
 			continue
 		}
-		if len(report.Items) > 0 {
+		if len(report.Items) > 0 || report.ErrorMessage != "" {
 			reports = append(reports, report)
 		}
 	}
@@ -126,10 +126,15 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 		}
 	}
 
-	// Interface drift — not yet implemented. Scope "interfaces" is accepted
-	// but returns no items until interface tracking is built.
-	// Verify drift — not yet implemented. Scope "verify" is accepted
-	// but returns no items until verification checks are built.
+	// Interface and verify drift — not yet implemented. Only set ErrorMessage
+	// when the client explicitly requests these scopes, so all-specs checks
+	// (scope="") don't pollute every report with a not-implemented note.
+	switch scope {
+	case "interfaces":
+		report.ErrorMessage = "interface drift checking not yet implemented"
+	case "verify":
+		report.ErrorMessage = "verify drift checking not yet implemented"
+	}
 
 	return report, nil
 }

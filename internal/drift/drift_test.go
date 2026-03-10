@@ -217,10 +217,12 @@ func TestCheckDrift_ScopeFilter(t *testing.T) {
 
 	engine := drift.NewEngine(backend, nil)
 
-	// scope="interfaces" → no drift (placeholder), filtered out.
+	// scope="interfaces" → no items but ErrorMessage indicates not yet implemented.
 	reports, err := engine.Check(context.Background(), "downstream", "interfaces")
 	require.NoError(t, err)
-	require.Empty(t, reports)
+	require.Len(t, reports, 1)
+	require.Empty(t, reports[0].Items)
+	require.Equal(t, "interface drift checking not yet implemented", reports[0].ErrorMessage)
 
 	// scope="deps" → drift found.
 	reports, err = engine.Check(context.Background(), "downstream", "deps")
