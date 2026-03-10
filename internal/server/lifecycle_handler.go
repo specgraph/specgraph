@@ -196,7 +196,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 				reports[i].Acknowledged = spec.DriftAcknowledged
 				reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
 			} else {
-				h.logger.Warn("CheckDrift: spec missing from batch result, setting AckStateUnavailable",
+				h.logger.Error("CheckDrift: spec missing from batch result, setting AckStateUnavailable",
 					slog.String("slug", reports[i].SpecSlug))
 				reports[i].AckStateUnavailable = true
 			}
