@@ -148,20 +148,22 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 
 	// Merge persisted acknowledgment state into drift reports.
 	if msg.Slug != "" {
-		// Single-spec path: one GetSpec call for the requested slug.
-		if spec, specErr := h.store.GetSpec(ctx, msg.Slug); specErr == nil {
-			for i := range reports {
-				if reports[i].SpecSlug == msg.Slug {
-					reports[i].Acknowledged = spec.DriftAcknowledged
-					reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
+		// Single-spec path: skip GetSpec when no reports to merge.
+		if len(reports) > 0 {
+			if spec, specErr := h.store.GetSpec(ctx, msg.Slug); specErr == nil {
+				for i := range reports {
+					if reports[i].SpecSlug == msg.Slug {
+						reports[i].Acknowledged = spec.DriftAcknowledged
+						reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
+					}
 				}
+			} else if errors.Is(specErr, storage.ErrSpecNotFound) {
+				h.logger.Debug("CheckDrift: spec deleted between drift check and ack merge",
+					slog.String("slug", msg.Slug))
+			} else {
+				return nil, connect.NewError(connect.CodeUnavailable,
+					fmt.Errorf("CheckDrift: failed to fetch acknowledgment state for %q: %w", msg.Slug, specErr))
 			}
-		} else if errors.Is(specErr, storage.ErrSpecNotFound) {
-			h.logger.Debug("CheckDrift: spec deleted between drift check and ack merge",
-				slog.String("slug", msg.Slug))
-		} else {
-			return nil, connect.NewError(connect.CodeUnavailable,
-				fmt.Errorf("CheckDrift: failed to fetch acknowledgment state for %q: %w", msg.Slug, specErr))
 		}
 	} else {
 		// All-specs path: batch-fetch specs for acknowledgment state merge.

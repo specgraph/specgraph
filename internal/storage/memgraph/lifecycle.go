@@ -105,6 +105,9 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	targetStage := storage.SpecStageAmended
 	if reEntryStage != "" {
 		targetStage = storage.SpecStage(reEntryStage)
+		if targetStage.ExcludesReEntry() {
+			return nil, fmt.Errorf("amend spec %q: re_entry_stage %q: %w", slug, reEntryStage, storage.ErrInvalidReEntryStage)
+		}
 	}
 
 	newVersion := spec.Version + 1

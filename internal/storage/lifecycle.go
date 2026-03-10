@@ -16,6 +16,7 @@ var (
 	ErrSpecTerminal           = errors.New("spec is in a terminal state (superseded or abandoned)")
 	ErrNewSpecNotFound        = errors.New("replacement spec not found")
 	ErrConcurrentModification = errors.New("concurrent modification detected — retry the operation")
+	ErrInvalidReEntryStage    = errors.New("re-entry stage is not allowed for this operation")
 )
 
 // DriftType identifies the category of drift detected.

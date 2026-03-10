@@ -418,24 +418,20 @@ func TestAmendedSpec_CanBeSuperseded(t *testing.T) {
 	require.Equal(t, "amend-supersede-old", newSpec.Supersedes)
 }
 
-func TestAmendSpec_ReEntryDone(t *testing.T) {
+func TestAmendSpec_ReEntryExcludedStages(t *testing.T) {
 	store, ctx := newTestStore(t)
 
-	_, err := store.CreateSpec(ctx, "amend-done-reentry", "Test spec", "p1", "medium")
-	require.NoError(t, err)
-	doneStage := "done"
-	_, err = store.UpdateSpec(ctx, "amend-done-reentry", nil, &doneStage, nil, nil)
-	require.NoError(t, err)
+	for _, stage := range []string{"done", "amended", "superseded", "abandoned"} {
+		slug := "amend-reentry-" + stage
+		_, err := store.CreateSpec(ctx, slug, "Test spec", "p1", "medium")
+		require.NoError(t, err)
+		doneStage := "done"
+		_, err = store.UpdateSpec(ctx, slug, nil, &doneStage, nil, nil)
+		require.NoError(t, err)
 
-	// Amend with re_entry_stage="done" on an already-done spec.
-	// This burns a version number but the spec remains in done stage.
-	amended, err := store.LifecycleAmendSpec(ctx, "amend-done-reentry", "re-enter at done", "done")
-	require.NoError(t, err)
-	require.Equal(t, storage.SpecStageDone, amended.Stage, "spec should remain in done stage")
-	require.Equal(t, int32(3), amended.Version, "version should increment (create=1, update=2, amend=3)")
-	require.NotEmpty(t, amended.History)
-	lastEntry := amended.History[len(amended.History)-1]
-	require.Equal(t, "re-enter at done", lastEntry.Reason)
+		_, err = store.LifecycleAmendSpec(ctx, slug, "reason", stage)
+		require.ErrorIs(t, err, storage.ErrInvalidReEntryStage, "stage %q should be rejected", stage)
+	}
 }
 
 func TestSupersedeSpec_ConcurrentModificationOnNewSpec(t *testing.T) {

@@ -21,9 +21,15 @@ type mockDriftBackend struct {
 	listErrForStage map[string]error // per-stage errors; checked before listErr
 	depsErr         error            // if non-nil, GetDependencies returns this error
 	specErr         error            // if non-nil, GetSpec returns this error for any slug
+	specErrForSlug  map[string]error // per-slug errors; checked before specErr
 }
 
 func (m *mockDriftBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
+	if m.specErrForSlug != nil {
+		if err, ok := m.specErrForSlug[slug]; ok {
+			return nil, err
+		}
+	}
 	if m.specErr != nil {
 		return nil, m.specErr
 	}
@@ -361,4 +367,43 @@ func TestCheckSpec_MissingDependencyCreatesInfoItem(t *testing.T) {
 	require.Contains(t, item.Description, "not found")
 	require.Equal(t, "downstream", item.SpecSlug)
 	require.Equal(t, "gone-dep", item.UpstreamSlug)
+}
+
+func TestCheck_UpstreamGetSpecError(t *testing.T) {
+	now := time.Now()
+	backend := &mockDriftBackend{
+		specs: map[string]*storage.Spec{
+			"downstream": {
+				Slug:      "downstream",
+				Stage:     storage.SpecStageDone,
+				UpdatedAt: now.Add(-time.Hour),
+			},
+			// upstream exists in the map so ListSpecs won't affect it,
+			// but specErrForSlug overrides GetSpec for this slug.
+			"upstream": {
+				Slug:      "upstream",
+				Stage:     storage.SpecStageDone,
+				UpdatedAt: now,
+			},
+		},
+		deps: map[string][]storage.NodeRef{
+			"downstream": {{Slug: "upstream", Label: storage.NodeLabelSpec}},
+		},
+		specErrForSlug: map[string]error{
+			"upstream": errors.New("connection reset"),
+		},
+	}
+
+	engine := drift.NewEngine(backend, nil)
+	reports, err := engine.Check(context.Background(), "downstream", "deps")
+
+	// Top-level error should be nil (partial success).
+	require.NoError(t, err)
+	// The report for "downstream" should have a non-empty ErrorMessage
+	// because checkSpec failed when fetching the upstream.
+	require.Len(t, reports, 1)
+	require.Equal(t, "downstream", reports[0].SpecSlug)
+	require.NotEmpty(t, reports[0].ErrorMessage, "expected ErrorMessage for mid-traversal failure")
+	require.Contains(t, reports[0].ErrorMessage, "connection reset")
+	require.Empty(t, reports[0].Items)
 }
