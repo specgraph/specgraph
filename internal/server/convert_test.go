@@ -422,6 +422,20 @@ func TestLintResultsToProto(t *testing.T) {
 	})
 }
 
+
+func TestLintResultsToProto_UnknownSeverity(t *testing.T) {
+	results := []storage.LintResult{
+		{
+			SpecSlug: "s",
+			Violations: []storage.LintViolation{
+				{Rule: "r", Severity: storage.LintSeverity("bogus"), Message: "m"},
+			},
+		},
+	}
+	_, err := lintResultsToProto(results)
+	assert.Error(t, err)
+}
+
 func TestDriftScopeFromProto(t *testing.T) {
 	tests := []struct {
 		name  string
