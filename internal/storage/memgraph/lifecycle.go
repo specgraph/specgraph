@@ -292,10 +292,8 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 				if errors.Is(newErr, storage.ErrSpecTerminal) {
 					return nil, nil, fmt.Errorf("supersede spec: new spec %q is in a terminal state: %w", newSlug, storage.ErrNewSpecTerminal)
 				}
-				if errors.Is(oldErr, storage.ErrConcurrentModification) {
-					return nil, nil, fmt.Errorf("supersede spec: new %q: %w (old %q also concurrently modified)", newSlug, newErr, oldSlug)
-				}
-				return nil, nil, newErr
+				// Both specs had concurrent modifications — surface both errors.
+				return nil, nil, fmt.Errorf("supersede spec: new %q: %w (old %q also had precondition error: %w)", newSlug, newErr, oldSlug, oldErr)
 			}
 		}
 		return nil, nil, oldErr

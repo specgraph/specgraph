@@ -84,7 +84,6 @@ func TestSupersedeSpec_HappyPath(t *testing.T) {
 	require.Equal(t, "old-lifecycle", newSpec.Supersedes)
 }
 
-
 func TestSupersedeSpec_SupersedesEdgePersists(t *testing.T) {
 	store, ctx := newTestStore(t)
 
@@ -100,8 +99,8 @@ func TestSupersedeSpec_SupersedesEdgePersists(t *testing.T) {
 	edges, err := store.ListEdges(ctx, "edge-new", storage.EdgeTypeSupersedes)
 	require.NoError(t, err)
 	require.Len(t, edges, 1, "expected one SUPERSEDES edge from new to old")
-	assert.Equal(t, "edge-new", edges[0].FromID)
-	assert.Equal(t, "edge-old", edges[0].ToID)
+	require.Equal(t, "edge-new", edges[0].FromID)
+	require.Equal(t, "edge-old", edges[0].ToID)
 }
 
 func TestSupersedeSpec_OldNotFound(t *testing.T) {

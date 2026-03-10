@@ -377,7 +377,6 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
 		})
 
-
 		It("rejects amend on a superseded (terminal) spec with FailedPrecondition", func() {
 			baseSlug := "lifecycle-err-amend-terminal-" + time.Now().Format("150405")
 			newSlug := baseSlug + "-v2"

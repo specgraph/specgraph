@@ -34,7 +34,6 @@ func TestSpecToProto(t *testing.T) {
 	assert.Equal(t, now.Unix(), pb.CreatedAt.AsTime().Unix())
 }
 
-
 func TestSpecToProto_LifecycleFields(t *testing.T) {
 	now := time.Date(2026, 3, 6, 12, 0, 0, 0, time.UTC)
 	spec := &storage.Spec{
@@ -455,7 +454,6 @@ func TestLintResultsToProto(t *testing.T) {
 		assert.Equal(t, specv1.LintSeverity_LINT_SEVERITY_INFO, pbs[0].Violations[0].Severity)
 	})
 }
-
 
 func TestLintResultsToProto_UnknownSeverity(t *testing.T) {
 	results := []storage.LintResult{

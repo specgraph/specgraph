@@ -4,9 +4,17 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/seanb4t/specgraph/internal/driftscope"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,7 +90,6 @@ func TestRunDrift_ClientError(t *testing.T) {
 	require.Error(t, err)
 }
 
-
 func TestRunDrift_InvalidScope(t *testing.T) {
 	old := driftScope
 	driftScope = "bogus"
@@ -96,6 +103,50 @@ func TestRunDriftAck_ClientError(t *testing.T) {
 	setMissingConfig(t)
 	err := runDriftAck(nil, []string{"my-spec"})
 	require.Error(t, err)
+}
+
+// fakeAckHandler implements only AcknowledgeDrift; all other methods return Unimplemented.
+type fakeAckHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeAckHandler) AcknowledgeDrift(_ context.Context, _ *connect.Request[specv1.DriftAcknowledgeRequest]) (*connect.Response[specv1.DriftAcknowledgeResponse], error) {
+	return connect.NewResponse(&specv1.DriftAcknowledgeResponse{
+		Report: &specv1.DriftReport{
+			SpecSlug:     "stale-spec",
+			Acknowledged: true,
+			ItemsStale:   true,
+		},
+	}), nil
+}
+
+func TestRunDriftAck_ItemsStale_ExitsWithCode2(t *testing.T) {
+	// Stand up a ConnectRPC server with a fake handler returning ItemsStale=true.
+	mux := http.NewServeMux()
+	path, handler := specgraphv1connect.NewLifecycleServiceHandler(fakeAckHandler{})
+	mux.Handle(path, handler)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	// Write a config file pointing at the test server.
+	cfgDir := t.TempDir()
+	cfgPath := filepath.Join(cfgDir, "config.yaml")
+	require.NoError(t, os.WriteFile(cfgPath, []byte(fmt.Sprintf("server:\n  remote: %s\n", srv.URL)), 0o600))
+	old := cfgFile
+	cfgFile = cfgPath
+	t.Cleanup(func() { cfgFile = old })
+
+	// Capture exitFunc calls.
+	var exitCode int
+	exitCalled := false
+	oldExit := exitFunc
+	exitFunc = func(code int) { exitCode = code; exitCalled = true }
+	t.Cleanup(func() { exitFunc = oldExit })
+
+	err := runDriftAck(nil, []string{"stale-spec"})
+	require.NoError(t, err)
+	assert.True(t, exitCalled, "expected exitFunc to be called")
+	assert.Equal(t, 2, exitCode, "expected exit code 2 for stale items")
 }
 
 func TestRunLint_ClientError(t *testing.T) {
