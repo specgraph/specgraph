@@ -396,7 +396,11 @@ func TestCheckDrift_AllSpecs_Integration(t *testing.T) {
 
 	ifaceReports, err := engine.Check(ctx, "", "interfaces")
 	require.NoError(t, err)
-	require.Empty(t, ifaceReports)
+	require.Len(t, ifaceReports, 2)
+	for _, r := range ifaceReports {
+		require.Empty(t, r.Items)
+		require.Contains(t, r.ErrorMessage, "not yet implemented")
+	}
 }
 
 func TestAcknowledgeDrift_PersistsAcrossReads(t *testing.T) {
