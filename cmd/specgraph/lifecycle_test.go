@@ -48,6 +48,9 @@ func TestDriftScopeToProtoMap_Completeness(t *testing.T) {
 
 func TestDriftScopeToProtoMap_SyncWithDriftscope(t *testing.T) {
 	for scope := range driftScopeToProtoMap {
+		if scope == "" {
+			continue // empty string maps to UNSPECIFIED; it is not a CLI scope
+		}
 		assert.True(t, driftscope.IsValid(scope),
 			"CLI scope %q not recognized by driftscope.IsValid — tables out of sync", scope)
 	}
