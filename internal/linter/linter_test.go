@@ -69,7 +69,7 @@ func TestLint_SchemaViolation(t *testing.T) {
 		deps: map[string][]storage.NodeRef{},
 	}
 
-	results, err := linter.Lint(context.Background(), backend, "bad-spec")
+	results, err := linter.NewEngine(backend).Lint(context.Background(), "bad-spec")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.False(t, results[0].Passed)
@@ -101,7 +101,7 @@ func TestLint_DanglingDependency(t *testing.T) {
 		},
 	}
 
-	results, err := linter.Lint(context.Background(), backend, "spec-a")
+	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-a")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.False(t, results[0].Passed)
@@ -138,7 +138,7 @@ func TestLint_CycleDetection(t *testing.T) {
 		},
 	}
 
-	results, err := linter.Lint(context.Background(), backend, "spec-a")
+	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-a")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.False(t, results[0].Passed)
@@ -174,7 +174,7 @@ func TestLint_ValidSpec(t *testing.T) {
 		},
 	}
 
-	results, err := linter.Lint(context.Background(), backend, "spec-a")
+	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-a")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.True(t, results[0].Passed)
@@ -200,7 +200,7 @@ func TestLint_AllSpecs(t *testing.T) {
 		deps: map[string][]storage.NodeRef{},
 	}
 
-	results, err := linter.Lint(context.Background(), backend, "")
+	results, err := linter.NewEngine(backend).Lint(context.Background(), "")
 	require.NoError(t, err)
 	require.Len(t, results, 2)
 
@@ -218,7 +218,7 @@ func TestLint_ListSpecsStorageError(t *testing.T) {
 		listSpecErr: dbErr,
 	}
 
-	_, err := linter.Lint(context.Background(), backend, "")
+	_, err := linter.NewEngine(backend).Lint(context.Background(), "")
 	require.Error(t, err)
 	require.ErrorIs(t, err, dbErr)
 }
@@ -231,7 +231,7 @@ func TestLint_GetSpecStorageError(t *testing.T) {
 		getSpecErr: dbErr,
 	}
 
-	_, err := linter.Lint(context.Background(), backend, "some-spec")
+	_, err := linter.NewEngine(backend).Lint(context.Background(), "some-spec")
 	require.Error(t, err)
 	require.ErrorIs(t, err, dbErr)
 }
@@ -251,7 +251,7 @@ func TestLint_GetDependenciesStorageError(t *testing.T) {
 		getDepsErr: dbErr,
 	}
 
-	results, err := linter.Lint(context.Background(), backend, "spec-a")
+	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-a")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
@@ -283,7 +283,7 @@ func TestLint_GetDependenciesMidTraversalStorageError(t *testing.T) {
 		},
 	}
 
-	results, err := linter.Lint(context.Background(), backend, "root")
+	results, err := linter.NewEngine(backend).Lint(context.Background(), "root")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
@@ -308,7 +308,7 @@ func TestLint_MaxCycleDepthExceeded(t *testing.T) {
 	}
 	backend := &mockLintBackend{specs: specs, deps: deps}
 
-	results, err := linter.Lint(context.Background(), backend, "spec-0")
+	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-0")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	var found bool
@@ -354,7 +354,7 @@ func TestLint_MissingTransitiveDep(t *testing.T) {
 		},
 	}
 
-	results, err := linter.Lint(context.Background(), backend, "spec-a")
+	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-a")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.False(t, results[0].Passed)
@@ -400,7 +400,7 @@ func TestLint_CycleDetection_StorageErrorPropagates(t *testing.T) {
 		},
 	}
 
-	results, err := linter.Lint(context.Background(), backend, "root")
+	results, err := linter.NewEngine(backend).Lint(context.Background(), "root")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
@@ -422,7 +422,7 @@ func TestLint_SelfReferentialCycle(t *testing.T) {
 		},
 	}
 
-	results, err := linter.Lint(context.Background(), backend, "spec-a")
+	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-a")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.False(t, results[0].Passed)

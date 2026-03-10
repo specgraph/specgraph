@@ -19,7 +19,7 @@ type Backend = storage.SpecReader
 const maxSpecsPerLint = 10000
 
 // Engine provides a storage-backed implementation of server.SpecLinter,
-// delegating lint execution to the package-level Lint function.
+// 
 type Engine struct {
 	backend Backend
 }
@@ -31,11 +31,11 @@ func NewEngine(backend Backend) *Engine {
 
 // Lint validates one or all specs, returning lint results for each.
 func (e *Engine) Lint(ctx context.Context, slug string) ([]storage.LintResult, error) {
-	return Lint(ctx, e.backend, slug)
+	return lint(ctx, e.backend, slug)
 }
 
-// Lint validates one or all specs. When slug is empty, all specs are linted.
-func Lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResult, error) {
+// lint validates one or all specs. When slug is empty, all specs are linted.
+func lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResult, error) {
 	var specs []*storage.Spec
 
 	if slug == "" {
