@@ -174,6 +174,7 @@ func detectCycles(ctx context.Context, backend Backend, slug string, rootDeps []
 
 		var deps []storage.NodeRef
 		var err error
+		// current == slug only on the first call since slug uniqueness is enforced by storage.
 		if current == slug && rootDeps != nil {
 			deps = rootDeps
 		} else {

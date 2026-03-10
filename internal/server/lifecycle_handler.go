@@ -227,7 +227,7 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 			// Acknowledgment was already persisted — log the re-check error
 			// but return the stored report rather than failing the entire RPC.
 			// Mark items as stale so clients know the re-check failed.
-			h.logger.Warn("AcknowledgeDrift: drift re-check failed after successful acknowledgment",
+			h.logger.Error("AcknowledgeDrift: drift re-check failed after successful acknowledgment; items are stale",
 				slog.String("slug", msg.Slug), slog.Any("error", driftErr))
 			report.ItemsStale = true
 		} else {

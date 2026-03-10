@@ -97,7 +97,7 @@ message TransitionAmendRequest {
   string reason = 2;
   // Valid non-terminal stages: spark, shape, specify, decompose, approved,
   // in_progress, review. Terminal states (amended, superseded, abandoned) are
-  // rejected. "done" is accepted but is a no-op re-entry (spec is already done).
+  // rejected. "done" is also rejected as it excludes re-entry.
   // Empty means the spec enters the "amended" stage directly.
   string re_entry_stage = 3;
 }
@@ -133,6 +133,11 @@ message DriftCheckRequest {
   DriftScope scope = 2;
 }
 
+// DriftCheckResponse contains drift reports for one or more specs.
+// IMPORTANT: Individual reports may have error_message set when drift checking
+// failed for a specific spec. Clients MUST check error_message on each report —
+// an empty items list with a non-empty error_message means the check failed,
+// not that no drift exists.
 message DriftCheckResponse {
   repeated DriftReport reports = 1;
 }
@@ -147,6 +152,11 @@ message LintRequest {
   string slug = 1;
 }
 
+// LintResponse contains lint results for one or more specs.
+// IMPORTANT: Individual results may have the error field set when linting
+// failed for a specific spec. Clients MUST check the error field on each result —
+// a result with passed=false, empty violations, and non-empty error indicates a
+// linting infrastructure failure, not a clean pass.
 message LintResponse {
   repeated LintResult results = 1;
 }

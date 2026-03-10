@@ -611,6 +611,20 @@ func TestLifecycleHandler_CheckDrift_NilChecker(t *testing.T) {
 	require.Equal(t, connect.CodeUnimplemented, connErr.Code())
 }
 
+func TestLifecycleHandler_CheckDrift_InvalidScope(t *testing.T) {
+	deps := defaultTestDeps()
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
+		Slug:  "my-spec",
+		Scope: specv1.DriftScope(99),
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
 func TestLifecycleHandler_AcknowledgeDrift_NilChecker(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {

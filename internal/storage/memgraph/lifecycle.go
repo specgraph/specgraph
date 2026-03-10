@@ -259,15 +259,16 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		return nil, nil, fmt.Errorf("memgraph: supersede spec: %w", err)
 	}
 	if len(records) == 0 {
-		// Check old spec first; if it passes (concurrent modification), also
-		// check new spec to provide a precise error when the conflict is there.
+		// Check old spec first for precondition errors.
 		oldErr := s.preconditionError(ctx, oldSlug, "supersede spec (old)", nil)
-		if errors.Is(oldErr, storage.ErrConcurrentModification) {
-			newErr := s.preconditionError(ctx, newSlug, "supersede spec (new)", nil)
-			if newErr != nil {
-				if errors.Is(newErr, storage.ErrSpecNotFound) {
-					return nil, nil, fmt.Errorf("supersede spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
-				}
+		// Always check the new spec — it may have been deleted between the
+		// pre-read and the atomic query, regardless of oldErr's value.
+		newErr := s.preconditionError(ctx, newSlug, "supersede spec (new)", nil)
+		if newErr != nil {
+			if errors.Is(newErr, storage.ErrSpecNotFound) {
+				return nil, nil, fmt.Errorf("supersede spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
+			}
+			if errors.Is(oldErr, storage.ErrConcurrentModification) {
 				// Both specs have precondition issues; prefer the new-spec
 				// error but include old-spec context for diagnostics.
 				return nil, nil, fmt.Errorf("supersede spec: new %q: %w (old %q also concurrently modified)", newSlug, newErr, oldSlug)

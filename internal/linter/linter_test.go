@@ -406,3 +406,34 @@ func TestLint_CycleDetection_StorageErrorPropagates(t *testing.T) {
 	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
 	require.Contains(t, results[0].Error, "database connection lost")
 }
+
+func TestLint_SelfReferentialCycle(t *testing.T) {
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"spec-a": {
+				Slug:    "spec-a",
+				Intent:  "Self-referencing spec",
+				Stage:   storage.SpecStageSpark,
+				Version: 1,
+			},
+		},
+		deps: map[string][]storage.NodeRef{
+			"spec-a": {{Slug: "spec-a", Label: storage.NodeLabelSpec}},
+		},
+	}
+
+	results, err := linter.Lint(context.Background(), backend, "spec-a")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.False(t, results[0].Passed)
+
+	hasCycle := false
+	for _, v := range results[0].Violations {
+		if v.Rule == "graph.cycle" {
+			hasCycle = true
+			require.Contains(t, v.Message, "spec-a")
+			break
+		}
+	}
+	require.True(t, hasCycle, "expected graph.cycle violation for self-referential dep")
+}

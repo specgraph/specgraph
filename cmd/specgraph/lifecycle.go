@@ -165,6 +165,9 @@ func runDrift(_ *cobra.Command, args []string) error {
 		for _, item := range r.GetItems() {
 			fmt.Printf("  [%s] %s: %s\n", item.GetSeverity(), item.GetType(), item.GetDescription())
 		}
+		if r.GetErrorMessage() != "" {
+			fmt.Printf("  [error] %s\n", r.GetErrorMessage())
+		}
 	}
 	return nil
 }
@@ -238,6 +241,9 @@ func runLint(_ *cobra.Command, args []string) error {
 				loc = fmt.Sprintf(" (%s)", v.GetLocation())
 			}
 			fmt.Printf("  [%s] %s: %s%s\n", v.GetSeverity(), v.GetRule(), v.GetMessage(), loc)
+		}
+		if r.GetError() != "" {
+			fmt.Printf("  [error] %s\n", r.GetError())
 		}
 	}
 	if failCount == 0 {
