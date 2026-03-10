@@ -189,6 +189,8 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 			if spec, ok := specMap[reports[i].SpecSlug]; ok {
 				reports[i].Acknowledged = spec.DriftAcknowledged
 				reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
+			} else {
+				reports[i].AckStateUnavailable = true
 			}
 		}
 	}
