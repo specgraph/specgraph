@@ -247,6 +247,8 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 			for _, r := range reports {
 				if r.SpecSlug == msg.Slug {
 					report.Items = r.Items
+					report.Acknowledged = true
+					report.AcknowledgeNote = msg.Note
 					found = true
 					break
 				}
