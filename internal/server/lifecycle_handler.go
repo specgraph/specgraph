@@ -327,6 +327,9 @@ func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 	if errors.Is(err, storage.ErrInvalidReEntryStage) {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("re-entry stage is not allowed"))
 	}
+	if errors.Is(err, storage.ErrSameSlugs) {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("old and new slugs must differ"))
+	}
 	h.logger.Error("lifecycleError: internal error", slog.String("op", op), slog.String("slug", slug), slog.Any("error", err))
 	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 }
