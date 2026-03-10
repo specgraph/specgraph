@@ -401,9 +401,6 @@ func unmarshalHistory(slug, raw string) ([]storage.HistoryEntry, error) {
 			return nil, err
 		}
 		stage := storage.SpecStage(e.Stage)
-		if !stage.IsValid() {
-			return nil, fmt.Errorf("memgraph: unmarshal history_json for spec %q: unknown stage %q at index %d (version %d) — if this stage was renamed/removed, a data migration is needed", slug, e.Stage, i, e.Version)
-		}
 		result[i] = storage.HistoryEntry{
 			Version: e.Version,
 			Stage:   stage,
