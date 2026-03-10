@@ -299,6 +299,9 @@ func (h *LifecycleHandler) lifecycleError(err error) error {
 	if errors.Is(err, storage.ErrConcurrentModification) {
 		return connect.NewError(connect.CodeAborted, errors.New("concurrent modification — retry the operation"))
 	}
+	if errors.Is(err, storage.ErrInvalidReEntryStage) {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("re-entry stage is not allowed"))
+	}
 	h.logger.Error("lifecycleError: internal error", slog.Any("error", err))
 	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 }
