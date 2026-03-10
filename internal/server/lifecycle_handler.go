@@ -203,12 +203,8 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		}
 	}
 
-	pbReports, err := driftReportsToProto(reports)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
 	return connect.NewResponse(&specv1.DriftCheckResponse{
-		Reports: pbReports,
+		Reports: driftReportsToProto(reports),
 	}), nil
 }
 
@@ -256,12 +252,8 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 		}
 	}
 
-	pbReport, err := driftReportToProto(report)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
 	return connect.NewResponse(&specv1.DriftAcknowledgeResponse{
-		Report: pbReport,
+		Report: driftReportToProto(report),
 	}), nil
 }
 
@@ -281,12 +273,8 @@ func (h *LifecycleHandler) Lint(ctx context.Context, req *connect.Request[specv1
 	if err != nil {
 		return nil, h.lifecycleError("Lint", msg.Slug, err)
 	}
-	pbResults, err := lintResultsToProto(results)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
 	return connect.NewResponse(&specv1.LintResponse{
-		Results: pbResults,
+		Results: lintResultsToProto(results),
 	}), nil
 }
 

@@ -5,6 +5,7 @@ package server
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -505,16 +506,20 @@ var driftSeverityToProtoMap = map[storage.DriftSeverity]specv1.DriftSeverity{
 	storage.DriftSeverityInfo:   specv1.DriftSeverity_DRIFT_SEVERITY_INFO,
 }
 
-func driftReportToProto(r *storage.DriftReport) (*specv1.DriftReport, error) {
+func driftReportToProto(r *storage.DriftReport) *specv1.DriftReport {
 	items := make([]*specv1.DriftItem, len(r.Items))
 	for i, item := range r.Items {
 		dt, ok := driftTypeToProtoMap[item.Type]
 		if !ok {
-			return nil, fmt.Errorf("unknown drift type: %q", item.Type)
+			slog.Warn("driftReportToProto: unknown drift type, using UNSPECIFIED",
+				slog.String("type", string(item.Type)), slog.String("slug", r.SpecSlug))
+			dt = specv1.DriftType_DRIFT_TYPE_UNSPECIFIED
 		}
 		ds, ok := driftSeverityToProtoMap[item.Severity]
 		if !ok {
-			return nil, fmt.Errorf("unknown drift severity: %q", item.Severity)
+			slog.Warn("driftReportToProto: unknown drift severity, using UNSPECIFIED",
+				slog.String("severity", string(item.Severity)), slog.String("slug", r.SpecSlug))
+			ds = specv1.DriftSeverity_DRIFT_SEVERITY_UNSPECIFIED
 		}
 		items[i] = &specv1.DriftItem{
 			Type:            dt,
@@ -534,19 +539,15 @@ func driftReportToProto(r *storage.DriftReport) (*specv1.DriftReport, error) {
 		ItemsStale:          r.ItemsStale,
 		ErrorMessage:        r.ErrorMessage,
 		AckStateUnavailable: r.AckStateUnavailable,
-	}, nil
+	}
 }
 
-func driftReportsToProto(reports []storage.DriftReport) ([]*specv1.DriftReport, error) {
+func driftReportsToProto(reports []storage.DriftReport) []*specv1.DriftReport {
 	result := make([]*specv1.DriftReport, len(reports))
 	for i := range reports {
-		r, err := driftReportToProto(&reports[i])
-		if err != nil {
-			return nil, err
-		}
-		result[i] = r
+		result[i] = driftReportToProto(&reports[i])
 	}
-	return result, nil
+	return result
 }
 
 // --- Lifecycle ---
@@ -572,46 +573,40 @@ var lintSeverityToProtoMap = map[storage.LintSeverity]specv1.LintSeverity{
 	storage.LintSeverityInfo:    specv1.LintSeverity_LINT_SEVERITY_INFO,
 }
 
-func lintViolationToProto(v *storage.LintViolation) (*specv1.LintViolation, error) {
+func lintViolationToProto(v *storage.LintViolation) *specv1.LintViolation {
 	sev, ok := lintSeverityToProtoMap[v.Severity]
 	if !ok {
-		return nil, fmt.Errorf("unknown lint severity: %q", v.Severity)
+		slog.Warn("lintViolationToProto: unknown lint severity, using UNSPECIFIED",
+			slog.String("severity", string(v.Severity)), slog.String("rule", v.Rule))
+		sev = specv1.LintSeverity_LINT_SEVERITY_UNSPECIFIED
 	}
 	return &specv1.LintViolation{
 		Rule:     v.Rule,
 		Severity: sev,
 		Message:  v.Message,
 		Location: v.Location,
-	}, nil
+	}
 }
 
-func lintResultToProto(r *storage.LintResult) (*specv1.LintResult, error) {
+func lintResultToProto(r *storage.LintResult) *specv1.LintResult {
 	violations := make([]*specv1.LintViolation, len(r.Violations))
 	for i := range r.Violations {
-		pb, err := lintViolationToProto(&r.Violations[i])
-		if err != nil {
-			return nil, err
-		}
-		violations[i] = pb
+		violations[i] = lintViolationToProto(&r.Violations[i])
 	}
 	return &specv1.LintResult{
 		SpecSlug:   r.SpecSlug,
 		Violations: violations,
 		Passed:     r.Passed,
 		Error:      r.Error,
-	}, nil
+	}
 }
 
-func lintResultsToProto(results []storage.LintResult) ([]*specv1.LintResult, error) {
+func lintResultsToProto(results []storage.LintResult) []*specv1.LintResult {
 	result := make([]*specv1.LintResult, len(results))
 	for i := range results {
-		pb, err := lintResultToProto(&results[i])
-		if err != nil {
-			return nil, err
-		}
-		result[i] = pb
+		result[i] = lintResultToProto(&results[i])
 	}
-	return result, nil
+	return result
 }
 
 func bundleToProto(b *storage.Bundle) (*specv1.Bundle, error) {

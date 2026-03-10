@@ -296,8 +296,7 @@ func TestDriftReportToProto(t *testing.T) {
 				},
 			},
 		}
-		pb, err := driftReportToProto(report)
-		require.NoError(t, err)
+		pb := driftReportToProto(report)
 		assert.Equal(t, "login-api", pb.SpecSlug)
 		assert.True(t, pb.Acknowledged)
 		assert.Equal(t, "accepted risk", pb.AcknowledgeNote)
@@ -306,8 +305,7 @@ func TestDriftReportToProto(t *testing.T) {
 
 	t.Run("empty items", func(t *testing.T) {
 		report := &storage.DriftReport{SpecSlug: "s"}
-		pb, err := driftReportToProto(report)
-		require.NoError(t, err)
+		pb := driftReportToProto(report)
 		assert.Empty(t, pb.Items)
 	})
 }
@@ -348,8 +346,7 @@ func TestDriftItemToProto(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Use driftReportToProto since driftItemToProto is inline
 			report := &storage.DriftReport{Items: []storage.DriftItem{tt.item}}
-			pb, err := driftReportToProto(report)
-			require.NoError(t, err)
+			pb := driftReportToProto(report)
 			require.Len(t, pb.Items, 1)
 			got := pb.Items[0]
 			assert.Equal(t, tt.wantType, got.Type)
@@ -380,8 +377,10 @@ func TestDriftReportToProto_UnknownType(t *testing.T) {
 			{Type: storage.DriftType("unknown-type"), Severity: storage.DriftSeverityHigh},
 		},
 	}
-	_, err := driftReportToProto(report)
-	assert.Error(t, err)
+	pb := driftReportToProto(report)
+	require.Len(t, pb.Items, 1)
+	assert.Equal(t, specv1.DriftType_DRIFT_TYPE_UNSPECIFIED, pb.Items[0].Type)
+	assert.Equal(t, specv1.DriftSeverity_DRIFT_SEVERITY_HIGH, pb.Items[0].Severity)
 }
 
 func TestDriftReportToProto_UnknownSeverity(t *testing.T) {
@@ -391,8 +390,10 @@ func TestDriftReportToProto_UnknownSeverity(t *testing.T) {
 			{Type: storage.DriftTypeDependency, Severity: storage.DriftSeverity("unknown-severity")},
 		},
 	}
-	_, err := driftReportToProto(report)
-	assert.Error(t, err)
+	pb := driftReportToProto(report)
+	require.Len(t, pb.Items, 1)
+	assert.Equal(t, specv1.DriftType_DRIFT_TYPE_DEPENDENCY, pb.Items[0].Type)
+	assert.Equal(t, specv1.DriftSeverity_DRIFT_SEVERITY_UNSPECIFIED, pb.Items[0].Severity)
 }
 
 func TestLintResultsToProto(t *testing.T) {
@@ -412,8 +413,7 @@ func TestLintResultsToProto(t *testing.T) {
 				Violations: nil,
 			},
 		}
-		pbs, err := lintResultsToProto(results)
-		require.NoError(t, err)
+		pbs := lintResultsToProto(results)
 		require.Len(t, pbs, 2)
 
 		// First result
@@ -433,8 +433,7 @@ func TestLintResultsToProto(t *testing.T) {
 	})
 
 	t.Run("empty input", func(t *testing.T) {
-		pbs, err := lintResultsToProto([]storage.LintResult{})
-		require.NoError(t, err)
+		pbs := lintResultsToProto([]storage.LintResult{})
 		assert.Empty(t, pbs)
 	})
 
@@ -447,8 +446,7 @@ func TestLintResultsToProto(t *testing.T) {
 				},
 			},
 		}
-		pbs, err := lintResultsToProto(results)
-		require.NoError(t, err)
+		pbs := lintResultsToProto(results)
 		require.Len(t, pbs, 1)
 		require.Len(t, pbs[0].Violations, 1)
 		assert.Equal(t, specv1.LintSeverity_LINT_SEVERITY_INFO, pbs[0].Violations[0].Severity)
@@ -464,8 +462,10 @@ func TestLintResultsToProto_UnknownSeverity(t *testing.T) {
 			},
 		},
 	}
-	_, err := lintResultsToProto(results)
-	assert.Error(t, err)
+	pbs := lintResultsToProto(results)
+	require.Len(t, pbs, 1)
+	require.Len(t, pbs[0].Violations, 1)
+	assert.Equal(t, specv1.LintSeverity_LINT_SEVERITY_UNSPECIFIED, pbs[0].Violations[0].Severity)
 }
 
 func TestDriftScopeFromProto(t *testing.T) {
