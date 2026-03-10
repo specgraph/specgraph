@@ -55,7 +55,7 @@ func (s *Store) GetConstitution(ctx context.Context) (*storage.Constitution, err
 // UpdateConstitution stores or replaces the constitution, bumping its version.
 // Uses MERGE so there is always at most one Constitution node.
 func (s *Store) UpdateConstitution(ctx context.Context, constitution *storage.Constitution) (*storage.Constitution, error) {
-	now := time.Now().UTC()
+	now := s.nowTime()
 	nowStr := now.Format(time.RFC3339)
 
 	techJSON, err := marshalJSON(constitution.Tech)

@@ -123,14 +123,14 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		Stage:   targetStage,
 		Summary: amendSummary(targetStage),
 		Reason:  reason,
-		Date:    time.Now().UTC(),
+		Date:    s.nowTime(),
 	}
 	historyJSON, err := appendHistory(spec.History, &entry)
 	if err != nil {
 		return nil, err
 	}
 
-	nowStr := nowRFC3339()
+	nowStr := s.now()
 	// Atomic: WHERE guards ensure we only transition if the spec is still at
 	// the expected stage and version, preventing TOCTOU races.
 	query := `
@@ -201,7 +201,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		return nil, nil, fmt.Errorf("supersede spec: new spec %q: %w", newSlug, newErr)
 	}
 
-	now := time.Now().UTC()
+	now := s.nowTime()
 	oldVersion := oldCheck.Version + 1
 	oldEntry := storage.HistoryEntry{
 		Version: oldVersion,
@@ -228,7 +228,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		return nil, nil, err
 	}
 
-	nowStr := nowRFC3339()
+	nowStr := s.now()
 	// Atomic: WHERE guards ensure old spec hasn't entered a terminal state
 	// since our pre-validation read.
 	query := `
@@ -333,14 +333,14 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		Stage:   storage.SpecStageAbandoned,
 		Summary: "Spec abandoned",
 		Reason:  reason,
-		Date:    time.Now().UTC(),
+		Date:    s.nowTime(),
 	}
 	historyJSON, err := appendHistory(spec.History, &entry)
 	if err != nil {
 		return nil, err
 	}
 
-	nowStr := nowRFC3339()
+	nowStr := s.now()
 	// Atomic: WHERE guards on stage and version prevent TOCTOU races.
 	query := `
 		MATCH (s:Spec {slug: $slug})

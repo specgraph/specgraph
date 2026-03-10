@@ -45,7 +45,7 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 	if err := authoring.ValidateTransition(authoring.Stage(from), authoring.Stage(to)); err != nil {
 		return fmt.Errorf("memgraph: %w: %w", storage.ErrInvalidStageTransition, err)
 	}
-	nowStr := nowRFC3339()
+	nowStr := s.now()
 	fromStr := string(from)
 	toStr := string(to)
 	// When transitioning to approved, also persist approved_at so the
@@ -252,7 +252,7 @@ func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason st
 	if _, err := s.GetSpec(ctx, supersededBy); err != nil {
 		return fmt.Errorf("memgraph: supersede spec: new spec %q: %w", supersededBy, err)
 	}
-	nowStr := nowRFC3339()
+	nowStr := s.now()
 	query := `
 		MATCH (old:Spec {slug: $old_slug}), (new:Spec {slug: $new_slug})
 		SET old.stage = "superseded", old.updated_at = $updated_at
@@ -286,7 +286,7 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 	if vErr := authoring.ValidateAmendTransition(authoring.Stage(spec.Stage), authoring.Stage(targetStage)); vErr != nil {
 		return nil, fmt.Errorf("memgraph: amend: %w: %w", storage.ErrInvalidStageTransition, vErr)
 	}
-	nowStr := nowRFC3339()
+	nowStr := s.now()
 	query := `
 		MATCH (s:Spec {slug: $slug})
 		SET s.stage = $stage, s.amend_reason = $reason,
@@ -354,7 +354,7 @@ func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, da
 	if err != nil {
 		return fmt.Errorf("memgraph: marshal %s: %w", property, err)
 	}
-	nowStr := nowRFC3339()
+	nowStr := s.now()
 	// property is safe to interpolate: it passed the allowlist check and the
 	// character-validation loop above, so it contains only [a-zA-Z0-9_].
 	query := fmt.Sprintf(`
