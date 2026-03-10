@@ -293,6 +293,9 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 				return nil, nil, newErr
 			}
 		}
+		if oldErr == nil {
+			return nil, nil, fmt.Errorf("supersede spec: guard failed but no precondition error found for %q or %q: %w", oldSlug, newSlug, storage.ErrConcurrentModification)
+		}
 		return nil, nil, oldErr
 	}
 
