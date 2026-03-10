@@ -149,30 +149,32 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 
 	// Merge persisted acknowledgment state into drift reports.
 	if msg.Slug != "" {
-		// Single-spec path: skip GetSpec when no reports to merge.
-		if len(reports) > 0 {
-			if spec, specErr := h.ackReader.GetSpec(ctx, msg.Slug); specErr == nil {
-				for i := range reports {
-					if reports[i].SpecSlug == msg.Slug {
-						reports[i].Acknowledged = spec.DriftAcknowledged
-						reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
-					}
+		// Single-spec path: when the drift engine returns no reports (clean spec),
+		// synthesize an empty DriftReport so callers can observe acknowledgment state.
+		if len(reports) == 0 {
+			reports = []storage.DriftReport{{SpecSlug: msg.Slug}}
+		}
+		if spec, specErr := h.ackReader.GetSpec(ctx, msg.Slug); specErr == nil {
+			for i := range reports {
+				if reports[i].SpecSlug == msg.Slug {
+					reports[i].Acknowledged = spec.DriftAcknowledged
+					reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
 				}
-			} else if errors.Is(specErr, storage.ErrSpecNotFound) {
-				h.logger.Warn("CheckDrift: spec deleted between drift check and ack merge; acknowledgment state unavailable",
-					slog.String("slug", msg.Slug))
-				for i := range reports {
-					if reports[i].SpecSlug == msg.Slug {
-						reports[i].AckStateUnavailable = true
-					}
-				}
-			} else {
-				h.logger.Error("CheckDrift: failed to fetch acknowledgment state",
-					slog.String("slug", msg.Slug),
-					slog.Any("error", specErr))
-				return nil, connect.NewError(connect.CodeUnavailable,
-					fmt.Errorf("CheckDrift: acknowledgment state unavailable for %q", msg.Slug))
 			}
+		} else if errors.Is(specErr, storage.ErrSpecNotFound) {
+			h.logger.Warn("CheckDrift: spec deleted between drift check and ack merge; acknowledgment state unavailable",
+				slog.String("slug", msg.Slug))
+			for i := range reports {
+				if reports[i].SpecSlug == msg.Slug {
+					reports[i].AckStateUnavailable = true
+				}
+			}
+		} else {
+			h.logger.Error("CheckDrift: failed to fetch acknowledgment state",
+				slog.String("slug", msg.Slug),
+				slog.Any("error", specErr))
+			return nil, connect.NewError(connect.CodeUnavailable,
+				fmt.Errorf("CheckDrift: acknowledgment state unavailable for %q", msg.Slug))
 		}
 	} else {
 		// All-specs path: batch-fetch specs for acknowledgment state merge.
