@@ -602,3 +602,24 @@ func TestBatchGetSpecs(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, result)
 }
+
+func TestAcknowledgeDrift_AmendedStage(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	// Create spec, move to done, then amend (empty re-entry → "amended" stage).
+	_, err := store.CreateSpec(ctx, "ack-amended", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "ack-amended", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+	amended, err := store.LifecycleAmendSpec(ctx, "ack-amended", "needs rework", "")
+	require.NoError(t, err)
+	require.Equal(t, storage.SpecStageAmended, amended.Stage)
+
+	// Amended specs should be eligible for drift acknowledgment.
+	report, err := store.LifecycleAcknowledgeDrift(ctx, "ack-amended", "divergence accepted")
+	require.NoError(t, err)
+	require.Equal(t, "ack-amended", report.SpecSlug)
+	require.True(t, report.Acknowledged)
+	require.Equal(t, "divergence accepted", report.AcknowledgeNote)
+}

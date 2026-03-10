@@ -1130,3 +1130,23 @@ func TestLifecycleHandler_Lint_SpecNotFound(t *testing.T) {
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeNotFound, connErr.Code())
 }
+
+func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyReports(t *testing.T) {
+	batchCalled := false
+	deps := defaultTestDeps()
+	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
+		require.Empty(t, slug)
+		return []storage.DriftReport{}, nil
+	}
+	deps.store.batchGetSpecs = func(_ context.Context, slugs []string) (map[string]*storage.Spec, error) {
+		batchCalled = true
+		require.Empty(t, slugs)
+		return map[string]*storage.Spec{}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{}))
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.Reports)
+	require.True(t, batchCalled, "BatchGetSpecs should be called even with empty reports")
+}

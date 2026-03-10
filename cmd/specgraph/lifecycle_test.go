@@ -356,3 +356,23 @@ func TestRunDrift_WithItemsAndErrors(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "drift check completed with errors")
 }
+
+// --- runDrift with slug (spgr-d1b.17) ---
+
+type fakeDriftSlugCapture struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+	capturedSlug string
+}
+
+func (h *fakeDriftSlugCapture) CheckDrift(_ context.Context, req *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
+	h.capturedSlug = req.Msg.GetSlug()
+	return connect.NewResponse(&specv1.DriftCheckResponse{}), nil
+}
+
+func TestRunDrift_HappyPath_WithSlug(t *testing.T) {
+	h := &fakeDriftSlugCapture{}
+	startFakeLifecycleServer(t, h)
+	err := runDrift(nil, []string{"my-spec"})
+	require.NoError(t, err)
+	assert.Equal(t, "my-spec", h.capturedSlug)
+}

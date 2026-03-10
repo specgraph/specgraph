@@ -409,3 +409,34 @@ func TestCheck_UpstreamGetSpecError(t *testing.T) {
 	require.Equal(t, "drift check failed", reports[0].ErrorMessage)
 	require.Empty(t, reports[0].Items)
 }
+
+func TestCheckDrift_AmendedSpecEligibleBySlug(t *testing.T) {
+	now := time.Now()
+	backend := &mockDriftBackend{
+		specs: map[string]*storage.Spec{
+			"amended-spec": {
+				Slug:      "amended-spec",
+				Stage:     storage.SpecStageAmended,
+				UpdatedAt: now.Add(-time.Hour),
+			},
+			"upstream": {
+				Slug:      "upstream",
+				Stage:     storage.SpecStageDone,
+				UpdatedAt: now,
+			},
+		},
+		deps: map[string][]storage.NodeRef{
+			"amended-spec": {
+				{Slug: "upstream", Label: storage.NodeLabelSpec},
+			},
+		},
+	}
+
+	engine := drift.NewEngine(backend, nil)
+	reports, err := engine.Check(context.Background(), "amended-spec", "")
+	require.NoError(t, err)
+	require.Len(t, reports, 1)
+	require.Equal(t, "amended-spec", reports[0].SpecSlug)
+	require.Len(t, reports[0].Items, 1)
+	require.Equal(t, storage.DriftTypeDependency, reports[0].Items[0].Type)
+}

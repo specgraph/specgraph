@@ -19,6 +19,7 @@ type mockLintBackend struct {
 	specs              map[string]*storage.Spec
 	deps               map[string][]storage.NodeRef
 	getSpecErr         error            // non-nil overrides GetSpec with this error for all slugs
+	getSpecErrMap      map[string]error // per-slug errors for GetSpec; checked before getSpecErr
 	listSpecErr        error            // non-nil overrides ListSpecs with this error
 	getDepsErr         error            // non-nil overrides GetDependencies with this error for all slugs
 	getDepsErrMap      map[string]error // per-slug errors checked before getDepsErr
@@ -26,6 +27,9 @@ type mockLintBackend struct {
 }
 
 func (m *mockLintBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
+	if err, ok := m.getSpecErrMap[slug]; ok {
+		return nil, err
+	}
 	if m.getSpecErr != nil {
 		return nil, m.getSpecErr
 	}
@@ -447,4 +451,24 @@ func TestLint_AllSpecs_PassesMaxSpecsPerLintAsLimit(t *testing.T) {
 	// maxSpecsPerLint is 10000 (unexported constant in linter.go).
 	require.Equal(t, 10000, backend.listSpecsLastLimit,
 		"ListSpecs should be called with maxSpecsPerLint (10000) as limit")
+}
+
+func TestLint_GetSpecErrorForDependency(t *testing.T) {
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"root": {Slug: "root", Intent: "Root spec", Stage: storage.SpecStageSpark, Version: 1},
+		},
+		deps: map[string][]storage.NodeRef{
+			"root": {{Slug: "broken-dep", Label: storage.NodeLabelSpec}},
+		},
+		getSpecErrMap: map[string]error{
+			"broken-dep": errors.New("connection reset"),
+		},
+	}
+
+	results, err := linter.NewEngine(backend).Lint(context.Background(), "root")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
+	require.Equal(t, "internal error during lint", results[0].Error)
 }
