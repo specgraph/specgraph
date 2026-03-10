@@ -16,12 +16,13 @@ import (
 
 // mockLintBackend implements linter.Backend for testing.
 type mockLintBackend struct {
-	specs         map[string]*storage.Spec
-	deps          map[string][]storage.NodeRef
-	getSpecErr    error            // non-nil overrides GetSpec with this error for all slugs
-	listSpecErr   error            // non-nil overrides ListSpecs with this error
-	getDepsErr    error            // non-nil overrides GetDependencies with this error for all slugs
-	getDepsErrMap map[string]error // per-slug errors checked before getDepsErr
+	specs              map[string]*storage.Spec
+	deps               map[string][]storage.NodeRef
+	getSpecErr         error            // non-nil overrides GetSpec with this error for all slugs
+	listSpecErr        error            // non-nil overrides ListSpecs with this error
+	getDepsErr         error            // non-nil overrides GetDependencies with this error for all slugs
+	getDepsErrMap      map[string]error // per-slug errors checked before getDepsErr
+	listSpecsLastLimit int              // captures the limit arg passed to ListSpecs
 }
 
 func (m *mockLintBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
@@ -35,7 +36,8 @@ func (m *mockLintBackend) GetSpec(_ context.Context, slug string) (*storage.Spec
 	return spec, nil
 }
 
-func (m *mockLintBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*storage.Spec, error) {
+func (m *mockLintBackend) ListSpecs(_ context.Context, _, _ string, limit int) ([]*storage.Spec, error) {
+	m.listSpecsLastLimit = limit
 	if m.listSpecErr != nil {
 		return nil, m.listSpecErr
 	}
@@ -436,4 +438,13 @@ func TestLint_SelfReferentialCycle(t *testing.T) {
 		}
 	}
 	require.True(t, hasCycle, "expected graph.cycle violation for self-referential dep")
+}
+
+func TestLint_AllSpecs_PassesMaxSpecsPerLintAsLimit(t *testing.T) {
+	backend := &mockLintBackend{specs: map[string]*storage.Spec{}}
+	engine := linter.NewEngine(backend)
+	_, _ = engine.Lint(context.Background(), "") // all-specs path
+	// maxSpecsPerLint is 10000 (unexported constant in linter.go).
+	require.Equal(t, 10000, backend.listSpecsLastLimit,
+		"ListSpecs should be called with maxSpecsPerLint (10000) as limit")
 }
