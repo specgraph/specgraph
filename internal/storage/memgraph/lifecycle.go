@@ -211,6 +211,9 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		}
 		return nil, nil, fmt.Errorf("supersede spec: new spec %q: %w", newSlug, newErr)
 	}
+	if terminalStages[newCheck.Stage] {
+		return nil, nil, fmt.Errorf("supersede spec: new spec %q (stage=%s): %w", newSlug, newCheck.Stage, storage.ErrNewSpecTerminal)
+	}
 
 	now := s.nowTime()
 	oldVersion := oldCheck.Version + 1

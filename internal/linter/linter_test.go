@@ -257,7 +257,7 @@ func TestLint_GetDependenciesStorageError(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
-	require.Contains(t, results[0].Error, dbErr.Error())
+	require.Equal(t, "internal error during lint", results[0].Error)
 }
 
 func TestLint_GetDependenciesMidTraversalStorageError(t *testing.T) {
@@ -289,7 +289,7 @@ func TestLint_GetDependenciesMidTraversalStorageError(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
-	require.Contains(t, results[0].Error, dbErr.Error())
+	require.Equal(t, "internal error during lint", results[0].Error)
 }
 
 func TestLint_MaxCycleDepthExceeded(t *testing.T) {
@@ -406,7 +406,7 @@ func TestLint_CycleDetection_StorageErrorPropagates(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
-	require.Contains(t, results[0].Error, "database connection lost")
+	require.Equal(t, "internal error during lint", results[0].Error)
 }
 
 func TestLint_SelfReferentialCycle(t *testing.T) {

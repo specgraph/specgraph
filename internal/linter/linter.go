@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/seanb4t/specgraph/internal/storage"
 )
@@ -55,9 +56,12 @@ func lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResu
 	for _, spec := range specs {
 		result, err := lintSpec(ctx, backend, spec)
 		if err != nil {
+			slog.ErrorContext(ctx, "linter: internal error",
+				slog.String("spec_slug", spec.Slug),
+				slog.Any("error", err))
 			results = append(results, storage.LintResult{
 				SpecSlug: spec.Slug,
-				Error:    err.Error(),
+				Error:    "internal error during lint",
 			})
 			continue
 		}

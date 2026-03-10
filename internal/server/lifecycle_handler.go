@@ -167,8 +167,11 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 					}
 				}
 			} else {
+				h.logger.Error("CheckDrift: failed to fetch acknowledgment state",
+					slog.String("slug", msg.Slug),
+					slog.Any("error", specErr))
 				return nil, connect.NewError(connect.CodeUnavailable,
-					fmt.Errorf("CheckDrift: failed to fetch acknowledgment state for %q: %w", msg.Slug, specErr))
+					fmt.Errorf("CheckDrift: acknowledgment state unavailable for %q", msg.Slug))
 			}
 		}
 	} else {

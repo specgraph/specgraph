@@ -279,3 +279,79 @@ func TestLintCmd_AcceptsOneArg(t *testing.T) {
 	err := lintCmd.Args(lintCmd, []string{"my-spec"})
 	require.NoError(t, err)
 }
+
+// --- runLint failure path (spgr-79b.29) ---
+
+type fakeLintFailHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeLintFailHandler) Lint(_ context.Context, _ *connect.Request[specv1.LintRequest]) (*connect.Response[specv1.LintResponse], error) {
+	return connect.NewResponse(&specv1.LintResponse{
+		Results: []*specv1.LintResult{
+			{SpecSlug: "good-spec", Passed: true},
+			{
+				SpecSlug: "bad-spec",
+				Passed:   false,
+				Violations: []*specv1.LintViolation{
+					{Rule: "missing-intent", Severity: specv1.LintSeverity_LINT_SEVERITY_ERROR, Message: "spec missing intent"},
+				},
+			},
+		},
+	}), nil
+}
+
+func TestRunLint_HappyPath_WithFailures(t *testing.T) {
+	startFakeLifecycleServer(t, fakeLintFailHandler{})
+	err := runLint(nil, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "spec(s) failed")
+}
+
+// --- runDrift happy-path tests (spgr-79b.28) ---
+
+type fakeDriftNoneHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeDriftNoneHandler) CheckDrift(_ context.Context, _ *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
+	return connect.NewResponse(&specv1.DriftCheckResponse{}), nil
+}
+
+func TestRunDrift_HappyPath_NoDrift(t *testing.T) {
+	startFakeLifecycleServer(t, fakeDriftNoneHandler{})
+	err := runDrift(nil, nil)
+	require.NoError(t, err)
+}
+
+type fakeDriftItemsHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeDriftItemsHandler) CheckDrift(_ context.Context, _ *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
+	return connect.NewResponse(&specv1.DriftCheckResponse{
+		Reports: []*specv1.DriftReport{
+			{
+				SpecSlug:     "my-spec",
+				Acknowledged: true,
+				Items: []*specv1.DriftItem{
+					{
+						Type:        specv1.DriftType_DRIFT_TYPE_DEPENDENCY,
+						Severity:    specv1.DriftSeverity_DRIFT_SEVERITY_MEDIUM,
+						Description: "dependency changed",
+					},
+				},
+			},
+			{
+				SpecSlug:     "err-spec",
+				ErrorMessage: "unable to check drift",
+			},
+		},
+	}), nil
+}
+
+func TestRunDrift_HappyPath_WithItems(t *testing.T) {
+	startFakeLifecycleServer(t, fakeDriftItemsHandler{})
+	err := runDrift(nil, nil)
+	require.NoError(t, err)
+}

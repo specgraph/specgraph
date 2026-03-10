@@ -395,6 +395,44 @@ func TestLifecycleHandler_CheckDrift_BatchGetSpecsErrorReturnsUnavailable(t *tes
 	require.Equal(t, connect.CodeUnavailable, connErr.Code())
 }
 
+func TestLifecycleHandler_CheckDrift_AllSpecs_MissingSpecInBatch(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.batchGetSpecs = func(_ context.Context, _ []string) (map[string]*storage.Spec, error) {
+		// Return only spec-a, omitting spec-b to trigger AckStateUnavailable.
+		return map[string]*storage.Spec{
+			"spec-a": {Slug: "spec-a", DriftAcknowledged: true, DriftAcknowledgeNote: "known"},
+		}, nil
+	}
+	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+		return []storage.DriftReport{
+			{SpecSlug: "spec-a"},
+			{SpecSlug: "spec-b"},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Reports, 2)
+
+	var specA, specB *specv1.DriftReport
+	for _, r := range resp.Msg.Reports {
+		switch r.SpecSlug {
+		case "spec-a":
+			specA = r
+		case "spec-b":
+			specB = r
+		}
+	}
+	require.NotNil(t, specA)
+	require.True(t, specA.Acknowledged)
+	require.False(t, specA.AckStateUnavailable)
+
+	require.NotNil(t, specB)
+	require.True(t, specB.AckStateUnavailable, "missing spec in batch must have AckStateUnavailable=true")
+	require.False(t, specB.Acknowledged)
+}
+
 func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
