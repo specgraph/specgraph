@@ -229,9 +229,8 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		return nil, nil, err
 	}
 
-	newVersion := newCheck.Version + 1
 	newEntry := storage.HistoryEntry{
-		Version: newVersion,
+		Version: newCheck.Version,
 		Stage:   newCheck.Stage,
 		Summary: "Supersedes predecessor",
 		Reason:  fmt.Sprintf("Supersedes %s", oldSlug),
@@ -256,8 +255,6 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		    old.updated_at = $updated_at,
 		    old.history_json = $history_json,
 		    new.supersedes = $old_slug,
-		    new.version = $new_version,
-		    new.updated_at = $updated_at,
 		    new.history_json = $new_history_json
 		MERGE (new)-[:SUPERSEDES]->(old)
 		RETURN old.id, old.slug, old.intent, old.stage, old.priority, old.complexity,
@@ -277,7 +274,6 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		"expected_version":     oldCheck.Version,
 		"expected_new_version": newCheck.Version,
 		"version":              int64(oldVersion),
-		"new_version":          int64(newVersion),
 		"updated_at":           nowStr,
 		"history_json":         historyJSON,
 		"new_history_json":     newHistoryJSON,
