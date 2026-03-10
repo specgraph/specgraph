@@ -150,15 +150,6 @@ func detectCycles(ctx context.Context, backend Backend, slug string, rootDeps []
 		if storageErr != nil {
 			return
 		}
-		if depth > maxCycleDepth {
-			violations = append(violations, storage.LintViolation{
-				Rule:     "graph.cycle",
-				Severity: storage.LintSeverityWarning,
-				Message:  fmt.Sprintf("dependency graph exceeds maximum depth of %d at %q", maxCycleDepth, current),
-				Location: current,
-			})
-			return
-		}
 		if inStack[current] {
 			violations = append(violations, storage.LintViolation{
 				Rule:     "graph.cycle",
@@ -173,6 +164,17 @@ func detectCycles(ctx context.Context, backend Backend, slug string, rootDeps []
 		}
 
 		visited[current] = true
+
+		if depth > maxCycleDepth {
+			violations = append(violations, storage.LintViolation{
+				Rule:     "graph.cycle",
+				Severity: storage.LintSeverityWarning,
+				Message:  fmt.Sprintf("dependency graph exceeds maximum depth of %d at %q", maxCycleDepth, current),
+				Location: current,
+			})
+			return
+		}
+
 		inStack[current] = true
 
 		var deps []storage.NodeRef
