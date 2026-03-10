@@ -203,8 +203,12 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		}
 	}
 
+	protoReports, err := driftReportsToProto(reports)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	return connect.NewResponse(&specv1.DriftCheckResponse{
-		Reports: driftReportsToProto(reports),
+		Reports: protoReports,
 	}), nil
 }
 
@@ -260,8 +264,12 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 		}
 	}
 
+	protoReport, err := driftReportToProto(report)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	return connect.NewResponse(&specv1.DriftAcknowledgeResponse{
-		Report: driftReportToProto(report),
+		Report: protoReport,
 	}), nil
 }
 

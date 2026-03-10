@@ -296,7 +296,8 @@ func TestDriftReportToProto(t *testing.T) {
 				},
 			},
 		}
-		pb := driftReportToProto(report)
+		pb, err := driftReportToProto(report)
+		require.NoError(t, err)
 		assert.Equal(t, "login-api", pb.SpecSlug)
 		assert.True(t, pb.Acknowledged)
 		assert.Equal(t, "accepted risk", pb.AcknowledgeNote)
@@ -305,7 +306,8 @@ func TestDriftReportToProto(t *testing.T) {
 
 	t.Run("empty items", func(t *testing.T) {
 		report := &storage.DriftReport{SpecSlug: "s"}
-		pb := driftReportToProto(report)
+		pb, err := driftReportToProto(report)
+		require.NoError(t, err)
 		assert.Empty(t, pb.Items)
 	})
 }
@@ -346,7 +348,8 @@ func TestDriftItemToProto(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Use driftReportToProto since driftItemToProto is inline
 			report := &storage.DriftReport{Items: []storage.DriftItem{tt.item}}
-			pb := driftReportToProto(report)
+			pb, err := driftReportToProto(report)
+			require.NoError(t, err)
 			require.Len(t, pb.Items, 1)
 			got := pb.Items[0]
 			assert.Equal(t, tt.wantType, got.Type)
@@ -377,10 +380,9 @@ func TestDriftReportToProto_UnknownType(t *testing.T) {
 			{Type: storage.DriftType("unknown-type"), Severity: storage.DriftSeverityHigh},
 		},
 	}
-	pb := driftReportToProto(report)
-	require.Len(t, pb.Items, 1)
-	assert.Equal(t, specv1.DriftType_DRIFT_TYPE_UNSPECIFIED, pb.Items[0].Type)
-	assert.Equal(t, specv1.DriftSeverity_DRIFT_SEVERITY_HIGH, pb.Items[0].Severity)
+	_, err := driftReportToProto(report)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown drift type")
 }
 
 func TestDriftReportToProto_UnknownSeverity(t *testing.T) {
@@ -390,10 +392,9 @@ func TestDriftReportToProto_UnknownSeverity(t *testing.T) {
 			{Type: storage.DriftTypeDependency, Severity: storage.DriftSeverity("unknown-severity")},
 		},
 	}
-	pb := driftReportToProto(report)
-	require.Len(t, pb.Items, 1)
-	assert.Equal(t, specv1.DriftType_DRIFT_TYPE_DEPENDENCY, pb.Items[0].Type)
-	assert.Equal(t, specv1.DriftSeverity_DRIFT_SEVERITY_UNSPECIFIED, pb.Items[0].Severity)
+	_, err := driftReportToProto(report)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown drift severity")
 }
 
 func TestLintResultsToProto(t *testing.T) {

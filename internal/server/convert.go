@@ -506,20 +506,16 @@ var driftSeverityToProtoMap = map[storage.DriftSeverity]specv1.DriftSeverity{
 	storage.DriftSeverityInfo:   specv1.DriftSeverity_DRIFT_SEVERITY_INFO,
 }
 
-func driftReportToProto(r *storage.DriftReport) *specv1.DriftReport {
+func driftReportToProto(r *storage.DriftReport) (*specv1.DriftReport, error) {
 	items := make([]*specv1.DriftItem, len(r.Items))
 	for i, item := range r.Items {
 		dt, ok := driftTypeToProtoMap[item.Type]
 		if !ok {
-			slog.Warn("driftReportToProto: unknown drift type, using UNSPECIFIED",
-				slog.String("type", string(item.Type)), slog.String("slug", r.SpecSlug))
-			dt = specv1.DriftType_DRIFT_TYPE_UNSPECIFIED
+			return nil, fmt.Errorf("driftReportToProto: unknown drift type %q for slug %q", item.Type, r.SpecSlug)
 		}
 		ds, ok := driftSeverityToProtoMap[item.Severity]
 		if !ok {
-			slog.Warn("driftReportToProto: unknown drift severity, using UNSPECIFIED",
-				slog.String("severity", string(item.Severity)), slog.String("slug", r.SpecSlug))
-			ds = specv1.DriftSeverity_DRIFT_SEVERITY_UNSPECIFIED
+			return nil, fmt.Errorf("driftReportToProto: unknown drift severity %q for slug %q", item.Severity, r.SpecSlug)
 		}
 		items[i] = &specv1.DriftItem{
 			Type:            dt,
@@ -539,15 +535,19 @@ func driftReportToProto(r *storage.DriftReport) *specv1.DriftReport {
 		ItemsStale:          r.ItemsStale,
 		ErrorMessage:        r.ErrorMessage,
 		AckStateUnavailable: r.AckStateUnavailable,
-	}
+	}, nil
 }
 
-func driftReportsToProto(reports []storage.DriftReport) []*specv1.DriftReport {
+func driftReportsToProto(reports []storage.DriftReport) ([]*specv1.DriftReport, error) {
 	result := make([]*specv1.DriftReport, len(reports))
 	for i := range reports {
-		result[i] = driftReportToProto(&reports[i])
+		var err error
+		result[i], err = driftReportToProto(&reports[i])
+		if err != nil {
+			return nil, err
+		}
 	}
-	return result
+	return result, nil
 }
 
 // --- Lifecycle ---
