@@ -34,6 +34,40 @@ func TestSpecToProto(t *testing.T) {
 	assert.Equal(t, now.Unix(), pb.CreatedAt.AsTime().Unix())
 }
 
+
+func TestSpecToProto_LifecycleFields(t *testing.T) {
+	now := time.Date(2026, 3, 6, 12, 0, 0, 0, time.UTC)
+	spec := &storage.Spec{
+		ID:           "spec-abc",
+		Slug:         "login",
+		Intent:       "Login API",
+		Stage:        "superseded",
+		Priority:     "p1",
+		Complexity:   "medium",
+		Version:      3,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+		SupersededBy: "login-v2",
+		Supersedes:   "login-v0",
+		History: []storage.HistoryEntry{
+			{Version: 1, Stage: "spark", Summary: "Created", Date: now},
+			{Version: 2, Stage: "done", Summary: "Completed", Reason: "ready", Date: now},
+			{Version: 3, Stage: "superseded", Summary: "Superseded by login-v2", Date: now},
+		},
+	}
+	pb, err := specToProto(spec)
+	require.NoError(t, err)
+	assert.Equal(t, "login-v2", pb.SupersededBy)
+	assert.Equal(t, "login-v0", pb.Supersedes)
+	require.Len(t, pb.History, 3)
+	assert.Equal(t, int32(1), pb.History[0].Version)
+	assert.Equal(t, "spark", pb.History[0].Stage)
+	assert.Equal(t, "Created", pb.History[0].Summary)
+	assert.Equal(t, int32(3), pb.History[2].Version)
+	assert.Equal(t, "superseded", pb.History[2].Stage)
+	assert.Equal(t, "Superseded by login-v2", pb.History[2].Summary)
+}
+
 func TestSpecsToProto(t *testing.T) {
 	specs := []*storage.Spec{
 		{ID: "a", Slug: "a"},
