@@ -15,6 +15,7 @@ var (
 	ErrSpecIneligibleForDrift = errors.New("spec is not eligible for drift checking (must be done or amended)")
 	ErrSpecTerminal           = errors.New("spec is in a terminal state (superseded or abandoned)")
 	ErrNewSpecNotFound        = errors.New("replacement spec not found")
+	ErrNewSpecTerminal        = errors.New("replacement spec is in a terminal state")
 	ErrConcurrentModification = errors.New("concurrent modification detected — retry the operation")
 	ErrInvalidReEntryStage    = errors.New("re-entry stage is not allowed for this operation")
 	ErrSameSlugs              = errors.New("old and new slugs must differ")

@@ -315,6 +315,9 @@ func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 	if errors.Is(err, storage.ErrNewSpecNotFound) {
 		return connect.NewError(connect.CodeNotFound, errors.New("replacement spec not found"))
 	}
+	if errors.Is(err, storage.ErrNewSpecTerminal) {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("replacement spec is in a terminal state"))
+	}
 	if errors.Is(err, storage.ErrConcurrentModification) {
 		return connect.NewError(connect.CodeAborted, errors.New("concurrent modification — retry the operation"))
 	}
