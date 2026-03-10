@@ -278,8 +278,8 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		// definitive answer (NotFound/Terminal explain the guard failure on
 		// their own). ErrConcurrentModification is ambiguous — both specs
 		// may have raced — so we still check the new spec in that case.
-		// preconditionError always returns non-nil; the oldErr == nil arm
-		// was removed as unreachable.
+		// preconditionError always returns non-nil, so we fall through
+		// directly to returning oldErr here.
 		if errors.Is(oldErr, storage.ErrConcurrentModification) {
 			newErr := s.preconditionError(ctx, newSlug, "supersede spec (new)", nil)
 			if newErr != nil {
@@ -294,9 +294,6 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 				}
 				return nil, nil, newErr
 			}
-		}
-		if oldErr == nil {
-			return nil, nil, fmt.Errorf("supersede spec: guard failed but no precondition error found for %q or %q: %w", oldSlug, newSlug, storage.ErrConcurrentModification)
 		}
 		return nil, nil, oldErr
 	}
