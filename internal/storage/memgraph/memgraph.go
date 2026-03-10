@@ -361,13 +361,14 @@ type historyEntryJSON struct {
 }
 
 // unmarshalHistory parses a JSON string into a slice of storage.HistoryEntry.
-func unmarshalHistory(raw string) ([]storage.HistoryEntry, error) {
+// slug is used in error messages to identify which spec's history is broken.
+func unmarshalHistory(slug, raw string) ([]storage.HistoryEntry, error) {
 	if raw == "" || raw == "[]" {
 		return []storage.HistoryEntry{}, nil
 	}
 	var entries []historyEntryJSON
 	if err := json.Unmarshal([]byte(raw), &entries); err != nil {
-		return nil, fmt.Errorf("memgraph: unmarshal history_json: %w", err)
+		return nil, fmt.Errorf("memgraph: unmarshal history_json for spec %q: %w", slug, err)
 	}
 	result := make([]storage.HistoryEntry, len(entries))
 	for i, e := range entries {
@@ -377,7 +378,7 @@ func unmarshalHistory(raw string) ([]storage.HistoryEntry, error) {
 		}
 		stage := storage.SpecStage(e.Stage)
 		if !stage.IsValid() {
-			return nil, fmt.Errorf("memgraph: unmarshal history_json: unknown stage %q at index %d (version %d)", e.Stage, i, e.Version)
+			return nil, fmt.Errorf("memgraph: unmarshal history_json for spec %q: unknown stage %q at index %d (version %d) — if this stage was renamed/removed, a data migration is needed", slug, e.Stage, i, e.Version)
 		}
 		result[i] = storage.HistoryEntry{
 			Version: e.Version,
@@ -462,7 +463,7 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 		return nil, err
 	}
 
-	history, err := unmarshalHistory(historyJSON)
+	history, err := unmarshalHistory(slug, historyJSON)
 	if err != nil {
 		return nil, err
 	}
