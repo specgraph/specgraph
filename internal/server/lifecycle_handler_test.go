@@ -33,7 +33,7 @@ type fakeLifecycleBackend struct {
 
 func (f *fakeLifecycleBackend) GetSpec(ctx context.Context, slug string) (*storage.Spec, error) {
 	if f.getSpec == nil {
-		return &storage.Spec{Slug: slug, Stage: storage.SpecStageDone}, nil
+		return nil, storage.ErrSpecNotFound
 	}
 	return f.getSpec(ctx, slug)
 }
