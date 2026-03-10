@@ -80,6 +80,14 @@ func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChe
 	return fmt.Errorf("%s %q: %w", op, slug, storage.ErrConcurrentModification)
 }
 
+// amendSummary returns the history summary for an amend operation.
+func amendSummary(targetStage storage.SpecStage) string {
+	if targetStage == storage.SpecStageAmended {
+		return "Amended from done"
+	}
+	return fmt.Sprintf("Amended from done, re-entering at: %s", targetStage)
+}
+
 // LifecycleAmendSpec transitions a done spec back into an earlier authoring stage,
 // appending a history entry. If reEntryStage is empty, the spec is set to "amended".
 // Returns ErrSpecNotDone if the spec is not at the "done" stage, and ErrSpecNotFound
@@ -113,7 +121,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	entry := storage.HistoryEntry{
 		Version: newVersion,
 		Stage:   targetStage,
-		Summary: fmt.Sprintf("Amended from done, re-entry stage: %s", targetStage),
+		Summary: amendSummary(targetStage),
 		Reason:  reason,
 		Date:    time.Now().UTC(),
 	}
@@ -376,7 +384,7 @@ var terminalStageStrings = func() []string {
 
 // LifecycleAcknowledgeDrift sets drift as acknowledged on the spec node and returns a
 // DriftReport reflecting the acknowledgment. Returns ErrSpecNotFound if the
-// spec does not exist, or ErrSpecNotDone if the spec is not in an eligible
+// spec does not exist, or ErrSpecIneligibleStage if the spec is not in an eligible
 // stage (done or amended).
 //
 // The WHERE guard is atomic: drift can only be acknowledged on specs in the
