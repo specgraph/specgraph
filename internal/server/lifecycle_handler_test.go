@@ -354,6 +354,27 @@ func TestLifecycleHandler_CheckDrift_GetSpecErrorReturnsUnavailable(t *testing.T
 	require.Equal(t, connect.CodeUnavailable, connErr.Code())
 }
 
+func TestLifecycleHandler_CheckDrift_SpecDeletedBetweenDriftAndAckMerge(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.getSpec = func(_ context.Context, _ string) (*storage.Spec, error) {
+		return nil, storage.ErrSpecNotFound
+	}
+	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+		return []storage.DriftReport{
+			{SpecSlug: "deleted-spec"},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
+		Slug: "deleted-spec",
+	}))
+	require.NoError(t, err, "spec deletion during ack merge should not cause an error")
+	require.Len(t, resp.Msg.Reports, 1)
+	require.False(t, resp.Msg.Reports[0].Acknowledged, "ack state must not leak from a deleted spec")
+	require.True(t, resp.Msg.Reports[0].AckStateUnavailable, "must signal that ack state is unavailable")
+}
+
 func TestLifecycleHandler_CheckDrift_BatchGetSpecsErrorReturnsUnavailable(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.batchGetSpecs = func(_ context.Context, _ []string) (map[string]*storage.Spec, error) {
@@ -393,9 +414,9 @@ func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 		Note: "intentional divergence",
 	}))
 	require.NoError(t, err)
-	require.Equal(t, "my-spec", resp.Msg.SpecSlug)
-	require.True(t, resp.Msg.Acknowledged)
-	require.Equal(t, "intentional divergence", resp.Msg.AcknowledgeNote)
+	require.Equal(t, "my-spec", resp.Msg.Report.SpecSlug)
+	require.True(t, resp.Msg.Report.Acknowledged)
+	require.Equal(t, "intentional divergence", resp.Msg.Report.AcknowledgeNote)
 }
 
 func TestLifecycleHandler_AcknowledgeDrift_RecheckMergesItems(t *testing.T) {
@@ -429,10 +450,10 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckMergesItems(t *testing.T) {
 		Note: "intentional",
 	}))
 	require.NoError(t, err)
-	require.True(t, resp.Msg.Acknowledged)
-	require.Len(t, resp.Msg.Items, 1)
-	require.Equal(t, specv1.DriftType_DRIFT_TYPE_DEPENDENCY, resp.Msg.Items[0].Type)
-	require.Equal(t, "upstream changed", resp.Msg.Items[0].Description)
+	require.True(t, resp.Msg.Report.Acknowledged)
+	require.Len(t, resp.Msg.Report.Items, 1)
+	require.Equal(t, specv1.DriftType_DRIFT_TYPE_DEPENDENCY, resp.Msg.Report.Items[0].Type)
+	require.Equal(t, "upstream changed", resp.Msg.Report.Items[0].Description)
 }
 
 func TestLifecycleHandler_Amend_EmptySlug(t *testing.T) {
@@ -682,7 +703,7 @@ func TestLifecycleHandler_AcknowledgeDrift_NilChecker(t *testing.T) {
 		Note: "intentional divergence",
 	}))
 	require.NoError(t, err)
-	require.Empty(t, resp.Msg.Items)
+	require.Empty(t, resp.Msg.Report.Items)
 }
 
 func TestLifecycleHandler_AcknowledgeDrift_RecheckError(t *testing.T) {
@@ -704,9 +725,9 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckError(t *testing.T) {
 		Note: "intentional divergence",
 	}))
 	require.NoError(t, err)
-	require.True(t, resp.Msg.Acknowledged)
-	require.True(t, resp.Msg.ItemsStale)
-	require.Empty(t, resp.Msg.Items)
+	require.True(t, resp.Msg.Report.Acknowledged)
+	require.True(t, resp.Msg.Report.ItemsStale)
+	require.Empty(t, resp.Msg.Report.Items)
 }
 
 func TestLifecycleHandler_Lint_NilLinter(t *testing.T) {
@@ -911,8 +932,8 @@ func TestLifecycleHandler_AcknowledgeDrift_AmendedStage(t *testing.T) {
 		Note: "divergence accepted",
 	}))
 	require.NoError(t, err)
-	require.Equal(t, "amended-spec", resp.Msg.SpecSlug)
-	require.True(t, resp.Msg.Acknowledged)
+	require.Equal(t, "amended-spec", resp.Msg.Report.SpecSlug)
+	require.True(t, resp.Msg.Report.Acknowledged)
 }
 
 func TestLifecycleHandler_Abandon_NotFound(t *testing.T) {
@@ -947,6 +968,26 @@ func TestLifecycleHandler_Supersede_OldNotFound(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeNotFound, connErr.Code())
+}
+
+func TestLifecycleHandler_Supersede_PreconditionGetSpecFails(t *testing.T) {
+	deps := defaultTestDeps()
+	// Simulate preconditionError's double-failure path: atomic guard fails,
+	// and the subsequent GetSpec re-read also fails with a non-NotFound error.
+	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+		return nil, nil, fmt.Errorf("supersede spec %q: atomic guard failed and precondition re-read also failed: %w",
+			"old-spec", errors.New("connection reset"))
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
+		Slug:    "old-spec",
+		NewSlug: "new-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
 }
 
 func TestLifecycleHandler_Amend_EmptyReason(t *testing.T) {

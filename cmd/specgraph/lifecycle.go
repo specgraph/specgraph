@@ -195,7 +195,7 @@ func runDriftAck(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("acknowledge drift: %w", err)
 	}
-	r := resp.Msg
+	r := resp.Msg.GetReport()
 	fmt.Printf("Acknowledged drift for: %s\n", r.GetSpecSlug())
 	return nil
 }

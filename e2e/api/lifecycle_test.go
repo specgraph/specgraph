@@ -249,8 +249,8 @@ var _ = Describe("Lifecycle", Ordered, func() {
 				Note: "Reviewed upstream change, no action needed",
 			}))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Acknowledged).To(BeTrue())
-			Expect(resp.Msg.AcknowledgeNote).To(Equal("Reviewed upstream change, no action needed"))
+			Expect(resp.Msg.Report.Acknowledged).To(BeTrue())
+			Expect(resp.Msg.Report.AcknowledgeNote).To(Equal("Reviewed upstream change, no action needed"))
 		})
 	})
 

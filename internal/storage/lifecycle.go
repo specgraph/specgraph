@@ -74,12 +74,13 @@ type DriftItem struct {
 
 // DriftReport aggregates drift items for a spec.
 type DriftReport struct {
-	SpecSlug        string
-	Items           []DriftItem
-	Acknowledged    bool
-	AcknowledgeNote string
-	ItemsStale      bool
-	ErrorMessage    string // non-empty when drift checking failed for this spec
+	SpecSlug            string
+	Items               []DriftItem
+	Acknowledged        bool
+	AcknowledgeNote     string
+	ItemsStale          bool
+	ErrorMessage        string // non-empty when drift checking failed for this spec
+	AckStateUnavailable bool   // true when ack state could not be fetched (e.g. spec deleted)
 }
 
 // LintSeverity indicates lint violation urgency.

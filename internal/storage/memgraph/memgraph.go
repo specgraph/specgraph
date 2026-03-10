@@ -28,11 +28,21 @@ var (
 
 // Store implements storage.Backend using Memgraph (Bolt protocol).
 type Store struct {
-	driver neo4j.DriverWithContext
+	driver  neo4j.DriverWithContext
+	nowFunc func() time.Time // injectable clock; defaults to time.Now
+}
+
+// Option configures a Store.
+type Option func(*Store)
+
+// WithClock overrides the default wall clock used for timestamps.
+// Intended for testing — production callers should omit this option.
+func WithClock(fn func() time.Time) Option {
+	return func(s *Store) { s.nowFunc = fn }
 }
 
 // New creates a new Memgraph-backed Store and verifies connectivity.
-func New(ctx context.Context, boltURI string) (*Store, error) {
+func New(ctx context.Context, boltURI string, opts ...Option) (*Store, error) {
 	driver, err := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: create driver: %w", err)
@@ -40,7 +50,11 @@ func New(ctx context.Context, boltURI string) (*Store, error) {
 	if err := driver.VerifyConnectivity(ctx); err != nil {
 		return nil, fmt.Errorf("memgraph: verify connectivity: %w", err)
 	}
-	return &Store{driver: driver}, nil
+	s := &Store{driver: driver, nowFunc: time.Now}
+	for _, o := range opts {
+		o(s)
+	}
+	return s, nil
 }
 
 const (
@@ -51,7 +65,7 @@ const (
 // CreateSpec stores a new spec node in Memgraph and returns it.
 func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
 	id := newID("spec")
-	nowStr := nowRFC3339()
+	nowStr := s.now()
 
 	query := `
 		CREATE (s:Spec {
@@ -217,7 +231,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		return s.GetSpec(ctx, slug)
 	}
 
-	nowStr := nowRFC3339()
+	nowStr := s.now()
 	setClauses = append(setClauses, "s.version = s.version + 1", "s.updated_at = $updated_at")
 	params["updated_at"] = nowStr
 
@@ -271,10 +285,15 @@ func newID(prefix string) string {
 // for Cypher ORDER BY and timestamp comparison operators on string-typed fields.
 const sortableRFC3339Nano = "2006-01-02T15:04:05.000000000Z07:00"
 
-// nowRFC3339 returns the current UTC time in a fixed-width RFC 3339 layout to
+// nowTime returns the current UTC time from the Store's clock.
+func (s *Store) nowTime() time.Time {
+	return s.nowFunc().UTC()
+}
+
+// now returns the current UTC time as a fixed-width RFC 3339 string to
 // ensure lexicographic string ordering matches chronological ordering.
-func nowRFC3339() string {
-	return time.Now().UTC().Format(sortableRFC3339Nano)
+func (s *Store) now() string {
+	return s.nowTime().Format(sortableRFC3339Nano)
 }
 
 // parseRFC3339 parses an RFC3339 timestamp string from a memgraph record field.

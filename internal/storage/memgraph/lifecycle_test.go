@@ -7,13 +7,33 @@ package memgraph_test
 
 import (
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/seanb4t/specgraph/internal/drift"
 	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/require"
 )
+
+// newTestClock returns a controllable clock and an advance function.
+// The clock starts at the current time; advance moves it forward.
+func newTestClock() (now func() time.Time, advance func(time.Duration)) {
+	mu := &sync.Mutex{}
+	t := time.Now()
+	now = func() time.Time {
+		mu.Lock()
+		defer mu.Unlock()
+		return t
+	}
+	advance = func(d time.Duration) {
+		mu.Lock()
+		defer mu.Unlock()
+		t = t.Add(d)
+	}
+	return
+}
 
 func TestAmendSpec_HappyPath(t *testing.T) {
 	store, ctx := newTestStore(t)
@@ -174,7 +194,8 @@ func TestAbandonSpec_Terminal(t *testing.T) {
 }
 
 func TestCheckDrift_DependencyDrift(t *testing.T) {
-	store, ctx := newTestStore(t)
+	clock, advance := newTestClock()
+	store, ctx := newTestStore(t, memgraph.WithClock(clock))
 
 	// Create upstream and downstream specs.
 	_, err := store.CreateSpec(ctx, "upstream-spec", "Upstream", "p1", "medium")
@@ -186,10 +207,9 @@ func TestCheckDrift_DependencyDrift(t *testing.T) {
 	_, err = store.AddEdge(ctx, "downstream-spec", "upstream-spec", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
 
-	// Drift detection compares updated_at timestamps: upstream must be strictly
-	// newer than downstream. Memgraph's datetime has second-level precision in
-	// practice, so we sleep >1s to guarantee the ordering.
-	time.Sleep(1100 * time.Millisecond)
+	// Advance the clock so the upstream update gets a strictly newer timestamp
+	// than the downstream spec's created_at / updated_at.
+	advance(2 * time.Second)
 
 	// Update upstream to bump its updated_at.
 	newIntent := "Upstream updated"
@@ -303,7 +323,8 @@ func TestAmendSpec_ConcurrentModification(t *testing.T) {
 }
 
 func TestCheckDrift_AllSpecs_Integration(t *testing.T) {
-	store, ctx := newTestStore(t)
+	clock, advance := newTestClock()
+	store, ctx := newTestStore(t, memgraph.WithClock(clock))
 
 	// Create two done specs with upstream dependency.
 	_, err := store.CreateSpec(ctx, "up-integ", "Upstream", "p1", "medium")
@@ -326,8 +347,8 @@ func TestCheckDrift_AllSpecs_Integration(t *testing.T) {
 	_, err = store.UpdateSpec(ctx, "down2-integ", nil, &doneStage, nil, nil)
 	require.NoError(t, err)
 
-	// Same as above: sleep >1s so updated_at(upstream) > updated_at(downstream).
-	time.Sleep(1100 * time.Millisecond)
+	// Advance the clock so upstream update gets a strictly newer timestamp.
+	advance(2 * time.Second)
 	newIntent := "Updated upstream"
 	_, err = store.UpdateSpec(ctx, "up-integ", &newIntent, nil, nil, nil)
 	require.NoError(t, err)
@@ -477,7 +498,8 @@ func TestSupersedeSpec_ConcurrentModificationOnNewSpec(t *testing.T) {
 }
 
 func TestCheckDrift_AmendedSpecDrift(t *testing.T) {
-	store, ctx := newTestStore(t)
+	clock, advance := newTestClock()
+	store, ctx := newTestStore(t, memgraph.WithClock(clock))
 
 	// Create upstream and downstream specs, move to done.
 	_, err := store.CreateSpec(ctx, "amended-drift-up", "Upstream", "p1", "medium")
@@ -500,8 +522,8 @@ func TestCheckDrift_AmendedSpecDrift(t *testing.T) {
 	_, err = store.AddEdge(ctx, "amended-drift-down", "amended-drift-up", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
 
-	// Sleep to ensure upstream timestamp is strictly newer.
-	time.Sleep(1100 * time.Millisecond)
+	// Advance the clock so upstream update gets a strictly newer timestamp.
+	advance(2 * time.Second)
 
 	// Update upstream to trigger drift.
 	newIntent := "Updated upstream"

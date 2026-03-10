@@ -20,12 +20,12 @@ import (
 
 // newTestStore creates a fresh Memgraph-backed store for a single test,
 // registering cleanup of the container and store connection.
-func newTestStore(t *testing.T) (*memgraph.Store, context.Context) {
+func newTestStore(t *testing.T, opts ...memgraph.Option) (*memgraph.Store, context.Context) {
 	t.Helper()
 	boltURI, cleanup := setupMemgraph(t)
 	t.Cleanup(cleanup)
 	ctx := context.Background()
-	store, err := newStore(ctx, boltURI)
+	store, err := newStore(ctx, boltURI, opts...)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		if err := store.Close(ctx); err != nil {

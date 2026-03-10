@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/seanb4t/specgraph/internal/storage"
 )
@@ -267,20 +266,23 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	if len(records) == 0 {
 		// Check old spec first for precondition errors.
 		oldErr := s.preconditionError(ctx, oldSlug, "supersede spec (old)", nil)
-		// Always check the new spec — it may have been deleted between the
-		// pre-read and the atomic query, regardless of oldErr's value.
-		newErr := s.preconditionError(ctx, newSlug, "supersede spec (new)", nil)
-		if newErr != nil {
-			if errors.Is(newErr, storage.ErrSpecNotFound) {
-				return nil, nil, fmt.Errorf("supersede spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
-			}
-			if errors.Is(newErr, storage.ErrSpecTerminal) {
-				return nil, nil, fmt.Errorf("supersede spec: new spec %q is in a terminal state: %w", newSlug, storage.ErrSpecTerminal)
-			}
-			if errors.Is(oldErr, storage.ErrConcurrentModification) {
-				// Both specs have precondition issues; prefer the new-spec
-				// error but include old-spec context for diagnostics.
-				return nil, nil, fmt.Errorf("supersede spec: new %q: %w (old %q also concurrently modified)", newSlug, newErr, oldSlug)
+		// Only check the new spec when the old spec doesn't provide a
+		// definitive answer (NotFound/Terminal explain the guard failure on
+		// their own). ErrConcurrentModification is ambiguous — both specs
+		// may have raced — so we still check the new spec in that case.
+		if oldErr == nil || errors.Is(oldErr, storage.ErrConcurrentModification) {
+			newErr := s.preconditionError(ctx, newSlug, "supersede spec (new)", nil)
+			if newErr != nil {
+				if errors.Is(newErr, storage.ErrSpecNotFound) {
+					return nil, nil, fmt.Errorf("supersede spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
+				}
+				if errors.Is(newErr, storage.ErrSpecTerminal) {
+					return nil, nil, fmt.Errorf("supersede spec: new spec %q is in a terminal state: %w", newSlug, storage.ErrSpecTerminal)
+				}
+				if errors.Is(oldErr, storage.ErrConcurrentModification) {
+					return nil, nil, fmt.Errorf("supersede spec: new %q: %w (old %q also concurrently modified)", newSlug, newErr, oldSlug)
+				}
+				return nil, nil, newErr
 			}
 		}
 		return nil, nil, oldErr

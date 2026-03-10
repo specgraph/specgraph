@@ -19,7 +19,6 @@ type Backend = storage.SpecReader
 const maxSpecsPerLint = 10000
 
 // Engine provides a storage-backed implementation of server.SpecLinter,
-// 
 type Engine struct {
 	backend Backend
 }

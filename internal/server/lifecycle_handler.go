@@ -160,6 +160,11 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 			} else if errors.Is(specErr, storage.ErrSpecNotFound) {
 				h.logger.Warn("CheckDrift: spec deleted between drift check and ack merge; acknowledgment state unavailable",
 					slog.String("slug", msg.Slug))
+				for i := range reports {
+					if reports[i].SpecSlug == msg.Slug {
+						reports[i].AckStateUnavailable = true
+					}
+				}
 			} else {
 				return nil, connect.NewError(connect.CodeUnavailable,
 					fmt.Errorf("CheckDrift: failed to fetch acknowledgment state for %q: %w", msg.Slug, specErr))
@@ -202,7 +207,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 // actual drift items alongside the acknowledgment fields. If drift checking is
 // not configured (driftChecker is nil), the response contains the acknowledgment
 // fields but an empty items slice.
-func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Request[specv1.DriftAcknowledgeRequest]) (*connect.Response[specv1.DriftReport], error) {
+func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Request[specv1.DriftAcknowledgeRequest]) (*connect.Response[specv1.DriftAcknowledgeResponse], error) {
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -244,7 +249,9 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(pbReport), nil
+	return connect.NewResponse(&specv1.DriftAcknowledgeResponse{
+		Report: pbReport,
+	}), nil
 }
 
 // Lint handles the Lint RPC, validating spec schema and graph integrity.

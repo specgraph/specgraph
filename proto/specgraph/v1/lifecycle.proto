@@ -71,6 +71,10 @@ message DriftReport {
   // Non-empty when drift checking failed for this spec. Contains the error
   // message. The report may still contain partial or stale data.
   string error_message = 6;
+  // True when acknowledgment state could not be fetched (e.g. spec deleted
+  // between drift check and ack merge). Clients should treat acknowledged
+  // and acknowledge_note as unknown rather than definitively false/empty.
+  bool ack_state_unavailable = 7;
 }
 
 // --- Lint Messages ---
@@ -151,6 +155,10 @@ message DriftAcknowledgeRequest {
   string note = 2;
 }
 
+message DriftAcknowledgeResponse {
+  DriftReport report = 1;
+}
+
 message LintRequest {
   string slug = 1;
 }
@@ -171,6 +179,6 @@ service LifecycleService {
   rpc TransitionSupersede(TransitionSupersedeRequest) returns (TransitionSupersedeResponse);
   rpc TransitionAbandon(TransitionAbandonRequest) returns (TransitionAbandonResponse);
   rpc CheckDrift(DriftCheckRequest) returns (DriftCheckResponse);
-  rpc AcknowledgeDrift(DriftAcknowledgeRequest) returns (DriftReport);
+  rpc AcknowledgeDrift(DriftAcknowledgeRequest) returns (DriftAcknowledgeResponse);
   rpc Lint(LintRequest) returns (LintResponse);
 }
