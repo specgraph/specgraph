@@ -1,0 +1,29 @@
+site/build/
+site/.venv/
+site/docs/design/
+
+# Go
+/specgraph
+*.exe
+dist/
+coverage.out
+coverage.html
+
+# Generated protobuf (reproducible via buf generate)
+gen/
+
+# Taskfile checksums
+.task/
+
+# Serena
+.serena/
+
+# Beads backup (Dolt-managed, not source-controlled)
+.beads/backup/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
+
+# Git worktrees
+.worktrees/

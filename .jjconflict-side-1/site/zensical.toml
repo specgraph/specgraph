@@ -1,0 +1,38 @@
+[project]
+site_name = "SpecGraph"
+site_url = "https://seanb4t.github.io/specgraph/"
+site_description = "Live Spec-Driven Development Framework"
+site_author = "Sean Brandt"
+copyright = "© 2026 Sean Brandt • MIT"
+
+docs_dir = "docs"
+site_dir = "build"
+
+nav = [
+  "index.md",
+  "problem.md",
+  "how-it-works.md",
+  { "Concepts" = ["concepts/index.md", "concepts/specs.md", "concepts/constitution.md", "concepts/authoring.md", "concepts/decisions.md", "concepts/passes.md"] },
+  "architecture.md",
+  "roadmap.md",
+  "ecosystem.md",
+]
+
+[project.theme]
+variant = "modern"
+
+[project.theme.palette]
+scheme = "slate"
+primary = "indigo"
+accent = "cyan"
+
+[project.theme.features]
+navigation.tabs = true
+navigation.sections = true
+navigation.instant = true
+search.suggest = true
+content.code.copy = true
+
+[project.repo]
+url = "https://github.com/seanb4t/specgraph"
+name = "GitHub"

@@ -1,0 +1,65 @@
+# Lefthook configuration
+# https://github.com/evilmartians/lefthook
+#
+# Prerequisites:
+# - rumdl: Install via `cargo install rumdl`, Homebrew (`brew install rumdl`), or download from GitHub Releases
+#
+# set because we chain through beads (bd) in spots
+no_auto_install: true
+pre-commit:
+  parallel: true
+  exclude:
+    - ".worktrees/**"
+  commands:
+    license-headers:
+      glob: "*.{go,sh,py,proto}"
+      exclude: "*.pb.go"
+      run: |
+        set -euo pipefail
+
+        # Verify LICENSE_HEADER exists
+        if [[ ! -f LICENSE_HEADER ]]; then
+          echo "ERROR: LICENSE_HEADER file not found in repository root"
+          echo "Please ensure LICENSE_HEADER exists before committing"
+          exit 1
+        fi
+
+        # Install addlicense if needed
+        if ! command -v addlicense >/dev/null 2>&1; then
+          echo "Installing addlicense..."
+          if ! go install github.com/google/addlicense@latest; then
+            echo "ERROR: Failed to install addlicense"
+            echo "Please run: go install github.com/google/addlicense@latest"
+            exit 1
+          fi
+        fi
+
+        addlicense -f LICENSE_HEADER {staged_files}
+      stage_fixed: true
+    lint-go:
+      glob: "*.go"
+      run: golangci-lint run --new-from-rev=HEAD~1
+      stage_fixed: true
+    lint-markdown:
+      glob: "*.md"
+      run: rumdl check {staged_files}
+    fmt-markdown:
+      glob: "*.md"
+      run: rumdl fmt {staged_files}
+      stage_fixed: true
+    lint-yaml:
+      glob: "*.{yaml,yml}"
+      run: yamlfmt -lint {staged_files}
+    lint-actions:
+      glob: ".github/workflows/*.{yaml,yml}"
+      run: actionlint {staged_files}
+    format-check:
+      run: dprint check
+pre-push:
+  commands:
+    quality-gate:
+      run: task check
+commit-msg:
+  commands:
+    conventional-commit:
+      run: cog verify --file {1}
