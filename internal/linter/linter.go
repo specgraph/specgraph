@@ -58,6 +58,7 @@ func lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResu
 			results = append(results, storage.LintResult{
 				SpecSlug: spec.Slug,
 				Error:    err.Error(),
+				Err:      err,
 			})
 			continue
 		}

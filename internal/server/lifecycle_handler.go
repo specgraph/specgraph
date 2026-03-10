@@ -237,6 +237,7 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 			h.logger.Error("AcknowledgeDrift: drift re-check failed after successful acknowledgment; items are stale",
 				slog.String("slug", msg.Slug), slog.Any("error", driftErr))
 			report.ItemsStale = true
+			report.ErrorMessage = "drift re-check failed after acknowledgment"
 		} else {
 			for _, r := range reports {
 				if r.SpecSlug == msg.Slug {
