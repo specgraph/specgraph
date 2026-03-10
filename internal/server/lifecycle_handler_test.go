@@ -1164,7 +1164,7 @@ func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyReports(t *testing.T) {
 		require.Empty(t, slug)
 		return []storage.DriftReport{}, nil
 	}
-	deps.store.batchGetSpecs = func(_ context.Context, slugs []string) (map[string]*storage.Spec, error) {
+	deps.store.batchGetSpecs = func(_ context.Context, _ []string) (map[string]*storage.Spec, error) {
 		batchCalled = true
 		return map[string]*storage.Spec{}, nil
 	}

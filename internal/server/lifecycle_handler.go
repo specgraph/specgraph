@@ -251,13 +251,14 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 		} else {
 			found := false
 			for _, r := range reports {
-				if r.SpecSlug == msg.Slug {
-					report.Items = r.Items
-					report.Acknowledged = true
-					report.AcknowledgeNote = msg.Note
-					found = true
-					break
+				if r.SpecSlug != msg.Slug {
+					continue
 				}
+				report.Items = r.Items
+				report.Acknowledged = true
+				report.AcknowledgeNote = msg.Note
+				found = true
+				break
 			}
 			if !found {
 				h.logger.Warn("AcknowledgeDrift: drift re-check returned no report for slug",

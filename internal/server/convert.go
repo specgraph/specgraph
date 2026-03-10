@@ -572,40 +572,46 @@ var lintSeverityToProtoMap = map[storage.LintSeverity]specv1.LintSeverity{
 	storage.LintSeverityInfo:    specv1.LintSeverity_LINT_SEVERITY_INFO,
 }
 
-func lintViolationToProto(v *storage.LintViolation) *specv1.LintViolation {
+func lintViolationToProto(v *storage.LintViolation) (*specv1.LintViolation, error) {
 	sev, ok := lintSeverityToProtoMap[v.Severity]
 	if !ok {
-		slog.Warn("lintViolationToProto: unknown lint severity, using UNSPECIFIED",
-			slog.String("severity", string(v.Severity)), slog.String("rule", v.Rule))
-		sev = specv1.LintSeverity_LINT_SEVERITY_UNSPECIFIED
+		return nil, fmt.Errorf("lintViolationToProto: unknown lint severity %q for rule %q", v.Severity, v.Rule)
 	}
 	return &specv1.LintViolation{
 		Rule:     v.Rule,
 		Severity: sev,
 		Message:  v.Message,
 		Location: v.Location,
-	}
+	}, nil
 }
 
-func lintResultToProto(r *storage.LintResult) *specv1.LintResult {
+func lintResultToProto(r *storage.LintResult) (*specv1.LintResult, error) {
 	violations := make([]*specv1.LintViolation, len(r.Violations))
 	for i := range r.Violations {
-		violations[i] = lintViolationToProto(&r.Violations[i])
+		v, err := lintViolationToProto(&r.Violations[i])
+		if err != nil {
+			return nil, err
+		}
+		violations[i] = v
 	}
 	return &specv1.LintResult{
 		SpecSlug:   r.SpecSlug,
 		Violations: violations,
 		Passed:     r.Passed,
 		Error:      r.Error,
-	}
+	}, nil
 }
 
-func lintResultsToProto(results []storage.LintResult) []*specv1.LintResult {
+func lintResultsToProto(results []storage.LintResult) ([]*specv1.LintResult, error) {
 	result := make([]*specv1.LintResult, len(results))
 	for i := range results {
-		result[i] = lintResultToProto(&results[i])
+		r, err := lintResultToProto(&results[i])
+		if err != nil {
+			return nil, err
+		}
+		result[i] = r
 	}
-	return result
+	return result, nil
 }
 
 func bundleToProto(b *storage.Bundle) (*specv1.Bundle, error) {
