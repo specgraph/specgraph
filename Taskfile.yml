@@ -29,10 +29,18 @@ tasks:
     cmds:
       - buf generate
   proto:check:
-    desc: Verify generated proto code is up to date
+    desc: Verify generated proto code is up to date (side-effect-free)
     cmds:
-      - buf generate
-      - git diff --exit-code gen/
+      - |
+        tmpdir=$(mktemp -d)
+        cp -r gen/ "$tmpdir/gen-before"
+        buf generate
+        diff -rq gen/ "$tmpdir/gen-before" > /dev/null 2>&1
+        status=$?
+        rm -rf gen/
+        cp -r "$tmpdir/gen-before" gen
+        rm -rf "$tmpdir"
+        exit $status
   # Building
   build:
     desc: Build the specgraph binary
