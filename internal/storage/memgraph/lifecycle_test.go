@@ -109,8 +109,7 @@ func TestSupersedeSpec_SameSlug(t *testing.T) {
 
 	// Superseding a spec with itself must fail at the storage layer.
 	_, _, err = store.LifecycleSupersedeSpec(ctx, "same-slug", "same-slug")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "old and new slugs must differ")
+	require.ErrorIs(t, err, storage.ErrSameSlugs)
 }
 
 func TestAbandonSpec_HappyPath(t *testing.T) {

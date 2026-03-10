@@ -176,7 +176,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 // in a terminal stage, preventing TOCTOU races.
 func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug string) (oldSpec, newSpec *storage.Spec, err error) {
 	if oldSlug == newSlug {
-		return nil, nil, fmt.Errorf("supersede spec: old and new slugs must differ (%q)", oldSlug)
+		return nil, nil, fmt.Errorf("supersede spec (%q): %w", oldSlug, storage.ErrSameSlugs)
 	}
 	// Pre-validate: check old spec exists and new spec exists.
 	oldCheck, err := s.GetSpec(ctx, oldSlug)

@@ -17,6 +17,7 @@ var (
 	ErrNewSpecNotFound        = errors.New("replacement spec not found")
 	ErrConcurrentModification = errors.New("concurrent modification detected — retry the operation")
 	ErrInvalidReEntryStage    = errors.New("re-entry stage is not allowed for this operation")
+	ErrSameSlugs              = errors.New("old and new slugs must differ")
 )
 
 // DriftType identifies the category of drift detected.
