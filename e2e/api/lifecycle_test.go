@@ -252,6 +252,18 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(resp.Msg.Report.Acknowledged).To(BeTrue())
 			Expect(resp.Msg.Report.AcknowledgeNote).To(Equal("Reviewed upstream change, no action needed"))
 		})
+
+		It("CheckDrift returns acknowledged state after AcknowledgeDrift", func() {
+			resp, err := lifecycleClient.CheckDrift(ctx, connect.NewRequest(&specv1.DriftCheckRequest{
+				Slug: downstreamSlug,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Msg.Reports).NotTo(BeEmpty())
+			report := resp.Msg.Reports[0]
+			Expect(report.SpecSlug).To(Equal(downstreamSlug))
+			Expect(report.Acknowledged).To(BeTrue(), "CheckDrift should reflect acknowledged state set by AcknowledgeDrift")
+			Expect(report.AcknowledgeNote).To(Equal("Reviewed upstream change, no action needed"))
+		})
 	})
 
 	Describe("Lint", Ordered, func() {
