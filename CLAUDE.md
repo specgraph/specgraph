@@ -52,7 +52,7 @@ task build          # Generate proto + build binary
 |-----------|----------|
 | `cmd/specgraph/` | CLI entry point |
 | `proto/specgraph/v1/` | Protobuf service definitions (source of truth) |
-| `gen/specgraph/v1/` | Generated Go code from proto (gitignored, run `task proto`) |
+| `gen/specgraph/v1/` | Generated Go code from proto (committed; regenerate with `task proto`) |
 | `internal/server/` | ConnectRPC handlers + proto↔domain converters |
 | `internal/storage/` | Storage interfaces (domain types, not protobuf) |
 | `internal/storage/memgraph/` | Memgraph implementation (Cypher queries, testcontainers) |
@@ -62,11 +62,11 @@ task build          # Generate proto + build binary
 
 ## Gotchas
 
-- **`gen/` is gitignored** — run `task proto` (or `task build`, which depends on it) after clone. Proto sources are in `proto/`, not `gen/`.
+- **`gen/` is committed** — generated proto code is checked in for Go module compatibility. Run `task proto:check` to verify staleness. Proto sources are in `proto/`, not `gen/`.
 - **`task proto` is incremental** — fingerprints `.proto` files and skips if unchanged
 - **Memgraph integration tests require Docker** — `internal/storage/memgraph/` uses testcontainers
 - **Lefthook pre-commit hooks**: license headers (addlicense), golangci-lint, yamlfmt, dprint, rumdl, cog (conventional commits). All run in parallel.
-- **Claude Code hooks**: `task fmt` runs after Edit/Write, `task lint` runs after Bash, edits to `gen/` are blocked via PreToolUse
+- **Claude Code hooks**: `task fmt` runs after Edit/Write, `task lint` runs after Bash, edits to `gen/` are blocked via PreToolUse (edit `.proto` sources instead)
 - **ConnectRPC, not plain gRPC** — handlers are in `internal/server/`, proto services generate both `.pb.go` and `.connect.go` files
 - **Storage interfaces in `internal/storage/`** — implementations are in subdirectories (currently only `memgraph/`). The interfaces use domain types, not protobuf types.
 - **License headers required** — all `.go`, `.sh`, `.py`, `.proto` files need SPDX headers. Run `task license:add` to fix.

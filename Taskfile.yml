@@ -28,6 +28,11 @@ tasks:
       - gen/**/*.go
     cmds:
       - buf generate
+  proto:check:
+    desc: Verify generated proto code is up to date
+    cmds:
+      - buf generate
+      - git diff --exit-code gen/
   # Building
   build:
     desc: Build the specgraph binary
