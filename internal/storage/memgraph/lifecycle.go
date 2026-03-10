@@ -274,6 +274,9 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 			if errors.Is(newErr, storage.ErrSpecNotFound) {
 				return nil, nil, fmt.Errorf("supersede spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
 			}
+			if errors.Is(newErr, storage.ErrSpecTerminal) {
+				return nil, nil, fmt.Errorf("supersede spec: new spec %q is in a terminal state: %w", newSlug, storage.ErrSpecTerminal)
+			}
 			if errors.Is(oldErr, storage.ErrConcurrentModification) {
 				// Both specs have precondition issues; prefer the new-spec
 				// error but include old-spec context for diagnostics.
