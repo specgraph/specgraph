@@ -134,11 +134,11 @@ func driftScopeToProto(s string) (specv1.DriftScope, error) {
 }
 
 func runDrift(_ *cobra.Command, args []string) error {
-	client, err := lifecycleClient()
+	scope, err := driftScopeToProto(driftScope)
 	if err != nil {
 		return err
 	}
-	scope, err := driftScopeToProto(driftScope)
+	client, err := lifecycleClient()
 	if err != nil {
 		return err
 	}

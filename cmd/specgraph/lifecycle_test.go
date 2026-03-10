@@ -82,6 +82,16 @@ func TestRunDrift_ClientError(t *testing.T) {
 	require.Error(t, err)
 }
 
+
+func TestRunDrift_InvalidScope(t *testing.T) {
+	old := driftScope
+	driftScope = "bogus"
+	t.Cleanup(func() { driftScope = old })
+	err := runDrift(nil, []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid scope")
+}
+
 func TestRunDriftAck_ClientError(t *testing.T) {
 	setMissingConfig(t)
 	err := runDriftAck(nil, []string{"my-spec"})
