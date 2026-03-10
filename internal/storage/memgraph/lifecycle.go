@@ -87,7 +87,7 @@ func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChe
 	// a true concurrent modification. Log to surface such cases.
 	slog.Warn("preconditionError: unexplained guard failure, returning ErrConcurrentModification",
 		slog.String("op", op), slog.String("slug", slug),
-		slog.String("stage", string(current.Stage)), slog.Int("version", current.Version))
+		slog.String("stage", string(current.Stage)), slog.Int("version", int(current.Version)))
 	return fmt.Errorf("%s %q: %w", op, slug, storage.ErrConcurrentModification)
 }
 
@@ -301,6 +301,8 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 					return nil, nil, fmt.Errorf("supersede spec: new spec %q is in a terminal state: %w", newSlug, storage.ErrNewSpecTerminal)
 				}
 				// Both specs had concurrent modifications — surface both errors.
+				// Go 1.20+ fmt.Errorf with two %w creates a multi-error (errors.Join
+				// semantics). errors.Is checks match either wrapped error.
 				return nil, nil, fmt.Errorf("supersede spec: new %q: %w (old %q also had precondition error: %w)", newSlug, newErr, oldSlug, oldErr)
 			}
 		}
