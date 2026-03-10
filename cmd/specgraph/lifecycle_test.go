@@ -136,17 +136,8 @@ func TestRunDriftAck_ItemsStale_ExitsWithCode2(t *testing.T) {
 	cfgFile = cfgPath
 	t.Cleanup(func() { cfgFile = old })
 
-	// Capture exitFunc calls.
-	var exitCode int
-	exitCalled := false
-	oldExit := exitFunc
-	exitFunc = func(code int) { exitCode = code; exitCalled = true }
-	t.Cleanup(func() { exitFunc = oldExit })
-
 	err := runDriftAck(nil, []string{"stale-spec"})
-	require.NoError(t, err)
-	assert.True(t, exitCalled, "expected exitFunc to be called")
-	assert.Equal(t, 2, exitCode, "expected exit code 2 for stale items")
+	require.ErrorIs(t, err, errDriftItemsStale)
 }
 
 func TestRunLint_ClientError(t *testing.T) {

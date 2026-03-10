@@ -506,6 +506,22 @@ func TestLifecycleHandler_Supersede_NewSpecNotFound(t *testing.T) {
 	require.Equal(t, connect.CodeNotFound, connErr.Code())
 }
 
+func TestLifecycleHandler_Supersede_NewSpecTerminal(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+		return nil, nil, storage.ErrNewSpecTerminal
+	}
+	client := newLifecycleClient(t, deps)
+	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
+		Slug:    "old-spec",
+		NewSlug: "abandoned-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+}
+
 func TestLifecycleHandler_Lint(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.linter.lint = func(_ context.Context, slug string) ([]storage.LintResult, error) {

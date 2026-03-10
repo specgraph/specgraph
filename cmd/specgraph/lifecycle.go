@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -13,6 +14,11 @@ import (
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/spf13/cobra"
 )
+
+// errDriftItemsStale is returned when AcknowledgeDrift succeeds but the
+// server reports that drift items may be stale (re-check failed after
+// acknowledgment). Callers should treat this as a warning-level exit.
+var errDriftItemsStale = errors.New("drift items are stale: re-check failed after acknowledgment")
 
 func lifecycleClient() (specgraphv1connect.LifecycleServiceClient, error) {
 	return newClient(specgraphv1connect.NewLifecycleServiceClient)
@@ -200,8 +206,7 @@ func runDriftAck(_ *cobra.Command, args []string) error {
 	fmt.Printf("Acknowledged drift for: %s\n", r.GetSpecSlug())
 	if r.GetItemsStale() {
 		fmt.Fprintf(os.Stderr, "Warning: drift items may be stale (re-check failed after acknowledgment)\n")
-		exitFunc(2)
-		return nil
+		return errDriftItemsStale
 	}
 	return nil
 }

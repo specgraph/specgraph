@@ -118,7 +118,6 @@ type LintResult struct {
 	Violations []LintViolation
 	Passed     bool
 	Error      string // non-empty when linting failed for this spec (for proto)
-	Err        error  // typed error for programmatic callers; nil when Error is empty
 }
 
 // LifecycleBackend defines storage operations for spec lifecycle transitions.

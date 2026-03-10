@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/seanb4t/specgraph/internal/storage"
 )
@@ -80,6 +81,13 @@ func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChe
 			return err
 		}
 	}
+	// Catch-all: the atomic WHERE guard returned 0 rows but the spec exists,
+	// is not terminal, and no extra-check explains the failure. This may
+	// indicate a Cypher engine bug or unexpected query behavior rather than
+	// a true concurrent modification. Log to surface such cases.
+	slog.Warn("preconditionError: unexplained guard failure, returning ErrConcurrentModification",
+		slog.String("op", op), slog.String("slug", slug),
+		slog.String("stage", string(current.Stage)), slog.Int("version", current.Version))
 	return fmt.Errorf("%s %q: %w", op, slug, storage.ErrConcurrentModification)
 }
 
