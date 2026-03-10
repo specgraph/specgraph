@@ -67,7 +67,10 @@ func marshalHistory(entries []storage.HistoryEntry) (string, error) {
 func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChecks func(*storage.Spec) error) error {
 	current, err := s.GetSpec(ctx, slug)
 	if err != nil {
-		return fmt.Errorf("%s %q: atomic guard failed and precondition re-read also failed: %w", op, slug, err)
+		// Guard failure indicates concurrent modification. If re-read also
+		// fails, wrap ErrConcurrentModification so the handler maps to
+		// CodeAborted (retryable) rather than CodeInternal.
+		return fmt.Errorf("%s %q: %w (re-read failed: %w)", op, slug, storage.ErrConcurrentModification, err)
 	}
 	if terminalStages[current.Stage] {
 		return fmt.Errorf("%s %q (stage=%s): %w", op, slug, current.Stage, storage.ErrSpecTerminal)
