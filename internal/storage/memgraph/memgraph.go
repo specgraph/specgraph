@@ -283,6 +283,11 @@ func newID(prefix string) string {
 // Unlike time.RFC3339Nano (which trims trailing fractional zeros), this format
 // ensures lexicographic string ordering matches chronological ordering — critical
 // for Cypher ORDER BY and timestamp comparison operators on string-typed fields.
+//
+// Migration note: This replaces the previous time.RFC3339 format used for all
+// timestamp fields. Existing Memgraph nodes may have timestamps in the old format
+// (without nanoseconds). Both formats are ISO 8601 prefix-sortable, so mixed-format
+// ORDER BY queries produce correct results. Reads fall back via parseRFC3339.
 const sortableRFC3339Nano = "2006-01-02T15:04:05.000000000Z07:00"
 
 // nowTime returns the current UTC time from the Store's clock.
