@@ -226,6 +226,11 @@ func TestCheckDrift_DependencyDrift(t *testing.T) {
 	_, err = store.AddEdge(ctx, "downstream-spec", "upstream-spec", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
 
+	// Advance downstream-spec to "done" so it is eligible for drift checking.
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "downstream-spec", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+
 	// Advance the clock so the upstream update gets a strictly newer timestamp
 	// than the downstream spec's created_at / updated_at.
 	advance(2 * time.Second)
