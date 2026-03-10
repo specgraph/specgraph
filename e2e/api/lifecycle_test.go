@@ -377,6 +377,39 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
 		})
 
+
+		It("rejects amend on a superseded (terminal) spec with FailedPrecondition", func() {
+			baseSlug := "lifecycle-err-amend-terminal-" + time.Now().Format("150405")
+			newSlug := baseSlug + "-v2"
+
+			// Create two specs: the original and the replacement.
+			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   baseSlug,
+				Intent: "Original spec",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			_, err = specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   newSlug,
+				Intent: "Replacement spec",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			// Supersede the original spec (makes it terminal).
+			_, err = lifecycleClient.TransitionSupersede(ctx, connect.NewRequest(&specv1.TransitionSupersedeRequest{
+				Slug:    baseSlug,
+				NewSlug: newSlug,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			// Attempt to amend the superseded spec — should fail.
+			_, err = lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
+				Slug:   baseSlug,
+				Reason: "should fail on terminal spec",
+			}))
+			Expect(err).To(HaveOccurred())
+			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
+		})
+
 		It("rejects supersede with nonexistent new spec with NotFound", func() {
 			errSlug := "lifecycle-err-supersede-" + time.Now().Format("150405")
 			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
