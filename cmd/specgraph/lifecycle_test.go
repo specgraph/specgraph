@@ -350,8 +350,9 @@ func (fakeDriftItemsHandler) CheckDrift(_ context.Context, _ *connect.Request[sp
 	}), nil
 }
 
-func TestRunDrift_HappyPath_WithItems(t *testing.T) {
+func TestRunDrift_WithItemsAndErrors(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftItemsHandler{})
 	err := runDrift(nil, nil)
-	require.NoError(t, err)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "drift check completed with errors")
 }

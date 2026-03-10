@@ -163,6 +163,7 @@ func runDrift(_ *cobra.Command, args []string) error {
 		fmt.Println("No drift detected.")
 		return nil
 	}
+	var hasErrors bool
 	for _, r := range reports {
 		ack := ""
 		if r.GetAcknowledged() {
@@ -173,8 +174,12 @@ func runDrift(_ *cobra.Command, args []string) error {
 			fmt.Printf("  [%s] %s: %s\n", item.GetSeverity(), item.GetType(), item.GetDescription())
 		}
 		if r.GetErrorMessage() != "" {
-			fmt.Printf("  [error] %s\n", r.GetErrorMessage())
+			fmt.Fprintf(os.Stderr, "  [error] %s\n", r.GetErrorMessage())
+			hasErrors = true
 		}
+	}
+	if hasErrors {
+		return fmt.Errorf("drift check completed with errors")
 	}
 	return nil
 }

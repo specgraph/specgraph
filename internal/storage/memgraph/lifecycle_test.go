@@ -50,6 +50,12 @@ func TestAmendSpec_HappyPath(t *testing.T) {
 	require.Equal(t, int32(3), amended.Version) // create=1, update=2, amend=3
 	require.NotEmpty(t, amended.History)
 	require.Equal(t, "Mobile needs offline refresh", amended.History[len(amended.History)-1].Reason)
+
+	// Verify re-entry stage was persisted to Memgraph, not just returned in-memory.
+	fetched, err := store.GetSpec(ctx, "amend-me")
+	require.NoError(t, err)
+	require.Equal(t, storage.SpecStage("shape"), fetched.Stage)
+	require.Equal(t, int32(3), fetched.Version)
 }
 
 func TestAmendSpec_NotDone(t *testing.T) {
