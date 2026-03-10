@@ -5,7 +5,6 @@ package server
 
 import (
 	"fmt"
-	"log/slog"
 	"time"
 
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"

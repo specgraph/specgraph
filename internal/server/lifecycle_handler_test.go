@@ -333,6 +333,32 @@ func TestLifecycleHandler_CheckDrift_MergesAcknowledgmentState(t *testing.T) {
 	require.Equal(t, "some note", resp.Msg.Reports[0].AcknowledgeNote)
 }
 
+func TestLifecycleHandler_CheckDrift_SynthesizedEmptyReportMergesAck(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
+		return &storage.Spec{
+			Slug:                 slug,
+			Stage:                storage.SpecStageDone,
+			DriftAcknowledged:    true,
+			DriftAcknowledgeNote: "intentional divergence",
+		}, nil
+	}
+	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+		return nil, nil // Empty reports — clean spec, triggers synthesized report.
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
+		Slug: "my-spec",
+	}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Reports, 1)
+	require.Equal(t, "my-spec", resp.Msg.Reports[0].SpecSlug)
+	require.True(t, resp.Msg.Reports[0].Acknowledged)
+	require.Equal(t, "intentional divergence", resp.Msg.Reports[0].AcknowledgeNote)
+	require.Empty(t, resp.Msg.Reports[0].Items)
+}
+
 func TestLifecycleHandler_CheckDrift_GetSpecErrorReturnsUnavailable(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.getSpec = func(_ context.Context, _ string) (*storage.Spec, error) {
@@ -1140,7 +1166,6 @@ func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyReports(t *testing.T) {
 	}
 	deps.store.batchGetSpecs = func(_ context.Context, slugs []string) (map[string]*storage.Spec, error) {
 		batchCalled = true
-		require.Empty(t, slugs)
 		return map[string]*storage.Spec{}, nil
 	}
 	client := newLifecycleClient(t, deps)
@@ -1148,5 +1173,5 @@ func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyReports(t *testing.T) {
 	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{}))
 	require.NoError(t, err)
 	require.Empty(t, resp.Msg.Reports)
-	require.True(t, batchCalled, "BatchGetSpecs should be called even with empty reports")
+	require.False(t, batchCalled, "BatchGetSpecs should NOT be called with empty slug list")
 }

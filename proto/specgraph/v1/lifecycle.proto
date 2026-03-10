@@ -60,6 +60,10 @@ message DriftItem {
   int32 actual_version = 7;
 }
 
+// DriftReport contains drift detection results for a single spec.
+// An empty items list (items=[]) means the spec was checked and no drift was
+// found — it does NOT mean the spec was not checked. Ineligible specs cause
+// an RPC error (FAILED_PRECONDITION) rather than an empty report.
 message DriftReport {
   string spec_slug = 1;
   repeated DriftItem items = 2;

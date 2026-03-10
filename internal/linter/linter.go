@@ -22,20 +22,26 @@ const maxSpecsPerLint = 10000
 // Engine provides a storage-backed implementation of server.SpecLinter,
 type Engine struct {
 	backend Backend
+	logger  *slog.Logger
 }
 
 // NewEngine creates a linter engine backed by the given storage.
-func NewEngine(backend Backend) *Engine {
-	return &Engine{backend: backend}
+// If logger is nil, slog.Default() is used.
+func NewEngine(backend Backend, logger ...*slog.Logger) *Engine {
+	l := slog.Default()
+	if len(logger) > 0 && logger[0] != nil {
+		l = logger[0]
+	}
+	return &Engine{backend: backend, logger: l}
 }
 
 // Lint validates one or all specs, returning lint results for each.
 func (e *Engine) Lint(ctx context.Context, slug string) ([]storage.LintResult, error) {
-	return lint(ctx, e.backend, slug)
+	return lint(ctx, e.backend, e.logger, slug)
 }
 
 // lint validates one or all specs. When slug is empty, all specs are linted.
-func lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResult, error) {
+func lint(ctx context.Context, backend Backend, logger *slog.Logger, slug string) ([]storage.LintResult, error) {
 	var specs []*storage.Spec
 
 	if slug == "" {
@@ -56,7 +62,7 @@ func lint(ctx context.Context, backend Backend, slug string) ([]storage.LintResu
 	for _, spec := range specs {
 		result, err := lintSpec(ctx, backend, spec)
 		if err != nil {
-			slog.ErrorContext(ctx, "linter: internal error",
+			logger.ErrorContext(ctx, "linter: internal error",
 				slog.String("spec_slug", spec.Slug),
 				slog.Any("error", err))
 			results = append(results, storage.LintResult{

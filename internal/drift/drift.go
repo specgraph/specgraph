@@ -141,6 +141,11 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 
 // sanitizeDriftError maps known error types to safe client-facing messages.
 // Unknown errors get a generic message; the real error is already logged.
+// sanitizeDriftError maps internal errors to safe user-facing messages.
+// Note: the ErrSpecIneligibleForDrift branch is currently unreachable because
+// Check() returns that error at the top level (before checkSpec is called), so
+// it never propagates through the per-spec error recovery path. The branch is
+// kept as a defensive guard for future refactoring.
 func sanitizeDriftError(err error) string {
 	if errors.Is(err, storage.ErrSpecNotFound) {
 		return "dependency not found"

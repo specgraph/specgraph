@@ -186,19 +186,21 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 				slugs = append(slugs, r.SpecSlug)
 			}
 		}
-		specMap, batchErr := h.ackReader.BatchGetSpecs(ctx, slugs)
-		if batchErr != nil {
-			return nil, connect.NewError(connect.CodeUnavailable,
-				fmt.Errorf("CheckDrift: batch fetch for ack merge failed: %w", batchErr))
-		}
-		for i := range reports {
-			if spec, ok := specMap[reports[i].SpecSlug]; ok {
-				reports[i].Acknowledged = spec.DriftAcknowledged
-				reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
-			} else {
-				h.logger.Error("CheckDrift: spec missing from batch result, setting AckStateUnavailable",
-					slog.String("slug", reports[i].SpecSlug))
-				reports[i].AckStateUnavailable = true
+		if len(slugs) > 0 {
+			specMap, batchErr := h.ackReader.BatchGetSpecs(ctx, slugs)
+			if batchErr != nil {
+				return nil, connect.NewError(connect.CodeUnavailable,
+					fmt.Errorf("CheckDrift: batch fetch for ack merge failed: %w", batchErr))
+			}
+			for i := range reports {
+				if spec, ok := specMap[reports[i].SpecSlug]; ok {
+					reports[i].Acknowledged = spec.DriftAcknowledged
+					reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
+				} else {
+					h.logger.Warn("CheckDrift: spec missing from batch result, setting AckStateUnavailable",
+						slog.String("slug", reports[i].SpecSlug))
+					reports[i].AckStateUnavailable = true
+				}
 			}
 		}
 	}
@@ -289,8 +291,12 @@ func (h *LifecycleHandler) Lint(ctx context.Context, req *connect.Request[specv1
 	if err != nil {
 		return nil, h.lifecycleError("Lint", msg.Slug, err)
 	}
+	protoResults, err := lintResultsToProto(results)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
 	return connect.NewResponse(&specv1.LintResponse{
-		Results: lintResultsToProto(results),
+		Results: protoResults,
 	}), nil
 }
 

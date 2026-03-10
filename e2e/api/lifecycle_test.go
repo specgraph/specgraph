@@ -19,8 +19,10 @@ import (
 )
 
 // timestampSkew is the minimum sleep to guarantee Memgraph datetime ordering.
-// Memgraph stores datetime at second precision; sleep >1s ensures updated_at differs.
-const timestampSkew = 1100 * time.Millisecond
+// Memgraph stores datetime at second precision; sleep >1s ensures updated_at
+// differs. Using 1200ms (not 1100ms) to reduce flakiness on slow CI environments
+// where write latency can push the timestamp into the same second window.
+const timestampSkew = 1200 * time.Millisecond
 
 var _ = Describe("Lifecycle", Ordered, func() {
 	var (

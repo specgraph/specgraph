@@ -335,6 +335,10 @@ func (x *DriftItem) GetActualVersion() int32 {
 	return 0
 }
 
+// DriftReport contains drift detection results for a single spec.
+// An empty items list (items=[]) means the spec was checked and no drift was
+// found — it does NOT mean the spec was not checked. Ineligible specs cause
+// an RPC error (FAILED_PRECONDITION) rather than an empty report.
 type DriftReport struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	SpecSlug        string                 `protobuf:"bytes,1,opt,name=spec_slug,json=specSlug,proto3" json:"spec_slug,omitempty"`
