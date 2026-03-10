@@ -84,6 +84,26 @@ func TestSupersedeSpec_HappyPath(t *testing.T) {
 	require.Equal(t, "old-lifecycle", newSpec.Supersedes)
 }
 
+
+func TestSupersedeSpec_SupersedesEdgePersists(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "edge-old", "Old spec", "p1", "medium")
+	require.NoError(t, err)
+	_, err = store.CreateSpec(ctx, "edge-new", "New spec", "p1", "medium")
+	require.NoError(t, err)
+
+	_, _, err = store.LifecycleSupersedeSpec(ctx, "edge-old", "edge-new")
+	require.NoError(t, err)
+
+	// Verify SUPERSEDES edge was written to Memgraph.
+	edges, err := store.ListEdges(ctx, "edge-new", storage.EdgeTypeSupersedes)
+	require.NoError(t, err)
+	require.Len(t, edges, 1, "expected one SUPERSEDES edge from new to old")
+	assert.Equal(t, "edge-new", edges[0].FromID)
+	assert.Equal(t, "edge-old", edges[0].ToID)
+}
+
 func TestSupersedeSpec_OldNotFound(t *testing.T) {
 	store, ctx := newTestStore(t)
 
