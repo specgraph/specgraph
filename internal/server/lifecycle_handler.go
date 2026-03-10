@@ -58,7 +58,7 @@ func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Req
 
 	spec, err := h.store.LifecycleAmendSpec(ctx, msg.Slug, msg.Reason, msg.ReEntryStage)
 	if err != nil {
-		return nil, h.lifecycleError("TransitionAmend", err)
+		return nil, h.lifecycleError("TransitionAmend", msg.Slug, err)
 	}
 	pb, err := specToProto(spec)
 	if err != nil {
@@ -82,7 +82,7 @@ func (h *LifecycleHandler) TransitionSupersede(ctx context.Context, req *connect
 
 	oldSpec, newSpec, err := h.store.LifecycleSupersedeSpec(ctx, msg.Slug, msg.NewSlug)
 	if err != nil {
-		return nil, h.lifecycleError("TransitionSupersede", err)
+		return nil, h.lifecycleError("TransitionSupersede", msg.Slug, err)
 	}
 	oldPb, err := specToProto(oldSpec)
 	if err != nil {
@@ -110,7 +110,7 @@ func (h *LifecycleHandler) TransitionAbandon(ctx context.Context, req *connect.R
 
 	spec, err := h.store.LifecycleAbandonSpec(ctx, msg.Slug, msg.Reason)
 	if err != nil {
-		return nil, h.lifecycleError("TransitionAbandon", err)
+		return nil, h.lifecycleError("TransitionAbandon", msg.Slug, err)
 	}
 	pb, err := specToProto(spec)
 	if err != nil {
@@ -143,7 +143,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 			slog.String("slug", msg.Slug),
 			slog.String("scope", scopeStr),
 			slog.Any("error", err))
-		return nil, h.lifecycleError("CheckDrift", err)
+		return nil, h.lifecycleError("CheckDrift", msg.Slug, err)
 	}
 
 	// Merge persisted acknowledgment state into drift reports.
@@ -223,7 +223,7 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	// WHERE clause (ErrSpecIneligibleStage → CodeFailedPrecondition).
 	report, err := h.store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.Note)
 	if err != nil {
-		return nil, h.lifecycleError("AcknowledgeDrift", err)
+		return nil, h.lifecycleError("AcknowledgeDrift", msg.Slug, err)
 	}
 
 	// Re-run drift detection to populate real drift items in the response.
@@ -270,7 +270,7 @@ func (h *LifecycleHandler) Lint(ctx context.Context, req *connect.Request[specv1
 	}
 	results, err := h.linter.Lint(ctx, msg.Slug)
 	if err != nil {
-		return nil, h.lifecycleError("Lint", err)
+		return nil, h.lifecycleError("Lint", msg.Slug, err)
 	}
 	pbResults, err := lintResultsToProto(results)
 	if err != nil {
@@ -281,26 +281,36 @@ func (h *LifecycleHandler) Lint(ctx context.Context, req *connect.Request[specv1
 	}), nil
 }
 
+// specMsg returns a slug-qualified message when slug is non-empty, or a plain
+// "spec <base>" message when slug is empty (e.g. all-specs operations).
+func specMsg(slug, base string) string {
+	if slug != "" {
+		return fmt.Sprintf("spec %q %s", slug, base)
+	}
+	return "spec " + base
+}
+
 // lifecycleError maps storage errors to connect error codes.
-func (h *LifecycleHandler) lifecycleError(op string, err error) error {
+// slug is the client-provided spec identifier (safe to echo in error messages).
+func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 	var connErr *connect.Error
 	if errors.As(err, &connErr) {
 		return connErr
 	}
 	if errors.Is(err, storage.ErrSpecNotFound) {
-		return connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
+		return connect.NewError(connect.CodeNotFound, errors.New(specMsg(slug, "not found")))
 	}
 	if errors.Is(err, storage.ErrSpecNotDone) {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec must be in done stage"))
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "must be in done stage")))
 	}
 	if errors.Is(err, storage.ErrSpecIneligibleStage) {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec is not in an eligible stage for this operation"))
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is not in an eligible stage for this operation")))
 	}
 	if errors.Is(err, storage.ErrSpecTerminal) {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec is in a terminal state"))
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is in a terminal state")))
 	}
 	if errors.Is(err, storage.ErrSpecIneligibleForDrift) {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec is not eligible for drift checking (must be done or amended)"))
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is not eligible for drift checking (must be done or amended)")))
 	}
 	if errors.Is(err, storage.ErrNewSpecNotFound) {
 		return connect.NewError(connect.CodeNotFound, errors.New("replacement spec not found"))
@@ -311,7 +321,7 @@ func (h *LifecycleHandler) lifecycleError(op string, err error) error {
 	if errors.Is(err, storage.ErrInvalidReEntryStage) {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("re-entry stage is not allowed"))
 	}
-	h.logger.Error("lifecycleError: internal error", slog.String("op", op), slog.Any("error", err))
+	h.logger.Error("lifecycleError: internal error", slog.String("op", op), slog.String("slug", slug), slog.Any("error", err))
 	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 }
 
