@@ -201,6 +201,7 @@ func runDriftAck(_ *cobra.Command, args []string) error {
 	if r.GetItemsStale() {
 		fmt.Fprintf(os.Stderr, "Warning: drift items may be stale (re-check failed after acknowledgment)\n")
 		exitFunc(2)
+		return nil
 	}
 	return nil
 }
