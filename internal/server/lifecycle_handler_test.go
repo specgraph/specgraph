@@ -155,6 +155,29 @@ func TestLifecycleHandler_Amend(t *testing.T) {
 	require.Equal(t, "needs rework", s.GetHistory()[0].GetReason())
 }
 
+func TestLifecycleHandler_Amend_UnknownLifecycleReturnsInternal(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.amendSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
+		return &storage.Spec{
+			Slug:      "my-spec",
+			Stage:     storage.SpecStageAmended,
+			Lifecycle: storage.SpecLifecycle("bogus"),
+			Version:   2,
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
+		Slug:         "my-spec",
+		Reason:       "rework",
+		ReEntryStage: "shape",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
 func TestLifecycleHandler_Amend_NotFound(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.amendSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
@@ -419,6 +442,21 @@ func TestLifecycleHandler_CheckDrift_BatchGetSpecsErrorReturnsUnavailable(t *tes
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeUnavailable, connErr.Code())
+}
+
+func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyResult(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
+		require.Empty(t, slug, "empty slug means check all specs")
+		return nil, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
+		Slug: "",
+	}))
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.Reports)
 }
 
 func TestLifecycleHandler_CheckDrift_AllSpecs_MissingSpecInBatch(t *testing.T) {

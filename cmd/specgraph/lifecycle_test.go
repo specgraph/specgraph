@@ -403,6 +403,30 @@ func TestRunDrift_CleanReport_NoDrift(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// --- runDrift error-only report (spgr-jqc.5) ---
+
+type fakeDriftErrorOnlyHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeDriftErrorOnlyHandler) CheckDrift(_ context.Context, _ *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
+	return connect.NewResponse(&specv1.DriftCheckResponse{
+		Reports: []*specv1.DriftReport{
+			{
+				SpecSlug:     "infra-fail-spec",
+				ErrorMessage: "database timeout during drift check",
+			},
+		},
+	}), nil
+}
+
+func TestRunDrift_ErrorOnlyReport(t *testing.T) {
+	startFakeLifecycleServer(t, fakeDriftErrorOnlyHandler{})
+	err := runDrift(nil, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "drift check completed with errors")
+}
+
 // --- runDrift with slug (spgr-d1b.17) ---
 
 type fakeDriftSlugCapture struct {

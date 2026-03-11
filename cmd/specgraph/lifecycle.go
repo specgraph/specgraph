@@ -5,7 +5,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 
@@ -15,10 +14,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// exitError is returned from RunE when the command should exit with a specific
+// code without Cobra printing the error (SilenceErrors is set on rootCmd).
+// The warning/message is printed by the command itself before returning.
+type exitError struct {
+	code int
+	msg  string
+}
+
+func (e *exitError) Error() string { return e.msg }
+
 // errDriftItemsStale is returned when AcknowledgeDrift succeeds but the
 // server reports that drift items may be stale (re-check failed after
-// acknowledgment). Callers should treat this as a warning-level exit.
-var errDriftItemsStale = errors.New("drift items are stale: re-check failed after acknowledgment")
+// acknowledgment). Exits with code 2; the warning is printed before returning.
+var errDriftItemsStale = &exitError{code: 2, msg: "drift items are stale: re-check failed after acknowledgment"}
 
 func lifecycleClient() (specgraphv1connect.LifecycleServiceClient, error) {
 	return newClient(specgraphv1connect.NewLifecycleServiceClient)

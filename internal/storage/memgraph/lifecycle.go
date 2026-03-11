@@ -81,8 +81,10 @@ func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChe
 		}
 	}
 	// Catch-all: the atomic WHERE guard returned 0 rows but the spec exists,
-	// is not terminal, and no extra-check explains the failure. Return a
-	// diagnostic-rich error so the handler layer can log it with request context.
+	// is not terminal, and no extra-check explains the failure. This branch
+	// is only reachable through Cypher bugs or unexpected Memgraph behavior
+	// (version guard should always catch concurrent modifications). Kept as
+	// defense-in-depth; exercised only at the integration level.
 	return fmt.Errorf("%s %q (stage=%s, version=%d): unexplained guard failure: %w",
 		op, slug, current.Stage, current.Version, storage.ErrConcurrentModification)
 }
