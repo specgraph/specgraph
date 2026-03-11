@@ -185,6 +185,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		if len(slugs) > 0 {
 			specMap, batchErr := h.ackReader.BatchGetSpecs(ctx, slugs)
 			if batchErr != nil {
+				h.logger.Error("CheckDrift: batch fetch for ack merge failed", slog.Any("error", batchErr))
 				return nil, connect.NewError(connect.CodeUnavailable,
 					fmt.Errorf("CheckDrift: batch fetch for ack merge failed: %w", batchErr))
 			}
