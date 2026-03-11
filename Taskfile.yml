@@ -34,13 +34,8 @@ tasks:
       - |
         tmpdir=$(mktemp -d)
         trap 'rm -rf "$tmpdir"' EXIT
-        cp -r gen/ "$tmpdir/gen-before"
-        buf generate
-        diff -rq gen/ "$tmpdir/gen-before" > /dev/null 2>&1
-        status=$?
-        rm -rf gen/
-        cp -r "$tmpdir/gen-before" gen/
-        exit $status
+        buf generate -o "$tmpdir"
+        diff -rq gen/ "$tmpdir/gen" > /dev/null 2>&1
   # Building
   build:
     desc: Build the specgraph binary

@@ -115,12 +115,12 @@ func TestRecordToSpecOffset(t *testing.T) {
 			id, slug, intent, stage, priority, complexity,
 			version,  // int64
 			now, now, // created_at, updated_at
-			"incremental", // lifecycle
-			supersededBy,  // superseded_by
-			supersedes,    // supersedes
-			"[]",          // history_json (empty array)
-			false,         // drift_acknowledged
-			nil,           // drift_acknowledge_note
+			"task",       // lifecycle
+			supersededBy, // superseded_by
+			supersedes,   // supersedes
+			"[]",         // history_json (empty array)
+			false,        // drift_acknowledged
+			nil,          // drift_acknowledge_note
 		}
 	}
 
@@ -146,6 +146,29 @@ func TestRecordToSpecOffset(t *testing.T) {
 	assert.Equal(t, storage.SpecStage("spark"), newSpec.Stage)
 	assert.Equal(t, int32(1), newSpec.Version)
 	assert.Equal(t, "old-spec", newSpec.Supersedes)
+}
+
+func TestSortableRFC3339Nano_LexicographicOrdering(t *testing.T) {
+	earlier := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
+	later := time.Date(2026, 3, 10, 12, 0, 1, 0, time.UTC)
+
+	earlierStr := earlier.Format(sortableRFC3339Nano)
+	laterStr := later.Format(sortableRFC3339Nano)
+
+	assert.Less(t, earlierStr, laterStr,
+		"sortableRFC3339Nano strings should sort chronologically")
+
+	// Mixed format: old RFC3339 (no nanos) vs new sortableRFC3339Nano.
+	oldFormatEarlier := earlier.Format(time.RFC3339)
+	assert.Less(t, oldFormatEarlier, laterStr,
+		"old RFC3339 format should still sort before newer sortableRFC3339Nano")
+}
+
+func TestUnmarshalHistory_UnparseableDate(t *testing.T) {
+	raw := `[{"version":1,"stage":"amended","summary":"test","reason":"r","date":"not-a-date"}]`
+	_, err := unmarshalHistory("test-spec", raw)
+	require.Error(t, err, "unparseable date should return error, not silently produce zero timestamp")
+	assert.Contains(t, err.Error(), "parse")
 }
 
 func TestUnmarshalHistory_UnknownStageAccepted(t *testing.T) {

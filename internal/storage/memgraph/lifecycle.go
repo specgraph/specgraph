@@ -433,11 +433,11 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string
 	ackNote, _ := rec.Get("s.drift_acknowledge_note")
 	acknowledged, ok := ack.(bool)
 	if !ok {
-		acknowledged = true // SET s.drift_acknowledged = true always succeeds
+		return nil, fmt.Errorf("memgraph: acknowledge drift %q: unexpected type for drift_acknowledged: %T", slug, ack)
 	}
 	acknowledgeNote, ok := ackNote.(string)
 	if !ok {
-		acknowledgeNote = note // fall back to input if type differs
+		return nil, fmt.Errorf("memgraph: acknowledge drift %q: unexpected type for drift_acknowledge_note: %T", slug, ackNote)
 	}
 	return &storage.DriftReport{
 		SpecSlug:        slug,
