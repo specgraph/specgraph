@@ -232,6 +232,38 @@ func TestCheckDrift_ScopeFilter(t *testing.T) {
 	require.Equal(t, storage.DriftTypeDependency, reports[0].Items[0].Type)
 }
 
+func TestCheckDrift_ScopeVerify(t *testing.T) {
+	now := time.Now()
+	backend := &mockDriftBackend{
+		specs: map[string]*storage.Spec{
+			"downstream": {
+				Slug:      "downstream",
+				Stage:     storage.SpecStageDone,
+				UpdatedAt: now.Add(-time.Hour),
+			},
+			"upstream": {
+				Slug:      "upstream",
+				Stage:     storage.SpecStageDone,
+				UpdatedAt: now,
+			},
+		},
+		deps: map[string][]storage.NodeRef{
+			"downstream": {
+				{Slug: "upstream", Label: storage.NodeLabelSpec},
+			},
+		},
+	}
+
+	engine := drift.NewEngine(backend, nil)
+
+	// scope="verify" → no items but ErrorMessage indicates not yet implemented.
+	reports, err := engine.Check(context.Background(), "downstream", "verify")
+	require.NoError(t, err)
+	require.Len(t, reports, 1)
+	require.Equal(t, "verify drift checking not yet implemented", reports[0].ErrorMessage)
+	require.Empty(t, reports[0].Items)
+}
+
 func TestCheck_InvalidScope(t *testing.T) {
 	backend := &mockDriftBackend{specs: map[string]*storage.Spec{}}
 	engine := drift.NewEngine(backend, nil)

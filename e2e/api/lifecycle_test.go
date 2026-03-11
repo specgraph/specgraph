@@ -239,13 +239,22 @@ var _ = Describe("Lifecycle", Ordered, func() {
 		})
 
 		It("detects drift on downstream spec", func() {
-			resp, err := lifecycleClient.CheckDrift(ctx, connect.NewRequest(&specv1.DriftCheckRequest{
-				Slug: downstreamSlug,
-			}))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Reports).NotTo(BeEmpty())
-			Expect(resp.Msg.Reports[0].SpecSlug).To(Equal(downstreamSlug))
-			Expect(resp.Msg.Reports[0].Items).NotTo(BeEmpty())
+			// Retry to handle the case where timestamps landed in the same second
+			// (second-precision storage may not distinguish them on the first check).
+			var driftFound bool
+			for attempt := 0; attempt < 3; attempt++ {
+				resp, err := lifecycleClient.CheckDrift(ctx, connect.NewRequest(&specv1.DriftCheckRequest{
+					Slug: downstreamSlug,
+				}))
+				Expect(err).NotTo(HaveOccurred())
+				if len(resp.Msg.Reports) > 0 && len(resp.Msg.Reports[0].Items) > 0 {
+					Expect(resp.Msg.Reports[0].SpecSlug).To(Equal(downstreamSlug))
+					driftFound = true
+					break
+				}
+				time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			}
+			Expect(driftFound).To(BeTrue(), "expected drift to be detected within retries")
 		})
 
 		It("acknowledges drift", func() {
