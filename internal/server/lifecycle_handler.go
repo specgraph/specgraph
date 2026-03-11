@@ -351,19 +351,23 @@ func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 }
 
 // RegisterLifecycleService registers the LifecycleService on the given mux.
-func RegisterLifecycleService(mux *http.ServeMux, store storage.LifecycleBackend, ackReader storage.AckStateReader, dc DriftChecker, l SpecLinter) {
+// If logger is nil, slog.Default() is used.
+func RegisterLifecycleService(mux *http.ServeMux, store storage.LifecycleBackend, ackReader storage.AckStateReader, dc DriftChecker, l SpecLinter, logger *slog.Logger) {
 	if store == nil {
 		panic("RegisterLifecycleService: store must not be nil")
 	}
 	if ackReader == nil {
 		panic("RegisterLifecycleService: ackReader must not be nil")
 	}
+	if logger == nil {
+		logger = slog.Default()
+	}
 	handler := &LifecycleHandler{
 		store:        store,
 		ackReader:    ackReader,
 		driftChecker: dc,
 		linter:       l,
-		logger:       slog.Default(),
+		logger:       logger,
 	}
 	path, h := specgraphv1connect.NewLifecycleServiceHandler(handler)
 	mux.Handle(path, h)

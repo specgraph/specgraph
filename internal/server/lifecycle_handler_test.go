@@ -120,7 +120,7 @@ func defaultTestDeps() *lifecycleTestDeps {
 func newLifecycleClient(t *testing.T, deps *lifecycleTestDeps) specgraphv1connect.LifecycleServiceClient {
 	t.Helper()
 	mux := http.NewServeMux()
-	server.RegisterLifecycleService(mux, deps.store, deps.store, deps.drift, deps.linter)
+	server.RegisterLifecycleService(mux, deps.store, deps.store, deps.drift, deps.linter, nil)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)
@@ -775,7 +775,7 @@ func TestLifecycleHandler_CheckDrift_Error(t *testing.T) {
 func TestLifecycleHandler_CheckDrift_NilChecker(t *testing.T) {
 	deps := defaultTestDeps()
 	mux := http.NewServeMux()
-	server.RegisterLifecycleService(mux, deps.store, deps.store, nil, deps.linter)
+	server.RegisterLifecycleService(mux, deps.store, deps.store, nil, deps.linter, nil)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	client := specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)
@@ -813,7 +813,7 @@ func TestLifecycleHandler_AcknowledgeDrift_NilChecker(t *testing.T) {
 		}, nil
 	}
 	mux := http.NewServeMux()
-	server.RegisterLifecycleService(mux, deps.store, deps.store, nil, deps.linter)
+	server.RegisterLifecycleService(mux, deps.store, deps.store, nil, deps.linter, nil)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	client := specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)
@@ -854,7 +854,7 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckError(t *testing.T) {
 func TestLifecycleHandler_Lint_NilLinter(t *testing.T) {
 	deps := defaultTestDeps()
 	mux := http.NewServeMux()
-	server.RegisterLifecycleService(mux, deps.store, deps.store, deps.drift, nil)
+	server.RegisterLifecycleService(mux, deps.store, deps.store, deps.drift, nil, nil)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	client := specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)

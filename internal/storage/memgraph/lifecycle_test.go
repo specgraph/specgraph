@@ -532,6 +532,46 @@ func TestSupersedeSpec_ConcurrentModificationOnNewSpec(t *testing.T) {
 	require.ErrorIs(t, err, storage.ErrConcurrentModification)
 }
 
+func TestSupersedeSpec_NewSpecConcurrentlyAbandoned(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	// Create old spec at done stage.
+	_, err := store.CreateSpec(ctx, "old-sup-aband", "Old spec", "p1", "medium")
+	require.NoError(t, err)
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "old-sup-aband", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+
+	// Create new spec at done stage, then abandon it to put it in a terminal state.
+	_, err = store.CreateSpec(ctx, "new-sup-aband", "New spec", "p1", "medium")
+	require.NoError(t, err)
+	_, err = store.UpdateSpec(ctx, "new-sup-aband", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+	_, err = store.LifecycleAbandonSpec(ctx, "new-sup-aband", "no longer needed")
+	require.NoError(t, err)
+
+	// Supersede should detect the new spec is in a terminal state.
+	_, _, err = store.LifecycleSupersedeSpec(ctx, "old-sup-aband", "new-sup-aband")
+	require.Error(t, err)
+	require.ErrorIs(t, err, storage.ErrNewSpecTerminal)
+}
+
+func TestSupersedeSpec_NewSpecNotFound(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	// Create old spec at done stage.
+	_, err := store.CreateSpec(ctx, "old-sup-nf", "Old spec", "p1", "medium")
+	require.NoError(t, err)
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "old-sup-nf", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+
+	// Supersede with a non-existent new spec.
+	_, _, err = store.LifecycleSupersedeSpec(ctx, "old-sup-nf", "no-such-spec")
+	require.Error(t, err)
+	require.ErrorIs(t, err, storage.ErrNewSpecNotFound)
+}
+
 func TestCheckDrift_AmendedSpecDrift(t *testing.T) {
 	clock, advance := newTestClock()
 	store, ctx := newTestStore(t, memgraph.WithClock(clock))
