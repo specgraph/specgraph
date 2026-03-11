@@ -308,6 +308,32 @@ func TestRunLint_HappyPath_WithFailures(t *testing.T) {
 	require.Contains(t, err.Error(), "spec(s) failed")
 }
 
+// --- runLint infra-error path (spgr-myz.2) ---
+
+type fakeLintInfraErrHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeLintInfraErrHandler) Lint(_ context.Context, _ *connect.Request[specv1.LintRequest]) (*connect.Response[specv1.LintResponse], error) {
+	return connect.NewResponse(&specv1.LintResponse{
+		Results: []*specv1.LintResult{
+			{SpecSlug: "good-spec", Passed: true},
+			{
+				SpecSlug: "infra-err-spec",
+				Passed:   false,
+				Error:    "storage unavailable",
+			},
+		},
+	}), nil
+}
+
+func TestRunLint_InfraError(t *testing.T) {
+	startFakeLifecycleServer(t, fakeLintInfraErrHandler{})
+	err := runLint(nil, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "infrastructure error")
+}
+
 // --- runDrift happy-path tests (spgr-79b.28) ---
 
 type fakeDriftNoneHandler struct {
