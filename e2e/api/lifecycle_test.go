@@ -136,8 +136,11 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(resp.Msg.OldSpec.Slug).To(Equal(oldSlug))
 			Expect(resp.Msg.OldSpec.Stage).To(Equal("superseded"))
 			Expect(resp.Msg.OldSpec.SupersededBy).To(Equal(newSlug))
+			Expect(resp.Msg.OldSpec.Version).To(BeNumerically(">=", int32(2)), "old spec version should be incremented")
+			Expect(resp.Msg.OldSpec.History).NotTo(BeEmpty(), "old spec should have history entries")
 			Expect(resp.Msg.NewSpec.Slug).To(Equal(newSlug))
 			Expect(resp.Msg.NewSpec.Supersedes).To(Equal(oldSlug))
+			Expect(resp.Msg.NewSpec.Version).To(BeNumerically(">=", int32(1)), "new spec version should be set")
 		})
 
 		It("creates a SUPERSEDES edge from new to old", func() {
@@ -406,6 +409,22 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			_, err = lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
 				Slug:   baseSlug,
 				Reason: "should fail on terminal spec",
+			}))
+			Expect(err).To(HaveOccurred())
+			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
+		})
+
+		It("rejects drift ack on a spark-stage spec with FailedPrecondition", func() {
+			errSlug := "lifecycle-err-driftack-" + time.Now().Format("150405")
+			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   errSlug,
+				Intent: "Test drift ack error path",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = lifecycleClient.AcknowledgeDrift(ctx, connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+				Slug: errSlug,
+				Note: "should fail on spark-stage spec",
 			}))
 			Expect(err).To(HaveOccurred())
 			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))

@@ -376,3 +376,17 @@ func TestRunDrift_HappyPath_WithSlug(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "my-spec", h.capturedSlug)
 }
+
+type fakeLintEmptyHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeLintEmptyHandler) Lint(_ context.Context, _ *connect.Request[specv1.LintRequest]) (*connect.Response[specv1.LintResponse], error) {
+	return connect.NewResponse(&specv1.LintResponse{Results: []*specv1.LintResult{}}), nil
+}
+
+func TestRunLint_EmptyResults(t *testing.T) {
+	startFakeLifecycleServer(t, fakeLintEmptyHandler{})
+	err := runLint(nil, nil)
+	require.NoError(t, err)
+}

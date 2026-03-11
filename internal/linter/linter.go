@@ -53,6 +53,8 @@ func lint(ctx context.Context, backend Backend, logger *slog.Logger, slug string
 	} else {
 		spec, err := backend.GetSpec(ctx, slug)
 		if err != nil {
+			// %w preserves errors.Is traversal; lifecycle handler depends on
+			// errors.Is(err, storage.ErrSpecNotFound) through this chain.
 			return nil, fmt.Errorf("linter: get spec %q: %w", slug, err)
 		}
 		specs = []*storage.Spec{spec}

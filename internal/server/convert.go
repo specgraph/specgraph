@@ -478,6 +478,8 @@ func historyToProto(entries []storage.HistoryEntry) []*specv1.HistoryEntry {
 
 // --- Drift ---
 
+// SYNC: keep in sync with validScopes (internal/driftscope/scope.go)
+// and driftScopeToProtoMap (cmd/specgraph/lifecycle.go).
 var driftScopeFromProtoMap = map[specv1.DriftScope]string{
 	specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED: "", // all scopes when client omits the field
 	specv1.DriftScope_DRIFT_SCOPE_DEPS:        "deps",

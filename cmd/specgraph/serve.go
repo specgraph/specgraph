@@ -92,7 +92,7 @@ func runServe(_ *cobra.Command, _ []string) error {
 		server.RegisterAuthoringService(mux, store, store)
 		server.RegisterExecutionService(mux, store)
 		driftEngine := drift.NewEngine(store, nil)
-		lintEngine := linter.NewEngine(store)
+		lintEngine := linter.NewEngine(store, nil)
 		server.RegisterLifecycleService(mux, store, store, driftEngine, lintEngine)
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}

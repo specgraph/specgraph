@@ -125,6 +125,8 @@ var driftCmd = &cobra.Command{
 
 var driftScope string
 
+// SYNC: keep in sync with validScopes (internal/driftscope/scope.go)
+// and driftScopeFromProtoMap (internal/server/convert.go).
 var driftScopeToProtoMap = map[string]specv1.DriftScope{
 	"":           specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED,
 	"deps":       specv1.DriftScope_DRIFT_SCOPE_DEPS,
@@ -136,7 +138,7 @@ func driftScopeToProto(s string) (specv1.DriftScope, error) {
 	if v, ok := driftScopeToProtoMap[s]; ok {
 		return v, nil
 	}
-	return 0, fmt.Errorf("invalid scope %q (valid: deps, interfaces, verify)", s)
+	return 0, fmt.Errorf("invalid scope %q (valid: unspecified/all, deps, interfaces, verify)", s)
 }
 
 func runDrift(_ *cobra.Command, args []string) error {

@@ -132,7 +132,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 
 	scopeStr, ok := driftScopeFromProto(msg.Scope)
 	if !ok {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scope %q (valid: deps, interfaces, verify)", msg.Scope.String()))
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scope %q (valid: unspecified/all, deps, interfaces, verify)", msg.Scope.String()))
 	}
 
 	if h.driftChecker == nil {
@@ -140,7 +140,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 	}
 	reports, err := h.driftChecker.Check(ctx, msg.Slug, scopeStr)
 	if err != nil {
-		h.logger.Warn("CheckDrift: drift engine error",
+		h.logger.Error("CheckDrift: drift engine error",
 			slog.String("slug", msg.Slug),
 			slog.String("scope", scopeStr),
 			slog.Any("error", err))
@@ -263,6 +263,8 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 			if !found {
 				h.logger.Warn("AcknowledgeDrift: drift re-check returned no report for slug",
 					slog.String("slug", msg.Slug), slog.Int("reports", len(reports)))
+				report.ItemsStale = true
+				report.ErrorMessage = "drift re-check returned no report for this slug"
 			}
 		}
 	}
@@ -355,6 +357,9 @@ func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 func RegisterLifecycleService(mux *http.ServeMux, store storage.LifecycleBackend, ackReader storage.AckStateReader, dc DriftChecker, l SpecLinter) {
 	if store == nil {
 		panic("RegisterLifecycleService: store must not be nil")
+	}
+	if ackReader == nil {
+		panic("RegisterLifecycleService: ackReader must not be nil")
 	}
 	handler := &LifecycleHandler{
 		store:        store,

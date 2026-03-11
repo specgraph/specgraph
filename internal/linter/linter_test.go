@@ -75,7 +75,7 @@ func TestLint_SchemaViolation(t *testing.T) {
 		deps: map[string][]storage.NodeRef{},
 	}
 
-	results, err := linter.NewEngine(backend).Lint(context.Background(), "bad-spec")
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "bad-spec")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.False(t, results[0].Passed)
@@ -107,7 +107,7 @@ func TestLint_DanglingDependency(t *testing.T) {
 		},
 	}
 
-	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-a")
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "spec-a")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.False(t, results[0].Passed)
@@ -144,7 +144,7 @@ func TestLint_CycleDetection(t *testing.T) {
 		},
 	}
 
-	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-a")
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "spec-a")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.False(t, results[0].Passed)
@@ -180,7 +180,7 @@ func TestLint_ValidSpec(t *testing.T) {
 		},
 	}
 
-	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-a")
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "spec-a")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.True(t, results[0].Passed)
@@ -206,7 +206,7 @@ func TestLint_AllSpecs(t *testing.T) {
 		deps: map[string][]storage.NodeRef{},
 	}
 
-	results, err := linter.NewEngine(backend).Lint(context.Background(), "")
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "")
 	require.NoError(t, err)
 	require.Len(t, results, 2)
 
@@ -224,7 +224,7 @@ func TestLint_ListSpecsStorageError(t *testing.T) {
 		listSpecErr: dbErr,
 	}
 
-	_, err := linter.NewEngine(backend).Lint(context.Background(), "")
+	_, err := linter.NewEngine(backend, nil).Lint(context.Background(), "")
 	require.Error(t, err)
 	require.ErrorIs(t, err, dbErr)
 }
@@ -237,7 +237,7 @@ func TestLint_GetSpecStorageError(t *testing.T) {
 		getSpecErr: dbErr,
 	}
 
-	_, err := linter.NewEngine(backend).Lint(context.Background(), "some-spec")
+	_, err := linter.NewEngine(backend, nil).Lint(context.Background(), "some-spec")
 	require.Error(t, err)
 	require.ErrorIs(t, err, dbErr)
 }
@@ -257,7 +257,7 @@ func TestLint_GetDependenciesStorageError(t *testing.T) {
 		getDepsErr: dbErr,
 	}
 
-	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-a")
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "spec-a")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
@@ -289,7 +289,7 @@ func TestLint_GetDependenciesMidTraversalStorageError(t *testing.T) {
 		},
 	}
 
-	results, err := linter.NewEngine(backend).Lint(context.Background(), "root")
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "root")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
@@ -314,7 +314,7 @@ func TestLint_MaxCycleDepthExceeded(t *testing.T) {
 	}
 	backend := &mockLintBackend{specs: specs, deps: deps}
 
-	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-0")
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "spec-0")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	var found bool
@@ -360,7 +360,7 @@ func TestLint_MissingTransitiveDep(t *testing.T) {
 		},
 	}
 
-	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-a")
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "spec-a")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.False(t, results[0].Passed)
@@ -406,7 +406,7 @@ func TestLint_CycleDetection_StorageErrorPropagates(t *testing.T) {
 		},
 	}
 
-	results, err := linter.NewEngine(backend).Lint(context.Background(), "root")
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "root")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
@@ -428,7 +428,7 @@ func TestLint_SelfReferentialCycle(t *testing.T) {
 		},
 	}
 
-	results, err := linter.NewEngine(backend).Lint(context.Background(), "spec-a")
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "spec-a")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.False(t, results[0].Passed)
@@ -446,7 +446,7 @@ func TestLint_SelfReferentialCycle(t *testing.T) {
 
 func TestLint_AllSpecs_PassesMaxSpecsPerLintAsLimit(t *testing.T) {
 	backend := &mockLintBackend{specs: map[string]*storage.Spec{}}
-	engine := linter.NewEngine(backend)
+	engine := linter.NewEngine(backend, nil)
 	_, _ = engine.Lint(context.Background(), "") // all-specs path
 	// maxSpecsPerLint is 10000 (unexported constant in linter.go).
 	require.Equal(t, 10000, backend.listSpecsLastLimit,
@@ -466,7 +466,7 @@ func TestLint_GetSpecErrorForDependency(t *testing.T) {
 		},
 	}
 
-	results, err := linter.NewEngine(backend).Lint(context.Background(), "root")
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "root")
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")

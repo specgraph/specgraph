@@ -7,6 +7,8 @@ package driftscope
 
 // validScopes is the set of recognized drift scope strings.
 // Empty string means "all scopes".
+// SYNC: keep in sync with driftScopeFromProtoMap (internal/server/convert.go)
+// and driftScopeToProtoMap (cmd/specgraph/lifecycle.go).
 var validScopes = map[string]bool{
 	"":           true,
 	"deps":       true,

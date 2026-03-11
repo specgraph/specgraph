@@ -49,7 +49,7 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 	server.RegisterConstitutionService(mux, store)
 	server.RegisterAuthoringService(mux, store, store)
 	driftEngine := drift.NewEngine(store, nil)
-	lintEngine := linter.NewEngine(store)
+	lintEngine := linter.NewEngine(store, nil)
 	server.RegisterLifecycleService(mux, store, store, driftEngine, lintEngine)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

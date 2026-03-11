@@ -1175,3 +1175,31 @@ func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyReports(t *testing.T) {
 	require.Empty(t, resp.Msg.Reports)
 	require.False(t, batchCalled, "BatchGetSpecs should NOT be called with empty slug list")
 }
+
+func TestLifecycleHandler_AcknowledgeDrift_RecheckSlugNotFound(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
+		return &storage.DriftReport{
+			SpecSlug:        slug,
+			Acknowledged:    true,
+			AcknowledgeNote: note,
+		}, nil
+	}
+	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+		// Return reports for a different slug, simulating the found=false branch.
+		return []storage.DriftReport{
+			{SpecSlug: "other-spec", Items: []storage.DriftItem{{Description: "changed"}}},
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug: "my-spec",
+		Note: "intentional divergence",
+	}))
+	require.NoError(t, err)
+	require.True(t, resp.Msg.Report.Acknowledged)
+	require.True(t, resp.Msg.Report.ItemsStale, "items should be stale when slug not found in re-check")
+	require.NotEmpty(t, resp.Msg.Report.ErrorMessage)
+	require.Empty(t, resp.Msg.Report.Items)
+}
