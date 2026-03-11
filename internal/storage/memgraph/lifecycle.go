@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"github.com/seanb4t/specgraph/internal/storage"
 )
@@ -82,13 +81,10 @@ func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChe
 		}
 	}
 	// Catch-all: the atomic WHERE guard returned 0 rows but the spec exists,
-	// is not terminal, and no extra-check explains the failure. This may
-	// indicate a Cypher engine bug or unexpected query behavior rather than
-	// a true concurrent modification. Log to surface such cases.
-	slog.Error("preconditionError: unexplained guard failure, returning ErrConcurrentModification",
-		slog.String("op", op), slog.String("slug", slug),
-		slog.String("stage", string(current.Stage)), slog.Int("version", int(current.Version)))
-	return fmt.Errorf("%s %q: %w", op, slug, storage.ErrConcurrentModification)
+	// is not terminal, and no extra-check explains the failure. Return a
+	// diagnostic-rich error so the handler layer can log it with request context.
+	return fmt.Errorf("%s %q (stage=%s, version=%d): unexplained guard failure: %w",
+		op, slug, current.Stage, current.Version, storage.ErrConcurrentModification)
 }
 
 // amendSummary returns the history summary for an amend operation.
@@ -183,6 +179,10 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 // a SUPERSEDES edge. Both specs are returned with updated fields. Returns
 // ErrSpecNotFound if the old spec doesn't exist, and ErrNewSpecNotFound if the
 // new spec doesn't exist.
+//
+// Unlike AmendSpec, supersession is allowed from any non-terminal stage (not
+// just "done"). A spec may be superseded at any point in the authoring funnel
+// when requirements change enough to warrant a new spec.
 //
 // The transition is atomic: a WHERE clause gates on the old spec not being
 // in a terminal stage, preventing TOCTOU races.

@@ -140,10 +140,6 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 	}
 	reports, err := h.driftChecker.Check(ctx, msg.Slug, scopeStr)
 	if err != nil {
-		h.logger.Error("CheckDrift: drift engine error",
-			slog.String("slug", msg.Slug),
-			slog.String("scope", scopeStr),
-			slog.Any("error", err))
 		return nil, h.lifecycleError("CheckDrift", msg.Slug, err)
 	}
 

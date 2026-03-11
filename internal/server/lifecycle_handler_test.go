@@ -786,6 +786,7 @@ func TestLifecycleHandler_AcknowledgeDrift_NilChecker(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.Empty(t, resp.Msg.Report.Items)
+	require.False(t, resp.Msg.Report.ItemsStale, "nil drift checker must not set items stale")
 }
 
 func TestLifecycleHandler_AcknowledgeDrift_RecheckError(t *testing.T) {
