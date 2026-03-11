@@ -182,6 +182,10 @@ func runDrift(_ *cobra.Command, args []string) error {
 			hasErrors = true
 		}
 	}
+	if !hasDrift && !hasErrors {
+		fmt.Println("No drift detected.")
+		return nil
+	}
 	if hasErrors {
 		return fmt.Errorf("drift check completed with errors")
 	}
