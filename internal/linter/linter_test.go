@@ -453,6 +453,20 @@ func TestLint_AllSpecs_PassesMaxSpecsPerLintAsLimit(t *testing.T) {
 		"ListSpecs should be called with maxSpecsPerLint (10000) as limit")
 }
 
+func TestLint_ErrSpecNotFoundPropagates(t *testing.T) {
+	// Verify that ErrSpecNotFound returned by GetSpec is preserved through the
+	// fmt.Errorf("%w") wrapping in lint() so that errors.Is() checks at the
+	// handler layer still work correctly.
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{},
+		deps:  map[string][]storage.NodeRef{},
+	}
+
+	_, err := linter.NewEngine(backend, nil).Lint(context.Background(), "nonexistent-slug")
+	require.Error(t, err)
+	require.ErrorIs(t, err, storage.ErrSpecNotFound)
+}
+
 func TestLint_GetSpecErrorForDependency(t *testing.T) {
 	backend := &mockLintBackend{
 		specs: map[string]*storage.Spec{
