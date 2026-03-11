@@ -383,6 +383,26 @@ func TestRunDrift_WithItemsAndErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "drift check completed with errors")
 }
 
+// --- runDrift clean report (spgr-myz.5) ---
+
+type fakeDriftCleanReportHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeDriftCleanReportHandler) CheckDrift(_ context.Context, _ *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
+	return connect.NewResponse(&specv1.DriftCheckResponse{
+		Reports: []*specv1.DriftReport{
+			{SpecSlug: "clean-spec"},
+		},
+	}), nil
+}
+
+func TestRunDrift_CleanReport_NoDrift(t *testing.T) {
+	startFakeLifecycleServer(t, fakeDriftCleanReportHandler{})
+	err := runDrift(nil, nil)
+	require.NoError(t, err)
+}
+
 // --- runDrift with slug (spgr-d1b.17) ---
 
 type fakeDriftSlugCapture struct {
