@@ -168,6 +168,9 @@ func runDrift(_ *cobra.Command, args []string) error {
 	var hasErrors bool
 	var hasDrift bool
 	for _, r := range reports {
+		if len(r.GetItems()) == 0 && r.GetErrorMessage() == "" {
+			continue
+		}
 		ack := ""
 		if r.GetAcknowledged() {
 			ack = " (acknowledged)"

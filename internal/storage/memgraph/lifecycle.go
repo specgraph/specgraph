@@ -237,11 +237,12 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	}
 
 	nowStr := s.now()
-	// Atomic: WHERE guards ensure old spec hasn't entered a terminal state
+	// Atomic: WHERE guards ensure neither spec has entered a terminal state
 	// since our pre-validation read.
 	query := `
 		MATCH (old:Spec {slug: $old_slug}), (new:Spec {slug: $new_slug})
 		WHERE NOT old.stage IN $terminal_stages
+		      AND NOT new.stage IN $terminal_stages
 		      AND old.version = $expected_version
 		      AND new.version = $expected_new_version
 		SET old.stage = $stage,

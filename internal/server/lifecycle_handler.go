@@ -187,7 +187,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 			if batchErr != nil {
 				h.logger.Error("CheckDrift: batch fetch for ack merge failed", slog.Any("error", batchErr))
 				return nil, connect.NewError(connect.CodeUnavailable,
-					fmt.Errorf("CheckDrift: batch fetch for ack merge failed: %w", batchErr))
+					errors.New("CheckDrift: acknowledgment state temporarily unavailable"))
 			}
 			for i := range reports {
 				if spec, ok := specMap[reports[i].SpecSlug]; ok {
