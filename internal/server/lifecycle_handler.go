@@ -261,10 +261,10 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 				break
 			}
 			if !found {
-				h.logger.Warn("AcknowledgeDrift: drift re-check returned no report for slug",
+				// No report for this slug means the drift checker found no drift — treat as clean.
+				h.logger.Debug("AcknowledgeDrift: drift re-check returned no report for slug; treating as clean",
 					slog.String("slug", msg.Slug), slog.Int("reports", len(reports)))
-				report.ItemsStale = true
-				report.ErrorMessage = "drift re-check returned no report for this slug"
+				report.Items = []storage.DriftItem{}
 			}
 		}
 	}

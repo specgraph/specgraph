@@ -481,6 +481,8 @@ func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 	require.Equal(t, "my-spec", resp.Msg.Report.SpecSlug)
 	require.True(t, resp.Msg.Report.Acknowledged)
 	require.Equal(t, "intentional divergence", resp.Msg.Report.AcknowledgeNote)
+	require.False(t, resp.Msg.Report.ItemsStale, "empty drift re-check result must not mark items as stale")
+	require.Empty(t, resp.Msg.Report.Items)
 }
 
 func TestLifecycleHandler_AcknowledgeDrift_RecheckMergesItems(t *testing.T) {
@@ -1199,8 +1201,8 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckSlugNotFound(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.True(t, resp.Msg.Report.Acknowledged)
-	require.True(t, resp.Msg.Report.ItemsStale, "items should be stale when slug not found in re-check")
-	require.NotEmpty(t, resp.Msg.Report.ErrorMessage)
+	require.False(t, resp.Msg.Report.ItemsStale, "missing slug in re-check reports means no drift — items should not be stale")
+	require.Empty(t, resp.Msg.Report.ErrorMessage)
 	require.Empty(t, resp.Msg.Report.Items)
 }
 
