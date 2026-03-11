@@ -33,13 +33,13 @@ tasks:
     cmds:
       - |
         tmpdir=$(mktemp -d)
+        trap 'rm -rf "$tmpdir"' EXIT
         cp -r gen/ "$tmpdir/gen-before"
         buf generate
         diff -rq gen/ "$tmpdir/gen-before" > /dev/null 2>&1
         status=$?
         rm -rf gen/
-        cp -r "$tmpdir/gen-before" gen
-        rm -rf "$tmpdir"
+        cp -r "$tmpdir/gen-before" gen/
         exit $status
   # Building
   build:

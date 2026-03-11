@@ -472,3 +472,66 @@ func TestLint_GetSpecErrorForDependency(t *testing.T) {
 	require.NotEmpty(t, results[0].Error, "expected per-spec error in LintResult")
 	require.Equal(t, "internal error during lint", results[0].Error)
 }
+
+// TestLint_DiamondDependency_NoCycle verifies that a diamond-shaped DAG
+// (A→B, A→C, B→D, C→D) does not produce a false-positive cycle violation.
+// The visited-optimization skips D on the second path (via C) because D's
+// entire subtree was already explored without finding a cycle.
+func TestLint_DiamondDependency_NoCycle(t *testing.T) {
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"spec-a": {Slug: "spec-a", Intent: "root", Stage: storage.SpecStageSpark, Version: 1},
+			"spec-b": {Slug: "spec-b", Intent: "left", Stage: storage.SpecStageSpark, Version: 1},
+			"spec-c": {Slug: "spec-c", Intent: "right", Stage: storage.SpecStageSpark, Version: 1},
+			"spec-d": {Slug: "spec-d", Intent: "bottom", Stage: storage.SpecStageSpark, Version: 1},
+		},
+		deps: map[string][]storage.NodeRef{
+			"spec-a": {{Slug: "spec-b", Label: storage.NodeLabelSpec}, {Slug: "spec-c", Label: storage.NodeLabelSpec}},
+			"spec-b": {{Slug: "spec-d", Label: storage.NodeLabelSpec}},
+			"spec-c": {{Slug: "spec-d", Label: storage.NodeLabelSpec}},
+		},
+	}
+
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "spec-a")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+
+	for _, v := range results[0].Violations {
+		require.NotEqual(t, "graph.cycle", v.Rule, "diamond DAG must not trigger false-positive cycle: %s", v.Message)
+	}
+}
+
+// TestLint_DiamondWithCycle verifies that a diamond graph with a back-edge
+// (A→B, A→C, B→D, C→D, D→A) correctly detects the cycle. The visited
+// optimization is correct here because D→A is explored during B→D traversal
+// (A is in-stack), so the cycle is caught on the first path through D.
+func TestLint_DiamondWithCycle(t *testing.T) {
+	backend := &mockLintBackend{
+		specs: map[string]*storage.Spec{
+			"spec-a": {Slug: "spec-a", Intent: "root", Stage: storage.SpecStageSpark, Version: 1},
+			"spec-b": {Slug: "spec-b", Intent: "left", Stage: storage.SpecStageSpark, Version: 1},
+			"spec-c": {Slug: "spec-c", Intent: "right", Stage: storage.SpecStageSpark, Version: 1},
+			"spec-d": {Slug: "spec-d", Intent: "bottom", Stage: storage.SpecStageSpark, Version: 1},
+		},
+		deps: map[string][]storage.NodeRef{
+			"spec-a": {{Slug: "spec-b", Label: storage.NodeLabelSpec}, {Slug: "spec-c", Label: storage.NodeLabelSpec}},
+			"spec-b": {{Slug: "spec-d", Label: storage.NodeLabelSpec}},
+			"spec-c": {{Slug: "spec-d", Label: storage.NodeLabelSpec}},
+			"spec-d": {{Slug: "spec-a", Label: storage.NodeLabelSpec}},
+		},
+	}
+
+	results, err := linter.NewEngine(backend, nil).Lint(context.Background(), "spec-a")
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+	require.False(t, results[0].Passed)
+
+	hasCycle := false
+	for _, v := range results[0].Violations {
+		if v.Rule == "graph.cycle" {
+			hasCycle = true
+			break
+		}
+	}
+	require.True(t, hasCycle, "expected graph.cycle violation for diamond-with-back-edge")
+}
