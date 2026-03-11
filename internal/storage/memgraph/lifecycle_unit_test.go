@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -103,6 +104,48 @@ func TestAppendHistory_TrimsOldestWhenFull(t *testing.T) {
 	// Newest entry should be present at the end.
 	assert.Equal(t, int32(maxHistoryEntries+1), roundTripped[len(roundTripped)-1].Version)
 	assert.Equal(t, storage.SpecStageDone, roundTripped[len(roundTripped)-1].Stage)
+}
+
+func TestRecordToSpecOffset(t *testing.T) {
+	// Build a 30-value record simulating a SupersedeSpec query that returns
+	// two specs: old at offset 0, new at offset 15.
+	now := "2026-01-15T10:30:00.000000000Z"
+	makeSpecValues := func(id, slug, intent, stage, priority, complexity string, version int64, supersededBy, supersedes string) []any {
+		return []any{
+			id, slug, intent, stage, priority, complexity,
+			version,  // int64
+			now, now, // created_at, updated_at
+			"incremental", // lifecycle
+			supersededBy,  // superseded_by
+			supersedes,    // supersedes
+			"[]",          // history_json (empty array)
+			false,         // drift_acknowledged
+			nil,           // drift_acknowledge_note
+		}
+	}
+
+	oldVals := makeSpecValues("id-old", "old-spec", "Original intent", "superseded", "high", "medium", int64(2), "new-spec", "")
+	newVals := makeSpecValues("id-new", "new-spec", "Replacement intent", "spark", "high", "low", int64(1), "", "old-spec")
+
+	rec := &neo4j.Record{Values: append(oldVals, newVals...)}
+
+	// Parse old spec at offset 0.
+	oldSpec, err := recordToSpecOffset(rec, 0)
+	require.NoError(t, err)
+	assert.Equal(t, "id-old", oldSpec.ID)
+	assert.Equal(t, "old-spec", oldSpec.Slug)
+	assert.Equal(t, storage.SpecStage("superseded"), oldSpec.Stage)
+	assert.Equal(t, int32(2), oldSpec.Version)
+	assert.Equal(t, "new-spec", oldSpec.SupersededBy)
+
+	// Parse new spec at offset 15.
+	newSpec, err := recordToSpecOffset(rec, 15)
+	require.NoError(t, err)
+	assert.Equal(t, "id-new", newSpec.ID)
+	assert.Equal(t, "new-spec", newSpec.Slug)
+	assert.Equal(t, storage.SpecStage("spark"), newSpec.Stage)
+	assert.Equal(t, int32(1), newSpec.Version)
+	assert.Equal(t, "old-spec", newSpec.Supersedes)
 }
 
 func TestUnmarshalHistory_UnknownStageAccepted(t *testing.T) {

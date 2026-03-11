@@ -462,31 +462,6 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
 		})
 
-		It("rejects supersede on a non-done (spark-stage) spec with FailedPrecondition", func() {
-			errSlug := "lifecycle-err-supersede-notdone-" + time.Now().Format("150405")
-			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
-				Slug:   errSlug,
-				Intent: "Test supersede on non-done spec",
-			}))
-			Expect(err).NotTo(HaveOccurred())
-
-			// Create the replacement spec so it exists.
-			newSlug := errSlug + "-new"
-			_, err = specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
-				Slug:   newSlug,
-				Intent: "Replacement spec",
-			}))
-			Expect(err).NotTo(HaveOccurred())
-
-			// Attempt to supersede the spark-stage spec — should fail.
-			_, err = lifecycleClient.TransitionSupersede(ctx, connect.NewRequest(&specv1.TransitionSupersedeRequest{
-				Slug:    errSlug,
-				NewSlug: newSlug,
-			}))
-			Expect(err).To(HaveOccurred())
-			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
-		})
-
 		It("rejects supersede with nonexistent new spec with NotFound", func() {
 			errSlug := "lifecycle-err-supersede-" + time.Now().Format("150405")
 			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{

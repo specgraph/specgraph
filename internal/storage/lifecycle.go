@@ -17,6 +17,7 @@ var (
 	ErrNewSpecNotFound        = errors.New("replacement spec not found")
 	ErrNewSpecTerminal        = errors.New("replacement spec is in a terminal state")
 	ErrConcurrentModification = errors.New("concurrent modification detected — retry the operation")
+	ErrInternalGuardFailure   = errors.New("internal guard failure — unexpected precondition violation")
 	ErrInvalidReEntryStage    = errors.New("re-entry stage is not allowed for this operation")
 	ErrSameSlugs              = errors.New("old and new slugs must differ")
 )

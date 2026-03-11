@@ -252,8 +252,6 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 					continue
 				}
 				report.Items = r.Items
-				report.Acknowledged = true
-				report.AcknowledgeNote = msg.Note
 				found = true
 				break
 			}
@@ -339,6 +337,10 @@ func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 	}
 	if errors.Is(err, storage.ErrConcurrentModification) {
 		return connect.NewError(connect.CodeAborted, errors.New("concurrent modification — retry the operation"))
+	}
+	if errors.Is(err, storage.ErrInternalGuardFailure) {
+		h.logger.Error("lifecycleError: internal guard failure", slog.String("op", op), slog.String("slug", slug), slog.Any("error", err))
+		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 	if errors.Is(err, storage.ErrInvalidReEntryStage) {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("re-entry stage is not allowed"))

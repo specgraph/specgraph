@@ -1245,21 +1245,58 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckSlugNotFound(t *testing.T) {
 	require.Empty(t, resp.Msg.Report.Items)
 }
 
-func TestLifecycleHandler_Supersede_OldSpecNotDone(t *testing.T) {
+func TestLifecycleHandler_Supersede_OldSpecTerminal(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
-		return nil, nil, storage.ErrSpecNotDone
+		return nil, nil, storage.ErrSpecTerminal
 	}
 	client := newLifecycleClient(t, deps)
 
 	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
-		Slug:    "spark-spec",
+		Slug:    "terminal-spec",
 		NewSlug: "new-spec",
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+}
+
+func TestLifecycleHandler_Amend_StorageErrInvalidReEntryStage(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.amendSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
+		return nil, storage.ErrInvalidReEntryStage
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
+		Slug:         "my-spec",
+		Reason:       "rework",
+		ReEntryStage: "shape",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestLifecycleHandler_Supersede_StorageErrSameSlugs(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+		return nil, nil, storage.ErrSameSlugs
+	}
+	client := newLifecycleClient(t, deps)
+
+	// Handler validates same-slugs first, but this exercises the storage-level
+	// error mapping in lifecycleError for defense-in-depth.
+	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
+		Slug:    "spec-a",
+		NewSlug: "spec-b",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
 func TestLifecycleHandler_CheckDrift_InvalidSlug(t *testing.T) {

@@ -427,6 +427,36 @@ func TestRunDrift_ErrorOnlyReport(t *testing.T) {
 	assert.Contains(t, err.Error(), "drift check completed with errors")
 }
 
+// --- runDrift drift-only (no errors) (spgr-5bl.1) ---
+
+type fakeDriftOnlyHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeDriftOnlyHandler) CheckDrift(_ context.Context, _ *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
+	return connect.NewResponse(&specv1.DriftCheckResponse{
+		Reports: []*specv1.DriftReport{
+			{
+				SpecSlug: "drifted-spec",
+				Items: []*specv1.DriftItem{
+					{
+						Type:        specv1.DriftType_DRIFT_TYPE_DEPENDENCY,
+						Severity:    specv1.DriftSeverity_DRIFT_SEVERITY_LOW,
+						Description: "dependency version changed",
+					},
+				},
+			},
+		},
+	}), nil
+}
+
+func TestRunDrift_DriftOnly_NoErrors(t *testing.T) {
+	startFakeLifecycleServer(t, fakeDriftOnlyHandler{})
+	err := runDrift(nil, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "drift detected")
+}
+
 // --- runDrift with slug (spgr-d1b.17) ---
 
 type fakeDriftSlugCapture struct {

@@ -86,7 +86,7 @@ func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChe
 	// (version guard should always catch concurrent modifications). Kept as
 	// defense-in-depth; exercised only at the integration level.
 	return fmt.Errorf("%s %q (stage=%s, version=%d): unexplained guard failure: %w",
-		op, slug, current.Stage, current.Version, storage.ErrConcurrentModification)
+		op, slug, current.Stage, current.Version, storage.ErrInternalGuardFailure)
 }
 
 // amendSummary returns the history summary for an amend operation.
