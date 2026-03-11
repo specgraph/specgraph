@@ -382,6 +382,29 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
 		})
 
+		It("rejects amend on a shape-stage spec with FailedPrecondition", func() {
+			errSlug := "lifecycle-err-amend-shape-" + time.Now().Format("150405")
+			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   errSlug,
+				Intent: "Test amend error path for mid-funnel spec",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			// Advance to shape (mid-funnel, not done).
+			_, err = specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
+				Slug:  errSlug,
+				Stage: proto.String("shape"),
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
+				Slug:   errSlug,
+				Reason: "should fail because spec is not done",
+			}))
+			Expect(err).To(HaveOccurred())
+			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
+		})
+
 		It("rejects amend on a superseded (terminal) spec with FailedPrecondition", func() {
 			baseSlug := "lifecycle-err-amend-terminal-" + time.Now().Format("150405")
 			newSlug := baseSlug + "-v2"

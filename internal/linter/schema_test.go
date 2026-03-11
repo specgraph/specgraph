@@ -142,6 +142,13 @@ func TestValidateSchema_InvalidLifecycle(t *testing.T) {
 	require.Contains(t, enumViolations[0].Message, "invalid lifecycle")
 }
 
+func TestValidateSchema_NilSpec(t *testing.T) {
+	violations := linter.ValidateSchema(nil)
+	require.Len(t, violations, 1)
+	require.Equal(t, "schema.required", violations[0].Rule)
+	require.Contains(t, violations[0].Message, "nil")
+}
+
 func filterByRule(violations []storage.LintViolation, rule string) []storage.LintViolation {
 	var filtered []storage.LintViolation
 	for _, v := range violations {

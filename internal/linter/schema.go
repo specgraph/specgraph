@@ -12,6 +12,13 @@ import (
 // ValidateSchema validates a spec against the spec schema rules.
 // Returns lint violations using domain types.
 func ValidateSchema(spec *storage.Spec) []storage.LintViolation {
+	if spec == nil {
+		return []storage.LintViolation{{
+			Rule:     "schema.required",
+			Severity: storage.LintSeverityError,
+			Message:  "spec is nil",
+		}}
+	}
 	var violations []storage.LintViolation
 
 	// Required fields

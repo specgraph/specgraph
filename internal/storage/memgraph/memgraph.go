@@ -344,9 +344,9 @@ func safeInt32(v int64) int32 {
 	return int32(v)
 }
 
-// recordStringOptional extracts a nullable string value from a neo4j record by
-// position. Returns "" for nil/null values, and fails fast on unexpected types
-// to surface schema/return-shift bugs immediately.
+// recordBoolOptional extracts a nullable bool value from a neo4j record by
+// position. Returns false for nil/null values, and fails fast on unexpected
+// types to surface schema/return-shift bugs immediately.
 func recordBoolOptional(rec *neo4j.Record, pos int, field string) (bool, error) {
 	if pos >= len(rec.Values) {
 		return false, fmt.Errorf("memgraph: field %q at position %d: missing", field, pos)

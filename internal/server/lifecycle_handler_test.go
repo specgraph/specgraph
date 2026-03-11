@@ -1203,3 +1203,43 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckSlugNotFound(t *testing.T) {
 	require.NotEmpty(t, resp.Msg.Report.ErrorMessage)
 	require.Empty(t, resp.Msg.Report.Items)
 }
+
+func TestLifecycleHandler_Supersede_OldSpecNotDone(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+		return nil, nil, storage.ErrSpecNotDone
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
+		Slug:    "spark-spec",
+		NewSlug: "new-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+}
+
+func TestLifecycleHandler_CheckDrift_InvalidSlug(t *testing.T) {
+	deps := defaultTestDeps()
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
+		Slug: "INVALID SLUG with spaces",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestLifecycleHandler_AcknowledgeDrift_InvalidSlug(t *testing.T) {
+	deps := defaultTestDeps()
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug: "INVALID/slug",
+		Note: "some note",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}

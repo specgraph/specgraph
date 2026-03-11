@@ -27,10 +27,10 @@ type Engine struct {
 
 // NewEngine creates a linter engine backed by the given storage.
 // If logger is nil, slog.Default() is used.
-func NewEngine(backend Backend, logger ...*slog.Logger) *Engine {
-	l := slog.Default()
-	if len(logger) > 0 && logger[0] != nil {
-		l = logger[0]
+func NewEngine(backend Backend, logger *slog.Logger) *Engine {
+	l := logger
+	if l == nil {
+		l = slog.Default()
 	}
 	return &Engine{backend: backend, logger: l}
 }

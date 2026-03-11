@@ -7,6 +7,7 @@ package memgraph_test
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -626,4 +627,38 @@ func TestAcknowledgeDrift_AmendedStage(t *testing.T) {
 	require.Equal(t, "ack-amended", report.SpecSlug)
 	require.True(t, report.Acknowledged)
 	require.Equal(t, "divergence accepted", report.AcknowledgeNote)
+}
+
+func TestAcknowledgeDrift_NotFound(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.LifecycleAcknowledgeDrift(ctx, "nonexistent-spec", "should fail")
+	require.Error(t, err)
+	require.ErrorIs(t, err, storage.ErrSpecNotFound)
+}
+
+func TestAcknowledgeDrift_ConcurrentAckAndCheck(t *testing.T) {
+	store, ctx := newTestStore(t)
+
+	_, err := store.CreateSpec(ctx, "ack-race", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "ack-race", nil, &doneStage, nil, nil)
+	require.NoError(t, err)
+
+	// Race an acknowledge against a concurrent acknowledge.
+	const n = 2
+	errs := make(chan error, n)
+	for i := 0; i < n; i++ {
+		i := i
+		go func() {
+			_, aErr := store.LifecycleAcknowledgeDrift(ctx, "ack-race", fmt.Sprintf("note-%d", i))
+			errs <- aErr
+		}()
+	}
+
+	// Both should succeed (last-writer-wins for SET operations).
+	for i := 0; i < n; i++ {
+		require.NoError(t, <-errs, "concurrent acknowledge should not fail")
+	}
 }

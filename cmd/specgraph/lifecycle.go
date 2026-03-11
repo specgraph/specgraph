@@ -166,6 +166,7 @@ func runDrift(_ *cobra.Command, args []string) error {
 		return nil
 	}
 	var hasErrors bool
+	var hasDrift bool
 	for _, r := range reports {
 		ack := ""
 		if r.GetAcknowledged() {
@@ -174,6 +175,7 @@ func runDrift(_ *cobra.Command, args []string) error {
 		fmt.Printf("Spec: %s%s\n", r.GetSpecSlug(), ack)
 		for _, item := range r.GetItems() {
 			fmt.Printf("  [%s] %s: %s\n", item.GetSeverity(), item.GetType(), item.GetDescription())
+			hasDrift = true
 		}
 		if r.GetErrorMessage() != "" {
 			fmt.Fprintf(os.Stderr, "  [error] %s\n", r.GetErrorMessage())
@@ -182,6 +184,9 @@ func runDrift(_ *cobra.Command, args []string) error {
 	}
 	if hasErrors {
 		return fmt.Errorf("drift check completed with errors")
+	}
+	if hasDrift {
+		return fmt.Errorf("drift detected")
 	}
 	return nil
 }
@@ -261,7 +266,7 @@ func runLint(_ *cobra.Command, args []string) error {
 			fmt.Printf("  [%s] %s: %s%s\n", v.GetSeverity(), v.GetRule(), v.GetMessage(), loc)
 		}
 		if r.GetError() != "" {
-			fmt.Printf("  [error] %s\n", r.GetError())
+			fmt.Fprintf(os.Stderr, "  [error] %s\n", r.GetError())
 		}
 	}
 	if failCount == 0 {

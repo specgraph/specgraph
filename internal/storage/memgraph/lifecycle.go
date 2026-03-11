@@ -296,18 +296,16 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		// directly to returning oldErr here.
 		if errors.Is(oldErr, storage.ErrConcurrentModification) {
 			newErr := s.preconditionError(ctx, newSlug, "supersede spec (new)", nil)
-			if newErr != nil {
-				if errors.Is(newErr, storage.ErrSpecNotFound) {
-					return nil, nil, fmt.Errorf("supersede spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
-				}
-				if errors.Is(newErr, storage.ErrSpecTerminal) {
-					return nil, nil, fmt.Errorf("supersede spec: new spec %q is in a terminal state: %w", newSlug, storage.ErrNewSpecTerminal)
-				}
-				// Both specs had concurrent modifications — surface both errors.
-				// Go 1.20+ fmt.Errorf with two %w creates a multi-error (errors.Join
-				// semantics). errors.Is checks match either wrapped error.
-				return nil, nil, fmt.Errorf("supersede spec: new %q: %w (old %q also had precondition error: %w)", newSlug, newErr, oldSlug, oldErr)
+			if errors.Is(newErr, storage.ErrSpecNotFound) {
+				return nil, nil, fmt.Errorf("supersede spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
 			}
+			if errors.Is(newErr, storage.ErrSpecTerminal) {
+				return nil, nil, fmt.Errorf("supersede spec: new spec %q is in a terminal state: %w", newSlug, storage.ErrNewSpecTerminal)
+			}
+			// Both specs had concurrent modifications — surface both errors.
+			// Go 1.20+ fmt.Errorf with two %w creates a multi-error (errors.Join
+			// semantics). errors.Is checks match either wrapped error.
+			return nil, nil, fmt.Errorf("supersede spec: new %q: %w (old %q also had precondition error: %w)", newSlug, newErr, oldSlug, oldErr)
 		}
 		return nil, nil, oldErr
 	}
