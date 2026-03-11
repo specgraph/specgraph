@@ -67,6 +67,9 @@ func marshalHistory(entries []storage.HistoryEntry) (string, error) {
 func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChecks func(*storage.Spec) error) error {
 	current, err := s.GetSpec(ctx, slug)
 	if err != nil {
+		if errors.Is(err, storage.ErrSpecNotFound) {
+			return fmt.Errorf("%s %q: %w", op, slug, storage.ErrSpecNotFound)
+		}
 		// Guard failure indicates concurrent modification. If re-read also
 		// fails, wrap ErrConcurrentModification so the handler maps to
 		// CodeAborted (retryable) rather than CodeInternal.
@@ -108,7 +111,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	// Read current state to build history and compute new version.
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("memgraph: amend spec: pre-read %q: %w", slug, err)
 	}
 
 	// Determine the target stage: use reEntryStage if provided, default to "amended".
@@ -195,7 +198,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	// Pre-validate: check old spec exists and new spec exists.
 	oldCheck, err := s.GetSpec(ctx, oldSlug)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("memgraph: supersede spec: pre-read %q: %w", oldSlug, err)
 	}
 	if terminalStages[oldCheck.Stage] {
 		return nil, nil, fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecTerminal)
@@ -332,7 +335,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (*storage.Spec, error) {
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("memgraph: abandon spec: pre-read %q: %w", slug, err)
 	}
 	if terminalStages[spec.Stage] {
 		return nil, fmt.Errorf("abandon spec %q (stage=%s): %w", slug, spec.Stage, storage.ErrSpecTerminal)
@@ -407,7 +410,7 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string
 		MATCH (s:Spec {slug: $slug})
 		WHERE s.stage IN $eligible_stages
 		SET s.drift_acknowledged = true, s.drift_acknowledge_note = $note
-		RETURN s.slug
+		RETURN s.slug, s.drift_acknowledged, s.drift_acknowledge_note
 	`
 	records, err := s.executeQuery(ctx, query, map[string]any{
 		"slug":            slug,
@@ -425,10 +428,21 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string
 			return nil
 		})
 	}
+	rec := records[0]
+	ack, _ := rec.Get("s.drift_acknowledged")
+	ackNote, _ := rec.Get("s.drift_acknowledge_note")
+	acknowledged, ok := ack.(bool)
+	if !ok {
+		acknowledged = true // SET s.drift_acknowledged = true always succeeds
+	}
+	acknowledgeNote, ok := ackNote.(string)
+	if !ok {
+		acknowledgeNote = note // fall back to input if type differs
+	}
 	return &storage.DriftReport{
 		SpecSlug:        slug,
-		Acknowledged:    true,
-		AcknowledgeNote: note,
+		Acknowledged:    acknowledged,
+		AcknowledgeNote: acknowledgeNote,
 		Items:           []storage.DriftItem{},
 	}, nil
 }

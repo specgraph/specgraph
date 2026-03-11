@@ -172,8 +172,6 @@ func detectCycles(ctx context.Context, backend Backend, slug string, rootDeps []
 			return
 		}
 
-		visited[current] = true
-
 		if depth > maxCycleDepth {
 			violations = append(violations, storage.LintViolation{
 				Rule:     "graph.cycle",
@@ -184,6 +182,7 @@ func detectCycles(ctx context.Context, backend Backend, slug string, rootDeps []
 			return
 		}
 
+		visited[current] = true
 		inStack[current] = true
 
 		var deps []storage.NodeRef

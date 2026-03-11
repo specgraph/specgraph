@@ -728,6 +728,23 @@ func TestLifecycleHandler_Amend_ConcurrentModification(t *testing.T) {
 	require.Equal(t, connect.CodeAborted, connErr.Code())
 }
 
+func TestLifecycleHandler_Amend_InternalGuardFailure(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.amendSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
+		return nil, storage.ErrInternalGuardFailure
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
+		Slug:   "guard-spec",
+		Reason: "rework",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
 func TestLifecycleHandler_Amend_TerminalReEntryStage(t *testing.T) {
 	client := newLifecycleClient(t, defaultTestDeps())
 	for _, stage := range []string{"amended", "superseded", "abandoned"} {
@@ -974,6 +991,40 @@ func TestLifecycleHandler_AcknowledgeDrift_ConcurrentModification(t *testing.T) 
 	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
 		Slug: "my-spec",
 		Note: "intentional divergence",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeAborted, connErr.Code())
+}
+
+func TestLifecycleHandler_Abandon_ConcurrentModification(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.abandonSpec = func(_ context.Context, _, _ string) (*storage.Spec, error) {
+		return nil, storage.ErrConcurrentModification
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.TransitionAbandon(context.Background(), connect.NewRequest(&specv1.TransitionAbandonRequest{
+		Slug:   "busy-spec",
+		Reason: "no longer needed",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeAborted, connErr.Code())
+}
+
+func TestLifecycleHandler_Supersede_ConcurrentModification(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+		return nil, nil, storage.ErrConcurrentModification
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
+		Slug:    "busy-spec",
+		NewSlug: "new-spec",
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
