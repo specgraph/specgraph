@@ -222,12 +222,14 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 
 	// Constitution is optional for injection
 	var constitution *storage.Constitution
+	var constitutionWarning string
 	if h.constitutionStore != nil {
 		// Try to load the project constitution; ignore errors (constitution is optional)
 		var conErr error
 		constitution, conErr = h.constitutionStore.GetConstitution(ctx)
 		if conErr != nil {
 			slog.WarnContext(ctx, "failed to load constitution for injection", "error", conErr)
+			constitutionWarning = " (warning: constitution unavailable)"
 		}
 	}
 
@@ -238,6 +240,6 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 
 	return connect.NewResponse(&specv1.InjectResponse{
 		FilesWritten: files,
-		Summary:      "Injected spec context for " + spec.Slug,
+		Summary:      "Injected spec context for " + spec.Slug + constitutionWarning,
 	}), nil
 }

@@ -214,3 +214,39 @@ func TestGitHubAdapter_PullMalformedJSON(t *testing.T) {
 		t.Errorf("Pull() error = %v, want ErrPullFailed", err)
 	}
 }
+
+type seqMockRunner struct {
+	responses []struct {
+		output []byte
+		err    error
+	}
+	callIdx int
+}
+
+func (m *seqMockRunner) Run(_ context.Context, _ string, _ ...string) ([]byte, error) {
+	if m.callIdx >= len(m.responses) {
+		return nil, errors.New("seqMockRunner: no more responses")
+	}
+	r := m.responses[m.callIdx]
+	m.callIdx++
+	return r.output, r.err
+}
+
+func TestGitHubAdapter_AvailableNotAuthenticated(t *testing.T) {
+	g := NewGitHubAdapter(&seqMockRunner{
+		responses: []struct {
+			output []byte
+			err    error
+		}{
+			{output: []byte("gh version 2.60.0\n")},
+			{err: errors.New("not logged in")},
+		},
+	}, "owner/repo")
+	err := g.Available(context.Background())
+	if err == nil {
+		t.Fatal("Available() expected error, got nil")
+	}
+	if !errors.Is(err, ErrAdapterNotAvailable) {
+		t.Errorf("Available() error = %v, want ErrAdapterNotAvailable", err)
+	}
+}

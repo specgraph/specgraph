@@ -508,3 +508,86 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingError(t *testing.T) {
 	require.Contains(t, resp.Msg.Results[0].Message, "pushed to adapter")
 	require.Contains(t, resp.Msg.Results[0].Message, "beads-test-spec")
 }
+
+func TestSyncHandler_SyncBeads_AdapterAvailableError(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: false,
+		pushFn: func(_ context.Context, _ *storage.Spec) (string, error) {
+			t.Fatal("push should not be called when adapter is unavailable")
+			return "", nil
+		},
+	}
+	client := setupSyncServerWithAdapter(t, adapter)
+	_, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+		}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
+}
+
+type errorSpecReader struct {
+	*mockSpecReader
+	listSpecsErr error
+}
+
+func (e *errorSpecReader) ListSpecs(_ context.Context, _, _ string, _ int) ([]*storage.Spec, error) {
+	if e.listSpecsErr != nil {
+		return nil, e.listSpecsErr
+	}
+	return e.mockSpecReader.ListSpecs(context.Background(), "", "", 0)
+}
+
+func TestSyncHandler_SyncBeads_ListSpecsError(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		pushFn: func(_ context.Context, _ *storage.Spec) (string, error) {
+			t.Fatal("push should not be called when ListSpecs fails")
+			return "", nil
+		},
+	}
+	specStore := &errorSpecReader{
+		mockSpecReader: &mockSpecReader{specs: map[string]*storage.Spec{}},
+		listSpecsErr:   fmt.Errorf("database unavailable"),
+	}
+	syncStore := newMockSyncBackend()
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler.RegisterAdapter(adapter)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	_, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+		}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInternal, connect.CodeOf(err))
+}
+
+func TestSyncHandler_Inject_OutputDirOutsideRoot(t *testing.T) {
+	syncStore := newMockSyncBackend()
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+		},
+	}
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler.SetAllowedOutputRoot(t.TempDir())
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	_, err := client.Inject(context.Background(),
+		connect.NewRequest(&specv1.InjectRequest{
+			SpecSlug:  "test-spec",
+			Tool:      specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
+			OutputDir: "/tmp/evil-path",
+		}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}

@@ -566,6 +566,7 @@ func TestSyncStateToProto(t *testing.T) {
 	}{
 		{storage.SyncStatePending, specv1.SyncState_SYNC_STATE_PENDING},
 		{storage.SyncStateSynced, specv1.SyncState_SYNC_STATE_SYNCED},
+		{storage.SyncStateConflict, specv1.SyncState_SYNC_STATE_CONFLICT},
 		{storage.SyncStateError, specv1.SyncState_SYNC_STATE_ERROR},
 	}
 	for _, tt := range tests {
