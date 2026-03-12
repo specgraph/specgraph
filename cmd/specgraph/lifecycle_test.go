@@ -533,6 +533,51 @@ func TestRunDrift_HappyPath_WithSlug(t *testing.T) {
 	assert.Equal(t, "my-spec", h.capturedSlug)
 }
 
+// --- runDrift AckStateUnavailable warning (spgr-0fk.2) ---
+
+type fakeDriftAckUnavailableHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeDriftAckUnavailableHandler) CheckDrift(_ context.Context, _ *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
+	return connect.NewResponse(&specv1.DriftCheckResponse{
+		Reports: []*specv1.DriftReport{
+			{
+				SpecSlug:            "warn-spec",
+				AckStateUnavailable: true,
+				Items: []*specv1.DriftItem{
+					{
+						Type:        specv1.DriftType_DRIFT_TYPE_DEPENDENCY,
+						Severity:    specv1.DriftSeverity_DRIFT_SEVERITY_LOW,
+						Description: "dependency changed",
+					},
+				},
+			},
+		},
+	}), nil
+}
+
+func TestRunDrift_AckStateUnavailable_WritesStderrWarning(t *testing.T) {
+	startFakeLifecycleServer(t, fakeDriftAckUnavailableHandler{})
+
+	// Redirect os.Stderr to a pipe so we can capture the warning.
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	t.Cleanup(func() { os.Stderr = oldStderr })
+
+	runErr := runDrift(nil, nil)
+
+	require.NoError(t, w.Close())
+	var buf [4096]byte
+	n, _ := r.Read(buf[:])
+	captured := string(buf[:n])
+
+	require.Error(t, runErr)
+	assert.Contains(t, captured, "[warn] acknowledgment state unavailable for warn-spec")
+}
+
 type fakeLintEmptyHandler struct {
 	specgraphv1connect.UnimplementedLifecycleServiceHandler
 }
