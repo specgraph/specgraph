@@ -180,14 +180,14 @@ func (s *Store) ListSyncMappings(ctx context.Context, adapter storage.SyncAdapte
 	}
 
 	mappings := make([]*storage.SyncMapping, 0, len(records))
-	for _, rec := range records {
+	for i, rec := range records {
 		specID, err := recordString(rec, 0, "id")
 		if err != nil {
 			return nil, fmt.Errorf("memgraph: list sync mappings: %w", err)
 		}
 		m, mErr := recordToSyncMapping(rec, specID)
 		if mErr != nil {
-			return nil, mErr
+			return nil, fmt.Errorf("scan sync mapping at index %d: %w", i, mErr)
 		}
 		mappings = append(mappings, m)
 	}

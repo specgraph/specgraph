@@ -209,6 +209,7 @@ func TestEdgeTypeToProto(t *testing.T) {
 	for _, tt := range tests {
 		got, err := edgeTypeToProto(tt.domain)
 		require.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, tt.proto, got)
 	}
 
@@ -529,11 +530,13 @@ func TestSyncAdapterToProto(t *testing.T) {
 		{storage.SyncAdapterGitHub, specv1.SyncAdapter_SYNC_ADAPTER_GITHUB},
 	}
 	for _, tt := range tests {
-		got := syncAdapterToProto(tt.domain)
+		got, err := syncAdapterToProto(tt.domain)
+		require.NoError(t, err)
 		assert.Equal(t, tt.proto, got)
 	}
 
-	got := syncAdapterToProto("unknown-adapter")
+	got, err := syncAdapterToProto("unknown-adapter")
+	assert.Error(t, err)
 	assert.Equal(t, specv1.SyncAdapter_SYNC_ADAPTER_UNSPECIFIED, got)
 }
 
@@ -567,6 +570,7 @@ func TestSyncStateToProto(t *testing.T) {
 	}
 	for _, tt := range tests {
 		got, err := syncStateToProto(tt.domain)
+		require.NoError(t, err)
 		require.NoError(t, err)
 		assert.Equal(t, tt.proto, got)
 	}
