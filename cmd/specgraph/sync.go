@@ -29,16 +29,24 @@ var syncCmd = &cobra.Command{
 var syncBeadsCmd = &cobra.Command{
 	Use:   "beads",
 	Short: "Push approved specs to Beads as issues",
-	RunE:  runSyncBeads,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		return runSyncBeads(cmd)
+	},
 }
 
 var (
-	syncFilterStage    string
-	syncFilterPriority string
-	syncDryRun         bool
+	beadsFilterStage    string
+	beadsFilterPriority string
+	beadsDryRun         bool
 )
 
-func runSyncBeads(_ *cobra.Command, _ []string) error {
+var (
+	ghFilterStage    string
+	ghFilterPriority string
+	ghDryRun         bool
+)
+
+func runSyncBeads(cmd *cobra.Command) error {
 	client, err := syncClient()
 	if err != nil {
 		return err
@@ -47,17 +55,16 @@ func runSyncBeads(_ *cobra.Command, _ []string) error {
 	resp, err := client.SyncBeads(context.Background(), connect.NewRequest(&specv1.SyncBeadsRequest{
 		Config: &specv1.SyncConfig{
 			Adapter:        specv1.SyncAdapter_SYNC_ADAPTER_BEADS,
-			FilterStage:    syncFilterStage,
-			FilterPriority: syncFilterPriority,
-			DryRun:         syncDryRun,
+			FilterStage:    beadsFilterStage,
+			FilterPriority: beadsFilterPriority,
+			DryRun:         beadsDryRun,
 		},
 	}))
 	if err != nil {
 		return fmt.Errorf("sync beads: %w", err)
 	}
 
-	printSyncResponse(resp.Msg)
-	return nil
+	return printSyncResponse(cmd, resp.Msg)
 }
 
 // --- sync github ---
@@ -65,10 +72,12 @@ func runSyncBeads(_ *cobra.Command, _ []string) error {
 var syncGitHubCmd = &cobra.Command{
 	Use:   "github",
 	Short: "Push specs as GitHub Issues",
-	RunE:  runSyncGitHub,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		return runSyncGitHub(cmd)
+	},
 }
 
-func runSyncGitHub(_ *cobra.Command, _ []string) error {
+func runSyncGitHub(cmd *cobra.Command) error {
 	client, err := syncClient()
 	if err != nil {
 		return err
@@ -77,17 +86,16 @@ func runSyncGitHub(_ *cobra.Command, _ []string) error {
 	resp, err := client.SyncGitHub(context.Background(), connect.NewRequest(&specv1.SyncGitHubRequest{
 		Config: &specv1.SyncConfig{
 			Adapter:        specv1.SyncAdapter_SYNC_ADAPTER_GITHUB,
-			FilterStage:    syncFilterStage,
-			FilterPriority: syncFilterPriority,
-			DryRun:         syncDryRun,
+			FilterStage:    ghFilterStage,
+			FilterPriority: ghFilterPriority,
+			DryRun:         ghDryRun,
 		},
 	}))
 	if err != nil {
 		return fmt.Errorf("sync github: %w", err)
 	}
 
-	printSyncResponse(resp.Msg)
-	return nil
+	return printSyncResponse(cmd, resp.Msg)
 }
 
 // --- sync status ---
@@ -131,8 +139,8 @@ func runSyncStatus(cmd *cobra.Command, _ []string) error {
 
 	mappings := resp.Msg.Mappings
 	if len(mappings) == 0 {
-		fmt.Println("No sync mappings found.")
-		return nil
+		_, err = fmt.Fprintln(cmd.OutOrStdout(), "No sync mappings found.")
+		return err
 	}
 
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
@@ -157,8 +165,10 @@ func runSyncStatus(cmd *cobra.Command, _ []string) error {
 	return w.Flush()
 }
 
-func printSyncResponse(resp *specv1.SyncResponse) {
-	fmt.Printf("Synced: %d  Skipped: %d  Errors: %d\n", resp.Synced, resp.Skipped, resp.Errors)
+func printSyncResponse(cmd *cobra.Command, resp *specv1.SyncResponse) error {
+	w := cmd.OutOrStdout()
+	tw := &tableWriter{w: w}
+	tw.printf("Synced: %d  Skipped: %d  Errors: %d\n", resp.Synced, resp.Skipped, resp.Errors)
 	for _, r := range resp.Results {
 		stateIcon := " "
 		switch r.State {
@@ -169,25 +179,26 @@ func printSyncResponse(resp *specv1.SyncResponse) {
 		case specv1.SyncState_SYNC_STATE_PENDING:
 			stateIcon = "~"
 		}
-		fmt.Printf("  [%s] %s", stateIcon, r.SpecSlug)
+		tw.printf("  [%s] %s", stateIcon, r.SpecSlug)
 		if r.ExternalId != "" {
-			fmt.Printf(" -> %s", r.ExternalId)
+			tw.printf(" -> %s", r.ExternalId)
 		}
 		if r.Message != "" {
-			fmt.Printf(" (%s)", r.Message)
+			tw.printf(" (%s)", r.Message)
 		}
-		fmt.Println()
+		tw.println("")
 	}
+	return tw.err
 }
 
 func init() {
-	syncBeadsCmd.Flags().StringVar(&syncFilterStage, "stage", "", "only sync specs at this stage")
-	syncBeadsCmd.Flags().StringVar(&syncFilterPriority, "priority", "", "only sync specs at this priority")
-	syncBeadsCmd.Flags().BoolVar(&syncDryRun, "dry-run", false, "show what would be synced without syncing")
+	syncBeadsCmd.Flags().StringVar(&beadsFilterStage, "stage", "", "only sync specs at this stage")
+	syncBeadsCmd.Flags().StringVar(&beadsFilterPriority, "priority", "", "only sync specs at this priority")
+	syncBeadsCmd.Flags().BoolVar(&beadsDryRun, "dry-run", false, "show what would be synced without syncing")
 
-	syncGitHubCmd.Flags().StringVar(&syncFilterStage, "stage", "", "only sync specs at this stage")
-	syncGitHubCmd.Flags().StringVar(&syncFilterPriority, "priority", "", "only sync specs at this priority")
-	syncGitHubCmd.Flags().BoolVar(&syncDryRun, "dry-run", false, "show what would be synced without syncing")
+	syncGitHubCmd.Flags().StringVar(&ghFilterStage, "stage", "", "only sync specs at this stage")
+	syncGitHubCmd.Flags().StringVar(&ghFilterPriority, "priority", "", "only sync specs at this priority")
+	syncGitHubCmd.Flags().BoolVar(&ghDryRun, "dry-run", false, "show what would be synced without syncing")
 
 	syncStatusCmd.Flags().StringVar(&statusAdapter, "adapter", "", "filter by adapter (beads, github)")
 	syncStatusCmd.Flags().StringVar(&statusSpec, "spec", "", "filter by spec slug")

@@ -192,23 +192,15 @@ func (s *Store) ListSyncMappings(ctx context.Context, adapter storage.SyncAdapte
 func (s *Store) DeleteSyncMapping(ctx context.Context, specSlug string, adapter storage.SyncAdapterType) error {
 	adapterStr := string(adapter)
 
-	records, err := s.executeQuery(ctx,
+	_, err := s.executeQuery(ctx,
 		`MATCH (s:Spec {slug: $slug})-[r:SYNCED_TO {adapter: $adapter}]->(e:ExternalRef)
-		 DELETE r, e
-		 RETURN count(r) AS deleted`,
+		 DELETE r, e`,
 		map[string]any{"slug": specSlug, "adapter": adapterStr},
 	)
 	if err != nil {
 		return fmt.Errorf("memgraph: delete sync mapping: %w", err)
 	}
-	if len(records) == 0 {
-		return fmt.Errorf("memgraph: delete sync mapping %q/%s: %w", specSlug, adapterStr, storage.ErrSyncMappingNotFound)
-	}
-	deleted, ok := records[0].Get("deleted")
-	count, _ := deleted.(int64) //nolint:errcheck // type assertion from neo4j record
-	if !ok || count == 0 {
-		return fmt.Errorf("memgraph: delete sync mapping %q/%s: %w", specSlug, adapterStr, storage.ErrSyncMappingNotFound)
-	}
+	// Idempotent: deleting a non-existent mapping is a no-op.
 	return nil
 }
 

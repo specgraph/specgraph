@@ -6,6 +6,7 @@ package sync
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/seanb4t/specgraph/internal/storage"
@@ -130,7 +131,7 @@ func TestFormatIssueBody(t *testing.T) {
 	}
 	// Verify key fields appear in the body.
 	for _, want := range []string{"my-spec", "Build a thing", "spark", "p1", "medium", "3"} {
-		if !containsStr(body, want) {
+		if !strings.Contains(body, want) {
 			t.Errorf("formatIssueBody() missing %q in:\n%s", want, body)
 		}
 	}
@@ -143,22 +144,8 @@ func TestFormatLabels(t *testing.T) {
 	}
 	labels := formatLabels(spec)
 	for _, want := range []string{"specgraph", "approved", "p0"} {
-		if !containsStr(labels, want) {
+		if !strings.Contains(labels, want) {
 			t.Errorf("formatLabels() = %q, missing %q", labels, want)
 		}
 	}
-}
-
-// containsStr is a small helper to check substring presence.
-func containsStr(s, sub string) bool {
-	return len(s) >= len(sub) && searchStr(s, sub)
-}
-
-func searchStr(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
 }

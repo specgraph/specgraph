@@ -47,16 +47,19 @@ type ghViewResponse struct {
 
 // Push creates a GitHub issue from the given spec using the gh CLI.
 func (g *GitHubAdapter) Push(ctx context.Context, spec *storage.Spec) (string, error) {
+	if spec.Slug == "" {
+		return "", fmt.Errorf("%w: spec slug is required", ErrPushFailed)
+	}
 	title := fmt.Sprintf("[spec] %s", spec.Slug)
 	body := formatIssueBody(spec)
 	labels := formatLabels(spec)
 
-	out, err := g.runner.Run(ctx, "gh", "issue", "create",
-		"--repo", g.repo,
-		"--title", title,
-		"--body", body,
-		"--label", labels,
-	)
+	args := []string{"issue", "create"}
+	if g.repo != "" {
+		args = append(args, "--repo", g.repo)
+	}
+	args = append(args, "--title", title, "--body", body, "--label", labels)
+	out, err := g.runner.Run(ctx, "gh", args...)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrPushFailed, err)
 	}
@@ -75,10 +78,12 @@ func (g *GitHubAdapter) Push(ctx context.Context, spec *storage.Spec) (string, e
 
 // Pull retrieves the current state of a GitHub issue by its number.
 func (g *GitHubAdapter) Pull(ctx context.Context, externalID string) (string, error) {
-	out, err := g.runner.Run(ctx, "gh", "issue", "view", externalID,
-		"--repo", g.repo,
-		"--json", "state",
-	)
+	args := []string{"issue", "view", externalID}
+	if g.repo != "" {
+		args = append(args, "--repo", g.repo)
+	}
+	args = append(args, "--json", "state")
+	out, err := g.runner.Run(ctx, "gh", args...)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", ErrPullFailed, err)
 	}

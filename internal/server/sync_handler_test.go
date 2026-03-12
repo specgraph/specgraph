@@ -17,6 +17,7 @@ import (
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/seanb4t/specgraph/internal/server"
 	"github.com/seanb4t/specgraph/internal/storage"
+	syncpkg "github.com/seanb4t/specgraph/internal/sync"
 	"github.com/stretchr/testify/require"
 )
 
@@ -102,11 +103,11 @@ func (m *mockSyncBackend) DeleteSyncMapping(_ context.Context, specSlug string, 
 	return nil
 }
 
-type mockSpecGetter struct {
+type mockSpecReader struct {
 	specs map[string]*storage.Spec
 }
 
-func (m *mockSpecGetter) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
+func (m *mockSpecReader) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
 	spec, ok := m.specs[slug]
 	if !ok {
 		return nil, storage.ErrSpecNotFound
@@ -114,7 +115,7 @@ func (m *mockSpecGetter) GetSpec(_ context.Context, slug string) (*storage.Spec,
 	return spec, nil
 }
 
-func (m *mockSpecGetter) ListSpecs(_ context.Context, stage, priority string, _ int) ([]*storage.Spec, error) {
+func (m *mockSpecReader) ListSpecs(_ context.Context, stage, priority string, _ int) ([]*storage.Spec, error) {
 	var result []*storage.Spec
 	for _, spec := range m.specs {
 		if stage != "" && string(spec.Stage) != stage {
@@ -128,12 +129,19 @@ func (m *mockSpecGetter) ListSpecs(_ context.Context, stage, priority string, _ 
 	return result, nil
 }
 
-var _ storage.SyncBackend = (*mockSyncBackend)(nil)
+func (m *mockSpecReader) GetDependencies(_ context.Context, _ string) ([]storage.NodeRef, error) {
+	return nil, nil
+}
+
+var (
+	_ storage.SpecReader  = (*mockSpecReader)(nil)
+	_ storage.SyncBackend = (*mockSyncBackend)(nil)
+)
 
 func setupSyncServer(t *testing.T) specgraphv1connect.SyncServiceClient {
 	t.Helper()
 	syncStore := newMockSyncBackend()
-	specStore := &mockSpecGetter{
+	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
 			"test-spec": {
 				ID:         "spec-test123",
@@ -172,7 +180,7 @@ func TestSyncHandler_GetSyncStatus_WithMappings(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, syncStore, &mockSpecGetter{specs: map[string]*storage.Spec{}}, nil)
+	server.RegisterSyncService(mux, syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}, nil)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
@@ -226,4 +234,153 @@ func TestSyncHandler_Inject_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.FilesWritten, 1)
 	require.Contains(t, resp.Msg.Summary, "test-spec")
+}
+
+// mockAdapter implements syncpkg.Adapter for testing syncWithAdapter.
+type mockAdapter struct {
+	name      storage.SyncAdapterType
+	pushFn    func(ctx context.Context, spec *storage.Spec) (string, error)
+	available bool
+}
+
+func (m *mockAdapter) Name() storage.SyncAdapterType { return m.name }
+func (m *mockAdapter) Available() error {
+	if !m.available {
+		return fmt.Errorf("adapter not available")
+	}
+	return nil
+}
+
+func (m *mockAdapter) Push(ctx context.Context, spec *storage.Spec) (string, error) {
+	return m.pushFn(ctx, spec)
+}
+func (m *mockAdapter) Pull(_ context.Context, _ string) (string, error) { return "", nil }
+
+var _ syncpkg.Adapter = (*mockAdapter)(nil)
+
+func setupSyncServerWithAdapter(t *testing.T, adapter syncpkg.Adapter) specgraphv1connect.SyncServiceClient {
+	t.Helper()
+	syncStore := newMockSyncBackend()
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {
+				ID:       "spec-test123",
+				Slug:     "test-spec",
+				Intent:   "Test spec for sync",
+				Stage:    "approved",
+				Priority: "p2",
+			},
+		},
+	}
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler.RegisterAdapter(adapter)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+}
+
+func TestSyncHandler_SyncBeads_NoAdapter(t *testing.T) {
+	client := setupSyncServer(t)
+	_, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
+}
+
+func TestSyncHandler_SyncBeads_Success(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		pushFn: func(_ context.Context, spec *storage.Spec) (string, error) {
+			return "beads-" + spec.Slug, nil
+		},
+	}
+	client := setupSyncServerWithAdapter(t, adapter)
+	resp, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+		}))
+	require.NoError(t, err)
+	require.Equal(t, int32(1), resp.Msg.Synced)
+	require.Len(t, resp.Msg.Results, 1)
+	require.Equal(t, specv1.SyncState_SYNC_STATE_SYNCED, resp.Msg.Results[0].State)
+}
+
+func TestSyncHandler_SyncBeads_PushError(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		pushFn: func(_ context.Context, _ *storage.Spec) (string, error) {
+			return "", fmt.Errorf("push failed")
+		},
+	}
+	client := setupSyncServerWithAdapter(t, adapter)
+	resp, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+		}))
+	require.NoError(t, err)
+	require.Equal(t, int32(1), resp.Msg.Errors)
+	require.Equal(t, "failed to push to adapter", resp.Msg.Results[0].Message)
+}
+
+func TestSyncHandler_SyncBeads_DryRun(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		pushFn: func(_ context.Context, _ *storage.Spec) (string, error) {
+			t.Fatal("push should not be called in dry run")
+			return "", nil
+		},
+	}
+	client := setupSyncServerWithAdapter(t, adapter)
+	resp, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{
+				Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS,
+				DryRun:  true,
+			},
+		}))
+	require.NoError(t, err)
+	require.Equal(t, int32(0), resp.Msg.Synced)
+	require.Len(t, resp.Msg.Results, 1)
+	require.Equal(t, specv1.SyncState_SYNC_STATE_PENDING, resp.Msg.Results[0].State)
+}
+
+func TestSyncHandler_SyncBeads_AlreadySynced(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		pushFn: func(_ context.Context, spec *storage.Spec) (string, error) {
+			return "beads-" + spec.Slug, nil
+		},
+	}
+	// Setup with pre-existing mapping
+	syncStore := newMockSyncBackend()
+	syncStore.mappings["test-spec:beads"] = &storage.SyncMapping{
+		SpecSlug:   "test-spec",
+		Adapter:    storage.SyncAdapterBeads,
+		ExternalID: "beads-existing",
+		State:      storage.SyncStateSynced,
+	}
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+		},
+	}
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler.RegisterAdapter(adapter)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	resp, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+		}))
+	require.NoError(t, err)
+	require.Equal(t, int32(1), resp.Msg.Skipped)
+	require.Equal(t, "already synced", resp.Msg.Results[0].Message)
 }

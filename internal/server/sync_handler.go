@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -17,16 +18,10 @@ import (
 	syncpkg "github.com/seanb4t/specgraph/internal/sync"
 )
 
-// SpecGetter retrieves specs for sync operations.
-type SpecGetter interface {
-	GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
-	ListSpecs(ctx context.Context, stage, priority string, limit int) ([]*storage.Spec, error)
-}
-
 // SyncHandler implements the ConnectRPC SyncService.
 type SyncHandler struct {
 	syncStore         storage.SyncBackend
-	specStore         SpecGetter
+	specStore         storage.SpecReader
 	constitutionStore storage.ConstitutionBackend
 	adapters          map[storage.SyncAdapterType]syncpkg.Adapter
 }
@@ -36,7 +31,7 @@ var _ specgraphv1connect.SyncServiceHandler = (*SyncHandler)(nil)
 // RegisterSyncService registers the SyncService handler on the mux and returns
 // the handler so callers can register adapters via RegisterAdapter.
 // constitutionStore can be nil if constitution injection is not needed.
-func RegisterSyncService(mux *http.ServeMux, syncStore storage.SyncBackend, specStore SpecGetter, constitutionStore storage.ConstitutionBackend) *SyncHandler {
+func RegisterSyncService(mux *http.ServeMux, syncStore storage.SyncBackend, specStore storage.SpecReader, constitutionStore storage.ConstitutionBackend) *SyncHandler {
 	handler := &SyncHandler{
 		syncStore:         syncStore,
 		specStore:         specStore,
@@ -76,9 +71,8 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
 
-	stage := ""
-	priority := ""
-	dryRun := false
+	var stage, priority string
+	var dryRun bool
 	if config != nil {
 		stage = config.FilterStage
 		priority = config.FilterPriority
@@ -122,7 +116,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 		externalID, pushErr := adapter.Push(ctx, spec)
 		if pushErr != nil {
 			result.State = specv1.SyncState_SYNC_STATE_ERROR
-			result.Message = pushErr.Error()
+			result.Message = "failed to push to adapter"
 			resp.Errors++
 			resp.Results = append(resp.Results, result)
 			continue
@@ -131,7 +125,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 		_, createErr := h.syncStore.CreateSyncMapping(ctx, spec.Slug, adapter.Name(), externalID)
 		if createErr != nil {
 			result.State = specv1.SyncState_SYNC_STATE_ERROR
-			result.Message = createErr.Error()
+			result.Message = "failed to record sync mapping"
 			resp.Errors++
 			resp.Results = append(resp.Results, result)
 			continue
@@ -183,7 +177,7 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to retrieve spec"))
 	}
 
 	outputDir := req.Msg.OutputDir
@@ -191,7 +185,7 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 		var wdErr error
 		outputDir, wdErr = os.Getwd()
 		if wdErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, wdErr)
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to determine working directory"))
 		}
 	}
 
@@ -201,12 +195,16 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 	var constitution *storage.Constitution
 	if h.constitutionStore != nil {
 		// Try to load the project constitution; ignore errors (constitution is optional)
-		constitution, _ = h.constitutionStore.GetConstitution(ctx) //nolint:errcheck // constitution is optional for injection
+		var conErr error
+		constitution, conErr = h.constitutionStore.GetConstitution(ctx)
+		if conErr != nil {
+			slog.WarnContext(ctx, "failed to load constitution for injection", "error", conErr)
+		}
 	}
 
 	files, err := inject.Inject(spec, constitution, tool, outputDir)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to inject spec context"))
 	}
 
 	return connect.NewResponse(&specv1.InjectResponse{

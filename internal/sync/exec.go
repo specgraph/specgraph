@@ -4,6 +4,7 @@
 package sync
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
@@ -17,12 +18,15 @@ func NewExecRunner() *ExecRunner {
 	return &ExecRunner{}
 }
 
-// Run executes a command and returns its combined stdout/stderr output.
+// Run executes a command and returns its stdout output.
+// Stderr is captured separately to prevent it from corrupting stdout parsing.
 func (r *ExecRunner) Run(ctx context.Context, name string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
-	out, err := cmd.CombinedOutput()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
 	if err != nil {
-		return out, fmt.Errorf("exec %s: %w", name, err)
+		return out, fmt.Errorf("exec %s: %w (stderr: %s)", name, err, stderr.String())
 	}
 	return out, nil
 }

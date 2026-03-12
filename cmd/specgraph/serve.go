@@ -96,7 +96,9 @@ func runServe(_ *cobra.Command, _ []string) error {
 		lintEngine := linter.NewEngine(store, nil)
 		server.RegisterLifecycleService(mux, store, store, driftEngine, lintEngine, nil)
 		syncHandler := server.RegisterSyncService(mux, store, store, store)
-		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(syncpkg.NewExecRunner()))
+		runner := syncpkg.NewExecRunner()
+		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
+		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 

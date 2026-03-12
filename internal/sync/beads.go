@@ -48,6 +48,9 @@ type beadsShowResponse struct {
 
 // Push creates a bead from the given spec using the bd CLI.
 func (b *BeadsAdapter) Push(ctx context.Context, spec *storage.Spec) (string, error) {
+	if spec.Slug == "" {
+		return "", fmt.Errorf("%w: spec slug is required", ErrPushFailed)
+	}
 	title := fmt.Sprintf("[spec] %s", spec.Slug)
 	out, err := b.runner.Run(ctx, "bd", "create",
 		"--title", title,

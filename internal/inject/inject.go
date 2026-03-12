@@ -19,13 +19,17 @@ func Inject(spec *storage.Spec, constitution *storage.Constitution, tool storage
 	if spec == nil {
 		return nil, fmt.Errorf("spec cannot be nil")
 	}
+	safeSlug := filepath.Base(spec.Slug)
+	if safeSlug == "." || safeSlug == "/" || safeSlug == "" {
+		return nil, fmt.Errorf("invalid spec slug: %q", spec.Slug)
+	}
 	content := renderMarkdown(spec, constitution)
 
 	switch tool {
 	case storage.InjectToolClaudeCode:
-		return writeClaudeCode(content, spec.Slug, outputDir)
+		return writeClaudeCode(content, safeSlug, outputDir)
 	case storage.InjectToolCursor:
-		return writeCursor(content, spec, outputDir)
+		return writeCursor(content, safeSlug, spec.Intent, outputDir)
 	case storage.InjectToolAgentsMD:
 		return writeAgentsMD(content, outputDir)
 	default:
@@ -99,21 +103,21 @@ func writeClaudeCode(content, slug, outputDir string) ([]string, error) {
 	return []string{p}, nil
 }
 
-func writeCursor(content string, spec *storage.Spec, outputDir string) ([]string, error) {
+func writeCursor(content, slug, intent, outputDir string) ([]string, error) {
 	dir := filepath.Join(outputDir, ".cursor", "rules")
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, fmt.Errorf("create cursor rules dir: %w", err)
 	}
 
-	safeIntent := strings.ReplaceAll(spec.Intent, `"`, `\"`)
+	safeIntent := strings.ReplaceAll(intent, `"`, `\"`)
 	var b strings.Builder
 	b.WriteString("---\n")
-	fmt.Fprintf(&b, "description: \"SpecGraph spec %s: %s\"\n", spec.Slug, safeIntent)
+	fmt.Fprintf(&b, "description: \"SpecGraph spec %s: %s\"\n", slug, safeIntent)
 	b.WriteString("alwaysApply: false\n")
 	b.WriteString("---\n\n")
 	b.WriteString(content)
 
-	p := filepath.Join(dir, "specgraph-"+spec.Slug+".md")
+	p := filepath.Join(dir, "specgraph-"+slug+".md")
 	if err := os.WriteFile(p, []byte(b.String()), 0o600); err != nil {
 		return nil, fmt.Errorf("write cursor rule: %w", err)
 	}
