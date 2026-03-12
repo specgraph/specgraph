@@ -22,26 +22,38 @@ func timeToProto(t time.Time) *timestamppb.Timestamp {
 
 // --- Spec ---
 
-func specToProto(s *storage.Spec) *specv1.Spec {
-	return &specv1.Spec{
-		Id:         s.ID,
-		Slug:       s.Slug,
-		Intent:     s.Intent,
-		Stage:      string(s.Stage),
-		Priority:   string(s.Priority),
-		Complexity: s.Complexity,
-		Version:    s.Version,
-		CreatedAt:  timeToProto(s.CreatedAt),
-		UpdatedAt:  timeToProto(s.UpdatedAt),
+func specToProto(s *storage.Spec) (*specv1.Spec, error) {
+	lc, err := lifecycleToProto(s.Lifecycle)
+	if err != nil {
+		return nil, fmt.Errorf("spec %q: %w", s.Slug, err)
 	}
+	return &specv1.Spec{
+		Id:           s.ID,
+		Slug:         s.Slug,
+		Intent:       s.Intent,
+		Stage:        string(s.Stage),
+		Priority:     string(s.Priority),
+		Complexity:   s.Complexity,
+		Version:      s.Version,
+		CreatedAt:    timeToProto(s.CreatedAt),
+		UpdatedAt:    timeToProto(s.UpdatedAt),
+		Lifecycle:    lc,
+		SupersededBy: s.SupersededBy,
+		Supersedes:   s.Supersedes,
+		History:      historyToProto(s.History),
+	}, nil
 }
 
-func specsToProto(specs []*storage.Spec) []*specv1.Spec {
+func specsToProto(specs []*storage.Spec) ([]*specv1.Spec, error) {
 	result := make([]*specv1.Spec, len(specs))
 	for i, s := range specs {
-		result[i] = specToProto(s)
+		pb, err := specToProto(s)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = pb
 	}
-	return result
+	return result, nil
 }
 
 // --- Decision ---
@@ -107,12 +119,13 @@ func decisionsToProto(decisions []*storage.Decision) ([]*specv1.Decision, error)
 // --- Edge ---
 
 var edgeTypeToProtoMap = map[storage.EdgeType]specv1.EdgeType{
-	storage.EdgeTypeDependsOn: specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
-	storage.EdgeTypeBlocks:    specv1.EdgeType_EDGE_TYPE_BLOCKS,
-	storage.EdgeTypeComposes:  specv1.EdgeType_EDGE_TYPE_COMPOSES,
-	storage.EdgeTypeRelatesTo: specv1.EdgeType_EDGE_TYPE_RELATES_TO,
-	storage.EdgeTypeInforms:   specv1.EdgeType_EDGE_TYPE_INFORMS,
-	storage.EdgeTypeDecidedIn: specv1.EdgeType_EDGE_TYPE_DECIDED_IN,
+	storage.EdgeTypeDependsOn:  specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
+	storage.EdgeTypeBlocks:     specv1.EdgeType_EDGE_TYPE_BLOCKS,
+	storage.EdgeTypeComposes:   specv1.EdgeType_EDGE_TYPE_COMPOSES,
+	storage.EdgeTypeRelatesTo:  specv1.EdgeType_EDGE_TYPE_RELATES_TO,
+	storage.EdgeTypeInforms:    specv1.EdgeType_EDGE_TYPE_INFORMS,
+	storage.EdgeTypeDecidedIn:  specv1.EdgeType_EDGE_TYPE_DECIDED_IN,
+	storage.EdgeTypeSupersedes: specv1.EdgeType_EDGE_TYPE_SUPERSEDES,
 }
 
 var edgeTypeFromProtoMap = map[specv1.EdgeType]storage.EdgeType{
@@ -122,6 +135,7 @@ var edgeTypeFromProtoMap = map[specv1.EdgeType]storage.EdgeType{
 	specv1.EdgeType_EDGE_TYPE_RELATES_TO: storage.EdgeTypeRelatesTo,
 	specv1.EdgeType_EDGE_TYPE_INFORMS:    storage.EdgeTypeInforms,
 	specv1.EdgeType_EDGE_TYPE_DECIDED_IN: storage.EdgeTypeDecidedIn,
+	specv1.EdgeType_EDGE_TYPE_SUPERSEDES: storage.EdgeTypeSupersedes,
 }
 
 func edgeTypeToProto(e storage.EdgeType) (specv1.EdgeType, error) {
@@ -443,8 +457,170 @@ func executionEventsToProto(events []*storage.ExecutionEvent) []*specv1.Executio
 	return result
 }
 
+// --- History ---
+
+func historyToProto(entries []storage.HistoryEntry) []*specv1.HistoryEntry {
+	if len(entries) == 0 {
+		return nil
+	}
+	result := make([]*specv1.HistoryEntry, len(entries))
+	for i, e := range entries {
+		result[i] = &specv1.HistoryEntry{
+			Version: e.Version,
+			Stage:   string(e.Stage),
+			Summary: e.Summary,
+			Reason:  e.Reason,
+			Date:    timeToProto(e.Date),
+		}
+	}
+	return result
+}
+
+// --- Drift ---
+
+// SYNC: keep in sync with validScopes (internal/driftscope/scope.go)
+// and driftScopeToProtoMap (cmd/specgraph/lifecycle.go).
+var driftScopeFromProtoMap = map[specv1.DriftScope]string{
+	specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED: "", // all scopes when client omits the field
+	specv1.DriftScope_DRIFT_SCOPE_DEPS:        "deps",
+	specv1.DriftScope_DRIFT_SCOPE_INTERFACES:  "interfaces",
+	specv1.DriftScope_DRIFT_SCOPE_VERIFY:      "verify",
+}
+
+func driftScopeFromProto(scope specv1.DriftScope) (string, bool) {
+	if s, ok := driftScopeFromProtoMap[scope]; ok {
+		return s, true
+	}
+	return "", false
+}
+
+var driftTypeToProtoMap = map[storage.DriftType]specv1.DriftType{
+	storage.DriftTypeDependency: specv1.DriftType_DRIFT_TYPE_DEPENDENCY,
+	storage.DriftTypeInterface:  specv1.DriftType_DRIFT_TYPE_INTERFACE,
+	storage.DriftTypeVerify:     specv1.DriftType_DRIFT_TYPE_VERIFY,
+}
+
+var driftSeverityToProtoMap = map[storage.DriftSeverity]specv1.DriftSeverity{
+	storage.DriftSeverityHigh:   specv1.DriftSeverity_DRIFT_SEVERITY_HIGH,
+	storage.DriftSeverityMedium: specv1.DriftSeverity_DRIFT_SEVERITY_MEDIUM,
+	storage.DriftSeverityLow:    specv1.DriftSeverity_DRIFT_SEVERITY_LOW,
+	storage.DriftSeverityInfo:   specv1.DriftSeverity_DRIFT_SEVERITY_INFO,
+}
+
+func driftReportToProto(r *storage.DriftReport) (*specv1.DriftReport, error) {
+	items := make([]*specv1.DriftItem, len(r.Items))
+	for i, item := range r.Items {
+		dt, ok := driftTypeToProtoMap[item.Type]
+		if !ok {
+			return nil, fmt.Errorf("driftReportToProto: unknown drift type %q for slug %q", item.Type, r.SpecSlug)
+		}
+		ds, ok := driftSeverityToProtoMap[item.Severity]
+		if !ok {
+			return nil, fmt.Errorf("driftReportToProto: unknown drift severity %q for slug %q", item.Severity, r.SpecSlug)
+		}
+		items[i] = &specv1.DriftItem{
+			Type:            dt,
+			Severity:        ds,
+			Description:     item.Description,
+			SpecSlug:        item.SpecSlug,
+			UpstreamSlug:    item.UpstreamSlug,
+			ExpectedVersion: item.ExpectedVersion,
+			ActualVersion:   item.ActualVersion,
+		}
+	}
+	return &specv1.DriftReport{
+		SpecSlug:            r.SpecSlug,
+		Items:               items,
+		Acknowledged:        r.Acknowledged,
+		AcknowledgeNote:     r.AcknowledgeNote,
+		ItemsStale:          r.ItemsStale,
+		ErrorMessage:        r.ErrorMessage,
+		AckStateUnavailable: r.AckStateUnavailable,
+	}, nil
+}
+
+func driftReportsToProto(reports []storage.DriftReport) ([]*specv1.DriftReport, error) {
+	result := make([]*specv1.DriftReport, len(reports))
+	for i := range reports {
+		var err error
+		result[i], err = driftReportToProto(&reports[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+// --- Lifecycle ---
+
+var lifecycleToProtoMap = map[storage.SpecLifecycle]specv1.SpecLifecycle{
+	"":                          specv1.SpecLifecycle_SPEC_LIFECYCLE_UNSPECIFIED,
+	storage.SpecLifecycleTask:   specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK,
+	storage.SpecLifecycleLiving: specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING,
+}
+
+func lifecycleToProto(l storage.SpecLifecycle) (specv1.SpecLifecycle, error) {
+	if v, ok := lifecycleToProtoMap[l]; ok {
+		return v, nil
+	}
+	return specv1.SpecLifecycle_SPEC_LIFECYCLE_UNSPECIFIED, fmt.Errorf("unknown lifecycle: %q", l)
+}
+
+// --- Lint ---
+
+var lintSeverityToProtoMap = map[storage.LintSeverity]specv1.LintSeverity{
+	storage.LintSeverityError:   specv1.LintSeverity_LINT_SEVERITY_ERROR,
+	storage.LintSeverityWarning: specv1.LintSeverity_LINT_SEVERITY_WARNING,
+	storage.LintSeverityInfo:    specv1.LintSeverity_LINT_SEVERITY_INFO,
+}
+
+func lintViolationToProto(v *storage.LintViolation) (*specv1.LintViolation, error) {
+	sev, ok := lintSeverityToProtoMap[v.Severity]
+	if !ok {
+		return nil, fmt.Errorf("lintViolationToProto: unknown lint severity %q for rule %q", v.Severity, v.Rule)
+	}
+	return &specv1.LintViolation{
+		Rule:     v.Rule,
+		Severity: sev,
+		Message:  v.Message,
+		Location: v.Location,
+	}, nil
+}
+
+func lintResultToProto(r *storage.LintResult) (*specv1.LintResult, error) {
+	violations := make([]*specv1.LintViolation, len(r.Violations))
+	for i := range r.Violations {
+		v, err := lintViolationToProto(&r.Violations[i])
+		if err != nil {
+			return nil, err
+		}
+		violations[i] = v
+	}
+	return &specv1.LintResult{
+		SpecSlug:   r.SpecSlug,
+		Violations: violations,
+		Passed:     r.Passed,
+		Error:      r.Error,
+	}, nil
+}
+
+func lintResultsToProto(results []storage.LintResult) ([]*specv1.LintResult, error) {
+	result := make([]*specv1.LintResult, len(results))
+	for i := range results {
+		r, err := lintResultToProto(&results[i])
+		if err != nil {
+			return nil, err
+		}
+		result[i] = r
+	}
+	return result, nil
+}
+
 func bundleToProto(b *storage.Bundle) (*specv1.Bundle, error) {
-	spec := specToProto(b.Spec)
+	spec, err := specToProto(b.Spec)
+	if err != nil {
+		return nil, err
+	}
 	decisions, err := decisionsToProto(b.Decisions)
 	if err != nil {
 		return nil, err

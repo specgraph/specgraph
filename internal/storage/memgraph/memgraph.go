@@ -7,6 +7,7 @@ package memgraph
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
@@ -19,13 +20,29 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
+// Compile-time interface assertions.
+var (
+	_ storage.AuthoringBackend = (*Store)(nil)
+	_ storage.LifecycleBackend = (*Store)(nil)
+)
+
 // Store implements storage.Backend using Memgraph (Bolt protocol).
 type Store struct {
-	driver neo4j.DriverWithContext
+	driver  neo4j.DriverWithContext
+	nowFunc func() time.Time // injectable clock; defaults to time.Now
+}
+
+// Option configures a Store.
+type Option func(*Store)
+
+// WithClock overrides the default wall clock used for timestamps.
+// Intended for testing — production callers should omit this option.
+func WithClock(fn func() time.Time) Option {
+	return func(s *Store) { s.nowFunc = fn }
 }
 
 // New creates a new Memgraph-backed Store and verifies connectivity.
-func New(ctx context.Context, boltURI string) (*Store, error) {
+func New(ctx context.Context, boltURI string, opts ...Option) (*Store, error) {
 	driver, err := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: create driver: %w", err)
@@ -33,15 +50,22 @@ func New(ctx context.Context, boltURI string) (*Store, error) {
 	if err := driver.VerifyConnectivity(ctx); err != nil {
 		return nil, fmt.Errorf("memgraph: verify connectivity: %w", err)
 	}
-	return &Store{driver: driver}, nil
+	s := &Store{driver: driver, nowFunc: time.Now}
+	for _, o := range opts {
+		o(s)
+	}
+	return s, nil
 }
 
-const defaultInitialStage = "spark"
+const (
+	defaultInitialStage = "spark"
+	defaultLifecycle    = storage.SpecLifecycleTask
+)
 
 // CreateSpec stores a new spec node in Memgraph and returns it.
 func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
 	id := newID("spec")
-	nowStr := nowRFC3339()
+	nowStr := s.now()
 
 	query := `
 		CREATE (s:Spec {
@@ -53,21 +77,27 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 			complexity: $complexity,
 			version: $version,
 			created_at: $created_at,
-			updated_at: $updated_at
+			updated_at: $updated_at,
+			lifecycle: $lifecycle,
+			history_json: $history_json
 		})
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
-		       s.version, s.created_at, s.updated_at
+		       s.version, s.created_at, s.updated_at,
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.drift_acknowledged, s.drift_acknowledge_note
 	`
 	params := map[string]any{
-		"id":         id,
-		"slug":       slug,
-		"intent":     intent,
-		"stage":      defaultInitialStage,
-		"priority":   priority,
-		"complexity": complexity,
-		"version":    int64(1),
-		"created_at": nowStr,
-		"updated_at": nowStr,
+		"id":           id,
+		"slug":         slug,
+		"intent":       intent,
+		"stage":        defaultInitialStage,
+		"priority":     priority,
+		"complexity":   complexity,
+		"version":      int64(1),
+		"created_at":   nowStr,
+		"updated_at":   nowStr,
+		"lifecycle":    string(defaultLifecycle),
+		"history_json": "[]",
 	}
 
 	records, err := s.executeQuery(ctx, query, params)
@@ -86,7 +116,9 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
 	query := `
 		MATCH (s:Spec {slug: $slug})
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
-		       s.version, s.created_at, s.updated_at
+		       s.version, s.created_at, s.updated_at,
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.drift_acknowledged, s.drift_acknowledge_note
 	`
 	params := map[string]any{"slug": slug}
 
@@ -99,6 +131,34 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
 	}
 
 	return recordToSpec(records[0])
+}
+
+// BatchGetSpecs retrieves multiple specs by slug in a single query.
+// Missing slugs are silently omitted from the result map.
+func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*storage.Spec, error) {
+	if len(slugs) == 0 {
+		return map[string]*storage.Spec{}, nil
+	}
+	query := `
+		MATCH (s:Spec) WHERE s.slug IN $slugs
+		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
+		       s.version, s.created_at, s.updated_at,
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.drift_acknowledged, s.drift_acknowledge_note
+	`
+	records, err := s.executeQuery(ctx, query, map[string]any{"slugs": slugs})
+	if err != nil {
+		return nil, fmt.Errorf("memgraph: batch get specs: %w", err)
+	}
+	result := make(map[string]*storage.Spec, len(records))
+	for _, rec := range records {
+		spec, err := recordToSpec(rec)
+		if err != nil {
+			return nil, fmt.Errorf("memgraph: batch get specs: parse: %w", err)
+		}
+		result[spec.Slug] = spec
+	}
+	return result, nil
 }
 
 // ListSpecs returns specs matching the given filters.
@@ -119,7 +179,10 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	if len(clauses) > 0 {
 		query += " WHERE " + strings.Join(clauses, " AND ")
 	}
-	query += " RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity, s.version, s.created_at, s.updated_at"
+	query += ` RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
+		       s.version, s.created_at, s.updated_at,
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.drift_acknowledged, s.drift_acknowledge_note`
 	query += " ORDER BY s.created_at"
 	if limit > 0 {
 		query += " LIMIT $limit"
@@ -168,7 +231,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		return s.GetSpec(ctx, slug)
 	}
 
-	nowStr := nowRFC3339()
+	nowStr := s.now()
 	setClauses = append(setClauses, "s.version = s.version + 1", "s.updated_at = $updated_at")
 	params["updated_at"] = nowStr
 
@@ -176,7 +239,9 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		MATCH (s:Spec {slug: $slug})
 		SET %s
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
-		       s.version, s.created_at, s.updated_at
+		       s.version, s.created_at, s.updated_at,
+		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.drift_acknowledged, s.drift_acknowledge_note
 	`, strings.Join(setClauses, ", "))
 
 	records, err := s.executeQuery(ctx, query, params)
@@ -214,9 +279,26 @@ func newID(prefix string) string {
 	return prefix + "-" + ulid.MustNew(ulid.Now(), rand.Reader).String()
 }
 
-// nowRFC3339 returns the current UTC time formatted as an RFC 3339 string.
-func nowRFC3339() string {
-	return time.Now().UTC().Format(time.RFC3339)
+// sortableRFC3339Nano is a fixed-width RFC 3339 layout with zero-padded nanoseconds.
+// Unlike time.RFC3339Nano (which trims trailing fractional zeros), this format
+// ensures lexicographic string ordering matches chronological ordering — critical
+// for Cypher ORDER BY and timestamp comparison operators on string-typed fields.
+//
+// Migration note: This replaces the previous time.RFC3339 format used for all
+// timestamp fields. Existing Memgraph nodes may have timestamps in the old format
+// (without nanoseconds). Both formats are ISO 8601 prefix-sortable, so mixed-format
+// ORDER BY queries produce correct results. Reads fall back via parseRFC3339.
+const sortableRFC3339Nano = "2006-01-02T15:04:05.000000000Z07:00"
+
+// nowTime returns the current UTC time from the Store's clock.
+func (s *Store) nowTime() time.Time {
+	return s.nowFunc().UTC()
+}
+
+// now returns the current UTC time as a fixed-width RFC 3339 string to
+// ensure lexicographic string ordering matches chronological ordering.
+func (s *Store) now() string {
+	return s.nowTime().Format(sortableRFC3339Nano)
 }
 
 // parseRFC3339 parses an RFC3339 timestamp string from a memgraph record field.
@@ -262,41 +344,112 @@ func safeInt32(v int64) int32 {
 	return int32(v)
 }
 
-// recordToSpec converts a neo4j record (with positional values) to a *storage.Spec.
-func recordToSpec(rec *neo4j.Record) (*storage.Spec, error) {
-	id, err := recordString(rec, 0, "id")
+// recordBoolOptional extracts a nullable bool value from a neo4j record by
+// position. Returns false for nil/null values, and fails fast on unexpected
+// types to surface schema/return-shift bugs immediately.
+func recordBoolOptional(rec *neo4j.Record, pos int, field string) (bool, error) {
+	if pos >= len(rec.Values) {
+		return false, fmt.Errorf("memgraph: field %q at position %d: missing", field, pos)
+	}
+	if rec.Values[pos] == nil {
+		return false, nil
+	}
+	b, ok := rec.Values[pos].(bool)
+	if !ok {
+		return false, fmt.Errorf("memgraph: field %q at position %d: expected bool or nil, got %T", field, pos, rec.Values[pos])
+	}
+	return b, nil
+}
+
+func recordStringOptional(rec *neo4j.Record, pos int, field string) (string, error) {
+	if pos >= len(rec.Values) {
+		return "", fmt.Errorf("memgraph: field %q at position %d: missing", field, pos)
+	}
+	if rec.Values[pos] == nil {
+		return "", nil
+	}
+	s, ok := rec.Values[pos].(string)
+	if !ok {
+		return "", fmt.Errorf("memgraph: field %q at position %d: expected string or nil, got %T", field, pos, rec.Values[pos])
+	}
+	return s, nil
+}
+
+// historyEntryJSON is a JSON-serializable form of storage.HistoryEntry.
+type historyEntryJSON struct {
+	Version int32  `json:"version"`
+	Stage   string `json:"stage"`
+	Summary string `json:"summary"`
+	Reason  string `json:"reason"`
+	Date    string `json:"date"`
+}
+
+// unmarshalHistory parses a JSON string into a slice of storage.HistoryEntry.
+// slug is used in error messages to identify which spec's history is broken.
+func unmarshalHistory(slug, raw string) ([]storage.HistoryEntry, error) {
+	if raw == "" || raw == "[]" {
+		return []storage.HistoryEntry{}, nil
+	}
+	var entries []historyEntryJSON
+	if err := json.Unmarshal([]byte(raw), &entries); err != nil {
+		return nil, fmt.Errorf("memgraph: unmarshal history_json for spec %q: %w", slug, err)
+	}
+	result := make([]storage.HistoryEntry, len(entries))
+	for i, e := range entries {
+		t, err := parseRFC3339("history.date", e.Date)
+		if err != nil {
+			return nil, err
+		}
+		stage := storage.SpecStage(e.Stage)
+		result[i] = storage.HistoryEntry{
+			Version: e.Version,
+			Stage:   stage,
+			Summary: e.Summary,
+			Reason:  e.Reason,
+			Date:    t,
+		}
+	}
+	return result, nil
+}
+
+// recordToSpecOffset converts a neo4j record to a *storage.Spec, reading field
+// values starting at the given positional offset. This supports queries that
+// return multiple spec records in a single row (e.g., SupersedeSpec returning
+// both old and new specs).
+func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
+	id, err := recordString(rec, offset+0, "id")
 	if err != nil {
 		return nil, err
 	}
-	slug, err := recordString(rec, 1, "slug")
+	slug, err := recordString(rec, offset+1, "slug")
 	if err != nil {
 		return nil, err
 	}
-	intent, err := recordString(rec, 2, "intent")
+	intent, err := recordString(rec, offset+2, "intent")
 	if err != nil {
 		return nil, err
 	}
-	stage, err := recordString(rec, 3, "stage")
+	stage, err := recordString(rec, offset+3, "stage")
 	if err != nil {
 		return nil, err
 	}
-	priority, err := recordString(rec, 4, "priority")
+	priority, err := recordString(rec, offset+4, "priority")
 	if err != nil {
 		return nil, err
 	}
-	complexity, err := recordString(rec, 5, "complexity")
+	complexity, err := recordString(rec, offset+5, "complexity")
 	if err != nil {
 		return nil, err
 	}
-	version, err := recordInt64(rec, 6, "version")
+	version, err := recordInt64(rec, offset+6, "version")
 	if err != nil {
 		return nil, err
 	}
-	createdAtStr, err := recordString(rec, 7, "created_at")
+	createdAtStr, err := recordString(rec, offset+7, "created_at")
 	if err != nil {
 		return nil, err
 	}
-	updatedAtStr, err := recordString(rec, 8, "updated_at")
+	updatedAtStr, err := recordString(rec, offset+8, "updated_at")
 	if err != nil {
 		return nil, err
 	}
@@ -310,15 +463,60 @@ func recordToSpec(rec *neo4j.Record) (*storage.Spec, error) {
 		return nil, err
 	}
 
+	lifecycleStr, err := recordStringOptional(rec, offset+9, "lifecycle")
+	if err != nil {
+		return nil, err
+	}
+	lifecycle := storage.SpecLifecycle(lifecycleStr)
+	if lifecycle == "" {
+		lifecycle = defaultLifecycle
+	}
+	supersededBy, err := recordStringOptional(rec, offset+10, "superseded_by")
+	if err != nil {
+		return nil, err
+	}
+	supersedes, err := recordStringOptional(rec, offset+11, "supersedes")
+	if err != nil {
+		return nil, err
+	}
+	historyJSON, err := recordStringOptional(rec, offset+12, "history_json")
+	if err != nil {
+		return nil, err
+	}
+
+	history, err := unmarshalHistory(slug, historyJSON)
+	if err != nil {
+		return nil, err
+	}
+	driftAck, err := recordBoolOptional(rec, offset+13, "drift_acknowledged")
+	if err != nil {
+		return nil, err
+	}
+	driftAckNote, err := recordStringOptional(rec, offset+14, "drift_acknowledge_note")
+	if err != nil {
+		return nil, err
+	}
+
 	return &storage.Spec{
-		ID:         id,
-		Slug:       slug,
-		Intent:     intent,
-		Stage:      storage.SpecStage(stage),
-		Priority:   storage.SpecPriority(priority),
-		Complexity: complexity,
-		Version:    safeInt32(version),
-		CreatedAt:  createdAt,
-		UpdatedAt:  updatedAt,
+		ID:                   id,
+		Slug:                 slug,
+		Intent:               intent,
+		Stage:                storage.SpecStage(stage),
+		Priority:             storage.SpecPriority(priority),
+		Complexity:           complexity,
+		Version:              safeInt32(version),
+		CreatedAt:            createdAt,
+		UpdatedAt:            updatedAt,
+		Lifecycle:            lifecycle,
+		SupersededBy:         supersededBy,
+		Supersedes:           supersedes,
+		History:              history,
+		DriftAcknowledged:    driftAck,
+		DriftAcknowledgeNote: driftAckNote,
 	}, nil
+}
+
+// recordToSpec converts a neo4j record (with positional values) to a *storage.Spec.
+func recordToSpec(rec *neo4j.Record) (*storage.Spec, error) {
+	return recordToSpecOffset(rec, 0)
 }

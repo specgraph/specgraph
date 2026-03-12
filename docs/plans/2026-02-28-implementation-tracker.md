@@ -145,18 +145,18 @@
 
 ## Slice 5: Spec Lifecycle
 
-**Plan:** `docs/plans/2026-02-28-slice-5-spec-lifecycle-plan.md`
-**Status:** Not started
+**Plan:** `docs/plans/2026-03-07-slice-5-spec-lifecycle-revised-plan.md` (supersedes `2026-02-28-slice-5-spec-lifecycle-plan.md`)
+**Status:** In progress
 **Depends on:** Slice 4
 
 - [ ] Task 1: Protobuf schema -- spec extensions + LifecycleService
-- [ ] Task 2: Update Memgraph spec storage for new fields
-- [ ] Task 3: Storage interface -- LifecycleBackend
+- [ ] Task 2: Domain types -- extend Spec + add lifecycle types
+- [ ] Task 3: Update Memgraph spec storage for new fields
 - [ ] Task 4: Memgraph implementation -- lifecycle storage
-- [ ] Task 5: Spec JSON Schema
+- [ ] Task 5: Spec JSON Schema + schema validator
 - [ ] Task 6: Linter engine
 - [ ] Task 7: Drift detection engine
-- [ ] Task 8: ConnectRPC handler -- LifecycleService
+- [ ] Task 8: Proto↔domain converters + ConnectRPC handler
 - [ ] Task 9: CLI commands -- lifecycle operations
 - [ ] Task 10: End-to-end integration test
 

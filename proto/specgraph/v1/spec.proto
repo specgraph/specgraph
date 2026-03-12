@@ -9,6 +9,14 @@ option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
 
 import "google/protobuf/timestamp.proto";
 
+// --- Enums ---
+
+enum SpecLifecycle {
+  SPEC_LIFECYCLE_UNSPECIFIED = 0;
+  SPEC_LIFECYCLE_TASK = 1;
+  SPEC_LIFECYCLE_LIVING = 2;
+}
+
 // --- Messages ---
 
 message Spec {
@@ -21,6 +29,18 @@ message Spec {
   int32 version = 7;
   google.protobuf.Timestamp created_at = 8;
   google.protobuf.Timestamp updated_at = 9;
+  SpecLifecycle lifecycle = 10; // task (default) | living
+  string superseded_by = 11;   // slug of replacement spec, if superseded
+  string supersedes = 12;      // slug of spec this replaced
+  repeated HistoryEntry history = 13;
+}
+
+message HistoryEntry {
+  int32 version = 1;
+  string stage = 2;
+  string summary = 3;
+  string reason = 4;
+  google.protobuf.Timestamp date = 5;
 }
 
 message CreateSpecRequest {

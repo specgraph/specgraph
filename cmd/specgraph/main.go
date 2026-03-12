@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -12,8 +13,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "specgraph",
-	Short: "Live spec-driven development framework",
+	Use:           "specgraph",
+	Short:         "Live spec-driven development framework",
+	SilenceErrors: true,
 }
 
 var cfgFile string
@@ -24,6 +26,10 @@ func init() {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
+		var ee *exitError
+		if errors.As(err, &ee) {
+			os.Exit(ee.code)
+		}
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

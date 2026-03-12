@@ -37,19 +37,21 @@ type EdgeType string
 
 // Edge type relationship values.
 const (
-	EdgeTypeDependsOn EdgeType = "DEPENDS_ON"
-	EdgeTypeBlocks    EdgeType = "BLOCKS"
-	EdgeTypeComposes  EdgeType = "COMPOSES"
-	EdgeTypeRelatesTo EdgeType = "RELATES_TO"
-	EdgeTypeInforms   EdgeType = "INFORMS"
-	EdgeTypeDecidedIn EdgeType = "DECIDED_IN"
+	EdgeTypeDependsOn  EdgeType = "DEPENDS_ON"
+	EdgeTypeBlocks     EdgeType = "BLOCKS"
+	EdgeTypeComposes   EdgeType = "COMPOSES"
+	EdgeTypeRelatesTo  EdgeType = "RELATES_TO"
+	EdgeTypeInforms    EdgeType = "INFORMS"
+	EdgeTypeDecidedIn  EdgeType = "DECIDED_IN"
+	EdgeTypeSupersedes EdgeType = "SUPERSEDES"
 )
 
 // IsValid reports whether e is a known edge type.
 func (e EdgeType) IsValid() bool {
 	switch e {
 	case EdgeTypeDependsOn, EdgeTypeBlocks, EdgeTypeComposes,
-		EdgeTypeRelatesTo, EdgeTypeInforms, EdgeTypeDecidedIn:
+		EdgeTypeRelatesTo, EdgeTypeInforms, EdgeTypeDecidedIn,
+		EdgeTypeSupersedes:
 		return true
 	default:
 		return false

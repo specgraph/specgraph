@@ -38,3 +38,7 @@ func newDecisionClient() specgraphv1connect.DecisionServiceClient {
 func newServerClient() specgraphv1connect.ServerServiceClient {
 	return specgraphv1connect.NewServerServiceClient(http.DefaultClient, serverInfo.BaseURL)
 }
+
+func newLifecycleClient() specgraphv1connect.LifecycleServiceClient {
+	return specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, serverInfo.BaseURL)
+}

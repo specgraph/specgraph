@@ -60,6 +60,8 @@ jobs:
         run: echo "$HOME/.dprint/bin" >> "$GITHUB_PATH"
       - name: Quality check
         run: task check
+      - name: Verify generated code is up to date
+        run: task proto:check
       - name: Integration tests
         run: task test:integration
   e2e:
