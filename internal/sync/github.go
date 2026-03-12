@@ -32,8 +32,8 @@ func (g *GitHubAdapter) Name() storage.SyncAdapterType {
 }
 
 // Available checks whether the gh CLI is installed and reachable.
-func (g *GitHubAdapter) Available() error {
-	_, err := g.runner.Run(context.Background(), "gh", "--version")
+func (g *GitHubAdapter) Available(ctx context.Context) error {
+	_, err := g.runner.Run(ctx, "gh", "--version")
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrAdapterNotAvailable, err)
 	}
@@ -91,6 +91,9 @@ func (g *GitHubAdapter) Pull(ctx context.Context, externalID string) (string, er
 	var resp ghViewResponse
 	if err := json.Unmarshal(out, &resp); err != nil {
 		return "", fmt.Errorf("%w: failed to parse response: %w", ErrPullFailed, err)
+	}
+	if resp.State == "" {
+		return "", fmt.Errorf("%w: missing issue state in response", ErrPullFailed)
 	}
 
 	return resp.State, nil

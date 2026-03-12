@@ -23,7 +23,7 @@ func TestGitHubAdapter_Available(t *testing.T) {
 	g := NewGitHubAdapter(&mockRunner{
 		output: []byte("gh version 2.60.0 (2026-01-15)\n"),
 	}, "owner/repo")
-	if err := g.Available(); err != nil {
+	if err := g.Available(context.Background()); err != nil {
 		t.Errorf("Available() unexpected error: %v", err)
 	}
 }
@@ -32,7 +32,7 @@ func TestGitHubAdapter_AvailableNotInstalled(t *testing.T) {
 	g := NewGitHubAdapter(&mockRunner{
 		err: errors.New("exec: \"gh\": executable file not found in $PATH"),
 	}, "owner/repo")
-	err := g.Available()
+	err := g.Available(context.Background())
 	if err == nil {
 		t.Fatal("Available() expected error, got nil")
 	}
@@ -147,5 +147,70 @@ func TestFormatLabels(t *testing.T) {
 		if !strings.Contains(labels, want) {
 			t.Errorf("formatLabels() = %q, missing %q", labels, want)
 		}
+	}
+}
+
+func TestGitHubAdapter_PushEmptySlug(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{}, "owner/repo")
+	_, err := g.Push(context.Background(), &storage.Spec{Slug: ""})
+	if err == nil {
+		t.Fatal("Push() expected error for empty slug, got nil")
+	}
+	if !errors.Is(err, ErrPushFailed) {
+		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	}
+}
+
+func TestGitHubAdapter_PushInvalidURL(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{
+		output: []byte("not-a-url\n"),
+	}, "owner/repo")
+	spec := &storage.Spec{Slug: "my-spec", Intent: "test"}
+	_, err := g.Push(context.Background(), spec)
+	if err == nil {
+		t.Fatal("Push() expected error for invalid URL, got nil")
+	}
+	if !errors.Is(err, ErrPushFailed) {
+		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	}
+}
+
+func TestGitHubAdapter_PushNonNumericIssueNumber(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{
+		output: []byte("https://github.com/owner/repo/issues/notanumber\n"),
+	}, "owner/repo")
+	spec := &storage.Spec{Slug: "my-spec", Intent: "test"}
+	_, err := g.Push(context.Background(), spec)
+	if err == nil {
+		t.Fatal("Push() expected error for non-numeric issue number, got nil")
+	}
+	if !errors.Is(err, ErrPushFailed) {
+		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	}
+}
+
+func TestGitHubAdapter_PullEmptyState(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{
+		output: []byte(`{"state":""}`),
+	}, "owner/repo")
+	_, err := g.Pull(context.Background(), "42")
+	if err == nil {
+		t.Fatal("Pull() expected error for empty state, got nil")
+	}
+	if !errors.Is(err, ErrPullFailed) {
+		t.Errorf("Pull() error = %v, want ErrPullFailed", err)
+	}
+}
+
+func TestGitHubAdapter_PullMalformedJSON(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{
+		output: []byte("not json at all"),
+	}, "owner/repo")
+	_, err := g.Pull(context.Background(), "42")
+	if err == nil {
+		t.Fatal("Pull() expected error for malformed JSON, got nil")
+	}
+	if !errors.Is(err, ErrPullFailed) {
+		t.Errorf("Pull() error = %v, want ErrPullFailed", err)
 	}
 }

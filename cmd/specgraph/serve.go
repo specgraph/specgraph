@@ -98,7 +98,10 @@ func runServe(_ *cobra.Command, _ []string) error {
 		syncHandler := server.RegisterSyncService(mux, store, store, store)
 		runner := syncpkg.NewExecRunner()
 		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
-		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
+		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, cfg.Sync.GitHubRepo))
+		if wd, err := os.Getwd(); err == nil {
+			syncHandler.SetAllowedOutputRoot(wd)
+		}
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 

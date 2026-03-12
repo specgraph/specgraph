@@ -85,6 +85,6 @@ type SyncBackend interface {
 	ListSyncMappings(ctx context.Context, adapter SyncAdapterType, specSlug string) ([]*SyncMapping, error)
 
 	// DeleteSyncMapping removes a sync mapping.
-	// Returns ErrSyncMappingNotFound if no mapping exists.
+	// Idempotent: deleting a non-existent mapping is a no-op and returns nil.
 	DeleteSyncMapping(ctx context.Context, specSlug string, adapter SyncAdapterType) error
 }

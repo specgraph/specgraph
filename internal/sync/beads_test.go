@@ -32,7 +32,7 @@ func TestBeadsAdapter_Available(t *testing.T) {
 	b := NewBeadsAdapter(&mockRunner{
 		output: []byte("bd version 0.1.0\n"),
 	})
-	if err := b.Available(); err != nil {
+	if err := b.Available(context.Background()); err != nil {
 		t.Errorf("Available() unexpected error: %v", err)
 	}
 }
@@ -41,7 +41,7 @@ func TestBeadsAdapter_AvailableNotInstalled(t *testing.T) {
 	b := NewBeadsAdapter(&mockRunner{
 		err: errors.New("exec: \"bd\": executable file not found in $PATH"),
 	})
-	err := b.Available()
+	err := b.Available(context.Background())
 	if err == nil {
 		t.Fatal("Available() expected error, got nil")
 	}
@@ -104,6 +104,30 @@ func TestBeadsAdapter_PullError(t *testing.T) {
 	_, err := b.Pull(context.Background(), "bead-abc123")
 	if err == nil {
 		t.Fatal("Pull() expected error, got nil")
+	}
+	if !errors.Is(err, ErrPullFailed) {
+		t.Errorf("Pull() error = %v, want ErrPullFailed", err)
+	}
+}
+
+func TestBeadsAdapter_PushEmptySlug(t *testing.T) {
+	b := NewBeadsAdapter(&mockRunner{})
+	_, err := b.Push(context.Background(), &storage.Spec{Slug: ""})
+	if err == nil {
+		t.Fatal("Push() expected error for empty slug, got nil")
+	}
+	if !errors.Is(err, ErrPushFailed) {
+		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	}
+}
+
+func TestBeadsAdapter_PullEmptyStatus(t *testing.T) {
+	b := NewBeadsAdapter(&mockRunner{
+		output: []byte(`{"id": "bead-abc123", "status": ""}`),
+	})
+	_, err := b.Pull(context.Background(), "bead-abc123")
+	if err == nil {
+		t.Fatal("Pull() expected error for empty status, got nil")
 	}
 	if !errors.Is(err, ErrPullFailed) {
 		t.Errorf("Pull() error = %v, want ErrPullFailed", err)

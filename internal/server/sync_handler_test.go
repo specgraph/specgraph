@@ -244,7 +244,7 @@ type mockAdapter struct {
 }
 
 func (m *mockAdapter) Name() storage.SyncAdapterType { return m.name }
-func (m *mockAdapter) Available() error {
+func (m *mockAdapter) Available(_ context.Context) error {
 	if !m.available {
 		return fmt.Errorf("adapter not available")
 	}
@@ -383,4 +383,128 @@ func TestSyncHandler_SyncBeads_AlreadySynced(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int32(1), resp.Msg.Skipped)
 	require.Equal(t, "already synced", resp.Msg.Results[0].Message)
+}
+
+func TestSyncHandler_SyncGitHub_NoAdapter(t *testing.T) {
+	client := setupSyncServer(t) // no adapters registered
+	_, err := client.SyncGitHub(context.Background(),
+		connect.NewRequest(&specv1.SyncGitHubRequest{}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
+}
+
+func TestSyncHandler_SyncGitHub_Success(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterGitHub,
+		available: true,
+		pushFn: func(_ context.Context, _ *storage.Spec) (string, error) {
+			return "https://github.com/owner/repo/issues/1", nil
+		},
+	}
+	client := setupSyncServerWithAdapter(t, adapter)
+	resp, err := client.SyncGitHub(context.Background(),
+		connect.NewRequest(&specv1.SyncGitHubRequest{
+			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_GITHUB},
+		}))
+	require.NoError(t, err)
+	require.Equal(t, int32(1), resp.Msg.Synced)
+}
+
+func TestSyncHandler_GetSyncStatus_InvalidAdapter(t *testing.T) {
+	client := setupSyncServer(t)
+	_, err := client.GetSyncStatus(context.Background(),
+		connect.NewRequest(&specv1.SyncStatusRequest{
+			Adapter: specv1.SyncAdapter(99),
+		}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+// errorSyncBackend wraps mockSyncBackend to inject errors for specific methods.
+type errorSyncBackend struct {
+	*mockSyncBackend
+	getSyncMappingErr    error
+	createSyncMappingErr error
+}
+
+func (e *errorSyncBackend) GetSyncMapping(ctx context.Context, specSlug string, adapter storage.SyncAdapterType) (*storage.SyncMapping, error) {
+	if e.getSyncMappingErr != nil {
+		return nil, e.getSyncMappingErr
+	}
+	return e.mockSyncBackend.GetSyncMapping(ctx, specSlug, adapter)
+}
+
+func (e *errorSyncBackend) CreateSyncMapping(ctx context.Context, specSlug string, adapter storage.SyncAdapterType, externalID string) (*storage.SyncMapping, error) {
+	if e.createSyncMappingErr != nil {
+		return nil, e.createSyncMappingErr
+	}
+	return e.mockSyncBackend.CreateSyncMapping(ctx, specSlug, adapter, externalID)
+}
+
+func TestSyncHandler_SyncBeads_GetSyncMappingError(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		pushFn: func(_ context.Context, _ *storage.Spec) (string, error) {
+			t.Fatal("push should not be called when GetSyncMapping fails")
+			return "", nil
+		},
+	}
+	syncStore := &errorSyncBackend{
+		mockSyncBackend:   newMockSyncBackend(),
+		getSyncMappingErr: fmt.Errorf("database connection lost"),
+	}
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+		},
+	}
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler.RegisterAdapter(adapter)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	resp, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+		}))
+	require.NoError(t, err)
+	require.Equal(t, int32(1), resp.Msg.Errors)
+	require.Equal(t, "failed to check sync state", resp.Msg.Results[0].Message)
+}
+
+func TestSyncHandler_SyncBeads_CreateSyncMappingError(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		pushFn: func(_ context.Context, spec *storage.Spec) (string, error) {
+			return "beads-" + spec.Slug, nil
+		},
+	}
+	syncStore := &errorSyncBackend{
+		mockSyncBackend:      newMockSyncBackend(),
+		createSyncMappingErr: fmt.Errorf("disk full"),
+	}
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+		},
+	}
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler.RegisterAdapter(adapter)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	resp, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+		}))
+	require.NoError(t, err)
+	require.Equal(t, int32(1), resp.Msg.Errors)
+	require.Contains(t, resp.Msg.Results[0].Message, "pushed to adapter")
+	require.Contains(t, resp.Msg.Results[0].Message, "beads-test-spec")
 }

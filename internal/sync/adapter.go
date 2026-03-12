@@ -24,7 +24,7 @@ type Adapter interface {
 	Name() storage.SyncAdapterType
 
 	// Available checks whether the adapter's CLI tool is installed and reachable.
-	Available() error
+	Available(ctx context.Context) error
 
 	// Push creates or updates an external work item from the given spec.
 	// Returns the external system's ID for the created item.

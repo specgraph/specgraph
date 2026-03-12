@@ -6,9 +6,12 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -24,6 +27,7 @@ type SyncHandler struct {
 	specStore         storage.SpecReader
 	constitutionStore storage.ConstitutionBackend
 	adapters          map[storage.SyncAdapterType]syncpkg.Adapter
+	allowedOutputRoot string // if set, Inject validates outputDir is within this root
 }
 
 var _ specgraphv1connect.SyncServiceHandler = (*SyncHandler)(nil)
@@ -48,6 +52,12 @@ func (h *SyncHandler) RegisterAdapter(adapter syncpkg.Adapter) {
 	h.adapters[adapter.Name()] = adapter
 }
 
+// SetAllowedOutputRoot restricts the Inject handler's output_dir to paths
+// within the given root directory. If not called, output_dir is unrestricted.
+func (h *SyncHandler) SetAllowedOutputRoot(root string) {
+	h.allowedOutputRoot = root
+}
+
 // SyncBeads implements specgraphv1connect.SyncServiceHandler.
 func (h *SyncHandler) SyncBeads(ctx context.Context, req *connect.Request[specv1.SyncBeadsRequest]) (*connect.Response[specv1.SyncResponse], error) {
 	adapter, ok := h.adapters[storage.SyncAdapterBeads]
@@ -67,7 +77,7 @@ func (h *SyncHandler) SyncGitHub(ctx context.Context, req *connect.Request[specv
 }
 
 func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapter, config *specv1.SyncConfig) (*connect.Response[specv1.SyncResponse], error) {
-	if err := adapter.Available(); err != nil {
+	if err := adapter.Available(ctx); err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
 
@@ -99,6 +109,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 			continue
 		}
 		if getErr != nil && !errors.Is(getErr, storage.ErrSyncMappingNotFound) {
+			slog.WarnContext(ctx, "failed to check sync state", "spec", spec.Slug, "error", getErr)
 			result.State = specv1.SyncState_SYNC_STATE_ERROR
 			result.Message = "failed to check sync state"
 			resp.Errors++
@@ -115,6 +126,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 
 		externalID, pushErr := adapter.Push(ctx, spec)
 		if pushErr != nil {
+			slog.WarnContext(ctx, "failed to push spec to adapter", "spec", spec.Slug, "adapter", adapter.Name(), "error", pushErr)
 			result.State = specv1.SyncState_SYNC_STATE_ERROR
 			result.Message = "failed to push to adapter"
 			resp.Errors++
@@ -124,8 +136,10 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 
 		_, createErr := h.syncStore.CreateSyncMapping(ctx, spec.Slug, adapter.Name(), externalID)
 		if createErr != nil {
+			slog.WarnContext(ctx, "sync mapping record failed after push", "spec", spec.Slug, "external_id", externalID, "error", createErr)
+			result.ExternalId = externalID
 			result.State = specv1.SyncState_SYNC_STATE_ERROR
-			result.Message = "failed to record sync mapping"
+			result.Message = fmt.Sprintf("pushed to adapter (%s) but failed to record mapping - manual cleanup may be required", externalID)
 			resp.Errors++
 			resp.Results = append(resp.Results, result)
 			continue
@@ -189,7 +203,21 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 		}
 	}
 
-	tool := injectToolFromProto(req.Msg.Tool)
+	if h.allowedOutputRoot != "" {
+		absDir, absErr := filepath.Abs(outputDir)
+		if absErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid output directory"))
+		}
+		absRoot := filepath.Clean(h.allowedOutputRoot)
+		if !strings.HasPrefix(absDir, absRoot+string(filepath.Separator)) && absDir != absRoot {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output_dir must be within the allowed root directory"))
+		}
+	}
+
+	tool, toolErr := injectToolFromProto(req.Msg.Tool)
+	if toolErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, toolErr)
+	}
 
 	// Constitution is optional for injection
 	var constitution *storage.Constitution

@@ -27,8 +27,8 @@ func (b *BeadsAdapter) Name() storage.SyncAdapterType {
 }
 
 // Available checks whether the bd CLI is installed and reachable.
-func (b *BeadsAdapter) Available() error {
-	_, err := b.runner.Run(context.Background(), "bd", "--version")
+func (b *BeadsAdapter) Available(ctx context.Context) error {
+	_, err := b.runner.Run(ctx, "bd", "--version")
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrAdapterNotAvailable, err)
 	}

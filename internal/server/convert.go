@@ -704,15 +704,15 @@ func syncStateToProto(s storage.SyncStateType) (specv1.SyncState, error) {
 	}
 }
 
-func injectToolFromProto(t specv1.InjectTool) storage.InjectToolType {
+func injectToolFromProto(t specv1.InjectTool) (storage.InjectToolType, error) {
 	switch t {
 	case specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE:
-		return storage.InjectToolClaudeCode
+		return storage.InjectToolClaudeCode, nil
 	case specv1.InjectTool_INJECT_TOOL_CURSOR:
-		return storage.InjectToolCursor
+		return storage.InjectToolCursor, nil
 	case specv1.InjectTool_INJECT_TOOL_AGENTS_MD:
-		return storage.InjectToolAgentsMD
+		return storage.InjectToolAgentsMD, nil
 	default:
-		return ""
+		return "", fmt.Errorf("unknown inject tool: %v", t)
 	}
 }
