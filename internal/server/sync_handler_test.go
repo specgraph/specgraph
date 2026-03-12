@@ -1,0 +1,229 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+package server_test
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	gosync "sync"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
+	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/seanb4t/specgraph/internal/server"
+	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/stretchr/testify/require"
+)
+
+type mockSyncBackend struct {
+	mu       gosync.Mutex
+	mappings map[string]*storage.SyncMapping // key: "slug:adapter"
+}
+
+func newMockSyncBackend() *mockSyncBackend {
+	return &mockSyncBackend{
+		mappings: map[string]*storage.SyncMapping{},
+	}
+}
+
+func (m *mockSyncBackend) key(slug string, adapter storage.SyncAdapterType) string {
+	return fmt.Sprintf("%s:%s", slug, string(adapter))
+}
+
+func (m *mockSyncBackend) CreateSyncMapping(_ context.Context, specSlug string, adapter storage.SyncAdapterType, externalID string) (*storage.SyncMapping, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	k := m.key(specSlug, adapter)
+	if _, exists := m.mappings[k]; exists {
+		return nil, storage.ErrSyncMappingExists
+	}
+	mapping := &storage.SyncMapping{
+		SpecSlug:   specSlug,
+		Adapter:    adapter,
+		ExternalID: externalID,
+		State:      storage.SyncStateSynced,
+		LastSync:   time.Now(),
+		CreatedAt:  time.Now(),
+	}
+	m.mappings[k] = mapping
+	return mapping, nil
+}
+
+func (m *mockSyncBackend) UpdateSyncState(_ context.Context, specSlug string, adapter storage.SyncAdapterType, state storage.SyncStateType, errorMessage string) (*storage.SyncMapping, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	k := m.key(specSlug, adapter)
+	mapping, exists := m.mappings[k]
+	if !exists {
+		return nil, storage.ErrSyncMappingNotFound
+	}
+	mapping.State = state
+	mapping.ErrorMessage = errorMessage
+	return mapping, nil
+}
+
+func (m *mockSyncBackend) GetSyncMapping(_ context.Context, specSlug string, adapter storage.SyncAdapterType) (*storage.SyncMapping, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	k := m.key(specSlug, adapter)
+	mapping, exists := m.mappings[k]
+	if !exists {
+		return nil, storage.ErrSyncMappingNotFound
+	}
+	return mapping, nil
+}
+
+func (m *mockSyncBackend) ListSyncMappings(_ context.Context, adapter storage.SyncAdapterType, specSlug string) ([]*storage.SyncMapping, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var result []*storage.SyncMapping
+	for _, mapping := range m.mappings {
+		if adapter != "" && mapping.Adapter != adapter {
+			continue
+		}
+		if specSlug != "" && mapping.SpecSlug != specSlug {
+			continue
+		}
+		result = append(result, mapping)
+	}
+	return result, nil
+}
+
+func (m *mockSyncBackend) DeleteSyncMapping(_ context.Context, specSlug string, adapter storage.SyncAdapterType) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	k := m.key(specSlug, adapter)
+	delete(m.mappings, k)
+	return nil
+}
+
+type mockSpecGetter struct {
+	specs map[string]*storage.Spec
+}
+
+func (m *mockSpecGetter) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
+	spec, ok := m.specs[slug]
+	if !ok {
+		return nil, storage.ErrSpecNotFound
+	}
+	return spec, nil
+}
+
+func (m *mockSpecGetter) ListSpecs(_ context.Context, stage, priority string, _ int) ([]*storage.Spec, error) {
+	var result []*storage.Spec
+	for _, spec := range m.specs {
+		if stage != "" && string(spec.Stage) != stage {
+			continue
+		}
+		if priority != "" && string(spec.Priority) != priority {
+			continue
+		}
+		result = append(result, spec)
+	}
+	return result, nil
+}
+
+var _ storage.SyncBackend = (*mockSyncBackend)(nil)
+
+func setupSyncServer(t *testing.T) specgraphv1connect.SyncServiceClient {
+	t.Helper()
+	syncStore := newMockSyncBackend()
+	specStore := &mockSpecGetter{
+		specs: map[string]*storage.Spec{
+			"test-spec": {
+				ID:         "spec-test123",
+				Slug:       "test-spec",
+				Intent:     "Test spec for sync",
+				Stage:      "approved",
+				Priority:   "p2",
+				Complexity: "medium",
+			},
+		},
+	}
+	mux := http.NewServeMux()
+	server.RegisterSyncService(mux, syncStore, specStore, nil)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+}
+
+func TestSyncHandler_GetSyncStatus_Empty(t *testing.T) {
+	client := setupSyncServer(t)
+	resp, err := client.GetSyncStatus(context.Background(),
+		connect.NewRequest(&specv1.SyncStatusRequest{}))
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.Mappings)
+}
+
+func TestSyncHandler_GetSyncStatus_WithMappings(t *testing.T) {
+	syncStore := newMockSyncBackend()
+	syncStore.mappings["spec-a:github"] = &storage.SyncMapping{
+		SpecSlug:   "spec-a",
+		Adapter:    storage.SyncAdapterGitHub,
+		ExternalID: "gh-1",
+		State:      storage.SyncStateSynced,
+		LastSync:   time.Now(),
+		CreatedAt:  time.Now(),
+	}
+
+	mux := http.NewServeMux()
+	server.RegisterSyncService(mux, syncStore, &mockSpecGetter{specs: map[string]*storage.Spec{}}, nil)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	resp, err := client.GetSyncStatus(context.Background(),
+		connect.NewRequest(&specv1.SyncStatusRequest{}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Mappings, 1)
+	require.Equal(t, "gh-1", resp.Msg.Mappings[0].ExternalId)
+}
+
+func TestSyncHandler_Inject_SpecNotFound(t *testing.T) {
+	client := setupSyncServer(t)
+	_, err := client.Inject(context.Background(),
+		connect.NewRequest(&specv1.InjectRequest{
+			SpecSlug: "nonexistent",
+			Tool:     specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
+		}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+}
+
+func TestSyncHandler_Inject_MissingSlug(t *testing.T) {
+	client := setupSyncServer(t)
+	_, err := client.Inject(context.Background(),
+		connect.NewRequest(&specv1.InjectRequest{
+			Tool: specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
+		}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestSyncHandler_Inject_MissingTool(t *testing.T) {
+	client := setupSyncServer(t)
+	_, err := client.Inject(context.Background(),
+		connect.NewRequest(&specv1.InjectRequest{
+			SpecSlug: "test-spec",
+		}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestSyncHandler_Inject_Success(t *testing.T) {
+	client := setupSyncServer(t)
+	resp, err := client.Inject(context.Background(),
+		connect.NewRequest(&specv1.InjectRequest{
+			SpecSlug:  "test-spec",
+			Tool:      specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
+			OutputDir: t.TempDir(),
+		}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.FilesWritten, 1)
+	require.Contains(t, resp.Msg.Summary, "test-spec")
+}

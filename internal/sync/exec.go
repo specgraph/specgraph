@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+package sync
+
+import (
+	"context"
+	"fmt"
+	"os/exec"
+)
+
+// ExecRunner implements CommandRunner using os/exec.
+type ExecRunner struct{}
+
+// NewExecRunner creates a new ExecRunner.
+func NewExecRunner() *ExecRunner {
+	return &ExecRunner{}
+}
+
+// Run executes a command and returns its combined stdout/stderr output.
+func (r *ExecRunner) Run(ctx context.Context, name string, args ...string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, name, args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return out, fmt.Errorf("exec %s: %w", name, err)
+	}
+	return out, nil
+}

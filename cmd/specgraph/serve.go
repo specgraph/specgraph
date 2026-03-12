@@ -20,6 +20,7 @@ import (
 	"github.com/seanb4t/specgraph/internal/server"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
+	syncpkg "github.com/seanb4t/specgraph/internal/sync"
 	"github.com/spf13/cobra"
 )
 
@@ -94,6 +95,8 @@ func runServe(_ *cobra.Command, _ []string) error {
 		driftEngine := drift.NewEngine(store, nil)
 		lintEngine := linter.NewEngine(store, nil)
 		server.RegisterLifecycleService(mux, store, store, driftEngine, lintEngine, nil)
+		syncHandler := server.RegisterSyncService(mux, store, store, store)
+		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(syncpkg.NewExecRunner()))
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 
