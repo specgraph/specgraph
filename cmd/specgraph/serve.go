@@ -72,16 +72,16 @@ func runServe(_ *cobra.Command, _ []string) error {
 		// Defers run LIFO: stopSweeper runs before store.Close, preventing races
 		// where the sweeper goroutine calls ReleaseExpiredClaims on a closed store.
 		defer func() {
-			if err := store.Close(ctx); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: close store: %v\n", err)
+			if closeErr := store.Close(ctx); closeErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: close store: %v\n", closeErr)
 			}
 		}()
 		sweeperCtx, stopSweeper := context.WithCancel(ctx)
 		defer stopSweeper()
 
 		constitutionPath := cfg.Storage.ConstitutionPath
-		if err := bootstrapConstitution(ctx, store, constitutionPath); err != nil {
-			return fmt.Errorf("constitution bootstrap: %w", err)
+		if bootstrapErr := bootstrapConstitution(ctx, store, constitutionPath); bootstrapErr != nil {
+			return fmt.Errorf("constitution bootstrap: %w", bootstrapErr)
 		}
 
 		mux := server.NewMux(store)
