@@ -56,13 +56,13 @@ func setupMemgraph(t *testing.T) (string, func()) {
 
 // newStore creates a Store with retry logic to handle the brief window between
 // the container wait strategy completing and the bolt protocol being fully ready.
-func newStore(ctx context.Context, boltURI string) (*memgraph.Store, error) {
+func newStore(ctx context.Context, boltURI string, opts ...memgraph.Option) (*memgraph.Store, error) {
 	var (
 		store *memgraph.Store
 		err   error
 	)
 	for range 10 {
-		store, err = memgraph.New(ctx, boltURI)
+		store, err = memgraph.New(ctx, boltURI, opts...)
 		if err == nil {
 			return store, nil
 		}

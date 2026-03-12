@@ -48,7 +48,7 @@ func (s *Store) RecordBlocker(ctx context.Context, slug, agent, description stri
 
 // RecordCompletion stores a completion event and transitions the spec to done.
 func (s *Store) RecordCompletion(ctx context.Context, slug, agent string) error {
-	now := time.Now().UTC()
+	now := s.nowTime()
 	id := newID("evt")
 	nowStr := now.Format(time.RFC3339Nano)
 
@@ -147,7 +147,7 @@ func (s *Store) GetPrimeData(ctx context.Context, slug string) (*storage.PrimeDa
 
 // ReleaseExpiredClaims finds and releases all CLAIMED_BY relationships past their lease.
 func (s *Store) ReleaseExpiredClaims(ctx context.Context) (int, error) {
-	nowStr := nowRFC3339()
+	nowStr := s.now()
 
 	query := `
 		MATCH ()-[r:CLAIMED_BY]->()
@@ -173,7 +173,7 @@ func (s *Store) ReleaseExpiredClaims(ctx context.Context) (int, error) {
 // recordClaimedEvent atomically verifies claim ownership and creates an execution event.
 // The claim check and event creation happen in a single Cypher query, preventing TOCTOU races.
 func (s *Store) recordClaimedEvent(ctx context.Context, slug, agent, eventType, message string) error {
-	now := time.Now().UTC()
+	now := s.nowTime()
 	id := newID("evt")
 	nowStr := now.Format(time.RFC3339Nano)
 

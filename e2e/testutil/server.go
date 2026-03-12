@@ -13,6 +13,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/seanb4t/specgraph/internal/drift"
+	"github.com/seanb4t/specgraph/internal/linter"
 	"github.com/seanb4t/specgraph/internal/server"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 )
@@ -46,6 +48,9 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 	server.RegisterClaimService(mux, store)
 	server.RegisterConstitutionService(mux, store)
 	server.RegisterAuthoringService(mux, store, store)
+	driftEngine := drift.NewEngine(store, nil)
+	lintEngine := linter.NewEngine(store, nil)
+	server.RegisterLifecycleService(mux, store, store, driftEngine, lintEngine, nil)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

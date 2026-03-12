@@ -21,7 +21,7 @@ func (s *Store) ClaimSpec(ctx context.Context, slug, agent string, leaseDuration
 		leaseDuration = defaultLeaseDuration
 	}
 
-	now := time.Now().UTC()
+	now := s.nowTime()
 	nowStr := now.Format(time.RFC3339)
 	expiresStr := now.Add(leaseDuration).Format(time.RFC3339)
 
@@ -123,7 +123,7 @@ func (s *Store) Heartbeat(ctx context.Context, slug, agent string, extendBy time
 		extendBy = defaultLeaseDuration
 	}
 
-	newExpires := time.Now().UTC().Add(extendBy).Format(time.RFC3339)
+	newExpires := s.nowTime().Add(extendBy).Format(time.RFC3339)
 
 	query := `
 		MATCH (s:Spec {slug: $slug})-[r:CLAIMED_BY {agent: $agent}]->(a)

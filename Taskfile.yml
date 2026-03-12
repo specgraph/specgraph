@@ -28,6 +28,14 @@ tasks:
       - gen/**/*.go
     cmds:
       - buf generate
+  proto:check:
+    desc: Verify generated proto code is up to date (side-effect-free)
+    cmds:
+      - |
+        tmpdir=$(mktemp -d)
+        trap 'rm -rf "$tmpdir"' EXIT
+        buf generate -o "$tmpdir"
+        diff -rq gen/ "$tmpdir/gen" > /dev/null 2>&1
   # Building
   build:
     desc: Build the specgraph binary

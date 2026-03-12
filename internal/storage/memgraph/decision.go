@@ -15,7 +15,7 @@ import (
 
 // CreateDecision stores a new decision node in Memgraph.
 func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale string) (*storage.Decision, error) {
-	now := time.Now().UTC()
+	now := s.nowTime()
 	id := newID("dec")
 	nowStr := now.Format(time.RFC3339)
 
@@ -150,7 +150,7 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 		return s.GetDecision(ctx, slug)
 	}
 
-	nowStr := time.Now().UTC().Format(time.RFC3339)
+	nowStr := s.nowTime().Format(time.RFC3339)
 	setClauses = append(setClauses, "d.updated_at = $updated_at")
 	params["updated_at"] = nowStr
 
