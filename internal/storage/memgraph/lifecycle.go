@@ -133,7 +133,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	}
 	historyJSON, err := appendHistory(spec.History, &entry)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("memgraph: amend spec %q: %w", slug, err)
 	}
 
 	nowStr := s.now()
@@ -225,7 +225,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	}
 	historyJSON, err := appendHistory(oldCheck.History, &oldEntry)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("memgraph: supersede spec %q: %w", oldSlug, err)
 	}
 
 	newVersion := newCheck.Version + 1
@@ -238,7 +238,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	}
 	newHistoryJSON, err := appendHistory(newCheck.History, &newEntry)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("memgraph: supersede spec (new) %q: %w", newSlug, err)
 	}
 
 	nowStr := s.now()
@@ -361,7 +361,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 	}
 	historyJSON, err := appendHistory(spec.History, &entry)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("memgraph: abandon spec %q: %w", slug, err)
 	}
 
 	nowStr := s.now()
