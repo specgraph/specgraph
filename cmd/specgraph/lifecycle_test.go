@@ -436,6 +436,29 @@ func TestRunDrift_CleanReport_NoDrift(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// --- runDrift multi-report clean path (spgr-0fk.1) ---
+
+// fakeDriftMultiCleanHandler returns 2 DriftReport entries both with no items and no error,
+// exercising the !hasDrift && !hasErrors branch at line 200 (not the early-return at line 173).
+type fakeDriftMultiCleanHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeDriftMultiCleanHandler) CheckDrift(_ context.Context, _ *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
+	return connect.NewResponse(&specv1.DriftCheckResponse{
+		Reports: []*specv1.DriftReport{
+			{SpecSlug: "clean-spec-a"},
+			{SpecSlug: "clean-spec-b"},
+		},
+	}), nil
+}
+
+func TestRunDrift_MultiCleanReports_NoDrift(t *testing.T) {
+	startFakeLifecycleServer(t, fakeDriftMultiCleanHandler{})
+	err := runDrift(nil, nil)
+	require.NoError(t, err)
+}
+
 // --- runDrift error-only report (spgr-jqc.5) ---
 
 type fakeDriftErrorOnlyHandler struct {
