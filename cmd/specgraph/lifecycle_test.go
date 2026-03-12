@@ -140,6 +140,39 @@ func TestRunDriftAck_ItemsStale_ExitsWithCode2(t *testing.T) {
 	require.ErrorIs(t, err, errDriftItemsStale)
 }
 
+// fakeAckHappyHandler implements AcknowledgeDrift returning a successful ack with no stale items.
+type fakeAckHappyHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeAckHappyHandler) AcknowledgeDrift(_ context.Context, req *connect.Request[specv1.DriftAcknowledgeRequest]) (*connect.Response[specv1.DriftAcknowledgeResponse], error) {
+	return connect.NewResponse(&specv1.DriftAcknowledgeResponse{
+		Report: &specv1.DriftReport{
+			SpecSlug:     req.Msg.GetSlug(),
+			Acknowledged: true,
+			ItemsStale:   false,
+		},
+	}), nil
+}
+
+func TestRunDriftAck_HappyPath(t *testing.T) {
+	mux := http.NewServeMux()
+	path, handler := specgraphv1connect.NewLifecycleServiceHandler(fakeAckHappyHandler{})
+	mux.Handle(path, handler)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	cfgDir := t.TempDir()
+	cfgPath := filepath.Join(cfgDir, "config.yaml")
+	require.NoError(t, os.WriteFile(cfgPath, []byte(fmt.Sprintf("server:\n  remote: %s\n", srv.URL)), 0o600))
+	old := cfgFile
+	cfgFile = cfgPath
+	t.Cleanup(func() { cfgFile = old })
+
+	err := runDriftAck(nil, []string{"my-spec"})
+	require.NoError(t, err)
+}
+
 // startFakeLifecycleServer registers handler with a fresh httptest.Server and
 // sets cfgFile to point at it.
 func startFakeLifecycleServer(t *testing.T, h specgraphv1connect.LifecycleServiceHandler) {

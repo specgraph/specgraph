@@ -1350,6 +1350,66 @@ func TestLifecycleHandler_Supersede_StorageErrSameSlugs(t *testing.T) {
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
+func TestLifecycleHandler_Supersede_InvalidOldSpecLifecycleReturnsInternal(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.supersedeSpec = func(_ context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error) {
+		return &storage.Spec{
+				Slug:      oldSlug,
+				Stage:     storage.SpecStageSuperseded,
+				Lifecycle: storage.SpecLifecycle("bogus"),
+				Version:   2,
+			}, &storage.Spec{
+				Slug:      newSlug,
+				Stage:     storage.SpecStageSpark,
+				Lifecycle: storage.SpecLifecycleTask,
+				Version:   1,
+			}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
+		Slug:    "old-spec",
+		NewSlug: "new-spec",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestLifecycleHandler_Abandon_UnknownLifecycleReturnsInternal(t *testing.T) {
+	deps := defaultTestDeps()
+	deps.store.abandonSpec = func(_ context.Context, slug, _ string) (*storage.Spec, error) {
+		return &storage.Spec{
+			Slug:      slug,
+			Stage:     storage.SpecStageAbandoned,
+			Lifecycle: storage.SpecLifecycle("bogus"),
+			Version:   2,
+		}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.TransitionAbandon(context.Background(), connect.NewRequest(&specv1.TransitionAbandonRequest{
+		Slug:   "my-spec",
+		Reason: "no longer needed",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestLifecycleHandler_Lint_InvalidSlug(t *testing.T) {
+	deps := defaultTestDeps()
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.Lint(context.Background(), connect.NewRequest(&specv1.LintRequest{
+		Slug: "INVALID SLUG with spaces",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
 func TestLifecycleHandler_CheckDrift_InvalidSlug(t *testing.T) {
 	deps := defaultTestDeps()
 	client := newLifecycleClient(t, deps)

@@ -53,7 +53,7 @@ func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Req
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid re_entry_stage %q", msg.ReEntryStage))
 		}
 		if stage.ExcludesReEntry() {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("re_entry_stage %q is a terminal state and cannot be used as a re-entry point", msg.ReEntryStage))
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("re_entry_stage %q cannot be used as a re-entry point", msg.ReEntryStage))
 		}
 	}
 
@@ -170,7 +170,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 				slog.String("slug", msg.Slug),
 				slog.Any("error", specErr))
 			return nil, connect.NewError(connect.CodeUnavailable,
-				fmt.Errorf("CheckDrift: acknowledgment state unavailable for %q", msg.Slug))
+				fmt.Errorf("acknowledgment state unavailable for %q", msg.Slug))
 		}
 	} else {
 		// All-specs path: batch-fetch specs for acknowledgment state merge.
@@ -187,7 +187,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 			if batchErr != nil {
 				h.logger.Error("CheckDrift: batch fetch for ack merge failed", slog.Any("error", batchErr))
 				return nil, connect.NewError(connect.CodeUnavailable,
-					errors.New("CheckDrift: acknowledgment state temporarily unavailable"))
+					errors.New("acknowledgment state temporarily unavailable"))
 			}
 			for i := range reports {
 				if spec, ok := specMap[reports[i].SpecSlug]; ok {

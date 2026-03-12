@@ -185,6 +185,9 @@ func runDrift(_ *cobra.Command, args []string) error {
 			ack = " (acknowledged)"
 		}
 		fmt.Printf("Spec: %s%s\n", r.GetSpecSlug(), ack)
+		if r.GetAckStateUnavailable() {
+			fmt.Fprintf(os.Stderr, "  [warn] acknowledgment state unavailable for %s\n", r.GetSpecSlug())
+		}
 		for _, item := range r.GetItems() {
 			fmt.Printf("  [%s] %s: %s\n", item.GetSeverity(), item.GetType(), item.GetDescription())
 			hasDrift = true

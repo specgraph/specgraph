@@ -173,6 +173,7 @@ func detectCycles(ctx context.Context, backend Backend, slug string, rootDeps []
 		}
 
 		if depth > maxCycleDepth {
+			visited[current] = true
 			violations = append(violations, storage.LintViolation{
 				Rule:     "graph.cycle",
 				Severity: storage.LintSeverityWarning,
