@@ -653,10 +653,14 @@ func syncMappingToProto(m *storage.SyncMapping) (*specv1.SyncMapping, error) {
 	if err != nil {
 		return nil, err
 	}
+	adapter, err := syncAdapterToProto(m.Adapter)
+	if err != nil {
+		return nil, err
+	}
 	return &specv1.SyncMapping{
 		SpecId:       m.SpecID,
 		SpecSlug:     m.SpecSlug,
-		Adapter:      syncAdapterToProto(m.Adapter),
+		Adapter:      adapter,
 		ExternalId:   m.ExternalID,
 		State:        state,
 		ErrorMessage: m.ErrorMessage,
@@ -665,14 +669,14 @@ func syncMappingToProto(m *storage.SyncMapping) (*specv1.SyncMapping, error) {
 	}, nil
 }
 
-func syncAdapterToProto(a storage.SyncAdapterType) specv1.SyncAdapter {
+func syncAdapterToProto(a storage.SyncAdapterType) (specv1.SyncAdapter, error) {
 	switch a {
 	case storage.SyncAdapterBeads:
-		return specv1.SyncAdapter_SYNC_ADAPTER_BEADS
+		return specv1.SyncAdapter_SYNC_ADAPTER_BEADS, nil
 	case storage.SyncAdapterGitHub:
-		return specv1.SyncAdapter_SYNC_ADAPTER_GITHUB
+		return specv1.SyncAdapter_SYNC_ADAPTER_GITHUB, nil
 	default:
-		return specv1.SyncAdapter_SYNC_ADAPTER_UNSPECIFIED
+		return specv1.SyncAdapter_SYNC_ADAPTER_UNSPECIFIED, fmt.Errorf("unknown sync adapter: %v", a)
 	}
 }
 
