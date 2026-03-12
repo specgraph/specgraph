@@ -120,6 +120,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 		if dryRun {
 			result.State = specv1.SyncState_SYNC_STATE_PENDING
 			result.Message = "dry run - would sync"
+			resp.Skipped++
 			resp.Results = append(resp.Results, result)
 			continue
 		}
@@ -189,7 +190,7 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 	spec, err := h.specStore.GetSpec(ctx, req.Msg.SpecSlug)
 	if err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
 		}
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to retrieve spec"))
 	}
