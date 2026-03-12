@@ -287,7 +287,12 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	}
 	if len(records) == 0 {
 		// Check old spec first for precondition errors.
-		oldErr := s.preconditionError(ctx, oldSlug, "supersede spec (old)", nil)
+		oldErr := s.preconditionError(ctx, oldSlug, "supersede spec (old)", func(current *storage.Spec) error {
+			if current.Version != oldCheck.Version {
+				return fmt.Errorf("supersede spec (old) %q: %w", oldSlug, storage.ErrConcurrentModification)
+			}
+			return nil
+		})
 		// Only check the new spec when the old spec doesn't provide a
 		// definitive answer (NotFound/Terminal explain the guard failure on
 		// their own). ErrConcurrentModification is ambiguous — both specs
@@ -295,7 +300,12 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		// preconditionError always returns non-nil, so we fall through
 		// directly to returning oldErr here.
 		if errors.Is(oldErr, storage.ErrConcurrentModification) {
-			newErr := s.preconditionError(ctx, newSlug, "supersede spec (new)", nil)
+			newErr := s.preconditionError(ctx, newSlug, "supersede spec (new)", func(current *storage.Spec) error {
+				if current.Version != newCheck.Version {
+					return fmt.Errorf("supersede spec (new) %q: %w", newSlug, storage.ErrConcurrentModification)
+				}
+				return nil
+			})
 			if errors.Is(newErr, storage.ErrSpecNotFound) {
 				return nil, nil, fmt.Errorf("supersede spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
 			}
@@ -381,7 +391,12 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		return nil, fmt.Errorf("memgraph: abandon spec: %w", err)
 	}
 	if len(records) == 0 {
-		return nil, s.preconditionError(ctx, slug, "abandon spec", nil)
+		return nil, s.preconditionError(ctx, slug, "abandon spec", func(current *storage.Spec) error {
+			if current.Version != spec.Version {
+				return fmt.Errorf("abandon spec %q: %w", slug, storage.ErrConcurrentModification)
+			}
+			return nil
+		})
 	}
 	return recordToSpec(records[0])
 }
