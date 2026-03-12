@@ -143,6 +143,11 @@ func (s *Store) GetSyncMapping(ctx context.Context, specSlug string, adapter sto
 
 // ListSyncMappings implements storage.SyncBackend.
 func (s *Store) ListSyncMappings(ctx context.Context, adapter storage.SyncAdapterType, specSlug string) ([]*storage.SyncMapping, error) {
+	// SECURITY: All conditions MUST use Cypher parameter placeholders ($param).
+	// Values are passed via the params map, not interpolated into the query string.
+	// The fmt.Sprintf below only injects the WHERE clause structure (hardcoded
+	// condition strings), never user input. Do NOT add dynamic field names or
+	// user-supplied strings to the conditions slice.
 	var conditions []string
 	params := map[string]any{}
 
@@ -160,6 +165,7 @@ func (s *Store) ListSyncMappings(ctx context.Context, adapter storage.SyncAdapte
 		where = " WHERE " + strings.Join(conditions, " AND ")
 	}
 
+	// Safe: where clause contains only hardcoded condition strings; values are parameterized.
 	query := fmt.Sprintf(
 		`MATCH (s:Spec)-[r:SYNCED_TO]->(e:ExternalRef)%s
 		 RETURN s.id, s.slug, r.adapter, e.external_id, r.state,

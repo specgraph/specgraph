@@ -125,6 +125,9 @@ func writeCursor(content, slug, intent, outputDir string) ([]string, error) {
 }
 
 func writeAgentsMD(content, outputDir string) ([]string, error) {
+	if err := os.MkdirAll(outputDir, 0o750); err != nil {
+		return nil, fmt.Errorf("create output dir: %w", err)
+	}
 	p := filepath.Join(outputDir, "AGENTS.md")
 	if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
 		return nil, fmt.Errorf("write AGENTS.md: %w", err)

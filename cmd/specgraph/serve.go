@@ -99,9 +99,11 @@ func runServe(_ *cobra.Command, _ []string) error {
 		runner := syncpkg.NewExecRunner()
 		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
 		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, cfg.Sync.GitHubRepo))
-		if wd, err := os.Getwd(); err == nil {
-			syncHandler.SetAllowedOutputRoot(wd)
+		wd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("determine working directory for inject root: %w", err)
 		}
+		syncHandler.SetAllowedOutputRoot(wd)
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 
