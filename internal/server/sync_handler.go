@@ -253,11 +253,12 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 	allowedRoot := h.allowedOutputRoot
 	h.mu.RUnlock()
 
+	absDir, absErr := filepath.Abs(outputDir)
+	if absErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid output directory"))
+	}
+
 	if allowedRoot != "" {
-		absDir, absErr := filepath.Abs(outputDir)
-		if absErr != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid output directory"))
-		}
 		absRoot := filepath.Clean(allowedRoot)
 		if !strings.HasPrefix(absDir, absRoot+string(filepath.Separator)) && absDir != absRoot {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output_dir must be within the allowed root directory"))
@@ -282,7 +283,7 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 		}
 	}
 
-	files, err := inject.Inject(spec, constitution, tool, outputDir)
+	files, err := inject.Inject(spec, constitution, tool, absDir)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to inject spec context", "error", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to inject spec context"))
