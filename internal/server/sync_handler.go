@@ -257,10 +257,17 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 	if absErr != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid output directory"))
 	}
+	// Resolve symlinks to prevent escape via symlinked directories.
+	realDir, evalErr := filepath.EvalSymlinks(absDir)
+	if evalErr != nil {
+		// If the directory doesn't exist yet, EvalSymlinks fails.
+		// Fall back to the unresolved absDir — the prefix check still applies.
+		realDir = absDir
+	}
 
 	if allowedRoot != "" {
 		absRoot := filepath.Clean(allowedRoot)
-		if !strings.HasPrefix(absDir, absRoot+string(filepath.Separator)) && absDir != absRoot {
+		if !strings.HasPrefix(realDir, absRoot+string(filepath.Separator)) && realDir != absRoot {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output_dir must be within the allowed root directory"))
 		}
 	}
@@ -283,7 +290,7 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 		}
 	}
 
-	files, err := inject.Inject(spec, constitution, tool, absDir)
+	files, err := inject.Inject(spec, constitution, tool, realDir)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to inject spec context", "error", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to inject spec context"))
