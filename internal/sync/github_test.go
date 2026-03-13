@@ -65,8 +65,10 @@ func TestGitHubAdapter_PushError(t *testing.T) {
 		err: errors.New("command failed"),
 	}, "owner/repo")
 	spec := &storage.Spec{
-		Slug:   "my-spec",
-		Intent: "Build a thing",
+		Slug:     "my-spec",
+		Intent:   "Build a thing",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP1,
 	}
 	_, err := g.Push(context.Background(), spec)
 	if err == nil {
@@ -165,7 +167,7 @@ func TestGitHubAdapter_PushInvalidURL(t *testing.T) {
 	g := NewGitHubAdapter(&mockRunner{
 		output: []byte("not-a-url\n"),
 	}, "owner/repo")
-	spec := &storage.Spec{Slug: "my-spec", Intent: "test"}
+	spec := &storage.Spec{Slug: "my-spec", Intent: "test", Stage: storage.SpecStageSpark, Priority: storage.SpecPriorityP1}
 	_, err := g.Push(context.Background(), spec)
 	if err == nil {
 		t.Fatal("Push() expected error for invalid URL, got nil")
@@ -179,7 +181,7 @@ func TestGitHubAdapter_PushNonNumericIssueNumber(t *testing.T) {
 	g := NewGitHubAdapter(&mockRunner{
 		output: []byte("https://github.com/owner/repo/issues/notanumber\n"),
 	}, "owner/repo")
-	spec := &storage.Spec{Slug: "my-spec", Intent: "test"}
+	spec := &storage.Spec{Slug: "my-spec", Intent: "test", Stage: storage.SpecStageSpark, Priority: storage.SpecPriorityP1}
 	_, err := g.Push(context.Background(), spec)
 	if err == nil {
 		t.Fatal("Push() expected error for non-numeric issue number, got nil")
@@ -248,5 +250,45 @@ func TestGitHubAdapter_AvailableNotAuthenticated(t *testing.T) {
 	}
 	if !errors.Is(err, ErrAdapterNotAvailable) {
 		t.Errorf("Available() error = %v, want ErrAdapterNotAvailable", err)
+	}
+}
+
+func TestGitHubAdapter_PushInvalidStage(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{}, "owner/repo")
+	spec := &storage.Spec{
+		Slug:     "my-spec",
+		Intent:   "test",
+		Stage:    storage.SpecStage("bogus"),
+		Priority: storage.SpecPriorityP1,
+	}
+	_, err := g.Push(context.Background(), spec)
+	if err == nil {
+		t.Fatal("Push() expected error for invalid stage, got nil")
+	}
+	if !errors.Is(err, ErrPushFailed) {
+		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	}
+	if !strings.Contains(err.Error(), "invalid spec stage") {
+		t.Errorf("Push() error should mention invalid stage, got: %v", err)
+	}
+}
+
+func TestGitHubAdapter_PushInvalidPriority(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{}, "owner/repo")
+	spec := &storage.Spec{
+		Slug:     "my-spec",
+		Intent:   "test",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriority("invalid"),
+	}
+	_, err := g.Push(context.Background(), spec)
+	if err == nil {
+		t.Fatal("Push() expected error for invalid priority, got nil")
+	}
+	if !errors.Is(err, ErrPushFailed) {
+		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	}
+	if !strings.Contains(err.Error(), "invalid spec priority") {
+		t.Errorf("Push() error should mention invalid priority, got: %v", err)
 	}
 }

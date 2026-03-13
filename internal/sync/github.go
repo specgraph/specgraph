@@ -54,6 +54,12 @@ func (g *GitHubAdapter) Push(ctx context.Context, spec *storage.Spec) (string, e
 	if spec.Slug == "" {
 		return "", fmt.Errorf("%w: spec slug is required", ErrPushFailed)
 	}
+	if !spec.Stage.IsValid() {
+		return "", fmt.Errorf("%w: invalid spec stage: %q", ErrPushFailed, spec.Stage)
+	}
+	if !spec.Priority.IsValid() {
+		return "", fmt.Errorf("%w: invalid spec priority: %q", ErrPushFailed, spec.Priority)
+	}
 	title := fmt.Sprintf("[spec] %s", spec.Slug)
 	body := formatIssueBody(spec)
 	labels := formatLabels(spec)
