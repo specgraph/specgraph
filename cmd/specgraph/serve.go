@@ -100,12 +100,27 @@ func runServe(_ *cobra.Command, _ []string) error {
 		// This works for both relative paths (resolved against CWD) and absolute paths,
 		// ensuring the server validates output_dir against the project root rather than
 		// the server process's working directory.
-		constitutionAbs, err := filepath.Abs(cfg.Storage.ConstitutionPath)
-		if err != nil {
-			return fmt.Errorf("resolve constitution path for inject root: %w", err)
+		var projectRoot string
+		if cfg.Storage.ConstitutionPath == "" {
+			// No constitution path configured — use CWD as project root.
+			projectRoot, err = os.Getwd()
+			if err != nil {
+				return fmt.Errorf("determine project root: %w", err)
+			}
+		} else {
+			// Require at least one directory component (e.g., ".specgraph/constitution.yaml").
+			// A bare filename like "constitution.yaml" would cause filepath.Dir(filepath.Dir(...))
+			// to resolve two levels above CWD, breaking the inject root.
+			if filepath.Dir(cfg.Storage.ConstitutionPath) == "." {
+				return fmt.Errorf("constitution_path %q must include a directory (e.g. .specgraph/constitution.yaml)", cfg.Storage.ConstitutionPath)
+			}
+			constitutionAbs, absErr := filepath.Abs(cfg.Storage.ConstitutionPath)
+			if absErr != nil {
+				return fmt.Errorf("resolve constitution path for inject root: %w", absErr)
+			}
+			// ConstitutionPath is like ".specgraph/constitution.yaml" — go up two levels to project root.
+			projectRoot = filepath.Dir(filepath.Dir(constitutionAbs))
 		}
-		// ConstitutionPath is like ".specgraph/constitution.yaml" — go up two levels to project root.
-		projectRoot := filepath.Dir(filepath.Dir(constitutionAbs))
 		syncHandler := server.RegisterSyncService(mux, store, store, store, projectRoot)
 		runner := syncpkg.NewExecRunner()
 		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
