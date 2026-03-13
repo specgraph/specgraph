@@ -511,7 +511,7 @@ type SyncResponse struct {
 	Synced        int32                  `protobuf:"varint,2,opt,name=synced,proto3" json:"synced,omitempty"`
 	Skipped       int32                  `protobuf:"varint,3,opt,name=skipped,proto3" json:"skipped,omitempty"`
 	Errors        int32                  `protobuf:"varint,4,opt,name=errors,proto3" json:"errors,omitempty"`
-	DryRun        int32                  `protobuf:"varint,5,opt,name=dry_run,json=dryRun,proto3" json:"dry_run,omitempty"`
+	DryRunCount   int32                  `protobuf:"varint,5,opt,name=dry_run_count,json=dryRunCount,proto3" json:"dry_run_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -574,9 +574,9 @@ func (x *SyncResponse) GetErrors() int32 {
 	return 0
 }
 
-func (x *SyncResponse) GetDryRun() int32 {
+func (x *SyncResponse) GetDryRunCount() int32 {
 	if x != nil {
-		return x.DryRun
+		return x.DryRunCount
 	}
 	return 0
 }
@@ -741,6 +741,7 @@ type InjectResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	FilesWritten  []string               `protobuf:"bytes,1,rep,name=files_written,json=filesWritten,proto3" json:"files_written,omitempty"`
 	Summary       string                 `protobuf:"bytes,2,opt,name=summary,proto3" json:"summary,omitempty"`
+	Warnings      []string               `protobuf:"bytes,3,rep,name=warnings,proto3" json:"warnings,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -789,6 +790,13 @@ func (x *InjectResponse) GetSummary() string {
 	return ""
 }
 
+func (x *InjectResponse) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
+}
+
 var File_specgraph_v1_sync_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_sync_proto_rawDesc = "" +
@@ -821,13 +829,13 @@ const file_specgraph_v1_sync_proto_rawDesc = "" +
 	"\x10SyncBeadsRequest\x120\n" +
 	"\x06config\x18\x01 \x01(\v2\x18.specgraph.v1.SyncConfigR\x06config\"E\n" +
 	"\x11SyncGitHubRequest\x120\n" +
-	"\x06config\x18\x01 \x01(\v2\x18.specgraph.v1.SyncConfigR\x06config\"\xa5\x01\n" +
+	"\x06config\x18\x01 \x01(\v2\x18.specgraph.v1.SyncConfigR\x06config\"\xb0\x01\n" +
 	"\fSyncResponse\x122\n" +
 	"\aresults\x18\x01 \x03(\v2\x18.specgraph.v1.SyncResultR\aresults\x12\x16\n" +
 	"\x06synced\x18\x02 \x01(\x05R\x06synced\x12\x18\n" +
 	"\askipped\x18\x03 \x01(\x05R\askipped\x12\x16\n" +
-	"\x06errors\x18\x04 \x01(\x05R\x06errors\x12\x17\n" +
-	"\adry_run\x18\x05 \x01(\x05R\x06dryRun\"e\n" +
+	"\x06errors\x18\x04 \x01(\x05R\x06errors\x12\"\n" +
+	"\rdry_run_count\x18\x05 \x01(\x05R\vdryRunCount\"e\n" +
 	"\x11SyncStatusRequest\x123\n" +
 	"\aadapter\x18\x01 \x01(\x0e2\x19.specgraph.v1.SyncAdapterR\aadapter\x12\x1b\n" +
 	"\tspec_slug\x18\x02 \x01(\tR\bspecSlug\"K\n" +
@@ -837,10 +845,11 @@ const file_specgraph_v1_sync_proto_rawDesc = "" +
 	"\tspec_slug\x18\x01 \x01(\tR\bspecSlug\x12,\n" +
 	"\x04tool\x18\x02 \x01(\x0e2\x18.specgraph.v1.InjectToolR\x04tool\x12\x1d\n" +
 	"\n" +
-	"output_dir\x18\x03 \x01(\tR\toutputDir\"O\n" +
+	"output_dir\x18\x03 \x01(\tR\toutputDir\"k\n" +
 	"\x0eInjectResponse\x12#\n" +
 	"\rfiles_written\x18\x01 \x03(\tR\ffilesWritten\x12\x18\n" +
-	"\asummary\x18\x02 \x01(\tR\asummary*\\\n" +
+	"\asummary\x18\x02 \x01(\tR\asummary\x12\x1a\n" +
+	"\bwarnings\x18\x03 \x03(\tR\bwarnings*\\\n" +
 	"\vSyncAdapter\x12\x1c\n" +
 	"\x18SYNC_ADAPTER_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SYNC_ADAPTER_BEADS\x10\x01\x12\x17\n" +

@@ -121,6 +121,43 @@ func TestBeadsAdapter_PushEmptySlug(t *testing.T) {
 	}
 }
 
+func TestBeadsAdapter_PushMalformedJSON(t *testing.T) {
+	b := NewBeadsAdapter(&mockRunner{
+		output: []byte(`not json`),
+	})
+	_, err := b.Push(context.Background(), &storage.Spec{Slug: "test-spec"})
+	if err == nil {
+		t.Fatal("Push() expected error for malformed JSON, got nil")
+	}
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
+	}
+}
+
+func TestBeadsAdapter_PushMissingID(t *testing.T) {
+	b := NewBeadsAdapter(&mockRunner{
+		output: []byte(`{"id": ""}`),
+	})
+	_, err := b.Push(context.Background(), &storage.Spec{Slug: "test-spec"})
+	if err == nil {
+		t.Fatal("Push() expected error for empty ID, got nil")
+	}
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
+	}
+}
+
+func TestBeadsAdapter_PullInvalidID(t *testing.T) {
+	b := NewBeadsAdapter(&mockRunner{})
+	_, err := b.Pull(context.Background(), "--help")
+	if err == nil {
+		t.Fatal("Pull() expected error for invalid ID, got nil")
+	}
+	if !errors.Is(err, errPullFailed) {
+		t.Errorf("Pull() error = %v, want errPullFailed", err)
+	}
+}
+
 func TestBeadsAdapter_PullEmptyStatus(t *testing.T) {
 	b := NewBeadsAdapter(&mockRunner{
 		output: []byte(`{"id": "bead-abc123", "status": ""}`),

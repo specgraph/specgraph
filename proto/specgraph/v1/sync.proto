@@ -74,7 +74,7 @@ message SyncResponse {
   int32 synced = 2;
   int32 skipped = 3;
   int32 errors = 4;
-  int32 dry_run = 5;
+  int32 dry_run_count = 5;
 }
 
 message SyncStatusRequest {
@@ -95,6 +95,7 @@ message InjectRequest {
 message InjectResponse {
   repeated string files_written = 1;
   string summary = 2;
+  repeated string warnings = 3;
 }
 
 // --- Service ---

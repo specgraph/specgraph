@@ -76,11 +76,21 @@ func (g *GitHubAdapter) Push(ctx context.Context, spec *storage.Spec) (string, e
 
 	// gh issue create outputs the issue URL (e.g. https://github.com/owner/repo/issues/42)
 	issueURL := strings.TrimSpace(string(out))
+	if issueURL == "" {
+		return "", fmt.Errorf("%w: gh issue create returned empty output", errPushFailed)
+	}
 	u, err := url.Parse(issueURL)
 	if err != nil {
 		return "", fmt.Errorf("%w: failed to parse created issue URL: %w", errPushFailed, err)
 	}
-	number := path.Base(u.Path)
+	if u.Scheme != "https" {
+		return "", fmt.Errorf("%w: unexpected URL scheme in created issue URL: %q", errPushFailed, issueURL)
+	}
+	segments := strings.Split(strings.Trim(u.Path, "/"), "/")
+	if len(segments) < 4 {
+		return "", fmt.Errorf("%w: unexpected URL structure in created issue URL: %q", errPushFailed, issueURL)
+	}
+	number := segments[len(segments)-1]
 	if _, err := strconv.Atoi(number); err != nil {
 		return "", fmt.Errorf("%w: invalid issue number in URL: %q", errPushFailed, number)
 	}
@@ -89,10 +99,16 @@ func (g *GitHubAdapter) Push(ctx context.Context, spec *storage.Spec) (string, e
 
 // Pull retrieves the current state of a GitHub issue by its URL or number.
 func (g *GitHubAdapter) Pull(ctx context.Context, externalID string) (string, error) {
+	if externalID == "" {
+		return "", fmt.Errorf("%w: external ID is empty", errPullFailed)
+	}
 	// Extract issue number from URL if externalID is a full URL.
 	issueRef := externalID
 	if u, parseErr := url.Parse(externalID); parseErr == nil && u.Scheme != "" {
 		issueRef = path.Base(u.Path)
+	}
+	if _, err := strconv.Atoi(issueRef); err != nil {
+		return "", fmt.Errorf("%w: invalid issue reference: %q", errPullFailed, issueRef)
 	}
 	args := []string{"issue", "view", issueRef}
 	if g.repo != "" {

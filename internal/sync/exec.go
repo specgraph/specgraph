@@ -26,7 +26,10 @@ func (r *ExecRunner) Run(ctx context.Context, name string, args ...string) ([]by
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
-		return out, fmt.Errorf("exec %s: %w (stderr: %s)", name, err, stderr.String())
+		if stderr.Len() > 0 {
+			return out, fmt.Errorf("exec %s: %w (stderr: %s)", name, err, stderr.String())
+		}
+		return out, fmt.Errorf("exec %s: %w", name, err)
 	}
 	return out, nil
 }

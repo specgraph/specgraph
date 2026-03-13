@@ -38,7 +38,7 @@ func Inject(spec *storage.Spec, constitution *storage.Constitution, tool storage
 	case storage.InjectToolCursor:
 		return writeCursor(content, safeSlug, spec.Intent, outputDir)
 	case storage.InjectToolAgentsMD:
-		return writeAgentsMD(content, outputDir)
+		return writeAgentsMD(content, safeSlug, outputDir)
 	default:
 		return nil, fmt.Errorf("unsupported inject tool: %s", tool)
 	}
@@ -116,7 +116,8 @@ func writeCursor(content, slug, intent, outputDir string) ([]string, error) {
 		return nil, fmt.Errorf("create cursor rules dir: %w", err)
 	}
 
-	safeIntent := strings.ReplaceAll(intent, `"`, `\"`)
+	safeIntent := strings.ReplaceAll(intent, `\`, `\\`)
+	safeIntent = strings.ReplaceAll(safeIntent, `"`, `\"`)
 	var b strings.Builder
 	b.WriteString("---\n")
 	fmt.Fprintf(&b, "description: \"SpecGraph spec %s: %s\"\n", slug, safeIntent)
@@ -131,13 +132,44 @@ func writeCursor(content, slug, intent, outputDir string) ([]string, error) {
 	return []string{p}, nil
 }
 
-func writeAgentsMD(content, outputDir string) ([]string, error) {
+func writeAgentsMD(content, slug, outputDir string) ([]string, error) {
 	if err := os.MkdirAll(outputDir, 0o750); err != nil {
 		return nil, fmt.Errorf("create output dir: %w", err)
 	}
-	p := filepath.Join(outputDir, "AGENTS.md")
-	if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
-		return nil, fmt.Errorf("write AGENTS.md: %w", err)
+	p := filepath.Clean(filepath.Join(outputDir, "AGENTS.md"))
+
+	startMarker := fmt.Sprintf("<!-- specgraph:%s:start -->", slug)
+	endMarker := fmt.Sprintf("<!-- specgraph:%s:end -->", slug)
+	section := startMarker + "\n" + content + "\n" + endMarker
+
+	existing, err := os.ReadFile(p)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("read existing AGENTS.md: %w", err)
+	}
+
+	if os.IsNotExist(err) || len(existing) == 0 {
+		if writeErr := os.WriteFile(p, []byte(section+"\n"), 0o600); writeErr != nil {
+			return nil, fmt.Errorf("write AGENTS.md: %w", writeErr)
+		}
+		return []string{p}, nil
+	}
+
+	text := string(existing)
+	startIdx := strings.Index(text, startMarker)
+	endIdx := strings.Index(text, endMarker)
+	if startIdx >= 0 && endIdx >= 0 {
+		// Replace existing section for this slug.
+		text = text[:startIdx] + section + text[endIdx+len(endMarker):]
+	} else {
+		// Append new section.
+		if !strings.HasSuffix(text, "\n") {
+			text += "\n"
+		}
+		text += "\n" + section + "\n"
+	}
+
+	if writeErr := os.WriteFile(p, []byte(text), 0o600); writeErr != nil { //nolint:gosec // G703: p is filepath.Join(outputDir, "AGENTS.md") — outputDir validated by handler's SetAllowedOutputRoot, filename is hardcoded
+		return nil, fmt.Errorf("write AGENTS.md: %w", writeErr)
 	}
 	return []string{p}, nil
 }

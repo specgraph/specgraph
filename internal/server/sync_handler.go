@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"path/filepath"
@@ -58,6 +57,8 @@ func (h *SyncHandler) RegisterAdapter(adapter syncpkg.Adapter) {
 // SetAllowedOutputRoot restricts the Inject handler's output_dir to paths
 // within the given root directory. If not called, output_dir is unrestricted.
 func (h *SyncHandler) SetAllowedOutputRoot(root string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.allowedOutputRoot = root
 }
 
@@ -118,7 +119,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 			continue
 		}
 		if getErr != nil && !errors.Is(getErr, storage.ErrSyncMappingNotFound) {
-			slog.WarnContext(ctx, "failed to check sync state", "spec", spec.Slug, "error", getErr)
+			slog.WarnContext(ctx, "failed to check sync state", "spec", spec.Slug, "adapter", adapter.Name(), "error", getErr)
 			result.State = specv1.SyncState_SYNC_STATE_ERROR
 			result.Message = "failed to check sync state"
 			resp.Errors++
@@ -129,7 +130,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 		if dryRun {
 			result.State = specv1.SyncState_SYNC_STATE_PENDING
 			result.Message = "dry run - would sync"
-			resp.DryRun++
+			resp.DryRunCount++
 			resp.Results = append(resp.Results, result)
 			continue
 		}
@@ -157,7 +158,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 			slog.WarnContext(ctx, "sync mapping record failed after push", "spec", spec.Slug, "external_id", externalID, "error", createErr)
 			result.ExternalId = externalID
 			result.State = specv1.SyncState_SYNC_STATE_ERROR
-			result.Message = fmt.Sprintf("pushed to adapter (%s) but failed to record mapping - manual cleanup may be required", externalID)
+			result.Message = "pushed to adapter but failed to record mapping - manual cleanup may be required"
 			resp.Errors++
 			resp.Results = append(resp.Results, result)
 			continue
@@ -219,12 +220,16 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output_dir is required"))
 	}
 
-	if h.allowedOutputRoot != "" {
+	h.mu.RLock()
+	allowedRoot := h.allowedOutputRoot
+	h.mu.RUnlock()
+
+	if allowedRoot != "" {
 		absDir, absErr := filepath.Abs(outputDir)
 		if absErr != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid output directory"))
 		}
-		absRoot := filepath.Clean(h.allowedOutputRoot)
+		absRoot := filepath.Clean(allowedRoot)
 		if !strings.HasPrefix(absDir, absRoot+string(filepath.Separator)) && absDir != absRoot {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output_dir must be within the allowed root directory"))
 		}
@@ -232,19 +237,19 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 
 	tool, toolErr := injectToolFromProto(req.Msg.Tool)
 	if toolErr != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, toolErr)
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unsupported inject tool"))
 	}
 
 	// Constitution is optional for injection
 	var constitution *storage.Constitution
-	var constitutionWarning string
+	var warnings []string
 	if h.constitutionStore != nil {
 		// Try to load the project constitution; ignore errors (constitution is optional)
 		var conErr error
 		constitution, conErr = h.constitutionStore.GetConstitution(ctx)
 		if conErr != nil {
 			slog.WarnContext(ctx, "failed to load constitution for injection", "error", conErr)
-			constitutionWarning = " (warning: constitution unavailable)"
+			warnings = append(warnings, "constitution unavailable")
 		}
 	}
 
@@ -254,8 +259,14 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to inject spec context"))
 	}
 
+	summary := "Injected spec context for " + spec.Slug
+	if len(warnings) > 0 {
+		summary += " (warning: " + strings.Join(warnings, "; ") + ")"
+	}
+
 	return connect.NewResponse(&specv1.InjectResponse{
 		FilesWritten: files,
-		Summary:      "Injected spec context for " + spec.Slug + constitutionWarning,
+		Summary:      summary,
+		Warnings:     warnings,
 	}), nil
 }

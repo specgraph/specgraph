@@ -425,6 +425,7 @@ type errorSyncBackend struct {
 	*mockSyncBackend
 	getSyncMappingErr    error
 	createSyncMappingErr error
+	listSyncMappingsErr  error
 }
 
 func (e *errorSyncBackend) GetSyncMapping(ctx context.Context, specSlug string, adapter storage.SyncAdapterType) (*storage.SyncMapping, error) {
@@ -432,6 +433,13 @@ func (e *errorSyncBackend) GetSyncMapping(ctx context.Context, specSlug string, 
 		return nil, e.getSyncMappingErr
 	}
 	return e.mockSyncBackend.GetSyncMapping(ctx, specSlug, adapter)
+}
+
+func (e *errorSyncBackend) ListSyncMappings(ctx context.Context, adapter storage.SyncAdapterType, specSlug string) ([]*storage.SyncMapping, error) {
+	if e.listSyncMappingsErr != nil {
+		return nil, e.listSyncMappingsErr
+	}
+	return e.mockSyncBackend.ListSyncMappings(ctx, adapter, specSlug)
 }
 
 func (e *errorSyncBackend) CreateSyncMapping(ctx context.Context, specSlug string, adapter storage.SyncAdapterType, externalID string) (*storage.SyncMapping, error) {
@@ -506,7 +514,7 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingError(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int32(1), resp.Msg.Errors)
 	require.Contains(t, resp.Msg.Results[0].Message, "pushed to adapter")
-	require.Contains(t, resp.Msg.Results[0].Message, "beads-test-spec")
+	require.NotContains(t, resp.Msg.Results[0].Message, "beads-test-spec", "externalID must not leak into client-visible message")
 }
 
 func TestSyncHandler_SyncBeads_AdapterAvailableError(t *testing.T) {
@@ -566,6 +574,114 @@ func TestSyncHandler_SyncBeads_ListSpecsError(t *testing.T) {
 		}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInternal, connect.CodeOf(err))
+}
+
+func TestSyncHandler_GetSyncStatus_ListSyncMappingsError(t *testing.T) {
+	syncStore := &errorSyncBackend{
+		mockSyncBackend:     newMockSyncBackend(),
+		listSyncMappingsErr: fmt.Errorf("storage unavailable"),
+	}
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+		},
+	}
+	mux := http.NewServeMux()
+	server.RegisterSyncService(mux, syncStore, specStore, nil)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	_, err := client.GetSyncStatus(context.Background(),
+		connect.NewRequest(&specv1.SyncStatusRequest{}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInternal, connect.CodeOf(err))
+}
+
+func TestSyncHandler_SyncBeads_CreateSyncMappingExists(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		pushFn: func(_ context.Context, spec *storage.Spec) (string, error) {
+			return "beads-" + spec.Slug, nil
+		},
+	}
+	syncStore := &errorSyncBackend{
+		mockSyncBackend:      newMockSyncBackend(),
+		createSyncMappingErr: storage.ErrSyncMappingExists,
+	}
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+		},
+	}
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler.RegisterAdapter(adapter)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	resp, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+		}))
+	require.NoError(t, err)
+	require.Equal(t, int32(1), resp.Msg.Skipped)
+	require.Contains(t, resp.Msg.Results[0].Message, "already synced (concurrent sync detected)")
+}
+
+func TestSyncHandler_Inject_ConstitutionWarning(t *testing.T) {
+	syncStore := newMockSyncBackend()
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {
+				ID:         "spec-test123",
+				Slug:       "test-spec",
+				Intent:     "Test spec",
+				Stage:      "approved",
+				Priority:   "p2",
+				Complexity: "medium",
+			},
+		},
+	}
+	conStore := &mockConstitutionStore{err: fmt.Errorf("db connection lost")}
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, conStore)
+	handler.SetAllowedOutputRoot(t.TempDir())
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	outputDir := t.TempDir()
+	handler.SetAllowedOutputRoot(outputDir)
+	resp, err := client.Inject(context.Background(),
+		connect.NewRequest(&specv1.InjectRequest{
+			SpecSlug:  "test-spec",
+			Tool:      specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
+			OutputDir: outputDir,
+		}))
+	require.NoError(t, err)
+	require.Contains(t, resp.Msg.Summary, "warning: constitution unavailable")
+	require.Len(t, resp.Msg.Warnings, 1)
+	require.Equal(t, "constitution unavailable", resp.Msg.Warnings[0])
+}
+
+// mockConstitutionStore always returns an error for GetConstitution.
+type mockConstitutionStore struct {
+	err error
+}
+
+func (m *mockConstitutionStore) GetConstitution(_ context.Context) (*storage.Constitution, error) {
+	return nil, m.err
+}
+
+func (m *mockConstitutionStore) UpdateConstitution(_ context.Context, c *storage.Constitution) (*storage.Constitution, error) {
+	return c, nil
+}
+
+func (m *mockConstitutionStore) CheckViolation(_ context.Context, _ string) ([]storage.Violation, error) {
+	return nil, nil
 }
 
 func TestSyncHandler_Inject_OutputDirOutsideRoot(t *testing.T) {

@@ -292,3 +292,59 @@ func TestGitHubAdapter_PushInvalidPriority(t *testing.T) {
 		t.Errorf("Push() error should mention invalid priority, got: %v", err)
 	}
 }
+
+func TestGitHubAdapter_PullEmptyExternalID(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{}, "")
+	_, err := g.Pull(context.Background(), "")
+	if err == nil {
+		t.Fatal("Pull() expected error for empty externalID, got nil")
+	}
+	if !errors.Is(err, errPullFailed) {
+		t.Errorf("Pull() error = %v, want errPullFailed", err)
+	}
+}
+
+func TestGitHubAdapter_PullInvalidIssueRef(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{}, "")
+	_, err := g.Pull(context.Background(), "not-a-number")
+	if err == nil {
+		t.Fatal("Pull() expected error for non-numeric externalID, got nil")
+	}
+	if !errors.Is(err, errPullFailed) {
+		t.Errorf("Pull() error = %v, want errPullFailed", err)
+	}
+}
+
+func TestGitHubAdapter_PushEmptyOutput(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{output: []byte("")}, "")
+	spec := &storage.Spec{
+		Slug:     "test-spec",
+		Intent:   "test",
+		Stage:    storage.SpecStageApproved,
+		Priority: storage.SpecPriorityP2,
+	}
+	_, err := g.Push(context.Background(), spec)
+	if err == nil {
+		t.Fatal("Push() expected error for empty output, got nil")
+	}
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
+	}
+}
+
+func TestGitHubAdapter_PushBadScheme(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{output: []byte("http://github.com/owner/repo/issues/42")}, "")
+	spec := &storage.Spec{
+		Slug:     "test-spec",
+		Intent:   "test",
+		Stage:    storage.SpecStageApproved,
+		Priority: storage.SpecPriorityP2,
+	}
+	_, err := g.Push(context.Background(), spec)
+	if err == nil {
+		t.Fatal("Push() expected error for non-https scheme, got nil")
+	}
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
+	}
+}

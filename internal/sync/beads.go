@@ -7,9 +7,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 
 	"github.com/seanb4t/specgraph/internal/storage"
 )
+
+// beadsIDPattern matches valid bead IDs (alphanumeric with hyphens, dots, underscores).
+var beadsIDPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
 
 // BeadsAdapter syncs specs to the Beads task system via the bd CLI.
 type BeadsAdapter struct {
@@ -75,6 +79,9 @@ func (b *BeadsAdapter) Push(ctx context.Context, spec *storage.Spec) (string, er
 
 // Pull retrieves the status of a bead by its external ID.
 func (b *BeadsAdapter) Pull(ctx context.Context, externalID string) (string, error) {
+	if externalID == "" || !beadsIDPattern.MatchString(externalID) {
+		return "", fmt.Errorf("%w: invalid bead ID format: %q", errPullFailed, externalID)
+	}
 	out, err := b.runner.Run(ctx, "bd", "show", externalID, "--json")
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", errPullFailed, err)

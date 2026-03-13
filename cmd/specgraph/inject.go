@@ -33,11 +33,6 @@ var (
 )
 
 func runInject(_ *cobra.Command, args []string) error {
-	client, err := injectClient()
-	if err != nil {
-		return err
-	}
-
 	var tool specv1.InjectTool
 	switch strings.ToLower(injectTool) {
 	case "claude-code", "claude":
@@ -48,6 +43,11 @@ func runInject(_ *cobra.Command, args []string) error {
 		tool = specv1.InjectTool_INJECT_TOOL_AGENTS_MD
 	default:
 		return fmt.Errorf("unsupported tool: %s (supported: claude-code, cursor, agents-md)", injectTool)
+	}
+
+	client, err := injectClient()
+	if err != nil {
+		return err
 	}
 
 	output := injectOutput

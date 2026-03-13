@@ -168,7 +168,7 @@ func runSyncStatus(cmd *cobra.Command, _ []string) error {
 func printSyncResponse(cmd *cobra.Command, resp *specv1.SyncResponse) error {
 	w := cmd.OutOrStdout()
 	tw := &tableWriter{w: w}
-	tw.printf("Synced: %d  Skipped: %d  DryRun: %d  Errors: %d\n", resp.Synced, resp.Skipped, resp.DryRun, resp.Errors)
+	tw.printf("Synced: %d  Skipped: %d  DryRun: %d  Errors: %d\n", resp.Synced, resp.Skipped, resp.DryRunCount, resp.Errors)
 	for _, r := range resp.Results {
 		stateIcon := " "
 		switch r.State {
