@@ -62,7 +62,9 @@ task build          # Generate proto + build binary
 
 ## Gotchas
 
+- **jj-colocated repo** — This repo uses jj with git colocated. Always use `jj --no-pager` for VCS operations. Never use `git push`; use `jj bookmark set <name> -r <rev>` then `jj git push --bookmark <name>`. Always use `-m` with jj commands that accept messages (`squash`, `describe`, `commit`, `new`) to avoid opening an editor.
 - **`gen/` is committed** — generated proto code is checked in for Go module compatibility. Run `task proto:check` to verify staleness. Proto sources are in `proto/`, not `gen/`.
+- **Proto field removal** — When removing a proto field, use `reserved` for both field number and name in the `.proto` file. Then run `task proto`, update all callers (CLI, handlers, tests), and verify with `go build ./...`.
 - **`task proto` is incremental** — fingerprints `.proto` files and skips if unchanged
 - **Memgraph integration tests require Docker** — `internal/storage/memgraph/` uses testcontainers
 - **Lefthook pre-commit hooks**: license headers (addlicense), golangci-lint, yamlfmt, dprint, rumdl, cog (conventional commits). All run in parallel.
@@ -70,6 +72,7 @@ task build          # Generate proto + build binary
 - **ConnectRPC, not plain gRPC** — handlers are in `internal/server/`, proto services generate both `.pb.go` and `.connect.go` files
 - **Storage interfaces in `internal/storage/`** — implementations are in subdirectories (currently only `memgraph/`). The interfaces use domain types, not protobuf types.
 - **License headers required** — all `.go`, `.sh`, `.py`, `.proto` files need SPDX headers. Run `task license:add` to fix.
+- **gosec in test files** — Intentional permission changes (e.g., `os.Chmod(dir, 0o555)` for read-only tests) trigger gosec G302. Add `//nolint:gosec // <reason>` on the same line.
 - **Memgraph bolt readiness race** — `wait.ForListeningPort` alone is insufficient; always pair with `wait.ForLog("memgraph entered RUNNING state")` (supervisord log — the platform image does NOT emit "You are running Memgraph" to container stdout) and a connection retry loop (see `newStore` in `memgraph_test.go`)
 - **Cypher DELETE + count** — `MATCH ()-[r]->() DELETE r RETURN count(r)` works in Memgraph; `r` was bound pre-deletion. No need to change to `count(*)`.
 - **E2E tests use Ginkgo/Gomega** — `e2e/api/` tests run via `go test -tags e2e`; `e2e/docker/` tests require Docker-in-Docker (skipped in CI)
