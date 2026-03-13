@@ -189,7 +189,7 @@ func (s *Store) DeleteSyncMapping(ctx context.Context, specSlug string, adapter 
 
 	_, err := s.executeQuery(ctx,
 		`MATCH (s:Spec {slug: $slug})-[r:SYNCED_TO {adapter: $adapter}]->(e:ExternalRef)
-		 DELETE r, e`,
+		 DELETE r`,
 		map[string]any{"slug": specSlug, "adapter": adapterStr},
 	)
 	if err != nil {

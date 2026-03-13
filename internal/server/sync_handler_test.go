@@ -154,7 +154,7 @@ func setupSyncServer(t *testing.T) specgraphv1connect.SyncServiceClient {
 		},
 	}
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, syncStore, specStore, nil)
+	server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
@@ -180,7 +180,7 @@ func TestSyncHandler_GetSyncStatus_WithMappings(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}, nil)
+	server.RegisterSyncService(mux, syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}, nil, "")
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
@@ -239,7 +239,7 @@ func TestSyncHandler_Inject_Success(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	handler.SetAllowedOutputRoot(outputDir)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -268,7 +268,7 @@ func TestSyncHandler_Inject_SuccessCursor(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	handler.SetAllowedOutputRoot(outputDir)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -297,7 +297,7 @@ func TestSyncHandler_Inject_SuccessAgentsMD(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	handler.SetAllowedOutputRoot(outputDir)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -351,7 +351,7 @@ func setupSyncServerWithAdapter(t *testing.T, adapter syncpkg.Adapter) specgraph
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -377,7 +377,7 @@ func TestSyncHandler_SyncBeads_Success(t *testing.T) {
 	client := setupSyncServerWithAdapter(t, adapter)
 	resp, err := client.SyncBeads(context.Background(),
 		connect.NewRequest(&specv1.SyncBeadsRequest{
-			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+			Config: &specv1.SyncConfig{},
 		}))
 	require.NoError(t, err)
 	require.Equal(t, int32(1), resp.Msg.Synced)
@@ -396,7 +396,7 @@ func TestSyncHandler_SyncBeads_PushError(t *testing.T) {
 	client := setupSyncServerWithAdapter(t, adapter)
 	resp, err := client.SyncBeads(context.Background(),
 		connect.NewRequest(&specv1.SyncBeadsRequest{
-			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+			Config: &specv1.SyncConfig{},
 		}))
 	require.NoError(t, err)
 	require.Equal(t, int32(1), resp.Msg.Errors)
@@ -416,8 +416,7 @@ func TestSyncHandler_SyncBeads_DryRun(t *testing.T) {
 	resp, err := client.SyncBeads(context.Background(),
 		connect.NewRequest(&specv1.SyncBeadsRequest{
 			Config: &specv1.SyncConfig{
-				Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS,
-				DryRun:  true,
+				DryRun: true,
 			},
 		}))
 	require.NoError(t, err)
@@ -449,7 +448,7 @@ func TestSyncHandler_SyncBeads_AlreadySynced(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -457,7 +456,7 @@ func TestSyncHandler_SyncBeads_AlreadySynced(t *testing.T) {
 
 	resp, err := client.SyncBeads(context.Background(),
 		connect.NewRequest(&specv1.SyncBeadsRequest{
-			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+			Config: &specv1.SyncConfig{},
 		}))
 	require.NoError(t, err)
 	require.Equal(t, int32(1), resp.Msg.Skipped)
@@ -483,7 +482,7 @@ func TestSyncHandler_SyncGitHub_Success(t *testing.T) {
 	client := setupSyncServerWithAdapter(t, adapter)
 	resp, err := client.SyncGitHub(context.Background(),
 		connect.NewRequest(&specv1.SyncGitHubRequest{
-			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_GITHUB},
+			Config: &specv1.SyncConfig{},
 		}))
 	require.NoError(t, err)
 	require.Equal(t, int32(1), resp.Msg.Synced)
@@ -547,7 +546,7 @@ func TestSyncHandler_SyncBeads_GetSyncMappingError(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -555,7 +554,7 @@ func TestSyncHandler_SyncBeads_GetSyncMappingError(t *testing.T) {
 
 	resp, err := client.SyncBeads(context.Background(),
 		connect.NewRequest(&specv1.SyncBeadsRequest{
-			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+			Config: &specv1.SyncConfig{},
 		}))
 	require.NoError(t, err)
 	require.Equal(t, int32(1), resp.Msg.Errors)
@@ -580,7 +579,7 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingError(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -588,7 +587,7 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingError(t *testing.T) {
 
 	resp, err := client.SyncBeads(context.Background(),
 		connect.NewRequest(&specv1.SyncBeadsRequest{
-			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+			Config: &specv1.SyncConfig{},
 		}))
 	require.NoError(t, err)
 	require.Equal(t, int32(1), resp.Msg.Errors)
@@ -608,7 +607,7 @@ func TestSyncHandler_SyncBeads_AdapterAvailableError(t *testing.T) {
 	client := setupSyncServerWithAdapter(t, adapter)
 	_, err := client.SyncBeads(context.Background(),
 		connect.NewRequest(&specv1.SyncBeadsRequest{
-			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+			Config: &specv1.SyncConfig{},
 		}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
@@ -641,7 +640,7 @@ func TestSyncHandler_SyncBeads_ListSpecsError(t *testing.T) {
 	}
 	syncStore := newMockSyncBackend()
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -649,7 +648,7 @@ func TestSyncHandler_SyncBeads_ListSpecsError(t *testing.T) {
 
 	_, err := client.SyncBeads(context.Background(),
 		connect.NewRequest(&specv1.SyncBeadsRequest{
-			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+			Config: &specv1.SyncConfig{},
 		}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInternal, connect.CodeOf(err))
@@ -666,7 +665,7 @@ func TestSyncHandler_GetSyncStatus_ListSyncMappingsError(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, syncStore, specStore, nil)
+	server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
@@ -689,7 +688,7 @@ func TestSyncHandler_GetSyncStatus_ConversionFailure(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}, nil)
+	server.RegisterSyncService(mux, syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}, nil, "")
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
@@ -718,7 +717,7 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingExists(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -726,7 +725,7 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingExists(t *testing.T) {
 
 	resp, err := client.SyncBeads(context.Background(),
 		connect.NewRequest(&specv1.SyncBeadsRequest{
-			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+			Config: &specv1.SyncConfig{},
 		}))
 	require.NoError(t, err)
 	require.Equal(t, int32(1), resp.Msg.Skipped)
@@ -749,7 +748,7 @@ func TestSyncHandler_Inject_ConstitutionWarning(t *testing.T) {
 	}
 	conStore := &mockConstitutionStore{err: fmt.Errorf("db connection lost")}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, conStore)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, conStore, "")
 	handler.SetAllowedOutputRoot(t.TempDir())
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -794,7 +793,7 @@ func TestSyncHandler_Inject_OutputDirOutsideRoot(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	handler.SetAllowedOutputRoot(t.TempDir())
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -845,7 +844,7 @@ func TestSyncHandler_SyncBeads_RetrySuccess(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -853,7 +852,7 @@ func TestSyncHandler_SyncBeads_RetrySuccess(t *testing.T) {
 
 	resp, err := client.SyncBeads(context.Background(),
 		connect.NewRequest(&specv1.SyncBeadsRequest{
-			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+			Config: &specv1.SyncConfig{},
 		}))
 	require.NoError(t, err)
 	require.Equal(t, int32(1), resp.Msg.Synced)
@@ -892,7 +891,7 @@ func TestSyncHandler_SyncBeads_RetryExistsCountsAsSkipped(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -900,7 +899,7 @@ func TestSyncHandler_SyncBeads_RetryExistsCountsAsSkipped(t *testing.T) {
 
 	resp, err := client.SyncBeads(context.Background(),
 		connect.NewRequest(&specv1.SyncBeadsRequest{
-			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+			Config: &specv1.SyncConfig{},
 		}))
 	require.NoError(t, err)
 	// First CreateSyncMapping fails with transient error, retry returns ErrSyncMappingExists
@@ -918,4 +917,84 @@ func TestSyncHandler_Inject_EmptyOutputDir(t *testing.T) {
 		}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+// TestSyncHandler_Inject_NoAllowedOutputRoot verifies that when RegisterSyncService
+// is called with allowedOutputRoot="" the Inject handler accepts any output_dir
+// without path validation (unrestricted mode).
+func TestSyncHandler_Inject_NoAllowedOutputRoot(t *testing.T) {
+	outputDir := t.TempDir()
+	syncStore := newMockSyncBackend()
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {
+				ID:         "spec-test123",
+				Slug:       "test-spec",
+				Intent:     "Test spec for sync",
+				Stage:      "approved",
+				Priority:   "p2",
+				Complexity: "medium",
+			},
+		},
+	}
+	mux := http.NewServeMux()
+	// Pass allowedOutputRoot="" — no root restriction.
+	server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	// Any output_dir should be accepted when allowedOutputRoot is empty.
+	resp, err := client.Inject(context.Background(),
+		connect.NewRequest(&specv1.InjectRequest{
+			SpecSlug:  "test-spec",
+			Tool:      specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
+			OutputDir: outputDir,
+		}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.FilesWritten, 1)
+	require.Contains(t, resp.Msg.Summary, "test-spec")
+}
+
+// TestSyncHandler_SyncBeads_DryRunCount verifies that syncWithAdapter correctly
+// increments dry_run_count (not synced/errors/skipped) for each spec when
+// dry_run is true.
+func TestSyncHandler_SyncBeads_DryRunCount(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		pushFn: func(_ context.Context, _ *storage.Spec) (string, error) {
+			t.Fatal("push must not be called in dry run mode")
+			return "", nil
+		},
+	}
+	syncStore := newMockSyncBackend()
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"spec-alpha": {ID: "spec-alpha-id", Slug: "spec-alpha", Stage: "approved"},
+			"spec-beta":  {ID: "spec-beta-id", Slug: "spec-beta", Stage: "approved"},
+		},
+	}
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler.RegisterAdapter(adapter)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	resp, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{
+				DryRun: true,
+			},
+		}))
+	require.NoError(t, err)
+	require.Equal(t, int32(0), resp.Msg.Synced)
+	require.Equal(t, int32(0), resp.Msg.Errors)
+	require.Equal(t, int32(0), resp.Msg.Skipped)
+	require.Equal(t, int32(2), resp.Msg.DryRunCount)
+	require.Len(t, resp.Msg.Results, 2)
+	for _, result := range resp.Msg.Results {
+		require.Equal(t, specv1.SyncState_SYNC_STATE_PENDING, result.State)
+	}
 }

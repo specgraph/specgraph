@@ -351,7 +351,6 @@ func (x *SyncResult) GetMessage() string {
 
 type SyncConfig struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	Adapter        SyncAdapter            `protobuf:"varint,1,opt,name=adapter,proto3,enum=specgraph.v1.SyncAdapter" json:"adapter,omitempty"`
 	FilterStage    string                 `protobuf:"bytes,2,opt,name=filter_stage,json=filterStage,proto3" json:"filter_stage,omitempty"`
 	FilterPriority string                 `protobuf:"bytes,3,opt,name=filter_priority,json=filterPriority,proto3" json:"filter_priority,omitempty"`
 	DryRun         bool                   `protobuf:"varint,4,opt,name=dry_run,json=dryRun,proto3" json:"dry_run,omitempty"`
@@ -387,13 +386,6 @@ func (x *SyncConfig) ProtoReflect() protoreflect.Message {
 // Deprecated: Use SyncConfig.ProtoReflect.Descriptor instead.
 func (*SyncConfig) Descriptor() ([]byte, []int) {
 	return file_specgraph_v1_sync_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *SyncConfig) GetAdapter() SyncAdapter {
-	if x != nil {
-		return x.Adapter
-	}
-	return SyncAdapter_SYNC_ADAPTER_UNSPECIFIED
 }
 
 func (x *SyncConfig) GetFilterStage() string {
@@ -819,13 +811,12 @@ const file_specgraph_v1_sync_proto_rawDesc = "" +
 	"\vexternal_id\x18\x02 \x01(\tR\n" +
 	"externalId\x12-\n" +
 	"\x05state\x18\x03 \x01(\x0e2\x17.specgraph.v1.SyncStateR\x05state\x12\x18\n" +
-	"\amessage\x18\x04 \x01(\tR\amessage\"\xa6\x01\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\"\x80\x01\n" +
 	"\n" +
-	"SyncConfig\x123\n" +
-	"\aadapter\x18\x01 \x01(\x0e2\x19.specgraph.v1.SyncAdapterR\aadapter\x12!\n" +
+	"SyncConfig\x12!\n" +
 	"\ffilter_stage\x18\x02 \x01(\tR\vfilterStage\x12'\n" +
 	"\x0ffilter_priority\x18\x03 \x01(\tR\x0efilterPriority\x12\x17\n" +
-	"\adry_run\x18\x04 \x01(\bR\x06dryRun\"D\n" +
+	"\adry_run\x18\x04 \x01(\bR\x06dryRunJ\x04\b\x01\x10\x02R\aadapter\"D\n" +
 	"\x10SyncBeadsRequest\x120\n" +
 	"\x06config\x18\x01 \x01(\v2\x18.specgraph.v1.SyncConfigR\x06config\"E\n" +
 	"\x11SyncGitHubRequest\x120\n" +
@@ -909,26 +900,25 @@ var file_specgraph_v1_sync_proto_depIdxs = []int32{
 	13, // 2: specgraph.v1.SyncMapping.last_sync:type_name -> google.protobuf.Timestamp
 	13, // 3: specgraph.v1.SyncMapping.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 4: specgraph.v1.SyncResult.state:type_name -> specgraph.v1.SyncState
-	0,  // 5: specgraph.v1.SyncConfig.adapter:type_name -> specgraph.v1.SyncAdapter
-	5,  // 6: specgraph.v1.SyncBeadsRequest.config:type_name -> specgraph.v1.SyncConfig
-	5,  // 7: specgraph.v1.SyncGitHubRequest.config:type_name -> specgraph.v1.SyncConfig
-	4,  // 8: specgraph.v1.SyncResponse.results:type_name -> specgraph.v1.SyncResult
-	0,  // 9: specgraph.v1.SyncStatusRequest.adapter:type_name -> specgraph.v1.SyncAdapter
-	3,  // 10: specgraph.v1.SyncStatusResponse.mappings:type_name -> specgraph.v1.SyncMapping
-	2,  // 11: specgraph.v1.InjectRequest.tool:type_name -> specgraph.v1.InjectTool
-	6,  // 12: specgraph.v1.SyncService.SyncBeads:input_type -> specgraph.v1.SyncBeadsRequest
-	7,  // 13: specgraph.v1.SyncService.SyncGitHub:input_type -> specgraph.v1.SyncGitHubRequest
-	9,  // 14: specgraph.v1.SyncService.GetSyncStatus:input_type -> specgraph.v1.SyncStatusRequest
-	11, // 15: specgraph.v1.SyncService.Inject:input_type -> specgraph.v1.InjectRequest
-	8,  // 16: specgraph.v1.SyncService.SyncBeads:output_type -> specgraph.v1.SyncResponse
-	8,  // 17: specgraph.v1.SyncService.SyncGitHub:output_type -> specgraph.v1.SyncResponse
-	10, // 18: specgraph.v1.SyncService.GetSyncStatus:output_type -> specgraph.v1.SyncStatusResponse
-	12, // 19: specgraph.v1.SyncService.Inject:output_type -> specgraph.v1.InjectResponse
-	16, // [16:20] is the sub-list for method output_type
-	12, // [12:16] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	5,  // 5: specgraph.v1.SyncBeadsRequest.config:type_name -> specgraph.v1.SyncConfig
+	5,  // 6: specgraph.v1.SyncGitHubRequest.config:type_name -> specgraph.v1.SyncConfig
+	4,  // 7: specgraph.v1.SyncResponse.results:type_name -> specgraph.v1.SyncResult
+	0,  // 8: specgraph.v1.SyncStatusRequest.adapter:type_name -> specgraph.v1.SyncAdapter
+	3,  // 9: specgraph.v1.SyncStatusResponse.mappings:type_name -> specgraph.v1.SyncMapping
+	2,  // 10: specgraph.v1.InjectRequest.tool:type_name -> specgraph.v1.InjectTool
+	6,  // 11: specgraph.v1.SyncService.SyncBeads:input_type -> specgraph.v1.SyncBeadsRequest
+	7,  // 12: specgraph.v1.SyncService.SyncGitHub:input_type -> specgraph.v1.SyncGitHubRequest
+	9,  // 13: specgraph.v1.SyncService.GetSyncStatus:input_type -> specgraph.v1.SyncStatusRequest
+	11, // 14: specgraph.v1.SyncService.Inject:input_type -> specgraph.v1.InjectRequest
+	8,  // 15: specgraph.v1.SyncService.SyncBeads:output_type -> specgraph.v1.SyncResponse
+	8,  // 16: specgraph.v1.SyncService.SyncGitHub:output_type -> specgraph.v1.SyncResponse
+	10, // 17: specgraph.v1.SyncService.GetSyncStatus:output_type -> specgraph.v1.SyncStatusResponse
+	12, // 18: specgraph.v1.SyncService.Inject:output_type -> specgraph.v1.InjectResponse
+	15, // [15:19] is the sub-list for method output_type
+	11, // [11:15] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_sync_proto_init() }

@@ -53,7 +53,8 @@ message SyncResult {
 }
 
 message SyncConfig {
-  SyncAdapter adapter = 1;
+  reserved 1;
+  reserved "adapter";
   string filter_stage = 2;
   string filter_priority = 3;
   bool dry_run = 4;

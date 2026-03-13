@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -95,15 +96,20 @@ func runServe(_ *cobra.Command, _ []string) error {
 		driftEngine := drift.NewEngine(store, nil)
 		lintEngine := linter.NewEngine(store, nil)
 		server.RegisterLifecycleService(mux, store, store, driftEngine, lintEngine, nil)
-		syncHandler := server.RegisterSyncService(mux, store, store, store)
+		// Derive inject output root from constitution path's parent directory.
+		// This works for both relative paths (resolved against CWD) and absolute paths,
+		// ensuring the server validates output_dir against the project root rather than
+		// the server process's working directory.
+		constitutionAbs, err := filepath.Abs(cfg.Storage.ConstitutionPath)
+		if err != nil {
+			return fmt.Errorf("resolve constitution path for inject root: %w", err)
+		}
+		// ConstitutionPath is like ".specgraph/constitution.yaml" — go up two levels to project root.
+		projectRoot := filepath.Dir(filepath.Dir(constitutionAbs))
+		syncHandler := server.RegisterSyncService(mux, store, store, store, projectRoot)
 		runner := syncpkg.NewExecRunner()
 		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
 		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, cfg.Sync.GitHubRepo))
-		wd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("determine working directory for inject root: %w", err)
-		}
-		syncHandler.SetAllowedOutputRoot(wd)
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 

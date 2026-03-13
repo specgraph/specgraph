@@ -35,14 +35,15 @@ var _ specgraphv1connect.SyncServiceHandler = (*SyncHandler)(nil)
 // RegisterSyncService registers the SyncService handler on the mux and returns
 // the handler so callers can register adapters via RegisterAdapter.
 // constitutionStore can be nil if constitution injection is not needed.
-func RegisterSyncService(mux *http.ServeMux, syncStore storage.SyncBackend, specStore storage.SpecReader, constitutionStore storage.ConstitutionBackend) *SyncHandler {
-	// allowedOutputRoot is empty by default — callers MUST call SetAllowedOutputRoot
-	// before the server starts accepting requests.
+// allowedOutputRoot restricts Inject output_dir to paths within this root;
+// pass "" for unrestricted mode (not recommended for production).
+func RegisterSyncService(mux *http.ServeMux, syncStore storage.SyncBackend, specStore storage.SpecReader, constitutionStore storage.ConstitutionBackend, allowedOutputRoot string) *SyncHandler {
 	handler := &SyncHandler{
 		syncStore:         syncStore,
 		specStore:         specStore,
 		constitutionStore: constitutionStore,
 		adapters:          map[storage.SyncAdapterType]syncpkg.Adapter{},
+		allowedOutputRoot: allowedOutputRoot,
 	}
 	path, h := specgraphv1connect.NewSyncServiceHandler(handler)
 	mux.Handle(path, h)
@@ -158,6 +159,17 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 				continue
 			}
 			// Retry once — transient store failures should not orphan external items.
+			if ctx.Err() != nil {
+				slog.ErrorContext(ctx, "sync mapping record failed after push (context cancelled before retry)",
+					"spec", spec.Slug, "adapter", adapter.Name(), "external_id", externalID,
+					"error", createErr)
+				result.ExternalId = externalID
+				result.State = specv1.SyncState_SYNC_STATE_ERROR
+				result.Message = "pushed to adapter but failed to record mapping - external_id preserved for reconciliation"
+				resp.Errors++
+				resp.Results = append(resp.Results, result)
+				continue
+			}
 			_, retryErr := h.syncStore.CreateSyncMapping(ctx, spec.Slug, adapter.Name(), externalID)
 			if retryErr != nil {
 				if errors.Is(retryErr, storage.ErrSyncMappingExists) {
@@ -171,7 +183,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 				}
 				slog.ErrorContext(ctx, "sync mapping record failed after push (orphaned external item)",
 					"spec", spec.Slug, "adapter", adapter.Name(), "external_id", externalID,
-					"error", createErr, "retry_error", retryErr)
+					"initial_error", createErr, "error", retryErr)
 				result.ExternalId = externalID
 				result.State = specv1.SyncState_SYNC_STATE_ERROR
 				result.Message = "pushed to adapter but failed to record mapping - external_id preserved for reconciliation"

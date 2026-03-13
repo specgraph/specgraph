@@ -400,3 +400,27 @@ func TestGitHubAdapter_PullInvalidHost(t *testing.T) {
 		t.Errorf("Pull() error = %v, want errPullFailed", err)
 	}
 }
+
+func TestGitHubAdapter_Pull_FullURL(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{
+		output: []byte(`{"state":"OPEN"}`),
+	}, "owner/repo")
+	status, err := g.Pull(context.Background(), "https://github.com/owner/repo/issues/123")
+	if err != nil {
+		t.Fatalf("Pull() unexpected error for full URL: %v", err)
+	}
+	if status != "OPEN" {
+		t.Errorf("Pull() status = %q, want %q", status, "OPEN")
+	}
+}
+
+func TestGitHubAdapter_AvailableNoRepo(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{}, "")
+	err := g.Available(context.Background())
+	if err == nil {
+		t.Fatal("Available() expected error for empty repo, got nil")
+	}
+	if !errors.Is(err, ErrAdapterNotAvailable) {
+		t.Errorf("Available() error = %v, want ErrAdapterNotAvailable", err)
+	}
+}

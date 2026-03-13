@@ -32,8 +32,12 @@ func (g *GitHubAdapter) Name() storage.SyncAdapterType {
 	return storage.SyncAdapterGitHub
 }
 
-// Available checks whether the gh CLI is installed and authenticated.
+// Available checks whether the gh CLI is installed, authenticated, and the
+// adapter has a configured repo.
 func (g *GitHubAdapter) Available(ctx context.Context) error {
+	if g.repo == "" {
+		return fmt.Errorf("%w: repo not configured", ErrAdapterNotAvailable)
+	}
 	_, err := g.runner.Run(ctx, "gh", "--version")
 	if err != nil {
 		return fmt.Errorf("%w: gh CLI not found: %w", ErrAdapterNotAvailable, err)

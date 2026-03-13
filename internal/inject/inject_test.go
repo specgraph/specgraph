@@ -393,6 +393,23 @@ func TestInject_Cursor_SpecialCharacters(t *testing.T) {
 	}
 }
 
+func TestInject_ReadOnlyOutputDir(t *testing.T) {
+	readOnlyDir := t.TempDir()
+	if err := os.Chmod(readOnlyDir, 0o555); err != nil { //nolint:gosec // intentionally read-only for testing
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(readOnlyDir, 0o755) }) //nolint:gosec // restore permissions for cleanup
+
+	spec := testSpec()
+	_, err := inject.Inject(spec, nil, storage.InjectToolAgentsMD, filepath.Join(readOnlyDir, "subdir"))
+	if err == nil {
+		t.Fatal("expected error for read-only output dir, got nil")
+	}
+	if !strings.Contains(err.Error(), "permission denied") {
+		t.Errorf("expected permission denied error, got: %v", err)
+	}
+}
+
 func TestInject_InvalidSlugSpecialChars(t *testing.T) {
 	dir := t.TempDir()
 	cases := []struct {

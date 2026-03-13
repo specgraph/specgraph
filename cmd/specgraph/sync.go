@@ -54,7 +54,6 @@ func runSyncBeads(cmd *cobra.Command) error {
 
 	resp, err := client.SyncBeads(context.Background(), connect.NewRequest(&specv1.SyncBeadsRequest{
 		Config: &specv1.SyncConfig{
-			Adapter:        specv1.SyncAdapter_SYNC_ADAPTER_BEADS,
 			FilterStage:    beadsFilterStage,
 			FilterPriority: beadsFilterPriority,
 			DryRun:         beadsDryRun,
@@ -85,7 +84,6 @@ func runSyncGitHub(cmd *cobra.Command) error {
 
 	resp, err := client.SyncGitHub(context.Background(), connect.NewRequest(&specv1.SyncGitHubRequest{
 		Config: &specv1.SyncConfig{
-			Adapter:        specv1.SyncAdapter_SYNC_ADAPTER_GITHUB,
 			FilterStage:    ghFilterStage,
 			FilterPriority: ghFilterPriority,
 			DryRun:         ghDryRun,

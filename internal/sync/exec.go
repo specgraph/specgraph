@@ -37,7 +37,12 @@ func (r *ExecRunner) Run(ctx context.Context, name string, args ...string) ([]by
 	out, err := cmd.Output()
 	if err != nil {
 		if stderr.Len() > 0 {
-			return out, fmt.Errorf("exec %s: %w (stderr: %s)", name, err, stderr.String())
+			stderrMsg := stderr.String()
+			const maxStderr = 512
+			if len(stderrMsg) > maxStderr {
+				stderrMsg = stderrMsg[:maxStderr] + "... (truncated)"
+			}
+			return out, fmt.Errorf("exec %s: %w (stderr: %s)", name, err, stderrMsg)
 		}
 		return out, fmt.Errorf("exec %s: %w", name, err)
 	}
