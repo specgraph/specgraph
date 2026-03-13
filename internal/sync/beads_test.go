@@ -55,8 +55,10 @@ func TestBeadsAdapter_Push(t *testing.T) {
 		output: []byte(`{"id": "bead-abc123", "title": "[spec] my-spec"}`),
 	})
 	spec := &storage.Spec{
-		Slug:   "my-spec",
-		Intent: "Build a thing",
+		Slug:     "my-spec",
+		Intent:   "Build a thing",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP2,
 	}
 	id, err := b.Push(context.Background(), spec)
 	if err != nil {
@@ -72,8 +74,10 @@ func TestBeadsAdapter_PushError(t *testing.T) {
 		err: errors.New("command failed"),
 	})
 	spec := &storage.Spec{
-		Slug:   "my-spec",
-		Intent: "Build a thing",
+		Slug:     "my-spec",
+		Intent:   "Build a thing",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP2,
 	}
 	_, err := b.Push(context.Background(), spec)
 	if err == nil {

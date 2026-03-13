@@ -22,6 +22,7 @@ type GitHubAdapter struct {
 }
 
 // NewGitHubAdapter creates a GitHubAdapter with the given command runner and repo.
+// repo must be in "owner/repo" format.
 func NewGitHubAdapter(runner CommandRunner, repo string) *GitHubAdapter {
 	return &GitHubAdapter{runner: runner, repo: repo}
 }
@@ -53,6 +54,9 @@ type ghViewResponse struct {
 func (g *GitHubAdapter) Push(ctx context.Context, spec *storage.Spec) (string, error) {
 	if spec.Slug == "" {
 		return "", fmt.Errorf("%w: spec slug is required", errPushFailed)
+	}
+	if g.repo == "" {
+		return "", fmt.Errorf("%w: repo is required", errPushFailed)
 	}
 	if !spec.Stage.IsValid() {
 		return "", fmt.Errorf("%w: invalid spec stage: %q", errPushFailed, spec.Stage)

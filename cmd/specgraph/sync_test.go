@@ -60,19 +60,15 @@ func TestInjectCmd_ToolAliases(t *testing.T) {
 		{"agents-md", false},
 		{"agents", false},
 		{"bogus", true},
-		{"CLAUDE-CODE", false}, // case-insensitive
+		{"CLAUDE-CODE", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			// Save and restore the global flag.
 			old := injectTool
 			defer func() { injectTool = old }()
 			injectTool = tt.input
 
-			// runInject will fail at client creation (no server),
-			// but we can detect tool validation errors by checking
-			// if the error message mentions "unsupported tool".
 			err := runInject(injectCmd, []string{"test-slug"})
 			require.Error(t, err, "runInject should error (no server running)")
 			if tt.wantErr {

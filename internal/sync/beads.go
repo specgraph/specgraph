@@ -55,6 +55,12 @@ func (b *BeadsAdapter) Push(ctx context.Context, spec *storage.Spec) (string, er
 	if spec.Slug == "" {
 		return "", fmt.Errorf("%w: spec slug is required", errPushFailed)
 	}
+	if !spec.Stage.IsValid() {
+		return "", fmt.Errorf("%w: invalid spec stage: %q", errPushFailed, spec.Stage)
+	}
+	if !spec.Priority.IsValid() {
+		return "", fmt.Errorf("%w: invalid spec priority: %q", errPushFailed, spec.Priority)
+	}
 	title := fmt.Sprintf("[spec] %s", spec.Slug)
 	out, err := b.runner.Run(ctx, "bd", "create",
 		"--title", title,

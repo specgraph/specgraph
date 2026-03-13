@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 
 	"github.com/seanb4t/specgraph/internal/storage"
 )
@@ -138,16 +139,29 @@ func writeAgentsMD(content, slug, outputDir string) ([]string, error) {
 	}
 	p := filepath.Clean(filepath.Join(outputDir, "AGENTS.md"))
 
+	// Acquire file lock to prevent TOCTOU races between concurrent inject calls.
+	lockPath := p + ".lock"
+	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("create lock file: %w", err)
+	}
+	defer lockFile.Close()   //nolint:errcheck // best-effort close; lock release is the important cleanup
+	fd := int(lockFile.Fd()) //nolint:gosec // G115: Fd() returns a valid file descriptor; overflow is not possible on supported platforms
+	if err := syscall.Flock(fd, syscall.LOCK_EX); err != nil {
+		return nil, fmt.Errorf("acquire file lock: %w", err)
+	}
+	defer syscall.Flock(fd, syscall.LOCK_UN) //nolint:errcheck // best-effort unlock
+
 	startMarker := fmt.Sprintf("<!-- specgraph:%s:start -->", slug)
 	endMarker := fmt.Sprintf("<!-- specgraph:%s:end -->", slug)
 	section := startMarker + "\n" + content + "\n" + endMarker
 
-	existing, err := os.ReadFile(p)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("read existing AGENTS.md: %w", err)
+	existing, readErr := os.ReadFile(p)
+	if readErr != nil && !os.IsNotExist(readErr) {
+		return nil, fmt.Errorf("read existing AGENTS.md: %w", readErr)
 	}
 
-	if os.IsNotExist(err) || len(existing) == 0 {
+	if os.IsNotExist(readErr) || len(existing) == 0 {
 		if writeErr := os.WriteFile(p, []byte(section+"\n"), 0o600); writeErr != nil {
 			return nil, fmt.Errorf("write AGENTS.md: %w", writeErr)
 		}
@@ -157,11 +171,19 @@ func writeAgentsMD(content, slug, outputDir string) ([]string, error) {
 	text := string(existing)
 	startIdx := strings.Index(text, startMarker)
 	endIdx := strings.Index(text, endMarker)
-	if startIdx >= 0 && endIdx >= 0 {
+
+	switch {
+	case startIdx >= 0 && endIdx >= 0 && startIdx < endIdx:
 		// Replace existing section for this slug.
 		text = text[:startIdx] + section + text[endIdx+len(endMarker):]
-	} else {
-		// Append new section.
+	case startIdx >= 0 && endIdx >= 0:
+		// End marker appears before start marker — corrupted file.
+		return nil, fmt.Errorf("corrupted AGENTS.md: end marker for slug %q appears before start marker", slug)
+	case startIdx >= 0 || endIdx >= 0:
+		// Only one marker present — corrupted file.
+		return nil, fmt.Errorf("corrupted AGENTS.md: mismatched markers for slug %q (start=%v, end=%v)", slug, startIdx >= 0, endIdx >= 0)
+	default:
+		// Neither marker found — append new section.
 		if !strings.HasSuffix(text, "\n") {
 			text += "\n"
 		}

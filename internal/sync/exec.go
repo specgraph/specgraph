@@ -8,7 +8,12 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"time"
 )
+
+// DefaultExecTimeout is the maximum time a subprocess is allowed to run
+// if the caller's context has no deadline.
+const DefaultExecTimeout = 30 * time.Second
 
 // ExecRunner implements CommandRunner using os/exec.
 type ExecRunner struct{}
@@ -21,6 +26,11 @@ func NewExecRunner() *ExecRunner {
 // Run executes a command and returns its stdout output.
 // Stderr is captured separately to prevent it from corrupting stdout parsing.
 func (r *ExecRunner) Run(ctx context.Context, name string, args ...string) ([]byte, error) {
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, DefaultExecTimeout)
+		defer cancel()
+	}
 	cmd := exec.CommandContext(ctx, name, args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

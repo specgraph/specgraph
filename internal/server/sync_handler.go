@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -36,11 +37,17 @@ var _ specgraphv1connect.SyncServiceHandler = (*SyncHandler)(nil)
 // the handler so callers can register adapters via RegisterAdapter.
 // constitutionStore can be nil if constitution injection is not needed.
 func RegisterSyncService(mux *http.ServeMux, syncStore storage.SyncBackend, specStore storage.SpecReader, constitutionStore storage.ConstitutionBackend) *SyncHandler {
+	// Default to cwd for output root safety — callers can override via SetAllowedOutputRoot.
+	defaultRoot, err := os.Getwd()
+	if err != nil {
+		defaultRoot = ""
+	}
 	handler := &SyncHandler{
 		syncStore:         syncStore,
 		specStore:         specStore,
 		constitutionStore: constitutionStore,
 		adapters:          map[storage.SyncAdapterType]syncpkg.Adapter{},
+		allowedOutputRoot: defaultRoot,
 	}
 	path, h := specgraphv1connect.NewSyncServiceHandler(handler)
 	mux.Handle(path, h)
@@ -155,13 +162,19 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 				resp.Results = append(resp.Results, result)
 				continue
 			}
-			slog.WarnContext(ctx, "sync mapping record failed after push", "spec", spec.Slug, "external_id", externalID, "error", createErr)
-			result.ExternalId = externalID
-			result.State = specv1.SyncState_SYNC_STATE_ERROR
-			result.Message = "pushed to adapter but failed to record mapping - manual cleanup may be required"
-			resp.Errors++
-			resp.Results = append(resp.Results, result)
-			continue
+			// Retry once — transient store failures should not orphan external items.
+			_, retryErr := h.syncStore.CreateSyncMapping(ctx, spec.Slug, adapter.Name(), externalID)
+			if retryErr != nil && !errors.Is(retryErr, storage.ErrSyncMappingExists) {
+				slog.ErrorContext(ctx, "sync mapping record failed after push (orphaned external item)",
+					"spec", spec.Slug, "adapter", adapter.Name(), "external_id", externalID,
+					"error", createErr, "retry_error", retryErr)
+				result.ExternalId = externalID
+				result.State = specv1.SyncState_SYNC_STATE_ERROR
+				result.Message = "pushed to adapter but failed to record mapping - external_id preserved for reconciliation"
+				resp.Errors++
+				resp.Results = append(resp.Results, result)
+				continue
+			}
 		}
 
 		result.ExternalId = externalID

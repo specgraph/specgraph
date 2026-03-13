@@ -4,6 +4,7 @@
 package inject_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -165,6 +166,119 @@ func TestInject_AgentsMD(t *testing.T) {
 	}
 }
 
+func TestInject_AgentsMD_ReplaceExisting(t *testing.T) {
+	dir := t.TempDir()
+	spec := testSpec()
+
+	// First inject
+	_, err := inject.Inject(spec, nil, storage.InjectToolAgentsMD, dir)
+	if err != nil {
+		t.Fatalf("first Inject: %v", err)
+	}
+
+	// Second inject with updated intent — should replace, not duplicate
+	spec2 := &storage.Spec{
+		ID: "spec-001", Slug: "add-auth", Intent: "Updated authentication intent",
+		Stage: storage.SpecStageApproved, Priority: storage.SpecPriorityP1,
+		Complexity: "medium", Version: 4,
+	}
+	_, err = inject.Inject(spec2, nil, storage.InjectToolAgentsMD, dir)
+	if err != nil {
+		t.Fatalf("second Inject: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("read AGENTS.md: %v", err)
+	}
+	s := string(content)
+
+	startMarker := "<!-- specgraph:add-auth:start -->"
+	if count := strings.Count(s, startMarker); count != 1 {
+		t.Errorf("expected 1 start marker, got %d", count)
+	}
+	if !strings.Contains(s, "Updated authentication intent") {
+		t.Error("replaced section should contain updated intent")
+	}
+}
+
+func TestInject_AgentsMD_AppendNewSlug(t *testing.T) {
+	dir := t.TempDir()
+	specA := testSpec() // slug "add-auth"
+
+	_, err := inject.Inject(specA, nil, storage.InjectToolAgentsMD, dir)
+	if err != nil {
+		t.Fatalf("first Inject: %v", err)
+	}
+
+	specB := &storage.Spec{
+		ID: "spec-002", Slug: "add-logging", Intent: "Add structured logging",
+		Stage: storage.SpecStageSpark, Priority: storage.SpecPriorityP2,
+		Complexity: "low", Version: 1,
+	}
+	_, err = inject.Inject(specB, nil, storage.InjectToolAgentsMD, dir)
+	if err != nil {
+		t.Fatalf("second Inject: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("read AGENTS.md: %v", err)
+	}
+	s := string(content)
+
+	if !strings.Contains(s, "<!-- specgraph:add-auth:start -->") {
+		t.Error("missing section for slug add-auth")
+	}
+	if !strings.Contains(s, "<!-- specgraph:add-logging:start -->") {
+		t.Error("missing section for slug add-logging")
+	}
+}
+
+func TestInject_AgentsMD_ReversedMarkers(t *testing.T) {
+	dir := t.TempDir()
+	slug := "my-spec"
+	// Write file with end marker before start marker
+	corrupted := fmt.Sprintf("<!-- specgraph:%s:end -->\nsome content\n<!-- specgraph:%s:start -->\n", slug, slug)
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(corrupted), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	spec := &storage.Spec{
+		ID: "spec-003", Slug: slug, Intent: "test",
+		Stage: storage.SpecStageSpark, Priority: storage.SpecPriorityP2,
+	}
+	_, err := inject.Inject(spec, nil, storage.InjectToolAgentsMD, dir)
+	if err == nil {
+		t.Fatal("expected error for reversed markers, got nil")
+	}
+	if !strings.Contains(err.Error(), "end marker") || !strings.Contains(err.Error(), "before start marker") {
+		t.Errorf("error should mention reversed markers, got: %v", err)
+	}
+}
+
+func TestInject_AgentsMD_MismatchedMarkers(t *testing.T) {
+	dir := t.TempDir()
+	slug := "my-spec"
+	// Write file with only a start marker (no end marker)
+	partial := fmt.Sprintf("<!-- specgraph:%s:start -->\norphaned content\n", slug)
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(partial), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	spec := &storage.Spec{
+		ID: "spec-003", Slug: slug, Intent: "test",
+		Stage: storage.SpecStageSpark, Priority: storage.SpecPriorityP2,
+	}
+	_, err := inject.Inject(spec, nil, storage.InjectToolAgentsMD, dir)
+	if err == nil {
+		t.Fatal("expected error for mismatched markers, got nil")
+	}
+	if !strings.Contains(err.Error(), "mismatched markers") {
+		t.Errorf("error should mention mismatched markers, got: %v", err)
+	}
+}
+
 func TestInject_UnsupportedTool(t *testing.T) {
 	dir := t.TempDir()
 	spec := testSpec()
@@ -233,6 +347,49 @@ func TestInject_NilConstitution(t *testing.T) {
 	// Constitution-specific content should NOT be present.
 	if strings.Contains(s, "Primary Language") {
 		t.Error("nil constitution should not produce language section")
+	}
+}
+
+func TestInject_Cursor_SpecialCharacters(t *testing.T) {
+	dir := t.TempDir()
+	spec := testSpec()
+	spec.Intent = `Support "quoted" identifiers with back\slash`
+	con := testConstitution()
+
+	files, err := inject.Inject(spec, con, storage.InjectToolCursor, dir)
+	if err != nil {
+		t.Fatalf("Inject returned error: %v", err)
+	}
+
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(files))
+	}
+
+	expected := filepath.Join(dir, ".cursor", "rules", "specgraph-add-auth.md")
+	if files[0] != expected {
+		t.Errorf("expected path %s, got %s", expected, files[0])
+	}
+
+	content, err := os.ReadFile(expected)
+	if err != nil {
+		t.Fatalf("failed to read output file: %v", err)
+	}
+
+	s := string(content)
+	// Frontmatter must be present and valid.
+	if !strings.HasPrefix(s, "---\n") {
+		t.Error("cursor file missing YAML frontmatter prefix")
+	}
+	if !strings.Contains(s, "description:") {
+		t.Error("frontmatter missing description field")
+	}
+	// Double-quotes must be escaped as \" in the YAML value.
+	if !strings.Contains(s, `\"quoted\"`) {
+		t.Errorf("frontmatter should contain escaped quotes, got:\n%s", s)
+	}
+	// Backslashes must be escaped as \\ in the YAML value.
+	if !strings.Contains(s, `back\\slash`) {
+		t.Errorf("frontmatter should contain escaped backslash, got:\n%s", s)
 	}
 }
 
