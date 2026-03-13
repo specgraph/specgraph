@@ -34,22 +34,12 @@ func (s *Store) CreateSyncMapping(ctx context.Context, specSlug string, adapter 
 		return nil, fmt.Errorf("memgraph: create sync mapping: %w", err)
 	}
 
-	// Check for existing mapping
-	existingRecords, err := s.executeQuery(ctx,
-		`MATCH (s:Spec {slug: $slug})-[r:SYNCED_TO {adapter: $adapter}]->(e:ExternalRef)
-		 RETURN e.external_id`,
-		map[string]any{"slug": specSlug, "adapter": adapterStr},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: create sync mapping: %w", err)
-	}
-	if len(existingRecords) > 0 {
-		return nil, fmt.Errorf("memgraph: create sync mapping %q/%s: %w", specSlug, adapterStr, storage.ErrSyncMappingExists)
-	}
-
-	// Create ExternalRef node and SYNCED_TO edge
+	// Atomic MERGE to avoid TOCTOU race on concurrent sync.
 	records, err := s.executeQuery(ctx,
 		`MATCH (s:Spec {slug: $slug})
+		 OPTIONAL MATCH (s)-[existing:SYNCED_TO {adapter: $adapter}]->(:ExternalRef)
+		 WITH s, existing
+		 WHERE existing IS NULL
 		 CREATE (e:ExternalRef {
 		   external_id: $external_id,
 		   adapter: $adapter,
@@ -77,7 +67,7 @@ func (s *Store) CreateSyncMapping(ctx context.Context, specSlug string, adapter 
 		return nil, fmt.Errorf("memgraph: create sync mapping: %w", err)
 	}
 	if len(records) == 0 {
-		return nil, fmt.Errorf("memgraph: create sync mapping: no result returned")
+		return nil, fmt.Errorf("memgraph: create sync mapping %q/%s: %w", specSlug, adapterStr, storage.ErrSyncMappingExists)
 	}
 
 	return recordToSyncMapping(records[0], specID)

@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -49,10 +50,19 @@ func runInject(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("unsupported tool: %s (supported: claude-code, cursor, agents-md)", injectTool)
 	}
 
+	output := injectOutput
+	if output == "" {
+		wd, wdErr := os.Getwd()
+		if wdErr != nil {
+			return fmt.Errorf("inject: failed to determine working directory: %w", wdErr)
+		}
+		output = wd
+	}
+
 	resp, err := client.Inject(context.Background(), connect.NewRequest(&specv1.InjectRequest{
 		SpecSlug:  args[0],
 		Tool:      tool,
-		OutputDir: injectOutput,
+		OutputDir: output,
 	}))
 	if err != nil {
 		return fmt.Errorf("inject: %w", err)

@@ -8,11 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"sync"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -130,7 +129,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 		if dryRun {
 			result.State = specv1.SyncState_SYNC_STATE_PENDING
 			result.Message = "dry run - would sync"
-			resp.Skipped++
+			resp.DryRun++
 			resp.Results = append(resp.Results, result)
 			continue
 		}
@@ -217,11 +216,7 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 
 	outputDir := req.Msg.OutputDir
 	if outputDir == "" {
-		var wdErr error
-		outputDir, wdErr = os.Getwd()
-		if wdErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to determine working directory"))
-		}
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output_dir is required"))
 	}
 
 	if h.allowedOutputRoot != "" {

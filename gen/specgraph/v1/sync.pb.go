@@ -511,6 +511,7 @@ type SyncResponse struct {
 	Synced        int32                  `protobuf:"varint,2,opt,name=synced,proto3" json:"synced,omitempty"`
 	Skipped       int32                  `protobuf:"varint,3,opt,name=skipped,proto3" json:"skipped,omitempty"`
 	Errors        int32                  `protobuf:"varint,4,opt,name=errors,proto3" json:"errors,omitempty"`
+	DryRun        int32                  `protobuf:"varint,5,opt,name=dry_run,json=dryRun,proto3" json:"dry_run,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -569,6 +570,13 @@ func (x *SyncResponse) GetSkipped() int32 {
 func (x *SyncResponse) GetErrors() int32 {
 	if x != nil {
 		return x.Errors
+	}
+	return 0
+}
+
+func (x *SyncResponse) GetDryRun() int32 {
+	if x != nil {
+		return x.DryRun
 	}
 	return 0
 }
@@ -813,12 +821,13 @@ const file_specgraph_v1_sync_proto_rawDesc = "" +
 	"\x10SyncBeadsRequest\x120\n" +
 	"\x06config\x18\x01 \x01(\v2\x18.specgraph.v1.SyncConfigR\x06config\"E\n" +
 	"\x11SyncGitHubRequest\x120\n" +
-	"\x06config\x18\x01 \x01(\v2\x18.specgraph.v1.SyncConfigR\x06config\"\x8c\x01\n" +
+	"\x06config\x18\x01 \x01(\v2\x18.specgraph.v1.SyncConfigR\x06config\"\xa5\x01\n" +
 	"\fSyncResponse\x122\n" +
 	"\aresults\x18\x01 \x03(\v2\x18.specgraph.v1.SyncResultR\aresults\x12\x16\n" +
 	"\x06synced\x18\x02 \x01(\x05R\x06synced\x12\x18\n" +
 	"\askipped\x18\x03 \x01(\x05R\askipped\x12\x16\n" +
-	"\x06errors\x18\x04 \x01(\x05R\x06errors\"e\n" +
+	"\x06errors\x18\x04 \x01(\x05R\x06errors\x12\x17\n" +
+	"\adry_run\x18\x05 \x01(\x05R\x06dryRun\"e\n" +
 	"\x11SyncStatusRequest\x123\n" +
 	"\aadapter\x18\x01 \x01(\x0e2\x19.specgraph.v1.SyncAdapterR\aadapter\x12\x1b\n" +
 	"\tspec_slug\x18\x02 \x01(\tR\bspecSlug\"K\n" +

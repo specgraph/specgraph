@@ -74,6 +74,7 @@ message SyncResponse {
   int32 synced = 2;
   int32 skipped = 3;
   int32 errors = 4;
+  int32 dry_run = 5;
 }
 
 message SyncStatusRequest {
