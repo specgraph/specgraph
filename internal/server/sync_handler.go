@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -23,6 +24,7 @@ import (
 
 // SyncHandler implements the ConnectRPC SyncService.
 type SyncHandler struct {
+	mu                sync.RWMutex
 	syncStore         storage.SyncBackend
 	specStore         storage.SpecReader
 	constitutionStore storage.ConstitutionBackend
@@ -49,6 +51,8 @@ func RegisterSyncService(mux *http.ServeMux, syncStore storage.SyncBackend, spec
 
 // RegisterAdapter adds a sync adapter to the handler.
 func (h *SyncHandler) RegisterAdapter(adapter syncpkg.Adapter) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.adapters[adapter.Name()] = adapter
 }
 
@@ -60,7 +64,9 @@ func (h *SyncHandler) SetAllowedOutputRoot(root string) {
 
 // SyncBeads implements specgraphv1connect.SyncServiceHandler.
 func (h *SyncHandler) SyncBeads(ctx context.Context, req *connect.Request[specv1.SyncBeadsRequest]) (*connect.Response[specv1.SyncResponse], error) {
+	h.mu.RLock()
 	adapter, ok := h.adapters[storage.SyncAdapterBeads]
+	h.mu.RUnlock()
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("beads adapter not configured"))
 	}
@@ -69,7 +75,9 @@ func (h *SyncHandler) SyncBeads(ctx context.Context, req *connect.Request[specv1
 
 // SyncGitHub implements specgraphv1connect.SyncServiceHandler.
 func (h *SyncHandler) SyncGitHub(ctx context.Context, req *connect.Request[specv1.SyncGitHubRequest]) (*connect.Response[specv1.SyncResponse], error) {
+	h.mu.RLock()
 	adapter, ok := h.adapters[storage.SyncAdapterGitHub]
+	h.mu.RUnlock()
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("github adapter not configured"))
 	}
@@ -92,6 +100,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 
 	specs, err := h.specStore.ListSpecs(ctx, stage, priority, 0)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to list specs", "error", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list specs"))
 	}
 
@@ -138,6 +147,14 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 
 		_, createErr := h.syncStore.CreateSyncMapping(ctx, spec.Slug, adapter.Name(), externalID)
 		if createErr != nil {
+			if errors.Is(createErr, storage.ErrSyncMappingExists) {
+				result.ExternalId = externalID
+				result.State = specv1.SyncState_SYNC_STATE_SYNCED
+				result.Message = "already synced (concurrent sync detected)"
+				resp.Skipped++
+				resp.Results = append(resp.Results, result)
+				continue
+			}
 			slog.WarnContext(ctx, "sync mapping record failed after push", "spec", spec.Slug, "external_id", externalID, "error", createErr)
 			result.ExternalId = externalID
 			result.State = specv1.SyncState_SYNC_STATE_ERROR
@@ -165,6 +182,7 @@ func (h *SyncHandler) GetSyncStatus(ctx context.Context, req *connect.Request[sp
 	}
 	mappings, err := h.syncStore.ListSyncMappings(ctx, adapterFilter, req.Msg.SpecSlug)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to list sync mappings", "error", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list sync mappings"))
 	}
 
@@ -172,6 +190,7 @@ func (h *SyncHandler) GetSyncStatus(ctx context.Context, req *connect.Request[sp
 	for _, m := range mappings {
 		pm, convErr := syncMappingToProto(m)
 		if convErr != nil {
+			slog.ErrorContext(ctx, "failed to convert sync mapping", "error", convErr)
 			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to convert sync mapping"))
 		}
 		protoMappings = append(protoMappings, pm)
@@ -236,6 +255,7 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 
 	files, err := inject.Inject(spec, constitution, tool, outputDir)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to inject spec context", "error", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to inject spec context"))
 	}
 

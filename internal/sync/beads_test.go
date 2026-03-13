@@ -79,8 +79,8 @@ func TestBeadsAdapter_PushError(t *testing.T) {
 	if err == nil {
 		t.Fatal("Push() expected error, got nil")
 	}
-	if !errors.Is(err, ErrPushFailed) {
-		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
 	}
 }
 
@@ -105,8 +105,8 @@ func TestBeadsAdapter_PullError(t *testing.T) {
 	if err == nil {
 		t.Fatal("Pull() expected error, got nil")
 	}
-	if !errors.Is(err, ErrPullFailed) {
-		t.Errorf("Pull() error = %v, want ErrPullFailed", err)
+	if !errors.Is(err, errPullFailed) {
+		t.Errorf("Pull() error = %v, want errPullFailed", err)
 	}
 }
 
@@ -116,8 +116,8 @@ func TestBeadsAdapter_PushEmptySlug(t *testing.T) {
 	if err == nil {
 		t.Fatal("Push() expected error for empty slug, got nil")
 	}
-	if !errors.Is(err, ErrPushFailed) {
-		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
 	}
 }
 
@@ -129,7 +129,7 @@ func TestBeadsAdapter_PullEmptyStatus(t *testing.T) {
 	if err == nil {
 		t.Fatal("Pull() expected error for empty status, got nil")
 	}
-	if !errors.Is(err, ErrPullFailed) {
-		t.Errorf("Pull() error = %v, want ErrPullFailed", err)
+	if !errors.Is(err, errPullFailed) {
+		t.Errorf("Pull() error = %v, want errPullFailed", err)
 	}
 }

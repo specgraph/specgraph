@@ -209,7 +209,6 @@ func TestEdgeTypeToProto(t *testing.T) {
 	for _, tt := range tests {
 		got, err := edgeTypeToProto(tt.domain)
 		require.NoError(t, err)
-		require.NoError(t, err)
 		assert.Equal(t, tt.proto, got)
 	}
 
@@ -571,7 +570,6 @@ func TestSyncStateToProto(t *testing.T) {
 	}
 	for _, tt := range tests {
 		got, err := syncStateToProto(tt.domain)
-		require.NoError(t, err)
 		require.NoError(t, err)
 		assert.Equal(t, tt.proto, got)
 	}

@@ -23,6 +23,9 @@ func Inject(spec *storage.Spec, constitution *storage.Constitution, tool storage
 	if spec == nil {
 		return nil, fmt.Errorf("spec cannot be nil")
 	}
+	if strings.ContainsRune(spec.Slug, filepath.Separator) || strings.ContainsRune(spec.Slug, '/') {
+		return nil, fmt.Errorf("invalid spec slug %q: must not contain path separators", spec.Slug)
+	}
 	safeSlug := filepath.Base(spec.Slug)
 	if safeSlug == "." || safeSlug == "" || !safeSlugPattern.MatchString(safeSlug) {
 		return nil, fmt.Errorf("invalid spec slug: %q", spec.Slug)

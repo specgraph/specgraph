@@ -52,13 +52,13 @@ type ghViewResponse struct {
 // Push creates a GitHub issue from the given spec using the gh CLI.
 func (g *GitHubAdapter) Push(ctx context.Context, spec *storage.Spec) (string, error) {
 	if spec.Slug == "" {
-		return "", fmt.Errorf("%w: spec slug is required", ErrPushFailed)
+		return "", fmt.Errorf("%w: spec slug is required", errPushFailed)
 	}
 	if !spec.Stage.IsValid() {
-		return "", fmt.Errorf("%w: invalid spec stage: %q", ErrPushFailed, spec.Stage)
+		return "", fmt.Errorf("%w: invalid spec stage: %q", errPushFailed, spec.Stage)
 	}
 	if !spec.Priority.IsValid() {
-		return "", fmt.Errorf("%w: invalid spec priority: %q", ErrPushFailed, spec.Priority)
+		return "", fmt.Errorf("%w: invalid spec priority: %q", errPushFailed, spec.Priority)
 	}
 	title := fmt.Sprintf("[spec] %s", spec.Slug)
 	body := formatIssueBody(spec)
@@ -71,39 +71,45 @@ func (g *GitHubAdapter) Push(ctx context.Context, spec *storage.Spec) (string, e
 	args = append(args, "--title", title, "--body", body, "--label", labels)
 	out, err := g.runner.Run(ctx, "gh", args...)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrPushFailed, err)
+		return "", fmt.Errorf("%w: %w", errPushFailed, err)
 	}
 
 	// gh issue create outputs the issue URL (e.g. https://github.com/owner/repo/issues/42)
-	u, err := url.Parse(strings.TrimSpace(string(out)))
+	issueURL := strings.TrimSpace(string(out))
+	u, err := url.Parse(issueURL)
 	if err != nil {
-		return "", fmt.Errorf("%w: failed to parse created issue URL: %w", ErrPushFailed, err)
+		return "", fmt.Errorf("%w: failed to parse created issue URL: %w", errPushFailed, err)
 	}
 	number := path.Base(u.Path)
 	if _, err := strconv.Atoi(number); err != nil {
-		return "", fmt.Errorf("%w: invalid issue number in URL: %q", ErrPushFailed, number)
+		return "", fmt.Errorf("%w: invalid issue number in URL: %q", errPushFailed, number)
 	}
-	return number, nil
+	return issueURL, nil
 }
 
-// Pull retrieves the current state of a GitHub issue by its number.
+// Pull retrieves the current state of a GitHub issue by its URL or number.
 func (g *GitHubAdapter) Pull(ctx context.Context, externalID string) (string, error) {
-	args := []string{"issue", "view", externalID}
+	// Extract issue number from URL if externalID is a full URL.
+	issueRef := externalID
+	if u, parseErr := url.Parse(externalID); parseErr == nil && u.Scheme != "" {
+		issueRef = path.Base(u.Path)
+	}
+	args := []string{"issue", "view", issueRef}
 	if g.repo != "" {
 		args = append(args, "--repo", g.repo)
 	}
 	args = append(args, "--json", "state")
 	out, err := g.runner.Run(ctx, "gh", args...)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrPullFailed, err)
+		return "", fmt.Errorf("%w: %w", errPullFailed, err)
 	}
 
 	var resp ghViewResponse
 	if err := json.Unmarshal(out, &resp); err != nil {
-		return "", fmt.Errorf("%w: failed to parse response: %w", ErrPullFailed, err)
+		return "", fmt.Errorf("%w: failed to parse response: %w", errPullFailed, err)
 	}
 	if resp.State == "" {
-		return "", fmt.Errorf("%w: missing issue state in response", ErrPullFailed)
+		return "", fmt.Errorf("%w: missing issue state in response", errPullFailed)
 	}
 
 	return resp.State, nil

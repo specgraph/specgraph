@@ -195,17 +195,12 @@ func TestInject_PathTraversal(t *testing.T) {
 		Slug:   "../../etc/passwd",
 		Intent: "malicious",
 	}
-	files, err := inject.Inject(spec, nil, storage.InjectToolClaudeCode, dir)
-	if err != nil {
-		t.Fatalf("Inject returned error: %v", err)
+	_, err := inject.Inject(spec, nil, storage.InjectToolClaudeCode, dir)
+	if err == nil {
+		t.Fatal("expected error for path-traversal slug, got nil")
 	}
-	// filepath.Base sanitizes to "passwd", so the file should be safely inside the output dir.
-	if len(files) != 1 {
-		t.Fatalf("expected 1 file, got %d", len(files))
-	}
-	expected := filepath.Join(dir, ".claude", "specs", "passwd.md")
-	if files[0] != expected {
-		t.Errorf("expected sanitized path %s, got %s", expected, files[0])
+	if !strings.Contains(err.Error(), "must not contain path separators") {
+		t.Errorf("error should mention path separators, got: %v", err)
 	}
 }
 

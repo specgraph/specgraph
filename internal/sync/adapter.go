@@ -14,8 +14,8 @@ import (
 // Sentinel errors for sync adapters.
 var (
 	ErrAdapterNotAvailable = errors.New("adapter CLI tool not available")
-	ErrPushFailed          = errors.New("push failed")
-	ErrPullFailed          = errors.New("pull failed")
+	errPushFailed          = errors.New("push failed")
+	errPullFailed          = errors.New("pull failed")
 )
 
 // Adapter defines the interface for syncing specs to external systems.

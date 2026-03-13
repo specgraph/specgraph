@@ -55,8 +55,8 @@ func TestGitHubAdapter_Push(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Push() unexpected error: %v", err)
 	}
-	if id != "42" {
-		t.Errorf("Push() id = %q, want %q", id, "42")
+	if id != "https://github.com/owner/repo/issues/42" {
+		t.Errorf("Push() id = %q, want %q", id, "https://github.com/owner/repo/issues/42")
 	}
 }
 
@@ -74,8 +74,8 @@ func TestGitHubAdapter_PushError(t *testing.T) {
 	if err == nil {
 		t.Fatal("Push() expected error, got nil")
 	}
-	if !errors.Is(err, ErrPushFailed) {
-		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
 	}
 }
 
@@ -113,8 +113,8 @@ func TestGitHubAdapter_PullError(t *testing.T) {
 	if err == nil {
 		t.Fatal("Pull() expected error, got nil")
 	}
-	if !errors.Is(err, ErrPullFailed) {
-		t.Errorf("Pull() error = %v, want ErrPullFailed", err)
+	if !errors.Is(err, errPullFailed) {
+		t.Errorf("Pull() error = %v, want errPullFailed", err)
 	}
 }
 
@@ -158,8 +158,8 @@ func TestGitHubAdapter_PushEmptySlug(t *testing.T) {
 	if err == nil {
 		t.Fatal("Push() expected error for empty slug, got nil")
 	}
-	if !errors.Is(err, ErrPushFailed) {
-		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
 	}
 }
 
@@ -172,8 +172,8 @@ func TestGitHubAdapter_PushInvalidURL(t *testing.T) {
 	if err == nil {
 		t.Fatal("Push() expected error for invalid URL, got nil")
 	}
-	if !errors.Is(err, ErrPushFailed) {
-		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
 	}
 }
 
@@ -186,8 +186,8 @@ func TestGitHubAdapter_PushNonNumericIssueNumber(t *testing.T) {
 	if err == nil {
 		t.Fatal("Push() expected error for non-numeric issue number, got nil")
 	}
-	if !errors.Is(err, ErrPushFailed) {
-		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
 	}
 }
 
@@ -199,8 +199,8 @@ func TestGitHubAdapter_PullEmptyState(t *testing.T) {
 	if err == nil {
 		t.Fatal("Pull() expected error for empty state, got nil")
 	}
-	if !errors.Is(err, ErrPullFailed) {
-		t.Errorf("Pull() error = %v, want ErrPullFailed", err)
+	if !errors.Is(err, errPullFailed) {
+		t.Errorf("Pull() error = %v, want errPullFailed", err)
 	}
 }
 
@@ -212,8 +212,8 @@ func TestGitHubAdapter_PullMalformedJSON(t *testing.T) {
 	if err == nil {
 		t.Fatal("Pull() expected error for malformed JSON, got nil")
 	}
-	if !errors.Is(err, ErrPullFailed) {
-		t.Errorf("Pull() error = %v, want ErrPullFailed", err)
+	if !errors.Is(err, errPullFailed) {
+		t.Errorf("Pull() error = %v, want errPullFailed", err)
 	}
 }
 
@@ -265,8 +265,8 @@ func TestGitHubAdapter_PushInvalidStage(t *testing.T) {
 	if err == nil {
 		t.Fatal("Push() expected error for invalid stage, got nil")
 	}
-	if !errors.Is(err, ErrPushFailed) {
-		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
 	}
 	if !strings.Contains(err.Error(), "invalid spec stage") {
 		t.Errorf("Push() error should mention invalid stage, got: %v", err)
@@ -285,8 +285,8 @@ func TestGitHubAdapter_PushInvalidPriority(t *testing.T) {
 	if err == nil {
 		t.Fatal("Push() expected error for invalid priority, got nil")
 	}
-	if !errors.Is(err, ErrPushFailed) {
-		t.Errorf("Push() error = %v, want ErrPushFailed", err)
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
 	}
 	if !strings.Contains(err.Error(), "invalid spec priority") {
 		t.Errorf("Push() error should mention invalid priority, got: %v", err)

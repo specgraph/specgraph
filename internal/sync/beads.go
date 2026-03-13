@@ -49,7 +49,7 @@ type beadsShowResponse struct {
 // Push creates a bead from the given spec using the bd CLI.
 func (b *BeadsAdapter) Push(ctx context.Context, spec *storage.Spec) (string, error) {
 	if spec.Slug == "" {
-		return "", fmt.Errorf("%w: spec slug is required", ErrPushFailed)
+		return "", fmt.Errorf("%w: spec slug is required", errPushFailed)
 	}
 	title := fmt.Sprintf("[spec] %s", spec.Slug)
 	out, err := b.runner.Run(ctx, "bd", "create",
@@ -59,15 +59,15 @@ func (b *BeadsAdapter) Push(ctx context.Context, spec *storage.Spec) (string, er
 		"--json",
 	)
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrPushFailed, err)
+		return "", fmt.Errorf("%w: %w", errPushFailed, err)
 	}
 
 	var resp beadsCreateResponse
 	if err := json.Unmarshal(out, &resp); err != nil {
-		return "", fmt.Errorf("%w: failed to parse response: %w", ErrPushFailed, err)
+		return "", fmt.Errorf("%w: failed to parse response: %w", errPushFailed, err)
 	}
 	if resp.ID == "" {
-		return "", fmt.Errorf("%w: missing bead id in response", ErrPushFailed)
+		return "", fmt.Errorf("%w: missing bead id in response", errPushFailed)
 	}
 
 	return resp.ID, nil
@@ -77,15 +77,15 @@ func (b *BeadsAdapter) Push(ctx context.Context, spec *storage.Spec) (string, er
 func (b *BeadsAdapter) Pull(ctx context.Context, externalID string) (string, error) {
 	out, err := b.runner.Run(ctx, "bd", "show", externalID, "--json")
 	if err != nil {
-		return "", fmt.Errorf("%w: %w", ErrPullFailed, err)
+		return "", fmt.Errorf("%w: %w", errPullFailed, err)
 	}
 
 	var resp beadsShowResponse
 	if err := json.Unmarshal(out, &resp); err != nil {
-		return "", fmt.Errorf("%w: failed to parse response: %w", ErrPullFailed, err)
+		return "", fmt.Errorf("%w: failed to parse response: %w", errPullFailed, err)
 	}
 	if resp.Status == "" {
-		return "", fmt.Errorf("%w: missing bead status in response", ErrPullFailed)
+		return "", fmt.Errorf("%w: missing bead status in response", errPullFailed)
 	}
 
 	return resp.Status, nil
