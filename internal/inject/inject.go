@@ -8,10 +8,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/seanb4t/specgraph/internal/storage"
 )
+
+// safeSlugPattern matches slugs containing only alphanumerics, dots, underscores, and hyphens.
+var safeSlugPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
 
 // Inject writes spec (and optional constitution) context to tool-specific files
 // under outputDir. It returns the list of files written.
@@ -20,7 +24,7 @@ func Inject(spec *storage.Spec, constitution *storage.Constitution, tool storage
 		return nil, fmt.Errorf("spec cannot be nil")
 	}
 	safeSlug := filepath.Base(spec.Slug)
-	if safeSlug == "." || safeSlug == "/" || safeSlug == "" {
+	if safeSlug == "." || safeSlug == "" || !safeSlugPattern.MatchString(safeSlug) {
 		return nil, fmt.Errorf("invalid spec slug: %q", spec.Slug)
 	}
 	content := renderMarkdown(spec, constitution)

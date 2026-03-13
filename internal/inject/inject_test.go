@@ -240,3 +240,31 @@ func TestInject_NilConstitution(t *testing.T) {
 		t.Error("nil constitution should not produce language section")
 	}
 }
+
+func TestInject_InvalidSlugSpecialChars(t *testing.T) {
+	dir := t.TempDir()
+	cases := []struct {
+		name string
+		slug string
+	}{
+		{"newline", "slug\nwith\nnewlines"},
+		{"null byte", "slug\x00evil"},
+		{"space", "slug with spaces"},
+		{"tab", "slug\twith\ttabs"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := &storage.Spec{
+				Slug:   tc.slug,
+				Intent: "test",
+			}
+			_, err := inject.Inject(spec, nil, storage.InjectToolClaudeCode, dir)
+			if err == nil {
+				t.Fatalf("expected error for slug with %s, got nil", tc.name)
+			}
+			if !strings.Contains(err.Error(), "invalid spec slug") {
+				t.Errorf("error should mention invalid slug, got: %v", err)
+			}
+		})
+	}
+}
