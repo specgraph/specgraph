@@ -35,16 +35,15 @@ func (s *Store) CreateSyncMapping(ctx context.Context, specSlug string, adapter 
 	}
 
 	// Atomic MERGE to avoid TOCTOU race on concurrent sync.
+	// MERGE on ExternalRef ensures at most one node per (external_id, adapter) combo
+	// even under concurrent writes.
 	records, err := s.executeQuery(ctx,
 		`MATCH (s:Spec {slug: $slug})
 		 OPTIONAL MATCH (s)-[existing:SYNCED_TO {adapter: $adapter}]->(:ExternalRef)
 		 WITH s, existing
 		 WHERE existing IS NULL
-		 CREATE (e:ExternalRef {
-		   external_id: $external_id,
-		   adapter: $adapter,
-		   created_at: $now
-		 })
+		 MERGE (e:ExternalRef {external_id: $external_id, adapter: $adapter})
+		 ON CREATE SET e.created_at = $now
 		 CREATE (s)-[r:SYNCED_TO {
 		   adapter: $adapter,
 		   external_id: $external_id,

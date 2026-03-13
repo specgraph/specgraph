@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 
 	"github.com/seanb4t/specgraph/internal/storage"
 )
@@ -45,18 +44,25 @@ func Inject(spec *storage.Spec, constitution *storage.Constitution, tool storage
 	}
 }
 
+// escapeTableCell escapes pipe characters and replaces newlines in markdown table cell values.
+func escapeTableCell(s string) string {
+	s = strings.ReplaceAll(s, "|", "\\|")
+	s = strings.ReplaceAll(s, "\n", " ")
+	return s
+}
+
 func renderMarkdown(spec *storage.Spec, con *storage.Constitution) string {
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "# Spec: %s\n\n", spec.Slug)
+	fmt.Fprintf(&b, "# Spec: %s\n\n", escapeTableCell(spec.Slug))
 
 	b.WriteString("| Field | Value |\n")
 	b.WriteString("|-------|-------|\n")
-	fmt.Fprintf(&b, "| Slug | %s |\n", spec.Slug)
-	fmt.Fprintf(&b, "| Intent | %s |\n", spec.Intent)
-	fmt.Fprintf(&b, "| Stage | %s |\n", string(spec.Stage))
-	fmt.Fprintf(&b, "| Priority | %s |\n", string(spec.Priority))
-	fmt.Fprintf(&b, "| Complexity | %s |\n", spec.Complexity)
+	fmt.Fprintf(&b, "| Slug | %s |\n", escapeTableCell(spec.Slug))
+	fmt.Fprintf(&b, "| Intent | %s |\n", escapeTableCell(spec.Intent))
+	fmt.Fprintf(&b, "| Stage | %s |\n", escapeTableCell(string(spec.Stage)))
+	fmt.Fprintf(&b, "| Priority | %s |\n", escapeTableCell(string(spec.Priority)))
+	fmt.Fprintf(&b, "| Complexity | %s |\n", escapeTableCell(spec.Complexity))
 	fmt.Fprintf(&b, "| Version | %d |\n", spec.Version)
 
 	if con == nil {
@@ -140,17 +146,11 @@ func writeAgentsMD(content, slug, outputDir string) ([]string, error) {
 	p := filepath.Clean(filepath.Join(outputDir, "AGENTS.md"))
 
 	// Acquire file lock to prevent TOCTOU races between concurrent inject calls.
-	lockPath := p + ".lock"
-	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
+	unlock, err := acquireFileLock(p)
 	if err != nil {
-		return nil, fmt.Errorf("create lock file: %w", err)
+		return nil, err
 	}
-	defer lockFile.Close()   //nolint:errcheck // best-effort close; lock release is the important cleanup
-	fd := int(lockFile.Fd()) //nolint:gosec // G115: Fd() returns a valid file descriptor; overflow is not possible on supported platforms
-	if err := syscall.Flock(fd, syscall.LOCK_EX); err != nil {
-		return nil, fmt.Errorf("acquire file lock: %w", err)
-	}
-	defer syscall.Flock(fd, syscall.LOCK_UN) //nolint:errcheck // best-effort unlock
+	defer unlock()
 
 	startMarker := fmt.Sprintf("<!-- specgraph:%s:start -->", slug)
 	endMarker := fmt.Sprintf("<!-- specgraph:%s:end -->", slug)

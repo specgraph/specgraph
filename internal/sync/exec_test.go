@@ -33,6 +33,17 @@ func TestExecRunner_ContextCancellation(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestExecRunner_DefaultTimeout(t *testing.T) {
+	// Exercises the !ok branch in exec.go where context.Background() (no deadline)
+	// triggers the internal default timeout. Uses a fast command to verify the
+	// code path without waiting for the actual 30s timeout.
+	runner := sync.NewExecRunner()
+	ctx := context.Background() // no deadline — triggers default timeout path
+	out, err := runner.Run(ctx, "echo", "default-timeout-path")
+	require.NoError(t, err)
+	require.Contains(t, string(out), "default-timeout-path")
+}
+
 func TestExecRunner_Stderr(t *testing.T) {
 	runner := sync.NewExecRunner()
 	_, err := runner.Run(context.Background(), "sh", "-c", "echo error >&2; exit 1")

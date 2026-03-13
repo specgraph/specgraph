@@ -8,7 +8,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -37,17 +36,13 @@ var _ specgraphv1connect.SyncServiceHandler = (*SyncHandler)(nil)
 // the handler so callers can register adapters via RegisterAdapter.
 // constitutionStore can be nil if constitution injection is not needed.
 func RegisterSyncService(mux *http.ServeMux, syncStore storage.SyncBackend, specStore storage.SpecReader, constitutionStore storage.ConstitutionBackend) *SyncHandler {
-	// Default to cwd for output root safety — callers can override via SetAllowedOutputRoot.
-	defaultRoot, err := os.Getwd()
-	if err != nil {
-		defaultRoot = ""
-	}
+	// allowedOutputRoot is empty by default — callers MUST call SetAllowedOutputRoot
+	// before the server starts accepting requests.
 	handler := &SyncHandler{
 		syncStore:         syncStore,
 		specStore:         specStore,
 		constitutionStore: constitutionStore,
 		adapters:          map[storage.SyncAdapterType]syncpkg.Adapter{},
-		allowedOutputRoot: defaultRoot,
 	}
 	path, h := specgraphv1connect.NewSyncServiceHandler(handler)
 	mux.Handle(path, h)
@@ -93,7 +88,7 @@ func (h *SyncHandler) SyncGitHub(ctx context.Context, req *connect.Request[specv
 
 func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapter, config *specv1.SyncConfig) (*connect.Response[specv1.SyncResponse], error) {
 	if err := adapter.Available(ctx); err != nil {
-		slog.WarnContext(ctx, "adapter unavailable", "adapter", adapter.Name(), "error", err)
+		slog.ErrorContext(ctx, "adapter unavailable", "adapter", adapter.Name(), "error", err)
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("sync adapter not available"))
 	}
 
@@ -164,7 +159,16 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 			}
 			// Retry once — transient store failures should not orphan external items.
 			_, retryErr := h.syncStore.CreateSyncMapping(ctx, spec.Slug, adapter.Name(), externalID)
-			if retryErr != nil && !errors.Is(retryErr, storage.ErrSyncMappingExists) {
+			if retryErr != nil {
+				if errors.Is(retryErr, storage.ErrSyncMappingExists) {
+					// A concurrent sync won the race — treat as skipped.
+					result.ExternalId = externalID
+					result.State = specv1.SyncState_SYNC_STATE_SYNCED
+					result.Message = "already synced (concurrent sync detected)"
+					resp.Skipped++
+					resp.Results = append(resp.Results, result)
+					continue
+				}
 				slog.ErrorContext(ctx, "sync mapping record failed after push (orphaned external item)",
 					"spec", spec.Slug, "adapter", adapter.Name(), "external_id", externalID,
 					"error", createErr, "retry_error", retryErr)
@@ -191,7 +195,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 func (h *SyncHandler) GetSyncStatus(ctx context.Context, req *connect.Request[specv1.SyncStatusRequest]) (*connect.Response[specv1.SyncStatusResponse], error) {
 	adapterFilter, err := syncAdapterFromProto(req.Msg.Adapter)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unsupported adapter"))
 	}
 	mappings, err := h.syncStore.ListSyncMappings(ctx, adapterFilter, req.Msg.SpecSlug)
 	if err != nil {

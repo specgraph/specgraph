@@ -6,6 +6,7 @@ package sync
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/seanb4t/specgraph/internal/storage"
@@ -148,6 +149,46 @@ func TestBeadsAdapter_PushMissingID(t *testing.T) {
 	}
 	if !errors.Is(err, errPushFailed) {
 		t.Errorf("Push() error = %v, want errPushFailed", err)
+	}
+}
+
+func TestBeadsAdapter_PushInvalidStage(t *testing.T) {
+	b := NewBeadsAdapter(&mockRunner{})
+	spec := &storage.Spec{
+		Slug:     "my-spec",
+		Intent:   "test",
+		Stage:    storage.SpecStage("bogus"),
+		Priority: storage.SpecPriorityP1,
+	}
+	_, err := b.Push(context.Background(), spec)
+	if err == nil {
+		t.Fatal("Push() expected error for invalid stage, got nil")
+	}
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
+	}
+	if !strings.Contains(err.Error(), "invalid spec stage") {
+		t.Errorf("Push() error should mention invalid stage, got: %v", err)
+	}
+}
+
+func TestBeadsAdapter_PushInvalidPriority(t *testing.T) {
+	b := NewBeadsAdapter(&mockRunner{})
+	spec := &storage.Spec{
+		Slug:     "my-spec",
+		Intent:   "test",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriority("invalid"),
+	}
+	_, err := b.Push(context.Background(), spec)
+	if err == nil {
+		t.Fatal("Push() expected error for invalid priority, got nil")
+	}
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
+	}
+	if !strings.Contains(err.Error(), "invalid spec priority") {
+		t.Errorf("Push() error should mention invalid priority, got: %v", err)
 	}
 }
 

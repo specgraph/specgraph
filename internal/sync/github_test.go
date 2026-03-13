@@ -146,8 +146,15 @@ func TestFormatLabels(t *testing.T) {
 	}
 	labels := formatLabels(spec)
 	for _, want := range []string{"specgraph", "approved", "p0"} {
-		if !strings.Contains(labels, want) {
-			t.Errorf("formatLabels() = %q, missing %q", labels, want)
+		found := false
+		for _, label := range labels {
+			if label == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("formatLabels() = %v, missing %q", labels, want)
 		}
 	}
 }
@@ -315,8 +322,25 @@ func TestGitHubAdapter_PullInvalidIssueRef(t *testing.T) {
 	}
 }
 
+func TestGitHubAdapter_PushEmptyRepo(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{}, "")
+	spec := &storage.Spec{
+		Slug:     "test-spec",
+		Intent:   "test",
+		Stage:    storage.SpecStageApproved,
+		Priority: storage.SpecPriorityP2,
+	}
+	_, err := g.Push(context.Background(), spec)
+	if err == nil {
+		t.Fatal("Push() expected error for empty repo, got nil")
+	}
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
+	}
+}
+
 func TestGitHubAdapter_PushEmptyOutput(t *testing.T) {
-	g := NewGitHubAdapter(&mockRunner{output: []byte("")}, "")
+	g := NewGitHubAdapter(&mockRunner{output: []byte("")}, "owner/repo")
 	spec := &storage.Spec{
 		Slug:     "test-spec",
 		Intent:   "test",
@@ -333,7 +357,7 @@ func TestGitHubAdapter_PushEmptyOutput(t *testing.T) {
 }
 
 func TestGitHubAdapter_PushBadScheme(t *testing.T) {
-	g := NewGitHubAdapter(&mockRunner{output: []byte("http://github.com/owner/repo/issues/42")}, "")
+	g := NewGitHubAdapter(&mockRunner{output: []byte("http://github.com/owner/repo/issues/42")}, "owner/repo")
 	spec := &storage.Spec{
 		Slug:     "test-spec",
 		Intent:   "test",
@@ -346,5 +370,33 @@ func TestGitHubAdapter_PushBadScheme(t *testing.T) {
 	}
 	if !errors.Is(err, errPushFailed) {
 		t.Errorf("Push() error = %v, want errPushFailed", err)
+	}
+}
+
+func TestGitHubAdapter_PushInvalidHost(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{output: []byte("https://evil.example.com/owner/repo/issues/42")}, "owner/repo")
+	spec := &storage.Spec{
+		Slug:     "test-spec",
+		Intent:   "test",
+		Stage:    storage.SpecStageApproved,
+		Priority: storage.SpecPriorityP2,
+	}
+	_, err := g.Push(context.Background(), spec)
+	if err == nil {
+		t.Fatal("Push() expected error for non-github.com host, got nil")
+	}
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
+	}
+}
+
+func TestGitHubAdapter_PullInvalidHost(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{}, "owner/repo")
+	_, err := g.Pull(context.Background(), "https://evil.example.com/issues/42")
+	if err == nil {
+		t.Fatal("Pull() expected error for non-github.com host, got nil")
+	}
+	if !errors.Is(err, errPullFailed) {
+		t.Errorf("Pull() error = %v, want errPullFailed", err)
 	}
 }

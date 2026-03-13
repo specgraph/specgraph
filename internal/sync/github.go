@@ -72,7 +72,10 @@ func (g *GitHubAdapter) Push(ctx context.Context, spec *storage.Spec) (string, e
 	if g.repo != "" {
 		args = append(args, "--repo", g.repo)
 	}
-	args = append(args, "--title", title, "--body", body, "--label", labels)
+	args = append(args, "--title", title, "--body", body)
+	for _, label := range labels {
+		args = append(args, "--label", label)
+	}
 	out, err := g.runner.Run(ctx, "gh", args...)
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", errPushFailed, err)
@@ -89,6 +92,9 @@ func (g *GitHubAdapter) Push(ctx context.Context, spec *storage.Spec) (string, e
 	}
 	if u.Scheme != "https" {
 		return "", fmt.Errorf("%w: unexpected URL scheme in created issue URL: %q", errPushFailed, issueURL)
+	}
+	if u.Host != "github.com" {
+		return "", fmt.Errorf("%w: unexpected host in created issue URL: %q", errPushFailed, issueURL)
 	}
 	segments := strings.Split(strings.Trim(u.Path, "/"), "/")
 	if len(segments) < 4 {
@@ -109,6 +115,9 @@ func (g *GitHubAdapter) Pull(ctx context.Context, externalID string) (string, er
 	// Extract issue number from URL if externalID is a full URL.
 	issueRef := externalID
 	if u, parseErr := url.Parse(externalID); parseErr == nil && u.Scheme != "" {
+		if u.Host != "github.com" {
+			return "", fmt.Errorf("%w: unexpected host in external ID URL: %q", errPullFailed, externalID)
+		}
 		issueRef = path.Base(u.Path)
 	}
 	if _, err := strconv.Atoi(issueRef); err != nil {
@@ -141,7 +150,9 @@ func formatIssueBody(spec *storage.Spec) string {
 		spec.Slug, spec.Intent, spec.Stage, spec.Priority, spec.Complexity, spec.Version)
 }
 
-// formatLabels produces a comma-separated label string for a GitHub issue.
-func formatLabels(spec *storage.Spec) string {
-	return fmt.Sprintf("specgraph,%s,%s", spec.Stage, spec.Priority)
+// formatLabels produces individual label strings for a GitHub issue.
+// Each label is passed as a separate --label argument to avoid comma-parsing
+// issues in the gh CLI when label values contain special characters.
+func formatLabels(spec *storage.Spec) []string {
+	return []string{"specgraph", string(spec.Stage), string(spec.Priority)}
 }

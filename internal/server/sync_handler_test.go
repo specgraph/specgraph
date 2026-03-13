@@ -422,6 +422,7 @@ func TestSyncHandler_SyncBeads_DryRun(t *testing.T) {
 		}))
 	require.NoError(t, err)
 	require.Equal(t, int32(0), resp.Msg.Synced)
+	require.Equal(t, int32(1), resp.Msg.DryRunCount)
 	require.Len(t, resp.Msg.Results, 1)
 	require.Equal(t, specv1.SyncState_SYNC_STATE_PENDING, resp.Msg.Results[0].State)
 }
@@ -804,6 +805,116 @@ func TestSyncHandler_Inject_OutputDirOutsideRoot(t *testing.T) {
 			SpecSlug:  "test-spec",
 			Tool:      specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
 			OutputDir: "/tmp/evil-path",
+		}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+// countingSyncBackend wraps mockSyncBackend to fail CreateSyncMapping N times then succeed.
+type countingSyncBackend struct {
+	*mockSyncBackend
+	createFailCount int
+	createErr       error
+	calls           int
+}
+
+func (c *countingSyncBackend) CreateSyncMapping(ctx context.Context, specSlug string, adapter storage.SyncAdapterType, externalID string) (*storage.SyncMapping, error) {
+	c.calls++
+	if c.calls <= c.createFailCount {
+		return nil, c.createErr
+	}
+	return c.mockSyncBackend.CreateSyncMapping(ctx, specSlug, adapter, externalID)
+}
+
+func TestSyncHandler_SyncBeads_RetrySuccess(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		pushFn: func(_ context.Context, spec *storage.Spec) (string, error) {
+			return "beads-" + spec.Slug, nil
+		},
+	}
+	syncStore := &countingSyncBackend{
+		mockSyncBackend: newMockSyncBackend(),
+		createFailCount: 1,
+		createErr:       fmt.Errorf("transient error"),
+	}
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+		},
+	}
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler.RegisterAdapter(adapter)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	resp, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+		}))
+	require.NoError(t, err)
+	require.Equal(t, int32(1), resp.Msg.Synced)
+	require.Equal(t, "synced", resp.Msg.Results[0].Message)
+}
+
+// retryExistsSyncBackend returns a transient error on first CreateSyncMapping call,
+// then ErrSyncMappingExists on retry (simulating a concurrent sync winning the race).
+type retryExistsSyncBackend struct {
+	*mockSyncBackend
+	createCalls int
+}
+
+func (r *retryExistsSyncBackend) CreateSyncMapping(_ context.Context, _ string, _ storage.SyncAdapterType, _ string) (*storage.SyncMapping, error) {
+	r.createCalls++
+	if r.createCalls == 1 {
+		return nil, fmt.Errorf("transient error")
+	}
+	return nil, storage.ErrSyncMappingExists
+}
+
+func TestSyncHandler_SyncBeads_RetryExistsCountsAsSkipped(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		pushFn: func(_ context.Context, spec *storage.Spec) (string, error) {
+			return "beads-" + spec.Slug, nil
+		},
+	}
+	syncStore := &retryExistsSyncBackend{
+		mockSyncBackend: newMockSyncBackend(),
+	}
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+		},
+	}
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil)
+	handler.RegisterAdapter(adapter)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	resp, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{Adapter: specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+		}))
+	require.NoError(t, err)
+	// First CreateSyncMapping fails with transient error, retry returns ErrSyncMappingExists
+	// (concurrent sync won the race). Should count as skipped, not synced.
+	require.Equal(t, int32(1), resp.Msg.Skipped)
+	require.Contains(t, resp.Msg.Results[0].Message, "already synced (concurrent sync detected)")
+}
+
+func TestSyncHandler_Inject_EmptyOutputDir(t *testing.T) {
+	client := setupSyncServer(t)
+	_, err := client.Inject(context.Background(),
+		connect.NewRequest(&specv1.InjectRequest{
+			SpecSlug: "test-spec",
+			Tool:     specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
 		}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
