@@ -62,7 +62,7 @@ task build          # Generate proto + build binary
 
 ## Gotchas
 
-- **jj-colocated repo** — This repo uses jj with git colocated. Always use `jj --no-pager` for VCS operations. Never use `git push`; use `jj bookmark set <name> -r <rev>` then `jj git push --bookmark <name>`. Always use `-m` with jj commands that accept messages (`squash`, `describe`, `commit`, `new`) to avoid opening an editor.
+- **jj-colocated repo** — This repo uses jj with git colocated. Always use `jj --no-pager` for VCS operations. Never use `git push`; use `jj bookmark set <name> -r <rev>` then `jj git push --bookmark <name>`. Always use `-m` with jj commands that accept messages (`squash`, `describe`, `commit`, `new`) to avoid opening an editor. MUST use `jj workspace add` instead of `git worktree`; git worktrees break jj's colocated state.
 - **`gen/` is committed** — generated proto code is checked in for Go module compatibility. Run `task proto:check` to verify staleness. Proto sources are in `proto/`, not `gen/`.
 - **Proto field removal** — When removing a proto field, use `reserved` for both field number and name in the `.proto` file. Then run `task proto`, update all callers (CLI, handlers, tests), and verify with `go build ./...`.
 - **`task proto` is incremental** — fingerprints `.proto` files and skips if unchanged
