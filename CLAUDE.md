@@ -53,16 +53,62 @@ task build          # Generate proto + build binary
 | `cmd/specgraph/` | CLI entry point |
 | `proto/specgraph/v1/` | Protobuf service definitions (source of truth) |
 | `gen/specgraph/v1/` | Generated Go code from proto (committed; regenerate with `task proto`) |
+| `internal/authoring/` | Authoring funnel stage logic |
+| `internal/config/` | Config loading and validation (YAML-based) |
+| `internal/docker/` | Docker compose templates for DB containers |
+| `internal/drift/` | Drift detection engine |
+| `internal/driftscope/` | Drift scope analysis |
+| `internal/emitter/` | Event/output emitters |
+| `internal/inject/` | Tool injection (AGENTS.md, CLAUDE.md, Cursor) with file locking |
 | `internal/server/` | ConnectRPC handlers + proto↔domain converters |
 | `internal/storage/` | Storage interfaces (domain types, not protobuf) |
 | `internal/storage/memgraph/` | Memgraph implementation (Cypher queries, testcontainers) |
-| `internal/authoring/` | Authoring funnel stage logic |
+| `internal/sync/` | Sync adapters (beads, GitHub) with exec runner |
 | `e2e/` | End-to-end tests (Ginkgo/Gomega, require Docker) |
 | `docs/plans/` | Implementation plan documents |
 
+## Jujutsu Workspaces
+
+Use `jj workspace` commands instead of git worktrees. Workspaces share a single repo
+store but provide independent working-copy commits in the DAG.
+
+### Key Commands
+- `jj workspace add ../dir-name` — create a new workspace (no branch-lock issues)
+- `jj workspace list` — show all workspaces
+- `jj workspace forget <name>` — untrack a workspace (manually delete the dir after)
+- `jj workspace update-stale` — rebase working-copy commit if ancestry changed elsewhere
+- `jj workspace root` — print the workspace root path
+
+### When to Use
+- Need two changes **on disk simultaneously** (e.g., running tests in one, coding in another)
+- For simple context switching, prefer `jj edit <change-id>` or `jj new` — no workspace needed
+- Multiple workspaces can operate on the same bookmark lineage (no branch-locking)
+
+### Workflow
+```sh
+# create workspace for parallel work
+jj workspace add ../project-creds
+cd ../project-creds
+jj edit <change-id>        # point at existing work
+# ...work here, auto-snapshotted...
+
+# back in main workspace, sync if needed
+cd ../project-main
+jj workspace update-stale
+```
+
+### Notes
+- Conflicts from workspace updates are materialized (not blocked) — resolve at leisure
+- `jj workspace forget` does NOT delete the directory on disk
+- Workspaces are rarely needed for solo work; `jj edit` covers most context-switching
+
 ## Gotchas
 
-- **jj-colocated repo** — This repo uses jj with git colocated. Always use `jj --no-pager` for VCS operations. Never use `git push`; use `jj bookmark set <name> -r <rev>` then `jj git push --bookmark <name>`. Always use `-m` with jj commands that accept messages (`squash`, `describe`, `commit`, `new`) to avoid opening an editor. MUST use `jj workspace add` instead of `git worktree`; git worktrees break jj's colocated state.
+- **jj-colocated repo** — This repo uses jj with git colocated. Key rules:
+  - Always use `jj --no-pager` for all jj commands
+  - Always use `-m` with `squash`, `describe`, `commit`, `new` (avoids opening editor)
+  - Never use `git push`; use `jj bookmark set <name> -r <rev>` then `jj git push --bookmark <name>`
+  - MUST use `jj workspace add` instead of `git worktree` (git worktrees break colocated state)
 - **`gen/` is committed** — generated proto code is checked in for Go module compatibility. Run `task proto:check` to verify staleness. Proto sources are in `proto/`, not `gen/`.
 - **Proto field removal** — When removing a proto field, use `reserved` for both field number and name in the `.proto` file. Then run `task proto`, update all callers (CLI, handlers, tests), and verify with `go build ./...`.
 - **`task proto` is incremental** — fingerprints `.proto` files and skips if unchanged
