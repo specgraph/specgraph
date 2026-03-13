@@ -78,7 +78,8 @@ func (h *SyncHandler) SyncGitHub(ctx context.Context, req *connect.Request[specv
 
 func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapter, config *specv1.SyncConfig) (*connect.Response[specv1.SyncResponse], error) {
 	if err := adapter.Available(ctx); err != nil {
-		return nil, connect.NewError(connect.CodeUnavailable, err)
+		slog.WarnContext(ctx, "adapter unavailable", "adapter", adapter.Name(), "error", err)
+		return nil, connect.NewError(connect.CodeUnavailable, errors.New("sync adapter not available"))
 	}
 
 	var stage, priority string
