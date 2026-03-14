@@ -14,6 +14,37 @@ import (
 	"github.com/seanb4t/specgraph/internal/storage"
 )
 
+// atomicWriteFile writes data to path atomically via a temp file + rename.
+// The temp file is created in the same directory to ensure same-filesystem rename.
+func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".*")
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+	tmpName := tmp.Name()
+
+	if _, writeErr := tmp.Write(data); writeErr != nil {
+		tmp.Close()  //nolint:errcheck // best-effort cleanup on write failure
+		os.Remove(tmpName) //nolint:errcheck // best-effort cleanup
+		return fmt.Errorf("write temp file: %w", writeErr)
+	}
+	if err := tmp.Chmod(perm); err != nil {
+		tmp.Close()  //nolint:errcheck // best-effort cleanup on chmod failure
+		os.Remove(tmpName) //nolint:errcheck // best-effort cleanup
+		return fmt.Errorf("chmod temp file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpName) //nolint:errcheck // best-effort cleanup
+		return fmt.Errorf("close temp file: %w", err)
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		os.Remove(tmpName) //nolint:errcheck // best-effort cleanup
+		return fmt.Errorf("rename temp to target: %w", err)
+	}
+	return nil
+}
+
 // safeSlugPattern matches slugs containing only alphanumerics, dots, underscores, and hyphens.
 var safeSlugPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
 
@@ -162,7 +193,7 @@ func writeAgentsMD(content, slug, outputDir string) ([]string, error) {
 	}
 
 	if os.IsNotExist(readErr) || len(existing) == 0 {
-		if writeErr := os.WriteFile(p, []byte(section+"\n"), 0o600); writeErr != nil {
+		if writeErr := atomicWriteFile(p, []byte(section+"\n"), 0o600); writeErr != nil {
 			return nil, fmt.Errorf("write AGENTS.md: %w", writeErr)
 		}
 		return []string{p}, nil
@@ -190,7 +221,7 @@ func writeAgentsMD(content, slug, outputDir string) ([]string, error) {
 		text += "\n" + section + "\n"
 	}
 
-	if writeErr := os.WriteFile(p, []byte(text), 0o600); writeErr != nil { //nolint:gosec // G703: p is filepath.Join(outputDir, "AGENTS.md") — outputDir validated by handler's SetAllowedOutputRoot, filename is hardcoded
+	if writeErr := atomicWriteFile(p, []byte(text), 0o600); writeErr != nil {
 		return nil, fmt.Errorf("write AGENTS.md: %w", writeErr)
 	}
 	return []string{p}, nil
