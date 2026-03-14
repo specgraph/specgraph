@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/seanb4t/specgraph/internal/inject"
@@ -407,6 +408,53 @@ func TestInject_ReadOnlyOutputDir(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "permission denied") {
 		t.Errorf("expected permission denied error, got: %v", err)
+	}
+}
+
+func TestInject_AgentsMD_ConcurrentSlugs(t *testing.T) {
+	dir := t.TempDir()
+	const n = 10
+	var wg sync.WaitGroup
+	errs := make([]error, n)
+
+	for i := range n {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			spec := &storage.Spec{
+				ID:       fmt.Sprintf("spec-%03d", idx),
+				Slug:     fmt.Sprintf("concurrent-%03d", idx),
+				Intent:   fmt.Sprintf("Concurrent test slug %d", idx),
+				Stage:    storage.SpecStageApproved,
+				Priority: storage.SpecPriorityP2,
+			}
+			_, err := inject.Inject(spec, nil, storage.InjectToolAgentsMD, dir)
+			errs[idx] = err
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("goroutine %d: Inject failed: %v", i, err)
+		}
+	}
+
+	content, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("read AGENTS.md: %v", err)
+	}
+	s := string(content)
+
+	for i := range n {
+		startMarker := fmt.Sprintf("<!-- specgraph:concurrent-%03d:start -->", i)
+		endMarker := fmt.Sprintf("<!-- specgraph:concurrent-%03d:end -->", i)
+		if !strings.Contains(s, startMarker) {
+			t.Errorf("missing start marker for slug concurrent-%03d", i)
+		}
+		if !strings.Contains(s, endMarker) {
+			t.Errorf("missing end marker for slug concurrent-%03d", i)
+		}
 	}
 }
 

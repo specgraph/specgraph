@@ -267,6 +267,10 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 
 	if allowedRoot != "" {
 		absRoot := filepath.Clean(allowedRoot)
+		// Resolve symlinks on the root too (e.g., /var -> /private/var on macOS).
+		if realRoot, rlErr := filepath.EvalSymlinks(absRoot); rlErr == nil {
+			absRoot = realRoot
+		}
 		if !strings.HasPrefix(realDir, absRoot+string(filepath.Separator)) && realDir != absRoot {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output_dir must be within the allowed root directory"))
 		}

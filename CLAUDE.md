@@ -73,6 +73,7 @@ Use `jj workspace` commands instead of git worktrees. Workspaces share a single 
 store but provide independent working-copy commits in the DAG.
 
 ### Key Commands
+
 - `jj workspace add ../dir-name` — create a new workspace (no branch-lock issues)
 - `jj workspace list` — show all workspaces
 - `jj workspace forget <name>` — untrack a workspace (manually delete the dir after)
@@ -80,11 +81,13 @@ store but provide independent working-copy commits in the DAG.
 - `jj workspace root` — print the workspace root path
 
 ### When to Use
+
 - Need two changes **on disk simultaneously** (e.g., running tests in one, coding in another)
 - For simple context switching, prefer `jj edit <change-id>` or `jj new` — no workspace needed
 - Multiple workspaces can operate on the same bookmark lineage (no branch-locking)
 
 ### Workflow
+
 ```sh
 # create workspace for parallel work
 jj workspace add ../project-creds
@@ -98,6 +101,7 @@ jj workspace update-stale
 ```
 
 ### Notes
+
 - Conflicts from workspace updates are materialized (not blocked) — resolve at leisure
 - `jj workspace forget` does NOT delete the directory on disk
 - Workspaces are rarely needed for solo work; `jj edit` covers most context-switching

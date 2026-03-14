@@ -9,6 +9,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
@@ -203,4 +204,51 @@ func TestSync_DeleteMapping(t *testing.T) {
 	// Delete nonexistent — should not error (idempotent)
 	err = store.DeleteSyncMapping(ctx, "del-spec", storage.SyncAdapterGitHub)
 	require.NoError(t, err)
+}
+
+func TestSync_DeleteMappingCleansUpExternalRef(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.CreateSpec(ctx, "cleanup-spec", "Spec for cleanup test", "p2", "medium")
+	require.NoError(t, err)
+
+	_, err = store.CreateSyncMapping(ctx, "cleanup-spec", storage.SyncAdapterGitHub, "gh-cleanup-42")
+	require.NoError(t, err)
+
+	// Verify ExternalRef exists before deletion
+	driver, dErr := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
+	require.NoError(t, dErr)
+	defer driver.Close(ctx)
+
+	session := driver.NewSession(ctx, neo4j.SessionConfig{})
+	defer session.Close(ctx)
+
+	result, qErr := session.Run(ctx,
+		`MATCH (e:ExternalRef {external_id: $eid, adapter: $adapter}) RETURN count(e) AS cnt`,
+		map[string]any{"eid": "gh-cleanup-42", "adapter": string(storage.SyncAdapterGitHub)})
+	require.NoError(t, qErr)
+	rec, rErr := result.Single(ctx)
+	require.NoError(t, rErr)
+	cnt, _ := rec.Get("cnt")
+	require.Equal(t, int64(1), cnt.(int64), "ExternalRef should exist before deletion") //nolint:forcetypeassert // test assertion
+
+	// Delete the mapping
+	err = store.DeleteSyncMapping(ctx, "cleanup-spec", storage.SyncAdapterGitHub)
+	require.NoError(t, err)
+
+	// Verify ExternalRef was cleaned up
+	result2, qErr2 := session.Run(ctx,
+		`MATCH (e:ExternalRef {external_id: $eid, adapter: $adapter}) RETURN count(e) AS cnt`,
+		map[string]any{"eid": "gh-cleanup-42", "adapter": string(storage.SyncAdapterGitHub)})
+	require.NoError(t, qErr2)
+	rec2, rErr2 := result2.Single(ctx)
+	require.NoError(t, rErr2)
+	cnt2, _ := rec2.Get("cnt")
+	require.Equal(t, int64(0), cnt2.(int64), "ExternalRef should be cleaned up after deletion") //nolint:forcetypeassert // test assertion
 }

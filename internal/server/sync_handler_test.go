@@ -763,9 +763,9 @@ func TestSyncHandler_Inject_ConstitutionWarning(t *testing.T) {
 			OutputDir: outputDir,
 		}))
 	require.NoError(t, err)
-	require.Contains(t, resp.Msg.Summary, "warning: constitution unavailable")
+	require.Contains(t, resp.Msg.Summary, "warning: constitution load failed: storage error")
 	require.Len(t, resp.Msg.Warnings, 1)
-	require.Equal(t, "constitution unavailable", resp.Msg.Warnings[0])
+	require.Equal(t, "constitution load failed: storage error", resp.Msg.Warnings[0])
 }
 
 // mockConstitutionStore always returns an error for GetConstitution.
@@ -906,6 +906,57 @@ func TestSyncHandler_SyncBeads_RetryExistsCountsAsSkipped(t *testing.T) {
 	// (concurrent sync won the race). Should count as skipped, not synced.
 	require.Equal(t, int32(1), resp.Msg.Skipped)
 	require.Contains(t, resp.Msg.Results[0].Message, "already synced (concurrent sync detected)")
+}
+
+// cancelledCtxSyncBackend fails on first CreateSyncMapping, then the test verifies
+// the context-cancelled path prevents a retry.
+type cancelledCtxSyncBackend struct {
+	*mockSyncBackend
+	createCalls int
+}
+
+func (c *cancelledCtxSyncBackend) CreateSyncMapping(_ context.Context, _ string, _ storage.SyncAdapterType, _ string) (*storage.SyncMapping, error) {
+	c.createCalls++
+	return nil, fmt.Errorf("transient error")
+}
+
+func TestSyncHandler_SyncBeads_ContextCancelledBeforeRetry(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		pushFn: func(_ context.Context, spec *storage.Spec) (string, error) {
+			// Cancel the context after push succeeds — handler checks ctx.Err()
+			// before retrying CreateSyncMapping.
+			cancel()
+			return "beads-" + spec.Slug, nil
+		},
+	}
+	syncStore := &cancelledCtxSyncBackend{
+		mockSyncBackend: newMockSyncBackend(),
+	}
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+		},
+	}
+	// Call the handler method directly (not via HTTP) to avoid context
+	// cancellation affecting the transport layer.
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler.RegisterAdapter(adapter)
+
+	resp, err := handler.SyncBeads(ctx,
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{},
+		}))
+	require.NoError(t, err)
+	// Context was cancelled after push but before retry — should be an error result
+	// with ExternalId preserved for reconciliation.
+	require.Equal(t, int32(1), resp.Msg.Errors)
+	require.Equal(t, specv1.SyncState_SYNC_STATE_ERROR, resp.Msg.Results[0].State)
+	require.NotEmpty(t, resp.Msg.Results[0].ExternalId)
+	require.Contains(t, resp.Msg.Results[0].Message, "reconciliation")
 }
 
 func TestSyncHandler_Inject_EmptyOutputDir(t *testing.T) {

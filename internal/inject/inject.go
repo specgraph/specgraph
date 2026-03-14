@@ -25,12 +25,12 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
 	tmpName := tmp.Name()
 
 	if _, writeErr := tmp.Write(data); writeErr != nil {
-		tmp.Close()  //nolint:errcheck // best-effort cleanup on write failure
+		tmp.Close()        //nolint:errcheck // best-effort cleanup on write failure
 		os.Remove(tmpName) //nolint:errcheck // best-effort cleanup
 		return fmt.Errorf("write temp file: %w", writeErr)
 	}
 	if err := tmp.Chmod(perm); err != nil {
-		tmp.Close()  //nolint:errcheck // best-effort cleanup on chmod failure
+		tmp.Close()        //nolint:errcheck // best-effort cleanup on chmod failure
 		os.Remove(tmpName) //nolint:errcheck // best-effort cleanup
 		return fmt.Errorf("chmod temp file: %w", err)
 	}

@@ -203,6 +203,38 @@ func TestBeadsAdapter_PullInvalidID(t *testing.T) {
 	}
 }
 
+func TestBeadsAdapter_PushCancelledContext(t *testing.T) {
+	b := NewBeadsAdapter(&ExecRunner{})
+	spec := &storage.Spec{
+		Slug:     "my-spec",
+		Intent:   "test",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP2,
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // pre-cancel
+	_, err := b.Push(ctx, spec)
+	if err == nil {
+		t.Fatal("Push() expected error for cancelled context, got nil")
+	}
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("Push() error = %v, want errPushFailed", err)
+	}
+}
+
+func TestBeadsAdapter_PullCancelledContext(t *testing.T) {
+	b := NewBeadsAdapter(&ExecRunner{})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // pre-cancel
+	_, err := b.Pull(ctx, "bead-abc123")
+	if err == nil {
+		t.Fatal("Pull() expected error for cancelled context, got nil")
+	}
+	if !errors.Is(err, errPullFailed) {
+		t.Errorf("Pull() error = %v, want errPullFailed", err)
+	}
+}
+
 func TestBeadsAdapter_PullEmptyStatus(t *testing.T) {
 	b := NewBeadsAdapter(&mockRunner{
 		output: []byte(`{"id": "bead-abc123", "status": ""}`),
