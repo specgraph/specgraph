@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log/slog"
 	"os/exec"
 	"time"
 )
@@ -45,6 +46,9 @@ func (r *ExecRunner) Run(ctx context.Context, name string, args ...string) ([]by
 			return out, fmt.Errorf("exec %s: %w (stderr: %s)", name, err, stderrMsg)
 		}
 		return out, fmt.Errorf("exec %s: %w", name, err)
+	}
+	if stderr.Len() > 0 {
+		slog.Debug("exec stderr (non-fatal)", "cmd", name, "stderr", stderr.String())
 	}
 	return out, nil
 }
