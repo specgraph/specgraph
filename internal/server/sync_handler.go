@@ -281,12 +281,15 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 	var constitution *storage.Constitution
 	var warnings []string
 	if h.constitutionStore != nil {
-		// Try to load the project constitution; ignore errors (constitution is optional)
 		var conErr error
 		constitution, conErr = h.constitutionStore.GetConstitution(ctx)
 		if conErr != nil {
-			slog.WarnContext(ctx, "failed to load constitution for injection", "error", conErr)
-			warnings = append(warnings, "constitution unavailable")
+			if errors.Is(conErr, storage.ErrConstitutionNotFound) {
+				slog.DebugContext(ctx, "no constitution seeded yet")
+			} else {
+				slog.WarnContext(ctx, "failed to load constitution for injection", "error", conErr)
+				warnings = append(warnings, "constitution load failed: storage error")
+			}
 		}
 	}
 
