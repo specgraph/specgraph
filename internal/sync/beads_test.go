@@ -152,7 +152,13 @@ func TestBeadsAdapter_PushMissingID(t *testing.T) {
 	b := NewBeadsAdapter(&mockRunner{
 		output: []byte(`{"id": ""}`),
 	})
-	_, err := b.Push(context.Background(), &storage.Spec{Slug: "test-spec"})
+	spec := &storage.Spec{
+		Slug:     "test-spec",
+		Intent:   "test",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP2,
+	}
+	_, err := b.Push(context.Background(), spec)
 	if err == nil {
 		t.Fatal("Push() expected error for empty ID, got nil")
 	}

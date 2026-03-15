@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -260,8 +261,11 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 	// Resolve symlinks to prevent escape via symlinked directories.
 	realDir, evalErr := filepath.EvalSymlinks(absDir)
 	if evalErr != nil {
-		// If the directory doesn't exist yet, EvalSymlinks fails.
-		// Fall back to the unresolved absDir — the prefix check still applies.
+		if !os.IsNotExist(evalErr) {
+			slog.WarnContext(ctx, "EvalSymlinks failed for output_dir, falling back to unresolved path",
+				"path", absDir, "error", evalErr)
+		}
+		// Directory may not exist yet — fall back to the unresolved absDir.
 		realDir = absDir
 	}
 

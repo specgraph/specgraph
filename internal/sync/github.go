@@ -148,10 +148,19 @@ func (g *GitHubAdapter) Pull(ctx context.Context, externalID string) (string, er
 	return resp.State, nil
 }
 
+// escapeCell escapes pipe characters and newlines for markdown table cells.
+func escapeCell(s string) string {
+	s = strings.ReplaceAll(s, "|", "\\|")
+	s = strings.ReplaceAll(s, "\n", " ")
+	return s
+}
+
 // formatIssueBody produces a markdown body for a GitHub issue from a spec.
 func formatIssueBody(spec *storage.Spec) string {
 	return fmt.Sprintf("## Spec: %s\n\n**Intent:** %s\n\n| Field | Value |\n|-------|-------|\n| Stage | %s |\n| Priority | %s |\n| Complexity | %s |\n| Version | %d |\n",
-		spec.Slug, spec.Intent, spec.Stage, spec.Priority, spec.Complexity, spec.Version)
+		escapeCell(spec.Slug), escapeCell(spec.Intent),
+		escapeCell(string(spec.Stage)), escapeCell(string(spec.Priority)),
+		escapeCell(spec.Complexity), spec.Version)
 }
 
 // formatLabels produces individual label strings for a GitHub issue.

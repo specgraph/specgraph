@@ -161,6 +161,7 @@ func writeCursor(content, slug, intent, outputDir string) ([]string, error) {
 
 	safeIntent := strings.ReplaceAll(intent, `\`, `\\`)
 	safeIntent = strings.ReplaceAll(safeIntent, `"`, `\"`)
+	safeIntent = strings.ReplaceAll(safeIntent, "\n", " ")
 	var b strings.Builder
 	b.WriteString("---\n")
 	fmt.Fprintf(&b, "description: \"SpecGraph spec %s: %s\"\n", slug, safeIntent)
