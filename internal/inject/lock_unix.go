@@ -27,8 +27,10 @@ func acquireFileLock(path string) (func(), error) {
 	}
 	return func() {
 		if unlockErr := syscall.Flock(fd, syscall.LOCK_UN); unlockErr != nil {
-			slog.Error("failed to release AGENTS.md lock", "path", path, "error", unlockErr)
+			slog.Error("failed to release file lock", "path", path, "error", unlockErr)
 		}
+		// Lock file is intentionally NOT removed — deleting it between unlock
+		// and a concurrent open creates a new inode, breaking mutual exclusion.
 		lockFile.Close() //nolint:errcheck // best-effort close after unlock
 	}, nil
 }

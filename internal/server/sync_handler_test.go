@@ -749,13 +749,11 @@ func TestSyncHandler_Inject_ConstitutionWarning(t *testing.T) {
 	conStore := &mockConstitutionStore{err: fmt.Errorf("db connection lost")}
 	mux := http.NewServeMux()
 	handler := server.RegisterSyncService(mux, syncStore, specStore, conStore, "")
-	handler.SetAllowedOutputRoot(t.TempDir())
+	outputDir := t.TempDir()
+	handler.SetAllowedOutputRoot(outputDir)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
-
-	outputDir := t.TempDir()
-	handler.SetAllowedOutputRoot(outputDir)
 	resp, err := client.Inject(context.Background(),
 		connect.NewRequest(&specv1.InjectRequest{
 			SpecSlug:  "test-spec",
@@ -783,6 +781,37 @@ func (m *mockConstitutionStore) UpdateConstitution(_ context.Context, c *storage
 
 func (m *mockConstitutionStore) CheckViolation(_ context.Context, _ string) ([]storage.Violation, error) {
 	return nil, nil
+}
+
+func TestSyncHandler_Inject_ConstitutionNotFound_NoWarning(t *testing.T) {
+	syncStore := newMockSyncBackend()
+	specStore := &mockSpecReader{
+		specs: map[string]*storage.Spec{
+			"test-spec": {
+				ID: "spec-test123", Slug: "test-spec", Intent: "Test spec",
+				Stage: "approved", Priority: "p2", Complexity: "medium",
+			},
+		},
+	}
+	// ErrConstitutionNotFound is a normal state — should NOT produce a warning.
+	conStore := &mockConstitutionStore{err: storage.ErrConstitutionNotFound}
+	outputDir := t.TempDir()
+	mux := http.NewServeMux()
+	handler := server.RegisterSyncService(mux, syncStore, specStore, conStore, "")
+	handler.SetAllowedOutputRoot(outputDir)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
+
+	resp, err := client.Inject(context.Background(),
+		connect.NewRequest(&specv1.InjectRequest{
+			SpecSlug:  "test-spec",
+			Tool:      specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
+			OutputDir: outputDir,
+		}))
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.Warnings, "ErrConstitutionNotFound should not produce warnings")
+	require.NotContains(t, resp.Msg.Summary, "warning:")
 }
 
 func TestSyncHandler_Inject_OutputDirOutsideRoot(t *testing.T) {

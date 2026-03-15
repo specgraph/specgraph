@@ -16,7 +16,7 @@ import (
 
 // atomicWriteFile writes data to path atomically via a temp file + rename.
 // The temp file is created in the same directory to ensure same-filesystem rename.
-func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+func atomicWriteFile(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".*")
 	if err != nil {
@@ -29,7 +29,7 @@ func atomicWriteFile(path string, data []byte, perm os.FileMode) error {
 		os.Remove(tmpName) //nolint:errcheck // best-effort cleanup
 		return fmt.Errorf("write temp file: %w", writeErr)
 	}
-	if err := tmp.Chmod(perm); err != nil {
+	if err := tmp.Chmod(0o600); err != nil {
 		tmp.Close()        //nolint:errcheck // best-effort cleanup on chmod failure
 		os.Remove(tmpName) //nolint:errcheck // best-effort cleanup
 		return fmt.Errorf("chmod temp file: %w", err)
@@ -142,7 +142,12 @@ func writeClaudeCode(content, slug, outputDir string) ([]string, error) {
 		return nil, fmt.Errorf("create claude specs dir: %w", err)
 	}
 	p := filepath.Join(dir, slug+".md")
-	if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
+	unlock, lockErr := acquireFileLock(p)
+	if lockErr != nil {
+		return nil, lockErr
+	}
+	defer unlock()
+	if err := atomicWriteFile(p, []byte(content)); err != nil {
 		return nil, fmt.Errorf("write claude code spec: %w", err)
 	}
 	return []string{p}, nil
@@ -164,7 +169,12 @@ func writeCursor(content, slug, intent, outputDir string) ([]string, error) {
 	b.WriteString(content)
 
 	p := filepath.Join(dir, "specgraph-"+slug+".md")
-	if err := os.WriteFile(p, []byte(b.String()), 0o600); err != nil {
+	unlock, lockErr := acquireFileLock(p)
+	if lockErr != nil {
+		return nil, lockErr
+	}
+	defer unlock()
+	if err := atomicWriteFile(p, []byte(b.String())); err != nil {
 		return nil, fmt.Errorf("write cursor rule: %w", err)
 	}
 	return []string{p}, nil
@@ -193,7 +203,7 @@ func writeAgentsMD(content, slug, outputDir string) ([]string, error) {
 	}
 
 	if os.IsNotExist(readErr) || len(existing) == 0 {
-		if writeErr := atomicWriteFile(p, []byte(section+"\n"), 0o600); writeErr != nil {
+		if writeErr := atomicWriteFile(p, []byte(section+"\n")); writeErr != nil {
 			return nil, fmt.Errorf("write AGENTS.md: %w", writeErr)
 		}
 		return []string{p}, nil
@@ -221,7 +231,7 @@ func writeAgentsMD(content, slug, outputDir string) ([]string, error) {
 		text += "\n" + section + "\n"
 	}
 
-	if writeErr := atomicWriteFile(p, []byte(text), 0o600); writeErr != nil {
+	if writeErr := atomicWriteFile(p, []byte(text)); writeErr != nil {
 		return nil, fmt.Errorf("write AGENTS.md: %w", writeErr)
 	}
 	return []string{p}, nil

@@ -130,12 +130,21 @@ func TestBeadsAdapter_PushMalformedJSON(t *testing.T) {
 	b := NewBeadsAdapter(&mockRunner{
 		output: []byte(`not json`),
 	})
-	_, err := b.Push(context.Background(), &storage.Spec{Slug: "test-spec"})
+	spec := &storage.Spec{
+		Slug:     "test-spec",
+		Intent:   "test",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP2,
+	}
+	_, err := b.Push(context.Background(), spec)
 	if err == nil {
 		t.Fatal("Push() expected error for malformed JSON, got nil")
 	}
 	if !errors.Is(err, errPushFailed) {
 		t.Errorf("Push() error = %v, want errPushFailed", err)
+	}
+	if !strings.Contains(err.Error(), "parse") {
+		t.Errorf("Push() error should mention parse failure, got: %v", err)
 	}
 }
 
