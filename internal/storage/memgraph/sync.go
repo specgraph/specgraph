@@ -187,13 +187,27 @@ func (s *Store) ListSyncMappings(ctx context.Context, adapter storage.SyncAdapte
 func (s *Store) DeleteSyncMapping(ctx context.Context, specSlug string, adapter storage.SyncAdapterType) error {
 	adapterStr := string(adapter)
 
+	// Delete the relationship first, then clean up the orphaned ExternalRef
+	// in a separate query. Memgraph 2.4 doesn't support anonymous node
+	// patterns or EXISTS subqueries in WHERE after WITH+DELETE.
 	_, err := s.executeQuery(ctx,
 		`MATCH (s:Spec {slug: $slug})-[r:SYNCED_TO {adapter: $adapter}]->(e:ExternalRef)
-		 DELETE r
-		 WITH e
-		 WHERE NOT (()-[:SYNCED_TO]->(e))
-		 DELETE e`,
+		 DELETE r`,
 		map[string]any{"slug": specSlug, "adapter": adapterStr},
+	)
+	if err != nil {
+		return fmt.Errorf("memgraph: delete sync mapping: %w", err)
+	}
+	// Remove ExternalRef nodes with no remaining incoming SYNCED_TO edges.
+	// Uses OPTIONAL MATCH + WHERE r IS NULL because Memgraph 2.4 doesn't
+	// support anonymous node patterns in WHERE predicates.
+	_, err = s.executeQuery(ctx,
+		`MATCH (e:ExternalRef)
+		 OPTIONAL MATCH (other)-[r:SYNCED_TO]->(e)
+		 WITH e, r
+		 WHERE r IS NULL
+		 DELETE e`,
+		nil,
 	)
 	if err != nil {
 		return fmt.Errorf("memgraph: delete sync mapping: %w", err)
