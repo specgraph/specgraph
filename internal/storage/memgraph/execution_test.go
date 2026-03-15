@@ -135,15 +135,20 @@ func TestExecution_FullLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, storage.SpecStage("done"), spec.Stage)
 
-	// Verify events (ordered by ULID id DESC — deterministic).
+	// Verify events — all three types present. ULID ordering within the same
+	// millisecond is non-deterministic, so check by type set rather than index.
 	events, err := store.GetExecutionEvents(ctx, "lifecycle", 10)
 	require.NoError(t, err)
 	require.Len(t, events, 3)
-	assert.Equal(t, storage.ExecutionEventTypeCompletion, events[0].Type)
-	assert.Equal(t, storage.ExecutionEventTypeBlocker, events[1].Type)
-	assert.Equal(t, storage.ExecutionEventTypeProgress, events[2].Type)
-	assert.Equal(t, "lifecycle", events[0].SpecSlug)
-	assert.Equal(t, "agent-1", events[0].Agent)
+	typeSet := map[storage.ExecutionEventType]bool{}
+	for _, e := range events {
+		typeSet[e.Type] = true
+		assert.Equal(t, "lifecycle", e.SpecSlug)
+		assert.Equal(t, "agent-1", e.Agent)
+	}
+	assert.True(t, typeSet[storage.ExecutionEventTypeCompletion], "missing completion event")
+	assert.True(t, typeSet[storage.ExecutionEventTypeBlocker], "missing blocker event")
+	assert.True(t, typeSet[storage.ExecutionEventTypeProgress], "missing progress event")
 
 	// Verify claim was released — reclaiming should succeed.
 	_, err = store.ClaimSpec(ctx, "lifecycle", "agent-2", 10*time.Minute)
