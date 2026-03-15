@@ -950,7 +950,7 @@ func (c *cancelledCtxSyncBackend) CreateSyncMapping(_ context.Context, _ string,
 }
 
 func TestSyncHandler_SyncBeads_ContextCancelledBeforeRetry(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background()) //nolint:gosec // G118: cancel is called inside pushFn to simulate mid-handler cancellation
 	adapter := &mockAdapter{
 		name:      storage.SyncAdapterBeads,
 		available: true,
