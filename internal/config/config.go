@@ -18,6 +18,12 @@ import (
 type Config struct {
 	Server  ServerConfig  `yaml:"server"`
 	Storage StorageConfig `yaml:"storage"`
+	Sync    SyncConfig    `yaml:"sync"`
+}
+
+// SyncConfig describes sync adapter settings.
+type SyncConfig struct {
+	GitHubRepo string `yaml:"github_repo"` // owner/repo for GitHub adapter; if empty, inferred from git remote
 }
 
 // ServerConfig describes how the SpecGraph server runs.

@@ -6,8 +6,11 @@ package memgraph
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+
+	"github.com/seanb4t/specgraph/internal/storage"
 )
 
 // txKey is the context key used to thread a managed transaction through storage calls.
@@ -61,23 +64,32 @@ func (s *Store) RunInTransaction(ctx context.Context, fn func(ctx context.Contex
 	return nil
 }
 
+// mapTxConflict wraps Memgraph's "Cannot resolve conflicting transactions"
+// error with ErrConcurrentModification so callers can handle it uniformly.
+func mapTxConflict(err error) error {
+	if err != nil && strings.Contains(err.Error(), "Cannot resolve conflicting transactions") {
+		return fmt.Errorf("%w: %w", storage.ErrConcurrentModification, err)
+	}
+	return err
+}
+
 // executeQuery runs a Cypher query using the transaction from context if present,
 // otherwise falls back to an auto-commit query via the driver.
 func (s *Store) executeQuery(ctx context.Context, query string, params map[string]any) ([]*neo4j.Record, error) {
 	if tx, ok := txFromContext(ctx); ok {
 		result, err := tx.Run(ctx, query, params)
 		if err != nil {
-			return nil, fmt.Errorf("memgraph: tx run: %w", err)
+			return nil, mapTxConflict(fmt.Errorf("memgraph: tx run: %w", err))
 		}
 		records, err := result.Collect(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("memgraph: tx collect: %w", err)
+			return nil, mapTxConflict(fmt.Errorf("memgraph: tx collect: %w", err))
 		}
 		return records, nil
 	}
 	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
 	if err != nil {
-		return nil, fmt.Errorf("memgraph: execute query: %w", err)
+		return nil, mapTxConflict(fmt.Errorf("memgraph: execute query: %w", err))
 	}
 	return result.Records, nil
 }
