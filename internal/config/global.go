@@ -80,7 +80,7 @@ func (c *GlobalConfig) ResolveServer(projectSlug, repoOverride string) string {
 func globalDefaults() *GlobalConfig {
 	return &GlobalConfig{
 		Server: ServerSection{
-			Listen:  "0.0.0.0:7890",
+			Listen:  "127.0.0.1:7890",
 			Mode:    "service",
 			Backend: "memgraph",
 			Memgraph: MemgraphConfig{
@@ -89,7 +89,7 @@ func globalDefaults() *GlobalConfig {
 			Docker: true,
 		},
 		Client: ClientConfig{
-			DefaultServer: "http://localhost:7890",
+			DefaultServer: "http://127.0.0.1:7890",
 		},
 	}
 }
@@ -102,7 +102,7 @@ func writeGlobal(path string, cfg *GlobalConfig) error {
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0o644); err != nil { //nolint:gosec // config file; world-readable is appropriate
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("write config file: %w", err)
 	}
 	return nil

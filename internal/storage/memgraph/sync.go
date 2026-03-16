@@ -206,7 +206,7 @@ func (s *Store) DeleteSyncMapping(ctx context.Context, specSlug string, adapter 
 		 OPTIONAL MATCH (other)-[r:SYNCED_TO]->(e)
 		 WITH e, r
 		 WHERE r IS NULL
-		 DELETE e`,
+		 DETACH DELETE e`,
 		nil,
 	)
 	if err != nil {

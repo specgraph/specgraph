@@ -60,8 +60,17 @@ func NewCLIRunner(binaryPath, configPath string) *CLIRunner {
 
 // Run executes the specgraph CLI with the given args.
 func (c *CLIRunner) Run(args ...string) CLIResult {
+	return c.RunInDir("", args...)
+}
+
+// RunInDir executes the specgraph CLI with the given args in the specified directory.
+// If dir is empty, uses the current working directory.
+func (c *CLIRunner) RunInDir(dir string, args ...string) CLIResult {
 	fullArgs := append([]string{"--config", c.ConfigPath}, args...)
 	cmd := exec.Command(c.BinaryPath, fullArgs...)
+	if dir != "" {
+		cmd.Dir = dir
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

@@ -14,9 +14,9 @@ import (
 // NewMux creates an http.ServeMux with the SpecService handler registered.
 // Callers register additional services (lifecycle, authoring, etc.) on the
 // returned mux via their respective Register functions.
-func NewMux(backend storage.Backend) *http.ServeMux {
+func NewMux(scoper storage.Scoper) *http.ServeMux {
 	mux := http.NewServeMux()
-	specHandler := NewSpecHandler(backend)
+	specHandler := NewSpecHandler(scoper)
 	path, handler := specgraphv1connect.NewSpecServiceHandler(specHandler)
 	mux.Handle(path, handler)
 	return mux

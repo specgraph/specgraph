@@ -19,7 +19,7 @@ func changeDir(t *testing.T, dir string) {
 	orig, err := os.Getwd()
 	require.NoError(t, err)
 	require.NoError(t, os.Chdir(dir))
-	t.Cleanup(func() { os.Chdir(orig) }) //nolint:errcheck // best-effort restore
+	t.Cleanup(func() { _ = os.Chdir(orig) })
 }
 
 func TestInitWithExplicitSlug(t *testing.T) {
@@ -65,6 +65,30 @@ func TestInitWriteProjectConfig(t *testing.T) {
 }
 
 func TestInitYesFlagAccepted(t *testing.T) {
-	// --yes is accepted for backward compat and should not cause errors.
-	assert.False(t, initYes) // default is false
+	t.Run("default is false", func(t *testing.T) {
+		// --yes defaults to false (non-interactive mode is always on)
+		assert.False(t, initYes)
+	})
+
+	t.Run("--yes flag is accepted by the command", func(t *testing.T) {
+		dir := t.TempDir()
+		changeDir(t, dir)
+
+		// Restore global state after test.
+		origYes := initYes
+		t.Cleanup(func() {
+			initYes = origYes
+			initCmd.SetArgs(nil)
+		})
+
+		// Execute the init command with --yes; runUp will fail (no server),
+		// but the flag itself must not be rejected as unknown.
+		initCmd.SetArgs([]string{"--yes", "test-slug"})
+		err := initCmd.Execute()
+		// The command may fail because runUp has no server, but it must NOT
+		// fail with "unknown flag: --yes".
+		if err != nil {
+			assert.NotContains(t, err.Error(), "unknown flag")
+		}
+	})
 }

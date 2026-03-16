@@ -19,12 +19,12 @@ func TestLoadGlobal_Defaults(t *testing.T) {
 
 	cfg, err := config.LoadGlobal(path)
 	require.NoError(t, err)
-	assert.Equal(t, "0.0.0.0:7890", cfg.Server.Listen)
+	assert.Equal(t, "127.0.0.1:7890", cfg.Server.Listen)
 	assert.Equal(t, "service", cfg.Server.Mode)
 	assert.Equal(t, "memgraph", cfg.Server.Backend)
 	assert.Equal(t, "bolt://localhost:7687", cfg.Server.Memgraph.BoltURI)
 	assert.True(t, cfg.Server.Docker)
-	assert.Equal(t, "http://localhost:7890", cfg.Client.DefaultServer)
+	assert.Equal(t, "http://127.0.0.1:7890", cfg.Client.DefaultServer)
 	assert.Empty(t, cfg.Client.Routes)
 
 	_, err = os.Stat(path)
@@ -49,7 +49,7 @@ client:
     - project: "org-*"
       server: "https://shared:7890"
 `
-	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600)) //nolint:gosec // test file in temp dir
+	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600))
 
 	cfg, err := config.LoadGlobal(path)
 	require.NoError(t, err)
@@ -70,6 +70,31 @@ func TestResolveServer_RepoOverride(t *testing.T) {
 	}
 	url := cfg.ResolveServer("myproject", "https://team-server:7890")
 	assert.Equal(t, "https://team-server:7890", url)
+}
+
+func TestLoadGlobal_MalformedYAML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server: [\ninvalid yaml"), 0o600))
+
+	_, err := config.LoadGlobal(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "parse config")
+}
+
+func TestLoadGlobal_ReadOnlyParentDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root bypasses permission checks")
+	}
+	parent := t.TempDir()
+	// Make parent read-only so creating config.yaml inside it fails.
+	require.NoError(t, os.Chmod(parent, 0o555)) //nolint:gosec // intentional for test
+	t.Cleanup(func() { _ = os.Chmod(parent, 0o750) }) //nolint:gosec // restore perms for cleanup
+
+	path := filepath.Join(parent, "subdir", "config.yaml")
+	_, err := config.LoadGlobal(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "write default config")
 }
 
 func TestResolveServer_RouteMatch(t *testing.T) {

@@ -4,6 +4,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +13,10 @@ import (
 
 	"gopkg.in/yaml.v3"
 )
+
+// ErrProjectNotFound is returned when no .specgraph.yaml is found walking up
+// the directory tree.
+var ErrProjectNotFound = errors.New("project config not found")
 
 // ProjectConfig is the per-repo .specgraph.yaml.
 type ProjectConfig struct {
@@ -26,6 +31,11 @@ const projectFileName = ".specgraph.yaml"
 func LoadProject(dir string) (*ProjectConfig, error) {
 	root, findErr := FindProjectRoot(dir)
 	if findErr != nil {
+		// Only fall back to derived slug if the error indicates no config file
+		// was found. Other errors (e.g., permission denied) should propagate.
+		if !errors.Is(findErr, ErrProjectNotFound) {
+			return nil, fmt.Errorf("find project root: %w", findErr)
+		}
 		slug := deriveSlug(dir)
 		return &ProjectConfig{Slug: slug}, nil
 	}
@@ -58,7 +68,7 @@ func FindProjectRoot(dir string) (string, error) {
 		}
 		parent := filepath.Dir(abs)
 		if parent == abs {
-			return "", fmt.Errorf("no %s found", projectFileName)
+			return "", fmt.Errorf("%w: no %s found", ErrProjectNotFound, projectFileName)
 		}
 		abs = parent
 	}
@@ -80,7 +90,8 @@ func WriteProject(dir string, pc *ProjectConfig) error {
 func NormalizeSlug(raw string) string {
 	s := raw
 	s = strings.TrimSuffix(s, ".git")
-	if idx := strings.LastIndex(s, ":"); idx != -1 && strings.Contains(s, "@") {
+	if idx := strings.LastIndex(s, ":"); idx != -1 && strings.Contains(s, "@") && !strings.Contains(s, "://") {
+		// SSH-style remote (git@host:owner/repo) — strip everything before the colon.
 		s = s[idx+1:]
 	} else if strings.Contains(s, "://") {
 		parts := strings.SplitN(s, "://", 2)
@@ -96,13 +107,17 @@ func NormalizeSlug(raw string) string {
 }
 
 func deriveSlug(dir string) string {
-	cmd := exec.Command("git", "-C", dir, "remote", "get-url", "origin")
-	out, err := cmd.Output()
-	if err == nil {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		abs = dir
+	}
+	cmd := exec.Command("git", "-C", abs, "remote", "get-url", "origin")
+	out, gitErr := cmd.Output()
+	if gitErr == nil {
 		remote := strings.TrimSpace(string(out))
 		if remote != "" {
 			return NormalizeSlug(remote)
 		}
 	}
-	return strings.ToLower(filepath.Base(dir))
+	return strings.ToLower(filepath.Base(abs))
 }

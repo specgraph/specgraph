@@ -67,7 +67,10 @@ func runUp(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("resolve binary path: %w", err)
 		}
-		destDir := serviceDestDir()
+		destDir, err := serviceDestDir()
+		if err != nil {
+			return fmt.Errorf("service dest dir: %w", err)
+		}
 		svcCfg := service.Config{
 			BinaryPath: binaryPath,
 			ConfigPath: xdg.ConfigFile(),
@@ -85,10 +88,12 @@ func runUp(_ *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	// Health-check loop: up to 10 attempts, 1s apart.
+	// Health-check loop: up to 10 attempts, 1s apart, 2s timeout per attempt.
 	client := specgraphv1connect.NewServerServiceClient(http.DefaultClient, serverURL)
 	for range 10 {
-		resp, err := client.Health(context.Background(), connect.NewRequest(&specv1.HealthRequest{}))
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		resp, err := client.Health(ctx, connect.NewRequest(&specv1.HealthRequest{}))
+		cancel()
 		if err == nil && resp.Msg.Status != "" {
 			fmt.Printf("SpecGraph server running at %s\n", serverURL)
 			return nil
@@ -109,16 +114,16 @@ func isServerHealthy(serverURL string) bool {
 }
 
 // serviceDestDir returns the OS-appropriate directory for the service definition file.
-func serviceDestDir() string {
+func serviceDestDir() (string, error) {
 	switch runtime.GOOS {
 	case "darwin":
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return xdg.DataHome()
+			return "", fmt.Errorf("resolve home directory: %w", err)
 		}
-		return filepath.Join(home, "Library", "LaunchAgents")
+		return filepath.Join(home, "Library", "LaunchAgents"), nil
 	default: // linux
-		return filepath.Join(xdg.ConfigHome(), "..", "systemd", "user")
+		return filepath.Join(filepath.Dir(xdg.ConfigHome()), "systemd", "user"), nil
 	}
 }
 

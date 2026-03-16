@@ -95,13 +95,51 @@ func TestGenerateDistinctOutputPerCall(t *testing.T) {
 		t.Fatalf("Generate() cfg2 error = %v", err)
 	}
 
-	data1, _ := os.ReadFile(path1)
-	data2, _ := os.ReadFile(path2)
+	data1, err := os.ReadFile(path1)
+	if err != nil {
+		t.Fatalf("ReadFile() path1 error = %v", err)
+	}
+	data2, err := os.ReadFile(path2)
+	if err != nil {
+		t.Fatalf("ReadFile() path2 error = %v", err)
+	}
 
 	if strings.Contains(string(data1), cfg2.BinaryPath) {
 		t.Error("file1 unexpectedly contains cfg2 BinaryPath")
 	}
 	if strings.Contains(string(data2), cfg1.BinaryPath) {
 		t.Error("file2 unexpectedly contains cfg1 BinaryPath")
+	}
+}
+
+func TestGenerate_EmptyBinaryPath(t *testing.T) {
+	cfg := service.Config{
+		BinaryPath: "",
+		ConfigPath: "/home/user/.config/specgraph/config.yaml",
+		LogPath:    "/home/user/.local/state/specgraph/server.log",
+	}
+
+	dir := t.TempDir()
+	_, err := service.Generate(dir, cfg)
+	// Both platforms validate BinaryPath is absolute.
+	if err == nil {
+		t.Fatal("Generate() with empty BinaryPath should return an error")
+	}
+}
+
+func TestGenerate_NonExistentDestDir(t *testing.T) {
+	cfg := service.Config{
+		BinaryPath: "/usr/local/bin/specgraph",
+		ConfigPath: "/home/user/.config/specgraph/config.yaml",
+		LogPath:    "/home/user/.local/state/specgraph/server.log",
+	}
+
+	nonExistent := "/tmp/specgraph-test-nonexistent-dir-xyz/subdir"
+	// Ensure the directory doesn't exist.
+	_ = os.RemoveAll(nonExistent)
+
+	_, err := service.Generate(nonExistent, cfg)
+	if err == nil {
+		t.Fatal("Generate() with non-existent destDir: expected error, got nil")
 	}
 }

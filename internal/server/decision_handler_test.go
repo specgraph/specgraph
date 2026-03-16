@@ -21,6 +21,7 @@ import (
 )
 
 type mockDecisionBackend struct {
+	stubBackend
 	mu        sync.Mutex
 	decisions map[string]*storage.Decision
 	seq       int
@@ -104,9 +105,10 @@ func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, tit
 func setupDecisionServer(t *testing.T) specgraphv1connect.DecisionServiceClient {
 	t.Helper()
 	mb := newMockDecisionBackend()
+	scoper := &testScoper{backend: mb}
 	mux := http.NewServeMux()
-	server.RegisterDecisionService(mux, mb)
-	srv := httptest.NewServer(mux)
+	server.RegisterDecisionService(mux, scoper)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewDecisionServiceClient(http.DefaultClient, srv.URL)
 }

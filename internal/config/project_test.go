@@ -63,6 +63,11 @@ func TestNormalizeSlug(t *testing.T) {
 		{"https://github.com/owner/repo.git", "owner-repo"},
 		{"simple", "simple"},
 		{"UPPER-Case", "upper-case"},
+		// Edge cases
+		{"", ""},
+		{"https://github.com", "github.com"},
+		{"ssh://git@host:22/owner/repo.git", "owner-repo"},
+		{"my-slug", "my-slug"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {

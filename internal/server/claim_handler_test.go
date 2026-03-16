@@ -22,6 +22,7 @@ import (
 )
 
 type mockClaimBackend struct {
+	stubBackend
 	mu     sync.Mutex
 	claims map[string]*storage.Claim
 }
@@ -76,9 +77,10 @@ func (m *mockClaimBackend) Heartbeat(_ context.Context, slug, _ string, extendBy
 func setupClaimServer(t *testing.T) specgraphv1connect.ClaimServiceClient {
 	t.Helper()
 	mb := newMockClaimBackend()
+	scoper := &testScoper{backend: mb}
 	mux := http.NewServeMux()
-	server.RegisterClaimService(mux, mb)
-	srv := httptest.NewServer(mux)
+	server.RegisterClaimService(mux, scoper)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewClaimServiceClient(http.DefaultClient, srv.URL)
 }

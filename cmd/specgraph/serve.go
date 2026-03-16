@@ -43,7 +43,7 @@ func runServe(_ *cobra.Command, _ []string) error {
 	defer cancel()
 
 	if cfg.Server.Docker {
-		composeFile, err := docker.EnsureComposeFile(".", cfg.Server.Backend)
+		composeFile, err := docker.EnsureComposeFile(xdg.DataHome(), cfg.Server.Backend)
 		if err != nil {
 			return err
 		}
@@ -81,17 +81,15 @@ func runServe(_ *cobra.Command, _ []string) error {
 		server.RegisterGraphService(mux, store)
 		server.RegisterClaimService(mux, store)
 		server.RegisterConstitutionService(mux, store)
-		server.RegisterAuthoringService(mux, store, store)
+		server.RegisterAuthoringService(mux, store)
 		server.RegisterExecutionService(mux, store)
 		driftEngine := drift.NewEngine(store, nil)
 		lintEngine := linter.NewEngine(store, nil)
-		server.RegisterLifecycleService(mux, store, store, driftEngine, lintEngine, nil)
+		server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil)
 
-		projectRoot, pwdErr := os.Getwd()
-		if pwdErr != nil {
-			return fmt.Errorf("determine project root: %w", pwdErr)
-		}
-		syncHandler := server.RegisterSyncService(mux, store, store, store, projectRoot)
+		// TODO(slice-7): Project root for inject should come from request context,
+		// not daemon CWD. Pass empty string; inject handler needs rework.
+		syncHandler := server.RegisterSyncService(mux, store, "")
 		runner := syncpkg.NewExecRunner()
 		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
 		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
@@ -113,6 +111,9 @@ func runServe(_ *cobra.Command, _ []string) error {
 			}
 		}()
 
+		// TODO(slice-7): Sweeper only covers the _server project. A cross-project
+		// sweeper needs to iterate all Project nodes and release expired claims
+		// in each. Track this as a follow-up issue.
 		server.StartSweeper(sweeperCtx, store, 60*time.Second)
 		fmt.Printf("SpecGraph server running at http://%s\n", addr)
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {

@@ -27,13 +27,16 @@ var (
 	_ storage.LifecycleBackend = (*Store)(nil)
 	_ storage.ProjectBackend   = (*Store)(nil)
 	_ storage.SyncBackend      = (*Store)(nil)
+	_ storage.Scoper           = (*Store)(nil)
+	_ storage.ScopedBackend    = (*Store)(nil)
 )
 
 // Store implements storage.Backend using Memgraph (Bolt protocol).
 type Store struct {
-	driver  neo4j.DriverWithContext
-	nowFunc func() time.Time // injectable clock; defaults to time.Now
-	project string           // project slug for graph namespacing
+	driver     neo4j.DriverWithContext
+	nowFunc    func() time.Time // injectable clock; defaults to time.Now
+	project    string           // project slug for graph namespacing
+	ownsDriver bool             // true for stores created by New(); false for Scoped() stores
 }
 
 // Option configures a Store.
@@ -58,17 +61,57 @@ func New(ctx context.Context, boltURI string, opts ...Option) (*Store, error) {
 		return nil, fmt.Errorf("memgraph: create driver: %w", err)
 	}
 	if connErr := driver.VerifyConnectivity(ctx); connErr != nil {
+		driver.Close(ctx) //nolint:errcheck // best-effort cleanup on init failure
 		return nil, fmt.Errorf("memgraph: verify connectivity: %w", connErr)
 	}
-	s := &Store{driver: driver, nowFunc: time.Now}
+	s := &Store{driver: driver, nowFunc: time.Now, ownsDriver: true}
 	for _, o := range opts {
 		o(s)
 	}
 	if s.project == "" {
+		driver.Close(ctx) //nolint:errcheck // best-effort cleanup on init failure
 		return nil, fmt.Errorf("memgraph: project slug required: use memgraph.WithProject(slug)")
 	}
+	if err := s.ensureIndexes(ctx); err != nil {
+		driver.Close(ctx) //nolint:errcheck // best-effort cleanup on init failure
+		return nil, fmt.Errorf("memgraph: ensure indexes: %w", err)
+	}
+
 	// Ensure the Project node exists (MERGE is idempotent).
-	_, err = neo4j.ExecuteQuery(ctx, driver,
+	if err := s.ensureProjectNode(ctx); err != nil {
+		driver.Close(ctx) //nolint:errcheck // best-effort cleanup on init failure
+		return nil, err
+	}
+	return s, nil
+}
+
+// ensureIndexes creates graph indexes idempotently. Called once from New();
+// Scoped() shares the driver and does not re-create indexes.
+func (s *Store) ensureIndexes(ctx context.Context) error {
+	indexes := []string{
+		"CREATE INDEX ON :Project(slug)",
+		"CREATE INDEX ON :Spec(slug)",
+		"CREATE INDEX ON :Decision(slug)",
+	}
+	// Memgraph requires index DDL to run in individual auto-commit transactions,
+	// not inside multi-statement transactions. Use a fresh session per statement.
+	for _, stmt := range indexes {
+		session := s.driver.NewSession(ctx, neo4j.SessionConfig{})
+		_, err := session.Run(ctx, stmt, nil)
+		closeErr := session.Close(ctx)
+		if err != nil && !strings.Contains(err.Error(), "already exists") {
+			return fmt.Errorf("create index %q: %w", stmt, err)
+		}
+		if closeErr != nil {
+			return fmt.Errorf("close session after index %q: %w", stmt, closeErr)
+		}
+	}
+	return nil
+}
+
+// ensureProjectNode creates the Project node via MERGE (idempotent).
+func (s *Store) ensureProjectNode(ctx context.Context) error {
+	_, err := neo4j.ExecuteQuery(ctx, s.driver,
 		`MERGE (p:Project {slug: $slug})
 		 ON CREATE SET p.created_at = $now, p.updated_at = $now,
 		               p.sync_adapters = [], p.github_repo = ""`,
@@ -76,27 +119,21 @@ func New(ctx context.Context, boltURI string, opts ...Option) (*Store, error) {
 		neo4j.EagerResultTransformer,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("memgraph: ensure project node: %w", err)
+		return fmt.Errorf("memgraph: ensure project node: %w", err)
 	}
-	return s, nil
+	return nil
 }
 
 // Scoped returns a new Store that shares this Store's driver but targets a different project.
-// The Project node is ensured via MERGE on first use.
-func (s *Store) Scoped(ctx context.Context, project string) (*Store, error) {
+// The Project node is ensured via MERGE on first use. Indexes are NOT re-created here —
+// they were already created by the parent Store's New() call.
+func (s *Store) Scoped(ctx context.Context, project string) (storage.ScopedBackend, error) {
 	if project == "" {
 		return nil, fmt.Errorf("memgraph: project slug required")
 	}
 	scoped := &Store{driver: s.driver, nowFunc: s.nowFunc, project: project}
-	_, err := neo4j.ExecuteQuery(ctx, s.driver,
-		`MERGE (p:Project {slug: $slug})
-		 ON CREATE SET p.created_at = $now, p.updated_at = $now,
-		               p.sync_adapters = [], p.github_repo = ""`,
-		map[string]any{"slug": project, "now": scoped.now()},
-		neo4j.EagerResultTransformer,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: ensure project node: %w", err)
+	if err := scoped.ensureProjectNode(ctx); err != nil {
+		return nil, err
 	}
 	return scoped, nil
 }
@@ -301,17 +338,23 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 }
 
 // ClearAll removes all nodes and relationships from the graph.
-// Intended for test cleanup only.
+// Intended for test cleanup only. Re-creates the Project node after clearing
+// so the store remains usable for subsequent operations.
 func (s *Store) ClearAll(ctx context.Context) error {
 	_, err := s.executeQuery(ctx, "MATCH (n) DETACH DELETE n", nil)
 	if err != nil {
 		return fmt.Errorf("memgraph: clear all: %w", err)
 	}
-	return nil
+	return s.ensureProjectNode(ctx)
 }
 
-// Close releases the driver resources.
+// Close releases the driver resources. Scoped stores (created via Scoped())
+// share the parent's driver and must not close it — only the owning store
+// (created via New()) closes the underlying driver.
 func (s *Store) Close(ctx context.Context) error {
+	if !s.ownsDriver {
+		return nil
+	}
 	if err := s.driver.Close(ctx); err != nil {
 		return fmt.Errorf("memgraph: close: %w", err)
 	}

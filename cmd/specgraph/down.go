@@ -34,14 +34,24 @@ func runDown(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
+	var stopErr error
+
 	if cfg.Server.Mode == "service" {
-		if err := service.Stop(); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: stop service: %v\n", err)
-		}
 		if downRM {
-			defPath := filepath.Join(serviceDestDir(), serviceDefinitionFilename())
+			// Uninstall handles stopping the service internally; no need for explicit Stop().
+			destDir, err := serviceDestDir()
+			if err != nil {
+				return fmt.Errorf("service dest dir: %w", err)
+			}
+			defPath := filepath.Join(destDir, serviceDefinitionFilename())
 			if err := service.Uninstall(defPath); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: uninstall service: %v\n", err)
+				stopErr = err
+			}
+		} else {
+			if err := service.Stop(); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: stop service: %v\n", err)
+				stopErr = err
 			}
 		}
 	}
@@ -55,6 +65,9 @@ func runDown(_ *cobra.Command, _ []string) error {
 		}
 	}
 
+	if stopErr != nil {
+		return fmt.Errorf("stop service: %w", stopErr)
+	}
 	fmt.Println("SpecGraph stopped")
 	return nil
 }

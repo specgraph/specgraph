@@ -56,7 +56,10 @@ func setupMemgraph(t *testing.T) (string, func()) {
 
 // newStore creates a Store with retry logic to handle the brief window between
 // the container wait strategy completing and the bolt protocol being fully ready.
+// Prepends WithProject("test") so callers don't need to specify a project.
+// Callers can override with their own WithProject (last option wins).
 func newStore(ctx context.Context, boltURI string, opts ...memgraph.Option) (*memgraph.Store, error) {
+	opts = append([]memgraph.Option{memgraph.WithProject("test")}, opts...)
 	var (
 		store *memgraph.Store
 		err   error

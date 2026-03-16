@@ -22,6 +22,13 @@ func constitutionClient() (specgraphv1connect.ConstitutionServiceClient, error) 
 	return newClient(specgraphv1connect.NewConstitutionServiceClient)
 }
 
+// constitutionClientWithProject creates a ConstitutionServiceClient that uses
+// the given project slug for the X-Specgraph-Project header, bypassing the
+// auto-derived slug from .specgraph.yaml.
+func constitutionClientWithProject(project string) (specgraphv1connect.ConstitutionServiceClient, error) {
+	return newClientWithProject(specgraphv1connect.NewConstitutionServiceClient, project)
+}
+
 var constitutionCmd = &cobra.Command{
 	Use:   "constitution",
 	Short: "Manage the project constitution",
@@ -192,25 +199,19 @@ func runConstitutionImport(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	tmpFile, err := os.CreateTemp("", "specgraph-constitution-*.yaml")
-	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
-	}
-	defer os.Remove(tmpFile.Name()) //nolint:errcheck // best-effort cleanup
-	if _, writeErr := tmpFile.Write(data); writeErr != nil {
-		tmpFile.Close() //nolint:errcheck // closing after write error
-		return fmt.Errorf("write temp file: %w", writeErr)
-	}
-	tmpFile.Close() //nolint:errcheck // contents flushed
-
-	cc, err := config.LoadConstitutionYAML(tmpFile.Name())
+	cc, err := config.ParseConstitutionYAML(data)
 	if err != nil {
 		return fmt.Errorf("parse constitution: %w", err)
 	}
 
 	pb := constitutionConfigToProto(cc)
 
-	client, err := constitutionClient()
+	var client specgraphv1connect.ConstitutionServiceClient
+	if importProjectSlug != "" {
+		client, err = constitutionClientWithProject(importProjectSlug)
+	} else {
+		client, err = constitutionClient()
+	}
 	if err != nil {
 		return err
 	}

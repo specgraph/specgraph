@@ -21,8 +21,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fakeLifecycleBackend is a minimal fake implementation of storage.LifecycleBackend for testing.
+// fakeLifecycleBackend is a minimal fake implementation of storage.LifecycleBackend + AckStateReader for testing.
 type fakeLifecycleBackend struct {
+	stubBackend
 	getSpec          func(ctx context.Context, slug string) (*storage.Spec, error)
 	batchGetSpecs    func(ctx context.Context, slugs []string) (map[string]*storage.Spec, error)
 	amendSpec        func(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error)
@@ -119,9 +120,10 @@ func defaultTestDeps() *lifecycleTestDeps {
 
 func newLifecycleClient(t *testing.T, deps *lifecycleTestDeps) specgraphv1connect.LifecycleServiceClient {
 	t.Helper()
+	scoper := &testScoper{backend: deps.store}
 	mux := http.NewServeMux()
-	server.RegisterLifecycleService(mux, deps.store, deps.store, deps.drift, deps.linter, nil)
-	srv := httptest.NewServer(mux)
+	server.RegisterLifecycleService(mux, scoper, deps.drift, deps.linter, nil)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)
 }
@@ -628,6 +630,9 @@ func TestLifecycleHandler_Supersede_NewSpecTerminal(t *testing.T) {
 
 func TestLifecycleHandler_Lint(t *testing.T) {
 	deps := defaultTestDeps()
+	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
+		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpecify}, nil
+	}
 	deps.linter.lint = func(_ context.Context, slug string) ([]storage.LintResult, error) {
 		return []storage.LintResult{
 			{
@@ -649,6 +654,9 @@ func TestLifecycleHandler_Lint(t *testing.T) {
 
 func TestLifecycleHandler_Lint_WithViolations(t *testing.T) {
 	deps := defaultTestDeps()
+	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
+		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpecify}, nil
+	}
 	deps.linter.lint = func(_ context.Context, _ string) ([]storage.LintResult, error) {
 		return []storage.LintResult{
 			{
@@ -792,8 +800,8 @@ func TestLifecycleHandler_CheckDrift_Error(t *testing.T) {
 func TestLifecycleHandler_CheckDrift_NilChecker(t *testing.T) {
 	deps := defaultTestDeps()
 	mux := http.NewServeMux()
-	server.RegisterLifecycleService(mux, deps.store, deps.store, nil, deps.linter, nil)
-	srv := httptest.NewServer(mux)
+	server.RegisterLifecycleService(mux, &testScoper{backend: deps.store}, nil, deps.linter, nil)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	client := specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)
 
@@ -830,8 +838,8 @@ func TestLifecycleHandler_AcknowledgeDrift_NilChecker(t *testing.T) {
 		}, nil
 	}
 	mux := http.NewServeMux()
-	server.RegisterLifecycleService(mux, deps.store, deps.store, nil, deps.linter, nil)
-	srv := httptest.NewServer(mux)
+	server.RegisterLifecycleService(mux, &testScoper{backend: deps.store}, nil, deps.linter, nil)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	client := specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)
 
@@ -870,9 +878,12 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckError(t *testing.T) {
 
 func TestLifecycleHandler_Lint_NilLinter(t *testing.T) {
 	deps := defaultTestDeps()
+	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
+		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpecify}, nil
+	}
 	mux := http.NewServeMux()
-	server.RegisterLifecycleService(mux, deps.store, deps.store, deps.drift, nil, nil)
-	srv := httptest.NewServer(mux)
+	server.RegisterLifecycleService(mux, &testScoper{backend: deps.store}, deps.drift, nil, nil)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	client := specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)
 
@@ -887,6 +898,9 @@ func TestLifecycleHandler_Lint_NilLinter(t *testing.T) {
 
 func TestLifecycleHandler_Lint_Error(t *testing.T) {
 	deps := defaultTestDeps()
+	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
+		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpecify}, nil
+	}
 	deps.linter.lint = func(_ context.Context, _ string) ([]storage.LintResult, error) {
 		return nil, errors.New("db unavailable")
 	}

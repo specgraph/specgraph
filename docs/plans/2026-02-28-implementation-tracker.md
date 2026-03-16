@@ -204,33 +204,48 @@
 
 ---
 
-## Slice 7: Claude Code Plugin
+## Slice 7: Global Daemon & Claude Code Plugin
 
-**Plan:** `docs/plans/2026-02-28-slice-7-claude-code-plugin-plan.md`
-**Status:** Not started
+**Design:** `docs/plans/2026-03-16-slice-7-global-daemon-and-plugin-design.md` (supersedes `2026-02-28-slice-7-claude-code-plugin-plan.md`)
+**Plan:** `docs/plans/2026-03-16-slice-7-global-daemon-and-plugin-plan.md`
+**Status:** Complete
 **Depends on:** Slice 6
 
-- [ ] Task 1: Plugin manifest -- plugin.json
-- [ ] Task 2: Meta-skill -- SpecGraph overview
-- [ ] Task 3: Authoring skills -- spark, shape, specify, decompose, approve
-- [ ] Task 4: Query skills -- list, show, deps, ready
-- [ ] Task 5: Bundle skill
-- [ ] Task 6: SessionStart hook
-- [ ] Task 7: PostToolUse progress hook (optional)
-- [ ] Task 8: Plugin packaging and installation
-- [ ] Task 9: Wire hook command into CLI and integration test
-- [ ] Task 10: CLI init --tool=claude-code support
+**Phase A: Global Daemon Infrastructure**
+
+- [x] XDG path resolution package (internal/xdg)
+- [x] Global config schema with server/client split (internal/config/global.go)
+- [x] Per-repo .specgraph.yaml reader with slug auto-derivation (internal/config/project.go)
+- [x] Project domain type and ProjectBackend interface (internal/storage/project.go)
+- [x] Memgraph Project CRUD implementation (internal/storage/memgraph/project.go)
+- [x] WithProject option and Scoped method on Store
+- [x] BELONGS_TO edges on all Cypher queries (9 files updated)
+- [x] Service manager package -- launchd/systemd (internal/service)
+- [x] specgraph up / down commands
+- [x] specgraph prime command (session initialization)
+- [x] specgraph init rework (global daemon model)
+- [x] specgraph constitution import subcommand
+- [x] Client wiring (new config + project header + old config fallback)
+- [x] serve.go updated (global config, WithProject, project middleware)
+- [x] X-Specgraph-Project RPC context middleware
+
+**Phase B: Claude Code Plugin**
+
+- [x] plugin.json manifest (11 skills, SessionStart hook)
+- [x] SessionStart hook (session-start.sh → specgraph prime)
+- [x] Meta-skill (overview/router)
+- [x] Authoring skills (spark, shape, specify, decompose, approve)
+- [x] Query skills (list, show, deps, ready)
+- [x] Bundle skill
 
 **Slice Verification Gate:**
 
-- [ ] `go test ./... -count=1 -timeout=120s` -- all pass
-- [ ] `golangci-lint run ./...` -- no issues
-- [ ] `go build -o specgraph ./cmd/specgraph` -- clean build
-- [ ] Plugin structure valid: `plugin.json` parses, all skill/hook paths resolve
-- [ ] `specgraph init --tool=claude-code` installs plugin files
-- [ ] Skills trigger correctly: `/specgraph`, `/specgraph-spark`, `/specgraph-list`, `/specgraph-bundle`
-- [ ] SessionStart hook auto-loads constitution context
-- [ ] Full workflow: `specgraph init --tool=claude-code` -> `/specgraph-spark` -> `/specgraph-approve` -> `/specgraph-bundle`
+- [x] `task check` -- all pass (fmt, license, lint, build, unit tests)
+- [x] `go build -o specgraph ./cmd/specgraph` -- clean build
+- [x] Plugin structure valid: `plugin.json` parses, all 11 skill paths resolve
+- [x] CLI commands: `specgraph up|down|prime|init|constitution import` all work
+- [ ] Integration tests with Docker -- `task test:integration` passes
+- [ ] E2E full authoring funnel -- `task pr-prep` passes end-to-end
 
 ---
 

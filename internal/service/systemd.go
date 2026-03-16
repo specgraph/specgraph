@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"text/template"
 )
 
@@ -33,19 +34,30 @@ Environment=SPECGRAPH_CONFIG={{.ConfigPath}}
 WantedBy=default.target
 `))
 
+// shellMetachars are characters that could cause shell injection in systemd ExecStart values.
+const shellMetachars = "|&;<>`$\"'\\!{}()*?#~"
+
 func generate(dir string, cfg Config) (string, error) {
+	if !filepath.IsAbs(cfg.BinaryPath) {
+		return "", fmt.Errorf("binary path must be absolute: %s", cfg.BinaryPath)
+	}
+	if strings.ContainsAny(cfg.BinaryPath, shellMetachars) {
+		return "", fmt.Errorf("binary path contains shell metacharacters: %s", cfg.BinaryPath)
+	}
 	path := filepath.Join(dir, systemdFilename)
 	f, err := os.Create(path)
 	if err != nil {
 		return "", fmt.Errorf("create unit file: %w", err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // best-effort close on write path
 	if err := unitTmpl.Execute(f, cfg); err != nil {
 		return "", fmt.Errorf("render unit template: %w", err)
 	}
 	return path, nil
 }
 
+// install enables the systemd user service. defPath is unused because
+// systemctl operates by unit name, not file path.
 func install(_ string) error {
 	cmd := exec.Command("systemctl", "--user", "enable", "--now", systemdUnit)
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -59,7 +71,14 @@ func uninstall(defPath string) error {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("systemctl disable: %w: %s", err, out)
 	}
-	return os.Remove(defPath)
+	if err := os.Remove(defPath); err != nil {
+		return fmt.Errorf("remove unit file: %w", err)
+	}
+	reload := exec.Command("systemctl", "--user", "daemon-reload")
+	if out, err := reload.CombinedOutput(); err != nil {
+		return fmt.Errorf("systemctl daemon-reload: %w: %s", err, out)
+	}
+	return nil
 }
 
 func stop() error {

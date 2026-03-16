@@ -22,13 +22,17 @@ const (
 
 // ClaimHandler implements the ConnectRPC ClaimService.
 type ClaimHandler struct {
-	store storage.ClaimBackend
+	scoper storage.Scoper
 }
 
 var _ specgraphv1connect.ClaimServiceHandler = (*ClaimHandler)(nil)
 
 // ClaimSpec handles the ClaimSpec RPC.
 func (h *ClaimHandler) ClaimSpec(ctx context.Context, req *connect.Request[specv1.ClaimSpecRequest]) (*connect.Response[specv1.Claim], error) {
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
 	msg := req.Msg
 
 	leaseDuration := defaultClaimLease
@@ -36,7 +40,7 @@ func (h *ClaimHandler) ClaimSpec(ctx context.Context, req *connect.Request[specv
 		leaseDuration = msg.LeaseDuration.AsDuration()
 	}
 
-	claim, err := h.store.ClaimSpec(ctx, msg.SpecSlug, msg.Agent, leaseDuration)
+	claim, err := store.ClaimSpec(ctx, msg.SpecSlug, msg.Agent, leaseDuration)
 	if err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
@@ -51,8 +55,12 @@ func (h *ClaimHandler) ClaimSpec(ctx context.Context, req *connect.Request[specv
 
 // UnclaimSpec handles the UnclaimSpec RPC.
 func (h *ClaimHandler) UnclaimSpec(ctx context.Context, req *connect.Request[specv1.UnclaimSpecRequest]) (*connect.Response[specv1.UnclaimSpecResponse], error) {
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
 	msg := req.Msg
-	err := h.store.UnclaimSpec(ctx, msg.SpecSlug, msg.Agent)
+	err = store.UnclaimSpec(ctx, msg.SpecSlug, msg.Agent)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotClaimOwner) {
 			return nil, connect.NewError(connect.CodePermissionDenied, err)
@@ -67,6 +75,10 @@ func (h *ClaimHandler) UnclaimSpec(ctx context.Context, req *connect.Request[spe
 
 // Heartbeat handles the Heartbeat RPC.
 func (h *ClaimHandler) Heartbeat(ctx context.Context, req *connect.Request[specv1.HeartbeatRequest]) (*connect.Response[specv1.Claim], error) {
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
 	msg := req.Msg
 
 	extendBy := defaultHeartbeatBy
@@ -74,7 +86,7 @@ func (h *ClaimHandler) Heartbeat(ctx context.Context, req *connect.Request[specv
 		extendBy = msg.ExtendBy.AsDuration()
 	}
 
-	claim, err := h.store.Heartbeat(ctx, msg.SpecSlug, msg.Agent, extendBy)
+	claim, err := store.Heartbeat(ctx, msg.SpecSlug, msg.Agent, extendBy)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
@@ -82,8 +94,8 @@ func (h *ClaimHandler) Heartbeat(ctx context.Context, req *connect.Request[specv
 }
 
 // RegisterClaimService registers the ClaimService on the given mux.
-func RegisterClaimService(mux *http.ServeMux, store storage.ClaimBackend) {
-	handler := &ClaimHandler{store: store}
+func RegisterClaimService(mux *http.ServeMux, scoper storage.Scoper) {
+	handler := &ClaimHandler{scoper: scoper}
 	path, h := specgraphv1connect.NewClaimServiceHandler(handler)
 	mux.Handle(path, h)
 }

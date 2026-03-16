@@ -30,7 +30,7 @@ func runPrime(cmd *cobra.Command, args []string) error {
 	// 1. Ensure server is running (idempotent).
 	if err := runUp(cmd, args); err != nil {
 		// Non-fatal: server may already be running via manual mode.
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: up: %v\n", err)
+		fmt.Fprintf(cmd.ErrOrStderr(), "warning: up: %v\n", err) //nolint:errcheck // best-effort warning output
 	}
 
 	// 2. Load project config from CWD.
@@ -49,8 +49,8 @@ func runPrime(cmd *cobra.Command, args []string) error {
 	serverURL := cfg.ResolveServer(project.Slug, project.Server)
 
 	// 5. Print orientation header.
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Project: %s\n", project.Slug)
-	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Server:  %s\n", serverURL)
+	fmt.Fprintf(cmd.OutOrStdout(), "Project: %s\n", project.Slug)   //nolint:errcheck // stdout write
+	fmt.Fprintf(cmd.OutOrStdout(), "Server:  %s\n", serverURL)     //nolint:errcheck // stdout write
 
 	// 6. List non-terminal specs.
 	client, err := specClient()
@@ -64,17 +64,20 @@ func runPrime(cmd *cobra.Command, args []string) error {
 
 	var active []*specv1.Spec
 	for _, s := range resp.Msg.Specs {
-		if s.Stage != "done" {
+		switch s.Stage {
+		case "done", "abandoned", "superseded":
+			// skip terminal stages
+		default:
 			active = append(active, s)
 		}
 	}
 
 	if len(active) == 0 {
-		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "\nNo active specs.")
+		fmt.Fprintln(cmd.OutOrStdout(), "\nNo active specs.") //nolint:errcheck // stdout write
 		return nil
 	}
 
-	_, _ = fmt.Fprintln(cmd.OutOrStdout())
+	fmt.Fprintln(cmd.OutOrStdout()) //nolint:errcheck // stdout write
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
 	tw := &tableWriter{w: w}
 	tw.println("SLUG\tSTAGE\tPRIORITY")

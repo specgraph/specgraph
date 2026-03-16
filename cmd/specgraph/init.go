@@ -27,12 +27,17 @@ func init() {
 
 func runInit(_ *cobra.Command, args []string) error {
 	if err := runUp(nil, nil); err != nil {
-		return fmt.Errorf("ensure server: %w", err)
+		_, _ = fmt.Fprintf(os.Stderr, "warning: server not started: %v\n", err)
 	}
 
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get working directory: %w", err)
+	}
+
+	// Reject re-init if .specgraph.yaml already exists.
+	if _, findErr := config.FindProjectRoot(cwd); findErr == nil {
+		return fmt.Errorf("project already initialized (found .specgraph.yaml)")
 	}
 
 	var slug string

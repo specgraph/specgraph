@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 
+// Package xdg provides XDG Base Directory paths for specgraph configuration, data, and state.
 package xdg
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -13,7 +15,7 @@ const appName = "specgraph"
 func homeDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "."
+		return ""
 	}
 	return home
 }
@@ -48,10 +50,14 @@ func ConfigFile() string {
 }
 
 // EnsureDirs creates all XDG directories if they don't exist.
+// Returns an error if any path is relative (e.g., $HOME is unset).
 func EnsureDirs() error {
 	for _, dir := range []string{ConfigHome(), DataHome(), StateHome()} {
+		if !filepath.IsAbs(dir) {
+			return fmt.Errorf("xdg: refusing to create relative directory %q (is $HOME set?)", dir)
+		}
 		if err := os.MkdirAll(dir, 0o750); err != nil {
-			return err
+			return fmt.Errorf("create directory %s: %w", dir, err)
 		}
 	}
 	return nil

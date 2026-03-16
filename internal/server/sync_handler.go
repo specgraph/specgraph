@@ -24,9 +24,7 @@ import (
 // SyncHandler implements the ConnectRPC SyncService.
 type SyncHandler struct {
 	mu                sync.RWMutex
-	syncStore         storage.SyncBackend
-	specStore         storage.SpecReader
-	constitutionStore storage.ConstitutionBackend
+	scoper            storage.Scoper
 	adapters          map[storage.SyncAdapterType]syncpkg.Adapter
 	allowedOutputRoot string // if set, Inject validates outputDir is within this root
 }
@@ -35,14 +33,11 @@ var _ specgraphv1connect.SyncServiceHandler = (*SyncHandler)(nil)
 
 // RegisterSyncService registers the SyncService handler on the mux and returns
 // the handler so callers can register adapters via RegisterAdapter.
-// constitutionStore can be nil if constitution injection is not needed.
 // allowedOutputRoot restricts Inject output_dir to paths within this root;
 // pass "" for unrestricted mode (not recommended for production).
-func RegisterSyncService(mux *http.ServeMux, syncStore storage.SyncBackend, specStore storage.SpecReader, constitutionStore storage.ConstitutionBackend, allowedOutputRoot string) *SyncHandler {
+func RegisterSyncService(mux *http.ServeMux, scoper storage.Scoper, allowedOutputRoot string) *SyncHandler {
 	handler := &SyncHandler{
-		syncStore:         syncStore,
-		specStore:         specStore,
-		constitutionStore: constitutionStore,
+		scoper:            scoper,
 		adapters:          map[storage.SyncAdapterType]syncpkg.Adapter{},
 		allowedOutputRoot: allowedOutputRoot,
 	}
@@ -68,27 +63,35 @@ func (h *SyncHandler) SetAllowedOutputRoot(root string) {
 
 // SyncBeads implements specgraphv1connect.SyncServiceHandler.
 func (h *SyncHandler) SyncBeads(ctx context.Context, req *connect.Request[specv1.SyncBeadsRequest]) (*connect.Response[specv1.SyncResponse], error) {
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
 	h.mu.RLock()
 	adapter, ok := h.adapters[storage.SyncAdapterBeads]
 	h.mu.RUnlock()
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("beads adapter not configured"))
 	}
-	return h.syncWithAdapter(ctx, adapter, req.Msg.Config)
+	return h.syncWithAdapter(ctx, store, adapter, req.Msg.Config)
 }
 
 // SyncGitHub implements specgraphv1connect.SyncServiceHandler.
 func (h *SyncHandler) SyncGitHub(ctx context.Context, req *connect.Request[specv1.SyncGitHubRequest]) (*connect.Response[specv1.SyncResponse], error) {
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
 	h.mu.RLock()
 	adapter, ok := h.adapters[storage.SyncAdapterGitHub]
 	h.mu.RUnlock()
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("github adapter not configured"))
 	}
-	return h.syncWithAdapter(ctx, adapter, req.Msg.Config)
+	return h.syncWithAdapter(ctx, store, adapter, req.Msg.Config)
 }
 
-func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapter, config *specv1.SyncConfig) (*connect.Response[specv1.SyncResponse], error) {
+func (h *SyncHandler) syncWithAdapter(ctx context.Context, store storage.ScopedBackend, adapter syncpkg.Adapter, config *specv1.SyncConfig) (*connect.Response[specv1.SyncResponse], error) {
 	if err := adapter.Available(ctx); err != nil {
 		slog.ErrorContext(ctx, "adapter unavailable", "adapter", adapter.Name(), "error", err)
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("sync adapter not available"))
@@ -102,7 +105,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 		dryRun = config.DryRun
 	}
 
-	specs, err := h.specStore.ListSpecs(ctx, stage, priority, 0)
+	specs, err := store.ListSpecs(ctx, stage, priority, 0)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to list specs", "error", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list specs"))
@@ -113,7 +116,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 		result := &specv1.SyncResult{SpecSlug: spec.Slug}
 
 		// Check if already synced
-		existing, getErr := h.syncStore.GetSyncMapping(ctx, spec.Slug, adapter.Name())
+		existing, getErr := store.GetSyncMapping(ctx, spec.Slug, adapter.Name())
 		if getErr == nil && existing != nil {
 			result.ExternalId = existing.ExternalID
 			result.State = specv1.SyncState_SYNC_STATE_SYNCED
@@ -149,7 +152,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 			continue
 		}
 
-		_, createErr := h.syncStore.CreateSyncMapping(ctx, spec.Slug, adapter.Name(), externalID)
+		_, createErr := store.CreateSyncMapping(ctx, spec.Slug, adapter.Name(), externalID)
 		if createErr != nil {
 			if errors.Is(createErr, storage.ErrSyncMappingExists) {
 				result.ExternalId = externalID
@@ -171,7 +174,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 				resp.Results = append(resp.Results, result)
 				continue
 			}
-			_, retryErr := h.syncStore.CreateSyncMapping(ctx, spec.Slug, adapter.Name(), externalID)
+			_, retryErr := store.CreateSyncMapping(ctx, spec.Slug, adapter.Name(), externalID)
 			if retryErr != nil {
 				if errors.Is(retryErr, storage.ErrSyncMappingExists) {
 					// A concurrent sync won the race — treat as skipped.
@@ -206,11 +209,15 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, adapter syncpkg.Adapt
 
 // GetSyncStatus implements specgraphv1connect.SyncServiceHandler.
 func (h *SyncHandler) GetSyncStatus(ctx context.Context, req *connect.Request[specv1.SyncStatusRequest]) (*connect.Response[specv1.SyncStatusResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	adapterFilter, err := syncAdapterFromProto(req.Msg.Adapter)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unsupported adapter"))
 	}
-	mappings, err := h.syncStore.ListSyncMappings(ctx, adapterFilter, req.Msg.SpecSlug)
+	mappings, err := store.ListSyncMappings(ctx, adapterFilter, req.Msg.SpecSlug)
 	if err != nil {
 		slog.ErrorContext(ctx, "failed to list sync mappings", "error", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list sync mappings"))
@@ -230,6 +237,10 @@ func (h *SyncHandler) GetSyncStatus(ctx context.Context, req *connect.Request[sp
 
 // Inject implements specgraphv1connect.SyncServiceHandler.
 func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.InjectRequest]) (*connect.Response[specv1.InjectResponse], error) {
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
 	if req.Msg.SpecSlug == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("spec_slug is required"))
 	}
@@ -237,7 +248,7 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tool is required"))
 	}
 
-	spec, err := h.specStore.GetSpec(ctx, req.Msg.SpecSlug)
+	spec, err := store.GetSpec(ctx, req.Msg.SpecSlug)
 	if err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
@@ -288,16 +299,15 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 	// Constitution is optional for injection
 	var constitution *storage.Constitution
 	var warnings []string
-	if h.constitutionStore != nil {
-		var conErr error
-		constitution, conErr = h.constitutionStore.GetConstitution(ctx)
-		if conErr != nil {
-			if errors.Is(conErr, storage.ErrConstitutionNotFound) {
-				slog.DebugContext(ctx, "no constitution seeded yet")
-			} else {
-				slog.WarnContext(ctx, "failed to load constitution for injection", "error", conErr)
-				warnings = append(warnings, "constitution load failed: storage error")
-			}
+	constitution, conErr := store.GetConstitution(ctx)
+	if conErr != nil {
+		if errors.Is(conErr, storage.ErrConstitutionNotFound) {
+			slog.DebugContext(ctx, "no constitution seeded yet")
+			constitution = nil
+		} else {
+			slog.WarnContext(ctx, "failed to load constitution for injection", "error", conErr)
+			warnings = append(warnings, "constitution load failed: storage error")
+			constitution = nil
 		}
 	}
 

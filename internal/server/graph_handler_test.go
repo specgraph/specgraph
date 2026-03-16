@@ -20,6 +20,7 @@ import (
 )
 
 type mockGraphBackend struct {
+	stubBackend
 	mu    sync.Mutex
 	edges []mockEdge
 	nodes map[string]mockNode
@@ -130,9 +131,10 @@ func (m *mockGraphBackend) GetCriticalPath(_ context.Context, slug string) ([]st
 func setupGraphServer(t *testing.T) specgraphv1connect.GraphServiceClient {
 	t.Helper()
 	mb := newMockGraphBackend()
+	scoper := &testScoper{backend: mb}
 	mux := http.NewServeMux()
-	server.RegisterGraphService(mux, mb)
-	srv := httptest.NewServer(mux)
+	server.RegisterGraphService(mux, scoper)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewGraphServiceClient(http.DefaultClient, srv.URL)
 }

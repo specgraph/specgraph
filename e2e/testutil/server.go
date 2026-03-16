@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/seanb4t/specgraph/internal/drift"
@@ -21,8 +22,9 @@ import (
 
 // ServerInfo holds the running server's details.
 type ServerInfo struct {
-	BaseURL string
-	Store   *memgraph.Store
+	BaseURL    string
+	Store      *memgraph.Store
+	ConfigPath string // path to a temp config file pointing at this server
 }
 
 // StartServer launches a specgraph HTTP server connected to the given Memgraph instance.
@@ -31,7 +33,7 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 	var store *memgraph.Store
 	var err error
 	for range 10 {
-		store, err = memgraph.New(ctx, boltURI)
+		store, err = memgraph.New(ctx, boltURI, memgraph.WithProject("e2e-test"))
 		if err == nil {
 			break
 		}
@@ -47,10 +49,12 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 	server.RegisterGraphService(mux, store)
 	server.RegisterClaimService(mux, store)
 	server.RegisterConstitutionService(mux, store)
-	server.RegisterAuthoringService(mux, store, store)
+	server.RegisterAuthoringService(mux, store)
+	server.RegisterExecutionService(mux, store)
 	driftEngine := drift.NewEngine(store, nil)
 	lintEngine := linter.NewEngine(store, nil)
-	server.RegisterLifecycleService(mux, store, store, driftEngine, lintEngine, nil)
+	server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil)
+	server.RegisterSyncService(mux, store, "")
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -58,7 +62,7 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 		return nil, nil, fmt.Errorf("listen: %w", err)
 	}
 
-	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Handler: server.ProjectMiddleware(mux), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
 			fmt.Fprintf(os.Stderr, "testutil: server error: %v\n", err)
@@ -76,5 +80,27 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 			fmt.Fprintf(os.Stderr, "testutil: store close error: %v\n", err)
 		}
 	}
-	return &ServerInfo{BaseURL: baseURL, Store: store}, cleanup, nil
+	// Write a temp config file pointing the CLI at this server.
+	// Used by E2E tests that shell out to the specgraph binary.
+	cfgDir, err := os.MkdirTemp("", "specgraph-e2e-config-*")
+	if err != nil {
+		_ = srv.Close()
+		_ = store.Close(ctx)
+		return nil, nil, fmt.Errorf("create temp config dir: %w", err)
+	}
+	cfgPath := filepath.Join(cfgDir, "config.yaml")
+	cfgContent := fmt.Sprintf("server:\n  remote: %s\n", baseURL)
+	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o600); err != nil {
+		_ = srv.Close()
+		_ = store.Close(ctx)
+		os.RemoveAll(cfgDir) //nolint:errcheck
+		return nil, nil, fmt.Errorf("write temp config: %w", err)
+	}
+
+	origCleanup := cleanup
+	cleanup = func() {
+		origCleanup()
+		os.RemoveAll(cfgDir) //nolint:errcheck
+	}
+	return &ServerInfo{BaseURL: baseURL, Store: store, ConfigPath: cfgPath}, cleanup, nil
 }

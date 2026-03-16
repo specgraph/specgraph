@@ -21,6 +21,7 @@ import (
 )
 
 type mockConstitutionBackend struct {
+	stubBackend
 	mu           sync.Mutex
 	constitution *storage.Constitution
 	version      int32
@@ -64,9 +65,10 @@ func (m *mockConstitutionBackend) CheckViolation(_ context.Context, specSlug str
 func setupConstitutionServer(t *testing.T) specgraphv1connect.ConstitutionServiceClient {
 	t.Helper()
 	mb := newMockConstitutionBackend()
+	scoper := &testScoper{backend: mb}
 	mux := http.NewServeMux()
-	server.RegisterConstitutionService(mux, mb)
-	srv := httptest.NewServer(mux)
+	server.RegisterConstitutionService(mux, scoper)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewConstitutionServiceClient(http.DefaultClient, srv.URL)
 }
