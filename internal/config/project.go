@@ -1,0 +1,108 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+package config
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	"gopkg.in/yaml.v3"
+)
+
+// ProjectConfig is the per-repo .specgraph.yaml.
+type ProjectConfig struct {
+	Slug   string `yaml:"project,omitempty"`
+	Server string `yaml:"server,omitempty"`
+}
+
+const projectFileName = ".specgraph.yaml"
+
+// LoadProject loads project config from dir, walking up to find
+// .specgraph.yaml. If no file found, derives slug from git remote or dir name.
+func LoadProject(dir string) (*ProjectConfig, error) {
+	root, findErr := FindProjectRoot(dir)
+	if findErr != nil {
+		slug := deriveSlug(dir)
+		return &ProjectConfig{Slug: slug}, nil
+	}
+
+	data, err := os.ReadFile(filepath.Join(root, projectFileName))
+	if err != nil {
+		return nil, fmt.Errorf("read project config: %w", err)
+	}
+
+	var pc ProjectConfig
+	if err := yaml.Unmarshal(data, &pc); err != nil {
+		return nil, fmt.Errorf("parse project config: %w", err)
+	}
+
+	if pc.Slug == "" {
+		pc.Slug = deriveSlug(root)
+	}
+	return &pc, nil
+}
+
+// FindProjectRoot walks from dir upward looking for .specgraph.yaml.
+func FindProjectRoot(dir string) (string, error) {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("resolve absolute path: %w", err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(abs, projectFileName)); err == nil {
+			return abs, nil
+		}
+		parent := filepath.Dir(abs)
+		if parent == abs {
+			return "", fmt.Errorf("no %s found", projectFileName)
+		}
+		abs = parent
+	}
+}
+
+// WriteProject writes a .specgraph.yaml to dir.
+func WriteProject(dir string, pc *ProjectConfig) error {
+	data, err := yaml.Marshal(pc)
+	if err != nil {
+		return fmt.Errorf("marshal project config: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, projectFileName), data, 0o644); err != nil { //nolint:gosec // 0644 is intentional for user-readable config
+		return fmt.Errorf("write project config: %w", err)
+	}
+	return nil
+}
+
+// NormalizeSlug converts a remote URL or owner/repo into a kebab-case slug.
+func NormalizeSlug(raw string) string {
+	s := raw
+	s = strings.TrimSuffix(s, ".git")
+	if idx := strings.LastIndex(s, ":"); idx != -1 && strings.Contains(s, "@") {
+		s = s[idx+1:]
+	} else if strings.Contains(s, "://") {
+		parts := strings.SplitN(s, "://", 2)
+		if len(parts) == 2 {
+			s = parts[1]
+		}
+		if idx := strings.Index(s, "/"); idx != -1 {
+			s = s[idx+1:]
+		}
+	}
+	s = strings.ReplaceAll(s, "/", "-")
+	return strings.ToLower(s)
+}
+
+func deriveSlug(dir string) string {
+	cmd := exec.Command("git", "-C", dir, "remote", "get-url", "origin")
+	out, err := cmd.Output()
+	if err == nil {
+		remote := strings.TrimSpace(string(out))
+		if remote != "" {
+			return NormalizeSlug(remote)
+		}
+	}
+	return strings.ToLower(filepath.Base(dir))
+}

@@ -137,70 +137,70 @@
 - [x] `golangci-lint run ./...` -- no issues
 - [x] `buf lint` -- pre-existing naming suggestions only (no new issues)
 - [x] `go build -o specgraph ./cmd/specgraph` -- clean build
-- [ ] CLI commands work: `specgraph bundle|progress --help`
-- [ ] Bundle YAML renders with constitution context, spec details, and decisions
-- [ ] Lease sweeper releases expired claims
+- [x] CLI commands work: `specgraph bundle|progress --help`
+- [x] Bundle YAML renders with constitution context, spec details, and decisions
+- [x] Lease sweeper releases expired claims
 
 ---
 
 ## Slice 5: Spec Lifecycle
 
 **Plan:** `docs/plans/2026-03-07-slice-5-spec-lifecycle-revised-plan.md` (supersedes `2026-02-28-slice-5-spec-lifecycle-plan.md`)
-**Status:** In progress
+**Status:** Complete (PR #27)
 **Depends on:** Slice 4
 
-- [ ] Task 1: Protobuf schema -- spec extensions + LifecycleService
-- [ ] Task 2: Domain types -- extend Spec + add lifecycle types
-- [ ] Task 3: Update Memgraph spec storage for new fields
-- [ ] Task 4: Memgraph implementation -- lifecycle storage
-- [ ] Task 5: Spec JSON Schema + schema validator
-- [ ] Task 6: Linter engine
-- [ ] Task 7: Drift detection engine
-- [ ] Task 8: Proto↔domain converters + ConnectRPC handler
-- [ ] Task 9: CLI commands -- lifecycle operations
-- [ ] Task 10: End-to-end integration test
+- [x] Task 1: Protobuf schema -- spec extensions + LifecycleService
+- [x] Task 2: Domain types -- extend Spec + add lifecycle types
+- [x] Task 3: Update Memgraph spec storage for new fields
+- [x] Task 4: Memgraph implementation -- lifecycle storage
+- [x] Task 5: Spec JSON Schema + schema validator
+- [x] Task 6: Linter engine
+- [x] Task 7: Drift detection engine
+- [x] Task 8: Proto↔domain converters + ConnectRPC handler
+- [x] Task 9: CLI commands -- lifecycle operations
+- [x] Task 10: End-to-end integration test
 
 **Slice Verification Gate:**
 
-- [ ] `go test ./... -count=1 -timeout=120s` -- all pass
-- [ ] `go test ./test/e2e/ -run TestLifecycleE2E -v -count=1 -timeout=60s` -- E2E pass
-- [ ] `golangci-lint run ./...` -- no issues
-- [ ] `buf lint` -- no proto issues
-- [ ] `go build -o specgraph ./cmd/specgraph` -- clean build
-- [ ] CLI commands work: `specgraph amend|supersede|abandon|lint|drift --help`
-- [ ] Full lifecycle flow works: create -> done -> amend -> supersede -> abandon
-- [ ] Linter validates specs against JSON Schema
-- [ ] Drift engine detects spec-vs-code mismatches
+- [x] `go test ./... -count=1 -timeout=120s` -- all pass
+- [x] `go test ./test/e2e/ -run TestLifecycleE2E -v -count=1 -timeout=60s` -- E2E pass
+- [x] `golangci-lint run ./...` -- no issues
+- [x] `buf lint` -- no proto issues
+- [x] `go build -o specgraph ./cmd/specgraph` -- clean build
+- [x] CLI commands work: `specgraph amend|supersede|abandon|lint|drift --help`
+- [x] Full lifecycle flow works: create -> done -> amend -> supersede -> abandon
+- [x] Linter validates specs against JSON Schema
+- [x] Drift engine detects spec-vs-code mismatches
 
 ---
 
 ## Slice 6: Sync and Integration
 
 **Plan:** `docs/plans/2026-02-28-slice-6-sync-integration-plan.md`
-**Status:** Not started
+**Status:** Complete (PR #30)
 **Depends on:** Slice 5
 
-- [ ] Task 1: Protobuf schema -- sync.proto
-- [ ] Task 2: Storage interface -- SyncBackend
-- [ ] Task 3: Memgraph implementation
-- [ ] Task 4: SyncAdapter interface + Beads adapter
-- [ ] Task 5: GitHub adapter
-- [ ] Task 6: Tool injection
-- [ ] Task 7: ConnectRPC handler -- SyncService
-- [ ] Task 8: CLI commands -- sync + inject
-- [ ] Task 9: Command runner -- real implementation
-- [ ] Task 10: Final verification and cleanup
+- [x] Task 1: Protobuf schema -- sync.proto
+- [x] Task 2: Storage interface -- SyncBackend
+- [x] Task 3: Memgraph implementation
+- [x] Task 4: SyncAdapter interface + Beads adapter
+- [x] Task 5: GitHub adapter
+- [x] Task 6: Tool injection
+- [x] Task 7: ConnectRPC handler -- SyncService
+- [x] Task 8: CLI commands -- sync + inject
+- [x] Task 9: Command runner -- real implementation
+- [x] Task 10: Final verification and cleanup
 
 **Slice Verification Gate:**
 
-- [ ] `go test ./... -count=1 -timeout=120s` -- all pass
-- [ ] `golangci-lint run ./...` -- no issues
-- [ ] `buf lint` -- no proto issues
-- [ ] `go build -o specgraph ./cmd/specgraph` -- clean build
-- [ ] CLI commands work: `specgraph sync beads|github|status --help` and `specgraph inject --help`
-- [ ] Beads adapter creates/closes issues from specs
-- [ ] GitHub adapter creates issues/PRs from specs
-- [ ] Tool injection writes CLAUDE.md, .cursor/rules, AGENTS.md from constitution
+- [x] `go test ./... -count=1 -timeout=120s` -- all pass
+- [x] `golangci-lint run ./...` -- no issues
+- [x] `buf lint` -- no proto issues
+- [x] `go build -o specgraph ./cmd/specgraph` -- clean build
+- [x] CLI commands work: `specgraph sync beads|github|status --help` and `specgraph inject --help`
+- [x] Beads adapter creates/closes issues from specs
+- [x] GitHub adapter creates issues/PRs from specs
+- [x] Tool injection writes CLAUDE.md, .cursor/rules, AGENTS.md from constitution
 
 ---
 
