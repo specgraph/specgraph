@@ -501,3 +501,98 @@ func TestDriftScopeFromProtoMap_SyncWithDriftscope(t *testing.T) {
 			"server scope %q not recognized by driftscope.IsValid — tables out of sync", scopeStr)
 	}
 }
+
+func TestSyncMappingToProto(t *testing.T) {
+	now := time.Date(2026, 3, 11, 12, 0, 0, 0, time.UTC)
+	m := &storage.SyncMapping{
+		SpecSlug:   "test-spec",
+		Adapter:    storage.SyncAdapterBeads,
+		ExternalID: "beads-123",
+		State:      storage.SyncStateSynced,
+		LastSync:   now,
+		CreatedAt:  now,
+	}
+	pb, err := syncMappingToProto(m)
+	require.NoError(t, err)
+	assert.Equal(t, "test-spec", pb.SpecSlug)
+	assert.Equal(t, specv1.SyncAdapter_SYNC_ADAPTER_BEADS, pb.Adapter)
+	assert.Equal(t, "beads-123", pb.ExternalId)
+	assert.Equal(t, specv1.SyncState_SYNC_STATE_SYNCED, pb.State)
+}
+
+func TestSyncAdapterToProto(t *testing.T) {
+	tests := []struct {
+		domain storage.SyncAdapterType
+		proto  specv1.SyncAdapter
+	}{
+		{storage.SyncAdapterBeads, specv1.SyncAdapter_SYNC_ADAPTER_BEADS},
+		{storage.SyncAdapterGitHub, specv1.SyncAdapter_SYNC_ADAPTER_GITHUB},
+	}
+	for _, tt := range tests {
+		got, err := syncAdapterToProto(tt.domain)
+		require.NoError(t, err)
+		assert.Equal(t, tt.proto, got)
+	}
+
+	got, err := syncAdapterToProto("unknown-adapter")
+	assert.Error(t, err)
+	assert.Equal(t, specv1.SyncAdapter_SYNC_ADAPTER_UNSPECIFIED, got)
+}
+
+func TestSyncAdapterFromProto(t *testing.T) {
+	tests := []struct {
+		proto  specv1.SyncAdapter
+		domain storage.SyncAdapterType
+	}{
+		{specv1.SyncAdapter_SYNC_ADAPTER_BEADS, storage.SyncAdapterBeads},
+		{specv1.SyncAdapter_SYNC_ADAPTER_GITHUB, storage.SyncAdapterGitHub},
+		{specv1.SyncAdapter_SYNC_ADAPTER_UNSPECIFIED, ""},
+	}
+	for _, tt := range tests {
+		got, err := syncAdapterFromProto(tt.proto)
+		require.NoError(t, err)
+		assert.Equal(t, tt.domain, got)
+	}
+
+	_, err := syncAdapterFromProto(specv1.SyncAdapter(99))
+	assert.Error(t, err)
+}
+
+func TestSyncStateToProto(t *testing.T) {
+	tests := []struct {
+		domain storage.SyncStateType
+		proto  specv1.SyncState
+	}{
+		{storage.SyncStatePending, specv1.SyncState_SYNC_STATE_PENDING},
+		{storage.SyncStateSynced, specv1.SyncState_SYNC_STATE_SYNCED},
+		{storage.SyncStateConflict, specv1.SyncState_SYNC_STATE_CONFLICT},
+		{storage.SyncStateError, specv1.SyncState_SYNC_STATE_ERROR},
+	}
+	for _, tt := range tests {
+		got, err := syncStateToProto(tt.domain)
+		require.NoError(t, err)
+		assert.Equal(t, tt.proto, got)
+	}
+
+	_, err := syncStateToProto("bogus-state")
+	assert.Error(t, err)
+}
+
+func TestInjectToolFromProto(t *testing.T) {
+	tests := []struct {
+		proto  specv1.InjectTool
+		domain storage.InjectToolType
+	}{
+		{specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE, storage.InjectToolClaudeCode},
+		{specv1.InjectTool_INJECT_TOOL_CURSOR, storage.InjectToolCursor},
+		{specv1.InjectTool_INJECT_TOOL_AGENTS_MD, storage.InjectToolAgentsMD},
+	}
+	for _, tt := range tests {
+		got, err := injectToolFromProto(tt.proto)
+		require.NoError(t, err)
+		assert.Equal(t, tt.domain, got)
+	}
+
+	_, err := injectToolFromProto(specv1.InjectTool(99))
+	assert.Error(t, err)
+}

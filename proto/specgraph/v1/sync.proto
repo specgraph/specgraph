@@ -1,0 +1,109 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+syntax = "proto3";
+
+package specgraph.v1;
+
+option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
+
+import "google/protobuf/timestamp.proto";
+
+// --- Enums ---
+
+enum SyncAdapter {
+  SYNC_ADAPTER_UNSPECIFIED = 0;
+  SYNC_ADAPTER_BEADS = 1;
+  SYNC_ADAPTER_GITHUB = 2;
+}
+
+enum SyncState {
+  SYNC_STATE_UNSPECIFIED = 0;
+  SYNC_STATE_PENDING = 1;
+  SYNC_STATE_SYNCED = 2;
+  SYNC_STATE_CONFLICT = 3;
+  SYNC_STATE_ERROR = 4;
+}
+
+enum InjectTool {
+  INJECT_TOOL_UNSPECIFIED = 0;
+  INJECT_TOOL_CLAUDE_CODE = 1;
+  INJECT_TOOL_CURSOR = 2;
+  INJECT_TOOL_AGENTS_MD = 3;
+}
+
+// --- Messages ---
+
+message SyncMapping {
+  string spec_id = 1;
+  string spec_slug = 2;
+  SyncAdapter adapter = 3;
+  string external_id = 4;
+  SyncState state = 5;
+  string error_message = 6;
+  google.protobuf.Timestamp last_sync = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message SyncResult {
+  string spec_slug = 1;
+  string external_id = 2;
+  SyncState state = 3;
+  string message = 4;
+}
+
+message SyncConfig {
+  reserved 1;
+  reserved "adapter";
+  string filter_stage = 2;
+  string filter_priority = 3;
+  bool dry_run = 4;
+}
+
+// --- Requests/Responses ---
+
+message SyncBeadsRequest {
+  SyncConfig config = 1;
+}
+
+message SyncGitHubRequest {
+  SyncConfig config = 1;
+}
+
+message SyncResponse {
+  repeated SyncResult results = 1;
+  int32 synced = 2;
+  int32 skipped = 3;
+  int32 errors = 4;
+  int32 dry_run_count = 5;
+}
+
+message SyncStatusRequest {
+  SyncAdapter adapter = 1;
+  string spec_slug = 2;
+}
+
+message SyncStatusResponse {
+  repeated SyncMapping mappings = 1;
+}
+
+message InjectRequest {
+  string spec_slug = 1;
+  InjectTool tool = 2;
+  string output_dir = 3;
+}
+
+message InjectResponse {
+  repeated string files_written = 1;
+  string summary = 2;
+  repeated string warnings = 3;
+}
+
+// --- Service ---
+
+service SyncService {
+  rpc SyncBeads(SyncBeadsRequest) returns (SyncResponse);
+  rpc SyncGitHub(SyncGitHubRequest) returns (SyncResponse);
+  rpc GetSyncStatus(SyncStatusRequest) returns (SyncStatusResponse);
+  rpc Inject(InjectRequest) returns (InjectResponse);
+}

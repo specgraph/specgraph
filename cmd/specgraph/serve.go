@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/seanb4t/specgraph/internal/server"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
+	syncpkg "github.com/seanb4t/specgraph/internal/sync"
 	"github.com/spf13/cobra"
 )
 
@@ -71,16 +73,16 @@ func runServe(_ *cobra.Command, _ []string) error {
 		// Defers run LIFO: stopSweeper runs before store.Close, preventing races
 		// where the sweeper goroutine calls ReleaseExpiredClaims on a closed store.
 		defer func() {
-			if err := store.Close(ctx); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: close store: %v\n", err)
+			if closeErr := store.Close(ctx); closeErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: close store: %v\n", closeErr)
 			}
 		}()
 		sweeperCtx, stopSweeper := context.WithCancel(ctx)
 		defer stopSweeper()
 
 		constitutionPath := cfg.Storage.ConstitutionPath
-		if err := bootstrapConstitution(ctx, store, constitutionPath); err != nil {
-			return fmt.Errorf("constitution bootstrap: %w", err)
+		if bootstrapErr := bootstrapConstitution(ctx, store, constitutionPath); bootstrapErr != nil {
+			return fmt.Errorf("constitution bootstrap: %w", bootstrapErr)
 		}
 
 		mux := server.NewMux(store)
@@ -94,6 +96,35 @@ func runServe(_ *cobra.Command, _ []string) error {
 		driftEngine := drift.NewEngine(store, nil)
 		lintEngine := linter.NewEngine(store, nil)
 		server.RegisterLifecycleService(mux, store, store, driftEngine, lintEngine, nil)
+		// Derive inject output root from constitution path's parent directory.
+		// This works for both relative paths (resolved against CWD) and absolute paths,
+		// ensuring the server validates output_dir against the project root rather than
+		// the server process's working directory.
+		var projectRoot string
+		if cfg.Storage.ConstitutionPath == "" {
+			// No constitution path configured — use CWD as project root.
+			projectRoot, err = os.Getwd()
+			if err != nil {
+				return fmt.Errorf("determine project root: %w", err)
+			}
+		} else {
+			// Require at least one directory component (e.g., ".specgraph/constitution.yaml").
+			// A bare filename like "constitution.yaml" would cause filepath.Dir(filepath.Dir(...))
+			// to resolve two levels above CWD, breaking the inject root.
+			if filepath.Dir(cfg.Storage.ConstitutionPath) == "." {
+				return fmt.Errorf("constitution_path %q must include a directory (e.g. .specgraph/constitution.yaml)", cfg.Storage.ConstitutionPath)
+			}
+			constitutionAbs, absErr := filepath.Abs(cfg.Storage.ConstitutionPath)
+			if absErr != nil {
+				return fmt.Errorf("resolve constitution path for inject root: %w", absErr)
+			}
+			// ConstitutionPath is like ".specgraph/constitution.yaml" — go up two levels to project root.
+			projectRoot = filepath.Dir(filepath.Dir(constitutionAbs))
+		}
+		syncHandler := server.RegisterSyncService(mux, store, store, store, projectRoot)
+		runner := syncpkg.NewExecRunner()
+		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
+		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, cfg.Sync.GitHubRepo))
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 

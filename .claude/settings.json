@@ -5,15 +5,6 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "task fmt 2>/dev/null || true"
-          }
-        ]
-      },
-      {
         "matcher": "Bash",
         "hooks": [
           {

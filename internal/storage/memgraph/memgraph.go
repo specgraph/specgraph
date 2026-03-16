@@ -24,6 +24,7 @@ import (
 var (
 	_ storage.AuthoringBackend = (*Store)(nil)
 	_ storage.LifecycleBackend = (*Store)(nil)
+	_ storage.SyncBackend      = (*Store)(nil)
 )
 
 // Store implements storage.Backend using Memgraph (Bolt protocol).
