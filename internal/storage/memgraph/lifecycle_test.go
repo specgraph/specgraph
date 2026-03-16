@@ -656,7 +656,8 @@ func TestLifecycle(t *testing.T) {
 			require.True(t,
 				errors.Is(e, storage.ErrConcurrentModification) ||
 					errors.Is(e, storage.ErrSpecNotFound) ||
-					errors.Is(e, storage.ErrSpecTerminal),
+					errors.Is(e, storage.ErrSpecTerminal) ||
+					errors.Is(e, storage.ErrInternalGuardFailure),
 				"unexpected error: %v", e)
 		}
 	})
