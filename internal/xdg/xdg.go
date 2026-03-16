@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
 package xdg
 
 import (
