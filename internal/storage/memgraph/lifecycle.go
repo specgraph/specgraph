@@ -140,7 +140,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	// Atomic: WHERE guards ensure we only transition if the spec is still at
 	// the expected stage and version, preventing TOCTOU races.
 	query := `
-		MATCH (s:Spec {slug: $slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 		WHERE s.stage = $expected_stage AND s.version = $expected_version
 		SET s.stage = $stage,
 		    s.version = $version,
@@ -151,7 +151,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
 		       s.drift_acknowledged, s.drift_acknowledge_note
 	`
-	records, err := s.executeQuery(ctx, query, map[string]any{
+	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{
 		"slug":             slug,
 		"expected_stage":   string(storage.SpecStageDone),
 		"expected_version": spec.Version,
@@ -159,7 +159,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		"version":          int64(newVersion),
 		"updated_at":       nowStr,
 		"history_json":     historyJSON,
-	})
+	}))
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: amend spec: %w", err)
 	}
@@ -245,7 +245,8 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	// Atomic: WHERE guards ensure neither spec has entered a terminal state
 	// since our pre-validation read.
 	query := `
-		MATCH (old:Spec {slug: $old_slug}), (new:Spec {slug: $new_slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(old:Spec {slug: $old_slug}),
+		      (p)<-[:BELONGS_TO]-(new:Spec {slug: $new_slug})
 		WHERE NOT old.stage IN $terminal_stages
 		      AND NOT new.stage IN $terminal_stages
 		      AND old.version = $expected_version
@@ -269,7 +270,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		       new.lifecycle, new.superseded_by, new.supersedes, new.history_json,
 		       new.drift_acknowledged, new.drift_acknowledge_note
 	`
-	records, err := s.executeQuery(ctx, query, map[string]any{
+	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{
 		"old_slug":             oldSlug,
 		"new_slug":             newSlug,
 		"stage":                string(storage.SpecStageSuperseded),
@@ -281,7 +282,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		"history_json":         historyJSON,
 		"new_version":          int64(newVersion),
 		"new_history_json":     newHistoryJSON,
-	})
+	}))
 	if err != nil {
 		return nil, nil, fmt.Errorf("memgraph: supersede spec: %w", err)
 	}
@@ -367,7 +368,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 	nowStr := s.now()
 	// Atomic: WHERE guards on stage and version prevent TOCTOU races.
 	query := `
-		MATCH (s:Spec {slug: $slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 		WHERE NOT s.stage IN $terminal_stages AND s.version = $expected_version
 		SET s.stage = $stage,
 		    s.version = $version,
@@ -378,7 +379,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
 		       s.drift_acknowledged, s.drift_acknowledge_note
 	`
-	records, err := s.executeQuery(ctx, query, map[string]any{
+	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{
 		"slug":             slug,
 		"expected_version": spec.Version,
 		"terminal_stages":  terminalStageStrings,
@@ -386,7 +387,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		"version":          int64(newVersion),
 		"updated_at":       nowStr,
 		"history_json":     historyJSON,
-	})
+	}))
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: abandon spec: %w", err)
 	}
@@ -422,16 +423,16 @@ var terminalStageStrings = func() []string {
 func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string) (*storage.DriftReport, error) {
 	eligibleStages := []string{string(storage.SpecStageDone), string(storage.SpecStageAmended)}
 	query := `
-		MATCH (s:Spec {slug: $slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 		WHERE s.stage IN $eligible_stages
 		SET s.drift_acknowledged = true, s.drift_acknowledge_note = $note
 		RETURN s.slug, s.drift_acknowledged, s.drift_acknowledge_note
 	`
-	records, err := s.executeQuery(ctx, query, map[string]any{
+	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{
 		"slug":            slug,
 		"note":            note,
 		"eligible_stages": eligibleStages,
-	})
+	}))
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: acknowledge drift: %w", err)
 	}

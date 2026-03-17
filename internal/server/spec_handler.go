@@ -21,18 +21,22 @@ const (
 
 // SpecHandler implements the ConnectRPC SpecService using a storage backend.
 type SpecHandler struct {
-	backend storage.Backend
+	scoper storage.Scoper
 }
 
 var _ specgraphv1connect.SpecServiceHandler = (*SpecHandler)(nil)
 
-// NewSpecHandler creates a SpecHandler backed by the given storage.Backend.
-func NewSpecHandler(backend storage.Backend) *SpecHandler {
-	return &SpecHandler{backend: backend}
+// NewSpecHandler creates a SpecHandler backed by the given storage.Scoper.
+func NewSpecHandler(scoper storage.Scoper) *SpecHandler {
+	return &SpecHandler{scoper: scoper}
 }
 
 // CreateSpec handles the CreateSpec RPC.
 func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv1.CreateSpecRequest]) (*connect.Response[specv1.Spec], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -46,7 +50,7 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 		complexity = defaultSpecComplexity
 	}
 
-	spec, err := h.backend.CreateSpec(ctx, msg.Slug, msg.Intent, priority, complexity)
+	spec, err := store.CreateSpec(ctx, msg.Slug, msg.Intent, priority, complexity)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -59,10 +63,14 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 
 // GetSpec handles the GetSpec RPC.
 func (h *SpecHandler) GetSpec(ctx context.Context, req *connect.Request[specv1.GetSpecRequest]) (*connect.Response[specv1.Spec], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	spec, err := h.backend.GetSpec(ctx, req.Msg.Slug)
+	spec, err := store.GetSpec(ctx, req.Msg.Slug)
 	if err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
@@ -78,13 +86,17 @@ func (h *SpecHandler) GetSpec(ctx context.Context, req *connect.Request[specv1.G
 
 // ListSpecs handles the ListSpecs RPC.
 func (h *SpecHandler) ListSpecs(ctx context.Context, req *connect.Request[specv1.ListSpecsRequest]) (*connect.Response[specv1.ListSpecsResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	limit := int(msg.Limit)
 	if limit == 0 {
 		limit = defaultListLimit
 	}
 
-	specs, err := h.backend.ListSpecs(ctx, msg.Stage, msg.Priority, limit)
+	specs, err := store.ListSpecs(ctx, msg.Stage, msg.Priority, limit)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -97,12 +109,16 @@ func (h *SpecHandler) ListSpecs(ctx context.Context, req *connect.Request[specv1
 
 // UpdateSpec handles the UpdateSpec RPC.
 func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv1.UpdateSpecRequest]) (*connect.Response[specv1.Spec], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	spec, err := h.backend.UpdateSpec(ctx, msg.Slug, msg.Intent, msg.Stage, msg.Priority, msg.Complexity)
+	spec, err := store.UpdateSpec(ctx, msg.Slug, msg.Intent, msg.Stage, msg.Priority, msg.Complexity)
 	if err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)

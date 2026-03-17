@@ -27,18 +27,18 @@ const maxElements = 100
 // wrap their operations in a transaction for atomicity. When nil, operations
 // execute sequentially without rollback on partial failure.
 type AuthoringHandler struct {
-	store           storage.AuthoringBackend
-	backend         storage.Backend
-	txBackend       storage.TransactionalBackend // optional, may be nil
-	decisionBackend storage.DecisionBackend      // optional; when non-nil, Approve transitions linked decisions
-	graphBackend    storage.GraphBackend         // optional; used to discover spec→decision DECIDED_IN edges
-	logger          *slog.Logger
+	scoper storage.Scoper
+	logger *slog.Logger
 }
 
 var _ specgraphv1connect.AuthoringServiceHandler = (*AuthoringHandler)(nil)
 
 // Spark handles the Spark RPC, creating a new spec and entering the spark stage.
 func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv1.SparkRequest]) (*connect.Response[specv1.SparkResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -63,22 +63,22 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	}
 	safetyInput := &authoring.SafetyInput{Text: msg.Output.GetSeed()}
 	var safetyFlags []authoring.SafetyFlagResult
-	if err := h.runInTxOrSequential(ctx,
+	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
-			if _, err := h.backend.CreateSpec(c, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
+			if _, err := store.CreateSpec(c, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
 				return fmt.Errorf("create spec: %w", err)
 			}
 			return nil
 		},
 		func(c context.Context) error {
-			if err := h.store.StoreSparkOutput(c, msg.Slug, sparkDomain); err != nil {
+			if err := store.StoreSparkOutput(c, msg.Slug, sparkDomain); err != nil {
 				return fmt.Errorf("store spark output: %w", err)
 			}
 			return nil
 		},
 		func(c context.Context) error {
 			var err error
-			safetyFlags, err = h.persistSafetyFlags(c, msg.Slug, safetyInput)
+			safetyFlags, err = persistSafetyFlags(c, store, msg.Slug, safetyInput)
 			return err
 		},
 	); err != nil {
@@ -107,6 +107,10 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 
 // Shape handles the Shape RPC, transitioning from spark to shape stage.
 func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv1.ShapeRequest]) (*connect.Response[specv1.ShapeResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -153,16 +157,16 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 		Scope: scope,
 	}
 	var safetyFlags []authoring.SafetyFlagResult
-	if err := h.runInTxOrSequential(ctx,
+	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
-			return h.store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape))
+			return store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape))
 		},
 		func(c context.Context) error {
-			return h.store.StoreShapeOutput(c, msg.Slug, shapeDomain)
+			return store.StoreShapeOutput(c, msg.Slug, shapeDomain)
 		},
 		func(c context.Context) error {
 			var err error
-			safetyFlags, err = h.persistSafetyFlags(c, msg.Slug, safetyInput)
+			safetyFlags, err = persistSafetyFlags(c, store, msg.Slug, safetyInput)
 			return err
 		},
 	); err != nil {
@@ -184,6 +188,10 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 
 // Specify handles the Specify RPC, transitioning from shape to specify stage.
 func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[specv1.SpecifyRequest]) (*connect.Response[specv1.SpecifyResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -219,16 +227,16 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 		Invariants: msg.Output.GetInvariants(),
 	}
 	var safetyFlags []authoring.SafetyFlagResult
-	if err := h.runInTxOrSequential(ctx,
+	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
-			return h.store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify))
+			return store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify))
 		},
 		func(c context.Context) error {
-			return h.store.StoreSpecifyOutput(c, msg.Slug, specifyDomain)
+			return store.StoreSpecifyOutput(c, msg.Slug, specifyDomain)
 		},
 		func(c context.Context) error {
 			var err error
-			safetyFlags, err = h.persistSafetyFlags(c, msg.Slug, safetyInput)
+			safetyFlags, err = persistSafetyFlags(c, store, msg.Slug, safetyInput)
 			return err
 		},
 	); err != nil {
@@ -251,6 +259,10 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 
 // Decompose handles the Decompose RPC, transitioning from specify to decompose stage.
 func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[specv1.DecomposeRequest]) (*connect.Response[specv1.DecomposeResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -286,12 +298,12 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	}
 	var safetyFlags []authoring.SafetyFlagResult
 	var childSlugs []string
-	if err := h.runInTxOrSequential(ctx,
+	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
-			return h.store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose))
+			return store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose))
 		},
 		func(c context.Context) error {
-			slugs, err := h.store.StoreDecomposeOutput(c, msg.Slug, decomposeDomain)
+			slugs, err := store.StoreDecomposeOutput(c, msg.Slug, decomposeDomain)
 			if err != nil {
 				return fmt.Errorf("store decompose output: %w", err)
 			}
@@ -300,7 +312,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 		},
 		func(c context.Context) error {
 			var err error
-			safetyFlags, err = h.persistSafetyFlags(c, msg.Slug, safetyInput)
+			safetyFlags, err = persistSafetyFlags(c, store, msg.Slug, safetyInput)
 			return err
 		},
 	); err != nil {
@@ -325,6 +337,10 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 // After approval, linked decisions (via DECIDED_IN edges) are transitioned from
 // proposed to accepted per ADR-003 (decisions as first-class graph nodes).
 func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[specv1.ApproveRequest]) (*connect.Response[specv1.ApproveResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -332,16 +348,16 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	// if decision promotion fails, the spec approval is rolled back.
 	var spec *storage.Spec
 	slug := req.Msg.Slug
-	if err := h.runInTxOrSequential(ctx,
+	if err := runInTxOrSequential(ctx, store,
 		func(txCtx context.Context) error {
-			return h.store.TransitionStage(txCtx, slug, storage.AuthoringStage(authoring.StageDecompose), storage.AuthoringStage(authoring.StageApproved))
+			return store.TransitionStage(txCtx, slug, storage.AuthoringStage(authoring.StageDecompose), storage.AuthoringStage(authoring.StageApproved))
 		},
 		func(txCtx context.Context) error {
-			return h.acceptLinkedDecisions(txCtx, slug)
+			return acceptLinkedDecisions(txCtx, h.logger, store, store, slug)
 		},
 		func(txCtx context.Context) error {
 			var err error
-			spec, err = h.backend.GetSpec(txCtx, slug)
+			spec, err = store.GetSpec(txCtx, slug)
 			if err != nil {
 				return fmt.Errorf("get spec %q: %w", slug, err)
 			}
@@ -365,6 +381,10 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 
 // Amend handles the Amend RPC, rolling a spec back to an earlier stage.
 func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv1.AmendRequest]) (*connect.Response[specv1.AmendResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -384,7 +404,7 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown target_stage %v", req.Msg.TargetStage))
 	}
-	result, err := h.store.AmendSpec(ctx, req.Msg.Slug, req.Msg.Reason, targetStage)
+	result, err := store.AmendSpec(ctx, req.Msg.Slug, req.Msg.Reason, targetStage)
 	if err != nil {
 		return nil, h.stageError(err)
 	}
@@ -401,6 +421,10 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 
 // Supersede handles the Supersede RPC, marking a spec as replaced by another.
 func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[specv1.SupersedeRequest]) (*connect.Response[specv1.SupersedeResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -419,7 +443,7 @@ func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[s
 	if len(req.Msg.Reason) > maxFieldLen {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("reason exceeds maximum length of %d", maxFieldLen))
 	}
-	if err := h.store.SupersedeSpec(ctx, req.Msg.Slug, req.Msg.SupersededBy, req.Msg.Reason); err != nil {
+	if err := store.SupersedeSpec(ctx, req.Msg.Slug, req.Msg.SupersededBy, req.Msg.Reason); err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
 		}
@@ -457,12 +481,10 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 
 // acceptLinkedDecisions queries for Decision nodes linked to the spec via
 // DECIDED_IN edges and transitions them from proposed to accepted. Returns an
-// error if any decision acceptance fails.
-func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug string) error {
-	if h.graphBackend == nil || h.decisionBackend == nil {
-		return nil
-	}
-	edges, err := h.graphBackend.ListEdges(ctx, slug, storage.EdgeTypeDecidedIn)
+// error if any decision acceptance fails. graphBackend and decisionBackend are
+// obtained from the scoped store (ScopedBackend embeds both interfaces).
+func acceptLinkedDecisions(ctx context.Context, logger *slog.Logger, graphBackend storage.GraphBackend, decisionBackend storage.DecisionBackend, slug string) error {
+	edges, err := graphBackend.ListEdges(ctx, slug, storage.EdgeTypeDecidedIn)
 	if err != nil {
 		return fmt.Errorf("list DECIDED_IN edges for %q: %w", slug, err)
 	}
@@ -472,21 +494,21 @@ func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug strin
 		// Use ToID as the decision slug; FromID should be the spec.
 		decisionSlug := edge.ToID
 		if decisionSlug == slug {
-			h.logger.WarnContext(ctx, "DECIDED_IN edge has unexpected direction (ToID is spec, not decision)",
+			logger.WarnContext(ctx, "DECIDED_IN edge has unexpected direction (ToID is spec, not decision)",
 				"slug", slug, "fromID", edge.FromID, "toID", edge.ToID)
 			decisionSlug = edge.FromID
 		}
 		if decisionSlug == "" || decisionSlug == slug {
 			return fmt.Errorf("DECIDED_IN edge for %q has no valid decision slug (from=%q, to=%q)", slug, edge.FromID, edge.ToID)
 		}
-		dec, err := h.decisionBackend.GetDecision(ctx, decisionSlug)
+		dec, err := decisionBackend.GetDecision(ctx, decisionSlug)
 		if err != nil {
 			return fmt.Errorf("get decision %q: %w", decisionSlug, err)
 		}
 		if dec.Status != storage.DecisionStatusProposed {
 			continue
 		}
-		if _, err := h.decisionBackend.UpdateDecision(ctx, decisionSlug, nil, &acceptedStatus, nil, nil, nil); err != nil {
+		if _, err := decisionBackend.UpdateDecision(ctx, decisionSlug, nil, &acceptedStatus, nil, nil, nil); err != nil {
 			return fmt.Errorf("accept decision %q: %w", decisionSlug, err)
 		}
 	}
@@ -494,26 +516,11 @@ func (h *AuthoringHandler) acceptLinkedDecisions(ctx context.Context, slug strin
 }
 
 // RegisterAuthoringService registers the AuthoringService on the given mux.
-func RegisterAuthoringService(mux *http.ServeMux, authoringStore storage.AuthoringBackend, backend storage.Backend) {
-	if authoringStore == nil {
-		panic("RegisterAuthoringService: authoringStore must not be nil")
+func RegisterAuthoringService(mux *http.ServeMux, scoper storage.Scoper) {
+	if scoper == nil {
+		panic("RegisterAuthoringService: scoper must not be nil")
 	}
-	if backend == nil {
-		panic("RegisterAuthoringService: backend must not be nil")
-	}
-	handler := &AuthoringHandler{store: authoringStore, backend: backend, logger: slog.Default()}
-	// If the backend supports transactions, enable atomic multi-operation RPCs.
-	if txb, ok := backend.(storage.TransactionalBackend); ok {
-		handler.txBackend = txb
-	}
-	// If the backend supports decision and graph operations, enable ADR-003
-	// decision acceptance on spec approval.
-	if db, ok := backend.(storage.DecisionBackend); ok {
-		handler.decisionBackend = db
-	}
-	if gb, ok := backend.(storage.GraphBackend); ok {
-		handler.graphBackend = gb
-	}
+	handler := &AuthoringHandler{scoper: scoper, logger: slog.Default()}
 	path, h := specgraphv1connect.NewAuthoringServiceHandler(handler)
 	mux.Handle(path, h)
 }
@@ -692,12 +699,11 @@ func init() {
 	}
 }
 
-// runInTxOrSequential runs the given operations within a transaction if txBackend
-// is available, otherwise runs them sequentially. This eliminates the txBackend
-// if/else duplication across RPC handlers.
-func (h *AuthoringHandler) runInTxOrSequential(ctx context.Context, ops ...func(context.Context) error) error {
-	if h.txBackend != nil {
-		if err := h.txBackend.RunInTransaction(ctx, func(txCtx context.Context) error {
+// runInTxOrSequential runs the given operations within a transaction if the
+// backend implements TransactionalBackend, otherwise runs them sequentially.
+func runInTxOrSequential(ctx context.Context, backend any, ops ...func(context.Context) error) error {
+	if txb, ok := backend.(storage.TransactionalBackend); ok {
+		if err := txb.RunInTransaction(ctx, func(txCtx context.Context) error {
 			for _, op := range ops {
 				if err := op(txCtx); err != nil {
 					return err
@@ -795,7 +801,7 @@ var categoryToStorageMap = map[authoring.SafetyCategory]storage.SafetyCategory{
 
 // persistSafetyFlags runs the safety net, stores any resulting flags, and
 // returns the domain-level results for inclusion in the RPC response.
-func (h *AuthoringHandler) persistSafetyFlags(ctx context.Context, slug string, input *authoring.SafetyInput) ([]authoring.SafetyFlagResult, error) {
+func persistSafetyFlags(ctx context.Context, store storage.AuthoringBackend, slug string, input *authoring.SafetyInput) ([]authoring.SafetyFlagResult, error) {
 	if err := input.Validate(); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -805,7 +811,7 @@ func (h *AuthoringHandler) persistSafetyFlags(ctx context.Context, slug string, 
 		if err != nil {
 			return nil, fmt.Errorf("convert safety flags: %w", err)
 		}
-		if err := h.store.StoreSafetyFlags(ctx, slug, storageFlags); err != nil {
+		if err := store.StoreSafetyFlags(ctx, slug, storageFlags); err != nil {
 			return nil, fmt.Errorf("store safety flags: %w", err)
 		}
 	}

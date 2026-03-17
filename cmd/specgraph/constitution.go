@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,11 +14,19 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/seanb4t/specgraph/internal/config"
 	"github.com/spf13/cobra"
 )
 
 func constitutionClient() (specgraphv1connect.ConstitutionServiceClient, error) {
 	return newClient(specgraphv1connect.NewConstitutionServiceClient)
+}
+
+// constitutionClientWithProject creates a ConstitutionServiceClient that uses
+// the given project slug for the X-Specgraph-Project header, bypassing the
+// auto-derived slug from .specgraph.yaml.
+func constitutionClientWithProject(project string) (specgraphv1connect.ConstitutionServiceClient, error) {
+	return newClientWithProject(specgraphv1connect.NewConstitutionServiceClient, project)
 }
 
 var constitutionCmd = &cobra.Command{
@@ -165,13 +174,158 @@ func runConstitutionEmit(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+var constitutionImportCmd = &cobra.Command{
+	Use:   "import [file]",
+	Short: "Import a constitution from a YAML file (or stdin)",
+	Args:  cobra.MaximumNArgs(1),
+	RunE:  runConstitutionImport,
+}
+
+var importProjectSlug string
+
+func runConstitutionImport(_ *cobra.Command, args []string) error {
+	var data []byte
+	var err error
+
+	if len(args) > 0 {
+		data, err = os.ReadFile(args[0])
+		if err != nil {
+			return fmt.Errorf("read file: %w", err)
+		}
+	} else {
+		data, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("read stdin: %w", err)
+		}
+	}
+
+	cc, err := config.ParseConstitutionYAML(data)
+	if err != nil {
+		return fmt.Errorf("parse constitution: %w", err)
+	}
+
+	pb := constitutionConfigToProto(cc)
+
+	var client specgraphv1connect.ConstitutionServiceClient
+	if importProjectSlug != "" {
+		client, err = constitutionClientWithProject(importProjectSlug)
+	} else {
+		client, err = constitutionClient()
+	}
+	if err != nil {
+		return err
+	}
+
+	_, err = client.UpdateConstitution(context.Background(), connect.NewRequest(&specv1.UpdateConstitutionRequest{
+		Constitution: pb,
+	}))
+	if err != nil {
+		return fmt.Errorf("update constitution: %w", err)
+	}
+
+	slug := importProjectSlug
+	if slug == "" {
+		if cwd, cwdErr := os.Getwd(); cwdErr == nil {
+			proj, lerr := config.LoadProject(cwd)
+			if lerr == nil {
+				slug = proj.Slug
+			}
+		}
+	}
+
+	fmt.Printf("Constitution imported for project %s\n", slug)
+	return nil
+}
+
+// constitutionConfigToProto converts a config.ConstitutionConfig (YAML) to a proto Constitution.
+func constitutionConfigToProto(cc *config.ConstitutionConfig) *specv1.Constitution {
+	pb := &specv1.Constitution{
+		Name:        cc.Name,
+		Layer:       constitutionLayerStringToProto(cc.Layer),
+		Constraints: cc.Constraints,
+	}
+	for _, p := range cc.Principles {
+		pb.Principles = append(pb.Principles, &specv1.Principle{
+			Id:         p.ID,
+			Statement:  p.Statement,
+			Rationale:  p.Rationale,
+			Exceptions: p.Exceptions,
+		})
+	}
+	for _, ap := range cc.Antipatterns {
+		pb.Antipatterns = append(pb.Antipatterns, &specv1.Antipattern{
+			Pattern: ap.Pattern,
+			Why:     ap.Why,
+			Instead: ap.Instead,
+		})
+	}
+	for _, ref := range cc.References {
+		pb.References = append(pb.References, &specv1.Reference{
+			ReferenceType: constitutionRefTypeToProto(ref.Type),
+			Path:          ref.Path,
+		})
+	}
+	if t := &cc.Tech; t.Languages.Primary != "" || len(t.Languages.Allowed) > 0 || len(t.Languages.Forbidden) > 0 ||
+		len(t.Frameworks) > 0 || len(t.Infrastructure) > 0 || len(t.APIStandards) > 0 || len(t.Data) > 0 {
+		tc := &specv1.TechConfig{
+			Frameworks:     t.Frameworks,
+			Infrastructure: t.Infrastructure,
+			ApiStandards:   t.APIStandards,
+			Data:           t.Data,
+		}
+		if t.Languages.Primary != "" || len(t.Languages.Allowed) > 0 || len(t.Languages.Forbidden) > 0 {
+			tc.Languages = &specv1.LanguageConfig{
+				Primary:          t.Languages.Primary,
+				Allowed:          t.Languages.Allowed,
+				Forbidden:        t.Languages.Forbidden,
+				ForbiddenReasons: t.Languages.ForbiddenReasons,
+			}
+		}
+		pb.Tech = tc
+	}
+	return pb
+}
+
+func constitutionLayerStringToProto(layer string) specv1.ConstitutionLayer {
+	switch strings.ToLower(layer) {
+	case "user":
+		return specv1.ConstitutionLayer_CONSTITUTION_LAYER_USER
+	case "org":
+		return specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG
+	case "project":
+		return specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT
+	case "domain":
+		return specv1.ConstitutionLayer_CONSTITUTION_LAYER_DOMAIN
+	default:
+		return specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED
+	}
+}
+
+func constitutionRefTypeToProto(t string) specv1.ReferenceType {
+	switch strings.ToLower(t) {
+	case "adr":
+		return specv1.ReferenceType_REFERENCE_TYPE_ADR
+	case "spec":
+		return specv1.ReferenceType_REFERENCE_TYPE_SPEC
+	case "doc":
+		return specv1.ReferenceType_REFERENCE_TYPE_DOC
+	case "url":
+		return specv1.ReferenceType_REFERENCE_TYPE_URL
+	default:
+		return specv1.ReferenceType_REFERENCE_TYPE_UNSPECIFIED
+	}
+}
+
 func init() {
 	constitutionEmitCmd.Flags().StringVar(&emitFormat, "format", "claude-md", "output format (e.g. claude-md)")
 	constitutionEmitCmd.Flags().StringVarP(&emitOutput, "output", "o", "", "write output to file instead of stdout")
 
+	constitutionImportCmd.Flags().StringVar(&importProjectSlug, "project", "", "project slug (defaults to slug from .specgraph.yaml)")
+
 	constitutionCmd.AddCommand(constitutionShowCmd)
 	constitutionCmd.AddCommand(constitutionCheckCmd)
 	constitutionCmd.AddCommand(constitutionEmitCmd)
+	constitutionCmd.AddCommand(constitutionImportCmd)
 
 	rootCmd.AddCommand(constitutionCmd)
 }

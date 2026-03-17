@@ -29,11 +29,12 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 	}
 
 	query := fmt.Sprintf(`
-		MATCH (a {slug: $from}), (b {slug: $to})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $from}),
+		      (p)<-[:BELONGS_TO]-(b {slug: $to})
 		MERGE (a)-[r:%s]->(b)
 		RETURN a.slug, b.slug
 	`, relType)
-	params := map[string]any{"from": actualFrom, "to": actualTo}
+	params := mergeParams(s.projectParam(), map[string]any{"from": actualFrom, "to": actualTo})
 
 	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
@@ -67,10 +68,12 @@ func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeTyp
 	}
 
 	query := fmt.Sprintf(`
-		MATCH (a {slug: $from})-[r:%s]->(b {slug: $to})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $from}),
+		      (p)<-[:BELONGS_TO]-(b {slug: $to}),
+		      (a)-[r:%s]->(b)
 		DELETE r
 	`, relType)
-	params := map[string]any{"from": actualFrom, "to": actualTo}
+	params := mergeParams(s.projectParam(), map[string]any{"from": actualFrom, "to": actualTo})
 
 	if _, err = neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer); err != nil {
 		return fmt.Errorf("memgraph: remove edge: %w", err)
@@ -81,23 +84,23 @@ func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeTyp
 // ListEdges returns edges for a node, optionally filtered by type.
 func (s *Store) ListEdges(ctx context.Context, slug string, edgeType storage.EdgeType) ([]*storage.Edge, error) {
 	var query string
-	params := map[string]any{"slug": slug}
+	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
 	if edgeType != "" {
 		relType := string(edgeType)
 		query = fmt.Sprintf(`
-			MATCH (a {slug: $slug})-[r:%s]->(b)
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})-[r:%s]->(b)
 			RETURN a.slug AS from_slug, b.slug AS to_slug, type(r) AS rel_type
 			UNION
-			MATCH (a {slug: $slug})<-[r:%s]-(b)
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})<-[r:%s]-(b)
 			RETURN b.slug AS from_slug, a.slug AS to_slug, type(r) AS rel_type
 		`, relType, relType)
 	} else {
 		query = `
-			MATCH (a {slug: $slug})-[r]->(b)
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})-[r]->(b)
 			RETURN a.slug AS from_slug, b.slug AS to_slug, type(r) AS rel_type
 			UNION
-			MATCH (a {slug: $slug})<-[r]-(b)
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})<-[r]-(b)
 			RETURN b.slug AS from_slug, a.slug AS to_slug, type(r) AS rel_type
 		`
 	}
@@ -130,38 +133,39 @@ func (s *Store) ListEdges(ctx context.Context, slug string, edgeType storage.Edg
 // A node's dependencies include both nodes it DEPENDS_ON and nodes that BLOCK it.
 func (s *Store) GetDependencies(ctx context.Context, slug string) ([]storage.NodeRef, error) {
 	query := `
-		MATCH (a {slug: $slug})-[:DEPENDS_ON]->(n)
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})-[:DEPENDS_ON]->(n)
 		RETURN n.id AS id, n.slug AS slug, labels(n)[0] AS label, COALESCE(n.stage, n.status, "") AS stage
 		UNION
-		MATCH (n)-[:BLOCKS]->(a {slug: $slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug}),
+		      (n)-[:BLOCKS]->(a)
 		RETURN n.id AS id, n.slug AS slug, labels(n)[0] AS label, COALESCE(n.stage, n.status, "") AS stage
 	`
-	return s.queryNodeRefs(ctx, query, map[string]any{"slug": slug})
+	return s.queryNodeRefs(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
 }
 
 // GetTransitiveDeps returns all transitive dependencies of a node.
 func (s *Store) GetTransitiveDeps(ctx context.Context, slug string) ([]storage.NodeRef, error) {
 	query := `
-		MATCH (a {slug: $slug})-[:DEPENDS_ON*]->(b)
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})-[:DEPENDS_ON*]->(b)
 		RETURN DISTINCT b.id AS id, b.slug AS slug, labels(b)[0] AS label, COALESCE(b.stage, b.status, "") AS stage
 	`
-	return s.queryNodeRefs(ctx, query, map[string]any{"slug": slug})
+	return s.queryNodeRefs(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
 }
 
 // GetImpact returns all nodes transitively depending on this node.
 func (s *Store) GetImpact(ctx context.Context, slug string) ([]storage.NodeRef, error) {
 	query := `
-		MATCH (a {slug: $slug})<-[:DEPENDS_ON*]-(b)
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})<-[:DEPENDS_ON*]-(b)
 		RETURN DISTINCT b.id AS id, b.slug AS slug, labels(b)[0] AS label, COALESCE(b.stage, b.status, "") AS stage
 	`
-	return s.queryNodeRefs(ctx, query, map[string]any{"slug": slug})
+	return s.queryNodeRefs(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
 }
 
 // GetReady returns specs with all dependencies "done" or no dependencies.
 // A spec is blocked if it has unfinished DEPENDS_ON targets or unfinished BLOCKS sources.
 func (s *Store) GetReady(ctx context.Context) ([]storage.NodeRef, error) {
 	query := `
-		MATCH (s:Spec)
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec)
 		WHERE s.stage <> "done"
 		OPTIONAL MATCH (s)-[:DEPENDS_ON]->(dep:Spec)
 		WHERE dep.stage <> "done"
@@ -173,13 +177,14 @@ func (s *Store) GetReady(ctx context.Context) ([]storage.NodeRef, error) {
 		WHERE size(active_blockers) = 0
 		RETURN s.id AS id, s.slug AS slug, labels(s)[0] AS label, s.stage AS stage
 	`
-	return s.queryNodeRefs(ctx, query, map[string]any{})
+	return s.queryNodeRefs(ctx, query, s.projectParam())
 }
 
 // GetCriticalPath returns the longest dependency chain ending at a node.
 func (s *Store) GetCriticalPath(ctx context.Context, slug string) ([]storage.NodeRef, error) {
 	query := `
-		MATCH p = (a {slug: $slug})-[:DEPENDS_ON*]->(b)
+		MATCH (proj:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})
+		MATCH p = (a)-[:DEPENDS_ON*]->(b)
 		OPTIONAL MATCH (b)-[:DEPENDS_ON]->(c)
 		WITH p, b, c
 		WHERE c IS NULL
@@ -187,7 +192,7 @@ func (s *Store) GetCriticalPath(ctx context.Context, slug string) ([]storage.Nod
 		UNWIND nodes(p) AS n
 		RETURN n.id AS id, n.slug AS slug, labels(n)[0] AS label, COALESCE(n.stage, n.status, "") AS stage
 	`
-	return s.queryNodeRefs(ctx, query, map[string]any{"slug": slug})
+	return s.queryNodeRefs(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
 }
 
 func (s *Store) queryNodeRefs(ctx context.Context, query string, params map[string]any) ([]storage.NodeRef, error) {

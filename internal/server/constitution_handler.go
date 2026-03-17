@@ -18,21 +18,25 @@ import (
 
 // ConstitutionHandler implements the ConnectRPC ConstitutionService.
 type ConstitutionHandler struct {
-	store storage.ConstitutionBackend
+	scoper storage.Scoper
 }
 
 var _ specgraphv1connect.ConstitutionServiceHandler = (*ConstitutionHandler)(nil)
 
 // RegisterConstitutionService registers the ConstitutionService on the given mux.
-func RegisterConstitutionService(mux *http.ServeMux, store storage.ConstitutionBackend) {
-	handler := &ConstitutionHandler{store: store}
+func RegisterConstitutionService(mux *http.ServeMux, scoper storage.Scoper) {
+	handler := &ConstitutionHandler{scoper: scoper}
 	path, h := specgraphv1connect.NewConstitutionServiceHandler(handler)
 	mux.Handle(path, h)
 }
 
 // GetConstitution handles the GetConstitution RPC.
 func (h *ConstitutionHandler) GetConstitution(ctx context.Context, _ *connect.Request[specv1.GetConstitutionRequest]) (*connect.Response[specv1.GetConstitutionResponse], error) {
-	c, err := h.store.GetConstitution(ctx)
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
+	c, err := store.GetConstitution(ctx)
 	if err != nil {
 		if errors.Is(err, storage.ErrConstitutionNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
@@ -44,11 +48,15 @@ func (h *ConstitutionHandler) GetConstitution(ctx context.Context, _ *connect.Re
 
 // UpdateConstitution handles the UpdateConstitution RPC.
 func (h *ConstitutionHandler) UpdateConstitution(ctx context.Context, req *connect.Request[specv1.UpdateConstitutionRequest]) (*connect.Response[specv1.UpdateConstitutionResponse], error) {
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
 	msg := req.Msg
 	if msg.Constitution == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("constitution is required"))
 	}
-	c, err := h.store.UpdateConstitution(ctx, constitutionFromProto(msg.Constitution))
+	c, err := store.UpdateConstitution(ctx, constitutionFromProto(msg.Constitution))
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -57,11 +65,15 @@ func (h *ConstitutionHandler) UpdateConstitution(ctx context.Context, req *conne
 
 // CheckViolation handles the CheckViolation RPC.
 func (h *ConstitutionHandler) CheckViolation(ctx context.Context, req *connect.Request[specv1.CheckViolationRequest]) (*connect.Response[specv1.CheckViolationResponse], error) {
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
 	msg := req.Msg
 	if msg.SpecSlug == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("spec_slug is required"))
 	}
-	violations, err := h.store.CheckViolation(ctx, msg.SpecSlug)
+	violations, err := store.CheckViolation(ctx, msg.SpecSlug)
 	if err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
@@ -76,11 +88,15 @@ func (h *ConstitutionHandler) CheckViolation(ctx context.Context, req *connect.R
 
 // EmitToolFiles handles the EmitToolFiles RPC.
 func (h *ConstitutionHandler) EmitToolFiles(ctx context.Context, req *connect.Request[specv1.EmitToolFilesRequest]) (*connect.Response[specv1.EmitToolFilesResponse], error) {
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
 	if req.Msg.Format == specv1.OutputFormat_OUTPUT_FORMAT_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("format is required"))
 	}
 
-	c, err := h.store.GetConstitution(ctx)
+	c, err := store.GetConstitution(ctx)
 	if err != nil {
 		if errors.Is(err, storage.ErrConstitutionNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)
