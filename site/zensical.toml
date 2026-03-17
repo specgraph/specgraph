@@ -12,7 +12,7 @@ nav = [
   "index.md",
   "problem.md",
   "how-it-works.md",
-  { "Concepts" = ["concepts/index.md", "concepts/specs.md", "concepts/constitution.md", "concepts/authoring.md", "concepts/decisions.md", "concepts/passes.md"] },
+  { "Concepts" = ["concepts/index.md", "concepts/specs.md", "concepts/constitution.md", "concepts/authoring.md", "concepts/decisions.md", "concepts/passes.md", "concepts/example-spec.md"] },
   "architecture.md",
   "roadmap.md",
   "ecosystem.md",
