@@ -7,8 +7,8 @@ description: >
 
 # SpecGraph Show
 
-````bash
+```bash
 specgraph show <slug> --format=json
-````
+```
 
 Present the spec details in a readable format: title, stage, priority, intent, decisions, edges.

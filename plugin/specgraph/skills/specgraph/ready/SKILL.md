@@ -7,8 +7,8 @@ description: >
 
 # SpecGraph Ready
 
-````bash
+```bash
 specgraph ready
-````
+```
 
 Present the ready-to-work specs. Suggest claiming one with `specgraph claim <slug>`.

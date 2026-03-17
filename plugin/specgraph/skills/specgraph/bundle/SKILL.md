@@ -8,12 +8,12 @@ description: >
 
 # SpecGraph Bundle
 
-````bash
+```bash
 specgraph bundle <slug>
-````
+```
 
 Present the bundle contents. Offer to inject context:
 
-````bash
+```bash
 specgraph inject <slug> --tool=claude-code
-````
+```

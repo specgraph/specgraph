@@ -7,8 +7,8 @@ description: >
 
 # SpecGraph Deps
 
-````bash
+```bash
 specgraph deps <slug>
-````
+```
 
 Present the dependency tree. Highlight blocked specs and circular dependencies if any.

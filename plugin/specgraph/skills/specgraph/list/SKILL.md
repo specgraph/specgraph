@@ -7,9 +7,9 @@ description: >
 
 # SpecGraph List
 
-````bash
+```bash
 specgraph list --format=table
-````
+```
 
 Present the output as a formatted table. If filtering is requested:
 

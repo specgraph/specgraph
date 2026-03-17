@@ -11,11 +11,11 @@ Review the spec and mark it ready for execution.
 
 ## Prerequisites
 
-````bash
+```bash
 specgraph health
 specgraph show <slug> --format=json
 specgraph deps <slug>
-````
+```
 
 ## Workflow
 
@@ -29,9 +29,9 @@ specgraph deps <slug>
 
 ### 2. Approve
 
-````bash
+```bash
 specgraph approve <slug>
-````
+```
 
 ### 3. Next Steps
 

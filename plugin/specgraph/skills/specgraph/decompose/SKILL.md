@@ -12,10 +12,10 @@ Break the spec into implementable work units.
 
 ## Prerequisites
 
-````bash
+```bash
 specgraph health
 specgraph show <slug> --format=json
-````
+```
 
 ## Workflow
 
@@ -27,15 +27,15 @@ specgraph show <slug> --format=json
 
 ### 2. Create Child Specs
 
-````bash
+```bash
 specgraph decompose <slug>
-````
+```
 
 ### 3. Add Dependencies Between Units
 
-````bash
+```bash
 specgraph edge <child-slug> depends-on <other-child-slug>
-````
+```
 
 ### 4. Next Steps
 

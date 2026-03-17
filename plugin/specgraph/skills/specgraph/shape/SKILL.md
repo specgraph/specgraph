@@ -12,18 +12,18 @@ Bound scope, explore solutions, capture decisions, surface risks.
 
 ## Prerequisites
 
-````bash
+```bash
 specgraph health
 specgraph constitution show --format=json
-````
+```
 
 ## Workflow
 
 ### 1. Load the Spec
 
-````bash
+```bash
 specgraph show <slug> --format=json
-````
+```
 
 ### 2. Shaping Moves
 
@@ -37,21 +37,21 @@ Work through all five — each is a conversation:
 
 ### 3. Capture Decisions
 
-````bash
+```bash
 specgraph decision create --spec=<slug> --title="<title>" --chosen="<chosen>" --rationale="<rationale>"
-````
+```
 
 ### 4. Capture Edges
 
-````bash
+```bash
 specgraph edge <slug> depends-on <dep-slug>
-````
+```
 
 ### 5. Persist
 
-````bash
+```bash
 specgraph shape <slug>
-````
+```
 
 ### 6. Next Steps
 

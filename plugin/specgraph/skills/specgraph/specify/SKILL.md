@@ -12,11 +12,11 @@ Make the spec precise enough for implementation without making decisions.
 
 ## Prerequisites
 
-````bash
+```bash
 specgraph health
 specgraph show <slug> --format=json
 specgraph deps <slug>
-````
+```
 
 ## Workflow
 
@@ -37,9 +37,9 @@ specgraph deps <slug>
 
 ### 4. Persist
 
-````bash
+```bash
 specgraph specify <slug>
-````
+```
 
 ### 5. Next Steps
 

@@ -14,9 +14,9 @@ Capture a vague idea and turn it into a seed spec.
 
 Verify server is reachable:
 
-````bash
+```bash
 specgraph health
-````
+```
 
 ## Workflow
 
@@ -24,18 +24,18 @@ specgraph health
 
 If `$ARGUMENTS` contains a slug, load it:
 
-````bash
+```bash
 specgraph show <slug> --format=json
-````
+```
 
 If `$ARGUMENTS` is a description, ask the user for a slug (kebab-case) or generate one.
 
 ### 2. Create and Spark
 
-````bash
+```bash
 specgraph create <slug> --title="<title>" --priority=p2 --size=medium
 specgraph spark <slug>
-````
+```
 
 ### 3. Elicitation Probes
 

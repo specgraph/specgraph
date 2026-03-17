@@ -5,6 +5,7 @@
 **Goal:** Transform SpecGraph from a per-project tool into a global development daemon, then ship a Claude Code plugin that wraps the CLI in conversational skills.
 
 **Two major deliverables:**
+
 1. Global daemon architecture (config, lifecycle, graph namespacing)
 2. Claude Code plugin (skills, hooks, plugin manifest)
 
@@ -39,6 +40,7 @@ project: specgraph                # optional — auto-derived from git remote if
 Minimal by design. Everything else (constitution, sync config, adapters) lives server-side and is managed via CLI/RPC. The `server` field is an optional override for teams with a shared specgraph instance.
 
 The `project` field is **optional**. If omitted or if `.specgraph.yaml` doesn't exist, the slug is auto-derived:
+
 - Parse `git remote get-url origin` → extract `owner/repo` → normalize to `owner-repo`
 - No git remote → use directory name
 - Auto-derived slugs are logged so the user knows what was inferred
@@ -65,11 +67,13 @@ client:
 ```
 
 The two top-level keys are independently meaningful:
+
 - **Client-only machine** (remote server): only `client:` present. No `server:` section.
 - **Server-only machine** (shared infra): only `server:` present. No `client:` section.
 - **Local dev** (default): both present.
 
 **Client config resolution order** (first match wins):
+
 1. `.specgraph.yaml` `server` field (per-repo override)
 2. Global `client.routes` — glob match on project slug
 3. Global `client.default_server`
@@ -109,6 +113,7 @@ RETURN s
 ```
 
 **Why edge-only (no `project` property on nodes):**
+
 - **Normalized** — project identity lives in one place (the Project node). No duplication across thousands of nodes.
 - **Graph-native** — "all nodes in this project" is a single traversal from the Project node.
 - **Phase 4 ready** — cross-project queries (federation, multi-repo) become trivial: traverse from multiple Project nodes.
@@ -128,6 +133,7 @@ store, err := memgraph.New(ctx, boltURI, memgraph.WithProject(projectSlug))
 When `projectSlug` is empty, the store returns an error — no implicit "all projects" queries.
 
 **Indexes:**
+
 - `CREATE INDEX ON :Project(slug)` — unique project lookup
 - `CREATE INDEX ON :Spec(slug)` — slug lookup (not globally unique, scoped by BELONGS_TO edge)
 - Similar indexes on Decision(slug), ExternalRef(external_id), etc.
@@ -155,7 +161,7 @@ When `projectSlug` is empty, the store returns an error — no implicit "all pro
 
 ### `specgraph up` Details
 
-```
+```text
 specgraph up
   1. Load ~/.config/specgraph/config.yaml (write defaults if missing)
   2. Check health endpoint on configured address (server.listen)
@@ -178,7 +184,7 @@ specgraph up
 
 ### `specgraph down` Details
 
-```
+```text
 specgraph down [--rm]
   1. If server.mode == "service":
      - macOS: launchctl bootout gui/$(id -u)/com.specgraph.server
@@ -247,7 +253,7 @@ Both reference the actual `specgraph` binary path (resolved at generation time v
 
 ### `specgraph prime` Details
 
-```
+```text
 specgraph prime
   1. Run `up` logic (idempotent)
   2. Find .specgraph.yaml by walking CWD upward to filesystem root (like git root discovery)
@@ -267,7 +273,7 @@ specgraph prime
 
 ### `specgraph init` Details
 
-```
+```text
 specgraph init [project-slug]
   1. Ensure server is running (calls `up` logic)
   2. Determine project slug:
@@ -300,7 +306,7 @@ Both `prime` and `init` can create a Project node — they are complementary, no
 
 ### `specgraph constitution import`
 
-```
+```text
 specgraph constitution import [--project=<slug>] [file]
   - Reads YAML from file argument or stdin
   - Parses into Constitution domain type
@@ -334,6 +340,7 @@ All other domain nodes (Spec, Decision, ExternalRef, etc.) connect to the Projec
 ### Server Process Model
 
 In `service` mode (default), the server runs as a **user-level service** managed by the OS (launchd on macOS, systemd on Linux). This provides:
+
 - **Auto-start on login** — no need to remember `specgraph up`
 - **Auto-restart on crash** — KeepAlive (launchd) / Restart=on-failure (systemd)
 - **Clean shutdown on logout** — OS sends SIGTERM
@@ -347,6 +354,7 @@ The server process handles all projects — it receives the project slug via RPC
 ### Route Glob Matching
 
 Route patterns in `~/.config/specgraph/config.yaml` use Go's `filepath.Match` semantics:
+
 - `*` matches any sequence of non-separator characters
 - `?` matches any single non-separator character
 - `[...]` matches character ranges
@@ -361,7 +369,7 @@ Route patterns in `~/.config/specgraph/config.yaml` use Go's `filepath.Match` se
 
 ### Plugin Structure
 
-```
+```text
 plugin/specgraph/
   plugin.json                          # Manifest
   hooks/
@@ -402,9 +410,11 @@ description: >
 # SpecGraph <Stage>
 
 ## Prerequisites
+
 - specgraph health (verify server)
 
 ## Workflow
+
 1. Load context (show spec, constitution)
 2. Interactive phase (elicitation probes, user conversation)
 3. Persist results (CLI command with captured data)
@@ -430,6 +440,7 @@ exec specgraph prime 2>&1
 ```
 
 Output is injected into the session context, giving the AI:
+
 - Project identity and constitution summary
 - Table of non-terminal specs (slug, stage, priority) — compact, queryable for details via CLI
 
@@ -473,6 +484,7 @@ Output is injected into the session context, giving the AI:
 This design breaks into two major phases within Slice 7:
 
 ### Phase A: Global Daemon Infrastructure
+
 - XDG config/data/state directory setup
 - New global config schema (`~/.config/specgraph/config.yaml`)
 - Per-repo `.specgraph.yaml` reader with project slug resolution (auto-derive from git remote)
@@ -488,6 +500,7 @@ This design breaks into two major phases within Slice 7:
 - Existing `specgraph health` command already exists (Slice 1) — no changes needed
 
 ### Phase B: Claude Code Plugin
+
 - plugin.json manifest
 - SessionStart hook (`session-start.sh` → `specgraph prime`)
 - Meta-skill (overview/router — dispatches to sub-skills based on user intent)
@@ -496,6 +509,7 @@ This design breaks into two major phases within Slice 7:
 - Bundle skill
 
 ### Out of Scope (Phase 4)
+
 - Multi-server federation
 - PostToolUse progress hook (optional enhancement)
 - `specgraph constitution export` for backup

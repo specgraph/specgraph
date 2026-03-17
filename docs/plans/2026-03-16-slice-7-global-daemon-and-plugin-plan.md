@@ -17,6 +17,7 @@
 ### Task 1: XDG Path Resolution Package
 
 **Files:**
+
 - Create: `internal/xdg/xdg.go`
 - Create: `internal/xdg/xdg_test.go`
 
@@ -152,6 +153,7 @@ git commit -m "feat(xdg): XDG base directory resolution package"
 ### Task 2: New Global Config Schema
 
 **Files:**
+
 - Create: `internal/config/global.go`
 - Create: `internal/config/global_test.go`
 
@@ -378,6 +380,7 @@ git commit -m "feat(config): global config schema with server/client split and r
 ### Task 3: Per-Repo `.specgraph.yaml` Reader
 
 **Files:**
+
 - Create: `internal/config/project.go`
 - Create: `internal/config/project_test.go`
 
@@ -598,6 +601,7 @@ git commit -m "feat(config): per-repo .specgraph.yaml reader with slug auto-deri
 ### Task 4: Project Storage Interface & Domain Type
 
 **Files:**
+
 - Create: `internal/storage/project.go`
 
 - [ ] **Step 1: Define the Project domain type and backend interface**
@@ -658,6 +662,7 @@ git commit -m "feat(storage): Project domain type and ProjectBackend interface"
 ### Task 5: Memgraph Project Storage Implementation
 
 **Files:**
+
 - Create: `internal/storage/memgraph/project.go`
 - Create: `internal/storage/memgraph/project_test.go`
 
@@ -916,6 +921,7 @@ git commit -m "feat(memgraph): Project node CRUD with MERGE-based idempotent cre
 ### Task 6: Add WithProject Option to Memgraph Store
 
 **Files:**
+
 - Modify: `internal/storage/memgraph/memgraph.go` (Store struct, New constructor, Option)
 
 This task adds the `project` field to the Store and the `WithProject` option. It does **not** yet modify queries — that's Task 7.
@@ -1001,6 +1007,7 @@ git commit -m "feat(memgraph): add WithProject option and require project slug o
 ### Task 7: Add BELONGS_TO Edges to All Cypher Queries
 
 **Files:**
+
 - Modify: `internal/storage/memgraph/memgraph.go` (spec CRUD queries)
 - Modify: `internal/storage/memgraph/graph.go` (edge queries)
 - Modify: `internal/storage/memgraph/decision.go` (decision queries)
@@ -1127,6 +1134,7 @@ git commit -m "feat(memgraph): add BELONGS_TO edge namespacing to all Cypher que
 ### Task 8: Create Memgraph Indexes for Project Scoping
 
 **Files:**
+
 - Modify: `internal/storage/memgraph/memgraph.go` (add index creation to constructor)
 
 - [ ] **Step 1: Add index creation to New()**
@@ -1170,6 +1178,7 @@ git commit -m "feat(memgraph): create indexes for Project, Spec, Decision, Exter
 ### Task 9: Service Manager Package (launchd/systemd)
 
 **Files:**
+
 - Create: `internal/service/service.go`
 - Create: `internal/service/launchd.go`
 - Create: `internal/service/systemd.go`
@@ -1315,6 +1324,7 @@ git commit -m "feat(service): platform-aware service manager (launchd + systemd)
 ### Task 10: `specgraph up` Command
 
 **Files:**
+
 - Create: `cmd/specgraph/up.go`
 - Create: `cmd/specgraph/up_test.go`
 
@@ -1344,6 +1354,7 @@ git commit -m "feat(cli): specgraph up command with service/manual modes"
 ### Task 11: `specgraph down` Command
 
 **Files:**
+
 - Create: `cmd/specgraph/down.go`
 
 - [ ] **Step 1: Write the `down` command**
@@ -1368,6 +1379,7 @@ git commit -m "feat(cli): specgraph down command with --rm flag"
 ### Task 12: `specgraph prime` Command
 
 **Files:**
+
 - Create: `cmd/specgraph/prime.go`
 
 - [ ] **Step 1: Write the `prime` command**
@@ -1396,6 +1408,7 @@ git commit -m "feat(cli): specgraph prime command for session initialization"
 ### Task 13: Rework `specgraph init`
 
 **Files:**
+
 - Modify: `cmd/specgraph/init.go` (rewrite to use new config, project registration, interactive constitution)
 
 - [ ] **Step 1: Rewrite init to use global config + project registration**
@@ -1426,6 +1439,7 @@ git commit -m "feat(cli): rework init for global daemon with project registratio
 ### Task 14: `specgraph constitution import` Command
 
 **Files:**
+
 - Create: `cmd/specgraph/constitution_import.go`
 
 - [ ] **Step 1: Write the import subcommand**
@@ -1447,6 +1461,7 @@ git commit -m "feat(cli): specgraph constitution import from file or stdin"
 ### Task 15: Update Client Resolution to Use New Config
 
 **Files:**
+
 - Modify: `cmd/specgraph/client.go` (use GlobalConfig + ProjectConfig instead of old Config)
 
 - [ ] **Step 1: Update `resolveBaseURL()` to use new config chain**
@@ -1474,6 +1489,7 @@ git commit -m "refactor(cli): switch all commands to global + project config res
 ### Task 16: Update `specgraph serve` for New Config
 
 **Files:**
+
 - Modify: `cmd/specgraph/serve.go`
 
 - [ ] **Step 1: Update serve to read from global config**
@@ -1503,6 +1519,7 @@ git commit -m "refactor(serve): use global config, remove constitution bootstrap
 ### Task 17: Wire Project Slug Through RPC Context
 
 **Files:**
+
 - Modify: `internal/server/server.go` (add project middleware)
 - Modify: All handler files to extract project from context
 
@@ -1597,6 +1614,7 @@ git commit -m "feat(server): project context middleware and per-request store sc
 ### Task 18: Remove Old Per-Project Config Code
 
 **Files:**
+
 - Modify: `internal/config/config.go` (remove or mark deprecated)
 - Remove: `.specgraph/` references in docker compose template path
 - Modify: `internal/docker/compose.go` (write to XDG data home instead of `.specgraph/`)
@@ -1626,6 +1644,7 @@ git commit -m "refactor: remove old per-project config, move compose to XDG data
 ### Task 19: Integration Test — Full Prime Flow
 
 **Files:**
+
 - Create: `internal/storage/memgraph/prime_integration_test.go`
 
 - [ ] **Step 1: Write integration test**
@@ -1707,6 +1726,7 @@ Expected: PASS (or expected failures documented)
 ### Task 21: Plugin Manifest and SessionStart Hook
 
 **Files:**
+
 - Create: `plugin/specgraph/plugin.json`
 - Create: `plugin/specgraph/hooks/session-start.sh`
 
@@ -1741,6 +1761,7 @@ git commit -m "feat(plugin): plugin.json manifest and SessionStart hook"
 ### Task 22: Meta-Skill (Router)
 
 **Files:**
+
 - Create: `plugin/specgraph/skills/specgraph/SKILL.md`
 
 - [ ] **Step 1: Write the meta-skill**
@@ -1759,6 +1780,7 @@ git commit -m "feat(plugin): meta-skill for SpecGraph overview and routing"
 ### Task 23: Authoring Skills (Spark, Shape, Specify, Decompose, Approve)
 
 **Files:**
+
 - Create: `plugin/specgraph/skills/specgraph/spark/SKILL.md`
 - Create: `plugin/specgraph/skills/specgraph/shape/SKILL.md`
 - Create: `plugin/specgraph/skills/specgraph/specify/SKILL.md`
@@ -1783,6 +1805,7 @@ git commit -m "feat(plugin): authoring skills (spark, shape, specify, decompose,
 ### Task 24: Query Skills (List, Show, Deps, Ready)
 
 **Files:**
+
 - Create: `plugin/specgraph/skills/specgraph/list/SKILL.md`
 - Create: `plugin/specgraph/skills/specgraph/show/SKILL.md`
 - Create: `plugin/specgraph/skills/specgraph/deps/SKILL.md`
@@ -1804,6 +1827,7 @@ git commit -m "feat(plugin): query skills (list, show, deps, ready)"
 ### Task 25: Bundle Skill
 
 **Files:**
+
 - Create: `plugin/specgraph/skills/specgraph/bundle/SKILL.md`
 
 - [ ] **Step 1: Write the bundle skill**
