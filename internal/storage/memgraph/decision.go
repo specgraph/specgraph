@@ -20,7 +20,8 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale
 	nowStr := now.Format(time.RFC3339)
 
 	query := `
-		CREATE (d:Decision {
+		MATCH (p:Project {slug: $project})
+		CREATE (p)<-[:BELONGS_TO]-(d:Decision {
 			id: $id,
 			slug: $slug,
 			title: $title,
@@ -34,7 +35,7 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale
 		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
 		       d.superseded_by, d.created_at, d.updated_at
 	`
-	params := map[string]any{
+	params := mergeParams(s.projectParam(), map[string]any{
 		"id":            id,
 		"slug":          slug,
 		"title":         title,
@@ -44,7 +45,7 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale
 		"superseded_by": "",
 		"created_at":    nowStr,
 		"updated_at":    nowStr,
-	}
+	})
 
 	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
@@ -60,11 +61,11 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale
 // GetDecision retrieves a decision by slug.
 func (s *Store) GetDecision(ctx context.Context, slug string) (*storage.Decision, error) {
 	query := `
-		MATCH (d:Decision {slug: $slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})
 		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
 		       d.superseded_by, d.created_at, d.updated_at
 	`
-	params := map[string]any{"slug": slug}
+	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
 	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
@@ -80,14 +81,14 @@ func (s *Store) GetDecision(ctx context.Context, slug string) (*storage.Decision
 // ListDecisions returns decisions matching the given filters.
 func (s *Store) ListDecisions(ctx context.Context, status storage.DecisionStatus, limit int) ([]*storage.Decision, error) {
 	var clauses []string
-	params := map[string]any{}
+	params := s.projectParam()
 
 	if status != "" {
 		clauses = append(clauses, "d.status = $status")
 		params["status"] = string(status)
 	}
 
-	query := "MATCH (d:Decision)"
+	query := "MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision)"
 	if len(clauses) > 0 {
 		query += " WHERE " + strings.Join(clauses, " AND ")
 	}
@@ -123,7 +124,7 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 	}
 
 	var setClauses []string
-	params := map[string]any{"slug": slug}
+	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
 	if title != nil {
 		setClauses = append(setClauses, "d.title = $title")
@@ -155,7 +156,7 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 	params["updated_at"] = nowStr
 
 	query := fmt.Sprintf(`
-		MATCH (d:Decision {slug: $slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})
 		SET %s
 		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
 		       d.superseded_by, d.created_at, d.updated_at

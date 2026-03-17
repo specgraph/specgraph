@@ -28,8 +28,7 @@ type SpecLinter interface {
 
 // LifecycleHandler implements the ConnectRPC LifecycleService.
 type LifecycleHandler struct {
-	store        storage.LifecycleBackend
-	ackReader    storage.AckStateReader
+	scoper       storage.Scoper
 	driftChecker DriftChecker
 	linter       SpecLinter
 	logger       *slog.Logger
@@ -40,6 +39,10 @@ var _ specgraphv1connect.LifecycleServiceHandler = (*LifecycleHandler)(nil)
 // TransitionAmend handles the TransitionAmend RPC, transitioning a done spec to
 // an earlier authoring stage (or "amended" if no re-entry stage is specified).
 func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Request[specv1.TransitionAmendRequest]) (*connect.Response[specv1.TransitionAmendResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -57,7 +60,7 @@ func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Req
 		}
 	}
 
-	spec, err := h.store.LifecycleAmendSpec(ctx, msg.Slug, msg.Reason, msg.ReEntryStage)
+	spec, err := store.LifecycleAmendSpec(ctx, msg.Slug, msg.Reason, msg.ReEntryStage)
 	if err != nil {
 		return nil, h.lifecycleError("TransitionAmend", msg.Slug, err)
 	}
@@ -70,6 +73,10 @@ func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Req
 
 // TransitionSupersede handles the TransitionSupersede RPC, marking a spec as replaced by another.
 func (h *LifecycleHandler) TransitionSupersede(ctx context.Context, req *connect.Request[specv1.TransitionSupersedeRequest]) (*connect.Response[specv1.TransitionSupersedeResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -81,7 +88,7 @@ func (h *LifecycleHandler) TransitionSupersede(ctx context.Context, req *connect
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a spec cannot supersede itself"))
 	}
 
-	oldSpec, newSpec, err := h.store.LifecycleSupersedeSpec(ctx, msg.Slug, msg.NewSlug)
+	oldSpec, newSpec, err := store.LifecycleSupersedeSpec(ctx, msg.Slug, msg.NewSlug)
 	if err != nil {
 		return nil, h.lifecycleError("TransitionSupersede", msg.Slug, err)
 	}
@@ -101,6 +108,10 @@ func (h *LifecycleHandler) TransitionSupersede(ctx context.Context, req *connect
 
 // TransitionAbandon handles the TransitionAbandon RPC, transitioning a spec to abandoned (terminal).
 func (h *LifecycleHandler) TransitionAbandon(ctx context.Context, req *connect.Request[specv1.TransitionAbandonRequest]) (*connect.Response[specv1.TransitionAbandonResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -109,7 +120,7 @@ func (h *LifecycleHandler) TransitionAbandon(ctx context.Context, req *connect.R
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	spec, err := h.store.LifecycleAbandonSpec(ctx, msg.Slug, msg.Reason)
+	spec, err := store.LifecycleAbandonSpec(ctx, msg.Slug, msg.Reason)
 	if err != nil {
 		return nil, h.lifecycleError("TransitionAbandon", msg.Slug, err)
 	}
@@ -123,6 +134,10 @@ func (h *LifecycleHandler) TransitionAbandon(ctx context.Context, req *connect.R
 // CheckDrift handles the CheckDrift RPC, returning drift reports for a spec.
 // An empty slug checks all eligible (done/amended) specs.
 func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if msg.Slug != "" {
 		if err := validateSlug(msg.Slug); err != nil {
@@ -150,7 +165,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		if len(reports) == 0 {
 			reports = []storage.DriftReport{{SpecSlug: msg.Slug}}
 		}
-		if spec, specErr := h.ackReader.GetSpec(ctx, msg.Slug); specErr == nil {
+		if spec, specErr := store.GetSpec(ctx, msg.Slug); specErr == nil {
 			for i := range reports {
 				if reports[i].SpecSlug == msg.Slug {
 					reports[i].Acknowledged = spec.DriftAcknowledged
@@ -183,7 +198,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 			}
 		}
 		if len(slugs) > 0 {
-			specMap, batchErr := h.ackReader.BatchGetSpecs(ctx, slugs)
+			specMap, batchErr := store.BatchGetSpecs(ctx, slugs)
 			if batchErr != nil {
 				h.logger.Error("CheckDrift: batch fetch for ack merge failed", slog.Any("error", batchErr))
 				return nil, connect.NewError(connect.CodeUnavailable,
@@ -217,6 +232,10 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 // not configured (driftChecker is nil), the response contains the acknowledgment
 // fields but an empty items slice.
 func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Request[specv1.DriftAcknowledgeRequest]) (*connect.Response[specv1.DriftAcknowledgeResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -228,7 +247,7 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 
 	// Stage eligibility is enforced atomically by the storage layer's Cypher
 	// WHERE clause (ErrSpecIneligibleStage → CodeFailedPrecondition).
-	report, err := h.store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.Note)
+	report, err := store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.Note)
 	if err != nil {
 		return nil, h.lifecycleError("AcknowledgeDrift", msg.Slug, err)
 	}
@@ -275,10 +294,18 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 
 // Lint handles the Lint RPC, validating spec schema and graph integrity.
 func (h *LifecycleHandler) Lint(ctx context.Context, req *connect.Request[specv1.LintRequest]) (*connect.Response[specv1.LintResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if msg.Slug != "" {
 		if err := validateSlug(msg.Slug); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		// Verify the spec exists in the scoped store before delegating to the linter.
+		if _, err := store.GetSpec(ctx, msg.Slug); err != nil {
+			return nil, h.lifecycleError("Lint", msg.Slug, err)
 		}
 	}
 
@@ -354,19 +381,15 @@ func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 
 // RegisterLifecycleService registers the LifecycleService on the given mux.
 // If logger is nil, slog.Default() is used.
-func RegisterLifecycleService(mux *http.ServeMux, store storage.LifecycleBackend, ackReader storage.AckStateReader, dc DriftChecker, l SpecLinter, logger *slog.Logger) {
-	if store == nil {
-		panic("RegisterLifecycleService: store must not be nil")
-	}
-	if ackReader == nil {
-		panic("RegisterLifecycleService: ackReader must not be nil")
+func RegisterLifecycleService(mux *http.ServeMux, scoper storage.Scoper, dc DriftChecker, l SpecLinter, logger *slog.Logger) {
+	if scoper == nil {
+		panic("RegisterLifecycleService: scoper must not be nil")
 	}
 	if logger == nil {
 		logger = slog.Default()
 	}
 	handler := &LifecycleHandler{
-		store:        store,
-		ackReader:    ackReader,
+		scoper:       scoper,
 		driftChecker: dc,
 		linter:       l,
 		logger:       logger,

@@ -55,21 +55,21 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 		setClause += ", s.approved_at = $updated_at"
 	}
 	query := fmt.Sprintf(`
-		MATCH (s:Spec {slug: $slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 		WHERE s.stage = $from OR ($from = "" AND (s.stage IS NULL OR s.stage = ""))
 		SET %s
 		RETURN s.slug
 	`, setClause)
 	records, err := s.executeQuery(ctx, query,
-		map[string]any{"slug": slug, "from": fromStr, "to": toStr, "updated_at": nowStr})
+		mergeParams(s.projectParam(), map[string]any{"slug": slug, "from": fromStr, "to": toStr, "updated_at": nowStr}))
 	if err != nil {
 		return fmt.Errorf("memgraph: transition stage: %w", err)
 	}
 	if len(records) == 0 {
 		// Distinguish between "spec not found" and "spec at wrong stage".
-		checkQuery := `MATCH (s:Spec {slug: $slug}) RETURN s.stage AS stage`
+		checkQuery := `MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug}) RETURN s.stage AS stage`
 		checkRecords, checkErr := s.executeQuery(ctx, checkQuery,
-			map[string]any{"slug": slug})
+			mergeParams(s.projectParam(), map[string]any{"slug": slug}))
 		if checkErr != nil {
 			return fmt.Errorf("memgraph: check spec stage: %w", checkErr)
 		}
@@ -176,11 +176,12 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 		}
 		// If getErr == nil, child spec already exists (idempotent retry).
 		composeQuery := `
-			MATCH (child:Spec {slug: $child_slug}), (parent:Spec {slug: $parent_slug})
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(child:Spec {slug: $child_slug}),
+			      (p)<-[:BELONGS_TO]-(parent:Spec {slug: $parent_slug})
 			MERGE (child)-[:COMPOSES]->(parent)
 		`
 		_, err := s.executeQuery(ctx, composeQuery,
-			map[string]any{"child_slug": childSlug, "parent_slug": slug})
+			mergeParams(s.projectParam(), map[string]any{"child_slug": childSlug, "parent_slug": slug}))
 		if err != nil {
 			return nil, fmt.Errorf("memgraph: merge COMPOSES edge: %w", err)
 		}
@@ -196,11 +197,12 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 			}
 			depSlug := fmt.Sprintf("%s/%s", slug, dep)
 			depQuery := `
-				MATCH (from:Spec {slug: $from_slug}), (to:Spec {slug: $to_slug})
+				MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(from:Spec {slug: $from_slug}),
+				      (p)<-[:BELONGS_TO]-(to:Spec {slug: $to_slug})
 				MERGE (from)-[:DEPENDS_ON]->(to)
 			`
 			_, err := s.executeQuery(ctx, depQuery,
-				map[string]any{"from_slug": childSlug, "to_slug": depSlug})
+				mergeParams(s.projectParam(), map[string]any{"from_slug": childSlug, "to_slug": depSlug}))
 			if err != nil {
 				return nil, fmt.Errorf("memgraph: merge DEPENDS_ON edge: %w", err)
 			}
@@ -254,13 +256,14 @@ func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason st
 	}
 	nowStr := s.now()
 	query := `
-		MATCH (old:Spec {slug: $old_slug}), (new:Spec {slug: $new_slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(old:Spec {slug: $old_slug}),
+		      (p)<-[:BELONGS_TO]-(new:Spec {slug: $new_slug})
 		SET old.stage = "superseded", old.updated_at = $updated_at
 		CREATE (new)-[:SUPERSEDES {reason: $reason}]->(old)
 		RETURN old.slug
 	`
 	records, err := s.executeQuery(ctx, query,
-		map[string]any{"old_slug": slug, "new_slug": supersededBy, "reason": reason, "updated_at": nowStr})
+		mergeParams(s.projectParam(), map[string]any{"old_slug": slug, "new_slug": supersededBy, "reason": reason, "updated_at": nowStr}))
 	if err != nil {
 		return fmt.Errorf("memgraph: supersede spec: %w", err)
 	}
@@ -288,13 +291,13 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 	}
 	nowStr := s.now()
 	query := `
-		MATCH (s:Spec {slug: $slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 		SET s.stage = $stage, s.amend_reason = $reason,
 		    s.version = s.version + 1, s.updated_at = $updated_at
 		RETURN s.slug, s.stage, s.version
 	`
 	records, err := s.executeQuery(ctx, query,
-		map[string]any{"slug": slug, "stage": string(targetStage), "reason": reason, "updated_at": nowStr})
+		mergeParams(s.projectParam(), map[string]any{"slug": slug, "stage": string(targetStage), "reason": reason, "updated_at": nowStr}))
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: amend spec: %w", err)
 	}
@@ -358,12 +361,12 @@ func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, da
 	// property is safe to interpolate: it passed the allowlist check and the
 	// character-validation loop above, so it contains only [a-zA-Z0-9_].
 	query := fmt.Sprintf(`
-		MATCH (s:Spec {slug: $slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 		SET s.%s = $data, s.updated_at = $updated_at
 		RETURN s.slug
 	`, property)
 	records, err := s.executeQuery(ctx, query,
-		map[string]any{"slug": slug, "data": jsonStr, "updated_at": nowStr})
+		mergeParams(s.projectParam(), map[string]any{"slug": slug, "data": jsonStr, "updated_at": nowStr}))
 	if err != nil {
 		return fmt.Errorf("memgraph: store %s: %w", property, err)
 	}

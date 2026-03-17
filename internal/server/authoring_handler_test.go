@@ -147,11 +147,142 @@ func (f *fakeBackend) Close(_ context.Context) error {
 	return nil
 }
 
-func newAuthoringClient(t *testing.T, authoringStore storage.AuthoringBackend, backend storage.Backend) specgraphv1connect.AuthoringServiceClient {
+// authoringTestBackend combines fakeAuthoringBackend and fakeBackend into a
+// ScopedBackend for handler tests. Methods not relevant to authoring tests
+// delegate to stubBackend.
+type authoringTestBackend struct {
+	stubBackend
+	authoring *fakeAuthoringBackend
+	backend   *fakeBackend
+}
+
+// txAuthoringTestBackend embeds authoringTestBackend and adds TransactionalBackend support.
+type txAuthoringTestBackend struct {
+	authoringTestBackend
+	runInTxErr error
+}
+
+func (a *txAuthoringTestBackend) RunInTransaction(_ context.Context, fn func(context.Context) error) error {
+	if a.runInTxErr != nil {
+		return a.runInTxErr
+	}
+	return fn(context.Background())
+}
+
+func (a *authoringTestBackend) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
+	return a.backend.CreateSpec(ctx, slug, intent, priority, complexity)
+}
+
+func (a *authoringTestBackend) GetSpec(ctx context.Context, slug string) (*storage.Spec, error) {
+	return a.backend.GetSpec(ctx, slug)
+}
+
+func (a *authoringTestBackend) ListSpecs(ctx context.Context, stage, priority string, limit int) ([]*storage.Spec, error) {
+	return a.backend.ListSpecs(ctx, stage, priority, limit)
+}
+
+func (a *authoringTestBackend) UpdateSpec(ctx context.Context, slug string, intent, stage, priority, complexity *string) (*storage.Spec, error) {
+	return a.backend.UpdateSpec(ctx, slug, intent, stage, priority, complexity)
+}
+
+func (a *authoringTestBackend) Close(ctx context.Context) error {
+	return a.backend.Close(ctx)
+}
+
+func (a *authoringTestBackend) TransitionStage(ctx context.Context, slug string, from, to storage.AuthoringStage) error {
+	return a.authoring.TransitionStage(ctx, slug, from, to)
+}
+
+func (a *authoringTestBackend) StoreSparkOutput(ctx context.Context, slug string, output *storage.SparkOutput) error {
+	return a.authoring.StoreSparkOutput(ctx, slug, output)
+}
+
+func (a *authoringTestBackend) StoreShapeOutput(ctx context.Context, slug string, output *storage.ShapeOutput) error {
+	return a.authoring.StoreShapeOutput(ctx, slug, output)
+}
+
+func (a *authoringTestBackend) StoreSpecifyOutput(ctx context.Context, slug string, output *storage.SpecifyOutput) error {
+	return a.authoring.StoreSpecifyOutput(ctx, slug, output)
+}
+
+func (a *authoringTestBackend) StoreDecomposeOutput(ctx context.Context, slug string, output *storage.DecomposeOutput) ([]string, error) {
+	return a.authoring.StoreDecomposeOutput(ctx, slug, output)
+}
+
+func (a *authoringTestBackend) StoreRedTeamFindings(ctx context.Context, slug string, findings []storage.RedTeamFinding) error {
+	return a.authoring.StoreRedTeamFindings(ctx, slug, findings)
+}
+
+func (a *authoringTestBackend) StorePeripheralVision(ctx context.Context, slug string, items []storage.PeripheralVisionItem) error {
+	return a.authoring.StorePeripheralVision(ctx, slug, items)
+}
+
+func (a *authoringTestBackend) StoreConsistencyIssues(ctx context.Context, slug string, issues []storage.ConsistencyIssue) error {
+	return a.authoring.StoreConsistencyIssues(ctx, slug, issues)
+}
+
+func (a *authoringTestBackend) StoreSimplicityFindings(ctx context.Context, slug string, findings []storage.SimplicityFinding) error {
+	return a.authoring.StoreSimplicityFindings(ctx, slug, findings)
+}
+
+func (a *authoringTestBackend) StoreSafetyFlags(ctx context.Context, slug string, flags []storage.SafetyFlag) error {
+	return a.authoring.StoreSafetyFlags(ctx, slug, flags)
+}
+
+func (a *authoringTestBackend) StoreConstitutionViolations(ctx context.Context, slug string, violations []storage.ConstitutionViolation) error {
+	return a.authoring.StoreConstitutionViolations(ctx, slug, violations)
+}
+
+func (a *authoringTestBackend) SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error {
+	return a.authoring.SupersedeSpec(ctx, slug, supersededBy, reason)
+}
+
+func (a *authoringTestBackend) AmendSpec(ctx context.Context, slug, reason string, targetStage storage.AuthoringStage) (*storage.AmendResult, error) {
+	return a.authoring.AmendSpec(ctx, slug, reason, targetStage)
+}
+
+// fullAuthoringTestBackend embeds authoringTestBackend and overrides Graph+Decision
+// methods for tests that exercise acceptLinkedDecisions.
+type fullAuthoringTestBackend struct {
+	authoringTestBackend
+	full *fakeFullBackend
+}
+
+func (f *fullAuthoringTestBackend) ListEdges(ctx context.Context, slug string, et storage.EdgeType) ([]*storage.Edge, error) {
+	return f.full.ListEdges(ctx, slug, et)
+}
+
+func (f *fullAuthoringTestBackend) GetDecision(ctx context.Context, slug string) (*storage.Decision, error) {
+	return f.full.GetDecision(ctx, slug)
+}
+
+func (f *fullAuthoringTestBackend) UpdateDecision(ctx context.Context, slug string, title *string, status *storage.DecisionStatus, decision, rationale, supersededBy *string) (*storage.Decision, error) {
+	return f.full.UpdateDecision(ctx, slug, title, status, decision, rationale, supersededBy)
+}
+
+func newAuthoringClient(t *testing.T, authoringStore *fakeAuthoringBackend, backend any) specgraphv1connect.AuthoringServiceClient {
 	t.Helper()
+	var scopedBackend storage.ScopedBackend
+	switch b := backend.(type) {
+	case *fakeFullBackend:
+		scopedBackend = &fullAuthoringTestBackend{
+			authoringTestBackend: authoringTestBackend{authoring: authoringStore, backend: &b.fakeBackend},
+			full:                 b,
+		}
+	case *fakeTxBackend:
+		scopedBackend = &txAuthoringTestBackend{
+			authoringTestBackend: authoringTestBackend{authoring: authoringStore, backend: &b.fakeBackend},
+			runInTxErr:           b.runInTxErr,
+		}
+	case *fakeBackend:
+		scopedBackend = &authoringTestBackend{authoring: authoringStore, backend: b}
+	default:
+		t.Fatalf("unsupported backend type: %T", backend)
+	}
+	scoper := &testScoper{backend: scopedBackend}
 	mux := http.NewServeMux()
-	server.RegisterAuthoringService(mux, authoringStore, backend)
-	srv := httptest.NewServer(mux)
+	server.RegisterAuthoringService(mux, scoper)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, srv.URL)
 }

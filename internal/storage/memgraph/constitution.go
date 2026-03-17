@@ -34,14 +34,14 @@ var layerFromString = map[string]storage.ConstitutionLayer{
 // GetConstitution returns the active constitution node.
 func (s *Store) GetConstitution(ctx context.Context) (*storage.Constitution, error) {
 	query := `
-		MATCH (c:Constitution)
+		MATCH (p:Project {slug: $project})-[:HAS_CONSTITUTION]->(c:Constitution)
 		RETURN c.id, c.layer, c.name, c.version, c.tech_json,
 		       c.principles_json, c.process_json, c.constraints_json,
 		       c.antipatterns_json, c.references_json,
 		       c.created_at, c.updated_at
 	`
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, nil, neo4j.EagerResultTransformer)
+	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, s.projectParam(), neo4j.EagerResultTransformer)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: get constitution: %w", err)
 	}
@@ -89,7 +89,8 @@ func (s *Store) UpdateConstitution(ctx context.Context, constitution *storage.Co
 	}
 
 	query := `
-		MERGE (c:Constitution)
+		MATCH (p:Project {slug: $project})
+		MERGE (p)-[:HAS_CONSTITUTION]->(c:Constitution)
 		ON CREATE SET
 			c.id = $id,
 			c.version = 1,
@@ -111,7 +112,7 @@ func (s *Store) UpdateConstitution(ctx context.Context, constitution *storage.Co
 		       c.antipatterns_json, c.references_json,
 		       c.created_at, c.updated_at
 	`
-	params := map[string]any{
+	params := mergeParams(s.projectParam(), map[string]any{
 		"id":                id,
 		"layer":             string(constitution.Layer),
 		"name":              constitution.Name,
@@ -122,7 +123,7 @@ func (s *Store) UpdateConstitution(ctx context.Context, constitution *storage.Co
 		"antipatterns_json": antipatternsJSON,
 		"references_json":   referencesJSON,
 		"now":               nowStr,
-	}
+	})
 
 	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
 	if err != nil {

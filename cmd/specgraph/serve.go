@@ -5,12 +5,10 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -19,9 +17,9 @@ import (
 	"github.com/seanb4t/specgraph/internal/drift"
 	"github.com/seanb4t/specgraph/internal/linter"
 	"github.com/seanb4t/specgraph/internal/server"
-	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/seanb4t/specgraph/internal/storage/memgraph"
 	syncpkg "github.com/seanb4t/specgraph/internal/sync"
+	"github.com/seanb4t/specgraph/internal/xdg"
 	"github.com/spf13/cobra"
 )
 
@@ -36,19 +34,16 @@ func init() {
 }
 
 func runServe(_ *cobra.Command, _ []string) error {
-	cfg, err := config.Load(cfgFile)
+	cfg, err := config.LoadGlobal(xdg.ConfigFile())
 	if err != nil {
-		return fmt.Errorf("load config: %w", err)
-	}
-	if cfg.IsRemote() {
-		return fmt.Errorf("config has remote server set — no need to run serve")
+		return fmt.Errorf("load global config: %w", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if cfg.Server.Mode == "docker" {
-		composeFile, err := docker.EnsureComposeFile(".", cfg.Storage.Backend)
+	if cfg.Server.Docker {
+		composeFile, err := docker.EnsureComposeFile(xdg.DataHome(), cfg.Server.Backend)
 		if err != nil {
 			return err
 		}
@@ -63,9 +58,9 @@ func runServe(_ *cobra.Command, _ []string) error {
 		}()
 	}
 
-	switch cfg.Storage.Backend {
+	switch cfg.Server.Backend {
 	case "memgraph":
-		store, err := memgraph.New(ctx, cfg.Storage.Memgraph.BoltURI)
+		store, err := memgraph.New(ctx, cfg.Server.Memgraph.BoltURI, memgraph.WithProject("_server"))
 		if err != nil {
 			return fmt.Errorf("connect to memgraph: %w", err)
 		}
@@ -80,53 +75,28 @@ func runServe(_ *cobra.Command, _ []string) error {
 		sweeperCtx, stopSweeper := context.WithCancel(ctx)
 		defer stopSweeper()
 
-		constitutionPath := cfg.Storage.ConstitutionPath
-		if bootstrapErr := bootstrapConstitution(ctx, store, constitutionPath); bootstrapErr != nil {
-			return fmt.Errorf("constitution bootstrap: %w", bootstrapErr)
-		}
-
 		mux := server.NewMux(store)
 		server.RegisterHealthService(mux)
 		server.RegisterDecisionService(mux, store)
 		server.RegisterGraphService(mux, store)
 		server.RegisterClaimService(mux, store)
 		server.RegisterConstitutionService(mux, store)
-		server.RegisterAuthoringService(mux, store, store)
+		server.RegisterAuthoringService(mux, store)
 		server.RegisterExecutionService(mux, store)
 		driftEngine := drift.NewEngine(store, nil)
 		lintEngine := linter.NewEngine(store, nil)
-		server.RegisterLifecycleService(mux, store, store, driftEngine, lintEngine, nil)
-		// Derive inject output root from constitution path's parent directory.
-		// This works for both relative paths (resolved against CWD) and absolute paths,
-		// ensuring the server validates output_dir against the project root rather than
-		// the server process's working directory.
-		var projectRoot string
-		if cfg.Storage.ConstitutionPath == "" {
-			// No constitution path configured — use CWD as project root.
-			projectRoot, err = os.Getwd()
-			if err != nil {
-				return fmt.Errorf("determine project root: %w", err)
-			}
-		} else {
-			// Require at least one directory component (e.g., ".specgraph/constitution.yaml").
-			// A bare filename like "constitution.yaml" would cause filepath.Dir(filepath.Dir(...))
-			// to resolve two levels above CWD, breaking the inject root.
-			if filepath.Dir(cfg.Storage.ConstitutionPath) == "." {
-				return fmt.Errorf("constitution_path %q must include a directory (e.g. .specgraph/constitution.yaml)", cfg.Storage.ConstitutionPath)
-			}
-			constitutionAbs, absErr := filepath.Abs(cfg.Storage.ConstitutionPath)
-			if absErr != nil {
-				return fmt.Errorf("resolve constitution path for inject root: %w", absErr)
-			}
-			// ConstitutionPath is like ".specgraph/constitution.yaml" — go up two levels to project root.
-			projectRoot = filepath.Dir(filepath.Dir(constitutionAbs))
-		}
-		syncHandler := server.RegisterSyncService(mux, store, store, store, projectRoot)
+		server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil)
+
+		// TODO(slice-7): Project root for inject should come from request context,
+		// not daemon CWD. Pass empty string; inject handler needs rework.
+		syncHandler := server.RegisterSyncService(mux, store, "")
 		runner := syncpkg.NewExecRunner()
 		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
-		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, cfg.Sync.GitHubRepo))
-		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
-		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
+
+		handler := server.ProjectMiddleware(mux)
+		addr := cfg.Server.Listen
+		srv := &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 
 		go func() {
 			sigCh := make(chan os.Signal, 1)
@@ -141,53 +111,18 @@ func runServe(_ *cobra.Command, _ []string) error {
 			}
 		}()
 
+		// TODO(slice-7): Sweeper only covers the _server project. A cross-project
+		// sweeper needs to iterate all Project nodes and release expired claims
+		// in each. Track this as a follow-up issue.
 		server.StartSweeper(sweeperCtx, store, 60*time.Second)
 		fmt.Printf("SpecGraph server running at http://%s\n", addr)
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			return err
 		}
 	default:
-		return fmt.Errorf("unsupported backend: %s", cfg.Storage.Backend)
+		return fmt.Errorf("unsupported backend: %s", cfg.Server.Backend)
 	}
 
 	return nil
 }
 
-const maxConstitutionSize = 1 << 20 // 1 MiB
-
-func bootstrapConstitution(ctx context.Context, store storage.ConstitutionBackend, yamlPath string) error {
-	// Check if constitution already exists in storage.
-	_, err := store.GetConstitution(ctx)
-	if err == nil {
-		return nil // already exists
-	}
-	if !errors.Is(err, storage.ErrConstitutionNotFound) {
-		return fmt.Errorf("check existing constitution: %w", err)
-	}
-
-	// Check file exists and size.
-	info, err := os.Stat(yamlPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil // missing constitution.yaml is intentional: server starts without one; callers use UpdateConstitution RPC
-		}
-		return fmt.Errorf("stat constitution YAML %s: %w", yamlPath, err)
-	}
-	if info.Size() > maxConstitutionSize {
-		return fmt.Errorf("constitution YAML %s exceeds 1 MiB size limit", yamlPath)
-	}
-
-	cy, err := config.LoadConstitutionYAML(yamlPath)
-	if err != nil {
-		return fmt.Errorf("load constitution YAML: %w", err)
-	}
-
-	constitution := cy.ToDomain()
-
-	if _, err := store.UpdateConstitution(ctx, constitution); err != nil {
-		return fmt.Errorf("seed constitution: %w", err)
-	}
-
-	fmt.Println("Bootstrapped constitution from", yamlPath)
-	return nil
-}

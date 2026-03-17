@@ -54,7 +54,7 @@ func (s *Store) RecordCompletion(ctx context.Context, slug, agent string) error 
 
 	// Single query: assert claim, create event, transition to done, release claim.
 	query := `
-		MATCH (s:Spec {slug: $slug})-[r:CLAIMED_BY {agent: $agent}]->(a)
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[r:CLAIMED_BY {agent: $agent}]->(a)
 		WHERE r.lease_expires >= $now
 		CREATE (e:ExecutionEvent {
 			id: $id,
@@ -69,14 +69,14 @@ func (s *Store) RecordCompletion(ctx context.Context, slug, agent string) error 
 		DELETE r
 		RETURN e.id
 	`
-	params := map[string]any{
+	params := mergeParams(s.projectParam(), map[string]any{
 		"slug":       slug,
 		"id":         id,
 		"spec_slug":  slug,
 		"agent":      agent,
 		"now":        nowStr,
 		"created_at": nowStr,
-	}
+	})
 
 	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
@@ -91,15 +91,15 @@ func (s *Store) RecordCompletion(ctx context.Context, slug, agent string) error 
 // GetExecutionEvents returns execution events for a spec, ordered by time descending.
 func (s *Store) GetExecutionEvents(ctx context.Context, slug string, limit int) ([]*storage.ExecutionEvent, error) {
 	query := `
-		MATCH (s:Spec {slug: $slug})-[:HAS_EVENT]->(e:ExecutionEvent)
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[:HAS_EVENT]->(e:ExecutionEvent)
 		RETURN e.id, e.spec_slug, e.agent, e.type, e.message, e.created_at
 		ORDER BY e.id DESC
 		LIMIT $limit
 	`
-	params := map[string]any{
+	params := mergeParams(s.projectParam(), map[string]any{
 		"slug":  slug,
 		"limit": int64(limit),
-	}
+	})
 
 	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
@@ -178,7 +178,7 @@ func (s *Store) recordClaimedEvent(ctx context.Context, slug, agent, eventType, 
 	nowStr := now.Format(time.RFC3339Nano)
 
 	query := `
-		MATCH (s:Spec {slug: $slug})-[r:CLAIMED_BY {agent: $agent}]->(a)
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[r:CLAIMED_BY {agent: $agent}]->(a)
 		WHERE r.lease_expires >= $now
 		CREATE (e:ExecutionEvent {
 			id: $id,
@@ -191,7 +191,7 @@ func (s *Store) recordClaimedEvent(ctx context.Context, slug, agent, eventType, 
 		CREATE (s)-[:HAS_EVENT]->(e)
 		RETURN e.id
 	`
-	params := map[string]any{
+	params := mergeParams(s.projectParam(), map[string]any{
 		"slug":       slug,
 		"id":         id,
 		"spec_slug":  slug,
@@ -200,7 +200,7 @@ func (s *Store) recordClaimedEvent(ctx context.Context, slug, agent, eventType, 
 		"message":    message,
 		"now":        nowStr,
 		"created_at": nowStr,
-	}
+	})
 
 	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
@@ -215,11 +215,11 @@ func (s *Store) recordClaimedEvent(ctx context.Context, slug, agent, eventType, 
 // fetchLinkedDecisions retrieves all decisions linked to a spec via DECIDED_IN edges.
 func (s *Store) fetchLinkedDecisions(ctx context.Context, slug string) ([]*storage.Decision, error) {
 	query := `
-		MATCH (s:Spec {slug: $slug})-[:DECIDED_IN]->(d:Decision)
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[:DECIDED_IN]->(d:Decision)
 		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
 		       d.superseded_by, d.created_at, d.updated_at
 	`
-	records, err := s.executeQuery(ctx, query, map[string]any{"slug": slug})
+	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
 	if err != nil {
 		return nil, err
 	}

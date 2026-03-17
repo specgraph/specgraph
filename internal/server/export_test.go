@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+package server
+
+import (
+	"context"
+
+	"github.com/seanb4t/specgraph/internal/storage"
+)
+
+// ScopeStore is a test export of the unexported scopeStore function.
+func ScopeStore(ctx context.Context, scoper storage.Scoper) (storage.ScopedBackend, error) {
+	return scopeStore(ctx, scoper)
+}

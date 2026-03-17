@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math"
 	"strings"
 	"time"
@@ -24,13 +25,18 @@ import (
 var (
 	_ storage.AuthoringBackend = (*Store)(nil)
 	_ storage.LifecycleBackend = (*Store)(nil)
+	_ storage.ProjectBackend   = (*Store)(nil)
 	_ storage.SyncBackend      = (*Store)(nil)
+	_ storage.Scoper           = (*Store)(nil)
+	_ storage.ScopedBackend    = (*Store)(nil)
 )
 
 // Store implements storage.Backend using Memgraph (Bolt protocol).
 type Store struct {
-	driver  neo4j.DriverWithContext
-	nowFunc func() time.Time // injectable clock; defaults to time.Now
+	driver     neo4j.DriverWithContext
+	nowFunc    func() time.Time // injectable clock; defaults to time.Now
+	project    string           // project slug for graph namespacing
+	ownsDriver bool             // true for stores created by New(); false for Scoped() stores
 }
 
 // Option configures a Store.
@@ -42,20 +48,94 @@ func WithClock(fn func() time.Time) Option {
 	return func(s *Store) { s.nowFunc = fn }
 }
 
+// WithProject sets the project slug for graph namespacing.
+// Required — New() returns an error if no project is set.
+func WithProject(slug string) Option {
+	return func(s *Store) { s.project = slug }
+}
+
 // New creates a new Memgraph-backed Store and verifies connectivity.
 func New(ctx context.Context, boltURI string, opts ...Option) (*Store, error) {
 	driver, err := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: create driver: %w", err)
 	}
-	if err := driver.VerifyConnectivity(ctx); err != nil {
-		return nil, fmt.Errorf("memgraph: verify connectivity: %w", err)
+	if connErr := driver.VerifyConnectivity(ctx); connErr != nil {
+		driver.Close(ctx) //nolint:errcheck // best-effort cleanup on init failure
+		return nil, fmt.Errorf("memgraph: verify connectivity: %w", connErr)
 	}
-	s := &Store{driver: driver, nowFunc: time.Now}
+	s := &Store{driver: driver, nowFunc: time.Now, ownsDriver: true}
 	for _, o := range opts {
 		o(s)
 	}
+	if s.project == "" {
+		driver.Close(ctx) //nolint:errcheck // best-effort cleanup on init failure
+		return nil, fmt.Errorf("memgraph: project slug required: use memgraph.WithProject(slug)")
+	}
+	if err := s.ensureIndexes(ctx); err != nil {
+		driver.Close(ctx) //nolint:errcheck // best-effort cleanup on init failure
+		return nil, fmt.Errorf("memgraph: ensure indexes: %w", err)
+	}
+
+	// Ensure the Project node exists (MERGE is idempotent).
+	if err := s.ensureProjectNode(ctx); err != nil {
+		driver.Close(ctx) //nolint:errcheck // best-effort cleanup on init failure
+		return nil, err
+	}
 	return s, nil
+}
+
+// ensureIndexes creates graph indexes idempotently. Called once from New();
+// Scoped() shares the driver and does not re-create indexes.
+func (s *Store) ensureIndexes(ctx context.Context) error {
+	indexes := []string{
+		"CREATE INDEX ON :Project(slug)",
+		"CREATE INDEX ON :Spec(slug)",
+		"CREATE INDEX ON :Decision(slug)",
+	}
+	// Memgraph requires index DDL to run in individual auto-commit transactions,
+	// not inside multi-statement transactions. Use a fresh session per statement.
+	for _, stmt := range indexes {
+		session := s.driver.NewSession(ctx, neo4j.SessionConfig{})
+		_, err := session.Run(ctx, stmt, nil)
+		closeErr := session.Close(ctx)
+		if err != nil && !strings.Contains(err.Error(), "already exists") {
+			return fmt.Errorf("create index %q: %w", stmt, err)
+		}
+		if closeErr != nil {
+			return fmt.Errorf("close session after index %q: %w", stmt, closeErr)
+		}
+	}
+	return nil
+}
+
+// ensureProjectNode creates the Project node via MERGE (idempotent).
+func (s *Store) ensureProjectNode(ctx context.Context) error {
+	_, err := neo4j.ExecuteQuery(ctx, s.driver,
+		`MERGE (p:Project {slug: $slug})
+		 ON CREATE SET p.created_at = $now, p.updated_at = $now,
+		               p.sync_adapters = [], p.github_repo = ""`,
+		map[string]any{"slug": s.project, "now": s.now()},
+		neo4j.EagerResultTransformer,
+	)
+	if err != nil {
+		return fmt.Errorf("memgraph: ensure project node: %w", err)
+	}
+	return nil
+}
+
+// Scoped returns a new Store that shares this Store's driver but targets a different project.
+// The Project node is ensured via MERGE on first use. Indexes are NOT re-created here —
+// they were already created by the parent Store's New() call.
+func (s *Store) Scoped(ctx context.Context, project string) (storage.ScopedBackend, error) {
+	if project == "" {
+		return nil, fmt.Errorf("memgraph: project slug required")
+	}
+	scoped := &Store{driver: s.driver, nowFunc: s.nowFunc, project: project}
+	if err := scoped.ensureProjectNode(ctx); err != nil {
+		return nil, err
+	}
+	return scoped, nil
 }
 
 const (
@@ -69,7 +149,8 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 	nowStr := s.now()
 
 	query := `
-		CREATE (s:Spec {
+		MATCH (p:Project {slug: $project})
+		CREATE (p)<-[:BELONGS_TO]-(s:Spec {
 			id: $id,
 			slug: $slug,
 			intent: $intent,
@@ -87,7 +168,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
 		       s.drift_acknowledged, s.drift_acknowledge_note
 	`
-	params := map[string]any{
+	params := mergeParams(s.projectParam(), map[string]any{
 		"id":           id,
 		"slug":         slug,
 		"intent":       intent,
@@ -99,7 +180,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		"updated_at":   nowStr,
 		"lifecycle":    string(defaultLifecycle),
 		"history_json": "[]",
-	}
+	})
 
 	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
@@ -115,13 +196,13 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 // GetSpec retrieves a spec by slug.
 func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error) {
 	query := `
-		MATCH (s:Spec {slug: $slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
 		       s.drift_acknowledged, s.drift_acknowledge_note
 	`
-	params := map[string]any{"slug": slug}
+	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
 	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
@@ -141,13 +222,13 @@ func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*
 		return map[string]*storage.Spec{}, nil
 	}
 	query := `
-		MATCH (s:Spec) WHERE s.slug IN $slugs
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec) WHERE s.slug IN $slugs
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
 		       s.drift_acknowledged, s.drift_acknowledge_note
 	`
-	records, err := s.executeQuery(ctx, query, map[string]any{"slugs": slugs})
+	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{"slugs": slugs}))
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: batch get specs: %w", err)
 	}
@@ -165,7 +246,7 @@ func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*
 // ListSpecs returns specs matching the given filters.
 func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int) ([]*storage.Spec, error) {
 	var clauses []string
-	params := map[string]any{}
+	params := s.projectParam()
 
 	if stage != "" {
 		clauses = append(clauses, "s.stage = $stage")
@@ -176,7 +257,7 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 		params["priority"] = priority
 	}
 
-	query := "MATCH (s:Spec)"
+	query := "MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec)"
 	if len(clauses) > 0 {
 		query += " WHERE " + strings.Join(clauses, " AND ")
 	}
@@ -209,7 +290,7 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 // UpdateSpec updates a spec by slug. Only non-nil fields are changed.
 func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, priority, complexity *string) (*storage.Spec, error) {
 	var setClauses []string
-	params := map[string]any{"slug": slug}
+	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
 	if intent != nil {
 		setClauses = append(setClauses, "s.intent = $intent")
@@ -237,7 +318,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 	params["updated_at"] = nowStr
 
 	query := fmt.Sprintf(`
-		MATCH (s:Spec {slug: $slug})
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 		SET %s
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
@@ -257,17 +338,23 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 }
 
 // ClearAll removes all nodes and relationships from the graph.
-// Intended for test cleanup only.
+// Intended for test cleanup only. Re-creates the Project node after clearing
+// so the store remains usable for subsequent operations.
 func (s *Store) ClearAll(ctx context.Context) error {
 	_, err := s.executeQuery(ctx, "MATCH (n) DETACH DELETE n", nil)
 	if err != nil {
 		return fmt.Errorf("memgraph: clear all: %w", err)
 	}
-	return nil
+	return s.ensureProjectNode(ctx)
 }
 
-// Close releases the driver resources.
+// Close releases the driver resources. Scoped stores (created via Scoped())
+// share the parent's driver and must not close it — only the owning store
+// (created via New()) closes the underlying driver.
 func (s *Store) Close(ctx context.Context) error {
+	if !s.ownsDriver {
+		return nil
+	}
 	if err := s.driver.Close(ctx); err != nil {
 		return fmt.Errorf("memgraph: close: %w", err)
 	}
@@ -300,6 +387,19 @@ func (s *Store) nowTime() time.Time {
 // ensure lexicographic string ordering matches chronological ordering.
 func (s *Store) now() string {
 	return s.nowTime().Format(sortableRFC3339Nano)
+}
+
+// projectParam returns a map with the project slug for use in Cypher queries.
+func (s *Store) projectParam() map[string]any {
+	return map[string]any{"project": s.project}
+}
+
+// mergeParams combines base params with additional params.
+func mergeParams(base, extra map[string]any) map[string]any {
+	m := make(map[string]any, len(base)+len(extra))
+	maps.Copy(m, base)
+	maps.Copy(m, extra)
+	return m
 }
 
 // parseRFC3339 parses an RFC3339 timestamp string from a memgraph record field.

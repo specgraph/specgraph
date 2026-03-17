@@ -137,100 +137,115 @@
 - [x] `golangci-lint run ./...` -- no issues
 - [x] `buf lint` -- pre-existing naming suggestions only (no new issues)
 - [x] `go build -o specgraph ./cmd/specgraph` -- clean build
-- [ ] CLI commands work: `specgraph bundle|progress --help`
-- [ ] Bundle YAML renders with constitution context, spec details, and decisions
-- [ ] Lease sweeper releases expired claims
+- [x] CLI commands work: `specgraph bundle|progress --help`
+- [x] Bundle YAML renders with constitution context, spec details, and decisions
+- [x] Lease sweeper releases expired claims
 
 ---
 
 ## Slice 5: Spec Lifecycle
 
 **Plan:** `docs/plans/2026-03-07-slice-5-spec-lifecycle-revised-plan.md` (supersedes `2026-02-28-slice-5-spec-lifecycle-plan.md`)
-**Status:** In progress
+**Status:** Complete (PR #27)
 **Depends on:** Slice 4
 
-- [ ] Task 1: Protobuf schema -- spec extensions + LifecycleService
-- [ ] Task 2: Domain types -- extend Spec + add lifecycle types
-- [ ] Task 3: Update Memgraph spec storage for new fields
-- [ ] Task 4: Memgraph implementation -- lifecycle storage
-- [ ] Task 5: Spec JSON Schema + schema validator
-- [ ] Task 6: Linter engine
-- [ ] Task 7: Drift detection engine
-- [ ] Task 8: Proto↔domain converters + ConnectRPC handler
-- [ ] Task 9: CLI commands -- lifecycle operations
-- [ ] Task 10: End-to-end integration test
+- [x] Task 1: Protobuf schema -- spec extensions + LifecycleService
+- [x] Task 2: Domain types -- extend Spec + add lifecycle types
+- [x] Task 3: Update Memgraph spec storage for new fields
+- [x] Task 4: Memgraph implementation -- lifecycle storage
+- [x] Task 5: Spec JSON Schema + schema validator
+- [x] Task 6: Linter engine
+- [x] Task 7: Drift detection engine
+- [x] Task 8: Proto↔domain converters + ConnectRPC handler
+- [x] Task 9: CLI commands -- lifecycle operations
+- [x] Task 10: End-to-end integration test
 
 **Slice Verification Gate:**
 
-- [ ] `go test ./... -count=1 -timeout=120s` -- all pass
-- [ ] `go test ./test/e2e/ -run TestLifecycleE2E -v -count=1 -timeout=60s` -- E2E pass
-- [ ] `golangci-lint run ./...` -- no issues
-- [ ] `buf lint` -- no proto issues
-- [ ] `go build -o specgraph ./cmd/specgraph` -- clean build
-- [ ] CLI commands work: `specgraph amend|supersede|abandon|lint|drift --help`
-- [ ] Full lifecycle flow works: create -> done -> amend -> supersede -> abandon
-- [ ] Linter validates specs against JSON Schema
-- [ ] Drift engine detects spec-vs-code mismatches
+- [x] `go test ./... -count=1 -timeout=120s` -- all pass
+- [x] `go test ./test/e2e/ -run TestLifecycleE2E -v -count=1 -timeout=60s` -- E2E pass
+- [x] `golangci-lint run ./...` -- no issues
+- [x] `buf lint` -- no proto issues
+- [x] `go build -o specgraph ./cmd/specgraph` -- clean build
+- [x] CLI commands work: `specgraph amend|supersede|abandon|lint|drift --help`
+- [x] Full lifecycle flow works: create -> done -> amend -> supersede -> abandon
+- [x] Linter validates specs against JSON Schema
+- [x] Drift engine detects spec-vs-code mismatches
 
 ---
 
 ## Slice 6: Sync and Integration
 
 **Plan:** `docs/plans/2026-02-28-slice-6-sync-integration-plan.md`
-**Status:** Not started
+**Status:** Complete (PR #30)
 **Depends on:** Slice 5
 
-- [ ] Task 1: Protobuf schema -- sync.proto
-- [ ] Task 2: Storage interface -- SyncBackend
-- [ ] Task 3: Memgraph implementation
-- [ ] Task 4: SyncAdapter interface + Beads adapter
-- [ ] Task 5: GitHub adapter
-- [ ] Task 6: Tool injection
-- [ ] Task 7: ConnectRPC handler -- SyncService
-- [ ] Task 8: CLI commands -- sync + inject
-- [ ] Task 9: Command runner -- real implementation
-- [ ] Task 10: Final verification and cleanup
+- [x] Task 1: Protobuf schema -- sync.proto
+- [x] Task 2: Storage interface -- SyncBackend
+- [x] Task 3: Memgraph implementation
+- [x] Task 4: SyncAdapter interface + Beads adapter
+- [x] Task 5: GitHub adapter
+- [x] Task 6: Tool injection
+- [x] Task 7: ConnectRPC handler -- SyncService
+- [x] Task 8: CLI commands -- sync + inject
+- [x] Task 9: Command runner -- real implementation
+- [x] Task 10: Final verification and cleanup
 
 **Slice Verification Gate:**
 
-- [ ] `go test ./... -count=1 -timeout=120s` -- all pass
-- [ ] `golangci-lint run ./...` -- no issues
-- [ ] `buf lint` -- no proto issues
-- [ ] `go build -o specgraph ./cmd/specgraph` -- clean build
-- [ ] CLI commands work: `specgraph sync beads|github|status --help` and `specgraph inject --help`
-- [ ] Beads adapter creates/closes issues from specs
-- [ ] GitHub adapter creates issues/PRs from specs
-- [ ] Tool injection writes CLAUDE.md, .cursor/rules, AGENTS.md from constitution
+- [x] `go test ./... -count=1 -timeout=120s` -- all pass
+- [x] `golangci-lint run ./...` -- no issues
+- [x] `buf lint` -- no proto issues
+- [x] `go build -o specgraph ./cmd/specgraph` -- clean build
+- [x] CLI commands work: `specgraph sync beads|github|status --help` and `specgraph inject --help`
+- [x] Beads adapter creates/closes issues from specs
+- [x] GitHub adapter creates issues/PRs from specs
+- [x] Tool injection writes CLAUDE.md, .cursor/rules, AGENTS.md from constitution
 
 ---
 
-## Slice 7: Claude Code Plugin
+## Slice 7: Global Daemon & Claude Code Plugin
 
-**Plan:** `docs/plans/2026-02-28-slice-7-claude-code-plugin-plan.md`
-**Status:** Not started
+**Design:** `docs/plans/2026-03-16-slice-7-global-daemon-and-plugin-design.md` (supersedes `2026-02-28-slice-7-claude-code-plugin-plan.md`)
+**Plan:** `docs/plans/2026-03-16-slice-7-global-daemon-and-plugin-plan.md`
+**Status:** Complete
 **Depends on:** Slice 6
 
-- [ ] Task 1: Plugin manifest -- plugin.json
-- [ ] Task 2: Meta-skill -- SpecGraph overview
-- [ ] Task 3: Authoring skills -- spark, shape, specify, decompose, approve
-- [ ] Task 4: Query skills -- list, show, deps, ready
-- [ ] Task 5: Bundle skill
-- [ ] Task 6: SessionStart hook
-- [ ] Task 7: PostToolUse progress hook (optional)
-- [ ] Task 8: Plugin packaging and installation
-- [ ] Task 9: Wire hook command into CLI and integration test
-- [ ] Task 10: CLI init --tool=claude-code support
+**Phase A: Global Daemon Infrastructure**
+
+- [x] XDG path resolution package (internal/xdg)
+- [x] Global config schema with server/client split (internal/config/global.go)
+- [x] Per-repo .specgraph.yaml reader with slug auto-derivation (internal/config/project.go)
+- [x] Project domain type and ProjectBackend interface (internal/storage/project.go)
+- [x] Memgraph Project CRUD implementation (internal/storage/memgraph/project.go)
+- [x] WithProject option and Scoped method on Store
+- [x] BELONGS_TO edges on all Cypher queries (9 files updated)
+- [x] Service manager package -- launchd/systemd (internal/service)
+- [x] specgraph up / down commands
+- [x] specgraph prime command (session initialization)
+- [x] specgraph init rework (global daemon model)
+- [x] specgraph constitution import subcommand
+- [x] Client wiring (new config + project header + old config fallback)
+- [x] serve.go updated (global config, WithProject, project middleware)
+- [x] X-Specgraph-Project RPC context middleware
+
+**Phase B: Claude Code Plugin**
+
+- [x] plugin.json manifest (11 skills, SessionStart hook)
+- [x] SessionStart hook (session-start.sh → specgraph prime)
+- [x] Meta-skill (overview/router)
+- [x] Authoring skills (spark, shape, specify, decompose, approve)
+- [x] Query skills (list, show, deps, ready)
+- [x] Bundle skill
 
 **Slice Verification Gate:**
 
-- [ ] `go test ./... -count=1 -timeout=120s` -- all pass
-- [ ] `golangci-lint run ./...` -- no issues
-- [ ] `go build -o specgraph ./cmd/specgraph` -- clean build
-- [ ] Plugin structure valid: `plugin.json` parses, all skill/hook paths resolve
-- [ ] `specgraph init --tool=claude-code` installs plugin files
-- [ ] Skills trigger correctly: `/specgraph`, `/specgraph-spark`, `/specgraph-list`, `/specgraph-bundle`
-- [ ] SessionStart hook auto-loads constitution context
-- [ ] Full workflow: `specgraph init --tool=claude-code` -> `/specgraph-spark` -> `/specgraph-approve` -> `/specgraph-bundle`
+- [x] `task check` -- all pass (fmt, license, lint, build, unit tests)
+- [x] `go build -o specgraph ./cmd/specgraph` -- clean build
+- [x] Plugin structure valid: `plugin.json` parses, all 11 skill paths resolve
+- [x] CLI commands: `specgraph up|down|prime|init|constitution import` all work
+- [ ] Integration tests with Docker -- `task test:integration` passes
+- [ ] E2E full authoring funnel -- `task pr-prep` passes end-to-end
 
 ---
 

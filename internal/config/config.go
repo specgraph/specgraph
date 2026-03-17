@@ -187,6 +187,11 @@ func LoadConstitutionYAML(path string) (*ConstitutionConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read constitution: %w", err)
 	}
+	return ParseConstitutionYAML(data)
+}
+
+// ParseConstitutionYAML parses constitution YAML from raw bytes.
+func ParseConstitutionYAML(data []byte) (*ConstitutionConfig, error) {
 	c := &ConstitutionConfig{}
 	if err := yaml.Unmarshal(data, c); err != nil {
 		return nil, fmt.Errorf("parse constitution: %w", err)

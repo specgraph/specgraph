@@ -17,7 +17,7 @@ import (
 
 // DecisionHandler implements the ConnectRPC DecisionService.
 type DecisionHandler struct {
-	store  storage.DecisionBackend
+	scoper storage.Scoper
 	logger *slog.Logger
 }
 
@@ -25,11 +25,15 @@ var _ specgraphv1connect.DecisionServiceHandler = (*DecisionHandler)(nil)
 
 // CreateDecision handles the CreateDecision RPC.
 func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Request[specv1.CreateDecisionRequest]) (*connect.Response[specv1.Decision], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if err := validateSlug(msg.GetSlug()); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	d, err := h.store.CreateDecision(ctx, msg.Slug, msg.Title, msg.Decision, msg.Rationale)
+	d, err := store.CreateDecision(ctx, msg.Slug, msg.Title, msg.Decision, msg.Rationale)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "create decision failed", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
@@ -43,10 +47,14 @@ func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Reque
 
 // GetDecision handles the GetDecision RPC.
 func (h *DecisionHandler) GetDecision(ctx context.Context, req *connect.Request[specv1.GetDecisionRequest]) (*connect.Response[specv1.Decision], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	if err := validateSlug(req.Msg.GetSlug()); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	d, err := h.store.GetDecision(ctx, req.Msg.Slug)
+	d, err := store.GetDecision(ctx, req.Msg.Slug)
 	if err != nil {
 		if errors.Is(err, storage.ErrDecisionNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("decision not found"))
@@ -63,6 +71,10 @@ func (h *DecisionHandler) GetDecision(ctx context.Context, req *connect.Request[
 
 // ListDecisions handles the ListDecisions RPC.
 func (h *DecisionHandler) ListDecisions(ctx context.Context, req *connect.Request[specv1.ListDecisionsRequest]) (*connect.Response[specv1.ListDecisionsResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	limit := int(msg.Limit)
 	if limit == 0 {
@@ -78,7 +90,7 @@ func (h *DecisionHandler) ListDecisions(ctx context.Context, req *connect.Reques
 		}
 		status = s
 	}
-	decisions, err := h.store.ListDecisions(ctx, status, limit)
+	decisions, err := store.ListDecisions(ctx, status, limit)
 	if err != nil {
 		h.logger.ErrorContext(ctx, "list decisions failed", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
@@ -92,6 +104,10 @@ func (h *DecisionHandler) ListDecisions(ctx context.Context, req *connect.Reques
 
 // UpdateDecision handles the UpdateDecision RPC.
 func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Request[specv1.UpdateDecisionRequest]) (*connect.Response[specv1.Decision], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	msg := req.Msg
 	if err := validateSlug(msg.GetSlug()); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -105,7 +121,7 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 		}
 		domainStatus = &s
 	}
-	d, err := h.store.UpdateDecision(ctx, msg.Slug, msg.Title, domainStatus, msg.Decision, msg.Rationale, msg.SupersededBy)
+	d, err := store.UpdateDecision(ctx, msg.Slug, msg.Title, domainStatus, msg.Decision, msg.Rationale, msg.SupersededBy)
 	if err != nil {
 		if errors.Is(err, storage.ErrDecisionNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("decision not found"))
@@ -124,8 +140,8 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 }
 
 // RegisterDecisionService registers the DecisionService on the given mux.
-func RegisterDecisionService(mux *http.ServeMux, store storage.DecisionBackend) {
-	handler := &DecisionHandler{store: store, logger: slog.Default()}
+func RegisterDecisionService(mux *http.ServeMux, scoper storage.Scoper) {
+	handler := &DecisionHandler{scoper: scoper, logger: slog.Default()}
 	path, h := specgraphv1connect.NewDecisionServiceHandler(handler)
 	mux.Handle(path, h)
 }

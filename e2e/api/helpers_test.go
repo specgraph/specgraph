@@ -11,28 +11,52 @@ import (
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 )
 
+// e2eProject is the project slug used by the E2E test server (set in testutil.StartServer).
+const e2eProject = "e2e-test"
+
+// projectClient returns an HTTP client that injects the X-Specgraph-Project header.
+func projectClient() *http.Client {
+	return &http.Client{
+		Transport: &projectRoundTripper{
+			base:    http.DefaultTransport,
+			project: e2eProject,
+		},
+	}
+}
+
+type projectRoundTripper struct {
+	base    http.RoundTripper
+	project string
+}
+
+func (t *projectRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set("X-Specgraph-Project", t.project)
+	return t.base.RoundTrip(req)
+}
+
 func newSpecClient() specgraphv1connect.SpecServiceClient {
-	return specgraphv1connect.NewSpecServiceClient(http.DefaultClient, serverInfo.BaseURL)
+	return specgraphv1connect.NewSpecServiceClient(projectClient(), serverInfo.BaseURL)
 }
 
 func newClaimClient() specgraphv1connect.ClaimServiceClient {
-	return specgraphv1connect.NewClaimServiceClient(http.DefaultClient, serverInfo.BaseURL)
+	return specgraphv1connect.NewClaimServiceClient(projectClient(), serverInfo.BaseURL)
 }
 
 func newConstitutionClient() specgraphv1connect.ConstitutionServiceClient {
-	return specgraphv1connect.NewConstitutionServiceClient(http.DefaultClient, serverInfo.BaseURL)
+	return specgraphv1connect.NewConstitutionServiceClient(projectClient(), serverInfo.BaseURL)
 }
 
 func newGraphClient() specgraphv1connect.GraphServiceClient {
-	return specgraphv1connect.NewGraphServiceClient(http.DefaultClient, serverInfo.BaseURL)
+	return specgraphv1connect.NewGraphServiceClient(projectClient(), serverInfo.BaseURL)
 }
 
 func newAuthoringClient() specgraphv1connect.AuthoringServiceClient {
-	return specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, serverInfo.BaseURL)
+	return specgraphv1connect.NewAuthoringServiceClient(projectClient(), serverInfo.BaseURL)
 }
 
 func newDecisionClient() specgraphv1connect.DecisionServiceClient {
-	return specgraphv1connect.NewDecisionServiceClient(http.DefaultClient, serverInfo.BaseURL)
+	return specgraphv1connect.NewDecisionServiceClient(projectClient(), serverInfo.BaseURL)
 }
 
 func newServerClient() specgraphv1connect.ServerServiceClient {
@@ -40,5 +64,5 @@ func newServerClient() specgraphv1connect.ServerServiceClient {
 }
 
 func newLifecycleClient() specgraphv1connect.LifecycleServiceClient {
-	return specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, serverInfo.BaseURL)
+	return specgraphv1connect.NewLifecycleServiceClient(projectClient(), serverInfo.BaseURL)
 }

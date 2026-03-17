@@ -22,6 +22,7 @@ import (
 
 // mockExecutionBackend implements storage.ExecutionBackend for unit tests.
 type mockExecutionBackend struct {
+	stubBackend
 	mu       sync.Mutex
 	bundles  map[string]*storage.Bundle
 	events   map[string][]*storage.ExecutionEvent
@@ -141,9 +142,11 @@ func (m *mockExecutionBackend) seedPrime(slug string, pd *storage.PrimeData) {
 
 func setupExecutionServer(t *testing.T, mb storage.ExecutionBackend) specgraphv1connect.ExecutionServiceClient {
 	t.Helper()
+	// mb must implement ScopedBackend (mockExecutionBackend embeds stubBackend).
+	scoper := &testScoper{backend: mb.(storage.ScopedBackend)}
 	mux := http.NewServeMux()
-	server.RegisterExecutionService(mux, mb)
-	srv := httptest.NewServer(mux)
+	server.RegisterExecutionService(mux, scoper)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewExecutionServiceClient(http.DefaultClient, srv.URL)
 }

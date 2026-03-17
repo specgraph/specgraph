@@ -16,13 +16,17 @@ import (
 
 // GraphHandler implements the ConnectRPC GraphService.
 type GraphHandler struct {
-	store storage.GraphBackend
+	scoper storage.Scoper
 }
 
 var _ specgraphv1connect.GraphServiceHandler = (*GraphHandler)(nil)
 
 // AddEdge handles the AddEdge RPC.
 func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.AddEdgeRequest]) (*connect.Response[specv1.Edge], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	if err := validateSlug(req.Msg.FromSlug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("from_slug: %w", err))
 	}
@@ -33,7 +37,7 @@ func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	edge, err := h.store.AddEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, et)
+	edge, err := store.AddEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, et)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -46,6 +50,10 @@ func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.
 
 // RemoveEdge handles the RemoveEdge RPC.
 func (h *GraphHandler) RemoveEdge(ctx context.Context, req *connect.Request[specv1.RemoveEdgeRequest]) (*connect.Response[specv1.RemoveEdgeResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	if err := validateSlug(req.Msg.FromSlug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("from_slug: %w", err))
 	}
@@ -56,7 +64,7 @@ func (h *GraphHandler) RemoveEdge(ctx context.Context, req *connect.Request[spec
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if err := h.store.RemoveEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, et); err != nil {
+	if err := store.RemoveEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, et); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return connect.NewResponse(&specv1.RemoveEdgeResponse{}), nil
@@ -64,6 +72,10 @@ func (h *GraphHandler) RemoveEdge(ctx context.Context, req *connect.Request[spec
 
 // ListEdges handles the ListEdges RPC.
 func (h *GraphHandler) ListEdges(ctx context.Context, req *connect.Request[specv1.ListEdgesRequest]) (*connect.Response[specv1.ListEdgesResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -76,7 +88,7 @@ func (h *GraphHandler) ListEdges(ctx context.Context, req *connect.Request[specv
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 	}
-	edges, err := h.store.ListEdges(ctx, req.Msg.Slug, et)
+	edges, err := store.ListEdges(ctx, req.Msg.Slug, et)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -89,10 +101,14 @@ func (h *GraphHandler) ListEdges(ctx context.Context, req *connect.Request[specv
 
 // GetDependencies handles the GetDependencies RPC.
 func (h *GraphHandler) GetDependencies(ctx context.Context, req *connect.Request[specv1.GetDependenciesRequest]) (*connect.Response[specv1.GetDependenciesResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	refs, err := h.store.GetDependencies(ctx, req.Msg.Slug)
+	refs, err := store.GetDependencies(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -101,10 +117,14 @@ func (h *GraphHandler) GetDependencies(ctx context.Context, req *connect.Request
 
 // GetTransitiveDeps handles the GetTransitiveDeps RPC.
 func (h *GraphHandler) GetTransitiveDeps(ctx context.Context, req *connect.Request[specv1.GetTransitiveDepsRequest]) (*connect.Response[specv1.GetTransitiveDepsResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	refs, err := h.store.GetTransitiveDeps(ctx, req.Msg.Slug)
+	refs, err := store.GetTransitiveDeps(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -113,10 +133,14 @@ func (h *GraphHandler) GetTransitiveDeps(ctx context.Context, req *connect.Reque
 
 // GetImpact handles the GetImpact RPC.
 func (h *GraphHandler) GetImpact(ctx context.Context, req *connect.Request[specv1.GetImpactRequest]) (*connect.Response[specv1.GetImpactResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	refs, err := h.store.GetImpact(ctx, req.Msg.Slug)
+	refs, err := store.GetImpact(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -125,7 +149,11 @@ func (h *GraphHandler) GetImpact(ctx context.Context, req *connect.Request[specv
 
 // GetReady handles the GetReady RPC.
 func (h *GraphHandler) GetReady(ctx context.Context, _ *connect.Request[specv1.GetReadyRequest]) (*connect.Response[specv1.GetReadyResponse], error) {
-	refs, err := h.store.GetReady(ctx)
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
+	refs, err := store.GetReady(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -134,10 +162,14 @@ func (h *GraphHandler) GetReady(ctx context.Context, _ *connect.Request[specv1.G
 
 // GetCriticalPath handles the GetCriticalPath RPC.
 func (h *GraphHandler) GetCriticalPath(ctx context.Context, req *connect.Request[specv1.GetCriticalPathRequest]) (*connect.Response[specv1.GetCriticalPathResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	refs, err := h.store.GetCriticalPath(ctx, req.Msg.Slug)
+	refs, err := store.GetCriticalPath(ctx, req.Msg.Slug)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -145,8 +177,8 @@ func (h *GraphHandler) GetCriticalPath(ctx context.Context, req *connect.Request
 }
 
 // RegisterGraphService registers the GraphService on the given mux.
-func RegisterGraphService(mux *http.ServeMux, store storage.GraphBackend) {
-	handler := &GraphHandler{store: store}
+func RegisterGraphService(mux *http.ServeMux, scoper storage.Scoper) {
+	handler := &GraphHandler{scoper: scoper}
 	path, h := specgraphv1connect.NewGraphServiceHandler(handler)
 	mux.Handle(path, h)
 }

@@ -19,8 +19,8 @@ func (s *Store) CreateSyncMapping(ctx context.Context, specSlug string, adapter 
 
 	// Verify spec exists
 	specRecords, err := s.executeQuery(ctx,
-		`MATCH (s:Spec {slug: $slug}) RETURN s.id`,
-		map[string]any{"slug": specSlug},
+		`MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug}) RETURN s.id`,
+		mergeParams(s.projectParam(), map[string]any{"slug": specSlug}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: create sync mapping: %w", err)
@@ -38,11 +38,11 @@ func (s *Store) CreateSyncMapping(ctx context.Context, specSlug string, adapter 
 	// MERGE on ExternalRef ensures at most one node per (external_id, adapter) combo
 	// even under concurrent writes.
 	records, err := s.executeQuery(ctx,
-		`MATCH (s:Spec {slug: $slug})
+		`MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 		 OPTIONAL MATCH (s)-[existing:SYNCED_TO {adapter: $adapter}]->(:ExternalRef)
-		 WITH s, existing
+		 WITH p, s, existing
 		 WHERE existing IS NULL
-		 MERGE (e:ExternalRef {external_id: $external_id, adapter: $adapter})
+		 MERGE (p)<-[:BELONGS_TO]-(e:ExternalRef {external_id: $external_id, adapter: $adapter})
 		 ON CREATE SET e.created_at = $now
 		 CREATE (s)-[r:SYNCED_TO {
 		   adapter: $adapter,
@@ -54,13 +54,13 @@ func (s *Store) CreateSyncMapping(ctx context.Context, specSlug string, adapter 
 		 }]->(e)
 		 RETURN s.id, s.slug, r.adapter, e.external_id, r.state,
 		        r.error_message, r.last_sync, r.created_at`,
-		map[string]any{
+		mergeParams(s.projectParam(), map[string]any{
 			"slug":        specSlug,
 			"external_id": externalID,
 			"adapter":     adapterStr,
 			"state":       string(storage.SyncStateSynced),
 			"now":         nowStr,
-		},
+		}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: create sync mapping: %w", err)
@@ -78,19 +78,19 @@ func (s *Store) UpdateSyncState(ctx context.Context, specSlug string, adapter st
 	adapterStr := string(adapter)
 
 	records, err := s.executeQuery(ctx,
-		`MATCH (s:Spec {slug: $slug})-[r:SYNCED_TO {adapter: $adapter}]->(e:ExternalRef)
+		`MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[r:SYNCED_TO {adapter: $adapter}]->(e:ExternalRef)
 		 SET r.state = $state,
 		     r.error_message = $error_message,
 		     r.last_sync = $now
 		 RETURN s.id, s.slug, r.adapter, e.external_id, r.state,
 		        r.error_message, r.last_sync, r.created_at`,
-		map[string]any{
+		mergeParams(s.projectParam(), map[string]any{
 			"slug":          specSlug,
 			"adapter":       adapterStr,
 			"state":         string(state),
 			"error_message": errorMessage,
 			"now":           nowStr,
-		},
+		}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: update sync state: %w", err)
@@ -111,10 +111,10 @@ func (s *Store) GetSyncMapping(ctx context.Context, specSlug string, adapter sto
 	adapterStr := string(adapter)
 
 	records, err := s.executeQuery(ctx,
-		`MATCH (s:Spec {slug: $slug})-[r:SYNCED_TO {adapter: $adapter}]->(e:ExternalRef)
+		`MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[r:SYNCED_TO {adapter: $adapter}]->(e:ExternalRef)
 		 RETURN s.id, s.slug, r.adapter, e.external_id, r.state,
 		        r.error_message, r.last_sync, r.created_at`,
-		map[string]any{"slug": specSlug, "adapter": adapterStr},
+		mergeParams(s.projectParam(), map[string]any{"slug": specSlug, "adapter": adapterStr}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: get sync mapping: %w", err)
@@ -138,7 +138,7 @@ func (s *Store) ListSyncMappings(ctx context.Context, adapter storage.SyncAdapte
 	// condition strings), never user input. Do NOT add dynamic field names or
 	// user-supplied strings to the conditions slice.
 	var conditions []string
-	params := map[string]any{}
+	params := s.projectParam()
 
 	if specSlug != "" {
 		conditions = append(conditions, "s.slug = $slug")
@@ -156,7 +156,7 @@ func (s *Store) ListSyncMappings(ctx context.Context, adapter storage.SyncAdapte
 
 	// Safe: where clause contains only hardcoded condition strings; values are parameterized.
 	query := fmt.Sprintf(
-		`MATCH (s:Spec)-[r:SYNCED_TO]->(e:ExternalRef)%s
+		`MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec)-[r:SYNCED_TO]->(e:ExternalRef)%s
 		 RETURN s.id, s.slug, r.adapter, e.external_id, r.state,
 		        r.error_message, r.last_sync, r.created_at
 		 ORDER BY r.last_sync DESC`,
@@ -191,9 +191,9 @@ func (s *Store) DeleteSyncMapping(ctx context.Context, specSlug string, adapter 
 	// in a separate query. Memgraph 2.4 doesn't support anonymous node
 	// patterns or EXISTS subqueries in WHERE after WITH+DELETE.
 	_, err := s.executeQuery(ctx,
-		`MATCH (s:Spec {slug: $slug})-[r:SYNCED_TO {adapter: $adapter}]->(e:ExternalRef)
+		`MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[r:SYNCED_TO {adapter: $adapter}]->(e:ExternalRef)
 		 DELETE r`,
-		map[string]any{"slug": specSlug, "adapter": adapterStr},
+		mergeParams(s.projectParam(), map[string]any{"slug": specSlug, "adapter": adapterStr}),
 	)
 	if err != nil {
 		return fmt.Errorf("memgraph: delete sync mapping: %w", err)
@@ -206,7 +206,7 @@ func (s *Store) DeleteSyncMapping(ctx context.Context, specSlug string, adapter 
 		 OPTIONAL MATCH (other)-[r:SYNCED_TO]->(e)
 		 WITH e, r
 		 WHERE r IS NULL
-		 DELETE e`,
+		 DETACH DELETE e`,
 		nil,
 	)
 	if err != nil {

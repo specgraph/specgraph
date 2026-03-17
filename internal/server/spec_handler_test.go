@@ -21,7 +21,9 @@ import (
 )
 
 // mockBackend implements storage.Backend with an in-memory map.
+// Embeds stubBackend for unimplemented ScopedBackend methods.
 type mockBackend struct {
+	stubBackend
 	mu    sync.Mutex
 	specs map[string]*storage.Spec
 	seq   int
@@ -110,7 +112,7 @@ func (m *mockBackend) Close(_ context.Context) error {
 
 func TestSpecHandler_CreateAndGet(t *testing.T) {
 	mb := newMockBackend()
-	srv := httptest.NewServer(server.NewMux(mb))
+	srv := httptest.NewServer(wrapTestProject(server.NewMux(&testScoper{backend: mb})))
 	t.Cleanup(srv.Close)
 
 	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)
@@ -147,7 +149,7 @@ func TestSpecHandler_CreateAndGet(t *testing.T) {
 
 func TestSpecHandler_UpdateSpec(t *testing.T) {
 	mb := newMockBackend()
-	srv := httptest.NewServer(server.NewMux(mb))
+	srv := httptest.NewServer(wrapTestProject(server.NewMux(&testScoper{backend: mb})))
 	t.Cleanup(srv.Close)
 
 	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)
@@ -193,7 +195,7 @@ func TestSpecHandler_GetSpec_InvalidLifecycle(t *testing.T) {
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 	}
-	srv := httptest.NewServer(server.NewMux(mb))
+	srv := httptest.NewServer(wrapTestProject(server.NewMux(&testScoper{backend: mb})))
 	t.Cleanup(srv.Close)
 
 	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)
@@ -206,7 +208,7 @@ func TestSpecHandler_GetSpec_InvalidLifecycle(t *testing.T) {
 
 func TestSpecHandler_ListSpecs(t *testing.T) {
 	mb := newMockBackend()
-	srv := httptest.NewServer(server.NewMux(mb))
+	srv := httptest.NewServer(wrapTestProject(server.NewMux(&testScoper{backend: mb})))
 	t.Cleanup(srv.Close)
 
 	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)

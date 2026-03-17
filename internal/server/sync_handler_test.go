@@ -22,6 +22,7 @@ import (
 )
 
 type mockSyncBackend struct {
+	stubBackend
 	mu       gosync.Mutex
 	mappings map[string]*storage.SyncMapping // key: "slug:adapter"
 }
@@ -138,6 +139,72 @@ var (
 	_ storage.SyncBackend = (*mockSyncBackend)(nil)
 )
 
+// syncTestBackend combines sync, spec-read, and constitution backends into a ScopedBackend.
+type syncTestBackend struct {
+	stubBackend
+	syncBackend storage.SyncBackend
+	spec        storage.SpecReader
+	con         storage.ConstitutionBackend // may be nil
+}
+
+func (s *syncTestBackend) GetSpec(ctx context.Context, slug string) (*storage.Spec, error) {
+	return s.spec.GetSpec(ctx, slug)
+}
+
+func (s *syncTestBackend) ListSpecs(ctx context.Context, stage, priority string, limit int) ([]*storage.Spec, error) {
+	return s.spec.ListSpecs(ctx, stage, priority, limit)
+}
+
+func (s *syncTestBackend) GetDependencies(ctx context.Context, slug string) ([]storage.NodeRef, error) {
+	return s.spec.GetDependencies(ctx, slug)
+}
+
+func (s *syncTestBackend) CreateSyncMapping(ctx context.Context, specSlug string, adapter storage.SyncAdapterType, externalID string) (*storage.SyncMapping, error) {
+	return s.syncBackend.CreateSyncMapping(ctx, specSlug, adapter, externalID)
+}
+
+func (s *syncTestBackend) UpdateSyncState(ctx context.Context, specSlug string, adapter storage.SyncAdapterType, state storage.SyncStateType, errMsg string) (*storage.SyncMapping, error) {
+	return s.syncBackend.UpdateSyncState(ctx, specSlug, adapter, state, errMsg)
+}
+
+func (s *syncTestBackend) GetSyncMapping(ctx context.Context, specSlug string, adapter storage.SyncAdapterType) (*storage.SyncMapping, error) {
+	return s.syncBackend.GetSyncMapping(ctx, specSlug, adapter)
+}
+
+func (s *syncTestBackend) ListSyncMappings(ctx context.Context, adapter storage.SyncAdapterType, specSlug string) ([]*storage.SyncMapping, error) {
+	return s.syncBackend.ListSyncMappings(ctx, adapter, specSlug)
+}
+
+func (s *syncTestBackend) DeleteSyncMapping(ctx context.Context, specSlug string, adapter storage.SyncAdapterType) error {
+	return s.syncBackend.DeleteSyncMapping(ctx, specSlug, adapter)
+}
+
+func (s *syncTestBackend) GetConstitution(ctx context.Context) (*storage.Constitution, error) {
+	if s.con != nil {
+		return s.con.GetConstitution(ctx)
+	}
+	return nil, storage.ErrConstitutionNotFound
+}
+
+func (s *syncTestBackend) UpdateConstitution(ctx context.Context, c *storage.Constitution) (*storage.Constitution, error) {
+	if s.con != nil {
+		return s.con.UpdateConstitution(ctx, c)
+	}
+	return nil, errNotImplemented
+}
+
+func (s *syncTestBackend) CheckViolation(ctx context.Context, specSlug string) ([]storage.Violation, error) {
+	if s.con != nil {
+		return s.con.CheckViolation(ctx, specSlug)
+	}
+	return nil, errNotImplemented
+}
+
+// newSyncScoper creates a testScoper from sync test components.
+func newSyncScoper(syncStore storage.SyncBackend, specStore storage.SpecReader, conStore storage.ConstitutionBackend) *testScoper {
+	return &testScoper{backend: &syncTestBackend{syncBackend: syncStore, spec: specStore, con: conStore}}
+}
+
 func setupSyncServer(t *testing.T) specgraphv1connect.SyncServiceClient {
 	t.Helper()
 	syncStore := newMockSyncBackend()
@@ -154,8 +221,8 @@ func setupSyncServer(t *testing.T) specgraphv1connect.SyncServiceClient {
 		},
 	}
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, syncStore, specStore, nil, "")
-	srv := httptest.NewServer(mux)
+	server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 }
@@ -180,8 +247,8 @@ func TestSyncHandler_GetSyncStatus_WithMappings(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}, nil, "")
-	srv := httptest.NewServer(mux)
+	server.RegisterSyncService(mux, newSyncScoper(syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}, nil), "")
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -239,9 +306,9 @@ func TestSyncHandler_Inject_Success(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.SetAllowedOutputRoot(outputDir)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -268,9 +335,9 @@ func TestSyncHandler_Inject_SuccessCursor(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.SetAllowedOutputRoot(outputDir)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -297,9 +364,9 @@ func TestSyncHandler_Inject_SuccessAgentsMD(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.SetAllowedOutputRoot(outputDir)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -351,9 +418,9 @@ func setupSyncServerWithAdapter(t *testing.T, adapter syncpkg.Adapter) specgraph
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.RegisterAdapter(adapter)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 }
@@ -448,9 +515,9 @@ func TestSyncHandler_SyncBeads_AlreadySynced(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.RegisterAdapter(adapter)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -546,9 +613,9 @@ func TestSyncHandler_SyncBeads_GetSyncMappingError(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.RegisterAdapter(adapter)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -579,9 +646,9 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingError(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.RegisterAdapter(adapter)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -640,9 +707,9 @@ func TestSyncHandler_SyncBeads_ListSpecsError(t *testing.T) {
 	}
 	syncStore := newMockSyncBackend()
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.RegisterAdapter(adapter)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -665,8 +732,8 @@ func TestSyncHandler_GetSyncStatus_ListSyncMappingsError(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, syncStore, specStore, nil, "")
-	srv := httptest.NewServer(mux)
+	server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -688,8 +755,8 @@ func TestSyncHandler_GetSyncStatus_ConversionFailure(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}, nil, "")
-	srv := httptest.NewServer(mux)
+	server.RegisterSyncService(mux, newSyncScoper(syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}, nil), "")
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -717,9 +784,9 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingExists(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.RegisterAdapter(adapter)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -748,10 +815,10 @@ func TestSyncHandler_Inject_ConstitutionWarning(t *testing.T) {
 	}
 	conStore := &mockConstitutionStore{err: fmt.Errorf("db connection lost")}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, conStore, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, conStore), "")
 	outputDir := t.TempDir()
 	handler.SetAllowedOutputRoot(outputDir)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 	resp, err := client.Inject(context.Background(),
@@ -797,9 +864,9 @@ func TestSyncHandler_Inject_ConstitutionNotFound_NoWarning(t *testing.T) {
 	conStore := &mockConstitutionStore{err: storage.ErrConstitutionNotFound}
 	outputDir := t.TempDir()
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, conStore, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, conStore), "")
 	handler.SetAllowedOutputRoot(outputDir)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -822,9 +889,9 @@ func TestSyncHandler_Inject_OutputDirOutsideRoot(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.SetAllowedOutputRoot(t.TempDir())
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -873,9 +940,9 @@ func TestSyncHandler_SyncBeads_RetrySuccess(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.RegisterAdapter(adapter)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -920,9 +987,9 @@ func TestSyncHandler_SyncBeads_RetryExistsCountsAsSkipped(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.RegisterAdapter(adapter)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -973,10 +1040,13 @@ func TestSyncHandler_SyncBeads_ContextCancelledBeforeRetry(t *testing.T) {
 	// Call the handler method directly (not via HTTP) to avoid context
 	// cancellation affecting the transport layer.
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.RegisterAdapter(adapter)
 
-	resp, err := handler.SyncBeads(ctx,
+	// Inject project into context since we're calling the handler directly,
+	// not through wrapTestProject middleware.
+	projectCtx := server.TestInjectProject(ctx, testProject)
+	resp, err := handler.SyncBeads(projectCtx,
 		connect.NewRequest(&specv1.SyncBeadsRequest{
 			Config: &specv1.SyncConfig{},
 		}))
@@ -1020,8 +1090,8 @@ func TestSyncHandler_Inject_NoAllowedOutputRoot(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	// Pass allowedOutputRoot="" — no root restriction.
-	server.RegisterSyncService(mux, syncStore, specStore, nil, "")
-	srv := httptest.NewServer(mux)
+	server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
@@ -1057,9 +1127,9 @@ func TestSyncHandler_SyncBeads_DryRunCount(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, syncStore, specStore, nil, "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
 	handler.RegisterAdapter(adapter)
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
 
