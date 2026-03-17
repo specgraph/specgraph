@@ -106,6 +106,10 @@ jj workspace update-stale
 - `jj workspace forget` does NOT delete the directory on disk
 - Workspaces are rarely needed for solo work; `jj edit` covers most context-switching
 
+## Documentation
+
+- **Spec template** — `site/docs/concepts/example-spec.md` is the canonical example spec on the public site. When proto messages for authoring stages change (`SparkOutput`, `ShapeOutput`, `SpecifyOutput`, `DecomposeOutput`), check if the example spec needs updating.
+
 ## Gotchas
 
 - **jj-colocated repo** — This repo uses jj with git colocated. Key rules:
