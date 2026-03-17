@@ -1,46 +1,250 @@
 ---
 name: specgraph-specify
 description: >
-  Define interface contracts, verification criteria, and invariants.
-  Use when ready to define precise technical shape. Triggered by
-  "define the interface", "acceptance criteria", "specify", "write the contract".
+  Define interface contracts, verification criteria, invariants, and touches.
+  Use when the spec is shaped and ready for precise technical definition.
+  Triggered by "define the interface", "acceptance criteria", "specify",
+  "write the contract", or "make it testable".
 ---
 
 # SpecGraph Specify
 
-Make the spec precise enough for implementation without making decisions.
+Make the spec precise enough to implement and test. Define contracts, not code.
+After Specify, the spec is testable — every success criterion from Shape has a
+concrete verification assertion, every interface has defined inputs, outputs, and
+error conditions.
 
-## Prerequisites
+---
+
+## Persona
+
+> **Read `../persona.md` for the full shared persona** — core identity, posture system
+> (Drive/Partner/Support with auto-detection), pushback protocol, tone calibration,
+> judgment heuristics, and conversational style.
+
+### Posture behavior during Specify
+
+- **Drive:** Agent drafts everything from Shape output — interface contract,
+  verify criteria, invariants, touches — and presents the complete Specify
+  output for review. Runs analytical passes automatically.
+- **Partner:** Agent drafts each section, pauses for input and discussion
+  before moving on to the next.
+- **Support:** Agent asks the user to describe contracts in their own words,
+  then refines, fills gaps, and challenges.
+
+---
+
+## Domain: The Specify Conversation
+
+Specify turns the shaped proposal into precise, testable contracts. The agent
+DRAFTS all technical detail based on Shape output. The user confirms, tweaks, or
+redirects — they never author contracts from scratch.
+
+The key principle: after Specify, a spec is testable. Every success criterion has
+a verification assertion. Every interface has defined inputs, outputs, and error
+conditions.
+
+### Elicitation Sequence
+
+Work through all four in order. Each is a conversation, not a single prompt.
+
+#### 1. Interface Contract
+
+Agent DRAFTS based on Shape output — API endpoints, function signatures, inputs,
+outputs, status codes, error conditions. Presents to user:
+
+"Based on what we shaped, the interface would look like: [draft]. Does that match
+what you're thinking?"
+
+- Define inputs with types and constraints.
+- Define outputs with success and error shapes.
+- Define error conditions explicitly — every failure mode the caller can
+  encounter.
+- Define status codes or error types for each failure mode.
+- If the Shape chose an approach with integration points, define the contract for
+  each boundary.
+
+#### 2. Verify Criteria
+
+Agent PROPOSES test assertions for each success criterion from Shape. Presents to
+user:
+
+"For each must-have, here's how I'd test it: [assertions]. Anything to add?"
+
+- Map each `success_must` and `success_should` from Shape to one or more
+  concrete test assertions.
+- Each assertion should be automatable — no "manually verify" language.
+- Include both happy-path and error-path assertions.
+
+#### 3. Invariants
+
+Agent PROPOSES system-level guarantees that must hold forever. Presents to user:
+
+"An invariant holds forever. A verify criterion is a test for this spec. Here's
+what I'd propose: [invariants]."
+
+- Invariants are properties of the system, not tests for this spec.
+- Example invariant: "Auth tokens never exceed 4096 bytes."
+- Example verify criterion (not an invariant): "The new endpoint returns 200 for
+  valid input."
+- Distinguish clearly. If the user proposes an invariant that is really a verify
+  criterion, push back.
+
+#### 4. Touches
+
+Agent PROPOSES files and packages that will change, based on codebase analysis.
+Presents to user:
+
+"Based on the interface, I'd expect these files to change: [list]."
+
+- Grep the codebase for related code — packages, interfaces, test files.
+- Group by: new files, modified files, test files.
+- Flag files that are also touched by other in-progress specs (collision risk).
+
+### Quality Heuristics
+
+Apply these throughout the conversation — they are red flags that require
+pushback:
+
+| Signal | Problem | Pushback |
+|--------|---------|----------|
+| Verify criteria that restate the contract | No interesting test coverage | "That restates the contract. The verify criterion should test the interesting case — what about concurrent requests? Expired tokens?" |
+| Missing error conditions | Incomplete interface contract | "Happy path is defined. What about: invalid input, auth failure, conflict, timeout?" |
+| Invariants that are really verify criteria | Confused scope | "Is this 'must hold forever' or 'must pass this test'?" |
+| No touches identified | Disconnected from codebase | "Every spec changes something. What files does this touch?" |
+| Overlapping touches with other specs | Collision risk | "Spec `[other-slug]` also modifies `[file]` — your invariants should be compatible with theirs." |
+
+### Analytical Passes (Peripheral Vision)
+
+Woven into the conversation, not separate blocks. While defining contracts and
+criteria, proactively surface related concerns.
+
+- **Red team:** Challenge correctness of the interface contract. "What happens if
+  two agents claim the same spec simultaneously? Your interface contract doesn't
+  address that race condition."
+- **Consistency:** Check against other specs. "Spec `pkce-enforcement` also
+  modifies `internal/auth/token.go` — your invariants should be compatible with
+  theirs."
+
+Surface findings naturally when they arise. Don't hold them until the end.
+
+### Background Research
+
+At the start of the specify conversation, dispatch background research:
+
+1. **Dependency scan:** `specgraph deps <slug>` — check dependencies for
+   invariant consistency across related specs.
+2. **Codebase scan:** Grep for files, packages, and interfaces that the spec
+   will touch. Note existing patterns and test coverage.
+3. **Graph scan:** Look for specs with overlapping touches or shared invariants.
+
+Surface findings when relevant — don't block the conversation waiting for
+results.
+
+---
+
+## Execution
+
+### Prerequisites
+
+Run these before starting the specify conversation:
 
 ```bash
+# 1. Verify server is reachable
 specgraph health
-specgraph show <slug> --format=json
+
+# 2. Load constitution — summarize relevant principles/constraints to user
+specgraph constitution show
+
+# 3. Load current spec state (especially Shape output)
+specgraph show <slug>
+
+# 4. Check dependencies for invariant consistency
 specgraph deps <slug>
 ```
 
-## Workflow
+After loading the constitution, summarize to the user: "Your project constitution
+has N principles and M constraints. Key ones for this spec: [relevant subset]."
 
-### 1. Define Interface Contract
+If the spec is already at or past Specify stage, present a summary of existing
+specify data and offer to revise or continue to the next stage.
 
-- Function signatures, API endpoints, data structures
-- Input/output types with constraints
+### Specify Conversation
 
-### 2. Verification Criteria
+Walk through the elicitation sequence above. The conversation structure depends
+on the detected posture, but the four moves (interface contract, verify criteria,
+invariants, touches) are always completed.
 
-- What must be true for this spec to be "done"?
-- Automated test descriptions
+During the conversation, run background research as described in the Domain
+section. Surface findings when relevant — don't wait until the end.
 
-### 3. Invariants
+### Persistence
 
-- What must never be violated?
-- Edge cases and error conditions
+When the specify conversation is complete:
 
-### 4. Persist
+1. **Synthesize** the conversation into a SpecifyOutput JSON structure:
 
-```bash
-specgraph specify <slug>
-```
+   ```json
+   {
+     "interface_contract": {
+       "endpoints": [
+         {
+           "method": "POST",
+           "path": "/api/v1/specs/{slug}/claim",
+           "input": { "agent_id": "string", "ttl_seconds": "int" },
+           "output": { "lease_id": "string", "expires_at": "timestamp" },
+           "errors": [
+             { "code": 404, "condition": "Spec not found" },
+             { "code": 409, "condition": "Already claimed by another agent" },
+             { "code": 422, "condition": "Invalid TTL value" }
+           ]
+         }
+       ]
+     },
+     "verify_criteria": [
+       "POST /claim with valid agent_id returns 200 and a lease_id",
+       "POST /claim on already-claimed spec returns 409",
+       "Lease expires after TTL seconds and spec becomes claimable again"
+     ],
+     "invariants": [
+       "A spec may have at most one active lease at any time",
+       "Lease expiry is monotonically increasing (no backdating)"
+     ],
+     "touches": [
+       "internal/server/claim_handler.go (new)",
+       "internal/storage/lease.go (new)",
+       "internal/storage/memgraph/lease_queries.go (new)",
+       "internal/server/claim_handler_test.go (new)"
+     ]
+   }
+   ```
 
-### 5. Next Steps
+2. **Show the user** a human-readable summary: "Here's what I'm going to save to
+   the graph: [summary]. Look right?"
+
+3. **Wait for confirmation.** User confirms or requests changes. Iterate until
+   they approve.
+
+4. **Write and persist:**
+
+   ```bash
+   # Write synthesized output to temp file
+   cat > /tmp/specify-<slug>.json << 'SPECIFY_EOF'
+   { ... }
+   SPECIFY_EOF
+
+   # Persist to the graph
+   specgraph specify <slug> --json-file /tmp/specify-<slug>.json
+   ```
+
+5. **Confirm:** "Saved. Spec is now at Decompose stage."
+
+### Stage Transition
+
+After persisting, offer to continue:
+
+"Specify is saved. Want to continue to Decompose? I can propose how to break this
+into slices."
 
 - Continue to **Decompose** → `/specgraph-decompose <slug>`
+- Or stop here — the spec is saved at Specify stage and can be resumed later.
