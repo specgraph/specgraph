@@ -1,0 +1,55 @@
+{
+  "scopeIn": [
+    "In-process LRU cache for graph traversal results",
+    "Write-through invalidation on spec mutations",
+    "Cache hit/miss metrics exposed via OpenTelemetry"
+  ],
+  "scopeOut": [
+    "Distributed or multi-node cache (Redis, Memcached)",
+    "Query result pagination changes",
+    "Storage backend schema changes"
+  ],
+  "approaches": [
+    {
+      "name": "sync-map-lru",
+      "description": "Use a sync.Map-backed LRU with fixed capacity, keyed by Cypher query fingerprint",
+      "tradeoffs": [
+        "Simple to implement and test",
+        "No external dependencies",
+        "Limited to single-process; no shared state across replicas"
+      ]
+    },
+    {
+      "name": "ristretto-cache",
+      "description": "Use dgraph-io/ristretto for a concurrent, admission-controlled cache",
+      "tradeoffs": [
+        "Battle-tested concurrent cache with TinyLFU admission",
+        "Adds an external dependency",
+        "More complex configuration surface"
+      ]
+    }
+  ],
+  "chosenApproach": "sync-map-lru",
+  "risks": [
+    "Stale reads if invalidation misses a mutation path",
+    "Memory pressure under large working sets without eviction tuning"
+  ],
+  "successMust": [
+    "P95 query latency under 80ms for repeated traversals on 10k-node graphs",
+    "Cache invalidation fires on every spec Create, Update, and Delete"
+  ],
+  "successShould": [
+    "Cache hit ratio above 70% during typical interactive sessions"
+  ],
+  "successWont": [
+    "Support distributed cache topologies in this iteration"
+  ],
+  "decisions": [
+    {
+      "slug": "adr-042-lru-cache-strategy",
+      "title": "Use in-process LRU for query caching",
+      "decision": "Implement a sync.Map-backed LRU cache keyed by query fingerprint with a configurable max-entry limit",
+      "rationale": "Avoids external dependencies while delivering measurable latency improvements; can be replaced with ristretto later if needed"
+    }
+  ]
+}
