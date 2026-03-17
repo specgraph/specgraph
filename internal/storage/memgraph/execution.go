@@ -92,7 +92,7 @@ func (s *Store) RecordCompletion(ctx context.Context, slug, agent string) error 
 func (s *Store) GetExecutionEvents(ctx context.Context, slug string, limit int) ([]*storage.ExecutionEvent, error) {
 	query := `
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[:HAS_EVENT]->(e:ExecutionEvent)
-		RETURN e.id, e.spec_slug, e.agent, e.type, e.message, e.created_at
+		RETURN DISTINCT e.id, e.spec_slug, e.agent, e.type, e.message, e.created_at
 		ORDER BY e.id DESC
 		LIMIT $limit
 	`

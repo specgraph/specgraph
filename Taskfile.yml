@@ -86,12 +86,23 @@ tasks:
     desc: Run all E2E tests (requires Docker)
     cmds:
       - task: test:e2e:api
+      - task: test:e2e:cli
       - task: test:e2e:docker
   test:e2e:api:
     desc: Run API E2E tests (requires Docker for Memgraph)
     deps: [generate]
     cmds:
       - go test -tags e2e -v -timeout 5m ./e2e/api/...
+  test:e2e:cli:
+    desc: Run CLI E2E tests (requires Docker)
+    deps: [build]
+    cmds:
+      - go test -tags e2e_cli -v -count=1 -timeout 300s ./e2e/cli/
+  test:e2e:agent:
+    desc: Run Agent E2E tests (requires Docker + ANTHROPIC_API_KEY)
+    deps: [build]
+    cmds:
+      - go test -tags e2e_agent -v -count=1 -timeout 600s ./e2e/agent/
   test:e2e:docker:
     desc: Run Docker mode E2E tests (requires Docker)
     deps: [build]
