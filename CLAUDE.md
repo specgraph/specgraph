@@ -108,7 +108,8 @@ jj workspace update-stale
 
 ## Documentation
 
-- **Spec template** — `site/docs/concepts/example-spec.md` is the canonical example spec on the public site. When proto messages for authoring stages change (`SparkOutput`, `ShapeOutput`, `SpecifyOutput`, `DecomposeOutput`), check if the example spec needs updating.
+- **Example spec** — `site/docs/concepts/example-spec.md` is the canonical example spec on the public site. When proto messages for authoring stages change (`SparkOutput`, `ShapeOutput`, `SpecifyOutput`, `DecomposeOutput`), check if the example spec needs updating.
+- **Skill personas** — Authoring skills live in `plugin/specgraph/skills/specgraph/*/SKILL.md`. The shared persona source of truth is `plugin/specgraph/skills/specgraph/persona.md`. When posture system or judgment heuristics change, update `persona.md` first, then propagate to each skill.
 
 ## Gotchas
 
