@@ -58,7 +58,7 @@ func (stubBackend) ListSpecs(context.Context, string, string, int) ([]*storage.S
 	return nil, errNotImplemented
 }
 
-func (stubBackend) UpdateSpec(context.Context, string, *string, *string, *string, *string) (*storage.Spec, error) {
+func (stubBackend) UpdateSpec(context.Context, string, *string, *string, *string, *string, *string) (*storage.Spec, error) {
 	return nil, errNotImplemented
 }
 

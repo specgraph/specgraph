@@ -70,6 +70,7 @@ message UpdateSpecRequest {
   optional string stage = 3;
   optional string priority = 4;
   optional string complexity = 5;
+  optional string notes = 6;
 }
 
 // --- Service ---

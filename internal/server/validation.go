@@ -17,6 +17,10 @@ const maxSlugLength = 256
 // maxFieldLen caps free-text RPC fields to prevent unbounded writes to graph storage.
 const maxFieldLen = 10000
 
+// maxNotesLen caps the notes field, which holds conversation summaries and
+// can be significantly longer than individual fields like seed or scope items.
+const maxNotesLen = 100000
+
 // validateRequiredField checks that a field is non-empty and within maxFieldLen.
 func validateRequiredField(name, value string) error {
 	if value == "" {

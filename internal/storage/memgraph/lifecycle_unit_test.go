@@ -107,8 +107,8 @@ func TestAppendHistory_TrimsOldestWhenFull(t *testing.T) {
 }
 
 func TestRecordToSpecOffset(t *testing.T) {
-	// Build a 30-value record simulating a SupersedeSpec query that returns
-	// two specs: old at offset 0, new at offset 15.
+	// Build a 32-value record simulating a SupersedeSpec query that returns
+	// two specs: old at offset 0, new at offset 16.
 	now := "2026-01-15T10:30:00.000000000Z"
 	makeSpecValues := func(id, slug, intent, stage, priority, complexity string, version int64, supersededBy, supersedes string) []any {
 		return []any{
@@ -121,6 +121,7 @@ func TestRecordToSpecOffset(t *testing.T) {
 			"[]",         // history_json (empty array)
 			false,        // drift_acknowledged
 			nil,          // drift_acknowledge_note
+			"",           // notes
 		}
 	}
 
@@ -138,8 +139,8 @@ func TestRecordToSpecOffset(t *testing.T) {
 	assert.Equal(t, int32(2), oldSpec.Version)
 	assert.Equal(t, "new-spec", oldSpec.SupersededBy)
 
-	// Parse new spec at offset 15.
-	newSpec, err := recordToSpecOffset(rec, 15)
+	// Parse new spec at offset 16.
+	newSpec, err := recordToSpecOffset(rec, 16)
 	require.NoError(t, err)
 	assert.Equal(t, "id-new", newSpec.ID)
 	assert.Equal(t, "new-spec", newSpec.Slug)

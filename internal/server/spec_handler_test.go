@@ -82,7 +82,7 @@ func (m *mockBackend) ListSpecs(_ context.Context, stage, priority string, limit
 	return result, nil
 }
 
-func (m *mockBackend) UpdateSpec(_ context.Context, slug string, intent, stage, priority, complexity *string) (*storage.Spec, error) {
+func (m *mockBackend) UpdateSpec(_ context.Context, slug string, intent, stage, priority, complexity, notes *string) (*storage.Spec, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	spec, ok := m.specs[slug]
@@ -100,6 +100,9 @@ func (m *mockBackend) UpdateSpec(_ context.Context, slug string, intent, stage, 
 	}
 	if complexity != nil {
 		spec.Complexity = *complexity
+	}
+	if notes != nil {
+		spec.Notes = *notes
 	}
 	spec.Version++
 	spec.UpdatedAt = time.Now().UTC()

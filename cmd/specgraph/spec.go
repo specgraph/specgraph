@@ -6,12 +6,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"text/tabwriter"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func specClient() (specgraphv1connect.SpecServiceClient, error) {
@@ -63,6 +65,7 @@ var (
 	updateStage      string
 	updatePriority   string
 	updateComplexity string
+	updateNotes      string
 )
 
 func runUpdate(cmd *cobra.Command, args []string) error {
@@ -82,6 +85,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 	if cmd.Flags().Changed("complexity") {
 		req.Complexity = &updateComplexity
+	}
+	if cmd.Flags().Changed("notes") {
+		req.Notes = &updateNotes
 	}
 
 	resp, err := client.UpdateSpec(context.Background(), connect.NewRequest(req))
@@ -143,6 +149,8 @@ var showCmd = &cobra.Command{
 	RunE:  runShow,
 }
 
+var showFormat string
+
 func init() {
 	createCmd.Flags().StringVar(&createIntent, "intent", "", "intent for the spec (required)")
 	createCmd.Flags().StringVar(&createPriority, "priority", "p2", "priority (p0-p3)")
@@ -153,12 +161,14 @@ func init() {
 	updateCmd.Flags().StringVar(&updateStage, "stage", "", "new stage")
 	updateCmd.Flags().StringVar(&updatePriority, "priority", "", "new priority")
 	updateCmd.Flags().StringVar(&updateComplexity, "complexity", "", "new complexity")
+	updateCmd.Flags().StringVar(&updateNotes, "notes", "", "free-text notes")
 	rootCmd.AddCommand(updateCmd)
 
 	listCmd.Flags().StringVar(&listStage, "stage", "", "filter by stage")
 	listCmd.Flags().StringVar(&listPriority, "priority", "", "filter by priority")
 	rootCmd.AddCommand(listCmd)
 
+	showCmd.Flags().StringVar(&showFormat, "format", "text", "output format (text, json)")
 	rootCmd.AddCommand(showCmd)
 }
 
@@ -173,6 +183,30 @@ func runShow(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("get spec: %w", err)
 	}
+
+	switch showFormat {
+	case "text":
+		// fall through to text output below
+	case "json":
+		// handled below
+	default:
+		return fmt.Errorf("unsupported format %q; valid values: text, json", showFormat)
+	}
+
+	if showFormat == "json" {
+		marshaler := protojson.MarshalOptions{Multiline: true}
+		data, mErr := marshaler.Marshal(resp.Msg)
+		if mErr != nil {
+			return fmt.Errorf("marshal json: %w", mErr)
+		}
+		_, err = os.Stdout.Write(data)
+		if err != nil {
+			return err
+		}
+		fmt.Println()
+		return nil
+	}
+
 	s := resp.Msg
 	fmt.Printf("ID:         %s\n", s.Id)
 	fmt.Printf("Slug:       %s\n", s.Slug)
@@ -181,5 +215,8 @@ func runShow(_ *cobra.Command, args []string) error {
 	fmt.Printf("Priority:   %s\n", s.Priority)
 	fmt.Printf("Complexity: %s\n", s.Complexity)
 	fmt.Printf("Version:    %d\n", s.Version)
+	if s.Notes != "" {
+		fmt.Printf("Notes:      %s\n", s.Notes)
+	}
 	return nil
 }

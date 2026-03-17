@@ -161,12 +161,13 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 			created_at: $created_at,
 			updated_at: $updated_at,
 			lifecycle: $lifecycle,
-			history_json: $history_json
+			history_json: $history_json,
+			notes: $notes
 		})
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
-		       s.drift_acknowledged, s.drift_acknowledge_note
+		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes
 	`
 	params := mergeParams(s.projectParam(), map[string]any{
 		"id":           id,
@@ -180,6 +181,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		"updated_at":   nowStr,
 		"lifecycle":    string(defaultLifecycle),
 		"history_json": "[]",
+		"notes":        "",
 	})
 
 	records, err := s.executeQuery(ctx, query, params)
@@ -200,7 +202,7 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
-		       s.drift_acknowledged, s.drift_acknowledge_note
+		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes
 	`
 	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
@@ -226,7 +228,7 @@ func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
-		       s.drift_acknowledged, s.drift_acknowledge_note
+		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes
 	`
 	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{"slugs": slugs}))
 	if err != nil {
@@ -264,7 +266,7 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	query += ` RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
-		       s.drift_acknowledged, s.drift_acknowledge_note`
+		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes`
 	query += " ORDER BY s.created_at"
 	if limit > 0 {
 		query += " LIMIT $limit"
@@ -288,7 +290,7 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 }
 
 // UpdateSpec updates a spec by slug. Only non-nil fields are changed.
-func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, priority, complexity *string) (*storage.Spec, error) {
+func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, priority, complexity, notes *string) (*storage.Spec, error) {
 	var setClauses []string
 	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
@@ -308,6 +310,10 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		setClauses = append(setClauses, "s.complexity = $complexity")
 		params["complexity"] = *complexity
 	}
+	if notes != nil {
+		setClauses = append(setClauses, "s.notes = $notes")
+		params["notes"] = *notes
+	}
 
 	if len(setClauses) == 0 {
 		return s.GetSpec(ctx, slug)
@@ -323,7 +329,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
-		       s.drift_acknowledged, s.drift_acknowledge_note
+		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes
 	`, strings.Join(setClauses, ", "))
 
 	records, err := s.executeQuery(ctx, query, params)
@@ -597,6 +603,10 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
+	notes, err := recordStringOptional(rec, offset+15, "notes")
+	if err != nil {
+		return nil, err
+	}
 
 	return &storage.Spec{
 		ID:                   id,
@@ -614,6 +624,7 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 		History:              history,
 		DriftAcknowledged:    driftAck,
 		DriftAcknowledgeNote: driftAckNote,
+		Notes:                notes,
 	}, nil
 }
 

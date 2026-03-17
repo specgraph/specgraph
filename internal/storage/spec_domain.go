@@ -149,6 +149,7 @@ type Spec struct {
 	History              []HistoryEntry // lifecycle event log
 	DriftAcknowledged    bool           // drift was intentionally acknowledged
 	DriftAcknowledgeNote string         // reason for acknowledging drift
+	Notes                string         // free-text notes (conversation summaries, context)
 }
 
 // HistoryEntry records a lifecycle event on a spec.
