@@ -153,7 +153,7 @@ func TestUpdateSpec(t *testing.T) {
 
 	// Update intent only.
 	newIntent := "Updated intent"
-	updated, err := store.UpdateSpec(ctx, "update-me", &newIntent, nil, nil, nil)
+	updated, err := store.UpdateSpec(ctx, "update-me", &newIntent, nil, nil, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, "Updated intent", updated.Intent)
 	require.Equal(t, int32(2), updated.Version)
@@ -163,7 +163,7 @@ func TestUpdateSpec(t *testing.T) {
 	// Update multiple fields.
 	newStage := "shape"
 	newPriority := "p0"
-	updated2, err := store.UpdateSpec(ctx, "update-me", nil, &newStage, &newPriority, nil)
+	updated2, err := store.UpdateSpec(ctx, "update-me", nil, &newStage, &newPriority, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, storage.SpecStageShape, updated2.Stage)
 	require.Equal(t, storage.SpecPriorityP0, updated2.Priority)
@@ -171,7 +171,7 @@ func TestUpdateSpec(t *testing.T) {
 	require.Equal(t, "Updated intent", updated2.Intent) // still from previous update
 
 	// Update non-existent spec.
-	_, err = store.UpdateSpec(ctx, "no-such-spec", &newIntent, nil, nil, nil)
+	_, err = store.UpdateSpec(ctx, "no-such-spec", &newIntent, nil, nil, nil, nil)
 	require.Error(t, err)
 }
 

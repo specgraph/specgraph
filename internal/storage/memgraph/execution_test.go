@@ -58,7 +58,7 @@ func TestExecution(t *testing.T) {
 		// Create and approve spec.
 		_, err = store.CreateSpec(ctx, "bundle-spec", "Build the thing", "p1", "medium")
 		require.NoError(t, err)
-		_, err = store.UpdateSpec(ctx, "bundle-spec", nil, ptr("approved"), nil, nil)
+		_, err = store.UpdateSpec(ctx, "bundle-spec", nil, ptr("approved"), nil, nil, nil)
 		require.NoError(t, err)
 
 		// Create decision and link it.
@@ -89,7 +89,7 @@ func TestExecution(t *testing.T) {
 		// Create and approve spec but do not claim it.
 		_, err = store.CreateSpec(ctx, "unclaimed", "Unclaimed spec", "p1", "low")
 		require.NoError(t, err)
-		_, err = store.UpdateSpec(ctx, "unclaimed", nil, ptr("approved"), nil, nil)
+		_, err = store.UpdateSpec(ctx, "unclaimed", nil, ptr("approved"), nil, nil, nil)
 		require.NoError(t, err)
 
 		err = store.RecordProgress(ctx, "unclaimed", "agent-x", "doing work")
@@ -107,7 +107,7 @@ func TestExecution(t *testing.T) {
 		// Create, approve, and claim spec.
 		_, err = store.CreateSpec(ctx, "lifecycle", "Full lifecycle spec", "p0", "high")
 		require.NoError(t, err)
-		_, err = store.UpdateSpec(ctx, "lifecycle", nil, ptr("approved"), nil, nil)
+		_, err = store.UpdateSpec(ctx, "lifecycle", nil, ptr("approved"), nil, nil, nil)
 		require.NoError(t, err)
 		_, err = store.ClaimSpec(ctx, "lifecycle", "agent-1", 15*time.Minute)
 		require.NoError(t, err)
