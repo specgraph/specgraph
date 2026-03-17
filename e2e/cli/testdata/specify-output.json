@@ -1,0 +1,14 @@
+{
+  "interfaceContract": "POST /api/v1/cli-pipeline",
+  "verifyCriteria": [
+    "returns 200 on valid input",
+    "returns 400 on missing slug"
+  ],
+  "invariants": [
+    "spec state is consistent after each stage transition"
+  ],
+  "touches": [
+    "internal/authoring/funnel.go",
+    "internal/server/authoring_handler.go"
+  ]
+}

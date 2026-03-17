@@ -86,3 +86,5 @@ jobs:
         run: task build
       - name: Run API E2E tests
         run: task test:e2e:api
+      - name: Run CLI E2E tests
+        run: task test:e2e:cli

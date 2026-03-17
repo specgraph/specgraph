@@ -1,0 +1,10 @@
+{
+  "strategy": "DECOMPOSITION_STRATEGY_VERTICAL_SLICE",
+  "slices": [
+    {
+      "id": "cli-pipeline-slice-1",
+      "intent": "Implement the CLI pipeline end-to-end",
+      "verify": ["e2e test passes"]
+    }
+  ]
+}

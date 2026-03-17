@@ -66,3 +66,18 @@ func newServerClient() specgraphv1connect.ServerServiceClient {
 func newLifecycleClient() specgraphv1connect.LifecycleServiceClient {
 	return specgraphv1connect.NewLifecycleServiceClient(projectClient(), serverInfo.BaseURL)
 }
+
+func newExecutionClient() specgraphv1connect.ExecutionServiceClient {
+	return specgraphv1connect.NewExecutionServiceClient(projectClient(), serverInfo.BaseURL)
+}
+
+// projectClientFor returns an HTTP client with a custom project header.
+// Used by isolation tests to target different projects.
+func projectClientFor(slug string) *http.Client {
+	return &http.Client{
+		Transport: &projectRoundTripper{
+			base:    http.DefaultTransport,
+			project: slug,
+		},
+	}
+}

@@ -1,0 +1,10 @@
+{
+  "seed": "Add a caching layer between the storage backend and the query engine to reduce latency for repeated graph traversals",
+  "signal": "P95 query latency exceeds 200ms on graphs with more than 10k nodes; user-reported sluggishness during interactive spec exploration",
+  "questions": [
+    "Should the cache be per-session or shared across all clients?",
+    "What invalidation strategy fits best — TTL, write-through, or event-driven?"
+  ],
+  "scopeSniff": "SCOPE_SNIFF_MEDIUM",
+  "killTest": "If query latency is already under 50ms at the 10k-node mark without caching, this work is unnecessary"
+}

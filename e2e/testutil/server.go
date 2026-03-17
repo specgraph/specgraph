@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 
-//go:build e2e
+//go:build e2e || e2e_cli || e2e_agent
 
 package testutil
 
