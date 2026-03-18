@@ -177,9 +177,9 @@ func (h *GraphHandler) GetCriticalPath(ctx context.Context, req *connect.Request
 }
 
 // RegisterGraphService registers the GraphService on the given mux.
-func RegisterGraphService(mux *http.ServeMux, scoper storage.Scoper) {
+func RegisterGraphService(mux *http.ServeMux, scoper storage.Scoper, opts ...connect.HandlerOption) {
 	handler := &GraphHandler{scoper: scoper}
-	path, h := specgraphv1connect.NewGraphServiceHandler(handler)
+	path, h := specgraphv1connect.NewGraphServiceHandler(handler, opts...)
 	mux.Handle(path, h)
 }
 

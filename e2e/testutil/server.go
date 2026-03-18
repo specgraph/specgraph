@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"connectrpc.com/connect"
+
 	"github.com/seanb4t/specgraph/internal/drift"
 	"github.com/seanb4t/specgraph/internal/linter"
 	"github.com/seanb4t/specgraph/internal/server"
@@ -29,7 +31,7 @@ type ServerInfo struct {
 
 // StartServer launches a specgraph HTTP server connected to the given Memgraph instance.
 // Returns the base URL and a cleanup function that shuts down the server.
-func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), error) {
+func StartServer(ctx context.Context, boltURI string, opts ...connect.HandlerOption) (*ServerInfo, func(), error) {
 	var store *memgraph.Store
 	var err error
 	for range 10 {
@@ -43,18 +45,18 @@ func StartServer(ctx context.Context, boltURI string) (*ServerInfo, func(), erro
 		return nil, nil, fmt.Errorf("connect to memgraph: %w", err)
 	}
 
-	mux := server.NewMux(store)
-	server.RegisterHealthService(mux)
-	server.RegisterDecisionService(mux, store)
-	server.RegisterGraphService(mux, store)
-	server.RegisterClaimService(mux, store)
-	server.RegisterConstitutionService(mux, store)
-	server.RegisterAuthoringService(mux, store)
-	server.RegisterExecutionService(mux, store)
+	mux := server.NewMux(store, opts...)
+	server.RegisterHealthService(mux, opts...)
+	server.RegisterDecisionService(mux, store, opts...)
+	server.RegisterGraphService(mux, store, opts...)
+	server.RegisterClaimService(mux, store, opts...)
+	server.RegisterConstitutionService(mux, store, opts...)
+	server.RegisterAuthoringService(mux, store, opts...)
+	server.RegisterExecutionService(mux, store, opts...)
 	driftEngine := drift.NewEngine(store, nil)
 	lintEngine := linter.NewEngine(store, nil)
-	server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil)
-	server.RegisterSyncService(mux, store, "")
+	server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts...)
+	server.RegisterSyncService(mux, store, "", opts...)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

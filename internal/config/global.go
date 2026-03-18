@@ -15,6 +15,7 @@ import (
 type GlobalConfig struct {
 	Server ServerSection `yaml:"server"`
 	Client ClientConfig  `yaml:"client"`
+	Auth   AuthConfig    `yaml:"auth"`
 }
 
 // ServerSection configures the specgraph server daemon.
@@ -36,6 +37,25 @@ type ClientConfig struct {
 type Route struct {
 	Project string `yaml:"project"`
 	Server  string `yaml:"server"`
+}
+
+// AuthConfig configures authentication and authorization.
+type AuthConfig struct {
+	APIKeys []APIKeyConfig        `yaml:"api_keys"`
+	Roles   map[string]RoleConfig `yaml:"roles"`
+}
+
+// APIKeyConfig defines a single API key and its associated role.
+type APIKeyConfig struct {
+	ID   string `yaml:"id"`
+	Key  string `yaml:"key"`
+	Name string `yaml:"name"`
+	Role string `yaml:"role"`
+}
+
+// RoleConfig defines a custom role with explicit permissions.
+type RoleConfig struct {
+	Permissions []string `yaml:"permissions"`
 }
 
 // LoadGlobal loads the global config from path. If the file doesn't exist,

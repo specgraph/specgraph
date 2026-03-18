@@ -7,6 +7,7 @@ package server
 import (
 	"net/http"
 
+	"connectrpc.com/connect"
 	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/seanb4t/specgraph/internal/storage"
 )
@@ -14,10 +15,10 @@ import (
 // NewMux creates an http.ServeMux with the SpecService handler registered.
 // Callers register additional services (lifecycle, authoring, etc.) on the
 // returned mux via their respective Register functions.
-func NewMux(scoper storage.Scoper) *http.ServeMux {
+func NewMux(scoper storage.Scoper, opts ...connect.HandlerOption) *http.ServeMux {
 	mux := http.NewServeMux()
 	specHandler := NewSpecHandler(scoper)
-	path, handler := specgraphv1connect.NewSpecServiceHandler(specHandler)
+	path, handler := specgraphv1connect.NewSpecServiceHandler(specHandler, opts...)
 	mux.Handle(path, handler)
 	return mux
 }
