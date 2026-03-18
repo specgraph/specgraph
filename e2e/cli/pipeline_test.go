@@ -69,17 +69,36 @@ var _ = Describe("CLI Pipeline", Ordered, func() {
 		Expect(result.Stdout).NotTo(BeEmpty())
 	})
 
-	It("shows execution events (empty)", func() {
-		result := cli.RunInDir(workDir, "progress", slug)
+	It("reports progress", func() {
+		result := cli.RunInDir(workDir, "report-progress", slug, "--agent", "cli-e2e-agent", "--message", "implementing slice 1")
 		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)
-		// No events have been written via CLI, so expect empty or "No execution events found."
-		Expect(result.Stdout).To(ContainSubstring("No execution events found"))
+		Expect(result.Stdout).To(ContainSubstring("Progress reported"))
 	})
 
-	It("shows the spec with correct stage", func() {
+	It("reports a blocker", func() {
+		result := cli.RunInDir(workDir, "report-blocker", slug, "--agent", "cli-e2e-agent", "--description", "waiting on dependency")
+		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)
+		Expect(result.Stdout).To(ContainSubstring("Blocker reported"))
+	})
+
+	It("reports completion", func() {
+		result := cli.RunInDir(workDir, "report-completion", slug, "--agent", "cli-e2e-agent")
+		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)
+		Expect(result.Stdout).To(ContainSubstring("done"))
+	})
+
+	It("shows execution events", func() {
+		result := cli.RunInDir(workDir, "progress", slug)
+		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)
+		Expect(result.Stdout).To(ContainSubstring("EXECUTION_EVENT_TYPE_PROGRESS"))
+		Expect(result.Stdout).To(ContainSubstring("EXECUTION_EVENT_TYPE_BLOCKER"))
+		Expect(result.Stdout).To(ContainSubstring("EXECUTION_EVENT_TYPE_COMPLETION"))
+	})
+
+	It("shows the spec is done", func() {
 		result := cli.RunInDir(workDir, "show", slug)
 		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)
 		Expect(result.Stdout).To(ContainSubstring(slug))
-		Expect(result.Stdout).To(ContainSubstring("approved"))
+		Expect(result.Stdout).To(ContainSubstring("done"))
 	})
 })
