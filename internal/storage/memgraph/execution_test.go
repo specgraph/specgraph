@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/seanb4t/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -147,6 +148,56 @@ func TestExecution(t *testing.T) {
 		// Verify claim was released — reclaiming should succeed.
 		_, err = store.ClaimSpec(ctx, "lifecycle", "agent-2", 10*time.Minute)
 		require.NoError(t, err)
+	})
+
+	t.Run("GetExecutionEvents_DeduplicatesPaths", func(t *testing.T) {
+		// Regression test for DISTINCT fix: GetExecutionEvents must return
+		// each event exactly once even when the graph has multiple paths
+		// from Project to Spec (e.g., duplicate BELONGS_TO edges).
+		// Note: the original duplicates were observed in E2E tests with
+		// multi-project scoping through ProjectMiddleware; injecting a
+		// duplicate edge here is a best-effort reproduction. The DISTINCT
+		// is defensive — if this test passes without it, the protection
+		// is still warranted for the E2E scenario.
+		clearGraph(t, boltURI)
+		ctx := context.Background()
+		store, err := newStore(ctx, boltURI)
+		require.NoError(t, err)
+		defer store.Close(ctx)
+
+		// Set up: create spec, approve, claim, record 2 events.
+		_, err = store.CreateSpec(ctx, "dedup-test", "Dedup test spec", "p1", "medium")
+		require.NoError(t, err)
+		_, err = store.UpdateSpec(ctx, "dedup-test", nil, ptr("approved"), nil, nil, nil)
+		require.NoError(t, err)
+		_, err = store.ClaimSpec(ctx, "dedup-test", "agent-dedup", 15*time.Minute)
+		require.NoError(t, err)
+		require.NoError(t, store.RecordProgress(ctx, "dedup-test", "agent-dedup", "working"))
+		require.NoError(t, store.RecordBlocker(ctx, "dedup-test", "agent-dedup", "stuck"))
+
+		// Inject a duplicate BELONGS_TO edge to create a second path
+		// from Project to Spec — this is the graph topology that caused
+		// GetExecutionEvents to return duplicated rows before DISTINCT was added.
+		driver, dErr := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
+		require.NoError(t, dErr)
+		defer driver.Close(ctx)
+		_, dErr = neo4j.ExecuteQuery(ctx, driver,
+			`MATCH (p:Project {slug: $project}), (s:Spec {slug: "dedup-test"})
+			 CREATE (s)-[:BELONGS_TO]->(p)`,
+			map[string]any{"project": "e2e-test"},
+			neo4j.EagerResultTransformer)
+		require.NoError(t, dErr)
+
+		// Verify: should still return exactly 2 events, not 4.
+		events, evtErr := store.GetExecutionEvents(ctx, "dedup-test", 10)
+		require.NoError(t, evtErr)
+		require.Len(t, events, 2, "DISTINCT should deduplicate events from multiple BELONGS_TO paths")
+
+		idSet := map[string]bool{}
+		for _, e := range events {
+			require.False(t, idSet[e.ID], "duplicate event ID: %s", e.ID)
+			idSet[e.ID] = true
+		}
 	})
 
 	t.Run("GetPrimeData", func(t *testing.T) {
