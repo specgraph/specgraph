@@ -139,7 +139,7 @@ func (f *fakeBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*stora
 	return nil, nil
 }
 
-func (f *fakeBackend) UpdateSpec(_ context.Context, slug string, _, _, _, _ *string) (*storage.Spec, error) {
+func (f *fakeBackend) UpdateSpec(_ context.Context, slug string, _, _, _, _, _ *string) (*storage.Spec, error) {
 	return &storage.Spec{Slug: slug}, nil
 }
 
@@ -181,8 +181,8 @@ func (a *authoringTestBackend) ListSpecs(ctx context.Context, stage, priority st
 	return a.backend.ListSpecs(ctx, stage, priority, limit)
 }
 
-func (a *authoringTestBackend) UpdateSpec(ctx context.Context, slug string, intent, stage, priority, complexity *string) (*storage.Spec, error) {
-	return a.backend.UpdateSpec(ctx, slug, intent, stage, priority, complexity)
+func (a *authoringTestBackend) UpdateSpec(ctx context.Context, slug string, intent, stage, priority, complexity, notes *string) (*storage.Spec, error) {
+	return a.backend.UpdateSpec(ctx, slug, intent, stage, priority, complexity, notes)
 }
 
 func (a *authoringTestBackend) Close(ctx context.Context) error {

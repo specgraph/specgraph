@@ -33,6 +33,7 @@ message Spec {
   string superseded_by = 11;   // slug of replacement spec, if superseded
   string supersedes = 12;      // slug of spec this replaced
   repeated HistoryEntry history = 13;
+  string notes = 14;  // free-text notes (conversation summaries, context)
 }
 
 message HistoryEntry {
@@ -70,6 +71,7 @@ message UpdateSpecRequest {
   optional string stage = 3;
   optional string priority = 4;
   optional string complexity = 5;
+  optional string notes = 6;
 }
 
 // --- Service ---

@@ -89,6 +89,7 @@ type Spec struct {
 	SupersededBy  string                 `protobuf:"bytes,11,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"`        // slug of replacement spec, if superseded
 	Supersedes    string                 `protobuf:"bytes,12,opt,name=supersedes,proto3" json:"supersedes,omitempty"`                                // slug of spec this replaced
 	History       []*HistoryEntry        `protobuf:"bytes,13,rep,name=history,proto3" json:"history,omitempty"`
+	Notes         string                 `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"` // free-text notes (conversation summaries, context)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -212,6 +213,13 @@ func (x *Spec) GetHistory() []*HistoryEntry {
 		return x.History
 	}
 	return nil
+}
+
+func (x *Spec) GetNotes() string {
+	if x != nil {
+		return x.Notes
+	}
+	return ""
 }
 
 type HistoryEntry struct {
@@ -513,6 +521,7 @@ type UpdateSpecRequest struct {
 	Stage         *string                `protobuf:"bytes,3,opt,name=stage,proto3,oneof" json:"stage,omitempty"`
 	Priority      *string                `protobuf:"bytes,4,opt,name=priority,proto3,oneof" json:"priority,omitempty"`
 	Complexity    *string                `protobuf:"bytes,5,opt,name=complexity,proto3,oneof" json:"complexity,omitempty"`
+	Notes         *string                `protobuf:"bytes,6,opt,name=notes,proto3,oneof" json:"notes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -582,11 +591,18 @@ func (x *UpdateSpecRequest) GetComplexity() string {
 	return ""
 }
 
+func (x *UpdateSpecRequest) GetNotes() string {
+	if x != nil && x.Notes != nil {
+		return *x.Notes
+	}
+	return ""
+}
+
 var File_specgraph_v1_spec_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xda\x03\n" +
+	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf0\x03\n" +
 	"\x04Spec\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x16\n" +
@@ -607,7 +623,8 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"supersedes\x18\f \x01(\tR\n" +
 	"supersedes\x124\n" +
-	"\ahistory\x18\r \x03(\v2\x1a.specgraph.v1.HistoryEntryR\ahistory\"\xa0\x01\n" +
+	"\ahistory\x18\r \x03(\v2\x1a.specgraph.v1.HistoryEntryR\ahistory\x12\x14\n" +
+	"\x05notes\x18\x0e \x01(\tR\x05notes\"\xa0\x01\n" +
 	"\fHistoryEntry\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x05R\aversion\x12\x14\n" +
 	"\x05stage\x18\x02 \x01(\tR\x05stage\x12\x18\n" +
@@ -628,7 +645,7 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\bpriority\x18\x02 \x01(\tR\bpriority\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\"=\n" +
 	"\x11ListSpecsResponse\x12(\n" +
-	"\x05specs\x18\x01 \x03(\v2\x12.specgraph.v1.SpecR\x05specs\"\xd6\x01\n" +
+	"\x05specs\x18\x01 \x03(\v2\x12.specgraph.v1.SpecR\x05specs\"\xfb\x01\n" +
 	"\x11UpdateSpecRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x1b\n" +
 	"\x06intent\x18\x02 \x01(\tH\x00R\x06intent\x88\x01\x01\x12\x19\n" +
@@ -636,11 +653,13 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\bpriority\x18\x04 \x01(\tH\x02R\bpriority\x88\x01\x01\x12#\n" +
 	"\n" +
 	"complexity\x18\x05 \x01(\tH\x03R\n" +
-	"complexity\x88\x01\x01B\t\n" +
+	"complexity\x88\x01\x01\x12\x19\n" +
+	"\x05notes\x18\x06 \x01(\tH\x04R\x05notes\x88\x01\x01B\t\n" +
 	"\a_intentB\b\n" +
 	"\x06_stageB\v\n" +
 	"\t_priorityB\r\n" +
-	"\v_complexity*c\n" +
+	"\v_complexityB\b\n" +
+	"\x06_notes*c\n" +
 	"\rSpecLifecycle\x12\x1e\n" +
 	"\x1aSPEC_LIFECYCLE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13SPEC_LIFECYCLE_TASK\x10\x01\x12\x19\n" +

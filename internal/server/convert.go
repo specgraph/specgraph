@@ -41,6 +41,7 @@ func specToProto(s *storage.Spec) (*specv1.Spec, error) {
 		SupersededBy: s.SupersededBy,
 		Supersedes:   s.Supersedes,
 		History:      historyToProto(s.History),
+		Notes:        s.Notes,
 	}, nil
 }
 
