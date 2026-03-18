@@ -34,7 +34,7 @@ type Backend interface {
 
 	// UpdateSpec updates a spec by slug. Only non-nil fields are changed.
 	// Returns the updated spec with bumped version and updated timestamp.
-	UpdateSpec(ctx context.Context, slug string, intent, stage, priority, complexity *string) (*Spec, error)
+	UpdateSpec(ctx context.Context, slug string, intent, stage, priority, complexity, notes *string) (*Spec, error)
 
 	// Close releases any resources held by the backend.
 	Close(ctx context.Context) error

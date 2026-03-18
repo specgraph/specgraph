@@ -6,6 +6,8 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
+	"unicode/utf8"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -117,8 +119,12 @@ func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	if msg.Notes != nil && utf8.RuneCountInString(*msg.Notes) > maxNotesLen {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("notes exceeds maximum length of %d characters", maxNotesLen))
+	}
 
-	spec, err := store.UpdateSpec(ctx, msg.Slug, msg.Intent, msg.Stage, msg.Priority, msg.Complexity)
+	spec, err := store.UpdateSpec(ctx, msg.Slug, msg.Intent, msg.Stage, msg.Priority, msg.Complexity, msg.Notes)
 	if err != nil {
 		if errors.Is(err, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, err)

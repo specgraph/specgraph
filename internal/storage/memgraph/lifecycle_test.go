@@ -51,7 +51,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "amend-me", "Test spec", "p1", "medium")
 		require.NoError(t, err)
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "amend-me", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "amend-me", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		amended, err := store.LifecycleAmendSpec(ctx, "amend-me", "Mobile needs offline refresh", "shape")
@@ -292,7 +292,7 @@ func TestLifecycle(t *testing.T) {
 
 		// Advance downstream-spec to "done" so it is eligible for drift checking.
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "downstream-spec", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "downstream-spec", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Advance the clock so the upstream update gets a strictly newer timestamp
@@ -301,7 +301,7 @@ func TestLifecycle(t *testing.T) {
 
 		// Update upstream to bump its updated_at.
 		newIntent := "Upstream updated"
-		_, err = store.UpdateSpec(ctx, "upstream-spec", &newIntent, nil, nil, nil)
+		_, err = store.UpdateSpec(ctx, "upstream-spec", &newIntent, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Use the drift engine to check drift.
@@ -355,7 +355,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "ack-drift", "Test spec", "p1", "medium")
 		require.NoError(t, err)
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "ack-drift", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "ack-drift", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		report, err := store.LifecycleAcknowledgeDrift(ctx, "ack-drift", "drift is intentional")
@@ -399,7 +399,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "toctou-amend", "Test spec", "p1", "medium")
 		require.NoError(t, err)
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "toctou-amend", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "toctou-amend", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Two goroutines race to amend the same spec. Exactly one should
@@ -454,15 +454,15 @@ func TestLifecycle(t *testing.T) {
 
 		// Move downstream specs to "done".
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "down1-integ", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "down1-integ", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
-		_, err = store.UpdateSpec(ctx, "down2-integ", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "down2-integ", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Advance the clock so upstream update gets a strictly newer timestamp.
 		advance(2 * time.Second)
 		newIntent := "Updated upstream"
-		_, err = store.UpdateSpec(ctx, "up-integ", &newIntent, nil, nil, nil)
+		_, err = store.UpdateSpec(ctx, "up-integ", &newIntent, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Check all specs (empty slug) — should find drift on both.
@@ -495,7 +495,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "ack-persist", "Test spec", "p1", "medium")
 		require.NoError(t, err)
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "ack-persist", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "ack-persist", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = store.LifecycleAcknowledgeDrift(ctx, "ack-persist", "intentional drift")
@@ -519,7 +519,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "ack-getspec", "Test spec", "p1", "medium")
 		require.NoError(t, err)
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "ack-getspec", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "ack-getspec", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = store.LifecycleAcknowledgeDrift(ctx, "ack-getspec", "drift accepted")
@@ -542,7 +542,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "amend-abandon", "Test spec", "p1", "medium")
 		require.NoError(t, err)
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "amend-abandon", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "amend-abandon", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Amend with empty reEntryStage → "amended" stage.
@@ -566,7 +566,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "amend-supersede-old", "Old spec", "p1", "medium")
 		require.NoError(t, err)
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "amend-supersede-old", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "amend-supersede-old", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Amend with empty reEntryStage → "amended" stage.
@@ -598,7 +598,7 @@ func TestLifecycle(t *testing.T) {
 			_, err = store.CreateSpec(ctx, slug, "Test spec", "p1", "medium")
 			require.NoError(t, err)
 			doneStage := "done"
-			_, err = store.UpdateSpec(ctx, slug, nil, &doneStage, nil, nil)
+			_, err = store.UpdateSpec(ctx, slug, nil, &doneStage, nil, nil, nil)
 			require.NoError(t, err)
 
 			_, err = store.LifecycleAmendSpec(ctx, slug, "reason", stage)
@@ -617,7 +617,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "old-supersede", "Old spec", "p1", "medium")
 		require.NoError(t, err)
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "old-supersede", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "old-supersede", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Create new spec (not terminal, so supersede WHERE guard allows it).
@@ -639,7 +639,7 @@ func TestLifecycle(t *testing.T) {
 		go func() {
 			// Concurrently modify the new spec's version.
 			newIntent := "Modified concurrently"
-			_, uErr := store.UpdateSpec(ctx, "new-supersede", &newIntent, nil, nil, nil)
+			_, uErr := store.UpdateSpec(ctx, "new-supersede", &newIntent, nil, nil, nil, nil)
 			results <- result{err: uErr}
 		}()
 
@@ -673,13 +673,13 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "old-sup-aband", "Old spec", "p1", "medium")
 		require.NoError(t, err)
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "old-sup-aband", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "old-sup-aband", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Create new spec at done stage, then abandon it to put it in a terminal state.
 		_, err = store.CreateSpec(ctx, "new-sup-aband", "New spec", "p1", "medium")
 		require.NoError(t, err)
-		_, err = store.UpdateSpec(ctx, "new-sup-aband", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "new-sup-aband", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 		_, err = store.LifecycleAbandonSpec(ctx, "new-sup-aband", "no longer needed")
 		require.NoError(t, err)
@@ -701,7 +701,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "old-sup-nf", "Old spec", "p1", "medium")
 		require.NoError(t, err)
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "old-sup-nf", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "old-sup-nf", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Supersede with a non-existent new spec.
@@ -725,9 +725,9 @@ func TestLifecycle(t *testing.T) {
 		require.NoError(t, err)
 
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "amended-drift-up", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "amended-drift-up", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
-		_, err = store.UpdateSpec(ctx, "amended-drift-down", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "amended-drift-down", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Amend the downstream spec (done → amended).
@@ -744,7 +744,7 @@ func TestLifecycle(t *testing.T) {
 
 		// Update upstream to trigger drift.
 		newIntent := "Updated upstream"
-		_, err = store.UpdateSpec(ctx, "amended-drift-up", &newIntent, nil, nil, nil)
+		_, err = store.UpdateSpec(ctx, "amended-drift-up", &newIntent, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Drift engine should detect drift on the amended downstream spec.
@@ -805,7 +805,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "ack-amended", "Test spec", "p1", "medium")
 		require.NoError(t, err)
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "ack-amended", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "ack-amended", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 		amended, err := store.LifecycleAmendSpec(ctx, "ack-amended", "needs rework", "")
 		require.NoError(t, err)
@@ -841,7 +841,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "ack-race", "Test spec", "p1", "medium")
 		require.NoError(t, err)
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "ack-race", nil, &doneStage, nil, nil)
+		_, err = store.UpdateSpec(ctx, "ack-race", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Race an acknowledge against a concurrent acknowledge.
