@@ -194,7 +194,31 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		return nil, fmt.Errorf("memgraph: create spec returned no records")
 	}
 
-	return recordToSpec(records[0])
+	spec, err := recordToSpec(records[0])
+	if err != nil {
+		return nil, err
+	}
+
+	// Create an initial checkpoint ChangeLog entry for the newly created spec.
+	allFields := storage.SpecFields{
+		Intent:     intent,
+		Stage:      defaultInitialStage,
+		Priority:   priority,
+		Complexity: complexity,
+	}
+	deltas := storage.ComputeFieldDeltas(storage.SpecFields{}, allFields)
+	clEntry := &storage.ChangeLogEntry{
+		Version:     spec.Version,
+		Stage:       spec.Stage,
+		ContentHash: spec.ContentHash,
+		Checkpoint:  true,
+		Summary:     "Spec created",
+		Date:        spec.CreatedAt,
+	}
+	if err := s.createChangeLog(ctx, slug, clEntry, deltas); err != nil {
+		return nil, err
+	}
+	return spec, nil
 }
 
 // GetSpec retrieves a spec by slug.
@@ -324,6 +348,12 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		return s.GetSpec(ctx, slug)
 	}
 
+	// Capture old field values before the update for changelog delta computation.
+	oldFields, oldContentHash, err := s.readSpecFields(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+
 	nowStr := s.now()
 	setClauses = append(setClauses, "s.version = s.version + 1", "s.updated_at = $updated_at")
 	params["updated_at"] = nowStr
@@ -380,7 +410,74 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 	}
 	spec.ContentHash = ch
 
+	// Create a changelog entry only if the content hash changed (substantive update).
+	if ch != oldContentHash {
+		newFields := storage.SpecFields{
+			Intent:          spec.Intent,
+			Stage:           string(spec.Stage),
+			Priority:        string(spec.Priority),
+			Complexity:      spec.Complexity,
+			SparkOutput:     authoringOutputs["spark_output"],
+			ShapeOutput:     authoringOutputs["shape_output"],
+			SpecifyOutput:   authoringOutputs["specify_output"],
+			DecomposeOutput: authoringOutputs["decompose_output"],
+		}
+		deltas := storage.ComputeFieldDeltas(oldFields, newFields)
+		clEntry := &storage.ChangeLogEntry{
+			Version:     spec.Version,
+			Stage:       spec.Stage,
+			ContentHash: ch,
+			Checkpoint:  false,
+			Summary:     "Spec updated",
+			Date:        spec.UpdatedAt,
+		}
+		if err := s.createChangeLog(ctx, slug, clEntry, deltas); err != nil {
+			return nil, err
+		}
+	}
+
 	return spec, nil
+}
+
+// readSpecFields reads the substantive fields and content hash of a spec.
+// Used before updates to capture old values for changelog delta computation.
+func (s *Store) readSpecFields(ctx context.Context, slug string) (storage.SpecFields, string, error) {
+	query := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+		RETURN s.intent, s.stage, s.priority, s.complexity,
+		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output,
+		       s.content_hash
+	`
+	records, err := s.executeQuery(ctx, query,
+		mergeParams(s.projectParam(), map[string]any{"slug": slug}))
+	if err != nil {
+		return storage.SpecFields{}, "", fmt.Errorf("memgraph: read spec fields: %w", err)
+	}
+	if len(records) == 0 {
+		return storage.SpecFields{}, "", fmt.Errorf("memgraph: read spec fields %q: %w", slug, storage.ErrSpecNotFound)
+	}
+	rec := records[0]
+	getString := func(pos int) string {
+		if pos >= len(rec.Values) || rec.Values[pos] == nil {
+			return ""
+		}
+		if v, ok := rec.Values[pos].(string); ok {
+			return v
+		}
+		return ""
+	}
+	fields := storage.SpecFields{
+		Intent:          getString(0),
+		Stage:           getString(1),
+		Priority:        getString(2),
+		Complexity:      getString(3),
+		SparkOutput:     getString(4),
+		ShapeOutput:     getString(5),
+		SpecifyOutput:   getString(6),
+		DecomposeOutput: getString(7),
+	}
+	contentHash := getString(8)
+	return fields, contentHash, nil
 }
 
 // ClearAll removes all nodes and relationships from the graph.
