@@ -71,47 +71,49 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 		SET %s
 		RETURN s.slug
 	`, setClause)
-	records, err := s.executeQuery(ctx, query,
-		mergeParams(s.projectParam(), map[string]any{"slug": slug, "from": fromStr, "to": toStr, "updated_at": nowStr}))
-	if err != nil {
-		return fmt.Errorf("memgraph: transition stage: %w", err)
-	}
-	if len(records) == 0 {
-		// Distinguish between "spec not found" and "spec at wrong stage".
-		checkQuery := `MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug}) RETURN s.stage AS stage`
-		checkRecords, checkErr := s.executeQuery(ctx, checkQuery,
-			mergeParams(s.projectParam(), map[string]any{"slug": slug}))
-		if checkErr != nil {
-			return fmt.Errorf("memgraph: check spec stage: %w", checkErr)
+	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		records, qErr := s.executeQuery(txCtx, query,
+			mergeParams(s.projectParam(), map[string]any{"slug": slug, "from": fromStr, "to": toStr, "updated_at": nowStr}))
+		if qErr != nil {
+			return fmt.Errorf("memgraph: transition stage: %w", qErr)
 		}
-		if len(checkRecords) == 0 {
-			return fmt.Errorf("memgraph: transition stage %q: %w", slug, storage.ErrSpecNotFound)
+		if len(records) == 0 {
+			// Distinguish between "spec not found" and "spec at wrong stage".
+			checkQuery := `MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug}) RETURN s.stage AS stage`
+			checkRecords, checkErr := s.executeQuery(txCtx, checkQuery,
+				mergeParams(s.projectParam(), map[string]any{"slug": slug}))
+			if checkErr != nil {
+				return fmt.Errorf("memgraph: check spec stage: %w", checkErr)
+			}
+			if len(checkRecords) == 0 {
+				return fmt.Errorf("memgraph: transition stage %q: %w", slug, storage.ErrSpecNotFound)
+			}
+			actualStage, ok := checkRecords[0].Get("stage")
+			if !ok || actualStage == nil {
+				actualStage = "<unknown>"
+			}
+			return fmt.Errorf("memgraph: spec %q at stage %v, expected %q: %w", slug, actualStage, from, storage.ErrInvalidStageTransition)
 		}
-		actualStage, ok := checkRecords[0].Get("stage")
-		if !ok || actualStage == nil {
-			actualStage = "<unknown>"
+		if hashErr := s.recomputeContentHash(txCtx, slug); hashErr != nil {
+			return hashErr
 		}
-		return fmt.Errorf("memgraph: spec %q at stage %v, expected %q: %w", slug, actualStage, from, storage.ErrInvalidStageTransition)
-	}
-	if hashErr := s.recomputeContentHash(ctx, slug); hashErr != nil {
-		return hashErr
-	}
 
-	// Create a checkpoint ChangeLog for the stage transition.
-	updatedSpec, err := s.GetSpec(ctx, slug)
-	if err != nil {
-		return err
-	}
-	deltas := []storage.FieldChange{{Field: "stage", OldValue: fromStr, NewValue: toStr}}
-	clEntry := &storage.ChangeLogEntry{
-		Version:     updatedSpec.Version,
-		Stage:       updatedSpec.Stage,
-		ContentHash: updatedSpec.ContentHash,
-		Checkpoint:  true,
-		Summary:     fmt.Sprintf("Stage transition: %s → %s", fromStr, toStr),
-		Date:        updatedSpec.UpdatedAt,
-	}
-	return s.createChangeLog(ctx, slug, clEntry, deltas)
+		// Create a checkpoint ChangeLog for the stage transition.
+		updatedSpec, getErr := s.GetSpec(txCtx, slug)
+		if getErr != nil {
+			return getErr
+		}
+		deltas := []storage.FieldChange{{Field: "stage", OldValue: fromStr, NewValue: toStr}}
+		clEntry := &storage.ChangeLogEntry{
+			Version:     updatedSpec.Version,
+			Stage:       updatedSpec.Stage,
+			ContentHash: updatedSpec.ContentHash,
+			Checkpoint:  true,
+			Summary:     fmt.Sprintf("Stage transition: %s → %s", fromStr, toStr),
+			Date:        updatedSpec.UpdatedAt,
+		}
+		return s.createChangeLog(txCtx, slug, clEntry, deltas)
+	})
 }
 
 // StoreSparkOutput persists the spark stage output as JSON on the spec node.
@@ -266,10 +268,15 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 				}
 			}
 		}
-		childSlugs = slugs
 		// Create a non-checkpoint ChangeLog for the decompose_output field change
 		// on the parent spec. Child specs get their own changelogs via CreateSpec.
-		return s.authoringOutputChangeLog(txCtx, slug, "decompose_output", &oldFields, oldHash)
+		if clErr := s.authoringOutputChangeLog(txCtx, slug, "decompose_output", &oldFields, oldHash); clErr != nil {
+			return clErr
+		}
+		// Only set childSlugs after all operations succeed — if the transaction
+		// rolls back, returning slugs of non-existent specs would be misleading.
+		childSlugs = slugs
+		return nil
 	})
 	return childSlugs, err
 }
@@ -357,17 +364,22 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 		nowStr := s.now()
 		query := `
 			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+			WHERE s.version = $expected_version
 			SET s.stage = $stage, s.amend_reason = $reason,
 			    s.version = s.version + 1, s.updated_at = $updated_at
 			RETURN s.slug, s.stage, s.version
 		`
 		records, qErr := s.executeQuery(txCtx, query,
-			mergeParams(s.projectParam(), map[string]any{"slug": slug, "stage": string(targetStage), "reason": reason, "updated_at": nowStr}))
+			mergeParams(s.projectParam(), map[string]any{"slug": slug, "expected_version": spec.Version, "stage": string(targetStage), "reason": reason, "updated_at": nowStr}))
 		if qErr != nil {
 			return fmt.Errorf("memgraph: amend spec: %w", qErr)
 		}
 		if len(records) == 0 {
-			return fmt.Errorf("memgraph: amend spec %q: %w", slug, storage.ErrSpecNotFound)
+			// Version guard returned 0 rows — either spec not found or concurrent modification.
+			if _, getErr := s.GetSpec(txCtx, slug); getErr != nil {
+				return fmt.Errorf("memgraph: amend spec %q: %w", slug, storage.ErrSpecNotFound)
+			}
+			return fmt.Errorf("memgraph: amend spec %q: %w", slug, storage.ErrConcurrentModification)
 		}
 		rec := records[0]
 		retSlug, ok := rec.Get("s.slug")

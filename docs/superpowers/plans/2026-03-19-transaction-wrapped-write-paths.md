@@ -454,7 +454,7 @@ Decision updates and hash recomputation now execute atomically.
 
 In `memgraph.go`, find and remove the comment block:
 
-```
+```text
 // Recompute content_hash from the updated fields. This is a two-query
 // approach: read all hash-input fields from the first query's result,
 // compute the new hash, then SET it. Acceptable because SpecGraph is
@@ -595,7 +595,7 @@ Add row: `| internal/storage/memgraph/tx.go | Transaction support (RunInTransact
 
 Add:
 
-```
+```text
 - **All multi-query write paths MUST use `RunInTransaction`** — Pass `txCtx` (not `ctx`) to `executeQuery`, `GetSpec`, `createChangeLog` inside the transaction. Queries automatically join the transaction via context. Validation that doesn't hit the DB stays outside the transaction to reduce lock time.
 - **Concurrent modifications return `ErrConcurrentModification`** — Mapped to `connect.CodeAborted` (retryable). Version guards in WHERE clauses detect conflicts. First writer wins; second fails fast.
 ```

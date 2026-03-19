@@ -166,6 +166,12 @@ ChangeLog nodes are graph-native — queryable in Cypher without deserializing
 JSON blobs. You can ask "what changed across the project this week?" with a
 single graph query.
 
+All spec mutations and their ChangeLog entries execute within a single
+database transaction. If any step fails — for example, a concurrent
+modification is detected via the version guard — the entire operation
+rolls back. No orphaned state: if a spec was mutated, its ChangeLog
+entry exists; if the ChangeLog failed, the mutation never happened.
+
 ---
 
 ## Why a Graph?
