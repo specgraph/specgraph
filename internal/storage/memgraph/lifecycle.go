@@ -95,57 +95,58 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash
 	`
-	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{
-		"slug":             slug,
-		"expected_stage":   string(storage.SpecStageDone),
-		"expected_version": spec.Version,
-		"stage":            string(targetStage),
-		"version":          int64(newVersion),
-		"updated_at":       nowStr,
-	}))
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: amend spec: %w", err)
-	}
-	if len(records) == 0 {
-		return nil, s.preconditionError(ctx, slug, "amend spec", func(current *storage.Spec) error {
-			// A version mismatch means another operation modified the spec
-			// between our pre-read and the atomic query — report concurrent
-			// modification rather than the misleading ErrSpecNotDone.
-			if current.Version != spec.Version {
-				return fmt.Errorf("amend spec %q: %w", slug, storage.ErrConcurrentModification)
-			}
-			if current.Stage != storage.SpecStageDone {
-				return fmt.Errorf("amend spec %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecNotDone)
-			}
-			return nil
-		})
-	}
-	if hashErr := s.recomputeContentHash(ctx, slug); hashErr != nil {
-		return nil, hashErr
-	}
-	// Re-read spec after hash recomputation to get the fresh content hash.
-	freshSpec, err := s.GetSpec(ctx, slug)
-	if err != nil {
-		return nil, err
-	}
-	summary := "Amended from done"
-	if targetStage != storage.SpecStageAmended {
-		summary = fmt.Sprintf("Amended from done, re-entering at: %s", targetStage)
-	}
-	deltas := []storage.FieldChange{{Field: "stage", OldValue: string(storage.SpecStageDone), NewValue: string(targetStage)}}
-	clEntry := &storage.ChangeLogEntry{
-		Version:     freshSpec.Version,
-		Stage:       freshSpec.Stage,
-		ContentHash: freshSpec.ContentHash,
-		Checkpoint:  true,
-		Summary:     summary,
-		Reason:      reason,
-		Date:        freshSpec.UpdatedAt,
-	}
-	if clErr := s.createChangeLog(ctx, slug, clEntry, deltas); clErr != nil {
-		return nil, clErr
-	}
-	return freshSpec, nil
+	var result *storage.Spec
+	err = s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		records, qErr := s.executeQuery(txCtx, query, mergeParams(s.projectParam(), map[string]any{
+			"slug":             slug,
+			"expected_stage":   string(storage.SpecStageDone),
+			"expected_version": spec.Version,
+			"stage":            string(targetStage),
+			"version":          int64(newVersion),
+			"updated_at":       nowStr,
+		}))
+		if qErr != nil {
+			return fmt.Errorf("memgraph: amend spec: %w", qErr)
+		}
+		if len(records) == 0 {
+			return s.preconditionError(txCtx, slug, "amend spec", func(current *storage.Spec) error {
+				if current.Version != spec.Version {
+					return fmt.Errorf("amend spec %q: %w", slug, storage.ErrConcurrentModification)
+				}
+				if current.Stage != storage.SpecStageDone {
+					return fmt.Errorf("amend spec %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecNotDone)
+				}
+				return nil
+			})
+		}
+		if hashErr := s.recomputeContentHash(txCtx, slug); hashErr != nil {
+			return hashErr
+		}
+		freshSpec, getErr := s.GetSpec(txCtx, slug)
+		if getErr != nil {
+			return getErr
+		}
+		summary := "Amended from done"
+		if targetStage != storage.SpecStageAmended {
+			summary = fmt.Sprintf("Amended from done, re-entering at: %s", targetStage)
+		}
+		deltas := []storage.FieldChange{{Field: "stage", OldValue: string(storage.SpecStageDone), NewValue: string(targetStage)}}
+		clEntry := &storage.ChangeLogEntry{
+			Version:     freshSpec.Version,
+			Stage:       freshSpec.Stage,
+			ContentHash: freshSpec.ContentHash,
+			Checkpoint:  true,
+			Summary:     summary,
+			Reason:      reason,
+			Date:        freshSpec.UpdatedAt,
+		}
+		if clErr := s.createChangeLog(txCtx, slug, clEntry, deltas); clErr != nil {
+			return clErr
+		}
+		result = freshSpec
+		return nil
+	})
+	return result, err
 }
 
 // LifecycleSupersedeSpec marks the old spec as superseded and links it to the new spec via
@@ -214,106 +215,100 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		       new.drift_acknowledged, new.drift_acknowledge_note, new.notes,
 		       new.content_hash
 	`
-	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{
-		"old_slug":             oldSlug,
-		"new_slug":             newSlug,
-		"stage":                string(storage.SpecStageSuperseded),
-		"terminal_stages":      terminalStageStrings,
-		"expected_version":     oldCheck.Version,
-		"expected_new_version": newCheck.Version,
-		"version":              int64(oldVersion),
-		"updated_at":           nowStr,
-		"new_version":          int64(newVersion),
-	}))
-	if err != nil {
-		return nil, nil, fmt.Errorf("memgraph: supersede spec: %w", err)
-	}
-	if len(records) == 0 {
-		// Check old spec first for precondition errors.
-		oldErr := s.preconditionError(ctx, oldSlug, "supersede spec (old)", func(current *storage.Spec) error {
-			if current.Version != oldCheck.Version {
-				return fmt.Errorf("supersede spec (old) %q: %w", oldSlug, storage.ErrConcurrentModification)
-			}
-			return nil
-		})
-		// Only check the new spec when the old spec doesn't provide a
-		// definitive answer (NotFound/Terminal explain the guard failure on
-		// their own). ErrConcurrentModification is ambiguous — both specs
-		// may have raced — so we still check the new spec in that case.
-		// preconditionError always returns non-nil, so we fall through
-		// directly to returning oldErr here.
-		if errors.Is(oldErr, storage.ErrConcurrentModification) {
-			newErr := s.preconditionError(ctx, newSlug, "supersede spec (new)", func(current *storage.Spec) error {
-				if current.Version != newCheck.Version {
-					return fmt.Errorf("supersede spec (new) %q: %w", newSlug, storage.ErrConcurrentModification)
+	txErr := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		records, qErr := s.executeQuery(txCtx, query, mergeParams(s.projectParam(), map[string]any{
+			"old_slug":             oldSlug,
+			"new_slug":             newSlug,
+			"stage":                string(storage.SpecStageSuperseded),
+			"terminal_stages":      terminalStageStrings,
+			"expected_version":     oldCheck.Version,
+			"expected_new_version": newCheck.Version,
+			"version":              int64(oldVersion),
+			"updated_at":           nowStr,
+			"new_version":          int64(newVersion),
+		}))
+		if qErr != nil {
+			return fmt.Errorf("memgraph: supersede spec: %w", qErr)
+		}
+		if len(records) == 0 {
+			// Check old spec first for precondition errors.
+			oldErr := s.preconditionError(txCtx, oldSlug, "supersede spec (old)", func(current *storage.Spec) error {
+				if current.Version != oldCheck.Version {
+					return fmt.Errorf("supersede spec (old) %q: %w", oldSlug, storage.ErrConcurrentModification)
 				}
 				return nil
 			})
-			if errors.Is(newErr, storage.ErrSpecNotFound) {
-				return nil, nil, fmt.Errorf("supersede spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
+			if errors.Is(oldErr, storage.ErrConcurrentModification) {
+				newPErr := s.preconditionError(txCtx, newSlug, "supersede spec (new)", func(current *storage.Spec) error {
+					if current.Version != newCheck.Version {
+						return fmt.Errorf("supersede spec (new) %q: %w", newSlug, storage.ErrConcurrentModification)
+					}
+					return nil
+				})
+				if errors.Is(newPErr, storage.ErrSpecNotFound) {
+					return fmt.Errorf("supersede spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
+				}
+				if errors.Is(newPErr, storage.ErrSpecTerminal) {
+					return fmt.Errorf("supersede spec: new spec %q is in a terminal state: %w", newSlug, storage.ErrNewSpecTerminal)
+				}
+				return fmt.Errorf("supersede spec: new %q: %w (old %q also had precondition error: %w)", newSlug, newPErr, oldSlug, oldErr)
 			}
-			if errors.Is(newErr, storage.ErrSpecTerminal) {
-				return nil, nil, fmt.Errorf("supersede spec: new spec %q is in a terminal state: %w", newSlug, storage.ErrNewSpecTerminal)
-			}
-			// Both specs had concurrent modifications — surface both errors.
-			// Go 1.20+ fmt.Errorf with two %w creates a multi-error (errors.Join
-			// semantics). errors.Is checks match either wrapped error.
-			return nil, nil, fmt.Errorf("supersede spec: new %q: %w (old %q also had precondition error: %w)", newSlug, newErr, oldSlug, oldErr)
+			return oldErr
 		}
-		return nil, nil, oldErr
-	}
 
-	// Recompute content hashes for both specs after the stage change.
-	if hashErr := s.recomputeContentHash(ctx, oldSlug); hashErr != nil {
-		return nil, nil, hashErr
-	}
-	// Only recompute hash for oldSpec (stage changed to superseded).
-	// newSpec's stage is unchanged — supersedes is not a hash-input field.
-	// Re-read both specs to get fresh values.
-	oldSpec, err = s.GetSpec(ctx, oldSlug)
-	if err != nil {
-		return nil, nil, fmt.Errorf("memgraph: supersede: re-read old spec: %w", err)
-	}
-	newSpec, err = s.GetSpec(ctx, newSlug)
-	if err != nil {
-		return nil, nil, fmt.Errorf("memgraph: supersede: re-read new spec: %w", err)
-	}
+		// Recompute content hashes for both specs after the stage change.
+		if hashErr := s.recomputeContentHash(txCtx, oldSlug); hashErr != nil {
+			return hashErr
+		}
+		// Only recompute hash for oldSpec (stage changed to superseded).
+		// newSpec's stage is unchanged — supersedes is not a hash-input field.
+		// Re-read both specs to get fresh values.
+		var getErr error
+		oldSpec, getErr = s.GetSpec(txCtx, oldSlug)
+		if getErr != nil {
+			return fmt.Errorf("memgraph: supersede: re-read old spec: %w", getErr)
+		}
+		newSpec, getErr = s.GetSpec(txCtx, newSlug)
+		if getErr != nil {
+			return fmt.Errorf("memgraph: supersede: re-read new spec: %w", getErr)
+		}
 
-	// Create checkpoint ChangeLog for the old spec (→ superseded).
-	oldDeltas := []storage.FieldChange{
-		{Field: "stage", OldValue: string(oldCheck.Stage), NewValue: string(storage.SpecStageSuperseded)},
-		{Field: "superseded_by", OldValue: "", NewValue: newSlug},
-	}
-	oldCLEntry := &storage.ChangeLogEntry{
-		Version:     oldSpec.Version,
-		Stage:       storage.SpecStageSuperseded,
-		ContentHash: oldSpec.ContentHash,
-		Checkpoint:  true,
-		Summary:     "Spec superseded",
-		Reason:      fmt.Sprintf("Superseded by %s", newSlug),
-		Date:        oldSpec.UpdatedAt,
-	}
-	if clErr := s.createChangeLog(ctx, oldSlug, oldCLEntry, oldDeltas); clErr != nil {
-		return nil, nil, clErr
-	}
+		// Create checkpoint ChangeLog for the old spec (→ superseded).
+		oldDeltas := []storage.FieldChange{
+			{Field: "stage", OldValue: string(oldCheck.Stage), NewValue: string(storage.SpecStageSuperseded)},
+			{Field: "superseded_by", OldValue: "", NewValue: newSlug},
+		}
+		oldCLEntry := &storage.ChangeLogEntry{
+			Version:     oldSpec.Version,
+			Stage:       storage.SpecStageSuperseded,
+			ContentHash: oldSpec.ContentHash,
+			Checkpoint:  true,
+			Summary:     "Spec superseded",
+			Reason:      fmt.Sprintf("Superseded by %s", newSlug),
+			Date:        oldSpec.UpdatedAt,
+		}
+		if clErr := s.createChangeLog(txCtx, oldSlug, oldCLEntry, oldDeltas); clErr != nil {
+			return clErr
+		}
 
-	// Create checkpoint ChangeLog for the new spec (supersedes predecessor).
-	newDeltas := []storage.FieldChange{
-		{Field: "supersedes", OldValue: "", NewValue: oldSlug},
+		// Create checkpoint ChangeLog for the new spec (supersedes predecessor).
+		newDeltas := []storage.FieldChange{
+			{Field: "supersedes", OldValue: "", NewValue: oldSlug},
+		}
+		newCLEntry := &storage.ChangeLogEntry{
+			Version:     newSpec.Version,
+			Stage:       newSpec.Stage,
+			ContentHash: newSpec.ContentHash,
+			Checkpoint:  true,
+			Summary:     "Supersedes predecessor",
+			Reason:      fmt.Sprintf("Supersedes %s", oldSlug),
+			Date:        newSpec.UpdatedAt,
+		}
+		return s.createChangeLog(txCtx, newSlug, newCLEntry, newDeltas)
+	})
+	if txErr != nil {
+		return nil, nil, txErr
 	}
-	newCLEntry := &storage.ChangeLogEntry{
-		Version:     newSpec.Version,
-		Stage:       newSpec.Stage,
-		ContentHash: newSpec.ContentHash,
-		Checkpoint:  true,
-		Summary:     "Supersedes predecessor",
-		Reason:      fmt.Sprintf("Supersedes %s", oldSlug),
-		Date:        newSpec.UpdatedAt,
-	}
-	if clErr := s.createChangeLog(ctx, newSlug, newCLEntry, newDeltas); clErr != nil {
-		return nil, nil, clErr
-	}
-
 	return oldSpec, newSpec, nil
 }
 
@@ -348,49 +343,53 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash
 	`
-	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{
-		"slug":             slug,
-		"expected_version": spec.Version,
-		"terminal_stages":  terminalStageStrings,
-		"stage":            string(storage.SpecStageAbandoned),
-		"version":          int64(newVersion),
-		"updated_at":       nowStr,
-	}))
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: abandon spec: %w", err)
-	}
-	if len(records) == 0 {
-		return nil, s.preconditionError(ctx, slug, "abandon spec", func(current *storage.Spec) error {
-			if current.Version != spec.Version {
-				return fmt.Errorf("abandon spec %q: %w", slug, storage.ErrConcurrentModification)
-			}
-			return nil
-		})
-	}
-	// Recompute content hash after stage change and re-read for fresh values.
-	if hashErr := s.recomputeContentHash(ctx, slug); hashErr != nil {
-		return nil, hashErr
-	}
-	abandonedSpec, err := s.GetSpec(ctx, slug)
-	if err != nil {
-		return nil, err
-	}
-	deltas := []storage.FieldChange{
-		{Field: "stage", OldValue: string(spec.Stage), NewValue: string(storage.SpecStageAbandoned)},
-	}
-	clEntry := &storage.ChangeLogEntry{
-		Version:     abandonedSpec.Version,
-		Stage:       storage.SpecStageAbandoned,
-		ContentHash: abandonedSpec.ContentHash,
-		Checkpoint:  true,
-		Summary:     "Spec abandoned",
-		Reason:      reason,
-		Date:        abandonedSpec.UpdatedAt,
-	}
-	if clErr := s.createChangeLog(ctx, slug, clEntry, deltas); clErr != nil {
-		return nil, clErr
-	}
-	return abandonedSpec, nil
+	var result *storage.Spec
+	err = s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		records, qErr := s.executeQuery(txCtx, query, mergeParams(s.projectParam(), map[string]any{
+			"slug":             slug,
+			"expected_version": spec.Version,
+			"terminal_stages":  terminalStageStrings,
+			"stage":            string(storage.SpecStageAbandoned),
+			"version":          int64(newVersion),
+			"updated_at":       nowStr,
+		}))
+		if qErr != nil {
+			return fmt.Errorf("memgraph: abandon spec: %w", qErr)
+		}
+		if len(records) == 0 {
+			return s.preconditionError(txCtx, slug, "abandon spec", func(current *storage.Spec) error {
+				if current.Version != spec.Version {
+					return fmt.Errorf("abandon spec %q: %w", slug, storage.ErrConcurrentModification)
+				}
+				return nil
+			})
+		}
+		if hashErr := s.recomputeContentHash(txCtx, slug); hashErr != nil {
+			return hashErr
+		}
+		abandonedSpec, getErr := s.GetSpec(txCtx, slug)
+		if getErr != nil {
+			return getErr
+		}
+		deltas := []storage.FieldChange{
+			{Field: "stage", OldValue: string(spec.Stage), NewValue: string(storage.SpecStageAbandoned)},
+		}
+		clEntry := &storage.ChangeLogEntry{
+			Version:     abandonedSpec.Version,
+			Stage:       storage.SpecStageAbandoned,
+			ContentHash: abandonedSpec.ContentHash,
+			Checkpoint:  true,
+			Summary:     "Spec abandoned",
+			Reason:      reason,
+			Date:        abandonedSpec.UpdatedAt,
+		}
+		if clErr := s.createChangeLog(txCtx, slug, clEntry, deltas); clErr != nil {
+			return clErr
+		}
+		result = abandonedSpec
+		return nil
+	})
+	return result, err
 }
 
 // terminalStageStrings contains the terminal stages as a string slice for use

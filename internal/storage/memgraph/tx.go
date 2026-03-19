@@ -1,6 +1,36 @@
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 
+// Transaction Usage Guide
+//
+// All multi-query write paths MUST use RunInTransaction for atomicity.
+// SpecGraph uses optimistic concurrency control: version guards in
+// WHERE clauses detect concurrent modifications, and transactions
+// ensure partial failures roll back cleanly.
+//
+// Pattern:
+//
+//	func (s *Store) SomeWriteOp(ctx context.Context, ...) error {
+//	    // Validation (no DB) stays outside — reduces lock time.
+//	    return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+//	        // All DB operations use txCtx, not ctx.
+//	        records, err := s.executeQuery(txCtx, query, params)
+//	        return s.createChangeLog(txCtx, slug, entry, deltas)
+//	    })
+//	}
+//
+// For functions returning values, capture via closure variable:
+//
+//	var result *storage.Spec
+//	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+//	    result = spec
+//	    return nil
+//	})
+//	return result, err
+//
+// Nested RunInTransaction calls reuse the outer transaction — safe for
+// operations like StoreDecomposeOutput that call CreateSpec internally.
+
 package memgraph
 
 import (

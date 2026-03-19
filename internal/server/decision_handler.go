@@ -129,6 +129,9 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 		if errors.Is(err, storage.ErrSupersededByRequired) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("superseded_by is required when status is superseded"))
 		}
+		if errors.Is(err, storage.ErrConcurrentModification) {
+			return nil, connect.NewError(connect.CodeAborted, errors.New("concurrent modification — retry the operation"))
+		}
 		h.logger.ErrorContext(ctx, "update decision failed", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}

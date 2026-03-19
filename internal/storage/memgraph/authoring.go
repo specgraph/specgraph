@@ -71,59 +71,63 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 		SET %s
 		RETURN s.slug
 	`, setClause)
-	records, err := s.executeQuery(ctx, query,
-		mergeParams(s.projectParam(), map[string]any{"slug": slug, "from": fromStr, "to": toStr, "updated_at": nowStr}))
-	if err != nil {
-		return fmt.Errorf("memgraph: transition stage: %w", err)
-	}
-	if len(records) == 0 {
-		// Distinguish between "spec not found" and "spec at wrong stage".
-		checkQuery := `MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug}) RETURN s.stage AS stage`
-		checkRecords, checkErr := s.executeQuery(ctx, checkQuery,
-			mergeParams(s.projectParam(), map[string]any{"slug": slug}))
-		if checkErr != nil {
-			return fmt.Errorf("memgraph: check spec stage: %w", checkErr)
+	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		records, qErr := s.executeQuery(txCtx, query,
+			mergeParams(s.projectParam(), map[string]any{"slug": slug, "from": fromStr, "to": toStr, "updated_at": nowStr}))
+		if qErr != nil {
+			return fmt.Errorf("memgraph: transition stage: %w", qErr)
 		}
-		if len(checkRecords) == 0 {
-			return fmt.Errorf("memgraph: transition stage %q: %w", slug, storage.ErrSpecNotFound)
+		if len(records) == 0 {
+			// Distinguish between "spec not found" and "spec at wrong stage".
+			checkQuery := `MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug}) RETURN s.stage AS stage`
+			checkRecords, checkErr := s.executeQuery(txCtx, checkQuery,
+				mergeParams(s.projectParam(), map[string]any{"slug": slug}))
+			if checkErr != nil {
+				return fmt.Errorf("memgraph: check spec stage: %w", checkErr)
+			}
+			if len(checkRecords) == 0 {
+				return fmt.Errorf("memgraph: transition stage %q: %w", slug, storage.ErrSpecNotFound)
+			}
+			actualStage, ok := checkRecords[0].Get("stage")
+			if !ok || actualStage == nil {
+				actualStage = "<unknown>"
+			}
+			return fmt.Errorf("memgraph: spec %q at stage %v, expected %q: %w", slug, actualStage, from, storage.ErrInvalidStageTransition)
 		}
-		actualStage, ok := checkRecords[0].Get("stage")
-		if !ok || actualStage == nil {
-			actualStage = "<unknown>"
+		if hashErr := s.recomputeContentHash(txCtx, slug); hashErr != nil {
+			return hashErr
 		}
-		return fmt.Errorf("memgraph: spec %q at stage %v, expected %q: %w", slug, actualStage, from, storage.ErrInvalidStageTransition)
-	}
-	if hashErr := s.recomputeContentHash(ctx, slug); hashErr != nil {
-		return hashErr
-	}
 
-	// Create a checkpoint ChangeLog for the stage transition.
-	updatedSpec, err := s.GetSpec(ctx, slug)
-	if err != nil {
-		return err
-	}
-	deltas := []storage.FieldChange{{Field: "stage", OldValue: fromStr, NewValue: toStr}}
-	clEntry := &storage.ChangeLogEntry{
-		Version:     updatedSpec.Version,
-		Stage:       updatedSpec.Stage,
-		ContentHash: updatedSpec.ContentHash,
-		Checkpoint:  true,
-		Summary:     fmt.Sprintf("Stage transition: %s → %s", fromStr, toStr),
-		Date:        updatedSpec.UpdatedAt,
-	}
-	return s.createChangeLog(ctx, slug, clEntry, deltas)
+		// Create a checkpoint ChangeLog for the stage transition.
+		updatedSpec, getErr := s.GetSpec(txCtx, slug)
+		if getErr != nil {
+			return getErr
+		}
+		deltas := []storage.FieldChange{{Field: "stage", OldValue: fromStr, NewValue: toStr}}
+		clEntry := &storage.ChangeLogEntry{
+			Version:     updatedSpec.Version,
+			Stage:       updatedSpec.Stage,
+			ContentHash: updatedSpec.ContentHash,
+			Checkpoint:  true,
+			Summary:     fmt.Sprintf("Stage transition: %s → %s", fromStr, toStr),
+			Date:        updatedSpec.UpdatedAt,
+		}
+		return s.createChangeLog(txCtx, slug, clEntry, deltas)
+	})
 }
 
 // StoreSparkOutput persists the spark stage output as JSON on the spec node.
 func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *storage.SparkOutput) error {
-	oldFields, oldHash, _, _, err := s.readSpecFields(ctx, slug)
-	if err != nil {
-		return err
-	}
-	if err := s.storeJSONProperty(ctx, slug, "spark_output", output); err != nil {
-		return err
-	}
-	return s.authoringOutputChangeLog(ctx, slug, "spark_output", &oldFields, oldHash)
+	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		oldFields, oldHash, _, _, err := s.readSpecFields(txCtx, slug)
+		if err != nil {
+			return err
+		}
+		if err := s.storeJSONProperty(txCtx, slug, "spark_output", output); err != nil {
+			return err
+		}
+		return s.authoringOutputChangeLog(txCtx, slug, "spark_output", &oldFields, oldHash)
+	})
 }
 
 // StoreShapeOutput persists the shape stage output as JSON on the spec node.
@@ -132,11 +136,11 @@ func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *stora
 // Decision promotion is idempotent: CreateDecision is skipped if the decision
 // already exists, but AddEdge is always called so a lost edge is recreated.
 func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *storage.ShapeOutput) error {
-	oldFields, oldHash, _, _, err := s.readSpecFields(ctx, slug)
-	if err != nil {
-		return err
-	}
-	if txErr := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		oldFields, oldHash, _, _, err := s.readSpecFields(txCtx, slug)
+		if err != nil {
+			return err
+		}
 		if err := s.storeJSONProperty(txCtx, slug, "shape_output", output); err != nil {
 			return err
 		}
@@ -163,23 +167,22 @@ func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *stora
 				return fmt.Errorf("add DECIDED_IN edge %q->%q: %w", slug, d.Slug, err)
 			}
 		}
-		return nil
-	}); txErr != nil {
-		return txErr
-	}
-	return s.authoringOutputChangeLog(ctx, slug, "shape_output", &oldFields, oldHash)
+		return s.authoringOutputChangeLog(txCtx, slug, "shape_output", &oldFields, oldHash)
+	})
 }
 
 // StoreSpecifyOutput persists the specify stage output as JSON on the spec node.
 func (s *Store) StoreSpecifyOutput(ctx context.Context, slug string, output *storage.SpecifyOutput) error {
-	oldFields, oldHash, _, _, err := s.readSpecFields(ctx, slug)
-	if err != nil {
-		return err
-	}
-	if err := s.storeJSONProperty(ctx, slug, "specify_output", output); err != nil {
-		return err
-	}
-	return s.authoringOutputChangeLog(ctx, slug, "specify_output", &oldFields, oldHash)
+	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		oldFields, oldHash, _, _, err := s.readSpecFields(txCtx, slug)
+		if err != nil {
+			return err
+		}
+		if err := s.storeJSONProperty(txCtx, slug, "specify_output", output); err != nil {
+			return err
+		}
+		return s.authoringOutputChangeLog(txCtx, slug, "specify_output", &oldFields, oldHash)
+	})
 }
 
 // StoreDecomposeOutput persists the decompose output and creates child spec nodes with edges.
@@ -203,72 +206,79 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 		}
 		sliceIDs[sl.ID] = true
 	}
-	// Capture old fields before the store to detect content hash changes.
-	oldFields, oldHash, _, _, err := s.readSpecFields(ctx, slug)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.storeJSONProperty(ctx, slug, "decompose_output", output); err != nil {
-		return nil, err
-	}
-	// Pass 1: create all child Spec nodes and COMPOSES edges.
-	// This ensures every node exists before any DEPENDS_ON edge is attempted,
-	// so out-of-order dependencies (slice B depends on slice C listed later)
-	// are handled correctly.
 	var childSlugs []string
-	for _, sl := range output.Slices {
-		childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
-		// Check if child spec already exists (idempotency for retries).
-		_, getErr := s.GetSpec(ctx, childSlug)
-		if getErr != nil {
-			if !errors.Is(getErr, storage.ErrSpecNotFound) {
-				return nil, fmt.Errorf("memgraph: check child spec %q: %w", childSlug, getErr)
-			}
-			// Not found — proceed to create.
-			if _, err := s.CreateSpec(ctx, childSlug, sl.Intent, defaultChildPriority, defaultChildComplexity); err != nil {
-				return nil, fmt.Errorf("memgraph: create child spec %q: %w", childSlug, err)
-			}
+	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Capture old fields before the store to detect content hash changes.
+		oldFields, oldHash, _, _, rfErr := s.readSpecFields(txCtx, slug)
+		if rfErr != nil {
+			return rfErr
 		}
-		// If getErr == nil, child spec already exists (idempotent retry).
-		composeQuery := `
-			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(child:Spec {slug: $child_slug}),
-			      (p)<-[:BELONGS_TO]-(parent:Spec {slug: $parent_slug})
-			MERGE (child)-[:COMPOSES]->(parent)
-		`
-		_, err := s.executeQuery(ctx, composeQuery,
-			mergeParams(s.projectParam(), map[string]any{"child_slug": childSlug, "parent_slug": slug}))
-		if err != nil {
-			return nil, fmt.Errorf("memgraph: merge COMPOSES edge: %w", err)
+		if err := s.storeJSONProperty(txCtx, slug, "decompose_output", output); err != nil {
+			return err
 		}
-		childSlugs = append(childSlugs, childSlug)
-	}
-
-	// Pass 2: create all DEPENDS_ON edges now that all child nodes exist.
-	for _, sl := range output.Slices {
-		childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
-		for _, dep := range sl.DependsOn {
-			if !sliceIDs[dep] {
-				return nil, fmt.Errorf("memgraph: slice %q depends on unknown sibling %q", sl.ID, dep)
+		// Pass 1: create all child Spec nodes and COMPOSES edges.
+		// This ensures every node exists before any DEPENDS_ON edge is attempted,
+		// so out-of-order dependencies (slice B depends on slice C listed later)
+		// are handled correctly.
+		var slugs []string
+		for _, sl := range output.Slices {
+			childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
+			// Check if child spec already exists (idempotency for retries).
+			_, getErr := s.GetSpec(txCtx, childSlug)
+			if getErr != nil {
+				if !errors.Is(getErr, storage.ErrSpecNotFound) {
+					return fmt.Errorf("memgraph: check child spec %q: %w", childSlug, getErr)
+				}
+				// Not found — proceed to create.
+				if _, err := s.CreateSpec(txCtx, childSlug, sl.Intent, defaultChildPriority, defaultChildComplexity); err != nil {
+					return fmt.Errorf("memgraph: create child spec %q: %w", childSlug, err)
+				}
 			}
-			depSlug := fmt.Sprintf("%s/%s", slug, dep)
-			depQuery := `
-				MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(from:Spec {slug: $from_slug}),
-				      (p)<-[:BELONGS_TO]-(to:Spec {slug: $to_slug})
-				MERGE (from)-[:DEPENDS_ON]->(to)
+			// If getErr == nil, child spec already exists (idempotent retry).
+			composeQuery := `
+				MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(child:Spec {slug: $child_slug}),
+				      (p)<-[:BELONGS_TO]-(parent:Spec {slug: $parent_slug})
+				MERGE (child)-[:COMPOSES]->(parent)
 			`
-			_, err := s.executeQuery(ctx, depQuery,
-				mergeParams(s.projectParam(), map[string]any{"from_slug": childSlug, "to_slug": depSlug}))
+			_, err := s.executeQuery(txCtx, composeQuery,
+				mergeParams(s.projectParam(), map[string]any{"child_slug": childSlug, "parent_slug": slug}))
 			if err != nil {
-				return nil, fmt.Errorf("memgraph: merge DEPENDS_ON edge: %w", err)
+				return fmt.Errorf("memgraph: merge COMPOSES edge: %w", err)
+			}
+			slugs = append(slugs, childSlug)
+		}
+
+		// Pass 2: create all DEPENDS_ON edges now that all child nodes exist.
+		for _, sl := range output.Slices {
+			childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
+			for _, dep := range sl.DependsOn {
+				if !sliceIDs[dep] {
+					return fmt.Errorf("memgraph: slice %q depends on unknown sibling %q", sl.ID, dep)
+				}
+				depSlug := fmt.Sprintf("%s/%s", slug, dep)
+				depQuery := `
+					MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(from:Spec {slug: $from_slug}),
+					      (p)<-[:BELONGS_TO]-(to:Spec {slug: $to_slug})
+					MERGE (from)-[:DEPENDS_ON]->(to)
+				`
+				_, err := s.executeQuery(txCtx, depQuery,
+					mergeParams(s.projectParam(), map[string]any{"from_slug": childSlug, "to_slug": depSlug}))
+				if err != nil {
+					return fmt.Errorf("memgraph: merge DEPENDS_ON edge: %w", err)
+				}
 			}
 		}
-	}
-	// Create a non-checkpoint ChangeLog for the decompose_output field change
-	// on the parent spec. Child specs get their own changelogs via CreateSpec.
-	if clErr := s.authoringOutputChangeLog(ctx, slug, "decompose_output", &oldFields, oldHash); clErr != nil {
-		return nil, clErr
-	}
-	return childSlugs, nil
+		// Create a non-checkpoint ChangeLog for the decompose_output field change
+		// on the parent spec. Child specs get their own changelogs via CreateSpec.
+		if clErr := s.authoringOutputChangeLog(txCtx, slug, "decompose_output", &oldFields, oldHash); clErr != nil {
+			return clErr
+		}
+		// Only set childSlugs after all operations succeed — if the transaction
+		// rolls back, returning slugs of non-existent specs would be misleading.
+		childSlugs = slugs
+		return nil
+	})
+	return childSlugs, err
 }
 
 // --- Analytical pass storage (thin wrappers over storeJSONProperty) ---
@@ -349,50 +359,60 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 	if vErr := authoring.ValidateAmendTransition(authoring.Stage(spec.Stage), authoring.Stage(targetStage)); vErr != nil {
 		return nil, fmt.Errorf("memgraph: amend: %w: %w", storage.ErrInvalidStageTransition, vErr)
 	}
-	nowStr := s.now()
-	query := `
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
-		SET s.stage = $stage, s.amend_reason = $reason,
-		    s.version = s.version + 1, s.updated_at = $updated_at
-		RETURN s.slug, s.stage, s.version
-	`
-	records, err := s.executeQuery(ctx, query,
-		mergeParams(s.projectParam(), map[string]any{"slug": slug, "stage": string(targetStage), "reason": reason, "updated_at": nowStr}))
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: amend spec: %w", err)
-	}
-	if len(records) == 0 {
-		return nil, fmt.Errorf("memgraph: amend spec %q: %w", slug, storage.ErrSpecNotFound)
-	}
-	rec := records[0]
-	retSlug, ok := rec.Get("s.slug")
-	if !ok {
-		return nil, fmt.Errorf("memgraph: amend spec %q: record missing s.slug", slug)
-	}
-	retStage, ok := rec.Get("s.stage")
-	if !ok {
-		return nil, fmt.Errorf("memgraph: amend spec %q: record missing s.stage", slug)
-	}
-	retVersion, ok := rec.Get("s.version")
-	if !ok {
-		return nil, fmt.Errorf("memgraph: amend spec %q: record missing s.version", slug)
-	}
-	result := &storage.AmendResult{
-		Slug:  fmt.Sprintf("%v", retSlug),
-		Stage: storage.AuthoringStage(fmt.Sprintf("%v", retStage)),
-	}
-	switch v := retVersion.(type) {
-	case int64:
-		result.Version = safeInt32(v)
-	case nil:
-		// Version not set on node — leave as 0.
-	default:
-		return nil, fmt.Errorf("memgraph: amend spec %q: unexpected version type %T", slug, retVersion)
-	}
-	if err := s.recomputeContentHash(ctx, slug); err != nil {
-		return nil, err
-	}
-	return result, nil
+	var result *storage.AmendResult
+	txErr := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		nowStr := s.now()
+		query := `
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+			WHERE s.version = $expected_version
+			SET s.stage = $stage, s.amend_reason = $reason,
+			    s.version = s.version + 1, s.updated_at = $updated_at
+			RETURN s.slug, s.stage, s.version
+		`
+		records, qErr := s.executeQuery(txCtx, query,
+			mergeParams(s.projectParam(), map[string]any{"slug": slug, "expected_version": spec.Version, "stage": string(targetStage), "reason": reason, "updated_at": nowStr}))
+		if qErr != nil {
+			return fmt.Errorf("memgraph: amend spec: %w", qErr)
+		}
+		if len(records) == 0 {
+			// Version guard returned 0 rows — either spec not found or concurrent modification.
+			if _, getErr := s.GetSpec(txCtx, slug); getErr != nil {
+				return fmt.Errorf("memgraph: amend spec %q: %w", slug, storage.ErrSpecNotFound)
+			}
+			return fmt.Errorf("memgraph: amend spec %q: %w", slug, storage.ErrConcurrentModification)
+		}
+		rec := records[0]
+		retSlug, ok := rec.Get("s.slug")
+		if !ok {
+			return fmt.Errorf("memgraph: amend spec %q: record missing s.slug", slug)
+		}
+		retStage, ok := rec.Get("s.stage")
+		if !ok {
+			return fmt.Errorf("memgraph: amend spec %q: record missing s.stage", slug)
+		}
+		retVersion, ok := rec.Get("s.version")
+		if !ok {
+			return fmt.Errorf("memgraph: amend spec %q: record missing s.version", slug)
+		}
+		r := &storage.AmendResult{
+			Slug:  fmt.Sprintf("%v", retSlug),
+			Stage: storage.AuthoringStage(fmt.Sprintf("%v", retStage)),
+		}
+		switch v := retVersion.(type) {
+		case int64:
+			r.Version = safeInt32(v)
+		case nil:
+			// Version not set on node — leave as 0.
+		default:
+			return fmt.Errorf("memgraph: amend spec %q: unexpected version type %T", slug, retVersion)
+		}
+		if hashErr := s.recomputeContentHash(txCtx, slug); hashErr != nil {
+			return hashErr
+		}
+		result = r
+		return nil
+	})
+	return result, txErr
 }
 
 // storeJSONProperty marshals data to JSON and stores it as a string property on the spec node.
