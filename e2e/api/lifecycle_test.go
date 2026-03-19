@@ -67,12 +67,10 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(resp.Msg.GetSpec().GetSlug()).To(Equal(amendSlug))
 			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("shape"))
 
-			// Finding .16: verify history and version through proto conversion.
+			// Verify version increments after amend.
 			spec := resp.Msg.GetSpec()
 			Expect(spec.GetVersion()).To(BeNumerically(">=", int32(2)), "version should increment after amend")
-			Expect(spec.GetHistory()).NotTo(BeEmpty(), "history should contain at least one entry")
-			lastEntry := spec.GetHistory()[len(spec.GetHistory())-1]
-			Expect(lastEntry.GetReason()).To(Equal("Requirements changed after implementation"))
+			// History field removed — changelog is now tracked via ChangeLog graph nodes.
 		})
 	})
 
@@ -137,7 +135,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(resp.Msg.OldSpec.Stage).To(Equal("superseded"))
 			Expect(resp.Msg.OldSpec.SupersededBy).To(Equal(newSlug))
 			Expect(resp.Msg.OldSpec.Version).To(BeNumerically(">=", int32(2)), "old spec version should be incremented")
-			Expect(resp.Msg.OldSpec.History).NotTo(BeEmpty(), "old spec should have history entries")
+			// History field removed — changelog is now tracked via ChangeLog graph nodes.
 			Expect(resp.Msg.NewSpec.Slug).To(Equal(newSlug))
 			Expect(resp.Msg.NewSpec.Supersedes).To(Equal(oldSlug))
 			Expect(resp.Msg.NewSpec.Version).To(BeNumerically(">=", int32(1)), "new spec version should be set")
@@ -181,12 +179,10 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(resp.Msg.GetSpec().GetSlug()).To(Equal(abandonSlug))
 			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("abandoned"))
 
-			// Finding .16: verify history and version through proto conversion.
+			// Verify version increments after abandon.
 			spec := resp.Msg.GetSpec()
 			Expect(spec.GetVersion()).To(BeNumerically(">=", int32(2)), "version should increment after abandon")
-			Expect(spec.GetHistory()).NotTo(BeEmpty(), "history should contain at least one entry")
-			lastEntry := spec.GetHistory()[len(spec.GetHistory())-1]
-			Expect(lastEntry.GetReason()).To(Equal("No longer needed"))
+			// History field removed — changelog is now tracked via ChangeLog graph nodes.
 		})
 	})
 
