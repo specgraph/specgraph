@@ -92,8 +92,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
-		       s.content_hash
+		       s.notes, s.content_hash
 	`
 	var result *storage.Spec
 	err = s.RunInTransaction(ctx, func(txCtx context.Context) error {
@@ -207,13 +206,11 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		RETURN old.id, old.slug, old.intent, old.stage, old.priority, old.complexity,
 		       old.version, old.created_at, old.updated_at,
 		       old.lifecycle, old.superseded_by, old.supersedes,
-		       old.drift_acknowledged, old.drift_acknowledge_note, old.notes,
-		       old.content_hash,
+		       old.notes, old.content_hash,
 		       new.id, new.slug, new.intent, new.stage, new.priority, new.complexity,
 		       new.version, new.created_at, new.updated_at,
 		       new.lifecycle, new.superseded_by, new.supersedes,
-		       new.drift_acknowledged, new.drift_acknowledge_note, new.notes,
-		       new.content_hash
+		       new.notes, new.content_hash
 	`
 	txErr := s.RunInTransaction(ctx, func(txCtx context.Context) error {
 		records, qErr := s.executeQuery(txCtx, query, mergeParams(s.projectParam(), map[string]any{
@@ -340,8 +337,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
-		       s.content_hash
+		       s.notes, s.content_hash
 	`
 	var result *storage.Spec
 	err = s.RunInTransaction(ctx, func(txCtx context.Context) error {
@@ -402,53 +398,12 @@ var terminalStageStrings = func() []string {
 	return stages
 }()
 
-// LifecycleAcknowledgeDrift sets drift as acknowledged on the spec node and returns a
-// DriftReport reflecting the acknowledgment. Returns ErrSpecNotFound if the
-// spec does not exist, or ErrSpecIneligibleStage if the spec is not in an eligible
-// stage (done or amended).
+// LifecycleAcknowledgeDrift refreshes content_hash_at_link on DEPENDS_ON edges,
+// acknowledging drift from an upstream spec (or all upstreams if upstreamSlug
+// is empty). Returns ErrSpecNotFound if the spec does not exist, or
+// ErrSpecIneligibleStage if the spec is not in an eligible stage (done or amended).
 //
-// The WHERE guard is atomic: drift can only be acknowledged on specs in the
-// done or amended stages, preventing TOCTOU races between the handler check
-// and the storage write.
-func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string) (*storage.DriftReport, error) {
-	eligibleStages := []string{string(storage.SpecStageDone), string(storage.SpecStageAmended)}
-	query := `
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
-		WHERE s.stage IN $eligible_stages
-		SET s.drift_acknowledged = true, s.drift_acknowledge_note = $note
-		RETURN s.slug, s.drift_acknowledged, s.drift_acknowledge_note
-	`
-	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{
-		"slug":            slug,
-		"note":            note,
-		"eligible_stages": eligibleStages,
-	}))
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: acknowledge drift: %w", err)
-	}
-	if len(records) == 0 {
-		return nil, s.preconditionError(ctx, slug, "acknowledge drift", func(current *storage.Spec) error {
-			if current.Stage != storage.SpecStageDone && current.Stage != storage.SpecStageAmended {
-				return fmt.Errorf("acknowledge drift %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecIneligibleStage)
-			}
-			return nil
-		})
-	}
-	rec := records[0]
-	ack, _ := rec.Get("s.drift_acknowledged")
-	ackNote, _ := rec.Get("s.drift_acknowledge_note")
-	acknowledged, ok := ack.(bool)
-	if !ok {
-		return nil, fmt.Errorf("memgraph: acknowledge drift %q: unexpected type for drift_acknowledged: %T", slug, ack)
-	}
-	acknowledgeNote, ok := ackNote.(string)
-	if !ok {
-		return nil, fmt.Errorf("memgraph: acknowledge drift %q: unexpected type for drift_acknowledge_note: %T", slug, ackNote)
-	}
-	return &storage.DriftReport{
-		SpecSlug:        slug,
-		Acknowledged:    acknowledged,
-		AcknowledgeNote: acknowledgeNote,
-		Items:           []storage.DriftItem{},
-	}, nil
+// Placeholder: real implementation is in Task 9.
+func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlug, note string) error {
+	return nil
 }
