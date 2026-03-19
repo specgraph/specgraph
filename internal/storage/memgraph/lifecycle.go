@@ -123,7 +123,33 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	if err := s.recomputeContentHash(ctx, slug); err != nil {
 		return nil, err
 	}
-	return recordToSpec(records[0])
+	updatedSpec, err := recordToSpec(records[0])
+	if err != nil {
+		return nil, err
+	}
+	// Re-read content hash after recomputation for the ChangeLog entry.
+	freshSpec, err := s.GetSpec(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	summary := "Amended from done"
+	if targetStage != storage.SpecStageAmended {
+		summary = fmt.Sprintf("Amended from done, re-entering at: %s", targetStage)
+	}
+	deltas := []storage.FieldChange{{Field: "stage", OldValue: string(storage.SpecStageDone), NewValue: string(targetStage)}}
+	clEntry := &storage.ChangeLogEntry{
+		Version:     freshSpec.Version,
+		Stage:       freshSpec.Stage,
+		ContentHash: freshSpec.ContentHash,
+		Checkpoint:  true,
+		Summary:     summary,
+		Reason:      reason,
+		Date:        freshSpec.UpdatedAt,
+	}
+	if clErr := s.createChangeLog(ctx, slug, clEntry, deltas); clErr != nil {
+		return nil, clErr
+	}
+	return updatedSpec, nil
 }
 
 // LifecycleSupersedeSpec marks the old spec as superseded and links it to the new spec via
@@ -254,6 +280,41 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		return nil, nil, fmt.Errorf("memgraph: supersede: parse new spec: %w", err)
 	}
 
+	// Create checkpoint ChangeLog for the old spec (→ superseded).
+	oldDeltas := []storage.FieldChange{
+		{Field: "stage", OldValue: string(oldCheck.Stage), NewValue: string(storage.SpecStageSuperseded)},
+		{Field: "superseded_by", OldValue: "", NewValue: newSlug},
+	}
+	oldCLEntry := &storage.ChangeLogEntry{
+		Version:     oldSpec.Version,
+		Stage:       storage.SpecStageSuperseded,
+		ContentHash: oldSpec.ContentHash,
+		Checkpoint:  true,
+		Summary:     "Spec superseded",
+		Reason:      fmt.Sprintf("Superseded by %s", newSlug),
+		Date:        oldSpec.UpdatedAt,
+	}
+	if clErr := s.createChangeLog(ctx, oldSlug, oldCLEntry, oldDeltas); clErr != nil {
+		return nil, nil, clErr
+	}
+
+	// Create checkpoint ChangeLog for the new spec (supersedes predecessor).
+	newDeltas := []storage.FieldChange{
+		{Field: "supersedes", OldValue: "", NewValue: oldSlug},
+	}
+	newCLEntry := &storage.ChangeLogEntry{
+		Version:     newSpec.Version,
+		Stage:       newSpec.Stage,
+		ContentHash: newSpec.ContentHash,
+		Checkpoint:  true,
+		Summary:     "Supersedes predecessor",
+		Reason:      fmt.Sprintf("Supersedes %s", oldSlug),
+		Date:        newSpec.UpdatedAt,
+	}
+	if clErr := s.createChangeLog(ctx, newSlug, newCLEntry, newDeltas); clErr != nil {
+		return nil, nil, clErr
+	}
+
 	return oldSpec, newSpec, nil
 }
 
@@ -307,7 +368,26 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 			return nil
 		})
 	}
-	return recordToSpec(records[0])
+	abandonedSpec, err := recordToSpec(records[0])
+	if err != nil {
+		return nil, err
+	}
+	deltas := []storage.FieldChange{
+		{Field: "stage", OldValue: string(spec.Stage), NewValue: string(storage.SpecStageAbandoned)},
+	}
+	clEntry := &storage.ChangeLogEntry{
+		Version:     abandonedSpec.Version,
+		Stage:       storage.SpecStageAbandoned,
+		ContentHash: abandonedSpec.ContentHash,
+		Checkpoint:  true,
+		Summary:     "Spec abandoned",
+		Reason:      reason,
+		Date:        abandonedSpec.UpdatedAt,
+	}
+	if clErr := s.createChangeLog(ctx, slug, clEntry, deltas); clErr != nil {
+		return nil, clErr
+	}
+	return abandonedSpec, nil
 }
 
 // terminalStageStrings contains the terminal stages as a string slice for use
