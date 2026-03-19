@@ -27,9 +27,9 @@ type ExecutionHandler struct {
 var _ specgraphv1connect.ExecutionServiceHandler = (*ExecutionHandler)(nil)
 
 // RegisterExecutionService registers the ExecutionService on the given mux.
-func RegisterExecutionService(mux *http.ServeMux, scoper storage.Scoper) {
+func RegisterExecutionService(mux *http.ServeMux, scoper storage.Scoper, opts ...connect.HandlerOption) {
 	handler := &ExecutionHandler{scoper: scoper}
-	path, h := specgraphv1connect.NewExecutionServiceHandler(handler)
+	path, h := specgraphv1connect.NewExecutionServiceHandler(handler, opts...)
 	mux.Handle(path, h)
 }
 

@@ -94,8 +94,8 @@ func (h *ClaimHandler) Heartbeat(ctx context.Context, req *connect.Request[specv
 }
 
 // RegisterClaimService registers the ClaimService on the given mux.
-func RegisterClaimService(mux *http.ServeMux, scoper storage.Scoper) {
+func RegisterClaimService(mux *http.ServeMux, scoper storage.Scoper, opts ...connect.HandlerOption) {
 	handler := &ClaimHandler{scoper: scoper}
-	path, h := specgraphv1connect.NewClaimServiceHandler(handler)
+	path, h := specgraphv1connect.NewClaimServiceHandler(handler, opts...)
 	mux.Handle(path, h)
 }

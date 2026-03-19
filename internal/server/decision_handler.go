@@ -140,8 +140,8 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 }
 
 // RegisterDecisionService registers the DecisionService on the given mux.
-func RegisterDecisionService(mux *http.ServeMux, scoper storage.Scoper) {
+func RegisterDecisionService(mux *http.ServeMux, scoper storage.Scoper, opts ...connect.HandlerOption) {
 	handler := &DecisionHandler{scoper: scoper, logger: slog.Default()}
-	path, h := specgraphv1connect.NewDecisionServiceHandler(handler)
+	path, h := specgraphv1connect.NewDecisionServiceHandler(handler, opts...)
 	mux.Handle(path, h)
 }

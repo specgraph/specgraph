@@ -516,12 +516,12 @@ func acceptLinkedDecisions(ctx context.Context, logger *slog.Logger, graphBacken
 }
 
 // RegisterAuthoringService registers the AuthoringService on the given mux.
-func RegisterAuthoringService(mux *http.ServeMux, scoper storage.Scoper) {
+func RegisterAuthoringService(mux *http.ServeMux, scoper storage.Scoper, opts ...connect.HandlerOption) {
 	if scoper == nil {
 		panic("RegisterAuthoringService: scoper must not be nil")
 	}
 	handler := &AuthoringHandler{scoper: scoper, logger: slog.Default()}
-	path, h := specgraphv1connect.NewAuthoringServiceHandler(handler)
+	path, h := specgraphv1connect.NewAuthoringServiceHandler(handler, opts...)
 	mux.Handle(path, h)
 }
 
