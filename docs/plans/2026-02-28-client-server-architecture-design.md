@@ -82,18 +82,19 @@ Both backends speak Cypher. AGE is **required** when using Postgres (no CTE fall
 
 ### Identity Scheme
 
-Content-addressable hashing (merge-conflict-free IDs), type-prefixed:
+Stable ULID-based IDs (merge-conflict-free), type-prefixed. A separate
+`content_hash` field (Murmur3-128) provides change detection:
 
 | Entity | Prefix | Example |
 |--------|--------|---------|
-| Spec | `spec-` | `spec-k7m3p` |
-| Decision | `dec-` | `dec-a7f3b2c1` |
+| Spec | `spec-` | `spec-01JQXYZ...` |
+| Decision | `dec-` | `dec-01JQXYZ...` |
 
 ### Node Types
 
 ```cypher
 (:Spec {
-  id: "spec-k7m3p",
+  id: "spec-01JQXYZ...",
   slug: "oauth-refresh-rotation",
   intent: "...",
   stage: "approved",        // spark | shape | specify | decompose | approved | in_progress | done
@@ -109,7 +110,7 @@ Content-addressable hashing (merge-conflict-free IDs), type-prefixed:
 })
 
 (:Decision {
-  id: "dec-a7f3b2c1",
+  id: "dec-01JQXYZ...",
   title: "Refresh token storage mechanism",
   question: "...",
   chosen: "...",
