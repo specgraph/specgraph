@@ -233,27 +233,25 @@ func TestLifecycleToProto(t *testing.T) {
 func TestDriftReportToProto(t *testing.T) {
 	t.Run("full report", func(t *testing.T) {
 		report := &storage.DriftReport{
-			SpecSlug:        "login-api",
-			Acknowledged:    true,
-			AcknowledgeNote: "accepted risk",
+			SpecSlug: "login-api",
 			Items: []storage.DriftItem{
 				{
-					Type:            storage.DriftTypeDependency,
-					Severity:        storage.DriftSeverityHigh,
-					Description:     "version mismatch",
-					SpecSlug:        "login-api",
-					UpstreamSlug:    "auth-core",
-					ExpectedVersion: 2,
-					ActualVersion:   1,
+					Type:         storage.DriftTypeDependency,
+					Severity:     storage.DriftSeverityHigh,
+					Description:  "content hash mismatch",
+					SpecSlug:     "login-api",
+					UpstreamSlug: "auth-core",
+					ExpectedHash: "aaa",
+					ActualHash:   "bbb",
 				},
 			},
 		}
 		pb, err := driftReportToProto(report)
 		require.NoError(t, err)
 		assert.Equal(t, "login-api", pb.SpecSlug)
-		assert.True(t, pb.Acknowledged)
-		assert.Equal(t, "accepted risk", pb.AcknowledgeNote)
 		require.Len(t, pb.Items, 1)
+		assert.Equal(t, "aaa", pb.Items[0].ExpectedHash)
+		assert.Equal(t, "bbb", pb.Items[0].ActualHash)
 	})
 
 	t.Run("empty items", func(t *testing.T) {
@@ -273,7 +271,7 @@ func TestDriftItemToProto(t *testing.T) {
 	}{
 		{
 			name:     "dependency/high",
-			item:     storage.DriftItem{Type: storage.DriftTypeDependency, Severity: storage.DriftSeverityHigh, Description: "d", SpecSlug: "a", UpstreamSlug: "b", ExpectedVersion: 3, ActualVersion: 1},
+			item:     storage.DriftItem{Type: storage.DriftTypeDependency, Severity: storage.DriftSeverityHigh, Description: "d", SpecSlug: "a", UpstreamSlug: "b", ExpectedHash: "aaa", ActualHash: "bbb"},
 			wantType: specv1.DriftType_DRIFT_TYPE_DEPENDENCY,
 			wantSev:  specv1.DriftSeverity_DRIFT_SEVERITY_HIGH,
 		},
@@ -309,8 +307,8 @@ func TestDriftItemToProto(t *testing.T) {
 			assert.Equal(t, tt.item.Description, got.Description)
 			assert.Equal(t, tt.item.SpecSlug, got.SpecSlug)
 			assert.Equal(t, tt.item.UpstreamSlug, got.UpstreamSlug)
-			assert.Equal(t, tt.item.ExpectedVersion, got.ExpectedVersion)
-			assert.Equal(t, tt.item.ActualVersion, got.ActualVersion)
+			assert.Equal(t, tt.item.ExpectedHash, got.ExpectedHash)
+			assert.Equal(t, tt.item.ActualHash, got.ActualHash)
 		})
 	}
 }

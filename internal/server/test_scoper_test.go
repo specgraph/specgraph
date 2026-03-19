@@ -240,14 +240,16 @@ func (stubBackend) LifecycleAbandonSpec(context.Context, string, string) (*stora
 	return nil, errNotImplemented
 }
 
-func (stubBackend) LifecycleAcknowledgeDrift(context.Context, string, string) (*storage.DriftReport, error) {
+func (stubBackend) LifecycleAcknowledgeDrift(context.Context, string, string, string) error {
+	return errNotImplemented
+}
+
+func (stubBackend) GetDependenciesWithEdgeData(context.Context, string) ([]storage.DependencyRef, error) {
 	return nil, errNotImplemented
 }
 
-// --- AckStateReader ---
-
-func (stubBackend) BatchGetSpecs(context.Context, []string) (map[string]*storage.Spec, error) {
-	return nil, errNotImplemented
+func (stubBackend) RefreshDependencyHashes(context.Context, string) error {
+	return errNotImplemented
 }
 
 // --- SyncBackend ---
