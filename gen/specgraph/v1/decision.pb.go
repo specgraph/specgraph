@@ -82,7 +82,7 @@ func (DecisionStatus) EnumDescriptor() ([]byte, []int) {
 
 type Decision struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`       // content-addressable, e.g. "dec-a7f3b2c"
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`       // stable ULID, e.g. "dec-01JQXYZ..."
 	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`   // human-readable, e.g. "use-memgraph"
 	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"` // short title
 	Status        DecisionStatus         `protobuf:"varint,4,opt,name=status,proto3,enum=specgraph.v1.DecisionStatus" json:"status,omitempty"`
@@ -91,6 +91,7 @@ type Decision struct {
 	SupersededBy  string                 `protobuf:"bytes,7,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"` // slug of superseding decision, if any
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ContentHash   string                 `protobuf:"bytes,10,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"` // Murmur3-128 hex digest of substantive fields; changes on every mutation
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -186,6 +187,13 @@ func (x *Decision) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *Decision) GetContentHash() string {
+	if x != nil {
+		return x.ContentHash
+	}
+	return ""
 }
 
 type CreateDecisionRequest struct {
@@ -484,7 +492,7 @@ var File_specgraph_v1_decision_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_decision_proto_rawDesc = "" +
 	"\n" +
-	"\x1bspecgraph/v1/decision.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xcf\x02\n" +
+	"\x1bspecgraph/v1/decision.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf2\x02\n" +
 	"\bDecision\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x14\n" +
@@ -496,7 +504,9 @@ const file_specgraph_v1_decision_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"{\n" +
+	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12!\n" +
+	"\fcontent_hash\x18\n" +
+	" \x01(\tR\vcontentHash\"{\n" +
 	"\x15CreateDecisionRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +

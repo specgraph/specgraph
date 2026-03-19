@@ -22,7 +22,7 @@ enum DecisionStatus {
 // --- Messages ---
 
 message Decision {
-  string id = 1;                             // content-addressable, e.g. "dec-a7f3b2c"
+  string id = 1;                             // stable ULID, e.g. "dec-01JQXYZ..."
   string slug = 2;                           // human-readable, e.g. "use-memgraph"
   string title = 3;                          // short title
   DecisionStatus status = 4;
@@ -31,6 +31,7 @@ message Decision {
   string superseded_by = 7;                  // slug of superseding decision, if any
   google.protobuf.Timestamp created_at = 8;
   google.protobuf.Timestamp updated_at = 9;
+  string content_hash = 10;                  // Murmur3-128 hex digest of substantive fields; changes on every mutation
 }
 
 message CreateDecisionRequest {
