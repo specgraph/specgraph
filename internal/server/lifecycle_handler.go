@@ -381,7 +381,7 @@ func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 
 // RegisterLifecycleService registers the LifecycleService on the given mux.
 // If logger is nil, slog.Default() is used.
-func RegisterLifecycleService(mux *http.ServeMux, scoper storage.Scoper, dc DriftChecker, l SpecLinter, logger *slog.Logger) {
+func RegisterLifecycleService(mux *http.ServeMux, scoper storage.Scoper, dc DriftChecker, l SpecLinter, logger *slog.Logger, opts ...connect.HandlerOption) {
 	if scoper == nil {
 		panic("RegisterLifecycleService: scoper must not be nil")
 	}
@@ -394,6 +394,6 @@ func RegisterLifecycleService(mux *http.ServeMux, scoper storage.Scoper, dc Drif
 		linter:       l,
 		logger:       logger,
 	}
-	path, h := specgraphv1connect.NewLifecycleServiceHandler(handler)
+	path, h := specgraphv1connect.NewLifecycleServiceHandler(handler, opts...)
 	mux.Handle(path, h)
 }

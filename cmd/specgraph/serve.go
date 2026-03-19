@@ -12,6 +12,9 @@ import (
 	"syscall"
 	"time"
 
+	"connectrpc.com/connect"
+
+	"github.com/seanb4t/specgraph/internal/auth"
 	"github.com/seanb4t/specgraph/internal/config"
 	"github.com/seanb4t/specgraph/internal/docker"
 	"github.com/seanb4t/specgraph/internal/drift"
@@ -75,21 +78,28 @@ func runServe(_ *cobra.Command, _ []string) error {
 		sweeperCtx, stopSweeper := context.WithCancel(ctx)
 		defer stopSweeper()
 
-		mux := server.NewMux(store)
-		server.RegisterHealthService(mux)
-		server.RegisterDecisionService(mux, store)
-		server.RegisterGraphService(mux, store)
-		server.RegisterClaimService(mux, store)
-		server.RegisterConstitutionService(mux, store)
-		server.RegisterAuthoringService(mux, store)
-		server.RegisterExecutionService(mux, store)
+		authStore, err := auth.NewConfigStore(cfg.Auth)
+		if err != nil {
+			return fmt.Errorf("auth config: %w", err)
+		}
+		interceptor := auth.NewAuthInterceptor(authStore)
+		opts := connect.WithInterceptors(interceptor)
+
+		mux := server.NewMux(store, opts)
+		server.RegisterHealthService(mux, opts)
+		server.RegisterDecisionService(mux, store, opts)
+		server.RegisterGraphService(mux, store, opts)
+		server.RegisterClaimService(mux, store, opts)
+		server.RegisterConstitutionService(mux, store, opts)
+		server.RegisterAuthoringService(mux, store, opts)
+		server.RegisterExecutionService(mux, store, opts)
 		driftEngine := drift.NewEngine(store, nil)
 		lintEngine := linter.NewEngine(store, nil)
-		server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil)
+		server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts)
 
 		// TODO(slice-7): Project root for inject should come from request context,
 		// not daemon CWD. Pass empty string; inject handler needs rework.
-		syncHandler := server.RegisterSyncService(mux, store, "")
+		syncHandler := server.RegisterSyncService(mux, store, "", opts)
 		runner := syncpkg.NewExecRunner()
 		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
 		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))

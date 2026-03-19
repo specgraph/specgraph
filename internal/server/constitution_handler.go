@@ -24,9 +24,9 @@ type ConstitutionHandler struct {
 var _ specgraphv1connect.ConstitutionServiceHandler = (*ConstitutionHandler)(nil)
 
 // RegisterConstitutionService registers the ConstitutionService on the given mux.
-func RegisterConstitutionService(mux *http.ServeMux, scoper storage.Scoper) {
+func RegisterConstitutionService(mux *http.ServeMux, scoper storage.Scoper, opts ...connect.HandlerOption) {
 	handler := &ConstitutionHandler{scoper: scoper}
-	path, h := specgraphv1connect.NewConstitutionServiceHandler(handler)
+	path, h := specgraphv1connect.NewConstitutionServiceHandler(handler, opts...)
 	mux.Handle(path, h)
 }
 

@@ -31,7 +31,7 @@ func (h *HealthHandler) Health(_ context.Context, _ *connect.Request[specv1.Heal
 }
 
 // RegisterHealthService registers the ServerService on the given mux.
-func RegisterHealthService(mux *http.ServeMux) {
-	path, handler := specgraphv1connect.NewServerServiceHandler(&HealthHandler{})
+func RegisterHealthService(mux *http.ServeMux, opts ...connect.HandlerOption) {
+	path, handler := specgraphv1connect.NewServerServiceHandler(&HealthHandler{}, opts...)
 	mux.Handle(path, handler)
 }

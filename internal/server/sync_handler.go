@@ -35,13 +35,13 @@ var _ specgraphv1connect.SyncServiceHandler = (*SyncHandler)(nil)
 // the handler so callers can register adapters via RegisterAdapter.
 // allowedOutputRoot restricts Inject output_dir to paths within this root;
 // pass "" for unrestricted mode (not recommended for production).
-func RegisterSyncService(mux *http.ServeMux, scoper storage.Scoper, allowedOutputRoot string) *SyncHandler {
+func RegisterSyncService(mux *http.ServeMux, scoper storage.Scoper, allowedOutputRoot string, opts ...connect.HandlerOption) *SyncHandler {
 	handler := &SyncHandler{
 		scoper:            scoper,
 		adapters:          map[storage.SyncAdapterType]syncpkg.Adapter{},
 		allowedOutputRoot: allowedOutputRoot,
 	}
-	path, h := specgraphv1connect.NewSyncServiceHandler(handler)
+	path, h := specgraphv1connect.NewSyncServiceHandler(handler, opts...)
 	mux.Handle(path, h)
 	return handler
 }
