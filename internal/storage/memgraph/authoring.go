@@ -92,8 +92,8 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 		}
 		return fmt.Errorf("memgraph: spec %q at stage %v, expected %q: %w", slug, actualStage, from, storage.ErrInvalidStageTransition)
 	}
-	if err := s.recomputeContentHash(ctx, slug); err != nil {
-		return err
+	if hashErr := s.recomputeContentHash(ctx, slug); hashErr != nil {
+		return hashErr
 	}
 
 	// Create a checkpoint ChangeLog for the stage transition.
@@ -122,7 +122,7 @@ func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *stora
 	if err := s.storeJSONProperty(ctx, slug, "spark_output", output); err != nil {
 		return err
 	}
-	return s.authoringOutputChangeLog(ctx, slug, "spark_output", oldFields, oldHash)
+	return s.authoringOutputChangeLog(ctx, slug, "spark_output", &oldFields, oldHash)
 }
 
 // StoreShapeOutput persists the shape stage output as JSON on the spec node.
@@ -166,7 +166,7 @@ func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *stora
 	}); txErr != nil {
 		return txErr
 	}
-	return s.authoringOutputChangeLog(ctx, slug, "shape_output", oldFields, oldHash)
+	return s.authoringOutputChangeLog(ctx, slug, "shape_output", &oldFields, oldHash)
 }
 
 // StoreSpecifyOutput persists the specify stage output as JSON on the spec node.
@@ -178,7 +178,7 @@ func (s *Store) StoreSpecifyOutput(ctx context.Context, slug string, output *sto
 	if err := s.storeJSONProperty(ctx, slug, "specify_output", output); err != nil {
 		return err
 	}
-	return s.authoringOutputChangeLog(ctx, slug, "specify_output", oldFields, oldHash)
+	return s.authoringOutputChangeLog(ctx, slug, "specify_output", &oldFields, oldHash)
 }
 
 // StoreDecomposeOutput persists the decompose output and creates child spec nodes with edges.
@@ -264,7 +264,7 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 	}
 	// Create a non-checkpoint ChangeLog for the decompose_output field change
 	// on the parent spec. Child specs get their own changelogs via CreateSpec.
-	if clErr := s.authoringOutputChangeLog(ctx, slug, "decompose_output", oldFields, oldHash); clErr != nil {
+	if clErr := s.authoringOutputChangeLog(ctx, slug, "decompose_output", &oldFields, oldHash); clErr != nil {
 		return nil, clErr
 	}
 	return childSlugs, nil
@@ -448,7 +448,7 @@ func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, da
 // only creates an entry if the content hash changed (i.e., the field was a
 // hash-input property that actually changed the hash). This keeps analytical
 // pass methods (StoreRedTeamFindings, etc.) free of changelog noise.
-func (s *Store) authoringOutputChangeLog(ctx context.Context, slug, field string, oldFields storage.SpecFields, oldHash string) error {
+func (s *Store) authoringOutputChangeLog(ctx context.Context, slug, field string, oldFields *storage.SpecFields, oldHash string) error {
 	newFields, newHash, err := s.readSpecFields(ctx, slug)
 	if err != nil {
 		return err
@@ -456,7 +456,7 @@ func (s *Store) authoringOutputChangeLog(ctx context.Context, slug, field string
 	if newHash == oldHash {
 		return nil
 	}
-	deltas := storage.ComputeFieldDeltas(oldFields, newFields)
+	deltas := storage.ComputeFieldDeltas(oldFields, &newFields)
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {
 		return err

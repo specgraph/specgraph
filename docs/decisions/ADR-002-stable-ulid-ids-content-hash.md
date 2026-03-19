@@ -73,3 +73,7 @@ primarily for drift detection and sync adapter reconciliation.
 - Sync adapters can use hash comparison for efficient reconciliation.
 - Site docs and proto comments updated to remove "content-addressable" language
   from ID descriptions.
+- Content hash is consumed by ChangeLog graph nodes for field-level change
+  tracking — every material mutation creates a ChangeLog node recording the
+  hash, field deltas, and checkpoint status. See the ChangeLog design spec at
+  `docs/superpowers/specs/2026-03-18-changelog-graph-nodes-design.md`.

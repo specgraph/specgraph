@@ -77,7 +77,7 @@ Expected: Compilation errors in files referencing `HistoryEntry` — this is exp
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 feat(proto): replace HistoryEntry with FieldChange message
 
 Remove HistoryEntry message and history field from Spec,
@@ -287,7 +287,7 @@ Expected: FAIL in memgraph and server packages — fixed in next tasks
 
 - [ ] **Step 8: Commit**
 
-```
+```text
 feat(storage): add ChangeLogEntry, FieldChange types and ComputeFieldDeltas
 
 Introduce domain types for changelog tracking. Remove HistoryEntry
@@ -344,7 +344,7 @@ Expected: FAIL — still references to `history_json` in queries and `spec.Histo
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 refactor(memgraph): remove history marshaling code and tests
 
 Remove marshalHistory, unmarshalHistory, appendHistory,
@@ -402,7 +402,7 @@ Expected: FAIL — lifecycle.go still references `spec.History` and `appendHisto
 
 - [ ] **Step 8: Commit**
 
-```
+```text
 refactor(memgraph): remove history_json from all Cypher queries
 
 Remove history_json from CreateSpec, GetSpec, ListSpecs, UpdateSpec
@@ -453,7 +453,7 @@ Expected: FAIL in `internal/server/convert.go` — `historyToProto` references r
 
 - [ ] **Step 6: Commit**
 
-```
+```text
 refactor(memgraph): remove history from lifecycle operations
 
 Remove HistoryEntry creation, appendHistory calls, and
@@ -486,7 +486,7 @@ Expected: PASS (some tests may need updates if they assert on History field — 
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 refactor(server): remove history converter
 
 Remove historyToProto and History field from specToProto
@@ -793,7 +793,7 @@ Expected: FAIL — `CreateSpec` doesn't create ChangeLog nodes yet. That's Task 
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 feat(memgraph): add ChangeLog storage implementation
 
 Add createChangeLog, ListChanges, field change marshaling,
@@ -939,7 +939,7 @@ Expected: PASS
 
 - [ ] **Step 6: Commit**
 
-```
+```text
 feat(memgraph): create ChangeLog nodes on CreateSpec and UpdateSpec
 
 CreateSpec creates a checkpoint ChangeLog with all initial fields.
@@ -1028,6 +1028,7 @@ func TestStoreSparkOutput_CreatesChangeLog(t *testing.T) {
 These all call `storeJSONProperty` which then calls `recomputeContentHash`. The ChangeLog creation needs to happen around `recomputeContentHash`. The cleanest approach: read old spec before, read new spec after, compare hashes, create ChangeLog if different.
 
 Modify `storeJSONProperty` or create a wrapper that:
+
 1. Reads old spec fields (including the relevant authoring output)
 2. Calls the existing `storeJSONProperty`
 3. Reads new spec
@@ -1036,6 +1037,7 @@ Modify `storeJSONProperty` or create a wrapper that:
 - [ ] **Step 5: Handle StoreDecomposeOutput separately**
 
 `StoreDecomposeOutput` is different from the other `Store*Output` methods — it creates child specs and `COMPOSES`/`DEPENDS_ON` edges in addition to storing the output. Wire ChangeLog creation for:
+
 1. The parent spec's `decompose_output` field change (non-checkpoint)
 2. Each child spec creation (checkpoint, same as `CreateSpec`)
 
@@ -1051,7 +1053,7 @@ Expected: PASS
 
 - [ ] **Step 7: Commit**
 
-```
+```text
 feat(memgraph): create ChangeLog nodes on stage transitions and authoring outputs
 
 TransitionStage creates checkpoint ChangeLog entries.
@@ -1189,7 +1191,7 @@ Expected: PASS
 
 - [ ] **Step 6: Commit**
 
-```
+```text
 feat(memgraph): create ChangeLog nodes on lifecycle operations
 
 Amend, supersede, and abandon operations create checkpoint
@@ -1276,7 +1278,7 @@ Expected: PASS
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 test(memgraph): add integration tests for ListChanges filters
 
 Test checkpoint-only, since-version, limit, and not-found
@@ -1304,7 +1306,7 @@ Expected: PASS
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 feat(memgraph): add ChangeLog indexes on version and date
 ```
 
@@ -1319,6 +1321,7 @@ feat(memgraph): add ChangeLog indexes on version and date
 Run: `rg "spec\.History|\.GetHistory\(\)|historyToProto" --type go -C 2`
 
 Known locations (verify these still exist):
+
 - `internal/server/convert_test.go` — `TestHistoryToProto`, History assertions in `TestSpecToProto`
 - `internal/server/lifecycle_handler_test.go` — History assertions (lines ~140-142, ~157-158)
 - `e2e/api/lifecycle_test.go` — `.GetHistory()` assertions (lines ~73-75, ~140, ~187-189)
@@ -1351,7 +1354,7 @@ Expected: PASS
 
 - [ ] **Step 7: Commit**
 
-```
+```text
 test: remove History/HistoryEntry assertions across all test files
 
 Update server converter tests, lifecycle handler tests, and
@@ -1401,7 +1404,7 @@ Add a note that content hash is now consumed by ChangeLog nodes for field-level 
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 docs: add change tracking documentation
 
 Update specs.md with Change Tracking section, authoring.md with

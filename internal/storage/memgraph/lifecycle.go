@@ -120,8 +120,8 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 			return nil
 		})
 	}
-	if err := s.recomputeContentHash(ctx, slug); err != nil {
-		return nil, err
+	if hashErr := s.recomputeContentHash(ctx, slug); hashErr != nil {
+		return nil, hashErr
 	}
 	updatedSpec, err := recordToSpec(records[0])
 	if err != nil {

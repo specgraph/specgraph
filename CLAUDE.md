@@ -63,6 +63,7 @@ task build          # Generate proto + build binary
 | `internal/server/` | ConnectRPC handlers + proto↔domain converters |
 | `internal/storage/` | Storage interfaces (domain types, not protobuf) |
 | `internal/storage/memgraph/` | Memgraph implementation (Cypher queries, testcontainers) |
+| `internal/storage/memgraph/changelog.go` | ChangeLog node operations (create, list, index, field change marshaling) |
 | `internal/sync/` | Sync adapters (beads, GitHub) with exec runner |
 | `e2e/` | End-to-end tests (Ginkgo/Gomega, require Docker) |
 | `docs/plans/` | Implementation plan documents |
@@ -136,6 +137,7 @@ jj workspace update-stale
 - **Handler error sanitization** — `stageError` and similar methods sanitize internal errors before returning to clients. Test assertions MUST use error codes (`connect.CodeInternal`, `connect.CodeNotFound`), not error message strings.
 - **Mock backends must use sentinel errors** — When handler code uses `errors.Is()` checks (e.g., `storage.ErrSpecNotFound`, `storage.ErrDecisionNotFound`), mock/fake backends must return these sentinel errors, not `fmt.Errorf()`.
 - **DECIDED_IN edge direction** — Per ADR-003, DECIDED_IN edges go from spec → decision. In `acceptLinkedDecisions`, `edge.ToID` is the decision slug.
+- **HAS_CHANGE edge is internal-only** — `HAS_CHANGE` (Spec → ChangeLog) is not in the proto `EdgeType` enum and is not exposed via `AddEdge`/`RemoveEdge` RPCs. It's created automatically by storage layer mutations.
 - **Use 4-backtick fences for nested code blocks** — when docs embed files containing ``` fences (e.g., SKILL.md content), use ````markdown for the outer block. Bare ``` nesting creates broken/orphaned fences.
 
 ## Roadmap

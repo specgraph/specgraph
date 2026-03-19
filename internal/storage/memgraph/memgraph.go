@@ -206,7 +206,8 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		Priority:   priority,
 		Complexity: complexity,
 	}
-	deltas := storage.ComputeFieldDeltas(storage.SpecFields{}, allFields)
+	empty := storage.SpecFields{}
+	deltas := storage.ComputeFieldDeltas(&empty, &allFields)
 	clEntry := &storage.ChangeLogEntry{
 		Version:     spec.Version,
 		Stage:       spec.Stage,
@@ -422,7 +423,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 			SpecifyOutput:   authoringOutputs["specify_output"],
 			DecomposeOutput: authoringOutputs["decompose_output"],
 		}
-		deltas := storage.ComputeFieldDeltas(oldFields, newFields)
+		deltas := storage.ComputeFieldDeltas(&oldFields, &newFields)
 		clEntry := &storage.ChangeLogEntry{
 			Version:     spec.Version,
 			Stage:       spec.Stage,
