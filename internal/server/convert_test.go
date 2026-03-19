@@ -48,23 +48,11 @@ func TestSpecToProto_LifecycleFields(t *testing.T) {
 		UpdatedAt:    now,
 		SupersededBy: "login-v2",
 		Supersedes:   "login-v0",
-		History: []storage.HistoryEntry{
-			{Version: 1, Stage: "spark", Summary: "Created", Date: now},
-			{Version: 2, Stage: "done", Summary: "Completed", Reason: "ready", Date: now},
-			{Version: 3, Stage: "superseded", Summary: "Superseded by login-v2", Date: now},
-		},
 	}
 	pb, err := specToProto(spec)
 	require.NoError(t, err)
 	assert.Equal(t, "login-v2", pb.SupersededBy)
 	assert.Equal(t, "login-v0", pb.Supersedes)
-	require.Len(t, pb.History, 3)
-	assert.Equal(t, int32(1), pb.History[0].Version)
-	assert.Equal(t, "spark", pb.History[0].Stage)
-	assert.Equal(t, "Created", pb.History[0].Summary)
-	assert.Equal(t, int32(3), pb.History[2].Version)
-	assert.Equal(t, "superseded", pb.History[2].Stage)
-	assert.Equal(t, "Superseded by login-v2", pb.History[2].Summary)
 }
 
 func TestSpecsToProto(t *testing.T) {
@@ -214,42 +202,6 @@ func TestEdgeTypeToProto(t *testing.T) {
 
 	_, err := edgeTypeToProto("unknown")
 	assert.Error(t, err)
-}
-
-func TestHistoryToProto(t *testing.T) {
-	t.Run("nil/empty returns nil", func(t *testing.T) {
-		assert.Nil(t, historyToProto(nil))
-		assert.Nil(t, historyToProto([]storage.HistoryEntry{}))
-	})
-
-	t.Run("converts entries", func(t *testing.T) {
-		now := time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC)
-		entries := []storage.HistoryEntry{
-			{Version: 1, Stage: "spark", Summary: "Created", Reason: "init", Date: now},
-			{Version: 2, Stage: "shape", Summary: "Shaped", Reason: "refined", Date: now.Add(time.Hour)},
-		}
-		pbs := historyToProto(entries)
-		require.Len(t, pbs, 2)
-
-		assert.Equal(t, int32(1), pbs[0].Version)
-		assert.Equal(t, "spark", pbs[0].Stage)
-		assert.Equal(t, "Created", pbs[0].Summary)
-		assert.Equal(t, "init", pbs[0].Reason)
-		require.NotNil(t, pbs[0].Date)
-		assert.Equal(t, now.Unix(), pbs[0].Date.AsTime().Unix())
-
-		assert.Equal(t, int32(2), pbs[1].Version)
-		assert.Equal(t, "shape", pbs[1].Stage)
-	})
-
-	t.Run("zero date produces nil timestamp", func(t *testing.T) {
-		entries := []storage.HistoryEntry{
-			{Version: 1, Stage: "spark", Summary: "s"},
-		}
-		pbs := historyToProto(entries)
-		require.Len(t, pbs, 1)
-		assert.Nil(t, pbs[0].Date)
-	})
 }
 
 func TestLifecycleToProto(t *testing.T) {

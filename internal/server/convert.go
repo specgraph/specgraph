@@ -40,7 +40,6 @@ func specToProto(s *storage.Spec) (*specv1.Spec, error) {
 		Lifecycle:    lc,
 		SupersededBy: s.SupersededBy,
 		Supersedes:   s.Supersedes,
-		History:      historyToProto(s.History),
 		Notes:        s.Notes,
 		ContentHash:  s.ContentHash,
 	}, nil
@@ -456,25 +455,6 @@ func executionEventsToProto(events []*storage.ExecutionEvent) []*specv1.Executio
 	result := make([]*specv1.ExecutionEvent, len(events))
 	for i, e := range events {
 		result[i] = executionEventToProto(e)
-	}
-	return result
-}
-
-// --- History ---
-
-func historyToProto(entries []storage.HistoryEntry) []*specv1.HistoryEntry {
-	if len(entries) == 0 {
-		return nil
-	}
-	result := make([]*specv1.HistoryEntry, len(entries))
-	for i, e := range entries {
-		result[i] = &specv1.HistoryEntry{
-			Version: e.Version,
-			Stage:   string(e.Stage),
-			Summary: e.Summary,
-			Reason:  e.Reason,
-			Date:    timeToProto(e.Date),
-		}
 	}
 	return result
 }
