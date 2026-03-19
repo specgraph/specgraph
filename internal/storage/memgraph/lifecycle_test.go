@@ -483,51 +483,99 @@ func TestLifecycle(t *testing.T) {
 		}
 	})
 
-	t.Run("AcknowledgeDrift_PersistsAcrossReads", func(t *testing.T) {
+	t.Run("AcknowledgeDrift_PerUpstream_UpdatesEdgeHash", func(t *testing.T) {
 		clearGraph(t, boltURI)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
 		defer store.Close(ctx)
 
-		_, err = store.CreateSpec(ctx, "ack-persist", "Test spec", "p1", "medium")
+		// Create upstream and downstream specs.
+		_, err = store.CreateSpec(ctx, "ack-upstream", "Upstream spec", "p1", "medium")
 		require.NoError(t, err)
+		_, err = store.CreateSpec(ctx, "ack-downstream", "Downstream spec", "p1", "medium")
+		require.NoError(t, err)
+
+		// Add DEPENDS_ON edge (baselines upstream's content hash).
+		_, err = store.AddEdge(ctx, "ack-downstream", "ack-upstream", storage.EdgeTypeDependsOn)
+		require.NoError(t, err)
+
+		// Move downstream to done stage so ack is eligible.
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "ack-persist", nil, &doneStage, nil, nil, nil)
+		_, err = store.UpdateSpec(ctx, "ack-downstream", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
-		_, err = store.LifecycleAcknowledgeDrift(ctx, "ack-persist", "intentional drift")
+		// Modify upstream (changes its content hash).
+		newIntent := "Updated upstream intent"
+		_, err = store.UpdateSpec(ctx, "ack-upstream", &newIntent, nil, nil, nil, nil)
+		require.NoError(t, err)
+		upstream, err := store.GetSpec(ctx, "ack-upstream")
 		require.NoError(t, err)
 
-		// Verify the acknowledgment persists by reading the spec independently
-		// and acknowledging again — the note should reflect the latest value.
-		report, err := store.LifecycleAcknowledgeDrift(ctx, "ack-persist", "new note")
+		// Acknowledge drift for this specific upstream.
+		err = store.LifecycleAcknowledgeDrift(ctx, "ack-downstream", "ack-upstream", "intentional drift")
 		require.NoError(t, err)
-		require.True(t, report.Acknowledged)
-		require.Equal(t, "new note", report.AcknowledgeNote)
+
+		// Verify edge hash updated to upstream's current hash.
+		deps, err := store.GetDependenciesWithEdgeData(ctx, "ack-downstream")
+		require.NoError(t, err)
+		require.Len(t, deps, 1)
+		require.Equal(t, upstream.ContentHash, deps[0].ContentHashAtLink)
 	})
 
-	t.Run("AcknowledgeDrift_VisibleViaGetSpec", func(t *testing.T) {
+	t.Run("AcknowledgeDrift_AllUpstreams_UpdatesAllEdges", func(t *testing.T) {
 		clearGraph(t, boltURI)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
 		defer store.Close(ctx)
 
-		_, err = store.CreateSpec(ctx, "ack-getspec", "Test spec", "p1", "medium")
+		// Create two upstreams and one downstream.
+		_, err = store.CreateSpec(ctx, "all-up1", "Upstream 1", "p1", "medium")
 		require.NoError(t, err)
+		_, err = store.CreateSpec(ctx, "all-up2", "Upstream 2", "p1", "medium")
+		require.NoError(t, err)
+		_, err = store.CreateSpec(ctx, "all-down", "Downstream", "p1", "medium")
+		require.NoError(t, err)
+
+		// Add DEPENDS_ON edges.
+		_, err = store.AddEdge(ctx, "all-down", "all-up1", storage.EdgeTypeDependsOn)
+		require.NoError(t, err)
+		_, err = store.AddEdge(ctx, "all-down", "all-up2", storage.EdgeTypeDependsOn)
+		require.NoError(t, err)
+
+		// Move downstream to done.
 		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "ack-getspec", nil, &doneStage, nil, nil, nil)
+		_, err = store.UpdateSpec(ctx, "all-down", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
-		_, err = store.LifecycleAcknowledgeDrift(ctx, "ack-getspec", "drift accepted")
+		// Modify both upstreams.
+		intent1 := "Changed upstream 1"
+		_, err = store.UpdateSpec(ctx, "all-up1", &intent1, nil, nil, nil, nil)
+		require.NoError(t, err)
+		intent2 := "Changed upstream 2"
+		_, err = store.UpdateSpec(ctx, "all-up2", &intent2, nil, nil, nil, nil)
 		require.NoError(t, err)
 
-		// GetSpec should reflect the acknowledged flag set by AcknowledgeDrift.
-		spec, err := store.GetSpec(ctx, "ack-getspec")
+		up1, err := store.GetSpec(ctx, "all-up1")
 		require.NoError(t, err)
-		require.True(t, spec.DriftAcknowledged)
-		require.Equal(t, "drift accepted", spec.DriftAcknowledgeNote)
+		up2, err := store.GetSpec(ctx, "all-up2")
+		require.NoError(t, err)
+
+		// Blanket ack (empty upstreamSlug = all).
+		err = store.LifecycleAcknowledgeDrift(ctx, "all-down", "", "blanket ack")
+		require.NoError(t, err)
+
+		// Verify both edges updated.
+		deps, err := store.GetDependenciesWithEdgeData(ctx, "all-down")
+		require.NoError(t, err)
+		require.Len(t, deps, 2)
+		hashes := map[string]string{}
+		for _, d := range deps {
+			hashes[d.Slug] = d.ContentHashAtLink
+		}
+		require.Equal(t, up1.ContentHash, hashes["all-up1"])
+		require.Equal(t, up2.ContentHash, hashes["all-up2"])
 	})
 
 	t.Run("AmendedSpec_CanBeAbandoned", func(t *testing.T) {
