@@ -24,11 +24,6 @@ type exitError struct {
 
 func (e *exitError) Error() string { return e.msg }
 
-// errDriftItemsStale is returned when AcknowledgeDrift succeeds but the
-// server reports that drift items may be stale (re-check failed after
-// acknowledgment). Exits with code 2; the warning is printed before returning.
-var errDriftItemsStale = &exitError{code: 2, msg: "drift items are stale: re-check failed after acknowledgment"}
-
 func lifecycleClient() (specgraphv1connect.LifecycleServiceClient, error) {
 	return newClient(specgraphv1connect.NewLifecycleServiceClient)
 }
@@ -180,14 +175,7 @@ func runDrift(_ *cobra.Command, args []string) error {
 		if len(r.GetItems()) == 0 && r.GetErrorMessage() == "" {
 			continue
 		}
-		ack := ""
-		if r.GetAcknowledged() {
-			ack = " (acknowledged)"
-		}
-		fmt.Printf("Spec: %s%s\n", r.GetSpecSlug(), ack)
-		if r.GetAckStateUnavailable() {
-			fmt.Fprintf(os.Stderr, "  [warn] acknowledgment state unavailable for %s\n", r.GetSpecSlug())
-		}
+		fmt.Printf("Spec: %s\n", r.GetSpecSlug())
 		for _, item := range r.GetItems() {
 			fmt.Printf("  [%s] %s: %s\n", item.GetSeverity(), item.GetType(), item.GetDescription())
 			hasDrift = true
@@ -219,25 +207,37 @@ var driftAckCmd = &cobra.Command{
 	RunE:  runDriftAck,
 }
 
-var driftAckNote string
+var (
+	driftAckNote     string
+	driftAckUpstream string
+	driftAckAll      bool
+)
 
 func runDriftAck(_ *cobra.Command, args []string) error {
+	if driftAckUpstream == "" && !driftAckAll {
+		return fmt.Errorf("specify --upstream <slug> or --all")
+	}
+	if driftAckUpstream != "" && driftAckAll {
+		return fmt.Errorf("cannot specify both --upstream and --all")
+	}
 	client, err := lifecycleClient()
 	if err != nil {
 		return err
 	}
 	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-		Slug: args[0],
-		Note: driftAckNote,
+		Slug:         args[0],
+		Note:         driftAckNote,
+		UpstreamSlug: driftAckUpstream,
+		All:          driftAckAll,
 	}))
 	if err != nil {
 		return fmt.Errorf("acknowledge drift: %w", err)
 	}
 	r := resp.Msg.GetReport()
-	fmt.Printf("Acknowledged drift for: %s\n", r.GetSpecSlug())
-	if r.GetItemsStale() {
-		fmt.Fprintf(os.Stderr, "Warning: drift items may be stale (re-check failed after acknowledgment)\n")
-		return errDriftItemsStale
+	if driftAckAll {
+		fmt.Printf("Acknowledged drift for %s (all upstreams)\n", r.GetSpecSlug())
+	} else {
+		fmt.Printf("Acknowledged drift for %s (upstream: %s)\n", r.GetSpecSlug(), driftAckUpstream)
 	}
 	return nil
 }
@@ -322,6 +322,8 @@ func init() {
 	driftCmd.Flags().StringVar(&driftScope, "scope", "", "drift check scope (deps|interfaces|verify); omit for all")
 	driftAckCmd.Flags().StringVar(&driftAckNote, "note", "", "acknowledgement note (required)")
 	cobra.CheckErr(driftAckCmd.MarkFlagRequired("note"))
+	driftAckCmd.Flags().StringVar(&driftAckUpstream, "upstream", "", "specific upstream slug to acknowledge")
+	driftAckCmd.Flags().BoolVar(&driftAckAll, "all", false, "acknowledge all upstream dependencies")
 	driftCmd.AddCommand(driftAckCmd)
 	rootCmd.AddCommand(driftCmd)
 

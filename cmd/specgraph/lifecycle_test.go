@@ -105,42 +105,7 @@ func TestRunDriftAck_ClientError(t *testing.T) {
 	require.Error(t, err)
 }
 
-// fakeAckHandler implements only AcknowledgeDrift; all other methods return Unimplemented.
-type fakeAckHandler struct {
-	specgraphv1connect.UnimplementedLifecycleServiceHandler
-}
-
-func (fakeAckHandler) AcknowledgeDrift(_ context.Context, _ *connect.Request[specv1.DriftAcknowledgeRequest]) (*connect.Response[specv1.DriftAcknowledgeResponse], error) {
-	return connect.NewResponse(&specv1.DriftAcknowledgeResponse{
-		Report: &specv1.DriftReport{
-			SpecSlug:     "stale-spec",
-			Acknowledged: true,
-			ItemsStale:   true,
-		},
-	}), nil
-}
-
-func TestRunDriftAck_ItemsStale_ExitsWithCode2(t *testing.T) {
-	// Stand up a ConnectRPC server with a fake handler returning ItemsStale=true.
-	mux := http.NewServeMux()
-	path, handler := specgraphv1connect.NewLifecycleServiceHandler(fakeAckHandler{})
-	mux.Handle(path, handler)
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-
-	// Write a config file pointing at the test server.
-	cfgDir := t.TempDir()
-	cfgPath := filepath.Join(cfgDir, "config.yaml")
-	require.NoError(t, os.WriteFile(cfgPath, []byte(fmt.Sprintf("server:\n  remote: %s\n", srv.URL)), 0o600))
-	old := cfgFile
-	cfgFile = cfgPath
-	t.Cleanup(func() { cfgFile = old })
-
-	err := runDriftAck(nil, []string{"stale-spec"})
-	require.ErrorIs(t, err, errDriftItemsStale)
-}
-
-// fakeAckHappyHandler implements AcknowledgeDrift returning a successful ack with no stale items.
+// fakeAckHappyHandler implements AcknowledgeDrift returning a successful ack.
 type fakeAckHappyHandler struct {
 	specgraphv1connect.UnimplementedLifecycleServiceHandler
 }
@@ -148,29 +113,61 @@ type fakeAckHappyHandler struct {
 func (fakeAckHappyHandler) AcknowledgeDrift(_ context.Context, req *connect.Request[specv1.DriftAcknowledgeRequest]) (*connect.Response[specv1.DriftAcknowledgeResponse], error) {
 	return connect.NewResponse(&specv1.DriftAcknowledgeResponse{
 		Report: &specv1.DriftReport{
-			SpecSlug:     req.Msg.GetSlug(),
-			Acknowledged: true,
-			ItemsStale:   false,
+			SpecSlug: req.Msg.GetSlug(),
 		},
 	}), nil
 }
 
-func TestRunDriftAck_HappyPath(t *testing.T) {
-	mux := http.NewServeMux()
-	path, handler := specgraphv1connect.NewLifecycleServiceHandler(fakeAckHappyHandler{})
-	mux.Handle(path, handler)
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
+func TestRunDriftAck_HappyPath_All(t *testing.T) {
+	startFakeLifecycleServer(t, fakeAckHappyHandler{})
 
-	cfgDir := t.TempDir()
-	cfgPath := filepath.Join(cfgDir, "config.yaml")
-	require.NoError(t, os.WriteFile(cfgPath, []byte(fmt.Sprintf("server:\n  remote: %s\n", srv.URL)), 0o600))
-	old := cfgFile
-	cfgFile = cfgPath
-	t.Cleanup(func() { cfgFile = old })
+	oldAll := driftAckAll
+	driftAckAll = true
+	t.Cleanup(func() { driftAckAll = oldAll })
 
 	err := runDriftAck(nil, []string{"my-spec"})
 	require.NoError(t, err)
+}
+
+func TestRunDriftAck_HappyPath_Upstream(t *testing.T) {
+	startFakeLifecycleServer(t, fakeAckHappyHandler{})
+
+	oldUpstream := driftAckUpstream
+	driftAckUpstream = "dep-spec"
+	t.Cleanup(func() { driftAckUpstream = oldUpstream })
+
+	err := runDriftAck(nil, []string{"my-spec"})
+	require.NoError(t, err)
+}
+
+func TestRunDriftAck_RequiresUpstreamOrAll(t *testing.T) {
+	oldAll := driftAckAll
+	oldUpstream := driftAckUpstream
+	driftAckAll = false
+	driftAckUpstream = ""
+	t.Cleanup(func() {
+		driftAckAll = oldAll
+		driftAckUpstream = oldUpstream
+	})
+
+	err := runDriftAck(nil, []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--upstream")
+}
+
+func TestRunDriftAck_CannotSpecifyBoth(t *testing.T) {
+	oldAll := driftAckAll
+	oldUpstream := driftAckUpstream
+	driftAckAll = true
+	driftAckUpstream = "dep-spec"
+	t.Cleanup(func() {
+		driftAckAll = oldAll
+		driftAckUpstream = oldUpstream
+	})
+
+	err := runDriftAck(nil, []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot specify both")
 }
 
 // startFakeLifecycleServer registers handler with a fresh httptest.Server and
@@ -391,8 +388,7 @@ func (fakeDriftItemsHandler) CheckDrift(_ context.Context, _ *connect.Request[sp
 	return connect.NewResponse(&specv1.DriftCheckResponse{
 		Reports: []*specv1.DriftReport{
 			{
-				SpecSlug:     "my-spec",
-				Acknowledged: true,
+				SpecSlug: "my-spec",
 				Items: []*specv1.DriftItem{
 					{
 						Type:        specv1.DriftType_DRIFT_TYPE_DEPENDENCY,
@@ -531,51 +527,6 @@ func TestRunDrift_HappyPath_WithSlug(t *testing.T) {
 	err := runDrift(nil, []string{"my-spec"})
 	require.NoError(t, err)
 	assert.Equal(t, "my-spec", h.capturedSlug)
-}
-
-// --- runDrift AckStateUnavailable warning (spgr-0fk.2) ---
-
-type fakeDriftAckUnavailableHandler struct {
-	specgraphv1connect.UnimplementedLifecycleServiceHandler
-}
-
-func (fakeDriftAckUnavailableHandler) CheckDrift(_ context.Context, _ *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
-	return connect.NewResponse(&specv1.DriftCheckResponse{
-		Reports: []*specv1.DriftReport{
-			{
-				SpecSlug:            "warn-spec",
-				AckStateUnavailable: true,
-				Items: []*specv1.DriftItem{
-					{
-						Type:        specv1.DriftType_DRIFT_TYPE_DEPENDENCY,
-						Severity:    specv1.DriftSeverity_DRIFT_SEVERITY_LOW,
-						Description: "dependency changed",
-					},
-				},
-			},
-		},
-	}), nil
-}
-
-func TestRunDrift_AckStateUnavailable_WritesStderrWarning(t *testing.T) {
-	startFakeLifecycleServer(t, fakeDriftAckUnavailableHandler{})
-
-	// Redirect os.Stderr to a pipe so we can capture the warning.
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	oldStderr := os.Stderr
-	os.Stderr = w
-	t.Cleanup(func() { os.Stderr = oldStderr })
-
-	runErr := runDrift(nil, nil)
-
-	require.NoError(t, w.Close())
-	var buf [4096]byte
-	n, _ := r.Read(buf[:])
-	captured := string(buf[:n])
-
-	require.Error(t, runErr)
-	assert.Contains(t, captured, "[warn] acknowledgment state unavailable for warn-spec")
 }
 
 type fakeLintEmptyHandler struct {
