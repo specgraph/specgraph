@@ -149,7 +149,8 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes
+		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
+		       s.content_hash
 	`
 	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{
 		"slug":             slug,
@@ -265,10 +266,12 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		       old.version, old.created_at, old.updated_at,
 		       old.lifecycle, old.superseded_by, old.supersedes, old.history_json,
 		       old.drift_acknowledged, old.drift_acknowledge_note, old.notes,
+		       old.content_hash,
 		       new.id, new.slug, new.intent, new.stage, new.priority, new.complexity,
 		       new.version, new.created_at, new.updated_at,
 		       new.lifecycle, new.superseded_by, new.supersedes, new.history_json,
-		       new.drift_acknowledged, new.drift_acknowledge_note, new.notes
+		       new.drift_acknowledged, new.drift_acknowledge_note, new.notes,
+		       new.content_hash
 	`
 	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{
 		"old_slug":             oldSlug,
@@ -322,14 +325,14 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	}
 
 	rec := records[0]
-	// Parse old spec from positions 0-15 (16 fields).
+	// Parse old spec from positions 0-16 (17 fields).
 	oldSpec, err = recordToSpec(rec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("memgraph: supersede: parse old spec: %w", err)
 	}
 
-	// Parse new spec from positions 16-31 (16 fields) using a shifted record adapter.
-	newSpec, err = recordToSpecOffset(rec, 16)
+	// Parse new spec from positions 17-33 (17 fields) using a shifted record adapter.
+	newSpec, err = recordToSpecOffset(rec, 17)
 	if err != nil {
 		return nil, nil, fmt.Errorf("memgraph: supersede: parse new spec: %w", err)
 	}
@@ -377,7 +380,8 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes
+		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
+		       s.content_hash
 	`
 	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{
 		"slug":             slug,
