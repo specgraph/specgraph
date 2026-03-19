@@ -116,14 +116,16 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 
 // StoreSparkOutput persists the spark stage output as JSON on the spec node.
 func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *storage.SparkOutput) error {
-	oldFields, oldHash, _, _, err := s.readSpecFields(ctx, slug)
-	if err != nil {
-		return err
-	}
-	if err := s.storeJSONProperty(ctx, slug, "spark_output", output); err != nil {
-		return err
-	}
-	return s.authoringOutputChangeLog(ctx, slug, "spark_output", &oldFields, oldHash)
+	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		oldFields, oldHash, _, _, err := s.readSpecFields(txCtx, slug)
+		if err != nil {
+			return err
+		}
+		if err := s.storeJSONProperty(txCtx, slug, "spark_output", output); err != nil {
+			return err
+		}
+		return s.authoringOutputChangeLog(txCtx, slug, "spark_output", &oldFields, oldHash)
+	})
 }
 
 // StoreShapeOutput persists the shape stage output as JSON on the spec node.
@@ -172,14 +174,16 @@ func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *stora
 
 // StoreSpecifyOutput persists the specify stage output as JSON on the spec node.
 func (s *Store) StoreSpecifyOutput(ctx context.Context, slug string, output *storage.SpecifyOutput) error {
-	oldFields, oldHash, _, _, err := s.readSpecFields(ctx, slug)
-	if err != nil {
-		return err
-	}
-	if err := s.storeJSONProperty(ctx, slug, "specify_output", output); err != nil {
-		return err
-	}
-	return s.authoringOutputChangeLog(ctx, slug, "specify_output", &oldFields, oldHash)
+	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		oldFields, oldHash, _, _, err := s.readSpecFields(txCtx, slug)
+		if err != nil {
+			return err
+		}
+		if err := s.storeJSONProperty(txCtx, slug, "specify_output", output); err != nil {
+			return err
+		}
+		return s.authoringOutputChangeLog(txCtx, slug, "specify_output", &oldFields, oldHash)
+	})
 }
 
 // StoreDecomposeOutput persists the decompose output and creates child spec nodes with edges.
