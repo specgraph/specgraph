@@ -192,6 +192,20 @@ func (s *Store) GetDependenciesWithEdgeData(ctx context.Context, slug string) ([
 	return refs, nil
 }
 
+// RefreshDependencyHashes updates content_hash_at_link on all outgoing
+// DEPENDS_ON edges for a spec, setting them to each upstream's current content_hash.
+func (s *Store) RefreshDependencyHashes(ctx context.Context, slug string) error {
+	query := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})-[dep:DEPENDS_ON]->(upstream)
+		SET dep.content_hash_at_link = COALESCE(upstream.content_hash, "")
+	`
+	_, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
+	if err != nil {
+		return fmt.Errorf("memgraph: refresh dependency hashes: %w", err)
+	}
+	return nil
+}
+
 // GetTransitiveDeps returns all transitive dependencies of a node.
 func (s *Store) GetTransitiveDeps(ctx context.Context, slug string) ([]storage.NodeRef, error) {
 	query := `
