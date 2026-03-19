@@ -65,24 +65,20 @@ func (s DriftSeverity) IsValid() bool {
 
 // DriftItem is a single drift finding.
 type DriftItem struct {
-	Type            DriftType
-	Severity        DriftSeverity
-	Description     string
-	SpecSlug        string
-	UpstreamSlug    string
-	ExpectedVersion int32
-	ActualVersion   int32
+	Type         DriftType
+	Severity     DriftSeverity
+	Description  string
+	SpecSlug     string
+	UpstreamSlug string
+	ExpectedHash string // edge's content_hash_at_link
+	ActualHash   string // upstream's current ContentHash
 }
 
 // DriftReport aggregates drift items for a spec.
 type DriftReport struct {
-	SpecSlug            string
-	Items               []DriftItem
-	Acknowledged        bool
-	AcknowledgeNote     string
-	ItemsStale          bool
-	ErrorMessage        string // non-empty when drift checking failed for this spec
-	AckStateUnavailable bool   // true when ack state could not be fetched (e.g. spec deleted)
+	SpecSlug     string
+	Items        []DriftItem
+	ErrorMessage string
 }
 
 // LintSeverity indicates lint violation urgency.
@@ -121,19 +117,6 @@ type LintResult struct {
 	Error      string // non-empty when linting failed for this spec (for proto)
 }
 
-// AckStateReader reads acknowledgment state fields from specs. It is a
-// separate interface so that LifecycleBackend need not carry query methods
-// used only by the handler's drift ack-state merge path.
-type AckStateReader interface {
-	// GetSpec retrieves a spec by slug.
-	// Returns ErrSpecNotFound if the spec does not exist.
-	GetSpec(ctx context.Context, slug string) (*Spec, error)
-
-	// BatchGetSpecs retrieves multiple specs by slug in a single round-trip.
-	// Missing slugs are silently omitted from the result map.
-	BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*Spec, error)
-}
-
 // LifecycleBackend defines storage operations for spec lifecycle transitions.
 type LifecycleBackend interface {
 	// LifecycleAmendSpec transitions a done spec back into authoring.
@@ -146,6 +129,6 @@ type LifecycleBackend interface {
 	// LifecycleAbandonSpec transitions a spec to abandoned (terminal).
 	LifecycleAbandonSpec(ctx context.Context, slug, reason string) (*Spec, error)
 
-	// LifecycleAcknowledgeDrift marks drift as intentional.
-	LifecycleAcknowledgeDrift(ctx context.Context, slug, note string) (*DriftReport, error)
+	// LifecycleAcknowledgeDrift marks drift as intentional for a specific upstream.
+	LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlug, note string) error
 }
