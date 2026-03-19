@@ -134,11 +134,11 @@ func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *stora
 // Decision promotion is idempotent: CreateDecision is skipped if the decision
 // already exists, but AddEdge is always called so a lost edge is recreated.
 func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *storage.ShapeOutput) error {
-	oldFields, oldHash, _, _, err := s.readSpecFields(ctx, slug)
-	if err != nil {
-		return err
-	}
-	if txErr := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		oldFields, oldHash, _, _, err := s.readSpecFields(txCtx, slug)
+		if err != nil {
+			return err
+		}
 		if err := s.storeJSONProperty(txCtx, slug, "shape_output", output); err != nil {
 			return err
 		}
@@ -165,11 +165,8 @@ func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *stora
 				return fmt.Errorf("add DECIDED_IN edge %q->%q: %w", slug, d.Slug, err)
 			}
 		}
-		return nil
-	}); txErr != nil {
-		return txErr
-	}
-	return s.authoringOutputChangeLog(ctx, slug, "shape_output", &oldFields, oldHash)
+		return s.authoringOutputChangeLog(txCtx, slug, "shape_output", &oldFields, oldHash)
+	})
 }
 
 // StoreSpecifyOutput persists the specify stage output as JSON on the spec node.
