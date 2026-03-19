@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/seanb4t/specgraph/internal/authoring"
 	"github.com/seanb4t/specgraph/internal/storage"
@@ -115,7 +116,7 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 
 // StoreSparkOutput persists the spark stage output as JSON on the spec node.
 func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *storage.SparkOutput) error {
-	oldFields, oldHash, err := s.readSpecFields(ctx, slug)
+	oldFields, oldHash, _, _, err := s.readSpecFields(ctx, slug)
 	if err != nil {
 		return err
 	}
@@ -131,7 +132,7 @@ func (s *Store) StoreSparkOutput(ctx context.Context, slug string, output *stora
 // Decision promotion is idempotent: CreateDecision is skipped if the decision
 // already exists, but AddEdge is always called so a lost edge is recreated.
 func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *storage.ShapeOutput) error {
-	oldFields, oldHash, err := s.readSpecFields(ctx, slug)
+	oldFields, oldHash, _, _, err := s.readSpecFields(ctx, slug)
 	if err != nil {
 		return err
 	}
@@ -171,7 +172,7 @@ func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *stora
 
 // StoreSpecifyOutput persists the specify stage output as JSON on the spec node.
 func (s *Store) StoreSpecifyOutput(ctx context.Context, slug string, output *storage.SpecifyOutput) error {
-	oldFields, oldHash, err := s.readSpecFields(ctx, slug)
+	oldFields, oldHash, _, _, err := s.readSpecFields(ctx, slug)
 	if err != nil {
 		return err
 	}
@@ -203,7 +204,7 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 		sliceIDs[sl.ID] = true
 	}
 	// Capture old fields before the store to detect content hash changes.
-	oldFields, oldHash, err := s.readSpecFields(ctx, slug)
+	oldFields, oldHash, _, _, err := s.readSpecFields(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
@@ -449,7 +450,7 @@ func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, da
 // hash-input property that actually changed the hash). This keeps analytical
 // pass methods (StoreRedTeamFindings, etc.) free of changelog noise.
 func (s *Store) authoringOutputChangeLog(ctx context.Context, slug, field string, oldFields *storage.SpecFields, oldHash string) error {
-	newFields, newHash, err := s.readSpecFields(ctx, slug)
+	newFields, newHash, version, updatedAtStr, err := s.readSpecFields(ctx, slug)
 	if err != nil {
 		return err
 	}
@@ -457,17 +458,17 @@ func (s *Store) authoringOutputChangeLog(ctx context.Context, slug, field string
 		return nil
 	}
 	deltas := storage.ComputeFieldDeltas(oldFields, &newFields)
-	spec, err := s.GetSpec(ctx, slug)
-	if err != nil {
-		return err
+	updatedAt, parseErr := time.Parse(sortableRFC3339Nano, updatedAtStr)
+	if parseErr != nil {
+		return fmt.Errorf("memgraph: parse updated_at for changelog: %w", parseErr)
 	}
 	clEntry := &storage.ChangeLogEntry{
-		Version:     spec.Version,
-		Stage:       spec.Stage,
+		Version:     version,
+		Stage:       storage.SpecStage(newFields.Stage),
 		ContentHash: newHash,
 		Checkpoint:  false,
 		Summary:     fmt.Sprintf("Updated %s", field),
-		Date:        spec.UpdatedAt,
+		Date:        updatedAt,
 	}
 	return s.createChangeLog(ctx, slug, clEntry, deltas)
 }

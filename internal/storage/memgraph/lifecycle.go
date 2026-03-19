@@ -123,11 +123,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	if hashErr := s.recomputeContentHash(ctx, slug); hashErr != nil {
 		return nil, hashErr
 	}
-	updatedSpec, err := recordToSpec(records[0])
-	if err != nil {
-		return nil, err
-	}
-	// Re-read content hash after recomputation for the ChangeLog entry.
+	// Re-read spec after hash recomputation to get the fresh content hash.
 	freshSpec, err := s.GetSpec(ctx, slug)
 	if err != nil {
 		return nil, err
@@ -149,7 +145,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	if clErr := s.createChangeLog(ctx, slug, clEntry, deltas); clErr != nil {
 		return nil, clErr
 	}
-	return updatedSpec, nil
+	return freshSpec, nil
 }
 
 // LifecycleSupersedeSpec marks the old spec as superseded and links it to the new spec via
@@ -267,17 +263,20 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		return nil, nil, oldErr
 	}
 
-	rec := records[0]
-	// Parse old spec from positions 0-15 (16 fields).
-	oldSpec, err = recordToSpec(rec)
-	if err != nil {
-		return nil, nil, fmt.Errorf("memgraph: supersede: parse old spec: %w", err)
+	// Recompute content hashes for both specs after the stage change.
+	if hashErr := s.recomputeContentHash(ctx, oldSlug); hashErr != nil {
+		return nil, nil, hashErr
 	}
-
-	// Parse new spec from positions 16-31 (16 fields) using a shifted record adapter.
-	newSpec, err = recordToSpecOffset(rec, 16)
+	// Only recompute hash for oldSpec (stage changed to superseded).
+	// newSpec's stage is unchanged — supersedes is not a hash-input field.
+	// Re-read both specs to get fresh values.
+	oldSpec, err = s.GetSpec(ctx, oldSlug)
 	if err != nil {
-		return nil, nil, fmt.Errorf("memgraph: supersede: parse new spec: %w", err)
+		return nil, nil, fmt.Errorf("memgraph: supersede: re-read old spec: %w", err)
+	}
+	newSpec, err = s.GetSpec(ctx, newSlug)
+	if err != nil {
+		return nil, nil, fmt.Errorf("memgraph: supersede: re-read new spec: %w", err)
 	}
 
 	// Create checkpoint ChangeLog for the old spec (→ superseded).
@@ -368,7 +367,11 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 			return nil
 		})
 	}
-	abandonedSpec, err := recordToSpec(records[0])
+	// Recompute content hash after stage change and re-read for fresh values.
+	if hashErr := s.recomputeContentHash(ctx, slug); hashErr != nil {
+		return nil, hashErr
+	}
+	abandonedSpec, err := s.GetSpec(ctx, slug)
 	if err != nil {
 		return nil, err
 	}

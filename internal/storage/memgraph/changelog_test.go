@@ -109,7 +109,7 @@ func TestStoreSparkOutput_CreatesChangeLog(t *testing.T) {
 	_, err = store.CreateSpec(ctx, "test-spark-cl", "intent", "p2", "medium")
 	require.NoError(t, err)
 
-	err = store.StoreSparkOutput(ctx, "test-spark-cl", &storage.SparkOutput{Goals: []string{"fast"}})
+	err = store.StoreSparkOutput(ctx, "test-spark-cl", &storage.SparkOutput{Seed: "fast login", Signal: "user request"})
 	require.NoError(t, err)
 
 	entries, err := store.ListChanges(ctx, "test-spark-cl", storage.ChangeLogFilter{})
@@ -143,7 +143,7 @@ func TestStoreSpecifyOutput_CreatesChangeLog(t *testing.T) {
 	require.NoError(t, err)
 
 	err = store.StoreSpecifyOutput(ctx, "test-specify-cl", &storage.SpecifyOutput{
-		AcceptanceCriteria: []string{"must be fast"},
+		VerifyCriteria: []string{"must be fast"},
 	})
 	require.NoError(t, err)
 
@@ -169,7 +169,7 @@ func TestStoreDecomposeOutput_CreatesChangeLog(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.StoreDecomposeOutput(ctx, "test-decompose-cl", &storage.DecomposeOutput{
-		Strategy: "vertical",
+		Strategy: storage.StrategyVerticalSlice,
 		Slices: []storage.DecomposeSlice{
 			{ID: "slice-a", Intent: "first slice"},
 		},
@@ -197,16 +197,10 @@ func TestLifecycleAmendSpec_CreatesCheckpointChangeLog(t *testing.T) {
 	_, err = store.CreateSpec(ctx, "test-amend-cl", "intent", "p2", "medium")
 	require.NoError(t, err)
 
-	// Walk spec through to done.
-	for _, tr := range []struct{ from, to string }{
-		{"spark", "shape"}, {"shape", "specify"}, {"specify", "decompose"},
-		{"decompose", "approved"}, {"approved", "in_progress"},
-		{"in_progress", "review"}, {"review", "done"},
-	} {
-		err = store.TransitionStage(ctx, "test-amend-cl",
-			storage.AuthoringStage(tr.from), storage.AuthoringStage(tr.to))
-		require.NoError(t, err)
-	}
+	// Set stage to "done" directly via UpdateSpec (matches existing lifecycle_test.go pattern).
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "test-amend-cl", nil, &doneStage, nil, nil, nil)
+	require.NoError(t, err)
 
 	_, err = store.LifecycleAmendSpec(ctx, "test-amend-cl", "needs rework", "shape")
 	require.NoError(t, err)

@@ -6,6 +6,7 @@ package memgraph
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -82,6 +83,10 @@ func recordBool(rec *neo4j.Record, pos int, name string) (bool, error) {
 // createChangeLog creates a ChangeLog node and links it to a Spec via a HAS_CHANGE edge.
 // The entry's ID is generated here if empty. The changes slice is serialized to JSON
 // and stored as a property on the node.
+//
+// A version guard ensures the spec's current version matches entry.Version at
+// write time. If another writer modified the spec between the mutation and this
+// call, the guard returns 0 rows and we return ErrConcurrentModification.
 func (s *Store) createChangeLog(ctx context.Context, slug string, entry *storage.ChangeLogEntry, changes []storage.FieldChange) error {
 	if entry.ID == "" {
 		entry.ID = newID("cl")
@@ -94,6 +99,7 @@ func (s *Store) createChangeLog(ctx context.Context, slug string, entry *storage
 
 	query := `
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+		WHERE s.version = $expected_version
 		CREATE (s)-[:HAS_CHANGE]->(cl:ChangeLog {
 			id: $id,
 			version: $version,
@@ -108,9 +114,10 @@ func (s *Store) createChangeLog(ctx context.Context, slug string, entry *storage
 		RETURN cl.id
 	`
 	params := mergeParams(s.projectParam(), map[string]any{
-		"slug":         slug,
-		"id":           entry.ID,
-		"version":      int64(entry.Version),
+		"slug":             slug,
+		"expected_version": int64(entry.Version),
+		"id":               entry.ID,
+		"version":          int64(entry.Version),
 		"stage":        string(entry.Stage),
 		"content_hash": entry.ContentHash,
 		"checkpoint":   entry.Checkpoint,
@@ -125,7 +132,10 @@ func (s *Store) createChangeLog(ctx context.Context, slug string, entry *storage
 		return fmt.Errorf("memgraph: create changelog: %w", err)
 	}
 	if len(records) == 0 {
-		return fmt.Errorf("memgraph: create changelog for %q: %w", slug, storage.ErrSpecNotFound)
+		// Version guard returned 0 rows. The caller already verified the spec
+		// exists (via the mutation query that matched it), so 0 rows here means
+		// the version changed between the mutation and this call.
+		return fmt.Errorf("memgraph: create changelog for %q (version %d): %w", slug, entry.Version, storage.ErrConcurrentModification)
 	}
 	return nil
 }
@@ -152,7 +162,7 @@ func (s *Store) ListChanges(ctx context.Context, slug string, opts storage.Chang
 		whereClauses = append(whereClauses, "cl.checkpoint = true")
 	}
 	if opts.SinceVersion > 0 {
-		whereClauses = append(whereClauses, "cl.version >= $since_version")
+		whereClauses = append(whereClauses, "cl.version > $since_version")
 		params["since_version"] = int64(opts.SinceVersion)
 	}
 
@@ -261,10 +271,16 @@ func (s *Store) EnsureChangeLogIndexes(ctx context.Context) error {
 	}
 	for _, stmt := range indexes {
 		session := s.driver.NewSession(ctx, neo4j.SessionConfig{})
-		_, err := session.Run(ctx, stmt, nil)
+		_, runErr := session.Run(ctx, stmt, nil)
 		closeErr := session.Close(ctx)
-		if err != nil && !strings.Contains(err.Error(), "already exists") {
-			return fmt.Errorf("create changelog index %q: %w", stmt, err)
+		if runErr != nil && !strings.Contains(runErr.Error(), "already exists") {
+			if closeErr != nil {
+				return errors.Join(
+					fmt.Errorf("create changelog index %q: %w", stmt, runErr),
+					fmt.Errorf("close session: %w", closeErr),
+				)
+			}
+			return fmt.Errorf("create changelog index %q: %w", stmt, runErr)
 		}
 		if closeErr != nil {
 			return fmt.Errorf("close session after changelog index %q: %w", stmt, closeErr)

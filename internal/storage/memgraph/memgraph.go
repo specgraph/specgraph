@@ -350,7 +350,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 	}
 
 	// Capture old field values before the update for changelog delta computation.
-	oldFields, oldContentHash, err := s.readSpecFields(ctx, slug)
+	oldFields, oldContentHash, _, _, err := s.readSpecFields(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
@@ -440,22 +440,25 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 	return spec, nil
 }
 
-// readSpecFields reads the substantive fields and content hash of a spec.
-// Used before updates to capture old values for changelog delta computation.
-func (s *Store) readSpecFields(ctx context.Context, slug string) (storage.SpecFields, string, error) {
+// readSpecFields reads the substantive fields, content hash, version, and
+// updated_at of a spec. Used before/after updates to capture values for
+// changelog delta computation without a separate GetSpec round-trip.
+func (s *Store) readSpecFields(ctx context.Context, slug string) (fields storage.SpecFields, contentHash string, version int32, updatedAt string, err error) {
 	query := `
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 		RETURN s.intent, s.stage, s.priority, s.complexity,
 		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output,
-		       s.content_hash
+		       s.content_hash, s.version, s.updated_at
 	`
-	records, err := s.executeQuery(ctx, query,
+	records, rErr := s.executeQuery(ctx, query,
 		mergeParams(s.projectParam(), map[string]any{"slug": slug}))
-	if err != nil {
-		return storage.SpecFields{}, "", fmt.Errorf("memgraph: read spec fields: %w", err)
+	if rErr != nil {
+		err = fmt.Errorf("memgraph: read spec fields: %w", rErr)
+		return
 	}
 	if len(records) == 0 {
-		return storage.SpecFields{}, "", fmt.Errorf("memgraph: read spec fields %q: %w", slug, storage.ErrSpecNotFound)
+		err = fmt.Errorf("memgraph: read spec fields %q: %w", slug, storage.ErrSpecNotFound)
+		return
 	}
 	rec := records[0]
 	getString := func(pos int) string {
@@ -467,7 +470,7 @@ func (s *Store) readSpecFields(ctx context.Context, slug string) (storage.SpecFi
 		}
 		return ""
 	}
-	fields := storage.SpecFields{
+	fields = storage.SpecFields{
 		Intent:          getString(0),
 		Stage:           getString(1),
 		Priority:        getString(2),
@@ -477,8 +480,14 @@ func (s *Store) readSpecFields(ctx context.Context, slug string) (storage.SpecFi
 		SpecifyOutput:   getString(6),
 		DecomposeOutput: getString(7),
 	}
-	contentHash := getString(8)
-	return fields, contentHash, nil
+	contentHash = getString(8)
+	if pos := 9; pos < len(rec.Values) && rec.Values[pos] != nil {
+		if v, ok := rec.Values[pos].(int64); ok {
+			version = int32(v) //nolint:gosec // version is always positive and small
+		}
+	}
+	updatedAt = getString(10)
+	return
 }
 
 // ClearAll removes all nodes and relationships from the graph.
