@@ -391,7 +391,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		}
 		authoringOutputs := make(map[string]string)
 		for i, key := range []string{"spark_output", "shape_output", "specify_output", "decompose_output"} {
-			val, aoErr := recordStringOptional(rec, 16+i, key)
+			val, aoErr := recordStringOptional(rec, 14+i, key)
 			if aoErr != nil {
 				return aoErr
 			}

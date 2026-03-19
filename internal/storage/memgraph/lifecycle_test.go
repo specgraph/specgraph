@@ -350,25 +350,33 @@ func TestLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		defer store.Close(ctx)
 
+		// Create upstream and downstream, link with DEPENDS_ON.
+		_, err = store.CreateSpec(ctx, "ack-upstream", "Upstream", "p1", "medium")
+		require.NoError(t, err)
 		_, err = store.CreateSpec(ctx, "ack-drift", "Test spec", "p1", "medium")
+		require.NoError(t, err)
+		_, err = store.AddEdge(ctx, "ack-drift", "ack-upstream", storage.EdgeTypeDependsOn)
 		require.NoError(t, err)
 		doneStage := "done"
 		_, err = store.UpdateSpec(ctx, "ack-drift", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
-		report, err := store.LifecycleAcknowledgeDrift(ctx, "ack-drift", "drift is intentional")
+		// Modify upstream to create drift.
+		newIntent := "Changed upstream"
+		_, err = store.UpdateSpec(ctx, "ack-upstream", &newIntent, nil, nil, nil, nil)
 		require.NoError(t, err)
-		require.Equal(t, "ack-drift", report.SpecSlug)
-		require.True(t, report.Acknowledged)
-		require.Equal(t, "drift is intentional", report.AcknowledgeNote)
+		upstream, err := store.GetSpec(ctx, "ack-upstream")
+		require.NoError(t, err)
 
-		// Verify persistence: a second acknowledgment with a different note should
-		// overwrite the previous value, proving the first was persisted to the node.
-		report2, err := store.LifecycleAcknowledgeDrift(ctx, "ack-drift", "updated note")
+		// Acknowledge drift for specific upstream.
+		err = store.LifecycleAcknowledgeDrift(ctx, "ack-drift", "ack-upstream", "drift is intentional")
 		require.NoError(t, err)
-		require.Equal(t, "ack-drift", report2.SpecSlug)
-		require.True(t, report2.Acknowledged)
-		require.Equal(t, "updated note", report2.AcknowledgeNote)
+
+		// Verify edge hash updated to upstream's current hash.
+		deps, err := store.GetDependenciesWithEdgeData(ctx, "ack-drift")
+		require.NoError(t, err)
+		require.Len(t, deps, 1)
+		require.Equal(t, upstream.ContentHash, deps[0].ContentHashAtLink)
 	})
 
 	t.Run("AcknowledgeDrift_IneligibleStage", func(t *testing.T) {
@@ -382,7 +390,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "ack-ineligible", "Test spec", "p1", "medium")
 		require.NoError(t, err)
 
-		_, err = store.LifecycleAcknowledgeDrift(ctx, "ack-ineligible", "should fail")
+		err = store.LifecycleAcknowledgeDrift(ctx, "ack-ineligible", "", "should fail")
 		require.Error(t, err)
 		require.ErrorIs(t, err, storage.ErrSpecIneligibleStage)
 	})
@@ -857,12 +865,9 @@ func TestLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, storage.SpecStageAmended, amended.Stage)
 
-		// Amended specs should be eligible for drift acknowledgment.
-		report, err := store.LifecycleAcknowledgeDrift(ctx, "ack-amended", "divergence accepted")
+		// Amended specs should be eligible for drift acknowledgment (blanket ack).
+		err = store.LifecycleAcknowledgeDrift(ctx, "ack-amended", "", "divergence accepted")
 		require.NoError(t, err)
-		require.Equal(t, "ack-amended", report.SpecSlug)
-		require.True(t, report.Acknowledged)
-		require.Equal(t, "divergence accepted", report.AcknowledgeNote)
 	})
 
 	t.Run("AcknowledgeDrift_NotFound", func(t *testing.T) {
@@ -872,7 +877,7 @@ func TestLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		defer store.Close(ctx)
 
-		_, err = store.LifecycleAcknowledgeDrift(ctx, "nonexistent-spec", "should fail")
+		err = store.LifecycleAcknowledgeDrift(ctx, "nonexistent-spec", "", "should fail")
 		require.Error(t, err)
 		require.ErrorIs(t, err, storage.ErrSpecNotFound)
 	})
@@ -896,7 +901,7 @@ func TestLifecycle(t *testing.T) {
 		for i := 0; i < n; i++ {
 			i := i
 			go func() {
-				_, aErr := store.LifecycleAcknowledgeDrift(ctx, "ack-race", fmt.Sprintf("note-%d", i))
+				aErr := store.LifecycleAcknowledgeDrift(ctx, "ack-race", "", fmt.Sprintf("note-%d", i))
 				errs <- aErr
 			}()
 		}
