@@ -15,7 +15,11 @@ import (
 )
 
 // Backend is the subset of storage needed by the drift engine.
-type Backend = storage.SpecReader
+type Backend interface {
+	GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
+	ListSpecs(ctx context.Context, stage, priority string, limit int) ([]*storage.Spec, error)
+	GetDependenciesWithEdgeData(ctx context.Context, slug string) ([]storage.DependencyRef, error)
+}
 
 // maxSpecsPerCheck limits the number of specs returned per ListSpecs call.
 // Note: check-all mode calls ListSpecs twice (done + amended), so the actual
@@ -91,9 +95,8 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string) (storage.DriftReport, error) {
 	report := storage.DriftReport{SpecSlug: spec.Slug, Items: []storage.DriftItem{}}
 
-	// Dependency drift
 	if scope == "" || scope == "deps" {
-		deps, err := e.backend.GetDependencies(ctx, spec.Slug)
+		deps, err := e.backend.GetDependenciesWithEdgeData(ctx, spec.Slug)
 		if err != nil {
 			return report, fmt.Errorf("drift: get dependencies for %q: %w", spec.Slug, err)
 		}
@@ -112,15 +115,15 @@ func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string
 				}
 				return report, fmt.Errorf("drift: get upstream spec %q: %w", dep.Slug, err)
 			}
-			if upstream.UpdatedAt.After(spec.UpdatedAt) {
+			if upstream.ContentHash != dep.ContentHashAtLink {
 				report.Items = append(report.Items, storage.DriftItem{
-					Type:            storage.DriftTypeDependency,
-					Severity:        storage.DriftSeverityMedium,
-					Description:     fmt.Sprintf("upstream %q updated after %q", upstream.Slug, spec.Slug),
-					SpecSlug:        spec.Slug,
-					UpstreamSlug:    upstream.Slug,
-					ExpectedVersion: spec.Version,
-					ActualVersion:   upstream.Version,
+					Type:         storage.DriftTypeDependency,
+					Severity:     storage.DriftSeverityMedium,
+					Description:  fmt.Sprintf("upstream %q content changed since %q baselined", upstream.Slug, spec.Slug),
+					SpecSlug:     spec.Slug,
+					UpstreamSlug: upstream.Slug,
+					ExpectedHash: dep.ContentHashAtLink,
+					ActualHash:   upstream.ContentHash,
 				})
 			}
 		}
