@@ -144,6 +144,7 @@ const (
 )
 
 // CreateSpec stores a new spec node in Memgraph and returns it.
+// All DB operations (CREATE node + ChangeLog) run within a single transaction.
 func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
 	id := newID("spec")
 	nowStr := s.now()
@@ -186,40 +187,45 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		"content_hash": ch,
 	})
 
-	records, err := s.executeQuery(ctx, query, params)
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: create spec: %w", err)
-	}
-	if len(records) == 0 {
-		return nil, fmt.Errorf("memgraph: create spec returned no records")
-	}
+	var result *storage.Spec
+	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		records, qErr := s.executeQuery(txCtx, query, params)
+		if qErr != nil {
+			return fmt.Errorf("memgraph: create spec: %w", qErr)
+		}
+		if len(records) == 0 {
+			return fmt.Errorf("memgraph: create spec returned no records")
+		}
 
-	spec, err := recordToSpec(records[0])
-	if err != nil {
-		return nil, err
-	}
+		spec, parseErr := recordToSpec(records[0])
+		if parseErr != nil {
+			return parseErr
+		}
 
-	// Create an initial checkpoint ChangeLog entry for the newly created spec.
-	allFields := storage.SpecFields{
-		Intent:     intent,
-		Stage:      defaultInitialStage,
-		Priority:   priority,
-		Complexity: complexity,
-	}
-	empty := storage.SpecFields{}
-	deltas := storage.ComputeFieldDeltas(&empty, &allFields)
-	clEntry := &storage.ChangeLogEntry{
-		Version:     spec.Version,
-		Stage:       spec.Stage,
-		ContentHash: spec.ContentHash,
-		Checkpoint:  true,
-		Summary:     "Spec created",
-		Date:        spec.CreatedAt,
-	}
-	if err := s.createChangeLog(ctx, slug, clEntry, deltas); err != nil {
-		return nil, err
-	}
-	return spec, nil
+		// Create an initial checkpoint ChangeLog entry for the newly created spec.
+		allFields := storage.SpecFields{
+			Intent:     intent,
+			Stage:      defaultInitialStage,
+			Priority:   priority,
+			Complexity: complexity,
+		}
+		empty := storage.SpecFields{}
+		deltas := storage.ComputeFieldDeltas(&empty, &allFields)
+		clEntry := &storage.ChangeLogEntry{
+			Version:     spec.Version,
+			Stage:       spec.Stage,
+			ContentHash: spec.ContentHash,
+			Checkpoint:  true,
+			Summary:     "Spec created",
+			Date:        spec.CreatedAt,
+		}
+		if clErr := s.createChangeLog(txCtx, slug, clEntry, deltas); clErr != nil {
+			return clErr
+		}
+		result = spec
+		return nil
+	})
+	return result, err
 }
 
 // GetSpec retrieves a spec by slug.
