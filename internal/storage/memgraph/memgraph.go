@@ -439,6 +439,12 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 			}
 		}
 
+		if stage != nil && storage.SpecStage(*stage) == storage.SpecStageDone {
+			if err := s.RefreshDependencyHashes(txCtx, slug); err != nil {
+				return fmt.Errorf("memgraph: refresh dependency hashes after done transition: %w", err)
+			}
+		}
+
 		result = spec
 		return nil
 	})

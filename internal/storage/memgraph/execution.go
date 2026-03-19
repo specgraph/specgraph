@@ -85,6 +85,9 @@ func (s *Store) RecordCompletion(ctx context.Context, slug, agent string) error 
 	if len(records) == 0 {
 		return fmt.Errorf("memgraph: record completion: %w", storage.ErrAgentNotClaimOwner)
 	}
+	if err := s.RefreshDependencyHashes(ctx, slug); err != nil {
+		return fmt.Errorf("memgraph: refresh dependency hashes after completion: %w", err)
+	}
 	return nil
 }
 

@@ -112,7 +112,15 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 			Summary:     fmt.Sprintf("Stage transition: %s → %s", fromStr, toStr),
 			Date:        updatedSpec.UpdatedAt,
 		}
-		return s.createChangeLog(txCtx, slug, clEntry, deltas)
+		if err := s.createChangeLog(txCtx, slug, clEntry, deltas); err != nil {
+			return err
+		}
+		if to == storage.AuthoringStage(storage.SpecStageDone) {
+			if err := s.RefreshDependencyHashes(txCtx, slug); err != nil {
+				return fmt.Errorf("refresh dependency hashes after done transition: %w", err)
+			}
+		}
+		return nil
 	})
 }
 
