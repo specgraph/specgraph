@@ -67,8 +67,7 @@ func unmarshalFieldChanges(raw string) ([]storage.FieldChange, error) {
 }
 
 // recordBool extracts a bool value from a neo4j record by position.
-// It returns an error if the value is nil or not a bool, unlike
-// recordBoolOptional which returns false for nil values.
+// It returns an error if the value is nil or not a bool.
 func recordBool(rec *neo4j.Record, pos int, name string) (bool, error) {
 	if pos >= len(rec.Values) || rec.Values[pos] == nil {
 		return false, fmt.Errorf("memgraph: %s at position %d is nil", name, pos)

@@ -609,23 +609,6 @@ func safeInt32(v int64) int32 {
 	return int32(v)
 }
 
-// recordBoolOptional extracts a nullable bool value from a neo4j record by
-// position. Returns false for nil/null values, and fails fast on unexpected
-// types to surface schema/return-shift bugs immediately.
-func recordBoolOptional(rec *neo4j.Record, pos int, field string) (bool, error) {
-	if pos >= len(rec.Values) {
-		return false, fmt.Errorf("memgraph: field %q at position %d: missing", field, pos)
-	}
-	if rec.Values[pos] == nil {
-		return false, nil
-	}
-	b, ok := rec.Values[pos].(bool)
-	if !ok {
-		return false, fmt.Errorf("memgraph: field %q at position %d: expected bool or nil, got %T", field, pos, rec.Values[pos])
-	}
-	return b, nil
-}
-
 func recordStringOptional(rec *neo4j.Record, pos int, field string) (string, error) {
 	if pos >= len(rec.Values) {
 		return "", fmt.Errorf("memgraph: field %q at position %d: missing", field, pos)
