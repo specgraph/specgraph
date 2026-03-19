@@ -28,12 +28,23 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 		return nil, err
 	}
 
-	query := fmt.Sprintf(`
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $from}),
-		      (p)<-[:BELONGS_TO]-(b {slug: $to})
-		MERGE (a)-[r:%s]->(b)
-		RETURN a.slug, b.slug
-	`, relType)
+	var query string
+	if edgeType == storage.EdgeTypeDependsOn {
+		query = fmt.Sprintf(`
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $from}),
+			      (p)<-[:BELONGS_TO]-(b {slug: $to})
+			MERGE (a)-[r:%s]->(b)
+			ON CREATE SET r.content_hash_at_link = COALESCE(b.content_hash, "")
+			RETURN a.slug, b.slug
+		`, relType)
+	} else {
+		query = fmt.Sprintf(`
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $from}),
+			      (p)<-[:BELONGS_TO]-(b {slug: $to})
+			MERGE (a)-[r:%s]->(b)
+			RETURN a.slug, b.slug
+		`, relType)
+	}
 	params := mergeParams(s.projectParam(), map[string]any{"from": actualFrom, "to": actualTo})
 
 	records, err := s.executeQuery(ctx, query, params)
