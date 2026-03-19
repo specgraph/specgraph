@@ -34,7 +34,7 @@ var promptRegistry = map[Stage][]Prompt{
 		{Name: "invariants", Template: "State the invariants that must hold before, during, and after execution."},
 	},
 	StageDecompose: {
-		{Name: "strategy", Template: "Choose a decomposition strategy: vertical slices, horizontal layers, or risk-first."},
+		{Name: "strategy", Template: "Choose a decomposition strategy: vertical slices, horizontal layers, or single unit."},
 		{Name: "slices", Template: "Break the spec into ordered, independently-deliverable slices."},
 	},
 }

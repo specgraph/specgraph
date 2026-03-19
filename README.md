@@ -68,7 +68,7 @@ Start the server and begin working with specs:
 
 ```bash
 specgraph serve             # starts the API and manages Memgraph via Docker Compose
-specgraph spec create auth-login --title "User login flow"
+specgraph spec create auth-login --intent "User login flow"
 specgraph constitution show # view project ground truth
 ```
 
@@ -88,14 +88,32 @@ See the [deployment guide](https://seanb4t.github.io/specgraph/deployment/) for 
 
 | Command | Description |
 |---------|-------------|
-| `specgraph init` | Initialize project config and optionally scan for constitution |
-| `specgraph serve` | Start the ConnectRPC API server |
+| **Specs** | |
 | `specgraph spec create/list/show/update` | Manage specs |
 | `specgraph decision create/list/show` | Manage decisions |
-| `specgraph constitution show/check/emit` | View and validate project constitution |
-| `specgraph claim/unclaim` | Claim or release specs for work |
+| **Authoring** | |
+| `specgraph spark/shape/specify/decompose/approve` | Drive specs through the authoring funnel |
+| **Lifecycle** | |
+| `specgraph amend/supersede/abandon` | Transition specs through lifecycle states |
+| `specgraph drift` | Check for spec drift; `drift ack` to acknowledge |
+| `specgraph lint` | Run the spec linter |
+| **Graph** | |
 | `specgraph edge add/remove/list` | Manage graph edges between specs |
-| `specgraph deps` | Show dependency tree for a spec |
+| `specgraph deps/impact/ready/critical-path` | Query the dependency graph |
+| **Execution** | |
+| `specgraph claim/unclaim` | Claim or release specs for work |
+| `specgraph bundle/prime` | Generate execution bundles and prime context |
+| `specgraph report-progress/report-blocker/report-completion` | Report execution status |
+| **Constitution** | |
+| `specgraph constitution show/import/check/emit` | View, import, validate, and emit constitution |
+| **Sync & Injection** | |
+| `specgraph sync` | Sync specs to Beads or GitHub |
+| `specgraph inject` | Inject spec context into tool files (CLAUDE.md, .cursor/rules, AGENTS.md) |
+| **Infrastructure** | |
+| `specgraph init` | Initialize project config and optionally scan for constitution |
+| `specgraph serve` | Start the ConnectRPC API server |
+| `specgraph health` | Check server health |
+| `specgraph up/down` | Start or stop the database container |
 
 ## Contributing
 
@@ -123,7 +141,7 @@ This runs protobuf code generation (`buf generate`) then builds the binary.
 ### Run tests
 
 ```bash
-task test          # all tests
+task test          # unit tests (excludes integration and e2e)
 task test:short    # skip integration tests
 task test:e2e      # end-to-end smoke tests
 ```
@@ -138,7 +156,7 @@ task dev                    # development mode with hot reload
 
 ### Code generation
 
-Protobuf sources live in `proto/`. Generated code goes to `gen/` (gitignored). Regenerate after changing `.proto` files:
+Protobuf sources live in `proto/`. Generated code goes to `gen/` (committed for Go module compatibility). Regenerate after changing `.proto` files:
 
 ```bash
 task proto

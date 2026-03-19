@@ -65,8 +65,8 @@ eventual-consistency lag between design and execution.
 
 ## Sync Adapters
 
-!!! note "Status: Planned"
-    Sync adapters are designed for Slice 6. None are implemented yet.
+!!! info "Status: In Progress"
+    Beads and GitHub adapters are implemented. Linear is planned.
 
 SpecGraph can push specs to external trackers for visibility and coordination
 with teams that do not use SpecGraph directly.
@@ -76,12 +76,12 @@ with teams that do not use SpecGraph directly.
   sync as task checklists. Full interface contracts and constitution references
   stay in SpecGraph — GitHub gets the summary, SpecGraph keeps the detail.
 
-- **Linear** — Bidirectional or push-only sync. The same fields as GitHub sync
-  to Linear issues and projects. Push-only mode is useful when Linear is the
-  PM-facing view but SpecGraph remains the authoring system.
+- **Linear** (Planned) — Bidirectional or push-only sync. The same fields as
+  GitHub sync to Linear issues and projects. Push-only mode is useful when
+  Linear is the PM-facing view but SpecGraph remains the authoring system.
 
 - **Tool Injection** — Emit the constitution and per-spec context into
-  coding-agent context files: `CLAUDE.md`, `.cursorrules`, `AGENTS.md`. The
+  coding-agent context files: `CLAUDE.md`, `.cursor/rules`, `AGENTS.md`. The
   command `specgraph inject <slug>` writes a spec's interface contracts,
   constraints, and relevant constitution layers into the current working
   directory so that any coding agent picks them up automatically.

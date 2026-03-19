@@ -45,7 +45,7 @@ RECOMMEND a decomposition strategy based on the spec's shape:
 |----------|-------------------|-------------|
 | **Vertical slice** | User-facing features | Each slice delivers end-to-end value |
 | **Horizontal layer** | Infrastructure work | Split by architecture tier (storage → API → UI) |
-| **Risk-first** | Significant technical risk | Front-load the hardest unknowns |
+| **Single unit** | Small, self-contained work | Deliver the spec as-is without decomposition |
 
 Explain why you recommend one and ask the user to confirm.
 

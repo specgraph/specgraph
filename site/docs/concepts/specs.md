@@ -67,7 +67,10 @@ they are queryable, traversable relationships:
 | `depends_on` | This spec requires another to be done first |
 | `blocks` | This spec prevents another from starting |
 | `composes` | This spec was decomposed from a parent spec |
-| `references` | Links to decisions, ADRs, incidents, or other artifacts |
+| `relates_to` | Informational link between specs or other artifacts |
+| `decided_in` | This spec made a design decision (spec → decision) |
+| `informs` | A decision informs this spec (decision → spec) |
+| `supersedes` | This spec replaces another spec |
 
 ```text
 ┌──────────────────┐
@@ -91,8 +94,9 @@ they are queryable, traversable relationships:
 Edges carry semantics. A `depends_on` edge tells the scheduler not to release a
 spec until its dependency is complete. A `blocks` edge surfaces bottlenecks. A
 `composes` edge traces how a large spec was broken into deliverable slices. A
-`references` edge connects specs to the [decisions](decisions.md) that informed
-them.
+`decided_in` edge connects specs to the [decisions](decisions.md) they produced,
+while `informs` connects decisions back to the specs they affect. A `supersedes`
+edge tracks when one spec replaces another.
 
 ---
 
@@ -122,7 +126,7 @@ The full spec schema is organized into five categories:
 | Category | Fields |
 |---|---|
 | **Identity** | `id`, `slug`, `version`, `created_at`, `updated_at` |
-| **Intent** | `intent`, `stage` (spark / shape / specify / decompose / approved / in_progress / done), `priority` (p0-p3), `complexity` |
+| **Intent** | `intent`, `stage` (spark / shape / specify / decompose / approved / in_progress / review / done / amended / superseded / abandoned), `priority` (p0-p3), `complexity` |
 | **Edges** | `depends_on`, `blocks`, `composes`, `references` |
 | **Authoring Outputs** | `spark_output`, `shape_output`, `specify_output`, `decompose_output` |
 | **Verification** | `verify` (acceptance criteria), `invariants` (conditions that must hold before and after execution) |

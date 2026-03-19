@@ -24,7 +24,7 @@ just enough to start a conversation.
 |-------|-------------|
 | `seed` | The idea itself, in the author's own words. |
 | `signal` | Why now — what triggered this idea (a bug report, a security audit, a customer request). |
-| `scope_sniff` | Initial size estimate: `small`, `medium`, or `large`. |
+| `scope_sniff` | Initial size estimate: `tiny`, `small`, `medium`, `large`, or `epic`. |
 | `kill_test` | What would make this idea not worth pursuing. If the kill test is true, stop here. |
 
 **Example:**

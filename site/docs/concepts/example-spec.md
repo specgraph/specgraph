@@ -214,8 +214,8 @@ Error (401): token family revoked (reuse detected)
     Decompose breaks the spec into independently deliverable slices. Each slice
     is small enough to implement, test, and review in isolation. The **strategy**
     determines how you cut: vertical slices deliver end-to-end value in each
-    piece, horizontal layers split by architecture tier, and risk-first
-    front-loads the hardest unknowns.
+    piece, horizontal layers split by architecture tier, or single unit
+    delivers the spec as-is when it's small enough.
 
 !!! tip "Graph edges from Depends On"
     The **Depends On** column creates `DEPENDS_ON` graph edges between slices.

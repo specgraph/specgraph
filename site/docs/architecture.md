@@ -32,7 +32,7 @@ there is no embedded or library mode.
 │  ├─ Beads (spec→bead issue)                         │
 │  ├─ GitHub Issues                                   │
 │  ├─ Linear                                          │
-│  └─ Tool Injection (CLAUDE.md, .cursorrules)        │
+│  └─ Tool Injection (CLAUDE.md, .cursor/rules)        │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -48,10 +48,13 @@ a single domain concern:
 | **SpecService** | CRUD for specs — create, get, list, update. The primary resource in the graph. |
 | **DecisionService** | CRUD for decisions. ADRs are first-class graph nodes with bidirectional edges to the specs they affect. |
 | **ConstitutionService** | Constitution management — layer merging, validation, and queries across the User → Org → Project → Domain hierarchy. |
-| **AuthoringService** | The authoring funnel RPCs: Spark, Shape, Specify, Decompose, Approve. Drives specs from rough idea to execution-ready. |
+| **AuthoringService** | The authoring funnel RPCs: Spark, Shape, Specify, Decompose, Approve, Amend, Supersede. Drives specs from rough idea to execution-ready. |
 | **ClaimService** | Claim and unclaim specs for execution. Manages leases so multiple agents don't collide on the same work. |
 | **GraphService** | Dependency queries, impact analysis, critical-path computation, and ready-spec detection. |
-| **HealthService** | Server health checks. |
+| **LifecycleService** | Spec lifecycle transitions (amend, supersede, abandon), drift detection, and spec linting. |
+| **ExecutionService** | Execution bundles, prime context, and agent progress/blocker/completion reporting. |
+| **SyncService** | Sync specs to external systems (Beads, GitHub) and inject context into tool files. |
+| **ServerService** | Server health checks. |
 
 All services use protobuf message types on the wire and generate both `.pb.go`
 and `.connect.go` files from the proto definitions.
@@ -94,9 +97,10 @@ are typed edges:
 (:Spec) -[:DEPENDS_ON]->  (:Spec)
 (:Spec) -[:BLOCKS]->      (:Spec)
 (:Spec) -[:COMPOSES]->    (:Spec)
-(:Spec) -[:GOVERNED_BY]-> (:Constitution)
+(:Spec) -[:RELATES_TO]->  (:Spec)
 (:Spec) -[:DECIDED_IN]->  (:Decision)
-(:Spec) -[:CLAIMED_BY]->  (:Agent)
+(:Decision) -[:INFORMS]-> (:Spec)
+(:Spec) -[:SUPERSEDES]->  (:Spec)
 ```
 
 These edges are first-class — they carry metadata, support traversal queries,
@@ -118,20 +122,29 @@ human-readable JSON for debugging.
 
 ```text
 specgraph/
-├── proto/specgraph/v1/     # Protobuf service definitions
-├── gen/                    # Generated code (gitignored)
+├── proto/specgraph/v1/     # Protobuf service definitions (source of truth)
+├── gen/                    # Generated Go code (committed for module compat)
 ├── internal/
-│   ├── server/             # ConnectRPC handlers
+│   ├── server/             # ConnectRPC handlers + proto↔domain converters
 │   ├── storage/            # Backend interface + implementations
-│   │   └── memgraph/       # Memgraph implementation
-│   ├── authoring/          # Domain logic (stages, postures, passes)
-│   └── config/             # Server configuration
+│   │   └── memgraph/       # Memgraph implementation (Cypher, testcontainers)
+│   ├── authoring/          # Authoring funnel (stages, postures, passes)
+│   ├── config/             # YAML-based server configuration
+│   ├── drift/              # Drift detection engine
+│   ├── driftscope/         # Drift scope analysis
+│   ├── linter/             # Spec linter (schema, edges, cycles)
+│   ├── inject/             # Tool injection (CLAUDE.md, .cursor/rules, AGENTS.md)
+│   ├── sync/               # Sync adapters (Beads, GitHub)
+│   ├── emitter/            # Event/output emitters
+│   ├── docker/             # Docker Compose templates for DB containers
+│   └── service/            # systemd/launchd integration
 ├── cmd/specgraph/          # CLI entry point
-├── docker/                 # Docker Compose for dev
+├── e2e/                    # End-to-end tests (Ginkgo/Gomega)
+├── plugin/                 # Claude Code skills and hooks
 └── Taskfile.yml            # Build automation
 ```
 
 Build automation is via [Taskfile.dev](https://taskfile.dev). Run `task --list`
 for the full catalog. The key commands are `task build`, `task test`,
 `task proto`, `task lint`, and `task fmt`. Generated code in `gen/` is
-gitignored — run `task proto` after clone to regenerate it.
+committed — regenerate with `task proto` after changing `.proto` files.
