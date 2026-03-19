@@ -162,13 +162,12 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 			created_at: $created_at,
 			updated_at: $updated_at,
 			lifecycle: $lifecycle,
-			history_json: $history_json,
 			notes: $notes,
 			content_hash: $content_hash
 		})
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash
 	`
@@ -183,7 +182,6 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		"created_at":   nowStr,
 		"updated_at":   nowStr,
 		"lifecycle":    string(defaultLifecycle),
-		"history_json": "[]",
 		"notes":        "",
 		"content_hash": ch,
 	})
@@ -205,7 +203,7 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash
 	`
@@ -232,7 +230,7 @@ func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec) WHERE s.slug IN $slugs
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash
 	`
@@ -271,7 +269,7 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	}
 	query += ` RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash`
 	query += " ORDER BY s.created_at"
@@ -335,7 +333,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		SET %s
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash,
 		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output
@@ -360,7 +358,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 	}
 	authoringOutputs := make(map[string]string)
 	for i, key := range []string{"spark_output", "shape_output", "specify_output", "decompose_output"} {
-		val, aoErr := recordStringOptional(rec, 17+i, key)
+		val, aoErr := recordStringOptional(rec, 16+i, key)
 		if aoErr != nil {
 			return nil, aoErr
 		}
@@ -591,28 +589,19 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	historyJSON, err := recordStringOptional(rec, offset+12, "history_json")
+	driftAck, err := recordBoolOptional(rec, offset+12, "drift_acknowledged")
 	if err != nil {
 		return nil, err
 	}
-
-	history, err := unmarshalHistory(slug, historyJSON)
+	driftAckNote, err := recordStringOptional(rec, offset+13, "drift_acknowledge_note")
 	if err != nil {
 		return nil, err
 	}
-	driftAck, err := recordBoolOptional(rec, offset+13, "drift_acknowledged")
+	notes, err := recordStringOptional(rec, offset+14, "notes")
 	if err != nil {
 		return nil, err
 	}
-	driftAckNote, err := recordStringOptional(rec, offset+14, "drift_acknowledge_note")
-	if err != nil {
-		return nil, err
-	}
-	notes, err := recordStringOptional(rec, offset+15, "notes")
-	if err != nil {
-		return nil, err
-	}
-	contentHash, err := recordStringOptional(rec, offset+16, "content_hash")
+	contentHash, err := recordStringOptional(rec, offset+15, "content_hash")
 	if err != nil {
 		return nil, err
 	}
@@ -630,7 +619,6 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 		Lifecycle:            lifecycle,
 		SupersededBy:         supersededBy,
 		Supersedes:           supersedes,
-		History:              history,
 		DriftAcknowledged:    driftAck,
 		DriftAcknowledgeNote: driftAckNote,
 		Notes:                notes,
