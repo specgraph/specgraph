@@ -52,9 +52,9 @@ Because relationships are edges in a graph, you can query them directly —
 Specs also support **progressive structure**. A solo developer can start with
 just three fields — title, status, and a description — while a large team can
 use the full schema with interface contracts, verify criteria, and invariants.
-Every spec has a **content-addressable identity**: its ID is derived from its
-content, so you can detect when a spec has changed and track its history without
-relying on mutable names or paths.
+Every spec has a **stable identity** (ULID-based) and a **content hash** — a
+Murmur3-128 fingerprint of the spec's substantive fields. The hash changes when
+content changes, enabling drift detection without field-by-field comparison.
 
 [:octicons-arrow-right-24: Deep dive into the spec schema](concepts/specs.md)
 

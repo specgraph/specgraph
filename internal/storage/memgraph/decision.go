@@ -11,6 +11,7 @@ import (
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/seanb4t/specgraph/internal/storage/contenthash"
 )
 
 // CreateDecision stores a new decision node in Memgraph.
@@ -18,6 +19,8 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale
 	now := s.nowTime()
 	id := newID("dec")
 	nowStr := now.Format(time.RFC3339)
+	initialStatus := string(storage.DecisionStatusProposed)
+	ch := contenthash.Decision(title, initialStatus, body, rationale)
 
 	query := `
 		MATCH (p:Project {slug: $project})
@@ -30,21 +33,23 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale
 			rationale: $rationale,
 			superseded_by: $superseded_by,
 			created_at: $created_at,
-			updated_at: $updated_at
+			updated_at: $updated_at,
+			content_hash: $content_hash
 		})
 		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
-		       d.superseded_by, d.created_at, d.updated_at
+		       d.superseded_by, d.created_at, d.updated_at, d.content_hash
 	`
 	params := mergeParams(s.projectParam(), map[string]any{
 		"id":            id,
 		"slug":          slug,
 		"title":         title,
-		"status":        string(storage.DecisionStatusProposed),
+		"status":        initialStatus,
 		"decision":      body,
 		"rationale":     rationale,
 		"superseded_by": "",
 		"created_at":    nowStr,
 		"updated_at":    nowStr,
+		"content_hash":  ch,
 	})
 
 	records, err := s.executeQuery(ctx, query, params)
@@ -63,7 +68,7 @@ func (s *Store) GetDecision(ctx context.Context, slug string) (*storage.Decision
 	query := `
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})
 		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
-		       d.superseded_by, d.created_at, d.updated_at
+		       d.superseded_by, d.created_at, d.updated_at, d.content_hash
 	`
 	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
@@ -92,7 +97,7 @@ func (s *Store) ListDecisions(ctx context.Context, status storage.DecisionStatus
 	if len(clauses) > 0 {
 		query += " WHERE " + strings.Join(clauses, " AND ")
 	}
-	query += " RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale, d.superseded_by, d.created_at, d.updated_at"
+	query += " RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale, d.superseded_by, d.created_at, d.updated_at, d.content_hash"
 	query += " ORDER BY d.created_at"
 	if limit > 0 {
 		query += " LIMIT $limit"
@@ -159,7 +164,7 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})
 		SET %s
 		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
-		       d.superseded_by, d.created_at, d.updated_at
+		       d.superseded_by, d.created_at, d.updated_at, d.content_hash
 	`, strings.Join(setClauses, ", "))
 
 	records, err := s.executeQuery(ctx, query, params)
@@ -170,7 +175,27 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 		return nil, fmt.Errorf("memgraph: decision %q: %w", slug, storage.ErrDecisionNotFound)
 	}
 
-	return recordToDecision(records[0])
+	// Recompute content_hash from the updated fields. Two-query approach:
+	// read all hash-input fields, compute new hash, then SET it.
+	dec, err := recordToDecision(records[0])
+	if err != nil {
+		return nil, err
+	}
+	ch := contenthash.Decision(dec.Title, string(dec.Status), dec.Body, dec.Rationale)
+
+	hashQuery := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})
+		SET d.content_hash = $content_hash
+	`
+	if _, err := s.executeQuery(ctx, hashQuery, mergeParams(s.projectParam(), map[string]any{
+		"slug":         slug,
+		"content_hash": ch,
+	})); err != nil {
+		return nil, fmt.Errorf("memgraph: update decision content_hash: %w", err)
+	}
+	dec.ContentHash = ch
+
+	return dec, nil
 }
 
 func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
@@ -210,6 +235,10 @@ func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
 	if err != nil {
 		return nil, err
 	}
+	contentHash, err := recordStringOptional(rec, 9, "content_hash")
+	if err != nil {
+		return nil, err
+	}
 
 	createdAt, err := parseRFC3339("created_at", createdAtStr)
 	if err != nil {
@@ -243,5 +272,6 @@ func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
 		SupersededBy: supersededBy,
 		CreatedAt:    createdAt,
 		UpdatedAt:    updatedAt,
+		ContentHash:  contentHash,
 	}, nil
 }

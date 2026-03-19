@@ -76,7 +76,7 @@ func (SpecLifecycle) EnumDescriptor() ([]byte, []int) {
 
 type Spec struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                 // content-addressable, e.g. "spec-k7m3p"
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                 // stable ULID, e.g. "spec-01JQXYZ..."
 	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`             // human-readable, e.g. "oauth-refresh-rotation"
 	Intent        string                 `protobuf:"bytes,3,opt,name=intent,proto3" json:"intent,omitempty"`         // what this spec is about
 	Stage         string                 `protobuf:"bytes,4,opt,name=stage,proto3" json:"stage,omitempty"`           // spark | shape | specify | decompose | approved | in_progress | done
@@ -89,7 +89,8 @@ type Spec struct {
 	SupersededBy  string                 `protobuf:"bytes,11,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"`        // slug of replacement spec, if superseded
 	Supersedes    string                 `protobuf:"bytes,12,opt,name=supersedes,proto3" json:"supersedes,omitempty"`                                // slug of spec this replaced
 	History       []*HistoryEntry        `protobuf:"bytes,13,rep,name=history,proto3" json:"history,omitempty"`
-	Notes         string                 `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"` // free-text notes (conversation summaries, context)
+	Notes         string                 `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"`                                // free-text notes (conversation summaries, context)
+	ContentHash   string                 `protobuf:"bytes,15,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"` // Murmur3-128 hex digest of substantive fields; changes on every mutation
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -218,6 +219,13 @@ func (x *Spec) GetHistory() []*HistoryEntry {
 func (x *Spec) GetNotes() string {
 	if x != nil {
 		return x.Notes
+	}
+	return ""
+}
+
+func (x *Spec) GetContentHash() string {
+	if x != nil {
+		return x.ContentHash
 	}
 	return ""
 }
@@ -602,7 +610,7 @@ var File_specgraph_v1_spec_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf0\x03\n" +
+	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x93\x04\n" +
 	"\x04Spec\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x16\n" +
@@ -624,7 +632,8 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"supersedes\x18\f \x01(\tR\n" +
 	"supersedes\x124\n" +
 	"\ahistory\x18\r \x03(\v2\x1a.specgraph.v1.HistoryEntryR\ahistory\x12\x14\n" +
-	"\x05notes\x18\x0e \x01(\tR\x05notes\"\xa0\x01\n" +
+	"\x05notes\x18\x0e \x01(\tR\x05notes\x12!\n" +
+	"\fcontent_hash\x18\x0f \x01(\tR\vcontentHash\"\xa0\x01\n" +
 	"\fHistoryEntry\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x05R\aversion\x12\x14\n" +
 	"\x05stage\x18\x02 \x01(\tR\x05stage\x12\x18\n" +

@@ -175,6 +175,32 @@ func TestUpdateSpec(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestCreateSpec_SetsContentHash(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	spec, err := store.CreateSpec(ctx, "hash-test", "Test content hashing", "p1", "medium")
+	require.NoError(t, err)
+	require.Len(t, spec.ContentHash, 32, "content_hash should be 32-char hex")
+
+	// Update should change the hash.
+	newIntent := "Updated intent"
+	updated, err := store.UpdateSpec(ctx, "hash-test", &newIntent, nil, nil, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, updated.ContentHash, 32)
+	require.NotEqual(t, spec.ContentHash, updated.ContentHash, "hash should change when intent changes")
+
+	// GetSpec should return the same hash as UpdateSpec.
+	fetched, err := store.GetSpec(ctx, "hash-test")
+	require.NoError(t, err)
+	require.Equal(t, updated.ContentHash, fetched.ContentHash)
+}
+
 func TestGetSpec_NotFound(t *testing.T) {
 	boltURI, cleanup := setupMemgraph(t)
 	defer cleanup()

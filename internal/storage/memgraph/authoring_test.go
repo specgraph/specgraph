@@ -545,4 +545,97 @@ func TestAuthoring(t *testing.T) {
 		})
 		require.ErrorIs(t, err, storage.ErrSpecNotFound)
 	})
+
+	t.Run("StoreSparkOutput_UpdatesContentHash", func(t *testing.T) {
+		clearGraph(t, boltURI)
+		ctx := context.Background()
+		store, err := newStore(ctx, boltURI)
+		require.NoError(t, err)
+		defer store.Close(ctx) //nolint:errcheck
+
+		spec, err := store.CreateSpec(ctx, "authoring-hash", "Test", "p1", "medium")
+		require.NoError(t, err)
+		initialHash := spec.ContentHash
+		require.NotEmpty(t, initialHash)
+
+		err = store.StoreSparkOutput(ctx, "authoring-hash", &storage.SparkOutput{Seed: "test seed"})
+		require.NoError(t, err)
+
+		updated, err := store.GetSpec(ctx, "authoring-hash")
+		require.NoError(t, err)
+		require.NotEqual(t, initialHash, updated.ContentHash)
+		require.NotEmpty(t, updated.ContentHash)
+	})
+
+	t.Run("TransitionStage_UpdatesContentHash", func(t *testing.T) {
+		clearGraph(t, boltURI)
+		ctx := context.Background()
+		store, err := newStore(ctx, boltURI)
+		require.NoError(t, err)
+		defer store.Close(ctx) //nolint:errcheck
+
+		spec, err := store.CreateSpec(ctx, "stage-hash", "Test", "p1", "medium")
+		require.NoError(t, err)
+		initialHash := spec.ContentHash
+
+		err = store.TransitionStage(ctx, "stage-hash",
+			storage.AuthoringStage(authoring.StageSpark),
+			storage.AuthoringStage(authoring.StageShape))
+		require.NoError(t, err)
+
+		updated, err := store.GetSpec(ctx, "stage-hash")
+		require.NoError(t, err)
+		require.NotEqual(t, initialHash, updated.ContentHash)
+		require.NotEmpty(t, updated.ContentHash)
+	})
+
+	t.Run("AmendSpec_UpdatesContentHash", func(t *testing.T) {
+		clearGraph(t, boltURI)
+		ctx := context.Background()
+		store, err := newStore(ctx, boltURI)
+		require.NoError(t, err)
+		defer store.Close(ctx) //nolint:errcheck
+
+		_, err = store.CreateSpec(ctx, "amend-hash", "Test", "p1", "medium")
+		require.NoError(t, err)
+
+		// Advance to shape so we can amend back to spark.
+		err = store.TransitionStage(ctx, "amend-hash",
+			storage.AuthoringStage(authoring.StageSpark),
+			storage.AuthoringStage(authoring.StageShape))
+		require.NoError(t, err)
+
+		preAmend, err := store.GetSpec(ctx, "amend-hash")
+		require.NoError(t, err)
+
+		_, err = store.AmendSpec(ctx, "amend-hash", "rework needed",
+			storage.AuthoringStage(authoring.StageSpark))
+		require.NoError(t, err)
+
+		updated, err := store.GetSpec(ctx, "amend-hash")
+		require.NoError(t, err)
+		require.NotEqual(t, preAmend.ContentHash, updated.ContentHash)
+		require.NotEmpty(t, updated.ContentHash)
+	})
+
+	t.Run("StoreRedTeamFindings_DoesNotUpdateContentHash", func(t *testing.T) {
+		clearGraph(t, boltURI)
+		ctx := context.Background()
+		store, err := newStore(ctx, boltURI)
+		require.NoError(t, err)
+		defer store.Close(ctx) //nolint:errcheck
+
+		spec, err := store.CreateSpec(ctx, "analytical-hash", "Test", "p1", "medium")
+		require.NoError(t, err)
+		initialHash := spec.ContentHash
+
+		err = store.StoreRedTeamFindings(ctx, "analytical-hash", []storage.RedTeamFinding{
+			{Severity: storage.SeverityCritical, Finding: "test finding"},
+		})
+		require.NoError(t, err)
+
+		updated, err := store.GetSpec(ctx, "analytical-hash")
+		require.NoError(t, err)
+		assert.Equal(t, initialHash, updated.ContentHash)
+	})
 }

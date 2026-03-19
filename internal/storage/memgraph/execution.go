@@ -217,7 +217,7 @@ func (s *Store) fetchLinkedDecisions(ctx context.Context, slug string) ([]*stora
 	query := `
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[:DECIDED_IN]->(d:Decision)
 		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
-		       d.superseded_by, d.created_at, d.updated_at
+		       d.superseded_by, d.created_at, d.updated_at, d.content_hash
 	`
 	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
 	if err != nil {

@@ -133,9 +133,10 @@ func TestLifecycleHandler_Amend(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.amendSpec = func(_ context.Context, slug, _, _ string) (*storage.Spec, error) {
 		return &storage.Spec{
-			Slug:    slug,
-			Stage:   storage.SpecStageAmended,
-			Version: 2,
+			Slug:        slug,
+			Stage:       storage.SpecStageAmended,
+			Version:     2,
+			ContentHash: strings.Repeat("a", 32),
 			History: []storage.HistoryEntry{
 				{Version: 2, Stage: storage.SpecStageAmended, Summary: "amended", Reason: "needs rework", Date: now},
 			},
@@ -161,10 +162,11 @@ func TestLifecycleHandler_Amend_UnknownLifecycleReturnsInternal(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.amendSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
 		return &storage.Spec{
-			Slug:      "my-spec",
-			Stage:     storage.SpecStageAmended,
-			Lifecycle: storage.SpecLifecycle("bogus"),
-			Version:   2,
+			Slug:        "my-spec",
+			Stage:       storage.SpecStageAmended,
+			Lifecycle:   storage.SpecLifecycle("bogus"),
+			Version:     2,
+			ContentHash: strings.Repeat("a", 32),
 		}, nil
 	}
 	client := newLifecycleClient(t, deps)
@@ -239,11 +241,13 @@ func TestLifecycleHandler_Supersede(t *testing.T) {
 				Stage:        storage.SpecStageSuperseded,
 				SupersededBy: newSlug,
 				Version:      3,
+				ContentHash:  strings.Repeat("a", 32),
 			}, &storage.Spec{
-				Slug:       newSlug,
-				Stage:      storage.SpecStageSpark,
-				Supersedes: oldSlug,
-				Version:    1,
+				Slug:        newSlug,
+				Stage:       storage.SpecStageSpark,
+				Supersedes:  oldSlug,
+				Version:     1,
+				ContentHash: strings.Repeat("a", 32),
 			}, nil
 	}
 	client := newLifecycleClient(t, deps)
@@ -264,9 +268,10 @@ func TestLifecycleHandler_Abandon(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.abandonSpec = func(_ context.Context, slug, _ string) (*storage.Spec, error) {
 		return &storage.Spec{
-			Slug:    slug,
-			Stage:   storage.SpecStageAbandoned,
-			Version: 2,
+			Slug:        slug,
+			Stage:       storage.SpecStageAbandoned,
+			Version:     2,
+			ContentHash: strings.Repeat("a", 32),
 		}, nil
 	}
 	client := newLifecycleClient(t, deps)
@@ -340,6 +345,7 @@ func TestLifecycleHandler_CheckDrift_MergesAcknowledgmentState(t *testing.T) {
 			Stage:                storage.SpecStageDone,
 			DriftAcknowledged:    true,
 			DriftAcknowledgeNote: "some note",
+			ContentHash:          strings.Repeat("a", 32),
 		}, nil
 	}
 	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
@@ -366,6 +372,7 @@ func TestLifecycleHandler_CheckDrift_SynthesizedEmptyReportMergesAck(t *testing.
 			Stage:                storage.SpecStageDone,
 			DriftAcknowledged:    true,
 			DriftAcknowledgeNote: "intentional divergence",
+			ContentHash:          strings.Repeat("a", 32),
 		}, nil
 	}
 	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
@@ -631,7 +638,7 @@ func TestLifecycleHandler_Supersede_NewSpecTerminal(t *testing.T) {
 func TestLifecycleHandler_Lint(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
-		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpecify}, nil
+		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpecify, ContentHash: strings.Repeat("a", 32)}, nil
 	}
 	deps.linter.lint = func(_ context.Context, slug string) ([]storage.LintResult, error) {
 		return []storage.LintResult{
@@ -655,7 +662,7 @@ func TestLifecycleHandler_Lint(t *testing.T) {
 func TestLifecycleHandler_Lint_WithViolations(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
-		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpecify}, nil
+		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpecify, ContentHash: strings.Repeat("a", 32)}, nil
 	}
 	deps.linter.lint = func(_ context.Context, _ string) ([]storage.LintResult, error) {
 		return []storage.LintResult{
@@ -879,7 +886,7 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckError(t *testing.T) {
 func TestLifecycleHandler_Lint_NilLinter(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
-		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpecify}, nil
+		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpecify, ContentHash: strings.Repeat("a", 32)}, nil
 	}
 	mux := http.NewServeMux()
 	server.RegisterLifecycleService(mux, &testScoper{backend: deps.store}, deps.drift, nil, nil)
@@ -899,7 +906,7 @@ func TestLifecycleHandler_Lint_NilLinter(t *testing.T) {
 func TestLifecycleHandler_Lint_Error(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
-		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpecify}, nil
+		return &storage.Spec{Slug: slug, Stage: storage.SpecStageSpecify, ContentHash: strings.Repeat("a", 32)}, nil
 	}
 	deps.linter.lint = func(_ context.Context, _ string) ([]storage.LintResult, error) {
 		return nil, errors.New("db unavailable")
@@ -1368,15 +1375,17 @@ func TestLifecycleHandler_Supersede_InvalidOldSpecLifecycleReturnsInternal(t *te
 	deps := defaultTestDeps()
 	deps.store.supersedeSpec = func(_ context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error) {
 		return &storage.Spec{
-				Slug:      oldSlug,
-				Stage:     storage.SpecStageSuperseded,
-				Lifecycle: storage.SpecLifecycle("bogus"),
-				Version:   2,
+				Slug:        oldSlug,
+				Stage:       storage.SpecStageSuperseded,
+				Lifecycle:   storage.SpecLifecycle("bogus"),
+				Version:     2,
+				ContentHash: strings.Repeat("a", 32),
 			}, &storage.Spec{
-				Slug:      newSlug,
-				Stage:     storage.SpecStageSpark,
-				Lifecycle: storage.SpecLifecycleTask,
-				Version:   1,
+				Slug:        newSlug,
+				Stage:       storage.SpecStageSpark,
+				Lifecycle:   storage.SpecLifecycleTask,
+				Version:     1,
+				ContentHash: strings.Repeat("a", 32),
 			}, nil
 	}
 	client := newLifecycleClient(t, deps)
@@ -1395,10 +1404,11 @@ func TestLifecycleHandler_Abandon_UnknownLifecycleReturnsInternal(t *testing.T) 
 	deps := defaultTestDeps()
 	deps.store.abandonSpec = func(_ context.Context, slug, _ string) (*storage.Spec, error) {
 		return &storage.Spec{
-			Slug:      slug,
-			Stage:     storage.SpecStageAbandoned,
-			Lifecycle: storage.SpecLifecycle("bogus"),
-			Version:   2,
+			Slug:        slug,
+			Stage:       storage.SpecStageAbandoned,
+			Lifecycle:   storage.SpecLifecycle("bogus"),
+			Version:     2,
+			ContentHash: strings.Repeat("a", 32),
 		}, nil
 	}
 	client := newLifecycleClient(t, deps)

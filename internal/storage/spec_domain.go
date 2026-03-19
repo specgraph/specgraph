@@ -150,6 +150,7 @@ type Spec struct {
 	DriftAcknowledged    bool           // drift was intentionally acknowledged
 	DriftAcknowledgeNote string         // reason for acknowledging drift
 	Notes                string         // free-text notes (conversation summaries, context)
+	ContentHash          string         // Murmur3-128 hash of substantive fields
 }
 
 // HistoryEntry records a lifecycle event on a spec.

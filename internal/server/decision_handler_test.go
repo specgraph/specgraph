@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -37,14 +38,15 @@ func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, dec
 	m.seq++
 	now := time.Now().UTC()
 	d := &storage.Decision{
-		ID:        fmt.Sprintf("dec-%05d", m.seq),
-		Slug:      slug,
-		Title:     title,
-		Status:    storage.DecisionStatusProposed,
-		Body:      decision,
-		Rationale: rationale,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:          fmt.Sprintf("dec-%05d", m.seq),
+		Slug:        slug,
+		Title:       title,
+		Status:      storage.DecisionStatusProposed,
+		Body:        decision,
+		Rationale:   rationale,
+		ContentHash: strings.Repeat("a", 32),
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	m.decisions[slug] = d
 	return d, nil

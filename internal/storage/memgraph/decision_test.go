@@ -84,6 +84,32 @@ func TestUpdateDecision(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestCreateDecision_SetsContentHash(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	dec, err := store.CreateDecision(ctx, "hash-test-dec", "Test Decision", "We decided this", "Because reasons")
+	require.NoError(t, err)
+	require.Len(t, dec.ContentHash, 32, "content_hash should be 32-char hex")
+
+	// Update and verify hash changes
+	newTitle := "Updated Decision Title"
+	updated, err := store.UpdateDecision(ctx, "hash-test-dec", &newTitle, nil, nil, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, updated.ContentHash, 32)
+	require.NotEqual(t, dec.ContentHash, updated.ContentHash, "hash should change when title changes")
+
+	// Get and verify hash is persisted
+	fetched, err := store.GetDecision(ctx, "hash-test-dec")
+	require.NoError(t, err)
+	require.Equal(t, updated.ContentHash, fetched.ContentHash)
+}
+
 func TestGetDecision_NotFound(t *testing.T) {
 	boltURI, cleanup := setupMemgraph(t)
 	defer cleanup()

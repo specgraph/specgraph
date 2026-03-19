@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	gosync "sync"
 	"testing"
 	"time"
@@ -211,12 +212,13 @@ func setupSyncServer(t *testing.T) specgraphv1connect.SyncServiceClient {
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
 			"test-spec": {
-				ID:         "spec-test123",
-				Slug:       "test-spec",
-				Intent:     "Test spec for sync",
-				Stage:      "approved",
-				Priority:   "p2",
-				Complexity: "medium",
+				ID:          "spec-test123",
+				Slug:        "test-spec",
+				Intent:      "Test spec for sync",
+				Stage:       "approved",
+				Priority:    "p2",
+				Complexity:  "medium",
+				ContentHash: strings.Repeat("a", 32),
 			},
 		},
 	}
@@ -296,12 +298,13 @@ func TestSyncHandler_Inject_Success(t *testing.T) {
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
 			"test-spec": {
-				ID:         "spec-test123",
-				Slug:       "test-spec",
-				Intent:     "Test spec for sync",
-				Stage:      "approved",
-				Priority:   "p2",
-				Complexity: "medium",
+				ID:          "spec-test123",
+				Slug:        "test-spec",
+				Intent:      "Test spec for sync",
+				Stage:       "approved",
+				Priority:    "p2",
+				Complexity:  "medium",
+				ContentHash: strings.Repeat("a", 32),
 			},
 		},
 	}
@@ -331,6 +334,7 @@ func TestSyncHandler_Inject_SuccessCursor(t *testing.T) {
 			"test-spec": {
 				ID: "spec-test123", Slug: "test-spec", Intent: "Test spec for sync",
 				Stage: "approved", Priority: "p2", Complexity: "medium",
+				ContentHash: strings.Repeat("a", 32),
 			},
 		},
 	}
@@ -360,6 +364,7 @@ func TestSyncHandler_Inject_SuccessAgentsMD(t *testing.T) {
 			"test-spec": {
 				ID: "spec-test123", Slug: "test-spec", Intent: "Test spec for sync",
 				Stage: "approved", Priority: "p2", Complexity: "medium",
+				ContentHash: strings.Repeat("a", 32),
 			},
 		},
 	}
@@ -409,11 +414,12 @@ func setupSyncServerWithAdapter(t *testing.T, adapter syncpkg.Adapter) specgraph
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
 			"test-spec": {
-				ID:       "spec-test123",
-				Slug:     "test-spec",
-				Intent:   "Test spec for sync",
-				Stage:    "approved",
-				Priority: "p2",
+				ID:          "spec-test123",
+				Slug:        "test-spec",
+				Intent:      "Test spec for sync",
+				Stage:       "approved",
+				Priority:    "p2",
+				ContentHash: strings.Repeat("a", 32),
 			},
 		},
 	}
@@ -511,7 +517,7 @@ func TestSyncHandler_SyncBeads_AlreadySynced(t *testing.T) {
 	}
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
-			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved", ContentHash: strings.Repeat("a", 32)},
 		},
 	}
 	mux := http.NewServeMux()
@@ -609,7 +615,7 @@ func TestSyncHandler_SyncBeads_GetSyncMappingError(t *testing.T) {
 	}
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
-			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved", ContentHash: strings.Repeat("a", 32)},
 		},
 	}
 	mux := http.NewServeMux()
@@ -642,7 +648,7 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingError(t *testing.T) {
 	}
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
-			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved", ContentHash: strings.Repeat("a", 32)},
 		},
 	}
 	mux := http.NewServeMux()
@@ -728,7 +734,7 @@ func TestSyncHandler_GetSyncStatus_ListSyncMappingsError(t *testing.T) {
 	}
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
-			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved", ContentHash: strings.Repeat("a", 32)},
 		},
 	}
 	mux := http.NewServeMux()
@@ -780,7 +786,7 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingExists(t *testing.T) {
 	}
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
-			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved", ContentHash: strings.Repeat("a", 32)},
 		},
 	}
 	mux := http.NewServeMux()
@@ -804,12 +810,13 @@ func TestSyncHandler_Inject_ConstitutionWarning(t *testing.T) {
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
 			"test-spec": {
-				ID:         "spec-test123",
-				Slug:       "test-spec",
-				Intent:     "Test spec",
-				Stage:      "approved",
-				Priority:   "p2",
-				Complexity: "medium",
+				ID:          "spec-test123",
+				Slug:        "test-spec",
+				Intent:      "Test spec",
+				Stage:       "approved",
+				Priority:    "p2",
+				Complexity:  "medium",
+				ContentHash: strings.Repeat("a", 32),
 			},
 		},
 	}
@@ -857,6 +864,7 @@ func TestSyncHandler_Inject_ConstitutionNotFound_NoWarning(t *testing.T) {
 			"test-spec": {
 				ID: "spec-test123", Slug: "test-spec", Intent: "Test spec",
 				Stage: "approved", Priority: "p2", Complexity: "medium",
+				ContentHash: strings.Repeat("a", 32),
 			},
 		},
 	}
@@ -885,7 +893,7 @@ func TestSyncHandler_Inject_OutputDirOutsideRoot(t *testing.T) {
 	syncStore := newMockSyncBackend()
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
-			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved", ContentHash: strings.Repeat("a", 32)},
 		},
 	}
 	mux := http.NewServeMux()
@@ -936,7 +944,7 @@ func TestSyncHandler_SyncBeads_RetrySuccess(t *testing.T) {
 	}
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
-			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved", ContentHash: strings.Repeat("a", 32)},
 		},
 	}
 	mux := http.NewServeMux()
@@ -983,7 +991,7 @@ func TestSyncHandler_SyncBeads_RetryExistsCountsAsSkipped(t *testing.T) {
 	}
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
-			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved", ContentHash: strings.Repeat("a", 32)},
 		},
 	}
 	mux := http.NewServeMux()
@@ -1034,7 +1042,7 @@ func TestSyncHandler_SyncBeads_ContextCancelledBeforeRetry(t *testing.T) {
 	}
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
-			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved"},
+			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved", ContentHash: strings.Repeat("a", 32)},
 		},
 	}
 	// Call the handler method directly (not via HTTP) to avoid context
@@ -1079,12 +1087,13 @@ func TestSyncHandler_Inject_NoAllowedOutputRoot(t *testing.T) {
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
 			"test-spec": {
-				ID:         "spec-test123",
-				Slug:       "test-spec",
-				Intent:     "Test spec for sync",
-				Stage:      "approved",
-				Priority:   "p2",
-				Complexity: "medium",
+				ID:          "spec-test123",
+				Slug:        "test-spec",
+				Intent:      "Test spec for sync",
+				Stage:       "approved",
+				Priority:    "p2",
+				Complexity:  "medium",
+				ContentHash: strings.Repeat("a", 32),
 			},
 		},
 	}
@@ -1122,8 +1131,8 @@ func TestSyncHandler_SyncBeads_DryRunCount(t *testing.T) {
 	syncStore := newMockSyncBackend()
 	specStore := &mockSpecReader{
 		specs: map[string]*storage.Spec{
-			"spec-alpha": {ID: "spec-alpha-id", Slug: "spec-alpha", Stage: "approved"},
-			"spec-beta":  {ID: "spec-beta-id", Slug: "spec-beta", Stage: "approved"},
+			"spec-alpha": {ID: "spec-alpha-id", Slug: "spec-alpha", Stage: "approved", ContentHash: strings.Repeat("a", 32)},
+			"spec-beta":  {ID: "spec-beta-id", Slug: "spec-beta", Stage: "approved", ContentHash: strings.Repeat("a", 32)},
 		},
 	}
 	mux := http.NewServeMux()
