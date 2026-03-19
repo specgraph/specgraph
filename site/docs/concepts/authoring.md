@@ -230,3 +230,8 @@ creates a traceable design history that survives beyond the original author's
 memory. When someone asks "why did we use lineage chain tracking instead of
 single-use tokens?" six months later, the answer is in the Shape output, not
 buried in a Slack thread.
+
+Each stage transition also creates a **checkpoint ChangeLog node** in the graph,
+recording the content hash and field deltas at that boundary. This means you can
+always answer "what did this spec look like when it entered Shape?" and "what
+changed between Shape and Specify?" directly from the graph.

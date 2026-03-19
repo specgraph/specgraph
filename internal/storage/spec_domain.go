@@ -146,18 +146,9 @@ type Spec struct {
 	Lifecycle            SpecLifecycle  // "task" (default) or "living"
 	SupersededBy         string         // slug of replacement spec
 	Supersedes           string         // slug of spec this replaced
-	History              []HistoryEntry // lifecycle event log
 	DriftAcknowledged    bool           // drift was intentionally acknowledged
 	DriftAcknowledgeNote string         // reason for acknowledging drift
 	Notes                string         // free-text notes (conversation summaries, context)
 	ContentHash          string         // Murmur3-128 hash of substantive fields
 }
 
-// HistoryEntry records a lifecycle event on a spec.
-type HistoryEntry struct {
-	Version int32
-	Stage   SpecStage
-	Summary string
-	Reason  string
-	Date    time.Time
-}

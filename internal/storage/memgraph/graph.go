@@ -96,11 +96,15 @@ func (s *Store) ListEdges(ctx context.Context, slug string, edgeType storage.Edg
 			RETURN b.slug AS from_slug, a.slug AS to_slug, type(r) AS rel_type
 		`, relType, relType)
 	} else {
+		// Exclude internal infrastructure edges (BELONGS_TO, HAS_CHANGE) from
+		// unfiltered listing — these are not user-facing edge types.
 		query = `
 			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})-[r]->(b)
+			WHERE type(r) <> "BELONGS_TO" AND type(r) <> "HAS_CHANGE"
 			RETURN a.slug AS from_slug, b.slug AS to_slug, type(r) AS rel_type
 			UNION
 			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})<-[r]-(b)
+			WHERE type(r) <> "BELONGS_TO" AND type(r) <> "HAS_CHANGE"
 			RETURN b.slug AS from_slug, a.slug AS to_slug, type(r) AS rel_type
 		`
 	}

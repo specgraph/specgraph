@@ -58,8 +58,7 @@ func TestLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, storage.SpecStage("shape"), amended.Stage)
 		require.Equal(t, int32(3), amended.Version) // create=1, update=2, amend=3
-		require.NotEmpty(t, amended.History)
-		require.Equal(t, "Mobile needs offline refresh", amended.History[len(amended.History)-1].Reason)
+		// History field removed — changelog is now tracked via ChangeLog graph nodes.
 
 		// Verify re-entry stage was persisted to Memgraph, not just returned in-memory.
 		fetched, err := store.GetSpec(ctx, "amend-me")
@@ -213,8 +212,7 @@ func TestLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, storage.SpecStageAbandoned, abandoned.Stage)
 		require.Equal(t, int32(2), abandoned.Version) // create=1, abandon=2
-		require.NotEmpty(t, abandoned.History)
-		require.Equal(t, "no longer needed", abandoned.History[len(abandoned.History)-1].Reason)
+		// History field removed — changelog is now tracked via ChangeLog graph nodes.
 	})
 
 	t.Run("AbandonSpec_ConcurrentModification", func(t *testing.T) {

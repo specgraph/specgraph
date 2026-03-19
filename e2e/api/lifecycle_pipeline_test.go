@@ -75,10 +75,7 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 		Expect(spec.GetSlug()).To(Equal(pipelineSlug))
 		Expect(spec.GetStage()).To(Equal("shape"))
 		Expect(spec.GetVersion()).To(BeNumerically(">=", int32(2)))
-		Expect(spec.GetHistory()).NotTo(BeEmpty())
-
-		lastEntry := spec.GetHistory()[len(spec.GetHistory())-1]
-		Expect(lastEntry.GetReason()).To(Equal("Requirements evolved after initial delivery"))
+		// History field removed — changelog is now tracked via ChangeLog graph nodes.
 	})
 
 	// After amend with re_entry_stage="shape", the spec is already AT "shape".
@@ -214,10 +211,7 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 		Expect(spec.GetSlug()).To(Equal(replacementSlug))
 		Expect(spec.GetStage()).To(Equal("abandoned"))
 		Expect(spec.GetVersion()).To(BeNumerically(">", versionBefore))
-		Expect(spec.GetHistory()).NotTo(BeEmpty())
-
-		lastEntry := spec.GetHistory()[len(spec.GetHistory())-1]
-		Expect(lastEntry.GetReason()).To(Equal("Project direction changed"))
+		// History field removed — changelog is now tracked via ChangeLog graph nodes.
 	})
 
 	It("lints the abandoned spec", func() {

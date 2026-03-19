@@ -143,6 +143,31 @@ the authoring funnel and as team needs grow.
 
 ---
 
+## Change Tracking
+
+Every material change to a spec creates a **ChangeLog** node in the graph,
+linked via a `HAS_CHANGE` edge. Each ChangeLog entry records:
+
+- **Content hash** — Murmur3-128 fingerprint of the spec's substantive fields
+  after the change
+- **Field deltas** — which fields changed and their old/new values
+- **Checkpoint flag** — `true` for stage transitions, `false` for in-stage edits
+
+This gives you:
+
+- **Change detection** — compare current `content_hash` against any previous
+  ChangeLog entry to know if a spec changed
+- **Impact analysis** — walk `DEPENDS_ON` edges from a changed spec to find
+  everything affected
+- **Point-in-time views** — query checkpoint entries to see the spec's state
+  at each stage boundary
+
+ChangeLog nodes are graph-native — queryable in Cypher without deserializing
+JSON blobs. You can ask "what changed across the project this week?" with a
+single graph query.
+
+---
+
 ## Why a Graph?
 
 Traditional spec management stores specifications as files in a directory.

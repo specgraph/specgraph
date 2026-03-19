@@ -11,7 +11,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
@@ -129,7 +128,6 @@ func newLifecycleClient(t *testing.T, deps *lifecycleTestDeps) specgraphv1connec
 }
 
 func TestLifecycleHandler_Amend(t *testing.T) {
-	now := time.Date(2026, 3, 7, 0, 0, 0, 0, time.UTC)
 	deps := defaultTestDeps()
 	deps.store.amendSpec = func(_ context.Context, slug, _, _ string) (*storage.Spec, error) {
 		return &storage.Spec{
@@ -137,9 +135,6 @@ func TestLifecycleHandler_Amend(t *testing.T) {
 			Stage:       storage.SpecStageAmended,
 			Version:     2,
 			ContentHash: strings.Repeat("a", 32),
-			History: []storage.HistoryEntry{
-				{Version: 2, Stage: storage.SpecStageAmended, Summary: "amended", Reason: "needs rework", Date: now},
-			},
 		}, nil
 	}
 	client := newLifecycleClient(t, deps)
@@ -154,8 +149,6 @@ func TestLifecycleHandler_Amend(t *testing.T) {
 	require.Equal(t, "my-spec", s.GetSlug())
 	require.Equal(t, "amended", s.GetStage())
 	require.Equal(t, int32(2), s.GetVersion())
-	require.Len(t, s.GetHistory(), 1)
-	require.Equal(t, "needs rework", s.GetHistory()[0].GetReason())
 }
 
 func TestLifecycleHandler_Amend_UnknownLifecycleReturnsInternal(t *testing.T) {

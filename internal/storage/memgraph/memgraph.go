@@ -7,7 +7,6 @@ package memgraph
 import (
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"maps"
 	"math"
@@ -107,7 +106,7 @@ func (s *Store) ensureIndexes(ctx context.Context) error {
 			return fmt.Errorf("close session after index %q: %w", stmt, closeErr)
 		}
 	}
-	return nil
+	return s.EnsureChangeLogIndexes(ctx)
 }
 
 // ensureProjectNode creates the Project node via MERGE (idempotent).
@@ -163,13 +162,12 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 			created_at: $created_at,
 			updated_at: $updated_at,
 			lifecycle: $lifecycle,
-			history_json: $history_json,
 			notes: $notes,
 			content_hash: $content_hash
 		})
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash
 	`
@@ -184,7 +182,6 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		"created_at":   nowStr,
 		"updated_at":   nowStr,
 		"lifecycle":    string(defaultLifecycle),
-		"history_json": "[]",
 		"notes":        "",
 		"content_hash": ch,
 	})
@@ -197,7 +194,32 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		return nil, fmt.Errorf("memgraph: create spec returned no records")
 	}
 
-	return recordToSpec(records[0])
+	spec, err := recordToSpec(records[0])
+	if err != nil {
+		return nil, err
+	}
+
+	// Create an initial checkpoint ChangeLog entry for the newly created spec.
+	allFields := storage.SpecFields{
+		Intent:     intent,
+		Stage:      defaultInitialStage,
+		Priority:   priority,
+		Complexity: complexity,
+	}
+	empty := storage.SpecFields{}
+	deltas := storage.ComputeFieldDeltas(&empty, &allFields)
+	clEntry := &storage.ChangeLogEntry{
+		Version:     spec.Version,
+		Stage:       spec.Stage,
+		ContentHash: spec.ContentHash,
+		Checkpoint:  true,
+		Summary:     "Spec created",
+		Date:        spec.CreatedAt,
+	}
+	if err := s.createChangeLog(ctx, slug, clEntry, deltas); err != nil {
+		return nil, err
+	}
+	return spec, nil
 }
 
 // GetSpec retrieves a spec by slug.
@@ -206,7 +228,7 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash
 	`
@@ -233,7 +255,7 @@ func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec) WHERE s.slug IN $slugs
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash
 	`
@@ -272,7 +294,7 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	}
 	query += ` RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash`
 	query += " ORDER BY s.created_at"
@@ -327,6 +349,12 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		return s.GetSpec(ctx, slug)
 	}
 
+	// Capture old field values before the update for changelog delta computation.
+	oldFields, oldContentHash, _, _, err := s.readSpecFields(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+
 	nowStr := s.now()
 	setClauses = append(setClauses, "s.version = s.version + 1", "s.updated_at = $updated_at")
 	params["updated_at"] = nowStr
@@ -336,7 +364,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		SET %s
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash,
 		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output
@@ -361,7 +389,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 	}
 	authoringOutputs := make(map[string]string)
 	for i, key := range []string{"spark_output", "shape_output", "specify_output", "decompose_output"} {
-		val, aoErr := recordStringOptional(rec, 17+i, key)
+		val, aoErr := recordStringOptional(rec, 16+i, key)
 		if aoErr != nil {
 			return nil, aoErr
 		}
@@ -383,7 +411,83 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 	}
 	spec.ContentHash = ch
 
+	// Create a changelog entry only if the content hash changed (substantive update).
+	if ch != oldContentHash {
+		newFields := storage.SpecFields{
+			Intent:          spec.Intent,
+			Stage:           string(spec.Stage),
+			Priority:        string(spec.Priority),
+			Complexity:      spec.Complexity,
+			SparkOutput:     authoringOutputs["spark_output"],
+			ShapeOutput:     authoringOutputs["shape_output"],
+			SpecifyOutput:   authoringOutputs["specify_output"],
+			DecomposeOutput: authoringOutputs["decompose_output"],
+		}
+		deltas := storage.ComputeFieldDeltas(&oldFields, &newFields)
+		clEntry := &storage.ChangeLogEntry{
+			Version:     spec.Version,
+			Stage:       spec.Stage,
+			ContentHash: ch,
+			Checkpoint:  false,
+			Summary:     "Spec updated",
+			Date:        spec.UpdatedAt,
+		}
+		if err := s.createChangeLog(ctx, slug, clEntry, deltas); err != nil {
+			return nil, err
+		}
+	}
+
 	return spec, nil
+}
+
+// readSpecFields reads the substantive fields, content hash, version, and
+// updated_at of a spec. Used before/after updates to capture values for
+// changelog delta computation without a separate GetSpec round-trip.
+func (s *Store) readSpecFields(ctx context.Context, slug string) (fields storage.SpecFields, contentHash string, version int32, updatedAt string, err error) {
+	query := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+		RETURN s.intent, s.stage, s.priority, s.complexity,
+		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output,
+		       s.content_hash, s.version, s.updated_at
+	`
+	records, rErr := s.executeQuery(ctx, query,
+		mergeParams(s.projectParam(), map[string]any{"slug": slug}))
+	if rErr != nil {
+		err = fmt.Errorf("memgraph: read spec fields: %w", rErr)
+		return
+	}
+	if len(records) == 0 {
+		err = fmt.Errorf("memgraph: read spec fields %q: %w", slug, storage.ErrSpecNotFound)
+		return
+	}
+	rec := records[0]
+	getString := func(pos int) string {
+		if pos >= len(rec.Values) || rec.Values[pos] == nil {
+			return ""
+		}
+		if v, ok := rec.Values[pos].(string); ok {
+			return v
+		}
+		return ""
+	}
+	fields = storage.SpecFields{
+		Intent:          getString(0),
+		Stage:           getString(1),
+		Priority:        getString(2),
+		Complexity:      getString(3),
+		SparkOutput:     getString(4),
+		ShapeOutput:     getString(5),
+		SpecifyOutput:   getString(6),
+		DecomposeOutput: getString(7),
+	}
+	contentHash = getString(8)
+	if pos := 9; pos < len(rec.Values) && rec.Values[pos] != nil {
+		if v, ok := rec.Values[pos].(int64); ok {
+			version = int32(v) //nolint:gosec // version is always positive and small
+		}
+	}
+	updatedAt = getString(10)
+	return
 }
 
 // ClearAll removes all nodes and relationships from the graph.
@@ -525,43 +629,6 @@ func recordStringOptional(rec *neo4j.Record, pos int, field string) (string, err
 	return s, nil
 }
 
-// historyEntryJSON is a JSON-serializable form of storage.HistoryEntry.
-type historyEntryJSON struct {
-	Version int32  `json:"version"`
-	Stage   string `json:"stage"`
-	Summary string `json:"summary"`
-	Reason  string `json:"reason"`
-	Date    string `json:"date"`
-}
-
-// unmarshalHistory parses a JSON string into a slice of storage.HistoryEntry.
-// slug is used in error messages to identify which spec's history is broken.
-func unmarshalHistory(slug, raw string) ([]storage.HistoryEntry, error) {
-	if raw == "" || raw == "[]" {
-		return []storage.HistoryEntry{}, nil
-	}
-	var entries []historyEntryJSON
-	if err := json.Unmarshal([]byte(raw), &entries); err != nil {
-		return nil, fmt.Errorf("memgraph: unmarshal history_json for spec %q: %w", slug, err)
-	}
-	result := make([]storage.HistoryEntry, len(entries))
-	for i, e := range entries {
-		t, err := parseRFC3339("history.date", e.Date)
-		if err != nil {
-			return nil, err
-		}
-		stage := storage.SpecStage(e.Stage)
-		result[i] = storage.HistoryEntry{
-			Version: e.Version,
-			Stage:   stage,
-			Summary: e.Summary,
-			Reason:  e.Reason,
-			Date:    t,
-		}
-	}
-	return result, nil
-}
-
 // recordToSpecOffset converts a neo4j record to a *storage.Spec, reading field
 // values starting at the given positional offset. This supports queries that
 // return multiple spec records in a single row (e.g., SupersedeSpec returning
@@ -629,28 +696,19 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	historyJSON, err := recordStringOptional(rec, offset+12, "history_json")
+	driftAck, err := recordBoolOptional(rec, offset+12, "drift_acknowledged")
 	if err != nil {
 		return nil, err
 	}
-
-	history, err := unmarshalHistory(slug, historyJSON)
+	driftAckNote, err := recordStringOptional(rec, offset+13, "drift_acknowledge_note")
 	if err != nil {
 		return nil, err
 	}
-	driftAck, err := recordBoolOptional(rec, offset+13, "drift_acknowledged")
+	notes, err := recordStringOptional(rec, offset+14, "notes")
 	if err != nil {
 		return nil, err
 	}
-	driftAckNote, err := recordStringOptional(rec, offset+14, "drift_acknowledge_note")
-	if err != nil {
-		return nil, err
-	}
-	notes, err := recordStringOptional(rec, offset+15, "notes")
-	if err != nil {
-		return nil, err
-	}
-	contentHash, err := recordStringOptional(rec, offset+16, "content_hash")
+	contentHash, err := recordStringOptional(rec, offset+15, "content_hash")
 	if err != nil {
 		return nil, err
 	}
@@ -668,7 +726,6 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 		Lifecycle:            lifecycle,
 		SupersededBy:         supersededBy,
 		Supersedes:           supersedes,
-		History:              history,
 		DriftAcknowledged:    driftAck,
 		DriftAcknowledgeNote: driftAckNote,
 		Notes:                notes,
