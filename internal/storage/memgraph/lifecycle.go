@@ -55,23 +55,15 @@ func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChe
 		op, slug, current.Stage, current.Version, storage.ErrInternalGuardFailure)
 }
 
-// amendSummary returns the history summary for an amend operation.
-func amendSummary(targetStage storage.SpecStage) string {
-	if targetStage == storage.SpecStageAmended {
-		return "Amended from done"
-	}
-	return fmt.Sprintf("Amended from done, re-entering at: %s", targetStage)
-}
-
-// LifecycleAmendSpec transitions a done spec back into an earlier authoring stage,
-// appending a history entry. If reEntryStage is empty, the spec is set to "amended".
+// LifecycleAmendSpec transitions a done spec back into an earlier authoring stage.
+// If reEntryStage is empty, the spec is set to "amended".
 // Returns ErrSpecNotDone if the spec is not at the "done" stage, and ErrSpecNotFound
 // if the spec does not exist.
 //
 // The transition is atomic: a single Cypher query gates on the expected stage
 // and version so concurrent requests cannot overwrite each other.
 func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error) {
-	// Read current state to build history and compute new version.
+	// Read current state to compute new version.
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: amend spec: pre-read %q: %w", slug, err)
@@ -87,17 +79,6 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 	}
 
 	newVersion := spec.Version + 1
-	entry := storage.HistoryEntry{
-		Version: newVersion,
-		Stage:   targetStage,
-		Summary: amendSummary(targetStage),
-		Reason:  reason,
-		Date:    s.nowTime(),
-	}
-	historyJSON, err := appendHistory(spec.History, &entry)
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: amend spec %q: %w", slug, err)
-	}
 
 	nowStr := s.now()
 	// Atomic: WHERE guards ensure we only transition if the spec is still at
@@ -107,11 +88,10 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		WHERE s.stage = $expected_stage AND s.version = $expected_version
 		SET s.stage = $stage,
 		    s.version = $version,
-		    s.updated_at = $updated_at,
-		    s.history_json = $history_json
+		    s.updated_at = $updated_at
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash
 	`
@@ -122,7 +102,6 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		"stage":            string(targetStage),
 		"version":          int64(newVersion),
 		"updated_at":       nowStr,
-		"history_json":     historyJSON,
 	}))
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: amend spec: %w", err)
@@ -181,32 +160,8 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		return nil, nil, fmt.Errorf("supersede spec: new spec %q (stage=%s): %w", newSlug, newCheck.Stage, storage.ErrNewSpecTerminal)
 	}
 
-	now := s.nowTime()
 	oldVersion := oldCheck.Version + 1
-	oldEntry := storage.HistoryEntry{
-		Version: oldVersion,
-		Stage:   storage.SpecStageSuperseded,
-		Summary: "Spec superseded",
-		Reason:  fmt.Sprintf("Superseded by %s", newSlug),
-		Date:    now,
-	}
-	historyJSON, err := appendHistory(oldCheck.History, &oldEntry)
-	if err != nil {
-		return nil, nil, fmt.Errorf("memgraph: supersede spec %q: %w", oldSlug, err)
-	}
-
 	newVersion := newCheck.Version + 1
-	newEntry := storage.HistoryEntry{
-		Version: newVersion,
-		Stage:   newCheck.Stage,
-		Summary: "Supersedes predecessor",
-		Reason:  fmt.Sprintf("Supersedes %s", oldSlug),
-		Date:    now,
-	}
-	newHistoryJSON, err := appendHistory(newCheck.History, &newEntry)
-	if err != nil {
-		return nil, nil, fmt.Errorf("memgraph: supersede spec (new) %q: %w", newSlug, err)
-	}
 
 	nowStr := s.now()
 	// Atomic: WHERE guards ensure neither spec has entered a terminal state
@@ -222,20 +177,18 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		    old.superseded_by = $new_slug,
 		    old.version = $version,
 		    old.updated_at = $updated_at,
-		    old.history_json = $history_json,
 		    new.supersedes = $old_slug,
 		    new.version = $new_version,
-		    new.updated_at = $updated_at,
-		    new.history_json = $new_history_json
+		    new.updated_at = $updated_at
 		MERGE (new)-[:SUPERSEDES]->(old)
 		RETURN old.id, old.slug, old.intent, old.stage, old.priority, old.complexity,
 		       old.version, old.created_at, old.updated_at,
-		       old.lifecycle, old.superseded_by, old.supersedes, old.history_json,
+		       old.lifecycle, old.superseded_by, old.supersedes,
 		       old.drift_acknowledged, old.drift_acknowledge_note, old.notes,
 		       old.content_hash,
 		       new.id, new.slug, new.intent, new.stage, new.priority, new.complexity,
 		       new.version, new.created_at, new.updated_at,
-		       new.lifecycle, new.superseded_by, new.supersedes, new.history_json,
+		       new.lifecycle, new.superseded_by, new.supersedes,
 		       new.drift_acknowledged, new.drift_acknowledge_note, new.notes,
 		       new.content_hash
 	`
@@ -248,9 +201,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		"expected_new_version": newCheck.Version,
 		"version":              int64(oldVersion),
 		"updated_at":           nowStr,
-		"history_json":         historyJSON,
 		"new_version":          int64(newVersion),
-		"new_history_json":     newHistoryJSON,
 	}))
 	if err != nil {
 		return nil, nil, fmt.Errorf("memgraph: supersede spec: %w", err)
@@ -291,14 +242,14 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	}
 
 	rec := records[0]
-	// Parse old spec from positions 0-16 (17 fields).
+	// Parse old spec from positions 0-15 (16 fields).
 	oldSpec, err = recordToSpec(rec)
 	if err != nil {
 		return nil, nil, fmt.Errorf("memgraph: supersede: parse old spec: %w", err)
 	}
 
-	// Parse new spec from positions 17-33 (17 fields) using a shifted record adapter.
-	newSpec, err = recordToSpecOffset(rec, 17)
+	// Parse new spec from positions 16-31 (16 fields) using a shifted record adapter.
+	newSpec, err = recordToSpecOffset(rec, 16)
 	if err != nil {
 		return nil, nil, fmt.Errorf("memgraph: supersede: parse new spec: %w", err)
 	}
@@ -322,17 +273,6 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 	}
 
 	newVersion := spec.Version + 1
-	entry := storage.HistoryEntry{
-		Version: newVersion,
-		Stage:   storage.SpecStageAbandoned,
-		Summary: "Spec abandoned",
-		Reason:  reason,
-		Date:    s.nowTime(),
-	}
-	historyJSON, err := appendHistory(spec.History, &entry)
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: abandon spec %q: %w", slug, err)
-	}
 
 	nowStr := s.now()
 	// Atomic: WHERE guards on stage and version prevent TOCTOU races.
@@ -341,11 +281,10 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		WHERE NOT s.stage IN $terminal_stages AND s.version = $expected_version
 		SET s.stage = $stage,
 		    s.version = $version,
-		    s.updated_at = $updated_at,
-		    s.history_json = $history_json
+		    s.updated_at = $updated_at
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
-		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
+		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
 		       s.content_hash
 	`
@@ -356,7 +295,6 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		"stage":            string(storage.SpecStageAbandoned),
 		"version":          int64(newVersion),
 		"updated_at":       nowStr,
-		"history_json":     historyJSON,
 	}))
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: abandon spec: %w", err)
