@@ -7,6 +7,7 @@ package memgraph_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/seanb4t/specgraph/internal/storage"
@@ -275,6 +276,91 @@ func TestLifecycleSupersedeSpec_CreatesCheckpointChangeLogs(t *testing.T) {
 	require.Len(t, newEntries, 2)
 	assert.True(t, newEntries[1].Checkpoint)
 	assert.Equal(t, "Supersedes predecessor", newEntries[1].Summary)
+}
+
+func TestListChanges_CheckpointsOnly(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.CreateSpec(ctx, "test-filter-cp", "intent", "p2", "medium")
+	require.NoError(t, err)
+
+	newIntent := "updated"
+	_, err = store.UpdateSpec(ctx, "test-filter-cp", &newIntent, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	all, err := store.ListChanges(ctx, "test-filter-cp", storage.ChangeLogFilter{})
+	require.NoError(t, err)
+	assert.Len(t, all, 2)
+
+	cps, err := store.ListChanges(ctx, "test-filter-cp", storage.ChangeLogFilter{CheckpointsOnly: true})
+	require.NoError(t, err)
+	assert.Len(t, cps, 1)
+}
+
+func TestListChanges_SinceVersion(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.CreateSpec(ctx, "test-filter-ver", "intent", "p2", "medium")
+	require.NoError(t, err)
+
+	newIntent := "v2"
+	_, err = store.UpdateSpec(ctx, "test-filter-ver", &newIntent, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	entries, err := store.ListChanges(ctx, "test-filter-ver", storage.ChangeLogFilter{SinceVersion: 1})
+	require.NoError(t, err)
+	assert.Len(t, entries, 1)
+	assert.Equal(t, int32(2), entries[0].Version)
+}
+
+func TestListChanges_Limit(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.CreateSpec(ctx, "test-filter-lim", "intent", "p2", "medium")
+	require.NoError(t, err)
+
+	for i := 0; i < 5; i++ {
+		v := fmt.Sprintf("intent-%d", i)
+		_, err = store.UpdateSpec(ctx, "test-filter-lim", &v, nil, nil, nil, nil)
+		require.NoError(t, err)
+	}
+
+	entries, err := store.ListChanges(ctx, "test-filter-lim", storage.ChangeLogFilter{Limit: 3})
+	require.NoError(t, err)
+	assert.Len(t, entries, 3)
+	assert.Equal(t, int32(1), entries[0].Version)
+}
+
+func TestListChanges_SpecNotFound(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.ListChanges(ctx, "nonexistent", storage.ChangeLogFilter{})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, storage.ErrSpecNotFound)
 }
 
 func TestUpdateSpec_NoChangeLogOnNoOp(t *testing.T) {
