@@ -134,8 +134,7 @@ func (h *LifecycleHandler) TransitionAbandon(ctx context.Context, req *connect.R
 // CheckDrift handles the CheckDrift RPC, returning drift reports for a spec.
 // An empty slug checks all eligible (done/amended) specs.
 func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
-	store, scopeErr := scopeStore(ctx, h.scoper)
-	if scopeErr != nil {
+	if _, scopeErr := scopeStore(ctx, h.scoper); scopeErr != nil {
 		return nil, scopeErr
 	}
 	msg := req.Msg
@@ -147,7 +146,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 
 	scopeStr, ok := driftScopeFromProto(msg.Scope)
 	if !ok {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scope %q (valid: unspecified/all, deps, interfaces, verify)", msg.Scope.String()))
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid scope %q", msg.Scope.String()))
 	}
 
 	if h.driftChecker == nil {
@@ -158,79 +157,17 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 		return nil, h.lifecycleError("CheckDrift", msg.Slug, err)
 	}
 
-	// Merge persisted acknowledgment state into drift reports.
-	if msg.Slug != "" {
-		// Single-spec path: when the drift engine returns no reports (clean spec),
-		// synthesize an empty DriftReport so callers can observe acknowledgment state.
-		if len(reports) == 0 {
-			reports = []storage.DriftReport{{SpecSlug: msg.Slug}}
-		}
-		if spec, specErr := store.GetSpec(ctx, msg.Slug); specErr == nil {
-			for i := range reports {
-				if reports[i].SpecSlug == msg.Slug {
-					reports[i].Acknowledged = spec.DriftAcknowledged
-					reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
-				}
-			}
-		} else if errors.Is(specErr, storage.ErrSpecNotFound) {
-			h.logger.Warn("CheckDrift: spec deleted between drift check and ack merge; acknowledgment state unavailable",
-				slog.String("slug", msg.Slug))
-			for i := range reports {
-				if reports[i].SpecSlug == msg.Slug {
-					reports[i].AckStateUnavailable = true
-				}
-			}
-		} else {
-			h.logger.Error("CheckDrift: failed to fetch acknowledgment state",
-				slog.String("slug", msg.Slug),
-				slog.Any("error", specErr))
-			return nil, connect.NewError(connect.CodeUnavailable,
-				fmt.Errorf("acknowledgment state unavailable for %q", msg.Slug))
-		}
-	} else {
-		// All-specs path: batch-fetch specs for acknowledgment state merge.
-		slugs := make([]string, 0, len(reports))
-		seen := make(map[string]struct{}, len(reports))
-		for _, r := range reports {
-			if _, ok := seen[r.SpecSlug]; !ok {
-				seen[r.SpecSlug] = struct{}{}
-				slugs = append(slugs, r.SpecSlug)
-			}
-		}
-		if len(slugs) > 0 {
-			specMap, batchErr := store.BatchGetSpecs(ctx, slugs)
-			if batchErr != nil {
-				h.logger.Error("CheckDrift: batch fetch for ack merge failed", slog.Any("error", batchErr))
-				return nil, connect.NewError(connect.CodeUnavailable,
-					errors.New("acknowledgment state temporarily unavailable"))
-			}
-			for i := range reports {
-				if spec, ok := specMap[reports[i].SpecSlug]; ok {
-					reports[i].Acknowledged = spec.DriftAcknowledged
-					reports[i].AcknowledgeNote = spec.DriftAcknowledgeNote
-				} else {
-					h.logger.Warn("CheckDrift: spec missing from batch result, setting AckStateUnavailable",
-						slog.String("slug", reports[i].SpecSlug))
-					reports[i].AckStateUnavailable = true
-				}
-			}
-		}
-	}
-
 	protoReports, err := driftReportsToProto(reports)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.DriftCheckResponse{
-		Reports: protoReports,
-	}), nil
+	return connect.NewResponse(&specv1.DriftCheckResponse{Reports: protoReports}), nil
 }
 
 // AcknowledgeDrift handles the AcknowledgeDrift RPC, marking drift as intentional.
 // After persisting the acknowledgment, it re-runs drift detection to return the
-// actual drift items alongside the acknowledgment fields. If drift checking is
-// not configured (driftChecker is nil), the response contains the acknowledgment
-// fields but an empty items slice.
+// current drift state. If drift checking is not configured (driftChecker is nil),
+// the response contains an empty items slice.
 func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Request[specv1.DriftAcknowledgeRequest]) (*connect.Response[specv1.DriftAcknowledgeResponse], error) {
 	store, scopeErr := scopeStore(ctx, h.scoper)
 	if scopeErr != nil {
@@ -240,45 +177,31 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-
-	if err := validateRequiredField("note", msg.Note); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	if msg.UpstreamSlug == "" && !msg.All {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("specify upstream_slug or set all=true"))
+	}
+	if msg.UpstreamSlug != "" && msg.All {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("cannot specify both upstream_slug and all=true"))
 	}
 
-	// Stage eligibility is enforced atomically by the storage layer's Cypher
-	// WHERE clause (ErrSpecIneligibleStage → CodeFailedPrecondition).
-	report, err := store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.Note)
-	if err != nil {
+	if err := store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.UpstreamSlug, msg.Note); err != nil {
 		return nil, h.lifecycleError("AcknowledgeDrift", msg.Slug, err)
 	}
 
-	// Re-run drift detection to populate real drift items in the response.
-	// The storage layer only persists the acknowledgment; it cannot compute drift items.
+	// Re-run drift check to return updated report.
+	report := &storage.DriftReport{SpecSlug: msg.Slug, Items: []storage.DriftItem{}}
 	if h.driftChecker != nil {
 		reports, driftErr := h.driftChecker.Check(ctx, msg.Slug, "")
 		if driftErr != nil {
-			// Acknowledgment was already persisted — log the re-check error
-			// but return the stored report rather than failing the entire RPC.
-			// Mark items as stale so clients know the re-check failed.
-			h.logger.Error("AcknowledgeDrift: drift re-check failed after successful acknowledgment; items are stale",
+			h.logger.Error("AcknowledgeDrift: drift re-check failed",
 				slog.String("slug", msg.Slug), slog.Any("error", driftErr))
-			report.ItemsStale = true
 			report.ErrorMessage = "drift re-check failed after acknowledgment"
 		} else {
-			found := false
 			for _, r := range reports {
-				if r.SpecSlug != msg.Slug {
-					continue
+				if r.SpecSlug == msg.Slug {
+					report = &r
+					break
 				}
-				report.Items = r.Items
-				found = true
-				break
-			}
-			if !found {
-				// No report for this slug means the drift checker found no drift — treat as clean.
-				h.logger.Debug("AcknowledgeDrift: drift re-check returned no report for slug; treating as clean",
-					slog.String("slug", msg.Slug), slog.Int("reports", len(reports)))
-				report.Items = []storage.DriftItem{}
 			}
 		}
 	}
@@ -287,9 +210,7 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(&specv1.DriftAcknowledgeResponse{
-		Report: protoReport,
-	}), nil
+	return connect.NewResponse(&specv1.DriftAcknowledgeResponse{Report: protoReport}), nil
 }
 
 // Lint handles the Lint RPC, validating spec schema and graph integrity.
