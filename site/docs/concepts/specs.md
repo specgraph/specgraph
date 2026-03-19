@@ -2,8 +2,8 @@
 
 ## What is a Spec?
 
-A spec is a **work unit** in the SpecGraph graph. Every spec has a stable,
-content-addressable identity (e.g. `spec-k7m3p`), a human-readable slug
+A spec is a **work unit** in the SpecGraph graph. Every spec has a stable
+identity (a ULID like `spec-01JQXYZ...`), a human-readable slug
 (e.g. `oauth-refresh-rotation`), and structured content that progresses through
 the [authoring funnel](authoring.md). Specs are the fundamental building
 block — everything else in SpecGraph exists to create, connect, validate, or
@@ -102,20 +102,26 @@ edge tracks when one spec replaces another.
 
 ## Identity
 
-Every spec has a **content-addressable identity** with the format
-`spec-{short-hash}`. The hash is derived from the spec's content, which gives
-you three properties:
+Every spec has three identity fields:
 
-1. **Merge-conflict-free** — two developers can create specs independently and
-   merge without ID collisions. There are no sequential counters to fight over.
-2. **Change detection** — if the content changes, the hash changes. You always
-   know whether a spec has been modified since you last saw it.
+- **`id`** — a stable ULID (e.g. `spec-01JQXYZ...`), assigned once at creation
+  and never changed. Graph edges (`DEPENDS_ON`, `BLOCKS`, `COMPOSES`) reference
+  this ID. ULIDs are timestamp-based and globally unique without coordination.
+- **`slug`** — a human-readable name (e.g. `oauth-refresh-rotation`) used in
+  CLI output, documentation, and conversation.
+- **`content_hash`** — a Murmur3-128 fingerprint (32 hex characters) of the
+  spec's substantive fields: intent, stage, priority, complexity, and all
+  authoring stage outputs. Recomputed on every create or update.
+
+This gives you three properties:
+
+1. **Merge-conflict-free** — ULIDs have no sequential counters. Two developers
+   can create specs independently and merge without ID collisions.
+2. **Change detection** — the `content_hash` changes whenever the spec's
+   content changes. Drift detection and sync adapters can compare hashes
+   instead of diffing every field.
 3. **Distributed-safe** — no central authority assigns IDs. Teams across repos,
    time zones, or organizations produce globally unique identifiers by default.
-
-The human-readable slug (`oauth-refresh-rotation`) exists for convenience in
-conversation, CLI output, and documentation. The stable `spec-{hash}` is what
-the graph stores and what edges reference.
 
 ---
 
@@ -125,7 +131,7 @@ The full spec schema is organized into five categories:
 
 | Category | Fields |
 |---|---|
-| **Identity** | `id`, `slug`, `version`, `created_at`, `updated_at` |
+| **Identity** | `id`, `slug`, `version`, `content_hash`, `created_at`, `updated_at` |
 | **Intent** | `intent`, `stage` (spark / shape / specify / decompose / approved / in_progress / review / done / amended / superseded / abandoned), `priority` (p0-p3), `complexity` |
 | **Edges** | `depends_on`, `blocks`, `composes`, `references` |
 | **Authoring Outputs** | `spark_output`, `shape_output`, `specify_output`, `decompose_output` |
