@@ -167,35 +167,37 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 		       d.superseded_by, d.created_at, d.updated_at, d.content_hash
 	`, strings.Join(setClauses, ", "))
 
-	records, err := s.executeQuery(ctx, query, params)
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: update decision: %w", err)
-	}
-	if len(records) == 0 {
-		return nil, fmt.Errorf("memgraph: decision %q: %w", slug, storage.ErrDecisionNotFound)
-	}
+	var result *storage.Decision
+	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		records, qErr := s.executeQuery(txCtx, query, params)
+		if qErr != nil {
+			return fmt.Errorf("memgraph: update decision: %w", qErr)
+		}
+		if len(records) == 0 {
+			return fmt.Errorf("memgraph: decision %q: %w", slug, storage.ErrDecisionNotFound)
+		}
 
-	// Recompute content_hash from the updated fields. Two-query approach:
-	// read all hash-input fields, compute new hash, then SET it.
-	dec, err := recordToDecision(records[0])
-	if err != nil {
-		return nil, err
-	}
-	ch := contenthash.Decision(dec.Title, string(dec.Status), dec.Body, dec.Rationale)
+		dec, parseErr := recordToDecision(records[0])
+		if parseErr != nil {
+			return parseErr
+		}
+		ch := contenthash.Decision(dec.Title, string(dec.Status), dec.Body, dec.Rationale)
 
-	hashQuery := `
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})
-		SET d.content_hash = $content_hash
-	`
-	if _, err := s.executeQuery(ctx, hashQuery, mergeParams(s.projectParam(), map[string]any{
-		"slug":         slug,
-		"content_hash": ch,
-	})); err != nil {
-		return nil, fmt.Errorf("memgraph: update decision content_hash: %w", err)
-	}
-	dec.ContentHash = ch
-
-	return dec, nil
+		hashQuery := `
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})
+			SET d.content_hash = $content_hash
+		`
+		if _, hashErr := s.executeQuery(txCtx, hashQuery, mergeParams(s.projectParam(), map[string]any{
+			"slug":         slug,
+			"content_hash": ch,
+		})); hashErr != nil {
+			return fmt.Errorf("memgraph: update decision content_hash: %w", hashErr)
+		}
+		dec.ContentHash = ch
+		result = dec
+		return nil
+	})
+	return result, err
 }
 
 func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
