@@ -13,10 +13,10 @@ The core system: spec schema, storage, authoring, and execution primitives.
 | 1 | Core proto schema, ConnectRPC server, Memgraph backend, CLI basics | Done |
 | 2 | Constitution creation/storage/validation, emitters | Done |
 | 3 | Full authoring funnel (Spark → Approve), AI postures, analytical passes, safety net, CLI commands | Done |
-| 4 | Execution bundles, prime endpoint, agent callbacks, claim leasing | Planned |
-| 5 | Spec lifecycle (amend/supersede/abandon), drift detection, spec linter | Planned |
-| 6 | Sync adapters (Beads, GitHub Issues, Linear), tool injection (CLAUDE.md, .cursorrules) | Planned |
-| 7 | Claude Code plugin (skills, hooks, MCP integration) | Planned |
+| 4 | Execution bundles, prime endpoint, agent callbacks, claim leasing | Done |
+| 5 | Spec lifecycle (amend/supersede/abandon), drift detection, spec linter | Done |
+| 6 | Sync adapters (Beads, GitHub Issues, Linear), tool injection (CLAUDE.md, .cursor/rules) | In Progress |
+| 7 | Claude Code plugin (skills, hooks, MCP integration) | In Progress |
 
 After Phase 1, you have a complete spec-driven development system: author specs with AI assistance, store them in a graph, query dependencies, claim work, and sync to your issue tracker.
 
