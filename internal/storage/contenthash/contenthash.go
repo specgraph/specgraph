@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 
+// Package contenthash computes Murmur3-128 content hashes for specs and decisions.
 package contenthash
 
 import (
@@ -52,10 +53,10 @@ func Decision(title, status, decision, rationale string) string {
 // murmur3.Hash128 is an interface — do NOT use a pointer to it.
 func writeField(h murmur3.Hash128, key, value string) {
 	var buf [4]byte
-	binary.BigEndian.PutUint32(buf[:], uint32(len(key)))
+	binary.BigEndian.PutUint32(buf[:], uint32(len(key)))  //nolint:gosec // key length will never overflow uint32
 	_, _ = h.Write(buf[:])
 	_, _ = h.Write([]byte(key))
-	binary.BigEndian.PutUint32(buf[:], uint32(len(value)))
+	binary.BigEndian.PutUint32(buf[:], uint32(len(value))) //nolint:gosec // value length will never overflow uint32
 	_, _ = h.Write(buf[:])
 	_, _ = h.Write([]byte(value))
 }

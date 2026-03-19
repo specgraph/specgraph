@@ -11,6 +11,7 @@
 **Decision:** spgr-hya — Stable ULID IDs with Murmur3-128 content hash
 
 **Beads:**
+
 - spgr-h08 — Write ADR
 - spgr-18l — Proto changes
 - spgr-lmt — Implementation
@@ -151,15 +152,19 @@ jj commit -m "docs(adr): ADR-002 stable ULID IDs with Murmur3-128 content hash"
 Change the `id` field comment from `content-addressable` to `stable ULID`. Add `content_hash` as field 15 after `notes` (field 14).
 
 In `proto/specgraph/v1/spec.proto`, change:
+
 ```protobuf
   string id = 1;           // content-addressable, e.g. "spec-k7m3p"
 ```
+
 to:
+
 ```protobuf
   string id = 1;           // stable ULID, e.g. "spec-01JQXYZ..."
 ```
 
 Add after the last field:
+
 ```protobuf
   string content_hash = 15; // Murmur3-128 hex digest of substantive fields; changes on every mutation
 ```
@@ -167,15 +172,19 @@ Add after the last field:
 - [ ] **Step 2: Update decision.proto**
 
 Change:
+
 ```protobuf
   string id = 1;                             // content-addressable, e.g. "dec-a7f3b2c"
 ```
+
 to:
+
 ```protobuf
   string id = 1;                             // stable ULID, e.g. "dec-01JQXYZ..."
 ```
 
 Add `content_hash` field after `updated_at` (field 9):
+
 ```protobuf
   string content_hash = 10;                  // Murmur3-128 hex digest of substantive fields; changes on every mutation
 ```
@@ -415,6 +424,7 @@ Expected: FAIL — ContentHash is empty string
 - [ ] **Step 3: Wire CreateSpec**
 
 In `internal/storage/memgraph/memgraph.go`, in `CreateSpec`:
+
 1. Import `contenthash` package
 2. After building parameters, compute hash: `ch := contenthash.Spec(intent, defaultInitialStage, priority, complexity, nil)`
 3. Add `content_hash` to the Cypher CREATE and RETURN clauses
@@ -428,6 +438,7 @@ and include it in the same query's SET. Alternatively, use the `recomputeContent
 (from Task 9) wrapped in `RunInTransaction` with the main update.
 
 Preferred single-query approach:
+
 1. In the existing UPDATE Cypher, add all hash-input fields to the RETURN clause
    (`s.intent, s.stage, s.priority, s.complexity, s.spark_output, s.shape_output, s.specify_output, s.decompose_output`)
 2. After executing and reading the returned values, compute the hash in Go
@@ -489,6 +500,7 @@ Expected: FAIL
 - [ ] **Step 3: Wire CreateDecision, UpdateDecision, and recordToDecision**
 
 All Cypher queries that create, update, or read decisions need `content_hash`:
+
 1. **CreateDecision:** Compute `contenthash.Decision(title, string(status), body, rationale)` and
    include `content_hash` in the CREATE clause and RETURN. Note: `status` is a `DecisionStatus`
    enum — convert to its string name before hashing.
@@ -529,6 +541,7 @@ Add `ContentHash: d.ContentHash` to the proto mapping in `decisionToProto`.
 
 Update ALL mock methods across ALL test files that return `*storage.Spec` or `*storage.Decision`
 to set a dummy `ContentHash` (e.g., `strings.Repeat("a", 32)`). Mock backends exist in:
+
 - `internal/server/spec_handler_test.go` (mockBackend)
 - `internal/server/authoring_handler_test.go` (fakeBackend, authoringTestBackend, fullAuthoringTestBackend, fakeFullBackend)
 - `internal/server/decision_handler_test.go` (mockDecisionBackend)
@@ -594,6 +607,7 @@ Expected: FAIL — hash unchanged after authoring output stored
 - [ ] **Step 3: Add `recomputeContentHash` private method**
 
 Add a private method `recomputeContentHash(ctx, slug)` on `*Store` that:
+
 1. Reads all hash-input fields and authoring output JSONs from the spec node
 2. Calls `contenthash.Spec(...)` with the current values
 3. SETs `content_hash` on the node
@@ -683,12 +697,15 @@ jj commit -m "feat(memgraph): recompute content_hash when authoring outputs or s
 - [ ] **Step 1: Rewrite specs.md intro (lines 5-7)**
 
 Replace lines 5-7:
+
 ```markdown
 A spec is a **work unit** in the SpecGraph graph. Every spec has a stable,
 content-addressable identity (e.g. `spec-k7m3p`), a human-readable slug
 (e.g. `oauth-refresh-rotation`), and structured content that progresses through
 ```
+
 with:
+
 ```markdown
 A spec is a **work unit** in the SpecGraph graph. Every spec has a stable
 identity (a ULID like `spec-01JQXYZ...`), a human-readable slug
@@ -698,6 +715,7 @@ identity (a ULID like `spec-01JQXYZ...`), a human-readable slug
 - [ ] **Step 2: Rewrite specs.md Identity section (lines 99-115)**
 
 Replace lines 99-115:
+
 ```markdown
 ## Identity
 
@@ -716,7 +734,9 @@ The human-readable slug (`oauth-refresh-rotation`) exists for convenience in
 conversation, CLI output, and documentation. The stable `spec-{hash}` is what
 the graph stores and what edges reference.
 ```
+
 with:
+
 ```markdown
 ## Identity
 
@@ -745,10 +765,13 @@ This gives you three properties:
 - [ ] **Step 3: Update Core Schema table**
 
 Change the Identity row from:
+
 ```markdown
 | **Identity** | `id`, `slug`, `version`, `created_at`, `updated_at` |
 ```
+
 to:
+
 ```markdown
 | **Identity** | `id`, `slug`, `version`, `content_hash`, `created_at`, `updated_at` |
 ```
@@ -756,12 +779,15 @@ to:
 - [ ] **Step 4: Fix how-it-works.md**
 
 Change:
+
 ```markdown
 Every spec has a **content-addressable identity**: its ID is derived from its
 content, so you can detect when a spec has changed and track its history without
 relying on mutable names or paths.
 ```
+
 to:
+
 ```markdown
 Every spec has a **stable identity** (ULID-based) and a **content hash** — a
 Murmur3-128 fingerprint of the spec's substantive fields. The hash changes when
@@ -786,12 +812,15 @@ jj commit -m "docs(site): update identity docs to reflect ULID + content_hash de
 - [ ] **Step 1: Fix architecture design Identity Scheme**
 
 Change:
+
 ```markdown
 ### Identity Scheme
 
 Content-addressable hashing (merge-conflict-free IDs), type-prefixed:
 ```
+
 to:
+
 ```markdown
 ### Identity Scheme
 
@@ -800,6 +829,7 @@ Stable ULID-based IDs (merge-conflict-free), type-prefixed. A separate
 ```
 
 Update the example table to show ULID-style IDs:
+
 ```markdown
 | Spec | `spec-` | `spec-01JQXYZ...` |
 | Decision | `dec-` | `dec-01JQXYZ...` |
@@ -808,10 +838,13 @@ Update the example table to show ULID-style IDs:
 - [ ] **Step 2: Fix vertical slice plan proto comment**
 
 Change:
+
 ```protobuf
   string id = 1;           // content-addressable, e.g. "spec-k7m3p"
 ```
+
 to:
+
 ```protobuf
   string id = 1;           // stable ULID, e.g. "spec-01JQXYZ..."
 ```

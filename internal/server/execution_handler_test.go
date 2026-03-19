@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -156,12 +157,13 @@ func TestExecutionHandler_GenerateBundle(t *testing.T) {
 	mb.seedBundle("my-spec", &storage.Bundle{
 		Version: 1,
 		Spec: &storage.Spec{
-			Slug:   "my-spec",
-			Intent: "build a widget",
-			Stage:  storage.SpecStageApproved,
+			Slug:        "my-spec",
+			Intent:      "build a widget",
+			Stage:       storage.SpecStageApproved,
+			ContentHash: strings.Repeat("a", 32),
 		},
 		Decisions: []*storage.Decision{
-			{Slug: "adr-001", Title: "Use Go", Status: storage.DecisionStatusAccepted},
+			{Slug: "adr-001", Title: "Use Go", Status: storage.DecisionStatusAccepted, ContentHash: strings.Repeat("a", 32)},
 		},
 		Bootstrap: "echo hello",
 	})
@@ -213,7 +215,7 @@ func TestExecutionHandler_ReportProgress(t *testing.T) {
 	mb := newMockExecutionBackend()
 	mb.seedBundle("my-spec", &storage.Bundle{
 		Version: 1,
-		Spec:    &storage.Spec{Slug: "my-spec", Intent: "test", Stage: storage.SpecStageApproved},
+		Spec:    &storage.Spec{Slug: "my-spec", Intent: "test", Stage: storage.SpecStageApproved, ContentHash: strings.Repeat("a", 32)},
 	})
 	client := setupExecutionServer(t, mb)
 
@@ -252,7 +254,7 @@ func TestExecutionHandler_GetExecutionEvents(t *testing.T) {
 	mb := newMockExecutionBackend()
 	mb.seedBundle("my-spec", &storage.Bundle{
 		Version: 1,
-		Spec:    &storage.Spec{Slug: "my-spec", Intent: "test", Stage: storage.SpecStageApproved},
+		Spec:    &storage.Spec{Slug: "my-spec", Intent: "test", Stage: storage.SpecStageApproved, ContentHash: strings.Repeat("a", 32)},
 	})
 	client := setupExecutionServer(t, mb)
 
@@ -279,7 +281,7 @@ func TestExecutionHandler_GetExecutionEvents_LimitCapped(t *testing.T) {
 	mb := newMockExecutionBackend()
 	mb.seedBundle("my-spec", &storage.Bundle{
 		Version: 1,
-		Spec:    &storage.Spec{Slug: "my-spec", Intent: "test", Stage: storage.SpecStageApproved},
+		Spec:    &storage.Spec{Slug: "my-spec", Intent: "test", Stage: storage.SpecStageApproved, ContentHash: strings.Repeat("a", 32)},
 	})
 	client := setupExecutionServer(t, mb)
 
@@ -296,9 +298,9 @@ func TestExecutionHandler_GetExecutionEvents_LimitCapped(t *testing.T) {
 func TestExecutionHandler_GetPrime(t *testing.T) {
 	mb := newMockExecutionBackend()
 	mb.seedPrime("my-spec", &storage.PrimeData{
-		Spec: &storage.Spec{Slug: "my-spec", Intent: "build a widget", Stage: storage.SpecStageApproved},
+		Spec: &storage.Spec{Slug: "my-spec", Intent: "build a widget", Stage: storage.SpecStageApproved, ContentHash: strings.Repeat("a", 32)},
 		Decisions: []*storage.Decision{
-			{Slug: "adr-001", Title: "Use Go", Status: storage.DecisionStatusAccepted},
+			{Slug: "adr-001", Title: "Use Go", Status: storage.DecisionStatusAccepted, ContentHash: strings.Repeat("a", 32)},
 		},
 		Constitution: &storage.Constitution{
 			Name:  "MyProject",
