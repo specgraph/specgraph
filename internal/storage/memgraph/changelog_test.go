@@ -130,6 +130,41 @@ func TestStoreSparkOutput_CreatesChangeLog(t *testing.T) {
 	assert.True(t, found, "should have spark_output field change")
 }
 
+func TestStoreShapeOutput_CreatesChangeLog(t *testing.T) {
+	boltURI, cleanup := setupMemgraph(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.CreateSpec(ctx, "test-shape-cl", "intent", "p2", "medium")
+	require.NoError(t, err)
+
+	err = store.StoreShapeOutput(ctx, "test-shape-cl", &storage.ShapeOutput{
+		ScopeIn:        []string{"auth module"},
+		ChosenApproach: "OAuth2",
+	})
+	require.NoError(t, err)
+
+	entries, err := store.ListChanges(ctx, "test-shape-cl", storage.ChangeLogFilter{})
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+
+	shapeEntry := entries[1]
+	assert.False(t, shapeEntry.Checkpoint)
+	assert.Contains(t, shapeEntry.Summary, "shape_output")
+	found := false
+	for _, c := range shapeEntry.Changes {
+		if c.Field == "shape_output" {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "should have shape_output field change")
+}
+
 func TestStoreSpecifyOutput_CreatesChangeLog(t *testing.T) {
 	boltURI, cleanup := setupMemgraph(t)
 	defer cleanup()
