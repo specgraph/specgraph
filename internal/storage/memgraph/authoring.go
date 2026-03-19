@@ -10,12 +10,22 @@ import (
 
 	"github.com/seanb4t/specgraph/internal/authoring"
 	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/seanb4t/specgraph/internal/storage/contenthash"
 )
 
 const (
 	defaultChildPriority   = "p2"
 	defaultChildComplexity = "medium"
 )
+
+// hashInputProperties lists the spec node properties that affect the content hash.
+// Only these properties trigger a hash recomputation after storeJSONProperty succeeds.
+var hashInputProperties = map[string]bool{
+	"spark_output":     true,
+	"shape_output":     true,
+	"specify_output":   true,
+	"decompose_output": true,
+}
 
 // allowedJSONProperties lists the spec node properties that storeJSONProperty may write.
 var allowedJSONProperties = map[string]bool{
@@ -82,7 +92,7 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 		}
 		return fmt.Errorf("memgraph: spec %q at stage %v, expected %q: %w", slug, actualStage, from, storage.ErrInvalidStageTransition)
 	}
-	return nil
+	return s.recomputeContentHash(ctx, slug)
 }
 
 // StoreSparkOutput persists the spark stage output as JSON on the spec node.
@@ -329,6 +339,9 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 	default:
 		return nil, fmt.Errorf("memgraph: amend spec %q: unexpected version type %T", slug, retVersion)
 	}
+	if err := s.recomputeContentHash(ctx, slug); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -372,6 +385,66 @@ func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, da
 	}
 	if len(records) == 0 {
 		return fmt.Errorf("memgraph: store %s for %q: %w", property, slug, storage.ErrSpecNotFound)
+	}
+	if hashInputProperties[property] {
+		if err := s.recomputeContentHash(ctx, slug); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// recomputeContentHash reads all hash-input fields from the spec node,
+// computes a new Murmur3-128 content hash, and persists it. This method
+// is called after any mutation that changes a hash-input field (stage,
+// authoring outputs).
+func (s *Store) recomputeContentHash(ctx context.Context, slug string) error {
+	query := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+		RETURN s.intent, s.stage, s.priority, s.complexity,
+		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output
+	`
+	records, err := s.executeQuery(ctx, query,
+		mergeParams(s.projectParam(), map[string]any{"slug": slug}))
+	if err != nil {
+		return fmt.Errorf("memgraph: recompute content_hash: read fields: %w", err)
+	}
+	if len(records) == 0 {
+		return fmt.Errorf("memgraph: recompute content_hash %q: %w", slug, storage.ErrSpecNotFound)
+	}
+	rec := records[0]
+	getString := func(_ string, pos int) string {
+		if pos >= len(rec.Values) || rec.Values[pos] == nil {
+			return ""
+		}
+		if v, ok := rec.Values[pos].(string); ok {
+			return v
+		}
+		return ""
+	}
+	intent := getString("s.intent", 0)
+	stage := getString("s.stage", 1)
+	priority := getString("s.priority", 2)
+	complexity := getString("s.complexity", 3)
+
+	authoringOutputs := make(map[string]string)
+	for i, key := range []string{"spark_output", "shape_output", "specify_output", "decompose_output"} {
+		if v := getString(key, 4+i); v != "" {
+			authoringOutputs[key] = v
+		}
+	}
+
+	ch := contenthash.Spec(intent, stage, priority, complexity, authoringOutputs)
+
+	hashQuery := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+		SET s.content_hash = $content_hash
+	`
+	if _, err := s.executeQuery(ctx, hashQuery, mergeParams(s.projectParam(), map[string]any{
+		"slug":         slug,
+		"content_hash": ch,
+	})); err != nil {
+		return fmt.Errorf("memgraph: recompute content_hash: set: %w", err)
 	}
 	return nil
 }
