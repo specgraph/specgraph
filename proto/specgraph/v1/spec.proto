@@ -32,17 +32,16 @@ message Spec {
   SpecLifecycle lifecycle = 10; // task (default) | living
   string superseded_by = 11;   // slug of replacement spec, if superseded
   string supersedes = 12;      // slug of spec this replaced
-  repeated HistoryEntry history = 13;
+  reserved 13;
+  reserved "history";
   string notes = 14;  // free-text notes (conversation summaries, context)
   string content_hash = 15; // Murmur3-128 hex digest of substantive fields; changes on every mutation
 }
 
-message HistoryEntry {
-  int32 version = 1;
-  string stage = 2;
-  string summary = 3;
-  string reason = 4;
-  google.protobuf.Timestamp date = 5;
+message FieldChange {
+  string field     = 1;
+  string old_value = 2;
+  string new_value = 3;
 }
 
 message CreateSpecRequest {

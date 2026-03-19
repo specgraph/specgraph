@@ -88,9 +88,8 @@ type Spec struct {
 	Lifecycle     SpecLifecycle          `protobuf:"varint,10,opt,name=lifecycle,proto3,enum=specgraph.v1.SpecLifecycle" json:"lifecycle,omitempty"` // task (default) | living
 	SupersededBy  string                 `protobuf:"bytes,11,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"`        // slug of replacement spec, if superseded
 	Supersedes    string                 `protobuf:"bytes,12,opt,name=supersedes,proto3" json:"supersedes,omitempty"`                                // slug of spec this replaced
-	History       []*HistoryEntry        `protobuf:"bytes,13,rep,name=history,proto3" json:"history,omitempty"`
-	Notes         string                 `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"`                                // free-text notes (conversation summaries, context)
-	ContentHash   string                 `protobuf:"bytes,15,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"` // Murmur3-128 hex digest of substantive fields; changes on every mutation
+	Notes         string                 `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"`                                          // free-text notes (conversation summaries, context)
+	ContentHash   string                 `protobuf:"bytes,15,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"`           // Murmur3-128 hex digest of substantive fields; changes on every mutation
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -209,13 +208,6 @@ func (x *Spec) GetSupersedes() string {
 	return ""
 }
 
-func (x *Spec) GetHistory() []*HistoryEntry {
-	if x != nil {
-		return x.History
-	}
-	return nil
-}
-
 func (x *Spec) GetNotes() string {
 	if x != nil {
 		return x.Notes
@@ -230,31 +222,29 @@ func (x *Spec) GetContentHash() string {
 	return ""
 }
 
-type HistoryEntry struct {
+type FieldChange struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Version       int32                  `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
-	Stage         string                 `protobuf:"bytes,2,opt,name=stage,proto3" json:"stage,omitempty"`
-	Summary       string                 `protobuf:"bytes,3,opt,name=summary,proto3" json:"summary,omitempty"`
-	Reason        string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
-	Date          *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=date,proto3" json:"date,omitempty"`
+	Field         string                 `protobuf:"bytes,1,opt,name=field,proto3" json:"field,omitempty"`
+	OldValue      string                 `protobuf:"bytes,2,opt,name=old_value,json=oldValue,proto3" json:"old_value,omitempty"`
+	NewValue      string                 `protobuf:"bytes,3,opt,name=new_value,json=newValue,proto3" json:"new_value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *HistoryEntry) Reset() {
-	*x = HistoryEntry{}
+func (x *FieldChange) Reset() {
+	*x = FieldChange{}
 	mi := &file_specgraph_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *HistoryEntry) String() string {
+func (x *FieldChange) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*HistoryEntry) ProtoMessage() {}
+func (*FieldChange) ProtoMessage() {}
 
-func (x *HistoryEntry) ProtoReflect() protoreflect.Message {
+func (x *FieldChange) ProtoReflect() protoreflect.Message {
 	mi := &file_specgraph_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -266,44 +256,30 @@ func (x *HistoryEntry) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use HistoryEntry.ProtoReflect.Descriptor instead.
-func (*HistoryEntry) Descriptor() ([]byte, []int) {
+// Deprecated: Use FieldChange.ProtoReflect.Descriptor instead.
+func (*FieldChange) Descriptor() ([]byte, []int) {
 	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *HistoryEntry) GetVersion() int32 {
+func (x *FieldChange) GetField() string {
 	if x != nil {
-		return x.Version
-	}
-	return 0
-}
-
-func (x *HistoryEntry) GetStage() string {
-	if x != nil {
-		return x.Stage
+		return x.Field
 	}
 	return ""
 }
 
-func (x *HistoryEntry) GetSummary() string {
+func (x *FieldChange) GetOldValue() string {
 	if x != nil {
-		return x.Summary
+		return x.OldValue
 	}
 	return ""
 }
 
-func (x *HistoryEntry) GetReason() string {
+func (x *FieldChange) GetNewValue() string {
 	if x != nil {
-		return x.Reason
+		return x.NewValue
 	}
 	return ""
-}
-
-func (x *HistoryEntry) GetDate() *timestamppb.Timestamp {
-	if x != nil {
-		return x.Date
-	}
-	return nil
 }
 
 type CreateSpecRequest struct {
@@ -610,7 +586,7 @@ var File_specgraph_v1_spec_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x93\x04\n" +
+	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xec\x03\n" +
 	"\x04Spec\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x16\n" +
@@ -630,16 +606,13 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\rsuperseded_by\x18\v \x01(\tR\fsupersededBy\x12\x1e\n" +
 	"\n" +
 	"supersedes\x18\f \x01(\tR\n" +
-	"supersedes\x124\n" +
-	"\ahistory\x18\r \x03(\v2\x1a.specgraph.v1.HistoryEntryR\ahistory\x12\x14\n" +
+	"supersedes\x12\x14\n" +
 	"\x05notes\x18\x0e \x01(\tR\x05notes\x12!\n" +
-	"\fcontent_hash\x18\x0f \x01(\tR\vcontentHash\"\xa0\x01\n" +
-	"\fHistoryEntry\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\x05R\aversion\x12\x14\n" +
-	"\x05stage\x18\x02 \x01(\tR\x05stage\x12\x18\n" +
-	"\asummary\x18\x03 \x01(\tR\asummary\x12\x16\n" +
-	"\x06reason\x18\x04 \x01(\tR\x06reason\x12.\n" +
-	"\x04date\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x04date\"{\n" +
+	"\fcontent_hash\x18\x0f \x01(\tR\vcontentHashJ\x04\b\r\x10\x0eR\ahistory\"]\n" +
+	"\vFieldChange\x12\x14\n" +
+	"\x05field\x18\x01 \x01(\tR\x05field\x12\x1b\n" +
+	"\told_value\x18\x02 \x01(\tR\boldValue\x12\x1b\n" +
+	"\tnew_value\x18\x03 \x01(\tR\bnewValue\"{\n" +
 	"\x11CreateSpecRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x16\n" +
 	"\x06intent\x18\x02 \x01(\tR\x06intent\x12\x1a\n" +
@@ -698,7 +671,7 @@ var file_specgraph_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_specgraph_v1_spec_proto_goTypes = []any{
 	(SpecLifecycle)(0),            // 0: specgraph.v1.SpecLifecycle
 	(*Spec)(nil),                  // 1: specgraph.v1.Spec
-	(*HistoryEntry)(nil),          // 2: specgraph.v1.HistoryEntry
+	(*FieldChange)(nil),           // 2: specgraph.v1.FieldChange
 	(*CreateSpecRequest)(nil),     // 3: specgraph.v1.CreateSpecRequest
 	(*GetSpecRequest)(nil),        // 4: specgraph.v1.GetSpecRequest
 	(*ListSpecsRequest)(nil),      // 5: specgraph.v1.ListSpecsRequest
@@ -707,25 +680,23 @@ var file_specgraph_v1_spec_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
 }
 var file_specgraph_v1_spec_proto_depIdxs = []int32{
-	8,  // 0: specgraph.v1.Spec.created_at:type_name -> google.protobuf.Timestamp
-	8,  // 1: specgraph.v1.Spec.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 2: specgraph.v1.Spec.lifecycle:type_name -> specgraph.v1.SpecLifecycle
-	2,  // 3: specgraph.v1.Spec.history:type_name -> specgraph.v1.HistoryEntry
-	8,  // 4: specgraph.v1.HistoryEntry.date:type_name -> google.protobuf.Timestamp
-	1,  // 5: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
-	3,  // 6: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
-	4,  // 7: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
-	5,  // 8: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
-	7,  // 9: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
-	1,  // 10: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.Spec
-	1,  // 11: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.Spec
-	6,  // 12: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
-	1,  // 13: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.Spec
-	10, // [10:14] is the sub-list for method output_type
-	6,  // [6:10] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	8, // 0: specgraph.v1.Spec.created_at:type_name -> google.protobuf.Timestamp
+	8, // 1: specgraph.v1.Spec.updated_at:type_name -> google.protobuf.Timestamp
+	0, // 2: specgraph.v1.Spec.lifecycle:type_name -> specgraph.v1.SpecLifecycle
+	1, // 3: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
+	3, // 4: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
+	4, // 5: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
+	5, // 6: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
+	7, // 7: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
+	1, // 8: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.Spec
+	1, // 9: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.Spec
+	6, // 10: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
+	1, // 11: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.Spec
+	8, // [8:12] is the sub-list for method output_type
+	4, // [4:8] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_spec_proto_init() }
