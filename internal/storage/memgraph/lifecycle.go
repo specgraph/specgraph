@@ -403,7 +403,76 @@ var terminalStageStrings = func() []string {
 // is empty). Returns ErrSpecNotFound if the spec does not exist, or
 // ErrSpecIneligibleStage if the spec is not in an eligible stage (done or amended).
 //
-// Placeholder: real implementation is in Task 9.
+// All queries are wrapped in RunInTransaction per ADR-004.
 func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlug, note string) error {
-	return nil
+	eligibleStages := []string{string(storage.SpecStageDone), string(storage.SpecStageAmended)}
+
+	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Verify spec is in eligible stage.
+		checkQuery := `
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+			WHERE s.stage IN $eligible_stages
+			RETURN s.slug
+		`
+		records, err := s.executeQuery(txCtx, checkQuery, mergeParams(s.projectParam(), map[string]any{
+			"slug":            slug,
+			"eligible_stages": eligibleStages,
+		}))
+		if err != nil {
+			return fmt.Errorf("memgraph: acknowledge drift: %w", err)
+		}
+		if len(records) == 0 {
+			return s.preconditionError(txCtx, slug, "acknowledge drift", func(current *storage.Spec) error {
+				if current.Stage != storage.SpecStageDone && current.Stage != storage.SpecStageAmended {
+					return fmt.Errorf("acknowledge drift %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecIneligibleStage)
+				}
+				return nil
+			})
+		}
+
+		// Update edge hash(es).
+		var updateQuery string
+		params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
+
+		if upstreamSlug != "" {
+			updateQuery = `
+				MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a:Spec {slug: $slug})-[dep:DEPENDS_ON]->(upstream {slug: $upstream_slug})
+				SET dep.content_hash_at_link = COALESCE(upstream.content_hash, "")
+			`
+			params["upstream_slug"] = upstreamSlug
+		} else {
+			updateQuery = `
+				MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a:Spec {slug: $slug})-[dep:DEPENDS_ON]->(upstream)
+				SET dep.content_hash_at_link = COALESCE(upstream.content_hash, "")
+			`
+		}
+
+		if _, err := s.executeQuery(txCtx, updateQuery, params); err != nil {
+			return fmt.Errorf("memgraph: acknowledge drift update edge: %w", err)
+		}
+
+		// Create a ChangeLog entry recording the acknowledgment.
+		target := upstreamSlug
+		if target == "" {
+			target = "all upstreams"
+		}
+		spec, specErr := s.GetSpec(txCtx, slug)
+		if specErr != nil {
+			return fmt.Errorf("memgraph: acknowledge drift changelog: %w", specErr)
+		}
+		clEntry := &storage.ChangeLogEntry{
+			Version:     spec.Version,
+			Stage:       spec.Stage,
+			ContentHash: spec.ContentHash,
+			Summary:     fmt.Sprintf("Acknowledged drift from %s", target),
+			Reason:      note,
+			Checkpoint:  false,
+			Date:        spec.UpdatedAt,
+		}
+		if clErr := s.createChangeLog(txCtx, slug, clEntry, nil); clErr != nil {
+			return fmt.Errorf("memgraph: acknowledge drift changelog: %w", clErr)
+		}
+
+		return nil
+	})
 }
