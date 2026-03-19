@@ -106,7 +106,7 @@ func (s *Store) ensureIndexes(ctx context.Context) error {
 			return fmt.Errorf("close session after index %q: %w", stmt, closeErr)
 		}
 	}
-	return nil
+	return s.EnsureChangeLogIndexes(ctx)
 }
 
 // ensureProjectNode creates the Project node via MERGE (idempotent).
