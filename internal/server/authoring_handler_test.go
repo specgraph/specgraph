@@ -125,14 +125,14 @@ func (f *fakeBackend) CreateSpec(_ context.Context, slug, _, _, _ string) (*stor
 	if f.createSpecResult != nil {
 		return f.createSpecResult, nil
 	}
-	return &storage.Spec{Slug: slug}, nil
+	return &storage.Spec{Slug: slug, ContentHash: strings.Repeat("a", 32)}, nil
 }
 
 func (f *fakeBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
 	if f.getSpecErr != nil {
 		return nil, f.getSpecErr
 	}
-	return &storage.Spec{Slug: slug, UpdatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}, nil
+	return &storage.Spec{Slug: slug, ContentHash: strings.Repeat("a", 32), UpdatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}, nil
 }
 
 func (f *fakeBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*storage.Spec, error) {
@@ -140,7 +140,7 @@ func (f *fakeBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*stora
 }
 
 func (f *fakeBackend) UpdateSpec(_ context.Context, slug string, _, _, _, _, _ *string) (*storage.Spec, error) {
-	return &storage.Spec{Slug: slug}, nil
+	return &storage.Spec{Slug: slug, ContentHash: strings.Repeat("a", 32)}, nil
 }
 
 func (f *fakeBackend) Close(_ context.Context) error {
@@ -1134,7 +1134,7 @@ func (f *fakeFullBackend) GetDecision(_ context.Context, _ string) (*storage.Dec
 	if f.getDecisionResult != nil {
 		return f.getDecisionResult, nil
 	}
-	return &storage.Decision{Status: storage.DecisionStatusProposed}, nil
+	return &storage.Decision{Status: storage.DecisionStatusProposed, ContentHash: strings.Repeat("a", 32)}, nil
 }
 
 func (f *fakeFullBackend) ListDecisions(_ context.Context, _ storage.DecisionStatus, _ int) ([]*storage.Decision, error) {
@@ -1145,7 +1145,7 @@ func (f *fakeFullBackend) UpdateDecision(_ context.Context, slug string, _ *stri
 	if f.updateDecisionErr != nil {
 		return nil, f.updateDecisionErr
 	}
-	return &storage.Decision{Slug: slug, Status: storage.DecisionStatusAccepted}, nil
+	return &storage.Decision{Slug: slug, Status: storage.DecisionStatusAccepted, ContentHash: strings.Repeat("a", 32)}, nil
 }
 
 func TestAuthoringHandler_Approve_GetSpecError(t *testing.T) {
@@ -1184,8 +1184,9 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_HappyPath(t *testing.T) 
 			{FromID: "decision-1", ToID: "my-spec", EdgeType: storage.EdgeTypeDecidedIn},
 		},
 		getDecisionResult: &storage.Decision{
-			Slug:   "decision-1",
-			Status: storage.DecisionStatusProposed,
+			Slug:        "decision-1",
+			Status:      storage.DecisionStatusProposed,
+			ContentHash: strings.Repeat("a", 32),
 		},
 	}
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
@@ -1203,8 +1204,9 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_SpecToDecisionDirection(
 			{FromID: "my-spec", ToID: "decision-1", EdgeType: storage.EdgeTypeDecidedIn},
 		},
 		getDecisionResult: &storage.Decision{
-			Slug:   "decision-1",
-			Status: storage.DecisionStatusProposed,
+			Slug:        "decision-1",
+			Status:      storage.DecisionStatusProposed,
+			ContentHash: strings.Repeat("a", 32),
 		},
 	}
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
@@ -1222,8 +1224,9 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_UpdateError(t *testing.T
 			{FromID: "decision-1", ToID: "my-spec", EdgeType: storage.EdgeTypeDecidedIn},
 		},
 		getDecisionResult: &storage.Decision{
-			Slug:   "decision-1",
-			Status: storage.DecisionStatusProposed,
+			Slug:        "decision-1",
+			Status:      storage.DecisionStatusProposed,
+			ContentHash: strings.Repeat("a", 32),
 		},
 		updateDecisionErr: errors.New("update failed"),
 	}

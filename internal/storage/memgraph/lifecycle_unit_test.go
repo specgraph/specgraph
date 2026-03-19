@@ -107,10 +107,10 @@ func TestAppendHistory_TrimsOldestWhenFull(t *testing.T) {
 }
 
 func TestRecordToSpecOffset(t *testing.T) {
-	// Build a 32-value record simulating a SupersedeSpec query that returns
-	// two specs: old at offset 0, new at offset 16.
+	// Build a 34-value record simulating a SupersedeSpec query that returns
+	// two specs: old at offset 0, new at offset 17.
 	now := "2026-01-15T10:30:00.000000000Z"
-	makeSpecValues := func(id, slug, intent, stage, priority, complexity string, version int64, supersededBy, supersedes string) []any {
+	makeSpecValues := func(id, slug, intent, stage, priority, complexity string, version int64, supersededBy, supersedes, contentHash string) []any {
 		return []any{
 			id, slug, intent, stage, priority, complexity,
 			version,  // int64
@@ -122,11 +122,12 @@ func TestRecordToSpecOffset(t *testing.T) {
 			false,        // drift_acknowledged
 			nil,          // drift_acknowledge_note
 			"",           // notes
+			contentHash,  // content_hash
 		}
 	}
 
-	oldVals := makeSpecValues("id-old", "old-spec", "Original intent", "superseded", "high", "medium", int64(2), "new-spec", "")
-	newVals := makeSpecValues("id-new", "new-spec", "Replacement intent", "spark", "high", "low", int64(1), "", "old-spec")
+	oldVals := makeSpecValues("id-old", "old-spec", "Original intent", "superseded", "high", "medium", int64(2), "new-spec", "", "abc123def456abc1")
+	newVals := makeSpecValues("id-new", "new-spec", "Replacement intent", "spark", "high", "low", int64(1), "", "old-spec", "def789ghi012def7")
 
 	rec := &neo4j.Record{Values: append(oldVals, newVals...)}
 
@@ -138,15 +139,17 @@ func TestRecordToSpecOffset(t *testing.T) {
 	assert.Equal(t, storage.SpecStage("superseded"), oldSpec.Stage)
 	assert.Equal(t, int32(2), oldSpec.Version)
 	assert.Equal(t, "new-spec", oldSpec.SupersededBy)
+	assert.Equal(t, "abc123def456abc1", oldSpec.ContentHash)
 
-	// Parse new spec at offset 16.
-	newSpec, err := recordToSpecOffset(rec, 16)
+	// Parse new spec at offset 17.
+	newSpec, err := recordToSpecOffset(rec, 17)
 	require.NoError(t, err)
 	assert.Equal(t, "id-new", newSpec.ID)
 	assert.Equal(t, "new-spec", newSpec.Slug)
 	assert.Equal(t, storage.SpecStage("spark"), newSpec.Stage)
 	assert.Equal(t, int32(1), newSpec.Version)
 	assert.Equal(t, "old-spec", newSpec.Supersedes)
+	assert.Equal(t, "def789ghi012def7", newSpec.ContentHash)
 }
 
 func TestSortableRFC3339Nano_LexicographicOrdering(t *testing.T) {

@@ -168,7 +168,7 @@ import "google/protobuf/timestamp.proto";
 // --- Messages ---
 
 message Spec {
-  string id = 1;           // content-addressable, e.g. "spec-k7m3p"
+  string id = 1;           // stable ULID, e.g. "spec-01JQXYZ..."
   string slug = 2;         // human-readable, e.g. "oauth-refresh-rotation"
   string intent = 3;       // what this spec is about
   string stage = 4;        // spark | shape | specify | decompose | approved | in_progress | done

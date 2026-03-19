@@ -42,6 +42,7 @@ func specToProto(s *storage.Spec) (*specv1.Spec, error) {
 		Supersedes:   s.Supersedes,
 		History:      historyToProto(s.History),
 		Notes:        s.Notes,
+		ContentHash:  s.ContentHash,
 	}, nil
 }
 
@@ -100,6 +101,7 @@ func decisionToProto(d *storage.Decision) (*specv1.Decision, error) {
 		Decision:     d.Body,
 		Rationale:    d.Rationale,
 		SupersededBy: d.SupersededBy,
+		ContentHash:  d.ContentHash,
 		CreatedAt:    timeToProto(d.CreatedAt),
 		UpdatedAt:    timeToProto(d.UpdatedAt),
 	}, nil

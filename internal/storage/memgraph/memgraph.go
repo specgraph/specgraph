@@ -17,6 +17,7 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/seanb4t/specgraph/internal/storage/contenthash"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
@@ -147,6 +148,7 @@ const (
 func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
 	id := newID("spec")
 	nowStr := s.now()
+	ch := contenthash.Spec(intent, defaultInitialStage, priority, complexity, nil)
 
 	query := `
 		MATCH (p:Project {slug: $project})
@@ -162,12 +164,14 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 			updated_at: $updated_at,
 			lifecycle: $lifecycle,
 			history_json: $history_json,
-			notes: $notes
+			notes: $notes,
+			content_hash: $content_hash
 		})
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes
+		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
+		       s.content_hash
 	`
 	params := mergeParams(s.projectParam(), map[string]any{
 		"id":           id,
@@ -182,6 +186,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		"lifecycle":    string(defaultLifecycle),
 		"history_json": "[]",
 		"notes":        "",
+		"content_hash": ch,
 	})
 
 	records, err := s.executeQuery(ctx, query, params)
@@ -202,7 +207,8 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes
+		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
+		       s.content_hash
 	`
 	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
@@ -228,7 +234,8 @@ func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes
+		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
+		       s.content_hash
 	`
 	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{"slugs": slugs}))
 	if err != nil {
@@ -266,7 +273,8 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	query += ` RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes`
+		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
+		       s.content_hash`
 	query += " ORDER BY s.created_at"
 	if limit > 0 {
 		query += " LIMIT $limit"
@@ -329,7 +337,9 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes, s.history_json,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes
+		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
+		       s.content_hash,
+		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output
 	`, strings.Join(setClauses, ", "))
 
 	records, err := s.executeQuery(ctx, query, params)
@@ -340,7 +350,40 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		return nil, fmt.Errorf("memgraph: spec %q: %w", slug, storage.ErrSpecNotFound)
 	}
 
-	return recordToSpec(records[0])
+	// Recompute content_hash from the updated fields. This is a two-query
+	// approach: read all hash-input fields from the first query's result,
+	// compute the new hash, then SET it. Acceptable because SpecGraph is
+	// single-writer; no concurrent updates can interleave between queries.
+	rec := records[0]
+	spec, err := recordToSpec(rec)
+	if err != nil {
+		return nil, err
+	}
+	authoringOutputs := make(map[string]string)
+	for i, key := range []string{"spark_output", "shape_output", "specify_output", "decompose_output"} {
+		val, aoErr := recordStringOptional(rec, 17+i, key)
+		if aoErr != nil {
+			return nil, aoErr
+		}
+		if val != "" {
+			authoringOutputs[key] = val
+		}
+	}
+	ch := contenthash.Spec(spec.Intent, string(spec.Stage), string(spec.Priority), spec.Complexity, authoringOutputs)
+
+	hashQuery := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+		SET s.content_hash = $content_hash
+	`
+	if _, err := s.executeQuery(ctx, hashQuery, mergeParams(s.projectParam(), map[string]any{
+		"slug":         slug,
+		"content_hash": ch,
+	})); err != nil {
+		return nil, fmt.Errorf("memgraph: update spec content_hash: %w", err)
+	}
+	spec.ContentHash = ch
+
+	return spec, nil
 }
 
 // ClearAll removes all nodes and relationships from the graph.
@@ -607,6 +650,10 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
+	contentHash, err := recordStringOptional(rec, offset+16, "content_hash")
+	if err != nil {
+		return nil, err
+	}
 
 	return &storage.Spec{
 		ID:                   id,
@@ -625,6 +672,7 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 		DriftAcknowledged:    driftAck,
 		DriftAcknowledgeNote: driftAckNote,
 		Notes:                notes,
+		ContentHash:          contentHash,
 	}, nil
 }
 

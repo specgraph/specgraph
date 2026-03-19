@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -39,15 +40,16 @@ func (m *mockBackend) CreateSpec(_ context.Context, slug, intent, priority, comp
 	m.seq++
 	now := time.Now().UTC()
 	spec := &storage.Spec{
-		ID:         fmt.Sprintf("spec-%05d", m.seq),
-		Slug:       slug,
-		Intent:     intent,
-		Stage:      storage.SpecStageSpark,
-		Priority:   storage.SpecPriority(priority),
-		Complexity: complexity,
-		Version:    1,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		ID:          fmt.Sprintf("spec-%05d", m.seq),
+		Slug:        slug,
+		Intent:      intent,
+		Stage:       storage.SpecStageSpark,
+		Priority:    storage.SpecPriority(priority),
+		Complexity:  complexity,
+		Version:     1,
+		ContentHash: strings.Repeat("a", 32),
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	m.specs[slug] = spec
 	return spec, nil
@@ -189,14 +191,15 @@ func TestSpecHandler_GetSpec_InvalidLifecycle(t *testing.T) {
 	mb := newMockBackend()
 	// Inject a spec with an invalid lifecycle directly.
 	mb.specs["bad-lifecycle"] = &storage.Spec{
-		ID:        "spec-bad",
-		Slug:      "bad-lifecycle",
-		Intent:    "test invalid lifecycle",
-		Stage:     storage.SpecStageSpark,
-		Version:   1,
-		Lifecycle: storage.SpecLifecycle("bogus"),
-		CreatedAt: time.Now().UTC(),
-		UpdatedAt: time.Now().UTC(),
+		ID:          "spec-bad",
+		Slug:        "bad-lifecycle",
+		Intent:      "test invalid lifecycle",
+		Stage:       storage.SpecStageSpark,
+		Version:     1,
+		Lifecycle:   storage.SpecLifecycle("bogus"),
+		ContentHash: strings.Repeat("a", 32),
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
 	}
 	srv := httptest.NewServer(wrapTestProject(server.NewMux(&testScoper{backend: mb})))
 	t.Cleanup(srv.Close)

@@ -48,6 +48,7 @@ type Decision struct {
 	SupersededBy string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	ContentHash  string
 }
 
 // DecisionBackend defines storage operations for Decision entities.
