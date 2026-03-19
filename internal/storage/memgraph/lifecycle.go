@@ -5,16 +5,11 @@ package memgraph
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/seanb4t/specgraph/internal/storage"
 )
-
-// maxHistoryEntries caps the number of history entries stored per spec.
-// When exceeded, the oldest entries are trimmed to prevent unbounded growth.
-const maxHistoryEntries = 100
 
 // terminalStages maps stages from which no further lifecycle transitions
 // are allowed. Derived from storage.FullyTerminalStages() to maintain a
@@ -26,38 +21,6 @@ var terminalStages = func() map[storage.SpecStage]bool {
 	}
 	return m
 }()
-
-// appendHistory appends entry to existing history and marshals the result to JSON.
-// The combined slice is passed directly to marshalHistory which handles trimming.
-func appendHistory(existing []storage.HistoryEntry, entry *storage.HistoryEntry) (string, error) {
-	combined := make([]storage.HistoryEntry, len(existing)+1)
-	copy(combined, existing)
-	combined[len(existing)] = *entry
-	return marshalHistory(combined)
-}
-
-// marshalHistory serializes a slice of HistoryEntry to a JSON string for storage.
-// If len(entries) exceeds maxHistoryEntries, the oldest entries are trimmed.
-func marshalHistory(entries []storage.HistoryEntry) (string, error) {
-	if len(entries) > maxHistoryEntries {
-		entries = entries[len(entries)-maxHistoryEntries:]
-	}
-	jsonEntries := make([]historyEntryJSON, len(entries))
-	for i, e := range entries {
-		jsonEntries[i] = historyEntryJSON{
-			Version: e.Version,
-			Stage:   string(e.Stage),
-			Summary: e.Summary,
-			Reason:  e.Reason,
-			Date:    e.Date.UTC().Format(sortableRFC3339Nano),
-		}
-	}
-	data, err := json.Marshal(jsonEntries)
-	if err != nil {
-		return "", fmt.Errorf("memgraph: marshal history: %w", err)
-	}
-	return string(data), nil
-}
 
 // preconditionError re-reads the spec after an atomic WHERE guard failed
 // and returns the appropriate sentinel error. The op parameter names the

@@ -7,7 +7,6 @@ package memgraph
 import (
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"maps"
 	"math"
@@ -523,43 +522,6 @@ func recordStringOptional(rec *neo4j.Record, pos int, field string) (string, err
 		return "", fmt.Errorf("memgraph: field %q at position %d: expected string or nil, got %T", field, pos, rec.Values[pos])
 	}
 	return s, nil
-}
-
-// historyEntryJSON is a JSON-serializable form of storage.HistoryEntry.
-type historyEntryJSON struct {
-	Version int32  `json:"version"`
-	Stage   string `json:"stage"`
-	Summary string `json:"summary"`
-	Reason  string `json:"reason"`
-	Date    string `json:"date"`
-}
-
-// unmarshalHistory parses a JSON string into a slice of storage.HistoryEntry.
-// slug is used in error messages to identify which spec's history is broken.
-func unmarshalHistory(slug, raw string) ([]storage.HistoryEntry, error) {
-	if raw == "" || raw == "[]" {
-		return []storage.HistoryEntry{}, nil
-	}
-	var entries []historyEntryJSON
-	if err := json.Unmarshal([]byte(raw), &entries); err != nil {
-		return nil, fmt.Errorf("memgraph: unmarshal history_json for spec %q: %w", slug, err)
-	}
-	result := make([]storage.HistoryEntry, len(entries))
-	for i, e := range entries {
-		t, err := parseRFC3339("history.date", e.Date)
-		if err != nil {
-			return nil, err
-		}
-		stage := storage.SpecStage(e.Stage)
-		result[i] = storage.HistoryEntry{
-			Version: e.Version,
-			Stage:   stage,
-			Summary: e.Summary,
-			Reason:  e.Reason,
-			Date:    t,
-		}
-	}
-	return result, nil
 }
 
 // recordToSpecOffset converts a neo4j record to a *storage.Spec, reading field
