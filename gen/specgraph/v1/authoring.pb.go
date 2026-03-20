@@ -2714,7 +2714,7 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\x05Amend\x12\x1a.specgraph.v1.AmendRequest\x1a\x1b.specgraph.v1.AmendResponse\x12L\n" +
 	"\tSupersede\x12\x1e.specgraph.v1.SupersedeRequest\x1a\x1f.specgraph.v1.SupersedeResponse\x12O\n" +
 	"\n" +
-	"GetPrompts\x12\x1f.specgraph.v1.GetPromptsRequest\x1a .specgraph.v1.GetPromptsResponseB;Z9github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"GetPrompts\x12\x1f.specgraph.v1.GetPromptsRequest\x1a .specgraph.v1.GetPromptsResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_authoring_proto_rawDescOnce sync.Once

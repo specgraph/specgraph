@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/seanb4t/specgraph/internal/authoring"
-	"github.com/seanb4t/specgraph/internal/storage"
-	"github.com/seanb4t/specgraph/internal/storage/contenthash"
+	"github.com/specgraph/specgraph/internal/authoring"
+	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage/contenthash"
 )
 
 const (

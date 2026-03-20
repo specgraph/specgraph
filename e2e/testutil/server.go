@@ -16,10 +16,10 @@ import (
 
 	"connectrpc.com/connect"
 
-	"github.com/seanb4t/specgraph/internal/drift"
-	"github.com/seanb4t/specgraph/internal/linter"
-	"github.com/seanb4t/specgraph/internal/server"
-	"github.com/seanb4t/specgraph/internal/storage/memgraph"
+	"github.com/specgraph/specgraph/internal/drift"
+	"github.com/specgraph/specgraph/internal/linter"
+	"github.com/specgraph/specgraph/internal/server"
+	"github.com/specgraph/specgraph/internal/storage/memgraph"
 )
 
 // ServerInfo holds the running server's details.

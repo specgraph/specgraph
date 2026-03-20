@@ -72,7 +72,7 @@ package auth_test
 import (
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/auth"
 )
 
 func TestHasPermission_ExactMatch(t *testing.T) {
@@ -130,7 +130,7 @@ func TestHasPermission_EmptyPerms(t *testing.T) {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go test ./internal/auth/ -run TestHasPermission -v`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go test ./internal/auth/ -run TestHasPermission -v`
 Expected: FAIL — package does not exist yet
 
 - [ ] **Step 3: Write Identity type, Role constants, and HasPermission**
@@ -188,7 +188,7 @@ func HasPermission(perms map[string]bool, required string) bool {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go test ./internal/auth/ -run TestHasPermission -v`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go test ./internal/auth/ -run TestHasPermission -v`
 Expected: PASS (all 5 tests)
 
 - [ ] **Step 5: Commit**
@@ -319,7 +319,7 @@ type RoleConfig struct {
 
 - [ ] **Step 2: Verify build**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go build ./...`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go build ./...`
 Expected: PASS
 
 - [ ] **Step 3: Commit**
@@ -346,8 +346,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/auth"
-	"github.com/seanb4t/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/config"
 )
 
 func TestConfigStore_ResolveAPIKey(t *testing.T) {
@@ -517,7 +517,7 @@ func TestConfigStore_BuiltinRolePermissions(t *testing.T) {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go test ./internal/auth/ -run TestConfigStore -v`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go test ./internal/auth/ -run TestConfigStore -v`
 Expected: FAIL — `NewConfigStore` not defined
 
 - [ ] **Step 3: Write ConfigStore implementation**
@@ -531,7 +531,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 
-	"github.com/seanb4t/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/config"
 )
 
 // DefaultRolePermissions defines the built-in role permission bundles.
@@ -618,7 +618,7 @@ func (s *ConfigStore) HasKeys() bool {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go test ./internal/auth/ -run TestConfigStore -v`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go test ./internal/auth/ -run TestConfigStore -v`
 Expected: PASS (all 8 tests)
 
 - [ ] **Step 5: Commit**
@@ -649,8 +649,8 @@ package auth_test
 import (
 	"testing"
 
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/auth"
 )
 
 // allProcedures lists every ConnectRPC procedure from generated code.
@@ -740,7 +740,7 @@ func TestPermissionTable_NoExemptInPermissions(t *testing.T) {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go test ./internal/auth/ -run TestPermissionTable -v`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go test ./internal/auth/ -run TestPermissionTable -v`
 Expected: FAIL — `IsExempt`, `RPCPermission` not defined
 
 - [ ] **Step 3: Write permissions.go**
@@ -750,7 +750,7 @@ Expected: FAIL — `IsExempt`, `RPCPermission` not defined
 package auth
 
 import (
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 )
 
 // rpcPermissions maps ConnectRPC procedure names to required permissions.
@@ -840,7 +840,7 @@ func IsExempt(procedure string) bool {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go test ./internal/auth/ -run TestPermissionTable -v`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go test ./internal/auth/ -run TestPermissionTable -v`
 Expected: PASS (both tests)
 
 - [ ] **Step 5: Commit**
@@ -876,10 +876,10 @@ import (
 
 	"connectrpc.com/connect"
 
-	specgraphv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/auth"
-	"github.com/seanb4t/specgraph/internal/config"
+	specgraphv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/config"
 )
 
 // stubHealthHandler returns a minimal Health handler for testing the interceptor.
@@ -1069,7 +1069,7 @@ test catches it.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go test ./internal/auth/ -run TestInterceptor -v`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go test ./internal/auth/ -run TestInterceptor -v`
 Expected: FAIL — `NewAuthInterceptor` not defined
 
 - [ ] **Step 3: Write interceptor implementation**
@@ -1192,7 +1192,7 @@ func localIdentity() *Identity {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go test ./internal/auth/ -run TestInterceptor -v`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go test ./internal/auth/ -run TestInterceptor -v`
 Expected: PASS (all 7 tests)
 
 - [ ] **Step 5: Commit**
@@ -1264,12 +1264,12 @@ In each, pass `opts...` to the corresponding `specgraphv1connect.New*ServiceHand
 
 - [ ] **Step 4: Verify build**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go build ./...`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go build ./...`
 Expected: PASS — the variadic `...connect.HandlerOption` is backward compatible (callers not passing opts still compile)
 
 - [ ] **Step 5: Run existing tests to verify no regressions**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go test ./internal/server/ -v`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go test ./internal/server/ -v`
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -1313,11 +1313,11 @@ server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts)
 syncHandler := server.RegisterSyncService(mux, store, "", opts)
 ```
 
-Add imports: `"github.com/seanb4t/specgraph/internal/auth"`, `"connectrpc.com/connect"`.
+Add imports: `"github.com/specgraph/specgraph/internal/auth"`, `"connectrpc.com/connect"`.
 
 - [ ] **Step 2: Verify build**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go build ./cmd/specgraph/`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go build ./cmd/specgraph/`
 Expected: PASS
 
 - [ ] **Step 3: Commit**
@@ -1340,7 +1340,7 @@ For tests that don't need auth (existing tests), pass no opts (empty variadic). 
 
 - [ ] **Step 2: Verify E2E tests still pass without auth**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go test -tags e2e ./e2e/api/ -v --ginkgo.label-filter='!auth' -count=1`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go test -tags e2e ./e2e/api/ -v --ginkgo.label-filter='!auth' -count=1`
 Expected: PASS (existing tests unaffected — no opts passed = no interceptor)
 
 - [ ] **Step 3: Commit**
@@ -1384,7 +1384,7 @@ Each scenario starts a fresh server with a specific auth config (using the E2E t
 
 - [ ] **Step 2: Run E2E auth tests**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && go test -tags e2e ./e2e/api/ -v --ginkgo.label-filter='auth' -count=1`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && go test -tags e2e ./e2e/api/ -v --ginkgo.label-filter='auth' -count=1`
 Expected: PASS
 
 - [ ] **Step 3: Commit**
@@ -1397,21 +1397,21 @@ test(e2e): add auth interceptor E2E test scenarios
 
 - [ ] **Step 1: Run task check**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && task check`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && task check`
 Expected: PASS (fmt, license, lint, build, unit tests)
 
 - [ ] **Step 2: Run task pr-prep**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && task pr-prep`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && task pr-prep`
 Expected: PASS (check + integration + e2e)
 
 - [ ] **Step 3: Add license headers to new files if missing**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && task license:add`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && task license:add`
 
 - [ ] **Step 4: Fix any lint issues**
 
-Run: `cd /Volumes/Code/github.com/seanb4t/specgraph && task lint`
+Run: `cd /Volumes/Code/github.com/specgraph/specgraph && task lint`
 Fix any issues found.
 
 - [ ] **Step 5: Final commit if any fixes needed**

@@ -6,7 +6,7 @@ package linter
 import (
 	"fmt"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // ValidateSchema validates a spec against the spec schema rules.

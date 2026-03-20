@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // GitHubAdapter syncs specs to GitHub Issues via the gh CLI.

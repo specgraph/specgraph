@@ -14,11 +14,11 @@ import (
 	"sync"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/inject"
-	"github.com/seanb4t/specgraph/internal/storage"
-	syncpkg "github.com/seanb4t/specgraph/internal/sync"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/inject"
+	"github.com/specgraph/specgraph/internal/storage"
+	syncpkg "github.com/specgraph/specgraph/internal/sync"
 )
 
 // SyncHandler implements the ConnectRPC SyncService.

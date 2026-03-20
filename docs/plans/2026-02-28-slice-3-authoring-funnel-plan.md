@@ -69,7 +69,7 @@ syntax = "proto3";
 
 package specgraph.v1;
 
-option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
+option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1";
 
 import "google/protobuf/timestamp.proto";
 
@@ -362,7 +362,7 @@ package authoring_test
 import (
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/authoring"
+	"github.com/specgraph/specgraph/internal/authoring"
 	"github.com/stretchr/testify/require"
 )
 
@@ -510,8 +510,8 @@ package authoring_test
 import (
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/authoring"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/authoring"
 	"github.com/stretchr/testify/require"
 )
 
@@ -556,7 +556,7 @@ Expected: FAIL
 
 package authoring
 
-import specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+import specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 
 const (
 	driveThreshold   = 20
@@ -626,7 +626,7 @@ package authoring_test
 import (
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/authoring"
+	"github.com/specgraph/specgraph/internal/authoring"
 	"github.com/stretchr/testify/require"
 )
 
@@ -664,7 +664,7 @@ Expected: FAIL
 
 package authoring
 
-import specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+import specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 
 // Prompt holds a named template for a stage.
 type Prompt struct {
@@ -752,8 +752,8 @@ package authoring_test
 import (
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/authoring"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/authoring"
 	"github.com/stretchr/testify/require"
 )
 
@@ -811,7 +811,7 @@ package authoring
 import (
 	"strings"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
 // SafetyInput is the data fed into the safety net.
@@ -919,8 +919,8 @@ package authoring_test
 import (
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/authoring"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/authoring"
 	"github.com/stretchr/testify/require"
 )
 
@@ -971,7 +971,7 @@ Expected: FAIL
 
 package authoring
 
-import specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+import specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 
 type passConfig struct {
 	pass      string
@@ -1075,7 +1075,7 @@ import (
 	"context"
 	"errors"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
 var ErrInvalidStageTransition = errors.New("invalid stage transition")
@@ -1113,9 +1113,9 @@ import (
 	"context"
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/storage"
-	"github.com/seanb4t/specgraph/internal/storage/memgraph"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1251,10 +1251,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	"github.com/seanb4t/specgraph/internal/authoring"
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/authoring"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 func (s *Store) TransitionStage(ctx context.Context, slug string, from, to string) error {
@@ -1457,10 +1457,10 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/authoring"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/authoring"
+	"github.com/specgraph/specgraph/internal/storage"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -1626,9 +1626,9 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/server"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/server"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1696,8 +1696,8 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/spf13/cobra"
 )
 
@@ -1763,7 +1763,7 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/spf13/cobra"
 )
 
@@ -1813,7 +1813,7 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/spf13/cobra"
 )
 
@@ -1863,7 +1863,7 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/spf13/cobra"
 )
 
@@ -1917,7 +1917,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/spf13/cobra"
 )
 
@@ -1989,7 +1989,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/scanner"
+	"github.com/specgraph/specgraph/internal/scanner"
 	"github.com/stretchr/testify/require"
 )
 
@@ -2140,7 +2140,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/scanner"
+	"github.com/specgraph/specgraph/internal/scanner"
 	"github.com/stretchr/testify/require"
 )
 

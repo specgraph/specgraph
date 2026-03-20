@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
 var _ = Describe("Health", func() {

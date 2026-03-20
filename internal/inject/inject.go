@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // atomicWriteFile writes data to path atomically via a temp file + rename.

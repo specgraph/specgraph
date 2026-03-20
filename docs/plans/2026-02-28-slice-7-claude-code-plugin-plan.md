@@ -64,7 +64,7 @@ cmd/specgraph/
   "name": "specgraph",
   "version": "0.1.0",
   "description": "SpecGraph: spec-driven development workflow — author, query, and execute specs from Claude Code",
-  "homepage": "https://github.com/seanb4t/specgraph",
+  "homepage": "https://github.com/specgraph/specgraph",
   "license": "MIT",
   "requires": {
     "cli": ["specgraph"]
@@ -1206,8 +1206,8 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/spf13/cobra"
 )
 

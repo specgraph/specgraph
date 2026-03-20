@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -88,7 +88,7 @@ func TestLoadGlobal_ReadOnlyParentDir(t *testing.T) {
 	}
 	parent := t.TempDir()
 	// Make parent read-only so creating config.yaml inside it fails.
-	require.NoError(t, os.Chmod(parent, 0o555)) //nolint:gosec // intentional for test
+	require.NoError(t, os.Chmod(parent, 0o555))       //nolint:gosec // intentional for test
 	t.Cleanup(func() { _ = os.Chmod(parent, 0o750) }) //nolint:gosec // restore perms for cleanup
 
 	path := filepath.Join(parent, "subdir", "config.yaml")

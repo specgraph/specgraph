@@ -6,8 +6,8 @@ package authoring_test
 import (
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/authoring"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/authoring"
 	"github.com/stretchr/testify/require"
 )
 

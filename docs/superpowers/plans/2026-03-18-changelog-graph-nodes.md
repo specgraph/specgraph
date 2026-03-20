@@ -104,7 +104,7 @@ package storage_test
 import (
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -516,7 +516,7 @@ package memgraph_test
 import (
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -562,7 +562,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // changeLogEntryJSON is the JSON serialization format for field changes.

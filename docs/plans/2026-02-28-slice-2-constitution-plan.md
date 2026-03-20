@@ -57,7 +57,7 @@ syntax = "proto3";
 
 package specgraph.v1;
 
-option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
+option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1";
 
 import "google/protobuf/timestamp.proto";
 
@@ -235,7 +235,7 @@ import (
 	"context"
 	"errors"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
 var ErrConstitutionNotFound = errors.New("constitution not found")
@@ -290,9 +290,9 @@ import (
 	"context"
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/storage"
-	"github.com/seanb4t/specgraph/internal/storage/memgraph"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/require"
 )
 
@@ -448,8 +448,8 @@ import (
 	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/storage"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -744,10 +744,10 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/server"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/server"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 
@@ -886,9 +886,9 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // ConstitutionHandler implements the ConstitutionService.
@@ -1050,8 +1050,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/scanner"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/scanner"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1160,7 +1160,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
 // Scan performs a Tier 0 scan of the given directory, detecting languages,
@@ -1356,8 +1356,8 @@ package emitter_test
 import (
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/emitter"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/emitter"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1461,7 +1461,7 @@ import (
 	"fmt"
 	"strings"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
 // Emit generates a tool-specific file from the given constitution.
@@ -1621,7 +1621,7 @@ Replace the placeholder `emitConstitution` function in `internal/server/constitu
 // In constitution_handler.go, replace the emitConstitution function and
 // the placeholder format functions with:
 
-import "github.com/seanb4t/specgraph/internal/emitter"
+import "github.com/specgraph/specgraph/internal/emitter"
 
 // In the EmitToolFiles method, replace the call to emitConstitution with:
 content, filename, err := emitter.Emit(constitution, req.Msg.Format)
@@ -1669,8 +1669,8 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/spf13/cobra"
 )
 

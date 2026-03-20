@@ -6,7 +6,7 @@ package storage_test
 import (
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 )
 

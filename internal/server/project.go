@@ -10,7 +10,7 @@ import (
 	"regexp"
 
 	"connectrpc.com/connect"
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // validProjectSlug matches kebab-case identifiers: alphanumeric + hyphens,

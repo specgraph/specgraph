@@ -451,7 +451,7 @@ Output is injected into the session context, giving the AI:
   "name": "specgraph",
   "version": "0.1.0",
   "description": "SpecGraph: spec-driven development — author, query, and execute specs",
-  "homepage": "https://github.com/seanb4t/specgraph",
+  "homepage": "https://github.com/specgraph/specgraph",
   "license": "MIT",
   "skills": [
     { "name": "specgraph", "path": "skills/specgraph/SKILL.md" },

@@ -3,7 +3,7 @@
 
 package authoring
 
-import specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+import specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 
 // Prompt is a named template used during a funnel stage.
 type Prompt struct {

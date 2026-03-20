@@ -9,9 +9,9 @@ import (
 	"text/tabwriter"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/config"
-	"github.com/seanb4t/specgraph/internal/xdg"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/spf13/cobra"
 )
 
@@ -49,8 +49,8 @@ func runPrime(cmd *cobra.Command, args []string) error {
 	serverURL := cfg.ResolveServer(project.Slug, project.Server)
 
 	// 5. Print orientation header.
-	fmt.Fprintf(cmd.OutOrStdout(), "Project: %s\n", project.Slug)   //nolint:errcheck // stdout write
-	fmt.Fprintf(cmd.OutOrStdout(), "Server:  %s\n", serverURL)     //nolint:errcheck // stdout write
+	fmt.Fprintf(cmd.OutOrStdout(), "Project: %s\n", project.Slug) //nolint:errcheck // stdout write
+	fmt.Fprintf(cmd.OutOrStdout(), "Server:  %s\n", serverURL)    //nolint:errcheck // stdout write
 
 	// 6. List non-terminal specs.
 	client, err := specClient()

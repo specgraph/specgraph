@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/linter"
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/linter"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 

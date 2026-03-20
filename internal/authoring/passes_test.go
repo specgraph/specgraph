@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/seanb4t/specgraph/internal/authoring"
+	"github.com/specgraph/specgraph/internal/authoring"
 )
 
 func TestPassesForStage(t *testing.T) {

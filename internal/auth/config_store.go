@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/seanb4t/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/config"
 )
 
 // DefaultRolePermissions defines the built-in role permission bundles.
