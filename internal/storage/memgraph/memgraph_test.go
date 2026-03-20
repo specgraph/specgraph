@@ -8,9 +8,11 @@ package memgraph_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/specgraph/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/require"
@@ -18,8 +20,10 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func setupMemgraph(t *testing.T) (string, func()) {
-	t.Helper()
+// boltURI is set once by TestMain and shared across all tests.
+var boltURI string
+
+func TestMain(m *testing.M) {
 	ctx := context.Background()
 
 	req := testcontainers.ContainerRequest{
@@ -37,27 +41,65 @@ func setupMemgraph(t *testing.T) (string, func()) {
 		ContainerRequest: req,
 		Started:          true,
 	})
-	require.NoError(t, err)
-
-	host, err := container.Host(ctx)
-	require.NoError(t, err)
-
-	port, err := container.MappedPort(ctx, "7687")
-	require.NoError(t, err)
-
-	boltURI := fmt.Sprintf("bolt://%s:%s", host, port.Port())
-
-	cleanup := func() {
-		_ = container.Terminate(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to start memgraph container: %v\n", err)
+		os.Exit(1)
 	}
 
-	return boltURI, cleanup
+	host, err := container.Host(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to get container host: %v\n", err)
+		_ = container.Terminate(ctx)
+		os.Exit(1)
+	}
+
+	port, err := container.MappedPort(ctx, "7687")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to get mapped port: %v\n", err)
+		_ = container.Terminate(ctx)
+		os.Exit(1)
+	}
+
+	boltURI = fmt.Sprintf("bolt://%s:%s", host, port.Port())
+
+	code := m.Run()
+
+	_ = container.Terminate(ctx)
+	os.Exit(code)
 }
 
-// newStore creates a Store with retry logic to handle the brief window between
-// the container wait strategy completing and the bolt protocol being fully ready.
-// Prepends WithProject("test") so callers don't need to specify a project.
-// Callers can override with their own WithProject (last option wins).
+// clearDatabase removes all nodes and edges from the shared Memgraph container.
+// Call at the start of each test to ensure isolation. Uses a retry loop and
+// neo4j.ExecuteQuery with EagerResultTransformer to avoid CI flakes from
+// transient Bolt connection issues.
+func clearDatabase(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+
+	var lastErr error
+	for range 10 {
+		driver, err := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
+		if err != nil {
+			lastErr = err
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		_, err = neo4j.ExecuteQuery(ctx, driver,
+			"MATCH (n) DETACH DELETE n", nil,
+			neo4j.EagerResultTransformer)
+		closeErr := driver.Close(ctx)
+		if err != nil {
+			lastErr = err
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+		require.NoError(t, closeErr)
+		return
+	}
+	require.NoError(t, lastErr, "clearDatabase: retry exhausted")
+}
+
+// newStore creates a Store with retry logic. Uses the shared boltURI.
 func newStore(ctx context.Context, boltURI string, opts ...memgraph.Option) (*memgraph.Store, error) {
 	opts = append([]memgraph.Option{memgraph.WithProject("test")}, opts...)
 	var (
@@ -75,8 +117,7 @@ func newStore(ctx context.Context, boltURI string, opts ...memgraph.Option) (*me
 }
 
 func TestCreateAndGetSpec(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -111,8 +152,7 @@ func TestCreateAndGetSpec(t *testing.T) {
 }
 
 func TestListSpecs(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -138,8 +178,7 @@ func TestListSpecs(t *testing.T) {
 }
 
 func TestUpdateSpec(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -176,8 +215,7 @@ func TestUpdateSpec(t *testing.T) {
 }
 
 func TestCreateSpec_SetsContentHash(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -202,8 +240,7 @@ func TestCreateSpec_SetsContentHash(t *testing.T) {
 }
 
 func TestGetSpec_NotFound(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)

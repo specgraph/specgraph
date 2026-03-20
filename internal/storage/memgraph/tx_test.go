@@ -14,8 +14,7 @@ import (
 )
 
 func TestRunInTransaction_Commit(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -43,8 +42,7 @@ func TestRunInTransaction_Commit(t *testing.T) {
 }
 
 func TestRunInTransaction_Rollback(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)

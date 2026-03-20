@@ -16,8 +16,7 @@ import (
 )
 
 func TestCreateSpec_CreatesChangeLogEntry(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -40,8 +39,7 @@ func TestCreateSpec_CreatesChangeLogEntry(t *testing.T) {
 }
 
 func TestUpdateSpec_CreatesChangeLogEntry(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -69,8 +67,7 @@ func TestUpdateSpec_CreatesChangeLogEntry(t *testing.T) {
 }
 
 func TestTransitionStage_CreatesCheckpointChangeLog(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -98,8 +95,7 @@ func TestTransitionStage_CreatesCheckpointChangeLog(t *testing.T) {
 }
 
 func TestStoreSparkOutput_CreatesChangeLog(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -131,8 +127,7 @@ func TestStoreSparkOutput_CreatesChangeLog(t *testing.T) {
 }
 
 func TestStoreShapeOutput_CreatesChangeLog(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -166,8 +161,7 @@ func TestStoreShapeOutput_CreatesChangeLog(t *testing.T) {
 }
 
 func TestStoreSpecifyOutput_CreatesChangeLog(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -192,8 +186,7 @@ func TestStoreSpecifyOutput_CreatesChangeLog(t *testing.T) {
 }
 
 func TestStoreDecomposeOutput_CreatesChangeLog(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -221,8 +214,7 @@ func TestStoreDecomposeOutput_CreatesChangeLog(t *testing.T) {
 }
 
 func TestLifecycleAmendSpec_CreatesCheckpointChangeLog(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -249,8 +241,7 @@ func TestLifecycleAmendSpec_CreatesCheckpointChangeLog(t *testing.T) {
 }
 
 func TestLifecycleAbandonSpec_CreatesCheckpointChangeLog(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -275,8 +266,7 @@ func TestLifecycleAbandonSpec_CreatesCheckpointChangeLog(t *testing.T) {
 }
 
 func TestLifecycleSupersedeSpec_CreatesCheckpointChangeLogs(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -308,8 +298,7 @@ func TestLifecycleSupersedeSpec_CreatesCheckpointChangeLogs(t *testing.T) {
 }
 
 func TestListChanges_CheckpointsOnly(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -333,8 +322,7 @@ func TestListChanges_CheckpointsOnly(t *testing.T) {
 }
 
 func TestListChanges_SinceVersion(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -355,8 +343,7 @@ func TestListChanges_SinceVersion(t *testing.T) {
 }
 
 func TestListChanges_Limit(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -379,8 +366,7 @@ func TestListChanges_Limit(t *testing.T) {
 }
 
 func TestListChanges_SpecNotFound(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -393,8 +379,7 @@ func TestListChanges_SpecNotFound(t *testing.T) {
 }
 
 func TestUpdateSpec_NoChangeLogOnNoOp(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
