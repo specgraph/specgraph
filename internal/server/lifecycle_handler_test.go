@@ -20,15 +20,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fakeLifecycleBackend is a minimal fake implementation of storage.LifecycleBackend + AckStateReader for testing.
+// fakeLifecycleBackend is a minimal fake implementation of storage.LifecycleBackend for testing.
 type fakeLifecycleBackend struct {
 	stubBackend
 	getSpec          func(ctx context.Context, slug string) (*storage.Spec, error)
-	batchGetSpecs    func(ctx context.Context, slugs []string) (map[string]*storage.Spec, error)
 	amendSpec        func(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error)
 	supersedeSpec    func(ctx context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error)
 	abandonSpec      func(ctx context.Context, slug, reason string) (*storage.Spec, error)
-	acknowledgeDrift func(ctx context.Context, slug, note string) (*storage.DriftReport, error)
+	acknowledgeDrift func(ctx context.Context, slug, upstreamSlug, note string) error
 }
 
 func (f *fakeLifecycleBackend) GetSpec(ctx context.Context, slug string) (*storage.Spec, error) {
@@ -36,25 +35,6 @@ func (f *fakeLifecycleBackend) GetSpec(ctx context.Context, slug string) (*stora
 		return nil, storage.ErrSpecNotFound
 	}
 	return f.getSpec(ctx, slug)
-}
-
-func (f *fakeLifecycleBackend) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*storage.Spec, error) {
-	if f.batchGetSpecs != nil {
-		return f.batchGetSpecs(ctx, slugs)
-	}
-	// Default: delegate to individual GetSpec calls.
-	result := make(map[string]*storage.Spec, len(slugs))
-	for _, slug := range slugs {
-		spec, err := f.GetSpec(ctx, slug)
-		if err != nil {
-			if errors.Is(err, storage.ErrSpecNotFound) {
-				continue
-			}
-			return nil, err
-		}
-		result[spec.Slug] = spec
-	}
-	return result, nil
 }
 
 func (f *fakeLifecycleBackend) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error) {
@@ -78,11 +58,11 @@ func (f *fakeLifecycleBackend) LifecycleAbandonSpec(ctx context.Context, slug, r
 	return f.abandonSpec(ctx, slug, reason)
 }
 
-func (f *fakeLifecycleBackend) LifecycleAcknowledgeDrift(ctx context.Context, slug, note string) (*storage.DriftReport, error) {
+func (f *fakeLifecycleBackend) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlug, note string) error {
 	if f.acknowledgeDrift == nil {
-		return nil, errors.New("fakeLifecycleBackend.acknowledgeDrift not configured")
+		return errors.New("fakeLifecycleBackend.acknowledgeDrift not configured")
 	}
-	return f.acknowledgeDrift(ctx, slug, note)
+	return f.acknowledgeDrift(ctx, slug, upstreamSlug, note)
 }
 
 // fakeDriftChecker implements server.DriftChecker for testing.
@@ -287,13 +267,13 @@ func TestLifecycleHandler_CheckDrift(t *testing.T) {
 				SpecSlug: "my-spec",
 				Items: []storage.DriftItem{
 					{
-						Type:            storage.DriftTypeDependency,
-						Severity:        storage.DriftSeverityHigh,
-						Description:     "upstream changed",
-						SpecSlug:        "my-spec",
-						UpstreamSlug:    "upstream-spec",
-						ExpectedVersion: 2,
-						ActualVersion:   3,
+						Type:         storage.DriftTypeDependency,
+						Severity:     storage.DriftSeverityHigh,
+						Description:  "upstream changed",
+						SpecSlug:     "my-spec",
+						UpstreamSlug: "upstream-spec",
+						ExpectedHash: "aaa",
+						ActualHash:   "bbb",
 					},
 				},
 			},
@@ -310,6 +290,8 @@ func TestLifecycleHandler_CheckDrift(t *testing.T) {
 	require.Len(t, resp.Msg.Reports[0].Items, 1)
 	require.Equal(t, specv1.DriftType_DRIFT_TYPE_DEPENDENCY, resp.Msg.Reports[0].Items[0].Type)
 	require.Equal(t, specv1.DriftSeverity_DRIFT_SEVERITY_HIGH, resp.Msg.Reports[0].Items[0].Severity)
+	require.Equal(t, "aaa", resp.Msg.Reports[0].Items[0].ExpectedHash)
+	require.Equal(t, "bbb", resp.Msg.Reports[0].Items[0].ActualHash)
 }
 
 func TestLifecycleHandler_CheckDrift_AllSpecs(t *testing.T) {
@@ -330,46 +312,11 @@ func TestLifecycleHandler_CheckDrift_AllSpecs(t *testing.T) {
 	require.Len(t, resp.Msg.Reports, 2)
 }
 
-func TestLifecycleHandler_CheckDrift_MergesAcknowledgmentState(t *testing.T) {
+func TestLifecycleHandler_CheckDrift_CleanSpec(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
-		return &storage.Spec{
-			Slug:                 slug,
-			Stage:                storage.SpecStageDone,
-			DriftAcknowledged:    true,
-			DriftAcknowledgeNote: "some note",
-			ContentHash:          strings.Repeat("a", 32),
-		}, nil
-	}
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
-		return []storage.DriftReport{
-			{SpecSlug: "my-spec"},
-		}, nil
-	}
-	client := newLifecycleClient(t, deps)
-
-	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
-		Slug: "my-spec",
-	}))
-	require.NoError(t, err)
-	require.Len(t, resp.Msg.Reports, 1)
-	require.True(t, resp.Msg.Reports[0].Acknowledged)
-	require.Equal(t, "some note", resp.Msg.Reports[0].AcknowledgeNote)
-}
-
-func TestLifecycleHandler_CheckDrift_SynthesizedEmptyReportMergesAck(t *testing.T) {
-	deps := defaultTestDeps()
-	deps.store.getSpec = func(_ context.Context, slug string) (*storage.Spec, error) {
-		return &storage.Spec{
-			Slug:                 slug,
-			Stage:                storage.SpecStageDone,
-			DriftAcknowledged:    true,
-			DriftAcknowledgeNote: "intentional divergence",
-			ContentHash:          strings.Repeat("a", 32),
-		}, nil
-	}
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
-		return nil, nil // Empty reports — clean spec, triggers synthesized report.
+	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
+		// Clean spec — checked, no drift items, but still returns a report.
+		return []storage.DriftReport{{SpecSlug: slug, Items: []storage.DriftItem{}}}, nil
 	}
 	client := newLifecycleClient(t, deps)
 
@@ -379,71 +326,7 @@ func TestLifecycleHandler_CheckDrift_SynthesizedEmptyReportMergesAck(t *testing.
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Reports, 1)
 	require.Equal(t, "my-spec", resp.Msg.Reports[0].SpecSlug)
-	require.True(t, resp.Msg.Reports[0].Acknowledged)
-	require.Equal(t, "intentional divergence", resp.Msg.Reports[0].AcknowledgeNote)
 	require.Empty(t, resp.Msg.Reports[0].Items)
-}
-
-func TestLifecycleHandler_CheckDrift_GetSpecErrorReturnsUnavailable(t *testing.T) {
-	deps := defaultTestDeps()
-	deps.store.getSpec = func(_ context.Context, _ string) (*storage.Spec, error) {
-		return nil, errors.New("database timeout")
-	}
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
-		return []storage.DriftReport{
-			{SpecSlug: "my-spec"},
-		}, nil
-	}
-	client := newLifecycleClient(t, deps)
-
-	_, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
-		Slug: "my-spec",
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeUnavailable, connErr.Code())
-}
-
-func TestLifecycleHandler_CheckDrift_SpecDeletedBetweenDriftAndAckMerge(t *testing.T) {
-	deps := defaultTestDeps()
-	deps.store.getSpec = func(_ context.Context, _ string) (*storage.Spec, error) {
-		return nil, storage.ErrSpecNotFound
-	}
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
-		return []storage.DriftReport{
-			{SpecSlug: "deleted-spec"},
-		}, nil
-	}
-	client := newLifecycleClient(t, deps)
-
-	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{
-		Slug: "deleted-spec",
-	}))
-	require.NoError(t, err, "spec deletion during ack merge should not cause an error")
-	require.Len(t, resp.Msg.Reports, 1)
-	require.False(t, resp.Msg.Reports[0].Acknowledged, "ack state must not leak from a deleted spec")
-	require.True(t, resp.Msg.Reports[0].AckStateUnavailable, "must signal that ack state is unavailable")
-}
-
-func TestLifecycleHandler_CheckDrift_BatchGetSpecsErrorReturnsUnavailable(t *testing.T) {
-	deps := defaultTestDeps()
-	deps.store.batchGetSpecs = func(_ context.Context, _ []string) (map[string]*storage.Spec, error) {
-		return nil, errors.New("database timeout")
-	}
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
-		return []storage.DriftReport{
-			{SpecSlug: "spec-a"},
-			{SpecSlug: "spec-b"},
-		}, nil
-	}
-	client := newLifecycleClient(t, deps)
-
-	_, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeUnavailable, connErr.Code())
 }
 
 func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyResult(t *testing.T) {
@@ -461,52 +344,30 @@ func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyResult(t *testing.T) {
 	require.Empty(t, resp.Msg.Reports)
 }
 
-func TestLifecycleHandler_CheckDrift_AllSpecs_MissingSpecInBatch(t *testing.T) {
+func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.batchGetSpecs = func(_ context.Context, _ []string) (map[string]*storage.Spec, error) {
-		// Return only spec-a, omitting spec-b to trigger AckStateUnavailable.
-		return map[string]*storage.Spec{
-			"spec-a": {Slug: "spec-a", DriftAcknowledged: true, DriftAcknowledgeNote: "known"},
-		}, nil
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
+		return nil
 	}
 	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
-		return []storage.DriftReport{
-			{SpecSlug: "spec-a"},
-			{SpecSlug: "spec-b"},
-		}, nil
+		return nil, nil
 	}
 	client := newLifecycleClient(t, deps)
 
-	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{}))
+	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug:         "my-spec",
+		UpstreamSlug: "upstream-spec",
+		Note:         "intentional divergence",
+	}))
 	require.NoError(t, err)
-	require.Len(t, resp.Msg.Reports, 2)
-
-	var specA, specB *specv1.DriftReport
-	for _, r := range resp.Msg.Reports {
-		switch r.SpecSlug {
-		case "spec-a":
-			specA = r
-		case "spec-b":
-			specB = r
-		}
-	}
-	require.NotNil(t, specA)
-	require.True(t, specA.Acknowledged)
-	require.False(t, specA.AckStateUnavailable)
-
-	require.NotNil(t, specB)
-	require.True(t, specB.AckStateUnavailable, "missing spec in batch must have AckStateUnavailable=true")
-	require.False(t, specB.Acknowledged)
+	require.Equal(t, "my-spec", resp.Msg.Report.SpecSlug)
+	require.Empty(t, resp.Msg.Report.Items)
 }
 
-func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
+func TestLifecycleHandler_AcknowledgeDrift_AllFlag(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
-		return &storage.DriftReport{
-			SpecSlug:        slug,
-			Acknowledged:    true,
-			AcknowledgeNote: note,
-		}, nil
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
+		return nil
 	}
 	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
 		return nil, nil
@@ -515,24 +376,39 @@ func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 
 	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
 		Slug: "my-spec",
-		Note: "intentional divergence",
+		All:  true,
+		Note: "accept all drift",
 	}))
 	require.NoError(t, err)
 	require.Equal(t, "my-spec", resp.Msg.Report.SpecSlug)
-	require.True(t, resp.Msg.Report.Acknowledged)
-	require.Equal(t, "intentional divergence", resp.Msg.Report.AcknowledgeNote)
-	require.False(t, resp.Msg.Report.ItemsStale, "empty drift re-check result must not mark items as stale")
-	require.Empty(t, resp.Msg.Report.Items)
+}
+
+func TestLifecycleHandler_AcknowledgeDrift_MissingUpstreamAndAll(t *testing.T) {
+	client := newLifecycleClient(t, defaultTestDeps())
+	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug: "my-spec",
+		Note: "intentional",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestLifecycleHandler_AcknowledgeDrift_BothUpstreamAndAll(t *testing.T) {
+	client := newLifecycleClient(t, defaultTestDeps())
+	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug:         "my-spec",
+		UpstreamSlug: "upstream-spec",
+		All:          true,
+		Note:         "intentional",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
 func TestLifecycleHandler_AcknowledgeDrift_RecheckMergesItems(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
-		return &storage.DriftReport{
-			SpecSlug:        slug,
-			Acknowledged:    true,
-			AcknowledgeNote: note,
-		}, nil
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
+		return nil
 	}
 	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
 		return []storage.DriftReport{
@@ -552,11 +428,11 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckMergesItems(t *testing.T) {
 	client := newLifecycleClient(t, deps)
 
 	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-		Slug: "my-spec",
-		Note: "intentional",
+		Slug:         "my-spec",
+		UpstreamSlug: "upstream-spec",
+		Note:         "intentional",
 	}))
 	require.NoError(t, err)
-	require.True(t, resp.Msg.Report.Acknowledged)
 	require.Len(t, resp.Msg.Report.Items, 1)
 	require.Equal(t, specv1.DriftType_DRIFT_TYPE_DEPENDENCY, resp.Msg.Report.Items[0].Type)
 	require.Equal(t, "upstream changed", resp.Msg.Report.Items[0].Description)
@@ -830,12 +706,8 @@ func TestLifecycleHandler_CheckDrift_InvalidScope(t *testing.T) {
 
 func TestLifecycleHandler_AcknowledgeDrift_NilChecker(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
-		return &storage.DriftReport{
-			SpecSlug:        slug,
-			Acknowledged:    true,
-			AcknowledgeNote: note,
-		}, nil
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
+		return nil
 	}
 	mux := http.NewServeMux()
 	server.RegisterLifecycleService(mux, &testScoper{backend: deps.store}, nil, deps.linter, nil)
@@ -844,22 +716,18 @@ func TestLifecycleHandler_AcknowledgeDrift_NilChecker(t *testing.T) {
 	client := specgraphv1connect.NewLifecycleServiceClient(http.DefaultClient, srv.URL)
 
 	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-		Slug: "my-spec",
-		Note: "intentional divergence",
+		Slug:         "my-spec",
+		UpstreamSlug: "upstream-spec",
+		Note:         "intentional divergence",
 	}))
 	require.NoError(t, err)
 	require.Empty(t, resp.Msg.Report.Items)
-	require.False(t, resp.Msg.Report.ItemsStale, "nil drift checker must not set items stale")
 }
 
 func TestLifecycleHandler_AcknowledgeDrift_RecheckError(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
-		return &storage.DriftReport{
-			SpecSlug:        slug,
-			Acknowledged:    true,
-			AcknowledgeNote: note,
-		}, nil
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
+		return nil
 	}
 	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
 		return nil, errors.New("drift engine down")
@@ -867,12 +735,12 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckError(t *testing.T) {
 	client := newLifecycleClient(t, deps)
 
 	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-		Slug: "my-spec",
-		Note: "intentional divergence",
+		Slug:         "my-spec",
+		UpstreamSlug: "upstream-spec",
+		Note:         "intentional divergence",
 	}))
 	require.NoError(t, err)
-	require.True(t, resp.Msg.Report.Acknowledged)
-	require.True(t, resp.Msg.Report.ItemsStale)
+	require.Equal(t, "drift re-check failed after acknowledgment", resp.Msg.Report.ErrorMessage)
 	require.Empty(t, resp.Msg.Report.Items)
 }
 
@@ -934,14 +802,15 @@ func TestLifecycleHandler_Amend_TerminalSpec(t *testing.T) {
 
 func TestLifecycleHandler_AcknowledgeDrift_NotFound(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.acknowledgeDrift = func(_ context.Context, _, _ string) (*storage.DriftReport, error) {
-		return nil, storage.ErrSpecNotFound
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
+		return storage.ErrSpecNotFound
 	}
 	client := newLifecycleClient(t, deps)
 
 	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-		Slug: "no-such-spec",
-		Note: "intentional divergence",
+		Slug:         "no-such-spec",
+		UpstreamSlug: "upstream-spec",
+		Note:         "intentional divergence",
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -949,28 +818,17 @@ func TestLifecycleHandler_AcknowledgeDrift_NotFound(t *testing.T) {
 	require.Equal(t, connect.CodeNotFound, connErr.Code())
 }
 
-func TestLifecycleHandler_AcknowledgeDrift_EmptyNote(t *testing.T) {
-	client := newLifecycleClient(t, defaultTestDeps())
-	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-		Slug: "my-spec",
-		Note: "",
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
-}
-
 func TestLifecycleHandler_AcknowledgeDrift_IneligibleStage(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.acknowledgeDrift = func(_ context.Context, _, _ string) (*storage.DriftReport, error) {
-		return nil, storage.ErrSpecIneligibleStage
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
+		return storage.ErrSpecIneligibleStage
 	}
 	client := newLifecycleClient(t, deps)
 
 	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-		Slug: "my-spec",
-		Note: "should fail",
+		Slug:         "my-spec",
+		UpstreamSlug: "upstream-spec",
+		Note:         "should fail",
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -980,14 +838,15 @@ func TestLifecycleHandler_AcknowledgeDrift_IneligibleStage(t *testing.T) {
 
 func TestLifecycleHandler_AcknowledgeDrift_StorageError(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.acknowledgeDrift = func(_ context.Context, _, _ string) (*storage.DriftReport, error) {
-		return nil, errors.New("db write failed")
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
+		return errors.New("db write failed")
 	}
 	client := newLifecycleClient(t, deps)
 
 	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-		Slug: "my-spec",
-		Note: "intentional divergence",
+		Slug:         "my-spec",
+		UpstreamSlug: "upstream-spec",
+		Note:         "intentional divergence",
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -997,14 +856,15 @@ func TestLifecycleHandler_AcknowledgeDrift_StorageError(t *testing.T) {
 
 func TestLifecycleHandler_AcknowledgeDrift_ConcurrentModification(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.acknowledgeDrift = func(_ context.Context, _, _ string) (*storage.DriftReport, error) {
-		return nil, storage.ErrConcurrentModification
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
+		return storage.ErrConcurrentModification
 	}
 	client := newLifecycleClient(t, deps)
 
 	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-		Slug: "my-spec",
-		Note: "intentional divergence",
+		Slug:         "my-spec",
+		UpstreamSlug: "upstream-spec",
+		Note:         "intentional divergence",
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -1062,51 +922,10 @@ func TestLifecycleHandler_CheckDrift_IneligibleForDrift(t *testing.T) {
 	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
 }
 
-func TestLifecycleHandler_CheckDrift_AllSpecs_AckMerge(t *testing.T) {
-	deps := defaultTestDeps()
-	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
-		require.Empty(t, slug)
-		return []storage.DriftReport{
-			{SpecSlug: "spec-a"},
-			{SpecSlug: "spec-b"},
-		}, nil
-	}
-	deps.store.batchGetSpecs = func(_ context.Context, _ []string) (map[string]*storage.Spec, error) {
-		return map[string]*storage.Spec{
-			"spec-a": {Slug: "spec-a", Stage: storage.SpecStageDone, DriftAcknowledged: true, DriftAcknowledgeNote: "acked"},
-			"spec-b": {Slug: "spec-b", Stage: storage.SpecStageDone},
-		}, nil
-	}
-	client := newLifecycleClient(t, deps)
-
-	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{}))
-	require.NoError(t, err)
-	require.Len(t, resp.Msg.Reports, 2)
-	// Find spec-a and spec-b reports (order not guaranteed).
-	var specA, specB *specv1.DriftReport
-	for _, r := range resp.Msg.Reports {
-		switch r.SpecSlug {
-		case "spec-a":
-			specA = r
-		case "spec-b":
-			specB = r
-		}
-	}
-	require.NotNil(t, specA)
-	require.True(t, specA.Acknowledged)
-	require.Equal(t, "acked", specA.AcknowledgeNote)
-	require.NotNil(t, specB)
-	require.False(t, specB.Acknowledged)
-}
-
 func TestLifecycleHandler_AcknowledgeDrift_AmendedStage(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
-		return &storage.DriftReport{
-			SpecSlug:        slug,
-			Acknowledged:    true,
-			AcknowledgeNote: note,
-		}, nil
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
+		return nil
 	}
 	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
 		return nil, nil
@@ -1114,12 +933,12 @@ func TestLifecycleHandler_AcknowledgeDrift_AmendedStage(t *testing.T) {
 	client := newLifecycleClient(t, deps)
 
 	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-		Slug: "amended-spec",
-		Note: "divergence accepted",
+		Slug:         "amended-spec",
+		UpstreamSlug: "upstream-spec",
+		Note:         "divergence accepted",
 	}))
 	require.NoError(t, err)
 	require.Equal(t, "amended-spec", resp.Msg.Report.SpecSlug)
-	require.True(t, resp.Msg.Report.Acknowledged)
 }
 
 func TestLifecycleHandler_Abandon_NotFound(t *testing.T) {
@@ -1264,32 +1083,22 @@ func TestLifecycleHandler_Lint_SpecNotFound(t *testing.T) {
 }
 
 func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyReports(t *testing.T) {
-	batchCalled := false
 	deps := defaultTestDeps()
 	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
 		require.Empty(t, slug)
 		return []storage.DriftReport{}, nil
-	}
-	deps.store.batchGetSpecs = func(_ context.Context, _ []string) (map[string]*storage.Spec, error) {
-		batchCalled = true
-		return map[string]*storage.Spec{}, nil
 	}
 	client := newLifecycleClient(t, deps)
 
 	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(&specv1.DriftCheckRequest{}))
 	require.NoError(t, err)
 	require.Empty(t, resp.Msg.Reports)
-	require.False(t, batchCalled, "BatchGetSpecs should NOT be called with empty slug list")
 }
 
 func TestLifecycleHandler_AcknowledgeDrift_RecheckSlugNotFound(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.acknowledgeDrift = func(_ context.Context, slug, note string) (*storage.DriftReport, error) {
-		return &storage.DriftReport{
-			SpecSlug:        slug,
-			Acknowledged:    true,
-			AcknowledgeNote: note,
-		}, nil
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
+		return nil
 	}
 	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
 		// Return reports for a different slug, simulating the found=false branch.
@@ -1300,12 +1109,11 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckSlugNotFound(t *testing.T) {
 	client := newLifecycleClient(t, deps)
 
 	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-		Slug: "my-spec",
-		Note: "intentional divergence",
+		Slug:         "my-spec",
+		UpstreamSlug: "upstream-spec",
+		Note:         "intentional divergence",
 	}))
 	require.NoError(t, err)
-	require.True(t, resp.Msg.Report.Acknowledged)
-	require.False(t, resp.Msg.Report.ItemsStale, "missing slug in re-check reports means no drift — items should not be stale")
 	require.Empty(t, resp.Msg.Report.ErrorMessage)
 	require.Empty(t, resp.Msg.Report.Items)
 }
@@ -1443,8 +1251,9 @@ func TestLifecycleHandler_AcknowledgeDrift_InvalidSlug(t *testing.T) {
 	client := newLifecycleClient(t, deps)
 
 	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-		Slug: "INVALID/slug",
-		Note: "some note",
+		Slug:         "INVALID/slug",
+		UpstreamSlug: "upstream-spec",
+		Note:         "some note",
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))

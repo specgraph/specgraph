@@ -77,3 +77,8 @@ primarily for drift detection and sync adapter reconciliation.
   tracking — every material mutation creates a ChangeLog node recording the
   hash, field deltas, and checkpoint status. See the ChangeLog design spec at
   `docs/superpowers/specs/2026-03-18-changelog-graph-nodes-design.md`.
+- Content hash is consumed by drift detection — `DEPENDS_ON` edges store
+  `content_hash_at_link` (the upstream's content hash at baseline time). Drift
+  is detected when `edge.content_hash_at_link != upstream.content_hash`. See
+  the content hash drift detection design spec at
+  `docs/superpowers/specs/2026-03-19-content-hash-drift-detection-design.md`.

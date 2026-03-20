@@ -248,26 +248,27 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(driftFound).To(BeTrue(), "expected drift to be detected within retries")
 		})
 
-		It("acknowledges drift", func() {
+		It("acknowledges drift for all upstreams", func() {
 			resp, err := lifecycleClient.AcknowledgeDrift(ctx, connect.NewRequest(&specv1.DriftAcknowledgeRequest{
 				Slug: downstreamSlug,
 				Note: "Reviewed upstream change, no action needed",
+				All:  true,
 			}))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Report.Acknowledged).To(BeTrue())
-			Expect(resp.Msg.Report.AcknowledgeNote).To(Equal("Reviewed upstream change, no action needed"))
+			Expect(resp.Msg.Report.SpecSlug).To(Equal(downstreamSlug))
 		})
 
-		It("CheckDrift returns acknowledged state after AcknowledgeDrift", func() {
+		It("CheckDrift returns no drift after AcknowledgeDrift", func() {
 			resp, err := lifecycleClient.CheckDrift(ctx, connect.NewRequest(&specv1.DriftCheckRequest{
 				Slug: downstreamSlug,
 			}))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Reports).NotTo(BeEmpty())
-			report := resp.Msg.Reports[0]
-			Expect(report.SpecSlug).To(Equal(downstreamSlug))
-			Expect(report.Acknowledged).To(BeTrue(), "CheckDrift should reflect acknowledged state set by AcknowledgeDrift")
-			Expect(report.AcknowledgeNote).To(Equal("Reviewed upstream change, no action needed"))
+			// After blanket ack, edge hashes match upstream — no drift items.
+			if len(resp.Msg.Reports) > 0 {
+				report := resp.Msg.Reports[0]
+				Expect(report.SpecSlug).To(Equal(downstreamSlug))
+				Expect(report.Items).To(BeEmpty(), "after ack, edge hashes should match — no drift")
+			}
 		})
 	})
 
@@ -346,12 +347,15 @@ var _ = Describe("Lifecycle", Ordered, func() {
 	})
 
 	// Depends on "Drift detection" Describe above (order guaranteed by outer Ordered container).
-	// That block creates two done specs with a dependency and bumps upstream's updated_at.
+	// After blanket AcknowledgeDrift, edge hashes match upstream — no drift expected.
 	Describe("Drift detection (all specs)", func() {
-		It("detects drift across all eligible specs when slug is empty", func() {
+		It("returns no drift after blanket acknowledgment", func() {
 			resp, err := lifecycleClient.CheckDrift(ctx, connect.NewRequest(&specv1.DriftCheckRequest{}))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Reports).NotTo(BeEmpty(), "drift-all should find at least one drifted spec")
+			// After ack, all edge hashes match — reports may be empty or have zero items.
+			for _, r := range resp.Msg.Reports {
+				Expect(r.Items).To(BeEmpty(), "all drift should be resolved after blanket ack for spec %s", r.SpecSlug)
+			}
 		})
 	})
 
@@ -460,6 +464,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			_, err = lifecycleClient.AcknowledgeDrift(ctx, connect.NewRequest(&specv1.DriftAcknowledgeRequest{
 				Slug: errSlug,
 				Note: "should fail on spark-stage spec",
+				All:  true,
 			}))
 			Expect(err).To(HaveOccurred())
 			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))

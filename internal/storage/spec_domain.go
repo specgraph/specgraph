@@ -146,8 +146,6 @@ type Spec struct {
 	Lifecycle            SpecLifecycle  // "task" (default) or "living"
 	SupersededBy         string         // slug of replacement spec
 	Supersedes           string         // slug of spec this replaced
-	DriftAcknowledged    bool           // drift was intentionally acknowledged
-	DriftAcknowledgeNote string         // reason for acknowledging drift
 	Notes                string         // free-text notes (conversation summaries, context)
 	ContentHash          string         // Murmur3-128 hash of substantive fields
 }

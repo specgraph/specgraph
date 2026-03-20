@@ -502,23 +502,19 @@ func driftReportToProto(r *storage.DriftReport) (*specv1.DriftReport, error) {
 			return nil, fmt.Errorf("driftReportToProto: unknown drift severity %q for slug %q", item.Severity, r.SpecSlug)
 		}
 		items[i] = &specv1.DriftItem{
-			Type:            dt,
-			Severity:        ds,
-			Description:     item.Description,
-			SpecSlug:        item.SpecSlug,
-			UpstreamSlug:    item.UpstreamSlug,
-			ExpectedVersion: item.ExpectedVersion,
-			ActualVersion:   item.ActualVersion,
+			Type:         dt,
+			Severity:     ds,
+			Description:  item.Description,
+			SpecSlug:     item.SpecSlug,
+			UpstreamSlug: item.UpstreamSlug,
+			ExpectedHash: item.ExpectedHash,
+			ActualHash:   item.ActualHash,
 		}
 	}
 	return &specv1.DriftReport{
-		SpecSlug:            r.SpecSlug,
-		Items:               items,
-		Acknowledged:        r.Acknowledged,
-		AcknowledgeNote:     r.AcknowledgeNote,
-		ItemsStale:          r.ItemsStale,
-		ErrorMessage:        r.ErrorMessage,
-		AckStateUnavailable: r.AckStateUnavailable,
+		SpecSlug:     r.SpecSlug,
+		Items:        items,
+		ErrorMessage: r.ErrorMessage,
 	}, nil
 }
 

@@ -112,7 +112,15 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 			Summary:     fmt.Sprintf("Stage transition: %s → %s", fromStr, toStr),
 			Date:        updatedSpec.UpdatedAt,
 		}
-		return s.createChangeLog(txCtx, slug, clEntry, deltas)
+		if err := s.createChangeLog(txCtx, slug, clEntry, deltas); err != nil {
+			return err
+		}
+		if to == storage.AuthoringStage(storage.SpecStageDone) {
+			if err := s.RefreshDependencyHashes(txCtx, slug); err != nil {
+				return fmt.Errorf("refresh dependency hashes after done transition: %w", err)
+			}
+		}
+		return nil
 	})
 }
 
@@ -259,7 +267,8 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 				depQuery := `
 					MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(from:Spec {slug: $from_slug}),
 					      (p)<-[:BELONGS_TO]-(to:Spec {slug: $to_slug})
-					MERGE (from)-[:DEPENDS_ON]->(to)
+					MERGE (from)-[dep:DEPENDS_ON]->(to)
+					ON CREATE SET dep.content_hash_at_link = COALESCE(to.content_hash, "")
 				`
 				_, err := s.executeQuery(txCtx, depQuery,
 					mergeParams(s.projectParam(), map[string]any{"from_slug": childSlug, "to_slug": depSlug}))

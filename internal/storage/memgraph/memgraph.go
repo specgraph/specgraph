@@ -169,8 +169,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
-		       s.content_hash
+		       s.notes, s.content_hash
 	`
 	params := mergeParams(s.projectParam(), map[string]any{
 		"id":           id,
@@ -235,8 +234,7 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
-		       s.content_hash
+		       s.notes, s.content_hash
 	`
 	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
@@ -262,8 +260,7 @@ func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
-		       s.content_hash
+		       s.notes, s.content_hash
 	`
 	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{"slugs": slugs}))
 	if err != nil {
@@ -301,8 +298,7 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	query += ` RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
-		       s.content_hash`
+		       s.notes, s.content_hash`
 	query += " ORDER BY s.created_at"
 	if limit > 0 {
 		query += " LIMIT $limit"
@@ -367,8 +363,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.drift_acknowledged, s.drift_acknowledge_note, s.notes,
-		       s.content_hash,
+		       s.notes, s.content_hash,
 		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output
 	`, strings.Join(setClauses, ", "))
 
@@ -396,7 +391,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		}
 		authoringOutputs := make(map[string]string)
 		for i, key := range []string{"spark_output", "shape_output", "specify_output", "decompose_output"} {
-			val, aoErr := recordStringOptional(rec, 16+i, key)
+			val, aoErr := recordStringOptional(rec, 14+i, key)
 			if aoErr != nil {
 				return aoErr
 			}
@@ -441,6 +436,12 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 			}
 			if clErr := s.createChangeLog(txCtx, slug, clEntry, deltas); clErr != nil {
 				return clErr
+			}
+		}
+
+		if stage != nil && storage.SpecStage(*stage) == storage.SpecStageDone {
+			if err := s.RefreshDependencyHashes(txCtx, slug); err != nil {
+				return fmt.Errorf("memgraph: refresh dependency hashes after done transition: %w", err)
 			}
 		}
 
@@ -608,23 +609,6 @@ func safeInt32(v int64) int32 {
 	return int32(v)
 }
 
-// recordBoolOptional extracts a nullable bool value from a neo4j record by
-// position. Returns false for nil/null values, and fails fast on unexpected
-// types to surface schema/return-shift bugs immediately.
-func recordBoolOptional(rec *neo4j.Record, pos int, field string) (bool, error) {
-	if pos >= len(rec.Values) {
-		return false, fmt.Errorf("memgraph: field %q at position %d: missing", field, pos)
-	}
-	if rec.Values[pos] == nil {
-		return false, nil
-	}
-	b, ok := rec.Values[pos].(bool)
-	if !ok {
-		return false, fmt.Errorf("memgraph: field %q at position %d: expected bool or nil, got %T", field, pos, rec.Values[pos])
-	}
-	return b, nil
-}
-
 func recordStringOptional(rec *neo4j.Record, pos int, field string) (string, error) {
 	if pos >= len(rec.Values) {
 		return "", fmt.Errorf("memgraph: field %q at position %d: missing", field, pos)
@@ -706,40 +690,30 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 	if err != nil {
 		return nil, err
 	}
-	driftAck, err := recordBoolOptional(rec, offset+12, "drift_acknowledged")
+	notes, err := recordStringOptional(rec, offset+12, "notes")
 	if err != nil {
 		return nil, err
 	}
-	driftAckNote, err := recordStringOptional(rec, offset+13, "drift_acknowledge_note")
-	if err != nil {
-		return nil, err
-	}
-	notes, err := recordStringOptional(rec, offset+14, "notes")
-	if err != nil {
-		return nil, err
-	}
-	contentHash, err := recordStringOptional(rec, offset+15, "content_hash")
+	contentHash, err := recordStringOptional(rec, offset+13, "content_hash")
 	if err != nil {
 		return nil, err
 	}
 
 	return &storage.Spec{
-		ID:                   id,
-		Slug:                 slug,
-		Intent:               intent,
-		Stage:                storage.SpecStage(stage),
-		Priority:             storage.SpecPriority(priority),
-		Complexity:           complexity,
-		Version:              safeInt32(version),
-		CreatedAt:            createdAt,
-		UpdatedAt:            updatedAt,
-		Lifecycle:            lifecycle,
-		SupersededBy:         supersededBy,
-		Supersedes:           supersedes,
-		DriftAcknowledged:    driftAck,
-		DriftAcknowledgeNote: driftAckNote,
-		Notes:                notes,
-		ContentHash:          contentHash,
+		ID:          id,
+		Slug:        slug,
+		Intent:      intent,
+		Stage:       storage.SpecStage(stage),
+		Priority:    storage.SpecPriority(priority),
+		Complexity:  complexity,
+		Version:     safeInt32(version),
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
+		Lifecycle:   lifecycle,
+		SupersededBy: supersededBy,
+		Supersedes:  supersedes,
+		Notes:       notes,
+		ContentHash: contentHash,
 	}, nil
 }
 

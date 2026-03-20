@@ -52,40 +52,45 @@ func (s *Store) RecordCompletion(ctx context.Context, slug, agent string) error 
 	id := newID("evt")
 	nowStr := now.Format(time.RFC3339Nano)
 
-	// Single query: assert claim, create event, transition to done, release claim.
-	query := `
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[r:CLAIMED_BY {agent: $agent}]->(a)
-		WHERE r.lease_expires >= $now
-		CREATE (e:ExecutionEvent {
-			id: $id,
-			spec_slug: $spec_slug,
-			agent: $agent,
-			type: "completion",
-			message: "",
-			created_at: $created_at
+	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Single query: assert claim, create event, transition to done, release claim.
+		query := `
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[r:CLAIMED_BY {agent: $agent}]->(a)
+			WHERE r.lease_expires >= $now
+			CREATE (e:ExecutionEvent {
+				id: $id,
+				spec_slug: $spec_slug,
+				agent: $agent,
+				type: "completion",
+				message: "",
+				created_at: $created_at
+			})
+			CREATE (s)-[:HAS_EVENT]->(e)
+			SET s.stage = "done", s.updated_at = $now, s.version = s.version + 1
+			DELETE r
+			RETURN e.id
+		`
+		params := mergeParams(s.projectParam(), map[string]any{
+			"slug":       slug,
+			"id":         id,
+			"spec_slug":  slug,
+			"agent":      agent,
+			"now":        nowStr,
+			"created_at": nowStr,
 		})
-		CREATE (s)-[:HAS_EVENT]->(e)
-		SET s.stage = "done", s.updated_at = $now, s.version = s.version + 1
-		DELETE r
-		RETURN e.id
-	`
-	params := mergeParams(s.projectParam(), map[string]any{
-		"slug":       slug,
-		"id":         id,
-		"spec_slug":  slug,
-		"agent":      agent,
-		"now":        nowStr,
-		"created_at": nowStr,
-	})
 
-	records, err := s.executeQuery(ctx, query, params)
-	if err != nil {
-		return fmt.Errorf("memgraph: record completion: %w", err)
-	}
-	if len(records) == 0 {
-		return fmt.Errorf("memgraph: record completion: %w", storage.ErrAgentNotClaimOwner)
-	}
-	return nil
+		records, err := s.executeQuery(txCtx, query, params)
+		if err != nil {
+			return fmt.Errorf("memgraph: record completion: %w", err)
+		}
+		if len(records) == 0 {
+			return fmt.Errorf("memgraph: record completion: %w", storage.ErrAgentNotClaimOwner)
+		}
+		if err := s.RefreshDependencyHashes(txCtx, slug); err != nil {
+			return fmt.Errorf("memgraph: refresh dependency hashes after completion: %w", err)
+		}
+		return nil
+	})
 }
 
 // GetExecutionEvents returns execution events for a spec, ordered by time descending.
