@@ -142,14 +142,11 @@ var _ = Describe("Agent pipeline", Ordered, func() {
 			"Claim specgraph spec %q as agent %q.",
 			slug, "agent-e2e",
 		))
-		// Agent may hit max turns — not a hard failure for a smoke test.
-		if err != nil {
-			GinkgoWriter.Printf("agent claim returned error (non-fatal): %v\n", err)
-		}
+		Expect(err).NotTo(HaveOccurred(), "agent claim step should succeed")
 
 		result := specgraphRun("show", slug)
 		Expect(result.ExitCode).To(Equal(0))
-	}, SpecTimeout(3*time.Minute))
+	}, SpecTimeout(5*time.Minute))
 
 	It("shows the spec via agent", func(ctx SpecContext) {
 		out, err := agentRun(fmt.Sprintf(
