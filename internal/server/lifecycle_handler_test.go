@@ -314,8 +314,9 @@ func TestLifecycleHandler_CheckDrift_AllSpecs(t *testing.T) {
 
 func TestLifecycleHandler_CheckDrift_CleanSpec(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
-		return nil, nil // Clean spec — no drift found.
+	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
+		// Clean spec — checked, no drift items, but still returns a report.
+		return []storage.DriftReport{{SpecSlug: slug, Items: []storage.DriftItem{}}}, nil
 	}
 	client := newLifecycleClient(t, deps)
 
@@ -323,7 +324,9 @@ func TestLifecycleHandler_CheckDrift_CleanSpec(t *testing.T) {
 		Slug: "my-spec",
 	}))
 	require.NoError(t, err)
-	require.Empty(t, resp.Msg.Reports)
+	require.Len(t, resp.Msg.Reports, 1)
+	require.Equal(t, "my-spec", resp.Msg.Reports[0].SpecSlug)
+	require.Empty(t, resp.Msg.Reports[0].Items)
 }
 
 func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyResult(t *testing.T) {

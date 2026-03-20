@@ -498,37 +498,58 @@ func TestLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		defer store.Close(ctx)
 
-		// Create upstream and downstream specs.
-		_, err = store.CreateSpec(ctx, "ack-upstream", "Upstream spec", "p1", "medium")
+		// Create two upstreams and one downstream to verify per-upstream filtering.
+		_, err = store.CreateSpec(ctx, "ack-up1", "Upstream 1", "p1", "medium")
+		require.NoError(t, err)
+		_, err = store.CreateSpec(ctx, "ack-up2", "Upstream 2", "p1", "medium")
 		require.NoError(t, err)
 		_, err = store.CreateSpec(ctx, "ack-downstream", "Downstream spec", "p1", "medium")
 		require.NoError(t, err)
 
-		// Add DEPENDS_ON edge (baselines upstream's content hash).
-		_, err = store.AddEdge(ctx, "ack-downstream", "ack-upstream", storage.EdgeTypeDependsOn)
+		// Add DEPENDS_ON edges (baselines upstream content hashes).
+		_, err = store.AddEdge(ctx, "ack-downstream", "ack-up1", storage.EdgeTypeDependsOn)
 		require.NoError(t, err)
+		_, err = store.AddEdge(ctx, "ack-downstream", "ack-up2", storage.EdgeTypeDependsOn)
+		require.NoError(t, err)
+
+		// Record initial edge hashes before any modification.
+		preAckDeps, err := store.GetDependenciesWithEdgeData(ctx, "ack-downstream")
+		require.NoError(t, err)
+		require.Len(t, preAckDeps, 2)
+		initialHashes := map[string]string{}
+		for _, d := range preAckDeps {
+			initialHashes[d.Slug] = d.ContentHashAtLink
+		}
 
 		// Move downstream to done stage so ack is eligible.
 		doneStage := "done"
 		_, err = store.UpdateSpec(ctx, "ack-downstream", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
-		// Modify upstream (changes its content hash).
-		newIntent := "Updated upstream intent"
-		_, err = store.UpdateSpec(ctx, "ack-upstream", &newIntent, nil, nil, nil, nil)
+		// Modify both upstreams (changes their content hashes).
+		intent1 := "Updated upstream 1"
+		_, err = store.UpdateSpec(ctx, "ack-up1", &intent1, nil, nil, nil, nil)
 		require.NoError(t, err)
-		upstream, err := store.GetSpec(ctx, "ack-upstream")
+		intent2 := "Updated upstream 2"
+		_, err = store.UpdateSpec(ctx, "ack-up2", &intent2, nil, nil, nil, nil)
+		require.NoError(t, err)
+		up1, err := store.GetSpec(ctx, "ack-up1")
 		require.NoError(t, err)
 
-		// Acknowledge drift for this specific upstream.
-		err = store.LifecycleAcknowledgeDrift(ctx, "ack-downstream", "ack-upstream", "intentional drift")
+		// Acknowledge drift for only ack-up1 (per-upstream).
+		err = store.LifecycleAcknowledgeDrift(ctx, "ack-downstream", "ack-up1", "intentional drift")
 		require.NoError(t, err)
 
-		// Verify edge hash updated to upstream's current hash.
-		deps, err := store.GetDependenciesWithEdgeData(ctx, "ack-downstream")
+		// Verify: ack-up1 edge hash updated, ack-up2 edge hash unchanged.
+		postAckDeps, err := store.GetDependenciesWithEdgeData(ctx, "ack-downstream")
 		require.NoError(t, err)
-		require.Len(t, deps, 1)
-		require.Equal(t, upstream.ContentHash, deps[0].ContentHashAtLink)
+		require.Len(t, postAckDeps, 2)
+		postHashes := map[string]string{}
+		for _, d := range postAckDeps {
+			postHashes[d.Slug] = d.ContentHashAtLink
+		}
+		require.Equal(t, up1.ContentHash, postHashes["ack-up1"], "acked upstream edge should be updated")
+		require.Equal(t, initialHashes["ack-up2"], postHashes["ack-up2"], "non-acked upstream edge should be unchanged")
 	})
 
 	t.Run("AcknowledgeDrift_AllUpstreams_UpdatesAllEdges", func(t *testing.T) {

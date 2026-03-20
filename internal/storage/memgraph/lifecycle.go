@@ -430,7 +430,7 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlu
 			})
 		}
 
-		// Update edge hash(es).
+		// Update edge hash(es) and return affected count.
 		var updateQuery string
 		params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
@@ -438,17 +438,32 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlu
 			updateQuery = `
 				MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a:Spec {slug: $slug})-[dep:DEPENDS_ON]->(upstream {slug: $upstream_slug})
 				SET dep.content_hash_at_link = COALESCE(upstream.content_hash, "")
+				RETURN count(dep) AS matched
 			`
 			params["upstream_slug"] = upstreamSlug
 		} else {
 			updateQuery = `
 				MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a:Spec {slug: $slug})-[dep:DEPENDS_ON]->(upstream)
 				SET dep.content_hash_at_link = COALESCE(upstream.content_hash, "")
+				RETURN count(dep) AS matched
 			`
 		}
 
-		if _, err := s.executeQuery(txCtx, updateQuery, params); err != nil {
-			return fmt.Errorf("memgraph: acknowledge drift update edge: %w", err)
+		updateRecords, updateErr := s.executeQuery(txCtx, updateQuery, params)
+		if updateErr != nil {
+			return fmt.Errorf("memgraph: acknowledge drift update edge: %w", updateErr)
+		}
+		// If a specific upstream was requested but no edge matched, fail fast.
+		if upstreamSlug != "" {
+			matched := int64(0)
+			if len(updateRecords) > 0 {
+				if v, _ := updateRecords[0].Get("matched"); v != nil {
+					matched, _ = v.(int64)
+				}
+			}
+			if matched == 0 {
+				return fmt.Errorf("memgraph: no DEPENDS_ON edge from %q to %q", slug, upstreamSlug)
+			}
 		}
 
 		// Create a ChangeLog entry recording the acknowledgment.
@@ -467,7 +482,7 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlu
 			Summary:     fmt.Sprintf("Acknowledged drift from %s", target),
 			Reason:      note,
 			Checkpoint:  false,
-			Date:        spec.UpdatedAt,
+			Date:        s.nowTime(),
 		}
 		if clErr := s.createChangeLog(txCtx, slug, clEntry, nil); clErr != nil {
 			return fmt.Errorf("memgraph: acknowledge drift changelog: %w", clErr)
