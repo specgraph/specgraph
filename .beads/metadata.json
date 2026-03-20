@@ -3,5 +3,6 @@
   "backend": "dolt",
   "dolt_mode": "server",
   "dolt_server_port": 3306,
-  "dolt_database": "spgr"
+  "dolt_database": "spgr",
+  "project_id": "a1b8ebf4-1ff6-4481-8dd3-f956e518204a"
 }

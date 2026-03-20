@@ -44,7 +44,7 @@ so you can always trace where a constraint originated.
 ```
 
 **User Layer** — Personal defaults that follow you across projects. "I prefer
-terse specs." "I use neovim." These don't affect team behavior; they shape
+terse specs." "I use neovim." These do not affect team behavior; they shape
 how SpecGraph interacts with you individually.
 
 **Organization Layer** — Rules that apply to every project in the org. "SOC2
@@ -164,15 +164,6 @@ shared databases — without being told any of this in the prompt.
 
 ## Why It Matters
 
-Agents never start cold. When a human or AI begins authoring a new spec,
-SpecGraph loads the resolved constitution and uses it as context for the entire
-session. The agent knows the tech stack, the architectural principles, and the
-hard constraints before it generates a single line. This eliminates the class
-of errors where technically valid specs violate project decisions — the Go
-project that gets a Java spec, the no-shared-database rule that gets ignored
-because the author didn't know it existed. The constitution turns tribal
-knowledge into queryable, enforceable ground truth.
-
 Governance becomes enforcement, not suggestion. During authoring, SpecGraph
 runs a **constitution check pass** that validates the emerging spec against
 every applicable constraint. When a spec violates a constraint — proposing
@@ -183,3 +174,6 @@ violation is caught at authoring time, not six months later in a code review
 or — worse — in production. For teams and managers, this means architectural
 decisions are living rules that shape every spec, not dusty documents that
 get rediscovered during postmortems.
+
+The constitution is automatically checked at every authoring stage via the
+[constitution check pass](passes.md#constitution-check).

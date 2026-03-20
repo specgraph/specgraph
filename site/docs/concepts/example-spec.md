@@ -222,7 +222,7 @@ Error (401): token family revoked (reuse detected)
     SpecGraph uses these to determine execution order and identify
     parallelizable work via the `specgraph ready` command.
 
-**Strategy:** vertical-slice
+**Strategy:** vertical_slice
 
 | Slice | Intent | Verify | Depends On |
 |-------|--------|--------|------------|

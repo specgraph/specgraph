@@ -14,8 +14,7 @@ there is no embedded or library mode.
 │  CLIENTS                                             │
 │  ├─ specgraph CLI                                   │
 │  ├─ Claude Code skills                              │
-│  ├─ MCP server proxy                                │
-│  └─ Tauri+Svelte UI (future)                        │
+│  └─ MCP server proxy (planned)                      │
 └────────────┬────────────────────────────────────────┘
              │ ConnectRPC (JSON/HTTP)
              ▼
@@ -23,7 +22,7 @@ there is no embedded or library mode.
 │  SPECGRAPH SERVER                                    │
 │  ├─ Core domain (Spec, Constitution, Authoring)     │
 │  ├─ Graph analysis (deps, impact, critical path)    │
-│  └─ Storage backend (Memgraph | Postgres+AGE)       │
+│  └─ Storage backend (Memgraph; Postgres planned)    │
 └────────────┬────────────────────────────────────────┘
              │
              ▼
@@ -31,7 +30,7 @@ there is no embedded or library mode.
 │  SYNC ADAPTERS (outbound)                            │
 │  ├─ Beads (spec→bead issue)                         │
 │  ├─ GitHub Issues                                   │
-│  ├─ Linear                                          │
+│  ├─ Linear (planned)                                │
 │  └─ Tool Injection (CLAUDE.md, .cursor/rules)        │
 └─────────────────────────────────────────────────────┘
 ```
@@ -45,16 +44,16 @@ a single domain concern:
 
 | Service | Description |
 |---------|-------------|
-| **SpecService** | CRUD for specs — create, get, list, update. The primary resource in the graph. |
-| **DecisionService** | CRUD for decisions. ADRs are first-class graph nodes with bidirectional edges to the specs they affect. |
-| **ConstitutionService** | Constitution management — layer merging, validation, and queries across the User → Org → Project → Domain hierarchy. |
-| **AuthoringService** | The authoring funnel RPCs: Spark, Shape, Specify, Decompose, Approve, Amend, Supersede. Drives specs from rough idea to execution-ready. |
-| **ClaimService** | Claim and unclaim specs for execution. Manages leases so multiple agents don't collide on the same work. |
+| **SpecService** | Create, get, list, and update specs — the primary resource in the graph. |
+| **DecisionService** | Create and manage decisions — first-class graph nodes with bidirectional edges to specs. |
+| **ConstitutionService** | Layer merging, validation, and queries across the User → Org → Project → Domain hierarchy. |
+| **AuthoringService** | Authoring funnel RPCs: Spark, Shape, Specify, Decompose, Approve, Amend, Supersede. |
+| **ClaimService** | Claim and release specs for execution. Time-limited leases prevent duplicate work. |
 | **GraphService** | Dependency queries, impact analysis, critical-path computation, and ready-spec detection. |
-| **LifecycleService** | Spec lifecycle transitions (amend, supersede, abandon), drift detection, and spec linting. |
-| **ExecutionService** | Execution bundles, prime context, and agent progress/blocker/completion reporting. |
-| **SyncService** | Sync specs to external systems (Beads, GitHub) and inject context into tool files. |
-| **ServerService** | Server health checks. |
+| **LifecycleService** | Lifecycle transitions (amend, supersede, abandon), drift detection, and spec linting. |
+| **ExecutionService** | Execution bundles, prime context, and progress/blocker/completion reporting. |
+| **SyncService** | Push specs to external systems (Beads, GitHub) and inject context into tool files. |
+| **ServerService** | Health checks. |
 
 All services use protobuf message types on the wire and generate both `.pb.go`
 and `.connect.go` files from the proto definitions.
@@ -63,15 +62,14 @@ and `.connect.go` files from the proto definitions.
 
 ## Storage
 
-SpecGraph supports two pluggable storage backends. Both implement the same
-`Backend` interface — the core domain never talks to the database directly.
+SpecGraph uses a pluggable storage backend behind a `Backend` interface — the
+core domain never talks to the database directly.
 
-**Memgraph** (default) — Native Cypher queries running in Docker. Good for solo
-developers and teams. Provides native graph operations without extensions.
+**Memgraph** (default, shipped) — The only backend in v0.1.0. Native Cypher
+queries running in Docker. No extensions required.
 
-**Postgres + AGE** (alternative) — Cypher via the Apache AGE extension on
-standard Postgres. Good for teams with existing Postgres infrastructure. Falls
-back to recursive CTEs if AGE is not available.
+**Postgres + AGE** (planned) — Designed but not yet implemented. Cypher via
+the Apache AGE extension on standard Postgres.
 
 ```go
 type Backend interface {
@@ -113,8 +111,8 @@ detection).
 
 ConnectRPC is browser-compatible (JSON over HTTP) while maintaining gRPC wire
 compatibility and protobuf type safety. Plain gRPC cannot be called from
-browsers directly. ConnectRPC gives both worlds — structured APIs for tools,
-human-readable JSON for debugging.
+browsers directly. ConnectRPC provides both: structured APIs for tools, human-readable JSON
+for debugging.
 
 ---
 
@@ -125,19 +123,21 @@ specgraph/
 ├── proto/specgraph/v1/     # Protobuf service definitions (source of truth)
 ├── gen/                    # Generated Go code (committed for module compat)
 ├── internal/
-│   ├── server/             # ConnectRPC handlers + proto↔domain converters
-│   ├── storage/            # Backend interface + implementations
-│   │   └── memgraph/       # Memgraph implementation (Cypher, testcontainers)
+│   ├── auth/               # Auth interceptor + config-based token store
 │   ├── authoring/          # Authoring funnel (stages, postures, passes)
 │   ├── config/             # YAML-based server configuration
+│   ├── docker/             # Docker Compose templates for DB containers
 │   ├── drift/              # Drift detection engine
 │   ├── driftscope/         # Drift scope analysis
-│   ├── linter/             # Spec linter (schema, edges, cycles)
-│   ├── inject/             # Tool injection (CLAUDE.md, .cursor/rules, AGENTS.md)
-│   ├── sync/               # Sync adapters (Beads, GitHub)
 │   ├── emitter/            # Event/output emitters
-│   ├── docker/             # Docker Compose templates for DB containers
-│   └── service/            # systemd/launchd integration
+│   ├── inject/             # Tool injection (CLAUDE.md, .cursor/rules, AGENTS.md)
+│   ├── linter/             # Spec linter (schema, edges, cycles)
+│   ├── server/             # ConnectRPC handlers + proto↔domain converters
+│   ├── service/            # systemd/launchd integration
+│   ├── storage/            # Backend interface + implementations
+│   │   └── memgraph/       # Memgraph implementation (Cypher, testcontainers)
+│   ├── sync/               # Sync adapters (Beads, GitHub)
+│   └── xdg/                # XDG base directory paths
 ├── cmd/specgraph/          # CLI entry point
 ├── e2e/                    # End-to-end tests (Ginkgo/Gomega)
 ├── plugin/                 # Claude Code skills and hooks
