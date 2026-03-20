@@ -19,14 +19,29 @@ through the full authoring funnel.
 > **Action:** Install the `specgraph` binary.
 
 <!-- x-release-please-start-version -->
-```bash
-# Homebrew (after first release)
-brew install specgraph/tap/specgraph
 
-# Or build from source
-go install github.com/specgraph/specgraph/cmd/specgraph@v0.1.0
+**Homebrew** (macOS/Linux):
+
+```bash
+brew install specgraph/tap/specgraph
 ```
+
+**Binary** (any platform):
+
+Download from [GitHub releases v0.1.0](https://github.com/specgraph/specgraph/releases/tag/v0.1.0),
+verify the SHA256 checksum, and add to your PATH.
+
+**Docker:**
+
+```bash
+docker pull ghcr.io/specgraph/specgraph:0.1.0
+```
+
 <!-- x-release-please-end -->
+
+> **Note:** Homebrew, binary, and Docker install paths require a published
+> release. If v0.1.0 has not been released yet, build from source:
+> `go install github.com/specgraph/specgraph/cmd/specgraph@latest`
 
 <details><summary>Build from source (development)</summary>
 
@@ -36,28 +51,6 @@ cd specgraph
 task build
 # binary is at ./specgraph
 ```
-
-</details>
-
----
-
-## Start the Server
-
-> **Action:** Start Memgraph and the SpecGraph server.
-
-```bash
-specgraph up
-```
-
-This starts the Memgraph Docker container and installs a background service
-(launchd on macOS, systemd on Linux). The server listens at
-`http://localhost:7600` by default.
-
-<details><summary>Manual mode</summary>
-
-If you prefer to manage the process yourself, set `server.mode = "manual"` in
-`~/.config/specgraph/config.yaml` and run `specgraph serve` in a separate
-terminal.
 
 </details>
 
@@ -77,17 +70,53 @@ slug with `specgraph init my-project`.
 
 ---
 
+## Start the Server
+
+> **Action:** Start Memgraph and the SpecGraph server.
+
+```bash
+specgraph up
+```
+
+This starts the Memgraph Docker container and installs a background service
+(launchd on macOS, systemd on Linux). The server listens at
+`http://localhost:9090` by default.
+
+<details><summary>Manual mode</summary>
+
+If you prefer to manage the process yourself, set `server.mode = "manual"` in
+`~/.config/specgraph/config.yaml` and run `specgraph serve` in a separate
+terminal.
+
+</details>
+
+---
+
 ## Install the Claude Code Plugin
 
 > **Action:** Link the plugin so Claude Code discovers SpecGraph skills.
+
+If you cloned the SpecGraph repo, the plugin is auto-discovered — no setup
+needed.
+
+For other projects, symlink the plugin directory:
 
 ```bash
 mkdir -p .claude/plugins
 ln -s /path/to/specgraph/plugin/specgraph .claude/plugins/specgraph
 ```
 
-If you cloned the SpecGraph repo, the plugin is auto-discovered inside that
-repo. For other projects, use the symlink above.
+<details><summary>Installed via Homebrew or binary?</summary>
+
+If you installed SpecGraph via Homebrew or a release binary (not a source
+clone), clone the repo to get the plugin files:
+
+```bash
+git clone --depth 1 https://github.com/specgraph/specgraph.git ~/.specgraph-plugin
+ln -s ~/.specgraph-plugin/plugin/specgraph .claude/plugins/specgraph
+```
+
+</details>
 
 ---
 
@@ -113,12 +142,11 @@ The Spark skill captures the raw idea:
 <details><summary>CLI equivalent</summary>
 
 ```bash
-specgraph spark healthz \
-  --seed "Health check endpoint for the API" \
-  --signal "Operational need" \
-  --scope-sniff tiny \
-  --kill-test "If we drop HTTP entirely"
+specgraph spark healthz --seed "Health check endpoint for the API"
 ```
+
+Only `--seed` is supported as a flag. The remaining fields (signal, scope_sniff,
+kill_test) are set interactively or via the Claude Code skill.
 
 </details>
 
@@ -138,11 +166,11 @@ Shape bounds the scope and explores approaches:
 <details><summary>CLI equivalent</summary>
 
 ```bash
-specgraph shape healthz \
-  --scope-in "GET /healthz returns 200 JSON" \
-  --scope-out "Deep checks, metrics" \
-  --approaches 2
+specgraph shape healthz --json-file shape-output.json
 ```
+
+Shape, Specify, and Decompose accept a `--json-file` flag pointing to a JSON
+file with the stage output. The Claude Code skill handles this interactively.
 
 </details>
 
@@ -161,10 +189,7 @@ Specify locks down the contract:
 <details><summary>CLI equivalent</summary>
 
 ```bash
-specgraph specify healthz \
-  --interface 'GET /healthz -> 200 {"status":"ok"}' \
-  --criteria "Returns 200 within 50ms" \
-  --invariant "Never returns 5xx unless shutting down"
+specgraph specify healthz --json-file specify-output.json
 ```
 
 </details>
@@ -183,9 +208,7 @@ For a tiny spec like this, decomposition produces a single slice:
 <details><summary>CLI equivalent</summary>
 
 ```bash
-specgraph decompose healthz \
-  --strategy "single slice" \
-  --slice "healthz-v1: implement handler, register route, add test"
+specgraph decompose healthz --json-file decompose-output.json
 ```
 
 </details>
@@ -239,3 +262,4 @@ specgraph drift acknowledge healthz --all --note "Updated after API refactor"
 - **[Concepts](concepts/index.md)** — specs, constitution, authoring funnel, decisions
 - **[Example Spec](concepts/example-spec.md)** — full annotated spec with all fields
 - **[Architecture](architecture.md)** — system design and storage layer
+- **[GitHub Issues](https://github.com/specgraph/specgraph/issues)** — contribute or report bugs

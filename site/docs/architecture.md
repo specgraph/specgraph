@@ -14,8 +14,7 @@ there is no embedded or library mode.
 │  CLIENTS                                             │
 │  ├─ specgraph CLI                                   │
 │  ├─ Claude Code skills                              │
-│  ├─ MCP server proxy (planned)                      │
-│  └─ Tauri+Svelte UI (future)                        │
+│  └─ MCP server proxy (planned)                      │
 └────────────┬────────────────────────────────────────┘
              │ ConnectRPC (JSON/HTTP)
              ▼
@@ -45,16 +44,16 @@ a single domain concern:
 
 | Service | Description |
 |---------|-------------|
-| **SpecService** | CRUD for specs — create, get, list, update. The primary resource in the graph. |
-| **DecisionService** | CRUD for decisions. ADRs are first-class graph nodes with bidirectional edges to the specs they affect. |
-| **ConstitutionService** | Constitution management — layer merging, validation, and queries across the User → Org → Project → Domain hierarchy. |
-| **AuthoringService** | The authoring funnel RPCs: Spark, Shape, Specify, Decompose, Approve, Amend, Supersede. Drives specs from rough idea to execution-ready. |
-| **ClaimService** | Claim and unclaim specs for execution. Manages leases so multiple agents don't collide on the same work. |
+| **SpecService** | Create, get, list, and update specs — the primary resource in the graph. |
+| **DecisionService** | Create and manage decisions — first-class graph nodes with bidirectional edges to specs. |
+| **ConstitutionService** | Layer merging, validation, and queries across the User → Org → Project → Domain hierarchy. |
+| **AuthoringService** | Authoring funnel RPCs: Spark, Shape, Specify, Decompose, Approve, Amend, Supersede. |
+| **ClaimService** | Claim and release specs for execution. Time-limited leases prevent duplicate work. |
 | **GraphService** | Dependency queries, impact analysis, critical-path computation, and ready-spec detection. |
-| **LifecycleService** | Spec lifecycle transitions (amend, supersede, abandon), drift detection, and spec linting. |
-| **ExecutionService** | Execution bundles, prime context, and agent progress/blocker/completion reporting. |
-| **SyncService** | Sync specs to external systems (Beads, GitHub) and inject context into tool files. |
-| **ServerService** | Server health checks. |
+| **LifecycleService** | Lifecycle transitions (amend, supersede, abandon), drift detection, and spec linting. |
+| **ExecutionService** | Execution bundles, prime context, and progress/blocker/completion reporting. |
+| **SyncService** | Push specs to external systems (Beads, GitHub) and inject context into tool files. |
+| **ServerService** | Health checks. |
 
 All services use protobuf message types on the wire and generate both `.pb.go`
 and `.connect.go` files from the proto definitions.
@@ -67,12 +66,10 @@ SpecGraph uses a pluggable storage backend behind a `Backend` interface — the
 core domain never talks to the database directly.
 
 **Memgraph** (default, shipped) — The only backend in v0.1.0. Native Cypher
-queries running in Docker. Good for solo developers and teams. Provides native
-graph operations without extensions.
+queries running in Docker. No extensions required.
 
-**Postgres + AGE** (planned) — Designed but not yet implemented. Cypher via the
-Apache AGE extension on standard Postgres. Intended for teams with existing
-Postgres infrastructure.
+**Postgres + AGE** (planned) — Designed but not yet implemented. Cypher via
+the Apache AGE extension on standard Postgres.
 
 ```go
 type Backend interface {
@@ -114,8 +111,8 @@ detection).
 
 ConnectRPC is browser-compatible (JSON over HTTP) while maintaining gRPC wire
 compatibility and protobuf type safety. Plain gRPC cannot be called from
-browsers directly. ConnectRPC gives both worlds — structured APIs for tools,
-human-readable JSON for debugging.
+browsers directly. ConnectRPC provides both: structured APIs for tools, human-readable JSON
+for debugging.
 
 ---
 

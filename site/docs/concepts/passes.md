@@ -155,7 +155,8 @@ Patterns the safety net scans for (from `internal/authoring/safety.go`):
 CRITICAL security:  "hardcoded secret", "hardcoded password",
                     "disable auth", "skip validation",
                     "no encryption", "rm -rf"
-WARNING  security:  "credential", "plaintext"
+WARNING  security:  "credential", "injection", "eval(",
+                    "exec(", "plaintext"
 CRITICAL data_loss: "drop table", "drop all", "delete all",
                     "without migration", "without backup",
                     "no rollback", "force delete"
@@ -163,8 +164,8 @@ WARNING  data_loss: "truncate", "purge"
 ```
 
 The safety net does not perform deep analysis — that is what the analytical
-passes are for. It performs fast pattern matching and structural validation to
-catch the things that should never ship, no matter how rushed the timeline.
+passes are for. It performs fast pattern matching to catch the things that should never
+ship, no matter how rushed the timeline.
 
 ---
 

@@ -27,7 +27,7 @@ drifts.
 
 **Scaling under churn.** Complex specs accumulate dozens of decisions over their
 lifetime — some current, some superseded, some deprecated when the context
-changed. An embedded array doesn't surface what's current. You have to read every
+changed. An embedded array obscures what is current. You have to read every
 entry and mentally reconstruct the history.
 
 **Export requires extraction.** If you want to generate ADR documents (for
