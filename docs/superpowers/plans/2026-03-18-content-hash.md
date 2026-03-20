@@ -225,7 +225,7 @@ package contenthash_test
 import (
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/storage/contenthash"
+	"github.com/specgraph/specgraph/internal/storage/contenthash"
 	"github.com/stretchr/testify/require"
 )
 

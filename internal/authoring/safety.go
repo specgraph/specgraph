@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/storage"
 	"golang.org/x/text/unicode/norm"
 )
 

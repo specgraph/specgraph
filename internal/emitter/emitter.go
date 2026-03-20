@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // Emit generates a tool-specific file from the given constitution.

@@ -8,8 +8,8 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // NewMux creates an http.ServeMux with the SpecService handler registered.

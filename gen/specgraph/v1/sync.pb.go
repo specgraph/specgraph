@@ -862,7 +862,7 @@ const file_specgraph_v1_sync_proto_rawDesc = "" +
 	"\n" +
 	"SyncGitHub\x12\x1f.specgraph.v1.SyncGitHubRequest\x1a\x1a.specgraph.v1.SyncResponse\x12R\n" +
 	"\rGetSyncStatus\x12\x1f.specgraph.v1.SyncStatusRequest\x1a .specgraph.v1.SyncStatusResponse\x12C\n" +
-	"\x06Inject\x12\x1b.specgraph.v1.InjectRequest\x1a\x1c.specgraph.v1.InjectResponseB;Z9github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\x06Inject\x12\x1b.specgraph.v1.InjectRequest\x1a\x1c.specgraph.v1.InjectResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_sync_proto_rawDescOnce sync.Once

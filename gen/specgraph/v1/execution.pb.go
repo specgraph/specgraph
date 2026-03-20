@@ -975,7 +975,7 @@ const file_specgraph_v1_execution_proto_rawDesc = "" +
 	"\x0eReportProgress\x12#.specgraph.v1.ReportProgressRequest\x1a$.specgraph.v1.ReportProgressResponse\x12X\n" +
 	"\rReportBlocker\x12\".specgraph.v1.ReportBlockerRequest\x1a#.specgraph.v1.ReportBlockerResponse\x12a\n" +
 	"\x10ReportCompletion\x12%.specgraph.v1.ReportCompletionRequest\x1a&.specgraph.v1.ReportCompletionResponse\x12g\n" +
-	"\x12GetExecutionEvents\x12'.specgraph.v1.GetExecutionEventsRequest\x1a(.specgraph.v1.GetExecutionEventsResponseB;Z9github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\x12GetExecutionEvents\x12'.specgraph.v1.GetExecutionEventsRequest\x1a(.specgraph.v1.GetExecutionEventsResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_execution_proto_rawDescOnce sync.Once

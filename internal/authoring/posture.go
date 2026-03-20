@@ -6,7 +6,7 @@
 // specified, decomposed, and approved spec nodes.
 package authoring
 
-import specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+import specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 
 // Posture represents the collaboration posture between the AI and the human.
 type Posture int

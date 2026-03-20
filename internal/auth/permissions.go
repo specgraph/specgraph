@@ -4,29 +4,29 @@
 package auth
 
 import (
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 )
 
 var rpcPermissions = map[string]string{
 	// SpecService
 	specgraphv1connect.SpecServiceGetSpecProcedure:    "spec:read",
-	specgraphv1connect.SpecServiceListSpecsProcedure:   "spec:read",
-	specgraphv1connect.SpecServiceCreateSpecProcedure:  "spec:write",
-	specgraphv1connect.SpecServiceUpdateSpecProcedure:  "spec:write",
+	specgraphv1connect.SpecServiceListSpecsProcedure:  "spec:read",
+	specgraphv1connect.SpecServiceCreateSpecProcedure: "spec:write",
+	specgraphv1connect.SpecServiceUpdateSpecProcedure: "spec:write",
 	// DecisionService
 	specgraphv1connect.DecisionServiceGetDecisionProcedure:    "decision:read",
-	specgraphv1connect.DecisionServiceListDecisionsProcedure:   "decision:read",
-	specgraphv1connect.DecisionServiceCreateDecisionProcedure:  "decision:write",
-	specgraphv1connect.DecisionServiceUpdateDecisionProcedure:  "decision:write",
+	specgraphv1connect.DecisionServiceListDecisionsProcedure:  "decision:read",
+	specgraphv1connect.DecisionServiceCreateDecisionProcedure: "decision:write",
+	specgraphv1connect.DecisionServiceUpdateDecisionProcedure: "decision:write",
 	// GraphService
-	specgraphv1connect.GraphServiceGetDependenciesProcedure:    "graph:read",
-	specgraphv1connect.GraphServiceGetTransitiveDepsProcedure:  "graph:read",
-	specgraphv1connect.GraphServiceGetImpactProcedure:          "graph:read",
-	specgraphv1connect.GraphServiceGetReadyProcedure:           "graph:read",
-	specgraphv1connect.GraphServiceGetCriticalPathProcedure:    "graph:read",
-	specgraphv1connect.GraphServiceListEdgesProcedure:          "graph:read",
-	specgraphv1connect.GraphServiceAddEdgeProcedure:            "graph:write",
-	specgraphv1connect.GraphServiceRemoveEdgeProcedure:         "graph:delete",
+	specgraphv1connect.GraphServiceGetDependenciesProcedure:   "graph:read",
+	specgraphv1connect.GraphServiceGetTransitiveDepsProcedure: "graph:read",
+	specgraphv1connect.GraphServiceGetImpactProcedure:         "graph:read",
+	specgraphv1connect.GraphServiceGetReadyProcedure:          "graph:read",
+	specgraphv1connect.GraphServiceGetCriticalPathProcedure:   "graph:read",
+	specgraphv1connect.GraphServiceListEdgesProcedure:         "graph:read",
+	specgraphv1connect.GraphServiceAddEdgeProcedure:           "graph:write",
+	specgraphv1connect.GraphServiceRemoveEdgeProcedure:        "graph:delete",
 	// ClaimService
 	specgraphv1connect.ClaimServiceClaimSpecProcedure:   "claim:write",
 	specgraphv1connect.ClaimServiceHeartbeatProcedure:   "claim:write",
@@ -37,14 +37,14 @@ var rpcPermissions = map[string]string{
 	specgraphv1connect.ConstitutionServiceUpdateConstitutionProcedure: "constitution:write",
 	specgraphv1connect.ConstitutionServiceEmitToolFilesProcedure:      "constitution:write",
 	// AuthoringService
-	specgraphv1connect.AuthoringServiceGetPromptsProcedure:  "authoring:read",
-	specgraphv1connect.AuthoringServiceSparkProcedure:       "authoring:write",
-	specgraphv1connect.AuthoringServiceShapeProcedure:       "authoring:write",
-	specgraphv1connect.AuthoringServiceSpecifyProcedure:     "authoring:write",
-	specgraphv1connect.AuthoringServiceDecomposeProcedure:   "authoring:write",
-	specgraphv1connect.AuthoringServiceApproveProcedure:     "authoring:write",
-	specgraphv1connect.AuthoringServiceAmendProcedure:       "authoring:write",
-	specgraphv1connect.AuthoringServiceSupersedeProcedure:   "authoring:write",
+	specgraphv1connect.AuthoringServiceGetPromptsProcedure: "authoring:read",
+	specgraphv1connect.AuthoringServiceSparkProcedure:      "authoring:write",
+	specgraphv1connect.AuthoringServiceShapeProcedure:      "authoring:write",
+	specgraphv1connect.AuthoringServiceSpecifyProcedure:    "authoring:write",
+	specgraphv1connect.AuthoringServiceDecomposeProcedure:  "authoring:write",
+	specgraphv1connect.AuthoringServiceApproveProcedure:    "authoring:write",
+	specgraphv1connect.AuthoringServiceAmendProcedure:      "authoring:write",
+	specgraphv1connect.AuthoringServiceSupersedeProcedure:  "authoring:write",
 	// ExecutionService
 	specgraphv1connect.ExecutionServiceGenerateBundleProcedure:     "execution:read",
 	specgraphv1connect.ExecutionServiceGetPrimeProcedure:           "execution:read",

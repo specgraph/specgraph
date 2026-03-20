@@ -1537,7 +1537,7 @@ const file_specgraph_v1_constitution_proto_rawDesc = "" +
 	"\x0fGetConstitution\x12$.specgraph.v1.GetConstitutionRequest\x1a%.specgraph.v1.GetConstitutionResponse\x12g\n" +
 	"\x12UpdateConstitution\x12'.specgraph.v1.UpdateConstitutionRequest\x1a(.specgraph.v1.UpdateConstitutionResponse\x12[\n" +
 	"\x0eCheckViolation\x12#.specgraph.v1.CheckViolationRequest\x1a$.specgraph.v1.CheckViolationResponse\x12X\n" +
-	"\rEmitToolFiles\x12\".specgraph.v1.EmitToolFilesRequest\x1a#.specgraph.v1.EmitToolFilesResponseB;Z9github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\rEmitToolFiles\x12\".specgraph.v1.EmitToolFilesRequest\x1a#.specgraph.v1.EmitToolFilesResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_constitution_proto_rawDescOnce sync.Once

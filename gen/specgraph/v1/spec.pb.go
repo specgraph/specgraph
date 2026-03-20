@@ -652,7 +652,7 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\aGetSpec\x12\x1c.specgraph.v1.GetSpecRequest\x1a\x12.specgraph.v1.Spec\x12L\n" +
 	"\tListSpecs\x12\x1e.specgraph.v1.ListSpecsRequest\x1a\x1f.specgraph.v1.ListSpecsResponse\x12A\n" +
 	"\n" +
-	"UpdateSpec\x12\x1f.specgraph.v1.UpdateSpecRequest\x1a\x12.specgraph.v1.SpecB;Z9github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"UpdateSpec\x12\x1f.specgraph.v1.UpdateSpecRequest\x1a\x12.specgraph.v1.SpecB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_spec_proto_rawDescOnce sync.Once

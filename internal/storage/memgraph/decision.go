@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	"github.com/seanb4t/specgraph/internal/storage"
-	"github.com/seanb4t/specgraph/internal/storage/contenthash"
+	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage/contenthash"
 )
 
 // CreateDecision stores a new decision node in Memgraph.

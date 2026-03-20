@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/seanb4t/specgraph/internal/server"
+	"github.com/specgraph/specgraph/internal/server"
 	"github.com/stretchr/testify/assert"
 )
 

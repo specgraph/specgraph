@@ -6,7 +6,7 @@ package server
 import (
 	"context"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // ScopeStore is a test export of the unexported scopeStore function.

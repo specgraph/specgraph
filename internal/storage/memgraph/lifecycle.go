@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // terminalStages maps stages from which no further lifecycle transitions

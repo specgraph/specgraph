@@ -8,8 +8,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/auth"
-	"github.com/seanb4t/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/config"
 )
 
 func TestConfigStore_ResolveAPIKey(t *testing.T) {

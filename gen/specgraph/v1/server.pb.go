@@ -133,7 +133,7 @@ const file_specgraph_v1_server_proto_rawDesc = "" +
 	"\vserver_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"serverTime2T\n" +
 	"\rServerService\x12C\n" +
-	"\x06Health\x12\x1b.specgraph.v1.HealthRequest\x1a\x1c.specgraph.v1.HealthResponseB;Z9github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\x06Health\x12\x1b.specgraph.v1.HealthRequest\x1a\x1c.specgraph.v1.HealthResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_server_proto_rawDescOnce sync.Once

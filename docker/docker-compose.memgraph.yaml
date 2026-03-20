@@ -1,6 +1,6 @@
 services:
   specgraph:
-    image: ghcr.io/seanb4t/specgraph:latest
+    image: ghcr.io/specgraph/specgraph:latest
     ports:
       - "${SPECGRAPH_PORT:-9090}:9090"
     depends_on:

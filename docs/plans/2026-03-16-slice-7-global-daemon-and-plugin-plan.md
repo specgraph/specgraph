@@ -32,7 +32,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/xdg"
+	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -170,7 +170,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -395,7 +395,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -678,7 +678,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -778,7 +778,7 @@ import (
 	"fmt"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 func (s *Store) EnsureProject(ctx context.Context, slug string) (*storage.Project, error) {
@@ -1195,7 +1195,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/service"
+	"github.com/specgraph/specgraph/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

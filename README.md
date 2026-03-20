@@ -82,7 +82,7 @@ In docker mode (the default), `serve` automatically starts and stops the Memgrap
 | **Team / shared server** | `remote` | Point CLI at a shared SpecGraph instance via config |
 | **Production / BYO infra** | `external` | Connect to your own Memgraph or Postgres |
 
-See the [deployment guide](https://seanb4t.github.io/specgraph/deployment/) for team and production configurations.
+See the [deployment guide](https://specgraph.io/deployment/) for team and production configurations.
 
 ### CLI overview
 

@@ -97,7 +97,7 @@ syntax = "proto3";
 
 package specgraph.v1;
 
-option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
+option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1";
 
 import "specgraph/v1/spec.proto";
 
@@ -321,7 +321,7 @@ import (
 	"context"
 	"errors"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
 // ErrSpecNotDone is returned when amend is called on a spec that is not in done stage.
@@ -400,8 +400,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/storage"
-	"github.com/seanb4t/specgraph/internal/storage/memgraph"
+	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/require"
 )
 
@@ -653,8 +653,8 @@ import (
 	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/storage"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -1308,7 +1308,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
 //go:embed ../../spec.schema.json
@@ -1435,8 +1435,8 @@ package linter_test
 import (
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/linter"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/linter"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1563,8 +1563,8 @@ import (
 	"context"
 	"testing"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/linter"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/linter"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1742,7 +1742,7 @@ import (
 	"context"
 	"fmt"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
 // LintBackend is the subset of storage needed by the linter.
@@ -1922,8 +1922,8 @@ import (
 	"testing"
 	"time"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/drift"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -2131,7 +2131,7 @@ import (
 	"context"
 	"fmt"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
 // DriftBackend is the subset of storage needed by the drift engine.
@@ -2302,10 +2302,10 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/server"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/server"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 
@@ -2529,9 +2529,9 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // LifecycleHandler implements the LifecycleService.
@@ -2705,8 +2705,8 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/spf13/cobra"
 )
 

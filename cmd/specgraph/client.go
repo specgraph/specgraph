@@ -9,9 +9,9 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/config"
-	"github.com/seanb4t/specgraph/internal/xdg"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/xdg"
 )
 
 // projectTransport injects the X-Specgraph-Project header on every request.

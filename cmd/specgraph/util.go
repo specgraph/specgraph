@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )

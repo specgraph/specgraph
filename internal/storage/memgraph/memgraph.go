@@ -15,8 +15,8 @@ import (
 
 	"github.com/oklog/ulid/v2"
 
-	"github.com/seanb4t/specgraph/internal/storage"
-	"github.com/seanb4t/specgraph/internal/storage/contenthash"
+	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage/contenthash"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
@@ -700,20 +700,20 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 	}
 
 	return &storage.Spec{
-		ID:          id,
-		Slug:        slug,
-		Intent:      intent,
-		Stage:       storage.SpecStage(stage),
-		Priority:    storage.SpecPriority(priority),
-		Complexity:  complexity,
-		Version:     safeInt32(version),
-		CreatedAt:   createdAt,
-		UpdatedAt:   updatedAt,
-		Lifecycle:   lifecycle,
+		ID:           id,
+		Slug:         slug,
+		Intent:       intent,
+		Stage:        storage.SpecStage(stage),
+		Priority:     storage.SpecPriority(priority),
+		Complexity:   complexity,
+		Version:      safeInt32(version),
+		CreatedAt:    createdAt,
+		UpdatedAt:    updatedAt,
+		Lifecycle:    lifecycle,
 		SupersededBy: supersededBy,
-		Supersedes:  supersedes,
-		Notes:       notes,
-		ContentHash: contentHash,
+		Supersedes:   supersedes,
+		Notes:        notes,
+		ContentHash:  contentHash,
 	}, nil
 }
 

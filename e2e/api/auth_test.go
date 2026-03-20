@@ -13,11 +13,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/auth"
-	"github.com/seanb4t/specgraph/internal/config"
-	"github.com/seanb4t/specgraph/e2e/testutil"
+	"github.com/specgraph/specgraph/e2e/testutil"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/config"
 )
 
 // withBearer returns a client option that injects a Bearer token into requests.
