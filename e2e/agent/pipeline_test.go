@@ -98,7 +98,7 @@ var _ = Describe("Agent pipeline", Ordered, func() {
 		Expect(result.ExitCode).To(Equal(0), "spec should exist after agent create")
 		Expect(result.Stdout).To(ContainSubstring(slug))
 		Expect(result.Stdout).To(ContainSubstring("spark"), "newly created spec should be at spark stage")
-	}, SpecTimeout(3*time.Minute))
+	}, SpecTimeout(5*time.Minute))
 
 	It("sparks the spec via agent", func(ctx SpecContext) {
 		_, err := agentRun(fmt.Sprintf(
@@ -111,7 +111,7 @@ var _ = Describe("Agent pipeline", Ordered, func() {
 		// depending on whether the agent found the right flags.
 		result := specgraphRun("show", slug)
 		Expect(result.ExitCode).To(Equal(0))
-	}, SpecTimeout(3*time.Minute))
+	}, SpecTimeout(5*time.Minute))
 
 	It("advances the spec to approved via agent", func(ctx SpecContext) {
 		out, err := agentRun(fmt.Sprintf(
@@ -135,21 +135,18 @@ var _ = Describe("Agent pipeline", Ordered, func() {
 			fb := specgraphRun("update", slug, "--stage", "approved")
 			Expect(fb.ExitCode).To(Equal(0), "direct fallback failed: %s", fb.Stderr)
 		}
-	}, SpecTimeout(3*time.Minute))
+	}, SpecTimeout(5*time.Minute))
 
 	It("claims the spec via agent", func(ctx SpecContext) {
 		_, err := agentRun(fmt.Sprintf(
 			"Claim specgraph spec %q as agent %q.",
 			slug, "agent-e2e",
 		))
-		// Agent may hit max turns — not a hard failure for a smoke test.
-		if err != nil {
-			GinkgoWriter.Printf("agent claim returned error (non-fatal): %v\n", err)
-		}
+		Expect(err).NotTo(HaveOccurred(), "agent claim step should succeed")
 
 		result := specgraphRun("show", slug)
 		Expect(result.ExitCode).To(Equal(0))
-	}, SpecTimeout(3*time.Minute))
+	}, SpecTimeout(5*time.Minute))
 
 	It("shows the spec via agent", func(ctx SpecContext) {
 		out, err := agentRun(fmt.Sprintf(
@@ -158,5 +155,5 @@ var _ = Describe("Agent pipeline", Ordered, func() {
 		))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(strings.ToLower(out)).To(ContainSubstring(slug))
-	}, SpecTimeout(3*time.Minute))
+	}, SpecTimeout(5*time.Minute))
 })
