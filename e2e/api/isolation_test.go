@@ -55,6 +55,20 @@ var _ = Describe("Project isolation", Ordered, func() {
 		Expect(resp.Msg.Intent).To(Equal("Beta intent for isolation test"))
 	})
 
+	It("creates a unique spec in each project for exclusion testing", func() {
+		_, err := alphaSpec.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+			Slug:   "iso-alpha-only",
+			Intent: "Alpha-exclusive spec",
+		}))
+		Expect(err).NotTo(HaveOccurred())
+
+		_, err = betaSpec.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+			Slug:   "iso-beta-only",
+			Intent: "Beta-exclusive spec",
+		}))
+		Expect(err).NotTo(HaveOccurred())
+	})
+
 	It("returns alpha intent for project-alpha", func() {
 		resp, err := alphaSpec.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
 			Slug: "iso-shared-name",
@@ -80,6 +94,8 @@ var _ = Describe("Project isolation", Ordered, func() {
 			alphaSlugs[i] = s.Slug
 		}
 		Expect(alphaSlugs).To(ContainElement("iso-shared-name"))
+		Expect(alphaSlugs).To(ContainElement("iso-alpha-only"))
+		Expect(alphaSlugs).NotTo(ContainElement("iso-beta-only"), "alpha project should not see beta specs")
 
 		betaResp, err := betaSpec.ListSpecs(ctx, connect.NewRequest(&specv1.ListSpecsRequest{}))
 		Expect(err).NotTo(HaveOccurred())
@@ -89,6 +105,8 @@ var _ = Describe("Project isolation", Ordered, func() {
 			betaSlugs[i] = s.Slug
 		}
 		Expect(betaSlugs).To(ContainElement("iso-shared-name"))
+		Expect(betaSlugs).To(ContainElement("iso-beta-only"))
+		Expect(betaSlugs).NotTo(ContainElement("iso-alpha-only"), "beta project should not see alpha specs")
 
 		// Verify the intents are different — each project has its own spec
 		var alphaIntent, betaIntent string
