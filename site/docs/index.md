@@ -85,8 +85,7 @@ that agents and humans can query, traverse, and act on.
 
 ## Project Status
 
-!!! info "Phase 2 — Authoring & CLI"
+!!! success "v0.1.0" <!-- x-release-please-version -->
 
-    Phase 1 (spec schema, constitution, storage, and query layer) is complete.
-    Phase 2 (authoring flow, codebase scanner, CLI integration) is in progress.
-    See the [roadmap](roadmap.md) for what's coming next.
+    SpecGraph v0.1.0 is the first public release. Install it, start the server,
+    and [author your first spec](quickstart.md) in under 10 minutes.

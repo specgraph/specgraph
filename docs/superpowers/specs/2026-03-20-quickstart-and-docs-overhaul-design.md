@@ -44,7 +44,7 @@ with expandable explanations underneath for users who want to understand what ha
 
 ### Flow
 
-```
+```text
 Install → Start Server → Install Claude Code Plugin → Author First Spec → Check Drift → Next Steps
 ```
 
@@ -166,6 +166,7 @@ detect when upstream specs change after downstream work was baselined.
 #### 7. Next Steps
 
 Links to:
+
 - Concept docs (specs, constitution, authoring, decisions)
 - Full example spec (`example-spec.md`)
 - Architecture overview

@@ -183,3 +183,6 @@ violation is caught at authoring time, not six months later in a code review
 or — worse — in production. For teams and managers, this means architectural
 decisions are living rules that shape every spec, not dusty documents that
 get rediscovered during postmortems.
+
+The constitution is automatically checked at every authoring stage via the
+[constitution check pass](passes.md#constitution-check).

@@ -135,15 +135,17 @@ execution:
   │                                                  │
   │   Nodes: specs, decisions, constitution layers   │
   │   Edges: depends_on, blocks, composes            │
-  │   Query: Cypher over Memgraph / Postgres+AGE     │
+  │   Query: Cypher over Memgraph (Postgres planned)  │
   └────────────────────────┬────────────────────────┘
                            │ serves
                            ▼
   ┌─────────────────────────────────────────────────┐
   │              Execution                           │
   │                                                  │
-  │   Claim → Execute → Verify → Complete            │
+  │   Claim → In Progress → Review → Done            │
   │   Agents or humans consume approved specs        │
+  │                                                  │
+  │   Terminal: Amended | Superseded | Abandoned      │
   └─────────────────────────────────────────────────┘
 ```
 

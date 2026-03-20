@@ -11,7 +11,9 @@ integrated with execution and coordination systems.
 
 !!! note "Status: Planned"
     Gastown is designed but not yet built. The integration described here
-    is the target architecture.
+    is the target architecture. **SpecGraph functions fully independently
+    without Gastown** — author specs, query the graph, run the linter, and
+    generate execution bundles using just the CLI and a Memgraph backend.
 
 Gastown is a multi-agent workspace manager that coordinates Claude Code instances
 (and other agents) via tmux, git worktrees, and Beads. It sits downstream of
@@ -44,41 +46,41 @@ handoff.
 
 ## Beads & Dolt
 
-!!! info "Status: In Progress"
-    Beads integration is under development as part of Slice 6.
+!!! info "Status: Shipped"
+    The Beads adapter pushes specs to Beads as issues. Pull (Beads to SpecGraph)
+    is not yet implemented — the adapter can poll bead status but does not
+    import or create specs from Beads.
 
 Beads is a git-backed issue tracker with Dolt for versioned relational storage.
-SpecGraph can sync specs to Beads as issues with a custom `spec` type. Dependency
-edges in the spec graph map to Beads links between issues. Execution bundles —
-the full context a polecat needs to implement a spec — are threaded as message
-beads attached to the spec issue.
+SpecGraph can push specs to Beads as issues via the `bd` CLI. The adapter
+creates a bead issue with the spec's slug and intent, and can poll the bead's
+status for coordination.
 
-The shared Beads/Dolt store is the **data plane** for the entire ecosystem. Both
-SpecGraph and Gastown read and write to the same database. Dolt provides
-versioning (every write is a commit), branching (branch-per-agent isolates
-concurrent work), cell-level merge (agents can modify different specs without
-conflicts), and sync via remotes (distributed teams share a single source of
-truth). This architecture means there is no ETL, no webhook glue, and no
-eventual-consistency lag between design and execution.
+Dolt provides versioning (every write is a commit), branching (branch-per-agent
+isolates concurrent work), cell-level merge (agents can modify different specs
+without conflicts), and sync via remotes (distributed teams share a single
+source of truth). When Gastown is built, the shared Beads/Dolt store becomes the
+data plane connecting design and execution.
 
 ---
 
 ## Sync Adapters
 
-!!! info "Status: In Progress"
-    Beads and GitHub adapters are implemented. Linear is planned.
+!!! info "Status: Shipped (push-only)"
+    Beads and GitHub adapters are implemented. Both push specs out and can poll
+    external status, but do not import data back into SpecGraph. Linear is planned.
 
 SpecGraph can push specs to external trackers for visibility and coordination
 with teams that do not use SpecGraph directly.
 
-- **GitHub Issues** — Bidirectional sync. Spec slug, title, intent, status,
-  priority, and dependencies (as linked issues) sync to GitHub. Verify items
-  sync as task checklists. Full interface contracts and constitution references
-  stay in SpecGraph — GitHub gets the summary, SpecGraph keeps the detail.
+- **GitHub Issues** — Push-only sync. Spec slug, title, intent, stage,
+  priority, and complexity are pushed to GitHub as issues via the `gh` CLI.
+  The adapter can poll issue state but does not sync changes from GitHub back
+  into SpecGraph. Full interface contracts and constitution references stay in
+  SpecGraph — GitHub gets the summary, SpecGraph keeps the detail.
 
-- **Linear** (Planned) — Bidirectional or push-only sync. The same fields as
-  GitHub sync to Linear issues and projects. Push-only mode is useful when
-  Linear is the PM-facing view but SpecGraph remains the authoring system.
+- **Linear** (Planned) — Push-only or bidirectional sync. The same fields as
+  GitHub would sync to Linear issues and projects.
 
 - **Tool Injection** — Emit the constitution and per-spec context into
   coding-agent context files: `CLAUDE.md`, `.cursor/rules`, `AGENTS.md`. The
@@ -97,9 +99,10 @@ different audience and use case; all share the same server and data.
   query the graph, generate execution bundles, run the linter, and manage the
   constitution from the terminal.
 
-- **Claude Code** (Planned — Slice 7) — Skills and hooks integrate SpecGraph into the IDE workflow.
-  Author specs through conversational prompts, inject spec context before
-  implementation, and validate changes against verify items — all without
+- **Claude Code** (Shipped) — 10 skills and hooks integrate SpecGraph into the IDE workflow.
+  Author specs through conversational prompts (`/spark`, `/shape`, `/specify`,
+  `/decompose`, `/approve`), query the graph (`/list`, `/show`, `/deps`,
+  `/ready`), and generate execution bundles (`/bundle`) — all without
   leaving the editor.
 
 - **MCP Server** (Planned — Phase 3) — Exposes SpecGraph operations to any MCP-compatible client.

@@ -33,7 +33,7 @@ entry and mentally reconstruct the history.
 **Export requires extraction.** If you want to generate ADR documents (for
 compliance, onboarding, or audit), embedded decisions must be extracted and
 cross-referenced manually. With graph nodes, ADR export is a straightforward
-traversal: walk the `decided_in` and `references` edges, render each node.
+traversal: walk the `decided_in` and `informs` edges, render each node.
 
 Making decisions first-class solves all three: one authoritative node, referenced
 from anywhere, with lifecycle state that tells you whether it's still active.
@@ -98,19 +98,19 @@ A decision connects to specs via two edge types:
 | Edge | Direction | Meaning |
 |---|---|---|
 | `decided_in` | spec &rarr; decision | "This spec made this decision" (origin) |
-| `references` | spec &rarr; decision | "This spec depends on this decision" (consumer) |
+| `informs` | decision &rarr; spec | "This decision informs this spec" (consumer) |
 
 One decision, four specs, two relationship types:
 
 ```text
 login-api       ──decided_in──▶  dec-a7f3b2c1
-session-mgmt    ──references──▶  dec-a7f3b2c1
-audit-logging   ──references──▶  dec-a7f3b2c1
-mobile-client   ──references──▶  dec-a7f3b2c1
+dec-a7f3b2c1    ──informs──▶     session-mgmt
+dec-a7f3b2c1    ──informs──▶     audit-logging
+dec-a7f3b2c1    ──informs──▶     mobile-client
 ```
 
 Query: *"What specs are affected if we change the refresh token storage
-decision?"* Walk the incoming `decided_in` and `references` edges from
+decision?"* Walk the `decided_in` and `informs` edges from
 `dec-a7f3b2c1` — instant answer: four specs, one origin, three consumers.
 
 ---
@@ -121,9 +121,9 @@ Your team originally decided to store session data in Redis. Three specs
 reference this decision:
 
 ```text
-session-mgmt    ──decided_in──▶  dec-session-redis
-api-gateway     ──references──▶  dec-session-redis
-rate-limiter    ──references──▶  dec-session-redis
+session-mgmt       ──decided_in──▶  dec-session-redis
+dec-session-redis   ──informs──▶    api-gateway
+dec-session-redis   ──informs──▶    rate-limiter
 ```
 
 Six months later, operational costs push you to move session storage into

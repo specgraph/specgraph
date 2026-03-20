@@ -14,7 +14,7 @@ there is no embedded or library mode.
 │  CLIENTS                                             │
 │  ├─ specgraph CLI                                   │
 │  ├─ Claude Code skills                              │
-│  ├─ MCP server proxy                                │
+│  ├─ MCP server proxy (planned)                      │
 │  └─ Tauri+Svelte UI (future)                        │
 └────────────┬────────────────────────────────────────┘
              │ ConnectRPC (JSON/HTTP)
@@ -23,7 +23,7 @@ there is no embedded or library mode.
 │  SPECGRAPH SERVER                                    │
 │  ├─ Core domain (Spec, Constitution, Authoring)     │
 │  ├─ Graph analysis (deps, impact, critical path)    │
-│  └─ Storage backend (Memgraph | Postgres+AGE)       │
+│  └─ Storage backend (Memgraph; Postgres planned)    │
 └────────────┬────────────────────────────────────────┘
              │
              ▼
@@ -31,7 +31,7 @@ there is no embedded or library mode.
 │  SYNC ADAPTERS (outbound)                            │
 │  ├─ Beads (spec→bead issue)                         │
 │  ├─ GitHub Issues                                   │
-│  ├─ Linear                                          │
+│  ├─ Linear (planned)                                │
 │  └─ Tool Injection (CLAUDE.md, .cursor/rules)        │
 └─────────────────────────────────────────────────────┘
 ```
@@ -63,15 +63,16 @@ and `.connect.go` files from the proto definitions.
 
 ## Storage
 
-SpecGraph supports two pluggable storage backends. Both implement the same
-`Backend` interface — the core domain never talks to the database directly.
+SpecGraph uses a pluggable storage backend behind a `Backend` interface — the
+core domain never talks to the database directly.
 
-**Memgraph** (default) — Native Cypher queries running in Docker. Good for solo
-developers and teams. Provides native graph operations without extensions.
+**Memgraph** (default, shipped) — The only backend in v0.1.0. Native Cypher
+queries running in Docker. Good for solo developers and teams. Provides native
+graph operations without extensions.
 
-**Postgres + AGE** (alternative) — Cypher via the Apache AGE extension on
-standard Postgres. Good for teams with existing Postgres infrastructure. Falls
-back to recursive CTEs if AGE is not available.
+**Postgres + AGE** (planned) — Designed but not yet implemented. Cypher via the
+Apache AGE extension on standard Postgres. Intended for teams with existing
+Postgres infrastructure.
 
 ```go
 type Backend interface {
@@ -125,19 +126,21 @@ specgraph/
 ├── proto/specgraph/v1/     # Protobuf service definitions (source of truth)
 ├── gen/                    # Generated Go code (committed for module compat)
 ├── internal/
-│   ├── server/             # ConnectRPC handlers + proto↔domain converters
-│   ├── storage/            # Backend interface + implementations
-│   │   └── memgraph/       # Memgraph implementation (Cypher, testcontainers)
+│   ├── auth/               # Auth interceptor + config-based token store
 │   ├── authoring/          # Authoring funnel (stages, postures, passes)
 │   ├── config/             # YAML-based server configuration
+│   ├── docker/             # Docker Compose templates for DB containers
 │   ├── drift/              # Drift detection engine
 │   ├── driftscope/         # Drift scope analysis
-│   ├── linter/             # Spec linter (schema, edges, cycles)
-│   ├── inject/             # Tool injection (CLAUDE.md, .cursor/rules, AGENTS.md)
-│   ├── sync/               # Sync adapters (Beads, GitHub)
 │   ├── emitter/            # Event/output emitters
-│   ├── docker/             # Docker Compose templates for DB containers
-│   └── service/            # systemd/launchd integration
+│   ├── inject/             # Tool injection (CLAUDE.md, .cursor/rules, AGENTS.md)
+│   ├── linter/             # Spec linter (schema, edges, cycles)
+│   ├── server/             # ConnectRPC handlers + proto↔domain converters
+│   ├── service/            # systemd/launchd integration
+│   ├── storage/            # Backend interface + implementations
+│   │   └── memgraph/       # Memgraph implementation (Cypher, testcontainers)
+│   ├── sync/               # Sync adapters (Beads, GitHub)
+│   └── xdg/                # XDG base directory paths
 ├── cmd/specgraph/          # CLI entry point
 ├── e2e/                    # End-to-end tests (Ginkgo/Gomega)
 ├── plugin/                 # Claude Code skills and hooks

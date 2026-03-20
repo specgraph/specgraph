@@ -70,7 +70,7 @@ Remove `site/docs/roadmap.md`.
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 jj --no-pager describe -m "docs: wire release-please extra-files, add changelog symlink, remove roadmap"
 jj --no-pager new -m "wip"
 ```
@@ -307,6 +307,7 @@ Use `specgraph drift acknowledge --upstream <slug>` to accept the change, or
 ````
 
 Adapt the above skeleton as needed. The key requirements:
+
 - Version numbers must have `x-release-please-version` inline annotations or use
   `x-release-please-start-version` / `x-release-please-end` blocks
 - Each authoring stage shows what the user says, what happens, and key outputs
@@ -378,7 +379,7 @@ Expected: Build succeeds. If the changelog symlink breaks the build, remove
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj --no-pager describe -m "docs: add Quick Start guide and plugin README for 0.1.0 (spgr-m3xx)"
 jj --no-pager new -m "wip"
 ```
@@ -419,6 +420,7 @@ Replace with a version-marked status:
 - [ ] **Step 2: Review core concept cards**
 
 Read each card in the `<div class="grid cards">` section. Verify:
+
 - "Specs as Graph Nodes" — accurate, no changes needed
 - "Constitution" — accurate, no changes needed
 - "Authoring Funnel" — accurate, no changes needed
@@ -431,7 +433,7 @@ Remove any roadmap references.
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 jj --no-pager describe -m "docs: update index.md for 0.1.0 release"
 jj --no-pager new -m "wip"
 ```
@@ -492,7 +494,7 @@ Line 105: "MCP Server (Planned — Phase 3)" — still planned, keep it.
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj --no-pager describe -m "docs: update ecosystem.md for truthfulness"
 jj --no-pager new -m "wip"
 ```
@@ -572,7 +574,7 @@ WARNING:  "credential", "injection", "eval(", "exec(",
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 jj --no-pager describe -m "docs: update passes.md with 0.1.0 implementation status"
 jj --no-pager new -m "wip"
 ```
@@ -624,7 +626,7 @@ Line 34: "Linear" — add "(planned)" marker.
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj --no-pager describe -m "docs: update architecture.md for 0.1.0 accuracy"
 jj --no-pager new -m "wip"
 ```
@@ -664,7 +666,7 @@ Check that "Postgres+AGE" in the storage box (line 138) is marked as planned:
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj --no-pager describe -m "docs: update how-it-works.md with execution lifecycle"
 jj --no-pager new -m "wip"
 ```
@@ -721,7 +723,7 @@ the current proto definitions in `authoring.proto`.
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 jj --no-pager describe -m "docs: update authoring.md with execution stages and posture clarification"
 jj --no-pager new -m "wip"
 ```
@@ -757,7 +759,8 @@ Check that all markdown links in the file point to existing pages.
 - [ ] **Step 4: Fix any discrepancies found and commit**
 
 If changes needed:
-```
+
+```text
 jj --no-pager describe -m "docs: fix specs.md accuracy issues"
 jj --no-pager new -m "wip"
 ```
