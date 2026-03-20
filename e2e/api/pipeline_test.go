@@ -276,19 +276,12 @@ var _ = Describe("Full pipeline", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Events).To(HaveLen(4))
 
-		// Events are ordered by ID descending (newest first).
-		expectedOrder := []specv1.ExecutionEventType{
-			specv1.ExecutionEventType_EXECUTION_EVENT_TYPE_COMPLETION,
-			specv1.ExecutionEventType_EXECUTION_EVENT_TYPE_BLOCKER,
-			specv1.ExecutionEventType_EXECUTION_EVENT_TYPE_PROGRESS,
-			specv1.ExecutionEventType_EXECUTION_EVENT_TYPE_PROGRESS,
-		}
-
+		// ULID ordering within the same millisecond is non-deterministic,
+		// so check by type counts rather than positional order.
 		typeCounts := map[specv1.ExecutionEventType]int{}
-		for i, event := range resp.Msg.Events {
+		for _, event := range resp.Msg.Events {
 			Expect(event.SpecSlug).To(Equal(pipelineSlug))
 			Expect(event.Agent).To(Equal(pipelineAgent))
-			Expect(event.Type).To(Equal(expectedOrder[i]))
 			typeCounts[event.Type]++
 		}
 		Expect(typeCounts[specv1.ExecutionEventType_EXECUTION_EVENT_TYPE_PROGRESS]).To(Equal(2))
