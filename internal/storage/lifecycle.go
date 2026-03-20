@@ -20,6 +20,7 @@ var (
 	ErrInternalGuardFailure   = errors.New("internal guard failure — unexpected precondition violation")
 	ErrInvalidReEntryStage    = errors.New("re-entry stage is not allowed for this operation")
 	ErrSameSlugs              = errors.New("old and new slugs must differ")
+	ErrEdgeNotFound           = errors.New("no matching dependency edge found")
 )
 
 // DriftType identifies the category of drift detected.
@@ -129,6 +130,9 @@ type LifecycleBackend interface {
 	// LifecycleAbandonSpec transitions a spec to abandoned (terminal).
 	LifecycleAbandonSpec(ctx context.Context, slug, reason string) (*Spec, error)
 
-	// LifecycleAcknowledgeDrift marks drift as intentional for a specific upstream.
+	// LifecycleAcknowledgeDrift marks drift as intentional.
+	// When upstreamSlug is non-empty, updates the specific DEPENDS_ON edge's hash.
+	// When upstreamSlug is empty, updates all outgoing DEPENDS_ON edges (blanket ack).
+	// Returns ErrEdgeNotFound if upstreamSlug is specified but no matching edge exists.
 	LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlug, note string) error
 }

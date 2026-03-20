@@ -457,12 +457,14 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlu
 		if upstreamSlug != "" {
 			matched := int64(0)
 			if len(updateRecords) > 0 {
-				if v, _ := updateRecords[0].Get("matched"); v != nil {
-					matched, _ = v.(int64)
+				if v, ok := updateRecords[0].Get("matched"); ok && v != nil {
+					if n, ok := v.(int64); ok {
+						matched = n
+					}
 				}
 			}
 			if matched == 0 {
-				return fmt.Errorf("memgraph: no DEPENDS_ON edge from %q to %q", slug, upstreamSlug)
+				return fmt.Errorf("memgraph: no DEPENDS_ON edge from %q to %q: %w", slug, upstreamSlug, storage.ErrEdgeNotFound)
 			}
 		}
 

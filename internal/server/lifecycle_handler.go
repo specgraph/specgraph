@@ -177,11 +177,19 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	if msg.UpstreamSlug != "" {
+		if err := validateSlug(msg.UpstreamSlug); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("upstream_slug: %w", err))
+		}
+	}
 	if msg.UpstreamSlug == "" && !msg.All {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("specify upstream_slug or set all=true"))
 	}
 	if msg.UpstreamSlug != "" && msg.All {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("cannot specify both upstream_slug and all=true"))
+	}
+	if len(msg.Note) > maxFieldLen {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("note exceeds maximum of %d characters", maxFieldLen))
 	}
 
 	if err := store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.UpstreamSlug, msg.Note); err != nil {
@@ -292,6 +300,9 @@ func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 	}
 	if errors.Is(err, storage.ErrInvalidReEntryStage) {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("re-entry stage is not allowed"))
+	}
+	if errors.Is(err, storage.ErrEdgeNotFound) {
+		return connect.NewError(connect.CodeNotFound, errors.New("no matching dependency edge found"))
 	}
 	if errors.Is(err, storage.ErrSameSlugs) {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("old and new slugs must differ"))
