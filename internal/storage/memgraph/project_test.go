@@ -15,9 +15,8 @@ import (
 )
 
 func TestEnsureProject_CreatesNew(t *testing.T) {
+	clearDatabase(t)
 	ctx := context.Background()
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
 	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
@@ -29,9 +28,8 @@ func TestEnsureProject_CreatesNew(t *testing.T) {
 }
 
 func TestEnsureProject_Idempotent(t *testing.T) {
+	clearDatabase(t)
 	ctx := context.Background()
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
 	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
@@ -44,9 +42,8 @@ func TestEnsureProject_Idempotent(t *testing.T) {
 }
 
 func TestGetProject_NotFound(t *testing.T) {
+	clearDatabase(t)
 	ctx := context.Background()
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
 	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
@@ -56,9 +53,8 @@ func TestGetProject_NotFound(t *testing.T) {
 }
 
 func TestUpdateProject_SyncAdapters(t *testing.T) {
+	clearDatabase(t)
 	ctx := context.Background()
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
 	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)
@@ -72,9 +68,8 @@ func TestUpdateProject_SyncAdapters(t *testing.T) {
 }
 
 func TestListProjects(t *testing.T) {
+	clearDatabase(t)
 	ctx := context.Background()
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
 	store, err := newStore(ctx, boltURI)
 	require.NoError(t, err)
 	defer store.Close(ctx)

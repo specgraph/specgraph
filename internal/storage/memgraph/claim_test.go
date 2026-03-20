@@ -14,8 +14,7 @@ import (
 )
 
 func TestClaimAndUnclaim(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -48,8 +47,7 @@ func TestClaimAndUnclaim(t *testing.T) {
 }
 
 func TestHeartbeat(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)

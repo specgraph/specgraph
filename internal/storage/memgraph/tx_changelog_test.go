@@ -15,8 +15,7 @@ import (
 )
 
 func TestCreateSpec_AtomicWithChangeLog(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -38,8 +37,7 @@ func TestCreateSpec_AtomicWithChangeLog(t *testing.T) {
 }
 
 func TestLifecycleAmendSpec_AtomicWithChangeLog(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)

@@ -18,12 +18,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// newTestStore creates a fresh Memgraph-backed store for a single test,
-// registering cleanup of the container and store connection.
+// newTestStore creates a Memgraph-backed store for a single test,
+// registering cleanup of the store connection.
 func newTestStore(t *testing.T, opts ...memgraph.Option) (*memgraph.Store, context.Context) {
 	t.Helper()
-	boltURI, cleanup := setupMemgraph(t)
-	t.Cleanup(cleanup)
+	clearDatabase(t)
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI, opts...)
 	require.NoError(t, err)
@@ -36,11 +35,8 @@ func newTestStore(t *testing.T, opts ...memgraph.Option) (*memgraph.Store, conte
 }
 
 func TestAuthoring(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	t.Cleanup(cleanup)
-
 	t.Run("TransitionStage", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -66,7 +62,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("TransitionStage_WrongStage", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -81,7 +77,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("StoreSparkOutput", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -101,7 +97,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("StoreDecomposeOutput", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -124,7 +120,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("AmendSpec", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -144,7 +140,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("AmendSpec_AlreadyApproved", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -162,7 +158,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("AmendSpec_InvalidTransition", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -178,7 +174,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("AmendSpec_NotFound", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -190,7 +186,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("AmendSpec_EmptyReason", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -209,7 +205,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("SupersedeSpec", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -230,7 +226,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("SupersedeSpec_NotFound", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -249,7 +245,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("StoreDecomposeOutput_Idempotent", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -282,7 +278,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("StoreDecomposeOutput_MissingParent", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -299,7 +295,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("StoreDecomposeOutput_DuplicateSliceID", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -320,7 +316,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("StoreDecomposeOutput_UnknownDependency", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -341,7 +337,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("TransitionStage_BackwardViaAmend", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -365,7 +361,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("TransitionStage_ApprovedGuard", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -386,7 +382,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("TransitionStage_SupersededGuard", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -408,7 +404,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("StoreShapeOutput_CreatesDecisionNodes", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -448,7 +444,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("StoreShapeOutput_IdempotentDecisions", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -480,7 +476,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("StoreSafetyFlags", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -534,7 +530,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("StoreSafetyFlags_SpecNotFound", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -547,7 +543,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("StoreSparkOutput_UpdatesContentHash", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -568,7 +564,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("TransitionStage_UpdatesContentHash", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -590,7 +586,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("AmendSpec_UpdatesContentHash", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -619,7 +615,7 @@ func TestAuthoring(t *testing.T) {
 	})
 
 	t.Run("StoreRedTeamFindings_DoesNotUpdateContentHash", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)

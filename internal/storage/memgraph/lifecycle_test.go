@@ -38,11 +38,8 @@ func newTestClock() (now func() time.Time, advance func(time.Duration)) {
 }
 
 func TestLifecycle(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	t.Cleanup(cleanup)
-
 	t.Run("AmendSpec_HappyPath", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -68,7 +65,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AmendSpec_NotDone", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -82,7 +79,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AmendSpec_LifecycleNotFound", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -93,7 +90,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("SupersedeSpec_HappyPath", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -112,7 +109,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("SupersedeSpec_SupersedesEdgePersists", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -135,7 +132,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("SupersedeSpec_OldNotFound", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -149,7 +146,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("SupersedeSpec_NewNotFound", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -163,7 +160,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("SupersedeSpec_TerminalState", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -184,7 +181,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("SupersedeSpec_SameSlug", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -199,7 +196,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AbandonSpec_HappyPath", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -216,7 +213,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AbandonSpec_ConcurrentModification", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -253,7 +250,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AbandonSpec_Terminal", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -271,7 +268,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("CheckDrift_DependencyDrift", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		clock, advance := newTestClock()
 		store, err := newStore(ctx, boltURI, memgraph.WithClock(clock))
@@ -314,7 +311,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AbandonSpec_NotFound", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -325,7 +322,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AmendSpec_Terminal", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -344,7 +341,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AcknowledgeDrift", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -380,7 +377,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AcknowledgeDrift_IneligibleStage", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -396,7 +393,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AmendSpec_ConcurrentModification", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -437,7 +434,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("CheckDrift_AllSpecs_Integration", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		clock, advance := newTestClock()
 		store, err := newStore(ctx, boltURI, memgraph.WithClock(clock))
@@ -492,7 +489,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AcknowledgeDrift_PerUpstream_UpdatesEdgeHash", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -553,7 +550,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AcknowledgeDrift_AllUpstreams_UpdatesAllEdges", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -608,7 +605,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AmendedSpec_CanBeAbandoned", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -632,7 +629,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AmendedSpec_CanBeSuperseded", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -662,7 +659,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AmendSpec_ReEntryExcludedStages", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -682,7 +679,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("SupersedeSpec_ConcurrentModificationOnNewSpec", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -738,7 +735,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("SupersedeSpec_NewSpecConcurrentlyAbandoned", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -766,7 +763,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("SupersedeSpec_NewSpecNotFound", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -786,7 +783,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("CheckDrift_AmendedSpecDrift", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		clock, advance := newTestClock()
 		store, err := newStore(ctx, boltURI, memgraph.WithClock(clock))
@@ -833,7 +830,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("BatchGetSpecs", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -870,7 +867,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AcknowledgeDrift_AmendedStage", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -892,7 +889,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AcknowledgeDrift_NotFound", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -904,7 +901,7 @@ func TestLifecycle(t *testing.T) {
 	})
 
 	t.Run("AcknowledgeDrift_ConcurrentAckAndCheck", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)

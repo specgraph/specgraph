@@ -14,27 +14,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// clearGraph removes all nodes and relationships from the Memgraph instance.
-func clearGraph(t *testing.T, boltURI string) {
-	t.Helper()
-	driver, err := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
-	require.NoError(t, err)
-	ctx := context.Background()
-	defer driver.Close(ctx)
-	session := driver.NewSession(ctx, neo4j.SessionConfig{})
-	defer session.Close(ctx)
-	_, err = session.Run(ctx, "MATCH (n) DETACH DELETE n", nil)
-	require.NoError(t, err)
-}
-
-// TestSync runs all sync integration tests against a single shared Memgraph
-// container to avoid the per-test container startup overhead (~6s each).
+// TestSync runs all sync integration tests against the shared Memgraph
+// container, clearing the database between subtests for isolation.
 func TestSync(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
-
 	t.Run("CreateMapping", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -55,7 +39,7 @@ func TestSync(t *testing.T) {
 	})
 
 	t.Run("CreateMappingDuplicate", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -72,7 +56,7 @@ func TestSync(t *testing.T) {
 	})
 
 	t.Run("CreateMappingSpecNotFound", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -83,7 +67,7 @@ func TestSync(t *testing.T) {
 	})
 
 	t.Run("UpdateState", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -107,7 +91,7 @@ func TestSync(t *testing.T) {
 	})
 
 	t.Run("UpdateStateNotFound", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -118,7 +102,7 @@ func TestSync(t *testing.T) {
 	})
 
 	t.Run("GetMapping", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -139,7 +123,7 @@ func TestSync(t *testing.T) {
 	})
 
 	t.Run("ListMappings", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -176,7 +160,7 @@ func TestSync(t *testing.T) {
 	})
 
 	t.Run("DeleteMapping", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -200,7 +184,7 @@ func TestSync(t *testing.T) {
 	})
 
 	t.Run("DeleteMappingCleansUpExternalRef", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)

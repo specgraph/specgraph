@@ -14,8 +14,7 @@ import (
 )
 
 func TestAddAndListEdges(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -46,8 +45,7 @@ func TestAddAndListEdges(t *testing.T) {
 }
 
 func TestGetDependencies(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -69,8 +67,7 @@ func TestGetDependencies(t *testing.T) {
 }
 
 func TestDiamondDependencies(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -104,8 +101,7 @@ func TestDiamondDependencies(t *testing.T) {
 }
 
 func TestBlocksEdgeDirection(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -143,8 +139,7 @@ func TestBlocksEdgeDirection(t *testing.T) {
 }
 
 func TestGetReady(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)

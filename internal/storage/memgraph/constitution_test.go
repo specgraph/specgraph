@@ -15,8 +15,7 @@ import (
 )
 
 func TestConstitution_GetNotFound(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -29,8 +28,7 @@ func TestConstitution_GetNotFound(t *testing.T) {
 }
 
 func TestConstitution_UpdateAndGet(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -107,8 +105,7 @@ func TestConstitution_UpdateAndGet(t *testing.T) {
 }
 
 func TestConstitution_MinimalRoundTrip(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -139,8 +136,7 @@ func TestConstitution_MinimalRoundTrip(t *testing.T) {
 }
 
 func TestConstitution_CheckViolation(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
