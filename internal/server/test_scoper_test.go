@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/seanb4t/specgraph/internal/server"
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/server"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 const testProject = "test-project"

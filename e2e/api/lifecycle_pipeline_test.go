@@ -13,8 +13,8 @@ import (
 	. "github.com/onsi/gomega"
 	"google.golang.org/protobuf/proto"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 )
 
 var _ = Describe("Lifecycle Pipeline", Ordered, func() {

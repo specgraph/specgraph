@@ -1254,7 +1254,7 @@ const file_specgraph_v1_lifecycle_proto_rawDesc = "" +
 	"\n" +
 	"CheckDrift\x12\x1f.specgraph.v1.DriftCheckRequest\x1a .specgraph.v1.DriftCheckResponse\x12a\n" +
 	"\x10AcknowledgeDrift\x12%.specgraph.v1.DriftAcknowledgeRequest\x1a&.specgraph.v1.DriftAcknowledgeResponse\x12=\n" +
-	"\x04Lint\x12\x19.specgraph.v1.LintRequest\x1a\x1a.specgraph.v1.LintResponseB;Z9github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\x04Lint\x12\x19.specgraph.v1.LintRequest\x1a\x1a.specgraph.v1.LintResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_lifecycle_proto_rawDescOnce sync.Once

@@ -11,7 +11,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	v1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	v1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	http "net/http"
 	strings "strings"
 )

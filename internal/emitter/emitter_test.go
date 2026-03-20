@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/emitter"
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/emitter"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 

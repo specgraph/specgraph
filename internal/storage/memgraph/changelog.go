@@ -12,7 +12,7 @@ import (
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // Compile-time interface assertion.
@@ -117,13 +117,13 @@ func (s *Store) createChangeLog(ctx context.Context, slug string, entry *storage
 		"expected_version": int64(entry.Version),
 		"id":               entry.ID,
 		"version":          int64(entry.Version),
-		"stage":        string(entry.Stage),
-		"content_hash": entry.ContentHash,
-		"checkpoint":   entry.Checkpoint,
-		"summary":      entry.Summary,
-		"reason":       entry.Reason,
-		"changes_json": changesJSON,
-		"date":         dateStr,
+		"stage":            string(entry.Stage),
+		"content_hash":     entry.ContentHash,
+		"checkpoint":       entry.Checkpoint,
+		"summary":          entry.Summary,
+		"reason":           entry.Reason,
+		"changes_json":     changesJSON,
+		"date":             dateStr,
 	})
 
 	records, err := s.executeQuery(ctx, query, params)

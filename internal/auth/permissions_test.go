@@ -6,8 +6,8 @@ package auth_test
 import (
 	"testing"
 
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/auth"
 )
 
 var allProcedures = []string{

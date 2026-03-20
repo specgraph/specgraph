@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/durationpb"
 )

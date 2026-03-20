@@ -6,7 +6,7 @@ package authoring
 import (
 	"fmt"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // Stage is a typed authoring funnel stage name.

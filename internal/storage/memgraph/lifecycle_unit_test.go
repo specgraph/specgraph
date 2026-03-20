@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -71,4 +71,3 @@ func TestSortableRFC3339Nano_LexicographicOrdering(t *testing.T) {
 	assert.Less(t, oldFormatEarlier, laterStr,
 		"old RFC3339 format should still sort before newer sortableRFC3339Nano")
 }
-

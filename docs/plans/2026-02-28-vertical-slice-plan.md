@@ -65,7 +65,7 @@ specgraph/
 
 ```bash
 cd /Volumes/Code/github.com/seanb4t/beads/specgraph
-go mod init github.com/seanb4t/specgraph
+go mod init github.com/specgraph/specgraph
 ```
 
 **Step 2: Create buf configuration**
@@ -161,7 +161,7 @@ syntax = "proto3";
 
 package specgraph.v1;
 
-option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
+option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1";
 
 import "google/protobuf/timestamp.proto";
 
@@ -249,7 +249,7 @@ package storage
 import (
 	"context"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
 // Backend is the interface that all storage backends must implement.
@@ -312,7 +312,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/seanb4t/specgraph/internal/storage/memgraph"
+	"github.com/specgraph/specgraph/internal/storage/memgraph"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -457,7 +457,7 @@ import (
 	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -654,10 +654,10 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/server"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/server"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // mockBackend is a test double for the storage interface.
@@ -782,9 +782,9 @@ import (
 	"context"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 type SpecHandler struct {
@@ -839,8 +839,8 @@ package server
 import (
 	"net/http"
 
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // NewMux creates an HTTP mux with all ConnectRPC services registered.
@@ -893,7 +893,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/config"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -1320,10 +1320,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/seanb4t/specgraph/internal/config"
-	"github.com/seanb4t/specgraph/internal/docker"
-	"github.com/seanb4t/specgraph/internal/server"
-	"github.com/seanb4t/specgraph/internal/storage/memgraph"
+	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/docker"
+	"github.com/specgraph/specgraph/internal/server"
+	"github.com/specgraph/specgraph/internal/storage/memgraph"
 	"github.com/spf13/cobra"
 )
 
@@ -1410,9 +1410,9 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/config"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/config"
 	"github.com/spf13/cobra"
 )
 

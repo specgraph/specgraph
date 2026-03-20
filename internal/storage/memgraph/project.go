@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // EnsureProject implements storage.ProjectBackend.

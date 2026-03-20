@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/seanb4t/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/config"
 	"github.com/spf13/cobra"
 )
 

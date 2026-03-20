@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/server"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/server"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 

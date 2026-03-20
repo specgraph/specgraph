@@ -19,7 +19,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/seanb4t/specgraph/e2e/testutil"
+	"github.com/specgraph/specgraph/e2e/testutil"
 )
 
 var (

@@ -11,10 +11,10 @@ import (
 
 	"connectrpc.com/connect"
 
-	specgraphv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/auth"
-	"github.com/seanb4t/specgraph/internal/config"
+	specgraphv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/config"
 )
 
 type stubHealthHandler struct {

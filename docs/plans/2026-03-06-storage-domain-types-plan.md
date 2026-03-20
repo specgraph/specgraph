@@ -30,7 +30,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/seanb4t/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -203,8 +203,8 @@ import (
 	"testing"
 	"time"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -290,8 +290,8 @@ Expected: FAIL — converter functions don't exist
 package server
 
 import (
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/storage"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

@@ -14,15 +14,15 @@ import (
 
 	"connectrpc.com/connect"
 
-	"github.com/seanb4t/specgraph/internal/auth"
-	"github.com/seanb4t/specgraph/internal/config"
-	"github.com/seanb4t/specgraph/internal/docker"
-	"github.com/seanb4t/specgraph/internal/drift"
-	"github.com/seanb4t/specgraph/internal/linter"
-	"github.com/seanb4t/specgraph/internal/server"
-	"github.com/seanb4t/specgraph/internal/storage/memgraph"
-	syncpkg "github.com/seanb4t/specgraph/internal/sync"
-	"github.com/seanb4t/specgraph/internal/xdg"
+	"github.com/specgraph/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/docker"
+	"github.com/specgraph/specgraph/internal/drift"
+	"github.com/specgraph/specgraph/internal/linter"
+	"github.com/specgraph/specgraph/internal/server"
+	"github.com/specgraph/specgraph/internal/storage/memgraph"
+	syncpkg "github.com/specgraph/specgraph/internal/sync"
+	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/spf13/cobra"
 )
 
@@ -135,4 +135,3 @@ func runServe(_ *cobra.Command, _ []string) error {
 
 	return nil
 }
-

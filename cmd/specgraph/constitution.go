@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/seanb4t/specgraph/internal/config"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/config"
 	"github.com/spf13/cobra"
 )
 

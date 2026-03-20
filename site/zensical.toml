@@ -1,6 +1,6 @@
 [project]
 site_name = "SpecGraph"
-site_url = "https://seanb4t.github.io/specgraph/"
+site_url = "https://specgraph.io/"
 site_description = "Live Spec-Driven Development Framework"
 site_author = "Sean Brandt"
 copyright = "© 2026 Sean Brandt • MIT"
@@ -34,5 +34,5 @@ search.suggest = true
 content.code.copy = true
 
 [project.repo]
-url = "https://github.com/seanb4t/specgraph"
+url = "https://github.com/specgraph/specgraph"
 name = "GitHub"

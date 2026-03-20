@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	specv1 "github.com/seanb4t/specgraph/gen/specgraph/v1"
-	"github.com/seanb4t/specgraph/internal/driftscope"
-	"github.com/seanb4t/specgraph/internal/storage"
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/driftscope"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

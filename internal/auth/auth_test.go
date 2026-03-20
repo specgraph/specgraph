@@ -6,7 +6,7 @@ package auth_test
 import (
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/auth"
 )
 
 func TestHasPermission_ExactMatch(t *testing.T) {

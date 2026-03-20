@@ -8,7 +8,7 @@ package api_test
 import (
 	"net/http"
 
-	"github.com/seanb4t/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 )
 
 // e2eProject is the project slug used by the E2E test server (set in testutil.StartServer).

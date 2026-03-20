@@ -328,7 +328,7 @@ const file_specgraph_v1_claim_proto_rawDesc = "" +
 	"\fClaimService\x12@\n" +
 	"\tClaimSpec\x12\x1e.specgraph.v1.ClaimSpecRequest\x1a\x13.specgraph.v1.Claim\x12R\n" +
 	"\vUnclaimSpec\x12 .specgraph.v1.UnclaimSpecRequest\x1a!.specgraph.v1.UnclaimSpecResponse\x12@\n" +
-	"\tHeartbeat\x12\x1e.specgraph.v1.HeartbeatRequest\x1a\x13.specgraph.v1.ClaimB;Z9github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\tHeartbeat\x12\x1e.specgraph.v1.HeartbeatRequest\x1a\x13.specgraph.v1.ClaimB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_claim_proto_rawDescOnce sync.Once

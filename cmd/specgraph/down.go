@@ -8,10 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/seanb4t/specgraph/internal/config"
-	"github.com/seanb4t/specgraph/internal/docker"
-	"github.com/seanb4t/specgraph/internal/service"
-	"github.com/seanb4t/specgraph/internal/xdg"
+	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/docker"
+	"github.com/specgraph/specgraph/internal/service"
+	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/spf13/cobra"
 )
 

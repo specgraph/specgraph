@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/seanb4t/specgraph/internal/sync"
+	"github.com/specgraph/specgraph/internal/sync"
 	"github.com/stretchr/testify/require"
 )
 

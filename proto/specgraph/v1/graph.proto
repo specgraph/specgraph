@@ -5,7 +5,7 @@ syntax = "proto3";
 
 package specgraph.v1;
 
-option go_package = "github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1";
+option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1";
 
 // --- Edge Types ---
 

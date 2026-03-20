@@ -542,7 +542,7 @@ const file_specgraph_v1_decision_proto_rawDesc = "" +
 	"\x0eCreateDecision\x12#.specgraph.v1.CreateDecisionRequest\x1a\x16.specgraph.v1.Decision\x12G\n" +
 	"\vGetDecision\x12 .specgraph.v1.GetDecisionRequest\x1a\x16.specgraph.v1.Decision\x12X\n" +
 	"\rListDecisions\x12\".specgraph.v1.ListDecisionsRequest\x1a#.specgraph.v1.ListDecisionsResponse\x12M\n" +
-	"\x0eUpdateDecision\x12#.specgraph.v1.UpdateDecisionRequest\x1a\x16.specgraph.v1.DecisionB;Z9github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\x0eUpdateDecision\x12#.specgraph.v1.UpdateDecisionRequest\x1a\x16.specgraph.v1.DecisionB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_decision_proto_rawDescOnce sync.Once

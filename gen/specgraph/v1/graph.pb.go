@@ -965,7 +965,7 @@ const file_specgraph_v1_graph_proto_rawDesc = "" +
 	"\x11GetTransitiveDeps\x12&.specgraph.v1.GetTransitiveDepsRequest\x1a'.specgraph.v1.GetTransitiveDepsResponse\x12L\n" +
 	"\tGetImpact\x12\x1e.specgraph.v1.GetImpactRequest\x1a\x1f.specgraph.v1.GetImpactResponse\x12I\n" +
 	"\bGetReady\x12\x1d.specgraph.v1.GetReadyRequest\x1a\x1e.specgraph.v1.GetReadyResponse\x12^\n" +
-	"\x0fGetCriticalPath\x12$.specgraph.v1.GetCriticalPathRequest\x1a%.specgraph.v1.GetCriticalPathResponseB;Z9github.com/seanb4t/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\x0fGetCriticalPath\x12$.specgraph.v1.GetCriticalPathRequest\x1a%.specgraph.v1.GetCriticalPathResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_graph_proto_rawDescOnce sync.Once

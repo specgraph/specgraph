@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/seanb4t/specgraph/internal/service"
+	"github.com/specgraph/specgraph/internal/service"
 )
 
 func TestGenerate(t *testing.T) {
