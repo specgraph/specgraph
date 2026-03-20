@@ -12,6 +12,15 @@ protection — it catches danger. Both run during the
 [authoring funnel](authoring.md), but they serve fundamentally different
 purposes and follow different rules.
 
+!!! warning "0.1.0 Implementation Status"
+    In v0.1.0, the **pass scheduling infrastructure** is fully implemented —
+    passes are registered per-stage with posture-aware auto/offered rules
+    (`internal/authoring/passes.go`). However, **pass execution returns
+    placeholder findings**. The safety net (pattern-based scanning) is fully
+    functional.
+
+    Real LLM-driven pass execution is tracked for 0.2.0.
+
 ---
 
 ## Analytical Passes
@@ -130,32 +139,33 @@ runs at **every stage**, and **cannot be skipped or deferred** — regardless of
 posture, user preference, or urgency. If the safety net flags something, the
 finding is attached to the spec and surfaced immediately.
 
-The safety net catches:
+The safety net catches two categories in v0.1.0:
 
 - **Security issues** — hardcoded credentials, disabled authentication, missing
-  encryption, SQL injection patterns, exposed secrets
+  encryption, code execution patterns, exposed secrets
 - **Data loss risks** — destructive operations without rollback plans, missing
-  migration strategies, irreversible state changes without confirmation gates
-- **Consistency contradictions** — dependency cycles, circular blocking
-  relationships, specs that contradict their own declared dependencies
-- **Constitution violations** — hard constraints breached (e.g., a spec that
-  uses a language or technology the constitution explicitly forbids)
-- **Showstoppers** — anything that makes the spec fundamentally unimplementable
-  (undefined interfaces, missing dependencies that do not exist in the graph,
-  contradictory acceptance criteria)
+  migration strategies, irreversible state changes
 
-Example patterns the safety net scans for:
+Future categories (consistency contradictions, constitution violations, and
+showstoppers) are planned but not yet implemented in the pattern scanner.
+
+Patterns the safety net scans for (from `internal/authoring/safety.go`):
 
 ```text
-CRITICAL: "hardcoded secret", "disable auth", "skip verification",
-          "plaintext password", "DROP TABLE", "rm -rf"
-WARNING:  "TODO", "hack", "temp", "fixme", "workaround",
-          "skip test", "no rollback"
+CRITICAL security:  "hardcoded secret", "hardcoded password",
+                    "disable auth", "skip validation",
+                    "no encryption", "rm -rf"
+WARNING  security:  "credential", "injection", "eval(",
+                    "exec(", "plaintext"
+CRITICAL data_loss: "drop table", "drop all", "delete all",
+                    "without migration", "without backup",
+                    "no rollback", "force delete"
+WARNING  data_loss: "truncate", "purge"
 ```
 
 The safety net does not perform deep analysis — that is what the analytical
-passes are for. It performs fast pattern matching and structural validation to
-catch the things that should never ship, no matter how rushed the timeline.
+passes are for. It performs fast pattern matching to catch the things that should never
+ship, no matter how rushed the timeline.
 
 ---
 

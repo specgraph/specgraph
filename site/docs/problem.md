@@ -1,162 +1,194 @@
 # The Problem
 
-**Why specs-as-files fails**
+**Why specs-as-files fails — and why it matters more now**
+
+---
+
+## The Upstream Bottleneck
+
+AI coding agents produce code at a rate no human team can match. The
+bottleneck has moved upstream — to specification, review, and verification.
+
+Three independent studies point in the same direction:
+
+- [Faros AI](https://www.faros.ai/blog/ai-software-engineering) (10,000+
+  developers, 1,255 teams): task completion rose 21%, but code review time
+  climbed 91% and bugs per developer increased 9%.
+- [METR](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/)
+  (16 experienced open-source developers, 246 tasks): developers were 19%
+  *slower* with AI assistance — while believing they were 20% faster.
+- [CodeRabbit](https://www.coderabbit.ai/blog/state-of-ai-vs-human-code-generation-report)
+  (470 pull requests): AI-generated code produced 1.7x more issues per PR,
+  with higher severity across logic, security, and performance categories.
+
+Generating code is cheap. Knowing what code to generate — and verifying
+that it does the right thing — is not.
+
+Spec-Driven Development (SDD) addresses this shift by treating
+specifications as the primary engineering artifact and code as generated
+output. The specification defines correctness; the code implements it.
 
 ---
 
 ## The Status Quo
 
-Most teams manage specifications the same way: markdown files in a `specs/` folder,
-Confluence pages, Jira epics, or Google Docs shared across Slack threads. A product
-manager writes up requirements, an engineer adds technical details, and the document
-gets reviewed in a pull request or a meeting. Then it sits there. The spec was useful
-for the two weeks it took to align the team, but by the time implementation starts,
-it's already drifting from reality.
+Most teams manage specifications the same way: markdown files in a
+`specs/` folder, Confluence pages, Jira epics, or Google Docs shared
+across Slack threads. A product manager writes requirements, an engineer
+adds technical details, and the document gets reviewed in a meeting or a
+pull request. Then it sits there. The spec was useful for the two weeks it
+took to align the team, but by the time implementation starts, it is
+already drifting from reality.
 
-The problem isn't that teams don't write specs — it's that the format can't keep up.
-A markdown file doesn't know what other specs depend on it. A Jira ticket can link to
-other tickets, but those links carry no semantics: is this a hard dependency, a
-soft reference, or just "related"? A wiki page can be updated, but nothing forces
-consistency between the page and the codebase it describes.
+The problem is not that teams fail to write specs. The problem is that the
+format cannot keep up. A markdown file does not know what other specs
+depend on it. A Jira ticket can link to other tickets, but those links
+carry no semantics: is this a hard dependency, a soft reference, or just
+"related"? A wiki page can be updated, but nothing forces consistency
+between the page and the codebase it describes.
 
-When AI agents enter the picture, these gaps become acute. An agent that receives
-"implement the feature in spec-42.md" faces a wall of prose with no queryable structure, no way to extract
-acceptance criteria programmatically, and no connection
-to the project's architectural constraints. The spec format that was "good enough" for
-human teams actively blocks agent-assisted development.
+When AI agents enter the picture, these gaps become structural barriers.
+An agent that receives "implement the feature in spec-42.md" faces prose
+with no queryable structure, no way to extract acceptance criteria
+programmatically, and no connection to the project's architectural
+constraints. The format that was adequate for human teams blocks
+agent-assisted development.
 
 ---
 
-## Six Gaps
-
-### No Live Query
-
-You can't ask your spec repository a question. "What specs are currently blocked?"
-"Which specs changed since the last release?" "Show me everything downstream of the
-auth service." These are natural questions for anyone planning a sprint or assessing
-risk, but answering them requires writing a custom script that parses filenames,
-greps for keywords, and hopes the results are accurate.
-
-**Example:** A team lead preparing for a release wants to know the critical path —
-which specs must be completed before the release can ship, and which of those are
-blocked. With specs-as-files, they open each document, manually trace the
-`depends_on` references, build a mental graph, and hope they didn't miss a
-transitive dependency three levels deep. With a live query layer, it's a single
-traversal.
-
-### No Addressability
-
-Specs reference each other by file path or ticket number. This creates a brittle
-web of string-based pointers that breaks whenever someone reorganizes a directory,
-renames a file, or migrates from one tool to another. There's no stable identity
-behind the reference — just a path that might or might not resolve.
-
-**Example:** Your auth spec lives at `specs/auth/login-spec.md` and twelve other
-specs reference it with `depends_on: ../auth/login-spec.md`. The team decides to
-reorganize the `auth/` directory into `identity/authn/` and `identity/authz/`.
-Every reference breaks silently. Nothing warns you. The specs still render fine in
-your markdown viewer — the dangling references just quietly become lies.
-
-### No Execution Interface
-
-AI agents and automation systems need structured task graphs with clear inputs,
-outputs, dependencies, and completion criteria. Prose documents — even well-written
-ones — don't provide that. An agent can read a spec, but it can't reliably extract
-what to build, what to build it on top of, what "done" looks like, or where to
-report status.
-
-**Example:** An orchestration agent receives the instruction "implement the feature
-described in spec-42.md." It parses the markdown and finds requirements written in
-natural language, a section labeled "Dependencies" that lists filenames it can't
-resolve, and acceptance criteria phrased as "the user should be able to..." The agent
-has to guess at structure, infer dependency ordering, and improvise a completion
-check. Every ambiguity becomes a decision the agent makes silently, without the
-context to make it well.
+## Five Gaps
 
 ### No Ground Truth
 
-Every authoring session starts cold. When a developer or an AI agent sits down to
-write a new spec, they don't know the project's tech stack, architectural principles,
-naming conventions, or constraints — unless someone explicitly tells them. That
-context lives in people's heads, in scattered ADRs, or in tribal knowledge that never
-got written down.
+Every authoring session starts cold. The developer or AI agent writing a
+new spec does not know the project's tech stack, architectural principles,
+naming conventions, or constraints — unless someone explicitly provides
+them. That context lives in people's heads, in scattered ADRs, in tribal
+knowledge that never got written down, or in code patterns that no one
+thought to document.
 
-**Example:** An AI agent is asked to draft a spec for a new microservice. The project
-is exclusively Go, uses ConnectRPC for service communication, and stores data in
-PostgreSQL. But nothing in the spec environment encodes these constraints. The agent
-suggests a Java service with REST endpoints and a MongoDB store — a technically valid
-design that violates every architectural decision the team has made. The review
-catches it, but the rework costs a full sprint cycle.
+**Example:** An AI agent drafts a spec for a new microservice. The project
+uses Go, ConnectRPC, and PostgreSQL exclusively. Nothing in the spec
+environment encodes these constraints. The agent proposes a Java service
+with REST endpoints and a MongoDB store — technically valid, architecturally
+wrong. The review catches it. The rework costs a sprint.
 
-### No Codebase Awareness
-
-Specs are written in a vacuum, disconnected from the actual codebase they describe.
-The author doesn't know — and has no way to discover — what patterns the code already
-uses, what interfaces exist, or what conventions the team follows. The spec describes
-what should be built without any grounding in what already exists.
-
-**Example:** A spec describes a new API endpoint for user profiles. It proposes a
-handler structure, middleware chain, and test approach. But the codebase already has
-an established router pattern, a standard middleware stack, and test helpers that
-handle setup and teardown. The spec author (human or AI) didn't know any of this, so
-the spec describes an implementation that's structurally incompatible with the
-existing code. The implementing engineer has to mentally diff the spec against the
-codebase and reconcile the two — work that should have been done at authoring time.
+A spec for a new API endpoint proposes a handler structure, middleware
+chain, and test approach. But the codebase already has an established
+router pattern, a standard middleware stack, and test helpers that handle
+setup and teardown. The spec author — human or AI — did not know any of
+this. The resulting spec describes an implementation structurally
+incompatible with the existing code. The implementing engineer reconciles
+the two by hand, doing work that should have been done at authoring time.
 
 ### No Governance
 
-Architectural decisions exist — often as ADRs, style guides, or team agreements —
-but nothing enforces them at the spec level. A decision like "no shared databases
-between services" or "all public APIs must have rate limiting" lives in a document
-somewhere, but the spec authoring process has no mechanism to check new specs against
-these constraints. Violations are caught in code review if you're lucky, or in
-production if you're not.
+Architectural decisions exist — as ADRs, style guides, or team agreements
+— but nothing enforces them at the spec level. A constraint like "no
+shared databases between services" or "all public APIs must have rate
+limiting" lives in a document somewhere. The spec authoring process has no
+mechanism to check new specs against these constraints. Violations surface
+in code review if you are lucky, or in production if you are not.
 
-**Example:** ADR-007 states that services must not share databases — each service
-owns its data and exposes it through APIs. A new spec for a reporting feature
-casually includes a cross-service database join for performance reasons. The spec
-gets approved because the reviewer didn't remember ADR-007 (or didn't know it
-existed). The implementation ships, creates a hidden coupling between two services,
-and the team discovers the violation six months later during a migration that was
-supposed to be isolated.
+**Example:** ADR-007 states that services must not share databases. A new
+spec for a reporting feature includes a cross-service database join for
+performance. The spec gets approved because the reviewer did not remember
+ADR-007. The implementation ships, creates a hidden coupling between two
+services, and the team discovers the violation six months later during a
+migration that was supposed to be isolated.
+
+### No Addressability
+
+Specs reference each other by file path or ticket number — a brittle web
+of string-based pointers that breaks whenever someone reorganizes a
+directory, renames a file, or migrates from one tool to another. There is
+no stable identity behind the reference, just a path that may or may not
+resolve.
+
+**Example:** Your auth spec lives at `specs/auth/login-spec.md` and twelve
+other specs reference it by path. The team reorganizes `auth/` into
+`identity/authn/` and `identity/authz/`. Every reference breaks silently.
+The specs still render fine in the markdown viewer — the dangling references
+quietly become lies.
+
+### No Execution Interface
+
+AI agents need structured task graphs with clear inputs, outputs,
+dependencies, and completion criteria. Prose documents — even well-written
+ones — do not provide that. An agent can read a spec, but it cannot
+reliably extract what to build, what to build it on top of, what "done"
+looks like, or where to report status.
+
+**Example:** An orchestration agent receives "implement the feature
+described in spec-42.md." It parses markdown and finds natural-language
+requirements, a "Dependencies" section listing filenames it cannot resolve,
+and acceptance criteria phrased as "the user should be able to..." Every
+ambiguity becomes a decision the agent makes silently, without the context
+to make it well.
+
+### No Live Query
+
+You cannot ask your spec repository a question. "What specs are currently
+blocked?" "Which specs changed since the last release?" "Show me everything
+downstream of the auth service." Answering these requires a custom script
+that parses filenames, greps for keywords, and hopes the results are
+accurate.
+
+**Example:** A team lead preparing for a release wants the critical path —
+which specs must complete before the release ships, and which are blocked.
+With specs-as-files, they open each document, trace `depends_on`
+references by hand, build a mental graph, and hope they have not missed a
+transitive dependency three levels deep. With a live query layer, it is a
+single traversal.
 
 ---
 
 ## The Cost
 
-These gaps compound. A spec written without codebase awareness gets approved without
-governance checks, handed to an agent that has no ground truth, which produces an
-implementation that conflicts with existing patterns. The review catches some issues,
-the author rewrites, another review, another rewrite. What should have been a
-single-pass authoring flow becomes a multi-week rework cycle. Multiply this across
-every spec in a growing project and you get teams that stop writing specs at all —
-not because specs aren't valuable, but because the cost of maintaining bad ones
-exceeds the cost of having none.
+These gaps compound. A spec written without ground truth gets approved
+without governance checks, handed to an agent that cannot query its
+dependencies, which produces an implementation that conflicts with existing
+patterns. The review catches some issues. The author rewrites. Another
+review. Another rewrite. What should have been a single-pass authoring flow
+becomes a multi-week rework cycle. Multiply this across every spec in a
+growing project and teams stop writing specs at all — not because specs
+lack value, but because the cost of maintaining bad ones exceeds the cost
+of having none.
 
-The agent-assisted case makes it worse. When agents make decisions without context,
-they make them confidently and at scale. An agent that doesn't know your architecture
-will produce internally consistent work that's externally wrong. The output looks
-correct until a human with project context reviews it and realizes the agent built
-the right thing on the wrong foundation. Rework at that point isn't a quick fix —
-it's a redesign.
+Agents amplify the problem. When agents make decisions without context,
+they make them confidently and at scale. An agent that does not know your
+architecture produces internally consistent work that is externally wrong.
+The output looks correct until a human with project context reviews it and
+discovers the agent built the right thing on the wrong foundation. Rework
+at that point is not a fix — it is a redesign.
 
 ---
 
 ## The Opportunity
 
-When specifications live in a graph instead of a folder, every gap closes. Live
-queries replace manual tracing: "what's on the critical path?" is a graph traversal,
-not a grep. Stable identities replace file paths: renaming or reorganizing specs
-doesn't break references because the identity is independent of location. Structured
-nodes replace prose: each spec carries structured fields for dependencies,
-acceptance criteria, and completion status that agents can consume directly.
+The response to these gaps varies by scale. A solo developer with a
+handful of specs can manage with markdown files in a repository — possibly
+with a lightweight framework like
+[Spec Kit](https://github.com/github/spec-kit) or
+[GSD](https://github.com/gsd-build/get-shit-done). The gaps are real but
+tolerable when one person holds the full context.
 
-A layered constitution anchors every authoring session in project ground truth — the
-tech stack, architectural principles, and constraints that should shape every spec.
-During authoring, the AI agent reads the actual codebase — exploring
-packages, interfaces, patterns, and conventions — so that specs are grounded
-in what exists, not what the author imagines.
-Governance becomes live enforcement: a spec that violates an architectural decision
-is flagged before it's approved, not after it's implemented. The result is specs
-that are correct by construction — authored with full context, validated against
-constraints, and structured for both human review and agent execution.
+At team scale and above, specifications need infrastructure. When specs
+live in a graph instead of a folder, the gaps close structurally:
+
+- **Ground truth** becomes a layered constitution — tech stack,
+  architectural principles, and constraints that anchor every authoring
+  session. Agents never start cold.
+- **Governance** becomes live enforcement — a spec that violates an
+  architectural decision is flagged before approval, not after deployment.
+- **Addressability** becomes content-based identity — renaming or
+  reorganizing specs does not break references.
+- **Execution** becomes structured — each spec carries typed fields for
+  dependencies, acceptance criteria, and completion status that agents
+  consume directly.
+- **Queryability** becomes native — "what's blocked?" is a graph
+  traversal, not a grep.
+
+SpecGraph is one implementation of this approach — an open-source reference
+implementation of the patterns that make SDD work at scale. The patterns
+matter more than any particular tool.

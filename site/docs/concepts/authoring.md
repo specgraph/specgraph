@@ -164,6 +164,22 @@ spec rather than edited in place — preserving the design history.
 
 ---
 
+### After Approval
+
+Once approved, a spec enters the execution lifecycle:
+
+- **In Progress** — an agent or human has claimed the spec and is working on it
+- **Review** — implementation is complete and awaiting review
+- **Done** — review passed, work is complete
+
+Specs can also reach terminal states at any point:
+
+- **Amended** — returned to an earlier authoring stage for changes
+- **Superseded** — replaced by a newer spec
+- **Abandoned** — dropped; no longer relevant
+
+---
+
 ## AI Postures
 
 The authoring funnel supports three collaboration modes that determine how the
@@ -199,7 +215,10 @@ sounding board.
 
 ### Auto-detection
 
-Posture auto-detects from conversation style:
+Posture auto-detection is a **skill-layer feature** — the Claude Code plugin
+infers posture from conversation style, not the server. The server accepts
+whichever posture the client sends; auto-detection happens in the authoring
+skill before the RPC call.
 
 - **Short, vague messages** (e.g., "we need token rotation") suggest the user
   wants the agent to drive.
