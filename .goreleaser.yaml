@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: MIT
+# Copyright 2026 Sean Brandt
+version: 2
+builds:
+  - id: specgraph
+    main: ./cmd/specgraph
+    binary: specgraph
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/specgraph/specgraph/cmd/specgraph.version={{.Version}}
+      - -X github.com/specgraph/specgraph/cmd/specgraph.commit={{.ShortCommit}}
+archives:
+  - id: default
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+brews:
+  - name: specgraph
+    repository:
+      owner: specgraph
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: https://specgraph.io
+    description: Live spec-driven development framework
+    license: MIT
+    install: |
+      bin.install "specgraph"
+dockers:
+  - image_templates:
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}"
+      - "ghcr.io/specgraph/specgraph:latest"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.source=https://github.com/specgraph/specgraph"
+changelog:
+  use: github
+  groups:
+    - title: Features
+      regexp: '^feat'
+    - title: Bug Fixes
+      regexp: '^fix'
+    - title: Documentation
+      regexp: '^docs'
+    - title: Performance
+      regexp: '^perf'
+    - title: Other
+      order: 999
