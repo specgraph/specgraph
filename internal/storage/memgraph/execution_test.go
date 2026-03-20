@@ -19,11 +19,8 @@ import (
 func ptr(s string) *string { return &s }
 
 func TestExecution(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
-
 	t.Run("GenerateBundle_SpecNotFound", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -35,7 +32,7 @@ func TestExecution(t *testing.T) {
 	})
 
 	t.Run("GenerateBundle_NotApproved", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -50,7 +47,7 @@ func TestExecution(t *testing.T) {
 	})
 
 	t.Run("GenerateBundle_Success", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -81,7 +78,7 @@ func TestExecution(t *testing.T) {
 	})
 
 	t.Run("RecordProgress_NoClaim", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -99,7 +96,7 @@ func TestExecution(t *testing.T) {
 	})
 
 	t.Run("FullLifecycle", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -159,7 +156,7 @@ func TestExecution(t *testing.T) {
 		// duplicate edge here is a best-effort reproduction. The DISTINCT
 		// is defensive — if this test passes without it, the protection
 		// is still warranted for the E2E scenario.
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -201,7 +198,7 @@ func TestExecution(t *testing.T) {
 	})
 
 	t.Run("GetPrimeData", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -236,7 +233,7 @@ func TestExecution(t *testing.T) {
 	})
 
 	t.Run("GetPrimeData_NoConstitution", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)
@@ -254,7 +251,7 @@ func TestExecution(t *testing.T) {
 	})
 
 	t.Run("ReleaseExpiredClaims", func(t *testing.T) {
-		clearGraph(t, boltURI)
+		clearDatabase(t)
 		ctx := context.Background()
 		store, err := newStore(ctx, boltURI)
 		require.NoError(t, err)

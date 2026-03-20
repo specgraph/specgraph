@@ -14,8 +14,7 @@ import (
 )
 
 func TestCreateAndGetDecision(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -40,8 +39,7 @@ func TestCreateAndGetDecision(t *testing.T) {
 }
 
 func TestListDecisions(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -63,8 +61,7 @@ func TestListDecisions(t *testing.T) {
 }
 
 func TestUpdateDecision(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -85,8 +82,7 @@ func TestUpdateDecision(t *testing.T) {
 }
 
 func TestCreateDecision_SetsContentHash(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
@@ -111,8 +107,7 @@ func TestCreateDecision_SetsContentHash(t *testing.T) {
 }
 
 func TestGetDecision_NotFound(t *testing.T) {
-	boltURI, cleanup := setupMemgraph(t)
-	defer cleanup()
+	clearDatabase(t)
 
 	ctx := context.Background()
 	store, err := newStore(ctx, boltURI)
