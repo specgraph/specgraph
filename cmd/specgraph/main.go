@@ -12,9 +12,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Set by goreleaser ldflags at build time.
+var (
+	version = "dev"
+	commit  = "none"
+)
+
+// buildVersion returns a semver-compatible version string.
+// Release builds (goreleaser): "0.1.0"
+// Dev builds: "0.0.0-dev+none" (valid semver pre-release + build metadata)
+func buildVersion() string {
+	if version != "dev" {
+		return version
+	}
+	return "0.0.0-dev+" + commit
+}
+
 var rootCmd = &cobra.Command{
 	Use:           "specgraph",
 	Short:         "Live spec-driven development framework",
+	Version:       buildVersion(),
 	SilenceErrors: true,
 }
 
