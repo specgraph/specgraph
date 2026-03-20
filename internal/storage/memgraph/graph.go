@@ -28,12 +28,23 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 		return nil, err
 	}
 
-	query := fmt.Sprintf(`
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $from}),
-		      (p)<-[:BELONGS_TO]-(b {slug: $to})
-		MERGE (a)-[r:%s]->(b)
-		RETURN a.slug, b.slug
-	`, relType)
+	var query string
+	if edgeType == storage.EdgeTypeDependsOn {
+		query = fmt.Sprintf(`
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $from}),
+			      (p)<-[:BELONGS_TO]-(b {slug: $to})
+			MERGE (a)-[r:%s]->(b)
+			ON CREATE SET r.content_hash_at_link = COALESCE(b.content_hash, "")
+			RETURN a.slug, b.slug
+		`, relType)
+	} else {
+		query = fmt.Sprintf(`
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $from}),
+			      (p)<-[:BELONGS_TO]-(b {slug: $to})
+			MERGE (a)-[r:%s]->(b)
+			RETURN a.slug, b.slug
+		`, relType)
+	}
 	params := mergeParams(s.projectParam(), map[string]any{"from": actualFrom, "to": actualTo})
 
 	records, err := s.executeQuery(ctx, query, params)
@@ -145,6 +156,54 @@ func (s *Store) GetDependencies(ctx context.Context, slug string) ([]storage.Nod
 		RETURN n.id AS id, n.slug AS slug, labels(n)[0] AS label, COALESCE(n.stage, n.status, "") AS stage
 	`
 	return s.queryNodeRefs(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
+}
+
+// GetDependenciesWithEdgeData returns DEPENDS_ON dependencies with edge properties.
+// Only queries DEPENDS_ON edges (not BLOCKS) — drift is a content concern, not scheduling.
+func (s *Store) GetDependenciesWithEdgeData(ctx context.Context, slug string) ([]storage.DependencyRef, error) {
+	query := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})-[dep:DEPENDS_ON]->(n)
+		RETURN n.id AS id, n.slug AS slug, labels(n)[0] AS label,
+		       COALESCE(n.stage, n.status, "") AS stage,
+		       COALESCE(dep.content_hash_at_link, "") AS content_hash_at_link
+	`
+	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
+	if err != nil {
+		return nil, fmt.Errorf("memgraph: get dependencies with edge data: %w", err)
+	}
+
+	refs := make([]storage.DependencyRef, 0, len(records))
+	for _, rec := range records {
+		id, _ := rec.Get("id")
+		sl, _ := rec.Get("slug")
+		label, _ := rec.Get("label")
+		stage, _ := rec.Get("stage")
+		hash, _ := rec.Get("content_hash_at_link")
+		refs = append(refs, storage.DependencyRef{
+			NodeRef: storage.NodeRef{
+				ID:    stringVal(id),
+				Slug:  stringVal(sl),
+				Label: storage.NodeLabel(stringVal(label)),
+				Stage: stringVal(stage),
+			},
+			ContentHashAtLink: stringVal(hash),
+		})
+	}
+	return refs, nil
+}
+
+// RefreshDependencyHashes updates content_hash_at_link on all outgoing
+// DEPENDS_ON edges for a spec, setting them to each upstream's current content_hash.
+func (s *Store) RefreshDependencyHashes(ctx context.Context, slug string) error {
+	query := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})-[dep:DEPENDS_ON]->(upstream)
+		SET dep.content_hash_at_link = COALESCE(upstream.content_hash, "")
+	`
+	_, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
+	if err != nil {
+		return fmt.Errorf("memgraph: refresh dependency hashes: %w", err)
+	}
+	return nil
 }
 
 // GetTransitiveDeps returns all transitive dependencies of a node.

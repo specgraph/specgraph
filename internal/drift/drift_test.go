@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/seanb4t/specgraph/internal/drift"
 	"github.com/seanb4t/specgraph/internal/storage"
@@ -16,10 +15,10 @@ import (
 
 type mockDriftBackend struct {
 	specs           map[string]*storage.Spec
-	deps            map[string][]storage.NodeRef
+	depsWithEdge    map[string][]storage.DependencyRef
 	listErr         error            // if non-nil, ListSpecs returns this error for all stages
 	listErrForStage map[string]error // per-stage errors; checked before listErr
-	depsErr         error            // if non-nil, GetDependencies returns this error
+	depsErr         error            // if non-nil, GetDependenciesWithEdgeData returns this error
 	specErr         error            // if non-nil, GetSpec returns this error for any slug
 	specErrForSlug  map[string]error // per-slug errors; checked before specErr
 }
@@ -56,31 +55,33 @@ func (m *mockDriftBackend) ListSpecs(_ context.Context, stage, _ string, _ int) 
 	return result, nil
 }
 
-func (m *mockDriftBackend) GetDependencies(_ context.Context, slug string) ([]storage.NodeRef, error) {
+func (m *mockDriftBackend) GetDependenciesWithEdgeData(_ context.Context, slug string) ([]storage.DependencyRef, error) {
 	if m.depsErr != nil {
 		return nil, m.depsErr
 	}
-	return m.deps[slug], nil
+	return m.depsWithEdge[slug], nil
 }
 
 func TestCheckDependencyDrift(t *testing.T) {
-	now := time.Now()
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
 			"downstream": {
-				Slug:      "downstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now.Add(-time.Hour),
+				Slug:        "downstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "aaa",
 			},
 			"upstream": {
-				Slug:      "upstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now,
+				Slug:        "upstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "bbb", // changed from "aaa"
 			},
 		},
-		deps: map[string][]storage.NodeRef{
+		depsWithEdge: map[string][]storage.DependencyRef{
 			"downstream": {
-				{Slug: "upstream", Label: storage.NodeLabelSpec},
+				{
+					NodeRef:           storage.NodeRef{Slug: "upstream", Label: storage.NodeLabelSpec},
+					ContentHashAtLink: "aaa",
+				},
 			},
 		},
 	}
@@ -94,26 +95,30 @@ func TestCheckDependencyDrift(t *testing.T) {
 	require.Equal(t, storage.DriftSeverityMedium, reports[0].Items[0].Severity)
 	require.Equal(t, "downstream", reports[0].Items[0].SpecSlug)
 	require.Equal(t, "upstream", reports[0].Items[0].UpstreamSlug)
+	require.Equal(t, "aaa", reports[0].Items[0].ExpectedHash)
+	require.Equal(t, "bbb", reports[0].Items[0].ActualHash)
 }
 
 func TestCheckDependencyDrift_NoDrift(t *testing.T) {
-	now := time.Now()
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
 			"downstream": {
-				Slug:      "downstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now,
+				Slug:        "downstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "aaa",
 			},
 			"upstream": {
-				Slug:      "upstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now.Add(-time.Hour),
+				Slug:        "upstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "aaa", // matches edge hash
 			},
 		},
-		deps: map[string][]storage.NodeRef{
+		depsWithEdge: map[string][]storage.DependencyRef{
 			"downstream": {
-				{Slug: "upstream", Label: storage.NodeLabelSpec},
+				{
+					NodeRef:           storage.NodeRef{Slug: "upstream", Label: storage.NodeLabelSpec},
+					ContentHashAtLink: "aaa",
+				},
 			},
 		},
 	}
@@ -124,24 +129,26 @@ func TestCheckDependencyDrift_NoDrift(t *testing.T) {
 	require.Empty(t, reports, "no-drift specs should be filtered out")
 }
 
-func TestCheckDependencyDrift_EqualTimestamps(t *testing.T) {
-	now := time.Now()
+func TestCheckDependencyDrift_EmptyEdgeHash(t *testing.T) {
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
 			"downstream": {
-				Slug:      "downstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now,
+				Slug:        "downstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "aaa",
 			},
 			"upstream": {
-				Slug:      "upstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now,
+				Slug:        "upstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "bbb",
 			},
 		},
-		deps: map[string][]storage.NodeRef{
+		depsWithEdge: map[string][]storage.DependencyRef{
 			"downstream": {
-				{Slug: "upstream", Label: storage.NodeLabelSpec},
+				{
+					NodeRef:           storage.NodeRef{Slug: "upstream", Label: storage.NodeLabelSpec},
+					ContentHashAtLink: "", // unmigrated edge — always drifted
+				},
 			},
 		},
 	}
@@ -149,35 +156,43 @@ func TestCheckDependencyDrift_EqualTimestamps(t *testing.T) {
 	engine := drift.NewEngine(backend, nil)
 	reports, err := engine.Check(context.Background(), "downstream", "")
 	require.NoError(t, err)
-	require.Empty(t, reports, "equal timestamps should not produce drift")
+	require.Len(t, reports, 1)
+	require.Len(t, reports[0].Items, 1, "empty edge hash should always produce drift")
+	require.Equal(t, "", reports[0].Items[0].ExpectedHash)
+	require.Equal(t, "bbb", reports[0].Items[0].ActualHash)
 }
 
 func TestCheckAllSpecs(t *testing.T) {
-	now := time.Now()
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
 			"done-spec": {
-				Slug:      "done-spec",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now.Add(-time.Hour),
+				Slug:        "done-spec",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "aaa",
 			},
 			"amended-spec": {
-				Slug:      "amended-spec",
-				Stage:     storage.SpecStageAmended,
-				UpdatedAt: now.Add(-time.Hour),
+				Slug:        "amended-spec",
+				Stage:       storage.SpecStageAmended,
+				ContentHash: "aaa",
 			},
 			"upstream": {
-				Slug:      "upstream",
-				Stage:     storage.SpecStageApproved,
-				UpdatedAt: now,
+				Slug:        "upstream",
+				Stage:       storage.SpecStageApproved,
+				ContentHash: "bbb", // changed from "aaa"
 			},
 		},
-		deps: map[string][]storage.NodeRef{
+		depsWithEdge: map[string][]storage.DependencyRef{
 			"done-spec": {
-				{Slug: "upstream", Label: storage.NodeLabelSpec},
+				{
+					NodeRef:           storage.NodeRef{Slug: "upstream", Label: storage.NodeLabelSpec},
+					ContentHashAtLink: "aaa",
+				},
 			},
 			"amended-spec": {
-				{Slug: "upstream", Label: storage.NodeLabelSpec},
+				{
+					NodeRef:           storage.NodeRef{Slug: "upstream", Label: storage.NodeLabelSpec},
+					ContentHashAtLink: "aaa",
+				},
 			},
 		},
 	}
@@ -187,44 +202,46 @@ func TestCheckAllSpecs(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, reports, 2)
 
-	// Both specs should have drift items since upstream is newer.
+	// Both specs should have drift items since upstream content hash changed.
 	for _, r := range reports {
 		require.Len(t, r.Items, 1, "spec %s should have 1 drift item", r.SpecSlug)
 	}
 }
 
 func TestCheckDrift_ScopeFilter(t *testing.T) {
-	now := time.Now()
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
 			"downstream": {
-				Slug:      "downstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now.Add(-time.Hour),
+				Slug:        "downstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "aaa",
 			},
 			"upstream": {
-				Slug:      "upstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now,
+				Slug:        "upstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "bbb",
 			},
 		},
-		deps: map[string][]storage.NodeRef{
+		depsWithEdge: map[string][]storage.DependencyRef{
 			"downstream": {
-				{Slug: "upstream", Label: storage.NodeLabelSpec},
+				{
+					NodeRef:           storage.NodeRef{Slug: "upstream", Label: storage.NodeLabelSpec},
+					ContentHashAtLink: "aaa",
+				},
 			},
 		},
 	}
 
 	engine := drift.NewEngine(backend, nil)
 
-	// scope="interfaces" → no items but ErrorMessage indicates not yet implemented.
+	// scope="interfaces" -> no items but ErrorMessage indicates not yet implemented.
 	reports, err := engine.Check(context.Background(), "downstream", "interfaces")
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
 	require.Empty(t, reports[0].Items)
 	require.Equal(t, "interface drift checking not yet implemented", reports[0].ErrorMessage)
 
-	// scope="deps" → drift found.
+	// scope="deps" -> drift found.
 	reports, err = engine.Check(context.Background(), "downstream", "deps")
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
@@ -233,30 +250,32 @@ func TestCheckDrift_ScopeFilter(t *testing.T) {
 }
 
 func TestCheckDrift_ScopeVerify(t *testing.T) {
-	now := time.Now()
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
 			"downstream": {
-				Slug:      "downstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now.Add(-time.Hour),
+				Slug:        "downstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "aaa",
 			},
 			"upstream": {
-				Slug:      "upstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now,
+				Slug:        "upstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "bbb",
 			},
 		},
-		deps: map[string][]storage.NodeRef{
+		depsWithEdge: map[string][]storage.DependencyRef{
 			"downstream": {
-				{Slug: "upstream", Label: storage.NodeLabelSpec},
+				{
+					NodeRef:           storage.NodeRef{Slug: "upstream", Label: storage.NodeLabelSpec},
+					ContentHashAtLink: "aaa",
+				},
 			},
 		},
 	}
 
 	engine := drift.NewEngine(backend, nil)
 
-	// scope="verify" → no items but ErrorMessage indicates not yet implemented.
+	// scope="verify" -> no items but ErrorMessage indicates not yet implemented.
 	reports, err := engine.Check(context.Background(), "downstream", "verify")
 	require.NoError(t, err)
 	require.Len(t, reports, 1)
@@ -286,13 +305,12 @@ func TestCheck_ListSpecsError(t *testing.T) {
 }
 
 func TestCheck_ListSpecsError_AmendedStageOnly(t *testing.T) {
-	now := time.Now()
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
 			"done-spec": {
-				Slug:      "done-spec",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now,
+				Slug:        "done-spec",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "aaa",
 			},
 		},
 		listErrForStage: map[string]error{
@@ -307,17 +325,16 @@ func TestCheck_ListSpecsError_AmendedStageOnly(t *testing.T) {
 }
 
 func TestCheckSpec_GetDependenciesError(t *testing.T) {
-	now := time.Now()
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
 			"my-spec": {
-				Slug:      "my-spec",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now,
+				Slug:        "my-spec",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "aaa",
 			},
 		},
-		deps:    map[string][]storage.NodeRef{},
-		depsErr: errors.New("graph unavailable"),
+		depsWithEdge: map[string][]storage.DependencyRef{},
+		depsErr:      errors.New("graph unavailable"),
 	}
 	engine := drift.NewEngine(backend, nil)
 
@@ -330,23 +347,25 @@ func TestCheckSpec_GetDependenciesError(t *testing.T) {
 }
 
 func TestCheck_NonDoneStageBySlug(t *testing.T) {
-	now := time.Now()
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
 			"in-progress": {
-				Slug:      "in-progress",
-				Stage:     storage.SpecStageShape,
-				UpdatedAt: now.Add(-time.Hour),
+				Slug:        "in-progress",
+				Stage:       storage.SpecStageShape,
+				ContentHash: "aaa",
 			},
 			"upstream": {
-				Slug:      "upstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now,
+				Slug:        "upstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "bbb",
 			},
 		},
-		deps: map[string][]storage.NodeRef{
+		depsWithEdge: map[string][]storage.DependencyRef{
 			"in-progress": {
-				{Slug: "upstream", Label: storage.NodeLabelSpec},
+				{
+					NodeRef:           storage.NodeRef{Slug: "upstream", Label: storage.NodeLabelSpec},
+					ContentHashAtLink: "aaa",
+				},
 			},
 		},
 	}
@@ -371,19 +390,21 @@ func TestCheck_GetSpecError(t *testing.T) {
 }
 
 func TestCheckSpec_MissingDependencyCreatesInfoItem(t *testing.T) {
-	now := time.Now()
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
 			"downstream": {
-				Slug:      "downstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now,
+				Slug:        "downstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "aaa",
 			},
 			// "gone-dep" intentionally absent
 		},
-		deps: map[string][]storage.NodeRef{
+		depsWithEdge: map[string][]storage.DependencyRef{
 			"downstream": {
-				{Slug: "gone-dep", Label: storage.NodeLabelSpec},
+				{
+					NodeRef:           storage.NodeRef{Slug: "gone-dep", Label: storage.NodeLabelSpec},
+					ContentHashAtLink: "xxx",
+				},
 			},
 		},
 	}
@@ -404,24 +425,28 @@ func TestCheckSpec_MissingDependencyCreatesInfoItem(t *testing.T) {
 }
 
 func TestCheck_UpstreamGetSpecError(t *testing.T) {
-	now := time.Now()
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
 			"downstream": {
-				Slug:      "downstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now.Add(-time.Hour),
+				Slug:        "downstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "aaa",
 			},
 			// upstream exists in the map so ListSpecs won't affect it,
 			// but specErrForSlug overrides GetSpec for this slug.
 			"upstream": {
-				Slug:      "upstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now,
+				Slug:        "upstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "bbb",
 			},
 		},
-		deps: map[string][]storage.NodeRef{
-			"downstream": {{Slug: "upstream", Label: storage.NodeLabelSpec}},
+		depsWithEdge: map[string][]storage.DependencyRef{
+			"downstream": {
+				{
+					NodeRef:           storage.NodeRef{Slug: "upstream", Label: storage.NodeLabelSpec},
+					ContentHashAtLink: "aaa",
+				},
+			},
 		},
 		specErrForSlug: map[string]error{
 			"upstream": errors.New("connection reset"),
@@ -443,23 +468,25 @@ func TestCheck_UpstreamGetSpecError(t *testing.T) {
 }
 
 func TestCheckDrift_AmendedSpecEligibleBySlug(t *testing.T) {
-	now := time.Now()
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
 			"amended-spec": {
-				Slug:      "amended-spec",
-				Stage:     storage.SpecStageAmended,
-				UpdatedAt: now.Add(-time.Hour),
+				Slug:        "amended-spec",
+				Stage:       storage.SpecStageAmended,
+				ContentHash: "aaa",
 			},
 			"upstream": {
-				Slug:      "upstream",
-				Stage:     storage.SpecStageDone,
-				UpdatedAt: now,
+				Slug:        "upstream",
+				Stage:       storage.SpecStageDone,
+				ContentHash: "bbb",
 			},
 		},
-		deps: map[string][]storage.NodeRef{
+		depsWithEdge: map[string][]storage.DependencyRef{
 			"amended-spec": {
-				{Slug: "upstream", Label: storage.NodeLabelSpec},
+				{
+					NodeRef:           storage.NodeRef{Slug: "upstream", Label: storage.NodeLabelSpec},
+					ContentHashAtLink: "aaa",
+				},
 			},
 		},
 	}

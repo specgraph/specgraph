@@ -54,10 +54,12 @@ message DriftItem {
   string spec_slug = 4;
   // Slug of the upstream dependency that changed.
   string upstream_slug = 5;
-  // Version of the upstream spec at the time the downstream was last updated.
-  int32 expected_version = 6;
-  // Current version of the upstream spec.
-  int32 actual_version = 7;
+  reserved 6, 7;
+  reserved "expected_version", "actual_version";
+  // Content hash the downstream last saw on the upstream (from the DEPENDS_ON edge).
+  string expected_hash = 8;
+  // Current content hash of the upstream spec.
+  string actual_hash = 9;
 }
 
 // DriftReport contains drift detection results for a single spec.
@@ -67,18 +69,11 @@ message DriftItem {
 message DriftReport {
   string spec_slug = 1;
   repeated DriftItem items = 2;
-  bool acknowledged = 3;
-  string acknowledge_note = 4;
-  // True when drift items could not be refreshed (e.g. re-check failed after
-  // acknowledgment). Clients should treat items as potentially stale.
-  bool items_stale = 5;
+  reserved 3, 4, 5, 7;
+  reserved "acknowledged", "acknowledge_note", "items_stale", "ack_state_unavailable";
   // Non-empty when drift checking failed for this spec. Contains the error
   // message. The report may still contain partial or stale data.
   string error_message = 6;
-  // True when acknowledgment state could not be fetched (e.g. spec deleted
-  // between drift check and ack merge). Clients should treat acknowledged
-  // and acknowledge_note as unknown rather than definitively false/empty.
-  bool ack_state_unavailable = 7;
 }
 
 // --- Lint Messages ---
@@ -157,6 +152,10 @@ message DriftAcknowledgeRequest {
   string slug = 1;
   // Required. Acknowledgment note explaining why drift is accepted.
   string note = 2;
+  // Optional: specific upstream to acknowledge. Empty = error (must use upstream_slug or all).
+  string upstream_slug = 3;
+  // If true, acknowledge all upstream dependencies at once.
+  bool all = 4;
 }
 
 message DriftAcknowledgeResponse {

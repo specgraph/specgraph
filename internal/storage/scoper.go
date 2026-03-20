@@ -16,7 +16,6 @@ type ScopedBackend interface {
 	AuthoringBackend
 	ExecutionBackend
 	LifecycleBackend
-	AckStateReader
 	SyncBackend
 	ProjectBackend
 }

@@ -22,7 +22,7 @@ import (
 var _ = Describe("Docker mode serve", Ordered, func() {
 	var (
 		projectDir string
-		configPath string
+		dataDir    string
 		cmd        *exec.Cmd
 		port       int
 		done       chan error // receives cmd.Wait() result; detects early crashes
@@ -33,25 +33,29 @@ var _ = Describe("Docker mode serve", Ordered, func() {
 		projectDir, err = os.MkdirTemp("", "specgraph-docker-project-*")
 		Expect(err).NotTo(HaveOccurred())
 
+		dataDir, err = os.MkdirTemp("", "specgraph-docker-data-*")
+		Expect(err).NotTo(HaveOccurred())
+
 		// Find a free port dynamically to avoid collisions when tests run in parallel.
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
 		Expect(err).NotTo(HaveOccurred())
 		port = listener.Addr().(*net.TCPAddr).Port
 		listener.Close()
 
-		// Write a docker-mode config file.
-		configPath = filepath.Join(projectDir, "specgraph.yaml")
+		// Write a GlobalConfig-format config file.
+		// serve uses config.LoadGlobal which reads from XDG_CONFIG_HOME/specgraph/config.yaml.
+		configDir := filepath.Join(projectDir, "config", "specgraph")
+		Expect(os.MkdirAll(configDir, 0o750)).To(Succeed())
+		configPath := filepath.Join(configDir, "config.yaml")
 		configContent := fmt.Sprintf(`server:
+  listen: "127.0.0.1:%d"
   mode: docker
-  host: 127.0.0.1
-  port: %d
-storage:
+  docker: true
   backend: memgraph
   memgraph:
     bolt_uri: bolt://localhost:7687
 `, port)
-		err = os.WriteFile(configPath, []byte(configContent), 0o600)
-		Expect(err).NotTo(HaveOccurred())
+		Expect(os.WriteFile(configPath, []byte(configContent), 0o600)).To(Succeed())
 	})
 
 	AfterAll(func() {
@@ -67,12 +71,19 @@ storage:
 			}
 		}
 		os.RemoveAll(projectDir)
+		os.RemoveAll(dataDir)
 	})
 
-	It("writes the compose file into .specgraph/", func() {
+	It("writes the compose file into the data directory", func() {
 		// Start the serve process — it persists across ordered specs.
-		cmd = exec.Command(binaryPath, "--config", configPath, "serve")
+		// Set XDG env vars so serve reads our config and writes compose files
+		// to our temp dirs instead of the real user paths.
+		cmd = exec.Command(binaryPath, "serve")
 		cmd.Dir = projectDir
+		cmd.Env = append(os.Environ(),
+			"XDG_CONFIG_HOME="+filepath.Join(projectDir, "config"),
+			"XDG_DATA_HOME="+dataDir,
+		)
 		cmd.Stdout = GinkgoWriter
 		cmd.Stderr = GinkgoWriter
 		// Put the process in its own process group so AfterAll can kill child
@@ -89,7 +100,8 @@ storage:
 		}()
 
 		// Wait for the compose file to appear (docker compose up may take a while).
-		composePath := filepath.Join(projectDir, ".specgraph", "docker-compose.yaml")
+		// EnsureComposeFile writes to xdg.DataHome()/.specgraph/docker-compose.yaml.
+		composePath := filepath.Join(dataDir, "specgraph", ".specgraph", "docker-compose.yaml")
 		Eventually(func() bool {
 			_, err := os.Stat(composePath)
 			return err == nil

@@ -60,9 +60,16 @@ func (e EdgeType) IsValid() bool {
 
 // Edge represents a typed relationship between two graph nodes.
 type Edge struct {
-	FromID   string
-	ToID     string
-	EdgeType EdgeType
+	FromID            string
+	ToID              string
+	EdgeType          EdgeType
+	ContentHashAtLink string // populated for DEPENDS_ON edges only
+}
+
+// DependencyRef is a dependency with edge metadata for drift detection.
+type DependencyRef struct {
+	NodeRef
+	ContentHashAtLink string
 }
 
 // GraphBackend defines storage operations for graph edges and queries.
@@ -90,4 +97,12 @@ type GraphBackend interface {
 
 	// GetCriticalPath returns the longest dependency chain ending at a node.
 	GetCriticalPath(ctx context.Context, slug string) ([]NodeRef, error)
+
+	// GetDependenciesWithEdgeData returns DEPENDS_ON dependencies with edge properties.
+	// Used by drift detection to compare content hashes. Does NOT include BLOCKS edges.
+	GetDependenciesWithEdgeData(ctx context.Context, slug string) ([]DependencyRef, error)
+
+	// RefreshDependencyHashes updates content_hash_at_link on all outgoing
+	// DEPENDS_ON edges for a spec, setting them to each upstream's current content_hash.
+	RefreshDependencyHashes(ctx context.Context, slug string) error
 }

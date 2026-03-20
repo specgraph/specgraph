@@ -141,6 +141,7 @@ jj workspace update-stale
 - **HAS_CHANGE edge is internal-only** — `HAS_CHANGE` (Spec → ChangeLog) is not in the proto `EdgeType` enum and is not exposed via `AddEdge`/`RemoveEdge` RPCs. It's created automatically by storage layer mutations.
 - **All multi-query write paths MUST use `RunInTransaction`** (ADR-004) — Pass `txCtx` (not `ctx`) to `executeQuery`, `GetSpec`, `createChangeLog` inside the transaction. Queries automatically join via context. Validation that doesn't hit the DB stays outside to reduce lock time. See `tx.go` for the pattern.
 - **Concurrent modifications return `ErrConcurrentModification`** — Mapped to `connect.CodeAborted` (retryable). Version guards in WHERE clauses detect conflicts. First writer wins; second fails fast.
+- **`content_hash_at_link` on DEPENDS_ON edges** — DEPENDS_ON edges carry a `content_hash_at_link` property recording the upstream's ContentHash when the dependency was baselined. Set automatically by `AddEdge`, `StoreDecomposeOutput`, and refreshed on done-transition (`RecordCompletion`, `TransitionStage`, `UpdateSpec`) and drift acknowledgment. Drift detection compares this edge hash against the upstream's current ContentHash. Empty edge hash (unmigrated edges) always triggers drift — use `specgraph drift acknowledge <slug> --all` to baseline.
 - **Use 4-backtick fences for nested code blocks** — when docs embed files containing ``` fences (e.g., SKILL.md content), use ````markdown for the outer block. Bare ``` nesting creates broken/orphaned fences.
 
 ## Roadmap

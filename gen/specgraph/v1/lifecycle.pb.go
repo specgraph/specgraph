@@ -248,10 +248,10 @@ type DriftItem struct {
 	SpecSlug string `protobuf:"bytes,4,opt,name=spec_slug,json=specSlug,proto3" json:"spec_slug,omitempty"`
 	// Slug of the upstream dependency that changed.
 	UpstreamSlug string `protobuf:"bytes,5,opt,name=upstream_slug,json=upstreamSlug,proto3" json:"upstream_slug,omitempty"`
-	// Version of the upstream spec at the time the downstream was last updated.
-	ExpectedVersion int32 `protobuf:"varint,6,opt,name=expected_version,json=expectedVersion,proto3" json:"expected_version,omitempty"`
-	// Current version of the upstream spec.
-	ActualVersion int32 `protobuf:"varint,7,opt,name=actual_version,json=actualVersion,proto3" json:"actual_version,omitempty"`
+	// Content hash the downstream last saw on the upstream (from the DEPENDS_ON edge).
+	ExpectedHash string `protobuf:"bytes,8,opt,name=expected_hash,json=expectedHash,proto3" json:"expected_hash,omitempty"`
+	// Current content hash of the upstream spec.
+	ActualHash    string `protobuf:"bytes,9,opt,name=actual_hash,json=actualHash,proto3" json:"actual_hash,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -321,18 +321,18 @@ func (x *DriftItem) GetUpstreamSlug() string {
 	return ""
 }
 
-func (x *DriftItem) GetExpectedVersion() int32 {
+func (x *DriftItem) GetExpectedHash() string {
 	if x != nil {
-		return x.ExpectedVersion
+		return x.ExpectedHash
 	}
-	return 0
+	return ""
 }
 
-func (x *DriftItem) GetActualVersion() int32 {
+func (x *DriftItem) GetActualHash() string {
 	if x != nil {
-		return x.ActualVersion
+		return x.ActualHash
 	}
-	return 0
+	return ""
 }
 
 // DriftReport contains drift detection results for a single spec.
@@ -340,23 +340,14 @@ func (x *DriftItem) GetActualVersion() int32 {
 // found — it does NOT mean the spec was not checked. Ineligible specs cause
 // an RPC error (FAILED_PRECONDITION) rather than an empty report.
 type DriftReport struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	SpecSlug        string                 `protobuf:"bytes,1,opt,name=spec_slug,json=specSlug,proto3" json:"spec_slug,omitempty"`
-	Items           []*DriftItem           `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
-	Acknowledged    bool                   `protobuf:"varint,3,opt,name=acknowledged,proto3" json:"acknowledged,omitempty"`
-	AcknowledgeNote string                 `protobuf:"bytes,4,opt,name=acknowledge_note,json=acknowledgeNote,proto3" json:"acknowledge_note,omitempty"`
-	// True when drift items could not be refreshed (e.g. re-check failed after
-	// acknowledgment). Clients should treat items as potentially stale.
-	ItemsStale bool `protobuf:"varint,5,opt,name=items_stale,json=itemsStale,proto3" json:"items_stale,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	SpecSlug string                 `protobuf:"bytes,1,opt,name=spec_slug,json=specSlug,proto3" json:"spec_slug,omitempty"`
+	Items    []*DriftItem           `protobuf:"bytes,2,rep,name=items,proto3" json:"items,omitempty"`
 	// Non-empty when drift checking failed for this spec. Contains the error
 	// message. The report may still contain partial or stale data.
-	ErrorMessage string `protobuf:"bytes,6,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	// True when acknowledgment state could not be fetched (e.g. spec deleted
-	// between drift check and ack merge). Clients should treat acknowledged
-	// and acknowledge_note as unknown rather than definitively false/empty.
-	AckStateUnavailable bool `protobuf:"varint,7,opt,name=ack_state_unavailable,json=ackStateUnavailable,proto3" json:"ack_state_unavailable,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	ErrorMessage  string `protobuf:"bytes,6,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DriftReport) Reset() {
@@ -403,39 +394,11 @@ func (x *DriftReport) GetItems() []*DriftItem {
 	return nil
 }
 
-func (x *DriftReport) GetAcknowledged() bool {
-	if x != nil {
-		return x.Acknowledged
-	}
-	return false
-}
-
-func (x *DriftReport) GetAcknowledgeNote() string {
-	if x != nil {
-		return x.AcknowledgeNote
-	}
-	return ""
-}
-
-func (x *DriftReport) GetItemsStale() bool {
-	if x != nil {
-		return x.ItemsStale
-	}
-	return false
-}
-
 func (x *DriftReport) GetErrorMessage() string {
 	if x != nil {
 		return x.ErrorMessage
 	}
 	return ""
-}
-
-func (x *DriftReport) GetAckStateUnavailable() bool {
-	if x != nil {
-		return x.AckStateUnavailable
-	}
-	return false
 }
 
 type LintViolation struct {
@@ -994,7 +957,11 @@ type DriftAcknowledgeRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Slug  string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
 	// Required. Acknowledgment note explaining why drift is accepted.
-	Note          string `protobuf:"bytes,2,opt,name=note,proto3" json:"note,omitempty"`
+	Note string `protobuf:"bytes,2,opt,name=note,proto3" json:"note,omitempty"`
+	// Optional: specific upstream to acknowledge. Empty = error (must use upstream_slug or all).
+	UpstreamSlug string `protobuf:"bytes,3,opt,name=upstream_slug,json=upstreamSlug,proto3" json:"upstream_slug,omitempty"`
+	// If true, acknowledge all upstream dependencies at once.
+	All           bool `protobuf:"varint,4,opt,name=all,proto3" json:"all,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1041,6 +1008,20 @@ func (x *DriftAcknowledgeRequest) GetNote() string {
 		return x.Note
 	}
 	return ""
+}
+
+func (x *DriftAcknowledgeRequest) GetUpstreamSlug() string {
+	if x != nil {
+		return x.UpstreamSlug
+	}
+	return ""
+}
+
+func (x *DriftAcknowledgeRequest) GetAll() bool {
+	if x != nil {
+		return x.All
+	}
+	return false
 }
 
 type DriftAcknowledgeResponse struct {
@@ -1184,24 +1165,20 @@ var File_specgraph_v1_lifecycle_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_lifecycle_proto_rawDesc = "" +
 	"\n" +
-	"\x1cspecgraph/v1/lifecycle.proto\x12\fspecgraph.v1\x1a\x17specgraph/v1/spec.proto\"\xa7\x02\n" +
+	"\x1cspecgraph/v1/lifecycle.proto\x12\fspecgraph.v1\x1a\x17specgraph/v1/spec.proto\"\xc9\x02\n" +
 	"\tDriftItem\x12+\n" +
 	"\x04type\x18\x01 \x01(\x0e2\x17.specgraph.v1.DriftTypeR\x04type\x127\n" +
 	"\bseverity\x18\x02 \x01(\x0e2\x1b.specgraph.v1.DriftSeverityR\bseverity\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1b\n" +
 	"\tspec_slug\x18\x04 \x01(\tR\bspecSlug\x12#\n" +
-	"\rupstream_slug\x18\x05 \x01(\tR\fupstreamSlug\x12)\n" +
-	"\x10expected_version\x18\x06 \x01(\x05R\x0fexpectedVersion\x12%\n" +
-	"\x0eactual_version\x18\a \x01(\x05R\ractualVersion\"\xa2\x02\n" +
+	"\rupstream_slug\x18\x05 \x01(\tR\fupstreamSlug\x12#\n" +
+	"\rexpected_hash\x18\b \x01(\tR\fexpectedHash\x12\x1f\n" +
+	"\vactual_hash\x18\t \x01(\tR\n" +
+	"actualHashJ\x04\b\x06\x10\aJ\x04\b\a\x10\bR\x10expected_versionR\x0eactual_version\"\xda\x01\n" +
 	"\vDriftReport\x12\x1b\n" +
 	"\tspec_slug\x18\x01 \x01(\tR\bspecSlug\x12-\n" +
-	"\x05items\x18\x02 \x03(\v2\x17.specgraph.v1.DriftItemR\x05items\x12\"\n" +
-	"\facknowledged\x18\x03 \x01(\bR\facknowledged\x12)\n" +
-	"\x10acknowledge_note\x18\x04 \x01(\tR\x0facknowledgeNote\x12\x1f\n" +
-	"\vitems_stale\x18\x05 \x01(\bR\n" +
-	"itemsStale\x12#\n" +
-	"\rerror_message\x18\x06 \x01(\tR\ferrorMessage\x122\n" +
-	"\x15ack_state_unavailable\x18\a \x01(\bR\x13ackStateUnavailable\"\x91\x01\n" +
+	"\x05items\x18\x02 \x03(\v2\x17.specgraph.v1.DriftItemR\x05items\x12#\n" +
+	"\rerror_message\x18\x06 \x01(\tR\ferrorMessageJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\a\x10\bR\facknowledgedR\x10acknowledge_noteR\vitems_staleR\x15ack_state_unavailable\"\x91\x01\n" +
 	"\rLintViolation\x12\x12\n" +
 	"\x04rule\x18\x01 \x01(\tR\x04rule\x126\n" +
 	"\bseverity\x18\x02 \x01(\x0e2\x1a.specgraph.v1.LintSeverityR\bseverity\x12\x18\n" +
@@ -1236,10 +1213,12 @@ const file_specgraph_v1_lifecycle_proto_rawDesc = "" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12.\n" +
 	"\x05scope\x18\x02 \x01(\x0e2\x18.specgraph.v1.DriftScopeR\x05scope\"I\n" +
 	"\x12DriftCheckResponse\x123\n" +
-	"\areports\x18\x01 \x03(\v2\x19.specgraph.v1.DriftReportR\areports\"A\n" +
+	"\areports\x18\x01 \x03(\v2\x19.specgraph.v1.DriftReportR\areports\"x\n" +
 	"\x17DriftAcknowledgeRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x12\n" +
-	"\x04note\x18\x02 \x01(\tR\x04note\"M\n" +
+	"\x04note\x18\x02 \x01(\tR\x04note\x12#\n" +
+	"\rupstream_slug\x18\x03 \x01(\tR\fupstreamSlug\x12\x10\n" +
+	"\x03all\x18\x04 \x01(\bR\x03all\"M\n" +
 	"\x18DriftAcknowledgeResponse\x121\n" +
 	"\x06report\x18\x01 \x01(\v2\x19.specgraph.v1.DriftReportR\x06report\"!\n" +
 	"\vLintRequest\x12\x12\n" +
