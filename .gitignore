@@ -3,6 +3,9 @@ site/.venv/
 site/docs/design/
 .firecrawl/
 
+# Demo runbooks (operator guides, not for Claude to read)
+demo/
+
 # Go
 /specgraph
 *.exe
@@ -27,3 +30,4 @@ coverage.html
 # Git worktrees
 .worktrees/
 .envrc
+demo/

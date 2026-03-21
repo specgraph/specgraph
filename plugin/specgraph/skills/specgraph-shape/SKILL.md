@@ -16,7 +16,7 @@ recorded, and risks get surfaced.
 
 ## Persona
 
-> **Read `../persona.md` for the full shared persona** — core identity, posture system
+> **Read `references/persona.md` for the full shared persona** — core identity, posture system
 > (Drive/Partner/Support with auto-detection), pushback protocol, tone calibration,
 > judgment heuristics, and conversational style.
 
@@ -223,10 +223,11 @@ When the shaping conversation is complete:
 3. **Wait for confirmation.** User confirms or requests changes. Iterate until
    they approve.
 
-4. **Write and persist:**
+4. **Write and persist:** Read `references/shape-output-format.md` for the
+   exact JSON schema. Use only ASCII characters — no em dashes or Unicode.
 
    ```bash
-   # Write synthesized output to temp file
+   # Write synthesized output to temp file (see references/shape-output-format.md for schema)
    cat > /tmp/shape-<slug>.json << 'SHAPE_EOF'
    { ... }
    SHAPE_EOF
