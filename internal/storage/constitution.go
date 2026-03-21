@@ -18,8 +18,4 @@ type ConstitutionBackend interface {
 
 	// UpdateConstitution stores or replaces the constitution, bumping its version.
 	UpdateConstitution(ctx context.Context, constitution *Constitution) (*Constitution, error)
-
-	// CheckViolation checks a spec against constitution constraints.
-	// Returns a list of violations (empty if compliant).
-	CheckViolation(ctx context.Context, specSlug string) ([]Violation, error)
 }

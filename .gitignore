@@ -1,6 +1,7 @@
 site/build/
 site/.venv/
 site/docs/design/
+.firecrawl/
 
 # Go
 /specgraph

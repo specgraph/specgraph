@@ -613,25 +613,4 @@ func TestAuthoring(t *testing.T) {
 		require.NotEqual(t, preAmend.ContentHash, updated.ContentHash)
 		require.NotEmpty(t, updated.ContentHash)
 	})
-
-	t.Run("StoreRedTeamFindings_DoesNotUpdateContentHash", func(t *testing.T) {
-		clearDatabase(t)
-		ctx := context.Background()
-		store, err := newStore(ctx, boltURI)
-		require.NoError(t, err)
-		defer store.Close(ctx) //nolint:errcheck
-
-		spec, err := store.CreateSpec(ctx, "analytical-hash", "Test", "p1", "medium")
-		require.NoError(t, err)
-		initialHash := spec.ContentHash
-
-		err = store.StoreRedTeamFindings(ctx, "analytical-hash", []storage.RedTeamFinding{
-			{Severity: storage.SeverityCritical, Finding: "test finding"},
-		})
-		require.NoError(t, err)
-
-		updated, err := store.GetSpec(ctx, "analytical-hash")
-		require.NoError(t, err)
-		assert.Equal(t, initialHash, updated.ContentHash)
-	})
 }

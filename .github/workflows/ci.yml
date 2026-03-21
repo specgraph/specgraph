@@ -16,16 +16,25 @@ env:
   YAMLFMT_VERSION: v0.21.0
   ADDLICENSE_VERSION: v1.2.0
   RUMDL_VERSION: 0.1.42
+  RUMDL_SHA256: "749d461e5add3c88f60dfb3b275f8de04c63bed98189721dcf075968dc3d1a94"
   DPRINT_VERSION: "0.52.0"
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-amd64-4x8
     steps:
       - uses: actions/checkout@v6
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache: false
+      - name: Configure Namespace cache
+        uses: namespacelabs/nscloud-cache-action@a90bb5d4b27522ce881c6e98eebd7d7e6d1653f9 # v1.4.2
+        with:
+          cache: go
+          path: |
+            ~/go/bin
+            ~/.dprint
       - name: Install Task
         uses: arduino/setup-task@v2
         with:
@@ -35,28 +44,20 @@ jobs:
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
-      - name: Cache Go tools
-        uses: actions/cache@v5
-        with:
-          path: ~/go/bin
-          key: go-tools-${{ runner.os }}-${{ env.GOLANGCI_LINT_VERSION }}-${{ env.YAMLFMT_VERSION }}-${{ env.ADDLICENSE_VERSION }}
-      - name: Cache dprint
-        uses: actions/cache@v5
-        with:
-          path: ~/.dprint
-          key: dprint-${{ runner.os }}-${{ env.DPRINT_VERSION }}
-      - name: Cache pip
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ runner.os }}-rumdl-${{ env.RUMDL_VERSION }}
       - name: Install Go tools
         run: |
           test -f ~/go/bin/golangci-lint || go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${{ env.GOLANGCI_LINT_VERSION }}
           test -f ~/go/bin/yamlfmt || go install github.com/google/yamlfmt/cmd/yamlfmt@${{ env.YAMLFMT_VERSION }}
           test -f ~/go/bin/addlicense || go install github.com/google/addlicense@${{ env.ADDLICENSE_VERSION }}
       - name: Install rumdl
-        run: pip install rumdl==${{ env.RUMDL_VERSION }}
+        run: |
+          if ! command -v rumdl &>/dev/null; then
+            RUMDL_TAR="/tmp/rumdl.tar.gz"
+            curl -fsSL -o "$RUMDL_TAR" "https://github.com/rvben/rumdl/releases/download/v${RUMDL_VERSION}/rumdl-v${RUMDL_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+            echo "${RUMDL_SHA256}  ${RUMDL_TAR}" | sha256sum -c -
+            tar xz -C /usr/local/bin rumdl -f "$RUMDL_TAR"
+            rm -f "$RUMDL_TAR"
+          fi
       - name: Install dprint
         run: test -f ~/.dprint/bin/dprint || (curl -fsSL https://dprint.dev/install.sh | sh)
       - name: Add dprint to PATH
@@ -69,13 +70,18 @@ jobs:
         run: task test:integration
   e2e:
     needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-amd64-4x8
     steps:
       - uses: actions/checkout@v6
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache: false
+      - name: Configure Namespace cache
+        uses: namespacelabs/nscloud-cache-action@a90bb5d4b27522ce881c6e98eebd7d7e6d1653f9 # v1.4.2
+        with:
+          cache: go
       - name: Install Task
         uses: arduino/setup-task@v2
         with:
@@ -95,13 +101,18 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[e2e-agent]')
     needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-amd64-4x8
     steps:
       - uses: actions/checkout@v6
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
+          cache: false
+      - name: Configure Namespace cache
+        uses: namespacelabs/nscloud-cache-action@a90bb5d4b27522ce881c6e98eebd7d7e6d1653f9 # v1.4.2
+        with:
+          cache: go
       - name: Install Task
         uses: arduino/setup-task@v2
         with:

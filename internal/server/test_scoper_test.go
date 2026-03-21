@@ -138,11 +138,7 @@ func (stubBackend) UpdateConstitution(context.Context, *storage.Constitution) (*
 	return nil, errNotImplemented
 }
 
-func (stubBackend) CheckViolation(context.Context, string) ([]storage.Violation, error) {
-	return nil, errNotImplemented
-}
-
-// --- AuthoringBackend (StageWriter + PassWriter + AuthoringSpecLifecycle) ---
+// --- AuthoringBackend (StageWriter + AuthoringSpecLifecycle) ---
 
 func (stubBackend) TransitionStage(context.Context, string, storage.AuthoringStage, storage.AuthoringStage) error {
 	return errNotImplemented
@@ -164,27 +160,7 @@ func (stubBackend) StoreDecomposeOutput(context.Context, string, *storage.Decomp
 	return nil, errNotImplemented
 }
 
-func (stubBackend) StoreRedTeamFindings(context.Context, string, []storage.RedTeamFinding) error {
-	return errNotImplemented
-}
-
-func (stubBackend) StorePeripheralVision(context.Context, string, []storage.PeripheralVisionItem) error {
-	return errNotImplemented
-}
-
-func (stubBackend) StoreConsistencyIssues(context.Context, string, []storage.ConsistencyIssue) error {
-	return errNotImplemented
-}
-
-func (stubBackend) StoreSimplicityFindings(context.Context, string, []storage.SimplicityFinding) error {
-	return errNotImplemented
-}
-
 func (stubBackend) StoreSafetyFlags(context.Context, string, []storage.SafetyFlag) error {
-	return errNotImplemented
-}
-
-func (stubBackend) StoreConstitutionViolations(context.Context, string, []storage.ConstitutionViolation) error {
 	return errNotImplemented
 }
 
@@ -193,6 +169,16 @@ func (stubBackend) SupersedeSpec(context.Context, string, string, string) error 
 }
 
 func (stubBackend) AmendSpec(context.Context, string, string, storage.AuthoringStage) (*storage.AmendResult, error) {
+	return nil, errNotImplemented
+}
+
+// --- FindingsBackend ---
+
+func (stubBackend) StoreFindings(context.Context, string, storage.PassType, []storage.AnalyticalFinding) ([]string, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) ListFindings(context.Context, string, storage.PassType) ([]storage.AnalyticalFinding, error) {
 	return nil, errNotImplemented
 }
 

@@ -83,36 +83,6 @@ func runConstitutionShow(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-var constitutionCheckCmd = &cobra.Command{
-	Use:   "check <slug>",
-	Short: "Check a spec for constitution violations",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runConstitutionCheck,
-}
-
-func runConstitutionCheck(_ *cobra.Command, args []string) error {
-	client, err := constitutionClient()
-	if err != nil {
-		return err
-	}
-	resp, err := client.CheckViolation(context.Background(), connect.NewRequest(&specv1.CheckViolationRequest{
-		SpecSlug: args[0],
-	}))
-	if err != nil {
-		return fmt.Errorf("check violation: %w", err)
-	}
-	violations := resp.Msg.GetViolations()
-	if len(violations) == 0 {
-		fmt.Println("No violations found.")
-		return nil
-	}
-	for _, v := range violations {
-		severity := strings.TrimPrefix(v.GetSeverity().String(), "VIOLATION_SEVERITY_")
-		fmt.Printf("[%s] %s: %s\n", severity, v.GetRule(), v.GetMessage())
-	}
-	return nil
-}
-
 var constitutionEmitCmd = &cobra.Command{
 	Use:   "emit",
 	Short: "Emit constitution as tool files",
@@ -323,7 +293,6 @@ func init() {
 	constitutionImportCmd.Flags().StringVar(&importProjectSlug, "project", "", "project slug (defaults to slug from .specgraph.yaml)")
 
 	constitutionCmd.AddCommand(constitutionShowCmd)
-	constitutionCmd.AddCommand(constitutionCheckCmd)
 	constitutionCmd.AddCommand(constitutionEmitCmd)
 	constitutionCmd.AddCommand(constitutionImportCmd)
 

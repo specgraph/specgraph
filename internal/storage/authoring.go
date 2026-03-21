@@ -118,42 +118,6 @@ const (
 	SeverityNote     FindingSeverity = "note"
 )
 
-// RedTeamFinding records an adversarial challenge to spec correctness or safety.
-type RedTeamFinding struct {
-	Severity   FindingSeverity `json:"severity,omitempty"`
-	Finding    string          `json:"finding,omitempty"`
-	Resolution string          `json:"resolution,omitempty"`
-}
-
-// PeripheralDisposition indicates how an out-of-scope concern should be handled.
-type PeripheralDisposition string
-
-// Peripheral disposition values.
-const (
-	DispositionAddedToSpec        PeripheralDisposition = "added_to_spec"
-	DispositionSeparateSpec       PeripheralDisposition = "separate_spec"
-	DispositionNoteForImplementer PeripheralDisposition = "note_for_implementer"
-)
-
-// PeripheralVisionItem captures a related concern noticed during authoring.
-type PeripheralVisionItem struct {
-	Item        string                `json:"item,omitempty"`
-	Disposition PeripheralDisposition `json:"disposition,omitempty"`
-}
-
-// ConsistencyIssue records a conflict between specs in the graph.
-type ConsistencyIssue struct {
-	IssueKind     string   `json:"issue_kind,omitempty"`
-	Description   string   `json:"description,omitempty"`
-	AffectedSpecs []string `json:"affected_specs,omitempty"`
-}
-
-// SimplicityFinding highlights where spec or design can be simplified.
-type SimplicityFinding struct {
-	Area       string `json:"area,omitempty"`
-	Suggestion string `json:"suggestion,omitempty"`
-}
-
 // SafetyCategory is the type for safety flag categories.
 type SafetyCategory string
 
@@ -162,13 +126,6 @@ type SafetyFlag struct {
 	Category    SafetyCategory  `json:"category,omitempty"`
 	Severity    FindingSeverity `json:"severity,omitempty"`
 	Description string          `json:"description,omitempty"`
-}
-
-// ConstitutionViolation records a conflict with an active constitution constraint.
-type ConstitutionViolation struct {
-	Constraint string          `json:"constraint,omitempty"`
-	Violation  string          `json:"violation,omitempty"`
-	Severity   FindingSeverity `json:"severity,omitempty"`
 }
 
 // AuthoringStage is a typed stage name for use in storage method signatures.
@@ -188,16 +145,9 @@ type StageWriter interface {
 	StoreShapeOutput(ctx context.Context, slug string, output *ShapeOutput) error
 	StoreSpecifyOutput(ctx context.Context, slug string, output *SpecifyOutput) error
 	StoreDecomposeOutput(ctx context.Context, slug string, output *DecomposeOutput) ([]string, error)
-}
-
-// PassWriter stores analytical pass results.
-type PassWriter interface {
-	StoreRedTeamFindings(ctx context.Context, slug string, findings []RedTeamFinding) error
-	StorePeripheralVision(ctx context.Context, slug string, items []PeripheralVisionItem) error
-	StoreConsistencyIssues(ctx context.Context, slug string, issues []ConsistencyIssue) error
-	StoreSimplicityFindings(ctx context.Context, slug string, findings []SimplicityFinding) error
+	// StoreSafetyFlags runs inline during stage transitions (not as a separate
+	// analytical pass), so it belongs in StageWriter rather than a pass-specific interface.
 	StoreSafetyFlags(ctx context.Context, slug string, flags []SafetyFlag) error
-	StoreConstitutionViolations(ctx context.Context, slug string, violations []ConstitutionViolation) error
 }
 
 // AuthoringSpecLifecycle handles authoring-level spec amendments and supersession.
@@ -213,6 +163,5 @@ type AuthoringSpecLifecycle interface {
 // All methods accept domain types defined in this package, not protobuf types.
 type AuthoringBackend interface {
 	StageWriter
-	PassWriter
 	AuthoringSpecLifecycle
 }

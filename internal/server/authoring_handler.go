@@ -87,21 +87,15 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 		}
 		return nil, h.stageError(err)
 	}
-	resolvedPosture := authoring.ResolvePosture(authoring.ProtoToPosture(msg.Posture), nil)
-	_, _, _, _, constitutionViolations, passErr := runAnalyticalPasses(authoring.StageSpark, resolvedPosture)
-	if passErr != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("analytical passes: %w", passErr))
-	}
 	// Output is echoed from the client request, NOT read back from storage. The
 	// storage layer stores domain-typed outputs (via StoreSparkOutput) but does not
 	// provide a proto-typed round-trip getter. This means the response reflects the
 	// input exactly — any server-side enrichment will require adding a read-back
 	// path. TODO(Slice 4): add read-back when output enrichment is implemented.
 	return connect.NewResponse(&specv1.SparkResponse{
-		Output:                 msg.Output,
-		SafetyFlags:            authoring.SafetyResultsToProto(safetyFlags),
-		ConstitutionViolations: constitutionViolations,
-		NextPrompts:            authoring.PromptsToProto(authoring.StageShape),
+		Output:      msg.Output,
+		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
+		NextPrompts: authoring.PromptsToProto(authoring.StageShape),
 	}), nil
 }
 
@@ -172,17 +166,11 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	); err != nil {
 		return nil, h.stageError(err)
 	}
-	resolvedPosture := authoring.ResolvePosture(authoring.ProtoToPosture(msg.Posture), nil)
-	peripheralVision, _, _, _, _, passErr := runAnalyticalPasses(authoring.StageShape, resolvedPosture)
-	if passErr != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("analytical passes: %w", passErr))
-	}
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.ShapeResponse{
-		Output:           msg.Output,
-		PeripheralVision: peripheralVision,
-		SafetyFlags:      authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts:      authoring.PromptsToProto(authoring.StageSpecify),
+		Output:      msg.Output,
+		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
+		NextPrompts: authoring.PromptsToProto(authoring.StageSpecify),
 	}), nil
 }
 
@@ -242,18 +230,11 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	); err != nil {
 		return nil, h.stageError(err)
 	}
-	resolvedPosture := authoring.ResolvePosture(authoring.ProtoToPosture(msg.Posture), nil)
-	_, redTeam, consistencyIssues, _, _, passErr := runAnalyticalPasses(authoring.StageSpecify, resolvedPosture)
-	if passErr != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("analytical passes: %w", passErr))
-	}
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.SpecifyResponse{
-		Output:            msg.Output,
-		RedTeam:           redTeam,
-		ConsistencyIssues: consistencyIssues,
-		SafetyFlags:       authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts:       authoring.PromptsToProto(authoring.StageDecompose),
+		Output:      msg.Output,
+		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
+		NextPrompts: authoring.PromptsToProto(authoring.StageDecompose),
 	}), nil
 }
 
@@ -318,15 +299,9 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	); err != nil {
 		return nil, h.stageError(err)
 	}
-	resolvedPosture := authoring.ResolvePosture(authoring.ProtoToPosture(msg.Posture), nil)
-	_, _, _, simplicity, _, passErr := runAnalyticalPasses(authoring.StageDecompose, resolvedPosture)
-	if passErr != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("analytical passes: %w", passErr))
-	}
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.DecomposeResponse{
 		Output:         msg.Output,
-		Simplicity:     simplicity,
 		SafetyFlags:    authoring.SafetyResultsToProto(safetyFlags),
 		NextPrompts:    authoring.PromptsToProto(authoring.StageApproved),
 		ChildSpecSlugs: childSlugs,
@@ -745,52 +720,6 @@ func (h *AuthoringHandler) stageError(err error) error {
 	}
 	h.logger.Error("stageError: internal error", slog.Any("error", err))
 	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
-}
-
-// runAnalyticalPasses executes the passes returned by PassesForStage for the
-// given stage and posture and converts the results into proto finding types.
-// All returned slices contain placeholder data; real LLM-driven pass
-// execution will replace these placeholders.
-// TODO(Slice 4): wire real pass execution for each PassName case.
-func runAnalyticalPasses(stage authoring.Stage, posture authoring.Posture) ( //nolint:gocritic // 6 results needed: one per pass type + error
-	peripheralVision []*specv1.PeripheralVisionItem,
-	redTeam []*specv1.RedTeamFinding,
-	consistencyIssues []*specv1.ConsistencyIssue,
-	simplicity []*specv1.SimplicityFinding,
-	constitutionViolations []*specv1.ConstitutionViolation,
-	err error, //nolint:unparam // reserved for Slice 4 real pass execution
-) {
-	for _, name := range authoring.PassesForStage(stage, posture) {
-		switch authoring.PassName(name) {
-		case authoring.PassConstitutionCheck:
-			constitutionViolations = append(constitutionViolations, &specv1.ConstitutionViolation{
-				Constraint: "constitution_check pass placeholder",
-				Violation:  "",
-				Severity:   specv1.FindingSeverity_FINDING_SEVERITY_NOTE,
-			})
-		case authoring.PassPeripheralVision:
-			peripheralVision = append(peripheralVision, &specv1.PeripheralVisionItem{
-				Item:        "peripheral_vision pass placeholder",
-				Disposition: specv1.PeripheralDisposition_PERIPHERAL_DISPOSITION_UNSPECIFIED,
-			})
-		case authoring.PassRedTeam:
-			redTeam = append(redTeam, &specv1.RedTeamFinding{
-				Severity: specv1.FindingSeverity_FINDING_SEVERITY_NOTE,
-				Finding:  "red_team pass placeholder",
-			})
-		case authoring.PassConsistencyCheck:
-			consistencyIssues = append(consistencyIssues, &specv1.ConsistencyIssue{
-				IssueKind:   specv1.IssueKind_ISSUE_KIND_UNSPECIFIED,
-				Description: "consistency_check pass placeholder",
-			})
-		case authoring.PassSimplicityCheck:
-			simplicity = append(simplicity, &specv1.SimplicityFinding{
-				Area:       "simplicity_check pass placeholder",
-				Suggestion: "",
-			})
-		}
-	}
-	return
 }
 
 // categoryToStorageMap maps authoring.SafetyCategory to the storage string representation.

@@ -21,6 +21,12 @@ const maxFieldLen = 10000
 // can be significantly longer than individual fields like seed or scope items.
 const maxNotesLen = 100000
 
+// maxFindingsPerRequest caps the number of findings per StoreFindings call.
+const maxFindingsPerRequest = 100
+
+// maxFindingDetailLen caps the detail field on analytical findings (64 KB).
+const maxFindingDetailLen = 65536
+
 // validateRequiredField checks that a field is non-empty and within maxFieldLen.
 func validateRequiredField(name, value string) error {
 	if value == "" {

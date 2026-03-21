@@ -6,9 +6,7 @@ package memgraph
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/specgraph/specgraph/internal/storage"
@@ -134,57 +132,6 @@ func (s *Store) UpdateConstitution(ctx context.Context, constitution *storage.Co
 	}
 
 	return recordToConstitution(result.Records[0])
-}
-
-// CheckViolation checks a spec against constitution constraints.
-// It checks the spec's intent and slug against forbidden languages declared in the constitution.
-func (s *Store) CheckViolation(ctx context.Context, specSlug string) ([]storage.Violation, error) {
-	// Verify the spec exists.
-	spec, err := s.GetSpec(ctx, specSlug)
-	if err != nil {
-		if errors.Is(err, storage.ErrSpecNotFound) {
-			return nil, fmt.Errorf("memgraph: check violation spec %q: %w", specSlug, storage.ErrSpecNotFound)
-		}
-		return nil, fmt.Errorf("memgraph: check violation: %w", err)
-	}
-
-	// Verify a constitution exists.
-	constitution, err := s.GetConstitution(ctx)
-	if err != nil {
-		if errors.Is(err, storage.ErrConstitutionNotFound) {
-			return nil, fmt.Errorf("memgraph: check violation: %w", storage.ErrConstitutionNotFound)
-		}
-		return nil, fmt.Errorf("memgraph: check violation: %w", err)
-	}
-
-	var violations []storage.Violation
-
-	// Check forbidden languages: scan spec intent and slug for mentions of forbidden language names.
-	if constitution.Tech != nil && constitution.Tech.Languages != nil {
-		langs := constitution.Tech.Languages
-		specText := strings.ToLower(spec.Slug + " " + spec.Intent)
-		for _, forbidden := range langs.Forbidden {
-			if forbidden == "" {
-				continue
-			}
-			if strings.Contains(specText, strings.ToLower(forbidden)) {
-				msg := fmt.Sprintf("spec %q references forbidden language %q", spec.Slug, forbidden)
-				if langs.ForbiddenReasons != nil {
-					if reason, ok := langs.ForbiddenReasons[forbidden]; ok && reason != "" {
-						msg = fmt.Sprintf("%s: %s", msg, reason)
-					}
-				}
-				violations = append(violations, storage.Violation{
-					Rule:     "forbidden-language",
-					Severity: storage.ViolationSeverityError,
-					Message:  msg,
-					SpecSlug: spec.Slug,
-				})
-			}
-		}
-	}
-
-	return violations, nil
 }
 
 // marshalJSON marshals v to a JSON string. Nil pointers produce "null"; nil slices produce "null".

@@ -194,12 +194,6 @@ var constitutionLayerFromProtoMap = map[specv1.ConstitutionLayer]storage.Constit
 	specv1.ConstitutionLayer_CONSTITUTION_LAYER_DOMAIN:  storage.ConstitutionLayerDomain,
 }
 
-var violationSeverityToProtoMap = map[storage.ViolationSeverity]specv1.ViolationSeverity{
-	storage.ViolationSeverityError:   specv1.ViolationSeverity_VIOLATION_SEVERITY_ERROR,
-	storage.ViolationSeverityWarning: specv1.ViolationSeverity_VIOLATION_SEVERITY_WARNING,
-	storage.ViolationSeverityInfo:    specv1.ViolationSeverity_VIOLATION_SEVERITY_INFO,
-}
-
 func constitutionToProto(c *storage.Constitution) *specv1.Constitution {
 	if c == nil {
 		return nil
@@ -406,19 +400,6 @@ var outputFormatToString = map[specv1.OutputFormat]string{
 	specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD:   "claude-md",
 	specv1.OutputFormat_OUTPUT_FORMAT_CURSORRULES: "cursorrules",
 	specv1.OutputFormat_OUTPUT_FORMAT_AGENTS_MD:   "agents-md",
-}
-
-func violationsToProto(violations []storage.Violation) []*specv1.Violation {
-	result := make([]*specv1.Violation, len(violations))
-	for i, v := range violations {
-		result[i] = &specv1.Violation{
-			Rule:     v.Rule,
-			Severity: violationSeverityToProtoMap[v.Severity],
-			Message:  v.Message,
-			SpecSlug: v.SpecSlug,
-		}
-	}
-	return result
 }
 
 // --- Claim ---
