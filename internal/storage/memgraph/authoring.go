@@ -290,18 +290,6 @@ func (s *Store) StoreSafetyFlags(ctx context.Context, slug string, flags []stora
 	return s.storeJSONProperty(ctx, slug, "safety_flags", flags)
 }
 
-// StoreFindings persists analytical pass findings for a spec.
-// TODO: implement in Task 5 (findings storage implementation).
-func (s *Store) StoreFindings(_ context.Context, _ string, _ storage.PassType, _ []storage.AnalyticalFinding) error {
-	return fmt.Errorf("memgraph: StoreFindings not yet implemented")
-}
-
-// ListFindings retrieves analytical pass findings for a spec.
-// TODO: implement in Task 5 (findings storage implementation).
-func (s *Store) ListFindings(_ context.Context, _ string, _ storage.PassType) ([]storage.AnalyticalFinding, error) {
-	return nil, fmt.Errorf("memgraph: ListFindings not yet implemented")
-}
-
 // SupersedeSpec marks a spec as superseded and creates a SUPERSEDES edge to the replacement.
 // This is the authoring-level supersession; for lifecycle-level supersession see LifecycleSupersedeSpec.
 func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error {
