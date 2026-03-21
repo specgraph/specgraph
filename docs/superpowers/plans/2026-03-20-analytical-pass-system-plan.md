@@ -923,7 +923,7 @@ Stage handlers no longer produce or return findings inline."
 
 - [ ] **Step 1: Create the templates directory and prompt file**
 
-```markdown
+````markdown
 # Constitution Compliance Reviewer
 
 ## Who You Are
@@ -989,8 +989,7 @@ If the spec fully complies with the constitution, return an empty array: `[]`
 - Consider the spec's current stage. A Spark-stage spec has only a seed and signal; don't flag missing details that come in later stages.
 - When a principle has documented exceptions, check whether the spec falls within an exception before flagging a violation.
 - Be specific in your findings. Reference the exact constitution section and the exact part of the spec that conflicts.
-
-```text
+````
 
 - [ ] **Step 2: Commit**
 
