@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/specgraph/specgraph/compare/v0.1.1...v0.1.2) (2026-03-21)
+
+
+### Bug Fixes
+
+* coordinate release-please and goreleaser — draft release handoff ([#521](https://github.com/specgraph/specgraph/issues/521)) ([fc299c4](https://github.com/specgraph/specgraph/commit/fc299c49d5bc91037cdaa955e734d6a5a3c42fd4))
+
 ## [0.1.1](https://github.com/specgraph/specgraph/compare/v0.1.0...v0.1.1) (2026-03-21)
 
 
