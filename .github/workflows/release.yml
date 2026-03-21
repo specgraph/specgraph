@@ -30,9 +30,10 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ needs.release-please.outputs.sha }}
-      - name: Create git tag
+      - name: Create and push git tag
         run: |
           git tag "$TAG" "$SHA"
+          git push origin "$TAG"
         env:
           TAG: ${{ needs.release-please.outputs.tag_name }}
           SHA: ${{ needs.release-please.outputs.sha }}
