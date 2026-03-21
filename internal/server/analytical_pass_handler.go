@@ -101,6 +101,9 @@ func (h *AnalyticalPassHandler) StoreFindings(ctx context.Context, req *connect.
 	}
 	domain := make([]storage.AnalyticalFinding, len(msg.Findings))
 	for i, f := range msg.Findings {
+		if f == nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("finding[%d]: must not be null", i))
+		}
 		if f.Severity == specv1.FindingSeverity_FINDING_SEVERITY_UNSPECIFIED {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("finding[%d]: severity must not be UNSPECIFIED", i))
 		}

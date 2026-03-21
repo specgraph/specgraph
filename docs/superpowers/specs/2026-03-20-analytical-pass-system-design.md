@@ -227,7 +227,7 @@ type FindingsReader interface {
 
 ## Prompt Template Design
 
-The prompt template is a markdown document with three responsibilities:
+The prompt template is a Markdown document with three responsibilities:
 
 1. **Persona** — who the LLM is and how it should think
 2. **Task instructions** — what to evaluate and how
