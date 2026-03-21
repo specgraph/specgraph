@@ -104,11 +104,12 @@ func (h *AnalyticalPassHandler) StoreFindings(ctx context.Context, req *connect.
 		if f == nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("finding[%d]: must not be null", i))
 		}
-		if f.Severity == specv1.FindingSeverity_FINDING_SEVERITY_UNSPECIFIED {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("finding[%d]: severity must not be UNSPECIFIED", i))
+		sev, convErr := findingSeverityFromProto(f.Severity)
+		if convErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("finding[%d]: %w", i, convErr))
 		}
 		domain[i] = storage.AnalyticalFinding{
-			Severity:   findingSeverityFromProto(f.Severity),
+			Severity:   sev,
 			Summary:    f.Summary,
 			Detail:     f.Detail,
 			Constraint: f.Constraint,
@@ -188,16 +189,17 @@ func passToolManifest(slug string) []*specv1.ToolReference {
 }
 
 // findingSeverityFromProto converts a proto FindingSeverity to the domain type.
-func findingSeverityFromProto(s specv1.FindingSeverity) storage.FindingSeverity {
+// Returns an error for UNSPECIFIED or unknown numeric values.
+func findingSeverityFromProto(s specv1.FindingSeverity) (storage.FindingSeverity, error) {
 	switch s {
 	case specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL:
-		return storage.SeverityCritical
+		return storage.SeverityCritical, nil
 	case specv1.FindingSeverity_FINDING_SEVERITY_WARNING:
-		return storage.SeverityWarning
+		return storage.SeverityWarning, nil
 	case specv1.FindingSeverity_FINDING_SEVERITY_NOTE:
-		return storage.SeverityNote
+		return storage.SeverityNote, nil
 	default:
-		return storage.SeverityNote
+		return "", fmt.Errorf("invalid severity %d", int32(s))
 	}
 }
 
