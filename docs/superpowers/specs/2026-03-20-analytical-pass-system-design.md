@@ -3,7 +3,7 @@
 **Date:** 2026-03-20
 **Bead:** spgr-5pq (constitution_check — infrastructure + first template)
 **Milestone:** 0.2.0
-**Status:** Draft
+**Status:** Implemented
 
 ## Problem
 
@@ -24,7 +24,7 @@ The analytical pass infrastructure exists (pass registry, scheduling, posture-aw
 
 ## Architecture
 
-```
+```text
 +----------------+     RunAnalyticalPass(slug, pass)     +----------------+
 |                | ------------------------------------> |                |
 |   SpecGraph    |  returns: prompt + tools + message    |     Agent      |
@@ -43,6 +43,7 @@ The analytical pass infrastructure exists (pass registry, scheduling, posture-aw
 ```
 
 **SpecGraph's responsibilities:**
+
 - Provide prompt template (markdown persona with task instructions and information map)
 - Provide tool manifest (CLI commands the agent exposes to the LLM)
 - Tell the agent which passes to run (pass registry, already exists)
@@ -50,6 +51,7 @@ The analytical pass infrastructure exists (pass registry, scheduling, posture-aw
 - Serve spec/constitution content when the LLM calls tools
 
 **Agent's responsibilities:**
+
 - Call `RunAnalyticalPass` for each pass the stage requires
 - Set up LLM session: system prompt from template, tools from manifest
 - Parse structured findings from LLM response
@@ -179,7 +181,7 @@ type AnalyticalFinding struct {
 
 ## Graph Model
 
-```
+```text
 (Spec)-[:HAS_FINDING]->(Finding {pass_type, severity, summary, detail, ...})
 ```
 
@@ -236,13 +238,16 @@ Example structure for `constitution_check`:
 # Constitution Compliance Reviewer
 
 ## Who You Are
+
 You are a constitution compliance analyst for SpecGraph...
 
 ## Your Task
+
 Evaluate spec `{slug}` against the project constitution.
 Identify any violations, conflicts, or tensions.
 
 ## Available Information
+
 Use these tools to gather the information you need:
 
 | Tool | Description |
@@ -253,6 +258,7 @@ Use these tools to gather the information you need:
 | show_dep | Read a specific dependency's content |
 
 ## Evaluation Framework
+
 - Check tech stack alignment
 - Check principle adherence (consider exceptions)
 - Check constraint compliance
@@ -260,9 +266,11 @@ Use these tools to gather the information you need:
 - Verify process requirements for this stage
 
 ## Output Format
+
 Return findings as structured JSON array...
 
 ## Severity Guidelines
+
 - critical: direct violation of an explicit constraint
 - warning: tension with a principle or borderline antipattern
 - note: worth flagging but not blocking
@@ -294,6 +302,7 @@ Stage responses no longer include inline finding fields. Clean break — agents 
 ## Testing Strategy
 
 **Deterministic (unit/integration):**
+
 - `RunAnalyticalPass` assembles correct tool manifest for each pass
 - `RunAnalyticalPass` returns valid markdown prompt template
 - `StoreFindings` persists findings with `HAS_FINDING` edges
@@ -304,6 +313,7 @@ Stage responses no longer include inline finding fields. Clean break — agents 
 - Old `CheckViolation` codepath is removed (compilation verifies)
 
 **Not tested deterministically:**
+
 - LLM output quality (agent responsibility, depends on prompt template)
 - Finding severity correctness for a given constitution+spec pair
 

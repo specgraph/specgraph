@@ -39,7 +39,8 @@ func (s *Store) StoreFindings(ctx context.Context, slug string, passType storage
 		}
 
 		// Create new Finding nodes with HAS_FINDING edges.
-		for _, f := range findings {
+		for i := range findings {
+			f := &findings[i]
 			id := newID("fn")
 			nowStr := s.now()
 			createQuery := `

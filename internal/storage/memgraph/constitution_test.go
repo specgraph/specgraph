@@ -134,4 +134,3 @@ func TestConstitution_MinimalRoundTrip(t *testing.T) {
 	require.Nil(t, fetched.Tech)
 	require.Empty(t, fetched.Principles)
 }
-

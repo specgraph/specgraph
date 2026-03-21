@@ -47,8 +47,8 @@ func (h *AnalyticalPassHandler) RunAnalyticalPass(ctx context.Context, req *conn
 		return nil, err
 	}
 	msg := req.Msg
-	if err := validateSlug(msg.Slug); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	if vErr := validateSlug(msg.Slug); vErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, vErr)
 	}
 	if msg.PassName == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("pass_name is required"))
@@ -92,8 +92,8 @@ func (h *AnalyticalPassHandler) StoreFindings(ctx context.Context, req *connect.
 		return nil, err
 	}
 	msg := req.Msg
-	if err := validateSlug(msg.Slug); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	if vErr := validateSlug(msg.Slug); vErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, vErr)
 	}
 	pt := storage.PassType(msg.PassType)
 	if !storage.ValidPassType(pt) {
@@ -114,11 +114,11 @@ func (h *AnalyticalPassHandler) StoreFindings(ctx context.Context, req *connect.
 		}
 	}
 
-	if err := store.StoreFindings(ctx, msg.Slug, pt, domain); err != nil {
-		if errors.Is(err, storage.ErrSpecNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
+	if sErr := store.StoreFindings(ctx, msg.Slug, pt, domain); sErr != nil {
+		if errors.Is(sErr, storage.ErrSpecNotFound) {
+			return nil, connect.NewError(connect.CodeNotFound, sErr)
 		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, connect.NewError(connect.CodeInternal, sErr)
 	}
 
 	stored, err := store.ListFindings(ctx, msg.Slug, pt)
@@ -126,8 +126,8 @@ func (h *AnalyticalPassHandler) StoreFindings(ctx context.Context, req *connect.
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	ids := make([]string, len(stored))
-	for i, f := range stored {
-		ids[i] = f.ID
+	for i := range stored {
+		ids[i] = stored[i].ID
 	}
 
 	return connect.NewResponse(&specv1.StoreFindingsResponse{
@@ -143,8 +143,8 @@ func (h *AnalyticalPassHandler) ListFindings(ctx context.Context, req *connect.R
 		return nil, err
 	}
 	msg := req.Msg
-	if err := validateSlug(msg.Slug); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	if vErr := validateSlug(msg.Slug); vErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, vErr)
 	}
 
 	var pt storage.PassType
@@ -164,7 +164,8 @@ func (h *AnalyticalPassHandler) ListFindings(ctx context.Context, req *connect.R
 	}
 
 	proto := make([]*specv1.AnalyticalFinding, len(findings))
-	for i, f := range findings {
+	for i := range findings {
+		f := &findings[i]
 		proto[i] = &specv1.AnalyticalFinding{
 			Id:         f.ID,
 			PassType:   string(f.PassType),

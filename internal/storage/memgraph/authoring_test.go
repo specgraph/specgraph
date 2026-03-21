@@ -613,6 +613,4 @@ func TestAuthoring(t *testing.T) {
 		require.NotEqual(t, preAmend.ContentHash, updated.ContentHash)
 		require.NotEmpty(t, updated.ContentHash)
 	})
-
 }
-

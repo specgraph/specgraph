@@ -60,6 +60,7 @@
 In `proto/specgraph/v1/authoring.proto`, delete the entire "Analytical Pass Messages" section (lines 198-244): `RedTeamFinding`, `PeripheralVisionItem`, `ConsistencyIssue`, `SimplicityFinding`, `ConstitutionViolation`.
 
 Also delete the orphaned enums that were only used by removed messages:
+
 - `PeripheralDisposition` enum (line 49)
 - `IssueKind` enum (line 91)
 
@@ -326,6 +327,7 @@ type FindingsBackend interface {
 - [ ] **Step 2: Remove old finding types from `internal/storage/authoring.go`**
 
 Delete these structs and types (keep `FindingSeverity` and its constants, and `SafetyFlag`/`SafetyCategory` — those stay):
+
 - `RedTeamFinding` (lines 122-126)
 - `PeripheralDisposition` type and its constants (lines 128-136)
 - `PeripheralVisionItem` (lines 139-142)
@@ -758,6 +760,7 @@ func (s *Store) ListFindings(ctx context.Context, slug string, passType storage.
 ```
 
 **Implementation notes:**
+
 - The Cypher uses `constraint_ref` (not `constraint`) as the property name to avoid potential reserved-word conflicts. The domain type maps it to `Constraint`.
 - The implementation uses positional indexing (`rec.Values[N]`). Verify this matches the established pattern in `changelog.go` and `graph.go`. If the codebase uses `rec.Get("alias")`, use that instead.
 - The `newID("fn")` prefix for findings should be verified against existing prefixes (`"cl"` for changelog). Check there's no collision.
@@ -800,6 +803,7 @@ Delete the entire `runAnalyticalPasses` function (lines 750-794).
 - [ ] **Step 2: Remove analytical pass calls from Spark handler**
 
 In the `Spark` handler (lines 37-106), remove:
+
 - Line 91: `_, _, _, _, constitutionViolations, passErr := runAnalyticalPasses(...)` and the `passErr` check (lines 91-94)
 - Line 103: `ConstitutionViolations: constitutionViolations,` from the response
 
@@ -816,6 +820,7 @@ return connect.NewResponse(&specv1.SparkResponse{
 - [ ] **Step 3: Remove analytical pass calls from Shape handler**
 
 In the `Shape` handler (lines 108-187), remove:
+
 - Lines 175-179: `runAnalyticalPasses` call and error check
 - Line 183: `PeripheralVision: peripheralVision,` from the response
 
@@ -832,6 +837,7 @@ return connect.NewResponse(&specv1.ShapeResponse{
 - [ ] **Step 4: Remove analytical pass calls from Specify handler**
 
 In the `Specify` handler (lines 189-258), remove:
+
 - Lines 245-249: `runAnalyticalPasses` call and error check
 - Lines 253-254: `RedTeam` and `ConsistencyIssues` from the response
 
@@ -848,6 +854,7 @@ return connect.NewResponse(&specv1.SpecifyResponse{
 - [ ] **Step 5: Remove analytical pass calls from Decompose handler**
 
 In the `Decompose` handler (lines 260-334), remove:
+
 - Lines 321-324: `runAnalyticalPasses` call and error check
 - Line 329: `Simplicity: simplicity,` from the response
 
@@ -865,6 +872,7 @@ return connect.NewResponse(&specv1.DecomposeResponse{
 - [ ] **Step 6: Update authoring handler tests**
 
 In `internal/server/authoring_handler_test.go`:
+
 - Remove `TestAuthoringHandler_Spark_ConstitutionViolationsReturned` (line 991)
 - Remove `TestAuthoringHandler_Spark_ConstitutionViolations_UnspecifiedPosture` (line 1003)
 - Remove `StoreConstitutionViolations` from `fakeAuthoringBackend` (line 88) and `authoringTestBackend` (line 232)
@@ -878,6 +886,7 @@ In `internal/server/constitution_handler.go`, delete the `CheckViolation` method
 - [ ] **Step 8: Remove `constitutionCheckCmd` from CLI**
 
 In `cmd/specgraph/constitution.go`:
+
 - Delete the `constitutionCheckCmd` variable and `runConstitutionCheck` function (lines 86-114)
 - Remove the `constitutionCheckCmd` registration at line 326: `constitutionCmd.AddCommand(constitutionCheckCmd)`
 
@@ -980,7 +989,8 @@ If the spec fully complies with the constitution, return an empty array: `[]`
 - Consider the spec's current stage. A Spark-stage spec has only a seed and signal; don't flag missing details that come in later stages.
 - When a principle has documented exceptions, check whether the spec falls within an exception before flagging a violation.
 - Be specific in your findings. Reference the exact constitution section and the exact part of the spec that conflicts.
-```
+
+```text
 
 - [ ] **Step 2: Commit**
 
@@ -1372,6 +1382,7 @@ func TestStoreAndListFindings(t *testing.T) {
 ```
 
 **IMPORTANT:** The test snippets above use placeholder helpers (`newAuthoringTestBackend`, `sparkSpec`). These do NOT exist in the codebase. Before writing tests, study the existing pattern in `authoring_handler_test.go`:
+
 - `fakeAuthoringBackend` (line 23) and `authoringTestBackend` (line 220) are the real patterns
 - `testScoper` and `wrapTestProject` exist in `test_scoper_test.go`
 - The test backend must implement `FindingsBackend` (with `StoreFindings`/`ListFindings` methods) since `ScopedBackend` requires it
