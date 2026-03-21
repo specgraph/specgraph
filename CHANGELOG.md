@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/specgraph/specgraph/compare/v0.1.5...v0.1.6) (2026-03-21)
+
+
+### Features
+
+* supply chain security — cosign, SBOMs, attestations, Trivy scan ([#562](https://github.com/specgraph/specgraph/issues/562)) ([070e014](https://github.com/specgraph/specgraph/commit/070e014ccf4f4aa5cef41fbc80ddeba9b2e1c267))
+
 ## [0.1.5](https://github.com/specgraph/specgraph/compare/v0.1.4...v0.1.5) (2026-03-21)
 
 
