@@ -40,15 +40,34 @@ brews:
       bin.install "specgraph"
 dockers:
   - image_templates:
-      - "ghcr.io/specgraph/specgraph:{{ .Version }}"
-      - "ghcr.io/specgraph/specgraph:latest"
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}-amd64"
     dockerfile: Dockerfile
     use: buildx
+    goarch: amd64
     build_flag_templates:
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.source=https://github.com/specgraph/specgraph"
+  - image_templates:
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}-arm64"
+    dockerfile: Dockerfile
+    use: buildx
+    goarch: arm64
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.source=https://github.com/specgraph/specgraph"
+docker_manifests:
+  - name_template: "ghcr.io/specgraph/specgraph:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}-amd64"
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/specgraph/specgraph:latest"
+    image_templates:
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}-amd64"
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}-arm64"
 changelog:
   use: github
   groups:
