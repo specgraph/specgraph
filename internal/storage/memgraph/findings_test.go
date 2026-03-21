@@ -37,7 +37,7 @@ func TestStoreFindings_CreatesNodesAndEdges(t *testing.T) {
 		},
 	}
 
-	err = store.StoreFindings(ctx, "findings-create", storage.PassTypeConstitutionCheck, findings)
+	_, err = store.StoreFindings(ctx, "findings-create", storage.PassTypeConstitutionCheck, findings)
 	require.NoError(t, err)
 
 	got, err := store.ListFindings(ctx, "findings-create", storage.PassTypeConstitutionCheck)
@@ -88,7 +88,7 @@ func TestStoreFindings_ReplacesExistingFindings(t *testing.T) {
 		},
 	}
 
-	err = store.StoreFindings(ctx, "findings-replace", storage.PassTypeRedTeam, initial)
+	_, err = store.StoreFindings(ctx, "findings-replace", storage.PassTypeRedTeam, initial)
 	require.NoError(t, err)
 
 	// Replace with a single new finding.
@@ -100,7 +100,7 @@ func TestStoreFindings_ReplacesExistingFindings(t *testing.T) {
 		},
 	}
 
-	err = store.StoreFindings(ctx, "findings-replace", storage.PassTypeRedTeam, replacement)
+	_, err = store.StoreFindings(ctx, "findings-replace", storage.PassTypeRedTeam, replacement)
 	require.NoError(t, err)
 
 	got, err := store.ListFindings(ctx, "findings-replace", storage.PassTypeRedTeam)
@@ -123,7 +123,7 @@ func TestStoreFindings_DifferentPassTypesAreIndependent(t *testing.T) {
 			Summary:  "Constitution finding",
 		},
 	}
-	err = store.StoreFindings(ctx, "findings-types", storage.PassTypeConstitutionCheck, constFindings)
+	_, err = store.StoreFindings(ctx, "findings-types", storage.PassTypeConstitutionCheck, constFindings)
 	require.NoError(t, err)
 
 	redTeamFindings := []storage.AnalyticalFinding{
@@ -138,7 +138,7 @@ func TestStoreFindings_DifferentPassTypesAreIndependent(t *testing.T) {
 			Summary:  "Red team finding 2",
 		},
 	}
-	err = store.StoreFindings(ctx, "findings-types", storage.PassTypeRedTeam, redTeamFindings)
+	_, err = store.StoreFindings(ctx, "findings-types", storage.PassTypeRedTeam, redTeamFindings)
 	require.NoError(t, err)
 
 	// List by constitution_check — should get only 1.
@@ -173,7 +173,7 @@ func TestStoreFindings_RecordsSpecVersion(t *testing.T) {
 		},
 	}
 
-	err = store.StoreFindings(ctx, "findings-version", storage.PassTypeConstitutionCheck, findings)
+	_, err = store.StoreFindings(ctx, "findings-version", storage.PassTypeConstitutionCheck, findings)
 	require.NoError(t, err)
 
 	got, err := store.ListFindings(ctx, "findings-version", storage.PassTypeConstitutionCheck)
@@ -193,7 +193,7 @@ func TestStoreFindings_SpecNotFound(t *testing.T) {
 		},
 	}
 
-	err := store.StoreFindings(ctx, "nonexistent-spec", storage.PassTypeRedTeam, findings)
+	_, err := store.StoreFindings(ctx, "nonexistent-spec", storage.PassTypeRedTeam, findings)
 	require.ErrorIs(t, err, storage.ErrSpecNotFound)
 }
 
@@ -228,7 +228,7 @@ func TestStoreFindings_EmptySliceDeletesExisting(t *testing.T) {
 		},
 	}
 
-	err = store.StoreFindings(ctx, "findings-delete", storage.PassTypeConstitutionCheck, initial)
+	_, err = store.StoreFindings(ctx, "findings-delete", storage.PassTypeConstitutionCheck, initial)
 	require.NoError(t, err)
 
 	// Verify they exist.
@@ -237,7 +237,7 @@ func TestStoreFindings_EmptySliceDeletesExisting(t *testing.T) {
 	require.Len(t, got, 2)
 
 	// Store empty slice — should delete existing findings for this pass type.
-	err = store.StoreFindings(ctx, "findings-delete", storage.PassTypeConstitutionCheck, nil)
+	_, err = store.StoreFindings(ctx, "findings-delete", storage.PassTypeConstitutionCheck, nil)
 	require.NoError(t, err)
 
 	// Verify findings are gone.
