@@ -4,14 +4,9 @@ Skills for the SpecGraph authoring funnel and graph queries.
 
 ## Install
 
-**Inside the specgraph repo:** Auto-discovered by Claude Code.
+**Inside the specgraph repo:** The plugin symlink is committed — skills are available automatically.
 
-**For other projects:**
-
-```bash
-mkdir -p .claude/plugins
-ln -s /path/to/specgraph/plugin/specgraph .claude/plugins/specgraph
-```
+**For other projects:** Install via Claude Code plugin marketplace or repo add (coming soon).
 
 ## Skills
 
