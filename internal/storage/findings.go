@@ -45,7 +45,9 @@ type AnalyticalFinding struct {
 
 // FindingsWriter stores analytical pass findings.
 type FindingsWriter interface {
-	StoreFindings(ctx context.Context, slug string, passType PassType, findings []AnalyticalFinding) error
+	// StoreFindings replaces all findings for the given (slug, passType) pair
+	// and returns the IDs assigned to the persisted findings.
+	StoreFindings(ctx context.Context, slug string, passType PassType, findings []AnalyticalFinding) ([]string, error)
 }
 
 // FindingsReader retrieves analytical pass findings.

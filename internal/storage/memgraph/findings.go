@@ -16,12 +16,13 @@ var _ storage.FindingsBackend = (*Store)(nil)
 // StoreFindings persists analytical pass findings for a spec.
 // Existing findings for the given (slug, passType) are atomically replaced
 // via RunInTransaction: delete-then-create ensures no stale findings remain.
-func (s *Store) StoreFindings(ctx context.Context, slug string, passType storage.PassType, findings []storage.AnalyticalFinding) error {
-	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+func (s *Store) StoreFindings(ctx context.Context, slug string, passType storage.PassType, findings []storage.AnalyticalFinding) ([]string, error) {
+	var ids []string
+	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
 		// Verify spec exists and capture its version.
-		spec, err := s.GetSpec(txCtx, slug)
-		if err != nil {
-			return err
+		spec, txErr := s.GetSpec(txCtx, slug)
+		if txErr != nil {
+			return txErr
 		}
 
 		// Delete existing findings for this (slug, pass_type).
@@ -29,16 +30,17 @@ func (s *Store) StoreFindings(ctx context.Context, slug string, passType storage
 			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[:HAS_FINDING]->(f:Finding {pass_type: $pass_type})
 			DETACH DELETE f
 		`
-		_, err = s.executeQuery(txCtx, deleteQuery,
+		_, txErr = s.executeQuery(txCtx, deleteQuery,
 			mergeParams(s.projectParam(), map[string]any{
 				"slug":      slug,
 				"pass_type": string(passType),
 			}))
-		if err != nil {
-			return fmt.Errorf("memgraph: delete findings: %w", err)
+		if txErr != nil {
+			return fmt.Errorf("memgraph: delete findings: %w", txErr)
 		}
 
 		// Create new Finding nodes with HAS_FINDING edges.
+		ids = make([]string, 0, len(findings))
 		for i := range findings {
 			f := &findings[i]
 			id := newID("fn")
@@ -58,7 +60,7 @@ func (s *Store) StoreFindings(ctx context.Context, slug string, passType storage
 				})
 				RETURN f.id
 			`
-			_, err = s.executeQuery(txCtx, createQuery,
+			_, txErr = s.executeQuery(txCtx, createQuery,
 				mergeParams(s.projectParam(), map[string]any{
 					"slug":           slug,
 					"id":             id,
@@ -71,13 +73,15 @@ func (s *Store) StoreFindings(ctx context.Context, slug string, passType storage
 					"version":        int64(spec.Version),
 					"created_at":     nowStr,
 				}))
-			if err != nil {
-				return fmt.Errorf("memgraph: create finding: %w", err)
+			if txErr != nil {
+				return fmt.Errorf("memgraph: create finding: %w", txErr)
 			}
+			ids = append(ids, id)
 		}
 
 		return nil
 	})
+	return ids, err
 }
 
 // ListFindings retrieves analytical pass findings for a spec.

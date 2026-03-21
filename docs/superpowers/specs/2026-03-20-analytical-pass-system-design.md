@@ -84,6 +84,7 @@ message RunAnalyticalPassResponse {
   repeated ToolReference tools = 3;   // CLI commands/RPCs to expose as tools
   string initial_message = 4;         // user-turn message to kick off evaluation
   repeated string offered_passes = 5; // passes available but not auto-running
+  string stage = 6;                   // spec's current stage (informational)
 }
 
 message ToolReference {

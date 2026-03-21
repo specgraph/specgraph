@@ -68,7 +68,7 @@ func (h *AnalyticalPassHandler) RunAnalyticalPass(ctx context.Context, req *conn
 	templatePath := fmt.Sprintf("templates/%s.md", msg.PassName)
 	tmplBytes, err := templateFS.ReadFile(templatePath)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no template for pass %q", msg.PassName))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no template for pass %q", msg.PassName))
 	}
 
 	stage := authoring.Stage(spec.Stage)
@@ -99,12 +99,11 @@ func (h *AnalyticalPassHandler) StoreFindings(ctx context.Context, req *connect.
 	if !storage.ValidPassType(pt) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown pass_type %q", msg.PassType))
 	}
-	if len(msg.Findings) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("findings must not be empty"))
-	}
-
 	domain := make([]storage.AnalyticalFinding, len(msg.Findings))
 	for i, f := range msg.Findings {
+		if f.Severity == specv1.FindingSeverity_FINDING_SEVERITY_UNSPECIFIED {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("finding[%d]: severity must not be UNSPECIFIED", i))
+		}
 		domain[i] = storage.AnalyticalFinding{
 			Severity:   findingSeverityFromProto(f.Severity),
 			Summary:    f.Summary,
@@ -114,20 +113,12 @@ func (h *AnalyticalPassHandler) StoreFindings(ctx context.Context, req *connect.
 		}
 	}
 
-	if sErr := store.StoreFindings(ctx, msg.Slug, pt, domain); sErr != nil {
+	ids, sErr := store.StoreFindings(ctx, msg.Slug, pt, domain)
+	if sErr != nil {
 		if errors.Is(sErr, storage.ErrSpecNotFound) {
 			return nil, connect.NewError(connect.CodeNotFound, sErr)
 		}
 		return nil, connect.NewError(connect.CodeInternal, sErr)
-	}
-
-	stored, err := store.ListFindings(ctx, msg.Slug, pt)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	ids := make([]string, len(stored))
-	for i := range stored {
-		ids[i] = stored[i].ID
 	}
 
 	return connect.NewResponse(&specv1.StoreFindingsResponse{

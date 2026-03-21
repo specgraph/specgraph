@@ -66,18 +66,20 @@ func (b *analyticalPassTestBackend) GetSpec(_ context.Context, slug string) (*st
 	return spec, nil
 }
 
-func (b *analyticalPassTestBackend) StoreFindings(_ context.Context, slug string, passType storage.PassType, findings []storage.AnalyticalFinding) error {
+func (b *analyticalPassTestBackend) StoreFindings(_ context.Context, slug string, passType storage.PassType, findings []storage.AnalyticalFinding) ([]string, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if _, ok := b.specs[slug]; !ok {
-		return storage.ErrSpecNotFound
+		return nil, storage.ErrSpecNotFound
 	}
 	key := fmt.Sprintf("%s:%s", slug, passType)
 	stored := make([]storage.AnalyticalFinding, len(findings))
+	ids := make([]string, len(findings))
 	for i, f := range findings {
 		b.nextID++
+		id := fmt.Sprintf("finding-%d", b.nextID)
 		stored[i] = storage.AnalyticalFinding{
-			ID:         fmt.Sprintf("finding-%d", b.nextID),
+			ID:         id,
 			PassType:   passType,
 			Severity:   f.Severity,
 			Summary:    f.Summary,
@@ -87,9 +89,10 @@ func (b *analyticalPassTestBackend) StoreFindings(_ context.Context, slug string
 			Version:    b.specs[slug].Version,
 			CreatedAt:  time.Now(),
 		}
+		ids[i] = id
 	}
 	b.findings[key] = stored
-	return nil
+	return ids, nil
 }
 
 func (b *analyticalPassTestBackend) ListFindings(_ context.Context, slug string, passType storage.PassType) ([]storage.AnalyticalFinding, error) {
