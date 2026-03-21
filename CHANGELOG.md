@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4](https://github.com/specgraph/specgraph/compare/v0.1.3...v0.1.4) (2026-03-21)
+
+
+### Bug Fixes
+
+* let goreleaser own GitHub releases, release-please only creates tags ([56051cf](https://github.com/specgraph/specgraph/commit/56051cfe16c34f680ae457388a741578e872679e))
+* let goreleaser own GitHub releases, release-please only tags ([#528](https://github.com/specgraph/specgraph/issues/528)) ([56051cf](https://github.com/specgraph/specgraph/commit/56051cfe16c34f680ae457388a741578e872679e))
+
 ## [0.1.3](https://github.com/specgraph/specgraph/compare/v0.1.2...v0.1.3) (2026-03-21)
 
 
