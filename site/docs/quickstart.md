@@ -28,13 +28,13 @@ brew install specgraph/tap/specgraph
 
 **Binary** (any platform):
 
-Download from [GitHub releases v0.1.5](https://github.com/specgraph/specgraph/releases/tag/v0.1.0),
+Download from [GitHub releases v0.1.6](https://github.com/specgraph/specgraph/releases/tag/v0.1.0),
 verify the SHA256 checksum, and add to your PATH.
 
 **Docker:**
 
 ```bash
-docker pull ghcr.io/specgraph/specgraph:0.1.5
+docker pull ghcr.io/specgraph/specgraph:0.1.6
 ```
 
 <!-- x-release-please-end -->
