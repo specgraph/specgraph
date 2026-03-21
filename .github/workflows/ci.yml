@@ -19,7 +19,7 @@ env:
   DPRINT_VERSION: "0.52.0"
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-amd64-4x8
     steps:
       - uses: actions/checkout@v6
       - name: Set up Go
@@ -69,7 +69,7 @@ jobs:
         run: task test:integration
   e2e:
     needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-amd64-4x8
     steps:
       - uses: actions/checkout@v6
       - name: Set up Go
@@ -95,7 +95,7 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[e2e-agent]')
     needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: namespace-profile-linux-amd64-4x8
     steps:
       - uses: actions/checkout@v6
       - name: Set up Go
