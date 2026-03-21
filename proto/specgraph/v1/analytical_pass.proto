@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+syntax = "proto3";
+package specgraph.v1;
+
+option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1";
+
+import "specgraph/v1/authoring.proto";
+
+// AnalyticalPassService manages LLM-driven analytical passes for spec evaluation.
+service AnalyticalPassService {
+  rpc RunAnalyticalPass(RunAnalyticalPassRequest) returns (RunAnalyticalPassResponse);
+  rpc StoreFindings(StoreFindingsRequest) returns (StoreFindingsResponse);
+  rpc ListFindings(ListFindingsRequest) returns (ListFindingsResponse);
+}
+
+message RunAnalyticalPassRequest {
+  string slug = 1;
+  string pass_name = 2;
+}
+
+message RunAnalyticalPassResponse {
+  string pass_name = 1;
+  string prompt_template = 2;
+  repeated ToolReference tools = 3;
+  string initial_message = 4;
+  repeated string offered_passes = 5;
+  string stage = 6;
+}
+
+message ToolReference {
+  string name = 1;
+  string command = 2;
+  string description = 3;
+}
+
+message AnalyticalFinding {
+  string id = 1;
+  string pass_type = 2;
+  FindingSeverity severity = 3;
+  string summary = 4;
+  string detail = 5;
+  string constraint = 6;
+  string resolution = 7;
+  int32 version = 8;
+}
+
+message AnalyticalFindingInput {
+  FindingSeverity severity = 1;
+  string summary = 2;
+  string detail = 3;
+  string constraint = 4;
+  string resolution = 5;
+}
+
+message StoreFindingsRequest {
+  string slug = 1;
+  string pass_type = 2;
+  repeated AnalyticalFindingInput findings = 3;
+}
+
+message StoreFindingsResponse {
+  repeated string ids = 1;
+}
+
+message ListFindingsRequest {
+  string slug = 1;
+  string pass_type = 2;
+}
+
+message ListFindingsResponse {
+  repeated AnalyticalFinding findings = 1;
+}

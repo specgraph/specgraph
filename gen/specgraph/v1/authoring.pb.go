@@ -199,61 +199,6 @@ func (FindingSeverity) EnumDescriptor() ([]byte, []int) {
 	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{2}
 }
 
-type PeripheralDisposition int32
-
-const (
-	PeripheralDisposition_PERIPHERAL_DISPOSITION_UNSPECIFIED PeripheralDisposition = 0
-	// Incorporate the item into the current spec.
-	PeripheralDisposition_PERIPHERAL_DISPOSITION_ADDED_TO_SPEC PeripheralDisposition = 1
-	// Track the item as its own independent spec.
-	PeripheralDisposition_PERIPHERAL_DISPOSITION_SEPARATE_SPEC PeripheralDisposition = 2
-	// Record the item as a note for the implementer without expanding scope.
-	PeripheralDisposition_PERIPHERAL_DISPOSITION_NOTE_FOR_IMPLEMENTER PeripheralDisposition = 3
-)
-
-// Enum value maps for PeripheralDisposition.
-var (
-	PeripheralDisposition_name = map[int32]string{
-		0: "PERIPHERAL_DISPOSITION_UNSPECIFIED",
-		1: "PERIPHERAL_DISPOSITION_ADDED_TO_SPEC",
-		2: "PERIPHERAL_DISPOSITION_SEPARATE_SPEC",
-		3: "PERIPHERAL_DISPOSITION_NOTE_FOR_IMPLEMENTER",
-	}
-	PeripheralDisposition_value = map[string]int32{
-		"PERIPHERAL_DISPOSITION_UNSPECIFIED":          0,
-		"PERIPHERAL_DISPOSITION_ADDED_TO_SPEC":        1,
-		"PERIPHERAL_DISPOSITION_SEPARATE_SPEC":        2,
-		"PERIPHERAL_DISPOSITION_NOTE_FOR_IMPLEMENTER": 3,
-	}
-)
-
-func (x PeripheralDisposition) Enum() *PeripheralDisposition {
-	p := new(PeripheralDisposition)
-	*p = x
-	return p
-}
-
-func (x PeripheralDisposition) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (PeripheralDisposition) Descriptor() protoreflect.EnumDescriptor {
-	return file_specgraph_v1_authoring_proto_enumTypes[3].Descriptor()
-}
-
-func (PeripheralDisposition) Type() protoreflect.EnumType {
-	return &file_specgraph_v1_authoring_proto_enumTypes[3]
-}
-
-func (x PeripheralDisposition) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use PeripheralDisposition.Descriptor instead.
-func (PeripheralDisposition) EnumDescriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{3}
-}
-
 type DecompositionStrategy int32
 
 const (
@@ -293,11 +238,11 @@ func (x DecompositionStrategy) String() string {
 }
 
 func (DecompositionStrategy) Descriptor() protoreflect.EnumDescriptor {
-	return file_specgraph_v1_authoring_proto_enumTypes[4].Descriptor()
+	return file_specgraph_v1_authoring_proto_enumTypes[3].Descriptor()
 }
 
 func (DecompositionStrategy) Type() protoreflect.EnumType {
-	return &file_specgraph_v1_authoring_proto_enumTypes[4]
+	return &file_specgraph_v1_authoring_proto_enumTypes[3]
 }
 
 func (x DecompositionStrategy) Number() protoreflect.EnumNumber {
@@ -306,7 +251,7 @@ func (x DecompositionStrategy) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DecompositionStrategy.Descriptor instead.
 func (DecompositionStrategy) EnumDescriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{4}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{3}
 }
 
 type SafetyCategory int32
@@ -344,11 +289,11 @@ func (x SafetyCategory) String() string {
 }
 
 func (SafetyCategory) Descriptor() protoreflect.EnumDescriptor {
-	return file_specgraph_v1_authoring_proto_enumTypes[5].Descriptor()
+	return file_specgraph_v1_authoring_proto_enumTypes[4].Descriptor()
 }
 
 func (SafetyCategory) Type() protoreflect.EnumType {
-	return &file_specgraph_v1_authoring_proto_enumTypes[5]
+	return &file_specgraph_v1_authoring_proto_enumTypes[4]
 }
 
 func (x SafetyCategory) Number() protoreflect.EnumNumber {
@@ -357,7 +302,7 @@ func (x SafetyCategory) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SafetyCategory.Descriptor instead.
 func (SafetyCategory) EnumDescriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{5}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{4}
 }
 
 type ScopeSniff int32
@@ -407,11 +352,11 @@ func (x ScopeSniff) String() string {
 }
 
 func (ScopeSniff) Descriptor() protoreflect.EnumDescriptor {
-	return file_specgraph_v1_authoring_proto_enumTypes[6].Descriptor()
+	return file_specgraph_v1_authoring_proto_enumTypes[5].Descriptor()
 }
 
 func (ScopeSniff) Type() protoreflect.EnumType {
-	return &file_specgraph_v1_authoring_proto_enumTypes[6]
+	return &file_specgraph_v1_authoring_proto_enumTypes[5]
 }
 
 func (x ScopeSniff) Number() protoreflect.EnumNumber {
@@ -420,66 +365,7 @@ func (x ScopeSniff) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ScopeSniff.Descriptor instead.
 func (ScopeSniff) EnumDescriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{6}
-}
-
-type IssueKind int32
-
-const (
-	IssueKind_ISSUE_KIND_UNSPECIFIED IssueKind = 0
-	// Two specs define overlapping responsibilities or scope boundaries.
-	IssueKind_ISSUE_KIND_OVERLAPPING_SCOPE IssueKind = 1
-	// Two specs assert invariants that contradict each other.
-	IssueKind_ISSUE_KIND_CONFLICTING_INVARIANT IssueKind = 2
-	// Two specs define incompatible interfaces for the same boundary.
-	IssueKind_ISSUE_KIND_CONFLICTING_INTERFACE IssueKind = 3
-	// A spec depends on another that does not exist or has been superseded.
-	IssueKind_ISSUE_KIND_MISSING_DEPENDENCY IssueKind = 4
-)
-
-// Enum value maps for IssueKind.
-var (
-	IssueKind_name = map[int32]string{
-		0: "ISSUE_KIND_UNSPECIFIED",
-		1: "ISSUE_KIND_OVERLAPPING_SCOPE",
-		2: "ISSUE_KIND_CONFLICTING_INVARIANT",
-		3: "ISSUE_KIND_CONFLICTING_INTERFACE",
-		4: "ISSUE_KIND_MISSING_DEPENDENCY",
-	}
-	IssueKind_value = map[string]int32{
-		"ISSUE_KIND_UNSPECIFIED":           0,
-		"ISSUE_KIND_OVERLAPPING_SCOPE":     1,
-		"ISSUE_KIND_CONFLICTING_INVARIANT": 2,
-		"ISSUE_KIND_CONFLICTING_INTERFACE": 3,
-		"ISSUE_KIND_MISSING_DEPENDENCY":    4,
-	}
-)
-
-func (x IssueKind) Enum() *IssueKind {
-	p := new(IssueKind)
-	*p = x
-	return p
-}
-
-func (x IssueKind) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (IssueKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_specgraph_v1_authoring_proto_enumTypes[7].Descriptor()
-}
-
-func (IssueKind) Type() protoreflect.EnumType {
-	return &file_specgraph_v1_authoring_proto_enumTypes[7]
-}
-
-func (x IssueKind) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use IssueKind.Descriptor instead.
-func (IssueKind) EnumDescriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{7}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{5}
 }
 
 // SparkOutput captures the initial distillation of a raw idea into a structured seed.
@@ -1030,308 +916,6 @@ func (x *DecompositionSlice) GetDependsOn() []string {
 	return nil
 }
 
-// RedTeamFinding records an adversarial challenge to the spec's correctness or safety.
-type RedTeamFinding struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// How severe the challenge is and whether it blocks spec advancement.
-	Severity FindingSeverity `protobuf:"varint,1,opt,name=severity,proto3,enum=specgraph.v1.FindingSeverity" json:"severity,omitempty"`
-	// Description of the challenge or identified weakness.
-	Finding string `protobuf:"bytes,2,opt,name=finding,proto3" json:"finding,omitempty"`
-	// Proposed change to the spec that would address this finding.
-	Resolution    string `protobuf:"bytes,3,opt,name=resolution,proto3" json:"resolution,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RedTeamFinding) Reset() {
-	*x = RedTeamFinding{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RedTeamFinding) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RedTeamFinding) ProtoMessage() {}
-
-func (x *RedTeamFinding) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RedTeamFinding.ProtoReflect.Descriptor instead.
-func (*RedTeamFinding) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *RedTeamFinding) GetSeverity() FindingSeverity {
-	if x != nil {
-		return x.Severity
-	}
-	return FindingSeverity_FINDING_SEVERITY_UNSPECIFIED
-}
-
-func (x *RedTeamFinding) GetFinding() string {
-	if x != nil {
-		return x.Finding
-	}
-	return ""
-}
-
-func (x *RedTeamFinding) GetResolution() string {
-	if x != nil {
-		return x.Resolution
-	}
-	return ""
-}
-
-// PeripheralVisionItem captures a related concern noticed during authoring that is out of scope.
-type PeripheralVisionItem struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Description of the out-of-scope concern or related idea.
-	Item string `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
-	// How this concern should be handled relative to the current spec.
-	Disposition   PeripheralDisposition `protobuf:"varint,2,opt,name=disposition,proto3,enum=specgraph.v1.PeripheralDisposition" json:"disposition,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PeripheralVisionItem) Reset() {
-	*x = PeripheralVisionItem{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PeripheralVisionItem) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PeripheralVisionItem) ProtoMessage() {}
-
-func (x *PeripheralVisionItem) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PeripheralVisionItem.ProtoReflect.Descriptor instead.
-func (*PeripheralVisionItem) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *PeripheralVisionItem) GetItem() string {
-	if x != nil {
-		return x.Item
-	}
-	return ""
-}
-
-func (x *PeripheralVisionItem) GetDisposition() PeripheralDisposition {
-	if x != nil {
-		return x.Disposition
-	}
-	return PeripheralDisposition_PERIPHERAL_DISPOSITION_UNSPECIFIED
-}
-
-// ConsistencyIssue records a conflict or inconsistency between this spec and other specs in the graph.
-type ConsistencyIssue struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Category of inconsistency (e.g. overlapping scope, conflicting invariant).
-	IssueKind IssueKind `protobuf:"varint,1,opt,name=issue_kind,json=issueKind,proto3,enum=specgraph.v1.IssueKind" json:"issue_kind,omitempty"`
-	// Human-readable explanation of the inconsistency.
-	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	// Slugs of other specs that are involved in or affected by this inconsistency.
-	AffectedSpecs []string `protobuf:"bytes,3,rep,name=affected_specs,json=affectedSpecs,proto3" json:"affected_specs,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ConsistencyIssue) Reset() {
-	*x = ConsistencyIssue{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConsistencyIssue) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConsistencyIssue) ProtoMessage() {}
-
-func (x *ConsistencyIssue) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConsistencyIssue.ProtoReflect.Descriptor instead.
-func (*ConsistencyIssue) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *ConsistencyIssue) GetIssueKind() IssueKind {
-	if x != nil {
-		return x.IssueKind
-	}
-	return IssueKind_ISSUE_KIND_UNSPECIFIED
-}
-
-func (x *ConsistencyIssue) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
-func (x *ConsistencyIssue) GetAffectedSpecs() []string {
-	if x != nil {
-		return x.AffectedSpecs
-	}
-	return nil
-}
-
-// SimplicityFinding highlights an area where the spec or design can be simplified.
-type SimplicityFinding struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Part of the spec or design where complexity was identified.
-	Area string `protobuf:"bytes,1,opt,name=area,proto3" json:"area,omitempty"`
-	// Specific suggestion for reducing complexity in this area.
-	Suggestion    string `protobuf:"bytes,2,opt,name=suggestion,proto3" json:"suggestion,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SimplicityFinding) Reset() {
-	*x = SimplicityFinding{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SimplicityFinding) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SimplicityFinding) ProtoMessage() {}
-
-func (x *SimplicityFinding) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SimplicityFinding.ProtoReflect.Descriptor instead.
-func (*SimplicityFinding) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *SimplicityFinding) GetArea() string {
-	if x != nil {
-		return x.Area
-	}
-	return ""
-}
-
-func (x *SimplicityFinding) GetSuggestion() string {
-	if x != nil {
-		return x.Suggestion
-	}
-	return ""
-}
-
-// ConstitutionViolation records a conflict between the spec and an active constitution constraint.
-type ConstitutionViolation struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The constitution constraint that is being violated.
-	Constraint string `protobuf:"bytes,1,opt,name=constraint,proto3" json:"constraint,omitempty"`
-	// Explanation of how the spec violates the constraint.
-	Violation string `protobuf:"bytes,2,opt,name=violation,proto3" json:"violation,omitempty"`
-	// How severe the violation is and whether it blocks spec advancement.
-	Severity      FindingSeverity `protobuf:"varint,3,opt,name=severity,proto3,enum=specgraph.v1.FindingSeverity" json:"severity,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ConstitutionViolation) Reset() {
-	*x = ConstitutionViolation{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConstitutionViolation) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConstitutionViolation) ProtoMessage() {}
-
-func (x *ConstitutionViolation) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConstitutionViolation.ProtoReflect.Descriptor instead.
-func (*ConstitutionViolation) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *ConstitutionViolation) GetConstraint() string {
-	if x != nil {
-		return x.Constraint
-	}
-	return ""
-}
-
-func (x *ConstitutionViolation) GetViolation() string {
-	if x != nil {
-		return x.Violation
-	}
-	return ""
-}
-
-func (x *ConstitutionViolation) GetSeverity() FindingSeverity {
-	if x != nil {
-		return x.Severity
-	}
-	return FindingSeverity_FINDING_SEVERITY_UNSPECIFIED
-}
-
 // SafetyFlag marks a concern that may indicate harmful, risky, or out-of-policy content.
 type SafetyFlag struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1347,7 +931,7 @@ type SafetyFlag struct {
 
 func (x *SafetyFlag) Reset() {
 	*x = SafetyFlag{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[12]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1359,7 +943,7 @@ func (x *SafetyFlag) String() string {
 func (*SafetyFlag) ProtoMessage() {}
 
 func (x *SafetyFlag) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[12]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1372,7 +956,7 @@ func (x *SafetyFlag) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SafetyFlag.ProtoReflect.Descriptor instead.
 func (*SafetyFlag) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{12}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SafetyFlag) GetCategory() SafetyCategory {
@@ -1411,7 +995,7 @@ type PromptTemplate struct {
 
 func (x *PromptTemplate) Reset() {
 	*x = PromptTemplate{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[13]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1423,7 +1007,7 @@ func (x *PromptTemplate) String() string {
 func (*PromptTemplate) ProtoMessage() {}
 
 func (x *PromptTemplate) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[13]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1436,7 +1020,7 @@ func (x *PromptTemplate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PromptTemplate.ProtoReflect.Descriptor instead.
 func (*PromptTemplate) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{13}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *PromptTemplate) GetStage() AuthoringStage {
@@ -1478,7 +1062,7 @@ type SparkRequest struct {
 
 func (x *SparkRequest) Reset() {
 	*x = SparkRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[14]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1490,7 +1074,7 @@ func (x *SparkRequest) String() string {
 func (*SparkRequest) ProtoMessage() {}
 
 func (x *SparkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[14]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1503,7 +1087,7 @@ func (x *SparkRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SparkRequest.ProtoReflect.Descriptor instead.
 func (*SparkRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{14}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SparkRequest) GetSlug() string {
@@ -1534,8 +1118,6 @@ type SparkResponse struct {
 	Output *SparkOutput `protobuf:"bytes,1,opt,name=output,proto3" json:"output,omitempty"`
 	// Safety concerns identified during the spark pass.
 	SafetyFlags []*SafetyFlag `protobuf:"bytes,2,rep,name=safety_flags,json=safetyFlags,proto3" json:"safety_flags,omitempty"`
-	// Constitution constraints violated by the current spark output.
-	ConstitutionViolations []*ConstitutionViolation `protobuf:"bytes,3,rep,name=constitution_violations,json=constitutionViolations,proto3" json:"constitution_violations,omitempty"`
 	// Prompt templates suggested for the next authoring stage.
 	NextPrompts   []*PromptTemplate `protobuf:"bytes,4,rep,name=next_prompts,json=nextPrompts,proto3" json:"next_prompts,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1544,7 +1126,7 @@ type SparkResponse struct {
 
 func (x *SparkResponse) Reset() {
 	*x = SparkResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[15]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1556,7 +1138,7 @@ func (x *SparkResponse) String() string {
 func (*SparkResponse) ProtoMessage() {}
 
 func (x *SparkResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[15]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1569,7 +1151,7 @@ func (x *SparkResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SparkResponse.ProtoReflect.Descriptor instead.
 func (*SparkResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{15}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SparkResponse) GetOutput() *SparkOutput {
@@ -1582,13 +1164,6 @@ func (x *SparkResponse) GetOutput() *SparkOutput {
 func (x *SparkResponse) GetSafetyFlags() []*SafetyFlag {
 	if x != nil {
 		return x.SafetyFlags
-	}
-	return nil
-}
-
-func (x *SparkResponse) GetConstitutionViolations() []*ConstitutionViolation {
-	if x != nil {
-		return x.ConstitutionViolations
 	}
 	return nil
 }
@@ -1615,7 +1190,7 @@ type ShapeRequest struct {
 
 func (x *ShapeRequest) Reset() {
 	*x = ShapeRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[16]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1627,7 +1202,7 @@ func (x *ShapeRequest) String() string {
 func (*ShapeRequest) ProtoMessage() {}
 
 func (x *ShapeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[16]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1640,7 +1215,7 @@ func (x *ShapeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShapeRequest.ProtoReflect.Descriptor instead.
 func (*ShapeRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{16}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ShapeRequest) GetSlug() string {
@@ -1669,12 +1244,8 @@ type ShapeResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Validated (and potentially enriched) shape stage output.
 	Output *ShapeOutput `protobuf:"bytes,1,opt,name=output,proto3" json:"output,omitempty"`
-	// Out-of-scope concerns noticed during shaping and how they should be handled.
-	PeripheralVision []*PeripheralVisionItem `protobuf:"bytes,2,rep,name=peripheral_vision,json=peripheralVision,proto3" json:"peripheral_vision,omitempty"`
 	// Safety concerns identified during the shape pass.
 	SafetyFlags []*SafetyFlag `protobuf:"bytes,3,rep,name=safety_flags,json=safetyFlags,proto3" json:"safety_flags,omitempty"`
-	// Constitution constraints violated by the current shape output.
-	ConstitutionViolations []*ConstitutionViolation `protobuf:"bytes,4,rep,name=constitution_violations,json=constitutionViolations,proto3" json:"constitution_violations,omitempty"`
 	// Prompt templates suggested for the next authoring stage.
 	NextPrompts   []*PromptTemplate `protobuf:"bytes,5,rep,name=next_prompts,json=nextPrompts,proto3" json:"next_prompts,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1683,7 +1254,7 @@ type ShapeResponse struct {
 
 func (x *ShapeResponse) Reset() {
 	*x = ShapeResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[17]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1695,7 +1266,7 @@ func (x *ShapeResponse) String() string {
 func (*ShapeResponse) ProtoMessage() {}
 
 func (x *ShapeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[17]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1708,7 +1279,7 @@ func (x *ShapeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShapeResponse.ProtoReflect.Descriptor instead.
 func (*ShapeResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{17}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ShapeResponse) GetOutput() *ShapeOutput {
@@ -1718,23 +1289,9 @@ func (x *ShapeResponse) GetOutput() *ShapeOutput {
 	return nil
 }
 
-func (x *ShapeResponse) GetPeripheralVision() []*PeripheralVisionItem {
-	if x != nil {
-		return x.PeripheralVision
-	}
-	return nil
-}
-
 func (x *ShapeResponse) GetSafetyFlags() []*SafetyFlag {
 	if x != nil {
 		return x.SafetyFlags
-	}
-	return nil
-}
-
-func (x *ShapeResponse) GetConstitutionViolations() []*ConstitutionViolation {
-	if x != nil {
-		return x.ConstitutionViolations
 	}
 	return nil
 }
@@ -1761,7 +1318,7 @@ type SpecifyRequest struct {
 
 func (x *SpecifyRequest) Reset() {
 	*x = SpecifyRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[18]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1773,7 +1330,7 @@ func (x *SpecifyRequest) String() string {
 func (*SpecifyRequest) ProtoMessage() {}
 
 func (x *SpecifyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[18]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1786,7 +1343,7 @@ func (x *SpecifyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpecifyRequest.ProtoReflect.Descriptor instead.
 func (*SpecifyRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{18}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SpecifyRequest) GetSlug() string {
@@ -1815,14 +1372,8 @@ type SpecifyResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Validated (and potentially enriched) specify stage output.
 	Output *SpecifyOutput `protobuf:"bytes,1,opt,name=output,proto3" json:"output,omitempty"`
-	// Adversarial challenges to the spec's correctness or safety.
-	RedTeam []*RedTeamFinding `protobuf:"bytes,2,rep,name=red_team,json=redTeam,proto3" json:"red_team,omitempty"`
-	// Conflicts between this spec and other specs in the graph.
-	ConsistencyIssues []*ConsistencyIssue `protobuf:"bytes,3,rep,name=consistency_issues,json=consistencyIssues,proto3" json:"consistency_issues,omitempty"`
 	// Safety concerns identified during the specify pass.
 	SafetyFlags []*SafetyFlag `protobuf:"bytes,4,rep,name=safety_flags,json=safetyFlags,proto3" json:"safety_flags,omitempty"`
-	// Constitution constraints violated by the current specify output.
-	ConstitutionViolations []*ConstitutionViolation `protobuf:"bytes,5,rep,name=constitution_violations,json=constitutionViolations,proto3" json:"constitution_violations,omitempty"`
 	// Prompt templates suggested for the next authoring stage.
 	NextPrompts   []*PromptTemplate `protobuf:"bytes,6,rep,name=next_prompts,json=nextPrompts,proto3" json:"next_prompts,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1831,7 +1382,7 @@ type SpecifyResponse struct {
 
 func (x *SpecifyResponse) Reset() {
 	*x = SpecifyResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[19]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1843,7 +1394,7 @@ func (x *SpecifyResponse) String() string {
 func (*SpecifyResponse) ProtoMessage() {}
 
 func (x *SpecifyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[19]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1856,7 +1407,7 @@ func (x *SpecifyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpecifyResponse.ProtoReflect.Descriptor instead.
 func (*SpecifyResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{19}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SpecifyResponse) GetOutput() *SpecifyOutput {
@@ -1866,30 +1417,9 @@ func (x *SpecifyResponse) GetOutput() *SpecifyOutput {
 	return nil
 }
 
-func (x *SpecifyResponse) GetRedTeam() []*RedTeamFinding {
-	if x != nil {
-		return x.RedTeam
-	}
-	return nil
-}
-
-func (x *SpecifyResponse) GetConsistencyIssues() []*ConsistencyIssue {
-	if x != nil {
-		return x.ConsistencyIssues
-	}
-	return nil
-}
-
 func (x *SpecifyResponse) GetSafetyFlags() []*SafetyFlag {
 	if x != nil {
 		return x.SafetyFlags
-	}
-	return nil
-}
-
-func (x *SpecifyResponse) GetConstitutionViolations() []*ConstitutionViolation {
-	if x != nil {
-		return x.ConstitutionViolations
 	}
 	return nil
 }
@@ -1916,7 +1446,7 @@ type DecomposeRequest struct {
 
 func (x *DecomposeRequest) Reset() {
 	*x = DecomposeRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[20]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1928,7 +1458,7 @@ func (x *DecomposeRequest) String() string {
 func (*DecomposeRequest) ProtoMessage() {}
 
 func (x *DecomposeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[20]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1941,7 +1471,7 @@ func (x *DecomposeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecomposeRequest.ProtoReflect.Descriptor instead.
 func (*DecomposeRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{20}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *DecomposeRequest) GetSlug() string {
@@ -1970,12 +1500,8 @@ type DecomposeResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Validated (and potentially enriched) decompose stage output.
 	Output *DecomposeOutput `protobuf:"bytes,1,opt,name=output,proto3" json:"output,omitempty"`
-	// Opportunities to simplify the decomposition or individual slices.
-	Simplicity []*SimplicityFinding `protobuf:"bytes,2,rep,name=simplicity,proto3" json:"simplicity,omitempty"`
 	// Safety concerns identified during the decompose pass.
 	SafetyFlags []*SafetyFlag `protobuf:"bytes,3,rep,name=safety_flags,json=safetyFlags,proto3" json:"safety_flags,omitempty"`
-	// Constitution constraints violated by the current decompose output.
-	ConstitutionViolations []*ConstitutionViolation `protobuf:"bytes,4,rep,name=constitution_violations,json=constitutionViolations,proto3" json:"constitution_violations,omitempty"`
 	// Prompt templates suggested for the next authoring stage.
 	NextPrompts []*PromptTemplate `protobuf:"bytes,5,rep,name=next_prompts,json=nextPrompts,proto3" json:"next_prompts,omitempty"`
 	// Canonical slugs of the child specs created (or already existing) during decomposition.
@@ -1986,7 +1512,7 @@ type DecomposeResponse struct {
 
 func (x *DecomposeResponse) Reset() {
 	*x = DecomposeResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[21]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1998,7 +1524,7 @@ func (x *DecomposeResponse) String() string {
 func (*DecomposeResponse) ProtoMessage() {}
 
 func (x *DecomposeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[21]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2011,7 +1537,7 @@ func (x *DecomposeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecomposeResponse.ProtoReflect.Descriptor instead.
 func (*DecomposeResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{21}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *DecomposeResponse) GetOutput() *DecomposeOutput {
@@ -2021,23 +1547,9 @@ func (x *DecomposeResponse) GetOutput() *DecomposeOutput {
 	return nil
 }
 
-func (x *DecomposeResponse) GetSimplicity() []*SimplicityFinding {
-	if x != nil {
-		return x.Simplicity
-	}
-	return nil
-}
-
 func (x *DecomposeResponse) GetSafetyFlags() []*SafetyFlag {
 	if x != nil {
 		return x.SafetyFlags
-	}
-	return nil
-}
-
-func (x *DecomposeResponse) GetConstitutionViolations() []*ConstitutionViolation {
-	if x != nil {
-		return x.ConstitutionViolations
 	}
 	return nil
 }
@@ -2067,7 +1579,7 @@ type ApproveRequest struct {
 
 func (x *ApproveRequest) Reset() {
 	*x = ApproveRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[22]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2079,7 +1591,7 @@ func (x *ApproveRequest) String() string {
 func (*ApproveRequest) ProtoMessage() {}
 
 func (x *ApproveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[22]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2092,7 +1604,7 @@ func (x *ApproveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveRequest.ProtoReflect.Descriptor instead.
 func (*ApproveRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{22}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ApproveRequest) GetSlug() string {
@@ -2117,7 +1629,7 @@ type ApproveResponse struct {
 
 func (x *ApproveResponse) Reset() {
 	*x = ApproveResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[23]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2129,7 +1641,7 @@ func (x *ApproveResponse) String() string {
 func (*ApproveResponse) ProtoMessage() {}
 
 func (x *ApproveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[23]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2142,7 +1654,7 @@ func (x *ApproveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveResponse.ProtoReflect.Descriptor instead.
 func (*ApproveResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{23}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ApproveResponse) GetSlug() string {
@@ -2182,7 +1694,7 @@ type AmendRequest struct {
 
 func (x *AmendRequest) Reset() {
 	*x = AmendRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[24]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2194,7 +1706,7 @@ func (x *AmendRequest) String() string {
 func (*AmendRequest) ProtoMessage() {}
 
 func (x *AmendRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[24]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2207,7 +1719,7 @@ func (x *AmendRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AmendRequest.ProtoReflect.Descriptor instead.
 func (*AmendRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{24}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AmendRequest) GetSlug() string {
@@ -2246,7 +1758,7 @@ type AmendResponse struct {
 
 func (x *AmendResponse) Reset() {
 	*x = AmendResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[25]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2258,7 +1770,7 @@ func (x *AmendResponse) String() string {
 func (*AmendResponse) ProtoMessage() {}
 
 func (x *AmendResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[25]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2271,7 +1783,7 @@ func (x *AmendResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AmendResponse.ProtoReflect.Descriptor instead.
 func (*AmendResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{25}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AmendResponse) GetSlug() string {
@@ -2310,7 +1822,7 @@ type SupersedeRequest struct {
 
 func (x *SupersedeRequest) Reset() {
 	*x = SupersedeRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[26]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2322,7 +1834,7 @@ func (x *SupersedeRequest) String() string {
 func (*SupersedeRequest) ProtoMessage() {}
 
 func (x *SupersedeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[26]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2335,7 +1847,7 @@ func (x *SupersedeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupersedeRequest.ProtoReflect.Descriptor instead.
 func (*SupersedeRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{26}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *SupersedeRequest) GetSlug() string {
@@ -2372,7 +1884,7 @@ type SupersedeResponse struct {
 
 func (x *SupersedeResponse) Reset() {
 	*x = SupersedeResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[27]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2384,7 +1896,7 @@ func (x *SupersedeResponse) String() string {
 func (*SupersedeResponse) ProtoMessage() {}
 
 func (x *SupersedeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[27]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2397,7 +1909,7 @@ func (x *SupersedeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupersedeResponse.ProtoReflect.Descriptor instead.
 func (*SupersedeResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{27}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SupersedeResponse) GetSlug() string {
@@ -2426,7 +1938,7 @@ type GetPromptsRequest struct {
 
 func (x *GetPromptsRequest) Reset() {
 	*x = GetPromptsRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[28]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2438,7 +1950,7 @@ func (x *GetPromptsRequest) String() string {
 func (*GetPromptsRequest) ProtoMessage() {}
 
 func (x *GetPromptsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[28]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2451,7 +1963,7 @@ func (x *GetPromptsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPromptsRequest.ProtoReflect.Descriptor instead.
 func (*GetPromptsRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{28}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GetPromptsRequest) GetStage() AuthoringStage {
@@ -2472,7 +1984,7 @@ type GetPromptsResponse struct {
 
 func (x *GetPromptsResponse) Reset() {
 	*x = GetPromptsResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[29]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2484,7 +1996,7 @@ func (x *GetPromptsResponse) String() string {
 func (*GetPromptsResponse) ProtoMessage() {}
 
 func (x *GetPromptsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[29]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2497,7 +2009,7 @@ func (x *GetPromptsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPromptsResponse.ProtoReflect.Descriptor instead.
 func (*GetPromptsResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{29}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetPromptsResponse) GetPrompts() []*PromptTemplate {
@@ -2556,32 +2068,7 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\x06verify\x18\x03 \x03(\tR\x06verify\x12\x18\n" +
 	"\atouches\x18\x04 \x03(\tR\atouches\x12\x1d\n" +
 	"\n" +
-	"depends_on\x18\x05 \x03(\tR\tdependsOn\"\x85\x01\n" +
-	"\x0eRedTeamFinding\x129\n" +
-	"\bseverity\x18\x01 \x01(\x0e2\x1d.specgraph.v1.FindingSeverityR\bseverity\x12\x18\n" +
-	"\afinding\x18\x02 \x01(\tR\afinding\x12\x1e\n" +
-	"\n" +
-	"resolution\x18\x03 \x01(\tR\n" +
-	"resolution\"q\n" +
-	"\x14PeripheralVisionItem\x12\x12\n" +
-	"\x04item\x18\x01 \x01(\tR\x04item\x12E\n" +
-	"\vdisposition\x18\x02 \x01(\x0e2#.specgraph.v1.PeripheralDispositionR\vdisposition\"\x93\x01\n" +
-	"\x10ConsistencyIssue\x126\n" +
-	"\n" +
-	"issue_kind\x18\x01 \x01(\x0e2\x17.specgraph.v1.IssueKindR\tissueKind\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescription\x12%\n" +
-	"\x0eaffected_specs\x18\x03 \x03(\tR\raffectedSpecs\"G\n" +
-	"\x11SimplicityFinding\x12\x12\n" +
-	"\x04area\x18\x01 \x01(\tR\x04area\x12\x1e\n" +
-	"\n" +
-	"suggestion\x18\x02 \x01(\tR\n" +
-	"suggestion\"\x90\x01\n" +
-	"\x15ConstitutionViolation\x12\x1e\n" +
-	"\n" +
-	"constraint\x18\x01 \x01(\tR\n" +
-	"constraint\x12\x1c\n" +
-	"\tviolation\x18\x02 \x01(\tR\tviolation\x129\n" +
-	"\bseverity\x18\x03 \x01(\x0e2\x1d.specgraph.v1.FindingSeverityR\bseverity\"\xa3\x01\n" +
+	"depends_on\x18\x05 \x03(\tR\tdependsOn\"\xa3\x01\n" +
 	"\n" +
 	"SafetyFlag\x128\n" +
 	"\bcategory\x18\x01 \x01(\x0e2\x1c.specgraph.v1.SafetyCategoryR\bcategory\x129\n" +
@@ -2594,44 +2081,34 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\fSparkRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x121\n" +
 	"\x06output\x18\x02 \x01(\v2\x19.specgraph.v1.SparkOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\x9e\x02\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xc0\x01\n" +
 	"\rSparkResponse\x121\n" +
 	"\x06output\x18\x01 \x01(\v2\x19.specgraph.v1.SparkOutputR\x06output\x12;\n" +
-	"\fsafety_flags\x18\x02 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12\\\n" +
-	"\x17constitution_violations\x18\x03 \x03(\v2#.specgraph.v1.ConstitutionViolationR\x16constitutionViolations\x12?\n" +
+	"\fsafety_flags\x18\x02 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
 	"\fnext_prompts\x18\x04 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPrompts\"\x86\x01\n" +
 	"\fShapeRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x121\n" +
 	"\x06output\x18\x02 \x01(\v2\x19.specgraph.v1.ShapeOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xef\x02\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xc0\x01\n" +
 	"\rShapeResponse\x121\n" +
-	"\x06output\x18\x01 \x01(\v2\x19.specgraph.v1.ShapeOutputR\x06output\x12O\n" +
-	"\x11peripheral_vision\x18\x02 \x03(\v2\".specgraph.v1.PeripheralVisionItemR\x10peripheralVision\x12;\n" +
-	"\fsafety_flags\x18\x03 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12\\\n" +
-	"\x17constitution_violations\x18\x04 \x03(\v2#.specgraph.v1.ConstitutionViolationR\x16constitutionViolations\x12?\n" +
+	"\x06output\x18\x01 \x01(\v2\x19.specgraph.v1.ShapeOutputR\x06output\x12;\n" +
+	"\fsafety_flags\x18\x03 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
 	"\fnext_prompts\x18\x05 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPrompts\"\x8a\x01\n" +
 	"\x0eSpecifyRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x123\n" +
 	"\x06output\x18\x02 \x01(\v2\x1b.specgraph.v1.SpecifyOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xaa\x03\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xc4\x01\n" +
 	"\x0fSpecifyResponse\x123\n" +
-	"\x06output\x18\x01 \x01(\v2\x1b.specgraph.v1.SpecifyOutputR\x06output\x127\n" +
-	"\bred_team\x18\x02 \x03(\v2\x1c.specgraph.v1.RedTeamFindingR\aredTeam\x12M\n" +
-	"\x12consistency_issues\x18\x03 \x03(\v2\x1e.specgraph.v1.ConsistencyIssueR\x11consistencyIssues\x12;\n" +
-	"\fsafety_flags\x18\x04 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12\\\n" +
-	"\x17constitution_violations\x18\x05 \x03(\v2#.specgraph.v1.ConstitutionViolationR\x16constitutionViolations\x12?\n" +
+	"\x06output\x18\x01 \x01(\v2\x1b.specgraph.v1.SpecifyOutputR\x06output\x12;\n" +
+	"\fsafety_flags\x18\x04 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
 	"\fnext_prompts\x18\x06 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPrompts\"\x8e\x01\n" +
 	"\x10DecomposeRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x125\n" +
 	"\x06output\x18\x02 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\x91\x03\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xf2\x01\n" +
 	"\x11DecomposeResponse\x125\n" +
-	"\x06output\x18\x01 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x06output\x12?\n" +
-	"\n" +
-	"simplicity\x18\x02 \x03(\v2\x1f.specgraph.v1.SimplicityFindingR\n" +
-	"simplicity\x12;\n" +
-	"\fsafety_flags\x18\x03 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12\\\n" +
-	"\x17constitution_violations\x18\x04 \x03(\v2#.specgraph.v1.ConstitutionViolationR\x16constitutionViolations\x12?\n" +
+	"\x06output\x18\x01 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x06output\x12;\n" +
+	"\fsafety_flags\x18\x03 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
 	"\fnext_prompts\x18\x05 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPrompts\x12(\n" +
 	"\x10child_spec_slugs\x18\x06 \x03(\tR\x0echildSpecSlugs\"$\n" +
 	"\x0eApproveRequest\x12\x12\n" +
@@ -2676,12 +2153,7 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\x1cFINDING_SEVERITY_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19FINDING_SEVERITY_CRITICAL\x10\x01\x12\x1c\n" +
 	"\x18FINDING_SEVERITY_WARNING\x10\x02\x12\x19\n" +
-	"\x15FINDING_SEVERITY_NOTE\x10\x03*\xc4\x01\n" +
-	"\x15PeripheralDisposition\x12&\n" +
-	"\"PERIPHERAL_DISPOSITION_UNSPECIFIED\x10\x00\x12(\n" +
-	"$PERIPHERAL_DISPOSITION_ADDED_TO_SPEC\x10\x01\x12(\n" +
-	"$PERIPHERAL_DISPOSITION_SEPARATE_SPEC\x10\x02\x12/\n" +
-	"+PERIPHERAL_DISPOSITION_NOTE_FOR_IMPLEMENTER\x10\x03*\xb9\x01\n" +
+	"\x15FINDING_SEVERITY_NOTE\x10\x03*\xb9\x01\n" +
 	"\x15DecompositionStrategy\x12&\n" +
 	"\"DECOMPOSITION_STRATEGY_UNSPECIFIED\x10\x00\x12)\n" +
 	"%DECOMPOSITION_STRATEGY_VERTICAL_SLICE\x10\x01\x12%\n" +
@@ -2698,13 +2170,7 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\x11SCOPE_SNIFF_SMALL\x10\x02\x12\x16\n" +
 	"\x12SCOPE_SNIFF_MEDIUM\x10\x03\x12\x15\n" +
 	"\x11SCOPE_SNIFF_LARGE\x10\x04\x12\x14\n" +
-	"\x10SCOPE_SNIFF_EPIC\x10\x05*\xb8\x01\n" +
-	"\tIssueKind\x12\x1a\n" +
-	"\x16ISSUE_KIND_UNSPECIFIED\x10\x00\x12 \n" +
-	"\x1cISSUE_KIND_OVERLAPPING_SCOPE\x10\x01\x12$\n" +
-	" ISSUE_KIND_CONFLICTING_INVARIANT\x10\x02\x12$\n" +
-	" ISSUE_KIND_CONFLICTING_INTERFACE\x10\x03\x12!\n" +
-	"\x1dISSUE_KIND_MISSING_DEPENDENCY\x10\x042\xd5\x04\n" +
+	"\x10SCOPE_SNIFF_EPIC\x10\x052\xd5\x04\n" +
 	"\x10AuthoringService\x12@\n" +
 	"\x05Spark\x12\x1a.specgraph.v1.SparkRequest\x1a\x1b.specgraph.v1.SparkResponse\x12@\n" +
 	"\x05Shape\x12\x1a.specgraph.v1.ShapeRequest\x1a\x1b.specgraph.v1.ShapeResponse\x12F\n" +
@@ -2728,117 +2194,98 @@ func file_specgraph_v1_authoring_proto_rawDescGZIP() []byte {
 	return file_specgraph_v1_authoring_proto_rawDescData
 }
 
-var file_specgraph_v1_authoring_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_specgraph_v1_authoring_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_specgraph_v1_authoring_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_specgraph_v1_authoring_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_specgraph_v1_authoring_proto_goTypes = []any{
 	(AuthoringStage)(0),           // 0: specgraph.v1.AuthoringStage
 	(Posture)(0),                  // 1: specgraph.v1.Posture
 	(FindingSeverity)(0),          // 2: specgraph.v1.FindingSeverity
-	(PeripheralDisposition)(0),    // 3: specgraph.v1.PeripheralDisposition
-	(DecompositionStrategy)(0),    // 4: specgraph.v1.DecompositionStrategy
-	(SafetyCategory)(0),           // 5: specgraph.v1.SafetyCategory
-	(ScopeSniff)(0),               // 6: specgraph.v1.ScopeSniff
-	(IssueKind)(0),                // 7: specgraph.v1.IssueKind
-	(*SparkOutput)(nil),           // 8: specgraph.v1.SparkOutput
-	(*DecisionInput)(nil),         // 9: specgraph.v1.DecisionInput
-	(*ShapeOutput)(nil),           // 10: specgraph.v1.ShapeOutput
-	(*Approach)(nil),              // 11: specgraph.v1.Approach
-	(*SpecifyOutput)(nil),         // 12: specgraph.v1.SpecifyOutput
-	(*DecomposeOutput)(nil),       // 13: specgraph.v1.DecomposeOutput
-	(*DecompositionSlice)(nil),    // 14: specgraph.v1.DecompositionSlice
-	(*RedTeamFinding)(nil),        // 15: specgraph.v1.RedTeamFinding
-	(*PeripheralVisionItem)(nil),  // 16: specgraph.v1.PeripheralVisionItem
-	(*ConsistencyIssue)(nil),      // 17: specgraph.v1.ConsistencyIssue
-	(*SimplicityFinding)(nil),     // 18: specgraph.v1.SimplicityFinding
-	(*ConstitutionViolation)(nil), // 19: specgraph.v1.ConstitutionViolation
-	(*SafetyFlag)(nil),            // 20: specgraph.v1.SafetyFlag
-	(*PromptTemplate)(nil),        // 21: specgraph.v1.PromptTemplate
-	(*SparkRequest)(nil),          // 22: specgraph.v1.SparkRequest
-	(*SparkResponse)(nil),         // 23: specgraph.v1.SparkResponse
-	(*ShapeRequest)(nil),          // 24: specgraph.v1.ShapeRequest
-	(*ShapeResponse)(nil),         // 25: specgraph.v1.ShapeResponse
-	(*SpecifyRequest)(nil),        // 26: specgraph.v1.SpecifyRequest
-	(*SpecifyResponse)(nil),       // 27: specgraph.v1.SpecifyResponse
-	(*DecomposeRequest)(nil),      // 28: specgraph.v1.DecomposeRequest
-	(*DecomposeResponse)(nil),     // 29: specgraph.v1.DecomposeResponse
-	(*ApproveRequest)(nil),        // 30: specgraph.v1.ApproveRequest
-	(*ApproveResponse)(nil),       // 31: specgraph.v1.ApproveResponse
-	(*AmendRequest)(nil),          // 32: specgraph.v1.AmendRequest
-	(*AmendResponse)(nil),         // 33: specgraph.v1.AmendResponse
-	(*SupersedeRequest)(nil),      // 34: specgraph.v1.SupersedeRequest
-	(*SupersedeResponse)(nil),     // 35: specgraph.v1.SupersedeResponse
-	(*GetPromptsRequest)(nil),     // 36: specgraph.v1.GetPromptsRequest
-	(*GetPromptsResponse)(nil),    // 37: specgraph.v1.GetPromptsResponse
-	(*timestamppb.Timestamp)(nil), // 38: google.protobuf.Timestamp
+	(DecompositionStrategy)(0),    // 3: specgraph.v1.DecompositionStrategy
+	(SafetyCategory)(0),           // 4: specgraph.v1.SafetyCategory
+	(ScopeSniff)(0),               // 5: specgraph.v1.ScopeSniff
+	(*SparkOutput)(nil),           // 6: specgraph.v1.SparkOutput
+	(*DecisionInput)(nil),         // 7: specgraph.v1.DecisionInput
+	(*ShapeOutput)(nil),           // 8: specgraph.v1.ShapeOutput
+	(*Approach)(nil),              // 9: specgraph.v1.Approach
+	(*SpecifyOutput)(nil),         // 10: specgraph.v1.SpecifyOutput
+	(*DecomposeOutput)(nil),       // 11: specgraph.v1.DecomposeOutput
+	(*DecompositionSlice)(nil),    // 12: specgraph.v1.DecompositionSlice
+	(*SafetyFlag)(nil),            // 13: specgraph.v1.SafetyFlag
+	(*PromptTemplate)(nil),        // 14: specgraph.v1.PromptTemplate
+	(*SparkRequest)(nil),          // 15: specgraph.v1.SparkRequest
+	(*SparkResponse)(nil),         // 16: specgraph.v1.SparkResponse
+	(*ShapeRequest)(nil),          // 17: specgraph.v1.ShapeRequest
+	(*ShapeResponse)(nil),         // 18: specgraph.v1.ShapeResponse
+	(*SpecifyRequest)(nil),        // 19: specgraph.v1.SpecifyRequest
+	(*SpecifyResponse)(nil),       // 20: specgraph.v1.SpecifyResponse
+	(*DecomposeRequest)(nil),      // 21: specgraph.v1.DecomposeRequest
+	(*DecomposeResponse)(nil),     // 22: specgraph.v1.DecomposeResponse
+	(*ApproveRequest)(nil),        // 23: specgraph.v1.ApproveRequest
+	(*ApproveResponse)(nil),       // 24: specgraph.v1.ApproveResponse
+	(*AmendRequest)(nil),          // 25: specgraph.v1.AmendRequest
+	(*AmendResponse)(nil),         // 26: specgraph.v1.AmendResponse
+	(*SupersedeRequest)(nil),      // 27: specgraph.v1.SupersedeRequest
+	(*SupersedeResponse)(nil),     // 28: specgraph.v1.SupersedeResponse
+	(*GetPromptsRequest)(nil),     // 29: specgraph.v1.GetPromptsRequest
+	(*GetPromptsResponse)(nil),    // 30: specgraph.v1.GetPromptsResponse
+	(*timestamppb.Timestamp)(nil), // 31: google.protobuf.Timestamp
 }
 var file_specgraph_v1_authoring_proto_depIdxs = []int32{
-	6,  // 0: specgraph.v1.SparkOutput.scope_sniff:type_name -> specgraph.v1.ScopeSniff
-	11, // 1: specgraph.v1.ShapeOutput.approaches:type_name -> specgraph.v1.Approach
-	9,  // 2: specgraph.v1.ShapeOutput.decisions:type_name -> specgraph.v1.DecisionInput
-	4,  // 3: specgraph.v1.DecomposeOutput.strategy:type_name -> specgraph.v1.DecompositionStrategy
-	14, // 4: specgraph.v1.DecomposeOutput.slices:type_name -> specgraph.v1.DecompositionSlice
-	2,  // 5: specgraph.v1.RedTeamFinding.severity:type_name -> specgraph.v1.FindingSeverity
-	3,  // 6: specgraph.v1.PeripheralVisionItem.disposition:type_name -> specgraph.v1.PeripheralDisposition
-	7,  // 7: specgraph.v1.ConsistencyIssue.issue_kind:type_name -> specgraph.v1.IssueKind
-	2,  // 8: specgraph.v1.ConstitutionViolation.severity:type_name -> specgraph.v1.FindingSeverity
-	5,  // 9: specgraph.v1.SafetyFlag.category:type_name -> specgraph.v1.SafetyCategory
-	2,  // 10: specgraph.v1.SafetyFlag.severity:type_name -> specgraph.v1.FindingSeverity
-	0,  // 11: specgraph.v1.PromptTemplate.stage:type_name -> specgraph.v1.AuthoringStage
-	8,  // 12: specgraph.v1.SparkRequest.output:type_name -> specgraph.v1.SparkOutput
-	1,  // 13: specgraph.v1.SparkRequest.posture:type_name -> specgraph.v1.Posture
-	8,  // 14: specgraph.v1.SparkResponse.output:type_name -> specgraph.v1.SparkOutput
-	20, // 15: specgraph.v1.SparkResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
-	19, // 16: specgraph.v1.SparkResponse.constitution_violations:type_name -> specgraph.v1.ConstitutionViolation
-	21, // 17: specgraph.v1.SparkResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
-	10, // 18: specgraph.v1.ShapeRequest.output:type_name -> specgraph.v1.ShapeOutput
-	1,  // 19: specgraph.v1.ShapeRequest.posture:type_name -> specgraph.v1.Posture
-	10, // 20: specgraph.v1.ShapeResponse.output:type_name -> specgraph.v1.ShapeOutput
-	16, // 21: specgraph.v1.ShapeResponse.peripheral_vision:type_name -> specgraph.v1.PeripheralVisionItem
-	20, // 22: specgraph.v1.ShapeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
-	19, // 23: specgraph.v1.ShapeResponse.constitution_violations:type_name -> specgraph.v1.ConstitutionViolation
-	21, // 24: specgraph.v1.ShapeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
-	12, // 25: specgraph.v1.SpecifyRequest.output:type_name -> specgraph.v1.SpecifyOutput
-	1,  // 26: specgraph.v1.SpecifyRequest.posture:type_name -> specgraph.v1.Posture
-	12, // 27: specgraph.v1.SpecifyResponse.output:type_name -> specgraph.v1.SpecifyOutput
-	15, // 28: specgraph.v1.SpecifyResponse.red_team:type_name -> specgraph.v1.RedTeamFinding
-	17, // 29: specgraph.v1.SpecifyResponse.consistency_issues:type_name -> specgraph.v1.ConsistencyIssue
-	20, // 30: specgraph.v1.SpecifyResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
-	19, // 31: specgraph.v1.SpecifyResponse.constitution_violations:type_name -> specgraph.v1.ConstitutionViolation
-	21, // 32: specgraph.v1.SpecifyResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
-	13, // 33: specgraph.v1.DecomposeRequest.output:type_name -> specgraph.v1.DecomposeOutput
-	1,  // 34: specgraph.v1.DecomposeRequest.posture:type_name -> specgraph.v1.Posture
-	13, // 35: specgraph.v1.DecomposeResponse.output:type_name -> specgraph.v1.DecomposeOutput
-	18, // 36: specgraph.v1.DecomposeResponse.simplicity:type_name -> specgraph.v1.SimplicityFinding
-	20, // 37: specgraph.v1.DecomposeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
-	19, // 38: specgraph.v1.DecomposeResponse.constitution_violations:type_name -> specgraph.v1.ConstitutionViolation
-	21, // 39: specgraph.v1.DecomposeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
-	0,  // 40: specgraph.v1.ApproveResponse.stage:type_name -> specgraph.v1.AuthoringStage
-	38, // 41: specgraph.v1.ApproveResponse.approved_at:type_name -> google.protobuf.Timestamp
-	0,  // 42: specgraph.v1.AmendRequest.target_stage:type_name -> specgraph.v1.AuthoringStage
-	0,  // 43: specgraph.v1.AmendResponse.stage:type_name -> specgraph.v1.AuthoringStage
-	0,  // 44: specgraph.v1.GetPromptsRequest.stage:type_name -> specgraph.v1.AuthoringStage
-	21, // 45: specgraph.v1.GetPromptsResponse.prompts:type_name -> specgraph.v1.PromptTemplate
-	22, // 46: specgraph.v1.AuthoringService.Spark:input_type -> specgraph.v1.SparkRequest
-	24, // 47: specgraph.v1.AuthoringService.Shape:input_type -> specgraph.v1.ShapeRequest
-	26, // 48: specgraph.v1.AuthoringService.Specify:input_type -> specgraph.v1.SpecifyRequest
-	28, // 49: specgraph.v1.AuthoringService.Decompose:input_type -> specgraph.v1.DecomposeRequest
-	30, // 50: specgraph.v1.AuthoringService.Approve:input_type -> specgraph.v1.ApproveRequest
-	32, // 51: specgraph.v1.AuthoringService.Amend:input_type -> specgraph.v1.AmendRequest
-	34, // 52: specgraph.v1.AuthoringService.Supersede:input_type -> specgraph.v1.SupersedeRequest
-	36, // 53: specgraph.v1.AuthoringService.GetPrompts:input_type -> specgraph.v1.GetPromptsRequest
-	23, // 54: specgraph.v1.AuthoringService.Spark:output_type -> specgraph.v1.SparkResponse
-	25, // 55: specgraph.v1.AuthoringService.Shape:output_type -> specgraph.v1.ShapeResponse
-	27, // 56: specgraph.v1.AuthoringService.Specify:output_type -> specgraph.v1.SpecifyResponse
-	29, // 57: specgraph.v1.AuthoringService.Decompose:output_type -> specgraph.v1.DecomposeResponse
-	31, // 58: specgraph.v1.AuthoringService.Approve:output_type -> specgraph.v1.ApproveResponse
-	33, // 59: specgraph.v1.AuthoringService.Amend:output_type -> specgraph.v1.AmendResponse
-	35, // 60: specgraph.v1.AuthoringService.Supersede:output_type -> specgraph.v1.SupersedeResponse
-	37, // 61: specgraph.v1.AuthoringService.GetPrompts:output_type -> specgraph.v1.GetPromptsResponse
-	54, // [54:62] is the sub-list for method output_type
-	46, // [46:54] is the sub-list for method input_type
-	46, // [46:46] is the sub-list for extension type_name
-	46, // [46:46] is the sub-list for extension extendee
-	0,  // [0:46] is the sub-list for field type_name
+	5,  // 0: specgraph.v1.SparkOutput.scope_sniff:type_name -> specgraph.v1.ScopeSniff
+	9,  // 1: specgraph.v1.ShapeOutput.approaches:type_name -> specgraph.v1.Approach
+	7,  // 2: specgraph.v1.ShapeOutput.decisions:type_name -> specgraph.v1.DecisionInput
+	3,  // 3: specgraph.v1.DecomposeOutput.strategy:type_name -> specgraph.v1.DecompositionStrategy
+	12, // 4: specgraph.v1.DecomposeOutput.slices:type_name -> specgraph.v1.DecompositionSlice
+	4,  // 5: specgraph.v1.SafetyFlag.category:type_name -> specgraph.v1.SafetyCategory
+	2,  // 6: specgraph.v1.SafetyFlag.severity:type_name -> specgraph.v1.FindingSeverity
+	0,  // 7: specgraph.v1.PromptTemplate.stage:type_name -> specgraph.v1.AuthoringStage
+	6,  // 8: specgraph.v1.SparkRequest.output:type_name -> specgraph.v1.SparkOutput
+	1,  // 9: specgraph.v1.SparkRequest.posture:type_name -> specgraph.v1.Posture
+	6,  // 10: specgraph.v1.SparkResponse.output:type_name -> specgraph.v1.SparkOutput
+	13, // 11: specgraph.v1.SparkResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
+	14, // 12: specgraph.v1.SparkResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
+	8,  // 13: specgraph.v1.ShapeRequest.output:type_name -> specgraph.v1.ShapeOutput
+	1,  // 14: specgraph.v1.ShapeRequest.posture:type_name -> specgraph.v1.Posture
+	8,  // 15: specgraph.v1.ShapeResponse.output:type_name -> specgraph.v1.ShapeOutput
+	13, // 16: specgraph.v1.ShapeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
+	14, // 17: specgraph.v1.ShapeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
+	10, // 18: specgraph.v1.SpecifyRequest.output:type_name -> specgraph.v1.SpecifyOutput
+	1,  // 19: specgraph.v1.SpecifyRequest.posture:type_name -> specgraph.v1.Posture
+	10, // 20: specgraph.v1.SpecifyResponse.output:type_name -> specgraph.v1.SpecifyOutput
+	13, // 21: specgraph.v1.SpecifyResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
+	14, // 22: specgraph.v1.SpecifyResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
+	11, // 23: specgraph.v1.DecomposeRequest.output:type_name -> specgraph.v1.DecomposeOutput
+	1,  // 24: specgraph.v1.DecomposeRequest.posture:type_name -> specgraph.v1.Posture
+	11, // 25: specgraph.v1.DecomposeResponse.output:type_name -> specgraph.v1.DecomposeOutput
+	13, // 26: specgraph.v1.DecomposeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
+	14, // 27: specgraph.v1.DecomposeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
+	0,  // 28: specgraph.v1.ApproveResponse.stage:type_name -> specgraph.v1.AuthoringStage
+	31, // 29: specgraph.v1.ApproveResponse.approved_at:type_name -> google.protobuf.Timestamp
+	0,  // 30: specgraph.v1.AmendRequest.target_stage:type_name -> specgraph.v1.AuthoringStage
+	0,  // 31: specgraph.v1.AmendResponse.stage:type_name -> specgraph.v1.AuthoringStage
+	0,  // 32: specgraph.v1.GetPromptsRequest.stage:type_name -> specgraph.v1.AuthoringStage
+	14, // 33: specgraph.v1.GetPromptsResponse.prompts:type_name -> specgraph.v1.PromptTemplate
+	15, // 34: specgraph.v1.AuthoringService.Spark:input_type -> specgraph.v1.SparkRequest
+	17, // 35: specgraph.v1.AuthoringService.Shape:input_type -> specgraph.v1.ShapeRequest
+	19, // 36: specgraph.v1.AuthoringService.Specify:input_type -> specgraph.v1.SpecifyRequest
+	21, // 37: specgraph.v1.AuthoringService.Decompose:input_type -> specgraph.v1.DecomposeRequest
+	23, // 38: specgraph.v1.AuthoringService.Approve:input_type -> specgraph.v1.ApproveRequest
+	25, // 39: specgraph.v1.AuthoringService.Amend:input_type -> specgraph.v1.AmendRequest
+	27, // 40: specgraph.v1.AuthoringService.Supersede:input_type -> specgraph.v1.SupersedeRequest
+	29, // 41: specgraph.v1.AuthoringService.GetPrompts:input_type -> specgraph.v1.GetPromptsRequest
+	16, // 42: specgraph.v1.AuthoringService.Spark:output_type -> specgraph.v1.SparkResponse
+	18, // 43: specgraph.v1.AuthoringService.Shape:output_type -> specgraph.v1.ShapeResponse
+	20, // 44: specgraph.v1.AuthoringService.Specify:output_type -> specgraph.v1.SpecifyResponse
+	22, // 45: specgraph.v1.AuthoringService.Decompose:output_type -> specgraph.v1.DecomposeResponse
+	24, // 46: specgraph.v1.AuthoringService.Approve:output_type -> specgraph.v1.ApproveResponse
+	26, // 47: specgraph.v1.AuthoringService.Amend:output_type -> specgraph.v1.AmendResponse
+	28, // 48: specgraph.v1.AuthoringService.Supersede:output_type -> specgraph.v1.SupersedeResponse
+	30, // 49: specgraph.v1.AuthoringService.GetPrompts:output_type -> specgraph.v1.GetPromptsResponse
+	42, // [42:50] is the sub-list for method output_type
+	34, // [34:42] is the sub-list for method input_type
+	34, // [34:34] is the sub-list for extension type_name
+	34, // [34:34] is the sub-list for extension extendee
+	0,  // [0:34] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_authoring_proto_init() }
@@ -2851,8 +2298,8 @@ func file_specgraph_v1_authoring_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_authoring_proto_rawDesc), len(file_specgraph_v1_authoring_proto_rawDesc)),
-			NumEnums:      8,
-			NumMessages:   30,
+			NumEnums:      6,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

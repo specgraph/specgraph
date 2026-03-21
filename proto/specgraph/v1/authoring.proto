@@ -46,16 +46,6 @@ enum FindingSeverity {
   FINDING_SEVERITY_NOTE = 3;
 }
 
-enum PeripheralDisposition {
-  PERIPHERAL_DISPOSITION_UNSPECIFIED = 0;
-  // Incorporate the item into the current spec.
-  PERIPHERAL_DISPOSITION_ADDED_TO_SPEC = 1;
-  // Track the item as its own independent spec.
-  PERIPHERAL_DISPOSITION_SEPARATE_SPEC = 2;
-  // Record the item as a note for the implementer without expanding scope.
-  PERIPHERAL_DISPOSITION_NOTE_FOR_IMPLEMENTER = 3;
-}
-
 enum DecompositionStrategy {
   DECOMPOSITION_STRATEGY_UNSPECIFIED = 0;
   // Deliver end-to-end value in independently shippable vertical slices.
@@ -86,18 +76,6 @@ enum ScopeSniff {
   SCOPE_SNIFF_LARGE = 4;
   // Estimated effort: months; may need decomposition.
   SCOPE_SNIFF_EPIC = 5;
-}
-
-enum IssueKind {
-  ISSUE_KIND_UNSPECIFIED = 0;
-  // Two specs define overlapping responsibilities or scope boundaries.
-  ISSUE_KIND_OVERLAPPING_SCOPE = 1;
-  // Two specs assert invariants that contradict each other.
-  ISSUE_KIND_CONFLICTING_INVARIANT = 2;
-  // Two specs define incompatible interfaces for the same boundary.
-  ISSUE_KIND_CONFLICTING_INTERFACE = 3;
-  // A spec depends on another that does not exist or has been superseded.
-  ISSUE_KIND_MISSING_DEPENDENCY = 4;
 }
 
 // --- Stage Output Messages ---
@@ -195,54 +173,6 @@ message DecompositionSlice {
   repeated string depends_on = 5;
 }
 
-// --- Analytical Pass Messages ---
-
-// RedTeamFinding records an adversarial challenge to the spec's correctness or safety.
-message RedTeamFinding {
-  // How severe the challenge is and whether it blocks spec advancement.
-  FindingSeverity severity = 1;
-  // Description of the challenge or identified weakness.
-  string finding = 2;
-  // Proposed change to the spec that would address this finding.
-  string resolution = 3;
-}
-
-// PeripheralVisionItem captures a related concern noticed during authoring that is out of scope.
-message PeripheralVisionItem {
-  // Description of the out-of-scope concern or related idea.
-  string item = 1;
-  // How this concern should be handled relative to the current spec.
-  PeripheralDisposition disposition = 2;
-}
-
-// ConsistencyIssue records a conflict or inconsistency between this spec and other specs in the graph.
-message ConsistencyIssue {
-  // Category of inconsistency (e.g. overlapping scope, conflicting invariant).
-  IssueKind issue_kind = 1;
-  // Human-readable explanation of the inconsistency.
-  string description = 2;
-  // Slugs of other specs that are involved in or affected by this inconsistency.
-  repeated string affected_specs = 3;
-}
-
-// SimplicityFinding highlights an area where the spec or design can be simplified.
-message SimplicityFinding {
-  // Part of the spec or design where complexity was identified.
-  string area = 1;
-  // Specific suggestion for reducing complexity in this area.
-  string suggestion = 2;
-}
-
-// ConstitutionViolation records a conflict between the spec and an active constitution constraint.
-message ConstitutionViolation {
-  // The constitution constraint that is being violated.
-  string constraint = 1;
-  // Explanation of how the spec violates the constraint.
-  string violation = 2;
-  // How severe the violation is and whether it blocks spec advancement.
-  FindingSeverity severity = 3;
-}
-
 // --- Safety Net ---
 
 // SafetyFlag marks a concern that may indicate harmful, risky, or out-of-policy content.
@@ -288,8 +218,6 @@ message SparkResponse {
   SparkOutput output = 1;
   // Safety concerns identified during the spark pass.
   repeated SafetyFlag safety_flags = 2;
-  // Constitution constraints violated by the current spark output.
-  repeated ConstitutionViolation constitution_violations = 3;
   // Prompt templates suggested for the next authoring stage.
   repeated PromptTemplate next_prompts = 4;
 }
@@ -308,12 +236,8 @@ message ShapeRequest {
 message ShapeResponse {
   // Validated (and potentially enriched) shape stage output.
   ShapeOutput output = 1;
-  // Out-of-scope concerns noticed during shaping and how they should be handled.
-  repeated PeripheralVisionItem peripheral_vision = 2;
   // Safety concerns identified during the shape pass.
   repeated SafetyFlag safety_flags = 3;
-  // Constitution constraints violated by the current shape output.
-  repeated ConstitutionViolation constitution_violations = 4;
   // Prompt templates suggested for the next authoring stage.
   repeated PromptTemplate next_prompts = 5;
 }
@@ -332,14 +256,8 @@ message SpecifyRequest {
 message SpecifyResponse {
   // Validated (and potentially enriched) specify stage output.
   SpecifyOutput output = 1;
-  // Adversarial challenges to the spec's correctness or safety.
-  repeated RedTeamFinding red_team = 2;
-  // Conflicts between this spec and other specs in the graph.
-  repeated ConsistencyIssue consistency_issues = 3;
   // Safety concerns identified during the specify pass.
   repeated SafetyFlag safety_flags = 4;
-  // Constitution constraints violated by the current specify output.
-  repeated ConstitutionViolation constitution_violations = 5;
   // Prompt templates suggested for the next authoring stage.
   repeated PromptTemplate next_prompts = 6;
 }
@@ -358,12 +276,8 @@ message DecomposeRequest {
 message DecomposeResponse {
   // Validated (and potentially enriched) decompose stage output.
   DecomposeOutput output = 1;
-  // Opportunities to simplify the decomposition or individual slices.
-  repeated SimplicityFinding simplicity = 2;
   // Safety concerns identified during the decompose pass.
   repeated SafetyFlag safety_flags = 3;
-  // Constitution constraints violated by the current decompose output.
-  repeated ConstitutionViolation constitution_violations = 4;
   // Prompt templates suggested for the next authoring stage.
   repeated PromptTemplate next_prompts = 5;
   // Canonical slugs of the child specs created (or already existing) during decomposition.
