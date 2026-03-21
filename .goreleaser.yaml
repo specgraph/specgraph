@@ -68,6 +68,31 @@ docker_manifests:
     image_templates:
       - "ghcr.io/specgraph/specgraph:{{ .Version }}-amd64"
       - "ghcr.io/specgraph/specgraph:{{ .Version }}-arm64"
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}.src"
+sboms:
+  - artifacts: archive
+  - id: source
+    artifacts: source
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+docker_signs:
+  - cmd: cosign
+    output: true
+    artifacts: all
+    args:
+      - "sign"
+      - "${artifact}@${digest}"
+      - "--yes"
 release:
   use_existing_draft: true
   mode: keep-existing
