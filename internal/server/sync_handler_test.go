@@ -194,13 +194,6 @@ func (s *syncTestBackend) UpdateConstitution(ctx context.Context, c *storage.Con
 	return nil, errNotImplemented
 }
 
-func (s *syncTestBackend) CheckViolation(ctx context.Context, specSlug string) ([]storage.Violation, error) {
-	if s.con != nil {
-		return s.con.CheckViolation(ctx, specSlug)
-	}
-	return nil, errNotImplemented
-}
-
 // newSyncScoper creates a testScoper from sync test components.
 func newSyncScoper(syncStore storage.SyncBackend, specStore storage.SpecReader, conStore storage.ConstitutionBackend) *testScoper {
 	return &testScoper{backend: &syncTestBackend{syncBackend: syncStore, spec: specStore, con: conStore}}
@@ -851,10 +844,6 @@ func (m *mockConstitutionStore) GetConstitution(_ context.Context) (*storage.Con
 
 func (m *mockConstitutionStore) UpdateConstitution(_ context.Context, c *storage.Constitution) (*storage.Constitution, error) {
 	return c, nil
-}
-
-func (m *mockConstitutionStore) CheckViolation(_ context.Context, _ string) ([]storage.Violation, error) {
-	return nil, nil
 }
 
 func TestSyncHandler_Inject_ConstitutionNotFound_NoWarning(t *testing.T) {

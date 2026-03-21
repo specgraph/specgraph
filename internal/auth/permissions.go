@@ -33,7 +33,6 @@ var rpcPermissions = map[string]string{
 	specgraphv1connect.ClaimServiceUnclaimSpecProcedure: "claim:write",
 	// ConstitutionService
 	specgraphv1connect.ConstitutionServiceGetConstitutionProcedure:    "constitution:read",
-	specgraphv1connect.ConstitutionServiceCheckViolationProcedure:     "constitution:read",
 	specgraphv1connect.ConstitutionServiceUpdateConstitutionProcedure: "constitution:write",
 	specgraphv1connect.ConstitutionServiceEmitToolFilesProcedure:      "constitution:write",
 	// AuthoringService

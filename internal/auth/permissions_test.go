@@ -37,7 +37,6 @@ var allProcedures = []string{
 	// ConstitutionService
 	specgraphv1connect.ConstitutionServiceGetConstitutionProcedure,
 	specgraphv1connect.ConstitutionServiceUpdateConstitutionProcedure,
-	specgraphv1connect.ConstitutionServiceCheckViolationProcedure,
 	specgraphv1connect.ConstitutionServiceEmitToolFilesProcedure,
 	// AuthoringService
 	specgraphv1connect.AuthoringServiceSparkProcedure,

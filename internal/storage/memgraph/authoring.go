@@ -30,16 +30,11 @@ var hashInputProperties = map[string]bool{
 
 // allowedJSONProperties lists the spec node properties that storeJSONProperty may write.
 var allowedJSONProperties = map[string]bool{
-	"spark_output":            true,
-	"shape_output":            true,
-	"specify_output":          true,
-	"decompose_output":        true,
-	"red_team_findings":       true,
-	"peripheral_vision":       true,
-	"consistency_issues":      true,
-	"simplicity_findings":     true,
-	"safety_flags":            true,
-	"constitution_violations": true,
+	"spark_output":     true,
+	"shape_output":     true,
+	"specify_output":   true,
+	"decompose_output": true,
+	"safety_flags":     true,
 }
 
 // TransitionStage validates and applies a spec's stage transition.
@@ -290,36 +285,21 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 	return childSlugs, err
 }
 
-// --- Analytical pass storage (thin wrappers over storeJSONProperty) ---
-
-// StoreRedTeamFindings persists red team findings as JSON on the spec node.
-func (s *Store) StoreRedTeamFindings(ctx context.Context, slug string, findings []storage.RedTeamFinding) error {
-	return s.storeJSONProperty(ctx, slug, "red_team_findings", findings)
-}
-
-// StorePeripheralVision persists peripheral vision items as JSON on the spec node.
-func (s *Store) StorePeripheralVision(ctx context.Context, slug string, items []storage.PeripheralVisionItem) error {
-	return s.storeJSONProperty(ctx, slug, "peripheral_vision", items)
-}
-
-// StoreConsistencyIssues persists consistency issues as JSON on the spec node.
-func (s *Store) StoreConsistencyIssues(ctx context.Context, slug string, issues []storage.ConsistencyIssue) error {
-	return s.storeJSONProperty(ctx, slug, "consistency_issues", issues)
-}
-
-// StoreSimplicityFindings persists simplicity findings as JSON on the spec node.
-func (s *Store) StoreSimplicityFindings(ctx context.Context, slug string, findings []storage.SimplicityFinding) error {
-	return s.storeJSONProperty(ctx, slug, "simplicity_findings", findings)
-}
-
 // StoreSafetyFlags persists safety flags as JSON on the spec node.
 func (s *Store) StoreSafetyFlags(ctx context.Context, slug string, flags []storage.SafetyFlag) error {
 	return s.storeJSONProperty(ctx, slug, "safety_flags", flags)
 }
 
-// StoreConstitutionViolations persists constitution violations as JSON on the spec node.
-func (s *Store) StoreConstitutionViolations(ctx context.Context, slug string, violations []storage.ConstitutionViolation) error {
-	return s.storeJSONProperty(ctx, slug, "constitution_violations", violations)
+// StoreFindings persists analytical pass findings for a spec.
+// TODO: implement in Task 5 (findings storage implementation).
+func (s *Store) StoreFindings(_ context.Context, _ string, _ storage.PassType, _ []storage.AnalyticalFinding) error {
+	return fmt.Errorf("memgraph: StoreFindings not yet implemented")
+}
+
+// ListFindings retrieves analytical pass findings for a spec.
+// TODO: implement in Task 5 (findings storage implementation).
+func (s *Store) ListFindings(_ context.Context, _ string, _ storage.PassType) ([]storage.AnalyticalFinding, error) {
+	return nil, fmt.Errorf("memgraph: ListFindings not yet implemented")
 }
 
 // SupersedeSpec marks a spec as superseded and creates a SUPERSEDES edge to the replacement.
@@ -476,8 +456,7 @@ func (s *Store) storeJSONProperty(ctx context.Context, slug, property string, da
 // authoringOutputChangeLog creates a non-checkpoint ChangeLog entry after a
 // Store*Output method succeeds. It compares the old and new spec fields and
 // only creates an entry if the content hash changed (i.e., the field was a
-// hash-input property that actually changed the hash). This keeps analytical
-// pass methods (StoreRedTeamFindings, etc.) free of changelog noise.
+// hash-input property that actually changed the hash).
 func (s *Store) authoringOutputChangeLog(ctx context.Context, slug, field string, oldFields *storage.SpecFields, oldHash string) error {
 	newFields, newHash, version, updatedAtStr, err := s.readSpecFields(ctx, slug)
 	if err != nil {
