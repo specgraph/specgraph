@@ -68,6 +68,9 @@ docker_manifests:
     image_templates:
       - "ghcr.io/specgraph/specgraph:{{ .Version }}-amd64"
       - "ghcr.io/specgraph/specgraph:{{ .Version }}-arm64"
+release:
+  use_existing_draft: true
+  mode: keep-existing
 changelog:
   use: github
   groups:
