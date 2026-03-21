@@ -33,7 +33,6 @@ var rpcPermissions = map[string]string{
 	specgraphv1connect.ClaimServiceUnclaimSpecProcedure: "claim:write",
 	// ConstitutionService
 	specgraphv1connect.ConstitutionServiceGetConstitutionProcedure:    "constitution:read",
-	specgraphv1connect.ConstitutionServiceCheckViolationProcedure:     "constitution:read",
 	specgraphv1connect.ConstitutionServiceUpdateConstitutionProcedure: "constitution:write",
 	specgraphv1connect.ConstitutionServiceEmitToolFilesProcedure:      "constitution:write",
 	// AuthoringService
@@ -64,6 +63,10 @@ var rpcPermissions = map[string]string{
 	specgraphv1connect.SyncServiceSyncBeadsProcedure:     "sync:write",
 	specgraphv1connect.SyncServiceSyncGitHubProcedure:    "sync:write",
 	specgraphv1connect.SyncServiceInjectProcedure:        "sync:write",
+	// AnalyticalPassService
+	specgraphv1connect.AnalyticalPassServiceRunAnalyticalPassProcedure: "analytical_pass:write",
+	specgraphv1connect.AnalyticalPassServiceStoreFindingsProcedure:     "analytical_pass:write",
+	specgraphv1connect.AnalyticalPassServiceListFindingsProcedure:      "analytical_pass:read",
 }
 
 var exemptProcedures = map[string]bool{

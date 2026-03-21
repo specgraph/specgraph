@@ -22,14 +22,6 @@ enum ConstitutionLayer {
   CONSTITUTION_LAYER_DOMAIN = 4;
 }
 
-// ViolationSeverity classifies how critical a constitution violation is.
-enum ViolationSeverity {
-  VIOLATION_SEVERITY_UNSPECIFIED = 0;
-  VIOLATION_SEVERITY_ERROR = 1;
-  VIOLATION_SEVERITY_WARNING = 2;
-  VIOLATION_SEVERITY_INFO = 3;
-}
-
 // OutputFormat specifies the tool-file format for constitution emission.
 enum OutputFormat {
   OUTPUT_FORMAT_UNSPECIFIED = 0;
@@ -168,18 +160,6 @@ message Reference {
   string path = 2;
 }
 
-// Violation represents a single constitution rule violation found in a spec.
-message Violation {
-  // The rule or constraint that was violated.
-  string rule = 1;
-  // How severe the violation is.
-  ViolationSeverity severity = 2;
-  // Human-readable description of the violation.
-  string message = 3;
-  // Slug of the spec that was checked.
-  string spec_slug = 4;
-}
-
 // --- Requests/Responses ---
 
 // GetConstitutionRequest requests the active constitution.
@@ -198,17 +178,6 @@ message UpdateConstitutionRequest {
 // UpdateConstitutionResponse wraps the stored constitution after update.
 message UpdateConstitutionResponse {
   Constitution constitution = 1;
-}
-
-// CheckViolationRequest identifies a spec to check against the constitution.
-message CheckViolationRequest {
-  // Slug of the spec to validate.
-  string spec_slug = 1;
-}
-
-// CheckViolationResponse contains any violations found.
-message CheckViolationResponse {
-  repeated Violation violations = 1;
 }
 
 // EmitToolFilesRequest specifies which tool-file format to generate.
@@ -233,8 +202,6 @@ service ConstitutionService {
   rpc GetConstitution(GetConstitutionRequest) returns (GetConstitutionResponse);
   // UpdateConstitution creates or replaces the constitution, bumping its version.
   rpc UpdateConstitution(UpdateConstitutionRequest) returns (UpdateConstitutionResponse);
-  // CheckViolation checks a spec against constitution constraints.
-  rpc CheckViolation(CheckViolationRequest) returns (CheckViolationResponse);
   // EmitToolFiles generates a tool-specific configuration file from the constitution.
   rpc EmitToolFiles(EmitToolFilesRequest) returns (EmitToolFilesResponse);
 }

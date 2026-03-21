@@ -134,39 +134,3 @@ func TestConstitution_MinimalRoundTrip(t *testing.T) {
 	require.Nil(t, fetched.Tech)
 	require.Empty(t, fetched.Principles)
 }
-
-func TestConstitution_CheckViolation(t *testing.T) {
-	clearDatabase(t)
-
-	ctx := context.Background()
-	store, err := newStore(ctx, boltURI)
-	require.NoError(t, err)
-	defer store.Close(ctx)
-
-	// CheckViolation on non-existent spec returns ErrSpecNotFound.
-	_, err = store.CheckViolation(ctx, "nonexistent-spec")
-	require.Error(t, err)
-	require.True(t, errors.Is(err, storage.ErrSpecNotFound))
-
-	// Create a spec.
-	_, err = store.CreateSpec(ctx, "auth-api", "Implement auth API", "p1", "medium")
-	require.NoError(t, err)
-
-	// CheckViolation without a constitution returns ErrConstitutionNotFound.
-	_, err = store.CheckViolation(ctx, "auth-api")
-	require.Error(t, err)
-	require.True(t, errors.Is(err, storage.ErrConstitutionNotFound))
-
-	// Store a constitution.
-	_, err = store.UpdateConstitution(ctx, &storage.Constitution{
-		Layer:       storage.ConstitutionLayerProject,
-		Name:        "test-project",
-		Constraints: []string{"no globals"},
-	})
-	require.NoError(t, err)
-
-	// Now CheckViolation should succeed and return empty violations.
-	violations, err := store.CheckViolation(ctx, "auth-api")
-	require.NoError(t, err)
-	require.Empty(t, violations)
-}

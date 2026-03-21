@@ -22,20 +22,15 @@ import (
 
 // fakeAuthoringBackend is a minimal fake implementation of storage.AuthoringBackend for testing.
 type fakeAuthoringBackend struct {
-	transitionStageErr             error
-	storeSparkOutputErr            error
-	storeShapeOutputErr            error
-	storeSpecifyOutputErr          error
-	storeDecomposeOutputErr        error
-	supersedeErr                   error
-	amendErr                       error
-	amendResult                    *storage.AmendResult
-	storeSafetyFlagsErr            error
-	storeRedTeamErr                error
-	storePeripheralVisionErr       error
-	storeConsistencyIssuesErr      error
-	storeSimplicityFindingsErr     error
-	storeConstitutionViolationsErr error
+	transitionStageErr      error
+	storeSparkOutputErr     error
+	storeShapeOutputErr     error
+	storeSpecifyOutputErr   error
+	storeDecomposeOutputErr error
+	supersedeErr            error
+	amendErr                error
+	amendResult             *storage.AmendResult
+	storeSafetyFlagsErr     error
 }
 
 func (f *fakeAuthoringBackend) TransitionStage(_ context.Context, _ string, _, _ storage.AuthoringStage) error {
@@ -65,28 +60,8 @@ func (f *fakeAuthoringBackend) StoreDecomposeOutput(_ context.Context, slug stri
 	return slugs, nil
 }
 
-func (f *fakeAuthoringBackend) StoreRedTeamFindings(_ context.Context, _ string, _ []storage.RedTeamFinding) error {
-	return f.storeRedTeamErr
-}
-
-func (f *fakeAuthoringBackend) StorePeripheralVision(_ context.Context, _ string, _ []storage.PeripheralVisionItem) error {
-	return f.storePeripheralVisionErr
-}
-
-func (f *fakeAuthoringBackend) StoreConsistencyIssues(_ context.Context, _ string, _ []storage.ConsistencyIssue) error {
-	return f.storeConsistencyIssuesErr
-}
-
-func (f *fakeAuthoringBackend) StoreSimplicityFindings(_ context.Context, _ string, _ []storage.SimplicityFinding) error {
-	return f.storeSimplicityFindingsErr
-}
-
 func (f *fakeAuthoringBackend) StoreSafetyFlags(_ context.Context, _ string, _ []storage.SafetyFlag) error {
 	return f.storeSafetyFlagsErr
-}
-
-func (f *fakeAuthoringBackend) StoreConstitutionViolations(_ context.Context, _ string, _ []storage.ConstitutionViolation) error {
-	return f.storeConstitutionViolationsErr
 }
 
 func (f *fakeAuthoringBackend) SupersedeSpec(_ context.Context, _, _, _ string) error {
@@ -209,28 +184,8 @@ func (a *authoringTestBackend) StoreDecomposeOutput(ctx context.Context, slug st
 	return a.authoring.StoreDecomposeOutput(ctx, slug, output)
 }
 
-func (a *authoringTestBackend) StoreRedTeamFindings(ctx context.Context, slug string, findings []storage.RedTeamFinding) error {
-	return a.authoring.StoreRedTeamFindings(ctx, slug, findings)
-}
-
-func (a *authoringTestBackend) StorePeripheralVision(ctx context.Context, slug string, items []storage.PeripheralVisionItem) error {
-	return a.authoring.StorePeripheralVision(ctx, slug, items)
-}
-
-func (a *authoringTestBackend) StoreConsistencyIssues(ctx context.Context, slug string, issues []storage.ConsistencyIssue) error {
-	return a.authoring.StoreConsistencyIssues(ctx, slug, issues)
-}
-
-func (a *authoringTestBackend) StoreSimplicityFindings(ctx context.Context, slug string, findings []storage.SimplicityFinding) error {
-	return a.authoring.StoreSimplicityFindings(ctx, slug, findings)
-}
-
 func (a *authoringTestBackend) StoreSafetyFlags(ctx context.Context, slug string, flags []storage.SafetyFlag) error {
 	return a.authoring.StoreSafetyFlags(ctx, slug, flags)
-}
-
-func (a *authoringTestBackend) StoreConstitutionViolations(ctx context.Context, slug string, violations []storage.ConstitutionViolation) error {
-	return a.authoring.StoreConstitutionViolations(ctx, slug, violations)
 }
 
 func (a *authoringTestBackend) SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error {
@@ -986,31 +941,6 @@ func TestAuthoringHandler_Decompose_EmptySlices(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
-}
-
-func TestAuthoringHandler_Spark_ConstitutionViolationsReturned(t *testing.T) {
-	// Spark runs PassConstitutionCheck for all postures; response should include violations.
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
-	resp, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
-		Slug:    "cv-spec",
-		Output:  &specv1.SparkOutput{Seed: "some intent"},
-		Posture: specv1.Posture_POSTURE_DRIVE,
-	}))
-	require.NoError(t, err)
-	require.NotEmpty(t, resp.Msg.ConstitutionViolations, "constitution_violations should be populated for Spark with DRIVE posture")
-}
-
-func TestAuthoringHandler_Spark_ConstitutionViolations_UnspecifiedPosture(t *testing.T) {
-	// PassConstitutionCheck auto-runs for all postures; UNSPECIFIED resolves to Partner which still auto-runs it.
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
-	resp, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
-		Slug:    "cv-unspecified",
-		Output:  &specv1.SparkOutput{Seed: "some intent"},
-		Posture: specv1.Posture_POSTURE_UNSPECIFIED,
-	}))
-	require.NoError(t, err)
-	// UNSPECIFIED resolves to Partner via ResolvePosture; constitution_check still auto-runs.
-	require.NotEmpty(t, resp.Msg.ConstitutionViolations, "constitution_violations should be populated even for UNSPECIFIED posture")
 }
 
 func TestAuthoringHandler_Shape_UnspecifiedPostureResolved(t *testing.T) {

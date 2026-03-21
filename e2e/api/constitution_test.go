@@ -18,14 +18,12 @@ import (
 
 var _ = Describe("Constitution", Ordered, func() {
 	var (
-		client     specgraphv1connect.ConstitutionServiceClient
-		specClient specgraphv1connect.SpecServiceClient
-		ctx        context.Context
+		client specgraphv1connect.ConstitutionServiceClient
+		ctx    context.Context
 	)
 
 	BeforeAll(func() {
 		client = newConstitutionClient()
-		specClient = newSpecClient()
 		ctx = context.Background()
 	})
 
@@ -142,66 +140,6 @@ var _ = Describe("Constitution", Ordered, func() {
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(updResp.Msg.Constitution.Version).To(BeNumerically(">", prevVersion))
-	})
-
-	Context("CheckViolation", func() {
-		It("returns failed-precondition when no spec exists", func() {
-			_, err := client.CheckViolation(ctx, connect.NewRequest(&specv1.CheckViolationRequest{
-				SpecSlug: "nonexistent-spec-for-check",
-			}))
-			Expect(err).To(HaveOccurred())
-
-			var connErr *connect.Error
-			Expect(err).To(BeAssignableToTypeOf(connErr))
-			connErr = err.(*connect.Error)
-			Expect(connErr.Code()).To(Equal(connect.CodeNotFound))
-		})
-
-		It("returns no violations for a compliant spec", func() {
-			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
-				Slug:   "go-auth-handler",
-				Intent: "Implement Go authentication handler with ConnectRPC",
-			}))
-			Expect(err).NotTo(HaveOccurred())
-
-			resp, err := client.CheckViolation(ctx, connect.NewRequest(&specv1.CheckViolationRequest{
-				SpecSlug: "go-auth-handler",
-			}))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Violations).To(BeEmpty())
-		})
-
-		It("detects forbidden language in spec intent", func() {
-			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
-				Slug:   "java-migration-tool",
-				Intent: "Build a Java-based data migration tool",
-			}))
-			Expect(err).NotTo(HaveOccurred())
-
-			resp, err := client.CheckViolation(ctx, connect.NewRequest(&specv1.CheckViolationRequest{
-				SpecSlug: "java-migration-tool",
-			}))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Violations).NotTo(BeEmpty())
-
-			v := resp.Msg.Violations[0]
-			Expect(v.Rule).To(Equal("forbidden-language"))
-			Expect(v.Severity).To(Equal(specv1.ViolationSeverity_VIOLATION_SEVERITY_ERROR))
-			Expect(v.SpecSlug).To(Equal("java-migration-tool"))
-			Expect(v.Message).To(ContainSubstring("Java"))
-		})
-
-		It("rejects request with empty spec_slug", func() {
-			_, err := client.CheckViolation(ctx, connect.NewRequest(&specv1.CheckViolationRequest{
-				SpecSlug: "",
-			}))
-			Expect(err).To(HaveOccurred())
-
-			var connErr *connect.Error
-			Expect(err).To(BeAssignableToTypeOf(connErr))
-			connErr = err.(*connect.Error)
-			Expect(connErr.Code()).To(Equal(connect.CodeInvalidArgument))
-		})
 	})
 
 	Context("EmitToolFiles", func() {

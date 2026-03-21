@@ -42,9 +42,6 @@ const (
 	// ConstitutionServiceUpdateConstitutionProcedure is the fully-qualified name of the
 	// ConstitutionService's UpdateConstitution RPC.
 	ConstitutionServiceUpdateConstitutionProcedure = "/specgraph.v1.ConstitutionService/UpdateConstitution"
-	// ConstitutionServiceCheckViolationProcedure is the fully-qualified name of the
-	// ConstitutionService's CheckViolation RPC.
-	ConstitutionServiceCheckViolationProcedure = "/specgraph.v1.ConstitutionService/CheckViolation"
 	// ConstitutionServiceEmitToolFilesProcedure is the fully-qualified name of the
 	// ConstitutionService's EmitToolFiles RPC.
 	ConstitutionServiceEmitToolFilesProcedure = "/specgraph.v1.ConstitutionService/EmitToolFiles"
@@ -56,8 +53,6 @@ type ConstitutionServiceClient interface {
 	GetConstitution(context.Context, *connect.Request[v1.GetConstitutionRequest]) (*connect.Response[v1.GetConstitutionResponse], error)
 	// UpdateConstitution creates or replaces the constitution, bumping its version.
 	UpdateConstitution(context.Context, *connect.Request[v1.UpdateConstitutionRequest]) (*connect.Response[v1.UpdateConstitutionResponse], error)
-	// CheckViolation checks a spec against constitution constraints.
-	CheckViolation(context.Context, *connect.Request[v1.CheckViolationRequest]) (*connect.Response[v1.CheckViolationResponse], error)
 	// EmitToolFiles generates a tool-specific configuration file from the constitution.
 	EmitToolFiles(context.Context, *connect.Request[v1.EmitToolFilesRequest]) (*connect.Response[v1.EmitToolFilesResponse], error)
 }
@@ -85,12 +80,6 @@ func NewConstitutionServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(constitutionServiceMethods.ByName("UpdateConstitution")),
 			connect.WithClientOptions(opts...),
 		),
-		checkViolation: connect.NewClient[v1.CheckViolationRequest, v1.CheckViolationResponse](
-			httpClient,
-			baseURL+ConstitutionServiceCheckViolationProcedure,
-			connect.WithSchema(constitutionServiceMethods.ByName("CheckViolation")),
-			connect.WithClientOptions(opts...),
-		),
 		emitToolFiles: connect.NewClient[v1.EmitToolFilesRequest, v1.EmitToolFilesResponse](
 			httpClient,
 			baseURL+ConstitutionServiceEmitToolFilesProcedure,
@@ -104,7 +93,6 @@ func NewConstitutionServiceClient(httpClient connect.HTTPClient, baseURL string,
 type constitutionServiceClient struct {
 	getConstitution    *connect.Client[v1.GetConstitutionRequest, v1.GetConstitutionResponse]
 	updateConstitution *connect.Client[v1.UpdateConstitutionRequest, v1.UpdateConstitutionResponse]
-	checkViolation     *connect.Client[v1.CheckViolationRequest, v1.CheckViolationResponse]
 	emitToolFiles      *connect.Client[v1.EmitToolFilesRequest, v1.EmitToolFilesResponse]
 }
 
@@ -118,11 +106,6 @@ func (c *constitutionServiceClient) UpdateConstitution(ctx context.Context, req 
 	return c.updateConstitution.CallUnary(ctx, req)
 }
 
-// CheckViolation calls specgraph.v1.ConstitutionService.CheckViolation.
-func (c *constitutionServiceClient) CheckViolation(ctx context.Context, req *connect.Request[v1.CheckViolationRequest]) (*connect.Response[v1.CheckViolationResponse], error) {
-	return c.checkViolation.CallUnary(ctx, req)
-}
-
 // EmitToolFiles calls specgraph.v1.ConstitutionService.EmitToolFiles.
 func (c *constitutionServiceClient) EmitToolFiles(ctx context.Context, req *connect.Request[v1.EmitToolFilesRequest]) (*connect.Response[v1.EmitToolFilesResponse], error) {
 	return c.emitToolFiles.CallUnary(ctx, req)
@@ -134,8 +117,6 @@ type ConstitutionServiceHandler interface {
 	GetConstitution(context.Context, *connect.Request[v1.GetConstitutionRequest]) (*connect.Response[v1.GetConstitutionResponse], error)
 	// UpdateConstitution creates or replaces the constitution, bumping its version.
 	UpdateConstitution(context.Context, *connect.Request[v1.UpdateConstitutionRequest]) (*connect.Response[v1.UpdateConstitutionResponse], error)
-	// CheckViolation checks a spec against constitution constraints.
-	CheckViolation(context.Context, *connect.Request[v1.CheckViolationRequest]) (*connect.Response[v1.CheckViolationResponse], error)
 	// EmitToolFiles generates a tool-specific configuration file from the constitution.
 	EmitToolFiles(context.Context, *connect.Request[v1.EmitToolFilesRequest]) (*connect.Response[v1.EmitToolFilesResponse], error)
 }
@@ -159,12 +140,6 @@ func NewConstitutionServiceHandler(svc ConstitutionServiceHandler, opts ...conne
 		connect.WithSchema(constitutionServiceMethods.ByName("UpdateConstitution")),
 		connect.WithHandlerOptions(opts...),
 	)
-	constitutionServiceCheckViolationHandler := connect.NewUnaryHandler(
-		ConstitutionServiceCheckViolationProcedure,
-		svc.CheckViolation,
-		connect.WithSchema(constitutionServiceMethods.ByName("CheckViolation")),
-		connect.WithHandlerOptions(opts...),
-	)
 	constitutionServiceEmitToolFilesHandler := connect.NewUnaryHandler(
 		ConstitutionServiceEmitToolFilesProcedure,
 		svc.EmitToolFiles,
@@ -177,8 +152,6 @@ func NewConstitutionServiceHandler(svc ConstitutionServiceHandler, opts ...conne
 			constitutionServiceGetConstitutionHandler.ServeHTTP(w, r)
 		case ConstitutionServiceUpdateConstitutionProcedure:
 			constitutionServiceUpdateConstitutionHandler.ServeHTTP(w, r)
-		case ConstitutionServiceCheckViolationProcedure:
-			constitutionServiceCheckViolationHandler.ServeHTTP(w, r)
 		case ConstitutionServiceEmitToolFilesProcedure:
 			constitutionServiceEmitToolFilesHandler.ServeHTTP(w, r)
 		default:
@@ -196,10 +169,6 @@ func (UnimplementedConstitutionServiceHandler) GetConstitution(context.Context, 
 
 func (UnimplementedConstitutionServiceHandler) UpdateConstitution(context.Context, *connect.Request[v1.UpdateConstitutionRequest]) (*connect.Response[v1.UpdateConstitutionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.ConstitutionService.UpdateConstitution is not implemented"))
-}
-
-func (UnimplementedConstitutionServiceHandler) CheckViolation(context.Context, *connect.Request[v1.CheckViolationRequest]) (*connect.Response[v1.CheckViolationResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.ConstitutionService.CheckViolation is not implemented"))
 }
 
 func (UnimplementedConstitutionServiceHandler) EmitToolFiles(context.Context, *connect.Request[v1.EmitToolFilesRequest]) (*connect.Response[v1.EmitToolFilesResponse], error) {

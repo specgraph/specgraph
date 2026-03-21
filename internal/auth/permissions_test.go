@@ -37,7 +37,6 @@ var allProcedures = []string{
 	// ConstitutionService
 	specgraphv1connect.ConstitutionServiceGetConstitutionProcedure,
 	specgraphv1connect.ConstitutionServiceUpdateConstitutionProcedure,
-	specgraphv1connect.ConstitutionServiceCheckViolationProcedure,
 	specgraphv1connect.ConstitutionServiceEmitToolFilesProcedure,
 	// AuthoringService
 	specgraphv1connect.AuthoringServiceSparkProcedure,
@@ -67,6 +66,10 @@ var allProcedures = []string{
 	specgraphv1connect.SyncServiceSyncGitHubProcedure,
 	specgraphv1connect.SyncServiceGetSyncStatusProcedure,
 	specgraphv1connect.SyncServiceInjectProcedure,
+	// AnalyticalPassService
+	specgraphv1connect.AnalyticalPassServiceRunAnalyticalPassProcedure,
+	specgraphv1connect.AnalyticalPassServiceStoreFindingsProcedure,
+	specgraphv1connect.AnalyticalPassServiceListFindingsProcedure,
 	// ServerService (exempt)
 	specgraphv1connect.ServerServiceHealthProcedure,
 }
