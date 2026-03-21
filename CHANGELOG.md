@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/specgraph/specgraph/compare/v0.1.0...v0.1.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* Dockerfile for goreleaser — use pre-built binary ([#519](https://github.com/specgraph/specgraph/issues/519)) ([92c243b](https://github.com/specgraph/specgraph/commit/92c243bf2ae5626d70c6e0f84b4f9240b6a48275))
+* goreleaser Dockerfile + multi-arch Docker images + bump GH actions ([92c243b](https://github.com/specgraph/specgraph/commit/92c243bf2ae5626d70c6e0f84b4f9240b6a48275))
+
 ## 0.1.0 (2026-03-21)
 
 
