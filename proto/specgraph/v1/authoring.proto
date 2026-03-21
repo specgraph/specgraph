@@ -218,6 +218,8 @@ message SparkResponse {
   SparkOutput output = 1;
   // Safety concerns identified during the spark pass.
   repeated SafetyFlag safety_flags = 2;
+  reserved 3;
+  reserved "constitution_violations";
   // Prompt templates suggested for the next authoring stage.
   repeated PromptTemplate next_prompts = 4;
 }
@@ -236,6 +238,8 @@ message ShapeRequest {
 message ShapeResponse {
   // Validated (and potentially enriched) shape stage output.
   ShapeOutput output = 1;
+  reserved 2, 4;
+  reserved "peripheral_vision", "constitution_violations";
   // Safety concerns identified during the shape pass.
   repeated SafetyFlag safety_flags = 3;
   // Prompt templates suggested for the next authoring stage.
@@ -256,6 +260,8 @@ message SpecifyRequest {
 message SpecifyResponse {
   // Validated (and potentially enriched) specify stage output.
   SpecifyOutput output = 1;
+  reserved 2, 3, 5;
+  reserved "red_team", "consistency_issues", "constitution_violations";
   // Safety concerns identified during the specify pass.
   repeated SafetyFlag safety_flags = 4;
   // Prompt templates suggested for the next authoring stage.
@@ -276,6 +282,8 @@ message DecomposeRequest {
 message DecomposeResponse {
   // Validated (and potentially enriched) decompose stage output.
   DecomposeOutput output = 1;
+  reserved 2, 4;
+  reserved "simplicity", "constitution_violations";
   // Safety concerns identified during the decompose pass.
   repeated SafetyFlag safety_flags = 3;
   // Prompt templates suggested for the next authoring stage.

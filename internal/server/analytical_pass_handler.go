@@ -8,7 +8,6 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -24,7 +23,6 @@ var templateFS embed.FS
 // AnalyticalPassHandler implements the ConnectRPC AnalyticalPassService.
 type AnalyticalPassHandler struct {
 	scoper storage.Scoper
-	logger *slog.Logger
 }
 
 var _ specgraphv1connect.AnalyticalPassServiceHandler = (*AnalyticalPassHandler)(nil)
@@ -34,7 +32,7 @@ func RegisterAnalyticalPassService(mux *http.ServeMux, scoper storage.Scoper, op
 	if scoper == nil {
 		panic("RegisterAnalyticalPassService: scoper must not be nil")
 	}
-	handler := &AnalyticalPassHandler{scoper: scoper, logger: slog.Default()}
+	handler := &AnalyticalPassHandler{scoper: scoper}
 	path, h := specgraphv1connect.NewAnalyticalPassServiceHandler(handler, opts...)
 	mux.Handle(path, h)
 }
@@ -50,11 +48,9 @@ func (h *AnalyticalPassHandler) RunAnalyticalPass(ctx context.Context, req *conn
 	if vErr := validateSlug(msg.Slug); vErr != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, vErr)
 	}
-	if msg.PassName == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("pass_name is required"))
-	}
-	if !storage.ValidPassType(storage.PassType(msg.PassName)) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown pass_name %q", msg.PassName))
+	pt, ptErr := passTypeFromProto(msg.PassType)
+	if ptErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, ptErr)
 	}
 
 	spec, err := store.GetSpec(ctx, msg.Slug)
@@ -65,20 +61,20 @@ func (h *AnalyticalPassHandler) RunAnalyticalPass(ctx context.Context, req *conn
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	templatePath := fmt.Sprintf("templates/%s.md", msg.PassName)
+	templatePath := fmt.Sprintf("templates/%s.md", string(pt))
 	tmplBytes, err := templateFS.ReadFile(templatePath)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no template for pass %q", msg.PassName))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no template for pass %q", pt))
 	}
 
 	stage := authoring.Stage(spec.Stage)
 	offered := authoring.OfferedPasses(stage, authoring.PostureDrive)
 
 	return connect.NewResponse(&specv1.RunAnalyticalPassResponse{
-		PassName:       msg.PassName,
+		PassType:       msg.PassType,
 		PromptTemplate: string(tmplBytes),
 		Tools:          passToolManifest(msg.Slug),
-		InitialMessage: fmt.Sprintf("Run the %s analytical pass on spec %q (stage: %s).", msg.PassName, msg.Slug, spec.Stage),
+		InitialMessage: fmt.Sprintf("Run the %s analytical pass on spec %q (stage: %s).", pt, msg.Slug, spec.Stage),
 		OfferedPasses:  offered,
 		Stage:          string(spec.Stage),
 	}), nil
@@ -95,20 +91,30 @@ func (h *AnalyticalPassHandler) StoreFindings(ctx context.Context, req *connect.
 	if vErr := validateSlug(msg.Slug); vErr != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, vErr)
 	}
-	pt := storage.PassType(msg.PassType)
-	if !storage.ValidPassType(pt) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown pass_type %q", msg.PassType))
+	pt, ptErr := passTypeFromProto(msg.PassType)
+	if ptErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, ptErr)
+	}
+	if len(msg.Findings) > maxFindingsPerRequest {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("too many findings: %d exceeds maximum of %d", len(msg.Findings), maxFindingsPerRequest))
 	}
 	domain := make([]storage.AnalyticalFinding, len(msg.Findings))
 	for i, f := range msg.Findings {
 		if f == nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("finding[%d]: must not be null", i))
 		}
+		if err := validateRequiredField("summary", f.Summary); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("finding[%d]: %w", i, err))
+		}
+		if len(f.Detail) > maxFindingDetailLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("finding[%d]: detail exceeds maximum length of %d", i, maxFindingDetailLen))
+		}
 		sev, convErr := findingSeverityFromProto(f.Severity)
 		if convErr != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("finding[%d]: %w", i, convErr))
 		}
 		domain[i] = storage.AnalyticalFinding{
+			PassType:   pt,
 			Severity:   sev,
 			Summary:    f.Summary,
 			Detail:     f.Detail,
@@ -143,10 +149,11 @@ func (h *AnalyticalPassHandler) ListFindings(ctx context.Context, req *connect.R
 	}
 
 	var pt storage.PassType
-	if msg.PassType != "" {
-		pt = storage.PassType(msg.PassType)
-		if !storage.ValidPassType(pt) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown pass_type %q", msg.PassType))
+	if msg.PassType != specv1.PassType_PASS_TYPE_UNSPECIFIED {
+		var ptErr error
+		pt, ptErr = passTypeFromProto(msg.PassType)
+		if ptErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, ptErr)
 		}
 	}
 
@@ -161,10 +168,18 @@ func (h *AnalyticalPassHandler) ListFindings(ctx context.Context, req *connect.R
 	proto := make([]*specv1.AnalyticalFinding, len(findings))
 	for i := range findings {
 		f := &findings[i]
+		protoSev, sevErr := findingSeverityToProto(f.Severity)
+		if sevErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, sevErr)
+		}
+		protoPassType, ptErr := passTypeToProto(f.PassType)
+		if ptErr != nil {
+			return nil, connect.NewError(connect.CodeInternal, ptErr)
+		}
 		proto[i] = &specv1.AnalyticalFinding{
 			Id:         f.ID,
-			PassType:   string(f.PassType),
-			Severity:   findingSeverityToProto(f.Severity),
+			PassType:   protoPassType,
+			Severity:   protoSev,
 			Summary:    f.Summary,
 			Detail:     f.Detail,
 			Constraint: f.Constraint,
@@ -204,15 +219,54 @@ func findingSeverityFromProto(s specv1.FindingSeverity) (storage.FindingSeverity
 }
 
 // findingSeverityToProto converts a domain FindingSeverity to the proto type.
-func findingSeverityToProto(s storage.FindingSeverity) specv1.FindingSeverity {
+// Returns an error for unknown severity values to surface data integrity issues.
+func findingSeverityToProto(s storage.FindingSeverity) (specv1.FindingSeverity, error) {
 	switch s {
 	case storage.SeverityCritical:
-		return specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL
+		return specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL, nil
 	case storage.SeverityWarning:
-		return specv1.FindingSeverity_FINDING_SEVERITY_WARNING
+		return specv1.FindingSeverity_FINDING_SEVERITY_WARNING, nil
 	case storage.SeverityNote:
-		return specv1.FindingSeverity_FINDING_SEVERITY_NOTE
+		return specv1.FindingSeverity_FINDING_SEVERITY_NOTE, nil
 	default:
-		return specv1.FindingSeverity_FINDING_SEVERITY_UNSPECIFIED
+		return specv1.FindingSeverity_FINDING_SEVERITY_UNSPECIFIED, fmt.Errorf("unknown severity %q", s)
+	}
+}
+
+// passTypeFromProto converts a proto PassType to the domain type.
+// Returns an error for UNSPECIFIED or unknown numeric values.
+func passTypeFromProto(p specv1.PassType) (storage.PassType, error) {
+	switch p {
+	case specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK:
+		return storage.PassTypeConstitutionCheck, nil
+	case specv1.PassType_PASS_TYPE_RED_TEAM:
+		return storage.PassTypeRedTeam, nil
+	case specv1.PassType_PASS_TYPE_PERIPHERAL_VISION:
+		return storage.PassTypePeripheralVision, nil
+	case specv1.PassType_PASS_TYPE_CONSISTENCY:
+		return storage.PassTypeConsistencyCheck, nil
+	case specv1.PassType_PASS_TYPE_SIMPLICITY:
+		return storage.PassTypeSimplicityCheck, nil
+	default:
+		return "", fmt.Errorf("invalid pass_type %d", int32(p))
+	}
+}
+
+// passTypeToProto converts a domain PassType to the proto type.
+// Returns an error for unknown pass type values to surface data integrity issues.
+func passTypeToProto(p storage.PassType) (specv1.PassType, error) {
+	switch p {
+	case storage.PassTypeConstitutionCheck:
+		return specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK, nil
+	case storage.PassTypeRedTeam:
+		return specv1.PassType_PASS_TYPE_RED_TEAM, nil
+	case storage.PassTypePeripheralVision:
+		return specv1.PassType_PASS_TYPE_PERIPHERAL_VISION, nil
+	case storage.PassTypeConsistencyCheck:
+		return specv1.PassType_PASS_TYPE_CONSISTENCY, nil
+	case storage.PassTypeSimplicityCheck:
+		return specv1.PassType_PASS_TYPE_SIMPLICITY, nil
+	default:
+		return specv1.PassType_PASS_TYPE_UNSPECIFIED, fmt.Errorf("unknown pass_type %q", p)
 	}
 }

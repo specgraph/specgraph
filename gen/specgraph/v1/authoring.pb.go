@@ -2081,36 +2081,37 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\fSparkRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x121\n" +
 	"\x06output\x18\x02 \x01(\v2\x19.specgraph.v1.SparkOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xc0\x01\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xdf\x01\n" +
 	"\rSparkResponse\x121\n" +
 	"\x06output\x18\x01 \x01(\v2\x19.specgraph.v1.SparkOutputR\x06output\x12;\n" +
 	"\fsafety_flags\x18\x02 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
-	"\fnext_prompts\x18\x04 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPrompts\"\x86\x01\n" +
+	"\fnext_prompts\x18\x04 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPromptsJ\x04\b\x03\x10\x04R\x17constitution_violations\"\x86\x01\n" +
 	"\fShapeRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x121\n" +
 	"\x06output\x18\x02 \x01(\v2\x19.specgraph.v1.ShapeOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xc0\x01\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xf8\x01\n" +
 	"\rShapeResponse\x121\n" +
 	"\x06output\x18\x01 \x01(\v2\x19.specgraph.v1.ShapeOutputR\x06output\x12;\n" +
 	"\fsafety_flags\x18\x03 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
-	"\fnext_prompts\x18\x05 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPrompts\"\x8a\x01\n" +
+	"\fnext_prompts\x18\x05 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPromptsJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x05R\x11peripheral_visionR\x17constitution_violations\"\x8a\x01\n" +
 	"\x0eSpecifyRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x123\n" +
 	"\x06output\x18\x02 \x01(\v2\x1b.specgraph.v1.SpecifyOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xc4\x01\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\x8d\x02\n" +
 	"\x0fSpecifyResponse\x123\n" +
 	"\x06output\x18\x01 \x01(\v2\x1b.specgraph.v1.SpecifyOutputR\x06output\x12;\n" +
 	"\fsafety_flags\x18\x04 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
-	"\fnext_prompts\x18\x06 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPrompts\"\x8e\x01\n" +
+	"\fnext_prompts\x18\x06 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPromptsJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x05\x10\x06R\bred_teamR\x12consistency_issuesR\x17constitution_violations\"\x8e\x01\n" +
 	"\x10DecomposeRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x125\n" +
 	"\x06output\x18\x02 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xf2\x01\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xa3\x02\n" +
 	"\x11DecomposeResponse\x125\n" +
 	"\x06output\x18\x01 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x06output\x12;\n" +
 	"\fsafety_flags\x18\x03 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
 	"\fnext_prompts\x18\x05 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPrompts\x12(\n" +
-	"\x10child_spec_slugs\x18\x06 \x03(\tR\x0echildSpecSlugs\"$\n" +
+	"\x10child_spec_slugs\x18\x06 \x03(\tR\x0echildSpecSlugsJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x05R\n" +
+	"simplicityR\x17constitution_violations\"$\n" +
 	"\x0eApproveRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\"\x96\x01\n" +
 	"\x0fApproveResponse\x12\x12\n" +

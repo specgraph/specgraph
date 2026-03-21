@@ -19,7 +19,7 @@ Use these tools to gather the information you need:
 | show_spec | The spec's full content: slug, intent, stage, and all stage outputs (spark, shape, specify, decompose) |
 | show_constitution | The full project constitution: tech stack, principles, constraints, antipatterns, process, references |
 | list_deps | Slugs of specs this one depends on |
-| show_dep | Full content of a specific dependency (for cross-spec context) |
+| show_dep | Full content of a specific dependency — replace `{slug}` in the command with the dependency slug from `list_deps` |
 
 Start by reading both the spec and the constitution. Then systematically work through each constitution section.
 

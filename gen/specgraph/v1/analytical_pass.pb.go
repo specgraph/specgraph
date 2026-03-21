@@ -24,10 +24,69 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// PassType identifies which analytical pass produced or should process findings.
+type PassType int32
+
+const (
+	PassType_PASS_TYPE_UNSPECIFIED        PassType = 0
+	PassType_PASS_TYPE_CONSTITUTION_CHECK PassType = 1
+	PassType_PASS_TYPE_RED_TEAM           PassType = 2
+	PassType_PASS_TYPE_PERIPHERAL_VISION  PassType = 3
+	PassType_PASS_TYPE_CONSISTENCY        PassType = 4
+	PassType_PASS_TYPE_SIMPLICITY         PassType = 5
+)
+
+// Enum value maps for PassType.
+var (
+	PassType_name = map[int32]string{
+		0: "PASS_TYPE_UNSPECIFIED",
+		1: "PASS_TYPE_CONSTITUTION_CHECK",
+		2: "PASS_TYPE_RED_TEAM",
+		3: "PASS_TYPE_PERIPHERAL_VISION",
+		4: "PASS_TYPE_CONSISTENCY",
+		5: "PASS_TYPE_SIMPLICITY",
+	}
+	PassType_value = map[string]int32{
+		"PASS_TYPE_UNSPECIFIED":        0,
+		"PASS_TYPE_CONSTITUTION_CHECK": 1,
+		"PASS_TYPE_RED_TEAM":           2,
+		"PASS_TYPE_PERIPHERAL_VISION":  3,
+		"PASS_TYPE_CONSISTENCY":        4,
+		"PASS_TYPE_SIMPLICITY":         5,
+	}
+)
+
+func (x PassType) Enum() *PassType {
+	p := new(PassType)
+	*p = x
+	return p
+}
+
+func (x PassType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PassType) Descriptor() protoreflect.EnumDescriptor {
+	return file_specgraph_v1_analytical_pass_proto_enumTypes[0].Descriptor()
+}
+
+func (PassType) Type() protoreflect.EnumType {
+	return &file_specgraph_v1_analytical_pass_proto_enumTypes[0]
+}
+
+func (x PassType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PassType.Descriptor instead.
+func (PassType) EnumDescriptor() ([]byte, []int) {
+	return file_specgraph_v1_analytical_pass_proto_rawDescGZIP(), []int{0}
+}
+
 type RunAnalyticalPassRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	PassName      string                 `protobuf:"bytes,2,opt,name=pass_name,json=passName,proto3" json:"pass_name,omitempty"`
+	PassType      PassType               `protobuf:"varint,2,opt,name=pass_type,json=passType,proto3,enum=specgraph.v1.PassType" json:"pass_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -69,16 +128,16 @@ func (x *RunAnalyticalPassRequest) GetSlug() string {
 	return ""
 }
 
-func (x *RunAnalyticalPassRequest) GetPassName() string {
+func (x *RunAnalyticalPassRequest) GetPassType() PassType {
 	if x != nil {
-		return x.PassName
+		return x.PassType
 	}
-	return ""
+	return PassType_PASS_TYPE_UNSPECIFIED
 }
 
 type RunAnalyticalPassResponse struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	PassName       string                 `protobuf:"bytes,1,opt,name=pass_name,json=passName,proto3" json:"pass_name,omitempty"`
+	PassType       PassType               `protobuf:"varint,1,opt,name=pass_type,json=passType,proto3,enum=specgraph.v1.PassType" json:"pass_type,omitempty"`
 	PromptTemplate string                 `protobuf:"bytes,2,opt,name=prompt_template,json=promptTemplate,proto3" json:"prompt_template,omitempty"`
 	Tools          []*ToolReference       `protobuf:"bytes,3,rep,name=tools,proto3" json:"tools,omitempty"`
 	InitialMessage string                 `protobuf:"bytes,4,opt,name=initial_message,json=initialMessage,proto3" json:"initial_message,omitempty"`
@@ -118,11 +177,11 @@ func (*RunAnalyticalPassResponse) Descriptor() ([]byte, []int) {
 	return file_specgraph_v1_analytical_pass_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *RunAnalyticalPassResponse) GetPassName() string {
+func (x *RunAnalyticalPassResponse) GetPassType() PassType {
 	if x != nil {
-		return x.PassName
+		return x.PassType
 	}
-	return ""
+	return PassType_PASS_TYPE_UNSPECIFIED
 }
 
 func (x *RunAnalyticalPassResponse) GetPromptTemplate() string {
@@ -223,7 +282,7 @@ func (x *ToolReference) GetDescription() string {
 type AnalyticalFinding struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	PassType      string                 `protobuf:"bytes,2,opt,name=pass_type,json=passType,proto3" json:"pass_type,omitempty"`
+	PassType      PassType               `protobuf:"varint,2,opt,name=pass_type,json=passType,proto3,enum=specgraph.v1.PassType" json:"pass_type,omitempty"`
 	Severity      FindingSeverity        `protobuf:"varint,3,opt,name=severity,proto3,enum=specgraph.v1.FindingSeverity" json:"severity,omitempty"`
 	Summary       string                 `protobuf:"bytes,4,opt,name=summary,proto3" json:"summary,omitempty"`
 	Detail        string                 `protobuf:"bytes,5,opt,name=detail,proto3" json:"detail,omitempty"`
@@ -271,11 +330,11 @@ func (x *AnalyticalFinding) GetId() string {
 	return ""
 }
 
-func (x *AnalyticalFinding) GetPassType() string {
+func (x *AnalyticalFinding) GetPassType() PassType {
 	if x != nil {
 		return x.PassType
 	}
-	return ""
+	return PassType_PASS_TYPE_UNSPECIFIED
 }
 
 func (x *AnalyticalFinding) GetSeverity() FindingSeverity {
@@ -399,7 +458,7 @@ func (x *AnalyticalFindingInput) GetResolution() string {
 type StoreFindingsRequest struct {
 	state         protoimpl.MessageState    `protogen:"open.v1"`
 	Slug          string                    `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	PassType      string                    `protobuf:"bytes,2,opt,name=pass_type,json=passType,proto3" json:"pass_type,omitempty"`
+	PassType      PassType                  `protobuf:"varint,2,opt,name=pass_type,json=passType,proto3,enum=specgraph.v1.PassType" json:"pass_type,omitempty"`
 	Findings      []*AnalyticalFindingInput `protobuf:"bytes,3,rep,name=findings,proto3" json:"findings,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -442,11 +501,11 @@ func (x *StoreFindingsRequest) GetSlug() string {
 	return ""
 }
 
-func (x *StoreFindingsRequest) GetPassType() string {
+func (x *StoreFindingsRequest) GetPassType() PassType {
 	if x != nil {
 		return x.PassType
 	}
-	return ""
+	return PassType_PASS_TYPE_UNSPECIFIED
 }
 
 func (x *StoreFindingsRequest) GetFindings() []*AnalyticalFindingInput {
@@ -503,7 +562,7 @@ func (x *StoreFindingsResponse) GetIds() []string {
 type ListFindingsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	PassType      string                 `protobuf:"bytes,2,opt,name=pass_type,json=passType,proto3" json:"pass_type,omitempty"`
+	PassType      PassType               `protobuf:"varint,2,opt,name=pass_type,json=passType,proto3,enum=specgraph.v1.PassType" json:"pass_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -545,11 +604,11 @@ func (x *ListFindingsRequest) GetSlug() string {
 	return ""
 }
 
-func (x *ListFindingsRequest) GetPassType() string {
+func (x *ListFindingsRequest) GetPassType() PassType {
 	if x != nil {
 		return x.PassType
 	}
-	return ""
+	return PassType_PASS_TYPE_UNSPECIFIED
 }
 
 type ListFindingsResponse struct {
@@ -600,12 +659,12 @@ var File_specgraph_v1_analytical_pass_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_analytical_pass_proto_rawDesc = "" +
 	"\n" +
-	"\"specgraph/v1/analytical_pass.proto\x12\fspecgraph.v1\x1a\x1cspecgraph/v1/authoring.proto\"K\n" +
+	"\"specgraph/v1/analytical_pass.proto\x12\fspecgraph.v1\x1a\x1cspecgraph/v1/authoring.proto\"c\n" +
 	"\x18RunAnalyticalPassRequest\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x1b\n" +
-	"\tpass_name\x18\x02 \x01(\tR\bpassName\"\xfa\x01\n" +
-	"\x19RunAnalyticalPassResponse\x12\x1b\n" +
-	"\tpass_name\x18\x01 \x01(\tR\bpassName\x12'\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x123\n" +
+	"\tpass_type\x18\x02 \x01(\x0e2\x16.specgraph.v1.PassTypeR\bpassType\"\x92\x02\n" +
+	"\x19RunAnalyticalPassResponse\x123\n" +
+	"\tpass_type\x18\x01 \x01(\x0e2\x16.specgraph.v1.PassTypeR\bpassType\x12'\n" +
 	"\x0fprompt_template\x18\x02 \x01(\tR\x0epromptTemplate\x121\n" +
 	"\x05tools\x18\x03 \x03(\v2\x1b.specgraph.v1.ToolReferenceR\x05tools\x12'\n" +
 	"\x0finitial_message\x18\x04 \x01(\tR\x0einitialMessage\x12%\n" +
@@ -614,10 +673,10 @@ const file_specgraph_v1_analytical_pass_proto_rawDesc = "" +
 	"\rToolReference\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\acommand\x18\x02 \x01(\tR\acommand\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\"\x87\x02\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\"\x9f\x02\n" +
 	"\x11AnalyticalFinding\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\tpass_type\x18\x02 \x01(\tR\bpassType\x129\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x123\n" +
+	"\tpass_type\x18\x02 \x01(\x0e2\x16.specgraph.v1.PassTypeR\bpassType\x129\n" +
 	"\bseverity\x18\x03 \x01(\x0e2\x1d.specgraph.v1.FindingSeverityR\bseverity\x12\x18\n" +
 	"\asummary\x18\x04 \x01(\tR\asummary\x12\x16\n" +
 	"\x06detail\x18\x05 \x01(\tR\x06detail\x12\x1e\n" +
@@ -637,18 +696,25 @@ const file_specgraph_v1_analytical_pass_proto_rawDesc = "" +
 	"constraint\x12\x1e\n" +
 	"\n" +
 	"resolution\x18\x05 \x01(\tR\n" +
-	"resolution\"\x89\x01\n" +
+	"resolution\"\xa1\x01\n" +
 	"\x14StoreFindingsRequest\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x1b\n" +
-	"\tpass_type\x18\x02 \x01(\tR\bpassType\x12@\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x123\n" +
+	"\tpass_type\x18\x02 \x01(\x0e2\x16.specgraph.v1.PassTypeR\bpassType\x12@\n" +
 	"\bfindings\x18\x03 \x03(\v2$.specgraph.v1.AnalyticalFindingInputR\bfindings\")\n" +
 	"\x15StoreFindingsResponse\x12\x10\n" +
-	"\x03ids\x18\x01 \x03(\tR\x03ids\"F\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\"^\n" +
 	"\x13ListFindingsRequest\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x1b\n" +
-	"\tpass_type\x18\x02 \x01(\tR\bpassType\"S\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x123\n" +
+	"\tpass_type\x18\x02 \x01(\x0e2\x16.specgraph.v1.PassTypeR\bpassType\"S\n" +
 	"\x14ListFindingsResponse\x12;\n" +
-	"\bfindings\x18\x01 \x03(\v2\x1f.specgraph.v1.AnalyticalFindingR\bfindings2\xae\x02\n" +
+	"\bfindings\x18\x01 \x03(\v2\x1f.specgraph.v1.AnalyticalFindingR\bfindings*\xb5\x01\n" +
+	"\bPassType\x12\x19\n" +
+	"\x15PASS_TYPE_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cPASS_TYPE_CONSTITUTION_CHECK\x10\x01\x12\x16\n" +
+	"\x12PASS_TYPE_RED_TEAM\x10\x02\x12\x1f\n" +
+	"\x1bPASS_TYPE_PERIPHERAL_VISION\x10\x03\x12\x19\n" +
+	"\x15PASS_TYPE_CONSISTENCY\x10\x04\x12\x18\n" +
+	"\x14PASS_TYPE_SIMPLICITY\x10\x052\xae\x02\n" +
 	"\x15AnalyticalPassService\x12d\n" +
 	"\x11RunAnalyticalPass\x12&.specgraph.v1.RunAnalyticalPassRequest\x1a'.specgraph.v1.RunAnalyticalPassResponse\x12X\n" +
 	"\rStoreFindings\x12\".specgraph.v1.StoreFindingsRequest\x1a#.specgraph.v1.StoreFindingsResponse\x12U\n" +
@@ -666,36 +732,43 @@ func file_specgraph_v1_analytical_pass_proto_rawDescGZIP() []byte {
 	return file_specgraph_v1_analytical_pass_proto_rawDescData
 }
 
+var file_specgraph_v1_analytical_pass_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_specgraph_v1_analytical_pass_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_specgraph_v1_analytical_pass_proto_goTypes = []any{
-	(*RunAnalyticalPassRequest)(nil),  // 0: specgraph.v1.RunAnalyticalPassRequest
-	(*RunAnalyticalPassResponse)(nil), // 1: specgraph.v1.RunAnalyticalPassResponse
-	(*ToolReference)(nil),             // 2: specgraph.v1.ToolReference
-	(*AnalyticalFinding)(nil),         // 3: specgraph.v1.AnalyticalFinding
-	(*AnalyticalFindingInput)(nil),    // 4: specgraph.v1.AnalyticalFindingInput
-	(*StoreFindingsRequest)(nil),      // 5: specgraph.v1.StoreFindingsRequest
-	(*StoreFindingsResponse)(nil),     // 6: specgraph.v1.StoreFindingsResponse
-	(*ListFindingsRequest)(nil),       // 7: specgraph.v1.ListFindingsRequest
-	(*ListFindingsResponse)(nil),      // 8: specgraph.v1.ListFindingsResponse
-	(FindingSeverity)(0),              // 9: specgraph.v1.FindingSeverity
+	(PassType)(0),                     // 0: specgraph.v1.PassType
+	(*RunAnalyticalPassRequest)(nil),  // 1: specgraph.v1.RunAnalyticalPassRequest
+	(*RunAnalyticalPassResponse)(nil), // 2: specgraph.v1.RunAnalyticalPassResponse
+	(*ToolReference)(nil),             // 3: specgraph.v1.ToolReference
+	(*AnalyticalFinding)(nil),         // 4: specgraph.v1.AnalyticalFinding
+	(*AnalyticalFindingInput)(nil),    // 5: specgraph.v1.AnalyticalFindingInput
+	(*StoreFindingsRequest)(nil),      // 6: specgraph.v1.StoreFindingsRequest
+	(*StoreFindingsResponse)(nil),     // 7: specgraph.v1.StoreFindingsResponse
+	(*ListFindingsRequest)(nil),       // 8: specgraph.v1.ListFindingsRequest
+	(*ListFindingsResponse)(nil),      // 9: specgraph.v1.ListFindingsResponse
+	(FindingSeverity)(0),              // 10: specgraph.v1.FindingSeverity
 }
 var file_specgraph_v1_analytical_pass_proto_depIdxs = []int32{
-	2, // 0: specgraph.v1.RunAnalyticalPassResponse.tools:type_name -> specgraph.v1.ToolReference
-	9, // 1: specgraph.v1.AnalyticalFinding.severity:type_name -> specgraph.v1.FindingSeverity
-	9, // 2: specgraph.v1.AnalyticalFindingInput.severity:type_name -> specgraph.v1.FindingSeverity
-	4, // 3: specgraph.v1.StoreFindingsRequest.findings:type_name -> specgraph.v1.AnalyticalFindingInput
-	3, // 4: specgraph.v1.ListFindingsResponse.findings:type_name -> specgraph.v1.AnalyticalFinding
-	0, // 5: specgraph.v1.AnalyticalPassService.RunAnalyticalPass:input_type -> specgraph.v1.RunAnalyticalPassRequest
-	5, // 6: specgraph.v1.AnalyticalPassService.StoreFindings:input_type -> specgraph.v1.StoreFindingsRequest
-	7, // 7: specgraph.v1.AnalyticalPassService.ListFindings:input_type -> specgraph.v1.ListFindingsRequest
-	1, // 8: specgraph.v1.AnalyticalPassService.RunAnalyticalPass:output_type -> specgraph.v1.RunAnalyticalPassResponse
-	6, // 9: specgraph.v1.AnalyticalPassService.StoreFindings:output_type -> specgraph.v1.StoreFindingsResponse
-	8, // 10: specgraph.v1.AnalyticalPassService.ListFindings:output_type -> specgraph.v1.ListFindingsResponse
-	8, // [8:11] is the sub-list for method output_type
-	5, // [5:8] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	0,  // 0: specgraph.v1.RunAnalyticalPassRequest.pass_type:type_name -> specgraph.v1.PassType
+	0,  // 1: specgraph.v1.RunAnalyticalPassResponse.pass_type:type_name -> specgraph.v1.PassType
+	3,  // 2: specgraph.v1.RunAnalyticalPassResponse.tools:type_name -> specgraph.v1.ToolReference
+	0,  // 3: specgraph.v1.AnalyticalFinding.pass_type:type_name -> specgraph.v1.PassType
+	10, // 4: specgraph.v1.AnalyticalFinding.severity:type_name -> specgraph.v1.FindingSeverity
+	10, // 5: specgraph.v1.AnalyticalFindingInput.severity:type_name -> specgraph.v1.FindingSeverity
+	0,  // 6: specgraph.v1.StoreFindingsRequest.pass_type:type_name -> specgraph.v1.PassType
+	5,  // 7: specgraph.v1.StoreFindingsRequest.findings:type_name -> specgraph.v1.AnalyticalFindingInput
+	0,  // 8: specgraph.v1.ListFindingsRequest.pass_type:type_name -> specgraph.v1.PassType
+	4,  // 9: specgraph.v1.ListFindingsResponse.findings:type_name -> specgraph.v1.AnalyticalFinding
+	1,  // 10: specgraph.v1.AnalyticalPassService.RunAnalyticalPass:input_type -> specgraph.v1.RunAnalyticalPassRequest
+	6,  // 11: specgraph.v1.AnalyticalPassService.StoreFindings:input_type -> specgraph.v1.StoreFindingsRequest
+	8,  // 12: specgraph.v1.AnalyticalPassService.ListFindings:input_type -> specgraph.v1.ListFindingsRequest
+	2,  // 13: specgraph.v1.AnalyticalPassService.RunAnalyticalPass:output_type -> specgraph.v1.RunAnalyticalPassResponse
+	7,  // 14: specgraph.v1.AnalyticalPassService.StoreFindings:output_type -> specgraph.v1.StoreFindingsResponse
+	9,  // 15: specgraph.v1.AnalyticalPassService.ListFindings:output_type -> specgraph.v1.ListFindingsResponse
+	13, // [13:16] is the sub-list for method output_type
+	10, // [10:13] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_analytical_pass_proto_init() }
@@ -709,13 +782,14 @@ func file_specgraph_v1_analytical_pass_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_analytical_pass_proto_rawDesc), len(file_specgraph_v1_analytical_pass_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_specgraph_v1_analytical_pass_proto_goTypes,
 		DependencyIndexes: file_specgraph_v1_analytical_pass_proto_depIdxs,
+		EnumInfos:         file_specgraph_v1_analytical_pass_proto_enumTypes,
 		MessageInfos:      file_specgraph_v1_analytical_pass_proto_msgTypes,
 	}.Build()
 	File_specgraph_v1_analytical_pass_proto = out.File

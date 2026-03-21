@@ -145,6 +145,8 @@ type StageWriter interface {
 	StoreShapeOutput(ctx context.Context, slug string, output *ShapeOutput) error
 	StoreSpecifyOutput(ctx context.Context, slug string, output *SpecifyOutput) error
 	StoreDecomposeOutput(ctx context.Context, slug string, output *DecomposeOutput) ([]string, error)
+	// StoreSafetyFlags runs inline during stage transitions (not as a separate
+	// analytical pass), so it belongs in StageWriter rather than a pass-specific interface.
 	StoreSafetyFlags(ctx context.Context, slug string, flags []SafetyFlag) error
 }
 

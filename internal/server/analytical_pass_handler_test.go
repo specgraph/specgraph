@@ -135,7 +135,7 @@ func TestRunAnalyticalPass_ReturnsPromptAndTools(t *testing.T) {
 
 	resp, err := client.RunAnalyticalPass(context.Background(), connect.NewRequest(&specv1.RunAnalyticalPassRequest{
 		Slug:     "my-spec",
-		PassName: "constitution_check",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
 	}))
 	require.NoError(t, err)
 
@@ -144,7 +144,7 @@ func TestRunAnalyticalPass_ReturnsPromptAndTools(t *testing.T) {
 	require.NotEmpty(t, msg.Tools)
 	require.Contains(t, msg.InitialMessage, "my-spec")
 	require.Equal(t, "spark", msg.Stage)
-	require.Equal(t, "constitution_check", msg.PassName)
+	require.Equal(t, specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK, msg.PassType)
 }
 
 func TestRunAnalyticalPass_UnknownPassType(t *testing.T) {
@@ -156,7 +156,7 @@ func TestRunAnalyticalPass_UnknownPassType(t *testing.T) {
 
 	_, err = client.RunAnalyticalPass(context.Background(), connect.NewRequest(&specv1.RunAnalyticalPassRequest{
 		Slug:     "my-spec",
-		PassName: "nonexistent_pass",
+		PassType: specv1.PassType(999),
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
@@ -168,7 +168,7 @@ func TestRunAnalyticalPass_SpecNotFound(t *testing.T) {
 
 	_, err := client.RunAnalyticalPass(context.Background(), connect.NewRequest(&specv1.RunAnalyticalPassRequest{
 		Slug:     "does-not-exist",
-		PassName: "constitution_check",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
@@ -183,7 +183,7 @@ func TestStoreAndListFindings_RoundTrip(t *testing.T) {
 
 	storeResp, err := client.StoreFindings(context.Background(), connect.NewRequest(&specv1.StoreFindingsRequest{
 		Slug:     "my-spec",
-		PassType: "constitution_check",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
 		Findings: []*specv1.AnalyticalFindingInput{
 			{
 				Severity:   specv1.FindingSeverity_FINDING_SEVERITY_WARNING,
@@ -200,14 +200,14 @@ func TestStoreAndListFindings_RoundTrip(t *testing.T) {
 
 	listResp, err := client.ListFindings(context.Background(), connect.NewRequest(&specv1.ListFindingsRequest{
 		Slug:     "my-spec",
-		PassType: "constitution_check",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
 	}))
 	require.NoError(t, err)
 	require.Len(t, listResp.Msg.Findings, 1)
 
 	f := listResp.Msg.Findings[0]
 	require.NotEmpty(t, f.Id)
-	require.Equal(t, "constitution_check", f.PassType)
+	require.Equal(t, specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK, f.PassType)
 	require.Equal(t, specv1.FindingSeverity_FINDING_SEVERITY_WARNING, f.Severity)
 	require.Equal(t, "Missing constraint coverage", f.Summary)
 	require.Equal(t, "The spec does not address constraint X", f.Detail)
@@ -225,7 +225,7 @@ func TestListFindings_EmptyPassType(t *testing.T) {
 	// Store findings for two different pass types.
 	_, err = client.StoreFindings(context.Background(), connect.NewRequest(&specv1.StoreFindingsRequest{
 		Slug:     "my-spec",
-		PassType: "constitution_check",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
 		Findings: []*specv1.AnalyticalFindingInput{
 			{
 				Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING,
@@ -237,7 +237,7 @@ func TestListFindings_EmptyPassType(t *testing.T) {
 
 	_, err = client.StoreFindings(context.Background(), connect.NewRequest(&specv1.StoreFindingsRequest{
 		Slug:     "my-spec",
-		PassType: "red_team",
+		PassType: specv1.PassType_PASS_TYPE_RED_TEAM,
 		Findings: []*specv1.AnalyticalFindingInput{
 			{
 				Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
@@ -247,10 +247,9 @@ func TestListFindings_EmptyPassType(t *testing.T) {
 	}))
 	require.NoError(t, err)
 
-	// List with empty pass_type — should return all findings.
+	// List with UNSPECIFIED pass_type — should return all findings.
 	listResp, err := client.ListFindings(context.Background(), connect.NewRequest(&specv1.ListFindingsRequest{
-		Slug:     "my-spec",
-		PassType: "",
+		Slug: "my-spec",
 	}))
 	require.NoError(t, err)
 	require.Len(t, listResp.Msg.Findings, 2)
@@ -265,13 +264,110 @@ func TestStoreFindings_UnknownPassType(t *testing.T) {
 
 	_, err = client.StoreFindings(context.Background(), connect.NewRequest(&specv1.StoreFindingsRequest{
 		Slug:     "my-spec",
-		PassType: "nonexistent_pass",
+		PassType: specv1.PassType(999),
 		Findings: []*specv1.AnalyticalFindingInput{
 			{
 				Severity: specv1.FindingSeverity_FINDING_SEVERITY_NOTE,
 				Summary:  "Should not be stored",
 			},
 		},
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestStoreFindings_SpecNotFound(t *testing.T) {
+	backend := newAnalyticalPassTestBackend()
+	client := setupAnalyticalPassServer(t, backend)
+
+	_, err := client.StoreFindings(context.Background(), connect.NewRequest(&specv1.StoreFindingsRequest{
+		Slug:     "does-not-exist",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
+		Findings: []*specv1.AnalyticalFindingInput{
+			{
+				Severity: specv1.FindingSeverity_FINDING_SEVERITY_NOTE,
+				Summary:  "Should not be stored",
+			},
+		},
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+}
+
+func TestStoreFindings_NullFindingElement(t *testing.T) {
+	backend := newAnalyticalPassTestBackend()
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	client := setupAnalyticalPassServer(t, backend)
+
+	_, err = client.StoreFindings(context.Background(), connect.NewRequest(&specv1.StoreFindingsRequest{
+		Slug:     "my-spec",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
+		Findings: []*specv1.AnalyticalFindingInput{nil},
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestStoreFindings_TooManyFindings(t *testing.T) {
+	backend := newAnalyticalPassTestBackend()
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	client := setupAnalyticalPassServer(t, backend)
+
+	findings := make([]*specv1.AnalyticalFindingInput, 101)
+	for i := range findings {
+		findings[i] = &specv1.AnalyticalFindingInput{
+			Severity: specv1.FindingSeverity_FINDING_SEVERITY_NOTE,
+			Summary:  fmt.Sprintf("finding %d", i),
+		}
+	}
+
+	_, err = client.StoreFindings(context.Background(), connect.NewRequest(&specv1.StoreFindingsRequest{
+		Slug:     "my-spec",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
+		Findings: findings,
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestRunAnalyticalPass_EmptySlug(t *testing.T) {
+	backend := newAnalyticalPassTestBackend()
+	client := setupAnalyticalPassServer(t, backend)
+
+	_, err := client.RunAnalyticalPass(context.Background(), connect.NewRequest(&specv1.RunAnalyticalPassRequest{
+		Slug:     "",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestListFindings_EmptySlug(t *testing.T) {
+	backend := newAnalyticalPassTestBackend()
+	client := setupAnalyticalPassServer(t, backend)
+
+	_, err := client.ListFindings(context.Background(), connect.NewRequest(&specv1.ListFindingsRequest{
+		Slug:     "",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestListFindings_UnknownPassType(t *testing.T) {
+	backend := newAnalyticalPassTestBackend()
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	client := setupAnalyticalPassServer(t, backend)
+
+	_, err = client.ListFindings(context.Background(), connect.NewRequest(&specv1.ListFindingsRequest{
+		Slug:     "my-spec",
+		PassType: specv1.PassType(999),
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))

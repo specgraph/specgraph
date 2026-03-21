@@ -64,7 +64,7 @@ func (s *Store) StoreFindings(ctx context.Context, slug string, passType storage
 				mergeParams(s.projectParam(), map[string]any{
 					"slug":           slug,
 					"id":             id,
-					"pass_type":      string(f.PassType),
+					"pass_type":      string(passType),
 					"severity":       string(f.Severity),
 					"summary":        f.Summary,
 					"detail":         f.Detail,
@@ -87,8 +87,13 @@ func (s *Store) StoreFindings(ctx context.Context, slug string, passType storage
 // ListFindings retrieves analytical pass findings for a spec.
 // If passType is empty, all findings for the spec are returned.
 // Results are ordered by created_at. Returns an empty slice (not nil) when
-// no matches are found.
+// no matches are found. Returns ErrSpecNotFound if the spec does not exist.
 func (s *Store) ListFindings(ctx context.Context, slug string, passType storage.PassType) ([]storage.AnalyticalFinding, error) {
+	// Verify spec exists before listing findings.
+	if _, err := s.GetSpec(ctx, slug); err != nil {
+		return nil, err
+	}
+
 	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
 	query := `MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[:HAS_FINDING]->(f:Finding)`

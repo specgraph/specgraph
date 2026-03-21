@@ -208,6 +208,12 @@ func TestListFindings_EmptyResult(t *testing.T) {
 	require.Empty(t, got)
 }
 
+func TestListFindings_SpecNotFound(t *testing.T) {
+	store, ctx := newTestStore(t)
+	_, err := store.ListFindings(ctx, "nonexistent-spec", storage.PassTypeConstitutionCheck)
+	require.ErrorIs(t, err, storage.ErrSpecNotFound)
+}
+
 func TestStoreFindings_EmptySliceDeletesExisting(t *testing.T) {
 	store, ctx := newTestStore(t)
 

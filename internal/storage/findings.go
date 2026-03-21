@@ -52,6 +52,9 @@ type FindingsWriter interface {
 
 // FindingsReader retrieves analytical pass findings.
 type FindingsReader interface {
+	// ListFindings returns findings for a spec, optionally filtered by pass type.
+	// Returns ErrSpecNotFound if the spec does not exist.
+	// An empty passType returns all findings across all pass types.
 	ListFindings(ctx context.Context, slug string, passType PassType) ([]AnalyticalFinding, error)
 }
 

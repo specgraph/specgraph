@@ -41,7 +41,7 @@ jobs:
           SHA: ${{ needs.release-please.outputs.sha }}
       - uses: sigstore/cosign-installer@v4.1.0
       - uses: anchore/sbom-action/download-syft@v0
-      - uses: namespacelabs/nscloud-setup-buildx-action@v0
+      - uses: namespacelabs/nscloud-setup-buildx-action@d059ed7184f0bc7c8b27e8810cea153d02bcc6dd # v0.0.23
       - uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -52,7 +52,7 @@ jobs:
           go-version-file: go.mod
           cache: false
       - name: Configure Namespace cache
-        uses: namespacelabs/nscloud-cache-action@v1
+        uses: namespacelabs/nscloud-cache-action@a90bb5d4b27522ce881c6e98eebd7d7e6d1653f9 # v1.4.2
         with:
           cache: go
       - uses: goreleaser/goreleaser-action@v7

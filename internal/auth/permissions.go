@@ -63,6 +63,10 @@ var rpcPermissions = map[string]string{
 	specgraphv1connect.SyncServiceSyncBeadsProcedure:     "sync:write",
 	specgraphv1connect.SyncServiceSyncGitHubProcedure:    "sync:write",
 	specgraphv1connect.SyncServiceInjectProcedure:        "sync:write",
+	// AnalyticalPassService
+	specgraphv1connect.AnalyticalPassServiceRunAnalyticalPassProcedure: "analytical_pass:write",
+	specgraphv1connect.AnalyticalPassServiceStoreFindingsProcedure:     "analytical_pass:write",
+	specgraphv1connect.AnalyticalPassServiceListFindingsProcedure:      "analytical_pass:read",
 }
 
 var exemptProcedures = map[string]bool{
