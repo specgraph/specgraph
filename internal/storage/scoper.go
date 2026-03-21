@@ -14,6 +14,7 @@ type ScopedBackend interface {
 	ClaimBackend
 	ConstitutionBackend
 	AuthoringBackend
+	FindingsBackend
 	ExecutionBackend
 	LifecycleBackend
 	SyncBackend

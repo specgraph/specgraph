@@ -17,16 +17,6 @@ const (
 	ConstitutionLayerDomain      ConstitutionLayer = "domain"
 )
 
-// ViolationSeverity classifies how critical a constitution violation is.
-type ViolationSeverity string
-
-// ViolationSeverity values.
-const (
-	ViolationSeverityError   ViolationSeverity = "error"
-	ViolationSeverityWarning ViolationSeverity = "warning"
-	ViolationSeverityInfo    ViolationSeverity = "info"
-)
-
 // Constitution is the project ground truth.
 type Constitution struct {
 	ID           string            `json:"id,omitempty"`
@@ -104,12 +94,4 @@ type Antipattern struct {
 type Reference struct {
 	Type string `json:"type,omitempty"`
 	Path string `json:"path,omitempty"`
-}
-
-// Violation represents a single constitution rule violation found in a spec.
-type Violation struct {
-	Rule     string            `json:"rule,omitempty"`
-	Severity ViolationSeverity `json:"severity,omitempty"`
-	Message  string            `json:"message,omitempty"`
-	SpecSlug string            `json:"spec_slug,omitempty"`
 }
