@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.1.6](https://github.com/specgraph/specgraph/compare/v0.1.5...v0.1.6) (2026-03-21)
+
+
+### Features
+
+* supply chain security — cosign, SBOMs, attestations, Trivy scan ([#562](https://github.com/specgraph/specgraph/issues/562)) ([070e014](https://github.com/specgraph/specgraph/commit/070e014ccf4f4aa5cef41fbc80ddeba9b2e1c267))
+
+
+### Bug Fixes
+
+* bump cosign-installer v3→v4, attest-build-provenance v2→v4, trivy-action v0.35.0 ([b55924d](https://github.com/specgraph/specgraph/commit/b55924d9b19fa5b7988a19006b42034b0727816c))
+* correct trivy-action version tag (v0.35.0) ([#564](https://github.com/specgraph/specgraph/issues/564)) ([b55924d](https://github.com/specgraph/specgraph/commit/b55924d9b19fa5b7988a19006b42034b0727816c))
+* pin cosign-installer to v4.1.0 (no floating v4 tag) ([#567](https://github.com/specgraph/specgraph/issues/567)) ([009ce40](https://github.com/specgraph/specgraph/commit/009ce40262766254ca003cd6e08c4be537dbe06f))
+
+
+### Miscellaneous
+
+* **main:** release 0.1.5 ([#563](https://github.com/specgraph/specgraph/issues/563)) ([2426b98](https://github.com/specgraph/specgraph/commit/2426b98d28113dc60b0e1106891efc68af3479f3))
+* **main:** release 0.1.5 ([#565](https://github.com/specgraph/specgraph/issues/565)) ([8608023](https://github.com/specgraph/specgraph/commit/8608023bda623c0d8a59eebc7ed1f09d266075cc))
+* **main:** release 0.1.5 ([#566](https://github.com/specgraph/specgraph/issues/566)) ([02c08bb](https://github.com/specgraph/specgraph/commit/02c08bbe66cac2f50a993371d9a2eaf8989acba2))
+* **main:** release 0.1.6 ([8608023](https://github.com/specgraph/specgraph/commit/8608023bda623c0d8a59eebc7ed1f09d266075cc))
+* **main:** release 0.1.6 ([#534](https://github.com/specgraph/specgraph/issues/534)) ([bc2ccd3](https://github.com/specgraph/specgraph/commit/bc2ccd3ba652c210608cf8c2f0edd00b23e2b38b))
+
 ## [0.1.5](https://github.com/specgraph/specgraph/compare/v0.1.6...v0.1.5) (2026-03-21)
 
 
