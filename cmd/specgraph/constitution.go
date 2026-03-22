@@ -15,6 +15,7 @@ import (
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/render"
 	"github.com/spf13/cobra"
 )
 
@@ -40,6 +41,8 @@ var constitutionShowCmd = &cobra.Command{
 	RunE:  runConstitutionShow,
 }
 
+var constitutionShowJSON bool
+
 func runConstitutionShow(_ *cobra.Command, _ []string) error {
 	client, err := constitutionClient()
 	if err != nil {
@@ -49,37 +52,10 @@ func runConstitutionShow(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("get constitution: %w", err)
 	}
-	c := resp.Msg.Constitution
-	if c == nil {
-		fmt.Println("No constitution found.")
-		return nil
+	if constitutionShowJSON {
+		return printJSON(resp.Msg)
 	}
-	fmt.Printf("Name:    %s\n", c.GetName())
-	fmt.Printf("Layer:   %s\n", c.GetLayer())
-	fmt.Printf("Version: %d\n", c.GetVersion())
-	if tech := c.GetTech(); tech != nil {
-		if langs := tech.GetLanguages(); langs != nil {
-			fmt.Printf("Tech:    primary=%s\n", langs.GetPrimary())
-		}
-	}
-	if principles := c.GetPrinciples(); len(principles) > 0 {
-		fmt.Println("Principles:")
-		for _, p := range principles {
-			fmt.Printf("  - %s\n", p.GetStatement())
-		}
-	}
-	if constraints := c.GetConstraints(); len(constraints) > 0 {
-		fmt.Println("Constraints:")
-		for _, ct := range constraints {
-			fmt.Printf("  - %s\n", ct)
-		}
-	}
-	if antipatterns := c.GetAntipatterns(); len(antipatterns) > 0 {
-		fmt.Println("Antipatterns:")
-		for _, ap := range antipatterns {
-			fmt.Printf("  - %s: %s\n", ap.GetPattern(), ap.GetWhy())
-		}
-	}
+	fmt.Print(render.Constitution(resp.Msg.Constitution))
 	return nil
 }
 
@@ -292,6 +268,7 @@ func init() {
 
 	constitutionImportCmd.Flags().StringVar(&importProjectSlug, "project", "", "project slug (defaults to slug from .specgraph.yaml)")
 
+	constitutionShowCmd.Flags().BoolVar(&constitutionShowJSON, "json", false, "output as JSON")
 	constitutionCmd.AddCommand(constitutionShowCmd)
 	constitutionCmd.AddCommand(constitutionEmitCmd)
 	constitutionCmd.AddCommand(constitutionImportCmd)
