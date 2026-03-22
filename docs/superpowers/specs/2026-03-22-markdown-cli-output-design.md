@@ -13,9 +13,9 @@ decisions from `specgraph show`.
 
 ## Approach
 
-Replace the text output format with markdown as the default for all read
+Replace the text output format with Markdown as the default for all read
 commands. JSON stays via `--json` flag for scripts. A new `internal/render/`
-package centralizes markdown rendering to keep it DRY across commands.
+package centralizes Markdown rendering to keep it DRY across commands.
 
 Primary consumer: AI agents reading specs from the graph. Human readability
 is a secondary benefit.
@@ -40,7 +40,7 @@ If authoring output fields are not yet available in the proto response,
 ## Package: `internal/render/`
 
 New package with one function per entity type. Functions accept proto types
-(commands already have proto responses) and return markdown strings.
+(commands already have proto responses) and return Markdown strings.
 
 ```go
 package render
@@ -219,9 +219,9 @@ creating it as a new command file.
 ## Testing
 
 Each render function gets a unit test with a proto message fixture verifying
-the markdown output contains expected sections, tables, and content. Tests
+the Markdown output contains expected sections, tables, and content. Tests
 use `strings.Contains` for key sections rather than exact string matching
 (fragile).
 
-CLI e2e tests that assert on text output need updating to expect markdown
+CLI e2e tests that assert on text output need updating to expect Markdown
 format.
