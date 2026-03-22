@@ -186,35 +186,26 @@ When the specify conversation is complete:
 
    ```json
    {
-     "interface_contract": {
-       "endpoints": [
-         {
-           "method": "POST",
-           "path": "/api/v1/specs/{slug}/claim",
-           "input": { "agent_id": "string", "ttl_seconds": "int" },
-           "output": { "lease_id": "string", "expires_at": "timestamp" },
-           "errors": [
-             { "code": 404, "condition": "Spec not found" },
-             { "code": 409, "condition": "Already claimed by another agent" },
-             { "code": 422, "condition": "Invalid TTL value" }
-           ]
-         }
-       ]
-     },
-     "verify_criteria": [
-       "POST /claim with valid agent_id returns 200 and a lease_id",
-       "POST /claim on already-claimed spec returns 409",
-       "Lease expires after TTL seconds and spec becomes claimable again"
+     "interfaces": [
+       {
+         "name": "ClaimService proto",
+         "body": "POST /api/v1/specs/{slug}/claim\n  Input: { agent_id: string, ttl_seconds: int }\n  Output: { lease_id: string, expires_at: timestamp }\n  Errors:\n    404 - Spec not found\n    409 - Already claimed\n    422 - Invalid TTL"
+       }
+     ],
+     "verifyCriteria": [
+       {"category": "happy-path", "description": "POST /claim with valid agent_id returns 200 and a lease_id"},
+       {"category": "conflict", "description": "POST /claim on already-claimed spec returns 409"},
+       {"category": "expiry", "description": "Lease expires after TTL seconds and spec becomes claimable again"}
      ],
      "invariants": [
        "A spec may have at most one active lease at any time",
        "Lease expiry is monotonically increasing (no backdating)"
      ],
      "touches": [
-       "internal/server/claim_handler.go (new)",
-       "internal/storage/lease.go (new)",
-       "internal/storage/memgraph/lease_queries.go (new)",
-       "internal/server/claim_handler_test.go (new)"
+       {"path": "internal/server/claim_handler.go", "purpose": "new claim handler", "changeType": "new"},
+       {"path": "internal/storage/lease.go", "purpose": "lease domain types", "changeType": "new"},
+       {"path": "internal/storage/memgraph/lease_queries.go", "purpose": "Cypher queries for leases", "changeType": "new"},
+       {"path": "internal/server/claim_handler_test.go", "purpose": "handler tests", "changeType": "new"}
      ]
    }
    ```

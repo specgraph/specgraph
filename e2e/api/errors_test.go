@@ -111,8 +111,12 @@ var _ = Describe("error handling", func() {
 		_, err = authoringClient.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
 			Slug: "err-bad-transition",
 			Output: &specv1.SpecifyOutput{
-				InterfaceContract: "POST /api",
-				VerifyCriteria:    []string{"returns 200"},
+				Interfaces: []*specv1.InterfaceSection{
+					{Name: "API", Body: "POST /api"},
+				},
+				VerifyCriteria: []*specv1.VerifyCriterion{
+					{Category: "happy-path", Description: "returns 200"},
+				},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
 		}))

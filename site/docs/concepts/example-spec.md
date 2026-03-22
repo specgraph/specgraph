@@ -150,15 +150,13 @@ mobile clients without sacrificing reuse detection.
     this contract after approval require a new spec version.
 
 ```text
+#### Token Endpoint
 POST /oauth/token
   grant_type=refresh_token
   refresh_token=<old_token>
 
 Response (200):
-  access_token: <new_access_token>
-  refresh_token: <new_refresh_token>
-  expires_in: 3600
-  token_type: bearer
+  access_token, refresh_token, expires_in, token_type
 
 Error (401): old token past grace period
 Error (401): token family revoked (reuse detected)
@@ -171,12 +169,12 @@ Error (401): token family revoked (reuse detected)
     When the implementing agent reports completion, these are what get checked.
     If they all pass, the spec is done.
 
-- `POST /oauth/token` with valid refresh token returns new token pair and 200
-- Old refresh token accepted during grace period (30s), rejected after
-- Concurrent rotation requests (same old token, < 1s apart) both succeed — both get valid new tokens in the same lineage
-- Using a rotated-out token after grace period triggers family revocation
-- After family revocation, all tokens in the lineage return 401
-- Token endpoint latency p99 < 50ms with rotation enabled (benchmark against baseline)
+- `[rotation]` `POST /oauth/token` with valid refresh token returns new token pair and 200
+- `[rotation]` Old refresh token accepted during grace period (30s), rejected after
+- `[rotation]` Concurrent rotation requests (same old token, < 1s apart) both succeed -- both get valid new tokens in the same lineage
+- `[security]` Using a rotated-out token after grace period triggers family revocation
+- `[security]` After family revocation, all tokens in the lineage return 401
+- `[expiry]` Token endpoint latency p99 < 50ms with rotation enabled (benchmark against baseline)
 
 ### Invariants
 

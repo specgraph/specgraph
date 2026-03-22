@@ -706,24 +706,201 @@ func (x *Approach) GetTradeoffs() []string {
 	return nil
 }
 
+// InterfaceSection defines one API surface in the specify stage contract.
+type InterfaceSection struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Surface name, e.g. "WebhookService proto", "EventBus Go interface".
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Free-form contract content (proto definitions, method signatures, etc.).
+	Body          string `protobuf:"bytes,2,opt,name=body,proto3" json:"body,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InterfaceSection) Reset() {
+	*x = InterfaceSection{}
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InterfaceSection) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InterfaceSection) ProtoMessage() {}
+
+func (x *InterfaceSection) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InterfaceSection.ProtoReflect.Descriptor instead.
+func (*InterfaceSection) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *InterfaceSection) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *InterfaceSection) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+// VerifyCriterion defines one testable acceptance criterion with a category.
+type VerifyCriterion struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Category grouping, e.g. "emission", "CRUD", "e2e".
+	Category string `protobuf:"bytes,1,opt,name=category,proto3" json:"category,omitempty"`
+	// The criterion description.
+	Description   string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VerifyCriterion) Reset() {
+	*x = VerifyCriterion{}
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyCriterion) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyCriterion) ProtoMessage() {}
+
+func (x *VerifyCriterion) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyCriterion.ProtoReflect.Descriptor instead.
+func (*VerifyCriterion) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *VerifyCriterion) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+func (x *VerifyCriterion) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+// FileTouch identifies a file expected to be created or modified by this spec.
+type FileTouch struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// File or package path relative to repo root.
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// What changes and why.
+	Purpose string `protobuf:"bytes,2,opt,name=purpose,proto3" json:"purpose,omitempty"`
+	// Type of change: "new", "modify", "delete".
+	ChangeType    string `protobuf:"bytes,3,opt,name=change_type,json=changeType,proto3" json:"change_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FileTouch) Reset() {
+	*x = FileTouch{}
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FileTouch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FileTouch) ProtoMessage() {}
+
+func (x *FileTouch) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FileTouch.ProtoReflect.Descriptor instead.
+func (*FileTouch) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *FileTouch) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *FileTouch) GetPurpose() string {
+	if x != nil {
+		return x.Purpose
+	}
+	return ""
+}
+
+func (x *FileTouch) GetChangeType() string {
+	if x != nil {
+		return x.ChangeType
+	}
+	return ""
+}
+
 // SpecifyOutput captures the precise contract and verification criteria for a spec.
+// WIRE-BREAK: Fields 1, 2, 4 change type from string/repeated-string to
+// repeated-message. Intentional at 0.2.0-dev (no production data). Field
+// numbers reused because semantic intent is preserved.
 type SpecifyOutput struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Formal interface contract (API shape, data model, or behaviour spec).
-	InterfaceContract string `protobuf:"bytes,1,opt,name=interface_contract,json=interfaceContract,proto3" json:"interface_contract,omitempty"`
-	// Conditions that must hold for an implementation to be considered correct.
-	VerifyCriteria []string `protobuf:"bytes,2,rep,name=verify_criteria,json=verifyCriteria,proto3" json:"verify_criteria,omitempty"`
+	// Interface contracts, one per API surface.
+	Interfaces []*InterfaceSection `protobuf:"bytes,1,rep,name=interfaces,proto3" json:"interfaces,omitempty"`
+	// Categorized conditions that must hold for correctness.
+	VerifyCriteria []*VerifyCriterion `protobuf:"bytes,2,rep,name=verify_criteria,json=verifyCriteria,proto3" json:"verify_criteria,omitempty"`
 	// Invariants that must never be violated across any implementation state.
 	Invariants []string `protobuf:"bytes,3,rep,name=invariants,proto3" json:"invariants,omitempty"`
-	// Files, packages, or components expected to be modified by this spec.
-	Touches       []string `protobuf:"bytes,4,rep,name=touches,proto3" json:"touches,omitempty"`
+	// Files, packages, or components expected to be created or modified.
+	Touches       []*FileTouch `protobuf:"bytes,4,rep,name=touches,proto3" json:"touches,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SpecifyOutput) Reset() {
 	*x = SpecifyOutput{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[4]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -735,7 +912,7 @@ func (x *SpecifyOutput) String() string {
 func (*SpecifyOutput) ProtoMessage() {}
 
 func (x *SpecifyOutput) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[4]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -748,17 +925,17 @@ func (x *SpecifyOutput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpecifyOutput.ProtoReflect.Descriptor instead.
 func (*SpecifyOutput) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{4}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *SpecifyOutput) GetInterfaceContract() string {
+func (x *SpecifyOutput) GetInterfaces() []*InterfaceSection {
 	if x != nil {
-		return x.InterfaceContract
+		return x.Interfaces
 	}
-	return ""
+	return nil
 }
 
-func (x *SpecifyOutput) GetVerifyCriteria() []string {
+func (x *SpecifyOutput) GetVerifyCriteria() []*VerifyCriterion {
 	if x != nil {
 		return x.VerifyCriteria
 	}
@@ -772,7 +949,7 @@ func (x *SpecifyOutput) GetInvariants() []string {
 	return nil
 }
 
-func (x *SpecifyOutput) GetTouches() []string {
+func (x *SpecifyOutput) GetTouches() []*FileTouch {
 	if x != nil {
 		return x.Touches
 	}
@@ -792,7 +969,7 @@ type DecomposeOutput struct {
 
 func (x *DecomposeOutput) Reset() {
 	*x = DecomposeOutput{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[5]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -804,7 +981,7 @@ func (x *DecomposeOutput) String() string {
 func (*DecomposeOutput) ProtoMessage() {}
 
 func (x *DecomposeOutput) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[5]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -817,7 +994,7 @@ func (x *DecomposeOutput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecomposeOutput.ProtoReflect.Descriptor instead.
 func (*DecomposeOutput) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{5}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *DecomposeOutput) GetStrategy() DecompositionStrategy {
@@ -853,7 +1030,7 @@ type DecompositionSlice struct {
 
 func (x *DecompositionSlice) Reset() {
 	*x = DecompositionSlice{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[6]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -865,7 +1042,7 @@ func (x *DecompositionSlice) String() string {
 func (*DecompositionSlice) ProtoMessage() {}
 
 func (x *DecompositionSlice) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[6]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -878,7 +1055,7 @@ func (x *DecompositionSlice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecompositionSlice.ProtoReflect.Descriptor instead.
 func (*DecompositionSlice) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{6}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DecompositionSlice) GetId() string {
@@ -931,7 +1108,7 @@ type SafetyFlag struct {
 
 func (x *SafetyFlag) Reset() {
 	*x = SafetyFlag{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[7]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -943,7 +1120,7 @@ func (x *SafetyFlag) String() string {
 func (*SafetyFlag) ProtoMessage() {}
 
 func (x *SafetyFlag) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[7]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -956,7 +1133,7 @@ func (x *SafetyFlag) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SafetyFlag.ProtoReflect.Descriptor instead.
 func (*SafetyFlag) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{7}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SafetyFlag) GetCategory() SafetyCategory {
@@ -995,7 +1172,7 @@ type PromptTemplate struct {
 
 func (x *PromptTemplate) Reset() {
 	*x = PromptTemplate{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[8]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1007,7 +1184,7 @@ func (x *PromptTemplate) String() string {
 func (*PromptTemplate) ProtoMessage() {}
 
 func (x *PromptTemplate) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[8]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1020,7 +1197,7 @@ func (x *PromptTemplate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PromptTemplate.ProtoReflect.Descriptor instead.
 func (*PromptTemplate) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{8}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *PromptTemplate) GetStage() AuthoringStage {
@@ -1062,7 +1239,7 @@ type SparkRequest struct {
 
 func (x *SparkRequest) Reset() {
 	*x = SparkRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[9]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1074,7 +1251,7 @@ func (x *SparkRequest) String() string {
 func (*SparkRequest) ProtoMessage() {}
 
 func (x *SparkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[9]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1087,7 +1264,7 @@ func (x *SparkRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SparkRequest.ProtoReflect.Descriptor instead.
 func (*SparkRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{9}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SparkRequest) GetSlug() string {
@@ -1126,7 +1303,7 @@ type SparkResponse struct {
 
 func (x *SparkResponse) Reset() {
 	*x = SparkResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[10]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1138,7 +1315,7 @@ func (x *SparkResponse) String() string {
 func (*SparkResponse) ProtoMessage() {}
 
 func (x *SparkResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[10]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1151,7 +1328,7 @@ func (x *SparkResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SparkResponse.ProtoReflect.Descriptor instead.
 func (*SparkResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{10}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SparkResponse) GetOutput() *SparkOutput {
@@ -1190,7 +1367,7 @@ type ShapeRequest struct {
 
 func (x *ShapeRequest) Reset() {
 	*x = ShapeRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[11]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1202,7 +1379,7 @@ func (x *ShapeRequest) String() string {
 func (*ShapeRequest) ProtoMessage() {}
 
 func (x *ShapeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[11]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1215,7 +1392,7 @@ func (x *ShapeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShapeRequest.ProtoReflect.Descriptor instead.
 func (*ShapeRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{11}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ShapeRequest) GetSlug() string {
@@ -1254,7 +1431,7 @@ type ShapeResponse struct {
 
 func (x *ShapeResponse) Reset() {
 	*x = ShapeResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[12]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1266,7 +1443,7 @@ func (x *ShapeResponse) String() string {
 func (*ShapeResponse) ProtoMessage() {}
 
 func (x *ShapeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[12]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1279,7 +1456,7 @@ func (x *ShapeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShapeResponse.ProtoReflect.Descriptor instead.
 func (*ShapeResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{12}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ShapeResponse) GetOutput() *ShapeOutput {
@@ -1318,7 +1495,7 @@ type SpecifyRequest struct {
 
 func (x *SpecifyRequest) Reset() {
 	*x = SpecifyRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[13]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1330,7 +1507,7 @@ func (x *SpecifyRequest) String() string {
 func (*SpecifyRequest) ProtoMessage() {}
 
 func (x *SpecifyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[13]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1343,7 +1520,7 @@ func (x *SpecifyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpecifyRequest.ProtoReflect.Descriptor instead.
 func (*SpecifyRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{13}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SpecifyRequest) GetSlug() string {
@@ -1382,7 +1559,7 @@ type SpecifyResponse struct {
 
 func (x *SpecifyResponse) Reset() {
 	*x = SpecifyResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[14]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1394,7 +1571,7 @@ func (x *SpecifyResponse) String() string {
 func (*SpecifyResponse) ProtoMessage() {}
 
 func (x *SpecifyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[14]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1407,7 +1584,7 @@ func (x *SpecifyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpecifyResponse.ProtoReflect.Descriptor instead.
 func (*SpecifyResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{14}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SpecifyResponse) GetOutput() *SpecifyOutput {
@@ -1446,7 +1623,7 @@ type DecomposeRequest struct {
 
 func (x *DecomposeRequest) Reset() {
 	*x = DecomposeRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[15]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1458,7 +1635,7 @@ func (x *DecomposeRequest) String() string {
 func (*DecomposeRequest) ProtoMessage() {}
 
 func (x *DecomposeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[15]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1471,7 +1648,7 @@ func (x *DecomposeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecomposeRequest.ProtoReflect.Descriptor instead.
 func (*DecomposeRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{15}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *DecomposeRequest) GetSlug() string {
@@ -1512,7 +1689,7 @@ type DecomposeResponse struct {
 
 func (x *DecomposeResponse) Reset() {
 	*x = DecomposeResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[16]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1524,7 +1701,7 @@ func (x *DecomposeResponse) String() string {
 func (*DecomposeResponse) ProtoMessage() {}
 
 func (x *DecomposeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[16]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1537,7 +1714,7 @@ func (x *DecomposeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecomposeResponse.ProtoReflect.Descriptor instead.
 func (*DecomposeResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{16}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *DecomposeResponse) GetOutput() *DecomposeOutput {
@@ -1579,7 +1756,7 @@ type ApproveRequest struct {
 
 func (x *ApproveRequest) Reset() {
 	*x = ApproveRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[17]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1591,7 +1768,7 @@ func (x *ApproveRequest) String() string {
 func (*ApproveRequest) ProtoMessage() {}
 
 func (x *ApproveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[17]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1604,7 +1781,7 @@ func (x *ApproveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveRequest.ProtoReflect.Descriptor instead.
 func (*ApproveRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{17}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ApproveRequest) GetSlug() string {
@@ -1629,7 +1806,7 @@ type ApproveResponse struct {
 
 func (x *ApproveResponse) Reset() {
 	*x = ApproveResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[18]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1641,7 +1818,7 @@ func (x *ApproveResponse) String() string {
 func (*ApproveResponse) ProtoMessage() {}
 
 func (x *ApproveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[18]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1654,7 +1831,7 @@ func (x *ApproveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApproveResponse.ProtoReflect.Descriptor instead.
 func (*ApproveResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{18}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ApproveResponse) GetSlug() string {
@@ -1694,7 +1871,7 @@ type AmendRequest struct {
 
 func (x *AmendRequest) Reset() {
 	*x = AmendRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[19]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1706,7 +1883,7 @@ func (x *AmendRequest) String() string {
 func (*AmendRequest) ProtoMessage() {}
 
 func (x *AmendRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[19]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1719,7 +1896,7 @@ func (x *AmendRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AmendRequest.ProtoReflect.Descriptor instead.
 func (*AmendRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{19}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AmendRequest) GetSlug() string {
@@ -1758,7 +1935,7 @@ type AmendResponse struct {
 
 func (x *AmendResponse) Reset() {
 	*x = AmendResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[20]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1770,7 +1947,7 @@ func (x *AmendResponse) String() string {
 func (*AmendResponse) ProtoMessage() {}
 
 func (x *AmendResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[20]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1783,7 +1960,7 @@ func (x *AmendResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AmendResponse.ProtoReflect.Descriptor instead.
 func (*AmendResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{20}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AmendResponse) GetSlug() string {
@@ -1822,7 +1999,7 @@ type SupersedeRequest struct {
 
 func (x *SupersedeRequest) Reset() {
 	*x = SupersedeRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[21]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1834,7 +2011,7 @@ func (x *SupersedeRequest) String() string {
 func (*SupersedeRequest) ProtoMessage() {}
 
 func (x *SupersedeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[21]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1847,7 +2024,7 @@ func (x *SupersedeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupersedeRequest.ProtoReflect.Descriptor instead.
 func (*SupersedeRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{21}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *SupersedeRequest) GetSlug() string {
@@ -1884,7 +2061,7 @@ type SupersedeResponse struct {
 
 func (x *SupersedeResponse) Reset() {
 	*x = SupersedeResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[22]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1896,7 +2073,7 @@ func (x *SupersedeResponse) String() string {
 func (*SupersedeResponse) ProtoMessage() {}
 
 func (x *SupersedeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[22]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1909,7 +2086,7 @@ func (x *SupersedeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SupersedeResponse.ProtoReflect.Descriptor instead.
 func (*SupersedeResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{22}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SupersedeResponse) GetSlug() string {
@@ -1938,7 +2115,7 @@ type GetPromptsRequest struct {
 
 func (x *GetPromptsRequest) Reset() {
 	*x = GetPromptsRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[23]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1950,7 +2127,7 @@ func (x *GetPromptsRequest) String() string {
 func (*GetPromptsRequest) ProtoMessage() {}
 
 func (x *GetPromptsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[23]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1963,7 +2140,7 @@ func (x *GetPromptsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPromptsRequest.ProtoReflect.Descriptor instead.
 func (*GetPromptsRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{23}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetPromptsRequest) GetStage() AuthoringStage {
@@ -1984,7 +2161,7 @@ type GetPromptsResponse struct {
 
 func (x *GetPromptsResponse) Reset() {
 	*x = GetPromptsResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[24]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1996,7 +2173,7 @@ func (x *GetPromptsResponse) String() string {
 func (*GetPromptsResponse) ProtoMessage() {}
 
 func (x *GetPromptsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[24]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2009,7 +2186,7 @@ func (x *GetPromptsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPromptsResponse.ProtoReflect.Descriptor instead.
 func (*GetPromptsResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{24}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetPromptsResponse) GetPrompts() []*PromptTemplate {
@@ -2051,14 +2228,27 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\bApproach\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x1c\n" +
-	"\ttradeoffs\x18\x03 \x03(\tR\ttradeoffs\"\xa1\x01\n" +
-	"\rSpecifyOutput\x12-\n" +
-	"\x12interface_contract\x18\x01 \x01(\tR\x11interfaceContract\x12'\n" +
-	"\x0fverify_criteria\x18\x02 \x03(\tR\x0everifyCriteria\x12\x1e\n" +
+	"\ttradeoffs\x18\x03 \x03(\tR\ttradeoffs\":\n" +
+	"\x10InterfaceSection\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04body\x18\x02 \x01(\tR\x04body\"O\n" +
+	"\x0fVerifyCriterion\x12\x1a\n" +
+	"\bcategory\x18\x01 \x01(\tR\bcategory\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\"Z\n" +
+	"\tFileTouch\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x18\n" +
+	"\apurpose\x18\x02 \x01(\tR\apurpose\x12\x1f\n" +
+	"\vchange_type\x18\x03 \x01(\tR\n" +
+	"changeType\"\xea\x01\n" +
+	"\rSpecifyOutput\x12>\n" +
+	"\n" +
+	"interfaces\x18\x01 \x03(\v2\x1e.specgraph.v1.InterfaceSectionR\n" +
+	"interfaces\x12F\n" +
+	"\x0fverify_criteria\x18\x02 \x03(\v2\x1d.specgraph.v1.VerifyCriterionR\x0everifyCriteria\x12\x1e\n" +
 	"\n" +
 	"invariants\x18\x03 \x03(\tR\n" +
-	"invariants\x12\x18\n" +
-	"\atouches\x18\x04 \x03(\tR\atouches\"\x8c\x01\n" +
+	"invariants\x121\n" +
+	"\atouches\x18\x04 \x03(\v2\x17.specgraph.v1.FileTouchR\atouches\"\x8c\x01\n" +
 	"\x0fDecomposeOutput\x12?\n" +
 	"\bstrategy\x18\x01 \x01(\x0e2#.specgraph.v1.DecompositionStrategyR\bstrategy\x128\n" +
 	"\x06slices\x18\x02 \x03(\v2 .specgraph.v1.DecompositionSliceR\x06slices\"\x8d\x01\n" +
@@ -2196,7 +2386,7 @@ func file_specgraph_v1_authoring_proto_rawDescGZIP() []byte {
 }
 
 var file_specgraph_v1_authoring_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_specgraph_v1_authoring_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_specgraph_v1_authoring_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_specgraph_v1_authoring_proto_goTypes = []any{
 	(AuthoringStage)(0),           // 0: specgraph.v1.AuthoringStage
 	(Posture)(0),                  // 1: specgraph.v1.Posture
@@ -2208,85 +2398,91 @@ var file_specgraph_v1_authoring_proto_goTypes = []any{
 	(*DecisionInput)(nil),         // 7: specgraph.v1.DecisionInput
 	(*ShapeOutput)(nil),           // 8: specgraph.v1.ShapeOutput
 	(*Approach)(nil),              // 9: specgraph.v1.Approach
-	(*SpecifyOutput)(nil),         // 10: specgraph.v1.SpecifyOutput
-	(*DecomposeOutput)(nil),       // 11: specgraph.v1.DecomposeOutput
-	(*DecompositionSlice)(nil),    // 12: specgraph.v1.DecompositionSlice
-	(*SafetyFlag)(nil),            // 13: specgraph.v1.SafetyFlag
-	(*PromptTemplate)(nil),        // 14: specgraph.v1.PromptTemplate
-	(*SparkRequest)(nil),          // 15: specgraph.v1.SparkRequest
-	(*SparkResponse)(nil),         // 16: specgraph.v1.SparkResponse
-	(*ShapeRequest)(nil),          // 17: specgraph.v1.ShapeRequest
-	(*ShapeResponse)(nil),         // 18: specgraph.v1.ShapeResponse
-	(*SpecifyRequest)(nil),        // 19: specgraph.v1.SpecifyRequest
-	(*SpecifyResponse)(nil),       // 20: specgraph.v1.SpecifyResponse
-	(*DecomposeRequest)(nil),      // 21: specgraph.v1.DecomposeRequest
-	(*DecomposeResponse)(nil),     // 22: specgraph.v1.DecomposeResponse
-	(*ApproveRequest)(nil),        // 23: specgraph.v1.ApproveRequest
-	(*ApproveResponse)(nil),       // 24: specgraph.v1.ApproveResponse
-	(*AmendRequest)(nil),          // 25: specgraph.v1.AmendRequest
-	(*AmendResponse)(nil),         // 26: specgraph.v1.AmendResponse
-	(*SupersedeRequest)(nil),      // 27: specgraph.v1.SupersedeRequest
-	(*SupersedeResponse)(nil),     // 28: specgraph.v1.SupersedeResponse
-	(*GetPromptsRequest)(nil),     // 29: specgraph.v1.GetPromptsRequest
-	(*GetPromptsResponse)(nil),    // 30: specgraph.v1.GetPromptsResponse
-	(*timestamppb.Timestamp)(nil), // 31: google.protobuf.Timestamp
+	(*InterfaceSection)(nil),      // 10: specgraph.v1.InterfaceSection
+	(*VerifyCriterion)(nil),       // 11: specgraph.v1.VerifyCriterion
+	(*FileTouch)(nil),             // 12: specgraph.v1.FileTouch
+	(*SpecifyOutput)(nil),         // 13: specgraph.v1.SpecifyOutput
+	(*DecomposeOutput)(nil),       // 14: specgraph.v1.DecomposeOutput
+	(*DecompositionSlice)(nil),    // 15: specgraph.v1.DecompositionSlice
+	(*SafetyFlag)(nil),            // 16: specgraph.v1.SafetyFlag
+	(*PromptTemplate)(nil),        // 17: specgraph.v1.PromptTemplate
+	(*SparkRequest)(nil),          // 18: specgraph.v1.SparkRequest
+	(*SparkResponse)(nil),         // 19: specgraph.v1.SparkResponse
+	(*ShapeRequest)(nil),          // 20: specgraph.v1.ShapeRequest
+	(*ShapeResponse)(nil),         // 21: specgraph.v1.ShapeResponse
+	(*SpecifyRequest)(nil),        // 22: specgraph.v1.SpecifyRequest
+	(*SpecifyResponse)(nil),       // 23: specgraph.v1.SpecifyResponse
+	(*DecomposeRequest)(nil),      // 24: specgraph.v1.DecomposeRequest
+	(*DecomposeResponse)(nil),     // 25: specgraph.v1.DecomposeResponse
+	(*ApproveRequest)(nil),        // 26: specgraph.v1.ApproveRequest
+	(*ApproveResponse)(nil),       // 27: specgraph.v1.ApproveResponse
+	(*AmendRequest)(nil),          // 28: specgraph.v1.AmendRequest
+	(*AmendResponse)(nil),         // 29: specgraph.v1.AmendResponse
+	(*SupersedeRequest)(nil),      // 30: specgraph.v1.SupersedeRequest
+	(*SupersedeResponse)(nil),     // 31: specgraph.v1.SupersedeResponse
+	(*GetPromptsRequest)(nil),     // 32: specgraph.v1.GetPromptsRequest
+	(*GetPromptsResponse)(nil),    // 33: specgraph.v1.GetPromptsResponse
+	(*timestamppb.Timestamp)(nil), // 34: google.protobuf.Timestamp
 }
 var file_specgraph_v1_authoring_proto_depIdxs = []int32{
 	5,  // 0: specgraph.v1.SparkOutput.scope_sniff:type_name -> specgraph.v1.ScopeSniff
 	9,  // 1: specgraph.v1.ShapeOutput.approaches:type_name -> specgraph.v1.Approach
 	7,  // 2: specgraph.v1.ShapeOutput.decisions:type_name -> specgraph.v1.DecisionInput
-	3,  // 3: specgraph.v1.DecomposeOutput.strategy:type_name -> specgraph.v1.DecompositionStrategy
-	12, // 4: specgraph.v1.DecomposeOutput.slices:type_name -> specgraph.v1.DecompositionSlice
-	4,  // 5: specgraph.v1.SafetyFlag.category:type_name -> specgraph.v1.SafetyCategory
-	2,  // 6: specgraph.v1.SafetyFlag.severity:type_name -> specgraph.v1.FindingSeverity
-	0,  // 7: specgraph.v1.PromptTemplate.stage:type_name -> specgraph.v1.AuthoringStage
-	6,  // 8: specgraph.v1.SparkRequest.output:type_name -> specgraph.v1.SparkOutput
-	1,  // 9: specgraph.v1.SparkRequest.posture:type_name -> specgraph.v1.Posture
-	6,  // 10: specgraph.v1.SparkResponse.output:type_name -> specgraph.v1.SparkOutput
-	13, // 11: specgraph.v1.SparkResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
-	14, // 12: specgraph.v1.SparkResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
-	8,  // 13: specgraph.v1.ShapeRequest.output:type_name -> specgraph.v1.ShapeOutput
-	1,  // 14: specgraph.v1.ShapeRequest.posture:type_name -> specgraph.v1.Posture
-	8,  // 15: specgraph.v1.ShapeResponse.output:type_name -> specgraph.v1.ShapeOutput
-	13, // 16: specgraph.v1.ShapeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
-	14, // 17: specgraph.v1.ShapeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
-	10, // 18: specgraph.v1.SpecifyRequest.output:type_name -> specgraph.v1.SpecifyOutput
-	1,  // 19: specgraph.v1.SpecifyRequest.posture:type_name -> specgraph.v1.Posture
-	10, // 20: specgraph.v1.SpecifyResponse.output:type_name -> specgraph.v1.SpecifyOutput
-	13, // 21: specgraph.v1.SpecifyResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
-	14, // 22: specgraph.v1.SpecifyResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
-	11, // 23: specgraph.v1.DecomposeRequest.output:type_name -> specgraph.v1.DecomposeOutput
-	1,  // 24: specgraph.v1.DecomposeRequest.posture:type_name -> specgraph.v1.Posture
-	11, // 25: specgraph.v1.DecomposeResponse.output:type_name -> specgraph.v1.DecomposeOutput
-	13, // 26: specgraph.v1.DecomposeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
-	14, // 27: specgraph.v1.DecomposeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
-	0,  // 28: specgraph.v1.ApproveResponse.stage:type_name -> specgraph.v1.AuthoringStage
-	31, // 29: specgraph.v1.ApproveResponse.approved_at:type_name -> google.protobuf.Timestamp
-	0,  // 30: specgraph.v1.AmendRequest.target_stage:type_name -> specgraph.v1.AuthoringStage
-	0,  // 31: specgraph.v1.AmendResponse.stage:type_name -> specgraph.v1.AuthoringStage
-	0,  // 32: specgraph.v1.GetPromptsRequest.stage:type_name -> specgraph.v1.AuthoringStage
-	14, // 33: specgraph.v1.GetPromptsResponse.prompts:type_name -> specgraph.v1.PromptTemplate
-	15, // 34: specgraph.v1.AuthoringService.Spark:input_type -> specgraph.v1.SparkRequest
-	17, // 35: specgraph.v1.AuthoringService.Shape:input_type -> specgraph.v1.ShapeRequest
-	19, // 36: specgraph.v1.AuthoringService.Specify:input_type -> specgraph.v1.SpecifyRequest
-	21, // 37: specgraph.v1.AuthoringService.Decompose:input_type -> specgraph.v1.DecomposeRequest
-	23, // 38: specgraph.v1.AuthoringService.Approve:input_type -> specgraph.v1.ApproveRequest
-	25, // 39: specgraph.v1.AuthoringService.Amend:input_type -> specgraph.v1.AmendRequest
-	27, // 40: specgraph.v1.AuthoringService.Supersede:input_type -> specgraph.v1.SupersedeRequest
-	29, // 41: specgraph.v1.AuthoringService.GetPrompts:input_type -> specgraph.v1.GetPromptsRequest
-	16, // 42: specgraph.v1.AuthoringService.Spark:output_type -> specgraph.v1.SparkResponse
-	18, // 43: specgraph.v1.AuthoringService.Shape:output_type -> specgraph.v1.ShapeResponse
-	20, // 44: specgraph.v1.AuthoringService.Specify:output_type -> specgraph.v1.SpecifyResponse
-	22, // 45: specgraph.v1.AuthoringService.Decompose:output_type -> specgraph.v1.DecomposeResponse
-	24, // 46: specgraph.v1.AuthoringService.Approve:output_type -> specgraph.v1.ApproveResponse
-	26, // 47: specgraph.v1.AuthoringService.Amend:output_type -> specgraph.v1.AmendResponse
-	28, // 48: specgraph.v1.AuthoringService.Supersede:output_type -> specgraph.v1.SupersedeResponse
-	30, // 49: specgraph.v1.AuthoringService.GetPrompts:output_type -> specgraph.v1.GetPromptsResponse
-	42, // [42:50] is the sub-list for method output_type
-	34, // [34:42] is the sub-list for method input_type
-	34, // [34:34] is the sub-list for extension type_name
-	34, // [34:34] is the sub-list for extension extendee
-	0,  // [0:34] is the sub-list for field type_name
+	10, // 3: specgraph.v1.SpecifyOutput.interfaces:type_name -> specgraph.v1.InterfaceSection
+	11, // 4: specgraph.v1.SpecifyOutput.verify_criteria:type_name -> specgraph.v1.VerifyCriterion
+	12, // 5: specgraph.v1.SpecifyOutput.touches:type_name -> specgraph.v1.FileTouch
+	3,  // 6: specgraph.v1.DecomposeOutput.strategy:type_name -> specgraph.v1.DecompositionStrategy
+	15, // 7: specgraph.v1.DecomposeOutput.slices:type_name -> specgraph.v1.DecompositionSlice
+	4,  // 8: specgraph.v1.SafetyFlag.category:type_name -> specgraph.v1.SafetyCategory
+	2,  // 9: specgraph.v1.SafetyFlag.severity:type_name -> specgraph.v1.FindingSeverity
+	0,  // 10: specgraph.v1.PromptTemplate.stage:type_name -> specgraph.v1.AuthoringStage
+	6,  // 11: specgraph.v1.SparkRequest.output:type_name -> specgraph.v1.SparkOutput
+	1,  // 12: specgraph.v1.SparkRequest.posture:type_name -> specgraph.v1.Posture
+	6,  // 13: specgraph.v1.SparkResponse.output:type_name -> specgraph.v1.SparkOutput
+	16, // 14: specgraph.v1.SparkResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
+	17, // 15: specgraph.v1.SparkResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
+	8,  // 16: specgraph.v1.ShapeRequest.output:type_name -> specgraph.v1.ShapeOutput
+	1,  // 17: specgraph.v1.ShapeRequest.posture:type_name -> specgraph.v1.Posture
+	8,  // 18: specgraph.v1.ShapeResponse.output:type_name -> specgraph.v1.ShapeOutput
+	16, // 19: specgraph.v1.ShapeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
+	17, // 20: specgraph.v1.ShapeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
+	13, // 21: specgraph.v1.SpecifyRequest.output:type_name -> specgraph.v1.SpecifyOutput
+	1,  // 22: specgraph.v1.SpecifyRequest.posture:type_name -> specgraph.v1.Posture
+	13, // 23: specgraph.v1.SpecifyResponse.output:type_name -> specgraph.v1.SpecifyOutput
+	16, // 24: specgraph.v1.SpecifyResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
+	17, // 25: specgraph.v1.SpecifyResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
+	14, // 26: specgraph.v1.DecomposeRequest.output:type_name -> specgraph.v1.DecomposeOutput
+	1,  // 27: specgraph.v1.DecomposeRequest.posture:type_name -> specgraph.v1.Posture
+	14, // 28: specgraph.v1.DecomposeResponse.output:type_name -> specgraph.v1.DecomposeOutput
+	16, // 29: specgraph.v1.DecomposeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
+	17, // 30: specgraph.v1.DecomposeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
+	0,  // 31: specgraph.v1.ApproveResponse.stage:type_name -> specgraph.v1.AuthoringStage
+	34, // 32: specgraph.v1.ApproveResponse.approved_at:type_name -> google.protobuf.Timestamp
+	0,  // 33: specgraph.v1.AmendRequest.target_stage:type_name -> specgraph.v1.AuthoringStage
+	0,  // 34: specgraph.v1.AmendResponse.stage:type_name -> specgraph.v1.AuthoringStage
+	0,  // 35: specgraph.v1.GetPromptsRequest.stage:type_name -> specgraph.v1.AuthoringStage
+	17, // 36: specgraph.v1.GetPromptsResponse.prompts:type_name -> specgraph.v1.PromptTemplate
+	18, // 37: specgraph.v1.AuthoringService.Spark:input_type -> specgraph.v1.SparkRequest
+	20, // 38: specgraph.v1.AuthoringService.Shape:input_type -> specgraph.v1.ShapeRequest
+	22, // 39: specgraph.v1.AuthoringService.Specify:input_type -> specgraph.v1.SpecifyRequest
+	24, // 40: specgraph.v1.AuthoringService.Decompose:input_type -> specgraph.v1.DecomposeRequest
+	26, // 41: specgraph.v1.AuthoringService.Approve:input_type -> specgraph.v1.ApproveRequest
+	28, // 42: specgraph.v1.AuthoringService.Amend:input_type -> specgraph.v1.AmendRequest
+	30, // 43: specgraph.v1.AuthoringService.Supersede:input_type -> specgraph.v1.SupersedeRequest
+	32, // 44: specgraph.v1.AuthoringService.GetPrompts:input_type -> specgraph.v1.GetPromptsRequest
+	19, // 45: specgraph.v1.AuthoringService.Spark:output_type -> specgraph.v1.SparkResponse
+	21, // 46: specgraph.v1.AuthoringService.Shape:output_type -> specgraph.v1.ShapeResponse
+	23, // 47: specgraph.v1.AuthoringService.Specify:output_type -> specgraph.v1.SpecifyResponse
+	25, // 48: specgraph.v1.AuthoringService.Decompose:output_type -> specgraph.v1.DecomposeResponse
+	27, // 49: specgraph.v1.AuthoringService.Approve:output_type -> specgraph.v1.ApproveResponse
+	29, // 50: specgraph.v1.AuthoringService.Amend:output_type -> specgraph.v1.AmendResponse
+	31, // 51: specgraph.v1.AuthoringService.Supersede:output_type -> specgraph.v1.SupersedeResponse
+	33, // 52: specgraph.v1.AuthoringService.GetPrompts:output_type -> specgraph.v1.GetPromptsResponse
+	45, // [45:53] is the sub-list for method output_type
+	37, // [37:45] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_authoring_proto_init() }
@@ -2300,7 +2496,7 @@ func file_specgraph_v1_authoring_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_authoring_proto_rawDesc), len(file_specgraph_v1_authoring_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   25,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
