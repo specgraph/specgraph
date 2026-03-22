@@ -30,7 +30,17 @@ func ValidPassType(pt PassType) bool {
 	return false
 }
 
-// AnalyticalFinding records a finding produced by an analytical pass.
+// AnalyticalFindingInput contains the fields required to create a finding.
+// PassType is derived from the method-level parameter, not per-finding.
+type AnalyticalFindingInput struct {
+	Severity   FindingSeverity
+	Summary    string
+	Detail     string
+	Constraint string
+	Resolution string
+}
+
+// AnalyticalFinding records a finding produced by an analytical pass (read-side).
 type AnalyticalFinding struct {
 	ID         string
 	PassType   PassType
@@ -47,7 +57,7 @@ type AnalyticalFinding struct {
 type FindingsWriter interface {
 	// StoreFindings replaces all findings for the given (slug, passType) pair
 	// and returns the IDs assigned to the persisted findings.
-	StoreFindings(ctx context.Context, slug string, passType PassType, findings []AnalyticalFinding) ([]string, error)
+	StoreFindings(ctx context.Context, slug string, passType PassType, findings []AnalyticalFindingInput) ([]string, error)
 }
 
 // FindingsReader retrieves analytical pass findings.

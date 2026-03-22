@@ -18,9 +18,8 @@ func TestStoreFindings_CreatesNodesAndEdges(t *testing.T) {
 	_, err := store.CreateSpec(ctx, "findings-create", "Test findings creation", "p1", "medium")
 	require.NoError(t, err)
 
-	findings := []storage.AnalyticalFinding{
+	findings := []storage.AnalyticalFindingInput{
 		{
-			PassType:   storage.PassTypeConstitutionCheck,
 			Severity:   storage.SeverityWarning,
 			Summary:    "Missing constraint coverage",
 			Detail:     "The spec does not address constraint X",
@@ -28,7 +27,6 @@ func TestStoreFindings_CreatesNodesAndEdges(t *testing.T) {
 			Resolution: "Add a section covering constraint X",
 		},
 		{
-			PassType:   storage.PassTypeConstitutionCheck,
 			Severity:   storage.SeverityCritical,
 			Summary:    "Violates naming convention",
 			Detail:     "Slug uses underscores instead of hyphens",
@@ -75,14 +73,12 @@ func TestStoreFindings_ReplacesExistingFindings(t *testing.T) {
 	_, err := store.CreateSpec(ctx, "findings-replace", "Test findings replacement", "p1", "medium")
 	require.NoError(t, err)
 
-	initial := []storage.AnalyticalFinding{
+	initial := []storage.AnalyticalFindingInput{
 		{
-			PassType: storage.PassTypeRedTeam,
 			Severity: storage.SeverityWarning,
 			Summary:  "Old finding A",
 		},
 		{
-			PassType: storage.PassTypeRedTeam,
 			Severity: storage.SeverityNote,
 			Summary:  "Old finding B",
 		},
@@ -92,9 +88,8 @@ func TestStoreFindings_ReplacesExistingFindings(t *testing.T) {
 	require.NoError(t, err)
 
 	// Replace with a single new finding.
-	replacement := []storage.AnalyticalFinding{
+	replacement := []storage.AnalyticalFindingInput{
 		{
-			PassType: storage.PassTypeRedTeam,
 			Severity: storage.SeverityCritical,
 			Summary:  "New finding C",
 		},
@@ -116,9 +111,8 @@ func TestStoreFindings_DifferentPassTypesAreIndependent(t *testing.T) {
 	_, err := store.CreateSpec(ctx, "findings-types", "Test pass type independence", "p1", "medium")
 	require.NoError(t, err)
 
-	constFindings := []storage.AnalyticalFinding{
+	constFindings := []storage.AnalyticalFindingInput{
 		{
-			PassType: storage.PassTypeConstitutionCheck,
 			Severity: storage.SeverityWarning,
 			Summary:  "Constitution finding",
 		},
@@ -126,14 +120,12 @@ func TestStoreFindings_DifferentPassTypesAreIndependent(t *testing.T) {
 	_, err = store.StoreFindings(ctx, "findings-types", storage.PassTypeConstitutionCheck, constFindings)
 	require.NoError(t, err)
 
-	redTeamFindings := []storage.AnalyticalFinding{
+	redTeamFindings := []storage.AnalyticalFindingInput{
 		{
-			PassType: storage.PassTypeRedTeam,
 			Severity: storage.SeverityCritical,
 			Summary:  "Red team finding 1",
 		},
 		{
-			PassType: storage.PassTypeRedTeam,
 			Severity: storage.SeverityNote,
 			Summary:  "Red team finding 2",
 		},
@@ -165,9 +157,8 @@ func TestStoreFindings_RecordsSpecVersion(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int32(1), spec.Version)
 
-	findings := []storage.AnalyticalFinding{
+	findings := []storage.AnalyticalFindingInput{
 		{
-			PassType: storage.PassTypeConstitutionCheck,
 			Severity: storage.SeverityNote,
 			Summary:  "Version check finding",
 		},
@@ -185,9 +176,8 @@ func TestStoreFindings_RecordsSpecVersion(t *testing.T) {
 func TestStoreFindings_SpecNotFound(t *testing.T) {
 	store, ctx := newTestStore(t)
 
-	findings := []storage.AnalyticalFinding{
+	findings := []storage.AnalyticalFindingInput{
 		{
-			PassType: storage.PassTypeRedTeam,
 			Severity: storage.SeverityWarning,
 			Summary:  "Should fail",
 		},
@@ -221,14 +211,12 @@ func TestStoreFindings_EmptySliceDeletesExisting(t *testing.T) {
 	require.NoError(t, err)
 
 	// Store initial findings.
-	initial := []storage.AnalyticalFinding{
+	initial := []storage.AnalyticalFindingInput{
 		{
-			PassType: storage.PassTypeConstitutionCheck,
 			Severity: storage.SeverityWarning,
 			Summary:  "Will be deleted",
 		},
 		{
-			PassType: storage.PassTypeConstitutionCheck,
 			Severity: storage.SeverityCritical,
 			Summary:  "Also deleted",
 		},
