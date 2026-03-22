@@ -151,6 +151,43 @@ func TestCreateAndGetSpec(t *testing.T) {
 	require.Equal(t, spec.UpdatedAt.Unix(), got.UpdatedAt.Unix())
 }
 
+func TestCreateSpec_DuplicateSlugReturnsError(t *testing.T) {
+	clearDatabase(t)
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.CreateSpec(ctx, "login-api", "Implement login API", "medium", "medium")
+	require.NoError(t, err)
+
+	_, err = store.CreateSpec(ctx, "login-api", "Duplicate login API", "medium", "medium")
+	require.ErrorIs(t, err, storage.ErrSpecAlreadyExists)
+}
+
+func TestCreateSpec_SameSlugDifferentProjectsSucceeds(t *testing.T) {
+	clearDatabase(t)
+
+	ctx := context.Background()
+
+	// Create spec in project "test" (default).
+	store1, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store1.Close(ctx)
+
+	_, err = store1.CreateSpec(ctx, "shared-slug", "Intent A", "p1", "medium")
+	require.NoError(t, err)
+
+	// Create spec with same slug in project "other".
+	store2, err := newStore(ctx, boltURI, memgraph.WithProject("other"))
+	require.NoError(t, err)
+	defer store2.Close(ctx)
+
+	_, err = store2.CreateSpec(ctx, "shared-slug", "Intent B", "p1", "medium")
+	require.NoError(t, err, "same slug in different project should succeed")
+}
+
 func TestListSpecs(t *testing.T) {
 	clearDatabase(t)
 

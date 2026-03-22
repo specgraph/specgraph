@@ -54,6 +54,9 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 
 	spec, err := store.CreateSpec(ctx, msg.Slug, msg.Intent, priority, complexity)
 	if err != nil {
+		if errors.Is(err, storage.ErrSpecAlreadyExists) {
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("spec with this slug already exists"))
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	pb, err := specToProto(spec)

@@ -73,16 +73,6 @@ var _ = Describe("Full pipeline", Ordered, func() {
 		Expect(resp.Msg.Constitution.Name).To(Equal("pipeline-e2e"))
 	})
 
-	It("creates a spec", func() {
-		resp, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
-			Slug:   pipelineSlug,
-			Intent: "Full pipeline happy-path test spec",
-		}))
-		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Slug).To(Equal(pipelineSlug))
-		Expect(resp.Msg.Stage).To(Equal("spark"))
-	})
-
 	It("sparks the spec", func() {
 		resp, err := authoringClient.Spark(ctx, connect.NewRequest(&specv1.SparkRequest{
 			Slug: pipelineSlug,

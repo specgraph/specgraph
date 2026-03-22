@@ -7,7 +7,9 @@ package api_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"time"
 
 	"connectrpc.com/connect"
 	. "github.com/onsi/ginkgo/v2"
@@ -209,8 +211,9 @@ var _ = Describe("Auth", Label("auth"), func() {
 		const adminKey = "admin-secret-key-456"
 
 		var (
-			info    *testutil.ServerInfo
-			cleanup func()
+			info     *testutil.ServerInfo
+			cleanup  func()
+			testSlug string
 		)
 
 		BeforeEach(func() {
@@ -229,10 +232,13 @@ var _ = Describe("Auth", Label("auth"), func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 
+			// Use unique slug per It block to avoid duplicate-slug errors.
+			testSlug = fmt.Sprintf("admin-test-%d", time.Now().UnixNano())
+
 			// Seed a spec for read operations.
 			client := specgraphv1connect.NewSpecServiceClient(authProjectClient(), info.BaseURL, withBearer(adminKey))
 			_, err = client.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
-				Slug: "admin-test-spec", Intent: "admin seeded spec", Priority: "p1",
+				Slug: testSlug, Intent: "admin seeded spec", Priority: "p1",
 			}))
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -260,9 +266,9 @@ var _ = Describe("Auth", Label("auth"), func() {
 
 		It("can GetSpec", func() {
 			client := specgraphv1connect.NewSpecServiceClient(authProjectClient(), info.BaseURL, withBearer(adminKey))
-			resp, err := client.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{Slug: "admin-test-spec"}))
+			resp, err := client.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{Slug: testSlug}))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Slug).To(Equal("admin-test-spec"))
+			Expect(resp.Msg.Slug).To(Equal(testSlug))
 		})
 
 		It("can CreateDecision", func() {
