@@ -18,7 +18,7 @@ error conditions.
 
 ## Persona
 
-> **Read `../persona.md` for the full shared persona** — core identity, posture system
+> **Read `references/persona.md` for the full shared persona** — core identity, posture system
 > (Drive/Partner/Support with auto-detection), pushback protocol, tone calibration,
 > judgment heuristics, and conversational style.
 

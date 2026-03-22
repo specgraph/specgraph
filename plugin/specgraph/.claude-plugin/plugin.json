@@ -1,0 +1,5 @@
+{
+  "name": "specgraph",
+  "description": "SpecGraph: spec-driven development — author, query, and execute specs as a queryable graph",
+  "version": "0.2.0"
+}

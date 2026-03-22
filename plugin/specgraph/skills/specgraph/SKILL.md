@@ -1,8 +1,10 @@
 ---
 name: specgraph
 description: >
-  SpecGraph router and concierge. Triggers on: "specgraph", "spec", "new spec",
-  "author", "funnel", "I have an idea", "what should I work on".
+  SpecGraph router and concierge — detects intent and routes to the right skill.
+  Use when "specgraph", "spec", "new spec", "author", "funnel", "I have an idea",
+  "what should I work on", "setup a constitution", "initialize project",
+  "bootstrap", "what's next", or any spec-related request.
 ---
 
 # SpecGraph Router
@@ -39,8 +41,13 @@ specgraph constitution show
 
 Summarize briefly: "Your project constitution has N principles and M constraints."
 
-If the command fails (e.g., no constitution configured yet), note it and continue:
-"No constitution configured yet — we can set that up later."
+If the command succeeds but returns empty (no constitution configured yet), **prioritize setting it up before any spec work.** The constitution is the project's ground truth — analytical passes check specs against it, so authoring without one produces weaker results.
+
+Route to `/specgraph-constitution` to guide setup: "No constitution configured yet. Let's set that up first — it defines your project's ground truth that analytical passes check every spec against."
+
+If the command fails (non-zero exit, connection refused, timeout), the server may not be running or initialized. Route to diagnostics: "The `specgraph constitution show` command failed — check that the server is running (`specgraph health`) and the project is initialized (`specgraph init`)."
+
+Only proceed to spec authoring after the constitution is loaded or the user explicitly declines.
 
 ## Step 3: Route Based on Context
 
@@ -80,6 +87,8 @@ If `$ARGUMENTS` contains an explicit keyword, route directly:
 
 | Keyword | Action |
 |---------|--------|
+| init, "initialize", "bootstrap", "set up specgraph", "start the server", "get started" | Invoke `/specgraph-init` |
+| constitution, "set up constitution", "ground truth", "principles" | Invoke `/specgraph-constitution` |
 | spark | Invoke `/specgraph-spark` |
 | shape | Invoke `/specgraph-shape` |
 | specify | Invoke `/specgraph-specify` |
