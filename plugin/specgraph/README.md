@@ -4,9 +4,13 @@ Skills for the SpecGraph authoring funnel and graph queries.
 
 ## Install
 
-**Inside the specgraph repo:** The plugin symlink is committed — skills are available automatically.
+**Inside the specgraph repo:**
 
-**For other projects:** Install via Claude Code plugin marketplace or repo add (coming soon).
+```bash
+claude --plugin-dir ./plugin/specgraph
+```
+
+**For other projects:** Install via Claude Code plugin marketplace (coming soon).
 
 ## Skills
 
@@ -23,3 +27,4 @@ Skills for the SpecGraph authoring funnel and graph queries.
 | `specgraph-deps` | Show dependency tree for a spec |
 | `specgraph-ready` | Show specs ready to be claimed and implemented |
 | `specgraph-bundle` | Generate execution bundle and prime context for a spec |
+| `specgraph-constitution` | Create or update the project constitution (ground truth) |
