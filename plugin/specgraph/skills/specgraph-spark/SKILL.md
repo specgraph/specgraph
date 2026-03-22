@@ -77,6 +77,30 @@ specgraph constitution show
 Summarize to user: "Your project constitution has N principles and M
 constraints. Key ones for this spec: [relevant subset]."
 
+### Duplicate Check
+
+Before creating a new spec, check for existing specs with the same or similar
+slugs. This prevents accidental duplicates and catches near-misses.
+
+```bash
+specgraph list --json
+```
+
+1. **Exact match:** If a spec with the proposed slug already exists, do NOT
+   create a new one. Instead, present the existing spec and ask:
+   - "A spec with slug `<slug>` already exists at stage `<stage>`. Resume it,
+     or pick a different slug?"
+
+2. **Substring/prefix match:** If any existing slug contains the proposed slug
+   as a substring (or vice versa), surface the matches:
+   - "I found similar specs: `<match-1>` (stage), `<match-2>` (stage). Is your
+     idea related to one of these, or is it a new spec?"
+
+3. **No matches:** Proceed normally.
+
+Use `AskUserQuestion` to present matches with options: "Resume existing",
+"Create new spec anyway", or "Pick a different slug."
+
 ### Slug Handling
 
 - If `$ARGUMENTS` contains a slug, load existing spec:
@@ -86,6 +110,7 @@ specgraph show <slug>
 ```
 
 - If `$ARGUMENTS` is a description, generate a slug or ask the user for one.
+  Run the **Duplicate Check** above before creating.
 
 ### Resumption
 
