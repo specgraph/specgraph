@@ -98,7 +98,7 @@ func (h *AnalyticalPassHandler) StoreFindings(ctx context.Context, req *connect.
 	if len(msg.Findings) > maxFindingsPerRequest {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("too many findings: %d exceeds maximum of %d", len(msg.Findings), maxFindingsPerRequest))
 	}
-	domain := make([]storage.AnalyticalFinding, len(msg.Findings))
+	domain := make([]storage.AnalyticalFindingInput, len(msg.Findings))
 	for i, f := range msg.Findings {
 		if f == nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("finding[%d]: must not be null", i))
@@ -113,8 +113,7 @@ func (h *AnalyticalPassHandler) StoreFindings(ctx context.Context, req *connect.
 		if convErr != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("finding[%d]: %w", i, convErr))
 		}
-		domain[i] = storage.AnalyticalFinding{
-			PassType:   pt,
+		domain[i] = storage.AnalyticalFindingInput{
 			Severity:   sev,
 			Summary:    f.Summary,
 			Detail:     f.Detail,

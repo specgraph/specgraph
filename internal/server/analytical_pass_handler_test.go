@@ -66,7 +66,7 @@ func (b *analyticalPassTestBackend) GetSpec(_ context.Context, slug string) (*st
 	return spec, nil
 }
 
-func (b *analyticalPassTestBackend) StoreFindings(_ context.Context, slug string, passType storage.PassType, findings []storage.AnalyticalFinding) ([]string, error) {
+func (b *analyticalPassTestBackend) StoreFindings(_ context.Context, slug string, passType storage.PassType, findings []storage.AnalyticalFindingInput) ([]string, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if _, ok := b.specs[slug]; !ok {
