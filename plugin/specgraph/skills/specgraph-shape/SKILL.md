@@ -142,6 +142,10 @@ Surface findings naturally when they arrive — don't block the conversation
 waiting for results. Example: "I checked the graph — there's already a spec for X
 that touches the same files. Want to factor that in?"
 
+**Important:** Background agent completions are NOT user input. When a background
+agent returns, fold its results into the current discussion but do NOT treat the
+notification as user approval of the current step.
+
 ---
 
 ## Execution
@@ -175,6 +179,22 @@ criteria, risks) are always completed.
 
 During the conversation, run background research as described in the Domain
 section. Surface findings when relevant — don't wait until the end.
+
+#### Step Gating (CRITICAL)
+
+Each elicitation step MUST be explicitly approved by the user before advancing to
+the next. Background agent notifications (e.g., codebase scan results) are NOT
+user approval — they are supplementary context to weave into the current step.
+
+- After presenting scope in/out: WAIT for user to confirm, adjust, or discuss.
+- After presenting approaches: WAIT for user to choose or discuss.
+- After presenting decisions: WAIT for user to confirm or revise.
+- After presenting success criteria: WAIT for user to confirm or adjust.
+- After presenting risks: WAIT for user to confirm or add.
+
+Use `AskUserQuestion` when presenting each step for approval. If a background
+agent returns results while waiting, incorporate the findings into the current
+step's presentation but do NOT advance to the next step.
 
 ### Persistence
 
