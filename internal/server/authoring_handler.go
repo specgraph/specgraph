@@ -83,7 +83,7 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 		},
 	); err != nil {
 		if errors.Is(err, storage.ErrSpecAlreadyExists) {
-			return nil, connect.NewError(connect.CodeAlreadyExists, err)
+			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("spec with this slug already exists"))
 		}
 		return nil, h.stageError(err)
 	}
