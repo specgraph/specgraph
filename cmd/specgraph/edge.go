@@ -127,7 +127,7 @@ func init() {
 	edgeCmd.AddCommand(edgeListCmd)
 }
 
-func runEdgeList(_ *cobra.Command, args []string) error {
+func runEdgeList(cmd *cobra.Command, args []string) error {
 	client, err := graphClient()
 	if err != nil {
 		return err
@@ -149,7 +149,7 @@ func runEdgeList(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("list edges: %w", err)
 	}
 	if edgeListJSON {
-		return printJSON(resp.Msg)
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	fmt.Print(render.EdgeList(args[0], resp.Msg.Edges))
 	return nil

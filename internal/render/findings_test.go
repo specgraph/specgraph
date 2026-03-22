@@ -25,7 +25,7 @@ func TestFindings(t *testing.T) {
 		},
 	}
 	got := Findings(fs)
-	if !strings.Contains(got, "| Pass | Severity | Summary |") {
+	if !strings.Contains(got, "| Pass | Severity | Summary | Detail |") {
 		t.Error("missing header")
 	}
 	if !strings.Contains(got, "CONSTITUTION_CHECK") {
@@ -33,6 +33,9 @@ func TestFindings(t *testing.T) {
 	}
 	if !strings.Contains(got, "CRITICAL") {
 		t.Error("missing severity")
+	}
+	if !strings.Contains(got, "Spec does not address constraint C3.") {
+		t.Error("missing detail")
 	}
 }
 

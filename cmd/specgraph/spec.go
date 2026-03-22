@@ -109,7 +109,7 @@ var (
 	listPriority string
 )
 
-func runList(_ *cobra.Command, _ []string) error {
+func runList(cmd *cobra.Command, _ []string) error {
 	client, err := specClient()
 	if err != nil {
 		return err
@@ -122,7 +122,7 @@ func runList(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("list specs: %w", err)
 	}
 	if listJSON {
-		return printJSON(resp.Msg)
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	fmt.Print(render.SpecList(resp.Msg.Specs))
 	return nil
@@ -164,7 +164,7 @@ func init() {
 	rootCmd.AddCommand(showCmd)
 }
 
-func runShow(_ *cobra.Command, args []string) error {
+func runShow(cmd *cobra.Command, args []string) error {
 	client, err := specClient()
 	if err != nil {
 		return err
@@ -176,7 +176,7 @@ func runShow(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("get spec: %w", err)
 	}
 	if showJSON {
-		return printJSON(resp.Msg)
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	fmt.Print(render.Spec(resp.Msg.GetSpec()))
 	return nil

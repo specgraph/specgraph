@@ -56,6 +56,6 @@ func lifecycleString(lc specv1.SpecLifecycle) string {
 	case specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING:
 		return "living"
 	default:
-		return "task"
+		return "unspecified"
 	}
 }

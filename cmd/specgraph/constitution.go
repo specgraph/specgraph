@@ -43,7 +43,7 @@ var constitutionShowCmd = &cobra.Command{
 
 var constitutionShowJSON bool
 
-func runConstitutionShow(_ *cobra.Command, _ []string) error {
+func runConstitutionShow(cmd *cobra.Command, _ []string) error {
 	client, err := constitutionClient()
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func runConstitutionShow(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("get constitution: %w", err)
 	}
 	if constitutionShowJSON {
-		return printJSON(resp.Msg)
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	fmt.Print(render.Constitution(resp.Msg.Constitution))
 	return nil

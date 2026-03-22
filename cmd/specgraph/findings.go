@@ -52,7 +52,7 @@ func init() {
 	rootCmd.AddCommand(findingsCmd)
 }
 
-func runFindingsList(_ *cobra.Command, args []string) error {
+func runFindingsList(cmd *cobra.Command, args []string) error {
 	client, err := analyticalPassClient()
 	if err != nil {
 		return err
@@ -72,7 +72,7 @@ func runFindingsList(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("list findings: %w", err)
 	}
 	if findingsListJSON {
-		return printJSON(resp.Msg)
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	fmt.Print(render.Findings(resp.Msg.Findings))
 	return nil

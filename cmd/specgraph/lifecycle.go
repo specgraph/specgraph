@@ -149,7 +149,7 @@ func driftScopeToProto(s string) (specv1.DriftScope, error) {
 	return 0, fmt.Errorf("invalid scope %q (valid: unspecified/all, deps, interfaces, verify)", s)
 }
 
-func runDrift(_ *cobra.Command, args []string) error {
+func runDrift(cmd *cobra.Command, args []string) error {
 	scope, err := driftScopeToProto(driftScope)
 	if err != nil {
 		return err
@@ -167,7 +167,7 @@ func runDrift(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("drift check: %w", err)
 	}
 	if driftJSON {
-		return printJSON(resp.Msg)
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 
 	reports := resp.Msg.GetReports()

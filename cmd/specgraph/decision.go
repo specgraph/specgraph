@@ -72,7 +72,7 @@ var (
 	decisionShowJSON   bool
 )
 
-func runDecisionList(_ *cobra.Command, _ []string) error {
+func runDecisionList(cmd *cobra.Command, _ []string) error {
 	client, err := decisionClient()
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func runDecisionList(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("list decisions: %w", err)
 	}
 	if decisionListJSON {
-		return printJSON(resp.Msg)
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	fmt.Print(render.DecisionList(resp.Msg.Decisions))
 	return nil
@@ -126,7 +126,7 @@ func init() {
 	decisionCmd.AddCommand(decisionShowCmd)
 }
 
-func runDecisionShow(_ *cobra.Command, args []string) error {
+func runDecisionShow(cmd *cobra.Command, args []string) error {
 	client, err := decisionClient()
 	if err != nil {
 		return err
@@ -138,7 +138,7 @@ func runDecisionShow(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("get decision: %w", err)
 	}
 	if decisionShowJSON {
-		return printJSON(resp.Msg)
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	fmt.Print(render.Decision(resp.Msg.GetDecision()))
 	return nil

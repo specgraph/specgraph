@@ -42,7 +42,7 @@ func init() {
 	rootCmd.AddCommand(impactCmd)
 }
 
-func runDeps(_ *cobra.Command, args []string) error {
+func runDeps(cmd *cobra.Command, args []string) error {
 	client, err := graphClient()
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func runDeps(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("get transitive deps: %w", tdErr)
 		}
 		if depsJSON {
-			return printJSON(resp.Msg)
+			return printJSON(cmd.OutOrStdout(), resp.Msg)
 		}
 		fmt.Print(render.NodeRefList("Dependencies (transitive)", resp.Msg.Dependencies))
 		return nil
@@ -66,7 +66,7 @@ func runDeps(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("get dependencies: %w", err)
 	}
 	if depsJSON {
-		return printJSON(resp.Msg)
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	fmt.Print(render.NodeRefList("Dependencies", resp.Msg.Dependencies))
 	return nil
@@ -80,7 +80,7 @@ var readyCmd = &cobra.Command{
 	RunE:  runReady,
 }
 
-func runReady(_ *cobra.Command, _ []string) error {
+func runReady(cmd *cobra.Command, _ []string) error {
 	client, err := graphClient()
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func runReady(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("get ready: %w", err)
 	}
 	if readyJSON {
-		return printJSON(resp.Msg)
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	fmt.Print(render.NodeRefList("Ready Specs", resp.Msg.Ready))
 	return nil
@@ -105,7 +105,7 @@ var criticalPathCmd = &cobra.Command{
 	RunE:  runCriticalPath,
 }
 
-func runCriticalPath(_ *cobra.Command, args []string) error {
+func runCriticalPath(cmd *cobra.Command, args []string) error {
 	client, err := graphClient()
 	if err != nil {
 		return err
@@ -115,7 +115,7 @@ func runCriticalPath(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("get critical path: %w", err)
 	}
 	if criticalPathJSON {
-		return printJSON(resp.Msg)
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	fmt.Print(render.NodeRefList("Critical Path", resp.Msg.Path))
 	return nil
@@ -130,7 +130,7 @@ var impactCmd = &cobra.Command{
 	RunE:  runImpact,
 }
 
-func runImpact(_ *cobra.Command, args []string) error {
+func runImpact(cmd *cobra.Command, args []string) error {
 	client, err := graphClient()
 	if err != nil {
 		return err
@@ -140,7 +140,7 @@ func runImpact(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("get impact: %w", err)
 	}
 	if impactJSON {
-		return printJSON(resp.Msg)
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	fmt.Print(render.NodeRefList("Impacted Specs", resp.Msg.Impacted))
 	return nil

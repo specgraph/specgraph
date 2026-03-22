@@ -14,13 +14,14 @@ func Findings(fs []*specv1.AnalyticalFinding) string {
 	if len(fs) == 0 {
 		return "No findings.\n"
 	}
-	headers := []string{"Pass", "Severity", "Summary"}
+	headers := []string{"Pass", "Severity", "Summary", "Detail"}
 	rows := make([][]string, len(fs))
 	for i, f := range fs {
 		rows[i] = []string{
 			passTypeName(f.GetPassType()),
 			findingSeverityName(f.GetSeverity()),
 			f.GetSummary(),
+			f.GetDetail(),
 		}
 	}
 	return itemTable(headers, rows)
