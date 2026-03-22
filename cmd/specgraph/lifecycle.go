@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/render"
 	"github.com/spf13/cobra"
 )
 
@@ -127,7 +128,10 @@ var driftCmd = &cobra.Command{
 	RunE:  runDrift,
 }
 
-var driftScope string
+var (
+	driftScope string
+	driftJSON  bool
+)
 
 // SYNC: keep in sync with validScopes (internal/driftscope/scope.go)
 // and driftScopeFromProtoMap (internal/server/convert.go).
@@ -154,9 +158,7 @@ func runDrift(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	req := &specv1.DriftCheckRequest{
-		Scope: scope,
-	}
+	req := &specv1.DriftCheckRequest{Scope: scope}
 	if len(args) > 0 {
 		req.Slug = args[0]
 	}
@@ -164,30 +166,21 @@ func runDrift(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("drift check: %w", err)
 	}
-	reports := resp.Msg.GetReports()
-	if len(reports) == 0 {
-		fmt.Println("No drift detected.")
-		return nil
+	if driftJSON {
+		return printJSON(resp.Msg)
 	}
-	var hasErrors bool
-	var hasDrift bool
+
+	reports := resp.Msg.GetReports()
+	fmt.Print(render.DriftReport(reports))
+
+	var hasErrors, hasDrift bool
 	for _, r := range reports {
-		if len(r.GetItems()) == 0 && r.GetErrorMessage() == "" {
-			continue
-		}
-		fmt.Printf("Spec: %s\n", r.GetSpecSlug())
-		for _, item := range r.GetItems() {
-			fmt.Printf("  [%s] %s: %s\n", item.GetSeverity(), item.GetType(), item.GetDescription())
-			hasDrift = true
-		}
 		if r.GetErrorMessage() != "" {
-			fmt.Fprintf(os.Stderr, "  [error] %s\n", r.GetErrorMessage())
 			hasErrors = true
 		}
-	}
-	if !hasDrift && !hasErrors {
-		fmt.Println("No drift detected.")
-		return nil
+		if len(r.GetItems()) > 0 {
+			hasDrift = true
+		}
 	}
 	if hasErrors {
 		return fmt.Errorf("drift check completed with errors")
@@ -320,6 +313,7 @@ func init() {
 	rootCmd.AddCommand(abandonCmd)
 
 	driftCmd.Flags().StringVar(&driftScope, "scope", "", "drift check scope (deps|interfaces|verify); omit for all")
+	driftCmd.Flags().BoolVar(&driftJSON, "json", false, "output as JSON")
 	driftAckCmd.Flags().StringVar(&driftAckNote, "note", "", "acknowledgement note (required)")
 	cobra.CheckErr(driftAckCmd.MarkFlagRequired("note"))
 	driftAckCmd.Flags().StringVar(&driftAckUpstream, "upstream", "", "specific upstream slug to acknowledge")
