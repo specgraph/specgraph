@@ -6,10 +6,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"text/tabwriter"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/render"
 	"github.com/spf13/cobra"
 )
 
@@ -22,17 +22,27 @@ var depsCmd = &cobra.Command{
 	RunE:  runDeps,
 }
 
-var depsTransitive bool
+var (
+	depsTransitive  bool
+	depsJSON        bool
+	readyJSON       bool
+	criticalPathJSON bool
+	impactJSON      bool
+)
 
 func init() {
 	depsCmd.Flags().BoolVar(&depsTransitive, "transitive", false, "show transitive dependencies")
+	depsCmd.Flags().BoolVar(&depsJSON, "json", false, "output as JSON")
+	readyCmd.Flags().BoolVar(&readyJSON, "json", false, "output as JSON")
+	criticalPathCmd.Flags().BoolVar(&criticalPathJSON, "json", false, "output as JSON")
+	impactCmd.Flags().BoolVar(&impactJSON, "json", false, "output as JSON")
 	rootCmd.AddCommand(depsCmd)
 	rootCmd.AddCommand(readyCmd)
 	rootCmd.AddCommand(criticalPathCmd)
 	rootCmd.AddCommand(impactCmd)
 }
 
-func runDeps(cmd *cobra.Command, args []string) error {
+func runDeps(_ *cobra.Command, args []string) error {
 	client, err := graphClient()
 	if err != nil {
 		return err
@@ -44,14 +54,22 @@ func runDeps(cmd *cobra.Command, args []string) error {
 		if tdErr != nil {
 			return fmt.Errorf("get transitive deps: %w", tdErr)
 		}
-		return printNodeRefs(cmd, "DEPENDENCIES (transitive)", resp.Msg.Dependencies)
+		if depsJSON {
+			return printJSON(resp.Msg)
+		}
+		fmt.Print(render.NodeRefList("Dependencies (transitive)", resp.Msg.Dependencies))
+		return nil
 	}
 
 	resp, err := client.GetDependencies(ctx, connect.NewRequest(&specv1.GetDependenciesRequest{Slug: args[0]}))
 	if err != nil {
 		return fmt.Errorf("get dependencies: %w", err)
 	}
-	return printNodeRefs(cmd, "DEPENDENCIES", resp.Msg.Dependencies)
+	if depsJSON {
+		return printJSON(resp.Msg)
+	}
+	fmt.Print(render.NodeRefList("Dependencies", resp.Msg.Dependencies))
+	return nil
 }
 
 // --- ready ---
@@ -62,7 +80,7 @@ var readyCmd = &cobra.Command{
 	RunE:  runReady,
 }
 
-func runReady(cmd *cobra.Command, _ []string) error {
+func runReady(_ *cobra.Command, _ []string) error {
 	client, err := graphClient()
 	if err != nil {
 		return err
@@ -71,7 +89,11 @@ func runReady(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("get ready: %w", err)
 	}
-	return printNodeRefs(cmd, "READY SPECS", resp.Msg.Ready)
+	if readyJSON {
+		return printJSON(resp.Msg)
+	}
+	fmt.Print(render.NodeRefList("Ready Specs", resp.Msg.Ready))
+	return nil
 }
 
 // --- critical-path ---
@@ -83,7 +105,7 @@ var criticalPathCmd = &cobra.Command{
 	RunE:  runCriticalPath,
 }
 
-func runCriticalPath(cmd *cobra.Command, args []string) error {
+func runCriticalPath(_ *cobra.Command, args []string) error {
 	client, err := graphClient()
 	if err != nil {
 		return err
@@ -92,7 +114,11 @@ func runCriticalPath(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("get critical path: %w", err)
 	}
-	return printNodeRefs(cmd, "CRITICAL PATH", resp.Msg.Path)
+	if criticalPathJSON {
+		return printJSON(resp.Msg)
+	}
+	fmt.Print(render.NodeRefList("Critical Path", resp.Msg.Path))
+	return nil
 }
 
 // --- impact ---
@@ -104,7 +130,7 @@ var impactCmd = &cobra.Command{
 	RunE:  runImpact,
 }
 
-func runImpact(cmd *cobra.Command, args []string) error {
+func runImpact(_ *cobra.Command, args []string) error {
 	client, err := graphClient()
 	if err != nil {
 		return err
@@ -113,25 +139,9 @@ func runImpact(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("get impact: %w", err)
 	}
-	return printNodeRefs(cmd, "IMPACTED SPECS", resp.Msg.Impacted)
-}
-
-// --- helpers ---
-
-func printNodeRefs(cmd *cobra.Command, header string, refs []*specv1.NodeRef) error {
-	if len(refs) == 0 {
-		fmt.Println("None.")
-		return nil
+	if impactJSON {
+		return printJSON(resp.Msg)
 	}
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
-	tw := &tableWriter{w: w}
-	tw.printf("%s:\n", header)
-	tw.println("ID\tSLUG\tLABEL\tSTAGE")
-	for _, r := range refs {
-		tw.printf("%s\t%s\t%s\t%s\n", r.Id, r.Slug, r.Label, r.Stage)
-	}
-	if tw.err != nil {
-		return tw.err
-	}
-	return w.Flush()
+	fmt.Print(render.NodeRefList("Impacted Specs", resp.Msg.Impacted))
+	return nil
 }
