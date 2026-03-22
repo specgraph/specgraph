@@ -87,16 +87,22 @@ var _ = Describe("Authoring funnel", Ordered, func() {
 		resp, err := authoringClient.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
 			Slug: authoringSlug,
 			Output: &specv1.SpecifyOutput{
-				InterfaceContract: "POST /api/v1/things",
-				VerifyCriteria:    []string{"returns 200"},
-				Invariants:        []string{"data is valid"},
-				Touches:           []string{"internal/server/handler.go"},
+				Interfaces: []*specv1.InterfaceSection{
+					{Name: "API", Body: "POST /api/v1/things"},
+				},
+				VerifyCriteria: []*specv1.VerifyCriterion{
+					{Category: "happy-path", Description: "returns 200"},
+				},
+				Invariants: []string{"data is valid"},
+				Touches: []*specv1.FileTouch{
+					{Path: "internal/server/handler.go", Purpose: "handler updates", ChangeType: "modify"},
+				},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Output).NotTo(BeNil())
-		Expect(resp.Msg.Output.InterfaceContract).NotTo(BeEmpty())
+		Expect(resp.Msg.Output.Interfaces).NotTo(BeEmpty())
 	})
 
 	It("decomposes a specified spec", func() {

@@ -60,12 +60,31 @@ type ShapeOutput struct {
 	Decisions      []DecisionInput `json:"decisions,omitempty"`
 }
 
+// InterfaceSection defines one API surface in the specify stage contract.
+type InterfaceSection struct {
+	Name string `json:"name"`
+	Body string `json:"body"`
+}
+
+// VerifyCriterion defines one testable acceptance criterion with a category.
+type VerifyCriterion struct {
+	Category    string `json:"category"`
+	Description string `json:"description"`
+}
+
+// FileTouch identifies a file expected to be created or modified by this spec.
+type FileTouch struct {
+	Path       string `json:"path"`
+	Purpose    string `json:"purpose"`
+	ChangeType string `json:"change_type"`
+}
+
 // SpecifyOutput captures the precise contract and verification criteria.
 type SpecifyOutput struct {
-	InterfaceContract string   `json:"interface_contract,omitempty"`
-	VerifyCriteria    []string `json:"verify_criteria,omitempty"`
-	Invariants        []string `json:"invariants,omitempty"`
-	Touches           []string `json:"touches,omitempty"`
+	Interfaces     []InterfaceSection `json:"interfaces,omitempty"`
+	VerifyCriteria []VerifyCriterion  `json:"verify_criteria,omitempty"`
+	Invariants     []string           `json:"invariants,omitempty"`
+	Touches        []FileTouch        `json:"touches,omitempty"`
 }
 
 // DecompositionStrategy identifies how a spec is broken into slices.

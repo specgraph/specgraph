@@ -130,16 +130,22 @@ var _ = Describe("Full pipeline", Ordered, func() {
 		resp, err := authoringClient.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
 			Slug: pipelineSlug,
 			Output: &specv1.SpecifyOutput{
-				InterfaceContract: "POST /api/v1/pipeline",
-				VerifyCriteria:    []string{"returns 200"},
-				Invariants:        []string{"data is consistent"},
-				Touches:           []string{"internal/pipeline/handler.go"},
+				Interfaces: []*specv1.InterfaceSection{
+					{Name: "API", Body: "POST /api/v1/pipeline"},
+				},
+				VerifyCriteria: []*specv1.VerifyCriterion{
+					{Category: "happy-path", Description: "returns 200"},
+				},
+				Invariants: []string{"data is consistent"},
+				Touches: []*specv1.FileTouch{
+					{Path: "internal/pipeline/handler.go", Purpose: "handler updates", ChangeType: "modify"},
+				},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Output).NotTo(BeNil())
-		Expect(resp.Msg.Output.InterfaceContract).NotTo(BeEmpty())
+		Expect(resp.Msg.Output.Interfaces).NotTo(BeEmpty())
 	})
 
 	It("decomposes the spec", func() {
