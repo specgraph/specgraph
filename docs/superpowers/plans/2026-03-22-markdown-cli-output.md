@@ -9,10 +9,12 @@
 **Tech Stack:** Go, ConnectRPC proto types, `strings.Builder` for markdown assembly, `protojson` for JSON output, standard `testing` for render tests.
 
 **Convention:** All new `.go` files MUST include the standard SPDX license header as the first two lines:
+
 ```go
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 ```
+
 Code blocks in this plan omit the header for brevity. Run `task license:add` as a safety net.
 
 **Output convention:** All CLI commands switch from `cmd.OutOrStdout()` to `fmt.Print` (writing to `os.Stdout` directly). This is intentional — render functions return strings, and no tests use cobra's `SetOut()`. This simplifies the code without breaking anything.
@@ -207,7 +209,7 @@ Expected: PASS
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj commit -m "feat(render): add shared markdown helpers (metadataTable, itemTable, section)"
 ```
 
@@ -384,7 +386,7 @@ Expected: PASS
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj commit -m "feat(render): add Spec and SpecList markdown renderers"
 ```
 
@@ -434,6 +436,7 @@ In `cmd/specgraph/spec.go`:
 5. Remove `protojson` and `tabwriter` imports, add `render` import.
 
 The updated `runList`:
+
 ```go
 func runList(_ *cobra.Command, _ []string) error {
 	client, err := specClient()
@@ -456,6 +459,7 @@ func runList(_ *cobra.Command, _ []string) error {
 ```
 
 The updated `runShow`:
+
 ```go
 func runShow(_ *cobra.Command, args []string) error {
 	client, err := specClient()
@@ -477,6 +481,7 @@ func runShow(_ *cobra.Command, args []string) error {
 ```
 
 The updated init (flag section only):
+
 ```go
 	listCmd.Flags().StringVar(&listStage, "stage", "", "filter by stage")
 	listCmd.Flags().StringVar(&listPriority, "priority", "", "filter by priority")
@@ -494,7 +499,7 @@ Expected: success
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 jj commit -m "feat(cli): replace spec text output with markdown rendering, --format→--json"
 ```
 
@@ -606,7 +611,7 @@ Expected: PASS
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj commit -m "feat(render): add EdgeList markdown renderer"
 ```
 
@@ -781,7 +786,7 @@ Expected: PASS
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj commit -m "feat(render): add Decision and DecisionList markdown renderers"
 ```
 
@@ -873,7 +878,7 @@ Expected: PASS
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj commit -m "feat(render): add NodeRefList markdown renderer"
 ```
 
@@ -1072,7 +1077,7 @@ Expected: PASS
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj commit -m "feat(render): add Constitution markdown renderer"
 ```
 
@@ -1220,7 +1225,7 @@ Expected: PASS
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj commit -m "feat(render): add DriftReport markdown renderer"
 ```
 
@@ -1330,7 +1335,7 @@ Expected: PASS
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj commit -m "feat(render): add Findings markdown renderer"
 ```
 
@@ -1349,6 +1354,7 @@ jj commit -m "feat(render): add Findings markdown renderer"
 Replace the `runEdgeList` function body after getting the response. Add `--json` flag to `edgeListCmd`. The slug is `args[0]`.
 
 Changes:
+
 1. Add `edgeListJSON` bool var
 2. Register `--json` flag in init
 3. Replace tabwriter rendering with `render.EdgeList(args[0], edges)`
@@ -1356,6 +1362,7 @@ Changes:
 5. Remove `tabwriter` import if no longer used in file (check `edgeAddCmd` — it uses `fmt.Printf`, not tabwriter)
 
 Updated rendering section of `runEdgeList`:
+
 ```go
 	if edgeListJSON {
 		return printJSON(resp.Msg)
@@ -1371,7 +1378,7 @@ Expected: success
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj commit -m "feat(cli): replace edge list text with markdown, add --json"
 ```
 
@@ -1384,6 +1391,7 @@ jj commit -m "feat(cli): replace edge list text with markdown, add --json"
 - [ ] **Step 1: Update decision show and list**
 
 Changes:
+
 1. Add `decisionShowJSON` and `decisionListJSON` bool vars
 2. Register `--json` flags in init for both subcommands
 3. Replace `runDecisionShow` text output with `render.Decision(d)`
@@ -1391,6 +1399,7 @@ Changes:
 5. Remove `tabwriter` import
 
 Updated `runDecisionShow`:
+
 ```go
 	if decisionShowJSON {
 		return printJSON(resp.Msg)
@@ -1400,6 +1409,7 @@ Updated `runDecisionShow`:
 ```
 
 Updated `runDecisionList`:
+
 ```go
 	if decisionListJSON {
 		return printJSON(resp.Msg)
@@ -1415,7 +1425,7 @@ Expected: success
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj commit -m "feat(cli): replace decision text with markdown, add --json"
 ```
 
@@ -1428,6 +1438,7 @@ jj commit -m "feat(cli): replace decision text with markdown, add --json"
 - [ ] **Step 1: Update constitution show**
 
 Changes:
+
 1. Add `constitutionShowJSON` bool var
 2. Register `--json` flag for `constitutionShowCmd`
 3. Replace `runConstitutionShow` text output with `render.Constitution(c)`
@@ -1435,6 +1446,7 @@ Changes:
 5. Add JSON path
 
 Updated `runConstitutionShow`:
+
 ```go
 func runConstitutionShow(_ *cobra.Command, _ []string) error {
 	client, err := constitutionClient()
@@ -1460,7 +1472,7 @@ Expected: success
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj commit -m "feat(cli): replace constitution show text with markdown, add --json"
 ```
 
@@ -1473,6 +1485,7 @@ jj commit -m "feat(cli): replace constitution show text with markdown, add --jso
 - [ ] **Step 1: Update all graph commands to use render.NodeRefList**
 
 Changes:
+
 1. Add `depsJSON`, `readyJSON`, `criticalPathJSON`, `impactJSON` bool vars
 2. Register `--json` flags in init for all four commands
 3. Replace `printNodeRefs` calls with `render.NodeRefList`
@@ -1480,6 +1493,7 @@ Changes:
 5. Remove `tabwriter` import
 
 Updated pattern for each command (example: `runDeps`):
+
 ```go
 func runDeps(_ *cobra.Command, args []string) error {
 	client, err := graphClient()
@@ -1534,7 +1548,7 @@ Expected: success
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj commit -m "feat(cli): replace graph commands text with markdown, add --json, remove printNodeRefs"
 ```
 
@@ -1547,6 +1561,7 @@ jj commit -m "feat(cli): replace graph commands text with markdown, add --json, 
 - [ ] **Step 1: Update runDrift to use render.DriftReport**
 
 Changes:
+
 1. Add `driftJSON` bool var
 2. Register `--json` flag for `driftCmd`
 3. Replace inline drift rendering with `render.DriftReport`
@@ -1555,6 +1570,7 @@ Changes:
 The drift command has special behavior: it needs to return errors for exit codes. The render function handles display; the CLI still needs to inspect reports for exit logic.
 
 Updated `runDrift`:
+
 ```go
 func runDrift(_ *cobra.Command, args []string) error {
 	scope, err := driftScopeToProto(driftScope)
@@ -1607,7 +1623,7 @@ Expected: success
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj commit -m "feat(cli): replace drift text with markdown, add --json"
 ```
 
@@ -1710,7 +1726,7 @@ Expected: success
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj commit -m "feat(cli): add findings list command with markdown output"
 ```
 
@@ -1744,6 +1760,7 @@ This adds SPDX headers to all new files created in Tasks 1-9 and 15. Verify with
 - [ ] **Step 3: Fix any lint issues**
 
 Address golangci-lint findings. Common issues:
+
 - Unused imports (tabwriter, protojson in spec.go)
 
 - [ ] **Step 4: Run task pr-prep**
@@ -1753,7 +1770,7 @@ Expected: all checks pass including integration and e2e tests
 
 - [ ] **Step 5: Commit any fixes**
 
-```
+```text
 jj commit -m "fix: address lint and formatting issues"
 ```
 
@@ -1762,16 +1779,21 @@ jj commit -m "fix: address lint and formatting issues"
 ## Notes for Implementation
 
 ### JSON output convention
+
 All `--json` flags use `printJSON(resp.Msg)` which outputs the full response wrapper (e.g., `GetSpecResponse` with `spec` field). This preserves the response structure and is consistent with how `protojson` works — consumers get the complete typed response.
 
 ### Empty collection messages
+
 The design spec's markdown format examples show tables for populated data. For empty collections, render functions return a simple message (`"No specs found.\n"`, `"None.\n"`, etc.) matching the existing CLI behavior.
 
 ### render.Spec degradation
+
 Per the design spec, `render.Spec` currently renders only metadata (stage, priority, complexity, version, lifecycle, notes). Authoring output sections (Spark, Shape, Specify, Decompose) will be added when `GetSpecResponse` is extended to include authoring data — that's a separate future task.
 
 ### Exit code preservation
+
 The `drift` command returns `fmt.Errorf("drift detected")` for non-zero exit when drift exists. This behavior is preserved — `render.DriftReport` handles display, the CLI function handles exit logic.
 
 ### Edge direction
+
 `render.EdgeList` derives direction by comparing `fromId` against the queried slug. `FromId == slug` → outgoing, otherwise incoming. The edge type name strips the `EDGE_TYPE_` prefix for cleaner display.

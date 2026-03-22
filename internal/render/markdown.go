@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright 2026 Sean Brandt
 
+// Package render converts protobuf types into markdown strings for CLI output.
 package render
 
 import (
