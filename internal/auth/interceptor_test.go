@@ -29,12 +29,12 @@ type stubSpecHandler struct {
 	specgraphv1connect.UnimplementedSpecServiceHandler
 }
 
-func (h *stubSpecHandler) GetSpec(_ context.Context, _ *connect.Request[specgraphv1.GetSpecRequest]) (*connect.Response[specgraphv1.Spec], error) {
-	return connect.NewResponse(&specgraphv1.Spec{}), nil
+func (h *stubSpecHandler) GetSpec(_ context.Context, _ *connect.Request[specgraphv1.GetSpecRequest]) (*connect.Response[specgraphv1.GetSpecResponse], error) {
+	return connect.NewResponse(&specgraphv1.GetSpecResponse{Spec: &specgraphv1.Spec{}}), nil
 }
 
-func (h *stubSpecHandler) CreateSpec(_ context.Context, _ *connect.Request[specgraphv1.CreateSpecRequest]) (*connect.Response[specgraphv1.Spec], error) {
-	return connect.NewResponse(&specgraphv1.Spec{}), nil
+func (h *stubSpecHandler) CreateSpec(_ context.Context, _ *connect.Request[specgraphv1.CreateSpecRequest]) (*connect.Response[specgraphv1.CreateSpecResponse], error) {
+	return connect.NewResponse(&specgraphv1.CreateSpecResponse{Spec: &specgraphv1.Spec{}}), nil
 }
 
 func newTestServer(t *testing.T, authCfg config.AuthConfig) (*httptest.Server, specgraphv1connect.SpecServiceClient, specgraphv1connect.ServerServiceClient) {

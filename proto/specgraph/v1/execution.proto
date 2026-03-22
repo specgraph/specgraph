@@ -63,6 +63,8 @@ message GenerateBundleRequest {
   string endpoint = 2;
 }
 
+message GenerateBundleResponse { Bundle bundle = 1; }
+
 message GetPrimeRequest {
   string slug = 1;
 }
@@ -109,7 +111,7 @@ message GetExecutionEventsResponse {
 // --- Service ---
 
 service ExecutionService {
-  rpc GenerateBundle(GenerateBundleRequest) returns (Bundle);
+  rpc GenerateBundle(GenerateBundleRequest) returns (GenerateBundleResponse);
   rpc GetPrime(GetPrimeRequest) returns (PrimeResponse);
   rpc ReportProgress(ReportProgressRequest) returns (ReportProgressResponse);
   rpc ReportBlocker(ReportBlockerRequest) returns (ReportBlockerResponse);

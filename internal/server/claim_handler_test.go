@@ -96,9 +96,9 @@ func TestClaimHandler_ClaimAndUnclaim(t *testing.T) {
 		LeaseDuration: durationpb.New(10 * time.Minute),
 	}))
 	require.NoError(t, err)
-	require.Equal(t, "my-spec", claimResp.Msg.SpecSlug)
-	require.Equal(t, "agent-1", claimResp.Msg.Agent)
-	require.True(t, claimResp.Msg.LeaseExpires.AsTime().After(time.Now()))
+	require.Equal(t, "my-spec", claimResp.Msg.GetClaim().GetSpecSlug())
+	require.Equal(t, "agent-1", claimResp.Msg.GetClaim().GetAgent())
+	require.True(t, claimResp.Msg.GetClaim().GetLeaseExpires().AsTime().After(time.Now()))
 
 	// Unclaim
 	_, err = client.UnclaimSpec(ctx, connect.NewRequest(&specv1.UnclaimSpecRequest{
@@ -126,7 +126,7 @@ func TestClaimHandler_Heartbeat(t *testing.T) {
 		ExtendBy: durationpb.New(30 * time.Minute),
 	}))
 	require.NoError(t, err)
-	require.True(t, hbResp.Msg.LeaseExpires.AsTime().After(time.Now().Add(29*time.Minute)))
+	require.True(t, hbResp.Msg.GetClaim().GetLeaseExpires().AsTime().After(time.Now().Add(29*time.Minute)))
 
 	// Heartbeat on non-existent claim
 	_, err = client.Heartbeat(ctx, connect.NewRequest(&specv1.HeartbeatRequest{

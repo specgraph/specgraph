@@ -449,6 +449,50 @@ func (x *GenerateBundleRequest) GetEndpoint() string {
 	return ""
 }
 
+type GenerateBundleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Bundle        *Bundle                `protobuf:"bytes,1,opt,name=bundle,proto3" json:"bundle,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenerateBundleResponse) Reset() {
+	*x = GenerateBundleResponse{}
+	mi := &file_specgraph_v1_execution_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateBundleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateBundleResponse) ProtoMessage() {}
+
+func (x *GenerateBundleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_execution_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateBundleResponse.ProtoReflect.Descriptor instead.
+func (*GenerateBundleResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GenerateBundleResponse) GetBundle() *Bundle {
+	if x != nil {
+		return x.Bundle
+	}
+	return nil
+}
+
 type GetPrimeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
@@ -458,7 +502,7 @@ type GetPrimeRequest struct {
 
 func (x *GetPrimeRequest) Reset() {
 	*x = GetPrimeRequest{}
-	mi := &file_specgraph_v1_execution_proto_msgTypes[5]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -470,7 +514,7 @@ func (x *GetPrimeRequest) String() string {
 func (*GetPrimeRequest) ProtoMessage() {}
 
 func (x *GetPrimeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_execution_proto_msgTypes[5]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -483,7 +527,7 @@ func (x *GetPrimeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPrimeRequest.ProtoReflect.Descriptor instead.
 func (*GetPrimeRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{5}
+	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetPrimeRequest) GetSlug() string {
@@ -504,7 +548,7 @@ type ReportProgressRequest struct {
 
 func (x *ReportProgressRequest) Reset() {
 	*x = ReportProgressRequest{}
-	mi := &file_specgraph_v1_execution_proto_msgTypes[6]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -516,7 +560,7 @@ func (x *ReportProgressRequest) String() string {
 func (*ReportProgressRequest) ProtoMessage() {}
 
 func (x *ReportProgressRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_execution_proto_msgTypes[6]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -529,7 +573,7 @@ func (x *ReportProgressRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportProgressRequest.ProtoReflect.Descriptor instead.
 func (*ReportProgressRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{6}
+	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ReportProgressRequest) GetSlug() string {
@@ -562,7 +606,7 @@ type ReportProgressResponse struct {
 
 func (x *ReportProgressResponse) Reset() {
 	*x = ReportProgressResponse{}
-	mi := &file_specgraph_v1_execution_proto_msgTypes[7]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -574,7 +618,7 @@ func (x *ReportProgressResponse) String() string {
 func (*ReportProgressResponse) ProtoMessage() {}
 
 func (x *ReportProgressResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_execution_proto_msgTypes[7]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -587,7 +631,7 @@ func (x *ReportProgressResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportProgressResponse.ProtoReflect.Descriptor instead.
 func (*ReportProgressResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{7}
+	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ReportProgressResponse) GetAcknowledged() bool {
@@ -608,7 +652,7 @@ type ReportBlockerRequest struct {
 
 func (x *ReportBlockerRequest) Reset() {
 	*x = ReportBlockerRequest{}
-	mi := &file_specgraph_v1_execution_proto_msgTypes[8]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -620,7 +664,7 @@ func (x *ReportBlockerRequest) String() string {
 func (*ReportBlockerRequest) ProtoMessage() {}
 
 func (x *ReportBlockerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_execution_proto_msgTypes[8]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -633,7 +677,7 @@ func (x *ReportBlockerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportBlockerRequest.ProtoReflect.Descriptor instead.
 func (*ReportBlockerRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{8}
+	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ReportBlockerRequest) GetSlug() string {
@@ -666,7 +710,7 @@ type ReportBlockerResponse struct {
 
 func (x *ReportBlockerResponse) Reset() {
 	*x = ReportBlockerResponse{}
-	mi := &file_specgraph_v1_execution_proto_msgTypes[9]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -678,7 +722,7 @@ func (x *ReportBlockerResponse) String() string {
 func (*ReportBlockerResponse) ProtoMessage() {}
 
 func (x *ReportBlockerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_execution_proto_msgTypes[9]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -691,7 +735,7 @@ func (x *ReportBlockerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportBlockerResponse.ProtoReflect.Descriptor instead.
 func (*ReportBlockerResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{9}
+	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ReportBlockerResponse) GetAcknowledged() bool {
@@ -711,7 +755,7 @@ type ReportCompletionRequest struct {
 
 func (x *ReportCompletionRequest) Reset() {
 	*x = ReportCompletionRequest{}
-	mi := &file_specgraph_v1_execution_proto_msgTypes[10]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -723,7 +767,7 @@ func (x *ReportCompletionRequest) String() string {
 func (*ReportCompletionRequest) ProtoMessage() {}
 
 func (x *ReportCompletionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_execution_proto_msgTypes[10]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -736,7 +780,7 @@ func (x *ReportCompletionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportCompletionRequest.ProtoReflect.Descriptor instead.
 func (*ReportCompletionRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{10}
+	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ReportCompletionRequest) GetSlug() string {
@@ -763,7 +807,7 @@ type ReportCompletionResponse struct {
 
 func (x *ReportCompletionResponse) Reset() {
 	*x = ReportCompletionResponse{}
-	mi := &file_specgraph_v1_execution_proto_msgTypes[11]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -775,7 +819,7 @@ func (x *ReportCompletionResponse) String() string {
 func (*ReportCompletionResponse) ProtoMessage() {}
 
 func (x *ReportCompletionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_execution_proto_msgTypes[11]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -788,7 +832,7 @@ func (x *ReportCompletionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportCompletionResponse.ProtoReflect.Descriptor instead.
 func (*ReportCompletionResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{11}
+	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ReportCompletionResponse) GetAcknowledged() bool {
@@ -815,7 +859,7 @@ type GetExecutionEventsRequest struct {
 
 func (x *GetExecutionEventsRequest) Reset() {
 	*x = GetExecutionEventsRequest{}
-	mi := &file_specgraph_v1_execution_proto_msgTypes[12]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -827,7 +871,7 @@ func (x *GetExecutionEventsRequest) String() string {
 func (*GetExecutionEventsRequest) ProtoMessage() {}
 
 func (x *GetExecutionEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_execution_proto_msgTypes[12]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -840,7 +884,7 @@ func (x *GetExecutionEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetExecutionEventsRequest.ProtoReflect.Descriptor instead.
 func (*GetExecutionEventsRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{12}
+	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetExecutionEventsRequest) GetSlug() string {
@@ -866,7 +910,7 @@ type GetExecutionEventsResponse struct {
 
 func (x *GetExecutionEventsResponse) Reset() {
 	*x = GetExecutionEventsResponse{}
-	mi := &file_specgraph_v1_execution_proto_msgTypes[13]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -878,7 +922,7 @@ func (x *GetExecutionEventsResponse) String() string {
 func (*GetExecutionEventsResponse) ProtoMessage() {}
 
 func (x *GetExecutionEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_execution_proto_msgTypes[13]
+	mi := &file_specgraph_v1_execution_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -891,7 +935,7 @@ func (x *GetExecutionEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetExecutionEventsResponse.ProtoReflect.Descriptor instead.
 func (*GetExecutionEventsResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{13}
+	return file_specgraph_v1_execution_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetExecutionEventsResponse) GetEvents() []*ExecutionEvent {
@@ -938,7 +982,9 @@ const file_specgraph_v1_execution_proto_rawDesc = "" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"G\n" +
 	"\x15GenerateBundleRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x1a\n" +
-	"\bendpoint\x18\x02 \x01(\tR\bendpoint\"%\n" +
+	"\bendpoint\x18\x02 \x01(\tR\bendpoint\"F\n" +
+	"\x16GenerateBundleResponse\x12,\n" +
+	"\x06bundle\x18\x01 \x01(\v2\x14.specgraph.v1.BundleR\x06bundle\"%\n" +
 	"\x0fGetPrimeRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\"[\n" +
 	"\x15ReportProgressRequest\x12\x12\n" +
@@ -968,9 +1014,9 @@ const file_specgraph_v1_execution_proto_rawDesc = "" +
 	" EXECUTION_EVENT_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dEXECUTION_EVENT_TYPE_PROGRESS\x10\x01\x12 \n" +
 	"\x1cEXECUTION_EVENT_TYPE_BLOCKER\x10\x02\x12#\n" +
-	"\x1fEXECUTION_EVENT_TYPE_COMPLETION\x10\x032\xaa\x04\n" +
-	"\x10ExecutionService\x12K\n" +
-	"\x0eGenerateBundle\x12#.specgraph.v1.GenerateBundleRequest\x1a\x14.specgraph.v1.Bundle\x12F\n" +
+	"\x1fEXECUTION_EVENT_TYPE_COMPLETION\x10\x032\xba\x04\n" +
+	"\x10ExecutionService\x12[\n" +
+	"\x0eGenerateBundle\x12#.specgraph.v1.GenerateBundleRequest\x1a$.specgraph.v1.GenerateBundleResponse\x12F\n" +
 	"\bGetPrime\x12\x1d.specgraph.v1.GetPrimeRequest\x1a\x1b.specgraph.v1.PrimeResponse\x12[\n" +
 	"\x0eReportProgress\x12#.specgraph.v1.ReportProgressRequest\x1a$.specgraph.v1.ReportProgressResponse\x12X\n" +
 	"\rReportBlocker\x12\".specgraph.v1.ReportBlockerRequest\x1a#.specgraph.v1.ReportBlockerResponse\x12a\n" +
@@ -990,7 +1036,7 @@ func file_specgraph_v1_execution_proto_rawDescGZIP() []byte {
 }
 
 var file_specgraph_v1_execution_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_specgraph_v1_execution_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_specgraph_v1_execution_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_specgraph_v1_execution_proto_goTypes = []any{
 	(ExecutionEventType)(0),            // 0: specgraph.v1.ExecutionEventType
 	(*CallbackConfig)(nil),             // 1: specgraph.v1.CallbackConfig
@@ -998,44 +1044,46 @@ var file_specgraph_v1_execution_proto_goTypes = []any{
 	(*PrimeResponse)(nil),              // 3: specgraph.v1.PrimeResponse
 	(*ExecutionEvent)(nil),             // 4: specgraph.v1.ExecutionEvent
 	(*GenerateBundleRequest)(nil),      // 5: specgraph.v1.GenerateBundleRequest
-	(*GetPrimeRequest)(nil),            // 6: specgraph.v1.GetPrimeRequest
-	(*ReportProgressRequest)(nil),      // 7: specgraph.v1.ReportProgressRequest
-	(*ReportProgressResponse)(nil),     // 8: specgraph.v1.ReportProgressResponse
-	(*ReportBlockerRequest)(nil),       // 9: specgraph.v1.ReportBlockerRequest
-	(*ReportBlockerResponse)(nil),      // 10: specgraph.v1.ReportBlockerResponse
-	(*ReportCompletionRequest)(nil),    // 11: specgraph.v1.ReportCompletionRequest
-	(*ReportCompletionResponse)(nil),   // 12: specgraph.v1.ReportCompletionResponse
-	(*GetExecutionEventsRequest)(nil),  // 13: specgraph.v1.GetExecutionEventsRequest
-	(*GetExecutionEventsResponse)(nil), // 14: specgraph.v1.GetExecutionEventsResponse
-	(*Spec)(nil),                       // 15: specgraph.v1.Spec
-	(*Decision)(nil),                   // 16: specgraph.v1.Decision
-	(*timestamppb.Timestamp)(nil),      // 17: google.protobuf.Timestamp
+	(*GenerateBundleResponse)(nil),     // 6: specgraph.v1.GenerateBundleResponse
+	(*GetPrimeRequest)(nil),            // 7: specgraph.v1.GetPrimeRequest
+	(*ReportProgressRequest)(nil),      // 8: specgraph.v1.ReportProgressRequest
+	(*ReportProgressResponse)(nil),     // 9: specgraph.v1.ReportProgressResponse
+	(*ReportBlockerRequest)(nil),       // 10: specgraph.v1.ReportBlockerRequest
+	(*ReportBlockerResponse)(nil),      // 11: specgraph.v1.ReportBlockerResponse
+	(*ReportCompletionRequest)(nil),    // 12: specgraph.v1.ReportCompletionRequest
+	(*ReportCompletionResponse)(nil),   // 13: specgraph.v1.ReportCompletionResponse
+	(*GetExecutionEventsRequest)(nil),  // 14: specgraph.v1.GetExecutionEventsRequest
+	(*GetExecutionEventsResponse)(nil), // 15: specgraph.v1.GetExecutionEventsResponse
+	(*Spec)(nil),                       // 16: specgraph.v1.Spec
+	(*Decision)(nil),                   // 17: specgraph.v1.Decision
+	(*timestamppb.Timestamp)(nil),      // 18: google.protobuf.Timestamp
 }
 var file_specgraph_v1_execution_proto_depIdxs = []int32{
-	15, // 0: specgraph.v1.Bundle.spec:type_name -> specgraph.v1.Spec
-	16, // 1: specgraph.v1.Bundle.decisions:type_name -> specgraph.v1.Decision
+	16, // 0: specgraph.v1.Bundle.spec:type_name -> specgraph.v1.Spec
+	17, // 1: specgraph.v1.Bundle.decisions:type_name -> specgraph.v1.Decision
 	1,  // 2: specgraph.v1.Bundle.callbacks:type_name -> specgraph.v1.CallbackConfig
-	16, // 3: specgraph.v1.PrimeResponse.decisions:type_name -> specgraph.v1.Decision
+	17, // 3: specgraph.v1.PrimeResponse.decisions:type_name -> specgraph.v1.Decision
 	0,  // 4: specgraph.v1.ExecutionEvent.type:type_name -> specgraph.v1.ExecutionEventType
-	17, // 5: specgraph.v1.ExecutionEvent.created_at:type_name -> google.protobuf.Timestamp
-	4,  // 6: specgraph.v1.GetExecutionEventsResponse.events:type_name -> specgraph.v1.ExecutionEvent
-	5,  // 7: specgraph.v1.ExecutionService.GenerateBundle:input_type -> specgraph.v1.GenerateBundleRequest
-	6,  // 8: specgraph.v1.ExecutionService.GetPrime:input_type -> specgraph.v1.GetPrimeRequest
-	7,  // 9: specgraph.v1.ExecutionService.ReportProgress:input_type -> specgraph.v1.ReportProgressRequest
-	9,  // 10: specgraph.v1.ExecutionService.ReportBlocker:input_type -> specgraph.v1.ReportBlockerRequest
-	11, // 11: specgraph.v1.ExecutionService.ReportCompletion:input_type -> specgraph.v1.ReportCompletionRequest
-	13, // 12: specgraph.v1.ExecutionService.GetExecutionEvents:input_type -> specgraph.v1.GetExecutionEventsRequest
-	2,  // 13: specgraph.v1.ExecutionService.GenerateBundle:output_type -> specgraph.v1.Bundle
-	3,  // 14: specgraph.v1.ExecutionService.GetPrime:output_type -> specgraph.v1.PrimeResponse
-	8,  // 15: specgraph.v1.ExecutionService.ReportProgress:output_type -> specgraph.v1.ReportProgressResponse
-	10, // 16: specgraph.v1.ExecutionService.ReportBlocker:output_type -> specgraph.v1.ReportBlockerResponse
-	12, // 17: specgraph.v1.ExecutionService.ReportCompletion:output_type -> specgraph.v1.ReportCompletionResponse
-	14, // 18: specgraph.v1.ExecutionService.GetExecutionEvents:output_type -> specgraph.v1.GetExecutionEventsResponse
-	13, // [13:19] is the sub-list for method output_type
-	7,  // [7:13] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	18, // 5: specgraph.v1.ExecutionEvent.created_at:type_name -> google.protobuf.Timestamp
+	2,  // 6: specgraph.v1.GenerateBundleResponse.bundle:type_name -> specgraph.v1.Bundle
+	4,  // 7: specgraph.v1.GetExecutionEventsResponse.events:type_name -> specgraph.v1.ExecutionEvent
+	5,  // 8: specgraph.v1.ExecutionService.GenerateBundle:input_type -> specgraph.v1.GenerateBundleRequest
+	7,  // 9: specgraph.v1.ExecutionService.GetPrime:input_type -> specgraph.v1.GetPrimeRequest
+	8,  // 10: specgraph.v1.ExecutionService.ReportProgress:input_type -> specgraph.v1.ReportProgressRequest
+	10, // 11: specgraph.v1.ExecutionService.ReportBlocker:input_type -> specgraph.v1.ReportBlockerRequest
+	12, // 12: specgraph.v1.ExecutionService.ReportCompletion:input_type -> specgraph.v1.ReportCompletionRequest
+	14, // 13: specgraph.v1.ExecutionService.GetExecutionEvents:input_type -> specgraph.v1.GetExecutionEventsRequest
+	6,  // 14: specgraph.v1.ExecutionService.GenerateBundle:output_type -> specgraph.v1.GenerateBundleResponse
+	3,  // 15: specgraph.v1.ExecutionService.GetPrime:output_type -> specgraph.v1.PrimeResponse
+	9,  // 16: specgraph.v1.ExecutionService.ReportProgress:output_type -> specgraph.v1.ReportProgressResponse
+	11, // 17: specgraph.v1.ExecutionService.ReportBlocker:output_type -> specgraph.v1.ReportBlockerResponse
+	13, // 18: specgraph.v1.ExecutionService.ReportCompletion:output_type -> specgraph.v1.ReportCompletionResponse
+	15, // 19: specgraph.v1.ExecutionService.GetExecutionEvents:output_type -> specgraph.v1.GetExecutionEventsResponse
+	14, // [14:20] is the sub-list for method output_type
+	8,  // [8:14] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_execution_proto_init() }
@@ -1051,7 +1099,7 @@ func file_specgraph_v1_execution_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_execution_proto_rawDesc), len(file_specgraph_v1_execution_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

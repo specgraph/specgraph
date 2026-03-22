@@ -63,11 +63,15 @@ message UpdateDecisionRequest {
   optional string superseded_by = 6;
 }
 
+message CreateDecisionResponse { Decision decision = 1; }
+message GetDecisionResponse { Decision decision = 1; }
+message UpdateDecisionResponse { Decision decision = 1; }
+
 // --- Service ---
 
 service DecisionService {
-  rpc CreateDecision(CreateDecisionRequest) returns (Decision);
-  rpc GetDecision(GetDecisionRequest) returns (Decision);
+  rpc CreateDecision(CreateDecisionRequest) returns (CreateDecisionResponse);
+  rpc GetDecision(GetDecisionRequest) returns (GetDecisionResponse);
   rpc ListDecisions(ListDecisionsRequest) returns (ListDecisionsResponse);
-  rpc UpdateDecision(UpdateDecisionRequest) returns (Decision);
+  rpc UpdateDecision(UpdateDecisionRequest) returns (UpdateDecisionResponse);
 }

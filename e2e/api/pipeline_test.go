@@ -121,9 +121,9 @@ var _ = Describe("Full pipeline", Ordered, func() {
 			Slug: "pipeline-decision-1",
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Title).To(Equal("Use direct approach"))
-		Expect(resp.Msg.Decision).To(Equal("We chose the direct approach"))
-		Expect(resp.Msg.Status).To(Equal(specv1.DecisionStatus_DECISION_STATUS_PROPOSED))
+		Expect(resp.Msg.GetDecision().GetTitle()).To(Equal("Use direct approach"))
+		Expect(resp.Msg.GetDecision().GetDecision()).To(Equal("We chose the direct approach"))
+		Expect(resp.Msg.GetDecision().GetStatus()).To(Equal(specv1.DecisionStatus_DECISION_STATUS_PROPOSED))
 	})
 
 	It("specifies the spec", func() {
@@ -190,10 +190,10 @@ var _ = Describe("Full pipeline", Ordered, func() {
 			LeaseDuration: durationpb.New(60_000_000_000), // 1 minute
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.SpecSlug).To(Equal(pipelineSlug))
-		Expect(resp.Msg.Agent).To(Equal(pipelineAgent))
-		Expect(resp.Msg.ClaimedAt).NotTo(BeNil())
-		Expect(resp.Msg.LeaseExpires).NotTo(BeNil())
+		Expect(resp.Msg.GetClaim().GetSpecSlug()).To(Equal(pipelineSlug))
+		Expect(resp.Msg.GetClaim().GetAgent()).To(Equal(pipelineAgent))
+		Expect(resp.Msg.GetClaim().GetClaimedAt()).NotTo(BeNil())
+		Expect(resp.Msg.GetClaim().GetLeaseExpires()).NotTo(BeNil())
 	})
 
 	It("generates an execution bundle", func() {
@@ -202,9 +202,9 @@ var _ = Describe("Full pipeline", Ordered, func() {
 			Endpoint: serverInfo.BaseURL,
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Spec).NotTo(BeNil())
-		Expect(resp.Msg.Spec.Slug).To(Equal(pipelineSlug))
-		Expect(resp.Msg.Version).To(BeNumerically(">=", int32(1)))
+		Expect(resp.Msg.GetBundle().GetSpec()).NotTo(BeNil())
+		Expect(resp.Msg.GetBundle().GetSpec().GetSlug()).To(Equal(pipelineSlug))
+		Expect(resp.Msg.GetBundle().GetVersion()).To(BeNumerically(">=", int32(1)))
 	})
 
 	It("returns prime data for the spec", func() {
@@ -262,7 +262,7 @@ var _ = Describe("Full pipeline", Ordered, func() {
 			Slug: pipelineSlug,
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Stage).To(Equal("done"))
+		Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))
 	})
 
 	It("verifies execution events are recorded", func() {

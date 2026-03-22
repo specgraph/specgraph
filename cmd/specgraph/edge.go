@@ -62,7 +62,7 @@ func runEdgeAdd(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("add edge: %w", err)
 	}
-	fmt.Printf("Added %s edge: %s → %s\n", edgeAddType, resp.Msg.FromId, resp.Msg.ToId)
+	fmt.Printf("Added %s edge: %s → %s\n", edgeAddType, resp.Msg.GetEdge().GetFromId(), resp.Msg.GetEdge().GetToId())
 	return nil
 }
 

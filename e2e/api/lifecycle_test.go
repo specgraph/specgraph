@@ -54,7 +54,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 				Stage: proto.String("done"),
 			}))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Stage).To(Equal("done"))
+			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))
 		})
 
 		It("amends the done spec back into authoring with re-entry stage", func() {
@@ -89,7 +89,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 				Stage: proto.String("done"),
 			}))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Stage).To(Equal("done"))
+			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))
 		})
 
 		It("amends the done spec to amended stage when no re-entry stage specified", func() {

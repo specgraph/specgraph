@@ -54,7 +54,7 @@ func runDecisionCreate(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("create decision: %w", err)
 	}
-	fmt.Printf("Created: %s (%s)\n", resp.Msg.Slug, resp.Msg.Id)
+	fmt.Printf("Created: %s (%s)\n", resp.Msg.GetDecision().GetSlug(), resp.Msg.GetDecision().GetId())
 	return nil
 }
 
@@ -141,7 +141,7 @@ func runDecisionShow(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("get decision: %w", err)
 	}
-	d := resp.Msg
+	d := resp.Msg.GetDecision()
 	fmt.Printf("ID:           %s\n", d.Id)
 	fmt.Printf("Slug:         %s\n", d.Slug)
 	fmt.Printf("Title:        %s\n", d.Title)
