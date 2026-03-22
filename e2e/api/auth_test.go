@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"connectrpc.com/connect"
 	. "github.com/onsi/ginkgo/v2"
@@ -231,8 +232,8 @@ var _ = Describe("Auth", Label("auth"), func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Use unique slug to avoid collisions with leftover data.
-			testSlug = fmt.Sprintf("admin-test-spec-%d", GinkgoRandomSeed())
+			// Use unique slug per It block to avoid duplicate-slug errors.
+			testSlug = fmt.Sprintf("admin-test-%d", time.Now().UnixNano())
 
 			// Seed a spec for read operations.
 			client := specgraphv1connect.NewSpecServiceClient(authProjectClient(), info.BaseURL, withBearer(adminKey))
