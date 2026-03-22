@@ -302,6 +302,94 @@ func (x *HeartbeatRequest) GetExtendBy() *durationpb.Duration {
 	return nil
 }
 
+type ClaimSpecResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Claim         *Claim                 `protobuf:"bytes,1,opt,name=claim,proto3" json:"claim,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClaimSpecResponse) Reset() {
+	*x = ClaimSpecResponse{}
+	mi := &file_specgraph_v1_claim_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClaimSpecResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClaimSpecResponse) ProtoMessage() {}
+
+func (x *ClaimSpecResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_claim_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClaimSpecResponse.ProtoReflect.Descriptor instead.
+func (*ClaimSpecResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_claim_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ClaimSpecResponse) GetClaim() *Claim {
+	if x != nil {
+		return x.Claim
+	}
+	return nil
+}
+
+type HeartbeatResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Claim         *Claim                 `protobuf:"bytes,1,opt,name=claim,proto3" json:"claim,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HeartbeatResponse) Reset() {
+	*x = HeartbeatResponse{}
+	mi := &file_specgraph_v1_claim_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HeartbeatResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HeartbeatResponse) ProtoMessage() {}
+
+func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_claim_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HeartbeatResponse.ProtoReflect.Descriptor instead.
+func (*HeartbeatResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_claim_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *HeartbeatResponse) GetClaim() *Claim {
+	if x != nil {
+		return x.Claim
+	}
+	return nil
+}
+
 var File_specgraph_v1_claim_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_claim_proto_rawDesc = "" +
@@ -324,11 +412,15 @@ const file_specgraph_v1_claim_proto_rawDesc = "" +
 	"\x10HeartbeatRequest\x12\x1b\n" +
 	"\tspec_slug\x18\x01 \x01(\tR\bspecSlug\x12\x14\n" +
 	"\x05agent\x18\x02 \x01(\tR\x05agent\x126\n" +
-	"\textend_by\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\bextendBy2\xe6\x01\n" +
-	"\fClaimService\x12@\n" +
-	"\tClaimSpec\x12\x1e.specgraph.v1.ClaimSpecRequest\x1a\x13.specgraph.v1.Claim\x12R\n" +
-	"\vUnclaimSpec\x12 .specgraph.v1.UnclaimSpecRequest\x1a!.specgraph.v1.UnclaimSpecResponse\x12@\n" +
-	"\tHeartbeat\x12\x1e.specgraph.v1.HeartbeatRequest\x1a\x13.specgraph.v1.ClaimB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\textend_by\x18\x03 \x01(\v2\x19.google.protobuf.DurationR\bextendBy\">\n" +
+	"\x11ClaimSpecResponse\x12)\n" +
+	"\x05claim\x18\x01 \x01(\v2\x13.specgraph.v1.ClaimR\x05claim\">\n" +
+	"\x11HeartbeatResponse\x12)\n" +
+	"\x05claim\x18\x01 \x01(\v2\x13.specgraph.v1.ClaimR\x05claim2\xfe\x01\n" +
+	"\fClaimService\x12L\n" +
+	"\tClaimSpec\x12\x1e.specgraph.v1.ClaimSpecRequest\x1a\x1f.specgraph.v1.ClaimSpecResponse\x12R\n" +
+	"\vUnclaimSpec\x12 .specgraph.v1.UnclaimSpecRequest\x1a!.specgraph.v1.UnclaimSpecResponse\x12L\n" +
+	"\tHeartbeat\x12\x1e.specgraph.v1.HeartbeatRequest\x1a\x1f.specgraph.v1.HeartbeatResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_claim_proto_rawDescOnce sync.Once
@@ -342,32 +434,36 @@ func file_specgraph_v1_claim_proto_rawDescGZIP() []byte {
 	return file_specgraph_v1_claim_proto_rawDescData
 }
 
-var file_specgraph_v1_claim_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_specgraph_v1_claim_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_specgraph_v1_claim_proto_goTypes = []any{
 	(*Claim)(nil),                 // 0: specgraph.v1.Claim
 	(*ClaimSpecRequest)(nil),      // 1: specgraph.v1.ClaimSpecRequest
 	(*UnclaimSpecRequest)(nil),    // 2: specgraph.v1.UnclaimSpecRequest
 	(*UnclaimSpecResponse)(nil),   // 3: specgraph.v1.UnclaimSpecResponse
 	(*HeartbeatRequest)(nil),      // 4: specgraph.v1.HeartbeatRequest
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 6: google.protobuf.Duration
+	(*ClaimSpecResponse)(nil),     // 5: specgraph.v1.ClaimSpecResponse
+	(*HeartbeatResponse)(nil),     // 6: specgraph.v1.HeartbeatResponse
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 8: google.protobuf.Duration
 }
 var file_specgraph_v1_claim_proto_depIdxs = []int32{
-	5, // 0: specgraph.v1.Claim.claimed_at:type_name -> google.protobuf.Timestamp
-	5, // 1: specgraph.v1.Claim.lease_expires:type_name -> google.protobuf.Timestamp
-	6, // 2: specgraph.v1.ClaimSpecRequest.lease_duration:type_name -> google.protobuf.Duration
-	6, // 3: specgraph.v1.HeartbeatRequest.extend_by:type_name -> google.protobuf.Duration
-	1, // 4: specgraph.v1.ClaimService.ClaimSpec:input_type -> specgraph.v1.ClaimSpecRequest
-	2, // 5: specgraph.v1.ClaimService.UnclaimSpec:input_type -> specgraph.v1.UnclaimSpecRequest
-	4, // 6: specgraph.v1.ClaimService.Heartbeat:input_type -> specgraph.v1.HeartbeatRequest
-	0, // 7: specgraph.v1.ClaimService.ClaimSpec:output_type -> specgraph.v1.Claim
-	3, // 8: specgraph.v1.ClaimService.UnclaimSpec:output_type -> specgraph.v1.UnclaimSpecResponse
-	0, // 9: specgraph.v1.ClaimService.Heartbeat:output_type -> specgraph.v1.Claim
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	7, // 0: specgraph.v1.Claim.claimed_at:type_name -> google.protobuf.Timestamp
+	7, // 1: specgraph.v1.Claim.lease_expires:type_name -> google.protobuf.Timestamp
+	8, // 2: specgraph.v1.ClaimSpecRequest.lease_duration:type_name -> google.protobuf.Duration
+	8, // 3: specgraph.v1.HeartbeatRequest.extend_by:type_name -> google.protobuf.Duration
+	0, // 4: specgraph.v1.ClaimSpecResponse.claim:type_name -> specgraph.v1.Claim
+	0, // 5: specgraph.v1.HeartbeatResponse.claim:type_name -> specgraph.v1.Claim
+	1, // 6: specgraph.v1.ClaimService.ClaimSpec:input_type -> specgraph.v1.ClaimSpecRequest
+	2, // 7: specgraph.v1.ClaimService.UnclaimSpec:input_type -> specgraph.v1.UnclaimSpecRequest
+	4, // 8: specgraph.v1.ClaimService.Heartbeat:input_type -> specgraph.v1.HeartbeatRequest
+	5, // 9: specgraph.v1.ClaimService.ClaimSpec:output_type -> specgraph.v1.ClaimSpecResponse
+	3, // 10: specgraph.v1.ClaimService.UnclaimSpec:output_type -> specgraph.v1.UnclaimSpecResponse
+	6, // 11: specgraph.v1.ClaimService.Heartbeat:output_type -> specgraph.v1.HeartbeatResponse
+	9, // [9:12] is the sub-list for method output_type
+	6, // [6:9] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_claim_proto_init() }
@@ -381,7 +477,7 @@ func file_specgraph_v1_claim_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_claim_proto_rawDesc), len(file_specgraph_v1_claim_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -58,7 +58,7 @@ const (
 
 // ExecutionServiceClient is a client for the specgraph.v1.ExecutionService service.
 type ExecutionServiceClient interface {
-	GenerateBundle(context.Context, *connect.Request[v1.GenerateBundleRequest]) (*connect.Response[v1.Bundle], error)
+	GenerateBundle(context.Context, *connect.Request[v1.GenerateBundleRequest]) (*connect.Response[v1.GenerateBundleResponse], error)
 	GetPrime(context.Context, *connect.Request[v1.GetPrimeRequest]) (*connect.Response[v1.PrimeResponse], error)
 	ReportProgress(context.Context, *connect.Request[v1.ReportProgressRequest]) (*connect.Response[v1.ReportProgressResponse], error)
 	ReportBlocker(context.Context, *connect.Request[v1.ReportBlockerRequest]) (*connect.Response[v1.ReportBlockerResponse], error)
@@ -77,7 +77,7 @@ func NewExecutionServiceClient(httpClient connect.HTTPClient, baseURL string, op
 	baseURL = strings.TrimRight(baseURL, "/")
 	executionServiceMethods := v1.File_specgraph_v1_execution_proto.Services().ByName("ExecutionService").Methods()
 	return &executionServiceClient{
-		generateBundle: connect.NewClient[v1.GenerateBundleRequest, v1.Bundle](
+		generateBundle: connect.NewClient[v1.GenerateBundleRequest, v1.GenerateBundleResponse](
 			httpClient,
 			baseURL+ExecutionServiceGenerateBundleProcedure,
 			connect.WithSchema(executionServiceMethods.ByName("GenerateBundle")),
@@ -118,7 +118,7 @@ func NewExecutionServiceClient(httpClient connect.HTTPClient, baseURL string, op
 
 // executionServiceClient implements ExecutionServiceClient.
 type executionServiceClient struct {
-	generateBundle     *connect.Client[v1.GenerateBundleRequest, v1.Bundle]
+	generateBundle     *connect.Client[v1.GenerateBundleRequest, v1.GenerateBundleResponse]
 	getPrime           *connect.Client[v1.GetPrimeRequest, v1.PrimeResponse]
 	reportProgress     *connect.Client[v1.ReportProgressRequest, v1.ReportProgressResponse]
 	reportBlocker      *connect.Client[v1.ReportBlockerRequest, v1.ReportBlockerResponse]
@@ -127,7 +127,7 @@ type executionServiceClient struct {
 }
 
 // GenerateBundle calls specgraph.v1.ExecutionService.GenerateBundle.
-func (c *executionServiceClient) GenerateBundle(ctx context.Context, req *connect.Request[v1.GenerateBundleRequest]) (*connect.Response[v1.Bundle], error) {
+func (c *executionServiceClient) GenerateBundle(ctx context.Context, req *connect.Request[v1.GenerateBundleRequest]) (*connect.Response[v1.GenerateBundleResponse], error) {
 	return c.generateBundle.CallUnary(ctx, req)
 }
 
@@ -158,7 +158,7 @@ func (c *executionServiceClient) GetExecutionEvents(ctx context.Context, req *co
 
 // ExecutionServiceHandler is an implementation of the specgraph.v1.ExecutionService service.
 type ExecutionServiceHandler interface {
-	GenerateBundle(context.Context, *connect.Request[v1.GenerateBundleRequest]) (*connect.Response[v1.Bundle], error)
+	GenerateBundle(context.Context, *connect.Request[v1.GenerateBundleRequest]) (*connect.Response[v1.GenerateBundleResponse], error)
 	GetPrime(context.Context, *connect.Request[v1.GetPrimeRequest]) (*connect.Response[v1.PrimeResponse], error)
 	ReportProgress(context.Context, *connect.Request[v1.ReportProgressRequest]) (*connect.Response[v1.ReportProgressResponse], error)
 	ReportBlocker(context.Context, *connect.Request[v1.ReportBlockerRequest]) (*connect.Response[v1.ReportBlockerResponse], error)
@@ -232,7 +232,7 @@ func NewExecutionServiceHandler(svc ExecutionServiceHandler, opts ...connect.Han
 // UnimplementedExecutionServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedExecutionServiceHandler struct{}
 
-func (UnimplementedExecutionServiceHandler) GenerateBundle(context.Context, *connect.Request[v1.GenerateBundleRequest]) (*connect.Response[v1.Bundle], error) {
+func (UnimplementedExecutionServiceHandler) GenerateBundle(context.Context, *connect.Request[v1.GenerateBundleRequest]) (*connect.Response[v1.GenerateBundleResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.ExecutionService.GenerateBundle is not implemented"))
 }
 

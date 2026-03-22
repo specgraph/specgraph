@@ -36,14 +36,14 @@ var _ = Describe("Decision", Ordered, func() {
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
-		d := resp.Msg
-		Expect(d.Slug).To(Equal("use-memgraph"))
-		Expect(d.Title).To(Equal("Use Memgraph for graph storage"))
-		Expect(d.Decision).To(Equal("We will use Memgraph as the primary graph database."))
-		Expect(d.Rationale).To(Equal("Memgraph offers low-latency Cypher queries and good container support."))
-		Expect(d.Status).To(Equal(specv1.DecisionStatus_DECISION_STATUS_PROPOSED))
-		Expect(d.Id).NotTo(BeEmpty())
-		Expect(d.CreatedAt).NotTo(BeNil())
+		d := resp.Msg.GetDecision()
+		Expect(d.GetSlug()).To(Equal("use-memgraph"))
+		Expect(d.GetTitle()).To(Equal("Use Memgraph for graph storage"))
+		Expect(d.GetDecision()).To(Equal("We will use Memgraph as the primary graph database."))
+		Expect(d.GetRationale()).To(Equal("Memgraph offers low-latency Cypher queries and good container support."))
+		Expect(d.GetStatus()).To(Equal(specv1.DecisionStatus_DECISION_STATUS_PROPOSED))
+		Expect(d.GetId()).NotTo(BeEmpty())
+		Expect(d.GetCreatedAt()).NotTo(BeNil())
 	})
 
 	It("lists decisions", func() {
@@ -53,7 +53,7 @@ var _ = Describe("Decision", Ordered, func() {
 
 		slugs := make([]string, len(resp.Msg.Decisions))
 		for i, d := range resp.Msg.Decisions {
-			slugs[i] = d.Slug
+			slugs[i] = d.GetSlug()
 		}
 		Expect(slugs).To(ContainElement("use-memgraph"))
 	})
@@ -64,12 +64,12 @@ var _ = Describe("Decision", Ordered, func() {
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
-		d := resp.Msg
-		Expect(d.Slug).To(Equal("use-memgraph"))
-		Expect(d.Title).To(Equal("Use Memgraph for graph storage"))
-		Expect(d.Decision).To(Equal("We will use Memgraph as the primary graph database."))
-		Expect(d.Rationale).To(Equal("Memgraph offers low-latency Cypher queries and good container support."))
-		Expect(d.Status).To(Equal(specv1.DecisionStatus_DECISION_STATUS_PROPOSED))
-		Expect(d.Id).NotTo(BeEmpty())
+		d := resp.Msg.GetDecision()
+		Expect(d.GetSlug()).To(Equal("use-memgraph"))
+		Expect(d.GetTitle()).To(Equal("Use Memgraph for graph storage"))
+		Expect(d.GetDecision()).To(Equal("We will use Memgraph as the primary graph database."))
+		Expect(d.GetRationale()).To(Equal("Memgraph offers low-latency Cypher queries and good container support."))
+		Expect(d.GetStatus()).To(Equal(specv1.DecisionStatus_DECISION_STATUS_PROPOSED))
+		Expect(d.GetId()).NotTo(BeEmpty())
 	})
 })

@@ -126,15 +126,15 @@ func TestDecisionHandler_CreateAndGet(t *testing.T) {
 		Rationale: "Native Cypher support, good performance for our scale.",
 	}))
 	require.NoError(t, err)
-	require.Equal(t, "use-memgraph", createResp.Msg.Slug)
-	require.Equal(t, specv1.DecisionStatus_DECISION_STATUS_PROPOSED, createResp.Msg.Status)
-	require.NotEmpty(t, createResp.Msg.Id)
+	require.Equal(t, "use-memgraph", createResp.Msg.GetDecision().GetSlug())
+	require.Equal(t, specv1.DecisionStatus_DECISION_STATUS_PROPOSED, createResp.Msg.GetDecision().GetStatus())
+	require.NotEmpty(t, createResp.Msg.GetDecision().GetId())
 
 	getResp, err := client.GetDecision(ctx, connect.NewRequest(&specv1.GetDecisionRequest{
 		Slug: "use-memgraph",
 	}))
 	require.NoError(t, err)
-	require.Equal(t, createResp.Msg.Id, getResp.Msg.Id)
+	require.Equal(t, createResp.Msg.GetDecision().GetId(), getResp.Msg.GetDecision().GetId())
 
 	_, err = client.GetDecision(ctx, connect.NewRequest(&specv1.GetDecisionRequest{
 		Slug: "nonexistent",
@@ -201,5 +201,5 @@ func TestDecisionHandler_ListAndUpdate(t *testing.T) {
 		Status: &newStatus,
 	}))
 	require.NoError(t, err)
-	require.Equal(t, specv1.DecisionStatus_DECISION_STATUS_ACCEPTED, updateResp.Msg.Status)
+	require.Equal(t, specv1.DecisionStatus_DECISION_STATUS_ACCEPTED, updateResp.Msg.GetDecision().GetStatus())
 }

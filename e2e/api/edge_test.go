@@ -47,10 +47,10 @@ var _ = Describe("graph edges", Ordered, func() {
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
-		edge := resp.Msg
-		Expect(edge.FromId).NotTo(BeEmpty())
-		Expect(edge.ToId).NotTo(BeEmpty())
-		Expect(edge.EdgeType).To(Equal(specv1.EdgeType_EDGE_TYPE_DEPENDS_ON))
+		edge := resp.Msg.GetEdge()
+		Expect(edge.GetFromId()).NotTo(BeEmpty())
+		Expect(edge.GetToId()).NotTo(BeEmpty())
+		Expect(edge.GetEdgeType()).To(Equal(specv1.EdgeType_EDGE_TYPE_DEPENDS_ON))
 	})
 
 	It("adds a COMPOSES edge", func() {
@@ -61,10 +61,10 @@ var _ = Describe("graph edges", Ordered, func() {
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
-		edge := resp.Msg
-		Expect(edge.FromId).NotTo(BeEmpty())
-		Expect(edge.ToId).NotTo(BeEmpty())
-		Expect(edge.EdgeType).To(Equal(specv1.EdgeType_EDGE_TYPE_COMPOSES))
+		edge := resp.Msg.GetEdge()
+		Expect(edge.GetFromId()).NotTo(BeEmpty())
+		Expect(edge.GetToId()).NotTo(BeEmpty())
+		Expect(edge.GetEdgeType()).To(Equal(specv1.EdgeType_EDGE_TYPE_COMPOSES))
 	})
 
 	It("lists edges for a spec", func() {

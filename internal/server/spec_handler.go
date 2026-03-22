@@ -34,7 +34,7 @@ func NewSpecHandler(scoper storage.Scoper) *SpecHandler {
 }
 
 // CreateSpec handles the CreateSpec RPC.
-func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv1.CreateSpecRequest]) (*connect.Response[specv1.Spec], error) {
+func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv1.CreateSpecRequest]) (*connect.Response[specv1.CreateSpecResponse], error) {
 	store, scopeErr := scopeStore(ctx, h.scoper)
 	if scopeErr != nil {
 		return nil, scopeErr
@@ -63,11 +63,11 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(pb), nil
+	return connect.NewResponse(&specv1.CreateSpecResponse{Spec: pb}), nil
 }
 
 // GetSpec handles the GetSpec RPC.
-func (h *SpecHandler) GetSpec(ctx context.Context, req *connect.Request[specv1.GetSpecRequest]) (*connect.Response[specv1.Spec], error) {
+func (h *SpecHandler) GetSpec(ctx context.Context, req *connect.Request[specv1.GetSpecRequest]) (*connect.Response[specv1.GetSpecResponse], error) {
 	store, scopeErr := scopeStore(ctx, h.scoper)
 	if scopeErr != nil {
 		return nil, scopeErr
@@ -86,7 +86,7 @@ func (h *SpecHandler) GetSpec(ctx context.Context, req *connect.Request[specv1.G
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(pb), nil
+	return connect.NewResponse(&specv1.GetSpecResponse{Spec: pb}), nil
 }
 
 // ListSpecs handles the ListSpecs RPC.
@@ -113,7 +113,7 @@ func (h *SpecHandler) ListSpecs(ctx context.Context, req *connect.Request[specv1
 }
 
 // UpdateSpec handles the UpdateSpec RPC.
-func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv1.UpdateSpecRequest]) (*connect.Response[specv1.Spec], error) {
+func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv1.UpdateSpecRequest]) (*connect.Response[specv1.UpdateSpecResponse], error) {
 	store, scopeErr := scopeStore(ctx, h.scoper)
 	if scopeErr != nil {
 		return nil, scopeErr
@@ -138,5 +138,5 @@ func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(pb), nil
+	return connect.NewResponse(&specv1.UpdateSpecResponse{Spec: pb}), nil
 }

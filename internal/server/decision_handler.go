@@ -24,7 +24,7 @@ type DecisionHandler struct {
 var _ specgraphv1connect.DecisionServiceHandler = (*DecisionHandler)(nil)
 
 // CreateDecision handles the CreateDecision RPC.
-func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Request[specv1.CreateDecisionRequest]) (*connect.Response[specv1.Decision], error) {
+func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Request[specv1.CreateDecisionRequest]) (*connect.Response[specv1.CreateDecisionResponse], error) {
 	store, scopeErr := scopeStore(ctx, h.scoper)
 	if scopeErr != nil {
 		return nil, scopeErr
@@ -42,11 +42,11 @@ func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(pb), nil
+	return connect.NewResponse(&specv1.CreateDecisionResponse{Decision: pb}), nil
 }
 
 // GetDecision handles the GetDecision RPC.
-func (h *DecisionHandler) GetDecision(ctx context.Context, req *connect.Request[specv1.GetDecisionRequest]) (*connect.Response[specv1.Decision], error) {
+func (h *DecisionHandler) GetDecision(ctx context.Context, req *connect.Request[specv1.GetDecisionRequest]) (*connect.Response[specv1.GetDecisionResponse], error) {
 	store, scopeErr := scopeStore(ctx, h.scoper)
 	if scopeErr != nil {
 		return nil, scopeErr
@@ -66,7 +66,7 @@ func (h *DecisionHandler) GetDecision(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(pb), nil
+	return connect.NewResponse(&specv1.GetDecisionResponse{Decision: pb}), nil
 }
 
 // ListDecisions handles the ListDecisions RPC.
@@ -103,7 +103,7 @@ func (h *DecisionHandler) ListDecisions(ctx context.Context, req *connect.Reques
 }
 
 // UpdateDecision handles the UpdateDecision RPC.
-func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Request[specv1.UpdateDecisionRequest]) (*connect.Response[specv1.Decision], error) {
+func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Request[specv1.UpdateDecisionRequest]) (*connect.Response[specv1.UpdateDecisionResponse], error) {
 	store, scopeErr := scopeStore(ctx, h.scoper)
 	if scopeErr != nil {
 		return nil, scopeErr
@@ -139,7 +139,7 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(pb), nil
+	return connect.NewResponse(&specv1.UpdateDecisionResponse{Decision: pb}), nil
 }
 
 // RegisterDecisionService registers the DecisionService on the given mux.

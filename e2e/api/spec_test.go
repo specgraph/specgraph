@@ -36,14 +36,14 @@ var _ = Describe("Spec lifecycle", Ordered, func() {
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
-		spec := resp.Msg
-		Expect(spec.Slug).To(Equal("oauth-refresh-rotation"))
-		Expect(spec.Intent).To(Equal("Rotate OAuth refresh tokens on each use to limit replay window"))
-		Expect(spec.Priority).To(Equal("p1"))
-		Expect(spec.Stage).To(Equal("spark"))
-		Expect(spec.Id).NotTo(BeEmpty())
-		Expect(spec.Version).To(BeNumerically(">=", 1))
-		Expect(spec.CreatedAt).NotTo(BeNil())
+		spec := resp.Msg.GetSpec()
+		Expect(spec.GetSlug()).To(Equal("oauth-refresh-rotation"))
+		Expect(spec.GetIntent()).To(Equal("Rotate OAuth refresh tokens on each use to limit replay window"))
+		Expect(spec.GetPriority()).To(Equal("p1"))
+		Expect(spec.GetStage()).To(Equal("spark"))
+		Expect(spec.GetId()).NotTo(BeEmpty())
+		Expect(spec.GetVersion()).To(BeNumerically(">=", 1))
+		Expect(spec.GetCreatedAt()).NotTo(BeNil())
 	})
 
 	It("lists specs and the created spec appears", func() {
@@ -63,11 +63,11 @@ var _ = Describe("Spec lifecycle", Ordered, func() {
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
-		spec := resp.Msg
-		Expect(spec.Slug).To(Equal("oauth-refresh-rotation"))
-		Expect(spec.Intent).To(Equal("Rotate OAuth refresh tokens on each use to limit replay window"))
-		Expect(spec.Priority).To(Equal("p1"))
-		Expect(spec.Stage).To(Equal("spark"))
+		spec := resp.Msg.GetSpec()
+		Expect(spec.GetSlug()).To(Equal("oauth-refresh-rotation"))
+		Expect(spec.GetIntent()).To(Equal("Rotate OAuth refresh tokens on each use to limit replay window"))
+		Expect(spec.GetPriority()).To(Equal("p1"))
+		Expect(spec.GetStage()).To(Equal("spark"))
 	})
 
 	It("updates spec fields", func() {
@@ -78,11 +78,11 @@ var _ = Describe("Spec lifecycle", Ordered, func() {
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
-		spec := resp.Msg
-		Expect(spec.Slug).To(Equal("oauth-refresh-rotation"))
-		Expect(spec.Intent).To(Equal("Rotate OAuth refresh tokens on each use to prevent replay attacks"))
-		Expect(spec.Priority).To(Equal("p0"))
+		spec := resp.Msg.GetSpec()
+		Expect(spec.GetSlug()).To(Equal("oauth-refresh-rotation"))
+		Expect(spec.GetIntent()).To(Equal("Rotate OAuth refresh tokens on each use to prevent replay attacks"))
+		Expect(spec.GetPriority()).To(Equal("p0"))
 		// Stage should remain unchanged
-		Expect(spec.Stage).To(Equal("spark"))
+		Expect(spec.GetStage()).To(Equal("spark"))
 	})
 })

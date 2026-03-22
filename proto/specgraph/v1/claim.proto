@@ -38,10 +38,13 @@ message HeartbeatRequest {
   google.protobuf.Duration extend_by = 3;   // extend lease by this duration (default 15m)
 }
 
+message ClaimSpecResponse { Claim claim = 1; }
+message HeartbeatResponse { Claim claim = 1; }
+
 // --- Service ---
 
 service ClaimService {
-  rpc ClaimSpec(ClaimSpecRequest) returns (Claim);
+  rpc ClaimSpec(ClaimSpecRequest) returns (ClaimSpecResponse);
   rpc UnclaimSpec(UnclaimSpecRequest) returns (UnclaimSpecResponse);
-  rpc Heartbeat(HeartbeatRequest) returns (Claim);
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
 }

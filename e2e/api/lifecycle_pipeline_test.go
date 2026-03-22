@@ -51,7 +51,7 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 			Stage: proto.String("approved"),
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Stage).To(Equal("approved"))
+		Expect(resp.Msg.GetSpec().GetStage()).To(Equal("approved"))
 	})
 
 	It("advances to done", func() {
@@ -60,7 +60,7 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 			Stage: proto.String("done"),
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Stage).To(Equal("done"))
+		Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))
 	})
 
 	It("amends with re-entry to shape stage", func() {
@@ -135,7 +135,7 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 			Stage: proto.String("done"),
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Stage).To(Equal("done"))
+		Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))
 	})
 
 	It("creates a replacement spec", func() {
@@ -205,7 +205,7 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 			Slug: replacementSlug,
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		versionBefore := getResp.Msg.GetVersion()
+		versionBefore := getResp.Msg.GetSpec().GetVersion()
 
 		resp, err := lifecycleClient.TransitionAbandon(ctx, connect.NewRequest(&specv1.TransitionAbandonRequest{
 			Slug:   replacementSlug,

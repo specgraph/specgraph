@@ -59,7 +59,7 @@ const (
 
 // GraphServiceClient is a client for the specgraph.v1.GraphService service.
 type GraphServiceClient interface {
-	AddEdge(context.Context, *connect.Request[v1.AddEdgeRequest]) (*connect.Response[v1.Edge], error)
+	AddEdge(context.Context, *connect.Request[v1.AddEdgeRequest]) (*connect.Response[v1.AddEdgeResponse], error)
 	RemoveEdge(context.Context, *connect.Request[v1.RemoveEdgeRequest]) (*connect.Response[v1.RemoveEdgeResponse], error)
 	ListEdges(context.Context, *connect.Request[v1.ListEdgesRequest]) (*connect.Response[v1.ListEdgesResponse], error)
 	GetDependencies(context.Context, *connect.Request[v1.GetDependenciesRequest]) (*connect.Response[v1.GetDependenciesResponse], error)
@@ -80,7 +80,7 @@ func NewGraphServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 	baseURL = strings.TrimRight(baseURL, "/")
 	graphServiceMethods := v1.File_specgraph_v1_graph_proto.Services().ByName("GraphService").Methods()
 	return &graphServiceClient{
-		addEdge: connect.NewClient[v1.AddEdgeRequest, v1.Edge](
+		addEdge: connect.NewClient[v1.AddEdgeRequest, v1.AddEdgeResponse](
 			httpClient,
 			baseURL+GraphServiceAddEdgeProcedure,
 			connect.WithSchema(graphServiceMethods.ByName("AddEdge")),
@@ -133,7 +133,7 @@ func NewGraphServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // graphServiceClient implements GraphServiceClient.
 type graphServiceClient struct {
-	addEdge           *connect.Client[v1.AddEdgeRequest, v1.Edge]
+	addEdge           *connect.Client[v1.AddEdgeRequest, v1.AddEdgeResponse]
 	removeEdge        *connect.Client[v1.RemoveEdgeRequest, v1.RemoveEdgeResponse]
 	listEdges         *connect.Client[v1.ListEdgesRequest, v1.ListEdgesResponse]
 	getDependencies   *connect.Client[v1.GetDependenciesRequest, v1.GetDependenciesResponse]
@@ -144,7 +144,7 @@ type graphServiceClient struct {
 }
 
 // AddEdge calls specgraph.v1.GraphService.AddEdge.
-func (c *graphServiceClient) AddEdge(ctx context.Context, req *connect.Request[v1.AddEdgeRequest]) (*connect.Response[v1.Edge], error) {
+func (c *graphServiceClient) AddEdge(ctx context.Context, req *connect.Request[v1.AddEdgeRequest]) (*connect.Response[v1.AddEdgeResponse], error) {
 	return c.addEdge.CallUnary(ctx, req)
 }
 
@@ -185,7 +185,7 @@ func (c *graphServiceClient) GetCriticalPath(ctx context.Context, req *connect.R
 
 // GraphServiceHandler is an implementation of the specgraph.v1.GraphService service.
 type GraphServiceHandler interface {
-	AddEdge(context.Context, *connect.Request[v1.AddEdgeRequest]) (*connect.Response[v1.Edge], error)
+	AddEdge(context.Context, *connect.Request[v1.AddEdgeRequest]) (*connect.Response[v1.AddEdgeResponse], error)
 	RemoveEdge(context.Context, *connect.Request[v1.RemoveEdgeRequest]) (*connect.Response[v1.RemoveEdgeResponse], error)
 	ListEdges(context.Context, *connect.Request[v1.ListEdgesRequest]) (*connect.Response[v1.ListEdgesResponse], error)
 	GetDependencies(context.Context, *connect.Request[v1.GetDependenciesRequest]) (*connect.Response[v1.GetDependenciesResponse], error)
@@ -277,7 +277,7 @@ func NewGraphServiceHandler(svc GraphServiceHandler, opts ...connect.HandlerOpti
 // UnimplementedGraphServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedGraphServiceHandler struct{}
 
-func (UnimplementedGraphServiceHandler) AddEdge(context.Context, *connect.Request[v1.AddEdgeRequest]) (*connect.Response[v1.Edge], error) {
+func (UnimplementedGraphServiceHandler) AddEdge(context.Context, *connect.Request[v1.AddEdgeRequest]) (*connect.Response[v1.AddEdgeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.GraphService.AddEdge is not implemented"))
 }
 

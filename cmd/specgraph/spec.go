@@ -47,7 +47,7 @@ func runCreate(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("create spec: %w", err)
 	}
-	fmt.Printf("Created: %s (%s)\n", resp.Msg.Slug, resp.Msg.Id)
+	fmt.Printf("Created: %s (%s)\n", resp.Msg.GetSpec().GetSlug(), resp.Msg.GetSpec().GetId())
 	return nil
 }
 
@@ -94,7 +94,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("update spec: %w", err)
 	}
-	fmt.Printf("Updated: %s (version %d)\n", resp.Msg.Slug, resp.Msg.Version)
+	fmt.Printf("Updated: %s (version %d)\n", resp.Msg.GetSpec().GetSlug(), resp.Msg.GetSpec().GetVersion())
 	return nil
 }
 
@@ -207,7 +207,7 @@ func runShow(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
-	s := resp.Msg
+	s := resp.Msg.GetSpec()
 	fmt.Printf("ID:         %s\n", s.Id)
 	fmt.Printf("Slug:       %s\n", s.Slug)
 	fmt.Printf("Intent:     %s\n", s.Intent)

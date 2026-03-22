@@ -78,9 +78,9 @@ var _ = Describe("Authoring funnel", Ordered, func() {
 			Slug: "e2e-decision-1",
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Title).To(Equal("Use approach 1"))
-		Expect(resp.Msg.Decision).To(Equal("We chose approach 1"))
-		Expect(resp.Msg.Status).To(Equal(specv1.DecisionStatus_DECISION_STATUS_PROPOSED))
+		Expect(resp.Msg.GetDecision().GetTitle()).To(Equal("Use approach 1"))
+		Expect(resp.Msg.GetDecision().GetDecision()).To(Equal("We chose approach 1"))
+		Expect(resp.Msg.GetDecision().GetStatus()).To(Equal(specv1.DecisionStatus_DECISION_STATUS_PROPOSED))
 	})
 
 	It("specifies a shaped spec", func() {
