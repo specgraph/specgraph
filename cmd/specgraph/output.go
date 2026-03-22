@@ -17,7 +17,7 @@ func printJSON(w io.Writer, msg proto.Message) error {
 	if err != nil {
 		return fmt.Errorf("marshal json: %w", err)
 	}
-	if _, err := w.Write(data); err != nil {
+	if _, err = w.Write(data); err != nil {
 		return err
 	}
 	_, err = fmt.Fprintln(w)
