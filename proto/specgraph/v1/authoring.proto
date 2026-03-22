@@ -139,16 +139,45 @@ message Approach {
   repeated string tradeoffs = 3;
 }
 
+// InterfaceSection defines one API surface in the specify stage contract.
+message InterfaceSection {
+  // Surface name, e.g. "WebhookService proto", "EventBus Go interface".
+  string name = 1;
+  // Free-form contract content (proto definitions, method signatures, etc.).
+  string body = 2;
+}
+
+// VerifyCriterion defines one testable acceptance criterion with a category.
+message VerifyCriterion {
+  // Category grouping, e.g. "emission", "CRUD", "e2e".
+  string category = 1;
+  // The criterion description.
+  string description = 2;
+}
+
+// FileTouch identifies a file expected to be created or modified by this spec.
+message FileTouch {
+  // File or package path relative to repo root.
+  string path = 1;
+  // What changes and why.
+  string purpose = 2;
+  // Type of change: "new", "modify", "delete".
+  string change_type = 3;
+}
+
 // SpecifyOutput captures the precise contract and verification criteria for a spec.
+// WIRE-BREAK: Fields 1, 2, 4 change type from string/repeated-string to
+// repeated-message. Intentional at 0.2.0-dev (no production data). Field
+// numbers reused because semantic intent is preserved.
 message SpecifyOutput {
-  // Formal interface contract (API shape, data model, or behaviour spec).
-  string interface_contract = 1;
-  // Conditions that must hold for an implementation to be considered correct.
-  repeated string verify_criteria = 2;
+  // Interface contracts, one per API surface.
+  repeated InterfaceSection interfaces = 1;
+  // Categorized conditions that must hold for correctness.
+  repeated VerifyCriterion verify_criteria = 2;
   // Invariants that must never be violated across any implementation state.
   repeated string invariants = 3;
-  // Files, packages, or components expected to be modified by this spec.
-  repeated string touches = 4;
+  // Files, packages, or components expected to be created or modified.
+  repeated FileTouch touches = 4;
 }
 
 // DecomposeOutput captures the decomposition strategy and resulting slices for a spec.

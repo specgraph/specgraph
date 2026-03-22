@@ -87,16 +87,22 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 		resp, err := authoringClient.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
 			Slug: pipelineSlug,
 			Output: &specv1.SpecifyOutput{
-				InterfaceContract: "POST /api/v1/amended",
-				VerifyCriteria:    []string{"returns 200"},
-				Invariants:        []string{"data consistent"},
-				Touches:           []string{"internal/amended/handler.go"},
+				Interfaces: []*specv1.InterfaceSection{
+					{Name: "API", Body: "POST /api/v1/amended"},
+				},
+				VerifyCriteria: []*specv1.VerifyCriterion{
+					{Category: "happy-path", Description: "returns 200"},
+				},
+				Invariants: []string{"data consistent"},
+				Touches: []*specv1.FileTouch{
+					{Path: "internal/amended/handler.go", Purpose: "handler updates", ChangeType: "modify"},
+				},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Output).NotTo(BeNil())
-		Expect(resp.Msg.Output.InterfaceContract).To(Equal("POST /api/v1/amended"))
+		Expect(resp.Msg.Output.Interfaces[0].Body).To(Equal("POST /api/v1/amended"))
 	})
 
 	It("re-traverses funnel: decompose", func() {

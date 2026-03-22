@@ -29,7 +29,7 @@ var promptRegistry = map[Stage][]Prompt{
 		{Name: "define_success", Template: "What does success look like? Define measurable acceptance criteria."},
 	},
 	StageSpecify: {
-		{Name: "interface_contract", Template: "Define the public interface: inputs, outputs, error cases."},
+		{Name: "interfaces", Template: "Define the public interfaces: inputs, outputs, error cases for each API surface."},
 		{Name: "verify_criteria", Template: "Write verification criteria that a reviewer can check mechanically."},
 		{Name: "invariants", Template: "State the invariants that must hold before, during, and after execution."},
 	},

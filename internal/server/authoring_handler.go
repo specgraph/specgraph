@@ -187,31 +187,69 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
-	if len(msg.Output.GetInterfaceContract()) > maxFieldLen {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("interface_contract exceeds maximum length of %d characters", maxFieldLen))
+	if len(msg.Output.GetInterfaces()) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("interfaces exceeds maximum of %d elements", maxElements))
+	}
+	for i, iface := range msg.Output.GetInterfaces() {
+		if iface.GetName() == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("interfaces[%d]: name is required", i))
+		}
+		if len(iface.GetName()) > maxFieldLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("interfaces[%d]: name exceeds maximum length of %d characters", i, maxFieldLen))
+		}
+		if len(iface.GetBody()) > maxFieldLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("interfaces[%d]: body exceeds maximum length of %d characters", i, maxFieldLen))
+		}
 	}
 	if len(msg.Output.GetVerifyCriteria()) > maxElements {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify_criteria exceeds maximum of %d elements", maxElements))
 	}
+	for i, vc := range msg.Output.GetVerifyCriteria() {
+		if len(vc.GetCategory()) > maxFieldLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify_criteria[%d]: category exceeds maximum length of %d characters", i, maxFieldLen))
+		}
+		if vc.GetDescription() == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify_criteria[%d]: description is required", i))
+		}
+		if len(vc.GetDescription()) > maxFieldLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify_criteria[%d]: description exceeds maximum length of %d characters", i, maxFieldLen))
+		}
+	}
 	if len(msg.Output.GetInvariants()) > maxElements {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invariants exceeds maximum of %d elements", maxElements))
-	}
-	if len(msg.Output.GetTouches()) > maxElements {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("touches exceeds maximum of %d elements", maxElements))
-	}
-	for _, item := range msg.Output.GetVerifyCriteria() {
-		if len(item) > maxFieldLen {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify_criteria item exceeds maximum length of %d characters", maxFieldLen))
-		}
 	}
 	for _, item := range msg.Output.GetInvariants() {
 		if len(item) > maxFieldLen {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invariants item exceeds maximum length of %d characters", maxFieldLen))
 		}
 	}
+	if len(msg.Output.GetTouches()) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("touches exceeds maximum of %d elements", maxElements))
+	}
+	for i, ft := range msg.Output.GetTouches() {
+		if ft.GetPath() == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("touches[%d]: path is required", i))
+		}
+		if len(ft.GetPath()) > maxFieldLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("touches[%d]: path exceeds maximum length of %d characters", i, maxFieldLen))
+		}
+		if len(ft.GetPurpose()) > maxFieldLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("touches[%d]: purpose exceeds maximum length of %d characters", i, maxFieldLen))
+		}
+		if len(ft.GetChangeType()) > maxFieldLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("touches[%d]: change_type exceeds maximum length of %d characters", i, maxFieldLen))
+		}
+	}
 	specifyDomain := specifyOutputToDomain(msg.Output)
+	var contractText strings.Builder
+	for _, iface := range msg.Output.GetInterfaces() {
+		if contractText.Len() > 0 {
+			contractText.WriteString("\n\n")
+		}
+		contractText.WriteString(iface.GetName() + ":\n" + iface.GetBody())
+	}
 	safetyInput := &authoring.SafetyInput{
-		Text:       msg.Output.GetInterfaceContract(),
+		Text:       contractText.String(),
 		Invariants: msg.Output.GetInvariants(),
 	}
 	var safetyFlags []authoring.SafetyFlagResult
@@ -613,11 +651,33 @@ func shapeOutputToDomain(p *specv1.ShapeOutput) (*storage.ShapeOutput, error) {
 }
 
 func specifyOutputToDomain(p *specv1.SpecifyOutput) *storage.SpecifyOutput {
+	interfaces := make([]storage.InterfaceSection, len(p.GetInterfaces()))
+	for i, iface := range p.GetInterfaces() {
+		interfaces[i] = storage.InterfaceSection{
+			Name: iface.GetName(),
+			Body: iface.GetBody(),
+		}
+	}
+	criteria := make([]storage.VerifyCriterion, len(p.GetVerifyCriteria()))
+	for i, vc := range p.GetVerifyCriteria() {
+		criteria[i] = storage.VerifyCriterion{
+			Category:    vc.GetCategory(),
+			Description: vc.GetDescription(),
+		}
+	}
+	touches := make([]storage.FileTouch, len(p.GetTouches()))
+	for i, ft := range p.GetTouches() {
+		touches[i] = storage.FileTouch{
+			Path:       ft.GetPath(),
+			Purpose:    ft.GetPurpose(),
+			ChangeType: ft.GetChangeType(),
+		}
+	}
 	return &storage.SpecifyOutput{
-		InterfaceContract: p.GetInterfaceContract(),
-		VerifyCriteria:    p.GetVerifyCriteria(),
-		Invariants:        p.GetInvariants(),
-		Touches:           p.GetTouches(),
+		Interfaces:     interfaces,
+		VerifyCriteria: criteria,
+		Invariants:     p.GetInvariants(),
+		Touches:        touches,
 	}
 }
 

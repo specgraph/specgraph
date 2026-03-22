@@ -172,7 +172,7 @@ func TestStoreSpecifyOutput_CreatesChangeLog(t *testing.T) {
 	require.NoError(t, err)
 
 	err = store.StoreSpecifyOutput(ctx, "test-specify-cl", &storage.SpecifyOutput{
-		VerifyCriteria: []string{"must be fast"},
+		VerifyCriteria: []storage.VerifyCriterion{{Category: "performance", Description: "must be fast"}},
 	})
 	require.NoError(t, err)
 

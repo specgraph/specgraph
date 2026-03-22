@@ -304,14 +304,19 @@ func TestAuthoringHandler_Specify_HappyPath(t *testing.T) {
 	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug: "my-spec",
 		Output: &specv1.SpecifyOutput{
-			InterfaceContract: "POST /api/login",
-			VerifyCriteria:    []string{"returns 200 on valid credentials"},
-			Invariants:        []string{"session token is opaque"},
+			Interfaces: []*specv1.InterfaceSection{
+				{Name: "API", Body: "POST /api/login"},
+			},
+			VerifyCriteria: []*specv1.VerifyCriterion{
+				{Category: "functional", Description: "returns 200 on valid credentials"},
+			},
+			Invariants: []string{"session token is opaque"},
 		},
 	}))
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg.Output)
-	require.Equal(t, "POST /api/login", resp.Msg.Output.InterfaceContract)
+	require.Len(t, resp.Msg.Output.Interfaces, 1)
+	require.Equal(t, "POST /api/login", resp.Msg.Output.Interfaces[0].Body)
 	require.NotEmpty(t, resp.Msg.NextPrompts, "should include next-stage prompts")
 }
 
@@ -536,8 +541,12 @@ func TestAuthoringHandler_Specify_StoreOutputError(t *testing.T) {
 	authoringStore := &fakeAuthoringBackend{storeSpecifyOutputErr: errors.New("store failed")}
 	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
 	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
-		Slug:   "my-spec",
-		Output: &specv1.SpecifyOutput{InterfaceContract: "POST /api/login"},
+		Slug: "my-spec",
+		Output: &specv1.SpecifyOutput{
+			Interfaces: []*specv1.InterfaceSection{
+				{Name: "API", Body: "POST /api/login"},
+			},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -836,7 +845,7 @@ func TestAuthoringHandler_GetPrompts_SpecifyStage(t *testing.T) {
 		names[p.Name] = true
 		require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY, p.Stage)
 	}
-	require.True(t, names["interface_contract"])
+	require.True(t, names["interfaces"])
 	require.True(t, names["invariants"])
 }
 
@@ -899,9 +908,13 @@ func TestAuthoringHandler_Specify_StoreSafetyFlagsError(t *testing.T) {
 	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug: "safety-err-specify",
 		Output: &specv1.SpecifyOutput{
-			InterfaceContract: "interface contract",
-			VerifyCriteria:    []string{"check 1"},
-			Invariants:        []string{"inv 1"},
+			Interfaces: []*specv1.InterfaceSection{
+				{Name: "API", Body: "interface contract"},
+			},
+			VerifyCriteria: []*specv1.VerifyCriterion{
+				{Category: "functional", Description: "check 1"},
+			},
+			Invariants: []string{"inv 1"},
 		},
 	}))
 	if err != nil {
@@ -1204,4 +1217,58 @@ func TestAuthoringHandler_Amend_UnknownStageFromStorage(t *testing.T) {
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInternal, connErr.Code())
 	require.Contains(t, connErr.Message(), "unknown stage")
+}
+
+func TestAuthoringHandler_Specify_InterfacesMissingName(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+		Slug: "test-spec",
+		Output: &specv1.SpecifyOutput{
+			Interfaces: []*specv1.InterfaceSection{
+				{Name: "", Body: "some body"},
+			},
+		},
+	}))
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestAuthoringHandler_Specify_VerifyCriteriaMissingDescription(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+		Slug: "test-spec",
+		Output: &specv1.SpecifyOutput{
+			VerifyCriteria: []*specv1.VerifyCriterion{
+				{Category: "test", Description: ""},
+			},
+		},
+	}))
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestAuthoringHandler_Specify_TouchesMissingPath(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+		Slug: "test-spec",
+		Output: &specv1.SpecifyOutput{
+			Touches: []*specv1.FileTouch{
+				{Path: "", Purpose: "something"},
+			},
+		},
+	}))
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestAuthoringHandler_Specify_MultipleInterfaces(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+		Slug: "multi-iface",
+		Output: &specv1.SpecifyOutput{
+			Interfaces: []*specv1.InterfaceSection{
+				{Name: "ProtoService", Body: "service Webhook { rpc Send(...) }"},
+				{Name: "GoInterface", Body: "type EventBus interface { Publish(event) }"},
+			},
+		},
+	}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.Output.Interfaces, 2)
 }
