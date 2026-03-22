@@ -174,16 +174,16 @@ func TestExecutionHandler_GenerateBundle(t *testing.T) {
 		Endpoint: "http://localhost:8080",
 	}))
 	require.NoError(t, err)
-	require.Equal(t, int32(1), resp.Msg.Version)
-	require.Equal(t, "my-spec", resp.Msg.Spec.Slug)
-	require.Equal(t, "build a widget", resp.Msg.Spec.Intent)
-	require.Len(t, resp.Msg.Decisions, 1)
-	require.Equal(t, "adr-001", resp.Msg.Decisions[0].Slug)
-	require.NotNil(t, resp.Msg.Callbacks)
-	require.Equal(t, "http://localhost:8080", resp.Msg.Callbacks.Endpoint)
-	require.Equal(t, "http://localhost:8080/progress", resp.Msg.Callbacks.Progress)
-	require.NotEmpty(t, resp.Msg.BundleYaml)
-	require.Contains(t, resp.Msg.BundleYaml, "my-spec")
+	require.Equal(t, int32(1), resp.Msg.GetBundle().GetVersion())
+	require.Equal(t, "my-spec", resp.Msg.GetBundle().GetSpec().GetSlug())
+	require.Equal(t, "build a widget", resp.Msg.GetBundle().GetSpec().GetIntent())
+	require.Len(t, resp.Msg.GetBundle().GetDecisions(), 1)
+	require.Equal(t, "adr-001", resp.Msg.GetBundle().GetDecisions()[0].GetSlug())
+	require.NotNil(t, resp.Msg.GetBundle().GetCallbacks())
+	require.Equal(t, "http://localhost:8080", resp.Msg.GetBundle().GetCallbacks().GetEndpoint())
+	require.Equal(t, "http://localhost:8080/progress", resp.Msg.GetBundle().GetCallbacks().GetProgress())
+	require.NotEmpty(t, resp.Msg.GetBundle().GetBundleYaml())
+	require.Contains(t, resp.Msg.GetBundle().GetBundleYaml(), "my-spec")
 }
 
 func TestExecutionHandler_GenerateBundle_NotFound(t *testing.T) {

@@ -47,9 +47,9 @@ const (
 
 // ClaimServiceClient is a client for the specgraph.v1.ClaimService service.
 type ClaimServiceClient interface {
-	ClaimSpec(context.Context, *connect.Request[v1.ClaimSpecRequest]) (*connect.Response[v1.Claim], error)
+	ClaimSpec(context.Context, *connect.Request[v1.ClaimSpecRequest]) (*connect.Response[v1.ClaimSpecResponse], error)
 	UnclaimSpec(context.Context, *connect.Request[v1.UnclaimSpecRequest]) (*connect.Response[v1.UnclaimSpecResponse], error)
-	Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.Claim], error)
+	Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error)
 }
 
 // NewClaimServiceClient constructs a client for the specgraph.v1.ClaimService service. By default,
@@ -63,7 +63,7 @@ func NewClaimServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 	baseURL = strings.TrimRight(baseURL, "/")
 	claimServiceMethods := v1.File_specgraph_v1_claim_proto.Services().ByName("ClaimService").Methods()
 	return &claimServiceClient{
-		claimSpec: connect.NewClient[v1.ClaimSpecRequest, v1.Claim](
+		claimSpec: connect.NewClient[v1.ClaimSpecRequest, v1.ClaimSpecResponse](
 			httpClient,
 			baseURL+ClaimServiceClaimSpecProcedure,
 			connect.WithSchema(claimServiceMethods.ByName("ClaimSpec")),
@@ -75,7 +75,7 @@ func NewClaimServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(claimServiceMethods.ByName("UnclaimSpec")),
 			connect.WithClientOptions(opts...),
 		),
-		heartbeat: connect.NewClient[v1.HeartbeatRequest, v1.Claim](
+		heartbeat: connect.NewClient[v1.HeartbeatRequest, v1.HeartbeatResponse](
 			httpClient,
 			baseURL+ClaimServiceHeartbeatProcedure,
 			connect.WithSchema(claimServiceMethods.ByName("Heartbeat")),
@@ -86,13 +86,13 @@ func NewClaimServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // claimServiceClient implements ClaimServiceClient.
 type claimServiceClient struct {
-	claimSpec   *connect.Client[v1.ClaimSpecRequest, v1.Claim]
+	claimSpec   *connect.Client[v1.ClaimSpecRequest, v1.ClaimSpecResponse]
 	unclaimSpec *connect.Client[v1.UnclaimSpecRequest, v1.UnclaimSpecResponse]
-	heartbeat   *connect.Client[v1.HeartbeatRequest, v1.Claim]
+	heartbeat   *connect.Client[v1.HeartbeatRequest, v1.HeartbeatResponse]
 }
 
 // ClaimSpec calls specgraph.v1.ClaimService.ClaimSpec.
-func (c *claimServiceClient) ClaimSpec(ctx context.Context, req *connect.Request[v1.ClaimSpecRequest]) (*connect.Response[v1.Claim], error) {
+func (c *claimServiceClient) ClaimSpec(ctx context.Context, req *connect.Request[v1.ClaimSpecRequest]) (*connect.Response[v1.ClaimSpecResponse], error) {
 	return c.claimSpec.CallUnary(ctx, req)
 }
 
@@ -102,15 +102,15 @@ func (c *claimServiceClient) UnclaimSpec(ctx context.Context, req *connect.Reque
 }
 
 // Heartbeat calls specgraph.v1.ClaimService.Heartbeat.
-func (c *claimServiceClient) Heartbeat(ctx context.Context, req *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.Claim], error) {
+func (c *claimServiceClient) Heartbeat(ctx context.Context, req *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error) {
 	return c.heartbeat.CallUnary(ctx, req)
 }
 
 // ClaimServiceHandler is an implementation of the specgraph.v1.ClaimService service.
 type ClaimServiceHandler interface {
-	ClaimSpec(context.Context, *connect.Request[v1.ClaimSpecRequest]) (*connect.Response[v1.Claim], error)
+	ClaimSpec(context.Context, *connect.Request[v1.ClaimSpecRequest]) (*connect.Response[v1.ClaimSpecResponse], error)
 	UnclaimSpec(context.Context, *connect.Request[v1.UnclaimSpecRequest]) (*connect.Response[v1.UnclaimSpecResponse], error)
-	Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.Claim], error)
+	Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error)
 }
 
 // NewClaimServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -155,7 +155,7 @@ func NewClaimServiceHandler(svc ClaimServiceHandler, opts ...connect.HandlerOpti
 // UnimplementedClaimServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedClaimServiceHandler struct{}
 
-func (UnimplementedClaimServiceHandler) ClaimSpec(context.Context, *connect.Request[v1.ClaimSpecRequest]) (*connect.Response[v1.Claim], error) {
+func (UnimplementedClaimServiceHandler) ClaimSpec(context.Context, *connect.Request[v1.ClaimSpecRequest]) (*connect.Response[v1.ClaimSpecResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.ClaimService.ClaimSpec is not implemented"))
 }
 
@@ -163,6 +163,6 @@ func (UnimplementedClaimServiceHandler) UnclaimSpec(context.Context, *connect.Re
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.ClaimService.UnclaimSpec is not implemented"))
 }
 
-func (UnimplementedClaimServiceHandler) Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.Claim], error) {
+func (UnimplementedClaimServiceHandler) Heartbeat(context.Context, *connect.Request[v1.HeartbeatRequest]) (*connect.Response[v1.HeartbeatResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.ClaimService.Heartbeat is not implemented"))
 }

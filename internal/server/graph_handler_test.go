@@ -150,7 +150,7 @@ func TestGraphHandler_AddAndListEdges(t *testing.T) {
 		EdgeType: specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
 	}))
 	require.NoError(t, err)
-	require.Equal(t, specv1.EdgeType_EDGE_TYPE_DEPENDS_ON, addResp.Msg.EdgeType)
+	require.Equal(t, specv1.EdgeType_EDGE_TYPE_DEPENDS_ON, addResp.Msg.GetEdge().GetEdgeType())
 
 	// List edges
 	listResp, err := client.ListEdges(ctx, connect.NewRequest(&specv1.ListEdgesRequest{

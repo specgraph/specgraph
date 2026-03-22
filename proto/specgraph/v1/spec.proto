@@ -74,11 +74,15 @@ message UpdateSpecRequest {
   optional string notes = 6;
 }
 
+message CreateSpecResponse { Spec spec = 1; }
+message GetSpecResponse { Spec spec = 1; }
+message UpdateSpecResponse { Spec spec = 1; }
+
 // --- Service ---
 
 service SpecService {
-  rpc CreateSpec(CreateSpecRequest) returns (Spec);
-  rpc GetSpec(GetSpecRequest) returns (Spec);
+  rpc CreateSpec(CreateSpecRequest) returns (CreateSpecResponse);
+  rpc GetSpec(GetSpecRequest) returns (GetSpecResponse);
   rpc ListSpecs(ListSpecsRequest) returns (ListSpecsResponse);
-  rpc UpdateSpec(UpdateSpecRequest) returns (Spec);
+  rpc UpdateSpec(UpdateSpecRequest) returns (UpdateSpecResponse);
 }

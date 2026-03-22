@@ -22,7 +22,7 @@ type GraphHandler struct {
 var _ specgraphv1connect.GraphServiceHandler = (*GraphHandler)(nil)
 
 // AddEdge handles the AddEdge RPC.
-func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.AddEdgeRequest]) (*connect.Response[specv1.Edge], error) {
+func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.AddEdgeRequest]) (*connect.Response[specv1.AddEdgeResponse], error) {
 	store, scopeErr := scopeStore(ctx, h.scoper)
 	if scopeErr != nil {
 		return nil, scopeErr
@@ -45,7 +45,7 @@ func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(pb), nil
+	return connect.NewResponse(&specv1.AddEdgeResponse{Edge: pb}), nil
 }
 
 // RemoveEdge handles the RemoveEdge RPC.

@@ -149,14 +149,14 @@ var _ = Describe("Constitution pipeline", Ordered, func() {
 			Stage: proto.String("approved"),
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(updateResp.Msg.Stage).To(Equal("approved"))
+		Expect(updateResp.Msg.GetSpec().GetStage()).To(Equal("approved"))
 
 		claimResp, err := claimClient.ClaimSpec(ctx, connect.NewRequest(&specv1.ClaimSpecRequest{
 			SpecSlug: specSlug,
 			Agent:    "pipeline-agent",
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(claimResp.Msg.SpecSlug).To(Equal(specSlug))
+		Expect(claimResp.Msg.GetClaim().GetSpecSlug()).To(Equal(specSlug))
 	})
 
 	It("generates an execution bundle with prime callback", func() {
@@ -167,14 +167,14 @@ var _ = Describe("Constitution pipeline", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		bundle := resp.Msg
-		Expect(bundle.Spec).NotTo(BeNil())
-		Expect(bundle.Spec.Slug).To(Equal(specSlug))
-		Expect(bundle.Version).To(BeNumerically(">=", 1))
+		Expect(bundle.GetBundle().GetSpec()).NotTo(BeNil())
+		Expect(bundle.GetBundle().GetSpec().GetSlug()).To(Equal(specSlug))
+		Expect(bundle.GetBundle().GetVersion()).To(BeNumerically(">=", 1))
 		// Bundle carries callback URLs — agents call Prime to get constitution.
 		// Constitution is NOT embedded in the Bundle proto by design: agents
 		// fetch it via the Prime callback so they always get the latest version.
-		Expect(bundle.Callbacks).NotTo(BeNil())
-		Expect(bundle.Callbacks.Prime).To(ContainSubstring("/prime"))
+		Expect(bundle.GetBundle().GetCallbacks()).NotTo(BeNil())
+		Expect(bundle.GetBundle().GetCallbacks().GetPrime()).To(ContainSubstring("/prime"))
 	})
 
 	It("verifies constitution is accessible via GetPrime", func() {

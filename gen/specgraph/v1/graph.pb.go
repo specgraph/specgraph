@@ -208,6 +208,50 @@ func (x *AddEdgeRequest) GetEdgeType() EdgeType {
 	return EdgeType_EDGE_TYPE_UNSPECIFIED
 }
 
+type AddEdgeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Edge          *Edge                  `protobuf:"bytes,1,opt,name=edge,proto3" json:"edge,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddEdgeResponse) Reset() {
+	*x = AddEdgeResponse{}
+	mi := &file_specgraph_v1_graph_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddEdgeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddEdgeResponse) ProtoMessage() {}
+
+func (x *AddEdgeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_graph_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddEdgeResponse.ProtoReflect.Descriptor instead.
+func (*AddEdgeResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AddEdgeResponse) GetEdge() *Edge {
+	if x != nil {
+		return x.Edge
+	}
+	return nil
+}
+
 type RemoveEdgeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	FromSlug      string                 `protobuf:"bytes,1,opt,name=from_slug,json=fromSlug,proto3" json:"from_slug,omitempty"`
@@ -219,7 +263,7 @@ type RemoveEdgeRequest struct {
 
 func (x *RemoveEdgeRequest) Reset() {
 	*x = RemoveEdgeRequest{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[2]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -231,7 +275,7 @@ func (x *RemoveEdgeRequest) String() string {
 func (*RemoveEdgeRequest) ProtoMessage() {}
 
 func (x *RemoveEdgeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[2]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -244,7 +288,7 @@ func (x *RemoveEdgeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveEdgeRequest.ProtoReflect.Descriptor instead.
 func (*RemoveEdgeRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{2}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *RemoveEdgeRequest) GetFromSlug() string {
@@ -276,7 +320,7 @@ type RemoveEdgeResponse struct {
 
 func (x *RemoveEdgeResponse) Reset() {
 	*x = RemoveEdgeResponse{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[3]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -288,7 +332,7 @@ func (x *RemoveEdgeResponse) String() string {
 func (*RemoveEdgeResponse) ProtoMessage() {}
 
 func (x *RemoveEdgeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[3]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -301,7 +345,7 @@ func (x *RemoveEdgeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveEdgeResponse.ProtoReflect.Descriptor instead.
 func (*RemoveEdgeResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{3}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{4}
 }
 
 type ListEdgesRequest struct {
@@ -314,7 +358,7 @@ type ListEdgesRequest struct {
 
 func (x *ListEdgesRequest) Reset() {
 	*x = ListEdgesRequest{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[4]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -326,7 +370,7 @@ func (x *ListEdgesRequest) String() string {
 func (*ListEdgesRequest) ProtoMessage() {}
 
 func (x *ListEdgesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[4]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -339,7 +383,7 @@ func (x *ListEdgesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEdgesRequest.ProtoReflect.Descriptor instead.
 func (*ListEdgesRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{4}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListEdgesRequest) GetSlug() string {
@@ -365,7 +409,7 @@ type ListEdgesResponse struct {
 
 func (x *ListEdgesResponse) Reset() {
 	*x = ListEdgesResponse{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[5]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -377,7 +421,7 @@ func (x *ListEdgesResponse) String() string {
 func (*ListEdgesResponse) ProtoMessage() {}
 
 func (x *ListEdgesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[5]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -390,7 +434,7 @@ func (x *ListEdgesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEdgesResponse.ProtoReflect.Descriptor instead.
 func (*ListEdgesResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{5}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListEdgesResponse) GetEdges() []*Edge {
@@ -412,7 +456,7 @@ type NodeRef struct {
 
 func (x *NodeRef) Reset() {
 	*x = NodeRef{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[6]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -424,7 +468,7 @@ func (x *NodeRef) String() string {
 func (*NodeRef) ProtoMessage() {}
 
 func (x *NodeRef) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[6]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -437,7 +481,7 @@ func (x *NodeRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodeRef.ProtoReflect.Descriptor instead.
 func (*NodeRef) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{6}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *NodeRef) GetId() string {
@@ -477,7 +521,7 @@ type GetDependenciesRequest struct {
 
 func (x *GetDependenciesRequest) Reset() {
 	*x = GetDependenciesRequest{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[7]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -489,7 +533,7 @@ func (x *GetDependenciesRequest) String() string {
 func (*GetDependenciesRequest) ProtoMessage() {}
 
 func (x *GetDependenciesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[7]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -502,7 +546,7 @@ func (x *GetDependenciesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDependenciesRequest.ProtoReflect.Descriptor instead.
 func (*GetDependenciesRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{7}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetDependenciesRequest) GetSlug() string {
@@ -521,7 +565,7 @@ type GetDependenciesResponse struct {
 
 func (x *GetDependenciesResponse) Reset() {
 	*x = GetDependenciesResponse{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[8]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -533,7 +577,7 @@ func (x *GetDependenciesResponse) String() string {
 func (*GetDependenciesResponse) ProtoMessage() {}
 
 func (x *GetDependenciesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[8]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -546,7 +590,7 @@ func (x *GetDependenciesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDependenciesResponse.ProtoReflect.Descriptor instead.
 func (*GetDependenciesResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{8}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetDependenciesResponse) GetDependencies() []*NodeRef {
@@ -565,7 +609,7 @@ type GetTransitiveDepsRequest struct {
 
 func (x *GetTransitiveDepsRequest) Reset() {
 	*x = GetTransitiveDepsRequest{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[9]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -577,7 +621,7 @@ func (x *GetTransitiveDepsRequest) String() string {
 func (*GetTransitiveDepsRequest) ProtoMessage() {}
 
 func (x *GetTransitiveDepsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[9]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -590,7 +634,7 @@ func (x *GetTransitiveDepsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTransitiveDepsRequest.ProtoReflect.Descriptor instead.
 func (*GetTransitiveDepsRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{9}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetTransitiveDepsRequest) GetSlug() string {
@@ -609,7 +653,7 @@ type GetTransitiveDepsResponse struct {
 
 func (x *GetTransitiveDepsResponse) Reset() {
 	*x = GetTransitiveDepsResponse{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[10]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -621,7 +665,7 @@ func (x *GetTransitiveDepsResponse) String() string {
 func (*GetTransitiveDepsResponse) ProtoMessage() {}
 
 func (x *GetTransitiveDepsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[10]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -634,7 +678,7 @@ func (x *GetTransitiveDepsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTransitiveDepsResponse.ProtoReflect.Descriptor instead.
 func (*GetTransitiveDepsResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{10}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetTransitiveDepsResponse) GetDependencies() []*NodeRef {
@@ -653,7 +697,7 @@ type GetImpactRequest struct {
 
 func (x *GetImpactRequest) Reset() {
 	*x = GetImpactRequest{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[11]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -665,7 +709,7 @@ func (x *GetImpactRequest) String() string {
 func (*GetImpactRequest) ProtoMessage() {}
 
 func (x *GetImpactRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[11]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -678,7 +722,7 @@ func (x *GetImpactRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetImpactRequest.ProtoReflect.Descriptor instead.
 func (*GetImpactRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{11}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetImpactRequest) GetSlug() string {
@@ -697,7 +741,7 @@ type GetImpactResponse struct {
 
 func (x *GetImpactResponse) Reset() {
 	*x = GetImpactResponse{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[12]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -709,7 +753,7 @@ func (x *GetImpactResponse) String() string {
 func (*GetImpactResponse) ProtoMessage() {}
 
 func (x *GetImpactResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[12]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -722,7 +766,7 @@ func (x *GetImpactResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetImpactResponse.ProtoReflect.Descriptor instead.
 func (*GetImpactResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{12}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetImpactResponse) GetImpacted() []*NodeRef {
@@ -740,7 +784,7 @@ type GetReadyRequest struct {
 
 func (x *GetReadyRequest) Reset() {
 	*x = GetReadyRequest{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[13]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -752,7 +796,7 @@ func (x *GetReadyRequest) String() string {
 func (*GetReadyRequest) ProtoMessage() {}
 
 func (x *GetReadyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[13]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -765,7 +809,7 @@ func (x *GetReadyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetReadyRequest.ProtoReflect.Descriptor instead.
 func (*GetReadyRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{13}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{14}
 }
 
 type GetReadyResponse struct {
@@ -777,7 +821,7 @@ type GetReadyResponse struct {
 
 func (x *GetReadyResponse) Reset() {
 	*x = GetReadyResponse{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[14]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -789,7 +833,7 @@ func (x *GetReadyResponse) String() string {
 func (*GetReadyResponse) ProtoMessage() {}
 
 func (x *GetReadyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[14]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -802,7 +846,7 @@ func (x *GetReadyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetReadyResponse.ProtoReflect.Descriptor instead.
 func (*GetReadyResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{14}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetReadyResponse) GetReady() []*NodeRef {
@@ -821,7 +865,7 @@ type GetCriticalPathRequest struct {
 
 func (x *GetCriticalPathRequest) Reset() {
 	*x = GetCriticalPathRequest{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[15]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -833,7 +877,7 @@ func (x *GetCriticalPathRequest) String() string {
 func (*GetCriticalPathRequest) ProtoMessage() {}
 
 func (x *GetCriticalPathRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[15]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -846,7 +890,7 @@ func (x *GetCriticalPathRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCriticalPathRequest.ProtoReflect.Descriptor instead.
 func (*GetCriticalPathRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{15}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetCriticalPathRequest) GetSlug() string {
@@ -865,7 +909,7 @@ type GetCriticalPathResponse struct {
 
 func (x *GetCriticalPathResponse) Reset() {
 	*x = GetCriticalPathResponse{}
-	mi := &file_specgraph_v1_graph_proto_msgTypes[16]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -877,7 +921,7 @@ func (x *GetCriticalPathResponse) String() string {
 func (*GetCriticalPathResponse) ProtoMessage() {}
 
 func (x *GetCriticalPathResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_graph_proto_msgTypes[16]
+	mi := &file_specgraph_v1_graph_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -890,7 +934,7 @@ func (x *GetCriticalPathResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCriticalPathResponse.ProtoReflect.Descriptor instead.
 func (*GetCriticalPathResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{16}
+	return file_specgraph_v1_graph_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetCriticalPathResponse) GetPath() []*NodeRef {
@@ -912,7 +956,9 @@ const file_specgraph_v1_graph_proto_rawDesc = "" +
 	"\x0eAddEdgeRequest\x12\x1b\n" +
 	"\tfrom_slug\x18\x01 \x01(\tR\bfromSlug\x12\x17\n" +
 	"\ato_slug\x18\x02 \x01(\tR\x06toSlug\x123\n" +
-	"\tedge_type\x18\x03 \x01(\x0e2\x16.specgraph.v1.EdgeTypeR\bedgeType\"~\n" +
+	"\tedge_type\x18\x03 \x01(\x0e2\x16.specgraph.v1.EdgeTypeR\bedgeType\"9\n" +
+	"\x0fAddEdgeResponse\x12&\n" +
+	"\x04edge\x18\x01 \x01(\v2\x12.specgraph.v1.EdgeR\x04edge\"~\n" +
 	"\x11RemoveEdgeRequest\x12\x1b\n" +
 	"\tfrom_slug\x18\x01 \x01(\tR\bfromSlug\x12\x17\n" +
 	"\ato_slug\x18\x02 \x01(\tR\x06toSlug\x123\n" +
@@ -955,9 +1001,9 @@ const file_specgraph_v1_graph_proto_rawDesc = "" +
 	"\x14EDGE_TYPE_RELATES_TO\x10\x04\x12\x15\n" +
 	"\x11EDGE_TYPE_INFORMS\x10\x05\x12\x18\n" +
 	"\x14EDGE_TYPE_DECIDED_IN\x10\x06\x12\x18\n" +
-	"\x14EDGE_TYPE_SUPERSEDES\x10\a2\xa9\x05\n" +
-	"\fGraphService\x12;\n" +
-	"\aAddEdge\x12\x1c.specgraph.v1.AddEdgeRequest\x1a\x12.specgraph.v1.Edge\x12O\n" +
+	"\x14EDGE_TYPE_SUPERSEDES\x10\a2\xb4\x05\n" +
+	"\fGraphService\x12F\n" +
+	"\aAddEdge\x12\x1c.specgraph.v1.AddEdgeRequest\x1a\x1d.specgraph.v1.AddEdgeResponse\x12O\n" +
 	"\n" +
 	"RemoveEdge\x12\x1f.specgraph.v1.RemoveEdgeRequest\x1a .specgraph.v1.RemoveEdgeResponse\x12L\n" +
 	"\tListEdges\x12\x1e.specgraph.v1.ListEdgesRequest\x1a\x1f.specgraph.v1.ListEdgesResponse\x12^\n" +
@@ -980,59 +1026,61 @@ func file_specgraph_v1_graph_proto_rawDescGZIP() []byte {
 }
 
 var file_specgraph_v1_graph_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_specgraph_v1_graph_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_specgraph_v1_graph_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_specgraph_v1_graph_proto_goTypes = []any{
 	(EdgeType)(0),                     // 0: specgraph.v1.EdgeType
 	(*Edge)(nil),                      // 1: specgraph.v1.Edge
 	(*AddEdgeRequest)(nil),            // 2: specgraph.v1.AddEdgeRequest
-	(*RemoveEdgeRequest)(nil),         // 3: specgraph.v1.RemoveEdgeRequest
-	(*RemoveEdgeResponse)(nil),        // 4: specgraph.v1.RemoveEdgeResponse
-	(*ListEdgesRequest)(nil),          // 5: specgraph.v1.ListEdgesRequest
-	(*ListEdgesResponse)(nil),         // 6: specgraph.v1.ListEdgesResponse
-	(*NodeRef)(nil),                   // 7: specgraph.v1.NodeRef
-	(*GetDependenciesRequest)(nil),    // 8: specgraph.v1.GetDependenciesRequest
-	(*GetDependenciesResponse)(nil),   // 9: specgraph.v1.GetDependenciesResponse
-	(*GetTransitiveDepsRequest)(nil),  // 10: specgraph.v1.GetTransitiveDepsRequest
-	(*GetTransitiveDepsResponse)(nil), // 11: specgraph.v1.GetTransitiveDepsResponse
-	(*GetImpactRequest)(nil),          // 12: specgraph.v1.GetImpactRequest
-	(*GetImpactResponse)(nil),         // 13: specgraph.v1.GetImpactResponse
-	(*GetReadyRequest)(nil),           // 14: specgraph.v1.GetReadyRequest
-	(*GetReadyResponse)(nil),          // 15: specgraph.v1.GetReadyResponse
-	(*GetCriticalPathRequest)(nil),    // 16: specgraph.v1.GetCriticalPathRequest
-	(*GetCriticalPathResponse)(nil),   // 17: specgraph.v1.GetCriticalPathResponse
+	(*AddEdgeResponse)(nil),           // 3: specgraph.v1.AddEdgeResponse
+	(*RemoveEdgeRequest)(nil),         // 4: specgraph.v1.RemoveEdgeRequest
+	(*RemoveEdgeResponse)(nil),        // 5: specgraph.v1.RemoveEdgeResponse
+	(*ListEdgesRequest)(nil),          // 6: specgraph.v1.ListEdgesRequest
+	(*ListEdgesResponse)(nil),         // 7: specgraph.v1.ListEdgesResponse
+	(*NodeRef)(nil),                   // 8: specgraph.v1.NodeRef
+	(*GetDependenciesRequest)(nil),    // 9: specgraph.v1.GetDependenciesRequest
+	(*GetDependenciesResponse)(nil),   // 10: specgraph.v1.GetDependenciesResponse
+	(*GetTransitiveDepsRequest)(nil),  // 11: specgraph.v1.GetTransitiveDepsRequest
+	(*GetTransitiveDepsResponse)(nil), // 12: specgraph.v1.GetTransitiveDepsResponse
+	(*GetImpactRequest)(nil),          // 13: specgraph.v1.GetImpactRequest
+	(*GetImpactResponse)(nil),         // 14: specgraph.v1.GetImpactResponse
+	(*GetReadyRequest)(nil),           // 15: specgraph.v1.GetReadyRequest
+	(*GetReadyResponse)(nil),          // 16: specgraph.v1.GetReadyResponse
+	(*GetCriticalPathRequest)(nil),    // 17: specgraph.v1.GetCriticalPathRequest
+	(*GetCriticalPathResponse)(nil),   // 18: specgraph.v1.GetCriticalPathResponse
 }
 var file_specgraph_v1_graph_proto_depIdxs = []int32{
 	0,  // 0: specgraph.v1.Edge.edge_type:type_name -> specgraph.v1.EdgeType
 	0,  // 1: specgraph.v1.AddEdgeRequest.edge_type:type_name -> specgraph.v1.EdgeType
-	0,  // 2: specgraph.v1.RemoveEdgeRequest.edge_type:type_name -> specgraph.v1.EdgeType
-	0,  // 3: specgraph.v1.ListEdgesRequest.edge_type:type_name -> specgraph.v1.EdgeType
-	1,  // 4: specgraph.v1.ListEdgesResponse.edges:type_name -> specgraph.v1.Edge
-	7,  // 5: specgraph.v1.GetDependenciesResponse.dependencies:type_name -> specgraph.v1.NodeRef
-	7,  // 6: specgraph.v1.GetTransitiveDepsResponse.dependencies:type_name -> specgraph.v1.NodeRef
-	7,  // 7: specgraph.v1.GetImpactResponse.impacted:type_name -> specgraph.v1.NodeRef
-	7,  // 8: specgraph.v1.GetReadyResponse.ready:type_name -> specgraph.v1.NodeRef
-	7,  // 9: specgraph.v1.GetCriticalPathResponse.path:type_name -> specgraph.v1.NodeRef
-	2,  // 10: specgraph.v1.GraphService.AddEdge:input_type -> specgraph.v1.AddEdgeRequest
-	3,  // 11: specgraph.v1.GraphService.RemoveEdge:input_type -> specgraph.v1.RemoveEdgeRequest
-	5,  // 12: specgraph.v1.GraphService.ListEdges:input_type -> specgraph.v1.ListEdgesRequest
-	8,  // 13: specgraph.v1.GraphService.GetDependencies:input_type -> specgraph.v1.GetDependenciesRequest
-	10, // 14: specgraph.v1.GraphService.GetTransitiveDeps:input_type -> specgraph.v1.GetTransitiveDepsRequest
-	12, // 15: specgraph.v1.GraphService.GetImpact:input_type -> specgraph.v1.GetImpactRequest
-	14, // 16: specgraph.v1.GraphService.GetReady:input_type -> specgraph.v1.GetReadyRequest
-	16, // 17: specgraph.v1.GraphService.GetCriticalPath:input_type -> specgraph.v1.GetCriticalPathRequest
-	1,  // 18: specgraph.v1.GraphService.AddEdge:output_type -> specgraph.v1.Edge
-	4,  // 19: specgraph.v1.GraphService.RemoveEdge:output_type -> specgraph.v1.RemoveEdgeResponse
-	6,  // 20: specgraph.v1.GraphService.ListEdges:output_type -> specgraph.v1.ListEdgesResponse
-	9,  // 21: specgraph.v1.GraphService.GetDependencies:output_type -> specgraph.v1.GetDependenciesResponse
-	11, // 22: specgraph.v1.GraphService.GetTransitiveDeps:output_type -> specgraph.v1.GetTransitiveDepsResponse
-	13, // 23: specgraph.v1.GraphService.GetImpact:output_type -> specgraph.v1.GetImpactResponse
-	15, // 24: specgraph.v1.GraphService.GetReady:output_type -> specgraph.v1.GetReadyResponse
-	17, // 25: specgraph.v1.GraphService.GetCriticalPath:output_type -> specgraph.v1.GetCriticalPathResponse
-	18, // [18:26] is the sub-list for method output_type
-	10, // [10:18] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	1,  // 2: specgraph.v1.AddEdgeResponse.edge:type_name -> specgraph.v1.Edge
+	0,  // 3: specgraph.v1.RemoveEdgeRequest.edge_type:type_name -> specgraph.v1.EdgeType
+	0,  // 4: specgraph.v1.ListEdgesRequest.edge_type:type_name -> specgraph.v1.EdgeType
+	1,  // 5: specgraph.v1.ListEdgesResponse.edges:type_name -> specgraph.v1.Edge
+	8,  // 6: specgraph.v1.GetDependenciesResponse.dependencies:type_name -> specgraph.v1.NodeRef
+	8,  // 7: specgraph.v1.GetTransitiveDepsResponse.dependencies:type_name -> specgraph.v1.NodeRef
+	8,  // 8: specgraph.v1.GetImpactResponse.impacted:type_name -> specgraph.v1.NodeRef
+	8,  // 9: specgraph.v1.GetReadyResponse.ready:type_name -> specgraph.v1.NodeRef
+	8,  // 10: specgraph.v1.GetCriticalPathResponse.path:type_name -> specgraph.v1.NodeRef
+	2,  // 11: specgraph.v1.GraphService.AddEdge:input_type -> specgraph.v1.AddEdgeRequest
+	4,  // 12: specgraph.v1.GraphService.RemoveEdge:input_type -> specgraph.v1.RemoveEdgeRequest
+	6,  // 13: specgraph.v1.GraphService.ListEdges:input_type -> specgraph.v1.ListEdgesRequest
+	9,  // 14: specgraph.v1.GraphService.GetDependencies:input_type -> specgraph.v1.GetDependenciesRequest
+	11, // 15: specgraph.v1.GraphService.GetTransitiveDeps:input_type -> specgraph.v1.GetTransitiveDepsRequest
+	13, // 16: specgraph.v1.GraphService.GetImpact:input_type -> specgraph.v1.GetImpactRequest
+	15, // 17: specgraph.v1.GraphService.GetReady:input_type -> specgraph.v1.GetReadyRequest
+	17, // 18: specgraph.v1.GraphService.GetCriticalPath:input_type -> specgraph.v1.GetCriticalPathRequest
+	3,  // 19: specgraph.v1.GraphService.AddEdge:output_type -> specgraph.v1.AddEdgeResponse
+	5,  // 20: specgraph.v1.GraphService.RemoveEdge:output_type -> specgraph.v1.RemoveEdgeResponse
+	7,  // 21: specgraph.v1.GraphService.ListEdges:output_type -> specgraph.v1.ListEdgesResponse
+	10, // 22: specgraph.v1.GraphService.GetDependencies:output_type -> specgraph.v1.GetDependenciesResponse
+	12, // 23: specgraph.v1.GraphService.GetTransitiveDeps:output_type -> specgraph.v1.GetTransitiveDepsResponse
+	14, // 24: specgraph.v1.GraphService.GetImpact:output_type -> specgraph.v1.GetImpactResponse
+	16, // 25: specgraph.v1.GraphService.GetReady:output_type -> specgraph.v1.GetReadyResponse
+	18, // 26: specgraph.v1.GraphService.GetCriticalPath:output_type -> specgraph.v1.GetCriticalPathResponse
+	19, // [19:27] is the sub-list for method output_type
+	11, // [11:19] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_graph_proto_init() }
@@ -1046,7 +1094,7 @@ func file_specgraph_v1_graph_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_graph_proto_rawDesc), len(file_specgraph_v1_graph_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

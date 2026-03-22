@@ -34,6 +34,8 @@ message AddEdgeRequest {
   EdgeType edge_type = 3;
 }
 
+message AddEdgeResponse { Edge edge = 1; }
+
 message RemoveEdgeRequest {
   string from_slug = 1;
   string to_slug = 2;
@@ -99,7 +101,7 @@ message GetCriticalPathResponse {
 // --- Service ---
 
 service GraphService {
-  rpc AddEdge(AddEdgeRequest) returns (Edge);
+  rpc AddEdge(AddEdgeRequest) returns (AddEdgeResponse);
   rpc RemoveEdge(RemoveEdgeRequest) returns (RemoveEdgeResponse);
   rpc ListEdges(ListEdgesRequest) returns (ListEdgesResponse);
   rpc GetDependencies(GetDependenciesRequest) returns (GetDependenciesResponse);

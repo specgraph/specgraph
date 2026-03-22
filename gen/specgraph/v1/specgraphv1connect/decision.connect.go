@@ -52,10 +52,10 @@ const (
 
 // DecisionServiceClient is a client for the specgraph.v1.DecisionService service.
 type DecisionServiceClient interface {
-	CreateDecision(context.Context, *connect.Request[v1.CreateDecisionRequest]) (*connect.Response[v1.Decision], error)
-	GetDecision(context.Context, *connect.Request[v1.GetDecisionRequest]) (*connect.Response[v1.Decision], error)
+	CreateDecision(context.Context, *connect.Request[v1.CreateDecisionRequest]) (*connect.Response[v1.CreateDecisionResponse], error)
+	GetDecision(context.Context, *connect.Request[v1.GetDecisionRequest]) (*connect.Response[v1.GetDecisionResponse], error)
 	ListDecisions(context.Context, *connect.Request[v1.ListDecisionsRequest]) (*connect.Response[v1.ListDecisionsResponse], error)
-	UpdateDecision(context.Context, *connect.Request[v1.UpdateDecisionRequest]) (*connect.Response[v1.Decision], error)
+	UpdateDecision(context.Context, *connect.Request[v1.UpdateDecisionRequest]) (*connect.Response[v1.UpdateDecisionResponse], error)
 }
 
 // NewDecisionServiceClient constructs a client for the specgraph.v1.DecisionService service. By
@@ -69,13 +69,13 @@ func NewDecisionServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 	baseURL = strings.TrimRight(baseURL, "/")
 	decisionServiceMethods := v1.File_specgraph_v1_decision_proto.Services().ByName("DecisionService").Methods()
 	return &decisionServiceClient{
-		createDecision: connect.NewClient[v1.CreateDecisionRequest, v1.Decision](
+		createDecision: connect.NewClient[v1.CreateDecisionRequest, v1.CreateDecisionResponse](
 			httpClient,
 			baseURL+DecisionServiceCreateDecisionProcedure,
 			connect.WithSchema(decisionServiceMethods.ByName("CreateDecision")),
 			connect.WithClientOptions(opts...),
 		),
-		getDecision: connect.NewClient[v1.GetDecisionRequest, v1.Decision](
+		getDecision: connect.NewClient[v1.GetDecisionRequest, v1.GetDecisionResponse](
 			httpClient,
 			baseURL+DecisionServiceGetDecisionProcedure,
 			connect.WithSchema(decisionServiceMethods.ByName("GetDecision")),
@@ -87,7 +87,7 @@ func NewDecisionServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(decisionServiceMethods.ByName("ListDecisions")),
 			connect.WithClientOptions(opts...),
 		),
-		updateDecision: connect.NewClient[v1.UpdateDecisionRequest, v1.Decision](
+		updateDecision: connect.NewClient[v1.UpdateDecisionRequest, v1.UpdateDecisionResponse](
 			httpClient,
 			baseURL+DecisionServiceUpdateDecisionProcedure,
 			connect.WithSchema(decisionServiceMethods.ByName("UpdateDecision")),
@@ -98,19 +98,19 @@ func NewDecisionServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 
 // decisionServiceClient implements DecisionServiceClient.
 type decisionServiceClient struct {
-	createDecision *connect.Client[v1.CreateDecisionRequest, v1.Decision]
-	getDecision    *connect.Client[v1.GetDecisionRequest, v1.Decision]
+	createDecision *connect.Client[v1.CreateDecisionRequest, v1.CreateDecisionResponse]
+	getDecision    *connect.Client[v1.GetDecisionRequest, v1.GetDecisionResponse]
 	listDecisions  *connect.Client[v1.ListDecisionsRequest, v1.ListDecisionsResponse]
-	updateDecision *connect.Client[v1.UpdateDecisionRequest, v1.Decision]
+	updateDecision *connect.Client[v1.UpdateDecisionRequest, v1.UpdateDecisionResponse]
 }
 
 // CreateDecision calls specgraph.v1.DecisionService.CreateDecision.
-func (c *decisionServiceClient) CreateDecision(ctx context.Context, req *connect.Request[v1.CreateDecisionRequest]) (*connect.Response[v1.Decision], error) {
+func (c *decisionServiceClient) CreateDecision(ctx context.Context, req *connect.Request[v1.CreateDecisionRequest]) (*connect.Response[v1.CreateDecisionResponse], error) {
 	return c.createDecision.CallUnary(ctx, req)
 }
 
 // GetDecision calls specgraph.v1.DecisionService.GetDecision.
-func (c *decisionServiceClient) GetDecision(ctx context.Context, req *connect.Request[v1.GetDecisionRequest]) (*connect.Response[v1.Decision], error) {
+func (c *decisionServiceClient) GetDecision(ctx context.Context, req *connect.Request[v1.GetDecisionRequest]) (*connect.Response[v1.GetDecisionResponse], error) {
 	return c.getDecision.CallUnary(ctx, req)
 }
 
@@ -120,16 +120,16 @@ func (c *decisionServiceClient) ListDecisions(ctx context.Context, req *connect.
 }
 
 // UpdateDecision calls specgraph.v1.DecisionService.UpdateDecision.
-func (c *decisionServiceClient) UpdateDecision(ctx context.Context, req *connect.Request[v1.UpdateDecisionRequest]) (*connect.Response[v1.Decision], error) {
+func (c *decisionServiceClient) UpdateDecision(ctx context.Context, req *connect.Request[v1.UpdateDecisionRequest]) (*connect.Response[v1.UpdateDecisionResponse], error) {
 	return c.updateDecision.CallUnary(ctx, req)
 }
 
 // DecisionServiceHandler is an implementation of the specgraph.v1.DecisionService service.
 type DecisionServiceHandler interface {
-	CreateDecision(context.Context, *connect.Request[v1.CreateDecisionRequest]) (*connect.Response[v1.Decision], error)
-	GetDecision(context.Context, *connect.Request[v1.GetDecisionRequest]) (*connect.Response[v1.Decision], error)
+	CreateDecision(context.Context, *connect.Request[v1.CreateDecisionRequest]) (*connect.Response[v1.CreateDecisionResponse], error)
+	GetDecision(context.Context, *connect.Request[v1.GetDecisionRequest]) (*connect.Response[v1.GetDecisionResponse], error)
 	ListDecisions(context.Context, *connect.Request[v1.ListDecisionsRequest]) (*connect.Response[v1.ListDecisionsResponse], error)
-	UpdateDecision(context.Context, *connect.Request[v1.UpdateDecisionRequest]) (*connect.Response[v1.Decision], error)
+	UpdateDecision(context.Context, *connect.Request[v1.UpdateDecisionRequest]) (*connect.Response[v1.UpdateDecisionResponse], error)
 }
 
 // NewDecisionServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -182,11 +182,11 @@ func NewDecisionServiceHandler(svc DecisionServiceHandler, opts ...connect.Handl
 // UnimplementedDecisionServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedDecisionServiceHandler struct{}
 
-func (UnimplementedDecisionServiceHandler) CreateDecision(context.Context, *connect.Request[v1.CreateDecisionRequest]) (*connect.Response[v1.Decision], error) {
+func (UnimplementedDecisionServiceHandler) CreateDecision(context.Context, *connect.Request[v1.CreateDecisionRequest]) (*connect.Response[v1.CreateDecisionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.DecisionService.CreateDecision is not implemented"))
 }
 
-func (UnimplementedDecisionServiceHandler) GetDecision(context.Context, *connect.Request[v1.GetDecisionRequest]) (*connect.Response[v1.Decision], error) {
+func (UnimplementedDecisionServiceHandler) GetDecision(context.Context, *connect.Request[v1.GetDecisionRequest]) (*connect.Response[v1.GetDecisionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.DecisionService.GetDecision is not implemented"))
 }
 
@@ -194,6 +194,6 @@ func (UnimplementedDecisionServiceHandler) ListDecisions(context.Context, *conne
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.DecisionService.ListDecisions is not implemented"))
 }
 
-func (UnimplementedDecisionServiceHandler) UpdateDecision(context.Context, *connect.Request[v1.UpdateDecisionRequest]) (*connect.Response[v1.Decision], error) {
+func (UnimplementedDecisionServiceHandler) UpdateDecision(context.Context, *connect.Request[v1.UpdateDecisionRequest]) (*connect.Response[v1.UpdateDecisionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.DecisionService.UpdateDecision is not implemented"))
 }

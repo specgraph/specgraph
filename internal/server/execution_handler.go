@@ -34,7 +34,7 @@ func RegisterExecutionService(mux *http.ServeMux, scoper storage.Scoper, opts ..
 }
 
 // GenerateBundle handles the GenerateBundle RPC.
-func (h *ExecutionHandler) GenerateBundle(ctx context.Context, req *connect.Request[specv1.GenerateBundleRequest]) (*connect.Response[specv1.Bundle], error) {
+func (h *ExecutionHandler) GenerateBundle(ctx context.Context, req *connect.Request[specv1.GenerateBundleRequest]) (*connect.Response[specv1.GenerateBundleResponse], error) {
 	store, err := scopeStore(ctx, h.scoper)
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func (h *ExecutionHandler) GenerateBundle(ctx context.Context, req *connect.Requ
 	}
 	pb.BundleYaml = renderBundleYAML(b)
 
-	return connect.NewResponse(pb), nil
+	return connect.NewResponse(&specv1.GenerateBundleResponse{Bundle: pb}), nil
 }
 
 // GetPrime handles the GetPrime RPC.

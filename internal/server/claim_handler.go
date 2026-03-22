@@ -28,7 +28,7 @@ type ClaimHandler struct {
 var _ specgraphv1connect.ClaimServiceHandler = (*ClaimHandler)(nil)
 
 // ClaimSpec handles the ClaimSpec RPC.
-func (h *ClaimHandler) ClaimSpec(ctx context.Context, req *connect.Request[specv1.ClaimSpecRequest]) (*connect.Response[specv1.Claim], error) {
+func (h *ClaimHandler) ClaimSpec(ctx context.Context, req *connect.Request[specv1.ClaimSpecRequest]) (*connect.Response[specv1.ClaimSpecResponse], error) {
 	store, err := scopeStore(ctx, h.scoper)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (h *ClaimHandler) ClaimSpec(ctx context.Context, req *connect.Request[specv
 		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(claimToProto(claim)), nil
+	return connect.NewResponse(&specv1.ClaimSpecResponse{Claim: claimToProto(claim)}), nil
 }
 
 // UnclaimSpec handles the UnclaimSpec RPC.
@@ -74,7 +74,7 @@ func (h *ClaimHandler) UnclaimSpec(ctx context.Context, req *connect.Request[spe
 }
 
 // Heartbeat handles the Heartbeat RPC.
-func (h *ClaimHandler) Heartbeat(ctx context.Context, req *connect.Request[specv1.HeartbeatRequest]) (*connect.Response[specv1.Claim], error) {
+func (h *ClaimHandler) Heartbeat(ctx context.Context, req *connect.Request[specv1.HeartbeatRequest]) (*connect.Response[specv1.HeartbeatResponse], error) {
 	store, err := scopeStore(ctx, h.scoper)
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func (h *ClaimHandler) Heartbeat(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	return connect.NewResponse(claimToProto(claim)), nil
+	return connect.NewResponse(&specv1.HeartbeatResponse{Claim: claimToProto(claim)}), nil
 }
 
 // RegisterClaimService registers the ClaimService on the given mux.

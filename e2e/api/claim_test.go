@@ -43,8 +43,8 @@ var _ = Describe("Claim protocol", Ordered, func() {
 			Intent: "Test the claim protocol end-to-end",
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(createResp.Msg.Slug).To(Equal(claimSlug))
-		Expect(createResp.Msg.Stage).To(Equal("spark"))
+		Expect(createResp.Msg.GetSpec().GetSlug()).To(Equal(claimSlug))
+		Expect(createResp.Msg.GetSpec().GetStage()).To(Equal("spark"))
 
 		// Advance stage to approved via UpdateSpec.
 		updateResp, err := specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
@@ -52,7 +52,7 @@ var _ = Describe("Claim protocol", Ordered, func() {
 			Stage: proto.String("approved"),
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(updateResp.Msg.Stage).To(Equal("approved"))
+		Expect(updateResp.Msg.GetSpec().GetStage()).To(Equal("approved"))
 	})
 
 	It("claims the approved spec", func() {
@@ -62,10 +62,10 @@ var _ = Describe("Claim protocol", Ordered, func() {
 			LeaseDuration: durationpb.New(60_000_000_000), // 1 minute
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.SpecSlug).To(Equal(claimSlug))
-		Expect(resp.Msg.Agent).To(Equal(claimAgent))
-		Expect(resp.Msg.ClaimedAt).NotTo(BeNil())
-		Expect(resp.Msg.LeaseExpires).NotTo(BeNil())
+		Expect(resp.Msg.GetClaim().GetSpecSlug()).To(Equal(claimSlug))
+		Expect(resp.Msg.GetClaim().GetAgent()).To(Equal(claimAgent))
+		Expect(resp.Msg.GetClaim().GetClaimedAt()).NotTo(BeNil())
+		Expect(resp.Msg.GetClaim().GetLeaseExpires()).NotTo(BeNil())
 	})
 
 	It("rejects a double-claim by a different agent", func() {
@@ -95,7 +95,7 @@ var _ = Describe("Claim protocol", Ordered, func() {
 			Agent:    "e2e-agent-2",
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Agent).To(Equal("e2e-agent-2"))
+		Expect(resp.Msg.GetClaim().GetAgent()).To(Equal("e2e-agent-2"))
 
 		// Clean up: unclaim so other tests are unaffected.
 		_, err = claimClient.UnclaimSpec(ctx, connect.NewRequest(&specv1.UnclaimSpecRequest{

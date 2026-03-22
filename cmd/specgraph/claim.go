@@ -58,8 +58,8 @@ func runClaim(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("claim spec: %w", err)
 	}
 	fmt.Printf("Claimed: %s by %s (expires %s)\n",
-		resp.Msg.SpecSlug, resp.Msg.Agent,
-		resp.Msg.LeaseExpires.AsTime().Format(time.RFC3339))
+		resp.Msg.GetClaim().GetSpecSlug(), resp.Msg.GetClaim().GetAgent(),
+		resp.Msg.GetClaim().GetLeaseExpires().AsTime().Format(time.RFC3339))
 	return nil
 }
 

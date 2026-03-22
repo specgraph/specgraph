@@ -41,8 +41,8 @@ var _ = Describe("Project isolation", Ordered, func() {
 			Intent: "Alpha intent for isolation test",
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Slug).To(Equal("iso-shared-name"))
-		Expect(resp.Msg.Intent).To(Equal("Alpha intent for isolation test"))
+		Expect(resp.Msg.GetSpec().GetSlug()).To(Equal("iso-shared-name"))
+		Expect(resp.Msg.GetSpec().GetIntent()).To(Equal("Alpha intent for isolation test"))
 	})
 
 	It("creates a spec with same slug in project-beta", func() {
@@ -51,8 +51,8 @@ var _ = Describe("Project isolation", Ordered, func() {
 			Intent: "Beta intent for isolation test",
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Slug).To(Equal("iso-shared-name"))
-		Expect(resp.Msg.Intent).To(Equal("Beta intent for isolation test"))
+		Expect(resp.Msg.GetSpec().GetSlug()).To(Equal("iso-shared-name"))
+		Expect(resp.Msg.GetSpec().GetIntent()).To(Equal("Beta intent for isolation test"))
 	})
 
 	It("creates a unique spec in each project for exclusion testing", func() {
@@ -74,7 +74,7 @@ var _ = Describe("Project isolation", Ordered, func() {
 			Slug: "iso-shared-name",
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Intent).To(Equal("Alpha intent for isolation test"))
+		Expect(resp.Msg.GetSpec().GetIntent()).To(Equal("Alpha intent for isolation test"))
 	})
 
 	It("returns beta intent for project-beta", func() {
@@ -82,7 +82,7 @@ var _ = Describe("Project isolation", Ordered, func() {
 			Slug: "iso-shared-name",
 		}))
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.Intent).To(Equal("Beta intent for isolation test"))
+		Expect(resp.Msg.GetSpec().GetIntent()).To(Equal("Beta intent for isolation test"))
 	})
 
 	It("lists specs only for the requesting project", func() {

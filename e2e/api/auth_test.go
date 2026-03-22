@@ -268,7 +268,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 			client := specgraphv1connect.NewSpecServiceClient(authProjectClient(), info.BaseURL, withBearer(adminKey))
 			resp, err := client.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{Slug: testSlug}))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.Slug).To(Equal(testSlug))
+			Expect(resp.Msg.GetSpec().GetSlug()).To(Equal(testSlug))
 		})
 
 		It("can CreateDecision", func() {

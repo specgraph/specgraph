@@ -129,20 +129,20 @@ func TestSpecHandler_CreateAndGet(t *testing.T) {
 		Intent: "Implement OAuth refresh token rotation",
 	}))
 	require.NoError(t, err)
-	require.Equal(t, "oauth-refresh", createResp.Msg.Slug)
-	require.Equal(t, "Implement OAuth refresh token rotation", createResp.Msg.Intent)
-	require.Equal(t, "p2", createResp.Msg.Priority)       // defaulted
-	require.Equal(t, "medium", createResp.Msg.Complexity) // defaulted
-	require.Equal(t, "spark", createResp.Msg.Stage)
-	require.NotEmpty(t, createResp.Msg.Id)
+	require.Equal(t, "oauth-refresh", createResp.Msg.GetSpec().GetSlug())
+	require.Equal(t, "Implement OAuth refresh token rotation", createResp.Msg.GetSpec().GetIntent())
+	require.Equal(t, "p2", createResp.Msg.GetSpec().GetPriority())       // defaulted
+	require.Equal(t, "medium", createResp.Msg.GetSpec().GetComplexity()) // defaulted
+	require.Equal(t, "spark", createResp.Msg.GetSpec().GetStage())
+	require.NotEmpty(t, createResp.Msg.GetSpec().GetId())
 
 	// Get it back.
 	getResp, err := client.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
 		Slug: "oauth-refresh",
 	}))
 	require.NoError(t, err)
-	require.Equal(t, createResp.Msg.Id, getResp.Msg.Id)
-	require.Equal(t, "oauth-refresh", getResp.Msg.Slug)
+	require.Equal(t, createResp.Msg.GetSpec().GetId(), getResp.Msg.GetSpec().GetId())
+	require.Equal(t, "oauth-refresh", getResp.Msg.GetSpec().GetSlug())
 
 	// Get non-existent returns not found.
 	_, err = client.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
@@ -174,9 +174,9 @@ func TestSpecHandler_UpdateSpec(t *testing.T) {
 		Intent: &newIntent,
 	}))
 	require.NoError(t, err)
-	require.Equal(t, "Updated intent", updateResp.Msg.Intent)
-	require.Equal(t, int32(2), updateResp.Msg.Version)
-	require.Equal(t, "p2", updateResp.Msg.Priority) // unchanged
+	require.Equal(t, "Updated intent", updateResp.Msg.GetSpec().GetIntent())
+	require.Equal(t, int32(2), updateResp.Msg.GetSpec().GetVersion())
+	require.Equal(t, "p2", updateResp.Msg.GetSpec().GetPriority()) // unchanged
 
 	// Update non-existent spec.
 	_, err = client.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
