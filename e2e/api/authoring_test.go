@@ -124,4 +124,29 @@ var _ = Describe("Authoring funnel", Ordered, func() {
 		Expect(resp.Msg.Stage).To(Equal(specv1.AuthoringStage_AUTHORING_STAGE_APPROVED))
 		Expect(resp.Msg.ApprovedAt).NotTo(BeNil())
 	})
+
+	It("returns AlreadyExists for duplicate slug", func() {
+		const dupSlug = "dup-spark-e2e"
+
+		// First Spark should succeed.
+		_, err := authoringClient.Spark(ctx, connect.NewRequest(&specv1.SparkRequest{
+			Slug: dupSlug,
+			Output: &specv1.SparkOutput{
+				Seed:   "duplicate test idea",
+				Signal: "testing duplicate rejection",
+			},
+		}))
+		Expect(err).NotTo(HaveOccurred())
+
+		// Second Spark with same slug should fail with AlreadyExists.
+		_, err = authoringClient.Spark(ctx, connect.NewRequest(&specv1.SparkRequest{
+			Slug: dupSlug,
+			Output: &specv1.SparkOutput{
+				Seed:   "another idea",
+				Signal: "should not matter",
+			},
+		}))
+		Expect(err).To(HaveOccurred())
+		Expect(connect.CodeOf(err)).To(Equal(connect.CodeAlreadyExists))
+	})
 })
