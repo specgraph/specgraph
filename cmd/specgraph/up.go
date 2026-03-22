@@ -67,6 +67,10 @@ func runUp(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("resolve binary path: %w", err)
 		}
+		binaryPath, err = filepath.Abs(binaryPath)
+		if err != nil {
+			return fmt.Errorf("resolve absolute binary path: %w", err)
+		}
 		destDir, err := serviceDestDir()
 		if err != nil {
 			return fmt.Errorf("service dest dir: %w", err)
