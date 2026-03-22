@@ -106,6 +106,23 @@ func (s *Store) ensureIndexes(ctx context.Context) error {
 			return fmt.Errorf("close session after index %q: %w", stmt, closeErr)
 		}
 	}
+
+	// Unique constraint for composite slug scoped to project.
+	constraints := []string{
+		"CREATE CONSTRAINT ON (s:Spec) ASSERT s.slug_key IS UNIQUE",
+	}
+	for _, stmt := range constraints {
+		session := s.driver.NewSession(ctx, neo4j.SessionConfig{})
+		_, err := session.Run(ctx, stmt, nil)
+		closeErr := session.Close(ctx)
+		if err != nil && !strings.Contains(err.Error(), "already exists") {
+			return fmt.Errorf("create constraint %q: %w", stmt, err)
+		}
+		if closeErr != nil {
+			return fmt.Errorf("close session after constraint %q: %w", stmt, closeErr)
+		}
+	}
+
 	return s.EnsureChangeLogIndexes(ctx)
 }
 
@@ -155,6 +172,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		CREATE (p)<-[:BELONGS_TO]-(s:Spec {
 			id: $id,
 			slug: $slug,
+			slug_key: $slug_key,
 			intent: $intent,
 			stage: $stage,
 			priority: $priority,
@@ -174,6 +192,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 	params := mergeParams(s.projectParam(), map[string]any{
 		"id":           id,
 		"slug":         slug,
+		"slug_key":     s.project + "/" + slug,
 		"intent":       intent,
 		"stage":        defaultInitialStage,
 		"priority":     priority,
@@ -193,8 +212,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
 			RETURN s.id LIMIT 1
 		`
-		existsParams := mergeParams(s.projectParam(), map[string]any{"slug": slug})
-		existing, existsErr := s.executeQuery(txCtx, existsQuery, existsParams)
+		existing, existsErr := s.executeQuery(txCtx, existsQuery, params)
 		if existsErr != nil {
 			return fmt.Errorf("memgraph: check existing spec: %w", existsErr)
 		}
