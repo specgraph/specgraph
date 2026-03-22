@@ -21,12 +21,6 @@ func testdataPath(name string) string {
 var _ = Describe("CLI Pipeline", Ordered, func() {
 	const slug = "cli-pipeline-test"
 
-	It("creates a spec", func() {
-		result := cli.RunInDir(workDir, "create", slug, "--intent", "CLI pipeline test")
-		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)
-		Expect(result.Stdout).To(ContainSubstring("Created: " + slug))
-	})
-
 	It("sparks the spec", func() {
 		result := cli.RunInDir(workDir, "spark", slug, "--seed", "CLI pipeline E2E seed idea")
 		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)

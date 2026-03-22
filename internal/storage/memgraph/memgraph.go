@@ -188,6 +188,20 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 
 	var result *storage.Spec
 	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Check for existing spec with the same slug within the project.
+		existsQuery := `
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+			RETURN s.id LIMIT 1
+		`
+		existsParams := mergeParams(s.projectParam(), map[string]any{"slug": slug})
+		existing, existsErr := s.executeQuery(txCtx, existsQuery, existsParams)
+		if existsErr != nil {
+			return fmt.Errorf("memgraph: check existing spec: %w", existsErr)
+		}
+		if len(existing) > 0 {
+			return fmt.Errorf("slug %q: %w", slug, storage.ErrSpecAlreadyExists)
+		}
+
 		records, qErr := s.executeQuery(txCtx, query, params)
 		if qErr != nil {
 			return fmt.Errorf("memgraph: create spec: %w", qErr)

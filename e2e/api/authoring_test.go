@@ -21,21 +21,12 @@ var _ = Describe("Authoring funnel", Ordered, func() {
 
 	var (
 		authoringClient specgraphv1connect.AuthoringServiceClient
-		specClient      specgraphv1connect.SpecServiceClient
 		ctx             context.Context
 	)
 
 	BeforeAll(func() {
 		authoringClient = newAuthoringClient()
-		specClient = newSpecClient()
 		ctx = context.Background()
-
-		// Seed a spec so the authoring funnel has something to work with.
-		_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
-			Slug:   authoringSlug,
-			Intent: "E2E authoring funnel test spec",
-		}))
-		Expect(err).NotTo(HaveOccurred())
 	})
 
 	It("sparks a new spec from an idea", func() {

@@ -151,6 +151,21 @@ func TestCreateAndGetSpec(t *testing.T) {
 	require.Equal(t, spec.UpdatedAt.Unix(), got.UpdatedAt.Unix())
 }
 
+func TestCreateSpec_DuplicateSlugReturnsError(t *testing.T) {
+	clearDatabase(t)
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.CreateSpec(ctx, "login-api", "Implement login API", "p1", "medium")
+	require.NoError(t, err)
+
+	_, err = store.CreateSpec(ctx, "login-api", "Duplicate login API", "p2", "low")
+	require.ErrorIs(t, err, storage.ErrSpecAlreadyExists)
+}
+
 func TestListSpecs(t *testing.T) {
 	clearDatabase(t)
 

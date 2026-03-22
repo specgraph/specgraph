@@ -229,6 +229,9 @@ var _ = Describe("Auth", Label("auth"), func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 
+			// Clear leftover data so seeding doesn't hit duplicate slug errors.
+			Expect(info.Store.ClearAll(ctx)).To(Succeed())
+
 			// Seed a spec for read operations.
 			client := specgraphv1connect.NewSpecServiceClient(authProjectClient(), info.BaseURL, withBearer(adminKey))
 			_, err = client.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
