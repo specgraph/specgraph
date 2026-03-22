@@ -174,7 +174,7 @@ func (stubBackend) AmendSpec(context.Context, string, string, storage.AuthoringS
 
 // --- FindingsBackend ---
 
-func (stubBackend) StoreFindings(context.Context, string, storage.PassType, []storage.AnalyticalFinding) ([]string, error) {
+func (stubBackend) StoreFindings(context.Context, string, storage.PassType, []storage.AnalyticalFindingInput) ([]string, error) {
 	return nil, errNotImplemented
 }
 

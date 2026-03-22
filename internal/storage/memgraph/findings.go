@@ -16,7 +16,7 @@ var _ storage.FindingsBackend = (*Store)(nil)
 // StoreFindings persists analytical pass findings for a spec.
 // Existing findings for the given (slug, passType) are atomically replaced
 // via RunInTransaction: delete-then-create ensures no stale findings remain.
-func (s *Store) StoreFindings(ctx context.Context, slug string, passType storage.PassType, findings []storage.AnalyticalFinding) ([]string, error) {
+func (s *Store) StoreFindings(ctx context.Context, slug string, passType storage.PassType, findings []storage.AnalyticalFindingInput) ([]string, error) {
 	var ids []string
 	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
 		// Verify spec exists and capture its version.
