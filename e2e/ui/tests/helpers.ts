@@ -1,33 +1,32 @@
-import { type Page, type APIRequestContext, expect } from '@playwright/test';
+import { type APIRequestContext, expect } from '@playwright/test';
 
 // Must match the project in web/src/lib/api/client.ts interceptor
 const PROJECT = 'default';
 const BASE_URL = process.env.SPECGRAPH_BASE_URL ?? 'http://specgraph:9090';
 const BASE_HEADERS = { 'Content-Type': 'application/json', 'Connect-Protocol-Version': '1', 'X-Specgraph-Project': PROJECT };
 
-// Seed helpers use raw HTTP POST with proto JSON field names (snake_case).
-// Uses the full base URL since beforeAll pages don't inherit baseURL from config.
+// Retry wrapper for transient Memgraph transaction conflicts (500).
+async function postWithRetry(request: APIRequestContext, url: string, data: object, label: string): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const resp = await request.post(url, { headers: BASE_HEADERS, data });
+    if (resp.ok() || resp.status() === 409) return; // 409 = already_exists, fine for idempotent seeding
+    if (resp.status() === 500 && attempt < 2) {
+      await new Promise((r) => setTimeout(r, 500)); // retry after brief pause
+      continue;
+    }
+    expect.soft(false, `${label} failed: ${resp.status()} ${await resp.text()}`).toBeTruthy();
+    return;
+  }
+}
+
 export async function seedSpec(request: APIRequestContext, slug: string, intent: string, priority = 'p2'): Promise<void> {
-  const resp = await request.post(`${BASE_URL}/specgraph.v1.SpecService/CreateSpec`, {
-    headers: BASE_HEADERS,
-    data: { slug, intent, priority },
-  });
-  // 409 = already_exists, which is fine for idempotent seeding
-  expect(resp.ok() || resp.status() === 409, `seedSpec(${slug}) failed: ${resp.status()} ${await resp.text()}`).toBeTruthy();
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.SpecService/CreateSpec`, { slug, intent, priority }, `seedSpec(${slug})`);
 }
 
 export async function seedEdge(request: APIRequestContext, fromSlug: string, toSlug: string): Promise<void> {
-  const resp = await request.post(`${BASE_URL}/specgraph.v1.GraphService/AddEdge`, {
-    headers: BASE_HEADERS,
-    data: { from_slug: fromSlug, to_slug: toSlug, edge_type: 'EDGE_TYPE_DEPENDS_ON' },
-  });
-  expect(resp.ok() || resp.status() === 409, `seedEdge(${fromSlug}->${toSlug}) failed: ${resp.status()} ${await resp.text()}`).toBeTruthy();
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.GraphService/AddEdge`, { from_slug: fromSlug, to_slug: toSlug, edge_type: 'EDGE_TYPE_DEPENDS_ON' }, `seedEdge(${fromSlug}->${toSlug})`);
 }
 
 export async function seedDecision(request: APIRequestContext, slug: string, title: string): Promise<void> {
-  const resp = await request.post(`${BASE_URL}/specgraph.v1.DecisionService/CreateDecision`, {
-    headers: BASE_HEADERS,
-    data: { slug, title, decision: 'Test decision text', rationale: 'Test rationale' },
-  });
-  expect(resp.ok() || resp.status() === 409, `seedDecision(${slug}) failed: ${resp.status()} ${await resp.text()}`).toBeTruthy();
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.DecisionService/CreateDecision`, { slug, title, decision: 'Test decision text', rationale: 'Test rationale' }, `seedDecision(${slug})`);
 }
