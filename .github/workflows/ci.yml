@@ -12,6 +12,7 @@ permissions:
   contents: read
 env:
   GO_VERSION: "1.26"
+  NODE_VERSION: "22"
   GOLANGCI_LINT_VERSION: v2.11.1
   YAMLFMT_VERSION: v0.21.0
   ADDLICENSE_VERSION: v1.2.0
@@ -35,6 +36,14 @@ jobs:
           path: |
             ~/go/bin
             ~/.dprint
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+      - name: Install web dependencies
+        run: cd web && pnpm install --frozen-lockfile
       - name: Install Task
         uses: arduino/setup-task@v2
         with:
@@ -82,6 +91,14 @@ jobs:
         uses: namespacelabs/nscloud-cache-action@a90bb5d4b27522ce881c6e98eebd7d7e6d1653f9 # v1.4.2
         with:
           cache: go
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+      - name: Install web dependencies
+        run: cd web && pnpm install --frozen-lockfile
       - name: Install Task
         uses: arduino/setup-task@v2
         with:
@@ -113,6 +130,14 @@ jobs:
         uses: namespacelabs/nscloud-cache-action@a90bb5d4b27522ce881c6e98eebd7d7e6d1653f9 # v1.4.2
         with:
           cache: go
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+      - name: Install web dependencies
+        run: cd web && pnpm install --frozen-lockfile
       - name: Install Task
         uses: arduino/setup-task@v2
         with:
