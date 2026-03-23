@@ -65,6 +65,7 @@ task build          # Generate proto + build binary
 | `internal/storage/memgraph/` | Memgraph implementation (Cypher queries, testcontainers) |
 | `internal/storage/memgraph/changelog.go` | ChangeLog node operations (create, list, index, field change marshaling) |
 | `internal/storage/memgraph/tx.go` | Transaction support (RunInTransaction, context-threaded tx) |
+| `internal/render/` | Markdown renderers for CLI output — one file per entity type, functions accept proto types and return strings |
 | `internal/sync/` | Sync adapters (beads, GitHub) with exec runner |
 | `e2e/` | End-to-end tests (Ginkgo/Gomega, require Docker) |
 | `docs/plans/` | Implementation plan documents |
@@ -129,6 +130,10 @@ jj workspace update-stale
 - **ConnectRPC, not plain gRPC** — handlers are in `internal/server/`, proto services generate both `.pb.go` and `.connect.go` files
 - **Storage interfaces in `internal/storage/`** — implementations are in subdirectories (currently only `memgraph/`). The interfaces use domain types, not protobuf types.
 - **License headers required** — all `.go`, `.sh`, `.py`, `.proto` files need SPDX headers. Run `task license:add` to fix.
+- **`revive` requires package comments** — new Go packages need a `// Package foo ...` doc comment on the first `.go` file or `revive` linter fails in `task check`.
+- **`cmd/specgraph/table.go` still used** — `sync.go` and `prime.go` depend on `tableWriter`. Don't delete when migrating other commands to the render package.
+- **`cmd/specgraph/output.go`** — shared `printJSON(proto.Message)` helper for `--json` flag output. All read commands use it.
+- **CLI `--pass-type` uses friendly names** — `findings list --pass-type constitution-check`, not raw proto enum strings. Follows the `driftScopeToProtoMap` pattern in `lifecycle.go`.
 - **gosec in test files** — Intentional permission changes (e.g., `os.Chmod(dir, 0o555)` for read-only tests) trigger gosec G302. Add `//nolint:gosec // <reason>` on the same line.
 - **Memgraph bolt readiness race** — `wait.ForListeningPort` alone is insufficient; always pair with `wait.ForLog("memgraph entered RUNNING state")` (supervisord log — the platform image does NOT emit "You are running Memgraph" to container stdout) and a connection retry loop (see `newStore` in `memgraph_test.go`)
 - **Cypher DELETE + count** — `MATCH ()-[r]->() DELETE r RETURN count(r)` works in Memgraph; `r` was bound pre-deletion. No need to change to `count(*)`.

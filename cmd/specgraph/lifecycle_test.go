@@ -86,7 +86,7 @@ func TestRunAbandon_ClientError(t *testing.T) {
 
 func TestRunDrift_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runDrift(nil, []string{"my-spec"})
+	err := runDrift(driftCmd, []string{"my-spec"})
 	require.Error(t, err)
 }
 
@@ -94,7 +94,7 @@ func TestRunDrift_InvalidScope(t *testing.T) {
 	old := driftScope
 	driftScope = "bogus"
 	t.Cleanup(func() { driftScope = old })
-	err := runDrift(nil, []string{"my-spec"})
+	err := runDrift(driftCmd, []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid scope")
 }
@@ -376,7 +376,7 @@ func (fakeDriftNoneHandler) CheckDrift(_ context.Context, _ *connect.Request[spe
 
 func TestRunDrift_HappyPath_NoDrift(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftNoneHandler{})
-	err := runDrift(nil, nil)
+	err := runDrift(driftCmd, nil)
 	require.NoError(t, err)
 }
 
@@ -407,7 +407,7 @@ func (fakeDriftItemsHandler) CheckDrift(_ context.Context, _ *connect.Request[sp
 
 func TestRunDrift_WithItemsAndErrors(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftItemsHandler{})
-	err := runDrift(nil, nil)
+	err := runDrift(driftCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "drift check completed with errors")
 }
@@ -428,7 +428,7 @@ func (fakeDriftCleanReportHandler) CheckDrift(_ context.Context, _ *connect.Requ
 
 func TestRunDrift_CleanReport_NoDrift(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftCleanReportHandler{})
-	err := runDrift(nil, nil)
+	err := runDrift(driftCmd, nil)
 	require.NoError(t, err)
 }
 
@@ -451,7 +451,7 @@ func (fakeDriftMultiCleanHandler) CheckDrift(_ context.Context, _ *connect.Reque
 
 func TestRunDrift_MultiCleanReports_NoDrift(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftMultiCleanHandler{})
-	err := runDrift(nil, nil)
+	err := runDrift(driftCmd, nil)
 	require.NoError(t, err)
 }
 
@@ -474,7 +474,7 @@ func (fakeDriftErrorOnlyHandler) CheckDrift(_ context.Context, _ *connect.Reques
 
 func TestRunDrift_ErrorOnlyReport(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftErrorOnlyHandler{})
-	err := runDrift(nil, nil)
+	err := runDrift(driftCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "drift check completed with errors")
 }
@@ -504,7 +504,7 @@ func (fakeDriftOnlyHandler) CheckDrift(_ context.Context, _ *connect.Request[spe
 
 func TestRunDrift_DriftOnly_NoErrors(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftOnlyHandler{})
-	err := runDrift(nil, nil)
+	err := runDrift(driftCmd, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "drift detected")
 }
@@ -524,7 +524,7 @@ func (h *fakeDriftSlugCapture) CheckDrift(_ context.Context, req *connect.Reques
 func TestRunDrift_HappyPath_WithSlug(t *testing.T) {
 	h := &fakeDriftSlugCapture{}
 	startFakeLifecycleServer(t, h)
-	err := runDrift(nil, []string{"my-spec"})
+	err := runDrift(driftCmd, []string{"my-spec"})
 	require.NoError(t, err)
 	assert.Equal(t, "my-spec", h.capturedSlug)
 }

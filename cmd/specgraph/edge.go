@@ -6,11 +6,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"text/tabwriter"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/render"
 	"github.com/spf13/cobra"
 )
 
@@ -108,7 +108,10 @@ var edgeListCmd = &cobra.Command{
 	RunE:  runEdgeList,
 }
 
-var edgeListType string
+var (
+	edgeListType string
+	edgeListJSON bool
+)
 
 func init() {
 	rootCmd.AddCommand(edgeCmd)
@@ -120,6 +123,7 @@ func init() {
 	edgeCmd.AddCommand(edgeRemoveCmd)
 
 	edgeListCmd.Flags().StringVar(&edgeListType, "type", "", "filter by edge type")
+	edgeListCmd.Flags().BoolVar(&edgeListJSON, "json", false, "output as JSON")
 	edgeCmd.AddCommand(edgeListCmd)
 }
 
@@ -144,19 +148,9 @@ func runEdgeList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("list edges: %w", err)
 	}
-	edges := resp.Msg.Edges
-	if len(edges) == 0 {
-		fmt.Println("No edges found.")
-		return nil
+	if edgeListJSON {
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
-	tw := &tableWriter{w: w}
-	tw.println("FROM\tTO\tTYPE")
-	for _, e := range edges {
-		tw.printf("%s\t%s\t%s\n", e.FromId, e.ToId, e.EdgeType)
-	}
-	if tw.err != nil {
-		return tw.err
-	}
-	return w.Flush()
+	fmt.Print(render.EdgeList(args[0], resp.Msg.Edges))
+	return nil
 }
