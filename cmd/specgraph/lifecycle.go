@@ -174,7 +174,7 @@ func runDrift(cmd *cobra.Command, args []string) error {
 			return jsonErr
 		}
 	} else {
-		fmt.Print(render.DriftReport(reports))
+		fmt.Fprint(cmd.OutOrStdout(), render.DriftReport(reports))
 	}
 
 	// Exit code logic: non-zero exit for errors or drift regardless of output format.
