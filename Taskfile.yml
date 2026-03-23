@@ -10,10 +10,10 @@ tasks:
       - task --list
   # Development
   dev:
-    desc: Run specgraph server in development mode
-    deps: [generate, 'web:build']
+    desc: Build and run specgraph server in development mode
+    deps: [build]
     cmds:
-      - go run {{.MAIN_PKG}} serve
+      - ./{{.BINARY_NAME}} serve
   # Code Generation
   generate:
     desc: Generate all code (protobuf)
