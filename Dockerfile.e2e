@@ -15,7 +15,7 @@ RUN go mod download
 COPY . .
 # Overwrite web/build with the freshly built SvelteKit output
 COPY --from=web-builder /app/web/build web/build
-RUN CGO_ENABLED=0 go build -o specgraph ./cmd/specgraph
+RUN CGO_ENABLED=0 go build -trimpath -o specgraph ./cmd/specgraph
 
 # Stage 3: Runtime
 FROM alpine:3.21
