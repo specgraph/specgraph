@@ -1,0 +1,8 @@
+FROM mcr.microsoft.com/playwright:v1.50.0-noble
+
+WORKDIR /tests
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && pnpm install --frozen-lockfile
+COPY . .
+
+CMD ["pnpm", "test"]

@@ -1,0 +1,43 @@
+# E2E test stack: Memgraph + SpecGraph server + Playwright
+# All containers share a Docker network. No host ports needed.
+services:
+  memgraph:
+    image: memgraph/memgraph-platform:2.4.0
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+    environment:
+      - MEMGRAPH=--storage-wal-enabled=true --log-level=WARNING
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 1"]
+      interval: 3s
+      timeout: 10s
+      retries: 10
+
+  specgraph:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.e2e
+    command: ["serve"]
+    depends_on:
+      memgraph:
+        condition: service_healthy
+    environment:
+      - XDG_CONFIG_HOME=/etc
+    volumes:
+      - ./config.e2e.yaml:/etc/specgraph/config.yaml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- --post-data='{}' --header='Content-Type: application/json' --header='Connect-Protocol-Version: 1' http://localhost:9090/specgraph.v1.ServerService/Health || exit 1"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+  playwright:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
+    depends_on:
+      specgraph:
+        condition: service_healthy
+    environment:
+      - SPECGRAPH_BASE_URL=http://specgraph:9090
+    volumes:
+      - ./test-results:/tests/test-results
