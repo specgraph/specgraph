@@ -53,7 +53,7 @@ tasks:
     generates:
       - web/build/**/*
     cmds:
-      - pnpm install --frozen-lockfile
+      - pnpm install
       - pnpm build
   build:
     desc: Build the specgraph binary
