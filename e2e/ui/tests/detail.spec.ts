@@ -20,8 +20,8 @@ test.describe('Detail Pages', () => {
 
   test('decision detail page shows metadata', async ({ page }) => {
     await page.goto('/decision/detail-dec');
-    await expect(page.locator('h1')).toContainText('detail-dec');
-    await expect(page.locator('.meta')).toContainText('Detail test decision');
+    await expect(page.locator('h1')).toContainText('Detail test decision');
+    await expect(page.locator('.meta')).toContainText('detail-dec');
   });
 
   test('spec detail 404 shows error', async ({ page }) => {
