@@ -258,6 +258,69 @@ func (s *Store) GetCriticalPath(ctx context.Context, slug string) ([]storage.Nod
 	return s.queryNodeRefs(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
 }
 
+// GetFullGraph returns all spec and decision nodes with all user-facing edges.
+func (s *Store) GetFullGraph(ctx context.Context) (*storage.FullGraph, error) {
+	// Query 1: All nodes (Spec + Decision)
+	nodeQuery := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(n)
+		WHERE n:Spec OR n:Decision
+		RETURN n.slug AS slug, labels(n)[0] AS label,
+		       COALESCE(n.stage, n.status, "") AS stage,
+		       COALESCE(n.intent, n.title, "") AS intent,
+		       COALESCE(n.priority, "") AS priority
+	`
+	nodeRecords, err := s.executeQuery(ctx, nodeQuery, s.projectParam())
+	if err != nil {
+		return nil, fmt.Errorf("memgraph: get full graph nodes: %w", err)
+	}
+
+	nodes := make([]storage.GraphNode, 0, len(nodeRecords))
+	for _, rec := range nodeRecords {
+		slug, _ := rec.Get("slug")
+		label, _ := rec.Get("label")
+		stage, _ := rec.Get("stage")
+		intent, _ := rec.Get("intent")
+		priority, _ := rec.Get("priority")
+		nodes = append(nodes, storage.GraphNode{
+			Slug:     stringVal(slug),
+			Label:    storage.NodeLabel(stringVal(label)),
+			Stage:    stringVal(stage),
+			Intent:   stringVal(intent),
+			Priority: stringVal(priority),
+		})
+	}
+
+	// Query 2: All user-facing edges (exclude BELONGS_TO, HAS_CHANGE, HAS_FINDING)
+	edgeQuery := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a)-[r]->(b)
+		WHERE type(r) <> "BELONGS_TO" AND type(r) <> "HAS_CHANGE" AND type(r) <> "HAS_FINDING"
+		  AND (b:Spec OR b:Decision)
+		RETURN a.slug AS from_slug, b.slug AS to_slug, type(r) AS rel_type
+	`
+	edgeRecords, err := s.executeQuery(ctx, edgeQuery, s.projectParam())
+	if err != nil {
+		return nil, fmt.Errorf("memgraph: get full graph edges: %w", err)
+	}
+
+	edges := make([]*storage.Edge, 0, len(edgeRecords))
+	for _, rec := range edgeRecords {
+		from, _ := rec.Get("from_slug")
+		to, _ := rec.Get("to_slug")
+		rt, _ := rec.Get("rel_type")
+		edgeType, err := relNameToEdgeType(stringVal(rt))
+		if err != nil {
+			return nil, fmt.Errorf("GetFullGraph: %w", err)
+		}
+		edges = append(edges, &storage.Edge{
+			FromID:   stringVal(from),
+			ToID:     stringVal(to),
+			EdgeType: edgeType,
+		})
+	}
+
+	return &storage.FullGraph{Nodes: nodes, Edges: edges}, nil
+}
+
 func (s *Store) queryNodeRefs(ctx context.Context, query string, params map[string]any) ([]storage.NodeRef, error) {
 	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
 	if err != nil {
