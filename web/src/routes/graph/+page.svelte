@@ -14,7 +14,9 @@
   async function loadGraph() {
     try {
       const resp = await graphClient.getFullGraph({});
-      nodes = resp.nodes ?? [];
+      // Deduplicate nodes by slug to prevent Svelte each_key_duplicate errors
+      const seen = new Set<string>();
+      nodes = (resp.nodes ?? []).filter(n => { if (seen.has(n.slug)) return false; seen.add(n.slug); return true; });
       edges = resp.edges ?? [];
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load graph';

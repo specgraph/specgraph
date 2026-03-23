@@ -35,7 +35,9 @@
       stageCounts = counts;
 
       readyCount = (readyRes.ready ?? []).length;
-      graphNodes = graphRes.nodes ?? [];
+      // Deduplicate nodes by slug to prevent Svelte each_key_duplicate errors
+      const seen = new Set<string>();
+      graphNodes = (graphRes.nodes ?? []).filter(n => { if (seen.has(n.slug)) return false; seen.add(n.slug); return true; });
       graphEdges = graphRes.edges ?? [];
       decisionCount = (decisionsRes.decisions ?? []).length;
 
