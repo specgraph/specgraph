@@ -55,6 +55,9 @@ const (
 	// GraphServiceGetCriticalPathProcedure is the fully-qualified name of the GraphService's
 	// GetCriticalPath RPC.
 	GraphServiceGetCriticalPathProcedure = "/specgraph.v1.GraphService/GetCriticalPath"
+	// GraphServiceGetFullGraphProcedure is the fully-qualified name of the GraphService's GetFullGraph
+	// RPC.
+	GraphServiceGetFullGraphProcedure = "/specgraph.v1.GraphService/GetFullGraph"
 )
 
 // GraphServiceClient is a client for the specgraph.v1.GraphService service.
@@ -67,6 +70,7 @@ type GraphServiceClient interface {
 	GetImpact(context.Context, *connect.Request[v1.GetImpactRequest]) (*connect.Response[v1.GetImpactResponse], error)
 	GetReady(context.Context, *connect.Request[v1.GetReadyRequest]) (*connect.Response[v1.GetReadyResponse], error)
 	GetCriticalPath(context.Context, *connect.Request[v1.GetCriticalPathRequest]) (*connect.Response[v1.GetCriticalPathResponse], error)
+	GetFullGraph(context.Context, *connect.Request[v1.GetFullGraphRequest]) (*connect.Response[v1.GetFullGraphResponse], error)
 }
 
 // NewGraphServiceClient constructs a client for the specgraph.v1.GraphService service. By default,
@@ -128,6 +132,12 @@ func NewGraphServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(graphServiceMethods.ByName("GetCriticalPath")),
 			connect.WithClientOptions(opts...),
 		),
+		getFullGraph: connect.NewClient[v1.GetFullGraphRequest, v1.GetFullGraphResponse](
+			httpClient,
+			baseURL+GraphServiceGetFullGraphProcedure,
+			connect.WithSchema(graphServiceMethods.ByName("GetFullGraph")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -141,6 +151,7 @@ type graphServiceClient struct {
 	getImpact         *connect.Client[v1.GetImpactRequest, v1.GetImpactResponse]
 	getReady          *connect.Client[v1.GetReadyRequest, v1.GetReadyResponse]
 	getCriticalPath   *connect.Client[v1.GetCriticalPathRequest, v1.GetCriticalPathResponse]
+	getFullGraph      *connect.Client[v1.GetFullGraphRequest, v1.GetFullGraphResponse]
 }
 
 // AddEdge calls specgraph.v1.GraphService.AddEdge.
@@ -183,6 +194,11 @@ func (c *graphServiceClient) GetCriticalPath(ctx context.Context, req *connect.R
 	return c.getCriticalPath.CallUnary(ctx, req)
 }
 
+// GetFullGraph calls specgraph.v1.GraphService.GetFullGraph.
+func (c *graphServiceClient) GetFullGraph(ctx context.Context, req *connect.Request[v1.GetFullGraphRequest]) (*connect.Response[v1.GetFullGraphResponse], error) {
+	return c.getFullGraph.CallUnary(ctx, req)
+}
+
 // GraphServiceHandler is an implementation of the specgraph.v1.GraphService service.
 type GraphServiceHandler interface {
 	AddEdge(context.Context, *connect.Request[v1.AddEdgeRequest]) (*connect.Response[v1.AddEdgeResponse], error)
@@ -193,6 +209,7 @@ type GraphServiceHandler interface {
 	GetImpact(context.Context, *connect.Request[v1.GetImpactRequest]) (*connect.Response[v1.GetImpactResponse], error)
 	GetReady(context.Context, *connect.Request[v1.GetReadyRequest]) (*connect.Response[v1.GetReadyResponse], error)
 	GetCriticalPath(context.Context, *connect.Request[v1.GetCriticalPathRequest]) (*connect.Response[v1.GetCriticalPathResponse], error)
+	GetFullGraph(context.Context, *connect.Request[v1.GetFullGraphRequest]) (*connect.Response[v1.GetFullGraphResponse], error)
 }
 
 // NewGraphServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -250,6 +267,12 @@ func NewGraphServiceHandler(svc GraphServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(graphServiceMethods.ByName("GetCriticalPath")),
 		connect.WithHandlerOptions(opts...),
 	)
+	graphServiceGetFullGraphHandler := connect.NewUnaryHandler(
+		GraphServiceGetFullGraphProcedure,
+		svc.GetFullGraph,
+		connect.WithSchema(graphServiceMethods.ByName("GetFullGraph")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/specgraph.v1.GraphService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case GraphServiceAddEdgeProcedure:
@@ -268,6 +291,8 @@ func NewGraphServiceHandler(svc GraphServiceHandler, opts ...connect.HandlerOpti
 			graphServiceGetReadyHandler.ServeHTTP(w, r)
 		case GraphServiceGetCriticalPathProcedure:
 			graphServiceGetCriticalPathHandler.ServeHTTP(w, r)
+		case GraphServiceGetFullGraphProcedure:
+			graphServiceGetFullGraphHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -307,4 +332,8 @@ func (UnimplementedGraphServiceHandler) GetReady(context.Context, *connect.Reque
 
 func (UnimplementedGraphServiceHandler) GetCriticalPath(context.Context, *connect.Request[v1.GetCriticalPathRequest]) (*connect.Response[v1.GetCriticalPathResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.GraphService.GetCriticalPath is not implemented"))
+}
+
+func (UnimplementedGraphServiceHandler) GetFullGraph(context.Context, *connect.Request[v1.GetFullGraphRequest]) (*connect.Response[v1.GetFullGraphResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.GraphService.GetFullGraph is not implemented"))
 }
