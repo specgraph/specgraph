@@ -1,13 +1,13 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, request as playwrightRequest } from '@playwright/test';
 import { seedSpec, seedEdge } from './helpers';
 
 test.describe('Graph View', () => {
-  test.beforeAll(async ({ browser }) => {
-    const page = await browser.newPage();
-    await seedSpec(page, 'ui-parent', 'Parent feature');
-    await seedSpec(page, 'ui-child', 'Child feature');
-    await seedEdge(page, 'ui-child', 'ui-parent');
-    await page.close();
+  test.beforeAll(async () => {
+    const request = await playwrightRequest.newContext();
+    await seedSpec(request, 'ui-parent', 'Parent feature');
+    await seedSpec(request, 'ui-child', 'Child feature');
+    await seedEdge(request, 'ui-child', 'ui-parent');
+    await request.dispose();
   });
 
   test('renders SVG graph with nodes', async ({ page }) => {

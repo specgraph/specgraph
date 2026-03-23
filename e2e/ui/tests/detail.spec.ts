@@ -1,12 +1,12 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, request as playwrightRequest } from '@playwright/test';
 import { seedSpec, seedDecision } from './helpers';
 
 test.describe('Detail Pages', () => {
-  test.beforeAll(async ({ browser }) => {
-    const page = await browser.newPage();
-    await seedSpec(page, 'detail-spec', 'Detail test spec', 'p1');
-    await seedDecision(page, 'detail-dec', 'Detail test decision');
-    await page.close();
+  test.beforeAll(async () => {
+    const request = await playwrightRequest.newContext();
+    await seedSpec(request, 'detail-spec', 'Detail test spec', 'p1');
+    await seedDecision(request, 'detail-dec', 'Detail test decision');
+    await request.dispose();
   });
 
   test('spec detail page shows metadata', async ({ page }) => {
