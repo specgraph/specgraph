@@ -31,8 +31,7 @@
     }
   }
 
-  let loaded = false;
-  $effect(() => { if (!loaded) { loaded = true; loadDecision(); } });
+  $effect(() => { loadDecision(); });
 </script>
 
 <nav class="breadcrumb">

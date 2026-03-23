@@ -9,14 +9,7 @@
   let filterText = $state('');
   let loading = $state(true);
   let error = $state<string | null>(null);
-  let loaded = false;
-
-  $effect(() => {
-    if (!loaded) {
-      loaded = true;
-      loadGraph();
-    }
-  });
+  $effect(() => { loadGraph(); });
 
   async function loadGraph() {
     try {
