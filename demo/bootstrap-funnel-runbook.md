@@ -235,7 +235,7 @@ Agent ran all prerequisites (`specgraph show`, `specgraph deps`, `specgraph cons
 
 Open the SpecGraph dashboard in your browser:
 
-```
+```text
 http://localhost:8080
 ```
 

@@ -30,7 +30,6 @@ coverage.html
 # Git worktrees
 .worktrees/
 .envrc
-demo/
 
 # Web UI
 web/node_modules/
