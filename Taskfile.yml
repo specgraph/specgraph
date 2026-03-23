@@ -282,6 +282,8 @@ tasks:
       - rm -f {{.BINARY_NAME}}
       - rm -f coverage.out coverage.html
       - rm -rf gen/
+      - rm -rf web/node_modules web/build web/.svelte-kit
+      - rm -rf e2e/ui/node_modules e2e/ui/test-results
   # Release
   release:check:
     desc: Validate goreleaser config
