@@ -176,11 +176,45 @@ func (h *GraphHandler) GetCriticalPath(ctx context.Context, req *connect.Request
 	return connect.NewResponse(&specv1.GetCriticalPathResponse{Path: nodeRefsToProto(refs)}), nil
 }
 
+// GetFullGraph handles the GetFullGraph RPC.
+func (h *GraphHandler) GetFullGraph(ctx context.Context, _ *connect.Request[specv1.GetFullGraphRequest]) (*connect.Response[specv1.GetFullGraphResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
+	graph, err := store.GetFullGraph(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	pbs, err := edgesToProto(graph.Edges)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return connect.NewResponse(&specv1.GetFullGraphResponse{
+		Nodes: graphNodesToProto(graph.Nodes),
+		Edges: pbs,
+	}), nil
+}
+
 // RegisterGraphService registers the GraphService on the given mux.
 func RegisterGraphService(mux *http.ServeMux, scoper storage.Scoper, opts ...connect.HandlerOption) {
 	handler := &GraphHandler{scoper: scoper}
 	path, h := specgraphv1connect.NewGraphServiceHandler(handler, opts...)
 	mux.Handle(path, h)
+}
+
+func graphNodesToProto(nodes []storage.GraphNode) []*specv1.GraphNode {
+	result := make([]*specv1.GraphNode, len(nodes))
+	for i, n := range nodes {
+		result[i] = &specv1.GraphNode{
+			Slug:     n.Slug,
+			Label:    string(n.Label),
+			Stage:    n.Stage,
+			Intent:   n.Intent,
+			Priority: n.Priority,
+		}
+	}
+	return result
 }
 
 func nodeRefsToProto(refs []storage.NodeRef) []*specv1.NodeRef {
