@@ -11,7 +11,6 @@ services:
       interval: 3s
       timeout: 10s
       retries: 10
-
   specgraph:
     build:
       context: ../..
@@ -29,7 +28,6 @@ services:
       interval: 3s
       timeout: 5s
       retries: 10
-
   playwright:
     build:
       context: .

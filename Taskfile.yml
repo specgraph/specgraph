@@ -56,7 +56,7 @@ tasks:
       - pnpm build
   build:
     desc: Build the specgraph binary
-    deps: [generate, web:build]
+    deps: [generate, 'web:build']
     cmds:
       - go build -o {{.BINARY_NAME}} {{.MAIN_PKG}}
   build:all:
@@ -170,7 +170,7 @@ tasks:
           [[ -d "$dir" ]] && EXISTING_DIRS="$EXISTING_DIRS $dir"
         done
         command -v addlicense >/dev/null 2>&1 || go install github.com/google/addlicense@latest
-        addlicense -check -f LICENSE_HEADER -ignore '**/*.pb.go' -ignore 'vendor/**' $EXISTING_DIRS
+        addlicense -check -f LICENSE_HEADER -ignore '**/*.pb.go' -ignore 'vendor/**' -ignore 'e2e/ui/**' $EXISTING_DIRS
   license:add:
     desc: Add missing SPDX license headers
     cmds:
@@ -182,7 +182,7 @@ tasks:
           [[ -d "$dir" ]] && EXISTING_DIRS="$EXISTING_DIRS $dir"
         done
         command -v addlicense >/dev/null 2>&1 || go install github.com/google/addlicense@latest
-        addlicense -f LICENSE_HEADER -ignore '**/*.pb.go' -ignore 'vendor/**' $EXISTING_DIRS
+        addlicense -f LICENSE_HEADER -ignore '**/*.pb.go' -ignore 'vendor/**' -ignore 'e2e/ui/**' $EXISTING_DIRS
   # Formatting
   fmt:
     desc: Format all files
