@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { graphClient } from '$lib/api/client';
   import type { GraphNode, Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
   import Graph from '$lib/components/Graph.svelte';
@@ -9,7 +10,7 @@
   let filterText = $state('');
   let loading = $state(true);
   let error = $state<string | null>(null);
-  $effect(() => { loadGraph(); });
+  onMount(() => { loadGraph(); });
 
   async function loadGraph() {
     try {

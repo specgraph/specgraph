@@ -6,7 +6,7 @@ import "@sveltejs/kit/internal/server";
 import "../../chunks/root.js";
 import "../../chunks/state.svelte.js";
 import "@dagrejs/dagre";
-/* empty css                                               */
+import "../../chunks/Graph.svelte_svelte_type_style_lang.js";
 function _page($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
     $$renderer2.push(`<h1 class="svelte-1uha8ag">Dashboard</h1> `);
