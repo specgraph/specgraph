@@ -9,6 +9,14 @@
   let filterText = $state('');
   let loading = $state(true);
   let error = $state<string | null>(null);
+  let loaded = false;
+
+  $effect(() => {
+    if (!loaded) {
+      loaded = true;
+      loadGraph();
+    }
+  });
 
   async function loadGraph() {
     try {
@@ -22,10 +30,6 @@
       loading = false;
     }
   }
-
-  $effect(() => {
-    loadGraph();
-  });
 </script>
 
 <h1>Dependency Graph</h1>

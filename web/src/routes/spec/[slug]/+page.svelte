@@ -20,7 +20,8 @@
     }
   }
 
-  $effect(() => { loadSpec(); });
+  let loaded = false;
+  $effect(() => { if (!loaded) { loaded = true; loadSpec(); } });
 </script>
 
 <nav class="breadcrumb">

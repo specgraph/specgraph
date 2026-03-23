@@ -209,7 +209,7 @@
   </defs>
 
   <g transform="translate({compact ? 0 : panX},{compact ? 0 : panY}) scale({compact ? 1 : zoom})">
-    {#each layout.layoutEdges as edge (edge.fromId + '-' + edge.toId)}
+    {#each layout.layoutEdges as edge, i (edge.fromId + '-' + edge.toId + '-' + i)}
       {@const style = edgeStyle(edge.edgeType)}
       <path
         d={pointsToPath(edge.points)}
