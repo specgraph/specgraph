@@ -98,6 +98,10 @@ func (stubBackend) GetCriticalPath(context.Context, string) ([]storage.NodeRef, 
 	return nil, errNotImplemented
 }
 
+func (stubBackend) GetFullGraph(context.Context) (*storage.FullGraph, error) {
+	return nil, errNotImplemented
+}
+
 // --- DecisionBackend ---
 
 func (stubBackend) CreateDecision(context.Context, string, string, string, string) (*storage.Decision, error) {
