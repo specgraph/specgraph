@@ -128,6 +128,30 @@ func (m *mockGraphBackend) GetCriticalPath(_ context.Context, slug string) ([]st
 	}, nil
 }
 
+func (m *mockGraphBackend) GetFullGraph(_ context.Context) (*storage.FullGraph, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	nodes := make([]storage.GraphNode, 0, len(m.nodes))
+	for _, n := range m.nodes {
+		nodes = append(nodes, storage.GraphNode{
+			Slug:     n.slug,
+			Label:    n.label,
+			Stage:    n.stage,
+			Intent:   "test intent",
+			Priority: "p2",
+		})
+	}
+	edges := make([]*storage.Edge, 0, len(m.edges))
+	for _, e := range m.edges {
+		edges = append(edges, &storage.Edge{
+			FromID:   e.from,
+			ToID:     e.to,
+			EdgeType: e.edgeType,
+		})
+	}
+	return &storage.FullGraph{Nodes: nodes, Edges: edges}, nil
+}
+
 func setupGraphServer(t *testing.T) specgraphv1connect.GraphServiceClient {
 	t.Helper()
 	mb := newMockGraphBackend()
@@ -186,6 +210,42 @@ func TestGraphHandler_Dependencies(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, depsResp.Msg.Dependencies, 1)
 	require.Equal(t, "spec-b", depsResp.Msg.Dependencies[0].Slug)
+}
+
+func TestGraphHandler_GetFullGraph(t *testing.T) {
+	client := setupGraphServer(t)
+	ctx := context.Background()
+
+	// Add an edge so we have edges in the response
+	_, err := client.AddEdge(ctx, connect.NewRequest(&specv1.AddEdgeRequest{
+		FromSlug: "spec-a",
+		ToSlug:   "spec-b",
+		EdgeType: specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
+	}))
+	require.NoError(t, err)
+
+	resp, err := client.GetFullGraph(ctx, connect.NewRequest(&specv1.GetFullGraphRequest{}))
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(resp.Msg.Nodes), 3, "should return all mock nodes")
+	require.Len(t, resp.Msg.Edges, 1, "should return the added edge")
+
+	// Verify node fields are populated
+	var found bool
+	for _, n := range resp.Msg.Nodes {
+		if n.Slug == "spec-a" {
+			found = true
+			require.Equal(t, "Spec", n.Label)
+			require.Equal(t, "spark", n.Stage)
+			require.Equal(t, "test intent", n.Intent)
+			require.Equal(t, "p2", n.Priority)
+		}
+	}
+	require.True(t, found, "spec-a should be in the response")
+
+	// Verify edge
+	require.Equal(t, "spec-a", resp.Msg.Edges[0].FromId)
+	require.Equal(t, "spec-b", resp.Msg.Edges[0].ToId)
+	require.Equal(t, specv1.EdgeType_EDGE_TYPE_DEPENDS_ON, resp.Msg.Edges[0].EdgeType)
 }
 
 func TestGraphHandler_ReadyAndImpact(t *testing.T) {
