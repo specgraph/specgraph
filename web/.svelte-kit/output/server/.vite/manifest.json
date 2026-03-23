@@ -16,7 +16,11 @@
   },
   "_exports.js": {
     "file": "chunks/exports.js",
-    "name": "exports",
+    "name": "exports"
+  },
+  "_index.js": {
+    "file": "chunks/index.js",
+    "name": "index",
     "imports": [
       "_root.js"
     ]
@@ -42,6 +46,14 @@
     "imports": [
       "_utils2.js",
       "_utils.js"
+    ]
+  },
+  "_state.svelte.js": {
+    "file": "chunks/state.svelte.js",
+    "name": "state.svelte",
+    "imports": [
+      "_root.js",
+      "_exports.js"
     ]
   },
   "_utils.js": {
@@ -70,15 +82,11 @@
     "isEntry": true,
     "imports": [
       "_root.js",
+      "_state.svelte.js",
       "_exports.js",
-      "_utils2.js"
+      "_utils2.js",
+      "_index.js"
     ]
-  },
-  "node_modules/.pnpm/@sveltejs+kit@2.55.0_@sveltejs+vite-plugin-svelte@4.0.4_svelte@5.54.1_vite@6.4.1__svelt_3fd0e2f725728bab256b47641a1d6b91/node_modules/@sveltejs/kit/src/runtime/components/svelte-5/layout.svelte": {
-    "file": "entries/fallbacks/layout.svelte.js",
-    "name": "entries/fallbacks/layout.svelte",
-    "src": "node_modules/.pnpm/@sveltejs+kit@2.55.0_@sveltejs+vite-plugin-svelte@4.0.4_svelte@5.54.1_vite@6.4.1__svelt_3fd0e2f725728bab256b47641a1d6b91/node_modules/@sveltejs/kit/src/runtime/components/svelte-5/layout.svelte",
-    "isEntry": true
   },
   "node_modules/.pnpm/@sveltejs+kit@2.55.0_@sveltejs+vite-plugin-svelte@4.0.4_svelte@5.54.1_vite@6.4.1__svelt_3fd0e2f725728bab256b47641a1d6b91/node_modules/@sveltejs/kit/src/runtime/server/index.js": {
     "file": "index.js",
@@ -92,7 +100,23 @@
       "_root.js",
       "_exports.js",
       "_utils2.js",
+      "_index.js",
       "_internal.js"
+    ]
+  },
+  "src/routes/+layout.svelte": {
+    "file": "entries/pages/_layout.svelte.js",
+    "name": "entries/pages/_layout.svelte",
+    "src": "src/routes/+layout.svelte",
+    "isEntry": true,
+    "imports": [
+      "_root.js",
+      "_exports.js",
+      "_utils2.js",
+      "_state.svelte.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_layout.BMV4_eWz.css"
     ]
   },
   "src/routes/+page.svelte": {

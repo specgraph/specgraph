@@ -1,1 +1,0 @@
-import{f as p,g as r,n}from"../chunks/B0dYN30k.js";import"../chunks/B59TT3mg.js";var t=r("<h1>SpecGraph</h1> <p>Graph visualization loading...</p>",1);function m(a){var o=t();n(2),p(a,o)}export{m as component};

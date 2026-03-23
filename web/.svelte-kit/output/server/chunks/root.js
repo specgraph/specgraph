@@ -2709,6 +2709,20 @@ function untrack(fn) {
     untracking = previous_untracking;
   }
 }
+function subscribe_to_store(store, run, invalidate) {
+  if (store == null) {
+    run(void 0);
+    return noop;
+  }
+  const unsub = untrack(
+    () => store.subscribe(
+      run,
+      // @ts-expect-error
+      invalidate
+    )
+  );
+  return unsub.unsubscribe ? () => unsub.unsubscribe() : unsub;
+}
 const event_symbol = Symbol("events");
 const all_registered_events = /* @__PURE__ */ new Set();
 const root_event_handles = /* @__PURE__ */ new Set();
@@ -4157,6 +4171,29 @@ function attributes(attrs, css_hash, classes, styles, flags2 = 0) {
   }
   return attr_str;
 }
+function attr_class(value, hash, directives) {
+  var result = to_class(value, hash, directives);
+  return result ? ` class="${escape_html(result, true)}"` : "";
+}
+function store_get(store_values, store_name, store) {
+  if (store_name in store_values && store_values[store_name][0] === store) {
+    return store_values[store_name][2];
+  }
+  store_values[store_name]?.[1]();
+  store_values[store_name] = [store, null, void 0];
+  const unsub = subscribe_to_store(
+    store,
+    /** @param {any} v */
+    (v) => store_values[store_name][2] = v
+  );
+  store_values[store_name][1] = unsub;
+  return store_values[store_name][2];
+}
+function unsubscribe_stores(store_values) {
+  for (const store_name of Object.keys(store_values)) {
+    store_values[store_name][1]();
+  }
+}
 function once(get_value) {
   let value = (
     /** @type {V} */
@@ -4289,10 +4326,13 @@ function Root($$renderer, $$props) {
 }
 const root = asClassComponent(Root);
 export {
+  attr_class as a,
+  unsubscribe_stores as b,
+  safe_not_equal as c,
   escape_html as e,
   getContext as g,
   noop as n,
   root as r,
-  safe_not_equal as s,
+  store_get as s,
   uneval as u
 };
