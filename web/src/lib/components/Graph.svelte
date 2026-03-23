@@ -3,6 +3,7 @@
   import type { GraphNode } from '$lib/api/gen/specgraph/v1/graph_pb';
   import type { Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
   import { EdgeType } from '$lib/api/gen/specgraph/v1/graph_pb';
+  import { stageColors } from '$lib/colors';
 
   interface Props {
     nodes: GraphNode[];
@@ -13,13 +14,8 @@
 
   let { nodes, edges, compact = false, filterText = '' }: Props = $props();
 
-  const stageColors: Record<string, string> = {
-    spark: '#7c3aed',
-    shape: '#2563eb',
-    specify: '#16a34a',
-    decompose: '#d97706',
-    approved: '#0d9488',
-    done: '#6b7280',
+  const allColors: Record<string, string> = {
+    ...stageColors,
     in_progress: '#ea580c',
     proposed: '#8b5cf6',
     accepted: '#0d9488',
@@ -35,7 +31,7 @@
     switch (et) {
       case EdgeType.DEPENDS_ON: return { dash: '', color: '#475569' };
       case EdgeType.BLOCKS: return { dash: '8,4', color: '#dc2626' };
-      case EdgeType.COMPOSES: return { dash: '', color: '#2563eb' };
+      case EdgeType.COMPOSES: return { dash: '2,4', color: '#64748b' };
       case EdgeType.RELATES_TO: return { dash: '4,4', color: '#9ca3af' };
       case EdgeType.INFORMS: return { dash: '6,3', color: '#7c3aed' };
       case EdgeType.DECIDED_IN: return { dash: '6,3', color: '#0d9488' };
@@ -184,7 +180,7 @@
   }
 
   function stageColor(stage: string): string {
-    return stageColors[stage] ?? '#6b7280';
+    return allColors[stage] ?? '#6b7280';
   }
 
   function truncate(text: string, max: number): string {

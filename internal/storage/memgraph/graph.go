@@ -264,7 +264,7 @@ func (s *Store) GetFullGraph(ctx context.Context) (*storage.FullGraph, error) {
 	nodeQuery := `
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(n)
 		WHERE n:Spec OR n:Decision
-		RETURN n.slug AS slug, labels(n)[0] AS label,
+		RETURN DISTINCT n.slug AS slug, labels(n)[0] AS label,
 		       COALESCE(n.stage, n.status, "") AS stage,
 		       COALESCE(n.intent, n.title, "") AS intent,
 		       COALESCE(n.priority, "") AS priority

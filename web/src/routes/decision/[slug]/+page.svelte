@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { decisionClient } from '$lib/api/client';
   import type { Decision } from '$lib/api/gen/specgraph/v1/decision_pb';
@@ -20,18 +21,18 @@
     }
   }
 
-  async function loadDecision() {
+  async function loadDecision(s: string) {
     try {
-      const resp = await decisionClient.getDecision({ slug });
+      const resp = await decisionClient.getDecision({ slug: s });
       decision = resp.decision ?? null;
-    } catch (err: any) {
-      error = err.message ?? 'Failed to load decision';
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Failed to load decision';
     } finally {
       loading = false;
     }
   }
 
-  $effect(() => { loadDecision(); });
+  onMount(() => { loadDecision(slug); });
 </script>
 
 <nav class="breadcrumb">

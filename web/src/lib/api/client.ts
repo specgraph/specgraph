@@ -6,7 +6,7 @@ import { DecisionService } from './gen/specgraph/v1/decision_pb';
 import { LifecycleService } from './gen/specgraph/v1/lifecycle_pb';
 
 const projectInterceptor: Interceptor = (next) => async (req) => {
-  req.header.set('X-Specgraph-Project', 'default');
+  req.header.set('X-Specgraph-Project', import.meta.env.VITE_SPECGRAPH_PROJECT ?? 'default');
   return next(req);
 };
 

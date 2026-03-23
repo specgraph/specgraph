@@ -62,19 +62,19 @@ tasks:
       - go build -o {{.BINARY_NAME}} {{.MAIN_PKG}}
   build:all:
     desc: Build for all platforms
-    deps: [generate]
+    deps: [generate, 'web:build']
     cmds:
       - task: build:linux
       - task: build:darwin
   build:linux:
     desc: Build for Linux
-    deps: [generate]
+    deps: [generate, 'web:build']
     cmds:
       - GOOS=linux GOARCH=amd64 go build -o dist/{{.BINARY_NAME}}-linux-amd64 {{.MAIN_PKG}}
       - GOOS=linux GOARCH=arm64 go build -o dist/{{.BINARY_NAME}}-linux-arm64 {{.MAIN_PKG}}
   build:darwin:
     desc: Build for macOS
-    deps: [generate]
+    deps: [generate, 'web:build']
     cmds:
       - GOOS=darwin GOARCH=amd64 go build -o dist/{{.BINARY_NAME}}-darwin-amd64 {{.MAIN_PKG}}
       - GOOS=darwin GOARCH=arm64 go build -o dist/{{.BINARY_NAME}}-darwin-arm64 {{.MAIN_PKG}}

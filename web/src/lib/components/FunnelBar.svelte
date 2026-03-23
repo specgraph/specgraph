@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { stageColors } from '$lib/colors';
+
   interface Props {
     stageCounts: Record<string, number>;
   }
@@ -6,15 +8,6 @@
   let { stageCounts }: Props = $props();
 
   const stages = ['spark', 'shape', 'specify', 'decompose', 'approved', 'done'];
-
-  const stageColors: Record<string, string> = {
-    spark: '#7c3aed',
-    shape: '#2563eb',
-    specify: '#16a34a',
-    decompose: '#d97706',
-    approved: '#0d9488',
-    done: '#6b7280',
-  };
 
   let total = $derived(stages.reduce((sum, s) => sum + (stageCounts[s] ?? 0), 0));
 </script>

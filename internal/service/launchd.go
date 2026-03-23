@@ -95,7 +95,7 @@ func install(defPath string) error {
 	// is already loaded.
 	service := fmt.Sprintf("gui/%d/%s", uid, launchdLabel)
 	bootout := exec.Command("launchctl", "bootout", service)
-	_ = bootout.Run() // intentionally ignore error: service may not be loaded
+	_ = bootout.Run() //nolint:errcheck // intentionally ignore error: service may not be loaded
 
 	target := fmt.Sprintf("gui/%d", uid)
 	cmd := exec.Command("launchctl", "bootstrap", target, defPath)

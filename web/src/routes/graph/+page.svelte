@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { graphClient } from '$lib/api/client';
   import type { GraphNode, Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
   import Graph from '$lib/components/Graph.svelte';
@@ -9,14 +10,12 @@
   let filterText = $state('');
   let loading = $state(true);
   let error = $state<string | null>(null);
-  $effect(() => { loadGraph(); });
+  onMount(() => { loadGraph(); });
 
   async function loadGraph() {
     try {
       const resp = await graphClient.getFullGraph({});
-      // Deduplicate nodes by slug to prevent Svelte each_key_duplicate errors
-      const seen = new Set<string>();
-      nodes = (resp.nodes ?? []).filter(n => { if (seen.has(n.slug)) return false; seen.add(n.slug); return true; });
+      nodes = resp.nodes ?? [];
       edges = resp.edges ?? [];
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load graph';

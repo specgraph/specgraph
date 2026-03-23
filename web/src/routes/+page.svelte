@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { specClient, graphClient, decisionClient, lifecycleClient } from '$lib/api/client';
   import type { GraphNode, Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
   import StatsBar from '$lib/components/StatsBar.svelte';
@@ -35,9 +36,7 @@
       stageCounts = counts;
 
       readyCount = (readyRes.ready ?? []).length;
-      // Deduplicate nodes by slug to prevent Svelte each_key_duplicate errors
-      const seen = new Set<string>();
-      graphNodes = (graphRes.nodes ?? []).filter(n => { if (seen.has(n.slug)) return false; seen.add(n.slug); return true; });
+      graphNodes = graphRes.nodes ?? [];
       graphEdges = graphRes.edges ?? [];
       decisionCount = (decisionsRes.decisions ?? []).length;
 
@@ -50,7 +49,7 @@
     }
   }
 
-  $effect(() => { loadDashboard(); });
+  onMount(() => { loadDashboard(); });
 </script>
 
 <h1>Dashboard</h1>
