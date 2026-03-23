@@ -170,8 +170,8 @@ func runDrift(cmd *cobra.Command, args []string) error {
 
 	// Render output (JSON or markdown).
 	if driftJSON {
-		if err = printJSON(cmd.OutOrStdout(), resp.Msg); err != nil {
-			return err
+		if jsonErr := printJSON(cmd.OutOrStdout(), resp.Msg); jsonErr != nil {
+			return jsonErr
 		}
 	} else {
 		fmt.Print(render.DriftReport(reports))
