@@ -6,11 +6,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"text/tabwriter"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/render"
 	"github.com/spf13/cobra"
 )
 
@@ -66,7 +66,11 @@ var decisionListCmd = &cobra.Command{
 	RunE:  runDecisionList,
 }
 
-var decisionListStatus string
+var (
+	decisionListStatus string
+	decisionListJSON   bool
+	decisionShowJSON   bool
+)
 
 func runDecisionList(cmd *cobra.Command, _ []string) error {
 	client, err := decisionClient()
@@ -89,21 +93,11 @@ func runDecisionList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("list decisions: %w", err)
 	}
-	decisions := resp.Msg.Decisions
-	if len(decisions) == 0 {
-		fmt.Println("No decisions found.")
-		return nil
+	if decisionListJSON {
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
-	tw := &tableWriter{w: w}
-	tw.println("ID\tSTATUS\tSLUG\tTITLE")
-	for _, d := range decisions {
-		tw.printf("%s\t%s\t%s\t%s\n", d.Id, d.Status, d.Slug, d.Title)
-	}
-	if tw.err != nil {
-		return tw.err
-	}
-	return w.Flush()
+	fmt.Print(render.DecisionList(resp.Msg.Decisions))
+	return nil
 }
 
 // --- decision show ---
@@ -125,12 +119,14 @@ func init() {
 	decisionCmd.AddCommand(decisionCreateCmd)
 
 	decisionListCmd.Flags().StringVar(&decisionListStatus, "status", "", "filter by status")
+	decisionListCmd.Flags().BoolVar(&decisionListJSON, "json", false, "output as JSON")
 	decisionCmd.AddCommand(decisionListCmd)
 
+	decisionShowCmd.Flags().BoolVar(&decisionShowJSON, "json", false, "output as JSON")
 	decisionCmd.AddCommand(decisionShowCmd)
 }
 
-func runDecisionShow(_ *cobra.Command, args []string) error {
+func runDecisionShow(cmd *cobra.Command, args []string) error {
 	client, err := decisionClient()
 	if err != nil {
 		return err
@@ -141,15 +137,9 @@ func runDecisionShow(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("get decision: %w", err)
 	}
-	d := resp.Msg.GetDecision()
-	fmt.Printf("ID:           %s\n", d.Id)
-	fmt.Printf("Slug:         %s\n", d.Slug)
-	fmt.Printf("Title:        %s\n", d.Title)
-	fmt.Printf("Status:       %s\n", d.Status)
-	fmt.Printf("Decision:     %s\n", d.Decision)
-	fmt.Printf("Rationale:    %s\n", d.Rationale)
-	if d.SupersededBy != "" {
-		fmt.Printf("Superseded By: %s\n", d.SupersededBy)
+	if decisionShowJSON {
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
+	fmt.Print(render.Decision(resp.Msg.GetDecision()))
 	return nil
 }

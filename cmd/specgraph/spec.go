@@ -6,14 +6,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"text/tabwriter"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/render"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func specClient() (specgraphv1connect.SpecServiceClient, error) {
@@ -123,21 +121,11 @@ func runList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("list specs: %w", err)
 	}
-	specs := resp.Msg.Specs
-	if len(specs) == 0 {
-		fmt.Println("No specs found.")
-		return nil
+	if listJSON {
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
-	tw := &tableWriter{w: w}
-	tw.println("ID\tPRIORITY\tSTAGE\tSLUG")
-	for _, s := range specs {
-		tw.printf("%s\t%s\t%s\t%s\n", s.Id, s.Priority, s.Stage, s.Slug)
-	}
-	if tw.err != nil {
-		return tw.err
-	}
-	return w.Flush()
+	fmt.Print(render.SpecList(resp.Msg.Specs))
+	return nil
 }
 
 // --- show ---
@@ -149,7 +137,10 @@ var showCmd = &cobra.Command{
 	RunE:  runShow,
 }
 
-var showFormat string
+var (
+	showJSON bool
+	listJSON bool
+)
 
 func init() {
 	createCmd.Flags().StringVar(&createIntent, "intent", "", "intent for the spec (required)")
@@ -166,13 +157,14 @@ func init() {
 
 	listCmd.Flags().StringVar(&listStage, "stage", "", "filter by stage")
 	listCmd.Flags().StringVar(&listPriority, "priority", "", "filter by priority")
+	listCmd.Flags().BoolVar(&listJSON, "json", false, "output as JSON")
 	rootCmd.AddCommand(listCmd)
 
-	showCmd.Flags().StringVar(&showFormat, "format", "text", "output format (text, json)")
+	showCmd.Flags().BoolVar(&showJSON, "json", false, "output as JSON")
 	rootCmd.AddCommand(showCmd)
 }
 
-func runShow(_ *cobra.Command, args []string) error {
+func runShow(cmd *cobra.Command, args []string) error {
 	client, err := specClient()
 	if err != nil {
 		return err
@@ -183,40 +175,9 @@ func runShow(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("get spec: %w", err)
 	}
-
-	switch showFormat {
-	case "text":
-		// fall through to text output below
-	case "json":
-		// handled below
-	default:
-		return fmt.Errorf("unsupported format %q; valid values: text, json", showFormat)
+	if showJSON {
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-
-	if showFormat == "json" {
-		marshaler := protojson.MarshalOptions{Multiline: true}
-		data, mErr := marshaler.Marshal(resp.Msg)
-		if mErr != nil {
-			return fmt.Errorf("marshal json: %w", mErr)
-		}
-		_, err = os.Stdout.Write(data)
-		if err != nil {
-			return err
-		}
-		fmt.Println()
-		return nil
-	}
-
-	s := resp.Msg.GetSpec()
-	fmt.Printf("ID:         %s\n", s.Id)
-	fmt.Printf("Slug:       %s\n", s.Slug)
-	fmt.Printf("Intent:     %s\n", s.Intent)
-	fmt.Printf("Stage:      %s\n", s.Stage)
-	fmt.Printf("Priority:   %s\n", s.Priority)
-	fmt.Printf("Complexity: %s\n", s.Complexity)
-	fmt.Printf("Version:    %d\n", s.Version)
-	if s.Notes != "" {
-		fmt.Printf("Notes:      %s\n", s.Notes)
-	}
+	fmt.Print(render.Spec(resp.Msg.GetSpec()))
 	return nil
 }
