@@ -22,6 +22,7 @@ var allProcedures = []string{
 	specgraphv1connect.DecisionServiceListDecisionsProcedure,
 	specgraphv1connect.DecisionServiceUpdateDecisionProcedure,
 	// GraphService
+	specgraphv1connect.GraphServiceGetFullGraphProcedure,
 	specgraphv1connect.GraphServiceAddEdgeProcedure,
 	specgraphv1connect.GraphServiceRemoveEdgeProcedure,
 	specgraphv1connect.GraphServiceListEdgesProcedure,
