@@ -1,6 +1,6 @@
 # Stage 1: Build SvelteKit UI
 FROM node:22-alpine AS web-builder
-RUN corepack enable
+RUN npm install -g pnpm@latest
 WORKDIR /app/web
 COPY web/package.json web/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile

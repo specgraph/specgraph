@@ -1,8 +1,11 @@
 FROM mcr.microsoft.com/playwright:v1.50.0-noble
 
+# Install pnpm via npm (corepack has key verification issues on this image)
+RUN npm install -g pnpm@latest
+
 WORKDIR /tests
 COPY package.json pnpm-lock.yaml ./
-RUN corepack enable && pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 COPY . .
 
 CMD ["pnpm", "test"]
