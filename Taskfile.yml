@@ -37,9 +37,26 @@ tasks:
         buf generate -o "$tmpdir"
         diff -rq gen/ "$tmpdir/gen" > /dev/null 2>&1
   # Building
+  web:dev:
+    desc: Start SvelteKit dev server (proxies API to :8080)
+    dir: web
+    cmds:
+      - pnpm dev
+  web:build:
+    desc: Build SvelteKit for production (output to web/build/)
+    dir: web
+    sources:
+      - web/src/**/*
+      - web/svelte.config.js
+      - web/vite.config.ts
+      - web/package.json
+    generates:
+      - web/build/**/*
+    cmds:
+      - pnpm build
   build:
     desc: Build the specgraph binary
-    deps: [generate]
+    deps: [generate, web:build]
     cmds:
       - go build -o {{.BINARY_NAME}} {{.MAIN_PKG}}
   build:all:
