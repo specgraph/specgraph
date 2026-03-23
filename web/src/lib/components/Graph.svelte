@@ -230,7 +230,7 @@
         onpointerenter={() => { if (!compact) hoveredSlug = node.slug; }}
         onpointerleave={() => { hoveredSlug = null; }}
       >
-        <a href="/spec/{node.slug}">
+        <a href="{node.isDecision ? '/decision' : '/spec'}/{node.slug}">
           {#if node.isDecision}
             <g transform="translate({node.x},{node.y})">
               <rect

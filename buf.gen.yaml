@@ -9,6 +9,3 @@ plugins:
   - remote: buf.build/bufbuild/es
     out: web/src/lib/api/gen
     opt: target=ts
-  - remote: buf.build/connectrpc/es
-    out: web/src/lib/api/gen
-    opt: target=ts
