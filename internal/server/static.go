@@ -6,6 +6,7 @@ package server
 import (
 	"io/fs"
 	"net/http"
+	"strings"
 )
 
 // StaticHandler serves embedded static files with an SPA catch-all.
@@ -14,9 +15,10 @@ import (
 func StaticHandler(fsys fs.FS) http.Handler {
 	fileServer := http.FileServer(http.FS(fsys))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Try serving the file directly
-		path := r.URL.Path
-		if path == "/" {
+		// Try serving the file directly.
+		// fs.FS requires clean paths without leading slash.
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "" {
 			path = "index.html"
 		}
 		// Check if the file exists in the embedded FS
