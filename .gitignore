@@ -31,3 +31,8 @@ coverage.html
 .worktrees/
 .envrc
 demo/
+
+# Web UI
+web/node_modules/
+web/build/
+web/.svelte-kit/
