@@ -43,6 +43,8 @@ var plistTmpl = template.Must(template.New("plist").Parse(`<?xml version="1.0" e
   <dict>
     <key>SPECGRAPH_CONFIG</key>
     <string>{{.ConfigPath}}</string>
+    <key>PATH</key>
+    <string>{{.Path}}</string>
   </dict>
 </dict>
 </plist>
@@ -53,6 +55,7 @@ type escapedConfig struct {
 	BinaryPath string
 	ConfigPath string
 	LogPath    string
+	Path       string
 }
 
 // xmlEscape returns s with XML special characters escaped for safe plist embedding.
@@ -76,6 +79,7 @@ func generate(dir string, cfg Config) (string, error) {
 		BinaryPath: xmlEscape(cfg.BinaryPath),
 		ConfigPath: xmlEscape(cfg.ConfigPath),
 		LogPath:    xmlEscape(cfg.LogPath),
+		Path:       xmlEscape(os.Getenv("PATH")),
 	}
 	if err := plistTmpl.Execute(f, escaped); err != nil {
 		return "", fmt.Errorf("render plist template: %w", err)
