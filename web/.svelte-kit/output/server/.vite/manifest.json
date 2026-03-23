@@ -123,6 +123,15 @@
     "file": "entries/pages/_page.svelte.js",
     "name": "entries/pages/_page.svelte",
     "src": "src/routes/+page.svelte",
-    "isEntry": true
+    "isEntry": true,
+    "imports": [
+      "_exports.js",
+      "_utils2.js",
+      "_root.js",
+      "_state.svelte.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.CAM201fI.css"
+    ]
   }
 }

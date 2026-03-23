@@ -1,9 +1,9 @@
 import { createConnectTransport } from '@connectrpc/connect-web';
 import { createClient, type Interceptor } from '@connectrpc/connect';
-import { GraphService } from './gen/specgraph/v1/graph_connect';
-import { SpecService } from './gen/specgraph/v1/spec_connect';
-import { DecisionService } from './gen/specgraph/v1/decision_connect';
-import { LifecycleService } from './gen/specgraph/v1/lifecycle_connect';
+import { GraphService } from './gen/specgraph/v1/graph_pb';
+import { SpecService } from './gen/specgraph/v1/spec_pb';
+import { DecisionService } from './gen/specgraph/v1/decision_pb';
+import { LifecycleService } from './gen/specgraph/v1/lifecycle_pb';
 
 const projectInterceptor: Interceptor = (next) => async (req) => {
   req.header.set('X-Specgraph-Project', 'default');
