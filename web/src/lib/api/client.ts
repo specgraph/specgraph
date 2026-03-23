@@ -4,9 +4,10 @@ import { GraphService } from './gen/specgraph/v1/graph_pb';
 import { SpecService } from './gen/specgraph/v1/spec_pb';
 import { DecisionService } from './gen/specgraph/v1/decision_pb';
 import { LifecycleService } from './gen/specgraph/v1/lifecycle_pb';
+import { project } from '$lib/project.svelte';
 
 const projectInterceptor: Interceptor = (next) => async (req) => {
-  req.header.set('X-Specgraph-Project', import.meta.env.VITE_SPECGRAPH_PROJECT ?? 'default');
+  req.header.set('X-Specgraph-Project', project.current || 'default');
   return next(req);
 };
 

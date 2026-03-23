@@ -97,6 +97,7 @@ declare module '$env/static/private' {
 	export const LaunchInstanceID: string;
 	export const npm_package_json: string;
 	export const __CFBundleIdentifier: string;
+	export const fish_tmux_term: string;
 	export const PWD: string;
 	export const npm_command: string;
 	export const JAVA_HOME: string;
@@ -308,6 +309,7 @@ declare module '$env/dynamic/private' {
 		LaunchInstanceID: string;
 		npm_package_json: string;
 		__CFBundleIdentifier: string;
+		fish_tmux_term: string;
 		PWD: string;
 		npm_command: string;
 		JAVA_HOME: string;

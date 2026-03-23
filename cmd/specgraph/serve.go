@@ -108,6 +108,9 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
 		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
 
+		// Register lightweight HTTP API endpoints (before static handler catch-all)
+		server.RegisterAPIHandlers(mux, store)
+
 		// Serve embedded UI static files
 		webFS, err := fs.Sub(web.Build, "build")
 		if err != nil {

@@ -37,7 +37,10 @@
   },
   "_client2.js": {
     "file": "chunks/client2.js",
-    "name": "client"
+    "name": "client",
+    "imports": [
+      "_project.svelte.js"
+    ]
   },
   "_environment.js": {
     "file": "chunks/environment.js",
@@ -63,6 +66,13 @@
     "imports": [
       "_index-server.js",
       "_environment.js"
+    ]
+  },
+  "_project.svelte.js": {
+    "file": "chunks/project.svelte.js",
+    "name": "project.svelte",
+    "imports": [
+      "_index-server.js"
     ]
   },
   "_shared.js": {
@@ -134,10 +144,11 @@
     "isEntry": true,
     "imports": [
       "_index-server.js",
-      "_stores.js"
+      "_stores.js",
+      "_project.svelte.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.B4GZ0ARd.css"
+      "_app/immutable/assets/_layout.BwJdOFPD.css"
     ]
   },
   "src/routes/+layout.ts": {
