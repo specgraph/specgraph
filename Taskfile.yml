@@ -105,6 +105,19 @@ tasks:
       - task: test:e2e:api
       - task: test:e2e:cli
       - task: test:e2e:docker
+      - task: test:e2e:ui
+  test:e2e:ui:
+    desc: Run Playwright UI E2E tests (all in Docker, no host ports needed)
+    cmds:
+      - |
+        docker compose -f e2e/ui/docker-compose.e2e.yaml up --build --abort-on-container-exit --exit-code-from playwright
+        rc=$?
+        docker compose -f e2e/ui/docker-compose.e2e.yaml down -v
+        exit $rc
+  test:e2e:ui:clean:
+    desc: Clean up UI E2E Docker resources
+    cmds:
+      - docker compose -f e2e/ui/docker-compose.e2e.yaml down -v --rmi local
   test:e2e:api:
     desc: Run API E2E tests (requires Docker for Memgraph)
     deps: [generate]
