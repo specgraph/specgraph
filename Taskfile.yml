@@ -14,6 +14,20 @@ tasks:
     deps: [build]
     cmds:
       - ./{{.BINARY_NAME}} serve
+  dev:stop:
+    desc: Stop the SpecGraph server (launchd service + Docker containers)
+    cmds:
+      - |
+        # Stop launchd service if installed
+        launchctl bootout gui/$(id -u)/com.specgraph.server 2>/dev/null || true
+        # Stop Docker containers from specgraph serve/up
+        docker compose -f "${XDG_DATA_HOME:-$HOME/.local/share}/specgraph/.specgraph/docker-compose.yaml" down 2>/dev/null || true
+  dev:reset:
+    desc: Stop server, clean all artifacts, rebuild from scratch
+    cmds:
+      - task: dev:stop
+      - task: clean
+      - task: build
   # Code Generation
   generate:
     desc: Generate all code (protobuf)
