@@ -332,6 +332,11 @@ func (s *Store) queryNodeRefs(ctx context.Context, query string, params map[stri
 		// Use named access via aliases to avoid Memgraph UNION column reordering.
 		id, _ := rec.Get("id")
 		slug, _ := rec.Get("slug")
+		// Skip null rows — Memgraph OPTIONAL MATCH chains can produce
+		// all-null rows when the initial MATCH has no results.
+		if slug == nil {
+			continue
+		}
 		label, _ := rec.Get("label")
 		stage, _ := rec.Get("stage")
 		refs = append(refs, storage.NodeRef{
