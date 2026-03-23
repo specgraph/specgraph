@@ -1,6 +1,5 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { onMount } from 'svelte';
   import { decisionClient } from '$lib/api/client';
   import type { Decision } from '$lib/api/gen/specgraph/v1/decision_pb';
   import { DecisionStatus } from '$lib/api/gen/specgraph/v1/decision_pb';
@@ -21,7 +20,7 @@
     }
   }
 
-  onMount(async () => {
+  async function loadDecision() {
     try {
       const resp = await decisionClient.getDecision({ slug });
       decision = resp.decision ?? null;
@@ -30,7 +29,9 @@
     } finally {
       loading = false;
     }
-  });
+  }
+
+  $effect(() => { loadDecision(); });
 </script>
 
 <nav class="breadcrumb">

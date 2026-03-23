@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { graphClient } from '$lib/api/client';
   import type { GraphNode, Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
   import Graph from '$lib/components/Graph.svelte';
@@ -11,7 +10,7 @@
   let loading = $state(true);
   let error = $state<string | null>(null);
 
-  onMount(async () => {
+  async function loadGraph() {
     try {
       const resp = await graphClient.getFullGraph({});
       nodes = resp.nodes ?? [];
@@ -22,6 +21,10 @@
     } finally {
       loading = false;
     }
+  }
+
+  $effect(() => {
+    loadGraph();
   });
 </script>
 

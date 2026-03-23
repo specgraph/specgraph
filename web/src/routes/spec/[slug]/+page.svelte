@@ -1,6 +1,5 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { onMount } from 'svelte';
   import { specClient } from '$lib/api/client';
   import type { Spec } from '$lib/api/gen/specgraph/v1/spec_pb';
 
@@ -10,7 +9,7 @@
 
   let slug = $derived($page.params.slug);
 
-  onMount(async () => {
+  async function loadSpec() {
     try {
       const resp = await specClient.getSpec({ slug });
       spec = resp.spec ?? null;
@@ -19,7 +18,9 @@
     } finally {
       loading = false;
     }
-  });
+  }
+
+  $effect(() => { loadSpec(); });
 </script>
 
 <nav class="breadcrumb">
