@@ -166,13 +166,18 @@ func runDrift(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("drift check: %w", err)
 	}
+	reports := resp.Msg.GetReports()
+
+	// Render output (JSON or markdown).
 	if driftJSON {
-		return printJSON(cmd.OutOrStdout(), resp.Msg)
+		if err = printJSON(cmd.OutOrStdout(), resp.Msg); err != nil {
+			return err
+		}
+	} else {
+		fmt.Print(render.DriftReport(reports))
 	}
 
-	reports := resp.Msg.GetReports()
-	fmt.Print(render.DriftReport(reports))
-
+	// Exit code logic: non-zero exit for errors or drift regardless of output format.
 	var hasErrors, hasDrift bool
 	for _, r := range reports {
 		if r.GetErrorMessage() != "" {
