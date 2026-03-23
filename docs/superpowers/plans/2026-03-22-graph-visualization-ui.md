@@ -122,7 +122,7 @@ Expected: Success (this only builds the interface file, not implementors like me
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(storage): add GraphNode type and GetFullGraph interface method"
 ```
 
@@ -208,7 +208,7 @@ Expected: Success
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(memgraph): implement GetFullGraph Cypher queries"
 ```
 
@@ -235,7 +235,7 @@ Expected: Success (stubBackend now satisfies updated ScopedBackend)
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj --no-pager commit -m "test(server): add GetFullGraph stub to stubBackend"
 ```
 
@@ -286,7 +286,7 @@ Expected: Success
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(proto): add GetFullGraph RPC with GraphNode message"
 ```
 
@@ -375,7 +375,7 @@ Expected: Compilation error — `GetFullGraph` method not on `GraphHandler`
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 jj --no-pager commit -m "test(server): add failing test for GetFullGraph handler"
 ```
 
@@ -443,7 +443,7 @@ Expected: All tests pass
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(server): implement GetFullGraph handler"
 ```
 
@@ -488,7 +488,7 @@ Expected: Success
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(server): add CORS middleware for dev mode"
 ```
 
@@ -545,7 +545,7 @@ Expected: Success
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(server): add static file handler with SPA catch-all"
 ```
 
@@ -639,7 +639,7 @@ Expected: Success
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(serve): wire embedded UI, CORS flag, and static file serving"
 ```
 
@@ -660,7 +660,7 @@ Expected: All checks pass (lint, build, tests)
 
 - [ ] **Step 4: Fix any issues and commit**
 
-```
+```text
 jj --no-pager commit -m "chore: fix lint and formatting for graph viz backend"
 ```
 
@@ -707,7 +707,7 @@ Expected: Success
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(proto): add TypeScript connect-es codegen to buf.gen.yaml"
 ```
 
@@ -869,7 +869,7 @@ Expected: Build succeeds, `web/build/` contains `index.html`
 
 - [ ] **Step 10: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(web): scaffold SvelteKit project with adapter-static"
 ```
 
@@ -915,7 +915,7 @@ export const lifecycleClient = createClient(LifecycleService, transport);
 
 - [ ] **Step 2: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(web): add ConnectRPC client setup"
 ```
 
@@ -961,7 +961,7 @@ Update the existing `build` task to depend on `web:build`:
 
 - [ ] **Step 2: Commit**
 
-```
+```text
 jj --no-pager commit -m "chore(taskfile): add web:dev, web:build tasks"
 ```
 
@@ -975,7 +975,7 @@ jj --no-pager commit -m "chore(taskfile): add web:dev, web:build tasks"
 
 Add to `.gitignore`:
 
-```
+```text
 # Web UI
 web/node_modules/
 web/build/
@@ -984,7 +984,7 @@ web/.svelte-kit/
 
 - [ ] **Step 2: Commit**
 
-```
+```text
 jj --no-pager commit -m "chore: add web UI entries to .gitignore"
 ```
 
@@ -1078,7 +1078,7 @@ Expected: Vite starts on `:5173`, page loads with nav bar
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(web): add shared layout with navigation"
 ```
 
@@ -1401,7 +1401,7 @@ Expected: No errors (warnings about unused imports are OK at this stage)
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(web): add Graph component with Dagre layout and SVG rendering"
 ```
 
@@ -1678,7 +1678,7 @@ Create `web/src/lib/components/GraphMini.svelte`:
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(web): add StatsBar, FunnelBar, SearchFilter, GraphMini components"
 ```
 
@@ -1768,7 +1768,7 @@ Expected: Build succeeds (static output in `web/build/`)
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(web): add dashboard page with stats, funnel, and mini graph"
 ```
 
@@ -1834,7 +1834,7 @@ Create `web/src/routes/graph/+page.svelte`:
 
 - [ ] **Step 2: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(web): add full graph page with search filter"
 ```
 
@@ -1969,7 +1969,7 @@ Create `web/src/routes/spec/[slug]/+page.svelte`:
 
 - [ ] **Step 2: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(web): add spec detail page"
 ```
 
@@ -2116,7 +2116,7 @@ Create `web/src/routes/decision/[slug]/+page.svelte`:
 
 - [ ] **Step 2: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(web): add decision detail page"
 ```
 
@@ -2140,7 +2140,7 @@ Expected: `web/build/` contains `index.html`, `_app/` with JS/CSS bundles
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj --no-pager commit -m "chore(web): verify SvelteKit production build"
 ```
 
@@ -2218,7 +2218,7 @@ Expected: PASS
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 jj --no-pager commit -m "test(e2e): add GetFullGraph integration test"
 ```
 
@@ -2241,7 +2241,7 @@ Expected: All e2e API tests pass
 
 - [ ] **Step 4: Final commit if any fixes were needed**
 
-```
+```text
 jj --no-pager commit -m "chore: fix lint and formatting for graph viz UI"
 ```
 
@@ -2255,7 +2255,7 @@ The UI needs end-to-end browser tests that verify the SPA works against a real S
 
 ### Architecture
 
-```
+```text
 docker-compose.e2e.yaml
 ├── memgraph        (memgraph/memgraph-platform:2.4.0)
 ├── specgraph       (built from repo Dockerfile + web assets)
@@ -2339,7 +2339,7 @@ cd e2e/ui && pnpm install
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(e2e): scaffold Playwright test project for UI e2e"
 ```
 
@@ -2514,7 +2514,7 @@ test.describe('Detail Pages', () => {
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj --no-pager commit -m "test(e2e): add Playwright UI tests for navigation, graph, and detail pages"
 ```
 
@@ -2641,7 +2641,7 @@ ENTRYPOINT ["specgraph"]
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 jj --no-pager commit -m "feat(e2e): add Docker Compose stack for Playwright UI e2e tests"
 ```
 
@@ -2686,7 +2686,7 @@ Modify the existing `test:e2e` task to include the new UI e2e suite:
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 jj --no-pager commit -m "chore(taskfile): add test:e2e:ui task, include in test:e2e"
 ```
 
@@ -2700,7 +2700,7 @@ jj --no-pager commit -m "chore(taskfile): add test:e2e:ui task, include in test:
 
 Add to `.gitignore`:
 
-```
+```text
 # Playwright
 e2e/ui/test-results/
 e2e/ui/node_modules/
@@ -2708,7 +2708,7 @@ e2e/ui/node_modules/
 
 - [ ] **Step 2: Commit**
 
-```
+```text
 jj --no-pager commit -m "chore: add Playwright e2e artifacts to .gitignore"
 ```
 
@@ -2731,6 +2731,6 @@ Expected: All e2e suites pass (API, CLI, Docker, UI)
 
 - [ ] **Step 4: Final commit if any fixes were needed**
 
-```
+```text
 jj --no-pager commit -m "chore: fix issues from full e2e run"
 ```

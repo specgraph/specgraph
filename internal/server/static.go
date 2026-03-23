@@ -22,7 +22,10 @@ func StaticHandler(fsys fs.FS) http.Handler {
 		// Check if the file exists in the embedded FS
 		f, err := fsys.Open(path)
 		if err == nil {
-			f.Close()
+			if closeErr := f.Close(); closeErr != nil {
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
 			fileServer.ServeHTTP(w, r)
 			return
 		}

@@ -119,7 +119,10 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		handler := server.ProjectMiddleware(mux)
 
 		// Optional CORS for dev mode (Vite on :5173 → Go on :8080)
-		corsOrigin, _ := cmd.Flags().GetString("cors-origin")
+		corsOrigin, err := cmd.Flags().GetString("cors-origin")
+		if err != nil {
+			return fmt.Errorf("cors-origin flag: %w", err)
+		}
 		if corsOrigin != "" {
 			handler = server.CORSMiddleware(corsOrigin, handler)
 		}
