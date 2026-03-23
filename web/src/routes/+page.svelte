@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { specClient, graphClient, decisionClient, lifecycleClient } from '$lib/api/client';
   import type { GraphNode, Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
   import StatsBar from '$lib/components/StatsBar.svelte';
@@ -49,7 +48,7 @@
     }
   }
 
-  onMount(() => { loadDashboard(); });
+  $effect(() => { loadDashboard(); });
 </script>
 
 <h1>Dashboard</h1>

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { specClient } from '$lib/api/client';
   import type { Spec } from '$lib/api/gen/specgraph/v1/spec_pb';
@@ -21,7 +20,7 @@
     }
   }
 
-  onMount(() => { loadSpec(slug); });
+  $effect(() => { loadSpec(slug); });
 </script>
 
 <nav class="breadcrumb">

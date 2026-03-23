@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { decisionClient } from '$lib/api/client';
   import type { Decision } from '$lib/api/gen/specgraph/v1/decision_pb';
@@ -32,7 +31,7 @@
     }
   }
 
-  onMount(() => { loadDecision(slug); });
+  $effect(() => { loadDecision(slug); });
 </script>
 
 <nav class="breadcrumb">
