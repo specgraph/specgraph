@@ -4329,6 +4329,7 @@ export {
   attr_class as a,
   unsubscribe_stores as b,
   safe_not_equal as c,
+  derived as d,
   escape_html as e,
   getContext as g,
   noop as n,

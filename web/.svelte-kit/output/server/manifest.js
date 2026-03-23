@@ -10,11 +10,14 @@ return {
 	assets: new Set([]),
 	mimeTypes: {},
 	_: {
-		client: {start:"_app/immutable/entry/start.DX12aSN2.js",app:"_app/immutable/entry/app.DdIwIkOT.js",imports:["_app/immutable/entry/start.DX12aSN2.js","_app/immutable/chunks/DaB5N9rk.js","_app/immutable/chunks/gxbwe7u6.js","_app/immutable/entry/app.DdIwIkOT.js","_app/immutable/chunks/gxbwe7u6.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		client: {start:"_app/immutable/entry/start.BAKadn-Y.js",app:"_app/immutable/entry/app.Dy8WLrIp.js",imports:["_app/immutable/entry/start.BAKadn-Y.js","_app/immutable/chunks/Bjy2ImV3.js","_app/immutable/chunks/cpNEi2H_.js","_app/immutable/chunks/UzYscr8Z.js","_app/immutable/entry/app.Dy8WLrIp.js","_app/immutable/chunks/cpNEi2H_.js","_app/immutable/chunks/UzYscr8Z.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
 		nodes: [
 			__memo(() => import('./nodes/0.js')),
 			__memo(() => import('./nodes/1.js')),
-			__memo(() => import('./nodes/2.js'))
+			__memo(() => import('./nodes/2.js')),
+			__memo(() => import('./nodes/3.js')),
+			__memo(() => import('./nodes/4.js')),
+			__memo(() => import('./nodes/5.js'))
 		],
 		remotes: {
 			
@@ -25,6 +28,27 @@ return {
 				pattern: /^\/$/,
 				params: [],
 				page: { layouts: [0,], errors: [1,], leaf: 2 },
+				endpoint: null
+			},
+			{
+				id: "/decision/[slug]",
+				pattern: /^\/decision\/([^/]+?)\/?$/,
+				params: [{"name":"slug","optional":false,"rest":false,"chained":false}],
+				page: { layouts: [0,], errors: [1,], leaf: 3 },
+				endpoint: null
+			},
+			{
+				id: "/graph",
+				pattern: /^\/graph\/?$/,
+				params: [],
+				page: { layouts: [0,], errors: [1,], leaf: 4 },
+				endpoint: null
+			},
+			{
+				id: "/spec/[slug]",
+				pattern: /^\/spec\/([^/]+?)\/?$/,
+				params: [{"name":"slug","optional":false,"rest":false,"chained":false}],
+				page: { layouts: [0,], errors: [1,], leaf: 5 },
 				endpoint: null
 			}
 		],
