@@ -11,7 +11,8 @@ export async function seedSpec(request: APIRequestContext, slug: string, intent:
     headers: BASE_HEADERS,
     data: { slug, intent, priority },
   });
-  expect(resp.ok(), `seedSpec(${slug}) failed: ${resp.status()} ${await resp.text()}`).toBeTruthy();
+  // 409 = already_exists, which is fine for idempotent seeding
+  expect(resp.ok() || resp.status() === 409, `seedSpec(${slug}) failed: ${resp.status()} ${await resp.text()}`).toBeTruthy();
 }
 
 export async function seedEdge(request: APIRequestContext, fromSlug: string, toSlug: string): Promise<void> {
@@ -19,7 +20,7 @@ export async function seedEdge(request: APIRequestContext, fromSlug: string, toS
     headers: BASE_HEADERS,
     data: { from_slug: fromSlug, to_slug: toSlug, edge_type: 'EDGE_TYPE_DEPENDS_ON' },
   });
-  expect(resp.ok(), `seedEdge(${fromSlug}->${toSlug}) failed: ${resp.status()} ${await resp.text()}`).toBeTruthy();
+  expect(resp.ok() || resp.status() === 409, `seedEdge(${fromSlug}->${toSlug}) failed: ${resp.status()} ${await resp.text()}`).toBeTruthy();
 }
 
 export async function seedDecision(request: APIRequestContext, slug: string, title: string): Promise<void> {
@@ -27,5 +28,5 @@ export async function seedDecision(request: APIRequestContext, slug: string, tit
     headers: BASE_HEADERS,
     data: { slug, title, decision: 'Test decision text', rationale: 'Test rationale' },
   });
-  expect(resp.ok(), `seedDecision(${slug}) failed: ${resp.status()} ${await resp.text()}`).toBeTruthy();
+  expect(resp.ok() || resp.status() === 409, `seedDecision(${slug}) failed: ${resp.status()} ${await resp.text()}`).toBeTruthy();
 }

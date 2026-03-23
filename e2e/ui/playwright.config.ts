@@ -9,5 +9,5 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'test-results/html' }]],
+  reporter: [['list'], ['html', { open: 'never', outputFolder: 'html-report' }]],
 });
