@@ -48,6 +48,7 @@ Verify the plugin loaded by typing `/specgraph:specgraph` — this invokes the r
 - Checks Docker, runs `specgraph init` (derives slug from git remote)
 - Falls back to `specgraph serve` if launchd service install fails (common in sandboxed environments)
 - Verifies health, lists specs (empty), detects no constitution
+- The web UI is now served on the same port as the API — open `http://localhost:8080` in a browser at any point to see the dashboard and graph
 - Offers to set up constitution
 
 ---
@@ -230,15 +231,44 @@ Agent ran all prerequisites (`specgraph show`, `specgraph deps`, `specgraph cons
 
 ## Act 4: Graph Exploration
 
-### You Say
+### 4a. Web UI — Visual Graph Explorer
 
-> Show me the spec and its graph relationships
+Open the SpecGraph dashboard in your browser:
 
-### What Happens
+```
+http://localhost:8080
+```
 
-- `specgraph show webhook-stage-notifications` — full spec with all stage outputs
-- `specgraph deps webhook-stage-notifications` — dependency tree
-- `specgraph list` — all specs
+**Dashboard (`/`)** — shows at a glance:
+
+- Stats cards: total specs, ready count, drift count, decisions
+- Authoring funnel bar: color-coded by stage (spark → shape → specify → decompose → approved → done)
+- Mini graph preview: compact dependency graph, click to expand
+
+**Graph View (`/graph`)** — click "Graph" in the nav bar:
+
+- Interactive Dagre-layouted dependency graph
+- Specs are rounded rectangles, decisions are diamonds
+- Color-coded by stage (purple=spark, blue=shape, green=specify, amber=decompose, teal=approved, gray=done)
+- Hover any node for a tooltip (slug, intent, stage, priority)
+- Click a node to navigate to its detail page
+- Use the search bar to filter — matching nodes stay highlighted, non-matching fade out
+- Pan (drag background) and zoom (mouse wheel) to explore large graphs
+
+**Detail Pages** — click any node in the graph:
+
+- `/spec/webhook-stage-notifications` — full metadata, notes, breadcrumb nav back to graph
+- `/decision/webhook-event-dispatch-model` — decision text, rationale, context
+
+### 4b. CLI — Query the Graph
+
+For CLI users and scripting:
+
+```bash
+specgraph show webhook-stage-notifications    # full spec with all stage outputs
+specgraph deps webhook-stage-notifications    # dependency tree
+specgraph list                                 # all specs
+```
 
 ---
 
