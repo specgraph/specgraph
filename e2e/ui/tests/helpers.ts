@@ -1,6 +1,7 @@
 import { type Page, type APIRequestContext, expect } from '@playwright/test';
 
-const PROJECT = 'e2e-ui-test';
+// Must match the project in web/src/lib/api/client.ts interceptor
+const PROJECT = 'default';
 const BASE_URL = process.env.SPECGRAPH_BASE_URL ?? 'http://specgraph:9090';
 const BASE_HEADERS = { 'Content-Type': 'application/json', 'Connect-Protocol-Version': '1', 'X-Specgraph-Project': PROJECT };
 
