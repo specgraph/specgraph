@@ -43,6 +43,8 @@ var plistTmpl = template.Must(template.New("plist").Parse(`<?xml version="1.0" e
   <dict>
     <key>SPECGRAPH_CONFIG</key>
     <string>{{.ConfigPath}}</string>
+    <key>PATH</key>
+    <string>{{.Path}}</string>
   </dict>
 </dict>
 </plist>
@@ -53,6 +55,7 @@ type escapedConfig struct {
 	BinaryPath string
 	ConfigPath string
 	LogPath    string
+	Path       string
 }
 
 // xmlEscape returns s with XML special characters escaped for safe plist embedding.
@@ -76,6 +79,7 @@ func generate(dir string, cfg Config) (string, error) {
 		BinaryPath: xmlEscape(cfg.BinaryPath),
 		ConfigPath: xmlEscape(cfg.ConfigPath),
 		LogPath:    xmlEscape(cfg.LogPath),
+		Path:       xmlEscape(os.Getenv("PATH")),
 	}
 	if err := plistTmpl.Execute(f, escaped); err != nil {
 		return "", fmt.Errorf("render plist template: %w", err)
@@ -85,6 +89,14 @@ func generate(dir string, cfg Config) (string, error) {
 
 func install(defPath string) error {
 	uid := os.Getuid()
+
+	// If the service is already bootstrapped (e.g., from a previous run),
+	// bootout first — launchctl bootstrap fails with exit 5 if the label
+	// is already loaded.
+	service := fmt.Sprintf("gui/%d/%s", uid, launchdLabel)
+	bootout := exec.Command("launchctl", "bootout", service)
+	_ = bootout.Run() //nolint:errcheck // intentionally ignore error: service may not be loaded
+
 	target := fmt.Sprintf("gui/%d", uid)
 	cmd := exec.Command("launchctl", "bootstrap", target, defPath)
 	if out, err := cmd.CombinedOutput(); err != nil {

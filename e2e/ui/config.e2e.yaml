@@ -1,0 +1,6 @@
+server:
+  listen: "0.0.0.0:9090"
+  backend: memgraph
+  docker: false
+  memgraph:
+    bolt_uri: bolt://memgraph:7687

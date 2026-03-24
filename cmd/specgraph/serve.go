@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,6 +24,7 @@ import (
 	"github.com/specgraph/specgraph/internal/storage/memgraph"
 	syncpkg "github.com/specgraph/specgraph/internal/sync"
 	"github.com/specgraph/specgraph/internal/xdg"
+	"github.com/specgraph/specgraph/web"
 	"github.com/spf13/cobra"
 )
 
@@ -33,10 +35,11 @@ var serveCmd = &cobra.Command{
 }
 
 func init() {
+	serveCmd.Flags().String("cors-origin", "", "Enable CORS for this origin (dev mode only)")
 	rootCmd.AddCommand(serveCmd)
 }
 
-func runServe(_ *cobra.Command, _ []string) error {
+func runServe(cmd *cobra.Command, _ []string) error {
 	cfg, err := config.LoadGlobal(xdg.ConfigFile())
 	if err != nil {
 		return fmt.Errorf("load global config: %w", err)
@@ -105,7 +108,27 @@ func runServe(_ *cobra.Command, _ []string) error {
 		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
 		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
 
+		// Register lightweight HTTP API endpoints (before static handler catch-all)
+		server.RegisterAPIHandlers(mux, store)
+
+		// Serve embedded UI static files
+		webFS, err := fs.Sub(web.Build, "build")
+		if err != nil {
+			return fmt.Errorf("embedded web FS: %w", err)
+		}
+		// Register static handler as catch-all (after ConnectRPC paths)
+		mux.Handle("/", server.StaticHandler(webFS))
+
 		handler := server.ProjectMiddleware(mux)
+
+		// Optional CORS for dev mode (Vite on :5173 → Go on :8080)
+		corsOrigin, err := cmd.Flags().GetString("cors-origin")
+		if err != nil {
+			return fmt.Errorf("cors-origin flag: %w", err)
+		}
+		if corsOrigin != "" {
+			handler = server.CORSMiddleware(corsOrigin, handler)
+		}
 		addr := cfg.Server.Listen
 		srv := &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 

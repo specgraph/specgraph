@@ -98,6 +98,21 @@ message GetCriticalPathResponse {
   repeated NodeRef path = 1;
 }
 
+message GetFullGraphRequest {}
+
+message GraphNode {
+  string slug = 1;
+  string label = 2;      // "Spec" or "Decision"
+  string stage = 3;       // authoring stage or decision status
+  string intent = 4;      // spec intent or decision title
+  string priority = 5;    // p0-p3 (specs only, empty for decisions)
+}
+
+message GetFullGraphResponse {
+  repeated GraphNode nodes = 1;
+  repeated Edge edges = 2;
+}
+
 // --- Service ---
 
 service GraphService {
@@ -109,4 +124,5 @@ service GraphService {
   rpc GetImpact(GetImpactRequest) returns (GetImpactResponse);
   rpc GetReady(GetReadyRequest) returns (GetReadyResponse);
   rpc GetCriticalPath(GetCriticalPathRequest) returns (GetCriticalPathResponse);
+  rpc GetFullGraph(GetFullGraphRequest) returns (GetFullGraphResponse);
 }

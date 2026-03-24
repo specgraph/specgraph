@@ -111,6 +111,59 @@ var _ = Describe("graph queries", Ordered, func() {
 		Expect(slugs).To(ContainElement("gq-a"))
 		Expect(slugs).To(ContainElement("gq-b"))
 	})
+
+	It("returns all nodes and edges via GetFullGraph", func() {
+		// Create two specs with unique slugs for this test.
+		_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+			Slug: "gfg-parent", Intent: "Parent spec", Priority: "p1",
+		}))
+		Expect(err).NotTo(HaveOccurred())
+		_, err = specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+			Slug: "gfg-child", Intent: "Child spec", Priority: "p2",
+		}))
+		Expect(err).NotTo(HaveOccurred())
+
+		// Add dependency edge.
+		_, err = graphClient.AddEdge(ctx, connect.NewRequest(&specv1.AddEdgeRequest{
+			FromSlug: "gfg-child", ToSlug: "gfg-parent",
+			EdgeType: specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
+		}))
+		Expect(err).NotTo(HaveOccurred())
+
+		// GetFullGraph returns the whole graph.
+		resp, err := graphClient.GetFullGraph(ctx, connect.NewRequest(&specv1.GetFullGraphRequest{}))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(len(resp.Msg.Nodes)).To(BeNumerically(">=", 2))
+
+		// Find our nodes.
+		slugs := make([]string, 0)
+		for _, n := range resp.Msg.Nodes {
+			slugs = append(slugs, n.Slug)
+		}
+		Expect(slugs).To(ContainElements("gfg-parent", "gfg-child"))
+
+		// Verify edge exists and all edge types are user-facing.
+		Expect(len(resp.Msg.Edges)).To(BeNumerically(">=", 1))
+		validEdgeTypes := map[specv1.EdgeType]bool{
+			specv1.EdgeType_EDGE_TYPE_DEPENDS_ON: true,
+			specv1.EdgeType_EDGE_TYPE_BLOCKS:     true,
+			specv1.EdgeType_EDGE_TYPE_COMPOSES:   true,
+			specv1.EdgeType_EDGE_TYPE_RELATES_TO: true,
+			specv1.EdgeType_EDGE_TYPE_INFORMS:    true,
+			specv1.EdgeType_EDGE_TYPE_DECIDED_IN: true,
+			specv1.EdgeType_EDGE_TYPE_SUPERSEDES: true,
+		}
+		var foundEdge bool
+		for _, e := range resp.Msg.Edges {
+			if e.FromId == "gfg-child" && e.ToId == "gfg-parent" {
+				foundEdge = true
+				Expect(e.EdgeType).To(Equal(specv1.EdgeType_EDGE_TYPE_DEPENDS_ON))
+			}
+			// All returned edge types must be user-facing (not internal like HAS_CHANGE, HAS_FINDING).
+			Expect(validEdgeTypes).To(HaveKey(e.EdgeType), "unexpected edge type: %v", e.EdgeType)
+		}
+		Expect(foundEdge).To(BeTrue())
+	})
 })
 
 // extractSlugs is a helper to pull slug strings from a slice of NodeRef.

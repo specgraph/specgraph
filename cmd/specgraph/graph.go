@@ -23,11 +23,11 @@ var depsCmd = &cobra.Command{
 }
 
 var (
-	depsTransitive  bool
-	depsJSON        bool
-	readyJSON       bool
+	depsTransitive   bool
+	depsJSON         bool
+	readyJSON        bool
 	criticalPathJSON bool
-	impactJSON      bool
+	impactJSON       bool
 )
 
 func init() {
