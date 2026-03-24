@@ -408,4 +408,50 @@ service AuthoringService {
   rpc Supersede(SupersedeRequest) returns (SupersedeResponse);
   // GetPrompts returns prompt templates for a given authoring stage.
   rpc GetPrompts(GetPromptsRequest) returns (GetPromptsResponse);
+  // RecordConversation stores authoring conversation exchanges for a spec stage.
+  rpc RecordConversation(RecordConversationRequest) returns (RecordConversationResponse);
+  // ListConversations returns conversation logs for a spec, in narrative order.
+  rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
+}
+
+// --- Conversation Log ---
+
+// ConversationExchange represents a single probe/response pair from an authoring session.
+message ConversationExchange {
+  string role = 1;           // "probe" or "response"
+  string content = 2;        // the text of the exchange
+  string stage = 3;          // authoring stage (spark, shape, specify, decompose, approve)
+  int32 sequence = 4;        // pairs probes with their responses (same sequence = same pair)
+  bool decision_point = 5;   // true if user made a judgment call between alternatives
+}
+
+// ConversationLog captures the authoring conversation for a single stage completion.
+message ConversationLog {
+  string id = 1;                              // cvl-prefixed ULID
+  string stage = 2;                           // authoring stage
+  int32 version = 3;                          // spec version at capture time
+  bool is_amend = 4;                          // true if this was an amend re-entry
+  repeated ConversationExchange exchanges = 5;
+  int32 exchange_count = 6;                   // number of exchanges
+  google.protobuf.Timestamp date = 7;         // creation timestamp
+}
+
+message RecordConversationRequest {
+  string slug = 1;                            // spec slug
+  string stage = 2;                           // authoring stage
+  repeated ConversationExchange exchanges = 3;
+  bool is_amend = 4;
+}
+
+message RecordConversationResponse {
+  ConversationLog conversation_log = 1;
+}
+
+message ListConversationsRequest {
+  string slug = 1;
+  string stage = 2;  // optional filter; empty = all stages
+}
+
+message ListConversationsResponse {
+  repeated ConversationLog conversation_logs = 1;
 }

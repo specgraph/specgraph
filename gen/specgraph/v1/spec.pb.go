@@ -75,23 +75,24 @@ func (SpecLifecycle) EnumDescriptor() ([]byte, []int) {
 }
 
 type Spec struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                 // stable ULID, e.g. "spec-01JQXYZ..."
-	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`             // human-readable, e.g. "oauth-refresh-rotation"
-	Intent        string                 `protobuf:"bytes,3,opt,name=intent,proto3" json:"intent,omitempty"`         // what this spec is about
-	Stage         string                 `protobuf:"bytes,4,opt,name=stage,proto3" json:"stage,omitempty"`           // spark | shape | specify | decompose | approved | in_progress | done
-	Priority      string                 `protobuf:"bytes,5,opt,name=priority,proto3" json:"priority,omitempty"`     // p0 | p1 | p2 | p3
-	Complexity    string                 `protobuf:"bytes,6,opt,name=complexity,proto3" json:"complexity,omitempty"` // low | medium | high
-	Version       int32                  `protobuf:"varint,7,opt,name=version,proto3" json:"version,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	Lifecycle     SpecLifecycle          `protobuf:"varint,10,opt,name=lifecycle,proto3,enum=specgraph.v1.SpecLifecycle" json:"lifecycle,omitempty"` // task (default) | living
-	SupersededBy  string                 `protobuf:"bytes,11,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"`        // slug of replacement spec, if superseded
-	Supersedes    string                 `protobuf:"bytes,12,opt,name=supersedes,proto3" json:"supersedes,omitempty"`                                // slug of spec this replaced
-	Notes         string                 `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"`                                          // free-text notes (conversation summaries, context)
-	ContentHash   string                 `protobuf:"bytes,15,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"`           // Murmur3-128 hex digest of substantive fields; changes on every mutation
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                 // stable ULID, e.g. "spec-01JQXYZ..."
+	Slug             string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`             // human-readable, e.g. "oauth-refresh-rotation"
+	Intent           string                 `protobuf:"bytes,3,opt,name=intent,proto3" json:"intent,omitempty"`         // what this spec is about
+	Stage            string                 `protobuf:"bytes,4,opt,name=stage,proto3" json:"stage,omitempty"`           // spark | shape | specify | decompose | approved | in_progress | done
+	Priority         string                 `protobuf:"bytes,5,opt,name=priority,proto3" json:"priority,omitempty"`     // p0 | p1 | p2 | p3
+	Complexity       string                 `protobuf:"bytes,6,opt,name=complexity,proto3" json:"complexity,omitempty"` // low | medium | high
+	Version          int32                  `protobuf:"varint,7,opt,name=version,proto3" json:"version,omitempty"`
+	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt        *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Lifecycle        SpecLifecycle          `protobuf:"varint,10,opt,name=lifecycle,proto3,enum=specgraph.v1.SpecLifecycle" json:"lifecycle,omitempty"`      // task (default) | living
+	SupersededBy     string                 `protobuf:"bytes,11,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"`             // slug of replacement spec, if superseded
+	Supersedes       string                 `protobuf:"bytes,12,opt,name=supersedes,proto3" json:"supersedes,omitempty"`                                     // slug of spec this replaced
+	Notes            string                 `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"`                                               // free-text notes (conversation summaries, context)
+	ContentHash      string                 `protobuf:"bytes,15,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"`                // Murmur3-128 hex digest of substantive fields; changes on every mutation
+	ConversationLogs []*ConversationLog     `protobuf:"bytes,16,rep,name=conversation_logs,json=conversationLogs,proto3" json:"conversation_logs,omitempty"` // authoring conversation audit trail
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Spec) Reset() {
@@ -220,6 +221,13 @@ func (x *Spec) GetContentHash() string {
 		return x.ContentHash
 	}
 	return ""
+}
+
+func (x *Spec) GetConversationLogs() []*ConversationLog {
+	if x != nil {
+		return x.ConversationLogs
+	}
+	return nil
 }
 
 type FieldChange struct {
@@ -718,7 +726,7 @@ var File_specgraph_v1_spec_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xec\x03\n" +
+	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cspecgraph/v1/authoring.proto\"\xb8\x04\n" +
 	"\x04Spec\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x16\n" +
@@ -740,7 +748,8 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"supersedes\x18\f \x01(\tR\n" +
 	"supersedes\x12\x14\n" +
 	"\x05notes\x18\x0e \x01(\tR\x05notes\x12!\n" +
-	"\fcontent_hash\x18\x0f \x01(\tR\vcontentHashJ\x04\b\r\x10\x0eR\ahistory\"]\n" +
+	"\fcontent_hash\x18\x0f \x01(\tR\vcontentHash\x12J\n" +
+	"\x11conversation_logs\x18\x10 \x03(\v2\x1d.specgraph.v1.ConversationLogR\x10conversationLogsJ\x04\b\r\x10\x0eR\ahistory\"]\n" +
 	"\vFieldChange\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\x12\x1b\n" +
 	"\told_value\x18\x02 \x01(\tR\boldValue\x12\x1b\n" +
@@ -819,28 +828,30 @@ var file_specgraph_v1_spec_proto_goTypes = []any{
 	(*GetSpecResponse)(nil),       // 9: specgraph.v1.GetSpecResponse
 	(*UpdateSpecResponse)(nil),    // 10: specgraph.v1.UpdateSpecResponse
 	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
+	(*ConversationLog)(nil),       // 12: specgraph.v1.ConversationLog
 }
 var file_specgraph_v1_spec_proto_depIdxs = []int32{
 	11, // 0: specgraph.v1.Spec.created_at:type_name -> google.protobuf.Timestamp
 	11, // 1: specgraph.v1.Spec.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: specgraph.v1.Spec.lifecycle:type_name -> specgraph.v1.SpecLifecycle
-	1,  // 3: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
-	1,  // 4: specgraph.v1.CreateSpecResponse.spec:type_name -> specgraph.v1.Spec
-	1,  // 5: specgraph.v1.GetSpecResponse.spec:type_name -> specgraph.v1.Spec
-	1,  // 6: specgraph.v1.UpdateSpecResponse.spec:type_name -> specgraph.v1.Spec
-	3,  // 7: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
-	4,  // 8: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
-	5,  // 9: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
-	7,  // 10: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
-	8,  // 11: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.CreateSpecResponse
-	9,  // 12: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.GetSpecResponse
-	6,  // 13: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
-	10, // 14: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.UpdateSpecResponse
-	11, // [11:15] is the sub-list for method output_type
-	7,  // [7:11] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	12, // 3: specgraph.v1.Spec.conversation_logs:type_name -> specgraph.v1.ConversationLog
+	1,  // 4: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
+	1,  // 5: specgraph.v1.CreateSpecResponse.spec:type_name -> specgraph.v1.Spec
+	1,  // 6: specgraph.v1.GetSpecResponse.spec:type_name -> specgraph.v1.Spec
+	1,  // 7: specgraph.v1.UpdateSpecResponse.spec:type_name -> specgraph.v1.Spec
+	3,  // 8: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
+	4,  // 9: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
+	5,  // 10: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
+	7,  // 11: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
+	8,  // 12: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.CreateSpecResponse
+	9,  // 13: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.GetSpecResponse
+	6,  // 14: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
+	10, // 15: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.UpdateSpecResponse
+	12, // [12:16] is the sub-list for method output_type
+	8,  // [8:12] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_spec_proto_init() }
@@ -848,6 +859,7 @@ func file_specgraph_v1_spec_proto_init() {
 	if File_specgraph_v1_spec_proto != nil {
 		return
 	}
+	file_specgraph_v1_authoring_proto_init()
 	file_specgraph_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

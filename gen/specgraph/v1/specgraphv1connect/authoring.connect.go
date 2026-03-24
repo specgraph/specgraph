@@ -57,6 +57,12 @@ const (
 	// AuthoringServiceGetPromptsProcedure is the fully-qualified name of the AuthoringService's
 	// GetPrompts RPC.
 	AuthoringServiceGetPromptsProcedure = "/specgraph.v1.AuthoringService/GetPrompts"
+	// AuthoringServiceRecordConversationProcedure is the fully-qualified name of the AuthoringService's
+	// RecordConversation RPC.
+	AuthoringServiceRecordConversationProcedure = "/specgraph.v1.AuthoringService/RecordConversation"
+	// AuthoringServiceListConversationsProcedure is the fully-qualified name of the AuthoringService's
+	// ListConversations RPC.
+	AuthoringServiceListConversationsProcedure = "/specgraph.v1.AuthoringService/ListConversations"
 )
 
 // AuthoringServiceClient is a client for the specgraph.v1.AuthoringService service.
@@ -77,6 +83,10 @@ type AuthoringServiceClient interface {
 	Supersede(context.Context, *connect.Request[v1.SupersedeRequest]) (*connect.Response[v1.SupersedeResponse], error)
 	// GetPrompts returns prompt templates for a given authoring stage.
 	GetPrompts(context.Context, *connect.Request[v1.GetPromptsRequest]) (*connect.Response[v1.GetPromptsResponse], error)
+	// RecordConversation stores authoring conversation exchanges for a spec stage.
+	RecordConversation(context.Context, *connect.Request[v1.RecordConversationRequest]) (*connect.Response[v1.RecordConversationResponse], error)
+	// ListConversations returns conversation logs for a spec, in narrative order.
+	ListConversations(context.Context, *connect.Request[v1.ListConversationsRequest]) (*connect.Response[v1.ListConversationsResponse], error)
 }
 
 // NewAuthoringServiceClient constructs a client for the specgraph.v1.AuthoringService service. By
@@ -138,19 +148,33 @@ func NewAuthoringServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(authoringServiceMethods.ByName("GetPrompts")),
 			connect.WithClientOptions(opts...),
 		),
+		recordConversation: connect.NewClient[v1.RecordConversationRequest, v1.RecordConversationResponse](
+			httpClient,
+			baseURL+AuthoringServiceRecordConversationProcedure,
+			connect.WithSchema(authoringServiceMethods.ByName("RecordConversation")),
+			connect.WithClientOptions(opts...),
+		),
+		listConversations: connect.NewClient[v1.ListConversationsRequest, v1.ListConversationsResponse](
+			httpClient,
+			baseURL+AuthoringServiceListConversationsProcedure,
+			connect.WithSchema(authoringServiceMethods.ByName("ListConversations")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // authoringServiceClient implements AuthoringServiceClient.
 type authoringServiceClient struct {
-	spark      *connect.Client[v1.SparkRequest, v1.SparkResponse]
-	shape      *connect.Client[v1.ShapeRequest, v1.ShapeResponse]
-	specify    *connect.Client[v1.SpecifyRequest, v1.SpecifyResponse]
-	decompose  *connect.Client[v1.DecomposeRequest, v1.DecomposeResponse]
-	approve    *connect.Client[v1.ApproveRequest, v1.ApproveResponse]
-	amend      *connect.Client[v1.AmendRequest, v1.AmendResponse]
-	supersede  *connect.Client[v1.SupersedeRequest, v1.SupersedeResponse]
-	getPrompts *connect.Client[v1.GetPromptsRequest, v1.GetPromptsResponse]
+	spark              *connect.Client[v1.SparkRequest, v1.SparkResponse]
+	shape              *connect.Client[v1.ShapeRequest, v1.ShapeResponse]
+	specify            *connect.Client[v1.SpecifyRequest, v1.SpecifyResponse]
+	decompose          *connect.Client[v1.DecomposeRequest, v1.DecomposeResponse]
+	approve            *connect.Client[v1.ApproveRequest, v1.ApproveResponse]
+	amend              *connect.Client[v1.AmendRequest, v1.AmendResponse]
+	supersede          *connect.Client[v1.SupersedeRequest, v1.SupersedeResponse]
+	getPrompts         *connect.Client[v1.GetPromptsRequest, v1.GetPromptsResponse]
+	recordConversation *connect.Client[v1.RecordConversationRequest, v1.RecordConversationResponse]
+	listConversations  *connect.Client[v1.ListConversationsRequest, v1.ListConversationsResponse]
 }
 
 // Spark calls specgraph.v1.AuthoringService.Spark.
@@ -193,6 +217,16 @@ func (c *authoringServiceClient) GetPrompts(ctx context.Context, req *connect.Re
 	return c.getPrompts.CallUnary(ctx, req)
 }
 
+// RecordConversation calls specgraph.v1.AuthoringService.RecordConversation.
+func (c *authoringServiceClient) RecordConversation(ctx context.Context, req *connect.Request[v1.RecordConversationRequest]) (*connect.Response[v1.RecordConversationResponse], error) {
+	return c.recordConversation.CallUnary(ctx, req)
+}
+
+// ListConversations calls specgraph.v1.AuthoringService.ListConversations.
+func (c *authoringServiceClient) ListConversations(ctx context.Context, req *connect.Request[v1.ListConversationsRequest]) (*connect.Response[v1.ListConversationsResponse], error) {
+	return c.listConversations.CallUnary(ctx, req)
+}
+
 // AuthoringServiceHandler is an implementation of the specgraph.v1.AuthoringService service.
 type AuthoringServiceHandler interface {
 	// Spark creates a new spec and enters the spark stage.
@@ -211,6 +245,10 @@ type AuthoringServiceHandler interface {
 	Supersede(context.Context, *connect.Request[v1.SupersedeRequest]) (*connect.Response[v1.SupersedeResponse], error)
 	// GetPrompts returns prompt templates for a given authoring stage.
 	GetPrompts(context.Context, *connect.Request[v1.GetPromptsRequest]) (*connect.Response[v1.GetPromptsResponse], error)
+	// RecordConversation stores authoring conversation exchanges for a spec stage.
+	RecordConversation(context.Context, *connect.Request[v1.RecordConversationRequest]) (*connect.Response[v1.RecordConversationResponse], error)
+	// ListConversations returns conversation logs for a spec, in narrative order.
+	ListConversations(context.Context, *connect.Request[v1.ListConversationsRequest]) (*connect.Response[v1.ListConversationsResponse], error)
 }
 
 // NewAuthoringServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -268,6 +306,18 @@ func NewAuthoringServiceHandler(svc AuthoringServiceHandler, opts ...connect.Han
 		connect.WithSchema(authoringServiceMethods.ByName("GetPrompts")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authoringServiceRecordConversationHandler := connect.NewUnaryHandler(
+		AuthoringServiceRecordConversationProcedure,
+		svc.RecordConversation,
+		connect.WithSchema(authoringServiceMethods.ByName("RecordConversation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	authoringServiceListConversationsHandler := connect.NewUnaryHandler(
+		AuthoringServiceListConversationsProcedure,
+		svc.ListConversations,
+		connect.WithSchema(authoringServiceMethods.ByName("ListConversations")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/specgraph.v1.AuthoringService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuthoringServiceSparkProcedure:
@@ -286,6 +336,10 @@ func NewAuthoringServiceHandler(svc AuthoringServiceHandler, opts ...connect.Han
 			authoringServiceSupersedeHandler.ServeHTTP(w, r)
 		case AuthoringServiceGetPromptsProcedure:
 			authoringServiceGetPromptsHandler.ServeHTTP(w, r)
+		case AuthoringServiceRecordConversationProcedure:
+			authoringServiceRecordConversationHandler.ServeHTTP(w, r)
+		case AuthoringServiceListConversationsProcedure:
+			authoringServiceListConversationsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -325,4 +379,12 @@ func (UnimplementedAuthoringServiceHandler) Supersede(context.Context, *connect.
 
 func (UnimplementedAuthoringServiceHandler) GetPrompts(context.Context, *connect.Request[v1.GetPromptsRequest]) (*connect.Response[v1.GetPromptsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.AuthoringService.GetPrompts is not implemented"))
+}
+
+func (UnimplementedAuthoringServiceHandler) RecordConversation(context.Context, *connect.Request[v1.RecordConversationRequest]) (*connect.Response[v1.RecordConversationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.AuthoringService.RecordConversation is not implemented"))
+}
+
+func (UnimplementedAuthoringServiceHandler) ListConversations(context.Context, *connect.Request[v1.ListConversationsRequest]) (*connect.Response[v1.ListConversationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.AuthoringService.ListConversations is not implemented"))
 }

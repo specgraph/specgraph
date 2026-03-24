@@ -4,6 +4,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -25,6 +26,22 @@ func printSafetyFlags(flags []*specv1.SafetyFlag) {
 // Security note: path must be a user-supplied value from CLI context only.
 // This function must NOT be used in server-side code paths where path could
 // originate from untrusted network input.
+
+// loadJSONFileRaw reads a JSON file and unmarshals it into a plain Go value.
+// Use this for non-proto structs; for proto messages use loadJSONFile.
+//
+// Security note: path must be a user-supplied value from CLI context only.
+func loadJSONFileRaw(path string, v any) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", path, err)
+	}
+	if err := json.Unmarshal(data, v); err != nil {
+		return fmt.Errorf("parse %s: %w", path, err)
+	}
+	return nil
+}
+
 func loadJSONFile[T proto.Message](path string, msg T) error {
 	data, err := os.ReadFile(path)
 	if err != nil {

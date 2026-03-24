@@ -147,5 +147,6 @@ type Spec struct {
 	SupersededBy string        // slug of replacement spec
 	Supersedes   string        // slug of spec this replaced
 	Notes        string        // free-text notes (conversation summaries, context)
-	ContentHash  string        // Murmur3-128 hash of substantive fields
+	ContentHash      string                // Murmur3-128 hash of substantive fields
+	ConversationLogs []*ConversationLogEntry // authoring conversation audit trail (populated by GetSpec)
 }
