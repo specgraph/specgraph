@@ -32,6 +32,11 @@ func Spec(s *specv1.Spec) string {
 	b.WriteString(metadataTable(pairs))
 
 	b.WriteString(section(2, "Notes", s.Notes))
+	b.WriteString(SparkSection(s.SparkOutput))
+	b.WriteString(ShapeSection(s.ShapeOutput))
+	b.WriteString(SpecifySection(s.SpecifyOutput))
+	b.WriteString(DecomposeSection(s.DecomposeOutput))
+	b.WriteString(ConversationLogList(s.ConversationLogs))
 
 	return b.String()
 }
