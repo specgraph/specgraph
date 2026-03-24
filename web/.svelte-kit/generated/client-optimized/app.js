@@ -13,9 +13,9 @@ export const server_loads = [];
 
 export const dictionary = {
 		"/": [2],
-		"/decision/[slug]": [3],
+		"/decision/[...slug]": [3],
 		"/graph": [4],
-		"/spec/[slug]": [5]
+		"/spec/[...slug]": [5]
 	};
 
 export const hooks = {

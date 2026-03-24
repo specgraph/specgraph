@@ -172,10 +172,10 @@
       "_app/immutable/assets/_page.DtrJRoAK.css"
     ]
   },
-  "src/routes/decision/[slug]/+page.svelte": {
-    "file": "entries/pages/decision/_slug_/_page.svelte.js",
-    "name": "entries/pages/decision/_slug_/_page.svelte",
-    "src": "src/routes/decision/[slug]/+page.svelte",
+  "src/routes/decision/[...slug]/+page.svelte": {
+    "file": "entries/pages/decision/_...slug_/_page.svelte.js",
+    "name": "entries/pages/decision/_...slug_/_page.svelte",
+    "src": "src/routes/decision/[...slug]/+page.svelte",
     "isEntry": true,
     "imports": [
       "_index-server.js",
@@ -183,7 +183,7 @@
       "_client2.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.D9tHjvMZ.css"
+      "_app/immutable/assets/_page.BTo_1O9m.css"
     ]
   },
   "src/routes/graph/+page.svelte": {
@@ -200,10 +200,10 @@
       "_app/immutable/assets/_page.DXD6IApP.css"
     ]
   },
-  "src/routes/spec/[slug]/+page.svelte": {
-    "file": "entries/pages/spec/_slug_/_page.svelte.js",
-    "name": "entries/pages/spec/_slug_/_page.svelte",
-    "src": "src/routes/spec/[slug]/+page.svelte",
+  "src/routes/spec/[...slug]/+page.svelte": {
+    "file": "entries/pages/spec/_...slug_/_page.svelte.js",
+    "name": "entries/pages/spec/_...slug_/_page.svelte",
+    "src": "src/routes/spec/[...slug]/+page.svelte",
     "isEntry": true,
     "imports": [
       "_index-server.js",
@@ -211,7 +211,7 @@
       "_client2.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.CZD40aoP.css"
+      "_app/immutable/assets/_page.uSFYBlDo.css"
     ]
   }
 }

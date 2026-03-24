@@ -10,7 +10,7 @@ return {
 	assets: new Set([]),
 	mimeTypes: {},
 	_: {
-		client: {start:"_app/immutable/entry/start.CpzK_EQi.js",app:"_app/immutable/entry/app.CR9B0Wja.js",imports:["_app/immutable/entry/start.CpzK_EQi.js","_app/immutable/chunks/C9BE5wQr.js","_app/immutable/chunks/DiPZ6AcG.js","_app/immutable/entry/app.CR9B0Wja.js","_app/immutable/chunks/DiPZ6AcG.js","_app/immutable/chunks/BgUy-a58.js","_app/immutable/chunks/CFKVnMbq.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		client: {start:"_app/immutable/entry/start.Ba3VAuL4.js",app:"_app/immutable/entry/app.CtskaTxO.js",imports:["_app/immutable/entry/start.Ba3VAuL4.js","_app/immutable/chunks/CukZKbqq.js","_app/immutable/chunks/DiPZ6AcG.js","_app/immutable/entry/app.CtskaTxO.js","_app/immutable/chunks/DiPZ6AcG.js","_app/immutable/chunks/BgUy-a58.js","_app/immutable/chunks/CFKVnMbq.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
 		nodes: [
 			__memo(() => import('./nodes/0.js')),
 			__memo(() => import('./nodes/1.js')),
@@ -31,9 +31,9 @@ return {
 				endpoint: null
 			},
 			{
-				id: "/decision/[slug]",
-				pattern: /^\/decision\/([^/]+?)\/?$/,
-				params: [{"name":"slug","optional":false,"rest":false,"chained":false}],
+				id: "/decision/[...slug]",
+				pattern: /^\/decision(?:\/([^]*))?\/?$/,
+				params: [{"name":"slug","optional":false,"rest":true,"chained":true}],
 				page: { layouts: [0,], errors: [1,], leaf: 3 },
 				endpoint: null
 			},
@@ -45,9 +45,9 @@ return {
 				endpoint: null
 			},
 			{
-				id: "/spec/[slug]",
-				pattern: /^\/spec\/([^/]+?)\/?$/,
-				params: [{"name":"slug","optional":false,"rest":false,"chained":false}],
+				id: "/spec/[...slug]",
+				pattern: /^\/spec(?:\/([^]*))?\/?$/,
+				params: [{"name":"slug","optional":false,"rest":true,"chained":true}],
 				page: { layouts: [0,], errors: [1,], leaf: 5 },
 				endpoint: null
 			}
