@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file specgraph/v1/authoring.proto.
  */
 export const file_specgraph_v1_authoring: GenFile = /*@__PURE__*/
-  fileDesc("ChxzcGVjZ3JhcGgvdjEvYXV0aG9yaW5nLnByb3RvEgxzcGVjZ3JhcGgudjEigAEKC1NwYXJrT3V0cHV0EgwKBHNlZWQYASABKAkSDgoGc2lnbmFsGAIgASgJEhEKCXF1ZXN0aW9ucxgDIAMoCRItCgtzY29wZV9zbmlmZhgEIAEoDjIYLnNwZWNncmFwaC52MS5TY29wZVNuaWZmEhEKCWtpbGxfdGVzdBgFIAEoCSJRCg1EZWNpc2lvbklucHV0EgwKBHNsdWcYASABKAkSDQoFdGl0bGUYAiABKAkSEAoIZGVjaXNpb24YAyABKAkSEQoJcmF0aW9uYWxlGAQgASgJIvoBCgtTaGFwZU91dHB1dBIQCghzY29wZV9pbhgBIAMoCRIRCglzY29wZV9vdXQYAiADKAkSKgoKYXBwcm9hY2hlcxgDIAMoCzIWLnNwZWNncmFwaC52MS5BcHByb2FjaBIXCg9jaG9zZW5fYXBwcm9hY2gYBCABKAkSDQoFcmlza3MYBSADKAkSFAoMc3VjY2Vzc19tdXN0GAYgAygJEhYKDnN1Y2Nlc3Nfc2hvdWxkGAcgAygJEhQKDHN1Y2Nlc3Nfd29udBgIIAMoCRIuCglkZWNpc2lvbnMYCSADKAsyGy5zcGVjZ3JhcGgudjEuRGVjaXNpb25JbnB1dCJACghBcHByb2FjaBIMCgRuYW1lGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEhEKCXRyYWRlb2ZmcxgDIAMoCSIuChBJbnRlcmZhY2VTZWN0aW9uEgwKBG5hbWUYASABKAkSDAoEYm9keRgCIAEoCSI4Cg9WZXJpZnlDcml0ZXJpb24SEAoIY2F0ZWdvcnkYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkiPwoJRmlsZVRvdWNoEgwKBHBhdGgYASABKAkSDwoHcHVycG9zZRgCIAEoCRITCgtjaGFuZ2VfdHlwZRgDIAEoCSK5AQoNU3BlY2lmeU91dHB1dBIyCgppbnRlcmZhY2VzGAEgAygLMh4uc3BlY2dyYXBoLnYxLkludGVyZmFjZVNlY3Rpb24SNgoPdmVyaWZ5X2NyaXRlcmlhGAIgAygLMh0uc3BlY2dyYXBoLnYxLlZlcmlmeUNyaXRlcmlvbhISCgppbnZhcmlhbnRzGAMgAygJEigKB3RvdWNoZXMYBCADKAsyFy5zcGVjZ3JhcGgudjEuRmlsZVRvdWNoInoKD0RlY29tcG9zZU91dHB1dBI1CghzdHJhdGVneRgBIAEoDjIjLnNwZWNncmFwaC52MS5EZWNvbXBvc2l0aW9uU3RyYXRlZ3kSMAoGc2xpY2VzGAIgAygLMiAuc3BlY2dyYXBoLnYxLkRlY29tcG9zaXRpb25TbGljZSJlChJEZWNvbXBvc2l0aW9uU2xpY2USCgoCaWQYASABKAkSDgoGaW50ZW50GAIgASgJEg4KBnZlcmlmeRgDIAMoCRIPCgd0b3VjaGVzGAQgAygJEhIKCmRlcGVuZHNfb24YBSADKAkiggEKClNhZmV0eUZsYWcSLgoIY2F0ZWdvcnkYASABKA4yHC5zcGVjZ3JhcGgudjEuU2FmZXR5Q2F0ZWdvcnkSLwoIc2V2ZXJpdHkYAiABKA4yHS5zcGVjZ3JhcGgudjEuRmluZGluZ1NldmVyaXR5EhMKC2Rlc2NyaXB0aW9uGAMgASgJIl0KDlByb21wdFRlbXBsYXRlEisKBXN0YWdlGAEgASgOMhwuc3BlY2dyYXBoLnYxLkF1dGhvcmluZ1N0YWdlEgwKBG5hbWUYAiABKAkSEAoIdGVtcGxhdGUYAyABKAkibwoMU3BhcmtSZXF1ZXN0EgwKBHNsdWcYASABKAkSKQoGb3V0cHV0GAIgASgLMhkuc3BlY2dyYXBoLnYxLlNwYXJrT3V0cHV0EiYKB3Bvc3R1cmUYAyABKA4yFS5zcGVjZ3JhcGgudjEuUG9zdHVyZSK9AQoNU3BhcmtSZXNwb25zZRIpCgZvdXRwdXQYASABKAsyGS5zcGVjZ3JhcGgudjEuU3BhcmtPdXRwdXQSLgoMc2FmZXR5X2ZsYWdzGAIgAygLMhguc3BlY2dyYXBoLnYxLlNhZmV0eUZsYWcSMgoMbmV4dF9wcm9tcHRzGAQgAygLMhwuc3BlY2dyYXBoLnYxLlByb21wdFRlbXBsYXRlSgQIAxAEUhdjb25zdGl0dXRpb25fdmlvbGF0aW9ucyJvCgxTaGFwZVJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIpCgZvdXRwdXQYAiABKAsyGS5zcGVjZ3JhcGgudjEuU2hhcGVPdXRwdXQSJgoHcG9zdHVyZRgDIAEoDjIVLnNwZWNncmFwaC52MS5Qb3N0dXJlItYBCg1TaGFwZVJlc3BvbnNlEikKBm91dHB1dBgBIAEoCzIZLnNwZWNncmFwaC52MS5TaGFwZU91dHB1dBIuCgxzYWZldHlfZmxhZ3MYAyADKAsyGC5zcGVjZ3JhcGgudjEuU2FmZXR5RmxhZxIyCgxuZXh0X3Byb21wdHMYBSADKAsyHC5zcGVjZ3JhcGgudjEuUHJvbXB0VGVtcGxhdGVKBAgCEANKBAgEEAVSEXBlcmlwaGVyYWxfdmlzaW9uUhdjb25zdGl0dXRpb25fdmlvbGF0aW9ucyJzCg5TcGVjaWZ5UmVxdWVzdBIMCgRzbHVnGAEgASgJEisKBm91dHB1dBgCIAEoCzIbLnNwZWNncmFwaC52MS5TcGVjaWZ5T3V0cHV0EiYKB3Bvc3R1cmUYAyABKA4yFS5zcGVjZ3JhcGgudjEuUG9zdHVyZSLrAQoPU3BlY2lmeVJlc3BvbnNlEisKBm91dHB1dBgBIAEoCzIbLnNwZWNncmFwaC52MS5TcGVjaWZ5T3V0cHV0Ei4KDHNhZmV0eV9mbGFncxgEIAMoCzIYLnNwZWNncmFwaC52MS5TYWZldHlGbGFnEjIKDG5leHRfcHJvbXB0cxgGIAMoCzIcLnNwZWNncmFwaC52MS5Qcm9tcHRUZW1wbGF0ZUoECAIQA0oECAMQBEoECAUQBlIIcmVkX3RlYW1SEmNvbnNpc3RlbmN5X2lzc3Vlc1IXY29uc3RpdHV0aW9uX3Zpb2xhdGlvbnMidwoQRGVjb21wb3NlUmVxdWVzdBIMCgRzbHVnGAEgASgJEi0KBm91dHB1dBgCIAEoCzIdLnNwZWNncmFwaC52MS5EZWNvbXBvc2VPdXRwdXQSJgoHcG9zdHVyZRgDIAEoDjIVLnNwZWNncmFwaC52MS5Qb3N0dXJlIvEBChFEZWNvbXBvc2VSZXNwb25zZRItCgZvdXRwdXQYASABKAsyHS5zcGVjZ3JhcGgudjEuRGVjb21wb3NlT3V0cHV0Ei4KDHNhZmV0eV9mbGFncxgDIAMoCzIYLnNwZWNncmFwaC52MS5TYWZldHlGbGFnEjIKDG5leHRfcHJvbXB0cxgFIAMoCzIcLnNwZWNncmFwaC52MS5Qcm9tcHRUZW1wbGF0ZRIYChBjaGlsZF9zcGVjX3NsdWdzGAYgAygJSgQIAhADSgQIBBAFUgpzaW1wbGljaXR5Uhdjb25zdGl0dXRpb25fdmlvbGF0aW9ucyIeCg5BcHByb3ZlUmVxdWVzdBIMCgRzbHVnGAEgASgJIn0KD0FwcHJvdmVSZXNwb25zZRIMCgRzbHVnGAEgASgJEisKBXN0YWdlGAIgASgOMhwuc3BlY2dyYXBoLnYxLkF1dGhvcmluZ1N0YWdlEi8KC2FwcHJvdmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJgCgxBbWVuZFJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIOCgZyZWFzb24YAiABKAkSMgoMdGFyZ2V0X3N0YWdlGAMgASgOMhwuc3BlY2dyYXBoLnYxLkF1dGhvcmluZ1N0YWdlIlsKDUFtZW5kUmVzcG9uc2USDAoEc2x1ZxgBIAEoCRIrCgVzdGFnZRgCIAEoDjIcLnNwZWNncmFwaC52MS5BdXRob3JpbmdTdGFnZRIPCgd2ZXJzaW9uGAMgASgFIkcKEFN1cGVyc2VkZVJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIVCg1zdXBlcnNlZGVkX2J5GAIgASgJEg4KBnJlYXNvbhgDIAEoCSI4ChFTdXBlcnNlZGVSZXNwb25zZRIMCgRzbHVnGAEgASgJEhUKDXN1cGVyc2VkZWRfYnkYAiABKAkiQAoRR2V0UHJvbXB0c1JlcXVlc3QSKwoFc3RhZ2UYASABKA4yHC5zcGVjZ3JhcGgudjEuQXV0aG9yaW5nU3RhZ2UiQwoSR2V0UHJvbXB0c1Jlc3BvbnNlEi0KB3Byb21wdHMYASADKAsyHC5zcGVjZ3JhcGgudjEuUHJvbXB0VGVtcGxhdGUqwQEKDkF1dGhvcmluZ1N0YWdlEh8KG0FVVEhPUklOR19TVEFHRV9VTlNQRUNJRklFRBAAEhkKFUFVVEhPUklOR19TVEFHRV9TUEFSSxABEhkKFUFVVEhPUklOR19TVEFHRV9TSEFQRRACEhsKF0FVVEhPUklOR19TVEFHRV9TUEVDSUZZEAMSHQoZQVVUSE9SSU5HX1NUQUdFX0RFQ09NUE9TRRAEEhwKGEFVVEhPUklOR19TVEFHRV9BUFBST1ZFRBAFKl8KB1Bvc3R1cmUSFwoTUE9TVFVSRV9VTlNQRUNJRklFRBAAEhEKDVBPU1RVUkVfRFJJVkUQARITCg9QT1NUVVJFX1BBUlRORVIQAhITCg9QT1NUVVJFX1NVUFBPUlQQAyqLAQoPRmluZGluZ1NldmVyaXR5EiAKHEZJTkRJTkdfU0VWRVJJVFlfVU5TUEVDSUZJRUQQABIdChlGSU5ESU5HX1NFVkVSSVRZX0NSSVRJQ0FMEAESHAoYRklORElOR19TRVZFUklUWV9XQVJOSU5HEAISGQoVRklORElOR19TRVZFUklUWV9OT1RFEAMquQEKFURlY29tcG9zaXRpb25TdHJhdGVneRImCiJERUNPTVBPU0lUSU9OX1NUUkFURUdZX1VOU1BFQ0lGSUVEEAASKQolREVDT01QT1NJVElPTl9TVFJBVEVHWV9WRVJUSUNBTF9TTElDRRABEiUKIURFQ09NUE9TSVRJT05fU1RSQVRFR1lfTEFZRVJfQ0FLRRACEiYKIkRFQ09NUE9TSVRJT05fU1RSQVRFR1lfU0lOR0xFX1VOSVQQAypuCg5TYWZldHlDYXRlZ29yeRIfChtTQUZFVFlfQ0FURUdPUllfVU5TUEVDSUZJRUQQABIcChhTQUZFVFlfQ0FURUdPUllfU0VDVVJJVFkQARIdChlTQUZFVFlfQ0FURUdPUllfREFUQV9MT1NTEAIqmwEKClNjb3BlU25pZmYSGwoXU0NPUEVfU05JRkZfVU5TUEVDSUZJRUQQABIUChBTQ09QRV9TTklGRl9USU5ZEAESFQoRU0NPUEVfU05JRkZfU01BTEwQAhIWChJTQ09QRV9TTklGRl9NRURJVU0QAxIVChFTQ09QRV9TTklGRl9MQVJHRRAEEhQKEFNDT1BFX1NOSUZGX0VQSUMQBTLVBAoQQXV0aG9yaW5nU2VydmljZRJACgVTcGFyaxIaLnNwZWNncmFwaC52MS5TcGFya1JlcXVlc3QaGy5zcGVjZ3JhcGgudjEuU3BhcmtSZXNwb25zZRJACgVTaGFwZRIaLnNwZWNncmFwaC52MS5TaGFwZVJlcXVlc3QaGy5zcGVjZ3JhcGgudjEuU2hhcGVSZXNwb25zZRJGCgdTcGVjaWZ5Ehwuc3BlY2dyYXBoLnYxLlNwZWNpZnlSZXF1ZXN0Gh0uc3BlY2dyYXBoLnYxLlNwZWNpZnlSZXNwb25zZRJMCglEZWNvbXBvc2USHi5zcGVjZ3JhcGgudjEuRGVjb21wb3NlUmVxdWVzdBofLnNwZWNncmFwaC52MS5EZWNvbXBvc2VSZXNwb25zZRJGCgdBcHByb3ZlEhwuc3BlY2dyYXBoLnYxLkFwcHJvdmVSZXF1ZXN0Gh0uc3BlY2dyYXBoLnYxLkFwcHJvdmVSZXNwb25zZRJACgVBbWVuZBIaLnNwZWNncmFwaC52MS5BbWVuZFJlcXVlc3QaGy5zcGVjZ3JhcGgudjEuQW1lbmRSZXNwb25zZRJMCglTdXBlcnNlZGUSHi5zcGVjZ3JhcGgudjEuU3VwZXJzZWRlUmVxdWVzdBofLnNwZWNncmFwaC52MS5TdXBlcnNlZGVSZXNwb25zZRJPCgpHZXRQcm9tcHRzEh8uc3BlY2dyYXBoLnYxLkdldFByb21wdHNSZXF1ZXN0GiAuc3BlY2dyYXBoLnYxLkdldFByb21wdHNSZXNwb25zZUI9WjtnaXRodWIuY29tL3NwZWNncmFwaC9zcGVjZ3JhcGgvZ2VuL3NwZWNncmFwaC92MTtzcGVjZ3JhcGh2MWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("ChxzcGVjZ3JhcGgvdjEvYXV0aG9yaW5nLnByb3RvEgxzcGVjZ3JhcGgudjEigAEKC1NwYXJrT3V0cHV0EgwKBHNlZWQYASABKAkSDgoGc2lnbmFsGAIgASgJEhEKCXF1ZXN0aW9ucxgDIAMoCRItCgtzY29wZV9zbmlmZhgEIAEoDjIYLnNwZWNncmFwaC52MS5TY29wZVNuaWZmEhEKCWtpbGxfdGVzdBgFIAEoCSJRCg1EZWNpc2lvbklucHV0EgwKBHNsdWcYASABKAkSDQoFdGl0bGUYAiABKAkSEAoIZGVjaXNpb24YAyABKAkSEQoJcmF0aW9uYWxlGAQgASgJIvoBCgtTaGFwZU91dHB1dBIQCghzY29wZV9pbhgBIAMoCRIRCglzY29wZV9vdXQYAiADKAkSKgoKYXBwcm9hY2hlcxgDIAMoCzIWLnNwZWNncmFwaC52MS5BcHByb2FjaBIXCg9jaG9zZW5fYXBwcm9hY2gYBCABKAkSDQoFcmlza3MYBSADKAkSFAoMc3VjY2Vzc19tdXN0GAYgAygJEhYKDnN1Y2Nlc3Nfc2hvdWxkGAcgAygJEhQKDHN1Y2Nlc3Nfd29udBgIIAMoCRIuCglkZWNpc2lvbnMYCSADKAsyGy5zcGVjZ3JhcGgudjEuRGVjaXNpb25JbnB1dCJACghBcHByb2FjaBIMCgRuYW1lGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEhEKCXRyYWRlb2ZmcxgDIAMoCSIuChBJbnRlcmZhY2VTZWN0aW9uEgwKBG5hbWUYASABKAkSDAoEYm9keRgCIAEoCSI4Cg9WZXJpZnlDcml0ZXJpb24SEAoIY2F0ZWdvcnkYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkiPwoJRmlsZVRvdWNoEgwKBHBhdGgYASABKAkSDwoHcHVycG9zZRgCIAEoCRITCgtjaGFuZ2VfdHlwZRgDIAEoCSK5AQoNU3BlY2lmeU91dHB1dBIyCgppbnRlcmZhY2VzGAEgAygLMh4uc3BlY2dyYXBoLnYxLkludGVyZmFjZVNlY3Rpb24SNgoPdmVyaWZ5X2NyaXRlcmlhGAIgAygLMh0uc3BlY2dyYXBoLnYxLlZlcmlmeUNyaXRlcmlvbhISCgppbnZhcmlhbnRzGAMgAygJEigKB3RvdWNoZXMYBCADKAsyFy5zcGVjZ3JhcGgudjEuRmlsZVRvdWNoInoKD0RlY29tcG9zZU91dHB1dBI1CghzdHJhdGVneRgBIAEoDjIjLnNwZWNncmFwaC52MS5EZWNvbXBvc2l0aW9uU3RyYXRlZ3kSMAoGc2xpY2VzGAIgAygLMiAuc3BlY2dyYXBoLnYxLkRlY29tcG9zaXRpb25TbGljZSJlChJEZWNvbXBvc2l0aW9uU2xpY2USCgoCaWQYASABKAkSDgoGaW50ZW50GAIgASgJEg4KBnZlcmlmeRgDIAMoCRIPCgd0b3VjaGVzGAQgAygJEhIKCmRlcGVuZHNfb24YBSADKAkiggEKClNhZmV0eUZsYWcSLgoIY2F0ZWdvcnkYASABKA4yHC5zcGVjZ3JhcGgudjEuU2FmZXR5Q2F0ZWdvcnkSLwoIc2V2ZXJpdHkYAiABKA4yHS5zcGVjZ3JhcGgudjEuRmluZGluZ1NldmVyaXR5EhMKC2Rlc2NyaXB0aW9uGAMgASgJIl0KDlByb21wdFRlbXBsYXRlEisKBXN0YWdlGAEgASgOMhwuc3BlY2dyYXBoLnYxLkF1dGhvcmluZ1N0YWdlEgwKBG5hbWUYAiABKAkSEAoIdGVtcGxhdGUYAyABKAkibwoMU3BhcmtSZXF1ZXN0EgwKBHNsdWcYASABKAkSKQoGb3V0cHV0GAIgASgLMhkuc3BlY2dyYXBoLnYxLlNwYXJrT3V0cHV0EiYKB3Bvc3R1cmUYAyABKA4yFS5zcGVjZ3JhcGgudjEuUG9zdHVyZSK9AQoNU3BhcmtSZXNwb25zZRIpCgZvdXRwdXQYASABKAsyGS5zcGVjZ3JhcGgudjEuU3BhcmtPdXRwdXQSLgoMc2FmZXR5X2ZsYWdzGAIgAygLMhguc3BlY2dyYXBoLnYxLlNhZmV0eUZsYWcSMgoMbmV4dF9wcm9tcHRzGAQgAygLMhwuc3BlY2dyYXBoLnYxLlByb21wdFRlbXBsYXRlSgQIAxAEUhdjb25zdGl0dXRpb25fdmlvbGF0aW9ucyJvCgxTaGFwZVJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIpCgZvdXRwdXQYAiABKAsyGS5zcGVjZ3JhcGgudjEuU2hhcGVPdXRwdXQSJgoHcG9zdHVyZRgDIAEoDjIVLnNwZWNncmFwaC52MS5Qb3N0dXJlItYBCg1TaGFwZVJlc3BvbnNlEikKBm91dHB1dBgBIAEoCzIZLnNwZWNncmFwaC52MS5TaGFwZU91dHB1dBIuCgxzYWZldHlfZmxhZ3MYAyADKAsyGC5zcGVjZ3JhcGgudjEuU2FmZXR5RmxhZxIyCgxuZXh0X3Byb21wdHMYBSADKAsyHC5zcGVjZ3JhcGgudjEuUHJvbXB0VGVtcGxhdGVKBAgCEANKBAgEEAVSEXBlcmlwaGVyYWxfdmlzaW9uUhdjb25zdGl0dXRpb25fdmlvbGF0aW9ucyJzCg5TcGVjaWZ5UmVxdWVzdBIMCgRzbHVnGAEgASgJEisKBm91dHB1dBgCIAEoCzIbLnNwZWNncmFwaC52MS5TcGVjaWZ5T3V0cHV0EiYKB3Bvc3R1cmUYAyABKA4yFS5zcGVjZ3JhcGgudjEuUG9zdHVyZSLrAQoPU3BlY2lmeVJlc3BvbnNlEisKBm91dHB1dBgBIAEoCzIbLnNwZWNncmFwaC52MS5TcGVjaWZ5T3V0cHV0Ei4KDHNhZmV0eV9mbGFncxgEIAMoCzIYLnNwZWNncmFwaC52MS5TYWZldHlGbGFnEjIKDG5leHRfcHJvbXB0cxgGIAMoCzIcLnNwZWNncmFwaC52MS5Qcm9tcHRUZW1wbGF0ZUoECAIQA0oECAMQBEoECAUQBlIIcmVkX3RlYW1SEmNvbnNpc3RlbmN5X2lzc3Vlc1IXY29uc3RpdHV0aW9uX3Zpb2xhdGlvbnMidwoQRGVjb21wb3NlUmVxdWVzdBIMCgRzbHVnGAEgASgJEi0KBm91dHB1dBgCIAEoCzIdLnNwZWNncmFwaC52MS5EZWNvbXBvc2VPdXRwdXQSJgoHcG9zdHVyZRgDIAEoDjIVLnNwZWNncmFwaC52MS5Qb3N0dXJlIvEBChFEZWNvbXBvc2VSZXNwb25zZRItCgZvdXRwdXQYASABKAsyHS5zcGVjZ3JhcGgudjEuRGVjb21wb3NlT3V0cHV0Ei4KDHNhZmV0eV9mbGFncxgDIAMoCzIYLnNwZWNncmFwaC52MS5TYWZldHlGbGFnEjIKDG5leHRfcHJvbXB0cxgFIAMoCzIcLnNwZWNncmFwaC52MS5Qcm9tcHRUZW1wbGF0ZRIYChBjaGlsZF9zcGVjX3NsdWdzGAYgAygJSgQIAhADSgQIBBAFUgpzaW1wbGljaXR5Uhdjb25zdGl0dXRpb25fdmlvbGF0aW9ucyIeCg5BcHByb3ZlUmVxdWVzdBIMCgRzbHVnGAEgASgJIn0KD0FwcHJvdmVSZXNwb25zZRIMCgRzbHVnGAEgASgJEisKBXN0YWdlGAIgASgOMhwuc3BlY2dyYXBoLnYxLkF1dGhvcmluZ1N0YWdlEi8KC2FwcHJvdmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJgCgxBbWVuZFJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIOCgZyZWFzb24YAiABKAkSMgoMdGFyZ2V0X3N0YWdlGAMgASgOMhwuc3BlY2dyYXBoLnYxLkF1dGhvcmluZ1N0YWdlIlsKDUFtZW5kUmVzcG9uc2USDAoEc2x1ZxgBIAEoCRIrCgVzdGFnZRgCIAEoDjIcLnNwZWNncmFwaC52MS5BdXRob3JpbmdTdGFnZRIPCgd2ZXJzaW9uGAMgASgFIkcKEFN1cGVyc2VkZVJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIVCg1zdXBlcnNlZGVkX2J5GAIgASgJEg4KBnJlYXNvbhgDIAEoCSI4ChFTdXBlcnNlZGVSZXNwb25zZRIMCgRzbHVnGAEgASgJEhUKDXN1cGVyc2VkZWRfYnkYAiABKAkiQAoRR2V0UHJvbXB0c1JlcXVlc3QSKwoFc3RhZ2UYASABKA4yHC5zcGVjZ3JhcGgudjEuQXV0aG9yaW5nU3RhZ2UiQwoSR2V0UHJvbXB0c1Jlc3BvbnNlEi0KB3Byb21wdHMYASADKAsyHC5zcGVjZ3JhcGgudjEuUHJvbXB0VGVtcGxhdGUibgoUQ29udmVyc2F0aW9uRXhjaGFuZ2USDAoEcm9sZRgBIAEoCRIPCgdjb250ZW50GAIgASgJEg0KBXN0YWdlGAMgASgJEhAKCHNlcXVlbmNlGAQgASgFEhYKDmRlY2lzaW9uX3BvaW50GAUgASgIIsgBCg9Db252ZXJzYXRpb25Mb2cSCgoCaWQYASABKAkSDQoFc3RhZ2UYAiABKAkSDwoHdmVyc2lvbhgDIAEoBRIQCghpc19hbWVuZBgEIAEoCBI1CglleGNoYW5nZXMYBSADKAsyIi5zcGVjZ3JhcGgudjEuQ29udmVyc2F0aW9uRXhjaGFuZ2USFgoOZXhjaGFuZ2VfY291bnQYBiABKAUSKAoEZGF0ZRgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAigQEKGVJlY29yZENvbnZlcnNhdGlvblJlcXVlc3QSDAoEc2x1ZxgBIAEoCRINCgVzdGFnZRgCIAEoCRI1CglleGNoYW5nZXMYAyADKAsyIi5zcGVjZ3JhcGgudjEuQ29udmVyc2F0aW9uRXhjaGFuZ2USEAoIaXNfYW1lbmQYBCABKAgiVQoaUmVjb3JkQ29udmVyc2F0aW9uUmVzcG9uc2USNwoQY29udmVyc2F0aW9uX2xvZxgBIAEoCzIdLnNwZWNncmFwaC52MS5Db252ZXJzYXRpb25Mb2ciNwoYTGlzdENvbnZlcnNhdGlvbnNSZXF1ZXN0EgwKBHNsdWcYASABKAkSDQoFc3RhZ2UYAiABKAkiVQoZTGlzdENvbnZlcnNhdGlvbnNSZXNwb25zZRI4ChFjb252ZXJzYXRpb25fbG9ncxgBIAMoCzIdLnNwZWNncmFwaC52MS5Db252ZXJzYXRpb25Mb2cqwQEKDkF1dGhvcmluZ1N0YWdlEh8KG0FVVEhPUklOR19TVEFHRV9VTlNQRUNJRklFRBAAEhkKFUFVVEhPUklOR19TVEFHRV9TUEFSSxABEhkKFUFVVEhPUklOR19TVEFHRV9TSEFQRRACEhsKF0FVVEhPUklOR19TVEFHRV9TUEVDSUZZEAMSHQoZQVVUSE9SSU5HX1NUQUdFX0RFQ09NUE9TRRAEEhwKGEFVVEhPUklOR19TVEFHRV9BUFBST1ZFRBAFKl8KB1Bvc3R1cmUSFwoTUE9TVFVSRV9VTlNQRUNJRklFRBAAEhEKDVBPU1RVUkVfRFJJVkUQARITCg9QT1NUVVJFX1BBUlRORVIQAhITCg9QT1NUVVJFX1NVUFBPUlQQAyqLAQoPRmluZGluZ1NldmVyaXR5EiAKHEZJTkRJTkdfU0VWRVJJVFlfVU5TUEVDSUZJRUQQABIdChlGSU5ESU5HX1NFVkVSSVRZX0NSSVRJQ0FMEAESHAoYRklORElOR19TRVZFUklUWV9XQVJOSU5HEAISGQoVRklORElOR19TRVZFUklUWV9OT1RFEAMquQEKFURlY29tcG9zaXRpb25TdHJhdGVneRImCiJERUNPTVBPU0lUSU9OX1NUUkFURUdZX1VOU1BFQ0lGSUVEEAASKQolREVDT01QT1NJVElPTl9TVFJBVEVHWV9WRVJUSUNBTF9TTElDRRABEiUKIURFQ09NUE9TSVRJT05fU1RSQVRFR1lfTEFZRVJfQ0FLRRACEiYKIkRFQ09NUE9TSVRJT05fU1RSQVRFR1lfU0lOR0xFX1VOSVQQAypuCg5TYWZldHlDYXRlZ29yeRIfChtTQUZFVFlfQ0FURUdPUllfVU5TUEVDSUZJRUQQABIcChhTQUZFVFlfQ0FURUdPUllfU0VDVVJJVFkQARIdChlTQUZFVFlfQ0FURUdPUllfREFUQV9MT1NTEAIqmwEKClNjb3BlU25pZmYSGwoXU0NPUEVfU05JRkZfVU5TUEVDSUZJRUQQABIUChBTQ09QRV9TTklGRl9USU5ZEAESFQoRU0NPUEVfU05JRkZfU01BTEwQAhIWChJTQ09QRV9TTklGRl9NRURJVU0QAxIVChFTQ09QRV9TTklGRl9MQVJHRRAEEhQKEFNDT1BFX1NOSUZGX0VQSUMQBTKkBgoQQXV0aG9yaW5nU2VydmljZRJACgVTcGFyaxIaLnNwZWNncmFwaC52MS5TcGFya1JlcXVlc3QaGy5zcGVjZ3JhcGgudjEuU3BhcmtSZXNwb25zZRJACgVTaGFwZRIaLnNwZWNncmFwaC52MS5TaGFwZVJlcXVlc3QaGy5zcGVjZ3JhcGgudjEuU2hhcGVSZXNwb25zZRJGCgdTcGVjaWZ5Ehwuc3BlY2dyYXBoLnYxLlNwZWNpZnlSZXF1ZXN0Gh0uc3BlY2dyYXBoLnYxLlNwZWNpZnlSZXNwb25zZRJMCglEZWNvbXBvc2USHi5zcGVjZ3JhcGgudjEuRGVjb21wb3NlUmVxdWVzdBofLnNwZWNncmFwaC52MS5EZWNvbXBvc2VSZXNwb25zZRJGCgdBcHByb3ZlEhwuc3BlY2dyYXBoLnYxLkFwcHJvdmVSZXF1ZXN0Gh0uc3BlY2dyYXBoLnYxLkFwcHJvdmVSZXNwb25zZRJACgVBbWVuZBIaLnNwZWNncmFwaC52MS5BbWVuZFJlcXVlc3QaGy5zcGVjZ3JhcGgudjEuQW1lbmRSZXNwb25zZRJMCglTdXBlcnNlZGUSHi5zcGVjZ3JhcGgudjEuU3VwZXJzZWRlUmVxdWVzdBofLnNwZWNncmFwaC52MS5TdXBlcnNlZGVSZXNwb25zZRJPCgpHZXRQcm9tcHRzEh8uc3BlY2dyYXBoLnYxLkdldFByb21wdHNSZXF1ZXN0GiAuc3BlY2dyYXBoLnYxLkdldFByb21wdHNSZXNwb25zZRJnChJSZWNvcmRDb252ZXJzYXRpb24SJy5zcGVjZ3JhcGgudjEuUmVjb3JkQ29udmVyc2F0aW9uUmVxdWVzdBooLnNwZWNncmFwaC52MS5SZWNvcmRDb252ZXJzYXRpb25SZXNwb25zZRJkChFMaXN0Q29udmVyc2F0aW9ucxImLnNwZWNncmFwaC52MS5MaXN0Q29udmVyc2F0aW9uc1JlcXVlc3QaJy5zcGVjZ3JhcGgudjEuTGlzdENvbnZlcnNhdGlvbnNSZXNwb25zZUI9WjtnaXRodWIuY29tL3NwZWNncmFwaC9zcGVjZ3JhcGgvZ2VuL3NwZWNncmFwaC92MTtzcGVjZ3JhcGh2MWIGcHJvdG8z", [file_google_protobuf_timestamp]);
 
 /**
  * SparkOutput captures the initial distillation of a raw idea into a structured seed.
@@ -1024,6 +1024,210 @@ export const GetPromptsResponseSchema: GenMessage<GetPromptsResponse> = /*@__PUR
   messageDesc(file_specgraph_v1_authoring, 27);
 
 /**
+ * ConversationExchange represents a single probe/response pair from an authoring session.
+ *
+ * @generated from message specgraph.v1.ConversationExchange
+ */
+export type ConversationExchange = Message<"specgraph.v1.ConversationExchange"> & {
+  /**
+   * "probe" or "response"
+   *
+   * @generated from field: string role = 1;
+   */
+  role: string;
+
+  /**
+   * the text of the exchange
+   *
+   * @generated from field: string content = 2;
+   */
+  content: string;
+
+  /**
+   * authoring stage (spark, shape, specify, decompose, approve)
+   *
+   * @generated from field: string stage = 3;
+   */
+  stage: string;
+
+  /**
+   * pairs probes with their responses (same sequence = same pair)
+   *
+   * @generated from field: int32 sequence = 4;
+   */
+  sequence: number;
+
+  /**
+   * true if user made a judgment call between alternatives
+   *
+   * @generated from field: bool decision_point = 5;
+   */
+  decisionPoint: boolean;
+};
+
+/**
+ * Describes the message specgraph.v1.ConversationExchange.
+ * Use `create(ConversationExchangeSchema)` to create a new message.
+ */
+export const ConversationExchangeSchema: GenMessage<ConversationExchange> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_authoring, 28);
+
+/**
+ * ConversationLog captures the authoring conversation for a single stage completion.
+ *
+ * @generated from message specgraph.v1.ConversationLog
+ */
+export type ConversationLog = Message<"specgraph.v1.ConversationLog"> & {
+  /**
+   * cvl-prefixed ULID
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * authoring stage
+   *
+   * @generated from field: string stage = 2;
+   */
+  stage: string;
+
+  /**
+   * spec version at capture time
+   *
+   * @generated from field: int32 version = 3;
+   */
+  version: number;
+
+  /**
+   * true if this was an amend re-entry
+   *
+   * @generated from field: bool is_amend = 4;
+   */
+  isAmend: boolean;
+
+  /**
+   * @generated from field: repeated specgraph.v1.ConversationExchange exchanges = 5;
+   */
+  exchanges: ConversationExchange[];
+
+  /**
+   * number of exchanges
+   *
+   * @generated from field: int32 exchange_count = 6;
+   */
+  exchangeCount: number;
+
+  /**
+   * creation timestamp
+   *
+   * @generated from field: google.protobuf.Timestamp date = 7;
+   */
+  date?: Timestamp;
+};
+
+/**
+ * Describes the message specgraph.v1.ConversationLog.
+ * Use `create(ConversationLogSchema)` to create a new message.
+ */
+export const ConversationLogSchema: GenMessage<ConversationLog> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_authoring, 29);
+
+/**
+ * @generated from message specgraph.v1.RecordConversationRequest
+ */
+export type RecordConversationRequest = Message<"specgraph.v1.RecordConversationRequest"> & {
+  /**
+   * spec slug
+   *
+   * @generated from field: string slug = 1;
+   */
+  slug: string;
+
+  /**
+   * authoring stage
+   *
+   * @generated from field: string stage = 2;
+   */
+  stage: string;
+
+  /**
+   * @generated from field: repeated specgraph.v1.ConversationExchange exchanges = 3;
+   */
+  exchanges: ConversationExchange[];
+
+  /**
+   * @generated from field: bool is_amend = 4;
+   */
+  isAmend: boolean;
+};
+
+/**
+ * Describes the message specgraph.v1.RecordConversationRequest.
+ * Use `create(RecordConversationRequestSchema)` to create a new message.
+ */
+export const RecordConversationRequestSchema: GenMessage<RecordConversationRequest> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_authoring, 30);
+
+/**
+ * @generated from message specgraph.v1.RecordConversationResponse
+ */
+export type RecordConversationResponse = Message<"specgraph.v1.RecordConversationResponse"> & {
+  /**
+   * @generated from field: specgraph.v1.ConversationLog conversation_log = 1;
+   */
+  conversationLog?: ConversationLog;
+};
+
+/**
+ * Describes the message specgraph.v1.RecordConversationResponse.
+ * Use `create(RecordConversationResponseSchema)` to create a new message.
+ */
+export const RecordConversationResponseSchema: GenMessage<RecordConversationResponse> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_authoring, 31);
+
+/**
+ * @generated from message specgraph.v1.ListConversationsRequest
+ */
+export type ListConversationsRequest = Message<"specgraph.v1.ListConversationsRequest"> & {
+  /**
+   * @generated from field: string slug = 1;
+   */
+  slug: string;
+
+  /**
+   * optional filter; empty = all stages
+   *
+   * @generated from field: string stage = 2;
+   */
+  stage: string;
+};
+
+/**
+ * Describes the message specgraph.v1.ListConversationsRequest.
+ * Use `create(ListConversationsRequestSchema)` to create a new message.
+ */
+export const ListConversationsRequestSchema: GenMessage<ListConversationsRequest> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_authoring, 32);
+
+/**
+ * @generated from message specgraph.v1.ListConversationsResponse
+ */
+export type ListConversationsResponse = Message<"specgraph.v1.ListConversationsResponse"> & {
+  /**
+   * @generated from field: repeated specgraph.v1.ConversationLog conversation_logs = 1;
+   */
+  conversationLogs: ConversationLog[];
+};
+
+/**
+ * Describes the message specgraph.v1.ListConversationsResponse.
+ * Use `create(ListConversationsResponseSchema)` to create a new message.
+ */
+export const ListConversationsResponseSchema: GenMessage<ListConversationsResponse> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_authoring, 33);
+
+/**
  * @generated from enum specgraph.v1.AuthoringStage
  */
 export enum AuthoringStage {
@@ -1351,6 +1555,26 @@ export const AuthoringService: GenService<{
     methodKind: "unary";
     input: typeof GetPromptsRequestSchema;
     output: typeof GetPromptsResponseSchema;
+  },
+  /**
+   * RecordConversation stores authoring conversation exchanges for a spec stage.
+   *
+   * @generated from rpc specgraph.v1.AuthoringService.RecordConversation
+   */
+  recordConversation: {
+    methodKind: "unary";
+    input: typeof RecordConversationRequestSchema;
+    output: typeof RecordConversationResponseSchema;
+  },
+  /**
+   * ListConversations returns conversation logs for a spec, in narrative order.
+   *
+   * @generated from rpc specgraph.v1.AuthoringService.ListConversations
+   */
+  listConversations: {
+    methodKind: "unary";
+    input: typeof ListConversationsRequestSchema;
+    output: typeof ListConversationsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_specgraph_v1_authoring, 0);

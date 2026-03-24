@@ -108,15 +108,16 @@ func (s *Store) ListEdges(ctx context.Context, slug string, edgeType storage.Edg
 			RETURN b.slug AS from_slug, a.slug AS to_slug, type(r) AS rel_type
 		`, relType, relType)
 	} else {
-		// Exclude internal infrastructure edges (BELONGS_TO, HAS_CHANGE, HAS_FINDING)
-		// from unfiltered listing — these are not user-facing edge types.
+		// Exclude internal infrastructure edges (BELONGS_TO, HAS_CHANGE, HAS_FINDING,
+		// AUTHORED_VIA, CONTINUES, EXPLAINS) from unfiltered listing — these are not
+		// user-facing edge types.
 		query = `
 			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})-[r]->(b)
-			WHERE type(r) <> "BELONGS_TO" AND type(r) <> "HAS_CHANGE" AND type(r) <> "HAS_FINDING"
+			WHERE type(r) <> "BELONGS_TO" AND type(r) <> "HAS_CHANGE" AND type(r) <> "HAS_FINDING" AND type(r) <> "AUTHORED_VIA" AND type(r) <> "CONTINUES" AND type(r) <> "EXPLAINS"
 			RETURN a.slug AS from_slug, b.slug AS to_slug, type(r) AS rel_type
 			UNION
 			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})<-[r]-(b)
-			WHERE type(r) <> "BELONGS_TO" AND type(r) <> "HAS_CHANGE" AND type(r) <> "HAS_FINDING"
+			WHERE type(r) <> "BELONGS_TO" AND type(r) <> "HAS_CHANGE" AND type(r) <> "HAS_FINDING" AND type(r) <> "AUTHORED_VIA" AND type(r) <> "CONTINUES" AND type(r) <> "EXPLAINS"
 			RETURN b.slug AS from_slug, a.slug AS to_slug, type(r) AS rel_type
 		`
 	}
@@ -301,10 +302,11 @@ func (s *Store) GetFullGraph(ctx context.Context) (*storage.FullGraph, error) {
 		})
 	}
 
-	// Query 2: All user-facing edges (exclude BELONGS_TO, HAS_CHANGE, HAS_FINDING)
+	// Query 2: All user-facing edges (exclude BELONGS_TO, HAS_CHANGE, HAS_FINDING,
+	// AUTHORED_VIA, CONTINUES, EXPLAINS)
 	edgeQuery := `
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a)-[r]->(b)
-		WHERE type(r) <> "BELONGS_TO" AND type(r) <> "HAS_CHANGE" AND type(r) <> "HAS_FINDING"
+		WHERE type(r) <> "BELONGS_TO" AND type(r) <> "HAS_CHANGE" AND type(r) <> "HAS_FINDING" AND type(r) <> "AUTHORED_VIA" AND type(r) <> "CONTINUES" AND type(r) <> "EXPLAINS"
 		  AND (b:Spec OR b:Decision)
 		RETURN a.slug AS from_slug, b.slug AS to_slug, type(r) AS rel_type
 	`

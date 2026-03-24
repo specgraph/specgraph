@@ -196,6 +196,55 @@ func (a *authoringTestBackend) AmendSpec(ctx context.Context, slug, reason strin
 	return a.authoring.AmendSpec(ctx, slug, reason, targetStage)
 }
 
+// fakeConversationBackend implements storage.ConversationBackend for handler tests.
+type fakeConversationBackend struct {
+	recordErr error
+	listErr   error
+	entries   []*storage.ConversationLogEntry
+}
+
+func (f *fakeConversationBackend) RecordConversation(_ context.Context, _ string, entry storage.ConversationLogEntry) (*storage.ConversationLogEntry, error) {
+	if f.recordErr != nil {
+		return nil, f.recordErr
+	}
+	return &storage.ConversationLogEntry{
+		ID:            "cvl-test",
+		Stage:         entry.Stage,
+		Version:       1,
+		IsAmend:       entry.IsAmend,
+		Exchanges:     entry.Exchanges,
+		ExchangeCount: entry.ExchangeCount,
+		Date:          time.Now(),
+	}, nil
+}
+
+func (f *fakeConversationBackend) ListConversations(_ context.Context, _ string, _ string) ([]*storage.ConversationLogEntry, error) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	return f.entries, nil
+}
+
+// fakeConvBackend combines fakeBackend with fakeConversationBackend for handler routing.
+type fakeConvBackend struct {
+	fakeBackend
+	conv *fakeConversationBackend
+}
+
+// convAuthoringTestBackend embeds authoringTestBackend and adds ConversationBackend.
+type convAuthoringTestBackend struct {
+	authoringTestBackend
+	conv *fakeConversationBackend
+}
+
+func (c *convAuthoringTestBackend) RecordConversation(ctx context.Context, slug string, entry storage.ConversationLogEntry) (*storage.ConversationLogEntry, error) {
+	return c.conv.RecordConversation(ctx, slug, entry)
+}
+
+func (c *convAuthoringTestBackend) ListConversations(ctx context.Context, slug string, stage string) ([]*storage.ConversationLogEntry, error) {
+	return c.conv.ListConversations(ctx, slug, stage)
+}
+
 // fullAuthoringTestBackend embeds authoringTestBackend and overrides Graph+Decision
 // methods for tests that exercise acceptLinkedDecisions.
 type fullAuthoringTestBackend struct {
@@ -228,6 +277,11 @@ func newAuthoringClient(t *testing.T, authoringStore *fakeAuthoringBackend, back
 		scopedBackend = &txAuthoringTestBackend{
 			authoringTestBackend: authoringTestBackend{authoring: authoringStore, backend: &b.fakeBackend},
 			runInTxErr:           b.runInTxErr,
+		}
+	case *fakeConvBackend:
+		scopedBackend = &convAuthoringTestBackend{
+			authoringTestBackend: authoringTestBackend{authoring: authoringStore, backend: &b.fakeBackend},
+			conv:                 b.conv,
 		}
 	case *fakeBackend:
 		scopedBackend = &authoringTestBackend{authoring: authoringStore, backend: b}
@@ -1271,4 +1325,117 @@ func TestAuthoringHandler_Specify_MultipleInterfaces(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Output.Interfaces, 2)
+}
+
+// --- RecordConversation / ListConversations ---
+
+func TestAuthoringHandler_RecordConversation(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
+
+	resp, err := client.RecordConversation(context.Background(), connect.NewRequest(&specv1.RecordConversationRequest{
+		Slug:  "test-spec",
+		Stage: "spark",
+		Exchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "What's the seed?", Stage: "spark", Sequence: 1},
+			{Role: "response", Content: "Build widgets", Stage: "spark", Sequence: 1, DecisionPoint: true},
+		},
+	}))
+	require.NoError(t, err)
+	require.Equal(t, "cvl-test", resp.Msg.ConversationLog.Id)
+	require.Equal(t, "spark", resp.Msg.ConversationLog.Stage)
+	require.Len(t, resp.Msg.ConversationLog.Exchanges, 2)
+}
+
+func TestAuthoringHandler_RecordConversation_MissingSlug(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
+
+	_, err := client.RecordConversation(context.Background(), connect.NewRequest(&specv1.RecordConversationRequest{
+		Stage:     "spark",
+		Exchanges: []*specv1.ConversationExchange{{Role: "probe", Content: "test", Stage: "spark", Sequence: 1}},
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestAuthoringHandler_RecordConversation_MissingStage(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
+
+	_, err := client.RecordConversation(context.Background(), connect.NewRequest(&specv1.RecordConversationRequest{
+		Slug:      "test-spec",
+		Exchanges: []*specv1.ConversationExchange{{Role: "probe", Content: "test", Stage: "spark", Sequence: 1}},
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestAuthoringHandler_RecordConversation_NoExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
+
+	_, err := client.RecordConversation(context.Background(), connect.NewRequest(&specv1.RecordConversationRequest{
+		Slug:  "test-spec",
+		Stage: "spark",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestAuthoringHandler_RecordConversation_SpecNotFound(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{recordErr: storage.ErrSpecNotFound},
+	})
+
+	_, err := client.RecordConversation(context.Background(), connect.NewRequest(&specv1.RecordConversationRequest{
+		Slug:      "nonexistent",
+		Stage:     "spark",
+		Exchanges: []*specv1.ConversationExchange{{Role: "probe", Content: "test", Stage: "spark", Sequence: 1}},
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+}
+
+func TestAuthoringHandler_ListConversations(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{
+			entries: []*storage.ConversationLogEntry{
+				{ID: "cvl-1", Stage: storage.SpecStageSpark, Version: 1, ExchangeCount: 2},
+			},
+		},
+	})
+
+	resp, err := client.ListConversations(context.Background(), connect.NewRequest(&specv1.ListConversationsRequest{
+		Slug: "test-spec",
+	}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.ConversationLogs, 1)
+	require.Equal(t, "cvl-1", resp.Msg.ConversationLogs[0].Id)
+}
+
+func TestAuthoringHandler_ListConversations_MissingSlug(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
+
+	_, err := client.ListConversations(context.Background(), connect.NewRequest(&specv1.ListConversationsRequest{}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestAuthoringHandler_ListConversations_SpecNotFound(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{listErr: storage.ErrSpecNotFound},
+	})
+
+	_, err := client.ListConversations(context.Background(), connect.NewRequest(&specv1.ListConversationsRequest{
+		Slug: "nonexistent",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
 }

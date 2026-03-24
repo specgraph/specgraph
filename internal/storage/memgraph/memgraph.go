@@ -28,7 +28,8 @@ var (
 	_ storage.ProjectBackend   = (*Store)(nil)
 	_ storage.SyncBackend      = (*Store)(nil)
 	_ storage.Scoper           = (*Store)(nil)
-	_ storage.ScopedBackend    = (*Store)(nil)
+	_ storage.ScopedBackend        = (*Store)(nil)
+	_ storage.ConversationBackend = (*Store)(nil)
 )
 
 // Store implements storage.Backend using Memgraph (Bolt protocol).
@@ -123,7 +124,10 @@ func (s *Store) ensureIndexes(ctx context.Context) error {
 		}
 	}
 
-	return s.EnsureChangeLogIndexes(ctx)
+	if err := s.EnsureChangeLogIndexes(ctx); err != nil {
+		return err
+	}
+	return s.EnsureConversationLogIndexes(ctx)
 }
 
 // ensureProjectNode creates the Project node via MERGE (idempotent).
@@ -278,7 +282,38 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
 		return nil, fmt.Errorf("memgraph: spec %q: %w", slug, storage.ErrSpecNotFound)
 	}
 
-	return recordToSpec(records[0])
+	spec, err := recordToSpec(records[0])
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch conversation logs in chain order (if any exist).
+	convQuery := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+		      -[:AUTHORED_VIA]->(first:ConversationLog)
+		OPTIONAL MATCH path = (first)-[:CONTINUES*0..]->(log)
+		RETURN log.id AS id,
+		       log.stage AS stage,
+		       log.version AS version,
+		       log.is_amend AS is_amend,
+		       log.exchanges_json AS exchanges_json,
+		       log.exchange_count AS exchange_count,
+		       log.date AS date
+		ORDER BY log.date
+	`
+	convRecords, convErr := s.executeQuery(ctx, convQuery, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
+	if convErr != nil {
+		return nil, fmt.Errorf("memgraph: get spec conversation logs: %w", convErr)
+	}
+	for _, rec := range convRecords {
+		entry, pErr := recordToConversationLogEntry(rec)
+		if pErr != nil {
+			return nil, pErr
+		}
+		spec.ConversationLogs = append(spec.ConversationLogs, entry)
+	}
+
+	return spec, nil
 }
 
 // BatchGetSpecs retrieves multiple specs by slug in a single query.

@@ -2196,6 +2196,384 @@ func (x *GetPromptsResponse) GetPrompts() []*PromptTemplate {
 	return nil
 }
 
+// ConversationExchange represents a single probe/response pair from an authoring session.
+type ConversationExchange struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Role          string                 `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`                                         // "probe" or "response"
+	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`                                   // the text of the exchange
+	Stage         string                 `protobuf:"bytes,3,opt,name=stage,proto3" json:"stage,omitempty"`                                       // authoring stage (spark, shape, specify, decompose, approve)
+	Sequence      int32                  `protobuf:"varint,4,opt,name=sequence,proto3" json:"sequence,omitempty"`                                // pairs probes with their responses (same sequence = same pair)
+	DecisionPoint bool                   `protobuf:"varint,5,opt,name=decision_point,json=decisionPoint,proto3" json:"decision_point,omitempty"` // true if user made a judgment call between alternatives
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConversationExchange) Reset() {
+	*x = ConversationExchange{}
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConversationExchange) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConversationExchange) ProtoMessage() {}
+
+func (x *ConversationExchange) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConversationExchange.ProtoReflect.Descriptor instead.
+func (*ConversationExchange) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ConversationExchange) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *ConversationExchange) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *ConversationExchange) GetStage() string {
+	if x != nil {
+		return x.Stage
+	}
+	return ""
+}
+
+func (x *ConversationExchange) GetSequence() int32 {
+	if x != nil {
+		return x.Sequence
+	}
+	return 0
+}
+
+func (x *ConversationExchange) GetDecisionPoint() bool {
+	if x != nil {
+		return x.DecisionPoint
+	}
+	return false
+}
+
+// ConversationLog captures the authoring conversation for a single stage completion.
+type ConversationLog struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Id            string                  `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                           // cvl-prefixed ULID
+	Stage         string                  `protobuf:"bytes,2,opt,name=stage,proto3" json:"stage,omitempty"`                     // authoring stage
+	Version       int32                   `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`                // spec version at capture time
+	IsAmend       bool                    `protobuf:"varint,4,opt,name=is_amend,json=isAmend,proto3" json:"is_amend,omitempty"` // true if this was an amend re-entry
+	Exchanges     []*ConversationExchange `protobuf:"bytes,5,rep,name=exchanges,proto3" json:"exchanges,omitempty"`
+	ExchangeCount int32                   `protobuf:"varint,6,opt,name=exchange_count,json=exchangeCount,proto3" json:"exchange_count,omitempty"` // number of exchanges
+	Date          *timestamppb.Timestamp  `protobuf:"bytes,7,opt,name=date,proto3" json:"date,omitempty"`                                         // creation timestamp
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConversationLog) Reset() {
+	*x = ConversationLog{}
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConversationLog) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConversationLog) ProtoMessage() {}
+
+func (x *ConversationLog) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConversationLog.ProtoReflect.Descriptor instead.
+func (*ConversationLog) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ConversationLog) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ConversationLog) GetStage() string {
+	if x != nil {
+		return x.Stage
+	}
+	return ""
+}
+
+func (x *ConversationLog) GetVersion() int32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *ConversationLog) GetIsAmend() bool {
+	if x != nil {
+		return x.IsAmend
+	}
+	return false
+}
+
+func (x *ConversationLog) GetExchanges() []*ConversationExchange {
+	if x != nil {
+		return x.Exchanges
+	}
+	return nil
+}
+
+func (x *ConversationLog) GetExchangeCount() int32 {
+	if x != nil {
+		return x.ExchangeCount
+	}
+	return 0
+}
+
+func (x *ConversationLog) GetDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Date
+	}
+	return nil
+}
+
+type RecordConversationRequest struct {
+	state         protoimpl.MessageState  `protogen:"open.v1"`
+	Slug          string                  `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`   // spec slug
+	Stage         string                  `protobuf:"bytes,2,opt,name=stage,proto3" json:"stage,omitempty"` // authoring stage
+	Exchanges     []*ConversationExchange `protobuf:"bytes,3,rep,name=exchanges,proto3" json:"exchanges,omitempty"`
+	IsAmend       bool                    `protobuf:"varint,4,opt,name=is_amend,json=isAmend,proto3" json:"is_amend,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecordConversationRequest) Reset() {
+	*x = RecordConversationRequest{}
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecordConversationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordConversationRequest) ProtoMessage() {}
+
+func (x *RecordConversationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordConversationRequest.ProtoReflect.Descriptor instead.
+func (*RecordConversationRequest) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *RecordConversationRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *RecordConversationRequest) GetStage() string {
+	if x != nil {
+		return x.Stage
+	}
+	return ""
+}
+
+func (x *RecordConversationRequest) GetExchanges() []*ConversationExchange {
+	if x != nil {
+		return x.Exchanges
+	}
+	return nil
+}
+
+func (x *RecordConversationRequest) GetIsAmend() bool {
+	if x != nil {
+		return x.IsAmend
+	}
+	return false
+}
+
+type RecordConversationResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	ConversationLog *ConversationLog       `protobuf:"bytes,1,opt,name=conversation_log,json=conversationLog,proto3" json:"conversation_log,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *RecordConversationResponse) Reset() {
+	*x = RecordConversationResponse{}
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecordConversationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordConversationResponse) ProtoMessage() {}
+
+func (x *RecordConversationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordConversationResponse.ProtoReflect.Descriptor instead.
+func (*RecordConversationResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *RecordConversationResponse) GetConversationLog() *ConversationLog {
+	if x != nil {
+		return x.ConversationLog
+	}
+	return nil
+}
+
+type ListConversationsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	Stage         string                 `protobuf:"bytes,2,opt,name=stage,proto3" json:"stage,omitempty"` // optional filter; empty = all stages
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListConversationsRequest) Reset() {
+	*x = ListConversationsRequest{}
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListConversationsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListConversationsRequest) ProtoMessage() {}
+
+func (x *ListConversationsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListConversationsRequest.ProtoReflect.Descriptor instead.
+func (*ListConversationsRequest) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *ListConversationsRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *ListConversationsRequest) GetStage() string {
+	if x != nil {
+		return x.Stage
+	}
+	return ""
+}
+
+type ListConversationsResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	ConversationLogs []*ConversationLog     `protobuf:"bytes,1,rep,name=conversation_logs,json=conversationLogs,proto3" json:"conversation_logs,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ListConversationsResponse) Reset() {
+	*x = ListConversationsResponse{}
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListConversationsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListConversationsResponse) ProtoMessage() {}
+
+func (x *ListConversationsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListConversationsResponse.ProtoReflect.Descriptor instead.
+func (*ListConversationsResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *ListConversationsResponse) GetConversationLogs() []*ConversationLog {
+	if x != nil {
+		return x.ConversationLogs
+	}
+	return nil
+}
+
 var File_specgraph_v1_authoring_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_authoring_proto_rawDesc = "" +
@@ -2327,7 +2705,33 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\x11GetPromptsRequest\x122\n" +
 	"\x05stage\x18\x01 \x01(\x0e2\x1c.specgraph.v1.AuthoringStageR\x05stage\"L\n" +
 	"\x12GetPromptsResponse\x126\n" +
-	"\aprompts\x18\x01 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\aprompts*\xc1\x01\n" +
+	"\aprompts\x18\x01 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\aprompts\"\x9d\x01\n" +
+	"\x14ConversationExchange\x12\x12\n" +
+	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\x12\x14\n" +
+	"\x05stage\x18\x03 \x01(\tR\x05stage\x12\x1a\n" +
+	"\bsequence\x18\x04 \x01(\x05R\bsequence\x12%\n" +
+	"\x0edecision_point\x18\x05 \x01(\bR\rdecisionPoint\"\x85\x02\n" +
+	"\x0fConversationLog\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05stage\x18\x02 \x01(\tR\x05stage\x12\x18\n" +
+	"\aversion\x18\x03 \x01(\x05R\aversion\x12\x19\n" +
+	"\bis_amend\x18\x04 \x01(\bR\aisAmend\x12@\n" +
+	"\texchanges\x18\x05 \x03(\v2\".specgraph.v1.ConversationExchangeR\texchanges\x12%\n" +
+	"\x0eexchange_count\x18\x06 \x01(\x05R\rexchangeCount\x12.\n" +
+	"\x04date\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\x04date\"\xa2\x01\n" +
+	"\x19RecordConversationRequest\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x14\n" +
+	"\x05stage\x18\x02 \x01(\tR\x05stage\x12@\n" +
+	"\texchanges\x18\x03 \x03(\v2\".specgraph.v1.ConversationExchangeR\texchanges\x12\x19\n" +
+	"\bis_amend\x18\x04 \x01(\bR\aisAmend\"f\n" +
+	"\x1aRecordConversationResponse\x12H\n" +
+	"\x10conversation_log\x18\x01 \x01(\v2\x1d.specgraph.v1.ConversationLogR\x0fconversationLog\"D\n" +
+	"\x18ListConversationsRequest\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x14\n" +
+	"\x05stage\x18\x02 \x01(\tR\x05stage\"g\n" +
+	"\x19ListConversationsResponse\x12J\n" +
+	"\x11conversation_logs\x18\x01 \x03(\v2\x1d.specgraph.v1.ConversationLogR\x10conversationLogs*\xc1\x01\n" +
 	"\x0eAuthoringStage\x12\x1f\n" +
 	"\x1bAUTHORING_STAGE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15AUTHORING_STAGE_SPARK\x10\x01\x12\x19\n" +
@@ -2361,7 +2765,7 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\x11SCOPE_SNIFF_SMALL\x10\x02\x12\x16\n" +
 	"\x12SCOPE_SNIFF_MEDIUM\x10\x03\x12\x15\n" +
 	"\x11SCOPE_SNIFF_LARGE\x10\x04\x12\x14\n" +
-	"\x10SCOPE_SNIFF_EPIC\x10\x052\xd5\x04\n" +
+	"\x10SCOPE_SNIFF_EPIC\x10\x052\xa4\x06\n" +
 	"\x10AuthoringService\x12@\n" +
 	"\x05Spark\x12\x1a.specgraph.v1.SparkRequest\x1a\x1b.specgraph.v1.SparkResponse\x12@\n" +
 	"\x05Shape\x12\x1a.specgraph.v1.ShapeRequest\x1a\x1b.specgraph.v1.ShapeResponse\x12F\n" +
@@ -2371,7 +2775,9 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\x05Amend\x12\x1a.specgraph.v1.AmendRequest\x1a\x1b.specgraph.v1.AmendResponse\x12L\n" +
 	"\tSupersede\x12\x1e.specgraph.v1.SupersedeRequest\x1a\x1f.specgraph.v1.SupersedeResponse\x12O\n" +
 	"\n" +
-	"GetPrompts\x12\x1f.specgraph.v1.GetPromptsRequest\x1a .specgraph.v1.GetPromptsResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"GetPrompts\x12\x1f.specgraph.v1.GetPromptsRequest\x1a .specgraph.v1.GetPromptsResponse\x12g\n" +
+	"\x12RecordConversation\x12'.specgraph.v1.RecordConversationRequest\x1a(.specgraph.v1.RecordConversationResponse\x12d\n" +
+	"\x11ListConversations\x12&.specgraph.v1.ListConversationsRequest\x1a'.specgraph.v1.ListConversationsResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_authoring_proto_rawDescOnce sync.Once
@@ -2386,43 +2792,49 @@ func file_specgraph_v1_authoring_proto_rawDescGZIP() []byte {
 }
 
 var file_specgraph_v1_authoring_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_specgraph_v1_authoring_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_specgraph_v1_authoring_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_specgraph_v1_authoring_proto_goTypes = []any{
-	(AuthoringStage)(0),           // 0: specgraph.v1.AuthoringStage
-	(Posture)(0),                  // 1: specgraph.v1.Posture
-	(FindingSeverity)(0),          // 2: specgraph.v1.FindingSeverity
-	(DecompositionStrategy)(0),    // 3: specgraph.v1.DecompositionStrategy
-	(SafetyCategory)(0),           // 4: specgraph.v1.SafetyCategory
-	(ScopeSniff)(0),               // 5: specgraph.v1.ScopeSniff
-	(*SparkOutput)(nil),           // 6: specgraph.v1.SparkOutput
-	(*DecisionInput)(nil),         // 7: specgraph.v1.DecisionInput
-	(*ShapeOutput)(nil),           // 8: specgraph.v1.ShapeOutput
-	(*Approach)(nil),              // 9: specgraph.v1.Approach
-	(*InterfaceSection)(nil),      // 10: specgraph.v1.InterfaceSection
-	(*VerifyCriterion)(nil),       // 11: specgraph.v1.VerifyCriterion
-	(*FileTouch)(nil),             // 12: specgraph.v1.FileTouch
-	(*SpecifyOutput)(nil),         // 13: specgraph.v1.SpecifyOutput
-	(*DecomposeOutput)(nil),       // 14: specgraph.v1.DecomposeOutput
-	(*DecompositionSlice)(nil),    // 15: specgraph.v1.DecompositionSlice
-	(*SafetyFlag)(nil),            // 16: specgraph.v1.SafetyFlag
-	(*PromptTemplate)(nil),        // 17: specgraph.v1.PromptTemplate
-	(*SparkRequest)(nil),          // 18: specgraph.v1.SparkRequest
-	(*SparkResponse)(nil),         // 19: specgraph.v1.SparkResponse
-	(*ShapeRequest)(nil),          // 20: specgraph.v1.ShapeRequest
-	(*ShapeResponse)(nil),         // 21: specgraph.v1.ShapeResponse
-	(*SpecifyRequest)(nil),        // 22: specgraph.v1.SpecifyRequest
-	(*SpecifyResponse)(nil),       // 23: specgraph.v1.SpecifyResponse
-	(*DecomposeRequest)(nil),      // 24: specgraph.v1.DecomposeRequest
-	(*DecomposeResponse)(nil),     // 25: specgraph.v1.DecomposeResponse
-	(*ApproveRequest)(nil),        // 26: specgraph.v1.ApproveRequest
-	(*ApproveResponse)(nil),       // 27: specgraph.v1.ApproveResponse
-	(*AmendRequest)(nil),          // 28: specgraph.v1.AmendRequest
-	(*AmendResponse)(nil),         // 29: specgraph.v1.AmendResponse
-	(*SupersedeRequest)(nil),      // 30: specgraph.v1.SupersedeRequest
-	(*SupersedeResponse)(nil),     // 31: specgraph.v1.SupersedeResponse
-	(*GetPromptsRequest)(nil),     // 32: specgraph.v1.GetPromptsRequest
-	(*GetPromptsResponse)(nil),    // 33: specgraph.v1.GetPromptsResponse
-	(*timestamppb.Timestamp)(nil), // 34: google.protobuf.Timestamp
+	(AuthoringStage)(0),                // 0: specgraph.v1.AuthoringStage
+	(Posture)(0),                       // 1: specgraph.v1.Posture
+	(FindingSeverity)(0),               // 2: specgraph.v1.FindingSeverity
+	(DecompositionStrategy)(0),         // 3: specgraph.v1.DecompositionStrategy
+	(SafetyCategory)(0),                // 4: specgraph.v1.SafetyCategory
+	(ScopeSniff)(0),                    // 5: specgraph.v1.ScopeSniff
+	(*SparkOutput)(nil),                // 6: specgraph.v1.SparkOutput
+	(*DecisionInput)(nil),              // 7: specgraph.v1.DecisionInput
+	(*ShapeOutput)(nil),                // 8: specgraph.v1.ShapeOutput
+	(*Approach)(nil),                   // 9: specgraph.v1.Approach
+	(*InterfaceSection)(nil),           // 10: specgraph.v1.InterfaceSection
+	(*VerifyCriterion)(nil),            // 11: specgraph.v1.VerifyCriterion
+	(*FileTouch)(nil),                  // 12: specgraph.v1.FileTouch
+	(*SpecifyOutput)(nil),              // 13: specgraph.v1.SpecifyOutput
+	(*DecomposeOutput)(nil),            // 14: specgraph.v1.DecomposeOutput
+	(*DecompositionSlice)(nil),         // 15: specgraph.v1.DecompositionSlice
+	(*SafetyFlag)(nil),                 // 16: specgraph.v1.SafetyFlag
+	(*PromptTemplate)(nil),             // 17: specgraph.v1.PromptTemplate
+	(*SparkRequest)(nil),               // 18: specgraph.v1.SparkRequest
+	(*SparkResponse)(nil),              // 19: specgraph.v1.SparkResponse
+	(*ShapeRequest)(nil),               // 20: specgraph.v1.ShapeRequest
+	(*ShapeResponse)(nil),              // 21: specgraph.v1.ShapeResponse
+	(*SpecifyRequest)(nil),             // 22: specgraph.v1.SpecifyRequest
+	(*SpecifyResponse)(nil),            // 23: specgraph.v1.SpecifyResponse
+	(*DecomposeRequest)(nil),           // 24: specgraph.v1.DecomposeRequest
+	(*DecomposeResponse)(nil),          // 25: specgraph.v1.DecomposeResponse
+	(*ApproveRequest)(nil),             // 26: specgraph.v1.ApproveRequest
+	(*ApproveResponse)(nil),            // 27: specgraph.v1.ApproveResponse
+	(*AmendRequest)(nil),               // 28: specgraph.v1.AmendRequest
+	(*AmendResponse)(nil),              // 29: specgraph.v1.AmendResponse
+	(*SupersedeRequest)(nil),           // 30: specgraph.v1.SupersedeRequest
+	(*SupersedeResponse)(nil),          // 31: specgraph.v1.SupersedeResponse
+	(*GetPromptsRequest)(nil),          // 32: specgraph.v1.GetPromptsRequest
+	(*GetPromptsResponse)(nil),         // 33: specgraph.v1.GetPromptsResponse
+	(*ConversationExchange)(nil),       // 34: specgraph.v1.ConversationExchange
+	(*ConversationLog)(nil),            // 35: specgraph.v1.ConversationLog
+	(*RecordConversationRequest)(nil),  // 36: specgraph.v1.RecordConversationRequest
+	(*RecordConversationResponse)(nil), // 37: specgraph.v1.RecordConversationResponse
+	(*ListConversationsRequest)(nil),   // 38: specgraph.v1.ListConversationsRequest
+	(*ListConversationsResponse)(nil),  // 39: specgraph.v1.ListConversationsResponse
+	(*timestamppb.Timestamp)(nil),      // 40: google.protobuf.Timestamp
 }
 var file_specgraph_v1_authoring_proto_depIdxs = []int32{
 	5,  // 0: specgraph.v1.SparkOutput.scope_sniff:type_name -> specgraph.v1.ScopeSniff
@@ -2457,32 +2869,41 @@ var file_specgraph_v1_authoring_proto_depIdxs = []int32{
 	16, // 29: specgraph.v1.DecomposeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
 	17, // 30: specgraph.v1.DecomposeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
 	0,  // 31: specgraph.v1.ApproveResponse.stage:type_name -> specgraph.v1.AuthoringStage
-	34, // 32: specgraph.v1.ApproveResponse.approved_at:type_name -> google.protobuf.Timestamp
+	40, // 32: specgraph.v1.ApproveResponse.approved_at:type_name -> google.protobuf.Timestamp
 	0,  // 33: specgraph.v1.AmendRequest.target_stage:type_name -> specgraph.v1.AuthoringStage
 	0,  // 34: specgraph.v1.AmendResponse.stage:type_name -> specgraph.v1.AuthoringStage
 	0,  // 35: specgraph.v1.GetPromptsRequest.stage:type_name -> specgraph.v1.AuthoringStage
 	17, // 36: specgraph.v1.GetPromptsResponse.prompts:type_name -> specgraph.v1.PromptTemplate
-	18, // 37: specgraph.v1.AuthoringService.Spark:input_type -> specgraph.v1.SparkRequest
-	20, // 38: specgraph.v1.AuthoringService.Shape:input_type -> specgraph.v1.ShapeRequest
-	22, // 39: specgraph.v1.AuthoringService.Specify:input_type -> specgraph.v1.SpecifyRequest
-	24, // 40: specgraph.v1.AuthoringService.Decompose:input_type -> specgraph.v1.DecomposeRequest
-	26, // 41: specgraph.v1.AuthoringService.Approve:input_type -> specgraph.v1.ApproveRequest
-	28, // 42: specgraph.v1.AuthoringService.Amend:input_type -> specgraph.v1.AmendRequest
-	30, // 43: specgraph.v1.AuthoringService.Supersede:input_type -> specgraph.v1.SupersedeRequest
-	32, // 44: specgraph.v1.AuthoringService.GetPrompts:input_type -> specgraph.v1.GetPromptsRequest
-	19, // 45: specgraph.v1.AuthoringService.Spark:output_type -> specgraph.v1.SparkResponse
-	21, // 46: specgraph.v1.AuthoringService.Shape:output_type -> specgraph.v1.ShapeResponse
-	23, // 47: specgraph.v1.AuthoringService.Specify:output_type -> specgraph.v1.SpecifyResponse
-	25, // 48: specgraph.v1.AuthoringService.Decompose:output_type -> specgraph.v1.DecomposeResponse
-	27, // 49: specgraph.v1.AuthoringService.Approve:output_type -> specgraph.v1.ApproveResponse
-	29, // 50: specgraph.v1.AuthoringService.Amend:output_type -> specgraph.v1.AmendResponse
-	31, // 51: specgraph.v1.AuthoringService.Supersede:output_type -> specgraph.v1.SupersedeResponse
-	33, // 52: specgraph.v1.AuthoringService.GetPrompts:output_type -> specgraph.v1.GetPromptsResponse
-	45, // [45:53] is the sub-list for method output_type
-	37, // [37:45] is the sub-list for method input_type
-	37, // [37:37] is the sub-list for extension type_name
-	37, // [37:37] is the sub-list for extension extendee
-	0,  // [0:37] is the sub-list for field type_name
+	34, // 37: specgraph.v1.ConversationLog.exchanges:type_name -> specgraph.v1.ConversationExchange
+	40, // 38: specgraph.v1.ConversationLog.date:type_name -> google.protobuf.Timestamp
+	34, // 39: specgraph.v1.RecordConversationRequest.exchanges:type_name -> specgraph.v1.ConversationExchange
+	35, // 40: specgraph.v1.RecordConversationResponse.conversation_log:type_name -> specgraph.v1.ConversationLog
+	35, // 41: specgraph.v1.ListConversationsResponse.conversation_logs:type_name -> specgraph.v1.ConversationLog
+	18, // 42: specgraph.v1.AuthoringService.Spark:input_type -> specgraph.v1.SparkRequest
+	20, // 43: specgraph.v1.AuthoringService.Shape:input_type -> specgraph.v1.ShapeRequest
+	22, // 44: specgraph.v1.AuthoringService.Specify:input_type -> specgraph.v1.SpecifyRequest
+	24, // 45: specgraph.v1.AuthoringService.Decompose:input_type -> specgraph.v1.DecomposeRequest
+	26, // 46: specgraph.v1.AuthoringService.Approve:input_type -> specgraph.v1.ApproveRequest
+	28, // 47: specgraph.v1.AuthoringService.Amend:input_type -> specgraph.v1.AmendRequest
+	30, // 48: specgraph.v1.AuthoringService.Supersede:input_type -> specgraph.v1.SupersedeRequest
+	32, // 49: specgraph.v1.AuthoringService.GetPrompts:input_type -> specgraph.v1.GetPromptsRequest
+	36, // 50: specgraph.v1.AuthoringService.RecordConversation:input_type -> specgraph.v1.RecordConversationRequest
+	38, // 51: specgraph.v1.AuthoringService.ListConversations:input_type -> specgraph.v1.ListConversationsRequest
+	19, // 52: specgraph.v1.AuthoringService.Spark:output_type -> specgraph.v1.SparkResponse
+	21, // 53: specgraph.v1.AuthoringService.Shape:output_type -> specgraph.v1.ShapeResponse
+	23, // 54: specgraph.v1.AuthoringService.Specify:output_type -> specgraph.v1.SpecifyResponse
+	25, // 55: specgraph.v1.AuthoringService.Decompose:output_type -> specgraph.v1.DecomposeResponse
+	27, // 56: specgraph.v1.AuthoringService.Approve:output_type -> specgraph.v1.ApproveResponse
+	29, // 57: specgraph.v1.AuthoringService.Amend:output_type -> specgraph.v1.AmendResponse
+	31, // 58: specgraph.v1.AuthoringService.Supersede:output_type -> specgraph.v1.SupersedeResponse
+	33, // 59: specgraph.v1.AuthoringService.GetPrompts:output_type -> specgraph.v1.GetPromptsResponse
+	37, // 60: specgraph.v1.AuthoringService.RecordConversation:output_type -> specgraph.v1.RecordConversationResponse
+	39, // 61: specgraph.v1.AuthoringService.ListConversations:output_type -> specgraph.v1.ListConversationsResponse
+	52, // [52:62] is the sub-list for method output_type
+	42, // [42:52] is the sub-list for method input_type
+	42, // [42:42] is the sub-list for extension type_name
+	42, // [42:42] is the sub-list for extension extendee
+	0,  // [0:42] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_authoring_proto_init() }
@@ -2496,7 +2917,7 @@ func file_specgraph_v1_authoring_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_authoring_proto_rawDesc), len(file_specgraph_v1_authoring_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   28,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
