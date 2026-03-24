@@ -9,19 +9,19 @@
   let { totalSpecs, readyCount, driftCount, decisionCount }: Props = $props();
 
   const cards = $derived([
-    { label: 'Specs', value: totalSpecs, color: '#2563eb' },
-    { label: 'Ready', value: readyCount, color: '#16a34a' },
-    { label: 'Drift', value: driftCount, color: '#dc2626' },
-    { label: 'Decisions', value: decisionCount, color: '#7c3aed' },
+    { label: 'Specs', value: totalSpecs, color: '#2563eb', href: '/graph' },
+    { label: 'Ready', value: readyCount, color: '#16a34a', href: '/graph' },
+    { label: 'Drift', value: driftCount, color: '#dc2626', href: '/graph' },
+    { label: 'Decisions', value: decisionCount, color: '#7c3aed', href: '/graph' },
   ]);
 </script>
 
 <div class="stats-bar">
   {#each cards as card (card.label)}
-    <div class="stat-card" style="border-top-color: {card.color}">
+    <a class="stat-card" style="border-top-color: {card.color}" href={card.href}>
       <span class="stat-value" style="color: {card.color}">{card.value}</span>
       <span class="stat-label">{card.label}</span>
-    </div>
+    </a>
   {/each}
 </div>
 
@@ -41,6 +41,13 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.15s;
+  }
+
+  .stat-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   }
 
   .stat-value {

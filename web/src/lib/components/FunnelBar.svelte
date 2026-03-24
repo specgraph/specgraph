@@ -12,7 +12,7 @@
   let total = $derived(stages.reduce((sum, s) => sum + (stageCounts[s] ?? 0), 0));
 </script>
 
-<div class="funnel-bar">
+<a class="funnel-bar" href="/graph">
   <h3>Authoring Funnel</h3>
   <div class="bar-container">
     {#each stages as stage (stage)}
@@ -39,14 +39,22 @@
       </span>
     {/each}
   </div>
-</div>
+</a>
 
 <style>
   .funnel-bar {
+    display: block;
     background: white;
     border-radius: 8px;
     padding: 1.25rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.15s;
+  }
+
+  .funnel-bar:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   }
 
   h3 {
