@@ -27,7 +27,7 @@ func specToProto(s *storage.Spec) (*specv1.Spec, error) {
 	if err != nil {
 		return nil, fmt.Errorf("spec %q: %w", s.Slug, err)
 	}
-	return &specv1.Spec{
+	pb := &specv1.Spec{
 		Id:           s.ID,
 		Slug:         s.Slug,
 		Intent:       s.Intent,
@@ -42,7 +42,15 @@ func specToProto(s *storage.Spec) (*specv1.Spec, error) {
 		Supersedes:   s.Supersedes,
 		Notes:        s.Notes,
 		ContentHash:  s.ContentHash,
-	}, nil
+	}
+	if s.ConversationLogs != nil {
+		logs := make([]*specv1.ConversationLog, len(s.ConversationLogs))
+		for i, entry := range s.ConversationLogs {
+			logs[i] = conversationLogToProto(entry)
+		}
+		pb.ConversationLogs = logs
+	}
+	return pb, nil
 }
 
 func specsToProto(specs []*storage.Spec) ([]*specv1.Spec, error) {
@@ -666,6 +674,49 @@ func syncStateToProto(s storage.SyncStateType) (specv1.SyncState, error) {
 	default:
 		return specv1.SyncState_SYNC_STATE_UNSPECIFIED, fmt.Errorf("unknown sync state: %v", s)
 	}
+}
+
+// --- ConversationLog ---
+
+// conversationLogToProto converts a storage ConversationLogEntry to a proto ConversationLog.
+func conversationLogToProto(entry *storage.ConversationLogEntry) *specv1.ConversationLog {
+	if entry == nil {
+		return nil
+	}
+	exchanges := make([]*specv1.ConversationExchange, len(entry.Exchanges))
+	for i, e := range entry.Exchanges {
+		exchanges[i] = &specv1.ConversationExchange{
+			Role:          e.Role,
+			Content:       e.Content,
+			Stage:         e.Stage,
+			Sequence:      e.Sequence,
+			DecisionPoint: e.DecisionPoint,
+		}
+	}
+	return &specv1.ConversationLog{
+		Id:            entry.ID,
+		Stage:         string(entry.Stage),
+		Version:       entry.Version,
+		IsAmend:       entry.IsAmend,
+		Exchanges:     exchanges,
+		ExchangeCount: entry.ExchangeCount,
+		Date:          timeToProto(entry.Date),
+	}
+}
+
+// conversationExchangesFromProto converts proto exchanges to storage domain types.
+func conversationExchangesFromProto(exchanges []*specv1.ConversationExchange) []storage.ConversationExchange {
+	result := make([]storage.ConversationExchange, len(exchanges))
+	for i, e := range exchanges {
+		result[i] = storage.ConversationExchange{
+			Role:          e.Role,
+			Content:       e.Content,
+			Stage:         e.Stage,
+			Sequence:      e.Sequence,
+			DecisionPoint: e.DecisionPoint,
+		}
+	}
+	return result
 }
 
 func injectToolFromProto(t specv1.InjectTool) (storage.InjectToolType, error) {

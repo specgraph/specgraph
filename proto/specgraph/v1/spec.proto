@@ -8,6 +8,7 @@ package specgraph.v1;
 option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1";
 
 import "google/protobuf/timestamp.proto";
+import "specgraph/v1/authoring.proto";
 
 // --- Enums ---
 
@@ -36,6 +37,7 @@ message Spec {
   reserved "history";
   string notes = 14;  // free-text notes (conversation summaries, context)
   string content_hash = 15; // Murmur3-128 hex digest of substantive fields; changes on every mutation
+  repeated specgraph.v1.ConversationLog conversation_logs = 16; // authoring conversation audit trail
 }
 
 message FieldChange {

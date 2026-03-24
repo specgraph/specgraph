@@ -528,6 +528,86 @@ func acceptLinkedDecisions(ctx context.Context, logger *slog.Logger, graphBacken
 	return nil
 }
 
+// RecordConversation stores authoring conversation exchanges for a spec stage.
+func (h *AuthoringHandler) RecordConversation(
+	ctx context.Context,
+	req *connect.Request[specv1.RecordConversationRequest],
+) (*connect.Response[specv1.RecordConversationResponse], error) {
+	slug := req.Msg.Slug
+	if slug == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug is required"))
+	}
+	stage := req.Msg.Stage
+	if stage == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("stage is required"))
+	}
+	if len(req.Msg.Exchanges) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("at least one exchange is required"))
+	}
+	if len(req.Msg.Exchanges) > maxElements {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("exchanges exceed maximum of %d", maxElements))
+	}
+
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
+	convBackend, ok := store.(storage.ConversationBackend)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("storage backend does not support conversation logs"))
+	}
+
+	entry := storage.ConversationLogEntry{
+		Stage:         storage.SpecStage(stage),
+		IsAmend:       req.Msg.IsAmend,
+		Exchanges:     conversationExchangesFromProto(req.Msg.Exchanges),
+		ExchangeCount: int32(len(req.Msg.Exchanges)), //nolint:gosec // bounded by maxElements (100) validation above
+	}
+
+	result, recErr := convBackend.RecordConversation(ctx, slug, entry)
+	if recErr != nil {
+		return nil, h.stageError(recErr)
+	}
+
+	return connect.NewResponse(&specv1.RecordConversationResponse{
+		ConversationLog: conversationLogToProto(result),
+	}), nil
+}
+
+// ListConversations returns conversation logs for a spec in narrative order.
+func (h *AuthoringHandler) ListConversations(
+	ctx context.Context,
+	req *connect.Request[specv1.ListConversationsRequest],
+) (*connect.Response[specv1.ListConversationsResponse], error) {
+	slug := req.Msg.Slug
+	if slug == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug is required"))
+	}
+
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
+	convBackend, ok := store.(storage.ConversationBackend)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("storage backend does not support conversation logs"))
+	}
+
+	entries, listErr := convBackend.ListConversations(ctx, slug, req.Msg.Stage)
+	if listErr != nil {
+		return nil, h.stageError(listErr)
+	}
+
+	logs := make([]*specv1.ConversationLog, len(entries))
+	for i, e := range entries {
+		logs[i] = conversationLogToProto(e)
+	}
+
+	return connect.NewResponse(&specv1.ListConversationsResponse{
+		ConversationLogs: logs,
+	}), nil
+}
+
 // RegisterAuthoringService registers the AuthoringService on the given mux.
 func RegisterAuthoringService(mux *http.ServeMux, scoper storage.Scoper, opts ...connect.HandlerOption) {
 	if scoper == nil {
