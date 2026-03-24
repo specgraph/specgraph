@@ -10,10 +10,25 @@ tasks:
       - task --list
   # Development
   dev:
-    desc: Run specgraph in development mode
-    deps: [generate]
+    desc: Build and run specgraph server in development mode
+    deps: [build]
     cmds:
-      - go run {{.MAIN_PKG}}
+      - ./{{.BINARY_NAME}} serve
+  dev:stop:
+    desc: Stop the SpecGraph server (launchd service + Docker containers)
+    cmds:
+      - |
+        # Stop launchd service if installed
+        launchctl bootout gui/$(id -u)/com.specgraph.server 2>/dev/null || true
+        # Stop Docker containers from specgraph serve/up
+        docker compose -f "${XDG_DATA_HOME:-$HOME/.local/share}/specgraph/.specgraph/docker-compose.yaml" down 2>/dev/null || true
+  dev:reset:
+    desc: Stop server, drop data volumes, clean artifacts, rebuild
+    cmds:
+      - task: dev:stop
+      - docker compose -f "${XDG_DATA_HOME:-$HOME/.local/share}/specgraph/.specgraph/docker-compose.yaml" down -v 2>/dev/null || true
+      - task: clean
+      - task: build
   # Code Generation
   generate:
     desc: Generate all code (protobuf)
@@ -37,26 +52,44 @@ tasks:
         buf generate -o "$tmpdir"
         diff -rq gen/ "$tmpdir/gen" > /dev/null 2>&1
   # Building
+  web:dev:
+    desc: Start SvelteKit dev server (proxies API to :8080)
+    dir: web
+    cmds:
+      - pnpm dev
+  web:build:
+    desc: Build SvelteKit for production (output to web/build/)
+    dir: web
+    sources:
+      - web/src/**/*
+      - web/svelte.config.js
+      - web/vite.config.ts
+      - web/package.json
+    generates:
+      - web/build/**/*
+    cmds:
+      - pnpm install
+      - pnpm build
   build:
     desc: Build the specgraph binary
-    deps: [generate]
+    deps: [generate, 'web:build']
     cmds:
       - go build -o {{.BINARY_NAME}} {{.MAIN_PKG}}
   build:all:
     desc: Build for all platforms
-    deps: [generate]
+    deps: [generate, 'web:build']
     cmds:
       - task: build:linux
       - task: build:darwin
   build:linux:
     desc: Build for Linux
-    deps: [generate]
+    deps: [generate, 'web:build']
     cmds:
       - GOOS=linux GOARCH=amd64 go build -o dist/{{.BINARY_NAME}}-linux-amd64 {{.MAIN_PKG}}
       - GOOS=linux GOARCH=arm64 go build -o dist/{{.BINARY_NAME}}-linux-arm64 {{.MAIN_PKG}}
   build:darwin:
     desc: Build for macOS
-    deps: [generate]
+    deps: [generate, 'web:build']
     cmds:
       - GOOS=darwin GOARCH=amd64 go build -o dist/{{.BINARY_NAME}}-darwin-amd64 {{.MAIN_PKG}}
       - GOOS=darwin GOARCH=arm64 go build -o dist/{{.BINARY_NAME}}-darwin-arm64 {{.MAIN_PKG}}
@@ -88,6 +121,19 @@ tasks:
       - task: test:e2e:api
       - task: test:e2e:cli
       - task: test:e2e:docker
+      - task: test:e2e:ui
+  test:e2e:ui:
+    desc: Run Playwright UI E2E tests (all in Docker, no host ports needed)
+    cmds:
+      - |
+        docker compose -f e2e/ui/docker-compose.e2e.yaml up --build --abort-on-container-exit --exit-code-from playwright
+        rc=$?
+        docker compose -f e2e/ui/docker-compose.e2e.yaml down -v
+        exit $rc
+  test:e2e:ui:clean:
+    desc: Clean up UI E2E Docker resources
+    cmds:
+      - docker compose -f e2e/ui/docker-compose.e2e.yaml down -v --rmi local
   test:e2e:api:
     desc: Run API E2E tests (requires Docker for Memgraph)
     deps: [generate]
@@ -140,7 +186,7 @@ tasks:
           [[ -d "$dir" ]] && EXISTING_DIRS="$EXISTING_DIRS $dir"
         done
         command -v addlicense >/dev/null 2>&1 || go install github.com/google/addlicense@latest
-        addlicense -check -f LICENSE_HEADER -ignore '**/*.pb.go' -ignore 'vendor/**' $EXISTING_DIRS
+        addlicense -check -f LICENSE_HEADER -ignore '**/*.pb.go' -ignore 'vendor/**' -ignore 'e2e/ui/**' $EXISTING_DIRS
   license:add:
     desc: Add missing SPDX license headers
     cmds:
@@ -152,7 +198,7 @@ tasks:
           [[ -d "$dir" ]] && EXISTING_DIRS="$EXISTING_DIRS $dir"
         done
         command -v addlicense >/dev/null 2>&1 || go install github.com/google/addlicense@latest
-        addlicense -f LICENSE_HEADER -ignore '**/*.pb.go' -ignore 'vendor/**' $EXISTING_DIRS
+        addlicense -f LICENSE_HEADER -ignore '**/*.pb.go' -ignore 'vendor/**' -ignore 'e2e/ui/**' $EXISTING_DIRS
   # Formatting
   fmt:
     desc: Format all files
@@ -251,6 +297,8 @@ tasks:
       - rm -f {{.BINARY_NAME}}
       - rm -f coverage.out coverage.html
       - rm -rf gen/
+      - rm -rf web/node_modules web/build web/.svelte-kit
+      - rm -rf e2e/ui/node_modules e2e/ui/test-results
   # Release
   release:check:
     desc: Validate goreleaser config

@@ -1,0 +1,6 @@
+web/build/
+web/node_modules/
+web/.svelte-kit/
+e2e/ui/node_modules/
+e2e/ui/test-results/
+.jj/

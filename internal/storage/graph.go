@@ -72,6 +72,22 @@ type DependencyRef struct {
 	ContentHashAtLink string
 }
 
+// GraphNode is a rich node reference for graph visualization.
+// It includes intent/priority to avoid N+1 lookups for tooltips.
+type GraphNode struct {
+	Slug     string
+	Label    NodeLabel // "Spec" or "Decision"
+	Stage    string    // authoring stage (specs) or status (decisions)
+	Intent   string    // spec intent or decision title
+	Priority string    // p0-p3 for specs, empty for decisions
+}
+
+// FullGraph contains all nodes and edges for graph visualization.
+type FullGraph struct {
+	Nodes []GraphNode
+	Edges []*Edge
+}
+
 // GraphBackend defines storage operations for graph edges and queries.
 type GraphBackend interface {
 	// AddEdge creates a typed relationship between two nodes (by slug).
@@ -105,4 +121,8 @@ type GraphBackend interface {
 	// RefreshDependencyHashes updates content_hash_at_link on all outgoing
 	// DEPENDS_ON edges for a spec, setting them to each upstream's current content_hash.
 	RefreshDependencyHashes(ctx context.Context, slug string) error
+
+	// GetFullGraph returns all spec and decision nodes with all user-facing edges.
+	// Internal edge types (HAS_CHANGE, HAS_FINDING) are excluded.
+	GetFullGraph(ctx context.Context) (*FullGraph, error)
 }

@@ -1,0 +1,156 @@
+<h2>Dashboard Layout</h2>
+<p class="subtitle">What should the landing page show? The dashboard gives context before diving into the graph.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Stats + Funnel + Graph Preview</h3>
+      <p>Top-level numbers, authoring funnel distribution, and a miniature graph you can click into.</p>
+      <div style="margin-top:12px; padding:16px; background:#0d1117; border-radius:8px; font-size:13px; color:#c9d1d9;">
+        <!-- Stats row -->
+        <div style="display:flex; gap:12px; margin-bottom:16px;">
+          <div style="flex:1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#58a6ff;">12</div>
+            <div style="font-size:11px; color:#8b949e;">Total Specs</div>
+          </div>
+          <div style="flex:1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#3fb950;">3</div>
+            <div style="font-size:11px; color:#8b949e;">Ready</div>
+          </div>
+          <div style="flex:1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#f0ad4e;">2</div>
+            <div style="font-size:11px; color:#8b949e;">Drift</div>
+          </div>
+          <div style="flex:1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#8b949e;">5</div>
+            <div style="font-size:11px; color:#8b949e;">Decisions</div>
+          </div>
+        </div>
+        <!-- Funnel -->
+        <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; margin-bottom:16px;">
+          <div style="font-size:12px; color:#8b949e; margin-bottom:8px;">Authoring Funnel</div>
+          <div style="display:flex; gap:4px; height:24px;">
+            <div style="flex:2; background:#6e40c9; border-radius:4px 0 0 4px; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">spark (2)</div>
+            <div style="flex:3; background:#58a6ff; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">shape (3)</div>
+            <div style="flex:4; background:#3fb950; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">specify (4)</div>
+            <div style="flex:1; background:#f0ad4e; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">decompose (1)</div>
+            <div style="flex:2; background:#238636; border-radius:0 4px 4px 0; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">done (2)</div>
+          </div>
+        </div>
+        <!-- Mini graph -->
+        <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="font-size:12px; color:#8b949e;">Dependency Graph</div>
+            <div style="font-size:11px; color:#58a6ff; cursor:pointer;">View full graph &rarr;</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:12px; align-items:center; min-height:80px;">
+            <div style="display:flex;gap:20px;">
+              <div style="padding:4px 10px;border:1px solid #58a6ff;border-radius:4px;color:#58a6ff;font-size:10px;">gateway</div>
+            </div>
+            <div style="color:#30363d;font-size:10px;">&darr;</div>
+            <div style="display:flex;gap:20px;">
+              <div style="padding:4px 10px;border:1px solid #3fb950;border-radius:4px;color:#3fb950;font-size:10px;">login</div>
+              <div style="padding:4px 10px;border:1px solid #f0ad4e;border-radius:4px;color:#f0ad4e;font-size:10px;">hooks</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Stats + Recent Activity</h3>
+      <p>Numbers at top, then a feed of recent spec changes (like a project pulse).</p>
+      <div style="margin-top:12px; padding:16px; background:#0d1117; border-radius:8px; font-size:13px; color:#c9d1d9;">
+        <!-- Stats row (same) -->
+        <div style="display:flex; gap:12px; margin-bottom:16px;">
+          <div style="flex:1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#58a6ff;">12</div>
+            <div style="font-size:11px; color:#8b949e;">Total Specs</div>
+          </div>
+          <div style="flex:1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#3fb950;">3</div>
+            <div style="font-size:11px; color:#8b949e;">Ready</div>
+          </div>
+          <div style="flex:1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#f0ad4e;">2</div>
+            <div style="font-size:11px; color:#8b949e;">Drift</div>
+          </div>
+          <div style="flex:1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#8b949e;">5</div>
+            <div style="font-size:11px; color:#8b949e;">Decisions</div>
+          </div>
+        </div>
+        <!-- Activity feed -->
+        <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px;">
+          <div style="font-size:12px; color:#8b949e; margin-bottom:10px;">Recent Activity</div>
+          <div style="border-bottom:1px solid #21262d; padding:8px 0;">
+            <span style="color:#3fb950;font-size:11px;">&#9679;</span>
+            <span style="color:#58a6ff;font-size:12px;">login-api</span>
+            <span style="color:#8b949e;font-size:11px;"> advanced to </span>
+            <span style="color:#c9d1d9;font-size:12px;">specify</span>
+            <span style="color:#484f58;font-size:11px; float:right;">2h ago</span>
+          </div>
+          <div style="border-bottom:1px solid #21262d; padding:8px 0;">
+            <span style="color:#f0ad4e;font-size:11px;">&#9679;</span>
+            <span style="color:#58a6ff;font-size:12px;">token-storage</span>
+            <span style="color:#8b949e;font-size:11px;"> drift detected</span>
+            <span style="color:#484f58;font-size:11px; float:right;">4h ago</span>
+          </div>
+          <div style="padding:8px 0;">
+            <span style="color:#6e40c9;font-size:11px;">&#9679;</span>
+            <span style="color:#58a6ff;font-size:12px;">webhook-events</span>
+            <span style="color:#8b949e;font-size:11px;"> sparked</span>
+            <span style="color:#484f58;font-size:11px; float:right;">yesterday</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Stats + Funnel Only (Minimal)</h3>
+      <p>Just the numbers and funnel bar. Simple, fast, gets you oriented then you navigate to graph/specs.</p>
+      <div style="margin-top:12px; padding:16px; background:#0d1117; border-radius:8px; font-size:13px; color:#c9d1d9;">
+        <div style="display:flex; gap:12px; margin-bottom:16px;">
+          <div style="flex:1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#58a6ff;">12</div>
+            <div style="font-size:11px; color:#8b949e;">Specs</div>
+          </div>
+          <div style="flex:1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#3fb950;">3</div>
+            <div style="font-size:11px; color:#8b949e;">Ready</div>
+          </div>
+          <div style="flex:1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#f0ad4e;">2</div>
+            <div style="font-size:11px; color:#8b949e;">Drift</div>
+          </div>
+          <div style="flex:1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px; text-align:center;">
+            <div style="font-size:24px; font-weight:bold; color:#8b949e;">5</div>
+            <div style="font-size:11px; color:#8b949e;">Decisions</div>
+          </div>
+        </div>
+        <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px;">
+          <div style="font-size:12px; color:#8b949e; margin-bottom:8px;">Authoring Funnel</div>
+          <div style="display:flex; gap:4px; height:24px;">
+            <div style="flex:2; background:#6e40c9; border-radius:4px 0 0 4px; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">spark (2)</div>
+            <div style="flex:3; background:#58a6ff; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">shape (3)</div>
+            <div style="flex:4; background:#3fb950; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">specify (4)</div>
+            <div style="flex:1; background:#f0ad4e; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">decompose (1)</div>
+            <div style="flex:2; background:#238636; border-radius:0 4px 4px 0; display:flex; align-items:center; justify-content:center; font-size:10px; color:white;">done (2)</div>
+          </div>
+        </div>
+        <div style="text-align:center; margin-top:16px;">
+          <div style="display:inline-block; padding:8px 24px; background:#238636; border-radius:6px; color:white; font-size:13px; cursor:pointer;">View Graph &rarr;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:24px; color:#888; font-size:14px;"><strong>My recommendation:</strong> <strong>A (Stats + Funnel + Graph Preview)</strong> &mdash; gives the full picture at a glance. The mini graph preview is the hook that draws people into the full graph view. Activity feed (B) is nice but needs ChangeLog data we'd have to aggregate, adding scope.</p>

@@ -19,6 +19,7 @@ var rpcPermissions = map[string]string{
 	specgraphv1connect.DecisionServiceCreateDecisionProcedure: "decision:write",
 	specgraphv1connect.DecisionServiceUpdateDecisionProcedure: "decision:write",
 	// GraphService
+	specgraphv1connect.GraphServiceGetFullGraphProcedure:      "graph:read",
 	specgraphv1connect.GraphServiceGetDependenciesProcedure:   "graph:read",
 	specgraphv1connect.GraphServiceGetTransitiveDepsProcedure: "graph:read",
 	specgraphv1connect.GraphServiceGetImpactProcedure:         "graph:read",
