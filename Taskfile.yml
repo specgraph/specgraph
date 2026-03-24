@@ -23,9 +23,10 @@ tasks:
         # Stop Docker containers from specgraph serve/up
         docker compose -f "${XDG_DATA_HOME:-$HOME/.local/share}/specgraph/.specgraph/docker-compose.yaml" down 2>/dev/null || true
   dev:reset:
-    desc: Stop server, clean all artifacts, rebuild from scratch
+    desc: Stop server, drop data volumes, clean artifacts, rebuild
     cmds:
       - task: dev:stop
+      - docker compose -f "${XDG_DATA_HOME:-$HOME/.local/share}/specgraph/.specgraph/docker-compose.yaml" down -v 2>/dev/null || true
       - task: clean
       - task: build
   # Code Generation

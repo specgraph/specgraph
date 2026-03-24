@@ -6,6 +6,7 @@ package memgraph
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/specgraph/specgraph/internal/storage"
 
@@ -275,8 +276,18 @@ func (s *Store) GetFullGraph(ctx context.Context) (*storage.FullGraph, error) {
 	}
 
 	nodes := make([]storage.GraphNode, 0, len(nodeRecords))
+	seen := make(map[string]bool, len(nodeRecords))
 	for _, rec := range nodeRecords {
 		slug, _ := rec.Get("slug")
+		slugStr := stringVal(slug)
+		// Deduplicate by slug — duplicate nodes can exist if CreateSpec uniqueness
+		// enforcement was bypassed (see spgr-ecm). Log a warning so the data issue
+		// is visible to operators.
+		if seen[slugStr] {
+			fmt.Fprintf(os.Stderr, "WARNING: duplicate node slug %q in project %q — data integrity issue (see spgr-ecm)\n", slugStr, s.project)
+			continue
+		}
+		seen[slugStr] = true
 		label, _ := rec.Get("label")
 		stage, _ := rec.Get("stage")
 		intent, _ := rec.Get("intent")
