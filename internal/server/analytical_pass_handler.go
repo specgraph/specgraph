@@ -24,7 +24,7 @@ var templateFS embed.FS
 
 // AnalyticalPassHandler implements the ConnectRPC AnalyticalPassService.
 type AnalyticalPassHandler struct {
-	scoper             storage.Scoper
+	scoper              storage.Scoper
 	templateOverrideDir string
 }
 

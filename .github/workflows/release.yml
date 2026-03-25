@@ -5,30 +5,36 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-permissions:
-  contents: write
-  pull-requests: write
-  packages: write
-  id-token: write
-  attestations: write
+permissions: {}
+concurrency:
+  group: release
+  cancel-in-progress: false
 jobs:
   release-please:
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: namespace-profile-linux-amd64-4x8
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
       sha: ${{ steps.release.outputs.sha }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4
         id: release
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
   goreleaser:
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
     runs-on: namespace-profile-linux-amd64-4x8
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
           ref: ${{ needs.release-please.outputs.sha }}
@@ -39,15 +45,15 @@ jobs:
         env:
           TAG: ${{ needs.release-please.outputs.tag_name }}
           SHA: ${{ needs.release-please.outputs.sha }}
-      - uses: sigstore/cosign-installer@v4.1.0
-      - uses: anchore/sbom-action/download-syft@v0
+      - uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
+      - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
       - uses: namespacelabs/nscloud-setup-buildx-action@d059ed7184f0bc7c8b27e8810cea153d02bcc6dd # v0.0.23
-      - uses: docker/login-action@v4
+      - uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
         with:
           go-version-file: go.mod
           cache: false
@@ -55,7 +61,7 @@ jobs:
         uses: namespacelabs/nscloud-cache-action@a90bb5d4b27522ce881c6e98eebd7d7e6d1653f9 # v1.4.2
         with:
           cache: go
-      - uses: goreleaser/goreleaser-action@v7
+      - uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7
         with:
           version: "~> v2"
           args: release --clean
@@ -68,24 +74,24 @@ jobs:
         env:
           TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
       - name: Scan Docker image (amd64)
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: "ghcr.io/specgraph/specgraph:${{ steps.version.outputs.version }}-amd64"
           format: table
           exit-code: "1"
           severity: CRITICAL,HIGH
       - name: Scan Docker image (arm64)
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: "ghcr.io/specgraph/specgraph:${{ steps.version.outputs.version }}-arm64"
           format: table
           exit-code: "1"
           severity: CRITICAL,HIGH
       - name: Attest binary provenance
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
         with:
           subject-checksums: ./dist/checksums.txt
       - name: Attest Docker image provenance
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
         with:
           subject-checksums: ./dist/digests.txt
