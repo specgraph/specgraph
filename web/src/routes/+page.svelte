@@ -46,7 +46,8 @@
       }
       stageCounts = counts;
 
-      readyCount = (readyRes.ready ?? []).length;
+      const readySpecs = (readyRes.ready ?? []).filter((s) => !sliceSlugs.has(s.slug));
+      readyCount = readySpecs.length;
       graphNodes = graphRes.nodes ?? [];
       graphEdges = graphRes.edges ?? [];
       decisionCount = (decisionsRes.decisions ?? []).length;
