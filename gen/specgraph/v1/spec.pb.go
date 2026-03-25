@@ -91,6 +91,10 @@ type Spec struct {
 	Notes            string                 `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"`                                               // free-text notes (conversation summaries, context)
 	ContentHash      string                 `protobuf:"bytes,15,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"`                // Murmur3-128 hex digest of substantive fields; changes on every mutation
 	ConversationLogs []*ConversationLog     `protobuf:"bytes,16,rep,name=conversation_logs,json=conversationLogs,proto3" json:"conversation_logs,omitempty"` // authoring conversation audit trail
+	SparkOutput      *SparkOutput           `protobuf:"bytes,17,opt,name=spark_output,json=sparkOutput,proto3" json:"spark_output,omitempty"`                // populated when stage >= spark
+	ShapeOutput      *ShapeOutput           `protobuf:"bytes,18,opt,name=shape_output,json=shapeOutput,proto3" json:"shape_output,omitempty"`                // populated when stage >= shape
+	SpecifyOutput    *SpecifyOutput         `protobuf:"bytes,19,opt,name=specify_output,json=specifyOutput,proto3" json:"specify_output,omitempty"`          // populated when stage >= specify
+	DecomposeOutput  *DecomposeOutput       `protobuf:"bytes,20,opt,name=decompose_output,json=decomposeOutput,proto3" json:"decompose_output,omitempty"`    // populated when stage >= decompose
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -226,6 +230,34 @@ func (x *Spec) GetContentHash() string {
 func (x *Spec) GetConversationLogs() []*ConversationLog {
 	if x != nil {
 		return x.ConversationLogs
+	}
+	return nil
+}
+
+func (x *Spec) GetSparkOutput() *SparkOutput {
+	if x != nil {
+		return x.SparkOutput
+	}
+	return nil
+}
+
+func (x *Spec) GetShapeOutput() *ShapeOutput {
+	if x != nil {
+		return x.ShapeOutput
+	}
+	return nil
+}
+
+func (x *Spec) GetSpecifyOutput() *SpecifyOutput {
+	if x != nil {
+		return x.SpecifyOutput
+	}
+	return nil
+}
+
+func (x *Spec) GetDecomposeOutput() *DecomposeOutput {
+	if x != nil {
+		return x.DecomposeOutput
 	}
 	return nil
 }
@@ -726,7 +758,7 @@ var File_specgraph_v1_spec_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cspecgraph/v1/authoring.proto\"\xb8\x04\n" +
+	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cspecgraph/v1/authoring.proto\"\xc2\x06\n" +
 	"\x04Spec\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x16\n" +
@@ -749,7 +781,11 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"supersedes\x12\x14\n" +
 	"\x05notes\x18\x0e \x01(\tR\x05notes\x12!\n" +
 	"\fcontent_hash\x18\x0f \x01(\tR\vcontentHash\x12J\n" +
-	"\x11conversation_logs\x18\x10 \x03(\v2\x1d.specgraph.v1.ConversationLogR\x10conversationLogsJ\x04\b\r\x10\x0eR\ahistory\"]\n" +
+	"\x11conversation_logs\x18\x10 \x03(\v2\x1d.specgraph.v1.ConversationLogR\x10conversationLogs\x12<\n" +
+	"\fspark_output\x18\x11 \x01(\v2\x19.specgraph.v1.SparkOutputR\vsparkOutput\x12<\n" +
+	"\fshape_output\x18\x12 \x01(\v2\x19.specgraph.v1.ShapeOutputR\vshapeOutput\x12B\n" +
+	"\x0especify_output\x18\x13 \x01(\v2\x1b.specgraph.v1.SpecifyOutputR\rspecifyOutput\x12H\n" +
+	"\x10decompose_output\x18\x14 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x0fdecomposeOutputJ\x04\b\r\x10\x0eR\ahistory\"]\n" +
 	"\vFieldChange\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\x12\x1b\n" +
 	"\told_value\x18\x02 \x01(\tR\boldValue\x12\x1b\n" +
@@ -829,29 +865,37 @@ var file_specgraph_v1_spec_proto_goTypes = []any{
 	(*UpdateSpecResponse)(nil),    // 10: specgraph.v1.UpdateSpecResponse
 	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
 	(*ConversationLog)(nil),       // 12: specgraph.v1.ConversationLog
+	(*SparkOutput)(nil),           // 13: specgraph.v1.SparkOutput
+	(*ShapeOutput)(nil),           // 14: specgraph.v1.ShapeOutput
+	(*SpecifyOutput)(nil),         // 15: specgraph.v1.SpecifyOutput
+	(*DecomposeOutput)(nil),       // 16: specgraph.v1.DecomposeOutput
 }
 var file_specgraph_v1_spec_proto_depIdxs = []int32{
 	11, // 0: specgraph.v1.Spec.created_at:type_name -> google.protobuf.Timestamp
 	11, // 1: specgraph.v1.Spec.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: specgraph.v1.Spec.lifecycle:type_name -> specgraph.v1.SpecLifecycle
 	12, // 3: specgraph.v1.Spec.conversation_logs:type_name -> specgraph.v1.ConversationLog
-	1,  // 4: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
-	1,  // 5: specgraph.v1.CreateSpecResponse.spec:type_name -> specgraph.v1.Spec
-	1,  // 6: specgraph.v1.GetSpecResponse.spec:type_name -> specgraph.v1.Spec
-	1,  // 7: specgraph.v1.UpdateSpecResponse.spec:type_name -> specgraph.v1.Spec
-	3,  // 8: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
-	4,  // 9: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
-	5,  // 10: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
-	7,  // 11: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
-	8,  // 12: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.CreateSpecResponse
-	9,  // 13: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.GetSpecResponse
-	6,  // 14: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
-	10, // 15: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.UpdateSpecResponse
-	12, // [12:16] is the sub-list for method output_type
-	8,  // [8:12] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	13, // 4: specgraph.v1.Spec.spark_output:type_name -> specgraph.v1.SparkOutput
+	14, // 5: specgraph.v1.Spec.shape_output:type_name -> specgraph.v1.ShapeOutput
+	15, // 6: specgraph.v1.Spec.specify_output:type_name -> specgraph.v1.SpecifyOutput
+	16, // 7: specgraph.v1.Spec.decompose_output:type_name -> specgraph.v1.DecomposeOutput
+	1,  // 8: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
+	1,  // 9: specgraph.v1.CreateSpecResponse.spec:type_name -> specgraph.v1.Spec
+	1,  // 10: specgraph.v1.GetSpecResponse.spec:type_name -> specgraph.v1.Spec
+	1,  // 11: specgraph.v1.UpdateSpecResponse.spec:type_name -> specgraph.v1.Spec
+	3,  // 12: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
+	4,  // 13: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
+	5,  // 14: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
+	7,  // 15: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
+	8,  // 16: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.CreateSpecResponse
+	9,  // 17: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.GetSpecResponse
+	6,  // 18: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
+	10, // 19: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.UpdateSpecResponse
+	16, // [16:20] is the sub-list for method output_type
+	12, // [12:16] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_spec_proto_init() }

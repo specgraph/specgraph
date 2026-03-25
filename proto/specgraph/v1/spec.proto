@@ -38,6 +38,10 @@ message Spec {
   string notes = 14;  // free-text notes (conversation summaries, context)
   string content_hash = 15; // Murmur3-128 hex digest of substantive fields; changes on every mutation
   repeated specgraph.v1.ConversationLog conversation_logs = 16; // authoring conversation audit trail
+  specgraph.v1.SparkOutput spark_output = 17;         // populated when stage >= spark
+  specgraph.v1.ShapeOutput shape_output = 18;         // populated when stage >= shape
+  specgraph.v1.SpecifyOutput specify_output = 19;     // populated when stage >= specify
+  specgraph.v1.DecomposeOutput decompose_output = 20; // populated when stage >= decompose
 }
 
 message FieldChange {

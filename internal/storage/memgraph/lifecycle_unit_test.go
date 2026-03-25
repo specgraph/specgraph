@@ -14,8 +14,8 @@ import (
 )
 
 func TestRecordToSpecOffset(t *testing.T) {
-	// Build a 28-value record simulating a SupersedeSpec query that returns
-	// two specs: old at offset 0, new at offset 14.
+	// Build a 36-value record simulating a SupersedeSpec query that returns
+	// two specs: old at offset 0, new at offset 18.
 	now := "2026-01-15T10:30:00.000000000Z"
 	makeSpecValues := func(id, slug, intent, stage, priority, complexity string, version int64, supersededBy, supersedes, contentHash string) []any {
 		return []any{
@@ -27,6 +27,7 @@ func TestRecordToSpecOffset(t *testing.T) {
 			supersedes,   // supersedes
 			"",           // notes
 			contentHash,  // content_hash
+			"", "", "", "", // spark_output, shape_output, specify_output, decompose_output
 		}
 	}
 
@@ -45,8 +46,8 @@ func TestRecordToSpecOffset(t *testing.T) {
 	assert.Equal(t, "new-spec", oldSpec.SupersededBy)
 	assert.Equal(t, "abc123def456abc1", oldSpec.ContentHash)
 
-	// Parse new spec at offset 14.
-	newSpec, err := recordToSpecOffset(rec, 14)
+	// Parse new spec at offset 18.
+	newSpec, err := recordToSpecOffset(rec, 18)
 	require.NoError(t, err)
 	assert.Equal(t, "id-new", newSpec.ID)
 	assert.Equal(t, "new-spec", newSpec.Slug)

@@ -7,6 +7,7 @@ package memgraph
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"math"
@@ -191,7 +192,8 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.notes, s.content_hash
+		       s.notes, s.content_hash,
+		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output
 	`
 	params := mergeParams(s.projectParam(), map[string]any{
 		"id":           id,
@@ -270,7 +272,8 @@ func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error)
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.notes, s.content_hash
+		       s.notes, s.content_hash,
+		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output
 	`
 	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
@@ -327,7 +330,8 @@ func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.notes, s.content_hash
+		       s.notes, s.content_hash,
+		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output
 	`
 	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{"slugs": slugs}))
 	if err != nil {
@@ -365,7 +369,8 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	query += ` RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.notes, s.content_hash`
+		       s.notes, s.content_hash,
+		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output`
 	query += " ORDER BY s.created_at"
 	if limit > 0 {
 		query += " LIMIT $limit"
@@ -766,21 +771,71 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 		return nil, err
 	}
 
+	sparkJSON, err := recordStringOptional(rec, offset+14, "spark_output")
+	if err != nil {
+		return nil, err
+	}
+	shapeJSON, err := recordStringOptional(rec, offset+15, "shape_output")
+	if err != nil {
+		return nil, err
+	}
+	specifyJSON, err := recordStringOptional(rec, offset+16, "specify_output")
+	if err != nil {
+		return nil, err
+	}
+	decomposeJSON, err := recordStringOptional(rec, offset+17, "decompose_output")
+	if err != nil {
+		return nil, err
+	}
+
+	var sparkOutput *storage.SparkOutput
+	if sparkJSON != "" {
+		sparkOutput = &storage.SparkOutput{}
+		if err := json.Unmarshal([]byte(sparkJSON), sparkOutput); err != nil {
+			return nil, fmt.Errorf("memgraph: unmarshal spark_output: %w", err)
+		}
+	}
+	var shapeOutput *storage.ShapeOutput
+	if shapeJSON != "" {
+		shapeOutput = &storage.ShapeOutput{}
+		if err := json.Unmarshal([]byte(shapeJSON), shapeOutput); err != nil {
+			return nil, fmt.Errorf("memgraph: unmarshal shape_output: %w", err)
+		}
+	}
+	var specifyOutput *storage.SpecifyOutput
+	if specifyJSON != "" {
+		specifyOutput = &storage.SpecifyOutput{}
+		if err := json.Unmarshal([]byte(specifyJSON), specifyOutput); err != nil {
+			return nil, fmt.Errorf("memgraph: unmarshal specify_output: %w", err)
+		}
+	}
+	var decomposeOutput *storage.DecomposeOutput
+	if decomposeJSON != "" {
+		decomposeOutput = &storage.DecomposeOutput{}
+		if err := json.Unmarshal([]byte(decomposeJSON), decomposeOutput); err != nil {
+			return nil, fmt.Errorf("memgraph: unmarshal decompose_output: %w", err)
+		}
+	}
+
 	return &storage.Spec{
-		ID:           id,
-		Slug:         slug,
-		Intent:       intent,
-		Stage:        storage.SpecStage(stage),
-		Priority:     storage.SpecPriority(priority),
-		Complexity:   complexity,
-		Version:      safeInt32(version),
-		CreatedAt:    createdAt,
-		UpdatedAt:    updatedAt,
-		Lifecycle:    lifecycle,
-		SupersededBy: supersededBy,
-		Supersedes:   supersedes,
-		Notes:        notes,
-		ContentHash:  contentHash,
+		ID:              id,
+		Slug:            slug,
+		Intent:          intent,
+		Stage:           storage.SpecStage(stage),
+		Priority:        storage.SpecPriority(priority),
+		Complexity:      complexity,
+		Version:         safeInt32(version),
+		CreatedAt:       createdAt,
+		UpdatedAt:       updatedAt,
+		Lifecycle:       lifecycle,
+		SupersededBy:    supersededBy,
+		Supersedes:      supersedes,
+		Notes:           notes,
+		ContentHash:     contentHash,
+		SparkOutput:     sparkOutput,
+		ShapeOutput:     shapeOutput,
+		SpecifyOutput:   specifyOutput,
+		DecomposeOutput: decomposeOutput,
 	}, nil
 }
 

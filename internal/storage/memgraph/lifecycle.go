@@ -92,7 +92,8 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.notes, s.content_hash
+		       s.notes, s.content_hash,
+		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output
 	`
 	var result *storage.Spec
 	err = s.RunInTransaction(ctx, func(txCtx context.Context) error {
@@ -207,10 +208,12 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		       old.version, old.created_at, old.updated_at,
 		       old.lifecycle, old.superseded_by, old.supersedes,
 		       old.notes, old.content_hash,
+		       old.spark_output, old.shape_output, old.specify_output, old.decompose_output,
 		       new.id, new.slug, new.intent, new.stage, new.priority, new.complexity,
 		       new.version, new.created_at, new.updated_at,
 		       new.lifecycle, new.superseded_by, new.supersedes,
-		       new.notes, new.content_hash
+		       new.notes, new.content_hash,
+		       new.spark_output, new.shape_output, new.specify_output, new.decompose_output
 	`
 	txErr := s.RunInTransaction(ctx, func(txCtx context.Context) error {
 		records, qErr := s.executeQuery(txCtx, query, mergeParams(s.projectParam(), map[string]any{
@@ -337,7 +340,8 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
-		       s.notes, s.content_hash
+		       s.notes, s.content_hash,
+		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output
 	`
 	var result *storage.Spec
 	err = s.RunInTransaction(ctx, func(txCtx context.Context) error {
