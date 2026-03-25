@@ -58,6 +58,7 @@ PROPOSE 2-5 slices. Each slice has:
 | **Id** | kebab-case identifier |
 | **Intent** | What this slice delivers |
 | **Verify** | How you know it's done |
+| **Touches** | Files/packages this slice creates or modifies |
 | **Depends on** | Which other slices must complete first |
 
 #### 3. Dependency Ordering
@@ -116,7 +117,7 @@ If the spec is already at or past Decompose:
 
 1. Synthesize DecomposeOutput JSON containing:
    - `strategy` — the chosen decomposition strategy
-   - `slices` — array of objects with `id`, `intent`, `verify`, `depends_on`
+   - `slices` — array of objects with `id`, `intent`, `verify`, `touches`, `dependsOn`
 2. Show the user: "Here's the decomposition I'm going to save: [summary]. Look right?"
 3. User confirms or tweaks.
 4. Write temp file, call CLI:

@@ -94,7 +94,7 @@ confirm or add.
 - Technical risks (performance, complexity, integration).
 - Operational risks (deployment, migration, rollback).
 - Business risks (timeline, dependency on external teams).
-- For each risk: description, likelihood, impact, and mitigation strategy.
+- Capture each risk as a concise string suitable for `risks: string[]` in the persisted output.
 
 ### Quality Heuristics
 
@@ -204,34 +204,26 @@ When the shaping conversation is complete:
 
    ```json
    {
-     "scope_in": ["item 1", "item 2"],
-     "scope_out": ["item 1", "item 2"],
+     "scopeIn": ["item 1", "item 2"],
+     "scopeOut": ["item 1", "item 2"],
      "approaches": [
        {
-         "name": "Approach A",
+         "name": "approach-a",
          "description": "...",
-         "tradeoffs": "...",
-         "recommended": true
+         "tradeoffs": ["Pro or con as a string"]
        }
      ],
-     "chosen_approach": "Approach A",
-     "success_must": ["criterion 1"],
-     "success_should": ["criterion 2"],
-     "success_wont": ["criterion 3"],
+     "chosenApproach": "approach-a",
+     "risks": ["Risk description as string"],
+     "successMust": ["criterion 1"],
+     "successShould": ["criterion 2"],
+     "successWont": ["criterion 3"],
      "decisions": [
        {
          "slug": "decision-slug",
          "title": "Decision Title",
          "decision": "What was chosen",
          "rationale": "Why"
-       }
-     ],
-     "risks": [
-       {
-         "description": "Risk description",
-         "likelihood": "medium",
-         "impact": "high",
-         "mitigation": "Mitigation strategy"
        }
      ]
    }

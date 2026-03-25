@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
@@ -22,17 +24,20 @@ var templateFS embed.FS
 
 // AnalyticalPassHandler implements the ConnectRPC AnalyticalPassService.
 type AnalyticalPassHandler struct {
-	scoper storage.Scoper
+	scoper             storage.Scoper
+	templateOverrideDir string
 }
 
 var _ specgraphv1connect.AnalyticalPassServiceHandler = (*AnalyticalPassHandler)(nil)
 
 // RegisterAnalyticalPassService registers the AnalyticalPassService on the given mux.
-func RegisterAnalyticalPassService(mux *http.ServeMux, scoper storage.Scoper, opts ...connect.HandlerOption) {
+// templateOverrideDir, if non-empty, is checked for <pass_type>.md files before
+// falling back to the embedded defaults. Typical value: ".specgraph/templates".
+func RegisterAnalyticalPassService(mux *http.ServeMux, scoper storage.Scoper, templateOverrideDir string, opts ...connect.HandlerOption) {
 	if scoper == nil {
 		panic("RegisterAnalyticalPassService: scoper must not be nil")
 	}
-	handler := &AnalyticalPassHandler{scoper: scoper}
+	handler := &AnalyticalPassHandler{scoper: scoper, templateOverrideDir: templateOverrideDir}
 	path, h := specgraphv1connect.NewAnalyticalPassServiceHandler(handler, opts...)
 	mux.Handle(path, h)
 }
@@ -61,10 +66,9 @@ func (h *AnalyticalPassHandler) RunAnalyticalPass(ctx context.Context, req *conn
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	templatePath := fmt.Sprintf("templates/%s.md", string(pt))
-	tmplBytes, err := templateFS.ReadFile(templatePath)
+	tmplBytes, err := h.loadTemplate(pt)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no template for pass %q", pt))
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no template for pass %q: %w", pt, err))
 	}
 
 	stage := authoring.Stage(spec.Stage)
@@ -78,6 +82,29 @@ func (h *AnalyticalPassHandler) RunAnalyticalPass(ctx context.Context, req *conn
 		OfferedPasses:  offered,
 		Stage:          string(spec.Stage),
 	}), nil
+}
+
+// loadTemplate returns the prompt template for the given pass type.
+// If templateOverrideDir is set and contains a <passType>.md file, that file
+// is used. Otherwise falls back to the embedded default.
+func (h *AnalyticalPassHandler) loadTemplate(pt storage.PassType) ([]byte, error) {
+	fileName := string(pt) + ".md"
+	if h.templateOverrideDir != "" {
+		overridePath := filepath.Join(h.templateOverrideDir, fileName)
+		data, err := os.ReadFile(overridePath)
+		if err == nil {
+			return data, nil
+		}
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("read template override %q: %w", overridePath, err)
+		}
+		// File not found — fall through to embedded default.
+	}
+	data, err := templateFS.ReadFile("templates/" + fileName)
+	if err != nil {
+		return nil, fmt.Errorf("load template %q: %w", fileName, err)
+	}
+	return data, nil
 }
 
 // StoreFindings validates the request, converts proto findings to domain types,

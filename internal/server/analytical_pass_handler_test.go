@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -120,7 +122,7 @@ func setupAnalyticalPassServer(t *testing.T, backend storage.ScopedBackend) spec
 	t.Helper()
 	scoper := &testScoper{backend: backend}
 	mux := http.NewServeMux()
-	server.RegisterAnalyticalPassService(mux, scoper)
+	server.RegisterAnalyticalPassService(mux, scoper, "")
 	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewAnalyticalPassServiceClient(http.DefaultClient, srv.URL)
@@ -371,4 +373,52 @@ func TestListFindings_UnknownPassType(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func setupAnalyticalPassServerWithOverrideDir(t *testing.T, backend storage.ScopedBackend, overrideDir string) specgraphv1connect.AnalyticalPassServiceClient {
+	t.Helper()
+	scoper := &testScoper{backend: backend}
+	mux := http.NewServeMux()
+	server.RegisterAnalyticalPassService(mux, scoper, overrideDir)
+	srv := httptest.NewServer(wrapTestProject(mux))
+	t.Cleanup(srv.Close)
+	return specgraphv1connect.NewAnalyticalPassServiceClient(http.DefaultClient, srv.URL)
+}
+
+func TestRunAnalyticalPass_TemplateOverride(t *testing.T) {
+	overrideDir := t.TempDir()
+	overrideContent := "# Custom Constitution Check\n\nThis is a local override."
+	err := os.WriteFile(filepath.Join(overrideDir, "constitution_check.md"), []byte(overrideContent), 0o644) //nolint:gosec // test file
+	require.NoError(t, err)
+
+	backend := newAnalyticalPassTestBackend()
+	_, err = backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	client := setupAnalyticalPassServerWithOverrideDir(t, backend, overrideDir)
+
+	resp, err := client.RunAnalyticalPass(context.Background(), connect.NewRequest(&specv1.RunAnalyticalPassRequest{
+		Slug:     "my-spec",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
+	}))
+	require.NoError(t, err)
+	require.Equal(t, overrideContent, resp.Msg.PromptTemplate)
+}
+
+func TestRunAnalyticalPass_TemplateOverrideFallback(t *testing.T) {
+	// Override dir exists but has no file for red_team — should fall back to embedded.
+	overrideDir := t.TempDir()
+
+	backend := newAnalyticalPassTestBackend()
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+
+	client := setupAnalyticalPassServerWithOverrideDir(t, backend, overrideDir)
+
+	resp, err := client.RunAnalyticalPass(context.Background(), connect.NewRequest(&specv1.RunAnalyticalPassRequest{
+		Slug:     "my-spec",
+		PassType: specv1.PassType_PASS_TYPE_RED_TEAM,
+	}))
+	require.NoError(t, err)
+	require.Contains(t, resp.Msg.PromptTemplate, "Red Team")
 }
