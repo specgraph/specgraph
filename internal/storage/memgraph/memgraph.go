@@ -24,12 +24,12 @@ import (
 
 // Compile-time interface assertions.
 var (
-	_ storage.AuthoringBackend = (*Store)(nil)
-	_ storage.LifecycleBackend = (*Store)(nil)
-	_ storage.ProjectBackend   = (*Store)(nil)
-	_ storage.SyncBackend      = (*Store)(nil)
-	_ storage.Scoper           = (*Store)(nil)
-	_ storage.ScopedBackend        = (*Store)(nil)
+	_ storage.AuthoringBackend    = (*Store)(nil)
+	_ storage.LifecycleBackend    = (*Store)(nil)
+	_ storage.ProjectBackend      = (*Store)(nil)
+	_ storage.SyncBackend         = (*Store)(nil)
+	_ storage.Scoper              = (*Store)(nil)
+	_ storage.ScopedBackend       = (*Store)(nil)
 	_ storage.ConversationBackend = (*Store)(nil)
 )
 

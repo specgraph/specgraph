@@ -1,0 +1,6 @@
+{
+  "exchanges": [
+    { "role": "probe", "content": "What is the seed idea?", "stage": "spark", "sequence": 1 },
+    { "role": "response", "content": "Build a test widget", "stage": "spark", "sequence": 1, "decision_point": true }
+  ]
+}

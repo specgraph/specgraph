@@ -22,11 +22,11 @@ func TestRecordToSpecOffset(t *testing.T) {
 			id, slug, intent, stage, priority, complexity,
 			version,  // int64
 			now, now, // created_at, updated_at
-			"task",       // lifecycle
-			supersededBy, // superseded_by
-			supersedes,   // supersedes
-			"",           // notes
-			contentHash,  // content_hash
+			"task",         // lifecycle
+			supersededBy,   // superseded_by
+			supersedes,     // supersedes
+			"",             // notes
+			contentHash,    // content_hash
 			"", "", "", "", // spark_output, shape_output, specify_output, decompose_output
 		}
 	}

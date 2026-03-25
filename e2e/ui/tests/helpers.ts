@@ -30,3 +30,18 @@ export async function seedEdge(request: APIRequestContext, fromSlug: string, toS
 export async function seedDecision(request: APIRequestContext, slug: string, title: string): Promise<void> {
   await postWithRetry(request, `${BASE_URL}/specgraph.v1.DecisionService/CreateDecision`, { slug, title, decision: 'Test decision text', rationale: 'Test rationale' }, `seedDecision(${slug})`);
 }
+
+export async function seedSparkOutput(request: APIRequestContext, slug: string): Promise<void> {
+  // Spark RPC creates the spec AND stores spark output atomically.
+  // Idempotent: if spec already exists (409), that's fine — spark output was stored on first call.
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Spark`, {
+    slug,
+    output: {
+      seed: 'E2E test seed idea',
+      signal: 'Strong test signal',
+      scopeSniff: 'SCOPE_SNIFF_SMALL',
+      killTest: 'No blockers found',
+      questions: ['How should we test this?'],
+    },
+  }, `seedSparkOutput(${slug})`);
+}

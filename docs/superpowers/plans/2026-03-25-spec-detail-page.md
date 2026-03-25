@@ -1,131 +1,268 @@
+# Spec Detail Page Implementation Plan
+
+> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Expand the web UI spec detail page with collapsible accordion sections for authoring stage outputs, edges, and conversations.
+
+**Architecture:** Create one new `AccordionSection.svelte` component, then expand the existing `+page.svelte` with stage output sections, edge fetching via `graphClient.listEdges`, and conversation rendering. All data from `GetSpec` response (stage outputs + conversations) plus one `listEdges` call.
+
+**Tech Stack:** SvelteKit 2, Svelte 5 (runes), @connectrpc/connect-web, TypeScript
+
+**Spec:** `docs/superpowers/specs/2026-03-25-spec-detail-page-design.md`
+
+---
+
+## File Structure
+
+| File | Action | Responsibility |
+|------|--------|---------------|
+| `web/src/lib/components/AccordionSection.svelte` | Create | Reusable collapsible section with title, badge, chevron |
+| `web/src/routes/spec/[...slug]/+page.svelte` | Modify | Add accordion sections for stages, edges, conversations |
+
+---
+
+## Chunk 1: AccordionSection Component
+
+### Task 1: Create AccordionSection.svelte
+
+**Files:**
+
+- Create: `web/src/lib/components/AccordionSection.svelte`
+
+- [ ] **Step 1: Create the component**
+
+```svelte
 <script lang="ts">
-  import { page } from '$app/stores';
-  import { specClient, graphClient } from '$lib/api/client';
-  import type { Spec } from '$lib/api/gen/specgraph/v1/spec_pb';
-  import type { Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
-  import { EdgeType } from '$lib/api/gen/specgraph/v1/graph_pb';
-  import { ScopeSniff, DecompositionStrategy } from '$lib/api/gen/specgraph/v1/authoring_pb';
-  import AccordionSection from '$lib/components/AccordionSection.svelte';
-
-  let spec = $state<Spec | null>(null);
-  let edges = $state<Edge[]>([]);
-  let loading = $state(true);
-  let error = $state<string | null>(null);
-
-  let slug = $derived($page.params.slug);
-
-  async function loadSpec(s: string) {
-    loading = true;
-    error = null;
-    try {
-      const specResp = await specClient.getSpec({ slug: s });
-      spec = specResp.spec ?? null;
-      // Edges are non-critical — fetch separately so failure doesn't lose spec data.
-      try {
-        const edgeResp = await graphClient.listEdges({ slug: s });
-        edges = edgeResp.edges;
-      } catch {
-        edges = [];
-      }
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to load spec';
-    } finally {
-      loading = false;
-    }
+  interface Props {
+    title: string;
+    expanded?: boolean;
+    badge?: string;
+    children: import('svelte').Snippet;
   }
-
-  // Reload when slug changes (SvelteKit reuses component on param-only navigation).
-  $effect(() => { if (slug) loadSpec(slug); });
-
-  function shouldExpand(stage: string): boolean {
-    return spec?.stage === stage;
-  }
-
-  function scopeSniffLabel(val: ScopeSniff): string {
-    const labels: Record<number, string> = {
-      [ScopeSniff.TINY]: 'tiny',
-      [ScopeSniff.SMALL]: 'small',
-      [ScopeSniff.MEDIUM]: 'medium',
-      [ScopeSniff.LARGE]: 'large',
-      [ScopeSniff.EPIC]: 'epic',
-    };
-    return labels[val] ?? '';
-  }
-
-  function strategyLabel(val: DecompositionStrategy): string {
-    const labels: Record<number, string> = {
-      [DecompositionStrategy.VERTICAL_SLICE]: 'vertical slice',
-      [DecompositionStrategy.LAYER_CAKE]: 'layer cake',
-      [DecompositionStrategy.SINGLE_UNIT]: 'single unit',
-    };
-    return labels[val] ?? '';
-  }
-
-  function edgeTypeLabel(val: EdgeType): string {
-    const labels: Record<number, string> = {
-      [EdgeType.DEPENDS_ON]: 'Depends on',
-      [EdgeType.BLOCKS]: 'Blocks',
-      [EdgeType.COMPOSES]: 'Composes',
-      [EdgeType.RELATES_TO]: 'Relates to',
-      [EdgeType.INFORMS]: 'Informs',
-      [EdgeType.DECIDED_IN]: 'Decision',
-      [EdgeType.SUPERSEDES]: 'Supersedes',
-    };
-    return labels[val] ?? String(val);
-  }
-
-  interface EdgeDisplay {
-    target: string;
-    route: string; // '/spec/' or '/decision/'
-    label: string; // direction-aware label
-  }
-
-  let groupedEdges = $derived(
-    edges.reduce((acc, e) => {
-      const isOutgoing = e.fromId === slug;
-      const target = isOutgoing ? e.toId : e.fromId;
-      // Decision edges link to /decision/, all others to /spec/
-      const isDecisionEdge = e.edgeType === EdgeType.DECIDED_IN;
-      const route = isDecisionEdge ? '/decision/' : '/spec/';
-      // Direction-aware labels for directed relationships
-      let label: string;
-      switch (e.edgeType) {
-        case EdgeType.DEPENDS_ON: label = isOutgoing ? 'Depends on' : 'Depended on by'; break;
-        case EdgeType.BLOCKS: label = isOutgoing ? 'Blocks' : 'Blocked by'; break;
-        case EdgeType.COMPOSES: label = isOutgoing ? 'Composes' : 'Composed by'; break;
-        case EdgeType.INFORMS: label = isOutgoing ? 'Informs' : 'Informed by'; break;
-        case EdgeType.DECIDED_IN: label = isOutgoing ? 'Decision' : 'Decided in'; break;
-        case EdgeType.SUPERSEDES: label = isOutgoing ? 'Supersedes' : 'Superseded by'; break;
-        default: label = edgeTypeLabel(e.edgeType); break;
-      }
-      if (!acc[label]) acc[label] = [];
-      acc[label].push({ target, route, label });
-      return acc;
-    }, {} as Record<string, EdgeDisplay[]>)
-  );
+  let { title, expanded = false, badge = '', children }: Props = $props();
+  let open = $state(expanded);
 </script>
 
-<nav class="breadcrumb">
-  <a href="/">Dashboard</a> / <a href="/graph">Graph</a> / <span>{slug}</span>
-</nav>
+<div class="accordion">
+  <button class="accordion-header" onclick={() => open = !open}>
+    <span class="chevron" class:open>▶</span>
+    <span class="accordion-title">{title}</span>
+    {#if badge}<span class="accordion-badge">{badge}</span>{/if}
+  </button>
+  {#if open}
+    <div class="accordion-body">
+      {@render children()}
+    </div>
+  {/if}
+</div>
 
-{#if loading}
-  <p class="status">Loading...</p>
-{:else if error}
-  <p class="status error">{error}</p>
-{:else if spec}
-  <h1>{spec.slug}</h1>
+<style>
+  .accordion {
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 0.25rem;
+  }
 
-  <table class="meta">
-    <tbody>
-      <tr><td class="label">Intent</td><td>{spec.intent}</td></tr>
-      <tr><td class="label">Stage</td><td><span class="badge stage-{spec.stage}">{spec.stage}</span></td></tr>
-      <tr><td class="label">Priority</td><td>{spec.priority || '—'}</td></tr>
-      <tr><td class="label">Complexity</td><td>{spec.complexity || '—'}</td></tr>
-      <tr><td class="label">Version</td><td>{spec.version}</td></tr>
-    </tbody>
-  </table>
+  .accordion-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    text-align: left;
+  }
 
+  .accordion-header:hover {
+    color: #2563eb;
+  }
+
+  .chevron {
+    font-size: 0.7rem;
+    transition: transform 0.15s ease;
+    color: #94a3b8;
+  }
+
+  .chevron.open {
+    transform: rotate(90deg);
+  }
+
+  .accordion-badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+  }
+
+  .accordion-body {
+    padding: 0 0 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    color: #374151;
+    line-height: 1.6;
+  }
+</style>
+```
+
+- [ ] **Step 2: Verify build**
+
+Run: `cd web && pnpm svelte-check`
+
+Expected: No errors on AccordionSection.svelte.
+
+- [ ] **Step 3: Commit**
+
+```text
+feat(web): add AccordionSection component (spgr-zn1)
+```
+
+---
+
+## Chunk 2: Expand Spec Detail Page
+
+### Task 2: Add imports, edge fetching, and helper functions
+
+**Files:**
+
+- Modify: `web/src/routes/spec/[...slug]/+page.svelte`
+
+- [ ] **Step 1: Add imports and state**
+
+Update the `<script>` block. Add imports for `graphClient`, `AccordionSection`, the generated types, and `EdgeType`. Add state for edges:
+
+```typescript
+import { onMount } from 'svelte';
+import { page } from '$app/stores';
+import { specClient, graphClient } from '$lib/api/client';
+import type { Spec } from '$lib/api/gen/specgraph/v1/spec_pb';
+import type { Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
+import { EdgeType } from '$lib/api/gen/specgraph/v1/graph_pb';
+import { ScopeSniff, DecompositionStrategy } from '$lib/api/gen/specgraph/v1/authoring_pb';
+import AccordionSection from '$lib/components/AccordionSection.svelte';
+
+let spec = $state<Spec | null>(null);
+let edges = $state<Edge[]>([]);
+let loading = $state(true);
+let error = $state<string | null>(null);
+
+let slug = $derived($page.params.slug);
+```
+
+- [ ] **Step 2: Update loadSpec to also fetch edges**
+
+Replace the existing `loadSpec` function:
+
+```typescript
+async function loadSpec(s: string) {
+  try {
+    const [specResp, edgeResp] = await Promise.all([
+      specClient.getSpec({ slug: s }),
+      graphClient.listEdges({ slug: s }),
+    ]);
+    spec = specResp.spec ?? null;
+    edges = edgeResp.edges;
+  } catch (err) {
+    error = err instanceof Error ? err.message : 'Failed to load spec';
+  } finally {
+    loading = false;
+  }
+}
+```
+
+- [ ] **Step 3: Add helper functions**
+
+After `loadSpec`, add helpers for display:
+
+```typescript
+function isCurrentStage(stage: string): boolean {
+  return spec?.stage === stage;
+}
+
+function isPastStage(stage: string): boolean {
+  const order = ['spark', 'shape', 'specify', 'decompose', 'approved', 'in_progress', 'review', 'done'];
+  const current = order.indexOf(spec?.stage ?? '');
+  const target = order.indexOf(stage);
+  return target >= 0 && current > target;
+}
+
+function shouldExpand(stage: string): boolean {
+  return isCurrentStage(stage);
+}
+
+function scopeSniffLabel(val: ScopeSniff): string {
+  const labels: Record<number, string> = {
+    [ScopeSniff.TINY]: 'tiny',
+    [ScopeSniff.SMALL]: 'small',
+    [ScopeSniff.MEDIUM]: 'medium',
+    [ScopeSniff.LARGE]: 'large',
+    [ScopeSniff.EPIC]: 'epic',
+  };
+  return labels[val] ?? '';
+}
+
+function strategyLabel(val: DecompositionStrategy): string {
+  const labels: Record<number, string> = {
+    [DecompositionStrategy.VERTICAL_SLICE]: 'vertical slice',
+    [DecompositionStrategy.LAYER_CAKE]: 'layer cake',
+    [DecompositionStrategy.SINGLE_UNIT]: 'single unit',
+  };
+  return labels[val] ?? '';
+}
+
+function edgeTypeLabel(val: EdgeType): string {
+  const labels: Record<number, string> = {
+    [EdgeType.DEPENDS_ON]: 'Depends on',
+    [EdgeType.BLOCKS]: 'Blocks',
+    [EdgeType.COMPOSES]: 'Composes',
+    [EdgeType.RELATES_TO]: 'Relates to',
+    [EdgeType.INFORMS]: 'Informs',
+    [EdgeType.DECIDED_IN]: 'Decision',
+    [EdgeType.SUPERSEDES]: 'Supersedes',
+  };
+  return labels[val] ?? String(val);
+}
+
+// Group edges by type for display
+let groupedEdges = $derived(
+  edges.reduce((acc, e) => {
+    const label = edgeTypeLabel(e.edgeType);
+    if (!acc[label]) acc[label] = [];
+    // Show the "other" end: if fromId is our slug, show toId; otherwise show fromId
+    const target = e.fromId === slug ? e.toId : e.fromId;
+    acc[label].push(target);
+    return acc;
+  }, {} as Record<string, string[]>)
+);
+```
+
+- [ ] **Step 4: Verify build**
+
+Run: `cd web && pnpm svelte-check`
+
+Expected: Pass (template not using new state yet, just script changes).
+
+- [ ] **Step 5: Commit**
+
+```text
+feat(web): add edge fetching and helper functions to spec detail page (spgr-zn1)
+```
+
+### Task 3: Add stage output sections to template
+
+**Files:**
+
+- Modify: `web/src/routes/spec/[...slug]/+page.svelte` (template section)
+
+- [ ] **Step 1: Replace the notes section and add all accordion sections**
+
+After the metadata `<table>`, replace the existing `{#if spec.notes}` block with the full accordion layout. Add after the closing `</table>`:
+
+```svelte
   <div class="sections">
     {#if spec.notes}
       <AccordionSection title="Notes" expanded={true}>
@@ -249,7 +386,7 @@
     {/if}
 
     {#if spec.decomposeOutput}
-      <AccordionSection title="Decompose" badge={spec.decomposeOutput.slices.length + ' slices'} expanded={shouldExpand('decompose')}>
+      <AccordionSection title="Decompose" badge="{spec.decomposeOutput.slices.length} slices" expanded={shouldExpand('decompose')}>
         {#if strategyLabel(spec.decomposeOutput.strategy)}
           <p><strong>Strategy:</strong> {strategyLabel(spec.decomposeOutput.strategy)}</p>
         {/if}
@@ -270,12 +407,12 @@
     {/if}
 
     {#if edges.length > 0}
-      <AccordionSection title="Edges" badge={String(edges.length)}>
-        {#each Object.entries(groupedEdges) as [label, items]}
+      <AccordionSection title="Edges" badge="{edges.length}">
+        {#each Object.entries(groupedEdges) as [label, targets]}
           <p><strong>{label}:</strong></p>
           <ul>
-            {#each items as item}
-              <li><a href="{item.route}{item.target}">{item.target}</a></li>
+            {#each targets as target}
+              <li><a href="/spec/{target}">{target}</a></li>
             {/each}
           </ul>
         {/each}
@@ -283,14 +420,14 @@
     {/if}
 
     {#if spec.conversationLogs.length > 0}
-      <AccordionSection title="Conversations" badge={String(spec.conversationLogs.length)}>
+      <AccordionSection title="Conversations" badge="{spec.conversationLogs.length}">
         {#each spec.conversationLogs as log}
           <div class="conversation-log">
             <h4>{log.stage} (v{log.version}{log.isAmend ? ', amend' : ''})</h4>
             {#each log.exchanges as ex}
               <div class="exchange">
                 <span class="role" class:probe={ex.role === 'probe'} class:response={ex.role === 'response'}>
-                  {ex.role === 'probe' ? 'Probe' : ex.role === 'response' ? 'Response' : ex.role}:
+                  {ex.role === 'probe' ? 'Probe' : 'User'}:
                 </span>
                 <span>{ex.content}</span>
                 {#if ex.decisionPoint}<span class="decision-marker">decision</span>{/if}
@@ -301,88 +438,13 @@
       </AccordionSection>
     {/if}
   </div>
-{/if}
+```
 
-<style>
-  .breadcrumb {
-    font-size: 0.85rem;
-    color: #64748b;
-    margin-bottom: 1.25rem;
-  }
+- [ ] **Step 2: Add styles for the new sections**
 
-  .breadcrumb a {
-    color: #2563eb;
-    text-decoration: none;
-  }
+Append to the `<style>` block:
 
-  .breadcrumb a:hover {
-    text-decoration: underline;
-  }
-
-  .breadcrumb span {
-    color: #1a1a2e;
-    font-weight: 500;
-  }
-
-  h1 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0 0 1rem;
-    color: #1a1a2e;
-  }
-
-  .status {
-    color: #64748b;
-    font-size: 0.95rem;
-  }
-
-  .status.error {
-    color: #dc2626;
-  }
-
-  .meta {
-    border-collapse: collapse;
-    font-size: 0.9rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .meta td {
-    padding: 0.4rem 1rem 0.4rem 0;
-    vertical-align: top;
-  }
-
-  .meta .label {
-    color: #64748b;
-    font-weight: 500;
-    white-space: nowrap;
-    min-width: 8rem;
-  }
-
-  .badge {
-    display: inline-block;
-    padding: 0.15rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    background: #f1f5f9;
-    color: #475569;
-  }
-
-  .badge.stage-spark { background: #ede9fe; color: #7c3aed; }
-  .badge.stage-shape { background: #dbeafe; color: #2563eb; }
-  .badge.stage-specify { background: #dcfce7; color: #16a34a; }
-  .badge.stage-decompose { background: #fef9c3; color: #ca8a04; }
-  .badge.stage-approved { background: #ccfbf1; color: #0d9488; }
-  .badge.stage-in_progress { background: #ffedd5; color: #ea580c; }
-  .badge.stage-done { background: #f1f5f9; color: #6b7280; }
-
-  .notes {
-    color: #374151;
-    font-size: 0.9rem;
-    line-height: 1.6;
-    white-space: pre-wrap;
-  }
-
+```css
   .sections {
     margin-top: 1rem;
   }
@@ -528,4 +590,58 @@
     border-radius: 3px;
     margin-left: 0.3rem;
   }
-</style>
+```
+
+- [ ] **Step 3: Remove old notes section**
+
+Remove the old `{#if spec.notes}` block that was replaced (the one without AccordionSection). The new version is inside the `.sections` div.
+
+- [ ] **Step 4: Verify build**
+
+Run: `cd web && pnpm svelte-check && pnpm build`
+
+Expected: Both pass.
+
+- [ ] **Step 5: Commit**
+
+```text
+feat(web): expand spec detail page with stage outputs, edges, and conversations (spgr-zn1)
+```
+
+---
+
+## Chunk 3: Quality Gates
+
+### Task 4: Run full quality gates
+
+- [ ] **Step 1: Run task check**
+
+Run: `task check`
+
+Expected: PASS
+
+- [ ] **Step 2: Run task pr-prep**
+
+Run: `task pr-prep`
+
+Expected: PASS (includes e2e/ui tests which load the spec detail page)
+
+- [ ] **Step 3: Fix any issues**
+
+- [ ] **Step 4: Commit fixes if needed**
+
+```text
+fix: address lint and formatting issues (spgr-zn1)
+```
+
+---
+
+## Summary
+
+| Chunk | Tasks | Focus |
+|-------|-------|-------|
+| 1 | Task 1 | AccordionSection component |
+| 2 | Tasks 2-3 | Page expansion (imports, helpers, template, styles) |
+| 3 | Task 4 | Quality gates |
+
+**Total:** 4 tasks, ~15 steps. Pure frontend — no Go/proto changes.
