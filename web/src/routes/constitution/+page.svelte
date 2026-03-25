@@ -43,7 +43,8 @@
     return labels[rt] ?? 'Ref';
   }
 
-  function mapEntries(m: { [key: string]: string }): [string, string][] {
+  function mapEntries(m: { [key: string]: string } | undefined): [string, string][] {
+    if (!m) return [];
     return Object.entries(m).sort(([a], [b]) => a.localeCompare(b));
   }
 </script>
