@@ -614,3 +614,31 @@ func TestAuthoring(t *testing.T) {
 		require.NotEmpty(t, updated.ContentHash)
 	})
 }
+
+func TestGetSpec_IncludesSparkOutput(t *testing.T) {
+	clearDatabase(t)
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.CreateSpec(ctx, "test-show-spark", "test intent", "p2", "medium")
+	require.NoError(t, err)
+
+	err = store.StoreSparkOutput(ctx, "test-show-spark", &storage.SparkOutput{
+		Seed:       "Build a widget",
+		Signal:     "High demand",
+		ScopeSniff: "small",
+		KillTest:   "No migration needed",
+		Questions:  []string{"What throughput?"},
+	})
+	require.NoError(t, err)
+
+	spec, err := store.GetSpec(ctx, "test-show-spark")
+	require.NoError(t, err)
+	require.NotNil(t, spec.SparkOutput)
+	assert.Equal(t, "Build a widget", spec.SparkOutput.Seed)
+	assert.Equal(t, "High demand", spec.SparkOutput.Signal)
+	assert.Equal(t, "small", spec.SparkOutput.ScopeSniff)
+	assert.Len(t, spec.SparkOutput.Questions, 1)
+}

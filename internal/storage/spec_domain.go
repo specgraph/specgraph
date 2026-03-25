@@ -149,4 +149,8 @@ type Spec struct {
 	Notes        string        // free-text notes (conversation summaries, context)
 	ContentHash      string                // Murmur3-128 hash of substantive fields
 	ConversationLogs []*ConversationLogEntry // authoring conversation audit trail (populated by GetSpec)
+	SparkOutput      *SparkOutput
+	ShapeOutput      *ShapeOutput
+	SpecifyOutput    *SpecifyOutput
+	DecomposeOutput  *DecomposeOutput
 }

@@ -50,6 +50,10 @@ func specToProto(s *storage.Spec) (*specv1.Spec, error) {
 		}
 		pb.ConversationLogs = logs
 	}
+	pb.SparkOutput = sparkOutputToProto(s.SparkOutput)
+	pb.ShapeOutput = shapeOutputToProto(s.ShapeOutput)
+	pb.SpecifyOutput = specifyOutputToProto(s.SpecifyOutput)
+	pb.DecomposeOutput = decomposeOutputToProto(s.DecomposeOutput)
 	return pb, nil
 }
 
@@ -717,6 +721,138 @@ func conversationExchangesFromProto(exchanges []*specv1.ConversationExchange) []
 		}
 	}
 	return result
+}
+
+// --- Stage output domain → proto converters ---
+
+var scopeSniffStringToProtoMap = map[string]specv1.ScopeSniff{
+	"":       specv1.ScopeSniff_SCOPE_SNIFF_UNSPECIFIED,
+	"tiny":   specv1.ScopeSniff_SCOPE_SNIFF_TINY,
+	"small":  specv1.ScopeSniff_SCOPE_SNIFF_SMALL,
+	"medium": specv1.ScopeSniff_SCOPE_SNIFF_MEDIUM,
+	"large":  specv1.ScopeSniff_SCOPE_SNIFF_LARGE,
+	"epic":   specv1.ScopeSniff_SCOPE_SNIFF_EPIC,
+}
+
+func scopeSniffStringToProto(s string) specv1.ScopeSniff {
+	if v, ok := scopeSniffStringToProtoMap[s]; ok {
+		return v
+	}
+	return specv1.ScopeSniff_SCOPE_SNIFF_UNSPECIFIED
+}
+
+func sparkOutputToProto(o *storage.SparkOutput) *specv1.SparkOutput {
+	if o == nil {
+		return nil
+	}
+	return &specv1.SparkOutput{
+		Seed:       o.Seed,
+		Signal:     o.Signal,
+		Questions:  o.Questions,
+		ScopeSniff: scopeSniffStringToProto(o.ScopeSniff),
+		KillTest:   o.KillTest,
+	}
+}
+
+func shapeOutputToProto(o *storage.ShapeOutput) *specv1.ShapeOutput {
+	if o == nil {
+		return nil
+	}
+	approaches := make([]*specv1.Approach, len(o.Approaches))
+	for i, a := range o.Approaches {
+		approaches[i] = &specv1.Approach{
+			Name:        a.Name,
+			Description: a.Description,
+			Tradeoffs:   a.Tradeoffs,
+		}
+	}
+	decisions := make([]*specv1.DecisionInput, len(o.Decisions))
+	for i, d := range o.Decisions {
+		decisions[i] = &specv1.DecisionInput{
+			Slug:      d.Slug,
+			Title:     d.Title,
+			Decision:  d.Body,
+			Rationale: d.Rationale,
+		}
+	}
+	return &specv1.ShapeOutput{
+		ScopeIn:        o.ScopeIn,
+		ScopeOut:       o.ScopeOut,
+		Approaches:     approaches,
+		ChosenApproach: o.ChosenApproach,
+		Risks:          o.Risks,
+		SuccessMust:    o.SuccessMust,
+		SuccessShould:  o.SuccessShould,
+		SuccessWont:    o.SuccessWont,
+		Decisions:      decisions,
+	}
+}
+
+func specifyOutputToProto(o *storage.SpecifyOutput) *specv1.SpecifyOutput {
+	if o == nil {
+		return nil
+	}
+	interfaces := make([]*specv1.InterfaceSection, len(o.Interfaces))
+	for i, iface := range o.Interfaces {
+		interfaces[i] = &specv1.InterfaceSection{
+			Name: iface.Name,
+			Body: iface.Body,
+		}
+	}
+	criteria := make([]*specv1.VerifyCriterion, len(o.VerifyCriteria))
+	for i, vc := range o.VerifyCriteria {
+		criteria[i] = &specv1.VerifyCriterion{
+			Category:    vc.Category,
+			Description: vc.Description,
+		}
+	}
+	touches := make([]*specv1.FileTouch, len(o.Touches))
+	for i, ft := range o.Touches {
+		touches[i] = &specv1.FileTouch{
+			Path:       ft.Path,
+			Purpose:    ft.Purpose,
+			ChangeType: ft.ChangeType,
+		}
+	}
+	return &specv1.SpecifyOutput{
+		Interfaces:     interfaces,
+		VerifyCriteria: criteria,
+		Invariants:     o.Invariants,
+		Touches:        touches,
+	}
+}
+
+var decomposeStrategyStringToProtoMap = map[storage.DecompositionStrategy]specv1.DecompositionStrategy{
+	storage.StrategyVerticalSlice: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
+	storage.StrategyLayerCake:     specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_LAYER_CAKE,
+	storage.StrategySingleUnit:    specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_SINGLE_UNIT,
+}
+
+func decomposeStrategyStringToProto(s storage.DecompositionStrategy) specv1.DecompositionStrategy {
+	if v, ok := decomposeStrategyStringToProtoMap[s]; ok {
+		return v
+	}
+	return specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_UNSPECIFIED
+}
+
+func decomposeOutputToProto(o *storage.DecomposeOutput) *specv1.DecomposeOutput {
+	if o == nil {
+		return nil
+	}
+	slices := make([]*specv1.DecompositionSlice, len(o.Slices))
+	for i, s := range o.Slices {
+		slices[i] = &specv1.DecompositionSlice{
+			Id:        s.ID,
+			Intent:    s.Intent,
+			Verify:    s.Verify,
+			Touches:   s.Touches,
+			DependsOn: s.DependsOn,
+		}
+	}
+	return &specv1.DecomposeOutput{
+		Strategy: decomposeStrategyStringToProto(o.Strategy),
+		Slices:   slices,
+	}
 }
 
 func injectToolFromProto(t specv1.InjectTool) (storage.InjectToolType, error) {
