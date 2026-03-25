@@ -97,69 +97,83 @@ b.WriteString(ConversationLogList(s.ConversationLogs))
 | Lifecycle | task |
 
 ## Notes
+
 Some context about this spec...
 
 ## Spark
 
 > **Seed:** Build a widget factory for production use
-
+>
 > **Signal:** High demand from enterprise customers
 
 **Scope Sniff:** greenfield
 **Kill Test:** No existing widget system to migrate from
 
 **Questions:**
+
 - What throughput is expected?
 - Which widget types are in scope?
 
 ## Shape
 
 **Scope In:**
+
 - API layer
 - Storage backend
 - CLI commands
 
 **Scope Out:**
+
 - Web UI
 - Authentication
 
 ### Approaches
 
 #### 1. Modular plugin architecture (chosen)
+
 Plugin-based design with hot-reloading for widget types...
 
 #### 2. Monolithic service
+
 Single service handling all widget operations...
 
 ### Risks
+
 - Performance under high concurrent load
 - Plugin compatibility across versions
 
 ### Success Criteria
 
 **Must:**
+
 - Create, read, update, delete widgets via API
 - Sub-100ms p99 latency
 
 **Should:**
+
 - Support batch operations
 - Provide CLI autocomplete
 
 **Won't:**
+
 - Real-time collaboration
 - Widget marketplace
 
 ### Decisions
+
 - Use protobuf for wire format
 - PostgreSQL for persistence
 
 ## Specify
+
 ...
 
 ## Decompose
+
 ...
 
 ## Conversations
+
 ...
 ```
 
