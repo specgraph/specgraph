@@ -95,7 +95,9 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		server.RegisterClaimService(mux, store, opts)
 		server.RegisterConstitutionService(mux, store, opts)
 		server.RegisterAuthoringService(mux, store, opts)
-		server.RegisterAnalyticalPassService(mux, store, opts)
+		// Template override dir defaults to .specgraph/templates in the working directory.
+		// Users can place <pass_type>.md files there to customize analytical pass prompts.
+		server.RegisterAnalyticalPassService(mux, store, ".specgraph/templates", opts)
 		server.RegisterExecutionService(mux, store, opts)
 		driftEngine := drift.NewEngine(store, nil)
 		lintEngine := linter.NewEngine(store, nil)

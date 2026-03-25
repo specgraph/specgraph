@@ -16,6 +16,7 @@ Unicode punctuation — the proto JSON parser rejects them.
       "id": "kebab-case-slice-id",
       "intent": "What this slice delivers",
       "verify": ["How to verify this slice works"],
+      "touches": ["path/to/file.go"],
       "dependsOn": ["id-of-prerequisite-slice"]
     }
   ]
@@ -26,13 +27,12 @@ Unicode punctuation — the proto JSON parser rejects them.
 
 - `DECOMPOSITION_STRATEGY_VERTICAL_SLICE` — Each slice delivers end-to-end value
 - `DECOMPOSITION_STRATEGY_LAYER_CAKE` — Split by architectural layer (e.g. storage first, then API, then UI)
-- `DECOMPOSITION_STRATEGY_HORIZONTAL_LAYER` — Split by technical layer
-- `DECOMPOSITION_STRATEGY_FEATURE_FLAG` — Behind feature flags
-- `DECOMPOSITION_STRATEGY_STRANGLER` — Incremental replacement
+- `DECOMPOSITION_STRATEGY_SINGLE_UNIT` — Deliver the entire spec as one unit; no decomposition
 
 ## Field Notes
 
 - `slices[].id`: Becomes a child spec slug in the graph.
 - `slices[].dependsOn`: References other slice IDs. Creates DEPENDS_ON edges.
 - `slices[].verify`: Each item should be independently testable.
+- `slices[].touches`: Files, packages, or components this slice is expected to modify.
 - Order slices by dependency: independent slices first, dependent ones after.
