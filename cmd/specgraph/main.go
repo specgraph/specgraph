@@ -33,6 +33,7 @@ var rootCmd = &cobra.Command{
 	Short:         "Live spec-driven development framework",
 	Version:       buildVersion(),
 	SilenceErrors: true,
+	SilenceUsage:  true,
 }
 
 var cfgFile string

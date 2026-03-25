@@ -2,11 +2,13 @@
   import { onMount } from 'svelte';
   import { specClient, graphClient, decisionClient, lifecycleClient } from '$lib/api/client';
   import type { GraphNode, Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
+  import { EdgeType } from '$lib/api/gen/specgraph/v1/graph_pb';
   import StatsBar from '$lib/components/StatsBar.svelte';
   import FunnelBar from '$lib/components/FunnelBar.svelte';
   import GraphMini from '$lib/components/GraphMini.svelte';
 
   let totalSpecs = $state(0);
+  let sliceCount = $state(0);
   let readyCount = $state(0);
   let driftCount = $state(0);
   let decisionCount = $state(0);
@@ -27,10 +29,19 @@
       ]);
 
       const specs = specsRes.specs ?? [];
-      totalSpecs = specs.length;
+      const allEdges = graphRes.edges ?? [];
 
+      // Slices are specs that have an incoming COMPOSES edge (a parent "composes" them).
+      const sliceSlugs = new Set(
+        allEdges.filter((e) => e.edgeType === EdgeType.COMPOSES).map((e) => e.toId)
+      );
+      const topLevel = specs.filter((s) => !sliceSlugs.has(s.slug));
+      totalSpecs = topLevel.length;
+      sliceCount = specs.length - topLevel.length;
+
+      // Funnel counts only top-level specs (not slices).
       const counts: Record<string, number> = {};
-      for (const s of specs) {
+      for (const s of topLevel) {
         counts[s.stage] = (counts[s.stage] ?? 0) + 1;
       }
       stageCounts = counts;
@@ -60,7 +71,7 @@
   <p class="status error">Error: {error}</p>
 {:else}
   <section class="dashboard">
-    <StatsBar {totalSpecs} {readyCount} {driftCount} {decisionCount} />
+    <StatsBar {totalSpecs} {sliceCount} {readyCount} {driftCount} {decisionCount} />
 
     <div class="row">
       <div class="col-funnel">

@@ -1,15 +1,18 @@
 <script lang="ts">
   interface Props {
     totalSpecs: number;
+    sliceCount?: number;
     readyCount: number;
     driftCount: number;
     decisionCount: number;
   }
 
-  let { totalSpecs, readyCount, driftCount, decisionCount }: Props = $props();
+  let { totalSpecs, sliceCount = 0, readyCount, driftCount, decisionCount }: Props = $props();
+
+  let specLabel = $derived(sliceCount > 0 ? `Specs (${sliceCount} slices)` : 'Specs');
 
   const cards = $derived([
-    { label: 'Specs', value: totalSpecs, color: '#2563eb', href: '/graph' },
+    { label: specLabel, value: totalSpecs, color: '#2563eb', href: '/graph' },
     { label: 'Ready', value: readyCount, color: '#16a34a', href: '/graph' },
     { label: 'Drift', value: driftCount, color: '#dc2626', href: '/graph' },
     { label: 'Decisions', value: decisionCount, color: '#7c3aed', href: '/graph' },
