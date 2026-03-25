@@ -134,20 +134,20 @@ func (l SpecLifecycle) IsValid() bool {
 // Spec is the storage-layer domain type for specifications.
 // Handlers convert between this type and the proto Spec message.
 type Spec struct {
-	ID           string
-	Slug         string
-	Intent       string
-	Stage        SpecStage
-	Priority     SpecPriority
-	Complexity   string
-	Version      int32
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	Lifecycle    SpecLifecycle // "task" (default) or "living"
-	SupersededBy string        // slug of replacement spec
-	Supersedes   string        // slug of spec this replaced
-	Notes        string        // free-text notes (conversation summaries, context)
-	ContentHash      string                // Murmur3-128 hash of substantive fields
+	ID               string
+	Slug             string
+	Intent           string
+	Stage            SpecStage
+	Priority         SpecPriority
+	Complexity       string
+	Version          int32
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	Lifecycle        SpecLifecycle           // "task" (default) or "living"
+	SupersededBy     string                  // slug of replacement spec
+	Supersedes       string                  // slug of spec this replaced
+	Notes            string                  // free-text notes (conversation summaries, context)
+	ContentHash      string                  // Murmur3-128 hash of substantive fields
 	ConversationLogs []*ConversationLogEntry // authoring conversation audit trail (populated by GetSpec)
 	SparkOutput      *SparkOutput
 	ShapeOutput      *ShapeOutput
