@@ -57,6 +57,35 @@ func TestRecordToSpecOffset(t *testing.T) {
 	assert.Equal(t, "def789ghi012def7", newSpec.ContentHash)
 }
 
+func TestRecordToSpecOffset_WithConversationCount(t *testing.T) {
+	now := "2026-01-15T10:30:00.000000000Z"
+	values := []any{
+		"id-1", "slug-1", "intent", "spark", "p1", "medium",
+		int64(1),   // version
+		now, now,   // created_at, updated_at
+		"task",     // lifecycle
+		"", "",     // superseded_by, supersedes
+		"",         // notes
+		"abc12345", // content_hash
+		"", "", "", "", // spark_output, shape_output, specify_output, decompose_output
+		int64(7), // conversation_count
+	}
+	keys := []string{
+		"s.id", "s.slug", "s.intent", "s.stage", "s.priority", "s.complexity",
+		"s.version", "s.created_at", "s.updated_at",
+		"s.lifecycle", "s.superseded_by", "s.supersedes",
+		"s.notes", "s.content_hash",
+		"s.spark_output", "s.shape_output", "s.specify_output", "s.decompose_output",
+		"conversation_count",
+	}
+	rec := &neo4j.Record{Values: values, Keys: keys}
+
+	spec, err := recordToSpecOffset(rec, 0)
+	require.NoError(t, err)
+	assert.Equal(t, "slug-1", spec.Slug)
+	assert.Equal(t, 7, spec.ConversationCount)
+}
+
 func TestSortableRFC3339Nano_LexicographicOrdering(t *testing.T) {
 	earlier := time.Date(2026, 3, 10, 12, 0, 0, 0, time.UTC)
 	later := time.Date(2026, 3, 10, 12, 0, 1, 0, time.UTC)
