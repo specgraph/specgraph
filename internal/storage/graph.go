@@ -12,12 +12,13 @@ type NodeLabel string
 const (
 	NodeLabelSpec     NodeLabel = "Spec"
 	NodeLabelDecision NodeLabel = "Decision"
+	NodeLabelSlice    NodeLabel = "Slice"
 )
 
 // IsValid reports whether l is a known node label.
 func (l NodeLabel) IsValid() bool {
 	switch l {
-	case NodeLabelSpec, NodeLabelDecision:
+	case NodeLabelSpec, NodeLabelDecision, NodeLabelSlice:
 		return true
 	default:
 		return false

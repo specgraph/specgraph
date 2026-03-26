@@ -388,7 +388,7 @@ func TestAuthoringHandler_Decompose_HappyPath(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg.Output)
 	require.Equal(t, specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE, resp.Msg.Output.Strategy)
-	require.Equal(t, []string{"my-spec/s1"}, resp.Msg.ChildSpecSlugs)
+	require.Equal(t, []string{"my-spec/s1"}, resp.Msg.SliceSlugs)
 }
 
 func TestAuthoringHandler_Approve_HappyPath(t *testing.T) {

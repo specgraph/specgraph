@@ -282,5 +282,27 @@ func (stubBackend) ListProjects(context.Context) ([]*storage.Project, error) {
 	return nil, errNotImplemented
 }
 
+// SliceBackend stubs.
+
+func (stubBackend) CreateSlice(context.Context, *storage.Slice) error {
+	return errNotImplemented
+}
+
+func (stubBackend) ListSlices(context.Context, string) ([]*storage.Slice, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) GetSlice(context.Context, string) (*storage.Slice, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) ClaimSlice(context.Context, string, string) error {
+	return errNotImplemented
+}
+
+func (stubBackend) CompleteSlice(context.Context, string) error {
+	return errNotImplemented
+}
+
 // Verify stubBackend satisfies ScopedBackend at compile time.
 var _ storage.ScopedBackend = (*stubBackend)(nil)
