@@ -10,6 +10,9 @@ on:
     - cron: "0 6 * * *"
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 env:
   GO_VERSION: "1.26"
   NODE_VERSION: "22"
@@ -19,13 +22,14 @@ env:
   RUMDL_VERSION: 0.1.42
   RUMDL_SHA256: "749d461e5add3c88f60dfb3b275f8de04c63bed98189721dcf075968dc3d1a94"
   DPRINT_VERSION: "0.52.0"
+  DPRINT_SHA256: "3172f1564e4984ab0b511d5872b128ac91429a9e32a2db95977f3611a524d224"
 jobs:
   build-and-test:
     runs-on: namespace-profile-linux-amd64-4x8
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: false
@@ -37,7 +41,7 @@ jobs:
             ~/go/bin
             ~/.dprint
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Enable corepack (pnpm)
@@ -45,12 +49,12 @@ jobs:
       - name: Install web dependencies
         run: cd web && pnpm install --frozen-lockfile
       - name: Install Task
-        uses: arduino/setup-task@v2
+        uses: arduino/setup-task@b91d5d2c96a56797b48ac1e0e89220bf64044611 # v2
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install buf
-        uses: bufbuild/buf-action@v1
+        uses: bufbuild/buf-action@fd21066df7214747548607aaa45548ba2b9bc1ff # v1
         with:
           setup_only: true
       - name: Install Go tools
@@ -68,24 +72,41 @@ jobs:
             rm -f "$RUMDL_TAR"
           fi
       - name: Install dprint
-        run: test -f ~/.dprint/bin/dprint || (curl -fsSL https://dprint.dev/install.sh | sh)
-      - name: Add dprint to PATH
-        run: echo "$HOME/.dprint/bin" >> "$GITHUB_PATH"
+        run: |
+          if ! command -v dprint &>/dev/null; then
+            DPRINT_TAR="/tmp/dprint.zip"
+            curl -fsSL -o "$DPRINT_TAR" "https://github.com/dprint/dprint/releases/download/${DPRINT_VERSION}/dprint-x86_64-unknown-linux-gnu.zip"
+            echo "${DPRINT_SHA256}  ${DPRINT_TAR}" | sha256sum -c -
+            mkdir -p ~/.dprint/bin
+            unzip -o "$DPRINT_TAR" -d ~/.dprint/bin
+            rm -f "$DPRINT_TAR"
+            echo "$HOME/.dprint/bin" >> "$GITHUB_PATH"
+          fi
       - name: Build web UI (required for go:embed in web/embed.go)
         run: task web:build
       - name: Quality check
         run: task check
+      - name: Go vulnerability check
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
       - name: Verify generated code is up to date
         run: task proto:check
-      - name: Integration tests
-        run: task test:integration
+      - name: Unit test coverage
+        run: go test -coverprofile=unit.out -covermode=atomic ./cmd/... ./internal/...
+      - name: Integration test coverage
+        run: go test -tags integration -coverprofile=integration.out -covermode=atomic ./internal/storage/memgraph/ ./internal/server/
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: unit.out,integration.out
+          fail_ci_if_error: false
   e2e:
     needs: build-and-test
     runs-on: namespace-profile-linux-amd64-4x8
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: false
@@ -94,7 +115,7 @@ jobs:
         with:
           cache: go
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Enable corepack (pnpm)
@@ -102,27 +123,41 @@ jobs:
       - name: Install web dependencies
         run: cd web && pnpm install --frozen-lockfile
       - name: Install Task
-        uses: arduino/setup-task@v2
+        uses: arduino/setup-task@b91d5d2c96a56797b48ac1e0e89220bf64044611 # v2
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install buf
-        uses: bufbuild/buf-action@v1
+        uses: bufbuild/buf-action@fd21066df7214747548607aaa45548ba2b9bc1ff # v1
         with:
           setup_only: true
       - name: Build
         run: task build
-      - name: Run E2E tests
-        run: task test:e2e
+      - name: E2E API tests with coverage
+        run: go test -tags e2e -coverprofile=e2e-api.out -covermode=atomic -v -timeout 5m ./e2e/api/...
+      - name: E2E CLI tests with coverage
+        run: go test -tags e2e_cli -coverprofile=e2e-cli.out -covermode=atomic -v -count=1 -timeout 300s ./e2e/cli/
+      - name: E2E Docker tests with coverage
+        run: go test -tags e2e -coverprofile=e2e-docker.out -covermode=atomic -v -timeout 5m ./e2e/docker/...
+      - name: E2E UI tests
+        run: task test:e2e:ui
+      - name: Upload E2E coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: e2e-api.out,e2e-cli.out,e2e-docker.out
+          flags: e2e
+          fail_ci_if_error: false
   e2e-agent:
     if: >-
       github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[e2e-agent]')
     needs: build-and-test
     runs-on: namespace-profile-linux-amd64-4x8
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: false
@@ -131,7 +166,7 @@ jobs:
         with:
           cache: go
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Enable corepack (pnpm)
@@ -139,12 +174,12 @@ jobs:
       - name: Install web dependencies
         run: cd web && pnpm install --frozen-lockfile
       - name: Install Task
-        uses: arduino/setup-task@v2
+        uses: arduino/setup-task@b91d5d2c96a56797b48ac1e0e89220bf64044611 # v2
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install buf
-        uses: bufbuild/buf-action@v1
+        uses: bufbuild/buf-action@fd21066df7214747548607aaa45548ba2b9bc1ff # v1
         with:
           setup_only: true
       - name: Build

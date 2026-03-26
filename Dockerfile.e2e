@@ -1,6 +1,6 @@
 # Stage 1: Build SvelteKit UI
-FROM node:22-alpine AS web-builder
-RUN npm install -g pnpm@latest
+FROM node:22-alpine@sha256:8094c002d08262dba12645a3b4a15cd6cd627d30bc782f53229a2ec13ee22a00 AS web-builder
+RUN npm install -g pnpm@10.33.0
 WORKDIR /app/web
 COPY web/package.json web/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
@@ -8,7 +8,7 @@ COPY web/ .
 RUN pnpm build
 
 # Stage 2: Build Go binary with embedded UI
-FROM golang:1.25-alpine AS go-builder
+FROM golang:1.25-alpine@sha256:8e02eb337d9e0ea459e041f1ee5eece41cbb61f1d83e7d883a3e2fb4862063fa AS go-builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
@@ -18,8 +18,11 @@ COPY --from=web-builder /app/web/build web/build
 RUN CGO_ENABLED=0 go build -trimpath -o specgraph ./cmd/specgraph
 
 # Stage 3: Runtime
-FROM alpine:3.21
+FROM alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
 RUN apk add --no-cache ca-certificates wget
 COPY --from=go-builder /app/specgraph /usr/local/bin/specgraph
 EXPOSE 9090
+RUN addgroup -S specgraph && adduser -S specgraph -G specgraph -h /home/specgraph
+ENV HOME=/home/specgraph
+USER specgraph
 ENTRYPOINT ["specgraph"]

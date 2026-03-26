@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: MIT
+# Copyright 2026 Sean Brandt
+name: Semgrep
+on:
+  workflow_dispatch: {}
+  pull_request: {}
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/semgrep.yml
+  schedule:
+    # random HH:MM to avoid a load spike on GitHub Actions at 00:00
+    - cron: "12 15 * * *"
+jobs:
+  semgrep:
+    name: semgrep/ci
+    runs-on: namespace-profile-linux-amd64-4x8
+    permissions:
+      contents: read
+    env:
+      SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+    container:
+      image: semgrep/semgrep@sha256:3dab091ee3247fce7e4ed3df9f92b3bd72692c083295f53cec3f135b86404db1
+    if: (github.actor != 'dependabot[bot]')
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - run: semgrep ci

@@ -1,7 +1,7 @@
-FROM mcr.microsoft.com/playwright:v1.58.2-noble
+FROM mcr.microsoft.com/playwright:v1.58.2-noble@sha256:6446946a1d9fd62d9ae501312a2d76a43ee688542b21622056a372959b65d63d
 
 # Install pnpm via npm (corepack has key verification issues on this image)
-RUN npm install -g pnpm@latest
+RUN npm install -g pnpm@10.33.0
 
 WORKDIR /tests
 COPY package.json pnpm-lock.yaml ./
