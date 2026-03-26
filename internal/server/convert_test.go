@@ -4,6 +4,7 @@
 package server
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -545,4 +546,34 @@ func TestInjectToolFromProto(t *testing.T) {
 
 	_, err := injectToolFromProto(specv1.InjectTool(99))
 	assert.Error(t, err)
+}
+
+func TestSafeConvCount(t *testing.T) {
+	tests := []struct {
+		name string
+		in   int
+		want int32
+	}{
+		{"zero", 0, 0},
+		{"positive", 42, 42},
+		{"negative clamps to zero", -1, 0},
+		{"max int32", math.MaxInt32, math.MaxInt32},
+		{"overflow clamps to max", math.MaxInt32 + 1, math.MaxInt32},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, safeConvCount(tt.in))
+		})
+	}
+}
+
+func TestSpecToProto_ConversationCount(t *testing.T) {
+	spec := &storage.Spec{
+		ID: "spec-conv", Slug: "conv-test", Intent: "test",
+		Stage: "spark", Priority: "p2", Complexity: "low",
+		ConversationCount: 5,
+	}
+	pb, err := specToProto(spec)
+	require.NoError(t, err)
+	assert.Equal(t, int32(5), pb.ConversationCount)
 }

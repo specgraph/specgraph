@@ -1,11 +1,26 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { specClient, graphClient, decisionClient, lifecycleClient } from '$lib/api/client';
+  import type { Spec } from '$lib/api/gen/specgraph/v1/spec_pb';
   import type { GraphNode, Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
+  import type { Decision } from '$lib/api/gen/specgraph/v1/decision_pb';
+  import { DecisionStatus } from '$lib/api/gen/specgraph/v1/decision_pb';
   import { EdgeType } from '$lib/api/gen/specgraph/v1/graph_pb';
+
+  function statusLabel(status: DecisionStatus): string {
+    switch (status) {
+      case DecisionStatus.PROPOSED: return 'proposed';
+      case DecisionStatus.ACCEPTED: return 'accepted';
+      case DecisionStatus.DEPRECATED: return 'deprecated';
+      case DecisionStatus.SUPERSEDED: return 'superseded';
+      default: return '—';
+    }
+  }
   import StatsBar from '$lib/components/StatsBar.svelte';
   import FunnelBar from '$lib/components/FunnelBar.svelte';
   import GraphMini from '$lib/components/GraphMini.svelte';
+  import TabBar from '$lib/components/TabBar.svelte';
+  import SpecTable from '$lib/components/SpecTable.svelte';
 
   let totalSpecs = $state(0);
   let sliceCount = $state(0);
@@ -15,8 +30,33 @@
   let stageCounts = $state<Record<string, number>>({});
   let graphNodes = $state<GraphNode[]>([]);
   let graphEdges = $state<Edge[]>([]);
+  let specs = $state<Spec[]>([]);
+  let decisions = $state<Decision[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
+
+  let activeTab = $state('All Specs');
+  const tabs = ['All Specs', 'Recent', 'By Priority', 'Decisions'];
+
+  let recentSpecs = $derived(
+    [...specs].sort((a, b) => Number(b.updatedAt?.seconds ?? 0n) - Number(a.updatedAt?.seconds ?? 0n)).slice(0, 10)
+  );
+
+  let priorityGroups = $derived(
+    ['p0', 'p1', 'p2', 'p3'].map(p => ({
+      label: p.toUpperCase(),
+      specs: specs.filter(s => s.priority === p),
+    })).filter(g => g.specs.length > 0)
+  );
+
+  let decisionSpecCounts = $derived(
+    graphEdges
+      .filter(e => e.edgeType === EdgeType.DECIDED_IN)
+      .reduce((acc, e) => {
+        acc[e.toId] = (acc[e.toId] ?? 0) + 1;
+        return acc;
+      }, {} as Record<string, number>)
+  );
 
   async function loadDashboard() {
     try {
@@ -28,16 +68,17 @@
         lifecycleClient.checkDrift({ slug: '' }),
       ]);
 
-      const specs = specsRes.specs ?? [];
+      const specsList = specsRes.specs ?? [];
+      specs = specsList;
       const allEdges = graphRes.edges ?? [];
 
       // Slices are specs that have an incoming COMPOSES edge (a parent "composes" them).
       const sliceSlugs = new Set(
         allEdges.filter((e) => e.edgeType === EdgeType.COMPOSES).map((e) => e.toId)
       );
-      const topLevel = specs.filter((s) => !sliceSlugs.has(s.slug));
+      const topLevel = specsList.filter((s) => !sliceSlugs.has(s.slug));
       totalSpecs = topLevel.length;
-      sliceCount = specs.length - topLevel.length;
+      sliceCount = specsList.length - topLevel.length;
 
       // Funnel counts only top-level specs (not slices).
       const counts: Record<string, number> = {};
@@ -50,7 +91,8 @@
       readyCount = readySpecs.length;
       graphNodes = graphRes.nodes ?? [];
       graphEdges = graphRes.edges ?? [];
-      decisionCount = (decisionsRes.decisions ?? []).length;
+      decisions = decisionsRes.decisions ?? [];
+      decisionCount = decisions.length;
 
       const reports = driftRes.reports ?? [];
       driftCount = reports.filter((r) => (r.items?.length ?? 0) > 0).length;
@@ -82,6 +124,37 @@
         <GraphMini nodes={graphNodes} edges={graphEdges} />
       </div>
     </div>
+  </section>
+
+  <section class="tabbed-content">
+    <TabBar {tabs} active={activeTab} onchange={(t) => activeTab = t} />
+
+    {#if activeTab === 'All Specs'}
+      <SpecTable {specs} />
+    {:else if activeTab === 'Recent'}
+      <SpecTable specs={recentSpecs} />
+    {:else if activeTab === 'By Priority'}
+      {#each priorityGroups as group}
+        <h3 class="priority-heading">{group.label} <span class="priority-count">({group.specs.length})</span></h3>
+        <SpecTable specs={group.specs} showConversations={false} />
+      {/each}
+    {:else if activeTab === 'Decisions'}
+      <table class="decision-table">
+        <thead>
+          <tr><th>Slug</th><th>Title</th><th>Status</th><th>Linked Specs</th></tr>
+        </thead>
+        <tbody>
+          {#each decisions as d}
+            <tr>
+              <td><a href="/decision/{d.slug}">{d.slug}</a></td>
+              <td>{d.title || '—'}</td>
+              <td><span class="badge">{statusLabel(d.status)}</span></td>
+              <td class="count">{decisionSpecCounts[d.slug] ?? 0}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {/if}
   </section>
 {/if}
 
@@ -117,5 +190,66 @@
     .row {
       grid-template-columns: 1fr;
     }
+  }
+
+  .tabbed-content {
+    margin-top: 1.25rem;
+  }
+
+  .priority-heading {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #475569;
+    margin: 1rem 0 0.25rem;
+  }
+
+  .priority-count {
+    font-weight: 400;
+    color: #94a3b8;
+  }
+
+  .decision-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .decision-table th {
+    text-align: left;
+    padding: 0.4rem 0.5rem;
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 600;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .decision-table td {
+    padding: 0.4rem 0.5rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .decision-table a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .decision-table a:hover {
+    text-decoration: underline;
+  }
+
+  .decision-table .count {
+    text-align: center;
+    color: #64748b;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: #475569;
   }
 </style>

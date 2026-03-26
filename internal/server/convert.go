@@ -5,12 +5,24 @@ package server
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/internal/storage"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+// safeConvCount clamps an int to the int32 range for proto serialization.
+func safeConvCount(v int) int32 {
+	if v > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	if v < 0 {
+		return 0
+	}
+	return int32(v)
+}
 
 // timeToProto converts a time.Time to a protobuf Timestamp, returning nil for zero values.
 func timeToProto(t time.Time) *timestamppb.Timestamp {
@@ -41,7 +53,8 @@ func specToProto(s *storage.Spec) (*specv1.Spec, error) {
 		SupersededBy: s.SupersededBy,
 		Supersedes:   s.Supersedes,
 		Notes:        s.Notes,
-		ContentHash:  s.ContentHash,
+		ContentHash:       s.ContentHash,
+		ConversationCount: safeConvCount(s.ConversationCount),
 	}
 	if s.ConversationLogs != nil {
 		logs := make([]*specv1.ConversationLog, len(s.ConversationLogs))

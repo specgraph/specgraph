@@ -75,28 +75,29 @@ func (SpecLifecycle) EnumDescriptor() ([]byte, []int) {
 }
 
 type Spec struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                 // stable ULID, e.g. "spec-01JQXYZ..."
-	Slug             string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`             // human-readable, e.g. "oauth-refresh-rotation"
-	Intent           string                 `protobuf:"bytes,3,opt,name=intent,proto3" json:"intent,omitempty"`         // what this spec is about
-	Stage            string                 `protobuf:"bytes,4,opt,name=stage,proto3" json:"stage,omitempty"`           // spark | shape | specify | decompose | approved | in_progress | done
-	Priority         string                 `protobuf:"bytes,5,opt,name=priority,proto3" json:"priority,omitempty"`     // p0 | p1 | p2 | p3
-	Complexity       string                 `protobuf:"bytes,6,opt,name=complexity,proto3" json:"complexity,omitempty"` // low | medium | high
-	Version          int32                  `protobuf:"varint,7,opt,name=version,proto3" json:"version,omitempty"`
-	CreatedAt        *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt        *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	Lifecycle        SpecLifecycle          `protobuf:"varint,10,opt,name=lifecycle,proto3,enum=specgraph.v1.SpecLifecycle" json:"lifecycle,omitempty"`      // task (default) | living
-	SupersededBy     string                 `protobuf:"bytes,11,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"`             // slug of replacement spec, if superseded
-	Supersedes       string                 `protobuf:"bytes,12,opt,name=supersedes,proto3" json:"supersedes,omitempty"`                                     // slug of spec this replaced
-	Notes            string                 `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"`                                               // free-text notes (conversation summaries, context)
-	ContentHash      string                 `protobuf:"bytes,15,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"`                // Murmur3-128 hex digest of substantive fields; changes on every mutation
-	ConversationLogs []*ConversationLog     `protobuf:"bytes,16,rep,name=conversation_logs,json=conversationLogs,proto3" json:"conversation_logs,omitempty"` // authoring conversation audit trail
-	SparkOutput      *SparkOutput           `protobuf:"bytes,17,opt,name=spark_output,json=sparkOutput,proto3" json:"spark_output,omitempty"`                // populated when stage >= spark
-	ShapeOutput      *ShapeOutput           `protobuf:"bytes,18,opt,name=shape_output,json=shapeOutput,proto3" json:"shape_output,omitempty"`                // populated when stage >= shape
-	SpecifyOutput    *SpecifyOutput         `protobuf:"bytes,19,opt,name=specify_output,json=specifyOutput,proto3" json:"specify_output,omitempty"`          // populated when stage >= specify
-	DecomposeOutput  *DecomposeOutput       `protobuf:"bytes,20,opt,name=decompose_output,json=decomposeOutput,proto3" json:"decompose_output,omitempty"`    // populated when stage >= decompose
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                 // stable ULID, e.g. "spec-01JQXYZ..."
+	Slug              string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`             // human-readable, e.g. "oauth-refresh-rotation"
+	Intent            string                 `protobuf:"bytes,3,opt,name=intent,proto3" json:"intent,omitempty"`         // what this spec is about
+	Stage             string                 `protobuf:"bytes,4,opt,name=stage,proto3" json:"stage,omitempty"`           // spark | shape | specify | decompose | approved | in_progress | done
+	Priority          string                 `protobuf:"bytes,5,opt,name=priority,proto3" json:"priority,omitempty"`     // p0 | p1 | p2 | p3
+	Complexity        string                 `protobuf:"bytes,6,opt,name=complexity,proto3" json:"complexity,omitempty"` // low | medium | high
+	Version           int32                  `protobuf:"varint,7,opt,name=version,proto3" json:"version,omitempty"`
+	CreatedAt         *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt         *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Lifecycle         SpecLifecycle          `protobuf:"varint,10,opt,name=lifecycle,proto3,enum=specgraph.v1.SpecLifecycle" json:"lifecycle,omitempty"`          // task (default) | living
+	SupersededBy      string                 `protobuf:"bytes,11,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"`                 // slug of replacement spec, if superseded
+	Supersedes        string                 `protobuf:"bytes,12,opt,name=supersedes,proto3" json:"supersedes,omitempty"`                                         // slug of spec this replaced
+	Notes             string                 `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"`                                                   // free-text notes (conversation summaries, context)
+	ContentHash       string                 `protobuf:"bytes,15,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"`                    // Murmur3-128 hex digest of substantive fields; changes on every mutation
+	ConversationLogs  []*ConversationLog     `protobuf:"bytes,16,rep,name=conversation_logs,json=conversationLogs,proto3" json:"conversation_logs,omitempty"`     // authoring conversation audit trail
+	SparkOutput       *SparkOutput           `protobuf:"bytes,17,opt,name=spark_output,json=sparkOutput,proto3" json:"spark_output,omitempty"`                    // populated when stage >= spark
+	ShapeOutput       *ShapeOutput           `protobuf:"bytes,18,opt,name=shape_output,json=shapeOutput,proto3" json:"shape_output,omitempty"`                    // populated when stage >= shape
+	SpecifyOutput     *SpecifyOutput         `protobuf:"bytes,19,opt,name=specify_output,json=specifyOutput,proto3" json:"specify_output,omitempty"`              // populated when stage >= specify
+	DecomposeOutput   *DecomposeOutput       `protobuf:"bytes,20,opt,name=decompose_output,json=decomposeOutput,proto3" json:"decompose_output,omitempty"`        // populated when stage >= decompose
+	ConversationCount int32                  `protobuf:"varint,21,opt,name=conversation_count,json=conversationCount,proto3" json:"conversation_count,omitempty"` // count of conversation log entries (populated by ListSpecs)
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Spec) Reset() {
@@ -260,6 +261,13 @@ func (x *Spec) GetDecomposeOutput() *DecomposeOutput {
 		return x.DecomposeOutput
 	}
 	return nil
+}
+
+func (x *Spec) GetConversationCount() int32 {
+	if x != nil {
+		return x.ConversationCount
+	}
+	return 0
 }
 
 type FieldChange struct {
@@ -758,7 +766,7 @@ var File_specgraph_v1_spec_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cspecgraph/v1/authoring.proto\"\xc2\x06\n" +
+	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cspecgraph/v1/authoring.proto\"\xf1\x06\n" +
 	"\x04Spec\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x16\n" +
@@ -785,7 +793,8 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\fspark_output\x18\x11 \x01(\v2\x19.specgraph.v1.SparkOutputR\vsparkOutput\x12<\n" +
 	"\fshape_output\x18\x12 \x01(\v2\x19.specgraph.v1.ShapeOutputR\vshapeOutput\x12B\n" +
 	"\x0especify_output\x18\x13 \x01(\v2\x1b.specgraph.v1.SpecifyOutputR\rspecifyOutput\x12H\n" +
-	"\x10decompose_output\x18\x14 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x0fdecomposeOutputJ\x04\b\r\x10\x0eR\ahistory\"]\n" +
+	"\x10decompose_output\x18\x14 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x0fdecomposeOutput\x12-\n" +
+	"\x12conversation_count\x18\x15 \x01(\x05R\x11conversationCountJ\x04\b\r\x10\x0eR\ahistory\"]\n" +
 	"\vFieldChange\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\x12\x1b\n" +
 	"\told_value\x18\x02 \x01(\tR\boldValue\x12\x1b\n" +

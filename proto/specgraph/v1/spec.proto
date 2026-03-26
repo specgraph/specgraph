@@ -42,6 +42,7 @@ message Spec {
   specgraph.v1.ShapeOutput shape_output = 18;         // populated when stage >= shape
   specgraph.v1.SpecifyOutput specify_output = 19;     // populated when stage >= specify
   specgraph.v1.DecomposeOutput decompose_output = 20; // populated when stage >= decompose
+  int32 conversation_count = 21; // count of conversation log entries (populated by ListSpecs)
 }
 
 message FieldChange {

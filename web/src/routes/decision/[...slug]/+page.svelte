@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import { decisionClient } from '$lib/api/client';
+  import { decisionClient, graphClient } from '$lib/api/client';
   import type { Decision } from '$lib/api/gen/specgraph/v1/decision_pb';
   import { DecisionStatus } from '$lib/api/gen/specgraph/v1/decision_pb';
+  import { EdgeType } from '$lib/api/gen/specgraph/v1/graph_pb';
 
   let decision = $state<Decision | null>(null);
+  let linkedSpecs = $state<string[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
 
@@ -25,6 +27,14 @@
     try {
       const resp = await decisionClient.getDecision({ slug: s });
       decision = resp.decision ?? null;
+      // Linked specs are non-critical — fetch asynchronously without blocking render.
+      graphClient.listEdges({ slug: s }).then(edgeResp => {
+        linkedSpecs = edgeResp.edges
+          .filter(e => e.edgeType === EdgeType.DECIDED_IN && e.toId === s)
+          .map(e => e.fromId);
+      }).catch(() => {
+        linkedSpecs = [];
+      });
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load decision';
     } finally {
@@ -56,6 +66,12 @@
       {#if decision.supersededBy}
         <tr><td class="label">Superseded by</td><td>{decision.supersededBy}</td></tr>
       {/if}
+      {#if decision.createdAt}
+        <tr><td class="label">Created</td><td>{new Date(Number(decision.createdAt.seconds) * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td></tr>
+      {/if}
+      {#if decision.updatedAt}
+        <tr><td class="label">Updated</td><td>{new Date(Number(decision.updatedAt.seconds) * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td></tr>
+      {/if}
     </tbody>
   </table>
 
@@ -70,6 +86,17 @@
     <section class="section">
       <h2>Rationale</h2>
       <p class="body-text">{decision.rationale}</p>
+    </section>
+  {/if}
+
+  {#if linkedSpecs.length > 0}
+    <section class="section">
+      <h2>Referenced by</h2>
+      <div class="spec-chips">
+        {#each linkedSpecs as specSlug}
+          <a href="/spec/{specSlug}" class="spec-chip">{specSlug}</a>
+        {/each}
+      </div>
     </section>
   {/if}
 {/if}
@@ -160,5 +187,25 @@
     font-size: 0.9rem;
     line-height: 1.6;
     white-space: pre-wrap;
+  }
+
+  .spec-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .spec-chip {
+    background: #eff6ff;
+    color: #2563eb;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .spec-chip:hover {
+    background: #dbeafe;
   }
 </style>
