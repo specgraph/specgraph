@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1](https://github.com/specgraph/specgraph/compare/v0.2.0...v0.2.1) (2026-03-26)
+
+
+### Bug Fixes
+
+* **ci:** build web UI before goreleaser in release workflow ([#674](https://github.com/specgraph/specgraph/issues/674)) ([0d9b96e](https://github.com/specgraph/specgraph/commit/0d9b96e49b08deb4a868fcc0cba439b8924f9993))
+
+
+### Miscellaneous
+
+* force 0.2.1 release ([#675](https://github.com/specgraph/specgraph/issues/675)) ([19d1172](https://github.com/specgraph/specgraph/commit/19d117282e6ef10f62e5b4e859a34ad81e626476))
+
 ## [0.2.0](https://github.com/specgraph/specgraph/compare/v0.1.6...v0.2.0) (2026-03-26)
 
 
