@@ -87,7 +87,7 @@ no structured execution interface.
 
 ## Project Status
 
-v0.2.1 <!-- x-release-please-version -->
+See the [changelog](changelog.md) for the latest release.
 
 SpecGraph v0.1.0 is the first public release.
 [Author your first spec](quickstart.md) in under 10 minutes, or read
