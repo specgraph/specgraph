@@ -4,11 +4,19 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"fmt"
+	"os"
 	"testing"
 
+	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/specgraph/specgraph/internal/config"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConstitutionLayerStringToProto(t *testing.T) {
@@ -122,4 +130,198 @@ func TestConstitutionConfigToProto_EmptyTech(t *testing.T) {
 
 	pb := constitutionConfigToProto(cc)
 	assert.Nil(t, pb.GetTech(), "expected Tech to be nil when no tech fields set")
+}
+
+// --- fake server helper ---
+
+func startFakeConstitutionServer(t *testing.T, h specgraphv1connect.ConstitutionServiceHandler) {
+	t.Helper()
+	startFakeServer[specgraphv1connect.ConstitutionServiceHandler](t, h, specgraphv1connect.NewConstitutionServiceHandler)
+}
+
+// --- fake handlers ---
+
+type fakeConstitutionShowHandler struct {
+	specgraphv1connect.UnimplementedConstitutionServiceHandler
+}
+
+func (fakeConstitutionShowHandler) GetConstitution(_ context.Context, _ *connect.Request[specv1.GetConstitutionRequest]) (*connect.Response[specv1.GetConstitutionResponse], error) {
+	return connect.NewResponse(&specv1.GetConstitutionResponse{
+		Constitution: &specv1.Constitution{Name: "test-project"},
+	}), nil
+}
+
+type fakeConstitutionShowErrorHandler struct {
+	specgraphv1connect.UnimplementedConstitutionServiceHandler
+}
+
+func (fakeConstitutionShowErrorHandler) GetConstitution(_ context.Context, _ *connect.Request[specv1.GetConstitutionRequest]) (*connect.Response[specv1.GetConstitutionResponse], error) {
+	return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("constitution not found"))
+}
+
+type fakeConstitutionEmitHandler struct {
+	specgraphv1connect.UnimplementedConstitutionServiceHandler
+}
+
+func (fakeConstitutionEmitHandler) EmitToolFiles(_ context.Context, _ *connect.Request[specv1.EmitToolFilesRequest]) (*connect.Response[specv1.EmitToolFilesResponse], error) {
+	return connect.NewResponse(&specv1.EmitToolFilesResponse{
+		Content:  "# Constitution\ntest content",
+		Filename: "CLAUDE.md",
+	}), nil
+}
+
+type fakeConstitutionEmitErrorHandler struct {
+	specgraphv1connect.UnimplementedConstitutionServiceHandler
+}
+
+func (fakeConstitutionEmitErrorHandler) EmitToolFiles(_ context.Context, _ *connect.Request[specv1.EmitToolFilesRequest]) (*connect.Response[specv1.EmitToolFilesResponse], error) {
+	return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("emit failed"))
+}
+
+// --- constitution show tests ---
+
+func TestRunConstitutionShow_HappyPath(t *testing.T) {
+	startFakeConstitutionServer(t, fakeConstitutionShowHandler{})
+
+	oldJSON := constitutionShowJSON
+	constitutionShowJSON = false
+	t.Cleanup(func() { constitutionShowJSON = oldJSON })
+
+	err := runConstitutionShow(&cobra.Command{}, nil)
+	require.NoError(t, err)
+}
+
+func TestRunConstitutionShow_HappyPath_JSON(t *testing.T) {
+	startFakeConstitutionServer(t, fakeConstitutionShowHandler{})
+
+	oldJSON := constitutionShowJSON
+	constitutionShowJSON = true
+	t.Cleanup(func() { constitutionShowJSON = oldJSON })
+
+	cmd := &cobra.Command{}
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	err := runConstitutionShow(cmd, nil)
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "test-project")
+}
+
+func TestRunConstitutionShow_RPCError(t *testing.T) {
+	startFakeConstitutionServer(t, fakeConstitutionShowErrorHandler{})
+
+	oldJSON := constitutionShowJSON
+	constitutionShowJSON = false
+	t.Cleanup(func() { constitutionShowJSON = oldJSON })
+
+	err := runConstitutionShow(&cobra.Command{}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "get constitution")
+}
+
+func TestRunConstitutionShow_ClientError(t *testing.T) {
+	setMissingConfig(t)
+	err := runConstitutionShow(&cobra.Command{}, nil)
+	require.Error(t, err)
+}
+
+// --- constitution emit tests ---
+
+func TestRunConstitutionEmit_HappyPath_Stdout(t *testing.T) {
+	startFakeConstitutionServer(t, fakeConstitutionEmitHandler{})
+
+	oldFmt := emitFormat
+	oldOut := emitOutput
+	emitFormat = "claude-md"
+	emitOutput = ""
+	t.Cleanup(func() { emitFormat = oldFmt; emitOutput = oldOut })
+
+	err := runConstitutionEmit(nil, nil)
+	require.NoError(t, err)
+}
+
+func TestRunConstitutionEmit_HappyPath_File(t *testing.T) {
+	startFakeConstitutionServer(t, fakeConstitutionEmitHandler{})
+
+	// t.Chdir changes cwd for this test only and restores on cleanup.
+	t.Chdir(t.TempDir())
+
+	oldFmt := emitFormat
+	oldOut := emitOutput
+	emitFormat = "claude-md"
+	emitOutput = "out.md"
+	t.Cleanup(func() { emitFormat = oldFmt; emitOutput = oldOut })
+
+	err := runConstitutionEmit(nil, nil)
+	require.NoError(t, err)
+
+	data, err := os.ReadFile("out.md")
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "# Constitution")
+	assert.Contains(t, string(data), "test content")
+}
+
+func TestRunConstitutionEmit_PathTraversal(t *testing.T) {
+	startFakeConstitutionServer(t, fakeConstitutionEmitHandler{})
+
+	t.Chdir(t.TempDir())
+
+	oldFmt := emitFormat
+	oldOut := emitOutput
+	emitFormat = "claude-md"
+	emitOutput = "../outside-cwd.md"
+	t.Cleanup(func() { emitFormat = oldFmt; emitOutput = oldOut })
+
+	err := runConstitutionEmit(nil, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "outside current directory")
+}
+
+func TestRunConstitutionEmit_InvalidFormat(t *testing.T) {
+	oldFmt := emitFormat
+	oldOut := emitOutput
+	emitFormat = "bogus"
+	emitOutput = ""
+	t.Cleanup(func() { emitFormat = oldFmt; emitOutput = oldOut })
+
+	err := runConstitutionEmit(nil, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported format")
+}
+
+func TestRunConstitutionEmit_RPCError(t *testing.T) {
+	startFakeConstitutionServer(t, fakeConstitutionEmitErrorHandler{})
+
+	oldFmt := emitFormat
+	oldOut := emitOutput
+	emitFormat = "claude-md"
+	emitOutput = ""
+	t.Cleanup(func() { emitFormat = oldFmt; emitOutput = oldOut })
+
+	err := runConstitutionEmit(nil, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "emit tool files")
+}
+
+func TestRunConstitutionEmit_ClientError(t *testing.T) {
+	setMissingConfig(t)
+
+	oldFmt := emitFormat
+	oldOut := emitOutput
+	emitFormat = "claude-md"
+	emitOutput = ""
+	t.Cleanup(func() { emitFormat = oldFmt; emitOutput = oldOut })
+
+	err := runConstitutionEmit(nil, nil)
+	require.Error(t, err)
+}
+
+// --- outputFormatMap tests ---
+
+func TestOutputFormatMap_Completeness(t *testing.T) {
+	expected := []string{"claude-md", "cursorrules", "agents-md"}
+	for _, key := range expected {
+		_, ok := outputFormatMap[key]
+		assert.True(t, ok, "expected key %q in outputFormatMap", key)
+	}
+	assert.Len(t, outputFormatMap, len(expected), "outputFormatMap has unexpected entries")
 }
