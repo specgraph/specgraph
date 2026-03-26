@@ -22,6 +22,24 @@ func (m *mockRunner) Run(_ context.Context, _ string, _ ...string) ([]byte, erro
 	return m.output, m.err
 }
 
+// sequenceRunner returns different output/error for each sequential call.
+type sequenceRunner struct {
+	calls []struct {
+		output []byte
+		err    error
+	}
+	idx int
+}
+
+func (s *sequenceRunner) Run(_ context.Context, _ string, _ ...string) ([]byte, error) {
+	if s.idx >= len(s.calls) {
+		return nil, errors.New("sequenceRunner: unexpected call")
+	}
+	c := s.calls[s.idx]
+	s.idx++
+	return c.output, c.err
+}
+
 func TestBeadsAdapter_Name(t *testing.T) {
 	b := NewBeadsAdapter(&mockRunner{})
 	if got := b.Name(); got != storage.SyncAdapterBeads {
@@ -260,5 +278,140 @@ func TestBeadsAdapter_PullEmptyStatus(t *testing.T) {
 	}
 	if !errors.Is(err, errPullFailed) {
 		t.Errorf("Pull() error = %v, want errPullFailed", err)
+	}
+}
+
+func TestBeadsAdapter_FindOrCreate_ExistingItem(t *testing.T) {
+	runner := &sequenceRunner{
+		calls: []struct {
+			output []byte
+			err    error
+		}{
+			{output: []byte(`[{"id": "bead-existing"}]`), err: nil},
+		},
+	}
+	b := NewBeadsAdapter(runner)
+	spec := &storage.Spec{
+		Slug:     "my-spec",
+		Intent:   "Build a thing",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP2,
+	}
+	id, created, err := b.FindOrCreate(context.Background(), spec)
+	if err != nil {
+		t.Fatalf("FindOrCreate() unexpected error: %v", err)
+	}
+	if created {
+		t.Error("FindOrCreate() created = true, want false")
+	}
+	if id != "bead-existing" {
+		t.Errorf("FindOrCreate() id = %q, want %q", id, "bead-existing")
+	}
+}
+
+func TestBeadsAdapter_FindOrCreate_NewItem(t *testing.T) {
+	runner := &sequenceRunner{
+		calls: []struct {
+			output []byte
+			err    error
+		}{
+			{output: []byte(`[]`), err: nil},
+			{output: []byte(`{"id": "bead-new123"}`), err: nil},
+		},
+	}
+	b := NewBeadsAdapter(runner)
+	spec := &storage.Spec{
+		Slug:     "my-spec",
+		Intent:   "Build a thing",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP2,
+	}
+	id, created, err := b.FindOrCreate(context.Background(), spec)
+	if err != nil {
+		t.Fatalf("FindOrCreate() unexpected error: %v", err)
+	}
+	if !created {
+		t.Error("FindOrCreate() created = false, want true")
+	}
+	if id != "bead-new123" {
+		t.Errorf("FindOrCreate() id = %q, want %q", id, "bead-new123")
+	}
+}
+
+func TestBeadsAdapter_FindOrCreate_EmptySlug(t *testing.T) {
+	b := NewBeadsAdapter(&mockRunner{})
+	spec := &storage.Spec{Slug: ""}
+	_, _, err := b.FindOrCreate(context.Background(), spec)
+	if err == nil {
+		t.Fatal("FindOrCreate() expected error for empty slug, got nil")
+	}
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("FindOrCreate() error = %v, want errPushFailed", err)
+	}
+}
+
+func TestBeadsAdapter_FindOrCreate_InvalidJSON(t *testing.T) {
+	runner := &sequenceRunner{
+		calls: []struct {
+			output []byte
+			err    error
+		}{
+			{output: []byte(`not-json`), err: nil},
+		},
+	}
+	b := NewBeadsAdapter(runner)
+	spec := &storage.Spec{
+		Slug:   "my-spec",
+		Intent: "Build a thing",
+		Stage:  storage.SpecStageSpark,
+	}
+	_, _, err := b.FindOrCreate(context.Background(), spec)
+	if err == nil {
+		t.Fatal("FindOrCreate() expected error for invalid JSON, got nil")
+	}
+}
+
+func TestBeadsAdapter_FindOrCreate_PushError(t *testing.T) {
+	runner := &sequenceRunner{
+		calls: []struct {
+			output []byte
+			err    error
+		}{
+			{output: []byte(`[]`), err: nil},
+			{output: nil, err: errors.New("bd create failed")},
+		},
+	}
+	b := NewBeadsAdapter(runner)
+	spec := &storage.Spec{
+		Slug:     "my-spec",
+		Intent:   "Build a thing",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP2,
+	}
+	_, _, err := b.FindOrCreate(context.Background(), spec)
+	if err == nil {
+		t.Fatal("FindOrCreate() expected error when push fails, got nil")
+	}
+}
+
+func TestBeadsAdapter_FindOrCreate_SearchError(t *testing.T) {
+	runner := &sequenceRunner{
+		calls: []struct {
+			output []byte
+			err    error
+		}{
+			{output: nil, err: errors.New("bd search failed")},
+		},
+	}
+	b := NewBeadsAdapter(runner)
+	spec := &storage.Spec{
+		Slug:     "my-spec",
+		Intent:   "Build a thing",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP2,
+	}
+	_, _, err := b.FindOrCreate(context.Background(), spec)
+	if err == nil {
+		t.Fatal("FindOrCreate() expected error, got nil")
 	}
 }
