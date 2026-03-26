@@ -366,11 +366,15 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	if len(clauses) > 0 {
 		query += " WHERE " + strings.Join(clauses, " AND ")
 	}
+	// TODO(spgr-cdd): Replace literal 0 with OPTIONAL MATCH conversation count
+	// once ConversationLog nodes exist. Memgraph requires WITH bridging for
+	// OPTIONAL MATCH aggregation (see Memgraph variable scoping rules).
 	query += ` RETURN s.id, s.slug, s.intent, s.stage, s.priority, s.complexity,
 		       s.version, s.created_at, s.updated_at,
 		       s.lifecycle, s.superseded_by, s.supersedes,
 		       s.notes, s.content_hash,
-		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output`
+		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output,
+		       0 AS conversation_count`
 	query += " ORDER BY s.created_at"
 	if limit > 0 {
 		query += " LIMIT $limit"
@@ -817,25 +821,37 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 		}
 	}
 
+	// conversation_count is populated by ListSpecs via a computed column.
+	// Other queries return only 18 columns, so we check bounds and key name.
+	var convCount int64
+	if len(rec.Values) > offset+18 && len(rec.Keys) > offset+18 && rec.Keys[offset+18] == "conversation_count" {
+		parsedConvCount, err := recordInt64(rec, offset+18, "conversation_count")
+		if err != nil {
+			return nil, err
+		}
+		convCount = parsedConvCount
+	}
+
 	return &storage.Spec{
-		ID:              id,
-		Slug:            slug,
-		Intent:          intent,
-		Stage:           storage.SpecStage(stage),
-		Priority:        storage.SpecPriority(priority),
-		Complexity:      complexity,
-		Version:         safeInt32(version),
-		CreatedAt:       createdAt,
-		UpdatedAt:       updatedAt,
-		Lifecycle:       lifecycle,
-		SupersededBy:    supersededBy,
-		Supersedes:      supersedes,
-		Notes:           notes,
-		ContentHash:     contentHash,
-		SparkOutput:     sparkOutput,
-		ShapeOutput:     shapeOutput,
-		SpecifyOutput:   specifyOutput,
-		DecomposeOutput: decomposeOutput,
+		ID:                id,
+		Slug:              slug,
+		Intent:            intent,
+		Stage:             storage.SpecStage(stage),
+		Priority:          storage.SpecPriority(priority),
+		Complexity:        complexity,
+		Version:           safeInt32(version),
+		CreatedAt:         createdAt,
+		UpdatedAt:         updatedAt,
+		Lifecycle:         lifecycle,
+		SupersededBy:      supersededBy,
+		Supersedes:        supersedes,
+		Notes:             notes,
+		ContentHash:       contentHash,
+		SparkOutput:       sparkOutput,
+		ShapeOutput:       shapeOutput,
+		SpecifyOutput:     specifyOutput,
+		DecomposeOutput:   decomposeOutput,
+		ConversationCount: int(convCount),
 	}, nil
 }
 

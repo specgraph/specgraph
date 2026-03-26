@@ -1,14 +1,18 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { specClient, graphClient } from '$lib/api/client';
+  import { specClient, graphClient, analyticalPassClient } from '$lib/api/client';
   import type { Spec } from '$lib/api/gen/specgraph/v1/spec_pb';
   import type { Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
+  import type { AnalyticalFinding } from '$lib/api/gen/specgraph/v1/analytical_pass_pb';
   import { EdgeType } from '$lib/api/gen/specgraph/v1/graph_pb';
   import { ScopeSniff, DecompositionStrategy } from '$lib/api/gen/specgraph/v1/authoring_pb';
   import AccordionSection from '$lib/components/AccordionSection.svelte';
+  import MetadataBar from '$lib/components/MetadataBar.svelte';
+  import FindingsSection from '$lib/components/FindingsSection.svelte';
 
   let spec = $state<Spec | null>(null);
   let edges = $state<Edge[]>([]);
+  let findings = $state<AnalyticalFinding[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
 
@@ -26,6 +30,13 @@
         edges = edgeResp.edges;
       } catch {
         edges = [];
+      }
+      // Findings are non-critical — fetch separately.
+      try {
+        const findingsResp = await analyticalPassClient.listFindings({ slug: s });
+        findings = findingsResp.findings;
+      } catch {
+        findings = [];
       }
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load spec';
@@ -115,6 +126,13 @@
   <p class="status error">{error}</p>
 {:else if spec}
   <h1>{spec.slug}</h1>
+
+  <MetadataBar
+    createdAt={spec.createdAt}
+    updatedAt={spec.updatedAt}
+    lifecycle={spec.lifecycle}
+    contentHash={spec.contentHash}
+  />
 
   <table class="meta">
     <tbody>
@@ -279,6 +297,12 @@
             {/each}
           </ul>
         {/each}
+      </AccordionSection>
+    {/if}
+
+    {#if findings.length > 0}
+      <AccordionSection title="Findings" badge={String(findings.length)}>
+        <FindingsSection {findings} />
       </AccordionSection>
     {/if}
 

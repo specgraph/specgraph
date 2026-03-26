@@ -152,5 +152,6 @@ type Spec struct {
 	SparkOutput      *SparkOutput
 	ShapeOutput      *ShapeOutput
 	SpecifyOutput    *SpecifyOutput
-	DecomposeOutput  *DecomposeOutput
+	DecomposeOutput   *DecomposeOutput
+	ConversationCount int // count of conversation log entries (populated by ListSpecs)
 }
