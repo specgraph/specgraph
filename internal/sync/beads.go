@@ -83,6 +83,41 @@ func (b *BeadsAdapter) Push(ctx context.Context, spec *storage.Spec) (string, er
 	return resp.ID, nil
 }
 
+// beadsSearchResponse captures one entry from bd search --json output.
+type beadsSearchResponse struct {
+	ID string `json:"id"`
+}
+
+// FindOrCreate searches for an existing bead matching "[spec] <slug>".
+// If found, returns its ID with created=false.
+// If not found, creates via Push and returns created=true.
+func (b *BeadsAdapter) FindOrCreate(ctx context.Context, spec *storage.Spec) (externalID string, created bool, err error) {
+	if spec.Slug == "" {
+		return "", false, fmt.Errorf("%w: spec slug is required", errPushFailed)
+	}
+
+	searchTitle := fmt.Sprintf("[spec] %s", spec.Slug)
+	out, err := b.runner.Run(ctx, "bd", "search", searchTitle, "--json", "--limit", "1")
+	if err != nil {
+		return "", false, fmt.Errorf("failed to search for existing bead: %w", err)
+	}
+
+	var results []beadsSearchResponse
+	if err := json.Unmarshal(out, &results); err != nil {
+		return "", false, fmt.Errorf("failed to parse search results: %w", err)
+	}
+
+	if len(results) > 0 && results[0].ID != "" {
+		return results[0].ID, false, nil
+	}
+
+	externalID, pushErr := b.Push(ctx, spec)
+	if pushErr != nil {
+		return "", false, pushErr
+	}
+	return externalID, true, nil
+}
+
 // Pull retrieves the status of a bead by its external ID.
 func (b *BeadsAdapter) Pull(ctx context.Context, externalID string) (string, error) {
 	if externalID == "" || !beadsIDPattern.MatchString(externalID) {
