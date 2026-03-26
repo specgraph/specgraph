@@ -23,7 +23,6 @@
   import SpecTable from '$lib/components/SpecTable.svelte';
 
   let totalSpecs = $state(0);
-  let sliceCount = $state(0);
   let readyCount = $state(0);
   let driftCount = $state(0);
   let decisionCount = $state(0);
@@ -70,25 +69,15 @@
 
       const specsList = specsRes.specs ?? [];
       specs = specsList;
-      const allEdges = graphRes.edges ?? [];
+      totalSpecs = specsList.length;
 
-      // Slices are specs that have an incoming COMPOSES edge (a parent "composes" them).
-      const sliceSlugs = new Set(
-        allEdges.filter((e) => e.edgeType === EdgeType.COMPOSES).map((e) => e.toId)
-      );
-      const topLevel = specsList.filter((s) => !sliceSlugs.has(s.slug));
-      totalSpecs = topLevel.length;
-      sliceCount = specsList.length - topLevel.length;
-
-      // Funnel counts only top-level specs (not slices).
       const counts: Record<string, number> = {};
-      for (const s of topLevel) {
+      for (const s of specsList) {
         counts[s.stage] = (counts[s.stage] ?? 0) + 1;
       }
       stageCounts = counts;
 
-      const readySpecs = (readyRes.ready ?? []).filter((s) => !sliceSlugs.has(s.slug));
-      readyCount = readySpecs.length;
+      readyCount = (readyRes.ready ?? []).length;
       graphNodes = graphRes.nodes ?? [];
       graphEdges = graphRes.edges ?? [];
       decisions = decisionsRes.decisions ?? [];
@@ -114,7 +103,7 @@
   <p class="status error">Error: {error}</p>
 {:else}
   <section class="dashboard">
-    <StatsBar {totalSpecs} {sliceCount} {readyCount} {driftCount} {decisionCount} />
+    <StatsBar {totalSpecs} {readyCount} {driftCount} {decisionCount} />
 
     <div class="row">
       <div class="col-funnel">
@@ -141,7 +130,7 @@
     {:else if activeTab === 'Decisions'}
       <table class="decision-table">
         <thead>
-          <tr><th>Slug</th><th>Title</th><th>Status</th><th>Linked Specs</th></tr>
+          <tr><th>Decision</th><th>Title</th><th>Status</th><th>Linked Specs</th></tr>
         </thead>
         <tbody>
           {#each decisions as d}
