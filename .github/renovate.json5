@@ -1,0 +1,46 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":gitSignOff"
+  ],
+  "labels": ["dependencies"],
+  "rangeStrategy": "pin",
+  "schedule": ["before 9am on Monday"],
+  "timezone": "America/Chicago",
+  "packageRules": [
+    {
+      "description": "Automerge minor and patch Go dependency updates",
+      "matchManagers": ["gomod"],
+      "groupName": "Go dependencies",
+      "automerge": true,
+      "matchUpdateTypes": ["minor", "patch", "digest"]
+    },
+    {
+      "description": "Automerge minor and patch Node.js dependency updates",
+      "matchManagers": ["npm"],
+      "groupName": "Node.js dependencies",
+      "automerge": true,
+      "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
+      "description": "Automerge minor and patch GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "automerge": true,
+      "matchUpdateTypes": ["minor", "patch", "digest"]
+    },
+    {
+      "description": "Group Docker dependency updates",
+      "matchManagers": ["dockerfile"],
+      "groupName": "Docker dependencies",
+      "automerge": true,
+      "matchUpdateTypes": ["minor", "patch", "digest"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  }
+}

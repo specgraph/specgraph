@@ -1,5 +1,11 @@
 # SpecGraph
 
+[![CI](https://github.com/specgraph/specgraph/actions/workflows/ci.yml/badge.svg)](https://github.com/specgraph/specgraph/actions/workflows/ci.yml)
+[![Release](https://github.com/specgraph/specgraph/actions/workflows/release.yml/badge.svg)](https://github.com/specgraph/specgraph/actions/workflows/release.yml)
+[![codecov](https://codecov.io/gh/specgraph/specgraph/graph/badge.svg)](https://codecov.io/gh/specgraph/specgraph)
+[![Go Report Card](https://goreportcard.com/badge/github.com/specgraph/specgraph)](https://goreportcard.com/report/github.com/specgraph/specgraph)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A live spec-driven development framework — specifications as a queryable graph, not static markdown.
 
 SpecGraph provides a **spec schema**, an **authoring funnel**, a **project constitution** (layered ground truth), and a **storage + query layer** that feeds agentic execution systems. It turns design intent into structured, claimable work units that agents and humans can pick up, execute, and verify.
