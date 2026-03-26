@@ -131,6 +131,16 @@ specgraph create <slug> --intent "<seed>"
 specgraph spark <slug> --seed "<seed>"
 ```
 
-2. Show the user what was saved.
-3. Offer to continue: "Spark is saved. Want to continue to Shape? I can help
+2. Record the conversation (see `references/conversation-recording.md`):
+
+   ```bash
+   cat > /tmp/conv-<slug>.json << 'CONV_EOF'
+   { "exchanges": [ ... accumulated probe/response exchanges ... ] }
+   CONV_EOF
+   specgraph conversation record <slug> --stage spark --json-file /tmp/conv-<slug>.json
+   rm /tmp/conv-<slug>.json
+   ```
+
+3. Show the user what was saved.
+4. Offer to continue: "Spark is saved. Want to continue to Shape? I can help
    scope the boundaries."

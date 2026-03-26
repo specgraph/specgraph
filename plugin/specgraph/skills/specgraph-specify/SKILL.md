@@ -228,7 +228,17 @@ When the specify conversation is complete:
    specgraph specify <slug> --json-file /tmp/specify-<slug>.json
    ```
 
-5. **Confirm:** "Saved. Spec is now at Decompose stage."
+5. **Record the conversation:** See `references/conversation-recording.md` for the exchange format.
+
+   ```bash
+   cat > /tmp/conv-<slug>.json << 'CONV_EOF'
+   { "exchanges": [ ... accumulated probe/response exchanges ... ] }
+   CONV_EOF
+   specgraph conversation record <slug> --stage specify --json-file /tmp/conv-<slug>.json
+   rm /tmp/conv-<slug>.json
+   ```
+
+6. **Confirm:** "Saved. Spec is now at Decompose stage."
 
 ### Stage Transition
 

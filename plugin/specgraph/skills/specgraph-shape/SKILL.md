@@ -248,7 +248,17 @@ When the shaping conversation is complete:
    specgraph shape <slug> --json-file /tmp/shape-<slug>.json
    ```
 
-5. **Confirm:** "Saved. Spec is now at Specify stage."
+5. **Record the conversation:** See `references/conversation-recording.md` for the exchange format.
+
+   ```bash
+   cat > /tmp/conv-<slug>.json << 'CONV_EOF'
+   { "exchanges": [ ... accumulated probe/response exchanges ... ] }
+   CONV_EOF
+   specgraph conversation record <slug> --stage shape --json-file /tmp/conv-<slug>.json
+   rm /tmp/conv-<slug>.json
+   ```
+
+6. **Confirm:** "Saved. Spec is now at Specify stage."
 
 ### Stage Transition
 
