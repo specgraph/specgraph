@@ -2,6 +2,7 @@ site/build/
 site/.venv/
 site/docs/design/
 .firecrawl/
+.superpowers/
 
 # Demo runbooks (operator guides, not for Claude to read)
 demo/

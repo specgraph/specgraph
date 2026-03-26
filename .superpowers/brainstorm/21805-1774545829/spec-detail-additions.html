@@ -1,0 +1,111 @@
+<h2>Spec Detail: New Sections to Add</h2>
+<p class="subtitle">The existing stage outputs and conversations are solid. These additions fill the remaining gaps.</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="metadata" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content">
+      <h3>Metadata bar (timestamps + lifecycle + content hash)</h3>
+      <div class="mockup" style="margin-top: 0.5rem;">
+        <div class="mockup-body" style="padding: 0.5rem; font-size: 0.75rem;">
+          <div style="display: flex; gap: 1rem; color: #64748b; flex-wrap: wrap;">
+            <span>Created: <strong>Mar 15, 2026</strong></span>
+            <span>Updated: <strong>2 hours ago</strong></span>
+            <span>Lifecycle: <span style="background: #dbeafe; color: #2563eb; padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.7rem;">task</span></span>
+            <span style="font-family: monospace; font-size: 0.65rem;">hash: a1b2c3d4...</span>
+          </div>
+        </div>
+      </div>
+      <p style="font-size: 0.8rem; color: #64748b;">Adds time context — "when was this last touched?" is the #1 question in a demo.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="findings" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>Analytical Findings accordion</h3>
+      <div class="mockup" style="margin-top: 0.5rem;">
+        <div class="mockup-body" style="padding: 0.5rem; font-size: 0.75rem;">
+          <div style="border-left: 3px solid #f59e0b; padding: 0.5rem; background: #fffbeb; border-radius: 0 4px 4px 0; margin-bottom: 0.35rem;">
+            <div style="display: flex; justify-content: space-between;">
+              <strong>Constitution Check</strong>
+              <span style="background: #fef3c7; color: #b45309; padding: 0.05rem 0.3rem; border-radius: 3px; font-size: 0.65rem;">2 findings</span>
+            </div>
+            <div style="font-size: 0.7rem; color: #92400e; margin-top: 0.25rem;">
+              ⚠ Missing security review constraint alignment<br/>
+              ⚠ Tech stack uses framework not in constitution
+            </div>
+          </div>
+          <div style="border-left: 3px solid #22c55e; padding: 0.5rem; background: #f0fdf4; border-radius: 0 4px 4px 0;">
+            <div style="display: flex; justify-content: space-between;">
+              <strong>Complexity Analysis</strong>
+              <span style="background: #dcfce7; color: #16a34a; padding: 0.05rem 0.3rem; border-radius: 3px; font-size: 0.65rem;">passed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size: 0.8rem; color: #64748b;">Shows analytical pass results — proves the system isn't just storing specs, it's validating them.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="conversation-count" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content">
+      <h3>Conversation count in spec table (dashboard)</h3>
+      <div class="mockup" style="margin-top: 0.5rem;">
+        <div class="mockup-body" style="padding: 0.5rem; font-size: 0.75rem;">
+          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 3fr; gap: 0.25rem; color: #64748b; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.15rem; font-weight: 600;">
+            <span>Slug</span><span>Stage</span><span>Pri</span><span>💬</span><span>Intent</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 3fr; gap: 0.25rem; padding: 0.15rem 0;">
+            <span style="color: #2563eb;">healthz</span>
+            <span style="color: #0d9488;">approved</span>
+            <span>P1</span>
+            <span>5</span>
+            <span>Health check endpoint</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 3fr; gap: 0.25rem; padding: 0.15rem 0;">
+            <span style="color: #2563eb;">auth-middleware</span>
+            <span style="color: #2563eb;">shape</span>
+            <span>P1</span>
+            <span>3</span>
+            <span>Auth interceptor for RPCs</span>
+          </div>
+        </div>
+      </div>
+      <p style="font-size: 0.8rem; color: #64748b;">The 💬 column shows conversation depth — proves specs aren't hollow, they have authoring history.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="decision-edges" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content">
+      <h3>Decision detail: linked specs</h3>
+      <div class="mockup" style="margin-top: 0.5rem;">
+        <div class="mockup-body" style="padding: 0.5rem; font-size: 0.75rem;">
+          <div style="margin-bottom: 0.35rem;">
+            <strong>ADR-003: Decisions as first-class nodes</strong>
+            <span style="background: #dcfce7; color: #16a34a; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.65rem; margin-left: 0.5rem;">accepted</span>
+          </div>
+          <div style="color: #475569; font-size: 0.7rem; margin-bottom: 0.5rem;">
+            <strong>Decision:</strong> Track decisions as graph nodes with bidirectional edges to specs...<br/>
+            <strong>Rationale:</strong> ADRs in markdown files lack queryable relationships...
+          </div>
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 0.35rem;">
+            <strong style="color: #2563eb;">Referenced by specs:</strong>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.15rem; flex-wrap: wrap;">
+              <a href="#" style="background: #eff6ff; color: #2563eb; padding: 0.1rem 0.4rem; border-radius: 3px; text-decoration: none; font-size: 0.7rem;">healthz</a>
+              <a href="#" style="background: #eff6ff; color: #2563eb; padding: 0.1rem 0.4rem; border-radius: 3px; text-decoration: none; font-size: 0.7rem;">auth-middleware</a>
+              <a href="#" style="background: #eff6ff; color: #2563eb; padding: 0.1rem 0.4rem; border-radius: 3px; text-decoration: none; font-size: 0.7rem;">drift-engine</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="font-size: 0.8rem; color: #64748b;">Decisions currently show no connections. Adding spec back-references closes the biggest decision page gap.</p>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top: 1rem; font-size: 0.85rem; color: #475569;">
+  <strong>Multi-select:</strong> Click all the additions you want in scope. Or tell me in the terminal if you want to adjust any.
+</p>

@@ -1,0 +1,88 @@
+<h2>Dashboard Gap Audit: Current vs Available Data</h2>
+<p class="subtitle">The UI has 27% data utilization on the dashboard. Here's what's missing.</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Current Dashboard</div>
+    <div class="mockup-body" style="padding: 1rem;">
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+        <div style="background: #f1f5f9; padding: 0.75rem; border-radius: 6px; text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: 700;">12</div>
+          <div style="font-size: 0.7rem; color: #64748b;">Specs</div>
+        </div>
+        <div style="background: #f1f5f9; padding: 0.75rem; border-radius: 6px; text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: 700;">5</div>
+          <div style="font-size: 0.7rem; color: #64748b;">Slices</div>
+        </div>
+        <div style="background: #f1f5f9; padding: 0.75rem; border-radius: 6px; text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: 700;">3</div>
+          <div style="font-size: 0.7rem; color: #64748b;">Ready</div>
+        </div>
+        <div style="background: #f1f5f9; padding: 0.75rem; border-radius: 6px; text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: 700;">1</div>
+          <div style="font-size: 0.7rem; color: #64748b;">Drift</div>
+        </div>
+        <div style="background: #f1f5f9; padding: 0.75rem; border-radius: 6px; text-align: center;">
+          <div style="font-size: 1.5rem; font-weight: 700;">4</div>
+          <div style="font-size: 0.7rem; color: #64748b;">Decisions</div>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 1rem;">
+          <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.5rem;">Funnel</div>
+          <div style="display: flex; gap: 0.25rem; height: 20px;">
+            <div style="flex: 2; background: #ede9fe; border-radius: 3px;" title="spark"></div>
+            <div style="flex: 3; background: #dbeafe; border-radius: 3px;" title="shape"></div>
+            <div style="flex: 2; background: #dcfce7; border-radius: 3px;" title="specify"></div>
+            <div style="flex: 1; background: #fef9c3; border-radius: 3px;" title="decompose"></div>
+            <div style="flex: 4; background: #ccfbf1; border-radius: 3px;" title="approved"></div>
+          </div>
+        </div>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 1rem;">
+          <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.5rem;">Graph</div>
+          <div style="height: 60px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 0.8rem;">
+            [mini graph visualization]
+          </div>
+        </div>
+      </div>
+      <div style="margin-top: 2rem; text-align: center; color: #cbd5e1; font-size: 0.85rem; font-style: italic;">
+        That's it. No spec list. No way to click into anything.<br/>
+        Must go to /graph to find individual specs.
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Available but Not Shown</div>
+    <div class="mockup-body" style="padding: 1rem; font-size: 0.8rem;">
+      <div style="margin-bottom: 1rem;">
+        <div style="font-weight: 700; color: #dc2626; margin-bottom: 0.25rem;">🔴 No spec list at all</div>
+        <div style="color: #64748b;">ListSpecs returns slug, intent, stage, priority, complexity — none browseable</div>
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <div style="font-weight: 700; color: #dc2626; margin-bottom: 0.25rem;">🔴 No recent activity</div>
+        <div style="color: #64748b;">updatedAt timestamps exist on every spec — could show "recently modified"</div>
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <div style="font-weight: 700; color: #dc2626; margin-bottom: 0.25rem;">🔴 No conversation signals</div>
+        <div style="color: #64748b;">ConversationLog nodes track all authoring dialogue — invisible on dashboard</div>
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <div style="font-weight: 700; color: #f59e0b; margin-bottom: 0.25rem;">🟡 No priority breakdown</div>
+        <div style="color: #64748b;">Priority field exists on every spec — could group/filter</div>
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <div style="font-weight: 700; color: #f59e0b; margin-bottom: 0.25rem;">🟡 No findings summary</div>
+        <div style="color: #64748b;">AnalyticalPassService stores findings per spec — zero UI</div>
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <div style="font-weight: 700; color: #f59e0b; margin-bottom: 0.25rem;">🟡 Decision detail page bare</div>
+        <div style="color: #64748b;">Shows title/status/rationale but no edges back to specs</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top: 1.5rem; font-size: 0.9rem; color: #475569;">
+  <strong>Key question:</strong> Which gaps hurt demo-readiness most? We'll tackle those first.
+</p>
