@@ -160,8 +160,21 @@ confirmed each one:
 5. Record provenance: who reviewed, agent-facilitated, any overrides noted.
 6. Confirm: "Approved. Spec is now frozen for execution."
 
-**If the human declines or wants changes:** Record the hold reason, suggest
-which stage to revisit, and do NOT re-offer approval.
+**If the human declines or wants changes:**
+
+1. Record the conversation (see `references/conversation-recording.md`). Only
+   record on hold/decline — approvals are self-evident.
+
+   ```bash
+   cat > /tmp/conv-<slug>.json << 'CONV_EOF'
+   { "exchanges": [ ... review discussion + rejection rationale ... ] }
+   CONV_EOF
+   specgraph conversation record <slug> --stage approve --json-file /tmp/conv-<slug>.json
+   rm /tmp/conv-<slug>.json
+   ```
+
+2. Record the hold reason, suggest which stage to revisit, and do NOT re-offer
+   approval.
 
 ### Post-Approval Options
 
