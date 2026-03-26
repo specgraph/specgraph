@@ -191,3 +191,7 @@ func TestRunImpact_ClientError(t *testing.T) {
 	err := runImpact(&cobra.Command{}, []string{"my-spec"})
 	require.Error(t, err)
 }
+
+// NOTE: Authoring and conversation client error tests live in authoring_test.go
+// and conversation_test.go respectively, alongside their happy-path tests.
+// Report, findings, and status client error tests live in their respective test files.
