@@ -214,3 +214,68 @@ func TestGetSpec_IncludesConversationLogs(t *testing.T) {
 	assert.Equal(t, storage.SpecStageSpark, spec.ConversationLogs[0].Stage)
 	assert.Len(t, spec.ConversationLogs[0].Exchanges, 1)
 }
+
+func TestListSpecs_ConversationCount(t *testing.T) {
+	clearDatabase(t)
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	slug := "conv-count-test"
+
+	// Create a spec.
+	_, err = store.CreateSpec(ctx, slug, "Test conversation count", "p2", "medium")
+	require.NoError(t, err)
+
+	// Before any conversations, count should be 0.
+	specs, err := store.ListSpecs(ctx, "", "", 0)
+	require.NoError(t, err)
+	require.Len(t, specs, 1)
+	assert.Equal(t, 0, specs[0].ConversationCount)
+
+	// Record first conversation (spark stage).
+	_, err = store.RecordConversation(ctx, slug, storage.ConversationLogEntry{
+		Stage: storage.SpecStageSpark,
+		Exchanges: []storage.ConversationExchange{
+			{Role: "probe", Content: "What's the idea?", Stage: "spark", Sequence: 1},
+			{Role: "response", Content: "A caching layer", Stage: "spark", Sequence: 1},
+		},
+		ExchangeCount: 2,
+	})
+	require.NoError(t, err)
+
+	// Count should be 1 (one ConversationLog node via AUTHORED_VIA).
+	specs, err = store.ListSpecs(ctx, "", "", 0)
+	require.NoError(t, err)
+	require.Len(t, specs, 1)
+	assert.Equal(t, 1, specs[0].ConversationCount)
+
+	// Transition to shape, then record second conversation (CONTINUES chain).
+	err = store.TransitionStage(ctx, slug, "spark", "shape")
+	require.NoError(t, err)
+
+	_, err = store.RecordConversation(ctx, slug, storage.ConversationLogEntry{
+		Stage: storage.SpecStageShape,
+		Exchanges: []storage.ConversationExchange{
+			{Role: "probe", Content: "What's in scope?", Stage: "shape", Sequence: 1},
+			{Role: "response", Content: "Just the API layer", Stage: "shape", Sequence: 1},
+		},
+		ExchangeCount: 2,
+	})
+	require.NoError(t, err)
+
+	// Count should be 2 (AUTHORED_VIA -> CL1 -> CONTINUES -> CL2).
+	specs, err = store.ListSpecs(ctx, "", "", 0)
+	require.NoError(t, err)
+	require.Len(t, specs, 1)
+	assert.Equal(t, 2, specs[0].ConversationCount)
+
+	// Also verify via ListConversations that the chain is intact.
+	entries, err := store.ListConversations(ctx, slug, "")
+	require.NoError(t, err)
+	require.Len(t, entries, 2, "AUTHORED_VIA -> CONTINUES chain should have 2 entries")
+	assert.Equal(t, storage.SpecStageSpark, entries[0].Stage)
+	assert.Equal(t, storage.SpecStageShape, entries[1].Stage)
+}

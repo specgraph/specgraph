@@ -40,17 +40,27 @@
   }
 
   let rows = $derived(sortedSpecs());
+
+  function ariaSort(key: typeof sortKey): 'ascending' | 'descending' | 'none' {
+    if (sortKey !== key) return 'none';
+    return sortAsc ? 'ascending' : 'descending';
+  }
+
+  function sortIndicator(key: typeof sortKey): string {
+    if (sortKey !== key) return '';
+    return sortAsc ? '↑' : '↓';
+  }
 </script>
 
 <table class="spec-table">
   <thead>
     <tr>
-      <th class="sortable" onclick={() => toggleSort('slug')}>Slug {sortKey === 'slug' ? (sortAsc ? '↑' : '↓') : ''}</th>
-      <th class="sortable" onclick={() => toggleSort('stage')}>Stage {sortKey === 'stage' ? (sortAsc ? '↑' : '↓') : ''}</th>
-      <th class="sortable" onclick={() => toggleSort('priority')}>Pri {sortKey === 'priority' ? (sortAsc ? '↑' : '↓') : ''}</th>
+      <th aria-sort={ariaSort('slug')}><button type="button" class="sort-btn" onclick={() => toggleSort('slug')}>Slug {sortIndicator('slug')}</button></th>
+      <th aria-sort={ariaSort('stage')}><button type="button" class="sort-btn" onclick={() => toggleSort('stage')}>Stage {sortIndicator('stage')}</button></th>
+      <th aria-sort={ariaSort('priority')}><button type="button" class="sort-btn" onclick={() => toggleSort('priority')}>Pri {sortIndicator('priority')}</button></th>
       {#if showConversations}<th>💬</th>{/if}
       <th>Intent</th>
-      <th class="sortable" onclick={() => toggleSort('updated')}>Updated {sortKey === 'updated' ? (sortAsc ? '↑' : '↓') : ''}</th>
+      <th aria-sort={ariaSort('updated')}><button type="button" class="sort-btn" onclick={() => toggleSort('updated')}>Updated {sortIndicator('updated')}</button></th>
     </tr>
   </thead>
   <tbody>
@@ -87,13 +97,25 @@
     white-space: nowrap;
   }
 
-  th.sortable {
+  .sort-btn {
+    all: unset;
     cursor: pointer;
     user-select: none;
+    font: inherit;
+    color: inherit;
+    font-weight: inherit;
+    width: 100%;
+    text-align: left;
   }
 
-  th.sortable:hover {
+  .sort-btn:hover {
     color: #2563eb;
+  }
+
+  .sort-btn:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 1px;
+    border-radius: 2px;
   }
 
   td {

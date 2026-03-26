@@ -126,7 +126,17 @@ If the spec is already at or past Decompose:
 specgraph decompose <slug> --json-file <tmpfile>
 ```
 
-5. Confirm: "Saved. Spec is now at Decompose."
+5. **Record the conversation:** See `references/conversation-recording.md` for the exchange format.
+
+   ```bash
+   cat > /tmp/conv-<slug>.json << 'CONV_EOF'
+   { "exchanges": [ ... accumulated probe/response exchanges ... ] }
+   CONV_EOF
+   specgraph conversation record <slug> --stage decompose --json-file /tmp/conv-<slug>.json
+   rm /tmp/conv-<slug>.json
+   ```
+
+6. Confirm: "Saved. Spec is now at Decompose."
 
 ### Transition
 
