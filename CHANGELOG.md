@@ -1,5 +1,52 @@
 # Changelog
 
+## [0.2.0](https://github.com/specgraph/specgraph/compare/v0.1.6...v0.2.0) (2026-03-26)
+
+
+### Features
+
+* add ConversationLog graph nodes for authoring audit trail (spgr-9mz) ([140341b](https://github.com/specgraph/specgraph/commit/140341be9a1986d07ef2a8c1b76d5f96184a1847))
+* add duplicate slug check to spark skill ([#620](https://github.com/specgraph/specgraph/issues/620)) ([4655650](https://github.com/specgraph/specgraph/commit/4655650785be3436126e709bd0d8ba5b8f5980f2))
+* add prompt templates for remaining analytical passes ([#572](https://github.com/specgraph/specgraph/issues/572)) ([e28ab1c](https://github.com/specgraph/specgraph/commit/e28ab1cae0ac3e1635a053b823e7f4b76b0333ab))
+* analytical pass system with unified findings ([#571](https://github.com/specgraph/specgraph/issues/571)) ([e8f455e](https://github.com/specgraph/specgraph/commit/e8f455e0198740bd0caf01cd024ed8f54b313f1a))
+* batch improvements — dashboard stats, constitution view, status command, template overrides, bug fixes ([#670](https://github.com/specgraph/specgraph/issues/670)) ([c8aa122](https://github.com/specgraph/specgraph/commit/c8aa1224980209cb44317c8c4407c1ba8aa0284d))
+* batch improvements + fix skill format references (spgr-r40, spgr-qdl, spgr-qu2, spgr-9n8, spgr-8ec, spgr-5sd, spgr-p9h) ([c8aa122](https://github.com/specgraph/specgraph/commit/c8aa1224980209cb44317c8c4407c1ba8aa0284d))
+* batch improvements + fix skill format references (spgr-r40, spgr-qdl, spgr-qu2, spgr-9n8, spgr-8ec, spgr-5sd, spgr-p9h) ([b984856](https://github.com/specgraph/specgraph/commit/b984856ea422b28e03835bc8915fe033517cb62d))
+* **cmd:** add comprehensive unit tests for CLI commands (spgr-dvb) ([#672](https://github.com/specgraph/specgraph/issues/672)) ([eb4d5f4](https://github.com/specgraph/specgraph/commit/eb4d5f4516830389275c4986af03b2fdd1bdfe15))
+* ConversationLog graph nodes for authoring audit trail (spgr-9mz) ([#664](https://github.com/specgraph/specgraph/issues/664)) ([140341b](https://github.com/specgraph/specgraph/commit/140341be9a1986d07ef2a8c1b76d5f96184a1847))
+* expand specgraph show with full authoring stage detail (spgr-0dg) ([#665](https://github.com/specgraph/specgraph/issues/665)) ([8fc8412](https://github.com/specgraph/specgraph/commit/8fc8412dbc3fad04b59e1e83ecd9e47fdd06bda9))
+* graph visualization UI with embedded SvelteKit SPA (spgr-p1l) ([#644](https://github.com/specgraph/specgraph/issues/644)) ([d66606a](https://github.com/specgraph/specgraph/commit/d66606adb84e2e4a5a9238691b11bac3c31e0f0f))
+* markdown CLI output with --json flags ([#496](https://github.com/specgraph/specgraph/issues/496)) ([#642](https://github.com/specgraph/specgraph/issues/642)) ([0f3bbe8](https://github.com/specgraph/specgraph/commit/0f3bbe81779981eb11d56431117efab75324012c))
+* plugin restructure, authoring skills, and demo runbook ([#609](https://github.com/specgraph/specgraph/issues/609)) ([b12f199](https://github.com/specgraph/specgraph/commit/b12f1992c22fe24789070dfa172c2852e08f83ea))
+* restructure SpecifyOutput with InterfaceSection, VerifyCriterion, FileTouch ([#619](https://github.com/specgraph/specgraph/issues/619)) ([5ba9999](https://github.com/specgraph/specgraph/commit/5ba9999d255ef556472713c4fe09386af4569cda))
+* restructure SpecifyOutput with structured sub-messages ([5ba9999](https://github.com/specgraph/specgraph/commit/5ba9999d255ef556472713c4fe09386af4569cda))
+* **web:** expand spec detail page with stage outputs, edges, and conversations (spgr-zn1) ([2638edd](https://github.com/specgraph/specgraph/commit/2638edd9c8cccca1d24e261476fdb4ed8487e0bf))
+* **web:** expand spec detail page with stage outputs, edges, conversations (spgr-zn1) ([#668](https://github.com/specgraph/specgraph/issues/668)) ([2638edd](https://github.com/specgraph/specgraph/commit/2638edd9c8cccca1d24e261476fdb4ed8487e0bf))
+
+
+### Bug Fixes
+
+* add explicit step gating to shape skill ([#618](https://github.com/specgraph/specgraph/issues/618)) ([ca2cedc](https://github.com/specgraph/specgraph/commit/ca2cedcdf2f2be0a7c81542f36c4aaddc6fa5a6a))
+* approve self-approval guardrails + CLI usage dump silence (spgr-8ec, spgr-5sd) ([#669](https://github.com/specgraph/specgraph/issues/669)) ([b984856](https://github.com/specgraph/specgraph/commit/b984856ea422b28e03835bc8915fe033517cb62d))
+* enforce slug uniqueness in CreateSpec ([#615](https://github.com/specgraph/specgraph/issues/615)) ([5d57110](https://github.com/specgraph/specgraph/commit/5d57110e5c58372833a5a2197fd34d85190abe1d))
+* resolve absolute binary path and quote slugs in tool commands ([#616](https://github.com/specgraph/specgraph/issues/616)) ([e2e08f4](https://github.com/specgraph/specgraph/commit/e2e08f4d69272a4f2687d8cd054c2afeb9d9311c))
+
+
+### Code Refactoring
+
+* **proto:** wrap bare-entity RPC returns in Response messages ([#622](https://github.com/specgraph/specgraph/issues/622)) ([b724308](https://github.com/specgraph/specgraph/commit/b72430893fdf36f04ee9b54e6f3046c87f733faf))
+* split AnalyticalFinding into input/output types ([#617](https://github.com/specgraph/specgraph/issues/617)) ([12a558d](https://github.com/specgraph/specgraph/commit/12a558dc305dba503a3ad4b1a73be90c6c8e5afd))
+
+
+### Miscellaneous
+
+* add Claude Code plugin symlink for specgraph skills ([#608](https://github.com/specgraph/specgraph/issues/608)) ([90ac791](https://github.com/specgraph/specgraph/commit/90ac791835cd2f4aae321c5b0a52d335a68dbb83))
+* beads updates ([#666](https://github.com/specgraph/specgraph/issues/666)) ([961da26](https://github.com/specgraph/specgraph/commit/961da262428e09ae05afc7ab02269da104295ea9))
+* beads updates for sharing ([#667](https://github.com/specgraph/specgraph/issues/667)) ([ab0b1a6](https://github.com/specgraph/specgraph/commit/ab0b1a67f30016f46d5802f12b375346949960f0))
+* begin 0.2.0 development ([#570](https://github.com/specgraph/specgraph/issues/570)) ([679732a](https://github.com/specgraph/specgraph/commit/679732a77a679ec96e2e2c83105052dc68bada4e))
+* **ci:** pin actions to SHA, add govulncheck, codecov, semgrep, renovate, badges (spgr-o49) ([05f281f](https://github.com/specgraph/specgraph/commit/05f281f45f65bac015c9fe5f42374b0e36bfd8ae))
+* **ci:** supply chain hardening — pin actions, govulncheck, codecov, semgrep, renovate (spgr-o49) ([#671](https://github.com/specgraph/specgraph/issues/671)) ([05f281f](https://github.com/specgraph/specgraph/commit/05f281f45f65bac015c9fe5f42374b0e36bfd8ae))
+
 ## [0.1.6](https://github.com/specgraph/specgraph/compare/v0.1.5...v0.1.6) (2026-03-21)
 
 
