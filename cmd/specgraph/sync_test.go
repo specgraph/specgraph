@@ -139,7 +139,7 @@ type fakeSyncGitHubHandler struct {
 
 func (fakeSyncGitHubHandler) SyncGitHub(_ context.Context, _ *connect.Request[specv1.SyncGitHubRequest]) (*connect.Response[specv1.SyncResponse], error) {
 	return connect.NewResponse(&specv1.SyncResponse{
-		Synced:  2,
+		Synced: 2,
 		Results: []*specv1.SyncResult{
 			{SpecSlug: "spec-a", State: specv1.SyncState_SYNC_STATE_SYNCED, ExternalId: "gh-1"},
 			{SpecSlug: "spec-b", State: specv1.SyncState_SYNC_STATE_PENDING, Message: "rate limited"},

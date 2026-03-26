@@ -18,8 +18,6 @@ through the full authoring funnel.
 
 > **Action:** Install the `specgraph` binary.
 
-<!-- x-release-please-start-version -->
-
 **Homebrew** (macOS/Linux):
 
 ```bash
@@ -28,16 +26,14 @@ brew install specgraph/tap/specgraph
 
 **Binary** (any platform):
 
-Download from [GitHub releases v0.2.1](https://github.com/specgraph/specgraph/releases/tag/v0.1.0),
+Download from [GitHub releases](https://github.com/specgraph/specgraph/releases/latest),
 verify the SHA256 checksum, and add to your PATH.
 
 **Docker:**
 
 ```bash
-docker pull ghcr.io/specgraph/specgraph:0.2.1
+docker pull ghcr.io/specgraph/specgraph:latest
 ```
-
-<!-- x-release-please-end -->
 
 > **Note:** Homebrew, binary, and Docker install paths require a published
 > release. If v0.1.0 has not been released yet, build from source:

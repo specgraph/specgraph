@@ -2,49 +2,83 @@
 # Copyright 2026 Sean Brandt
 name: Release
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_dispatch: {}
 permissions: {}
 concurrency:
   group: release
   cancel-in-progress: false
 jobs:
-  release-please:
+  release:
     permissions:
       contents: write
-      pull-requests: write
     runs-on: namespace-profile-linux-amd64-4x8
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-      sha: ${{ steps.release.outputs.sha }}
+      new_tag: ${{ steps.check.outputs.new_tag }}
+      version: ${{ steps.check.outputs.version }}
     steps:
-      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38 # v4
-        id: release
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          fetch-depth: 0
+      - name: Install git-cliff
+        uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 # v4
+        id: cliff
+        with:
+          args: --bump
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTPUT: CHANGELOG.md
+      - name: Check if version bumped
+        id: check
+        run: |
+          TAG="${{ steps.cliff.outputs.tag }}"
+          if [ -z "$TAG" ]; then
+            echo "No releasable commits since last tag. Exiting."
+            echo "new_tag=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          VERSION="${TAG#v}"
+          echo "new_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Commit changelog
+        if: steps.check.outputs.new_tag != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore(release): ${{ steps.check.outputs.new_tag }}"
+          git push
+      - name: Create and push tag
+        if: steps.check.outputs.new_tag != ''
+        run: |
+          git tag "$TAG"
+          git push origin "$TAG"
+        env:
+          TAG: ${{ steps.check.outputs.new_tag }}
+      - name: Create GitHub release
+        if: steps.check.outputs.new_tag != ''
+        run: |
+          git cliff --latest --strip header > /tmp/release-notes.md
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file /tmp/release-notes.md \
+            --verify-tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.check.outputs.new_tag }}
   goreleaser:
     permissions:
       contents: write
       packages: write
       id-token: write
       attestations: write
-    needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    needs: release
+    if: needs.release.outputs.new_tag != ''
     runs-on: namespace-profile-linux-amd64-4x8
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
-          ref: ${{ needs.release-please.outputs.sha }}
-      - name: Create and push git tag
-        run: |
-          git tag "$TAG" "$SHA"
-          git push origin "$TAG"
-        env:
-          TAG: ${{ needs.release-please.outputs.tag_name }}
-          SHA: ${{ needs.release-please.outputs.sha }}
+          ref: ${{ needs.release.outputs.new_tag }}
       - uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
       - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
       - uses: namespacelabs/nscloud-setup-buildx-action@d059ed7184f0bc7c8b27e8810cea153d02bcc6dd # v0.0.23
@@ -77,22 +111,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-      - name: Set release version
-        id: version
-        run: echo "version=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
-        env:
-          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
-      - name: Scan Docker image (amd64)
+      - name: Scan Docker image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
-          image-ref: "ghcr.io/specgraph/specgraph:${{ steps.version.outputs.version }}-amd64"
-          format: table
-          exit-code: "1"
-          severity: CRITICAL,HIGH
-      - name: Scan Docker image (arm64)
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
-        with:
-          image-ref: "ghcr.io/specgraph/specgraph:${{ steps.version.outputs.version }}-arm64"
+          image-ref: "ghcr.io/specgraph/specgraph:${{ needs.release.outputs.version }}"
           format: table
           exit-code: "1"
           severity: CRITICAL,HIGH
