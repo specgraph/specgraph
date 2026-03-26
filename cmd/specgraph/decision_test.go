@@ -255,4 +255,3 @@ func TestDecisionShowCmd_RequiresSlug(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "accepts 1 arg")
 }
-

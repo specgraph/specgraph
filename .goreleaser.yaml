@@ -19,7 +19,8 @@ builds:
       - -X github.com/specgraph/specgraph/cmd/specgraph.commit={{.ShortCommit}}
 archives:
   - id: default
-    format: tar.gz
+    formats:
+      - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - README.md
@@ -27,7 +28,7 @@ archives:
 checksum:
   name_template: checksums.txt
   algorithm: sha256
-brews:
+homebrew_casks:
   - name: specgraph
     repository:
       owner: specgraph
@@ -36,38 +37,17 @@ brews:
     homepage: https://specgraph.io
     description: Live spec-driven development framework
     license: MIT
-    install: |
-      bin.install "specgraph"
-dockers:
-  - image_templates:
-      - "ghcr.io/specgraph/specgraph:{{ .Version }}-amd64"
+dockers_v2:
+  - images:
+      - "ghcr.io/specgraph/specgraph"
+    tags:
+      - "{{ .Version }}"
+      - latest
     dockerfile: Dockerfile
-    use: buildx
-    goarch: amd64
-    build_flag_templates:
-      - "--platform=linux/amd64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.source=https://github.com/specgraph/specgraph"
-  - image_templates:
-      - "ghcr.io/specgraph/specgraph:{{ .Version }}-arm64"
-    dockerfile: Dockerfile
-    use: buildx
-    goarch: arm64
-    build_flag_templates:
-      - "--platform=linux/arm64"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.source=https://github.com/specgraph/specgraph"
-docker_manifests:
-  - name_template: "ghcr.io/specgraph/specgraph:{{ .Version }}"
-    image_templates:
-      - "ghcr.io/specgraph/specgraph:{{ .Version }}-amd64"
-      - "ghcr.io/specgraph/specgraph:{{ .Version }}-arm64"
-  - name_template: "ghcr.io/specgraph/specgraph:latest"
-    image_templates:
-      - "ghcr.io/specgraph/specgraph:{{ .Version }}-amd64"
-      - "ghcr.io/specgraph/specgraph:{{ .Version }}-arm64"
+    labels:
+      "org.opencontainers.image.title": "{{ .ProjectName }}"
+      "org.opencontainers.image.version": "{{ .Version }}"
+      "org.opencontainers.image.source": "https://github.com/specgraph/specgraph"
 source:
   enabled: true
   name_template: "{{ .ProjectName }}.src"
@@ -94,18 +74,6 @@ docker_signs:
       - "${artifact}@${digest}"
       - "--yes"
 release:
-  use_existing_draft: true
-  mode: keep-existing
+  mode: append
 changelog:
-  use: github
-  groups:
-    - title: Features
-      regexp: '^feat'
-    - title: Bug Fixes
-      regexp: '^fix'
-    - title: Documentation
-      regexp: '^docs'
-    - title: Performance
-      regexp: '^perf'
-    - title: Other
-      order: 999
+  disable: true
