@@ -424,3 +424,150 @@ func TestGitHubAdapter_AvailableNoRepo(t *testing.T) {
 		t.Errorf("Available() error = %v, want ErrAdapterNotAvailable", err)
 	}
 }
+
+func TestGitHubAdapter_FindOrCreate_ExistingItem(t *testing.T) {
+	runner := &sequenceRunner{
+		calls: []struct {
+			output []byte
+			err    error
+		}{
+			{output: []byte(`[{"number":42,"url":"https://github.com/owner/repo/issues/42"}]`), err: nil},
+		},
+	}
+	g := NewGitHubAdapter(runner, "owner/repo")
+	spec := &storage.Spec{
+		Slug:     "my-spec",
+		Intent:   "Build a thing",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP1,
+	}
+	id, created, err := g.FindOrCreate(context.Background(), spec)
+	if err != nil {
+		t.Fatalf("FindOrCreate() unexpected error: %v", err)
+	}
+	if created {
+		t.Error("FindOrCreate() created = true, want false")
+	}
+	if id != "https://github.com/owner/repo/issues/42" {
+		t.Errorf("FindOrCreate() id = %q, want URL", id)
+	}
+}
+
+func TestGitHubAdapter_FindOrCreate_NewItem(t *testing.T) {
+	runner := &sequenceRunner{
+		calls: []struct {
+			output []byte
+			err    error
+		}{
+			{output: []byte(`[]`), err: nil},
+			{output: []byte("https://github.com/owner/repo/issues/99\n"), err: nil},
+		},
+	}
+	g := NewGitHubAdapter(runner, "owner/repo")
+	spec := &storage.Spec{
+		Slug:     "new-spec",
+		Intent:   "Build a thing",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP1,
+	}
+	id, created, err := g.FindOrCreate(context.Background(), spec)
+	if err != nil {
+		t.Fatalf("FindOrCreate() unexpected error: %v", err)
+	}
+	if !created {
+		t.Error("FindOrCreate() created = false, want true")
+	}
+	if id != "https://github.com/owner/repo/issues/99" {
+		t.Errorf("FindOrCreate() id = %q, want URL", id)
+	}
+}
+
+func TestGitHubAdapter_FindOrCreate_EmptySlug(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{}, "owner/repo")
+	spec := &storage.Spec{Slug: ""}
+	_, _, err := g.FindOrCreate(context.Background(), spec)
+	if err == nil {
+		t.Fatal("FindOrCreate() expected error for empty slug, got nil")
+	}
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("FindOrCreate() error = %v, want errPushFailed", err)
+	}
+}
+
+func TestGitHubAdapter_FindOrCreate_EmptyRepo(t *testing.T) {
+	g := NewGitHubAdapter(&mockRunner{}, "")
+	spec := &storage.Spec{Slug: "my-spec"}
+	_, _, err := g.FindOrCreate(context.Background(), spec)
+	if err == nil {
+		t.Fatal("FindOrCreate() expected error for empty repo, got nil")
+	}
+	if !errors.Is(err, errPushFailed) {
+		t.Errorf("FindOrCreate() error = %v, want errPushFailed", err)
+	}
+}
+
+func TestGitHubAdapter_FindOrCreate_InvalidJSON(t *testing.T) {
+	runner := &sequenceRunner{
+		calls: []struct {
+			output []byte
+			err    error
+		}{
+			{output: []byte(`not-json`), err: nil},
+		},
+	}
+	g := NewGitHubAdapter(runner, "owner/repo")
+	spec := &storage.Spec{
+		Slug:   "my-spec",
+		Intent: "Build a thing",
+		Stage:  storage.SpecStageSpark,
+	}
+	_, _, err := g.FindOrCreate(context.Background(), spec)
+	if err == nil {
+		t.Fatal("FindOrCreate() expected error for invalid JSON, got nil")
+	}
+}
+
+func TestGitHubAdapter_FindOrCreate_PushError(t *testing.T) {
+	runner := &sequenceRunner{
+		calls: []struct {
+			output []byte
+			err    error
+		}{
+			{output: []byte(`[]`), err: nil},
+			{output: nil, err: errors.New("gh issue create failed")},
+		},
+	}
+	g := NewGitHubAdapter(runner, "owner/repo")
+	spec := &storage.Spec{
+		Slug:     "new-spec",
+		Intent:   "Build a thing",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP1,
+	}
+	_, _, err := g.FindOrCreate(context.Background(), spec)
+	if err == nil {
+		t.Fatal("FindOrCreate() expected error when push fails, got nil")
+	}
+}
+
+func TestGitHubAdapter_FindOrCreate_SearchError(t *testing.T) {
+	runner := &sequenceRunner{
+		calls: []struct {
+			output []byte
+			err    error
+		}{
+			{output: nil, err: errors.New("gh search failed")},
+		},
+	}
+	g := NewGitHubAdapter(runner, "owner/repo")
+	spec := &storage.Spec{
+		Slug:     "my-spec",
+		Intent:   "Build a thing",
+		Stage:    storage.SpecStageSpark,
+		Priority: storage.SpecPriorityP1,
+	}
+	_, _, err := g.FindOrCreate(context.Background(), spec)
+	if err == nil {
+		t.Fatal("FindOrCreate() expected error, got nil")
+	}
+}

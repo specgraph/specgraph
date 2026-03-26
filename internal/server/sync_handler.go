@@ -142,7 +142,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, store storage.ScopedB
 			continue
 		}
 
-		externalID, pushErr := adapter.Push(ctx, spec)
+		externalID, created, pushErr := adapter.FindOrCreate(ctx, spec)
 		if pushErr != nil {
 			slog.WarnContext(ctx, "failed to push spec to adapter", "spec", spec.Slug, "adapter", adapter.Name(), "error", pushErr)
 			result.State = specv1.SyncState_SYNC_STATE_ERROR
@@ -199,7 +199,11 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, store storage.ScopedB
 
 		result.ExternalId = externalID
 		result.State = specv1.SyncState_SYNC_STATE_SYNCED
-		result.Message = "synced"
+		if created {
+			result.Message = "synced"
+		} else {
+			result.Message = "synced (recovered existing external item)"
+		}
 		resp.Synced++
 		resp.Results = append(resp.Results, result)
 	}

@@ -381,9 +381,10 @@ func TestSyncHandler_Inject_SuccessAgentsMD(t *testing.T) {
 
 // mockAdapter implements syncpkg.Adapter for testing syncWithAdapter.
 type mockAdapter struct {
-	name      storage.SyncAdapterType
-	pushFn    func(ctx context.Context, spec *storage.Spec) (string, error)
-	available bool
+	name           storage.SyncAdapterType
+	pushFn         func(ctx context.Context, spec *storage.Spec) (string, error)
+	findOrCreateFn func(ctx context.Context, spec *storage.Spec) (string, bool, error)
+	available      bool
 }
 
 func (m *mockAdapter) Name() storage.SyncAdapterType { return m.name }
@@ -397,6 +398,15 @@ func (m *mockAdapter) Available(_ context.Context) error {
 func (m *mockAdapter) Push(ctx context.Context, spec *storage.Spec) (string, error) {
 	return m.pushFn(ctx, spec)
 }
+
+func (m *mockAdapter) FindOrCreate(ctx context.Context, spec *storage.Spec) (string, bool, error) {
+	if m.findOrCreateFn != nil {
+		return m.findOrCreateFn(ctx, spec)
+	}
+	id, err := m.pushFn(ctx, spec)
+	return id, true, err
+}
+
 func (m *mockAdapter) Pull(_ context.Context, _ string) (string, error) { return "", nil }
 
 var _ syncpkg.Adapter = (*mockAdapter)(nil)
@@ -449,6 +459,26 @@ func TestSyncHandler_SyncBeads_Success(t *testing.T) {
 	require.Equal(t, int32(1), resp.Msg.Synced)
 	require.Len(t, resp.Msg.Results, 1)
 	require.Equal(t, specv1.SyncState_SYNC_STATE_SYNCED, resp.Msg.Results[0].State)
+}
+
+func TestSyncHandler_SyncBeads_FindOrCreate_Recovery(t *testing.T) {
+	adapter := &mockAdapter{
+		name:      storage.SyncAdapterBeads,
+		available: true,
+		findOrCreateFn: func(_ context.Context, spec *storage.Spec) (string, bool, error) {
+			return "beads-recovered-" + spec.Slug, false, nil
+		},
+	}
+	client := setupSyncServerWithAdapter(t, adapter)
+	resp, err := client.SyncBeads(context.Background(),
+		connect.NewRequest(&specv1.SyncBeadsRequest{
+			Config: &specv1.SyncConfig{},
+		}))
+	require.NoError(t, err)
+	require.Equal(t, int32(1), resp.Msg.Synced)
+	require.Len(t, resp.Msg.Results, 1)
+	require.Equal(t, specv1.SyncState_SYNC_STATE_SYNCED, resp.Msg.Results[0].State)
+	require.Contains(t, resp.Msg.Results[0].Message, "recovered")
 }
 
 func TestSyncHandler_SyncBeads_PushError(t *testing.T) {

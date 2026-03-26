@@ -111,6 +111,50 @@ func (g *GitHubAdapter) Push(ctx context.Context, spec *storage.Spec) (string, e
 	return issueURL, nil
 }
 
+// ghSearchResult captures one entry from gh issue list --json output.
+type ghSearchResult struct {
+	Number int    `json:"number"`
+	URL    string `json:"url"`
+}
+
+// FindOrCreate searches for an existing GitHub issue matching "[spec] <slug>".
+// If found, returns its URL with created=false.
+// If not found, creates via Push and returns created=true.
+func (g *GitHubAdapter) FindOrCreate(ctx context.Context, spec *storage.Spec) (externalID string, created bool, err error) {
+	if spec.Slug == "" {
+		return "", false, fmt.Errorf("%w: spec slug is required", errPushFailed)
+	}
+	if g.repo == "" {
+		return "", false, fmt.Errorf("%w: repo is required", errPushFailed)
+	}
+
+	searchTitle := fmt.Sprintf("in:title [spec] %s", spec.Slug)
+	out, err := g.runner.Run(ctx, "gh", "issue", "list",
+		"--search", searchTitle,
+		"--repo", g.repo,
+		"--json", "number,url",
+		"--limit", "1",
+	)
+	if err != nil {
+		return "", false, fmt.Errorf("failed to search for existing issue: %w", err)
+	}
+
+	var results []ghSearchResult
+	if err := json.Unmarshal(out, &results); err != nil {
+		return "", false, fmt.Errorf("failed to parse search results: %w", err)
+	}
+
+	if len(results) > 0 && results[0].URL != "" {
+		return results[0].URL, false, nil
+	}
+
+	externalID, pushErr := g.Push(ctx, spec)
+	if pushErr != nil {
+		return "", false, pushErr
+	}
+	return externalID, true, nil
+}
+
 // Pull retrieves the current state of a GitHub issue by its URL or number.
 func (g *GitHubAdapter) Pull(ctx context.Context, externalID string) (string, error) {
 	if externalID == "" {

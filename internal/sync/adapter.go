@@ -30,6 +30,11 @@ type Adapter interface {
 	// Returns the external system's ID for the created item.
 	Push(ctx context.Context, spec *storage.Spec) (externalID string, err error)
 
+	// FindOrCreate searches for an existing external item matching this spec.
+	// If found, returns its ID with created=false.
+	// If not found, creates a new one (like Push) and returns created=true.
+	FindOrCreate(ctx context.Context, spec *storage.Spec) (externalID string, created bool, err error)
+
 	// Pull retrieves the current status of an external work item.
 	Pull(ctx context.Context, externalID string) (status string, err error)
 }
