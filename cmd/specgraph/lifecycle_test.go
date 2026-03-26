@@ -20,6 +20,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestExitError_Error(t *testing.T) {
+	e := &exitError{code: 1, msg: "test error"}
+	assert.Equal(t, "test error", e.Error())
+}
+
 func TestDriftScopeToProto(t *testing.T) {
 	tests := []struct {
 		input string

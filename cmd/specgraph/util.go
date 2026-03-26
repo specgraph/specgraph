@@ -16,6 +16,9 @@ import (
 // printSafetyFlags prints each safety flag in a standard format.
 func printSafetyFlags(flags []*specv1.SafetyFlag) {
 	for _, f := range flags {
+		if f == nil {
+			continue
+		}
 		fmt.Printf("  [%s] %s: %s\n", f.Severity, f.Category, f.Description)
 	}
 }
