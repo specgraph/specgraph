@@ -160,7 +160,7 @@ type Bundle struct {
 	Decisions     []*Decision            `protobuf:"bytes,3,rep,name=decisions,proto3" json:"decisions,omitempty"`
 	Bootstrap     string                 `protobuf:"bytes,4,opt,name=bootstrap,proto3" json:"bootstrap,omitempty"`
 	Callbacks     *CallbackConfig        `protobuf:"bytes,5,opt,name=callbacks,proto3" json:"callbacks,omitempty"`
-	BundleYaml    string                 `protobuf:"bytes,6,opt,name=bundle_yaml,json=bundleYaml,proto3" json:"bundle_yaml,omitempty"`
+	BundleContent string                 `protobuf:"bytes,7,opt,name=bundle_content,json=bundleContent,proto3" json:"bundle_content,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -230,9 +230,9 @@ func (x *Bundle) GetCallbacks() *CallbackConfig {
 	return nil
 }
 
-func (x *Bundle) GetBundleYaml() string {
+func (x *Bundle) GetBundleContent() string {
 	if x != nil {
-		return x.BundleYaml
+		return x.BundleContent
 	}
 	return ""
 }
@@ -957,15 +957,14 @@ const file_specgraph_v1_execution_proto_rawDesc = "" +
 	"\ablocker\x18\x04 \x01(\tR\ablocker\x12\x1e\n" +
 	"\n" +
 	"completion\x18\x05 \x01(\tR\n" +
-	"completion\"\xfb\x01\n" +
+	"completion\"\x94\x02\n" +
 	"\x06Bundle\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\x05R\aversion\x12&\n" +
 	"\x04spec\x18\x02 \x01(\v2\x12.specgraph.v1.SpecR\x04spec\x124\n" +
 	"\tdecisions\x18\x03 \x03(\v2\x16.specgraph.v1.DecisionR\tdecisions\x12\x1c\n" +
 	"\tbootstrap\x18\x04 \x01(\tR\tbootstrap\x12:\n" +
-	"\tcallbacks\x18\x05 \x01(\v2\x1c.specgraph.v1.CallbackConfigR\tcallbacks\x12\x1f\n" +
-	"\vbundle_yaml\x18\x06 \x01(\tR\n" +
-	"bundleYaml\"\xf5\x01\n" +
+	"\tcallbacks\x18\x05 \x01(\v2\x1c.specgraph.v1.CallbackConfigR\tcallbacks\x12%\n" +
+	"\x0ebundle_content\x18\a \x01(\tR\rbundleContentJ\x04\b\x06\x10\aR\vbundle_yaml\"\xf5\x01\n" +
 	"\rPrimeResponse\x121\n" +
 	"\x14constitution_summary\x18\x01 \x01(\tR\x13constitutionSummary\x12'\n" +
 	"\x0fproject_context\x18\x02 \x01(\tR\x0eprojectContext\x124\n" +

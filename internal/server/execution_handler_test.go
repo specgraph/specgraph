@@ -182,8 +182,8 @@ func TestExecutionHandler_GenerateBundle(t *testing.T) {
 	require.NotNil(t, resp.Msg.GetBundle().GetCallbacks())
 	require.Equal(t, "http://localhost:8080", resp.Msg.GetBundle().GetCallbacks().GetEndpoint())
 	require.Equal(t, "http://localhost:8080/progress", resp.Msg.GetBundle().GetCallbacks().GetProgress())
-	require.NotEmpty(t, resp.Msg.GetBundle().GetBundleYaml())
-	require.Contains(t, resp.Msg.GetBundle().GetBundleYaml(), "my-spec")
+	require.NotEmpty(t, resp.Msg.GetBundle().GetBundleContent())
+	require.Contains(t, resp.Msg.GetBundle().GetBundleContent(), "my-spec")
 }
 
 func TestExecutionHandler_GenerateBundle_NotFound(t *testing.T) {

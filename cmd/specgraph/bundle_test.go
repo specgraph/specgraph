@@ -24,7 +24,7 @@ type fakeBundleHandler struct {
 
 func (fakeBundleHandler) GenerateBundle(_ context.Context, _ *connect.Request[specv1.GenerateBundleRequest]) (*connect.Response[specv1.GenerateBundleResponse], error) {
 	return connect.NewResponse(&specv1.GenerateBundleResponse{
-		Bundle: &specv1.Bundle{BundleYaml: "spec:\n  slug: test\n"},
+		Bundle: &specv1.Bundle{BundleContent: "---\nversion: 2\nslug: test\n---\n\n# Execution Bundle: test\n"},
 	}), nil
 }
 
@@ -53,7 +53,7 @@ func TestRunBundle_HappyPath_File(t *testing.T) {
 	startFakeExecutionServer(t, fakeBundleHandler{})
 
 	dir := t.TempDir()
-	outPath := filepath.Join(dir, "bundle.yaml")
+	outPath := filepath.Join(dir, "bundle.md")
 
 	old := bundleOutput
 	bundleOutput = outPath
@@ -64,7 +64,7 @@ func TestRunBundle_HappyPath_File(t *testing.T) {
 
 	data, err := os.ReadFile(outPath)
 	require.NoError(t, err)
-	assert.Equal(t, "spec:\n  slug: test\n", string(data))
+	assert.Contains(t, string(data), "# Execution Bundle: test")
 }
 
 func TestRunBundle_RPCError(t *testing.T) {

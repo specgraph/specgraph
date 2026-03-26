@@ -374,6 +374,7 @@ func TestLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, deps, 1)
 		require.Equal(t, upstream.ContentHash, deps[0].ContentHashAtLink)
+	require.NotEmpty(t, deps[0].UpstreamContentHash, "upstream content hash should be populated")
 	})
 
 	t.Run("AcknowledgeDrift_IneligibleStage", func(t *testing.T) {

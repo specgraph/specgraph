@@ -69,7 +69,8 @@ type Edge struct {
 // DependencyRef is a dependency with edge metadata for drift detection.
 type DependencyRef struct {
 	NodeRef
-	ContentHashAtLink string
+	ContentHashAtLink   string
+	UpstreamContentHash string
 }
 
 // GraphNode is a rich node reference for graph visualization.

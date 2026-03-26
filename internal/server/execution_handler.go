@@ -14,7 +14,6 @@ import (
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/specgraph/specgraph/internal/storage"
-	"gopkg.in/yaml.v3"
 )
 
 const maxEventsLimit = 500
@@ -64,7 +63,7 @@ func (h *ExecutionHandler) GenerateBundle(ctx context.Context, req *connect.Requ
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("convert bundle: %w", err))
 	}
-	pb.BundleYaml = renderBundleYAML(b)
+	pb.BundleContent = renderBundleMarkdown(b)
 
 	return connect.NewResponse(&specv1.GenerateBundleResponse{Bundle: pb}), nil
 }
@@ -228,52 +227,4 @@ func executionError(err error) error {
 	default:
 		return connect.NewError(connect.CodeInternal, err)
 	}
-}
-
-// renderBundleYAML produces a human-readable YAML representation of a bundle.
-func renderBundleYAML(b *storage.Bundle) string {
-	type bundleDecision struct {
-		Slug   string `yaml:"slug"`
-		Title  string `yaml:"title"`
-		Status string `yaml:"status"`
-	}
-	type bundleCallbacks struct {
-		Endpoint string `yaml:"endpoint"`
-	}
-	type bundleSpec struct {
-		Slug   string            `yaml:"slug"`
-		Intent string            `yaml:"intent"`
-		Stage  storage.SpecStage `yaml:"stage"`
-	}
-	type bundleYAML struct {
-		Version   int32            `yaml:"version"`
-		Spec      bundleSpec       `yaml:"spec"`
-		Decisions []bundleDecision `yaml:"decisions,omitempty"`
-		Callbacks *bundleCallbacks `yaml:"callbacks,omitempty"`
-	}
-
-	doc := bundleYAML{
-		Version: b.Version,
-		Spec: bundleSpec{
-			Slug:   b.Spec.Slug,
-			Intent: b.Spec.Intent,
-			Stage:  b.Spec.Stage,
-		},
-	}
-	for _, d := range b.Decisions {
-		doc.Decisions = append(doc.Decisions, bundleDecision{
-			Slug:   d.Slug,
-			Title:  d.Title,
-			Status: string(d.Status),
-		})
-	}
-	if b.Callbacks != nil {
-		doc.Callbacks = &bundleCallbacks{Endpoint: b.Callbacks.Endpoint}
-	}
-
-	out, err := yaml.Marshal(doc)
-	if err != nil {
-		return fmt.Sprintf("# error rendering bundle: %v\n", err)
-	}
-	return "# SpecGraph Execution Bundle\n" + string(out)
 }

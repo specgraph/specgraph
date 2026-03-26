@@ -167,7 +167,8 @@ func (s *Store) GetDependenciesWithEdgeData(ctx context.Context, slug string) ([
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})-[dep:DEPENDS_ON]->(n)
 		RETURN n.id AS id, n.slug AS slug, labels(n)[0] AS label,
 		       COALESCE(n.stage, n.status, "") AS stage,
-		       COALESCE(dep.content_hash_at_link, "") AS content_hash_at_link
+		       COALESCE(dep.content_hash_at_link, "") AS content_hash_at_link,
+		       COALESCE(n.content_hash, "") AS upstream_content_hash
 	`
 	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
 	if err != nil {
@@ -181,6 +182,7 @@ func (s *Store) GetDependenciesWithEdgeData(ctx context.Context, slug string) ([
 		label, _ := rec.Get("label")
 		stage, _ := rec.Get("stage")
 		hash, _ := rec.Get("content_hash_at_link")
+		upHash, _ := rec.Get("upstream_content_hash")
 		refs = append(refs, storage.DependencyRef{
 			NodeRef: storage.NodeRef{
 				ID:    stringVal(id),
@@ -188,7 +190,8 @@ func (s *Store) GetDependenciesWithEdgeData(ctx context.Context, slug string) ([
 				Label: storage.NodeLabel(stringVal(label)),
 				Stage: stringVal(stage),
 			},
-			ContentHashAtLink: stringVal(hash),
+			ContentHashAtLink:   stringVal(hash),
+			UpstreamContentHash: stringVal(upHash),
 		})
 	}
 	return refs, nil

@@ -67,11 +67,21 @@ type CallbackConfig struct {
 
 // Bundle is a self-contained package for an executing agent.
 type Bundle struct {
-	Version   int32
-	Spec      *Spec
-	Decisions []*Decision
-	Bootstrap string
-	Callbacks *CallbackConfig
+	Version      int32
+	Spec         *Spec
+	Decisions    []*Decision
+	Bootstrap    string
+	Callbacks    *CallbackConfig
+	Claim        *Claim
+	Dependencies []DependencyInfo
+}
+
+// DependencyInfo captures an upstream spec's status and drift state for the bundle.
+type DependencyInfo struct {
+	Slug    string
+	Stage   SpecStage
+	Drifted bool
+	Note    string
 }
 
 // PrimeData holds the raw data needed to compose a prime response.
