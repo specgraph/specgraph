@@ -55,7 +55,7 @@
 <table class="spec-table">
   <thead>
     <tr>
-      <th aria-sort={ariaSort('slug')}><button type="button" class="sort-btn" onclick={() => toggleSort('slug')}>Slug {sortIndicator('slug')}</button></th>
+      <th aria-sort={ariaSort('slug')}><button type="button" class="sort-btn" onclick={() => toggleSort('slug')}>Spec {sortIndicator('slug')}</button></th>
       <th aria-sort={ariaSort('stage')}><button type="button" class="sort-btn" onclick={() => toggleSort('stage')}>Stage {sortIndicator('stage')}</button></th>
       <th aria-sort={ariaSort('priority')}><button type="button" class="sort-btn" onclick={() => toggleSort('priority')}>Pri {sortIndicator('priority')}</button></th>
       {#if showConversations}<th>💬</th>{/if}
