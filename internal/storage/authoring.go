@@ -122,9 +122,13 @@ type DecomposeSlice struct {
 }
 
 // DecomposeOutput captures the decomposition strategy and resulting slices.
+// Slices carries the full input data used by StoreDecomposeOutput to create
+// Slice graph nodes. SliceSlugs is populated after creation and stored as the
+// parent spec's decompose_output JSON (Slices data lives in the Slice nodes).
 type DecomposeOutput struct {
-	Strategy DecompositionStrategy `json:"strategy,omitempty"`
-	Slices   []DecomposeSlice      `json:"slices,omitempty"`
+	Strategy   DecompositionStrategy `json:"strategy,omitempty"`
+	Slices     []DecomposeSlice      `json:"slices,omitempty"`       // input: full slice data for creation
+	SliceSlugs []string              `json:"slice_slugs,omitempty"` // stored output: slug references to Slice nodes
 }
 
 // FindingSeverity indicates how severe a finding is.

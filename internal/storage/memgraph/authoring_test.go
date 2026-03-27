@@ -117,6 +117,45 @@ func TestAuthoring(t *testing.T) {
 		require.Len(t, children, 2)
 		require.Equal(t, "decomp-parent/slice-1", children[0])
 		require.Equal(t, "decomp-parent/slice-2", children[1])
+
+		// Verify Slice nodes were created (not Spec nodes).
+		sl1, err := store.GetSlice(ctx, "decomp-parent/slice-1")
+		require.NoError(t, err)
+		require.Equal(t, "Auth endpoint", sl1.Intent)
+		require.Equal(t, []string{"login works"}, sl1.Verify)
+		require.Equal(t, []string{"auth.go"}, sl1.Touches)
+		require.Equal(t, storage.SliceStatusOpen, sl1.Status)
+		require.Empty(t, sl1.DependsOn, "slice-1 has no dependencies")
+
+		sl2, err := store.GetSlice(ctx, "decomp-parent/slice-2")
+		require.NoError(t, err)
+		require.Equal(t, "Token refresh", sl2.Intent)
+		require.Equal(t, []string{"decomp-parent/slice-1"}, sl2.DependsOn, "slice-2 depends on slice-1 (resolved slug)")
+
+		// Verify no child Spec nodes were created.
+		_, err = store.GetSpec(ctx, "decomp-parent/slice-1")
+		require.ErrorIs(t, err, storage.ErrSpecNotFound)
+
+		// Verify Slices appear in GetFullGraph.
+		graph, err := store.GetFullGraph(ctx)
+		require.NoError(t, err)
+		slugLabels := make(map[string]storage.NodeLabel)
+		for _, n := range graph.Nodes {
+			slugLabels[n.Slug] = n.Label
+		}
+		require.Equal(t, storage.NodeLabelSpec, slugLabels["decomp-parent"])
+		require.Equal(t, storage.NodeLabelSlice, slugLabels["decomp-parent/slice-1"])
+		require.Equal(t, storage.NodeLabelSlice, slugLabels["decomp-parent/slice-2"])
+
+		// Verify COMPOSES and DEPENDS_ON edges in the graph.
+		edgeSet := make(map[string]storage.EdgeType)
+		for _, e := range graph.Edges {
+			key := e.FromID + "->" + e.ToID
+			edgeSet[key] = e.EdgeType
+		}
+		require.Equal(t, storage.EdgeTypeComposes, edgeSet["decomp-parent/slice-1->decomp-parent"])
+		require.Equal(t, storage.EdgeTypeComposes, edgeSet["decomp-parent/slice-2->decomp-parent"])
+		require.Equal(t, storage.EdgeTypeDependsOn, edgeSet["decomp-parent/slice-2->decomp-parent/slice-1"])
 	})
 
 	t.Run("AmendSpec", func(t *testing.T) {

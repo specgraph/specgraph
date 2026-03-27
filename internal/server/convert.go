@@ -863,8 +863,9 @@ func decomposeOutputToProto(o *storage.DecomposeOutput) *specv1.DecomposeOutput 
 		}
 	}
 	return &specv1.DecomposeOutput{
-		Strategy: decomposeStrategyStringToProto(o.Strategy),
-		Slices:   slices,
+		Strategy:   decomposeStrategyStringToProto(o.Strategy),
+		Slices:     slices,
+		SliceSlugs: o.SliceSlugs,
 	}
 }
 
