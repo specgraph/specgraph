@@ -52,6 +52,8 @@ a single domain concern:
 | **GraphService** | Dependency queries, impact analysis, critical-path computation, and ready-spec detection. |
 | **LifecycleService** | Lifecycle transitions (amend, supersede, abandon), drift detection, and spec linting. |
 | **ExecutionService** | Execution bundles, prime context, and progress/blocker/completion reporting. |
+| **SliceService** | Create, list, and get slices. Claim and complete slices for execution. |
+| **AnalyticalPassService** | Run analytical passes and manage findings for specs. |
 | **SyncService** | Push specs to external systems (Beads, GitHub) and inject context into tool files. |
 | **ServerService** | Health checks. |
 
@@ -99,6 +101,8 @@ are typed edges:
 (:Spec) -[:DECIDED_IN]->  (:Decision)
 (:Decision) -[:INFORMS]-> (:Spec)
 (:Spec) -[:SUPERSEDES]->  (:Spec)
+(:Spec) -[:HAS_SLICE]->   (:Slice)
+(:Spec) -[:HAS_FINDING]-> (:Finding)   # internal — not exposed via AddEdge/RemoveEdge
 ```
 
 These edges are first-class — they carry metadata, support traversal queries,
