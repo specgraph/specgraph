@@ -961,8 +961,10 @@ type DecomposeOutput struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Strategy used to break the spec into independently deliverable slices.
 	Strategy DecompositionStrategy `protobuf:"varint,1,opt,name=strategy,proto3,enum=specgraph.v1.DecompositionStrategy" json:"strategy,omitempty"`
-	// Ordered list of implementation slices produced by decomposition.
-	Slices        []*DecompositionSlice `protobuf:"bytes,2,rep,name=slices,proto3" json:"slices,omitempty"`
+	// Input: slice definitions from the decompose request.
+	Slices []*DecompositionSlice `protobuf:"bytes,2,rep,name=slices,proto3" json:"slices,omitempty"`
+	// Output: resolved slugs of created Slice graph nodes (populated after storage).
+	SliceSlugs    []string `protobuf:"bytes,3,rep,name=slice_slugs,json=sliceSlugs,proto3" json:"slice_slugs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1007,6 +1009,13 @@ func (x *DecomposeOutput) GetStrategy() DecompositionStrategy {
 func (x *DecomposeOutput) GetSlices() []*DecompositionSlice {
 	if x != nil {
 		return x.Slices
+	}
+	return nil
+}
+
+func (x *DecomposeOutput) GetSliceSlugs() []string {
+	if x != nil {
+		return x.SliceSlugs
 	}
 	return nil
 }
@@ -1681,10 +1690,10 @@ type DecomposeResponse struct {
 	SafetyFlags []*SafetyFlag `protobuf:"bytes,3,rep,name=safety_flags,json=safetyFlags,proto3" json:"safety_flags,omitempty"`
 	// Prompt templates suggested for the next authoring stage.
 	NextPrompts []*PromptTemplate `protobuf:"bytes,5,rep,name=next_prompts,json=nextPrompts,proto3" json:"next_prompts,omitempty"`
-	// Canonical slugs of the child specs created (or already existing) during decomposition.
-	ChildSpecSlugs []string `protobuf:"bytes,6,rep,name=child_spec_slugs,json=childSpecSlugs,proto3" json:"child_spec_slugs,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Canonical slugs of the Slice nodes created during decomposition.
+	SliceSlugs    []string `protobuf:"bytes,7,rep,name=slice_slugs,json=sliceSlugs,proto3" json:"slice_slugs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DecomposeResponse) Reset() {
@@ -1738,9 +1747,9 @@ func (x *DecomposeResponse) GetNextPrompts() []*PromptTemplate {
 	return nil
 }
 
-func (x *DecomposeResponse) GetChildSpecSlugs() []string {
+func (x *DecomposeResponse) GetSliceSlugs() []string {
 	if x != nil {
-		return x.ChildSpecSlugs
+		return x.SliceSlugs
 	}
 	return nil
 }
@@ -2626,10 +2635,12 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\n" +
 	"invariants\x18\x03 \x03(\tR\n" +
 	"invariants\x121\n" +
-	"\atouches\x18\x04 \x03(\v2\x17.specgraph.v1.FileTouchR\atouches\"\x8c\x01\n" +
+	"\atouches\x18\x04 \x03(\v2\x17.specgraph.v1.FileTouchR\atouches\"\xad\x01\n" +
 	"\x0fDecomposeOutput\x12?\n" +
 	"\bstrategy\x18\x01 \x01(\x0e2#.specgraph.v1.DecompositionStrategyR\bstrategy\x128\n" +
-	"\x06slices\x18\x02 \x03(\v2 .specgraph.v1.DecompositionSliceR\x06slices\"\x8d\x01\n" +
+	"\x06slices\x18\x02 \x03(\v2 .specgraph.v1.DecompositionSliceR\x06slices\x12\x1f\n" +
+	"\vslice_slugs\x18\x03 \x03(\tR\n" +
+	"sliceSlugs\"\x8d\x01\n" +
 	"\x12DecompositionSlice\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06intent\x18\x02 \x01(\tR\x06intent\x12\x16\n" +
@@ -2673,13 +2684,14 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\x10DecomposeRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x125\n" +
 	"\x06output\x18\x02 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xa3\x02\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xb2\x02\n" +
 	"\x11DecomposeResponse\x125\n" +
 	"\x06output\x18\x01 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x06output\x12;\n" +
 	"\fsafety_flags\x18\x03 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
-	"\fnext_prompts\x18\x05 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPrompts\x12(\n" +
-	"\x10child_spec_slugs\x18\x06 \x03(\tR\x0echildSpecSlugsJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x05R\n" +
-	"simplicityR\x17constitution_violations\"$\n" +
+	"\fnext_prompts\x18\x05 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPrompts\x12\x1f\n" +
+	"\vslice_slugs\x18\a \x03(\tR\n" +
+	"sliceSlugsJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x05J\x04\b\x06\x10\aR\n" +
+	"simplicityR\x17constitution_violationsR\x10child_spec_slugs\"$\n" +
 	"\x0eApproveRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\"\x96\x01\n" +
 	"\x0fApproveResponse\x12\x12\n" +
