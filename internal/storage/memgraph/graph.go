@@ -87,7 +87,7 @@ func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeTyp
 	`, relType)
 	params := mergeParams(s.projectParam(), map[string]any{"from": actualFrom, "to": actualTo})
 
-	if _, err = neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer); err != nil {
+	if _, err = s.executeQuery(ctx, query, params); err != nil {
 		return fmt.Errorf("memgraph: remove edge: %w", err)
 	}
 	return nil

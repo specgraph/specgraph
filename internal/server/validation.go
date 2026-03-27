@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"connectrpc.com/connect"
 )
 
 var validSlugRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9_/-]*[a-z0-9])?$`)
@@ -34,6 +36,22 @@ func validateRequiredField(name, value string) error {
 	}
 	if len(value) > maxFieldLen {
 		return fmt.Errorf("%s exceeds maximum length of %d characters", name, maxFieldLen)
+	}
+	return nil
+}
+
+// validateStringSlice checks that a repeated string field doesn't exceed maxCount
+// items and that no individual item exceeds maxItemLen bytes.
+func validateStringSlice(name string, items []string, maxCount, maxItemLen int) error {
+	if len(items) > maxCount {
+		return connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("%s: too many items (%d > %d)", name, len(items), maxCount))
+	}
+	for i, item := range items {
+		if len(item) > maxItemLen {
+			return connect.NewError(connect.CodeInvalidArgument,
+				fmt.Errorf("%s[%d]: too long (%d > %d)", name, i, len(item), maxItemLen))
+		}
 	}
 	return nil
 }

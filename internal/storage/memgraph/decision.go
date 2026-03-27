@@ -200,6 +200,24 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 	return result, err
 }
 
+// normalizeDecisionStatus handles both old proto-style values from existing
+// Memgraph data and the new lowercase values. New writes use lowercase;
+// this function ensures old data is read correctly.
+func normalizeDecisionStatus(raw string) storage.DecisionStatus {
+	switch raw {
+	case "DECISION_STATUS_PROPOSED":
+		return storage.DecisionStatusProposed
+	case "DECISION_STATUS_ACCEPTED":
+		return storage.DecisionStatusAccepted
+	case "DECISION_STATUS_SUPERSEDED":
+		return storage.DecisionStatusSuperseded
+	case "DECISION_STATUS_DEPRECATED":
+		return storage.DecisionStatusDeprecated
+	default:
+		return storage.DecisionStatus(raw)
+	}
+}
+
 func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
 	id, err := recordString(rec, 0, "id")
 	if err != nil {
@@ -251,15 +269,12 @@ func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
 		return nil, err
 	}
 
-	status := storage.DecisionStatus(statusStr)
-	switch status {
-	case storage.DecisionStatusProposed, storage.DecisionStatusAccepted,
-		storage.DecisionStatusSuperseded, storage.DecisionStatusDeprecated:
-		// valid
-	default:
-		if statusStr == "DECISION_STATUS_UNSPECIFIED" || statusStr == "" {
-			status = storage.DecisionStatusProposed
-		} else {
+	var status storage.DecisionStatus
+	if statusStr == "DECISION_STATUS_UNSPECIFIED" || statusStr == "" {
+		status = storage.DecisionStatusProposed
+	} else {
+		status = normalizeDecisionStatus(statusStr)
+		if !status.IsValid() {
 			return nil, fmt.Errorf("memgraph: unknown decision status %q", statusStr)
 		}
 	}

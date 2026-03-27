@@ -94,8 +94,8 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	// path. TODO(Slice 4): add read-back when output enrichment is implemented.
 	return connect.NewResponse(&specv1.SparkResponse{
 		Output:      msg.Output,
-		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts: authoring.PromptsToProto(authoring.StageShape),
+		SafetyFlags: safetyResultsToProto(safetyFlags),
+		NextPrompts: promptsToProto(authoring.StageShape),
 	}), nil
 }
 
@@ -112,30 +112,23 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
-	if len(msg.Output.GetScopeIn()) > maxElements {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("scope_in exceeds maximum of %d elements", maxElements))
-	}
-	if len(msg.Output.GetScopeOut()) > maxElements {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("scope_out exceeds maximum of %d elements", maxElements))
+	for _, v := range []struct {
+		name  string
+		items []string
+	}{
+		{"scope_in", msg.Output.GetScopeIn()},
+		{"scope_out", msg.Output.GetScopeOut()},
+		{"risks", msg.Output.GetRisks()},
+	} {
+		if err := validateStringSlice(v.name, v.items, maxElements, maxFieldLen); err != nil {
+			return nil, err
+		}
 	}
 	if len(msg.Output.GetApproaches()) > maxElements {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("approaches exceeds maximum of %d elements", maxElements))
 	}
-	if len(msg.Output.GetRisks()) > maxElements {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("risks exceeds maximum of %d elements", maxElements))
-	}
 	if len(msg.Output.GetDecisions()) > maxElements {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("decisions exceeds maximum of %d elements", maxElements))
-	}
-	for _, item := range msg.Output.GetScopeIn() {
-		if len(item) > maxFieldLen {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("scope_in item exceeds maximum length of %d characters", maxFieldLen))
-		}
-	}
-	for _, item := range msg.Output.GetScopeOut() {
-		if len(item) > maxFieldLen {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("scope_out item exceeds maximum length of %d characters", maxFieldLen))
-		}
 	}
 	shapeDomain, err := shapeOutputToDomain(msg.Output)
 	if err != nil {
@@ -169,8 +162,8 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.ShapeResponse{
 		Output:      msg.Output,
-		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts: authoring.PromptsToProto(authoring.StageSpecify),
+		SafetyFlags: safetyResultsToProto(safetyFlags),
+		NextPrompts: promptsToProto(authoring.StageSpecify),
 	}), nil
 }
 
@@ -215,13 +208,8 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("verify_criteria[%d]: description exceeds maximum length of %d characters", i, maxFieldLen))
 		}
 	}
-	if len(msg.Output.GetInvariants()) > maxElements {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invariants exceeds maximum of %d elements", maxElements))
-	}
-	for _, item := range msg.Output.GetInvariants() {
-		if len(item) > maxFieldLen {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invariants item exceeds maximum length of %d characters", maxFieldLen))
-		}
+	if err := validateStringSlice("invariants", msg.Output.GetInvariants(), maxElements, maxFieldLen); err != nil {
+		return nil, err
 	}
 	if len(msg.Output.GetTouches()) > maxElements {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("touches exceeds maximum of %d elements", maxElements))
@@ -271,8 +259,8 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.SpecifyResponse{
 		Output:      msg.Output,
-		SafetyFlags: authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts: authoring.PromptsToProto(authoring.StageDecompose),
+		SafetyFlags: safetyResultsToProto(safetyFlags),
+		NextPrompts: promptsToProto(authoring.StageDecompose),
 	}), nil
 }
 
@@ -340,8 +328,8 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.DecomposeResponse{
 		Output:         msg.Output,
-		SafetyFlags:    authoring.SafetyResultsToProto(safetyFlags),
-		NextPrompts:    authoring.PromptsToProto(authoring.StageApproved),
+		SafetyFlags:    safetyResultsToProto(safetyFlags),
+		NextPrompts:    promptsToProto(authoring.StageApproved),
 		SliceSlugs: childSlugs,
 	}), nil
 }
@@ -480,7 +468,7 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 	if req.Msg.Stage == specv1.AuthoringStage_AUTHORING_STAGE_APPROVED {
 		return connect.NewResponse(&specv1.GetPromptsResponse{}), nil
 	}
-	prompts := authoring.PromptsToProto(stage)
+	prompts := promptsToProto(stage)
 	if len(prompts) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no prompts defined for stage %q", stage))
 	}
@@ -787,9 +775,9 @@ func decomposeOutputToDomain(p *specv1.DecomposeOutput) (*storage.DecomposeOutpu
 
 // --- Stage mapping ---
 
-// stageToProto delegates to the canonical mapping in the authoring package.
+// stageToProto delegates to the canonical mapping in authoring_convert.go.
 func stageToProto(stage storage.SpecStage) specv1.AuthoringStage {
-	return authoring.StageToProto(stage)
+	return authoringStageToProto(stage)
 }
 
 var protoToStage = map[specv1.AuthoringStage]storage.SpecStage{

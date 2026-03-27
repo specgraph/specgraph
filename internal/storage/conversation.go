@@ -8,9 +8,18 @@ import (
 	"time"
 )
 
+// ConversationRole represents the role in a conversation exchange.
+type ConversationRole string
+
+// Conversation role values.
+const (
+	ConversationRoleProbe    ConversationRole = "probe"
+	ConversationRoleResponse ConversationRole = "response"
+)
+
 // ConversationExchange represents a single probe/response from an authoring session.
 type ConversationExchange struct {
-	Role          string // "probe" or "response"
+	Role          ConversationRole
 	Content       string
 	Stage         string
 	Sequence      int32

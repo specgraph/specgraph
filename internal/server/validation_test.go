@@ -45,6 +45,36 @@ func TestValidateSlug(t *testing.T) {
 	}
 }
 
+func TestValidateStringSlice(t *testing.T) {
+	tests := []struct {
+		name       string
+		fieldName  string
+		items      []string
+		maxCount   int
+		maxItemLen int
+		wantErr    string
+	}{
+		{name: "nil slice", fieldName: "tags", items: nil, maxCount: 5, maxItemLen: 100},
+		{name: "empty slice", fieldName: "tags", items: []string{}, maxCount: 5, maxItemLen: 100},
+		{name: "within limits", fieldName: "tags", items: []string{"a", "bb"}, maxCount: 5, maxItemLen: 100},
+		{name: "at max count", fieldName: "tags", items: []string{"a", "b", "c"}, maxCount: 3, maxItemLen: 100},
+		{name: "exceeds max count", fieldName: "risks", items: []string{"a", "b", "c", "d"}, maxCount: 3, maxItemLen: 100, wantErr: "risks: too many items (4 > 3)"},
+		{name: "item at max length", fieldName: "tags", items: []string{"abc"}, maxCount: 5, maxItemLen: 3},
+		{name: "item exceeds max length", fieldName: "scope_in", items: []string{"ok", "toolong"}, maxCount: 5, maxItemLen: 3, wantErr: "scope_in[1]: too long (7 > 3)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateStringSlice(tt.fieldName, tt.items, tt.maxCount, tt.maxItemLen)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidateRequiredField(t *testing.T) {
 	tests := []struct {
 		name    string

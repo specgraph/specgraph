@@ -7,6 +7,7 @@ package memgraph_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/storage"
@@ -136,6 +137,38 @@ func TestBlocksEdgeDirection(t *testing.T) {
 	// Direction must be preserved: from=spec-alpha, to=spec-beta
 	require.Equal(t, "spec-alpha", found.FromID)
 	require.Equal(t, "spec-beta", found.ToID)
+}
+
+func TestRemoveEdge_InTransaction_RollsBack(t *testing.T) {
+	clearDatabase(t)
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	// Create two specs and an edge.
+	_, err = store.CreateSpec(ctx, "tx-from", "From spec", "p1", "low")
+	require.NoError(t, err)
+	_, err = store.CreateSpec(ctx, "tx-to", "To spec", "p1", "low")
+	require.NoError(t, err)
+	_, err = store.AddEdge(ctx, "tx-from", "tx-to", storage.EdgeTypeDependsOn)
+	require.NoError(t, err)
+
+	// RemoveEdge inside a transaction that fails should roll back the removal.
+	deliberateErr := errors.New("deliberate rollback")
+	err = store.RunInTransaction(ctx, func(txCtx context.Context) error {
+		if removeErr := store.RemoveEdge(txCtx, "tx-from", "tx-to", storage.EdgeTypeDependsOn); removeErr != nil {
+			return removeErr
+		}
+		return deliberateErr
+	})
+	require.ErrorIs(t, err, deliberateErr)
+
+	// Edge should still exist because the transaction was rolled back.
+	edges, err := store.ListEdges(ctx, "tx-from", storage.EdgeTypeDependsOn)
+	require.NoError(t, err)
+	require.Len(t, edges, 1, "edge should survive transaction rollback")
 }
 
 func TestGetReady(t *testing.T) {

@@ -6,8 +6,6 @@
 // specified, decomposed, and approved spec nodes.
 package authoring
 
-import specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-
 // Posture represents the collaboration posture between the AI and the human.
 type Posture int
 
@@ -18,34 +16,6 @@ const (
 	PosturePartner     Posture = 2
 	PostureSupport     Posture = 3
 )
-
-// postureToProtoMap maps domain Posture values to proto Posture values.
-var postureToProtoMap = map[Posture]specv1.Posture{
-	PostureUnspecified: specv1.Posture_POSTURE_UNSPECIFIED,
-	PostureDrive:       specv1.Posture_POSTURE_DRIVE,
-	PosturePartner:     specv1.Posture_POSTURE_PARTNER,
-	PostureSupport:     specv1.Posture_POSTURE_SUPPORT,
-}
-
-// protoToPostureMap maps proto Posture values to domain Posture values.
-var protoToPostureMap = map[specv1.Posture]Posture{
-	specv1.Posture_POSTURE_UNSPECIFIED: PostureUnspecified,
-	specv1.Posture_POSTURE_DRIVE:       PostureDrive,
-	specv1.Posture_POSTURE_PARTNER:     PosturePartner,
-	specv1.Posture_POSTURE_SUPPORT:     PostureSupport,
-}
-
-// PostureToProto converts a domain Posture to its proto equivalent.
-// Unknown values map to POSTURE_UNSPECIFIED.
-func PostureToProto(p Posture) specv1.Posture {
-	return postureToProtoMap[p]
-}
-
-// ProtoToPosture converts a proto Posture to its domain equivalent.
-// Unknown values map to PostureUnspecified.
-func ProtoToPosture(p specv1.Posture) Posture {
-	return protoToPostureMap[p]
-}
 
 const (
 	driveThreshold   = 20

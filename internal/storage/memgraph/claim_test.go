@@ -7,6 +7,7 @@ package memgraph_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -68,4 +69,31 @@ func TestHeartbeat(t *testing.T) {
 	// Heartbeat on non-existent claim
 	_, err = store.Heartbeat(ctx, "no-such-spec", "agent-1", 10*time.Minute)
 	require.Error(t, err)
+}
+
+func TestClaimSpec_InTransaction_RollsBack(t *testing.T) {
+	clearDatabase(t)
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	_, err = store.CreateSpec(ctx, "tx-claim", "Transactional claim spec", "p1", "low")
+	require.NoError(t, err)
+
+	// ClaimSpec inside a failing transaction should roll back.
+	deliberateErr := errors.New("deliberate rollback")
+	err = store.RunInTransaction(ctx, func(txCtx context.Context) error {
+		if _, claimErr := store.ClaimSpec(txCtx, "tx-claim", "agent-tx", 10*time.Minute); claimErr != nil {
+			return claimErr
+		}
+		return deliberateErr
+	})
+	require.ErrorIs(t, err, deliberateErr)
+
+	// Spec should not be claimed after rollback — another agent can claim it.
+	claim, err := store.ClaimSpec(ctx, "tx-claim", "agent-after", 10*time.Minute)
+	require.NoError(t, err, "claim should succeed after transaction rollback")
+	require.Equal(t, "agent-after", claim.Agent)
 }

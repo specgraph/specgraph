@@ -146,7 +146,7 @@ func TestNewSpec(t *testing.T) {
 	assert.Equal(t, "REST endpoint for OAuth2", spec.Intent)
 	assert.Equal(t, storage.SpecStageSpark, spec.Stage)
 	assert.Equal(t, storage.SpecPriorityP1, spec.Priority)
-	assert.Equal(t, "medium", spec.Complexity)
+	assert.Equal(t, storage.SpecComplexityMedium, spec.Complexity)
 	assert.Equal(t, int32(1), spec.Version)
 	assert.Equal(t, now, spec.CreatedAt)
 	assert.Equal(t, now, spec.UpdatedAt)
