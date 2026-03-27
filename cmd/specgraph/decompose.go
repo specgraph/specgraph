@@ -47,8 +47,11 @@ func runDecompose(_ *cobra.Command, args []string) error {
 	fmt.Printf("Decomposed: %s\n", args[0])
 	if resp.Msg.Output != nil {
 		fmt.Printf("Strategy: %s\n", resp.Msg.Output.Strategy)
-		for _, s := range resp.Msg.Output.Slices {
-			fmt.Printf("  - %s: %s\n", s.Id, s.Intent)
+	}
+	if len(resp.Msg.SliceSlugs) > 0 {
+		fmt.Printf("Slices (%d):\n", len(resp.Msg.SliceSlugs))
+		for _, slug := range resp.Msg.SliceSlugs {
+			fmt.Printf("  - %s\n", slug)
 		}
 	}
 	return nil
