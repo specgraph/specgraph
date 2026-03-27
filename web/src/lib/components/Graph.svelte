@@ -26,6 +26,14 @@
   const NODE_W = 180;
   const NODE_H = 60;
   const DECISION_SIZE = 50;
+  const SLICE_W = 130;
+  const SLICE_H = 36;
+
+  const sliceColors: Record<string, { fill: string; stroke: string }> = {
+    open: { fill: '#f0f9ff', stroke: '#0ea5e9' },
+    claimed: { fill: '#fff7ed', stroke: '#ea580c' },
+    done: { fill: '#f0fdf4', stroke: '#16a34a' },
+  };
 
   function edgeStyle(et: EdgeType): { dash: string; color: string } {
     switch (et) {
@@ -49,6 +57,7 @@
     x: number;
     y: number;
     isDecision: boolean;
+    isSlice: boolean;
   }
 
   interface LayoutEdge {
@@ -65,9 +74,10 @@
 
     for (const n of nodes) {
       const isDecision = n.label === 'Decision';
+      const isSlice = n.label === 'Slice';
       g.setNode(n.slug, {
-        width: isDecision ? DECISION_SIZE * 1.5 : NODE_W,
-        height: isDecision ? DECISION_SIZE * 1.5 : NODE_H,
+        width: isDecision ? DECISION_SIZE * 1.5 : isSlice ? SLICE_W : NODE_W,
+        height: isDecision ? DECISION_SIZE * 1.5 : isSlice ? SLICE_H : NODE_H,
       });
     }
 
@@ -100,6 +110,7 @@
         x: pos.x,
         y: pos.y,
         isDecision: n.label === 'Decision',
+        isSlice: n.label === 'Slice',
       };
     });
 
@@ -226,7 +237,7 @@
         onpointerenter={() => { if (!compact) hoveredSlug = node.slug; }}
         onpointerleave={() => { hoveredSlug = null; }}
       >
-        <a href="{node.isDecision ? '/decision' : '/spec'}/{node.slug}">
+        <a href="{node.isDecision ? '/decision' : '/spec'}/{node.isSlice ? (node.slug.includes('/') ? node.slug.split('/').slice(0, -1).join('/') : node.slug) : node.slug}">
           {#if node.isDecision}
             <g transform="translate({node.x},{node.y})">
               <rect
@@ -244,6 +255,37 @@
                 {truncate(node.slug, 12)}
               </text>
             </g>
+          {:else if node.isSlice}
+            {@const sc = sliceColors[node.stage] ?? { fill: '#f8fafc', stroke: '#6b7280' }}
+            <rect
+              x={node.x - SLICE_W / 2}
+              y={node.y - SLICE_H / 2}
+              width={SLICE_W}
+              height={SLICE_H}
+              rx="18"
+              fill={sc.fill}
+              stroke={sc.stroke}
+              stroke-width="1.5"
+            />
+            <text
+              x={node.x}
+              y={node.y - 2}
+              text-anchor="middle"
+              font-size="10"
+              font-weight="500"
+              fill="#1a1a2e"
+            >
+              {truncate(node.slug.split('/').pop() ?? node.slug, 16)}
+            </text>
+            <text
+              x={node.x}
+              y={node.y + 10}
+              text-anchor="middle"
+              font-size="8"
+              fill={sc.stroke}
+            >
+              {node.stage}
+            </text>
           {:else}
             <rect
               x={node.x - NODE_W / 2}
