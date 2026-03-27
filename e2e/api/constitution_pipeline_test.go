@@ -169,7 +169,8 @@ var _ = Describe("Constitution pipeline", Ordered, func() {
 		bundle := resp.Msg
 		Expect(bundle.GetBundle().GetSpec()).NotTo(BeNil())
 		Expect(bundle.GetBundle().GetSpec().GetSlug()).To(Equal(specSlug))
-		Expect(bundle.GetBundle().GetVersion()).To(BeNumerically(">=", 1))
+		Expect(bundle.GetBundle().GetVersion()).To(Equal(int32(2)))
+		Expect(bundle.GetBundle().GetBundleContent()).To(HavePrefix("---\n"))
 		// Bundle carries callback URLs — agents call Prime to get constitution.
 		// Constitution is NOT embedded in the Bundle proto by design: agents
 		// fetch it via the Prime callback so they always get the latest version.

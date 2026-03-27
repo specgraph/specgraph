@@ -69,7 +69,7 @@ func TestExecution(t *testing.T) {
 		bundle, err := store.GenerateBundle(ctx, "bundle-spec")
 		require.NoError(t, err)
 		require.NotNil(t, bundle)
-		assert.Equal(t, int32(1), bundle.Version)
+		assert.Equal(t, int32(2), bundle.Version)
 		assert.Equal(t, "bundle-spec", bundle.Spec.Slug)
 		assert.Equal(t, storage.SpecStageApproved, bundle.Spec.Stage)
 		require.Len(t, bundle.Decisions, 1)
@@ -248,6 +248,51 @@ func TestExecution(t *testing.T) {
 		assert.Equal(t, "no-con-spec", pd.Spec.Slug)
 		assert.Empty(t, pd.Decisions)
 		assert.Nil(t, pd.Constitution)
+	})
+
+	t.Run("GenerateBundle_IncludesClaim", func(t *testing.T) {
+		clearDatabase(t)
+		ctx := context.Background()
+		store, err := newStore(ctx, boltURI)
+		require.NoError(t, err)
+		defer store.Close(ctx)
+
+		_, err = store.CreateSpec(ctx, "claimed-spec", "test intent", "p1", "medium")
+		require.NoError(t, err)
+		_, err = store.UpdateSpec(ctx, "claimed-spec", nil, ptr("approved"), nil, nil, nil)
+		require.NoError(t, err)
+
+		_, err = store.ClaimSpec(ctx, "claimed-spec", "agent-1", 15*time.Minute)
+		require.NoError(t, err)
+
+		bundle, err := store.GenerateBundle(ctx, "claimed-spec")
+		require.NoError(t, err)
+		require.NotNil(t, bundle.Claim)
+		assert.Equal(t, "agent-1", bundle.Claim.Agent)
+	})
+
+	t.Run("GenerateBundle_IncludesDependencies", func(t *testing.T) {
+		clearDatabase(t)
+		ctx := context.Background()
+		store, err := newStore(ctx, boltURI)
+		require.NoError(t, err)
+		defer store.Close(ctx)
+
+		_, err = store.CreateSpec(ctx, "upstream-spec", "upstream", "p1", "medium")
+		require.NoError(t, err)
+		_, err = store.CreateSpec(ctx, "downstream-spec", "downstream", "p1", "medium")
+		require.NoError(t, err)
+
+		_, err = store.AddEdge(ctx, "downstream-spec", "upstream-spec", storage.EdgeTypeDependsOn)
+		require.NoError(t, err)
+
+		_, err = store.UpdateSpec(ctx, "downstream-spec", nil, ptr("approved"), nil, nil, nil)
+		require.NoError(t, err)
+
+		bundle, err := store.GenerateBundle(ctx, "downstream-spec")
+		require.NoError(t, err)
+		require.Len(t, bundle.Dependencies, 1)
+		assert.Equal(t, "upstream-spec", bundle.Dependencies[0].Slug)
 	})
 
 	t.Run("ReleaseExpiredClaims", func(t *testing.T) {

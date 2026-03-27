@@ -204,7 +204,8 @@ var _ = Describe("Full pipeline", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.GetBundle().GetSpec()).NotTo(BeNil())
 		Expect(resp.Msg.GetBundle().GetSpec().GetSlug()).To(Equal(pipelineSlug))
-		Expect(resp.Msg.GetBundle().GetVersion()).To(BeNumerically(">=", int32(1)))
+		Expect(resp.Msg.GetBundle().GetVersion()).To(Equal(int32(2)))
+		Expect(resp.Msg.GetBundle().GetBundleContent()).To(HavePrefix("---\n"))
 	})
 
 	It("returns prime data for the spec", func() {
