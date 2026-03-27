@@ -53,6 +53,7 @@ func StartServer(ctx context.Context, boltURI string, opts ...connect.HandlerOpt
 	server.RegisterConstitutionService(mux, store, opts...)
 	server.RegisterAuthoringService(mux, store, opts...)
 	server.RegisterExecutionService(mux, store, opts...)
+	server.RegisterSliceService(mux, store, opts...)
 	driftEngine := drift.NewEngine(store, nil)
 	lintEngine := linter.NewEngine(store, nil)
 	server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts...)

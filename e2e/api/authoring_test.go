@@ -120,6 +120,9 @@ var _ = Describe("Authoring funnel", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Output).NotTo(BeNil())
 		Expect(resp.Msg.Output.Slices).To(HaveLen(2))
+		Expect(resp.Msg.SliceSlugs).To(HaveLen(2))
+		Expect(resp.Msg.SliceSlugs[0]).To(HaveSuffix("/slice-1"))
+		Expect(resp.Msg.SliceSlugs[1]).To(HaveSuffix("/slice-2"))
 	})
 
 	It("approves a decomposed spec", func() {

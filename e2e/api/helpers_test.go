@@ -71,6 +71,10 @@ func newExecutionClient() specgraphv1connect.ExecutionServiceClient {
 	return specgraphv1connect.NewExecutionServiceClient(projectClient(), serverInfo.BaseURL)
 }
 
+func newSliceClient() specgraphv1connect.SliceServiceClient {
+	return specgraphv1connect.NewSliceServiceClient(projectClient(), serverInfo.BaseURL)
+}
+
 // projectClientFor returns an HTTP client with a custom project header.
 // Used by isolation tests to target different projects.
 func projectClientFor(slug string) *http.Client {
