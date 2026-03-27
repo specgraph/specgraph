@@ -36,9 +36,10 @@ var (
 // Store implements storage.Backend using Memgraph (Bolt protocol).
 type Store struct {
 	driver     neo4j.DriverWithContext
-	nowFunc    func() time.Time // injectable clock; defaults to time.Now
-	project    string           // project slug for graph namespacing
-	ownsDriver bool             // true for stores created by New(); false for Scoped() stores
+	nowFunc    func() time.Time    // injectable clock; defaults to time.Now
+	sliceOps   storage.SliceBackend // injectable slice operations; defaults to self
+	project    string               // project slug for graph namespacing
+	ownsDriver bool                 // true for stores created by New(); false for Scoped() stores
 }
 
 // Option configures a Store.
@@ -54,6 +55,12 @@ func WithClock(fn func() time.Time) Option {
 // Required — New() returns an error if no project is set.
 func WithProject(slug string) Option {
 	return func(s *Store) { s.project = slug }
+}
+
+// WithSliceOps overrides the default SliceBackend used by StoreDecomposeOutput.
+// Intended for testing — production callers should omit this option.
+func WithSliceOps(ops storage.SliceBackend) Option {
+	return func(s *Store) { s.sliceOps = ops }
 }
 
 // New creates a new Memgraph-backed Store and verifies connectivity.
@@ -73,6 +80,9 @@ func New(ctx context.Context, boltURI string, opts ...Option) (*Store, error) {
 	if s.project == "" {
 		driver.Close(ctx) //nolint:errcheck // best-effort cleanup on init failure
 		return nil, fmt.Errorf("memgraph: project slug required: use memgraph.WithProject(slug)")
+	}
+	if s.sliceOps == nil {
+		s.sliceOps = s
 	}
 	if err := s.ensureIndexes(ctx); err != nil {
 		driver.Close(ctx) //nolint:errcheck // best-effort cleanup on init failure
@@ -154,6 +164,7 @@ func (s *Store) Scoped(ctx context.Context, project string) (storage.ScopedBacke
 		return nil, fmt.Errorf("memgraph: project slug required")
 	}
 	scoped := &Store{driver: s.driver, nowFunc: s.nowFunc, project: project}
+	scoped.sliceOps = scoped // default to self; inherit pattern, not parent's ops
 	if err := scoped.ensureProjectNode(ctx); err != nil {
 		return nil, err
 	}

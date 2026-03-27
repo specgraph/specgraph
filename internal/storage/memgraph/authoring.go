@@ -14,10 +14,6 @@ import (
 	"github.com/specgraph/specgraph/internal/storage/contenthash"
 )
 
-const (
-	defaultChildPriority   = "p2"
-	defaultChildComplexity = "medium"
-)
 
 // hashInputProperties lists the spec node properties that affect the content hash.
 // Only these properties trigger a hash recomputation after storeJSONProperty succeeds.
@@ -188,11 +184,11 @@ func (s *Store) StoreSpecifyOutput(ctx context.Context, slug string, output *sto
 	})
 }
 
-// StoreDecomposeOutput persists the decompose output and creates child spec nodes with edges.
+// StoreDecomposeOutput persists the decompose output and creates Slice nodes.
 // When called within a transaction (via RunInTransaction), partial failures roll back automatically.
-// Child spec creation is idempotent: GetSpec is called first; if the child does not exist,
-// CreateSpec is used to create it. MERGE is used only for the COMPOSES and DEPENDS_ON edges.
-// It returns the slugs of the created (or already-existing) child specs.
+// Slice creation is idempotent: GetSlice is called first; if the slice does not exist,
+// CreateSlice creates it (with BELONGS_TO + COMPOSES edges). MERGE is used for DEPENDS_ON edges.
+// It returns the slugs of the created (or already-existing) slices.
 func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *storage.DecomposeOutput) ([]string, error) {
 	if err := storage.ValidateStrategy(output.Strategy); err != nil {
 		return nil, fmt.Errorf("memgraph: invalid decomposition strategy: %w", err)
@@ -216,42 +212,44 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 		if rfErr != nil {
 			return rfErr
 		}
-		if err := s.storeJSONProperty(txCtx, slug, "decompose_output", output); err != nil {
-			return err
-		}
-		// Pass 1: create all child Spec nodes and COMPOSES edges.
+		// Pass 1: create all Slice nodes (with BELONGS_TO + COMPOSES edges).
 		// This ensures every node exists before any DEPENDS_ON edge is attempted,
 		// so out-of-order dependencies (slice B depends on slice C listed later)
 		// are handled correctly.
 		var slugs []string
 		for _, sl := range output.Slices {
 			childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
-			// Check if child spec already exists (idempotency for retries).
-			_, getErr := s.GetSpec(txCtx, childSlug)
-			if getErr != nil {
-				if !errors.Is(getErr, storage.ErrSpecNotFound) {
-					return fmt.Errorf("memgraph: check child spec %q: %w", childSlug, getErr)
-				}
-				// Not found — proceed to create.
-				if _, err := s.CreateSpec(txCtx, childSlug, sl.Intent, defaultChildPriority, defaultChildComplexity); err != nil {
-					return fmt.Errorf("memgraph: create child spec %q: %w", childSlug, err)
-				}
+			// Resolve local dependency IDs to full sibling slugs.
+			resolvedDeps := make([]string, len(sl.DependsOn))
+			for i, dep := range sl.DependsOn {
+				resolvedDeps[i] = fmt.Sprintf("%s/%s", slug, dep)
 			}
-			// If getErr == nil, child spec already exists (idempotent retry).
-			composeQuery := `
-				MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(child:Spec {slug: $child_slug}),
-				      (p)<-[:BELONGS_TO]-(parent:Spec {slug: $parent_slug})
-				MERGE (child)-[:COMPOSES]->(parent)
-			`
-			_, err := s.executeQuery(txCtx, composeQuery,
-				mergeParams(s.projectParam(), map[string]any{"child_slug": childSlug, "parent_slug": slug}))
-			if err != nil {
-				return fmt.Errorf("memgraph: merge COMPOSES edge: %w", err)
+			// Check if slice already exists (idempotency for retries).
+			_, getErr := s.sliceOps.GetSlice(txCtx, childSlug)
+			if getErr != nil {
+				if !errors.Is(getErr, storage.ErrSliceNotFound) {
+					return fmt.Errorf("memgraph: check slice %q: %w", childSlug, getErr)
+				}
+				// Not found — create the slice node.
+				sliceDomain := &storage.Slice{
+					Slug:       childSlug,
+					ParentSlug: slug,
+					SliceID:    sl.ID,
+					Intent:     sl.Intent,
+					Verify:     sl.Verify,
+					Touches:    sl.Touches,
+					DependsOn:  resolvedDeps,
+				}
+				if err := s.sliceOps.CreateSlice(txCtx, sliceDomain); err != nil {
+					return fmt.Errorf("memgraph: create slice %q: %w", childSlug, err)
+				}
 			}
 			slugs = append(slugs, childSlug)
 		}
 
-		// Pass 2: create all DEPENDS_ON edges now that all child nodes exist.
+		// Pass 2: create all DEPENDS_ON edges now that all Slice nodes exist.
+		// Slice-to-Slice DEPENDS_ON edges carry no content_hash_at_link (slices
+		// have no content hash).
 		for _, sl := range output.Slices {
 			childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
 			for _, dep := range sl.DependsOn {
@@ -260,10 +258,9 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 				}
 				depSlug := fmt.Sprintf("%s/%s", slug, dep)
 				depQuery := `
-					MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(from:Spec {slug: $from_slug}),
-					      (p)<-[:BELONGS_TO]-(to:Spec {slug: $to_slug})
-					MERGE (from)-[dep:DEPENDS_ON]->(to)
-					ON CREATE SET dep.content_hash_at_link = COALESCE(to.content_hash, "")
+					MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(from:Slice {slug: $from_slug}),
+					      (p)<-[:BELONGS_TO]-(to:Slice {slug: $to_slug})
+					MERGE (from)-[:DEPENDS_ON]->(to)
 				`
 				_, err := s.executeQuery(txCtx, depQuery,
 					mergeParams(s.projectParam(), map[string]any{"from_slug": childSlug, "to_slug": depSlug}))
@@ -272,13 +269,22 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 				}
 			}
 		}
+		// Store slimmed output on the parent spec: strategy + slug references only.
+		// Full slice data lives in the Slice nodes themselves.
+		storedOutput := &storage.DecomposeOutput{
+			Strategy:   output.Strategy,
+			SliceSlugs: slugs,
+		}
+		if err := s.storeJSONProperty(txCtx, slug, "decompose_output", storedOutput); err != nil {
+			return err
+		}
 		// Create a non-checkpoint ChangeLog for the decompose_output field change
-		// on the parent spec. Child specs get their own changelogs via CreateSpec.
+		// on the parent spec.
 		if clErr := s.authoringOutputChangeLog(txCtx, slug, "decompose_output", &oldFields, oldHash); clErr != nil {
 			return clErr
 		}
 		// Only set childSlugs after all operations succeed — if the transaction
-		// rolls back, returning slugs of non-existent specs would be misleading.
+		// rolls back, returning slugs of non-existent slices would be misleading.
 		childSlugs = slugs
 		return nil
 	})
