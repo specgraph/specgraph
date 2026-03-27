@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -44,12 +43,12 @@ func init() {
 	rootCmd.AddCommand(unclaimCmd)
 }
 
-func runClaim(_ *cobra.Command, args []string) error {
+func runClaim(cmd *cobra.Command, args []string) error {
 	client, err := claimClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.ClaimSpec(context.Background(), connect.NewRequest(&specv1.ClaimSpecRequest{
+	resp, err := client.ClaimSpec(cmd.Context(), connect.NewRequest(&specv1.ClaimSpecRequest{
 		SpecSlug:      args[0],
 		Agent:         claimAgent,
 		LeaseDuration: durationpb.New(claimDuration),
@@ -74,12 +73,12 @@ var unclaimCmd = &cobra.Command{
 
 var unclaimAgent string
 
-func runUnclaim(_ *cobra.Command, args []string) error {
+func runUnclaim(cmd *cobra.Command, args []string) error {
 	client, err := claimClient()
 	if err != nil {
 		return err
 	}
-	_, err = client.UnclaimSpec(context.Background(), connect.NewRequest(&specv1.UnclaimSpecRequest{
+	_, err = client.UnclaimSpec(cmd.Context(), connect.NewRequest(&specv1.UnclaimSpecRequest{
 		SpecSlug: args[0],
 		Agent:    unclaimAgent,
 	}))

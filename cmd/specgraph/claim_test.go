@@ -65,7 +65,7 @@ func TestRunClaim_HappyPath(t *testing.T) {
 	claimDuration = 10 * time.Minute
 	t.Cleanup(func() { claimDuration = oldDur })
 
-	err := runClaim(nil, []string{"my-spec"})
+	err := runClaim(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -76,7 +76,7 @@ func TestRunUnclaim_HappyPath(t *testing.T) {
 	unclaimAgent = "test-agent"
 	t.Cleanup(func() { unclaimAgent = old })
 
-	err := runUnclaim(nil, []string{"my-spec"})
+	err := runUnclaim(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -93,7 +93,7 @@ func TestRunClaim_RPCError(t *testing.T) {
 	claimDuration = 10 * time.Minute
 	t.Cleanup(func() { claimDuration = oldDur })
 
-	err := runClaim(nil, []string{"my-spec"})
+	err := runClaim(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "claim spec")
 }
@@ -105,7 +105,7 @@ func TestRunUnclaim_RPCError(t *testing.T) {
 	unclaimAgent = "test-agent"
 	t.Cleanup(func() { unclaimAgent = old })
 
-	err := runUnclaim(nil, []string{"my-spec"})
+	err := runUnclaim(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unclaim spec")
 }

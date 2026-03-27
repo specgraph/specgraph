@@ -40,11 +40,11 @@ var allowedJSONProperties = map[string]bool{
 // a different stage than expected. Returns ErrSpecAlreadyApproved if from
 // is the approved stage — approved is terminal and cannot be a source stage
 // (AmendSpec handles the approved→X path with its own guard).
-func (s *Store) TransitionStage(ctx context.Context, slug string, from, to storage.AuthoringStage) error {
-	if from == storage.AuthoringStage(authoring.StageApproved) {
+func (s *Store) TransitionStage(ctx context.Context, slug string, from, to storage.SpecStage) error {
+	if from == storage.SpecStageApproved {
 		return storage.ErrSpecAlreadyApproved
 	}
-	if err := authoring.ValidateTransition(authoring.Stage(from), authoring.Stage(to)); err != nil {
+	if err := authoring.ValidateTransition(from, to); err != nil {
 		return fmt.Errorf("memgraph: %w: %w", storage.ErrInvalidStageTransition, err)
 	}
 	nowStr := s.now()
@@ -53,7 +53,7 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 	// When transitioning to approved, also persist approved_at so the
 	// timestamp is stored rather than computed at response time.
 	setClause := "s.stage = $to, s.updated_at = $updated_at"
-	if to == storage.AuthoringStage(authoring.StageApproved) {
+	if to == storage.SpecStageApproved {
 		setClause += ", s.approved_at = $updated_at"
 	}
 	query := fmt.Sprintf(`
@@ -106,7 +106,7 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 		if err := s.createChangeLog(txCtx, slug, clEntry, deltas); err != nil {
 			return err
 		}
-		if to == storage.AuthoringStage(storage.SpecStageDone) {
+		if to == storage.SpecStageDone {
 			if err := s.RefreshDependencyHashes(txCtx, slug); err != nil {
 				return fmt.Errorf("refresh dependency hashes after done transition: %w", err)
 			}
@@ -328,18 +328,18 @@ func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason st
 
 // AmendSpec moves a spec backward to an earlier stage, bumping its version.
 // This is the authoring-level amendment; for lifecycle-level amendment see LifecycleAmendSpec.
-func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage storage.AuthoringStage) (*storage.AmendResult, error) {
+func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage storage.SpecStage) (*storage.AmendResult, error) {
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {
 		return nil, fmt.Errorf("amend spec %q: get current: %w", slug, err)
 	}
-	if string(spec.Stage) == string(authoring.StageApproved) {
+	if spec.Stage == storage.SpecStageApproved {
 		return nil, storage.ErrSpecAlreadyApproved
 	}
 	if spec.Stage == storage.SpecStageSuperseded {
 		return nil, fmt.Errorf("amend spec %q: %w", slug, storage.ErrSpecSuperseded)
 	}
-	if vErr := authoring.ValidateAmendTransition(authoring.Stage(spec.Stage), authoring.Stage(targetStage)); vErr != nil {
+	if vErr := authoring.ValidateAmendTransition(spec.Stage, targetStage); vErr != nil {
 		return nil, fmt.Errorf("memgraph: amend: %w: %w", storage.ErrInvalidStageTransition, vErr)
 	}
 	var result *storage.AmendResult
@@ -379,7 +379,7 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 		}
 		r := &storage.AmendResult{
 			Slug:  fmt.Sprintf("%v", retSlug),
-			Stage: storage.AuthoringStage(fmt.Sprintf("%v", retStage)),
+			Stage: storage.SpecStage(fmt.Sprintf("%v", retStage)),
 		}
 		switch v := retVersion.(type) {
 		case int64:

@@ -151,19 +151,16 @@ type SafetyFlag struct {
 	Description string          `json:"description,omitempty"`
 }
 
-// AuthoringStage is a typed stage name for use in storage method signatures.
-type AuthoringStage string
-
 // AmendResult holds the minimal fields returned after amending a spec.
 type AmendResult struct {
 	Slug    string
-	Stage   AuthoringStage
+	Stage   SpecStage
 	Version int32
 }
 
 // StageWriter handles stage transitions and output storage.
 type StageWriter interface {
-	TransitionStage(ctx context.Context, slug string, from, to AuthoringStage) error
+	TransitionStage(ctx context.Context, slug string, from, to SpecStage) error
 	StoreSparkOutput(ctx context.Context, slug string, output *SparkOutput) error
 	StoreShapeOutput(ctx context.Context, slug string, output *ShapeOutput) error
 	StoreSpecifyOutput(ctx context.Context, slug string, output *SpecifyOutput) error
@@ -178,7 +175,7 @@ type StageWriter interface {
 // see LifecycleBackend in lifecycle.go.
 type AuthoringSpecLifecycle interface {
 	SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error
-	AmendSpec(ctx context.Context, slug, reason string, targetStage AuthoringStage) (*AmendResult, error)
+	AmendSpec(ctx context.Context, slug, reason string, targetStage SpecStage) (*AmendResult, error)
 }
 
 // AuthoringBackend composes all authoring storage operations.

@@ -11,8 +11,10 @@ import (
 )
 
 // RegisterAPIHandlers registers lightweight HTTP endpoints for the UI.
-func RegisterAPIHandlers(mux *http.ServeMux, scoper storage.Scoper) {
-	mux.HandleFunc("/api/projects", func(w http.ResponseWriter, r *http.Request) {
+// The authMW parameter wraps each handler with authentication middleware,
+// ensuring API keys are enforced consistently with ConnectRPC endpoints.
+func RegisterAPIHandlers(mux *http.ServeMux, scoper storage.Scoper, authMW func(http.Handler) http.Handler) {
+	mux.Handle("/api/projects", authMW(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		store, err := scoper.Scoped(r.Context(), "_server")
 		if err != nil {
 			http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
@@ -31,5 +33,5 @@ func RegisterAPIHandlers(mux *http.ServeMux, scoper storage.Scoper) {
 			}
 		}
 		json.NewEncoder(w).Encode(map[string]any{"projects": slugs}) //nolint:errcheck // best-effort write to http.ResponseWriter
-	})
+	})))
 }

@@ -5,7 +5,9 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -39,11 +41,11 @@ func (h *GraphHandler) AddEdge(ctx context.Context, req *connect.Request[specv1.
 	}
 	edge, err := store.AddEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, et)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, graphError(err)
 	}
 	pb, err := edgeToProto(edge)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, graphError(err)
 	}
 	return connect.NewResponse(&specv1.AddEdgeResponse{Edge: pb}), nil
 }
@@ -65,7 +67,7 @@ func (h *GraphHandler) RemoveEdge(ctx context.Context, req *connect.Request[spec
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if err := store.RemoveEdge(ctx, req.Msg.FromSlug, req.Msg.ToSlug, et); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, graphError(err)
 	}
 	return connect.NewResponse(&specv1.RemoveEdgeResponse{}), nil
 }
@@ -90,11 +92,11 @@ func (h *GraphHandler) ListEdges(ctx context.Context, req *connect.Request[specv
 	}
 	edges, err := store.ListEdges(ctx, req.Msg.Slug, et)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, graphError(err)
 	}
 	pbs, err := edgesToProto(edges)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, graphError(err)
 	}
 	return connect.NewResponse(&specv1.ListEdgesResponse{Edges: pbs}), nil
 }
@@ -110,7 +112,7 @@ func (h *GraphHandler) GetDependencies(ctx context.Context, req *connect.Request
 	}
 	refs, err := store.GetDependencies(ctx, req.Msg.Slug)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, graphError(err)
 	}
 	return connect.NewResponse(&specv1.GetDependenciesResponse{Dependencies: nodeRefsToProto(refs)}), nil
 }
@@ -126,7 +128,7 @@ func (h *GraphHandler) GetTransitiveDeps(ctx context.Context, req *connect.Reque
 	}
 	refs, err := store.GetTransitiveDeps(ctx, req.Msg.Slug)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, graphError(err)
 	}
 	return connect.NewResponse(&specv1.GetTransitiveDepsResponse{Dependencies: nodeRefsToProto(refs)}), nil
 }
@@ -142,7 +144,7 @@ func (h *GraphHandler) GetImpact(ctx context.Context, req *connect.Request[specv
 	}
 	refs, err := store.GetImpact(ctx, req.Msg.Slug)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, graphError(err)
 	}
 	return connect.NewResponse(&specv1.GetImpactResponse{Impacted: nodeRefsToProto(refs)}), nil
 }
@@ -155,7 +157,7 @@ func (h *GraphHandler) GetReady(ctx context.Context, _ *connect.Request[specv1.G
 	}
 	refs, err := store.GetReady(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, graphError(err)
 	}
 	return connect.NewResponse(&specv1.GetReadyResponse{Ready: nodeRefsToProto(refs)}), nil
 }
@@ -171,7 +173,7 @@ func (h *GraphHandler) GetCriticalPath(ctx context.Context, req *connect.Request
 	}
 	refs, err := store.GetCriticalPath(ctx, req.Msg.Slug)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, graphError(err)
 	}
 	return connect.NewResponse(&specv1.GetCriticalPathResponse{Path: nodeRefsToProto(refs)}), nil
 }
@@ -184,16 +186,33 @@ func (h *GraphHandler) GetFullGraph(ctx context.Context, _ *connect.Request[spec
 	}
 	graph, err := store.GetFullGraph(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, graphError(err)
 	}
 	pbs, err := edgesToProto(graph.Edges)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, graphError(err)
 	}
 	return connect.NewResponse(&specv1.GetFullGraphResponse{
 		Nodes: graphNodesToProto(graph.Nodes),
 		Edges: pbs,
 	}), nil
+}
+
+// graphError maps storage/conversion errors to sanitized connect error codes.
+func graphError(err error) error {
+	var connErr *connect.Error
+	if errors.As(err, &connErr) {
+		return connErr
+	}
+	switch {
+	case errors.Is(err, storage.ErrSpecNotFound):
+		return connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
+	case errors.Is(err, storage.ErrEdgeNotFound):
+		return connect.NewError(connect.CodeNotFound, errors.New("edge not found"))
+	default:
+		slog.Error("graphError: internal error", slog.Any("error", err))
+		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
+	}
 }
 
 // RegisterGraphService registers the GraphService on the given mux.

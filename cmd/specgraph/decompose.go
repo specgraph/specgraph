@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -26,7 +25,7 @@ func init() {
 	rootCmd.AddCommand(decomposeCmd)
 }
 
-func runDecompose(_ *cobra.Command, args []string) error {
+func runDecompose(cmd *cobra.Command, args []string) error {
 	client, err := authoringClient()
 	if err != nil {
 		return err
@@ -37,7 +36,7 @@ func runDecompose(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("decompose: %w", loadErr)
 		}
 	}
-	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+	resp, err := client.Decompose(cmd.Context(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug:   args[0],
 		Output: output,
 	}))

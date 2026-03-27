@@ -11,7 +11,6 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -97,7 +96,7 @@ func TestRunDecisionCreate_HappyPath(t *testing.T) {
 		decisionRationale = oldRationale
 	})
 
-	err := runDecisionCreate(nil, []string{"use-memgraph"})
+	err := runDecisionCreate(newCmdWithCtx(), []string{"use-memgraph"})
 	require.NoError(t, err)
 }
 
@@ -108,7 +107,7 @@ func TestRunDecisionCreate_RPCError(t *testing.T) {
 	decisionTitle = "Fail"
 	t.Cleanup(func() { decisionTitle = oldTitle })
 
-	err := runDecisionCreate(nil, []string{"fail-slug"})
+	err := runDecisionCreate(newCmdWithCtx(), []string{"fail-slug"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "create decision")
 }
@@ -133,7 +132,7 @@ func TestRunDecisionList_HappyPath(t *testing.T) {
 		decisionListJSON = oldJSON
 	})
 
-	err := runDecisionList(&cobra.Command{}, nil)
+	err := runDecisionList(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -154,7 +153,7 @@ func TestRunDecisionList_HappyPath_JSON(t *testing.T) {
 		decisionListJSON = oldJSON
 	})
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	cmd.SetOut(io.Discard)
 	err := runDecisionList(cmd, nil)
 	require.NoError(t, err)
@@ -173,7 +172,7 @@ func TestRunDecisionList_EmptyResults(t *testing.T) {
 		decisionListJSON = oldJSON
 	})
 
-	err := runDecisionList(&cobra.Command{}, nil)
+	err := runDecisionList(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -184,7 +183,7 @@ func TestRunDecisionList_RPCError(t *testing.T) {
 	decisionListStatus = ""
 	t.Cleanup(func() { decisionListStatus = oldStatus })
 
-	err := runDecisionList(&cobra.Command{}, nil)
+	err := runDecisionList(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "list decisions")
 }
@@ -199,7 +198,7 @@ func TestRunDecisionList_InvalidStatus_WithServer(t *testing.T) {
 	decisionListStatus = "bogus"
 	t.Cleanup(func() { decisionListStatus = oldStatus })
 
-	err := runDecisionList(&cobra.Command{}, nil)
+	err := runDecisionList(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown status")
 }
@@ -213,7 +212,7 @@ func TestRunDecisionShow_HappyPath(t *testing.T) {
 	decisionShowJSON = false
 	t.Cleanup(func() { decisionShowJSON = oldJSON })
 
-	err := runDecisionShow(&cobra.Command{}, []string{"use-memgraph"})
+	err := runDecisionShow(newCmdWithCtx(), []string{"use-memgraph"})
 	require.NoError(t, err)
 }
 
@@ -224,7 +223,7 @@ func TestRunDecisionShow_HappyPath_JSON(t *testing.T) {
 	decisionShowJSON = true
 	t.Cleanup(func() { decisionShowJSON = oldJSON })
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	cmd.SetOut(io.Discard)
 	err := runDecisionShow(cmd, []string{"use-memgraph"})
 	require.NoError(t, err)
@@ -237,7 +236,7 @@ func TestRunDecisionShow_RPCError(t *testing.T) {
 	decisionShowJSON = false
 	t.Cleanup(func() { decisionShowJSON = oldJSON })
 
-	err := runDecisionShow(&cobra.Command{}, []string{"nonexistent"})
+	err := runDecisionShow(newCmdWithCtx(), []string{"nonexistent"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "get decision")
 }

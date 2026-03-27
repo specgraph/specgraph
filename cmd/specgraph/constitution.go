@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -48,7 +47,7 @@ func runConstitutionShow(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.GetConstitution(context.Background(), connect.NewRequest(&specv1.GetConstitutionRequest{}))
+	resp, err := client.GetConstitution(cmd.Context(), connect.NewRequest(&specv1.GetConstitutionRequest{}))
 	if err != nil {
 		return fmt.Errorf("get constitution: %w", err)
 	}
@@ -77,7 +76,7 @@ var outputFormatMap = map[string]specv1.OutputFormat{
 	"agents-md":   specv1.OutputFormat_OUTPUT_FORMAT_AGENTS_MD,
 }
 
-func runConstitutionEmit(_ *cobra.Command, _ []string) error {
+func runConstitutionEmit(cmd *cobra.Command, _ []string) error {
 	format, ok := outputFormatMap[emitFormat]
 	if !ok {
 		return fmt.Errorf("unsupported format %q; valid values: claude-md, cursorrules, agents-md", emitFormat)
@@ -86,7 +85,7 @@ func runConstitutionEmit(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.EmitToolFiles(context.Background(), connect.NewRequest(&specv1.EmitToolFilesRequest{
+	resp, err := client.EmitToolFiles(cmd.Context(), connect.NewRequest(&specv1.EmitToolFilesRequest{
 		Format: format,
 	}))
 	if err != nil {
@@ -129,7 +128,7 @@ var constitutionImportCmd = &cobra.Command{
 
 var importProjectSlug string
 
-func runConstitutionImport(_ *cobra.Command, args []string) error {
+func runConstitutionImport(cmd *cobra.Command, args []string) error {
 	var data []byte
 	var err error
 
@@ -162,7 +161,7 @@ func runConstitutionImport(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = client.UpdateConstitution(context.Background(), connect.NewRequest(&specv1.UpdateConstitutionRequest{
+	_, err = client.UpdateConstitution(cmd.Context(), connect.NewRequest(&specv1.UpdateConstitutionRequest{
 		Constitution: pb,
 	}))
 	if err != nil {

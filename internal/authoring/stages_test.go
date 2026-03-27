@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/authoring"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 
@@ -128,33 +129,40 @@ func TestValidateAmendTransition(t *testing.T) {
 	}
 }
 
-func TestStageToStorage(t *testing.T) {
-	t.Run("known stages convert without error", func(t *testing.T) {
-		known := []authoring.Stage{
-			authoring.StageSpark,
-			authoring.StageShape,
-			authoring.StageSpecify,
-			authoring.StageDecompose,
-			authoring.StageApproved,
+func TestIsAuthoringStage(t *testing.T) {
+	t.Run("known authoring stages return true", func(t *testing.T) {
+		known := []storage.SpecStage{
+			storage.SpecStageSpark,
+			storage.SpecStageShape,
+			storage.SpecStageSpecify,
+			storage.SpecStageDecompose,
+			storage.SpecStageApproved,
 		}
 		for _, s := range known {
-			v, err := s.ToStorage()
-			require.NoError(t, err)
-			require.Equal(t, string(s), string(v))
+			require.True(t, authoring.IsAuthoringStage(s), "expected %q to be an authoring stage", s)
 		}
 	})
 
-	t.Run("unknown stage returns error", func(t *testing.T) {
-		_, err := authoring.Stage("typo").ToStorage()
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "unknown authoring stage")
-		require.Contains(t, err.Error(), "typo")
+	t.Run("non-authoring stages return false", func(t *testing.T) {
+		nonAuthoring := []storage.SpecStage{
+			storage.SpecStageInProgress,
+			storage.SpecStageReview,
+			storage.SpecStageDone,
+			storage.SpecStageAmended,
+			storage.SpecStageSuperseded,
+			storage.SpecStageAbandoned,
+		}
+		for _, s := range nonAuthoring {
+			require.False(t, authoring.IsAuthoringStage(s), "expected %q to not be an authoring stage", s)
+		}
 	})
 
-	t.Run("empty string returns error", func(t *testing.T) {
-		_, err := authoring.Stage("").ToStorage()
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "unknown authoring stage")
+	t.Run("unknown stage returns false", func(t *testing.T) {
+		require.False(t, authoring.IsAuthoringStage(storage.SpecStage("typo")))
+	})
+
+	t.Run("empty string returns false", func(t *testing.T) {
+		require.False(t, authoring.IsAuthoringStage(storage.SpecStage("")))
 	})
 }
 

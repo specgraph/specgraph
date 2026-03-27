@@ -14,7 +14,6 @@ import (
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/specgraph/specgraph/internal/config"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -187,7 +186,7 @@ func TestRunConstitutionShow_HappyPath(t *testing.T) {
 	constitutionShowJSON = false
 	t.Cleanup(func() { constitutionShowJSON = oldJSON })
 
-	err := runConstitutionShow(&cobra.Command{}, nil)
+	err := runConstitutionShow(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -198,7 +197,7 @@ func TestRunConstitutionShow_HappyPath_JSON(t *testing.T) {
 	constitutionShowJSON = true
 	t.Cleanup(func() { constitutionShowJSON = oldJSON })
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 	err := runConstitutionShow(cmd, nil)
@@ -213,14 +212,14 @@ func TestRunConstitutionShow_RPCError(t *testing.T) {
 	constitutionShowJSON = false
 	t.Cleanup(func() { constitutionShowJSON = oldJSON })
 
-	err := runConstitutionShow(&cobra.Command{}, nil)
+	err := runConstitutionShow(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "get constitution")
 }
 
 func TestRunConstitutionShow_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runConstitutionShow(&cobra.Command{}, nil)
+	err := runConstitutionShow(newCmdWithCtx(), nil)
 	require.Error(t, err)
 }
 
@@ -235,7 +234,7 @@ func TestRunConstitutionEmit_HappyPath_Stdout(t *testing.T) {
 	emitOutput = ""
 	t.Cleanup(func() { emitFormat = oldFmt; emitOutput = oldOut })
 
-	err := runConstitutionEmit(nil, nil)
+	err := runConstitutionEmit(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -251,7 +250,7 @@ func TestRunConstitutionEmit_HappyPath_File(t *testing.T) {
 	emitOutput = "out.md"
 	t.Cleanup(func() { emitFormat = oldFmt; emitOutput = oldOut })
 
-	err := runConstitutionEmit(nil, nil)
+	err := runConstitutionEmit(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile("out.md")
@@ -271,7 +270,7 @@ func TestRunConstitutionEmit_PathTraversal(t *testing.T) {
 	emitOutput = "../outside-cwd.md"
 	t.Cleanup(func() { emitFormat = oldFmt; emitOutput = oldOut })
 
-	err := runConstitutionEmit(nil, nil)
+	err := runConstitutionEmit(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "outside current directory")
 }
@@ -283,7 +282,7 @@ func TestRunConstitutionEmit_InvalidFormat(t *testing.T) {
 	emitOutput = ""
 	t.Cleanup(func() { emitFormat = oldFmt; emitOutput = oldOut })
 
-	err := runConstitutionEmit(nil, nil)
+	err := runConstitutionEmit(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported format")
 }
@@ -297,7 +296,7 @@ func TestRunConstitutionEmit_RPCError(t *testing.T) {
 	emitOutput = ""
 	t.Cleanup(func() { emitFormat = oldFmt; emitOutput = oldOut })
 
-	err := runConstitutionEmit(nil, nil)
+	err := runConstitutionEmit(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "emit tool files")
 }
@@ -311,7 +310,7 @@ func TestRunConstitutionEmit_ClientError(t *testing.T) {
 	emitOutput = ""
 	t.Cleanup(func() { emitFormat = oldFmt; emitOutput = oldOut })
 
-	err := runConstitutionEmit(nil, nil)
+	err := runConstitutionEmit(newCmdWithCtx(), nil)
 	require.Error(t, err)
 }
 

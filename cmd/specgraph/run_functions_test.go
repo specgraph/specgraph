@@ -6,7 +6,6 @@ package main
 import (
 	"testing"
 
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,13 +22,13 @@ func setMissingConfig(t *testing.T) {
 
 func TestRunCreate_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runCreate(nil, []string{"my-spec"})
+	err := runCreate(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
 func TestRunUpdate_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	cmd.Flags().String("intent", "", "")
 	err := runUpdate(cmd, []string{"my-spec"})
 	require.Error(t, err)
@@ -37,13 +36,13 @@ func TestRunUpdate_ClientError(t *testing.T) {
 
 func TestRunList_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runList(&cobra.Command{}, nil)
+	err := runList(newCmdWithCtx(), nil)
 	require.Error(t, err)
 }
 
 func TestRunShow_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runShow(nil, []string{"my-spec"})
+	err := runShow(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
@@ -51,13 +50,13 @@ func TestRunShow_ClientError(t *testing.T) {
 
 func TestRunClaim_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runClaim(nil, []string{"my-spec"})
+	err := runClaim(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
 func TestRunUnclaim_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runUnclaim(nil, []string{"my-spec"})
+	err := runUnclaim(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
@@ -65,7 +64,7 @@ func TestRunUnclaim_ClientError(t *testing.T) {
 
 func TestRunDecisionCreate_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runDecisionCreate(nil, []string{"my-decision"})
+	err := runDecisionCreate(newCmdWithCtx(), []string{"my-decision"})
 	require.Error(t, err)
 }
 
@@ -78,7 +77,7 @@ func TestRunDecisionList_InvalidStatus(t *testing.T) {
 	t.Cleanup(func() { decisionListStatus = old })
 
 	setMissingConfig(t)
-	err := runDecisionList(&cobra.Command{}, nil)
+	err := runDecisionList(newCmdWithCtx(), nil)
 	require.Error(t, err)
 }
 
@@ -88,13 +87,13 @@ func TestRunDecisionList_ClientError(t *testing.T) {
 	decisionListStatus = ""
 	t.Cleanup(func() { decisionListStatus = old })
 
-	err := runDecisionList(&cobra.Command{}, nil)
+	err := runDecisionList(newCmdWithCtx(), nil)
 	require.Error(t, err)
 }
 
 func TestRunDecisionShow_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runDecisionShow(nil, []string{"my-decision"})
+	err := runDecisionShow(newCmdWithCtx(), []string{"my-decision"})
 	require.Error(t, err)
 }
 
@@ -108,7 +107,7 @@ func TestRunEdgeAdd_UnknownType(t *testing.T) {
 	t.Cleanup(func() { edgeAddType = old })
 
 	setMissingConfig(t)
-	err := runEdgeAdd(nil, []string{"from-spec", "to-spec"})
+	err := runEdgeAdd(newCmdWithCtx(), []string{"from-spec", "to-spec"})
 	require.Error(t, err)
 }
 
@@ -118,7 +117,7 @@ func TestRunEdgeAdd_ClientError(t *testing.T) {
 	edgeAddType = "depends_on"
 	t.Cleanup(func() { edgeAddType = old })
 
-	err := runEdgeAdd(nil, []string{"from-spec", "to-spec"})
+	err := runEdgeAdd(newCmdWithCtx(), []string{"from-spec", "to-spec"})
 	require.Error(t, err)
 }
 
@@ -130,7 +129,7 @@ func TestRunEdgeRemove_UnknownType(t *testing.T) {
 	t.Cleanup(func() { edgeRemoveType = old })
 
 	setMissingConfig(t)
-	err := runEdgeRemove(nil, []string{"from-spec", "to-spec"})
+	err := runEdgeRemove(newCmdWithCtx(), []string{"from-spec", "to-spec"})
 	require.Error(t, err)
 }
 
@@ -140,7 +139,7 @@ func TestRunEdgeRemove_ClientError(t *testing.T) {
 	edgeRemoveType = "blocks"
 	t.Cleanup(func() { edgeRemoveType = old })
 
-	err := runEdgeRemove(nil, []string{"from-spec", "to-spec"})
+	err := runEdgeRemove(newCmdWithCtx(), []string{"from-spec", "to-spec"})
 	require.Error(t, err)
 }
 
@@ -152,7 +151,7 @@ func TestRunEdgeList_UnknownType(t *testing.T) {
 	t.Cleanup(func() { edgeListType = old })
 
 	setMissingConfig(t)
-	err := runEdgeList(&cobra.Command{}, []string{"my-spec"})
+	err := runEdgeList(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
@@ -162,7 +161,7 @@ func TestRunEdgeList_ClientError(t *testing.T) {
 	edgeListType = ""
 	t.Cleanup(func() { edgeListType = old })
 
-	err := runEdgeList(&cobra.Command{}, []string{"my-spec"})
+	err := runEdgeList(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
@@ -170,25 +169,25 @@ func TestRunEdgeList_ClientError(t *testing.T) {
 
 func TestRunDeps_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runDeps(&cobra.Command{}, []string{"my-spec"})
+	err := runDeps(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
 func TestRunReady_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runReady(&cobra.Command{}, nil)
+	err := runReady(newCmdWithCtx(), nil)
 	require.Error(t, err)
 }
 
 func TestRunCriticalPath_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runCriticalPath(&cobra.Command{}, []string{"my-spec"})
+	err := runCriticalPath(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
 func TestRunImpact_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runImpact(&cobra.Command{}, []string{"my-spec"})
+	err := runImpact(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 

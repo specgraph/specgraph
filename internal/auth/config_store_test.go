@@ -192,3 +192,47 @@ func TestConfigStore_BuiltinRolePermissions(t *testing.T) {
 		t.Error("admin should have graph:delete via *:*")
 	}
 }
+
+func TestConfigStore_DifferentLengthKeyRejected(t *testing.T) {
+	cfg := config.AuthConfig{
+		APIKeys: []config.APIKeyConfig{
+			{ID: "k1", Key: "spgr_sk_abc", Name: "Test Key", Role: "admin"},
+		},
+	}
+	store, err := auth.NewConfigStore(cfg)
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+
+	// Shorter key — different length, must not match
+	_, err = store.ResolveAPIKey(context.Background(), "spgr_sk_ab")
+	if !errors.Is(err, auth.ErrUnknownKey) {
+		t.Errorf("shorter key: err = %v, want ErrUnknownKey", err)
+	}
+
+	// Longer key — different length, must not match
+	_, err = store.ResolveAPIKey(context.Background(), "spgr_sk_abcd")
+	if !errors.Is(err, auth.ErrUnknownKey) {
+		t.Errorf("longer key: err = %v, want ErrUnknownKey", err)
+	}
+}
+
+func TestConfigStore_SameContentKeyMatches(t *testing.T) {
+	cfg := config.AuthConfig{
+		APIKeys: []config.APIKeyConfig{
+			{ID: "k1", Key: "spgr_sk_exactmatch", Name: "Test Key", Role: "admin"},
+		},
+	}
+	store, err := auth.NewConfigStore(cfg)
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+
+	id, err := store.ResolveAPIKey(context.Background(), "spgr_sk_exactmatch")
+	if err != nil {
+		t.Fatalf("exact match: unexpected error: %v", err)
+	}
+	if id.Subject != "apikey:k1" {
+		t.Errorf("subject = %q, want apikey:k1", id.Subject)
+	}
+}

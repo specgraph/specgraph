@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -61,7 +62,7 @@ func (h *ExecutionHandler) GenerateBundle(ctx context.Context, req *connect.Requ
 
 	pb, err := bundleToProto(b)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("convert bundle: %w", err))
+		return nil, executionError(err)
 	}
 	pb.BundleContent = renderBundleMarkdown(b)
 
@@ -86,7 +87,7 @@ func (h *ExecutionHandler) GetPrime(ctx context.Context, req *connect.Request[sp
 
 	decisions, err := decisionsToProto(pd.Decisions)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("convert decisions: %w", err))
+		return nil, executionError(err)
 	}
 
 	var constitutionSummary string
@@ -215,16 +216,21 @@ func (h *ExecutionHandler) GetExecutionEvents(ctx context.Context, req *connect.
 	}), nil
 }
 
-// executionError maps storage errors to appropriate connect error codes.
+// executionError maps storage errors to sanitized connect error codes.
 func executionError(err error) error {
+	var connErr *connect.Error
+	if errors.As(err, &connErr) {
+		return connErr
+	}
 	switch {
 	case errors.Is(err, storage.ErrSpecNotFound):
-		return connect.NewError(connect.CodeNotFound, err)
+		return connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
 	case errors.Is(err, storage.ErrSpecNotApproved):
-		return connect.NewError(connect.CodeFailedPrecondition, err)
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec is not in an approved or in_progress stage"))
 	case errors.Is(err, storage.ErrAgentNotClaimOwner):
-		return connect.NewError(connect.CodePermissionDenied, err)
+		return connect.NewError(connect.CodePermissionDenied, errors.New("agent does not hold the claim for this spec"))
 	default:
-		return connect.NewError(connect.CodeInternal, err)
+		slog.Error("executionError: internal error", slog.Any("error", err))
+		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 }

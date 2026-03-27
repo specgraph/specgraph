@@ -11,7 +11,6 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -160,7 +159,7 @@ func TestRunDeps_HappyPath_Direct(t *testing.T) {
 	depsJSON = false
 	t.Cleanup(func() { depsJSON = oldJSON })
 
-	err := runDeps(&cobra.Command{}, []string{"my-spec"})
+	err := runDeps(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -175,7 +174,7 @@ func TestRunDeps_HappyPath_Transitive(t *testing.T) {
 	depsJSON = false
 	t.Cleanup(func() { depsJSON = oldJSON })
 
-	err := runDeps(&cobra.Command{}, []string{"my-spec"})
+	err := runDeps(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -190,7 +189,7 @@ func TestRunDeps_HappyPath_JSON(t *testing.T) {
 	depsJSON = true
 	t.Cleanup(func() { depsJSON = oldJSON })
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	err := runDeps(cmd, []string{"my-spec"})
 	require.NoError(t, err)
 }
@@ -206,7 +205,7 @@ func TestRunDeps_EmptyResults(t *testing.T) {
 	depsJSON = false
 	t.Cleanup(func() { depsJSON = oldJSON })
 
-	err := runDeps(&cobra.Command{}, []string{"my-spec"})
+	err := runDeps(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -219,7 +218,7 @@ func TestRunReady_HappyPath(t *testing.T) {
 	readyJSON = false
 	t.Cleanup(func() { readyJSON = old })
 
-	err := runReady(&cobra.Command{}, nil)
+	err := runReady(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -230,7 +229,7 @@ func TestRunReady_HappyPath_JSON(t *testing.T) {
 	readyJSON = true
 	t.Cleanup(func() { readyJSON = old })
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	err := runReady(cmd, nil)
 	require.NoError(t, err)
 }
@@ -242,7 +241,7 @@ func TestRunReady_EmptyResults(t *testing.T) {
 	readyJSON = false
 	t.Cleanup(func() { readyJSON = old })
 
-	err := runReady(&cobra.Command{}, nil)
+	err := runReady(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -255,7 +254,7 @@ func TestRunCriticalPath_HappyPath(t *testing.T) {
 	criticalPathJSON = false
 	t.Cleanup(func() { criticalPathJSON = old })
 
-	err := runCriticalPath(&cobra.Command{}, []string{"my-spec"})
+	err := runCriticalPath(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -266,7 +265,7 @@ func TestRunCriticalPath_HappyPath_JSON(t *testing.T) {
 	criticalPathJSON = true
 	t.Cleanup(func() { criticalPathJSON = old })
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	err := runCriticalPath(cmd, []string{"my-spec"})
 	require.NoError(t, err)
 }
@@ -280,7 +279,7 @@ func TestRunImpact_HappyPath(t *testing.T) {
 	impactJSON = false
 	t.Cleanup(func() { impactJSON = old })
 
-	err := runImpact(&cobra.Command{}, []string{"my-spec"})
+	err := runImpact(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -291,7 +290,7 @@ func TestRunImpact_HappyPath_JSON(t *testing.T) {
 	impactJSON = true
 	t.Cleanup(func() { impactJSON = old })
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	err := runImpact(cmd, []string{"my-spec"})
 	require.NoError(t, err)
 }
@@ -305,7 +304,7 @@ func TestRunDeps_RPCError(t *testing.T) {
 	depsTransitive = false
 	t.Cleanup(func() { depsTransitive = old })
 
-	err := runDeps(&cobra.Command{}, []string{"my-spec"})
+	err := runDeps(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "get dependencies")
 }
@@ -317,7 +316,7 @@ func TestRunDeps_Transitive_RPCError(t *testing.T) {
 	depsTransitive = true
 	t.Cleanup(func() { depsTransitive = old })
 
-	err := runDeps(&cobra.Command{}, []string{"my-spec"})
+	err := runDeps(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "get transitive deps")
 }
@@ -329,7 +328,7 @@ func TestRunReady_RPCError(t *testing.T) {
 	readyJSON = false
 	t.Cleanup(func() { readyJSON = old })
 
-	err := runReady(&cobra.Command{}, nil)
+	err := runReady(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "get ready")
 }
@@ -341,7 +340,7 @@ func TestRunCriticalPath_RPCError(t *testing.T) {
 	criticalPathJSON = false
 	t.Cleanup(func() { criticalPathJSON = old })
 
-	err := runCriticalPath(&cobra.Command{}, []string{"my-spec"})
+	err := runCriticalPath(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "get critical path")
 }
@@ -353,7 +352,7 @@ func TestRunImpact_RPCError(t *testing.T) {
 	impactJSON = false
 	t.Cleanup(func() { impactJSON = old })
 
-	err := runImpact(&cobra.Command{}, []string{"my-spec"})
+	err := runImpact(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "get impact")
 }

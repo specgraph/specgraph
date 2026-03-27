@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -43,12 +42,12 @@ var (
 	amendReEntry string
 )
 
-func runAmend(_ *cobra.Command, args []string) error {
+func runAmend(cmd *cobra.Command, args []string) error {
 	client, err := lifecycleClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
+	resp, err := client.TransitionAmend(cmd.Context(), connect.NewRequest(&specv1.TransitionAmendRequest{
 		Slug:         args[0],
 		Reason:       amendReason,
 		ReEntryStage: amendReEntry,
@@ -72,12 +71,12 @@ var supersedeCmd = &cobra.Command{
 
 var supersedeWith string
 
-func runSupersede(_ *cobra.Command, args []string) error {
+func runSupersede(cmd *cobra.Command, args []string) error {
 	client, err := lifecycleClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
+	resp, err := client.TransitionSupersede(cmd.Context(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
 		Slug:    args[0],
 		NewSlug: supersedeWith,
 	}))
@@ -102,12 +101,12 @@ var abandonCmd = &cobra.Command{
 
 var abandonReason string
 
-func runAbandon(_ *cobra.Command, args []string) error {
+func runAbandon(cmd *cobra.Command, args []string) error {
 	client, err := lifecycleClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.TransitionAbandon(context.Background(), connect.NewRequest(&specv1.TransitionAbandonRequest{
+	resp, err := client.TransitionAbandon(cmd.Context(), connect.NewRequest(&specv1.TransitionAbandonRequest{
 		Slug:   args[0],
 		Reason: abandonReason,
 	}))
@@ -162,7 +161,7 @@ func runDrift(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		req.Slug = args[0]
 	}
-	resp, err := client.CheckDrift(context.Background(), connect.NewRequest(req))
+	resp, err := client.CheckDrift(cmd.Context(), connect.NewRequest(req))
 	if err != nil {
 		return fmt.Errorf("drift check: %w", err)
 	}
@@ -213,7 +212,7 @@ var (
 	driftAckAll      bool
 )
 
-func runDriftAck(_ *cobra.Command, args []string) error {
+func runDriftAck(cmd *cobra.Command, args []string) error {
 	if driftAckUpstream == "" && !driftAckAll {
 		return fmt.Errorf("specify --upstream <slug> or --all")
 	}
@@ -224,7 +223,7 @@ func runDriftAck(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+	resp, err := client.AcknowledgeDrift(cmd.Context(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
 		Slug:         args[0],
 		Note:         driftAckNote,
 		UpstreamSlug: driftAckUpstream,
@@ -251,7 +250,7 @@ var lintCmd = &cobra.Command{
 	RunE:  runLint,
 }
 
-func runLint(_ *cobra.Command, args []string) error {
+func runLint(cmd *cobra.Command, args []string) error {
 	client, err := lifecycleClient()
 	if err != nil {
 		return err
@@ -260,7 +259,7 @@ func runLint(_ *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		req.Slug = args[0]
 	}
-	resp, err := client.Lint(context.Background(), connect.NewRequest(req))
+	resp, err := client.Lint(cmd.Context(), connect.NewRequest(req))
 	if err != nil {
 		return fmt.Errorf("lint: %w", err)
 	}

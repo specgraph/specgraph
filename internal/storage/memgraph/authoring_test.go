@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
-	"github.com/specgraph/specgraph/internal/authoring"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/specgraph/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/assert"
@@ -46,18 +45,18 @@ func TestAuthoring(t *testing.T) {
 		require.NoError(t, err)
 
 		// CreateSpec sets stage to "spark", so transition spark → shape.
-		err = store.TransitionStage(ctx, "funnel-test", storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape))
+		err = store.TransitionStage(ctx, "funnel-test", storage.SpecStageSpark, storage.SpecStageShape)
 		require.NoError(t, err)
 
 		spec, err := store.GetSpec(ctx, "funnel-test")
 		require.NoError(t, err)
 		require.Equal(t, storage.SpecStageShape, spec.Stage)
 
-		err = store.TransitionStage(ctx, "funnel-test", storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify))
+		err = store.TransitionStage(ctx, "funnel-test", storage.SpecStageShape, storage.SpecStageSpecify)
 		require.NoError(t, err)
 
 		// Invalid: skipping from specify straight to approved (must go through decompose).
-		err = store.TransitionStage(ctx, "funnel-test", storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageApproved))
+		err = store.TransitionStage(ctx, "funnel-test", storage.SpecStageSpecify, storage.SpecStageApproved)
 		require.ErrorIs(t, err, storage.ErrInvalidStageTransition)
 	})
 
@@ -72,7 +71,7 @@ func TestAuthoring(t *testing.T) {
 		require.NoError(t, err)
 
 		// Spec is at "spark", but we claim it's at "shape" → should fail.
-		err = store.TransitionStage(ctx, "wrong-stage", storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify))
+		err = store.TransitionStage(ctx, "wrong-stage", storage.SpecStageShape, storage.SpecStageSpecify)
 		require.ErrorIs(t, err, storage.ErrInvalidStageTransition)
 	})
 
@@ -168,13 +167,13 @@ func TestAuthoring(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "amend-test", "Amend test", "p1", "low")
 		require.NoError(t, err)
 		// CreateSpec sets stage to "spark". Advance through stages.
-		require.NoError(t, store.TransitionStage(ctx, "amend-test", storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape)))
-		require.NoError(t, store.TransitionStage(ctx, "amend-test", storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify)))
+		require.NoError(t, store.TransitionStage(ctx, "amend-test", storage.SpecStageSpark, storage.SpecStageShape))
+		require.NoError(t, store.TransitionStage(ctx, "amend-test", storage.SpecStageShape, storage.SpecStageSpecify))
 
 		// Amend back to shape (valid backward transition).
-		spec, err := store.AmendSpec(ctx, "amend-test", "need to reconsider scope", storage.AuthoringStage(authoring.StageShape))
+		spec, err := store.AmendSpec(ctx, "amend-test", "need to reconsider scope", storage.SpecStageShape)
 		require.NoError(t, err)
-		require.Equal(t, storage.AuthoringStage(authoring.StageShape), spec.Stage)
+		require.Equal(t, storage.SpecStageShape, spec.Stage)
 		require.Equal(t, int32(2), spec.Version, "version should increment after amendment")
 	})
 
@@ -187,12 +186,12 @@ func TestAuthoring(t *testing.T) {
 
 		_, err = store.CreateSpec(ctx, "approved-spec", "Will be approved", "p1", "low")
 		require.NoError(t, err)
-		require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape)))
-		require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify)))
-		require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose)))
-		require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.AuthoringStage(authoring.StageDecompose), storage.AuthoringStage(authoring.StageApproved)))
+		require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.SpecStageSpark, storage.SpecStageShape))
+		require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.SpecStageShape, storage.SpecStageSpecify))
+		require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.SpecStageSpecify, storage.SpecStageDecompose))
+		require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.SpecStageDecompose, storage.SpecStageApproved))
 
-		_, err = store.AmendSpec(ctx, "approved-spec", "too late", storage.AuthoringStage(authoring.StageShape))
+		_, err = store.AmendSpec(ctx, "approved-spec", "too late", storage.SpecStageShape)
 		require.ErrorIs(t, err, storage.ErrSpecAlreadyApproved)
 	})
 
@@ -205,10 +204,10 @@ func TestAuthoring(t *testing.T) {
 
 		_, err = store.CreateSpec(ctx, "amend-invalid", "Invalid amend", "p1", "low")
 		require.NoError(t, err)
-		require.NoError(t, store.TransitionStage(ctx, "amend-invalid", storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape)))
+		require.NoError(t, store.TransitionStage(ctx, "amend-invalid", storage.SpecStageSpark, storage.SpecStageShape))
 
 		// Amend forward (shape → specify) should fail — amend only allows backward.
-		_, err = store.AmendSpec(ctx, "amend-invalid", "forward not allowed", storage.AuthoringStage(authoring.StageSpecify))
+		_, err = store.AmendSpec(ctx, "amend-invalid", "forward not allowed", storage.SpecStageSpecify)
 		require.ErrorIs(t, err, storage.ErrInvalidStageTransition)
 	})
 
@@ -220,7 +219,7 @@ func TestAuthoring(t *testing.T) {
 		defer store.Close(ctx) //nolint:errcheck
 
 		// AmendSpec on a non-existent slug should return ErrSpecNotFound.
-		_, err = store.AmendSpec(ctx, "nonexistent-spec", "reason", storage.AuthoringStage(authoring.StageShape))
+		_, err = store.AmendSpec(ctx, "nonexistent-spec", "reason", storage.SpecStageShape)
 		require.ErrorIs(t, err, storage.ErrSpecNotFound)
 	})
 
@@ -233,14 +232,14 @@ func TestAuthoring(t *testing.T) {
 
 		_, err = store.CreateSpec(ctx, "empty-reason", "Empty reason test", "p1", "low")
 		require.NoError(t, err)
-		require.NoError(t, store.TransitionStage(ctx, "empty-reason", storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape)))
-		require.NoError(t, store.TransitionStage(ctx, "empty-reason", storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify)))
+		require.NoError(t, store.TransitionStage(ctx, "empty-reason", storage.SpecStageSpark, storage.SpecStageShape))
+		require.NoError(t, store.TransitionStage(ctx, "empty-reason", storage.SpecStageShape, storage.SpecStageSpecify))
 
 		// Amend with empty reason should still succeed at the storage layer
 		// (validation is the handler's responsibility), but verify the operation works.
-		result, err := store.AmendSpec(ctx, "empty-reason", "", storage.AuthoringStage(authoring.StageShape))
+		result, err := store.AmendSpec(ctx, "empty-reason", "", storage.SpecStageShape)
 		require.NoError(t, err)
-		require.Equal(t, storage.AuthoringStage(authoring.StageShape), result.Stage)
+		require.Equal(t, storage.SpecStageShape, result.Stage)
 	})
 
 	t.Run("SupersedeSpec", func(t *testing.T) {
@@ -386,17 +385,17 @@ func TestAuthoring(t *testing.T) {
 		require.NoError(t, err)
 
 		// Advance spark → shape → specify.
-		require.NoError(t, store.TransitionStage(ctx, "backward-test", storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape)))
-		require.NoError(t, store.TransitionStage(ctx, "backward-test", storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify)))
+		require.NoError(t, store.TransitionStage(ctx, "backward-test", storage.SpecStageSpark, storage.SpecStageShape))
+		require.NoError(t, store.TransitionStage(ctx, "backward-test", storage.SpecStageShape, storage.SpecStageSpecify))
 
 		// AmendSpec back to spark (two stages back).
-		result, err := store.AmendSpec(ctx, "backward-test", "starting over", storage.AuthoringStage(authoring.StageSpark))
+		result, err := store.AmendSpec(ctx, "backward-test", "starting over", storage.SpecStageSpark)
 		require.NoError(t, err)
-		require.Equal(t, storage.AuthoringStage(authoring.StageSpark), result.Stage)
+		require.Equal(t, storage.SpecStageSpark, result.Stage)
 		require.Equal(t, int32(2), result.Version)
 
 		// After amend, can transition forward again from spark.
-		require.NoError(t, store.TransitionStage(ctx, "backward-test", storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape)))
+		require.NoError(t, store.TransitionStage(ctx, "backward-test", storage.SpecStageSpark, storage.SpecStageShape))
 	})
 
 	t.Run("TransitionStage_ApprovedGuard", func(t *testing.T) {
@@ -410,13 +409,13 @@ func TestAuthoring(t *testing.T) {
 		require.NoError(t, err)
 
 		// Full forward path to approved.
-		require.NoError(t, store.TransitionStage(ctx, "approved-guard", storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape)))
-		require.NoError(t, store.TransitionStage(ctx, "approved-guard", storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify)))
-		require.NoError(t, store.TransitionStage(ctx, "approved-guard", storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose)))
-		require.NoError(t, store.TransitionStage(ctx, "approved-guard", storage.AuthoringStage(authoring.StageDecompose), storage.AuthoringStage(authoring.StageApproved)))
+		require.NoError(t, store.TransitionStage(ctx, "approved-guard", storage.SpecStageSpark, storage.SpecStageShape))
+		require.NoError(t, store.TransitionStage(ctx, "approved-guard", storage.SpecStageShape, storage.SpecStageSpecify))
+		require.NoError(t, store.TransitionStage(ctx, "approved-guard", storage.SpecStageSpecify, storage.SpecStageDecompose))
+		require.NoError(t, store.TransitionStage(ctx, "approved-guard", storage.SpecStageDecompose, storage.SpecStageApproved))
 
 		// Once approved, further forward transitions should fail with ErrSpecAlreadyApproved.
-		err = store.TransitionStage(ctx, "approved-guard", storage.AuthoringStage(authoring.StageApproved), storage.AuthoringStage(authoring.StageSpark))
+		err = store.TransitionStage(ctx, "approved-guard", storage.SpecStageApproved, storage.SpecStageSpark)
 		require.ErrorIs(t, err, storage.ErrSpecAlreadyApproved)
 	})
 
@@ -438,7 +437,7 @@ func TestAuthoring(t *testing.T) {
 
 		// Attempting TransitionStage on a superseded spec should fail because
 		// "superseded" is not a valid funnel stage and ValidateTransition rejects it.
-		err = store.TransitionStage(ctx, "superseded-old", storage.AuthoringStage("superseded"), storage.AuthoringStage(authoring.StageShape))
+		err = store.TransitionStage(ctx, "superseded-old", storage.SpecStageSuperseded, storage.SpecStageShape)
 		require.ErrorIs(t, err, storage.ErrInvalidStageTransition)
 	})
 
@@ -614,8 +613,8 @@ func TestAuthoring(t *testing.T) {
 		initialHash := spec.ContentHash
 
 		err = store.TransitionStage(ctx, "stage-hash",
-			storage.AuthoringStage(authoring.StageSpark),
-			storage.AuthoringStage(authoring.StageShape))
+			storage.SpecStageSpark,
+			storage.SpecStageShape)
 		require.NoError(t, err)
 
 		updated, err := store.GetSpec(ctx, "stage-hash")
@@ -636,15 +635,15 @@ func TestAuthoring(t *testing.T) {
 
 		// Advance to shape so we can amend back to spark.
 		err = store.TransitionStage(ctx, "amend-hash",
-			storage.AuthoringStage(authoring.StageSpark),
-			storage.AuthoringStage(authoring.StageShape))
+			storage.SpecStageSpark,
+			storage.SpecStageShape)
 		require.NoError(t, err)
 
 		preAmend, err := store.GetSpec(ctx, "amend-hash")
 		require.NoError(t, err)
 
 		_, err = store.AmendSpec(ctx, "amend-hash", "rework needed",
-			storage.AuthoringStage(authoring.StageSpark))
+			storage.SpecStageSpark)
 		require.NoError(t, err)
 
 		updated, err := store.GetSpec(ctx, "amend-hash")

@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -32,12 +31,12 @@ var (
 	createPriority string
 )
 
-func runCreate(_ *cobra.Command, args []string) error {
+func runCreate(cmd *cobra.Command, args []string) error {
 	client, err := specClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.CreateSpec(context.Background(), connect.NewRequest(&specv1.CreateSpecRequest{
+	resp, err := client.CreateSpec(cmd.Context(), connect.NewRequest(&specv1.CreateSpecRequest{
 		Slug:     args[0],
 		Intent:   createIntent,
 		Priority: createPriority,
@@ -88,7 +87,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		req.Notes = &updateNotes
 	}
 
-	resp, err := client.UpdateSpec(context.Background(), connect.NewRequest(req))
+	resp, err := client.UpdateSpec(cmd.Context(), connect.NewRequest(req))
 	if err != nil {
 		return fmt.Errorf("update spec: %w", err)
 	}
@@ -114,7 +113,7 @@ func runList(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.ListSpecs(context.Background(), connect.NewRequest(&specv1.ListSpecsRequest{
+	resp, err := client.ListSpecs(cmd.Context(), connect.NewRequest(&specv1.ListSpecsRequest{
 		Stage:    listStage,
 		Priority: listPriority,
 	}))
@@ -169,7 +168,7 @@ func runShow(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.GetSpec(context.Background(), connect.NewRequest(&specv1.GetSpecRequest{
+	resp, err := client.GetSpec(cmd.Context(), connect.NewRequest(&specv1.GetSpecRequest{
 		Slug: args[0],
 	}))
 	if err != nil {

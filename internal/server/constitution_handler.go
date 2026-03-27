@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -38,10 +39,7 @@ func (h *ConstitutionHandler) GetConstitution(ctx context.Context, _ *connect.Re
 	}
 	c, err := store.GetConstitution(ctx)
 	if err != nil {
-		if errors.Is(err, storage.ErrConstitutionNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, constitutionError(err)
 	}
 	return connect.NewResponse(&specv1.GetConstitutionResponse{Constitution: constitutionToProto(c)}), nil
 }
@@ -58,7 +56,7 @@ func (h *ConstitutionHandler) UpdateConstitution(ctx context.Context, req *conne
 	}
 	c, err := store.UpdateConstitution(ctx, constitutionFromProto(msg.Constitution))
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, constitutionError(err)
 	}
 	return connect.NewResponse(&specv1.UpdateConstitutionResponse{Constitution: constitutionToProto(c)}), nil
 }
@@ -75,10 +73,7 @@ func (h *ConstitutionHandler) EmitToolFiles(ctx context.Context, req *connect.Re
 
 	c, err := store.GetConstitution(ctx)
 	if err != nil {
-		if errors.Is(err, storage.ErrConstitutionNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, constitutionError(err)
 	}
 
 	formatStr, ok := outputFormatToString[req.Msg.Format]
@@ -95,4 +90,19 @@ func (h *ConstitutionHandler) EmitToolFiles(ctx context.Context, req *connect.Re
 		Content:  content,
 		Filename: filename,
 	}), nil
+}
+
+// constitutionError maps storage errors to sanitized connect error codes.
+func constitutionError(err error) error {
+	var connErr *connect.Error
+	if errors.As(err, &connErr) {
+		return connErr
+	}
+	switch {
+	case errors.Is(err, storage.ErrConstitutionNotFound):
+		return connect.NewError(connect.CodeNotFound, errors.New("constitution not found"))
+	default:
+		slog.Error("constitutionError: internal error", slog.Any("error", err))
+		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
+	}
 }

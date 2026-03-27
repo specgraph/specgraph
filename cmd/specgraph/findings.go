@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -67,7 +66,7 @@ func runFindingsList(cmd *cobra.Command, args []string) error {
 		req.PassType = pt
 	}
 
-	resp, err := client.ListFindings(context.Background(), connect.NewRequest(req))
+	resp, err := client.ListFindings(cmd.Context(), connect.NewRequest(req))
 	if err != nil {
 		return fmt.Errorf("list findings: %w", err)
 	}

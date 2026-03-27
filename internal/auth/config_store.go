@@ -5,6 +5,8 @@ package auth
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"crypto/subtle"
 	"fmt"
 	"strings"
@@ -76,12 +78,25 @@ func NewConfigStore(cfg config.AuthConfig) (*ConfigStore, error) {
 	}, nil
 }
 
+// fixedLenCompare compares two strings in constant time regardless of length.
+// It hashes both values with HMAC-SHA256 so the inputs to ConstantTimeCompare
+// are always 32 bytes, eliminating the length side-channel.
+func fixedLenCompare(a, b string) bool {
+	mac := hmac.New(sha256.New, []byte("specgraph-key-compare"))
+	mac.Write([]byte(a))
+	ha := mac.Sum(nil)
+	mac.Reset()
+	mac.Write([]byte(b))
+	hb := mac.Sum(nil)
+	return subtle.ConstantTimeCompare(ha, hb) == 1
+}
+
 // ResolveAPIKey looks up the identity for the given API key using constant-time comparison.
 // Always iterates all keys to prevent timing side-channels from leaking which slot matched.
 func (s *ConfigStore) ResolveAPIKey(_ context.Context, key string) (*Identity, error) {
 	var matched *Identity
 	for storedKey, id := range s.identities {
-		if subtle.ConstantTimeCompare([]byte(storedKey), []byte(key)) == 1 {
+		if fixedLenCompare(storedKey, key) {
 			matched = id
 		}
 	}
