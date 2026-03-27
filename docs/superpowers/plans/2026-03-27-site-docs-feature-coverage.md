@@ -244,7 +244,7 @@ Expected: PASS — no lint errors, no build errors, tests pass.
 
 - [ ] **Step 9: Commit**
 
-```
+```text
 docs(cli): add specgraph docs cli command for auto-generated reference (spgr-drz.1)
 ```
 
@@ -288,7 +288,7 @@ Expected: Build succeeds with no errors. (Page won't be in nav yet — that's Ta
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 docs(concepts): add slices concept page (spgr-drz.2)
 ```
 
@@ -308,10 +308,12 @@ Create `site/docs/concepts/drift.md` with these sections:
    When a dependency edge is created, the upstream's content hash is recorded.
    Detection compares the recorded hash against the upstream's current hash.
    Include a simple diagram:
+
    ```text
    (:Spec A) --[DEPENDS_ON {content_hash_at_link: "abc123"}]--> (:Spec B)
                                                                   content_hash: "def456"  ← DRIFTED
    ```
+
 3. **Per-Edge Acknowledgment** section — Drift is per-edge, not per-spec.
    Acknowledge one upstream at a time or all at once. Each acknowledgment
    re-baselines the edge hash.
@@ -329,7 +331,7 @@ Expected: Build succeeds.
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 docs(concepts): add drift detection concept page (spgr-drz.3)
 ```
 
@@ -368,7 +370,7 @@ Expected: Build succeeds.
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 docs(concepts): add spec linting concept page (spgr-drz.4)
 ```
 
@@ -396,7 +398,7 @@ jump to whichever workflow you need.
 
 - :material-console: **CLI Cookbook**
 
-    ---
+---
 
     Step-by-step recipes for common CLI workflows — authoring, graph queries,
     slices, drift, linting, and execution lifecycle.
@@ -405,7 +407,7 @@ jump to whichever workflow you need.
 
 - :material-sync: **Sync & Integration**
 
-    ---
+---
 
     Push specs to Beads and GitHub Issues for external visibility and
     coordination.
@@ -422,7 +424,7 @@ Expected: `index.md` listed, build succeeds.
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 docs(guides): add guides section index page (spgr-drz.5)
 ```
 
@@ -435,6 +437,7 @@ docs(guides): add guides section index page (spgr-drz.5)
 - [ ] **Step 1: Write CLI cookbook with 7 recipes**
 
 Create `site/docs/guides/cli-cookbook.md`. Each recipe gets:
+
 - A `##` heading with the recipe name
 - A one-line goal statement
 - The commands with inline comments
@@ -475,7 +478,7 @@ Expected: Build succeeds.
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 docs(guides): add CLI cookbook with 7 workflow recipes (spgr-drz.6)
 ```
 
@@ -516,7 +519,7 @@ Expected: Build succeeds.
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 docs(guides): add sync and integration guide (spgr-drz.7)
 ```
 
@@ -555,7 +558,7 @@ Insert after the `SUPERSEDES` edge.
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 docs(arch): add SliceService, AnalyticalPassService, Slice/Finding nodes (spgr-drz.8)
 ```
 
@@ -608,7 +611,7 @@ if already correct.
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 docs(quickstart): add slice workflow, update decompose and drift sections (spgr-drz.9)
 ```
 
@@ -625,7 +628,7 @@ Add after the "Analytical Passes & Safety" card (before the closing `</div>`):
 ```markdown
 - :material-puzzle: **Slices & Execution Units**
 
-    ---
+---
 
     Decompose creates independently claimable slice nodes in the graph — each
     with its own lifecycle from open through claimed to completed.
@@ -634,7 +637,7 @@ Add after the "Analytical Passes & Safety" card (before the closing `</div>`):
 
 - :material-swap-horizontal: **Drift Detection**
 
-    ---
+---
 
     Per-edge content hashing detects when upstream specs change after a
     dependency was baselined — keeping downstream assumptions honest.
@@ -643,7 +646,7 @@ Add after the "Analytical Passes & Safety" card (before the closing `</div>`):
 
 - :material-check-decagram: **Spec Linting**
 
-    ---
+---
 
     Structural validation catches malformed specs, broken edges, and
     constitution violations before deeper analytical passes run.
@@ -653,7 +656,7 @@ Add after the "Analytical Passes & Safety" card (before the closing `</div>`):
 
 - [ ] **Step 2: Commit**
 
-```
+```text
 docs(concepts): add grid cards for slices, drift, linting (spgr-drz.10)
 ```
 
@@ -690,7 +693,7 @@ Then add a cross-reference note after the `slices` field table:
 
 - [ ] **Step 2: Commit**
 
-```
+```text
 docs(authoring): fix stale child-spec language, cross-reference slices page (spgr-drz.11)
 ```
 
@@ -726,7 +729,7 @@ Expected: Build succeeds, all pages present in nav.
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 docs(nav): add concept pages, guides section, CLI reference to nav (spgr-drz.12)
 ```
 
@@ -777,7 +780,7 @@ action needed. (Bead research indicated this was already clean.)
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 docs(fixes): update passes.md accuracy, remove stale scanner references (spgr-drz.13)
 ```
 
@@ -805,6 +808,7 @@ Expected: PASS — all Go code compiles, tests pass, lint clean.
 - [ ] **Step 4: Verify all new pages are reachable**
 
 Grep the built site for each new page title:
+
 - "CLI Reference"
 - "Slices & Execution Units"
 - "Drift Detection"
@@ -814,6 +818,6 @@ Grep the built site for each new page title:
 
 - [ ] **Step 5: Final commit (if any remaining changes)**
 
-```
+```text
 docs: final verification and cleanup (spgr-drz.14)
 ```

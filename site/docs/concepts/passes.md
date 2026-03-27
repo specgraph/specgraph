@@ -146,10 +146,10 @@ The safety net catches two categories in v0.1.0:
 - **Data loss risks** — destructive operations without rollback plans, missing
   migration strategies, irreversible state changes
 
-Future categories (consistency contradictions, constitution violations, and
-showstoppers) are planned but not yet implemented in the pattern scanner.
+Additional categories (consistency contradictions, constitution violations, and
+showstoppers) are handled by the analytical pass system — see the pass types listed above.
 
-Patterns the safety net scans for (from `internal/authoring/safety.go`):
+Patterns the safety net checks for (from `internal/authoring/safety.go`):
 
 ```text
 CRITICAL security:  "hardcoded secret", "hardcoded password",
