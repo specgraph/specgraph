@@ -1,9 +1,11 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { specClient, graphClient, analyticalPassClient } from '$lib/api/client';
+  import { specClient, graphClient, analyticalPassClient, sliceClient } from '$lib/api/client';
   import type { Spec } from '$lib/api/gen/specgraph/v1/spec_pb';
   import type { Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
   import type { AnalyticalFinding } from '$lib/api/gen/specgraph/v1/analytical_pass_pb';
+  import type { Slice } from '$lib/api/gen/specgraph/v1/slice_pb';
+  import { SliceStatus } from '$lib/api/gen/specgraph/v1/slice_pb';
   import { EdgeType } from '$lib/api/gen/specgraph/v1/graph_pb';
   import { ScopeSniff, DecompositionStrategy } from '$lib/api/gen/specgraph/v1/authoring_pb';
   import AccordionSection from '$lib/components/AccordionSection.svelte';
@@ -13,35 +15,50 @@
   let spec = $state<Spec | null>(null);
   let edges = $state<Edge[]>([]);
   let findings = $state<AnalyticalFinding[]>([]);
+  let slices = $state<Slice[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
 
   let slug = $derived($page.params.slug);
 
+  // Guard against stale responses when slug changes mid-flight.
+  let activeSlug = $state('');
+
   async function loadSpec(s: string) {
+    activeSlug = s;
     loading = true;
     error = null;
     try {
       const specResp = await specClient.getSpec({ slug: s });
+      if (activeSlug !== s) return; // slug changed — discard stale response
       spec = specResp.spec ?? null;
-      // Edges are non-critical — fetch separately so failure doesn't lose spec data.
+      // Non-critical fetches — failure doesn't lose spec data.
       try {
         const edgeResp = await graphClient.listEdges({ slug: s });
-        edges = edgeResp.edges;
+        if (activeSlug === s) edges = edgeResp.edges;
       } catch {
-        edges = [];
+        if (activeSlug === s) edges = [];
       }
-      // Findings are non-critical — fetch separately.
       try {
         const findingsResp = await analyticalPassClient.listFindings({ slug: s });
-        findings = findingsResp.findings;
+        if (activeSlug === s) findings = findingsResp.findings;
       } catch {
-        findings = [];
+        if (activeSlug === s) findings = [];
+      }
+      try {
+        if (specResp.spec?.decomposeOutput) {
+          const sliceResp = await sliceClient.listSlices({ parentSlug: s });
+          if (activeSlug === s) slices = sliceResp.slices;
+        } else {
+          if (activeSlug === s) slices = [];
+        }
+      } catch {
+        if (activeSlug === s) slices = [];
       }
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to load spec';
+      if (activeSlug === s) error = err instanceof Error ? err.message : 'Failed to load spec';
     } finally {
-      loading = false;
+      if (activeSlug === s) loading = false;
     }
   }
 
@@ -70,6 +87,15 @@
       [DecompositionStrategy.SINGLE_UNIT]: 'single unit',
     };
     return labels[val] ?? '';
+  }
+
+  function sliceStatusBadge(status: SliceStatus): { label: string; color: string } {
+    switch (status) {
+      case SliceStatus.OPEN: return { label: 'open', color: '#4b5563' };
+      case SliceStatus.CLAIMED: return { label: 'claimed', color: '#c2410c' };
+      case SliceStatus.DONE: return { label: 'done', color: '#15803d' };
+      default: return { label: 'unknown', color: '#4b5563' };
+    }
   }
 
   function edgeTypeLabel(val: EdgeType): string {
@@ -267,23 +293,48 @@
     {/if}
 
     {#if spec.decomposeOutput}
-      <AccordionSection title="Decompose" badge={spec.decomposeOutput.slices.length + ' slices'} expanded={shouldExpand('decompose')}>
+      <AccordionSection title="Decompose" badge={slices.length ? slices.length + ' slices' : 'output'} expanded={shouldExpand('decompose')}>
         {#if strategyLabel(spec.decomposeOutput.strategy)}
           <p><strong>Strategy:</strong> {strategyLabel(spec.decomposeOutput.strategy)}</p>
         {/if}
-        {#each spec.decomposeOutput.slices as slice}
-          <div class="slice-card">
-            <strong>{slice.id}</strong>
-            {#if slice.intent}<p>{slice.intent}</p>{/if}
-            {#if slice.verify.length > 0}
-              <p class="slice-label">Verify:</p>
-              <ul>{#each slice.verify as v}<li>{v}</li>{/each}</ul>
-            {/if}
-            {#if slice.dependsOn.length > 0}
-              <p class="slice-label">Depends on: {slice.dependsOn.join(', ')}</p>
-            {/if}
-          </div>
-        {/each}
+        {#if slices.length > 0}
+          {#each slices as slice}
+            {@const badge = sliceStatusBadge(slice.status)}
+            <div class="slice-card">
+              <div class="slice-header">
+                <strong>{slice.sliceId}</strong>
+                <span class="slice-badge" style="background:{badge.color}">{badge.label}</span>
+              </div>
+              {#if slice.intent}<p>{slice.intent}</p>{/if}
+              {#if slice.assignedTo}
+                <p class="slice-label">Assigned to: {slice.assignedTo}</p>
+              {/if}
+              {#if slice.verify.length > 0}
+                <p class="slice-label">Verify:</p>
+                <ul>{#each slice.verify as v}<li>{v}</li>{/each}</ul>
+              {/if}
+              {#if slice.dependsOn.length > 0}
+                <p class="slice-label">Depends on: {slice.dependsOn.join(', ')}</p>
+              {/if}
+            </div>
+          {/each}
+        {:else if spec.decomposeOutput.slices.length > 0}
+          {#each spec.decomposeOutput.slices as slice}
+            <div class="slice-card">
+              <strong>{slice.id}</strong>
+              {#if slice.intent}<p>{slice.intent}</p>{/if}
+              {#if slice.verify.length > 0}
+                <p class="slice-label">Verify:</p>
+                <ul>{#each slice.verify as v}<li>{v}</li>{/each}</ul>
+              {/if}
+              {#if slice.dependsOn.length > 0}
+                <p class="slice-label">Depends on: {slice.dependsOn.join(', ')}</p>
+              {/if}
+            </div>
+          {/each}
+        {:else if spec.decomposeOutput.sliceSlugs.length > 0}
+          <p class="slice-label">{spec.decomposeOutput.sliceSlugs.length} slice(s) — loading details</p>
+        {/if}
       </AccordionSection>
     {/if}
 
@@ -510,11 +561,25 @@
   }
 
   .slice-card {
-    padding: 0.5rem;
+    padding: 0.5rem 0.75rem;
     margin: 0.25rem 0;
     background: #f8fafc;
-    border-radius: 4px;
+    border-radius: 6px;
     border-left: 3px solid #ca8a04;
+  }
+
+  .slice-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .slice-badge {
+    font-size: 0.7rem;
+    color: white;
+    padding: 0.1rem 0.4rem;
+    border-radius: 9999px;
+    font-weight: 500;
   }
 
   .slice-label {

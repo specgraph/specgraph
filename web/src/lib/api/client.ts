@@ -6,6 +6,7 @@ import { DecisionService } from './gen/specgraph/v1/decision_pb';
 import { LifecycleService } from './gen/specgraph/v1/lifecycle_pb';
 import { ConstitutionService } from './gen/specgraph/v1/constitution_pb';
 import { AnalyticalPassService } from './gen/specgraph/v1/analytical_pass_pb';
+import { SliceService } from './gen/specgraph/v1/slice_pb';
 import { project } from '$lib/project.svelte';
 
 const projectInterceptor: Interceptor = (next) => async (req) => {
@@ -24,3 +25,4 @@ export const decisionClient = createClient(DecisionService, transport);
 export const lifecycleClient = createClient(LifecycleService, transport);
 export const constitutionClient = createClient(ConstitutionService, transport);
 export const analyticalPassClient = createClient(AnalyticalPassService, transport);
+export const sliceClient = createClient(SliceService, transport);
