@@ -51,4 +51,31 @@ framework.
 
     [:octicons-arrow-right-24: Passes & Safety](passes.md)
 
+- :material-puzzle: **Slices & Execution Units**
+
+    ---
+
+    Decompose creates independently claimable slice nodes in the graph — each
+    with its own lifecycle from open through claimed to completed.
+
+    [:octicons-arrow-right-24: Slices](slices.md)
+
+- :material-swap-horizontal: **Drift Detection**
+
+    ---
+
+    Per-edge content hashing detects when upstream specs change after a
+    dependency was baselined — keeping downstream assumptions honest.
+
+    [:octicons-arrow-right-24: Drift Detection](drift.md)
+
+- :material-check-decagram: **Spec Linting**
+
+    ---
+
+    Structural validation catches malformed specs, broken edges, and
+    constitution violations before deeper analytical passes run.
+
+    [:octicons-arrow-right-24: Spec Linting](linting.md)
+
 </div>
