@@ -99,6 +99,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		// Users can place <pass_type>.md files there to customize analytical pass prompts.
 		server.RegisterAnalyticalPassService(mux, store, ".specgraph/templates", opts)
 		server.RegisterExecutionService(mux, store, opts)
+		server.RegisterSliceService(mux, store, opts)
 		driftEngine := drift.NewEngine(store, nil)
 		lintEngine := linter.NewEngine(store, nil)
 		server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts)

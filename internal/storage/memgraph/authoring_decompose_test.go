@@ -39,12 +39,12 @@ func (f *faultingSliceOps) ListSlices(context.Context, string) ([]*storage.Slice
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (f *faultingSliceOps) ClaimSlice(context.Context, string, string) error {
-	return fmt.Errorf("not implemented")
+func (f *faultingSliceOps) ClaimSlice(context.Context, string, string) (*storage.Slice, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
-func (f *faultingSliceOps) CompleteSlice(context.Context, string) error {
-	return fmt.Errorf("not implemented")
+func (f *faultingSliceOps) CompleteSlice(context.Context, string) (*storage.Slice, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 func TestStoreDecomposeOutput_GetSliceError(t *testing.T) {

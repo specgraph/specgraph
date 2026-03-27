@@ -125,18 +125,22 @@ func TestClaimSlice(t *testing.T) {
 	require.NoError(t, err)
 
 	// Claim it.
-	err = store.ClaimSlice(ctx, "claim-parent/work", "alice")
+	claimed, err := store.ClaimSlice(ctx, "claim-parent/work", "alice")
 	require.NoError(t, err)
+	require.NotNil(t, claimed)
+	assert.Equal(t, storage.SliceStatusClaimed, claimed.Status)
+	assert.Equal(t, "alice", claimed.AssignedTo)
 
-	// Verify status changed.
+	// Verify via separate GetSlice too.
 	sl, err := store.GetSlice(ctx, "claim-parent/work")
 	require.NoError(t, err)
 	assert.Equal(t, storage.SliceStatusClaimed, sl.Status)
 	assert.Equal(t, "alice", sl.AssignedTo)
 
 	// Claiming again should fail (not open) with sentinel error.
-	err = store.ClaimSlice(ctx, "claim-parent/work", "bob")
+	badClaim, err := store.ClaimSlice(ctx, "claim-parent/work", "bob")
 	require.ErrorIs(t, err, storage.ErrSliceWrongStatus)
+	require.Nil(t, badClaim)
 }
 
 func TestCompleteSlice(t *testing.T) {
@@ -159,15 +163,18 @@ func TestCompleteSlice(t *testing.T) {
 	require.NoError(t, err)
 
 	// Must claim before completing — should return sentinel error.
-	err = store.CompleteSlice(ctx, "complete-parent/task")
+	badComplete, err := store.CompleteSlice(ctx, "complete-parent/task")
 	require.ErrorIs(t, err, storage.ErrSliceWrongStatus)
+	require.Nil(t, badComplete)
 
 	// Claim then complete.
-	err = store.ClaimSlice(ctx, "complete-parent/task", "alice")
+	_, err = store.ClaimSlice(ctx, "complete-parent/task", "alice")
 	require.NoError(t, err)
 
-	err = store.CompleteSlice(ctx, "complete-parent/task")
+	completed, err := store.CompleteSlice(ctx, "complete-parent/task")
 	require.NoError(t, err)
+	require.NotNil(t, completed)
+	assert.Equal(t, storage.SliceStatusDone, completed.Status)
 
 	sl, err := store.GetSlice(ctx, "complete-parent/task")
 	require.NoError(t, err)
