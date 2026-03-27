@@ -6,6 +6,7 @@ package memgraph
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -117,16 +118,21 @@ func (s *Store) GetSlice(ctx context.Context, slug string) (*storage.Slice, erro
 }
 
 // ClaimSlice transitions a slice to claimed status and records the assignee.
-func (s *Store) ClaimSlice(ctx context.Context, slug, assignee string) error {
+func (s *Store) ClaimSlice(ctx context.Context, slug, assignee string) (*storage.Slice, error) {
 	if strings.TrimSpace(assignee) == "" {
-		return fmt.Errorf("memgraph: claim slice %q: assignee must not be blank", slug)
+		return nil, fmt.Errorf("memgraph: claim slice %q: assignee must not be blank", slug)
 	}
 	nowStr := s.now()
+	// Use OPTIONAL MATCH + WITH to distinguish "not found" from "wrong status".
+	// If the slice doesn't exist, sl is NULL. If it exists but has wrong status,
+	// sl is non-NULL but the WHERE filters it out of the SET.
 	query := `
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(sl:Slice {slug: $slug})
-		WHERE sl.status = $expected_status
+		MATCH (p:Project {slug: $project})
+		OPTIONAL MATCH (p)<-[:BELONGS_TO]-(sl:Slice {slug: $slug})
+		WITH sl, CASE WHEN sl IS NULL THEN 'missing' WHEN sl.status <> $expected_status THEN 'wrong_status' ELSE 'ok' END AS check
+		WHERE check = 'ok'
 		SET sl.status = $new_status, sl.assigned_to = $assignee, sl.updated_at = $now
-		RETURN sl.id
+		RETURN sl.id, sl.slug, sl.parent_slug, sl.slice_id, sl.intent, sl.verify_json, sl.touches_json, sl.depends_on_json, sl.status, sl.assigned_to, sl.created_at, sl.updated_at, check
 	`
 	params := mergeParams(s.projectParam(), map[string]any{
 		"slug":            slug,
@@ -138,39 +144,56 @@ func (s *Store) ClaimSlice(ctx context.Context, slug, assignee string) error {
 
 	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
-		return fmt.Errorf("memgraph: claim slice %q: %w", slug, err)
+		return nil, fmt.Errorf("memgraph: claim slice %q: %w", slug, err)
 	}
 	if len(records) == 0 {
-		return fmt.Errorf("memgraph: claim slice %q: %w", slug, storage.ErrSliceWrongStatus)
+		// check = 'ok' matched nothing. Determine why with a simple existence check.
+		return nil, s.sliceNotFoundOrWrongStatus(ctx, slug)
 	}
-	return nil
+	return recordToSlice(records[0])
 }
 
 // CompleteSlice transitions a slice to done status.
-func (s *Store) CompleteSlice(ctx context.Context, slug string) error {
+func (s *Store) CompleteSlice(ctx context.Context, slug string) (*storage.Slice, error) {
 	nowStr := s.now()
 	query := `
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(sl:Slice {slug: $slug})
-		WHERE sl.status = $expected_status
+		MATCH (p:Project {slug: $project})
+		OPTIONAL MATCH (p)<-[:BELONGS_TO]-(sl:Slice {slug: $slug})
+		WITH sl, CASE WHEN sl IS NULL THEN 'missing' WHEN sl.status <> $expected_status THEN 'wrong_status' ELSE 'ok' END AS check
+		WHERE check = 'ok'
 		SET sl.status = $new_status, sl.updated_at = $now
-		RETURN sl.id
+		RETURN sl.id, sl.slug, sl.parent_slug, sl.slice_id, sl.intent, sl.verify_json, sl.touches_json, sl.depends_on_json, sl.status, sl.assigned_to, sl.created_at, sl.updated_at, check
 	`
 	params := mergeParams(s.projectParam(), map[string]any{
 		"slug":            slug,
 		"expected_status": string(storage.SliceStatusClaimed),
 		"new_status":      string(storage.SliceStatusDone),
-		"assignee":        "",
 		"now":             nowStr,
 	})
 
 	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
-		return fmt.Errorf("memgraph: complete slice %q: %w", slug, err)
+		return nil, fmt.Errorf("memgraph: complete slice %q: %w", slug, err)
 	}
 	if len(records) == 0 {
-		return fmt.Errorf("memgraph: complete slice %q: %w", slug, storage.ErrSliceWrongStatus)
+		return nil, s.sliceNotFoundOrWrongStatus(ctx, slug)
 	}
-	return nil
+	return recordToSlice(records[0])
+}
+
+// sliceNotFoundOrWrongStatus checks whether a slice exists to distinguish
+// ErrSliceNotFound from ErrSliceWrongStatus when a conditional update returns 0 rows.
+func (s *Store) sliceNotFoundOrWrongStatus(ctx context.Context, slug string) error {
+	_, err := s.GetSlice(ctx, slug)
+	if err == nil {
+		// Slice exists but status didn't match the WHERE condition.
+		return fmt.Errorf("memgraph: slice %q: %w", slug, storage.ErrSliceWrongStatus)
+	}
+	if errors.Is(err, storage.ErrSliceNotFound) {
+		return fmt.Errorf("memgraph: slice %q: %w", slug, storage.ErrSliceNotFound)
+	}
+	// Real backend error — propagate it, don't mask as not-found.
+	return fmt.Errorf("memgraph: slice %q status check: %w", slug, err)
 }
 
 // marshalStringSlice marshals a []string to JSON. This cannot fail because

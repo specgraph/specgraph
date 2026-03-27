@@ -119,12 +119,14 @@ func TestClaimSlice_BlankAssignee(t *testing.T) {
 	s := &Store{}
 	ctx := context.Background()
 
-	err := s.ClaimSlice(ctx, "any/slug", "")
+	sl, err := s.ClaimSlice(ctx, "any/slug", "")
 	require.Error(t, err)
+	require.Nil(t, sl)
 	assert.Contains(t, err.Error(), "must not be blank")
 
-	err = s.ClaimSlice(ctx, "any/slug", "   ")
+	sl, err = s.ClaimSlice(ctx, "any/slug", "   ")
 	require.Error(t, err)
+	require.Nil(t, sl)
 	assert.Contains(t, err.Error(), "must not be blank")
 }
 
