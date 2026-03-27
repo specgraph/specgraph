@@ -342,7 +342,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 		Output:         msg.Output,
 		SafetyFlags:    authoring.SafetyResultsToProto(safetyFlags),
 		NextPrompts:    authoring.PromptsToProto(authoring.StageApproved),
-		ChildSpecSlugs: childSlugs,
+		SliceSlugs: childSlugs,
 	}), nil
 }
 

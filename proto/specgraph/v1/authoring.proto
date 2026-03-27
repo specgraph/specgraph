@@ -184,8 +184,10 @@ message SpecifyOutput {
 message DecomposeOutput {
   // Strategy used to break the spec into independently deliverable slices.
   DecompositionStrategy strategy = 1;
-  // Ordered list of implementation slices produced by decomposition.
+  // Input: slice definitions from the decompose request.
   repeated DecompositionSlice slices = 2;
+  // Output: resolved slugs of created Slice graph nodes (populated after storage).
+  repeated string slice_slugs = 3;
 }
 
 // DecompositionSlice represents one independently deliverable unit of work within a spec.
@@ -317,8 +319,10 @@ message DecomposeResponse {
   repeated SafetyFlag safety_flags = 3;
   // Prompt templates suggested for the next authoring stage.
   repeated PromptTemplate next_prompts = 5;
-  // Canonical slugs of the child specs created (or already existing) during decomposition.
-  repeated string child_spec_slugs = 6;
+  reserved 6;
+  reserved "child_spec_slugs";
+  // Canonical slugs of the Slice nodes created during decomposition.
+  repeated string slice_slugs = 7;
 }
 
 // ApproveRequest finalises a spec and advances it to the approved stage.

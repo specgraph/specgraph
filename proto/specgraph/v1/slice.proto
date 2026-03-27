@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+syntax = "proto3";
+
+package specgraph.v1;
+
+option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1";
+
+import "google/protobuf/timestamp.proto";
+
+// Slice represents a decomposition unit — a discrete work item created by
+// the decompose stage. Slices are first-class graph vertices, not Specs.
+message Slice {
+  string id = 1;                           // ULID with slc- prefix
+  string slug = 2;                         // parent-slug/slice-id (full slug)
+  string parent_slug = 3;                  // parent spec slug
+  string slice_id = 4;                     // local ID within decomposition
+  string intent = 5;                       // what this slice accomplishes
+  repeated string verify = 6;              // conditions for completion
+  repeated string touches = 7;             // files/packages modified
+  repeated string depends_on = 8;          // full sibling slice slugs (resolved at creation)
+  SliceStatus status = 9;
+  string assigned_to = 10;                 // who claimed it (empty if unclaimed)
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+enum SliceStatus {
+  SLICE_STATUS_UNSPECIFIED = 0;
+  SLICE_STATUS_OPEN = 1;
+  SLICE_STATUS_CLAIMED = 2;
+  SLICE_STATUS_DONE = 3;
+}
+
+// SliceService manages decomposition slices.
+service SliceService {
+  rpc ListSlices(ListSlicesRequest) returns (ListSlicesResponse);
+  rpc GetSlice(GetSliceRequest) returns (GetSliceResponse);
+  rpc ClaimSlice(ClaimSliceRequest) returns (ClaimSliceResponse);
+  rpc CompleteSlice(CompleteSliceRequest) returns (CompleteSliceResponse);
+}
+
+message ListSlicesRequest {
+  string parent_slug = 1; // parent spec slug — required
+}
+
+message ListSlicesResponse {
+  repeated Slice slices = 1;
+}
+
+message GetSliceRequest {
+  string slug = 1; // full slice slug (parent/slice-id)
+}
+
+message GetSliceResponse {
+  Slice slice = 1;
+}
+
+message ClaimSliceRequest {
+  string slug = 1;     // full slice slug
+  string assignee = 2; // who is claiming it
+}
+
+message ClaimSliceResponse {
+  Slice slice = 1;
+}
+
+message CompleteSliceRequest {
+  string slug = 1; // full slice slug
+}
+
+message CompleteSliceResponse {
+  Slice slice = 1;
+}
