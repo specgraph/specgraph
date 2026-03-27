@@ -114,14 +114,17 @@ specs in the graph to detect overlapping scope or conflicting invariants.
 ### Decompose
 
 **Purpose:** Break large specs into independently deliverable slices. Each slice
-becomes a child spec connected to the parent by `composes` edges.
+becomes a [Slice node](slices.md) in the graph, connected to the parent via `HAS_SLICE` edges.
 
 **Key outputs:**
 
 | Field | Description |
 |-------|-------------|
 | `strategy` | How the spec is being sliced: `vertical_slice`, `layer_cake`, or `single_unit`. |
-| `slices` | Ordered list of child specs, each with its own intent, verify criteria, touches, and internal dependencies. |
+| `slices` | Ordered list of slices, each with its own intent, verify criteria, touches, and internal dependencies. |
+
+> See [Slices & Execution Units](slices.md) for the full slice lifecycle
+> (claim, complete, parent done-state).
 
 A **vertical slice** delivers end-to-end value in each slice (e.g., "rotation
 for password grant" then "rotation for authorization code grant"). A **layer
