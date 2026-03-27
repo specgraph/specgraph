@@ -263,12 +263,12 @@ func (s *Store) GetCriticalPath(ctx context.Context, slug string) ([]storage.Nod
 	return s.queryNodeRefs(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
 }
 
-// GetFullGraph returns all spec and decision nodes with all user-facing edges.
+// GetFullGraph returns all spec, decision, and slice nodes with all user-facing edges.
 func (s *Store) GetFullGraph(ctx context.Context) (*storage.FullGraph, error) {
-	// Query 1: All nodes (Spec + Decision)
+	// Query 1: All nodes (Spec + Decision + Slice)
 	nodeQuery := `
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(n)
-		WHERE n:Spec OR n:Decision
+		WHERE n:Spec OR n:Decision OR n:Slice
 		RETURN DISTINCT n.slug AS slug, labels(n)[0] AS label,
 		       COALESCE(n.stage, n.status, "") AS stage,
 		       COALESCE(n.intent, n.title, "") AS intent,
@@ -310,7 +310,7 @@ func (s *Store) GetFullGraph(ctx context.Context) (*storage.FullGraph, error) {
 	edgeQuery := `
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a)-[r]->(b)
 		WHERE type(r) <> "BELONGS_TO" AND type(r) <> "HAS_CHANGE" AND type(r) <> "HAS_FINDING" AND type(r) <> "AUTHORED_VIA" AND type(r) <> "CONTINUES" AND type(r) <> "EXPLAINS"
-		  AND (b:Spec OR b:Decision)
+		  AND (b:Spec OR b:Decision OR b:Slice)
 		RETURN a.slug AS from_slug, b.slug AS to_slug, type(r) AS rel_type
 	`
 	edgeRecords, err := s.executeQuery(ctx, edgeQuery, s.projectParam())
