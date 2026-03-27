@@ -54,7 +54,7 @@ type SliceBackend interface {
 	// GetSlice returns a single slice by its full slug.
 	GetSlice(ctx context.Context, slug string) (*Slice, error)
 	// ClaimSlice transitions a slice to claimed status and records the assignee.
-	ClaimSlice(ctx context.Context, slug, assignee string) error
+	ClaimSlice(ctx context.Context, slug, assignee string) (*Slice, error)
 	// CompleteSlice transitions a slice to done status.
-	CompleteSlice(ctx context.Context, slug string) error
+	CompleteSlice(ctx context.Context, slug string) (*Slice, error)
 }
