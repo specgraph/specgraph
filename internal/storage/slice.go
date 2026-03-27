@@ -38,8 +38,12 @@ const (
 	SliceStatusDone SliceStatus = "done"
 )
 
-// ErrSliceNotFound is returned when a slice lookup finds no matching node.
-var ErrSliceNotFound = errors.New("slice not found")
+var (
+	// ErrSliceNotFound is returned when a slice lookup finds no matching node.
+	ErrSliceNotFound = errors.New("slice not found")
+	// ErrSliceWrongStatus is returned when a status transition is invalid.
+	ErrSliceWrongStatus = errors.New("slice status precondition not met")
+)
 
 // SliceBackend provides CRUD operations for decomposition slices.
 type SliceBackend interface {
