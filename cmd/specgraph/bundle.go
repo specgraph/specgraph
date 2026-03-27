@@ -48,7 +48,7 @@ func runBundle(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("generate bundle: %w", err)
 	}
-	yaml := resp.Msg.GetBundle().GetBundleYaml()
+	yaml := resp.Msg.GetBundle().GetBundleContent()
 	if bundleOutput != "" {
 		if err := os.WriteFile(bundleOutput, []byte(yaml), 0o600); err != nil {
 			return fmt.Errorf("write bundle: %w", err)

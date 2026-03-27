@@ -36,7 +36,9 @@ message Bundle {
   repeated Decision decisions = 3;
   string bootstrap = 4;
   CallbackConfig callbacks = 5;
-  string bundle_yaml = 6;
+  reserved 6;
+  reserved "bundle_yaml";
+  string bundle_content = 7;
 }
 
 message PrimeResponse {

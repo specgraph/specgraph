@@ -13,7 +13,8 @@ import (
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
-// GenerateBundle assembles a bundle from the spec and its linked decisions.
+// GenerateBundle assembles a bundle from the spec and its linked decisions,
+// active claim, and upstream dependencies with drift state.
 func (s *Store) GenerateBundle(ctx context.Context, slug string) (*storage.Bundle, error) {
 	spec, err := s.GetSpec(ctx, slug)
 	if err != nil {
@@ -29,10 +30,22 @@ func (s *Store) GenerateBundle(ctx context.Context, slug string) (*storage.Bundl
 		return nil, fmt.Errorf("memgraph: generate bundle decisions: %w", err)
 	}
 
+	claim, err := s.fetchActiveClaim(ctx, slug)
+	if err != nil {
+		return nil, fmt.Errorf("memgraph: generate bundle claim: %w", err)
+	}
+
+	deps, err := s.fetchBundleDependencies(ctx, slug)
+	if err != nil {
+		return nil, fmt.Errorf("memgraph: generate bundle dependencies: %w", err)
+	}
+
 	return &storage.Bundle{
-		Version:   1,
-		Spec:      spec,
-		Decisions: decisions,
+		Version:      2,
+		Spec:         spec,
+		Decisions:    decisions,
+		Claim:        claim,
+		Dependencies: deps,
 	}, nil
 }
 
@@ -173,6 +186,65 @@ func (s *Store) ReleaseExpiredClaims(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("memgraph: release expired claims count: %w", err)
 	}
 	return int(released), nil
+}
+
+// fetchActiveClaim returns the active claim for a spec, or nil if unclaimed.
+func (s *Store) fetchActiveClaim(ctx context.Context, slug string) (*storage.Claim, error) {
+	nowStr := s.now()
+	query := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+		OPTIONAL MATCH (s)-[r:CLAIMED_BY]->(a)
+		WHERE r.lease_expires >= $now
+		RETURN r.agent AS agent, r.claimed_at AS claimed_at, r.lease_expires AS lease_expires
+	`
+	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{
+		"slug": slug,
+		"now":  nowStr,
+	}))
+	if err != nil {
+		return nil, err
+	}
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	agentVal, _ := records[0].Get("agent")
+	if agentVal == nil {
+		return nil, nil
+	}
+
+	return recordToClaim(slug, records[0])
+}
+
+// fetchBundleDependencies returns dependency info with drift state for the bundle.
+func (s *Store) fetchBundleDependencies(ctx context.Context, slug string) ([]storage.DependencyInfo, error) {
+	refs, err := s.GetDependenciesWithEdgeData(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	if len(refs) == 0 {
+		return nil, nil
+	}
+
+	deps := make([]storage.DependencyInfo, 0, len(refs))
+	for _, ref := range refs {
+		drifted := ref.ContentHashAtLink == "" || ref.ContentHashAtLink != ref.UpstreamContentHash
+		var note string
+		if drifted {
+			if ref.ContentHashAtLink == "" {
+				note = "dependency not yet baselined"
+			} else {
+				note = "content changed since baseline"
+			}
+		}
+		deps = append(deps, storage.DependencyInfo{
+			Slug:    ref.Slug,
+			Stage:   storage.SpecStage(ref.Stage),
+			Drifted: drifted,
+			Note:    note,
+		})
+	}
+	return deps, nil
 }
 
 // recordClaimedEvent atomically verifies claim ownership and creates an execution event.
