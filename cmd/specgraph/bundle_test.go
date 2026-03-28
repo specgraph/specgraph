@@ -45,7 +45,7 @@ func TestRunBundle_HappyPath_Stdout(t *testing.T) {
 	bundleOutput = ""
 	t.Cleanup(func() { bundleOutput = old })
 
-	err := runBundle(nil, []string{"my-spec"})
+	err := runBundle(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -59,7 +59,7 @@ func TestRunBundle_HappyPath_File(t *testing.T) {
 	bundleOutput = outPath
 	t.Cleanup(func() { bundleOutput = old })
 
-	err := runBundle(nil, []string{"my-spec"})
+	err := runBundle(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(outPath)
@@ -74,7 +74,7 @@ func TestRunBundle_RPCError(t *testing.T) {
 	bundleOutput = ""
 	t.Cleanup(func() { bundleOutput = old })
 
-	err := runBundle(nil, []string{"my-spec"})
+	err := runBundle(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "generate bundle")
 }
@@ -82,7 +82,7 @@ func TestRunBundle_RPCError(t *testing.T) {
 func TestRunBundle_ClientError(t *testing.T) {
 	setMissingConfig(t)
 
-	err := runBundle(nil, []string{"my-spec"})
+	err := runBundle(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 

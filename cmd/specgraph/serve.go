@@ -45,7 +45,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("load global config: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	if cfg.Server.Docker {
@@ -86,33 +86,34 @@ func runServe(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("auth config: %w", err)
 		}
 		interceptor := auth.NewAuthInterceptor(authStore)
+		maxBytes := connect.WithReadMaxBytes(4 << 20) // 4 MiB request body limit
 		opts := connect.WithInterceptors(interceptor)
 
-		mux := server.NewMux(store, opts)
-		server.RegisterHealthService(mux, opts)
-		server.RegisterDecisionService(mux, store, opts)
-		server.RegisterGraphService(mux, store, opts)
-		server.RegisterClaimService(mux, store, opts)
-		server.RegisterConstitutionService(mux, store, opts)
-		server.RegisterAuthoringService(mux, store, opts)
+		mux := server.NewMux(store, opts, maxBytes)
+		server.RegisterHealthService(mux, opts, maxBytes)
+		server.RegisterDecisionService(mux, store, opts, maxBytes)
+		server.RegisterGraphService(mux, store, opts, maxBytes)
+		server.RegisterClaimService(mux, store, opts, maxBytes)
+		server.RegisterConstitutionService(mux, store, opts, maxBytes)
+		server.RegisterAuthoringService(mux, store, opts, maxBytes)
 		// Template override dir defaults to .specgraph/templates in the working directory.
 		// Users can place <pass_type>.md files there to customize analytical pass prompts.
-		server.RegisterAnalyticalPassService(mux, store, ".specgraph/templates", opts)
-		server.RegisterExecutionService(mux, store, opts)
-		server.RegisterSliceService(mux, store, opts)
+		server.RegisterAnalyticalPassService(mux, store, ".specgraph/templates", opts, maxBytes)
+		server.RegisterExecutionService(mux, store, opts, maxBytes)
+		server.RegisterSliceService(mux, store, opts, maxBytes)
 		driftEngine := drift.NewEngine(store, nil)
 		lintEngine := linter.NewEngine(store, nil)
-		server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts)
+		server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts, maxBytes)
 
 		// TODO(slice-7): Project root for inject should come from request context,
 		// not daemon CWD. Pass empty string; inject handler needs rework.
-		syncHandler := server.RegisterSyncService(mux, store, "", opts)
+		syncHandler := server.RegisterSyncService(mux, store, "", opts, maxBytes)
 		runner := syncpkg.NewExecRunner()
 		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
 		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
 
 		// Register lightweight HTTP API endpoints (before static handler catch-all)
-		server.RegisterAPIHandlers(mux, store)
+		server.RegisterAPIHandlers(mux, store, auth.RequireAuth(authStore))
 
 		// Serve embedded UI static files
 		webFS, err := fs.Sub(web.Build, "build")
@@ -122,7 +123,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		// Register static handler as catch-all (after ConnectRPC paths)
 		mux.Handle("/", server.StaticHandler(webFS))
 
-		handler := server.ProjectMiddleware(mux)
+		handler := server.SecurityHeaders(server.ProjectMiddleware(mux))
 
 		// Optional CORS for dev mode (Vite on :5173 → Go on :8080)
 		corsOrigin, err := cmd.Flags().GetString("cors-origin")
@@ -133,12 +134,17 @@ func runServe(cmd *cobra.Command, _ []string) error {
 			handler = server.CORSMiddleware(corsOrigin, handler)
 		}
 		addr := cfg.Server.Listen
-		srv := &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
+		srv := &http.Server{
+			Addr:              addr,
+			Handler:           handler,
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      60 * time.Second,
+			IdleTimeout:       120 * time.Second,
+		}
 
 		go func() {
-			sigCh := make(chan os.Signal, 1)
-			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-			<-sigCh
+			<-ctx.Done()
 			fmt.Println("\nShutting down...")
 			stopSweeper()
 			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)

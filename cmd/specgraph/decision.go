@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -40,12 +39,12 @@ var (
 	decisionRationale string
 )
 
-func runDecisionCreate(_ *cobra.Command, args []string) error {
+func runDecisionCreate(cmd *cobra.Command, args []string) error {
 	client, err := decisionClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.CreateDecision(context.Background(), connect.NewRequest(&specv1.CreateDecisionRequest{
+	resp, err := client.CreateDecision(cmd.Context(), connect.NewRequest(&specv1.CreateDecisionRequest{
 		Slug:      args[0],
 		Title:     decisionTitle,
 		Decision:  decisionText,
@@ -87,7 +86,7 @@ func runDecisionList(cmd *cobra.Command, _ []string) error {
 		statusFilter = specv1.DecisionStatus(val)
 	}
 
-	resp, err := client.ListDecisions(context.Background(), connect.NewRequest(&specv1.ListDecisionsRequest{
+	resp, err := client.ListDecisions(cmd.Context(), connect.NewRequest(&specv1.ListDecisionsRequest{
 		Status: statusFilter,
 	}))
 	if err != nil {
@@ -131,7 +130,7 @@ func runDecisionShow(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.GetDecision(context.Background(), connect.NewRequest(&specv1.GetDecisionRequest{
+	resp, err := client.GetDecision(cmd.Context(), connect.NewRequest(&specv1.GetDecisionRequest{
 		Slug: args[0],
 	}))
 	if err != nil {

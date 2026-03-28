@@ -104,7 +104,7 @@ func TestRunEdgeAdd_HappyPath(t *testing.T) {
 	edgeAddType = "depends_on"
 	t.Cleanup(func() { edgeAddType = old })
 
-	err := runEdgeAdd(nil, []string{"spec-a", "spec-b"})
+	err := runEdgeAdd(newCmdWithCtx(), []string{"spec-a", "spec-b"})
 	require.NoError(t, err)
 }
 
@@ -115,7 +115,7 @@ func TestRunEdgeRemove_HappyPath(t *testing.T) {
 	edgeRemoveType = "blocks"
 	t.Cleanup(func() { edgeRemoveType = old })
 
-	err := runEdgeRemove(nil, []string{"spec-a", "spec-b"})
+	err := runEdgeRemove(newCmdWithCtx(), []string{"spec-a", "spec-b"})
 	require.NoError(t, err)
 }
 
@@ -130,7 +130,7 @@ func TestRunEdgeList_HappyPath(t *testing.T) {
 	edgeListJSON = false
 	t.Cleanup(func() { edgeListJSON = oldJSON })
 
-	err := runEdgeList(edgeListCmd, []string{"spec-a"})
+	err := runEdgeList(newCmdWithCtx(), []string{"spec-a"})
 	require.NoError(t, err)
 }
 
@@ -145,7 +145,7 @@ func TestRunEdgeList_HappyPath_JSON(t *testing.T) {
 	edgeListJSON = true
 	t.Cleanup(func() { edgeListJSON = oldJSON })
 
-	err := runEdgeList(edgeListCmd, []string{"spec-a"})
+	err := runEdgeList(newCmdWithCtx(), []string{"spec-a"})
 	require.NoError(t, err)
 }
 
@@ -160,7 +160,7 @@ func TestRunEdgeList_WithTypeFilter(t *testing.T) {
 	edgeListJSON = false
 	t.Cleanup(func() { edgeListJSON = oldJSON })
 
-	err := runEdgeList(edgeListCmd, []string{"spec-a"})
+	err := runEdgeList(newCmdWithCtx(), []string{"spec-a"})
 	require.NoError(t, err)
 }
 
@@ -173,7 +173,7 @@ func TestRunEdgeAdd_UnknownType_WithServer(t *testing.T) {
 	edgeAddType = "invalid"
 	t.Cleanup(func() { edgeAddType = old })
 
-	err := runEdgeAdd(nil, []string{"spec-a", "spec-b"})
+	err := runEdgeAdd(newCmdWithCtx(), []string{"spec-a", "spec-b"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown edge type")
 }
@@ -185,7 +185,7 @@ func TestRunEdgeRemove_UnknownType_WithServer(t *testing.T) {
 	edgeRemoveType = "invalid"
 	t.Cleanup(func() { edgeRemoveType = old })
 
-	err := runEdgeRemove(nil, []string{"spec-a", "spec-b"})
+	err := runEdgeRemove(newCmdWithCtx(), []string{"spec-a", "spec-b"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown edge type")
 }
@@ -197,7 +197,7 @@ func TestRunEdgeList_UnknownType_WithServer(t *testing.T) {
 	edgeListType = "invalid"
 	t.Cleanup(func() { edgeListType = old })
 
-	err := runEdgeList(edgeListCmd, []string{"spec-a"})
+	err := runEdgeList(newCmdWithCtx(), []string{"spec-a"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown edge type")
 }
@@ -211,7 +211,7 @@ func TestRunEdgeAdd_RPCError(t *testing.T) {
 	edgeAddType = "depends_on"
 	t.Cleanup(func() { edgeAddType = old })
 
-	err := runEdgeAdd(nil, []string{"spec-a", "spec-b"})
+	err := runEdgeAdd(newCmdWithCtx(), []string{"spec-a", "spec-b"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "add edge")
 }
@@ -223,7 +223,7 @@ func TestRunEdgeRemove_RPCError(t *testing.T) {
 	edgeRemoveType = "blocks"
 	t.Cleanup(func() { edgeRemoveType = old })
 
-	err := runEdgeRemove(nil, []string{"spec-a", "spec-b"})
+	err := runEdgeRemove(newCmdWithCtx(), []string{"spec-a", "spec-b"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "remove edge")
 }
@@ -235,7 +235,7 @@ func TestRunEdgeList_RPCError(t *testing.T) {
 	edgeListType = ""
 	t.Cleanup(func() { edgeListType = old })
 
-	err := runEdgeList(edgeListCmd, []string{"spec-a"})
+	err := runEdgeList(newCmdWithCtx(), []string{"spec-a"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "list edges")
 }

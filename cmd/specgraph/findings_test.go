@@ -11,7 +11,6 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -92,7 +91,7 @@ func TestRunFindingsList_HappyPath(t *testing.T) {
 		findingsListJSON = oldJSON
 	})
 
-	err := runFindingsList(&cobra.Command{}, []string{"my-spec"})
+	err := runFindingsList(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -108,7 +107,7 @@ func TestRunFindingsList_HappyPath_JSON(t *testing.T) {
 		findingsListJSON = oldJSON
 	})
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	cmd.SetOut(io.Discard)
 	err := runFindingsList(cmd, []string{"my-spec"})
 	require.NoError(t, err)
@@ -126,7 +125,7 @@ func TestRunFindingsList_WithPassTypeFilter(t *testing.T) {
 		findingsListJSON = oldJSON
 	})
 
-	err := runFindingsList(&cobra.Command{}, []string{"my-spec"})
+	err := runFindingsList(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -142,7 +141,7 @@ func TestRunFindingsList_EmptyResults(t *testing.T) {
 		findingsListJSON = oldJSON
 	})
 
-	err := runFindingsList(&cobra.Command{}, []string{"my-spec"})
+	err := runFindingsList(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -160,7 +159,7 @@ func TestRunFindingsList_InvalidPassType(t *testing.T) {
 		findingsListJSON = oldJSON
 	})
 
-	err := runFindingsList(&cobra.Command{}, []string{"my-spec"})
+	err := runFindingsList(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown pass type")
 	assert.Contains(t, err.Error(), "bogus")
@@ -178,7 +177,7 @@ func TestRunFindingsList_RPCError(t *testing.T) {
 		findingsListJSON = oldJSON
 	})
 
-	err := runFindingsList(&cobra.Command{}, []string{"my-spec"})
+	err := runFindingsList(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "list findings")
 }
@@ -195,7 +194,7 @@ func TestRunFindingsList_ClientError(t *testing.T) {
 		findingsListJSON = oldJSON
 	})
 
-	err := runFindingsList(nil, []string{"my-spec"})
+	err := runFindingsList(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 

@@ -25,8 +25,8 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 }
 
-func runInit(_ *cobra.Command, args []string) error {
-	if err := runUp(nil, nil); err != nil {
+func runInit(cmd *cobra.Command, args []string) error {
+	if err := runUp(cmd, nil); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "warning: server not started: %v\n", err)
 	}
 

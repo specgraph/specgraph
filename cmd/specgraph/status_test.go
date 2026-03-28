@@ -45,7 +45,7 @@ func TestRunStatus_HappyPath(t *testing.T) {
 	statusJSON = false
 	t.Cleanup(func() { statusJSON = old })
 
-	err := runStatus(nil, nil)
+	err := runStatus(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -56,14 +56,14 @@ func TestRunStatus_HappyPath_JSON(t *testing.T) {
 	statusJSON = true
 	t.Cleanup(func() { statusJSON = old })
 
-	err := runStatus(nil, nil)
+	err := runStatus(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
 func TestRunStatus_ClientError(t *testing.T) {
 	setMissingConfig(t)
 
-	err := runStatus(nil, nil)
+	err := runStatus(newCmdWithCtx(), nil)
 	require.Error(t, err)
 }
 
@@ -81,7 +81,7 @@ func TestRunStatus_NotRunning(t *testing.T) {
 	t.Cleanup(func() { statusJSON = oldJSON })
 
 	// Should NOT return an error — prints "not running" instead.
-	err := runStatus(nil, nil)
+	err := runStatus(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -92,7 +92,7 @@ func TestRunStatus_RPCError(t *testing.T) {
 	statusJSON = false
 	t.Cleanup(func() { statusJSON = old })
 
-	err := runStatus(nil, nil)
+	err := runStatus(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "health check")
 }

@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -26,7 +25,7 @@ func init() {
 	rootCmd.AddCommand(shapeCmd)
 }
 
-func runShape(_ *cobra.Command, args []string) error {
+func runShape(cmd *cobra.Command, args []string) error {
 	client, err := authoringClient()
 	if err != nil {
 		return err
@@ -37,7 +36,7 @@ func runShape(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("shape: %w", loadErr)
 		}
 	}
-	resp, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+	resp, err := client.Shape(cmd.Context(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug:   args[0],
 		Output: output,
 	}))

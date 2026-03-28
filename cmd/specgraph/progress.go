@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -27,12 +26,12 @@ func init() {
 	rootCmd.AddCommand(progressCmd)
 }
 
-func runProgress(_ *cobra.Command, args []string) error {
+func runProgress(cmd *cobra.Command, args []string) error {
 	client, err := executionClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.GetExecutionEvents(context.Background(), connect.NewRequest(&specv1.GetExecutionEventsRequest{
+	resp, err := client.GetExecutionEvents(cmd.Context(), connect.NewRequest(&specv1.GetExecutionEventsRequest{
 		Slug:  args[0],
 		Limit: progressLimit,
 	}))

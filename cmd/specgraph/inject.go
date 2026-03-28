@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -32,7 +31,7 @@ var (
 	injectOutput string
 )
 
-func runInject(_ *cobra.Command, args []string) error {
+func runInject(cmd *cobra.Command, args []string) error {
 	var tool specv1.InjectTool
 	switch strings.ToLower(injectTool) {
 	case "claude-code", "claude":
@@ -59,7 +58,7 @@ func runInject(_ *cobra.Command, args []string) error {
 		output = wd
 	}
 
-	resp, err := client.Inject(context.Background(), connect.NewRequest(&specv1.InjectRequest{
+	resp, err := client.Inject(cmd.Context(), connect.NewRequest(&specv1.InjectRequest{
 		SpecSlug:  args[0],
 		Tool:      tool,
 		OutputDir: output,

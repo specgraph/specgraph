@@ -68,7 +68,7 @@ func TestRunProgress_HappyPath(t *testing.T) {
 	progressLimit = 20
 	t.Cleanup(func() { progressLimit = old })
 
-	err := runProgress(nil, []string{"my-spec"})
+	err := runProgress(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -79,7 +79,7 @@ func TestRunProgress_EmptyEvents(t *testing.T) {
 	progressLimit = 20
 	t.Cleanup(func() { progressLimit = old })
 
-	err := runProgress(nil, []string{"my-spec"})
+	err := runProgress(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -90,7 +90,7 @@ func TestRunProgress_RPCError(t *testing.T) {
 	progressLimit = 20
 	t.Cleanup(func() { progressLimit = old })
 
-	err := runProgress(nil, []string{"my-spec"})
+	err := runProgress(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "get execution events")
 }
@@ -98,7 +98,7 @@ func TestRunProgress_RPCError(t *testing.T) {
 func TestRunProgress_ClientError(t *testing.T) {
 	setMissingConfig(t)
 
-	err := runProgress(nil, []string{"my-spec"})
+	err := runProgress(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 

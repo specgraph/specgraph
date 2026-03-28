@@ -11,7 +11,6 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -118,14 +117,14 @@ func (fakeGetSpecErrHandler) GetSpec(_ context.Context, _ *connect.Request[specv
 
 func TestRunCreate_HappyPath(t *testing.T) {
 	startFakeSpecServer(t, fakeCreateSpecHandler{})
-	err := runCreate(nil, []string{"my-spec"})
+	err := runCreate(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
 func TestRunUpdate_HappyPath(t *testing.T) {
 	startFakeSpecServer(t, fakeUpdateSpecHandler{})
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	cmd.Flags().String("intent", "", "")
 	cmd.Flags().String("stage", "", "")
 	cmd.Flags().String("priority", "", "")
@@ -148,7 +147,7 @@ func TestRunList_HappyPath(t *testing.T) {
 	listJSON = false
 	t.Cleanup(func() { listJSON = old })
 
-	err := runList(&cobra.Command{}, nil)
+	err := runList(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -159,7 +158,7 @@ func TestRunList_HappyPath_JSON(t *testing.T) {
 	listJSON = true
 	t.Cleanup(func() { listJSON = old })
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	err := runList(cmd, nil)
 	require.NoError(t, err)
 }
@@ -171,7 +170,7 @@ func TestRunList_EmptyResults(t *testing.T) {
 	listJSON = false
 	t.Cleanup(func() { listJSON = old })
 
-	err := runList(&cobra.Command{}, nil)
+	err := runList(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -182,7 +181,7 @@ func TestRunShow_HappyPath(t *testing.T) {
 	showJSON = false
 	t.Cleanup(func() { showJSON = old })
 
-	err := runShow(&cobra.Command{}, []string{"my-spec"})
+	err := runShow(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -193,7 +192,7 @@ func TestRunShow_HappyPath_JSON(t *testing.T) {
 	showJSON = true
 	t.Cleanup(func() { showJSON = old })
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	err := runShow(cmd, []string{"my-spec"})
 	require.NoError(t, err)
 }
@@ -202,7 +201,7 @@ func TestRunShow_HappyPath_JSON(t *testing.T) {
 
 func TestRunCreate_RPCError(t *testing.T) {
 	startFakeSpecServer(t, fakeCreateSpecErrHandler{})
-	err := runCreate(nil, []string{"my-spec"})
+	err := runCreate(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "create spec")
 }
@@ -210,7 +209,7 @@ func TestRunCreate_RPCError(t *testing.T) {
 func TestRunUpdate_RPCError(t *testing.T) {
 	startFakeSpecServer(t, fakeUpdateSpecErrHandler{})
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	cmd.Flags().String("intent", "", "")
 	cmd.Flags().String("stage", "", "")
 	cmd.Flags().String("priority", "", "")
@@ -229,7 +228,7 @@ func TestRunShow_RPCError(t *testing.T) {
 	showJSON = false
 	t.Cleanup(func() { showJSON = old })
 
-	err := runShow(&cobra.Command{}, []string{"my-spec"})
+	err := runShow(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "get spec")
 }
@@ -241,7 +240,7 @@ func TestRunList_RPCError(t *testing.T) {
 	listJSON = false
 	t.Cleanup(func() { listJSON = old })
 
-	err := runList(&cobra.Command{}, nil)
+	err := runList(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "list specs")
 }
