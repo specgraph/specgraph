@@ -56,3 +56,8 @@ protect_breaking_commits = true
 filter_commits = false
 tag_pattern = "v[0-9].*"
 sort_commits = "newest"
+
+[bump]
+# While pre-1.0, breaking changes bump minor instead of major.
+# Remove this section when ready to release v1.0.0.
+breaking_always_bump_major = false
