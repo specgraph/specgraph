@@ -30,7 +30,7 @@ jobs:
       - name: Check if version bumped
         id: check
         run: |
-          TAG="${{ steps.cliff.outputs.tag }}"
+          TAG="${{ steps.cliff.outputs.version }}"
           if [ -z "$TAG" ]; then
             echo "No releasable commits since last tag. Exiting."
             echo "new_tag=" >> "$GITHUB_OUTPUT"
