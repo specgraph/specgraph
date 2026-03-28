@@ -66,14 +66,14 @@ jobs:
       - name: Create GitHub release
         if: steps.check.outputs.new_tag != ''
         run: |
-          git cliff --latest --strip header > /tmp/release-notes.md
           gh release create "$TAG" \
             --title "$TAG" \
-            --notes-file /tmp/release-notes.md \
+            --notes "$NOTES" \
             --verify-tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.check.outputs.new_tag }}
+          NOTES: ${{ steps.cliff.outputs.content }}
   goreleaser:
     permissions:
       contents: write
