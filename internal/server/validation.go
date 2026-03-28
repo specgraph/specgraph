@@ -56,6 +56,14 @@ func validateStringSlice(name string, items []string, maxCount, maxItemLen int) 
 	return nil
 }
 
+// validateOptionalField checks that a non-nil optional field does not exceed maxFieldLen.
+func validateOptionalField(name string, value *string) error {
+	if value != nil && len(*value) > maxFieldLen {
+		return fmt.Errorf("%s exceeds maximum length of %d characters", name, maxFieldLen)
+	}
+	return nil
+}
+
 func validateSlug(slug string) error {
 	if slug == "" {
 		return errors.New("slug is required")

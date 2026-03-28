@@ -102,6 +102,50 @@ storage:
 	assert.Equal(t, ".specgraph/docker-compose.yaml", cfg.Storage.Docker.ComposeFile)
 }
 
+func TestLoadConfig_MemgraphAuthAndTLS(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "specgraph.yaml")
+
+	yaml := `
+storage:
+  backend: memgraph
+  memgraph:
+    bolt_uri: bolt://db:7687
+    username: admin
+    password: secret
+    use_tls: true
+`
+	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600))
+
+	cfg, err := Load(path)
+	require.NoError(t, err)
+
+	assert.Equal(t, "bolt://db:7687", cfg.Storage.Memgraph.BoltURI)
+	assert.Equal(t, "admin", cfg.Storage.Memgraph.Username)
+	assert.Equal(t, "secret", cfg.Storage.Memgraph.Password)
+	assert.True(t, cfg.Storage.Memgraph.UseTLS)
+}
+
+func TestLoadConfig_MemgraphDefaultsNoAuth(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "specgraph.yaml")
+
+	yaml := `
+storage:
+  backend: memgraph
+  memgraph:
+    bolt_uri: bolt://localhost:7687
+`
+	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600))
+
+	cfg, err := Load(path)
+	require.NoError(t, err)
+
+	assert.Equal(t, "", cfg.Storage.Memgraph.Username)
+	assert.Equal(t, "", cfg.Storage.Memgraph.Password)
+	assert.False(t, cfg.Storage.Memgraph.UseTLS)
+}
+
 // --- Constitution YAML tests ---
 
 func TestConstitutionYAML_RoundTrip(t *testing.T) {

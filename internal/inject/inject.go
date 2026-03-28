@@ -5,7 +5,9 @@
 package inject
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -199,11 +201,11 @@ func writeAgentsMD(content, slug, outputDir string) ([]string, error) {
 	section := startMarker + "\n" + content + "\n" + endMarker
 
 	existing, readErr := os.ReadFile(p)
-	if readErr != nil && !os.IsNotExist(readErr) {
+	if readErr != nil && !errors.Is(readErr, fs.ErrNotExist) {
 		return nil, fmt.Errorf("read existing AGENTS.md: %w", readErr)
 	}
 
-	if os.IsNotExist(readErr) || len(existing) == 0 {
+	if errors.Is(readErr, fs.ErrNotExist) || len(existing) == 0 {
 		if writeErr := atomicWriteFile(p, []byte(section+"\n")); writeErr != nil {
 			return nil, fmt.Errorf("write AGENTS.md: %w", writeErr)
 		}

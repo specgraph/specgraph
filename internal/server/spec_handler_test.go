@@ -302,3 +302,80 @@ func TestSpecHandler_ListSpecs(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, listResp.Msg.Specs, 2)
 }
+
+func TestSpecHandler_CreateSpec_FieldLengthValidation(t *testing.T) {
+	mb := newMockBackend()
+	srv := httptest.NewServer(wrapTestProject(server.NewMux(&testScoper{backend: mb})))
+	t.Cleanup(srv.Close)
+
+	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)
+	ctx := context.Background()
+	oversized := strings.Repeat("x", 10001)
+
+	// Empty intent is rejected.
+	_, err := client.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+		Slug:   "empty-intent",
+		Intent: "",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
+	// Oversized intent is rejected.
+	_, err = client.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+		Slug:   "big-intent",
+		Intent: oversized,
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
+	// Oversized priority is rejected.
+	_, err = client.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+		Slug:     "big-priority",
+		Intent:   "valid intent",
+		Priority: oversized,
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
+	// Oversized complexity is rejected.
+	_, err = client.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+		Slug:       "big-complexity",
+		Intent:     "valid intent",
+		Complexity: oversized,
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestSpecHandler_UpdateSpec_FieldLengthValidation(t *testing.T) {
+	mb := newMockBackend()
+	srv := httptest.NewServer(wrapTestProject(server.NewMux(&testScoper{backend: mb})))
+	t.Cleanup(srv.Close)
+
+	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)
+	ctx := context.Background()
+	oversized := strings.Repeat("x", 10001)
+
+	// Create a spec first.
+	_, err := client.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+		Slug:   "update-validate",
+		Intent: "Original intent",
+	}))
+	require.NoError(t, err)
+
+	// Oversized intent in update is rejected.
+	_, err = client.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
+		Slug:   "update-validate",
+		Intent: &oversized,
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
+	// Oversized priority in update is rejected.
+	_, err = client.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
+		Slug:     "update-validate",
+		Priority: &oversized,
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}

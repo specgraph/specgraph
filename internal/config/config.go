@@ -116,7 +116,10 @@ type ConstitutionLangs struct {
 
 // MemgraphConfig holds Memgraph-specific connection settings.
 type MemgraphConfig struct {
-	BoltURI string `yaml:"bolt_uri"`
+	BoltURI  string `yaml:"bolt_uri"`
+	Username string `yaml:"username,omitempty"`
+	Password string `yaml:"password,omitempty"`
+	UseTLS   bool   `yaml:"use_tls,omitempty"`
 }
 
 // PostgresConfig holds Postgres-specific connection settings.

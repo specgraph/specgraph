@@ -545,10 +545,14 @@ func (h *AuthoringHandler) RecordConversation(
 		return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("storage backend does not support conversation logs"))
 	}
 
+	exchanges, exErr := conversationExchangesFromProto(req.Msg.Exchanges)
+	if exErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, exErr)
+	}
 	entry := storage.ConversationLogEntry{
 		Stage:         storage.SpecStage(stage),
 		IsAmend:       req.Msg.IsAmend,
-		Exchanges:     conversationExchangesFromProto(req.Msg.Exchanges),
+		Exchanges:     exchanges,
 		ExchangeCount: int32(len(req.Msg.Exchanges)), //nolint:gosec // bounded by maxElements (100) validation above
 	}
 
@@ -793,24 +797,16 @@ var protoToStage = map[specv1.AuthoringStage]storage.SpecStage{
 
 // runInTxOrSequential runs the given operations within a transaction if the
 // backend implements TransactionalBackend, otherwise runs them sequentially.
-func runInTxOrSequential(ctx context.Context, backend any, ops ...func(context.Context) error) error {
-	if txb, ok := backend.(storage.TransactionalBackend); ok {
-		if err := txb.RunInTransaction(ctx, func(txCtx context.Context) error {
-			for _, op := range ops {
-				if err := op(txCtx); err != nil {
-					return err
-				}
+func runInTxOrSequential(ctx context.Context, backend storage.TransactionalBackend, ops ...func(context.Context) error) error {
+	if err := backend.RunInTransaction(ctx, func(txCtx context.Context) error {
+		for _, op := range ops {
+			if err := op(txCtx); err != nil {
+				return err
 			}
-			return nil
-		}); err != nil {
-			return fmt.Errorf("transaction: %w", err)
 		}
 		return nil
-	}
-	for _, op := range ops {
-		if err := op(ctx); err != nil {
-			return err
-		}
+	}); err != nil {
+		return fmt.Errorf("transaction: %w", err)
 	}
 	return nil
 }
@@ -822,6 +818,9 @@ func (h *AuthoringHandler) stageError(err error) error {
 	var connErr *connect.Error
 	if errors.As(err, &connErr) {
 		return connErr
+	}
+	if errors.Is(err, storage.ErrConcurrentModification) {
+		return connect.NewError(connect.CodeAborted, errors.New("concurrent modification"))
 	}
 	if errors.Is(err, storage.ErrSpecAlreadyApproved) {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec is already approved"))

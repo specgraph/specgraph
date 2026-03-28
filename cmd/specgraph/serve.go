@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -66,7 +68,14 @@ func runServe(cmd *cobra.Command, _ []string) error {
 
 	switch cfg.Server.Backend {
 	case "memgraph":
-		store, err := memgraph.New(ctx, cfg.Server.Memgraph.BoltURI, memgraph.WithProject("_server"))
+		mgOpts := []memgraph.Option{memgraph.WithProject("_server")}
+		if cfg.Server.Memgraph.Username != "" && cfg.Server.Memgraph.Password != "" {
+			mgOpts = append(mgOpts, memgraph.WithAuth(cfg.Server.Memgraph.Username, cfg.Server.Memgraph.Password))
+		}
+		if cfg.Server.Memgraph.UseTLS {
+			mgOpts = append(mgOpts, memgraph.WithTLS(true))
+		}
+		store, err := memgraph.New(ctx, cfg.Server.Memgraph.BoltURI, mgOpts...)
 		if err != nil {
 			return fmt.Errorf("connect to memgraph: %w", err)
 		}
@@ -84,6 +93,11 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		authStore, err := auth.NewConfigStore(cfg.Auth)
 		if err != nil {
 			return fmt.Errorf("auth config: %w", err)
+		}
+		if !authStore.HasKeys() && !isLoopbackAddr(cfg.Server.Listen) {
+			slog.Warn("server listening without authentication on non-loopback interface",
+				"addr", cfg.Server.Listen,
+				"risk", "all requests will have full admin access")
 		}
 		interceptor := auth.NewAuthInterceptor(authStore)
 		maxBytes := connect.WithReadMaxBytes(4 << 20) // 4 MiB request body limit
@@ -158,7 +172,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		// TODO(slice-7): Sweeper only covers the _server project. A cross-project
 		// sweeper needs to iterate all Project nodes and release expired claims
 		// in each. Track this as a follow-up issue.
-		server.StartSweeper(sweeperCtx, store, 60*time.Second)
+		server.StartSweeper(sweeperCtx, store, 60*time.Second, slog.Default())
 		fmt.Printf("SpecGraph server running at http://%s\n", addr)
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			return err
@@ -168,4 +182,18 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+// isLoopbackAddr reports whether the listen address refers to a loopback interface.
+func isLoopbackAddr(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = addr
+	}
+	switch host {
+	case "localhost", "127.0.0.1", "::1":
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }

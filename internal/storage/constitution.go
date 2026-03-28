@@ -5,11 +5,7 @@ package storage
 
 import (
 	"context"
-	"errors"
 )
-
-// ErrConstitutionNotFound is returned when no constitution exists.
-var ErrConstitutionNotFound = errors.New("constitution not found")
 
 // ConstitutionBackend defines storage operations for the project constitution.
 type ConstitutionBackend interface {

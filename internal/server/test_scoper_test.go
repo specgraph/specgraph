@@ -332,5 +332,9 @@ func (stubBackend) WipeProjectData(context.Context) error {
 	return errNotImplemented
 }
 
+func (stubBackend) RunInTransaction(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
+}
+
 // Verify stubBackend satisfies ScopedBackend at compile time.
 var _ storage.ScopedBackend = (*stubBackend)(nil)
