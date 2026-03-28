@@ -13,7 +13,7 @@ jobs:
       contents: write
     runs-on: namespace-profile-linux-amd64-4x8
     outputs:
-      new_tag: ${{ steps.check.outputs.new_tag }}
+      new_tag: ${{ steps.push.outputs.new_tag || steps.check.outputs.new_tag }}
       version: ${{ steps.check.outputs.version }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -47,6 +47,7 @@ jobs:
           echo "new_tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Commit changelog and push
+        id: push
         if: steps.check.outputs.new_tag != ''
         run: |
           # Override the remote URL to use the app token for authentication.
@@ -56,22 +57,36 @@ jobs:
           git config user.name "specgraph-release-bot[bot]"
           git config user.email "specgraph-release-bot[bot]@users.noreply.github.com"
           git add CHANGELOG.md
-          # Commit only if changelog actually changed — makes re-runs safe
-          # after partial failures (e.g., tag push blocked).
+
+          CHANGED=false
+
+          # Commit only if changelog actually changed.
           if ! git diff --cached --quiet; then
             git commit -m "chore(release): ${TAG}"
             git push
+            CHANGED=true
           fi
-          # Create tag if it doesn't already exist (idempotent).
+
+          # Create tag if it doesn't already exist.
           if ! git rev-parse "${TAG}" >/dev/null 2>&1; then
             git tag "${TAG}"
             git push origin "${TAG}"
+            CHANGED=true
+          fi
+
+          # If nothing changed, this is a no-op re-run. Clear the tag so
+          # downstream steps (release creation, goreleaser) are skipped.
+          if [ "$CHANGED" = "false" ]; then
+            echo "Tag ${TAG} and changelog already exist. Nothing to do."
+            echo "new_tag=" >> "$GITHUB_OUTPUT"
+          else
+            echo "new_tag=${TAG}" >> "$GITHUB_OUTPUT"
           fi
         env:
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
           TAG: ${{ steps.check.outputs.new_tag }}
       - name: Create GitHub release
-        if: steps.check.outputs.new_tag != ''
+        if: steps.push.outputs.new_tag != ''
         run: |
           # Create release if it doesn't already exist (idempotent).
           if ! gh release view "$TAG" >/dev/null 2>&1; then
@@ -82,7 +97,7 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.check.outputs.new_tag }}
+          TAG: ${{ steps.push.outputs.new_tag }}
           NOTES: ${{ steps.cliff.outputs.content }}
   goreleaser:
     permissions:
@@ -134,7 +149,7 @@ jobs:
       - name: Scan Docker image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
-          image-ref: "ghcr.io/specgraph/specgraph:${{ needs.release.outputs.version }}-amd64"
+          image-ref: "ghcr.io/specgraph/specgraph:${{ needs.release.outputs.version }}"
           format: table
           exit-code: "1"
           ignore-unfixed: true
