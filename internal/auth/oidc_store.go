@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 
@@ -134,11 +135,7 @@ func matchClaimValue(raw json.RawMessage, target string) bool {
 	// Try string array.
 	var arr []string
 	if err := json.Unmarshal(raw, &arr); err == nil {
-		for _, v := range arr {
-			if v == target {
-				return true
-			}
-		}
+		return slices.Contains(arr, target)
 	}
 
 	return false
