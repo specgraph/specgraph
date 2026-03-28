@@ -6,7 +6,6 @@ package authoring_test
 import (
 	"testing"
 
-	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/internal/authoring"
 	"github.com/stretchr/testify/require"
 )
@@ -63,34 +62,6 @@ func TestSafetyNet_InvariantsFlags(t *testing.T) {
 	flags := authoring.RunSafetyNet(input)
 	require.NotEmpty(t, flags)
 	require.Equal(t, authoring.SafetyCategoryDataLoss, flags[0].Category)
-}
-
-func TestSafetyResultsToProto(t *testing.T) {
-	t.Run("converts domain flags to proto", func(t *testing.T) {
-		flags := []authoring.SafetyFlagResult{
-			{
-				Category:    authoring.SafetyCategorySecurity,
-				Severity:    authoring.SeverityCritical,
-				Description: "test security flag",
-			},
-			{
-				Category:    authoring.SafetyCategoryDataLoss,
-				Severity:    authoring.SeverityCritical,
-				Description: "test data loss flag",
-			},
-		}
-		protos := authoring.SafetyResultsToProto(flags)
-		require.Len(t, protos, 2)
-		require.Equal(t, specv1.SafetyCategory_SAFETY_CATEGORY_SECURITY, protos[0].Category)
-		require.Equal(t, specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL, protos[0].Severity)
-		require.Equal(t, "test security flag", protos[0].Description)
-		require.Equal(t, specv1.SafetyCategory_SAFETY_CATEGORY_DATA_LOSS, protos[1].Category)
-	})
-
-	t.Run("empty input returns empty output", func(t *testing.T) {
-		protos := authoring.SafetyResultsToProto(nil)
-		require.Empty(t, protos)
-	})
 }
 
 // TestSafetyNet_CriticalWinsOverWarning verifies that when both CRITICAL and WARNING

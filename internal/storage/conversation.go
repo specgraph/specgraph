@@ -8,9 +8,28 @@ import (
 	"time"
 )
 
+// ConversationRole represents the role in a conversation exchange.
+type ConversationRole string
+
+// Conversation role values.
+const (
+	ConversationRoleProbe    ConversationRole = "probe"
+	ConversationRoleResponse ConversationRole = "response"
+)
+
+// IsValid reports whether r is a known conversation role.
+func (r ConversationRole) IsValid() bool {
+	switch r {
+	case ConversationRoleProbe, ConversationRoleResponse:
+		return true
+	default:
+		return false
+	}
+}
+
 // ConversationExchange represents a single probe/response from an authoring session.
 type ConversationExchange struct {
-	Role          string // "probe" or "response"
+	Role          ConversationRole
 	Content       string
 	Stage         string
 	Sequence      int32

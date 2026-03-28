@@ -45,7 +45,7 @@ func specToProto(s *storage.Spec) (*specv1.Spec, error) {
 		Intent:       s.Intent,
 		Stage:        string(s.Stage),
 		Priority:     string(s.Priority),
-		Complexity:   s.Complexity,
+		Complexity:   string(s.Complexity),
 		Version:      s.Version,
 		CreatedAt:    timeToProto(s.CreatedAt),
 		UpdatedAt:    timeToProto(s.UpdatedAt),
@@ -703,7 +703,7 @@ func conversationLogToProto(entry *storage.ConversationLogEntry) *specv1.Convers
 	exchanges := make([]*specv1.ConversationExchange, len(entry.Exchanges))
 	for i, e := range entry.Exchanges {
 		exchanges[i] = &specv1.ConversationExchange{
-			Role:          e.Role,
+			Role:          string(e.Role),
 			Content:       e.Content,
 			Stage:         e.Stage,
 			Sequence:      e.Sequence,
@@ -726,7 +726,7 @@ func conversationExchangesFromProto(exchanges []*specv1.ConversationExchange) []
 	result := make([]storage.ConversationExchange, len(exchanges))
 	for i, e := range exchanges {
 		result[i] = storage.ConversationExchange{
-			Role:          e.Role,
+			Role:          storage.ConversationRole(e.Role),
 			Content:       e.Content,
 			Stage:         e.Stage,
 			Sequence:      e.Sequence,

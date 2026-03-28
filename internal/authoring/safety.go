@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/internal/storage"
 	"golang.org/x/text/unicode/norm"
 )
@@ -226,41 +225,6 @@ func RunSafetyNet(input *SafetyInput) []SafetyFlagResult {
 	})
 
 	return flags
-}
-
-var severityToProto = map[FindingSeverity]specv1.FindingSeverity{
-	SeverityCritical: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
-	SeverityWarning:  specv1.FindingSeverity_FINDING_SEVERITY_WARNING,
-	SeverityNote:     specv1.FindingSeverity_FINDING_SEVERITY_NOTE,
-}
-
-var categoryToProto = map[SafetyCategory]specv1.SafetyCategory{
-	SafetyCategorySecurity: specv1.SafetyCategory_SAFETY_CATEGORY_SECURITY,
-	SafetyCategoryDataLoss: specv1.SafetyCategory_SAFETY_CATEGORY_DATA_LOSS,
-}
-
-// SafetyResultsToProto converts domain safety flags to protobuf SafetyFlag messages.
-func SafetyResultsToProto(flags []SafetyFlagResult) []*specv1.SafetyFlag {
-	out := make([]*specv1.SafetyFlag, len(flags))
-	for i, f := range flags {
-		protoSev, ok := severityToProto[f.Severity]
-		if !ok {
-			// Unknown severity values map to UNSPECIFIED so callers always
-			// receive a valid proto enum rather than an out-of-range integer.
-			protoSev = specv1.FindingSeverity_FINDING_SEVERITY_UNSPECIFIED
-		}
-		protoCat, ok := categoryToProto[f.Category]
-		if !ok {
-			// Unknown category values map to UNSPECIFIED for the same reason.
-			protoCat = specv1.SafetyCategory_SAFETY_CATEGORY_UNSPECIFIED
-		}
-		out[i] = &specv1.SafetyFlag{
-			Category:    protoCat,
-			Severity:    protoSev,
-			Description: f.Description,
-		}
-	}
-	return out
 }
 
 // severityToStorage maps authoring.FindingSeverity (ordered int) to

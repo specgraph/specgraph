@@ -100,41 +100,15 @@ func New(ctx context.Context, boltURI string, opts ...Option) (*Store, error) {
 // ensureIndexes creates graph indexes idempotently. Called once from New();
 // Scoped() shares the driver and does not re-create indexes.
 func (s *Store) ensureIndexes(ctx context.Context) error {
-	indexes := []string{
+	if err := runDDLStatements(ctx, s.driver, []string{
 		"CREATE INDEX ON :Project(slug)",
 		"CREATE INDEX ON :Spec(slug)",
 		"CREATE INDEX ON :Decision(slug)",
-	}
-	// Memgraph requires index DDL to run in individual auto-commit transactions,
-	// not inside multi-statement transactions. Use a fresh session per statement.
-	for _, stmt := range indexes {
-		session := s.driver.NewSession(ctx, neo4j.SessionConfig{})
-		_, err := session.Run(ctx, stmt, nil)
-		closeErr := session.Close(ctx)
-		if err != nil && !strings.Contains(err.Error(), "already exists") {
-			return fmt.Errorf("create index %q: %w", stmt, err)
-		}
-		if closeErr != nil {
-			return fmt.Errorf("close session after index %q: %w", stmt, closeErr)
-		}
-	}
-
-	// Unique constraint for composite slug scoped to project.
-	constraints := []string{
+		// Unique constraint for composite slug scoped to project.
 		"CREATE CONSTRAINT ON (s:Spec) ASSERT s.slug_key IS UNIQUE",
+	}); err != nil {
+		return err
 	}
-	for _, stmt := range constraints {
-		session := s.driver.NewSession(ctx, neo4j.SessionConfig{})
-		_, err := session.Run(ctx, stmt, nil)
-		closeErr := session.Close(ctx)
-		if err != nil && !strings.Contains(err.Error(), "already exists") {
-			return fmt.Errorf("create constraint %q: %w", stmt, err)
-		}
-		if closeErr != nil {
-			return fmt.Errorf("close session after constraint %q: %w", stmt, closeErr)
-		}
-	}
-
 	if err := s.EnsureChangeLogIndexes(ctx); err != nil {
 		return err
 	}
@@ -487,7 +461,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 				authoringOutputs[key] = val
 			}
 		}
-		ch := contenthash.Spec(spec.Intent, string(spec.Stage), string(spec.Priority), spec.Complexity, authoringOutputs)
+		ch := contenthash.Spec(spec.Intent, string(spec.Stage), string(spec.Priority), string(spec.Complexity), authoringOutputs)
 
 		hashQuery := `
 			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
@@ -507,7 +481,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 				Intent:          spec.Intent,
 				Stage:           string(spec.Stage),
 				Priority:        string(spec.Priority),
-				Complexity:      spec.Complexity,
+				Complexity:      string(spec.Complexity),
 				SparkOutput:     authoringOutputs["spark_output"],
 				ShapeOutput:     authoringOutputs["shape_output"],
 				SpecifyOutput:   authoringOutputs["specify_output"],
@@ -850,7 +824,7 @@ func recordToSpecOffset(rec *neo4j.Record, offset int) (*storage.Spec, error) {
 		Intent:            intent,
 		Stage:             storage.SpecStage(stage),
 		Priority:          storage.SpecPriority(priority),
-		Complexity:        complexity,
+		Complexity:        storage.SpecComplexity(complexity),
 		Version:           safeInt32(version),
 		CreatedAt:         createdAt,
 		UpdatedAt:         updatedAt,
