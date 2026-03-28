@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- **ci:** Use cliff action output for release notes (#785) ([#785](https://github.com/specgraph/specgraph/pull/785)) ([1c4bac0](https://github.com/specgraph/specgraph/commit/1c4bac074513310bd7db44481ae3383ec0fbff16))
 - **ci:** Disable persist-credentials so app token works for push (#784) ([#784](https://github.com/specgraph/specgraph/pull/784)) ([3bd38db](https://github.com/specgraph/specgraph/commit/3bd38dbad7cd7b66c12cd3f166e8b929b90d2769))
 - **ci:** Use app token via git remote URL for branch protection bypass (#783) ([#783](https://github.com/specgraph/specgraph/pull/783)) ([8cebf51](https://github.com/specgraph/specgraph/commit/8cebf512326f3091831bd6bbf44d2ee8d80e0e87))
 - **ci:** Use GitHub App token for release workflow pushes (#782) ([#782](https://github.com/specgraph/specgraph/pull/782)) ([138b9c5](https://github.com/specgraph/specgraph/commit/138b9c5d1ae8d68a34ca25622270590ffcca6dfb))
