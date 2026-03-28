@@ -6,9 +6,9 @@ package server
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"log/slog"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -276,7 +276,7 @@ func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.In
 	// Resolve symlinks to prevent escape via symlinked directories.
 	realDir, evalErr := filepath.EvalSymlinks(absDir)
 	if evalErr != nil {
-		if !os.IsNotExist(evalErr) {
+		if !errors.Is(evalErr, fs.ErrNotExist) {
 			slog.WarnContext(ctx, "EvalSymlinks failed for output_dir, falling back to unresolved path",
 				"path", absDir, "error", evalErr)
 		}

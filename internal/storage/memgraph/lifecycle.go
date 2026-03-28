@@ -63,13 +63,8 @@ func (s *Store) preconditionError(ctx context.Context, slug, op string, extraChe
 // The transition is atomic: a single Cypher query gates on the expected stage
 // and version so concurrent requests cannot overwrite each other.
 func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error) {
-	// Read current state to compute new version.
-	spec, err := s.GetSpec(ctx, slug)
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: amend spec: pre-read %q: %w", slug, err)
-	}
-
 	// Determine the target stage: use reEntryStage if provided, default to "amended".
+	// This validation doesn't hit the DB so it stays outside the transaction.
 	targetStage := storage.SpecStageAmended
 	if reEntryStage != "" {
 		targetStage = storage.SpecStage(reEntryStage)
@@ -78,9 +73,6 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		}
 	}
 
-	newVersion := spec.Version + 1
-
-	nowStr := s.now()
 	// Atomic: WHERE guards ensure we only transition if the spec is still at
 	// the expected stage and version, preventing TOCTOU races.
 	query := `
@@ -96,7 +88,16 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output
 	`
 	var result *storage.Spec
-	err = s.RunInTransaction(ctx, func(txCtx context.Context) error {
+	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Read current state inside the transaction for consistency.
+		spec, getErr := s.GetSpec(txCtx, slug)
+		if getErr != nil {
+			return fmt.Errorf("memgraph: amend spec: pre-read %q: %w", slug, getErr)
+		}
+
+		newVersion := spec.Version + 1
+		nowStr := s.now()
+
 		records, qErr := s.executeQuery(txCtx, query, mergeParams(s.projectParam(), map[string]any{
 			"slug":             slug,
 			"expected_stage":   string(storage.SpecStageDone),
@@ -164,29 +165,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 	if oldSlug == newSlug {
 		return nil, nil, fmt.Errorf("supersede spec (%q): %w", oldSlug, storage.ErrSameSlugs)
 	}
-	// Pre-validate: check old spec exists and new spec exists.
-	oldCheck, err := s.GetSpec(ctx, oldSlug)
-	if err != nil {
-		return nil, nil, fmt.Errorf("memgraph: supersede spec: pre-read %q: %w", oldSlug, err)
-	}
-	if terminalStages[oldCheck.Stage] {
-		return nil, nil, fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecTerminal)
-	}
-	newCheck, newErr := s.GetSpec(ctx, newSlug)
-	if newErr != nil {
-		if errors.Is(newErr, storage.ErrSpecNotFound) {
-			return nil, nil, fmt.Errorf("supersede spec: new spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
-		}
-		return nil, nil, fmt.Errorf("supersede spec: new spec %q: %w", newSlug, newErr)
-	}
-	if terminalStages[newCheck.Stage] {
-		return nil, nil, fmt.Errorf("supersede spec: new spec %q (stage=%s): %w", newSlug, newCheck.Stage, storage.ErrNewSpecTerminal)
-	}
 
-	oldVersion := oldCheck.Version + 1
-	newVersion := newCheck.Version + 1
-
-	nowStr := s.now()
 	// Atomic: WHERE guards ensure neither spec has entered a terminal state
 	// since our pre-validation read.
 	query := `
@@ -216,6 +195,29 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		       new.spark_output, new.shape_output, new.specify_output, new.decompose_output
 	`
 	txErr := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Pre-validate inside the transaction for consistent reads.
+		oldCheck, preErr := s.GetSpec(txCtx, oldSlug)
+		if preErr != nil {
+			return fmt.Errorf("memgraph: supersede spec: pre-read %q: %w", oldSlug, preErr)
+		}
+		if terminalStages[oldCheck.Stage] {
+			return fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecTerminal)
+		}
+		newCheck, newErr := s.GetSpec(txCtx, newSlug)
+		if newErr != nil {
+			if errors.Is(newErr, storage.ErrSpecNotFound) {
+				return fmt.Errorf("supersede spec: new spec %q: %w", newSlug, storage.ErrNewSpecNotFound)
+			}
+			return fmt.Errorf("supersede spec: new spec %q: %w", newSlug, newErr)
+		}
+		if terminalStages[newCheck.Stage] {
+			return fmt.Errorf("supersede spec: new spec %q (stage=%s): %w", newSlug, newCheck.Stage, storage.ErrNewSpecTerminal)
+		}
+
+		oldVersion := oldCheck.Version + 1
+		newVersion := newCheck.Version + 1
+		nowStr := s.now()
+
 		records, qErr := s.executeQuery(txCtx, query, mergeParams(s.projectParam(), map[string]any{
 			"old_slug":             oldSlug,
 			"new_slug":             newSlug,
@@ -319,17 +321,6 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 // The transition is atomic: WHERE guards prevent concurrent transitions from
 // racing past the terminal-state check.
 func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (*storage.Spec, error) {
-	spec, err := s.GetSpec(ctx, slug)
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: abandon spec: pre-read %q: %w", slug, err)
-	}
-	if terminalStages[spec.Stage] {
-		return nil, fmt.Errorf("abandon spec %q (stage=%s): %w", slug, spec.Stage, storage.ErrSpecTerminal)
-	}
-
-	newVersion := spec.Version + 1
-
-	nowStr := s.now()
 	// Atomic: WHERE guards on stage and version prevent TOCTOU races.
 	query := `
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
@@ -344,7 +335,19 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		       s.spark_output, s.shape_output, s.specify_output, s.decompose_output
 	`
 	var result *storage.Spec
-	err = s.RunInTransaction(ctx, func(txCtx context.Context) error {
+	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Read current state inside the transaction for consistency.
+		spec, getErr := s.GetSpec(txCtx, slug)
+		if getErr != nil {
+			return fmt.Errorf("memgraph: abandon spec: pre-read %q: %w", slug, getErr)
+		}
+		if terminalStages[spec.Stage] {
+			return fmt.Errorf("abandon spec %q (stage=%s): %w", slug, spec.Stage, storage.ErrSpecTerminal)
+		}
+
+		newVersion := spec.Version + 1
+		nowStr := s.now()
+
 		records, qErr := s.executeQuery(txCtx, query, mergeParams(s.projectParam(), map[string]any{
 			"slug":             slug,
 			"expected_version": spec.Version,

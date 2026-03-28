@@ -54,7 +54,11 @@ func (h *ConstitutionHandler) UpdateConstitution(ctx context.Context, req *conne
 	if msg.Constitution == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("constitution is required"))
 	}
-	c, err := store.UpdateConstitution(ctx, constitutionFromProto(msg.Constitution))
+	domainConst, parseErr := constitutionFromProto(msg.Constitution)
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, parseErr)
+	}
+	c, err := store.UpdateConstitution(ctx, domainConst)
 	if err != nil {
 		return nil, constitutionError(err)
 	}

@@ -40,6 +40,9 @@ type Store struct {
 	sliceOps   storage.SliceBackend // injectable slice operations; defaults to self
 	project    string               // project slug for graph namespacing
 	ownsDriver bool                 // true for stores created by New(); false for Scoped() stores
+	username   string               // optional Bolt auth username
+	password   string               // optional Bolt auth password
+	useTLS     bool                 // if true, use bolt+s:// scheme for TLS
 }
 
 // Option configures a Store.
@@ -63,9 +66,45 @@ func WithSliceOps(ops storage.SliceBackend) Option {
 	return func(s *Store) { s.sliceOps = ops }
 }
 
+// WithAuth configures Bolt authentication credentials. When set, BasicAuth is
+// used instead of NoAuth. Both username and password must be non-empty.
+func WithAuth(username, password string) Option {
+	return func(s *Store) {
+		s.username = username
+		s.password = password
+	}
+}
+
+// WithTLS enables TLS for the Bolt connection. When true, bolt:// URIs are
+// rewritten to bolt+s:// before connecting. Has no effect if the URI already
+// uses a TLS scheme (bolt+s://, bolt+ssc://, neo4j+s://).
+func WithTLS(enabled bool) Option {
+	return func(s *Store) { s.useTLS = enabled }
+}
+
 // New creates a new Memgraph-backed Store and verifies connectivity.
 func New(ctx context.Context, boltURI string, opts ...Option) (*Store, error) {
-	driver, err := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
+	// Apply options first to determine auth and TLS settings.
+	s := &Store{nowFunc: time.Now, ownsDriver: true}
+	for _, o := range opts {
+		o(s)
+	}
+
+	// Determine auth token.
+	if (s.username == "") != (s.password == "") {
+		return nil, fmt.Errorf("memgraph: username and password must be set together")
+	}
+	authToken := neo4j.NoAuth()
+	if s.username != "" && s.password != "" {
+		authToken = neo4j.BasicAuth(s.username, s.password, "")
+	}
+
+	// Rewrite scheme for TLS if requested and not already a TLS scheme.
+	if s.useTLS {
+		boltURI = upgradeBoltSchemeToTLS(boltURI)
+	}
+
+	driver, err := neo4j.NewDriverWithContext(boltURI, authToken)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: create driver: %w", err)
 	}
@@ -73,10 +112,7 @@ func New(ctx context.Context, boltURI string, opts ...Option) (*Store, error) {
 		driver.Close(ctx) //nolint:errcheck // best-effort cleanup on init failure
 		return nil, fmt.Errorf("memgraph: verify connectivity: %w", connErr)
 	}
-	s := &Store{driver: driver, nowFunc: time.Now, ownsDriver: true}
-	for _, o := range opts {
-		o(s)
-	}
+	s.driver = driver
 	if s.project == "" {
 		driver.Close(ctx) //nolint:errcheck // best-effort cleanup on init failure
 		return nil, fmt.Errorf("memgraph: project slug required: use memgraph.WithProject(slug)")
@@ -626,6 +662,24 @@ func mergeParams(base, extra map[string]any) map[string]any {
 	maps.Copy(m, base)
 	maps.Copy(m, extra)
 	return m
+}
+
+// upgradeBoltSchemeToTLS rewrites bolt:// to bolt+s:// and neo4j:// to neo4j+s://.
+// URIs already using a TLS scheme (bolt+s://, bolt+ssc://, neo4j+s://, neo4j+ssc://)
+// are returned unchanged.
+func upgradeBoltSchemeToTLS(uri string) string {
+	for _, prefix := range []string{"bolt+s://", "bolt+ssc://", "neo4j+s://", "neo4j+ssc://"} {
+		if strings.HasPrefix(uri, prefix) {
+			return uri
+		}
+	}
+	if strings.HasPrefix(uri, "bolt://") {
+		return "bolt+s://" + strings.TrimPrefix(uri, "bolt://")
+	}
+	if strings.HasPrefix(uri, "neo4j://") {
+		return "neo4j+s://" + strings.TrimPrefix(uri, "neo4j://")
+	}
+	return uri
 }
 
 // parseRFC3339 parses an RFC3339 timestamp string from a memgraph record field.

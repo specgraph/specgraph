@@ -5,8 +5,7 @@ package server
 
 import (
 	"context"
-	"fmt"
-	"os"
+	"log/slog"
 	"time"
 )
 
@@ -17,7 +16,7 @@ type ClaimSweeper interface {
 
 // StartSweeper launches a background goroutine that periodically releases expired claims.
 // It stops when the context is cancelled.
-func StartSweeper(ctx context.Context, store ClaimSweeper, interval time.Duration) {
+func StartSweeper(ctx context.Context, store ClaimSweeper, interval time.Duration, logger *slog.Logger) {
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
@@ -28,11 +27,11 @@ func StartSweeper(ctx context.Context, store ClaimSweeper, interval time.Duratio
 			case <-ticker.C:
 				released, err := store.ReleaseExpiredClaims(ctx)
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "sweeper: release expired claims: %v\n", err)
+					logger.Error("release expired claims", "error", err)
 					continue
 				}
 				if released > 0 {
-					fmt.Printf("sweeper: released %d expired claim(s)\n", released)
+					logger.Info("released expired claims", "count", released)
 				}
 			}
 		}

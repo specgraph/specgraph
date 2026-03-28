@@ -5,12 +5,8 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"time"
 )
-
-// ErrProjectNotFound is returned when no project exists with the given slug.
-var ErrProjectNotFound = errors.New("project not found")
 
 // Project represents a registered project in the spec graph.
 type Project struct {

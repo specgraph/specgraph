@@ -5,15 +5,8 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"time"
 )
-
-// ErrDecisionNotFound is returned when a decision does not exist.
-var ErrDecisionNotFound = errors.New("decision not found")
-
-// ErrSupersededByRequired is returned when status is superseded but superseded_by is not provided.
-var ErrSupersededByRequired = errors.New("superseded_by is required when status is superseded")
 
 // DecisionStatus represents the lifecycle state of a decision.
 type DecisionStatus string

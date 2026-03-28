@@ -17,7 +17,9 @@ const (
 	ConstitutionLayerDomain      ConstitutionLayer = "domain"
 )
 
-// Constitution is the project ground truth.
+// Constitution represents the project's ground truth configuration.
+// JSON tags are intentional — constitutions are loaded from YAML/JSON config files
+// via encoding/json, unlike other domain types which use manual field mapping.
 type Constitution struct {
 	ID           string            `json:"id,omitempty"`
 	Layer        ConstitutionLayer `json:"layer,omitempty"`

@@ -189,8 +189,8 @@ func (s *Store) StoreSpecifyOutput(ctx context.Context, slug string, output *sto
 // CreateSlice creates it (with BELONGS_TO + COMPOSES edges). MERGE is used for DEPENDS_ON edges.
 // It returns the slugs of the created (or already-existing) slices.
 func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *storage.DecomposeOutput) ([]string, error) {
-	if err := storage.ValidateStrategy(output.Strategy); err != nil {
-		return nil, fmt.Errorf("memgraph: invalid decomposition strategy: %w", err)
+	if !output.Strategy.IsValid() {
+		return nil, fmt.Errorf("memgraph: invalid decomposition strategy: %q", output.Strategy)
 	}
 	// Build and validate the set of slice IDs before writing anything to the
 	// database so that validation failures do not leave a partial JSON blob.

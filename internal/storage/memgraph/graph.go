@@ -13,21 +13,12 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
-// resolveEdge maps an edge type to its Cypher relation name.
-// EdgeType string values are the Cypher relationship names directly.
-func resolveEdge(fromSlug, toSlug string, edgeType storage.EdgeType) (rel, from, to string, err error) {
-	if !edgeType.IsValid() {
-		return "", "", "", fmt.Errorf("memgraph: unknown edge type %v", edgeType)
-	}
-	return string(edgeType), fromSlug, toSlug, nil
-}
-
 // AddEdge creates a typed relationship between two nodes.
 func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType storage.EdgeType) (*storage.Edge, error) {
-	relType, actualFrom, actualTo, err := resolveEdge(fromSlug, toSlug, edgeType)
-	if err != nil {
-		return nil, err
+	if !edgeType.IsValid() {
+		return nil, fmt.Errorf("unsupported edge type: %q", edgeType)
 	}
+	relType := string(edgeType)
 
 	var query string
 	if edgeType == storage.EdgeTypeDependsOn {
@@ -46,7 +37,7 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 			RETURN a.slug, b.slug
 		`, relType)
 	}
-	params := mergeParams(s.projectParam(), map[string]any{"from": actualFrom, "to": actualTo})
+	params := mergeParams(s.projectParam(), map[string]any{"from": fromSlug, "to": toSlug})
 
 	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
@@ -74,20 +65,20 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 
 // RemoveEdge removes a typed relationship between two nodes.
 func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeType storage.EdgeType) error {
-	relType, actualFrom, actualTo, err := resolveEdge(fromSlug, toSlug, edgeType)
-	if err != nil {
-		return err
+	if !edgeType.IsValid() {
+		return fmt.Errorf("unsupported edge type: %q", edgeType)
 	}
+	rel := string(edgeType)
 
 	query := fmt.Sprintf(`
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $from}),
 		      (p)<-[:BELONGS_TO]-(b {slug: $to}),
 		      (a)-[r:%s]->(b)
 		DELETE r
-	`, relType)
-	params := mergeParams(s.projectParam(), map[string]any{"from": actualFrom, "to": actualTo})
+	`, rel)
+	params := mergeParams(s.projectParam(), map[string]any{"from": fromSlug, "to": toSlug})
 
-	if _, err = s.executeQuery(ctx, query, params); err != nil {
+	if _, err := s.executeQuery(ctx, query, params); err != nil {
 		return fmt.Errorf("memgraph: remove edge: %w", err)
 	}
 	return nil
@@ -212,9 +203,11 @@ func (s *Store) RefreshDependencyHashes(ctx context.Context, slug string) error 
 }
 
 // GetTransitiveDeps returns all transitive dependencies of a node.
+// Variable-length path traversals are bounded to 50 hops to prevent OOM on
+// deep or cyclic graphs.
 func (s *Store) GetTransitiveDeps(ctx context.Context, slug string) ([]storage.NodeRef, error) {
 	query := `
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})-[:DEPENDS_ON*]->(b)
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})-[:DEPENDS_ON*..50]->(b)
 		RETURN DISTINCT b.id AS id, b.slug AS slug, labels(b)[0] AS label, COALESCE(b.stage, b.status, "") AS stage
 	`
 	return s.queryNodeRefs(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
@@ -223,7 +216,7 @@ func (s *Store) GetTransitiveDeps(ctx context.Context, slug string) ([]storage.N
 // GetImpact returns all nodes transitively depending on this node.
 func (s *Store) GetImpact(ctx context.Context, slug string) ([]storage.NodeRef, error) {
 	query := `
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})<-[:DEPENDS_ON*]-(b)
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})<-[:DEPENDS_ON*..50]-(b)
 		RETURN DISTINCT b.id AS id, b.slug AS slug, labels(b)[0] AS label, COALESCE(b.stage, b.status, "") AS stage
 	`
 	return s.queryNodeRefs(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
@@ -252,7 +245,7 @@ func (s *Store) GetReady(ctx context.Context) ([]storage.NodeRef, error) {
 func (s *Store) GetCriticalPath(ctx context.Context, slug string) ([]storage.NodeRef, error) {
 	query := `
 		MATCH (proj:Project {slug: $project})<-[:BELONGS_TO]-(a {slug: $slug})
-		MATCH p = (a)-[:DEPENDS_ON*]->(b)
+		MATCH p = (a)-[:DEPENDS_ON*..50]->(b)
 		OPTIONAL MATCH (b)-[:DEPENDS_ON]->(c)
 		WITH p, b, c
 		WHERE c IS NULL

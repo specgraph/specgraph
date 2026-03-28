@@ -5,14 +5,7 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"time"
-)
-
-// Sync-specific sentinel errors.
-var (
-	ErrSyncMappingNotFound = errors.New("sync mapping not found")
-	ErrSyncMappingExists   = errors.New("sync mapping already exists for this spec and adapter")
 )
 
 // SyncAdapterType identifies the external system a spec is synced to.
