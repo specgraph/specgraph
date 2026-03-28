@@ -101,6 +101,7 @@ jobs:
           node-version: "22"
       - uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
         with:
+          version: 10
           run_install: false
       - name: Build web UI
         working-directory: web
