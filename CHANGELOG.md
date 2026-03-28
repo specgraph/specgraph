@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.3.2](https://github.com/specgraph/specgraph/compare/v0.3.1...v0.3.2) - 2026-03-28
+
+### Bug Fixes
+
+- **ci:** Make tag and release creation fully idempotent (#790) ([#790](https://github.com/specgraph/specgraph/pull/790)) ([c38f490](https://github.com/specgraph/specgraph/commit/c38f4908f3f9c2e7ca3765686d897f01673c9d33))
+
 ## [0.3.1](https://github.com/specgraph/specgraph/compare/v0.2.1...v0.3.1) - 2026-03-28
 
 ### Bug Fixes
