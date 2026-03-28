@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.3.6](https://github.com/specgraph/specgraph/compare/v0.3.5...v0.3.6) - 2026-03-28
+
+### Bug Fixes
+
+- **ci:** Skip release on no-op re-runs, switch to dockers_v2 (#794) ([#794](https://github.com/specgraph/specgraph/pull/794)) ([6819133](https://github.com/specgraph/specgraph/commit/6819133f7d848043cfc86e48dd8b387a48389711))
+
 ## [0.3.5](https://github.com/specgraph/specgraph/compare/v0.3.4...v0.3.5) - 2026-03-28
 
 ### Bug Fixes
