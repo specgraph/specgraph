@@ -104,6 +104,17 @@ func (s *Store) ListProjects(ctx context.Context) ([]*storage.Project, error) {
 	return projects, nil
 }
 
+// WipeProjectData deletes all nodes belonging to the project (everything with a
+// BELONGS_TO edge pointing to the Project node). The Project node itself is preserved.
+func (s *Store) WipeProjectData(ctx context.Context) error {
+	query := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(n)
+		DETACH DELETE n
+	`
+	_, err := s.executeQuery(ctx, query, map[string]any{"project": s.project})
+	return err
+}
+
 func recordToProject(rec *neo4j.Record) (*storage.Project, error) {
 	p := &storage.Project{}
 
