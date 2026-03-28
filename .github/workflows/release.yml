@@ -93,7 +93,8 @@ jobs:
             gh release create "$TAG" \
               --title "$TAG" \
               --notes "$NOTES" \
-              --verify-tag
+              --verify-tag \
+              --draft
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -162,3 +163,8 @@ jobs:
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
         with:
           subject-checksums: ./dist/digests.txt
+      - name: Publish release
+        run: gh release edit "$TAG" --draft=false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release.outputs.new_tag }}
