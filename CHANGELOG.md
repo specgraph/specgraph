@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.3.7](https://github.com/specgraph/specgraph/compare/v0.3.6...v0.3.7) - 2026-03-28
+
+### Bug Fixes
+
+- **ci:** Dockerfile TARGETPLATFORM for dockers_v2 + skip no-op re-runs (#795) ([#795](https://github.com/specgraph/specgraph/pull/795)) ([0b65633](https://github.com/specgraph/specgraph/commit/0b656330c1dd33fb88c39dad0e3757bf597c1c50))
+
 ## [0.3.6](https://github.com/specgraph/specgraph/compare/v0.3.5...v0.3.6) - 2026-03-28
 
 ### Bug Fixes
