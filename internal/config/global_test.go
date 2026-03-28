@@ -109,3 +109,45 @@ func TestResolveServer_RouteMatch(t *testing.T) {
 	assert.Equal(t, "https://shared:7890", cfg.ResolveServer("org-frontend", ""))
 	assert.Equal(t, "http://localhost:7890", cfg.ResolveServer("my-project", ""))
 }
+
+func TestLoadGlobal_AuthConfig(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	yaml := `
+auth:
+  mode: oidc
+  default_role: writer
+  api_keys:
+    - id: k1
+      key: spgr_sk_test
+      name: Test
+      role: admin
+  oidc_providers:
+    - id: entra
+      issuer: https://login.microsoftonline.com/tenant/v2.0
+      client_id: app-id
+      audience: api-audience
+      claims_mapping:
+        - claim: groups
+          value: specgraph-admins
+          role: admin
+  roles:
+    deployer:
+      permissions: ["spec:read", "execution:*"]
+`
+	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600))
+
+	cfg, err := config.LoadGlobal(path)
+	require.NoError(t, err)
+	assert.Equal(t, "oidc", cfg.Auth.Mode)
+	assert.Equal(t, "writer", cfg.Auth.DefaultRole)
+	require.Len(t, cfg.Auth.OIDCProviders, 1)
+	assert.Equal(t, "entra", cfg.Auth.OIDCProviders[0].ID)
+	assert.Equal(t, "https://login.microsoftonline.com/tenant/v2.0", cfg.Auth.OIDCProviders[0].Issuer)
+	assert.Equal(t, "app-id", cfg.Auth.OIDCProviders[0].ClientID)
+	assert.Equal(t, "api-audience", cfg.Auth.OIDCProviders[0].Audience)
+	require.Len(t, cfg.Auth.OIDCProviders[0].ClaimsMapping, 1)
+	assert.Equal(t, "groups", cfg.Auth.OIDCProviders[0].ClaimsMapping[0].Claim)
+	assert.Equal(t, "specgraph-admins", cfg.Auth.OIDCProviders[0].ClaimsMapping[0].Value)
+	assert.Equal(t, "admin", cfg.Auth.OIDCProviders[0].ClaimsMapping[0].Role)
+}
