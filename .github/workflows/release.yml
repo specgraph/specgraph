@@ -61,18 +61,24 @@ jobs:
             git commit -m "chore(release): ${TAG}"
             git push
           fi
-          git tag "${TAG}"
-          git push origin "${TAG}"
+          # Create tag if it doesn't already exist (idempotent).
+          if ! git rev-parse "${TAG}" >/dev/null 2>&1; then
+            git tag "${TAG}"
+            git push origin "${TAG}"
+          fi
         env:
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
           TAG: ${{ steps.check.outputs.new_tag }}
       - name: Create GitHub release
         if: steps.check.outputs.new_tag != ''
         run: |
-          gh release create "$TAG" \
-            --title "$TAG" \
-            --notes "$NOTES" \
-            --verify-tag
+          # Create release if it doesn't already exist (idempotent).
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes "$NOTES" \
+              --verify-tag
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.check.outputs.new_tag }}
