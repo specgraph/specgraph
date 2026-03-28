@@ -65,7 +65,7 @@ func resolveIdentity(ctx context.Context, store IdentityStore, headers http.Head
 	authHeader := headers.Get("Authorization")
 
 	if authHeader == "" {
-		if !store.HasKeys() {
+		if store.AllowUnauthenticated() {
 			return localIdentity(), nil
 		}
 		return nil, connect.NewError(connect.CodeUnauthenticated, nil)

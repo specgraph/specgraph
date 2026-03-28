@@ -90,7 +90,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		sweeperCtx, stopSweeper := context.WithCancel(ctx)
 		defer stopSweeper()
 
-		authStore, err := auth.NewConfigStore(cfg.Auth)
+		authStore, err := auth.NewConfigStore(cfg.Auth, "")
 		if err != nil {
 			return fmt.Errorf("auth config: %w", err)
 		}

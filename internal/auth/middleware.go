@@ -30,7 +30,7 @@ func RequireAuth(store IdentityStore) func(http.Handler) http.Handler {
 // Returns the identity and true on success, or nil and false on failure.
 func authenticate(ctx context.Context, store IdentityStore, authHeader string) (*Identity, bool) {
 	if authHeader == "" {
-		if !store.HasKeys() {
+		if store.AllowUnauthenticated() {
 			return localIdentity(), true
 		}
 		return nil, false

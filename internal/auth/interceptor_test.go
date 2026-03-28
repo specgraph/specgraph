@@ -39,7 +39,7 @@ func (h *stubSpecHandler) CreateSpec(_ context.Context, _ *connect.Request[specg
 
 func newTestServer(t *testing.T, authCfg config.AuthConfig) (*httptest.Server, specgraphv1connect.SpecServiceClient, specgraphv1connect.ServerServiceClient) {
 	t.Helper()
-	store, err := auth.NewConfigStore(authCfg)
+	store, err := auth.NewConfigStore(authCfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}

@@ -35,7 +35,7 @@ func TestAPIHandler_AuthRequired_NoToken_Returns401(t *testing.T) {
 		APIKeys: []config.APIKeyConfig{
 			{ID: "k1", Key: "spgr_sk_test", Name: "Admin", Role: "admin"},
 		},
-	})
+	}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestAPIHandler_AuthRequired_ValidToken_Returns200(t *testing.T) {
 		APIKeys: []config.APIKeyConfig{
 			{ID: "k1", Key: "spgr_sk_test", Name: "Admin", Role: "admin"},
 		},
-	})
+	}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestAPIHandler_AuthRequired_ValidToken_Returns200(t *testing.T) {
 }
 
 func TestAPIHandler_NoKeys_PassesThrough(t *testing.T) {
-	store, err := auth.NewConfigStore(config.AuthConfig{})
+	store, err := auth.NewConfigStore(config.AuthConfig{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

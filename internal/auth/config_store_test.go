@@ -18,7 +18,7 @@ func TestConfigStore_ResolveAPIKey(t *testing.T) {
 			{ID: "k1", Key: "spgr_sk_abc", Name: "Test Key", Role: "admin"},
 		},
 	}
-	store, err := auth.NewConfigStore(cfg)
+	store, err := auth.NewConfigStore(cfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestConfigStore_UnknownKey(t *testing.T) {
 			{ID: "k1", Key: "spgr_sk_abc", Name: "Test Key", Role: "admin"},
 		},
 	}
-	store, err := auth.NewConfigStore(cfg)
+	store, err := auth.NewConfigStore(cfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestConfigStore_UnknownKey(t *testing.T) {
 }
 
 func TestConfigStore_HasKeys(t *testing.T) {
-	empty, err := auth.NewConfigStore(config.AuthConfig{})
+	empty, err := auth.NewConfigStore(config.AuthConfig{}, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestConfigStore_HasKeys(t *testing.T) {
 		APIKeys: []config.APIKeyConfig{
 			{ID: "k1", Key: "spgr_sk_abc", Name: "Key", Role: "reader"},
 		},
-	})
+	}, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestConfigStore_DuplicateKeyID(t *testing.T) {
 			{ID: "k1", Key: "spgr_sk_def", Name: "Key 2", Role: "reader"},
 		},
 	}
-	_, err := auth.NewConfigStore(cfg)
+	_, err := auth.NewConfigStore(cfg, "")
 	if err == nil {
 		t.Fatal("expected error for duplicate key ID")
 	}
@@ -94,7 +94,7 @@ func TestConfigStore_DuplicateKeyValue(t *testing.T) {
 			{ID: "k2", Key: "spgr_sk_same", Name: "Key 2", Role: "reader"},
 		},
 	}
-	_, err := auth.NewConfigStore(cfg)
+	_, err := auth.NewConfigStore(cfg, "")
 	if err == nil {
 		t.Fatal("expected error for duplicate key value")
 	}
@@ -106,7 +106,7 @@ func TestConfigStore_UnknownRole(t *testing.T) {
 			{ID: "k1", Key: "spgr_sk_abc", Name: "Key", Role: "nonexistent"},
 		},
 	}
-	_, err := auth.NewConfigStore(cfg)
+	_, err := auth.NewConfigStore(cfg, "")
 	if err == nil {
 		t.Fatal("expected error for unknown role")
 	}
@@ -118,7 +118,7 @@ func TestConfigStore_BlankID(t *testing.T) {
 			{ID: "", Key: "spgr_sk_abc", Name: "Key", Role: "admin"},
 		},
 	}
-	_, err := auth.NewConfigStore(cfg)
+	_, err := auth.NewConfigStore(cfg, "")
 	if err == nil {
 		t.Fatal("expected error for blank key ID")
 	}
@@ -130,7 +130,7 @@ func TestConfigStore_BlankKey(t *testing.T) {
 			{ID: "k1", Key: "", Name: "Key", Role: "admin"},
 		},
 	}
-	_, err := auth.NewConfigStore(cfg)
+	_, err := auth.NewConfigStore(cfg, "")
 	if err == nil {
 		t.Fatal("expected error for blank key value")
 	}
@@ -145,7 +145,7 @@ func TestConfigStore_CustomRole(t *testing.T) {
 			"ci-readonly": {Permissions: []string{"spec:read", "decision:read"}},
 		},
 	}
-	store, err := auth.NewConfigStore(cfg)
+	store, err := auth.NewConfigStore(cfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -169,7 +169,7 @@ func TestConfigStore_BuiltinRolePermissions(t *testing.T) {
 			{ID: "k3", Key: "spgr_sk_a", Name: "Admin", Role: "admin"},
 		},
 	}
-	store, err := auth.NewConfigStore(cfg)
+	store, err := auth.NewConfigStore(cfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -199,7 +199,7 @@ func TestConfigStore_DifferentLengthKeyRejected(t *testing.T) {
 			{ID: "k1", Key: "spgr_sk_abc", Name: "Test Key", Role: "admin"},
 		},
 	}
-	store, err := auth.NewConfigStore(cfg)
+	store, err := auth.NewConfigStore(cfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -217,13 +217,72 @@ func TestConfigStore_DifferentLengthKeyRejected(t *testing.T) {
 	}
 }
 
+func TestConfigStore_ResolveJWT_ReturnsErrNoOIDC(t *testing.T) {
+	store, err := auth.NewConfigStore(config.AuthConfig{}, "")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	_, err = store.ResolveJWT(context.Background(), "header.payload.signature")
+	if !errors.Is(err, auth.ErrNoOIDC) {
+		t.Errorf("ResolveJWT error = %v, want ErrNoOIDC", err)
+	}
+}
+
+func TestConfigStore_HasAuth_NoKeys(t *testing.T) {
+	store, err := auth.NewConfigStore(config.AuthConfig{}, "")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	if store.HasAuth() {
+		t.Error("HasAuth() = true, want false with no keys")
+	}
+}
+
+func TestConfigStore_HasAuth_WithKeys(t *testing.T) {
+	store, err := auth.NewConfigStore(config.AuthConfig{
+		APIKeys: []config.APIKeyConfig{
+			{ID: "k1", Key: "spgr_sk_test", Name: "Test", Role: "admin"},
+		},
+	}, "")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	if !store.HasAuth() {
+		t.Error("HasAuth() = false, want true with keys")
+	}
+}
+
+func TestConfigStore_AllowUnauthenticated_NoKeys(t *testing.T) {
+	store, err := auth.NewConfigStore(config.AuthConfig{}, "")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	if !store.AllowUnauthenticated() {
+		t.Error("AllowUnauthenticated() = false, want true with no keys")
+	}
+}
+
+func TestConfigStore_AllowUnauthenticated_WithKeys(t *testing.T) {
+	store, err := auth.NewConfigStore(config.AuthConfig{
+		APIKeys: []config.APIKeyConfig{
+			{ID: "k1", Key: "spgr_sk_test", Name: "Test", Role: "admin"},
+		},
+	}, "")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	if store.AllowUnauthenticated() {
+		t.Error("AllowUnauthenticated() = true, want false with keys")
+	}
+}
+
 func TestConfigStore_SameContentKeyMatches(t *testing.T) {
 	cfg := config.AuthConfig{
 		APIKeys: []config.APIKeyConfig{
 			{ID: "k1", Key: "spgr_sk_exactmatch", Name: "Test Key", Role: "admin"},
 		},
 	}
-	store, err := auth.NewConfigStore(cfg)
+	store, err := auth.NewConfigStore(cfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}

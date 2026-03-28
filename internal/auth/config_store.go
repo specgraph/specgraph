@@ -29,7 +29,9 @@ type ConfigStore struct {
 
 // NewConfigStore builds a ConfigStore from the auth section of the config file.
 // It validates that all key IDs and values are unique and that referenced roles exist.
-func NewConfigStore(cfg config.AuthConfig) (*ConfigStore, error) {
+// credentialsPath is reserved for future credential bootstrap (Task 7) and is unused here.
+func NewConfigStore(cfg config.AuthConfig, credentialsPath string) (*ConfigStore, error) {
+	_ = credentialsPath
 	roles := make(map[string][]string)
 	for role, perms := range DefaultRolePermissions {
 		roles[string(role)] = perms
@@ -109,4 +111,20 @@ func (s *ConfigStore) ResolveAPIKey(_ context.Context, key string) (*Identity, e
 // HasKeys reports whether any API keys are configured.
 func (s *ConfigStore) HasKeys() bool {
 	return s.hasKeys
+}
+
+// ResolveJWT is a no-op for ConfigStore — it doesn't support OIDC.
+func (s *ConfigStore) ResolveJWT(_ context.Context, _ string) (*Identity, error) {
+	return nil, ErrNoOIDC
+}
+
+// HasAuth reports whether any API keys are configured.
+func (s *ConfigStore) HasAuth() bool {
+	return s.hasKeys
+}
+
+// AllowUnauthenticated returns true when no API keys are configured,
+// preserving the existing local-identity fallback behavior.
+func (s *ConfigStore) AllowUnauthenticated() bool {
+	return !s.hasKeys
 }
