@@ -16,6 +16,12 @@ type GlobalConfig struct {
 	Server ServerSection `yaml:"server"`
 	Client ClientConfig  `yaml:"client"`
 	Auth   AuthConfig    `yaml:"auth"`
+	Export ExportConfig  `yaml:"export"`
+}
+
+// ExportConfig holds settings for project export and import operations.
+type ExportConfig struct {
+	SigningKey string `yaml:"signing_key"`
 }
 
 // ServerSection configures the specgraph server daemon.

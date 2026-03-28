@@ -316,5 +316,21 @@ func (stubBackend) ListConversations(context.Context, string, string) ([]*storag
 	return nil, errNotImplemented
 }
 
+func (stubBackend) ListAllFindings(context.Context) ([]*storage.AnalyticalFinding, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) ListAllChanges(context.Context) ([]*storage.ChangeLogEntry, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) ListAllConversations(context.Context) ([]*storage.ConversationLogEntry, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) WipeProjectData(context.Context) error {
+	return errNotImplemented
+}
+
 // Verify stubBackend satisfies ScopedBackend at compile time.
 var _ storage.ScopedBackend = (*stubBackend)(nil)

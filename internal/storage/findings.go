@@ -43,6 +43,7 @@ type AnalyticalFindingInput struct {
 // AnalyticalFinding records a finding produced by an analytical pass (read-side).
 type AnalyticalFinding struct {
 	ID         string
+	SpecSlug   string // populated by ListAllFindings for export
 	PassType   PassType
 	Severity   FindingSeverity
 	Summary    string
@@ -66,6 +67,9 @@ type FindingsReader interface {
 	// Returns ErrSpecNotFound if the spec does not exist.
 	// An empty passType returns all findings across all pass types.
 	ListFindings(ctx context.Context, slug string, passType PassType) ([]AnalyticalFinding, error)
+
+	// ListAllFindings returns all findings across all specs, with SpecSlug populated.
+	ListAllFindings(ctx context.Context) ([]*AnalyticalFinding, error)
 }
 
 // FindingsBackend combines finding read and write operations.

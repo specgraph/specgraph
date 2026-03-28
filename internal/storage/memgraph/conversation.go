@@ -334,6 +334,78 @@ func recordToConversationLogEntry(rec *neo4j.Record) (*storage.ConversationLogEn
 	}, nil
 }
 
+// ListAllConversations returns all conversation logs across all specs in the project.
+// SpecSlug is populated from the spec_slug column for each entry.
+func (s *Store) ListAllConversations(ctx context.Context) ([]*storage.ConversationLogEntry, error) {
+	query := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec)-[:AUTHORED_VIA]->(first:ConversationLog)
+		OPTIONAL MATCH path = (first)-[:CONTINUES*0..]->(log:ConversationLog)
+		RETURN log.id, s.slug AS spec_slug, log.stage, log.version, log.is_amend,
+		       log.exchanges_json, log.exchange_count, log.date
+		ORDER BY s.slug, log.date
+	`
+	records, err := s.executeQuery(ctx, query, s.projectParam())
+	if err != nil {
+		return nil, fmt.Errorf("memgraph: list all conversations: %w", err)
+	}
+
+	entries := make([]*storage.ConversationLogEntry, 0, len(records))
+	for _, rec := range records {
+		id, err := recordString(rec, 0, "log.id")
+		if err != nil {
+			return nil, err
+		}
+		specSlug, err := recordString(rec, 1, "spec_slug")
+		if err != nil {
+			return nil, err
+		}
+		stageStr, err := recordString(rec, 2, "log.stage")
+		if err != nil {
+			return nil, err
+		}
+		version, err := recordInt64(rec, 3, "log.version")
+		if err != nil {
+			return nil, err
+		}
+		isAmend, ok := rec.Values[4].(bool)
+		if !ok {
+			return nil, fmt.Errorf("memgraph: conversation log: expected bool for is_amend, got %T", rec.Values[4])
+		}
+		exchangesJSON, err := recordString(rec, 5, "log.exchanges_json")
+		if err != nil {
+			return nil, err
+		}
+		exchangeCount, err := recordInt64(rec, 6, "log.exchange_count")
+		if err != nil {
+			return nil, err
+		}
+		dateStr, err := recordString(rec, 7, "log.date")
+		if err != nil {
+			return nil, err
+		}
+		exchanges, err := unmarshalExchanges(exchangesJSON)
+		if err != nil {
+			return nil, err
+		}
+		date, err := parseRFC3339("log.date", dateStr)
+		if err != nil {
+			return nil, err
+		}
+
+		entries = append(entries, &storage.ConversationLogEntry{
+			ID:            id,
+			SpecSlug:      specSlug,
+			Stage:         storage.SpecStage(stageStr),
+			Version:       safeInt32(version),
+			IsAmend:       isAmend,
+			Exchanges:     exchanges,
+			ExchangeCount: safeInt32(exchangeCount),
+			Date:          date,
+		})
+	}
+	return entries, nil
+}
+
 // EnsureConversationLogIndexes creates indexes on ConversationLog nodes.
 // Called from ensureIndexes during Store initialization.
 func (s *Store) EnsureConversationLogIndexes(ctx context.Context) error {

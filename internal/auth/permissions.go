@@ -68,6 +68,15 @@ var rpcPermissions = map[string]string{
 	specgraphv1connect.AnalyticalPassServiceRunAnalyticalPassProcedure: "analytical_pass:write",
 	specgraphv1connect.AnalyticalPassServiceStoreFindingsProcedure:     "analytical_pass:write",
 	specgraphv1connect.AnalyticalPassServiceListFindingsProcedure:      "analytical_pass:read",
+	// ExportService
+	specgraphv1connect.ExportServiceExportProjectProcedure: "export:read",
+	specgraphv1connect.ExportServiceImportProjectProcedure: "export:write",
+	specgraphv1connect.ExportServiceVerifyExportProcedure:  "export:read",
+	// SliceService
+	specgraphv1connect.SliceServiceListSlicesProcedure:    "slice:read",
+	specgraphv1connect.SliceServiceGetSliceProcedure:      "slice:read",
+	specgraphv1connect.SliceServiceClaimSliceProcedure:    "slice:write",
+	specgraphv1connect.SliceServiceCompleteSliceProcedure: "slice:write",
 }
 
 var exemptProcedures = map[string]bool{
