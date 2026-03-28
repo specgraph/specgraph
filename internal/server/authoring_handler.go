@@ -540,11 +540,6 @@ func (h *AuthoringHandler) RecordConversation(
 	if err != nil {
 		return nil, err
 	}
-	convBackend, ok := store.(storage.ConversationBackend)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("storage backend does not support conversation logs"))
-	}
-
 	exchanges, exErr := conversationExchangesFromProto(req.Msg.Exchanges)
 	if exErr != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, exErr)
@@ -556,7 +551,7 @@ func (h *AuthoringHandler) RecordConversation(
 		ExchangeCount: int32(len(req.Msg.Exchanges)), //nolint:gosec // bounded by maxElements (100) validation above
 	}
 
-	result, recErr := convBackend.RecordConversation(ctx, slug, entry)
+	result, recErr := store.RecordConversation(ctx, slug, entry)
 	if recErr != nil {
 		return nil, h.stageError(recErr)
 	}
@@ -580,12 +575,7 @@ func (h *AuthoringHandler) ListConversations(
 	if err != nil {
 		return nil, err
 	}
-	convBackend, ok := store.(storage.ConversationBackend)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnimplemented, fmt.Errorf("storage backend does not support conversation logs"))
-	}
-
-	entries, listErr := convBackend.ListConversations(ctx, slug, req.Msg.Stage)
+	entries, listErr := store.ListConversations(ctx, slug, req.Msg.Stage)
 	if listErr != nil {
 		return nil, h.stageError(listErr)
 	}
