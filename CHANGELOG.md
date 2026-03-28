@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.3.3](https://github.com/specgraph/specgraph/compare/v0.3.2...v0.3.3) - 2026-03-28
+
+### Bug Fixes
+
+- **ci:** Goreleaser Docker build — use dockers with buildx + multi-arch (#791) ([#791](https://github.com/specgraph/specgraph/pull/791)) ([860a6ac](https://github.com/specgraph/specgraph/commit/860a6ac19c4c892d2b9ccc5552a4ecc4caa2b0f7))
+
 ## [0.3.2](https://github.com/specgraph/specgraph/compare/v0.3.1...v0.3.2) - 2026-03-28
 
 ### Bug Fixes
