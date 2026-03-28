@@ -245,8 +245,15 @@ func (e *Engine) Import(ctx context.Context, data []byte, force, requireSig bool
 	return e.writeEntities(ctx, &doc)
 }
 
+// rawEnvelope extracts the "data" field as raw bytes from the original JSON,
+// avoiding re-marshaling which could reorder map keys nondeterministically.
+type rawEnvelope struct {
+	Data json.RawMessage `json:"data"`
+}
+
 // verifySignature checks the HMAC signature on a document.
-func (e *Engine) verifySignature(_ []byte, doc *Document, requireSig bool) error {
+// It uses the raw bytes from the original JSON to avoid nondeterministic re-marshaling.
+func (e *Engine) verifySignature(raw []byte, doc *Document, requireSig bool) error {
 	if doc.Signature == nil {
 		if requireSig {
 			return errors.New("signature required but not present")
@@ -259,13 +266,14 @@ func (e *Engine) verifySignature(_ []byte, doc *Document, requireSig bool) error
 		return nil
 	}
 
-	dataBytes, err := json.Marshal(doc.Data)
-	if err != nil {
-		return fmt.Errorf("marshal data for verification: %w", err)
+	// Extract the original "data" bytes from raw JSON to preserve exact byte ordering.
+	var env rawEnvelope
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return fmt.Errorf("extract data bytes for verification: %w", err)
 	}
 
 	mac := hmac.New(sha256.New, []byte(e.signingKey))
-	mac.Write(dataBytes)
+	mac.Write(env.Data)
 	expected := mac.Sum(nil)
 
 	got, err := hex.DecodeString(doc.Signature.Digest)
@@ -379,7 +387,7 @@ func (e *Engine) writeEntities(ctx context.Context, doc *Document) (*ImportResul
 
 	// 3. Specs — create then restore stage via Store*Output + TransitionStage
 	for _, spec := range doc.Data.Specs {
-		if _, err := e.backend.CreateSpec(ctx, spec.Slug, spec.Intent, string(spec.Priority), spec.Complexity); err != nil {
+		if _, err := e.backend.CreateSpec(ctx, spec.Slug, spec.Intent, string(spec.Priority), string(spec.Complexity)); err != nil {
 			return nil, fmt.Errorf("create spec %q: %w", spec.Slug, err)
 		}
 

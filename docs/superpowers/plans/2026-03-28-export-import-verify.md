@@ -1194,6 +1194,7 @@ func TestImport_RejectsUnsupportedSchemaVersion(t *testing.T) {
 - [ ] **Step 2: Write tests for HMAC signature**
 
 Test cases:
+
 - Valid signature → passes
 - Tampered data → fails
 - Missing key, signature present → warns (no error)
@@ -1203,6 +1204,7 @@ Test cases:
 - [ ] **Step 3: Write tests for referential integrity**
 
 Test cases:
+
 - Edge referencing nonexistent spec → error listing broken ref
 - Slice with missing parent → error
 - Finding with missing spec → error
@@ -1233,6 +1235,7 @@ test(export): add unit tests for schema, signature, refs (spgr-m56.9)
 
 Follow the existing handler pattern (see `internal/server/decision_handler.go`
 for reference). The handler:
+
 - Accepts `ExportProjectRequest` → calls `engine.Export` → returns bytes
 - Accepts `ImportProjectRequest` → calls `engine.Import` → maps result to proto
 - Accepts `VerifyExportRequest` → calls `engine.Verify` → maps result to proto
@@ -1315,6 +1318,7 @@ var verifyCmd = &cobra.Command{
 ```
 
 Flags:
+
 - `export`: `-o, --output` (file path, default stdout)
 - `import`: `--force`, `--require-signature`
 - `verify`: (none)

@@ -101,7 +101,7 @@ jobs:
       - name: Unit test coverage
         run: go test -coverprofile=unit.out -covermode=atomic ./cmd/... ./internal/...
       - name: Integration test coverage
-        run: go test -tags integration -coverprofile=integration.out -covermode=atomic ./internal/storage/memgraph/ ./internal/server/
+        run: go test -tags integration -coverprofile=integration.out -covermode=atomic ./internal/...
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
         with:

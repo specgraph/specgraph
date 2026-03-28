@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"math"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -80,15 +81,15 @@ func (h *exportHandler) ImportProject(ctx context.Context, req *connect.Request[
 
 	return connect.NewResponse(&specv1.ImportProjectResponse{
 		Result: &specv1.ImportResult{
-			SpecsCreated:           int32(result.Specs),
-			DecisionsCreated:       int32(result.Decisions),
-			SlicesCreated:          int32(result.Slices),
-			EdgesCreated:           int32(result.Edges),
-			FindingsCreated:        int32(result.Findings),
-			ChangelogsCreated:      int32(result.ChangeLogs),
-			ConversationsCreated:   int32(result.Conversations),
-			SyncMappingsCreated:    int32(result.SyncMappings),
-			ExecutionEventsCreated: int32(result.ExecEvents),
+			SpecsCreated:           safeInt32(result.Specs),
+			DecisionsCreated:       safeInt32(result.Decisions),
+			SlicesCreated:          safeInt32(result.Slices),
+			EdgesCreated:           safeInt32(result.Edges),
+			FindingsCreated:        safeInt32(result.Findings),
+			ChangelogsCreated:      safeInt32(result.ChangeLogs),
+			ConversationsCreated:   safeInt32(result.Conversations),
+			SyncMappingsCreated:    safeInt32(result.SyncMappings),
+			ExecutionEventsCreated: safeInt32(result.ExecEvents),
 			Warnings:               result.Warnings,
 		},
 	}), nil
@@ -132,9 +133,9 @@ func (h *exportHandler) VerifyExport(ctx context.Context, req *connect.Request[s
 	for _, d := range result.Diffs {
 		diffs = append(diffs, &specv1.EntityDiff{
 			EntityType: d.EntityType,
-			Matched:    int32(d.Matched),
-			Missing:    int32(d.Missing),
-			Extra:      int32(d.Extra),
+			Matched:    safeInt32(d.Matched),
+			Missing:    safeInt32(d.Missing),
+			Extra:      safeInt32(d.Extra),
 		})
 	}
 
@@ -152,6 +153,14 @@ func (h *exportHandler) exportError(ctx context.Context, err error) error {
 	}
 	h.logger.ErrorContext(ctx, "exportError: internal error", slog.Any("error", err))
 	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
+}
+
+// safeInt32 converts n to int32, capping at math.MaxInt32 to prevent overflow.
+func safeInt32(n int) int32 {
+	if n > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	return int32(n) //nolint:gosec // bounded by math.MaxInt32 check above
 }
 
 // RegisterExportService registers the ExportService on the given mux.

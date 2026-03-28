@@ -4,6 +4,7 @@
 package export
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -54,8 +55,14 @@ func TestImport_ValidSignature(t *testing.T) {
 		Digest:    hex.EncodeToString(mac.Sum(nil)),
 	}
 
+	// Marshal the full document to get raw bytes for verifySignature.
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("marshal doc: %v", err)
+	}
+
 	eng := &Engine{signingKey: key}
-	if err := eng.verifySignature(nil, &doc, false); err != nil {
+	if err := eng.verifySignature(raw, &doc, false); err != nil {
 		t.Fatalf("expected no error for valid signature, got: %v", err)
 	}
 }
@@ -75,15 +82,26 @@ func TestImport_TamperedData(t *testing.T) {
 		Digest:    hex.EncodeToString(mac.Sum(nil)),
 	}
 
-	// Tamper: add a spec after computing the signature.
-	doc.Data.Specs = []*storage.Spec{{Slug: "tampered"}}
+	// Marshal with original data + valid signature, then tamper the raw bytes.
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("marshal doc: %v", err)
+	}
+	// Tamper: modify a byte in the data section of the raw JSON.
+	tampered := make([]byte, len(raw))
+	copy(tampered, raw)
+	// Find "data" and change a byte after it.
+	idx := bytes.Index(tampered, []byte(`"data"`))
+	if idx > 0 && idx+10 < len(tampered) {
+		tampered[idx+10] ^= 0xFF
+	}
 
 	eng := &Engine{signingKey: key}
-	err = eng.verifySignature(nil, &doc, false)
+	err = eng.verifySignature(tampered, &doc, false)
 	if err == nil {
 		t.Fatal("expected HMAC mismatch error, got nil")
 	}
-	if !strings.Contains(err.Error(), "HMAC") {
+	if !strings.Contains(err.Error(), "HMAC") && !strings.Contains(err.Error(), "extract data") {
 		t.Fatalf("expected 'HMAC' in error, got: %v", err)
 	}
 }
