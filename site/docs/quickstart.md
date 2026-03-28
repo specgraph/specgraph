@@ -199,7 +199,7 @@ For a tiny spec like this, decomposition produces a single slice:
 | Field | Value |
 |-------|-------|
 | strategy | Single slice — spec is small enough to implement atomically |
-| slices | `healthz-v1`: implement handler, register route, add test |
+| slices | `healthz-v1`: implement handler, register route, add test — created as a Slice node in the graph |
 
 <details><summary>CLI equivalent</summary>
 
@@ -229,6 +229,26 @@ specgraph approve healthz
 ```
 
 </details>
+
+---
+
+## Work with Slices
+
+After decompose, slices exist as independent graph nodes. List, claim, and
+complete them:
+
+```bash
+# List slices for a spec
+specgraph slice list healthz
+
+# Claim a slice for work
+specgraph slice claim healthz-v1 --assignee alice
+
+# After implementation, mark it done
+specgraph slice complete healthz-v1
+```
+
+See [Slices & Execution Units](concepts/slices.md) for the full lifecycle.
 
 ---
 
