@@ -11,6 +11,7 @@ import (
 // ChangeLogEntry records a single material change to a spec.
 type ChangeLogEntry struct {
 	ID          string
+	SpecSlug    string // populated by ListAllChanges for export
 	Version     int32
 	Stage       SpecStage
 	ContentHash string
@@ -34,4 +35,7 @@ type ChangeLogBackend interface {
 	// Returns an empty slice (not an error) if the spec has no changelog entries.
 	// Returns ErrSpecNotFound if the spec slug does not exist.
 	ListChanges(ctx context.Context, slug string, opts ChangeLogFilter) ([]*ChangeLogEntry, error)
+
+	// ListAllChanges returns all changelog entries across all specs, with SpecSlug populated.
+	ListAllChanges(ctx context.Context) ([]*ChangeLogEntry, error)
 }

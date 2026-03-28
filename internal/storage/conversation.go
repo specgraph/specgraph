@@ -20,6 +20,7 @@ type ConversationExchange struct {
 // ConversationLogEntry records the authoring conversation for a single stage completion.
 type ConversationLogEntry struct {
 	ID            string
+	SpecSlug      string // populated by ListAllConversations for export
 	Stage         SpecStage
 	Version       int32
 	IsAmend       bool
@@ -41,4 +42,7 @@ type ConversationBackend interface {
 	// Returns an empty slice (not an error) if no conversation logs exist.
 	// Returns ErrSpecNotFound if the spec slug does not exist.
 	ListConversations(ctx context.Context, slug string, stage string) ([]*ConversationLogEntry, error)
+
+	// ListAllConversations returns all conversation logs across all specs, with SpecSlug populated.
+	ListAllConversations(ctx context.Context) ([]*ConversationLogEntry, error)
 }
