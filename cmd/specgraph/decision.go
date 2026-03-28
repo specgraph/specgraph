@@ -79,11 +79,17 @@ func runDecisionList(cmd *cobra.Command, _ []string) error {
 
 	var statusFilter specv1.DecisionStatus
 	if decisionListStatus != "" {
-		val, ok := specv1.DecisionStatus_value[decisionListStatus]
+		decisionStatusToProtoMap := map[string]specv1.DecisionStatus{
+			"proposed":   specv1.DecisionStatus_DECISION_STATUS_PROPOSED,
+			"accepted":   specv1.DecisionStatus_DECISION_STATUS_ACCEPTED,
+			"deprecated": specv1.DecisionStatus_DECISION_STATUS_DEPRECATED,
+			"superseded": specv1.DecisionStatus_DECISION_STATUS_SUPERSEDED,
+		}
+		val, ok := decisionStatusToProtoMap[decisionListStatus]
 		if !ok {
 			return fmt.Errorf("unknown status %q; valid values: proposed, accepted, deprecated, superseded", decisionListStatus)
 		}
-		statusFilter = specv1.DecisionStatus(val)
+		statusFilter = val
 	}
 
 	resp, err := client.ListDecisions(cmd.Context(), connect.NewRequest(&specv1.ListDecisionsRequest{

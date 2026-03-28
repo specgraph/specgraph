@@ -20,10 +20,10 @@ type DecisionStatus string
 
 // Decision status lifecycle values.
 const (
-	DecisionStatusProposed   DecisionStatus = "DECISION_STATUS_PROPOSED"
-	DecisionStatusAccepted   DecisionStatus = "DECISION_STATUS_ACCEPTED"
-	DecisionStatusSuperseded DecisionStatus = "DECISION_STATUS_SUPERSEDED"
-	DecisionStatusDeprecated DecisionStatus = "DECISION_STATUS_DEPRECATED"
+	DecisionStatusProposed   DecisionStatus = "proposed"
+	DecisionStatusAccepted   DecisionStatus = "accepted"
+	DecisionStatusSuperseded DecisionStatus = "superseded"
+	DecisionStatusDeprecated DecisionStatus = "deprecated"
 )
 
 // IsValid reports whether s is a known decision status.

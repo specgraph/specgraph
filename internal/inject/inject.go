@@ -93,7 +93,7 @@ func renderMarkdown(spec *storage.Spec, con *storage.Constitution) string {
 	fmt.Fprintf(&b, "| Intent | %s |\n", escapeTableCell(spec.Intent))
 	fmt.Fprintf(&b, "| Stage | %s |\n", escapeTableCell(string(spec.Stage)))
 	fmt.Fprintf(&b, "| Priority | %s |\n", escapeTableCell(string(spec.Priority)))
-	fmt.Fprintf(&b, "| Complexity | %s |\n", escapeTableCell(spec.Complexity))
+	fmt.Fprintf(&b, "| Complexity | %s |\n", escapeTableCell(string(spec.Complexity)))
 	fmt.Fprintf(&b, "| Version | %d |\n", spec.Version)
 
 	if con == nil {

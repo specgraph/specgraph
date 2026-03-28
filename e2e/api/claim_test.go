@@ -11,7 +11,6 @@ import (
 	"connectrpc.com/connect"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
@@ -46,13 +45,8 @@ var _ = Describe("Claim protocol", Ordered, func() {
 		Expect(createResp.Msg.GetSpec().GetSlug()).To(Equal(claimSlug))
 		Expect(createResp.Msg.GetSpec().GetStage()).To(Equal("spark"))
 
-		// Advance stage to approved via UpdateSpec.
-		updateResp, err := specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
-			Slug:  claimSlug,
-			Stage: proto.String("approved"),
-		}))
-		Expect(err).NotTo(HaveOccurred())
-		Expect(updateResp.Msg.GetSpec().GetStage()).To(Equal("approved"))
+		// Advance through authoring funnel to approved.
+		Expect(advanceStage(ctx, claimSlug, "approved")).To(Succeed())
 	})
 
 	It("claims the approved spec", func() {

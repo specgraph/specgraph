@@ -204,7 +204,7 @@ func formatIssueBody(spec *storage.Spec) string {
 	return fmt.Sprintf("## Spec: %s\n\n**Intent:** %s\n\n| Field | Value |\n|-------|-------|\n| Stage | %s |\n| Priority | %s |\n| Complexity | %s |\n| Version | %d |\n",
 		escapeCell(spec.Slug), escapeCell(spec.Intent),
 		escapeCell(string(spec.Stage)), escapeCell(string(spec.Priority)),
-		escapeCell(spec.Complexity), spec.Version)
+		escapeCell(string(spec.Complexity)), spec.Version)
 }
 
 // formatLabels produces individual label strings for a GitHub issue.

@@ -25,49 +25,59 @@ func (s *Store) ClaimSpec(ctx context.Context, slug, agent string, leaseDuration
 	nowStr := now.Format(time.RFC3339)
 	expiresStr := now.Add(leaseDuration).Format(time.RFC3339)
 
-	// First verify the spec exists.
-	existsResult, err := neo4j.ExecuteQuery(ctx, s.driver,
-		`MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug}) RETURN s.slug`,
-		mergeParams(s.projectParam(), map[string]any{"slug": slug}), neo4j.EagerResultTransformer)
-	if err != nil {
-		return nil, fmt.Errorf("memgraph: claim spec existence check: %w", err)
-	}
-	if len(existsResult.Records) == 0 {
-		return nil, fmt.Errorf("memgraph: claim spec %q: %w", slug, storage.ErrSpecNotFound)
-	}
+	var claim *storage.Claim
 
-	// Delete any expired claims first, then check for active ones
-	query := `
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
-		OPTIONAL MATCH (s)-[old:CLAIMED_BY]->()
-		WHERE old.lease_expires < $now
-		DELETE old
-		WITH s
-		OPTIONAL MATCH (s)-[active:CLAIMED_BY]->(existing)
-		WHERE active.lease_expires >= $now
-		WITH s, active
-		WHERE active IS NULL
-		MERGE (a:Agent {name: $agent})
-		CREATE (s)-[r:CLAIMED_BY {agent: $agent, claimed_at: $claimed_at, lease_expires: $lease_expires}]->(a)
-		RETURN r.agent, r.claimed_at, r.lease_expires
-	`
-	params := mergeParams(s.projectParam(), map[string]any{
-		"slug":          slug,
-		"agent":         agent,
-		"now":           nowStr,
-		"claimed_at":    nowStr,
-		"lease_expires": expiresStr,
+	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Verify the spec exists inside the transaction.
+		existsRecords, err := s.executeQuery(txCtx,
+			`MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug}) RETURN s.slug`,
+			mergeParams(s.projectParam(), map[string]any{"slug": slug}))
+		if err != nil {
+			return fmt.Errorf("memgraph: claim spec existence check: %w", err)
+		}
+		if len(existsRecords) == 0 {
+			return fmt.Errorf("memgraph: claim spec %q: %w", slug, storage.ErrSpecNotFound)
+		}
+
+		// Delete expired claims, check for active ones, and create new claim atomically.
+		query := `
+			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
+			OPTIONAL MATCH (s)-[old:CLAIMED_BY]->()
+			WHERE old.lease_expires < $now
+			DELETE old
+			WITH DISTINCT s
+			OPTIONAL MATCH (s)-[active:CLAIMED_BY]->(existing)
+			WHERE active.lease_expires >= $now
+			WITH s, active
+			WHERE active IS NULL
+			MERGE (a:Agent {name: $agent})
+			CREATE (s)-[r:CLAIMED_BY {agent: $agent, claimed_at: $claimed_at, lease_expires: $lease_expires}]->(a)
+			RETURN r.agent, r.claimed_at, r.lease_expires
+		`
+		params := mergeParams(s.projectParam(), map[string]any{
+			"slug":          slug,
+			"agent":         agent,
+			"now":           nowStr,
+			"claimed_at":    nowStr,
+			"lease_expires": expiresStr,
+		})
+
+		records, err := s.executeQuery(txCtx, query, params)
+		if err != nil {
+			return fmt.Errorf("memgraph: claim spec: %w", err)
+		}
+		if len(records) == 0 {
+			return fmt.Errorf("memgraph: claim spec %q: %w", slug, storage.ErrSpecAlreadyClaimed)
+		}
+
+		claim, err = recordToClaim(slug, records[0])
+		return err
 	})
-
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
 	if err != nil {
-		return nil, fmt.Errorf("memgraph: claim spec: %w", err)
-	}
-	if len(result.Records) == 0 {
-		return nil, fmt.Errorf("memgraph: claim spec %q: %w", slug, storage.ErrSpecAlreadyClaimed)
+		return nil, err
 	}
 
-	return recordToClaim(slug, result.Records[0])
+	return claim, nil
 }
 
 // UnclaimSpec removes the CLAIMED_BY relationship for a specific agent.
@@ -79,17 +89,17 @@ func (s *Store) UnclaimSpec(ctx context.Context, slug, agent string) error {
 		OPTIONAL MATCH (s)-[r:CLAIMED_BY]->(a)
 		RETURN r.agent AS claim_agent
 	`
-	checkResult, err := neo4j.ExecuteQuery(ctx, s.driver, checkQuery,
-		mergeParams(s.projectParam(), map[string]any{"slug": slug}), neo4j.EagerResultTransformer)
+	checkRecords, err := s.executeQuery(ctx, checkQuery,
+		mergeParams(s.projectParam(), map[string]any{"slug": slug}))
 	if err != nil {
 		return fmt.Errorf("memgraph: unclaim spec check: %w", err)
 	}
 
-	if len(checkResult.Records) == 0 {
+	if len(checkRecords) == 0 {
 		return fmt.Errorf("memgraph: unclaim spec %q: %w", slug, storage.ErrSpecNotClaimed)
 	}
 
-	rec := checkResult.Records[0]
+	rec := checkRecords[0]
 	claimAgentVal, _ := rec.Get("claim_agent")
 	if claimAgentVal == nil {
 		return fmt.Errorf("memgraph: unclaim spec %q: %w", slug, storage.ErrSpecNotClaimed)
@@ -109,8 +119,8 @@ func (s *Store) UnclaimSpec(ctx context.Context, slug, agent string) error {
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[r:CLAIMED_BY {agent: $agent}]->(a)
 		DELETE r
 	`
-	_, err = neo4j.ExecuteQuery(ctx, s.driver, deleteQuery,
-		mergeParams(s.projectParam(), map[string]any{"slug": slug, "agent": agent}), neo4j.EagerResultTransformer)
+	_, err = s.executeQuery(ctx, deleteQuery,
+		mergeParams(s.projectParam(), map[string]any{"slug": slug, "agent": agent}))
 	if err != nil {
 		return fmt.Errorf("memgraph: unclaim spec: %w", err)
 	}
@@ -136,15 +146,15 @@ func (s *Store) Heartbeat(ctx context.Context, slug, agent string, extendBy time
 		"lease_expires": newExpires,
 	})
 
-	result, err := neo4j.ExecuteQuery(ctx, s.driver, query, params, neo4j.EagerResultTransformer)
+	records, err := s.executeQuery(ctx, query, params)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: heartbeat: %w", err)
 	}
-	if len(result.Records) == 0 {
+	if len(records) == 0 {
 		return nil, fmt.Errorf("memgraph: no active claim for spec %q by agent %q", slug, agent)
 	}
 
-	return recordToClaim(slug, result.Records[0])
+	return recordToClaim(slug, records[0])
 }
 
 func recordToClaim(slug string, rec *neo4j.Record) (*storage.Claim, error) {

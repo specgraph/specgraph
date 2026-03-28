@@ -49,9 +49,10 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			}))
 			Expect(err).NotTo(HaveOccurred())
 
-			resp, err := specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
-				Slug:  amendSlug,
-				Stage: proto.String("done"),
+			Expect(advanceStage(ctx, amendSlug, "done")).To(Succeed())
+
+			resp, err := specClient.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
+				Slug: amendSlug,
 			}))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))
@@ -84,9 +85,10 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			}))
 			Expect(err).NotTo(HaveOccurred())
 
-			resp, err := specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
-				Slug:  amendDefaultSlug,
-				Stage: proto.String("done"),
+			Expect(advanceStage(ctx, amendDefaultSlug, "done")).To(Succeed())
+
+			resp, err := specClient.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
+				Slug: amendDefaultSlug,
 			}))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))
@@ -200,11 +202,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 				}))
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
-					Slug:  slug,
-					Stage: proto.String("done"),
-				}))
-				Expect(err).NotTo(HaveOccurred())
+				Expect(advanceStage(ctx, slug, "done")).To(Succeed())
 			}
 
 			// downstream DEPENDS_ON upstream
@@ -407,11 +405,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Advance to shape (mid-funnel, not done).
-			_, err = specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
-				Slug:  errSlug,
-				Stage: proto.String("shape"),
-			}))
-			Expect(err).NotTo(HaveOccurred())
+			Expect(advanceStage(ctx, errSlug, "shape")).To(Succeed())
 
 			_, err = lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
 				Slug:   errSlug,

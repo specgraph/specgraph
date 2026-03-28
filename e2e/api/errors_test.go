@@ -64,13 +64,8 @@ var _ = Describe("error handling", func() {
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
-		// Advance to approved stage.
-		approved := "approved"
-		_, err = specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
-			Slug:  "err-double-claim",
-			Stage: &approved,
-		}))
-		Expect(err).NotTo(HaveOccurred())
+		// Advance through authoring funnel to approved.
+		Expect(advanceStage(ctx, "err-double-claim", "approved")).To(Succeed())
 
 		// First claim succeeds.
 		_, err = claimClient.ClaimSpec(ctx, connect.NewRequest(&specv1.ClaimSpecRequest{

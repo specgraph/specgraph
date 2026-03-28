@@ -6,8 +6,13 @@
 package api_test
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 
+	"connectrpc.com/connect"
+
+	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 )
 
@@ -73,6 +78,120 @@ func newExecutionClient() specgraphv1connect.ExecutionServiceClient {
 
 func newSliceClient() specgraphv1connect.SliceServiceClient {
 	return specgraphv1connect.NewSliceServiceClient(projectClient(), serverInfo.BaseURL)
+}
+
+// advanceStage advances a spec (already at "spark") through the authoring funnel
+// to the target stage. Valid targets: "shape", "specify", "decompose", "approved",
+// "done". For "done", it also claims and completes the spec.
+// The spec must have been created via CreateSpec or Spark before calling this.
+// An optional http.Client may be passed to target a different project.
+func advanceStage(ctx context.Context, slug, target string, httpClients ...*http.Client) error {
+	hc := projectClient()
+	if len(httpClients) > 0 && httpClients[0] != nil {
+		hc = httpClients[0]
+	}
+	ac := specgraphv1connect.NewAuthoringServiceClient(hc, serverInfo.BaseURL)
+
+	stages := []string{"shape", "specify", "decompose", "approved", "done"}
+	targetIdx := -1
+	for i, s := range stages {
+		if s == target {
+			targetIdx = i
+			break
+		}
+	}
+	if targetIdx < 0 {
+		return fmt.Errorf("advanceStage: unknown target %q", target)
+	}
+
+	// shape
+	if targetIdx >= 0 {
+		_, err := ac.Shape(ctx, connect.NewRequest(&specv1.ShapeRequest{
+			Slug: slug,
+			Output: &specv1.ShapeOutput{
+				ScopeIn:        []string{"in-scope"},
+				ScopeOut:       []string{"out-scope"},
+				Approaches:     []*specv1.Approach{{Name: "default", Description: "test approach"}},
+				ChosenApproach: "default",
+			},
+		}))
+		if err != nil {
+			return fmt.Errorf("advanceStage shape: %w", err)
+		}
+	}
+	if targetIdx < 1 {
+		return nil
+	}
+
+	// specify
+	_, err := ac.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
+		Slug: slug,
+		Output: &specv1.SpecifyOutput{
+			Interfaces:     []*specv1.InterfaceSection{{Name: "API", Body: "test"}},
+			VerifyCriteria: []*specv1.VerifyCriterion{{Description: "passes"}},
+		},
+	}))
+	if err != nil {
+		return fmt.Errorf("advanceStage specify: %w", err)
+	}
+	if targetIdx < 2 {
+		return nil
+	}
+
+	// decompose
+	_, err = ac.Decompose(ctx, connect.NewRequest(&specv1.DecomposeRequest{
+		Slug: slug,
+		Output: &specv1.DecomposeOutput{
+			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_SINGLE_UNIT,
+			Slices:   []*specv1.DecompositionSlice{{Id: "main", Intent: "test"}},
+		},
+	}))
+	if err != nil {
+		return fmt.Errorf("advanceStage decompose: %w", err)
+	}
+	if targetIdx < 3 {
+		return nil
+	}
+
+	// approved
+	_, err = ac.Approve(ctx, connect.NewRequest(&specv1.ApproveRequest{Slug: slug}))
+	if err != nil {
+		return fmt.Errorf("advanceStage approve: %w", err)
+	}
+	if targetIdx < 4 {
+		return nil
+	}
+
+	// done: claim + complete
+	return claimAndComplete(ctx, slug, hc)
+}
+
+// claimAndComplete claims a spec (must be at approved or in_progress) and
+// reports completion, advancing it to "done".
+// An optional http.Client may be passed to target a different project.
+func claimAndComplete(ctx context.Context, slug string, httpClients ...*http.Client) error {
+	hc := projectClient()
+	if len(httpClients) > 0 && httpClients[0] != nil {
+		hc = httpClients[0]
+	}
+	const agent = "e2e-advance-agent"
+	cc := specgraphv1connect.NewClaimServiceClient(hc, serverInfo.BaseURL)
+	_, err := cc.ClaimSpec(ctx, connect.NewRequest(&specv1.ClaimSpecRequest{
+		SpecSlug: slug,
+		Agent:    agent,
+	}))
+	if err != nil {
+		return fmt.Errorf("claimAndComplete claim: %w", err)
+	}
+	ec := specgraphv1connect.NewExecutionServiceClient(hc, serverInfo.BaseURL)
+	_, err = ec.ReportCompletion(ctx, connect.NewRequest(&specv1.ReportCompletionRequest{
+		Slug:  slug,
+		Agent: agent,
+	}))
+	if err != nil {
+		return fmt.Errorf("claimAndComplete done: %w", err)
+	}
+	return nil
 }
 
 // projectClientFor returns an HTTP client with a custom project header.

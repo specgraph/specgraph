@@ -92,6 +92,20 @@ func TestValidateSchema_InvalidPriority(t *testing.T) {
 	require.Equal(t, "priority", violations[0].Location)
 }
 
+func TestValidateSchema_InvalidComplexity(t *testing.T) {
+	spec := &storage.Spec{
+		Slug:       "my-spec",
+		Intent:     "Do something",
+		Stage:      storage.SpecStageSpark,
+		Complexity: storage.SpecComplexity("extreme"),
+		Version:    1,
+	}
+	violations := linter.ValidateSchema(spec)
+	require.Len(t, violations, 1)
+	require.Equal(t, "schema.enum", violations[0].Rule)
+	require.Equal(t, "complexity", violations[0].Location)
+}
+
 func TestValidateSchema_LivingLifecycle(t *testing.T) {
 	spec := &storage.Spec{
 		Slug:      "living-spec",
