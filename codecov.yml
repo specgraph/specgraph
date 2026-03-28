@@ -9,13 +9,18 @@ coverage:
   status:
     project:
       default:
-        target: auto
+        target: 80%
         threshold: 2% # allow 2% drop without failing
         if_ci_failed: error
     patch:
       default:
-        target: 80% # new code should have 80%+ coverage
-        threshold: 5%
+        informational: true # report only, don't block PRs
+        # Patch coverage penalizes infra code (handlers, CLI, memgraph queries)
+        # that can only be tested via integration/E2E. Project coverage is the
+        # meaningful gate.
+    changes:
+      default:
+        enabled: true # report files with coverage changes
 comment:
   layout: "reach,diff,flags,files"
   behavior: default

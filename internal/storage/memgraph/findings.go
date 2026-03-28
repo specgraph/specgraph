@@ -170,3 +170,81 @@ func (s *Store) ListFindings(ctx context.Context, slug string, passType storage.
 
 	return findings, nil
 }
+
+// ListAllFindings returns all analytical findings across all specs in the project.
+// SpecSlug is populated from the spec_slug column for each finding.
+func (s *Store) ListAllFindings(ctx context.Context) ([]*storage.AnalyticalFinding, error) {
+	query := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(spec:Spec)-[:HAS_FINDING]->(f:Finding)
+		RETURN f.id, spec.slug AS spec_slug, f.pass_type, f.severity, f.summary,
+		       f.detail, f.constraint_ref, f.resolution, f.version, f.created_at
+		ORDER BY spec.slug, f.created_at
+	`
+	records, err := s.executeQuery(ctx, query, s.projectParam())
+	if err != nil {
+		return nil, fmt.Errorf("memgraph: list all findings: %w", err)
+	}
+
+	findings := make([]*storage.AnalyticalFinding, 0, len(records))
+	for _, rec := range records {
+		id, err := recordString(rec, 0, "f.id")
+		if err != nil {
+			return nil, err
+		}
+		specSlug, err := recordString(rec, 1, "spec_slug")
+		if err != nil {
+			return nil, err
+		}
+		pt, err := recordString(rec, 2, "f.pass_type")
+		if err != nil {
+			return nil, err
+		}
+		severity, err := recordString(rec, 3, "f.severity")
+		if err != nil {
+			return nil, err
+		}
+		summary, err := recordString(rec, 4, "f.summary")
+		if err != nil {
+			return nil, err
+		}
+		detail, err := recordStringOptional(rec, 5, "f.detail")
+		if err != nil {
+			return nil, err
+		}
+		constraintRef, err := recordStringOptional(rec, 6, "f.constraint_ref")
+		if err != nil {
+			return nil, err
+		}
+		resolution, err := recordStringOptional(rec, 7, "f.resolution")
+		if err != nil {
+			return nil, err
+		}
+		version, err := recordInt64(rec, 8, "f.version")
+		if err != nil {
+			return nil, err
+		}
+		createdAtStr, err := recordString(rec, 9, "f.created_at")
+		if err != nil {
+			return nil, err
+		}
+		createdAt, err := parseRFC3339("f.created_at", createdAtStr)
+		if err != nil {
+			return nil, err
+		}
+
+		findings = append(findings, &storage.AnalyticalFinding{
+			ID:         id,
+			SpecSlug:   specSlug,
+			PassType:   storage.PassType(pt),
+			Severity:   storage.FindingSeverity(severity),
+			Summary:    summary,
+			Detail:     detail,
+			Constraint: constraintRef,
+			Resolution: resolution,
+			Version:    safeInt32(version),
+			CreatedAt:  createdAt,
+		})
+	}
+
+	return findings, nil
+}

@@ -16,6 +16,7 @@
 - [Conversations](#conversations)
 - [Findings](#findings)
 - [Sync](#sync)
+- [Export & Backup](#export-backup)
 - [Server & Config](#server-config)
 
 ---
@@ -741,6 +742,45 @@ specgraph sync status [flags]
 ```
       --adapter string   filter by adapter (beads, github)
       --spec string      filter by spec slug
+```
+
+## Export & Backup
+
+### specgraph export
+
+Export a project to a JSON backup file
+
+```
+specgraph export <project-slug> [flags]
+```
+
+**Flags:**
+
+```
+  -o, --output string   output file path (default: stdout)
+```
+
+### specgraph import
+
+Import a project from a JSON backup file
+
+```
+specgraph import <file> [flags]
+```
+
+**Flags:**
+
+```
+      --force               overwrite existing project data
+      --require-signature   require a valid HMAC signature
+```
+
+### specgraph verify
+
+Verify an export matches current server state
+
+```
+specgraph verify <file>
 ```
 
 ## Server & Config

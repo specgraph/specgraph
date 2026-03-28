@@ -260,6 +260,87 @@ func recordToChangeLogEntry(rec *neo4j.Record) (*storage.ChangeLogEntry, error) 
 	}, nil
 }
 
+// ListAllChanges returns all changelog entries across all specs in the project.
+// SpecSlug is populated from the spec_slug column for each entry.
+func (s *Store) ListAllChanges(ctx context.Context) ([]*storage.ChangeLogEntry, error) {
+	query := `
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(spec:Spec)-[:HAS_CHANGE]->(cl:ChangeLog)
+		RETURN cl.id, spec.slug AS spec_slug, cl.version, cl.stage, cl.content_hash,
+		       cl.checkpoint, cl.summary, cl.reason, cl.changes_json, cl.date
+		ORDER BY spec.slug, cl.version
+	`
+	records, err := s.executeQuery(ctx, query, s.projectParam())
+	if err != nil {
+		return nil, fmt.Errorf("memgraph: list all changes: %w", err)
+	}
+
+	entries := make([]*storage.ChangeLogEntry, 0, len(records))
+	for _, rec := range records {
+		id, err := recordString(rec, 0, "cl.id")
+		if err != nil {
+			return nil, err
+		}
+		specSlug, err := recordString(rec, 1, "spec_slug")
+		if err != nil {
+			return nil, err
+		}
+		version, err := recordInt64(rec, 2, "cl.version")
+		if err != nil {
+			return nil, err
+		}
+		stage, err := recordString(rec, 3, "cl.stage")
+		if err != nil {
+			return nil, err
+		}
+		contentHash, err := recordString(rec, 4, "cl.content_hash")
+		if err != nil {
+			return nil, err
+		}
+		checkpoint, err := recordBool(rec, 5, "cl.checkpoint")
+		if err != nil {
+			return nil, err
+		}
+		summary, err := recordString(rec, 6, "cl.summary")
+		if err != nil {
+			return nil, err
+		}
+		reason, err := recordStringOptional(rec, 7, "cl.reason")
+		if err != nil {
+			return nil, err
+		}
+		changesJSON, err := recordStringOptional(rec, 8, "cl.changes_json")
+		if err != nil {
+			return nil, err
+		}
+		dateStr, err := recordString(rec, 9, "cl.date")
+		if err != nil {
+			return nil, err
+		}
+		date, err := parseRFC3339("cl.date", dateStr)
+		if err != nil {
+			return nil, err
+		}
+		changes, err := unmarshalFieldChanges(changesJSON)
+		if err != nil {
+			return nil, err
+		}
+
+		entries = append(entries, &storage.ChangeLogEntry{
+			ID:          id,
+			SpecSlug:    specSlug,
+			Version:     safeInt32(version),
+			Stage:       storage.SpecStage(stage),
+			ContentHash: contentHash,
+			Checkpoint:  checkpoint,
+			Summary:     summary,
+			Reason:      reason,
+			Changes:     changes,
+			Date:        date,
+		})
+	}
+	return entries, nil
+}
+
 // EnsureChangeLogIndexes creates indexes on ChangeLog nodes for efficient queries.
 // Called from ensureIndexes during Store initialization.
 func (s *Store) EnsureChangeLogIndexes(ctx context.Context) error {

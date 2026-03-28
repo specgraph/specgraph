@@ -34,4 +34,10 @@ type ProjectBackend interface {
 
 	// ListProjects returns all registered projects.
 	ListProjects(ctx context.Context) ([]*Project, error)
+
+	// WipeProjectData deletes all entities belonging to the project (specs,
+	// decisions, slices, findings, changelogs, conversations, sync mappings,
+	// execution events, constitution) and all edges between them. The Project
+	// node itself is preserved.
+	WipeProjectData(ctx context.Context) error
 }
