@@ -1,7 +1,7 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
-## [0.3.0](https://github.com/specgraph/specgraph/compare/v0.2.1...v0.3.0) - 2026-03-28
+## [0.3.1](https://github.com/specgraph/specgraph/compare/v0.2.1...v0.3.1) - 2026-03-28
 
 ### Bug Fixes
 
