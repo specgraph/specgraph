@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.3.4](https://github.com/specgraph/specgraph/compare/v0.3.3...v0.3.4) - 2026-03-28
+
+### Bug Fixes
+
+- **security:** Upgrade Go 1.26.1, add Trivy FS scan to CI (#792) ([#792](https://github.com/specgraph/specgraph/pull/792)) ([f934fbe](https://github.com/specgraph/specgraph/commit/f934fbecc55dde03fa6927eeb145f8c5d776955f))
+
 ## [0.3.3](https://github.com/specgraph/specgraph/compare/v0.3.2...v0.3.3) - 2026-03-28
 
 ### Bug Fixes
