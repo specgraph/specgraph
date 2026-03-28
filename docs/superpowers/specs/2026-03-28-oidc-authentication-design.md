@@ -62,26 +62,26 @@ auth:
 
 ### Auth Mode Semantics
 
-**Precise behavior for each (mode, auth-present, auth-absent) combination:**
+**When auth is configured (keys or OIDC providers), all requests require a valid token.** When no auth is configured (`!HasAuth()`), requests fall back to a local admin identity. In `local` mode, bootstrap auto-generates an admin API key on first writable start — after which auth is required.
 
 | Mode | Bearer token present | No Authorization header |
 |------|---------------------|----------------------|
-| `local` | Try API key only. JWT-shaped tokens return `CodeUnauthenticated` (OIDC disabled, `CompositeStore` skips JWT routing). | If keys configured: `CodeUnauthenticated`. If no keys: `localIdentity()`. |
-| `oidc` | Try API key, then OIDC for JWT-shaped tokens. | `CodeUnauthenticated` (no fallback). |
-| `mixed` | Try API key, then OIDC for JWT-shaped tokens. | `localIdentity()` (allows unauthenticated access with local admin identity — intended for migration scenarios where some clients don't yet have tokens). |
+| `local` | Try API key only. JWT-shaped tokens return `CodeUnauthenticated` (OIDC disabled, `CompositeStore` skips JWT routing). | If keys configured: `CodeUnauthenticated`. If no keys (pre-bootstrap or read-only env): local admin identity. |
+| `oidc` | Try API key, then OIDC for JWT-shaped tokens. | `CodeUnauthenticated`. |
+| `mixed` | Try API key, then OIDC for JWT-shaped tokens. | If keys/OIDC configured: `CodeUnauthenticated`. If none: local admin identity. |
 
 The `CompositeStore` checks `Mode` before attempting OIDC resolution. In `local` mode, `ResolveAPIKey` never delegates to `ResolveJWT` even for JWT-shaped tokens — it returns `ErrUnknownKey` directly.
 
-**Security note on `mixed` mode:** The local fallback grants admin permissions to unauthenticated requests. This is intentionally permissive for migration use. Operators should move to `oidc` mode once all clients are configured. The loopback warning in `serve.go` remains advisory.
+**Note on `mixed` mode:** `mixed` enables both API key and OIDC authentication simultaneously. Useful during migration from API keys to OIDC — existing API key clients continue working alongside new OIDC clients.
 
 ### Config Validation Rules
 
 - `mode` must be one of `local`, `oidc`, `mixed`. Go type: `string` with const validation.
 - `mode=oidc` requires at least one entry in `oidc_providers`.
 - `default_role` must reference a built-in role (`admin`, `writer`, `reader`) or a custom role defined in `roles`. Defaults to `reader` if omitted.
-- Each `oidc_providers[].id` must be unique.
-- Each `oidc_providers[].issuer` must be a valid HTTPS URL (enforced by `go-oidc` discovery).
-- Each `claims_mapping[].role` must reference a known role.
+- `oidc_providers[].id` values must be unique.
+- `oidc_providers[].issuer` must be a valid HTTPS URL (enforced by `go-oidc` discovery).
+- `claims_mapping[].role` must reference a known role.
 
 ### Bootstrap Behavior (local mode)
 
@@ -108,7 +108,7 @@ api_keys:
     role: admin
 ```
 
-**Merge semantics:** Keys from `credentials.yaml` are merged with keys from the main `config.yaml` at load time. If both files define a key with the same `id`, the main config wins (explicit config overrides auto-generated). This merge happens in `NewConfigStore` — it accepts both `AuthConfig` (from main config) and a credentials path.
+**Merge semantics:** Keys from `credentials.yaml` are merged with keys from the main `config.yaml` at load time. If both files define a key with the same `id`, the main config wins (explicit config overrides auto-generated). This merge is implemented in `NewConfigStore` (`internal/auth/config_store.go`) via `loadCredentialKeys` — the function accepts both `AuthConfig` (from main config) and a `credentialsPath` string, reads the credential file if it exists, and appends any keys whose IDs don't conflict with config keys.
 
 **Startup check:** If `credentials.yaml` exists but has permissions more open than `0600`, log a warning.
 
@@ -127,12 +127,12 @@ api_keys:
 
 | Type | Change |
 |------|--------|
-| `IdentityStore` | Add `ResolveJWT(ctx context.Context, token string) (*Identity, error)`, `HasAuth() bool` (replaces `HasKeys`, returns true if any auth is configured — keys or OIDC), and `AllowUnauthenticated() bool` (returns true when the no-header path should fall back to `localIdentity()` — i.e., mode is `mixed`, or mode is `local` with no keys configured). All callers of `HasKeys` must update: `interceptor.go:68`, `middleware.go:33`, `serve.go:97`. The no-header branch in `resolveIdentity` and `authenticate` changes from `!store.HasKeys()` to `store.AllowUnauthenticated()`. |
+| `IdentityStore` | Add `ResolveJWT(ctx context.Context, token string) (*Identity, error)` and `HasAuth() bool` (replaces `HasKeys`, returns true if any auth is configured — keys or OIDC). All callers of `HasKeys` must update: `interceptor.go:68`, `middleware.go:33`, `serve.go:97`. No-header branch uses `!store.HasAuth()` → `localIdentity()` fallback (only when no keys/OIDC configured). |
 | `AuthConfig` | Add `Mode string`, `DefaultRole string`, `OIDCProviders []OIDCProviderConfig` fields |
-| `resolveIdentity()` in `interceptor.go` | Replace `CodeUnimplemented` JWT stub — `store.ResolveAPIKey()` handles JWT fallback internally via `CompositeStore`. No-header branch: change `!store.HasKeys()` → `store.AllowUnauthenticated()`. Remove explicit JWT-shape detection (dead code after composite routing). |
-| `authenticate()` in `middleware.go` | No-header branch: change `!store.HasKeys()` → `store.AllowUnauthenticated()`. No other changes — `store.ResolveAPIKey()` handles JWT routing internally. |
-| `serve.go` | Update `authStore.HasKeys()` → `authStore.HasAuth()` in loopback warning (different method — `HasAuth` is for "any auth configured" advisory check, not for routing). Change `NewConfigStore` call to pass credentials path. |
-| `ConfigStore` | Implement `ResolveJWT` as no-op returning `ErrNoOIDC`. Implement `HasAuth` delegating to existing `HasKeys`. Implement `AllowUnauthenticated` returning `!HasKeys()` (preserves current behavior for non-composite usage). |
+| `resolveIdentity()` in `interceptor.go` | Replace `CodeUnimplemented` JWT stub — `store.ResolveAPIKey()` handles JWT fallback internally via `CompositeStore`. No-header branch: `!store.HasAuth()` → `localIdentity()`, else `CodeUnauthenticated`. Remove explicit JWT-shape detection (dead code after composite routing). |
+| `authenticate()` in `middleware.go` | No-header branch: `!store.HasAuth()` → `localIdentity()`, else `nil, false`. No other changes — `store.ResolveAPIKey()` handles JWT routing internally. |
+| `serve.go` | Update `authStore.HasKeys()` → `authStore.HasAuth()` in advisory loopback warning. Change `NewConfigStore` call to pass credentials path. |
+| `ConfigStore` | Implement `ResolveJWT` as no-op returning `ErrNoOIDC`. Implement `HasAuth` delegating to existing `HasKeys`. |
 | `NewConfigStore` | Signature changes to `NewConfigStore(cfg config.AuthConfig, credentialsPath string) (*ConfigStore, error)`. Reads and merges keys from credentials file before validating. Main config keys with duplicate IDs take precedence over credentials file keys. |
 
 ### New Files
@@ -170,12 +170,11 @@ Bearer token arrives -> store.ResolveAPIKey(ctx, token)
             -> not found: ErrUnknownKey (bubbles up)
         -> not JWT: ErrUnknownKey (bubbles up)
   -> no Authorization header?
-    -> store.AllowUnauthenticated()? -> localIdentity()
-       (true when: mode=mixed, or mode=local with no keys configured)
-    -> else: CodeUnauthenticated
+    -> store.HasAuth() is false: localIdentity() (pre-bootstrap or read-only)
+    -> store.HasAuth() is true: CodeUnauthenticated
 ```
 
-Both `resolveIdentity` (interceptor) and `authenticate` (middleware) call `store.ResolveAPIKey` for the token path and `store.AllowUnauthenticated()` for the no-header path. All routing logic is internal to `CompositeStore`.
+Both `resolveIdentity` (interceptor) and `authenticate` (middleware) call `store.ResolveAPIKey` for the token path and `store.HasAuth()` for the no-header path. Token routing logic is internal to `CompositeStore`.
 
 ### Claims Mapping Logic
 
@@ -207,7 +206,8 @@ For a verified JWT, claims are evaluated against the provider's `claims_mapping`
 **New sentinel errors:**
 
 - `ErrNoOIDC` — returned by `ConfigStore.ResolveJWT` (no OIDC support in standalone config store). Internal only, never surfaces to clients.
-- `ErrUnknownIssuer` — returned by `CompositeStore` when JWT `iss` doesn't match any configured provider. Mapped to `CodeUnauthenticated` by the interceptor.
+- `ErrUnknownIssuer` — returned by `CompositeStore` when JWT `iss` doesn't match any configured provider. Mapped to `ErrUnknownKey` by `CompositeStore.ResolveAPIKey`, then to `CodeUnauthenticated` by the interceptor.
+- `ErrInvalidToken` — returned by `OIDCStore.ResolveJWT` when a JWT fails verification (expired, bad signature, wrong audience). Mapped to `ErrUnknownKey` by `CompositeStore.ResolveAPIKey`, then to `CodeUnauthenticated` by the interceptor. Internal only.
 
 **Error-to-code mapping in interceptor:** `ErrUnknownKey` from `ResolveAPIKey` (including composite fallthrough) → `CodeUnauthenticated`. This preserves the existing behavior where unrecognized tokens are treated as unauthenticated, not as internal errors.
 
@@ -222,7 +222,7 @@ For a verified JWT, claims are evaluated against the provider's `claims_mapping`
 ### Graceful Degradation
 
 - Provider unreachable at startup: fail fast with a 10-second context deadline on OIDC provider discovery. Refuse to start with broken auth.
-- Provider unreachable at runtime (JWKS refresh): `go-oidc`'s `RemoteKeySet` fetches JWKS on first use and re-fetches when it encounters an unknown `kid`. There is no TTL-based cache expiry. If a re-fetch fails (provider down), tokens signed with already-cached keys continue to verify. Tokens signed with new keys (unknown `kid`) will fail until the provider recovers and the JWKS can be refreshed.
+- Provider unreachable at runtime: `go-oidc/v3`'s `RemoteKeySet` fetches JWKS on first use. It does NOT automatically re-fetch on unknown `kid` — tokens signed with keys not in the cached JWKS fail verification immediately. There is no TTL-based cache expiry. Tokens signed with already-cached keys continue to verify. If the provider rotates keys, new tokens will fail until the server is restarted (triggering a fresh JWKS fetch via `oidc.NewProvider`).
 - Single provider down in multi-provider setup: only that provider's tokens fail. Others unaffected.
 
 ## Testing Strategy

@@ -101,3 +101,57 @@ func TestBootstrap_PermissionWarning(t *testing.T) {
 		t.Error("expected warning for open permissions")
 	}
 }
+
+func TestBootstrap_ReadOnlyDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root bypasses permission checks")
+	}
+
+	dir := t.TempDir()
+	readOnlyDir := filepath.Join(dir, "readonly")
+	if err := os.MkdirAll(readOnlyDir, 0o555); err != nil { //nolint:gosec // intentional for test
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(readOnlyDir, 0o750) }) //nolint:gosec // restore perms for cleanup
+
+	credPath := filepath.Join(readOnlyDir, "credentials.yaml")
+	_, err := auth.Bootstrap(credPath)
+	if err == nil {
+		t.Fatal("expected error when writing to read-only directory")
+	}
+}
+
+func TestBootstrap_EmptyExistingFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "credentials.yaml")
+
+	// Write a credentials file with no keys.
+	if err := os.WriteFile(path, []byte("api_keys: []\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// File already exists, so O_EXCL fails → readExistingBootstrapKey is called → no keys → error.
+	_, err := auth.Bootstrap(path)
+	if err == nil {
+		t.Fatal("expected error for empty existing credentials")
+	}
+}
+
+func TestCheckCredentialPermissions_NoFile(t *testing.T) {
+	warning := auth.CheckCredentialPermissions("/nonexistent/file")
+	if warning != "" {
+		t.Errorf("expected empty warning for missing file, got %q", warning)
+	}
+}
+
+func TestCheckCredentialPermissions_CorrectPerms(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "credentials.yaml")
+	if err := os.WriteFile(path, []byte("test"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	warning := auth.CheckCredentialPermissions(path)
+	if warning != "" {
+		t.Errorf("expected empty warning for 0600 file, got %q", warning)
+	}
+}

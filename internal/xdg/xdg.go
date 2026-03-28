@@ -49,6 +49,11 @@ func ConfigFile() string {
 	return filepath.Join(ConfigHome(), "config.yaml")
 }
 
+// CredentialsFile returns the path to the credentials file.
+func CredentialsFile() string {
+	return filepath.Join(ConfigHome(), "credentials.yaml")
+}
+
 // EnsureDirs creates all XDG directories if they don't exist.
 // Returns an error if any path is relative (e.g., $HOME is unset).
 func EnsureDirs() error {

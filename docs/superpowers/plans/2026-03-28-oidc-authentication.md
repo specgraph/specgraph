@@ -4,7 +4,7 @@
 
 **Goal:** Add OIDC authentication support with multi-provider JWT validation, claims-to-role mapping, credential bootstrap, and explicit auth mode configuration.
 
-**Architecture:** Extend `IdentityStore` interface with `ResolveJWT`, `HasAuth`, and `AllowUnauthenticated`. Build `OIDCStore` (per-provider JWKS validation via `go-oidc/v3`) and `CompositeStore` (routes API keys vs JWTs, enforces auth mode). Add credential file bootstrap for local mode. All routing logic is internal to `CompositeStore` — interceptor and middleware stay simple.
+**Architecture:** Extend `IdentityStore` interface with `ResolveJWT` and `HasAuth`. Build `OIDCStore` (per-provider JWKS validation via `go-oidc/v3`) and `CompositeStore` (routes API keys vs JWTs, enforces auth mode). Add credential file bootstrap for local mode. All routing logic is internal to `CompositeStore` — interceptor and middleware stay simple.
 
 **Tech Stack:** Go, `github.com/coreos/go-oidc/v3`, ConnectRPC interceptors, `httptest` for mock IdP in tests
 
@@ -17,13 +17,13 @@
 | File | Responsibility |
 |------|---------------|
 | `internal/config/global.go` | Add `Mode`, `DefaultRole`, `OIDCProviders` to `AuthConfig`. New `OIDCProviderConfig` and `ClaimMapping` structs. |
-| `internal/auth/store.go` | Extend `IdentityStore` interface: add `ResolveJWT`, `HasAuth`, `AllowUnauthenticated`. New sentinels `ErrNoOIDC`, `ErrUnknownIssuer`. |
-| `internal/auth/config_store.go` | Add no-op `ResolveJWT`, delegate `HasAuth`→`HasKeys`, `AllowUnauthenticated`→`!HasKeys`. Signature change: accept `credentialsPath`. |
+| `internal/auth/store.go` | Extend `IdentityStore` interface: add `ResolveJWT`, `HasAuth`. New sentinels `ErrNoOIDC`, `ErrUnknownIssuer`, `ErrInvalidToken`. |
+| `internal/auth/config_store.go` | Add no-op `ResolveJWT`, delegate `HasAuth`→`HasKeys`. Signature change: accept `credentialsPath`. Load and merge credential file keys. |
 | `internal/auth/oidc_store.go` | New. Per-provider OIDC verifier — JWKS fetch, token verification, claims mapping → `*Identity`. |
 | `internal/auth/composite_store.go` | New. Wraps `ConfigStore` + `[]OIDCStore` + mode. Routes tokens, enforces mode gates. |
 | `internal/auth/bootstrap.go` | New. Generate default admin API key, write `credentials.yaml` with `0600`. |
-| `internal/auth/interceptor.go` | Replace JWT stub, `HasKeys`→`AllowUnauthenticated` in no-header branch. |
-| `internal/auth/middleware.go` | `HasKeys`→`AllowUnauthenticated` in no-header branch. |
+| `internal/auth/interceptor.go` | Replace JWT stub. No-header branch: `!store.HasAuth()`→`localIdentity()`, else `CodeUnauthenticated`. |
+| `internal/auth/middleware.go` | No-header branch: `!store.HasAuth()`→`localIdentity()`, else deny. |
 | `cmd/specgraph/serve.go` | Wire `CompositeStore`, pass credentials path, `HasKeys`→`HasAuth` in warning. |
 | `internal/auth/oidc_store_test.go` | New. Mock OIDC provider, token verification, claims mapping tests. |
 | `internal/auth/composite_store_test.go` | New. Composite routing, mode enforcement tests. |
@@ -979,7 +979,7 @@ jj --no-pager new -m ""
 
 ---
 
-### Task 6: Implement `CompositeStore`
+### Task 5: Implement `CompositeStore`
 
 **Files:**
 
@@ -1378,7 +1378,7 @@ jj --no-pager new -m ""
 
 ## Chunk 3: Bootstrap + Server Integration
 
-### Task 7: Implement credential bootstrap
+### Task 6: Implement credential bootstrap
 
 **Files:**
 
@@ -1616,7 +1616,7 @@ jj --no-pager new -m ""
 
 ---
 
-### Task 8: Wire everything together in `serve.go`
+### Task 7: Wire everything together in `serve.go`
 
 **Files:**
 
@@ -1745,7 +1745,7 @@ jj --no-pager new -m ""
 
 ---
 
-### Task 9: Run full test suite and fix any issues
+### Task 8: Run full test suite and fix any issues
 
 - [ ] **Step 1: Run unit tests**
 

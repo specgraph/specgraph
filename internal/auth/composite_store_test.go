@@ -5,6 +5,8 @@ package auth_test
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -25,7 +27,10 @@ func TestCompositeStore_APIKey(t *testing.T) {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
 
-	cs := auth.NewCompositeStore(cfgStore, nil, "local")
+	cs, csErr := auth.NewCompositeStore(cfgStore, nil, "local")
+	if csErr != nil {
+		t.Fatalf("NewCompositeStore: %v", csErr)
+	}
 	id, err := cs.ResolveAPIKey(context.Background(), "spgr_sk_test")
 	if err != nil {
 		t.Fatalf("ResolveAPIKey: %v", err)
@@ -45,7 +50,10 @@ func TestCompositeStore_LocalMode_RejectsJWT(t *testing.T) {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
 
-	cs := auth.NewCompositeStore(cfgStore, nil, "local")
+	cs, csErr := auth.NewCompositeStore(cfgStore, nil, "local")
+	if csErr != nil {
+		t.Fatalf("NewCompositeStore: %v", csErr)
+	}
 	_, err = cs.ResolveAPIKey(context.Background(), "header.payload.signature")
 	if !errors.Is(err, auth.ErrUnknownKey) {
 		t.Errorf("error = %v, want ErrUnknownKey", err)
@@ -74,7 +82,10 @@ func TestCompositeStore_OIDCMode_RoutesJWT(t *testing.T) {
 		t.Fatalf("NewOIDCStore: %v", err)
 	}
 
-	cs := auth.NewCompositeStore(cfgStore, []*auth.OIDCStore{oidcStore}, "oidc")
+	cs, csErr := auth.NewCompositeStore(cfgStore, []*auth.OIDCStore{oidcStore}, "oidc")
+	if csErr != nil {
+		t.Fatalf("NewCompositeStore: %v", csErr)
+	}
 	token := signToken(t, key, map[string]interface{}{
 		"iss": srv.URL, "aud": "test-client", "sub": "user-oidc",
 		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
@@ -109,7 +120,10 @@ func TestCompositeStore_UnknownIssuer(t *testing.T) {
 		t.Fatalf("NewOIDCStore: %v", err)
 	}
 
-	cs := auth.NewCompositeStore(cfgStore, []*auth.OIDCStore{oidcStore}, "oidc")
+	cs, csErr := auth.NewCompositeStore(cfgStore, []*auth.OIDCStore{oidcStore}, "oidc")
+	if csErr != nil {
+		t.Fatalf("NewCompositeStore: %v", csErr)
+	}
 
 	// Token with a different issuer — will not match any provider
 	token := signToken(t, key, map[string]interface{}{
@@ -120,58 +134,6 @@ func TestCompositeStore_UnknownIssuer(t *testing.T) {
 	_, err = cs.ResolveAPIKey(ctx, token)
 	if !errors.Is(err, auth.ErrUnknownKey) {
 		t.Errorf("error = %v, want ErrUnknownKey (unknown issuer mapped)", err)
-	}
-}
-
-func TestCompositeStore_AllowUnauthenticated_MixedMode(t *testing.T) {
-	cfgStore, err := auth.NewConfigStore(config.AuthConfig{
-		APIKeys: []config.APIKeyConfig{
-			{ID: "k1", Key: "spgr_sk_test", Name: "Test", Role: "admin"},
-		},
-	}, "")
-	if err != nil {
-		t.Fatalf("NewConfigStore: %v", err)
-	}
-	cs := auth.NewCompositeStore(cfgStore, nil, "mixed")
-	if !cs.AllowUnauthenticated() {
-		t.Error("AllowUnauthenticated() = false, want true in mixed mode")
-	}
-}
-
-func TestCompositeStore_AllowUnauthenticated_OIDCMode(t *testing.T) {
-	cfgStore, err := auth.NewConfigStore(config.AuthConfig{}, "")
-	if err != nil {
-		t.Fatalf("NewConfigStore: %v", err)
-	}
-	cs := auth.NewCompositeStore(cfgStore, nil, "oidc")
-	if cs.AllowUnauthenticated() {
-		t.Error("AllowUnauthenticated() = true, want false in oidc mode")
-	}
-}
-
-func TestCompositeStore_AllowUnauthenticated_LocalNoKeys(t *testing.T) {
-	cfgStore, err := auth.NewConfigStore(config.AuthConfig{}, "")
-	if err != nil {
-		t.Fatalf("NewConfigStore: %v", err)
-	}
-	cs := auth.NewCompositeStore(cfgStore, nil, "local")
-	if !cs.AllowUnauthenticated() {
-		t.Error("AllowUnauthenticated() = false, want true in local mode with no keys")
-	}
-}
-
-func TestCompositeStore_AllowUnauthenticated_LocalWithKeys(t *testing.T) {
-	cfgStore, err := auth.NewConfigStore(config.AuthConfig{
-		APIKeys: []config.APIKeyConfig{
-			{ID: "k1", Key: "spgr_sk_test", Name: "Test", Role: "admin"},
-		},
-	}, "")
-	if err != nil {
-		t.Fatalf("NewConfigStore: %v", err)
-	}
-	cs := auth.NewCompositeStore(cfgStore, nil, "local")
-	if cs.AllowUnauthenticated() {
-		t.Error("AllowUnauthenticated() = true, want false in local mode with keys")
 	}
 }
 
@@ -191,8 +153,95 @@ func TestCompositeStore_HasAuth_WithOIDCOnly(t *testing.T) {
 		t.Fatalf("NewOIDCStore: %v", err)
 	}
 
-	cs := auth.NewCompositeStore(cfgStore, []*auth.OIDCStore{oidcStore}, "oidc")
+	cs, csErr := auth.NewCompositeStore(cfgStore, []*auth.OIDCStore{oidcStore}, "oidc")
+	if csErr != nil {
+		t.Fatalf("NewCompositeStore: %v", csErr)
+	}
 	if !cs.HasAuth() {
 		t.Error("HasAuth() = false, want true with OIDC providers")
+	}
+}
+
+func TestCompositeStore_MalformedJWT_BadBase64(t *testing.T) {
+	cfgStore, err := auth.NewConfigStore(config.AuthConfig{}, "")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	cs, csErr := auth.NewCompositeStore(cfgStore, nil, "oidc")
+	if csErr != nil {
+		t.Fatalf("NewCompositeStore: %v", csErr)
+	}
+	// JWT with invalid base64 in payload
+	_, err = cs.ResolveAPIKey(context.Background(), "header.!!!invalid-base64!!!.signature")
+	if !errors.Is(err, auth.ErrUnknownKey) {
+		t.Errorf("error = %v, want ErrUnknownKey for bad base64", err)
+	}
+}
+
+func TestCompositeStore_MalformedJWT_MissingIss(t *testing.T) {
+	cfgStore, err := auth.NewConfigStore(config.AuthConfig{}, "")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	cs, csErr := auth.NewCompositeStore(cfgStore, nil, "oidc")
+	if csErr != nil {
+		t.Fatalf("NewCompositeStore: %v", csErr)
+	}
+	// Build a JWT-shaped token with a valid base64 payload that has no "iss" claim.
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none"}`))
+	payload, _ := json.Marshal(map[string]string{"sub": "test"})
+	noIssToken := header + "." + base64.RawURLEncoding.EncodeToString(payload) + ".signature"
+	_, err = cs.ResolveAPIKey(context.Background(), noIssToken)
+	if !errors.Is(err, auth.ErrUnknownKey) {
+		t.Errorf("error = %v, want ErrUnknownKey for missing iss", err)
+	}
+}
+
+func TestCompositeStore_NonJWTToken_OIDCMode(t *testing.T) {
+	cfgStore, err := auth.NewConfigStore(config.AuthConfig{}, "")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	cs, csErr := auth.NewCompositeStore(cfgStore, nil, "oidc")
+	if csErr != nil {
+		t.Fatalf("NewCompositeStore: %v", csErr)
+	}
+	// Token without dots — not JWT-shaped
+	_, err = cs.ResolveAPIKey(context.Background(), "plain-api-key-no-dots")
+	if !errors.Is(err, auth.ErrUnknownKey) {
+		t.Errorf("error = %v, want ErrUnknownKey for non-JWT token", err)
+	}
+}
+
+func TestIdentityFromContext(t *testing.T) {
+	id := &auth.Identity{
+		Subject:     "test:user",
+		DisplayName: "Test User",
+		Role:        auth.RoleAdmin,
+		Source:      "test",
+	}
+
+	ctx := auth.WithIdentity(context.Background(), id)
+	got, ok := auth.IdentityFromContext(ctx)
+	if !ok {
+		t.Fatal("IdentityFromContext returned false")
+	}
+	if got.Subject != "test:user" {
+		t.Errorf("subject = %q, want test:user", got.Subject)
+	}
+}
+
+func TestIdentityFromContext_Missing(t *testing.T) {
+	_, ok := auth.IdentityFromContext(context.Background())
+	if ok {
+		t.Error("IdentityFromContext returned true for empty context")
+	}
+}
+
+func TestWithIdentity_Nil(t *testing.T) {
+	ctx := auth.WithIdentity(context.Background(), nil)
+	_, ok := auth.IdentityFromContext(ctx)
+	if ok {
+		t.Error("IdentityFromContext returned true after WithIdentity(nil)")
 	}
 }

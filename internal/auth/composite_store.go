@@ -24,9 +24,14 @@ type CompositeStore struct {
 
 // NewCompositeStore creates a CompositeStore wrapping the given stores.
 // mode must be "local", "oidc", or "mixed".
-func NewCompositeStore(config *ConfigStore, oidc []*OIDCStore, mode string) *CompositeStore {
+// Returns an error if multiple providers share the same issuer URL.
+func NewCompositeStore(config *ConfigStore, oidc []*OIDCStore, mode string) (*CompositeStore, error) {
 	issuerMap := make(map[string]*OIDCStore, len(oidc))
 	for _, s := range oidc {
+		if existing, ok := issuerMap[s.Issuer()]; ok {
+			return nil, fmt.Errorf("duplicate OIDC issuer %q: providers %q and %q share the same issuer URL",
+				s.Issuer(), existing.providerID, s.providerID)
+		}
 		issuerMap[s.Issuer()] = s
 	}
 	return &CompositeStore{
@@ -34,7 +39,7 @@ func NewCompositeStore(config *ConfigStore, oidc []*OIDCStore, mode string) *Com
 		oidc:      oidc,
 		issuerMap: issuerMap,
 		mode:      mode,
-	}
+	}, nil
 }
 
 // ResolveAPIKey tries the ConfigStore first. On ErrUnknownKey, if the token
@@ -60,8 +65,8 @@ func (s *CompositeStore) ResolveAPIKey(ctx context.Context, token string) (*Iden
 
 	id, jwtErr := s.ResolveJWT(ctx, token)
 	if jwtErr != nil {
-		// Map OIDC-specific errors to ErrUnknownKey for the interceptor.
-		if errors.Is(jwtErr, ErrUnknownIssuer) {
+		// Map OIDC-specific errors to ErrUnknownKey for the interceptor (→ 401).
+		if errors.Is(jwtErr, ErrUnknownIssuer) || errors.Is(jwtErr, ErrInvalidToken) {
 			return nil, ErrUnknownKey
 		}
 		return nil, jwtErr
@@ -74,7 +79,7 @@ func (s *CompositeStore) ResolveJWT(ctx context.Context, token string) (*Identit
 	issuer, err := peekIssuer(token)
 	if err != nil {
 		slog.Warn("auth: malformed JWT, cannot extract issuer", "error", err.Error())
-		return nil, ErrUnknownKey
+		return nil, ErrInvalidToken
 	}
 
 	store, ok := s.issuerMap[issuer]
@@ -91,17 +96,6 @@ func (s *CompositeStore) HasAuth() bool {
 	return s.config.HasAuth() || len(s.oidc) > 0
 }
 
-// AllowUnauthenticated reports whether unauthenticated requests get local identity.
-func (s *CompositeStore) AllowUnauthenticated() bool {
-	switch s.mode {
-	case "mixed":
-		return true
-	case "local":
-		return !s.config.HasAuth()
-	default: // "oidc"
-		return false
-	}
-}
 
 // peekIssuer extracts the "iss" claim from the JWT payload without verification.
 // This is safe because it's only used for routing — the actual verification

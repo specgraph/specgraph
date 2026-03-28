@@ -28,10 +28,19 @@ type OIDCStore struct {
 // NewOIDCStore creates an OIDCStore by discovering the provider's OIDC configuration.
 // The context should include a 10-second deadline for startup.
 // For test issuers using HTTP, pass oidc.InsecureIssuerURLContext.
-func NewOIDCStore(ctx context.Context, cfg config.OIDCProviderConfig, defaultRole string, rolePerms map[Role][]string) (*OIDCStore, error) {
+func NewOIDCStore(ctx context.Context, cfg config.OIDCProviderConfig, defaultRole string, rolePerms map[Role][]string) (*OIDCStore, error) { //nolint:gocritic // hugeParam: cfg is read-only; pointer would require changing all call sites
 	provider, err := oidc.NewProvider(ctx, cfg.Issuer)
 	if err != nil {
 		return nil, fmt.Errorf("discover OIDC provider %s: %w", cfg.ID, err)
+	}
+
+	if _, ok := rolePerms[Role(defaultRole)]; !ok {
+		return nil, fmt.Errorf("OIDC provider %s: default_role %q not found in configured roles", cfg.ID, defaultRole)
+	}
+	for _, m := range cfg.ClaimsMapping {
+		if _, ok := rolePerms[Role(m.Role)]; !ok {
+			return nil, fmt.Errorf("OIDC provider %s: claims_mapping role %q not found in configured roles", cfg.ID, m.Role)
+		}
 	}
 
 	audience := cfg.Audience
@@ -62,11 +71,11 @@ func (s *OIDCStore) Issuer() string {
 func (s *OIDCStore) ResolveJWT(ctx context.Context, rawToken string) (*Identity, error) {
 	idToken, err := s.verifier.Verify(ctx, rawToken)
 	if err != nil {
-		slog.Warn("auth: OIDC token verification failed",
+		slog.Warn("auth: OIDC token verification failed", //nolint:gosec // G706: structured logging sanitizes values
 			"provider", s.providerID,
 			"error", err.Error(),
 		)
-		return nil, fmt.Errorf("verify token: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrInvalidToken, err)
 	}
 
 	// Extract all claims as raw JSON for flexible mapping.
@@ -79,7 +88,7 @@ func (s *OIDCStore) ResolveJWT(ctx context.Context, rawToken string) (*Identity,
 
 	perms, ok := s.rolePerms[Role(role)]
 	if !ok {
-		slog.Warn("auth: OIDC mapped role not found, falling back to default",
+		slog.Warn("auth: OIDC mapped role not found, falling back to default", //nolint:gosec // G706: structured logging sanitizes values
 			"provider", s.providerID,
 			"role", role,
 			"default_role", s.defaultRole,
@@ -93,7 +102,7 @@ func (s *OIDCStore) ResolveJWT(ctx context.Context, rawToken string) (*Identity,
 		permMap[p] = true
 	}
 
-	slog.Debug("auth: OIDC authenticated",
+	slog.Debug("auth: OIDC authenticated", //nolint:gosec // G706: structured logging sanitizes values
 		"provider", s.providerID,
 		"subject", idToken.Subject,
 		"role", role,

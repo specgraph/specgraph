@@ -35,7 +35,7 @@ func mockOIDCServer(t *testing.T) (*httptest.Server, *rsa.PrivateKey) {
 		jwk := jose.JSONWebKey{Key: &key.PublicKey, KeyID: "test-key-1", Algorithm: "RS256", Use: "sig"}
 		jwks := jose.JSONWebKeySet{Keys: []jose.JSONWebKey{jwk}}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(jwks) //nolint:errcheck // test helper
+		_ = json.NewEncoder(w).Encode(jwks)
 	})
 
 	srv := httptest.NewServer(mux)
@@ -47,7 +47,7 @@ func mockOIDCServer(t *testing.T) (*httptest.Server, *rsa.PrivateKey) {
 			"id_token_signing_alg_values_supported": []string{"RS256"},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(disc) //nolint:errcheck // test helper
+		_ = json.NewEncoder(w).Encode(disc)
 	})
 
 	return srv, key
@@ -250,6 +250,62 @@ func TestOIDCStore_FirstMatchWins(t *testing.T) {
 	}
 	if id.Role != auth.RoleAdmin {
 		t.Errorf("role = %q, want admin (first match)", id.Role)
+	}
+}
+
+func TestOIDCStore_InvalidDefaultRole(t *testing.T) {
+	srv, _ := mockOIDCServer(t)
+	defer srv.Close()
+
+	providerCfg := config.OIDCProviderConfig{
+		ID:       "test",
+		Issuer:   srv.URL,
+		ClientID: "test-client",
+	}
+
+	ctx := oidc.InsecureIssuerURLContext(context.Background(), srv.URL)
+	_, err := auth.NewOIDCStore(ctx, providerCfg, "nonexistent-role", auth.DefaultRolePermissions)
+	if err == nil {
+		t.Fatal("expected error for invalid default role")
+	}
+}
+
+func TestOIDCStore_NumericClaim_NoMatch(t *testing.T) {
+	srv, key := mockOIDCServer(t)
+	defer srv.Close()
+
+	providerCfg := config.OIDCProviderConfig{
+		ID:       "test",
+		Issuer:   srv.URL,
+		ClientID: "test-client",
+		ClaimsMapping: []config.ClaimMapping{
+			{Claim: "org_id", Value: "123", Role: "admin"},
+		},
+	}
+
+	ctx := oidc.InsecureIssuerURLContext(context.Background(), srv.URL)
+	store, err := auth.NewOIDCStore(ctx, providerCfg, "reader", auth.DefaultRolePermissions)
+	if err != nil {
+		t.Fatalf("NewOIDCStore: %v", err)
+	}
+
+	// Numeric claim value — matchClaimValue should not match string "123" to number 123
+	token := signToken(t, key, map[string]interface{}{
+		"iss":    srv.URL,
+		"aud":    "test-client",
+		"sub":    "user-numeric",
+		"exp":    time.Now().Add(time.Hour).Unix(),
+		"iat":    time.Now().Unix(),
+		"org_id": 123,
+	})
+
+	id, err := store.ResolveJWT(ctx, token)
+	if err != nil {
+		t.Fatalf("ResolveJWT: %v", err)
+	}
+	// Should fall back to default role since numeric 123 != string "123"
+	if id.Role != auth.RoleReader {
+		t.Errorf("role = %q, want reader (default, numeric claim)", id.Role)
 	}
 }
 

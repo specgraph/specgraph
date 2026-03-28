@@ -17,6 +17,9 @@ var ErrNoOIDC = errors.New("OIDC not configured")
 // ErrUnknownIssuer is returned when a JWT's issuer doesn't match any configured provider.
 var ErrUnknownIssuer = errors.New("unknown token issuer")
 
+// ErrInvalidToken is returned when a JWT fails verification (expired, bad signature, wrong audience).
+var ErrInvalidToken = errors.New("invalid token")
+
 // IdentityStore resolves authentication tokens to identities.
 type IdentityStore interface {
 	// ResolveAPIKey returns the identity for the given API key.
@@ -30,9 +33,4 @@ type IdentityStore interface {
 
 	// HasAuth reports whether any authentication is configured (keys or OIDC providers).
 	HasAuth() bool
-
-	// AllowUnauthenticated reports whether unauthenticated requests should
-	// fall back to the local identity. True when mode is "mixed", or mode
-	// is "local" with no keys configured.
-	AllowUnauthenticated() bool
 }
