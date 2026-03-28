@@ -315,6 +315,101 @@ func TestLintCmd_AcceptsOneArg(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// --- RPC error tests (spgr-a7t.15) ---
+
+type fakeAmendErrHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeAmendErrHandler) TransitionAmend(context.Context, *connect.Request[specv1.TransitionAmendRequest]) (*connect.Response[specv1.TransitionAmendResponse], error) {
+	return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("amend failed"))
+}
+
+func TestRunAmend_RPCError(t *testing.T) {
+	startFakeLifecycleServer(t, fakeAmendErrHandler{})
+	err := runAmend(newCmdWithCtx(), []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "amend:")
+}
+
+type fakeSupersedeErrHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeSupersedeErrHandler) TransitionSupersede(context.Context, *connect.Request[specv1.TransitionSupersedeRequest]) (*connect.Response[specv1.TransitionSupersedeResponse], error) {
+	return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("supersede failed"))
+}
+
+func TestRunSupersede_RPCError(t *testing.T) {
+	startFakeLifecycleServer(t, fakeSupersedeErrHandler{})
+	err := runSupersede(newCmdWithCtx(), []string{"old-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "supersede:")
+}
+
+type fakeAbandonErrHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeAbandonErrHandler) TransitionAbandon(context.Context, *connect.Request[specv1.TransitionAbandonRequest]) (*connect.Response[specv1.TransitionAbandonResponse], error) {
+	return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("abandon failed"))
+}
+
+func TestRunAbandon_RPCError(t *testing.T) {
+	startFakeLifecycleServer(t, fakeAbandonErrHandler{})
+	err := runAbandon(newCmdWithCtx(), []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "abandon:")
+}
+
+type fakeDriftErrHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeDriftErrHandler) CheckDrift(context.Context, *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
+	return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("drift check failed"))
+}
+
+func TestRunDrift_RPCError(t *testing.T) {
+	startFakeLifecycleServer(t, fakeDriftErrHandler{})
+	err := runDrift(newCmdWithCtx(), []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "drift check:")
+}
+
+type fakeDriftAckErrHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeDriftAckErrHandler) AcknowledgeDrift(context.Context, *connect.Request[specv1.DriftAcknowledgeRequest]) (*connect.Response[specv1.DriftAcknowledgeResponse], error) {
+	return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("ack failed"))
+}
+
+func TestRunDriftAck_RPCError(t *testing.T) {
+	startFakeLifecycleServer(t, fakeDriftAckErrHandler{})
+	old := driftAckAll
+	driftAckAll = true
+	t.Cleanup(func() { driftAckAll = old })
+	err := runDriftAck(newCmdWithCtx(), []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "acknowledge drift:")
+}
+
+type fakeLintErrHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeLintErrHandler) Lint(context.Context, *connect.Request[specv1.LintRequest]) (*connect.Response[specv1.LintResponse], error) {
+	return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("lint failed"))
+}
+
+func TestRunLint_RPCError(t *testing.T) {
+	startFakeLifecycleServer(t, fakeLintErrHandler{})
+	err := runLint(newCmdWithCtx(), nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "lint:")
+}
+
 // --- runLint failure path (spgr-79b.29) ---
 
 type fakeLintFailHandler struct {
