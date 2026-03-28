@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -36,12 +35,12 @@ func init() {
 	rootCmd.AddCommand(bundleCmd)
 }
 
-func runBundle(_ *cobra.Command, args []string) error {
+func runBundle(cmd *cobra.Command, args []string) error {
 	client, err := executionClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.GenerateBundle(context.Background(), connect.NewRequest(&specv1.GenerateBundleRequest{
+	resp, err := client.GenerateBundle(cmd.Context(), connect.NewRequest(&specv1.GenerateBundleRequest{
 		Slug:     args[0],
 		Endpoint: bundleEndpoint,
 	}))

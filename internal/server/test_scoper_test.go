@@ -144,7 +144,7 @@ func (stubBackend) UpdateConstitution(context.Context, *storage.Constitution) (*
 
 // --- AuthoringBackend (StageWriter + AuthoringSpecLifecycle) ---
 
-func (stubBackend) TransitionStage(context.Context, string, storage.AuthoringStage, storage.AuthoringStage) error {
+func (stubBackend) TransitionStage(context.Context, string, storage.SpecStage, storage.SpecStage) error {
 	return errNotImplemented
 }
 
@@ -172,7 +172,7 @@ func (stubBackend) SupersedeSpec(context.Context, string, string, string) error 
 	return errNotImplemented
 }
 
-func (stubBackend) AmendSpec(context.Context, string, string, storage.AuthoringStage) (*storage.AmendResult, error) {
+func (stubBackend) AmendSpec(context.Context, string, string, storage.SpecStage) (*storage.AmendResult, error) {
 	return nil, errNotImplemented
 }
 
@@ -301,6 +301,18 @@ func (stubBackend) ClaimSlice(context.Context, string, string) (*storage.Slice, 
 }
 
 func (stubBackend) CompleteSlice(context.Context, string) (*storage.Slice, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) ListChanges(context.Context, string, storage.ChangeLogFilter) ([]*storage.ChangeLogEntry, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) RecordConversation(context.Context, string, storage.ConversationLogEntry) (*storage.ConversationLogEntry, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) ListConversations(context.Context, string, string) ([]*storage.ConversationLogEntry, error) {
 	return nil, errNotImplemented
 }
 

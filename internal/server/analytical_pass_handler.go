@@ -8,6 +8,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -60,18 +61,16 @@ func (h *AnalyticalPassHandler) RunAnalyticalPass(ctx context.Context, req *conn
 
 	spec, err := store.GetSpec(ctx, msg.Slug)
 	if err != nil {
-		if errors.Is(err, storage.ErrSpecNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, analyticalPassError(err)
 	}
 
 	tmplBytes, err := h.loadTemplate(pt)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no template for pass %q: %w", pt, err))
+		slog.Error("analyticalPassError: template load failed", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 
-	stage := authoring.Stage(spec.Stage)
+	stage := spec.Stage
 	offered := authoring.OfferedPasses(stage, authoring.PostureDrive)
 
 	return connect.NewResponse(&specv1.RunAnalyticalPassResponse{
@@ -151,10 +150,7 @@ func (h *AnalyticalPassHandler) StoreFindings(ctx context.Context, req *connect.
 
 	ids, sErr := store.StoreFindings(ctx, msg.Slug, pt, domain)
 	if sErr != nil {
-		if errors.Is(sErr, storage.ErrSpecNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, sErr)
-		}
-		return nil, connect.NewError(connect.CodeInternal, sErr)
+		return nil, analyticalPassError(sErr)
 	}
 
 	return connect.NewResponse(&specv1.StoreFindingsResponse{
@@ -185,10 +181,7 @@ func (h *AnalyticalPassHandler) ListFindings(ctx context.Context, req *connect.R
 
 	findings, err := store.ListFindings(ctx, msg.Slug, pt)
 	if err != nil {
-		if errors.Is(err, storage.ErrSpecNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, analyticalPassError(err)
 	}
 
 	proto := make([]*specv1.AnalyticalFinding, len(findings))
@@ -196,11 +189,11 @@ func (h *AnalyticalPassHandler) ListFindings(ctx context.Context, req *connect.R
 		f := &findings[i]
 		protoSev, sevErr := findingSeverityToProto(f.Severity)
 		if sevErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, sevErr)
+			return nil, analyticalPassError(sevErr)
 		}
 		protoPassType, ptErr := passTypeToProto(f.PassType)
 		if ptErr != nil {
-			return nil, connect.NewError(connect.CodeInternal, ptErr)
+			return nil, analyticalPassError(ptErr)
 		}
 		proto[i] = &specv1.AnalyticalFinding{
 			Id:         f.ID,
@@ -294,5 +287,20 @@ func passTypeToProto(p storage.PassType) (specv1.PassType, error) {
 		return specv1.PassType_PASS_TYPE_SIMPLICITY, nil
 	default:
 		return specv1.PassType_PASS_TYPE_UNSPECIFIED, fmt.Errorf("unknown pass_type %q", p)
+	}
+}
+
+// analyticalPassError maps storage errors to sanitized connect error codes.
+func analyticalPassError(err error) error {
+	var connErr *connect.Error
+	if errors.As(err, &connErr) {
+		return connErr
+	}
+	switch {
+	case errors.Is(err, storage.ErrSpecNotFound):
+		return connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
+	default:
+		slog.Error("analyticalPassError: internal error", slog.Any("error", err))
+		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 }

@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"text/tabwriter"
 
@@ -57,7 +56,7 @@ func runPrime(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("create spec client: %w", err)
 	}
-	resp, err := client.ListSpecs(context.Background(), connect.NewRequest(&specv1.ListSpecsRequest{}))
+	resp, err := client.ListSpecs(cmd.Context(), connect.NewRequest(&specv1.ListSpecsRequest{}))
 	if err != nil {
 		return fmt.Errorf("list specs: %w", err)
 	}

@@ -153,7 +153,7 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	var safetyFlags []authoring.SafetyFlagResult
 	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
-			return store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageSpark), storage.AuthoringStage(authoring.StageShape))
+			return store.TransitionStage(c, msg.Slug, storage.SpecStageSpark, storage.SpecStageShape)
 		},
 		func(c context.Context) error {
 			return store.StoreShapeOutput(c, msg.Slug, shapeDomain)
@@ -255,7 +255,7 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	var safetyFlags []authoring.SafetyFlagResult
 	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
-			return store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageShape), storage.AuthoringStage(authoring.StageSpecify))
+			return store.TransitionStage(c, msg.Slug, storage.SpecStageShape, storage.SpecStageSpecify)
 		},
 		func(c context.Context) error {
 			return store.StoreSpecifyOutput(c, msg.Slug, specifyDomain)
@@ -319,7 +319,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	var childSlugs []string
 	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
-			return store.TransitionStage(c, msg.Slug, storage.AuthoringStage(authoring.StageSpecify), storage.AuthoringStage(authoring.StageDecompose))
+			return store.TransitionStage(c, msg.Slug, storage.SpecStageSpecify, storage.SpecStageDecompose)
 		},
 		func(c context.Context) error {
 			slugs, err := store.StoreDecomposeOutput(c, msg.Slug, decomposeDomain)
@@ -363,7 +363,7 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	slug := req.Msg.Slug
 	if err := runInTxOrSequential(ctx, store,
 		func(txCtx context.Context) error {
-			return store.TransitionStage(txCtx, slug, storage.AuthoringStage(authoring.StageDecompose), storage.AuthoringStage(authoring.StageApproved))
+			return store.TransitionStage(txCtx, slug, storage.SpecStageDecompose, storage.SpecStageApproved)
 		},
 		func(txCtx context.Context) error {
 			return acceptLinkedDecisions(txCtx, h.logger, store, store, slug)
@@ -382,12 +382,12 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	if spec.UpdatedAt.IsZero() {
 		h.logger.ErrorContext(ctx, "spec.UpdatedAt is zero after TransitionStage",
 			"slug", slug, "specID", spec.ID, "stage", "approved")
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("spec %q has zero UpdatedAt after approval", slug))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 	approvedAt := timestamppb.New(spec.UpdatedAt)
 	return connect.NewResponse(&specv1.ApproveResponse{
 		Slug:       req.Msg.Slug,
-		Stage:      stageToProto(authoring.StageApproved),
+		Stage:      stageToProto(storage.SpecStageApproved),
 		ApprovedAt: approvedAt,
 	}), nil
 }
@@ -421,9 +421,10 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	if err != nil {
 		return nil, h.stageError(err)
 	}
-	protoStage := stageToProto(authoring.Stage(result.Stage))
+	protoStage := stageToProto(result.Stage)
 	if protoStage == specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("unknown stage %q returned from storage", result.Stage))
+		h.logger.Error("unknown stage returned from storage", slog.String("stage", string(result.Stage)), slog.String("slug", req.Msg.Slug))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 	return connect.NewResponse(&specv1.AmendResponse{
 		Slug:    result.Slug,
@@ -457,11 +458,7 @@ func (h *AuthoringHandler) Supersede(ctx context.Context, req *connect.Request[s
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("reason exceeds maximum length of %d", maxFieldLen))
 	}
 	if err := store.SupersedeSpec(ctx, req.Msg.Slug, req.Msg.SupersededBy, req.Msg.Reason); err != nil {
-		if errors.Is(err, storage.ErrSpecNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
-		}
-		h.logger.Error("supersede failed", slog.Any("error", err))
-		return nil, connect.NewError(connect.CodeInternal, errors.New("supersede failed"))
+		return nil, h.stageError(err)
 	}
 	return connect.NewResponse(&specv1.SupersedeResponse{
 		Slug:         req.Msg.Slug,
@@ -483,7 +480,7 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 	if req.Msg.Stage == specv1.AuthoringStage_AUTHORING_STAGE_APPROVED {
 		return connect.NewResponse(&specv1.GetPromptsResponse{}), nil
 	}
-	prompts := authoring.PromptsToProto(authoring.Stage(stage))
+	prompts := authoring.PromptsToProto(stage)
 	if len(prompts) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no prompts defined for stage %q", stage))
 	}
@@ -791,27 +788,16 @@ func decomposeOutputToDomain(p *specv1.DecomposeOutput) (*storage.DecomposeOutpu
 // --- Stage mapping ---
 
 // stageToProto delegates to the canonical mapping in the authoring package.
-func stageToProto(stage authoring.Stage) specv1.AuthoringStage {
+func stageToProto(stage storage.SpecStage) specv1.AuthoringStage {
 	return authoring.StageToProto(stage)
 }
 
-var protoToStage map[specv1.AuthoringStage]storage.AuthoringStage
-
-func init() {
-	mustToStorage := func(s authoring.Stage) storage.AuthoringStage {
-		v, err := s.ToStorage()
-		if err != nil {
-			panic(fmt.Sprintf("invalid authoring stage constant: %v", err))
-		}
-		return v
-	}
-	protoToStage = map[specv1.AuthoringStage]storage.AuthoringStage{
-		specv1.AuthoringStage_AUTHORING_STAGE_SPARK:     mustToStorage(authoring.StageSpark),
-		specv1.AuthoringStage_AUTHORING_STAGE_SHAPE:     mustToStorage(authoring.StageShape),
-		specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY:   mustToStorage(authoring.StageSpecify),
-		specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE: mustToStorage(authoring.StageDecompose),
-		specv1.AuthoringStage_AUTHORING_STAGE_APPROVED:  mustToStorage(authoring.StageApproved),
-	}
+var protoToStage = map[specv1.AuthoringStage]storage.SpecStage{
+	specv1.AuthoringStage_AUTHORING_STAGE_SPARK:     storage.SpecStageSpark,
+	specv1.AuthoringStage_AUTHORING_STAGE_SHAPE:     storage.SpecStageShape,
+	specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY:   storage.SpecStageSpecify,
+	specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE: storage.SpecStageDecompose,
+	specv1.AuthoringStage_AUTHORING_STAGE_APPROVED:  storage.SpecStageApproved,
 }
 
 // runInTxOrSequential runs the given operations within a transaction if the

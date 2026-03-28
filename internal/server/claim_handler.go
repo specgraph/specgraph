@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -42,13 +43,7 @@ func (h *ClaimHandler) ClaimSpec(ctx context.Context, req *connect.Request[specv
 
 	claim, err := store.ClaimSpec(ctx, msg.SpecSlug, msg.Agent, leaseDuration)
 	if err != nil {
-		if errors.Is(err, storage.ErrSpecNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
-		if errors.Is(err, storage.ErrSpecAlreadyClaimed) {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, claimError(err)
 	}
 	return connect.NewResponse(&specv1.ClaimSpecResponse{Claim: claimToProto(claim)}), nil
 }
@@ -62,13 +57,7 @@ func (h *ClaimHandler) UnclaimSpec(ctx context.Context, req *connect.Request[spe
 	msg := req.Msg
 	err = store.UnclaimSpec(ctx, msg.SpecSlug, msg.Agent)
 	if err != nil {
-		if errors.Is(err, storage.ErrNotClaimOwner) {
-			return nil, connect.NewError(connect.CodePermissionDenied, err)
-		}
-		if errors.Is(err, storage.ErrSpecNotClaimed) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, claimError(err)
 	}
 	return connect.NewResponse(&specv1.UnclaimSpecResponse{}), nil
 }
@@ -88,9 +77,30 @@ func (h *ClaimHandler) Heartbeat(ctx context.Context, req *connect.Request[specv
 
 	claim, err := store.Heartbeat(ctx, msg.SpecSlug, msg.Agent, extendBy)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeNotFound, err)
+		return nil, claimError(err)
 	}
 	return connect.NewResponse(&specv1.HeartbeatResponse{Claim: claimToProto(claim)}), nil
+}
+
+// claimError maps storage errors to sanitized connect error codes.
+func claimError(err error) error {
+	var connErr *connect.Error
+	if errors.As(err, &connErr) {
+		return connErr
+	}
+	switch {
+	case errors.Is(err, storage.ErrSpecNotFound):
+		return connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
+	case errors.Is(err, storage.ErrSpecAlreadyClaimed):
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec already claimed"))
+	case errors.Is(err, storage.ErrNotClaimOwner):
+		return connect.NewError(connect.CodePermissionDenied, errors.New("agent does not own the claim"))
+	case errors.Is(err, storage.ErrSpecNotClaimed):
+		return connect.NewError(connect.CodeNotFound, errors.New("spec is not claimed"))
+	default:
+		slog.Error("claimError: internal error", slog.Any("error", err))
+		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
+	}
 }
 
 // RegisterClaimService registers the ClaimService on the given mux.

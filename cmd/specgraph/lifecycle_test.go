@@ -73,25 +73,25 @@ func TestDriftScopeToProtoMap_SyncWithDriftscope(t *testing.T) {
 
 func TestRunAmend_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runAmend(nil, []string{"my-spec"})
+	err := runAmend(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
 func TestRunSupersede_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runSupersede(nil, []string{"my-spec"})
+	err := runSupersede(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
 func TestRunAbandon_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runAbandon(nil, []string{"my-spec"})
+	err := runAbandon(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
 func TestRunDrift_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runDrift(driftCmd, []string{"my-spec"})
+	err := runDrift(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
@@ -99,14 +99,14 @@ func TestRunDrift_InvalidScope(t *testing.T) {
 	old := driftScope
 	driftScope = "bogus"
 	t.Cleanup(func() { driftScope = old })
-	err := runDrift(driftCmd, []string{"my-spec"})
+	err := runDrift(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid scope")
 }
 
 func TestRunDriftAck_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runDriftAck(nil, []string{"my-spec"})
+	err := runDriftAck(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
@@ -130,7 +130,7 @@ func TestRunDriftAck_HappyPath_All(t *testing.T) {
 	driftAckAll = true
 	t.Cleanup(func() { driftAckAll = oldAll })
 
-	err := runDriftAck(nil, []string{"my-spec"})
+	err := runDriftAck(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -141,7 +141,7 @@ func TestRunDriftAck_HappyPath_Upstream(t *testing.T) {
 	driftAckUpstream = "dep-spec"
 	t.Cleanup(func() { driftAckUpstream = oldUpstream })
 
-	err := runDriftAck(nil, []string{"my-spec"})
+	err := runDriftAck(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -155,7 +155,7 @@ func TestRunDriftAck_RequiresUpstreamOrAll(t *testing.T) {
 		driftAckUpstream = oldUpstream
 	})
 
-	err := runDriftAck(nil, []string{"my-spec"})
+	err := runDriftAck(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--upstream")
 }
@@ -170,7 +170,7 @@ func TestRunDriftAck_CannotSpecifyBoth(t *testing.T) {
 		driftAckUpstream = oldUpstream
 	})
 
-	err := runDriftAck(nil, []string{"my-spec"})
+	err := runDriftAck(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot specify both")
 }
@@ -210,7 +210,7 @@ func TestRunAmend_HappyPath(t *testing.T) {
 	old := amendReason
 	amendReason = "test reason"
 	t.Cleanup(func() { amendReason = old })
-	err := runAmend(nil, []string{"my-spec"})
+	err := runAmend(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -230,7 +230,7 @@ func TestRunSupersede_HappyPath(t *testing.T) {
 	old := supersedeWith
 	supersedeWith = "new-spec"
 	t.Cleanup(func() { supersedeWith = old })
-	err := runSupersede(nil, []string{"old-spec"})
+	err := runSupersede(newCmdWithCtx(), []string{"old-spec"})
 	require.NoError(t, err)
 }
 
@@ -249,7 +249,7 @@ func TestRunAbandon_HappyPath(t *testing.T) {
 	old := abandonReason
 	abandonReason = "no longer needed"
 	t.Cleanup(func() { abandonReason = old })
-	err := runAbandon(nil, []string{"my-spec"})
+	err := runAbandon(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -265,13 +265,13 @@ func (fakeLintHandler) Lint(_ context.Context, _ *connect.Request[specv1.LintReq
 
 func TestRunLint_HappyPath(t *testing.T) {
 	startFakeLifecycleServer(t, fakeLintHandler{})
-	err := runLint(nil, nil)
+	err := runLint(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
 func TestRunLint_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runLint(nil, nil)
+	err := runLint(newCmdWithCtx(), nil)
 	require.Error(t, err)
 }
 
@@ -338,7 +338,7 @@ func (fakeLintFailHandler) Lint(_ context.Context, _ *connect.Request[specv1.Lin
 
 func TestRunLint_HappyPath_WithFailures(t *testing.T) {
 	startFakeLifecycleServer(t, fakeLintFailHandler{})
-	err := runLint(nil, nil)
+	err := runLint(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "spec(s) failed")
 }
@@ -364,7 +364,7 @@ func (fakeLintInfraErrHandler) Lint(_ context.Context, _ *connect.Request[specv1
 
 func TestRunLint_InfraError(t *testing.T) {
 	startFakeLifecycleServer(t, fakeLintInfraErrHandler{})
-	err := runLint(nil, nil)
+	err := runLint(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "infrastructure error")
 }
@@ -381,7 +381,7 @@ func (fakeDriftNoneHandler) CheckDrift(_ context.Context, _ *connect.Request[spe
 
 func TestRunDrift_HappyPath_NoDrift(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftNoneHandler{})
-	err := runDrift(driftCmd, nil)
+	err := runDrift(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -412,7 +412,7 @@ func (fakeDriftItemsHandler) CheckDrift(_ context.Context, _ *connect.Request[sp
 
 func TestRunDrift_WithItemsAndErrors(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftItemsHandler{})
-	err := runDrift(driftCmd, nil)
+	err := runDrift(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "drift check completed with errors")
 }
@@ -433,7 +433,7 @@ func (fakeDriftCleanReportHandler) CheckDrift(_ context.Context, _ *connect.Requ
 
 func TestRunDrift_CleanReport_NoDrift(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftCleanReportHandler{})
-	err := runDrift(driftCmd, nil)
+	err := runDrift(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -456,7 +456,7 @@ func (fakeDriftMultiCleanHandler) CheckDrift(_ context.Context, _ *connect.Reque
 
 func TestRunDrift_MultiCleanReports_NoDrift(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftMultiCleanHandler{})
-	err := runDrift(driftCmd, nil)
+	err := runDrift(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -479,7 +479,7 @@ func (fakeDriftErrorOnlyHandler) CheckDrift(_ context.Context, _ *connect.Reques
 
 func TestRunDrift_ErrorOnlyReport(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftErrorOnlyHandler{})
-	err := runDrift(driftCmd, nil)
+	err := runDrift(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "drift check completed with errors")
 }
@@ -509,7 +509,7 @@ func (fakeDriftOnlyHandler) CheckDrift(_ context.Context, _ *connect.Request[spe
 
 func TestRunDrift_DriftOnly_NoErrors(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftOnlyHandler{})
-	err := runDrift(driftCmd, nil)
+	err := runDrift(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "drift detected")
 }
@@ -529,7 +529,7 @@ func (h *fakeDriftSlugCapture) CheckDrift(_ context.Context, req *connect.Reques
 func TestRunDrift_HappyPath_WithSlug(t *testing.T) {
 	h := &fakeDriftSlugCapture{}
 	startFakeLifecycleServer(t, h)
-	err := runDrift(driftCmd, []string{"my-spec"})
+	err := runDrift(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 	assert.Equal(t, "my-spec", h.capturedSlug)
 }
@@ -544,6 +544,6 @@ func (fakeLintEmptyHandler) Lint(_ context.Context, _ *connect.Request[specv1.Li
 
 func TestRunLint_EmptyResults(t *testing.T) {
 	startFakeLifecycleServer(t, fakeLintEmptyHandler{})
-	err := runLint(nil, nil)
+	err := runLint(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }

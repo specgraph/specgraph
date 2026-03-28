@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -41,7 +40,7 @@ func runSliceList(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.ListSlices(context.Background(), connect.NewRequest(&specv1.ListSlicesRequest{
+	resp, err := client.ListSlices(cmd.Context(), connect.NewRequest(&specv1.ListSlicesRequest{
 		ParentSlug: args[0],
 	}))
 	if err != nil {
@@ -70,7 +69,7 @@ func runSliceGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.GetSlice(context.Background(), connect.NewRequest(&specv1.GetSliceRequest{
+	resp, err := client.GetSlice(cmd.Context(), connect.NewRequest(&specv1.GetSliceRequest{
 		Slug: args[0],
 	}))
 	if err != nil {
@@ -94,12 +93,12 @@ var sliceClaimCmd = &cobra.Command{
 
 var sliceClaimAssignee string
 
-func runSliceClaim(_ *cobra.Command, args []string) error {
+func runSliceClaim(cmd *cobra.Command, args []string) error {
 	client, err := sliceClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.ClaimSlice(context.Background(), connect.NewRequest(&specv1.ClaimSliceRequest{
+	resp, err := client.ClaimSlice(cmd.Context(), connect.NewRequest(&specv1.ClaimSliceRequest{
 		Slug:     args[0],
 		Assignee: sliceClaimAssignee,
 	}))
@@ -119,12 +118,12 @@ var sliceCompleteCmd = &cobra.Command{
 	RunE:  runSliceComplete,
 }
 
-func runSliceComplete(_ *cobra.Command, args []string) error {
+func runSliceComplete(cmd *cobra.Command, args []string) error {
 	client, err := sliceClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.CompleteSlice(context.Background(), connect.NewRequest(&specv1.CompleteSliceRequest{
+	resp, err := client.CompleteSlice(cmd.Context(), connect.NewRequest(&specv1.CompleteSliceRequest{
 		Slug: args[0],
 	}))
 	if err != nil {

@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -26,7 +25,7 @@ func init() {
 	rootCmd.AddCommand(specifyCmd)
 }
 
-func runSpecify(_ *cobra.Command, args []string) error {
+func runSpecify(cmd *cobra.Command, args []string) error {
 	client, err := authoringClient()
 	if err != nil {
 		return err
@@ -37,7 +36,7 @@ func runSpecify(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("specify: %w", loadErr)
 		}
 	}
-	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+	resp, err := client.Specify(cmd.Context(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug:   args[0],
 		Output: output,
 	}))

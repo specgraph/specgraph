@@ -11,7 +11,6 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -113,7 +112,7 @@ func TestRunSliceList_HappyPath(t *testing.T) {
 	sliceListJSON = false
 	t.Cleanup(func() { sliceListJSON = oldJSON })
 
-	err := runSliceList(nil, []string{"parent-spec"})
+	err := runSliceList(newCmdWithCtx(), []string{"parent-spec"})
 	require.NoError(t, err)
 }
 
@@ -124,7 +123,7 @@ func TestRunSliceList_HappyPath_JSON(t *testing.T) {
 	sliceListJSON = true
 	t.Cleanup(func() { sliceListJSON = oldJSON })
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	cmd.SetOut(io.Discard)
 	err := runSliceList(cmd, []string{"parent-spec"})
 	require.NoError(t, err)
@@ -137,7 +136,7 @@ func TestRunSliceList_RPCError(t *testing.T) {
 	sliceListJSON = false
 	t.Cleanup(func() { sliceListJSON = oldJSON })
 
-	err := runSliceList(nil, []string{"parent-spec"})
+	err := runSliceList(newCmdWithCtx(), []string{"parent-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "list slices")
 }
@@ -151,7 +150,7 @@ func TestRunSliceGet_HappyPath(t *testing.T) {
 	sliceGetJSON = false
 	t.Cleanup(func() { sliceGetJSON = oldJSON })
 
-	err := runSliceGet(nil, []string{"parent/slice-1"})
+	err := runSliceGet(newCmdWithCtx(), []string{"parent/slice-1"})
 	require.NoError(t, err)
 }
 
@@ -162,7 +161,7 @@ func TestRunSliceGet_HappyPath_JSON(t *testing.T) {
 	sliceGetJSON = true
 	t.Cleanup(func() { sliceGetJSON = oldJSON })
 
-	cmd := &cobra.Command{}
+	cmd := newCmdWithCtx()
 	cmd.SetOut(io.Discard)
 	err := runSliceGet(cmd, []string{"parent/slice-1"})
 	require.NoError(t, err)
@@ -175,7 +174,7 @@ func TestRunSliceGet_RPCError(t *testing.T) {
 	sliceGetJSON = false
 	t.Cleanup(func() { sliceGetJSON = oldJSON })
 
-	err := runSliceGet(nil, []string{"parent/slice-1"})
+	err := runSliceGet(newCmdWithCtx(), []string{"parent/slice-1"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "get slice")
 }
@@ -189,7 +188,7 @@ func TestRunSliceClaim_HappyPath(t *testing.T) {
 	sliceClaimAssignee = "alice"
 	t.Cleanup(func() { sliceClaimAssignee = oldAssignee })
 
-	err := runSliceClaim(nil, []string{"parent/slice-1"})
+	err := runSliceClaim(newCmdWithCtx(), []string{"parent/slice-1"})
 	require.NoError(t, err)
 }
 
@@ -200,7 +199,7 @@ func TestRunSliceClaim_RPCError(t *testing.T) {
 	sliceClaimAssignee = "alice"
 	t.Cleanup(func() { sliceClaimAssignee = oldAssignee })
 
-	err := runSliceClaim(nil, []string{"parent/slice-1"})
+	err := runSliceClaim(newCmdWithCtx(), []string{"parent/slice-1"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "claim slice")
 }
@@ -210,14 +209,14 @@ func TestRunSliceClaim_RPCError(t *testing.T) {
 func TestRunSliceComplete_HappyPath(t *testing.T) {
 	startFakeServer[specgraphv1connect.SliceServiceHandler](t, fakeSliceCompleteHandler{}, specgraphv1connect.NewSliceServiceHandler)
 
-	err := runSliceComplete(nil, []string{"parent/slice-1"})
+	err := runSliceComplete(newCmdWithCtx(), []string{"parent/slice-1"})
 	require.NoError(t, err)
 }
 
 func TestRunSliceComplete_RPCError(t *testing.T) {
 	startFakeServer[specgraphv1connect.SliceServiceHandler](t, fakeSliceCompleteErrorHandler{}, specgraphv1connect.NewSliceServiceHandler)
 
-	err := runSliceComplete(nil, []string{"parent/slice-1"})
+	err := runSliceComplete(newCmdWithCtx(), []string{"parent/slice-1"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "complete slice")
 }

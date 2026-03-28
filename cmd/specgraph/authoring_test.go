@@ -31,7 +31,7 @@ func (fakeSparkHandler) Spark(_ context.Context, req *connect.Request[specv1.Spa
 
 func TestRunSpark_HappyPath(t *testing.T) {
 	startFakeAuthoringServer(t, fakeSparkHandler{})
-	err := runSpark(nil, []string{"my-spec"})
+	err := runSpark(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -62,7 +62,7 @@ func TestRunSpark_WithSeedAndPrompts(t *testing.T) {
 	sparkSeed = "test seed idea"
 	t.Cleanup(func() { sparkSeed = old })
 
-	err := runSpark(nil, []string{"my-spec"})
+	err := runSpark(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -76,14 +76,14 @@ func (fakeSparkErrorHandler) Spark(context.Context, *connect.Request[specv1.Spar
 
 func TestRunSpark_RPCError(t *testing.T) {
 	startFakeAuthoringServer(t, fakeSparkErrorHandler{})
-	err := runSpark(nil, []string{"my-spec"})
+	err := runSpark(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "spark:")
 }
 
 func TestRunSpark_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runSpark(nil, []string{"my-spec"})
+	err := runSpark(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
@@ -106,7 +106,7 @@ func (fakeShapeHandler) Shape(_ context.Context, _ *connect.Request[specv1.Shape
 
 func TestRunShape_HappyPath(t *testing.T) {
 	startFakeAuthoringServer(t, fakeShapeHandler{})
-	err := runShape(nil, []string{"my-spec"})
+	err := runShape(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -118,7 +118,7 @@ func TestRunShape_WithJSONFile(t *testing.T) {
 	shapeJSONFile = path
 	t.Cleanup(func() { shapeJSONFile = old })
 
-	err := runShape(nil, []string{"my-spec"})
+	err := runShape(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -130,7 +130,7 @@ func TestRunShape_InvalidJSONFile(t *testing.T) {
 	shapeJSONFile = path
 	t.Cleanup(func() { shapeJSONFile = old })
 
-	err := runShape(nil, []string{"my-spec"})
+	err := runShape(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "shape:")
 }
@@ -142,7 +142,7 @@ func TestRunShape_MissingJSONFile(t *testing.T) {
 	shapeJSONFile = t.TempDir() + "/no-such-file.json"
 	t.Cleanup(func() { shapeJSONFile = old })
 
-	err := runShape(nil, []string{"my-spec"})
+	err := runShape(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "shape:")
 }
@@ -157,14 +157,14 @@ func (fakeShapeErrorHandler) Shape(context.Context, *connect.Request[specv1.Shap
 
 func TestRunShape_RPCError(t *testing.T) {
 	startFakeAuthoringServer(t, fakeShapeErrorHandler{})
-	err := runShape(nil, []string{"my-spec"})
+	err := runShape(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "shape:")
 }
 
 func TestRunShape_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runShape(nil, []string{"my-spec"})
+	err := runShape(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
@@ -187,7 +187,7 @@ func (fakeSpecifyHandler) Specify(_ context.Context, _ *connect.Request[specv1.S
 
 func TestRunSpecify_HappyPath(t *testing.T) {
 	startFakeAuthoringServer(t, fakeSpecifyHandler{})
-	err := runSpecify(nil, []string{"my-spec"})
+	err := runSpecify(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -199,7 +199,7 @@ func TestRunSpecify_WithJSONFile(t *testing.T) {
 	specifyJSONFile = path
 	t.Cleanup(func() { specifyJSONFile = old })
 
-	err := runSpecify(nil, []string{"my-spec"})
+	err := runSpecify(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -211,14 +211,14 @@ func TestRunSpecify_InvalidJSONFile(t *testing.T) {
 	specifyJSONFile = path
 	t.Cleanup(func() { specifyJSONFile = old })
 
-	err := runSpecify(nil, []string{"my-spec"})
+	err := runSpecify(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "specify:")
 }
 
 func TestRunSpecify_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runSpecify(nil, []string{"my-spec"})
+	err := runSpecify(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
@@ -241,7 +241,7 @@ func (fakeDecomposeHandler) Decompose(_ context.Context, _ *connect.Request[spec
 
 func TestRunDecompose_HappyPath(t *testing.T) {
 	startFakeAuthoringServer(t, fakeDecomposeHandler{})
-	err := runDecompose(nil, []string{"my-spec"})
+	err := runDecompose(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -263,7 +263,7 @@ func (fakeDecomposeWithSlicesHandler) Decompose(_ context.Context, _ *connect.Re
 
 func TestRunDecompose_WithSlices(t *testing.T) {
 	startFakeAuthoringServer(t, fakeDecomposeWithSlicesHandler{})
-	err := runDecompose(nil, []string{"my-spec"})
+	err := runDecompose(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -275,14 +275,14 @@ func TestRunDecompose_InvalidJSONFile(t *testing.T) {
 	decomposeJSONFile = path
 	t.Cleanup(func() { decomposeJSONFile = old })
 
-	err := runDecompose(nil, []string{"my-spec"})
+	err := runDecompose(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "decompose:")
 }
 
 func TestRunDecompose_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runDecompose(nil, []string{"my-spec"})
+	err := runDecompose(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 
@@ -308,7 +308,7 @@ func (fakeApproveHandler) Approve(_ context.Context, req *connect.Request[specv1
 
 func TestRunApprove_HappyPath(t *testing.T) {
 	startFakeAuthoringServer(t, fakeApproveHandler{})
-	err := runApprove(nil, []string{"my-spec"})
+	err := runApprove(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -322,14 +322,14 @@ func (fakeApproveErrorHandler) Approve(context.Context, *connect.Request[specv1.
 
 func TestRunApprove_RPCError(t *testing.T) {
 	startFakeAuthoringServer(t, fakeApproveErrorHandler{})
-	err := runApprove(nil, []string{"my-spec"})
+	err := runApprove(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "approve:")
 }
 
 func TestRunApprove_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runApprove(nil, []string{"my-spec"})
+	err := runApprove(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 }
 

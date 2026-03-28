@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -47,7 +46,7 @@ func runDeps(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ctx := context.Background()
+	ctx := cmd.Context()
 
 	if depsTransitive {
 		resp, tdErr := client.GetTransitiveDeps(ctx, connect.NewRequest(&specv1.GetTransitiveDepsRequest{Slug: args[0]}))
@@ -85,7 +84,7 @@ func runReady(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.GetReady(context.Background(), connect.NewRequest(&specv1.GetReadyRequest{}))
+	resp, err := client.GetReady(cmd.Context(), connect.NewRequest(&specv1.GetReadyRequest{}))
 	if err != nil {
 		return fmt.Errorf("get ready: %w", err)
 	}
@@ -110,7 +109,7 @@ func runCriticalPath(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.GetCriticalPath(context.Background(), connect.NewRequest(&specv1.GetCriticalPathRequest{Slug: args[0]}))
+	resp, err := client.GetCriticalPath(cmd.Context(), connect.NewRequest(&specv1.GetCriticalPathRequest{Slug: args[0]}))
 	if err != nil {
 		return fmt.Errorf("get critical path: %w", err)
 	}
@@ -135,7 +134,7 @@ func runImpact(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.GetImpact(context.Background(), connect.NewRequest(&specv1.GetImpactRequest{Slug: args[0]}))
+	resp, err := client.GetImpact(cmd.Context(), connect.NewRequest(&specv1.GetImpactRequest{Slug: args[0]}))
 	if err != nil {
 		return fmt.Errorf("get impact: %w", err)
 	}

@@ -5,7 +5,9 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"regexp"
 
@@ -59,8 +61,9 @@ func scopeStore(ctx context.Context, scoper storage.Scoper) (storage.ScopedBacke
 	}
 	store, err := scoper.Scoped(ctx, project)
 	if err != nil {
+		slog.Error("scopeStore: failed to scope storage", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal,
-			fmt.Errorf("scope store: %w", err))
+			errors.New("internal error"))
 	}
 	return store, nil
 }
