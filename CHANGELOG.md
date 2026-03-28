@@ -1,6 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.3.5](https://github.com/specgraph/specgraph/compare/v0.3.4...v0.3.5) - 2026-03-28
+
+### Bug Fixes
+
+- Remove shadowing renovate.json root config (#793) ([#793](https://github.com/specgraph/specgraph/pull/793)) ([b0d509e](https://github.com/specgraph/specgraph/commit/b0d509e8b13bfc636f8f4b28fd6f515ed0f858eb))
+
 ## [0.3.4](https://github.com/specgraph/specgraph/compare/v0.3.3...v0.3.4) - 2026-03-28
 
 ### Bug Fixes
