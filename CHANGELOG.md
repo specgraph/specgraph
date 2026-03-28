@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- **ci:** Specify pnpm version in goreleaser release job (#786) ([#786](https://github.com/specgraph/specgraph/pull/786)) ([81d28d2](https://github.com/specgraph/specgraph/commit/81d28d20356a632b1f2f1a6fb24b10932ce3fdae))
 - **ci:** Use cliff action output for release notes (#785) ([#785](https://github.com/specgraph/specgraph/pull/785)) ([1c4bac0](https://github.com/specgraph/specgraph/commit/1c4bac074513310bd7db44481ae3383ec0fbff16))
 - **ci:** Disable persist-credentials so app token works for push (#784) ([#784](https://github.com/specgraph/specgraph/pull/784)) ([3bd38db](https://github.com/specgraph/specgraph/commit/3bd38dbad7cd7b66c12cd3f166e8b929b90d2769))
 - **ci:** Use app token via git remote URL for branch protection bypass (#783) ([#783](https://github.com/specgraph/specgraph/pull/783)) ([8cebf51](https://github.com/specgraph/specgraph/commit/8cebf512326f3091831bd6bbf44d2ee8d80e0e87))
