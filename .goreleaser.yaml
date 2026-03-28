@@ -37,17 +37,42 @@ homebrew_casks:
     homepage: https://specgraph.io
     description: Live spec-driven development framework
     license: MIT
-dockers_v2:
-  - images:
-      - "ghcr.io/specgraph/specgraph"
-    tags:
-      - "{{ .Version }}"
-      - latest
+dockers:
+  - id: docker-amd64
+    ids: [specgraph]
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}-amd64"
     dockerfile: Dockerfile
-    labels:
-      "org.opencontainers.image.title": "{{ .ProjectName }}"
-      "org.opencontainers.image.version": "{{ .Version }}"
-      "org.opencontainers.image.source": "https://github.com/specgraph/specgraph"
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.source=https://github.com/specgraph/specgraph"
+  - id: docker-arm64
+    ids: [specgraph]
+    goos: linux
+    goarch: arm64
+    image_templates:
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}-arm64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.source=https://github.com/specgraph/specgraph"
+docker_manifests:
+  - name_template: "ghcr.io/specgraph/specgraph:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}-amd64"
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}-arm64"
+  - name_template: "ghcr.io/specgraph/specgraph:latest"
+    image_templates:
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}-amd64"
+      - "ghcr.io/specgraph/specgraph:{{ .Version }}-arm64"
 source:
   enabled: true
   name_template: "{{ .ProjectName }}.src"
