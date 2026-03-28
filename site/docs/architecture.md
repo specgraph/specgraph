@@ -111,6 +111,43 @@ detection).
 
 ---
 
+## Decision Promotion Lifecycle
+
+Decisions follow a two-step promotion flow through the authoring funnel:
+
+**Step 1 — Shape creates decision nodes.** When `AuthoringService.Shape` stores
+its output, each `DecisionInput` in `ShapeOutput.decisions` is promoted to a
+first-class Decision graph node with a `DECIDED_IN` edge from the spec
+(per [ADR-003](https://github.com/specgraph/specgraph/blob/main/docs/decisions/003-decisions-as-nodes.md)).
+This happens inside `StoreShapeOutput` in a single transaction.
+
+```text
+Shape stage:
+  ShapeOutput.decisions[0] ──► (:Decision {slug: "adr-007", status: "proposed"})
+                                     ▲
+  (:Spec {slug: "my-feature"}) ──[:DECIDED_IN]──┘
+```
+
+From this point forward, decisions are queryable graph nodes. The Specify and
+Decompose stages can reference them, and impact analysis traverses through them.
+
+**Step 2 — Approve accepts linked decisions.** When `AuthoringService.Approve`
+transitions a spec to the approved stage, it calls `acceptLinkedDecisions` which
+traverses all `DECIDED_IN` edges from that spec and transitions each linked
+decision from `proposed` to `accepted`. Both the stage transition and decision
+acceptance run in a single transaction — if any decision fails to accept, the
+approval is rolled back.
+
+```text
+Approve stage:
+  (:Spec {stage: "approved"}) ──[:DECIDED_IN]──► (:Decision {status: "accepted"})
+```
+
+This separation means decisions are visible and linkable throughout the funnel
+but only reach their final state when the spec is approved.
+
+---
+
 ## Why ConnectRPC?
 
 ConnectRPC is browser-compatible (JSON over HTTP) while maintaining gRPC wire
