@@ -131,6 +131,26 @@ func (l SpecLifecycle) IsValid() bool {
 	}
 }
 
+// SpecComplexity represents the complexity level of a spec.
+type SpecComplexity string
+
+// Spec complexity values.
+const (
+	SpecComplexityLow    SpecComplexity = "low"
+	SpecComplexityMedium SpecComplexity = "medium"
+	SpecComplexityHigh   SpecComplexity = "high"
+)
+
+// IsValid reports whether c is a known spec complexity.
+func (c SpecComplexity) IsValid() bool {
+	switch c {
+	case SpecComplexityLow, SpecComplexityMedium, SpecComplexityHigh:
+		return true
+	default:
+		return false
+	}
+}
+
 // Spec is the storage-layer domain type for specifications.
 // Handlers convert between this type and the proto Spec message.
 type Spec struct {
@@ -139,7 +159,7 @@ type Spec struct {
 	Intent           string
 	Stage            SpecStage
 	Priority         SpecPriority
-	Complexity       string
+	Complexity       SpecComplexity
 	Version          int32
 	CreatedAt        time.Time
 	UpdatedAt        time.Time

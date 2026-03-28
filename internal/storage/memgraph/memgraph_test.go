@@ -133,7 +133,7 @@ func TestCreateAndGetSpec(t *testing.T) {
 	require.Equal(t, "Implement login API", spec.Intent)
 	require.Equal(t, storage.SpecStageSpark, spec.Stage)
 	require.Equal(t, storage.SpecPriorityP1, spec.Priority)
-	require.Equal(t, "medium", spec.Complexity)
+	require.Equal(t, storage.SpecComplexityMedium, spec.Complexity)
 	require.Equal(t, int32(1), spec.Version)
 	require.NotNil(t, spec.CreatedAt)
 	require.NotNil(t, spec.UpdatedAt)

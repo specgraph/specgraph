@@ -3,8 +3,6 @@
 
 package authoring
 
-import specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-
 // Prompt is a named template used during a funnel stage.
 type Prompt struct {
 	Name     string
@@ -52,37 +50,3 @@ func GetPrompts(stage Stage) []Prompt {
 	return out
 }
 
-// stageToProtoEnum is the canonical mapping from domain Stage to proto AuthoringStage.
-// Use StageToProto for external access.
-var stageToProtoEnum = map[Stage]specv1.AuthoringStage{
-	StageSpark:     specv1.AuthoringStage_AUTHORING_STAGE_SPARK,
-	StageShape:     specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
-	StageSpecify:   specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY,
-	StageDecompose: specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE,
-	StageApproved:  specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
-}
-
-// StageToProto converts a domain Stage to its proto AuthoringStage equivalent.
-// Returns AUTHORING_STAGE_UNSPECIFIED if the stage is not recognised.
-func StageToProto(stage Stage) specv1.AuthoringStage {
-	return stageToProtoEnum[stage]
-}
-
-// PromptsToProto converts the prompts for a stage into protobuf PromptTemplate messages.
-// Returns nil if no prompts are defined for the stage.
-func PromptsToProto(stage Stage) []*specv1.PromptTemplate {
-	prompts := promptRegistry[stage]
-	if len(prompts) == 0 {
-		return nil
-	}
-	protoStage := stageToProtoEnum[stage]
-	out := make([]*specv1.PromptTemplate, len(prompts))
-	for i, p := range prompts {
-		out[i] = &specv1.PromptTemplate{
-			Stage:    protoStage,
-			Name:     p.Name,
-			Template: p.Template,
-		}
-	}
-	return out
-}

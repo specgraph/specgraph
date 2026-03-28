@@ -89,8 +89,18 @@ func (s *Store) ListDecisions(ctx context.Context, status storage.DecisionStatus
 	params := s.projectParam()
 
 	if status != "" {
-		clauses = append(clauses, "d.status = $status")
-		params["status"] = string(status)
+		// Match both new lowercase and legacy proto-style values for backward compatibility.
+		clauses = append(clauses, "d.status IN $statuses")
+		statuses := []string{string(status)}
+		if legacy := legacyDecisionStatus(status); legacy != "" {
+			statuses = append(statuses, legacy)
+		}
+		// Include unspecified/empty legacy values when filtering for "proposed",
+		// since the read path normalizes DECISION_STATUS_UNSPECIFIED and "" to proposed.
+		if status == storage.DecisionStatusProposed {
+			statuses = append(statuses, "DECISION_STATUS_UNSPECIFIED", "")
+		}
+		params["statuses"] = statuses
 	}
 
 	query := "MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision)"
@@ -200,6 +210,40 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 	return result, err
 }
 
+// legacyDecisionStatus returns the old proto-style status string for backward-compatible queries.
+func legacyDecisionStatus(s storage.DecisionStatus) string {
+	switch s {
+	case storage.DecisionStatusProposed:
+		return "DECISION_STATUS_PROPOSED"
+	case storage.DecisionStatusAccepted:
+		return "DECISION_STATUS_ACCEPTED"
+	case storage.DecisionStatusSuperseded:
+		return "DECISION_STATUS_SUPERSEDED"
+	case storage.DecisionStatusDeprecated:
+		return "DECISION_STATUS_DEPRECATED"
+	default:
+		return ""
+	}
+}
+
+// normalizeDecisionStatus handles both old proto-style values from existing
+// Memgraph data and the new lowercase values. New writes use lowercase;
+// this function ensures old data is read correctly.
+func normalizeDecisionStatus(raw string) storage.DecisionStatus {
+	switch raw {
+	case "DECISION_STATUS_PROPOSED":
+		return storage.DecisionStatusProposed
+	case "DECISION_STATUS_ACCEPTED":
+		return storage.DecisionStatusAccepted
+	case "DECISION_STATUS_SUPERSEDED":
+		return storage.DecisionStatusSuperseded
+	case "DECISION_STATUS_DEPRECATED":
+		return storage.DecisionStatusDeprecated
+	default:
+		return storage.DecisionStatus(raw)
+	}
+}
+
 func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
 	id, err := recordString(rec, 0, "id")
 	if err != nil {
@@ -251,15 +295,12 @@ func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
 		return nil, err
 	}
 
-	status := storage.DecisionStatus(statusStr)
-	switch status {
-	case storage.DecisionStatusProposed, storage.DecisionStatusAccepted,
-		storage.DecisionStatusSuperseded, storage.DecisionStatusDeprecated:
-		// valid
-	default:
-		if statusStr == "DECISION_STATUS_UNSPECIFIED" || statusStr == "" {
-			status = storage.DecisionStatusProposed
-		} else {
+	var status storage.DecisionStatus
+	if statusStr == "DECISION_STATUS_UNSPECIFIED" || statusStr == "" {
+		status = storage.DecisionStatusProposed
+	} else {
+		status = normalizeDecisionStatus(statusStr)
+		if !status.IsValid() {
 			return nil, fmt.Errorf("memgraph: unknown decision status %q", statusStr)
 		}
 	}

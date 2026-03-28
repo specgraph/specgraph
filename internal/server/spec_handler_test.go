@@ -45,7 +45,7 @@ func (m *mockBackend) CreateSpec(_ context.Context, slug, intent, priority, comp
 		Intent:      intent,
 		Stage:       storage.SpecStageSpark,
 		Priority:    storage.SpecPriority(priority),
-		Complexity:  complexity,
+		Complexity:  storage.SpecComplexity(complexity),
 		Version:     1,
 		ContentHash: strings.Repeat("a", 32),
 		CreatedAt:   now,
@@ -101,7 +101,7 @@ func (m *mockBackend) UpdateSpec(_ context.Context, slug string, intent, stage, 
 		spec.Priority = storage.SpecPriority(*priority)
 	}
 	if complexity != nil {
-		spec.Complexity = *complexity
+		spec.Complexity = storage.SpecComplexity(*complexity)
 	}
 	if notes != nil {
 		spec.Notes = *notes
@@ -187,6 +187,32 @@ func TestSpecHandler_UpdateSpec(t *testing.T) {
 	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
 }
 
+func TestSpecHandler_UpdateSpec_StageIgnored(t *testing.T) {
+	mb := newMockBackend()
+	srv := httptest.NewServer(wrapTestProject(server.NewMux(&testScoper{backend: mb})))
+	t.Cleanup(srv.Close)
+
+	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)
+	ctx := context.Background()
+
+	// Create a spec (starts in "spark" stage).
+	_, err := client.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+		Slug:   "stage-bypass-test",
+		Intent: "Test that stage cannot be set via UpdateSpec",
+	}))
+	require.NoError(t, err)
+
+	// Attempt to mutate stage via UpdateSpec — should be ignored by the handler.
+	newStage := "specify"
+	updateResp, err := client.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
+		Slug:  "stage-bypass-test",
+		Stage: &newStage,
+	}))
+	require.NoError(t, err)
+	// Stage must remain "spark" — the handler must NOT propagate the stage field.
+	require.Equal(t, "spark", updateResp.Msg.GetSpec().GetStage(), "UpdateSpec must not mutate stage")
+}
+
 func TestSpecHandler_GetSpec_InvalidLifecycle(t *testing.T) {
 	mb := newMockBackend()
 	// Inject a spec with an invalid lifecycle directly.
@@ -210,6 +236,44 @@ func TestSpecHandler_GetSpec_InvalidLifecycle(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInternal, connect.CodeOf(err))
+}
+
+func TestSpecHandler_CreateSpec_InvalidComplexity(t *testing.T) {
+	mb := newMockBackend()
+	srv := httptest.NewServer(wrapTestProject(server.NewMux(&testScoper{backend: mb})))
+	t.Cleanup(srv.Close)
+
+	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)
+	_, err := client.CreateSpec(context.Background(), connect.NewRequest(&specv1.CreateSpecRequest{
+		Slug:       "bad-complexity",
+		Intent:     "test",
+		Complexity: "extreme",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.Contains(t, err.Error(), "invalid complexity")
+}
+
+func TestSpecHandler_UpdateSpec_InvalidComplexity(t *testing.T) {
+	mb := newMockBackend()
+	mb.specs["existing"] = &storage.Spec{
+		ID: "spec-1", Slug: "existing", Intent: "test", Stage: storage.SpecStageSpark,
+		Version: 1, Complexity: storage.SpecComplexityMedium,
+		ContentHash: strings.Repeat("a", 32),
+		CreatedAt:   time.Now().UTC(), UpdatedAt: time.Now().UTC(),
+	}
+	srv := httptest.NewServer(wrapTestProject(server.NewMux(&testScoper{backend: mb})))
+	t.Cleanup(srv.Close)
+
+	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)
+	bad := "extreme"
+	_, err := client.UpdateSpec(context.Background(), connect.NewRequest(&specv1.UpdateSpecRequest{
+		Slug:       "existing",
+		Complexity: &bad,
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.Contains(t, err.Error(), "invalid complexity")
 }
 
 func TestSpecHandler_ListSpecs(t *testing.T) {

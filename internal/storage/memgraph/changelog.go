@@ -6,7 +6,6 @@ package memgraph
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -264,26 +263,8 @@ func recordToChangeLogEntry(rec *neo4j.Record) (*storage.ChangeLogEntry, error) 
 // EnsureChangeLogIndexes creates indexes on ChangeLog nodes for efficient queries.
 // Called from ensureIndexes during Store initialization.
 func (s *Store) EnsureChangeLogIndexes(ctx context.Context) error {
-	indexes := []string{
+	return runDDLStatements(ctx, s.driver, []string{
 		"CREATE INDEX ON :ChangeLog(version)",
 		"CREATE INDEX ON :ChangeLog(date)",
-	}
-	for _, stmt := range indexes {
-		session := s.driver.NewSession(ctx, neo4j.SessionConfig{})
-		_, runErr := session.Run(ctx, stmt, nil)
-		closeErr := session.Close(ctx)
-		if runErr != nil && !strings.Contains(runErr.Error(), "already exists") {
-			if closeErr != nil {
-				return errors.Join(
-					fmt.Errorf("create changelog index %q: %w", stmt, runErr),
-					fmt.Errorf("close session: %w", closeErr),
-				)
-			}
-			return fmt.Errorf("create changelog index %q: %w", stmt, runErr)
-		}
-		if closeErr != nil {
-			return fmt.Errorf("close session after changelog index %q: %w", stmt, closeErr)
-		}
-	}
-	return nil
+	})
 }

@@ -11,7 +11,6 @@ import (
 	"connectrpc.com/connect"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"google.golang.org/protobuf/proto"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
@@ -46,18 +45,20 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
-		resp, err := specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
-			Slug:  pipelineSlug,
-			Stage: proto.String("approved"),
+		Expect(advanceStage(ctx, pipelineSlug, "approved")).To(Succeed())
+
+		resp, err := specClient.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
+			Slug: pipelineSlug,
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.GetSpec().GetStage()).To(Equal("approved"))
 	})
 
 	It("advances to done", func() {
-		resp, err := specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
-			Slug:  pipelineSlug,
-			Stage: proto.String("done"),
+		Expect(claimAndComplete(ctx, pipelineSlug)).To(Succeed())
+
+		resp, err := specClient.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
+			Slug: pipelineSlug,
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))
@@ -130,9 +131,10 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 	})
 
 	It("re-advances to done again", func() {
-		resp, err := specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
-			Slug:  pipelineSlug,
-			Stage: proto.String("done"),
+		Expect(claimAndComplete(ctx, pipelineSlug)).To(Succeed())
+
+		resp, err := specClient.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
+			Slug: pipelineSlug,
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))

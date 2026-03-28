@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/specgraph/specgraph/internal/authoring"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/specgraph/specgraph/internal/storage/contenthash"
 )
@@ -34,7 +33,7 @@ var allowedJSONProperties = map[string]bool{
 }
 
 // TransitionStage validates and applies a spec's stage transition.
-// It first checks the transition is valid via authoring.ValidateTransition,
+// It first checks the transition is valid via storage.ValidateTransition,
 // then updates the spec's stage in the database. Returns ErrSpecNotFound if
 // the spec doesn't exist, or ErrInvalidStageTransition if the spec is at
 // a different stage than expected. Returns ErrSpecAlreadyApproved if from
@@ -44,7 +43,7 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 	if from == storage.SpecStageApproved {
 		return storage.ErrSpecAlreadyApproved
 	}
-	if err := authoring.ValidateTransition(from, to); err != nil {
+	if err := storage.ValidateTransition(from, to); err != nil {
 		return fmt.Errorf("memgraph: %w: %w", storage.ErrInvalidStageTransition, err)
 	}
 	nowStr := s.now()
@@ -339,7 +338,7 @@ func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage 
 	if spec.Stage == storage.SpecStageSuperseded {
 		return nil, fmt.Errorf("amend spec %q: %w", slug, storage.ErrSpecSuperseded)
 	}
-	if vErr := authoring.ValidateAmendTransition(spec.Stage, targetStage); vErr != nil {
+	if vErr := storage.ValidateAmendTransition(spec.Stage, targetStage); vErr != nil {
 		return nil, fmt.Errorf("memgraph: amend: %w: %w", storage.ErrInvalidStageTransition, vErr)
 	}
 	var result *storage.AmendResult

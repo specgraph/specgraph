@@ -52,6 +52,10 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 	if complexity == "" {
 		complexity = defaultSpecComplexity
 	}
+	if !storage.SpecComplexity(complexity).IsValid() {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("invalid complexity %q; valid values: low, medium, high", complexity))
+	}
 
 	spec, err := store.CreateSpec(ctx, msg.Slug, msg.Intent, priority, complexity)
 	if err != nil {
@@ -122,7 +126,15 @@ func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv
 			fmt.Errorf("notes exceeds maximum length of %d characters", maxNotesLen))
 	}
 
-	spec, err := store.UpdateSpec(ctx, msg.Slug, msg.Intent, msg.Stage, msg.Priority, msg.Complexity, msg.Notes)
+	if msg.Complexity != nil && !storage.SpecComplexity(*msg.Complexity).IsValid() {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("invalid complexity %q; valid values: low, medium, high", *msg.Complexity))
+	}
+
+	// Stage transitions are only permitted through authoring and lifecycle RPCs.
+	// The stage field in UpdateSpecRequest is intentionally ignored here to enforce
+	// the state machine (spgr-dec.1).
+	spec, err := store.UpdateSpec(ctx, msg.Slug, msg.Intent, nil, msg.Priority, msg.Complexity, msg.Notes)
 	if err != nil {
 		return nil, specError(err)
 	}

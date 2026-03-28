@@ -128,6 +128,25 @@ func TestSpecPriority_IsValid(t *testing.T) {
 	}
 }
 
+func TestSpecComplexity_IsValid(t *testing.T) {
+	valid := []storage.SpecComplexity{
+		storage.SpecComplexityLow,
+		storage.SpecComplexityMedium,
+		storage.SpecComplexityHigh,
+	}
+	for _, c := range valid {
+		t.Run(string(c), func(t *testing.T) {
+			assert.True(t, c.IsValid(), "complexity %q should be valid", c)
+		})
+	}
+	t.Run("invalid", func(t *testing.T) {
+		assert.False(t, storage.SpecComplexity("bogus").IsValid())
+	})
+	t.Run("empty", func(t *testing.T) {
+		assert.False(t, storage.SpecComplexity("").IsValid())
+	})
+}
+
 func TestNewSpec(t *testing.T) {
 	now := time.Now().UTC()
 	spec := &storage.Spec{
@@ -146,7 +165,7 @@ func TestNewSpec(t *testing.T) {
 	assert.Equal(t, "REST endpoint for OAuth2", spec.Intent)
 	assert.Equal(t, storage.SpecStageSpark, spec.Stage)
 	assert.Equal(t, storage.SpecPriorityP1, spec.Priority)
-	assert.Equal(t, "medium", spec.Complexity)
+	assert.Equal(t, storage.SpecComplexityMedium, spec.Complexity)
 	assert.Equal(t, int32(1), spec.Version)
 	assert.Equal(t, now, spec.CreatedAt)
 	assert.Equal(t, now, spec.UpdatedAt)

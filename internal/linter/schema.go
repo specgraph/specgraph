@@ -59,6 +59,15 @@ func ValidateSchema(spec *storage.Spec) []storage.LintViolation {
 		})
 	}
 
+	// Validate complexity enum
+	if spec.Complexity != "" && !spec.Complexity.IsValid() {
+		violations = append(violations, storage.LintViolation{
+			Rule: "schema.enum", Severity: storage.LintSeverityError,
+			Message:  fmt.Sprintf("invalid complexity %q", spec.Complexity),
+			Location: "complexity",
+		})
+	}
+
 	// Validate lifecycle enum
 	if spec.Lifecycle != "" && !spec.Lifecycle.IsValid() {
 		violations = append(violations, storage.LintViolation{
