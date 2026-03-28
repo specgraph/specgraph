@@ -101,6 +101,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		server.RegisterAnalyticalPassService(mux, store, ".specgraph/templates", opts, maxBytes)
 		server.RegisterExecutionService(mux, store, opts, maxBytes)
 		server.RegisterSliceService(mux, store, opts, maxBytes)
+		server.RegisterExportService(mux, store, cfg.Export.SigningKey, buildVersion(), opts, maxBytes)
 		driftEngine := drift.NewEngine(store, nil)
 		lintEngine := linter.NewEngine(store, nil)
 		server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts, maxBytes)
