@@ -96,7 +96,7 @@ var commandGroups = []commandGroup{
 
 Add to `cmd/specgraph/docs.go`:
 
-```go
+````go
 func runDocsCli(_ *cobra.Command, args []string) error {
 	outPath := docsCliDefaultPath
 	if len(args) > 0 {
@@ -199,7 +199,7 @@ func writeCommand(sb *strings.Builder, cmd *cobra.Command, heading string) {
 		writeCommand(sb, sub, heading+"#")
 	}
 }
-```
+````
 
 - [ ] **Step 4: Build and test the command**
 

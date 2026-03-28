@@ -104,7 +104,7 @@ specgraph slice list auth-service
 specgraph slice claim auth-service.slice.1 --assignee alice
 
 # Report progress on the claimed slice
-specgraph report-progress auth-service.slice.1 --message "JWT signing logic done, writing tests"
+specgraph report-progress auth-service.slice.1 --agent alice --message "JWT signing logic done, writing tests"
 
 # Mark the slice complete
 specgraph slice complete auth-service.slice.1
@@ -143,7 +143,7 @@ specgraph slice complete auth-service.slice.1
 # Create two specs and link them
 specgraph create token-storage --intent "Persistent token store"
 specgraph create auth-service --intent "JWT auth"
-specgraph add-edge auth-service --to token-storage --type depends-on
+specgraph edge add auth-service token-storage --type depends_on
 
 # Approve both and baseline the dependency
 specgraph approve token-storage
@@ -211,7 +211,7 @@ Fix the issues — in this example, add verify criteria to the spec and remove t
 specgraph specify auth-service --json-file specify-output-v2.json
 
 # Remove the circular edge
-specgraph remove-edge auth-service --to api-gateway --type depends-on
+specgraph edge remove auth-service api-gateway --type depends_on
 
 # Re-run lint to confirm clean
 specgraph lint auth-service
@@ -229,20 +229,20 @@ specgraph lint auth-service
 **Goal:** Claim a spec for execution, report status updates, signal blockers, and record completion.
 
 ```bash
-# Claim the spec for execution (--assignee required, --ttl sets lease duration)
-specgraph claim auth-service --assignee alice --ttl 30m
+# Claim the spec for execution (--agent required, --duration sets lease)
+specgraph claim auth-service --agent alice --duration 30m
 
 # Send a progress update (visible in spec timeline)
-specgraph report-progress auth-service --message "JWT signing done, refresh flow in progress"
+specgraph report-progress auth-service --agent alice --message "JWT signing done, refresh flow in progress"
 
 # Signal a blocker (pauses SLA clock, notifies dependents)
-specgraph report-blocker auth-service --message "Waiting on token-storage schema migration"
+specgraph report-blocker auth-service --agent alice --description "Waiting on token-storage schema migration"
 
 # Once the blocker is cleared, send another progress update
-specgraph report-progress auth-service --message "Blocker resolved, resuming refresh flow"
+specgraph report-progress auth-service --agent alice --message "Blocker resolved, resuming refresh flow"
 
 # Record completion (transitions spec to done)
-specgraph report-completion auth-service
+specgraph report-completion auth-service --agent alice
 ```
 
 ??? example "Expected output — `claim`"
@@ -258,8 +258,9 @@ specgraph report-completion auth-service
     ```
 
 !!! tip
-    The `--ttl` flag accepts Go duration strings: `30m`, `2h`, `24h`. Leases
-    auto-expire if not renewed, returning the spec to unclaimed state.
+    The `--duration` flag accepts Go duration strings: `30m`, `2h`, `24h`.
+    Leases auto-expire if not renewed, returning the spec to unclaimed state.
+    The `--agent` flag is required on all execution lifecycle commands.
 
 ---
 

@@ -118,7 +118,7 @@ if stale. This ensures the reference stays in sync with the code.
    (changed in PR #43). Acknowledge one upstream at a time or all at once.
 
 4. **CLI usage** — `drift [slug]` to check (single spec or all),
-   `drift acknowledge <slug> --upstream <dep>` or `--all` with optional
+   `drift acknowledge <slug> --upstream <dep>` or `--all` with required
    `--note`.
 
 5. **Worked example** — Two specs with a dependency. Upstream gets amended,
@@ -129,8 +129,7 @@ if stale. This ensures the reference stays in sync with the code.
 **Sections:**
 
 1. **What does the linter check?** — Schema validation (required fields per
-   stage), edge consistency (no dangling references), constitution compliance,
-   cycle detection.
+   stage), edge consistency (no dangling references), cycle detection.
 
 2. **CLI usage** — `lint` (all specs) or `lint <slug>` (single spec).
 

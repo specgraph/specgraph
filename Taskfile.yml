@@ -262,9 +262,12 @@ tasks:
   docs:cli:check:
     desc: Verify CLI reference is up to date
     deps: [build]
+    vars:
+      CLI_REF_TMP:
+        sh: mktemp
     cmds:
-      - ./{{.BINARY_NAME}} docs cli /tmp/cli-reference-check.md
-      - diff -u site/docs/cli-reference.md /tmp/cli-reference-check.md
+      - ./{{.BINARY_NAME}} docs cli {{.CLI_REF_TMP}}
+      - diff -u site/docs/cli-reference.md {{.CLI_REF_TMP}}
   # Git hooks
   hooks:install:
     desc: Install git hooks

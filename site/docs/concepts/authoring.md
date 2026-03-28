@@ -114,7 +114,7 @@ specs in the graph to detect overlapping scope or conflicting invariants.
 ### Decompose
 
 **Purpose:** Break large specs into independently deliverable slices. Each slice
-becomes a [Slice node](slices.md) in the graph, connected to the parent via `HAS_SLICE` edges.
+becomes a [Slice node](slices.md) in the graph, connected to the parent spec via a `COMPOSES` edge.
 
 **Key outputs:**
 

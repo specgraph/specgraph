@@ -36,12 +36,17 @@ func TestWriteTOC(t *testing.T) {
 			t.Errorf("TOC missing group %q", g.Name)
 		}
 	}
-	// "Drift & Linting" anchor should not have double-hyphen.
-	if strings.Contains(got, "drift--linting") {
-		t.Error("TOC anchor has double-hyphen for 'Drift & Linting'")
+	// Anchors with special chars should not have double-hyphens.
+	for _, line := range strings.Split(got, "\n") {
+		if strings.Contains(line, "(#") && strings.Contains(line, "--") {
+			t.Errorf("TOC anchor has double-hyphen: %s", line)
+		}
 	}
 	if !strings.Contains(got, "#drift-linting") {
 		t.Error("TOC missing expected anchor #drift-linting")
+	}
+	if !strings.Contains(got, "#server-config") {
+		t.Error("TOC missing expected anchor #server-config")
 	}
 }
 

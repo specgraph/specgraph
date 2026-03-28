@@ -11,13 +11,13 @@ Beads or GitHub are not imported back into SpecGraph.
 `specgraph sync beads` pushes approved specs to Beads as issues. It syncs all
 specs that match the given filters — there is no slug argument.
 
-```
+```bash
 specgraph sync beads [--dry-run] [--stage <stage>] [--priority <priority>]
 ```
 
 **Preview before pushing**
 
-```
+```bash
 specgraph sync beads --dry-run
 ```
 
@@ -26,7 +26,7 @@ issues.
 
 **Filter by stage**
 
-```
+```bash
 specgraph sync beads --stage specify
 specgraph sync beads --stage decompose
 ```
@@ -35,7 +35,7 @@ Only syncs specs currently at the given authoring stage.
 
 **Filter by priority**
 
-```
+```bash
 specgraph sync beads --priority high
 specgraph sync beads --priority critical
 ```
@@ -53,7 +53,7 @@ Each Beads issue receives:
 
 **Check sync state**
 
-```
+```bash
 specgraph sync status --adapter beads
 ```
 
@@ -64,19 +64,19 @@ specgraph sync status --adapter beads
 `specgraph sync github` pushes specs as GitHub Issues. Like Beads sync, it
 operates on all matching specs — no slug argument.
 
-```
+```bash
 specgraph sync github [--dry-run] [--stage <stage>] [--priority <priority>]
 ```
 
 **Preview before pushing**
 
-```
+```bash
 specgraph sync github --dry-run
 ```
 
 **Filter by stage or priority**
 
-```
+```bash
 specgraph sync github --stage specify --priority high
 ```
 
@@ -90,7 +90,7 @@ Each GitHub Issue receives:
 
 **Check sync state**
 
-```
+```bash
 specgraph sync status --adapter github
 ```
 
@@ -101,20 +101,20 @@ specgraph sync status --adapter github
 `specgraph sync status` shows the sync state for all adapters and all synced
 specs.
 
-```
+```bash
 specgraph sync status [--adapter beads|github] [--spec <slug>]
 ```
 
 **Filter by adapter**
 
-```
+```bash
 specgraph sync status --adapter beads
 specgraph sync status --adapter github
 ```
 
 **Filter by spec**
 
-```
+```bash
 specgraph sync status --spec auth-service-v2
 ```
 
@@ -122,6 +122,5 @@ Shows the sync state for a single spec across all adapters.
 
 **Combine filters**
 
-```
+```bash
 specgraph sync status --adapter github --spec auth-service-v2
-```

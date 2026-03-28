@@ -13,7 +13,7 @@ changes, before that staleness silently propagates into execution.
 ## How It Works
 
 Every `DEPENDS_ON` edge carries a `content_hash_at_link` property. When the
-edge is created (via `specgraph depend`, `specgraph decompose`, or
+edge is created (via `specgraph edge add`, `specgraph decompose`, or
 `specgraph update`), the upstream spec's current `content_hash` is written into
 that property.
 
@@ -84,7 +84,7 @@ Two specs: `payment-service` depends on `auth-tokens`.
 
 ```bash
 # Create the dependency
-specgraph depend payment-service --on auth-tokens
+specgraph edge add payment-service auth-tokens --type depends_on
 # Edge is created with content_hash_at_link = auth-tokens' current hash
 ```
 

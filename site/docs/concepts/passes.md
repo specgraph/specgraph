@@ -147,7 +147,8 @@ The safety net catches two categories in v0.1.0:
   migration strategies, irreversible state changes
 
 Additional categories (consistency contradictions, constitution violations, and
-showstoppers) are handled by the analytical pass system — see the pass types listed above.
+showstoppers) are planned for the analytical pass system but not yet implemented
+in the safety net.
 
 Patterns the safety net checks for (from `internal/authoring/safety.go`):
 

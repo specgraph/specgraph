@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+var multiHyphen = regexp.MustCompile(`-{2,}`)
 
 var docsCmd = &cobra.Command{
 	Use:   "docs",
@@ -70,7 +73,7 @@ func runDocsCli(_ *cobra.Command, args []string) error {
 	if err := os.WriteFile(outPath, []byte(sb.String()), 0o644); err != nil { //nolint:gosec // committed docs artifact, world-readable
 		return fmt.Errorf("write cli reference: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "CLI reference written to %s\n", outPath)
+	_, _ = fmt.Fprintf(os.Stderr, "CLI reference written to %s\n", outPath)
 	return nil
 }
 
@@ -84,7 +87,8 @@ func writeTOC(sb *strings.Builder) {
 	for _, g := range commandGroups {
 		anchor := strings.ToLower(g.Name)
 		anchor = strings.NewReplacer(" & ", "-", " ", "-").Replace(anchor)
-		fmt.Fprintf(sb, "- [%s](#%s)\n", g.Name, anchor)
+		anchor = multiHyphen.ReplaceAllString(anchor, "-")
+		_, _ = fmt.Fprintf(sb, "- [%s](#%s)\n", g.Name, anchor)
 	}
 	sb.WriteString("\n---\n\n")
 }
@@ -97,7 +101,7 @@ func writeGroups(sb *strings.Builder, root *cobra.Command) {
 
 	written := make(map[string]bool)
 	for _, g := range commandGroups {
-		fmt.Fprintf(sb, "## %s\n\n", g.Name)
+		_, _ = fmt.Fprintf(sb, "## %s\n\n", g.Name)
 		for _, name := range g.Commands {
 			cmd, ok := cmdMap[name]
 			if !ok {
@@ -123,7 +127,7 @@ func writeGroups(sb *strings.Builder, root *cobra.Command) {
 }
 
 func writeCommand(sb *strings.Builder, cmd *cobra.Command, heading string) {
-	fmt.Fprintf(sb, "%s %s\n\n", heading, cmd.CommandPath())
+	_, _ = fmt.Fprintf(sb, "%s %s\n\n", heading, cmd.CommandPath())
 
 	if cmd.Long != "" {
 		sb.WriteString(cmd.Long + "\n\n")
@@ -131,7 +135,7 @@ func writeCommand(sb *strings.Builder, cmd *cobra.Command, heading string) {
 		sb.WriteString(cmd.Short + "\n\n")
 	}
 
-	fmt.Fprintf(sb, "```\n%s\n```\n\n", cmd.UseLine())
+	_, _ = fmt.Fprintf(sb, "```\n%s\n```\n\n", cmd.UseLine())
 
 	if cmd.HasAvailableLocalFlags() {
 		sb.WriteString("**Flags:**\n\n```\n")

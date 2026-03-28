@@ -9,22 +9,17 @@ at authoring time rather than during execution.
 
 ## What the Linter Checks
 
-**Schema validation** — required fields must be present and correctly typed for
-the spec's current authoring stage. A spec at the `specify` stage must have a
-title, description, and acceptance criteria; a spec at `decompose` must have
-slices.
+**Schema validation** — required fields must be present for the spec's current
+authoring stage. The linter checks that core fields like `intent` and `slug` are
+populated and that stage-specific outputs exist where expected.
 
 **Edge consistency** — every edge must point to a spec that exists in the graph.
-`depends_on`, `blocks`, and `composed_of` edges with dangling references are
-flagged before they can be committed.
-
-**Constitution compliance** — specs must respect the constraints defined in the
-active constitution layers (project, domain, org). Field restrictions,
-required tags, and naming conventions are all evaluated here.
+`depends_on`, `blocks`, and `composes` edges with dangling references are
+flagged before they can cause downstream failures.
 
 **Cycle detection** — no circular dependency chains. If spec A depends on B and
 B depends on A, neither can ever be completed. The linter walks the dependency
-graph and reports the full cycle path.
+graph via DFS and flags the node where a cycle is detected.
 
 ---
 
