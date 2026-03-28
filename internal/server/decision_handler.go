@@ -35,12 +35,11 @@ func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Reque
 	}
 	d, err := store.CreateDecision(ctx, msg.Slug, msg.Title, msg.Decision, msg.Rationale)
 	if err != nil {
-		h.logger.ErrorContext(ctx, "create decision failed", slog.Any("error", err))
-		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
+		return nil, h.decisionError(ctx, err)
 	}
 	pb, err := decisionToProto(d)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, h.decisionError(ctx, err)
 	}
 	return connect.NewResponse(&specv1.CreateDecisionResponse{Decision: pb}), nil
 }
@@ -56,15 +55,11 @@ func (h *DecisionHandler) GetDecision(ctx context.Context, req *connect.Request[
 	}
 	d, err := store.GetDecision(ctx, req.Msg.Slug)
 	if err != nil {
-		if errors.Is(err, storage.ErrDecisionNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("decision not found"))
-		}
-		h.logger.ErrorContext(ctx, "get decision failed", slog.Any("error", err))
-		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
+		return nil, h.decisionError(ctx, err)
 	}
 	pb, err := decisionToProto(d)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, h.decisionError(ctx, err)
 	}
 	return connect.NewResponse(&specv1.GetDecisionResponse{Decision: pb}), nil
 }
@@ -92,12 +87,11 @@ func (h *DecisionHandler) ListDecisions(ctx context.Context, req *connect.Reques
 	}
 	decisions, err := store.ListDecisions(ctx, status, limit)
 	if err != nil {
-		h.logger.ErrorContext(ctx, "list decisions failed", slog.Any("error", err))
-		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
+		return nil, h.decisionError(ctx, err)
 	}
 	pbs, err := decisionsToProto(decisions)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, h.decisionError(ctx, err)
 	}
 	return connect.NewResponse(&specv1.ListDecisionsResponse{Decisions: pbs}), nil
 }
@@ -123,23 +117,32 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 	}
 	d, err := store.UpdateDecision(ctx, msg.Slug, msg.Title, domainStatus, msg.Decision, msg.Rationale, msg.SupersededBy)
 	if err != nil {
-		if errors.Is(err, storage.ErrDecisionNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("decision not found"))
-		}
-		if errors.Is(err, storage.ErrSupersededByRequired) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("superseded_by is required when status is superseded"))
-		}
-		if errors.Is(err, storage.ErrConcurrentModification) {
-			return nil, connect.NewError(connect.CodeAborted, errors.New("concurrent modification — retry the operation"))
-		}
-		h.logger.ErrorContext(ctx, "update decision failed", slog.Any("error", err))
-		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
+		return nil, h.decisionError(ctx, err)
 	}
 	pb, err := decisionToProto(d)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, h.decisionError(ctx, err)
 	}
 	return connect.NewResponse(&specv1.UpdateDecisionResponse{Decision: pb}), nil
+}
+
+// decisionError maps storage errors to sanitized connect error codes.
+func (h *DecisionHandler) decisionError(ctx context.Context, err error) error {
+	var connErr *connect.Error
+	if errors.As(err, &connErr) {
+		return connErr
+	}
+	switch {
+	case errors.Is(err, storage.ErrDecisionNotFound):
+		return connect.NewError(connect.CodeNotFound, errors.New("decision not found"))
+	case errors.Is(err, storage.ErrSupersededByRequired):
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("superseded_by is required when status is superseded"))
+	case errors.Is(err, storage.ErrConcurrentModification):
+		return connect.NewError(connect.CodeAborted, errors.New("concurrent modification — retry the operation"))
+	default:
+		h.logger.ErrorContext(ctx, "decisionError: internal error", slog.Any("error", err))
+		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
+	}
 }
 
 // RegisterDecisionService registers the DecisionService on the given mux.

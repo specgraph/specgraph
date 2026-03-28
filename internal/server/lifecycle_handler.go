@@ -66,7 +66,7 @@ func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Req
 	}
 	pb, err := specToProto(spec)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, h.lifecycleError("TransitionAmend", msg.Slug, err)
 	}
 	return connect.NewResponse(&specv1.TransitionAmendResponse{Spec: pb}), nil
 }
@@ -94,11 +94,11 @@ func (h *LifecycleHandler) TransitionSupersede(ctx context.Context, req *connect
 	}
 	oldPb, err := specToProto(oldSpec)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, h.lifecycleError("TransitionSupersede", msg.Slug, err)
 	}
 	newPb, err := specToProto(newSpec)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, h.lifecycleError("TransitionSupersede", msg.Slug, err)
 	}
 	return connect.NewResponse(&specv1.TransitionSupersedeResponse{
 		OldSpec: oldPb,
@@ -126,7 +126,7 @@ func (h *LifecycleHandler) TransitionAbandon(ctx context.Context, req *connect.R
 	}
 	pb, err := specToProto(spec)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, h.lifecycleError("TransitionAbandon", msg.Slug, err)
 	}
 	return connect.NewResponse(&specv1.TransitionAbandonResponse{Spec: pb}), nil
 }
@@ -159,7 +159,7 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 
 	protoReports, err := driftReportsToProto(reports)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, h.lifecycleError("CheckDrift", msg.Slug, err)
 	}
 	return connect.NewResponse(&specv1.DriftCheckResponse{Reports: protoReports}), nil
 }
@@ -216,7 +216,7 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 
 	protoReport, err := driftReportToProto(report)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, h.lifecycleError("AcknowledgeDrift", msg.Slug, err)
 	}
 	return connect.NewResponse(&specv1.DriftAcknowledgeResponse{Report: protoReport}), nil
 }
@@ -247,7 +247,7 @@ func (h *LifecycleHandler) Lint(ctx context.Context, req *connect.Request[specv1
 	}
 	protoResults, err := lintResultsToProto(results)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, h.lifecycleError("Lint", msg.Slug, err)
 	}
 	return connect.NewResponse(&specv1.LintResponse{
 		Results: protoResults,

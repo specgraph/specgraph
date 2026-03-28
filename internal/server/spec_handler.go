@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"unicode/utf8"
 
 	"connectrpc.com/connect"
@@ -54,14 +55,11 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 
 	spec, err := store.CreateSpec(ctx, msg.Slug, msg.Intent, priority, complexity)
 	if err != nil {
-		if errors.Is(err, storage.ErrSpecAlreadyExists) {
-			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("spec with this slug already exists"))
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, specError(err)
 	}
 	pb, err := specToProto(spec)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, specError(err)
 	}
 	return connect.NewResponse(&specv1.CreateSpecResponse{Spec: pb}), nil
 }
@@ -77,14 +75,11 @@ func (h *SpecHandler) GetSpec(ctx context.Context, req *connect.Request[specv1.G
 	}
 	spec, err := store.GetSpec(ctx, req.Msg.Slug)
 	if err != nil {
-		if errors.Is(err, storage.ErrSpecNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, specError(err)
 	}
 	pb, err := specToProto(spec)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, specError(err)
 	}
 	return connect.NewResponse(&specv1.GetSpecResponse{Spec: pb}), nil
 }
@@ -103,11 +98,11 @@ func (h *SpecHandler) ListSpecs(ctx context.Context, req *connect.Request[specv1
 
 	specs, err := store.ListSpecs(ctx, msg.Stage, msg.Priority, limit)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, specError(err)
 	}
 	pbs, err := specsToProto(specs)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, specError(err)
 	}
 	return connect.NewResponse(&specv1.ListSpecsResponse{Specs: pbs}), nil
 }
@@ -129,14 +124,30 @@ func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv
 
 	spec, err := store.UpdateSpec(ctx, msg.Slug, msg.Intent, msg.Stage, msg.Priority, msg.Complexity, msg.Notes)
 	if err != nil {
-		if errors.Is(err, storage.ErrSpecNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, specError(err)
 	}
 	pb, err := specToProto(spec)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
+		return nil, specError(err)
 	}
 	return connect.NewResponse(&specv1.UpdateSpecResponse{Spec: pb}), nil
+}
+
+// specError maps storage/conversion errors to sanitized connect error codes.
+func specError(err error) error {
+	var connErr *connect.Error
+	if errors.As(err, &connErr) {
+		return connErr
+	}
+	switch {
+	case errors.Is(err, storage.ErrSpecNotFound):
+		return connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
+	case errors.Is(err, storage.ErrSpecAlreadyExists):
+		return connect.NewError(connect.CodeAlreadyExists, errors.New("spec already exists"))
+	case errors.Is(err, storage.ErrConcurrentModification):
+		return connect.NewError(connect.CodeAborted, errors.New("concurrent modification — retry the operation"))
+	default:
+		slog.Error("specError: internal error", slog.Any("error", err))
+		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
+	}
 }

@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -26,12 +25,12 @@ func init() {
 	rootCmd.AddCommand(sparkCmd)
 }
 
-func runSpark(_ *cobra.Command, args []string) error {
+func runSpark(cmd *cobra.Command, args []string) error {
 	client, err := authoringClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+	resp, err := client.Spark(cmd.Context(), connect.NewRequest(&specv1.SparkRequest{
 		Slug:   args[0],
 		Output: &specv1.SparkOutput{Seed: sparkSeed},
 	}))

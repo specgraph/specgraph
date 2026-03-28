@@ -37,7 +37,7 @@ type statusOutput struct {
 	Version string `json:"version,omitempty"`
 }
 
-func runStatus(_ *cobra.Command, _ []string) error {
+func runStatus(cmd *cobra.Command, _ []string) error {
 	baseURL, _, err := resolveBaseURL()
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func runStatus(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(cmd.Context(), 5*time.Second)
 	defer cancel()
 
 	resp, connErr := client.Health(ctx, connect.NewRequest(&specv1.HealthRequest{}))

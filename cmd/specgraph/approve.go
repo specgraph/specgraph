@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -24,12 +23,12 @@ func init() {
 	rootCmd.AddCommand(approveCmd)
 }
 
-func runApprove(_ *cobra.Command, args []string) error {
+func runApprove(cmd *cobra.Command, args []string) error {
 	client, err := authoringClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+	resp, err := client.Approve(cmd.Context(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug: args[0],
 	}))
 	if err != nil {

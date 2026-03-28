@@ -32,7 +32,7 @@ func init() {
 	rootCmd.AddCommand(upCmd)
 }
 
-func runUp(_ *cobra.Command, _ []string) error {
+func runUp(cmd *cobra.Command, _ []string) error {
 	if err := xdg.EnsureDirs(); err != nil {
 		return fmt.Errorf("ensure XDG dirs: %w", err)
 	}
@@ -95,7 +95,7 @@ func runUp(_ *cobra.Command, _ []string) error {
 	// Health-check loop: up to 10 attempts, 1s apart, 2s timeout per attempt.
 	client := specgraphv1connect.NewServerServiceClient(http.DefaultClient, serverURL)
 	for range 10 {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		ctx, cancel := context.WithTimeout(cmd.Context(), 2*time.Second)
 		resp, err := client.Health(ctx, connect.NewRequest(&specv1.HealthRequest{}))
 		cancel()
 		if err == nil && resp.Msg.Status != "" {

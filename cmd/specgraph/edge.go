@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
 	"connectrpc.com/connect"
@@ -44,7 +43,7 @@ var edgeAddCmd = &cobra.Command{
 
 var edgeAddType string
 
-func runEdgeAdd(_ *cobra.Command, args []string) error {
+func runEdgeAdd(cmd *cobra.Command, args []string) error {
 	client, err := graphClient()
 	if err != nil {
 		return err
@@ -54,7 +53,7 @@ func runEdgeAdd(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("unknown edge type: %s", edgeAddType)
 	}
 
-	resp, err := client.AddEdge(context.Background(), connect.NewRequest(&specv1.AddEdgeRequest{
+	resp, err := client.AddEdge(cmd.Context(), connect.NewRequest(&specv1.AddEdgeRequest{
 		FromSlug: args[0],
 		ToSlug:   args[1],
 		EdgeType: et,
@@ -77,7 +76,7 @@ var edgeRemoveCmd = &cobra.Command{
 
 var edgeRemoveType string
 
-func runEdgeRemove(_ *cobra.Command, args []string) error {
+func runEdgeRemove(cmd *cobra.Command, args []string) error {
 	client, err := graphClient()
 	if err != nil {
 		return err
@@ -87,7 +86,7 @@ func runEdgeRemove(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("unknown edge type: %s", edgeRemoveType)
 	}
 
-	_, err = client.RemoveEdge(context.Background(), connect.NewRequest(&specv1.RemoveEdgeRequest{
+	_, err = client.RemoveEdge(cmd.Context(), connect.NewRequest(&specv1.RemoveEdgeRequest{
 		FromSlug: args[0],
 		ToSlug:   args[1],
 		EdgeType: et,
@@ -141,7 +140,7 @@ func runEdgeList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	resp, err := client.ListEdges(context.Background(), connect.NewRequest(&specv1.ListEdgesRequest{
+	resp, err := client.ListEdges(cmd.Context(), connect.NewRequest(&specv1.ListEdgesRequest{
 		Slug:     args[0],
 		EdgeType: et,
 	}))

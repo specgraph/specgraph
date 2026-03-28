@@ -33,7 +33,7 @@ type fakeAuthoringBackend struct {
 	storeSafetyFlagsErr     error
 }
 
-func (f *fakeAuthoringBackend) TransitionStage(_ context.Context, _ string, _, _ storage.AuthoringStage) error {
+func (f *fakeAuthoringBackend) TransitionStage(_ context.Context, _ string, _, _ storage.SpecStage) error {
 	return f.transitionStageErr
 }
 
@@ -68,7 +68,7 @@ func (f *fakeAuthoringBackend) SupersedeSpec(_ context.Context, _, _, _ string) 
 	return f.supersedeErr
 }
 
-func (f *fakeAuthoringBackend) AmendSpec(_ context.Context, _, _ string, _ storage.AuthoringStage) (*storage.AmendResult, error) {
+func (f *fakeAuthoringBackend) AmendSpec(_ context.Context, _, _ string, _ storage.SpecStage) (*storage.AmendResult, error) {
 	return f.amendResult, f.amendErr
 }
 
@@ -164,7 +164,7 @@ func (a *authoringTestBackend) Close(ctx context.Context) error {
 	return a.backend.Close(ctx)
 }
 
-func (a *authoringTestBackend) TransitionStage(ctx context.Context, slug string, from, to storage.AuthoringStage) error {
+func (a *authoringTestBackend) TransitionStage(ctx context.Context, slug string, from, to storage.SpecStage) error {
 	return a.authoring.TransitionStage(ctx, slug, from, to)
 }
 
@@ -192,7 +192,7 @@ func (a *authoringTestBackend) SupersedeSpec(ctx context.Context, slug, supersed
 	return a.authoring.SupersedeSpec(ctx, slug, supersededBy, reason)
 }
 
-func (a *authoringTestBackend) AmendSpec(ctx context.Context, slug, reason string, targetStage storage.AuthoringStage) (*storage.AmendResult, error) {
+func (a *authoringTestBackend) AmendSpec(ctx context.Context, slug, reason string, targetStage storage.SpecStage) (*storage.AmendResult, error) {
 	return a.authoring.AmendSpec(ctx, slug, reason, targetStage)
 }
 
@@ -404,7 +404,7 @@ func TestAuthoringHandler_Approve_HappyPath(t *testing.T) {
 
 func TestAuthoringHandler_Amend_HappyPath(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
-		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.AuthoringStage("shape"), Version: 2},
+		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.SpecStageShape, Version: 2},
 	}, &fakeBackend{})
 	resp, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
 		Slug:        "my-spec",
@@ -780,7 +780,7 @@ func TestAuthoringHandler_Supersede_SelfSupersede(t *testing.T) {
 
 func TestAuthoringHandler_Amend_EmptyReason(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
-		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.AuthoringStage("shape"), Version: 2},
+		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.SpecStageShape, Version: 2},
 	}, &fakeBackend{})
 	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
 		Slug:        "my-spec",
@@ -795,7 +795,7 @@ func TestAuthoringHandler_Amend_EmptyReason(t *testing.T) {
 
 func TestAuthoringHandler_Amend_UnspecifiedTargetStage(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
-		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.AuthoringStage("shape"), Version: 2},
+		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.SpecStageShape, Version: 2},
 	}, &fakeBackend{})
 	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
 		Slug:        "my-spec",
@@ -1028,7 +1028,7 @@ func TestAuthoringHandler_Shape_UnspecifiedPostureResolved(t *testing.T) {
 func TestAuthoringHandler_Amend_ApprovedTargetStageRejected(t *testing.T) {
 	// Amend with target_stage=APPROVED should return CodeInvalidArgument.
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
-		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.AuthoringStage("shape"), Version: 2},
+		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.SpecStageShape, Version: 2},
 	}, &fakeBackend{})
 	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
 		Slug:        "my-spec",
@@ -1258,7 +1258,7 @@ func TestAuthoringHandler_Shape_InvalidDecisionSlug(t *testing.T) {
 func TestAuthoringHandler_Amend_UnknownStageFromStorage(t *testing.T) {
 	// When AmendSpec returns a stage unknown to stageToProto, handler returns CodeInternal.
 	authoringStore := &fakeAuthoringBackend{
-		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.AuthoringStage("bogus-stage"), Version: 3},
+		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.SpecStage("bogus-stage"), Version: 3},
 	}
 	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
 	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
@@ -1270,7 +1270,7 @@ func TestAuthoringHandler_Amend_UnknownStageFromStorage(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInternal, connErr.Code())
-	require.Contains(t, connErr.Message(), "unknown stage")
+	require.Equal(t, "internal error", connErr.Message())
 }
 
 func TestAuthoringHandler_Specify_InterfacesMissingName(t *testing.T) {

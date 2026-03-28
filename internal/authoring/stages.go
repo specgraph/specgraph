@@ -9,42 +9,41 @@ import (
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
-// Stage is a typed authoring funnel stage name.
-type Stage string
+// Stage is an alias for storage.SpecStage, kept for backward compatibility
+// within the authoring package. New code should use storage.SpecStage directly.
+type Stage = storage.SpecStage
 
 // Stage name constants used across the authoring funnel.
+// These are aliases for the corresponding storage.SpecStage* constants.
 const (
-	StageSpark     Stage = "spark"
-	StageShape     Stage = "shape"
-	StageSpecify   Stage = "specify"
-	StageDecompose Stage = "decompose"
-	StageApproved  Stage = "approved"
+	StageSpark     = storage.SpecStageSpark
+	StageShape     = storage.SpecStageShape
+	StageSpecify   = storage.SpecStageSpecify
+	StageDecompose = storage.SpecStageDecompose
+	StageApproved  = storage.SpecStageApproved
 )
 
-// ToStorage converts a Stage to a storage.AuthoringStage.
-// Returns an error if the Stage value is not a known constant.
-func (s Stage) ToStorage() (storage.AuthoringStage, error) {
-	if indexOf(s) < 0 {
-		return "", fmt.Errorf("unknown authoring stage %q", s)
-	}
-	return storage.AuthoringStage(s), nil
-}
-
-// stages defines the ordered authoring funnel stages.
-var stages = []Stage{StageSpark, StageShape, StageSpecify, StageDecompose, StageApproved}
+// authoringStages defines the ordered authoring funnel stages.
+var authoringStages = []storage.SpecStage{StageSpark, StageShape, StageSpecify, StageDecompose, StageApproved}
 
 // AllStages returns a copy of the ordered stage list as strings (for backward compat with callers that need []string).
 func AllStages() []string {
-	out := make([]string, len(stages))
-	for i, s := range stages {
+	out := make([]string, len(authoringStages))
+	for i, s := range authoringStages {
 		out[i] = string(s)
 	}
 	return out
 }
 
-// validateStageNames returns an error if from or to are unknown stage names.
+// IsAuthoringStage reports whether the given SpecStage is one of the five
+// authoring funnel stages (spark, shape, specify, decompose, approved).
+func IsAuthoringStage(s storage.SpecStage) bool {
+	return indexOf(s) >= 0
+}
+
+// validateStageNames returns an error if from or to are unknown authoring stage names.
 // allowEmptyFrom controls whether from=="" is accepted (used for initial transitions).
-func validateStageNames(from, to Stage, allowEmptyFrom bool) (fromIdx, toIdx int, err error) {
+func validateStageNames(from, to storage.SpecStage, allowEmptyFrom bool) (fromIdx, toIdx int, err error) {
 	fromIdx = indexOf(from)
 	toIdx = indexOf(to)
 	var unknowns []string
@@ -64,7 +63,7 @@ func validateStageNames(from, to Stage, allowEmptyFrom bool) (fromIdx, toIdx int
 // Forward transitions must follow the defined order (no skipping).
 // Backward (amend) transitions are allowed to any earlier stage.
 // Same-to-same transitions are not allowed.
-func ValidateTransition(from, to Stage) error {
+func ValidateTransition(from, to storage.SpecStage) error {
 	if from == to {
 		return fmt.Errorf("transition from %q to %q is a no-op", from, to)
 	}
@@ -92,7 +91,7 @@ func ValidateTransition(from, to Stage) error {
 // ValidateAmendTransition checks whether an amend (backward) transition is valid.
 // It only allows moving to an earlier stage — forward transitions and same-to-same
 // are rejected. This is distinct from ValidateTransition which allows both directions.
-func ValidateAmendTransition(from, to Stage) error {
+func ValidateAmendTransition(from, to storage.SpecStage) error {
 	if from == to {
 		return fmt.Errorf("amend transition from %q to %q is a no-op", from, to)
 	}
@@ -109,9 +108,9 @@ func ValidateAmendTransition(from, to Stage) error {
 	return fmt.Errorf("amend requires backward transition: %q to %q is not backward", from, to)
 }
 
-// indexOf returns the position of a stage in the ordered list, or -1 if not found.
-func indexOf(stage Stage) int {
-	for i, s := range stages {
+// indexOf returns the position of a stage in the ordered authoring funnel list, or -1 if not found.
+func indexOf(stage storage.SpecStage) int {
+	for i, s := range authoringStages {
 		if s == stage {
 			return i
 		}

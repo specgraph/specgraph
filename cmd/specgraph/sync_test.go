@@ -11,7 +11,6 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -123,13 +122,13 @@ func TestRunSyncBeads_HappyPath(t *testing.T) {
 	beadsDryRun = false
 	t.Cleanup(func() { beadsDryRun = old })
 
-	err := runSyncBeads(&cobra.Command{})
+	err := runSyncBeads(newCmdWithCtx())
 	require.NoError(t, err)
 }
 
 func TestRunSyncBeads_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runSyncBeads(&cobra.Command{})
+	err := runSyncBeads(newCmdWithCtx())
 	require.Error(t, err)
 }
 
@@ -149,13 +148,13 @@ func (fakeSyncGitHubHandler) SyncGitHub(_ context.Context, _ *connect.Request[sp
 
 func TestRunSyncGitHub_HappyPath(t *testing.T) {
 	startFakeSyncServer(t, fakeSyncGitHubHandler{})
-	err := runSyncGitHub(&cobra.Command{})
+	err := runSyncGitHub(newCmdWithCtx())
 	require.NoError(t, err)
 }
 
 func TestRunSyncGitHub_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runSyncGitHub(&cobra.Command{})
+	err := runSyncGitHub(newCmdWithCtx())
 	require.Error(t, err)
 }
 
@@ -183,7 +182,7 @@ func TestRunSyncStatus_HappyPath(t *testing.T) {
 	statusAdapter = ""
 	t.Cleanup(func() { statusAdapter = old })
 
-	err := runSyncStatus(&cobra.Command{}, nil)
+	err := runSyncStatus(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -193,7 +192,7 @@ func TestRunSyncStatus_WithAdapterFilter(t *testing.T) {
 	statusAdapter = "beads"
 	t.Cleanup(func() { statusAdapter = old })
 
-	err := runSyncStatus(&cobra.Command{}, nil)
+	err := runSyncStatus(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
@@ -203,7 +202,7 @@ func TestRunSyncStatus_InvalidAdapter(t *testing.T) {
 	statusAdapter = "bogus"
 	t.Cleanup(func() { statusAdapter = old })
 
-	err := runSyncStatus(&cobra.Command{}, nil)
+	err := runSyncStatus(newCmdWithCtx(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported adapter")
 }
@@ -222,13 +221,13 @@ func TestRunSyncStatus_Empty(t *testing.T) {
 	statusAdapter = ""
 	t.Cleanup(func() { statusAdapter = old })
 
-	err := runSyncStatus(&cobra.Command{}, nil)
+	err := runSyncStatus(newCmdWithCtx(), nil)
 	require.NoError(t, err)
 }
 
 func TestRunSyncStatus_ClientError(t *testing.T) {
 	setMissingConfig(t)
-	err := runSyncStatus(&cobra.Command{}, nil)
+	err := runSyncStatus(newCmdWithCtx(), nil)
 	require.Error(t, err)
 }
 
@@ -244,7 +243,7 @@ func (fakeSyncBeadsErrHandler) SyncBeads(_ context.Context, _ *connect.Request[s
 
 func TestRunSyncBeads_RPCError(t *testing.T) {
 	startFakeSyncServer(t, fakeSyncBeadsErrHandler{})
-	err := runSyncBeads(&cobra.Command{})
+	err := runSyncBeads(newCmdWithCtx())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "sync beads")
 }
@@ -259,7 +258,7 @@ func (fakeSyncGitHubErrHandler) SyncGitHub(_ context.Context, _ *connect.Request
 
 func TestRunSyncGitHub_RPCError(t *testing.T) {
 	startFakeSyncServer(t, fakeSyncGitHubErrHandler{})
-	err := runSyncGitHub(&cobra.Command{})
+	err := runSyncGitHub(newCmdWithCtx())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "sync github")
 }

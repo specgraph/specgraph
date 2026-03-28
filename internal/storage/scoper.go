@@ -20,6 +20,8 @@ type ScopedBackend interface {
 	SyncBackend
 	ProjectBackend
 	SliceBackend
+	ConversationBackend
+	ChangeLogBackend
 }
 
 // Scoper creates project-scoped storage instances.

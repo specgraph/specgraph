@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"text/tabwriter"
@@ -52,7 +51,7 @@ func runSyncBeads(cmd *cobra.Command) error {
 		return err
 	}
 
-	resp, err := client.SyncBeads(context.Background(), connect.NewRequest(&specv1.SyncBeadsRequest{
+	resp, err := client.SyncBeads(cmd.Context(), connect.NewRequest(&specv1.SyncBeadsRequest{
 		Config: &specv1.SyncConfig{
 			FilterStage:    beadsFilterStage,
 			FilterPriority: beadsFilterPriority,
@@ -82,7 +81,7 @@ func runSyncGitHub(cmd *cobra.Command) error {
 		return err
 	}
 
-	resp, err := client.SyncGitHub(context.Background(), connect.NewRequest(&specv1.SyncGitHubRequest{
+	resp, err := client.SyncGitHub(cmd.Context(), connect.NewRequest(&specv1.SyncGitHubRequest{
 		Config: &specv1.SyncConfig{
 			FilterStage:    ghFilterStage,
 			FilterPriority: ghFilterPriority,
@@ -127,7 +126,7 @@ func runSyncStatus(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("unsupported adapter: %s (supported: beads, github)", statusAdapter)
 	}
 
-	resp, err := client.GetSyncStatus(context.Background(), connect.NewRequest(&specv1.SyncStatusRequest{
+	resp, err := client.GetSyncStatus(cmd.Context(), connect.NewRequest(&specv1.SyncStatusRequest{
 		Adapter:  adapter,
 		SpecSlug: statusSpec,
 	}))
