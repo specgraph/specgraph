@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
+- **ci:** Make release workflow idempotent and advance past v0.3.0 (#789) ([#789](https://github.com/specgraph/specgraph/pull/789)) ([ec48765](https://github.com/specgraph/specgraph/commit/ec487654e753bbd386818cb3528eaa3385f6d3da))
 - **ci:** Skip changelog commit when nothing changed (idempotent re-runs) (#788) ([#788](https://github.com/specgraph/specgraph/pull/788)) ([d95cb4d](https://github.com/specgraph/specgraph/commit/d95cb4dd96fb5782f53a2786591ebaaf3e8c70b2))
 - **ci:** Bump the version (#787) ([#787](https://github.com/specgraph/specgraph/pull/787)) ([6dfd5da](https://github.com/specgraph/specgraph/commit/6dfd5da7884ab3e3e1363b998242fccc093b8f32))
 - **ci:** Specify pnpm version in goreleaser release job (#786) ([#786](https://github.com/specgraph/specgraph/pull/786)) ([81d28d2](https://github.com/specgraph/specgraph/commit/81d28d20356a632b1f2f1a6fb24b10932ce3fdae))
