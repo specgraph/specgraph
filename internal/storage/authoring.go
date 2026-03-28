@@ -5,21 +5,7 @@ package storage
 
 import (
 	"context"
-	"errors"
-	"fmt"
 )
-
-// ErrInvalidStageTransition is returned when a stage transition violates funnel rules.
-var ErrInvalidStageTransition = errors.New("invalid stage transition")
-
-// ErrSpecAlreadyApproved is returned when attempting to modify an already-approved spec.
-var ErrSpecAlreadyApproved = errors.New("spec is already approved")
-
-// ErrSpecAlreadyExists is returned when creating a spec with a slug that already exists.
-var ErrSpecAlreadyExists = errors.New("spec already exists")
-
-// ErrSpecSuperseded is returned when attempting to amend a spec that has been superseded.
-var ErrSpecSuperseded = errors.New("spec has been superseded and cannot be amended")
 
 // --- Domain types for authoring stage outputs ---
 
@@ -97,19 +83,14 @@ const (
 	StrategySingleUnit    DecompositionStrategy = "single_unit"
 )
 
-// validStrategies lists the accepted DecompositionStrategy values.
-var validStrategies = map[DecompositionStrategy]bool{
-	StrategyVerticalSlice: true,
-	StrategyLayerCake:     true,
-	StrategySingleUnit:    true,
-}
-
-// ValidateStrategy checks whether a DecompositionStrategy is a known value.
-func ValidateStrategy(s DecompositionStrategy) error {
-	if !validStrategies[s] {
-		return fmt.Errorf("unknown decomposition strategy %q", s)
+// IsValid reports whether s is a known DecompositionStrategy value.
+func (s DecompositionStrategy) IsValid() bool {
+	switch s {
+	case StrategyVerticalSlice, StrategyLayerCake, StrategySingleUnit:
+		return true
+	default:
+		return false
 	}
-	return nil
 }
 
 // DecomposeSlice represents one independently deliverable unit of work.

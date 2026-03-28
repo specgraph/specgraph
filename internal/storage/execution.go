@@ -5,14 +5,7 @@ package storage
 
 import (
 	"context"
-	"errors"
 )
-
-// ErrSpecNotApproved is returned when a bundle is requested for a spec not in an executable stage.
-var ErrSpecNotApproved = errors.New("spec is not in an approved or in_progress stage")
-
-// ErrAgentNotClaimOwner is returned when an agent reports an event but does not hold the claim.
-var ErrAgentNotClaimOwner = errors.New("agent does not hold the claim for this spec")
 
 // ExecutionBackend defines storage operations for execution bundles and agent callbacks.
 type ExecutionBackend interface {

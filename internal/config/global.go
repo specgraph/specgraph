@@ -4,7 +4,9 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -71,7 +73,7 @@ func LoadGlobal(path string) (*GlobalConfig, error) {
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, fs.ErrNotExist) {
 			return nil, fmt.Errorf("read config: %w", err)
 		}
 		if writeErr := writeGlobal(path, cfg); writeErr != nil {

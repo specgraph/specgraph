@@ -8,6 +8,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -94,7 +95,7 @@ func (h *AnalyticalPassHandler) loadTemplate(pt storage.PassType) ([]byte, error
 		if err == nil {
 			return data, nil
 		}
-		if !os.IsNotExist(err) {
+		if !errors.Is(err, fs.ErrNotExist) {
 			return nil, fmt.Errorf("read template override %q: %w", overridePath, err)
 		}
 		// File not found — fall through to embedded default.

@@ -44,6 +44,17 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	if err := validateRequiredField("intent", msg.Intent); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if len(msg.Priority) > maxFieldLen {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("priority exceeds maximum length of %d characters", maxFieldLen))
+	}
+	if len(msg.Complexity) > maxFieldLen {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("complexity exceeds maximum length of %d characters", maxFieldLen))
+	}
 	priority := msg.Priority
 	if priority == "" {
 		priority = defaultSpecPriority
@@ -120,6 +131,19 @@ func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv
 	msg := req.Msg
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	for _, check := range []struct {
+		name  string
+		value *string
+	}{
+		{"intent", msg.Intent},
+		{"stage", msg.Stage},
+		{"priority", msg.Priority},
+		{"complexity", msg.Complexity},
+	} {
+		if err := validateOptionalField(check.name, check.value); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
 	}
 	if msg.Notes != nil && utf8.RuneCountInString(*msg.Notes) > maxNotesLen {
 		return nil, connect.NewError(connect.CodeInvalidArgument,

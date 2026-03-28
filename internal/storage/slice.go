@@ -5,7 +5,6 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"time"
 )
 
@@ -36,13 +35,6 @@ const (
 	SliceStatusClaimed SliceStatus = "claimed"
 	// SliceStatusDone indicates the slice is complete.
 	SliceStatusDone SliceStatus = "done"
-)
-
-var (
-	// ErrSliceNotFound is returned when a slice lookup finds no matching node.
-	ErrSliceNotFound = errors.New("slice not found")
-	// ErrSliceWrongStatus is returned when a status transition is invalid.
-	ErrSliceWrongStatus = errors.New("slice status precondition not met")
 )
 
 // SliceBackend provides CRUD operations for decomposition slices.

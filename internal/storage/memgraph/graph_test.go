@@ -8,6 +8,7 @@ package memgraph_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/storage"
@@ -169,6 +170,37 @@ func TestRemoveEdge_InTransaction_RollsBack(t *testing.T) {
 	edges, err := store.ListEdges(ctx, "tx-from", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
 	require.Len(t, edges, 1, "edge should survive transaction rollback")
+}
+
+func TestGetTransitiveDeps_BoundedChain(t *testing.T) {
+	clearDatabase(t)
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	// Create a chain longer than the traversal cap (50).
+	const chainLen = 55
+	slugs := make([]string, 0, chainLen)
+	for i := 0; i < chainLen; i++ {
+		slugs = append(slugs, fmt.Sprintf("n%02d", i))
+	}
+	for _, slug := range slugs {
+		_, err = store.CreateSpec(ctx, slug, "Spec "+slug, "p1", "low")
+		require.NoError(t, err)
+	}
+
+	// Add DEPENDS_ON edges forming a chain: n54 -> ... -> n00
+	for i := len(slugs) - 1; i > 0; i-- {
+		_, err = store.AddEdge(ctx, slugs[i], slugs[i-1], storage.EdgeTypeDependsOn)
+		require.NoError(t, err)
+	}
+
+	// Traversal is bounded at depth 50.
+	trans, err := store.GetTransitiveDeps(ctx, slugs[len(slugs)-1])
+	require.NoError(t, err)
+	require.Len(t, trans, 50)
 }
 
 func TestGetReady(t *testing.T) {

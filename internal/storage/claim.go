@@ -5,21 +5,8 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"time"
 )
-
-// ErrSpecNotFound is returned when a spec does not exist.
-var ErrSpecNotFound = errors.New("spec not found")
-
-// ErrSpecAlreadyClaimed is returned when a spec has an active claim by another agent.
-var ErrSpecAlreadyClaimed = errors.New("spec already claimed")
-
-// ErrNotClaimOwner is returned when the agent does not own the claim.
-var ErrNotClaimOwner = errors.New("agent does not own the claim")
-
-// ErrSpecNotClaimed is returned when the spec is not claimed.
-var ErrSpecNotClaimed = errors.New("spec is not claimed")
 
 // ClaimBackend defines storage operations for spec claims/leases.
 type ClaimBackend interface {

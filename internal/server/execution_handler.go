@@ -211,8 +211,12 @@ func (h *ExecutionHandler) GetExecutionEvents(ctx context.Context, req *connect.
 		return nil, executionError(err)
 	}
 
+	pbEvents, convErr := executionEventsToProto(events)
+	if convErr != nil {
+		return nil, executionError(convErr)
+	}
 	return connect.NewResponse(&specv1.GetExecutionEventsResponse{
-		Events: executionEventsToProto(events),
+		Events: pbEvents,
 	}), nil
 }
 

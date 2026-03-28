@@ -5,22 +5,6 @@ package storage
 
 import (
 	"context"
-	"errors"
-)
-
-// Lifecycle-specific sentinel errors.
-var (
-	ErrSpecNotDone            = errors.New("spec must be in done stage")
-	ErrSpecIneligibleStage    = errors.New("spec is not in an eligible stage for this operation")
-	ErrSpecIneligibleForDrift = errors.New("spec is not eligible for drift checking (must be done or amended)")
-	ErrSpecTerminal           = errors.New("spec is in a terminal state (superseded or abandoned)")
-	ErrNewSpecNotFound        = errors.New("replacement spec not found")
-	ErrNewSpecTerminal        = errors.New("replacement spec is in a terminal state")
-	ErrConcurrentModification = errors.New("concurrent modification detected — retry the operation")
-	ErrInternalGuardFailure   = errors.New("internal guard failure — unexpected precondition violation")
-	ErrInvalidReEntryStage    = errors.New("re-entry stage is not allowed for this operation")
-	ErrSameSlugs              = errors.New("old and new slugs must differ")
-	ErrEdgeNotFound           = errors.New("no matching dependency edge found")
 )
 
 // DriftType identifies the category of drift detected.

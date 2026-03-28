@@ -5,6 +5,7 @@ package server_test
 
 import (
 	"context"
+	"log/slog"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -27,7 +28,7 @@ func TestSweeper_RunsOnInterval(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	server.StartSweeper(ctx, mock, 50*time.Millisecond)
+	server.StartSweeper(ctx, mock, 50*time.Millisecond, slog.Default())
 
 	// Poll until the sweeper has run at least twice, with a hard timeout.
 	deadline := time.After(500 * time.Millisecond)
@@ -45,7 +46,7 @@ func TestSweeper_StopsOnCancel(t *testing.T) {
 	mock := &mockSweeper{}
 	ctx, cancel := context.WithCancel(context.Background())
 
-	server.StartSweeper(ctx, mock, 50*time.Millisecond)
+	server.StartSweeper(ctx, mock, 50*time.Millisecond, slog.Default())
 
 	// Wait for the first sweep to actually run, with a timeout.
 	deadline := time.After(500 * time.Millisecond)
