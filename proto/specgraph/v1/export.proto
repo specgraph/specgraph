@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: MIT
+// Copyright 2026 Sean Brandt
+
+syntax = "proto3";
+
+package specgraph.v1;
+
+option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1";
+
+service ExportService {
+  rpc ExportProject(ExportProjectRequest) returns (ExportProjectResponse);
+  rpc ImportProject(ImportProjectRequest) returns (ImportProjectResponse);
+  rpc VerifyExport(VerifyExportRequest) returns (VerifyExportResponse);
+}
+
+message ExportProjectRequest {
+  string project_slug = 1;
+}
+
+message ExportProjectResponse {
+  bytes data = 1;
+}
+
+message ImportProjectRequest {
+  bytes data = 1;
+  bool force = 2;
+  bool require_signature = 3;
+}
+
+message ImportProjectResponse {
+  ImportResult result = 1;
+}
+
+message ImportResult {
+  int32 specs_created = 1;
+  int32 decisions_created = 2;
+  int32 slices_created = 3;
+  int32 edges_created = 4;
+  int32 findings_created = 5;
+  int32 changelogs_created = 6;
+  int32 conversations_created = 7;
+  int32 sync_mappings_created = 8;
+  int32 execution_events_created = 9;
+  repeated string warnings = 10;
+}
+
+message VerifyExportRequest {
+  bytes data = 1;
+  // Optional — if empty, inferred from data.project_slug after parsing.
+  string project_slug = 2;
+}
+
+message VerifyExportResponse {
+  bool match = 1;
+  repeated EntityDiff diffs = 2;
+}
+
+message EntityDiff {
+  string entity_type = 1;
+  int32 matched = 2;
+  int32 missing = 3;
+  int32 extra = 4;
+  repeated string details = 5;
+}
