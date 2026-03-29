@@ -49,8 +49,11 @@ type Route struct {
 
 // AuthConfig configures authentication and authorization.
 type AuthConfig struct {
-	APIKeys []APIKeyConfig        `yaml:"api_keys"`
-	Roles   map[string]RoleConfig `yaml:"roles"`
+	Mode          string                `yaml:"mode"`
+	DefaultRole   string                `yaml:"default_role"`
+	APIKeys       []APIKeyConfig        `yaml:"api_keys"`
+	OIDCProviders []OIDCProviderConfig  `yaml:"oidc_providers"`
+	Roles         map[string]RoleConfig `yaml:"roles"`
 }
 
 // APIKeyConfig defines a single API key and its associated role.
@@ -64,6 +67,22 @@ type APIKeyConfig struct {
 // RoleConfig defines a custom role with explicit permissions.
 type RoleConfig struct {
 	Permissions []string `yaml:"permissions"`
+}
+
+// OIDCProviderConfig defines a single OIDC identity provider.
+type OIDCProviderConfig struct {
+	ID            string         `yaml:"id"`
+	Issuer        string         `yaml:"issuer"`
+	ClientID      string         `yaml:"client_id"`
+	Audience      string         `yaml:"audience"`
+	ClaimsMapping []ClaimMapping `yaml:"claims_mapping"`
+}
+
+// ClaimMapping maps a JWT claim value to a SpecGraph role.
+type ClaimMapping struct {
+	Claim string `yaml:"claim"`
+	Value string `yaml:"value"`
+	Role  string `yaml:"role"`
 }
 
 // LoadGlobal loads the global config from path. If the file doesn't exist,

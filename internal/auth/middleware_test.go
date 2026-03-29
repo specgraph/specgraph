@@ -13,7 +13,7 @@ import (
 )
 
 func TestRequireAuth_NoKeys_PassesThrough(t *testing.T) {
-	store, err := auth.NewConfigStore(config.AuthConfig{})
+	store, err := auth.NewConfigStore(config.AuthConfig{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestRequireAuth_WithKeys_NoToken_Returns401(t *testing.T) {
 		APIKeys: []config.APIKeyConfig{
 			{ID: "k1", Key: "spgr_sk_test", Name: "Admin", Role: "admin"},
 		},
-	})
+	}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestRequireAuth_WithKeys_ValidToken_PassesThrough(t *testing.T) {
 		APIKeys: []config.APIKeyConfig{
 			{ID: "k1", Key: "spgr_sk_test", Name: "Admin", Role: "admin"},
 		},
-	})
+	}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestRequireAuth_WithKeys_InvalidToken_Returns401(t *testing.T) {
 		APIKeys: []config.APIKeyConfig{
 			{ID: "k1", Key: "spgr_sk_test", Name: "Admin", Role: "admin"},
 		},
-	})
+	}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestRequireAuth_MalformedAuthHeader_Returns401(t *testing.T) {
 		APIKeys: []config.APIKeyConfig{
 			{ID: "k1", Key: "spgr_sk_test", Name: "Admin", Role: "admin"},
 		},
-	})
+	}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

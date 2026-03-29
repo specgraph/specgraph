@@ -8,8 +8,13 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/specgraph/specgraph/internal/config"
 )
@@ -29,7 +34,30 @@ type ConfigStore struct {
 
 // NewConfigStore builds a ConfigStore from the auth section of the config file.
 // It validates that all key IDs and values are unique and that referenced roles exist.
-func NewConfigStore(cfg config.AuthConfig) (*ConfigStore, error) {
+// If credentialsPath is non-empty and the file exists, its API keys are merged
+// with cfg.APIKeys (config keys take precedence over credential file keys with
+// the same ID).
+func NewConfigStore(cfg config.AuthConfig, credentialsPath string) (*ConfigStore, error) { //nolint:gocritic // hugeParam: cfg is read-only; pointer would require changing 60+ call sites
+	allKeys := cfg.APIKeys
+	if credentialsPath != "" {
+		credKeys, err := loadCredentialKeys(credentialsPath)
+		if err != nil {
+			return nil, fmt.Errorf("load credentials: %w", err)
+		}
+		if len(credKeys) > 0 {
+			// Config keys take precedence — build set of config IDs.
+			configIDs := make(map[string]bool, len(cfg.APIKeys))
+			for _, ak := range cfg.APIKeys {
+				configIDs[ak.ID] = true
+			}
+			for _, ck := range credKeys {
+				if !configIDs[ck.ID] {
+					allKeys = append(allKeys, ck)
+				}
+			}
+		}
+	}
+
 	roles := make(map[string][]string)
 	for role, perms := range DefaultRolePermissions {
 		roles[string(role)] = perms
@@ -38,10 +66,10 @@ func NewConfigStore(cfg config.AuthConfig) (*ConfigStore, error) {
 		roles[name] = rc.Permissions
 	}
 
-	identities := make(map[string]*Identity, len(cfg.APIKeys))
-	seenIDs := make(map[string]bool, len(cfg.APIKeys))
+	identities := make(map[string]*Identity, len(allKeys))
+	seenIDs := make(map[string]bool, len(allKeys))
 
-	for _, ak := range cfg.APIKeys {
+	for _, ak := range allKeys {
 		if strings.TrimSpace(ak.ID) == "" {
 			return nil, fmt.Errorf("API key ID must not be empty")
 		}
@@ -78,6 +106,23 @@ func NewConfigStore(cfg config.AuthConfig) (*ConfigStore, error) {
 	}, nil
 }
 
+// loadCredentialKeys reads API keys from the credentials file.
+// Returns nil (no error) if the file doesn't exist.
+func loadCredentialKeys(path string) ([]config.APIKeyConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("read %s: %w", path, err)
+	}
+	var creds CredentialsFile
+	if err := yaml.Unmarshal(data, &creds); err != nil {
+		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	return creds.APIKeys, nil
+}
+
 // fixedLenCompare compares two strings in constant time regardless of length.
 // It hashes both values with HMAC-SHA256 so the inputs to ConstantTimeCompare
 // are always 32 bytes, eliminating the length side-channel.
@@ -110,3 +155,14 @@ func (s *ConfigStore) ResolveAPIKey(_ context.Context, key string) (*Identity, e
 func (s *ConfigStore) HasKeys() bool {
 	return s.hasKeys
 }
+
+// ResolveJWT is a no-op for ConfigStore — it doesn't support OIDC.
+func (s *ConfigStore) ResolveJWT(_ context.Context, _ string) (*Identity, error) {
+	return nil, ErrNoOIDC
+}
+
+// HasAuth reports whether any API keys are configured.
+func (s *ConfigStore) HasAuth() bool {
+	return s.hasKeys
+}
+
