@@ -6,6 +6,7 @@ package xdg_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/xdg"
@@ -42,4 +43,14 @@ func TestStateHome_Default(t *testing.T) {
 func TestConfigFilePath(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "/tmp/xdg-test")
 	assert.Equal(t, "/tmp/xdg-test/specgraph/config.yaml", xdg.ConfigFile())
+}
+
+func TestCredentialsFilePath(t *testing.T) {
+	path := xdg.CredentialsFile()
+	if path == "" {
+		t.Fatal("CredentialsFile returned empty string")
+	}
+	if !strings.HasSuffix(path, "credentials.yaml") {
+		t.Errorf("path = %q, want suffix credentials.yaml", path)
+	}
 }

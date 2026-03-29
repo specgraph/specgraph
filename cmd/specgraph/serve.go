@@ -90,16 +90,95 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		sweeperCtx, stopSweeper := context.WithCancel(ctx)
 		defer stopSweeper()
 
-		authStore, err := auth.NewConfigStore(cfg.Auth)
+		credPath := xdg.CredentialsFile()
+		authStore, err := auth.NewConfigStore(cfg.Auth, credPath)
 		if err != nil {
 			return fmt.Errorf("auth config: %w", err)
 		}
-		if !authStore.HasKeys() && !isLoopbackAddr(cfg.Server.Listen) {
+
+		mode := cfg.Auth.Mode
+		if mode == "" {
+			mode = "local"
+		}
+
+		// Validate auth mode.
+		switch mode {
+		case "local", "oidc", "mixed":
+		default:
+			return fmt.Errorf("invalid auth.mode %q (must be local, oidc, or mixed)", mode)
+		}
+		if mode == "oidc" && len(cfg.Auth.OIDCProviders) == 0 {
+			return fmt.Errorf("auth.mode=oidc requires at least one oidc_providers entry")
+		}
+
+		// Bootstrap: generate default admin key in local mode if none configured.
+		if mode == "local" && !authStore.HasKeys() {
+			key, bootstrapErr := auth.Bootstrap(credPath)
+			if bootstrapErr != nil {
+				// Bootstrap failed (read-only filesystem, container, etc.).
+				// Server continues with local identity fallback (!HasAuth → localIdentity).
+				// The advisory warning below covers non-loopback exposure.
+				slog.Warn("auth bootstrap skipped (credentials directory not writable)",
+					"path", credPath,
+					"error", bootstrapErr.Error())
+			} else {
+				if stderrIsTerminal() {
+					fmt.Fprintf(os.Stderr, "\n  SpecGraph generated a default admin API key:\n\n    %s\n\n  Save this key — it won't be shown again.\n  Stored in: %s\n\n", key, credPath)
+				} else {
+					slog.Info("auth: default admin API key created", "path", credPath)
+				}
+
+				// Reload store with the new key.
+				authStore, err = auth.NewConfigStore(cfg.Auth, credPath)
+				if err != nil {
+					return fmt.Errorf("reload auth after bootstrap: %w", err)
+				}
+			}
+		}
+
+		if warning := auth.CheckCredentialPermissions(credPath); warning != "" {
+			slog.Warn(warning)
+		}
+
+		// Set up OIDC providers (only for oidc/mixed modes).
+		var oidcStores []*auth.OIDCStore
+		if mode != "local" {
+			defaultRole := cfg.Auth.DefaultRole
+			if defaultRole == "" {
+				defaultRole = "reader"
+			}
+
+			rolePerms := make(map[auth.Role][]string)
+			for role, perms := range auth.DefaultRolePermissions {
+				rolePerms[role] = perms
+			}
+			for name, rc := range cfg.Auth.Roles {
+				rolePerms[auth.Role(name)] = rc.Permissions
+			}
+
+			for _, pc := range cfg.Auth.OIDCProviders {
+				issuerCtx, issuerCancel := context.WithTimeout(ctx, 10*time.Second)
+				oidcStore, oidcErr := auth.NewOIDCStore(issuerCtx, pc, defaultRole, rolePerms)
+				issuerCancel()
+				if oidcErr != nil {
+					return fmt.Errorf("OIDC provider %s: %w", pc.ID, oidcErr)
+				}
+				oidcStores = append(oidcStores, oidcStore)
+				slog.Info("auth: OIDC provider configured", "id", pc.ID, "issuer", pc.Issuer)
+			}
+		}
+
+		compositeStore, csErr := auth.NewCompositeStore(authStore, oidcStores, mode)
+		if csErr != nil {
+			return fmt.Errorf("auth composite store: %w", csErr)
+		}
+
+		if !compositeStore.HasAuth() && !isLoopbackAddr(cfg.Server.Listen) {
 			slog.Warn("server listening without authentication on non-loopback interface",
 				"addr", cfg.Server.Listen,
-				"risk", "all requests will have full admin access")
+				"risk", "configure API keys or OIDC providers")
 		}
-		interceptor := auth.NewAuthInterceptor(authStore)
+		interceptor := auth.NewAuthInterceptor(compositeStore)
 		maxBytes := connect.WithReadMaxBytes(4 << 20) // 4 MiB request body limit
 		opts := connect.WithInterceptors(interceptor)
 
@@ -128,7 +207,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
 
 		// Register lightweight HTTP API endpoints (before static handler catch-all)
-		server.RegisterAPIHandlers(mux, store, auth.RequireAuth(authStore))
+		server.RegisterAPIHandlers(mux, store, auth.RequireAuth(compositeStore))
 
 		// Serve embedded UI static files
 		webFS, err := fs.Sub(web.Build, "build")
@@ -182,6 +261,17 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+// stderrIsTerminal reports whether stderr is connected to an interactive terminal.
+// Used to avoid printing secrets (e.g., bootstrap API keys) to non-interactive
+// outputs like CI logs or container log collectors.
+func stderrIsTerminal() bool {
+	fi, err := os.Stderr.Stat()
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeCharDevice != 0
 }
 
 // isLoopbackAddr reports whether the listen address refers to a loopback interface.

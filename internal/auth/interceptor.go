@@ -65,7 +65,7 @@ func resolveIdentity(ctx context.Context, store IdentityStore, headers http.Head
 	authHeader := headers.Get("Authorization")
 
 	if authHeader == "" {
-		if !store.HasKeys() {
+		if !store.HasAuth() {
 			return localIdentity(), nil
 		}
 		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
@@ -78,14 +78,12 @@ func resolveIdentity(ctx context.Context, store IdentityStore, headers http.Head
 		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
 	}
 
-	// Try API key resolution first — keys are opaque strings that may contain dots.
+	// ResolveAPIKey handles all token routing:
+	// - API keys matched directly by ConfigStore
+	// - JWT-shaped tokens delegated to OIDCStore via CompositeStore
 	id, err := store.ResolveAPIKey(ctx, token)
 	if err == nil {
 		return id, nil
-	}
-	// Unknown key: check if it looks like a JWT (future OIDC support).
-	if errors.Is(err, ErrUnknownKey) && strings.Count(token, ".") == 2 {
-		return nil, connect.NewError(connect.CodeUnimplemented, nil)
 	}
 	if errors.Is(err, ErrUnknownKey) {
 		return nil, connect.NewError(connect.CodeUnauthenticated, nil)

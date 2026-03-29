@@ -6,11 +6,19 @@ package auth_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/config"
 )
+
+// credFileYAML builds a credentials.yaml string for test use.
+func credFileYAML(id, key, name, role string) string {
+	return fmt.Sprintf("api_keys:\n  - id: %s\n    key: %s\n    name: %s\n    role: %s\n", id, key, name, role)
+}
 
 func TestConfigStore_ResolveAPIKey(t *testing.T) {
 	cfg := config.AuthConfig{
@@ -18,7 +26,7 @@ func TestConfigStore_ResolveAPIKey(t *testing.T) {
 			{ID: "k1", Key: "spgr_sk_abc", Name: "Test Key", Role: "admin"},
 		},
 	}
-	store, err := auth.NewConfigStore(cfg)
+	store, err := auth.NewConfigStore(cfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -43,7 +51,7 @@ func TestConfigStore_UnknownKey(t *testing.T) {
 			{ID: "k1", Key: "spgr_sk_abc", Name: "Test Key", Role: "admin"},
 		},
 	}
-	store, err := auth.NewConfigStore(cfg)
+	store, err := auth.NewConfigStore(cfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -54,7 +62,7 @@ func TestConfigStore_UnknownKey(t *testing.T) {
 }
 
 func TestConfigStore_HasKeys(t *testing.T) {
-	empty, err := auth.NewConfigStore(config.AuthConfig{})
+	empty, err := auth.NewConfigStore(config.AuthConfig{}, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -65,7 +73,7 @@ func TestConfigStore_HasKeys(t *testing.T) {
 		APIKeys: []config.APIKeyConfig{
 			{ID: "k1", Key: "spgr_sk_abc", Name: "Key", Role: "reader"},
 		},
-	})
+	}, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -81,7 +89,7 @@ func TestConfigStore_DuplicateKeyID(t *testing.T) {
 			{ID: "k1", Key: "spgr_sk_def", Name: "Key 2", Role: "reader"},
 		},
 	}
-	_, err := auth.NewConfigStore(cfg)
+	_, err := auth.NewConfigStore(cfg, "")
 	if err == nil {
 		t.Fatal("expected error for duplicate key ID")
 	}
@@ -94,7 +102,7 @@ func TestConfigStore_DuplicateKeyValue(t *testing.T) {
 			{ID: "k2", Key: "spgr_sk_same", Name: "Key 2", Role: "reader"},
 		},
 	}
-	_, err := auth.NewConfigStore(cfg)
+	_, err := auth.NewConfigStore(cfg, "")
 	if err == nil {
 		t.Fatal("expected error for duplicate key value")
 	}
@@ -106,7 +114,7 @@ func TestConfigStore_UnknownRole(t *testing.T) {
 			{ID: "k1", Key: "spgr_sk_abc", Name: "Key", Role: "nonexistent"},
 		},
 	}
-	_, err := auth.NewConfigStore(cfg)
+	_, err := auth.NewConfigStore(cfg, "")
 	if err == nil {
 		t.Fatal("expected error for unknown role")
 	}
@@ -118,7 +126,7 @@ func TestConfigStore_BlankID(t *testing.T) {
 			{ID: "", Key: "spgr_sk_abc", Name: "Key", Role: "admin"},
 		},
 	}
-	_, err := auth.NewConfigStore(cfg)
+	_, err := auth.NewConfigStore(cfg, "")
 	if err == nil {
 		t.Fatal("expected error for blank key ID")
 	}
@@ -130,7 +138,7 @@ func TestConfigStore_BlankKey(t *testing.T) {
 			{ID: "k1", Key: "", Name: "Key", Role: "admin"},
 		},
 	}
-	_, err := auth.NewConfigStore(cfg)
+	_, err := auth.NewConfigStore(cfg, "")
 	if err == nil {
 		t.Fatal("expected error for blank key value")
 	}
@@ -145,7 +153,7 @@ func TestConfigStore_CustomRole(t *testing.T) {
 			"ci-readonly": {Permissions: []string{"spec:read", "decision:read"}},
 		},
 	}
-	store, err := auth.NewConfigStore(cfg)
+	store, err := auth.NewConfigStore(cfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -169,7 +177,7 @@ func TestConfigStore_BuiltinRolePermissions(t *testing.T) {
 			{ID: "k3", Key: "spgr_sk_a", Name: "Admin", Role: "admin"},
 		},
 	}
-	store, err := auth.NewConfigStore(cfg)
+	store, err := auth.NewConfigStore(cfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -199,7 +207,7 @@ func TestConfigStore_DifferentLengthKeyRejected(t *testing.T) {
 			{ID: "k1", Key: "spgr_sk_abc", Name: "Test Key", Role: "admin"},
 		},
 	}
-	store, err := auth.NewConfigStore(cfg)
+	store, err := auth.NewConfigStore(cfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -217,13 +225,48 @@ func TestConfigStore_DifferentLengthKeyRejected(t *testing.T) {
 	}
 }
 
+func TestConfigStore_ResolveJWT_ReturnsErrNoOIDC(t *testing.T) {
+	store, err := auth.NewConfigStore(config.AuthConfig{}, "")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	_, err = store.ResolveJWT(context.Background(), "header.payload.signature")
+	if !errors.Is(err, auth.ErrNoOIDC) {
+		t.Errorf("ResolveJWT error = %v, want ErrNoOIDC", err)
+	}
+}
+
+func TestConfigStore_HasAuth_NoKeys(t *testing.T) {
+	store, err := auth.NewConfigStore(config.AuthConfig{}, "")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	if store.HasAuth() {
+		t.Error("HasAuth() = true, want false with no keys")
+	}
+}
+
+func TestConfigStore_HasAuth_WithKeys(t *testing.T) {
+	store, err := auth.NewConfigStore(config.AuthConfig{
+		APIKeys: []config.APIKeyConfig{
+			{ID: "k1", Key: "spgr_sk_test", Name: "Test", Role: "admin"},
+		},
+	}, "")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	if !store.HasAuth() {
+		t.Error("HasAuth() = false, want true with keys")
+	}
+}
+
 func TestConfigStore_SameContentKeyMatches(t *testing.T) {
 	cfg := config.AuthConfig{
 		APIKeys: []config.APIKeyConfig{
 			{ID: "k1", Key: "spgr_sk_exactmatch", Name: "Test Key", Role: "admin"},
 		},
 	}
-	store, err := auth.NewConfigStore(cfg)
+	store, err := auth.NewConfigStore(cfg, "")
 	if err != nil {
 		t.Fatalf("NewConfigStore: %v", err)
 	}
@@ -234,5 +277,109 @@ func TestConfigStore_SameContentKeyMatches(t *testing.T) {
 	}
 	if id.Subject != "apikey:k1" {
 		t.Errorf("subject = %q, want apikey:k1", id.Subject)
+	}
+}
+
+func TestConfigStore_LoadsCredentialKeys(t *testing.T) {
+	dir := t.TempDir()
+	credPath := filepath.Join(dir, "credentials.yaml")
+	credYAML := credFileYAML("cred-key", "spgr_sk_from_creds", "Credential Key", "admin")
+	if err := os.WriteFile(credPath, []byte(credYAML), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	store, err := auth.NewConfigStore(config.AuthConfig{}, credPath)
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	id, err := store.ResolveAPIKey(context.Background(), "spgr_sk_from_creds")
+	if err != nil {
+		t.Fatalf("ResolveAPIKey: %v", err)
+	}
+	if id.Subject != "apikey:cred-key" {
+		t.Errorf("subject = %q, want apikey:cred-key", id.Subject)
+	}
+}
+
+func TestConfigStore_ConfigKeyOverridesCredential(t *testing.T) {
+	dir := t.TempDir()
+	credPath := filepath.Join(dir, "credentials.yaml")
+	credYAML := credFileYAML("shared-id", "spgr_sk_cred_version", "Credential Version", "reader")
+	if err := os.WriteFile(credPath, []byte(credYAML), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	store, err := auth.NewConfigStore(config.AuthConfig{
+		APIKeys: []config.APIKeyConfig{
+			{ID: "shared-id", Key: "spgr_sk_config_version", Name: "Config Version", Role: "admin"},
+		},
+	}, credPath)
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+
+	// Config key should win.
+	id, err := store.ResolveAPIKey(context.Background(), "spgr_sk_config_version")
+	if err != nil {
+		t.Fatalf("ResolveAPIKey for config key: %v", err)
+	}
+	if id.Role != auth.RoleAdmin {
+		t.Errorf("role = %q, want admin", id.Role)
+	}
+
+	// Credential key with same ID should NOT be loaded.
+	_, err = store.ResolveAPIKey(context.Background(), "spgr_sk_cred_version")
+	if !errors.Is(err, auth.ErrUnknownKey) {
+		t.Errorf("expected ErrUnknownKey for overridden credential key, got %v", err)
+	}
+}
+
+func TestConfigStore_MissingCredentialFile(t *testing.T) {
+	store, err := auth.NewConfigStore(config.AuthConfig{
+		APIKeys: []config.APIKeyConfig{
+			{ID: "k1", Key: "spgr_sk_test", Name: "Test", Role: "admin"},
+		},
+	}, "/nonexistent/credentials.yaml")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	// Should still work with just config keys.
+	id, err := store.ResolveAPIKey(context.Background(), "spgr_sk_test")
+	if err != nil {
+		t.Fatalf("ResolveAPIKey: %v", err)
+	}
+	if id.Subject != "apikey:k1" {
+		t.Errorf("subject = %q, want apikey:k1", id.Subject)
+	}
+}
+
+func TestConfigStore_EmptyCredentialFilePath(t *testing.T) {
+	store, err := auth.NewConfigStore(config.AuthConfig{
+		APIKeys: []config.APIKeyConfig{
+			{ID: "k1", Key: "spgr_sk_test2", Name: "Test", Role: "reader"},
+		},
+	}, "")
+	if err != nil {
+		t.Fatalf("NewConfigStore: %v", err)
+	}
+	id, err := store.ResolveAPIKey(context.Background(), "spgr_sk_test2")
+	if err != nil {
+		t.Fatalf("ResolveAPIKey: %v", err)
+	}
+	if id.Subject != "apikey:k1" {
+		t.Errorf("subject = %q, want apikey:k1", id.Subject)
+	}
+}
+
+func TestConfigStore_InvalidCredentialYAML(t *testing.T) {
+	dir := t.TempDir()
+	credPath := filepath.Join(dir, "credentials.yaml")
+	if err := os.WriteFile(credPath, []byte("not: [valid yaml"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := auth.NewConfigStore(config.AuthConfig{}, credPath)
+	if err == nil {
+		t.Fatal("expected error for invalid credential YAML")
 	}
 }

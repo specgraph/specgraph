@@ -54,7 +54,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 
 		BeforeEach(func() {
 			// Start server with auth interceptor but no API keys configured.
-			store, err := auth.NewConfigStore(config.AuthConfig{})
+			store, err := auth.NewConfigStore(config.AuthConfig{}, "")
 			Expect(err).NotTo(HaveOccurred())
 			interceptor := auth.NewAuthInterceptor(store)
 
@@ -97,7 +97,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 					{ID: "k1", Key: "secret-admin-key", Name: "Admin", Role: "admin"},
 				},
 			}
-			store, err := auth.NewConfigStore(authCfg)
+			store, err := auth.NewConfigStore(authCfg, "")
 			Expect(err).NotTo(HaveOccurred())
 			interceptor := auth.NewAuthInterceptor(store)
 
@@ -159,7 +159,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 					{ID: "reader1", Key: readerKey, Name: "Reader", Role: "reader"},
 				},
 			}
-			store, err := auth.NewConfigStore(authCfg)
+			store, err := auth.NewConfigStore(authCfg, "")
 			Expect(err).NotTo(HaveOccurred())
 			interceptor := auth.NewAuthInterceptor(store)
 
@@ -222,7 +222,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 					{ID: "admin1", Key: adminKey, Name: "Admin", Role: "admin"},
 				},
 			}
-			store, err := auth.NewConfigStore(authCfg)
+			store, err := auth.NewConfigStore(authCfg, "")
 			Expect(err).NotTo(HaveOccurred())
 			interceptor := auth.NewAuthInterceptor(store)
 
@@ -297,7 +297,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 					"spec-reader": {Permissions: []string{"spec:read"}},
 				},
 			}
-			store, err := auth.NewConfigStore(authCfg)
+			store, err := auth.NewConfigStore(authCfg, "")
 			Expect(err).NotTo(HaveOccurred())
 			interceptor := auth.NewAuthInterceptor(store)
 
@@ -359,7 +359,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 					{ID: "h1", Key: "health-test-key", Name: "Test", Role: "admin"},
 				},
 			}
-			store, err := auth.NewConfigStore(authCfg)
+			store, err := auth.NewConfigStore(authCfg, "")
 			Expect(err).NotTo(HaveOccurred())
 			interceptor := auth.NewAuthInterceptor(store)
 
