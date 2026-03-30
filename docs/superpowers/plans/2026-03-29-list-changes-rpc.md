@@ -65,11 +65,13 @@ message ListChangesResponse {
 ```
 
 Add `google.protobuf.Timestamp` import at the top if not already present:
+
 ```protobuf
 import "google/protobuf/timestamp.proto";
 ```
 
 Add the RPC to the `SpecService` block (after `UpdateSpec`):
+
 ```protobuf
   rpc ListChanges(ListChangesRequest) returns (ListChangesResponse);
 ```

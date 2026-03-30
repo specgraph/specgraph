@@ -51,8 +51,8 @@ func TestChanges_WithEntries(t *testing.T) {
 	if !strings.Contains(out, "intent") {
 		t.Error("missing field change")
 	}
-	if !strings.Contains(out, "v2") {
-		t.Error("missing version 2")
+	if !strings.Contains(out, "## v2 — spark") {
+		t.Error("missing version 2 entry header")
 	}
 }
 

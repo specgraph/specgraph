@@ -10,6 +10,10 @@ import (
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
+func escapePipe(s string) string {
+	return strings.ReplaceAll(s, "|", "\\|")
+}
+
 // Changes renders changelog entries as a markdown timeline.
 func Changes(entries []*specv1.ChangeLogEntry) string {
 	if len(entries) == 0 {
@@ -35,7 +39,7 @@ func Changes(entries []*specv1.ChangeLogEntry) string {
 			headers := []string{"Field", "Old", "New"}
 			rows := make([][]string, len(e.Changes))
 			for i, c := range e.Changes {
-				rows[i] = []string{c.Field, c.OldValue, c.NewValue}
+				rows[i] = []string{escapePipe(c.Field), escapePipe(c.OldValue), escapePipe(c.NewValue)}
 			}
 			fmt.Fprint(&b, itemTable(headers, rows))
 		}

@@ -80,6 +80,7 @@ Add `ListChanges` to the existing spec handler (`internal/server/spec_handler.go
 6. Returns `ListChangesResponse`
 
 Error mapping follows existing patterns:
+
 - `storage.ErrSpecNotFound` → `connect.CodeNotFound`
 - Other errors → `connect.CodeInternal`
 
@@ -106,7 +107,7 @@ The existing `TestPermissionTable_Completeness` test will catch this if missing.
 
 New file `cmd/specgraph/changes.go`:
 
-```
+```text
 specgraph changes <slug> [--checkpoints] [--since-version N] [--limit N] [--json]
 ```
 
@@ -120,7 +121,7 @@ New file `internal/render/changelog.go`:
 
 Output format (markdown):
 
-```
+```text
 ## v3 — shape (checkpoint)
 **2026-03-28** | Hash: a1b2c3d4
 

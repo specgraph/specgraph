@@ -179,6 +179,12 @@ func (h *SpecHandler) ListChanges(ctx context.Context, req *connect.Request[spec
 	if err := validateSlug(msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	if msg.SinceVersion < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("since_version must be non-negative"))
+	}
+	if msg.Limit < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("limit must be non-negative"))
+	}
 	filter := storage.ChangeLogFilter{
 		CheckpointsOnly: msg.CheckpointsOnly,
 		SinceVersion:    msg.SinceVersion,
