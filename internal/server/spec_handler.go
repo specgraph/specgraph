@@ -169,6 +169,11 @@ func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv
 	return connect.NewResponse(&specv1.UpdateSpecResponse{Spec: pb}), nil
 }
 
+// ListChanges handles the ListChanges RPC.
+func (h *SpecHandler) ListChanges(_ context.Context, _ *connect.Request[specv1.ListChangesRequest]) (*connect.Response[specv1.ListChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListChanges not yet implemented"))
+}
+
 // specError maps storage/conversion errors to sanitized connect error codes.
 func specError(err error) error {
 	var connErr *connect.Error
