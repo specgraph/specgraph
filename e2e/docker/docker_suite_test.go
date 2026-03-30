@@ -24,7 +24,7 @@ func TestDocker(t *testing.T) {
 var _ = BeforeSuite(func() {
 	var cleanup func()
 	var err error
-	binaryPath, cleanup, err = testutil.BuildBinary()
+	binaryPath, _, cleanup, err = testutil.BuildBinary()
 	Expect(err).NotTo(HaveOccurred())
 	DeferCleanup(cleanup)
 })

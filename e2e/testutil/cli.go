@@ -18,6 +18,7 @@ import (
 type CLIRunner struct {
 	BinaryPath string
 	ConfigPath string
+	CoverDir   string // GOCOVERDIR for coverage-instrumented binary; empty to skip
 }
 
 // CLIResult holds the output of a CLI command.
@@ -27,35 +28,45 @@ type CLIResult struct {
 	ExitCode int
 }
 
-// BuildBinary builds the specgraph binary once into a temp dir.
-// It returns the binary path, a cleanup function, and any error.
+// BuildBinary builds the specgraph binary once into a temp dir with coverage
+// instrumentation enabled. It returns the binary path, a coverage directory
+// path (for GOCOVERDIR), a cleanup function, and any error.
 // Callers should invoke cleanup (e.g. via DeferCleanup) after the suite finishes.
-func BuildBinary() (string, func(), error) {
+func BuildBinary() (string, string, func(), error) {
 	tmpDir, err := os.MkdirTemp("", "specgraph-e2e-*")
 	if err != nil {
-		return "", nil, err
+		return "", "", nil, err
+	}
+	// Use SPECGRAPH_E2E_COVERDIR if set (CI), otherwise create inside tmpDir.
+	coverDir := os.Getenv("SPECGRAPH_E2E_COVERDIR")
+	if coverDir == "" {
+		coverDir = filepath.Join(tmpDir, "coverdata")
+	}
+	if err := os.MkdirAll(coverDir, 0o750); err != nil {
+		os.RemoveAll(tmpDir)
+		return "", "", nil, err
 	}
 	cleanup := func() { os.RemoveAll(tmpDir) }
 	binaryPath := filepath.Join(tmpDir, "specgraph")
-	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/specgraph")
+	cmd := exec.Command("go", "build", "-cover", "-o", binaryPath, "./cmd/specgraph") //nolint:gosec // binary path is constructed, not user input
 	root, err := FindProjectRoot()
 	if err != nil {
 		cleanup()
-		return "", nil, err
+		return "", "", nil, err
 	}
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
 		cleanup()
-		return "", nil, &BuildError{Output: string(out), Err: err}
+		return "", "", nil, &BuildError{Output: string(out), Err: err}
 	}
-	return binaryPath, cleanup, nil
+	return binaryPath, coverDir, cleanup, nil
 }
 
-// NewCLIRunner creates a CLIRunner from an already-built binary path and a
-// config file path. Use this in BeforeEach after calling BuildBinary once in
-// BeforeSuite.
-func NewCLIRunner(binaryPath, configPath string) *CLIRunner {
-	return &CLIRunner{BinaryPath: binaryPath, ConfigPath: configPath}
+// NewCLIRunner creates a CLIRunner from an already-built binary path, a config
+// file path, and an optional coverage directory (from BuildBinary). Use this in
+// BeforeEach after calling BuildBinary once in BeforeSuite.
+func NewCLIRunner(binaryPath, configPath, coverDir string) *CLIRunner {
+	return &CLIRunner{BinaryPath: binaryPath, ConfigPath: configPath, CoverDir: coverDir}
 }
 
 // Run executes the specgraph CLI with the given args.
@@ -67,9 +78,12 @@ func (c *CLIRunner) Run(args ...string) CLIResult {
 // If dir is empty, uses the current working directory.
 func (c *CLIRunner) RunInDir(dir string, args ...string) CLIResult {
 	fullArgs := append([]string{"--config", c.ConfigPath}, args...)
-	cmd := exec.Command(c.BinaryPath, fullArgs...)
+	cmd := exec.Command(c.BinaryPath, fullArgs...) //nolint:gosec // binary path from BuildBinary, not user input
 	if dir != "" {
 		cmd.Dir = dir
+	}
+	if c.CoverDir != "" {
+		cmd.Env = append(os.Environ(), "GOCOVERDIR="+c.CoverDir)
 	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
