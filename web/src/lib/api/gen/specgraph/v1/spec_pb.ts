@@ -17,7 +17,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file specgraph/v1/spec.proto.
  */
 export const file_specgraph_v1_spec: GenFile = /*@__PURE__*/
-  fileDesc("ChdzcGVjZ3JhcGgvdjEvc3BlYy5wcm90bxIMc3BlY2dyYXBoLnYxIosFCgRTcGVjEgoKAmlkGAEgASgJEgwKBHNsdWcYAiABKAkSDgoGaW50ZW50GAMgASgJEg0KBXN0YWdlGAQgASgJEhAKCHByaW9yaXR5GAUgASgJEhIKCmNvbXBsZXhpdHkYBiABKAkSDwoHdmVyc2lvbhgHIAEoBRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCglsaWZlY3ljbGUYCiABKA4yGy5zcGVjZ3JhcGgudjEuU3BlY0xpZmVjeWNsZRIVCg1zdXBlcnNlZGVkX2J5GAsgASgJEhIKCnN1cGVyc2VkZXMYDCABKAkSDQoFbm90ZXMYDiABKAkSFAoMY29udGVudF9oYXNoGA8gASgJEjgKEWNvbnZlcnNhdGlvbl9sb2dzGBAgAygLMh0uc3BlY2dyYXBoLnYxLkNvbnZlcnNhdGlvbkxvZxIvCgxzcGFya19vdXRwdXQYESABKAsyGS5zcGVjZ3JhcGgudjEuU3BhcmtPdXRwdXQSLwoMc2hhcGVfb3V0cHV0GBIgASgLMhkuc3BlY2dyYXBoLnYxLlNoYXBlT3V0cHV0EjMKDnNwZWNpZnlfb3V0cHV0GBMgASgLMhsuc3BlY2dyYXBoLnYxLlNwZWNpZnlPdXRwdXQSNwoQZGVjb21wb3NlX291dHB1dBgUIAEoCzIdLnNwZWNncmFwaC52MS5EZWNvbXBvc2VPdXRwdXQSGgoSY29udmVyc2F0aW9uX2NvdW50GBUgASgFSgQIDRAOUgdoaXN0b3J5IkIKC0ZpZWxkQ2hhbmdlEg0KBWZpZWxkGAEgASgJEhEKCW9sZF92YWx1ZRgCIAEoCRIRCgluZXdfdmFsdWUYAyABKAkiVwoRQ3JlYXRlU3BlY1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIOCgZpbnRlbnQYAiABKAkSEAoIcHJpb3JpdHkYAyABKAkSEgoKY29tcGxleGl0eRgEIAEoCSIeCg5HZXRTcGVjUmVxdWVzdBIMCgRzbHVnGAEgASgJIkIKEExpc3RTcGVjc1JlcXVlc3QSDQoFc3RhZ2UYASABKAkSEAoIcHJpb3JpdHkYAiABKAkSDQoFbGltaXQYAyABKAUiNgoRTGlzdFNwZWNzUmVzcG9uc2USIQoFc3BlY3MYASADKAsyEi5zcGVjZ3JhcGgudjEuU3BlYyLJAQoRVXBkYXRlU3BlY1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRITCgZpbnRlbnQYAiABKAlIAIgBARISCgVzdGFnZRgDIAEoCUgBiAEBEhUKCHByaW9yaXR5GAQgASgJSAKIAQESFwoKY29tcGxleGl0eRgFIAEoCUgDiAEBEhIKBW5vdGVzGAYgASgJSASIAQFCCQoHX2ludGVudEIICgZfc3RhZ2VCCwoJX3ByaW9yaXR5Qg0KC19jb21wbGV4aXR5QggKBl9ub3RlcyI2ChJDcmVhdGVTcGVjUmVzcG9uc2USIAoEc3BlYxgBIAEoCzISLnNwZWNncmFwaC52MS5TcGVjIjMKD0dldFNwZWNSZXNwb25zZRIgCgRzcGVjGAEgASgLMhIuc3BlY2dyYXBoLnYxLlNwZWMiNgoSVXBkYXRlU3BlY1Jlc3BvbnNlEiAKBHNwZWMYASABKAsyEi5zcGVjZ3JhcGgudjEuU3BlYypjCg1TcGVjTGlmZWN5Y2xlEh4KGlNQRUNfTElGRUNZQ0xFX1VOU1BFQ0lGSUVEEAASFwoTU1BFQ19MSUZFQ1lDTEVfVEFTSxABEhkKFVNQRUNfTElGRUNZQ0xFX0xJVklORxACMsUCCgtTcGVjU2VydmljZRJPCgpDcmVhdGVTcGVjEh8uc3BlY2dyYXBoLnYxLkNyZWF0ZVNwZWNSZXF1ZXN0GiAuc3BlY2dyYXBoLnYxLkNyZWF0ZVNwZWNSZXNwb25zZRJGCgdHZXRTcGVjEhwuc3BlY2dyYXBoLnYxLkdldFNwZWNSZXF1ZXN0Gh0uc3BlY2dyYXBoLnYxLkdldFNwZWNSZXNwb25zZRJMCglMaXN0U3BlY3MSHi5zcGVjZ3JhcGgudjEuTGlzdFNwZWNzUmVxdWVzdBofLnNwZWNncmFwaC52MS5MaXN0U3BlY3NSZXNwb25zZRJPCgpVcGRhdGVTcGVjEh8uc3BlY2dyYXBoLnYxLlVwZGF0ZVNwZWNSZXF1ZXN0GiAuc3BlY2dyYXBoLnYxLlVwZGF0ZVNwZWNSZXNwb25zZUI9WjtnaXRodWIuY29tL3NwZWNncmFwaC9zcGVjZ3JhcGgvZ2VuL3NwZWNncmFwaC92MTtzcGVjZ3JhcGh2MWIGcHJvdG8z", [file_google_protobuf_timestamp, file_specgraph_v1_authoring]);
+  fileDesc("ChdzcGVjZ3JhcGgvdjEvc3BlYy5wcm90bxIMc3BlY2dyYXBoLnYxIosFCgRTcGVjEgoKAmlkGAEgASgJEgwKBHNsdWcYAiABKAkSDgoGaW50ZW50GAMgASgJEg0KBXN0YWdlGAQgASgJEhAKCHByaW9yaXR5GAUgASgJEhIKCmNvbXBsZXhpdHkYBiABKAkSDwoHdmVyc2lvbhgHIAEoBRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCglsaWZlY3ljbGUYCiABKA4yGy5zcGVjZ3JhcGgudjEuU3BlY0xpZmVjeWNsZRIVCg1zdXBlcnNlZGVkX2J5GAsgASgJEhIKCnN1cGVyc2VkZXMYDCABKAkSDQoFbm90ZXMYDiABKAkSFAoMY29udGVudF9oYXNoGA8gASgJEjgKEWNvbnZlcnNhdGlvbl9sb2dzGBAgAygLMh0uc3BlY2dyYXBoLnYxLkNvbnZlcnNhdGlvbkxvZxIvCgxzcGFya19vdXRwdXQYESABKAsyGS5zcGVjZ3JhcGgudjEuU3BhcmtPdXRwdXQSLwoMc2hhcGVfb3V0cHV0GBIgASgLMhkuc3BlY2dyYXBoLnYxLlNoYXBlT3V0cHV0EjMKDnNwZWNpZnlfb3V0cHV0GBMgASgLMhsuc3BlY2dyYXBoLnYxLlNwZWNpZnlPdXRwdXQSNwoQZGVjb21wb3NlX291dHB1dBgUIAEoCzIdLnNwZWNncmFwaC52MS5EZWNvbXBvc2VPdXRwdXQSGgoSY29udmVyc2F0aW9uX2NvdW50GBUgASgFSgQIDRAOUgdoaXN0b3J5IkIKC0ZpZWxkQ2hhbmdlEg0KBWZpZWxkGAEgASgJEhEKCW9sZF92YWx1ZRgCIAEoCRIRCgluZXdfdmFsdWUYAyABKAki3QEKDkNoYW5nZUxvZ0VudHJ5EgoKAmlkGAEgASgJEg8KB3ZlcnNpb24YAiABKAUSDQoFc3RhZ2UYAyABKAkSFAoMY29udGVudF9oYXNoGAQgASgJEhIKCmNoZWNrcG9pbnQYBSABKAgSDwoHc3VtbWFyeRgGIAEoCRIOCgZyZWFzb24YByABKAkSKgoHY2hhbmdlcxgIIAMoCzIZLnNwZWNncmFwaC52MS5GaWVsZENoYW5nZRIoCgRkYXRlGAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJiChJMaXN0Q2hhbmdlc1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIYChBjaGVja3BvaW50c19vbmx5GAIgASgIEhUKDXNpbmNlX3ZlcnNpb24YAyABKAUSDQoFbGltaXQYBCABKAUiRAoTTGlzdENoYW5nZXNSZXNwb25zZRItCgdlbnRyaWVzGAEgAygLMhwuc3BlY2dyYXBoLnYxLkNoYW5nZUxvZ0VudHJ5IlcKEUNyZWF0ZVNwZWNSZXF1ZXN0EgwKBHNsdWcYASABKAkSDgoGaW50ZW50GAIgASgJEhAKCHByaW9yaXR5GAMgASgJEhIKCmNvbXBsZXhpdHkYBCABKAkiHgoOR2V0U3BlY1JlcXVlc3QSDAoEc2x1ZxgBIAEoCSJCChBMaXN0U3BlY3NSZXF1ZXN0Eg0KBXN0YWdlGAEgASgJEhAKCHByaW9yaXR5GAIgASgJEg0KBWxpbWl0GAMgASgFIjYKEUxpc3RTcGVjc1Jlc3BvbnNlEiEKBXNwZWNzGAEgAygLMhIuc3BlY2dyYXBoLnYxLlNwZWMiyQEKEVVwZGF0ZVNwZWNSZXF1ZXN0EgwKBHNsdWcYASABKAkSEwoGaW50ZW50GAIgASgJSACIAQESEgoFc3RhZ2UYAyABKAlIAYgBARIVCghwcmlvcml0eRgEIAEoCUgCiAEBEhcKCmNvbXBsZXhpdHkYBSABKAlIA4gBARISCgVub3RlcxgGIAEoCUgEiAEBQgkKB19pbnRlbnRCCAoGX3N0YWdlQgsKCV9wcmlvcml0eUINCgtfY29tcGxleGl0eUIICgZfbm90ZXMiNgoSQ3JlYXRlU3BlY1Jlc3BvbnNlEiAKBHNwZWMYASABKAsyEi5zcGVjZ3JhcGgudjEuU3BlYyIzCg9HZXRTcGVjUmVzcG9uc2USIAoEc3BlYxgBIAEoCzISLnNwZWNncmFwaC52MS5TcGVjIjYKElVwZGF0ZVNwZWNSZXNwb25zZRIgCgRzcGVjGAEgASgLMhIuc3BlY2dyYXBoLnYxLlNwZWMqYwoNU3BlY0xpZmVjeWNsZRIeChpTUEVDX0xJRkVDWUNMRV9VTlNQRUNJRklFRBAAEhcKE1NQRUNfTElGRUNZQ0xFX1RBU0sQARIZChVTUEVDX0xJRkVDWUNMRV9MSVZJTkcQAjKZAwoLU3BlY1NlcnZpY2USTwoKQ3JlYXRlU3BlYxIfLnNwZWNncmFwaC52MS5DcmVhdGVTcGVjUmVxdWVzdBogLnNwZWNncmFwaC52MS5DcmVhdGVTcGVjUmVzcG9uc2USRgoHR2V0U3BlYxIcLnNwZWNncmFwaC52MS5HZXRTcGVjUmVxdWVzdBodLnNwZWNncmFwaC52MS5HZXRTcGVjUmVzcG9uc2USTAoJTGlzdFNwZWNzEh4uc3BlY2dyYXBoLnYxLkxpc3RTcGVjc1JlcXVlc3QaHy5zcGVjZ3JhcGgudjEuTGlzdFNwZWNzUmVzcG9uc2USTwoKVXBkYXRlU3BlYxIfLnNwZWNncmFwaC52MS5VcGRhdGVTcGVjUmVxdWVzdBogLnNwZWNncmFwaC52MS5VcGRhdGVTcGVjUmVzcG9uc2USUgoLTGlzdENoYW5nZXMSIC5zcGVjZ3JhcGgudjEuTGlzdENoYW5nZXNSZXF1ZXN0GiEuc3BlY2dyYXBoLnYxLkxpc3RDaGFuZ2VzUmVzcG9uc2VCPVo7Z2l0aHViLmNvbS9zcGVjZ3JhcGgvc3BlY2dyYXBoL2dlbi9zcGVjZ3JhcGgvdjE7c3BlY2dyYXBodjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_specgraph_v1_authoring]);
 
 /**
  * @generated from message specgraph.v1.Spec
@@ -193,6 +193,112 @@ export const FieldChangeSchema: GenMessage<FieldChange> = /*@__PURE__*/
   messageDesc(file_specgraph_v1_spec, 1);
 
 /**
+ * @generated from message specgraph.v1.ChangeLogEntry
+ */
+export type ChangeLogEntry = Message<"specgraph.v1.ChangeLogEntry"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: int32 version = 2;
+   */
+  version: number;
+
+  /**
+   * @generated from field: string stage = 3;
+   */
+  stage: string;
+
+  /**
+   * @generated from field: string content_hash = 4;
+   */
+  contentHash: string;
+
+  /**
+   * @generated from field: bool checkpoint = 5;
+   */
+  checkpoint: boolean;
+
+  /**
+   * @generated from field: string summary = 6;
+   */
+  summary: string;
+
+  /**
+   * @generated from field: string reason = 7;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: repeated specgraph.v1.FieldChange changes = 8;
+   */
+  changes: FieldChange[];
+
+  /**
+   * @generated from field: google.protobuf.Timestamp date = 9;
+   */
+  date?: Timestamp;
+};
+
+/**
+ * Describes the message specgraph.v1.ChangeLogEntry.
+ * Use `create(ChangeLogEntrySchema)` to create a new message.
+ */
+export const ChangeLogEntrySchema: GenMessage<ChangeLogEntry> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_spec, 2);
+
+/**
+ * @generated from message specgraph.v1.ListChangesRequest
+ */
+export type ListChangesRequest = Message<"specgraph.v1.ListChangesRequest"> & {
+  /**
+   * @generated from field: string slug = 1;
+   */
+  slug: string;
+
+  /**
+   * @generated from field: bool checkpoints_only = 2;
+   */
+  checkpointsOnly: boolean;
+
+  /**
+   * @generated from field: int32 since_version = 3;
+   */
+  sinceVersion: number;
+
+  /**
+   * @generated from field: int32 limit = 4;
+   */
+  limit: number;
+};
+
+/**
+ * Describes the message specgraph.v1.ListChangesRequest.
+ * Use `create(ListChangesRequestSchema)` to create a new message.
+ */
+export const ListChangesRequestSchema: GenMessage<ListChangesRequest> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_spec, 3);
+
+/**
+ * @generated from message specgraph.v1.ListChangesResponse
+ */
+export type ListChangesResponse = Message<"specgraph.v1.ListChangesResponse"> & {
+  /**
+   * @generated from field: repeated specgraph.v1.ChangeLogEntry entries = 1;
+   */
+  entries: ChangeLogEntry[];
+};
+
+/**
+ * Describes the message specgraph.v1.ListChangesResponse.
+ * Use `create(ListChangesResponseSchema)` to create a new message.
+ */
+export const ListChangesResponseSchema: GenMessage<ListChangesResponse> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_spec, 4);
+
+/**
  * @generated from message specgraph.v1.CreateSpecRequest
  */
 export type CreateSpecRequest = Message<"specgraph.v1.CreateSpecRequest"> & {
@@ -226,7 +332,7 @@ export type CreateSpecRequest = Message<"specgraph.v1.CreateSpecRequest"> & {
  * Use `create(CreateSpecRequestSchema)` to create a new message.
  */
 export const CreateSpecRequestSchema: GenMessage<CreateSpecRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 2);
+  messageDesc(file_specgraph_v1_spec, 5);
 
 /**
  * @generated from message specgraph.v1.GetSpecRequest
@@ -243,7 +349,7 @@ export type GetSpecRequest = Message<"specgraph.v1.GetSpecRequest"> & {
  * Use `create(GetSpecRequestSchema)` to create a new message.
  */
 export const GetSpecRequestSchema: GenMessage<GetSpecRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 3);
+  messageDesc(file_specgraph_v1_spec, 6);
 
 /**
  * @generated from message specgraph.v1.ListSpecsRequest
@@ -276,7 +382,7 @@ export type ListSpecsRequest = Message<"specgraph.v1.ListSpecsRequest"> & {
  * Use `create(ListSpecsRequestSchema)` to create a new message.
  */
 export const ListSpecsRequestSchema: GenMessage<ListSpecsRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 4);
+  messageDesc(file_specgraph_v1_spec, 7);
 
 /**
  * @generated from message specgraph.v1.ListSpecsResponse
@@ -293,7 +399,7 @@ export type ListSpecsResponse = Message<"specgraph.v1.ListSpecsResponse"> & {
  * Use `create(ListSpecsResponseSchema)` to create a new message.
  */
 export const ListSpecsResponseSchema: GenMessage<ListSpecsResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 5);
+  messageDesc(file_specgraph_v1_spec, 8);
 
 /**
  * @generated from message specgraph.v1.UpdateSpecRequest
@@ -337,7 +443,7 @@ export type UpdateSpecRequest = Message<"specgraph.v1.UpdateSpecRequest"> & {
  * Use `create(UpdateSpecRequestSchema)` to create a new message.
  */
 export const UpdateSpecRequestSchema: GenMessage<UpdateSpecRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 6);
+  messageDesc(file_specgraph_v1_spec, 9);
 
 /**
  * @generated from message specgraph.v1.CreateSpecResponse
@@ -354,7 +460,7 @@ export type CreateSpecResponse = Message<"specgraph.v1.CreateSpecResponse"> & {
  * Use `create(CreateSpecResponseSchema)` to create a new message.
  */
 export const CreateSpecResponseSchema: GenMessage<CreateSpecResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 7);
+  messageDesc(file_specgraph_v1_spec, 10);
 
 /**
  * @generated from message specgraph.v1.GetSpecResponse
@@ -371,7 +477,7 @@ export type GetSpecResponse = Message<"specgraph.v1.GetSpecResponse"> & {
  * Use `create(GetSpecResponseSchema)` to create a new message.
  */
 export const GetSpecResponseSchema: GenMessage<GetSpecResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 8);
+  messageDesc(file_specgraph_v1_spec, 11);
 
 /**
  * @generated from message specgraph.v1.UpdateSpecResponse
@@ -388,7 +494,7 @@ export type UpdateSpecResponse = Message<"specgraph.v1.UpdateSpecResponse"> & {
  * Use `create(UpdateSpecResponseSchema)` to create a new message.
  */
 export const UpdateSpecResponseSchema: GenMessage<UpdateSpecResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 9);
+  messageDesc(file_specgraph_v1_spec, 12);
 
 /**
  * @generated from enum specgraph.v1.SpecLifecycle
@@ -451,6 +557,14 @@ export const SpecService: GenService<{
     methodKind: "unary";
     input: typeof UpdateSpecRequestSchema;
     output: typeof UpdateSpecResponseSchema;
+  },
+  /**
+   * @generated from rpc specgraph.v1.SpecService.ListChanges
+   */
+  listChanges: {
+    methodKind: "unary";
+    input: typeof ListChangesRequestSchema;
+    output: typeof ListChangesResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_specgraph_v1_spec, 0);

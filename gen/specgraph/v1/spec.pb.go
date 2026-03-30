@@ -330,6 +330,226 @@ func (x *FieldChange) GetNewValue() string {
 	return ""
 }
 
+type ChangeLogEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Version       int32                  `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
+	Stage         string                 `protobuf:"bytes,3,opt,name=stage,proto3" json:"stage,omitempty"`
+	ContentHash   string                 `protobuf:"bytes,4,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"`
+	Checkpoint    bool                   `protobuf:"varint,5,opt,name=checkpoint,proto3" json:"checkpoint,omitempty"`
+	Summary       string                 `protobuf:"bytes,6,opt,name=summary,proto3" json:"summary,omitempty"`
+	Reason        string                 `protobuf:"bytes,7,opt,name=reason,proto3" json:"reason,omitempty"`
+	Changes       []*FieldChange         `protobuf:"bytes,8,rep,name=changes,proto3" json:"changes,omitempty"`
+	Date          *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=date,proto3" json:"date,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ChangeLogEntry) Reset() {
+	*x = ChangeLogEntry{}
+	mi := &file_specgraph_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ChangeLogEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ChangeLogEntry) ProtoMessage() {}
+
+func (x *ChangeLogEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ChangeLogEntry.ProtoReflect.Descriptor instead.
+func (*ChangeLogEntry) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ChangeLogEntry) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ChangeLogEntry) GetVersion() int32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
+func (x *ChangeLogEntry) GetStage() string {
+	if x != nil {
+		return x.Stage
+	}
+	return ""
+}
+
+func (x *ChangeLogEntry) GetContentHash() string {
+	if x != nil {
+		return x.ContentHash
+	}
+	return ""
+}
+
+func (x *ChangeLogEntry) GetCheckpoint() bool {
+	if x != nil {
+		return x.Checkpoint
+	}
+	return false
+}
+
+func (x *ChangeLogEntry) GetSummary() string {
+	if x != nil {
+		return x.Summary
+	}
+	return ""
+}
+
+func (x *ChangeLogEntry) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *ChangeLogEntry) GetChanges() []*FieldChange {
+	if x != nil {
+		return x.Changes
+	}
+	return nil
+}
+
+func (x *ChangeLogEntry) GetDate() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Date
+	}
+	return nil
+}
+
+type ListChangesRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Slug            string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	CheckpointsOnly bool                   `protobuf:"varint,2,opt,name=checkpoints_only,json=checkpointsOnly,proto3" json:"checkpoints_only,omitempty"`
+	SinceVersion    int32                  `protobuf:"varint,3,opt,name=since_version,json=sinceVersion,proto3" json:"since_version,omitempty"`
+	Limit           int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ListChangesRequest) Reset() {
+	*x = ListChangesRequest{}
+	mi := &file_specgraph_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListChangesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListChangesRequest) ProtoMessage() {}
+
+func (x *ListChangesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListChangesRequest.ProtoReflect.Descriptor instead.
+func (*ListChangesRequest) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ListChangesRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *ListChangesRequest) GetCheckpointsOnly() bool {
+	if x != nil {
+		return x.CheckpointsOnly
+	}
+	return false
+}
+
+func (x *ListChangesRequest) GetSinceVersion() int32 {
+	if x != nil {
+		return x.SinceVersion
+	}
+	return 0
+}
+
+func (x *ListChangesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListChangesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Entries       []*ChangeLogEntry      `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListChangesResponse) Reset() {
+	*x = ListChangesResponse{}
+	mi := &file_specgraph_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListChangesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListChangesResponse) ProtoMessage() {}
+
+func (x *ListChangesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListChangesResponse.ProtoReflect.Descriptor instead.
+func (*ListChangesResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListChangesResponse) GetEntries() []*ChangeLogEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
 type CreateSpecRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
@@ -342,7 +562,7 @@ type CreateSpecRequest struct {
 
 func (x *CreateSpecRequest) Reset() {
 	*x = CreateSpecRequest{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[2]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -354,7 +574,7 @@ func (x *CreateSpecRequest) String() string {
 func (*CreateSpecRequest) ProtoMessage() {}
 
 func (x *CreateSpecRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[2]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -367,7 +587,7 @@ func (x *CreateSpecRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSpecRequest.ProtoReflect.Descriptor instead.
 func (*CreateSpecRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateSpecRequest) GetSlug() string {
@@ -407,7 +627,7 @@ type GetSpecRequest struct {
 
 func (x *GetSpecRequest) Reset() {
 	*x = GetSpecRequest{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[3]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -419,7 +639,7 @@ func (x *GetSpecRequest) String() string {
 func (*GetSpecRequest) ProtoMessage() {}
 
 func (x *GetSpecRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[3]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -432,7 +652,7 @@ func (x *GetSpecRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSpecRequest.ProtoReflect.Descriptor instead.
 func (*GetSpecRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetSpecRequest) GetSlug() string {
@@ -453,7 +673,7 @@ type ListSpecsRequest struct {
 
 func (x *ListSpecsRequest) Reset() {
 	*x = ListSpecsRequest{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[4]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -465,7 +685,7 @@ func (x *ListSpecsRequest) String() string {
 func (*ListSpecsRequest) ProtoMessage() {}
 
 func (x *ListSpecsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[4]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -478,7 +698,7 @@ func (x *ListSpecsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSpecsRequest.ProtoReflect.Descriptor instead.
 func (*ListSpecsRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListSpecsRequest) GetStage() string {
@@ -511,7 +731,7 @@ type ListSpecsResponse struct {
 
 func (x *ListSpecsResponse) Reset() {
 	*x = ListSpecsResponse{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[5]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -523,7 +743,7 @@ func (x *ListSpecsResponse) String() string {
 func (*ListSpecsResponse) ProtoMessage() {}
 
 func (x *ListSpecsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[5]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -536,7 +756,7 @@ func (x *ListSpecsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSpecsResponse.ProtoReflect.Descriptor instead.
 func (*ListSpecsResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ListSpecsResponse) GetSpecs() []*Spec {
@@ -560,7 +780,7 @@ type UpdateSpecRequest struct {
 
 func (x *UpdateSpecRequest) Reset() {
 	*x = UpdateSpecRequest{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[6]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -572,7 +792,7 @@ func (x *UpdateSpecRequest) String() string {
 func (*UpdateSpecRequest) ProtoMessage() {}
 
 func (x *UpdateSpecRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[6]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -585,7 +805,7 @@ func (x *UpdateSpecRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSpecRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSpecRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UpdateSpecRequest) GetSlug() string {
@@ -639,7 +859,7 @@ type CreateSpecResponse struct {
 
 func (x *CreateSpecResponse) Reset() {
 	*x = CreateSpecResponse{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[7]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -651,7 +871,7 @@ func (x *CreateSpecResponse) String() string {
 func (*CreateSpecResponse) ProtoMessage() {}
 
 func (x *CreateSpecResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[7]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -664,7 +884,7 @@ func (x *CreateSpecResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSpecResponse.ProtoReflect.Descriptor instead.
 func (*CreateSpecResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CreateSpecResponse) GetSpec() *Spec {
@@ -683,7 +903,7 @@ type GetSpecResponse struct {
 
 func (x *GetSpecResponse) Reset() {
 	*x = GetSpecResponse{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[8]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -695,7 +915,7 @@ func (x *GetSpecResponse) String() string {
 func (*GetSpecResponse) ProtoMessage() {}
 
 func (x *GetSpecResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[8]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -708,7 +928,7 @@ func (x *GetSpecResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSpecResponse.ProtoReflect.Descriptor instead.
 func (*GetSpecResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetSpecResponse) GetSpec() *Spec {
@@ -727,7 +947,7 @@ type UpdateSpecResponse struct {
 
 func (x *UpdateSpecResponse) Reset() {
 	*x = UpdateSpecResponse{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[9]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -739,7 +959,7 @@ func (x *UpdateSpecResponse) String() string {
 func (*UpdateSpecResponse) ProtoMessage() {}
 
 func (x *UpdateSpecResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[9]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -752,7 +972,7 @@ func (x *UpdateSpecResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSpecResponse.ProtoReflect.Descriptor instead.
 func (*UpdateSpecResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *UpdateSpecResponse) GetSpec() *Spec {
@@ -798,7 +1018,26 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\vFieldChange\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\x12\x1b\n" +
 	"\told_value\x18\x02 \x01(\tR\boldValue\x12\x1b\n" +
-	"\tnew_value\x18\x03 \x01(\tR\bnewValue\"{\n" +
+	"\tnew_value\x18\x03 \x01(\tR\bnewValue\"\xaa\x02\n" +
+	"\x0eChangeLogEntry\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\x05R\aversion\x12\x14\n" +
+	"\x05stage\x18\x03 \x01(\tR\x05stage\x12!\n" +
+	"\fcontent_hash\x18\x04 \x01(\tR\vcontentHash\x12\x1e\n" +
+	"\n" +
+	"checkpoint\x18\x05 \x01(\bR\n" +
+	"checkpoint\x12\x18\n" +
+	"\asummary\x18\x06 \x01(\tR\asummary\x12\x16\n" +
+	"\x06reason\x18\a \x01(\tR\x06reason\x123\n" +
+	"\achanges\x18\b \x03(\v2\x19.specgraph.v1.FieldChangeR\achanges\x12.\n" +
+	"\x04date\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x04date\"\x8e\x01\n" +
+	"\x12ListChangesRequest\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12)\n" +
+	"\x10checkpoints_only\x18\x02 \x01(\bR\x0fcheckpointsOnly\x12#\n" +
+	"\rsince_version\x18\x03 \x01(\x05R\fsinceVersion\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\"M\n" +
+	"\x13ListChangesResponse\x126\n" +
+	"\aentries\x18\x01 \x03(\v2\x1c.specgraph.v1.ChangeLogEntryR\aentries\"{\n" +
 	"\x11CreateSpecRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x16\n" +
 	"\x06intent\x18\x02 \x01(\tR\x06intent\x12\x1a\n" +
@@ -837,14 +1076,15 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\rSpecLifecycle\x12\x1e\n" +
 	"\x1aSPEC_LIFECYCLE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13SPEC_LIFECYCLE_TASK\x10\x01\x12\x19\n" +
-	"\x15SPEC_LIFECYCLE_LIVING\x10\x022\xc5\x02\n" +
+	"\x15SPEC_LIFECYCLE_LIVING\x10\x022\x99\x03\n" +
 	"\vSpecService\x12O\n" +
 	"\n" +
 	"CreateSpec\x12\x1f.specgraph.v1.CreateSpecRequest\x1a .specgraph.v1.CreateSpecResponse\x12F\n" +
 	"\aGetSpec\x12\x1c.specgraph.v1.GetSpecRequest\x1a\x1d.specgraph.v1.GetSpecResponse\x12L\n" +
 	"\tListSpecs\x12\x1e.specgraph.v1.ListSpecsRequest\x1a\x1f.specgraph.v1.ListSpecsResponse\x12O\n" +
 	"\n" +
-	"UpdateSpec\x12\x1f.specgraph.v1.UpdateSpecRequest\x1a .specgraph.v1.UpdateSpecResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"UpdateSpec\x12\x1f.specgraph.v1.UpdateSpecRequest\x1a .specgraph.v1.UpdateSpecResponse\x12R\n" +
+	"\vListChanges\x12 .specgraph.v1.ListChangesRequest\x1a!.specgraph.v1.ListChangesResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_spec_proto_rawDescOnce sync.Once
@@ -859,52 +1099,60 @@ func file_specgraph_v1_spec_proto_rawDescGZIP() []byte {
 }
 
 var file_specgraph_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_specgraph_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_specgraph_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_specgraph_v1_spec_proto_goTypes = []any{
 	(SpecLifecycle)(0),            // 0: specgraph.v1.SpecLifecycle
 	(*Spec)(nil),                  // 1: specgraph.v1.Spec
 	(*FieldChange)(nil),           // 2: specgraph.v1.FieldChange
-	(*CreateSpecRequest)(nil),     // 3: specgraph.v1.CreateSpecRequest
-	(*GetSpecRequest)(nil),        // 4: specgraph.v1.GetSpecRequest
-	(*ListSpecsRequest)(nil),      // 5: specgraph.v1.ListSpecsRequest
-	(*ListSpecsResponse)(nil),     // 6: specgraph.v1.ListSpecsResponse
-	(*UpdateSpecRequest)(nil),     // 7: specgraph.v1.UpdateSpecRequest
-	(*CreateSpecResponse)(nil),    // 8: specgraph.v1.CreateSpecResponse
-	(*GetSpecResponse)(nil),       // 9: specgraph.v1.GetSpecResponse
-	(*UpdateSpecResponse)(nil),    // 10: specgraph.v1.UpdateSpecResponse
-	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
-	(*ConversationLog)(nil),       // 12: specgraph.v1.ConversationLog
-	(*SparkOutput)(nil),           // 13: specgraph.v1.SparkOutput
-	(*ShapeOutput)(nil),           // 14: specgraph.v1.ShapeOutput
-	(*SpecifyOutput)(nil),         // 15: specgraph.v1.SpecifyOutput
-	(*DecomposeOutput)(nil),       // 16: specgraph.v1.DecomposeOutput
+	(*ChangeLogEntry)(nil),        // 3: specgraph.v1.ChangeLogEntry
+	(*ListChangesRequest)(nil),    // 4: specgraph.v1.ListChangesRequest
+	(*ListChangesResponse)(nil),   // 5: specgraph.v1.ListChangesResponse
+	(*CreateSpecRequest)(nil),     // 6: specgraph.v1.CreateSpecRequest
+	(*GetSpecRequest)(nil),        // 7: specgraph.v1.GetSpecRequest
+	(*ListSpecsRequest)(nil),      // 8: specgraph.v1.ListSpecsRequest
+	(*ListSpecsResponse)(nil),     // 9: specgraph.v1.ListSpecsResponse
+	(*UpdateSpecRequest)(nil),     // 10: specgraph.v1.UpdateSpecRequest
+	(*CreateSpecResponse)(nil),    // 11: specgraph.v1.CreateSpecResponse
+	(*GetSpecResponse)(nil),       // 12: specgraph.v1.GetSpecResponse
+	(*UpdateSpecResponse)(nil),    // 13: specgraph.v1.UpdateSpecResponse
+	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
+	(*ConversationLog)(nil),       // 15: specgraph.v1.ConversationLog
+	(*SparkOutput)(nil),           // 16: specgraph.v1.SparkOutput
+	(*ShapeOutput)(nil),           // 17: specgraph.v1.ShapeOutput
+	(*SpecifyOutput)(nil),         // 18: specgraph.v1.SpecifyOutput
+	(*DecomposeOutput)(nil),       // 19: specgraph.v1.DecomposeOutput
 }
 var file_specgraph_v1_spec_proto_depIdxs = []int32{
-	11, // 0: specgraph.v1.Spec.created_at:type_name -> google.protobuf.Timestamp
-	11, // 1: specgraph.v1.Spec.updated_at:type_name -> google.protobuf.Timestamp
+	14, // 0: specgraph.v1.Spec.created_at:type_name -> google.protobuf.Timestamp
+	14, // 1: specgraph.v1.Spec.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: specgraph.v1.Spec.lifecycle:type_name -> specgraph.v1.SpecLifecycle
-	12, // 3: specgraph.v1.Spec.conversation_logs:type_name -> specgraph.v1.ConversationLog
-	13, // 4: specgraph.v1.Spec.spark_output:type_name -> specgraph.v1.SparkOutput
-	14, // 5: specgraph.v1.Spec.shape_output:type_name -> specgraph.v1.ShapeOutput
-	15, // 6: specgraph.v1.Spec.specify_output:type_name -> specgraph.v1.SpecifyOutput
-	16, // 7: specgraph.v1.Spec.decompose_output:type_name -> specgraph.v1.DecomposeOutput
-	1,  // 8: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
-	1,  // 9: specgraph.v1.CreateSpecResponse.spec:type_name -> specgraph.v1.Spec
-	1,  // 10: specgraph.v1.GetSpecResponse.spec:type_name -> specgraph.v1.Spec
-	1,  // 11: specgraph.v1.UpdateSpecResponse.spec:type_name -> specgraph.v1.Spec
-	3,  // 12: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
-	4,  // 13: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
-	5,  // 14: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
-	7,  // 15: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
-	8,  // 16: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.CreateSpecResponse
-	9,  // 17: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.GetSpecResponse
-	6,  // 18: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
-	10, // 19: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.UpdateSpecResponse
-	16, // [16:20] is the sub-list for method output_type
-	12, // [12:16] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	15, // 3: specgraph.v1.Spec.conversation_logs:type_name -> specgraph.v1.ConversationLog
+	16, // 4: specgraph.v1.Spec.spark_output:type_name -> specgraph.v1.SparkOutput
+	17, // 5: specgraph.v1.Spec.shape_output:type_name -> specgraph.v1.ShapeOutput
+	18, // 6: specgraph.v1.Spec.specify_output:type_name -> specgraph.v1.SpecifyOutput
+	19, // 7: specgraph.v1.Spec.decompose_output:type_name -> specgraph.v1.DecomposeOutput
+	2,  // 8: specgraph.v1.ChangeLogEntry.changes:type_name -> specgraph.v1.FieldChange
+	14, // 9: specgraph.v1.ChangeLogEntry.date:type_name -> google.protobuf.Timestamp
+	3,  // 10: specgraph.v1.ListChangesResponse.entries:type_name -> specgraph.v1.ChangeLogEntry
+	1,  // 11: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
+	1,  // 12: specgraph.v1.CreateSpecResponse.spec:type_name -> specgraph.v1.Spec
+	1,  // 13: specgraph.v1.GetSpecResponse.spec:type_name -> specgraph.v1.Spec
+	1,  // 14: specgraph.v1.UpdateSpecResponse.spec:type_name -> specgraph.v1.Spec
+	6,  // 15: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
+	7,  // 16: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
+	8,  // 17: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
+	10, // 18: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
+	4,  // 19: specgraph.v1.SpecService.ListChanges:input_type -> specgraph.v1.ListChangesRequest
+	11, // 20: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.CreateSpecResponse
+	12, // 21: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.GetSpecResponse
+	9,  // 22: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
+	13, // 23: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.UpdateSpecResponse
+	5,  // 24: specgraph.v1.SpecService.ListChanges:output_type -> specgraph.v1.ListChangesResponse
+	20, // [20:25] is the sub-list for method output_type
+	15, // [15:20] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_spec_proto_init() }
@@ -913,14 +1161,14 @@ func file_specgraph_v1_spec_proto_init() {
 		return
 	}
 	file_specgraph_v1_authoring_proto_init()
-	file_specgraph_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
+	file_specgraph_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_spec_proto_rawDesc), len(file_specgraph_v1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
