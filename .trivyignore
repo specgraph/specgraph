@@ -1,4 +1,19 @@
-# CVE-2026-34040: github.com/docker/docker AuthZ bypass
-# Only used in testcontainers (integration tests), not in production binary.
-# Fix (v29.3.1) not yet published as a Go module.
+# CVE-2026-34040: Moby AuthZ plugin bypass with oversized request bodies
+# Affected: github.com/docker/docker v28.5.2+incompatible (indirect)
+# Fixed in: Docker v29.3.1, but published under github.com/moby/moby (new module path)
+#
+# Why we can't upgrade:
+#   - testcontainers-go v0.41.0 (latest) depends on github.com/docker/docker@v28.5.2+incompatible
+#   - Docker v29+ uses github.com/moby/moby module path (no +incompatible)
+#   - testcontainers-go must migrate to the new module path first
+#   - go mod graph: specgraph → testcontainers-go@v0.41.0 → docker/docker@v28.5.2
+#
+# Risk assessment:
+#   - Test-only dependency (integration tests via testcontainers)
+#   - NOT compiled into the production specgraph binary
+#   - AuthZ bypass requires Docker API access, which tests run locally/in CI only
+#
+# Remove this entry when testcontainers-go releases with moby/moby dependency.
+# Track: https://github.com/testcontainers/testcontainers-go/issues (watch for moby migration)
+# Added: 2026-03-30
 CVE-2026-34040
