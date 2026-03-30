@@ -75,7 +75,7 @@ func agentRun(prompt string) (string, error) {
 
 // specgraphRun runs a specgraph CLI command and returns the result.
 func specgraphRun(args ...string) testutil.CLIResult {
-	cli := testutil.NewCLIRunner(binaryPath, serverInfo.ConfigPath)
+	cli := testutil.NewCLIRunner(binaryPath, serverInfo.ConfigPath, "")
 	return cli.RunInDir(workDir, args...)
 }
 

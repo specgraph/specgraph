@@ -32,7 +32,7 @@ func TestCLI(t *testing.T) {
 var _ = BeforeSuite(func() {
 	ctx := context.Background()
 
-	binaryPath, cleanupBinary, err := testutil.BuildBinary()
+	binaryPath, coverDir, cleanupBinary, err := testutil.BuildBinary()
 	Expect(err).NotTo(HaveOccurred())
 	DeferCleanup(cleanupBinary)
 
@@ -56,5 +56,5 @@ var _ = BeforeSuite(func() {
 	specgraphYAML := fmt.Sprintf("project: cli-e2e-test\nserver: %s\n", serverInfo.BaseURL)
 	Expect(os.WriteFile(filepath.Join(workDir, ".specgraph.yaml"), []byte(specgraphYAML), 0o644)).To(Succeed()) //nolint:gosec // test fixture
 
-	cli = testutil.NewCLIRunner(binaryPath, serverInfo.ConfigPath)
+	cli = testutil.NewCLIRunner(binaryPath, serverInfo.ConfigPath, coverDir)
 })
