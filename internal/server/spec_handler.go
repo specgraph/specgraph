@@ -170,8 +170,27 @@ func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv
 }
 
 // ListChanges handles the ListChanges RPC.
-func (h *SpecHandler) ListChanges(_ context.Context, _ *connect.Request[specv1.ListChangesRequest]) (*connect.Response[specv1.ListChangesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListChanges not yet implemented"))
+func (h *SpecHandler) ListChanges(ctx context.Context, req *connect.Request[specv1.ListChangesRequest]) (*connect.Response[specv1.ListChangesResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
+	msg := req.Msg
+	if err := validateSlug(msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	filter := storage.ChangeLogFilter{
+		CheckpointsOnly: msg.CheckpointsOnly,
+		SinceVersion:    msg.SinceVersion,
+		Limit:           int(msg.Limit),
+	}
+	entries, err := store.ListChanges(ctx, msg.Slug, filter)
+	if err != nil {
+		return nil, specError(err)
+	}
+	return connect.NewResponse(&specv1.ListChangesResponse{
+		Entries: changeLogEntriesToProto(entries),
+	}), nil
 }
 
 // specError maps storage/conversion errors to sanitized connect error codes.
