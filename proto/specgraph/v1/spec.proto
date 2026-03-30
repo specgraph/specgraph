@@ -51,6 +51,29 @@ message FieldChange {
   string new_value = 3;
 }
 
+message ChangeLogEntry {
+  string id = 1;
+  int32 version = 2;
+  string stage = 3;
+  string content_hash = 4;
+  bool checkpoint = 5;
+  string summary = 6;
+  string reason = 7;
+  repeated FieldChange changes = 8;
+  google.protobuf.Timestamp date = 9;
+}
+
+message ListChangesRequest {
+  string slug = 1;
+  bool checkpoints_only = 2;
+  int32 since_version = 3;
+  int32 limit = 4;
+}
+
+message ListChangesResponse {
+  repeated ChangeLogEntry entries = 1;
+}
+
 message CreateSpecRequest {
   string slug = 1;
   string intent = 2;
@@ -92,4 +115,5 @@ service SpecService {
   rpc GetSpec(GetSpecRequest) returns (GetSpecResponse);
   rpc ListSpecs(ListSpecsRequest) returns (ListSpecsResponse);
   rpc UpdateSpec(UpdateSpecRequest) returns (UpdateSpecResponse);
+  rpc ListChanges(ListChangesRequest) returns (ListChangesResponse);
 }

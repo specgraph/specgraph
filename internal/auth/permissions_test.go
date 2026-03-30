@@ -16,6 +16,7 @@ var allProcedures = []string{
 	specgraphv1connect.SpecServiceGetSpecProcedure,
 	specgraphv1connect.SpecServiceListSpecsProcedure,
 	specgraphv1connect.SpecServiceUpdateSpecProcedure,
+	specgraphv1connect.SpecServiceListChangesProcedure,
 	// DecisionService
 	specgraphv1connect.DecisionServiceCreateDecisionProcedure,
 	specgraphv1connect.DecisionServiceGetDecisionProcedure,

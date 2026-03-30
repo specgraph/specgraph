@@ -13,6 +13,7 @@ var rpcPermissions = map[string]string{
 	specgraphv1connect.SpecServiceListSpecsProcedure:  "spec:read",
 	specgraphv1connect.SpecServiceCreateSpecProcedure: "spec:write",
 	specgraphv1connect.SpecServiceUpdateSpecProcedure: "spec:write",
+	specgraphv1connect.SpecServiceListChangesProcedure: "spec:read",
 	// DecisionService
 	specgraphv1connect.DecisionServiceGetDecisionProcedure:    "decision:read",
 	specgraphv1connect.DecisionServiceListDecisionsProcedure:  "decision:read",

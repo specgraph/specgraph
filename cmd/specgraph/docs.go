@@ -41,7 +41,7 @@ type commandGroup struct {
 }
 
 var commandGroups = []commandGroup{
-	{Name: "Spec Management", Commands: []string{"create", "show", "list", "update"}},
+	{Name: "Spec Management", Commands: []string{"create", "show", "list", "update", "changes"}},
 	{Name: "Authoring Funnel", Commands: []string{"spark", "shape", "specify", "decompose", "approve"}},
 	{Name: "Slices", Commands: []string{"slice"}},
 	{Name: "Graph Queries", Commands: []string{"deps", "impact", "critical-path", "ready", "edge"}},
