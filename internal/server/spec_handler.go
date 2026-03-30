@@ -169,6 +169,36 @@ func (h *SpecHandler) UpdateSpec(ctx context.Context, req *connect.Request[specv
 	return connect.NewResponse(&specv1.UpdateSpecResponse{Spec: pb}), nil
 }
 
+// ListChanges handles the ListChanges RPC.
+func (h *SpecHandler) ListChanges(ctx context.Context, req *connect.Request[specv1.ListChangesRequest]) (*connect.Response[specv1.ListChangesResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
+	msg := req.Msg
+	if err := validateSlug(msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if msg.SinceVersion < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("since_version must be non-negative"))
+	}
+	if msg.Limit < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("limit must be non-negative"))
+	}
+	filter := storage.ChangeLogFilter{
+		CheckpointsOnly: msg.CheckpointsOnly,
+		SinceVersion:    msg.SinceVersion,
+		Limit:           int(msg.Limit),
+	}
+	entries, err := store.ListChanges(ctx, msg.Slug, filter)
+	if err != nil {
+		return nil, specError(err)
+	}
+	return connect.NewResponse(&specv1.ListChangesResponse{
+		Entries: changeLogEntriesToProto(entries),
+	}), nil
+}
+
 // specError maps storage/conversion errors to sanitized connect error codes.
 func specError(err error) error {
 	var connErr *connect.Error
