@@ -28,7 +28,7 @@ var _ = Describe("init command", func() {
 
 		// Point --config at the running test server so init doesn't try to
 		// start its own Docker compose stack.
-		cli = testutil.NewCLIRunner(cliBinaryPath, serverInfo.ConfigPath)
+		cli = testutil.NewCLIRunner(cliBinaryPath, serverInfo.ConfigPath, "")
 	})
 
 	AfterEach(func() {

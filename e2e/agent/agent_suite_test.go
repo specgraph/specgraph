@@ -63,7 +63,7 @@ var _ = BeforeSuite(func() {
 	ctx := context.Background()
 
 	var cleanupBinary func()
-	binaryPath, cleanupBinary, err = testutil.BuildBinary()
+	binaryPath, _, cleanupBinary, err = testutil.BuildBinary()
 	Expect(err).NotTo(HaveOccurred())
 	DeferCleanup(cleanupBinary)
 
