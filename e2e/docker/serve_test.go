@@ -100,8 +100,8 @@ var _ = Describe("Docker mode serve", Ordered, func() {
 		}()
 
 		// Wait for the compose file to appear (docker compose up may take a while).
-		// EnsureComposeFile writes to xdg.DataHome()/.specgraph/docker-compose.yaml.
-		composePath := filepath.Join(dataDir, "specgraph", ".specgraph", "docker-compose.yaml")
+		// EnsureComposeFile writes to xdg.DataHome()/docker-compose.yaml.
+		composePath := filepath.Join(dataDir, "specgraph", "docker-compose.yaml")
 		Eventually(func() bool {
 			_, err := os.Stat(composePath)
 			return err == nil
