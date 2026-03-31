@@ -7,6 +7,8 @@ package memgraph_test
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"testing"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -181,6 +183,51 @@ func TestSync(t *testing.T) {
 		// Delete nonexistent — should not error (idempotent)
 		err = store.DeleteSyncMapping(ctx, "del-spec", storage.SyncAdapterGitHub)
 		require.NoError(t, err)
+	})
+
+	t.Run("ConcurrentCreateMapping", func(t *testing.T) {
+		clearDatabase(t)
+		ctx := context.Background()
+		store, err := newStore(ctx, boltURI)
+		require.NoError(t, err)
+		defer store.Close(ctx)
+
+		_, err = store.CreateSpec(ctx, "race-spec", "Spec for race test", "p2", "medium")
+		require.NoError(t, err)
+
+		const goroutines = 5
+		errs := make([]error, goroutines)
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		wg.Add(goroutines)
+
+		for i := range goroutines {
+			go func(idx int) {
+				defer wg.Done()
+				<-start // barrier — all goroutines fire simultaneously
+				_, errs[idx] = store.CreateSyncMapping(ctx, "race-spec", storage.SyncAdapterGitHub, "gh-race")
+			}(i)
+		}
+		close(start)
+		wg.Wait()
+
+		var successes, rejected int
+		for _, e := range errs {
+			switch {
+			case e == nil:
+				successes++
+			case errors.Is(e, storage.ErrSyncMappingExists):
+				rejected++
+			case errors.Is(e, storage.ErrConcurrentModification):
+				// Memgraph may abort conflicting transactions before
+				// the duplicate-detection WHERE clause evaluates.
+				rejected++
+			default:
+				t.Fatalf("unexpected error: %v", e)
+			}
+		}
+		require.Equal(t, 1, successes, "exactly one goroutine should succeed")
+		require.Equal(t, goroutines-1, rejected, "remaining goroutines should be rejected")
 	})
 
 	t.Run("DeleteMappingCleansUpExternalRef", func(t *testing.T) {
