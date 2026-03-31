@@ -10,7 +10,7 @@ import (
 
 	"github.com/specgraph/specgraph/internal/storage"
 
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
 )
 
 // AddEdge creates a typed relationship between two nodes.

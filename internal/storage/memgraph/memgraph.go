@@ -19,7 +19,7 @@ import (
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/specgraph/specgraph/internal/storage/contenthash"
 
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
 )
 
 // Compile-time interface assertions.
@@ -41,7 +41,7 @@ type sharedState struct {
 
 // Store implements storage.Backend using Memgraph (Bolt protocol).
 type Store struct {
-	driver     neo4j.DriverWithContext
+	driver     neo4j.Driver
 	nowFunc    func() time.Time     // injectable clock; defaults to time.Now
 	sliceOps   storage.SliceBackend // injectable slice operations; defaults to self
 	project    string               // project slug for graph namespacing
@@ -111,7 +111,7 @@ func New(ctx context.Context, boltURI string, opts ...Option) (*Store, error) {
 		boltURI = upgradeBoltSchemeToTLS(boltURI)
 	}
 
-	driver, err := neo4j.NewDriverWithContext(boltURI, authToken)
+	driver, err := neo4j.NewDriver(boltURI, authToken)
 	if err != nil {
 		return nil, fmt.Errorf("memgraph: create driver: %w", err)
 	}
