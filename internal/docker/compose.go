@@ -37,13 +37,12 @@ func ComposeDown(composeFile string) error {
 }
 
 // EnsureComposeFile writes a default docker-compose.yaml for the given backend
-// into projectDir/.specgraph/ if one does not already exist.
+// into projectDir if one does not already exist.
 func EnsureComposeFile(projectDir, backend string) (string, error) {
-	sgDir := filepath.Join(projectDir, ".specgraph")
-	if err := os.MkdirAll(sgDir, 0o750); err != nil {
-		return "", fmt.Errorf("create .specgraph dir: %w", err)
+	if err := os.MkdirAll(projectDir, 0o750); err != nil {
+		return "", fmt.Errorf("create data dir: %w", err)
 	}
-	dest := filepath.Join(sgDir, "docker-compose.yaml")
+	dest := filepath.Join(projectDir, "docker-compose.yaml")
 	if _, err := os.Stat(dest); err == nil {
 		return dest, nil
 	}
