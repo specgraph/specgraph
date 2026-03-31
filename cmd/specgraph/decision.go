@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
@@ -34,9 +35,16 @@ var decisionCreateCmd = &cobra.Command{
 }
 
 var (
-	decisionTitle     string
-	decisionText      string
-	decisionRationale string
+	decisionTitle       string
+	decisionText        string
+	decisionRationale   string
+	decisionQuestion    string
+	decisionConfidence  string
+	decisionTags        string
+	decisionScope       string
+	decisionOriginSpec  string
+	decisionOriginStage string
+	decisionRejected    []string
 )
 
 func runDecisionCreate(cmd *cobra.Command, args []string) error {
@@ -44,17 +52,84 @@ func runDecisionCreate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	confidence, err := parseDecisionConfidence(decisionConfidence)
+	if err != nil {
+		return err
+	}
+	scope, err := parseDecisionScope(decisionScope)
+	if err != nil {
+		return err
+	}
+
+	var tags []string
+	if decisionTags != "" {
+		for _, t := range strings.Split(decisionTags, ",") {
+			trimmed := strings.TrimSpace(t)
+			if trimmed != "" {
+				tags = append(tags, trimmed)
+			}
+		}
+	}
+
+	var rejected []*specv1.RejectedAlternative
+	for _, r := range decisionRejected {
+		option, reason, found := strings.Cut(r, ":")
+		if !found || strings.TrimSpace(option) == "" || strings.TrimSpace(reason) == "" {
+			return fmt.Errorf("invalid --rejected value %q: expected \"Option:Reason\"", r)
+		}
+		rejected = append(rejected, &specv1.RejectedAlternative{
+			Option: strings.TrimSpace(option),
+			Reason: strings.TrimSpace(reason),
+		})
+	}
+
 	resp, err := client.CreateDecision(cmd.Context(), connect.NewRequest(&specv1.CreateDecisionRequest{
-		Slug:      args[0],
-		Title:     decisionTitle,
-		Decision:  decisionText,
-		Rationale: decisionRationale,
+		Slug:                 args[0],
+		Title:                decisionTitle,
+		Decision:             decisionText,
+		Rationale:            decisionRationale,
+		Question:             decisionQuestion,
+		Confidence:           confidence,
+		Tags:                 tags,
+		Scope:                scope,
+		OriginSpec:           decisionOriginSpec,
+		OriginStage:          decisionOriginStage,
+		RejectedAlternatives: rejected,
 	}))
 	if err != nil {
 		return fmt.Errorf("create decision: %w", err)
 	}
 	fmt.Printf("Created: %s (%s)\n", resp.Msg.GetDecision().GetSlug(), resp.Msg.GetDecision().GetId())
 	return nil
+}
+
+var decisionConfidenceMap = map[string]specv1.DecisionConfidence{
+	"":       specv1.DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED,
+	"high":   specv1.DecisionConfidence_DECISION_CONFIDENCE_HIGH,
+	"medium": specv1.DecisionConfidence_DECISION_CONFIDENCE_MEDIUM,
+	"low":    specv1.DecisionConfidence_DECISION_CONFIDENCE_LOW,
+}
+
+func parseDecisionConfidence(s string) (specv1.DecisionConfidence, error) {
+	if v, ok := decisionConfidenceMap[s]; ok {
+		return v, nil
+	}
+	return 0, fmt.Errorf("unknown confidence %q; valid values: high, medium, low", s)
+}
+
+var decisionScopeMap = map[string]specv1.DecisionScope{
+	"":        specv1.DecisionScope_DECISION_SCOPE_UNSPECIFIED,
+	"project": specv1.DecisionScope_DECISION_SCOPE_PROJECT,
+	"team":    specv1.DecisionScope_DECISION_SCOPE_TEAM,
+	"org":     specv1.DecisionScope_DECISION_SCOPE_ORG,
+}
+
+func parseDecisionScope(s string) (specv1.DecisionScope, error) {
+	if v, ok := decisionScopeMap[s]; ok {
+		return v, nil
+	}
+	return 0, fmt.Errorf("unknown scope %q; valid values: project, team, org", s)
 }
 
 // --- decision list ---
@@ -120,6 +195,13 @@ func init() {
 	decisionCreateCmd.Flags().StringVar(&decisionTitle, "title", "", "decision title (required)")
 	decisionCreateCmd.Flags().StringVar(&decisionText, "decision", "", "decision text")
 	decisionCreateCmd.Flags().StringVar(&decisionRationale, "rationale", "", "rationale")
+	decisionCreateCmd.Flags().StringVar(&decisionQuestion, "question", "", "the question being decided")
+	decisionCreateCmd.Flags().StringVar(&decisionConfidence, "confidence", "", "confidence level (high|medium|low)")
+	decisionCreateCmd.Flags().StringVar(&decisionTags, "tags", "", "comma-separated tags")
+	decisionCreateCmd.Flags().StringVar(&decisionScope, "scope", "", "decision scope (project|team|org)")
+	decisionCreateCmd.Flags().StringVar(&decisionOriginSpec, "origin-spec", "", "slug of originating spec")
+	decisionCreateCmd.Flags().StringVar(&decisionOriginStage, "origin-stage", "", "authoring stage")
+	decisionCreateCmd.Flags().StringArrayVar(&decisionRejected, "rejected", nil, `rejected alternative "Option:Reason" (repeatable)`)
 	cobra.CheckErr(decisionCreateCmd.MarkFlagRequired("title"))
 	decisionCmd.AddCommand(decisionCreateCmd)
 

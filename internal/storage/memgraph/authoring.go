@@ -96,13 +96,13 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 		deltas := []storage.FieldChange{{Field: "stage", OldValue: fromStr, NewValue: toStr}}
 		clEntry := &storage.ChangeLogEntry{
 			Version:     updatedSpec.Version,
-			Stage:       updatedSpec.Stage,
+			Stage:       string(updatedSpec.Stage),
 			ContentHash: updatedSpec.ContentHash,
 			Checkpoint:  true,
 			Summary:     fmt.Sprintf("Stage transition: %s → %s", fromStr, toStr),
 			Date:        updatedSpec.UpdatedAt,
 		}
-		if err := s.createChangeLog(txCtx, slug, clEntry, deltas); err != nil {
+		if err := s.createChangeLog(txCtx, "Spec", slug, clEntry, deltas); err != nil {
 			return err
 		}
 		if to == storage.SpecStageDone {
@@ -154,7 +154,7 @@ func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *stora
 			_, getErr := s.GetDecision(txCtx, d.Slug)
 			if errors.Is(getErr, storage.ErrDecisionNotFound) {
 				if _, createErr := s.CreateDecision(txCtx, d.Slug, d.Title, d.Body, d.Rationale,
-					"", nil, "", nil, "", "", ""); createErr != nil {
+					"", nil, "", nil, "", slug, "shape"); createErr != nil {
 					return fmt.Errorf("create decision %q: %w", d.Slug, createErr)
 				}
 			} else if getErr != nil {
@@ -466,13 +466,13 @@ func (s *Store) authoringOutputChangeLog(ctx context.Context, slug, field string
 	}
 	clEntry := &storage.ChangeLogEntry{
 		Version:     version,
-		Stage:       storage.SpecStage(newFields.Stage),
+		Stage:       newFields.Stage,
 		ContentHash: newHash,
 		Checkpoint:  false,
 		Summary:     fmt.Sprintf("Updated %s", field),
 		Date:        updatedAt,
 	}
-	return s.createChangeLog(ctx, slug, clEntry, deltas)
+	return s.createChangeLog(ctx, "Spec", slug, clEntry, deltas)
 }
 
 // recomputeContentHash reads all hash-input fields from the spec node,

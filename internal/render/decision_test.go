@@ -75,3 +75,68 @@ func TestDecisionListEmpty(t *testing.T) {
 		t.Error("expected empty message")
 	}
 }
+
+func TestDecisionRender_NewFields(t *testing.T) {
+	d := &specv1.Decision{
+		Slug:       "use-postgres",
+		Title:      "Token storage mechanism",
+		Status:     specv1.DecisionStatus_DECISION_STATUS_ACCEPTED,
+		Decision:   "Use Postgres",
+		Question:   "Where to store refresh tokens?",
+		Confidence: specv1.DecisionConfidence_DECISION_CONFIDENCE_HIGH,
+		Scope:      specv1.DecisionScope_DECISION_SCOPE_PROJECT,
+		Tags:       []string{"auth", "storage"},
+		OriginSpec: "login-api",
+		OriginStage: "specify",
+		RejectedAlternatives: []*specv1.RejectedAlternative{
+			{Option: "Redis", Reason: "Adds ops complexity"},
+			{Option: "DynamoDB", Reason: "Cost prohibitive"},
+		},
+	}
+	got := Decision(d)
+	if !strings.Contains(got, "Where to store refresh tokens?") {
+		t.Error("missing question")
+	}
+	if !strings.Contains(got, "HIGH") {
+		t.Error("missing confidence")
+	}
+	if !strings.Contains(got, "PROJECT") {
+		t.Error("missing scope")
+	}
+	if !strings.Contains(got, "auth, storage") {
+		t.Error("missing tags")
+	}
+	if !strings.Contains(got, "login-api") {
+		t.Error("missing origin spec")
+	}
+	if !strings.Contains(got, "specify") {
+		t.Error("missing origin stage")
+	}
+	if !strings.Contains(got, "Redis") {
+		t.Error("missing rejected option Redis")
+	}
+	if !strings.Contains(got, "Adds ops complexity") {
+		t.Error("missing rejected reason")
+	}
+	if !strings.Contains(got, "DynamoDB") {
+		t.Error("missing rejected option DynamoDB")
+	}
+}
+
+func TestDecisionRender_EmptyNewFields(t *testing.T) {
+	d := &specv1.Decision{
+		Slug:   "minimal",
+		Title:  "Minimal decision",
+		Status: specv1.DecisionStatus_DECISION_STATUS_PROPOSED,
+	}
+	got := Decision(d)
+	if strings.Contains(got, "Question") {
+		t.Error("should not contain Question when empty")
+	}
+	if strings.Contains(got, "Confidence") {
+		t.Error("should not contain Confidence when unspecified")
+	}
+	if strings.Contains(got, "Rejected") {
+		t.Error("should not contain Rejected when empty")
+	}
+}

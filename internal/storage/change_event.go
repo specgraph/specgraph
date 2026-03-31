@@ -9,7 +9,7 @@ import "context"
 type ChangeEvent struct {
 	Slug        string
 	Version     int32
-	Stage       SpecStage
+	Stage       string // spec authoring stage or decision status
 	ContentHash string
 	Checkpoint  bool
 	Summary     string

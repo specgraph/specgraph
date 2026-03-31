@@ -78,14 +78,18 @@ func recordBool(rec *neo4j.Record, pos int, name string) (bool, error) {
 	return v, nil
 }
 
-// createChangeLog creates a ChangeLog node and links it to a Spec via a HAS_CHANGE edge.
+// createChangeLog creates a ChangeLog node and links it to a node via a HAS_CHANGE edge.
+// The label parameter specifies the node type ("Spec" or "Decision").
 // The entry's ID is generated here if empty. The changes slice is serialized to JSON
 // and stored as a property on the node.
 //
-// A version guard ensures the spec's current version matches entry.Version at
-// write time. If another writer modified the spec between the mutation and this
+// A version guard ensures the node's current version matches entry.Version at
+// write time. If another writer modified the node between the mutation and this
 // call, the guard returns 0 rows and we return ErrConcurrentModification.
-func (s *Store) createChangeLog(ctx context.Context, slug string, entry *storage.ChangeLogEntry, changes []storage.FieldChange) error {
+func (s *Store) createChangeLog(ctx context.Context, label, slug string, entry *storage.ChangeLogEntry, changes []storage.FieldChange) error {
+	if label != "Spec" && label != "Decision" {
+		return fmt.Errorf("memgraph: createChangeLog: invalid label %q (expected Spec or Decision)", label)
+	}
 	if entry.ID == "" {
 		entry.ID = newID("cl")
 	}
@@ -95,10 +99,10 @@ func (s *Store) createChangeLog(ctx context.Context, slug string, entry *storage
 		return err
 	}
 
-	query := `
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})
-		WHERE s.version = $expected_version
-		CREATE (s)-[:HAS_CHANGE]->(cl:ChangeLog {
+	query := fmt.Sprintf(`
+		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(n:%s {slug: $slug})
+		WHERE n.version = $expected_version
+		CREATE (n)-[:HAS_CHANGE]->(cl:ChangeLog {
 			id: $id,
 			version: $version,
 			stage: $stage,
@@ -110,13 +114,13 @@ func (s *Store) createChangeLog(ctx context.Context, slug string, entry *storage
 			date: $date
 		})
 		RETURN cl.id
-	`
+	`, label)
 	params := mergeParams(s.projectParam(), map[string]any{
 		"slug":             slug,
 		"expected_version": int64(entry.Version),
 		"id":               entry.ID,
 		"version":          int64(entry.Version),
-		"stage":            string(entry.Stage),
+		"stage":            entry.Stage,
 		"content_hash":     entry.ContentHash,
 		"checkpoint":       entry.Checkpoint,
 		"summary":          entry.Summary,
@@ -130,7 +134,7 @@ func (s *Store) createChangeLog(ctx context.Context, slug string, entry *storage
 		return fmt.Errorf("memgraph: create changelog: %w", err)
 	}
 	if len(records) == 0 {
-		// Version guard returned 0 rows. The caller already verified the spec
+		// Version guard returned 0 rows. The caller already verified the node
 		// exists (via the mutation query that matched it), so 0 rows here means
 		// the version changed between the mutation and this call.
 		return fmt.Errorf("memgraph: create changelog for %q (version %d): %w", slug, entry.Version, storage.ErrConcurrentModification)
@@ -259,7 +263,7 @@ func recordToChangeLogEntry(rec *neo4j.Record) (*storage.ChangeLogEntry, error) 
 	return &storage.ChangeLogEntry{
 		ID:          id,
 		Version:     safeInt32(version),
-		Stage:       storage.SpecStage(stage),
+		Stage:       stage,
 		ContentHash: contentHash,
 		Checkpoint:  checkpoint,
 		Summary:     summary,
@@ -338,7 +342,7 @@ func (s *Store) ListAllChanges(ctx context.Context) ([]*storage.ChangeLogEntry, 
 			ID:          id,
 			SpecSlug:    specSlug,
 			Version:     safeInt32(version),
-			Stage:       storage.SpecStage(stage),
+			Stage:       stage,
 			ContentHash: contentHash,
 			Checkpoint:  checkpoint,
 			Summary:     summary,

@@ -134,14 +134,14 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		deltas := []storage.FieldChange{{Field: "stage", OldValue: string(storage.SpecStageDone), NewValue: string(targetStage)}}
 		clEntry := &storage.ChangeLogEntry{
 			Version:     freshSpec.Version,
-			Stage:       freshSpec.Stage,
+			Stage:       string(freshSpec.Stage),
 			ContentHash: freshSpec.ContentHash,
 			Checkpoint:  true,
 			Summary:     summary,
 			Reason:      reason,
 			Date:        freshSpec.UpdatedAt,
 		}
-		if clErr := s.createChangeLog(txCtx, slug, clEntry, deltas); clErr != nil {
+		if clErr := s.createChangeLog(txCtx, "Spec", slug, clEntry, deltas); clErr != nil {
 			return clErr
 		}
 		result = freshSpec
@@ -282,14 +282,14 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		}
 		oldCLEntry := &storage.ChangeLogEntry{
 			Version:     oldSpec.Version,
-			Stage:       storage.SpecStageSuperseded,
+			Stage:       string(storage.SpecStageSuperseded),
 			ContentHash: oldSpec.ContentHash,
 			Checkpoint:  true,
 			Summary:     "Spec superseded",
 			Reason:      fmt.Sprintf("Superseded by %s", newSlug),
 			Date:        oldSpec.UpdatedAt,
 		}
-		if clErr := s.createChangeLog(txCtx, oldSlug, oldCLEntry, oldDeltas); clErr != nil {
+		if clErr := s.createChangeLog(txCtx, "Spec", oldSlug, oldCLEntry, oldDeltas); clErr != nil {
 			return clErr
 		}
 
@@ -299,14 +299,14 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		}
 		newCLEntry := &storage.ChangeLogEntry{
 			Version:     newSpec.Version,
-			Stage:       newSpec.Stage,
+			Stage:       string(newSpec.Stage),
 			ContentHash: newSpec.ContentHash,
 			Checkpoint:  true,
 			Summary:     "Supersedes predecessor",
 			Reason:      fmt.Sprintf("Supersedes %s", oldSlug),
 			Date:        newSpec.UpdatedAt,
 		}
-		return s.createChangeLog(txCtx, newSlug, newCLEntry, newDeltas)
+		return s.createChangeLog(txCtx, "Spec", newSlug, newCLEntry, newDeltas)
 	})
 	if txErr != nil {
 		return nil, nil, txErr
@@ -379,14 +379,14 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		}
 		clEntry := &storage.ChangeLogEntry{
 			Version:     abandonedSpec.Version,
-			Stage:       storage.SpecStageAbandoned,
+			Stage:       string(storage.SpecStageAbandoned),
 			ContentHash: abandonedSpec.ContentHash,
 			Checkpoint:  true,
 			Summary:     "Spec abandoned",
 			Reason:      reason,
 			Date:        abandonedSpec.UpdatedAt,
 		}
-		if clErr := s.createChangeLog(txCtx, slug, clEntry, deltas); clErr != nil {
+		if clErr := s.createChangeLog(txCtx, "Spec", slug, clEntry, deltas); clErr != nil {
 			return clErr
 		}
 		result = abandonedSpec
@@ -486,14 +486,14 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlu
 		}
 		clEntry := &storage.ChangeLogEntry{
 			Version:     spec.Version,
-			Stage:       spec.Stage,
+			Stage:       string(spec.Stage),
 			ContentHash: spec.ContentHash,
 			Summary:     fmt.Sprintf("Acknowledged drift from %s", target),
 			Reason:      note,
 			Checkpoint:  false,
 			Date:        s.nowTime(),
 		}
-		if clErr := s.createChangeLog(txCtx, slug, clEntry, nil); clErr != nil {
+		if clErr := s.createChangeLog(txCtx, "Spec", slug, clEntry, nil); clErr != nil {
 			return fmt.Errorf("memgraph: acknowledge drift changelog: %w", clErr)
 		}
 

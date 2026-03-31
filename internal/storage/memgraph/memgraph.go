@@ -284,13 +284,13 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		deltas := storage.ComputeFieldDeltas(&empty, &allFields)
 		clEntry := &storage.ChangeLogEntry{
 			Version:     spec.Version,
-			Stage:       spec.Stage,
+			Stage:       string(spec.Stage),
 			ContentHash: spec.ContentHash,
 			Checkpoint:  true,
 			Summary:     "Spec created",
 			Date:        spec.CreatedAt,
 		}
-		if clErr := s.createChangeLog(txCtx, slug, clEntry, deltas); clErr != nil {
+		if clErr := s.createChangeLog(txCtx, "Spec", slug, clEntry, deltas); clErr != nil {
 			return clErr
 		}
 		result = spec
@@ -539,13 +539,13 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 			deltas := storage.ComputeFieldDeltas(&oldFields, &newFields)
 			clEntry := &storage.ChangeLogEntry{
 				Version:     spec.Version,
-				Stage:       spec.Stage,
+				Stage:       string(spec.Stage),
 				ContentHash: ch,
 				Checkpoint:  false,
 				Summary:     "Spec updated",
 				Date:        spec.UpdatedAt,
 			}
-			if clErr := s.createChangeLog(txCtx, slug, clEntry, deltas); clErr != nil {
+			if clErr := s.createChangeLog(txCtx, "Spec", slug, clEntry, deltas); clErr != nil {
 				return clErr
 			}
 		}
@@ -671,7 +671,7 @@ func (s *Store) projectParam() map[string]any {
 
 // mergeParams combines base params with additional params.
 func mergeParams(base, extra map[string]any) map[string]any {
-	m := make(map[string]any, len(base)+len(extra))
+	m := make(map[string]any)
 	maps.Copy(m, base)
 	maps.Copy(m, extra)
 	return m
