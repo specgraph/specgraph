@@ -115,7 +115,7 @@ type ChangeEvent struct {
 
 // ChangeSubscriber receives notifications after spec changes are committed.
 type ChangeSubscriber interface {
-	OnSpecChanged(ctx context.Context, event ChangeEvent)
+	OnSpecChanged(ctx context.Context, event *ChangeEvent)
 }
 
 // Subscribable is implemented by storage backends that support change notifications.
@@ -531,7 +531,7 @@ func NewImpactLogger() *ImpactLogger {
 }
 
 // OnSpecChanged implements storage.ChangeSubscriber.
-func (l *ImpactLogger) OnSpecChanged(ctx context.Context, event storage.ChangeEvent) {
+func (l *ImpactLogger) OnSpecChanged(ctx context.Context, event *storage.ChangeEvent) {
 	graph, ok := storage.GraphBackendFromContext(ctx)
 	if !ok {
 		return

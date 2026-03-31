@@ -18,7 +18,7 @@ type ChangeEvent struct {
 
 // ChangeSubscriber receives notifications after spec changes are committed.
 type ChangeSubscriber interface {
-	OnSpecChanged(ctx context.Context, event ChangeEvent)
+	OnSpecChanged(ctx context.Context, event *ChangeEvent)
 }
 
 // Subscribable is implemented by storage backends that support change notifications.
@@ -37,12 +37,12 @@ func InitChangeEvents(ctx context.Context) context.Context {
 
 // StashChangeEvent appends an event to the context's event slice.
 // No-op if the context has no event slice (non-transactional path).
-func StashChangeEvent(ctx context.Context, event ChangeEvent) {
+func StashChangeEvent(ctx context.Context, event *ChangeEvent) {
 	ptr, ok := ctx.Value(changeEventsKey{}).(*[]ChangeEvent)
 	if !ok || ptr == nil {
 		return
 	}
-	*ptr = append(*ptr, event)
+	*ptr = append(*ptr, *event)
 }
 
 // DrainChangeEvents returns all stashed events from the context.

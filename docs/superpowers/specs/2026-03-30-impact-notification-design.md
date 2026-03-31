@@ -37,7 +37,7 @@ type ChangeEvent struct {
 
 // ChangeSubscriber receives notifications after spec changes are committed.
 type ChangeSubscriber interface {
-    OnSpecChanged(ctx context.Context, event ChangeEvent)
+    OnSpecChanged(ctx context.Context, event *ChangeEvent)
 }
 
 // Subscribable is implemented by storage backends that support change notifications.

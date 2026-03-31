@@ -140,18 +140,18 @@ func (s *Store) dispatchChangeEvents(ctx context.Context) {
 	}
 	notifyCtx := storage.WithGraphBackend(ctx, s)
 	for _, sub := range s.shared.subscribers {
-		for _, event := range events {
+		for i := range events {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
 						slog.Error("change subscriber panicked",
 							"subscriber", fmt.Sprintf("%T", sub),
-							"slug", event.Slug,
+							"slug", events[i].Slug,
 							"panic", r,
 						)
 					}
 				}()
-				sub.OnSpecChanged(notifyCtx, event)
+				sub.OnSpecChanged(notifyCtx, &events[i])
 			}()
 		}
 	}

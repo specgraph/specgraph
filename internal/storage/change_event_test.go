@@ -12,8 +12,8 @@ import (
 
 func TestStashAndDrainChangeEvents(t *testing.T) {
 	ctx := storage.InitChangeEvents(context.Background())
-	storage.StashChangeEvent(ctx, storage.ChangeEvent{Slug: "spec-a", Version: 1})
-	storage.StashChangeEvent(ctx, storage.ChangeEvent{Slug: "spec-b", Version: 2})
+	storage.StashChangeEvent(ctx, &storage.ChangeEvent{Slug: "spec-a", Version: 1})
+	storage.StashChangeEvent(ctx, &storage.ChangeEvent{Slug: "spec-b", Version: 2})
 
 	events := storage.DrainChangeEvents(ctx)
 	if len(events) != 2 {
@@ -34,14 +34,14 @@ func TestDrainChangeEvents_NoInit(t *testing.T) {
 	}
 }
 
-func TestStashChangeEvent_NoInit(t *testing.T) {
+func TestStashChangeEvent_NoInit(_ *testing.T) {
 	// Should not panic on un-initialized context.
-	storage.StashChangeEvent(context.Background(), storage.ChangeEvent{Slug: "x"})
+	storage.StashChangeEvent(context.Background(), &storage.ChangeEvent{Slug: "x"})
 }
 
 func TestChangeEventPreservesAllFields(t *testing.T) {
 	ctx := storage.InitChangeEvents(context.Background())
-	storage.StashChangeEvent(ctx, storage.ChangeEvent{
+	storage.StashChangeEvent(ctx, &storage.ChangeEvent{
 		Slug:        "s1",
 		Version:     5,
 		Stage:       storage.SpecStageShape,
@@ -62,12 +62,56 @@ func TestChangeEventPreservesAllFields(t *testing.T) {
 	}
 }
 
+// minimalGraphBackend is a minimal implementation of storage.GraphBackend used
+// only to test context round-trip threading — all methods are no-ops.
+type minimalGraphBackend struct{}
+
+func (minimalGraphBackend) AddEdge(_ context.Context, _, _ string, _ storage.EdgeType) (*storage.Edge, error) {
+	return nil, nil
+}
+func (minimalGraphBackend) RemoveEdge(_ context.Context, _, _ string, _ storage.EdgeType) error {
+	return nil
+}
+func (minimalGraphBackend) ListEdges(_ context.Context, _ string, _ storage.EdgeType) ([]*storage.Edge, error) {
+	return nil, nil
+}
+func (minimalGraphBackend) GetDependencies(_ context.Context, _ string) ([]storage.NodeRef, error) {
+	return nil, nil
+}
+func (minimalGraphBackend) GetTransitiveDeps(_ context.Context, _ string) ([]storage.NodeRef, error) {
+	return nil, nil
+}
+func (minimalGraphBackend) GetImpact(_ context.Context, _ string) ([]storage.NodeRef, error) {
+	return nil, nil
+}
+func (minimalGraphBackend) GetReady(_ context.Context) ([]storage.NodeRef, error) {
+	return nil, nil
+}
+func (minimalGraphBackend) GetCriticalPath(_ context.Context, _ string) ([]storage.NodeRef, error) {
+	return nil, nil
+}
+func (minimalGraphBackend) GetDependenciesWithEdgeData(_ context.Context, _ string) ([]storage.DependencyRef, error) {
+	return nil, nil
+}
+func (minimalGraphBackend) RefreshDependencyHashes(_ context.Context, _ string) error { return nil }
+func (minimalGraphBackend) GetFullGraph(_ context.Context) (*storage.FullGraph, error) {
+	return nil, nil
+}
+
 func TestWithGraphBackend_RoundTrip(t *testing.T) {
 	ctx := context.Background()
 	_, ok := storage.GraphBackendFromContext(ctx)
 	if ok {
 		t.Error("expected no GraphBackend in empty context")
 	}
-	// We can't easily mock GraphBackend here without importing memgraph,
-	// but we can verify nil behavior.
+
+	var backend storage.GraphBackend = minimalGraphBackend{}
+	ctx = storage.WithGraphBackend(ctx, backend)
+	got, ok := storage.GraphBackendFromContext(ctx)
+	if !ok {
+		t.Fatal("expected GraphBackend in context")
+	}
+	if got != backend {
+		t.Error("got different backend than stored")
+	}
 }
