@@ -33,7 +33,8 @@ func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Reque
 	if err := validateSlug(msg.GetSlug()); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	d, err := store.CreateDecision(ctx, msg.Slug, msg.Title, msg.Decision, msg.Rationale)
+	d, err := store.CreateDecision(ctx, msg.Slug, msg.Title, msg.Decision, msg.Rationale,
+		"", nil, "", nil, "", "", "")
 	if err != nil {
 		return nil, h.decisionError(ctx, err)
 	}
@@ -115,7 +116,8 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 		}
 		domainStatus = &s
 	}
-	d, err := store.UpdateDecision(ctx, msg.Slug, msg.Title, domainStatus, msg.Decision, msg.Rationale, msg.SupersededBy)
+	d, err := store.UpdateDecision(ctx, msg.Slug, msg.Title, domainStatus, msg.Decision, msg.Rationale, msg.SupersededBy,
+		nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, h.decisionError(ctx, err)
 	}

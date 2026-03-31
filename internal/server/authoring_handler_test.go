@@ -260,8 +260,12 @@ func (f *fullAuthoringTestBackend) GetDecision(ctx context.Context, slug string)
 	return f.full.GetDecision(ctx, slug)
 }
 
-func (f *fullAuthoringTestBackend) UpdateDecision(ctx context.Context, slug string, title *string, status *storage.DecisionStatus, decision, rationale, supersededBy *string) (*storage.Decision, error) {
-	return f.full.UpdateDecision(ctx, slug, title, status, decision, rationale, supersededBy)
+func (f *fullAuthoringTestBackend) UpdateDecision(ctx context.Context, slug string, title *string, status *storage.DecisionStatus,
+	decision, rationale, supersededBy, question *string,
+	rejectedAlts *[]storage.RejectedAlternative, confidence *storage.DecisionConfidence,
+	tags *[]string, scope *storage.DecisionScope, originSpec, originStage *string) (*storage.Decision, error) {
+	return f.full.UpdateDecision(ctx, slug, title, status, decision, rationale, supersededBy,
+		question, rejectedAlts, confidence, tags, scope, originSpec, originStage)
 }
 
 func newAuthoringClient(t *testing.T, authoringStore *fakeAuthoringBackend, backend any) specgraphv1connect.AuthoringServiceClient {
@@ -1120,7 +1124,9 @@ func (f *fakeFullBackend) GetCriticalPath(_ context.Context, _ string) ([]storag
 	return nil, nil
 }
 
-func (f *fakeFullBackend) CreateDecision(_ context.Context, _, _, _, _ string) (*storage.Decision, error) {
+func (f *fakeFullBackend) CreateDecision(_ context.Context, _, _, _, _, _ string,
+	_ []storage.RejectedAlternative, _ storage.DecisionConfidence,
+	_ []string, _ storage.DecisionScope, _, _ string) (*storage.Decision, error) {
 	return nil, nil
 }
 
@@ -1138,7 +1144,10 @@ func (f *fakeFullBackend) ListDecisions(_ context.Context, _ storage.DecisionSta
 	return nil, nil
 }
 
-func (f *fakeFullBackend) UpdateDecision(_ context.Context, slug string, _ *string, _ *storage.DecisionStatus, _, _, _ *string) (*storage.Decision, error) {
+func (f *fakeFullBackend) UpdateDecision(_ context.Context, slug string, _ *string, _ *storage.DecisionStatus,
+	_, _, _, _ *string,
+	_ *[]storage.RejectedAlternative, _ *storage.DecisionConfidence,
+	_ *[]string, _ *storage.DecisionScope, _, _ *string) (*storage.Decision, error) {
 	if f.updateDecisionErr != nil {
 		return nil, f.updateDecisionErr
 	}

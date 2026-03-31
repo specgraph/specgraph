@@ -60,7 +60,8 @@ func TestExecution(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create decision and link it.
-		_, err = store.CreateDecision(ctx, "dec-1", "Use Go", "We will use Go", "Performance")
+		_, err = store.CreateDecision(ctx, "dec-1", "Use Go", "We will use Go", "Performance",
+			"", nil, "", nil, "", "", "")
 		require.NoError(t, err)
 		_, err = store.AddEdge(ctx, "bundle-spec", "dec-1", storage.EdgeTypeDecidedIn)
 		require.NoError(t, err)
@@ -209,7 +210,8 @@ func TestExecution(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create decision and link.
-		_, err = store.CreateDecision(ctx, "prime-dec", "Use Redis", "Redis for caching", "Speed")
+		_, err = store.CreateDecision(ctx, "prime-dec", "Use Redis", "Redis for caching", "Speed",
+			"", nil, "", nil, "", "", "")
 		require.NoError(t, err)
 		_, err = store.AddEdge(ctx, "prime-spec", "prime-dec", storage.EdgeTypeDecidedIn)
 		require.NoError(t, err)

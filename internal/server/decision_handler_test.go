@@ -32,7 +32,9 @@ func newMockDecisionBackend() *mockDecisionBackend {
 	return &mockDecisionBackend{decisions: make(map[string]*storage.Decision)}
 }
 
-func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, decision, rationale string) (*storage.Decision, error) {
+func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, decision, rationale, _ string,
+	_ []storage.RejectedAlternative, _ storage.DecisionConfidence,
+	_ []string, _ storage.DecisionScope, _, _ string) (*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.seq++
@@ -78,7 +80,10 @@ func (m *mockDecisionBackend) ListDecisions(_ context.Context, status storage.De
 	return result, nil
 }
 
-func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, title *string, status *storage.DecisionStatus, decision, rationale, supersededBy *string) (*storage.Decision, error) {
+func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, title *string, status *storage.DecisionStatus,
+	decision, rationale, supersededBy, _ *string,
+	_ *[]storage.RejectedAlternative, _ *storage.DecisionConfidence,
+	_ *[]string, _ *storage.DecisionScope, _, _ *string) (*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.decisions[slug]

@@ -15,12 +15,14 @@ import (
 )
 
 // CreateDecision stores a new decision node in Memgraph.
-func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale string) (*storage.Decision, error) {
+func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale, question string,
+	rejectedAlts []storage.RejectedAlternative, confidence storage.DecisionConfidence,
+	tags []string, scope storage.DecisionScope, originSpec, originStage string) (*storage.Decision, error) {
 	now := s.nowTime()
 	id := newID("dec")
 	nowStr := now.Format(time.RFC3339)
 	initialStatus := string(storage.DecisionStatusProposed)
-	ch := contenthash.Decision(title, initialStatus, body, rationale)
+	ch := contenthash.Decision(title, initialStatus, body, rationale, "", "", "", nil, nil)
 
 	query := `
 		MATCH (p:Project {slug: $project})
@@ -131,7 +133,10 @@ func (s *Store) ListDecisions(ctx context.Context, status storage.DecisionStatus
 }
 
 // UpdateDecision updates a decision by slug. Only non-nil fields are changed.
-func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, status *storage.DecisionStatus, body, rationale, supersededBy *string) (*storage.Decision, error) {
+func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, status *storage.DecisionStatus,
+	body, rationale, supersededBy, question *string,
+	rejectedAlts *[]storage.RejectedAlternative, confidence *storage.DecisionConfidence,
+	tags *[]string, scope *storage.DecisionScope, originSpec, originStage *string) (*storage.Decision, error) {
 	if status != nil && *status == storage.DecisionStatusSuperseded {
 		if supersededBy == nil || *supersededBy == "" {
 			return nil, storage.ErrSupersededByRequired
@@ -191,7 +196,7 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 		if parseErr != nil {
 			return parseErr
 		}
-		ch := contenthash.Decision(dec.Title, string(dec.Status), dec.Body, dec.Rationale)
+		ch := contenthash.Decision(dec.Title, string(dec.Status), dec.Body, dec.Rationale, "", "", "", nil, nil)
 
 		hashQuery := `
 			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})

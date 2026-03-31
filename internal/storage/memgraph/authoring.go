@@ -153,7 +153,8 @@ func (s *Store) StoreShapeOutput(ctx context.Context, slug string, output *stora
 			// Create decision node only if it does not already exist.
 			_, getErr := s.GetDecision(txCtx, d.Slug)
 			if errors.Is(getErr, storage.ErrDecisionNotFound) {
-				if _, createErr := s.CreateDecision(txCtx, d.Slug, d.Title, d.Body, d.Rationale); createErr != nil {
+				if _, createErr := s.CreateDecision(txCtx, d.Slug, d.Title, d.Body, d.Rationale,
+					"", nil, "", nil, "", "", ""); createErr != nil {
 					return fmt.Errorf("create decision %q: %w", d.Slug, createErr)
 				}
 			} else if getErr != nil {

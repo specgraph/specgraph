@@ -471,7 +471,8 @@ func (e *Engine) writeEntities(ctx context.Context, doc *Document) (*ImportResul
 
 	// 4. Decisions
 	for _, dec := range doc.Data.Decisions {
-		if _, err := e.backend.CreateDecision(ctx, dec.Slug, dec.Title, dec.Body, dec.Rationale); err != nil {
+		if _, err := e.backend.CreateDecision(ctx, dec.Slug, dec.Title, dec.Body, dec.Rationale,
+			"", nil, "", nil, "", "", ""); err != nil {
 			return nil, fmt.Errorf("create decision %q: %w", dec.Slug, err)
 		}
 		// Restore status if not the default (proposed).
@@ -481,7 +482,8 @@ func (e *Engine) writeEntities(ctx context.Context, doc *Document) (*ImportResul
 			if dec.SupersededBy != "" {
 				supersededBy = &dec.SupersededBy
 			}
-			if _, err := e.backend.UpdateDecision(ctx, dec.Slug, nil, &status, nil, nil, supersededBy); err != nil {
+			if _, err := e.backend.UpdateDecision(ctx, dec.Slug, nil, &status, nil, nil, supersededBy,
+				nil, nil, nil, nil, nil, nil, nil); err != nil {
 				res.Warnings = append(res.Warnings, fmt.Sprintf("update decision status %q: %v", dec.Slug, err))
 			}
 		}
