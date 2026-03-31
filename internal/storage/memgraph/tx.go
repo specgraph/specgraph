@@ -36,6 +36,7 @@ package memgraph
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -74,6 +75,8 @@ func (s *Store) RunInTransaction(ctx context.Context, fn func(ctx context.Contex
 		return fn(ctx)
 	}
 
+	ctx = storage.InitChangeEvents(ctx)
+
 	session := s.driver.NewSession(ctx, neo4j.SessionConfig{})
 	defer func() {
 		if closeErr := session.Close(ctx); closeErr != nil && retErr == nil {
@@ -91,6 +94,7 @@ func (s *Store) RunInTransaction(ctx context.Context, fn func(ctx context.Contex
 	if err != nil {
 		return fmt.Errorf("memgraph: transaction: %w", err)
 	}
+	s.dispatchChangeEvents(ctx)
 	return nil
 }
 
@@ -122,4 +126,33 @@ func (s *Store) executeQuery(ctx context.Context, query string, params map[strin
 		return nil, mapTxConflict(fmt.Errorf("memgraph: execute query: %w", err))
 	}
 	return result.Records, nil
+}
+
+// dispatchChangeEvents fires stashed change events to all registered subscribers.
+// Called after successful commit. Each subscriber is isolated with panic recovery.
+func (s *Store) dispatchChangeEvents(ctx context.Context) {
+	if s.shared == nil {
+		return
+	}
+	events := storage.DrainChangeEvents(ctx)
+	if len(events) == 0 {
+		return
+	}
+	notifyCtx := storage.WithGraphBackend(ctx, s)
+	for _, sub := range s.shared.subscribers {
+		for _, event := range events {
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						slog.Error("change subscriber panicked",
+							"subscriber", fmt.Sprintf("%T", sub),
+							"slug", event.Slug,
+							"panic", r,
+						)
+					}
+				}()
+				sub.OnSpecChanged(notifyCtx, event)
+			}()
+		}
+	}
 }
