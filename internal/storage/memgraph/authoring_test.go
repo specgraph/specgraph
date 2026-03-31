@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/specgraph/specgraph/internal/storage/memgraph"
 	"github.com/stretchr/testify/assert"
@@ -541,7 +541,7 @@ func TestAuthoring(t *testing.T) {
 
 		// Verify the safety_flags property was persisted on the spec node by
 		// querying Memgraph directly with a raw Cypher query.
-		driver, err := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
+		driver, err := neo4j.NewDriver(boltURI, neo4j.NoAuth())
 		require.NoError(t, err)
 		defer driver.Close(ctx) //nolint:errcheck
 

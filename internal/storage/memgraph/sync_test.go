@@ -11,7 +11,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
@@ -244,7 +244,7 @@ func TestSync(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify ExternalRef exists before deletion
-		driver, dErr := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
+		driver, dErr := neo4j.NewDriver(boltURI, neo4j.NoAuth())
 		require.NoError(t, dErr)
 		defer driver.Close(ctx)
 
