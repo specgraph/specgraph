@@ -5,6 +5,7 @@ package memgraph
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -14,6 +15,101 @@ import (
 	"github.com/specgraph/specgraph/internal/storage/contenthash"
 )
 
+// rejectedAltJSON is the JSON-serializable representation of a rejected alternative.
+type rejectedAltJSON struct {
+	Option string `json:"option"`
+	Reason string `json:"reason"`
+}
+
+// marshalRejectedAlts serializes a slice of RejectedAlternative to a JSON string
+// for storage as a property on the Decision node.
+func marshalRejectedAlts(alts []storage.RejectedAlternative) string {
+	if len(alts) == 0 {
+		return "[]"
+	}
+	items := make([]rejectedAltJSON, len(alts))
+	for i, a := range alts {
+		items[i] = rejectedAltJSON{Option: a.Option, Reason: a.Reason}
+	}
+	b, err := json.Marshal(items)
+	if err != nil {
+		return "[]"
+	}
+	return string(b)
+}
+
+// unmarshalRejectedAlts deserializes a JSON string into a slice of RejectedAlternative.
+func unmarshalRejectedAlts(raw string) ([]storage.RejectedAlternative, error) {
+	if raw == "" || raw == "[]" {
+		return nil, nil
+	}
+	var items []rejectedAltJSON
+	if err := json.Unmarshal([]byte(raw), &items); err != nil {
+		return nil, fmt.Errorf("memgraph: unmarshal rejected alternatives: %w", err)
+	}
+	alts := make([]storage.RejectedAlternative, len(items))
+	for i, item := range items {
+		alts[i] = storage.RejectedAlternative{Option: item.Option, Reason: item.Reason}
+	}
+	return alts, nil
+}
+
+// marshalTags serializes a string slice to a JSON array string.
+func marshalTags(tags []string) string {
+	if len(tags) == 0 {
+		return "[]"
+	}
+	b, err := json.Marshal(tags)
+	if err != nil {
+		return "[]"
+	}
+	return string(b)
+}
+
+// unmarshalTags deserializes a JSON array string into a string slice.
+func unmarshalTags(raw string) ([]string, error) {
+	if raw == "" || raw == "[]" {
+		return nil, nil
+	}
+	var tags []string
+	if err := json.Unmarshal([]byte(raw), &tags); err != nil {
+		return nil, fmt.Errorf("memgraph: unmarshal tags: %w", err)
+	}
+	return tags, nil
+}
+
+// recordInt64Optional extracts an int64 from a neo4j record by position,
+// returning 0 for nil or missing values (backward compatibility for nodes
+// created before the field existed).
+func recordInt64Optional(rec *neo4j.Record, pos int, field string) (int64, error) { //nolint:unparam // field kept for error context; currently only "version" but will expand
+	if pos >= len(rec.Values) || rec.Values[pos] == nil {
+		return 0, nil
+	}
+	v, ok := rec.Values[pos].(int64)
+	if !ok {
+		return 0, fmt.Errorf("memgraph: field %q at position %d: expected int64 or nil, got %T", field, pos, rec.Values[pos])
+	}
+	return v, nil
+}
+
+// toContentHashAlts converts storage rejected alternatives to contenthash rejected alternatives.
+func toContentHashAlts(alts []storage.RejectedAlternative) []contenthash.RejectedAlt {
+	if len(alts) == 0 {
+		return nil
+	}
+	out := make([]contenthash.RejectedAlt, len(alts))
+	for i, a := range alts {
+		out[i] = contenthash.RejectedAlt{Option: a.Option, Reason: a.Reason}
+	}
+	return out
+}
+
+// decisionReturnCols is the RETURN clause shared by CreateDecision, GetDecision, ListDecisions, and UpdateDecision.
+const decisionReturnCols = `d.id, d.slug, d.title, d.status, d.decision, d.rationale,
+	       d.superseded_by, d.created_at, d.updated_at, d.content_hash,
+	       d.question, d.rejected_alternatives_json, d.confidence,
+	       d.tags_json, d.scope, d.origin_spec, d.origin_stage, d.version`
+
 // CreateDecision stores a new decision node in Memgraph.
 func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale, question string,
 	rejectedAlts []storage.RejectedAlternative, confidence storage.DecisionConfidence,
@@ -22,9 +118,11 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale
 	id := newID("dec")
 	nowStr := now.Format(time.RFC3339)
 	initialStatus := string(storage.DecisionStatusProposed)
-	ch := contenthash.Decision(title, initialStatus, body, rationale, "", "", "", nil, nil)
+	ch := contenthash.Decision(title, initialStatus, body, rationale,
+		question, string(confidence), string(scope), originSpec, originStage,
+		tags, toContentHashAlts(rejectedAlts))
 
-	query := `
+	query := fmt.Sprintf(`
 		MATCH (p:Project {slug: $project})
 		CREATE (p)<-[:BELONGS_TO]-(d:Decision {
 			id: $id,
@@ -34,24 +132,39 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale
 			decision: $decision,
 			rationale: $rationale,
 			superseded_by: $superseded_by,
+			question: $question,
+			rejected_alternatives_json: $rejected_alternatives_json,
+			confidence: $confidence,
+			tags_json: $tags_json,
+			scope: $scope,
+			origin_spec: $origin_spec,
+			origin_stage: $origin_stage,
+			version: $version,
 			created_at: $created_at,
 			updated_at: $updated_at,
 			content_hash: $content_hash
 		})
-		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
-		       d.superseded_by, d.created_at, d.updated_at, d.content_hash
-	`
+		RETURN %s
+	`, decisionReturnCols)
 	params := mergeParams(s.projectParam(), map[string]any{
-		"id":            id,
-		"slug":          slug,
-		"title":         title,
-		"status":        initialStatus,
-		"decision":      body,
-		"rationale":     rationale,
-		"superseded_by": "",
-		"created_at":    nowStr,
-		"updated_at":    nowStr,
-		"content_hash":  ch,
+		"id":                         id,
+		"slug":                       slug,
+		"title":                      title,
+		"status":                     initialStatus,
+		"decision":                   body,
+		"rationale":                  rationale,
+		"superseded_by":              "",
+		"question":                   question,
+		"rejected_alternatives_json": marshalRejectedAlts(rejectedAlts),
+		"confidence":                 string(confidence),
+		"tags_json":                  marshalTags(tags),
+		"scope":                      string(scope),
+		"origin_spec":                originSpec,
+		"origin_stage":               originStage,
+		"version":                    int64(1),
+		"created_at":                 nowStr,
+		"updated_at":                 nowStr,
+		"content_hash":               ch,
 	})
 
 	records, err := s.executeQuery(ctx, query, params)
@@ -67,11 +180,10 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale
 
 // GetDecision retrieves a decision by slug.
 func (s *Store) GetDecision(ctx context.Context, slug string) (*storage.Decision, error) {
-	query := `
+	query := fmt.Sprintf(`
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})
-		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
-		       d.superseded_by, d.created_at, d.updated_at, d.content_hash
-	`
+		RETURN %s
+	`, decisionReturnCols)
 	params := mergeParams(s.projectParam(), map[string]any{"slug": slug})
 
 	records, err := s.executeQuery(ctx, query, params)
@@ -109,7 +221,7 @@ func (s *Store) ListDecisions(ctx context.Context, status storage.DecisionStatus
 	if len(clauses) > 0 {
 		query += " WHERE " + strings.Join(clauses, " AND ")
 	}
-	query += " RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale, d.superseded_by, d.created_at, d.updated_at, d.content_hash"
+	query += " RETURN " + decisionReturnCols
 	query += " ORDER BY d.created_at"
 	if limit > 0 {
 		query += " LIMIT $limit"
@@ -166,6 +278,34 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 		setClauses = append(setClauses, "d.superseded_by = $superseded_by")
 		params["superseded_by"] = *supersededBy
 	}
+	if question != nil {
+		setClauses = append(setClauses, "d.question = $question")
+		params["question"] = *question
+	}
+	if rejectedAlts != nil {
+		setClauses = append(setClauses, "d.rejected_alternatives_json = $rejected_alternatives_json")
+		params["rejected_alternatives_json"] = marshalRejectedAlts(*rejectedAlts)
+	}
+	if confidence != nil {
+		setClauses = append(setClauses, "d.confidence = $confidence")
+		params["confidence"] = string(*confidence)
+	}
+	if tags != nil {
+		setClauses = append(setClauses, "d.tags_json = $tags_json")
+		params["tags_json"] = marshalTags(*tags)
+	}
+	if scope != nil {
+		setClauses = append(setClauses, "d.scope = $scope")
+		params["scope"] = string(*scope)
+	}
+	if originSpec != nil {
+		setClauses = append(setClauses, "d.origin_spec = $origin_spec")
+		params["origin_spec"] = *originSpec
+	}
+	if originStage != nil {
+		setClauses = append(setClauses, "d.origin_stage = $origin_stage")
+		params["origin_stage"] = *originStage
+	}
 
 	if len(setClauses) == 0 {
 		return s.GetDecision(ctx, slug)
@@ -174,16 +314,23 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 	nowStr := s.nowTime().Format(time.RFC3339)
 	setClauses = append(setClauses, "d.updated_at = $updated_at")
 	params["updated_at"] = nowStr
+	setClauses = append(setClauses, "d.version = coalesce(d.version, 0) + 1")
 
 	query := fmt.Sprintf(`
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})
 		SET %s
-		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
-		       d.superseded_by, d.created_at, d.updated_at, d.content_hash
-	`, strings.Join(setClauses, ", "))
+		RETURN %s
+	`, strings.Join(setClauses, ", "), decisionReturnCols)
 
 	var result *storage.Decision
 	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Fetch old state before mutation for field delta computation.
+		oldDec, getErr := s.GetDecision(txCtx, slug)
+		if getErr != nil {
+			return getErr
+		}
+		oldFields := decisionToFields(oldDec)
+
 		records, qErr := s.executeQuery(txCtx, query, params)
 		if qErr != nil {
 			return fmt.Errorf("memgraph: update decision: %w", qErr)
@@ -196,7 +343,10 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 		if parseErr != nil {
 			return parseErr
 		}
-		ch := contenthash.Decision(dec.Title, string(dec.Status), dec.Body, dec.Rationale, "", "", "", nil, nil)
+		ch := contenthash.Decision(dec.Title, string(dec.Status), dec.Body, dec.Rationale,
+			dec.Question, string(dec.Confidence), string(dec.Scope),
+			dec.OriginSpec, dec.OriginStage,
+			dec.Tags, toContentHashAlts(dec.RejectedAlternatives))
 
 		hashQuery := `
 			MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})
@@ -209,10 +359,44 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 			return fmt.Errorf("memgraph: update decision content_hash: %w", hashErr)
 		}
 		dec.ContentHash = ch
+
+		// Compute field deltas and create ChangeLog entry.
+		newFields := decisionToFields(dec)
+		deltas := storage.ComputeDecisionFieldDeltas(oldFields, newFields)
+		if len(deltas) > 0 {
+			clEntry := &storage.ChangeLogEntry{
+				Version:     int32(dec.Version), //nolint:gosec // version is a small monotonic counter; overflow impossible
+				Stage:       storage.SpecStage(dec.Status),
+				ContentHash: dec.ContentHash,
+				Summary:     "decision updated",
+				Date:        s.nowTime(),
+			}
+			if clErr := s.createChangeLog(txCtx, "Decision", slug, clEntry, deltas); clErr != nil {
+				return clErr
+			}
+		}
+
 		result = dec
 		return nil
 	})
 	return result, err
+}
+
+// decisionToFields converts a Decision to DecisionFields for delta computation.
+func decisionToFields(d *storage.Decision) *storage.DecisionFields {
+	return &storage.DecisionFields{
+		Title:                d.Title,
+		Status:               string(d.Status),
+		Body:                 d.Body,
+		Rationale:            d.Rationale,
+		Question:             d.Question,
+		Confidence:           string(d.Confidence),
+		Scope:                string(d.Scope),
+		Tags:                 marshalTags(d.Tags),
+		RejectedAlternatives: marshalRejectedAlts(d.RejectedAlternatives),
+		OriginSpec:           d.OriginSpec,
+		OriginStage:          d.OriginStage,
+	}
 }
 
 // legacyDecisionStatus returns the old proto-style status string for backward-compatible queries.
@@ -290,6 +474,47 @@ func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
 	if err != nil {
 		return nil, err
 	}
+	questionStr, err := recordStringOptional(rec, 10, "question")
+	if err != nil {
+		return nil, err
+	}
+	rejectedAltsJSON, err := recordStringOptional(rec, 11, "rejected_alternatives_json")
+	if err != nil {
+		return nil, err
+	}
+	confidenceStr, err := recordStringOptional(rec, 12, "confidence")
+	if err != nil {
+		return nil, err
+	}
+	tagsJSON, err := recordStringOptional(rec, 13, "tags_json")
+	if err != nil {
+		return nil, err
+	}
+	scopeStr, err := recordStringOptional(rec, 14, "scope")
+	if err != nil {
+		return nil, err
+	}
+	originSpec, err := recordStringOptional(rec, 15, "origin_spec")
+	if err != nil {
+		return nil, err
+	}
+	originStage, err := recordStringOptional(rec, 16, "origin_stage")
+	if err != nil {
+		return nil, err
+	}
+	version, err := recordInt64Optional(rec, 17, "version")
+	if err != nil {
+		return nil, err
+	}
+
+	rejectedAlts, err := unmarshalRejectedAlts(rejectedAltsJSON)
+	if err != nil {
+		return nil, err
+	}
+	tags, err := unmarshalTags(tagsJSON)
+	if err != nil {
+		return nil, err
+	}
 
 	createdAt, err := parseRFC3339("created_at", createdAtStr)
 	if err != nil {
@@ -311,15 +536,23 @@ func recordToDecision(rec *neo4j.Record) (*storage.Decision, error) {
 	}
 
 	return &storage.Decision{
-		ID:           id,
-		Slug:         slug,
-		Title:        title,
-		Status:       status,
-		Body:         body,
-		Rationale:    rationale,
-		SupersededBy: supersededBy,
-		CreatedAt:    createdAt,
-		UpdatedAt:    updatedAt,
-		ContentHash:  contentHash,
+		ID:                   id,
+		Slug:                 slug,
+		Title:                title,
+		Status:               status,
+		Body:                 body,
+		Rationale:            rationale,
+		SupersededBy:         supersededBy,
+		Question:             questionStr,
+		RejectedAlternatives: rejectedAlts,
+		Confidence:           storage.DecisionConfidence(confidenceStr),
+		Tags:                 tags,
+		Scope:                storage.DecisionScope(scopeStr),
+		OriginSpec:           originSpec,
+		OriginStage:          originStage,
+		Version:              int(version),
+		CreatedAt:            createdAt,
+		UpdatedAt:            updatedAt,
+		ContentHash:          contentHash,
 	}, nil
 }

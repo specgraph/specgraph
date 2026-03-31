@@ -28,6 +28,21 @@ func Decision(d *specv1.Decision) string {
 	if d.SupersededBy != "" {
 		pairs = append(pairs, [2]string{"Superseded By", d.SupersededBy})
 	}
+	if d.Confidence != specv1.DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED {
+		pairs = append(pairs, [2]string{"Confidence", decisionConfidenceName(d.Confidence)})
+	}
+	if d.Scope != specv1.DecisionScope_DECISION_SCOPE_UNSPECIFIED {
+		pairs = append(pairs, [2]string{"Scope", decisionScopeName(d.Scope)})
+	}
+	if d.OriginSpec != "" {
+		pairs = append(pairs, [2]string{"Origin Spec", d.OriginSpec})
+	}
+	if d.OriginStage != "" {
+		pairs = append(pairs, [2]string{"Origin Stage", d.OriginStage})
+	}
+	if d.Version != 0 {
+		pairs = append(pairs, [2]string{"Version", fmt.Sprintf("%d", d.Version)})
+	}
 	b.WriteString(metadataTable(pairs))
 
 	if d.Decision != "" {
@@ -35,6 +50,21 @@ func Decision(d *specv1.Decision) string {
 	}
 	if d.Rationale != "" {
 		fmt.Fprintf(&b, "\n**Rationale:** %s\n", d.Rationale)
+	}
+	if d.Question != "" {
+		fmt.Fprintf(&b, "\n**Question:** %s\n", d.Question)
+	}
+	if len(d.Tags) > 0 {
+		fmt.Fprintf(&b, "\n**Tags:** %s\n", strings.Join(d.Tags, ", "))
+	}
+	if len(d.RejectedAlternatives) > 0 {
+		b.WriteString("\n### Rejected Alternatives\n\n")
+		headers := []string{"Option", "Reason"}
+		rows := make([][]string, len(d.RejectedAlternatives))
+		for i, ra := range d.RejectedAlternatives {
+			rows[i] = []string{ra.Option, ra.Reason}
+		}
+		b.WriteString(itemTable(headers, rows))
 	}
 
 	return b.String()
@@ -51,6 +81,14 @@ func DecisionList(ds []*specv1.Decision) string {
 		rows[i] = []string{d.Slug, decisionStatusString(d.Status), d.Title}
 	}
 	return itemTable(headers, rows)
+}
+
+func decisionConfidenceName(c specv1.DecisionConfidence) string {
+	return strings.TrimPrefix(c.String(), "DECISION_CONFIDENCE_")
+}
+
+func decisionScopeName(s specv1.DecisionScope) string {
+	return strings.TrimPrefix(s.String(), "DECISION_SCOPE_")
 }
 
 func decisionStatusString(s specv1.DecisionStatus) string {

@@ -19,6 +19,25 @@ enum DecisionStatus {
   DECISION_STATUS_SUPERSEDED = 4;
 }
 
+enum DecisionConfidence {
+  DECISION_CONFIDENCE_UNSPECIFIED = 0;
+  DECISION_CONFIDENCE_HIGH = 1;
+  DECISION_CONFIDENCE_MEDIUM = 2;
+  DECISION_CONFIDENCE_LOW = 3;
+}
+
+enum DecisionScope {
+  DECISION_SCOPE_UNSPECIFIED = 0;
+  DECISION_SCOPE_PROJECT = 1;
+  DECISION_SCOPE_TEAM = 2;
+  DECISION_SCOPE_ORG = 3;
+}
+
+message RejectedAlternative {
+  string option = 1;
+  string reason = 2;
+}
+
 // --- Messages ---
 
 message Decision {
@@ -32,6 +51,14 @@ message Decision {
   google.protobuf.Timestamp created_at = 8;
   google.protobuf.Timestamp updated_at = 9;
   string content_hash = 10;                  // Murmur3-128 hex digest of substantive fields; changes on every mutation
+  string question = 11;                      // the question this decision answers
+  repeated RejectedAlternative rejected_alternatives = 12;
+  DecisionConfidence confidence = 13;
+  repeated string tags = 14;
+  DecisionScope scope = 15;
+  string origin_spec = 16;                   // slug of the spec that prompted this decision
+  string origin_stage = 17;                  // authoring stage when decision was created
+  int32 version = 18;                        // optimistic concurrency version
 }
 
 message CreateDecisionRequest {
@@ -39,6 +66,13 @@ message CreateDecisionRequest {
   string title = 2;
   string decision = 3;
   string rationale = 4;
+  string question = 5;
+  repeated RejectedAlternative rejected_alternatives = 6;
+  DecisionConfidence confidence = 7;
+  repeated string tags = 8;
+  DecisionScope scope = 9;
+  string origin_spec = 10;
+  string origin_stage = 11;
 }
 
 message GetDecisionRequest {
@@ -61,6 +95,13 @@ message UpdateDecisionRequest {
   optional string decision = 4;
   optional string rationale = 5;
   optional string superseded_by = 6;
+  optional string question = 7;
+  optional DecisionConfidence confidence = 8;
+  repeated string tags = 9;
+  optional DecisionScope scope = 10;
+  optional string origin_spec = 11;
+  optional string origin_stage = 12;
+  repeated RejectedAlternative rejected_alternatives = 13;
 }
 
 message CreateDecisionResponse { Decision decision = 1; }

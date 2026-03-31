@@ -141,7 +141,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 			Reason:      reason,
 			Date:        freshSpec.UpdatedAt,
 		}
-		if clErr := s.createChangeLog(txCtx, slug, clEntry, deltas); clErr != nil {
+		if clErr := s.createChangeLog(txCtx, "Spec", slug, clEntry, deltas); clErr != nil {
 			return clErr
 		}
 		result = freshSpec
@@ -289,7 +289,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 			Reason:      fmt.Sprintf("Superseded by %s", newSlug),
 			Date:        oldSpec.UpdatedAt,
 		}
-		if clErr := s.createChangeLog(txCtx, oldSlug, oldCLEntry, oldDeltas); clErr != nil {
+		if clErr := s.createChangeLog(txCtx, "Spec", oldSlug, oldCLEntry, oldDeltas); clErr != nil {
 			return clErr
 		}
 
@@ -306,7 +306,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 			Reason:      fmt.Sprintf("Supersedes %s", oldSlug),
 			Date:        newSpec.UpdatedAt,
 		}
-		return s.createChangeLog(txCtx, newSlug, newCLEntry, newDeltas)
+		return s.createChangeLog(txCtx, "Spec", newSlug, newCLEntry, newDeltas)
 	})
 	if txErr != nil {
 		return nil, nil, txErr
@@ -386,7 +386,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 			Reason:      reason,
 			Date:        abandonedSpec.UpdatedAt,
 		}
-		if clErr := s.createChangeLog(txCtx, slug, clEntry, deltas); clErr != nil {
+		if clErr := s.createChangeLog(txCtx, "Spec", slug, clEntry, deltas); clErr != nil {
 			return clErr
 		}
 		result = abandonedSpec
@@ -493,7 +493,7 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlu
 			Checkpoint:  false,
 			Date:        s.nowTime(),
 		}
-		if clErr := s.createChangeLog(txCtx, slug, clEntry, nil); clErr != nil {
+		if clErr := s.createChangeLog(txCtx, "Spec", slug, clEntry, nil); clErr != nil {
 			return fmt.Errorf("memgraph: acknowledge drift changelog: %w", clErr)
 		}
 

@@ -15,7 +15,7 @@
 //	    return s.RunInTransaction(ctx, func(txCtx context.Context) error {
 //	        // All DB operations use txCtx, not ctx.
 //	        records, err := s.executeQuery(txCtx, query, params)
-//	        return s.createChangeLog(txCtx, slug, entry, deltas)
+//	        return s.createChangeLog(txCtx, "Spec", slug, entry, deltas)
 //	    })
 //	}
 //

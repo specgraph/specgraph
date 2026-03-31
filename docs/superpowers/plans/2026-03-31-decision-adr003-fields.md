@@ -253,6 +253,7 @@ func Decision(title, status, decision, rationale, question, confidence, scope st
 - [ ] **Step 4: Fix all callers of `contenthash.Decision`**
 
 Two callers in `internal/storage/memgraph/decision.go`:
+
 - `CreateDecision` (line 23): pass new fields
 - `UpdateDecision` (line 194): pass new fields
 
@@ -374,7 +375,8 @@ Message: `feat(proto): add Decision ADR-003 fields to proto schema (spgr-bk8)`
 Update `CreateDecision` signature to match the new `DecisionBackend` interface. Add new properties to the CREATE Cypher query and params map.
 
 New Cypher properties in the CREATE clause:
-```
+
+```text
 question: $question,
 rejected_alternatives_json: $rejected_alternatives_json,
 confidence: $confidence,
@@ -386,6 +388,7 @@ version: $version
 ```
 
 New params:
+
 ```go
 "question":                     question,
 "rejected_alternatives_json":   marshalRejectedAlts(rejectedAlts),
@@ -398,6 +401,7 @@ New params:
 ```
 
 Add helper functions (in decision.go or a shared helper):
+
 ```go
 func marshalRejectedAlts(alts []storage.RejectedAlternative) string
 func unmarshalRejectedAlts(raw string) ([]storage.RejectedAlternative, error)
@@ -494,6 +498,7 @@ Update the RETURN clause to include new fields.
 Search for all callers of `store.UpdateDecision` in handler tests, handler code, and other tests. Update call signatures to pass `nil` for new parameters where they don't set new fields.
 
 Key files:
+
 - `internal/server/decision_handler.go:118` — add nil params for new fields
 - `internal/server/decision_handler_test.go` — update all mock/fake `UpdateDecision` implementations
 - `internal/server/test_scoper_test.go` — update stub backend
@@ -649,6 +654,7 @@ func (s *Store) createChangeLog(ctx context.Context, label, slug string, entry *
 ```
 
 Replace the hardcoded Cypher:
+
 ```go
 query := fmt.Sprintf(`
     MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(n:%s {slug: $slug})
@@ -665,6 +671,7 @@ Update all existing callers of `createChangeLog` in the memgraph package (search
 - [ ] **Step 3: Generalize ListChanges to accept a node label**
 
 In `ListChanges`, change the check query and main query from `(s:Spec {slug: $slug})` to use a label parameter. Either:
+
 - Add a `label` parameter to `ListChanges` (preferred, keeps it generic), OR
 - Add a separate `ListDecisionChanges` method
 
@@ -675,6 +682,7 @@ For now, keep `ChangeLogBackend.ListChanges` as-is (spec-only) and add an intern
 - [ ] **Step 4: Wire ChangeLog into UpdateDecision**
 
 In `UpdateDecision`, inside the `RunInTransaction` block, after the mutation:
+
 1. Build `DecisionFields` for old and new state
 2. Call `ComputeDecisionFieldDeltas`
 3. Call `s.createChangeLog("Decision", slug, entry, deltas)`
@@ -714,6 +722,7 @@ var (
 ```
 
 Register in init():
+
 ```go
 decisionCreateCmd.Flags().StringVar(&decisionQuestion, "question", "", "the question being decided")
 decisionCreateCmd.Flags().StringVar(&decisionConfidence, "confidence", "", "confidence level (high|medium|low)")
@@ -782,6 +791,7 @@ Run: `go test ./internal/render/ -run TestDecisionRender_NewFields -v`
 In `render/decision.go`, add new fields to the metadata pairs and add sections:
 
 After the existing metadata table, add:
+
 - Confidence, Scope, Origin Spec, Origin Stage to metadata pairs (if non-empty/non-default)
 - Tags as inline comma-separated after metadata table
 - Question as `**Question:** ...` section

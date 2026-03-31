@@ -80,25 +80,189 @@ func (DecisionStatus) EnumDescriptor() ([]byte, []int) {
 	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{0}
 }
 
-type Decision struct {
+type DecisionConfidence int32
+
+const (
+	DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED DecisionConfidence = 0
+	DecisionConfidence_DECISION_CONFIDENCE_HIGH        DecisionConfidence = 1
+	DecisionConfidence_DECISION_CONFIDENCE_MEDIUM      DecisionConfidence = 2
+	DecisionConfidence_DECISION_CONFIDENCE_LOW         DecisionConfidence = 3
+)
+
+// Enum value maps for DecisionConfidence.
+var (
+	DecisionConfidence_name = map[int32]string{
+		0: "DECISION_CONFIDENCE_UNSPECIFIED",
+		1: "DECISION_CONFIDENCE_HIGH",
+		2: "DECISION_CONFIDENCE_MEDIUM",
+		3: "DECISION_CONFIDENCE_LOW",
+	}
+	DecisionConfidence_value = map[string]int32{
+		"DECISION_CONFIDENCE_UNSPECIFIED": 0,
+		"DECISION_CONFIDENCE_HIGH":        1,
+		"DECISION_CONFIDENCE_MEDIUM":      2,
+		"DECISION_CONFIDENCE_LOW":         3,
+	}
+)
+
+func (x DecisionConfidence) Enum() *DecisionConfidence {
+	p := new(DecisionConfidence)
+	*p = x
+	return p
+}
+
+func (x DecisionConfidence) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DecisionConfidence) Descriptor() protoreflect.EnumDescriptor {
+	return file_specgraph_v1_decision_proto_enumTypes[1].Descriptor()
+}
+
+func (DecisionConfidence) Type() protoreflect.EnumType {
+	return &file_specgraph_v1_decision_proto_enumTypes[1]
+}
+
+func (x DecisionConfidence) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DecisionConfidence.Descriptor instead.
+func (DecisionConfidence) EnumDescriptor() ([]byte, []int) {
+	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{1}
+}
+
+type DecisionScope int32
+
+const (
+	DecisionScope_DECISION_SCOPE_UNSPECIFIED DecisionScope = 0
+	DecisionScope_DECISION_SCOPE_PROJECT     DecisionScope = 1
+	DecisionScope_DECISION_SCOPE_TEAM        DecisionScope = 2
+	DecisionScope_DECISION_SCOPE_ORG         DecisionScope = 3
+)
+
+// Enum value maps for DecisionScope.
+var (
+	DecisionScope_name = map[int32]string{
+		0: "DECISION_SCOPE_UNSPECIFIED",
+		1: "DECISION_SCOPE_PROJECT",
+		2: "DECISION_SCOPE_TEAM",
+		3: "DECISION_SCOPE_ORG",
+	}
+	DecisionScope_value = map[string]int32{
+		"DECISION_SCOPE_UNSPECIFIED": 0,
+		"DECISION_SCOPE_PROJECT":     1,
+		"DECISION_SCOPE_TEAM":        2,
+		"DECISION_SCOPE_ORG":         3,
+	}
+)
+
+func (x DecisionScope) Enum() *DecisionScope {
+	p := new(DecisionScope)
+	*p = x
+	return p
+}
+
+func (x DecisionScope) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DecisionScope) Descriptor() protoreflect.EnumDescriptor {
+	return file_specgraph_v1_decision_proto_enumTypes[2].Descriptor()
+}
+
+func (DecisionScope) Type() protoreflect.EnumType {
+	return &file_specgraph_v1_decision_proto_enumTypes[2]
+}
+
+func (x DecisionScope) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DecisionScope.Descriptor instead.
+func (DecisionScope) EnumDescriptor() ([]byte, []int) {
+	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{2}
+}
+
+type RejectedAlternative struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`       // stable ULID, e.g. "dec-01JQXYZ..."
-	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`   // human-readable, e.g. "use-memgraph"
-	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"` // short title
-	Status        DecisionStatus         `protobuf:"varint,4,opt,name=status,proto3,enum=specgraph.v1.DecisionStatus" json:"status,omitempty"`
-	Decision      string                 `protobuf:"bytes,5,opt,name=decision,proto3" json:"decision,omitempty"`                             // the decision text
-	Rationale     string                 `protobuf:"bytes,6,opt,name=rationale,proto3" json:"rationale,omitempty"`                           // why this decision was made
-	SupersededBy  string                 `protobuf:"bytes,7,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"` // slug of superseding decision, if any
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	ContentHash   string                 `protobuf:"bytes,10,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"` // Murmur3-128 hex digest of substantive fields; changes on every mutation
+	Option        string                 `protobuf:"bytes,1,opt,name=option,proto3" json:"option,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
+func (x *RejectedAlternative) Reset() {
+	*x = RejectedAlternative{}
+	mi := &file_specgraph_v1_decision_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RejectedAlternative) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectedAlternative) ProtoMessage() {}
+
+func (x *RejectedAlternative) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_decision_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectedAlternative.ProtoReflect.Descriptor instead.
+func (*RejectedAlternative) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *RejectedAlternative) GetOption() string {
+	if x != nil {
+		return x.Option
+	}
+	return ""
+}
+
+func (x *RejectedAlternative) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type Decision struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Id                   string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`       // stable ULID, e.g. "dec-01JQXYZ..."
+	Slug                 string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`   // human-readable, e.g. "use-memgraph"
+	Title                string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"` // short title
+	Status               DecisionStatus         `protobuf:"varint,4,opt,name=status,proto3,enum=specgraph.v1.DecisionStatus" json:"status,omitempty"`
+	Decision             string                 `protobuf:"bytes,5,opt,name=decision,proto3" json:"decision,omitempty"`                             // the decision text
+	Rationale            string                 `protobuf:"bytes,6,opt,name=rationale,proto3" json:"rationale,omitempty"`                           // why this decision was made
+	SupersededBy         string                 `protobuf:"bytes,7,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"` // slug of superseding decision, if any
+	CreatedAt            *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt            *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ContentHash          string                 `protobuf:"bytes,10,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"` // Murmur3-128 hex digest of substantive fields; changes on every mutation
+	Question             string                 `protobuf:"bytes,11,opt,name=question,proto3" json:"question,omitempty"`                          // the question this decision answers
+	RejectedAlternatives []*RejectedAlternative `protobuf:"bytes,12,rep,name=rejected_alternatives,json=rejectedAlternatives,proto3" json:"rejected_alternatives,omitempty"`
+	Confidence           DecisionConfidence     `protobuf:"varint,13,opt,name=confidence,proto3,enum=specgraph.v1.DecisionConfidence" json:"confidence,omitempty"`
+	Tags                 []string               `protobuf:"bytes,14,rep,name=tags,proto3" json:"tags,omitempty"`
+	Scope                DecisionScope          `protobuf:"varint,15,opt,name=scope,proto3,enum=specgraph.v1.DecisionScope" json:"scope,omitempty"`
+	OriginSpec           string                 `protobuf:"bytes,16,opt,name=origin_spec,json=originSpec,proto3" json:"origin_spec,omitempty"`    // slug of the spec that prompted this decision
+	OriginStage          string                 `protobuf:"bytes,17,opt,name=origin_stage,json=originStage,proto3" json:"origin_stage,omitempty"` // authoring stage when decision was created
+	Version              int32                  `protobuf:"varint,18,opt,name=version,proto3" json:"version,omitempty"`                           // optimistic concurrency version
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
 func (x *Decision) Reset() {
 	*x = Decision{}
-	mi := &file_specgraph_v1_decision_proto_msgTypes[0]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -110,7 +274,7 @@ func (x *Decision) String() string {
 func (*Decision) ProtoMessage() {}
 
 func (x *Decision) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_decision_proto_msgTypes[0]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -123,7 +287,7 @@ func (x *Decision) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Decision.ProtoReflect.Descriptor instead.
 func (*Decision) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{0}
+	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Decision) GetId() string {
@@ -196,19 +360,82 @@ func (x *Decision) GetContentHash() string {
 	return ""
 }
 
+func (x *Decision) GetQuestion() string {
+	if x != nil {
+		return x.Question
+	}
+	return ""
+}
+
+func (x *Decision) GetRejectedAlternatives() []*RejectedAlternative {
+	if x != nil {
+		return x.RejectedAlternatives
+	}
+	return nil
+}
+
+func (x *Decision) GetConfidence() DecisionConfidence {
+	if x != nil {
+		return x.Confidence
+	}
+	return DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED
+}
+
+func (x *Decision) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *Decision) GetScope() DecisionScope {
+	if x != nil {
+		return x.Scope
+	}
+	return DecisionScope_DECISION_SCOPE_UNSPECIFIED
+}
+
+func (x *Decision) GetOriginSpec() string {
+	if x != nil {
+		return x.OriginSpec
+	}
+	return ""
+}
+
+func (x *Decision) GetOriginStage() string {
+	if x != nil {
+		return x.OriginStage
+	}
+	return ""
+}
+
+func (x *Decision) GetVersion() int32 {
+	if x != nil {
+		return x.Version
+	}
+	return 0
+}
+
 type CreateDecisionRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Decision      string                 `protobuf:"bytes,3,opt,name=decision,proto3" json:"decision,omitempty"`
-	Rationale     string                 `protobuf:"bytes,4,opt,name=rationale,proto3" json:"rationale,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Slug                 string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	Title                string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Decision             string                 `protobuf:"bytes,3,opt,name=decision,proto3" json:"decision,omitempty"`
+	Rationale            string                 `protobuf:"bytes,4,opt,name=rationale,proto3" json:"rationale,omitempty"`
+	Question             string                 `protobuf:"bytes,5,opt,name=question,proto3" json:"question,omitempty"`
+	RejectedAlternatives []*RejectedAlternative `protobuf:"bytes,6,rep,name=rejected_alternatives,json=rejectedAlternatives,proto3" json:"rejected_alternatives,omitempty"`
+	Confidence           DecisionConfidence     `protobuf:"varint,7,opt,name=confidence,proto3,enum=specgraph.v1.DecisionConfidence" json:"confidence,omitempty"`
+	Tags                 []string               `protobuf:"bytes,8,rep,name=tags,proto3" json:"tags,omitempty"`
+	Scope                DecisionScope          `protobuf:"varint,9,opt,name=scope,proto3,enum=specgraph.v1.DecisionScope" json:"scope,omitempty"`
+	OriginSpec           string                 `protobuf:"bytes,10,opt,name=origin_spec,json=originSpec,proto3" json:"origin_spec,omitempty"`
+	OriginStage          string                 `protobuf:"bytes,11,opt,name=origin_stage,json=originStage,proto3" json:"origin_stage,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *CreateDecisionRequest) Reset() {
 	*x = CreateDecisionRequest{}
-	mi := &file_specgraph_v1_decision_proto_msgTypes[1]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -220,7 +447,7 @@ func (x *CreateDecisionRequest) String() string {
 func (*CreateDecisionRequest) ProtoMessage() {}
 
 func (x *CreateDecisionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_decision_proto_msgTypes[1]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -233,7 +460,7 @@ func (x *CreateDecisionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateDecisionRequest.ProtoReflect.Descriptor instead.
 func (*CreateDecisionRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{1}
+	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *CreateDecisionRequest) GetSlug() string {
@@ -264,6 +491,55 @@ func (x *CreateDecisionRequest) GetRationale() string {
 	return ""
 }
 
+func (x *CreateDecisionRequest) GetQuestion() string {
+	if x != nil {
+		return x.Question
+	}
+	return ""
+}
+
+func (x *CreateDecisionRequest) GetRejectedAlternatives() []*RejectedAlternative {
+	if x != nil {
+		return x.RejectedAlternatives
+	}
+	return nil
+}
+
+func (x *CreateDecisionRequest) GetConfidence() DecisionConfidence {
+	if x != nil {
+		return x.Confidence
+	}
+	return DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED
+}
+
+func (x *CreateDecisionRequest) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *CreateDecisionRequest) GetScope() DecisionScope {
+	if x != nil {
+		return x.Scope
+	}
+	return DecisionScope_DECISION_SCOPE_UNSPECIFIED
+}
+
+func (x *CreateDecisionRequest) GetOriginSpec() string {
+	if x != nil {
+		return x.OriginSpec
+	}
+	return ""
+}
+
+func (x *CreateDecisionRequest) GetOriginStage() string {
+	if x != nil {
+		return x.OriginStage
+	}
+	return ""
+}
+
 type GetDecisionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
@@ -273,7 +549,7 @@ type GetDecisionRequest struct {
 
 func (x *GetDecisionRequest) Reset() {
 	*x = GetDecisionRequest{}
-	mi := &file_specgraph_v1_decision_proto_msgTypes[2]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -285,7 +561,7 @@ func (x *GetDecisionRequest) String() string {
 func (*GetDecisionRequest) ProtoMessage() {}
 
 func (x *GetDecisionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_decision_proto_msgTypes[2]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -298,7 +574,7 @@ func (x *GetDecisionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDecisionRequest.ProtoReflect.Descriptor instead.
 func (*GetDecisionRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{2}
+	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetDecisionRequest) GetSlug() string {
@@ -318,7 +594,7 @@ type ListDecisionsRequest struct {
 
 func (x *ListDecisionsRequest) Reset() {
 	*x = ListDecisionsRequest{}
-	mi := &file_specgraph_v1_decision_proto_msgTypes[3]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -330,7 +606,7 @@ func (x *ListDecisionsRequest) String() string {
 func (*ListDecisionsRequest) ProtoMessage() {}
 
 func (x *ListDecisionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_decision_proto_msgTypes[3]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -343,7 +619,7 @@ func (x *ListDecisionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDecisionsRequest.ProtoReflect.Descriptor instead.
 func (*ListDecisionsRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{3}
+	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ListDecisionsRequest) GetStatus() DecisionStatus {
@@ -369,7 +645,7 @@ type ListDecisionsResponse struct {
 
 func (x *ListDecisionsResponse) Reset() {
 	*x = ListDecisionsResponse{}
-	mi := &file_specgraph_v1_decision_proto_msgTypes[4]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -381,7 +657,7 @@ func (x *ListDecisionsResponse) String() string {
 func (*ListDecisionsResponse) ProtoMessage() {}
 
 func (x *ListDecisionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_decision_proto_msgTypes[4]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -394,7 +670,7 @@ func (x *ListDecisionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDecisionsResponse.ProtoReflect.Descriptor instead.
 func (*ListDecisionsResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{4}
+	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListDecisionsResponse) GetDecisions() []*Decision {
@@ -405,20 +681,27 @@ func (x *ListDecisionsResponse) GetDecisions() []*Decision {
 }
 
 type UpdateDecisionRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"` // identifies which decision (required)
-	Title         *string                `protobuf:"bytes,2,opt,name=title,proto3,oneof" json:"title,omitempty"`
-	Status        *DecisionStatus        `protobuf:"varint,3,opt,name=status,proto3,enum=specgraph.v1.DecisionStatus,oneof" json:"status,omitempty"`
-	Decision      *string                `protobuf:"bytes,4,opt,name=decision,proto3,oneof" json:"decision,omitempty"`
-	Rationale     *string                `protobuf:"bytes,5,opt,name=rationale,proto3,oneof" json:"rationale,omitempty"`
-	SupersededBy  *string                `protobuf:"bytes,6,opt,name=superseded_by,json=supersededBy,proto3,oneof" json:"superseded_by,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Slug                 string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"` // identifies which decision (required)
+	Title                *string                `protobuf:"bytes,2,opt,name=title,proto3,oneof" json:"title,omitempty"`
+	Status               *DecisionStatus        `protobuf:"varint,3,opt,name=status,proto3,enum=specgraph.v1.DecisionStatus,oneof" json:"status,omitempty"`
+	Decision             *string                `protobuf:"bytes,4,opt,name=decision,proto3,oneof" json:"decision,omitempty"`
+	Rationale            *string                `protobuf:"bytes,5,opt,name=rationale,proto3,oneof" json:"rationale,omitempty"`
+	SupersededBy         *string                `protobuf:"bytes,6,opt,name=superseded_by,json=supersededBy,proto3,oneof" json:"superseded_by,omitempty"`
+	Question             *string                `protobuf:"bytes,7,opt,name=question,proto3,oneof" json:"question,omitempty"`
+	Confidence           *DecisionConfidence    `protobuf:"varint,8,opt,name=confidence,proto3,enum=specgraph.v1.DecisionConfidence,oneof" json:"confidence,omitempty"`
+	Tags                 []string               `protobuf:"bytes,9,rep,name=tags,proto3" json:"tags,omitempty"`
+	Scope                *DecisionScope         `protobuf:"varint,10,opt,name=scope,proto3,enum=specgraph.v1.DecisionScope,oneof" json:"scope,omitempty"`
+	OriginSpec           *string                `protobuf:"bytes,11,opt,name=origin_spec,json=originSpec,proto3,oneof" json:"origin_spec,omitempty"`
+	OriginStage          *string                `protobuf:"bytes,12,opt,name=origin_stage,json=originStage,proto3,oneof" json:"origin_stage,omitempty"`
+	RejectedAlternatives []*RejectedAlternative `protobuf:"bytes,13,rep,name=rejected_alternatives,json=rejectedAlternatives,proto3" json:"rejected_alternatives,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *UpdateDecisionRequest) Reset() {
 	*x = UpdateDecisionRequest{}
-	mi := &file_specgraph_v1_decision_proto_msgTypes[5]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -430,7 +713,7 @@ func (x *UpdateDecisionRequest) String() string {
 func (*UpdateDecisionRequest) ProtoMessage() {}
 
 func (x *UpdateDecisionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_decision_proto_msgTypes[5]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -443,7 +726,7 @@ func (x *UpdateDecisionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateDecisionRequest.ProtoReflect.Descriptor instead.
 func (*UpdateDecisionRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{5}
+	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *UpdateDecisionRequest) GetSlug() string {
@@ -488,6 +771,55 @@ func (x *UpdateDecisionRequest) GetSupersededBy() string {
 	return ""
 }
 
+func (x *UpdateDecisionRequest) GetQuestion() string {
+	if x != nil && x.Question != nil {
+		return *x.Question
+	}
+	return ""
+}
+
+func (x *UpdateDecisionRequest) GetConfidence() DecisionConfidence {
+	if x != nil && x.Confidence != nil {
+		return *x.Confidence
+	}
+	return DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED
+}
+
+func (x *UpdateDecisionRequest) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *UpdateDecisionRequest) GetScope() DecisionScope {
+	if x != nil && x.Scope != nil {
+		return *x.Scope
+	}
+	return DecisionScope_DECISION_SCOPE_UNSPECIFIED
+}
+
+func (x *UpdateDecisionRequest) GetOriginSpec() string {
+	if x != nil && x.OriginSpec != nil {
+		return *x.OriginSpec
+	}
+	return ""
+}
+
+func (x *UpdateDecisionRequest) GetOriginStage() string {
+	if x != nil && x.OriginStage != nil {
+		return *x.OriginStage
+	}
+	return ""
+}
+
+func (x *UpdateDecisionRequest) GetRejectedAlternatives() []*RejectedAlternative {
+	if x != nil {
+		return x.RejectedAlternatives
+	}
+	return nil
+}
+
 type CreateDecisionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Decision      *Decision              `protobuf:"bytes,1,opt,name=decision,proto3" json:"decision,omitempty"`
@@ -497,7 +829,7 @@ type CreateDecisionResponse struct {
 
 func (x *CreateDecisionResponse) Reset() {
 	*x = CreateDecisionResponse{}
-	mi := &file_specgraph_v1_decision_proto_msgTypes[6]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -509,7 +841,7 @@ func (x *CreateDecisionResponse) String() string {
 func (*CreateDecisionResponse) ProtoMessage() {}
 
 func (x *CreateDecisionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_decision_proto_msgTypes[6]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -522,7 +854,7 @@ func (x *CreateDecisionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateDecisionResponse.ProtoReflect.Descriptor instead.
 func (*CreateDecisionResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{6}
+	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CreateDecisionResponse) GetDecision() *Decision {
@@ -541,7 +873,7 @@ type GetDecisionResponse struct {
 
 func (x *GetDecisionResponse) Reset() {
 	*x = GetDecisionResponse{}
-	mi := &file_specgraph_v1_decision_proto_msgTypes[7]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -553,7 +885,7 @@ func (x *GetDecisionResponse) String() string {
 func (*GetDecisionResponse) ProtoMessage() {}
 
 func (x *GetDecisionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_decision_proto_msgTypes[7]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -566,7 +898,7 @@ func (x *GetDecisionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDecisionResponse.ProtoReflect.Descriptor instead.
 func (*GetDecisionResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{7}
+	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetDecisionResponse) GetDecision() *Decision {
@@ -585,7 +917,7 @@ type UpdateDecisionResponse struct {
 
 func (x *UpdateDecisionResponse) Reset() {
 	*x = UpdateDecisionResponse{}
-	mi := &file_specgraph_v1_decision_proto_msgTypes[8]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -597,7 +929,7 @@ func (x *UpdateDecisionResponse) String() string {
 func (*UpdateDecisionResponse) ProtoMessage() {}
 
 func (x *UpdateDecisionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_decision_proto_msgTypes[8]
+	mi := &file_specgraph_v1_decision_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -610,7 +942,7 @@ func (x *UpdateDecisionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateDecisionResponse.ProtoReflect.Descriptor instead.
 func (*UpdateDecisionResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{8}
+	return file_specgraph_v1_decision_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UpdateDecisionResponse) GetDecision() *Decision {
@@ -624,7 +956,10 @@ var File_specgraph_v1_decision_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_decision_proto_rawDesc = "" +
 	"\n" +
-	"\x1bspecgraph/v1/decision.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf2\x02\n" +
+	"\x1bspecgraph/v1/decision.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"E\n" +
+	"\x13RejectedAlternative\x12\x16\n" +
+	"\x06option\x18\x01 \x01(\tR\x06option\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\xcd\x05\n" +
 	"\bDecision\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x14\n" +
@@ -638,32 +973,70 @@ const file_specgraph_v1_decision_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12!\n" +
 	"\fcontent_hash\x18\n" +
-	" \x01(\tR\vcontentHash\"{\n" +
+	" \x01(\tR\vcontentHash\x12\x1a\n" +
+	"\bquestion\x18\v \x01(\tR\bquestion\x12V\n" +
+	"\x15rejected_alternatives\x18\f \x03(\v2!.specgraph.v1.RejectedAlternativeR\x14rejectedAlternatives\x12@\n" +
+	"\n" +
+	"confidence\x18\r \x01(\x0e2 .specgraph.v1.DecisionConfidenceR\n" +
+	"confidence\x12\x12\n" +
+	"\x04tags\x18\x0e \x03(\tR\x04tags\x121\n" +
+	"\x05scope\x18\x0f \x01(\x0e2\x1b.specgraph.v1.DecisionScopeR\x05scope\x12\x1f\n" +
+	"\vorigin_spec\x18\x10 \x01(\tR\n" +
+	"originSpec\x12!\n" +
+	"\forigin_stage\x18\x11 \x01(\tR\voriginStage\x12\x18\n" +
+	"\aversion\x18\x12 \x01(\x05R\aversion\"\xbc\x03\n" +
 	"\x15CreateDecisionRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1a\n" +
 	"\bdecision\x18\x03 \x01(\tR\bdecision\x12\x1c\n" +
-	"\trationale\x18\x04 \x01(\tR\trationale\"(\n" +
+	"\trationale\x18\x04 \x01(\tR\trationale\x12\x1a\n" +
+	"\bquestion\x18\x05 \x01(\tR\bquestion\x12V\n" +
+	"\x15rejected_alternatives\x18\x06 \x03(\v2!.specgraph.v1.RejectedAlternativeR\x14rejectedAlternatives\x12@\n" +
+	"\n" +
+	"confidence\x18\a \x01(\x0e2 .specgraph.v1.DecisionConfidenceR\n" +
+	"confidence\x12\x12\n" +
+	"\x04tags\x18\b \x03(\tR\x04tags\x121\n" +
+	"\x05scope\x18\t \x01(\x0e2\x1b.specgraph.v1.DecisionScopeR\x05scope\x12\x1f\n" +
+	"\vorigin_spec\x18\n" +
+	" \x01(\tR\n" +
+	"originSpec\x12!\n" +
+	"\forigin_stage\x18\v \x01(\tR\voriginStage\"(\n" +
 	"\x12GetDecisionRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\"b\n" +
 	"\x14ListDecisionsRequest\x124\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x1c.specgraph.v1.DecisionStatusR\x06status\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\"M\n" +
 	"\x15ListDecisionsResponse\x124\n" +
-	"\tdecisions\x18\x01 \x03(\v2\x16.specgraph.v1.DecisionR\tdecisions\"\xb1\x02\n" +
+	"\tdecisions\x18\x01 \x03(\v2\x16.specgraph.v1.DecisionR\tdecisions\"\xd2\x05\n" +
 	"\x15UpdateDecisionRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x19\n" +
 	"\x05title\x18\x02 \x01(\tH\x00R\x05title\x88\x01\x01\x129\n" +
 	"\x06status\x18\x03 \x01(\x0e2\x1c.specgraph.v1.DecisionStatusH\x01R\x06status\x88\x01\x01\x12\x1f\n" +
 	"\bdecision\x18\x04 \x01(\tH\x02R\bdecision\x88\x01\x01\x12!\n" +
 	"\trationale\x18\x05 \x01(\tH\x03R\trationale\x88\x01\x01\x12(\n" +
-	"\rsuperseded_by\x18\x06 \x01(\tH\x04R\fsupersededBy\x88\x01\x01B\b\n" +
+	"\rsuperseded_by\x18\x06 \x01(\tH\x04R\fsupersededBy\x88\x01\x01\x12\x1f\n" +
+	"\bquestion\x18\a \x01(\tH\x05R\bquestion\x88\x01\x01\x12E\n" +
+	"\n" +
+	"confidence\x18\b \x01(\x0e2 .specgraph.v1.DecisionConfidenceH\x06R\n" +
+	"confidence\x88\x01\x01\x12\x12\n" +
+	"\x04tags\x18\t \x03(\tR\x04tags\x126\n" +
+	"\x05scope\x18\n" +
+	" \x01(\x0e2\x1b.specgraph.v1.DecisionScopeH\aR\x05scope\x88\x01\x01\x12$\n" +
+	"\vorigin_spec\x18\v \x01(\tH\bR\n" +
+	"originSpec\x88\x01\x01\x12&\n" +
+	"\forigin_stage\x18\f \x01(\tH\tR\voriginStage\x88\x01\x01\x12V\n" +
+	"\x15rejected_alternatives\x18\r \x03(\v2!.specgraph.v1.RejectedAlternativeR\x14rejectedAlternativesB\b\n" +
 	"\x06_titleB\t\n" +
 	"\a_statusB\v\n" +
 	"\t_decisionB\f\n" +
 	"\n" +
 	"_rationaleB\x10\n" +
-	"\x0e_superseded_by\"L\n" +
+	"\x0e_superseded_byB\v\n" +
+	"\t_questionB\r\n" +
+	"\v_confidenceB\b\n" +
+	"\x06_scopeB\x0e\n" +
+	"\f_origin_specB\x0f\n" +
+	"\r_origin_stage\"L\n" +
 	"\x16CreateDecisionResponse\x122\n" +
 	"\bdecision\x18\x01 \x01(\v2\x16.specgraph.v1.DecisionR\bdecision\"I\n" +
 	"\x13GetDecisionResponse\x122\n" +
@@ -675,7 +1048,17 @@ const file_specgraph_v1_decision_proto_rawDesc = "" +
 	"\x18DECISION_STATUS_PROPOSED\x10\x01\x12\x1c\n" +
 	"\x18DECISION_STATUS_ACCEPTED\x10\x02\x12\x1e\n" +
 	"\x1aDECISION_STATUS_DEPRECATED\x10\x03\x12\x1e\n" +
-	"\x1aDECISION_STATUS_SUPERSEDED\x10\x042\xf9\x02\n" +
+	"\x1aDECISION_STATUS_SUPERSEDED\x10\x04*\x94\x01\n" +
+	"\x12DecisionConfidence\x12#\n" +
+	"\x1fDECISION_CONFIDENCE_UNSPECIFIED\x10\x00\x12\x1c\n" +
+	"\x18DECISION_CONFIDENCE_HIGH\x10\x01\x12\x1e\n" +
+	"\x1aDECISION_CONFIDENCE_MEDIUM\x10\x02\x12\x1b\n" +
+	"\x17DECISION_CONFIDENCE_LOW\x10\x03*|\n" +
+	"\rDecisionScope\x12\x1e\n" +
+	"\x1aDECISION_SCOPE_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16DECISION_SCOPE_PROJECT\x10\x01\x12\x17\n" +
+	"\x13DECISION_SCOPE_TEAM\x10\x02\x12\x16\n" +
+	"\x12DECISION_SCOPE_ORG\x10\x032\xf9\x02\n" +
 	"\x0fDecisionService\x12[\n" +
 	"\x0eCreateDecision\x12#.specgraph.v1.CreateDecisionRequest\x1a$.specgraph.v1.CreateDecisionResponse\x12R\n" +
 	"\vGetDecision\x12 .specgraph.v1.GetDecisionRequest\x1a!.specgraph.v1.GetDecisionResponse\x12X\n" +
@@ -694,44 +1077,56 @@ func file_specgraph_v1_decision_proto_rawDescGZIP() []byte {
 	return file_specgraph_v1_decision_proto_rawDescData
 }
 
-var file_specgraph_v1_decision_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_specgraph_v1_decision_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_specgraph_v1_decision_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_specgraph_v1_decision_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_specgraph_v1_decision_proto_goTypes = []any{
 	(DecisionStatus)(0),            // 0: specgraph.v1.DecisionStatus
-	(*Decision)(nil),               // 1: specgraph.v1.Decision
-	(*CreateDecisionRequest)(nil),  // 2: specgraph.v1.CreateDecisionRequest
-	(*GetDecisionRequest)(nil),     // 3: specgraph.v1.GetDecisionRequest
-	(*ListDecisionsRequest)(nil),   // 4: specgraph.v1.ListDecisionsRequest
-	(*ListDecisionsResponse)(nil),  // 5: specgraph.v1.ListDecisionsResponse
-	(*UpdateDecisionRequest)(nil),  // 6: specgraph.v1.UpdateDecisionRequest
-	(*CreateDecisionResponse)(nil), // 7: specgraph.v1.CreateDecisionResponse
-	(*GetDecisionResponse)(nil),    // 8: specgraph.v1.GetDecisionResponse
-	(*UpdateDecisionResponse)(nil), // 9: specgraph.v1.UpdateDecisionResponse
-	(*timestamppb.Timestamp)(nil),  // 10: google.protobuf.Timestamp
+	(DecisionConfidence)(0),        // 1: specgraph.v1.DecisionConfidence
+	(DecisionScope)(0),             // 2: specgraph.v1.DecisionScope
+	(*RejectedAlternative)(nil),    // 3: specgraph.v1.RejectedAlternative
+	(*Decision)(nil),               // 4: specgraph.v1.Decision
+	(*CreateDecisionRequest)(nil),  // 5: specgraph.v1.CreateDecisionRequest
+	(*GetDecisionRequest)(nil),     // 6: specgraph.v1.GetDecisionRequest
+	(*ListDecisionsRequest)(nil),   // 7: specgraph.v1.ListDecisionsRequest
+	(*ListDecisionsResponse)(nil),  // 8: specgraph.v1.ListDecisionsResponse
+	(*UpdateDecisionRequest)(nil),  // 9: specgraph.v1.UpdateDecisionRequest
+	(*CreateDecisionResponse)(nil), // 10: specgraph.v1.CreateDecisionResponse
+	(*GetDecisionResponse)(nil),    // 11: specgraph.v1.GetDecisionResponse
+	(*UpdateDecisionResponse)(nil), // 12: specgraph.v1.UpdateDecisionResponse
+	(*timestamppb.Timestamp)(nil),  // 13: google.protobuf.Timestamp
 }
 var file_specgraph_v1_decision_proto_depIdxs = []int32{
 	0,  // 0: specgraph.v1.Decision.status:type_name -> specgraph.v1.DecisionStatus
-	10, // 1: specgraph.v1.Decision.created_at:type_name -> google.protobuf.Timestamp
-	10, // 2: specgraph.v1.Decision.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 3: specgraph.v1.ListDecisionsRequest.status:type_name -> specgraph.v1.DecisionStatus
-	1,  // 4: specgraph.v1.ListDecisionsResponse.decisions:type_name -> specgraph.v1.Decision
-	0,  // 5: specgraph.v1.UpdateDecisionRequest.status:type_name -> specgraph.v1.DecisionStatus
-	1,  // 6: specgraph.v1.CreateDecisionResponse.decision:type_name -> specgraph.v1.Decision
-	1,  // 7: specgraph.v1.GetDecisionResponse.decision:type_name -> specgraph.v1.Decision
-	1,  // 8: specgraph.v1.UpdateDecisionResponse.decision:type_name -> specgraph.v1.Decision
-	2,  // 9: specgraph.v1.DecisionService.CreateDecision:input_type -> specgraph.v1.CreateDecisionRequest
-	3,  // 10: specgraph.v1.DecisionService.GetDecision:input_type -> specgraph.v1.GetDecisionRequest
-	4,  // 11: specgraph.v1.DecisionService.ListDecisions:input_type -> specgraph.v1.ListDecisionsRequest
-	6,  // 12: specgraph.v1.DecisionService.UpdateDecision:input_type -> specgraph.v1.UpdateDecisionRequest
-	7,  // 13: specgraph.v1.DecisionService.CreateDecision:output_type -> specgraph.v1.CreateDecisionResponse
-	8,  // 14: specgraph.v1.DecisionService.GetDecision:output_type -> specgraph.v1.GetDecisionResponse
-	5,  // 15: specgraph.v1.DecisionService.ListDecisions:output_type -> specgraph.v1.ListDecisionsResponse
-	9,  // 16: specgraph.v1.DecisionService.UpdateDecision:output_type -> specgraph.v1.UpdateDecisionResponse
-	13, // [13:17] is the sub-list for method output_type
-	9,  // [9:13] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	13, // 1: specgraph.v1.Decision.created_at:type_name -> google.protobuf.Timestamp
+	13, // 2: specgraph.v1.Decision.updated_at:type_name -> google.protobuf.Timestamp
+	3,  // 3: specgraph.v1.Decision.rejected_alternatives:type_name -> specgraph.v1.RejectedAlternative
+	1,  // 4: specgraph.v1.Decision.confidence:type_name -> specgraph.v1.DecisionConfidence
+	2,  // 5: specgraph.v1.Decision.scope:type_name -> specgraph.v1.DecisionScope
+	3,  // 6: specgraph.v1.CreateDecisionRequest.rejected_alternatives:type_name -> specgraph.v1.RejectedAlternative
+	1,  // 7: specgraph.v1.CreateDecisionRequest.confidence:type_name -> specgraph.v1.DecisionConfidence
+	2,  // 8: specgraph.v1.CreateDecisionRequest.scope:type_name -> specgraph.v1.DecisionScope
+	0,  // 9: specgraph.v1.ListDecisionsRequest.status:type_name -> specgraph.v1.DecisionStatus
+	4,  // 10: specgraph.v1.ListDecisionsResponse.decisions:type_name -> specgraph.v1.Decision
+	0,  // 11: specgraph.v1.UpdateDecisionRequest.status:type_name -> specgraph.v1.DecisionStatus
+	1,  // 12: specgraph.v1.UpdateDecisionRequest.confidence:type_name -> specgraph.v1.DecisionConfidence
+	2,  // 13: specgraph.v1.UpdateDecisionRequest.scope:type_name -> specgraph.v1.DecisionScope
+	3,  // 14: specgraph.v1.UpdateDecisionRequest.rejected_alternatives:type_name -> specgraph.v1.RejectedAlternative
+	4,  // 15: specgraph.v1.CreateDecisionResponse.decision:type_name -> specgraph.v1.Decision
+	4,  // 16: specgraph.v1.GetDecisionResponse.decision:type_name -> specgraph.v1.Decision
+	4,  // 17: specgraph.v1.UpdateDecisionResponse.decision:type_name -> specgraph.v1.Decision
+	5,  // 18: specgraph.v1.DecisionService.CreateDecision:input_type -> specgraph.v1.CreateDecisionRequest
+	6,  // 19: specgraph.v1.DecisionService.GetDecision:input_type -> specgraph.v1.GetDecisionRequest
+	7,  // 20: specgraph.v1.DecisionService.ListDecisions:input_type -> specgraph.v1.ListDecisionsRequest
+	9,  // 21: specgraph.v1.DecisionService.UpdateDecision:input_type -> specgraph.v1.UpdateDecisionRequest
+	10, // 22: specgraph.v1.DecisionService.CreateDecision:output_type -> specgraph.v1.CreateDecisionResponse
+	11, // 23: specgraph.v1.DecisionService.GetDecision:output_type -> specgraph.v1.GetDecisionResponse
+	8,  // 24: specgraph.v1.DecisionService.ListDecisions:output_type -> specgraph.v1.ListDecisionsResponse
+	12, // 25: specgraph.v1.DecisionService.UpdateDecision:output_type -> specgraph.v1.UpdateDecisionResponse
+	22, // [22:26] is the sub-list for method output_type
+	18, // [18:22] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_decision_proto_init() }
@@ -739,14 +1134,14 @@ func file_specgraph_v1_decision_proto_init() {
 	if File_specgraph_v1_decision_proto != nil {
 		return
 	}
-	file_specgraph_v1_decision_proto_msgTypes[5].OneofWrappers = []any{}
+	file_specgraph_v1_decision_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_decision_proto_rawDesc), len(file_specgraph_v1_decision_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   9,
+			NumEnums:      3,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
