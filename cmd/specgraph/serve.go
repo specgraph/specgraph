@@ -22,6 +22,7 @@ import (
 	"github.com/specgraph/specgraph/internal/docker"
 	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/specgraph/specgraph/internal/linter"
+	"github.com/specgraph/specgraph/internal/notify"
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/storage/memgraph"
 	syncpkg "github.com/specgraph/specgraph/internal/sync"
@@ -89,6 +90,9 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		}()
 		sweeperCtx, stopSweeper := context.WithCancel(ctx)
 		defer stopSweeper()
+
+		// Register change notification subscribers.
+		store.Subscribe(notify.NewImpactLogger())
 
 		credPath := xdg.CredentialsFile()
 		authStore, err := auth.NewConfigStore(cfg.Auth, credPath)

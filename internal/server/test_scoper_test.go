@@ -25,6 +25,8 @@ func (s *testScoper) Scoped(_ context.Context, _ string) (storage.ScopedBackend,
 	return s.backend, nil
 }
 
+func (s *testScoper) Subscribe(_ storage.ChangeSubscriber) {}
+
 // wrapTestProject injects a default X-Specgraph-Project header into incoming
 // requests (if not already set), then applies ProjectMiddleware to extract
 // it into context. This allows test clients to work without setting the header.
