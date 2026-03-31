@@ -22,6 +22,8 @@ func (f *fakeScoper) Scoped(_ context.Context, _ string) (storage.ScopedBackend,
 	return &fakeProjectBackend{}, nil
 }
 
+func (f *fakeScoper) Subscribe(_ storage.ChangeSubscriber) {}
+
 type fakeProjectBackend struct {
 	stubBackend
 }

@@ -31,18 +31,25 @@ var (
 	_ storage.Scoper              = (*Store)(nil)
 	_ storage.ScopedBackend       = (*Store)(nil)
 	_ storage.ConversationBackend = (*Store)(nil)
+	_ storage.Subscribable        = (*Store)(nil)
 )
+
+// sharedState holds state shared between root and scoped Store instances.
+type sharedState struct {
+	subscribers []storage.ChangeSubscriber
+}
 
 // Store implements storage.Backend using Memgraph (Bolt protocol).
 type Store struct {
 	driver     neo4j.DriverWithContext
-	nowFunc    func() time.Time    // injectable clock; defaults to time.Now
+	nowFunc    func() time.Time     // injectable clock; defaults to time.Now
 	sliceOps   storage.SliceBackend // injectable slice operations; defaults to self
 	project    string               // project slug for graph namespacing
 	ownsDriver bool                 // true for stores created by New(); false for Scoped() stores
 	username   string               // optional Bolt auth username
 	password   string               // optional Bolt auth password
 	useTLS     bool                 // if true, use bolt+s:// scheme for TLS
+	shared     *sharedState         // shared between root and scoped stores
 }
 
 // Option configures a Store.
@@ -85,7 +92,7 @@ func WithTLS(enabled bool) Option {
 // New creates a new Memgraph-backed Store and verifies connectivity.
 func New(ctx context.Context, boltURI string, opts ...Option) (*Store, error) {
 	// Apply options first to determine auth and TLS settings.
-	s := &Store{nowFunc: time.Now, ownsDriver: true}
+	s := &Store{nowFunc: time.Now, ownsDriver: true, shared: &sharedState{}}
 	for _, o := range opts {
 		o(s)
 	}
@@ -173,12 +180,18 @@ func (s *Store) Scoped(ctx context.Context, project string) (storage.ScopedBacke
 	if project == "" {
 		return nil, fmt.Errorf("memgraph: project slug required")
 	}
-	scoped := &Store{driver: s.driver, nowFunc: s.nowFunc, project: project}
+	scoped := &Store{driver: s.driver, nowFunc: s.nowFunc, project: project, shared: s.shared}
 	scoped.sliceOps = scoped // default to self; inherit pattern, not parent's ops
 	if err := scoped.ensureProjectNode(ctx); err != nil {
 		return nil, err
 	}
 	return scoped, nil
+}
+
+// Subscribe registers a subscriber for change notifications.
+// Must be called before any writes (at startup). Not goroutine-safe.
+func (s *Store) Subscribe(sub storage.ChangeSubscriber) {
+	s.shared.subscribers = append(s.shared.subscribers, sub)
 }
 
 const (

@@ -22,6 +22,8 @@ func (e *errorScoper) Scoped(_ context.Context, _ string) (storage.ScopedBackend
 	return nil, e.err
 }
 
+func (e *errorScoper) Subscribe(_ storage.ChangeSubscriber) {}
+
 func TestScopeStore_MissingProjectHeader(t *testing.T) {
 	scoper := &testScoper{backend: &stubBackend{}}
 	_, err := server.ScopeStore(context.Background(), scoper)
