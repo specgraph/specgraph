@@ -24,7 +24,7 @@ func TestDriftReport(t *testing.T) {
 			},
 		},
 	}
-	got := DriftReport(reports)
+	got := DriftReport(reports, 0)
 	if !strings.Contains(got, "## login-api") {
 		t.Error("missing spec heading")
 	}
@@ -37,15 +37,22 @@ func TestDriftReportWithError(t *testing.T) {
 	reports := []*specv1.DriftReport{
 		{SpecSlug: "broken", ErrorMessage: "storage unavailable"},
 	}
-	got := DriftReport(reports)
+	got := DriftReport(reports, 0)
 	if !strings.Contains(got, "**Error:** storage unavailable") {
 		t.Error("missing error message")
 	}
 }
 
 func TestDriftReportEmpty(t *testing.T) {
-	got := DriftReport(nil)
+	got := DriftReport(nil, 0)
 	if !strings.Contains(got, "No drift detected.") {
 		t.Error("expected empty message")
+	}
+}
+
+func TestDriftReportSkippedCount(t *testing.T) {
+	got := DriftReport(nil, 3)
+	if !strings.Contains(got, "3 spec(s) skipped") {
+		t.Error("expected skipped count message")
 	}
 }

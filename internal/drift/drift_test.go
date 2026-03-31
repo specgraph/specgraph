@@ -48,7 +48,7 @@ func (m *mockDriftBackend) ListSpecs(_ context.Context, stage, _ string, _ int) 
 	}
 	var result []*storage.Spec
 	for _, s := range m.specs {
-		if string(s.Stage) == stage {
+		if stage == "" || string(s.Stage) == stage {
 			result = append(result, s)
 		}
 	}
@@ -87,16 +87,17 @@ func TestCheckDependencyDrift(t *testing.T) {
 	}
 
 	engine := drift.NewEngine(backend, nil)
-	reports, err := engine.Check(context.Background(), "downstream", "")
+	result, err := engine.Check(context.Background(), "downstream", "")
 	require.NoError(t, err)
-	require.Len(t, reports, 1)
-	require.Len(t, reports[0].Items, 1)
-	require.Equal(t, storage.DriftTypeDependency, reports[0].Items[0].Type)
-	require.Equal(t, storage.DriftSeverityMedium, reports[0].Items[0].Severity)
-	require.Equal(t, "downstream", reports[0].Items[0].SpecSlug)
-	require.Equal(t, "upstream", reports[0].Items[0].UpstreamSlug)
-	require.Equal(t, "aaa", reports[0].Items[0].ExpectedHash)
-	require.Equal(t, "bbb", reports[0].Items[0].ActualHash)
+	require.Len(t, result.Reports, 1)
+	require.Len(t, result.Reports[0].Items, 1)
+	require.Equal(t, storage.DriftTypeDependency, result.Reports[0].Items[0].Type)
+	require.Equal(t, storage.DriftSeverityMedium, result.Reports[0].Items[0].Severity)
+	require.Equal(t, "downstream", result.Reports[0].Items[0].SpecSlug)
+	require.Equal(t, "upstream", result.Reports[0].Items[0].UpstreamSlug)
+	require.Equal(t, "aaa", result.Reports[0].Items[0].ExpectedHash)
+	require.Equal(t, "bbb", result.Reports[0].Items[0].ActualHash)
+	require.Equal(t, int32(0), result.SkippedCount, "single-spec check should not have skipped count")
 }
 
 func TestCheckDependencyDrift_NoDrift(t *testing.T) {
@@ -124,9 +125,9 @@ func TestCheckDependencyDrift_NoDrift(t *testing.T) {
 	}
 
 	engine := drift.NewEngine(backend, nil)
-	reports, err := engine.Check(context.Background(), "downstream", "")
+	result, err := engine.Check(context.Background(), "downstream", "")
 	require.NoError(t, err)
-	require.Empty(t, reports, "no-drift specs should be filtered out")
+	require.Empty(t, result.Reports, "no-drift specs should be filtered out")
 }
 
 func TestCheckDependencyDrift_EmptyEdgeHash(t *testing.T) {
@@ -154,12 +155,12 @@ func TestCheckDependencyDrift_EmptyEdgeHash(t *testing.T) {
 	}
 
 	engine := drift.NewEngine(backend, nil)
-	reports, err := engine.Check(context.Background(), "downstream", "")
+	result, err := engine.Check(context.Background(), "downstream", "")
 	require.NoError(t, err)
-	require.Len(t, reports, 1)
-	require.Len(t, reports[0].Items, 1, "empty edge hash should always produce drift")
-	require.Equal(t, "", reports[0].Items[0].ExpectedHash)
-	require.Equal(t, "bbb", reports[0].Items[0].ActualHash)
+	require.Len(t, result.Reports, 1)
+	require.Len(t, result.Reports[0].Items, 1, "empty edge hash should always produce drift")
+	require.Equal(t, "", result.Reports[0].Items[0].ExpectedHash)
+	require.Equal(t, "bbb", result.Reports[0].Items[0].ActualHash)
 }
 
 func TestCheckAllSpecs(t *testing.T) {
@@ -198,12 +199,14 @@ func TestCheckAllSpecs(t *testing.T) {
 	}
 
 	engine := drift.NewEngine(backend, nil)
-	reports, err := engine.Check(context.Background(), "", "")
+	result, err := engine.Check(context.Background(), "", "")
 	require.NoError(t, err)
-	require.Len(t, reports, 2)
+	require.Len(t, result.Reports, 2)
+	// "upstream" is approved (not done/amended), so it was skipped.
+	require.Equal(t, int32(1), result.SkippedCount)
 
 	// Both specs should have drift items since upstream content hash changed.
-	for _, r := range reports {
+	for _, r := range result.Reports {
 		require.Len(t, r.Items, 1, "spec %s should have 1 drift item", r.SpecSlug)
 	}
 }
@@ -235,18 +238,18 @@ func TestCheckDrift_ScopeFilter(t *testing.T) {
 	engine := drift.NewEngine(backend, nil)
 
 	// scope="interfaces" -> no items but ErrorMessage indicates not yet implemented.
-	reports, err := engine.Check(context.Background(), "downstream", "interfaces")
+	result, err := engine.Check(context.Background(), "downstream", "interfaces")
 	require.NoError(t, err)
-	require.Len(t, reports, 1)
-	require.Empty(t, reports[0].Items)
-	require.Equal(t, "interface drift checking not yet implemented", reports[0].ErrorMessage)
+	require.Len(t, result.Reports, 1)
+	require.Empty(t, result.Reports[0].Items)
+	require.Equal(t, "interface drift checking not yet implemented", result.Reports[0].ErrorMessage)
 
 	// scope="deps" -> drift found.
-	reports, err = engine.Check(context.Background(), "downstream", "deps")
+	result, err = engine.Check(context.Background(), "downstream", "deps")
 	require.NoError(t, err)
-	require.Len(t, reports, 1)
-	require.Len(t, reports[0].Items, 1)
-	require.Equal(t, storage.DriftTypeDependency, reports[0].Items[0].Type)
+	require.Len(t, result.Reports, 1)
+	require.Len(t, result.Reports[0].Items, 1)
+	require.Equal(t, storage.DriftTypeDependency, result.Reports[0].Items[0].Type)
 }
 
 func TestCheckDrift_ScopeVerify(t *testing.T) {
@@ -276,11 +279,11 @@ func TestCheckDrift_ScopeVerify(t *testing.T) {
 	engine := drift.NewEngine(backend, nil)
 
 	// scope="verify" -> no items but ErrorMessage indicates not yet implemented.
-	reports, err := engine.Check(context.Background(), "downstream", "verify")
+	result, err := engine.Check(context.Background(), "downstream", "verify")
 	require.NoError(t, err)
-	require.Len(t, reports, 1)
-	require.Equal(t, "verify drift checking not yet implemented", reports[0].ErrorMessage)
-	require.Empty(t, reports[0].Items)
+	require.Len(t, result.Reports, 1)
+	require.Equal(t, "verify drift checking not yet implemented", result.Reports[0].ErrorMessage)
+	require.Empty(t, result.Reports[0].Items)
 }
 
 func TestCheck_InvalidScope(t *testing.T) {
@@ -324,6 +327,25 @@ func TestCheck_ListSpecsError_AmendedStageOnly(t *testing.T) {
 	require.ErrorContains(t, err, "amended stage query failed")
 }
 
+func TestCheck_ListAllSpecsError(t *testing.T) {
+	backend := &mockDriftBackend{
+		specs: map[string]*storage.Spec{
+			"done-spec": {
+				Slug:  "done-spec",
+				Stage: storage.SpecStageDone,
+			},
+		},
+		listErrForStage: map[string]error{
+			"": errors.New("all-specs query failed"),
+		},
+	}
+	engine := drift.NewEngine(backend, nil)
+
+	_, err := engine.Check(context.Background(), "", "")
+	require.Error(t, err)
+	require.ErrorContains(t, err, "all-specs query failed")
+}
+
 func TestCheckSpec_GetDependenciesError(t *testing.T) {
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
@@ -338,12 +360,12 @@ func TestCheckSpec_GetDependenciesError(t *testing.T) {
 	}
 	engine := drift.NewEngine(backend, nil)
 
-	reports, err := engine.Check(context.Background(), "my-spec", "deps")
+	result, err := engine.Check(context.Background(), "my-spec", "deps")
 	require.NoError(t, err)
-	require.Len(t, reports, 1)
-	require.Equal(t, "my-spec", reports[0].SpecSlug)
-	require.Equal(t, "drift check failed", reports[0].ErrorMessage)
-	require.Empty(t, reports[0].Items)
+	require.Len(t, result.Reports, 1)
+	require.Equal(t, "my-spec", result.Reports[0].SpecSlug)
+	require.Equal(t, "drift check failed", result.Reports[0].ErrorMessage)
+	require.Empty(t, result.Reports[0].Items)
 }
 
 func TestCheck_NonDoneStageBySlug(t *testing.T) {
@@ -410,12 +432,12 @@ func TestCheckSpec_MissingDependencyCreatesInfoItem(t *testing.T) {
 	}
 	engine := drift.NewEngine(backend, nil)
 
-	reports, err := engine.Check(context.Background(), "downstream", "deps")
+	result, err := engine.Check(context.Background(), "downstream", "deps")
 	require.NoError(t, err)
-	require.Len(t, reports, 1)
-	require.Len(t, reports[0].Items, 1)
+	require.Len(t, result.Reports, 1)
+	require.Len(t, result.Reports[0].Items, 1)
 
-	item := reports[0].Items[0]
+	item := result.Reports[0].Items[0]
 	require.Equal(t, storage.DriftTypeDependency, item.Type)
 	require.Equal(t, storage.DriftSeverityMedium, item.Severity)
 	require.Contains(t, item.Description, "gone-dep")
@@ -454,17 +476,17 @@ func TestCheck_UpstreamGetSpecError(t *testing.T) {
 	}
 
 	engine := drift.NewEngine(backend, nil)
-	reports, err := engine.Check(context.Background(), "downstream", "deps")
+	result, err := engine.Check(context.Background(), "downstream", "deps")
 
 	// Top-level error should be nil (partial success).
 	require.NoError(t, err)
 	// The report for "downstream" should have a non-empty ErrorMessage
 	// because checkSpec failed when fetching the upstream.
-	require.Len(t, reports, 1)
-	require.Equal(t, "downstream", reports[0].SpecSlug)
-	require.NotEmpty(t, reports[0].ErrorMessage, "expected ErrorMessage for mid-traversal failure")
-	require.Equal(t, "drift check failed", reports[0].ErrorMessage)
-	require.Empty(t, reports[0].Items)
+	require.Len(t, result.Reports, 1)
+	require.Equal(t, "downstream", result.Reports[0].SpecSlug)
+	require.NotEmpty(t, result.Reports[0].ErrorMessage, "expected ErrorMessage for mid-traversal failure")
+	require.Equal(t, "drift check failed", result.Reports[0].ErrorMessage)
+	require.Empty(t, result.Reports[0].Items)
 }
 
 func TestCheckDrift_AmendedSpecEligibleBySlug(t *testing.T) {
@@ -492,10 +514,10 @@ func TestCheckDrift_AmendedSpecEligibleBySlug(t *testing.T) {
 	}
 
 	engine := drift.NewEngine(backend, nil)
-	reports, err := engine.Check(context.Background(), "amended-spec", "")
+	result, err := engine.Check(context.Background(), "amended-spec", "")
 	require.NoError(t, err)
-	require.Len(t, reports, 1)
-	require.Equal(t, "amended-spec", reports[0].SpecSlug)
-	require.Len(t, reports[0].Items, 1)
-	require.Equal(t, storage.DriftTypeDependency, reports[0].Items[0].Type)
+	require.Len(t, result.Reports, 1)
+	require.Equal(t, "amended-spec", result.Reports[0].SpecSlug)
+	require.Len(t, result.Reports[0].Items, 1)
+	require.Equal(t, storage.DriftTypeDependency, result.Reports[0].Items[0].Type)
 }

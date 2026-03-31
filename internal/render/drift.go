@@ -11,8 +11,9 @@ import (
 )
 
 // DriftReport renders drift reports as markdown grouped by spec.
-func DriftReport(reports []*specv1.DriftReport) string {
-	if len(reports) == 0 {
+// skippedCount indicates specs not eligible for drift checking (not done/amended).
+func DriftReport(reports []*specv1.DriftReport, skippedCount int32) string {
+	if len(reports) == 0 && skippedCount == 0 {
 		return "No drift detected.\n"
 	}
 
@@ -23,7 +24,7 @@ func DriftReport(reports []*specv1.DriftReport) string {
 			break
 		}
 	}
-	if !hasContent {
+	if !hasContent && skippedCount == 0 {
 		return "No drift detected.\n"
 	}
 
@@ -52,6 +53,9 @@ func DriftReport(reports []*specv1.DriftReport) string {
 			fmt.Fprintf(&b, "\n**Error:** %s\n", errMsg)
 		}
 		b.WriteString("\n")
+	}
+	if skippedCount > 0 {
+		fmt.Fprintf(&b, "%d spec(s) skipped (not in done/amended stage).\n", skippedCount)
 	}
 	return b.String()
 }
