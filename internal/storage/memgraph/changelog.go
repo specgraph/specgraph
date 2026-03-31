@@ -135,6 +135,15 @@ func (s *Store) createChangeLog(ctx context.Context, slug string, entry *storage
 		// the version changed between the mutation and this call.
 		return fmt.Errorf("memgraph: create changelog for %q (version %d): %w", slug, entry.Version, storage.ErrConcurrentModification)
 	}
+	storage.StashChangeEvent(ctx, &storage.ChangeEvent{
+		Slug:        slug,
+		Version:     entry.Version,
+		Stage:       entry.Stage,
+		ContentHash: entry.ContentHash,
+		Checkpoint:  entry.Checkpoint,
+		Summary:     entry.Summary,
+		Reason:      entry.Reason,
+	})
 	return nil
 }
 

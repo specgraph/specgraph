@@ -31,4 +31,5 @@ type Scoper interface {
 	// The returned backend shares the underlying connection but scopes
 	// all queries to the specified project.
 	Scoped(ctx context.Context, project string) (ScopedBackend, error)
+	Subscribable
 }

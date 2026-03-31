@@ -8,6 +8,7 @@ package memgraph_test
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/storage"
@@ -396,4 +397,100 @@ func TestUpdateSpec_NoChangeLogOnNoOp(t *testing.T) {
 	entries, err := store.ListChanges(ctx, "test-noop-cl", storage.ChangeLogFilter{})
 	require.NoError(t, err)
 	assert.Len(t, entries, 1) // only creation, no update changelog
+}
+
+// changeCapture is a minimal ChangeSubscriber that records received events.
+type changeCapture struct {
+	mu     sync.Mutex
+	events []*storage.ChangeEvent
+}
+
+func (c *changeCapture) OnSpecChanged(_ context.Context, event *storage.ChangeEvent) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	cp := *event
+	c.events = append(c.events, &cp)
+}
+
+func (c *changeCapture) received() []*storage.ChangeEvent {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make([]*storage.ChangeEvent, len(c.events))
+	copy(out, c.events)
+	return out
+}
+
+func TestSubscribe_FiresOnCreateSpec(t *testing.T) {
+	clearDatabase(t)
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	cap := &changeCapture{}
+	store.Subscribe(cap)
+
+	_, err = store.CreateSpec(ctx, "sub-fire-test", "Test intent", "p2", "medium")
+	require.NoError(t, err)
+
+	events := cap.received()
+	require.NotEmpty(t, events, "subscriber should have received at least one event after CreateSpec")
+	assert.Equal(t, "sub-fire-test", events[0].Slug)
+}
+
+func TestSubscribe_GraphBackendAvailableInContext(t *testing.T) {
+	clearDatabase(t)
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	var gotBackend storage.GraphBackend
+	sub := &contextCheckSubscriber{
+		onChanged: func(notifyCtx context.Context, _ *storage.ChangeEvent) {
+			gotBackend, _ = storage.GraphBackendFromContext(notifyCtx)
+		},
+	}
+	store.Subscribe(sub)
+
+	_, err = store.CreateSpec(ctx, "sub-ctx-test", "intent", "p2", "medium")
+	require.NoError(t, err)
+
+	assert.NotNil(t, gotBackend, "GraphBackend should be present in subscriber context")
+}
+
+func TestSubscribe_PanicInSubscriberDoesNotPropagate(t *testing.T) {
+	clearDatabase(t)
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	panicSub := &panicSubscriber{}
+	store.Subscribe(panicSub)
+
+	// CreateSpec must succeed even though the subscriber panics.
+	_, err = store.CreateSpec(ctx, "sub-panic-test", "intent", "p2", "medium")
+	assert.NoError(t, err, "transaction should not fail when subscriber panics")
+}
+
+// contextCheckSubscriber calls a provided function with the notification context.
+type contextCheckSubscriber struct {
+	onChanged func(ctx context.Context, event *storage.ChangeEvent)
+}
+
+func (s *contextCheckSubscriber) OnSpecChanged(ctx context.Context, event *storage.ChangeEvent) {
+	if s.onChanged != nil {
+		s.onChanged(ctx, event)
+	}
+}
+
+// panicSubscriber deliberately panics to verify dispatchChangeEvents recovery.
+type panicSubscriber struct{}
+
+func (panicSubscriber) OnSpecChanged(_ context.Context, _ *storage.ChangeEvent) {
+	panic("deliberate test panic")
 }
