@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -58,7 +58,7 @@ func StartMemgraph(ctx context.Context) (string, func(), error) {
 	// the Bolt protocol being fully available (see CLAUDE.md "Memgraph bolt readiness race").
 	var connErr error
 	for range 10 {
-		driver, dErr := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
+		driver, dErr := neo4j.NewDriver(boltURI, neo4j.NoAuth())
 		if dErr != nil {
 			connErr = dErr
 			time.Sleep(500 * time.Millisecond)

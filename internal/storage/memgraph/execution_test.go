@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -175,7 +175,7 @@ func TestExecution(t *testing.T) {
 		// Inject a duplicate BELONGS_TO edge to create a second path
 		// from Project to Spec — this is the graph topology that caused
 		// GetExecutionEvents to return duplicated rows before DISTINCT was added.
-		driver, dErr := neo4j.NewDriverWithContext(boltURI, neo4j.NoAuth())
+		driver, dErr := neo4j.NewDriver(boltURI, neo4j.NoAuth())
 		require.NoError(t, dErr)
 		defer driver.Close(ctx)
 		_, dErr = neo4j.ExecuteQuery(ctx, driver,
