@@ -1,6 +1,23 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.4.0](https://github.com/specgraph/specgraph/compare/v0.3.7...v0.4.0) - 2026-03-31
+
+### Code Refactoring
+
+- **server:** Remove redundant ConversationBackend type assertions (#798) ([#798](https://github.com/specgraph/specgraph/pull/798)) ([36d1ee5](https://github.com/specgraph/specgraph/commit/36d1ee5129f90a1fbae22f2abd68b2b12e85352a))
+
+### Features
+
+- Impact notification service for spec changes (spgr-w6o) (#806) ([#806](https://github.com/specgraph/specgraph/pull/806)) ([f349911](https://github.com/specgraph/specgraph/commit/f34991184493b9e6b94faf2c2134528bb3ddfe8e))
+- **server:** Expose ListChanges via ConnectRPC API (spgr-fn5) (#804) ([#804](https://github.com/specgraph/specgraph/pull/804)) ([d66c9eb](https://github.com/specgraph/specgraph/commit/d66c9ebf1489440caee25ebefd51236c130704be))
+- **e2e:** Coverage-instrumented CLI binary (spgr-6n8) (#803) ([#803](https://github.com/specgraph/specgraph/pull/803)) ([b7034bd](https://github.com/specgraph/specgraph/commit/b7034bdd2c50d837d288b50a0b0615a546ffc1e6))
+- **auth:** OIDC authentication with multi-provider support (spgr-0az) (#802) ([#802](https://github.com/specgraph/specgraph/pull/802)) ([a99871d](https://github.com/specgraph/specgraph/commit/a99871d686412a85fc3b9d3a53236f87a4df6347))
+
+### Tests
+
+- **cli:** Add lifecycle RPC error tests (spgr-a7t.15) (#800) ([#800](https://github.com/specgraph/specgraph/pull/800)) ([00c4711](https://github.com/specgraph/specgraph/commit/00c4711b5c80669f5743714219dc3170e437e06f))
+
 ## [0.3.7](https://github.com/specgraph/specgraph/compare/v0.3.6...v0.3.7) - 2026-03-28
 
 ### Bug Fixes
