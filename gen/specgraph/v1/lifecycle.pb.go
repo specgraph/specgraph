@@ -910,8 +910,11 @@ func (x *DriftCheckRequest) GetScope() DriftScope {
 // an empty items list with a non-empty error_message means the check failed,
 // not that no drift exists.
 type DriftCheckResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Reports       []*DriftReport         `protobuf:"bytes,1,rep,name=reports,proto3" json:"reports,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Reports []*DriftReport         `protobuf:"bytes,1,rep,name=reports,proto3" json:"reports,omitempty"`
+	// Number of specs skipped because they are not in done/amended stage.
+	// Only set for all-specs checks (empty slug); zero for single-spec checks.
+	SkippedCount  int32 `protobuf:"varint,2,opt,name=skipped_count,json=skippedCount,proto3" json:"skipped_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -951,6 +954,13 @@ func (x *DriftCheckResponse) GetReports() []*DriftReport {
 		return x.Reports
 	}
 	return nil
+}
+
+func (x *DriftCheckResponse) GetSkippedCount() int32 {
+	if x != nil {
+		return x.SkippedCount
+	}
+	return 0
 }
 
 type DriftAcknowledgeRequest struct {
@@ -1211,9 +1221,10 @@ const file_specgraph_v1_lifecycle_proto_rawDesc = "" +
 	"\x04spec\x18\x01 \x01(\v2\x12.specgraph.v1.SpecR\x04spec\"W\n" +
 	"\x11DriftCheckRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12.\n" +
-	"\x05scope\x18\x02 \x01(\x0e2\x18.specgraph.v1.DriftScopeR\x05scope\"I\n" +
+	"\x05scope\x18\x02 \x01(\x0e2\x18.specgraph.v1.DriftScopeR\x05scope\"n\n" +
 	"\x12DriftCheckResponse\x123\n" +
-	"\areports\x18\x01 \x03(\v2\x19.specgraph.v1.DriftReportR\areports\"x\n" +
+	"\areports\x18\x01 \x03(\v2\x19.specgraph.v1.DriftReportR\areports\x12#\n" +
+	"\rskipped_count\x18\x02 \x01(\x05R\fskippedCount\"x\n" +
 	"\x17DriftAcknowledgeRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x12\n" +
 	"\x04note\x18\x02 \x01(\tR\x04note\x12#\n" +

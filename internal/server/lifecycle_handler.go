@@ -13,12 +13,13 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // DriftChecker runs drift detection for specs.
 type DriftChecker interface {
-	Check(ctx context.Context, slug, scope string) ([]storage.DriftReport, error)
+	Check(ctx context.Context, slug, scope string) (*drift.CheckResult, error)
 }
 
 // SpecLinter runs lint validation for specs.
@@ -152,16 +153,19 @@ func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[
 	if h.driftChecker == nil {
 		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("drift checking is not configured"))
 	}
-	reports, err := h.driftChecker.Check(ctx, msg.Slug, scopeStr)
+	result, err := h.driftChecker.Check(ctx, msg.Slug, scopeStr)
 	if err != nil {
 		return nil, h.lifecycleError("CheckDrift", msg.Slug, err)
 	}
 
-	protoReports, err := driftReportsToProto(reports)
+	protoReports, err := driftReportsToProto(result.Reports)
 	if err != nil {
 		return nil, h.lifecycleError("CheckDrift", msg.Slug, err)
 	}
-	return connect.NewResponse(&specv1.DriftCheckResponse{Reports: protoReports}), nil
+	return connect.NewResponse(&specv1.DriftCheckResponse{
+		Reports:      protoReports,
+		SkippedCount: result.SkippedCount,
+	}), nil
 }
 
 // AcknowledgeDrift handles the AcknowledgeDrift RPC, marking drift as intentional.
@@ -199,13 +203,13 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	// Re-run drift check to return updated report.
 	report := &storage.DriftReport{SpecSlug: msg.Slug, Items: []storage.DriftItem{}}
 	if h.driftChecker != nil {
-		reports, driftErr := h.driftChecker.Check(ctx, msg.Slug, "")
+		result, driftErr := h.driftChecker.Check(ctx, msg.Slug, "")
 		if driftErr != nil {
 			h.logger.Error("AcknowledgeDrift: drift re-check failed",
 				slog.String("slug", msg.Slug), slog.Any("error", driftErr))
 			report.ErrorMessage = "drift re-check failed after acknowledgment"
-		} else {
-			for _, r := range reports {
+		} else if result != nil {
+			for _, r := range result.Reports {
 				if r.SpecSlug == msg.Slug {
 					report = &r
 					break

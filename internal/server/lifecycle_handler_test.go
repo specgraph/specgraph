@@ -15,6 +15,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
@@ -67,10 +68,10 @@ func (f *fakeLifecycleBackend) LifecycleAcknowledgeDrift(ctx context.Context, sl
 
 // fakeDriftChecker implements server.DriftChecker for testing.
 type fakeDriftChecker struct {
-	check func(ctx context.Context, slug, scope string) ([]storage.DriftReport, error)
+	check func(ctx context.Context, slug, scope string) (*drift.CheckResult, error)
 }
 
-func (f *fakeDriftChecker) Check(ctx context.Context, slug, scope string) ([]storage.DriftReport, error) {
+func (f *fakeDriftChecker) Check(ctx context.Context, slug, scope string) (*drift.CheckResult, error) {
 	return f.check(ctx, slug, scope)
 }
 
@@ -261,8 +262,8 @@ func TestLifecycleHandler_Abandon(t *testing.T) {
 
 func TestLifecycleHandler_CheckDrift(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
-		return []storage.DriftReport{
+	deps.drift.check = func(_ context.Context, _, _ string) (*drift.CheckResult, error) {
+		return &drift.CheckResult{Reports: []storage.DriftReport{
 			{
 				SpecSlug: "my-spec",
 				Items: []storage.DriftItem{
@@ -277,7 +278,7 @@ func TestLifecycleHandler_CheckDrift(t *testing.T) {
 					},
 				},
 			},
-		}, nil
+		}}, nil
 	}
 	client := newLifecycleClient(t, deps)
 
@@ -296,11 +297,14 @@ func TestLifecycleHandler_CheckDrift(t *testing.T) {
 
 func TestLifecycleHandler_CheckDrift_AllSpecs(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
+	deps.drift.check = func(_ context.Context, slug, _ string) (*drift.CheckResult, error) {
 		require.Empty(t, slug, "empty slug means check all specs")
-		return []storage.DriftReport{
-			{SpecSlug: "spec-a"},
-			{SpecSlug: "spec-b"},
+		return &drift.CheckResult{
+			Reports: []storage.DriftReport{
+				{SpecSlug: "spec-a"},
+				{SpecSlug: "spec-b"},
+			},
+			SkippedCount: 5,
 		}, nil
 	}
 	client := newLifecycleClient(t, deps)
@@ -310,13 +314,14 @@ func TestLifecycleHandler_CheckDrift_AllSpecs(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Reports, 2)
+	require.Equal(t, int32(5), resp.Msg.SkippedCount)
 }
 
 func TestLifecycleHandler_CheckDrift_CleanSpec(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
+	deps.drift.check = func(_ context.Context, slug, _ string) (*drift.CheckResult, error) {
 		// Clean spec — checked, no drift items, but still returns a report.
-		return []storage.DriftReport{{SpecSlug: slug, Items: []storage.DriftItem{}}}, nil
+		return &drift.CheckResult{Reports: []storage.DriftReport{{SpecSlug: slug, Items: []storage.DriftItem{}}}}, nil
 	}
 	client := newLifecycleClient(t, deps)
 
@@ -331,9 +336,9 @@ func TestLifecycleHandler_CheckDrift_CleanSpec(t *testing.T) {
 
 func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyResult(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
+	deps.drift.check = func(_ context.Context, slug, _ string) (*drift.CheckResult, error) {
 		require.Empty(t, slug, "empty slug means check all specs")
-		return nil, nil
+		return &drift.CheckResult{}, nil
 	}
 	client := newLifecycleClient(t, deps)
 
@@ -342,6 +347,7 @@ func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyResult(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.Empty(t, resp.Msg.Reports)
+	require.Equal(t, int32(0), resp.Msg.SkippedCount)
 }
 
 func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
@@ -349,7 +355,7 @@ func TestLifecycleHandler_AcknowledgeDrift(t *testing.T) {
 	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
 		return nil
 	}
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+	deps.drift.check = func(_ context.Context, _, _ string) (*drift.CheckResult, error) {
 		return nil, nil
 	}
 	client := newLifecycleClient(t, deps)
@@ -369,7 +375,7 @@ func TestLifecycleHandler_AcknowledgeDrift_AllFlag(t *testing.T) {
 	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
 		return nil
 	}
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+	deps.drift.check = func(_ context.Context, _, _ string) (*drift.CheckResult, error) {
 		return nil, nil
 	}
 	client := newLifecycleClient(t, deps)
@@ -410,8 +416,8 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckMergesItems(t *testing.T) {
 	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
 		return nil
 	}
-	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
-		return []storage.DriftReport{
+	deps.drift.check = func(_ context.Context, slug, _ string) (*drift.CheckResult, error) {
+		return &drift.CheckResult{Reports: []storage.DriftReport{
 			{
 				SpecSlug: slug,
 				Items: []storage.DriftItem{
@@ -423,7 +429,7 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckMergesItems(t *testing.T) {
 					},
 				},
 			},
-		}, nil
+		}}, nil
 	}
 	client := newLifecycleClient(t, deps)
 
@@ -659,7 +665,7 @@ func TestLifecycleHandler_Amend_ReEntryDone(t *testing.T) {
 
 func TestLifecycleHandler_CheckDrift_Error(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+	deps.drift.check = func(_ context.Context, _, _ string) (*drift.CheckResult, error) {
 		return nil, errors.New("backend unavailable")
 	}
 	client := newLifecycleClient(t, deps)
@@ -729,7 +735,7 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckError(t *testing.T) {
 	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
 		return nil
 	}
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+	deps.drift.check = func(_ context.Context, _, _ string) (*drift.CheckResult, error) {
 		return nil, errors.New("drift engine down")
 	}
 	client := newLifecycleClient(t, deps)
@@ -908,8 +914,8 @@ func TestLifecycleHandler_Supersede_ConcurrentModification(t *testing.T) {
 
 func TestLifecycleHandler_CheckDrift_IneligibleForDrift(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
-		return nil, fmt.Errorf("drift: spec ineligible: %w", storage.ErrSpecIneligibleForDrift)
+	deps.drift.check = func(_ context.Context, _, _ string) (*drift.CheckResult, error) {
+		return nil, storage.ErrSpecIneligibleForDrift
 	}
 	client := newLifecycleClient(t, deps)
 
@@ -927,7 +933,7 @@ func TestLifecycleHandler_AcknowledgeDrift_AmendedStage(t *testing.T) {
 	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
 		return nil
 	}
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+	deps.drift.check = func(_ context.Context, _, _ string) (*drift.CheckResult, error) {
 		return nil, nil
 	}
 	client := newLifecycleClient(t, deps)
@@ -1084,9 +1090,9 @@ func TestLifecycleHandler_Lint_SpecNotFound(t *testing.T) {
 
 func TestLifecycleHandler_CheckDrift_AllSpecs_EmptyReports(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.drift.check = func(_ context.Context, slug, _ string) ([]storage.DriftReport, error) {
+	deps.drift.check = func(_ context.Context, slug, _ string) (*drift.CheckResult, error) {
 		require.Empty(t, slug)
-		return []storage.DriftReport{}, nil
+		return &drift.CheckResult{}, nil
 	}
 	client := newLifecycleClient(t, deps)
 
@@ -1100,11 +1106,11 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckSlugNotFound(t *testing.T) {
 	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
 		return nil
 	}
-	deps.drift.check = func(_ context.Context, _, _ string) ([]storage.DriftReport, error) {
+	deps.drift.check = func(_ context.Context, _, _ string) (*drift.CheckResult, error) {
 		// Return reports for a different slug, simulating the found=false branch.
-		return []storage.DriftReport{
+		return &drift.CheckResult{Reports: []storage.DriftReport{
 			{SpecSlug: "other-spec", Items: []storage.DriftItem{{Description: "changed"}}},
-		}, nil
+		}}, nil
 	}
 	client := newLifecycleClient(t, deps)
 

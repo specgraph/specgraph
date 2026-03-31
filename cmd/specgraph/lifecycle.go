@@ -173,7 +173,7 @@ func runDrift(cmd *cobra.Command, args []string) error {
 			return jsonErr
 		}
 	} else {
-		if _, printErr := fmt.Fprint(cmd.OutOrStdout(), render.DriftReport(reports)); printErr != nil {
+		if _, printErr := fmt.Fprint(cmd.OutOrStdout(), render.DriftReport(reports, resp.Msg.GetSkippedCount())); printErr != nil {
 			return printErr
 		}
 	}

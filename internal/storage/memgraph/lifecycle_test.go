@@ -301,13 +301,13 @@ func TestLifecycle(t *testing.T) {
 
 		// Use the drift engine to check drift.
 		engine := drift.NewEngine(store, nil)
-		reports, err := engine.Check(ctx, "downstream-spec", "")
+		result, err := engine.Check(ctx, "downstream-spec", "")
 		require.NoError(t, err)
-		require.Len(t, reports, 1)
-		require.Equal(t, "downstream-spec", reports[0].SpecSlug)
-		require.NotEmpty(t, reports[0].Items)
-		require.Equal(t, storage.DriftTypeDependency, reports[0].Items[0].Type)
-		require.Equal(t, "upstream-spec", reports[0].Items[0].UpstreamSlug)
+		require.Len(t, result.Reports, 1)
+		require.Equal(t, "downstream-spec", result.Reports[0].SpecSlug)
+		require.NotEmpty(t, result.Reports[0].Items)
+		require.Equal(t, storage.DriftTypeDependency, result.Reports[0].Items[0].Type)
+		require.Equal(t, "upstream-spec", result.Reports[0].Items[0].UpstreamSlug)
 	})
 
 	t.Run("AbandonSpec_NotFound", func(t *testing.T) {
@@ -471,19 +471,19 @@ func TestLifecycle(t *testing.T) {
 
 		// Check all specs (empty slug) — should find drift on both.
 		engine := drift.NewEngine(store, nil)
-		reports, err := engine.Check(ctx, "", "")
+		allResult, err := engine.Check(ctx, "", "")
 		require.NoError(t, err)
-		require.Len(t, reports, 2)
+		require.Len(t, allResult.Reports, 2)
 
 		// Check with scope filter — deps should find drift, interfaces should not.
-		depsReports, err := engine.Check(ctx, "", "deps")
+		depsResult, err := engine.Check(ctx, "", "deps")
 		require.NoError(t, err)
-		require.Len(t, depsReports, 2)
+		require.Len(t, depsResult.Reports, 2)
 
-		ifaceReports, err := engine.Check(ctx, "", "interfaces")
+		ifaceResult, err := engine.Check(ctx, "", "interfaces")
 		require.NoError(t, err)
-		require.Len(t, ifaceReports, 2)
-		for _, r := range ifaceReports {
+		require.Len(t, ifaceResult.Reports, 2)
+		for _, r := range ifaceResult.Reports {
 			require.Empty(t, r.Items)
 			require.Contains(t, r.ErrorMessage, "not yet implemented")
 		}
@@ -822,12 +822,12 @@ func TestLifecycle(t *testing.T) {
 
 		// Drift engine should detect drift on the amended downstream spec.
 		engine := drift.NewEngine(store, nil)
-		reports, err := engine.Check(ctx, "amended-drift-down", "")
+		result, err := engine.Check(ctx, "amended-drift-down", "")
 		require.NoError(t, err)
-		require.Len(t, reports, 1)
-		require.Equal(t, "amended-drift-down", reports[0].SpecSlug)
-		require.NotEmpty(t, reports[0].Items)
-		require.Equal(t, storage.DriftTypeDependency, reports[0].Items[0].Type)
+		require.Len(t, result.Reports, 1)
+		require.Equal(t, "amended-drift-down", result.Reports[0].SpecSlug)
+		require.NotEmpty(t, result.Reports[0].Items)
+		require.Equal(t, storage.DriftTypeDependency, result.Reports[0].Items[0].Type)
 	})
 
 	t.Run("BatchGetSpecs", func(t *testing.T) {

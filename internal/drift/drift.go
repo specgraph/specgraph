@@ -26,6 +26,12 @@ type Backend interface {
 // ceiling is 2 * maxSpecsPerCheck.
 const maxSpecsPerCheck = 10000
 
+// CheckResult holds drift detection results plus metadata.
+type CheckResult struct {
+	Reports      []storage.DriftReport
+	SkippedCount int32 // specs not in done/amended stage (all-specs mode only)
+}
+
 // Engine runs drift detection checks.
 type Engine struct {
 	backend Backend
@@ -42,11 +48,12 @@ func NewEngine(backend Backend, logger *slog.Logger) *Engine {
 
 // Check runs drift detection for a single spec (by slug) or all eligible specs (empty slug).
 // The scope parameter filters which drift checks to run: "deps", "interfaces", "verify", or "" (all).
-func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.DriftReport, error) {
+func (e *Engine) Check(ctx context.Context, slug, scope string) (*CheckResult, error) {
 	if !driftscope.IsValid(scope) {
 		return nil, fmt.Errorf("drift: unknown scope %q (valid: deps, interfaces, verify)", scope)
 	}
 	var specs []*storage.Spec
+	var skipped int32
 
 	if slug != "" {
 		spec, err := e.backend.GetSpec(ctx, slug)
@@ -67,8 +74,15 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 		if err != nil {
 			return nil, fmt.Errorf("drift: list amended specs: %w", err)
 		}
+		allSpecs, err := e.backend.ListSpecs(ctx, "", "", maxSpecsPerCheck)
+		if err != nil {
+			return nil, fmt.Errorf("drift: list all specs: %w", err)
+		}
 		specs = append(specs, doneSpecs...)
 		specs = append(specs, amendedSpecs...)
+		if diff := len(allSpecs) - len(specs); diff > 0 {
+			skipped = int32(diff) //nolint:gosec // bounded by maxSpecsPerCheck (10000)
+		}
 	}
 
 	reports := make([]storage.DriftReport, 0, len(specs))
@@ -89,7 +103,7 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) ([]storage.Drift
 			reports = append(reports, report)
 		}
 	}
-	return reports, nil
+	return &CheckResult{Reports: reports, SkippedCount: skipped}, nil
 }
 
 func (e *Engine) checkSpec(ctx context.Context, spec *storage.Spec, scope string) (storage.DriftReport, error) {

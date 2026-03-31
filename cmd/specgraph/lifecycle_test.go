@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -553,6 +554,28 @@ func TestRunDrift_MultiCleanReports_NoDrift(t *testing.T) {
 	startFakeLifecycleServer(t, fakeDriftMultiCleanHandler{})
 	err := runDrift(newCmdWithCtx(), nil)
 	require.NoError(t, err)
+}
+
+// --- runDrift skipped count (spgr-col) ---
+
+type fakeDriftSkippedHandler struct {
+	specgraphv1connect.UnimplementedLifecycleServiceHandler
+}
+
+func (fakeDriftSkippedHandler) CheckDrift(_ context.Context, _ *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
+	return connect.NewResponse(&specv1.DriftCheckResponse{
+		SkippedCount: 3,
+	}), nil
+}
+
+func TestRunDrift_SkippedCount(t *testing.T) {
+	startFakeLifecycleServer(t, fakeDriftSkippedHandler{})
+	cmd := newCmdWithCtx()
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	err := runDrift(cmd, nil)
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "3 spec(s) skipped")
 }
 
 // --- runDrift error-only report (spgr-jqc.5) ---

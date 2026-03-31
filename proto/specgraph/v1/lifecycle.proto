@@ -146,6 +146,9 @@ message DriftCheckRequest {
 // not that no drift exists.
 message DriftCheckResponse {
   repeated DriftReport reports = 1;
+  // Number of specs skipped because they are not in done/amended stage.
+  // Only set for all-specs checks (empty slug); zero for single-spec checks.
+  int32 skipped_count = 2;
 }
 
 message DriftAcknowledgeRequest {
