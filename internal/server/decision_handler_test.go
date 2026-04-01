@@ -87,7 +87,7 @@ func (m *mockDecisionBackend) ListDecisions(_ context.Context, status storage.De
 	return result, nil
 }
 
-func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, title *string, status *storage.DecisionStatus,
+func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, _ int32, title *string, status *storage.DecisionStatus,
 	decision, rationale, supersededBy, question *string,
 	rejectedAlts *[]storage.RejectedAlternative, confidence *storage.DecisionConfidence,
 	tags *[]string, scope *storage.DecisionScope, originSpec, originStage *string) (*storage.Decision, error) {

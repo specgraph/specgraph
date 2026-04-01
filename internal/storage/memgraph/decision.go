@@ -245,7 +245,7 @@ func (s *Store) ListDecisions(ctx context.Context, status storage.DecisionStatus
 }
 
 // UpdateDecision updates a decision by slug. Only non-nil fields are changed.
-func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, status *storage.DecisionStatus,
+func (s *Store) UpdateDecision(ctx context.Context, slug string, expectedVersion int32, title *string, status *storage.DecisionStatus,
 	body, rationale, supersededBy, question *string,
 	rejectedAlts *[]storage.RejectedAlternative, confidence *storage.DecisionConfidence,
 	tags *[]string, scope *storage.DecisionScope, originSpec, originStage *string) (*storage.Decision, error) {
@@ -314,13 +314,19 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 	nowStr := s.nowTime().Format(time.RFC3339)
 	setClauses = append(setClauses, "d.updated_at = $updated_at")
 	params["updated_at"] = nowStr
-	setClauses = append(setClauses, "d.version = coalesce(d.version, 0) + 1")
+	setClauses = append(setClauses, "d.version = d.version + 1")
+
+	matchClause := `MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})`
+	if expectedVersion > 0 {
+		matchClause += "\nWHERE d.version = $expected_version"
+		params["expected_version"] = int64(expectedVersion)
+	}
 
 	query := fmt.Sprintf(`
-		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(d:Decision {slug: $slug})
+		%s
 		SET %s
 		RETURN %s
-	`, strings.Join(setClauses, ", "), decisionReturnCols)
+	`, matchClause, strings.Join(setClauses, ", "), decisionReturnCols)
 
 	var result *storage.Decision
 	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
@@ -336,6 +342,9 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 			return fmt.Errorf("memgraph: update decision: %w", qErr)
 		}
 		if len(records) == 0 {
+			if expectedVersion > 0 {
+				return fmt.Errorf("memgraph: decision %q version %d: %w", slug, expectedVersion, storage.ErrConcurrentModification)
+			}
 			return fmt.Errorf("memgraph: decision %q: %w", slug, storage.ErrDecisionNotFound)
 		}
 

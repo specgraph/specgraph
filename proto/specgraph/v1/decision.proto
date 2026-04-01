@@ -102,6 +102,7 @@ message UpdateDecisionRequest {
   optional string origin_spec = 11;
   optional string origin_stage = 12;
   repeated RejectedAlternative rejected_alternatives = 13;
+  int32 expected_version = 14;                       // optimistic concurrency: 0 = skip check
 }
 
 message CreateDecisionResponse { Decision decision = 1; }

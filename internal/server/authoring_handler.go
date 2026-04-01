@@ -509,7 +509,7 @@ func acceptLinkedDecisions(ctx context.Context, logger *slog.Logger, graphBacken
 		if dec.Status != storage.DecisionStatusProposed {
 			continue
 		}
-		if _, err := decisionBackend.UpdateDecision(ctx, decisionSlug, nil, &acceptedStatus, nil, nil, nil,
+		if _, err := decisionBackend.UpdateDecision(ctx, decisionSlug, 0, nil, &acceptedStatus, nil, nil, nil,
 			nil, nil, nil, nil, nil, nil, nil); err != nil {
 			return fmt.Errorf("accept decision %q: %w", decisionSlug, err)
 		}
