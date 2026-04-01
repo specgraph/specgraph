@@ -120,7 +120,7 @@ func (stubBackend) ListDecisions(context.Context, storage.DecisionStatus, int) (
 	return nil, errNotImplemented
 }
 
-func (stubBackend) UpdateDecision(context.Context, string, *string, *storage.DecisionStatus,
+func (stubBackend) UpdateDecision(context.Context, string, int32, *string, *storage.DecisionStatus,
 	*string, *string, *string, *string,
 	*[]storage.RejectedAlternative, *storage.DecisionConfidence,
 	*[]string, *storage.DecisionScope, *string, *string) (*storage.Decision, error) {

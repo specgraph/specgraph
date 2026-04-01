@@ -109,7 +109,10 @@ type DecisionBackend interface {
 	// ListDecisions returns decisions matching the given filters.
 	ListDecisions(ctx context.Context, status DecisionStatus, limit int) ([]*Decision, error)
 	// UpdateDecision updates a decision by slug. Only non-nil fields are changed.
-	UpdateDecision(ctx context.Context, slug string, title *string, status *DecisionStatus,
+	// expectedVersion enables optimistic concurrency: if non-zero, the update only
+	// succeeds when the stored version matches. Returns ErrConcurrentModification on mismatch.
+	// Pass 0 to skip the version check.
+	UpdateDecision(ctx context.Context, slug string, expectedVersion int32, title *string, status *DecisionStatus,
 		body, rationale, supersededBy, question *string,
 		rejectedAlts *[]RejectedAlternative, confidence *DecisionConfidence,
 		tags *[]string, scope *DecisionScope, originSpec, originStage *string) (*Decision, error)
