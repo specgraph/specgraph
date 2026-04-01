@@ -33,7 +33,10 @@ func (h *DecisionHandler) CreateDecision(ctx context.Context, req *connect.Reque
 	if err := validateSlug(msg.GetSlug()); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	d, err := store.CreateDecision(ctx, msg.Slug, msg.Title, msg.Decision, msg.Rationale)
+	d, err := store.CreateDecision(ctx, msg.Slug, msg.Title, msg.Decision, msg.Rationale,
+		msg.Question, rejectedAltsFromProto(msg.RejectedAlternatives),
+		decisionConfidenceFromProto(msg.Confidence), msg.Tags,
+		decisionScopeFromProto(msg.Scope), msg.OriginSpec, msg.OriginStage)
 	if err != nil {
 		return nil, h.decisionError(ctx, err)
 	}
@@ -115,7 +118,34 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 		}
 		domainStatus = &s
 	}
-	d, err := store.UpdateDecision(ctx, msg.Slug, msg.Title, domainStatus, msg.Decision, msg.Rationale, msg.SupersededBy)
+
+	var question *string
+	if msg.Question != nil {
+		question = msg.Question
+	}
+	var confidence *storage.DecisionConfidence
+	if msg.Confidence != nil {
+		c := decisionConfidenceFromProto(*msg.Confidence)
+		confidence = &c
+	}
+	var scope *storage.DecisionScope
+	if msg.Scope != nil {
+		sc := decisionScopeFromProto(*msg.Scope)
+		scope = &sc
+	}
+	var rejectedAlts *[]storage.RejectedAlternative
+	if len(msg.RejectedAlternatives) > 0 {
+		alts := rejectedAltsFromProto(msg.RejectedAlternatives)
+		rejectedAlts = &alts
+	}
+	var tags *[]string
+	if len(msg.Tags) > 0 {
+		t := msg.Tags
+		tags = &t
+	}
+
+	d, err := store.UpdateDecision(ctx, msg.Slug, msg.Title, domainStatus, msg.Decision, msg.Rationale, msg.SupersededBy,
+		question, rejectedAlts, confidence, tags, scope, msg.OriginSpec, msg.OriginStage)
 	if err != nil {
 		return nil, h.decisionError(ctx, err)
 	}

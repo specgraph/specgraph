@@ -32,21 +32,30 @@ func newMockDecisionBackend() *mockDecisionBackend {
 	return &mockDecisionBackend{decisions: make(map[string]*storage.Decision)}
 }
 
-func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, decision, rationale string) (*storage.Decision, error) {
+func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, decision, rationale, question string,
+	rejectedAlts []storage.RejectedAlternative, confidence storage.DecisionConfidence,
+	tags []string, scope storage.DecisionScope, originSpec, originStage string) (*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.seq++
 	now := time.Now().UTC()
 	d := &storage.Decision{
-		ID:          fmt.Sprintf("dec-%05d", m.seq),
-		Slug:        slug,
-		Title:       title,
-		Status:      storage.DecisionStatusProposed,
-		Body:        decision,
-		Rationale:   rationale,
-		ContentHash: strings.Repeat("a", 32),
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:                   fmt.Sprintf("dec-%05d", m.seq),
+		Slug:                 slug,
+		Title:                title,
+		Status:               storage.DecisionStatusProposed,
+		Body:                 decision,
+		Rationale:            rationale,
+		Question:             question,
+		RejectedAlternatives: rejectedAlts,
+		Confidence:           confidence,
+		Tags:                 tags,
+		Scope:                scope,
+		OriginSpec:           originSpec,
+		OriginStage:          originStage,
+		ContentHash:          strings.Repeat("a", 32),
+		CreatedAt:            now,
+		UpdatedAt:            now,
 	}
 	m.decisions[slug] = d
 	return d, nil
@@ -78,7 +87,10 @@ func (m *mockDecisionBackend) ListDecisions(_ context.Context, status storage.De
 	return result, nil
 }
 
-func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, title *string, status *storage.DecisionStatus, decision, rationale, supersededBy *string) (*storage.Decision, error) {
+func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, title *string, status *storage.DecisionStatus,
+	decision, rationale, supersededBy, question *string,
+	rejectedAlts *[]storage.RejectedAlternative, confidence *storage.DecisionConfidence,
+	tags *[]string, scope *storage.DecisionScope, originSpec, originStage *string) (*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.decisions[slug]
@@ -99,6 +111,27 @@ func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, tit
 	}
 	if supersededBy != nil {
 		d.SupersededBy = *supersededBy
+	}
+	if question != nil {
+		d.Question = *question
+	}
+	if rejectedAlts != nil {
+		d.RejectedAlternatives = *rejectedAlts
+	}
+	if confidence != nil {
+		d.Confidence = *confidence
+	}
+	if tags != nil {
+		d.Tags = *tags
+	}
+	if scope != nil {
+		d.Scope = *scope
+	}
+	if originSpec != nil {
+		d.OriginSpec = *originSpec
+	}
+	if originStage != nil {
+		d.OriginStage = *originStage
 	}
 	d.UpdatedAt = time.Now().UTC()
 	return d, nil
@@ -202,4 +235,109 @@ func TestDecisionHandler_ListAndUpdate(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.Equal(t, specv1.DecisionStatus_DECISION_STATUS_ACCEPTED, updateResp.Msg.GetDecision().GetStatus())
+}
+
+func TestDecisionHandler_CreateWithAllNewFields(t *testing.T) {
+	client := setupDecisionServer(t)
+	ctx := context.Background()
+
+	resp, err := client.CreateDecision(ctx, connect.NewRequest(&specv1.CreateDecisionRequest{
+		Slug:       "full-decision",
+		Title:      "Use Memgraph",
+		Decision:   "We will use Memgraph.",
+		Rationale:  "Graph-native.",
+		Question:   "Which database?",
+		Confidence: specv1.DecisionConfidence_DECISION_CONFIDENCE_HIGH,
+		Tags:       []string{"database", "infrastructure"},
+		Scope:      specv1.DecisionScope_DECISION_SCOPE_TEAM,
+		OriginSpec: "storage-design",
+		OriginStage: "specify",
+		RejectedAlternatives: []*specv1.RejectedAlternative{
+			{Option: "PostgreSQL", Reason: "Not graph-native"},
+			{Option: "Neo4j", Reason: "Too expensive"},
+		},
+	}))
+	require.NoError(t, err)
+	d := resp.Msg.GetDecision()
+	require.Equal(t, "full-decision", d.GetSlug())
+	require.Equal(t, "Which database?", d.GetQuestion())
+	require.Equal(t, specv1.DecisionConfidence_DECISION_CONFIDENCE_HIGH, d.GetConfidence())
+	require.Equal(t, []string{"database", "infrastructure"}, d.GetTags())
+	require.Equal(t, specv1.DecisionScope_DECISION_SCOPE_TEAM, d.GetScope())
+	require.Equal(t, "storage-design", d.GetOriginSpec())
+	require.Equal(t, "specify", d.GetOriginStage())
+	require.Len(t, d.GetRejectedAlternatives(), 2)
+	require.Equal(t, "PostgreSQL", d.GetRejectedAlternatives()[0].GetOption())
+	require.Equal(t, "Neo4j", d.GetRejectedAlternatives()[1].GetOption())
+}
+
+func TestDecisionHandler_UpdateWithNewFields(t *testing.T) {
+	client := setupDecisionServer(t)
+	ctx := context.Background()
+
+	// Create a minimal decision first.
+	_, err := client.CreateDecision(ctx, connect.NewRequest(&specv1.CreateDecisionRequest{
+		Slug:  "update-target",
+		Title: "Minimal",
+	}))
+	require.NoError(t, err)
+
+	// Update with all new fields.
+	q := "Updated question?"
+	conf := specv1.DecisionConfidence_DECISION_CONFIDENCE_LOW
+	sc := specv1.DecisionScope_DECISION_SCOPE_ORG
+	originSpec := "origin-spec-slug"
+	originStage := "shape"
+	resp, err := client.UpdateDecision(ctx, connect.NewRequest(&specv1.UpdateDecisionRequest{
+		Slug:        "update-target",
+		Question:    &q,
+		Confidence:  &conf,
+		Scope:       &sc,
+		Tags:        []string{"new-tag"},
+		OriginSpec:  &originSpec,
+		OriginStage: &originStage,
+		RejectedAlternatives: []*specv1.RejectedAlternative{
+			{Option: "Option A", Reason: "Too slow"},
+		},
+	}))
+	require.NoError(t, err)
+	d := resp.Msg.GetDecision()
+	require.Equal(t, "Updated question?", d.GetQuestion())
+	require.Equal(t, specv1.DecisionConfidence_DECISION_CONFIDENCE_LOW, d.GetConfidence())
+	require.Equal(t, specv1.DecisionScope_DECISION_SCOPE_ORG, d.GetScope())
+	require.Equal(t, []string{"new-tag"}, d.GetTags())
+	require.Equal(t, "origin-spec-slug", d.GetOriginSpec())
+	require.Equal(t, "shape", d.GetOriginStage())
+	require.Len(t, d.GetRejectedAlternatives(), 1)
+}
+
+func TestDecisionHandler_UpdateWithNoNewFields(t *testing.T) {
+	client := setupDecisionServer(t)
+	ctx := context.Background()
+
+	// Create with some fields.
+	_, err := client.CreateDecision(ctx, connect.NewRequest(&specv1.CreateDecisionRequest{
+		Slug:       "no-change-target",
+		Title:      "Existing",
+		Question:   "Original Q?",
+		Confidence: specv1.DecisionConfidence_DECISION_CONFIDENCE_MEDIUM,
+		Scope:      specv1.DecisionScope_DECISION_SCOPE_PROJECT,
+		Tags:       []string{"keep"},
+	}))
+	require.NoError(t, err)
+
+	// Update with none of the new fields set — they should be unchanged.
+	newTitle := "Updated title"
+	resp, err := client.UpdateDecision(ctx, connect.NewRequest(&specv1.UpdateDecisionRequest{
+		Slug:  "no-change-target",
+		Title: &newTitle,
+	}))
+	require.NoError(t, err)
+	d := resp.Msg.GetDecision()
+	require.Equal(t, "Updated title", d.GetTitle())
+	// New fields should be preserved from create.
+	require.Equal(t, "Original Q?", d.GetQuestion())
+	require.Equal(t, specv1.DecisionConfidence_DECISION_CONFIDENCE_MEDIUM, d.GetConfidence())
+	require.Equal(t, specv1.DecisionScope_DECISION_SCOPE_PROJECT, d.GetScope())
+	require.Equal(t, []string{"keep"}, d.GetTags())
 }
