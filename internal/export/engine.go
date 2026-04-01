@@ -472,7 +472,8 @@ func (e *Engine) writeEntities(ctx context.Context, doc *Document) (*ImportResul
 	// 4. Decisions
 	for _, dec := range doc.Data.Decisions {
 		if _, err := e.backend.CreateDecision(ctx, dec.Slug, dec.Title, dec.Body, dec.Rationale,
-			"", nil, "", nil, "", "", ""); err != nil {
+			dec.Question, dec.RejectedAlternatives, dec.Confidence,
+			dec.Tags, dec.Scope, dec.OriginSpec, dec.OriginStage); err != nil {
 			return nil, fmt.Errorf("create decision %q: %w", dec.Slug, err)
 		}
 		// Restore status if not the default (proposed).
