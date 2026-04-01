@@ -96,7 +96,7 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 		deltas := []storage.FieldChange{{Field: "stage", OldValue: fromStr, NewValue: toStr}}
 		clEntry := &storage.ChangeLogEntry{
 			Version:     updatedSpec.Version,
-			Stage:       updatedSpec.Stage,
+			Stage:       string(updatedSpec.Stage),
 			ContentHash: updatedSpec.ContentHash,
 			Checkpoint:  true,
 			Summary:     fmt.Sprintf("Stage transition: %s → %s", fromStr, toStr),
@@ -466,7 +466,7 @@ func (s *Store) authoringOutputChangeLog(ctx context.Context, slug, field string
 	}
 	clEntry := &storage.ChangeLogEntry{
 		Version:     version,
-		Stage:       storage.SpecStage(newFields.Stage),
+		Stage:       newFields.Stage,
 		ContentHash: newHash,
 		Checkpoint:  false,
 		Summary:     fmt.Sprintf("Updated %s", field),

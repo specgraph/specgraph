@@ -284,7 +284,7 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		deltas := storage.ComputeFieldDeltas(&empty, &allFields)
 		clEntry := &storage.ChangeLogEntry{
 			Version:     spec.Version,
-			Stage:       spec.Stage,
+			Stage:       string(spec.Stage),
 			ContentHash: spec.ContentHash,
 			Checkpoint:  true,
 			Summary:     "Spec created",
@@ -539,7 +539,7 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 			deltas := storage.ComputeFieldDeltas(&oldFields, &newFields)
 			clEntry := &storage.ChangeLogEntry{
 				Version:     spec.Version,
-				Stage:       spec.Stage,
+				Stage:       string(spec.Stage),
 				ContentHash: ch,
 				Checkpoint:  false,
 				Summary:     "Spec updated",

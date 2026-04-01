@@ -366,7 +366,7 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, title *string, 
 		if len(deltas) > 0 {
 			clEntry := &storage.ChangeLogEntry{
 				Version:     int32(dec.Version), //nolint:gosec // version is a small monotonic counter; overflow impossible
-				Stage:       storage.SpecStage(dec.Status),
+				Stage:       string(dec.Status),
 				ContentHash: dec.ContentHash,
 				Summary:     "decision updated",
 				Date:        s.nowTime(),

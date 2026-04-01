@@ -134,7 +134,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		deltas := []storage.FieldChange{{Field: "stage", OldValue: string(storage.SpecStageDone), NewValue: string(targetStage)}}
 		clEntry := &storage.ChangeLogEntry{
 			Version:     freshSpec.Version,
-			Stage:       freshSpec.Stage,
+			Stage:       string(freshSpec.Stage),
 			ContentHash: freshSpec.ContentHash,
 			Checkpoint:  true,
 			Summary:     summary,
@@ -282,7 +282,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		}
 		oldCLEntry := &storage.ChangeLogEntry{
 			Version:     oldSpec.Version,
-			Stage:       storage.SpecStageSuperseded,
+			Stage:       string(storage.SpecStageSuperseded),
 			ContentHash: oldSpec.ContentHash,
 			Checkpoint:  true,
 			Summary:     "Spec superseded",
@@ -299,7 +299,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		}
 		newCLEntry := &storage.ChangeLogEntry{
 			Version:     newSpec.Version,
-			Stage:       newSpec.Stage,
+			Stage:       string(newSpec.Stage),
 			ContentHash: newSpec.ContentHash,
 			Checkpoint:  true,
 			Summary:     "Supersedes predecessor",
@@ -379,7 +379,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 		}
 		clEntry := &storage.ChangeLogEntry{
 			Version:     abandonedSpec.Version,
-			Stage:       storage.SpecStageAbandoned,
+			Stage:       string(storage.SpecStageAbandoned),
 			ContentHash: abandonedSpec.ContentHash,
 			Checkpoint:  true,
 			Summary:     "Spec abandoned",
@@ -486,7 +486,7 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlu
 		}
 		clEntry := &storage.ChangeLogEntry{
 			Version:     spec.Version,
-			Stage:       spec.Stage,
+			Stage:       string(spec.Stage),
 			ContentHash: spec.ContentHash,
 			Summary:     fmt.Sprintf("Acknowledged drift from %s", target),
 			Reason:      note,

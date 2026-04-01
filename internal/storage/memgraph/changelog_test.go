@@ -33,7 +33,7 @@ func TestCreateSpec_CreatesChangeLogEntry(t *testing.T) {
 
 	entry := entries[0]
 	assert.Equal(t, int32(1), entry.Version)
-	assert.Equal(t, storage.SpecStageSpark, entry.Stage)
+	assert.Equal(t, string(storage.SpecStageSpark), entry.Stage)
 	assert.True(t, entry.Checkpoint, "initial creation should be a checkpoint")
 	assert.NotEmpty(t, entry.ContentHash)
 	assert.NotEmpty(t, entry.ID)
@@ -87,7 +87,7 @@ func TestTransitionStage_CreatesCheckpointChangeLog(t *testing.T) {
 
 	transition := entries[1]
 	assert.True(t, transition.Checkpoint, "stage transition should be checkpoint")
-	assert.Equal(t, storage.SpecStageShape, transition.Stage)
+	assert.Equal(t, string(storage.SpecStageShape), transition.Stage)
 	assert.Contains(t, transition.Summary, "Stage transition")
 	require.Len(t, transition.Changes, 1)
 	assert.Equal(t, "stage", transition.Changes[0].Field)
@@ -261,7 +261,7 @@ func TestLifecycleAbandonSpec_CreatesCheckpointChangeLog(t *testing.T) {
 
 	abandonEntry := entries[1]
 	assert.True(t, abandonEntry.Checkpoint)
-	assert.Equal(t, storage.SpecStageAbandoned, abandonEntry.Stage)
+	assert.Equal(t, string(storage.SpecStageAbandoned), abandonEntry.Stage)
 	assert.Equal(t, "Spec abandoned", abandonEntry.Summary)
 	assert.Equal(t, "no longer needed", abandonEntry.Reason)
 }
@@ -287,7 +287,7 @@ func TestLifecycleSupersedeSpec_CreatesCheckpointChangeLogs(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, oldEntries, 2)
 	assert.True(t, oldEntries[1].Checkpoint)
-	assert.Equal(t, storage.SpecStageSuperseded, oldEntries[1].Stage)
+	assert.Equal(t, string(storage.SpecStageSuperseded), oldEntries[1].Stage)
 	assert.Equal(t, "Spec superseded", oldEntries[1].Summary)
 
 	// New spec should have 2 entries: creation + supersedes predecessor checkpoint.
