@@ -126,7 +126,7 @@ func (errorBackend) ListDecisions(context.Context, storage.DecisionStatus, int) 
 	return nil, errRawDB
 }
 
-func (errorBackend) UpdateDecision(context.Context, string, *string, *storage.DecisionStatus,
+func (errorBackend) UpdateDecision(context.Context, string, int32, *string, *storage.DecisionStatus,
 	*string, *string, *string, *string,
 	*[]storage.RejectedAlternative, *storage.DecisionConfidence,
 	*[]string, *storage.DecisionScope, *string, *string) (*storage.Decision, error) {

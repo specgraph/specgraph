@@ -144,7 +144,11 @@ func (h *DecisionHandler) UpdateDecision(ctx context.Context, req *connect.Reque
 		tags = &t
 	}
 
-	d, err := store.UpdateDecision(ctx, msg.Slug, msg.Title, domainStatus, msg.Decision, msg.Rationale, msg.SupersededBy,
+	if msg.GetExpectedVersion() < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("expected_version must be non-negative"))
+	}
+
+	d, err := store.UpdateDecision(ctx, msg.Slug, msg.GetExpectedVersion(), msg.Title, domainStatus, msg.Decision, msg.Rationale, msg.SupersededBy,
 		question, rejectedAlts, confidence, tags, scope, msg.OriginSpec, msg.OriginStage)
 	if err != nil {
 		return nil, h.decisionError(ctx, err)

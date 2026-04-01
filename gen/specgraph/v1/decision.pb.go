@@ -695,6 +695,7 @@ type UpdateDecisionRequest struct {
 	OriginSpec           *string                `protobuf:"bytes,11,opt,name=origin_spec,json=originSpec,proto3,oneof" json:"origin_spec,omitempty"`
 	OriginStage          *string                `protobuf:"bytes,12,opt,name=origin_stage,json=originStage,proto3,oneof" json:"origin_stage,omitempty"`
 	RejectedAlternatives []*RejectedAlternative `protobuf:"bytes,13,rep,name=rejected_alternatives,json=rejectedAlternatives,proto3" json:"rejected_alternatives,omitempty"`
+	ExpectedVersion      int32                  `protobuf:"varint,14,opt,name=expected_version,json=expectedVersion,proto3" json:"expected_version,omitempty"` // optimistic concurrency: 0 = skip check
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -818,6 +819,13 @@ func (x *UpdateDecisionRequest) GetRejectedAlternatives() []*RejectedAlternative
 		return x.RejectedAlternatives
 	}
 	return nil
+}
+
+func (x *UpdateDecisionRequest) GetExpectedVersion() int32 {
+	if x != nil {
+		return x.ExpectedVersion
+	}
+	return 0
 }
 
 type CreateDecisionResponse struct {
@@ -1007,7 +1015,7 @@ const file_specgraph_v1_decision_proto_rawDesc = "" +
 	"\x06status\x18\x01 \x01(\x0e2\x1c.specgraph.v1.DecisionStatusR\x06status\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\"M\n" +
 	"\x15ListDecisionsResponse\x124\n" +
-	"\tdecisions\x18\x01 \x03(\v2\x16.specgraph.v1.DecisionR\tdecisions\"\xd2\x05\n" +
+	"\tdecisions\x18\x01 \x03(\v2\x16.specgraph.v1.DecisionR\tdecisions\"\xfd\x05\n" +
 	"\x15UpdateDecisionRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x19\n" +
 	"\x05title\x18\x02 \x01(\tH\x00R\x05title\x88\x01\x01\x129\n" +
@@ -1025,7 +1033,8 @@ const file_specgraph_v1_decision_proto_rawDesc = "" +
 	"\vorigin_spec\x18\v \x01(\tH\bR\n" +
 	"originSpec\x88\x01\x01\x12&\n" +
 	"\forigin_stage\x18\f \x01(\tH\tR\voriginStage\x88\x01\x01\x12V\n" +
-	"\x15rejected_alternatives\x18\r \x03(\v2!.specgraph.v1.RejectedAlternativeR\x14rejectedAlternativesB\b\n" +
+	"\x15rejected_alternatives\x18\r \x03(\v2!.specgraph.v1.RejectedAlternativeR\x14rejectedAlternatives\x12)\n" +
+	"\x10expected_version\x18\x0e \x01(\x05R\x0fexpectedVersionB\b\n" +
 	"\x06_titleB\t\n" +
 	"\a_statusB\v\n" +
 	"\t_decisionB\f\n" +

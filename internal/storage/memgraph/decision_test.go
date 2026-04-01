@@ -76,13 +76,13 @@ func TestUpdateDecision(t *testing.T) {
 	require.NoError(t, err)
 
 	newStatus := storage.DecisionStatusAccepted
-	updated, err := store.UpdateDecision(ctx, "update-dec", nil, &newStatus, nil, nil, nil,
+	updated, err := store.UpdateDecision(ctx, "update-dec", 0, nil, &newStatus, nil, nil, nil,
 		nil, nil, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, storage.DecisionStatusAccepted, updated.Status)
 	require.Equal(t, "Original Title", updated.Title)
 
-	_, err = store.UpdateDecision(ctx, "nonexistent", nil, &newStatus, nil, nil, nil,
+	_, err = store.UpdateDecision(ctx, "nonexistent", 0, nil, &newStatus, nil, nil, nil,
 		nil, nil, nil, nil, nil, nil, nil)
 	require.Error(t, err)
 }
@@ -102,7 +102,7 @@ func TestCreateDecision_SetsContentHash(t *testing.T) {
 
 	// Update and verify hash changes
 	newTitle := "Updated Decision Title"
-	updated, err := store.UpdateDecision(ctx, "hash-test-dec", &newTitle, nil, nil, nil, nil,
+	updated, err := store.UpdateDecision(ctx, "hash-test-dec", 0, &newTitle, nil, nil, nil, nil,
 		nil, nil, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	require.Len(t, updated.ContentHash, 32)
@@ -171,7 +171,7 @@ func TestUpdateDecision_ADR003Fields(t *testing.T) {
 	newQuestion := "Updated question?"
 	newConfidence := storage.DecisionConfidenceMedium
 	newTags := []string{"updated", "tags"}
-	updated, err := store.UpdateDecision(ctx, "update-adr003",
+	updated, err := store.UpdateDecision(ctx, "update-adr003", 0,
 		nil, nil, nil, nil, nil, &newQuestion,
 		nil, &newConfidence, &newTags, nil, nil, nil)
 	require.NoError(t, err)
@@ -210,4 +210,40 @@ func TestDecision_BackwardCompat(t *testing.T) {
 	require.Empty(t, string(got.Scope))
 	require.Empty(t, got.OriginSpec)
 	require.Empty(t, got.OriginStage)
+}
+
+func TestUpdateDecision_VersionGuard(t *testing.T) {
+	clearDatabase(t)
+
+	ctx := context.Background()
+	store, err := newStore(ctx, boltURI)
+	require.NoError(t, err)
+	defer store.Close(ctx)
+
+	dec, err := store.CreateDecision(ctx, "ver-guard", "Title", "Body", "Rationale",
+		"", nil, "", nil, "", "", "")
+	require.NoError(t, err)
+	require.Equal(t, 1, dec.Version)
+
+	// Update with correct version succeeds.
+	newTitle := "Updated"
+	updated, err := store.UpdateDecision(ctx, "ver-guard", 1, &newTitle, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, "Updated", updated.Title)
+	require.Equal(t, 2, updated.Version)
+
+	// Update with stale version fails with ErrConcurrentModification.
+	anotherTitle := "Stale"
+	_, err = store.UpdateDecision(ctx, "ver-guard", 1, &anotherTitle, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, nil)
+	require.ErrorIs(t, err, storage.ErrConcurrentModification)
+
+	// Update with version=0 skips the check and succeeds.
+	skipTitle := "NoCheck"
+	noCheck, err := store.UpdateDecision(ctx, "ver-guard", 0, &skipTitle, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, "NoCheck", noCheck.Title)
+	require.Equal(t, 3, noCheck.Version)
 }

@@ -482,7 +482,7 @@ func (e *Engine) writeEntities(ctx context.Context, doc *Document) (*ImportResul
 			if dec.SupersededBy != "" {
 				supersededBy = &dec.SupersededBy
 			}
-			if _, err := e.backend.UpdateDecision(ctx, dec.Slug, nil, &status, nil, nil, supersededBy,
+			if _, err := e.backend.UpdateDecision(ctx, dec.Slug, 0, nil, &status, nil, nil, supersededBy,
 				nil, nil, nil, nil, nil, nil, nil); err != nil {
 				res.Warnings = append(res.Warnings, fmt.Sprintf("update decision status %q: %v", dec.Slug, err))
 			}

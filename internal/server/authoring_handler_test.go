@@ -260,11 +260,11 @@ func (f *fullAuthoringTestBackend) GetDecision(ctx context.Context, slug string)
 	return f.full.GetDecision(ctx, slug)
 }
 
-func (f *fullAuthoringTestBackend) UpdateDecision(ctx context.Context, slug string, title *string, status *storage.DecisionStatus,
+func (f *fullAuthoringTestBackend) UpdateDecision(ctx context.Context, slug string, expectedVersion int32, title *string, status *storage.DecisionStatus,
 	decision, rationale, supersededBy, question *string,
 	rejectedAlts *[]storage.RejectedAlternative, confidence *storage.DecisionConfidence,
 	tags *[]string, scope *storage.DecisionScope, originSpec, originStage *string) (*storage.Decision, error) {
-	return f.full.UpdateDecision(ctx, slug, title, status, decision, rationale, supersededBy,
+	return f.full.UpdateDecision(ctx, slug, expectedVersion, title, status, decision, rationale, supersededBy,
 		question, rejectedAlts, confidence, tags, scope, originSpec, originStage)
 }
 
@@ -1144,7 +1144,7 @@ func (f *fakeFullBackend) ListDecisions(_ context.Context, _ storage.DecisionSta
 	return nil, nil
 }
 
-func (f *fakeFullBackend) UpdateDecision(_ context.Context, slug string, _ *string, _ *storage.DecisionStatus,
+func (f *fakeFullBackend) UpdateDecision(_ context.Context, slug string, _ int32, _ *string, _ *storage.DecisionStatus,
 	_, _, _, _ *string,
 	_ *[]storage.RejectedAlternative, _ *storage.DecisionConfidence,
 	_ *[]string, _ *storage.DecisionScope, _, _ *string) (*storage.Decision, error) {
