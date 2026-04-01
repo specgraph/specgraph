@@ -8,12 +8,12 @@ import (
 	"time"
 )
 
-// ChangeLogEntry records a single material change to a spec.
+// ChangeLogEntry records a single material change to a spec or decision.
 type ChangeLogEntry struct {
 	ID          string
 	SpecSlug    string // populated by ListAllChanges for export
 	Version     int32
-	Stage       SpecStage
+	Stage       string // spec authoring stage or decision status
 	ContentHash string
 	Checkpoint  bool
 	Summary     string

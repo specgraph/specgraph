@@ -17,7 +17,7 @@ func TestChangeLogEntryToProto(t *testing.T) {
 	entry := &storage.ChangeLogEntry{
 		ID:          "cl-1",
 		Version:     3,
-		Stage:       storage.SpecStageShape,
+		Stage:       string(storage.SpecStageShape),
 		ContentHash: "a1b2c3d4",
 		Checkpoint:  true,
 		Summary:     "Refined scope",
@@ -49,7 +49,7 @@ func TestChangeLogEntryToProto_NoChanges(t *testing.T) {
 	entry := &storage.ChangeLogEntry{
 		ID:      "cl-2",
 		Version: 1,
-		Stage:   storage.SpecStageSpark,
+		Stage:   string(storage.SpecStageSpark),
 		Date:    time.Now(),
 	}
 

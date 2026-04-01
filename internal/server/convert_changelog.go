@@ -21,7 +21,7 @@ func changeLogEntryToProto(e *storage.ChangeLogEntry) *specv1.ChangeLogEntry {
 	return &specv1.ChangeLogEntry{
 		Id:          e.ID,
 		Version:     e.Version,
-		Stage:       string(e.Stage),
+		Stage:       e.Stage,
 		ContentHash: e.ContentHash,
 		Checkpoint:  e.Checkpoint,
 		Summary:     e.Summary,

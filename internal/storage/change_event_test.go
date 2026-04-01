@@ -44,7 +44,7 @@ func TestChangeEventPreservesAllFields(t *testing.T) {
 	storage.StashChangeEvent(ctx, &storage.ChangeEvent{
 		Slug:        "s1",
 		Version:     5,
-		Stage:       storage.SpecStageShape,
+		Stage:       string(storage.SpecStageShape),
 		ContentHash: "abc123",
 		Checkpoint:  true,
 		Summary:     "test summary",
@@ -56,7 +56,7 @@ func TestChangeEventPreservesAllFields(t *testing.T) {
 		t.Fatalf("got %d events, want 1", len(events))
 	}
 	e := events[0]
-	if e.Slug != "s1" || e.Version != 5 || e.Stage != storage.SpecStageShape ||
+	if e.Slug != "s1" || e.Version != 5 || e.Stage != string(storage.SpecStageShape) ||
 		e.ContentHash != "abc123" || !e.Checkpoint || e.Summary != "test summary" || e.Reason != "test reason" {
 		t.Errorf("field mismatch: %+v", e)
 	}
