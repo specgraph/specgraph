@@ -5,6 +5,7 @@ package export
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -13,6 +14,8 @@ import (
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ---------------------------------------------------------------------------
@@ -230,4 +233,94 @@ func TestValidateRefs_AllValid(t *testing.T) {
 	if err := validateRefs(doc); err != nil {
 		t.Fatalf("expected no error for valid refs, got: %v", err)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Import — ADR-003 decision fields pass-through
+// ---------------------------------------------------------------------------
+
+// decisionCapturingBackend captures CreateDecision calls during import.
+// It embeds the Backend interface so unimplemented methods panic (acceptable
+// for this test since only ListSpecs and CreateDecision are exercised).
+type decisionCapturingBackend struct {
+	Backend
+	captured []*storage.Decision
+}
+
+func (b *decisionCapturingBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*storage.Spec, error) {
+	return nil, nil
+}
+
+func (b *decisionCapturingBackend) CreateDecision(_ context.Context, slug, title, body, rationale, question string,
+	rejectedAlts []storage.RejectedAlternative, confidence storage.DecisionConfidence,
+	tags []string, scope storage.DecisionScope, originSpec, originStage string) (*storage.Decision, error) {
+	dec := &storage.Decision{
+		Slug:                 slug,
+		Title:                title,
+		Body:                 body,
+		Rationale:            rationale,
+		Question:             question,
+		RejectedAlternatives: rejectedAlts,
+		Confidence:           confidence,
+		Tags:                 tags,
+		Scope:                scope,
+		OriginSpec:           originSpec,
+		OriginStage:          originStage,
+		Version:              1,
+	}
+	b.captured = append(b.captured, dec)
+	return dec, nil
+}
+
+func TestImport_DecisionADR003Fields(t *testing.T) {
+	back := &decisionCapturingBackend{}
+
+	doc := Document{
+		SchemaVersion: CurrentSchemaVersion,
+		Data: Data{
+			Decisions: []*storage.Decision{
+				{
+					Slug:      "use-postgres",
+					Title:     "Use Postgres for tokens",
+					Body:      "We will use Postgres",
+					Rationale: "Mature, reliable, well-known",
+					Question:  "Where should we store auth tokens?",
+					RejectedAlternatives: []storage.RejectedAlternative{
+						{Option: "Redis", Reason: "operational complexity"},
+						{Option: "DynamoDB", Reason: "vendor lock-in"},
+					},
+					Confidence:  storage.DecisionConfidenceHigh,
+					Tags:        []string{"auth", "storage", "backend"},
+					Scope:       storage.DecisionScopeProject,
+					OriginSpec:  "login-api",
+					OriginStage: "specify",
+				},
+			},
+		},
+	}
+
+	data, err := json.Marshal(doc)
+	require.NoError(t, err)
+
+	eng := NewEngine(back, "", "test")
+	res, err := eng.Import(t.Context(), data, false, false)
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.Decisions)
+
+	require.Len(t, back.captured, 1)
+	got := back.captured[0]
+	assert.Equal(t, "use-postgres", got.Slug)
+	assert.Equal(t, "Use Postgres for tokens", got.Title)
+	assert.Equal(t, "We will use Postgres", got.Body)
+	assert.Equal(t, "Mature, reliable, well-known", got.Rationale)
+	assert.Equal(t, "Where should we store auth tokens?", got.Question)
+	assert.Equal(t, []storage.RejectedAlternative{
+		{Option: "Redis", Reason: "operational complexity"},
+		{Option: "DynamoDB", Reason: "vendor lock-in"},
+	}, got.RejectedAlternatives)
+	assert.Equal(t, storage.DecisionConfidenceHigh, got.Confidence)
+	assert.Equal(t, []string{"auth", "storage", "backend"}, got.Tags)
+	assert.Equal(t, storage.DecisionScopeProject, got.Scope)
+	assert.Equal(t, "login-api", got.OriginSpec)
+	assert.Equal(t, "specify", got.OriginStage)
 }
