@@ -241,6 +241,257 @@ func TestRunDecisionShow_RPCError(t *testing.T) {
 	assert.Contains(t, err.Error(), "get decision")
 }
 
+// --- flag parsing / validation ---
+
+func TestParseDecisionConfidence(t *testing.T) {
+	tests := []struct {
+		input   string
+		want    specv1.DecisionConfidence
+		wantErr bool
+	}{
+		{"", specv1.DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED, false},
+		{"high", specv1.DecisionConfidence_DECISION_CONFIDENCE_HIGH, false},
+		{"medium", specv1.DecisionConfidence_DECISION_CONFIDENCE_MEDIUM, false},
+		{"low", specv1.DecisionConfidence_DECISION_CONFIDENCE_LOW, false},
+		{"extreme", 0, true},
+		{"HIGH", 0, true},
+	}
+	for _, tt := range tests {
+		t.Run("confidence_"+tt.input, func(t *testing.T) {
+			got, err := parseDecisionConfidence(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "unknown confidence")
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestParseDecisionScope(t *testing.T) {
+	tests := []struct {
+		input   string
+		want    specv1.DecisionScope
+		wantErr bool
+	}{
+		{"", specv1.DecisionScope_DECISION_SCOPE_UNSPECIFIED, false},
+		{"project", specv1.DecisionScope_DECISION_SCOPE_PROJECT, false},
+		{"team", specv1.DecisionScope_DECISION_SCOPE_TEAM, false},
+		{"org", specv1.DecisionScope_DECISION_SCOPE_ORG, false},
+		{"global", 0, true},
+		{"PROJECT", 0, true},
+	}
+	for _, tt := range tests {
+		t.Run("scope_"+tt.input, func(t *testing.T) {
+			got, err := parseDecisionScope(tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "unknown scope")
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestRunDecisionCreate_RejectedValidation(t *testing.T) {
+	startFakeServer[specgraphv1connect.DecisionServiceHandler](t, fakeDecisionCreateHandler{}, specgraphv1connect.NewDecisionServiceHandler)
+
+	tests := []struct {
+		name    string
+		value   string
+		wantErr string
+	}{
+		{"missing colon", "NoColonHere", `invalid --rejected value "NoColonHere"`},
+		{"empty option", ":some reason", `invalid --rejected value ":some reason"`},
+		{"empty reason", "option:", `invalid --rejected value "option:"`},
+		{"whitespace option", "  :reason", `invalid --rejected value "  :reason"`},
+		{"whitespace reason", "option:  ", `invalid --rejected value "option:  "`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldTitle := decisionTitle
+			oldRejected := decisionRejected
+			oldConfidence := decisionConfidence
+			oldScope := decisionScope
+			decisionTitle = "Test"
+			decisionRejected = []string{tt.value}
+			decisionConfidence = ""
+			decisionScope = ""
+			t.Cleanup(func() {
+				decisionTitle = oldTitle
+				decisionRejected = oldRejected
+				decisionConfidence = oldConfidence
+				decisionScope = oldScope
+			})
+
+			err := runDecisionCreate(newCmdWithCtx(), []string{"test-slug"})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}
+
+func TestRunDecisionCreate_RejectedHappyPath(t *testing.T) {
+	h := &capturingDecisionCreateHandler{}
+	startFakeServer[specgraphv1connect.DecisionServiceHandler](t, h, specgraphv1connect.NewDecisionServiceHandler)
+
+	oldTitle := decisionTitle
+	oldRejected := decisionRejected
+	oldConfidence := decisionConfidence
+	oldScope := decisionScope
+	decisionTitle = "Test"
+	decisionRejected = []string{"PostgreSQL:Not graph-native", " Neo4j : Too expensive "}
+	decisionConfidence = ""
+	decisionScope = ""
+	t.Cleanup(func() {
+		decisionTitle = oldTitle
+		decisionRejected = oldRejected
+		decisionConfidence = oldConfidence
+		decisionScope = oldScope
+	})
+
+	err := runDecisionCreate(newCmdWithCtx(), []string{"test-slug"})
+	require.NoError(t, err)
+	require.Len(t, h.lastReq.RejectedAlternatives, 2)
+	assert.Equal(t, "PostgreSQL", h.lastReq.RejectedAlternatives[0].Option)
+	assert.Equal(t, "Not graph-native", h.lastReq.RejectedAlternatives[0].Reason)
+	assert.Equal(t, "Neo4j", h.lastReq.RejectedAlternatives[1].Option)
+	assert.Equal(t, "Too expensive", h.lastReq.RejectedAlternatives[1].Reason)
+}
+
+func TestRunDecisionCreate_TagsParsing(t *testing.T) {
+	h := &capturingDecisionCreateHandler{}
+	startFakeServer[specgraphv1connect.DecisionServiceHandler](t, h, specgraphv1connect.NewDecisionServiceHandler)
+
+	tests := []struct {
+		name     string
+		tags     string
+		wantTags []string
+	}{
+		{"simple", "db,infra", []string{"db", "infra"}},
+		{"with spaces", " db , infra , ", []string{"db", "infra"}},
+		{"empty segments filtered", "db,,infra", []string{"db", "infra"}},
+		{"empty string", "", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldTitle := decisionTitle
+			oldTags := decisionTags
+			oldConfidence := decisionConfidence
+			oldScope := decisionScope
+			oldRejected := decisionRejected
+			decisionTitle = "Test"
+			decisionTags = tt.tags
+			decisionConfidence = ""
+			decisionScope = ""
+			decisionRejected = nil
+			t.Cleanup(func() {
+				decisionTitle = oldTitle
+				decisionTags = oldTags
+				decisionConfidence = oldConfidence
+				decisionScope = oldScope
+				decisionRejected = oldRejected
+			})
+
+			err := runDecisionCreate(newCmdWithCtx(), []string{"test-slug"})
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantTags, h.lastReq.Tags)
+		})
+	}
+}
+
+func TestRunDecisionCreate_AllNewFields(t *testing.T) {
+	h := &capturingDecisionCreateHandler{}
+	startFakeServer[specgraphv1connect.DecisionServiceHandler](t, h, specgraphv1connect.NewDecisionServiceHandler)
+
+	oldTitle := decisionTitle
+	oldQuestion := decisionQuestion
+	oldConfidence := decisionConfidence
+	oldScope := decisionScope
+	oldOriginSpec := decisionOriginSpec
+	oldOriginStage := decisionOriginStage
+	oldTags := decisionTags
+	oldRejected := decisionRejected
+	decisionTitle = "Full test"
+	decisionQuestion = "Which DB?"
+	decisionConfidence = "high"
+	decisionScope = "team"
+	decisionOriginSpec = "storage-design"
+	decisionOriginStage = "specify"
+	decisionTags = "db,infra"
+	decisionRejected = []string{"Postgres:Not graph"}
+	t.Cleanup(func() {
+		decisionTitle = oldTitle
+		decisionQuestion = oldQuestion
+		decisionConfidence = oldConfidence
+		decisionScope = oldScope
+		decisionOriginSpec = oldOriginSpec
+		decisionOriginStage = oldOriginStage
+		decisionTags = oldTags
+		decisionRejected = oldRejected
+	})
+
+	err := runDecisionCreate(newCmdWithCtx(), []string{"full-test"})
+	require.NoError(t, err)
+	assert.Equal(t, "Which DB?", h.lastReq.Question)
+	assert.Equal(t, specv1.DecisionConfidence_DECISION_CONFIDENCE_HIGH, h.lastReq.Confidence)
+	assert.Equal(t, specv1.DecisionScope_DECISION_SCOPE_TEAM, h.lastReq.Scope)
+	assert.Equal(t, "storage-design", h.lastReq.OriginSpec)
+	assert.Equal(t, "specify", h.lastReq.OriginStage)
+	assert.Equal(t, []string{"db", "infra"}, h.lastReq.Tags)
+	require.Len(t, h.lastReq.RejectedAlternatives, 1)
+}
+
+func TestRunDecisionCreate_InvalidConfidence(t *testing.T) {
+	startFakeServer[specgraphv1connect.DecisionServiceHandler](t, fakeDecisionCreateHandler{}, specgraphv1connect.NewDecisionServiceHandler)
+
+	oldTitle := decisionTitle
+	oldConfidence := decisionConfidence
+	oldScope := decisionScope
+	oldRejected := decisionRejected
+	decisionTitle = "Test"
+	decisionConfidence = "extreme"
+	decisionScope = ""
+	decisionRejected = nil
+	t.Cleanup(func() {
+		decisionTitle = oldTitle
+		decisionConfidence = oldConfidence
+		decisionScope = oldScope
+		decisionRejected = oldRejected
+	})
+
+	err := runDecisionCreate(newCmdWithCtx(), []string{"test-slug"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown confidence")
+}
+
+func TestRunDecisionCreate_InvalidScope(t *testing.T) {
+	startFakeServer[specgraphv1connect.DecisionServiceHandler](t, fakeDecisionCreateHandler{}, specgraphv1connect.NewDecisionServiceHandler)
+
+	oldTitle := decisionTitle
+	oldConfidence := decisionConfidence
+	oldScope := decisionScope
+	oldRejected := decisionRejected
+	decisionTitle = "Test"
+	decisionConfidence = ""
+	decisionScope = "global"
+	decisionRejected = nil
+	t.Cleanup(func() {
+		decisionTitle = oldTitle
+		decisionConfidence = oldConfidence
+		decisionScope = oldScope
+		decisionRejected = oldRejected
+	})
+
+	err := runDecisionCreate(newCmdWithCtx(), []string{"test-slug"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown scope")
+}
+
 // --- cobra arg validation ---
 
 func TestDecisionCreateCmd_RequiresSlug(t *testing.T) {
@@ -253,4 +504,21 @@ func TestDecisionShowCmd_RequiresSlug(t *testing.T) {
 	err := decisionShowCmd.Args(decisionShowCmd, []string{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "accepts 1 arg")
+}
+
+// --- capturing fake handler ---
+
+type capturingDecisionCreateHandler struct {
+	specgraphv1connect.UnimplementedDecisionServiceHandler
+	lastReq *specv1.CreateDecisionRequest
+}
+
+func (h *capturingDecisionCreateHandler) CreateDecision(_ context.Context, req *connect.Request[specv1.CreateDecisionRequest]) (*connect.Response[specv1.CreateDecisionResponse], error) {
+	h.lastReq = req.Msg
+	return connect.NewResponse(&specv1.CreateDecisionResponse{
+		Decision: &specv1.Decision{
+			Id:   "dec-captured",
+			Slug: req.Msg.GetSlug(),
+		},
+	}), nil
 }

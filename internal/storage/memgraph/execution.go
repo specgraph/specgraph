@@ -291,11 +291,10 @@ func (s *Store) recordClaimedEvent(ctx context.Context, slug, agent, eventType, 
 
 // fetchLinkedDecisions retrieves all decisions linked to a spec via DECIDED_IN edges.
 func (s *Store) fetchLinkedDecisions(ctx context.Context, slug string) ([]*storage.Decision, error) {
-	query := `
+	query := fmt.Sprintf(`
 		MATCH (p:Project {slug: $project})<-[:BELONGS_TO]-(s:Spec {slug: $slug})-[:DECIDED_IN]->(d:Decision)
-		RETURN d.id, d.slug, d.title, d.status, d.decision, d.rationale,
-		       d.superseded_by, d.created_at, d.updated_at, d.content_hash
-	`
+		RETURN %s
+	`, decisionReturnCols)
 	records, err := s.executeQuery(ctx, query, mergeParams(s.projectParam(), map[string]any{"slug": slug}))
 	if err != nil {
 		return nil, err

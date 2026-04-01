@@ -15,7 +15,29 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file specgraph/v1/decision.proto.
  */
 export const file_specgraph_v1_decision: GenFile = /*@__PURE__*/
-  fileDesc("ChtzcGVjZ3JhcGgvdjEvZGVjaXNpb24ucHJvdG8SDHNwZWNncmFwaC52MSKTAgoIRGVjaXNpb24SCgoCaWQYASABKAkSDAoEc2x1ZxgCIAEoCRINCgV0aXRsZRgDIAEoCRIsCgZzdGF0dXMYBCABKA4yHC5zcGVjZ3JhcGgudjEuRGVjaXNpb25TdGF0dXMSEAoIZGVjaXNpb24YBSABKAkSEQoJcmF0aW9uYWxlGAYgASgJEhUKDXN1cGVyc2VkZWRfYnkYByABKAkSLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFAoMY29udGVudF9oYXNoGAogASgJIlkKFUNyZWF0ZURlY2lzaW9uUmVxdWVzdBIMCgRzbHVnGAEgASgJEg0KBXRpdGxlGAIgASgJEhAKCGRlY2lzaW9uGAMgASgJEhEKCXJhdGlvbmFsZRgEIAEoCSIiChJHZXREZWNpc2lvblJlcXVlc3QSDAoEc2x1ZxgBIAEoCSJTChRMaXN0RGVjaXNpb25zUmVxdWVzdBIsCgZzdGF0dXMYASABKA4yHC5zcGVjZ3JhcGgudjEuRGVjaXNpb25TdGF0dXMSDQoFbGltaXQYAiABKAUiQgoVTGlzdERlY2lzaW9uc1Jlc3BvbnNlEikKCWRlY2lzaW9ucxgBIAMoCzIWLnNwZWNncmFwaC52MS5EZWNpc2lvbiL5AQoVVXBkYXRlRGVjaXNpb25SZXF1ZXN0EgwKBHNsdWcYASABKAkSEgoFdGl0bGUYAiABKAlIAIgBARIxCgZzdGF0dXMYAyABKA4yHC5zcGVjZ3JhcGgudjEuRGVjaXNpb25TdGF0dXNIAYgBARIVCghkZWNpc2lvbhgEIAEoCUgCiAEBEhYKCXJhdGlvbmFsZRgFIAEoCUgDiAEBEhoKDXN1cGVyc2VkZWRfYnkYBiABKAlIBIgBAUIICgZfdGl0bGVCCQoHX3N0YXR1c0ILCglfZGVjaXNpb25CDAoKX3JhdGlvbmFsZUIQCg5fc3VwZXJzZWRlZF9ieSJCChZDcmVhdGVEZWNpc2lvblJlc3BvbnNlEigKCGRlY2lzaW9uGAEgASgLMhYuc3BlY2dyYXBoLnYxLkRlY2lzaW9uIj8KE0dldERlY2lzaW9uUmVzcG9uc2USKAoIZGVjaXNpb24YASABKAsyFi5zcGVjZ3JhcGgudjEuRGVjaXNpb24iQgoWVXBkYXRlRGVjaXNpb25SZXNwb25zZRIoCghkZWNpc2lvbhgBIAEoCzIWLnNwZWNncmFwaC52MS5EZWNpc2lvbiqtAQoORGVjaXNpb25TdGF0dXMSHwobREVDSVNJT05fU1RBVFVTX1VOU1BFQ0lGSUVEEAASHAoYREVDSVNJT05fU1RBVFVTX1BST1BPU0VEEAESHAoYREVDSVNJT05fU1RBVFVTX0FDQ0VQVEVEEAISHgoaREVDSVNJT05fU1RBVFVTX0RFUFJFQ0FURUQQAxIeChpERUNJU0lPTl9TVEFUVVNfU1VQRVJTRURFRBAEMvkCCg9EZWNpc2lvblNlcnZpY2USWwoOQ3JlYXRlRGVjaXNpb24SIy5zcGVjZ3JhcGgudjEuQ3JlYXRlRGVjaXNpb25SZXF1ZXN0GiQuc3BlY2dyYXBoLnYxLkNyZWF0ZURlY2lzaW9uUmVzcG9uc2USUgoLR2V0RGVjaXNpb24SIC5zcGVjZ3JhcGgudjEuR2V0RGVjaXNpb25SZXF1ZXN0GiEuc3BlY2dyYXBoLnYxLkdldERlY2lzaW9uUmVzcG9uc2USWAoNTGlzdERlY2lzaW9ucxIiLnNwZWNncmFwaC52MS5MaXN0RGVjaXNpb25zUmVxdWVzdBojLnNwZWNncmFwaC52MS5MaXN0RGVjaXNpb25zUmVzcG9uc2USWwoOVXBkYXRlRGVjaXNpb24SIy5zcGVjZ3JhcGgudjEuVXBkYXRlRGVjaXNpb25SZXF1ZXN0GiQuc3BlY2dyYXBoLnYxLlVwZGF0ZURlY2lzaW9uUmVzcG9uc2VCPVo7Z2l0aHViLmNvbS9zcGVjZ3JhcGgvc3BlY2dyYXBoL2dlbi9zcGVjZ3JhcGgvdjE7c3BlY2dyYXBodjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChtzcGVjZ3JhcGgvdjEvZGVjaXNpb24ucHJvdG8SDHNwZWNncmFwaC52MSI1ChNSZWplY3RlZEFsdGVybmF0aXZlEg4KBm9wdGlvbhgBIAEoCRIOCgZyZWFzb24YAiABKAkikwQKCERlY2lzaW9uEgoKAmlkGAEgASgJEgwKBHNsdWcYAiABKAkSDQoFdGl0bGUYAyABKAkSLAoGc3RhdHVzGAQgASgOMhwuc3BlY2dyYXBoLnYxLkRlY2lzaW9uU3RhdHVzEhAKCGRlY2lzaW9uGAUgASgJEhEKCXJhdGlvbmFsZRgGIAEoCRIVCg1zdXBlcnNlZGVkX2J5GAcgASgJEi4KCmNyZWF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhQKDGNvbnRlbnRfaGFzaBgKIAEoCRIQCghxdWVzdGlvbhgLIAEoCRJAChVyZWplY3RlZF9hbHRlcm5hdGl2ZXMYDCADKAsyIS5zcGVjZ3JhcGgudjEuUmVqZWN0ZWRBbHRlcm5hdGl2ZRI0Cgpjb25maWRlbmNlGA0gASgOMiAuc3BlY2dyYXBoLnYxLkRlY2lzaW9uQ29uZmlkZW5jZRIMCgR0YWdzGA4gAygJEioKBXNjb3BlGA8gASgOMhsuc3BlY2dyYXBoLnYxLkRlY2lzaW9uU2NvcGUSEwoLb3JpZ2luX3NwZWMYECABKAkSFAoMb3JpZ2luX3N0YWdlGBEgASgJEg8KB3ZlcnNpb24YEiABKAUiyAIKFUNyZWF0ZURlY2lzaW9uUmVxdWVzdBIMCgRzbHVnGAEgASgJEg0KBXRpdGxlGAIgASgJEhAKCGRlY2lzaW9uGAMgASgJEhEKCXJhdGlvbmFsZRgEIAEoCRIQCghxdWVzdGlvbhgFIAEoCRJAChVyZWplY3RlZF9hbHRlcm5hdGl2ZXMYBiADKAsyIS5zcGVjZ3JhcGgudjEuUmVqZWN0ZWRBbHRlcm5hdGl2ZRI0Cgpjb25maWRlbmNlGAcgASgOMiAuc3BlY2dyYXBoLnYxLkRlY2lzaW9uQ29uZmlkZW5jZRIMCgR0YWdzGAggAygJEioKBXNjb3BlGAkgASgOMhsuc3BlY2dyYXBoLnYxLkRlY2lzaW9uU2NvcGUSEwoLb3JpZ2luX3NwZWMYCiABKAkSFAoMb3JpZ2luX3N0YWdlGAsgASgJIiIKEkdldERlY2lzaW9uUmVxdWVzdBIMCgRzbHVnGAEgASgJIlMKFExpc3REZWNpc2lvbnNSZXF1ZXN0EiwKBnN0YXR1cxgBIAEoDjIcLnNwZWNncmFwaC52MS5EZWNpc2lvblN0YXR1cxINCgVsaW1pdBgCIAEoBSJCChVMaXN0RGVjaXNpb25zUmVzcG9uc2USKQoJZGVjaXNpb25zGAEgAygLMhYuc3BlY2dyYXBoLnYxLkRlY2lzaW9uIsgEChVVcGRhdGVEZWNpc2lvblJlcXVlc3QSDAoEc2x1ZxgBIAEoCRISCgV0aXRsZRgCIAEoCUgAiAEBEjEKBnN0YXR1cxgDIAEoDjIcLnNwZWNncmFwaC52MS5EZWNpc2lvblN0YXR1c0gBiAEBEhUKCGRlY2lzaW9uGAQgASgJSAKIAQESFgoJcmF0aW9uYWxlGAUgASgJSAOIAQESGgoNc3VwZXJzZWRlZF9ieRgGIAEoCUgEiAEBEhUKCHF1ZXN0aW9uGAcgASgJSAWIAQESOQoKY29uZmlkZW5jZRgIIAEoDjIgLnNwZWNncmFwaC52MS5EZWNpc2lvbkNvbmZpZGVuY2VIBogBARIMCgR0YWdzGAkgAygJEi8KBXNjb3BlGAogASgOMhsuc3BlY2dyYXBoLnYxLkRlY2lzaW9uU2NvcGVIB4gBARIYCgtvcmlnaW5fc3BlYxgLIAEoCUgIiAEBEhkKDG9yaWdpbl9zdGFnZRgMIAEoCUgJiAEBEkAKFXJlamVjdGVkX2FsdGVybmF0aXZlcxgNIAMoCzIhLnNwZWNncmFwaC52MS5SZWplY3RlZEFsdGVybmF0aXZlQggKBl90aXRsZUIJCgdfc3RhdHVzQgsKCV9kZWNpc2lvbkIMCgpfcmF0aW9uYWxlQhAKDl9zdXBlcnNlZGVkX2J5QgsKCV9xdWVzdGlvbkINCgtfY29uZmlkZW5jZUIICgZfc2NvcGVCDgoMX29yaWdpbl9zcGVjQg8KDV9vcmlnaW5fc3RhZ2UiQgoWQ3JlYXRlRGVjaXNpb25SZXNwb25zZRIoCghkZWNpc2lvbhgBIAEoCzIWLnNwZWNncmFwaC52MS5EZWNpc2lvbiI/ChNHZXREZWNpc2lvblJlc3BvbnNlEigKCGRlY2lzaW9uGAEgASgLMhYuc3BlY2dyYXBoLnYxLkRlY2lzaW9uIkIKFlVwZGF0ZURlY2lzaW9uUmVzcG9uc2USKAoIZGVjaXNpb24YASABKAsyFi5zcGVjZ3JhcGgudjEuRGVjaXNpb24qrQEKDkRlY2lzaW9uU3RhdHVzEh8KG0RFQ0lTSU9OX1NUQVRVU19VTlNQRUNJRklFRBAAEhwKGERFQ0lTSU9OX1NUQVRVU19QUk9QT1NFRBABEhwKGERFQ0lTSU9OX1NUQVRVU19BQ0NFUFRFRBACEh4KGkRFQ0lTSU9OX1NUQVRVU19ERVBSRUNBVEVEEAMSHgoaREVDSVNJT05fU1RBVFVTX1NVUEVSU0VERUQQBCqUAQoSRGVjaXNpb25Db25maWRlbmNlEiMKH0RFQ0lTSU9OX0NPTkZJREVOQ0VfVU5TUEVDSUZJRUQQABIcChhERUNJU0lPTl9DT05GSURFTkNFX0hJR0gQARIeChpERUNJU0lPTl9DT05GSURFTkNFX01FRElVTRACEhsKF0RFQ0lTSU9OX0NPTkZJREVOQ0VfTE9XEAMqfAoNRGVjaXNpb25TY29wZRIeChpERUNJU0lPTl9TQ09QRV9VTlNQRUNJRklFRBAAEhoKFkRFQ0lTSU9OX1NDT1BFX1BST0pFQ1QQARIXChNERUNJU0lPTl9TQ09QRV9URUFNEAISFgoSREVDSVNJT05fU0NPUEVfT1JHEAMy+QIKD0RlY2lzaW9uU2VydmljZRJbCg5DcmVhdGVEZWNpc2lvbhIjLnNwZWNncmFwaC52MS5DcmVhdGVEZWNpc2lvblJlcXVlc3QaJC5zcGVjZ3JhcGgudjEuQ3JlYXRlRGVjaXNpb25SZXNwb25zZRJSCgtHZXREZWNpc2lvbhIgLnNwZWNncmFwaC52MS5HZXREZWNpc2lvblJlcXVlc3QaIS5zcGVjZ3JhcGgudjEuR2V0RGVjaXNpb25SZXNwb25zZRJYCg1MaXN0RGVjaXNpb25zEiIuc3BlY2dyYXBoLnYxLkxpc3REZWNpc2lvbnNSZXF1ZXN0GiMuc3BlY2dyYXBoLnYxLkxpc3REZWNpc2lvbnNSZXNwb25zZRJbCg5VcGRhdGVEZWNpc2lvbhIjLnNwZWNncmFwaC52MS5VcGRhdGVEZWNpc2lvblJlcXVlc3QaJC5zcGVjZ3JhcGgudjEuVXBkYXRlRGVjaXNpb25SZXNwb25zZUI9WjtnaXRodWIuY29tL3NwZWNncmFwaC9zcGVjZ3JhcGgvZ2VuL3NwZWNncmFwaC92MTtzcGVjZ3JhcGh2MWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+
+/**
+ * @generated from message specgraph.v1.RejectedAlternative
+ */
+export type RejectedAlternative = Message<"specgraph.v1.RejectedAlternative"> & {
+  /**
+   * @generated from field: string option = 1;
+   */
+  option: string;
+
+  /**
+   * @generated from field: string reason = 2;
+   */
+  reason: string;
+};
+
+/**
+ * Describes the message specgraph.v1.RejectedAlternative.
+ * Use `create(RejectedAlternativeSchema)` to create a new message.
+ */
+export const RejectedAlternativeSchema: GenMessage<RejectedAlternative> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_decision, 0);
 
 /**
  * @generated from message specgraph.v1.Decision
@@ -84,6 +106,54 @@ export type Decision = Message<"specgraph.v1.Decision"> & {
    * @generated from field: string content_hash = 10;
    */
   contentHash: string;
+
+  /**
+   * the question this decision answers
+   *
+   * @generated from field: string question = 11;
+   */
+  question: string;
+
+  /**
+   * @generated from field: repeated specgraph.v1.RejectedAlternative rejected_alternatives = 12;
+   */
+  rejectedAlternatives: RejectedAlternative[];
+
+  /**
+   * @generated from field: specgraph.v1.DecisionConfidence confidence = 13;
+   */
+  confidence: DecisionConfidence;
+
+  /**
+   * @generated from field: repeated string tags = 14;
+   */
+  tags: string[];
+
+  /**
+   * @generated from field: specgraph.v1.DecisionScope scope = 15;
+   */
+  scope: DecisionScope;
+
+  /**
+   * slug of the spec that prompted this decision
+   *
+   * @generated from field: string origin_spec = 16;
+   */
+  originSpec: string;
+
+  /**
+   * authoring stage when decision was created
+   *
+   * @generated from field: string origin_stage = 17;
+   */
+  originStage: string;
+
+  /**
+   * optimistic concurrency version
+   *
+   * @generated from field: int32 version = 18;
+   */
+  version: number;
 };
 
 /**
@@ -91,7 +161,7 @@ export type Decision = Message<"specgraph.v1.Decision"> & {
  * Use `create(DecisionSchema)` to create a new message.
  */
 export const DecisionSchema: GenMessage<Decision> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_decision, 0);
+  messageDesc(file_specgraph_v1_decision, 1);
 
 /**
  * @generated from message specgraph.v1.CreateDecisionRequest
@@ -116,6 +186,41 @@ export type CreateDecisionRequest = Message<"specgraph.v1.CreateDecisionRequest"
    * @generated from field: string rationale = 4;
    */
   rationale: string;
+
+  /**
+   * @generated from field: string question = 5;
+   */
+  question: string;
+
+  /**
+   * @generated from field: repeated specgraph.v1.RejectedAlternative rejected_alternatives = 6;
+   */
+  rejectedAlternatives: RejectedAlternative[];
+
+  /**
+   * @generated from field: specgraph.v1.DecisionConfidence confidence = 7;
+   */
+  confidence: DecisionConfidence;
+
+  /**
+   * @generated from field: repeated string tags = 8;
+   */
+  tags: string[];
+
+  /**
+   * @generated from field: specgraph.v1.DecisionScope scope = 9;
+   */
+  scope: DecisionScope;
+
+  /**
+   * @generated from field: string origin_spec = 10;
+   */
+  originSpec: string;
+
+  /**
+   * @generated from field: string origin_stage = 11;
+   */
+  originStage: string;
 };
 
 /**
@@ -123,7 +228,7 @@ export type CreateDecisionRequest = Message<"specgraph.v1.CreateDecisionRequest"
  * Use `create(CreateDecisionRequestSchema)` to create a new message.
  */
 export const CreateDecisionRequestSchema: GenMessage<CreateDecisionRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_decision, 1);
+  messageDesc(file_specgraph_v1_decision, 2);
 
 /**
  * @generated from message specgraph.v1.GetDecisionRequest
@@ -140,7 +245,7 @@ export type GetDecisionRequest = Message<"specgraph.v1.GetDecisionRequest"> & {
  * Use `create(GetDecisionRequestSchema)` to create a new message.
  */
 export const GetDecisionRequestSchema: GenMessage<GetDecisionRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_decision, 2);
+  messageDesc(file_specgraph_v1_decision, 3);
 
 /**
  * @generated from message specgraph.v1.ListDecisionsRequest
@@ -166,7 +271,7 @@ export type ListDecisionsRequest = Message<"specgraph.v1.ListDecisionsRequest"> 
  * Use `create(ListDecisionsRequestSchema)` to create a new message.
  */
 export const ListDecisionsRequestSchema: GenMessage<ListDecisionsRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_decision, 3);
+  messageDesc(file_specgraph_v1_decision, 4);
 
 /**
  * @generated from message specgraph.v1.ListDecisionsResponse
@@ -183,7 +288,7 @@ export type ListDecisionsResponse = Message<"specgraph.v1.ListDecisionsResponse"
  * Use `create(ListDecisionsResponseSchema)` to create a new message.
  */
 export const ListDecisionsResponseSchema: GenMessage<ListDecisionsResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_decision, 4);
+  messageDesc(file_specgraph_v1_decision, 5);
 
 /**
  * @generated from message specgraph.v1.UpdateDecisionRequest
@@ -220,6 +325,41 @@ export type UpdateDecisionRequest = Message<"specgraph.v1.UpdateDecisionRequest"
    * @generated from field: optional string superseded_by = 6;
    */
   supersededBy?: string;
+
+  /**
+   * @generated from field: optional string question = 7;
+   */
+  question?: string;
+
+  /**
+   * @generated from field: optional specgraph.v1.DecisionConfidence confidence = 8;
+   */
+  confidence?: DecisionConfidence;
+
+  /**
+   * @generated from field: repeated string tags = 9;
+   */
+  tags: string[];
+
+  /**
+   * @generated from field: optional specgraph.v1.DecisionScope scope = 10;
+   */
+  scope?: DecisionScope;
+
+  /**
+   * @generated from field: optional string origin_spec = 11;
+   */
+  originSpec?: string;
+
+  /**
+   * @generated from field: optional string origin_stage = 12;
+   */
+  originStage?: string;
+
+  /**
+   * @generated from field: repeated specgraph.v1.RejectedAlternative rejected_alternatives = 13;
+   */
+  rejectedAlternatives: RejectedAlternative[];
 };
 
 /**
@@ -227,7 +367,7 @@ export type UpdateDecisionRequest = Message<"specgraph.v1.UpdateDecisionRequest"
  * Use `create(UpdateDecisionRequestSchema)` to create a new message.
  */
 export const UpdateDecisionRequestSchema: GenMessage<UpdateDecisionRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_decision, 5);
+  messageDesc(file_specgraph_v1_decision, 6);
 
 /**
  * @generated from message specgraph.v1.CreateDecisionResponse
@@ -244,7 +384,7 @@ export type CreateDecisionResponse = Message<"specgraph.v1.CreateDecisionRespons
  * Use `create(CreateDecisionResponseSchema)` to create a new message.
  */
 export const CreateDecisionResponseSchema: GenMessage<CreateDecisionResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_decision, 6);
+  messageDesc(file_specgraph_v1_decision, 7);
 
 /**
  * @generated from message specgraph.v1.GetDecisionResponse
@@ -261,7 +401,7 @@ export type GetDecisionResponse = Message<"specgraph.v1.GetDecisionResponse"> & 
  * Use `create(GetDecisionResponseSchema)` to create a new message.
  */
 export const GetDecisionResponseSchema: GenMessage<GetDecisionResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_decision, 7);
+  messageDesc(file_specgraph_v1_decision, 8);
 
 /**
  * @generated from message specgraph.v1.UpdateDecisionResponse
@@ -278,7 +418,7 @@ export type UpdateDecisionResponse = Message<"specgraph.v1.UpdateDecisionRespons
  * Use `create(UpdateDecisionResponseSchema)` to create a new message.
  */
 export const UpdateDecisionResponseSchema: GenMessage<UpdateDecisionResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_decision, 8);
+  messageDesc(file_specgraph_v1_decision, 9);
 
 /**
  * @generated from enum specgraph.v1.DecisionStatus
@@ -315,6 +455,68 @@ export enum DecisionStatus {
  */
 export const DecisionStatusSchema: GenEnum<DecisionStatus> = /*@__PURE__*/
   enumDesc(file_specgraph_v1_decision, 0);
+
+/**
+ * @generated from enum specgraph.v1.DecisionConfidence
+ */
+export enum DecisionConfidence {
+  /**
+   * @generated from enum value: DECISION_CONFIDENCE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: DECISION_CONFIDENCE_HIGH = 1;
+   */
+  HIGH = 1,
+
+  /**
+   * @generated from enum value: DECISION_CONFIDENCE_MEDIUM = 2;
+   */
+  MEDIUM = 2,
+
+  /**
+   * @generated from enum value: DECISION_CONFIDENCE_LOW = 3;
+   */
+  LOW = 3,
+}
+
+/**
+ * Describes the enum specgraph.v1.DecisionConfidence.
+ */
+export const DecisionConfidenceSchema: GenEnum<DecisionConfidence> = /*@__PURE__*/
+  enumDesc(file_specgraph_v1_decision, 1);
+
+/**
+ * @generated from enum specgraph.v1.DecisionScope
+ */
+export enum DecisionScope {
+  /**
+   * @generated from enum value: DECISION_SCOPE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: DECISION_SCOPE_PROJECT = 1;
+   */
+  PROJECT = 1,
+
+  /**
+   * @generated from enum value: DECISION_SCOPE_TEAM = 2;
+   */
+  TEAM = 2,
+
+  /**
+   * @generated from enum value: DECISION_SCOPE_ORG = 3;
+   */
+  ORG = 3,
+}
+
+/**
+ * Describes the enum specgraph.v1.DecisionScope.
+ */
+export const DecisionScopeSchema: GenEnum<DecisionScope> = /*@__PURE__*/
+  enumDesc(file_specgraph_v1_decision, 2);
 
 /**
  * @generated from service specgraph.v1.DecisionService

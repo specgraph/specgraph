@@ -112,7 +112,9 @@ func (errorBackend) Heartbeat(context.Context, string, string, time.Duration) (*
 	return nil, errRawDB
 }
 
-func (errorBackend) CreateDecision(context.Context, string, string, string, string) (*storage.Decision, error) {
+func (errorBackend) CreateDecision(context.Context, string, string, string, string, string,
+	[]storage.RejectedAlternative, storage.DecisionConfidence,
+	[]string, storage.DecisionScope, string, string) (*storage.Decision, error) {
 	return nil, errRawDB
 }
 
@@ -124,7 +126,10 @@ func (errorBackend) ListDecisions(context.Context, storage.DecisionStatus, int) 
 	return nil, errRawDB
 }
 
-func (errorBackend) UpdateDecision(context.Context, string, *string, *storage.DecisionStatus, *string, *string, *string) (*storage.Decision, error) {
+func (errorBackend) UpdateDecision(context.Context, string, *string, *storage.DecisionStatus,
+	*string, *string, *string, *string,
+	*[]storage.RejectedAlternative, *storage.DecisionConfidence,
+	*[]string, *storage.DecisionScope, *string, *string) (*storage.Decision, error) {
 	return nil, errRawDB
 }
 

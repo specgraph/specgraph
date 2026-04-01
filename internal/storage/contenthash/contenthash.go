@@ -36,13 +36,47 @@ func Spec(intent, stage, priority, complexity string, authoringOutputs map[strin
 	return fmt.Sprintf("%016x%016x", hi, lo)
 }
 
+// RejectedAlt holds a rejected alternative for content hashing.
+// Defined here to avoid importing the storage package.
+type RejectedAlt struct {
+	Option string
+	Reason string
+}
+
 // Decision computes a Murmur3-128 content hash for a decision's substantive fields.
-func Decision(title, status, decision, rationale string) string {
+func Decision(title, status, decision, rationale, question, confidence, scope, originSpec, originStage string, tags []string, rejectedAlts []RejectedAlt) string {
 	h := murmur3.New128()
 	writeField(h, "title", title)
 	writeField(h, "status", status)
 	writeField(h, "decision", decision)
 	writeField(h, "rationale", rationale)
+	writeField(h, "question", question)
+	writeField(h, "confidence", confidence)
+	writeField(h, "scope", scope)
+	writeField(h, "origin_spec", originSpec)
+	writeField(h, "origin_stage", originStage)
+
+	// Sort tags for deterministic ordering.
+	sorted := make([]string, len(tags))
+	copy(sorted, tags)
+	sort.Strings(sorted)
+	for _, tag := range sorted {
+		writeField(h, "tag", tag)
+	}
+
+	// Sort rejected alternatives by Option for deterministic ordering.
+	alts := make([]RejectedAlt, len(rejectedAlts))
+	copy(alts, rejectedAlts)
+	sort.Slice(alts, func(i, j int) bool {
+		if alts[i].Option != alts[j].Option {
+			return alts[i].Option < alts[j].Option
+		}
+		return alts[i].Reason < alts[j].Reason
+	})
+	for _, alt := range alts {
+		writeField(h, "rejected_alt_option", alt.Option)
+		writeField(h, "rejected_alt_reason", alt.Reason)
+	}
 
 	hi, lo := h.Sum128()
 	return fmt.Sprintf("%016x%016x", hi, lo)
