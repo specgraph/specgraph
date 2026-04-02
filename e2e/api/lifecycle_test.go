@@ -18,10 +18,10 @@ import (
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 )
 
-// timestampSkew is the minimum sleep to guarantee Memgraph datetime ordering.
-// Memgraph stores datetime at second precision; sleep >1s ensures updated_at
-// differs. Using 1200ms (not 1100ms) to reduce flakiness on slow CI environments
-// where write latency can push the timestamp into the same second window.
+// timestampSkew is the minimum sleep to guarantee timestamp ordering.
+// Sleep >1s ensures updated_at differs between operations. Using 1200ms
+// (not 1100ms) to reduce flakiness on slow CI environments where write latency
+// can push the timestamp into the same second window.
 const timestampSkew = 1200 * time.Millisecond
 
 var _ = Describe("Lifecycle", Ordered, func() {
@@ -329,10 +329,10 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			// DEPENDS_ON relationship via the graph. Since the target was
 			// deleted, the MATCH won't find it — so we skip this approach.
 			//
-			// Instead: Memgraph enforces referential integrity, so dangling
+			// Instead: the storage backend enforces referential integrity, so dangling
 			// edges cannot exist. The linter covers this via unit tests with
-			// mock backends. Skip this e2e test for graph backends.
-			Skip("Memgraph enforces referential integrity — dangling edges cannot be created; covered by unit tests")
+			// mock backends. Skip this e2e test.
+			Skip("Storage backend enforces referential integrity — dangling edges cannot be created; covered by unit tests")
 		})
 	})
 

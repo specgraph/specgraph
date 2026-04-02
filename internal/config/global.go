@@ -31,7 +31,6 @@ type ServerSection struct {
 	Listen   string         `yaml:"listen"`
 	Mode     string         `yaml:"mode"`
 	Backend  string         `yaml:"backend"`
-	Memgraph MemgraphConfig `yaml:"memgraph"`
 	Postgres PostgresConfig `yaml:"postgres"`
 	Docker   bool           `yaml:"docker"`
 }
@@ -130,9 +129,9 @@ func globalDefaults() *GlobalConfig {
 		Server: ServerSection{
 			Listen:  "127.0.0.1:7890",
 			Mode:    "service",
-			Backend: "memgraph",
-			Memgraph: MemgraphConfig{
-				BoltURI: "bolt://localhost:7687",
+			Backend: "postgres",
+			Postgres: PostgresConfig{ //nolint:gosec // dev default, not a real credential
+				URL: "postgres://specgraph:specgraph@localhost:5432/specgraph?sslmode=disable",
 			},
 			Docker: true,
 		},

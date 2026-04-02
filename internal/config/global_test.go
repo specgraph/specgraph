@@ -21,8 +21,8 @@ func TestLoadGlobal_Defaults(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "127.0.0.1:7890", cfg.Server.Listen)
 	assert.Equal(t, "service", cfg.Server.Mode)
-	assert.Equal(t, "memgraph", cfg.Server.Backend)
-	assert.Equal(t, "bolt://localhost:7687", cfg.Server.Memgraph.BoltURI)
+	assert.Equal(t, "postgres", cfg.Server.Backend)
+	assert.Equal(t, "postgres://specgraph:specgraph@localhost:5432/specgraph?sslmode=disable", cfg.Server.Postgres.URL)
 	assert.True(t, cfg.Server.Docker)
 	assert.Equal(t, "http://127.0.0.1:7890", cfg.Client.DefaultServer)
 	assert.Empty(t, cfg.Client.Routes)
@@ -35,13 +35,14 @@ func TestLoadGlobal_ExistingFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
 
+	//nolint:gosec // test fixture with dev credentials
 	yaml := `
 server:
   listen: "0.0.0.0:9999"
   mode: manual
-  backend: memgraph
-  memgraph:
-    bolt_uri: "bolt://db:7687"
+  backend: postgres
+  postgres:
+    url: "postgres://specgraph:specgraph@db:5432/specgraph?sslmode=disable"
   docker: false
 client:
   default_server: "http://remote:9999"
