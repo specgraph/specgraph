@@ -16,15 +16,16 @@ func TestLoadConfig(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "specgraph.yaml")
 
+	//nolint:gosec // test fixture with dev credentials
 	yaml := `
 server:
   mode: external
   host: 127.0.0.1
   port: 8080
 storage:
-  backend: memgraph
-  memgraph:
-    bolt_uri: bolt://db:7687
+  backend: postgres
+  postgres:
+    url: postgres://specgraph:specgraph@db:5432/specgraph?sslmode=disable
 `
 	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600))
 
@@ -34,8 +35,8 @@ storage:
 	assert.Equal(t, "external", cfg.Server.Mode)
 	assert.Equal(t, "127.0.0.1", cfg.Server.Host)
 	assert.Equal(t, 8080, cfg.Server.Port)
-	assert.Equal(t, "memgraph", cfg.Storage.Backend)
-	assert.Equal(t, "bolt://db:7687", cfg.Storage.Memgraph.BoltURI)
+	assert.Equal(t, "postgres", cfg.Storage.Backend)
+	assert.Equal(t, "postgres://specgraph:specgraph@db:5432/specgraph?sslmode=disable", cfg.Storage.Postgres.URL)
 	assert.False(t, cfg.IsRemote())
 }
 
@@ -67,7 +68,7 @@ func TestWriteConfig(t *testing.T) {
 			Port: 8080,
 		},
 		Storage: StorageConfig{
-			Backend: "memgraph",
+			Backend: "postgres",
 		},
 	}
 
@@ -79,7 +80,7 @@ func TestWriteConfig(t *testing.T) {
 	assert.Equal(t, "docker", loaded.Server.Mode)
 	assert.Equal(t, "127.0.0.1", loaded.Server.Host)
 	assert.Equal(t, 8080, loaded.Server.Port)
-	assert.Equal(t, "memgraph", loaded.Storage.Backend)
+	assert.Equal(t, "postgres", loaded.Storage.Backend)
 }
 
 func TestLoadConfig_Defaults(t *testing.T) {
@@ -88,7 +89,7 @@ func TestLoadConfig_Defaults(t *testing.T) {
 
 	yaml := `
 storage:
-  backend: memgraph
+  backend: postgres
 `
 	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600))
 
@@ -98,52 +99,42 @@ storage:
 	assert.Equal(t, "0.0.0.0", cfg.Server.Host)
 	assert.Equal(t, 9090, cfg.Server.Port)
 	assert.Equal(t, "docker", cfg.Server.Mode)
-	assert.Equal(t, "bolt://localhost:7687", cfg.Storage.Memgraph.BoltURI)
 	assert.Equal(t, ".specgraph/docker-compose.yaml", cfg.Storage.Docker.ComposeFile)
 }
 
-func TestLoadConfig_MemgraphAuthAndTLS(t *testing.T) {
+func TestLoadConfig_PostgresURL(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "specgraph.yaml")
 
 	yaml := `
 storage:
-  backend: memgraph
-  memgraph:
-    bolt_uri: bolt://db:7687
-    username: admin
-    password: secret
-    use_tls: true
+  backend: postgres
+  postgres:
+    url: postgres://admin:secret@db:5432/specgraph?sslmode=require
 `
 	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600))
 
 	cfg, err := Load(path)
 	require.NoError(t, err)
 
-	assert.Equal(t, "bolt://db:7687", cfg.Storage.Memgraph.BoltURI)
-	assert.Equal(t, "admin", cfg.Storage.Memgraph.Username)
-	assert.Equal(t, "secret", cfg.Storage.Memgraph.Password)
-	assert.True(t, cfg.Storage.Memgraph.UseTLS)
+	assert.Equal(t, "postgres://admin:secret@db:5432/specgraph?sslmode=require", cfg.Storage.Postgres.URL)
 }
 
-func TestLoadConfig_MemgraphDefaultsNoAuth(t *testing.T) {
+func TestLoadConfig_PostgresDefaults(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "specgraph.yaml")
 
 	yaml := `
 storage:
-  backend: memgraph
-  memgraph:
-    bolt_uri: bolt://localhost:7687
+  backend: postgres
 `
 	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600))
 
 	cfg, err := Load(path)
 	require.NoError(t, err)
 
-	assert.Equal(t, "", cfg.Storage.Memgraph.Username)
-	assert.Equal(t, "", cfg.Storage.Memgraph.Password)
-	assert.False(t, cfg.Storage.Memgraph.UseTLS)
+	assert.Equal(t, "postgres", cfg.Storage.Backend)
+	assert.Equal(t, "postgres://specgraph:specgraph@localhost:5432/specgraph?sslmode=disable", cfg.Storage.Postgres.URL)
 }
 
 // --- Constitution YAML tests ---

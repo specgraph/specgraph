@@ -41,8 +41,7 @@ type ServerConfig struct {
 
 // StorageConfig describes the storage backend and its options.
 type StorageConfig struct {
-	Backend          string         `yaml:"backend"` // memgraph | postgres
-	Memgraph         MemgraphConfig `yaml:"memgraph"`
+	Backend          string         `yaml:"backend"` // postgres
 	Postgres         PostgresConfig `yaml:"postgres"`
 	Docker           DockerConfig   `yaml:"docker"`
 	ConstitutionPath string         `yaml:"constitution_path"`
@@ -112,14 +111,6 @@ type ConstitutionLangs struct {
 	Allowed          []string          `yaml:"allowed,omitempty"`
 	Forbidden        []string          `yaml:"forbidden,omitempty"`
 	ForbiddenReasons map[string]string `yaml:"forbidden_reasons,omitempty"`
-}
-
-// MemgraphConfig holds Memgraph-specific connection settings.
-type MemgraphConfig struct {
-	BoltURI  string `yaml:"bolt_uri"`
-	Username string `yaml:"username,omitempty"`
-	Password string `yaml:"password,omitempty"`
-	UseTLS   bool   `yaml:"use_tls,omitempty"`
 }
 
 // PostgresConfig holds Postgres-specific connection settings.
@@ -350,8 +341,8 @@ func applyDefaults(cfg *Config) {
 	if cfg.Server.Mode == "" && !cfg.IsRemote() {
 		cfg.Server.Mode = "docker"
 	}
-	if cfg.Storage.Memgraph.BoltURI == "" {
-		cfg.Storage.Memgraph.BoltURI = "bolt://localhost:7687"
+	if cfg.Storage.Postgres.URL == "" {
+		cfg.Storage.Postgres.URL = "postgres://specgraph:specgraph@localhost:5432/specgraph?sslmode=disable"
 	}
 	if cfg.Storage.Docker.ComposeFile == "" {
 		cfg.Storage.Docker.ComposeFile = ".specgraph/docker-compose.yaml"

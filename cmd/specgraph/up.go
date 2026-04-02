@@ -51,7 +51,7 @@ func runUp(cmd *cobra.Command, _ []string) error {
 	}
 
 	if cfg.Server.Docker {
-		composeFile, err := docker.EnsureComposeFile(xdg.DataHome(), cfg.Server.Backend)
+		composeFile, err := docker.EnsureComposeFile(xdg.DataHome())
 		if err != nil {
 			return fmt.Errorf("ensure compose file: %w", err)
 		}

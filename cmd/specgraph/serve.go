@@ -69,7 +69,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	}
 
 	if cfg.Server.Docker {
-		composeFile, dockerErr := docker.EnsureComposeFile(xdg.DataHome(), cfg.Server.Backend)
+		composeFile, dockerErr := docker.EnsureComposeFile(xdg.DataHome())
 		if dockerErr != nil {
 			return dockerErr
 		}
