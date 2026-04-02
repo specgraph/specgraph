@@ -21,14 +21,14 @@ import (
 )
 
 // errRawDB simulates a raw database error that should never be exposed to clients.
-var errRawDB = errors.New("memgraph: bolt connection failed: MATCH (n:Spec {slug: $slug}) RETURN n")
+var errRawDB = errors.New("postgres: query failed: SELECT * FROM specs WHERE slug = $1; pq: relation \"specs\" does not exist")
 
 // assertSanitized verifies that an error response does not leak internal details.
 func assertSanitized(t *testing.T, err error) {
 	t.Helper()
 	require.Error(t, err)
 	msg := err.Error()
-	for _, leak := range []string{"memgraph:", "bolt:", "MATCH", "RETURN", "Cypher"} {
+	for _, leak := range []string{"postgres:", "SELECT", "pq:", "relation"} {
 		require.False(t, strings.Contains(msg, leak),
 			"error message should not contain %q, got: %s", leak, msg)
 	}
