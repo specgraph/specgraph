@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -43,8 +44,12 @@ func EnsureComposeFile(projectDir string) (string, error) {
 		return "", fmt.Errorf("create data dir: %w", err)
 	}
 	dest := filepath.Join(projectDir, "docker-compose.yaml")
-	if _, err := os.Stat(dest); err == nil {
-		return dest, nil
+	if data, err := os.ReadFile(dest); err == nil {
+		// Regenerate if the existing file is a stale Memgraph compose template.
+		if !bytes.Contains(data, []byte("memgraph")) {
+			return dest, nil
+		}
+		// Fall through to overwrite with Postgres template.
 	}
 	template := postgresComposeTemplate()
 	if err := os.WriteFile(dest, []byte(template), 0o600); err != nil {
