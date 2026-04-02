@@ -16,11 +16,11 @@ import (
 )
 
 var (
-	serverInfo      *testutil.ServerInfo
-	cleanupServer   func()
-	cleanupMG       func()
-	cliBinaryPath   string
-	memgraphBoltURI string
+	serverInfo    *testutil.ServerInfo
+	cleanupServer func()
+	cleanupDB     func()
+	cliBinaryPath string
+	pgConnURL     string
 )
 
 func TestAPI(t *testing.T) {
@@ -38,10 +38,10 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	DeferCleanup(cleanupBinary)
 
-	memgraphBoltURI, cleanupMG, err = testutil.StartMemgraph(ctx)
+	pgConnURL, cleanupDB, err = testutil.StartPostgres(ctx)
 	Expect(err).NotTo(HaveOccurred())
 
-	serverInfo, cleanupServer, err = testutil.StartServer(ctx, memgraphBoltURI)
+	serverInfo, cleanupServer, err = testutil.StartServer(ctx, pgConnURL)
 	Expect(err).NotTo(HaveOccurred())
 
 	// Clear any leftover data from previous test runs.
@@ -52,7 +52,7 @@ var _ = AfterSuite(func() {
 	if cleanupServer != nil {
 		cleanupServer()
 	}
-	if cleanupMG != nil {
-		cleanupMG()
+	if cleanupDB != nil {
+		cleanupDB()
 	}
 })

@@ -12,7 +12,7 @@ All automation is via Taskfile.dev. Run `task --list` for the full catalog.
 
 | Task | When to run | What it does |
 |------|-------------|--------------|
-| `task check` | Before every `git push` (also runs automatically via pre-push hook) | fmt:check → license:check → lint → build → unit tests (excludes memgraph/Docker) |
+| `task check` | Before every `git push` (also runs automatically via pre-push hook) | fmt:check → license:check → lint → build → unit tests (excludes postgres integration/Docker) |
 | `task pr-prep` | Before opening/updating a PR (requires Docker) | check → test:integration → test:e2e |
 
 - **MUST run `task check`** after finishing a batch of changes and before pushing. The pre-push hook enforces this automatically, but run it manually first to catch issues early.
@@ -62,9 +62,9 @@ task build          # Generate proto + build binary
 | `internal/inject/` | Tool injection (AGENTS.md, CLAUDE.md, Cursor) with file locking |
 | `internal/server/` | ConnectRPC handlers + proto↔domain converters |
 | `internal/storage/` | Storage interfaces (domain types, not protobuf) |
-| `internal/storage/memgraph/` | Memgraph implementation (Cypher queries, testcontainers) |
-| `internal/storage/memgraph/changelog.go` | ChangeLog node operations (create, list, index, field change marshaling) |
-| `internal/storage/memgraph/tx.go` | Transaction support (RunInTransaction, context-threaded tx) |
+| `internal/storage/postgres/` | PostgreSQL implementation (pgx v5, recursive CTEs, testcontainers) |
+| `internal/storage/postgres/migrations/` | goose SQL migrations (schema DDL) |
+| `internal/storage/postgres/tx.go` | Transaction support (RunInTransaction, context-threaded tx via pgx) |
 | `internal/render/` | Markdown renderers for CLI output — one file per entity type, functions accept proto types and return strings |
 | `internal/sync/` | Sync adapters (beads, GitHub) with exec runner |
 | `e2e/` | End-to-end tests (Ginkgo/Gomega, require Docker) |
@@ -125,22 +125,22 @@ jj workspace update-stale
 - **`gen/` is committed** — generated proto code is checked in for Go module compatibility. Run `task proto:check` to verify staleness. Proto sources are in `proto/`, not `gen/`.
 - **Proto field removal** — When removing a proto field, use `reserved` for both field number and name in the `.proto` file. Then run `task proto`, update all callers (CLI, handlers, tests), and verify with `go build ./...`.
 - **`task proto` is incremental** — fingerprints `.proto` files and skips if unchanged
-- **Memgraph integration tests require Docker** — `internal/storage/memgraph/` uses testcontainers
+- **Postgres integration tests require Docker** — `internal/storage/postgres/` uses testcontainers with `pgvector/pgvector:pg18`. Wait strategy: `ForLog("database system is ready").WithOccurrence(2)`
 - **Lefthook pre-commit hooks**: license headers (addlicense), golangci-lint, yamlfmt, dprint, rumdl, cog (conventional commits). All run in parallel.
 - **Claude Code hooks**: `task lint` runs after Bash, edits to `gen/` are blocked via PreToolUse (edit `.proto` sources instead). Formatting is handled by pre-commit hooks, not Claude Code PostToolUse.
 - **ConnectRPC, not plain gRPC** — handlers are in `internal/server/`, proto services generate both `.pb.go` and `.connect.go` files
-- **Storage interfaces in `internal/storage/`** — implementations are in subdirectories (currently only `memgraph/`). The interfaces use domain types, not protobuf types.
+- **Storage interfaces in `internal/storage/`** — implementations are in subdirectories (currently only `postgres/`). The interfaces use domain types, not protobuf types.
 - **License headers required** — all `.go`, `.sh`, `.py`, `.proto` files need SPDX headers. Run `task license:add` to fix.
 - **`revive` requires package comments** — new Go packages need a `// Package foo ...` doc comment on the first `.go` file or `revive` linter fails in `task check`.
 - **`cmd/specgraph/table.go` still used** — `sync.go` and `prime.go` depend on `tableWriter`. Don't delete when migrating other commands to the render package.
 - **`cmd/specgraph/output.go`** — shared `printJSON(proto.Message)` helper for `--json` flag output. All read commands use it.
 - **CLI `--pass-type` uses friendly names** — `findings list --pass-type constitution-check`, not raw proto enum strings. Follows the `driftScopeToProtoMap` pattern in `lifecycle.go`.
 - **gosec in test files** — Intentional permission changes (e.g., `os.Chmod(dir, 0o555)` for read-only tests) trigger gosec G302. Add `//nolint:gosec // <reason>` on the same line.
-- **Memgraph bolt readiness race** — `wait.ForListeningPort` alone is insufficient; always pair with `wait.ForLog("memgraph entered RUNNING state")` (supervisord log — the platform image does NOT emit "You are running Memgraph" to container stdout) and a connection retry loop (see `newStore` in `memgraph_test.go`)
-- **Cypher DELETE + count** — `MATCH ()-[r]->() DELETE r RETURN count(r)` works in Memgraph; `r` was bound pre-deletion. No need to change to `count(*)`.
+- **Postgres recursive CTEs for graph traversals** — `GetTransitiveDeps`, `GetImpact` use `CYCLE` clause (PG14+). `GetCriticalPath` uses manual path array + `unnest WITH ORDINALITY`. All bounded to 50 hops.
+- **pgx v5 native driver** — use pgxpool, not database/sql. JSONB auto-marshals Go structs. `pgx.CollectRows` with `RowToStructByName` for scanning. goose migrations use `pgx/v5/stdlib` shim.
 - **E2E tests use Ginkgo/Gomega** — `e2e/api/` tests run via `go test -tags e2e`; `e2e/docker/` tests require Docker-in-Docker (skipped in CI)
-- **Go test glob `./pkg/...` vs `./pkg/`** — ellipsis recurses into subdirs. CI uses `./internal/storage/` (no ellipsis) to avoid pulling in `memgraph/` integration tests into the unit test step
-- **Docker compose templates manage DB only** — `internal/docker/compose.go` templates start Memgraph or Postgres containers; the SpecGraph process runs natively and connects to the containerized DB
+- **Go test glob `./pkg/...` vs `./pkg/`** — ellipsis recurses into subdirs. CI uses `./internal/storage/` (no ellipsis) to avoid pulling in `postgres/` integration tests into the unit test step
+- **Docker compose templates manage DB only** — `internal/docker/compose.go` templates start Postgres containers; the SpecGraph process runs natively and connects to the containerized DB
 - **Handler error sanitization** — `stageError` and similar methods sanitize internal errors before returning to clients. Test assertions MUST use error codes (`connect.CodeInternal`, `connect.CodeNotFound`), not error message strings.
 - **Mock backends must use sentinel errors** — When handler code uses `errors.Is()` checks (e.g., `storage.ErrSpecNotFound`, `storage.ErrDecisionNotFound`), mock/fake backends must return these sentinel errors, not `fmt.Errorf()`.
 - **DECIDED_IN edge direction** — Per ADR-003, DECIDED_IN edges go from spec → decision. In `acceptLinkedDecisions`, `edge.ToID` is the decision slug.
