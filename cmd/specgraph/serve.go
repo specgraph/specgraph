@@ -24,7 +24,8 @@ import (
 	"github.com/specgraph/specgraph/internal/linter"
 	"github.com/specgraph/specgraph/internal/notify"
 	"github.com/specgraph/specgraph/internal/server"
-	"github.com/specgraph/specgraph/internal/storage/memgraph"
+	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage/postgres"
 	syncpkg "github.com/specgraph/specgraph/internal/sync"
 	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/specgraph/specgraph/web"
@@ -39,6 +40,7 @@ var serveCmd = &cobra.Command{
 
 func init() {
 	serveCmd.Flags().String("cors-origin", "", "Enable CORS for this origin (dev mode only)")
+	serveCmd.Flags().String("pg-url", "", "PostgreSQL connection URL (overrides config; env: SPECGRAPH_PG_URL)")
 	rootCmd.AddCommand(serveCmd)
 }
 
@@ -51,217 +53,220 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	// Resolve --pg-url flag / SPECGRAPH_PG_URL env override before Docker compose
+	// so the correct backend URL is used when starting the compose stack.
+	pgURL, err := cmd.Flags().GetString("pg-url")
+	if err != nil {
+		return fmt.Errorf("pg-url flag: %w", err)
+	}
+	if pgURL == "" {
+		pgURL = os.Getenv("SPECGRAPH_PG_URL")
+	}
+	// Flag/env override selects postgres backend automatically.
+	if pgURL != "" {
+		cfg.Server.Backend = "postgres"
+		cfg.Server.Postgres.URL = pgURL
+	}
+
 	if cfg.Server.Docker {
-		composeFile, err := docker.EnsureComposeFile(xdg.DataHome(), cfg.Server.Backend)
-		if err != nil {
-			return err
+		composeFile, dockerErr := docker.EnsureComposeFile(xdg.DataHome(), cfg.Server.Backend)
+		if dockerErr != nil {
+			return dockerErr
 		}
 		fmt.Println("Starting Docker Compose stack...")
-		if err := docker.ComposeUp(composeFile); err != nil {
-			return err
+		if upErr := docker.ComposeUp(composeFile); upErr != nil {
+			return upErr
 		}
 		defer func() {
-			if err := docker.ComposeDown(composeFile); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: compose down: %v\n", err)
+			if downErr := docker.ComposeDown(composeFile); downErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: compose down: %v\n", downErr)
 			}
 		}()
 	}
 
-	switch cfg.Server.Backend {
-	case "memgraph":
-		mgOpts := []memgraph.Option{memgraph.WithProject("_server")}
-		if cfg.Server.Memgraph.Username != "" && cfg.Server.Memgraph.Password != "" {
-			mgOpts = append(mgOpts, memgraph.WithAuth(cfg.Server.Memgraph.Username, cfg.Server.Memgraph.Password))
+	// Create backend store.
+	type backendStore interface {
+		storage.Scoper
+		storage.ScopedBackend
+		server.ClaimSweeper
+		Close(context.Context) error
+	}
+	var store backendStore
+
+	connURL := cfg.Server.Postgres.URL
+	if connURL == "" {
+		return fmt.Errorf("postgres backend requires a connection URL (set server.postgres.url in config or use --pg-url)")
+	}
+	s, pgErr := postgres.New(ctx, connURL, postgres.WithProject("_server"))
+	if pgErr != nil {
+		return fmt.Errorf("connect to postgres: %w", pgErr)
+	}
+	store = s
+
+	// Defers run LIFO: stopSweeper runs before store.Close, preventing races
+	// where the sweeper goroutine calls ReleaseExpiredClaims on a closed store.
+	defer func() {
+		if closeErr := store.Close(ctx); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: close store: %v\n", closeErr)
 		}
-		if cfg.Server.Memgraph.UseTLS {
-			mgOpts = append(mgOpts, memgraph.WithTLS(true))
-		}
-		store, err := memgraph.New(ctx, cfg.Server.Memgraph.BoltURI, mgOpts...)
-		if err != nil {
-			return fmt.Errorf("connect to memgraph: %w", err)
-		}
+	}()
+	sweeperCtx, stopSweeper := context.WithCancel(ctx)
+	defer stopSweeper()
 
-		// Defers run LIFO: stopSweeper runs before store.Close, preventing races
-		// where the sweeper goroutine calls ReleaseExpiredClaims on a closed store.
-		defer func() {
-			if closeErr := store.Close(ctx); closeErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: close store: %v\n", closeErr)
-			}
-		}()
-		sweeperCtx, stopSweeper := context.WithCancel(ctx)
-		defer stopSweeper()
+	// Register change notification subscribers.
+	store.Subscribe(notify.NewImpactLogger())
 
-		// Register change notification subscribers.
-		store.Subscribe(notify.NewImpactLogger())
+	credPath := xdg.CredentialsFile()
+	authStore, err := auth.NewConfigStore(cfg.Auth, credPath)
+	if err != nil {
+		return fmt.Errorf("auth config: %w", err)
+	}
 
-		credPath := xdg.CredentialsFile()
-		authStore, err := auth.NewConfigStore(cfg.Auth, credPath)
-		if err != nil {
-			return fmt.Errorf("auth config: %w", err)
-		}
+	mode := cfg.Auth.Mode
+	if mode == "" {
+		mode = "local"
+	}
 
-		mode := cfg.Auth.Mode
-		if mode == "" {
-			mode = "local"
-		}
-
-		// Validate auth mode.
-		switch mode {
-		case "local", "oidc", "mixed":
-		default:
-			return fmt.Errorf("invalid auth.mode %q (must be local, oidc, or mixed)", mode)
-		}
-		if mode == "oidc" && len(cfg.Auth.OIDCProviders) == 0 {
-			return fmt.Errorf("auth.mode=oidc requires at least one oidc_providers entry")
-		}
-
-		// Bootstrap: generate default admin key in local mode if none configured.
-		if mode == "local" && !authStore.HasKeys() {
-			key, bootstrapErr := auth.Bootstrap(credPath)
-			if bootstrapErr != nil {
-				// Bootstrap failed (read-only filesystem, container, etc.).
-				// Server continues with local identity fallback (!HasAuth → localIdentity).
-				// The advisory warning below covers non-loopback exposure.
-				slog.Warn("auth bootstrap skipped (credentials directory not writable)",
-					"path", credPath,
-					"error", bootstrapErr.Error())
-			} else {
-				if stderrIsTerminal() {
-					fmt.Fprintf(os.Stderr, "\n  SpecGraph generated a default admin API key:\n\n    %s\n\n  Save this key — it won't be shown again.\n  Stored in: %s\n\n", key, credPath)
-				} else {
-					slog.Info("auth: default admin API key created", "path", credPath)
-				}
-
-				// Reload store with the new key.
-				authStore, err = auth.NewConfigStore(cfg.Auth, credPath)
-				if err != nil {
-					return fmt.Errorf("reload auth after bootstrap: %w", err)
-				}
-			}
-		}
-
-		if warning := auth.CheckCredentialPermissions(credPath); warning != "" {
-			slog.Warn(warning)
-		}
-
-		// Set up OIDC providers (only for oidc/mixed modes).
-		var oidcStores []*auth.OIDCStore
-		if mode != "local" {
-			defaultRole := cfg.Auth.DefaultRole
-			if defaultRole == "" {
-				defaultRole = "reader"
-			}
-
-			rolePerms := make(map[auth.Role][]string)
-			for role, perms := range auth.DefaultRolePermissions {
-				rolePerms[role] = perms
-			}
-			for name, rc := range cfg.Auth.Roles {
-				rolePerms[auth.Role(name)] = rc.Permissions
-			}
-
-			for _, pc := range cfg.Auth.OIDCProviders {
-				issuerCtx, issuerCancel := context.WithTimeout(ctx, 10*time.Second)
-				oidcStore, oidcErr := auth.NewOIDCStore(issuerCtx, pc, defaultRole, rolePerms)
-				issuerCancel()
-				if oidcErr != nil {
-					return fmt.Errorf("OIDC provider %s: %w", pc.ID, oidcErr)
-				}
-				oidcStores = append(oidcStores, oidcStore)
-				slog.Info("auth: OIDC provider configured", "id", pc.ID, "issuer", pc.Issuer)
-			}
-		}
-
-		compositeStore, csErr := auth.NewCompositeStore(authStore, oidcStores, mode)
-		if csErr != nil {
-			return fmt.Errorf("auth composite store: %w", csErr)
-		}
-
-		if !compositeStore.HasAuth() && !isLoopbackAddr(cfg.Server.Listen) {
-			slog.Warn("server listening without authentication on non-loopback interface",
-				"addr", cfg.Server.Listen,
-				"risk", "configure API keys or OIDC providers")
-		}
-		interceptor := auth.NewAuthInterceptor(compositeStore)
-		maxBytes := connect.WithReadMaxBytes(4 << 20) // 4 MiB request body limit
-		opts := connect.WithInterceptors(interceptor)
-
-		mux := server.NewMux(store, opts, maxBytes)
-		server.RegisterHealthService(mux, opts, maxBytes)
-		server.RegisterDecisionService(mux, store, opts, maxBytes)
-		server.RegisterGraphService(mux, store, opts, maxBytes)
-		server.RegisterClaimService(mux, store, opts, maxBytes)
-		server.RegisterConstitutionService(mux, store, opts, maxBytes)
-		server.RegisterAuthoringService(mux, store, opts, maxBytes)
-		// Template override dir defaults to .specgraph/templates in the working directory.
-		// Users can place <pass_type>.md files there to customize analytical pass prompts.
-		server.RegisterAnalyticalPassService(mux, store, ".specgraph/templates", opts, maxBytes)
-		server.RegisterExecutionService(mux, store, opts, maxBytes)
-		server.RegisterSliceService(mux, store, opts, maxBytes)
-		server.RegisterExportService(mux, store, cfg.Export.SigningKey, buildVersion(), opts, maxBytes)
-		driftEngine := drift.NewEngine(store, nil)
-		lintEngine := linter.NewEngine(store, nil)
-		server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts, maxBytes)
-
-		// TODO(slice-7): Project root for inject should come from request context,
-		// not daemon CWD. Pass empty string; inject handler needs rework.
-		syncHandler := server.RegisterSyncService(mux, store, "", opts, maxBytes)
-		runner := syncpkg.NewExecRunner()
-		syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
-		syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
-
-		// Register lightweight HTTP API endpoints (before static handler catch-all)
-		server.RegisterAPIHandlers(mux, store, auth.RequireAuth(compositeStore))
-
-		// Serve embedded UI static files
-		webFS, err := fs.Sub(web.Build, "build")
-		if err != nil {
-			return fmt.Errorf("embedded web FS: %w", err)
-		}
-		// Register static handler as catch-all (after ConnectRPC paths)
-		mux.Handle("/", server.StaticHandler(webFS))
-
-		handler := server.SecurityHeaders(server.ProjectMiddleware(mux))
-
-		// Optional CORS for dev mode (Vite on :5173 → Go on :8080)
-		corsOrigin, err := cmd.Flags().GetString("cors-origin")
-		if err != nil {
-			return fmt.Errorf("cors-origin flag: %w", err)
-		}
-		if corsOrigin != "" {
-			handler = server.CORSMiddleware(corsOrigin, handler)
-		}
-		addr := cfg.Server.Listen
-		srv := &http.Server{
-			Addr:              addr,
-			Handler:           handler,
-			ReadHeaderTimeout: 10 * time.Second,
-			ReadTimeout:       30 * time.Second,
-			WriteTimeout:      60 * time.Second,
-			IdleTimeout:       120 * time.Second,
-		}
-
-		go func() {
-			<-ctx.Done()
-			fmt.Println("\nShutting down...")
-			stopSweeper()
-			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
-			defer shutdownCancel()
-			if err := srv.Shutdown(shutdownCtx); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: server shutdown: %v\n", err)
-			}
-		}()
-
-		// TODO(slice-7): Sweeper only covers the _server project. A cross-project
-		// sweeper needs to iterate all Project nodes and release expired claims
-		// in each. Track this as a follow-up issue.
-		server.StartSweeper(sweeperCtx, store, 60*time.Second, slog.Default())
-		fmt.Printf("SpecGraph server running at http://%s\n", addr)
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			return err
-		}
+	// Validate auth mode.
+	switch mode {
+	case "local", "oidc", "mixed":
 	default:
-		return fmt.Errorf("unsupported backend: %s", cfg.Server.Backend)
+		return fmt.Errorf("invalid auth.mode %q (must be local, oidc, or mixed)", mode)
+	}
+	if mode == "oidc" && len(cfg.Auth.OIDCProviders) == 0 {
+		return fmt.Errorf("auth.mode=oidc requires at least one oidc_providers entry")
+	}
+
+	// Bootstrap: generate default admin key in local mode if none configured.
+	if mode == "local" && !authStore.HasKeys() {
+		key, bootstrapErr := auth.Bootstrap(credPath)
+		if bootstrapErr != nil {
+			slog.Warn("auth bootstrap skipped (credentials directory not writable)",
+				"path", credPath,
+				"error", bootstrapErr.Error())
+		} else {
+			if stderrIsTerminal() {
+				fmt.Fprintf(os.Stderr, "\n  SpecGraph generated a default admin API key:\n\n    %s\n\n  Save this key — it won't be shown again.\n  Stored in: %s\n\n", key, credPath)
+			} else {
+				slog.Info("auth: default admin API key created", "path", credPath)
+			}
+
+			// Reload store with the new key.
+			authStore, err = auth.NewConfigStore(cfg.Auth, credPath)
+			if err != nil {
+				return fmt.Errorf("reload auth after bootstrap: %w", err)
+			}
+		}
+	}
+
+	if warning := auth.CheckCredentialPermissions(credPath); warning != "" {
+		slog.Warn(warning)
+	}
+
+	// Set up OIDC providers (only for oidc/mixed modes).
+	var oidcStores []*auth.OIDCStore
+	if mode != "local" {
+		defaultRole := cfg.Auth.DefaultRole
+		if defaultRole == "" {
+			defaultRole = "reader"
+		}
+
+		rolePerms := make(map[auth.Role][]string)
+		for role, perms := range auth.DefaultRolePermissions {
+			rolePerms[role] = perms
+		}
+		for name, rc := range cfg.Auth.Roles {
+			rolePerms[auth.Role(name)] = rc.Permissions
+		}
+
+		for _, pc := range cfg.Auth.OIDCProviders {
+			issuerCtx, issuerCancel := context.WithTimeout(ctx, 10*time.Second)
+			oidcStore, oidcErr := auth.NewOIDCStore(issuerCtx, pc, defaultRole, rolePerms)
+			issuerCancel()
+			if oidcErr != nil {
+				return fmt.Errorf("OIDC provider %s: %w", pc.ID, oidcErr)
+			}
+			oidcStores = append(oidcStores, oidcStore)
+			slog.Info("auth: OIDC provider configured", "id", pc.ID, "issuer", pc.Issuer)
+		}
+	}
+
+	compositeStore, csErr := auth.NewCompositeStore(authStore, oidcStores, mode)
+	if csErr != nil {
+		return fmt.Errorf("auth composite store: %w", csErr)
+	}
+
+	if !compositeStore.HasAuth() && !isLoopbackAddr(cfg.Server.Listen) {
+		slog.Warn("server listening without authentication on non-loopback interface",
+			"addr", cfg.Server.Listen,
+			"risk", "configure API keys or OIDC providers")
+	}
+	interceptor := auth.NewAuthInterceptor(compositeStore)
+	maxBytes := connect.WithReadMaxBytes(4 << 20) // 4 MiB request body limit
+	opts := connect.WithInterceptors(interceptor)
+
+	mux := server.NewMux(store, opts, maxBytes)
+	server.RegisterHealthService(mux, opts, maxBytes)
+	server.RegisterDecisionService(mux, store, opts, maxBytes)
+	server.RegisterGraphService(mux, store, opts, maxBytes)
+	server.RegisterClaimService(mux, store, opts, maxBytes)
+	server.RegisterConstitutionService(mux, store, opts, maxBytes)
+	server.RegisterAuthoringService(mux, store, opts, maxBytes)
+	server.RegisterAnalyticalPassService(mux, store, ".specgraph/templates", opts, maxBytes)
+	server.RegisterExecutionService(mux, store, opts, maxBytes)
+	server.RegisterSliceService(mux, store, opts, maxBytes)
+	server.RegisterExportService(mux, store, cfg.Export.SigningKey, buildVersion(), opts, maxBytes)
+	driftEngine := drift.NewEngine(store, nil)
+	lintEngine := linter.NewEngine(store, nil)
+	server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts, maxBytes)
+
+	syncHandler := server.RegisterSyncService(mux, store, "", opts, maxBytes)
+	runner := syncpkg.NewExecRunner()
+	syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
+	syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
+
+	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(compositeStore))
+
+	webFS, err := fs.Sub(web.Build, "build")
+	if err != nil {
+		return fmt.Errorf("embedded web FS: %w", err)
+	}
+	mux.Handle("/", server.StaticHandler(webFS))
+
+	handler := server.SecurityHeaders(server.ProjectMiddleware(mux))
+
+	corsOrigin, err := cmd.Flags().GetString("cors-origin")
+	if err != nil {
+		return fmt.Errorf("cors-origin flag: %w", err)
+	}
+	if corsOrigin != "" {
+		handler = server.CORSMiddleware(corsOrigin, handler)
+	}
+	addr := cfg.Server.Listen
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
+	go func() {
+		<-ctx.Done()
+		fmt.Println("\nShutting down...")
+		stopSweeper()
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer shutdownCancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: server shutdown: %v\n", err)
+		}
+	}()
+
+	server.StartSweeper(sweeperCtx, store, 60*time.Second, slog.Default())
+	fmt.Printf("SpecGraph server running at http://%s\n", addr)
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		return err
 	}
 
 	return nil

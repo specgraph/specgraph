@@ -32,6 +32,7 @@ type ServerSection struct {
 	Mode     string         `yaml:"mode"`
 	Backend  string         `yaml:"backend"`
 	Memgraph MemgraphConfig `yaml:"memgraph"`
+	Postgres PostgresConfig `yaml:"postgres"`
 	Docker   bool           `yaml:"docker"`
 }
 

@@ -58,8 +58,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 			Expect(err).NotTo(HaveOccurred())
 			interceptor := auth.NewAuthInterceptor(store)
 
-			boltURI := memgraphBoltURI
-			info, cleanup, err = testutil.StartServer(ctx, boltURI,
+			info, cleanup, err = testutil.StartServer(ctx, pgConnURL,
 				connect.WithInterceptors(interceptor),
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -101,8 +100,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 			Expect(err).NotTo(HaveOccurred())
 			interceptor := auth.NewAuthInterceptor(store)
 
-			boltURI := memgraphBoltURI
-			info, cleanup, err = testutil.StartServer(ctx, boltURI,
+			info, cleanup, err = testutil.StartServer(ctx, pgConnURL,
 				connect.WithInterceptors(interceptor),
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -163,8 +161,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 			Expect(err).NotTo(HaveOccurred())
 			interceptor := auth.NewAuthInterceptor(store)
 
-			boltURI := memgraphBoltURI
-			info, cleanup, err = testutil.StartServer(ctx, boltURI,
+			info, cleanup, err = testutil.StartServer(ctx, pgConnURL,
 				connect.WithInterceptors(interceptor),
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -226,8 +223,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 			Expect(err).NotTo(HaveOccurred())
 			interceptor := auth.NewAuthInterceptor(store)
 
-			boltURI := memgraphBoltURI
-			info, cleanup, err = testutil.StartServer(ctx, boltURI,
+			info, cleanup, err = testutil.StartServer(ctx, pgConnURL,
 				connect.WithInterceptors(interceptor),
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -301,8 +297,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 			Expect(err).NotTo(HaveOccurred())
 			interceptor := auth.NewAuthInterceptor(store)
 
-			boltURI := memgraphBoltURI
-			info, cleanup, err = testutil.StartServer(ctx, boltURI,
+			info, cleanup, err = testutil.StartServer(ctx, pgConnURL,
 				connect.WithInterceptors(interceptor),
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -363,8 +358,7 @@ var _ = Describe("Auth", Label("auth"), func() {
 			Expect(err).NotTo(HaveOccurred())
 			interceptor := auth.NewAuthInterceptor(store)
 
-			boltURI := memgraphBoltURI
-			info, cleanup, err := testutil.StartServer(ctx, boltURI,
+			info, cleanup, err := testutil.StartServer(ctx, pgConnURL,
 				connect.WithInterceptors(interceptor),
 			)
 			Expect(err).NotTo(HaveOccurred())

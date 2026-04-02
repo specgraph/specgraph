@@ -19,30 +19,30 @@ import (
 	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/specgraph/specgraph/internal/linter"
 	"github.com/specgraph/specgraph/internal/server"
-	"github.com/specgraph/specgraph/internal/storage/memgraph"
+	"github.com/specgraph/specgraph/internal/storage/postgres"
 )
 
 // ServerInfo holds the running server's details.
 type ServerInfo struct {
 	BaseURL    string
-	Store      *memgraph.Store
+	Store      *postgres.Store
 	ConfigPath string // path to a temp config file pointing at this server
 }
 
-// StartServer launches a specgraph HTTP server connected to the given Memgraph instance.
+// StartServer launches a specgraph HTTP server connected to the given PostgreSQL instance.
 // Returns the base URL and a cleanup function that shuts down the server.
-func StartServer(ctx context.Context, boltURI string, opts ...connect.HandlerOption) (*ServerInfo, func(), error) {
-	var store *memgraph.Store
+func StartServer(ctx context.Context, connURL string, opts ...connect.HandlerOption) (*ServerInfo, func(), error) {
+	var store *postgres.Store
 	var err error
 	for range 10 {
-		store, err = memgraph.New(ctx, boltURI, memgraph.WithProject("e2e-test"))
+		store, err = postgres.New(ctx, connURL, postgres.WithProject("e2e-test"))
 		if err == nil {
 			break
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
 	if err != nil {
-		return nil, nil, fmt.Errorf("connect to memgraph: %w", err)
+		return nil, nil, fmt.Errorf("connect to postgres: %w", err)
 	}
 
 	mux := server.NewMux(store, opts...)

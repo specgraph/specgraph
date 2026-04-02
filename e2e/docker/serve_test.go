@@ -47,18 +47,30 @@ var _ = Describe("Docker mode serve", Ordered, func() {
 		configDir := filepath.Join(projectDir, "config", "specgraph")
 		Expect(os.MkdirAll(configDir, 0o750)).To(Succeed())
 		configPath := filepath.Join(configDir, "config.yaml")
+		// Use a random high port for Postgres to avoid conflicts with
+		// any Postgres instance already running on the CI runner (e.g.
+		// from the integration test step that uses testcontainers).
+		pgPort := port + 1000
 		configContent := fmt.Sprintf(`server:
   listen: "127.0.0.1:%d"
   mode: docker
   docker: true
-  backend: memgraph
-  memgraph:
-    bolt_uri: bolt://localhost:7687
-`, port)
+  backend: postgres
+  postgres:
+    url: postgres://specgraph:specgraph@localhost:%d/specgraph?sslmode=disable
+`, port, pgPort)
+		// Set POSTGRES_PORT so the compose template uses our random port.
+		os.Setenv("POSTGRES_PORT", fmt.Sprintf("%d", pgPort)) //nolint:tenv // test intentionally sets global env for child process
 		Expect(os.WriteFile(configPath, []byte(configContent), 0o600)).To(Succeed())
 	})
 
 	AfterAll(func() {
+		// Dump container logs for debugging CI failures.
+		logCmd := exec.Command("docker", "logs", "specgraph-postgres-1") //nolint:gosec // static container name
+		logCmd.Stdout = GinkgoWriter
+		logCmd.Stderr = GinkgoWriter
+		_ = logCmd.Run()
+
 		if cmd != nil && cmd.Process != nil {
 			// Kill the entire process group so child processes (e.g. docker compose
 			// down) are also terminated; otherwise cmd.Wait blocks on inherited pipes.
@@ -111,7 +123,7 @@ var _ = Describe("Docker mode serve", Ordered, func() {
 		// Read the compose file to verify it's valid.
 		content, err := os.ReadFile(composePath)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(string(content)).To(ContainSubstring("memgraph"))
+		Expect(string(content)).To(ContainSubstring("postgres"))
 		Expect(string(content)).To(ContainSubstring("services:"))
 	})
 
