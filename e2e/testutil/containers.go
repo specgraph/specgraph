@@ -11,34 +11,36 @@ import (
 	"os"
 	"time"
 
-	"github.com/neo4j/neo4j-go-driver/v6/neo4j"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-// MemgraphImage is the container image used for Memgraph in e2e tests.
-// Pin to a specific version here when reproducible builds are required.
-const MemgraphImage = "memgraph/memgraph-platform:2.4.0"
+// PostgresImage is the container image used for PostgreSQL in e2e tests.
+const PostgresImage = "pgvector/pgvector:pg18"
 
-// StartMemgraph launches a Memgraph container and returns the bolt URI.
+// StartPostgres launches a PostgreSQL container and returns the connection URL.
 // The returned cleanup function terminates the container.
-func StartMemgraph(ctx context.Context) (string, func(), error) {
+func StartPostgres(ctx context.Context) (string, func(), error) {
 	req := testcontainers.ContainerRequest{
-		Image:        MemgraphImage,
-		ExposedPorts: []string{"7687/tcp"},
-		Env:          map[string]string{"MEMGRAPH": ""},
-		Cmd:          []string{"/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"},
+		Image:        PostgresImage,
+		ExposedPorts: []string{"5432/tcp"},
+		Env: map[string]string{
+			"POSTGRES_USER":     "specgraph",
+			"POSTGRES_PASSWORD": "specgraph",
+			"POSTGRES_DB":       "specgraph",
+		},
 		WaitingFor: wait.ForAll(
-			wait.ForListeningPort("7687/tcp"),
-			wait.ForLog("memgraph entered RUNNING state"),
-		).WithDeadline(120 * time.Second),
+			wait.ForListeningPort("5432/tcp"),
+			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
+		).WithDeadline(60 * time.Second),
 	}
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
 	if err != nil {
-		return "", nil, fmt.Errorf("start memgraph container: %w", err)
+		return "", nil, fmt.Errorf("start postgres container: %w", err)
 	}
 
 	host, err := container.Host(ctx)
@@ -46,37 +48,36 @@ func StartMemgraph(ctx context.Context) (string, func(), error) {
 		_ = container.Terminate(ctx)
 		return "", nil, fmt.Errorf("get container host: %w", err)
 	}
-	port, err := container.MappedPort(ctx, "7687")
+	port, err := container.MappedPort(ctx, "5432")
 	if err != nil {
 		_ = container.Terminate(ctx)
 		return "", nil, fmt.Errorf("get mapped port: %w", err)
 	}
 
-	boltURI := fmt.Sprintf("bolt://%s:%s", host, port.Port())
+	connURL := fmt.Sprintf("postgres://specgraph:specgraph@%s:%s/specgraph?sslmode=disable", host, port.Port())
 
-	// Retry Bolt connection to handle the window between port/log readiness and
-	// the Bolt protocol being fully available (see CLAUDE.md "Memgraph bolt readiness race").
+	// Retry connection to handle the window between port readiness and PG accepting queries.
 	var connErr error
 	for range 10 {
-		driver, dErr := neo4j.NewDriver(boltURI, neo4j.NoAuth())
-		if dErr != nil {
-			connErr = dErr
+		pool, pErr := pgxpool.New(ctx, connURL)
+		if pErr != nil {
+			connErr = pErr
 			time.Sleep(500 * time.Millisecond)
 			continue
 		}
-		if vErr := driver.VerifyConnectivity(ctx); vErr != nil {
-			_ = driver.Close(ctx)
-			connErr = vErr
+		if pingErr := pool.Ping(ctx); pingErr != nil {
+			pool.Close()
+			connErr = pingErr
 			time.Sleep(500 * time.Millisecond)
 			continue
 		}
-		_ = driver.Close(ctx)
+		pool.Close()
 		connErr = nil
 		break
 	}
 	if connErr != nil {
 		_ = container.Terminate(ctx)
-		return "", nil, fmt.Errorf("bolt connection retry exhausted: %w", connErr)
+		return "", nil, fmt.Errorf("postgres connection retry exhausted: %w", connErr)
 	}
 
 	cleanup := func() {
@@ -86,5 +87,5 @@ func StartMemgraph(ctx context.Context) (string, func(), error) {
 			fmt.Fprintf(os.Stderr, "testutil: container terminate error: %v\n", err)
 		}
 	}
-	return boltURI, cleanup, nil
+	return connURL, cleanup, nil
 }

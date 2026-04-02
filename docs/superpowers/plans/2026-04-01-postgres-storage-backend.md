@@ -47,7 +47,7 @@ Mirror Memgraph test files with `//go:build integration` tag. Each implementatio
 | File | Change |
 |------|--------|
 | `go.mod` | Add pgx v5, pgxpool, goose v3, pgvector-go |
-| `internal/docker/compose.go` | Change `apache/age:latest` to `pgvector/pgvector:pg16` |
+| `internal/docker/compose.go` | Change `apache/age:latest` to `pgvector/pgvector:pg18` |
 | `e2e/testutil/containers.go` | Add `StartPostgres()` function |
 | `e2e/testutil/server.go` | Switch from `memgraph.New()` to `postgres.New()` |
 | `cmd/specgraph/` | Add `--pg-url` / `SPECGRAPH_PG_URL` |
@@ -90,6 +90,7 @@ and `github_repo TEXT` (not `name`), and `specs` table has `safety_flags JSONB`.
 - [ ] **Step 3: Create the migration runner**
 
 Create `internal/storage/postgres/migrate.go`:
+
 - Package comment for `postgres`
 - `//go:embed migrations/*.sql` for embedded FS
 - `runMigrations(connString string) error` opens a `database/sql` connection via
@@ -103,7 +104,7 @@ Expected: Build succeeds.
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 feat(storage): add Postgres schema migration and goose runner (spgr-khy)
 ```
 
@@ -122,7 +123,7 @@ options pattern, New constructor, Close, Scoped methods.
 - [ ] **Step 1: Write test for New and Close**
 
 Create `internal/storage/postgres/postgres_test.go` with `//go:build integration` tag.
-Use testcontainers-go Postgres module with `pgvector/pgvector:pg16` image. Wait for
+Use testcontainers-go Postgres module with `pgvector/pgvector:pg18` image. Wait for
 `"database system is ready to accept connections"` with `WithOccurrence(2)`.
 
 Create `setupTestDB(t)` helper using `sync.Once` for shared container.
@@ -150,6 +151,7 @@ type Store struct {
 ```
 
 Implement:
+
 - `Option` type + `WithClock`, `WithProject`, `WithSliceOps`
 - `New(ctx, connString, opts...)` -- creates pgxpool, runs migrations, ensures project row
 - `Close(ctx)` -- closes pool if ownsPool
@@ -174,7 +176,7 @@ Test: Scoped returns non-nil ScopedBackend for a different project.
 
 - [ ] **Step 7: Commit**
 
-```
+```text
 feat(storage): add Postgres Store struct with New/Close/Scoped (spgr-khy)
 ```
 
@@ -205,6 +207,7 @@ verify OnSpecChanged is called after commit.
 - [ ] **Step 3: Implement tx.go**
 
 Port from memgraph tx.go:
+
 - `txKey struct{}` context key
 - `txToContext(ctx, pgx.Tx)` / `txFromContext(ctx) (pgx.Tx, bool)`
 - `RunInTransaction(ctx, fn)`: check for existing tx (nested = reuse); otherwise
@@ -220,7 +223,7 @@ Port from memgraph tx.go:
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 feat(storage): add Postgres transaction threading and query helpers (spgr-khy)
 ```
 
@@ -239,6 +242,7 @@ feat(storage): add Postgres transaction threading and query helpers (spgr-khy)
 - [ ] **Step 1: Write tests for all project methods**
 
 Port from memgraph project_test.go:
+
 - EnsureProject creates row, second call idempotent
 - GetProject returns project
 - UpdateProject sets fields
@@ -262,7 +266,7 @@ Port from memgraph project_test.go:
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 feat(storage): add Postgres project CRUD and WipeProjectData (spgr-khy)
 ```
 
@@ -317,7 +321,7 @@ filled in Task 12).
 
 - [ ] **Step 8: Commit**
 
-```
+```text
 feat(storage): add Postgres CreateSpec, GetSpec with changelog (spgr-khy)
 ```
 
@@ -355,7 +359,7 @@ Recompute content hash. Create ChangeLog only if hash changed.
 
 - [ ] **Step 9: Commit**
 
-```
+```text
 feat(storage): add Postgres ListSpecs, BatchGetSpecs, UpdateSpec (spgr-khy)
 ```
 
@@ -383,7 +387,7 @@ filters. ListAllChanges: SELECT all with spec_slug populated via JOIN or direct 
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 feat(storage): add Postgres changelog ListChanges/ListAllChanges (spgr-khy)
 ```
 
@@ -444,7 +448,7 @@ CTE with manual path array + unnest WITH ORDINALITY), **GetFullGraph** (nodes + 
 
 - [ ] **Step 13: Commit**
 
-```
+```text
 feat(storage): add Postgres graph operations with recursive CTEs (spgr-khy)
 ```
 
@@ -479,7 +483,7 @@ UpdateDecision: dynamic SET, version guard, content hash recompute, changelog if
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 feat(storage): add Postgres decision CRUD with version guards (spgr-khy)
 ```
 
@@ -519,7 +523,7 @@ checkpoint changelog, hash recompute)
 
 - [ ] **Step 10: Commit**
 
-```
+```text
 feat(storage): add Postgres lifecycle operations (spgr-khy)
 ```
 
@@ -569,7 +573,7 @@ StoreSafetyFlags: stores `[]SafetyFlag` as JSONB in `safety_flags` column.
 
 - [ ] **Step 13: Commit**
 
-```
+```text
 feat(storage): add Postgres authoring operations (spgr-khy)
 ```
 
@@ -602,7 +606,7 @@ ListConversations: ORDER BY date (chain order). Go back and wire into GetSpec.
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 feat(storage): add Postgres conversation log operations (spgr-khy)
 ```
 
@@ -625,7 +629,7 @@ feat(storage): add Postgres conversation log operations (spgr-khy)
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 feat(storage): add Postgres claim/lease operations (spgr-khy)
 ```
 
@@ -648,7 +652,7 @@ feat(storage): add Postgres claim/lease operations (spgr-khy)
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 feat(storage): add Postgres constitution operations (spgr-khy)
 ```
 
@@ -675,7 +679,7 @@ hashes). GenerateBundle joins specs, decisions, edges, claims.
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 feat(storage): add Postgres execution events and bundle generation (spgr-khy)
 ```
 
@@ -698,7 +702,7 @@ feat(storage): add Postgres execution events and bundle generation (spgr-khy)
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 feat(storage): add Postgres findings operations (spgr-khy)
 ```
 
@@ -730,7 +734,7 @@ feat(storage): add Postgres findings operations (spgr-khy)
 
 - [ ] **Step 7: Commit**
 
-```
+```text
 feat(storage): add Postgres slice and sync mapping operations (spgr-khy)
 ```
 
@@ -752,7 +756,7 @@ pipeline, and remove Memgraph code.
 
 - [ ] **Step 1: Add StartPostgres to e2e containers**
 
-Use `pgvector/pgvector:pg16` image with testcontainers Postgres module. Wait for
+Use `pgvector/pgvector:pg18` image with testcontainers Postgres module. Wait for
 `"database system is ready to accept connections"` with occurrence 2.
 
 - [ ] **Step 2: Update e2e server to use postgres.Store**
@@ -762,7 +766,7 @@ ServerInfo.Store type becomes `storage.ScopedBackend` (interface) instead of
 
 - [ ] **Step 3: Update docker compose template**
 
-Change `apache/age:latest` to `pgvector/pgvector:pg16`.
+Change `apache/age:latest` to `pgvector/pgvector:pg18`.
 
 - [ ] **Step 4: Update CLI** to accept --pg-url and create postgres.Store
 
@@ -770,7 +774,7 @@ Change `apache/age:latest` to `pgvector/pgvector:pg16`.
 
 - [ ] **Step 6: Commit**
 
-```
+```text
 feat(storage): wire Postgres backend into server, CLI, and e2e setup (spgr-khy)
 ```
 
@@ -799,7 +803,7 @@ Expected: All e2e tests pass including new schema validation.
 
 - [ ] **Step 4: Commit**
 
-```
+```text
 test(e2e): add Postgres schema and behavioral validation tests (spgr-khy)
 ```
 
@@ -836,7 +840,7 @@ Update Architecture table: memgraph -> postgres.
 
 - [ ] **Step 9: Commit**
 
-```
+```text
 chore(storage): remove Memgraph backend and neo4j dependency (spgr-khy)
 ```
 
@@ -844,7 +848,7 @@ chore(storage): remove Memgraph backend and neo4j dependency (spgr-khy)
 
 ## Task Dependency Graph
 
-```
+```text
 Task 1 (schema + deps)
   |
   v
@@ -881,5 +885,6 @@ Task 18 (wiring) --> Task 19 (e2e validation) --> Task 20 (cleanup)
 ```
 
 Tasks 5-17 can be parallelized after Task 4 completes, with these constraints:
+
 - Task 11 (authoring) depends on Tasks 8, 9, and 17 (slice portion)
 - Task 15 (execution) depends on Tasks 8, 9, and 13

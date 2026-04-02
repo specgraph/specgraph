@@ -16,7 +16,7 @@ func ComposeUp(composeFile string) error {
 	if _, err := os.Stat(composeFile); err != nil {
 		return fmt.Errorf("compose file not found: %s", composeFile)
 	}
-	cmd := exec.Command("docker", "compose", "-f", composeFile, "up", "-d", "--wait")
+	cmd := exec.Command("docker", "compose", "-f", composeFile, "up", "-d", "--wait", "--force-recreate", "-V")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -27,7 +27,7 @@ func ComposeUp(composeFile string) error {
 
 // ComposeDown tears down the Docker Compose stack defined in composeFile.
 func ComposeDown(composeFile string) error {
-	cmd := exec.Command("docker", "compose", "-f", composeFile, "down", "--timeout", "10")
+	cmd := exec.Command("docker", "compose", "-f", composeFile, "down", "--timeout", "10", "-v")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -97,7 +97,7 @@ volumes:
 // credential to avoid gosec G101 (hardcoded credential pattern).
 const postgresComposeFormat = `services:
   postgres:
-    image: apache/age:latest
+    image: pgvector/pgvector:pg18
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     environment:
@@ -105,7 +105,7 @@ const postgresComposeFormat = `services:
       - POSTGRES_PASSWORD=%[1]s
       - POSTGRES_DB=%[1]s
     volumes:
-      - specgraph-data:/var/lib/postgresql/data
+      - specgraph-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U %[1]s -d %[1]s"]
       interval: 5s

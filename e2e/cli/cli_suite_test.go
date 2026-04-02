@@ -36,12 +36,12 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	DeferCleanup(cleanupBinary)
 
-	boltURI, cleanupMG, err := testutil.StartMemgraph(ctx)
+	connURL, cleanupDB, err := testutil.StartPostgres(ctx)
 	Expect(err).NotTo(HaveOccurred())
-	DeferCleanup(cleanupMG)
+	DeferCleanup(cleanupDB)
 
 	var cleanupServer func()
-	serverInfo, cleanupServer, err = testutil.StartServer(ctx, boltURI)
+	serverInfo, cleanupServer, err = testutil.StartServer(ctx, connURL)
 	Expect(err).NotTo(HaveOccurred())
 	DeferCleanup(cleanupServer)
 

@@ -1,13 +1,14 @@
-# E2E test stack: Memgraph + SpecGraph server + Playwright
+# E2E test stack: Postgres + SpecGraph server + Playwright
 # All containers share a Docker network. No host ports needed.
 services:
-  memgraph:
-    image: memgraph/memgraph-platform:2.4.0
-    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+  postgres:
+    image: pgvector/pgvector:pg18
     environment:
-      - MEMGRAPH=--storage-wal-enabled=true --log-level=WARNING
+      - POSTGRES_USER=specgraph
+      - POSTGRES_PASSWORD=specgraph
+      - POSTGRES_DB=specgraph
     healthcheck:
-      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U specgraph -d specgraph"]
       interval: 3s
       timeout: 10s
       retries: 10
@@ -17,7 +18,7 @@ services:
       dockerfile: Dockerfile.e2e
     command: ["serve"]
     depends_on:
-      memgraph:
+      postgres:
         condition: service_healthy
     environment:
       - XDG_CONFIG_HOME=/etc

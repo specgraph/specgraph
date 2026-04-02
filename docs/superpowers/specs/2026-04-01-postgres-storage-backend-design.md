@@ -450,7 +450,7 @@ assert:
 - FK constraints are present on node tables (`specs.project_slug`, `slices.parent_slug`)
 - The `vector` extension is installed
 - `NOT NULL` constraints are enforced (attempt INSERT with NULL required field, expect failure)
-- Partial unique index on `claims` prevents duplicate active claims
+- Primary key on `claims` (`project_slug`, `spec_slug`) prevents duplicate active claims
 
 Additionally, after API-driven test scenarios (create spec, add edge, delete spec),
 query the database directly to verify:
