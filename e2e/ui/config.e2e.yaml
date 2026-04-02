@@ -4,3 +4,10 @@ server:
   docker: false
   postgres:
     url: postgres://specgraph:specgraph@postgres:5432/specgraph?sslmode=disable
+auth:
+  mode: local
+  api_keys:
+    - id: e2e-admin
+      key: spgr_sk_e2e00000000000000000000000000000
+      name: E2E Admin
+      role: admin

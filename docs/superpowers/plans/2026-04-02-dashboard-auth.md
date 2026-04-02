@@ -53,6 +53,7 @@ pattern. Read `internal/auth/auth.go` for the `Identity` type. Read
 - [ ] **Step 1: Write tests for login handler**
 
 Create `internal/server/auth_handler_test.go`. Tests:
+
 - `TestLogin_ValidKey` — POST with valid key returns 200 + identity JSON + Set-Cookie header
 - `TestLogin_InvalidKey` — POST with bad key returns 401
 - `TestLogin_MissingKey` — POST with empty body returns 400
@@ -76,6 +77,7 @@ func RegisterAuthHandlers(mux *http.ServeMux, store auth.IdentityStore, authMW f
 ```
 
 **Login handler:**
+
 1. Validate `Content-Type: application/json` (return 415 if not)
 2. Decode `{"key": "..."}` from body
 3. Call `store.ResolveAPIKey(ctx, key)`
@@ -83,6 +85,7 @@ func RegisterAuthHandlers(mux *http.ServeMux, store auth.IdentityStore, authMW f
 5. On failure: 401
 
 **Cookie helper:**
+
 ```go
 func sessionCookie(value string, r *http.Request) *http.Cookie {
     return &http.Cookie{
@@ -110,6 +113,7 @@ Run: `go test ./internal/server/ -run TestLogin -v`
 - [ ] **Step 5: Write tests for logout and whoami**
 
 Tests:
+
 - `TestLogout_ClearsCookie` — POST returns 204 + Set-Cookie with MaxAge=-1
 - `TestWhoami_Authenticated` — GET with valid cookie returns 200 + identity
 - `TestWhoami_Unauthenticated` — GET with no cookie returns 401
@@ -120,7 +124,7 @@ Run: `go test ./internal/server/ -run "TestLogout|TestWhoami" -v`
 
 - [ ] **Step 7: Commit**
 
-```
+```text
 feat(auth): add login/logout/whoami HTTP handlers for dashboard auth
 ```
 
@@ -139,6 +143,7 @@ feat(auth): add login/logout/whoami HTTP handlers for dashboard auth
 - [ ] **Step 1: Update existing tests**
 
 In `interceptor_test.go`:
+
 - Change test for "no auth header + no auth configured" — previously expected
   200 with local identity. Now should expect 401 (CodeUnauthenticated).
 - Add test: "cookie auth + valid key" — request with `Cookie: specgraph_session=<valid-key>`
@@ -199,7 +204,7 @@ Run: `go test ./internal/auth/ -run TestAuth -v`
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 feat(auth): add cookie fallback to ConnectRPC interceptor, remove local bypass
 ```
 
@@ -218,6 +223,7 @@ feat(auth): add cookie fallback to ConnectRPC interceptor, remove local bypass
 - [ ] **Step 1: Update existing tests**
 
 In `middleware_test.go`:
+
 - Change test for "no auth + no keys" — previously 200 with local identity.
   Now should be 401.
 - Add test: "cookie auth" — request with session cookie returns 200.
@@ -275,7 +281,7 @@ Run: `go test ./internal/auth/ -v`
 
 - [ ] **Step 5: Commit**
 
-```
+```text
 feat(auth): add cookie fallback to REST middleware, remove local bypass
 ```
 
@@ -301,7 +307,7 @@ Run: `go build ./cmd/specgraph/...`
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 feat(auth): register dashboard auth endpoints in serve command
 ```
 
@@ -381,7 +387,7 @@ export function onUnauthenticated(): void {
 
 - [ ] **Step 2: Commit**
 
-```
+```text
 feat(web): add auth state module with login/logout/checkAuth
 ```
 
@@ -493,12 +499,14 @@ Create `web/src/lib/components/LoginModal.svelte`:
 Modify `web/src/lib/api/client.ts`:
 
 Add import:
+
 ```typescript
 import { ConnectError, Code } from '@connectrpc/connect';
 import { onUnauthenticated } from '$lib/auth.svelte';
 ```
 
 Add interceptor:
+
 ```typescript
 const authErrorInterceptor: Interceptor = (next) => async (req) => {
   try {
@@ -513,13 +521,14 @@ const authErrorInterceptor: Interceptor = (next) => async (req) => {
 ```
 
 Update transport interceptors:
+
 ```typescript
 interceptors: [projectInterceptor, authErrorInterceptor],
 ```
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 feat(web): add LoginModal component and auth error interceptor
 ```
 
@@ -590,7 +599,7 @@ Run: `cd web && pnpm build`
 
 - [ ] **Step 3: Commit**
 
-```
+```text
 feat(web): gate dashboard on authentication with login modal
 ```
 

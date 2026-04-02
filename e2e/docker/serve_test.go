@@ -58,6 +58,13 @@ var _ = Describe("Docker mode serve", Ordered, func() {
   backend: postgres
   postgres:
     url: postgres://specgraph:specgraph@localhost:%d/specgraph?sslmode=disable
+auth:
+  mode: local
+  api_keys:
+    - id: docker-e2e
+      key: spgr_sk_dkr00000000000000000000000000000
+      name: Docker E2E
+      role: admin
 `, port, pgPort)
 		// Set POSTGRES_PORT so the compose template uses our random port.
 		os.Setenv("POSTGRES_PORT", fmt.Sprintf("%d", pgPort)) //nolint:tenv // test intentionally sets global env for child process

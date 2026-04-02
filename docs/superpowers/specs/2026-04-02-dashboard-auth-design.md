@@ -42,6 +42,7 @@ Response (200): `{"identity": {"subject": "apikey:admin1", "display_name": "Admi
 Response (401): `{"error": "invalid API key"}`
 
 Flow:
+
 1. Parse JSON body, extract `key`
 2. Call `store.ResolveAPIKey(ctx, key)`
 3. On success: set `specgraph_session` cookie, return identity
@@ -51,30 +52,31 @@ Flow:
 
 Response: 204 No Content
 
-Flow: Set `specgraph_session` cookie with `Max-Age=0` (immediate expiry).
+Flow: Set `specgraph_session` cookie with `MaxAge=-1 (Go net/http convention that emits Max-Age=0 with Expires in the past)`.
 
 **`GET /api/auth/whoami`**
 
 Response (200): `{"identity": {"subject": "...", "display_name": "...", "role": "..."}}`
 
-Response (401): `{"error": "not authenticated"}`
+Response (401): `{"error": "unauthenticated"}`
 
 Flow: Read cookie, resolve identity via store, return it. Used by the frontend
 to check auth state on page load.
 
 ### Cookie Configuration
 
-```
+```text
 Name:     specgraph_session
 Value:    <raw API key>
 HttpOnly: true
 SameSite: Strict
 Secure:   true (when request is HTTPS)
-Path:     /api
+Path:     /
 ```
 
-`Path: /api` limits the cookie to API endpoints — it is not sent for static
-assets or SvelteKit page loads. The raw API key is visible in browser devtools
+`Path: /` is required because ConnectRPC endpoints live at `/specgraph.v1.*`,
+not under `/api`. The cookie must be sent on all requests to the same origin.
+The raw API key is visible in browser devtools
 cookie inspector; this is inherent to the stateless session design and acceptable
 for API key auth. OIDC migration will replace the raw key with an opaque session
 token.
@@ -89,11 +91,13 @@ over plain HTTP, `Secure` is omitted so the cookie works without TLS.
 `internal/auth/interceptor.go` — `resolveIdentity`:
 
 Current flow:
+
 1. Read `Authorization: Bearer <token>` header
 2. If missing and `!HasAuth()`: return local identity
 3. If missing and `HasAuth()`: return 401
 
 New flow:
+
 1. Read `Authorization: Bearer <token>` header
 2. If present: validate token (unchanged)
 3. If missing: read `specgraph_session` cookie
@@ -143,6 +147,7 @@ Removing the local-mode bypass is a deliberate breaking change. Previously,
 Now all requests must authenticate.
 
 The migration path is already in place:
+
 1. On first `specgraph serve`, `auth.Bootstrap` generates a default admin key
    (`spgr_sk_...`) and stores it in the credentials file
 2. The key is printed to stderr on interactive terminals
@@ -162,7 +167,7 @@ credentials). The whoami endpoint does go through auth middleware.
 Actually — login validates the key itself, so it handles its own auth. The
 pattern:
 
-```
+```text
 /api/auth/login   — no middleware (validates key in handler)
 /api/auth/logout  — no middleware (just clears cookie)
 /api/auth/whoami  — auth middleware (returns identity from cookie)
@@ -182,6 +187,7 @@ let identity = $state<{subject: string; displayName: string; role: string} | nul
 ```
 
 Functions:
+
 - `checkAuth()` — GET `/api/auth/whoami`, update state
 - `login(key: string): Promise<boolean>` — POST `/api/auth/login`, update state
 - `logout(): Promise<void>` — POST `/api/auth/logout`, clear state
@@ -221,7 +227,7 @@ const authInterceptor: Interceptor = (next) => async (req) => {
 
 Update `web/src/routes/+layout.svelte`:
 
-```
+```text
 onMount:
   1. checkAuth()
   2. if authenticated: loadProjects()

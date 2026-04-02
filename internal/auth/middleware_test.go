@@ -12,15 +12,13 @@ import (
 	"github.com/specgraph/specgraph/internal/config"
 )
 
-func TestRequireAuth_NoKeys_PassesThrough(t *testing.T) {
+func TestRequireAuth_NoKeys_NoToken_Returns401(t *testing.T) {
 	store, err := auth.NewConfigStore(config.AuthConfig{}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	called := false
 	handler := auth.RequireAuth(store)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		called = true
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -28,11 +26,8 @@ func TestRequireAuth_NoKeys_PassesThrough(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
-	if !called {
-		t.Fatal("handler not called when no keys configured")
-	}
-	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rec.Code)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", rec.Code)
 	}
 }
 
@@ -133,5 +128,65 @@ func TestRequireAuth_MalformedAuthHeader_Returns401(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("status = %d, want 401", rec.Code)
+	}
+}
+
+func TestRequireAuth_SessionCookie_ValidKey_Returns200(t *testing.T) {
+	store, err := auth.NewConfigStore(config.AuthConfig{
+		APIKeys: []config.APIKeyConfig{
+			{ID: "k1", Key: "spgr_sk_test", Name: "Admin", Role: "admin"},
+		},
+	}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	called := false
+	handler := auth.RequireAuth(store)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/projects", nil)
+	req.AddCookie(&http.Cookie{Name: "specgraph_session", Value: "spgr_sk_test", HttpOnly: true, Secure: true})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if !called {
+		t.Fatal("handler not called with valid session cookie")
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200", rec.Code)
+	}
+}
+
+func TestRequireAuth_HeaderTakesPrecedenceOverCookie(t *testing.T) {
+	store, err := auth.NewConfigStore(config.AuthConfig{
+		APIKeys: []config.APIKeyConfig{
+			{ID: "k1", Key: "spgr_sk_valid", Name: "Admin", Role: "admin"},
+		},
+	}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	called := false
+	handler := auth.RequireAuth(store)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	// Valid header + invalid cookie: header wins → success.
+	req := httptest.NewRequest(http.MethodGet, "/api/projects", nil)
+	req.Header.Set("Authorization", "Bearer spgr_sk_valid")
+	req.AddCookie(&http.Cookie{Name: "specgraph_session", Value: "invalid_cookie_token", HttpOnly: true, Secure: true})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if !called {
+		t.Fatal("handler not called when valid header present with invalid cookie")
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200", rec.Code)
 	}
 }

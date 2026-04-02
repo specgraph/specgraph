@@ -110,8 +110,11 @@ func TestInterceptor_InvalidAPIKey(t *testing.T) {
 func TestInterceptor_NoToken_NoKeys(t *testing.T) {
 	_, specClient, _ := newTestServer(t, config.AuthConfig{})
 	_, err := specClient.GetSpec(context.Background(), connect.NewRequest(&specgraphv1.GetSpecRequest{}))
-	if err != nil {
-		t.Fatalf("expected success with local identity, got: %v", err)
+	if err == nil {
+		t.Fatal("expected error when no token provided")
+	}
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Errorf("code = %v, want Unauthenticated", connect.CodeOf(err))
 	}
 }
 
@@ -164,6 +167,49 @@ func TestInterceptor_ExemptRPC(t *testing.T) {
 	_, err := healthClient.Health(context.Background(), connect.NewRequest(&specgraphv1.HealthRequest{}))
 	if err != nil {
 		t.Fatalf("Health should be exempt: %v", err)
+	}
+}
+
+func withSessionCookie(token string) connect.ClientOption {
+	return connect.WithInterceptors(connect.UnaryInterceptorFunc(
+		func(next connect.UnaryFunc) connect.UnaryFunc {
+			return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+				req.Header().Set("Cookie", "specgraph_session="+token)
+				return next(ctx, req)
+			}
+		},
+	))
+}
+
+func TestInterceptor_SessionCookie_ValidKey(t *testing.T) {
+	cfg := config.AuthConfig{
+		APIKeys: []config.APIKeyConfig{
+			{ID: "k1", Key: "spgr_sk_abc", Name: "Admin", Role: "admin"},
+		},
+	}
+	srv, _, _ := newTestServer(t, cfg)
+	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL, withSessionCookie("spgr_sk_abc"))
+	_, err := client.GetSpec(context.Background(), connect.NewRequest(&specgraphv1.GetSpecRequest{}))
+	if err != nil {
+		t.Fatalf("expected success with session cookie, got: %v", err)
+	}
+}
+
+func TestInterceptor_HeaderTakesPrecedenceOverCookie(t *testing.T) {
+	cfg := config.AuthConfig{
+		APIKeys: []config.APIKeyConfig{
+			{ID: "k1", Key: "spgr_sk_valid", Name: "Admin", Role: "admin"},
+		},
+	}
+	srv, _, _ := newTestServer(t, cfg)
+	// Valid header + invalid cookie: header wins → success.
+	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL,
+		withBearer("spgr_sk_valid"),
+		withSessionCookie("invalid_cookie_token"),
+	)
+	_, err := client.GetSpec(context.Background(), connect.NewRequest(&specgraphv1.GetSpecRequest{}))
+	if err != nil {
+		t.Fatalf("expected success when valid header present with invalid cookie, got: %v", err)
 	}
 }
 

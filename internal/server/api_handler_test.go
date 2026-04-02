@@ -77,7 +77,7 @@ func TestAPIHandler_AuthRequired_ValidToken_Returns200(t *testing.T) {
 	}
 }
 
-func TestAPIHandler_NoKeys_PassesThrough(t *testing.T) {
+func TestAPIHandler_NoKeys_Returns401(t *testing.T) {
 	store, err := auth.NewConfigStore(config.AuthConfig{}, "")
 	if err != nil {
 		t.Fatal(err)
@@ -90,7 +90,7 @@ func TestAPIHandler_NoKeys_PassesThrough(t *testing.T) {
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rec.Code)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401 (no auth bypass)", rec.Code)
 	}
 }
