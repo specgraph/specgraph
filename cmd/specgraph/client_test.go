@@ -85,9 +85,9 @@ func TestClientTransport_InjectsBearerToken(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := &http.Client{Transport: &clientTransport{
+	client := &http.Client{Transport: &clientTransport{ //nolint:gosec // test fixture, not a real credential
 		base:        http.DefaultTransport,
-		bearerToken: "spgr_sk_testkey", //nolint:gosec // test fixture, not a real credential
+		bearerToken: "spgr_sk_testkey",
 	}}
 	resp, err := client.Get(ts.URL) //nolint:noctx // test helper
 	require.NoError(t, err)
