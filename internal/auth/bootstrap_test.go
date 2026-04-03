@@ -137,6 +137,34 @@ func TestBootstrap_EmptyExistingFile(t *testing.T) {
 	}
 }
 
+func TestReadDefaultKey_ReturnsKey(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "credentials.yaml")
+
+	key, err := auth.Bootstrap(path)
+	if err != nil {
+		t.Fatalf("Bootstrap: %v", err)
+	}
+
+	got, err := auth.ReadDefaultKey(path)
+	if err != nil {
+		t.Fatalf("ReadDefaultKey: %v", err)
+	}
+	if got != key {
+		t.Errorf("ReadDefaultKey = %q, want %q", got, key)
+	}
+}
+
+func TestReadDefaultKey_MissingFile(t *testing.T) {
+	got, err := auth.ReadDefaultKey("/nonexistent/credentials.yaml")
+	if err != nil {
+		t.Fatalf("ReadDefaultKey: %v", err)
+	}
+	if got != "" {
+		t.Errorf("ReadDefaultKey = %q, want empty for missing file", got)
+	}
+}
+
 func TestCheckCredentialPermissions_NoFile(t *testing.T) {
 	warning := auth.CheckCredentialPermissions("/nonexistent/file")
 	if warning != "" {
