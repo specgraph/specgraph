@@ -49,6 +49,8 @@ var allProcedures = []string{
 	specgraphv1connect.AuthoringServiceAmendProcedure,
 	specgraphv1connect.AuthoringServiceSupersedeProcedure,
 	specgraphv1connect.AuthoringServiceGetPromptsProcedure,
+	specgraphv1connect.AuthoringServiceRecordConversationProcedure,
+	specgraphv1connect.AuthoringServiceListConversationsProcedure,
 	// ExecutionService
 	specgraphv1connect.ExecutionServiceGenerateBundleProcedure,
 	specgraphv1connect.ExecutionServiceGetPrimeProcedure,

@@ -231,11 +231,18 @@ When the specify conversation is complete:
 5. **Record the conversation:** See `references/conversation-recording.md` for the exchange format.
 
    ```bash
-   cat > /tmp/conv-<slug>.json << 'CONV_EOF'
-   { "exchanges": [ ... accumulated probe/response exchanges ... ] }
+   CONV_TMP="$(mktemp /tmp/conv-XXXXXX.json)"
+   trap 'rm -f "$CONV_TMP"' EXIT
+   cat > "$CONV_TMP" << 'CONV_EOF'
+   {
+     "exchanges": [
+       {"role": "probe", "content": "...", "stage": "specify", "sequence": 1},
+       {"role": "response", "content": "...", "stage": "specify", "sequence": 1},
+       ...
+     ]
+   }
    CONV_EOF
-   specgraph conversation record <slug> --stage specify --json-file /tmp/conv-<slug>.json
-   rm /tmp/conv-<slug>.json
+   specgraph conversation record <slug> --stage specify --json-file "$CONV_TMP"
    ```
 
 6. **Confirm:** "Saved. Spec is now at Decompose stage."

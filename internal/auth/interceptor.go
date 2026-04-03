@@ -39,7 +39,7 @@ func NewAuthInterceptor(store IdentityStore) connect.UnaryInterceptorFunc {
 				slog.Error("auth: unconfigured RPC permission",
 					"procedure", procedure,
 				)
-				return nil, connect.NewError(connect.CodeInternal, nil)
+				return nil, connect.NewError(connect.CodeInternal, errors.New("unconfigured RPC permission"))
 			}
 
 			if !HasPermission(id.Permissions, required) {

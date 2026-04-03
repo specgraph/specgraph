@@ -166,11 +166,18 @@ confirmed each one:
    record on hold/decline — approvals are self-evident.
 
    ```bash
-   cat > /tmp/conv-<slug>.json << 'CONV_EOF'
-   { "exchanges": [ ... review discussion + rejection rationale ... ] }
+   CONV_TMP="$(mktemp /tmp/conv-XXXXXX.json)"
+   trap 'rm -f "$CONV_TMP"' EXIT
+   cat > "$CONV_TMP" << 'CONV_EOF'
+   {
+     "exchanges": [
+       {"role": "probe", "content": "...", "stage": "approve", "sequence": 1},
+       {"role": "response", "content": "...", "stage": "approve", "sequence": 1},
+       ...
+     ]
+   }
    CONV_EOF
-   specgraph conversation record <slug> --stage approve --json-file /tmp/conv-<slug>.json
-   rm /tmp/conv-<slug>.json
+   specgraph conversation record <slug> --stage approve --json-file "$CONV_TMP"
    ```
 
 2. Record the hold reason, suggest which stage to revisit, and do NOT re-offer
