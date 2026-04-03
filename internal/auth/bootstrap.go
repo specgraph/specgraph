@@ -87,6 +87,16 @@ func writeNewCredentials(path string, content []byte) (err error) {
 	return nil
 }
 
+// ReadDefaultKey reads the first API key from a credentials file.
+// Returns ("", nil) if the file does not exist.
+// Returns ("", error) if the file exists but cannot be parsed or has no keys.
+func ReadDefaultKey(path string) (string, error) {
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+		return "", nil
+	}
+	return readExistingBootstrapKey(path)
+}
+
 // readExistingBootstrapKey reads the first API key from an existing credentials file.
 func readExistingBootstrapKey(path string) (string, error) {
 	data, err := os.ReadFile(path)

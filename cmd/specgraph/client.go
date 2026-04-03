@@ -7,22 +7,30 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 
 	"connectrpc.com/connect"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/xdg"
 )
 
-// projectTransport injects the X-Specgraph-Project header on every request.
-type projectTransport struct {
-	base    http.RoundTripper
-	project string
+// clientTransport injects the X-Specgraph-Project and Authorization headers on every request.
+type clientTransport struct {
+	base        http.RoundTripper
+	project     string
+	bearerToken string
 }
 
-func (t *projectTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req = req.Clone(req.Context())
-	req.Header.Set("X-Specgraph-Project", t.project)
+	if t.project != "" {
+		req.Header.Set("X-Specgraph-Project", t.project)
+	}
+	if t.bearerToken != "" {
+		req.Header.Set("Authorization", "Bearer "+t.bearerToken)
+	}
 	return t.base.RoundTrip(req)
 }
 
@@ -61,15 +69,25 @@ func resolveBaseURL() (baseURL, project string, err error) {
 	return fmt.Sprintf("%s://%s:%d", scheme, cfg.Server.Host, cfg.Server.Port), "", nil
 }
 
-func newHTTPClient(project string) *http.Client {
-	transport := http.DefaultTransport
-	if project != "" {
-		transport = &projectTransport{
-			base:    http.DefaultTransport,
-			project: project,
-		}
+// resolveAPIKey returns the API key to use for CLI requests.
+// Precedence: SPECGRAPH_API_KEY env var > credentials file > empty (no auth).
+func resolveAPIKey() string {
+	if key := os.Getenv("SPECGRAPH_API_KEY"); key != "" {
+		return key
 	}
-	return &http.Client{Transport: transport}
+	key, err := auth.ReadDefaultKey(xdg.CredentialsFile())
+	if err != nil {
+		return ""
+	}
+	return key
+}
+
+func newHTTPClient(project string) *http.Client {
+	return &http.Client{Transport: &clientTransport{
+		base:        http.DefaultTransport,
+		project:     project,
+		bearerToken: resolveAPIKey(),
+	}}
 }
 
 // newClient creates a ConnectRPC client using the configured base URL.
