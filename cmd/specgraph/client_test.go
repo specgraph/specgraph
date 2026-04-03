@@ -19,7 +19,7 @@ func TestProjectTransport_InjectsHeader(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := &http.Client{Transport: &projectTransport{
+	client := &http.Client{Transport: &clientTransport{
 		base:    http.DefaultTransport,
 		project: "test-proj",
 	}}
@@ -38,7 +38,7 @@ func TestProjectTransport_EmptyProject(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := &http.Client{Transport: &projectTransport{
+	client := &http.Client{Transport: &clientTransport{
 		base:    http.DefaultTransport,
 		project: "",
 	}}
@@ -64,7 +64,7 @@ func TestProjectTransport_DoesNotMutateOriginalRequest(t *testing.T) {
 	require.NoError(t, err)
 	orig.Header.Set("X-Custom", "original")
 
-	client := &http.Client{Transport: &projectTransport{
+	client := &http.Client{Transport: &clientTransport{
 		base:    http.DefaultTransport,
 		project: "injected",
 	}}
@@ -75,4 +75,41 @@ func TestProjectTransport_DoesNotMutateOriginalRequest(t *testing.T) {
 	assert.Equal(t, "injected", captured.Get("X-Specgraph-Project"))
 	// Original request header should not be modified.
 	assert.Empty(t, orig.Header.Get("X-Specgraph-Project"))
+}
+
+func TestClientTransport_InjectsBearerToken(t *testing.T) {
+	var captured http.Header
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captured = r.Header.Clone()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	client := &http.Client{Transport: &clientTransport{
+		base:        http.DefaultTransport,
+		bearerToken: "spgr_sk_testkey",
+	}}
+	resp, err := client.Get(ts.URL) //nolint:noctx // test helper
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	assert.Equal(t, "Bearer spgr_sk_testkey", captured.Get("Authorization"))
+}
+
+func TestClientTransport_NoBearerWhenEmpty(t *testing.T) {
+	var captured http.Header
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captured = r.Header.Clone()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	client := &http.Client{Transport: &clientTransport{
+		base: http.DefaultTransport,
+	}}
+	resp, err := client.Get(ts.URL) //nolint:noctx // test helper
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	assert.Empty(t, captured.Get("Authorization"))
 }
