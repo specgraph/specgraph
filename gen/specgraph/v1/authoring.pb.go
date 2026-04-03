@@ -209,6 +209,9 @@ const (
 	DecompositionStrategy_DECOMPOSITION_STRATEGY_LAYER_CAKE DecompositionStrategy = 2
 	// Deliver the entire spec as one unit; no decomposition.
 	DecompositionStrategy_DECOMPOSITION_STRATEGY_SINGLE_UNIT DecompositionStrategy = 3
+	// Thin vertical cut proving riskiest integration points first.
+	// slices[0] is the thread (no dependsOn); all others reachable from it.
+	DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD DecompositionStrategy = 4
 )
 
 // Enum value maps for DecompositionStrategy.
@@ -218,12 +221,14 @@ var (
 		1: "DECOMPOSITION_STRATEGY_VERTICAL_SLICE",
 		2: "DECOMPOSITION_STRATEGY_LAYER_CAKE",
 		3: "DECOMPOSITION_STRATEGY_SINGLE_UNIT",
+		4: "DECOMPOSITION_STRATEGY_STEEL_THREAD",
 	}
 	DecompositionStrategy_value = map[string]int32{
 		"DECOMPOSITION_STRATEGY_UNSPECIFIED":    0,
 		"DECOMPOSITION_STRATEGY_VERTICAL_SLICE": 1,
 		"DECOMPOSITION_STRATEGY_LAYER_CAKE":     2,
 		"DECOMPOSITION_STRATEGY_SINGLE_UNIT":    3,
+		"DECOMPOSITION_STRATEGY_STEEL_THREAD":   4,
 	}
 )
 
@@ -2760,12 +2765,13 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\x1cFINDING_SEVERITY_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19FINDING_SEVERITY_CRITICAL\x10\x01\x12\x1c\n" +
 	"\x18FINDING_SEVERITY_WARNING\x10\x02\x12\x19\n" +
-	"\x15FINDING_SEVERITY_NOTE\x10\x03*\xb9\x01\n" +
+	"\x15FINDING_SEVERITY_NOTE\x10\x03*\xe2\x01\n" +
 	"\x15DecompositionStrategy\x12&\n" +
 	"\"DECOMPOSITION_STRATEGY_UNSPECIFIED\x10\x00\x12)\n" +
 	"%DECOMPOSITION_STRATEGY_VERTICAL_SLICE\x10\x01\x12%\n" +
 	"!DECOMPOSITION_STRATEGY_LAYER_CAKE\x10\x02\x12&\n" +
-	"\"DECOMPOSITION_STRATEGY_SINGLE_UNIT\x10\x03*n\n" +
+	"\"DECOMPOSITION_STRATEGY_SINGLE_UNIT\x10\x03\x12'\n" +
+	"#DECOMPOSITION_STRATEGY_STEEL_THREAD\x10\x04*n\n" +
 	"\x0eSafetyCategory\x12\x1f\n" +
 	"\x1bSAFETY_CATEGORY_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18SAFETY_CATEGORY_SECURITY\x10\x01\x12\x1d\n" +

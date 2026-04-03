@@ -234,6 +234,7 @@ func TestDecomposeStrategyStringToProto(t *testing.T) {
 		{storage.StrategyVerticalSlice, specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE},
 		{storage.StrategyLayerCake, specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_LAYER_CAKE},
 		{storage.StrategySingleUnit, specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_SINGLE_UNIT},
+		{storage.StrategySteelThread, specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD},
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.domain), func(t *testing.T) {
@@ -291,6 +292,7 @@ func TestDecompositionStrategyIsValid(t *testing.T) {
 	assert.True(t, storage.StrategyVerticalSlice.IsValid())
 	assert.True(t, storage.StrategyLayerCake.IsValid())
 	assert.True(t, storage.StrategySingleUnit.IsValid())
+	assert.True(t, storage.StrategySteelThread.IsValid())
 	assert.False(t, storage.DecompositionStrategy("bogus").IsValid())
 	assert.False(t, storage.DecompositionStrategy("").IsValid())
 }

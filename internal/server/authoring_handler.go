@@ -291,6 +291,11 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slice %q intent exceeds maximum length of %d characters", s.GetId(), maxFieldLen))
 		}
 	}
+	if msg.Output.GetStrategy() == specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD {
+		if err := validateSteelThread(msg.Output.GetSlices()); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
 	decomposeDomain, domainErr := decomposeOutputToDomain(msg.Output)
 	if domainErr != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, domainErr)
@@ -748,6 +753,57 @@ var decomposeStrategyMap = map[specv1.DecompositionStrategy]storage.Decompositio
 	specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE: storage.StrategyVerticalSlice,
 	specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_LAYER_CAKE:     storage.StrategyLayerCake,
 	specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_SINGLE_UNIT:    storage.StrategySingleUnit,
+	specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD:   storage.StrategySteelThread,
+}
+
+// validateSteelThread checks steel-thread topology constraints:
+// 1. slices[0] (the thread) must have no dependsOn.
+// 2. Every other slice must transitively reach slices[0].id.
+func validateSteelThread(slices []*specv1.DecompositionSlice) error {
+	if len(slices) == 0 {
+		return errors.New("steel thread strategy requires at least one slice")
+	}
+	threadID := slices[0].GetId()
+	if len(slices[0].GetDependsOn()) > 0 {
+		return fmt.Errorf("steel thread strategy requires slices[0] to have no dependencies (it is the thread)")
+	}
+
+	// Build adjacency: child -> parents (dependsOn). Reject duplicate IDs.
+	deps := make(map[string][]string, len(slices))
+	for _, s := range slices {
+		id := s.GetId()
+		if _, exists := deps[id]; exists {
+			return fmt.Errorf("duplicate slice id %q", id)
+		}
+		deps[id] = s.GetDependsOn()
+	}
+
+	// For each non-root slice, walk dependsOn transitively to check reachability.
+	for _, s := range slices[1:] {
+		if !reachesRoot(s.GetId(), threadID, deps) {
+			return fmt.Errorf("slice %q does not transitively depend on thread slice %q", s.GetId(), threadID)
+		}
+	}
+	return nil
+}
+
+// reachesRoot walks the dependsOn graph from start, returning true if threadID is reachable.
+func reachesRoot(start, threadID string, deps map[string][]string) bool {
+	visited := map[string]bool{}
+	queue := []string{start}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		if cur == threadID {
+			return true
+		}
+		if visited[cur] {
+			continue
+		}
+		visited[cur] = true
+		queue = append(queue, deps[cur]...)
+	}
+	return false
 }
 
 func decomposeOutputToDomain(p *specv1.DecomposeOutput) (*storage.DecomposeOutput, error) {

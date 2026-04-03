@@ -173,6 +173,8 @@ func decompositionStrategyString(s specv1.DecompositionStrategy) string {
 		return "layer_cake"
 	case specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_SINGLE_UNIT:
 		return "single_unit"
+	case specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD:
+		return "steel_thread"
 	default:
 		return ""
 	}

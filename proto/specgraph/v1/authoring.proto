@@ -54,6 +54,9 @@ enum DecompositionStrategy {
   DECOMPOSITION_STRATEGY_LAYER_CAKE = 2;
   // Deliver the entire spec as one unit; no decomposition.
   DECOMPOSITION_STRATEGY_SINGLE_UNIT = 3;
+  // Thin vertical cut proving riskiest integration points first.
+  // slices[0] is the thread (no dependsOn); all others reachable from it.
+  DECOMPOSITION_STRATEGY_STEEL_THREAD = 4;
 }
 
 enum SafetyCategory {
