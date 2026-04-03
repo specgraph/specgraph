@@ -83,13 +83,6 @@ Apply these throughout the conversation. Push back when they fire.
 | All slices chain linearly | "Everything chains through slice-1. Is there anything that could start independently?" |
 | Slice that's just "write tests" | "Tests should be part of each slice, not a separate slice." |
 
-### Analytical Pass (Simplicity)
-
-Woven into conversation, not a separate step. Challenge unnecessary splits:
-
-- "Do we really need separate slices for the migration and the queries? They're
-  tightly coupled — merging them reduces integration risk."
-
 ---
 
 ## Execution
@@ -135,6 +128,23 @@ specgraph decompose <slug> --json-file <tmpfile>
    specgraph conversation record <slug> --stage decompose --json-file /tmp/conv-<slug>.json
    rm /tmp/conv-<slug>.json
    ```
+
+### Analytical Passes
+
+After persisting decompose output, run analytical passes per the shared protocol.
+
+> **Read `references/analytical-passes.md`** for the full dispatch-collate-present
+> protocol, including posture-aware behavior and severity-based gating.
+
+Passes for Decompose stage:
+
+- **Drive:** `simplicity` + `constitution-check` (auto-run both).
+- **Partner:** `constitution-check` (auto-run). Offer `simplicity`.
+- **Support:** `constitution-check` (auto-run). Offer `simplicity`.
+
+Dispatch all auto-run passes as parallel background subagents. Wait for
+completion, then present findings per the protocol before offering to
+continue to Approve.
 
 6. Confirm: "Saved. Spec is now at Decompose."
 
