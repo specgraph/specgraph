@@ -41,7 +41,7 @@ For each pass, dispatch a background subagent with `run_in_background: true`. Th
 
 Subagent prompt template:
 
-````
+````text
 You are running the {pass_type} analytical pass on spec "{slug}".
 
 {output of specgraph pass run <slug> --pass-type <pass_type>}
@@ -54,7 +54,8 @@ Execute the pass using the tools listed above. For each finding, assign a severi
 When complete, write findings to a temp file and store them:
 
 ```bash
-TMPFILE=$(mktemp /tmp/findings-XXXXXXXX.json)
+TMPFILE="$(mktemp "${TMPDIR:-/tmp}/findings-XXXXXXXX.json")"
+trap 'rm -f "$TMPFILE"' EXIT
 cat > "$TMPFILE" << 'FINDINGS_EOF'
 {
   "findings": [
@@ -69,8 +70,10 @@ cat > "$TMPFILE" << 'FINDINGS_EOF'
 }
 FINDINGS_EOF
 
-specgraph findings store {slug} --pass-type {pass_type} --json-file "$TMPFILE"
-rm "$TMPFILE"
+if ! specgraph findings store {slug} --pass-type {pass_type} --json-file "$TMPFILE"; then
+  echo "findings store failed" >&2
+  exit 1
+fi
 ```
 
 Return a summary: count of findings at each severity level, and a one-line
