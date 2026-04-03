@@ -1,37 +1,56 @@
 <script>
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
+  import { auth, checkAuth } from '$lib/auth.svelte';
   import { project, loadProjects } from '$lib/project.svelte';
+  import LoginModal from '$lib/components/LoginModal.svelte';
 
   let { children } = $props();
+  let ready = $state(false);
 
-  onMount(() => { loadProjects(); });
+  onMount(async () => {
+    await checkAuth();
+    if (auth.authenticated) {
+      await loadProjects();
+    }
+    ready = true;
+  });
+
+  async function handleLoginSuccess() {
+    await loadProjects();
+  }
 </script>
 
-<nav>
-  <a href="/" class:active={$page.url.pathname === '/'}>Dashboard</a>
-  <a href="/graph" class:active={$page.url.pathname === '/graph'}>Graph</a>
-  <a href="/constitution" class:active={$page.url.pathname === '/constitution'}>Constitution</a>
-  <span class="spacer"></span>
-  {#if project.available.length > 1}
-    <select bind:value={project.current} class="project-picker">
-      {#each project.available as slug}
-        <option value={slug}>{slug}</option>
-      {/each}
-    </select>
-  {:else if project.current}
-    <span class="project-name">{project.current}</span>
-  {/if}
-  <span class="brand">SpecGraph</span>
-</nav>
+{#if !ready}
+  <main><p class="loading">Connecting...</p></main>
+{:else if !auth.authenticated}
+  <LoginModal onSuccess={handleLoginSuccess} />
+{:else}
+  <nav>
+    <a href="/" class:active={$page.url.pathname === '/'}>Dashboard</a>
+    <a href="/graph" class:active={$page.url.pathname === '/graph'}>Graph</a>
+    <a href="/constitution" class:active={$page.url.pathname === '/constitution'}>Constitution</a>
+    <span class="spacer"></span>
+    {#if project.available.length > 1}
+      <select bind:value={project.current} class="project-picker">
+        {#each project.available as slug}
+          <option value={slug}>{slug}</option>
+        {/each}
+      </select>
+    {:else if project.current}
+      <span class="project-name">{project.current}</span>
+    {/if}
+    <span class="brand">SpecGraph</span>
+  </nav>
 
-<main>
-  {#if project.loaded}
-    {@render children()}
-  {:else}
-    <p class="loading">Connecting...</p>
-  {/if}
-</main>
+  <main>
+    {#if project.loaded}
+      {@render children()}
+    {:else}
+      <p class="loading">Loading projects...</p>
+    {/if}
+  </main>
+{/if}
 
 <style>
   :global(body) {

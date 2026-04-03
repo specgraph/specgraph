@@ -7,6 +7,7 @@ package api_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -70,10 +71,13 @@ var _ = Describe("Auth", Label("auth"), func() {
 			}
 		})
 
-		It("allows unauthenticated requests via local identity fallback", func() {
+		It("rejects unauthenticated requests (no local bypass)", func() {
 			client := specgraphv1connect.NewSpecServiceClient(authProjectClient(), info.BaseURL)
 			_, err := client.ListSpecs(ctx, connect.NewRequest(&specv1.ListSpecsRequest{}))
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(HaveOccurred())
+			var connectErr *connect.Error
+			Expect(errors.As(err, &connectErr)).To(BeTrue())
+			Expect(connectErr.Code()).To(Equal(connect.CodeUnauthenticated))
 		})
 
 		It("allows health check without auth", func() {

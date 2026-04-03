@@ -73,6 +73,9 @@ var (
 // ErrDecisionNotFound is returned when a decision does not exist.
 var ErrDecisionNotFound = errors.New("decision not found")
 
+// ErrDecisionAlreadyExists is returned when creating a decision with a slug that already exists.
+var ErrDecisionAlreadyExists = errors.New("decision already exists")
+
 // ErrSupersededByRequired is returned when status is superseded but superseded_by is not provided.
 var ErrSupersededByRequired = errors.New("superseded_by is required when status is superseded")
 

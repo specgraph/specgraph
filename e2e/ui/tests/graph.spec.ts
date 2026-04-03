@@ -1,4 +1,4 @@
-import { test, expect, request as playwrightRequest } from '@playwright/test';
+import { test, expect, request as playwrightRequest } from './fixtures';
 import { seedSpec, seedEdge } from './helpers';
 
 test.describe('Graph View', () => {

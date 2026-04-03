@@ -169,6 +169,8 @@ func (h *DecisionHandler) decisionError(ctx context.Context, err error) error {
 	switch {
 	case errors.Is(err, storage.ErrDecisionNotFound):
 		return connect.NewError(connect.CodeNotFound, errors.New("decision not found"))
+	case errors.Is(err, storage.ErrDecisionAlreadyExists):
+		return connect.NewError(connect.CodeAlreadyExists, errors.New("decision already exists"))
 	case errors.Is(err, storage.ErrSupersededByRequired):
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("superseded_by is required when status is superseded"))
 	case errors.Is(err, storage.ErrConcurrentModification):

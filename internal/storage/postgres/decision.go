@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/specgraph/specgraph/internal/storage/contenthash"
@@ -202,6 +203,10 @@ func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale
 
 		dec, scanErr := scanDecisionRow(row)
 		if scanErr != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(scanErr, &pgErr) && pgErr.Code == "23505" {
+				return fmt.Errorf("slug %q: %w", slug, storage.ErrDecisionAlreadyExists)
+			}
 			return fmt.Errorf("postgres: create decision: scan: %w", scanErr)
 		}
 
