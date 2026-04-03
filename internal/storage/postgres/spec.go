@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/specgraph/specgraph/internal/storage/contenthash"
@@ -59,6 +60,10 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 
 		spec, err := scanSpec(row)
 		if err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				return fmt.Errorf("slug %q: %w", slug, storage.ErrSpecAlreadyExists)
+			}
 			return fmt.Errorf("postgres: create spec: scan: %w", err)
 		}
 
