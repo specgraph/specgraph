@@ -204,3 +204,209 @@ func TestFindingsListCmd_RequiresSlug(t *testing.T) {
 	err := findingsListCmd.Args(findingsListCmd, []string{})
 	require.Error(t, err)
 }
+
+// --- findings store fake handlers ---
+
+type fakeFindingsStoreHandler struct {
+	specgraphv1connect.UnimplementedAnalyticalPassServiceHandler
+}
+
+func (fakeFindingsStoreHandler) StoreFindings(_ context.Context, _ *connect.Request[specv1.StoreFindingsRequest]) (*connect.Response[specv1.StoreFindingsResponse], error) {
+	return connect.NewResponse(&specv1.StoreFindingsResponse{
+		Ids: []string{"finding-abc", "finding-def"},
+	}), nil
+}
+
+type fakeFindingsStoreErrorHandler struct {
+	specgraphv1connect.UnimplementedAnalyticalPassServiceHandler
+}
+
+func (fakeFindingsStoreErrorHandler) StoreFindings(_ context.Context, _ *connect.Request[specv1.StoreFindingsRequest]) (*connect.Response[specv1.StoreFindingsResponse], error) {
+	return nil, connect.NewError(connect.CodeNotFound, nil)
+}
+
+// --- findings store tests ---
+
+func TestRunFindingsStore_HappyPath(t *testing.T) {
+	startFakeServer[specgraphv1connect.AnalyticalPassServiceHandler](t, fakeFindingsStoreHandler{}, specgraphv1connect.NewAnalyticalPassServiceHandler)
+
+	f := writeJSONFile(t, `{"findings":[{"summary":"test finding"}]}`)
+
+	oldPT := findingsStorePassType
+	oldJSON := findingsStoreJSON
+	oldFile := findingsStoreFile
+	findingsStorePassType = "red-team"
+	findingsStoreJSON = false
+	findingsStoreFile = f
+	t.Cleanup(func() {
+		findingsStorePassType = oldPT
+		findingsStoreJSON = oldJSON
+		findingsStoreFile = oldFile
+	})
+
+	err := runFindingsStore(newCmdWithCtx(), []string{"my-spec"})
+	require.NoError(t, err)
+}
+
+func TestRunFindingsStore_JSON(t *testing.T) {
+	startFakeServer[specgraphv1connect.AnalyticalPassServiceHandler](t, fakeFindingsStoreHandler{}, specgraphv1connect.NewAnalyticalPassServiceHandler)
+
+	f := writeJSONFile(t, `{"findings":[{"summary":"test finding"}]}`)
+
+	oldPT := findingsStorePassType
+	oldJSON := findingsStoreJSON
+	oldFile := findingsStoreFile
+	findingsStorePassType = "red-team"
+	findingsStoreJSON = true
+	findingsStoreFile = f
+	t.Cleanup(func() {
+		findingsStorePassType = oldPT
+		findingsStoreJSON = oldJSON
+		findingsStoreFile = oldFile
+	})
+
+	cmd := newCmdWithCtx()
+	cmd.SetOut(io.Discard)
+	err := runFindingsStore(cmd, []string{"my-spec"})
+	require.NoError(t, err)
+}
+
+func TestRunFindingsStore_MissingPassType(t *testing.T) {
+	oldPT := findingsStorePassType
+	oldJSON := findingsStoreJSON
+	oldFile := findingsStoreFile
+	findingsStorePassType = ""
+	findingsStoreJSON = false
+	findingsStoreFile = "some-file.json"
+	t.Cleanup(func() {
+		findingsStorePassType = oldPT
+		findingsStoreJSON = oldJSON
+		findingsStoreFile = oldFile
+	})
+
+	err := runFindingsStore(newCmdWithCtx(), []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "pass-type is required")
+}
+
+func TestRunFindingsStore_MissingJSONFile(t *testing.T) {
+	oldPT := findingsStorePassType
+	oldJSON := findingsStoreJSON
+	oldFile := findingsStoreFile
+	findingsStorePassType = "red-team"
+	findingsStoreJSON = false
+	findingsStoreFile = ""
+	t.Cleanup(func() {
+		findingsStorePassType = oldPT
+		findingsStoreJSON = oldJSON
+		findingsStoreFile = oldFile
+	})
+
+	err := runFindingsStore(newCmdWithCtx(), []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "json-file is required")
+}
+
+func TestRunFindingsStore_InvalidPassType(t *testing.T) {
+	oldPT := findingsStorePassType
+	oldJSON := findingsStoreJSON
+	oldFile := findingsStoreFile
+	findingsStorePassType = "bogus"
+	findingsStoreJSON = false
+	findingsStoreFile = "some-file.json"
+	t.Cleanup(func() {
+		findingsStorePassType = oldPT
+		findingsStoreJSON = oldJSON
+		findingsStoreFile = oldFile
+	})
+
+	err := runFindingsStore(newCmdWithCtx(), []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown pass type")
+}
+
+func TestRunFindingsStore_FileNotFound(t *testing.T) {
+	oldPT := findingsStorePassType
+	oldJSON := findingsStoreJSON
+	oldFile := findingsStoreFile
+	findingsStorePassType = "red-team"
+	findingsStoreJSON = false
+	findingsStoreFile = "/tmp/does-not-exist-specgraph-test.json"
+	t.Cleanup(func() {
+		findingsStorePassType = oldPT
+		findingsStoreJSON = oldJSON
+		findingsStoreFile = oldFile
+	})
+
+	err := runFindingsStore(newCmdWithCtx(), []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "read json file")
+}
+
+func TestRunFindingsStore_MalformedJSON(t *testing.T) {
+	f := writeJSONFile(t, `{not valid json}`)
+
+	oldPT := findingsStorePassType
+	oldJSON := findingsStoreJSON
+	oldFile := findingsStoreFile
+	findingsStorePassType = "red-team"
+	findingsStoreJSON = false
+	findingsStoreFile = f
+	t.Cleanup(func() {
+		findingsStorePassType = oldPT
+		findingsStoreJSON = oldJSON
+		findingsStoreFile = oldFile
+	})
+
+	err := runFindingsStore(newCmdWithCtx(), []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "parse json file")
+}
+
+func TestRunFindingsStore_RPCError(t *testing.T) {
+	startFakeServer[specgraphv1connect.AnalyticalPassServiceHandler](t, fakeFindingsStoreErrorHandler{}, specgraphv1connect.NewAnalyticalPassServiceHandler)
+
+	f := writeJSONFile(t, `{"findings":[{"summary":"test"}]}`)
+
+	oldPT := findingsStorePassType
+	oldJSON := findingsStoreJSON
+	oldFile := findingsStoreFile
+	findingsStorePassType = "red-team"
+	findingsStoreJSON = false
+	findingsStoreFile = f
+	t.Cleanup(func() {
+		findingsStorePassType = oldPT
+		findingsStoreJSON = oldJSON
+		findingsStoreFile = oldFile
+	})
+
+	err := runFindingsStore(newCmdWithCtx(), []string{"my-spec"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "store findings")
+}
+
+func TestRunFindingsStore_ClientError(t *testing.T) {
+	setMissingConfig(t)
+
+	f := writeJSONFile(t, `{"findings":[{"summary":"test"}]}`)
+
+	oldPT := findingsStorePassType
+	oldJSON := findingsStoreJSON
+	oldFile := findingsStoreFile
+	findingsStorePassType = "red-team"
+	findingsStoreJSON = false
+	findingsStoreFile = f
+	t.Cleanup(func() {
+		findingsStorePassType = oldPT
+		findingsStoreJSON = oldJSON
+		findingsStoreFile = oldFile
+	})
+
+	err := runFindingsStore(newCmdWithCtx(), []string{"my-spec"})
+	require.Error(t, err)
+}
+
+func TestFindingsStoreCmd_RequiresSlug(t *testing.T) {
+	err := findingsStoreCmd.Args(findingsStoreCmd, []string{})
+	require.Error(t, err)
+}
