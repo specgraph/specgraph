@@ -145,11 +145,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 				"path", credPath,
 				"error", bootstrapErr.Error())
 		} else {
-			if stderrIsTerminal() {
-				fmt.Fprintf(os.Stderr, "\n  SpecGraph generated a default admin API key:\n\n    %s\n\n  Save this key — it won't be shown again.\n  Stored in: %s\n\n", key, credPath)
-			} else {
-				slog.Info("auth: default admin API key created", "path", credPath)
-			}
+			fmt.Fprintf(os.Stderr, "\n  SpecGraph generated a default admin API key:\n\n    %s\n\n  Save this key — it won't be shown again.\n  Stored in: %s\n\n", key, credPath)
 
 			// Reload store with the new key.
 			authStore, err = auth.NewConfigStore(cfg.Auth, credPath)
@@ -157,6 +153,8 @@ func runServe(cmd *cobra.Command, _ []string) error {
 				return fmt.Errorf("reload auth after bootstrap: %w", err)
 			}
 		}
+	} else if mode == "local" && authStore.HasKeys() {
+		fmt.Fprintf(os.Stderr, "  Auth: using credentials from %s\n", credPath)
 	}
 
 	if warning := auth.CheckCredentialPermissions(credPath); warning != "" {
@@ -271,17 +269,6 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
-}
-
-// stderrIsTerminal reports whether stderr is connected to an interactive terminal.
-// Used to avoid printing secrets (e.g., bootstrap API keys) to non-interactive
-// outputs like CI logs or container log collectors.
-func stderrIsTerminal() bool {
-	fi, err := os.Stderr.Stat()
-	if err != nil {
-		return false
-	}
-	return fi.Mode()&os.ModeCharDevice != 0
 }
 
 // isLoopbackAddr reports whether the listen address refers to a loopback interface.
