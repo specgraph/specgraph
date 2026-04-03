@@ -160,6 +160,7 @@ var decomposeStrategyStringToProtoMap = map[storage.DecompositionStrategy]specv1
 	storage.StrategyVerticalSlice: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
 	storage.StrategyLayerCake:     specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_LAYER_CAKE,
 	storage.StrategySingleUnit:    specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_SINGLE_UNIT,
+	storage.StrategySteelThread:   specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD,
 }
 
 func decomposeStrategyStringToProto(s storage.DecompositionStrategy) (specv1.DecompositionStrategy, error) {
