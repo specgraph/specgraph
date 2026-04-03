@@ -5,12 +5,14 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/specgraph/specgraph/internal/render"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func analyticalPassClient() (specgraphv1connect.AnalyticalPassServiceClient, error) {
@@ -34,6 +36,20 @@ var (
 	findingsListJSON     bool
 )
 
+var findingsStoreCmd = &cobra.Command{
+	Use:   "store <slug>",
+	Short: "Store analytical findings for a spec",
+	Long:  "Reads findings from a JSON file (proto3 format) and stores them via the StoreFindings RPC.",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runFindingsStore,
+}
+
+var (
+	findingsStorePassType string
+	findingsStoreJSON     bool
+	findingsStoreFile     string
+)
+
 // passTypeMap maps friendly CLI names to proto enum values,
 // following the same pattern as driftScopeToProtoMap in lifecycle.go.
 var passTypeMap = map[string]specv1.PassType{
@@ -48,6 +64,12 @@ func init() {
 	findingsListCmd.Flags().StringVar(&findingsListPassType, "pass-type", "", "filter by pass type (constitution-check, red-team, peripheral-vision, consistency, simplicity)")
 	findingsListCmd.Flags().BoolVar(&findingsListJSON, "json", false, "output as JSON")
 	findingsCmd.AddCommand(findingsListCmd)
+
+	findingsStoreCmd.Flags().StringVar(&findingsStorePassType, "pass-type", "", "pass type (constitution-check, red-team, peripheral-vision, consistency, simplicity) (required)")
+	findingsStoreCmd.Flags().BoolVar(&findingsStoreJSON, "json", false, "output as JSON")
+	findingsStoreCmd.Flags().StringVar(&findingsStoreFile, "json-file", "", "path to findings JSON file (required)")
+	findingsCmd.AddCommand(findingsStoreCmd)
+
 	rootCmd.AddCommand(findingsCmd)
 }
 
@@ -74,5 +96,50 @@ func runFindingsList(cmd *cobra.Command, args []string) error {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	fmt.Print(render.Findings(resp.Msg.Findings))
+	return nil
+}
+
+func runFindingsStore(cmd *cobra.Command, args []string) error {
+	if findingsStorePassType == "" {
+		return fmt.Errorf("--pass-type is required")
+	}
+	if findingsStoreFile == "" {
+		return fmt.Errorf("--json-file is required")
+	}
+	pt, ok := passTypeMap[findingsStorePassType]
+	if !ok {
+		return fmt.Errorf("unknown pass type %q; valid: constitution-check, red-team, peripheral-vision, consistency, simplicity", findingsStorePassType)
+	}
+
+	data, err := os.ReadFile(findingsStoreFile)
+	if err != nil {
+		return fmt.Errorf("read json file: %w", err)
+	}
+
+	var req specv1.StoreFindingsRequest
+	if unmarshalErr := protojson.Unmarshal(data, &req); unmarshalErr != nil {
+		return fmt.Errorf("parse json file: %w", unmarshalErr)
+	}
+	req.Slug = args[0]
+	req.PassType = pt
+
+	client, err := analyticalPassClient()
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.StoreFindings(cmd.Context(), connect.NewRequest(&req))
+	if err != nil {
+		return fmt.Errorf("store findings: %w", err)
+	}
+
+	if findingsStoreJSON {
+		return printJSON(cmd.OutOrStdout(), resp.Msg)
+	}
+	for _, id := range resp.Msg.Ids {
+		if _, wErr := fmt.Fprintln(cmd.OutOrStdout(), id); wErr != nil {
+			return wErr
+		}
+	}
 	return nil
 }

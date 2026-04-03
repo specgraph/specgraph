@@ -110,23 +110,6 @@ pushback:
 | No risks identified | Blind optimism | "Every design has risks. What's the thing most likely to bite you during implementation?" |
 | Constitution violation | Conflicting with project ground truth | "Your constitution says '[principle].' This seems to conflict — how do you want to reconcile?" |
 
-### Analytical Pass (Peripheral Vision)
-
-Woven into the conversation, not a separate step. While scoping and discussing
-approaches, proactively surface related concerns from the graph and codebase.
-
-- Check `specgraph list` for related or overlapping specs.
-- Grep the codebase for files and packages that the spec will likely touch.
-- Surface findings naturally: "I checked the graph — there's already a spec for X
-  that touches the same files."
-- When a related concern surfaces, ask how to disposition it:
-  - **Fold in:** Add it to this spec's scope.
-  - **Track separately:** Create a new spec or link to an existing one.
-  - **Note for implementer:** Add as context, not scope.
-
-Example: "This touches the auth module — I see `token-encryption-at-rest` is also
-in progress there. Collision risk?"
-
 ### Background Research
 
 At the start of the shaping conversation, dispatch background research:
@@ -264,6 +247,23 @@ When the shaping conversation is complete:
    CONV_EOF
    specgraph conversation record <slug> --stage shape --json-file "$CONV_TMP"
    ```
+
+### Analytical Passes
+
+After persisting shape output, run analytical passes per the shared protocol.
+
+> **Read `references/analytical-passes.md`** for the full dispatch-collate-present
+> protocol, including posture-aware behavior and severity-based gating.
+
+Passes for Shape stage:
+
+- **Drive:** `peripheral-vision` + `constitution-check` (auto-run both).
+- **Partner:** `constitution-check` (auto-run). Offer `peripheral-vision`.
+- **Support:** `constitution-check` (auto-run). No offered passes.
+
+Dispatch all auto-run passes as parallel background subagents. Wait for
+completion, then present findings per the protocol before offering to
+continue to Specify.
 
 6. **Confirm:** "Saved. Spec is now at Specify stage."
 
