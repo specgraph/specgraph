@@ -8,7 +8,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"os/user"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -63,24 +62,26 @@ func NewAuthInterceptor(store IdentityStore) connect.UnaryInterceptorFunc {
 
 func resolveIdentity(ctx context.Context, store IdentityStore, headers http.Header) (*Identity, error) {
 	authHeader := headers.Get("Authorization")
-
-	if authHeader == "" {
-		if !store.HasAuth() {
-			return localIdentity(), nil
+	if authHeader != "" {
+		scheme, token, ok := strings.Cut(authHeader, " ")
+		token = strings.TrimSpace(token)
+		if !ok || !strings.EqualFold(scheme, "Bearer") || token == "" {
+			return nil, connect.NewError(connect.CodeUnauthenticated, nil)
 		}
-		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
+		return resolveToken(ctx, store, token)
 	}
 
-	// Parse "Bearer <token>" — scheme is case-insensitive per RFC 7235.
-	scheme, token, ok := strings.Cut(authHeader, " ")
-	token = strings.TrimSpace(token)
-	if !ok || !strings.EqualFold(scheme, "Bearer") || token == "" {
-		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
+	// Fallback: session cookie.
+	r := &http.Request{Header: headers}
+	cookie, err := r.Cookie("specgraph_session")
+	if err == nil && cookie.Value != "" {
+		return resolveToken(ctx, store, cookie.Value)
 	}
 
-	// ResolveAPIKey handles all token routing:
-	// - API keys matched directly by ConfigStore
-	// - JWT-shaped tokens delegated to OIDCStore via CompositeStore
+	return nil, connect.NewError(connect.CodeUnauthenticated, nil)
+}
+
+func resolveToken(ctx context.Context, store IdentityStore, token string) (*Identity, error) {
 	id, err := store.ResolveAPIKey(ctx, token)
 	if err == nil {
 		return id, nil
@@ -88,20 +89,5 @@ func resolveIdentity(ctx context.Context, store IdentityStore, headers http.Head
 	if errors.Is(err, ErrUnknownKey) {
 		return nil, connect.NewError(connect.CodeUnauthenticated, nil)
 	}
-	// Non-ErrUnknownKey failures (I/O, store outage) are internal errors.
 	return nil, connect.NewError(connect.CodeInternal, nil)
-}
-
-func localIdentity() *Identity {
-	username := "unknown"
-	if u, err := user.Current(); err == nil {
-		username = u.Username
-	}
-	return &Identity{
-		Subject:     "local:" + username,
-		DisplayName: username,
-		Role:        RoleAdmin,
-		Permissions: map[string]bool{"*:*": true},
-		Source:      "local",
-	}
 }

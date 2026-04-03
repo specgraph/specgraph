@@ -226,6 +226,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
 
 	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(compositeStore))
+	server.RegisterAuthHandlers(mux, compositeStore, auth.RequireAuth(compositeStore))
 
 	webFS, err := fs.Sub(web.Build, "build")
 	if err != nil {
