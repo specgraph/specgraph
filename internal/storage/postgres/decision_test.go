@@ -73,6 +73,20 @@ func TestCreateDecision_MinimalFields(t *testing.T) {
 	require.Empty(t, dec.OriginStage)
 }
 
+func TestCreateDecision_DuplicateSlug(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.CreateDecision(ctx, "dup-dec", "Title", "Body", "Rationale",
+		"", nil, "", nil, "", "", "")
+	require.NoError(t, err)
+
+	_, err = store.CreateDecision(ctx, "dup-dec", "Title2", "Body2", "Rationale2",
+		"", nil, "", nil, "", "", "")
+	require.ErrorIs(t, err, storage.ErrDecisionAlreadyExists)
+}
+
 func TestGetDecision_NotFound(t *testing.T) {
 	store := newStore(t)
 	clearDatabase(t, store)
