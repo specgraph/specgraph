@@ -34,7 +34,8 @@ func newMockDecisionBackend() *mockDecisionBackend {
 
 func (m *mockDecisionBackend) CreateDecision(_ context.Context, slug, title, decision, rationale, question string,
 	rejectedAlts []storage.RejectedAlternative, confidence storage.DecisionConfidence,
-	tags []string, scope storage.DecisionScope, originSpec, originStage string) (*storage.Decision, error) {
+	tags []string, scope storage.DecisionScope, originSpec, originStage string,
+) (*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.seq++
@@ -90,7 +91,8 @@ func (m *mockDecisionBackend) ListDecisions(_ context.Context, status storage.De
 func (m *mockDecisionBackend) UpdateDecision(_ context.Context, slug string, _ int32, title *string, status *storage.DecisionStatus,
 	decision, rationale, supersededBy, question *string,
 	rejectedAlts *[]storage.RejectedAlternative, confidence *storage.DecisionConfidence,
-	tags *[]string, scope *storage.DecisionScope, originSpec, originStage *string) (*storage.Decision, error) {
+	tags *[]string, scope *storage.DecisionScope, originSpec, originStage *string,
+) (*storage.Decision, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.decisions[slug]
@@ -242,15 +244,15 @@ func TestDecisionHandler_CreateWithAllNewFields(t *testing.T) {
 	ctx := context.Background()
 
 	resp, err := client.CreateDecision(ctx, connect.NewRequest(&specv1.CreateDecisionRequest{
-		Slug:       "full-decision",
-		Title:      "Use Memgraph",
-		Decision:   "We will use Memgraph.",
-		Rationale:  "Graph-native.",
-		Question:   "Which database?",
-		Confidence: specv1.DecisionConfidence_DECISION_CONFIDENCE_HIGH,
-		Tags:       []string{"database", "infrastructure"},
-		Scope:      specv1.DecisionScope_DECISION_SCOPE_TEAM,
-		OriginSpec: "storage-design",
+		Slug:        "full-decision",
+		Title:       "Use Memgraph",
+		Decision:    "We will use Memgraph.",
+		Rationale:   "Graph-native.",
+		Question:    "Which database?",
+		Confidence:  specv1.DecisionConfidence_DECISION_CONFIDENCE_HIGH,
+		Tags:        []string{"database", "infrastructure"},
+		Scope:       specv1.DecisionScope_DECISION_SCOPE_TEAM,
+		OriginSpec:  "storage-design",
 		OriginStage: "specify",
 		RejectedAlternatives: []*specv1.RejectedAlternative{
 			{Option: "PostgreSQL", Reason: "Not graph-native"},

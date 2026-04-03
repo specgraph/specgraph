@@ -1,8 +1,7 @@
 {
   "database": "dolt",
   "backend": "dolt",
-  "dolt_mode": "server",
-  "dolt_server_port": 3306,
-  "dolt_database": "spgr",
-  "project_id": "a1b8ebf4-1ff6-4481-8dd3-f956e518204a"
+  "dolt_mode": "embedded",
+  "dolt_database": "specgraph",
+  "project_id": "64a1066b-6297-4940-bee4-a5bbecfce122"
 }

@@ -335,10 +335,10 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	}
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.DecomposeResponse{
-		Output:         msg.Output,
-		SafetyFlags:    safetyResultsToProto(safetyFlags),
-		NextPrompts:    promptsToProto(authoring.StageApproved),
-		SliceSlugs: childSlugs,
+		Output:      msg.Output,
+		SafetyFlags: safetyResultsToProto(safetyFlags),
+		NextPrompts: promptsToProto(authoring.StageApproved),
+		SliceSlugs:  childSlugs,
 	}), nil
 }
 

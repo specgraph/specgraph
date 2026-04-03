@@ -37,7 +37,7 @@ what patterns to follow, and what constraints to respect.
 
 ## Specs as a Graph
 
-Every specification is a **node** in a graph database. Relationships
+Every specification is a **node** in a queryable graph. Relationships
 between specs are **first-class edges**, not filename references or
 hand-maintained lists:
 
@@ -104,40 +104,25 @@ work proceeds in dependency order.
 
 ## Putting It Together
 
-```text
-                         SpecGraph Pipeline
-  ═══════════════════════════════════════════════════════
+```mermaid
+graph TD
+    subgraph Constitution
+        C["Constitution<br/>U → O → P → D<br/>Ground truth: stack, constraints,<br/>principles, patterns"]
+    end
 
-  ┌─────────────────┐
-  │   Constitution   │  Ground truth: stack, constraints,
-  │  U → O → P → D  │  principles, patterns
-  └────────┬────────┘
-           │ informs
-           ▼
-  ┌─────────────────────────────────────────────────┐
-  │              Authoring Funnel                    │
-  │                                                  │
-  │  Spark → Shape → Specify → Decompose → Approve  │
-  │                                                  │
-  │  AI postures: Drive | Partner | Support          │
-  └────────────────────────┬────────────────────────┘
-                           │ produces
-                           ▼
-  ┌─────────────────────────────────────────────────┐
-  │              Spec Graph (Storage)                │
-  │                                                  │
-  │   Nodes: specs, decisions, constitution layers   │
-  │   Edges: depends_on, blocks, composes            │
-  │   Query: Cypher over Memgraph (Postgres planned) │
-  └────────────────────────┬────────────────────────┘
-                           │ serves
-                           ▼
-  ┌─────────────────────────────────────────────────┐
-  │              Execution                           │
-  │                                                  │
-  │   Claim → In Progress → Review → Done            │
-  │   Agents or humans consume approved specs        │
-  │                                                  │
-  │   Terminal: Amended | Superseded | Abandoned      │
-  └─────────────────────────────────────────────────┘
+    subgraph Funnel["Authoring Funnel"]
+        F["Spark → Shape → Specify → Decompose → Approve<br/>AI postures: Drive | Partner | Support"]
+    end
+
+    subgraph Storage["Spec Graph (Storage)"]
+        S["Nodes: specs, decisions, constitution<br/>Edges: depends_on, blocks, composes<br/>Backend: PostgreSQL"]
+    end
+
+    subgraph Execution
+        E["Claim → In Progress → Review → Done<br/>Agents or humans consume approved specs<br/>Terminal: Amended | Superseded | Abandoned"]
+    end
+
+    C -->|informs| Funnel
+    Funnel -->|produces| Storage
+    Storage -->|serves| Execution
 ```

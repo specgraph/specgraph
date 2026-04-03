@@ -120,7 +120,7 @@ becomes a [Slice node](slices.md) in the graph, connected to the parent spec via
 
 | Field | Description |
 |-------|-------------|
-| `strategy` | How the spec is being sliced: `vertical_slice`, `layer_cake`, or `single_unit`. |
+| `strategy` | How the spec is being sliced: `vertical_slice`, `layer_cake`, `single_unit`, or `steel_thread`. |
 | `slices` | Ordered list of slices, each with its own intent, verify criteria, touches, and internal dependencies. |
 
 > See [Slices & Execution Units](slices.md) for the full slice lifecycle
@@ -130,6 +130,10 @@ A **vertical slice** delivers end-to-end value in each slice (e.g., "rotation
 for password grant" then "rotation for authorization code grant"). A **layer
 cake** splits by architectural layer (e.g., storage first, then API, then
 client). **Single unit** means the spec is small enough to deliver as-is.
+A **steel thread** cuts the thinnest possible vertical slice that proves the
+riskiest integration points first. The first slice (`slices[0]`) is the thread
+itself with no dependencies; all subsequent slices are reachable from it. Use
+when the primary risk is integration uncertainty rather than feature breadth.
 
 **Example:**
 
@@ -162,8 +166,10 @@ immutable and becomes a claimable work unit.
 
 Once approved, the spec enters the execution pipeline. Agents or humans can
 **claim** the spec, execute against its verify criteria, and report completion.
-If a spec needs to change after approval, it must be **superseded** by a new
-spec rather than edited in place — preserving the design history.
+If a spec needs to change after reaching done, it can be **amended**
+(returning to an earlier authoring stage for modification) or **superseded**
+by a new spec that replaces it. Amendment is for refining an existing spec;
+supersession is for replacing it with a fundamentally different approach.
 
 ---
 
@@ -180,6 +186,39 @@ Specs can also reach terminal states at any point:
 - **Amended** — returned to an earlier authoring stage for changes
 - **Superseded** — replaced by a newer spec
 - **Abandoned** — dropped; no longer relevant
+
+### Spec Lifecycle
+
+The full spec lifecycle, including post-approval transitions:
+
+```mermaid
+stateDiagram-v2
+    [*] --> spark
+    spark --> shape
+    shape --> specify
+    specify --> decompose
+    decompose --> approved
+    approved --> in_progress
+    in_progress --> review
+    review --> done
+
+    done --> amended : amend
+    amended --> spark : re-entry
+
+    note left of amended : Re-entry targets any\nearlier funnel stage\n(spark through review)
+
+    note right of superseded : Any non-terminal stage\ncan reach superseded\nor abandoned
+    superseded --> [*]
+    abandoned --> [*]
+```
+
+**Terminal states:** `superseded` and `abandoned` are fully terminal — no
+further transitions are possible. `amended` is semi-terminal: it can be
+superseded or abandoned, but not amended again.
+
+Any non-terminal stage can reach `superseded` (via `specgraph supersede`) or
+`abandoned` (via `specgraph abandon`). The diagram shows only the `amended`
+path for clarity.
 
 ---
 
@@ -257,3 +296,8 @@ Each stage transition also creates a **checkpoint ChangeLog node** in the graph,
 recording the content hash and field deltas at that boundary. This means you can
 always answer "what did this spec look like when it entered Shape?" and "what
 changed between Shape and Specify?" directly from the graph.
+
+Authoring conversations can be recorded for traceability using
+`specgraph conversation record` and reviewed with
+`specgraph conversation list`. Each record captures the exchanges that
+shaped a spec at a given stage.

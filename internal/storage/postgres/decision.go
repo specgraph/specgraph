@@ -169,7 +169,8 @@ const decisionSelectCols = `d.id, d.slug, d.title, d.status, d.body, d.rationale
 // All DB operations run within a single transaction.
 func (s *Store) CreateDecision(ctx context.Context, slug, title, body, rationale, question string,
 	rejectedAlts []storage.RejectedAlternative, confidence storage.DecisionConfidence,
-	tags []string, scope storage.DecisionScope, originSpec, originStage string) (*storage.Decision, error) {
+	tags []string, scope storage.DecisionScope, originSpec, originStage string,
+) (*storage.Decision, error) {
 	now := s.now()
 	initialStatus := string(storage.DecisionStatusProposed)
 	ch := contenthash.Decision(title, initialStatus, body, rationale,
@@ -323,7 +324,8 @@ func (s *Store) UpdateDecision(ctx context.Context, slug string, expectedVersion
 	title *string, status *storage.DecisionStatus,
 	body, rationale, supersededBy, question *string,
 	rejectedAlts *[]storage.RejectedAlternative, confidence *storage.DecisionConfidence,
-	tags *[]string, scope *storage.DecisionScope, originSpec, originStage *string) (*storage.Decision, error) {
+	tags *[]string, scope *storage.DecisionScope, originSpec, originStage *string,
+) (*storage.Decision, error) {
 	if status != nil && *status == storage.DecisionStatusSuperseded {
 		if supersededBy == nil || *supersededBy == "" {
 			return nil, storage.ErrSupersededByRequired
@@ -585,7 +587,7 @@ func buildDecision(
 	}
 
 	return &storage.Decision{
-		ID:   id,
+		ID:                   id,
 		Slug:                 slug,
 		Title:                title,
 		Status:               status,

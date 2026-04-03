@@ -19,8 +19,8 @@ func TestUpdateConstitution_CreatesNew(t *testing.T) {
 	ctx := context.Background()
 
 	c := &storage.Constitution{
-		Layer: storage.ConstitutionLayerProject,
-		Name:  "test-constitution",
+		Layer:       storage.ConstitutionLayerProject,
+		Name:        "test-constitution",
 		Constraints: []string{"no globals", "prefer immutability"},
 	}
 

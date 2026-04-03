@@ -28,24 +28,31 @@ func (m *mockGraphBackend) GetImpact(_ context.Context, _ string) ([]storage.Nod
 func (m *mockGraphBackend) AddEdge(_ context.Context, _, _ string, _ storage.EdgeType) (*storage.Edge, error) {
 	return nil, nil
 }
+
 func (m *mockGraphBackend) RemoveEdge(_ context.Context, _, _ string, _ storage.EdgeType) error {
 	return nil
 }
+
 func (m *mockGraphBackend) ListEdges(_ context.Context, _ string, _ storage.EdgeType) ([]*storage.Edge, error) {
 	return nil, nil
 }
+
 func (m *mockGraphBackend) GetDependencies(_ context.Context, _ string) ([]storage.NodeRef, error) {
 	return nil, nil
 }
+
 func (m *mockGraphBackend) GetTransitiveDeps(_ context.Context, _ string) ([]storage.NodeRef, error) {
 	return nil, nil
 }
+
 func (m *mockGraphBackend) GetReady(_ context.Context) ([]storage.NodeRef, error) {
 	return nil, nil
 }
+
 func (m *mockGraphBackend) GetCriticalPath(_ context.Context, _ string) ([]storage.NodeRef, error) {
 	return nil, nil
 }
+
 func (m *mockGraphBackend) GetDependenciesWithEdgeData(_ context.Context, _ string) ([]storage.DependencyRef, error) {
 	return nil, nil
 }

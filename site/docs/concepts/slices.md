@@ -13,17 +13,21 @@ work).
 
 Each slice points back to its parent spec via a `COMPOSES` edge:
 
-```text
-(:Slice) -[:COMPOSES]-> (:Spec)
+```mermaid
+graph LR
+    Slice["(:Slice)"] -->|COMPOSES| Spec["(:Spec)"]
 ```
 
 The same `COMPOSES` edge type is used for both spec-to-spec structural
 composition and slice-to-spec execution composition:
 
-```text
-(:Spec)  -[:COMPOSES]-> (:Spec)  # structural — a spec broken into sub-specs
-(:Slice) -[:COMPOSES]-> (:Spec)  # execution — implementable work items from decompose
+```mermaid
+graph LR
+    SpecA["(:Spec)"] -->|COMPOSES| SpecB["(:Spec)"]
+    Slice["(:Slice)"] -->|COMPOSES| SpecC["(:Spec)"]
 ```
+
+Spec-to-Spec composition is structural (a spec broken into sub-specs). Slice-to-Spec composition is execution (implementable work items from decompose).
 
 In both cases, the child node composes into the parent. Slices also carry a
 `BELONGS_TO` edge to the project for scoping. Unlike sub-specs, slices do not
@@ -46,8 +50,12 @@ A slice carries:
 
 Slices move through a three-state machine:
 
-```text
-open ──▶ claimed ──▶ done
+```mermaid
+stateDiagram-v2
+    [*] --> open
+    open --> claimed
+    claimed --> done
+    done --> [*]
 ```
 
 | State | Meaning |

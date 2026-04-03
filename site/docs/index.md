@@ -2,19 +2,18 @@
 
 **Spec-Driven Development infrastructure — specifications as a queryable graph**
 
-SpecGraph manages software specifications as nodes in a graph database, not
+SpecGraph manages software specifications as nodes in a queryable graph, not
 files in a folder. Dependencies, blocks, and compositions are first-class
 edges. Architectural constraints live in a layered constitution that agents
 query before writing a single line of code. An AI-collaborative authoring
 funnel guides ideas from rough spark to execution-ready spec. The result is
 a specification graph that humans and agents can query, traverse, and act on.
 
-SpecGraph is a reference implementation of
-[Spec-Driven Development](https://seanbrandt.dev/blog/intro-to-sdd) (SDD)
+SpecGraph is a reference implementation of Spec-Driven Development (SDD)
 infrastructure — the practice of treating specifications as the primary
 engineering artifact and code as generated output.
 
-[:octicons-arrow-right-24: Quick Start — author your first spec in 10 minutes](quickstart.md)
+[:octicons-arrow-right-24: Quick Start — author your first spec in under ten minutes](quickstart.md)
 
 !!! tip "When to Use SpecGraph"
     SpecGraph is designed for teams where file-based specs break down:
@@ -45,8 +44,8 @@ no structured execution interface.
 
     ---
 
-    Dependencies, blocks, and compositions are typed edges in a graph
-    database — not filename references. Query relationships, detect cycles,
+    Dependencies, blocks, and compositions are typed edges in a
+    queryable graph — not filename references. Query relationships, detect cycles,
     and traverse the full dependency tree.
 
     [:octicons-arrow-right-24: Learn more](concepts/specs.md)
@@ -89,7 +88,6 @@ no structured execution interface.
 
 See the [changelog](changelog.md) for the latest release.
 
-SpecGraph v0.1.0 is the first public release.
-[Author your first spec](quickstart.md) in under 10 minutes, or read
+[Author your first spec](quickstart.md) in under ten minutes, or read
 the [architecture overview](architecture.md) to understand the system
-design.
+design. See the [changelog](changelog.md) for the latest release.

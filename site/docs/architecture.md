@@ -9,30 +9,29 @@ there is no embedded or library mode.
 
 ## System Diagram
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  CLIENTS                                             │
-│  ├─ specgraph CLI                                   │
-│  ├─ Claude Code skills                              │
-│  └─ MCP server proxy (planned)                      │
-└────────────┬────────────────────────────────────────┘
-             │ ConnectRPC (JSON/HTTP)
-             ▼
-┌─────────────────────────────────────────────────────┐
-│  SPECGRAPH SERVER                                    │
-│  ├─ Core domain (Spec, Constitution, Authoring)     │
-│  ├─ Graph analysis (deps, impact, critical path)    │
-│  └─ Storage backend (Memgraph; Postgres planned)    │
-└────────────┬────────────────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────────────────┐
-│  SYNC ADAPTERS (outbound)                            │
-│  ├─ Beads (spec→bead issue)                         │
-│  ├─ GitHub Issues                                   │
-│  ├─ Linear (planned)                                │
-│  └─ Tool Injection (CLAUDE.md, .cursor/rules)        │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Clients
+        CLI["specgraph CLI"]
+        CC["Claude Code skills"]
+        MCP["MCP server proxy (planned)"]
+    end
+
+    subgraph Server["SpecGraph Server"]
+        Core["Core domain<br/>(Spec, Constitution, Authoring)"]
+        Graph["Graph analysis<br/>(deps, impact, critical path)"]
+        Store["Storage backend (PostgreSQL)"]
+    end
+
+    subgraph Sync["Sync Adapters (outbound)"]
+        Beads["Beads (spec→bead issue)"]
+        GH["GitHub Issues"]
+        Linear["Linear (planned)"]
+        Inject["Tool Injection<br/>(CLAUDE.md, .cursor/rules)"]
+    end
+
+    Clients -->|"ConnectRPC (JSON/HTTP)"| Server
+    Server --> Sync
 ```
 
 ---
@@ -64,27 +63,42 @@ and `.connect.go` files from the proto definitions.
 
 ## Storage
 
-SpecGraph uses a pluggable storage backend behind a `Backend` interface — the
+SpecGraph uses a pluggable storage backend behind composed interfaces — the
 core domain never talks to the database directly.
 
-**Memgraph** (default, shipped) — The only backend in v0.1.0. Native Cypher
-queries running in Docker. No extensions required.
+**PostgreSQL** — The shipped backend. Uses pgx v5 with recursive CTEs for
+graph traversals (transitive dependencies, impact analysis, critical path),
+JSONB for structured fields, and optimistic locking via version guards.
 
-**Postgres + AGE** (planned) — Designed but not yet implemented. Cypher via
-the Apache AGE extension on standard Postgres.
+The storage layer is composed of focused interfaces rather than one
+monolithic backend:
 
 ```go
-type Backend interface {
-    CreateSpec(ctx context.Context, slug, intent string, ...) (*Spec, error)
-    GetSpec(ctx context.Context, slug string) (*Spec, error)
-    ListSpecs(ctx context.Context, filters Filters) ([]*Spec, error)
-    // ... graph operations, claims, events
-}
+// Core resource backends
+type SpecBackend interface { ... }
+type DecisionBackend interface { ... }
+type ConstitutionBackend interface { ... }
+type SliceBackend interface { ... }
+
+// Graph operations
+type GraphBackend interface { ... }
+
+// Lifecycle and authoring
+type AuthoringBackend interface { ... }
+type LifecycleBackend interface { ... }
+type ClaimBackend interface { ... }
+
+// Support
+type ChangeLogBackend interface { ... }
+type ConversationBackend interface { ... }
+type FindingsBackend interface { ... }
+type SyncBackend interface { ... }
+type ExecutionBackend interface { ... }
 ```
 
-Storage interfaces use domain types, not protobuf types. The ConnectRPC handlers
-in `internal/server/` translate between protobuf and domain types before calling
-the backend.
+Storage interfaces use domain types, not protobuf types. The ConnectRPC
+handlers in `internal/server/` translate between protobuf and domain types
+before calling the backend.
 
 ---
 
@@ -93,17 +107,20 @@ the backend.
 Specs, constitutions, decisions, and agents are nodes. Relationships between them
 are typed edges:
 
-```text
-(:Spec) -[:DEPENDS_ON]->  (:Spec)
-(:Spec) -[:BLOCKS]->      (:Spec)
-(:Spec) -[:COMPOSES]->    (:Spec)
-(:Spec) -[:RELATES_TO]->  (:Spec)
-(:Spec) -[:DECIDED_IN]->  (:Decision)
-(:Decision) -[:INFORMS]-> (:Spec)
-(:Spec) -[:SUPERSEDES]->  (:Spec)
-(:Slice) -[:COMPOSES]->   (:Spec)      # slice belongs to parent spec
-(:Spec) -[:HAS_FINDING]-> (:Finding)   # internal — not exposed via AddEdge/RemoveEdge
+```mermaid
+graph LR
+    S1["(:Spec)"] -->|DEPENDS_ON| S2["(:Spec)"]
+    S3["(:Spec)"] -->|BLOCKS| S4["(:Spec)"]
+    S5["(:Spec)"] -->|COMPOSES| S6["(:Spec)"]
+    S7["(:Spec)"] -->|RELATES_TO| S8["(:Spec)"]
+    S9["(:Spec)"] -->|DECIDED_IN| Dec["(:Decision)"]
+    Dec2["(:Decision)"] -->|INFORMS| S10["(:Spec)"]
+    S11["(:Spec)"] -->|SUPERSEDES| S12["(:Spec)"]
+    Slice["(:Slice)"] -->|COMPOSES| S13["(:Spec)"]
+    S14["(:Spec)"] -.->|HAS_FINDING| Finding["(:Finding)"]
 ```
+
+Dashed edges (HAS_FINDING) are internal — not exposed via AddEdge/RemoveEdge RPCs.
 
 These edges are first-class — they carry metadata, support traversal queries,
 and power the graph analysis operations (impact analysis, critical path, ready
@@ -118,14 +135,13 @@ Decisions follow a two-step promotion flow through the authoring funnel:
 **Step 1 — Shape creates decision nodes.** When `AuthoringService.Shape` stores
 its output, each `DecisionInput` in `ShapeOutput.decisions` is promoted to a
 first-class Decision graph node with a `DECIDED_IN` edge from the spec
-(per [ADR-003](https://github.com/specgraph/specgraph/blob/main/docs/decisions/003-decisions-as-nodes.md)).
+(per ADR-003: Decisions as Graph Nodes).
 This happens inside `StoreShapeOutput` in a single transaction.
 
-```text
-Shape stage:
-  ShapeOutput.decisions[0] ──► (:Decision {slug: "adr-007", status: "proposed"})
-                                     ▲
-  (:Spec {slug: "my-feature"}) ──[:DECIDED_IN]──┘
+```mermaid
+graph LR
+    Shape["ShapeOutput.decisions[0]"] --> Dec["(:Decision)<br/>slug: adr-007<br/>status: proposed"]
+    Spec["(:Spec)<br/>slug: my-feature"] -->|DECIDED_IN| Dec
 ```
 
 From this point forward, decisions are queryable graph nodes. The Specify and
@@ -138,9 +154,9 @@ decision from `proposed` to `accepted`. Both the stage transition and decision
 acceptance run in a single transaction — if any decision fails to accept, the
 approval is rolled back.
 
-```text
-Approve stage:
-  (:Spec {stage: "approved"}) ──[:DECIDED_IN]──► (:Decision {status: "accepted"})
+```mermaid
+graph LR
+    Spec["(:Spec)<br/>stage: approved"] -->|DECIDED_IN| Dec["(:Decision)<br/>status: accepted"]
 ```
 
 This separation means decisions are visible and linkable throughout the funnel
@@ -157,6 +173,25 @@ for debugging.
 
 ---
 
+## Authentication
+
+SpecGraph supports token-based authentication via an interceptor that
+validates requests before they reach service handlers.
+
+- **OIDC** — Multi-provider support for OpenID Connect. Configure providers
+  in the server config; tokens are validated against the provider's JWKS
+  endpoint.
+- **Dashboard sessions** — Cookie-based authentication for the web dashboard.
+  Sessions are created on login and validated on each request.
+- **Auth interceptor** — A ConnectRPC interceptor (`internal/auth/`) that
+  extracts and validates credentials from request headers or cookies before
+  forwarding to handlers.
+
+Authentication is optional — the server runs without it for local
+development. Enable it in the server configuration.
+
+---
+
 ## Code Organization
 
 ```text
@@ -164,19 +199,22 @@ specgraph/
 ├── proto/specgraph/v1/     # Protobuf service definitions (source of truth)
 ├── gen/                    # Generated Go code (committed for module compat)
 ├── internal/
-│   ├── auth/               # Auth interceptor + config-based token store
+│   ├── auth/               # Auth interceptor + OIDC provider config
 │   ├── authoring/          # Authoring funnel (stages, postures, passes)
 │   ├── config/             # YAML-based server configuration
 │   ├── docker/             # Docker Compose templates for DB containers
 │   ├── drift/              # Drift detection engine
 │   ├── driftscope/         # Drift scope analysis
-│   ├── emitter/            # Event/output emitters
+│   ├── emitter/            # Constitution → tool file renderers
+│   ├── export/             # Project export/import/verify engine
 │   ├── inject/             # Tool injection (CLAUDE.md, .cursor/rules, AGENTS.md)
 │   ├── linter/             # Spec linter (schema, edges, cycles)
+│   ├── notify/             # Change notification subscribers (impact logging)
+│   ├── render/             # Markdown renderers for CLI output
 │   ├── server/             # ConnectRPC handlers + proto↔domain converters
 │   ├── service/            # systemd/launchd integration
 │   ├── storage/            # Backend interface + implementations
-│   │   └── memgraph/       # Memgraph implementation (Cypher, testcontainers)
+│   │   └── postgres/       # PostgreSQL implementation (pgx v5, testcontainers)
 │   ├── sync/               # Sync adapters (Beads, GitHub)
 │   └── xdg/                # XDG base directory paths
 ├── cmd/specgraph/          # CLI entry point

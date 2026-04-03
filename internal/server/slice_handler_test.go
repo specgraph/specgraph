@@ -22,12 +22,12 @@ import (
 
 type mockSliceBackend struct {
 	stubBackend
-	mu             sync.Mutex
-	slices         map[string]*storage.Slice
-	seq            int
-	listSlicesErr  error // injected error for ListSlices
-	getSliceErr    error // injected error for GetSlice
-	claimSliceErr  error // injected error for ClaimSlice
+	mu               sync.Mutex
+	slices           map[string]*storage.Slice
+	seq              int
+	listSlicesErr    error // injected error for ListSlices
+	getSliceErr      error // injected error for GetSlice
+	claimSliceErr    error // injected error for ClaimSlice
 	completeSliceErr error // injected error for CompleteSlice
 }
 

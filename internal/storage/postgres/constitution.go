@@ -18,12 +18,12 @@ import (
 // constitutionData is the intermediate struct marshaled into the JSONB data column.
 // It excludes identity/version fields that are stored as explicit columns.
 type constitutionData struct {
-	Tech         *storage.TechStack    `json:"tech,omitempty"`
-	Principles   []storage.Principle   `json:"principles,omitempty"`
+	Tech         *storage.TechStack     `json:"tech,omitempty"`
+	Principles   []storage.Principle    `json:"principles,omitempty"`
 	Process      *storage.ProcessConfig `json:"process,omitempty"`
-	Constraints  []string              `json:"constraints,omitempty"`
-	Antipatterns []storage.Antipattern `json:"antipatterns,omitempty"`
-	References   []storage.Reference   `json:"references,omitempty"`
+	Constraints  []string               `json:"constraints,omitempty"`
+	Antipatterns []storage.Antipattern  `json:"antipatterns,omitempty"`
+	References   []storage.Reference    `json:"references,omitempty"`
 }
 
 // GetConstitution returns the active constitution for the current project.

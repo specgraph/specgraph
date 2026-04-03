@@ -253,7 +253,8 @@ func (b *decisionCapturingBackend) ListSpecs(_ context.Context, _, _ string, _ i
 
 func (b *decisionCapturingBackend) CreateDecision(_ context.Context, slug, title, body, rationale, question string,
 	rejectedAlts []storage.RejectedAlternative, confidence storage.DecisionConfidence,
-	tags []string, scope storage.DecisionScope, originSpec, originStage string) (*storage.Decision, error) {
+	tags []string, scope storage.DecisionScope, originSpec, originStage string,
+) (*storage.Decision, error) {
 	dec := &storage.Decision{
 		Slug:                 slug,
 		Title:                title,

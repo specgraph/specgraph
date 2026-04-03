@@ -519,4 +519,3 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 	})
 	return result, err
 }
-

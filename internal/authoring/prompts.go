@@ -49,4 +49,3 @@ func GetPrompts(stage Stage) []Prompt {
 	copy(out, src)
 	return out
 }
-

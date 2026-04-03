@@ -72,10 +72,12 @@ that has since been garbage-collected.
 
 Decisions move through a simple state machine:
 
-```text
-proposed ──▶ accepted ──▶ deprecated
-                    │
-                    └──▶ superseded ──▶ (links to replacement)
+```mermaid
+stateDiagram-v2
+    proposed --> accepted
+    accepted --> deprecated
+    accepted --> superseded
+    superseded --> replacement : links to replacement
 ```
 
 | Status | Meaning |
@@ -102,11 +104,12 @@ A decision connects to specs via two edge types:
 
 One decision, four specs, two relationship types:
 
-```text
-login-api       ──decided_in──▶  dec-a7f3b2c1
-dec-a7f3b2c1    ──informs──▶     session-mgmt
-dec-a7f3b2c1    ──informs──▶     audit-logging
-dec-a7f3b2c1    ──informs──▶     mobile-client
+```mermaid
+graph LR
+    login["login-api"] -->|decided_in| dec["dec-a7f3b2c1"]
+    dec -->|informs| session["session-mgmt"]
+    dec -->|informs| audit["audit-logging"]
+    dec -->|informs| mobile["mobile-client"]
 ```
 
 Query: *"What specs are affected if we change the refresh token storage
@@ -120,10 +123,11 @@ decision?"* Walk the `decided_in` and `informs` edges from
 Your team originally decided to store session data in Redis. Three specs
 reference this decision:
 
-```text
-session-mgmt       ──decided_in──▶  dec-session-redis
-dec-session-redis   ──informs──▶    api-gateway
-dec-session-redis   ──informs──▶    rate-limiter
+```mermaid
+graph LR
+    sm["session-mgmt"] -->|decided_in| dec["dec-session-redis"]
+    dec -->|informs| gw["api-gateway"]
+    dec -->|informs| rl["rate-limiter"]
 ```
 
 Six months later, operational costs push you to move session storage into
