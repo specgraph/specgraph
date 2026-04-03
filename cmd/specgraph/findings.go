@@ -117,8 +117,8 @@ func runFindingsStore(cmd *cobra.Command, args []string) error {
 	}
 
 	var req specv1.StoreFindingsRequest
-	if err := protojson.Unmarshal(data, &req); err != nil {
-		return fmt.Errorf("parse json file: %w", err)
+	if unmarshalErr := protojson.Unmarshal(data, &req); unmarshalErr != nil {
+		return fmt.Errorf("parse json file: %w", unmarshalErr)
 	}
 	req.Slug = args[0]
 	req.PassType = pt
@@ -137,7 +137,9 @@ func runFindingsStore(cmd *cobra.Command, args []string) error {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
 	for _, id := range resp.Msg.Ids {
-		fmt.Fprintln(cmd.OutOrStdout(), id)
+		if _, wErr := fmt.Fprintln(cmd.OutOrStdout(), id); wErr != nil {
+			return wErr
+		}
 	}
 	return nil
 }

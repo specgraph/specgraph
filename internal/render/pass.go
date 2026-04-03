@@ -45,7 +45,7 @@ func passTypeTitle(pt specv1.PassType) string {
 	s = strings.TrimPrefix(s, "PASS_TYPE_")
 	parts := strings.Split(strings.ToLower(s), "_")
 	for i := range parts {
-		if len(parts[i]) > 0 {
+		if parts[i] != "" {
 			parts[i] = strings.ToUpper(parts[i][:1]) + parts[i][1:]
 		}
 	}
