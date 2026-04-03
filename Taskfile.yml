@@ -3,6 +3,11 @@ version: "3"
 vars:
   BINARY_NAME: specgraph
   MAIN_PKG: ./cmd/specgraph
+env:
+  # Colima exposes the Docker socket at a non-default path. Testcontainers
+  # needs this override so the Ryuk reaper container mounts the socket inside
+  # the VM at /var/run/docker.sock rather than trying to mkdir the host path.
+  TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: /var/run/docker.sock
 tasks:
   default:
     desc: Show available tasks
