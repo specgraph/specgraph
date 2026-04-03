@@ -75,7 +75,10 @@ func resolveAPIKey() string {
 	if key := os.Getenv("SPECGRAPH_API_KEY"); key != "" {
 		return key
 	}
-	key, _ := auth.ReadDefaultKey(xdg.CredentialsFile())
+	key, err := auth.ReadDefaultKey(xdg.CredentialsFile())
+	if err != nil {
+		return ""
+	}
 	return key
 }
 
