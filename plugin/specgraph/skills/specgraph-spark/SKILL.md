@@ -134,11 +134,18 @@ specgraph spark <slug> --seed "<seed>"
 2. Record the conversation (see `references/conversation-recording.md`):
 
    ```bash
-   cat > /tmp/conv-<slug>.json << 'CONV_EOF'
-   { "exchanges": [ ... accumulated probe/response exchanges ... ] }
+   CONV_TMP="$(mktemp /tmp/conv-XXXXXX.json)"
+   trap 'rm -f "$CONV_TMP"' EXIT
+   cat > "$CONV_TMP" << 'CONV_EOF'
+   {
+     "exchanges": [
+       {"role": "probe", "content": "...", "stage": "spark", "sequence": 1},
+       {"role": "response", "content": "...", "stage": "spark", "sequence": 1},
+       ...
+     ]
+   }
    CONV_EOF
-   specgraph conversation record <slug> --stage spark --json-file /tmp/conv-<slug>.json
-   rm /tmp/conv-<slug>.json
+   specgraph conversation record <slug> --stage spark --json-file "$CONV_TMP"
    ```
 
 3. Show the user what was saved.
