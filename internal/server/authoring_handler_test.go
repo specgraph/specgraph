@@ -395,6 +395,117 @@ func TestAuthoringHandler_Decompose_HappyPath(t *testing.T) {
 	require.Equal(t, []string{"my-spec/s1"}, resp.Msg.SliceSlugs)
 }
 
+func TestAuthoringHandler_Decompose_SteelThread_HappyPath(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug: "my-spec",
+		Output: &specv1.DecomposeOutput{
+			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD,
+			Slices: []*specv1.DecompositionSlice{
+				{Id: "thread", Intent: "prove roundtrip"},
+				{Id: "broaden-a", Intent: "add feature A", DependsOn: []string{"thread"}},
+			},
+		},
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.Output)
+	require.Equal(t, specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD, resp.Msg.Output.Strategy)
+}
+
+func TestAuthoringHandler_Decompose_SteelThread_RootHasDeps(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug: "my-spec",
+		Output: &specv1.DecomposeOutput{
+			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD,
+			Slices: []*specv1.DecompositionSlice{
+				{Id: "thread", Intent: "prove roundtrip", DependsOn: []string{"something"}},
+				{Id: "broaden", Intent: "add feature", DependsOn: []string{"thread"}},
+			},
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+	require.Contains(t, connErr.Message(), "no dependencies")
+}
+
+func TestAuthoringHandler_Decompose_SteelThread_DisconnectedSlice(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug: "my-spec",
+		Output: &specv1.DecomposeOutput{
+			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD,
+			Slices: []*specv1.DecompositionSlice{
+				{Id: "thread", Intent: "prove roundtrip"},
+				{Id: "connected", Intent: "depends on thread", DependsOn: []string{"thread"}},
+				{Id: "island", Intent: "no path to thread"},
+			},
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+	require.Contains(t, connErr.Message(), "does not transitively depend on thread slice")
+}
+
+func TestAuthoringHandler_Decompose_SteelThread_ChainedBroadening(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug: "my-spec",
+		Output: &specv1.DecomposeOutput{
+			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD,
+			Slices: []*specv1.DecompositionSlice{
+				{Id: "thread", Intent: "prove roundtrip"},
+				{Id: "broaden-a", Intent: "first broadening", DependsOn: []string{"thread"}},
+				{Id: "broaden-b", Intent: "depends on broaden-a", DependsOn: []string{"broaden-a"}},
+			},
+		},
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.Output)
+	require.Equal(t, specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD, resp.Msg.Output.Strategy)
+}
+
+func TestAuthoringHandler_Decompose_NonSteelThread_NoNewValidation(t *testing.T) {
+	// A vertical-slice decomposition with a disconnected slice should still pass
+	// (steel thread validation only applies to STEEL_THREAD strategy).
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug: "my-spec",
+		Output: &specv1.DecomposeOutput{
+			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
+			Slices: []*specv1.DecompositionSlice{
+				{Id: "a", Intent: "independent slice A"},
+				{Id: "b", Intent: "independent slice B"},
+			},
+		},
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.Output)
+}
+
+func TestAuthoringHandler_Decompose_SteelThread_DuplicateSliceID(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug: "my-spec",
+		Output: &specv1.DecomposeOutput{
+			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD,
+			Slices: []*specv1.DecompositionSlice{
+				{Id: "thread", Intent: "prove roundtrip"},
+				{Id: "thread", Intent: "duplicate id", DependsOn: []string{"thread"}},
+			},
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+	require.Contains(t, connErr.Message(), "duplicate slice id")
+}
+
 func TestAuthoringHandler_Approve_HappyPath(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
 	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{

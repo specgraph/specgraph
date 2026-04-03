@@ -7,6 +7,7 @@ package api_test
 
 import (
 	"context"
+	"errors"
 
 	"connectrpc.com/connect"
 	. "github.com/onsi/ginkgo/v2"
@@ -157,5 +158,116 @@ var _ = Describe("Authoring funnel", Ordered, func() {
 		}))
 		Expect(err).To(HaveOccurred())
 		Expect(connect.CodeOf(err)).To(Equal(connect.CodeAlreadyExists))
+	})
+})
+
+var _ = Describe("Authoring funnel — steel thread", Ordered, func() {
+	const steelThreadSlug = "steel-thread-funnel-test"
+
+	var (
+		authoringClient specgraphv1connect.AuthoringServiceClient
+		ctx             context.Context
+	)
+
+	BeforeAll(func() {
+		authoringClient = newAuthoringClient()
+		ctx = context.Background()
+	})
+
+	It("sparks a new spec", func() {
+		_, err := authoringClient.Spark(ctx, connect.NewRequest(&specv1.SparkRequest{
+			Slug: steelThreadSlug,
+			Output: &specv1.SparkOutput{
+				Seed:       "Steel thread E2E test idea",
+				Signal:     "Testing steel thread decomposition",
+				ScopeSniff: specv1.ScopeSniff_SCOPE_SNIFF_MEDIUM,
+				KillTest:   "Test fails",
+			},
+		}))
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("shapes the spec", func() {
+		_, err := authoringClient.Shape(ctx, connect.NewRequest(&specv1.ShapeRequest{
+			Slug: steelThreadSlug,
+			Output: &specv1.ShapeOutput{
+				ScopeIn: []string{"interfaces"},
+				Risks:   []string{"integration risk"},
+			},
+		}))
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("specifies the spec", func() {
+		_, err := authoringClient.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
+			Slug: steelThreadSlug,
+			Output: &specv1.SpecifyOutput{
+				Interfaces:     []*specv1.InterfaceSection{{Name: "API", Body: "test"}},
+				VerifyCriteria: []*specv1.VerifyCriterion{{Description: "passes"}},
+			},
+		}))
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("decomposes with steel thread strategy", func() {
+		resp, err := authoringClient.Decompose(ctx, connect.NewRequest(&specv1.DecomposeRequest{
+			Slug: steelThreadSlug,
+			Output: &specv1.DecomposeOutput{
+				Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD,
+				Slices: []*specv1.DecompositionSlice{
+					{Id: "thread", Intent: "Prove roundtrip", Verify: []string{"roundtrip works"}},
+					{Id: "broaden-a", Intent: "Add feature A", Verify: []string{"feature A works"}, DependsOn: []string{"thread"}},
+					{Id: "broaden-b", Intent: "Add feature B", Verify: []string{"feature B works"}, DependsOn: []string{"thread"}},
+				},
+			},
+		}))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.Msg.Output).NotTo(BeNil())
+		Expect(resp.Msg.Output.Slices).To(HaveLen(3))
+		Expect(resp.Msg.SliceSlugs).To(HaveLen(3))
+		Expect(resp.Msg.SliceSlugs).To(ContainElement(HaveSuffix("/thread")))
+	})
+
+	It("approves the steel thread spec", func() {
+		resp, err := authoringClient.Approve(ctx, connect.NewRequest(&specv1.ApproveRequest{
+			Slug: steelThreadSlug,
+		}))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.Msg.Stage).To(Equal(specv1.AuthoringStage_AUTHORING_STAGE_APPROVED))
+	})
+
+	It("rejects steel thread with disconnected slice", func() {
+		const badSlug = "steel-thread-bad-test"
+		// Advance to specify first
+		_, err := authoringClient.Spark(ctx, connect.NewRequest(&specv1.SparkRequest{
+			Slug:   badSlug,
+			Output: &specv1.SparkOutput{Seed: "bad steel thread", Signal: "test", ScopeSniff: specv1.ScopeSniff_SCOPE_SNIFF_SMALL, KillTest: "fails"},
+		}))
+		Expect(err).NotTo(HaveOccurred())
+		_, err = authoringClient.Shape(ctx, connect.NewRequest(&specv1.ShapeRequest{
+			Slug:   badSlug,
+			Output: &specv1.ShapeOutput{ScopeIn: []string{"test"}, Risks: []string{"none"}},
+		}))
+		Expect(err).NotTo(HaveOccurred())
+		_, err = authoringClient.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
+			Slug:   badSlug,
+			Output: &specv1.SpecifyOutput{Interfaces: []*specv1.InterfaceSection{{Name: "X", Body: "y"}}, VerifyCriteria: []*specv1.VerifyCriterion{{Description: "z"}}},
+		}))
+		Expect(err).NotTo(HaveOccurred())
+
+		_, err = authoringClient.Decompose(ctx, connect.NewRequest(&specv1.DecomposeRequest{
+			Slug: badSlug,
+			Output: &specv1.DecomposeOutput{
+				Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_STEEL_THREAD,
+				Slices: []*specv1.DecompositionSlice{
+					{Id: "thread", Intent: "Prove roundtrip"},
+					{Id: "island", Intent: "No path to thread"},
+				},
+			},
+		}))
+		Expect(err).To(HaveOccurred())
+		var connErr *connect.Error
+		Expect(errors.As(err, &connErr)).To(BeTrue())
+		Expect(connErr.Code()).To(Equal(connect.CodeInvalidArgument))
 	})
 })

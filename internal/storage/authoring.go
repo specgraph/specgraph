@@ -81,12 +81,13 @@ const (
 	StrategyVerticalSlice DecompositionStrategy = "vertical_slice"
 	StrategyLayerCake     DecompositionStrategy = "layer_cake"
 	StrategySingleUnit    DecompositionStrategy = "single_unit"
+	StrategySteelThread   DecompositionStrategy = "steel_thread"
 )
 
 // IsValid reports whether s is a known DecompositionStrategy value.
 func (s DecompositionStrategy) IsValid() bool {
 	switch s {
-	case StrategyVerticalSlice, StrategyLayerCake, StrategySingleUnit:
+	case StrategyVerticalSlice, StrategyLayerCake, StrategySingleUnit, StrategySteelThread:
 		return true
 	default:
 		return false

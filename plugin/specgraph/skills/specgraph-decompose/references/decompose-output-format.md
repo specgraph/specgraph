@@ -28,6 +28,7 @@ Unicode punctuation — the proto JSON parser rejects them.
 - `DECOMPOSITION_STRATEGY_VERTICAL_SLICE` — Each slice delivers end-to-end value
 - `DECOMPOSITION_STRATEGY_LAYER_CAKE` — Split by architectural layer (e.g. storage first, then API, then UI)
 - `DECOMPOSITION_STRATEGY_SINGLE_UNIT` — Deliver the entire spec as one unit; no decomposition
+- `DECOMPOSITION_STRATEGY_STEEL_THREAD` — First slice (slices[0]) is a thin vertical cut proving riskiest interfaces; all other slices depend on it and can parallelize
 
 ## Field Notes
 
@@ -36,3 +37,4 @@ Unicode punctuation — the proto JSON parser rejects them.
 - `slices[].verify`: Each item should be independently testable.
 - `slices[].touches`: Files, packages, or components this slice is expected to modify.
 - Order slices by dependency: independent slices first, dependent ones after.
+- When using `STEEL_THREAD`, `slices[0]` is the thread slice and must have no `dependsOn`. All other slices must transitively depend on it.
