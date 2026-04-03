@@ -20,6 +20,7 @@ import (
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -144,6 +145,10 @@ func TestRunAnalyticalPass_ReturnsPromptAndTools(t *testing.T) {
 	msg := resp.Msg
 	require.Contains(t, msg.PromptTemplate, "Constitution Compliance Reviewer")
 	require.NotEmpty(t, msg.Tools)
+	for _, tool := range msg.Tools {
+		assert.NotContains(t, tool.Command, "--json",
+			"tool %q command should not include --json (LLM subagents read markdown)", tool.Name)
+	}
 	require.Contains(t, msg.InitialMessage, "my-spec")
 	require.Equal(t, "spark", msg.Stage)
 	require.Equal(t, specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK, msg.PassType)
