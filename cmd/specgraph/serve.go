@@ -153,8 +153,10 @@ func runServe(cmd *cobra.Command, _ []string) error {
 				return fmt.Errorf("reload auth after bootstrap: %w", err)
 			}
 		}
-	} else if mode == "local" && authStore.HasKeys() {
-		fmt.Fprintf(os.Stderr, "  Auth: using credentials from %s\n", credPath)
+	} else if mode == "local" {
+		if _, statErr := os.Stat(credPath); statErr == nil {
+			fmt.Fprintf(os.Stderr, "  Auth: using credentials from %s\n", credPath)
+		}
 	}
 
 	if warning := auth.CheckCredentialPermissions(credPath); warning != "" {
