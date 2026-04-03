@@ -114,20 +114,6 @@ pushback:
 | No touches identified | Disconnected from codebase | "Every spec changes something. What files does this touch?" |
 | Overlapping touches with other specs | Collision risk | "Spec `[other-slug]` also modifies `[file]` — your invariants should be compatible with theirs." |
 
-### Analytical Passes (Peripheral Vision)
-
-Woven into the conversation, not separate blocks. While defining contracts and
-criteria, proactively surface related concerns.
-
-- **Red team:** Challenge correctness of the interface contract. "What happens if
-  two agents claim the same spec simultaneously? Your interface contract doesn't
-  address that race condition."
-- **Consistency:** Check against other specs. "Spec `pkce-enforcement` also
-  modifies `internal/auth/token.go` — your invariants should be compatible with
-  theirs."
-
-Surface findings naturally when they arise. Don't hold them until the end.
-
 ### Background Research
 
 At the start of the specify conversation, dispatch background research:
@@ -244,6 +230,23 @@ When the specify conversation is complete:
    CONV_EOF
    specgraph conversation record <slug> --stage specify --json-file "$CONV_TMP"
    ```
+
+### Analytical Passes
+
+After persisting specify output, run analytical passes per the shared protocol.
+
+> **Read `references/analytical-passes.md`** for the full dispatch-collate-present
+> protocol, including posture-aware behavior and severity-based gating.
+
+Passes for Specify stage:
+
+- **Drive:** `red-team` + `consistency` + `constitution-check` (auto-run all).
+- **Partner:** `constitution-check` (auto-run). Offer `red-team` + `consistency`.
+- **Support:** `constitution-check` (auto-run). Offer `red-team` + `consistency`.
+
+Dispatch all auto-run passes as parallel background subagents. Wait for
+completion, then present findings per the protocol before offering to
+continue to Decompose.
 
 6. **Confirm:** "Saved. Spec is now at Decompose stage."
 

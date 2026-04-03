@@ -52,10 +52,6 @@ style. Do not dump all probes at once.
 - **Support:** Agent waits for user to describe the idea, reflects back, fills
   gaps when user seems done.
 
-### Analytical Passes
-
-No analytical passes at Spark — too early to analyze.
-
 ---
 
 ## Execution
@@ -147,6 +143,18 @@ specgraph spark <slug> --seed "<seed>"
    CONV_EOF
    specgraph conversation record <slug> --stage spark --json-file "$CONV_TMP"
    ```
+
+### Analytical Passes
+
+After persisting spark output, run analytical passes per the shared protocol.
+
+> **Read `references/analytical-passes.md`** for the full dispatch-collate-present
+> protocol, including posture-aware behavior and severity-based gating.
+
+Passes for Spark stage (all postures): `constitution-check`.
+
+Dispatch as a background subagent. Wait for completion, then present
+findings per the protocol before offering to continue to Shape.
 
 3. Show the user what was saved.
 4. Offer to continue: "Spark is saved. Want to continue to Shape? I can help

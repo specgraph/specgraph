@@ -51,7 +51,7 @@ var commandGroups = []commandGroup{
 	{Name: "Decisions", Commands: []string{"decision"}},
 	{Name: "Constitution", Commands: []string{"constitution"}},
 	{Name: "Conversations", Commands: []string{"conversation"}},
-	{Name: "Findings", Commands: []string{"findings"}},
+	{Name: "Findings", Commands: []string{"findings", "pass"}},
 	{Name: "Sync", Commands: []string{"sync"}},
 	{Name: "Export & Backup", Commands: []string{"export", "import", "verify"}},
 	{Name: "Server & Config", Commands: []string{"up", "down", "serve", "status", "health", "init", "prime", "inject"}},

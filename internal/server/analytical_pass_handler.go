@@ -216,10 +216,10 @@ func (h *AnalyticalPassHandler) ListFindings(ctx context.Context, req *connect.R
 // passToolManifest returns the tool references for an analytical pass.
 func passToolManifest(slug string) []*specv1.ToolReference {
 	return []*specv1.ToolReference{
-		{Name: "show_spec", Command: fmt.Sprintf("specgraph show %q --json", slug), Description: "Read the spec's full content including all stage outputs"},
-		{Name: "show_constitution", Command: "specgraph constitution show --json", Description: "Read the full project constitution"},
-		{Name: "list_deps", Command: fmt.Sprintf("specgraph edges %q --type DEPENDS_ON --json", slug), Description: "List specs this one depends on"},
-		{Name: "show_dep", Command: "specgraph show {slug} --json", Description: "Read a specific dependency's full content (replace {slug} with the dependency slug)"},
+		{Name: "show_spec", Command: fmt.Sprintf("specgraph show %q", slug), Description: "Read the spec's full content including all stage outputs"},
+		{Name: "show_constitution", Command: "specgraph constitution show", Description: "Read the full project constitution"},
+		{Name: "list_deps", Command: fmt.Sprintf("specgraph edges %q --type DEPENDS_ON", slug), Description: "List specs this one depends on"},
+		{Name: "show_dep", Command: "specgraph show {slug}", Description: "Read a specific dependency's full content (replace {slug} with the dependency slug)"},
 	}
 }
 

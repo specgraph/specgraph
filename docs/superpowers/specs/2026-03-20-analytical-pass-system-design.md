@@ -56,7 +56,7 @@ The analytical pass infrastructure exists (pass registry, scheduling, posture-aw
 - Set up LLM session: system prompt from template, tools from manifest
 - Parse structured findings from LLM response
 - Store findings via `StoreFindings` RPC
-- Automatic execution via hook/subagent on stage transitions (deferred, not 0.2.0 server scope)
+- Automatic execution via skill-level orchestration on stage transitions — **delivered by spgr-iap** (2026-04-03)
 
 ## Service Ownership
 
@@ -329,6 +329,6 @@ Stage responses no longer include inline finding fields. Clean break — agents 
 ## Deferred
 
 - Prompt templates for the other four passes
-- Claude Code plugin hook/agent for automatic pass execution on stage transitions
+- ~~Claude Code plugin hook/agent for automatic pass execution on stage transitions~~ — **delivered by spgr-iap** (skill-level orchestration, 2026-04-03)
 - Server-side LLM provider option (enterprise mode)
 - Cross-spec content inclusion in tool responses for consistency_check
