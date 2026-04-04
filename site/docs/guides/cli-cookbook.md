@@ -101,33 +101,33 @@ specgraph decompose auth-service --json-file decompose-output.json
 specgraph slice list auth-service
 
 # Claim a specific slice (--assignee is required)
-specgraph slice claim auth-service.slice.1 --assignee alice
+specgraph slice claim auth-service/jwt-signing --assignee alice
 
 # Report progress on the claimed slice
-specgraph report-progress auth-service.slice.1 --agent alice --message "JWT signing logic done, writing tests"
+specgraph report-progress auth-service/jwt-signing --agent alice --message "JWT signing logic done, writing tests"
 
 # Mark the slice complete
-specgraph slice complete auth-service.slice.1
+specgraph slice complete auth-service/jwt-signing
 ```
 
 ??? example "Expected output — `slice list auth-service`"
     ```
     Slices for auth-service:
 
-      SLUG                    TITLE                    STATUS    ASSIGNEE
-      auth-service.slice.1    Implement JWT signing     open      —
-      auth-service.slice.2    Implement refresh flow    open      —
-      auth-service.slice.3    Write integration tests   open      —
+      SLUG                          TITLE                    STATUS    ASSIGNEE
+      auth-service/jwt-signing      Implement JWT signing     open      —
+      auth-service/refresh-flow     Implement refresh flow    open      —
+      auth-service/integration-tests  Write integration tests   open      —
     ```
 
-??? example "Expected output — `slice claim auth-service.slice.1 --assignee alice`"
+??? example "Expected output — `slice claim auth-service/jwt-signing --assignee alice`"
     ```
-    ✓ auth-service.slice.1 claimed by alice
+    ✓ auth-service/jwt-signing claimed by alice
     ```
 
-??? example "Expected output — `slice complete auth-service.slice.1`"
+??? example "Expected output — `slice complete auth-service/jwt-signing`"
     ```
-    ✓ auth-service.slice.1 marked complete
+    ✓ auth-service/jwt-signing marked complete
     ```
 
 !!! note
@@ -314,3 +314,35 @@ The bundle output contains:
     DECISIONS
       adr-007   Use RS256 over HS256 for token signing
     ```
+
+---
+
+## 8. Export and restore a project
+
+**Goal:** Back up a project's specs, decisions, constitution, and slices to a portable JSON file, then verify or restore it.
+
+```bash
+# Export the project to a JSON file
+specgraph export my-project -o backup.json
+
+# Verify an export matches current server state
+specgraph verify backup.json
+
+# Import (restore) from a backup
+specgraph import backup.json
+
+# Force overwrite if project already exists
+specgraph import backup.json --force
+```
+
+??? example "Expected output — `export`"
+    ```
+    ✓ Exported my-project to backup.json
+      specs: 12
+      decisions: 5
+      slices: 23
+    ```
+
+!!! tip
+    Export files are self-contained JSON. Use `--require-signature` on import
+    to validate HMAC integrity if the file was transferred across systems.

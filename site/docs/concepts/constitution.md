@@ -26,22 +26,20 @@ The constitution uses a layered inheritance model. Each layer adds specificity,
 and more specific layers override more general ones. All layers remain visible,
 so you can always trace where a constraint originated.
 
-```text
-┌─────────────────────────────────────────────────────┐
-│                   User Layer                        │
-│  Personal defaults: editor, verbosity, preferences  │
-├─────────────────────────────────────────────────────┤
-│                Organization Layer                   │
-│  Org-wide rules: compliance, security, CI standards │
-├─────────────────────────────────────────────────────┤
-│                 Project Layer                       │
-│  Project standards: tech stack, architecture, APIs  │
-├─────────────────────────────────────────────────────┤
-│                  Domain Layer                       │
-│  Domain-specific: auth review, schema requirements  │
-└─────────────────────────────────────────────────────┘
-         ▲ More specific (wins in conflicts)
+```mermaid
+graph BT
+    D["Domain Layer<br/>Domain-specific: auth review, schema requirements"] --> P
+    P["Project Layer<br/>Project standards: tech stack, architecture, APIs"] --> O
+    O["Organization Layer<br/>Org-wide rules: compliance, security, CI standards"] --> U
+    U["User Layer<br/>Personal defaults: editor, verbosity, preferences"]
+
+    style D fill:#4a90d9,color:#fff
+    style P fill:#5ba0e9,color:#fff
+    style O fill:#7ab8f5,color:#fff
+    style U fill:#a0ceff,color:#000
 ```
+
+More specific layers (bottom) override more general ones (top).
 
 **User Layer** — Personal defaults that follow you across projects. "I prefer
 terse specs." "I use neovim." These do not affect team behavior; they shape
@@ -53,7 +51,7 @@ compliance is mandatory." "All services must expose health check endpoints."
 policy that no single project should override without explicit justification.
 
 **Project Layer** — Standards specific to this project. "This project uses
-Go 1.25 with the chi router." "Internal communication is gRPC; external APIs
+Go 1.25 with the chi router." "Internal communication is ConnectRPC; external APIs
 are REST." "PostgreSQL 15 on Cloud SQL." This is the layer most teams populate
 first and most heavily.
 
@@ -69,6 +67,12 @@ wins for internal services. The org layer's REST rule still applies to anything
 the project layer doesn't explicitly override. Every resolved value carries a
 provenance trail — you can always see which layer set it and which layers it
 overrode.
+
+!!! info "Planned"
+    Multi-layer composition is designed but not yet shipped. Currently,
+    SpecGraph stores one constitution per project at a single layer. The
+    layer field is stored and the override model is defined, but automatic
+    merging across layers and provenance tracking are not yet implemented.
 
 ---
 

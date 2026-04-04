@@ -108,7 +108,8 @@ func (stubBackend) GetFullGraph(context.Context) (*storage.FullGraph, error) {
 
 func (stubBackend) CreateDecision(context.Context, string, string, string, string, string,
 	[]storage.RejectedAlternative, storage.DecisionConfidence,
-	[]string, storage.DecisionScope, string, string) (*storage.Decision, error) {
+	[]string, storage.DecisionScope, string, string,
+) (*storage.Decision, error) {
 	return nil, errNotImplemented
 }
 
@@ -123,7 +124,8 @@ func (stubBackend) ListDecisions(context.Context, storage.DecisionStatus, int) (
 func (stubBackend) UpdateDecision(context.Context, string, int32, *string, *storage.DecisionStatus,
 	*string, *string, *string, *string,
 	*[]storage.RejectedAlternative, *storage.DecisionConfidence,
-	*[]string, *storage.DecisionScope, *string, *string) (*storage.Decision, error) {
+	*[]string, *storage.DecisionScope, *string, *string,
+) (*storage.Decision, error) {
 	return nil, errNotImplemented
 }
 

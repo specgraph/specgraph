@@ -1,6 +1,6 @@
 # Quick Start
 
-Author your first spec in five minutes. This guide walks through installing
+Author your first spec in under ten minutes. This guide walks through installing
 SpecGraph, starting the server, and running a "health check endpoint" spec
 through the full authoring funnel.
 
@@ -9,7 +9,7 @@ through the full authoring funnel.
 ## Prerequisites
 
 - **Go 1.23+** (build from source) or **Homebrew** (when published)
-- **Docker** (Memgraph container)
+- **Docker** (PostgreSQL container)
 - **Claude Code** (recommended for AI-assisted authoring)
 
 ---
@@ -36,7 +36,7 @@ docker pull ghcr.io/specgraph/specgraph:latest
 ```
 
 > **Note:** Homebrew, binary, and Docker install paths require a published
-> release. If v0.1.0 has not been released yet, build from source:
+> release. To build from source instead:
 > `go install github.com/specgraph/specgraph/cmd/specgraph@latest`
 
 <details><summary>Build from source (development)</summary>
@@ -68,13 +68,13 @@ slug with `specgraph init my-project`.
 
 ## Start the Server
 
-> **Action:** Start Memgraph and the SpecGraph server.
+> **Action:** Start PostgreSQL and the SpecGraph server.
 
 ```bash
 specgraph up
 ```
 
-This starts the Memgraph Docker container and installs a background service
+This starts a PostgreSQL Docker container and installs a background service
 (launchd on macOS, systemd on Linux). The server listens at
 `http://localhost:9090` by default.
 

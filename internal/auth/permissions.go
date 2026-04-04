@@ -9,10 +9,10 @@ import (
 
 var rpcPermissions = map[string]string{
 	// SpecService
-	specgraphv1connect.SpecServiceGetSpecProcedure:    "spec:read",
-	specgraphv1connect.SpecServiceListSpecsProcedure:  "spec:read",
-	specgraphv1connect.SpecServiceCreateSpecProcedure: "spec:write",
-	specgraphv1connect.SpecServiceUpdateSpecProcedure: "spec:write",
+	specgraphv1connect.SpecServiceGetSpecProcedure:     "spec:read",
+	specgraphv1connect.SpecServiceListSpecsProcedure:   "spec:read",
+	specgraphv1connect.SpecServiceCreateSpecProcedure:  "spec:write",
+	specgraphv1connect.SpecServiceUpdateSpecProcedure:  "spec:write",
 	specgraphv1connect.SpecServiceListChangesProcedure: "spec:read",
 	// DecisionService
 	specgraphv1connect.DecisionServiceGetDecisionProcedure:    "decision:read",
@@ -38,13 +38,13 @@ var rpcPermissions = map[string]string{
 	specgraphv1connect.ConstitutionServiceUpdateConstitutionProcedure: "constitution:write",
 	specgraphv1connect.ConstitutionServiceEmitToolFilesProcedure:      "constitution:write",
 	// AuthoringService
-	specgraphv1connect.AuthoringServiceGetPromptsProcedure: "authoring:read",
-	specgraphv1connect.AuthoringServiceSparkProcedure:      "authoring:write",
-	specgraphv1connect.AuthoringServiceShapeProcedure:      "authoring:write",
-	specgraphv1connect.AuthoringServiceSpecifyProcedure:    "authoring:write",
-	specgraphv1connect.AuthoringServiceDecomposeProcedure:  "authoring:write",
-	specgraphv1connect.AuthoringServiceApproveProcedure:    "authoring:write",
-	specgraphv1connect.AuthoringServiceAmendProcedure:      "authoring:write",
+	specgraphv1connect.AuthoringServiceGetPromptsProcedure:         "authoring:read",
+	specgraphv1connect.AuthoringServiceSparkProcedure:              "authoring:write",
+	specgraphv1connect.AuthoringServiceShapeProcedure:              "authoring:write",
+	specgraphv1connect.AuthoringServiceSpecifyProcedure:            "authoring:write",
+	specgraphv1connect.AuthoringServiceDecomposeProcedure:          "authoring:write",
+	specgraphv1connect.AuthoringServiceApproveProcedure:            "authoring:write",
+	specgraphv1connect.AuthoringServiceAmendProcedure:              "authoring:write",
 	specgraphv1connect.AuthoringServiceSupersedeProcedure:          "authoring:write",
 	specgraphv1connect.AuthoringServiceRecordConversationProcedure: "authoring:write",
 	specgraphv1connect.AuthoringServiceListConversationsProcedure:  "authoring:read",

@@ -360,9 +360,9 @@ func TestConstitutionFromProto_UnknownLayer(t *testing.T) {
 
 func TestConstitutionFromProto_UnknownReferenceType(t *testing.T) {
 	pb := &specv1.Constitution{
-		Id:   "const-bad-ref",
+		Id:    "const-bad-ref",
 		Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_USER,
-		Name: "bad-ref",
+		Name:  "bad-ref",
 		References: []*specv1.Reference{
 			{ReferenceType: specv1.ReferenceType(99), Path: "bad.md"},
 		},

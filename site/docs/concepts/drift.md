@@ -20,9 +20,11 @@ that property.
 At detection time, SpecGraph compares `content_hash_at_link` against the
 upstream's live `content_hash`. A mismatch means drift.
 
-```text
-(:Spec A) --[DEPENDS_ON {content_hash_at_link: "abc123"}]--> (:Spec B)
-                                                               content_hash: "def456"  ← DRIFTED
+```mermaid
+graph LR
+    A["Spec A"] -->|"DEPENDS_ON<br/>content_hash_at_link: abc123"| B["Spec B<br/>content_hash: def456 ← DRIFTED"]
+
+    style B fill:#f9c74f,color:#000
 ```
 
 Spec A was linked when Spec B had hash `abc123`. Spec B has since changed to
@@ -75,6 +77,11 @@ specgraph drift acknowledge <slug> --note "reason" [--upstream <dep-slug> | --al
 - `--all` — acknowledge every drifted edge on the spec in one operation.
 
 Exactly one of `--upstream` or `--all` must be provided.
+
+!!! info "Planned"
+    The `--scope interfaces` and `--scope verify` options are defined but not
+    yet implemented. Currently only `deps` (dependency edge hash comparison)
+    is functional. Omitting `--scope` defaults to dependency-only checking.
 
 ---
 

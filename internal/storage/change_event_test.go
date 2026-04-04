@@ -69,27 +69,35 @@ type minimalGraphBackend struct{}
 func (minimalGraphBackend) AddEdge(_ context.Context, _, _ string, _ storage.EdgeType) (*storage.Edge, error) {
 	return nil, nil
 }
+
 func (minimalGraphBackend) RemoveEdge(_ context.Context, _, _ string, _ storage.EdgeType) error {
 	return nil
 }
+
 func (minimalGraphBackend) ListEdges(_ context.Context, _ string, _ storage.EdgeType) ([]*storage.Edge, error) {
 	return nil, nil
 }
+
 func (minimalGraphBackend) GetDependencies(_ context.Context, _ string) ([]storage.NodeRef, error) {
 	return nil, nil
 }
+
 func (minimalGraphBackend) GetTransitiveDeps(_ context.Context, _ string) ([]storage.NodeRef, error) {
 	return nil, nil
 }
+
 func (minimalGraphBackend) GetImpact(_ context.Context, _ string) ([]storage.NodeRef, error) {
 	return nil, nil
 }
+
 func (minimalGraphBackend) GetReady(_ context.Context) ([]storage.NodeRef, error) {
 	return nil, nil
 }
+
 func (minimalGraphBackend) GetCriticalPath(_ context.Context, _ string) ([]storage.NodeRef, error) {
 	return nil, nil
 }
+
 func (minimalGraphBackend) GetDependenciesWithEdgeData(_ context.Context, _ string) ([]storage.DependencyRef, error) {
 	return nil, nil
 }

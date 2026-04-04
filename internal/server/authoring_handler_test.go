@@ -263,7 +263,8 @@ func (f *fullAuthoringTestBackend) GetDecision(ctx context.Context, slug string)
 func (f *fullAuthoringTestBackend) UpdateDecision(ctx context.Context, slug string, expectedVersion int32, title *string, status *storage.DecisionStatus,
 	decision, rationale, supersededBy, question *string,
 	rejectedAlts *[]storage.RejectedAlternative, confidence *storage.DecisionConfidence,
-	tags *[]string, scope *storage.DecisionScope, originSpec, originStage *string) (*storage.Decision, error) {
+	tags *[]string, scope *storage.DecisionScope, originSpec, originStage *string,
+) (*storage.Decision, error) {
 	return f.full.UpdateDecision(ctx, slug, expectedVersion, title, status, decision, rationale, supersededBy,
 		question, rejectedAlts, confidence, tags, scope, originSpec, originStage)
 }
@@ -1237,7 +1238,8 @@ func (f *fakeFullBackend) GetCriticalPath(_ context.Context, _ string) ([]storag
 
 func (f *fakeFullBackend) CreateDecision(_ context.Context, _, _, _, _, _ string,
 	_ []storage.RejectedAlternative, _ storage.DecisionConfidence,
-	_ []string, _ storage.DecisionScope, _, _ string) (*storage.Decision, error) {
+	_ []string, _ storage.DecisionScope, _, _ string,
+) (*storage.Decision, error) {
 	return nil, nil
 }
 
@@ -1258,7 +1260,8 @@ func (f *fakeFullBackend) ListDecisions(_ context.Context, _ storage.DecisionSta
 func (f *fakeFullBackend) UpdateDecision(_ context.Context, slug string, _ int32, _ *string, _ *storage.DecisionStatus,
 	_, _, _, _ *string,
 	_ *[]storage.RejectedAlternative, _ *storage.DecisionConfidence,
-	_ *[]string, _ *storage.DecisionScope, _, _ *string) (*storage.Decision, error) {
+	_ *[]string, _ *storage.DecisionScope, _, _ *string,
+) (*storage.Decision, error) {
 	if f.updateDecisionErr != nil {
 		return nil, f.updateDecisionErr
 	}
