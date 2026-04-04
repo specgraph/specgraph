@@ -78,15 +78,15 @@ func TestDecisionListEmpty(t *testing.T) {
 
 func TestDecisionRender_NewFields(t *testing.T) {
 	d := &specv1.Decision{
-		Slug:       "use-postgres",
-		Title:      "Token storage mechanism",
-		Status:     specv1.DecisionStatus_DECISION_STATUS_ACCEPTED,
-		Decision:   "Use Postgres",
-		Question:   "Where to store refresh tokens?",
-		Confidence: specv1.DecisionConfidence_DECISION_CONFIDENCE_HIGH,
-		Scope:      specv1.DecisionScope_DECISION_SCOPE_PROJECT,
-		Tags:       []string{"auth", "storage"},
-		OriginSpec: "login-api",
+		Slug:        "use-postgres",
+		Title:       "Token storage mechanism",
+		Status:      specv1.DecisionStatus_DECISION_STATUS_ACCEPTED,
+		Decision:    "Use Postgres",
+		Question:    "Where to store refresh tokens?",
+		Confidence:  specv1.DecisionConfidence_DECISION_CONFIDENCE_HIGH,
+		Scope:       specv1.DecisionScope_DECISION_SCOPE_PROJECT,
+		Tags:        []string{"auth", "storage"},
+		OriginSpec:  "login-api",
 		OriginStage: "specify",
 		RejectedAlternatives: []*specv1.RejectedAlternative{
 			{Option: "Redis", Reason: "Adds ops complexity"},

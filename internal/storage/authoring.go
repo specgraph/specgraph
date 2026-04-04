@@ -109,7 +109,7 @@ type DecomposeSlice struct {
 // parent spec's decompose_output JSON (Slices data lives in the Slice nodes).
 type DecomposeOutput struct {
 	Strategy   DecompositionStrategy `json:"strategy,omitempty"`
-	Slices     []DecomposeSlice      `json:"slices,omitempty"`       // input: full slice data for creation
+	Slices     []DecomposeSlice      `json:"slices,omitempty"`      // input: full slice data for creation
 	SliceSlugs []string              `json:"slice_slugs,omitempty"` // stored output: slug references to Slice nodes
 }
 

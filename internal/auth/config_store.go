@@ -165,4 +165,3 @@ func (s *ConfigStore) ResolveJWT(_ context.Context, _ string) (*Identity, error)
 func (s *ConfigStore) HasAuth() bool {
 	return s.hasKeys
 }
-

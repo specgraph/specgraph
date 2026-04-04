@@ -96,7 +96,6 @@ func (s *CompositeStore) HasAuth() bool {
 	return s.config.HasAuth() || len(s.oidc) > 0
 }
 
-
 // peekIssuer extracts the "iss" claim from the JWT payload without verification.
 // This is safe because it's only used for routing — the actual verification
 // happens in the OIDCStore after routing.

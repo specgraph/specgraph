@@ -174,13 +174,13 @@ func TestRejectedAltsRoundTrip(t *testing.T) {
 func TestDecisionToProto_AllNewFields(t *testing.T) {
 	now := time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC)
 	d := &storage.Decision{
-		ID:       "dec-full",
-		Slug:     "use-memgraph",
-		Title:    "Use Memgraph",
-		Status:   storage.DecisionStatusAccepted,
-		Body:     "We chose Memgraph",
+		ID:        "dec-full",
+		Slug:      "use-memgraph",
+		Title:     "Use Memgraph",
+		Status:    storage.DecisionStatusAccepted,
+		Body:      "We chose Memgraph",
 		Rationale: "Graph-native queries",
-		Question: "Which database to use?",
+		Question:  "Which database to use?",
 		RejectedAlternatives: []storage.RejectedAlternative{
 			{Option: "PostgreSQL", Reason: "Not graph-native"},
 		},

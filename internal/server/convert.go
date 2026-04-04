@@ -28,4 +28,3 @@ func timeToProto(t time.Time) *timestamppb.Timestamp {
 	}
 	return timestamppb.New(t)
 }
-

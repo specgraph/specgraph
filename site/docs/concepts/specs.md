@@ -57,8 +57,8 @@ approval chains without changing the underlying data model.
 
 ## The Graph
 
-Specs connect to each other via **first-class edges** stored in a graph
-database. These are not fragile filename references or hand-maintained lists —
+Specs connect to each other via **first-class edges** stored in the graph.
+These are not fragile filename references or hand-maintained lists —
 they are queryable, traversable relationships:
 
 | Edge type | Meaning |
@@ -71,23 +71,11 @@ they are queryable, traversable relationships:
 | `informs` | A decision informs this spec (decision → spec) |
 | `supersedes` | This spec replaces another spec |
 
-```text
-┌──────────────────┐
-│  auth-api        │
-│  (approved)      │
-└────────┬─────────┘
-         │ depends_on
-         ▼
-┌──────────────────┐     blocks      ┌──────────────────┐
-│  user-store      │ ──────────────▶ │  migration       │
-│  (in-progress)   │                 │  (pending)       │
-└────────┬─────────┘                 └──────────────────┘
-         │ composes
-         ▼
-┌──────────────────┐
-│  user-cache      │
-│  (draft)         │
-└──────────────────┘
+```mermaid
+graph TD
+    A["auth-api<br/>(approved)"] -->|depends_on| B["user-store<br/>(in_progress)"]
+    B -->|blocks| C["migration<br/>(spark)"]
+    B -->|composes| D["user-cache<br/>(shape)"]
 ```
 
 Edges carry semantics. A `depends_on` edge tells the scheduler not to release a
@@ -161,15 +149,18 @@ This gives you:
 - **Point-in-time views** — query checkpoint entries to see the spec's state
   at each stage boundary
 
-ChangeLog nodes are graph-native — queryable in Cypher (the graph query
-language) without deserializing JSON blobs. You can ask "what changed across the project this week?" with a
-single graph query.
+ChangeLog entries are queryable without deserializing JSON blobs. You can
+ask "what changed across the project this week?" with a single query.
 
 All spec mutations and their ChangeLog entries execute within a single
 database transaction. If any step fails — for example, a concurrent
 modification is detected via the version guard — the entire operation
 rolls back. No orphaned state: if a spec was mutated, its ChangeLog
 entry exists; if the ChangeLog failed, the mutation never happened.
+
+Use `specgraph changes <slug>` to view a spec's changelog. Filter to major
+milestones with `--checkpoints`, or scope to recent changes with
+`--since-version`.
 
 ---
 

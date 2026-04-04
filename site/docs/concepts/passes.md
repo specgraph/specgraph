@@ -12,14 +12,11 @@ protection — it catches danger. Both run during the
 [authoring funnel](authoring.md), but they serve fundamentally different
 purposes and follow different rules.
 
-!!! warning "0.1.0 Implementation Status"
-    In v0.1.0, the **pass scheduling infrastructure** is fully implemented —
-    passes are registered per-stage with posture-aware auto/offered rules
-    (`internal/authoring/passes.go`). However, **pass execution returns
-    placeholder findings**. The safety net (pattern-based scanning) is fully
-    functional.
-
-    Real LLM-driven pass execution is tracked for 0.2.0.
+!!! info "Planned"
+    Pass scheduling infrastructure is fully implemented — passes are
+    registered per-stage with posture-aware auto/offered rules
+    (`internal/authoring/passes.go`). Pass execution currently returns
+    placeholder findings. LLM-driven pass execution is planned.
 
 ---
 
@@ -139,7 +136,7 @@ runs at **every stage**, and **cannot be skipped or deferred** — regardless of
 posture, user preference, or urgency. If the safety net flags something, the
 finding is attached to the spec and surfaced immediately.
 
-The safety net catches two categories in v0.1.0:
+The safety net catches two categories:
 
 - **Security issues** — hardcoded credentials, disabled authentication, missing
   encryption, code execution patterns, exposed secrets
@@ -186,3 +183,22 @@ whether you are in Drive mode or Support mode. The safety net does not care abou
 posture because the things it catches are not matters of judgment — they are
 structural defects. You can skip a red team pass if you are confident. You
 cannot skip a security check. Different purposes, complementary systems.
+
+---
+
+## Working with Findings
+
+Findings from analytical passes are stored as graph nodes linked to specs
+via `HAS_FINDING` edges. Use the CLI to inspect them:
+
+```bash
+# List all findings for a spec
+specgraph findings list <slug>
+
+# Filter by pass type
+specgraph findings list <slug> --pass-type constitution-check
+specgraph findings list <slug> --pass-type red-team
+```
+
+Available pass types: `constitution-check`, `red-team`, `peripheral-vision`,
+`consistency`, `simplicity`.

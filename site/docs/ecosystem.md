@@ -54,8 +54,7 @@ and dispatches them. This pipeline requires extending the Beads adapter
     SpecGraph) is not implemented — the adapter can poll bead status but
     does not import specs.
 
-SpecGraph pushes specs to [Beads](https://github.com/beads-project/beads)
-as issues via the sync adapter. Each spec becomes a bead with the spec's
+SpecGraph pushes specs to Beads as issues via the sync adapter. Each spec becomes a bead with the spec's
 slug, intent, and stage. The adapter can poll bead status for coordination.
 
 Dolt provides the underlying versioned storage — every write is a commit,
@@ -113,7 +112,7 @@ SpecGraph connects to the outside world through four interfaces:
 ## Composability
 
 SpecGraph is independently useful without any execution orchestrator or
-sync adapter. The CLI and a Memgraph backend provide a complete setup —
+sync adapter. The CLI and a PostgreSQL backend provide a complete setup —
 author specs, query the graph, run the linter, generate bundles.
 
 Every integration is independently optional. Add an execution environment
