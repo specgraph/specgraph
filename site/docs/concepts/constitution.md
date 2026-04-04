@@ -33,10 +33,10 @@ graph BT
     O["Organization Layer<br/>Org-wide rules: compliance, security, CI standards"] --> U
     U["User Layer<br/>Personal defaults: editor, verbosity, preferences"]
 
-    style D fill:#4a90d9,color:#fff
-    style P fill:#5ba0e9,color:#fff
-    style O fill:#7ab8f5,color:#fff
-    style U fill:#a0ceff,color:#000
+    style D fill:#1a3a5c,color:#e0e0e0,stroke:#4a90d9
+    style P fill:#1e4470,color:#e0e0e0,stroke:#5ba0e9
+    style O fill:#234e84,color:#e0e0e0,stroke:#7ab8f5
+    style U fill:#285898,color:#e0e0e0,stroke:#a0ceff
 ```
 
 More specific layers (bottom) override more general ones (top).

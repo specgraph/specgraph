@@ -205,9 +205,8 @@ stateDiagram-v2
     done --> amended : amend
     amended --> spark : re-entry
 
-    note left of amended : Re-entry targets any\nearlier funnel stage\n(spark through review)
-
-    note right of superseded : Any non-terminal stage\ncan reach superseded\nor abandoned
+    state superseded
+    state abandoned
     superseded --> [*]
     abandoned --> [*]
 ```
