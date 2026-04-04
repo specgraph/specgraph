@@ -1,6 +1,40 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.5.0](https://github.com/specgraph/specgraph/compare/v0.4.0...v0.5.0) - 2026-04-04
+
+### Bug Fixes
+
+- **auth:** Add missing permission mappings for conversation RPCs (#829) ([#829](https://github.com/specgraph/specgraph/pull/829)) ([66ce95d](https://github.com/specgraph/specgraph/commit/66ce95d10622a12ab2a165aea0ef539eb343f7f2))
+- **auth:** CLI loads API key from credentials file (#828) ([#828](https://github.com/specgraph/specgraph/pull/828)) ([6b24f39](https://github.com/specgraph/specgraph/commit/6b24f3937b1d61d262b84fb4a756cc052ecfbe25))
+- **auth:** Always show admin token path on dev server startup (#827) ([#827](https://github.com/specgraph/specgraph/pull/827)) ([6abb371](https://github.com/specgraph/specgraph/commit/6abb371250669e36701a6147b9dd6675c5f76856))
+- **storage:** Handle duplicate slug constraint in CreateDecision and CreateSpec (spgr-dn7) (#826) ([#826](https://github.com/specgraph/specgraph/pull/826)) ([2ec2422](https://github.com/specgraph/specgraph/commit/2ec24228995d7d4c5ffdfe23a79f476549d06878))
+- Dev:reset removes stale compose file, fix XDG data paths (#823) ([#823](https://github.com/specgraph/specgraph/pull/823)) ([6a4d34a](https://github.com/specgraph/specgraph/commit/6a4d34afad9f74e8184104f97040abbcc88c8f4a))
+- Pass ADR-003 fields through export engine import path (spgr-389) (#820) ([#820](https://github.com/specgraph/specgraph/pull/820)) ([650751c](https://github.com/specgraph/specgraph/commit/650751c58c3c575ceb2839a39916bd585307a0b6))
+- Remove redundant .specgraph subdir in EnsureComposeFile path (spgr-2p5) (#808) ([#808](https://github.com/specgraph/specgraph/pull/808)) ([963f86c](https://github.com/specgraph/specgraph/commit/963f86cce2703ffbffc7118ebbdc959dc7ec4e49))
+
+### Build
+
+- **deps:** Bump github.com/go-jose/go-jose/v4 from 4.1.3 to 4.1.4 in the go_modules group across 1 directory (#825) ([#825](https://github.com/specgraph/specgraph/pull/825)) ([06d035c](https://github.com/specgraph/specgraph/commit/06d035c4953c7f44ba7d0a684c9a9ee07fb71f2b))
+
+### Code Refactoring
+
+- Broaden ChangeLogEntry.Stage from SpecStage to string (spgr-egu) (#813) ([#813](https://github.com/specgraph/specgraph/pull/813)) ([b9aeb3b](https://github.com/specgraph/specgraph/commit/b9aeb3b72db9ac7e6a93aeb300dab96d50759e33))
+
+### Features
+
+- **authoring:** Add steel thread decomposition strategy (spgr-47v) (#878) ([#878](https://github.com/specgraph/specgraph/pull/878)) ([786cf18](https://github.com/specgraph/specgraph/commit/786cf18be0f8c5d5ffa2bea5c7c2b9778ce7c8f6))
+- Auto-run analytical passes after authoring stage transitions (spgr-iap) (#830) ([#830](https://github.com/specgraph/specgraph/pull/830)) ([18386e1](https://github.com/specgraph/specgraph/commit/18386e1f6907e6ab788f4c6f6de976ceee8b7256))
+- **auth:** Add dashboard authentication with cookie-based sessions (#824) ([#824](https://github.com/specgraph/specgraph/pull/824)) ([4283946](https://github.com/specgraph/specgraph/commit/4283946102d3cf72da65d2cde88384f6851110bf))
+- **storage:** Replace Memgraph with Postgres backend (spgr-khy) (#821) ([#821](https://github.com/specgraph/specgraph/pull/821)) ([48d659a](https://github.com/specgraph/specgraph/commit/48d659ad44cb078f049d3662b5ac3d00f6eab1ea))
+- Add optimistic concurrency version guard to UpdateDecision (spgr-ejd) (#819) ([#819](https://github.com/specgraph/specgraph/pull/819)) ([4858e7f](https://github.com/specgraph/specgraph/commit/4858e7fd412588f5e2c428a58d84670ef8acf90a))
+- Extend Decision type with ADR-003 fields (spgr-bk8) (#812) ([#812](https://github.com/specgraph/specgraph/pull/812)) ([92fccb3](https://github.com/specgraph/specgraph/commit/92fccb303e9e18ff7723bedc222acf0073f03a82))
+- Add skipped-spec count to all-specs drift check (spgr-col) (#810) ([#810](https://github.com/specgraph/specgraph/pull/810)) ([740d61b](https://github.com/specgraph/specgraph/commit/740d61b38c2f1b6eea7b648edbab63fe0fac292a))
+
+### Tests
+
+- **integration:** Concurrent duplicate-detection for CreateSyncMapping (spgr-5xt) (#809) ([#809](https://github.com/specgraph/specgraph/pull/809)) ([2de2cd4](https://github.com/specgraph/specgraph/commit/2de2cd4097f0dcc508c757fc009001f52174067d))
+
 ## [0.4.0](https://github.com/specgraph/specgraph/compare/v0.3.7...v0.4.0) - 2026-03-31
 
 ### Code Refactoring
