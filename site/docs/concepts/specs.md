@@ -149,6 +149,42 @@ This gives you:
 - **Point-in-time views** — query checkpoint entries to see the spec's state
   at each stage boundary
 
+```mermaid
+graph TD
+    subgraph Spec["oauth-refresh v1–v5"]
+        V1["v1 spark"] --> V2["v2 shape"]
+        V2 --> V3["v3 specify"]
+        V3 --> V4["v4 approved ✓"]
+        V4 --> V5["v5 done ✓"]
+    end
+
+    subgraph CL["ChangeLog"]
+        C1["Δ v1→v2<br/>fields: intent, scope"]
+        C2["Δ v2→v3<br/>fields: interface ✓"]
+        C3["Δ v3→v4<br/>checkpoint ✓"]
+        C4["Δ v4→v5<br/>checkpoint ✓"]
+    end
+
+    V2 -.->|HAS_CHANGE| C1
+    V3 -.->|HAS_CHANGE| C2
+    V4 -.->|HAS_CHANGE| C3
+    V5 -.->|HAS_CHANGE| C4
+
+    V5 -->|amend| A["v6 amended"]
+    A -->|re-entry| V7["v7 specify"]
+    V7 --> V8["v8 approved ✓"]
+    V8 --> V9["v9 done ✓"]
+
+    V9 -->|supersede| S["v10 superseded"]
+    NEW["oauth-refresh-v2"] -->|SUPERSEDES| S
+```
+
+The diagram shows a spec's full evolution: progressing through the funnel
+(v1–v5), being **amended** back to an earlier stage for refinement (v6–v9),
+and eventually being **superseded** by a replacement spec. Every version
+transition creates a ChangeLog entry linked via `HAS_CHANGE`. Checkpoint
+entries (marked ✓) flag major stage transitions.
+
 ChangeLog entries are queryable without deserializing JSON blobs. You can
 ask "what changed across the project this week?" with a single query.
 
