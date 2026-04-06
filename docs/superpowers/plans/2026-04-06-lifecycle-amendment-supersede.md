@@ -2410,7 +2410,7 @@ cd /Volumes/Code/github.com/specgraph && git add e2e/ui/tests/lifecycle.spec.ts 
 
 Create `site/docs/concepts/lifecycle.md`:
 
-```markdown
+````markdown
 # Lifecycle Transitions
 
 Specs aren't static. After reaching **done**, reality may demand changes. SpecGraph provides three lifecycle transitions to handle this cleanly, preserving full history and graph integrity.
@@ -2539,14 +2539,14 @@ The spec detail page includes:
 - **Lifecycle banners** — prominent indicators when a spec has been superseded or supersedes another, with links to the related spec
 - **Changelog timeline** — every version as an expandable entry with checkpoint markers for major transitions. Click to see side-by-side field diffs.
 - **Version comparison** — select any two versions to see a full side-by-side diff of all changed fields
-
-```text
+````
 
 - [ ] **Step 2: Add to navigation config**
 
 In `site/zensical.toml`, add `lifecycle` to the concepts section after `drift` and before `linting`:
 
 Find:
+
 ```toml
     "drift",
     "linting",
