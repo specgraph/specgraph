@@ -93,10 +93,17 @@ func ChangesWithDiff(entries []*specv1.ChangeLogEntry, hunksProvider func(oldVal
 		if e.Reason != "" {
 			fmt.Fprintf(&b, "Reason: %s\n", e.Reason)
 		}
+		if e.Summary != "" {
+			fmt.Fprintf(&b, "\n%s\n", e.Summary)
+		}
 		if len(e.Changes) > 0 {
 			fmt.Fprintln(&b)
 			for _, c := range e.Changes {
 				hunks := hunksProvider(c.OldValue, c.NewValue)
+				if len(hunks) == 0 {
+					fmt.Fprintf(&b, "  %s: %s → %s\n", c.Field, c.OldValue, c.NewValue)
+					continue
+				}
 				fmt.Fprintf(&b, "  %s: %s\n", c.Field, formatInlineHunks(hunks))
 			}
 		}

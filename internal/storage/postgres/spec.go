@@ -416,6 +416,10 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 		if complexity != nil {
 			newComplexity = *complexity
 		}
+		newNotes := current.Notes
+		if notes != nil {
+			newNotes = *notes
+		}
 		// Recompute content hash with new field values.
 		// Authoring outputs are not mutated by UpdateSpec, so pass nil.
 		ch := contenthash.Spec(newIntent, newStage, newPriority, newComplexity, nil)
@@ -489,12 +493,14 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 				Stage:      string(current.Stage),
 				Priority:   string(current.Priority),
 				Complexity: string(current.Complexity),
+				Notes:      current.Notes,
 			}
 			newFields := &storage.SpecFields{
 				Intent:     newIntent,
 				Stage:      newStage,
 				Priority:   newPriority,
 				Complexity: newComplexity,
+				Notes:      newNotes,
 			}
 			deltas := storage.ComputeFieldDeltas(oldFields, newFields)
 			clEntry := &storage.ChangeLogEntry{

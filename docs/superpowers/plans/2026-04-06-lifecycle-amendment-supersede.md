@@ -344,9 +344,7 @@ Expected: generates updated `.pb.go` and `.connect.go` files in `gen/specgraph/v
 cd /Volumes/Code/github.com/specgraph && go build ./...
 ```
 
-Expected: build succeeds (handler doesn't implement CompareVersions yet, but the generated code compiles).
-
-Note: Build will fail because the handler doesn't satisfy the interface yet. This is expected — Task 4 will fix it.
+Expected: build may fail because the handler doesn't satisfy the SpecServiceHandler interface yet (missing CompareVersions method). This is expected — Task 4 will fix it. Verify `go build ./gen/...` succeeds for the generated code itself.
 
 - [ ] **Step 4: Commit**
 

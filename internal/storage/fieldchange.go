@@ -17,6 +17,7 @@ type SpecFields struct {
 	Stage           string
 	Priority        string
 	Complexity      string
+	Notes           string
 	SparkOutput     string
 	ShapeOutput     string
 	SpecifyOutput   string
@@ -80,6 +81,7 @@ func ComputeFieldDeltas(old, updated *SpecFields) []FieldChange {
 		{"stage", old.Stage, updated.Stage},
 		{"priority", old.Priority, updated.Priority},
 		{"complexity", old.Complexity, updated.Complexity},
+		{"notes", old.Notes, updated.Notes},
 		{"spark_output", old.SparkOutput, updated.SparkOutput},
 		{"shape_output", old.ShapeOutput, updated.ShapeOutput},
 		{"specify_output", old.SpecifyOutput, updated.SpecifyOutput},
