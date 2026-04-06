@@ -157,16 +157,15 @@ test.describe('Version Compare', () => {
 
     await expect(page.locator('.timeline-entry').first()).toBeVisible({ timeout: 10_000 });
 
-    // Find and click the compare button (version picker UI).
+    // Select version 1 in the "From" dropdown to trigger a real comparison.
+    const fromSelect = page.locator('.compare-label select').first();
+    await expect(fromSelect).toBeVisible({ timeout: 5_000 });
+    await fromSelect.selectOption({ index: 1 }); // first real version after "auto"
+
     const compareBtn = page.locator('.compare-btn').first();
-    if (await compareBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await compareBtn.click();
-      await expect(page.locator('.compare-result')).toBeVisible({ timeout: 10_000 });
-    } else {
-      // Fallback: the version-compare widget may already be visible.
-      const versionCompare = page.locator('.version-compare');
-      await expect(versionCompare).toBeVisible({ timeout: 10_000 });
-    }
+    await expect(compareBtn).toBeVisible({ timeout: 3_000 });
+    await compareBtn.click();
+    await expect(page.locator('.compare-result')).toBeVisible({ timeout: 10_000 });
   });
 });
 
