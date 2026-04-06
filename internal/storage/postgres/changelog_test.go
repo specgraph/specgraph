@@ -157,3 +157,151 @@ func filterBySlug(entries []*storage.ChangeLogEntry, slug string) []*storage.Cha
 	}
 	return out
 }
+
+func TestListChanges_AfterAmend(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.CreateSpec(ctx, "amend-changelog", "original intent", "p2", "medium")
+	require.NoError(t, err)
+
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "amend-changelog", nil, &doneStage, nil, nil, nil)
+	require.NoError(t, err)
+
+	_, err = store.LifecycleAmendSpec(ctx, "amend-changelog", "requirements changed", "shape")
+	require.NoError(t, err)
+
+	entries, err := store.ListChanges(ctx, "amend-changelog", storage.ChangeLogFilter{})
+	require.NoError(t, err)
+
+	// Find the amendment entry: checkpoint entry where stage = "shape".
+	var amendEntry *storage.ChangeLogEntry
+	for _, e := range entries {
+		if e.Stage == "shape" && e.Checkpoint {
+			amendEntry = e
+			break
+		}
+	}
+
+	require.NotNil(t, amendEntry, "expected an amendment changelog entry with stage=shape")
+	assert.True(t, amendEntry.Checkpoint)
+	assert.Equal(t, "requirements changed", amendEntry.Reason)
+
+	var stageChange *storage.FieldChange
+	for i := range amendEntry.Changes {
+		if amendEntry.Changes[i].Field == "stage" {
+			stageChange = &amendEntry.Changes[i]
+			break
+		}
+	}
+	require.NotNil(t, stageChange, "expected a stage field delta in amendment entry")
+	assert.Equal(t, "done", stageChange.OldValue)
+	assert.Equal(t, "shape", stageChange.NewValue)
+}
+
+func TestListChanges_AfterSupersede(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.CreateSpec(ctx, "old-spec", "old intent", "p1", "medium")
+	require.NoError(t, err)
+	_, err = store.CreateSpec(ctx, "new-spec", "new intent", "p1", "medium")
+	require.NoError(t, err)
+
+	_, _, err = store.LifecycleSupersedeSpec(ctx, "old-spec", "new-spec")
+	require.NoError(t, err)
+
+	// Verify old spec changelog contains supersede entry.
+	oldEntries, err := store.ListChanges(ctx, "old-spec", storage.ChangeLogFilter{})
+	require.NoError(t, err)
+
+	var supersedeEntry *storage.ChangeLogEntry
+	for _, e := range oldEntries {
+		if e.Stage == "superseded" && e.Checkpoint {
+			supersedeEntry = e
+			break
+		}
+	}
+
+	require.NotNil(t, supersedeEntry, "expected a supersede changelog entry with stage=superseded")
+	assert.True(t, supersedeEntry.Checkpoint)
+
+	var supersededByChange *storage.FieldChange
+	for i := range supersedeEntry.Changes {
+		if supersedeEntry.Changes[i].Field == "superseded_by" {
+			supersededByChange = &supersedeEntry.Changes[i]
+			break
+		}
+	}
+	require.NotNil(t, supersededByChange, "expected a superseded_by field delta in supersede entry")
+	assert.Equal(t, "new-spec", supersededByChange.NewValue)
+
+	// Verify new spec changelog contains supersedes entry.
+	newEntries, err := store.ListChanges(ctx, "new-spec", storage.ChangeLogFilter{})
+	require.NoError(t, err)
+
+	var supersededEntry *storage.ChangeLogEntry
+	for _, e := range newEntries {
+		for _, ch := range e.Changes {
+			if ch.Field == "supersedes" {
+				supersededEntry = e
+				break
+			}
+		}
+		if supersededEntry != nil {
+			break
+		}
+	}
+
+	require.NotNil(t, supersededEntry, "expected a changelog entry with supersedes field on new-spec")
+	var supersededChange *storage.FieldChange
+	for i := range supersededEntry.Changes {
+		if supersededEntry.Changes[i].Field == "supersedes" {
+			supersededChange = &supersededEntry.Changes[i]
+			break
+		}
+	}
+	require.NotNil(t, supersededChange)
+	assert.Equal(t, "old-spec", supersededChange.NewValue)
+}
+
+func TestListChanges_AfterAbandon(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.CreateSpec(ctx, "abandon-changelog", "original intent", "p1", "medium")
+	require.NoError(t, err)
+
+	_, err = store.LifecycleAbandonSpec(ctx, "abandon-changelog", "no longer needed")
+	require.NoError(t, err)
+
+	entries, err := store.ListChanges(ctx, "abandon-changelog", storage.ChangeLogFilter{})
+	require.NoError(t, err)
+
+	// Find the abandon entry: checkpoint entry where stage = "abandoned".
+	var abandonEntry *storage.ChangeLogEntry
+	for _, e := range entries {
+		if e.Stage == "abandoned" && e.Checkpoint {
+			abandonEntry = e
+			break
+		}
+	}
+
+	require.NotNil(t, abandonEntry, "expected an abandon changelog entry with stage=abandoned")
+	assert.True(t, abandonEntry.Checkpoint)
+	assert.Equal(t, "no longer needed", abandonEntry.Reason)
+
+	var stageChange *storage.FieldChange
+	for i := range abandonEntry.Changes {
+		if abandonEntry.Changes[i].Field == "stage" {
+			stageChange = &abandonEntry.Changes[i]
+			break
+		}
+	}
+	require.NotNil(t, stageChange, "expected a stage field delta in abandon entry")
+	assert.Equal(t, "abandoned", stageChange.NewValue)
+}
