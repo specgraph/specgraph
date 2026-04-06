@@ -103,7 +103,9 @@
   <p class="status error">Error: {error}</p>
 {:else}
   <section class="dashboard">
-    <StatsBar {totalSpecs} {readyCount} {driftCount} {decisionCount} />
+    <StatsBar {totalSpecs} {readyCount} {driftCount} {decisionCount}
+      amendedCount={stageCounts['amended'] ?? 0}
+      supersededCount={stageCounts['superseded'] ?? 0} />
 
     <div class="row">
       <div class="col-funnel">
