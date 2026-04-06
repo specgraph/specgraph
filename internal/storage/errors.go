@@ -68,6 +68,11 @@ var (
 	ErrEdgeNotFound = errors.New("no matching dependency edge found")
 )
 
+// --- Version errors ---
+
+// ErrVersionNotFound is returned when a requested version does not exist.
+var ErrVersionNotFound = errors.New("version not found")
+
 // --- Decision errors ---
 
 // ErrDecisionNotFound is returned when a decision does not exist.
