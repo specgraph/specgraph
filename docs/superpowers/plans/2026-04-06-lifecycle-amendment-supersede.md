@@ -60,6 +60,7 @@
 ### Task 1: Diff Engine — `internal/diff`
 
 **Files:**
+
 - Create: `internal/diff/diff.go`
 - Create: `internal/diff/diff_test.go`
 
@@ -281,6 +282,7 @@ cd /Volumes/Code/github.com/specgraph && git add internal/diff/ go.mod go.sum &&
 ### Task 2: Proto — CompareVersions RPC
 
 **Files:**
+
 - Modify: `proto/specgraph/v1/spec.proto`
 
 - [ ] **Step 1: Add CompareVersions messages and RPC to spec.proto**
@@ -357,6 +359,7 @@ cd /Volumes/Code/github.com/specgraph && git add proto/ gen/ && git commit -m "f
 ### Task 3: Storage — GetSpecAtVersion
 
 **Files:**
+
 - Modify: `internal/storage/changelog.go` (add interface)
 - Create: `internal/storage/postgres/spec_version.go`
 - Create: `internal/storage/postgres/spec_version_test.go`
@@ -608,6 +611,7 @@ cd /Volumes/Code/github.com/specgraph && git add internal/storage/changelog.go i
 ### Task 4: Handler — CompareVersions RPC
 
 **Files:**
+
 - Create: `internal/server/convert_versiondiff.go`
 - Modify: `internal/server/spec_handler.go`
 
@@ -760,6 +764,7 @@ cd /Volumes/Code/github.com/specgraph && git add internal/server/convert_version
 ### Task 5: CLI — Enhanced `specgraph changes`
 
 **Files:**
+
 - Modify: `cmd/specgraph/changes.go`
 - Modify: `internal/render/changelog.go`
 
@@ -982,6 +987,7 @@ cd /Volumes/Code/github.com/specgraph && git add internal/render/changelog.go cm
 ### Task 6: Web — Diff Dependency & DiffView Component
 
 **Files:**
+
 - Modify: `web/package.json`
 - Create: `web/src/lib/components/DiffView.svelte`
 
@@ -1122,6 +1128,7 @@ cd /Volumes/Code/github.com/specgraph && git add web/src/lib/components/DiffView
 ### Task 7: Web — ChangelogTimeline Component
 
 **Files:**
+
 - Create: `web/src/lib/components/ChangelogTimeline.svelte`
 
 - [ ] **Step 1: Create ChangelogTimeline component**
@@ -1350,6 +1357,7 @@ cd /Volumes/Code/github.com/specgraph && git add web/src/lib/components/Changelo
 ### Task 8: Web — VersionCompare Component
 
 **Files:**
+
 - Create: `web/src/lib/components/VersionCompare.svelte`
 
 - [ ] **Step 1: Create VersionCompare component**
@@ -1520,6 +1528,7 @@ cd /Volumes/Code/github.com/specgraph && git add web/src/lib/components/VersionC
 ### Task 9: Web — Integrate Changelog on Spec Detail Page
 
 **Files:**
+
 - Modify: `web/src/routes/spec/[...slug]/+page.svelte`
 
 - [ ] **Step 1: Import new components and add changelog data loading**
@@ -1643,6 +1652,7 @@ cd /Volumes/Code/github.com/specgraph && git add web/src/routes/spec/ && git com
 ### Task 10: Web — Dashboard Stats for Lifecycle States
 
 **Files:**
+
 - Modify: `web/src/lib/components/StatsBar.svelte`
 - Modify: `web/src/routes/+page.svelte` (dashboard)
 
@@ -1710,6 +1720,7 @@ cd /Volumes/Code/github.com/specgraph && git add web/src/lib/components/StatsBar
 ### Task 11: Storage Method Correctness — Lifecycle Changelog Tests
 
 **Files:**
+
 - Modify: `internal/storage/postgres/changelog_test.go`
 
 - [ ] **Step 1: Add lifecycle changelog integration tests**
@@ -1869,6 +1880,7 @@ cd /Volumes/Code/github.com/specgraph && git add internal/storage/postgres/chang
 ### Task 12: Storage Method Correctness — Edge Hash Refresh After Amend
 
 **Files:**
+
 - Modify: `internal/storage/postgres/lifecycle_test.go`
 
 - [ ] **Step 1: Add content_hash_at_link refresh test**
@@ -1939,6 +1951,7 @@ cd /Volumes/Code/github.com/specgraph && git add internal/storage/postgres/lifec
 ### Task 13: E2E API — Changelog After Lifecycle Transitions
 
 **Files:**
+
 - Modify: `e2e/api/lifecycle_test.go`
 
 - [ ] **Step 1: Add changelog verification to existing amend test**
@@ -2027,6 +2040,7 @@ cd /Volumes/Code/github.com/specgraph && git add e2e/api/lifecycle_test.go && gi
 ### Task 14: E2E API — CompareVersions
 
 **Files:**
+
 - Create: `e2e/api/changes_test.go`
 
 - [ ] **Step 1: Write CompareVersions E2E tests**
@@ -2163,6 +2177,7 @@ cd /Volumes/Code/github.com/specgraph && git add e2e/api/changes_test.go && git 
 ### Task 15: Playwright — Lifecycle Seeding Helpers
 
 **Files:**
+
 - Modify: `e2e/ui/tests/helpers.ts`
 
 - [ ] **Step 1: Add lifecycle seeding helpers**
@@ -2237,6 +2252,7 @@ cd /Volumes/Code/github.com/specgraph && git add e2e/ui/tests/helpers.ts && git 
 ### Task 16: Playwright — Lifecycle UI Tests
 
 **Files:**
+
 - Create: `e2e/ui/tests/lifecycle.spec.ts`
 
 - [ ] **Step 1: Write lifecycle Playwright tests**
@@ -2386,6 +2402,7 @@ cd /Volumes/Code/github.com/specgraph && git add e2e/ui/tests/lifecycle.spec.ts 
 ### Task 17: Site — Lifecycle Concept Page
 
 **Files:**
+
 - Create: `site/docs/concepts/lifecycle.md`
 - Modify: `site/zensical.toml`
 
@@ -2428,6 +2445,8 @@ specgraph amend my-auth-spec \
   --reason "Stakeholder review revealed OAuth2 requirement" \
   --re-entry shape
 ```
+
+```text
 
 After amendment, the spec re-enters the authoring funnel at the **shape** stage. The team refines the approach, then progresses through specify → decompose → approve → done again.
 
@@ -2520,7 +2539,8 @@ The spec detail page includes:
 - **Lifecycle banners** — prominent indicators when a spec has been superseded or supersedes another, with links to the related spec
 - **Changelog timeline** — every version as an expandable entry with checkpoint markers for major transitions. Click to see side-by-side field diffs.
 - **Version comparison** — select any two versions to see a full side-by-side diff of all changed fields
-```
+
+```text
 
 - [ ] **Step 2: Add to navigation config**
 
@@ -2533,6 +2553,7 @@ Find:
 ```
 
 Replace with:
+
 ```toml
     "drift",
     "lifecycle",
@@ -2558,6 +2579,7 @@ cd /Volumes/Code/github.com/specgraph && git add site/docs/concepts/lifecycle.md
 ### Task 18: Site — Cross-References from Existing Pages
 
 **Files:**
+
 - Modify: `site/docs/concepts/specs.md`
 - Modify: `site/docs/concepts/authoring.md`
 

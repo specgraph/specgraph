@@ -510,6 +510,14 @@ func (s *Store) UpdateSpec(ctx context.Context, slug string, intent, stage, prio
 			}
 		}
 
+		// When transitioning to done, refresh content_hash_at_link on all inbound
+		// DEPENDS_ON edges so downstream specs see the new baseline immediately.
+		if stage != nil && *stage == "done" {
+			if refreshErr := s.refreshInboundDependencyHashes(txCtx, slug); refreshErr != nil {
+				return fmt.Errorf("postgres: update spec: %w", refreshErr)
+			}
+		}
+
 		updated, getErr := s.GetSpec(txCtx, slug)
 		if getErr != nil {
 			return getErr

@@ -84,7 +84,7 @@ Reconstructs spec state at a given version by walking changelog entries forward 
 
 ### Single command, progressive disclosure
 
-```
+```text
 specgraph changes <slug>                            # field-level changelog (current + reason)
 specgraph changes <slug> --diff                     # adds word-level inline diffs per entry
 specgraph changes <slug> --diff --from=3 --to=7     # arbitrary version comparison
@@ -97,7 +97,7 @@ Existing flags (`--checkpoints`, `--since-version`, `--limit`, `--json`) compose
 
 **Without `--diff`** (enhanced current behavior):
 
-```
+```text
 ## v7 → amended (checkpoint)
   2026-04-05 | Hash: a1b2c3d4
   Reason: Requirements changed after stakeholder review
@@ -112,7 +112,7 @@ Key fix: `reason` field now rendered (currently captured but not displayed).
 
 **With `--diff`** (inline word-level):
 
-```
+```text
 ## v7 → amended (checkpoint)
   2026-04-05 | Hash: a1b2c3d4
   Reason: Requirements changed after stakeholder review
@@ -125,7 +125,7 @@ Uses `[-deleted-]` and `{+inserted+}` markers. Color-coded when terminal support
 
 **With `--diff --from=3 --to=7`** (version comparison):
 
-```
+```text
 ## Comparing v3 → v7
 
   stage: specify → amended

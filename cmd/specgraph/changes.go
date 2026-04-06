@@ -50,13 +50,13 @@ func runChanges(cmd *cobra.Command, args []string) error {
 
 	// Version comparison mode: --diff with --from or --to
 	if changesDiff && (changesFrom != 0 || changesTo != 0) {
-		resp, err := client.CompareVersions(cmd.Context(), connect.NewRequest(&specv1.CompareVersionsRequest{
+		resp, compareErr := client.CompareVersions(cmd.Context(), connect.NewRequest(&specv1.CompareVersionsRequest{
 			Slug:        args[0],
 			FromVersion: changesFrom,
 			ToVersion:   changesTo,
 		}))
-		if err != nil {
-			return fmt.Errorf("compare versions: %w", err)
+		if compareErr != nil {
+			return fmt.Errorf("compare versions: %w", compareErr)
 		}
 		if changesJSON {
 			return printJSON(cmd.OutOrStdout(), resp.Msg)
