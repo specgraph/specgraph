@@ -3,6 +3,7 @@ FROM mcr.microsoft.com/playwright:v1.58.2-noble@sha256:6446946a1d9fd62d9ae501312
 
 # Install pnpm via npm (corepack has key verification issues on this image)
 RUN --mount=type=secret,id=extra-certs,target=/tmp/extra-ca-bundle.pem,required=false \
+    touch /etc/extra-ca-bundle.pem && \
     if [ -s /tmp/extra-ca-bundle.pem ]; then \
       cat /tmp/extra-ca-bundle.pem >> /etc/ssl/certs/ca-certificates.crt && \
       cat /tmp/extra-ca-bundle.pem > /etc/extra-ca-bundle.pem && \

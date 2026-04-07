@@ -3,6 +3,7 @@
 # Stage 1: Build SvelteKit UI
 FROM node:22-alpine@sha256:8094c002d08262dba12645a3b4a15cd6cd627d30bc782f53229a2ec13ee22a00 AS web-builder
 RUN --mount=type=secret,id=extra-certs,target=/tmp/extra-ca-bundle.pem,required=false \
+    touch /etc/extra-ca-bundle.pem && \
     if [ -s /tmp/extra-ca-bundle.pem ]; then \
       cat /tmp/extra-ca-bundle.pem >> /etc/ssl/certs/ca-certificates.crt && \
       cat /tmp/extra-ca-bundle.pem > /etc/extra-ca-bundle.pem && \
@@ -31,7 +32,8 @@ RUN CGO_ENABLED=0 go build -trimpath -o specgraph ./cmd/specgraph
 FROM alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
 RUN --mount=type=secret,id=extra-certs,target=/tmp/extra-ca-bundle.pem,required=false \
     if [ -s /tmp/extra-ca-bundle.pem ]; then cat /tmp/extra-ca-bundle.pem >> /etc/ssl/certs/ca-certificates.crt; fi && \
-    apk add --no-cache ca-certificates wget
+    apk add --no-cache ca-certificates wget && \
+    if [ -s /tmp/extra-ca-bundle.pem ]; then cat /tmp/extra-ca-bundle.pem >> /etc/ssl/certs/ca-certificates.crt; fi
 COPY --from=go-builder /app/specgraph /usr/local/bin/specgraph
 EXPOSE 9090
 RUN addgroup -S specgraph && adduser -S specgraph -G specgraph -h /home/specgraph
