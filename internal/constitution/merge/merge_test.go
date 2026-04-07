@@ -298,8 +298,8 @@ func TestMerge_MapMerge(t *testing.T) {
 		Layer: storage.ConstitutionLayerProject,
 		Tech: &storage.TechStack{
 			Frameworks: map[string]string{
-				"rpc":  "grpc",    // override
-				"orm":  "sqlc",    // new key
+				"rpc": "grpc",  // override
+				"orm": "sqlc",  // new key
 			},
 		},
 	}
@@ -319,4 +319,252 @@ func TestMerge_MapMerge(t *testing.T) {
 	assert.Equal(t, storage.ConstitutionLayerOrg, result.Provenance["tech_config.frameworks[http]"])
 	assert.Equal(t, storage.ConstitutionLayerProject, result.Provenance["tech_config.frameworks[rpc]"])
 	assert.Equal(t, storage.ConstitutionLayerProject, result.Provenance["tech_config.frameworks[orm]"])
+}
+
+func TestMerge_NilLayerSkipped(t *testing.T) {
+	org := &storage.Constitution{
+		Layer: storage.ConstitutionLayerOrg,
+		Process: &storage.ProcessConfig{
+			SpecReview: "required",
+		},
+	}
+	domain := &storage.Constitution{
+		Layer: storage.ConstitutionLayerDomain,
+		Process: &storage.ProcessConfig{
+			SpecReview: "mandatory",
+		},
+	}
+
+	// nil layer between org and domain — must be silently skipped.
+	result, err := merge.Layers([]*storage.Constitution{org, nil, domain})
+	require.NoError(t, err)
+
+	// Domain wins; nil layer caused no panic and no data loss.
+	require.NotNil(t, result.Constitution.Process)
+	assert.Equal(t, "mandatory", result.Constitution.Process.SpecReview)
+	assert.Equal(t, storage.ConstitutionLayerDomain, result.Provenance["process.spec_review"])
+}
+
+func TestMerge_ProcessFullMerge(t *testing.T) {
+	org := &storage.Constitution{
+		Layer: storage.ConstitutionLayerOrg,
+		Process: &storage.ProcessConfig{
+			SecurityReview: &storage.SecurityReviewConfig{
+				When: "always",
+			},
+			Documentation: &storage.DocumentationConfig{
+				APIDocs: "required",
+				Runbook: "required",
+			},
+		},
+	}
+	project := &storage.Constitution{
+		Layer: storage.ConstitutionLayerProject,
+		Process: &storage.ProcessConfig{
+			Documentation: &storage.DocumentationConfig{
+				APIDocs: "optional", // override org's api_docs
+			},
+		},
+	}
+
+	result, err := merge.Layers([]*storage.Constitution{org, project})
+	require.NoError(t, err)
+
+	require.NotNil(t, result.Constitution.Process)
+
+	// SecurityReview set by org, not overridden by project.
+	require.NotNil(t, result.Constitution.Process.SecurityReview)
+	assert.Equal(t, "always", result.Constitution.Process.SecurityReview.When)
+	assert.Equal(t, storage.ConstitutionLayerOrg, result.Provenance["process.security_review.when"])
+
+	// Documentation: project wins on api_docs, org's runbook preserved.
+	require.NotNil(t, result.Constitution.Process.Documentation)
+	assert.Equal(t, "optional", result.Constitution.Process.Documentation.APIDocs)
+	assert.Equal(t, "required", result.Constitution.Process.Documentation.Runbook)
+	assert.Equal(t, storage.ConstitutionLayerProject, result.Provenance["process.documentation.api_docs"])
+	assert.Equal(t, storage.ConstitutionLayerOrg, result.Provenance["process.documentation.runbook"])
+}
+
+func TestMerge_ForbiddenLanguages(t *testing.T) {
+	org := &storage.Constitution{
+		Layer: storage.ConstitutionLayerOrg,
+		Tech: &storage.TechStack{
+			Languages: &storage.Languages{
+				Primary:   "go",
+				Forbidden: []string{"java"},
+				ForbiddenReasons: map[string]string{
+					"java": "JVM startup cost",
+				},
+			},
+		},
+	}
+	project := &storage.Constitution{
+		Layer: storage.ConstitutionLayerProject,
+		Tech: &storage.TechStack{
+			Languages: &storage.Languages{
+				Primary:   "typescript", // override primary
+				Forbidden: []string{"ruby"},
+				ForbiddenReasons: map[string]string{
+					"ruby": "no typing",
+				},
+			},
+		},
+	}
+
+	result, err := merge.Layers([]*storage.Constitution{org, project})
+	require.NoError(t, err)
+
+	require.NotNil(t, result.Constitution.Tech)
+	require.NotNil(t, result.Constitution.Tech.Languages)
+
+	// Project overrides primary language.
+	assert.Equal(t, "typescript", result.Constitution.Tech.Languages.Primary)
+	assert.Equal(t, storage.ConstitutionLayerProject, result.Provenance["tech_config.languages.primary"])
+
+	// Both forbidden entries present (union).
+	assert.ElementsMatch(t, []string{"java", "ruby"}, result.Constitution.Tech.Languages.Forbidden)
+
+	// Both forbidden reasons present (map merge).
+	require.NotNil(t, result.Constitution.Tech.Languages.ForbiddenReasons)
+	assert.Equal(t, "JVM startup cost", result.Constitution.Tech.Languages.ForbiddenReasons["java"])
+	assert.Equal(t, "no typing", result.Constitution.Tech.Languages.ForbiddenReasons["ruby"])
+
+	// Provenance for forbidden entries.
+	assert.Equal(t, storage.ConstitutionLayerOrg, result.Provenance["tech_config.languages.forbidden[java]"])
+	assert.Equal(t, storage.ConstitutionLayerProject, result.Provenance["tech_config.languages.forbidden[ruby]"])
+	assert.Equal(t, storage.ConstitutionLayerOrg, result.Provenance["tech_config.languages.forbidden_reasons[java]"])
+	assert.Equal(t, storage.ConstitutionLayerProject, result.Provenance["tech_config.languages.forbidden_reasons[ruby]"])
+}
+
+func TestMerge_AntipatternMergeAndDelete(t *testing.T) {
+	org := &storage.Constitution{
+		Layer: storage.ConstitutionLayerOrg,
+		Antipatterns: []storage.Antipattern{
+			{Pattern: "god object", Why: "org-why", Instead: "org-instead"},
+			{Pattern: "magic numbers", Why: "hard to read", Instead: "use constants"},
+		},
+	}
+	project := &storage.Constitution{
+		Layer: storage.ConstitutionLayerProject,
+		Antipatterns: []storage.Antipattern{
+			{Pattern: "god object", Why: "project-why", Instead: "project-instead"}, // override
+		},
+	}
+	domain := &storage.Constitution{
+		Layer: storage.ConstitutionLayerDomain,
+		Antipatterns: []storage.Antipattern{
+			{Pattern: "magic numbers", Delete: true}, // delete
+		},
+	}
+
+	result, err := merge.Layers([]*storage.Constitution{org, project, domain})
+	require.NoError(t, err)
+
+	// Only "god object" should remain.
+	require.Len(t, result.Constitution.Antipatterns, 1)
+	ap := result.Constitution.Antipatterns[0]
+	assert.Equal(t, "god object", ap.Pattern)
+	assert.Equal(t, "project-why", ap.Why)
+	assert.Equal(t, "project-instead", ap.Instead)
+
+	// Provenance: god object owned by project.
+	assert.Equal(t, storage.ConstitutionLayerProject, result.Provenance["antipatterns[god object]"])
+
+	// magic numbers deleted — no provenance entry.
+	_, hasProv := result.Provenance["antipatterns[magic numbers]"]
+	assert.False(t, hasProv)
+}
+
+func TestMerge_ReferenceMergeAndDelete(t *testing.T) {
+	org := &storage.Constitution{
+		Layer: storage.ConstitutionLayerOrg,
+		References: []storage.Reference{
+			{Type: "api", Path: "/docs/api.md"},
+			{Type: "arch", Path: "/docs/arch.md"},
+		},
+	}
+	project := &storage.Constitution{
+		Layer: storage.ConstitutionLayerProject,
+		References: []storage.Reference{
+			{Delete: true, Path: "/docs/arch.md"},    // delete arch doc
+			{Type: "setup", Path: "/docs/setup.md"},  // add new
+		},
+	}
+
+	result, err := merge.Layers([]*storage.Constitution{org, project})
+	require.NoError(t, err)
+
+	// Expect /docs/api.md and /docs/setup.md; /docs/arch.md deleted.
+	require.Len(t, result.Constitution.References, 2)
+
+	paths := make(map[string]storage.Reference)
+	for _, r := range result.Constitution.References {
+		paths[r.Path] = r
+	}
+
+	assert.Contains(t, paths, "/docs/api.md")
+	assert.Equal(t, "api", paths["/docs/api.md"].Type)
+	assert.Contains(t, paths, "/docs/setup.md")
+	assert.Equal(t, "setup", paths["/docs/setup.md"].Type)
+	assert.NotContains(t, paths, "/docs/arch.md")
+
+	// Provenance.
+	assert.Equal(t, storage.ConstitutionLayerOrg, result.Provenance["references[/docs/api.md]"])
+	assert.Equal(t, storage.ConstitutionLayerProject, result.Provenance["references[/docs/setup.md]"])
+	_, hasProv := result.Provenance["references[/docs/arch.md]"]
+	assert.False(t, hasProv)
+}
+
+func TestMerge_TechMapsComplete(t *testing.T) {
+	org := &storage.Constitution{
+		Layer: storage.ConstitutionLayerOrg,
+		Tech: &storage.TechStack{
+			Infrastructure: map[string]string{
+				"cloud":    "aws",
+				"registry": "ecr",
+			},
+			APIStandards: map[string]string{
+				"style":  "rest",
+				"format": "json",
+			},
+		},
+	}
+	project := &storage.Constitution{
+		Layer: storage.ConstitutionLayerProject,
+		Tech: &storage.TechStack{
+			Infrastructure: map[string]string{
+				"cloud": "gcp",         // override
+				"cdn":   "cloudfront",  // new key
+			},
+			APIStandards: map[string]string{
+				"style":   "graphql",   // override
+				"version": "semver",    // new key
+			},
+		},
+	}
+
+	result, err := merge.Layers([]*storage.Constitution{org, project})
+	require.NoError(t, err)
+
+	require.NotNil(t, result.Constitution.Tech)
+
+	// Infrastructure: project wins on "cloud", org's "registry" preserved, project adds "cdn".
+	assert.Equal(t, "gcp", result.Constitution.Tech.Infrastructure["cloud"])
+	assert.Equal(t, "ecr", result.Constitution.Tech.Infrastructure["registry"])
+	assert.Equal(t, "cloudfront", result.Constitution.Tech.Infrastructure["cdn"])
+
+	// APIStandards: project wins on "style", org's "format" preserved, project adds "version".
+	assert.Equal(t, "graphql", result.Constitution.Tech.APIStandards["style"])
+	assert.Equal(t, "json", result.Constitution.Tech.APIStandards["format"])
+	assert.Equal(t, "semver", result.Constitution.Tech.APIStandards["version"])
+
+	// Provenance for infrastructure.
+	assert.Equal(t, storage.ConstitutionLayerProject, result.Provenance["tech_config.infrastructure[cloud]"])
+	assert.Equal(t, storage.ConstitutionLayerOrg, result.Provenance["tech_config.infrastructure[registry]"])
+	assert.Equal(t, storage.ConstitutionLayerProject, result.Provenance["tech_config.infrastructure[cdn]"])
+
+	// Provenance for api_standards.
+	assert.Equal(t, storage.ConstitutionLayerProject, result.Provenance["tech_config.api_standards[style]"])
+	assert.Equal(t, storage.ConstitutionLayerOrg, result.Provenance["tech_config.api_standards[format]"])
+	assert.Equal(t, storage.ConstitutionLayerProject, result.Provenance["tech_config.api_standards[version]"])
 }
