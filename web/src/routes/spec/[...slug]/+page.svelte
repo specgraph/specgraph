@@ -8,9 +8,12 @@
   import { SliceStatus } from '$lib/api/gen/specgraph/v1/slice_pb';
   import { EdgeType } from '$lib/api/gen/specgraph/v1/graph_pb';
   import { ScopeSniff, DecompositionStrategy } from '$lib/api/gen/specgraph/v1/authoring_pb';
+  import type { ChangeLogEntry } from '$lib/api/gen/specgraph/v1/spec_pb';
   import AccordionSection from '$lib/components/AccordionSection.svelte';
   import MetadataBar from '$lib/components/MetadataBar.svelte';
   import FindingsSection from '$lib/components/FindingsSection.svelte';
+  import ChangelogTimeline from '$lib/components/ChangelogTimeline.svelte';
+  import VersionCompare from '$lib/components/VersionCompare.svelte';
 
   let spec = $state<Spec | null>(null);
   let edges = $state<Edge[]>([]);
@@ -18,6 +21,9 @@
   let slices = $state<Slice[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
+  let changelogEntries = $state<ChangeLogEntry[]>([]);
+  let changelogLoading = $state(false);
+  let changelogLoaded = $state(false);
 
   let slug = $derived($page.params.slug);
 
@@ -63,7 +69,27 @@
   }
 
   // Reload when slug changes (SvelteKit reuses component on param-only navigation).
-  $effect(() => { if (slug) loadSpec(slug); });
+  $effect(() => {
+    if (slug) {
+      changelogLoaded = false;
+      changelogEntries = [];
+      loadSpec(slug);
+    }
+  });
+
+  async function loadChangelog() {
+    if (changelogLoaded || !spec) return;
+    changelogLoading = true;
+    try {
+      const resp = await specClient.listChanges({ slug: spec.slug, limit: 0 });
+      changelogEntries = resp.entries;
+    } catch {
+      changelogEntries = [];
+    } finally {
+      changelogLoading = false;
+      changelogLoaded = true;
+    }
+  }
 
   function shouldExpand(stage: string): boolean {
     return spec?.stage === stage;
@@ -169,6 +195,19 @@
       <tr><td class="label">Version</td><td>{spec.version}</td></tr>
     </tbody>
   </table>
+
+  {#if spec.supersededBy}
+    <div class="lifecycle-banner superseded-banner">
+      This spec has been superseded by
+      <a href="/spec/{spec.supersededBy}">{spec.supersededBy}</a>
+    </div>
+  {/if}
+  {#if spec.supersedes}
+    <div class="lifecycle-banner supersedes-banner">
+      This spec supersedes
+      <a href="/spec/{spec.supersedes}">{spec.supersedes}</a>
+    </div>
+  {/if}
 
   <div class="sections">
     {#if spec.notes}
@@ -375,6 +414,15 @@
         {/each}
       </AccordionSection>
     {/if}
+
+    <AccordionSection title="Changelog" badge={changelogLoaded ? String(changelogEntries.length) : '…'}>
+      {#if !changelogLoaded}
+        <button class="load-changelog-btn" onclick={loadChangelog}>Load changelog</button>
+      {:else}
+        <VersionCompare slug={spec.slug} entries={changelogEntries} />
+        <ChangelogTimeline entries={changelogEntries} loading={changelogLoading} />
+      {/if}
+    </AccordionSection>
   </div>
 {/if}
 
@@ -450,6 +498,9 @@
   .badge.stage-approved { background: #ccfbf1; color: #0d9488; }
   .badge.stage-in_progress { background: #ffedd5; color: #ea580c; }
   .badge.stage-done { background: #f1f5f9; color: #6b7280; }
+  .badge.stage-amended { background: #fef3c7; color: #92400e; }
+  .badge.stage-superseded { background: #f3f4f6; color: #6b7280; text-decoration: line-through; }
+  .badge.stage-abandoned { background: #fee2e2; color: #991b1b; }
 
   .notes {
     color: #374151;
@@ -607,6 +658,37 @@
 
   .role.response {
     color: #059669;
+  }
+
+  .lifecycle-banner {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  .lifecycle-banner a {
+    font-weight: 700;
+    text-decoration: underline;
+  }
+  .superseded-banner {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    color: #92400e;
+  }
+  .supersedes-banner {
+    background: #dbeafe;
+    border: 1px solid #3b82f6;
+    color: #1e40af;
+  }
+  .load-changelog-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.85rem;
+    background: var(--accent-color, #6366f1);
+    color: #fff;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
   }
 
   .decision-marker {

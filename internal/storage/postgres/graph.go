@@ -251,6 +251,27 @@ func (s *Store) RefreshDependencyHashes(ctx context.Context, slug string) error 
 	return nil
 }
 
+// refreshInboundDependencyHashes updates content_hash_at_link on all incoming
+// DEPENDS_ON edges that point to slug, setting them to slug's current content_hash.
+// Called when a spec transitions to done so downstream specs see the refreshed baseline.
+func (s *Store) refreshInboundDependencyHashes(ctx context.Context, slug string) error {
+	_, err := s.exec(ctx,
+		`UPDATE edges e
+		 SET content_hash_at_link = COALESCE(upstream.content_hash, '')
+		 FROM (
+		     SELECT slug, content_hash FROM specs
+		     WHERE slug = $1 AND project_slug = $2
+		 ) upstream
+		 WHERE e.to_slug = $1 AND e.edge_type = 'DEPENDS_ON'
+		   AND e.project_slug = $2`,
+		slug, s.project,
+	)
+	if err != nil {
+		return fmt.Errorf("postgres: refresh inbound dependency hashes: %w", err)
+	}
+	return nil
+}
+
 // GetTransitiveDeps returns all transitive dependencies of a node.
 // Uses a recursive CTE bounded to 50 hops with Postgres CYCLE detection.
 func (s *Store) GetTransitiveDeps(ctx context.Context, slug string) ([]storage.NodeRef, error) {

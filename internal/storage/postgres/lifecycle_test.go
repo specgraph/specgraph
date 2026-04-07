@@ -500,3 +500,49 @@ func TestLifecycle(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+func TestLifecycle_AmendRefreshesEdgeHash(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	// Create upstream and downstream specs.
+	_, err := store.CreateSpec(ctx, "upstream-hash", "Upstream spec", "p1", "medium")
+	require.NoError(t, err)
+	_, err = store.CreateSpec(ctx, "downstream-hash", "Downstream spec", "p1", "medium")
+	require.NoError(t, err)
+
+	// Link downstream -> upstream with a DEPENDS_ON edge.
+	_, err = store.AddEdge(ctx, "downstream-hash", "upstream-hash", storage.EdgeTypeDependsOn)
+	require.NoError(t, err)
+
+	// Record the initial edge hash.
+	initialDeps, err := store.GetDependenciesWithEdgeData(ctx, "downstream-hash")
+	require.NoError(t, err)
+	require.Len(t, initialDeps, 1)
+	initialHashAtLink := initialDeps[0].ContentHashAtLink
+
+	// Advance upstream to done so it can be amended.
+	_, err = store.UpdateSpec(ctx, "upstream-hash", nil, strPtr("done"), nil, nil, nil)
+	require.NoError(t, err)
+
+	// Amend the upstream spec — this changes its content hash.
+	_, err = store.LifecycleAmendSpec(ctx, "upstream-hash", "needs revision", "shape")
+	require.NoError(t, err)
+
+	// Confirm upstream's content hash changed.
+	upstream, err := store.GetSpec(ctx, "upstream-hash")
+	require.NoError(t, err)
+	require.NotEqual(t, initialHashAtLink, upstream.ContentHash, "amend should change the upstream content hash")
+
+	// Advance upstream back to done — this should refresh the edge hash.
+	_, err = store.UpdateSpec(ctx, "upstream-hash", nil, strPtr("done"), nil, nil, nil)
+	require.NoError(t, err)
+
+	// Verify the edge hash was refreshed.
+	refreshedDeps, err := store.GetDependenciesWithEdgeData(ctx, "downstream-hash")
+	require.NoError(t, err)
+	require.Len(t, refreshedDeps, 1)
+	require.NotEqual(t, initialHashAtLink, refreshedDeps[0].ContentHashAtLink,
+		"ContentHashAtLink should be refreshed after upstream is re-completed")
+}

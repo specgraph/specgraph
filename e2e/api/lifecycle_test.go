@@ -73,6 +73,39 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(spec.GetVersion()).To(BeNumerically(">=", int32(2)), "version should increment after amend")
 			// History field removed — changelog is now tracked via ChangeLog graph nodes.
 		})
+
+		It("verifies changelog has a checkpoint entry with reason and stage delta", func() {
+			resp, err := specClient.ListChanges(ctx, connect.NewRequest(&specv1.ListChangesRequest{
+				Slug:            amendSlug,
+				CheckpointsOnly: true,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Msg.GetEntries()).NotTo(BeEmpty(), "expected at least one checkpoint changelog entry")
+
+			// Find the amend checkpoint entry.
+			var amendEntry *specv1.ChangeLogEntry
+			for _, e := range resp.Msg.GetEntries() {
+				if e.GetCheckpoint() && e.GetReason() == "Requirements changed after implementation" {
+					amendEntry = e
+					break
+				}
+			}
+			Expect(amendEntry).NotTo(BeNil(), "expected a checkpoint entry with the amend reason")
+			Expect(amendEntry.GetCheckpoint()).To(BeTrue())
+			Expect(amendEntry.GetReason()).To(Equal("Requirements changed after implementation"))
+
+			// Verify the stage field delta is recorded.
+			var stageChange *specv1.FieldChange
+			for _, c := range amendEntry.GetChanges() {
+				if c.GetField() == "stage" {
+					stageChange = c
+					break
+				}
+			}
+			Expect(stageChange).NotTo(BeNil(), "expected a stage field delta in the changelog entry")
+			Expect(stageChange.GetOldValue()).To(Equal("done"))
+			Expect(stageChange.GetNewValue()).To(Equal("shape"))
+		})
 	})
 
 	Describe("Amend flow (default stage)", func() {
@@ -141,6 +174,38 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(resp.Msg.NewSpec.Slug).To(Equal(newSlug))
 			Expect(resp.Msg.NewSpec.Supersedes).To(Equal(oldSlug))
 			Expect(resp.Msg.NewSpec.Version).To(BeNumerically(">=", int32(1)), "new spec version should be set")
+		})
+
+		It("verifies old spec changelog has a superseded checkpoint entry", func() {
+			resp, err := specClient.ListChanges(ctx, connect.NewRequest(&specv1.ListChangesRequest{
+				Slug:            oldSlug,
+				CheckpointsOnly: true,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Msg.GetEntries()).NotTo(BeEmpty(), "expected at least one checkpoint changelog entry for superseded spec")
+
+			// Find the supersede checkpoint entry.
+			var supersedeEntry *specv1.ChangeLogEntry
+			for _, e := range resp.Msg.GetEntries() {
+				if e.GetCheckpoint() && e.GetStage() == "superseded" {
+					supersedeEntry = e
+					break
+				}
+			}
+			Expect(supersedeEntry).NotTo(BeNil(), "expected a checkpoint entry for superseded stage")
+			Expect(supersedeEntry.GetCheckpoint()).To(BeTrue())
+
+			// Verify the superseded_by field delta is recorded.
+			var supersededByChange *specv1.FieldChange
+			for _, c := range supersedeEntry.GetChanges() {
+				if c.GetField() == "superseded_by" {
+					supersededByChange = c
+					break
+				}
+			}
+			Expect(supersededByChange).NotTo(BeNil(), "expected a superseded_by field delta in the changelog entry")
+			Expect(supersededByChange.GetOldValue()).To(Equal(""))
+			Expect(supersededByChange.GetNewValue()).To(Equal(newSlug))
 		})
 
 		It("creates a SUPERSEDES edge from new to old", func() {

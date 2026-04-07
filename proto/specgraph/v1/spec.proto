@@ -74,6 +74,37 @@ message ListChangesResponse {
   repeated ChangeLogEntry entries = 1;
 }
 
+message InlineDiff {
+  enum Op {
+    EQUAL = 0;
+    INSERT = 1;
+    DELETE = 2;
+  }
+  Op op = 1;
+  string text = 2;
+}
+
+message VersionDiff {
+  string field = 1;
+  string old_value = 2;
+  string new_value = 3;
+  repeated InlineDiff hunks = 4;
+}
+
+message CompareVersionsRequest {
+  string slug = 1;
+  int32 from_version = 2;
+  int32 to_version = 3;
+}
+
+message CompareVersionsResponse {
+  int32 from_version = 1;
+  int32 to_version = 2;
+  string from_stage = 3;
+  string to_stage = 4;
+  repeated VersionDiff diffs = 5;
+}
+
 message CreateSpecRequest {
   string slug = 1;
   string intent = 2;
@@ -116,4 +147,5 @@ service SpecService {
   rpc ListSpecs(ListSpecsRequest) returns (ListSpecsResponse);
   rpc UpdateSpec(UpdateSpecRequest) returns (UpdateSpecResponse);
   rpc ListChanges(ListChangesRequest) returns (ListChangesResponse);
+  rpc CompareVersions(CompareVersionsRequest) returns (CompareVersionsResponse);
 }

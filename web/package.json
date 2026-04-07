@@ -20,6 +20,7 @@
     "@bufbuild/protobuf": "^2.0.0",
     "@connectrpc/connect": "^2.0.0",
     "@connectrpc/connect-web": "^2.0.0",
-    "@dagrejs/dagre": "^3.0.0"
+    "@dagrejs/dagre": "^3.0.0",
+    "diff": "^8.0.4"
   }
 }

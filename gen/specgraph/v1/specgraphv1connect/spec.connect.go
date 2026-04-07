@@ -46,6 +46,9 @@ const (
 	SpecServiceUpdateSpecProcedure = "/specgraph.v1.SpecService/UpdateSpec"
 	// SpecServiceListChangesProcedure is the fully-qualified name of the SpecService's ListChanges RPC.
 	SpecServiceListChangesProcedure = "/specgraph.v1.SpecService/ListChanges"
+	// SpecServiceCompareVersionsProcedure is the fully-qualified name of the SpecService's
+	// CompareVersions RPC.
+	SpecServiceCompareVersionsProcedure = "/specgraph.v1.SpecService/CompareVersions"
 )
 
 // SpecServiceClient is a client for the specgraph.v1.SpecService service.
@@ -55,6 +58,7 @@ type SpecServiceClient interface {
 	ListSpecs(context.Context, *connect.Request[v1.ListSpecsRequest]) (*connect.Response[v1.ListSpecsResponse], error)
 	UpdateSpec(context.Context, *connect.Request[v1.UpdateSpecRequest]) (*connect.Response[v1.UpdateSpecResponse], error)
 	ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error)
+	CompareVersions(context.Context, *connect.Request[v1.CompareVersionsRequest]) (*connect.Response[v1.CompareVersionsResponse], error)
 }
 
 // NewSpecServiceClient constructs a client for the specgraph.v1.SpecService service. By default, it
@@ -98,16 +102,23 @@ func NewSpecServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(specServiceMethods.ByName("ListChanges")),
 			connect.WithClientOptions(opts...),
 		),
+		compareVersions: connect.NewClient[v1.CompareVersionsRequest, v1.CompareVersionsResponse](
+			httpClient,
+			baseURL+SpecServiceCompareVersionsProcedure,
+			connect.WithSchema(specServiceMethods.ByName("CompareVersions")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // specServiceClient implements SpecServiceClient.
 type specServiceClient struct {
-	createSpec  *connect.Client[v1.CreateSpecRequest, v1.CreateSpecResponse]
-	getSpec     *connect.Client[v1.GetSpecRequest, v1.GetSpecResponse]
-	listSpecs   *connect.Client[v1.ListSpecsRequest, v1.ListSpecsResponse]
-	updateSpec  *connect.Client[v1.UpdateSpecRequest, v1.UpdateSpecResponse]
-	listChanges *connect.Client[v1.ListChangesRequest, v1.ListChangesResponse]
+	createSpec      *connect.Client[v1.CreateSpecRequest, v1.CreateSpecResponse]
+	getSpec         *connect.Client[v1.GetSpecRequest, v1.GetSpecResponse]
+	listSpecs       *connect.Client[v1.ListSpecsRequest, v1.ListSpecsResponse]
+	updateSpec      *connect.Client[v1.UpdateSpecRequest, v1.UpdateSpecResponse]
+	listChanges     *connect.Client[v1.ListChangesRequest, v1.ListChangesResponse]
+	compareVersions *connect.Client[v1.CompareVersionsRequest, v1.CompareVersionsResponse]
 }
 
 // CreateSpec calls specgraph.v1.SpecService.CreateSpec.
@@ -135,6 +146,11 @@ func (c *specServiceClient) ListChanges(ctx context.Context, req *connect.Reques
 	return c.listChanges.CallUnary(ctx, req)
 }
 
+// CompareVersions calls specgraph.v1.SpecService.CompareVersions.
+func (c *specServiceClient) CompareVersions(ctx context.Context, req *connect.Request[v1.CompareVersionsRequest]) (*connect.Response[v1.CompareVersionsResponse], error) {
+	return c.compareVersions.CallUnary(ctx, req)
+}
+
 // SpecServiceHandler is an implementation of the specgraph.v1.SpecService service.
 type SpecServiceHandler interface {
 	CreateSpec(context.Context, *connect.Request[v1.CreateSpecRequest]) (*connect.Response[v1.CreateSpecResponse], error)
@@ -142,6 +158,7 @@ type SpecServiceHandler interface {
 	ListSpecs(context.Context, *connect.Request[v1.ListSpecsRequest]) (*connect.Response[v1.ListSpecsResponse], error)
 	UpdateSpec(context.Context, *connect.Request[v1.UpdateSpecRequest]) (*connect.Response[v1.UpdateSpecResponse], error)
 	ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error)
+	CompareVersions(context.Context, *connect.Request[v1.CompareVersionsRequest]) (*connect.Response[v1.CompareVersionsResponse], error)
 }
 
 // NewSpecServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -181,6 +198,12 @@ func NewSpecServiceHandler(svc SpecServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(specServiceMethods.ByName("ListChanges")),
 		connect.WithHandlerOptions(opts...),
 	)
+	specServiceCompareVersionsHandler := connect.NewUnaryHandler(
+		SpecServiceCompareVersionsProcedure,
+		svc.CompareVersions,
+		connect.WithSchema(specServiceMethods.ByName("CompareVersions")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/specgraph.v1.SpecService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SpecServiceCreateSpecProcedure:
@@ -193,6 +216,8 @@ func NewSpecServiceHandler(svc SpecServiceHandler, opts ...connect.HandlerOption
 			specServiceUpdateSpecHandler.ServeHTTP(w, r)
 		case SpecServiceListChangesProcedure:
 			specServiceListChangesHandler.ServeHTTP(w, r)
+		case SpecServiceCompareVersionsProcedure:
+			specServiceCompareVersionsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -220,4 +245,8 @@ func (UnimplementedSpecServiceHandler) UpdateSpec(context.Context, *connect.Requ
 
 func (UnimplementedSpecServiceHandler) ListChanges(context.Context, *connect.Request[v1.ListChangesRequest]) (*connect.Response[v1.ListChangesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.SpecService.ListChanges is not implemented"))
+}
+
+func (UnimplementedSpecServiceHandler) CompareVersions(context.Context, *connect.Request[v1.CompareVersionsRequest]) (*connect.Response[v1.CompareVersionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.SpecService.CompareVersions is not implemented"))
 }
