@@ -43,7 +43,7 @@ a single domain concern:
 
 | Service | Description |
 |---------|-------------|
-| **SpecService** | Create, get, list, and update specs — the primary resource in the graph. |
+| **SpecService** | Create, get, list, update specs, view changelogs, and compare versions — the primary resource in the graph. |
 | **DecisionService** | Create and manage decisions — first-class graph nodes with bidirectional edges to specs. |
 | **ConstitutionService** | Layer merging, validation, and queries across the User → Org → Project → Domain hierarchy. |
 | **AuthoringService** | Authoring funnel RPCs: Spark, Shape, Specify, Decompose, Approve, Amend, Supersede. |
@@ -54,6 +54,7 @@ a single domain concern:
 | **SliceService** | List, get, claim, and complete decomposition slices. Slices are created by `AuthoringService.Decompose`. |
 | **AnalyticalPassService** | Run analytical passes and manage findings for specs. |
 | **SyncService** | Push specs to external systems (Beads, GitHub) and inject context into tool files. |
+| **ExportService** | Export a project to JSON, import from JSON, and verify export integrity. |
 | **ServerService** | Health checks. |
 
 All services use protobuf message types on the wire and generate both `.pb.go`

@@ -317,7 +317,50 @@ The bundle output contains:
 
 ---
 
-## 8. Export and restore a project
+## 8. Lifecycle transitions and changelog
+
+**Goal:** Amend, supersede, or abandon a completed spec, and view its change history with diffs.
+
+```bash
+# Amend: return a done spec to an earlier authoring stage
+specgraph amend my-spec --reason "Stakeholder feedback changed scope" --re-entry shape
+
+# Supersede: replace a spec with a fundamentally different one
+specgraph supersede old-approach --with new-approach
+
+# Abandon: drop a spec that's no longer relevant
+specgraph abandon legacy-migration --reason "Migrating to new platform instead"
+
+# View changelog for a spec
+specgraph changes my-spec
+
+# View only checkpoint entries (stage transitions, amendments)
+specgraph changes my-spec --checkpoints
+
+# View with inline word-level diffs
+specgraph changes my-spec --diff
+
+# Compare two specific versions
+specgraph changes my-spec --diff --from=3 --to=7
+```
+
+??? example "Expected output — `changes --diff`"
+    ```
+    ## v5 — shape (checkpoint)
+    **2026-04-05** | Hash: a1b2c3d4e5f6
+    Reason: Stakeholder feedback changed scope
+
+      stage: done → shape
+      intent: Build [-basic auth-]{+OAuth2 with PKCE+} flow
+    ```
+
+!!! tip
+    Use `--checkpoints` to see only major transitions (amendments, stage
+    completions) and skip incremental field updates.
+
+---
+
+## 9. Export and restore a project
 
 **Goal:** Back up a project's specs, decisions, constitution, and slices to a portable JSON file, then verify or restore it.
 

@@ -69,6 +69,15 @@ framework.
 
     [:octicons-arrow-right-24: Drift Detection](drift.md)
 
+- :material-history: **Lifecycle Transitions**
+
+    ---
+
+    Amendment, supersession, and abandonment — what happens when completed
+    specs need to change, with full changelog and diff support.
+
+    [:octicons-arrow-right-24: Lifecycle Transitions](lifecycle.md)
+
 - :material-check-decagram: **Spec Linting**
 
     ---
