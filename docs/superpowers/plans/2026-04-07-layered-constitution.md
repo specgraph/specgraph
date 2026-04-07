@@ -47,6 +47,7 @@
 ### Task 1: Domain Type Changes — `$delete` Support
 
 **Files:**
+
 - Modify: `internal/storage/constitution_domain.go`
 
 - [ ] **Step 1: Add Delete field to keyed types and source fields to Constitution**
@@ -113,6 +114,7 @@ git commit -m "feat(storage): add Delete field and source tracking to constituti
 ### Task 2: Merge Engine — Core Merge Logic
 
 **Files:**
+
 - Create: `internal/constitution/merge/merge.go`
 - Create: `internal/constitution/merge/merge_test.go`
 
@@ -698,6 +700,7 @@ git commit -m "feat(constitution): add strategic merge engine with delete direct
 ### Task 3: Database Migration
 
 **Files:**
+
 - Create: `internal/storage/postgres/migrations/004_constitution_layers.sql`
 
 - [ ] **Step 1: Write migration**
@@ -748,6 +751,7 @@ git commit -m "feat(storage): add migration for multi-layer constitution support
 ### Task 4: Storage Interface & Postgres Implementation
 
 **Files:**
+
 - Modify: `internal/storage/constitution.go`
 - Modify: `internal/storage/postgres/constitution.go`
 
@@ -1075,6 +1079,7 @@ git commit -m "feat(storage): implement multi-layer constitution storage with pe
 ### Task 5: Storage Integration Tests
 
 **Files:**
+
 - Modify: `internal/storage/postgres/constitution_test.go`
 
 - [ ] **Step 1: Add multi-layer integration tests**
@@ -1241,6 +1246,7 @@ git commit -m "test(storage): add multi-layer constitution integration tests"
 ### Task 6: Proto Changes
 
 **Files:**
+
 - Modify: `proto/specgraph/v1/constitution.proto`
 
 - [ ] **Step 1: Add layer filter, provenance, and source fields to proto**
@@ -1302,6 +1308,7 @@ git commit -m "feat(proto): add layer filter, provenance, and source tracking to
 ### Task 7: Handler — Merge on Read
 
 **Files:**
+
 - Modify: `internal/server/constitution_handler.go`
 - Modify: `internal/server/convert_constitution.go`
 
@@ -1437,6 +1444,7 @@ git commit -m "feat(server): wire merge engine into GetConstitution with layer f
 ### Task 8: CLI — `--layer` Flag
 
 **Files:**
+
 - Modify: `cmd/specgraph/constitution.go`
 
 - [ ] **Step 1: Add `--layer` flag to import command**
@@ -1514,6 +1522,7 @@ git commit -m "feat(cli): add --layer flag to constitution import and show"
 ### Task 9: Constitution Page — Provenance Badges
 
 **Files:**
+
 - Modify: `web/src/routes/constitution/+page.svelte`
 
 - [ ] **Step 1: Update constitution page to display provenance badges**
@@ -1593,6 +1602,7 @@ git commit -m "feat(web): add provenance layer badges to constitution page"
 ### Task 10: E2E API Tests
 
 **Files:**
+
 - Modify: `e2e/api/constitution_test.go`
 
 - [ ] **Step 1: Add multi-layer E2E tests**
@@ -1689,6 +1699,7 @@ git commit -m "test(e2e): add multi-layer constitution API tests"
 ### Task 11: Update Site Documentation
 
 **Files:**
+
 - Modify: `site/docs/concepts/constitution.md`
 - Modify: `site/docs/guides/cli-cookbook.md`
 

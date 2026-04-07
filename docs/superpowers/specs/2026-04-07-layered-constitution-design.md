@@ -28,6 +28,7 @@ Higher layers override lower layers. All layers are optional — a project with 
 Change the `constitutions` table uniqueness constraint from `PRIMARY KEY (project_slug, id)` to `UNIQUE (project_slug, layer)`, keeping `id` as primary key. This allows up to 4 rows per project.
 
 Add columns:
+
 - `source_url` (TEXT, default '') — where this layer was imported from. Empty for local imports, URL for future remote sources.
 - `source_hash` (TEXT, default '') — content hash of the source at import time. For future drift detection between cached and remote versions.
 
@@ -36,11 +37,13 @@ Each row stores the raw layer data as JSONB, including any `$delete` directives.
 ### Read Path
 
 `GetConstitution` with no layer filter:
+
 1. Fetch all rows for the project ordered by layer precedence
 2. Run the merge engine
 3. Return merged result with provenance entries
 
 `GetConstitution` with a layer filter:
+
 1. Fetch the single row for `(project_slug, layer)`
 2. Return raw data (including `$delete` markers)
 3. No provenance (single layer, provenance is self-evident)
@@ -85,6 +88,7 @@ principles:
 ```
 
 Semantics:
+
 - `$delete` on a key that doesn't exist in lower layers is a no-op (not an error)
 - `$delete` consumes the item — the merged result never contains `$delete` entries
 - If an item is added at org, overridden at project, then `$delete`'d at domain — deleted wins
@@ -101,6 +105,7 @@ type MergeResult struct {
 ```
 
 Field paths use dot notation for scalars and bracket notation for list items:
+
 - `"tech_config.languages[go]"` → project
 - `"principles[p1]"` → org
 - `"process.deployment_strategy"` → project
@@ -210,6 +215,7 @@ Always operates on the merged result. No `--layer` flag. Tool files (CLAUDE.md, 
 ### Unit Tests — Merge Engine (`internal/constitution/merge/`)
 
 **Positive:**
+
 - Two layers: scalar override (project replaces org)
 - Two layers: string list union (project adds to org's languages)
 - Two layers: keyed object merge (project overrides principle by id)
@@ -219,12 +225,14 @@ Always operates on the merged result. No `--layer` flag. Tool files (CLAUDE.md, 
 - Single layer returns itself with provenance pointing to that layer
 
 **Negative:**
+
 - `$delete` on key that doesn't exist in lower layers — no-op, no error
 - `$delete` with no merge key (missing `id` on principle) — error
 - Empty layer slice — returns empty constitution, empty provenance
 - Duplicate keys within same layer — last wins
 
 **Boundary:**
+
 - All four layers present but only domain has content — result equals domain
 - Layer overrides every field — nothing inherited
 - `$delete` removes the only item in a list — list becomes empty, not nil
@@ -233,6 +241,7 @@ Always operates on the merged result. No `--layer` flag. Tool files (CLAUDE.md, 
 ### Integration Tests — Storage (`internal/storage/postgres/`)
 
 **Positive:**
+
 - Store org layer, store project layer — both rows exist independently
 - `GetConstitution` no filter: returns merged result with provenance
 - `GetConstitution` with layer filter: returns raw single layer including `$delete`
@@ -240,11 +249,13 @@ Always operates on the merged result. No `--layer` flag. Tool files (CLAUDE.md, 
 - Version increments per layer independently
 
 **Negative:**
+
 - `GetConstitution` for project with no layers — returns ErrConstitutionNotFound
 - `GetConstitution` with layer filter for non-existent layer — returns ErrConstitutionNotFound
 - Update with invalid layer — returns error
 
 **Boundary:**
+
 - Store all four layers, delete one, verify merged result excludes deleted layer
 - Upsert same layer — replaces, doesn't duplicate
 - Concurrent updates to different layers — both succeed
