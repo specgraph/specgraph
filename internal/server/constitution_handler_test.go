@@ -38,12 +38,16 @@ func (m *mockConstitutionBackend) GetConstitution(_ context.Context) (*storage.C
 	if len(m.layers) == 0 {
 		return nil, storage.ErrConstitutionNotFound
 	}
-	// Return the project layer if present, otherwise the first one found.
-	if c, ok := m.layers[storage.ConstitutionLayerProject]; ok {
-		return c, nil
-	}
-	for _, c := range m.layers {
-		return c, nil
+	// Return highest-precedence layer (domain > project > org > user).
+	for _, l := range []storage.ConstitutionLayer{
+		storage.ConstitutionLayerDomain,
+		storage.ConstitutionLayerProject,
+		storage.ConstitutionLayerOrg,
+		storage.ConstitutionLayerUser,
+	} {
+		if c, ok := m.layers[l]; ok {
+			return c, nil
+		}
 	}
 	return nil, storage.ErrConstitutionNotFound
 }
@@ -62,7 +66,7 @@ func (m *mockConstitutionBackend) GetAllLayers(_ context.Context) ([]*storage.Co
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if len(m.layers) == 0 {
-		return nil, nil
+		return []*storage.Constitution{}, nil
 	}
 	// Return layers in a stable precedence order: user, org, project, domain.
 	order := []storage.ConstitutionLayer{
