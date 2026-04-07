@@ -68,6 +68,10 @@ message Constitution {
   google.protobuf.Timestamp created_at = 11;
   // Timestamp of most recent update.
   google.protobuf.Timestamp updated_at = 12;
+  // URL where this layer was imported from (empty for local imports).
+  string source_url = 13;
+  // Content hash of the source at import time (for drift detection).
+  string source_hash = 14;
 }
 
 // TechConfig describes the technology stack for a project.
@@ -163,11 +167,23 @@ message Reference {
 // --- Requests/Responses ---
 
 // GetConstitutionRequest requests the active constitution.
-message GetConstitutionRequest {}
+// If layer is UNSPECIFIED, returns the merged result across all layers.
+message GetConstitutionRequest {
+  ConstitutionLayer layer = 1;
+}
+
+// ProvenanceEntry tracks which layer contributed a specific field or item.
+message ProvenanceEntry {
+  string path = 1;
+  ConstitutionLayer layer = 2;
+}
 
 // GetConstitutionResponse wraps the active constitution.
 message GetConstitutionResponse {
   Constitution constitution = 1;
+  // Provenance entries indicating which layer each value came from.
+  // Only populated when returning a merged result (no layer filter).
+  repeated ProvenanceEntry provenance = 2;
 }
 
 // UpdateConstitutionRequest provides a new or updated constitution.
