@@ -16,6 +16,8 @@ services:
     build:
       context: ../..
       dockerfile: Dockerfile.e2e
+      secrets:
+        - extra-certs
     command: ["serve"]
     depends_on:
       postgres:
@@ -33,6 +35,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.playwright
+      secrets:
+        - extra-certs
     depends_on:
       specgraph:
         condition: service_healthy
@@ -40,3 +44,6 @@ services:
       - SPECGRAPH_BASE_URL=http://specgraph:9090
     volumes:
       - ./test-results:/tests/test-results
+secrets:
+  extra-certs:
+    file: ${EXTRA_CA_BUNDLE:-/dev/null}
