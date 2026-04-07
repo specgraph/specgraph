@@ -142,6 +142,87 @@ var _ = Describe("Constitution", Ordered, func() {
 		Expect(updResp.Msg.Constitution.Version).To(BeNumerically(">", prevVersion))
 	})
 
+	Context("Multi-layer", Ordered, func() {
+		const (
+			orgLayerName = "specgraph-e2e-org"
+			projLayerName = "specgraph-e2e-proj"
+		)
+
+		It("stores org layer independently", func() {
+			resp, err := client.UpdateConstitution(ctx, connect.NewRequest(&specv1.UpdateConstitutionRequest{
+				Constitution: &specv1.Constitution{
+					Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG,
+					Name:  orgLayerName,
+					Tech: &specv1.TechConfig{
+						Languages: &specv1.LanguageConfig{
+							Primary: "Go",
+							Allowed: []string{"Go", "Python"},
+						},
+					},
+					Principles: []*specv1.Principle{
+						{Id: "p1", Statement: "Specs are graph nodes", Rationale: "enables dependency tracking"},
+						{Id: "p2", Statement: "org-level principle two", Rationale: "org rationale"},
+					},
+				},
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Msg.Constitution.Layer).To(Equal(specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG))
+		})
+
+		It("stores project layer independently", func() {
+			resp, err := client.UpdateConstitution(ctx, connect.NewRequest(&specv1.UpdateConstitutionRequest{
+				Constitution: &specv1.Constitution{
+					Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
+					Name:  projLayerName,
+					Tech: &specv1.TechConfig{
+						Languages: &specv1.LanguageConfig{
+							Primary: "Go",
+							Allowed: []string{"Go", "TypeScript"},
+						},
+					},
+					Principles: []*specv1.Principle{
+						{Id: "p2", Statement: "project override of p2", Rationale: "project rationale"},
+						{Id: "p3-new", Statement: "project-only principle", Rationale: "project specific"},
+					},
+				},
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Msg.Constitution.Layer).To(Equal(specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT))
+		})
+
+		It("returns merged constitution with provenance when no layer filter", func() {
+			resp, err := client.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{}))
+			Expect(err).NotTo(HaveOccurred())
+
+			c := resp.Msg.Constitution
+			Expect(c.Tech).NotTo(BeNil())
+			Expect(c.Tech.Languages).NotTo(BeNil())
+			// Go, Python (org) and TypeScript (project) should all be present
+			Expect(c.Tech.Languages.Allowed).To(ContainElements("Go", "Python", "TypeScript"))
+			// p1 from org, p2 overridden by project, p3-new from project
+			Expect(c.Principles).To(HaveLen(3))
+			ids := make([]string, 0, len(c.Principles))
+			for _, p := range c.Principles {
+				ids = append(ids, p.Id)
+			}
+			Expect(ids).To(ContainElements("p1", "p2", "p3-new"))
+			// Provenance must be populated for merged results
+			Expect(resp.Msg.Provenance).NotTo(BeEmpty())
+		})
+
+		It("returns raw org layer when layer filter is set", func() {
+			resp, err := client.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{
+				Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			c := resp.Msg.Constitution
+			Expect(c.Name).To(Equal(orgLayerName))
+			// Raw layer response — no provenance
+			Expect(resp.Msg.Provenance).To(BeEmpty())
+		})
+	})
+
 	Context("EmitToolFiles", func() {
 		It("emits CLAUDE.md format", func() {
 			resp, err := client.EmitToolFiles(ctx, connect.NewRequest(&specv1.EmitToolFilesRequest{
