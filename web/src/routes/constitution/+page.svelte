@@ -140,7 +140,7 @@
             <thead><tr><th>Area</th><th>Standard</th></tr></thead>
             <tbody>
               {#each mapEntries(constitution.tech.apiStandards) as [area, standard]}
-                <tr><td>{area}</td><td>{standard}</td></tr>
+                <tr><td>{area} {@render layerBadge("tech_config.api_standards[" + area + "]")}</td><td>{standard}</td></tr>
               {/each}
             </tbody>
           </table>
@@ -151,7 +151,7 @@
             <thead><tr><th>Area</th><th>Store</th></tr></thead>
             <tbody>
               {#each mapEntries(constitution.tech.data) as [area, store]}
-                <tr><td>{area}</td><td>{store}</td></tr>
+                <tr><td>{area} {@render layerBadge("tech_config.data[" + area + "]")}</td><td>{store}</td></tr>
               {/each}
             </tbody>
           </table>
