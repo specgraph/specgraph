@@ -1,10 +1,11 @@
 <script lang="ts">
   import { constitutionClient } from '$lib/api/client';
-  import type { Constitution } from '$lib/api/gen/specgraph/v1/constitution_pb';
+  import type { Constitution, ProvenanceEntry } from '$lib/api/gen/specgraph/v1/constitution_pb';
   import { ConstitutionLayer, ReferenceType } from '$lib/api/gen/specgraph/v1/constitution_pb';
   import AccordionSection from '$lib/components/AccordionSection.svelte';
 
   let constitution = $state<Constitution | null>(null);
+  let provenance = $state<ProvenanceEntry[]>([]);
   let loading = $state(true);
   let error = $state<string | null>(null);
 
@@ -14,6 +15,7 @@
     try {
       const resp = await constitutionClient.getConstitution({});
       constitution = resp.constitution ?? null;
+      provenance = resp.provenance ?? [];
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load constitution';
     } finally {
@@ -47,7 +49,21 @@
     if (!m) return [];
     return Object.entries(m).sort(([a], [b]) => a.localeCompare(b));
   }
+
+  function layerOf(path: string): string {
+    const entry = provenance.find((p) => p.path === path);
+    if (!entry) return '';
+    const labels: Record<number, string> = { 1: 'user', 2: 'org', 3: 'project', 4: 'domain' };
+    return labels[entry.layer] ?? '';
+  }
 </script>
+
+{#snippet layerBadge(path: string)}
+    {@const l = layerOf(path)}
+    {#if l}
+        <span class="layer-badge layer-{l}">{l}</span>
+    {/if}
+{/snippet}
 
 <nav class="breadcrumb">
   <a href="/">Dashboard</a> / <span>Constitution</span>
@@ -98,7 +114,7 @@
             <thead><tr><th>Area</th><th>Choice</th></tr></thead>
             <tbody>
               {#each mapEntries(constitution.tech.frameworks) as [area, choice]}
-                <tr><td>{area}</td><td>{choice}</td></tr>
+                <tr><td>{area}</td><td>{choice}{@render layerBadge("tech_config.frameworks[" + area + "]")}</td></tr>
               {/each}
             </tbody>
           </table>
@@ -109,7 +125,7 @@
             <thead><tr><th>Area</th><th>Choice</th></tr></thead>
             <tbody>
               {#each mapEntries(constitution.tech.infrastructure) as [area, choice]}
-                <tr><td>{area}</td><td>{choice}</td></tr>
+                <tr><td>{area}</td><td>{choice}{@render layerBadge("tech_config.infrastructure[" + area + "]")}</td></tr>
               {/each}
             </tbody>
           </table>
@@ -143,7 +159,7 @@
       <AccordionSection title="Principles" badge={String(constitution.principles.length)} expanded={true}>
         {#each constitution.principles as p}
           <div class="principle-card">
-            <strong>{p.id}: {p.statement}</strong>
+            <strong>{p.id}: {p.statement}</strong>{@render layerBadge("principles[" + p.id + "]")}
             {#if p.rationale}<p class="detail">{p.rationale}</p>{/if}
             {#if p.exceptions}<p class="detail"><em>Exceptions:</em> {p.exceptions}</p>{/if}
           </div>
@@ -155,7 +171,7 @@
       <AccordionSection title="Constraints" badge={String(constitution.constraints.length)}>
         <ul>
           {#each constitution.constraints as c}
-            <li>{c}</li>
+            <li>{c}{@render layerBadge("constraints[" + c + "]")}</li>
           {/each}
         </ul>
       </AccordionSection>
@@ -165,7 +181,7 @@
       <AccordionSection title="Antipatterns" badge={String(constitution.antipatterns.length)}>
         {#each constitution.antipatterns as ap}
           <div class="antipattern-card">
-            <strong>{ap.pattern}</strong>
+            <strong>{ap.pattern}</strong>{@render layerBadge("antipatterns[" + ap.pattern + "]")}
             {#if ap.why}<p class="detail"><em>Why:</em> {ap.why}</p>{/if}
             {#if ap.instead}<p class="detail"><em>Instead:</em> {ap.instead}</p>{/if}
           </div>
@@ -176,27 +192,27 @@
     {#if constitution.process}
       <AccordionSection title="Process">
         {#if constitution.process.specReview}
-          <p><strong>Spec Review:</strong> {constitution.process.specReview}</p>
+          <p><strong>Spec Review:</strong> {constitution.process.specReview}{@render layerBadge("process.spec_review")}</p>
         {/if}
         {#if constitution.process.securityReview?.when}
-          <p><strong>Security Review:</strong> {constitution.process.securityReview.when}</p>
+          <p><strong>Security Review:</strong> {constitution.process.securityReview.when}{@render layerBadge("process.security_review.when")}</p>
         {/if}
         {#if constitution.process.deployment}
           <h3>Deployment</h3>
           {#if constitution.process.deployment.strategy}
-            <p><strong>Strategy:</strong> {constitution.process.deployment.strategy}</p>
+            <p><strong>Strategy:</strong> {constitution.process.deployment.strategy}{@render layerBadge("process.deployment.strategy")}</p>
           {/if}
           {#if constitution.process.deployment.rollback}
-            <p><strong>Rollback:</strong> {constitution.process.deployment.rollback}</p>
+            <p><strong>Rollback:</strong> {constitution.process.deployment.rollback}{@render layerBadge("process.deployment.rollback")}</p>
           {/if}
         {/if}
         {#if constitution.process.documentation}
           <h3>Documentation</h3>
           {#if constitution.process.documentation.apiDocs}
-            <p><strong>API Docs:</strong> {constitution.process.documentation.apiDocs}</p>
+            <p><strong>API Docs:</strong> {constitution.process.documentation.apiDocs}{@render layerBadge("process.documentation.api_docs")}</p>
           {/if}
           {#if constitution.process.documentation.runbook}
-            <p><strong>Runbook:</strong> {constitution.process.documentation.runbook}</p>
+            <p><strong>Runbook:</strong> {constitution.process.documentation.runbook}{@render layerBadge("process.documentation.runbook")}</p>
           {/if}
         {/if}
       </AccordionSection>
@@ -208,7 +224,7 @@
           {#each constitution.references as ref}
             <li>
               <span class="ref-type">{refTypeLabel(ref.referenceType)}</span>
-              {ref.path}
+              {ref.path}{@render layerBadge("references[" + ref.path + "]")}
             </li>
           {/each}
         </ul>
@@ -353,4 +369,20 @@
     border-radius: 3px;
     margin-right: 0.4rem;
   }
+
+  .layer-badge {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-left: 0.375rem;
+    vertical-align: middle;
+  }
+
+  .layer-user { background: #dbeafe; color: #1e40af; }
+  .layer-org { background: #fef3c7; color: #92400e; }
+  .layer-project { background: #dcfce7; color: #166534; }
+  .layer-domain { background: #ede9fe; color: #5b21b6; }
 </style>
