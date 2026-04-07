@@ -630,6 +630,7 @@ specgraph constitution import [file] [flags]
 **Flags:**
 
 ```
+      --layer string     constitution layer (user|org|project|domain; default: project)
       --project string   project slug (defaults to slug from .specgraph.yaml)
 ```
 
@@ -644,7 +645,8 @@ specgraph constitution show [flags]
 **Flags:**
 
 ```
-      --json   output as JSON
+      --json           output as JSON
+      --layer string   show specific layer (user|org|project|domain; default: merged)
 ```
 
 ## Conversations
