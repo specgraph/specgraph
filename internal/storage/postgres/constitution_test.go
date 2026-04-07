@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -135,4 +136,140 @@ func TestGetConstitution_RoundTrip(t *testing.T) {
 	// References
 	require.Len(t, got.References, 1)
 	require.Equal(t, "adr", got.References[0].Type)
+}
+
+func TestGetAllLayers_ReturnsOrdered(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.UpdateConstitution(ctx, &storage.Constitution{
+		Layer: storage.ConstitutionLayerOrg,
+		Name:  "org-layer",
+	})
+	require.NoError(t, err)
+
+	_, err = store.UpdateConstitution(ctx, &storage.Constitution{
+		Layer: storage.ConstitutionLayerProject,
+		Name:  "project-layer",
+	})
+	require.NoError(t, err)
+
+	layers, err := store.GetAllLayers(ctx)
+	require.NoError(t, err)
+	require.Len(t, layers, 2)
+	assert.Equal(t, storage.ConstitutionLayerOrg, layers[0].Layer)
+	assert.Equal(t, storage.ConstitutionLayerProject, layers[1].Layer)
+}
+
+func TestGetConstitutionLayer_ReturnsSpecific(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.UpdateConstitution(ctx, &storage.Constitution{
+		Layer:       storage.ConstitutionLayerOrg,
+		Name:        "org-layer",
+		Constraints: []string{"org-constraint"},
+	})
+	require.NoError(t, err)
+
+	_, err = store.UpdateConstitution(ctx, &storage.Constitution{
+		Layer:       storage.ConstitutionLayerProject,
+		Name:        "project-layer",
+		Constraints: []string{"project-constraint"},
+	})
+	require.NoError(t, err)
+
+	orgLayer, err := store.GetConstitutionLayer(ctx, storage.ConstitutionLayerOrg)
+	require.NoError(t, err)
+	assert.Equal(t, storage.ConstitutionLayerOrg, orgLayer.Layer)
+	assert.Equal(t, "org-layer", orgLayer.Name)
+	assert.Equal(t, []string{"org-constraint"}, orgLayer.Constraints)
+
+	projectLayer, err := store.GetConstitutionLayer(ctx, storage.ConstitutionLayerProject)
+	require.NoError(t, err)
+	assert.Equal(t, storage.ConstitutionLayerProject, projectLayer.Layer)
+	assert.Equal(t, "project-layer", projectLayer.Name)
+	assert.Equal(t, []string{"project-constraint"}, projectLayer.Constraints)
+}
+
+func TestUpdateConstitution_IndependentLayers(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.UpdateConstitution(ctx, &storage.Constitution{
+		Layer: storage.ConstitutionLayerOrg,
+		Name:  "org-original",
+	})
+	require.NoError(t, err)
+
+	project, err := store.UpdateConstitution(ctx, &storage.Constitution{
+		Layer:       storage.ConstitutionLayerProject,
+		Name:        "project-original",
+		Constraints: []string{"project-only"},
+	})
+	require.NoError(t, err)
+	projectVersion := project.Version
+	projectContent := project.Constraints
+
+	// Update org layer
+	_, err = store.UpdateConstitution(ctx, &storage.Constitution{
+		Layer: storage.ConstitutionLayerOrg,
+		Name:  "org-updated",
+	})
+	require.NoError(t, err)
+
+	// Verify project layer is unchanged
+	got, err := store.GetConstitutionLayer(ctx, storage.ConstitutionLayerProject)
+	require.NoError(t, err)
+	assert.Equal(t, projectVersion, got.Version)
+	assert.Equal(t, projectContent, got.Constraints)
+}
+
+func TestUpdateConstitution_UpsertSameLayer(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	v1, err := store.UpdateConstitution(ctx, &storage.Constitution{
+		Layer: storage.ConstitutionLayerOrg,
+		Name:  "org-v1",
+	})
+	require.NoError(t, err)
+	require.Equal(t, int32(1), v1.Version)
+
+	v2, err := store.UpdateConstitution(ctx, &storage.Constitution{
+		Layer: storage.ConstitutionLayerOrg,
+		Name:  "org-v2",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), v2.Version)
+
+	// Only one row should exist for this layer
+	layers, err := store.GetAllLayers(ctx)
+	require.NoError(t, err)
+	require.Len(t, layers, 1)
+	assert.Equal(t, storage.ConstitutionLayerOrg, layers[0].Layer)
+	assert.Equal(t, "org-v2", layers[0].Name)
+}
+
+func TestGetConstitutionLayer_NotFound(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.GetConstitutionLayer(ctx, storage.ConstitutionLayerDomain)
+	require.ErrorIs(t, err, storage.ErrConstitutionNotFound)
+}
+
+func TestGetAllLayers_Empty(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	layers, err := store.GetAllLayers(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, layers)
 }

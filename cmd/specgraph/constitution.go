@@ -42,12 +42,22 @@ var constitutionShowCmd = &cobra.Command{
 
 var constitutionShowJSON bool
 
+var constitutionShowLayer string
+
 func runConstitutionShow(cmd *cobra.Command, _ []string) error {
 	client, err := constitutionClient()
 	if err != nil {
 		return err
 	}
-	resp, err := client.GetConstitution(cmd.Context(), connect.NewRequest(&specv1.GetConstitutionRequest{}))
+	req := &specv1.GetConstitutionRequest{}
+	if constitutionShowLayer != "" {
+		resolved := constitutionLayerStringToProto(constitutionShowLayer)
+		if resolved == specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED {
+			return fmt.Errorf("invalid layer %q; must be user, org, project, or domain", constitutionShowLayer)
+		}
+		req.Layer = resolved
+	}
+	resp, err := client.GetConstitution(cmd.Context(), connect.NewRequest(req))
 	if err != nil {
 		return fmt.Errorf("get constitution: %w", err)
 	}
@@ -128,6 +138,8 @@ var constitutionImportCmd = &cobra.Command{
 
 var importProjectSlug string
 
+var importLayerFlag string
+
 func runConstitutionImport(cmd *cobra.Command, args []string) error {
 	var data []byte
 	var err error
@@ -150,6 +162,18 @@ func runConstitutionImport(cmd *cobra.Command, args []string) error {
 	}
 
 	pb := constitutionConfigToProto(cc)
+
+	// Layer resolution: --layer flag > YAML layer field > default "project".
+	if importLayerFlag != "" {
+		resolved := constitutionLayerStringToProto(importLayerFlag)
+		if resolved == specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED {
+			return fmt.Errorf("invalid layer %q; must be user, org, project, or domain", importLayerFlag)
+		}
+		pb.Layer = resolved
+	}
+	if pb.Layer == specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED {
+		pb.Layer = specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT
+	}
 
 	var client specgraphv1connect.ConstitutionServiceClient
 	if importProjectSlug != "" {
@@ -266,8 +290,10 @@ func init() {
 	constitutionEmitCmd.Flags().StringVarP(&emitOutput, "output", "o", "", "write output to file instead of stdout")
 
 	constitutionImportCmd.Flags().StringVar(&importProjectSlug, "project", "", "project slug (defaults to slug from .specgraph.yaml)")
+	constitutionImportCmd.Flags().StringVar(&importLayerFlag, "layer", "", "constitution layer (user|org|project|domain; default: project)")
 
 	constitutionShowCmd.Flags().BoolVar(&constitutionShowJSON, "json", false, "output as JSON")
+	constitutionShowCmd.Flags().StringVar(&constitutionShowLayer, "layer", "", "show specific layer (user|org|project|domain; default: merged)")
 	constitutionCmd.AddCommand(constitutionShowCmd)
 	constitutionCmd.AddCommand(constitutionEmitCmd)
 	constitutionCmd.AddCommand(constitutionImportCmd)

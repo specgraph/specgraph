@@ -25,6 +25,8 @@ type Constitution struct {
 	Layer        ConstitutionLayer `json:"layer,omitempty"`
 	Name         string            `json:"name,omitempty"`
 	Version      int32             `json:"version,omitempty"`
+	SourceURL    string            `json:"source_url,omitempty"`
+	SourceHash   string            `json:"source_hash,omitempty"`
 	Tech         *TechStack        `json:"tech,omitempty"`
 	Principles   []Principle       `json:"principles,omitempty"`
 	Process      *ProcessConfig    `json:"process,omitempty"`
@@ -58,6 +60,7 @@ type Principle struct {
 	Statement  string `json:"statement,omitempty"`
 	Rationale  string `json:"rationale,omitempty"`
 	Exceptions string `json:"exceptions,omitempty"`
+	Delete     bool   `json:"$delete,omitempty"`
 }
 
 // ProcessConfig describes the team's review and deployment processes.
@@ -90,10 +93,12 @@ type Antipattern struct {
 	Pattern string `json:"pattern,omitempty"`
 	Why     string `json:"why,omitempty"`
 	Instead string `json:"instead,omitempty"`
+	Delete  bool   `json:"$delete,omitempty"`
 }
 
 // Reference points to an external document related to the constitution.
 type Reference struct {
-	Type string `json:"type,omitempty"`
-	Path string `json:"path,omitempty"`
+	Type   string `json:"type,omitempty"`
+	Path   string `json:"path,omitempty"`
+	Delete bool   `json:"$delete,omitempty"`
 }

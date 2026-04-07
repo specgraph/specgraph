@@ -21,22 +21,67 @@ import (
 
 type mockConstitutionBackend struct {
 	stubBackend
-	mu           sync.Mutex
-	constitution *storage.Constitution
-	version      int32
+	mu      sync.Mutex
+	layers  map[storage.ConstitutionLayer]*storage.Constitution
+	version int32
 }
 
 func newMockConstitutionBackend() *mockConstitutionBackend {
-	return &mockConstitutionBackend{}
+	return &mockConstitutionBackend{
+		layers: make(map[storage.ConstitutionLayer]*storage.Constitution),
+	}
 }
 
 func (m *mockConstitutionBackend) GetConstitution(_ context.Context) (*storage.Constitution, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.constitution == nil {
+	if len(m.layers) == 0 {
 		return nil, storage.ErrConstitutionNotFound
 	}
-	return m.constitution, nil
+	// Return highest-precedence layer (domain > project > org > user).
+	for _, l := range []storage.ConstitutionLayer{
+		storage.ConstitutionLayerDomain,
+		storage.ConstitutionLayerProject,
+		storage.ConstitutionLayerOrg,
+		storage.ConstitutionLayerUser,
+	} {
+		if c, ok := m.layers[l]; ok {
+			return c, nil
+		}
+	}
+	return nil, storage.ErrConstitutionNotFound
+}
+
+func (m *mockConstitutionBackend) GetConstitutionLayer(_ context.Context, layer storage.ConstitutionLayer) (*storage.Constitution, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	c, ok := m.layers[layer]
+	if !ok {
+		return nil, storage.ErrConstitutionNotFound
+	}
+	return c, nil
+}
+
+func (m *mockConstitutionBackend) GetAllLayers(_ context.Context) ([]*storage.Constitution, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.layers) == 0 {
+		return []*storage.Constitution{}, nil
+	}
+	// Return layers in a stable precedence order: user, org, project, domain.
+	order := []storage.ConstitutionLayer{
+		storage.ConstitutionLayerUser,
+		storage.ConstitutionLayerOrg,
+		storage.ConstitutionLayerProject,
+		storage.ConstitutionLayerDomain,
+	}
+	result := make([]*storage.Constitution, 0, len(m.layers))
+	for _, l := range order {
+		if c, ok := m.layers[l]; ok {
+			result = append(result, c)
+		}
+	}
+	return result, nil
 }
 
 func (m *mockConstitutionBackend) UpdateConstitution(_ context.Context, c *storage.Constitution) (*storage.Constitution, error) {
@@ -44,7 +89,7 @@ func (m *mockConstitutionBackend) UpdateConstitution(_ context.Context, c *stora
 	defer m.mu.Unlock()
 	m.version++
 	c.Version = m.version
-	m.constitution = c
+	m.layers[c.Layer] = c
 	return c, nil
 }
 
@@ -76,6 +121,9 @@ func TestConstitutionHandler_UpdateAndGet(t *testing.T) {
 		Constitution: &specv1.Constitution{
 			Name:  "specgraph",
 			Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
+			Tech: &specv1.TechConfig{
+				Languages: &specv1.LanguageConfig{Primary: "go"},
+			},
 		},
 	}))
 	require.NoError(t, err)
@@ -83,10 +131,14 @@ func TestConstitutionHandler_UpdateAndGet(t *testing.T) {
 	require.Equal(t, "specgraph", updateResp.Msg.Constitution.Name)
 	require.Equal(t, int32(1), updateResp.Msg.Constitution.Version)
 
+	// GetConstitution with no layer filter merges all layers via the merge engine.
+	// Name is not a merged field; verify the response is non-nil and that merged
+	// fields (Tech) are present.
 	getResp, err := client.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{}))
 	require.NoError(t, err)
 	require.NotNil(t, getResp.Msg.Constitution)
-	require.Equal(t, "specgraph", getResp.Msg.Constitution.Name)
+	require.NotNil(t, getResp.Msg.Constitution.Tech)
+	require.Equal(t, "go", getResp.Msg.Constitution.Tech.Languages.Primary)
 }
 
 func TestConstitutionHandler_UpdateNilBody(t *testing.T) {
@@ -98,6 +150,36 @@ func TestConstitutionHandler_UpdateNilBody(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestConstitutionHandler_GetByLayer(t *testing.T) {
+	client := setupConstitutionServer(t)
+	ctx := context.Background()
+
+	// Store a constitution at the org layer.
+	_, err := client.UpdateConstitution(ctx, connect.NewRequest(&specv1.UpdateConstitutionRequest{
+		Constitution: &specv1.Constitution{
+			Name:  "org-constitution",
+			Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG,
+			Tech: &specv1.TechConfig{
+				Languages: &specv1.LanguageConfig{Primary: "go"},
+			},
+		},
+	}))
+	require.NoError(t, err)
+
+	// Query with a specific layer filter — exercises the single-layer branch.
+	resp, err := client.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{
+		Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG,
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.Constitution)
+	require.Equal(t, specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG, resp.Msg.Constitution.Layer)
+	require.NotNil(t, resp.Msg.Constitution.Tech)
+	require.Equal(t, "go", resp.Msg.Constitution.Tech.Languages.Primary)
+
+	// Single-layer response has no provenance (no merge performed).
+	require.Empty(t, resp.Msg.Provenance)
 }
 
 func TestConstitutionHandler_EmitNotFound(t *testing.T) {

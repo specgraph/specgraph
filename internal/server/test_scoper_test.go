@@ -147,6 +147,14 @@ func (stubBackend) GetConstitution(context.Context) (*storage.Constitution, erro
 	return nil, errNotImplemented
 }
 
+func (stubBackend) GetConstitutionLayer(_ context.Context, _ storage.ConstitutionLayer) (*storage.Constitution, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) GetAllLayers(_ context.Context) ([]*storage.Constitution, error) {
+	return nil, errNotImplemented
+}
+
 func (stubBackend) UpdateConstitution(context.Context, *storage.Constitution) (*storage.Constitution, error) {
 	return nil, errNotImplemented
 }

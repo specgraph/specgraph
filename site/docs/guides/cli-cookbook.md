@@ -360,7 +360,54 @@ specgraph changes my-spec --diff --from=3 --to=7
 
 ---
 
-## 9. Export and restore a project
+## 9. Set up a multi-layer constitution
+
+**Goal:** Import org-wide standards and project overrides into separate constitution
+layers, then inspect the merged and raw results.
+
+```bash
+# Import org-wide standards into the org layer
+specgraph constitution import org-standards.yaml --layer org
+
+# Import project-level overrides (with $delete to remove inherited items)
+specgraph constitution import project-overrides.yaml --layer project
+
+# View the merged (effective) constitution across all layers
+specgraph constitution show
+
+# View a single raw layer without merging
+specgraph constitution show --layer org
+
+# Emit the merged constitution as a CLAUDE.md inject
+specgraph constitution emit --format claude-md
+```
+
+??? example "Expected output — `constitution show` (truncated)"
+    ```
+    Constitution (merged: org → project)
+
+    TECH
+      primary language:  go          [project]
+      allowed:           go, python  [org ∪ project]
+      runtime:           GKE         [project]
+
+    PRINCIPLES
+      [project] backward-compat  All API changes must be backward compatible
+      [org]     least-privilege  Services request only required permissions
+
+    CONSTRAINTS
+      [org]     All secrets via Secret Manager, never env vars
+      [project] No direct database access from API handlers
+    ```
+
+!!! tip
+    Use `--layer` on `constitution show` to inspect a single raw layer before
+    merging. Items marked `$delete: true` in a higher layer are excluded from
+    the merged output but visible when viewing the raw layer directly.
+
+---
+
+## 10. Export and restore a project
 
 **Goal:** Back up a project's specs, decisions, constitution, and slices to a portable JSON file, then verify or restore it.
 

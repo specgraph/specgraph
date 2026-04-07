@@ -68,11 +68,64 @@ the project layer doesn't explicitly override. Every resolved value carries a
 provenance trail — you can always see which layer set it and which layers it
 overrode.
 
-!!! info "Planned"
-    Multi-layer composition is designed but not yet shipped. Currently,
-    SpecGraph stores one constitution per project at a single layer. The
-    layer field is stored and the override model is defined, but automatic
-    merging across layers and provenance tracking are not yet implemented.
+### Importing layers
+
+Use `specgraph constitution import` to load a constitution file into a specific
+layer. The default layer is `project`:
+
+```bash
+# Import org-wide standards into the org layer
+specgraph constitution import org-standards.yaml --layer org
+
+# Import project overrides (default layer: project)
+specgraph constitution import project-overrides.yaml
+```
+
+### Merge semantics
+
+When SpecGraph resolves the effective constitution, it merges all present layers
+from most-general to most-specific. Higher layers win:
+
+| Field type | Merge behavior |
+|------------|----------------|
+| Scalars (`primary`, `runtime`, etc.) | Highest layer wins |
+| String lists (`allowed`, `constraints`) | Union of all layers |
+| Keyed objects (`principles` by `id`, `antipatterns` by `pattern`, `references` by `path`) | Merge by key — highest layer entry wins |
+
+### The `$delete` directive
+
+A higher layer can remove an item inherited from a lower layer by adding
+`$delete: true` to the keyed entry:
+
+```yaml
+# project-overrides.yaml
+layer: project
+principles:
+  - id: "p3"
+    $delete: true
+```
+
+This removes the `p3` principle from the merged result even if it exists in the
+org or user layer. The directive works on any keyed list field (`principles`,
+`antipatterns`, `references`).
+
+### Viewing the constitution
+
+```bash
+# View the merged (effective) constitution across all layers
+specgraph constitution show
+
+# View a single raw layer without merging
+specgraph constitution show --layer org
+```
+
+### Provenance
+
+The SpecGraph dashboard annotates each field and list item with a layer
+badge — `[user]`, `[org]`, `[project]`, or `[domain]` — showing which layer
+set it. When a lower-layer value was overridden, the override source is
+shown inline so the decision is always traceable. Emitted tool files
+(`constitution emit`) reflect the merged result without layer annotations.
 
 ---
 
