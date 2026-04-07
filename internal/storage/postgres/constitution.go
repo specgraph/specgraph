@@ -44,7 +44,14 @@ func (s *Store) GetConstitution(ctx context.Context) (*storage.Constitution, err
 	err := s.queryRow(ctx,
 		`SELECT id, layer, name, version, data, source_url, source_hash, created_at, updated_at
 		 FROM constitutions WHERE project_slug = $1
-		 ORDER BY version DESC LIMIT 1`,
+		 ORDER BY CASE layer
+		   WHEN 'domain' THEN 1
+		   WHEN 'project' THEN 2
+		   WHEN 'org' THEN 3
+		   WHEN 'user' THEN 4
+		   ELSE 5
+		 END, version DESC
+		 LIMIT 1`,
 		s.project,
 	).Scan(&id, &layer, &name, &version, &dataJSON, &sourceURL, &sourceHash, &createdAt, &updatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -146,6 +153,8 @@ func (s *Store) GetAllLayers(ctx context.Context) ([]*storage.Constitution, erro
 func (s *Store) UpdateConstitution(ctx context.Context, constitution *storage.Constitution) (*storage.Constitution, error) {
 	now := s.now()
 
+	// Default to project layer for backward compatibility — pre-layered callers
+	// (e.g., CLI import without --layer) pass ConstitutionLayerUnspecified.
 	layer := string(constitution.Layer)
 	if layer == "" {
 		layer = string(storage.ConstitutionLayerProject)

@@ -206,8 +206,16 @@ var _ = Describe("Constitution", Ordered, func() {
 				ids = append(ids, p.Id)
 			}
 			Expect(ids).To(ContainElements("p1", "p2", "p3-new"))
-			// Provenance must be populated for merged results
+			// Provenance must be populated for merged results.
 			Expect(resp.Msg.Provenance).NotTo(BeEmpty())
+			// Verify specific provenance: p2 overridden by project layer.
+			var p2Prov specv1.ConstitutionLayer
+			for _, pe := range resp.Msg.Provenance {
+				if pe.Path == "principles[p2]" {
+					p2Prov = pe.Layer
+				}
+			}
+			Expect(p2Prov).To(Equal(specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT))
 		})
 
 		It("returns raw org layer when layer filter is set", func() {

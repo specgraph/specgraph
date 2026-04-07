@@ -78,8 +78,12 @@
 
   <table class="meta">
     <tbody>
-      <tr><td class="label">Layer</td><td><span class="badge">{layerLabel(constitution.layer)}</span></td></tr>
-      <tr><td class="label">Version</td><td>{constitution.version}</td></tr>
+      {#if provenance.length > 0}
+        <tr><td class="label">View</td><td><span class="badge">Merged</span></td></tr>
+      {:else}
+        <tr><td class="label">Layer</td><td><span class="badge">{layerLabel(constitution.layer)}</span></td></tr>
+        <tr><td class="label">Version</td><td>{constitution.version}</td></tr>
+      {/if}
     </tbody>
   </table>
 

@@ -15,6 +15,10 @@ CREATE UNIQUE INDEX idx_constitutions_project_layer ON constitutions (project_sl
 
 -- +goose Down
 
+-- WARNING: The unique index on (project_slug) will fail if multiple rows per
+-- project exist (i.e., different layers were stored). Before running this
+-- rollback, deduplicate to one row per project_slug or the final CREATE INDEX
+-- will error.
 DROP INDEX IF EXISTS idx_constitutions_project_layer;
 ALTER TABLE constitutions DROP COLUMN IF EXISTS source_hash;
 ALTER TABLE constitutions DROP COLUMN IF EXISTS source_url;

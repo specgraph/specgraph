@@ -7,6 +7,8 @@
 package merge
 
 import (
+	"slices"
+
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
@@ -296,10 +298,8 @@ func Layers(layers []*storage.Constitution) (*Result, error) {
 
 // removeString removes the first occurrence of s from slice and returns the result.
 func removeString(slice []string, s string) []string {
-	for i, v := range slice {
-		if v == s {
-			return append(slice[:i], slice[i+1:]...)
-		}
+	if i := slices.Index(slice, s); i >= 0 {
+		return slices.Delete(slice, i, i+1)
 	}
 	return slice
 }

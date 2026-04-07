@@ -121,10 +121,11 @@ specgraph constitution show --layer org
 
 ### Provenance
 
-The SpecGraph dashboard and execution bundle output annotate each field and
-list item with a layer badge — `[user]`, `[org]`, `[project]`, or `[domain]`
-— showing which layer set it. When a lower-layer value was overridden, the
-override source is shown inline so the decision is always traceable.
+The SpecGraph dashboard annotates each field and list item with a layer
+badge — `[user]`, `[org]`, `[project]`, or `[domain]` — showing which layer
+set it. When a lower-layer value was overridden, the override source is
+shown inline so the decision is always traceable. Emitted tool files
+(`constitution emit`) reflect the merged result without layer annotations.
 
 ---
 
