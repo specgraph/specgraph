@@ -174,22 +174,12 @@ func (s *Store) UpdateConstitution(ctx context.Context, constitution *storage.Co
 		return nil, fmt.Errorf("postgres: update constitution marshal: %w", err)
 	}
 
+	// Always generate a fresh ID for the INSERT path. On conflict (existing
+	// row for this project+layer), the existing ID is preserved — no pre-read
+	// needed and no race between concurrent first-writes.
 	id := constitution.ID
 	if id == "" {
-		// Reuse existing constitution ID for this project+layer so ON CONFLICT fires.
-		var existingID string
-		existErr := s.queryRow(ctx,
-			`SELECT id FROM constitutions WHERE project_slug = $1 AND layer = $2`,
-			s.project, layer,
-		).Scan(&existingID)
-		if existErr != nil && !errors.Is(existErr, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("postgres: update constitution: lookup existing: %w", existErr)
-		}
-		if existingID != "" {
-			id = existingID
-		} else {
-			id = newID("con")
-		}
+		id = newID("con")
 	}
 
 	var (
@@ -208,14 +198,12 @@ func (s *Store) UpdateConstitution(ctx context.Context, constitution *storage.Co
 		`INSERT INTO constitutions (id, project_slug, layer, name, version, data, source_url, source_hash, created_at, updated_at)
 		 VALUES ($1, $2, $3, $4, 1, $5, $6, $7, $8, $8)
 		 ON CONFLICT (project_slug, layer) DO UPDATE
-		   SET id         = EXCLUDED.id,
-		       layer      = EXCLUDED.layer,
-		       name       = EXCLUDED.name,
-		       data       = EXCLUDED.data,
+		   SET name        = EXCLUDED.name,
+		       data        = EXCLUDED.data,
 		       source_url  = EXCLUDED.source_url,
 		       source_hash = EXCLUDED.source_hash,
-		       version    = constitutions.version + 1,
-		       updated_at = EXCLUDED.updated_at
+		       version     = constitutions.version + 1,
+		       updated_at  = EXCLUDED.updated_at
 		 RETURNING id, layer, name, version, data, source_url, source_hash, created_at, updated_at`,
 		id, s.project, layer, constitution.Name, dataJSON, constitution.SourceURL, constitution.SourceHash, now,
 	).Scan(&retID, &retLayer, &retName, &retVersion, &retDataJSON, &retSourceURL, &retSourceHash, &retCreatedAt, &retUpdatedAt)
