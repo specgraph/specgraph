@@ -219,7 +219,11 @@ type Constitution struct {
 	// Timestamp of initial creation.
 	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// Timestamp of most recent update.
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// URL where this layer was imported from (empty for local imports).
+	SourceUrl string `protobuf:"bytes,13,opt,name=source_url,json=sourceUrl,proto3" json:"source_url,omitempty"`
+	// Content hash of the source at import time (for drift detection).
+	SourceHash    string `protobuf:"bytes,14,opt,name=source_hash,json=sourceHash,proto3" json:"source_hash,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -336,6 +340,20 @@ func (x *Constitution) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *Constitution) GetSourceUrl() string {
+	if x != nil {
+		return x.SourceUrl
+	}
+	return ""
+}
+
+func (x *Constitution) GetSourceHash() string {
+	if x != nil {
+		return x.SourceHash
+	}
+	return ""
 }
 
 // TechConfig describes the technology stack for a project.
@@ -915,8 +933,10 @@ func (x *Reference) GetPath() string {
 }
 
 // GetConstitutionRequest requests the active constitution.
+// If layer is UNSPECIFIED, returns the merged result across all layers.
 type GetConstitutionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	Layer         ConstitutionLayer      `protobuf:"varint,1,opt,name=layer,proto3,enum=specgraph.v1.ConstitutionLayer" json:"layer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -951,17 +971,80 @@ func (*GetConstitutionRequest) Descriptor() ([]byte, []int) {
 	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{10}
 }
 
+func (x *GetConstitutionRequest) GetLayer() ConstitutionLayer {
+	if x != nil {
+		return x.Layer
+	}
+	return ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED
+}
+
+// ProvenanceEntry tracks which layer contributed a specific field or item.
+type ProvenanceEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	Layer         ConstitutionLayer      `protobuf:"varint,2,opt,name=layer,proto3,enum=specgraph.v1.ConstitutionLayer" json:"layer,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProvenanceEntry) Reset() {
+	*x = ProvenanceEntry{}
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProvenanceEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProvenanceEntry) ProtoMessage() {}
+
+func (x *ProvenanceEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProvenanceEntry.ProtoReflect.Descriptor instead.
+func (*ProvenanceEntry) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ProvenanceEntry) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *ProvenanceEntry) GetLayer() ConstitutionLayer {
+	if x != nil {
+		return x.Layer
+	}
+	return ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED
+}
+
 // GetConstitutionResponse wraps the active constitution.
 type GetConstitutionResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Constitution  *Constitution          `protobuf:"bytes,1,opt,name=constitution,proto3" json:"constitution,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Constitution *Constitution          `protobuf:"bytes,1,opt,name=constitution,proto3" json:"constitution,omitempty"`
+	// Provenance entries indicating which layer each value came from.
+	// Only populated when returning a merged result (no layer filter).
+	Provenance    []*ProvenanceEntry `protobuf:"bytes,2,rep,name=provenance,proto3" json:"provenance,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetConstitutionResponse) Reset() {
 	*x = GetConstitutionResponse{}
-	mi := &file_specgraph_v1_constitution_proto_msgTypes[11]
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -973,7 +1056,7 @@ func (x *GetConstitutionResponse) String() string {
 func (*GetConstitutionResponse) ProtoMessage() {}
 
 func (x *GetConstitutionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_constitution_proto_msgTypes[11]
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -986,12 +1069,19 @@ func (x *GetConstitutionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetConstitutionResponse.ProtoReflect.Descriptor instead.
 func (*GetConstitutionResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{11}
+	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetConstitutionResponse) GetConstitution() *Constitution {
 	if x != nil {
 		return x.Constitution
+	}
+	return nil
+}
+
+func (x *GetConstitutionResponse) GetProvenance() []*ProvenanceEntry {
+	if x != nil {
+		return x.Provenance
 	}
 	return nil
 }
@@ -1006,7 +1096,7 @@ type UpdateConstitutionRequest struct {
 
 func (x *UpdateConstitutionRequest) Reset() {
 	*x = UpdateConstitutionRequest{}
-	mi := &file_specgraph_v1_constitution_proto_msgTypes[12]
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1018,7 +1108,7 @@ func (x *UpdateConstitutionRequest) String() string {
 func (*UpdateConstitutionRequest) ProtoMessage() {}
 
 func (x *UpdateConstitutionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_constitution_proto_msgTypes[12]
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1031,7 +1121,7 @@ func (x *UpdateConstitutionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateConstitutionRequest.ProtoReflect.Descriptor instead.
 func (*UpdateConstitutionRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{12}
+	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UpdateConstitutionRequest) GetConstitution() *Constitution {
@@ -1051,7 +1141,7 @@ type UpdateConstitutionResponse struct {
 
 func (x *UpdateConstitutionResponse) Reset() {
 	*x = UpdateConstitutionResponse{}
-	mi := &file_specgraph_v1_constitution_proto_msgTypes[13]
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1063,7 +1153,7 @@ func (x *UpdateConstitutionResponse) String() string {
 func (*UpdateConstitutionResponse) ProtoMessage() {}
 
 func (x *UpdateConstitutionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_constitution_proto_msgTypes[13]
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1076,7 +1166,7 @@ func (x *UpdateConstitutionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateConstitutionResponse.ProtoReflect.Descriptor instead.
 func (*UpdateConstitutionResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{13}
+	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *UpdateConstitutionResponse) GetConstitution() *Constitution {
@@ -1097,7 +1187,7 @@ type EmitToolFilesRequest struct {
 
 func (x *EmitToolFilesRequest) Reset() {
 	*x = EmitToolFilesRequest{}
-	mi := &file_specgraph_v1_constitution_proto_msgTypes[14]
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1109,7 +1199,7 @@ func (x *EmitToolFilesRequest) String() string {
 func (*EmitToolFilesRequest) ProtoMessage() {}
 
 func (x *EmitToolFilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_constitution_proto_msgTypes[14]
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1122,7 +1212,7 @@ func (x *EmitToolFilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EmitToolFilesRequest.ProtoReflect.Descriptor instead.
 func (*EmitToolFilesRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{14}
+	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *EmitToolFilesRequest) GetFormat() OutputFormat {
@@ -1145,7 +1235,7 @@ type EmitToolFilesResponse struct {
 
 func (x *EmitToolFilesResponse) Reset() {
 	*x = EmitToolFilesResponse{}
-	mi := &file_specgraph_v1_constitution_proto_msgTypes[15]
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1157,7 +1247,7 @@ func (x *EmitToolFilesResponse) String() string {
 func (*EmitToolFilesResponse) ProtoMessage() {}
 
 func (x *EmitToolFilesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_constitution_proto_msgTypes[15]
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1170,7 +1260,7 @@ func (x *EmitToolFilesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EmitToolFilesResponse.ProtoReflect.Descriptor instead.
 func (*EmitToolFilesResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{15}
+	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *EmitToolFilesResponse) GetContent() string {
@@ -1191,7 +1281,7 @@ var File_specgraph_v1_constitution_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_constitution_proto_rawDesc = "" +
 	"\n" +
-	"\x1fspecgraph/v1/constitution.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb1\x04\n" +
+	"\x1fspecgraph/v1/constitution.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf1\x04\n" +
 	"\fConstitution\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x125\n" +
 	"\x05layer\x18\x02 \x01(\x0e2\x1f.specgraph.v1.ConstitutionLayerR\x05layer\x12\x12\n" +
@@ -1211,7 +1301,11 @@ const file_specgraph_v1_constitution_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xed\x04\n" +
+	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
+	"\n" +
+	"source_url\x18\r \x01(\tR\tsourceUrl\x12\x1f\n" +
+	"\vsource_hash\x18\x0e \x01(\tR\n" +
+	"sourceHash\"\xed\x04\n" +
 	"\n" +
 	"TechConfig\x12:\n" +
 	"\tlanguages\x18\x01 \x01(\v2\x1c.specgraph.v1.LanguageConfigR\tlanguages\x12H\n" +
@@ -1270,10 +1364,17 @@ const file_specgraph_v1_constitution_proto_rawDesc = "" +
 	"\ainstead\x18\x03 \x01(\tR\ainstead\"c\n" +
 	"\tReference\x12B\n" +
 	"\x0ereference_type\x18\x01 \x01(\x0e2\x1b.specgraph.v1.ReferenceTypeR\rreferenceType\x12\x12\n" +
-	"\x04path\x18\x02 \x01(\tR\x04path\"\x18\n" +
-	"\x16GetConstitutionRequest\"Y\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\"O\n" +
+	"\x16GetConstitutionRequest\x125\n" +
+	"\x05layer\x18\x01 \x01(\x0e2\x1f.specgraph.v1.ConstitutionLayerR\x05layer\"\\\n" +
+	"\x0fProvenanceEntry\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x125\n" +
+	"\x05layer\x18\x02 \x01(\x0e2\x1f.specgraph.v1.ConstitutionLayerR\x05layer\"\x98\x01\n" +
 	"\x17GetConstitutionResponse\x12>\n" +
-	"\fconstitution\x18\x01 \x01(\v2\x1a.specgraph.v1.ConstitutionR\fconstitution\"[\n" +
+	"\fconstitution\x18\x01 \x01(\v2\x1a.specgraph.v1.ConstitutionR\fconstitution\x12=\n" +
+	"\n" +
+	"provenance\x18\x02 \x03(\v2\x1d.specgraph.v1.ProvenanceEntryR\n" +
+	"provenance\"[\n" +
 	"\x19UpdateConstitutionRequest\x12>\n" +
 	"\fconstitution\x18\x01 \x01(\v2\x1a.specgraph.v1.ConstitutionR\fconstitution\"\\\n" +
 	"\x1aUpdateConstitutionResponse\x12>\n" +
@@ -1318,7 +1419,7 @@ func file_specgraph_v1_constitution_proto_rawDescGZIP() []byte {
 }
 
 var file_specgraph_v1_constitution_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_specgraph_v1_constitution_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_specgraph_v1_constitution_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_specgraph_v1_constitution_proto_goTypes = []any{
 	(ConstitutionLayer)(0),             // 0: specgraph.v1.ConstitutionLayer
 	(OutputFormat)(0),                  // 1: specgraph.v1.OutputFormat
@@ -1334,17 +1435,18 @@ var file_specgraph_v1_constitution_proto_goTypes = []any{
 	(*Antipattern)(nil),                // 11: specgraph.v1.Antipattern
 	(*Reference)(nil),                  // 12: specgraph.v1.Reference
 	(*GetConstitutionRequest)(nil),     // 13: specgraph.v1.GetConstitutionRequest
-	(*GetConstitutionResponse)(nil),    // 14: specgraph.v1.GetConstitutionResponse
-	(*UpdateConstitutionRequest)(nil),  // 15: specgraph.v1.UpdateConstitutionRequest
-	(*UpdateConstitutionResponse)(nil), // 16: specgraph.v1.UpdateConstitutionResponse
-	(*EmitToolFilesRequest)(nil),       // 17: specgraph.v1.EmitToolFilesRequest
-	(*EmitToolFilesResponse)(nil),      // 18: specgraph.v1.EmitToolFilesResponse
-	nil,                                // 19: specgraph.v1.TechConfig.FrameworksEntry
-	nil,                                // 20: specgraph.v1.TechConfig.InfrastructureEntry
-	nil,                                // 21: specgraph.v1.TechConfig.ApiStandardsEntry
-	nil,                                // 22: specgraph.v1.TechConfig.DataEntry
-	nil,                                // 23: specgraph.v1.LanguageConfig.ForbiddenReasonsEntry
-	(*timestamppb.Timestamp)(nil),      // 24: google.protobuf.Timestamp
+	(*ProvenanceEntry)(nil),            // 14: specgraph.v1.ProvenanceEntry
+	(*GetConstitutionResponse)(nil),    // 15: specgraph.v1.GetConstitutionResponse
+	(*UpdateConstitutionRequest)(nil),  // 16: specgraph.v1.UpdateConstitutionRequest
+	(*UpdateConstitutionResponse)(nil), // 17: specgraph.v1.UpdateConstitutionResponse
+	(*EmitToolFilesRequest)(nil),       // 18: specgraph.v1.EmitToolFilesRequest
+	(*EmitToolFilesResponse)(nil),      // 19: specgraph.v1.EmitToolFilesResponse
+	nil,                                // 20: specgraph.v1.TechConfig.FrameworksEntry
+	nil,                                // 21: specgraph.v1.TechConfig.InfrastructureEntry
+	nil,                                // 22: specgraph.v1.TechConfig.ApiStandardsEntry
+	nil,                                // 23: specgraph.v1.TechConfig.DataEntry
+	nil,                                // 24: specgraph.v1.LanguageConfig.ForbiddenReasonsEntry
+	(*timestamppb.Timestamp)(nil),      // 25: google.protobuf.Timestamp
 }
 var file_specgraph_v1_constitution_proto_depIdxs = []int32{
 	0,  // 0: specgraph.v1.Constitution.layer:type_name -> specgraph.v1.ConstitutionLayer
@@ -1353,33 +1455,36 @@ var file_specgraph_v1_constitution_proto_depIdxs = []int32{
 	7,  // 3: specgraph.v1.Constitution.process:type_name -> specgraph.v1.ProcessConfig
 	11, // 4: specgraph.v1.Constitution.antipatterns:type_name -> specgraph.v1.Antipattern
 	12, // 5: specgraph.v1.Constitution.references:type_name -> specgraph.v1.Reference
-	24, // 6: specgraph.v1.Constitution.created_at:type_name -> google.protobuf.Timestamp
-	24, // 7: specgraph.v1.Constitution.updated_at:type_name -> google.protobuf.Timestamp
+	25, // 6: specgraph.v1.Constitution.created_at:type_name -> google.protobuf.Timestamp
+	25, // 7: specgraph.v1.Constitution.updated_at:type_name -> google.protobuf.Timestamp
 	5,  // 8: specgraph.v1.TechConfig.languages:type_name -> specgraph.v1.LanguageConfig
-	19, // 9: specgraph.v1.TechConfig.frameworks:type_name -> specgraph.v1.TechConfig.FrameworksEntry
-	20, // 10: specgraph.v1.TechConfig.infrastructure:type_name -> specgraph.v1.TechConfig.InfrastructureEntry
-	21, // 11: specgraph.v1.TechConfig.api_standards:type_name -> specgraph.v1.TechConfig.ApiStandardsEntry
-	22, // 12: specgraph.v1.TechConfig.data:type_name -> specgraph.v1.TechConfig.DataEntry
-	23, // 13: specgraph.v1.LanguageConfig.forbidden_reasons:type_name -> specgraph.v1.LanguageConfig.ForbiddenReasonsEntry
+	20, // 9: specgraph.v1.TechConfig.frameworks:type_name -> specgraph.v1.TechConfig.FrameworksEntry
+	21, // 10: specgraph.v1.TechConfig.infrastructure:type_name -> specgraph.v1.TechConfig.InfrastructureEntry
+	22, // 11: specgraph.v1.TechConfig.api_standards:type_name -> specgraph.v1.TechConfig.ApiStandardsEntry
+	23, // 12: specgraph.v1.TechConfig.data:type_name -> specgraph.v1.TechConfig.DataEntry
+	24, // 13: specgraph.v1.LanguageConfig.forbidden_reasons:type_name -> specgraph.v1.LanguageConfig.ForbiddenReasonsEntry
 	8,  // 14: specgraph.v1.ProcessConfig.security_review:type_name -> specgraph.v1.SecurityReviewConfig
 	9,  // 15: specgraph.v1.ProcessConfig.deployment:type_name -> specgraph.v1.DeploymentConfig
 	10, // 16: specgraph.v1.ProcessConfig.documentation:type_name -> specgraph.v1.DocumentationConfig
 	2,  // 17: specgraph.v1.Reference.reference_type:type_name -> specgraph.v1.ReferenceType
-	3,  // 18: specgraph.v1.GetConstitutionResponse.constitution:type_name -> specgraph.v1.Constitution
-	3,  // 19: specgraph.v1.UpdateConstitutionRequest.constitution:type_name -> specgraph.v1.Constitution
-	3,  // 20: specgraph.v1.UpdateConstitutionResponse.constitution:type_name -> specgraph.v1.Constitution
-	1,  // 21: specgraph.v1.EmitToolFilesRequest.format:type_name -> specgraph.v1.OutputFormat
-	13, // 22: specgraph.v1.ConstitutionService.GetConstitution:input_type -> specgraph.v1.GetConstitutionRequest
-	15, // 23: specgraph.v1.ConstitutionService.UpdateConstitution:input_type -> specgraph.v1.UpdateConstitutionRequest
-	17, // 24: specgraph.v1.ConstitutionService.EmitToolFiles:input_type -> specgraph.v1.EmitToolFilesRequest
-	14, // 25: specgraph.v1.ConstitutionService.GetConstitution:output_type -> specgraph.v1.GetConstitutionResponse
-	16, // 26: specgraph.v1.ConstitutionService.UpdateConstitution:output_type -> specgraph.v1.UpdateConstitutionResponse
-	18, // 27: specgraph.v1.ConstitutionService.EmitToolFiles:output_type -> specgraph.v1.EmitToolFilesResponse
-	25, // [25:28] is the sub-list for method output_type
-	22, // [22:25] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	0,  // 18: specgraph.v1.GetConstitutionRequest.layer:type_name -> specgraph.v1.ConstitutionLayer
+	0,  // 19: specgraph.v1.ProvenanceEntry.layer:type_name -> specgraph.v1.ConstitutionLayer
+	3,  // 20: specgraph.v1.GetConstitutionResponse.constitution:type_name -> specgraph.v1.Constitution
+	14, // 21: specgraph.v1.GetConstitutionResponse.provenance:type_name -> specgraph.v1.ProvenanceEntry
+	3,  // 22: specgraph.v1.UpdateConstitutionRequest.constitution:type_name -> specgraph.v1.Constitution
+	3,  // 23: specgraph.v1.UpdateConstitutionResponse.constitution:type_name -> specgraph.v1.Constitution
+	1,  // 24: specgraph.v1.EmitToolFilesRequest.format:type_name -> specgraph.v1.OutputFormat
+	13, // 25: specgraph.v1.ConstitutionService.GetConstitution:input_type -> specgraph.v1.GetConstitutionRequest
+	16, // 26: specgraph.v1.ConstitutionService.UpdateConstitution:input_type -> specgraph.v1.UpdateConstitutionRequest
+	18, // 27: specgraph.v1.ConstitutionService.EmitToolFiles:input_type -> specgraph.v1.EmitToolFilesRequest
+	15, // 28: specgraph.v1.ConstitutionService.GetConstitution:output_type -> specgraph.v1.GetConstitutionResponse
+	17, // 29: specgraph.v1.ConstitutionService.UpdateConstitution:output_type -> specgraph.v1.UpdateConstitutionResponse
+	19, // 30: specgraph.v1.ConstitutionService.EmitToolFiles:output_type -> specgraph.v1.EmitToolFilesResponse
+	28, // [28:31] is the sub-list for method output_type
+	25, // [25:28] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_constitution_proto_init() }
@@ -1393,7 +1498,7 @@ func file_specgraph_v1_constitution_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_constitution_proto_rawDesc), len(file_specgraph_v1_constitution_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

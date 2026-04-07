@@ -127,9 +127,10 @@ tasks:
     desc: Run Playwright UI E2E tests (all in Docker, no host ports needed)
     cmds:
       - |
-        docker compose -f e2e/ui/docker-compose.e2e.yaml up --build --abort-on-container-exit --exit-code-from playwright
+        compose="$(realpath e2e/ui/docker-compose.e2e.yaml)"
+        docker compose -f "$compose" up --build --abort-on-container-exit --exit-code-from playwright
         rc=$?
-        docker compose -f e2e/ui/docker-compose.e2e.yaml down -v
+        docker compose -f "$compose" down -v
         exit $rc
   test:e2e:ui:clean:
     desc: Clean up UI E2E Docker resources

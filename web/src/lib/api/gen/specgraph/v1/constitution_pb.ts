@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file specgraph/v1/constitution.proto.
  */
 export const file_specgraph_v1_constitution: GenFile = /*@__PURE__*/
-  fileDesc("Ch9zcGVjZ3JhcGgvdjEvY29uc3RpdHV0aW9uLnByb3RvEgxzcGVjZ3JhcGgudjEivwMKDENvbnN0aXR1dGlvbhIKCgJpZBgBIAEoCRIuCgVsYXllchgCIAEoDjIfLnNwZWNncmFwaC52MS5Db25zdGl0dXRpb25MYXllchIMCgRuYW1lGAMgASgJEg8KB3ZlcnNpb24YBCABKAUSJgoEdGVjaBgFIAEoCzIYLnNwZWNncmFwaC52MS5UZWNoQ29uZmlnEisKCnByaW5jaXBsZXMYBiADKAsyFy5zcGVjZ3JhcGgudjEuUHJpbmNpcGxlEiwKB3Byb2Nlc3MYByABKAsyGy5zcGVjZ3JhcGgudjEuUHJvY2Vzc0NvbmZpZxITCgtjb25zdHJhaW50cxgIIAMoCRIvCgxhbnRpcGF0dGVybnMYCSADKAsyGS5zcGVjZ3JhcGgudjEuQW50aXBhdHRlcm4SKwoKcmVmZXJlbmNlcxgKIAMoCzIXLnNwZWNncmFwaC52MS5SZWZlcmVuY2USLgoKY3JlYXRlZF9hdBgLIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgMIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiggQKClRlY2hDb25maWcSLwoJbGFuZ3VhZ2VzGAEgASgLMhwuc3BlY2dyYXBoLnYxLkxhbmd1YWdlQ29uZmlnEjwKCmZyYW1ld29ya3MYAiADKAsyKC5zcGVjZ3JhcGgudjEuVGVjaENvbmZpZy5GcmFtZXdvcmtzRW50cnkSRAoOaW5mcmFzdHJ1Y3R1cmUYAyADKAsyLC5zcGVjZ3JhcGgudjEuVGVjaENvbmZpZy5JbmZyYXN0cnVjdHVyZUVudHJ5EkEKDWFwaV9zdGFuZGFyZHMYBCADKAsyKi5zcGVjZ3JhcGgudjEuVGVjaENvbmZpZy5BcGlTdGFuZGFyZHNFbnRyeRIwCgRkYXRhGAUgAygLMiIuc3BlY2dyYXBoLnYxLlRlY2hDb25maWcuRGF0YUVudHJ5GjEKD0ZyYW1ld29ya3NFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBGjUKE0luZnJhc3RydWN0dXJlRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARozChFBcGlTdGFuZGFyZHNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBGisKCURhdGFFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIs0BCg5MYW5ndWFnZUNvbmZpZxIPCgdwcmltYXJ5GAEgASgJEg8KB2FsbG93ZWQYAiADKAkSEQoJZm9yYmlkZGVuGAMgAygJEk0KEWZvcmJpZGRlbl9yZWFzb25zGAQgAygLMjIuc3BlY2dyYXBoLnYxLkxhbmd1YWdlQ29uZmlnLkZvcmJpZGRlblJlYXNvbnNFbnRyeRo3ChVGb3JiaWRkZW5SZWFzb25zRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASJRCglQcmluY2lwbGUSCgoCaWQYASABKAkSEQoJc3RhdGVtZW50GAIgASgJEhEKCXJhdGlvbmFsZRgDIAEoCRISCgpleGNlcHRpb25zGAQgASgJIs8BCg1Qcm9jZXNzQ29uZmlnEhMKC3NwZWNfcmV2aWV3GAEgASgJEjsKD3NlY3VyaXR5X3JldmlldxgCIAEoCzIiLnNwZWNncmFwaC52MS5TZWN1cml0eVJldmlld0NvbmZpZxIyCgpkZXBsb3ltZW50GAMgASgLMh4uc3BlY2dyYXBoLnYxLkRlcGxveW1lbnRDb25maWcSOAoNZG9jdW1lbnRhdGlvbhgEIAEoCzIhLnNwZWNncmFwaC52MS5Eb2N1bWVudGF0aW9uQ29uZmlnIiQKFFNlY3VyaXR5UmV2aWV3Q29uZmlnEgwKBHdoZW4YASABKAkiNgoQRGVwbG95bWVudENvbmZpZxIQCghzdHJhdGVneRgBIAEoCRIQCghyb2xsYmFjaxgCIAEoCSI4ChNEb2N1bWVudGF0aW9uQ29uZmlnEhAKCGFwaV9kb2NzGAEgASgJEg8KB3J1bmJvb2sYAiABKAkiPAoLQW50aXBhdHRlcm4SDwoHcGF0dGVybhgBIAEoCRILCgN3aHkYAiABKAkSDwoHaW5zdGVhZBgDIAEoCSJOCglSZWZlcmVuY2USMwoOcmVmZXJlbmNlX3R5cGUYASABKA4yGy5zcGVjZ3JhcGgudjEuUmVmZXJlbmNlVHlwZRIMCgRwYXRoGAIgASgJIhgKFkdldENvbnN0aXR1dGlvblJlcXVlc3QiSwoXR2V0Q29uc3RpdHV0aW9uUmVzcG9uc2USMAoMY29uc3RpdHV0aW9uGAEgASgLMhouc3BlY2dyYXBoLnYxLkNvbnN0aXR1dGlvbiJNChlVcGRhdGVDb25zdGl0dXRpb25SZXF1ZXN0EjAKDGNvbnN0aXR1dGlvbhgBIAEoCzIaLnNwZWNncmFwaC52MS5Db25zdGl0dXRpb24iTgoaVXBkYXRlQ29uc3RpdHV0aW9uUmVzcG9uc2USMAoMY29uc3RpdHV0aW9uGAEgASgLMhouc3BlY2dyYXBoLnYxLkNvbnN0aXR1dGlvbiJCChRFbWl0VG9vbEZpbGVzUmVxdWVzdBIqCgZmb3JtYXQYASABKA4yGi5zcGVjZ3JhcGgudjEuT3V0cHV0Rm9ybWF0IjoKFUVtaXRUb29sRmlsZXNSZXNwb25zZRIPCgdjb250ZW50GAEgASgJEhAKCGZpbGVuYW1lGAIgASgJKq8BChFDb25zdGl0dXRpb25MYXllchIiCh5DT05TVElUVVRJT05fTEFZRVJfVU5TUEVDSUZJRUQQABIbChdDT05TVElUVVRJT05fTEFZRVJfVVNFUhABEhoKFkNPTlNUSVRVVElPTl9MQVlFUl9PUkcQAhIeChpDT05TVElUVVRJT05fTEFZRVJfUFJPSkVDVBADEh0KGUNPTlNUSVRVVElPTl9MQVlFUl9ET01BSU4QBCqGAQoMT3V0cHV0Rm9ybWF0Eh0KGU9VVFBVVF9GT1JNQVRfVU5TUEVDSUZJRUQQABIbChdPVVRQVVRfRk9STUFUX0NMQVVERV9NRBABEh0KGU9VVFBVVF9GT1JNQVRfQ1VSU09SUlVMRVMQAhIbChdPVVRQVVRfRk9STUFUX0FHRU5UU19NRBADKpABCg1SZWZlcmVuY2VUeXBlEh4KGlJFRkVSRU5DRV9UWVBFX1VOU1BFQ0lGSUVEEAASFgoSUkVGRVJFTkNFX1RZUEVfQURSEAESFwoTUkVGRVJFTkNFX1RZUEVfU1BFQxACEhYKElJFRkVSRU5DRV9UWVBFX0RPQxADEhYKElJFRkVSRU5DRV9UWVBFX1VSTBAEMrgCChNDb25zdGl0dXRpb25TZXJ2aWNlEl4KD0dldENvbnN0aXR1dGlvbhIkLnNwZWNncmFwaC52MS5HZXRDb25zdGl0dXRpb25SZXF1ZXN0GiUuc3BlY2dyYXBoLnYxLkdldENvbnN0aXR1dGlvblJlc3BvbnNlEmcKElVwZGF0ZUNvbnN0aXR1dGlvbhInLnNwZWNncmFwaC52MS5VcGRhdGVDb25zdGl0dXRpb25SZXF1ZXN0Giguc3BlY2dyYXBoLnYxLlVwZGF0ZUNvbnN0aXR1dGlvblJlc3BvbnNlElgKDUVtaXRUb29sRmlsZXMSIi5zcGVjZ3JhcGgudjEuRW1pdFRvb2xGaWxlc1JlcXVlc3QaIy5zcGVjZ3JhcGgudjEuRW1pdFRvb2xGaWxlc1Jlc3BvbnNlQj1aO2dpdGh1Yi5jb20vc3BlY2dyYXBoL3NwZWNncmFwaC9nZW4vc3BlY2dyYXBoL3YxO3NwZWNncmFwaHYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("Ch9zcGVjZ3JhcGgvdjEvY29uc3RpdHV0aW9uLnByb3RvEgxzcGVjZ3JhcGgudjEi6AMKDENvbnN0aXR1dGlvbhIKCgJpZBgBIAEoCRIuCgVsYXllchgCIAEoDjIfLnNwZWNncmFwaC52MS5Db25zdGl0dXRpb25MYXllchIMCgRuYW1lGAMgASgJEg8KB3ZlcnNpb24YBCABKAUSJgoEdGVjaBgFIAEoCzIYLnNwZWNncmFwaC52MS5UZWNoQ29uZmlnEisKCnByaW5jaXBsZXMYBiADKAsyFy5zcGVjZ3JhcGgudjEuUHJpbmNpcGxlEiwKB3Byb2Nlc3MYByABKAsyGy5zcGVjZ3JhcGgudjEuUHJvY2Vzc0NvbmZpZxITCgtjb25zdHJhaW50cxgIIAMoCRIvCgxhbnRpcGF0dGVybnMYCSADKAsyGS5zcGVjZ3JhcGgudjEuQW50aXBhdHRlcm4SKwoKcmVmZXJlbmNlcxgKIAMoCzIXLnNwZWNncmFwaC52MS5SZWZlcmVuY2USLgoKY3JlYXRlZF9hdBgLIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgMIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKc291cmNlX3VybBgNIAEoCRITCgtzb3VyY2VfaGFzaBgOIAEoCSKCBAoKVGVjaENvbmZpZxIvCglsYW5ndWFnZXMYASABKAsyHC5zcGVjZ3JhcGgudjEuTGFuZ3VhZ2VDb25maWcSPAoKZnJhbWV3b3JrcxgCIAMoCzIoLnNwZWNncmFwaC52MS5UZWNoQ29uZmlnLkZyYW1ld29ya3NFbnRyeRJECg5pbmZyYXN0cnVjdHVyZRgDIAMoCzIsLnNwZWNncmFwaC52MS5UZWNoQ29uZmlnLkluZnJhc3RydWN0dXJlRW50cnkSQQoNYXBpX3N0YW5kYXJkcxgEIAMoCzIqLnNwZWNncmFwaC52MS5UZWNoQ29uZmlnLkFwaVN0YW5kYXJkc0VudHJ5EjAKBGRhdGEYBSADKAsyIi5zcGVjZ3JhcGgudjEuVGVjaENvbmZpZy5EYXRhRW50cnkaMQoPRnJhbWV3b3Jrc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEaNQoTSW5mcmFzdHJ1Y3R1cmVFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBGjMKEUFwaVN0YW5kYXJkc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEaKwoJRGF0YUVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEizQEKDkxhbmd1YWdlQ29uZmlnEg8KB3ByaW1hcnkYASABKAkSDwoHYWxsb3dlZBgCIAMoCRIRCglmb3JiaWRkZW4YAyADKAkSTQoRZm9yYmlkZGVuX3JlYXNvbnMYBCADKAsyMi5zcGVjZ3JhcGgudjEuTGFuZ3VhZ2VDb25maWcuRm9yYmlkZGVuUmVhc29uc0VudHJ5GjcKFUZvcmJpZGRlblJlYXNvbnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIlEKCVByaW5jaXBsZRIKCgJpZBgBIAEoCRIRCglzdGF0ZW1lbnQYAiABKAkSEQoJcmF0aW9uYWxlGAMgASgJEhIKCmV4Y2VwdGlvbnMYBCABKAkizwEKDVByb2Nlc3NDb25maWcSEwoLc3BlY19yZXZpZXcYASABKAkSOwoPc2VjdXJpdHlfcmV2aWV3GAIgASgLMiIuc3BlY2dyYXBoLnYxLlNlY3VyaXR5UmV2aWV3Q29uZmlnEjIKCmRlcGxveW1lbnQYAyABKAsyHi5zcGVjZ3JhcGgudjEuRGVwbG95bWVudENvbmZpZxI4Cg1kb2N1bWVudGF0aW9uGAQgASgLMiEuc3BlY2dyYXBoLnYxLkRvY3VtZW50YXRpb25Db25maWciJAoUU2VjdXJpdHlSZXZpZXdDb25maWcSDAoEd2hlbhgBIAEoCSI2ChBEZXBsb3ltZW50Q29uZmlnEhAKCHN0cmF0ZWd5GAEgASgJEhAKCHJvbGxiYWNrGAIgASgJIjgKE0RvY3VtZW50YXRpb25Db25maWcSEAoIYXBpX2RvY3MYASABKAkSDwoHcnVuYm9vaxgCIAEoCSI8CgtBbnRpcGF0dGVybhIPCgdwYXR0ZXJuGAEgASgJEgsKA3doeRgCIAEoCRIPCgdpbnN0ZWFkGAMgASgJIk4KCVJlZmVyZW5jZRIzCg5yZWZlcmVuY2VfdHlwZRgBIAEoDjIbLnNwZWNncmFwaC52MS5SZWZlcmVuY2VUeXBlEgwKBHBhdGgYAiABKAkiSAoWR2V0Q29uc3RpdHV0aW9uUmVxdWVzdBIuCgVsYXllchgBIAEoDjIfLnNwZWNncmFwaC52MS5Db25zdGl0dXRpb25MYXllciJPCg9Qcm92ZW5hbmNlRW50cnkSDAoEcGF0aBgBIAEoCRIuCgVsYXllchgCIAEoDjIfLnNwZWNncmFwaC52MS5Db25zdGl0dXRpb25MYXllciJ+ChdHZXRDb25zdGl0dXRpb25SZXNwb25zZRIwCgxjb25zdGl0dXRpb24YASABKAsyGi5zcGVjZ3JhcGgudjEuQ29uc3RpdHV0aW9uEjEKCnByb3ZlbmFuY2UYAiADKAsyHS5zcGVjZ3JhcGgudjEuUHJvdmVuYW5jZUVudHJ5Ik0KGVVwZGF0ZUNvbnN0aXR1dGlvblJlcXVlc3QSMAoMY29uc3RpdHV0aW9uGAEgASgLMhouc3BlY2dyYXBoLnYxLkNvbnN0aXR1dGlvbiJOChpVcGRhdGVDb25zdGl0dXRpb25SZXNwb25zZRIwCgxjb25zdGl0dXRpb24YASABKAsyGi5zcGVjZ3JhcGgudjEuQ29uc3RpdHV0aW9uIkIKFEVtaXRUb29sRmlsZXNSZXF1ZXN0EioKBmZvcm1hdBgBIAEoDjIaLnNwZWNncmFwaC52MS5PdXRwdXRGb3JtYXQiOgoVRW1pdFRvb2xGaWxlc1Jlc3BvbnNlEg8KB2NvbnRlbnQYASABKAkSEAoIZmlsZW5hbWUYAiABKAkqrwEKEUNvbnN0aXR1dGlvbkxheWVyEiIKHkNPTlNUSVRVVElPTl9MQVlFUl9VTlNQRUNJRklFRBAAEhsKF0NPTlNUSVRVVElPTl9MQVlFUl9VU0VSEAESGgoWQ09OU1RJVFVUSU9OX0xBWUVSX09SRxACEh4KGkNPTlNUSVRVVElPTl9MQVlFUl9QUk9KRUNUEAMSHQoZQ09OU1RJVFVUSU9OX0xBWUVSX0RPTUFJThAEKoYBCgxPdXRwdXRGb3JtYXQSHQoZT1VUUFVUX0ZPUk1BVF9VTlNQRUNJRklFRBAAEhsKF09VVFBVVF9GT1JNQVRfQ0xBVURFX01EEAESHQoZT1VUUFVUX0ZPUk1BVF9DVVJTT1JSVUxFUxACEhsKF09VVFBVVF9GT1JNQVRfQUdFTlRTX01EEAMqkAEKDVJlZmVyZW5jZVR5cGUSHgoaUkVGRVJFTkNFX1RZUEVfVU5TUEVDSUZJRUQQABIWChJSRUZFUkVOQ0VfVFlQRV9BRFIQARIXChNSRUZFUkVOQ0VfVFlQRV9TUEVDEAISFgoSUkVGRVJFTkNFX1RZUEVfRE9DEAMSFgoSUkVGRVJFTkNFX1RZUEVfVVJMEAQyuAIKE0NvbnN0aXR1dGlvblNlcnZpY2USXgoPR2V0Q29uc3RpdHV0aW9uEiQuc3BlY2dyYXBoLnYxLkdldENvbnN0aXR1dGlvblJlcXVlc3QaJS5zcGVjZ3JhcGgudjEuR2V0Q29uc3RpdHV0aW9uUmVzcG9uc2USZwoSVXBkYXRlQ29uc3RpdHV0aW9uEicuc3BlY2dyYXBoLnYxLlVwZGF0ZUNvbnN0aXR1dGlvblJlcXVlc3QaKC5zcGVjZ3JhcGgudjEuVXBkYXRlQ29uc3RpdHV0aW9uUmVzcG9uc2USWAoNRW1pdFRvb2xGaWxlcxIiLnNwZWNncmFwaC52MS5FbWl0VG9vbEZpbGVzUmVxdWVzdBojLnNwZWNncmFwaC52MS5FbWl0VG9vbEZpbGVzUmVzcG9uc2VCPVo7Z2l0aHViLmNvbS9zcGVjZ3JhcGgvc3BlY2dyYXBoL2dlbi9zcGVjZ3JhcGgvdjE7c3BlY2dyYXBodjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * Constitution is the project ground truth — layered rules, tech stack,
@@ -107,6 +107,20 @@ export type Constitution = Message<"specgraph.v1.Constitution"> & {
    * @generated from field: google.protobuf.Timestamp updated_at = 12;
    */
   updatedAt?: Timestamp;
+
+  /**
+   * URL where this layer was imported from (empty for local imports).
+   *
+   * @generated from field: string source_url = 13;
+   */
+  sourceUrl: string;
+
+  /**
+   * Content hash of the source at import time (for drift detection).
+   *
+   * @generated from field: string source_hash = 14;
+   */
+  sourceHash: string;
 };
 
 /**
@@ -433,10 +447,15 @@ export const ReferenceSchema: GenMessage<Reference> = /*@__PURE__*/
 
 /**
  * GetConstitutionRequest requests the active constitution.
+ * If layer is UNSPECIFIED, returns the merged result across all layers.
  *
  * @generated from message specgraph.v1.GetConstitutionRequest
  */
 export type GetConstitutionRequest = Message<"specgraph.v1.GetConstitutionRequest"> & {
+  /**
+   * @generated from field: specgraph.v1.ConstitutionLayer layer = 1;
+   */
+  layer: ConstitutionLayer;
 };
 
 /**
@@ -445,6 +464,30 @@ export type GetConstitutionRequest = Message<"specgraph.v1.GetConstitutionReques
  */
 export const GetConstitutionRequestSchema: GenMessage<GetConstitutionRequest> = /*@__PURE__*/
   messageDesc(file_specgraph_v1_constitution, 10);
+
+/**
+ * ProvenanceEntry tracks which layer contributed a specific field or item.
+ *
+ * @generated from message specgraph.v1.ProvenanceEntry
+ */
+export type ProvenanceEntry = Message<"specgraph.v1.ProvenanceEntry"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * @generated from field: specgraph.v1.ConstitutionLayer layer = 2;
+   */
+  layer: ConstitutionLayer;
+};
+
+/**
+ * Describes the message specgraph.v1.ProvenanceEntry.
+ * Use `create(ProvenanceEntrySchema)` to create a new message.
+ */
+export const ProvenanceEntrySchema: GenMessage<ProvenanceEntry> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_constitution, 11);
 
 /**
  * GetConstitutionResponse wraps the active constitution.
@@ -456,6 +499,14 @@ export type GetConstitutionResponse = Message<"specgraph.v1.GetConstitutionRespo
    * @generated from field: specgraph.v1.Constitution constitution = 1;
    */
   constitution?: Constitution;
+
+  /**
+   * Provenance entries indicating which layer each value came from.
+   * Only populated when returning a merged result (no layer filter).
+   *
+   * @generated from field: repeated specgraph.v1.ProvenanceEntry provenance = 2;
+   */
+  provenance: ProvenanceEntry[];
 };
 
 /**
@@ -463,7 +514,7 @@ export type GetConstitutionResponse = Message<"specgraph.v1.GetConstitutionRespo
  * Use `create(GetConstitutionResponseSchema)` to create a new message.
  */
 export const GetConstitutionResponseSchema: GenMessage<GetConstitutionResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_constitution, 11);
+  messageDesc(file_specgraph_v1_constitution, 12);
 
 /**
  * UpdateConstitutionRequest provides a new or updated constitution.
@@ -482,7 +533,7 @@ export type UpdateConstitutionRequest = Message<"specgraph.v1.UpdateConstitution
  * Use `create(UpdateConstitutionRequestSchema)` to create a new message.
  */
 export const UpdateConstitutionRequestSchema: GenMessage<UpdateConstitutionRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_constitution, 12);
+  messageDesc(file_specgraph_v1_constitution, 13);
 
 /**
  * UpdateConstitutionResponse wraps the stored constitution after update.
@@ -501,7 +552,7 @@ export type UpdateConstitutionResponse = Message<"specgraph.v1.UpdateConstitutio
  * Use `create(UpdateConstitutionResponseSchema)` to create a new message.
  */
 export const UpdateConstitutionResponseSchema: GenMessage<UpdateConstitutionResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_constitution, 13);
+  messageDesc(file_specgraph_v1_constitution, 14);
 
 /**
  * EmitToolFilesRequest specifies which tool-file format to generate.
@@ -522,7 +573,7 @@ export type EmitToolFilesRequest = Message<"specgraph.v1.EmitToolFilesRequest"> 
  * Use `create(EmitToolFilesRequestSchema)` to create a new message.
  */
 export const EmitToolFilesRequestSchema: GenMessage<EmitToolFilesRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_constitution, 14);
+  messageDesc(file_specgraph_v1_constitution, 15);
 
 /**
  * EmitToolFilesResponse contains the generated file content and suggested filename.
@@ -550,7 +601,7 @@ export type EmitToolFilesResponse = Message<"specgraph.v1.EmitToolFilesResponse"
  * Use `create(EmitToolFilesResponseSchema)` to create a new message.
  */
 export const EmitToolFilesResponseSchema: GenMessage<EmitToolFilesResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_constitution, 15);
+  messageDesc(file_specgraph_v1_constitution, 16);
 
 /**
  * ConstitutionLayer defines the scope at which a constitution applies.

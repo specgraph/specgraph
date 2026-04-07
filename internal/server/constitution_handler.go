@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/constitution/merge"
 	"github.com/specgraph/specgraph/internal/emitter"
 	"github.com/specgraph/specgraph/internal/storage"
 )
@@ -32,16 +33,46 @@ func RegisterConstitutionService(mux *http.ServeMux, scoper storage.Scoper, opts
 }
 
 // GetConstitution handles the GetConstitution RPC.
-func (h *ConstitutionHandler) GetConstitution(ctx context.Context, _ *connect.Request[specv1.GetConstitutionRequest]) (*connect.Response[specv1.GetConstitutionResponse], error) {
+func (h *ConstitutionHandler) GetConstitution(ctx context.Context, req *connect.Request[specv1.GetConstitutionRequest]) (*connect.Response[specv1.GetConstitutionResponse], error) {
 	store, err := scopeStore(ctx, h.scoper)
 	if err != nil {
 		return nil, err
 	}
-	c, err := store.GetConstitution(ctx)
+	msg := req.Msg
+
+	// Single layer query.
+	if msg.Layer != specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED {
+		domainLayer, ok := constitutionLayerFromProtoMap[msg.Layer]
+		if !ok {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown layer: %s", msg.Layer))
+		}
+		c, getErr := store.GetConstitutionLayer(ctx, domainLayer)
+		if getErr != nil {
+			return nil, constitutionError(getErr)
+		}
+		return connect.NewResponse(&specv1.GetConstitutionResponse{
+			Constitution: constitutionToProto(c),
+		}), nil
+	}
+
+	// Merged query.
+	layers, err := store.GetAllLayers(ctx)
 	if err != nil {
 		return nil, constitutionError(err)
 	}
-	return connect.NewResponse(&specv1.GetConstitutionResponse{Constitution: constitutionToProto(c)}), nil
+	if len(layers) == 0 {
+		return nil, constitutionError(fmt.Errorf("%w", storage.ErrConstitutionNotFound))
+	}
+
+	result, mergeErr := merge.Layers(layers)
+	if mergeErr != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("merge layers: %w", mergeErr))
+	}
+
+	return connect.NewResponse(&specv1.GetConstitutionResponse{
+		Constitution: constitutionToProto(result.Constitution),
+		Provenance:   provenanceToProto(result.Provenance),
+	}), nil
 }
 
 // UpdateConstitution handles the UpdateConstitution RPC.
@@ -75,10 +106,18 @@ func (h *ConstitutionHandler) EmitToolFiles(ctx context.Context, req *connect.Re
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("format is required"))
 	}
 
-	c, err := store.GetConstitution(ctx)
+	layers, err := store.GetAllLayers(ctx)
 	if err != nil {
 		return nil, constitutionError(err)
 	}
+	if len(layers) == 0 {
+		return nil, constitutionError(fmt.Errorf("%w", storage.ErrConstitutionNotFound))
+	}
+	result, mergeErr := merge.Layers(layers)
+	if mergeErr != nil {
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("merge layers: %w", mergeErr))
+	}
+	c := result.Constitution
 
 	formatStr, ok := outputFormatToString[req.Msg.Format]
 	if !ok {

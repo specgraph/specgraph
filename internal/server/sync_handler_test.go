@@ -187,6 +187,20 @@ func (s *syncTestBackend) GetConstitution(ctx context.Context) (*storage.Constit
 	return nil, storage.ErrConstitutionNotFound
 }
 
+func (s *syncTestBackend) GetConstitutionLayer(ctx context.Context, layer storage.ConstitutionLayer) (*storage.Constitution, error) {
+	if s.con != nil {
+		return s.con.GetConstitutionLayer(ctx, layer)
+	}
+	return nil, storage.ErrConstitutionNotFound
+}
+
+func (s *syncTestBackend) GetAllLayers(ctx context.Context) ([]*storage.Constitution, error) {
+	if s.con != nil {
+		return s.con.GetAllLayers(ctx)
+	}
+	return []*storage.Constitution{}, nil
+}
+
 func (s *syncTestBackend) UpdateConstitution(ctx context.Context, c *storage.Constitution) (*storage.Constitution, error) {
 	if s.con != nil {
 		return s.con.UpdateConstitution(ctx, c)
@@ -869,6 +883,14 @@ type mockConstitutionStore struct {
 }
 
 func (m *mockConstitutionStore) GetConstitution(_ context.Context) (*storage.Constitution, error) {
+	return nil, m.err
+}
+
+func (m *mockConstitutionStore) GetConstitutionLayer(_ context.Context, _ storage.ConstitutionLayer) (*storage.Constitution, error) {
+	return nil, m.err
+}
+
+func (m *mockConstitutionStore) GetAllLayers(_ context.Context) ([]*storage.Constitution, error) {
 	return nil, m.err
 }
 
