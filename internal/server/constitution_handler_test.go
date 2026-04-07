@@ -148,6 +148,36 @@ func TestConstitutionHandler_UpdateNilBody(t *testing.T) {
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
+func TestConstitutionHandler_GetByLayer(t *testing.T) {
+	client := setupConstitutionServer(t)
+	ctx := context.Background()
+
+	// Store a constitution at the org layer.
+	_, err := client.UpdateConstitution(ctx, connect.NewRequest(&specv1.UpdateConstitutionRequest{
+		Constitution: &specv1.Constitution{
+			Name:  "org-constitution",
+			Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG,
+			Tech: &specv1.TechConfig{
+				Languages: &specv1.LanguageConfig{Primary: "go"},
+			},
+		},
+	}))
+	require.NoError(t, err)
+
+	// Query with a specific layer filter — exercises the single-layer branch.
+	resp, err := client.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{
+		Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG,
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.Constitution)
+	require.Equal(t, specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG, resp.Msg.Constitution.Layer)
+	require.NotNil(t, resp.Msg.Constitution.Tech)
+	require.Equal(t, "go", resp.Msg.Constitution.Tech.Languages.Primary)
+
+	// Single-layer response has no provenance (no merge performed).
+	require.Empty(t, resp.Msg.Provenance)
+}
+
 func TestConstitutionHandler_EmitNotFound(t *testing.T) {
 	client := setupConstitutionServer(t)
 	ctx := context.Background()
