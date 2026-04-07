@@ -56,6 +56,14 @@ func Layers(layers []*storage.Constitution) (*Result, error) {
 		}
 		lyr := layer.Layer
 
+		// Carry forward identity/metadata from highest-precedence layer.
+		if layer.Name != "" {
+			result.Constitution.Name = layer.Name
+		}
+		if layer.Layer != "" {
+			result.Constitution.Layer = layer.Layer
+		}
+
 		// --- Scalar: process fields ---
 		if layer.Process != nil {
 			if result.Constitution.Process == nil {
