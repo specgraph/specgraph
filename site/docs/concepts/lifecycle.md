@@ -147,10 +147,16 @@ specgraph changes <slug>
 specgraph changes <slug> --checkpoints
 ```
 
-**Compare two versions:**
+**Show inline word-level diffs:**
 
 ```bash
 specgraph changes <slug> --diff
+```
+
+**Compare two specific versions:**
+
+```bash
+specgraph changes <slug> --diff --from=3 --to=7
 ```
 
 **Scope to recent changes:**

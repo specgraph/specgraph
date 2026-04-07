@@ -86,6 +86,26 @@ specgraph update <slug> [flags]
       --stage string        new stage
 ```
 
+### specgraph changes
+
+List changelog entries for a spec
+
+```
+specgraph changes <slug> [flags]
+```
+
+**Flags:**
+
+```
+      --checkpoints           show only checkpoint entries
+      --diff                  show inline word-level diffs
+      --from int32            compare from this version (requires --diff)
+      --json                  output as JSON
+      --limit int32           maximum number of entries (0 = all)
+      --since-version int32   show entries after this version
+      --to int32              compare to this version (requires --diff)
+```
+
 ## Authoring Funnel
 
 ### specgraph spark
@@ -533,9 +553,16 @@ specgraph decision create <slug> [flags]
 **Flags:**
 
 ```
-      --decision string    decision text
-      --rationale string   rationale
-      --title string       decision title (required)
+      --confidence string      confidence level (high|medium|low)
+      --decision string        decision text
+      --origin-spec string     slug of originating spec
+      --origin-stage string    authoring stage
+      --question string        the question being decided
+      --rationale string       rationale
+      --rejected stringArray   rejected alternative "Option:Reason" (repeatable)
+      --scope string           decision scope (project|team|org)
+      --tags string            comma-separated tags
+      --title string           decision title (required)
 ```
 
 #### specgraph decision list
@@ -687,6 +714,45 @@ specgraph findings list <slug> [flags]
       --pass-type string   filter by pass type (constitution-check, red-team, peripheral-vision, consistency, simplicity)
 ```
 
+#### specgraph findings store
+
+Reads findings from a JSON file (proto3 format) and stores them via the StoreFindings RPC.
+
+```
+specgraph findings store <slug> [flags]
+```
+
+**Flags:**
+
+```
+      --json               output as JSON
+      --json-file string   path to findings JSON file (required)
+      --pass-type string   pass type (constitution-check, red-team, peripheral-vision, consistency, simplicity) (required)
+```
+
+### specgraph pass
+
+Manage analytical passes
+
+```
+specgraph pass
+```
+
+#### specgraph pass run
+
+Calls RunAnalyticalPass RPC and returns the prompt template, tool manifest, and instructions. Default output is markdown optimized for LLM consumption.
+
+```
+specgraph pass run <slug> [flags]
+```
+
+**Flags:**
+
+```
+      --json               output as JSON
+      --pass-type string   pass type (constitution-check, red-team, peripheral-vision, consistency, simplicity) (required)
+```
+
 ## Sync
 
 ### specgraph sync
@@ -819,6 +885,7 @@ specgraph serve [flags]
 
 ```
       --cors-origin string   Enable CORS for this origin (dev mode only)
+      --pg-url string        PostgreSQL connection URL (overrides config; env: SPECGRAPH_PG_URL)
 ```
 
 ### specgraph status
