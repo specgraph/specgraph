@@ -51,6 +51,8 @@ func constitutionToProto(c *storage.Constitution) *specv1.Constitution {
 			Exceptions: p.Exceptions,
 		})
 	}
+	pb.SourceUrl = c.SourceURL
+	pb.SourceHash = c.SourceHash
 	if c.Process != nil {
 		pb.Process = processConfigToProto(c.Process)
 	}
@@ -125,6 +127,8 @@ func constitutionFromProto(pb *specv1.Constitution) (*storage.Constitution, erro
 		Name:        pb.Name,
 		Version:     pb.Version,
 		Constraints: pb.Constraints,
+		SourceURL:   pb.SourceUrl,
+		SourceHash:  pb.SourceHash,
 	}
 	if pb.CreatedAt != nil {
 		c.CreatedAt = pb.CreatedAt.AsTime()
@@ -240,6 +244,24 @@ var outputFormatToString = map[specv1.OutputFormat]string{
 	specv1.OutputFormat_OUTPUT_FORMAT_CLAUDE_MD:   "claude-md",
 	specv1.OutputFormat_OUTPUT_FORMAT_CURSORRULES: "cursorrules",
 	specv1.OutputFormat_OUTPUT_FORMAT_AGENTS_MD:   "agents-md",
+}
+
+func provenanceToProto(prov map[string]storage.ConstitutionLayer) []*specv1.ProvenanceEntry {
+	if len(prov) == 0 {
+		return nil
+	}
+	entries := make([]*specv1.ProvenanceEntry, 0, len(prov))
+	for path, layer := range prov {
+		protoLayer, ok := constitutionLayerToProtoMap[layer]
+		if !ok {
+			continue
+		}
+		entries = append(entries, &specv1.ProvenanceEntry{
+			Path:  path,
+			Layer: protoLayer,
+		})
+	}
+	return entries
 }
 
 func injectToolFromProto(t specv1.InjectTool) (storage.InjectToolType, error) {
