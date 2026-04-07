@@ -13,7 +13,7 @@ nav = [
   "problem.md",
   "quickstart.md",
   "how-it-works.md",
-  { "Concepts" = ["concepts/index.md", "concepts/specs.md", "concepts/constitution.md", "concepts/authoring.md", "concepts/decisions.md", "concepts/passes.md", "concepts/slices.md", "concepts/drift.md", "concepts/linting.md", "concepts/example-spec.md"] },
+  { "Concepts" = ["concepts/index.md", "concepts/specs.md", "concepts/constitution.md", "concepts/authoring.md", "concepts/decisions.md", "concepts/passes.md", "concepts/slices.md", "concepts/drift.md", "concepts/lifecycle.md", "concepts/linting.md", "concepts/example-spec.md"] },
   { "Guides" = ["guides/index.md", "guides/cli-cookbook.md", "guides/sync.md"] },
   "cli-reference.md",
   "architecture.md",

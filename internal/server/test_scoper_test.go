@@ -345,5 +345,11 @@ func (stubBackend) RunInTransaction(ctx context.Context, fn func(context.Context
 	return fn(ctx)
 }
 
+// --- SpecVersionBackend ---
+
+func (stubBackend) GetSpecAtVersion(_ context.Context, _ string, _ int32) (*storage.Spec, error) {
+	return nil, errNotImplemented
+}
+
 // Verify stubBackend satisfies ScopedBackend at compile time.
 var _ storage.ScopedBackend = (*stubBackend)(nil)

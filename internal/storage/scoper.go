@@ -22,6 +22,7 @@ type ScopedBackend interface {
 	SliceBackend
 	ConversationBackend
 	ChangeLogBackend
+	SpecVersionBackend
 	TransactionalBackend
 }
 

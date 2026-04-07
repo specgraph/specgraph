@@ -4,15 +4,19 @@
     readyCount: number;
     driftCount: number;
     decisionCount: number;
+    amendedCount?: number;
+    supersededCount?: number;
   }
 
-  let { totalSpecs, readyCount, driftCount, decisionCount }: Props = $props();
+  let { totalSpecs, readyCount, driftCount, decisionCount, amendedCount = 0, supersededCount = 0 }: Props = $props();
 
   const cards = $derived([
     { label: 'Specs', value: totalSpecs, color: '#2563eb', href: '/graph' },
     { label: 'Ready', value: readyCount, color: '#16a34a', href: '/graph' },
     { label: 'Drift', value: driftCount, color: '#dc2626', href: '/graph' },
     { label: 'Decisions', value: decisionCount, color: '#7c3aed', href: '/graph' },
+    { label: 'Amended', value: amendedCount, color: '#d97706', href: '/graph' },
+    { label: 'Superseded', value: supersededCount, color: '#6b7280', href: '/graph' },
   ]);
 </script>
 
@@ -28,7 +32,7 @@
 <style>
   .stats-bar {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 1rem;
   }
 

@@ -2,3 +2,4 @@ gitignore_excludes: true
 exclude:
   - "web/pnpm-lock.yaml"
   - "e2e/ui/pnpm-lock.yaml"
+  - ".beads/config.yaml"

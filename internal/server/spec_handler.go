@@ -199,6 +199,49 @@ func (h *SpecHandler) ListChanges(ctx context.Context, req *connect.Request[spec
 	}), nil
 }
 
+// CompareVersions handles the CompareVersions RPC.
+func (h *SpecHandler) CompareVersions(ctx context.Context, req *connect.Request[specv1.CompareVersionsRequest]) (*connect.Response[specv1.CompareVersionsResponse], error) {
+	store, scopeErr := scopeStore(ctx, h.scoper)
+	if scopeErr != nil {
+		return nil, scopeErr
+	}
+	msg := req.Msg
+	if err := validateSlug(msg.Slug); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if msg.FromVersion < 0 || msg.ToVersion < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("versions must be non-negative"))
+	}
+
+	toSpec, err := store.GetSpecAtVersion(ctx, msg.Slug, msg.ToVersion)
+	if err != nil {
+		return nil, specError(err)
+	}
+
+	fromVersion := msg.FromVersion
+	if fromVersion == 0 {
+		fromVersion = toSpec.Version - 1
+		if fromVersion < 1 {
+			fromVersion = 1
+		}
+	}
+
+	fromSpec, err := store.GetSpecAtVersion(ctx, msg.Slug, fromVersion)
+	if err != nil {
+		return nil, specError(err)
+	}
+
+	diffs := computeVersionDiffs(fromSpec, toSpec)
+
+	return connect.NewResponse(&specv1.CompareVersionsResponse{
+		FromVersion: fromSpec.Version,
+		ToVersion:   toSpec.Version,
+		FromStage:   string(fromSpec.Stage),
+		ToStage:     string(toSpec.Stage),
+		Diffs:       diffs,
+	}), nil
+}
+
 // specError maps storage/conversion errors to sanitized connect error codes.
 func specError(err error) error {
 	var connErr *connect.Error
@@ -212,6 +255,8 @@ func specError(err error) error {
 		return connect.NewError(connect.CodeAlreadyExists, errors.New("spec already exists"))
 	case errors.Is(err, storage.ErrConcurrentModification):
 		return connect.NewError(connect.CodeAborted, errors.New("concurrent modification — retry the operation"))
+	case errors.Is(err, storage.ErrVersionNotFound):
+		return connect.NewError(connect.CodeNotFound, errors.New("version not found"))
 	default:
 		slog.Error("specError: internal error", slog.Any("error", err))
 		return connect.NewError(connect.CodeInternal, errors.New("internal error"))

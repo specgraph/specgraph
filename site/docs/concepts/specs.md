@@ -119,7 +119,7 @@ The full spec schema is organized into five categories:
 | Category | Fields |
 |---|---|
 | **Identity** | `id`, `slug`, `version`, `content_hash`, `created_at`, `updated_at` |
-| **Intent** | `intent`, `stage` (spark / shape / specify / decompose / approved / in_progress / review / done / amended / superseded / abandoned), `priority` (p0-p3), `complexity` |
+| **Intent** | `intent`, `stage` (spark / shape / specify / decompose / approved / in_progress / review / done / amended / superseded / abandoned), `priority` (p0-p3), `complexity` — see [Lifecycle Transitions](lifecycle.md) for post-completion transitions |
 | **Edges** | `depends_on`, `blocks`, `composes`, `relates_to` |
 | **Authoring Outputs** | `spark_output`, `shape_output`, `specify_output`, `decompose_output` |
 | **Verification** | `verify` (acceptance criteria), `invariants` (conditions that must hold before and after execution) |

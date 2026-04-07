@@ -46,3 +46,99 @@ export async function seedSparkOutput(request: APIRequestContext, slug: string):
     },
   }, `seedSparkOutput(${slug})`);
 }
+
+// advanceToDone transitions a spec (already created via CreateSpec/Spark) through
+// the full authoring funnel: shape → specify → decompose → approved → done.
+export async function advanceToDone(request: APIRequestContext, slug: string): Promise<void> {
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Shape`, {
+    slug,
+    output: {
+      scopeIn: ['in-scope'],
+      scopeOut: ['out-scope'],
+      approaches: [{ name: 'default', description: 'test approach' }],
+      chosenApproach: 'default',
+    },
+  }, `advanceToDone shape(${slug})`);
+
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Specify`, {
+    slug,
+    output: {
+      interfaces: [{ name: 'API', body: 'test' }],
+      verifyCriteria: [{ description: 'passes' }],
+    },
+  }, `advanceToDone specify(${slug})`);
+
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Decompose`, {
+    slug,
+    output: {
+      strategy: 'DECOMPOSITION_STRATEGY_SINGLE_UNIT',
+      slices: [{ id: 'main', intent: 'test' }],
+    },
+  }, `advanceToDone decompose(${slug})`);
+
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Approve`, {
+    slug,
+  }, `advanceToDone approve(${slug})`);
+
+  // Claim + complete to reach "done".
+  const agent = 'e2e-ui-agent';
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.ClaimService/ClaimSpec`, {
+    specSlug: slug,
+    agent,
+  }, `advanceToDone claim(${slug})`);
+
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.ExecutionService/ReportCompletion`, {
+    slug,
+    agent,
+  }, `advanceToDone complete(${slug})`);
+}
+
+// amendSpec calls LifecycleService/TransitionAmend. reEntryStage is optional;
+// omitting it transitions the spec directly to the "amended" terminal stage.
+export async function amendSpec(
+  request: APIRequestContext,
+  slug: string,
+  reason: string,
+  reEntryStage?: string,
+): Promise<void> {
+  const body: Record<string, string> = { slug, reason };
+  if (reEntryStage) {
+    body['reEntryStage'] = reEntryStage;
+  }
+  await postWithRetry(
+    request,
+    `${BASE_URL}/specgraph.v1.LifecycleService/TransitionAmend`,
+    body,
+    `amendSpec(${slug})`,
+  );
+}
+
+// supersedeSpec calls LifecycleService/TransitionSupersede, replacing oldSlug
+// with newSlug. The new spec must already exist.
+export async function supersedeSpec(
+  request: APIRequestContext,
+  oldSlug: string,
+  newSlug: string,
+): Promise<void> {
+  await postWithRetry(
+    request,
+    `${BASE_URL}/specgraph.v1.LifecycleService/TransitionSupersede`,
+    { slug: oldSlug, newSlug },
+    `supersedeSpec(${oldSlug}->${newSlug})`,
+  );
+}
+
+// updateSpecIntent calls SpecService/UpdateSpec to change the intent field,
+// which creates a new changelog entry and bumps the version.
+export async function updateSpecIntent(
+  request: APIRequestContext,
+  slug: string,
+  intent: string,
+): Promise<void> {
+  await postWithRetry(
+    request,
+    `${BASE_URL}/specgraph.v1.SpecService/UpdateSpec`,
+    { slug, intent },
+    `updateSpecIntent(${slug})`,
+  );
+}

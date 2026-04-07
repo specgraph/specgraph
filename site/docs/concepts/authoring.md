@@ -187,6 +187,11 @@ Specs can also reach terminal states at any point:
 - **Superseded** — replaced by a newer spec
 - **Abandoned** — dropped; no longer relevant
 
+!!! info "Lifecycle Transitions"
+    For detailed guidance on when and how to amend, supersede, or abandon a
+    spec — including re-entry stage selection and the decision tree — see
+    [Lifecycle Transitions](lifecycle.md).
+
 ### Spec Lifecycle
 
 The full spec lifecycle, including post-approval transitions:

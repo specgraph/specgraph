@@ -39,3 +39,12 @@ type ChangeLogBackend interface {
 	// ListAllChanges returns all changelog entries across all specs, with SpecSlug populated.
 	ListAllChanges(ctx context.Context) ([]*ChangeLogEntry, error)
 }
+
+// SpecVersionBackend provides version reconstruction for spec comparison.
+type SpecVersionBackend interface {
+	// GetSpecAtVersion reconstructs the spec state at a given version
+	// by walking changelog entries. Version 0 means latest.
+	// Returns ErrSpecNotFound if slug doesn't exist.
+	// Returns ErrVersionNotFound if version exceeds current version.
+	GetSpecAtVersion(ctx context.Context, slug string, version int32) (*Spec, error)
+}
