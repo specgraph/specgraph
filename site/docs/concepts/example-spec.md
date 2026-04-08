@@ -241,5 +241,7 @@ This spec is now **approved** and ready for execution:
 4. Implementation proceeds slice-by-slice, with **progress** and **blocker** reports along the way
 5. **ReportCompletion** transitions the spec to `done` and releases the claim
 
-If requirements change after completion, the spec can be **amended** (re-entering
-the funnel at any stage) or **superseded** by a new spec that links back to this one.
+If requirements change while the spec is in flight (`approved`, `in_progress`, or
+`review`), it can be **amended** — returning to an earlier authoring stage. If a
+completed spec (`done`) needs replacement, it can be **superseded** by a new spec
+that links back to this one.

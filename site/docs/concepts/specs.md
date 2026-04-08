@@ -119,7 +119,7 @@ The full spec schema is organized into five categories:
 | Category | Fields |
 |---|---|
 | **Identity** | `id`, `slug`, `version`, `content_hash`, `created_at`, `updated_at` |
-| **Intent** | `intent`, `stage` (spark / shape / specify / decompose / approved / in_progress / review / done / amended / superseded / abandoned), `priority` (p0-p3), `complexity`, `notes` — see [Lifecycle Transitions](lifecycle.md) for post-completion transitions |
+| **Intent** | `intent`, `stage` (spark / shape / specify / decompose / approved / in_progress / review / done / superseded / abandoned), `priority` (p0-p3), `complexity`, `notes` — see [Lifecycle Transitions](lifecycle.md) for lifecycle transitions |
 | **Lifecycle** | `lifecycle` (task / living), `superseded_by`, `supersedes` |
 | **Edges** | `depends_on`, `blocks`, `composes`, `relates_to`, `supersedes` |
 | **Authoring Outputs** | `spark_output`, `shape_output`, `specify_output`, `decompose_output`, `conversation_logs` |
@@ -171,18 +171,18 @@ graph TD
     V4 -.->|HAS_CHANGE| C3
     V5 -.->|HAS_CHANGE| C4
 
-    V5 -->|amend| A["v6 amended"]
-    A -->|re-entry| V7["v7 specify"]
-    V7 --> V8["v8 approved ✓"]
-    V8 --> V9["v9 done ✓"]
+    V4 -->|amend| A["v6 specify (amend re-entry)"]
+    A --> V8["v7 approved ✓"]
+    V8 --> V9["v8 done ✓"]
 
-    V9 -->|supersede| S["v10 superseded"]
+    V9 -->|supersede| S["v9 superseded"]
     NEW["oauth-refresh-v2"] -->|SUPERSEDES| S
 ```
 
 The diagram shows a spec's full evolution: progressing through the funnel
-(v1–v5), being **amended** back to an earlier stage for refinement (v6–v9),
-and eventually being **superseded** by a replacement spec. Every version
+(v1–v5), being **amended** from an in-flight stage back to an earlier
+authoring stage for refinement (v6–v8), and eventually being **superseded**
+from `done` by a replacement spec. Every version
 transition creates a ChangeLog entry linked via `HAS_CHANGE`. Checkpoint
 entries (marked ✓) flag major stage transitions.
 

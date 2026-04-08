@@ -73,8 +73,8 @@ framework.
 
     ---
 
-    Amendment, supersession, and abandonment — what happens when completed
-    specs need to change, with full changelog and diff support.
+    Amendment, supersession, and abandonment — what happens when in-flight
+    or completed specs need to change, with full changelog and diff support.
 
     [:octicons-arrow-right-24: Lifecycle Transitions](lifecycle.md)
 
