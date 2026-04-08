@@ -42,23 +42,23 @@ var _ = Describe("Lifecycle", Ordered, func() {
 	Describe("Amend flow", func() {
 		const amendSlug = "lifecycle-amend-spec"
 
-		It("creates a spec and advances to in_progress", func() {
+		It("creates a spec and advances to approved", func() {
 			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
 				Slug:   amendSlug,
 				Intent: "Test amend lifecycle flow",
 			}))
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(advanceStage(ctx, amendSlug, "in_progress")).To(Succeed())
+			Expect(advanceStage(ctx, amendSlug, "approved")).To(Succeed())
 
 			resp, err := specClient.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
 				Slug: amendSlug,
 			}))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("in_progress"))
+			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("approved"))
 		})
 
-		It("amends the in_progress spec back into authoring with re-entry stage", func() {
+		It("amends the approved spec back into authoring with re-entry stage", func() {
 			resp, err := lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
 				Slug:         amendSlug,
 				Reason:       "Requirements changed during implementation",
@@ -103,7 +103,7 @@ var _ = Describe("Lifecycle", Ordered, func() {
 				}
 			}
 			Expect(stageChange).NotTo(BeNil(), "expected a stage field delta in the changelog entry")
-			Expect(stageChange.GetOldValue()).To(Equal("in_progress"))
+			Expect(stageChange.GetOldValue()).To(Equal("approved"))
 			Expect(stageChange.GetNewValue()).To(Equal("shape"))
 		})
 	})

@@ -82,7 +82,7 @@ func newSliceClient() specgraphv1connect.SliceServiceClient {
 
 // advanceStage advances a spec (already at "spark") through the authoring funnel
 // to the target stage. Valid targets: "shape", "specify", "decompose", "approved",
-// "done". For "done", it also claims and completes the spec.
+// "in_progress" (claim without completing), "done" (claim + complete).
 // The spec must have been created via CreateSpec or Spark before calling this.
 // An optional http.Client may be passed to target a different project.
 func advanceStage(ctx context.Context, slug, target string, httpClients ...*http.Client) error {
@@ -92,7 +92,7 @@ func advanceStage(ctx context.Context, slug, target string, httpClients ...*http
 	}
 	ac := specgraphv1connect.NewAuthoringServiceClient(hc, serverInfo.BaseURL)
 
-	stages := []string{"shape", "specify", "decompose", "approved", "done"}
+	stages := []string{"shape", "specify", "decompose", "approved", "in_progress", "done"}
 	targetIdx := -1
 	for i, s := range stages {
 		if s == target {
@@ -162,8 +162,30 @@ func advanceStage(ctx context.Context, slug, target string, httpClients ...*http
 		return nil
 	}
 
-	// done: claim + complete
-	return claimAndComplete(ctx, slug, hc)
+	// in_progress: claim only (do not complete)
+	const advanceAgent = "e2e-advance-agent"
+	cc := specgraphv1connect.NewClaimServiceClient(hc, serverInfo.BaseURL)
+	_, err = cc.ClaimSpec(ctx, connect.NewRequest(&specv1.ClaimSpecRequest{
+		SpecSlug: slug,
+		Agent:    advanceAgent,
+	}))
+	if err != nil {
+		return fmt.Errorf("advanceStage claim: %w", err)
+	}
+	if targetIdx < 5 {
+		return nil
+	}
+
+	// done: complete
+	ec := specgraphv1connect.NewExecutionServiceClient(hc, serverInfo.BaseURL)
+	_, err = ec.ReportCompletion(ctx, connect.NewRequest(&specv1.ReportCompletionRequest{
+		Slug:  slug,
+		Agent: advanceAgent,
+	}))
+	if err != nil {
+		return fmt.Errorf("advanceStage complete: %w", err)
+	}
+	return nil
 }
 
 // claimAndComplete claims a spec (must be at approved or in_progress) and
