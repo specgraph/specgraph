@@ -22,8 +22,8 @@ func TestLifecycle(t *testing.T) {
 
 		_, err := store.CreateSpec(ctx, "amend-me", "Test spec", "p1", "medium")
 		require.NoError(t, err)
-		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "amend-me", nil, &doneStage, nil, nil, nil)
+		inProgressStage := "in_progress"
+		_, err = store.UpdateSpec(ctx, "amend-me", nil, &inProgressStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		amended, err := store.LifecycleAmendSpec(ctx, "amend-me", "Mobile needs offline refresh", "shape")
@@ -38,32 +38,46 @@ func TestLifecycle(t *testing.T) {
 		require.Equal(t, int32(3), fetched.Version)
 	})
 
-	t.Run("AmendSpec_DefaultToAmended", func(t *testing.T) {
+	t.Run("AmendSpec_RequiresReEntryStage", func(t *testing.T) {
 		store := newStore(t)
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "amend-default", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "amend-noreentry", "Test spec", "p1", "medium")
 		require.NoError(t, err)
-		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "amend-default", nil, &doneStage, nil, nil, nil)
+		inProgressStage := "in_progress"
+		_, err = store.UpdateSpec(ctx, "amend-noreentry", nil, &inProgressStage, nil, nil, nil)
 		require.NoError(t, err)
 
-		amended, err := store.LifecycleAmendSpec(ctx, "amend-default", "needs rework", "")
-		require.NoError(t, err)
-		require.Equal(t, storage.SpecStageAmended, amended.Stage)
+		_, err = store.LifecycleAmendSpec(ctx, "amend-noreentry", "needs rework", "")
+		require.ErrorIs(t, err, storage.ErrReEntryStageRequired)
 	})
 
-	t.Run("AmendSpec_NotDone", func(t *testing.T) {
+	t.Run("AmendSpec_NotAmendable_Spark", func(t *testing.T) {
 		store := newStore(t)
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "not-done", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "not-amendable-spark", "Test spec", "p1", "medium")
 		require.NoError(t, err)
-		// Spec is at "spark" -- not done, so amend should fail.
-		_, err = store.LifecycleAmendSpec(ctx, "not-done", "reason", "shape")
-		require.ErrorIs(t, err, storage.ErrSpecNotDone)
+		// Spec is at "spark" -- not amend-eligible, so amend should fail.
+		_, err = store.LifecycleAmendSpec(ctx, "not-amendable-spark", "reason", "shape")
+		require.ErrorIs(t, err, storage.ErrSpecNotAmendable)
+	})
+
+	t.Run("AmendSpec_NotAmendable_Done", func(t *testing.T) {
+		store := newStore(t)
+		clearDatabase(t, store)
+		ctx := context.Background()
+
+		_, err := store.CreateSpec(ctx, "not-amendable-done", "Test spec", "p1", "medium")
+		require.NoError(t, err)
+		doneStage := "done"
+		_, err = store.UpdateSpec(ctx, "not-amendable-done", nil, &doneStage, nil, nil, nil)
+		require.NoError(t, err)
+		// Spec is at "done" -- not amend-eligible, so amend should fail.
+		_, err = store.LifecycleAmendSpec(ctx, "not-amendable-done", "reason", "shape")
+		require.ErrorIs(t, err, storage.ErrSpecNotAmendable)
 	})
 
 	t.Run("AmendSpec_NotFound", func(t *testing.T) {
@@ -92,6 +106,24 @@ func TestLifecycle(t *testing.T) {
 		require.ErrorIs(t, err, storage.ErrSpecTerminal)
 	})
 
+	t.Run("AmendSpec_AllEligibleStages", func(t *testing.T) {
+		store := newStore(t)
+		clearDatabase(t, store)
+		ctx := context.Background()
+
+		for _, stage := range []string{"approved", "in_progress", "review"} {
+			slug := "amend-eligible-" + stage
+			_, err := store.CreateSpec(ctx, slug, "Test spec", "p1", "medium")
+			require.NoError(t, err)
+			_, err = store.UpdateSpec(ctx, slug, nil, &stage, nil, nil, nil)
+			require.NoError(t, err)
+
+			amended, err := store.LifecycleAmendSpec(ctx, slug, "needs rework", "shape")
+			require.NoError(t, err, "amend from %q should succeed", stage)
+			require.Equal(t, storage.SpecStage("shape"), amended.Stage, "stage %q", stage)
+		}
+	})
+
 	t.Run("AmendSpec_VersionGuard", func(t *testing.T) {
 		store := newStore(t)
 		clearDatabase(t, store)
@@ -99,8 +131,8 @@ func TestLifecycle(t *testing.T) {
 
 		_, err := store.CreateSpec(ctx, "toctou-amend", "Test spec", "p1", "medium")
 		require.NoError(t, err)
-		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "toctou-amend", nil, &doneStage, nil, nil, nil)
+		inProgressStage := "in_progress"
+		_, err = store.UpdateSpec(ctx, "toctou-amend", nil, &inProgressStage, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Two goroutines race to amend the same spec.
@@ -118,7 +150,7 @@ func TestLifecycle(t *testing.T) {
 			if e := <-errs; e != nil {
 				failed++
 				require.True(t,
-					errors.Is(e, storage.ErrConcurrentModification) || errors.Is(e, storage.ErrSpecNotDone),
+					errors.Is(e, storage.ErrConcurrentModification) || errors.Is(e, storage.ErrSpecNotAmendable),
 					"unexpected error: %v", e)
 			} else {
 				succeeded++
@@ -133,12 +165,12 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		for _, stage := range []string{"done", "amended", "superseded", "abandoned"} {
+		for _, stage := range []string{"done", "superseded", "abandoned"} {
 			slug := "amend-reentry-" + stage
 			_, err := store.CreateSpec(ctx, slug, "Test spec", "p1", "medium")
 			require.NoError(t, err)
-			doneStage := "done"
-			_, err = store.UpdateSpec(ctx, slug, nil, &doneStage, nil, nil, nil)
+			inProgressStage := "in_progress"
+			_, err = store.UpdateSpec(ctx, slug, nil, &inProgressStage, nil, nil, nil)
 			require.NoError(t, err)
 
 			_, err = store.LifecycleAmendSpec(ctx, slug, "reason", stage)
@@ -152,6 +184,9 @@ func TestLifecycle(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := store.CreateSpec(ctx, "old-lifecycle", "Old spec", "p1", "medium")
+		require.NoError(t, err)
+		doneStage := "done"
+		_, err = store.UpdateSpec(ctx, "old-lifecycle", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 		_, err = store.CreateSpec(ctx, "new-lifecycle", "New spec", "p1", "medium")
 		require.NoError(t, err)
@@ -169,6 +204,9 @@ func TestLifecycle(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := store.CreateSpec(ctx, "edge-old", "Old spec", "p1", "medium")
+		require.NoError(t, err)
+		doneStage := "done"
+		_, err = store.UpdateSpec(ctx, "edge-old", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 		_, err = store.CreateSpec(ctx, "edge-new", "New spec", "p1", "medium")
 		require.NoError(t, err)
@@ -203,9 +241,27 @@ func TestLifecycle(t *testing.T) {
 
 		_, err := store.CreateSpec(ctx, "exists-old", "Old spec", "p1", "medium")
 		require.NoError(t, err)
+		doneStage := "done"
+		_, err = store.UpdateSpec(ctx, "exists-old", nil, &doneStage, nil, nil, nil)
+		require.NoError(t, err)
 
 		_, _, err = store.LifecycleSupersedeSpec(ctx, "exists-old", "nonexistent-new")
 		require.ErrorIs(t, err, storage.ErrNewSpecNotFound)
+	})
+
+	t.Run("SupersedeSpec_NotDone", func(t *testing.T) {
+		store := newStore(t)
+		clearDatabase(t, store)
+		ctx := context.Background()
+
+		_, err := store.CreateSpec(ctx, "not-done-old", "Old spec", "p1", "medium")
+		require.NoError(t, err)
+		_, err = store.CreateSpec(ctx, "not-done-new", "New spec", "p1", "medium")
+		require.NoError(t, err)
+
+		// Old spec is at spark -- not done, supersede should fail.
+		_, _, err = store.LifecycleSupersedeSpec(ctx, "not-done-old", "not-done-new")
+		require.ErrorIs(t, err, storage.ErrSpecNotDone)
 	})
 
 	t.Run("SupersedeSpec_TerminalState", func(t *testing.T) {
@@ -222,9 +278,9 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.LifecycleAbandonSpec(ctx, "terminal-old", "abandoned")
 		require.NoError(t, err)
 
-		// Supersede should fail because old spec is terminal.
+		// Supersede should fail because old spec is not done.
 		_, _, err = store.LifecycleSupersedeSpec(ctx, "terminal-old", "replacement")
-		require.ErrorIs(t, err, storage.ErrSpecTerminal)
+		require.ErrorIs(t, err, storage.ErrSpecNotDone)
 	})
 
 	t.Run("SupersedeSpec_NewTerminal", func(t *testing.T) {
@@ -233,6 +289,9 @@ func TestLifecycle(t *testing.T) {
 		ctx := context.Background()
 
 		_, err := store.CreateSpec(ctx, "old-sup-aband", "Old spec", "p1", "medium")
+		require.NoError(t, err)
+		doneStage := "done"
+		_, err = store.UpdateSpec(ctx, "old-sup-aband", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 		_, err = store.CreateSpec(ctx, "new-sup-aband", "New spec", "p1", "medium")
 		require.NoError(t, err)
@@ -325,53 +384,6 @@ func TestLifecycle(t *testing.T) {
 		}
 		require.Equal(t, 1, succeeded, "exactly one abandon should succeed")
 		require.Equal(t, 1, failed, "exactly one abandon should fail")
-	})
-
-	t.Run("AmendedSpec_CanBeAbandoned", func(t *testing.T) {
-		store := newStore(t)
-		clearDatabase(t, store)
-		ctx := context.Background()
-
-		_, err := store.CreateSpec(ctx, "amend-abandon", "Test spec", "p1", "medium")
-		require.NoError(t, err)
-		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "amend-abandon", nil, &doneStage, nil, nil, nil)
-		require.NoError(t, err)
-
-		// Amend with empty reEntryStage -> "amended" stage.
-		amended, err := store.LifecycleAmendSpec(ctx, "amend-abandon", "needs rework", "")
-		require.NoError(t, err)
-		require.Equal(t, storage.SpecStageAmended, amended.Stage)
-
-		// Amended is not fully terminal -- abandon should succeed.
-		abandoned, err := store.LifecycleAbandonSpec(ctx, "amend-abandon", "no longer needed")
-		require.NoError(t, err)
-		require.Equal(t, storage.SpecStageAbandoned, abandoned.Stage)
-	})
-
-	t.Run("AmendedSpec_CanBeSuperseded", func(t *testing.T) {
-		store := newStore(t)
-		clearDatabase(t, store)
-		ctx := context.Background()
-
-		_, err := store.CreateSpec(ctx, "amend-supersede-old", "Old spec", "p1", "medium")
-		require.NoError(t, err)
-		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "amend-supersede-old", nil, &doneStage, nil, nil, nil)
-		require.NoError(t, err)
-
-		amended, err := store.LifecycleAmendSpec(ctx, "amend-supersede-old", "needs rework", "")
-		require.NoError(t, err)
-		require.Equal(t, storage.SpecStageAmended, amended.Stage)
-
-		_, err = store.CreateSpec(ctx, "amend-supersede-new", "New spec", "p1", "medium")
-		require.NoError(t, err)
-
-		oldSpec, newSpec, err := store.LifecycleSupersedeSpec(ctx, "amend-supersede-old", "amend-supersede-new")
-		require.NoError(t, err)
-		require.Equal(t, storage.SpecStageSuperseded, oldSpec.Stage)
-		require.Equal(t, "amend-supersede-new", oldSpec.SupersededBy)
-		require.Equal(t, "amend-supersede-old", newSpec.Supersedes)
 	})
 
 	t.Run("AcknowledgeDrift_Basic", func(t *testing.T) {
@@ -480,25 +492,6 @@ func TestLifecycle(t *testing.T) {
 		require.Error(t, err)
 		require.ErrorIs(t, err, storage.ErrSpecNotFound)
 	})
-
-	t.Run("AcknowledgeDrift_AmendedStage", func(t *testing.T) {
-		store := newStore(t)
-		clearDatabase(t, store)
-		ctx := context.Background()
-
-		_, err := store.CreateSpec(ctx, "ack-amended", "Test spec", "p1", "medium")
-		require.NoError(t, err)
-		doneStage := "done"
-		_, err = store.UpdateSpec(ctx, "ack-amended", nil, &doneStage, nil, nil, nil)
-		require.NoError(t, err)
-		amended, err := store.LifecycleAmendSpec(ctx, "ack-amended", "needs rework", "")
-		require.NoError(t, err)
-		require.Equal(t, storage.SpecStageAmended, amended.Stage)
-
-		// Amended specs should be eligible for drift acknowledgment.
-		err = store.LifecycleAcknowledgeDrift(ctx, "ack-amended", "", "divergence accepted")
-		require.NoError(t, err)
-	})
 }
 
 func TestLifecycle_AmendRefreshesEdgeHash(t *testing.T) {
@@ -522,11 +515,11 @@ func TestLifecycle_AmendRefreshesEdgeHash(t *testing.T) {
 	require.Len(t, initialDeps, 1)
 	initialHashAtLink := initialDeps[0].ContentHashAtLink
 
-	// Advance upstream to done so it can be amended.
-	_, err = store.UpdateSpec(ctx, "upstream-hash", nil, strPtr("done"), nil, nil, nil)
+	// Advance upstream to in_progress so it can be amended.
+	_, err = store.UpdateSpec(ctx, "upstream-hash", nil, strPtr("in_progress"), nil, nil, nil)
 	require.NoError(t, err)
 
-	// Amend the upstream spec — this changes its content hash.
+	// Amend the upstream spec from in_progress to shape — this changes its content hash.
 	_, err = store.LifecycleAmendSpec(ctx, "upstream-hash", "needs revision", "shape")
 	require.NoError(t, err)
 
