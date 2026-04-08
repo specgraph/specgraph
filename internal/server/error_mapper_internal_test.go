@@ -171,6 +171,8 @@ func TestLifecycleError(t *testing.T) {
 		{"concurrent modification", storage.ErrConcurrentModification, connect.CodeAborted},
 		{"internal guard failure", storage.ErrInternalGuardFailure, connect.CodeInternal},
 		{"invalid re-entry stage", storage.ErrInvalidReEntryStage, connect.CodeInvalidArgument},
+		{"spec not amendable", storage.ErrSpecNotAmendable, connect.CodeFailedPrecondition},
+		{"re-entry stage required", storage.ErrReEntryStageRequired, connect.CodeInvalidArgument},
 		{"edge not found", storage.ErrEdgeNotFound, connect.CodeNotFound},
 		{"same slugs", storage.ErrSameSlugs, connect.CodeInvalidArgument},
 		{"connect error passthrough", connect.NewError(connect.CodeAborted, errors.New("abort")), connect.CodeAborted},

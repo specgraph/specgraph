@@ -37,8 +37,8 @@ type LifecycleHandler struct {
 
 var _ specgraphv1connect.LifecycleServiceHandler = (*LifecycleHandler)(nil)
 
-// TransitionAmend handles the TransitionAmend RPC, transitioning a done spec to
-// an earlier authoring stage (or "amended" if no re-entry stage is specified).
+// TransitionAmend handles the TransitionAmend RPC, transitioning an in-flight spec
+// (approved, in_progress, or review) to an earlier authoring stage. re_entry_stage is required.
 func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Request[specv1.TransitionAmendRequest]) (*connect.Response[specv1.TransitionAmendResponse], error) {
 	store, scopeErr := scopeStore(ctx, h.scoper)
 	if scopeErr != nil {
@@ -50,6 +50,9 @@ func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Req
 	}
 	if err := validateRequiredField("reason", msg.Reason); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if msg.ReEntryStage == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("re_entry_stage is required"))
 	}
 	if msg.ReEntryStage != "" {
 		stage := storage.SpecStage(msg.ReEntryStage)
@@ -133,7 +136,7 @@ func (h *LifecycleHandler) TransitionAbandon(ctx context.Context, req *connect.R
 }
 
 // CheckDrift handles the CheckDrift RPC, returning drift reports for a spec.
-// An empty slug checks all eligible (done/amended) specs.
+// An empty slug checks all eligible (done) specs.
 func (h *LifecycleHandler) CheckDrift(ctx context.Context, req *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
 	if _, scopeErr := scopeStore(ctx, h.scoper); scopeErr != nil {
 		return nil, scopeErr
@@ -278,7 +281,13 @@ func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 		return connect.NewError(connect.CodeNotFound, errors.New(specMsg(slug, "not found")))
 	}
 	if errors.Is(err, storage.ErrSpecNotDone) {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "must be in done stage")))
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "must be in done stage; use amend for in-flight specs")))
+	}
+	if errors.Is(err, storage.ErrSpecNotAmendable) {
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is not in an amend-eligible stage (must be approved, in_progress, or review); use supersede for completed specs")))
+	}
+	if errors.Is(err, storage.ErrReEntryStageRequired) {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("re_entry_stage is required — one of: spark, shape, specify, decompose"))
 	}
 	if errors.Is(err, storage.ErrSpecIneligibleStage) {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is not in an eligible stage for this operation")))
@@ -287,7 +296,7 @@ func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is in a terminal state")))
 	}
 	if errors.Is(err, storage.ErrSpecIneligibleForDrift) {
-		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is not eligible for drift checking (must be done or amended)")))
+		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is not eligible for drift checking (must be done)")))
 	}
 	if errors.Is(err, storage.ErrNewSpecNotFound) {
 		return connect.NewError(connect.CodeNotFound, errors.New("replacement spec not found"))

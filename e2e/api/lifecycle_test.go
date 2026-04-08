@@ -127,14 +127,24 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))
 		})
 
-		It("amends the done spec to amended stage when no re-entry stage specified", func() {
-			resp, err := lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
+		It("rejects amend without re_entry_stage", func() {
+			_, err := lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
 				Slug:   amendDefaultSlug,
 				Reason: "Needs revision",
 			}))
+			Expect(err).To(HaveOccurred())
+			Expect(connect.CodeOf(err)).To(Equal(connect.CodeInvalidArgument))
+		})
+
+		It("amends the done spec to shape stage with re_entry_stage", func() {
+			resp, err := lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
+				Slug:         amendDefaultSlug,
+				Reason:       "Needs revision",
+				ReEntryStage: "shape",
+			}))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Msg.GetSpec().GetSlug()).To(Equal(amendDefaultSlug))
-			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("amended"))
+			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("shape"))
 		})
 	})
 
