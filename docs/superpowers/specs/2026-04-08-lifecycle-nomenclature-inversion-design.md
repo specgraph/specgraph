@@ -103,7 +103,7 @@ Extend the stage-routing table (Step 3A) to cover execution and lifecycle stages
 
 | Current Stage | Suggest | Action |
 |---|---|---|
-| `in_progress` | "Work is underway. Need to amend the spec?" | Offer `specgraph lifecycle amend <slug> --re-entry-stage <stage>` |
+| `in_progress` | "Work is underway. Need to amend the spec?" | Offer `specgraph lifecycle amend <slug> --re-entry <stage>` |
 | `review` | "In review. Need to amend?" | Same |
 | `done` | "This spec is complete. Supersede it or start something new?" | Offer `specgraph lifecycle supersede` |
 

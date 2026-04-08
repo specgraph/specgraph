@@ -152,37 +152,34 @@ This gives you:
 
 ```mermaid
 graph TD
-    subgraph Spec["oauth-refresh v1–v5"]
+    subgraph Spec["oauth-refresh v1–v4 (in-flight)"]
         V1["v1 spark"] --> V2["v2 shape"]
         V2 --> V3["v3 specify"]
         V3 --> V4["v4 approved ✓"]
-        V4 --> V5["v5 done ✓"]
     end
 
     subgraph CL["ChangeLog"]
         C1["Δ v1→v2<br/>fields: intent, scope"]
         C2["Δ v2→v3<br/>fields: interface ✓"]
         C3["Δ v3→v4<br/>checkpoint ✓"]
-        C4["Δ v4→v5<br/>checkpoint ✓"]
     end
 
     V2 -.->|HAS_CHANGE| C1
     V3 -.->|HAS_CHANGE| C2
     V4 -.->|HAS_CHANGE| C3
-    V5 -.->|HAS_CHANGE| C4
 
-    V4 -->|amend| A["v6 specify (amend re-entry)"]
-    A --> V8["v7 approved ✓"]
-    V8 --> V9["v8 done ✓"]
+    V4 -->|amend| A["v5 specify (amend re-entry)"]
+    A --> V8["v6 approved ✓"]
+    V8 --> V9["v7 done ✓"]
 
-    V9 -->|supersede| S["v9 superseded"]
+    V9 -->|supersede| S["v8 superseded"]
     NEW["oauth-refresh-v2"] -->|SUPERSEDES| S
 ```
 
 The diagram shows a spec's full evolution: progressing through the funnel
-(v1–v5), being **amended** from an in-flight stage back to an earlier
-authoring stage for refinement (v6–v8), and eventually being **superseded**
-from `done` by a replacement spec. Every version
+(v1–v4), being **amended** from an approved in-flight stage back to specify
+for refinement (v5–v6), reaching `done` (v7), and eventually being
+**superseded** by a replacement spec. Every version
 transition creates a ChangeLog entry linked via `HAS_CHANGE`. Checkpoint
 entries (marked ✓) flag major stage transitions.
 
