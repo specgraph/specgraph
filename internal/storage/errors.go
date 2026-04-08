@@ -49,7 +49,7 @@ var (
 	// ErrSpecIneligibleStage is returned when a spec's stage does not support the requested operation.
 	ErrSpecIneligibleStage = errors.New("spec is not in an eligible stage for this operation")
 	// ErrSpecIneligibleForDrift is returned when a spec cannot be drift-checked.
-	ErrSpecIneligibleForDrift = errors.New("spec is not eligible for drift checking (must be done or amended)")
+	ErrSpecIneligibleForDrift = errors.New("spec is not eligible for drift checking (must be done)")
 	// ErrSpecTerminal is returned when a spec is superseded or abandoned.
 	ErrSpecTerminal = errors.New("spec is in a terminal state (superseded or abandoned)")
 	// ErrNewSpecNotFound is returned when a replacement spec does not exist.
