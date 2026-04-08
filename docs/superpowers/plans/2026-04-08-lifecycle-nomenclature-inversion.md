@@ -10,9 +10,10 @@
 
 ---
 
-### Task 1: Add New Error Sentinels and Update Domain Types
+## Task 1: Add New Error Sentinels and Update Domain Types
 
 **Files:**
+
 - Modify: `internal/storage/errors.go:47-68`
 - Modify: `internal/storage/spec_domain.go:1-92`
 - Create: `internal/storage/spec_domain_test.go`
@@ -121,6 +122,7 @@ git commit -m "feat(storage): add IsAmendEligible, remove SpecStageAmended, add 
 ### Task 2: Update Storage Backend — `LifecycleAmendSpec`
 
 **Files:**
+
 - Modify: `internal/storage/postgres/lifecycle.go:32-102`
 - Modify: `internal/storage/lifecycle.go:106-109`
 - Modify: `internal/storage/postgres/lifecycle_test.go`
@@ -398,6 +400,7 @@ git commit -m "feat(storage): amend from in-flight stages, require re_entry_stag
 ### Task 3: Update Storage Backend — `LifecycleSupersedeSpec`
 
 **Files:**
+
 - Modify: `internal/storage/postgres/lifecycle.go:104-238`
 - Modify: `internal/storage/postgres/lifecycle_test.go`
 
@@ -502,6 +505,7 @@ t.Run("SupersedeSpec_TerminalState", func(t *testing.T) {
 In `internal/storage/postgres/lifecycle.go`, in the `LifecycleSupersedeSpec` method:
 
 Replace the old spec eligibility check:
+
 ```go
 // Before:
 if terminalStages[oldCheck.Stage] {
@@ -515,6 +519,7 @@ if oldCheck.Stage != storage.SpecStageDone {
 ```
 
 Replace the old spec UPDATE query to use `AND stage = 'done'` instead of `AND stage NOT IN (...)`:
+
 ```go
 oldTag, oldErr := s.exec(txCtx,
 	`UPDATE specs SET stage = $1, superseded_by = $2, version = version + 1, updated_at = $3
@@ -541,6 +546,7 @@ git commit -m "feat(storage): supersede restricted to done-only specs"
 ### Task 4: Update `TestLifecycle_AmendRefreshesEdgeHash`
 
 **Files:**
+
 - Modify: `internal/storage/postgres/lifecycle_test.go`
 
 - [ ] **Step 1: Update the test to use `in_progress` as amend source**
@@ -607,6 +613,7 @@ git commit -m "test(storage): update AmendRefreshesEdgeHash for new amend eligib
 ### Task 5: Update Drift Engine and Drift Acknowledgment
 
 **Files:**
+
 - Modify: `internal/drift/drift.go`
 - Modify: `internal/storage/postgres/lifecycle.go` (LifecycleAcknowledgeDrift)
 - Modify: `internal/storage/errors.go`
@@ -616,27 +623,33 @@ git commit -m "test(storage): update AmendRefreshesEdgeHash for new amend eligib
 In `internal/drift/drift.go`:
 
 Update the comment on `maxSpecsPerCheck`:
+
 ```go
 // maxSpecsPerCheck limits the number of specs returned per ListSpecs call.
 const maxSpecsPerCheck = 10000
 ```
 
 In the single-spec check path, replace:
+
 ```go
 if spec.Stage != storage.SpecStageDone && spec.Stage != storage.SpecStageAmended {
 ```
+
 With:
+
 ```go
 if spec.Stage != storage.SpecStageDone {
 ```
 
 In the all-specs path, remove the `amendedSpecs` fetch and append. The code should go from fetching `doneSpecs` directly to the `allSpecs` count:
+
 ```go
 specs = append(specs, doneSpecs...)
 // Remove the amendedSpecs fetch/append entirely
 ```
 
 Update the `SkippedCount` field comment in `CheckResult`:
+
 ```go
 SkippedCount int32 // specs not in done stage (all-specs mode only)
 ```
@@ -646,10 +659,13 @@ SkippedCount int32 // specs not in done stage (all-specs mode only)
 In `internal/storage/postgres/lifecycle.go`, in `LifecycleAcknowledgeDrift`:
 
 Replace:
+
 ```go
 eligibleStages := []string{string(storage.SpecStageDone), string(storage.SpecStageAmended)}
 ```
+
 With:
+
 ```go
 eligibleStages := []string{string(storage.SpecStageDone)}
 ```
@@ -657,6 +673,7 @@ eligibleStages := []string{string(storage.SpecStageDone)}
 - [ ] **Step 3: Update `ErrSpecIneligibleForDrift` message**
 
 In `internal/storage/errors.go`:
+
 ```go
 ErrSpecIneligibleForDrift = errors.New("spec is not eligible for drift checking (must be done)")
 ```
@@ -678,6 +695,7 @@ git commit -m "feat(drift): remove amended stage from drift eligibility"
 ### Task 6: Update Handler and Error Mapping
 
 **Files:**
+
 - Modify: `internal/server/lifecycle_handler.go`
 
 - [ ] **Step 1: Require `re_entry_stage` in handler**
@@ -704,6 +722,7 @@ if errors.Is(err, storage.ErrReEntryStageRequired) {
 ```
 
 Update `ErrSpecNotDone` message:
+
 ```go
 if errors.Is(err, storage.ErrSpecNotDone) {
 	return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "must be in done stage; use amend for in-flight specs")))
@@ -711,6 +730,7 @@ if errors.Is(err, storage.ErrSpecNotDone) {
 ```
 
 Update `ErrSpecIneligibleForDrift` message:
+
 ```go
 if errors.Is(err, storage.ErrSpecIneligibleForDrift) {
 	return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is not eligible for drift checking (must be done)")))
@@ -725,6 +745,7 @@ if errors.Is(err, storage.ErrSpecIneligibleForDrift) {
 ```
 
 Also update `CheckDrift` doc comment:
+
 ```go
 // CheckDrift handles the CheckDrift RPC, returning drift reports for a spec.
 // An empty slug checks all eligible (done) specs.
@@ -747,6 +768,7 @@ git commit -m "feat(handler): require re_entry_stage, add cross-referencing erro
 ### Task 7: Fix All Remaining `SpecStageAmended` References
 
 **Files:**
+
 - Various — any file still referencing `SpecStageAmended` or `"amended"` in Go code
 
 - [ ] **Step 1: Find all remaining references**
@@ -754,6 +776,7 @@ git commit -m "feat(handler): require re_entry_stage, add cross-referencing erro
 Run: `grep -rn 'SpecStageAmended\|"amended"' --include='*.go' .`
 
 Common locations to fix:
+
 - `internal/drift/drift_test.go` — update tests referencing amended
 - `internal/server/lifecycle_handler_test.go` — update handler test mocks
 - `internal/server/error_mapper_internal_test.go` — update error mapping tests
@@ -783,6 +806,7 @@ git commit -m "fix: remove all remaining SpecStageAmended references"
 ### Task 8: Update CLI
 
 **Files:**
+
 - Modify: `cmd/specgraph/lifecycle.go`
 
 - [ ] **Step 1: Make `--re-entry` required and update descriptions**
@@ -790,6 +814,7 @@ git commit -m "fix: remove all remaining SpecStageAmended references"
 In `cmd/specgraph/lifecycle.go`:
 
 Update `amendCmd`:
+
 ```go
 var amendCmd = &cobra.Command{
 	Use:   "amend <slug>",
@@ -800,6 +825,7 @@ var amendCmd = &cobra.Command{
 ```
 
 Update `supersedeCmd`:
+
 ```go
 var supersedeCmd = &cobra.Command{
 	Use:   "supersede <slug>",
@@ -810,6 +836,7 @@ var supersedeCmd = &cobra.Command{
 ```
 
 In `init()`, update the `--re-entry` flag:
+
 ```go
 amendCmd.Flags().StringVar(&amendReEntry, "re-entry", "", "authoring stage to re-enter (spark|shape|specify|decompose)")
 cobra.CheckErr(amendCmd.MarkFlagRequired("re-entry"))
@@ -832,6 +859,7 @@ git commit -m "feat(cli): require --re-entry on amend, update command descriptio
 ### Task 9: Update Proto Comments
 
 **Files:**
+
 - Modify: `proto/specgraph/v1/lifecycle.proto`
 
 - [ ] **Step 1: Update `TransitionAmendRequest` comment**
@@ -851,12 +879,14 @@ message TransitionAmendRequest {
 - [ ] **Step 2: Update drift comments — remove "amended"**
 
 `DriftCheckRequest.slug`:
+
 ```protobuf
 // Empty slug checks all eligible (done) specs.
 string slug = 1;
 ```
 
 `DriftCheckResponse.skipped_count`:
+
 ```protobuf
 // Number of specs skipped because they are not in done stage.
 // Only set for all-specs checks (empty slug); zero for single-spec checks.
@@ -879,6 +909,7 @@ git commit -m "docs(proto): update lifecycle.proto comments for amend/supersede 
 ### Task 10: Add Postgres Migration
 
 **Files:**
+
 - Create: `internal/storage/postgres/migrations/005_remove_amended_stage.sql`
 
 - [ ] **Step 1: Write the migration**
@@ -904,6 +935,7 @@ git commit -m "feat(migration): move amended specs to spark stage"
 ### Task 11: Update E2E Tests
 
 **Files:**
+
 - Modify: `e2e/api/lifecycle_test.go`
 
 - [ ] **Step 1: Rewrite "Amend flow" — amend from `in_progress`**
@@ -1000,6 +1032,7 @@ It("creates two specs and advances old to done", func() {
 - [ ] **Step 4: Update error paths**
 
 Add test for missing `re_entry_stage`:
+
 ```go
 It("rejects amend without re_entry_stage with InvalidArgument", func() {
 	errSlug := "lifecycle-err-amend-noreentry-" + time.Now().Format("150405")
@@ -1021,6 +1054,7 @@ It("rejects amend without re_entry_stage with InvalidArgument", func() {
 ```
 
 Add test for amend-on-done:
+
 ```go
 It("rejects amend on a done spec with FailedPrecondition", func() {
 	errSlug := "lifecycle-err-amend-done-" + time.Now().Format("150405")
@@ -1043,6 +1077,7 @@ It("rejects amend on a done spec with FailedPrecondition", func() {
 ```
 
 Add test for supersede-on-non-done:
+
 ```go
 It("rejects supersede on a non-done spec with FailedPrecondition", func() {
 	errSlug := "lifecycle-err-supersede-notdone-" + time.Now().Format("150405")
@@ -1075,6 +1110,7 @@ git commit -m "test(e2e): update lifecycle E2E tests for amend/supersede inversi
 ### Task 12: Update Plugin/Skill
 
 **Files:**
+
 - Modify: `plugin/specgraph/skills/specgraph/SKILL.md`
 
 - [ ] **Step 1: Extend stage-routing table**
@@ -1099,6 +1135,7 @@ git commit -m "docs(skill): extend router table for execution/lifecycle stages"
 ### Task 13: Update Site Documentation
 
 **Files:**
+
 - Modify: `site/docs/concepts/lifecycle.md`
 - Modify: `site/docs/concepts/authoring.md`
 - Scan: remaining doc files
@@ -1106,6 +1143,7 @@ git commit -m "docs(skill): extend router table for execution/lifecycle stages"
 - [ ] **Step 1: Rewrite `lifecycle.md`**
 
 Key changes:
+
 - Decision tree: amend from in-flight stages, supersede from done
 - Eligibility table: amend `{approved, in_progress, review}`, supersede `{done}`
 - State diagram: remove `done --> amended`, add `approved/in_progress/review --> [authoring stage]`

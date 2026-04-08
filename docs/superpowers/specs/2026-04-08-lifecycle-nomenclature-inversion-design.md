@@ -53,12 +53,14 @@ Additionally, the `amended` semi-terminal stage exists as a parking state when n
 ### 3. Storage Backend (`internal/storage/postgres/lifecycle.go`)
 
 **`LifecycleAmendSpec`:**
+
 - If `reEntryStage` is empty, return `ErrReEntryStageRequired` (new sentinel)
 - Change SQL WHERE from `stage = 'done'` to `stage IN ('approved', 'in_progress', 'review')`
 - Update changelog summary from `"Amended from done"` to `"Amended from <source_stage>"`
 - `ExcludesReEntry()` check on target stays (excludes `done`, `superseded`, `abandoned`)
 
 **`LifecycleSupersedeSpec`:**
+
 - Change eligibility from `if terminalStages[oldCheck.Stage]` to `if oldCheck.Stage != storage.SpecStageDone`
 - Error becomes `ErrSpecNotDone` (semantically correct now)
 
@@ -80,6 +82,7 @@ Additionally, the `amended` semi-terminal stage exists as a parking state when n
 - `TransitionSupersede`: `ErrSpecNotDone` → `CodeFailedPrecondition` (stays)
 
 **Cross-referencing error messages:**
+
 - Amend on `done`: "spec is not amendable (stage=done); use supersede for completed specs"
 - Supersede on non-done: "spec is not done (stage=in_progress); use amend for in-flight specs"
 
@@ -107,10 +110,12 @@ Extend the stage-routing table (Step 3A) to cover execution and lifecycle stages
 ### 10. Site Documentation
 
 **Major rewrites:**
+
 - `site/docs/concepts/lifecycle.md` — decision tree, eligibility, state diagram, "when to use" examples
 - `site/docs/concepts/authoring.md` — state machine diagram (remove `done-->amended` path, add `approved/in_progress/review --> [re-entry stage]`)
 
 **Scan and update:**
+
 - `site/docs/concepts/specs.md`
 - `site/docs/concepts/slices.md`
 - `site/docs/cli-reference.md`
@@ -127,11 +132,13 @@ Remove all references to the `amended` stage across all docs.
 ### 11. Tests
 
 **`internal/storage/stage_validation_test.go`:**
+
 - Valid amend sources: `{approved, in_progress, review}`
 - Invalid amend from `done` → error
 - Remove `amended` stage references
 
 **`internal/storage/postgres/lifecycle_test.go`:**
+
 - Amend tests: create specs at `approved`/`in_progress`/`review` before amending
 - Amend errors: from `done` → `ErrSpecNotAmendable`, empty re-entry → `ErrReEntryStageRequired`
 - Remove "amended spec can be superseded/abandoned" tests
@@ -139,6 +146,7 @@ Remove all references to the `amended` stage across all docs.
 - Supersede: from `done` → success, from non-done → `ErrSpecNotDone`
 
 **`e2e/api/lifecycle_test.go`:**
+
 - Amendment flow: create → advance to `in_progress` → amend to `shape` → verify changelog
 - Supersession flow: create → advance to `done` → supersede → verify edge + terminal
 - Error paths: amend-on-done, supersede-on-non-done, amend-without-re-entry
