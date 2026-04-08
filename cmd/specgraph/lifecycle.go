@@ -32,7 +32,7 @@ func lifecycleClient() (specgraphv1connect.LifecycleServiceClient, error) {
 
 var amendCmd = &cobra.Command{
 	Use:   "amend <slug>",
-	Short: "Amend a spec, returning it to an earlier authoring stage",
+	Short: "Amend an in-flight spec, returning it to an earlier authoring stage",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runAmend,
 }
@@ -64,7 +64,7 @@ func runAmend(cmd *cobra.Command, args []string) error {
 
 var supersedeCmd = &cobra.Command{
 	Use:   "supersede <slug>",
-	Short: "Supersede a spec with a new one",
+	Short: "Supersede a completed (done) spec with a new one",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runSupersede,
 }
@@ -307,7 +307,8 @@ func runLint(cmd *cobra.Command, args []string) error {
 func init() {
 	amendCmd.Flags().StringVar(&amendReason, "reason", "", "reason for amendment (required)")
 	cobra.CheckErr(amendCmd.MarkFlagRequired("reason"))
-	amendCmd.Flags().StringVar(&amendReEntry, "re-entry", "", "authoring stage to re-enter (spark|shape|specify|decompose|approved|in_progress|review)")
+	amendCmd.Flags().StringVar(&amendReEntry, "re-entry", "", "authoring stage to re-enter (spark|shape|specify|decompose)")
+	cobra.CheckErr(amendCmd.MarkFlagRequired("re-entry"))
 	rootCmd.AddCommand(amendCmd)
 
 	supersedeCmd.Flags().StringVar(&supersedeWith, "with", "", "slug for the replacement spec (required)")
