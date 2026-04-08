@@ -166,8 +166,8 @@ func TestListChanges_AfterAmend(t *testing.T) {
 	_, err := store.CreateSpec(ctx, "amend-changelog", "original intent", "p2", "medium")
 	require.NoError(t, err)
 
-	doneStage := "done"
-	_, err = store.UpdateSpec(ctx, "amend-changelog", nil, &doneStage, nil, nil, nil)
+	inProgressStage := "in_progress"
+	_, err = store.UpdateSpec(ctx, "amend-changelog", nil, &inProgressStage, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.LifecycleAmendSpec(ctx, "amend-changelog", "requirements changed", "shape")
@@ -197,7 +197,7 @@ func TestListChanges_AfterAmend(t *testing.T) {
 		}
 	}
 	require.NotNil(t, stageChange, "expected a stage field delta in amendment entry")
-	assert.Equal(t, "done", stageChange.OldValue)
+	assert.Equal(t, "in_progress", stageChange.OldValue)
 	assert.Equal(t, "shape", stageChange.NewValue)
 }
 
@@ -207,6 +207,9 @@ func TestListChanges_AfterSupersede(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := store.CreateSpec(ctx, "old-spec", "old intent", "p1", "medium")
+	require.NoError(t, err)
+	doneStage := "done"
+	_, err = store.UpdateSpec(ctx, "old-spec", nil, &doneStage, nil, nil, nil)
 	require.NoError(t, err)
 	_, err = store.CreateSpec(ctx, "new-spec", "new intent", "p1", "medium")
 	require.NoError(t, err)
