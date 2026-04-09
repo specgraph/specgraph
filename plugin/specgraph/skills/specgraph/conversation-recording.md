@@ -78,4 +78,4 @@ Only record on rejection (hold/decline). The approval flow's discussion is worth
 
 ## Error Handling
 
-Conversation recording is non-critical. If the CLI call fails, log the error but do NOT abort the stage persistence. The structured stage output is the primary artifact.
+Conversation recording is required. If the CLI call fails with a transient error, retry once automatically (the stage SKILL.md snippets include this retry). If the retry also fails, treat it as a fatal error for the persistence step: surface the error to the user and do not advance to the next stage. The structured stage output and the conversation log are a single atomic persistence operation — both must succeed before the stage is considered complete.
