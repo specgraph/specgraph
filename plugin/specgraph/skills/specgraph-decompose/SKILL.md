@@ -140,15 +140,14 @@ If the spec is already at or past Decompose:
    - `slices` — array of objects with `id`, `intent`, `verify`, `touches`, `dependsOn`
 2. Show the user: "Here's the decomposition I'm going to save: [summary]. Look right?"
 3. User confirms or tweaks.
-4. Write temp file, call CLI:
-
-```bash
-specgraph decompose <slug> --json-file <tmpfile>
-```
-
-5. **Record the conversation:** See `references/conversation-recording.md` for the exchange format.
+4. Write temp file and persist, then record the conversation in the same step.
+   Run both commands before moving on — conversation recording is not optional.
 
    ```bash
+   # Persist to the graph
+   specgraph decompose <slug> --json-file <tmpfile>
+
+   # Record the conversation (REQUIRED — see references/conversation-recording.md)
    CONV_TMP="$(mktemp /tmp/conv-XXXXXX.json)"
    trap 'rm -f "$CONV_TMP"' EXIT
    cat > "$CONV_TMP" << 'CONV_EOF'
