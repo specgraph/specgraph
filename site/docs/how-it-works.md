@@ -119,7 +119,7 @@ graph TD
     end
 
     subgraph Execution
-        E["Claim → In Progress → Review → Done<br/>Agents or humans consume approved specs<br/>Terminal: Amended | Superseded | Abandoned"]
+        E["Claim → In Progress → Review → Done<br/>Agents or humans consume approved specs<br/>Amend from in-flight | Supersede from done | Abandon"]
     end
 
     C -->|informs| Funnel

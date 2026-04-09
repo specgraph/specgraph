@@ -119,7 +119,7 @@ The full spec schema is organized into five categories:
 | Category | Fields |
 |---|---|
 | **Identity** | `id`, `slug`, `version`, `content_hash`, `created_at`, `updated_at` |
-| **Intent** | `intent`, `stage` (spark / shape / specify / decompose / approved / in_progress / review / done / amended / superseded / abandoned), `priority` (p0-p3), `complexity`, `notes` — see [Lifecycle Transitions](lifecycle.md) for post-completion transitions |
+| **Intent** | `intent`, `stage` (spark / shape / specify / decompose / approved / in_progress / review / done / superseded / abandoned), `priority` (p0-p3), `complexity`, `notes` — see [Lifecycle Transitions](lifecycle.md) for lifecycle transitions |
 | **Lifecycle** | `lifecycle` (task / living), `superseded_by`, `supersedes` |
 | **Edges** | `depends_on`, `blocks`, `composes`, `relates_to`, `supersedes` |
 | **Authoring Outputs** | `spark_output`, `shape_output`, `specify_output`, `decompose_output`, `conversation_logs` |
@@ -152,37 +152,34 @@ This gives you:
 
 ```mermaid
 graph TD
-    subgraph Spec["oauth-refresh v1–v5"]
+    subgraph Spec["oauth-refresh v1–v4 (in-flight)"]
         V1["v1 spark"] --> V2["v2 shape"]
         V2 --> V3["v3 specify"]
         V3 --> V4["v4 approved ✓"]
-        V4 --> V5["v5 done ✓"]
     end
 
     subgraph CL["ChangeLog"]
         C1["Δ v1→v2<br/>fields: intent, scope"]
         C2["Δ v2→v3<br/>fields: interface ✓"]
         C3["Δ v3→v4<br/>checkpoint ✓"]
-        C4["Δ v4→v5<br/>checkpoint ✓"]
     end
 
     V2 -.->|HAS_CHANGE| C1
     V3 -.->|HAS_CHANGE| C2
     V4 -.->|HAS_CHANGE| C3
-    V5 -.->|HAS_CHANGE| C4
 
-    V5 -->|amend| A["v6 amended"]
-    A -->|re-entry| V7["v7 specify"]
-    V7 --> V8["v8 approved ✓"]
-    V8 --> V9["v9 done ✓"]
+    V4 -->|amend| A["v5 specify (amend re-entry)"]
+    A --> V8["v6 approved ✓"]
+    V8 --> V9["v7 done ✓"]
 
-    V9 -->|supersede| S["v10 superseded"]
+    V9 -->|supersede| S["v8 superseded"]
     NEW["oauth-refresh-v2"] -->|SUPERSEDES| S
 ```
 
 The diagram shows a spec's full evolution: progressing through the funnel
-(v1–v5), being **amended** back to an earlier stage for refinement (v6–v9),
-and eventually being **superseded** by a replacement spec. Every version
+(v1–v4), being **amended** from an approved in-flight stage back to specify
+for refinement (v5–v6), reaching `done` (v7), and eventually being
+**superseded** by a replacement spec. Every version
 transition creates a ChangeLog entry linked via `HAS_CHANGE`. Checkpoint
 entries (marked ✓) flag major stage transitions.
 

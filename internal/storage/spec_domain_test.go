@@ -9,12 +9,12 @@ import (
 
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSpecStage_ExcludesReEntry(t *testing.T) {
 	terminal := []storage.SpecStage{
 		storage.SpecStageDone,
-		storage.SpecStageAmended,
 		storage.SpecStageSuperseded,
 		storage.SpecStageAbandoned,
 	}
@@ -43,7 +43,6 @@ func TestSpecStage_IsFullyTerminal(t *testing.T) {
 	}{
 		{storage.SpecStageSuperseded, true},
 		{storage.SpecStageAbandoned, true},
-		{storage.SpecStageAmended, false},
 		{storage.SpecStageDone, false},
 		{storage.SpecStageSpark, false},
 		{storage.SpecStageShape, false},
@@ -78,7 +77,6 @@ func TestSpecStage_IsValid(t *testing.T) {
 		storage.SpecStageInProgress,
 		storage.SpecStageReview,
 		storage.SpecStageDone,
-		storage.SpecStageAmended,
 		storage.SpecStageSuperseded,
 		storage.SpecStageAbandoned,
 	}
@@ -90,6 +88,30 @@ func TestSpecStage_IsValid(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		assert.False(t, storage.SpecStage("bogus").IsValid())
 	})
+}
+
+func TestSpecStage_IsAmendEligible(t *testing.T) {
+	eligible := []storage.SpecStage{
+		storage.SpecStageApproved,
+		storage.SpecStageInProgress,
+		storage.SpecStageReview,
+	}
+	for _, s := range eligible {
+		require.True(t, s.IsAmendEligible(), "stage %q should be amend-eligible", s)
+	}
+
+	ineligible := []storage.SpecStage{
+		storage.SpecStageSpark,
+		storage.SpecStageShape,
+		storage.SpecStageSpecify,
+		storage.SpecStageDecompose,
+		storage.SpecStageDone,
+		storage.SpecStageSuperseded,
+		storage.SpecStageAbandoned,
+	}
+	for _, s := range ineligible {
+		require.False(t, s.IsAmendEligible(), "stage %q should not be amend-eligible", s)
+	}
 }
 
 func TestSpecLifecycle_IsValid(t *testing.T) {

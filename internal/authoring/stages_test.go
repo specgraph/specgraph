@@ -148,7 +148,6 @@ func TestIsAuthoringStage(t *testing.T) {
 			storage.SpecStageInProgress,
 			storage.SpecStageReview,
 			storage.SpecStageDone,
-			storage.SpecStageAmended,
 			storage.SpecStageSuperseded,
 			storage.SpecStageAbandoned,
 		}

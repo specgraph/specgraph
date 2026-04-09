@@ -49,7 +49,7 @@ var (
 	// ErrSpecIneligibleStage is returned when a spec's stage does not support the requested operation.
 	ErrSpecIneligibleStage = errors.New("spec is not in an eligible stage for this operation")
 	// ErrSpecIneligibleForDrift is returned when a spec cannot be drift-checked.
-	ErrSpecIneligibleForDrift = errors.New("spec is not eligible for drift checking (must be done or amended)")
+	ErrSpecIneligibleForDrift = errors.New("spec is not eligible for drift checking (must be done)")
 	// ErrSpecTerminal is returned when a spec is superseded or abandoned.
 	ErrSpecTerminal = errors.New("spec is in a terminal state (superseded or abandoned)")
 	// ErrNewSpecNotFound is returned when a replacement spec does not exist.
@@ -66,6 +66,10 @@ var (
 	ErrSameSlugs = errors.New("old and new slugs must differ")
 	// ErrEdgeNotFound is returned when no matching dependency edge exists.
 	ErrEdgeNotFound = errors.New("no matching dependency edge found")
+	// ErrSpecNotAmendable is returned when amend is attempted on a spec not in an eligible stage.
+	ErrSpecNotAmendable = errors.New("spec must be in approved, in_progress, or review stage to amend")
+	// ErrReEntryStageRequired is returned when amend is called without a re-entry stage.
+	ErrReEntryStageRequired = errors.New("re_entry_stage is required for amend")
 )
 
 // --- Version errors ---

@@ -46,3 +46,4 @@ e2e/ui/node_modules/
 
 # Skip dotenv
 .env
+.worktrees/

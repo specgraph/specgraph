@@ -555,7 +555,7 @@ func TestLifecycleHandler_ErrorSanitization(t *testing.T) {
 
 	t.Run("TransitionAmend", func(t *testing.T) {
 		_, err := client.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
-			Slug: "test-spec", Reason: "needs rework",
+			Slug: "test-spec", Reason: "needs rework", ReEntryStage: "shape",
 		}))
 		require.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 		assertSanitized(t, err)

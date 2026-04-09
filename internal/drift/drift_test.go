@@ -171,11 +171,6 @@ func TestCheckAllSpecs(t *testing.T) {
 				Stage:       storage.SpecStageDone,
 				ContentHash: "aaa",
 			},
-			"amended-spec": {
-				Slug:        "amended-spec",
-				Stage:       storage.SpecStageAmended,
-				ContentHash: "aaa",
-			},
 			"upstream": {
 				Slug:        "upstream",
 				Stage:       storage.SpecStageApproved,
@@ -189,26 +184,18 @@ func TestCheckAllSpecs(t *testing.T) {
 					ContentHashAtLink: "aaa",
 				},
 			},
-			"amended-spec": {
-				{
-					NodeRef:           storage.NodeRef{Slug: "upstream", Label: storage.NodeLabelSpec},
-					ContentHashAtLink: "aaa",
-				},
-			},
 		},
 	}
 
 	engine := drift.NewEngine(backend, nil)
 	result, err := engine.Check(context.Background(), "", "")
 	require.NoError(t, err)
-	require.Len(t, result.Reports, 2)
-	// "upstream" is approved (not done/amended), so it was skipped.
+	require.Len(t, result.Reports, 1)
+	// "upstream" is approved (not done), so it was skipped.
 	require.Equal(t, int32(1), result.SkippedCount)
 
-	// Both specs should have drift items since upstream content hash changed.
-	for _, r := range result.Reports {
-		require.Len(t, r.Items, 1, "spec %s should have 1 drift item", r.SpecSlug)
-	}
+	// done-spec should have drift items since upstream content hash changed.
+	require.Len(t, result.Reports[0].Items, 1, "done-spec should have 1 drift item")
 }
 
 func TestCheckDrift_ScopeFilter(t *testing.T) {
@@ -307,26 +294,6 @@ func TestCheck_ListSpecsError(t *testing.T) {
 	require.ErrorContains(t, err, "db connection lost")
 }
 
-func TestCheck_ListSpecsError_AmendedStageOnly(t *testing.T) {
-	backend := &mockDriftBackend{
-		specs: map[string]*storage.Spec{
-			"done-spec": {
-				Slug:        "done-spec",
-				Stage:       storage.SpecStageDone,
-				ContentHash: "aaa",
-			},
-		},
-		listErrForStage: map[string]error{
-			string(storage.SpecStageAmended): errors.New("amended stage query failed"),
-		},
-	}
-	engine := drift.NewEngine(backend, nil)
-
-	_, err := engine.Check(context.Background(), "", "")
-	require.Error(t, err)
-	require.ErrorContains(t, err, "amended stage query failed")
-}
-
 func TestCheck_ListAllSpecsError(t *testing.T) {
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
@@ -393,7 +360,7 @@ func TestCheck_NonDoneStageBySlug(t *testing.T) {
 	}
 
 	engine := drift.NewEngine(backend, nil)
-	// Non-done/non-amended specs are not eligible for drift detection.
+	// Non-done specs are not eligible for drift detection.
 	_, err := engine.Check(context.Background(), "in-progress", "deps")
 	require.Error(t, err)
 	require.ErrorIs(t, err, storage.ErrSpecIneligibleForDrift)
@@ -489,35 +456,19 @@ func TestCheck_UpstreamGetSpecError(t *testing.T) {
 	require.Empty(t, result.Reports[0].Items)
 }
 
-func TestCheckDrift_AmendedSpecEligibleBySlug(t *testing.T) {
+func TestCheckDrift_ApprovedSpecIneligibleBySlug(t *testing.T) {
 	backend := &mockDriftBackend{
 		specs: map[string]*storage.Spec{
-			"amended-spec": {
-				Slug:        "amended-spec",
-				Stage:       storage.SpecStageAmended,
+			"approved-spec": {
+				Slug:        "approved-spec",
+				Stage:       storage.SpecStageApproved,
 				ContentHash: "aaa",
-			},
-			"upstream": {
-				Slug:        "upstream",
-				Stage:       storage.SpecStageDone,
-				ContentHash: "bbb",
-			},
-		},
-		depsWithEdge: map[string][]storage.DependencyRef{
-			"amended-spec": {
-				{
-					NodeRef:           storage.NodeRef{Slug: "upstream", Label: storage.NodeLabelSpec},
-					ContentHashAtLink: "aaa",
-				},
 			},
 		},
 	}
 
 	engine := drift.NewEngine(backend, nil)
-	result, err := engine.Check(context.Background(), "amended-spec", "")
-	require.NoError(t, err)
-	require.Len(t, result.Reports, 1)
-	require.Equal(t, "amended-spec", result.Reports[0].SpecSlug)
-	require.Len(t, result.Reports[0].Items, 1)
-	require.Equal(t, storage.DriftTypeDependency, result.Reports[0].Items[0].Type)
+	_, err := engine.Check(context.Background(), "approved-spec", "")
+	require.Error(t, err)
+	require.ErrorIs(t, err, storage.ErrSpecIneligibleForDrift)
 }

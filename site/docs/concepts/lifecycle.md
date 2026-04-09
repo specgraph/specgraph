@@ -1,38 +1,41 @@
 # Lifecycle Transitions
 
-Specs aren't static. A spec that reaches `done` has passed through the full
-authoring funnel, been approved, executed, and verified — but the work it
-described may need to change. SpecGraph provides three post-completion
-transitions: **amend**, **supersede**, and **abandon**.
+Specs aren't static. As execution progresses, new information may reveal
+that a spec needs to change — or that a completed spec should be replaced.
+SpecGraph provides three lifecycle transitions: **amend**, **supersede**,
+and **abandon**.
 
 Each transition is recorded in the changelog, carries a reason, and leaves
 a queryable audit trail. Choosing the right one depends on whether the
-problem is still relevant and whether the existing spec's approach is still
-sound.
+spec is still in flight, whether the problem is still relevant, and
+whether the existing approach is still sound.
 
 ---
 
 ## Amendment
 
-Amendment returns a completed spec to an earlier authoring stage for
-modification. The spec's slug and identity are preserved; the version
-increments; the stage resets; a checkpoint ChangeLog entry records the
+Amendment sends an **in-flight** spec back to an earlier authoring stage
+for modification. The spec must be in one of the execution stages —
+`approved`, `in_progress`, or `review` — to be amended. The spec's slug
+and identity are preserved; the version increments; the stage resets to
+the specified re-entry stage; a checkpoint ChangeLog entry records the
 reason.
 
 **When to use:**
 
-- Scope needs refinement after implementation revealed gaps
-- A requirement was misunderstood and needs clarification
+- Scope needs refinement while execution is underway
+- A requirement was misunderstood and needs clarification before completion
 - A detail in the spec was wrong but the overall approach is still correct
 
 **When not to use:**
 
-- The approach itself is wrong — use supersession instead
+- The spec has already reached `done` — use supersession instead
 - The problem is no longer relevant — use abandonment instead
 
-Amendment is **semi-terminal**: an amended spec can be superseded or
-abandoned, but cannot be amended again until it completes the funnel and
-reaches `done` a second time.
+**Eligible stages:** `approved`, `in_progress`, `review`
+
+A `re_entry_stage` is required — the spec transitions directly to the
+specified authoring stage.
 
 ```bash
 specgraph amend <slug> --stage <stage> --reason "why"
@@ -51,27 +54,30 @@ choosing too late means skipping the refinement that the change requires.
 | Interface contract, invariants, or acceptance criteria need updating | `specify` |
 | Slice breakdown needs restructuring | `decompose` |
 
-After the spec completes the funnel again and reaches `done`, it can be
-amended again. There is no limit on amendment cycles.
+After the spec completes the funnel again and reaches an execution stage,
+it can be amended again. There is no limit on amendment cycles.
 
 ---
 
 ## Supersession
 
-Supersession replaces one spec with another. The original spec moves to
-`superseded` (a terminal state). A `SUPERSEDES` edge is created from the
-new spec to the old. Both specs receive a checkpoint ChangeLog entry.
+Supersession replaces a **completed** spec with a new one. The original
+spec must be in the `done` stage. It moves to `superseded` (a terminal
+state). A `SUPERSEDES` edge is created from the new spec to the old. Both
+specs receive a checkpoint ChangeLog entry.
 
 **When to use:**
 
 - The approach is fundamentally wrong, not just the details
-- Requirements changed so significantly that the original spec is misleading
+- Requirements changed so significantly that the completed spec is misleading
 - The existing spec's implementation should be treated as a clean break
 
 **When not to use:**
 
-- The original spec can be refined — amendment is cheaper and preserves
-  continuity
+- The spec is still in flight — use amendment instead (cheaper and preserves
+  continuity)
+
+**Eligible stages:** `done`
 
 The new spec starts fresh in the authoring funnel. It carries no execution
 history from the original, but the `SUPERSEDES` edge makes the lineage
@@ -117,15 +123,17 @@ remains queryable for audit and retrospective purposes.
 
 ```mermaid
 flowchart TD
-    A["Spec reached done\nor needs to change"] --> B{"Is the problem\nstill relevant?"}
+    A["Spec needs to change"] --> B{"Is the problem\nstill relevant?"}
     B -- No --> C["Abandon\nspecgraph abandon"]
-    B -- Yes --> D{"Is the approach\nstill sound?"}
-    D -- No --> E["Supersede\nspecgraph supersede"]
-    D -- Yes --> F{"What needs\nto change?"}
-    F -- "Intent or framing" --> G["Amend → spark"]
-    F -- "Scope or tradeoffs" --> H["Amend → shape"]
-    F -- "Contract or criteria" --> I["Amend → specify"]
-    F -- "Slice structure" --> J["Amend → decompose"]
+    B -- Yes --> D{"What stage\nis the spec in?"}
+    D -- "approved / in_progress / review" --> E{"Is the approach\nstill sound?"}
+    D -- "done" --> F["Supersede\nspecgraph supersede"]
+    E -- No --> C
+    E -- Yes --> G{"What needs\nto change?"}
+    G -- "Intent or framing" --> H["Amend → spark"]
+    G -- "Scope or tradeoffs" --> I["Amend → shape"]
+    G -- "Contract or criteria" --> J["Amend → specify"]
+    G -- "Slice structure" --> K["Amend → decompose"]
 ```
 
 ---

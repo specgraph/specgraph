@@ -54,16 +54,6 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 		Expect(resp.Msg.GetSpec().GetStage()).To(Equal("approved"))
 	})
 
-	It("advances to done", func() {
-		Expect(claimAndComplete(ctx, pipelineSlug)).To(Succeed())
-
-		resp, err := specClient.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
-			Slug: pipelineSlug,
-		}))
-		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))
-	})
-
 	It("amends with re-entry to shape stage", func() {
 		resp, err := lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
 			Slug:         pipelineSlug,
@@ -194,8 +184,9 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 
 	It("rejects amend on superseded spec with FailedPrecondition", func() {
 		_, err := lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
-			Slug:   pipelineSlug,
-			Reason: "should fail on superseded spec",
+			Slug:         pipelineSlug,
+			Reason:       "should fail on superseded spec",
+			ReEntryStage: "spark",
 		}))
 		Expect(err).To(HaveOccurred())
 		Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))

@@ -22,14 +22,12 @@ type Backend interface {
 }
 
 // maxSpecsPerCheck limits the number of specs returned per ListSpecs call.
-// Note: check-all mode calls ListSpecs twice (done + amended), so the actual
-// ceiling is 2 * maxSpecsPerCheck.
 const maxSpecsPerCheck = 10000
 
 // CheckResult holds drift detection results plus metadata.
 type CheckResult struct {
 	Reports      []storage.DriftReport
-	SkippedCount int32 // specs not in done/amended stage (all-specs mode only)
+	SkippedCount int32 // specs not in done stage (all-specs mode only)
 }
 
 // Engine runs drift detection checks.
@@ -60,8 +58,8 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) (*CheckResult, e
 		if err != nil {
 			return nil, fmt.Errorf("drift: get spec %q: %w", slug, err)
 		}
-		// Only done and amended specs are eligible for drift detection.
-		if spec.Stage != storage.SpecStageDone && spec.Stage != storage.SpecStageAmended {
+		// Only done specs are eligible for drift detection.
+		if spec.Stage != storage.SpecStageDone {
 			return nil, fmt.Errorf("drift: spec %q stage %q: %w", slug, spec.Stage, storage.ErrSpecIneligibleForDrift)
 		}
 		specs = []*storage.Spec{spec}
@@ -70,16 +68,11 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) (*CheckResult, e
 		if err != nil {
 			return nil, fmt.Errorf("drift: list done specs: %w", err)
 		}
-		amendedSpecs, err := e.backend.ListSpecs(ctx, string(storage.SpecStageAmended), "", maxSpecsPerCheck)
-		if err != nil {
-			return nil, fmt.Errorf("drift: list amended specs: %w", err)
-		}
 		allSpecs, err := e.backend.ListSpecs(ctx, "", "", maxSpecsPerCheck)
 		if err != nil {
 			return nil, fmt.Errorf("drift: list all specs: %w", err)
 		}
 		specs = append(specs, doneSpecs...)
-		specs = append(specs, amendedSpecs...)
 		if diff := len(allSpecs) - len(specs); diff > 0 {
 			skipped = int32(diff) //nolint:gosec // bounded by maxSpecsPerCheck (10000)
 		}
