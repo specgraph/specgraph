@@ -127,10 +127,12 @@ jj workspace update-stale
 - **`task proto` is incremental** — fingerprints `.proto` files and skips if unchanged
 - **Postgres integration tests require Docker** — `internal/storage/postgres/` uses testcontainers with `pgvector/pgvector:pg18`. Wait strategy: `ForLog("database system is ready").WithOccurrence(2)`
 - **Lefthook pre-commit hooks**: license headers (addlicense), golangci-lint, yamlfmt, dprint, rumdl, cog (conventional commits). All run in parallel.
+- **Lefthook commit-msg hooks**: `cog` (conventional commits) and DCO sign-off check. All commits require `Signed-off-by:` trailer — use `git commit -s` or `jj describe` with trailer.
 - **Claude Code hooks**: `task lint` runs after Bash, edits to `gen/` are blocked via PreToolUse (edit `.proto` sources instead). Formatting is handled by pre-commit hooks, not Claude Code PostToolUse.
 - **ConnectRPC, not plain gRPC** — handlers are in `internal/server/`, proto services generate both `.pb.go` and `.connect.go` files
 - **Storage interfaces in `internal/storage/`** — implementations are in subdirectories (currently only `postgres/`). The interfaces use domain types, not protobuf types.
-- **License headers required** — all `.go`, `.sh`, `.py`, `.proto` files need SPDX headers. Run `task license:add` to fix.
+- **License headers required** — all `.go`, `.sh`, `.py`, `.proto` files need `SPDX-License-Identifier: Apache-2.0` headers. Run `task license:add` to fix.
+- **DCO required** — all commits must carry a `Signed-off-by:` trailer per the Developer Certificate of Origin. See `CONTRIBUTING.md`.
 - **`revive` requires package comments** — new Go packages need a `// Package foo ...` doc comment on the first `.go` file or `revive` linter fails in `task check`.
 - **`cmd/specgraph/table.go` still used** — `sync.go` and `prime.go` depend on `tableWriter`. Don't delete when migrating other commands to the render package.
 - **`cmd/specgraph/output.go`** — shared `printJSON(proto.Message)` helper for `--json` flag output. All read commands use it.
