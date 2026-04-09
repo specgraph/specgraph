@@ -3,7 +3,7 @@ site_name = "SpecGraph"
 site_url = "https://specgraph.io/"
 site_description = "Live Spec-Driven Development Framework"
 site_author = "Sean Brandt"
-copyright = "© 2026 Sean Brandt • MIT"
+copyright = "© 2026 Sean Brandt • Apache-2.0"
 
 docs_dir = "docs"
 site_dir = "build"

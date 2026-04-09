@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 Sean Brandt
 name: CI
 on:
@@ -96,7 +96,7 @@ jobs:
         run: task check
       - name: Go vulnerability check
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
-      - name: Trivy filesystem scan
+      - name: Trivy vulnerability scan
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           scan-type: fs
@@ -104,6 +104,14 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: "1"
           ignore-unfixed: true
+      - name: Trivy license scan
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: license
+          severity: CRITICAL,HIGH
+          exit-code: "1"
       - name: Verify generated code is up to date
         run: task proto:check
       - name: Unit test coverage

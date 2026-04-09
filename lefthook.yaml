@@ -63,3 +63,13 @@ commit-msg:
   commands:
     conventional-commit:
       run: cog verify --file {1}
+    dco-signoff:
+      run: |
+        set -euo pipefail
+        if ! grep -q "^Signed-off-by: " "{1}"; then
+          echo "ERROR: Missing DCO sign-off in commit message"
+          echo "All commits must include a Signed-off-by trailer."
+          echo "Use: git commit -s"
+          echo "See: CONTRIBUTING.md"
+          exit 1
+        fi

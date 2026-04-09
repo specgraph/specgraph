@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
 // Package service manages specgraph as a user-level OS service.
