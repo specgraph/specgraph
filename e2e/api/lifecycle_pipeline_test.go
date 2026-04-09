@@ -64,15 +64,27 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 
 		spec := resp.Msg.GetSpec()
 		Expect(spec.GetSlug()).To(Equal(pipelineSlug))
-		Expect(spec.GetStage()).To(Equal("shape"))
+		// re-entry "shape" lands at "spark" so the Shape RPC (spark→shape) can run.
+		Expect(spec.GetStage()).To(Equal("spark"))
 		Expect(spec.GetVersion()).To(BeNumerically(">=", int32(2)))
 		// History field removed — changelog is now tracked via ChangeLog graph nodes.
 	})
 
-	// After amend with re_entry_stage="shape", the spec is already AT "shape".
-	// Shape RPC transitions FROM spark, so we skip it and start at Specify
-	// (which transitions shape→specify). This matches the authoring funnel:
-	// the re-entry stage is where the spec resumes, not where it needs to go.
+	It("re-traverses funnel: shape", func() {
+		resp, err := authoringClient.Shape(ctx, connect.NewRequest(&specv1.ShapeRequest{
+			Slug: pipelineSlug,
+			Output: &specv1.ShapeOutput{
+				ScopeIn:         []string{"amended scope"},
+				ScopeOut:        []string{"out of scope"},
+				SuccessMust:     []string{"amended behaviour works"},
+				ChosenApproach:  "revised-approach",
+			},
+			Posture: specv1.Posture_POSTURE_DRIVE,
+		}))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.Msg.Output).NotTo(BeNil())
+		Expect(resp.Msg.Output.ScopeIn).To(ContainElement("amended scope"))
+	})
 
 	It("re-traverses funnel: specify", func() {
 		resp, err := authoringClient.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{

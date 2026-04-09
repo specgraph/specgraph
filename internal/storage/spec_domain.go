@@ -85,6 +85,18 @@ func (s SpecStage) IsAmendEligible() bool {
 	}
 }
 
+// PrecedingAuthStage returns the authoring stage that immediately precedes s in
+// the authoring funnel. For example, PrecedingAuthStage(shape) == spark because
+// the shape authoring command transitions spark → shape.
+// Returns s itself if s is the first authoring stage or not in the authoring sequence.
+func (s SpecStage) PrecedingAuthStage() SpecStage {
+	idx := stageIndex(s)
+	if idx <= 0 {
+		return s
+	}
+	return authoringStages[idx-1]
+}
+
 // IsValid reports whether s is a known spec stage.
 func (s SpecStage) IsValid() bool {
 	switch s {

@@ -29,8 +29,8 @@ test.describe('Amendment', () => {
   test('stage badge updates after amend', async ({ page }) => {
     await page.goto(`/spec/${slug}`);
     await page.waitForLoadState('networkidle');
-    // After amend with re-entry stage "shape", the spec should be at "shape".
-    await expect(page.locator('.badge.stage-shape')).toBeVisible({ timeout: 10_000 });
+    // After amend with re-entry stage "shape", the spec lands at "spark" (one before shape).
+    await expect(page.locator('.badge.stage-spark')).toBeVisible({ timeout: 10_000 });
   });
 
   test('changelog accordion shows entries', async ({ page }) => {

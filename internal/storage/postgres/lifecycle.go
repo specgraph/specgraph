@@ -44,6 +44,13 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		return nil, fmt.Errorf("amend spec %q: re_entry_stage %q: %w", slug, reEntryStage, storage.ErrInvalidReEntryStage)
 	}
 
+	// landingStage is the stage the spec is set to in storage. It is one step
+	// before targetStage so that the authoring command for targetStage (which
+	// transitions landingStage → targetStage) succeeds after the amend.
+	// For example: re-entry "shape" → landing "spark" → user runs `shape` (spark→shape).
+	// For "spark" (first stage) there is no preceding stage, so spark stays at spark.
+	landingStage := targetStage.PrecedingAuthStage()
+
 	var result *storage.Spec
 	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
 		spec, getErr := s.GetSpec(txCtx, slug)
@@ -56,7 +63,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 			`UPDATE specs SET stage = $1, version = version + 1, updated_at = $2
 			 WHERE slug = $3 AND project_slug = $4 AND version = $5
 			   AND stage IN ('approved', 'in_progress', 'review')`,
-			string(targetStage), s.now(), slug, s.project, spec.Version,
+			string(landingStage), s.now(), slug, s.project, spec.Version,
 		)
 		if execErr != nil {
 			return fmt.Errorf("postgres: amend spec: %w", execErr)
@@ -82,7 +89,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		}
 
 		summary := fmt.Sprintf("Amended from %s, re-entering at: %s", spec.Stage, targetStage)
-		deltas := []storage.FieldChange{{Field: "stage", OldValue: string(spec.Stage), NewValue: string(targetStage)}}
+		deltas := []storage.FieldChange{{Field: "stage", OldValue: string(spec.Stage), NewValue: string(landingStage)}}
 		clEntry := &storage.ChangeLogEntry{
 			Version:     freshSpec.Version,
 			Stage:       string(freshSpec.Stage),

@@ -28,13 +28,14 @@ func TestLifecycle(t *testing.T) {
 
 		amended, err := store.LifecycleAmendSpec(ctx, "amend-me", "Mobile needs offline refresh", "shape")
 		require.NoError(t, err)
-		require.Equal(t, storage.SpecStage("shape"), amended.Stage)
+		// re-entry "shape" lands at "spark" so that `specgraph shape` (spark→shape) succeeds.
+		require.Equal(t, storage.SpecStageSpark, amended.Stage)
 		require.Equal(t, int32(3), amended.Version) // create=1, update=2, amend=3
 
-		// Verify re-entry stage was persisted, not just returned in-memory.
+		// Verify landing stage was persisted, not just returned in-memory.
 		fetched, err := store.GetSpec(ctx, "amend-me")
 		require.NoError(t, err)
-		require.Equal(t, storage.SpecStage("shape"), fetched.Stage)
+		require.Equal(t, storage.SpecStageSpark, fetched.Stage)
 		require.Equal(t, int32(3), fetched.Version)
 	})
 
@@ -120,7 +121,8 @@ func TestLifecycle(t *testing.T) {
 
 			amended, err := store.LifecycleAmendSpec(ctx, slug, "needs rework", "shape")
 			require.NoError(t, err, "amend from %q should succeed", stage)
-			require.Equal(t, storage.SpecStage("shape"), amended.Stage, "stage %q", stage)
+			// re-entry "shape" lands at "spark" so that `specgraph shape` (spark→shape) succeeds.
+			require.Equal(t, storage.SpecStageSpark, amended.Stage, "stage %q", stage)
 		}
 	})
 
