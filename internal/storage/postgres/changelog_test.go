@@ -176,16 +176,17 @@ func TestListChanges_AfterAmend(t *testing.T) {
 	entries, err := store.ListChanges(ctx, "amend-changelog", storage.ChangeLogFilter{})
 	require.NoError(t, err)
 
-	// Find the amendment entry: checkpoint entry where stage = "spark" (landing stage for re-entry "shape").
+	// Find the amendment entry by reason — stage alone is not sufficient because
+	// CreateSpec also produces a checkpoint entry at "spark".
 	var amendEntry *storage.ChangeLogEntry
 	for _, e := range entries {
-		if e.Stage == "spark" && e.Checkpoint {
+		if e.Checkpoint && e.Reason == "requirements changed" {
 			amendEntry = e
 			break
 		}
 	}
 
-	require.NotNil(t, amendEntry, "expected an amendment changelog entry with stage=spark")
+	require.NotNil(t, amendEntry, "expected an amendment changelog entry with reason='requirements changed'")
 	assert.True(t, amendEntry.Checkpoint)
 	assert.Equal(t, "requirements changed", amendEntry.Reason)
 
