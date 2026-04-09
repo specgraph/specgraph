@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
 // Package emitter converts constitutions into tool-specific configuration files.

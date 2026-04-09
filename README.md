@@ -4,7 +4,7 @@
 [![Release](https://github.com/specgraph/specgraph/actions/workflows/release.yml/badge.svg)](https://github.com/specgraph/specgraph/actions/workflows/release.yml)
 [![codecov](https://codecov.io/gh/specgraph/specgraph/graph/badge.svg)](https://codecov.io/gh/specgraph/specgraph)
 [![Go Report Card](https://goreportcard.com/badge/github.com/specgraph/specgraph)](https://goreportcard.com/report/github.com/specgraph/specgraph)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 A live spec-driven development framework — specifications as a queryable graph, not static markdown.
 
@@ -194,4 +194,4 @@ task hooks:install
 
 ## License
 
-[MIT](LICENSE) — Copyright 2026 Sean Brandt
+[Apache-2.0](LICENSE) — Copyright 2026 Sean Brandt
