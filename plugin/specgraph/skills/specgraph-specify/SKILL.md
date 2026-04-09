@@ -202,7 +202,9 @@ When the specify conversation is complete:
 3. **Wait for confirmation.** User confirms or requests changes. Iterate until
    they approve.
 
-4. **Write and persist:**
+4. **Persist and record — both commands, same step:** Run both commands before
+   moving on. Conversation recording is part of this step, not an optional
+   follow-up.
 
    ```bash
    # Write synthesized output to temp file
@@ -212,11 +214,8 @@ When the specify conversation is complete:
 
    # Persist to the graph
    specgraph specify <slug> --json-file /tmp/specify-<slug>.json
-   ```
 
-5. **Record the conversation:** See `references/conversation-recording.md` for the exchange format.
-
-   ```bash
+   # Record the conversation (REQUIRED — retry once on failure; abort if both attempts fail)
    CONV_TMP="$(mktemp /tmp/conv-XXXXXX.json)"
    trap 'rm -f "$CONV_TMP"' EXIT
    cat > "$CONV_TMP" << 'CONV_EOF'
@@ -228,7 +227,9 @@ When the specify conversation is complete:
      ]
    }
    CONV_EOF
-   specgraph conversation record <slug> --stage specify --json-file "$CONV_TMP"
+   specgraph conversation record <slug> --stage specify --json-file "$CONV_TMP" || \
+     specgraph conversation record <slug> --stage specify --json-file "$CONV_TMP" || \
+     { echo "ERROR: conversation recording failed after retry — do not advance to the next stage until this is resolved"; exit 1; }
    ```
 
 ### Analytical Passes
