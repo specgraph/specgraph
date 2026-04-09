@@ -28,13 +28,14 @@ func TestLifecycle(t *testing.T) {
 
 		amended, err := store.LifecycleAmendSpec(ctx, "amend-me", "Mobile needs offline refresh", "shape")
 		require.NoError(t, err)
-		require.Equal(t, storage.SpecStage("shape"), amended.Stage)
+		// re-entry "shape" lands at "spark" so that `specgraph shape` (spark→shape) succeeds.
+		require.Equal(t, storage.SpecStageSpark, amended.Stage)
 		require.Equal(t, int32(3), amended.Version) // create=1, update=2, amend=3
 
-		// Verify re-entry stage was persisted, not just returned in-memory.
+		// Verify landing stage was persisted, not just returned in-memory.
 		fetched, err := store.GetSpec(ctx, "amend-me")
 		require.NoError(t, err)
-		require.Equal(t, storage.SpecStage("shape"), fetched.Stage)
+		require.Equal(t, storage.SpecStageSpark, fetched.Stage)
 		require.Equal(t, int32(3), fetched.Version)
 	})
 
@@ -120,7 +121,8 @@ func TestLifecycle(t *testing.T) {
 
 			amended, err := store.LifecycleAmendSpec(ctx, slug, "needs rework", "shape")
 			require.NoError(t, err, "amend from %q should succeed", stage)
-			require.Equal(t, storage.SpecStage("shape"), amended.Stage, "stage %q", stage)
+			// re-entry "shape" lands at "spark" so that `specgraph shape` (spark→shape) succeeds.
+			require.Equal(t, storage.SpecStageSpark, amended.Stage, "stage %q", stage)
 		}
 	})
 
@@ -509,24 +511,31 @@ func TestLifecycle_AmendRefreshesEdgeHash(t *testing.T) {
 	_, err = store.AddEdge(ctx, "downstream-hash", "upstream-hash", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
 
-	// Record the initial edge hash.
+	// Advance upstream to in_progress so it can be amended.
+	_, err = store.UpdateSpec(ctx, "upstream-hash", nil, strPtr("in_progress"), nil, nil, nil)
+	require.NoError(t, err)
+
+	// Record the hash after advancing to in_progress — this is our baseline for detecting change.
+	// We cannot use the initial edge hash because amend now lands at "spark" (the stage before
+	// the re-entry target), which produces the same hash as the spec had at creation time.
+	upstreamBeforeAmend, err := store.GetSpec(ctx, "upstream-hash")
+	require.NoError(t, err)
+	hashBeforeAmend := upstreamBeforeAmend.ContentHash
+
+	// Also record the edge hash for the final refresh assertion.
 	initialDeps, err := store.GetDependenciesWithEdgeData(ctx, "downstream-hash")
 	require.NoError(t, err)
 	require.Len(t, initialDeps, 1)
 	initialHashAtLink := initialDeps[0].ContentHashAtLink
 
-	// Advance upstream to in_progress so it can be amended.
-	_, err = store.UpdateSpec(ctx, "upstream-hash", nil, strPtr("in_progress"), nil, nil, nil)
-	require.NoError(t, err)
-
-	// Amend the upstream spec from in_progress to shape — this changes its content hash.
+	// Amend the upstream spec — re-entry "shape" lands at "spark", changing its content hash.
 	_, err = store.LifecycleAmendSpec(ctx, "upstream-hash", "needs revision", "shape")
 	require.NoError(t, err)
 
-	// Confirm upstream's content hash changed.
+	// Confirm upstream's content hash changed from its in_progress value.
 	upstream, err := store.GetSpec(ctx, "upstream-hash")
 	require.NoError(t, err)
-	require.NotEqual(t, initialHashAtLink, upstream.ContentHash, "amend should change the upstream content hash")
+	require.NotEqual(t, hashBeforeAmend, upstream.ContentHash, "amend should change the upstream content hash")
 
 	// Advance upstream back to done — this should refresh the edge hash.
 	_, err = store.UpdateSpec(ctx, "upstream-hash", nil, strPtr("done"), nil, nil, nil)

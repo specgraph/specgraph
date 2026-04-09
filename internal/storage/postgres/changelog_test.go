@@ -176,16 +176,17 @@ func TestListChanges_AfterAmend(t *testing.T) {
 	entries, err := store.ListChanges(ctx, "amend-changelog", storage.ChangeLogFilter{})
 	require.NoError(t, err)
 
-	// Find the amendment entry: checkpoint entry where stage = "shape".
+	// Find the amendment entry by reason — stage alone is not sufficient because
+	// CreateSpec also produces a checkpoint entry at "spark".
 	var amendEntry *storage.ChangeLogEntry
 	for _, e := range entries {
-		if e.Stage == "shape" && e.Checkpoint {
+		if e.Checkpoint && e.Reason == "requirements changed" {
 			amendEntry = e
 			break
 		}
 	}
 
-	require.NotNil(t, amendEntry, "expected an amendment changelog entry with stage=shape")
+	require.NotNil(t, amendEntry, "expected an amendment changelog entry with reason='requirements changed'")
 	assert.True(t, amendEntry.Checkpoint)
 	assert.Equal(t, "requirements changed", amendEntry.Reason)
 
@@ -198,7 +199,8 @@ func TestListChanges_AfterAmend(t *testing.T) {
 	}
 	require.NotNil(t, stageChange, "expected a stage field delta in amendment entry")
 	assert.Equal(t, "in_progress", stageChange.OldValue)
-	assert.Equal(t, "shape", stageChange.NewValue)
+	// Delta records the landing stage (spark), not the re-entry target (shape).
+	assert.Equal(t, "spark", stageChange.NewValue)
 }
 
 func TestListChanges_AfterSupersede(t *testing.T) {
