@@ -114,6 +114,31 @@ func TestSpecStage_IsAmendEligible(t *testing.T) {
 	}
 }
 
+func TestSpecStage_PrecedingAuthStage(t *testing.T) {
+	tests := []struct {
+		stage    storage.SpecStage
+		expected storage.SpecStage
+	}{
+		// Each authoring stage maps to the one before it.
+		{storage.SpecStageSpark, storage.SpecStageSpark},       // first stage: returns self
+		{storage.SpecStageShape, storage.SpecStageSpark},       // shape ← spark
+		{storage.SpecStageSpecify, storage.SpecStageShape},     // specify ← shape
+		{storage.SpecStageDecompose, storage.SpecStageSpecify}, // decompose ← specify
+		{storage.SpecStageApproved, storage.SpecStageDecompose}, // approved ← decompose
+		// Non-authoring stages: not in authoringStages sequence, return self.
+		{storage.SpecStageInProgress, storage.SpecStageInProgress},
+		{storage.SpecStageReview, storage.SpecStageReview},
+		{storage.SpecStageDone, storage.SpecStageDone},
+		{storage.SpecStageSuperseded, storage.SpecStageSuperseded},
+		{storage.SpecStageAbandoned, storage.SpecStageAbandoned},
+	}
+	for _, tc := range tests {
+		t.Run(string(tc.stage), func(t *testing.T) {
+			assert.Equal(t, tc.expected, tc.stage.PrecedingAuthStage())
+		})
+	}
+}
+
 func TestSpecLifecycle_IsValid(t *testing.T) {
 	tests := []struct {
 		lifecycle storage.SpecLifecycle

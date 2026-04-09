@@ -66,7 +66,8 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			}))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Msg.GetSpec().GetSlug()).To(Equal(amendSlug))
-			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("shape"))
+			// re-entry "shape" lands at "spark" so that `specgraph shape` (spark→shape) succeeds.
+			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("spark"))
 
 			// Verify version increments after amend.
 			spec := resp.Msg.GetSpec()
@@ -104,7 +105,8 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			}
 			Expect(stageChange).NotTo(BeNil(), "expected a stage field delta in the changelog entry")
 			Expect(stageChange.GetOldValue()).To(Equal("approved"))
-			Expect(stageChange.GetNewValue()).To(Equal("shape"))
+			// Delta records the landing stage (spark), not the re-entry target (shape).
+			Expect(stageChange.GetNewValue()).To(Equal("spark"))
 		})
 	})
 
