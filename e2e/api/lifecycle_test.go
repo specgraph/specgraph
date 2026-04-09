@@ -42,26 +42,26 @@ var _ = Describe("Lifecycle", Ordered, func() {
 	Describe("Amend flow", func() {
 		const amendSlug = "lifecycle-amend-spec"
 
-		It("creates a spec and advances to done", func() {
+		It("creates a spec and advances to approved", func() {
 			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
 				Slug:   amendSlug,
 				Intent: "Test amend lifecycle flow",
 			}))
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(advanceStage(ctx, amendSlug, "done")).To(Succeed())
+			Expect(advanceStage(ctx, amendSlug, "approved")).To(Succeed())
 
 			resp, err := specClient.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
 				Slug: amendSlug,
 			}))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))
+			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("approved"))
 		})
 
-		It("amends the done spec back into authoring with re-entry stage", func() {
+		It("amends the approved spec back into authoring with re-entry stage", func() {
 			resp, err := lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
 				Slug:         amendSlug,
-				Reason:       "Requirements changed after implementation",
+				Reason:       "Requirements changed during implementation",
 				ReEntryStage: "shape",
 			}))
 			Expect(err).NotTo(HaveOccurred())
@@ -85,14 +85,14 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			// Find the amend checkpoint entry.
 			var amendEntry *specv1.ChangeLogEntry
 			for _, e := range resp.Msg.GetEntries() {
-				if e.GetCheckpoint() && e.GetReason() == "Requirements changed after implementation" {
+				if e.GetCheckpoint() && e.GetReason() == "Requirements changed during implementation" {
 					amendEntry = e
 					break
 				}
 			}
 			Expect(amendEntry).NotTo(BeNil(), "expected a checkpoint entry with the amend reason")
 			Expect(amendEntry.GetCheckpoint()).To(BeTrue())
-			Expect(amendEntry.GetReason()).To(Equal("Requirements changed after implementation"))
+			Expect(amendEntry.GetReason()).To(Equal("Requirements changed during implementation"))
 
 			// Verify the stage field delta is recorded.
 			var stageChange *specv1.FieldChange
@@ -103,38 +103,8 @@ var _ = Describe("Lifecycle", Ordered, func() {
 				}
 			}
 			Expect(stageChange).NotTo(BeNil(), "expected a stage field delta in the changelog entry")
-			Expect(stageChange.GetOldValue()).To(Equal("done"))
+			Expect(stageChange.GetOldValue()).To(Equal("approved"))
 			Expect(stageChange.GetNewValue()).To(Equal("shape"))
-		})
-	})
-
-	Describe("Amend flow (default stage)", func() {
-		const amendDefaultSlug = "lifecycle-amend-default"
-
-		It("creates a spec and advances to done", func() {
-			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
-				Slug:   amendDefaultSlug,
-				Intent: "Test amend with default stage",
-			}))
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(advanceStage(ctx, amendDefaultSlug, "done")).To(Succeed())
-
-			resp, err := specClient.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{
-				Slug: amendDefaultSlug,
-			}))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("done"))
-		})
-
-		It("amends the done spec to amended stage when no re-entry stage specified", func() {
-			resp, err := lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
-				Slug:   amendDefaultSlug,
-				Reason: "Needs revision",
-			}))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Msg.GetSpec().GetSlug()).To(Equal(amendDefaultSlug))
-			Expect(resp.Msg.GetSpec().GetStage()).To(Equal("amended"))
 		})
 	})
 
@@ -144,12 +114,14 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			newSlug = "lifecycle-supersede-new"
 		)
 
-		It("creates two specs", func() {
+		It("creates two specs and advances old to done", func() {
 			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
 				Slug:   oldSlug,
 				Intent: "Original spec to be superseded",
 			}))
 			Expect(err).NotTo(HaveOccurred())
+
+			Expect(advanceStage(ctx, oldSlug, "done")).To(Succeed())
 
 			_, err = specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
 				Slug:   newSlug,
@@ -432,8 +404,9 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
-				Slug:   errSlug,
-				Reason: "should fail",
+				Slug:         errSlug,
+				Reason:       "should fail",
+				ReEntryStage: "shape",
 			}))
 			Expect(err).To(HaveOccurred())
 			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
@@ -469,12 +442,13 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			}))
 			Expect(err).NotTo(HaveOccurred())
 
-			// Advance to shape (mid-funnel, not done).
+			// Advance to shape (mid-funnel, not in_progress/review/done).
 			Expect(advanceStage(ctx, errSlug, "shape")).To(Succeed())
 
 			_, err = lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
-				Slug:   errSlug,
-				Reason: "should fail because spec is not done",
+				Slug:         errSlug,
+				Reason:       "should fail because spec is not in execution",
+				ReEntryStage: "spark",
 			}))
 			Expect(err).To(HaveOccurred())
 			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
@@ -490,6 +464,10 @@ var _ = Describe("Lifecycle", Ordered, func() {
 				Intent: "Original spec",
 			}))
 			Expect(err).NotTo(HaveOccurred())
+
+			// Advance to done (required for supersede).
+			Expect(advanceStage(ctx, baseSlug, "done")).To(Succeed())
+
 			_, err = specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
 				Slug:   newSlug,
 				Intent: "Replacement spec",
@@ -505,8 +483,9 @@ var _ = Describe("Lifecycle", Ordered, func() {
 
 			// Attempt to amend the superseded spec — should fail.
 			_, err = lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
-				Slug:   baseSlug,
-				Reason: "should fail on terminal spec",
+				Slug:         baseSlug,
+				Reason:       "should fail on terminal spec",
+				ReEntryStage: "shape",
 			}))
 			Expect(err).To(HaveOccurred())
 			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
@@ -529,6 +508,59 @@ var _ = Describe("Lifecycle", Ordered, func() {
 			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
 		})
 
+		It("rejects amend without re_entry_stage with InvalidArgument", func() {
+			errSlug := "lifecycle-err-amend-noreentry-" + time.Now().Format("150405")
+			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   errSlug,
+				Intent: "Test amend missing re_entry_stage",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(advanceStage(ctx, errSlug, "in_progress")).To(Succeed())
+
+			_, err = lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
+				Slug:   errSlug,
+				Reason: "should fail without re_entry_stage",
+			}))
+			Expect(err).To(HaveOccurred())
+			Expect(connect.CodeOf(err)).To(Equal(connect.CodeInvalidArgument))
+		})
+
+		It("rejects amend on a done spec with FailedPrecondition", func() {
+			errSlug := "lifecycle-err-amend-done-" + time.Now().Format("150405")
+			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   errSlug,
+				Intent: "Test amend on done spec",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(advanceStage(ctx, errSlug, "done")).To(Succeed())
+
+			_, err = lifecycleClient.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
+				Slug:         errSlug,
+				Reason:       "should fail on done spec",
+				ReEntryStage: "shape",
+			}))
+			Expect(err).To(HaveOccurred())
+			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
+		})
+
+		It("rejects supersede on a non-done spec with FailedPrecondition", func() {
+			errSlug := "lifecycle-err-supersede-notdone-" + time.Now().Format("150405")
+			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+				Slug:   errSlug,
+				Intent: "Test supersede on non-done spec",
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = lifecycleClient.TransitionSupersede(ctx, connect.NewRequest(&specv1.TransitionSupersedeRequest{
+				Slug:    errSlug,
+				NewSlug: "some-new-slug-xyz",
+			}))
+			Expect(err).To(HaveOccurred())
+			Expect(connect.CodeOf(err)).To(Equal(connect.CodeFailedPrecondition))
+		})
+
 		It("rejects supersede with nonexistent new spec with NotFound", func() {
 			errSlug := "lifecycle-err-supersede-" + time.Now().Format("150405")
 			_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
@@ -536,6 +568,8 @@ var _ = Describe("Lifecycle", Ordered, func() {
 				Intent: "Test supersede error path",
 			}))
 			Expect(err).NotTo(HaveOccurred())
+
+			Expect(advanceStage(ctx, errSlug, "done")).To(Succeed())
 
 			_, err = lifecycleClient.TransitionSupersede(ctx, connect.NewRequest(&specv1.TransitionSupersedeRequest{
 				Slug:    errSlug,

@@ -319,13 +319,13 @@ The bundle output contains:
 
 ## 8. Lifecycle transitions and changelog
 
-**Goal:** Amend, supersede, or abandon a completed spec, and view its change history with diffs.
+**Goal:** Amend, supersede, or abandon a spec, and view its change history with diffs.
 
 ```bash
-# Amend: return a done spec to an earlier authoring stage
+# Amend: return an in-flight spec (approved/in_progress/review) to an earlier authoring stage
 specgraph amend my-spec --reason "Stakeholder feedback changed scope" --re-entry shape
 
-# Supersede: replace a spec with a fundamentally different one
+# Supersede: replace a completed (done) spec with a fundamentally different one
 specgraph supersede old-approach --with new-approach
 
 # Abandon: drop a spec that's no longer relevant

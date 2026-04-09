@@ -101,10 +101,9 @@ message TransitionAmendRequest {
   string slug = 1;
   // Required. Reason for amending the spec. Maximum 10000 characters.
   string reason = 2;
-  // Valid non-terminal stages: spark, shape, specify, decompose, approved,
-  // in_progress, review. Terminal states (amended, superseded, abandoned) are
-  // rejected. "done" is also rejected as it excludes re-entry.
-  // Empty means the spec enters the "amended" stage directly.
+  // Required. Authoring stage to re-enter: spark, shape, specify, or decompose.
+  // The spec must be in an amend-eligible stage (approved, in_progress, review).
+  // Terminal states (superseded, abandoned) and done are rejected.
   string re_entry_stage = 3;
 }
 
@@ -132,7 +131,7 @@ message TransitionAbandonResponse {
 }
 
 message DriftCheckRequest {
-  // Empty slug checks all eligible (done/amended) specs.
+  // Empty slug checks all eligible (done) specs.
   string slug = 1;
   // Scope of drift detection. UNSPECIFIED (default): runs all enabled drift scopes.
   // Note: INTERFACES and VERIFY are not yet implemented and return empty results.
@@ -146,7 +145,7 @@ message DriftCheckRequest {
 // not that no drift exists.
 message DriftCheckResponse {
   repeated DriftReport reports = 1;
-  // Number of specs skipped because they are not in done/amended stage.
+  // Number of specs skipped because they are not in done stage.
   // Only set for all-specs checks (empty slug); zero for single-spec checks.
   int32 skipped_count = 2;
 }

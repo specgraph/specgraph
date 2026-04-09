@@ -104,8 +104,10 @@ type LintResult struct {
 
 // LifecycleBackend defines storage operations for spec lifecycle transitions.
 type LifecycleBackend interface {
-	// LifecycleAmendSpec transitions a done spec back into authoring.
-	// Returns ErrSpecNotFound, ErrSpecNotDone, or ErrSpecTerminal.
+	// LifecycleAmendSpec transitions an in-flight spec back into authoring.
+	// The spec must be in an amend-eligible stage (approved, in_progress, review).
+	// reEntryStage is required (spark, shape, specify, decompose).
+	// Returns ErrSpecNotFound, ErrSpecNotAmendable, ErrReEntryStageRequired, or ErrSpecTerminal.
 	LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*Spec, error)
 
 	// LifecycleSupersedeSpec marks old spec superseded and links to new.

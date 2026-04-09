@@ -166,10 +166,12 @@ immutable and becomes a claimable work unit.
 
 Once approved, the spec enters the execution pipeline. Agents or humans can
 **claim** the spec, execute against its verify criteria, and report completion.
-If a spec needs to change after reaching done, it can be **amended**
-(returning to an earlier authoring stage for modification) or **superseded**
-by a new spec that replaces it. Amendment is for refining an existing spec;
-supersession is for replacing it with a fundamentally different approach.
+If an in-flight spec needs to change (while `approved`, `in_progress`, or
+`review`), it can be **amended** — returning to an earlier authoring stage
+for modification. If a completed spec (`done`) needs to be replaced, it can
+be **superseded** by a new spec. Amendment is for course-correcting during
+execution; supersession is for replacing completed work with a fundamentally
+different approach.
 
 ---
 
@@ -183,8 +185,7 @@ Once approved, a spec enters the execution lifecycle:
 
 Specs can also reach terminal states at any point:
 
-- **Amended** — returned to an earlier authoring stage for changes
-- **Superseded** — replaced by a newer spec
+- **Superseded** — replaced by a newer spec (from `done` only)
 - **Abandoned** — dropped; no longer relevant
 
 !!! info "Lifecycle Transitions"
@@ -207,8 +208,14 @@ stateDiagram-v2
     in_progress --> review
     review --> done
 
-    done --> amended : amend
-    amended --> spark : re-entry
+    approved --> spark : amend (re-entry)
+    approved --> shape : amend (re-entry)
+    in_progress --> spark : amend (re-entry)
+    in_progress --> shape : amend (re-entry)
+    review --> spark : amend (re-entry)
+    review --> shape : amend (re-entry)
+
+    done --> superseded : supersede
 
     state superseded
     state abandoned
@@ -217,12 +224,14 @@ stateDiagram-v2
 ```
 
 **Terminal states:** `superseded` and `abandoned` are fully terminal — no
-further transitions are possible. `amended` is semi-terminal: it can be
-superseded or abandoned, but not amended again.
+further transitions are possible.
 
-Any non-terminal stage can reach `superseded` (via `specgraph supersede`) or
-`abandoned` (via `specgraph abandon`). The diagram shows only the `amended`
-path for clarity.
+**Amendment** sends in-flight specs (`approved`, `in_progress`, `review`)
+back to an authoring stage. **Supersession** replaces completed specs
+(`done` only). Any non-terminal stage can reach `abandoned` (via
+`specgraph abandon`). The diagram shows representative amend paths for
+clarity — amendment can target any authoring stage (`spark`, `shape`,
+`specify`, `decompose`).
 
 ---
 

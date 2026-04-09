@@ -29,17 +29,19 @@ var terminalStages = func() map[storage.SpecStage]bool {
 	return m
 }()
 
-// LifecycleAmendSpec transitions a done spec back into an earlier authoring stage.
-// If reEntryStage is empty, the spec is set to "amended".
-// Returns ErrSpecNotDone if the spec is not at the "done" stage, and ErrSpecNotFound
-// if the spec does not exist.
+// LifecycleAmendSpec transitions an in-flight spec back into an earlier authoring stage.
+// The spec must be in an amend-eligible stage (approved, in_progress, review).
+// reEntryStage is required — one of: spark, shape, specify, decompose.
+// Returns ErrReEntryStageRequired if reEntryStage is empty,
+// ErrSpecNotAmendable if the spec is not in an eligible stage, and
+// ErrSpecNotFound if the spec does not exist.
 func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error) {
-	targetStage := storage.SpecStageAmended
-	if reEntryStage != "" {
-		targetStage = storage.SpecStage(reEntryStage)
-		if targetStage.ExcludesReEntry() {
-			return nil, fmt.Errorf("amend spec %q: re_entry_stage %q: %w", slug, reEntryStage, storage.ErrInvalidReEntryStage)
-		}
+	if reEntryStage == "" {
+		return nil, fmt.Errorf("amend spec %q: %w", slug, storage.ErrReEntryStageRequired)
+	}
+	targetStage := storage.SpecStage(reEntryStage)
+	if targetStage.ExcludesReEntry() {
+		return nil, fmt.Errorf("amend spec %q: re_entry_stage %q: %w", slug, reEntryStage, storage.ErrInvalidReEntryStage)
 	}
 
 	var result *storage.Spec
@@ -49,11 +51,12 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 			return fmt.Errorf("postgres: amend spec: pre-read %q: %w", slug, getErr)
 		}
 
-		// Version guard: only proceed if spec is at "done" stage with expected version.
+		// Version guard: only proceed if spec is in an amend-eligible stage.
 		tag, execErr := s.exec(txCtx,
 			`UPDATE specs SET stage = $1, version = version + 1, updated_at = $2
-			 WHERE slug = $3 AND project_slug = $4 AND version = $5 AND stage = $6`,
-			string(targetStage), s.now(), slug, s.project, spec.Version, string(storage.SpecStageDone),
+			 WHERE slug = $3 AND project_slug = $4 AND version = $5
+			   AND stage IN ('approved', 'in_progress', 'review')`,
+			string(targetStage), s.now(), slug, s.project, spec.Version,
 		)
 		if execErr != nil {
 			return fmt.Errorf("postgres: amend spec: %w", execErr)
@@ -63,8 +66,8 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 				if current.Version != spec.Version {
 					return fmt.Errorf("amend spec %q: %w", slug, storage.ErrConcurrentModification)
 				}
-				if current.Stage != storage.SpecStageDone {
-					return fmt.Errorf("amend spec %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecNotDone)
+				if !current.Stage.IsAmendEligible() {
+					return fmt.Errorf("amend spec %q (stage=%s): %w", slug, current.Stage, storage.ErrSpecNotAmendable)
 				}
 				return nil
 			})
@@ -78,11 +81,8 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 			return getErr
 		}
 
-		summary := "Amended from done"
-		if targetStage != storage.SpecStageAmended {
-			summary = fmt.Sprintf("Amended from done, re-entering at: %s", targetStage)
-		}
-		deltas := []storage.FieldChange{{Field: "stage", OldValue: string(storage.SpecStageDone), NewValue: string(targetStage)}}
+		summary := fmt.Sprintf("Amended from %s, re-entering at: %s", spec.Stage, targetStage)
+		deltas := []storage.FieldChange{{Field: "stage", OldValue: string(spec.Stage), NewValue: string(targetStage)}}
 		clEntry := &storage.ChangeLogEntry{
 			Version:     freshSpec.Version,
 			Stage:       string(freshSpec.Stage),
@@ -113,8 +113,8 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		if preErr != nil {
 			return fmt.Errorf("postgres: supersede spec: pre-read %q: %w", oldSlug, preErr)
 		}
-		if terminalStages[oldCheck.Stage] {
-			return fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecTerminal)
+		if oldCheck.Stage != storage.SpecStageDone {
+			return fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecNotDone)
 		}
 		newCheck, newErr := s.GetSpec(txCtx, newSlug)
 		if newErr != nil {
@@ -132,11 +132,9 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 		// Version guard on old spec: set to superseded.
 		oldTag, oldErr := s.exec(txCtx,
 			`UPDATE specs SET stage = $1, superseded_by = $2, version = version + 1, updated_at = $3
-			 WHERE slug = $4 AND project_slug = $5 AND version = $6
-			   AND stage NOT IN (SELECT unnest($7::text[]))`,
+			 WHERE slug = $4 AND project_slug = $5 AND version = $6 AND stage = 'done'`,
 			string(storage.SpecStageSuperseded), newSlug, now,
 			oldSlug, s.project, oldCheck.Version,
-			terminalStageStrings(),
 		)
 		if oldErr != nil {
 			return fmt.Errorf("postgres: supersede spec (old): %w", oldErr)
@@ -302,7 +300,7 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 // acknowledging drift from an upstream spec (or all upstreams if upstreamSlug
 // is empty).
 func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlug, note string) error {
-	eligibleStages := []string{string(storage.SpecStageDone), string(storage.SpecStageAmended)}
+	eligibleStages := []string{string(storage.SpecStageDone)}
 
 	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
 		// Verify spec exists and is in eligible stage.

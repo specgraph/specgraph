@@ -22,7 +22,7 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 env:
-  GO_VERSION: "1.26"
+  GO_VERSION: "1.26.2"
   NODE_VERSION: "22"
   GOLANGCI_LINT_VERSION: v2.11.1
   YAMLFMT_VERSION: v0.21.0

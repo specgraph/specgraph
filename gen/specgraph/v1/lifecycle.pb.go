@@ -545,10 +545,9 @@ type TransitionAmendRequest struct {
 	Slug  string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
 	// Required. Reason for amending the spec. Maximum 10000 characters.
 	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
-	// Valid non-terminal stages: spark, shape, specify, decompose, approved,
-	// in_progress, review. Terminal states (amended, superseded, abandoned) are
-	// rejected. "done" is also rejected as it excludes re-entry.
-	// Empty means the spec enters the "amended" stage directly.
+	// Required. Authoring stage to re-enter: spark, shape, specify, or decompose.
+	// The spec must be in an amend-eligible stage (approved, in_progress, review).
+	// Terminal states (superseded, abandoned) and done are rejected.
 	ReEntryStage  string `protobuf:"bytes,3,opt,name=re_entry_stage,json=reEntryStage,proto3" json:"re_entry_stage,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -851,7 +850,7 @@ func (x *TransitionAbandonResponse) GetSpec() *Spec {
 
 type DriftCheckRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Empty slug checks all eligible (done/amended) specs.
+	// Empty slug checks all eligible (done) specs.
 	Slug string `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
 	// Scope of drift detection. UNSPECIFIED (default): runs all enabled drift scopes.
 	// Note: INTERFACES and VERIFY are not yet implemented and return empty results.
@@ -912,7 +911,7 @@ func (x *DriftCheckRequest) GetScope() DriftScope {
 type DriftCheckResponse struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Reports []*DriftReport         `protobuf:"bytes,1,rep,name=reports,proto3" json:"reports,omitempty"`
-	// Number of specs skipped because they are not in done/amended stage.
+	// Number of specs skipped because they are not in done stage.
 	// Only set for all-specs checks (empty slug); zero for single-spec checks.
 	SkippedCount  int32 `protobuf:"varint,2,opt,name=skipped_count,json=skippedCount,proto3" json:"skipped_count,omitempty"`
 	unknownFields protoimpl.UnknownFields

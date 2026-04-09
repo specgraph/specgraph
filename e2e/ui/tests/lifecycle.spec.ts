@@ -5,6 +5,7 @@ import { test, expect, request as playwrightRequest } from './fixtures';
 import {
   seedSpec,
   advanceToDone,
+  advanceToApproved,
   amendSpec,
   supersedeSpec,
   updateSpecIntent,
@@ -20,7 +21,7 @@ test.describe('Amendment', () => {
   test.beforeAll(async () => {
     const request = await playwrightRequest.newContext();
     await seedSpec(request, slug, 'Lifecycle amend E2E test spec', 'p2');
-    await advanceToDone(request, slug);
+    await advanceToApproved(request, slug);
     await amendSpec(request, slug, 'Requirements changed after implementation', 'shape');
     await request.dispose();
   });

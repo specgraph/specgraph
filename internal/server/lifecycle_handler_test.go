@@ -113,7 +113,7 @@ func TestLifecycleHandler_Amend(t *testing.T) {
 	deps.store.amendSpec = func(_ context.Context, slug, _, _ string) (*storage.Spec, error) {
 		return &storage.Spec{
 			Slug:        slug,
-			Stage:       storage.SpecStageAmended,
+			Stage:       storage.SpecStageShape,
 			Version:     2,
 			ContentHash: strings.Repeat("a", 32),
 		}, nil
@@ -128,7 +128,7 @@ func TestLifecycleHandler_Amend(t *testing.T) {
 	require.NoError(t, err)
 	s := resp.Msg.GetSpec()
 	require.Equal(t, "my-spec", s.GetSlug())
-	require.Equal(t, "amended", s.GetStage())
+	require.Equal(t, "shape", s.GetStage())
 	require.Equal(t, int32(2), s.GetVersion())
 }
 
@@ -137,7 +137,7 @@ func TestLifecycleHandler_Amend_UnknownLifecycleReturnsInternal(t *testing.T) {
 	deps.store.amendSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
 		return &storage.Spec{
 			Slug:        "my-spec",
-			Stage:       storage.SpecStageAmended,
+			Stage:       storage.SpecStageShape,
 			Lifecycle:   storage.SpecLifecycle("bogus"),
 			Version:     2,
 			ContentHash: strings.Repeat("a", 32),
@@ -456,6 +456,18 @@ func TestLifecycleHandler_Amend_EmptySlug(t *testing.T) {
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
+func TestLifecycleHandler_Amend_MissingReEntryStage(t *testing.T) {
+	client := newLifecycleClient(t, defaultTestDeps())
+	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
+		Slug:   "my-spec",
+		Reason: "rework",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
 func TestLifecycleHandler_Supersede_SameSlug(t *testing.T) {
 	client := newLifecycleClient(t, defaultTestDeps())
 	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
@@ -609,8 +621,9 @@ func TestLifecycleHandler_Amend_ConcurrentModification(t *testing.T) {
 	client := newLifecycleClient(t, deps)
 
 	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
-		Slug:   "busy-spec",
-		Reason: "rework",
+		Slug:         "busy-spec",
+		Reason:       "rework",
+		ReEntryStage: "shape",
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -626,8 +639,9 @@ func TestLifecycleHandler_Amend_InternalGuardFailure(t *testing.T) {
 	client := newLifecycleClient(t, deps)
 
 	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
-		Slug:   "guard-spec",
-		Reason: "rework",
+		Slug:         "guard-spec",
+		Reason:       "rework",
+		ReEntryStage: "shape",
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -637,7 +651,7 @@ func TestLifecycleHandler_Amend_InternalGuardFailure(t *testing.T) {
 
 func TestLifecycleHandler_Amend_TerminalReEntryStage(t *testing.T) {
 	client := newLifecycleClient(t, defaultTestDeps())
-	for _, stage := range []string{"amended", "superseded", "abandoned"} {
+	for _, stage := range []string{"superseded", "abandoned"} {
 		_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
 			Slug:         "my-spec",
 			Reason:       "rework",
@@ -797,8 +811,9 @@ func TestLifecycleHandler_Amend_TerminalSpec(t *testing.T) {
 	client := newLifecycleClient(t, deps)
 
 	_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
-		Slug:   "superseded-spec",
-		Reason: "rework",
+		Slug:         "superseded-spec",
+		Reason:       "rework",
+		ReEntryStage: "shape",
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error

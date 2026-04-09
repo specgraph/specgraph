@@ -66,6 +66,9 @@ If `$ARGUMENTS` contains what looks like a spec slug (kebab-case identifier):
 | specify | "Contracts are set. Time to decompose into work units." | `/specgraph-decompose` |
 | decompose | "Decomposition complete. Ready for approval?" | `/specgraph-approve` |
 | approved | "This spec is approved and ready for execution." | `/specgraph-bundle` |
+| in_progress | "Work is underway. Need to amend the spec?" | `specgraph amend <slug> --re-entry <stage> --reason "..."` |
+| review | "In review. Need to amend the spec?" | `specgraph amend <slug> --re-entry <stage> --reason "..."` |
+| done | "This spec is complete. Supersede or start something new?" | `specgraph supersede <slug> --with <new-slug>` |
 
 ### B) No slug, vague idea — Create a new spec
 

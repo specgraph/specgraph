@@ -47,6 +47,41 @@ export async function seedSparkOutput(request: APIRequestContext, slug: string):
   }, `seedSparkOutput(${slug})`);
 }
 
+// advanceToApproved transitions a spec through the authoring funnel up to
+// approved (shape → specify → decompose → approved). Does not claim or complete.
+// Use this when the spec needs to be in an amend-eligible stage (approved/in_progress/review).
+export async function advanceToApproved(request: APIRequestContext, slug: string): Promise<void> {
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Shape`, {
+    slug,
+    output: {
+      scopeIn: ['in-scope'],
+      scopeOut: ['out-scope'],
+      approaches: [{ name: 'default', description: 'test approach' }],
+      chosenApproach: 'default',
+    },
+  }, `advanceToApproved shape(${slug})`);
+
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Specify`, {
+    slug,
+    output: {
+      interfaces: [{ name: 'API', body: 'test' }],
+      verifyCriteria: [{ description: 'passes' }],
+    },
+  }, `advanceToApproved specify(${slug})`);
+
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Decompose`, {
+    slug,
+    output: {
+      strategy: 'DECOMPOSITION_STRATEGY_SINGLE_UNIT',
+      slices: [{ id: 'main', intent: 'test' }],
+    },
+  }, `advanceToApproved decompose(${slug})`);
+
+  await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Approve`, {
+    slug,
+  }, `advanceToApproved approve(${slug})`);
+}
+
 // advanceToDone transitions a spec (already created via CreateSpec/Spark) through
 // the full authoring funnel: shape → specify → decompose → approved → done.
 export async function advanceToDone(request: APIRequestContext, slug: string): Promise<void> {
@@ -93,8 +128,8 @@ export async function advanceToDone(request: APIRequestContext, slug: string): P
   }, `advanceToDone complete(${slug})`);
 }
 
-// amendSpec calls LifecycleService/TransitionAmend. reEntryStage is optional;
-// omitting it transitions the spec directly to the "amended" terminal stage.
+// amendSpec calls LifecycleService/TransitionAmend. reEntryStage is required;
+// the spec must be in an amend-eligible stage (approved, in_progress, or review).
 export async function amendSpec(
   request: APIRequestContext,
   slug: string,

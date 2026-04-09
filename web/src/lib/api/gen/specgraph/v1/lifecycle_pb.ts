@@ -198,10 +198,9 @@ export type TransitionAmendRequest = Message<"specgraph.v1.TransitionAmendReques
   reason: string;
 
   /**
-   * Valid non-terminal stages: spark, shape, specify, decompose, approved,
-   * in_progress, review. Terminal states (amended, superseded, abandoned) are
-   * rejected. "done" is also rejected as it excludes re-entry.
-   * Empty means the spec enters the "amended" stage directly.
+   * Required. Authoring stage to re-enter: spark, shape, specify, or decompose.
+   * The spec must be in an amend-eligible stage (approved, in_progress, review).
+   * Terminal states (superseded, abandoned) and done are rejected.
    *
    * @generated from field: string re_entry_stage = 3;
    */
@@ -320,7 +319,7 @@ export const TransitionAbandonResponseSchema: GenMessage<TransitionAbandonRespon
  */
 export type DriftCheckRequest = Message<"specgraph.v1.DriftCheckRequest"> & {
   /**
-   * Empty slug checks all eligible (done/amended) specs.
+   * Empty slug checks all eligible (done) specs.
    *
    * @generated from field: string slug = 1;
    */
@@ -358,7 +357,7 @@ export type DriftCheckResponse = Message<"specgraph.v1.DriftCheckResponse"> & {
   reports: DriftReport[];
 
   /**
-   * Number of specs skipped because they are not in done/amended stage.
+   * Number of specs skipped because they are not in done stage.
    * Only set for all-specs checks (empty slug); zero for single-spec checks.
    *
    * @generated from field: int32 skipped_count = 2;

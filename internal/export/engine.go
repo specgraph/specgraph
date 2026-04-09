@@ -360,9 +360,8 @@ var stageOrder = map[storage.SpecStage]int{
 	storage.SpecStageInProgress: 5,
 	storage.SpecStageReview:     6,
 	storage.SpecStageDone:       7,
-	storage.SpecStageAmended:    8,
-	storage.SpecStageSuperseded: 9,
-	storage.SpecStageAbandoned:  10,
+	storage.SpecStageSuperseded: 8,
+	storage.SpecStageAbandoned:  9,
 }
 
 // writeEntities creates all entities in dependency order.
@@ -437,9 +436,9 @@ func (e *Engine) writeEntities(ctx context.Context, doc *Document) (*ImportResul
 					return nil, fmt.Errorf("transition %q from %s to %s: %w", spec.Slug, from, to, err)
 				}
 			}
-			// Terminal lifecycle stages (amended, superseded, abandoned) transition from done.
+			// Terminal lifecycle stages (superseded, abandoned) transition from done.
 			switch spec.Stage {
-			case storage.SpecStageAmended, storage.SpecStageSuperseded, storage.SpecStageAbandoned:
+			case storage.SpecStageSuperseded, storage.SpecStageAbandoned:
 				if err := e.backend.TransitionStage(ctx, spec.Slug, storage.SpecStageDone, spec.Stage); err != nil {
 					res.Warnings = append(res.Warnings, fmt.Sprintf("could not set terminal stage %s for %q: %v", spec.Stage, spec.Slug, err))
 				}

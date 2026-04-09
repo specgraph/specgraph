@@ -202,7 +202,7 @@ type fakeAmendHandler struct {
 
 func (fakeAmendHandler) TransitionAmend(_ context.Context, _ *connect.Request[specv1.TransitionAmendRequest]) (*connect.Response[specv1.TransitionAmendResponse], error) {
 	return connect.NewResponse(&specv1.TransitionAmendResponse{
-		Spec: &specv1.Spec{Slug: "my-spec", Stage: "amended", Lifecycle: specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING, Version: 2},
+		Spec: &specv1.Spec{Slug: "my-spec", Stage: "shape", Lifecycle: specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING, Version: 2},
 	}), nil
 }
 

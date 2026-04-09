@@ -7,7 +7,7 @@ import "time"
 
 // SpecStage represents a spec's stage, covering both authoring funnel stages
 // (spark→shape→specify→decompose→approved→in_progress→review→done) and
-// lifecycle terminal states (amended, superseded, abandoned).
+// lifecycle terminal states (superseded, abandoned).
 type SpecStage string
 
 // Spec stage lifecycle values.
@@ -20,17 +20,15 @@ const (
 	SpecStageInProgress SpecStage = "in_progress"
 	SpecStageReview     SpecStage = "review"
 	SpecStageDone       SpecStage = "done"
-	SpecStageAmended    SpecStage = "amended"
 	SpecStageSuperseded SpecStage = "superseded"
 	SpecStageAbandoned  SpecStage = "abandoned"
 )
 
 // ExcludesReEntry reports whether s is a stage that cannot be used as a re-entry
-// target. Amended specs cannot cycle back (semantically invalid), and
-// superseded/abandoned specs are fully terminal states.
+// target. Done, superseded, and abandoned specs cannot be re-entry targets.
 func (s SpecStage) ExcludesReEntry() bool {
 	switch s {
-	case SpecStageDone, SpecStageAmended, SpecStageSuperseded, SpecStageAbandoned:
+	case SpecStageDone, SpecStageSuperseded, SpecStageAbandoned:
 		return true
 	default:
 		return false
@@ -49,14 +47,12 @@ var allSpecStages = []SpecStage{
 	SpecStageInProgress,
 	SpecStageReview,
 	SpecStageDone,
-	SpecStageAmended,
 	SpecStageSuperseded,
 	SpecStageAbandoned,
 }
 
 // IsFullyTerminal reports whether s is a stage from which no further lifecycle
-// transitions are allowed. Unlike ExcludesReEntry (which also includes Amended),
-// fully terminal stages cannot be superseded or abandoned.
+// transitions are allowed. Fully terminal stages cannot be superseded or abandoned.
 func (s SpecStage) IsFullyTerminal() bool {
 	switch s {
 	case SpecStageSuperseded, SpecStageAbandoned:
@@ -67,7 +63,7 @@ func (s SpecStage) IsFullyTerminal() bool {
 }
 
 // FullyTerminalStages returns stages from which no lifecycle transitions are
-// possible. This excludes Amended, which can still be superseded or abandoned.
+// possible.
 func FullyTerminalStages() []SpecStage {
 	var out []SpecStage
 	for _, s := range allSpecStages {
@@ -78,12 +74,23 @@ func FullyTerminalStages() []SpecStage {
 	return out
 }
 
+// IsAmendEligible reports whether s is a stage from which amend is allowed.
+// Only execution-adjacent stages (approved, in_progress, review) qualify.
+func (s SpecStage) IsAmendEligible() bool {
+	switch s {
+	case SpecStageApproved, SpecStageInProgress, SpecStageReview:
+		return true
+	default:
+		return false
+	}
+}
+
 // IsValid reports whether s is a known spec stage.
 func (s SpecStage) IsValid() bool {
 	switch s {
 	case SpecStageSpark, SpecStageShape, SpecStageSpecify,
 		SpecStageDecompose, SpecStageApproved, SpecStageInProgress,
-		SpecStageReview, SpecStageDone, SpecStageAmended,
+		SpecStageReview, SpecStageDone,
 		SpecStageSuperseded, SpecStageAbandoned:
 		return true
 	default:
