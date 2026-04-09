@@ -215,7 +215,7 @@ When the specify conversation is complete:
    # Persist to the graph
    specgraph specify <slug> --json-file /tmp/specify-<slug>.json
 
-   # Record the conversation (REQUIRED — see references/conversation-recording.md)
+   # Record the conversation (REQUIRED — retry once on failure; abort if both attempts fail)
    CONV_TMP="$(mktemp /tmp/conv-XXXXXX.json)"
    trap 'rm -f "$CONV_TMP"' EXIT
    cat > "$CONV_TMP" << 'CONV_EOF'
@@ -227,7 +227,9 @@ When the specify conversation is complete:
      ]
    }
    CONV_EOF
-   specgraph conversation record <slug> --stage specify --json-file "$CONV_TMP"
+   specgraph conversation record <slug> --stage specify --json-file "$CONV_TMP" || \
+     specgraph conversation record <slug> --stage specify --json-file "$CONV_TMP" || \
+     { echo "ERROR: conversation recording failed after retry — do not advance to the next stage until this is resolved"; exit 1; }
    ```
 
 ### Analytical Passes
