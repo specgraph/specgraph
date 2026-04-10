@@ -12,6 +12,16 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// stringPtrParam extracts an optional string parameter, returning nil if absent or empty.
+// Used to populate proto optional (oneof) *string fields that should only be set when provided.
+func stringPtrParam(params map[string]any, key string) *string {
+	v, ok := params[key].(string)
+	if !ok || v == "" {
+		return nil
+	}
+	return proto.String(v)
+}
+
 // props is shorthand for JSON Schema property maps.
 type props = map[string]any
 
@@ -46,8 +56,6 @@ func boolParam(params map[string]any, key string) bool {
 }
 
 // stringSliceParam extracts a []string parameter from a JSON array.
-//
-//nolint:unused // used by tool handler files added in subsequent tasks
 func stringSliceParam(params map[string]any, key string) []string {
 	raw, ok := params[key].([]any)
 	if !ok {
@@ -63,8 +71,6 @@ func stringSliceParam(params map[string]any, key string) []string {
 }
 
 // jsonResult marshals a proto message to JSON and returns it as a text result.
-//
-//nolint:unused // used by tool handler files added in subsequent tasks
 func jsonResult(msg proto.Message) *ToolResult {
 	data, err := protojson.MarshalOptions{Multiline: true}.Marshal(msg)
 	if err != nil {
@@ -90,8 +96,6 @@ func errResult(msg string) *ToolResult {
 
 // connectErrResult maps a ConnectRPC error to an MCP tool error result.
 // Auth errors return a Go error (protocol-level); everything else is a tool result.
-//
-//nolint:unused // used by tool handler files added in subsequent tasks
 func connectErrResult(err error) (*ToolResult, error) {
 	if err == nil {
 		return nil, nil
@@ -139,8 +143,6 @@ func stringProp(desc string, enum ...string) map[string]any {
 }
 
 // intProp builds a JSON Schema integer property.
-//
-//nolint:unused // used by tool handler files added in subsequent tasks
 func intProp(desc string) map[string]any {
 	return map[string]any{"type": "integer", "description": desc}
 }
@@ -153,8 +155,6 @@ func boolProp(desc string) map[string]any {
 }
 
 // arrayProp builds a JSON Schema array property with the given item schema.
-//
-//nolint:unused // used by tool handler files added in subsequent tasks
 func arrayProp(desc string, items map[string]any) map[string]any {
 	return map[string]any{"type": "array", "description": desc, "items": items}
 }
