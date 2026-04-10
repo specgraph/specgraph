@@ -134,9 +134,7 @@ shown inline so the decision is always traceable. Emitted tool files
 ### Tech Config
 
 Languages (primary, allowed, and forbidden — with reasons for each prohibition),
-frameworks, infrastructure targets, API standards, and data strategies. This
-section answers the question every new spec must start from: "what are we
-building with?"
+frameworks, infrastructure targets, API standards, and data strategies.
 
 ### Principles
 
@@ -279,16 +277,11 @@ to stdout.
 
 ## Why It Matters
 
-Governance becomes enforcement, not suggestion. During authoring, SpecGraph
-runs a **constitution check pass** that validates the emerging spec against
-every applicable constraint. When a spec violates a constraint — proposing
-direct database access from a handler, introducing a forbidden language,
-skipping a required security review — SpecGraph flags it immediately, in the
-authoring session, with the specific constraint and its provenance. The
-violation is caught at authoring time, not six months later in a code review
-or — worse — in production. For teams and managers, this means architectural
-decisions are living rules that shape every spec, not dusty documents that
-get rediscovered during postmortems.
+During authoring, SpecGraph runs a **constitution check pass** that validates
+each spec against every applicable constraint. A spec that proposes direct
+database access from an API handler gets flagged in the authoring session —
+not six months later in code review. The flag includes the specific
+constraint and which constitution layer set it.
 
 The constitution is automatically checked at every authoring stage via the
 [constitution check pass](passes.md#constitution-check).

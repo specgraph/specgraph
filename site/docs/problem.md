@@ -24,9 +24,9 @@ Three independent studies point in the same direction:
 Generating code is cheap. Knowing what code to generate — and verifying
 that it does the right thing — is not.
 
-Spec-Driven Development (SDD) addresses this shift by treating
-specifications as the primary engineering artifact and code as generated
-output. The specification defines correctness; the code implements it.
+Spec-Driven Development (SDD) flips the priority: the spec is the source
+of truth, and code is what you generate from it. Get the spec right and
+the code follows. Get it wrong and no amount of code review saves you.
 
 ---
 
@@ -176,22 +176,20 @@ tolerable when one person holds the full context.
 At team scale and above, specifications need infrastructure. When specs
 live in a graph instead of a folder, the gaps close structurally:
 
-- **Ground truth** becomes a layered constitution — tech stack,
-  architectural principles, and constraints that anchor every authoring
-  session. Agents never start cold.
-- **Governance** becomes live enforcement — a spec that violates an
-  architectural decision is flagged before approval, not after deployment.
-- **Addressability** becomes content-based identity — renaming or
-  reorganizing specs does not break references.
-- **Execution** becomes structured — each spec carries typed fields for
-  dependencies, acceptance criteria, and completion status that agents
-  consume directly.
-- **Queryability** becomes native — "what's blocked?" is a graph
-  traversal, not a grep.
+- **Ground truth**: a layered constitution — tech stack, principles,
+  constraints. Agents query it before building. They never start cold.
+- **Governance**: a spec that violates an architectural decision gets
+  flagged before approval, not after deployment.
+- **Addressability**: content-based identity. Rename files, reorganize
+  folders — references hold.
+- **Execution**: typed fields for dependencies, acceptance criteria, and
+  completion status. Agents consume them directly.
+- **Queryability**: "what's blocked?" is a graph traversal, not a grep
+  script.
 
-SpecGraph is one implementation of this approach — an open-source reference
-implementation of the patterns that make SDD work at scale. The patterns
-matter more than any particular tool.
+SpecGraph is an open-source implementation of these patterns — SDD
+infrastructure you can run today. The patterns matter more than any
+particular tool.
 
 ---
 

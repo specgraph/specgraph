@@ -2,10 +2,10 @@
 
 **One ground truth. Every decision, every dependency, every engineer.**
 
-SpecGraph is Spec-Driven Development at enterprise scale — a live, queryable
-spec graph where architectural constraints are enforced, decisions are
-traceable, and every member of your team starts with the full picture.
-Human or AI, no one builds cold.
+SpecGraph is Spec-Driven Development at enterprise scale. Your specs live
+in a queryable graph that enforces architectural constraints, traces
+decisions back to the specs they shaped, and gives every engineer — human
+or AI — the full picture before they write a line of code.
 
 [:octicons-arrow-right-24: How It Works — understand the full SDD picture](how-it-works.md){ .md-button }
 [:octicons-arrow-right-24: Quick Start — author your first spec in under ten minutes](quickstart.md)
@@ -20,11 +20,11 @@ Human or AI, no one builds cold.
 
 ## Why
 
-AI coding teams produce code fast. The bottleneck has moved upstream — to
-specification, governance, and verification. Static specs in files can't
-coordinate parallel workers, can't enforce architectural constraints, and
-can't answer "what's the critical path?" Spec-Driven Development solves
-this. SpecGraph is SDD built for enterprise scale.
+AI coding teams generate code fast. What they can't do is verify it's the
+right code — that's a spec problem. Static specs in files can't coordinate
+parallel workers, can't enforce architectural constraints, and can't answer
+"what's the critical path?" Spec-Driven Development solves this. SpecGraph
+is what SDD looks like at enterprise scale.
 
 [:octicons-arrow-right-24: The full problem statement](problem.md)
 
@@ -38,9 +38,9 @@ this. SpecGraph is SDD built for enterprise scale.
 
     ---
 
-    No engineer starts cold. Your tech stack, constraints, and architectural
-    decisions — encoded once, inherited by every engineer and agent. Query
-    before you build.
+    No engineer starts cold. Your tech stack, constraints, and architecture
+    — encoded once, queryable by every engineer and agent before they write
+    anything.
 
     [:octicons-arrow-right-24: Learn more](concepts/ground-truth.md)
 

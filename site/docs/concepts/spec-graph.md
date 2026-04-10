@@ -266,9 +266,7 @@ conventions, or external tracking tools. Answering questions like "what's the
 critical path?" or "what does this spec impact?" requires writing bespoke grep
 scripts or manually tracing links across documents.
 
-In SpecGraph, those questions are first-class graph operations. "What's
-blocked?" is a single-edge traversal. "What's the critical path?" is a
-longest-path query weighted by complexity. "What does this spec impact?" is a
-downstream walk from a node through its `blocks` and `depends_on` edges. The
-graph makes structural queries cheap and reliable — you query the shape of
-your project the same way you query its data.
+In SpecGraph, these are graph operations. "What's blocked?" — single-edge
+traversal. "Critical path?" — longest-path query weighted by complexity.
+"Impact of a change?" — downstream walk through `depends_on` edges. You
+stop writing grep scripts and start querying structure.
