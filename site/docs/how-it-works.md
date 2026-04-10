@@ -9,23 +9,13 @@ Spec-Driven Development has four layers. SpecGraph implements all of them.
 Every SpecGraph project begins with a constitution — a layered document
 that records the decisions, constraints, and conventions that define how
 the project works. This is the ground truth: the thing every engineer
-and every agent queries before building anything. The constitution has four layers, from most general to
-most specific:
+and every agent queries before building anything.
 
-**User &rarr; Org &rarr; Project &rarr; Domain**
-
-The **User** layer captures personal preferences (editor, language
-defaults). The **Org** layer records organization-wide standards (security
-policies, CI requirements). The **Project** layer pins the tech stack, repo
-structure, and architectural principles. The **Domain** layer captures
-bounded-context details — naming conventions, invariants, and patterns that
-apply to a specific part of the codebase.
-
-More specific layers override more general ones. If the org constitution
-says "use REST" but the project constitution says "use ConnectRPC," the
-project layer wins. Agents never start cold: before writing a single line
-of code, they query the constitution to understand what technology to use,
-what patterns to follow, and what constraints to respect.
+The constitution has four layers — **User**, **Org**, **Project**,
+**Domain** — each adding specificity. More specific layers win. The Project
+layer pins your tech stack and architecture; the Domain layer adds
+bounded-context rules like "auth specs require security review." Agents
+query the merged result before building anything.
 
 [:octicons-arrow-right-24: Deep dive into Ground Truth](concepts/ground-truth.md)
 
@@ -43,8 +33,8 @@ resolved ground truth as a single document:
     - No ORMs
     - All secrets via Secret Manager
 
-Tech stack, principles, constraints, antipatterns — all four layers merged
-into one file. See [Ground Truth](concepts/ground-truth.md#what-engineers-and-agents-receive)
+All four layers merge into one file — tech stack, principles, constraints,
+antipatterns. See [Ground Truth](concepts/ground-truth.md#what-engineers-and-agents-receive)
 for the full output and format options.
 
 ---
@@ -69,7 +59,7 @@ without field-by-field comparison.
 
 ### Live Queries
 
-Questions you can answer with one command:
+One example — finding the critical path to a release:
 
 ```bash
 specgraph critical-path checkout-flow
@@ -106,9 +96,9 @@ Each stage can be driven by a human, an AI agent, or both. SpecGraph
 defines three **AI postures** that control how much initiative the agent
 takes:
 
-- **Drive** — the agent leads; the human reviews and approves.
-- **Partner** — human and agent collaborate interactively (the default).
-- **Support** — the human leads; the agent answers questions and fills gaps.
+- **Drive** — the agent leads. The human reviews and approves.
+- **Partner** — human and agent collaborate interactively. This is the default.
+- **Support** — the human leads. The agent answers questions and fills gaps.
 
 The posture can change at any stage. Let the agent drive during Spark to
 brainstorm, switch to Partner for Specify to nail down interfaces together,

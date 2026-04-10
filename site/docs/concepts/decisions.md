@@ -2,20 +2,15 @@
 
 ## What are Decisions?
 
-In most teams, architectural decisions live in ADR files that drift from the
-specs they influenced. In SpecGraph, decisions are graph nodes with
-bidirectional edges — you can query every spec a decision shaped, and every
-decision a spec was built on.
-
 A decision is a **first-class node** in the spec graph. When you make a choice
 during authoring — "use Postgres for token storage", "authenticate via OAuth2,
 not API keys" — that choice becomes a graph node with a stable identity, a
 lifecycle, and bidirectional edges to every spec it touches.
 
-Decisions are not embedded arrays inside spec YAML. They are not separate ADR
-files living in a `docs/adr/` folder. They are queryable nodes in the same graph
-as your specs, connected by typed edges that let you answer "what breaks if we
-change this?" with a single traversal.
+Decisions aren't embedded arrays in spec YAML or standalone ADR files in a
+`docs/adr/` folder. They're queryable nodes in the same graph as your specs,
+connected by typed edges that answer "what breaks if we change this?" with a
+single traversal.
 
 ---
 
@@ -40,8 +35,9 @@ compliance, onboarding, or audit), embedded decisions must be extracted and
 cross-referenced manually. With graph nodes, ADR export is a straightforward
 traversal: walk the `decided_in` and `informs` edges, render each node.
 
-Making decisions first-class solves all three: one authoritative node, referenced
-from anywhere, with lifecycle state that tells you whether it's still active.
+Making decisions first-class fixes all three problems. A single authoritative
+node replaces duplicated rationale, any spec can reference it, and lifecycle
+state shows whether the decision is still active.
 
 ---
 

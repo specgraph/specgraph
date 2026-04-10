@@ -148,25 +148,24 @@ single traversal.
 These gaps compound. A spec written without ground truth gets approved
 without governance checks, handed to an agent that cannot query its
 dependencies, which produces an implementation that conflicts with existing
-patterns. The review catches some issues. The author rewrites. Another
-review. Another rewrite. What should have been a single-pass authoring flow
-becomes a multi-week rework cycle. Multiply this across every spec in a
-growing project and teams stop writing specs at all — not because specs
-lack value, but because the cost of maintaining bad ones exceeds the cost
-of having none.
+patterns. Reviews catch some of the problems, rewrites follow, and the
+cycle repeats until what should have been single-pass authoring has consumed
+weeks. Multiply this across every spec in a growing project and teams stop
+writing specs at all — not because specs lack value, but because maintaining
+bad ones costs more than having none.
 
 Agents amplify the problem. When agents make decisions without context,
 they make them confidently and at scale. An agent that does not know your
 architecture produces internally consistent work that is externally wrong.
 The output looks correct until a human with project context reviews it and
-discovers the agent built the right thing on the wrong foundation. Rework
-at that point is not a fix — it is a redesign.
+discovers the agent built the right thing on the wrong foundation. At that
+point you're not patching — you're redesigning.
 
 ---
 
 ## The Opportunity
 
-The response to these gaps varies by scale. A solo developer with a
+How much this matters depends on team size. A solo developer with a
 handful of specs can manage with markdown files in a repository — possibly
 with a lightweight framework like
 [Spec Kit](https://github.com/github/spec-kit) or
@@ -201,8 +200,8 @@ particular tool.
 | No Governance | Constitution check and analytical passes enforce constraints at the spec layer, before code is written |
 | No Addressability | Every spec has a stable ULID and slug — reorganise folders, rename files, references hold |
 | No Execution Interface | Approved specs carry verify criteria, invariants, interface contracts, and typed dependencies — structured input for any executor |
-| No Live Query | The spec graph answers `critical-path`, `impact`, `ready`, `drift` — direct traversal, not a grep script |
+| No Live Query | The spec graph answers `critical-path`, `impact`, `ready`, `drift` — direct traversal, not a custom script |
 
-This is Spec-Driven Development. SpecGraph is what it looks like at enterprise scale.
+SpecGraph implements all five.
 
-[:octicons-arrow-right-24: How It Works](how-it-works.md){ .md-button }
+[:octicons-arrow-right-24: See how it works](how-it-works.md){ .md-button }

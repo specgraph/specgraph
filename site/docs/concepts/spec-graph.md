@@ -5,9 +5,8 @@
 A spec is a **work unit** in the SpecGraph graph. Every spec has a stable
 identity (a ULID like `spec-01JQXYZ...`), a human-readable slug
 (e.g. `oauth-refresh-rotation`), and structured content that progresses through
-the [authoring funnel](authoring.md). Specs are the fundamental building
-block — everything else in SpecGraph exists to create, connect, validate, or
-execute them.
+the [authoring funnel](authoring.md). Everything else in SpecGraph exists
+to create, connect, validate, or execute specs.
 
 ---
 
@@ -256,17 +255,3 @@ specgraph deps auth-tokens --transitive
 See the [CLI Cookbook](../guides/cli-cookbook.md) for the full set of graph
 queries.
 
----
-
-## Why a Graph?
-
-Traditional spec management stores specifications as files in a directory.
-Relationships between specs are implicit — buried in prose references, filename
-conventions, or external tracking tools. Answering questions like "what's the
-critical path?" or "what does this spec impact?" requires writing bespoke grep
-scripts or manually tracing links across documents.
-
-In SpecGraph, these are graph operations. "What's blocked?" — single-edge
-traversal. "Critical path?" — longest-path query weighted by complexity.
-"Impact of a change?" — downstream walk through `depends_on` edges. You
-stop writing grep scripts and start querying structure.

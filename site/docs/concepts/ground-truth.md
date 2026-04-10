@@ -15,8 +15,8 @@ Without a constitution, every authoring session starts cold. An agent drafting
 spec #47 asks "what language should this be in?" even though the team settled on
 Go eighteen months ago. A new engineer writes a spec proposing a shared database
 between services, unaware of the postmortem that led to an explicit ban on that
-pattern. The constitution eliminates this class of problem by making project
-context queryable and enforceable, not just documented.
+pattern. The constitution fixes this: project context becomes queryable and
+enforceable, not just documented.
 
 ---
 
@@ -210,10 +210,7 @@ constitution:
       instead: "Event-driven with Pub/Sub"
 ```
 
-This constitution tells SpecGraph everything it needs to validate new specs
-against the project's established decisions. An agent drafting a spec for a new
-service will use Go (not Java), target GKE, connect to Cloud SQL, and avoid
-shared databases — without being told any of this in the prompt.
+SpecGraph validates new specs against this constitution automatically.
 
 ---
 
@@ -259,8 +256,7 @@ truth as your tools see it:
 
 All four layers — User, Org, Project, Domain — are resolved into a single
 merged document. Every constraint, principle, and tech choice carries
-provenance so you can trace where it was set. Agents query this before
-writing a single line of code.
+provenance so you can trace where it was set.
 
 The `emit` command supports three output formats:
 
