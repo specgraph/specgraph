@@ -35,10 +35,6 @@ verify the SHA256 checksum, and add to your PATH.
 docker pull ghcr.io/specgraph/specgraph:latest
 ```
 
-> **Note:** Homebrew, binary, and Docker install paths require a published
-> release. To build from source instead:
-> `go install github.com/specgraph/specgraph/cmd/specgraph@latest`
-
 <details><summary>Build from source (development)</summary>
 
 ```bash
