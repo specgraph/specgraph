@@ -31,7 +31,7 @@ project layer wins. Agents never start cold: before writing a single line
 of code, they query the constitution to understand what technology to use,
 what patterns to follow, and what constraints to respect.
 
-[:octicons-arrow-right-24: Deep dive into the constitution](concepts/constitution.md)
+[:octicons-arrow-right-24: Deep dive into Ground Truth](concepts/ground-truth.md)
 
 ---
 
@@ -51,7 +51,7 @@ me every spec blocked by this one" is a single traversal. Every spec has a
 fingerprint) that changes when content changes, enabling drift detection
 without field-by-field comparison.
 
-[:octicons-arrow-right-24: See the full graph model](concepts/specs.md)
+[:octicons-arrow-right-24: See the full graph model](concepts/spec-graph.md)
 
 ---
 

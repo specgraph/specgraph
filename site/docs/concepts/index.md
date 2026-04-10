@@ -13,7 +13,7 @@ framework.
     Specifications are nodes in a queryable graph with first-class dependency
     edges — not files in a folder.
 
-    [:octicons-arrow-right-24: Specs & the Graph](specs.md)
+    [:octicons-arrow-right-24: The Spec Graph](spec-graph.md)
 
 - :material-shield-check: **Constitution**
 
@@ -22,7 +22,7 @@ framework.
     A layered document that captures project ground truth — stack, constraints,
     and conventions — so agents and humans never start cold.
 
-    [:octicons-arrow-right-24: Constitution](constitution.md)
+    [:octicons-arrow-right-24: Ground Truth](ground-truth.md)
 
 - :material-filter: **Authoring Funnel**
 

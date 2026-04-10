@@ -118,7 +118,7 @@ integration surface.
 **Question:** "Does this respect our rules?"
 
 The constitution check validates the spec against the project's
-[constitution](constitution.md) at every stage of the funnel. It catches
+[constitution](ground-truth.md) at every stage of the funnel. It catches
 violations of hard constraints (forbidden technologies, required patterns,
 naming conventions) and surfaces soft guidance that may be relevant. Like the
 red team pass, findings carry severity levels.

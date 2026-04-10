@@ -48,7 +48,7 @@ no structured execution interface.
     queryable graph — not filename references. Query relationships, detect cycles,
     and traverse the full dependency tree.
 
-    [:octicons-arrow-right-24: Learn more](concepts/specs.md)
+    [:octicons-arrow-right-24: Learn more](concepts/spec-graph.md)
 
 - :material-shield-check: **Constitution**
 
@@ -58,7 +58,7 @@ no structured execution interface.
     principles, constraints, and patterns. More specific layers (Project,
     Domain) override general ones (Org, User).
 
-    [:octicons-arrow-right-24: Learn more](concepts/constitution.md)
+    [:octicons-arrow-right-24: Learn more](concepts/ground-truth.md)
 
 - :material-filter: **Authoring Funnel**
 
