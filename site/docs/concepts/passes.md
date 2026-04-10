@@ -7,16 +7,26 @@ passes** that run during authoring, and an **always-on safety net** that catches
 critical issues. Together they ensure specs are thorough, consistent, and safe
 before they ever reach an executor.
 
-Passes are optional depth — they sharpen thinking. The safety net is mandatory
-protection — it catches danger. Both run during the
-[authoring funnel](authoring.md), but they serve fundamentally different
-purposes and follow different rules.
+**Passes are analytical depth** — they sharpen thinking, surface tradeoffs, and
+improve design. They are posture-aware because experienced teams may not need
+every pass on every spec. **The safety net is structural protection** — it
+catches patterns that are dangerous regardless of context, expertise, or urgency.
+You can skip a red team pass if you are confident. You cannot skip a security
+check. Both run during the [authoring funnel](authoring.md), but they serve
+fundamentally different purposes and follow different rules.
 
-!!! info "Planned"
-    Pass scheduling infrastructure is fully implemented — passes are
-    registered per-stage with posture-aware auto/offered rules
-    (`internal/authoring/passes.go`). Pass execution currently returns
-    placeholder findings. LLM-driven pass execution is planned.
+!!! info "How pass execution works"
+    The server handles scheduling and template delivery: `RunAnalyticalPass`
+    loads the spec context and the embedded prompt template for the requested
+    pass type, then returns them to the caller. The caller is responsible for
+    invoking an LLM and storing findings via `StoreFindings`.
+
+    When using the Claude Code plugin, this loop runs automatically — passes
+    invoke the LLM and persist real findings as part of each stage transition.
+    When using the CLI or a custom client, retrieve the prompt with
+    `specgraph pass run <slug> --type <pass>`, run the analysis externally,
+    and store findings manually. Server-side LLM orchestration is not yet
+    implemented.
 
 ---
 
@@ -34,6 +44,17 @@ who performs the analysis.
 | Consistency Check | After Specify | Does this contradict anything? | — |
 | Simplicity Check | After Decompose | Can this be simpler? | — |
 | Constitution Check | Every stage | Does this respect our rules? | Critical / Warning / Note |
+
+**Posture-aware scheduling** — whether a pass runs automatically, is offered for
+confirmation, or is held until requested depends on the active posture:
+
+| Pass | Drive | Partner | Support |
+|---|---|---|---|
+| Constitution Check | auto | auto | auto |
+| Peripheral Vision | auto | offered | held |
+| Red Team | auto | offered | offered |
+| Consistency Check | auto | offered | offered |
+| Simplicity Check | auto | offered | offered |
 
 ### Red Team
 
@@ -169,20 +190,12 @@ ship, no matter how rushed the timeline.
 
 ## Why Both?
 
-Analytical passes and the safety net exist because quality has two distinct
-dimensions. Passes are **analytical** — they deepen understanding, surface
-tradeoffs, and improve the spec's design. They are posture-aware because
-experienced developers may not need every pass on every spec. A senior engineer
-writing a well-understood CRUD endpoint can skip the red team pass and still
-produce a solid spec. The passes respect that judgment.
-
-The safety net is **protective** — it catches patterns that are dangerous
-regardless of context or expertise. Hardcoded credentials are wrong whether you
-are a junior developer or a principal engineer. A circular dependency is broken
-whether you are in Drive mode or Support mode. The safety net does not care about
-posture because the things it catches are not matters of judgment — they are
-structural defects. You can skip a red team pass if you are confident. You
-cannot skip a security check. Different purposes, complementary systems.
+A senior engineer writing a well-understood CRUD endpoint can skip the red team
+pass and still produce a solid spec — the pass respects that judgment. That same
+engineer cannot skip a hardcoded-credential check. One is a matter of depth;
+the other is a matter of safety. Posture-aware passes let experienced teams move
+fast on familiar ground. The always-on safety net ensures that speed never creates
+a security or data-loss risk that no one noticed because they were in a hurry.
 
 ---
 

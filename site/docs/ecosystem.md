@@ -94,7 +94,7 @@ SpecGraph connects to the outside world through four interfaces:
   query the graph, generate execution bundles, run the linter, and manage
   the constitution from the terminal.
 
-- **Claude Code** (Shipped) — 11 skills and hooks integrate SpecGraph into
+- **Claude Code** (Shipped) — 13 skills and hooks integrate SpecGraph into
   the IDE workflow. Author specs through conversational prompts, query the
   graph, and generate execution bundles without leaving the editor.
 
