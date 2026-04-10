@@ -198,6 +198,66 @@ milestones with `--checkpoints`, or scope to recent changes with
 
 ---
 
+## Live Queries
+
+The graph answers questions that no static folder can. These are real CLI
+commands with realistic output:
+
+```bash
+# What's on the critical path to the checkout release?
+specgraph critical-path checkout-flow
+```
+
+    ## Critical Path
+
+    | Slug            | Stage       |
+    |-----------------|-------------|
+    | auth-tokens     | in_progress |
+    | payment-service | approved    |
+    | checkout-flow   | approved    |
+
+```bash
+# What breaks if auth-tokens changes?
+specgraph impact auth-tokens
+```
+
+    ## Impacted Specs
+
+    | Slug            | Stage    |
+    |-----------------|----------|
+    | payment-service | approved |
+    | session-mgmt    | approved |
+    | checkout-flow   | approved |
+
+```bash
+# What's ready to claim right now?
+specgraph ready
+```
+
+    ## Ready Specs
+
+    | Slug          | Stage    |
+    |---------------|----------|
+    | rate-limiter  | approved |
+    | audit-logging | approved |
+
+```bash
+# What does the auth-tokens spec depend on?
+specgraph deps auth-tokens --transitive
+```
+
+    ## Dependencies (transitive)
+
+    | Slug        | Stage       |
+    |-------------|-------------|
+    | user-model  | done        |
+    | db-schema   | done        |
+
+See the [CLI Cookbook](../guides/cli-cookbook.md) for the full set of graph
+queries.
+
+---
+
 ## Why a Graph?
 
 Traditional spec management stores specifications as files in a directory.
