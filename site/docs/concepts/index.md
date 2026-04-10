@@ -87,4 +87,13 @@ framework.
 
     [:octicons-arrow-right-24: Spec Linting](linting.md)
 
+- :material-file-document-outline: **Example Spec**
+
+    ---
+
+    A fully annotated OAuth2 refresh token spec showing every field, edge type,
+    and authoring stage output in context.
+
+    [:octicons-arrow-right-24: Example Spec](example-spec.md)
+
 </div>

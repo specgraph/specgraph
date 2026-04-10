@@ -8,7 +8,7 @@ through the full authoring funnel.
 
 ## Prerequisites
 
-- **Go 1.23+** (build from source) or **Homebrew** (when published)
+- **Go 1.23+** (build from source) or **Homebrew / binary release**
 - **Docker** (PostgreSQL container)
 - **Claude Code** (recommended for AI-assisted authoring)
 
