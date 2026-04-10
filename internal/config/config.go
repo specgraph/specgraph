@@ -19,6 +19,28 @@ type Config struct {
 	Server  ServerConfig  `yaml:"server"`
 	Storage StorageConfig `yaml:"storage"`
 	Sync    SyncConfig    `yaml:"sync"`
+	Publish PublishConfig `yaml:"publish"`
+}
+
+// PublishConfig describes publishing settings.
+type PublishConfig struct {
+	Confluence ConfluencePublishConfig `yaml:"confluence"`
+}
+
+// ConfluencePublishConfig describes Confluence-specific publishing settings.
+type ConfluencePublishConfig struct {
+	CloudID      string           `yaml:"cloud_id"`
+	SpaceKey     string           `yaml:"space_key"`
+	ParentPageID string           `yaml:"parent_page_id"`
+	Auth         AuthMethodConfig `yaml:"auth"`
+	PollInterval string           `yaml:"poll_interval"` // duration string, e.g. "15m"
+	AutoPublish  bool             `yaml:"auto_publish"`
+	Labels       []string         `yaml:"labels"`
+}
+
+// AuthMethodConfig describes authentication for external services.
+type AuthMethodConfig struct {
+	Method string `yaml:"method"` // api_token | oauth2
 }
 
 // SyncConfig describes sync adapter settings.
