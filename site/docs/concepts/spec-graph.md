@@ -1,4 +1,4 @@
-# Specs & the Graph
+# The Spec Graph
 
 ## What is a Spec?
 
