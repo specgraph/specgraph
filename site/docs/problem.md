@@ -192,3 +192,19 @@ live in a graph instead of a folder, the gaps close structurally:
 SpecGraph is one implementation of this approach — an open-source reference
 implementation of the patterns that make SDD work at scale. The patterns
 matter more than any particular tool.
+
+---
+
+## What SDD Does About This
+
+| Gap | SpecGraph answer |
+|---|---|
+| No Ground Truth | The constitution — layered architectural context every engineer and agent queries before building |
+| No Governance | Constitution check and analytical passes enforce constraints at the spec layer, before code is written |
+| No Addressability | Every spec has a stable ULID and slug — reorganise folders, rename files, references hold |
+| No Execution Interface | Approved specs carry verify criteria, invariants, interface contracts, and typed dependencies — structured input for any executor |
+| No Live Query | The spec graph answers `critical-path`, `impact`, `ready`, `drift` — direct traversal, not a grep script |
+
+This is Spec-Driven Development. SpecGraph is what it looks like at enterprise scale.
+
+[:octicons-arrow-right-24: How It Works](how-it-works.md){ .md-button }
