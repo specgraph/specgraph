@@ -211,15 +211,12 @@ stateDiagram-v2
     approved --> spark : amend
     approved --> shape : amend
     approved --> specify : amend
-    approved --> decompose : amend
     in_progress --> spark : amend
     in_progress --> shape : amend
     in_progress --> specify : amend
-    in_progress --> decompose : amend
     review --> spark : amend
     review --> shape : amend
     review --> specify : amend
-    review --> decompose : amend
 
     done --> superseded : supersede
 
@@ -233,13 +230,14 @@ stateDiagram-v2
 further transitions are possible.
 
 **Amendment** sends in-flight specs (`approved`, `in_progress`, `review`)
-back to an authoring stage for rework. Each amend arrow shows the *target*
-work stage you specify — the spec actually lands one stage before that
-target, so the authoring command for the target stage can succeed. For
-example, `amend --stage shape` moves the spec to `spark`; the next
-`specgraph shape` call then advances it through shape. **Supersession**
-replaces completed specs (`done` only). Any non-terminal stage can reach
-`abandoned` (via `specgraph abandon`).
+back to an authoring stage for rework. Edges show the **landing stage** —
+where the spec is actually set. The CLI flag `--re-entry` names the stage
+you want to redo; the spec lands one step earlier so the next authoring
+command succeeds. For example, `amend --re-entry shape` sets the spec to
+`spark`; you then run `specgraph shape` to advance through shape.
+Re-entering `spark` also lands at spark (the first stage has no
+predecessor). **Supersession** replaces completed specs (`done` only). Any
+non-terminal stage can reach `abandoned` (via `specgraph abandon`).
 
 ---
 

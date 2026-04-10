@@ -253,8 +253,8 @@ truth as your tools see it:
     - **Shared mutable state** — Caused cascading failure. Instead: Event-driven
 
 All four layers (User, Org, Project, Domain) merge into one document.
-Constraints, principles, and tech choices carry provenance so you can
-trace where each was set.
+The emitted file is annotation-free — provenance (which layer set each
+value) is available in the dashboard and via `constitution show`.
 
 The `emit` command supports three output formats:
 

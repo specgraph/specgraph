@@ -12,11 +12,12 @@
 
 ---
 
-### Task 1: Rename Constitution → Ground Truth
+## Task 1: Rename Constitution → Ground Truth
 
 Rename the file and update its H1 and sidebar label. This is a prerequisite for all subsequent link fixups.
 
 **Files:**
+
 - Rename: `site/docs/concepts/constitution.md` → `site/docs/concepts/ground-truth.md`
 
 - [ ] **Step 1: Rename the file**
@@ -31,11 +32,13 @@ git mv site/docs/concepts/constitution.md site/docs/concepts/ground-truth.md
 In `site/docs/concepts/ground-truth.md`, change line 1:
 
 Old:
+
 ```markdown
 # Constitution
 ```
 
 New:
+
 ```markdown
 # Ground Truth
 ```
@@ -45,11 +48,13 @@ New:
 In `site/docs/concepts/ground-truth.md`, change line 3:
 
 Old:
+
 ```markdown
 **The project's ground truth, encoded once and inherited by every spec.**
 ```
 
 New:
+
 ```markdown
 **Your project's architectural context, encoded once and inherited by every engineer and agent.**
 ```
@@ -68,6 +73,7 @@ git commit -s -m "docs(site): rename constitution.md → ground-truth.md"
 Rename the file and update its H1 heading.
 
 **Files:**
+
 - Rename: `site/docs/concepts/specs.md` → `site/docs/concepts/spec-graph.md`
 
 - [ ] **Step 1: Rename the file**
@@ -82,11 +88,13 @@ git mv site/docs/concepts/specs.md site/docs/concepts/spec-graph.md
 In `site/docs/concepts/spec-graph.md`, change line 1:
 
 Old:
+
 ```markdown
 # Specs & the Graph
 ```
 
 New:
+
 ```markdown
 # The Spec Graph
 ```
@@ -105,6 +113,7 @@ git commit -s -m "docs(site): rename specs.md → spec-graph.md"
 Swap How It Works ↔ Quick Start, reorder concepts, and update renamed file references.
 
 **Files:**
+
 - Modify: `site/zensical.toml:11-22`
 
 - [ ] **Step 1: Update the nav array**
@@ -112,6 +121,7 @@ Swap How It Works ↔ Quick Start, reorder concepts, and update renamed file ref
 Replace the entire `nav` block in `site/zensical.toml`:
 
 Old:
+
 ```toml
 nav = [
   "index.md",
@@ -128,6 +138,7 @@ nav = [
 ```
 
 New:
+
 ```toml
 nav = [
   "index.md",
@@ -144,6 +155,7 @@ nav = [
 ```
 
 Changes:
+
 - `quickstart.md` and `how-it-works.md` swapped (positions 3 ↔ 4)
 - `concepts/constitution.md` → `concepts/ground-truth.md` (moved to 1st in concepts)
 - `concepts/specs.md` → `concepts/spec-graph.md` (moved to 2nd in concepts)
@@ -163,6 +175,7 @@ git commit -s -m "docs(site): reorder nav — How It Works before Quick Start, r
 Update every file that links to the old `constitution.md` or `specs.md` paths.
 
 **Files:**
+
 - Modify: `site/docs/index.md` (2 links)
 - Modify: `site/docs/how-it-works.md` (2 links)
 - Modify: `site/docs/concepts/index.md` (2 links)
@@ -173,19 +186,25 @@ Update every file that links to the old `constitution.md` or `specs.md` paths.
 In `site/docs/index.md`:
 
 Change:
+
 ```markdown
     [:octicons-arrow-right-24: Learn more](concepts/specs.md)
 ```
+
 To:
+
 ```markdown
     [:octicons-arrow-right-24: Learn more](concepts/spec-graph.md)
 ```
 
 Change:
+
 ```markdown
     [:octicons-arrow-right-24: Learn more](concepts/constitution.md)
 ```
+
 To:
+
 ```markdown
     [:octicons-arrow-right-24: Learn more](concepts/ground-truth.md)
 ```
@@ -195,19 +214,25 @@ To:
 In `site/docs/how-it-works.md`:
 
 Change:
+
 ```markdown
 [:octicons-arrow-right-24: Deep dive into the constitution](concepts/constitution.md)
 ```
+
 To:
+
 ```markdown
 [:octicons-arrow-right-24: Deep dive into Ground Truth](concepts/ground-truth.md)
 ```
 
 Change:
+
 ```markdown
 [:octicons-arrow-right-24: See the full graph model](concepts/specs.md)
 ```
+
 To:
+
 ```markdown
 [:octicons-arrow-right-24: See the full graph model](concepts/spec-graph.md)
 ```
@@ -217,19 +242,25 @@ To:
 In `site/docs/concepts/index.md`:
 
 Change:
+
 ```markdown
     [:octicons-arrow-right-24: Specs & the Graph](specs.md)
 ```
+
 To:
+
 ```markdown
     [:octicons-arrow-right-24: The Spec Graph](spec-graph.md)
 ```
 
 Change:
+
 ```markdown
     [:octicons-arrow-right-24: Constitution](constitution.md)
 ```
+
 To:
+
 ```markdown
     [:octicons-arrow-right-24: Ground Truth](ground-truth.md)
 ```
@@ -239,10 +270,13 @@ To:
 In `site/docs/concepts/passes.md`:
 
 Change:
+
 ```markdown
 [constitution](constitution.md)
 ```
+
 To:
+
 ```markdown
 [constitution](ground-truth.md)
 ```
@@ -271,6 +305,7 @@ git commit -s -m "docs(site): update internal links for page renames"
 Replace the hero, why block, grid cards, when-to-use callout, and project status section.
 
 **Files:**
+
 - Modify: `site/docs/index.md`
 
 - [ ] **Step 1: Replace the hero section**
@@ -278,6 +313,7 @@ Replace the hero, why block, grid cards, when-to-use callout, and project status
 Replace lines 1–14 of `site/docs/index.md`:
 
 Old:
+
 ```markdown
 # SpecGraph
 
@@ -296,6 +332,7 @@ engineering artifact and code as generated output.
 ```
 
 New:
+
 ```markdown
 # SpecGraph
 
@@ -310,11 +347,13 @@ Human or AI, no one builds cold.
 - [ ] **Step 2: Replace the Quick Start CTA link**
 
 Old:
+
 ```markdown
 [:octicons-arrow-right-24: Quick Start — author your first spec in under ten minutes](quickstart.md)
 ```
 
 New:
+
 ```markdown
 [:octicons-arrow-right-24: How It Works — understand the full SDD picture](how-it-works.md){ .md-button }
 [:octicons-arrow-right-24: Quick Start — author your first spec in under ten minutes](quickstart.md)
@@ -323,6 +362,7 @@ New:
 - [ ] **Step 3: Replace the when-to-use callout**
 
 Old:
+
 ```markdown
 !!! tip "When to Use SpecGraph"
     SpecGraph is designed for teams where file-based specs break down:
@@ -334,6 +374,7 @@ Old:
 ```
 
 New:
+
 ```markdown
 !!! tip "When to Use SpecGraph"
     SpecGraph is designed for enterprise teams where multiple engineers and
@@ -345,6 +386,7 @@ New:
 - [ ] **Step 4: Expand the Why block**
 
 Old:
+
 ```markdown
 ## Why
 
@@ -357,6 +399,7 @@ no structured execution interface.
 ```
 
 New:
+
 ```markdown
 ## Why
 
@@ -374,6 +417,7 @@ this. SpecGraph is SDD built for enterprise scale.
 Replace the entire `## Core Concepts` section (from `## Core Concepts` through the closing `</div>`):
 
 New:
+
 ```markdown
 ## Core Concepts
 
@@ -381,7 +425,7 @@ New:
 
 - :material-shield-check: **Ground Truth**
 
-    ---
+---
 
     No engineer starts cold. Your tech stack, constraints, and architectural
     decisions — encoded once, inherited by every engineer and agent. Query
@@ -391,7 +435,7 @@ New:
 
 - :material-graph: **The Spec Graph**
 
-    ---
+---
 
     Query your architecture. Specs are live graph nodes with typed edges.
     Find what's blocked, trace the critical path, detect drift — one
@@ -401,7 +445,7 @@ New:
 
 - :material-filter: **Authoring Funnel**
 
-    ---
+---
 
     From rough idea to execution-ready spec. A five-stage AI-collaborative
     pipeline — Spark, Shape, Specify, Decompose, Approve. Human or agent,
@@ -411,7 +455,7 @@ New:
 
 - :material-gavel: **Architectural Governance**
 
-    ---
+---
 
     Violations surface at the spec layer. Constitution checks, red-team
     passes, and drift detection catch problems before code review — or
@@ -427,6 +471,7 @@ New:
 Replace the current Project Status section (which has a duplicate changelog link):
 
 Old:
+
 ```markdown
 ## Project Status
 
@@ -438,6 +483,7 @@ design. See the [changelog](changelog.md) for the latest release.
 ```
 
 New:
+
 ```markdown
 ## Project Status
 
@@ -463,11 +509,13 @@ git commit -s -m "docs(site): rewrite landing page for SDD enterprise narrative"
 Reframe around SDD, rename sections, add live queries, posture sentences, cycle diagram, and closing links.
 
 **Files:**
+
 - Modify: `site/docs/how-it-works.md`
 
 - [ ] **Step 1: Replace the opening paragraph**
 
 Old:
+
 ```markdown
 # How It Works
 
@@ -480,6 +528,7 @@ fit together.
 ```
 
 New:
+
 ```markdown
 # How It Works
 
@@ -494,6 +543,7 @@ how they fit together.
 - [ ] **Step 2: Rename "The Constitution" section to "Ground Truth"**
 
 Old:
+
 ```markdown
 ## The Constitution
 
@@ -503,6 +553,7 @@ the project works.
 ```
 
 New:
+
 ```markdown
 ## Ground Truth
 
@@ -524,7 +575,8 @@ Run `specgraph constitution emit --format claude-md` to see the ground truth
 as your tools see it. Here is a realistic snippet:
 
 ```
-# Project Constitution
+
+## Project Constitution
 
 Generated by SpecGraph. Do not edit manually.
 
@@ -557,7 +609,8 @@ Generated by SpecGraph. Do not edit manually.
 ## Anti-patterns
 
 - **Shared mutable state** — Caused cascading failure. Instead: Event-driven
-```
+
+```text
 
 This is what agents query before writing a single line of code. Every
 constraint, every principle, every tech choice — resolved from all
@@ -569,6 +622,7 @@ Note: The outer code fence around the emit snippet must use 4 backticks (`````) 
 - [ ] **Step 4: Rename "Specs as a Graph" section to "The Spec Graph"**
 
 Old:
+
 ```markdown
 ## Specs as a Graph
 
@@ -578,6 +632,7 @@ hand-maintained lists:
 ```
 
 New:
+
 ```markdown
 ## The Spec Graph
 
@@ -601,7 +656,7 @@ These are questions no static folder can answer — but the spec graph handles w
 specgraph critical-path checkout-flow
 ```
 
-```
+```text
 ## Critical Path
 
 | Slug            | Stage       |
@@ -616,7 +671,7 @@ specgraph critical-path checkout-flow
 specgraph impact auth-tokens
 ```
 
-```
+```text
 ## Impacted Specs
 
 | Slug            | Stage    |
@@ -631,7 +686,7 @@ specgraph impact auth-tokens
 specgraph ready
 ```
 
-```
+```text
 ## Ready Specs
 
 | Slug          | Stage    |
@@ -657,6 +712,7 @@ in control with AI filling gaps on request.
 - [ ] **Step 7: Reframe the Execution-Ready Output section**
 
 Old:
+
 ```markdown
 ## Execution-Ready Output
 
@@ -676,6 +732,7 @@ work proceeds in dependency order.
 ```
 
 New:
+
 ```markdown
 ## Execution-Ready Output
 
@@ -703,6 +760,7 @@ code review.
 Replace the entire Mermaid diagram:
 
 Old:
+
 ````markdown
 ```mermaid
 graph TD
@@ -729,6 +787,7 @@ graph TD
 ````
 
 New:
+
 ````markdown
 ```mermaid
 graph TD
@@ -786,6 +845,7 @@ git commit -s -m "docs(site): restructure How It Works around SDD narrative"
 Reorder cards, fix passes card description, update copy for renamed concepts.
 
 **Files:**
+
 - Modify: `site/docs/concepts/index.md`
 
 - [ ] **Step 1: Replace the entire file content**
@@ -803,7 +863,7 @@ framework.
 
 - :material-shield-check: **Ground Truth**
 
-    ---
+---
 
     Your project's architectural context — tech stack, constraints, and
     conventions — encoded once so engineers and agents never start cold.
@@ -812,7 +872,7 @@ framework.
 
 - :material-graph: **The Spec Graph**
 
-    ---
+---
 
     Specifications are nodes in a queryable graph with first-class dependency
     edges — not files in a folder.
@@ -821,7 +881,7 @@ framework.
 
 - :material-gavel: **Decisions**
 
-    ---
+---
 
     Architectural decisions are first-class graph nodes with bidirectional edges
     to the specs they influence.
@@ -830,7 +890,7 @@ framework.
 
 - :material-filter: **Authoring Funnel**
 
-    ---
+---
 
     A five-stage pipeline (Spark through Approve) that transforms rough ideas
     into execution-ready, structured specifications.
@@ -839,7 +899,7 @@ framework.
 
 - :material-shield-search: **Analytical Passes & Safety**
 
-    ---
+---
 
     Red team, peripheral vision, consistency, and simplicity checks —
     posture-aware analysis that runs at each authoring stage.
@@ -848,7 +908,7 @@ framework.
 
 - :material-puzzle: **Slices & Execution Units**
 
-    ---
+---
 
     Decompose creates independently claimable slice nodes in the graph — each
     with its own lifecycle from open through claimed to completed.
@@ -857,7 +917,7 @@ framework.
 
 - :material-swap-horizontal: **Drift Detection**
 
-    ---
+---
 
     Per-edge content hashing detects when upstream specs change after a
     dependency was baselined — keeping downstream assumptions honest.
@@ -866,7 +926,7 @@ framework.
 
 - :material-history: **Lifecycle Transitions**
 
-    ---
+---
 
     Amendment, supersession, and abandonment — what happens when in-flight
     or completed specs need to change, with full changelog and diff support.
@@ -875,7 +935,7 @@ framework.
 
 - :material-check-decagram: **Spec Linting**
 
-    ---
+---
 
     Structural validation catches malformed specs, broken edges, and
     constitution violations before deeper analytical passes run.
@@ -886,6 +946,7 @@ framework.
 ```
 
 Changes from current:
+
 - Ground Truth replaces Constitution (1st position, new copy)
 - The Spec Graph replaces Specs & the Graph (2nd position)
 - Decisions promoted to 3rd (was 4th)
@@ -906,6 +967,7 @@ git commit -s -m "docs(site): reorder concept cards, fix passes description, upd
 Add the emit output snippet to the concept page (same content as How It Works, cross-referenced).
 
 **Files:**
+
 - Modify: `site/docs/concepts/ground-truth.md`
 
 - [ ] **Step 1: Add emit output section before "Why It Matters"**
@@ -922,7 +984,8 @@ The constitution is consumed by tools — not just humans reading YAML. Run
 truth as your tools see it:
 
 ```
-# Project Constitution
+
+## Project Constitution
 
 Generated by SpecGraph. Do not edit manually.
 
@@ -955,7 +1018,8 @@ Generated by SpecGraph. Do not edit manually.
 ## Anti-patterns
 
 - **Shared mutable state** — Caused cascading failure. Instead: Event-driven
-```
+
+```text
 
 All four layers — User, Org, Project, Domain — are resolved into a single
 merged document. Every constraint, principle, and tech choice carries
@@ -990,6 +1054,7 @@ git commit -s -m "docs(site): add emit output section to Ground Truth concept pa
 Add the same live queries block from How It Works to the concept page.
 
 **Files:**
+
 - Modify: `site/docs/concepts/spec-graph.md`
 
 - [ ] **Step 1: Add "Live Queries" section before "Why a Graph?"**
@@ -1009,7 +1074,7 @@ commands with realistic output:
 specgraph critical-path checkout-flow
 ```
 
-```
+```text
 ## Critical Path
 
 | Slug            | Stage       |
@@ -1024,7 +1089,7 @@ specgraph critical-path checkout-flow
 specgraph impact auth-tokens
 ```
 
-```
+```text
 ## Impacted Specs
 
 | Slug            | Stage    |
@@ -1039,7 +1104,7 @@ specgraph impact auth-tokens
 specgraph ready
 ```
 
-```
+```text
 ## Ready Specs
 
 | Slug          | Stage    |
@@ -1053,7 +1118,7 @@ specgraph ready
 specgraph deps auth-tokens --transitive
 ```
 
-```
+```text
 ## Dependencies (transitive)
 
 | Slug        | Stage       |
@@ -1080,6 +1145,7 @@ git commit -s -m "docs(site): add live queries section to Spec Graph concept pag
 Add a governance-framed opening paragraph that connects decisions to graph queries.
 
 **Files:**
+
 - Modify: `site/docs/concepts/decisions.md`
 
 - [ ] **Step 1: Add governance framing after "What are Decisions?"**
@@ -1087,6 +1153,7 @@ Add a governance-framed opening paragraph that connects decisions to graph queri
 In `site/docs/concepts/decisions.md`, after the `## What are Decisions?` heading and before the first paragraph, insert a new opening paragraph:
 
 Old (first paragraph after heading):
+
 ```markdown
 A decision is a **first-class node** in the spec graph. When you make a choice
 during authoring — "use Postgres for token storage", "authenticate via OAuth2,
@@ -1095,6 +1162,7 @@ lifecycle, and bidirectional edges to every spec it touches.
 ```
 
 New (replace with):
+
 ```markdown
 In most teams, architectural decisions live in ADR files that drift from the
 specs they influenced. In SpecGraph, decisions are graph nodes with
@@ -1121,6 +1189,7 @@ git commit -s -m "docs(site): add governance-framed opener to Decisions page"
 Add a closing section that maps each of the five gaps to its SpecGraph answer.
 
 **Files:**
+
 - Modify: `site/docs/problem.md`
 
 - [ ] **Step 1: Add bridge section at the end of the file**
@@ -1160,6 +1229,7 @@ git commit -s -m "docs(site): add SDD bridge section to Problem page"
 Remove the misleading "Note" about unpublished releases — v0.5.0 shipped April 4th.
 
 **Files:**
+
 - Modify: `site/docs/quickstart.md:38-40`
 
 - [ ] **Step 1: Remove the stale note**
