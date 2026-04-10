@@ -1,6 +1,6 @@
-# Constitution
+# Ground Truth
 
-**The project's ground truth, encoded once and inherited by every spec.**
+**Your project's architectural context, encoded once and inherited by every engineer and agent.**
 
 ---
 
