@@ -79,9 +79,12 @@ specgraph drift acknowledge <slug> --note "reason" [--upstream <dep-slug> | --al
 Exactly one of `--upstream` or `--all` must be provided.
 
 !!! info "Planned"
-    The `--scope interfaces` and `--scope verify` options are defined but not
-    yet implemented. Currently only `deps` (dependency edge hash comparison)
-    is functional. Omitting `--scope` defaults to dependency-only checking.
+    The `--scope interfaces` and `--scope verify` options are not yet
+    implemented — passing them returns a "not yet implemented" error.
+    Dependency hash drift (`--scope deps`, the default) is the primary and
+    highest-value mechanism: it catches the most common case where an
+    upstream spec's contract changed after a dependency was baselined.
+    Omitting `--scope` defaults to dependency-only checking.
 
 ---
 

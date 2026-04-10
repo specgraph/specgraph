@@ -18,8 +18,8 @@ Amendment sends an **in-flight** spec back to an earlier authoring stage
 for modification. The spec must be in one of the execution stages —
 `approved`, `in_progress`, or `review` — to be amended. The spec's slug
 and identity are preserved; the version increments; the stage resets to
-the specified re-entry stage; a checkpoint ChangeLog entry records the
-reason.
+the stage immediately before your target so the authoring command for that
+stage can succeed; a checkpoint ChangeLog entry records the reason.
 
 **When to use:**
 
@@ -34,8 +34,13 @@ reason.
 
 **Eligible stages:** `approved`, `in_progress`, `review`
 
-A `re_entry_stage` is required — the spec transitions directly to the
-specified authoring stage.
+A `--stage` argument is required — it specifies the authoring stage you
+want to *work* from, not where the spec lands. SpecGraph transitions the
+spec to the stage immediately before your target, so the authoring command
+for that stage can succeed. For example, `amend --stage shape` moves the
+spec to `spark`; the next `specgraph shape` call then advances it through
+shape, replacing the existing shape output. Amending to `specify` lands at
+`shape`; amending to `decompose` lands at `specify`.
 
 ```bash
 specgraph amend <slug> --stage <stage> --reason "why"
@@ -130,10 +135,10 @@ flowchart TD
     D -- "done" --> F["Supersede\nspecgraph supersede"]
     E -- No --> C
     E -- Yes --> G{"What needs\nto change?"}
-    G -- "Intent or framing" --> H["Amend → spark"]
-    G -- "Scope or tradeoffs" --> I["Amend → shape"]
-    G -- "Contract or criteria" --> J["Amend → specify"]
-    G -- "Slice structure" --> K["Amend → decompose"]
+    G -- "Intent or framing" --> H["Amend, target: spark\nspec lands at spark"]
+    G -- "Scope or tradeoffs" --> I["Amend, target: shape\nspec lands at spark"]
+    G -- "Contract or criteria" --> J["Amend, target: specify\nspec lands at shape"]
+    G -- "Slice structure" --> K["Amend, target: decompose\nspec lands at specify"]
 ```
 
 ---
@@ -173,8 +178,8 @@ specgraph changes <slug> --diff --from=3 --to=7
 specgraph changes <slug> --since-version <n>
 ```
 
-The dashboard surfaces lifecycle history as a **changelog timeline** on each
-spec's detail view. Superseded and abandoned specs show a lifecycle banner
-indicating their terminal state and, for superseded specs, a link to the
-replacement. Version comparison renders field-level diffs between any two
-checkpoint entries.
+The web dashboard (served by `specgraph serve`) surfaces lifecycle history
+as a **changelog timeline** on each spec's detail view. Superseded and
+abandoned specs show a lifecycle banner indicating their terminal state
+and, for superseded specs, a link to the replacement. Version comparison
+renders field-level diffs between any two checkpoint entries.
