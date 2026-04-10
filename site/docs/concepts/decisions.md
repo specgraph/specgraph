@@ -89,8 +89,8 @@ stateDiagram-v2
 | **superseded** | Replaced by a different decision. Carries a link to the replacement node. |
 
 When a decision is superseded, every spec that references the old decision gets
-flagged. You don't discover stale assumptions during implementation — you
-discover them the moment the replacement is recorded.
+flagged. Stale assumptions surface the moment the replacement is recorded,
+not months later during implementation.
 
 ---
 

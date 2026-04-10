@@ -1,15 +1,14 @@
 # Ground Truth
 
-**Your project's architectural context, encoded once and inherited by every engineer and agent.**
+**Your project's architectural context — encoded once, inherited everywhere.**
 
 ---
 
 ## What Is a Constitution?
 
 A constitution is the document that tells SpecGraph — and any agent working within
-it — what your project values, allows, forbids, and expects. It captures the
-decisions your team has already made: which languages you use, which architectural
-principles you follow, which patterns are banned and why.
+it — what your project values, allows, forbids, and expects. It captures what your team has already decided: the languages, the
+architecture, which patterns are banned and why.
 
 Without a constitution, every authoring session starts cold. An agent drafting
 spec #47 asks "what language should this be in?" even though the team settled on
@@ -159,9 +158,8 @@ authoring — a spec that violates one is flagged before it reaches approval.
 ### Antipatterns
 
 Known bad patterns paired with recommended alternatives. These encode lessons
-learned, often from incidents. "Shared mutable state between services" is not
-just discouraged — it's documented with the 2023 cascading failure that
-motivated the ban and the event-driven alternative the team adopted.
+learned, often from incidents. "Shared mutable state between services" carries the 2023 cascading
+failure as context, plus the event-driven alternative the team adopted.
 
 ### References
 
@@ -254,9 +252,9 @@ truth as your tools see it:
 
     - **Shared mutable state** — Caused cascading failure. Instead: Event-driven
 
-All four layers — User, Org, Project, Domain — are resolved into a single
-merged document. Every constraint, principle, and tech choice carries
-provenance so you can trace where it was set.
+All four layers (User, Org, Project, Domain) merge into one document.
+Constraints, principles, and tech choices carry provenance so you can
+trace where each was set.
 
 The `emit` command supports three output formats:
 

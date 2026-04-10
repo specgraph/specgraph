@@ -6,16 +6,15 @@ Spec-Driven Development has four layers. SpecGraph implements all of them.
 
 ## Ground Truth
 
-Every SpecGraph project begins with a constitution — a layered document
-that records the decisions, constraints, and conventions that define how
-the project works. This is the ground truth: the thing every engineer
-and every agent queries before building anything.
+Every SpecGraph project begins with a constitution, a layered document
+that records what the project expects: tech stack, constraints, conventions,
+banned patterns. Engineers and agents query this ground truth before
+building anything.
 
 The constitution has four layers — **User**, **Org**, **Project**,
 **Domain** — each adding specificity. More specific layers win. The Project
 layer pins your tech stack and architecture; the Domain layer adds
-bounded-context rules like "auth specs require security review." Agents
-query the merged result before building anything.
+bounded-context rules like "auth specs require security review."
 
 [:octicons-arrow-right-24: Deep dive into Ground Truth](concepts/ground-truth.md)
 
@@ -33,7 +32,7 @@ resolved ground truth as a single document:
     - No ORMs
     - All secrets via Secret Manager
 
-All four layers merge into one file — tech stack, principles, constraints,
+All four layers merge into one file: tech stack, principles, constraints,
 antipatterns. See [Ground Truth](concepts/ground-truth.md#what-engineers-and-agents-receive)
 for the full output and format options.
 
@@ -49,7 +48,7 @@ hand-maintained lists:
 - **`blocks`** — this spec prevents another from starting
 - **`composes`** — this spec is a parent that breaks down into child specs
 
-Because relationships are graph edges, you can query them directly — "show
+Because relationships are graph edges, you can query them directly. "Show
 me every spec blocked by this one" is a single traversal. Every spec has a
 **stable identity** (ULID-based) and a **content hash** (Murmur3-128
 fingerprint) that changes when content changes, enabling drift detection
@@ -59,7 +58,7 @@ without field-by-field comparison.
 
 ### Live Queries
 
-One example — finding the critical path to a release:
+One example, finding the critical path to a release:
 
 ```bash
 specgraph critical-path checkout-flow
@@ -111,9 +110,8 @@ and take Support during Approve to keep the human in full control.
 ## Execution-Ready Output
 
 When a spec reaches **Approved**, it becomes claimable. It carries verify
-criteria, invariants, and interface contracts — everything an executor
-needs. Dependencies are explicit graph edges, so the executor knows what
-must finish first.
+criteria, invariants, and interface contracts. Dependencies are explicit
+graph edges, so the executor knows what must finish first.
 
 Agents (or humans) **claim** an approved spec, locking it to prevent
 duplicate work. They execute against the verify criteria and report
@@ -121,9 +119,9 @@ completion. If the invariants are violated or the criteria are not met, the
 claim fails and the spec returns to the pool. The graph structure ensures
 work proceeds in dependency order.
 
-When upstream specs change, downstream dependencies surface as drift —
-reviewed and acknowledged before execution continues, not discovered in
-code review.
+When upstream specs change, downstream dependencies surface as drift.
+You review and acknowledge before execution continues, rather than
+finding out in code review.
 
 ---
 

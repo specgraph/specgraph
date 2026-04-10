@@ -57,8 +57,8 @@ approval chains without changing the underlying data model.
 ## The Graph
 
 Specs connect to each other via **first-class edges** stored in the graph.
-These are not fragile filename references or hand-maintained lists —
-they are queryable, traversable relationships:
+Unlike filename references or hand-maintained lists, these edges are
+queryable and traversable:
 
 | Edge type | Meaning |
 |---|---|
@@ -140,7 +140,7 @@ linked via a `HAS_CHANGE` edge. Each ChangeLog entry records:
 - **Field deltas** — which fields changed and their old/new values
 - **Checkpoint flag** — `true` for stage transitions, `false` for in-stage edits
 
-This gives you:
+With that, you can do:
 
 - **Change detection** — compare current `content_hash` against any previous
   ChangeLog entry to know if a spec changed
@@ -188,8 +188,8 @@ ask "what changed across the project this week?" with a single query.
 All spec mutations and their ChangeLog entries execute within a single
 database transaction. If any step fails — for example, a concurrent
 modification is detected via the version guard — the entire operation
-rolls back. No orphaned state: if a spec was mutated, its ChangeLog
-entry exists; if the ChangeLog failed, the mutation never happened.
+rolls back. If a spec was mutated, its ChangeLog entry exists. If the
+ChangeLog write failed, the mutation never happened either.
 
 Use `specgraph changes <slug>` to view a spec's changelog. Filter to major
 milestones with `--checkpoints`, or scope to recent changes with

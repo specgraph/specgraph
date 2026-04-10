@@ -3,9 +3,9 @@
 **One ground truth for every decision, dependency, and engineer.**
 
 SpecGraph is Spec-Driven Development at enterprise scale. Your specs live
-in a queryable graph that enforces architectural constraints, traces
-decisions back to the specs they shaped, and gives every engineer — human
-or AI — the full picture before they write a line of code.
+in a queryable graph. It enforces architectural constraints and traces
+decisions back to the specs they shaped, so every engineer (human or AI)
+gets the full picture before writing code.
 
 [:octicons-arrow-right-24: How It Works — understand the full SDD picture](how-it-works.md){ .md-button }
 [:octicons-arrow-right-24: Quick Start — author your first spec in under ten minutes](quickstart.md)
@@ -21,10 +21,10 @@ or AI — the full picture before they write a line of code.
 ## Why
 
 AI coding teams generate code fast. What they can't do is verify it's the
-right code — that's a spec problem. Static specs in files don't coordinate
-parallel workers, don't enforce architectural constraints, and have no way
-to answer "what's the critical path?" Spec-Driven Development solves this.
-SpecGraph is SDD at enterprise scale.
+right code, and that's a spec problem. Static specs in files can't
+coordinate parallel workers or enforce architectural constraints. Try
+asking your markdown folder "what's the critical path?" Spec-Driven
+Development solves this. SpecGraph is SDD at enterprise scale.
 
 [:octicons-arrow-right-24: The full problem statement](problem.md)
 
@@ -38,9 +38,8 @@ SpecGraph is SDD at enterprise scale.
 
     ---
 
-    No engineer starts cold. Your tech stack, constraints, and architecture
-    — encoded once, queryable by every engineer and agent before they write
-    anything.
+    No engineer starts cold. Your tech stack, constraints, and architecture,
+    encoded once and queryable by anyone before they write anything.
 
     [:octicons-arrow-right-24: Learn more](concepts/ground-truth.md)
 
@@ -49,8 +48,8 @@ SpecGraph is SDD at enterprise scale.
     ---
 
     Query your architecture. Specs are live graph nodes with typed edges.
-    Find what's blocked, trace the critical path, detect drift — one
-    command, not a grep script.
+    Find what's blocked, trace the critical path, detect drift. One
+    command each.
 
     [:octicons-arrow-right-24: Learn more](concepts/spec-graph.md)
 
@@ -69,7 +68,7 @@ SpecGraph is SDD at enterprise scale.
     ---
 
     Violations surface at the spec layer. Constitution checks, red-team
-    passes, and drift detection catch problems before code review — or
+    passes, and drift detection catch problems before code review. Or
     production.
 
     [:octicons-arrow-right-24: How it works](how-it-works.md)
