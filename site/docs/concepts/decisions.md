@@ -2,6 +2,11 @@
 
 ## What are Decisions?
 
+In most teams, architectural decisions live in ADR files that drift from the
+specs they influenced. In SpecGraph, decisions are graph nodes with
+bidirectional edges — you can query every spec a decision shaped, and every
+decision a spec was built on.
+
 A decision is a **first-class node** in the spec graph. When you make a choice
 during authoring — "use Postgres for token storage", "authenticate via OAuth2,
 not API keys" — that choice becomes a graph node with a stable identity, a
