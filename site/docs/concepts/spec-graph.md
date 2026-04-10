@@ -1,13 +1,12 @@
-# Specs & the Graph
+# The Spec Graph
 
 ## What is a Spec?
 
 A spec is a **work unit** in the SpecGraph graph. Every spec has a stable
 identity (a ULID like `spec-01JQXYZ...`), a human-readable slug
 (e.g. `oauth-refresh-rotation`), and structured content that progresses through
-the [authoring funnel](authoring.md). Specs are the fundamental building
-block — everything else in SpecGraph exists to create, connect, validate, or
-execute them.
+the [authoring funnel](authoring.md). Everything else in SpecGraph exists
+to create, connect, validate, or execute specs.
 
 ---
 
@@ -58,8 +57,8 @@ approval chains without changing the underlying data model.
 ## The Graph
 
 Specs connect to each other via **first-class edges** stored in the graph.
-These are not fragile filename references or hand-maintained lists —
-they are queryable, traversable relationships:
+Unlike filename references or hand-maintained lists, these edges are
+queryable and traversable:
 
 | Edge type | Meaning |
 |---|---|
@@ -141,7 +140,7 @@ linked via a `HAS_CHANGE` edge. Each ChangeLog entry records:
 - **Field deltas** — which fields changed and their old/new values
 - **Checkpoint flag** — `true` for stage transitions, `false` for in-stage edits
 
-This gives you:
+With that, you can do:
 
 - **Change detection** — compare current `content_hash` against any previous
   ChangeLog entry to know if a spec changed
@@ -189,8 +188,8 @@ ask "what changed across the project this week?" with a single query.
 All spec mutations and their ChangeLog entries execute within a single
 database transaction. If any step fails — for example, a concurrent
 modification is detected via the version guard — the entire operation
-rolls back. No orphaned state: if a spec was mutated, its ChangeLog
-entry exists; if the ChangeLog failed, the mutation never happened.
+rolls back. If a spec was mutated, its ChangeLog entry exists. If the
+ChangeLog write failed, the mutation never happened either.
 
 Use `specgraph changes <slug>` to view a spec's changelog. Filter to major
 milestones with `--checkpoints`, or scope to recent changes with
@@ -198,17 +197,61 @@ milestones with `--checkpoints`, or scope to recent changes with
 
 ---
 
-## Why a Graph?
+## Live Queries
 
-Traditional spec management stores specifications as files in a directory.
-Relationships between specs are implicit — buried in prose references, filename
-conventions, or external tracking tools. Answering questions like "what's the
-critical path?" or "what does this spec impact?" requires writing bespoke grep
-scripts or manually tracing links across documents.
+The graph answers questions that no static folder can. These are real CLI
+commands with realistic output:
 
-In SpecGraph, those questions are first-class graph operations. "What's
-blocked?" is a single-edge traversal. "What's the critical path?" is a
-longest-path query weighted by complexity. "What does this spec impact?" is a
-downstream walk from a node through its `blocks` and `depends_on` edges. The
-graph makes structural queries cheap and reliable — you query the shape of
-your project the same way you query its data.
+```bash
+# What's on the critical path to the checkout release?
+specgraph critical-path checkout-flow
+```
+
+    ## Critical Path
+
+    | Slug            | Stage       |
+    |-----------------|-------------|
+    | auth-tokens     | in_progress |
+    | payment-service | approved    |
+    | checkout-flow   | approved    |
+
+```bash
+# What breaks if auth-tokens changes?
+specgraph impact auth-tokens
+```
+
+    ## Impacted Specs
+
+    | Slug            | Stage    |
+    |-----------------|----------|
+    | payment-service | approved |
+    | session-mgmt    | approved |
+    | checkout-flow   | approved |
+
+```bash
+# What's ready to claim right now?
+specgraph ready
+```
+
+    ## Ready Specs
+
+    | Slug          | Stage    |
+    |---------------|----------|
+    | rate-limiter  | approved |
+    | audit-logging | approved |
+
+```bash
+# What does the auth-tokens spec depend on?
+specgraph deps auth-tokens --transitive
+```
+
+    ## Dependencies (transitive)
+
+    | Slug        | Stage       |
+    |-------------|-------------|
+    | user-model  | done        |
+    | db-schema   | done        |
+
+See the [CLI Cookbook](../guides/cli-cookbook.md) for the full set of graph
+queries.
+

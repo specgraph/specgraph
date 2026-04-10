@@ -6,32 +6,23 @@ framework.
 
 <div class="grid cards" markdown>
 
-- :material-graph: **Specs & the Graph**
+- :material-shield-check: **Ground Truth**
+
+    ---
+
+    Your project's architectural context — tech stack, constraints, and
+    conventions — encoded once so engineers and agents never start cold.
+
+    [:octicons-arrow-right-24: Ground Truth](ground-truth.md)
+
+- :material-graph: **The Spec Graph**
 
     ---
 
     Specifications are nodes in a queryable graph with first-class dependency
     edges — not files in a folder.
 
-    [:octicons-arrow-right-24: Specs & the Graph](specs.md)
-
-- :material-shield-check: **Constitution**
-
-    ---
-
-    A layered document that captures project ground truth — stack, constraints,
-    and conventions — so agents and humans never start cold.
-
-    [:octicons-arrow-right-24: Constitution](constitution.md)
-
-- :material-filter: **Authoring Funnel**
-
-    ---
-
-    A five-stage pipeline (Spark through Approve) that transforms rough ideas
-    into execution-ready, structured specifications.
-
-    [:octicons-arrow-right-24: Authoring Funnel](authoring.md)
+    [:octicons-arrow-right-24: The Spec Graph](spec-graph.md)
 
 - :material-gavel: **Decisions**
 
@@ -42,12 +33,21 @@ framework.
 
     [:octicons-arrow-right-24: Decisions](decisions.md)
 
+- :material-filter: **Authoring Funnel**
+
+    ---
+
+    A five-stage pipeline (Spark through Approve) that transforms rough ideas
+    into execution-ready, structured specifications.
+
+    [:octicons-arrow-right-24: Authoring Funnel](authoring.md)
+
 - :material-shield-search: **Analytical Passes & Safety**
 
     ---
 
-    Automated analysis passes that detect cycles, unreachable specs, missing
-    verify criteria, and other structural problems before execution begins.
+    Red team, peripheral vision, consistency, and simplicity checks —
+    posture-aware analysis that runs at each authoring stage.
 
     [:octicons-arrow-right-24: Passes & Safety](passes.md)
 
@@ -86,5 +86,14 @@ framework.
     constitution violations before deeper analytical passes run.
 
     [:octicons-arrow-right-24: Spec Linting](linting.md)
+
+- :material-file-document-outline: **Example Spec**
+
+    ---
+
+    A fully annotated OAuth2 refresh token spec showing every field, edge type,
+    and authoring stage output in context.
+
+    [:octicons-arrow-right-24: Example Spec](example-spec.md)
 
 </div>

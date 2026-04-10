@@ -8,7 +8,7 @@ through the full authoring funnel.
 
 ## Prerequisites
 
-- **Go 1.23+** (build from source) or **Homebrew** (when published)
+- **Go 1.23+** (build from source) or **Homebrew / binary release**
 - **Docker** (PostgreSQL container)
 - **Claude Code** (recommended for AI-assisted authoring)
 
@@ -34,10 +34,6 @@ verify the SHA256 checksum, and add to your PATH.
 ```bash
 docker pull ghcr.io/specgraph/specgraph:latest
 ```
-
-> **Note:** Homebrew, binary, and Docker install paths require a published
-> release. To build from source instead:
-> `go install github.com/specgraph/specgraph/cmd/specgraph@latest`
 
 <details><summary>Build from source (development)</summary>
 

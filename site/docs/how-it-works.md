@@ -1,41 +1,44 @@
 # How It Works
 
-SpecGraph rests on four pillars: a **constitution** that captures project
-ground truth, a **graph-native spec schema** that makes relationships
-queryable, an **AI-collaborative authoring funnel** that guides ideas from
-spark to execution-ready spec, and a **storage + query layer** that keeps
-every artifact live. This page walks through each pillar and shows how they
-fit together.
+Spec-Driven Development has four layers. SpecGraph implements all of them.
 
 ---
 
-## The Constitution
+## Ground Truth
 
-Every SpecGraph project begins with a constitution — a layered document
-that records the decisions, constraints, and conventions that define how
-the project works. The constitution has four layers, from most general to
-most specific:
+Every SpecGraph project begins with a constitution, a layered document
+that records what the project expects: tech stack, constraints, conventions,
+banned patterns. Engineers and agents query this ground truth before
+building anything.
 
-**User &rarr; Org &rarr; Project &rarr; Domain**
+The constitution has four layers — **User**, **Org**, **Project**,
+**Domain** — each adding specificity. More specific layers win. The Project
+layer pins your tech stack and architecture; the Domain layer adds
+bounded-context rules like "auth specs require security review."
 
-The **User** layer captures personal preferences (editor, language
-defaults). The **Org** layer records organization-wide standards (security
-policies, CI requirements). The **Project** layer pins the tech stack, repo
-structure, and architectural principles. The **Domain** layer captures
-bounded-context details — naming conventions, invariants, and patterns that
-apply to a specific part of the codebase.
+[:octicons-arrow-right-24: Deep dive into Ground Truth](concepts/ground-truth.md)
 
-More specific layers override more general ones. If the org constitution
-says "use REST" but the project constitution says "use ConnectRPC," the
-project layer wins. Agents never start cold: before writing a single line
-of code, they query the constitution to understand what technology to use,
-what patterns to follow, and what constraints to respect.
+### What engineers and agents receive
 
-[:octicons-arrow-right-24: Deep dive into the constitution](concepts/constitution.md)
+Run `specgraph constitution emit --format claude-md` and agents get the
+resolved ground truth as a single document:
+
+    ## Tech Stack
+    - **Primary language:** go
+    - **Forbidden languages:** java
+      - java: No Java expertise
+
+    ## Constraints
+    - No ORMs
+    - All secrets via Secret Manager
+
+All four layers merge into one file: tech stack, principles, constraints,
+antipatterns. See [Ground Truth](concepts/ground-truth.md#what-engineers-and-agents-receive)
+for the full output and format options.
 
 ---
 
-## Specs as a Graph
+## The Spec Graph
 
 Every specification is a **node** in a queryable graph. Relationships
 between specs are **first-class edges**, not filename references or
@@ -45,13 +48,33 @@ hand-maintained lists:
 - **`blocks`** — this spec prevents another from starting
 - **`composes`** — this spec is a parent that breaks down into child specs
 
-Because relationships are graph edges, you can query them directly — "show
+Because relationships are graph edges, you can query them directly. "Show
 me every spec blocked by this one" is a single traversal. Every spec has a
 **stable identity** (ULID-based) and a **content hash** (Murmur3-128
 fingerprint) that changes when content changes, enabling drift detection
 without field-by-field comparison.
 
-[:octicons-arrow-right-24: See the full graph model](concepts/specs.md)
+[:octicons-arrow-right-24: See the full graph model](concepts/spec-graph.md)
+
+### Live Queries
+
+One example, finding the critical path to a release:
+
+```bash
+specgraph critical-path checkout-flow
+```
+
+    ## Critical Path
+
+    | Slug            | Stage       |
+    |-----------------|-------------|
+    | auth-tokens     | in_progress |
+    | payment-service | approved    |
+    | checkout-flow   | approved    |
+
+`impact`, `ready`, `deps --transitive` — the full set is on
+[The Spec Graph](concepts/spec-graph.md#live-queries) page and the
+[CLI Cookbook](guides/cli-cookbook.md).
 
 ---
 
@@ -72,9 +95,9 @@ Each stage can be driven by a human, an AI agent, or both. SpecGraph
 defines three **AI postures** that control how much initiative the agent
 takes:
 
-- **Drive** — the agent leads; the human reviews and approves.
-- **Partner** — human and agent collaborate interactively (the default).
-- **Support** — the human leads; the agent answers questions and fills gaps.
+- **Drive** — the agent leads. The human reviews and approves.
+- **Partner** — human and agent collaborate interactively. This is the default.
+- **Support** — the human leads. The agent answers questions and fills gaps.
 
 The posture can change at any stage. Let the agent drive during Spark to
 brainstorm, switch to Partner for Specify to nail down interfaces together,
@@ -86,13 +109,9 @@ and take Support during Approve to keep the human in full control.
 
 ## Execution-Ready Output
 
-When a spec reaches the **Approved** stage, it becomes a claimable work
-unit. Each approved spec carries everything an executor — human or agent —
-needs to act without further clarification: **verify criteria** that define
-"done," **invariants** that must hold before and after execution, and
-**interface contracts** that specify inputs and outputs. Dependencies are
-explicit graph edges, so the executor knows exactly what must be complete
-before starting.
+When a spec reaches **Approved**, it becomes claimable. It carries verify
+criteria, invariants, and interface contracts. Dependencies are explicit
+graph edges, so the executor knows what must finish first.
 
 Agents (or humans) **claim** an approved spec, locking it to prevent
 duplicate work. They execute against the verify criteria and report
@@ -100,29 +119,42 @@ completion. If the invariants are violated or the criteria are not met, the
 claim fails and the spec returns to the pool. The graph structure ensures
 work proceeds in dependency order.
 
+When upstream specs change, downstream dependencies surface as drift.
+You review and acknowledge before execution continues, rather than
+finding out in code review.
+
 ---
 
 ## Putting It Together
 
 ```mermaid
 graph TD
-    subgraph Constitution
-        C["Constitution<br/>U → O → P → D<br/>Ground truth: stack, constraints,<br/>principles, patterns"]
+    subgraph GT["Ground Truth"]
+        C["Constitution layers"]
     end
 
     subgraph Funnel["Authoring Funnel"]
-        F["Spark → Shape → Specify → Decompose → Approve<br/>AI postures: Drive | Partner | Support"]
+        F["Spark → Shape → Specify → Decompose → Approve"]
     end
 
-    subgraph Storage["Spec Graph (Storage)"]
-        S["Nodes: specs, decisions, constitution<br/>Edges: depends_on, blocks, composes<br/>Backend: PostgreSQL"]
+    subgraph Graph["The Spec Graph"]
+        S["Specs, decisions, and edges"]
     end
 
     subgraph Execution
-        E["Claim → In Progress → Review → Done<br/>Agents or humans consume approved specs<br/>Amend from in-flight | Supersede from done | Abandon"]
+        E["Claim → Execute → Verify → Done"]
     end
 
-    C -->|informs| Funnel
-    Funnel -->|produces| Storage
-    Storage -->|serves| Execution
+    GT -->|informs| Funnel
+    Funnel -->|produces| Graph
+    Graph -->|serves| Execution
+    Execution -->|drift, amendments, supersessions| GT
 ```
+
+---
+
+## Where to Go Next
+
+- **[The Problem](problem.md)** — the full evidence-backed case for SDD
+- **[Quick Start](quickstart.md)** — get running in under 10 minutes
+- **[Ground Truth](concepts/ground-truth.md)** — the first concept to understand

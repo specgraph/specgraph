@@ -1,36 +1,30 @@
 # SpecGraph
 
-**Spec-Driven Development infrastructure — specifications as a queryable graph**
+**One ground truth for every decision, dependency, and engineer.**
 
-SpecGraph manages software specifications as nodes in a queryable graph, not
-files in a folder. Dependencies, blocks, and compositions are first-class
-edges. Architectural constraints live in a layered constitution that agents
-query before writing a single line of code. An AI-collaborative authoring
-funnel guides ideas from rough spark to execution-ready spec. The result is
-a specification graph that humans and agents can query, traverse, and act on.
+SpecGraph is Spec-Driven Development at enterprise scale. Your specs live
+in a queryable graph. It enforces architectural constraints and traces
+decisions back to the specs they shaped, so every engineer (human or AI)
+gets the full picture before writing code.
 
-SpecGraph is a reference implementation of Spec-Driven Development (SDD)
-infrastructure — the practice of treating specifications as the primary
-engineering artifact and code as generated output.
-
+[:octicons-arrow-right-24: How It Works — understand the full SDD picture](how-it-works.md){ .md-button }
 [:octicons-arrow-right-24: Quick Start — author your first spec in under ten minutes](quickstart.md)
 
 !!! tip "When to Use SpecGraph"
-    SpecGraph is designed for teams where file-based specs break down:
-    cross-spec queries, dependency tracking, multi-agent coordination, and
-    layered governance at scale. For solo developers or small projects,
-    simpler tools — markdown files,
-    [Spec Kit](https://github.com/github/spec-kit), lightweight execution
-    frameworks — are a better fit.
+    SpecGraph targets teams where multiple engineers and AI agents share a
+    codebase — shared architectural context, live dependency tracking, and
+    governance at the spec layer. Solo developers with a handful of specs
+    can start with simpler tools.
 
 ---
 
 ## Why
 
-AI agents produce code fast. The bottleneck has moved upstream — to
-specification, review, and verification. File-based specs cannot keep up:
-no stable identity, no queryable dependencies, no governance enforcement,
-no structured execution interface.
+AI coding teams generate code fast. What they can't do is verify it's the
+right code, and that's a spec problem. Static specs in files can't
+coordinate parallel workers or enforce architectural constraints. Try
+asking your markdown folder "what's the critical path?" Spec-Driven
+Development solves this. SpecGraph is SDD at enterprise scale.
 
 [:octicons-arrow-right-24: The full problem statement](problem.md)
 
@@ -40,43 +34,42 @@ no structured execution interface.
 
 <div class="grid cards" markdown>
 
-- :material-graph: **Specs as Graph Nodes**
+- :material-shield-check: **Ground Truth**
 
     ---
 
-    Dependencies, blocks, and compositions are typed edges in a
-    queryable graph — not filename references. Query relationships, detect cycles,
-    and traverse the full dependency tree.
+    No engineer starts cold. Your tech stack, constraints, and architecture,
+    encoded once and queryable by anyone before they write anything.
 
-    [:octicons-arrow-right-24: Learn more](concepts/specs.md)
+    [:octicons-arrow-right-24: Learn more](concepts/ground-truth.md)
 
-- :material-shield-check: **Constitution**
+- :material-graph: **The Spec Graph**
 
     ---
 
-    A layered document that captures project ground truth — tech stack,
-    principles, constraints, and patterns. More specific layers (Project,
-    Domain) override general ones (Org, User).
+    Query your architecture. Specs are live graph nodes with typed edges.
+    Find what's blocked, trace the critical path, detect drift. One
+    command each.
 
-    [:octicons-arrow-right-24: Learn more](concepts/constitution.md)
+    [:octicons-arrow-right-24: Learn more](concepts/spec-graph.md)
 
 - :material-filter: **Authoring Funnel**
 
     ---
 
-    An AI-collaborative pipeline that guides ideas from rough spark to
-    execution-ready spec: Spark, Shape, Specify, Decompose, Approve. Each
-    stage adds structure and validation.
+    From rough idea to execution-ready spec. A five-stage AI-collaborative
+    pipeline — Spark, Shape, Specify, Decompose, Approve. Human or agent,
+    the funnel adds just enough structure at each step.
 
     [:octicons-arrow-right-24: Learn more](concepts/authoring.md)
 
-- :material-robot: **Execution-Ready Output**
+- :material-gavel: **Architectural Governance**
 
     ---
 
-    Every approved spec is a structured, claimable work unit with clear
-    inputs, outputs, and acceptance criteria. Agents claim specs, execute
-    them, and verify results — no human translation required.
+    Violations surface at the spec layer. Constitution checks, red-team
+    passes, and drift detection catch problems before code review. Or
+    production.
 
     [:octicons-arrow-right-24: How it works](how-it-works.md)
 
@@ -86,8 +79,9 @@ no structured execution interface.
 
 ## Project Status
 
-See the [changelog](changelog.md) for the latest release.
+Core authoring, graph queries, ground truth, drift detection, and sync
+adapters are shipped. CLI and Claude Code plugin available now.
 
+See the [changelog](changelog.md) for the latest release.
 [Author your first spec](quickstart.md) in under ten minutes, or read
-the [architecture overview](architecture.md) to understand the system
-design. See the [changelog](changelog.md) for the latest release.
+the [architecture overview](architecture.md) to understand the system design.

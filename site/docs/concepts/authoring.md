@@ -208,12 +208,15 @@ stateDiagram-v2
     in_progress --> review
     review --> done
 
-    approved --> spark : amend (re-entry)
-    approved --> shape : amend (re-entry)
-    in_progress --> spark : amend (re-entry)
-    in_progress --> shape : amend (re-entry)
-    review --> spark : amend (re-entry)
-    review --> shape : amend (re-entry)
+    approved --> spark : amend
+    approved --> shape : amend
+    approved --> specify : amend
+    in_progress --> spark : amend
+    in_progress --> shape : amend
+    in_progress --> specify : amend
+    review --> spark : amend
+    review --> shape : amend
+    review --> specify : amend
 
     done --> superseded : supersede
 
@@ -227,11 +230,14 @@ stateDiagram-v2
 further transitions are possible.
 
 **Amendment** sends in-flight specs (`approved`, `in_progress`, `review`)
-back to an authoring stage. **Supersession** replaces completed specs
-(`done` only). Any non-terminal stage can reach `abandoned` (via
-`specgraph abandon`). The diagram shows representative amend paths for
-clarity — amendment can target any authoring stage (`spark`, `shape`,
-`specify`, `decompose`).
+back to an authoring stage for rework. Edges show the **landing stage** —
+where the spec is actually set. The CLI flag `--re-entry` names the stage
+you want to redo; the spec lands one step earlier so the next authoring
+command succeeds. For example, `amend --re-entry shape` sets the spec to
+`spark`; you then run `specgraph shape` to advance through shape.
+Re-entering `spark` also lands at spark (the first stage has no
+predecessor). **Supersession** replaces completed specs (`done` only). Any
+non-terminal stage can reach `abandoned` (via `specgraph abandon`).
 
 ---
 
@@ -282,8 +288,8 @@ skill before the RPC call.
 - **Back-and-forth exchanges** with questions and refinements suggest
   collaborative work (Partner).
 
-Users can also set the posture explicitly at any point during authoring, and the
-posture can change between stages.
+You can also set the posture explicitly at any point with a `--posture` flag,
+and the posture can change between stages.
 
 ---
 
@@ -310,7 +316,10 @@ recording the content hash and field deltas at that boundary. This means you can
 always answer "what did this spec look like when it entered Shape?" and "what
 changed between Shape and Specify?" directly from the graph.
 
-Authoring conversations can be recorded for traceability using
-`specgraph conversation record` and reviewed with
-`specgraph conversation list`. Each record captures the exchanges that
-shaped a spec at a given stage.
+Each stage transition captures a **conversation record** — the authoring
+exchanges that shaped the spec at that stage. When using the Claude Code
+plugin, conversation recording is automatic and structurally tied to stage
+persistence; the record is written as part of committing each stage's
+output. When using the CLI directly, capture the conversation manually
+after each stage using `specgraph conversation record`, and review records
+with `specgraph conversation list`.
