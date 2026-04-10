@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-package render_test
+package markdown_test
 
 import (
 	"strings"
 	"testing"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +21,7 @@ func TestConversationLog_RendersPairs(t *testing.T) {
 			{Role: "response", Content: "API and storage, not CLI", Stage: "shape", Sequence: 1, DecisionPoint: true},
 		},
 	}
-	output := render.ConversationLog(log)
+	output := markdown.ConversationLog(log)
 	assert.Contains(t, output, "Authoring Conversation (shape, v3)")
 	assert.Contains(t, output, "(decision)")
 	assert.Contains(t, output, "What should be in scope?")
@@ -29,11 +29,11 @@ func TestConversationLog_RendersPairs(t *testing.T) {
 }
 
 func TestConversationLog_Nil(t *testing.T) {
-	assert.Empty(t, render.ConversationLog(nil))
+	assert.Empty(t, markdown.ConversationLog(nil))
 }
 
 func TestConversationLogList_Empty(t *testing.T) {
-	assert.Empty(t, render.ConversationLogList(nil))
+	assert.Empty(t, markdown.ConversationLogList(nil))
 }
 
 func TestConversationLog_AmendLabel(t *testing.T) {
@@ -45,6 +45,6 @@ func TestConversationLog_AmendLabel(t *testing.T) {
 			{Role: "probe", Content: "Revised scope?", Stage: "shape", Sequence: 1},
 		},
 	}
-	output := render.ConversationLog(log)
+	output := markdown.ConversationLog(log)
 	assert.True(t, strings.Contains(output, "amend"))
 }

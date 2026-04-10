@@ -14,7 +14,7 @@ import (
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/specgraph/specgraph/internal/config"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/spf13/cobra"
 )
 
@@ -64,7 +64,7 @@ func runConstitutionShow(cmd *cobra.Command, _ []string) error {
 	if constitutionShowJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.Constitution(resp.Msg.Constitution))
+	fmt.Print(markdown.Constitution(resp.Msg.Constitution))
 	return nil
 }
 

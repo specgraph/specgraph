@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-package render_test
+package markdown_test
 
 import (
 	"strings"
 	"testing"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSliceDetail(t *testing.T) {
-	out := render.SliceDetail(&specv1.Slice{
+	out := markdown.SliceDetail(&specv1.Slice{
 		Slug:       "my-spec/backend-api",
 		ParentSlug: "my-spec",
 		SliceId:    "backend-api",
@@ -33,11 +33,11 @@ func TestSliceDetail(t *testing.T) {
 }
 
 func TestSliceDetail_Nil(t *testing.T) {
-	require.Empty(t, render.SliceDetail(nil))
+	require.Empty(t, markdown.SliceDetail(nil))
 }
 
 func TestSliceList(t *testing.T) {
-	out := render.SliceList([]*specv1.Slice{
+	out := markdown.SliceList([]*specv1.Slice{
 		{Slug: "p/a", SliceId: "a", Intent: "First", Status: specv1.SliceStatus_SLICE_STATUS_OPEN},
 		{Slug: "p/b", SliceId: "b", Intent: "Second", Status: specv1.SliceStatus_SLICE_STATUS_DONE},
 	})
@@ -48,11 +48,11 @@ func TestSliceList(t *testing.T) {
 }
 
 func TestSliceList_Empty(t *testing.T) {
-	require.Contains(t, render.SliceList(nil), "No slices")
+	require.Contains(t, markdown.SliceList(nil), "No slices")
 }
 
 func TestSliceList_EscapesPipeAndNewline(t *testing.T) {
-	out := render.SliceList([]*specv1.Slice{
+	out := markdown.SliceList([]*specv1.Slice{
 		{Slug: "p/tricky", SliceId: "id|bad", Intent: "line1\nline2", Status: specv1.SliceStatus_SLICE_STATUS_OPEN, AssignedTo: "a|b"},
 	})
 	// Pipes escaped, newlines replaced — each row is one line.

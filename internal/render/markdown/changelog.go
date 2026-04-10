@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-package render
+package markdown
 
 import (
 	"fmt"
@@ -65,7 +65,7 @@ func Changes(entries []*specv1.ChangeLogEntry) string {
 			for i, c := range e.Changes {
 				rows[i] = []string{escapePipe(c.Field), escapePipe(c.OldValue), escapePipe(c.NewValue)}
 			}
-			fmt.Fprint(&b, itemTable(headers, rows))
+			fmt.Fprint(&b, ItemTable(headers, rows))
 		}
 		fmt.Fprintln(&b)
 	}

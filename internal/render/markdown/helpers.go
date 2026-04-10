@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-// Package render converts protobuf types into markdown strings for CLI output.
-package render
+// Package markdown renders protobuf types as markdown strings for CLI output.
+package markdown
 
 import (
 	"fmt"
@@ -24,9 +24,9 @@ func metadataTable(pairs [][2]string) string {
 	return b.String()
 }
 
-// itemTable renders a multi-column markdown table.
+// ItemTable renders a multi-column markdown table.
 // Returns empty string if rows is empty.
-func itemTable(headers []string, rows [][]string) string {
+func ItemTable(headers []string, rows [][]string) string {
 	if len(rows) == 0 {
 		return ""
 	}

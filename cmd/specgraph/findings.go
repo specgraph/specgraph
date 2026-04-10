@@ -10,7 +10,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -95,7 +95,7 @@ func runFindingsList(cmd *cobra.Command, args []string) error {
 	if findingsListJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.Findings(resp.Msg.Findings))
+	fmt.Print(markdown.Findings(resp.Msg.Findings))
 	return nil
 }
 

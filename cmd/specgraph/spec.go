@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/spf13/cobra"
 )
 
@@ -123,7 +123,7 @@ func runList(cmd *cobra.Command, _ []string) error {
 	if listJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.SpecList(resp.Msg.Specs))
+	fmt.Print(markdown.SpecList(resp.Msg.Specs))
 	return nil
 }
 
@@ -177,6 +177,6 @@ func runShow(cmd *cobra.Command, args []string) error {
 	if showJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.Spec(resp.Msg.GetSpec()))
+	fmt.Print(markdown.Spec(resp.Msg.GetSpec()))
 	return nil
 }

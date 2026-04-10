@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-package render
+package markdown
 
 import (
 	"fmt"
@@ -64,7 +64,7 @@ func Decision(d *specv1.Decision) string {
 		for i, ra := range d.RejectedAlternatives {
 			rows[i] = []string{ra.Option, ra.Reason}
 		}
-		b.WriteString(itemTable(headers, rows))
+		b.WriteString(ItemTable(headers, rows))
 	}
 
 	return b.String()
@@ -80,7 +80,7 @@ func DecisionList(ds []*specv1.Decision) string {
 	for i, d := range ds {
 		rows[i] = []string{d.Slug, decisionStatusString(d.Status), d.Title}
 	}
-	return itemTable(headers, rows)
+	return ItemTable(headers, rows)
 }
 
 func decisionConfidenceName(c specv1.DecisionConfidence) string {

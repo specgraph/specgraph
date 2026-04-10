@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-package render_test
+package markdown_test
 
 import (
 	"strings"
@@ -9,7 +9,7 @@ import (
 	"time"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -34,7 +34,7 @@ func TestChanges_WithEntries(t *testing.T) {
 		},
 	}
 
-	out := render.Changes(entries)
+	out := markdown.Changes(entries)
 
 	if !strings.Contains(out, "v3") {
 		t.Error("missing version 3")
@@ -57,7 +57,7 @@ func TestChanges_WithEntries(t *testing.T) {
 }
 
 func TestChanges_Empty(t *testing.T) {
-	out := render.Changes(nil)
+	out := markdown.Changes(nil)
 	if !strings.Contains(out, "No changelog entries") {
 		t.Errorf("expected empty message, got %q", out)
 	}

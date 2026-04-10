@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-package render
+package markdown
 
 import (
 	"fmt"
@@ -143,7 +143,7 @@ func SpecifySection(o *specv1.SpecifyOutput) string {
 		for i, vc := range o.VerifyCriteria {
 			rows[i] = []string{vc.Category, vc.Description}
 		}
-		b.WriteString(itemTable([]string{"Category", "Description"}, rows))
+		b.WriteString(ItemTable([]string{"Category", "Description"}, rows))
 		b.WriteString("\n")
 	}
 	if len(o.Invariants) > 0 {
@@ -159,7 +159,7 @@ func SpecifySection(o *specv1.SpecifyOutput) string {
 		for i, ft := range o.Touches {
 			rows[i] = []string{ft.Path, ft.Purpose, ft.ChangeType}
 		}
-		b.WriteString(itemTable([]string{"Path", "Purpose", "Action"}, rows))
+		b.WriteString(ItemTable([]string{"Path", "Purpose", "Action"}, rows))
 		b.WriteString("\n")
 	}
 	return b.String()

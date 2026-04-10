@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +49,7 @@ func runSliceList(cmd *cobra.Command, args []string) error {
 	if sliceListJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.SliceList(resp.Msg.Slices))
+	fmt.Print(markdown.SliceList(resp.Msg.Slices))
 	return nil
 }
 
@@ -78,7 +78,7 @@ func runSliceGet(cmd *cobra.Command, args []string) error {
 	if sliceGetJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.SliceDetail(resp.Msg.Slice))
+	fmt.Print(markdown.SliceDetail(resp.Msg.Slice))
 	return nil
 }
 

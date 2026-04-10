@@ -8,7 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/spf13/cobra"
 )
 
@@ -63,6 +63,6 @@ func runPassRun(cmd *cobra.Command, args []string) error {
 	if passRunJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	_, err = fmt.Fprint(cmd.OutOrStdout(), render.AnalyticalPass(resp.Msg, slug))
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.AnalyticalPass(resp.Msg, slug))
 	return err
 }

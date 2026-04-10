@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-package render
+package markdown
 
 import (
 	"fmt"
@@ -51,7 +51,7 @@ func SpecList(specs []*specv1.Spec) string {
 	for i, s := range specs {
 		rows[i] = []string{s.Slug, s.Stage, s.Priority, s.Intent}
 	}
-	return itemTable(headers, rows)
+	return ItemTable(headers, rows)
 }
 
 func lifecycleString(lc specv1.SpecLifecycle) string {

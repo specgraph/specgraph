@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-package render
+package markdown
 
 import (
 	"strings"
@@ -29,7 +29,7 @@ func TestMetadataTableEmpty(t *testing.T) {
 }
 
 func TestItemTable(t *testing.T) {
-	got := itemTable(
+	got := ItemTable(
 		[]string{"Slug", "Stage"},
 		[][]string{{"login-api", "specify"}, {"webhook", "shape"}},
 	)
@@ -42,7 +42,7 @@ func TestItemTable(t *testing.T) {
 }
 
 func TestItemTableEmpty(t *testing.T) {
-	got := itemTable([]string{"A"}, nil)
+	got := ItemTable([]string{"A"}, nil)
 	if got != "" {
 		t.Errorf("expected empty string for no rows, got %q", got)
 	}

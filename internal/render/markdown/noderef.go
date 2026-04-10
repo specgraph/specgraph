@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-package render
+package markdown
 
 import (
 	"fmt"
@@ -23,6 +23,6 @@ func NodeRefList(title string, refs []*specv1.NodeRef) string {
 	for i, r := range refs {
 		rows[i] = []string{r.Slug, r.Stage}
 	}
-	b.WriteString(itemTable(headers, rows))
+	b.WriteString(ItemTable(headers, rows))
 	return b.String()
 }

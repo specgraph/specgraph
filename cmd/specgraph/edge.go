@@ -9,7 +9,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/spf13/cobra"
 )
 
@@ -150,6 +150,6 @@ func runEdgeList(cmd *cobra.Command, args []string) error {
 	if edgeListJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.EdgeList(args[0], resp.Msg.Edges))
+	fmt.Print(markdown.EdgeList(args[0], resp.Msg.Edges))
 	return nil
 }

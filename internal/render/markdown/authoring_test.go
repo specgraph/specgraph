@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-package render_test
+package markdown_test
 
 import (
 	"testing"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSparkSection_Nil(t *testing.T) {
-	assert.Empty(t, render.SparkSection(nil))
+	assert.Empty(t, markdown.SparkSection(nil))
 }
 
 func TestSparkSection_Full(t *testing.T) {
@@ -23,7 +23,7 @@ func TestSparkSection_Full(t *testing.T) {
 		KillTest:   "No migration needed",
 		Questions:  []string{"What throughput?", "Which types?"},
 	}
-	result := render.SparkSection(out)
+	result := markdown.SparkSection(out)
 	assert.Contains(t, result, "## Spark")
 	assert.Contains(t, result, "Build a widget factory")
 	assert.Contains(t, result, "High customer demand")
@@ -33,7 +33,7 @@ func TestSparkSection_Full(t *testing.T) {
 }
 
 func TestShapeSection_Nil(t *testing.T) {
-	assert.Empty(t, render.ShapeSection(nil))
+	assert.Empty(t, markdown.ShapeSection(nil))
 }
 
 func TestShapeSection_Full(t *testing.T) {
@@ -50,7 +50,7 @@ func TestShapeSection_Full(t *testing.T) {
 		SuccessShould: []string{"Batch ops"},
 		SuccessWont:   []string{"Real-time collab"},
 	}
-	result := render.ShapeSection(out)
+	result := markdown.ShapeSection(out)
 	assert.Contains(t, result, "## Shape")
 	assert.Contains(t, result, "API")
 	assert.Contains(t, result, "Web UI")
@@ -61,7 +61,7 @@ func TestShapeSection_Full(t *testing.T) {
 }
 
 func TestSpecifySection_Nil(t *testing.T) {
-	assert.Empty(t, render.SpecifySection(nil))
+	assert.Empty(t, markdown.SpecifySection(nil))
 }
 
 func TestSpecifySection_Full(t *testing.T) {
@@ -77,7 +77,7 @@ func TestSpecifySection_Full(t *testing.T) {
 			{Path: "internal/widget/service.go", Purpose: "Widget service", ChangeType: "create"},
 		},
 	}
-	result := render.SpecifySection(out)
+	result := markdown.SpecifySection(out)
 	assert.Contains(t, result, "## Specify")
 	assert.Contains(t, result, "WidgetService")
 	assert.Contains(t, result, "Create returns valid ID")
@@ -86,7 +86,7 @@ func TestSpecifySection_Full(t *testing.T) {
 }
 
 func TestDecomposeSection_Nil(t *testing.T) {
-	assert.Empty(t, render.DecomposeSection(nil))
+	assert.Empty(t, markdown.DecomposeSection(nil))
 }
 
 func TestDecomposeSection_Full(t *testing.T) {
@@ -106,7 +106,7 @@ func TestDecomposeSection_Full(t *testing.T) {
 			},
 		},
 	}
-	result := render.DecomposeSection(out)
+	result := markdown.DecomposeSection(out)
 	assert.Contains(t, result, "## Decompose")
 	assert.Contains(t, result, "vertical_slice")
 	assert.Contains(t, result, "slice-1")

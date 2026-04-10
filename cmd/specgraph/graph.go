@@ -8,7 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/spf13/cobra"
 )
 
@@ -56,7 +56,7 @@ func runDeps(cmd *cobra.Command, args []string) error {
 		if depsJSON {
 			return printJSON(cmd.OutOrStdout(), resp.Msg)
 		}
-		fmt.Print(render.NodeRefList("Dependencies (transitive)", resp.Msg.Dependencies))
+		fmt.Print(markdown.NodeRefList("Dependencies (transitive)", resp.Msg.Dependencies))
 		return nil
 	}
 
@@ -67,7 +67,7 @@ func runDeps(cmd *cobra.Command, args []string) error {
 	if depsJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.NodeRefList("Dependencies", resp.Msg.Dependencies))
+	fmt.Print(markdown.NodeRefList("Dependencies", resp.Msg.Dependencies))
 	return nil
 }
 
@@ -91,7 +91,7 @@ func runReady(cmd *cobra.Command, _ []string) error {
 	if readyJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.NodeRefList("Ready Specs", resp.Msg.Ready))
+	fmt.Print(markdown.NodeRefList("Ready Specs", resp.Msg.Ready))
 	return nil
 }
 
@@ -116,7 +116,7 @@ func runCriticalPath(cmd *cobra.Command, args []string) error {
 	if criticalPathJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.NodeRefList("Critical Path", resp.Msg.Path))
+	fmt.Print(markdown.NodeRefList("Critical Path", resp.Msg.Path))
 	return nil
 }
 
@@ -141,6 +141,6 @@ func runImpact(cmd *cobra.Command, args []string) error {
 	if impactJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.NodeRefList("Impacted Specs", resp.Msg.Impacted))
+	fmt.Print(markdown.NodeRefList("Impacted Specs", resp.Msg.Impacted))
 	return nil
 }

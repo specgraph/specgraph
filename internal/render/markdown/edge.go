@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-package render
+package markdown
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ func EdgeList(slug string, edges []*specv1.Edge) string {
 		dir, target := edgeDirection(slug, e)
 		rows[i] = []string{edgeTypeName(e.EdgeType), dir, target}
 	}
-	b.WriteString(itemTable(headers, rows))
+	b.WriteString(ItemTable(headers, rows))
 	return b.String()
 }
 

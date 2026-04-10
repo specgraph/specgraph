@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
-package render
+package markdown
 
 import (
 	"strings"
@@ -24,7 +24,7 @@ func Findings(fs []*specv1.AnalyticalFinding) string {
 			f.GetDetail(),
 		}
 	}
-	return itemTable(headers, rows)
+	return ItemTable(headers, rows)
 }
 
 func passTypeName(pt specv1.PassType) string {
