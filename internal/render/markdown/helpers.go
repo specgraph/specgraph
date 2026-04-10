@@ -43,11 +43,10 @@ func ItemTable(headers []string, rows [][]string) string {
 	return b.String()
 }
 
-// section renders a markdown heading with body. Returns empty string if body is empty.
-func section(level int, title, body string) string {
+// section renders a level-2 markdown heading with body. Returns empty string if body is empty.
+func section(title, body string) string {
 	if body == "" {
 		return ""
 	}
-	prefix := strings.Repeat("#", level)
-	return fmt.Sprintf("%s %s\n\n%s\n", prefix, title, body)
+	return fmt.Sprintf("## %s\n\n%s\n", title, body)
 }

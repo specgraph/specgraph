@@ -3,7 +3,10 @@
 
 package adf
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // Node represents an ADF node.
 type Node struct {
@@ -39,11 +42,15 @@ func NewDocument() *Document {
 
 // JSON serializes the document to JSON bytes.
 func (d *Document) JSON() ([]byte, error) {
-	return json.Marshal(d.root)
+	b, err := json.Marshal(d.root)
+	if err != nil {
+		return nil, fmt.Errorf("marshal ADF document: %w", err)
+	}
+	return b, nil
 }
 
 // append adds a node to the document's content.
-func (d *Document) append(n Node) *Document {
+func (d *Document) append(n Node) *Document { //nolint:gocritic // fluent builder API; inline literals make pointer syntax harmful
 	d.root.Content = append(d.root.Content, n)
 	return d
 }
@@ -233,6 +240,6 @@ func (d *Document) Rule() *Document {
 }
 
 // Raw appends a pre-built node directly to the document.
-func (d *Document) Raw(n Node) *Document {
+func (d *Document) Raw(n Node) *Document { //nolint:gocritic // public builder API; pointer would break caller ergonomics
 	return d.append(n)
 }

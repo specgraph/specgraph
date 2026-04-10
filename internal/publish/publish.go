@@ -13,8 +13,8 @@ import (
 	"github.com/specgraph/specgraph/internal/render"
 )
 
-// PublishResult describes the outcome of a publish or update operation.
-type PublishResult struct {
+// Result describes the outcome of a publish or update operation.
+type Result struct {
 	Mappings []PageRef
 }
 
@@ -27,8 +27,8 @@ type PageRef struct {
 	URL        string
 }
 
-// PublishStatus describes the current state of a spec's published documents.
-type PublishStatus struct {
+// Status describes the current state of a spec's published documents.
+type Status struct {
 	SpecSlug    string
 	PRD         *PageState
 	SDD         *PageState
@@ -62,17 +62,19 @@ type Feedback struct {
 type FeedbackKind string
 
 const (
+	// FeedbackInline is a comment anchored to a specific text range.
 	FeedbackInline FeedbackKind = "inline"
+	// FeedbackFooter is a general footer comment on the page.
 	FeedbackFooter FeedbackKind = "footer"
 )
 
 // Publisher manages document lifecycle in an external system.
 type Publisher interface {
 	Name() string
-	Publish(ctx context.Context, slug string, docs []render.Document) (PublishResult, error)
-	Update(ctx context.Context, slug string, docs []render.Document, changelog *specv1.ChangeLogEntry) (PublishResult, error)
+	Publish(ctx context.Context, slug string, docs []render.Document) (Result, error)
+	Update(ctx context.Context, slug string, docs []render.Document, changelog *specv1.ChangeLogEntry) (Result, error)
 	Unpublish(ctx context.Context, slug string) error
-	Status(ctx context.Context, slug string) (PublishStatus, error)
+	Status(ctx context.Context, slug string) (Status, error)
 }
 
 // FeedbackSource ingests external feedback back into SpecGraph.

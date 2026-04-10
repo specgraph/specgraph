@@ -47,7 +47,7 @@ func (r *Renderer) RenderADR(_ context.Context, d *specv1.Decision) (render.Docu
 	if len(d.RejectedAlternatives) > 0 || d.Decision != "" {
 		doc.Heading(2, "Considered Options")
 		rows := []Node{Row(HeaderCell("Option"), HeaderCell("Status"), HeaderCell("Reason"))}
-		if d.Title != "" {
+		if d.Decision != "" {
 			rows = append(rows, Row(Cell(d.Title), Cell("Chosen"), Cell(d.Rationale)))
 		}
 		for _, ra := range d.RejectedAlternatives {
@@ -57,13 +57,17 @@ func (r *Renderer) RenderADR(_ context.Context, d *specv1.Decision) (render.Docu
 	}
 
 	// Confidence & Scope
-	if d.Confidence != specv1.DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED {
+	if d.Confidence != specv1.DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED ||
+		d.Scope != specv1.DecisionScope_DECISION_SCOPE_UNSPECIFIED {
 		doc.Heading(2, "Confidence & Scope")
-		details := fmt.Sprintf("Confidence: %s", strings.TrimPrefix(d.Confidence.String(), "DECISION_CONFIDENCE_"))
-		if d.Scope != specv1.DecisionScope_DECISION_SCOPE_UNSPECIFIED {
-			details += fmt.Sprintf(" | Scope: %s", strings.TrimPrefix(d.Scope.String(), "DECISION_SCOPE_"))
+		var parts []string
+		if d.Confidence != specv1.DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED {
+			parts = append(parts, fmt.Sprintf("Confidence: %s", strings.TrimPrefix(d.Confidence.String(), "DECISION_CONFIDENCE_")))
 		}
-		doc.Panel(PanelInfo, details)
+		if d.Scope != specv1.DecisionScope_DECISION_SCOPE_UNSPECIFIED {
+			parts = append(parts, fmt.Sprintf("Scope: %s", strings.TrimPrefix(d.Scope.String(), "DECISION_SCOPE_")))
+		}
+		doc.Panel(PanelInfo, strings.Join(parts, " | "))
 	}
 
 	b, err := doc.JSON()

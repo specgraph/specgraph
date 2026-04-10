@@ -22,11 +22,11 @@ func (r *Renderer) RenderADR(_ context.Context, d *specv1.Decision) (render.Docu
 	fmt.Fprintf(&b, "# ADR: %s\n\n", d.Title)
 
 	// Status
-	b.WriteString(section(2, "Status", decisionStatusString(d.Status)))
+	b.WriteString(section("Status", decisionStatusString(d.Status)))
 
 	// Context
 	if d.Question != "" {
-		b.WriteString(section(2, "Context", d.Question))
+		b.WriteString(section("Context", d.Question))
 	}
 
 	// Decision
@@ -35,7 +35,7 @@ func (r *Renderer) RenderADR(_ context.Context, d *specv1.Decision) (render.Docu
 		if d.Rationale != "" {
 			body += fmt.Sprintf("\n\n**Rationale:** %s", d.Rationale)
 		}
-		b.WriteString(section(2, "Decision", body))
+		b.WriteString(section("Decision", body))
 	}
 
 	// Considered Options (MADR extension)
@@ -47,17 +47,20 @@ func (r *Renderer) RenderADR(_ context.Context, d *specv1.Decision) (render.Docu
 		for _, ra := range d.RejectedAlternatives {
 			rows = append(rows, []string{ra.Option, "Rejected", ra.Reason})
 		}
-		b.WriteString(section(2, "Considered Options", ItemTable([]string{"Option", "Status", "Reason"}, rows)))
+		b.WriteString(section("Considered Options", ItemTable([]string{"Option", "Status", "Reason"}, rows)))
 	}
 
-	// Confidence (MADR extension)
-	if d.Confidence != specv1.DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED {
-		conf := decisionConfidenceName(d.Confidence)
-		detail := fmt.Sprintf("**Confidence:** %s", conf)
-		if d.Scope != specv1.DecisionScope_DECISION_SCOPE_UNSPECIFIED {
-			detail += fmt.Sprintf("\n**Scope:** %s", decisionScopeName(d.Scope))
+	// Confidence & Scope (MADR extension)
+	if d.Confidence != specv1.DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED ||
+		d.Scope != specv1.DecisionScope_DECISION_SCOPE_UNSPECIFIED {
+		var parts []string
+		if d.Confidence != specv1.DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED {
+			parts = append(parts, fmt.Sprintf("**Confidence:** %s", decisionConfidenceName(d.Confidence)))
 		}
-		b.WriteString(section(2, "Confidence & Scope", detail))
+		if d.Scope != specv1.DecisionScope_DECISION_SCOPE_UNSPECIFIED {
+			parts = append(parts, fmt.Sprintf("**Scope:** %s", decisionScopeName(d.Scope)))
+		}
+		b.WriteString(section("Confidence & Scope", strings.Join(parts, "\n")))
 	}
 
 	return render.Document{

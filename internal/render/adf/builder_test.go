@@ -133,3 +133,311 @@ func TestChaining(t *testing.T) {
 		t.Errorf("content length = %d, want 4", len(content))
 	}
 }
+
+func TestOrderedList(t *testing.T) {
+	doc := NewDocument().OrderedList([]string{"first", "second", "third"})
+	b, _ := doc.JSON()
+	var m map[string]any
+	json.Unmarshal(b, &m)
+	content := m["content"].([]any)
+	list := content[0].(map[string]any)
+	if list["type"] != TypeOrderedList {
+		t.Errorf("type = %v, want %q", list["type"], TypeOrderedList)
+	}
+	items := list["content"].([]any)
+	if len(items) != 3 {
+		t.Errorf("items count = %d, want 3", len(items))
+	}
+	// Verify structure of first item
+	firstItem := items[0].(map[string]any)
+	if firstItem["type"] != TypeListItem {
+		t.Errorf("item type = %v, want %q", firstItem["type"], TypeListItem)
+	}
+	itemContent := firstItem["content"].([]any)
+	para := itemContent[0].(map[string]any)
+	if para["type"] != TypeParagraph {
+		t.Errorf("paragraph type = %v, want %q", para["type"], TypeParagraph)
+	}
+	paraContent := para["content"].([]any)
+	text := paraContent[0].(map[string]any)
+	if text["text"] != "first" {
+		t.Errorf("text = %v, want %q", text["text"], "first")
+	}
+}
+
+func TestBlockquote(t *testing.T) {
+	doc := NewDocument().Blockquote("This is a quote")
+	b, _ := doc.JSON()
+	var m map[string]any
+	json.Unmarshal(b, &m)
+	content := m["content"].([]any)
+	blockquote := content[0].(map[string]any)
+	if blockquote["type"] != TypeBlockquote {
+		t.Errorf("type = %v, want %q", blockquote["type"], TypeBlockquote)
+	}
+	bqContent := blockquote["content"].([]any)
+	para := bqContent[0].(map[string]any)
+	if para["type"] != TypeParagraph {
+		t.Errorf("paragraph type = %v, want %q", para["type"], TypeParagraph)
+	}
+	paraContent := para["content"].([]any)
+	text := paraContent[0].(map[string]any)
+	if text["text"] != "This is a quote" {
+		t.Errorf("text = %v, want %q", text["text"], "This is a quote")
+	}
+}
+
+func TestRaw(t *testing.T) {
+	customNode := Node{
+		Type: "custom",
+		Attrs: map[string]any{"key": "value"},
+	}
+	doc := NewDocument().Raw(customNode)
+	b, _ := doc.JSON()
+	var m map[string]any
+	json.Unmarshal(b, &m)
+	content := m["content"].([]any)
+	custom := content[0].(map[string]any)
+	if custom["type"] != "custom" {
+		t.Errorf("type = %v, want %q", custom["type"], "custom")
+	}
+	attrs := custom["attrs"].(map[string]any)
+	if attrs["key"] != "value" {
+		t.Errorf("attrs[key] = %v, want %q", attrs["key"], "value")
+	}
+}
+
+func TestParagraphNodes(t *testing.T) {
+	node1 := TextNode("Hello", Bold())
+	node2 := TextNode("world")
+	doc := NewDocument().ParagraphNodes(node1, node2)
+	b, _ := doc.JSON()
+	var m map[string]any
+	json.Unmarshal(b, &m)
+	content := m["content"].([]any)
+	para := content[0].(map[string]any)
+	if para["type"] != TypeParagraph {
+		t.Errorf("type = %v, want %q", para["type"], TypeParagraph)
+	}
+	paraContent := para["content"].([]any)
+	if len(paraContent) != 2 {
+		t.Errorf("paragraph content length = %d, want 2", len(paraContent))
+	}
+	firstText := paraContent[0].(map[string]any)
+	if firstText["text"] != "Hello" {
+		t.Errorf("first text = %v, want %q", firstText["text"], "Hello")
+	}
+	marks := firstText["marks"].([]any)
+	if len(marks) != 1 {
+		t.Errorf("marks length = %d, want 1", len(marks))
+	}
+}
+
+func TestTextNode(t *testing.T) {
+	tests := []struct {
+		name  string
+		text  string
+		marks []Mark
+		check func(t *testing.T, node Node)
+	}{
+		{
+			name: "plain text",
+			text: "plain",
+			marks: []Mark{},
+			check: func(t *testing.T, node Node) {
+				if node.Type != TypeText {
+					t.Errorf("type = %v, want %q", node.Type, TypeText)
+				}
+				if node.Text != "plain" {
+					t.Errorf("text = %v, want %q", node.Text, "plain")
+				}
+				if len(node.Marks) != 0 {
+					t.Errorf("marks = %v, want empty", node.Marks)
+				}
+			},
+		},
+		{
+			name: "text with bold",
+			text: "bold text",
+			marks: []Mark{Bold()},
+			check: func(t *testing.T, node Node) {
+				if len(node.Marks) != 1 {
+					t.Errorf("marks length = %d, want 1", len(node.Marks))
+					return
+				}
+				if node.Marks[0].Type != MarkStrong {
+					t.Errorf("mark type = %v, want %q", node.Marks[0].Type, MarkStrong)
+				}
+			},
+		},
+		{
+			name: "text with multiple marks",
+			text: "bold italic code",
+			marks: []Mark{Bold(), Italic(), CodeMark()},
+			check: func(t *testing.T, node Node) {
+				if len(node.Marks) != 3 {
+					t.Errorf("marks length = %d, want 3", len(node.Marks))
+					return
+				}
+				if node.Marks[0].Type != MarkStrong {
+					t.Errorf("mark[0] = %q, want %q", node.Marks[0].Type, MarkStrong)
+				}
+				if node.Marks[1].Type != MarkEm {
+					t.Errorf("mark[1] = %q, want %q", node.Marks[1].Type, MarkEm)
+				}
+				if node.Marks[2].Type != MarkCode {
+					t.Errorf("mark[2] = %q, want %q", node.Marks[2].Type, MarkCode)
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := TextNode(tt.text, tt.marks...)
+			tt.check(t, node)
+		})
+	}
+}
+
+func TestBold(t *testing.T) {
+	mark := Bold()
+	if mark.Type != MarkStrong {
+		t.Errorf("type = %v, want %q", mark.Type, MarkStrong)
+	}
+	if mark.Attrs != nil {
+		t.Errorf("attrs = %v, want nil", mark.Attrs)
+	}
+}
+
+func TestItalic(t *testing.T) {
+	mark := Italic()
+	if mark.Type != MarkEm {
+		t.Errorf("type = %v, want %q", mark.Type, MarkEm)
+	}
+	if mark.Attrs != nil {
+		t.Errorf("attrs = %v, want nil", mark.Attrs)
+	}
+}
+
+func TestCodeMark(t *testing.T) {
+	mark := CodeMark()
+	if mark.Type != MarkCode {
+		t.Errorf("type = %v, want %q", mark.Type, MarkCode)
+	}
+	if mark.Attrs != nil {
+		t.Errorf("attrs = %v, want nil", mark.Attrs)
+	}
+}
+
+func TestLink(t *testing.T) {
+	tests := []struct {
+		href string
+	}{
+		{"https://example.com"},
+		{"http://localhost:3000"},
+		{"/relative/path"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.href, func(t *testing.T) {
+			mark := Link(tt.href)
+			if mark.Type != MarkLink {
+				t.Errorf("type = %v, want %q", mark.Type, MarkLink)
+			}
+			if mark.Attrs == nil {
+				t.Fatalf("attrs = nil, want non-nil")
+			}
+			href, ok := mark.Attrs["href"]
+			if !ok {
+				t.Errorf("href not in attrs")
+			}
+			if href != tt.href {
+				t.Errorf("href = %v, want %v", href, tt.href)
+			}
+		})
+	}
+}
+
+func TestCellNodes(t *testing.T) {
+	para := Node{
+		Type: TypeParagraph,
+		Content: []Node{
+			{Type: TypeText, Text: "Cell content"},
+		},
+	}
+	cell := CellNodes(para)
+	if cell.Type != TypeTableCell {
+		t.Errorf("type = %v, want %q", cell.Type, TypeTableCell)
+	}
+	if len(cell.Content) != 1 {
+		t.Errorf("content length = %d, want 1", len(cell.Content))
+	}
+	if cell.Content[0].Type != TypeParagraph {
+		t.Errorf("content[0].type = %v, want %q", cell.Content[0].Type, TypeParagraph)
+	}
+}
+
+func TestCodeBlockWithoutLanguage(t *testing.T) {
+	doc := NewDocument().CodeBlock("", "const x = 42;")
+	b, _ := doc.JSON()
+	var m map[string]any
+	json.Unmarshal(b, &m)
+	content := m["content"].([]any)
+	cb := content[0].(map[string]any)
+	if cb["type"] != TypeCodeBlock {
+		t.Errorf("type = %v, want %q", cb["type"], TypeCodeBlock)
+	}
+	// When no language is specified, attrs should be nil or not present
+	attrs, hasAttrs := cb["attrs"]
+	if hasAttrs && attrs != nil {
+		attrMap := attrs.(map[string]any)
+		if _, hasLanguage := attrMap["language"]; hasLanguage {
+			t.Errorf("language should not be in attrs")
+		}
+	}
+}
+
+func TestRule(t *testing.T) {
+	doc := NewDocument().Rule()
+	b, _ := doc.JSON()
+	var m map[string]any
+	json.Unmarshal(b, &m)
+	content := m["content"].([]any)
+	rule := content[0].(map[string]any)
+	if rule["type"] != TypeRule {
+		t.Errorf("type = %v, want %q", rule["type"], TypeRule)
+	}
+}
+
+func TestEmptyOrderedList(t *testing.T) {
+	doc := NewDocument().OrderedList([]string{})
+	b, _ := doc.JSON()
+	var m map[string]any
+	json.Unmarshal(b, &m)
+	content := m["content"].([]any)
+	list := content[0].(map[string]any)
+	items, ok := list["content"].([]any)
+	if !ok {
+		// Empty list may have nil content
+		items = []any{}
+	}
+	if len(items) != 0 {
+		t.Errorf("items = %d, want 0", len(items))
+	}
+}
+
+func TestTextNodeSerialization(t *testing.T) {
+	node := TextNode("test", Bold(), Link("https://example.com"))
+	b, _ := json.Marshal(node)
+	var m map[string]any
+	json.Unmarshal(b, &m)
+	if m["type"] != TypeText {
+		t.Errorf("type = %v, want %q", m["type"], TypeText)
+	}
+	if m["text"] != "test" {
+		t.Errorf("text = %v, want %q", m["text"], "test")
+	}
+	marks := m["marks"].([]any)
+	if len(marks) != 2 {
+		t.Errorf("marks = %d, want 2", len(marks))
+	}
+}

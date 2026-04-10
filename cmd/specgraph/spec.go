@@ -123,8 +123,8 @@ func runList(cmd *cobra.Command, _ []string) error {
 	if listJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(markdown.SpecList(resp.Msg.Specs))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.SpecList(resp.Msg.Specs))
+	return err
 }
 
 // --- show ---
@@ -177,6 +177,6 @@ func runShow(cmd *cobra.Command, args []string) error {
 	if showJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(markdown.Spec(resp.Msg.GetSpec()))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.Spec(resp.Msg.GetSpec()))
+	return err
 }

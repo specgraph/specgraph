@@ -150,6 +150,6 @@ func runEdgeList(cmd *cobra.Command, args []string) error {
 	if edgeListJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(markdown.EdgeList(args[0], resp.Msg.Edges))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.EdgeList(args[0], resp.Msg.Edges))
+	return err
 }

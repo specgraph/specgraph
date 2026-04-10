@@ -107,6 +107,7 @@ Code blocks in this plan omit the header for brevity. Run `task license:add` as 
 ### Task 1: Renderer Interface + Document Types
 
 **Files:**
+
 - Create: `internal/render/render.go`
 
 - [ ] **Step 1: Create the Renderer interface and Document types**
@@ -185,6 +186,7 @@ Defines DocumentKind (PRD, SDD, ADR) and format-agnostic Document container."
 This is a mechanical refactor. All existing files in `internal/render/` (except the new `render.go`) move to `internal/render/markdown/`. Package name changes from `render` to `markdown`. All CLI callers update their import.
 
 **Files:**
+
 - Move: all `internal/render/*.go` except `render.go` → `internal/render/markdown/`
 - Modify: all `cmd/specgraph/*.go` files that import `render`
 
@@ -274,6 +276,7 @@ All CLI callers updated: render.Xxx → markdown.Xxx. No behavior change."
 ### Task 3: ADF Node Types + Builder Core
 
 **Files:**
+
 - Create: `internal/render/adf/adf.go`
 - Create: `internal/render/adf/builder.go`
 - Create: `internal/render/adf/builder_test.go`
@@ -737,6 +740,7 @@ rules, and inline marks (bold, italic, code, link)."
 ### Task 4: ADF Macro Helpers
 
 **Files:**
+
 - Create: `internal/render/adf/macros.go`
 - Create: `internal/render/adf/macros_test.go`
 
@@ -986,6 +990,7 @@ macro. Includes stage-to-color mappings for status lozenges."
 ### Task 5: Markdown PRD Renderer
 
 **Files:**
+
 - Create: `internal/render/markdown/prd.go`
 - Create: `internal/render/markdown/prd_test.go`
 
@@ -1220,6 +1225,7 @@ Implements render.Renderer.RenderPRD for CLI preview."
 ### Task 6: Markdown SDD Renderer
 
 **Files:**
+
 - Create: `internal/render/markdown/sdd.go`
 - Create: `internal/render/markdown/sdd_test.go`
 
@@ -1407,6 +1413,7 @@ Implements render.Renderer.RenderSDD for CLI preview."
 ### Task 7: Markdown ADR Renderer (MADR Format)
 
 **Files:**
+
 - Create: `internal/render/markdown/adr.go`
 - Create: `internal/render/markdown/adr_test.go`
 
@@ -1588,6 +1595,7 @@ Includes considered-options table and confidence/scope metadata."
 ### Task 8: ADF PRD Renderer
 
 **Files:**
+
 - Create: `internal/render/adf/prd.go`
 - Create: `internal/render/adf/prd_test.go`
 
@@ -1867,6 +1875,7 @@ MoSCoW criteria table, and risk panel."
 ### Task 9: ADF SDD Renderer
 
 **Files:**
+
 - Create: `internal/render/adf/sdd.go`
 - Create: `internal/render/adf/sdd_test.go`
 
@@ -2081,6 +2090,7 @@ warning panels for invariants, and slice dependency tables."
 ### Task 10: ADF ADR Renderer (MADR)
 
 **Files:**
+
 - Create: `internal/render/adf/adr.go`
 - Create: `internal/render/adf/adr_test.go`
 
@@ -2274,6 +2284,7 @@ considered-options table, and confidence/scope info panel."
 ### Task 11: PublishService Proto Definition
 
 **Files:**
+
 - Create: `proto/specgraph/v1/publish.proto`
 
 - [ ] **Step 1: Write the proto definition**
@@ -2420,6 +2431,7 @@ Includes PageMapping, Feedback, and PublishStatusEntry messages."
 ### Task 12: Config — Add Publish Section
 
 **Files:**
+
 - Modify: `internal/config/config.go`
 
 - [ ] **Step 1: Add publish config types**
@@ -2480,6 +2492,7 @@ poll_interval, auto_publish flag, and labels."
 ### Task 13: Storage — PublishBackend Interface + Domain Types
 
 **Files:**
+
 - Create: `internal/storage/publish.go`
 - Modify: `internal/storage/storage.go` — add `PublishBackend` to `ScopedBackend`
 
@@ -2611,6 +2624,7 @@ Defines PageMapping (spec↔Confluence page tracking) and FeedbackEntry
 ### Task 14: Postgres Migration + PublishBackend Implementation
 
 **Files:**
+
 - Create: `internal/storage/postgres/migrations/NNNN_publish_mappings.sql`
 - Create: `internal/storage/postgres/publish.go`
 - Create: `internal/storage/postgres/publish_test.go`
@@ -2911,6 +2925,7 @@ Upsert semantics for page mappings, ON CONFLICT DO NOTHING for feedback."
 ### Task 15: Publisher Interface + Types
 
 **Files:**
+
 - Create: `internal/publish/publish.go`
 
 - [ ] **Step 1: Define publisher interfaces and types**
@@ -3018,6 +3033,7 @@ create/update/unpublish/status. FeedbackSource handles comment polling."
 ### Task 16: Confluence REST API Client
 
 **Files:**
+
 - Create: `internal/publish/confluence/config.go`
 - Create: `internal/publish/confluence/client.go`
 - Create: `internal/publish/confluence/client_test.go`
@@ -3359,6 +3375,7 @@ Basic auth with API token."
 ### Task 17: Confluence Publisher Implementation
 
 **Files:**
+
 - Create: `internal/publish/confluence/publisher.go`
 - Create: `internal/publish/confluence/publisher_test.go`
 
@@ -3652,6 +3669,7 @@ in storage for idempotent updates and unpublish."
 ### Task 18: Confluence Comment Feedback Source
 
 **Files:**
+
 - Create: `internal/publish/confluence/feedback.go`
 - Create: `internal/publish/confluence/feedback_test.go`
 
@@ -3834,6 +3852,7 @@ Question heuristic for ? in comment body."
 ### Task 19: Publish Orchestrator
 
 **Files:**
+
 - Create: `internal/publish/orchestrator.go`
 - Create: `internal/publish/orchestrator_test.go`
 
@@ -4044,6 +4063,7 @@ links, and spec updates. PublishAll for manual full-publish."
 ### Task 20: ConnectRPC Publish Handler
 
 **Files:**
+
 - Create: `internal/server/publish_handler.go`
 - Create: `internal/server/publish_handler_test.go`
 
@@ -4221,6 +4241,7 @@ entries via PublishBackend."
 ### Task 21: CLI Commands
 
 **Files:**
+
 - Create: `cmd/specgraph/confluence.go`
 - Create: `cmd/specgraph/confluence_test.go`
 - Modify: `cmd/specgraph/main.go` — register command
@@ -4447,6 +4468,7 @@ Status renders as markdown table by default."
 ### Task 22: Final Integration — Wire Everything in Server Startup
 
 **Files:**
+
 - Modify: `internal/server/server.go` — add `RegisterPublishService`
 - Modify: `cmd/specgraph/serve.go` — wire up Confluence publisher on server start
 
@@ -4478,6 +4500,7 @@ config is present. Registers PublishService handler on the mux."
 During Task 2 (render refactor), the `itemTable` helper needs to be exported as `ItemTable` so the CLI status renderer can use it.
 
 **Files:**
+
 - Modify: `internal/render/markdown/helpers.go`
 
 - [ ] **Step 1: Export the helper**
@@ -4504,7 +4527,7 @@ Needed by CLI status renderer for publish status output."
 
 ### Task Dependencies
 
-```
+```text
 Task 1 (interfaces)           ─┐
 Task 2 (render refactor)       ├─→ Task 5-7 (markdown renderers)
 Task 3-4 (ADF builder+macros) ─┘   Task 8-10 (ADF renderers)

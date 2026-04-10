@@ -95,8 +95,8 @@ func runFindingsList(cmd *cobra.Command, args []string) error {
 	if findingsListJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(markdown.Findings(resp.Msg.Findings))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.Findings(resp.Msg.Findings))
+	return err
 }
 
 func runFindingsStore(cmd *cobra.Command, args []string) error {

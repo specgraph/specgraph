@@ -49,7 +49,7 @@ func TestItemTableEmpty(t *testing.T) {
 }
 
 func TestSection(t *testing.T) {
-	got := section(2, "Details", "Some body text.")
+	got := section("Details", "Some body text.")
 	if !strings.Contains(got, "## Details") {
 		t.Error("missing heading")
 	}
@@ -59,7 +59,7 @@ func TestSection(t *testing.T) {
 }
 
 func TestSectionEmptyBody(t *testing.T) {
-	got := section(2, "Empty", "")
+	got := section("Empty", "")
 	if got != "" {
 		t.Errorf("expected empty string for empty body, got %q", got)
 	}

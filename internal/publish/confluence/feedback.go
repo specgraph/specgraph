@@ -37,24 +37,24 @@ func (f *FeedbackSource) Poll(ctx context.Context, slug string) ([]publish.Feedb
 		if err != nil {
 			return nil, fmt.Errorf("get footer comments for page %s: %w", m.PageID, err)
 		}
-		for _, c := range footerComments {
-			all = append(all, toFeedback(c, slug, publish.FeedbackFooter, ""))
+		for i := range footerComments {
+			all = append(all, toFeedback(&footerComments[i], slug, publish.FeedbackFooter, ""))
 		}
 		// Inline comments
 		inlineComments, err := f.client.GetInlineComments(ctx, m.PageID)
 		if err != nil {
 			return nil, fmt.Errorf("get inline comments for page %s: %w", m.PageID, err)
 		}
-		for _, c := range inlineComments {
-			stage := routeInlineComment(c, m)
-			all = append(all, toFeedback(c, slug, publish.FeedbackInline, stage))
+		for i := range inlineComments {
+			stage := routeInlineComment(&inlineComments[i], m)
+			all = append(all, toFeedback(&inlineComments[i], slug, publish.FeedbackInline, stage))
 		}
 	}
 	return all, nil
 }
 
-func toFeedback(c CommentInfo, slug string, kind publish.FeedbackKind, stage string) publish.Feedback {
-	ts, _ := time.Parse(time.RFC3339, c.CreatedAt)
+func toFeedback(c *CommentInfo, slug string, kind publish.FeedbackKind, stage string) publish.Feedback {
+	ts, _ := time.Parse(time.RFC3339, c.CreatedAt) //nolint:errcheck // invalid timestamps default to zero time
 	return publish.Feedback{
 		ExternalID: c.ID,
 		Author:     c.Author,
@@ -69,8 +69,9 @@ func toFeedback(c CommentInfo, slug string, kind publish.FeedbackKind, stage str
 }
 
 // routeInlineComment maps an inline comment to an authoring stage
-// based on the page's document kind and the comment's anchor position.
-func routeInlineComment(_ CommentInfo, m *storage.PageMapping) string {
+// based on the page's document kind. Anchor-based routing within
+// document sections is not yet implemented.
+func routeInlineComment(_ *CommentInfo, m *storage.PageMapping) string {
 	switch m.DocKind {
 	case storage.DocumentKindPRD:
 		return "shape"

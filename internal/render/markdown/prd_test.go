@@ -74,3 +74,78 @@ func TestRenderPRDNilSpec(t *testing.T) {
 		t.Error("expected error for nil spec")
 	}
 }
+
+func TestRenderPRDNoSparkOutput(t *testing.T) {
+	r := NewRenderer()
+	spec := &specv1.Spec{
+		Slug:        "no-spark",
+		Intent:      "Some intent",
+		Stage:       "shape",
+		SparkOutput: nil,
+		ShapeOutput: &specv1.ShapeOutput{
+			ScopeIn: []string{"something"},
+		},
+	}
+	doc, err := r.RenderPRD(context.Background(), spec)
+	if err != nil {
+		t.Fatalf("RenderPRD: %v", err)
+	}
+	body := string(doc.Body)
+	if strings.Contains(body, "## Intent") {
+		t.Error("body should not contain 'Intent' section when SparkOutput is nil")
+	}
+	if strings.Contains(body, "Context & Signal") {
+		t.Error("body should not contain 'Context & Signal' section when SparkOutput is nil")
+	}
+}
+
+func TestRenderPRDNoShapeOutput(t *testing.T) {
+	r := NewRenderer()
+	spec := &specv1.Spec{
+		Slug:  "no-shape",
+		Stage: "shape",
+		SparkOutput: &specv1.SparkOutput{
+			Seed: "Some seed idea",
+		},
+		ShapeOutput: nil,
+	}
+	doc, err := r.RenderPRD(context.Background(), spec)
+	if err != nil {
+		t.Fatalf("RenderPRD: %v", err)
+	}
+	body := string(doc.Body)
+	if strings.Contains(body, "## Scope") {
+		t.Error("body should not contain 'Scope' section when ShapeOutput is nil")
+	}
+	if strings.Contains(body, "## Approaches") {
+		t.Error("body should not contain 'Approaches' section when ShapeOutput is nil")
+	}
+}
+
+func TestRenderPRDEmptyShapeFields(t *testing.T) {
+	r := NewRenderer()
+	spec := &specv1.Spec{
+		Slug:  "empty-shape",
+		Stage: "shape",
+		ShapeOutput: &specv1.ShapeOutput{
+			ScopeIn:     []string{},
+			ScopeOut:    []string{},
+			Approaches:  []*specv1.Approach{},
+			SuccessMust: []string{},
+		},
+	}
+	doc, err := r.RenderPRD(context.Background(), spec)
+	if err != nil {
+		t.Fatalf("RenderPRD: %v", err)
+	}
+	body := string(doc.Body)
+	if strings.Contains(body, "## Scope") {
+		t.Error("body should not contain 'Scope' section when ScopeIn/ScopeOut are empty")
+	}
+	if strings.Contains(body, "## Approaches") {
+		t.Error("body should not contain 'Approaches' section when Approaches is empty")
+	}
+	if strings.Contains(body, "## Success Criteria") {
+		t.Error("body should not contain 'Success Criteria' section when SuccessMust is empty")
+	}
+}

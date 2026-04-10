@@ -76,7 +76,8 @@ func (h *PublishHandler) Publish(ctx context.Context, req *connect.Request[specv
 	}
 
 	// Orchestrate render + publish.
-	if err := h.orchestrator.PublishAll(ctx, protoSpec, protoDecisions); err != nil {
+	err = h.orchestrator.PublishAll(ctx, protoSpec, protoDecisions)
+	if err != nil {
 		return nil, publishError(err)
 	}
 
@@ -163,14 +164,14 @@ func (h *PublishHandler) SyncComments(ctx context.Context, req *connect.Request[
 			continue
 		}
 		specCount++
-		for _, c := range comments {
-			entry := feedbackToStorage(c, s)
+		for i := range comments {
+			entry := feedbackToStorage(&comments[i], s)
 			if _, storeErr := store.StoreFeedback(ctx, entry); storeErr != nil {
 				slog.ErrorContext(ctx, "publish: store feedback",
 					slog.String("slug", s), slog.Any("error", storeErr))
 				continue
 			}
-			allFeedback = append(allFeedback, feedbackToProto(c))
+			allFeedback = append(allFeedback, feedbackToProto(&comments[i]))
 		}
 	}
 
@@ -186,6 +187,10 @@ func (h *PublishHandler) Unpublish(ctx context.Context, req *connect.Request[spe
 	slug := req.Msg.GetSlug()
 	if err := validateSlug(slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	if h.publisher == nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("no publisher configured"))
 	}
 
 	if err := h.publisher.Unpublish(ctx, slug); err != nil {
@@ -359,7 +364,7 @@ func groupMappingsToEntries(mappings []*storage.PageMapping) []*specv1.PublishSt
 }
 
 // feedbackToProto converts a publish.Feedback to proto.
-func feedbackToProto(f publish.Feedback) *specv1.Feedback {
+func feedbackToProto(f *publish.Feedback) *specv1.Feedback {
 	return &specv1.Feedback{
 		ExternalId: f.ExternalID,
 		Author:     f.Author,
@@ -374,7 +379,7 @@ func feedbackToProto(f publish.Feedback) *specv1.Feedback {
 }
 
 // feedbackToStorage converts a publish.Feedback to a storage FeedbackEntry.
-func feedbackToStorage(f publish.Feedback, specSlug string) *storage.FeedbackEntry {
+func feedbackToStorage(f *publish.Feedback, specSlug string) *storage.FeedbackEntry {
 	var kind storage.FeedbackKind
 	switch f.Kind {
 	case publish.FeedbackInline:

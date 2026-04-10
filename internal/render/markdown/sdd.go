@@ -37,28 +37,28 @@ func (r *Renderer) RenderSDD(_ context.Context, spec *specv1.Spec) (render.Docum
 			for i, vc := range o.VerifyCriteria {
 				rows[i] = []string{vc.Category, vc.Description}
 			}
-			b.WriteString(section(2, "Acceptance Criteria", ItemTable([]string{"Category", "Description"}, rows)))
+			b.WriteString(section("Acceptance Criteria", ItemTable([]string{"Category", "Description"}, rows)))
 		}
 		if len(o.Invariants) > 0 {
 			var inv strings.Builder
 			for _, s := range o.Invariants {
 				fmt.Fprintf(&inv, "- %s\n", s)
 			}
-			b.WriteString(section(2, "Invariants", inv.String()))
+			b.WriteString(section("Invariants", inv.String()))
 		}
 		if len(o.Touches) > 0 {
 			rows := make([][]string, len(o.Touches))
 			for i, ft := range o.Touches {
 				rows[i] = []string{ft.Path, ft.Purpose, ft.ChangeType}
 			}
-			b.WriteString(section(2, "File Touches", ItemTable([]string{"Path", "Purpose", "Action"}, rows)))
+			b.WriteString(section("File Touches", ItemTable([]string{"Path", "Purpose", "Action"}, rows)))
 		}
 	}
 
 	// Decompose section
 	if o := spec.DecomposeOutput; o != nil {
 		if strategy := decompositionStrategyString(o.Strategy); strategy != "" {
-			b.WriteString(section(2, "Decomposition Strategy", strategy))
+			b.WriteString(section("Decomposition Strategy", strategy))
 		}
 		if len(o.Slices) > 0 {
 			b.WriteString("## Slices\n\n")

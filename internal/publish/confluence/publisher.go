@@ -29,14 +29,16 @@ type Publisher struct {
 }
 
 // NewPublisher creates a Confluence publisher.
-func NewPublisher(client *Client, store PublishStore, cfg Config) *Publisher {
-	return &Publisher{client: client, store: store, cfg: cfg}
+func NewPublisher(client *Client, store PublishStore, cfg *Config) *Publisher {
+	return &Publisher{client: client, store: store, cfg: *cfg}
 }
 
+// Name returns the publisher's identifier.
 func (p *Publisher) Name() string { return "confluence" }
 
-func (p *Publisher) Publish(ctx context.Context, slug string, docs []render.Document) (publish.PublishResult, error) {
-	var result publish.PublishResult
+// Publish creates Confluence pages for the given documents and stores the page mappings.
+func (p *Publisher) Publish(ctx context.Context, slug string, docs []render.Document) (publish.Result, error) {
+	var result publish.Result
 	for _, doc := range docs {
 		parentID := p.cfg.ParentPageID
 		// SDDs and ADRs are children of the PRD page
@@ -78,16 +80,23 @@ func (p *Publisher) Publish(ctx context.Context, slug string, docs []render.Docu
 	return result, nil
 }
 
-func (p *Publisher) Update(ctx context.Context, slug string, docs []render.Document, _ *specv1.ChangeLogEntry) (publish.PublishResult, error) {
-	var result publish.PublishResult
+// Update updates existing Confluence pages for the given documents using the stored page mappings.
+func (p *Publisher) Update(ctx context.Context, slug string, docs []render.Document, _ *specv1.ChangeLogEntry) (publish.Result, error) {
+	var result publish.Result
 	for _, doc := range docs {
 		existing, err := p.store.GetPageMapping(ctx, slug, storageDocKind(doc.Kind), doc.DecisionID)
 		if err != nil {
 			return result, fmt.Errorf("get mapping: %w", err)
 		}
 		if existing == nil {
-			// Not yet published — create instead
-			return p.Publish(ctx, slug, docs)
+			// Not yet published — create this single doc
+			var singleResult publish.Result
+			singleResult, err = p.Publish(ctx, slug, []render.Document{doc})
+			if err != nil {
+				return result, err
+			}
+			result.Mappings = append(result.Mappings, singleResult.Mappings...)
+			continue
 		}
 
 		page, err := p.client.UpdatePage(ctx, existing.PageID, doc.Title, existing.PageVersion, doc.Body)
@@ -110,6 +119,7 @@ func (p *Publisher) Update(ctx context.Context, slug string, docs []render.Docum
 	return result, nil
 }
 
+// Unpublish deletes all Confluence pages for the given spec slug.
 func (p *Publisher) Unpublish(ctx context.Context, slug string) error {
 	mappings, err := p.store.ListPageMappings(ctx, slug)
 	if err != nil {
@@ -127,12 +137,13 @@ func (p *Publisher) Unpublish(ctx context.Context, slug string) error {
 	return nil
 }
 
-func (p *Publisher) Status(ctx context.Context, slug string) (publish.PublishStatus, error) {
+// Status returns the current publish status for the given spec slug.
+func (p *Publisher) Status(ctx context.Context, slug string) (publish.Status, error) {
 	mappings, err := p.store.ListPageMappings(ctx, slug)
 	if err != nil {
-		return publish.PublishStatus{}, err
+		return publish.Status{}, fmt.Errorf("list page mappings: %w", err)
 	}
-	status := publish.PublishStatus{SpecSlug: slug}
+	status := publish.Status{SpecSlug: slug}
 	for _, m := range mappings {
 		ps := &publish.PageState{
 			PageID:      m.PageID,

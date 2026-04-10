@@ -24,21 +24,28 @@ func NewOrchestrator(r render.Renderer, p Publisher) *Orchestrator {
 
 // OnStageComplete is called when a spec completes an authoring stage.
 func (o *Orchestrator) OnStageComplete(ctx context.Context, spec *specv1.Spec, stage string) error {
+	if spec == nil {
+		return fmt.Errorf("spec is nil")
+	}
 	switch stage {
 	case "shape":
 		doc, err := o.renderer.RenderPRD(ctx, spec)
 		if err != nil {
 			return fmt.Errorf("render PRD: %w", err)
 		}
-		_, err = o.publisher.Publish(ctx, spec.Slug, []render.Document{doc})
-		return err
+		if _, err = o.publisher.Publish(ctx, spec.Slug, []render.Document{doc}); err != nil {
+			return fmt.Errorf("publish: %w", err)
+		}
+		return nil
 	case "specify":
 		doc, err := o.renderer.RenderSDD(ctx, spec)
 		if err != nil {
 			return fmt.Errorf("render SDD: %w", err)
 		}
-		_, err = o.publisher.Publish(ctx, spec.Slug, []render.Document{doc})
-		return err
+		if _, err = o.publisher.Publish(ctx, spec.Slug, []render.Document{doc}); err != nil {
+			return fmt.Errorf("publish: %w", err)
+		}
+		return nil
 	default:
 		return nil
 	}
@@ -46,16 +53,24 @@ func (o *Orchestrator) OnStageComplete(ctx context.Context, spec *specv1.Spec, s
 
 // OnDecisionLinked is called when a decision is linked to a spec.
 func (o *Orchestrator) OnDecisionLinked(ctx context.Context, specSlug string, decision *specv1.Decision) error {
+	if decision == nil {
+		return fmt.Errorf("decision is nil")
+	}
 	doc, err := o.renderer.RenderADR(ctx, decision)
 	if err != nil {
 		return fmt.Errorf("render ADR: %w", err)
 	}
-	_, err = o.publisher.Publish(ctx, specSlug, []render.Document{doc})
-	return err
+	if _, err = o.publisher.Publish(ctx, specSlug, []render.Document{doc}); err != nil {
+		return fmt.Errorf("publish: %w", err)
+	}
+	return nil
 }
 
 // OnSpecUpdated is called when a spec is updated (new version).
 func (o *Orchestrator) OnSpecUpdated(ctx context.Context, spec *specv1.Spec, changelog *specv1.ChangeLogEntry) error {
+	if spec == nil {
+		return fmt.Errorf("spec is nil")
+	}
 	var docs []render.Document
 	if spec.ShapeOutput != nil {
 		doc, err := o.renderer.RenderPRD(ctx, spec)
@@ -74,12 +89,17 @@ func (o *Orchestrator) OnSpecUpdated(ctx context.Context, spec *specv1.Spec, cha
 	if len(docs) == 0 {
 		return nil
 	}
-	_, err := o.publisher.Update(ctx, spec.Slug, docs, changelog)
-	return err
+	if _, err := o.publisher.Update(ctx, spec.Slug, docs, changelog); err != nil {
+		return fmt.Errorf("update: %w", err)
+	}
+	return nil
 }
 
 // PublishAll renders and publishes all available documents for a spec.
 func (o *Orchestrator) PublishAll(ctx context.Context, spec *specv1.Spec, decisions []*specv1.Decision) error {
+	if spec == nil {
+		return fmt.Errorf("spec is nil")
+	}
 	var docs []render.Document
 	if spec.ShapeOutput != nil {
 		doc, err := o.renderer.RenderPRD(ctx, spec)
@@ -97,7 +117,7 @@ func (o *Orchestrator) PublishAll(ctx context.Context, spec *specv1.Spec, decisi
 	}
 	if len(docs) > 0 {
 		if _, err := o.publisher.Publish(ctx, spec.Slug, docs); err != nil {
-			return err
+			return fmt.Errorf("publish: %w", err)
 		}
 	}
 	for _, d := range decisions {
@@ -106,7 +126,7 @@ func (o *Orchestrator) PublishAll(ctx context.Context, spec *specv1.Spec, decisi
 			return fmt.Errorf("render ADR %s: %w", d.Slug, err)
 		}
 		if _, err := o.publisher.Publish(ctx, spec.Slug, []render.Document{doc}); err != nil {
-			return err
+			return fmt.Errorf("publish ADR %s: %w", d.Slug, err)
 		}
 	}
 	return nil

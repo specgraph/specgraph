@@ -176,8 +176,8 @@ func runDecisionList(cmd *cobra.Command, _ []string) error {
 	if decisionListJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(markdown.DecisionList(resp.Msg.Decisions))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.DecisionList(resp.Msg.Decisions))
+	return err
 }
 
 // --- decision show ---
@@ -227,6 +227,6 @@ func runDecisionShow(cmd *cobra.Command, args []string) error {
 	if decisionShowJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(markdown.Decision(resp.Msg.GetDecision()))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.Decision(resp.Msg.GetDecision()))
+	return err
 }

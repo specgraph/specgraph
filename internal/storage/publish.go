@@ -12,9 +12,13 @@ import (
 type PublishState string
 
 const (
-	PublishStateDraft       PublishState = "draft"
-	PublishStateSynced      PublishState = "synced"
-	PublishStateError       PublishState = "error"
+	// PublishStateDraft indicates the document has been created but not yet synced.
+	PublishStateDraft PublishState = "draft"
+	// PublishStateSynced indicates the document is up to date with Confluence.
+	PublishStateSynced PublishState = "synced"
+	// PublishStateError indicates the last publish attempt failed.
+	PublishStateError PublishState = "error"
+	// PublishStateUnpublished indicates the document has been removed from Confluence.
 	PublishStateUnpublished PublishState = "unpublished"
 )
 
@@ -22,8 +26,11 @@ const (
 type DocumentKind string
 
 const (
+	// DocumentKindPRD identifies a Product Requirements Document.
 	DocumentKindPRD DocumentKind = "prd"
+	// DocumentKindSDD identifies a Software Design Document.
 	DocumentKindSDD DocumentKind = "sdd"
+	// DocumentKindADR identifies an Architectural Decision Record.
 	DocumentKindADR DocumentKind = "adr"
 )
 
@@ -31,7 +38,9 @@ const (
 type FeedbackKind string
 
 const (
+	// FeedbackKindInline is a comment anchored to a specific text range.
 	FeedbackKindInline FeedbackKind = "inline"
+	// FeedbackKindFooter is a general footer comment on the page.
 	FeedbackKindFooter FeedbackKind = "footer"
 )
 
@@ -72,6 +81,6 @@ type PublishBackend interface {
 	DeletePageMappings(ctx context.Context, specSlug string) (int, error)
 
 	StoreFeedback(ctx context.Context, entry *FeedbackEntry) (*FeedbackEntry, error)
-	ListFeedback(ctx context.Context, specSlug string, sinceExternalID string) ([]*FeedbackEntry, error)
+	ListFeedback(ctx context.Context, specSlug, sinceExternalID string) ([]*FeedbackEntry, error)
 	CountNewFeedback(ctx context.Context, specSlug string) (int, error)
 }

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 // PageInfo represents a Confluence page response.
@@ -37,11 +38,12 @@ type Client struct {
 }
 
 // NewClient creates a Confluence API client.
-func NewClient(cfg Config) *Client {
-	if cfg.BaseURL == "" {
-		cfg.BaseURL = fmt.Sprintf("https://api.atlassian.com/ex/confluence/%s", cfg.CloudID)
+func NewClient(cfg *Config) *Client {
+	c := *cfg
+	if c.BaseURL == "" {
+		c.BaseURL = fmt.Sprintf("https://api.atlassian.com/ex/confluence/%s", c.CloudID)
 	}
-	return &Client{cfg: cfg, http: &http.Client{}}
+	return &Client{cfg: c, http: &http.Client{Timeout: 30 * time.Second}}
 }
 
 func (c *Client) do(ctx context.Context, method, path string, body any) ([]byte, error) {
@@ -55,7 +57,7 @@ func (c *Client) do(ctx context.Context, method, path string, body any) ([]byte,
 	}
 	req, err := http.NewRequestWithContext(ctx, method, c.cfg.BaseURL+path, reqBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create request: %w", err)
 	}
 	req.SetBasicAuth(c.cfg.UserEmail, c.cfg.APIToken)
 	req.Header.Set("Content-Type", "application/json")
@@ -63,9 +65,9 @@ func (c *Client) do(ctx context.Context, method, path string, body any) ([]byte,
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("do request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // response body close error is not actionable
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read response: %w", err)

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
+// Package render defines format-agnostic document types and the Renderer interface
+// for transforming spec data into structured documents.
 package render
 
 import (
@@ -13,8 +15,11 @@ import (
 type DocumentKind int
 
 const (
+	// DocumentPRD is a Product Requirements Document.
 	DocumentPRD DocumentKind = iota
+	// DocumentSDD is a Software Design Document.
 	DocumentSDD
+	// DocumentADR is an Architectural Decision Record.
 	DocumentADR
 )
 

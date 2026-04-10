@@ -64,8 +64,8 @@ func runConstitutionShow(cmd *cobra.Command, _ []string) error {
 	if constitutionShowJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(markdown.Constitution(resp.Msg.Constitution))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.Constitution(resp.Msg.Constitution))
+	return err
 }
 
 var constitutionEmitCmd = &cobra.Command{

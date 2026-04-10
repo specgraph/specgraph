@@ -38,7 +38,7 @@ func (r *Renderer) RenderPRD(_ context.Context, spec *specv1.Spec) (render.Docum
 	// Spark section
 	if o := spec.SparkOutput; o != nil {
 		if o.Seed != "" {
-			b.WriteString(section(2, "Intent", o.Seed))
+			b.WriteString(section("Intent", o.Seed))
 		}
 		if o.Signal != "" || o.KillTest != "" {
 			var ctx strings.Builder
@@ -48,7 +48,7 @@ func (r *Renderer) RenderPRD(_ context.Context, spec *specv1.Spec) (render.Docum
 			if o.KillTest != "" {
 				fmt.Fprintf(&ctx, "**Kill Test:** %s\n", o.KillTest)
 			}
-			b.WriteString(section(2, "Context & Signal", ctx.String()))
+			b.WriteString(section("Context & Signal", ctx.String()))
 		}
 	}
 
@@ -69,7 +69,7 @@ func (r *Renderer) RenderPRD(_ context.Context, spec *specv1.Spec) (render.Docum
 					fmt.Fprintf(&scope, "- %s\n", s)
 				}
 			}
-			b.WriteString(section(2, "Scope", scope.String()))
+			b.WriteString(section("Scope", scope.String()))
 		}
 		if len(o.Approaches) > 0 {
 			var app strings.Builder
@@ -87,7 +87,7 @@ func (r *Renderer) RenderPRD(_ context.Context, spec *specv1.Spec) (render.Docum
 				}
 				app.WriteString("\n")
 			}
-			b.WriteString(section(2, "Approaches", app.String()))
+			b.WriteString(section("Approaches", app.String()))
 		}
 		if len(o.SuccessMust) > 0 || len(o.SuccessShould) > 0 || len(o.SuccessWont) > 0 {
 			var sc strings.Builder
@@ -100,14 +100,14 @@ func (r *Renderer) RenderPRD(_ context.Context, spec *specv1.Spec) (render.Docum
 			for _, s := range o.SuccessWont {
 				fmt.Fprintf(&sc, "- **WON'T:** %s\n", s)
 			}
-			b.WriteString(section(2, "Success Criteria", sc.String()))
+			b.WriteString(section("Success Criteria", sc.String()))
 		}
 		if len(o.Risks) > 0 {
 			var risks strings.Builder
 			for _, ri := range o.Risks {
 				fmt.Fprintf(&risks, "- %s\n", ri)
 			}
-			b.WriteString(section(2, "Risks", risks.String()))
+			b.WriteString(section("Risks", risks.String()))
 		}
 	}
 

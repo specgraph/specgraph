@@ -5,6 +5,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -42,7 +43,7 @@ func (s *Store) GetPageMapping(ctx context.Context, specSlug string, kind storag
 		WHERE spec_slug = $1 AND doc_kind = $2 AND decision_slug = $3`,
 		specSlug, kind, decisionSlug,
 	).Scan(&m.SpecSlug, &m.DocKind, &m.DecisionSlug, &m.PageID, &m.PageVersion, &m.SpecVersion, &m.State, &m.ErrorMessage, &m.LastSync, &m.CreatedAt)
-	if err == pgx.ErrNoRows {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -73,7 +74,10 @@ func (s *Store) ListPageMappings(ctx context.Context, specSlug string) ([]*stora
 		}
 		mappings = append(mappings, &m)
 	}
-	return mappings, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list page mappings rows: %w", err)
+	}
+	return mappings, nil
 }
 
 // DeletePageMappings removes all page mappings for a spec slug. Returns count deleted.
@@ -91,7 +95,7 @@ func (s *Store) StoreFeedback(ctx context.Context, entry *storage.FeedbackEntry)
 		entry.ID = "fb-" + ulid.Make().String()
 	}
 	now := time.Now()
-	_, err := s.exec(ctx, `
+	tag, err := s.exec(ctx, `
 		INSERT INTO feedback_entries (id, external_id, spec_slug, author, body, timestamp, kind, stage, is_question, parent_id, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (external_id) DO NOTHING`,
@@ -100,18 +104,20 @@ func (s *Store) StoreFeedback(ctx context.Context, entry *storage.FeedbackEntry)
 	if err != nil {
 		return nil, fmt.Errorf("store feedback: %w", err)
 	}
-	entry.CreatedAt = now
+	if tag.RowsAffected() > 0 {
+		entry.CreatedAt = now
+	}
 	return entry, nil
 }
 
 // ListFeedback returns feedback entries for a spec, optionally filtering to entries
 // created after the entry with the given external ID.
-func (s *Store) ListFeedback(ctx context.Context, specSlug string, sinceExternalID string) ([]*storage.FeedbackEntry, error) {
+func (s *Store) ListFeedback(ctx context.Context, specSlug, sinceExternalID string) ([]*storage.FeedbackEntry, error) {
 	query := `SELECT id, external_id, spec_slug, author, body, timestamp, kind, stage, is_question, parent_id, created_at
 		FROM feedback_entries WHERE spec_slug = $1`
 	args := []any{specSlug}
 	if sinceExternalID != "" {
-		query += ` AND created_at > (SELECT created_at FROM feedback_entries WHERE external_id = $2)`
+		query += ` AND created_at > COALESCE((SELECT created_at FROM feedback_entries WHERE external_id = $2), '1970-01-01'::timestamptz)`
 		args = append(args, sinceExternalID)
 	}
 	query += ` ORDER BY timestamp`
@@ -128,7 +134,10 @@ func (s *Store) ListFeedback(ctx context.Context, specSlug string, sinceExternal
 		}
 		entries = append(entries, &e)
 	}
-	return entries, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list feedback rows: %w", err)
+	}
+	return entries, nil
 }
 
 // CountNewFeedback returns the total number of feedback entries for a spec.

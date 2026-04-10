@@ -49,8 +49,8 @@ func runSliceList(cmd *cobra.Command, args []string) error {
 	if sliceListJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(markdown.SliceList(resp.Msg.Slices))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.SliceList(resp.Msg.Slices))
+	return err
 }
 
 // --- slice get ---
@@ -78,8 +78,8 @@ func runSliceGet(cmd *cobra.Command, args []string) error {
 	if sliceGetJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(markdown.SliceDetail(resp.Msg.Slice))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.SliceDetail(resp.Msg.Slice))
+	return err
 }
 
 // --- slice claim ---

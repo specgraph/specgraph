@@ -72,3 +72,77 @@ func TestRenderADRNilDecision(t *testing.T) {
 		t.Error("expected error for nil decision")
 	}
 }
+
+func TestRenderADRNoAlternatives(t *testing.T) {
+	r := NewRenderer()
+	dec := &specv1.Decision{
+		Slug:                 "no-alts",
+		Title:                "Use PostgreSQL",
+		Status:               specv1.DecisionStatus_DECISION_STATUS_ACCEPTED,
+		Decision:             "We choose PostgreSQL",
+		Rationale:            "Best fit for our needs",
+		RejectedAlternatives: nil,
+	}
+	doc, err := r.RenderADR(context.Background(), dec)
+	if err != nil {
+		t.Fatalf("RenderADR: %v", err)
+	}
+	body := string(doc.Body)
+	if strings.Contains(body, "Considered Options") {
+		t.Error("body should not contain 'Considered Options' when RejectedAlternatives is nil")
+	}
+	if !strings.Contains(body, "Use PostgreSQL") {
+		t.Error("missing title in body")
+	}
+}
+
+func TestRenderADRScopeOnly(t *testing.T) {
+	r := NewRenderer()
+	dec := &specv1.Decision{
+		Slug:       "scope-only",
+		Title:      "Scoped decision",
+		Status:     specv1.DecisionStatus_DECISION_STATUS_ACCEPTED,
+		Scope:      specv1.DecisionScope_DECISION_SCOPE_PROJECT,
+		Confidence: specv1.DecisionConfidence_DECISION_CONFIDENCE_UNSPECIFIED,
+	}
+	doc, err := r.RenderADR(context.Background(), dec)
+	if err != nil {
+		t.Fatalf("RenderADR: %v", err)
+	}
+	body := string(doc.Body)
+	if !strings.Contains(body, "Confidence & Scope") {
+		t.Error("'Confidence & Scope' section should render when Scope is set even if Confidence is unspecified")
+	}
+	if !strings.Contains(body, "PROJECT") {
+		t.Error("scope value should appear in body")
+	}
+}
+
+func TestRenderADRMinimal(t *testing.T) {
+	r := NewRenderer()
+	dec := &specv1.Decision{
+		Slug:   "minimal",
+		Title:  "Minimal Decision",
+		Status: specv1.DecisionStatus_DECISION_STATUS_PROPOSED,
+	}
+	doc, err := r.RenderADR(context.Background(), dec)
+	if err != nil {
+		t.Fatalf("RenderADR: %v", err)
+	}
+	if doc.Kind != render.DocumentADR {
+		t.Errorf("Kind = %v, want DocumentADR", doc.Kind)
+	}
+	if doc.DecisionID != "minimal" {
+		t.Errorf("DecisionID = %q, want minimal", doc.DecisionID)
+	}
+	body := string(doc.Body)
+	if !strings.Contains(body, "# ADR: Minimal Decision") {
+		t.Error("missing ADR title")
+	}
+	if strings.Contains(body, "Considered Options") {
+		t.Error("should not contain 'Considered Options' for minimal decision")
+	}
+	if strings.Contains(body, "Confidence & Scope") {
+		t.Error("should not contain 'Confidence & Scope' when both unspecified")
+	}
+}

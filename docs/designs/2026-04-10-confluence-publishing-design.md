@@ -66,7 +66,7 @@ This work could be killed if teams don't use Confluence or if a lighter-weight e
 
 ### Package Layout
 
-```
+```text
 internal/
 ├── render/
 │   ├── render.go              # Renderer interface
@@ -145,7 +145,7 @@ type Document struct {
     Kind       DocumentKind
     Title      string
     Body       []byte       // Rendered content (ADF JSON, Markdown, etc.)
-    ParentSlug string       // For SDD/ADR: the spec slug (determines parent page)
+    SpecSlug   string       // For SDD/ADR: the spec slug (determines parent page)
     DecisionID string       // For ADR only: the decision slug
     Metadata   map[string]string
 }
@@ -153,7 +153,7 @@ type Document struct {
 
 ### Page Tree Structure
 
-```
+```text
 [Space Root or Configured Parent Page]
 └── PRD: <Spec Title>              ← auto-published on Shape completion
     ├── SDD: <Spec Title>          ← auto-published on Specify completion
@@ -239,7 +239,7 @@ Output is the ADF JSON tree that goes directly into the Confluence REST API `bod
 
 ### Update Flow
 
-```
+```text
 Stage transition / spec update
   → Orchestrator detects change
   → Renderer produces updated Document(s)
@@ -341,7 +341,7 @@ Auth credentials come from environment variables or system keyring — never in 
 
 ## CLI Commands
 
-```
+```text
 specgraph confluence publish <slug>       # Manual publish/re-publish
 specgraph confluence status [slug]        # Show publish state (all or one)
 specgraph confluence sync-comments        # Poll comments now (all published specs)
@@ -352,7 +352,7 @@ All read commands support `--json` flag (via `printJSON`) and default table/mark
 
 ### Status Output (Default Table)
 
-```
+```text
 SLUG              PRD     SDD     ADRS    LAST SYNC            COMMENTS
 auth-redesign     synced  synced  2/2     2026-04-10 14:30     3 new
 payment-flow      synced  -       1/1     2026-04-10 14:30     0 new
