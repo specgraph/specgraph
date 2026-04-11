@@ -22,6 +22,7 @@ import (
 	"github.com/specgraph/specgraph/internal/docker"
 	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/specgraph/specgraph/internal/linter"
+	mcppkg "github.com/specgraph/specgraph/internal/mcp"
 	"github.com/specgraph/specgraph/internal/notify"
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/storage"
@@ -228,6 +229,20 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(compositeStore))
 	server.RegisterAuthHandlers(mux, compositeStore, auth.RequireAuth(compositeStore))
 
+	// Mount MCP streamable HTTP endpoint.
+	// Tier determined by X-Specgraph-MCP-Tier header, or ?tier= query param, defaulting to core.
+	mcpClient := mcppkg.NewClient(newHTTPClient(""), "http://"+cfg.Server.Listen)
+	mcpServer := mcppkg.NewServer(mcpClient)
+	mux.Handle("/mcp/", http.StripPrefix("/mcp", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tierStr := r.Header.Get("X-Specgraph-MCP-Tier")
+		if tierStr == "" {
+			tierStr = r.URL.Query().Get("tier")
+		}
+		tier := mcppkg.ParseTier(tierStr)
+		mcpHandler := mcpServer.HTTPHandler(tier)
+		mcpHandler.ServeHTTP(w, r)
+	})))
+
 	webFS, err := fs.Sub(web.Build, "build")
 	if err != nil {
 		return fmt.Errorf("embedded web FS: %w", err)
@@ -266,6 +281,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 
 	server.StartSweeper(sweeperCtx, store, 60*time.Second, slog.Default())
 	fmt.Printf("SpecGraph server running at http://%s\n", addr)
+	slog.Info("MCP endpoint available", "path", "/mcp/")
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}
