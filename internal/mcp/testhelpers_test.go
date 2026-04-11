@@ -302,6 +302,7 @@ type mockAuthoringService struct {
 	supersede          func(req *specv1.SupersedeRequest) (*specv1.SupersedeResponse, error)
 	recordConversation func(req *specv1.RecordConversationRequest) (*specv1.RecordConversationResponse, error)
 	listConversations  func(req *specv1.ListConversationsRequest) (*specv1.ListConversationsResponse, error)
+	getPrompts         func(req *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error)
 }
 
 func (m *mockAuthoringService) Spark(_ context.Context, req *connect.Request[specv1.SparkRequest]) (*connect.Response[specv1.SparkResponse], error) {
@@ -364,6 +365,17 @@ func (m *mockAuthoringService) ListConversations(_ context.Context, req *connect
 		panic("mockAuthoringService.ListConversations not configured")
 	}
 	resp, err := m.listConversations(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockAuthoringService) GetPrompts(_ context.Context, req *connect.Request[specv1.GetPromptsRequest]) (*connect.Response[specv1.GetPromptsResponse], error) {
+	if m.getPrompts == nil {
+		panic("mockAuthoringService.GetPrompts not configured")
+	}
+	resp, err := m.getPrompts(req.Msg)
 	if err != nil {
 		return nil, err
 	}
