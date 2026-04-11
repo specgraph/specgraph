@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // RegisterCoreTools registers the constitution, findings, and health tools into the registry.
@@ -60,10 +61,10 @@ func (t *constitutionTool) def() ToolDef {
 			props{
 				"action": stringProp("Operation to perform", "get", "update"),
 				"layer": stringProp(
-					"Constitution layer: user, org, project, domain",
+					"Constitution layer filter for get: user, org, project, domain",
 					"user", "org", "project", "domain",
 				),
-				"content": stringProp("Constitution content (required for update)"),
+				"constitution": stringProp("Full constitution JSON for update (output from get, modified as needed)"),
 			},
 			"action",
 		),
@@ -95,20 +96,16 @@ func (t *constitutionTool) handleGet(ctx context.Context, params map[string]any)
 }
 
 func (t *constitutionTool) handleUpdate(ctx context.Context, params map[string]any) (*ToolResult, error) {
-	layerStr := stringParam(params, "layer")
-	content := stringParam(params, "content")
-	if layerStr == "" {
-		return errResult("layer is required for update"), nil
+	raw := stringParam(params, "constitution")
+	if raw == "" {
+		return errResult("constitution is required for update (pass the full JSON from get, modified as needed)"), nil
 	}
-	if content == "" {
-		return errResult("content is required for update"), nil
+	var c specv1.Constitution
+	if err := protojson.Unmarshal([]byte(raw), &c); err != nil {
+		return errResult(fmt.Sprintf("invalid constitution JSON: %v", err)), nil
 	}
-	layer := constitutionLayerFromString(layerStr)
 	resp, err := t.client.Constitution.UpdateConstitution(ctx, connect.NewRequest(&specv1.UpdateConstitutionRequest{
-		Constitution: &specv1.Constitution{
-			Layer: layer,
-			Name:  content,
-		},
+		Constitution: &c,
 	}))
 	if err != nil {
 		return connectErrResult(err)

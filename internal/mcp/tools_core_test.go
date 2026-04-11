@@ -61,6 +61,51 @@ func TestConstitutionTool_Get_WithLayer(t *testing.T) {
 	require.False(t, result.IsError)
 }
 
+func TestConstitutionTool_Update_RoundTrip(t *testing.T) {
+	c := &Client{Constitution: &mockConstitutionService{
+		updateConstitution: func(req *specv1.UpdateConstitutionRequest) (*specv1.UpdateConstitutionResponse, error) {
+			require.NotNil(t, req.Constitution)
+			require.Equal(t, specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT, req.Constitution.Layer)
+			require.Equal(t, "my-project", req.Constitution.Name)
+			require.Len(t, req.Constitution.Constraints, 1)
+			require.Equal(t, "no vendor lock-in", req.Constitution.Constraints[0])
+			return &specv1.UpdateConstitutionResponse{
+				Constitution: req.Constitution,
+			}, nil
+		},
+	}}
+	r := NewRegistry()
+	RegisterCoreTools(r, c)
+	tool, ok := r.LookupTool("constitution")
+	require.True(t, ok)
+
+	// Simulate round-trip: pass full JSON as returned by get
+	constitutionJSON := `{"layer":"CONSTITUTION_LAYER_PROJECT","name":"my-project","constraints":["no vendor lock-in"]}`
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":       "update",
+		"constitution": constitutionJSON,
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "my-project")
+}
+
+func TestConstitutionTool_Update_InvalidJSON(t *testing.T) {
+	c := &Client{Constitution: &mockConstitutionService{}}
+	r := NewRegistry()
+	RegisterCoreTools(r, c)
+	tool, ok := r.LookupTool("constitution")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":       "update",
+		"constitution": "not valid json {{{",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "invalid constitution JSON")
+}
+
 func TestConstitutionTool_UnknownAction(t *testing.T) {
 	c := &Client{Constitution: &mockConstitutionService{}}
 	r := NewRegistry()

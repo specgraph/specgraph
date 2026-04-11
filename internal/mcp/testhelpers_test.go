@@ -229,11 +229,20 @@ func (m *mockHealthService) Health(_ context.Context, _ *connect.Request[specv1.
 
 type mockConstitutionService struct {
 	specgraphv1connect.ConstitutionServiceClient // panics on unimplemented methods
-	getConstitution func() (*specv1.GetConstitutionResponse, error)
+	getConstitution    func() (*specv1.GetConstitutionResponse, error)
+	updateConstitution func(req *specv1.UpdateConstitutionRequest) (*specv1.UpdateConstitutionResponse, error)
 }
 
 func (m *mockConstitutionService) GetConstitution(_ context.Context, _ *connect.Request[specv1.GetConstitutionRequest]) (*connect.Response[specv1.GetConstitutionResponse], error) {
 	resp, err := m.getConstitution()
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockConstitutionService) UpdateConstitution(_ context.Context, req *connect.Request[specv1.UpdateConstitutionRequest]) (*connect.Response[specv1.UpdateConstitutionResponse], error) {
+	resp, err := m.updateConstitution(req.Msg)
 	if err != nil {
 		return nil, err
 	}
