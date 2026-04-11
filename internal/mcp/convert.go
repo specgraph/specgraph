@@ -29,12 +29,13 @@ func toSDKInputSchema(schema map[string]any) sdkmcp.ToolInputSchema {
 	if is.Properties == nil {
 		is.Properties = make(map[string]any)
 	}
-	if req, ok := schema["required"].([]string); ok {
+	switch req := schema["required"].(type) {
+	case []string:
 		is.Required = req
-	} else if reqAny, ok := schema["required"].([]any); ok {
+	case []any:
 		// objectSchema stores required as []string but the type system may
 		// round-trip through []any in some contexts.
-		for _, v := range reqAny {
+		for _, v := range req {
 			if s, ok := v.(string); ok {
 				is.Required = append(is.Required, s)
 			}
@@ -44,7 +45,7 @@ func toSDKInputSchema(schema map[string]any) sdkmcp.ToolInputSchema {
 }
 
 // fromSDKParams extracts the arguments map from an SDK CallToolRequest.
-func fromSDKParams(req sdkmcp.CallToolRequest) map[string]any {
+func fromSDKParams(req *sdkmcp.CallToolRequest) map[string]any {
 	return req.GetArguments()
 }
 
@@ -61,7 +62,7 @@ func toSDKResult(r *ToolResult) *sdkmcp.CallToolResult {
 }
 
 // toSDKResource converts a SpecGraph ResourceDef (non-template) to an SDK Resource.
-func toSDKResource(def ResourceDef) sdkmcp.Resource {
+func toSDKResource(def *ResourceDef) sdkmcp.Resource {
 	opts := []sdkmcp.ResourceOption{
 		sdkmcp.WithResourceDescription(def.Description),
 	}
@@ -72,7 +73,7 @@ func toSDKResource(def ResourceDef) sdkmcp.Resource {
 }
 
 // toSDKResourceTemplate converts a SpecGraph ResourceDef (template) to an SDK ResourceTemplate.
-func toSDKResourceTemplate(def ResourceDef) sdkmcp.ResourceTemplate {
+func toSDKResourceTemplate(def *ResourceDef) sdkmcp.ResourceTemplate {
 	opts := []sdkmcp.ResourceTemplateOption{
 		sdkmcp.WithTemplateDescription(def.Description),
 	}
@@ -97,9 +98,8 @@ func toSDKResourceContents(rcs []ResourceContent) []sdkmcp.ResourceContents {
 
 // toSDKPrompt converts a SpecGraph PromptDef to an SDK Prompt.
 func toSDKPrompt(def PromptDef) sdkmcp.Prompt {
-	opts := []sdkmcp.PromptOption{
-		sdkmcp.WithPromptDescription(def.Description),
-	}
+	opts := make([]sdkmcp.PromptOption, 1, 1+len(def.Arguments))
+	opts[0] = sdkmcp.WithPromptDescription(def.Description)
 	for _, arg := range def.Arguments {
 		argOpts := []sdkmcp.ArgumentOption{}
 		if arg.Description != "" {

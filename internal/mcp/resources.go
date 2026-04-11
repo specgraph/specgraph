@@ -103,8 +103,12 @@ func constitutionResourceHandler(c *Client) ResourceHandler {
 func constitutionLayerResourceHandler(c *Client) ResourceHandler {
 	return func(ctx context.Context, uri string) ([]ResourceContent, error) {
 		layer := extractSlugFromURI(uri)
+		enumLayer := constitutionLayerFromString(layer)
+		if enumLayer == specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED {
+			return nil, fmt.Errorf("unknown constitution layer %q", layer)
+		}
 		resp, err := c.Constitution.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{
-			Layer: constitutionLayerFromString(layer),
+			Layer: enumLayer,
 		}))
 		if err != nil {
 			return nil, fmt.Errorf("get constitution layer %s: %w", layer, err)

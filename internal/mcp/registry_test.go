@@ -12,7 +12,7 @@ import (
 
 func TestRegistry_ToolsFilteredByTier(t *testing.T) {
 	r := NewRegistry()
-	noop := func(ctx context.Context, params map[string]any) (*ToolResult, error) {
+	noop := func(_ context.Context, _ map[string]any) (*ToolResult, error) {
 		return textResult("ok"), nil
 	}
 
@@ -35,7 +35,7 @@ func TestRegistry_ToolsFilteredByTier(t *testing.T) {
 
 func TestRegistry_LookupTool(t *testing.T) {
 	r := NewRegistry()
-	noop := func(ctx context.Context, params map[string]any) (*ToolResult, error) {
+	noop := func(_ context.Context, _ map[string]any) (*ToolResult, error) {
 		return textResult("ok"), nil
 	}
 	r.AddTool(ToolDef{Name: "spec", Tier: TierCore, Handler: noop})

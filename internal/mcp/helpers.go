@@ -35,12 +35,19 @@ func stringParam(params map[string]any, key string) string {
 }
 
 // int32Param extracts an int32 parameter. JSON numbers arrive as float64.
+// Returns 0 if absent, non-numeric, fractional, or out of int32 range.
 func int32Param(params map[string]any, key string) int32 {
 	switch v := params[key].(type) {
 	case float64:
+		if v != float64(int32(v)) {
+			return 0
+		}
 		return int32(v)
 	case int:
-		return int32(v) //nolint:gosec // internal callers always pass bounded API page sizes
+		if v < -2147483648 || v > 2147483647 {
+			return 0
+		}
+		return int32(v)
 	default:
 		return 0
 	}

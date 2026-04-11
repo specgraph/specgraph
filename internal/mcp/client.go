@@ -1,6 +1,8 @@
 // Copyright 2026 SpecGraph Contributors
 // SPDX-License-Identifier: Apache-2.0
 
+// Package mcp implements a Model Context Protocol server that exposes
+// SpecGraph's ConnectRPC services as MCP tools, resources, and prompts.
 package mcp
 
 import (

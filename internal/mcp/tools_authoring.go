@@ -25,6 +25,20 @@ func RegisterAuthoringTools(r *Registry, c *Client) {
 	r.AddTool(apt.def())
 }
 
+// validateOptionalPosture checks that a non-empty posture string maps to a known enum.
+// Returns the parsed posture and nil, or zero and an errResult if invalid.
+func validateOptionalPosture(params map[string]any) (specv1.Posture, *ToolResult) {
+	s := stringParam(params, "posture")
+	if s == "" {
+		return specv1.Posture_POSTURE_UNSPECIFIED, nil
+	}
+	p := postureFromString(s)
+	if p == specv1.Posture_POSTURE_UNSPECIFIED {
+		return 0, errResult("invalid posture (valid: drive, partner, support)")
+	}
+	return p, nil
+}
+
 // postureFromString converts a friendly string (e.g. "drive") to a Posture enum.
 func postureFromString(s string) specv1.Posture {
 	key := "POSTURE_" + strings.ToUpper(s)
@@ -68,7 +82,7 @@ func (t *authorTool) def() ToolDef {
 				"target_stage": stringProp("Target stage for amend: spark, shape, specify, decompose"),
 				"superseded_by": stringProp("Slug of the replacement spec (required for supersede)"),
 			},
-			"action",
+			"action", "slug",
 		),
 		Handler: t.handle,
 	}
@@ -109,10 +123,14 @@ func (t *authorTool) handleSpark(ctx context.Context, params map[string]any) (*T
 	if err := protojson.Unmarshal([]byte(raw), &out); err != nil {
 		return errResult(fmt.Sprintf("invalid spark output JSON: %v", err)), nil
 	}
+	posture, posErr := validateOptionalPosture(params)
+	if posErr != nil {
+		return posErr, nil
+	}
 	resp, err := t.client.Authoring.Spark(ctx, connect.NewRequest(&specv1.SparkRequest{
 		Slug:    slug,
 		Output:  &out,
-		Posture: postureFromString(stringParam(params, "posture")),
+		Posture: posture,
 	}))
 	if err != nil {
 		return connectErrResult(err)
@@ -133,10 +151,14 @@ func (t *authorTool) handleShape(ctx context.Context, params map[string]any) (*T
 	if err := protojson.Unmarshal([]byte(raw), &out); err != nil {
 		return errResult(fmt.Sprintf("invalid shape output JSON: %v", err)), nil
 	}
+	posture, posErr := validateOptionalPosture(params)
+	if posErr != nil {
+		return posErr, nil
+	}
 	resp, err := t.client.Authoring.Shape(ctx, connect.NewRequest(&specv1.ShapeRequest{
 		Slug:    slug,
 		Output:  &out,
-		Posture: postureFromString(stringParam(params, "posture")),
+		Posture: posture,
 	}))
 	if err != nil {
 		return connectErrResult(err)
@@ -157,10 +179,14 @@ func (t *authorTool) handleSpecify(ctx context.Context, params map[string]any) (
 	if err := protojson.Unmarshal([]byte(raw), &out); err != nil {
 		return errResult(fmt.Sprintf("invalid specify output JSON: %v", err)), nil
 	}
+	posture, posErr := validateOptionalPosture(params)
+	if posErr != nil {
+		return posErr, nil
+	}
 	resp, err := t.client.Authoring.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
 		Slug:    slug,
 		Output:  &out,
-		Posture: postureFromString(stringParam(params, "posture")),
+		Posture: posture,
 	}))
 	if err != nil {
 		return connectErrResult(err)
@@ -181,10 +207,14 @@ func (t *authorTool) handleDecompose(ctx context.Context, params map[string]any)
 	if err := protojson.Unmarshal([]byte(raw), &out); err != nil {
 		return errResult(fmt.Sprintf("invalid decompose output JSON: %v", err)), nil
 	}
+	posture, posErr := validateOptionalPosture(params)
+	if posErr != nil {
+		return posErr, nil
+	}
 	resp, err := t.client.Authoring.Decompose(ctx, connect.NewRequest(&specv1.DecomposeRequest{
 		Slug:    slug,
 		Output:  &out,
-		Posture: postureFromString(stringParam(params, "posture")),
+		Posture: posture,
 	}))
 	if err != nil {
 		return connectErrResult(err)
@@ -211,10 +241,18 @@ func (t *authorTool) handleAmend(ctx context.Context, params map[string]any) (*T
 	if slug == "" {
 		return errResult("slug is required for amend"), nil
 	}
+	targetStageStr := stringParam(params, "target_stage")
+	targetStage := specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED
+	if targetStageStr != "" {
+		targetStage = authoringStageFromString(targetStageStr)
+		if targetStage == specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED {
+			return errResult("invalid target_stage (valid: spark, shape, specify, decompose, approved)"), nil
+		}
+	}
 	resp, err := t.client.Authoring.Amend(ctx, connect.NewRequest(&specv1.AmendRequest{
 		Slug:        slug,
 		Reason:      stringParam(params, "reason"),
-		TargetStage: authoringStageFromString(stringParam(params, "target_stage")),
+		TargetStage: targetStage,
 	}))
 	if err != nil {
 		return connectErrResult(err)
@@ -264,7 +302,7 @@ func (t *conversationTool) def() ToolDef {
 				"exchanges": stringProp("JSON array of ConversationExchange objects (required for record)"),
 				"is_amend":  boolProp("Whether this conversation is part of an amendment"),
 			},
-			"action",
+			"action", "slug",
 		),
 		Handler: t.handle,
 	}
@@ -295,15 +333,18 @@ func (t *conversationTool) handleRecord(ctx context.Context, params map[string]a
 	if exchangesRaw == "" {
 		return errResult("exchanges is required for record (JSON array of ConversationExchange)"), nil
 	}
-	// Wrap the array in a RecordConversationRequest wrapper and unmarshal via protojson.
-	// We use a temporary wrapper JSON to decode the exchanges array.
-	wrappedJSON := fmt.Sprintf(`{"slug":%q,"stage":%q,"exchanges":%s}`, slug, stage, exchangesRaw)
-	var req specv1.RecordConversationRequest
-	if err := protojson.Unmarshal([]byte(wrappedJSON), &req); err != nil {
+	// Parse exchanges array in isolation to prevent JSON injection.
+	var exchanges specv1.RecordConversationRequest
+	if err := protojson.Unmarshal([]byte(`{"exchanges":`+exchangesRaw+`}`), &exchanges); err != nil {
 		return errResult(fmt.Sprintf("invalid exchanges JSON: %v", err)), nil
 	}
-	req.IsAmend = boolParam(params, "is_amend")
-	resp, err := t.client.Authoring.RecordConversation(ctx, connect.NewRequest(&req))
+	req := &specv1.RecordConversationRequest{
+		Slug:      slug,
+		Stage:     stage,
+		Exchanges: exchanges.Exchanges,
+		IsAmend:   boolParam(params, "is_amend"),
+	}
+	resp, err := t.client.Authoring.RecordConversation(ctx, connect.NewRequest(req))
 	if err != nil {
 		return connectErrResult(err)
 	}
@@ -349,7 +390,7 @@ func (t *analyticalPassTool) def() ToolDef {
 				),
 				"findings": stringProp("JSON array of AnalyticalFindingInput objects (required for store)"),
 			},
-			"action",
+			"action", "slug",
 		),
 		Handler: t.handle,
 	}
@@ -372,7 +413,14 @@ func (t *analyticalPassTool) handleRun(ctx context.Context, params map[string]an
 	if slug == "" {
 		return errResult("slug is required for run"), nil
 	}
-	passType := passTypeFromString(stringParam(params, "pass_type"))
+	passTypeStr := stringParam(params, "pass_type")
+	if passTypeStr == "" {
+		return errResult("pass_type is required for run"), nil
+	}
+	passType := passTypeFromString(passTypeStr)
+	if passType == specv1.PassType_PASS_TYPE_UNSPECIFIED {
+		return errResult("invalid pass_type for run"), nil
+	}
 	resp, err := t.client.AnalyticalPass.RunAnalyticalPass(ctx, connect.NewRequest(&specv1.RunAnalyticalPassRequest{
 		Slug:     slug,
 		PassType: passType,
@@ -392,14 +440,25 @@ func (t *analyticalPassTool) handleStore(ctx context.Context, params map[string]
 	if findingsRaw == "" {
 		return errResult("findings is required for store (JSON array of AnalyticalFindingInput)"), nil
 	}
-	// Use protojson to unmarshal the findings array via a wrapper.
-	wrappedJSON := fmt.Sprintf(`{"slug":%q,"findings":%s}`, slug, findingsRaw)
-	var req specv1.StoreFindingsRequest
-	if err := protojson.Unmarshal([]byte(wrappedJSON), &req); err != nil {
+	// Parse findings array in isolation to prevent JSON injection.
+	var findings specv1.StoreFindingsRequest
+	if err := protojson.Unmarshal([]byte(`{"findings":`+findingsRaw+`}`), &findings); err != nil {
 		return errResult(fmt.Sprintf("invalid findings JSON: %v", err)), nil
 	}
-	req.PassType = passTypeFromString(stringParam(params, "pass_type"))
-	resp, err := t.client.AnalyticalPass.StoreFindings(ctx, connect.NewRequest(&req))
+	passTypeStr := stringParam(params, "pass_type")
+	if passTypeStr == "" {
+		return errResult("pass_type is required for store"), nil
+	}
+	passType := passTypeFromString(passTypeStr)
+	if passType == specv1.PassType_PASS_TYPE_UNSPECIFIED {
+		return errResult("invalid pass_type for store"), nil
+	}
+	req := &specv1.StoreFindingsRequest{
+		Slug:     slug,
+		PassType: passType,
+		Findings: findings.Findings,
+	}
+	resp, err := t.client.AnalyticalPass.StoreFindings(ctx, connect.NewRequest(req))
 	if err != nil {
 		return connectErrResult(err)
 	}

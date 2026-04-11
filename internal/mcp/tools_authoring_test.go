@@ -216,6 +216,257 @@ func TestAuthorTool_UnknownAction(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "delete")
 }
 
+func TestAuthorTool_Shape(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{
+		shape: func(req *specv1.ShapeRequest) (*specv1.ShapeResponse, error) {
+			require.Equal(t, "my-spec", req.GetSlug())
+			require.NotNil(t, req.GetOutput())
+			require.Equal(t, []string{"auth"}, req.GetOutput().GetScopeIn())
+			return &specv1.ShapeResponse{
+				Output: req.GetOutput(),
+			}, nil
+		},
+	}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "shape",
+		"slug":   "my-spec",
+		"output": `{"scopeIn":["auth"],"chosenApproach":"oauth2"}`,
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+}
+
+func TestAuthorTool_Shape_MissingSlug(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "shape",
+		"output": `{"scopeIn":["auth"]}`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
+func TestAuthorTool_Shape_MissingOutput(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "shape",
+		"slug":   "my-spec",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "output")
+}
+
+func TestAuthorTool_Shape_InvalidJSON(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "shape",
+		"slug":   "my-spec",
+		"output": `{{{not valid`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "invalid shape output JSON")
+}
+
+func TestAuthorTool_Specify(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{
+		specify: func(req *specv1.SpecifyRequest) (*specv1.SpecifyResponse, error) {
+			require.Equal(t, "my-spec", req.GetSlug())
+			require.NotNil(t, req.GetOutput())
+			require.Equal(t, []string{"state is never negative"}, req.GetOutput().GetInvariants())
+			return &specv1.SpecifyResponse{
+				Output: req.GetOutput(),
+			}, nil
+		},
+	}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "specify",
+		"slug":   "my-spec",
+		"output": `{"invariants":["state is never negative"]}`,
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+}
+
+func TestAuthorTool_Specify_MissingSlug(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "specify",
+		"output": `{"invariants":["x"]}`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
+func TestAuthorTool_Specify_MissingOutput(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "specify",
+		"slug":   "my-spec",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "output")
+}
+
+func TestAuthorTool_Specify_InvalidJSON(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "specify",
+		"slug":   "my-spec",
+		"output": `not json at all`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "invalid specify output JSON")
+}
+
+func TestAuthorTool_Decompose(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{
+		decompose: func(req *specv1.DecomposeRequest) (*specv1.DecomposeResponse, error) {
+			require.Equal(t, "my-spec", req.GetSlug())
+			require.NotNil(t, req.GetOutput())
+			return &specv1.DecomposeResponse{
+				Output: req.GetOutput(),
+			}, nil
+		},
+	}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "decompose",
+		"slug":   "my-spec",
+		"output": `{"strategy":"DECOMPOSITION_STRATEGY_VERTICAL_SLICE"}`,
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+}
+
+func TestAuthorTool_Decompose_MissingSlug(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "decompose",
+		"output": `{"strategy":"DECOMPOSITION_STRATEGY_VERTICAL"}`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
+func TestAuthorTool_Decompose_MissingOutput(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "decompose",
+		"slug":   "my-spec",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "output")
+}
+
+func TestAuthorTool_Decompose_InvalidJSON(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "decompose",
+		"slug":   "my-spec",
+		"output": `[invalid`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "invalid decompose output JSON")
+}
+
+func TestAuthorTool_Amend_MissingSlug(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "amend",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
+func TestAuthorTool_Supersede_MissingSlug(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "supersede",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
 // ---------------------------------------------------------------------------
 // conversationTool tests
 // ---------------------------------------------------------------------------
@@ -307,6 +558,57 @@ func TestConversationTool_Record_InvalidJSON(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "invalid exchanges JSON")
 }
 
+func TestConversationTool_Record_MissingSlug(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("conversation")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "record",
+		"stage":     "spark",
+		"exchanges": `[{"role":"probe","content":"what?"}]`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
+func TestConversationTool_Record_MissingStage(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("conversation")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "record",
+		"slug":      "my-spec",
+		"exchanges": `[{"role":"probe","content":"what?"}]`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "stage")
+}
+
+func TestConversationTool_Record_MissingExchanges(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("conversation")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "record",
+		"slug":   "my-spec",
+		"stage":  "spark",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "exchanges")
+}
+
 func TestConversationTool_UnknownAction(t *testing.T) {
 	c := &Client{Authoring: &mockAuthoringService{}}
 	r := NewRegistry()
@@ -368,6 +670,39 @@ func TestAnalyticalPassTool_Run_MissingSlug(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "slug")
 }
 
+func TestAnalyticalPassTool_Run_MissingPassType(t *testing.T) {
+	c := &Client{AnalyticalPass: &mockAnalyticalPassService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("analytical_pass")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "run",
+		"slug":   "my-spec",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "pass_type")
+}
+
+func TestAnalyticalPassTool_Run_InvalidPassType(t *testing.T) {
+	c := &Client{AnalyticalPass: &mockAnalyticalPassService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("analytical_pass")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "run",
+		"slug":      "my-spec",
+		"pass_type": "not-a-real-pass",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "invalid pass_type")
+}
+
 func TestAnalyticalPassTool_Store(t *testing.T) {
 	c := &Client{AnalyticalPass: &mockAnalyticalPassService{
 		storeFindings: func(req *specv1.StoreFindingsRequest) (*specv1.StoreFindingsResponse, error) {
@@ -411,6 +746,75 @@ func TestAnalyticalPassTool_Store_InvalidJSON(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, result.IsError)
 	require.Contains(t, result.Content[0].Text, "invalid findings JSON")
+}
+
+func TestAnalyticalPassTool_Store_MissingSlug(t *testing.T) {
+	c := &Client{AnalyticalPass: &mockAnalyticalPassService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("analytical_pass")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "store",
+		"pass_type": "constitution-check",
+		"findings":  `[{"severity":"FINDING_SEVERITY_WARNING","summary":"x"}]`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
+func TestAnalyticalPassTool_Store_MissingFindings(t *testing.T) {
+	c := &Client{AnalyticalPass: &mockAnalyticalPassService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("analytical_pass")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "store",
+		"slug":      "my-spec",
+		"pass_type": "constitution-check",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "findings")
+}
+
+func TestAnalyticalPassTool_Store_MissingPassType(t *testing.T) {
+	c := &Client{AnalyticalPass: &mockAnalyticalPassService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("analytical_pass")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":   "store",
+		"slug":     "my-spec",
+		"findings": `[{"severity":"FINDING_SEVERITY_WARNING","summary":"x"}]`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "pass_type")
+}
+
+func TestAnalyticalPassTool_Store_InvalidPassType(t *testing.T) {
+	c := &Client{AnalyticalPass: &mockAnalyticalPassService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("analytical_pass")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "store",
+		"slug":      "my-spec",
+		"pass_type": "bogus-pass",
+		"findings":  `[{"severity":"FINDING_SEVERITY_WARNING","summary":"x"}]`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "invalid pass_type")
 }
 
 func TestAnalyticalPassTool_UnknownAction(t *testing.T) {

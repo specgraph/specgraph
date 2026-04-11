@@ -606,3 +606,175 @@ func TestExecutionEventsTool_MissingSlug(t *testing.T) {
 	require.True(t, result.IsError)
 	require.Contains(t, result.Content[0].Text, "slug")
 }
+
+// ---------------------------------------------------------------------------
+// claimTool — unclaim and heartbeat missing-param tests
+// ---------------------------------------------------------------------------
+
+func TestClaimTool_Unclaim_MissingSpecSlug(t *testing.T) {
+	c := &Client{Claim: &mockClaimService{}}
+	r := NewRegistry()
+	RegisterExecutionTools(r, c)
+	tool, ok := r.LookupTool("claim")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "unclaim",
+		"agent":  "agent-1",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "spec_slug")
+}
+
+func TestClaimTool_Unclaim_MissingAgent(t *testing.T) {
+	c := &Client{Claim: &mockClaimService{}}
+	r := NewRegistry()
+	RegisterExecutionTools(r, c)
+	tool, ok := r.LookupTool("claim")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "unclaim",
+		"spec_slug": "auth-spec",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "agent")
+}
+
+func TestClaimTool_Heartbeat_MissingSpecSlug(t *testing.T) {
+	c := &Client{Claim: &mockClaimService{}}
+	r := NewRegistry()
+	RegisterExecutionTools(r, c)
+	tool, ok := r.LookupTool("claim")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "heartbeat",
+		"agent":  "agent-1",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "spec_slug")
+}
+
+func TestClaimTool_Heartbeat_MissingAgent(t *testing.T) {
+	c := &Client{Claim: &mockClaimService{}}
+	r := NewRegistry()
+	RegisterExecutionTools(r, c)
+	tool, ok := r.LookupTool("claim")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "heartbeat",
+		"spec_slug": "auth-spec",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "agent")
+}
+
+// ---------------------------------------------------------------------------
+// reportTool — missing slug/agent for progress, blocker, completion
+// ---------------------------------------------------------------------------
+
+func TestReportTool_Progress_MissingSlug(t *testing.T) {
+	c := &Client{Execution: &mockExecutionService{}}
+	r := NewRegistry()
+	RegisterExecutionTools(r, c)
+	tool, ok := r.LookupTool("report")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":  "progress",
+		"agent":   "agent-1",
+		"message": "done",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
+func TestReportTool_Progress_MissingAgent(t *testing.T) {
+	c := &Client{Execution: &mockExecutionService{}}
+	r := NewRegistry()
+	RegisterExecutionTools(r, c)
+	tool, ok := r.LookupTool("report")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":  "progress",
+		"slug":    "auth-spec",
+		"message": "done",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "agent")
+}
+
+func TestReportTool_Blocker_MissingSlug(t *testing.T) {
+	c := &Client{Execution: &mockExecutionService{}}
+	r := NewRegistry()
+	RegisterExecutionTools(r, c)
+	tool, ok := r.LookupTool("report")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":      "blocker",
+		"agent":       "agent-1",
+		"description": "db is down",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
+func TestReportTool_Blocker_MissingAgent(t *testing.T) {
+	c := &Client{Execution: &mockExecutionService{}}
+	r := NewRegistry()
+	RegisterExecutionTools(r, c)
+	tool, ok := r.LookupTool("report")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":      "blocker",
+		"slug":        "auth-spec",
+		"description": "db is down",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "agent")
+}
+
+func TestReportTool_Completion_MissingSlug(t *testing.T) {
+	c := &Client{Execution: &mockExecutionService{}}
+	r := NewRegistry()
+	RegisterExecutionTools(r, c)
+	tool, ok := r.LookupTool("report")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "completion",
+		"agent":  "agent-1",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
+func TestReportTool_Completion_MissingAgent(t *testing.T) {
+	c := &Client{Execution: &mockExecutionService{}}
+	r := NewRegistry()
+	RegisterExecutionTools(r, c)
+	tool, ok := r.LookupTool("report")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "completion",
+		"slug":   "auth-spec",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "agent")
+}

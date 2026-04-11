@@ -53,6 +53,7 @@
 ### Task 1: Foundation Types and Helpers
 
 **Files:**
+
 - Create: `internal/mcp/types.go`
 - Create: `internal/mcp/helpers.go`
 - Create: `internal/mcp/helpers_test.go`
@@ -415,6 +416,7 @@ git commit -s -m "feat(mcp): add foundation types and helpers for MCP server"
 ### Task 2: Tool Registry
 
 **Files:**
+
 - Create: `internal/mcp/registry.go`
 - Create: `internal/mcp/registry_test.go`
 
@@ -581,6 +583,7 @@ git commit -s -m "feat(mcp): add tool/resource/prompt registry with tier filteri
 ### Task 3: ConnectRPC Client Wrapper
 
 **Files:**
+
 - Create: `internal/mcp/client.go`
 
 - [ ] **Step 1: Write client**
@@ -652,6 +655,7 @@ git commit -s -m "feat(mcp): add ConnectRPC client wrapper for MCP handlers"
 ### Task 4: Test Infrastructure and Core Tier Tools — spec, decision
 
 **Files:**
+
 - Create: `internal/mcp/testhelpers_test.go`
 - Create: `internal/mcp/tools_spec.go`
 - Create: `internal/mcp/tools_spec_test.go`
@@ -1210,6 +1214,7 @@ git commit -s -m "feat(mcp): add spec and decision tool handlers with tests"
 ### Task 5: Core Tier Tools — edge, graph_query, constitution, changes, findings, health
 
 **Files:**
+
 - Create: `internal/mcp/tools_graph.go`
 - Create: `internal/mcp/tools_graph_test.go`
 - Create: `internal/mcp/tools_core.go`
@@ -1765,6 +1770,7 @@ git commit -s -m "feat(mcp): add core tier tools — edge, graph_query, constitu
 ### Task 6: Authoring Tier Tools
 
 **Files:**
+
 - Create: `internal/mcp/tools_authoring.go`
 - Create: `internal/mcp/tools_authoring_test.go`
 - Create: `internal/mcp/tools_lifecycle.go`
@@ -2512,6 +2518,7 @@ git commit -s -m "feat(mcp): add authoring tier tools — author, conversation, 
 ### Task 7: Execution Tier Tools
 
 **Files:**
+
 - Create: `internal/mcp/tools_execution.go`
 - Create: `internal/mcp/tools_execution_test.go`
 
@@ -3123,6 +3130,7 @@ git commit -s -m "feat(mcp): add execution tier tools — claim, slice, bundle, 
 ### Task 8: Resources
 
 **Files:**
+
 - Create: `internal/mcp/resources.go`
 - Create: `internal/mcp/resources_test.go`
 
@@ -3445,6 +3453,7 @@ git commit -s -m "feat(mcp): add MCP resources — specs, decisions, constitutio
 ### Task 9: Prompts
 
 **Files:**
+
 - Create: `internal/mcp/prompts.go`
 - Create: `internal/mcp/prompts_test.go`
 
@@ -3664,6 +3673,7 @@ git commit -s -m "feat(mcp): add MCP prompts — spark, shape, specify, decompos
 ### Task 10: SDK Integration — convert, tiers, server
 
 **Files:**
+
 - Create: `internal/mcp/convert.go`
 - Create: `internal/mcp/convert_test.go`
 - Create: `internal/mcp/tiers.go`
@@ -4196,6 +4206,7 @@ git commit -s -m "feat(mcp): add SDK integration — convert, tiers, server wiri
 ### Task 11: `specgraph mcp` CLI Command
 
 **Files:**
+
 - Create: `cmd/specgraph/mcp.go`
 
 - [ ] **Step 1: Write the CLI command**
@@ -4285,6 +4296,7 @@ git commit -s -m "feat(mcp): add 'specgraph mcp' CLI command for stdio transport
 ### Task 12: MCP HTTP Endpoint in `specgraph serve`
 
 **Files:**
+
 - Modify: `cmd/specgraph/serve.go`
 
 - [ ] **Step 1: Read current serve.go to identify insertion points**
@@ -4296,6 +4308,7 @@ Read `cmd/specgraph/serve.go` to find where the HTTP mux is created, where middl
 Add these changes to `cmd/specgraph/serve.go`:
 
 1. Import the mcp package:
+
 ```go
 import (
 	// ... existing imports ...
@@ -4304,6 +4317,7 @@ import (
 ```
 
 2. After the ConnectRPC mux setup and service registration, add the MCP endpoint:
+
 ```go
 // Create MCP server with a loopback ConnectRPC client
 mcpHTTPClient := newHTTPClient(projectSlug)
@@ -4324,6 +4338,7 @@ mux.Handle("/mcp/", http.StripPrefix("/mcp", http.HandlerFunc(func(w http.Respon
 ```
 
 3. Log the MCP endpoint availability alongside the ConnectRPC log:
+
 ```go
 slog.Info("MCP endpoint available", "path", "/mcp/")
 ```
@@ -4357,6 +4372,7 @@ Run: `task fmt`
 Run: `task check`
 
 Fix any issues that arise. Common ones:
+
 - `revive`: package comment needed for `internal/mcp/` — the `types.go` file has it
 - `govet -shadow`: variable shadowing in switch cases — rename if needed
 - `wrapcheck`: exported functions in `server.go` may need error wrapping

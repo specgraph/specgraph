@@ -11,7 +11,10 @@ import (
 // on its reported Implementation name. Execution engines (polecat, gastown)
 // get full access; authoring IDEs get authoring + core; everything else gets
 // core only.
-func TierFromClientInfo(info sdkmcp.Implementation) Tier {
+func TierFromClientInfo(info *sdkmcp.Implementation) Tier {
+	if info == nil {
+		return TierCore
+	}
 	switch info.Name {
 	case "polecat", "gastown":
 		return TierExecution

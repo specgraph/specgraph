@@ -165,10 +165,15 @@ func (t *specTool) handleCompare(ctx context.Context, params map[string]any) (*T
 	if slug == "" {
 		return errResult("slug is required for compare"), nil
 	}
+	fromVersion := int32Param(params, "from_version")
+	toVersion := int32Param(params, "to_version")
+	if fromVersion == 0 || toVersion == 0 {
+		return errResult("from_version and to_version are required for compare"), nil
+	}
 	resp, err := t.client.Spec.CompareVersions(ctx, connect.NewRequest(&specv1.CompareVersionsRequest{
 		Slug:        slug,
-		FromVersion: int32Param(params, "from_version"),
-		ToVersion:   int32Param(params, "to_version"),
+		FromVersion: fromVersion,
+		ToVersion:   toVersion,
 	}))
 	if err != nil {
 		result, rerr := connectErrResult(err)

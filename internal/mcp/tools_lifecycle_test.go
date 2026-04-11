@@ -383,3 +383,58 @@ func TestDriftScopeFromString(t *testing.T) {
 	require.Equal(t, specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED, driftScopeFromString("unknown"))
 	require.Equal(t, specv1.DriftScope_DRIFT_SCOPE_UNSPECIFIED, driftScopeFromString(""))
 }
+
+// ---------------------------------------------------------------------------
+// syncTool — github action test
+// ---------------------------------------------------------------------------
+
+func TestSyncTool_GitHub(t *testing.T) {
+	c := &Client{Sync: &mockSyncService{
+		syncGitHub: func() (*specv1.SyncResponse, error) {
+			return &specv1.SyncResponse{
+				Synced: 3,
+			}, nil
+		},
+	}}
+	r := NewRegistry()
+	RegisterLifecycleTools(r, c)
+	tool, ok := r.LookupTool("sync")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "github",
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+}
+
+// ---------------------------------------------------------------------------
+// driftTool — acknowledge with all flag
+// ---------------------------------------------------------------------------
+
+func TestDriftTool_Acknowledge_AllFlag(t *testing.T) {
+	c := &Client{Lifecycle: &mockLifecycleService{
+		acknowledgeDrift: func(req *specv1.DriftAcknowledgeRequest) (*specv1.DriftAcknowledgeResponse, error) {
+			require.Equal(t, "my-spec", req.GetSlug())
+			require.Equal(t, "reviewed all upstreams", req.GetNote())
+			require.True(t, req.GetAll())
+			return &specv1.DriftAcknowledgeResponse{
+				Report: &specv1.DriftReport{SpecSlug: "my-spec"},
+			}, nil
+		},
+	}}
+	r := NewRegistry()
+	RegisterLifecycleTools(r, c)
+	tool, ok := r.LookupTool("drift")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "acknowledge",
+		"slug":   "my-spec",
+		"note":   "reviewed all upstreams",
+		"all":    true,
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "my-spec")
+}

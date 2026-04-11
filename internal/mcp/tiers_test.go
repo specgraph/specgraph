@@ -9,6 +9,13 @@ import (
 	sdkmcp "github.com/mark3labs/mcp-go/mcp"
 )
 
+func TestTierFromClientInfo_Nil(t *testing.T) {
+	got := TierFromClientInfo(nil)
+	if got != TierCore {
+		t.Errorf("TierFromClientInfo(nil) = %v, want %v", got, TierCore)
+	}
+}
+
 func TestTierFromClientInfo(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -30,7 +37,7 @@ func TestTierFromClientInfo(t *testing.T) {
 				Name:    tt.client,
 				Version: "1.0.0",
 			}
-			got := TierFromClientInfo(info)
+			got := TierFromClientInfo(&info)
 			if got != tt.wantTier {
 				t.Errorf("TierFromClientInfo(%q) = %v, want %v", tt.client, got, tt.wantTier)
 			}

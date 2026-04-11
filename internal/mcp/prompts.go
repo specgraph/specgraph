@@ -72,7 +72,11 @@ func RegisterPrompts(r *Registry, c *Client) {
 // stagePromptHandler returns a PromptHandler that fetches prompt templates for
 // the given authoring stage and returns the first template as a user message.
 func stagePromptHandler(c *Client, stage string) PromptHandler {
-	return func(ctx context.Context, _ map[string]string) (*PromptResult, error) {
+	return func(ctx context.Context, args map[string]string) (*PromptResult, error) {
+		specSlug := args["spec_slug"]
+		if specSlug == "" {
+			return nil, fmt.Errorf("spec_slug is required for %s prompt", stage)
+		}
 		resp, err := c.Authoring.GetPrompts(ctx, connect.NewRequest(&specv1.GetPromptsRequest{
 			Stage: authoringStageFromString(stage),
 		}))
@@ -86,6 +90,7 @@ func stagePromptHandler(c *Client, stage string) PromptHandler {
 		} else {
 			text = templates[0].GetTemplate()
 		}
+		text += "\n\nSpec: " + specSlug
 		return &PromptResult{
 			Messages: []PromptMessage{
 				{Role: "user", Content: text},
@@ -98,6 +103,9 @@ func stagePromptHandler(c *Client, stage string) PromptHandler {
 // the topic and optional context to the fetched template.
 func sparkPromptHandler(c *Client) PromptHandler {
 	return func(ctx context.Context, args map[string]string) (*PromptResult, error) {
+		if args["topic"] == "" {
+			return nil, fmt.Errorf("topic is required for spark prompt")
+		}
 		resp, err := c.Authoring.GetPrompts(ctx, connect.NewRequest(&specv1.GetPromptsRequest{
 			Stage: authoringStageFromString("spark"),
 		}))
@@ -129,8 +137,12 @@ func sparkPromptHandler(c *Client) PromptHandler {
 // and returns its prompt template as a user message.
 func analyticalPromptHandler(c *Client, passType string) PromptHandler {
 	return func(ctx context.Context, args map[string]string) (*PromptResult, error) {
+		specSlug := args["spec_slug"]
+		if specSlug == "" {
+			return nil, fmt.Errorf("spec_slug is required for %s prompt", passType)
+		}
 		resp, err := c.AnalyticalPass.RunAnalyticalPass(ctx, connect.NewRequest(&specv1.RunAnalyticalPassRequest{
-			Slug:     args["spec_slug"],
+			Slug:     specSlug,
 			PassType: passTypeFromString(passType),
 		}))
 		if err != nil {

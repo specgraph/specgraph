@@ -46,7 +46,7 @@ func (r *Registry) LookupTool(name string) (ToolDef, bool) {
 }
 
 // AddResource registers a resource definition.
-func (r *Registry) AddResource(def ResourceDef) {
+func (r *Registry) AddResource(def ResourceDef) { //nolint:gocritic // value receiver keeps API simple
 	r.resources = append(r.resources, def)
 }
 

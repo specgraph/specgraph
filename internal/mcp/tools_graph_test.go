@@ -301,3 +301,215 @@ func TestGraphQueryTool_MissingSlug(t *testing.T) {
 	require.True(t, result.IsError)
 	require.Contains(t, result.Content[0].Text, "slug")
 }
+
+func TestGraphQueryTool_TransitiveDeps_MissingSlug(t *testing.T) {
+	c := &Client{Graph: &mockGraphService{}}
+	r := NewRegistry()
+	RegisterGraphTools(r, c)
+	tool, ok := r.LookupTool("graph_query")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{"action": "transitive_deps"})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
+func TestGraphQueryTool_Impact_MissingSlug(t *testing.T) {
+	c := &Client{Graph: &mockGraphService{}}
+	r := NewRegistry()
+	RegisterGraphTools(r, c)
+	tool, ok := r.LookupTool("graph_query")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{"action": "impact"})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
+func TestGraphQueryTool_CriticalPath_MissingSlug(t *testing.T) {
+	c := &Client{Graph: &mockGraphService{}}
+	r := NewRegistry()
+	RegisterGraphTools(r, c)
+	tool, ok := r.LookupTool("graph_query")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{"action": "critical_path"})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug")
+}
+
+// ---------------------------------------------------------------------------
+// edgeTool — add/remove missing-param and invalid edge_type tests
+// ---------------------------------------------------------------------------
+
+func TestEdgeTool_Add_MissingFromSlug(t *testing.T) {
+	c := &Client{Graph: &mockGraphService{}}
+	r := NewRegistry()
+	RegisterGraphTools(r, c)
+	tool, ok := r.LookupTool("edge")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":  "add",
+		"to_slug": "spec-b",
+		// from_slug intentionally absent
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "from_slug")
+}
+
+func TestEdgeTool_Add_MissingToSlug(t *testing.T) {
+	c := &Client{Graph: &mockGraphService{}}
+	r := NewRegistry()
+	RegisterGraphTools(r, c)
+	tool, ok := r.LookupTool("edge")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "add",
+		"from_slug": "spec-a",
+		// to_slug intentionally absent
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+}
+
+func TestEdgeTool_Add_InvalidEdgeType(t *testing.T) {
+	c := &Client{Graph: &mockGraphService{}}
+	r := NewRegistry()
+	RegisterGraphTools(r, c)
+	tool, ok := r.LookupTool("edge")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "add",
+		"from_slug": "spec-a",
+		"to_slug":   "spec-b",
+		"edge_type": "not_a_real_type",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "edge_type")
+}
+
+func TestEdgeTool_Remove_MissingFromSlug(t *testing.T) {
+	c := &Client{Graph: &mockGraphService{}}
+	r := NewRegistry()
+	RegisterGraphTools(r, c)
+	tool, ok := r.LookupTool("edge")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":  "remove",
+		"to_slug": "spec-b",
+		// from_slug intentionally absent
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+}
+
+func TestEdgeTool_Remove_MissingToSlug(t *testing.T) {
+	c := &Client{Graph: &mockGraphService{}}
+	r := NewRegistry()
+	RegisterGraphTools(r, c)
+	tool, ok := r.LookupTool("edge")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "remove",
+		"from_slug": "spec-a",
+		// to_slug intentionally absent
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+}
+
+func TestEdgeTool_Remove_InvalidEdgeType(t *testing.T) {
+	c := &Client{Graph: &mockGraphService{}}
+	r := NewRegistry()
+	RegisterGraphTools(r, c)
+	tool, ok := r.LookupTool("edge")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "remove",
+		"from_slug": "spec-a",
+		"to_slug":   "spec-b",
+		"edge_type": "not_a_real_type",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "edge_type")
+}
+
+func TestEdgeTool_List_InvalidEdgeType(t *testing.T) {
+	c := &Client{Graph: &mockGraphService{}}
+	r := NewRegistry()
+	RegisterGraphTools(r, c)
+	tool, ok := r.LookupTool("edge")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "list",
+		"slug":      "spec-a",
+		"edge_type": "not_a_real_type",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "edge_type")
+}
+
+func TestEdgeTool_List_WithValidEdgeType(t *testing.T) {
+	c := &Client{Graph: &mockGraphService{
+		listEdges: func(slug string) (*specv1.ListEdgesResponse, error) {
+			require.Equal(t, "spec-a", slug)
+			return &specv1.ListEdgesResponse{
+				Edges: []*specv1.Edge{
+					{FromId: "spec-a", ToId: "spec-b", EdgeType: specv1.EdgeType_EDGE_TYPE_BLOCKS},
+				},
+			}, nil
+		},
+	}}
+	r := NewRegistry()
+	RegisterGraphTools(r, c)
+	tool, ok := r.LookupTool("edge")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "list",
+		"slug":      "spec-a",
+		"edge_type": "blocks",
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+}
+
+// ---------------------------------------------------------------------------
+// edgeTypeFromString helper tests
+// ---------------------------------------------------------------------------
+
+func TestEdgeTypeFromString(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected specv1.EdgeType
+	}{
+		{"depends_on", specv1.EdgeType_EDGE_TYPE_DEPENDS_ON},
+		{"blocks", specv1.EdgeType_EDGE_TYPE_BLOCKS},
+		{"composes", specv1.EdgeType_EDGE_TYPE_COMPOSES},
+		{"relates_to", specv1.EdgeType_EDGE_TYPE_RELATES_TO},
+		{"informs", specv1.EdgeType_EDGE_TYPE_INFORMS},
+		{"decided_in", specv1.EdgeType_EDGE_TYPE_DECIDED_IN},
+		{"supersedes", specv1.EdgeType_EDGE_TYPE_SUPERSEDES},
+		{"unknown_value", specv1.EdgeType_EDGE_TYPE_UNSPECIFIED},
+		{"", specv1.EdgeType_EDGE_TYPE_UNSPECIFIED},
+	}
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			require.Equal(t, tc.expected, edgeTypeFromString(tc.input))
+		})
+	}
+}

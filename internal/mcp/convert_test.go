@@ -120,7 +120,7 @@ func TestFromSDKParams(t *testing.T) {
 		},
 	}
 
-	params := fromSDKParams(req)
+	params := fromSDKParams(&req)
 
 	if params["slug"] != "auth-service" {
 		t.Errorf("slug = %v, want %q", params["slug"], "auth-service")
@@ -138,7 +138,7 @@ func TestFromSDKParams_Empty(t *testing.T) {
 		},
 	}
 
-	params := fromSDKParams(req)
+	params := fromSDKParams(&req)
 
 	if len(params) != 0 {
 		t.Errorf("params length = %d, want 0", len(params))
@@ -153,7 +153,7 @@ func TestToSDKResource(t *testing.T) {
 		MimeType:    "application/json",
 	}
 
-	res := toSDKResource(def)
+	res := toSDKResource(&def)
 
 	if res.URI != "specgraph://constitution" {
 		t.Errorf("URI = %q, want %q", res.URI, "specgraph://constitution")
@@ -178,7 +178,7 @@ func TestToSDKResourceTemplate(t *testing.T) {
 		IsTemplate:  true,
 	}
 
-	tmpl := toSDKResourceTemplate(def)
+	tmpl := toSDKResourceTemplate(&def)
 
 	if tmpl.Name != "spec" {
 		t.Errorf("Name = %q, want %q", tmpl.Name, "spec")

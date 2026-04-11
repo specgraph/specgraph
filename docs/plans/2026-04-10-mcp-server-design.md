@@ -48,7 +48,7 @@ All tool handlers, resource handlers, prompt handlers, and the ConnectRPC client
 
 #### Stdio (`specgraph mcp`)
 
-```
+```text
 Claude Code / Cursor
     ↓ stdin/stdout (JSON-RPC)
 specgraph mcp (lightweight process)
@@ -62,7 +62,7 @@ specgraph serve (full server)
 
 #### HTTP (embedded in `specgraph serve`)
 
-```
+```text
 Gastown polecat / remote client
     ↓ HTTP (streamable HTTP / SSE)
 specgraph serve
@@ -96,7 +96,7 @@ Two implementations:
 
 ## Package Structure
 
-```
+```text
 internal/mcp/
 ├── server.go          # MCP server setup, transport wiring (imports SDK)
 ├── client.go          # SpecGraphClient interface + RemoteClient/LocalClient
@@ -125,9 +125,9 @@ Three tiers, each inclusive of the one below:
 
 | Tier | Target Client | Tool Count | Focus |
 |------|---------------|------------|-------|
-| **core** | General MCP clients | ~8 | Read-heavy: browse specs, query graph, read constitution, view findings |
-| **authoring** | Claude Code, Cursor | +7 (~15) | Core + authoring funnel, decisions, drift, analytical passes |
-| **execution** | Gastown polecats | +6 (~21) | Authoring + claims, slices, progress reporting, bundles |
+| **core** | General MCP clients | 7 | Read-heavy: browse specs, query graph, read constitution, view findings |
+| **authoring** | Claude Code, Cursor | +7 (14) | Core + authoring funnel, decisions, drift, analytical passes |
+| **execution** | Gastown polecats | +6 (20) | Authoring + claims, slices, progress reporting, bundles |
 
 ### Capability Negotiation
 
@@ -191,12 +191,11 @@ Resource-oriented CRUD and graph queries.
 
 | Tool | Actions | Maps to RPCs |
 |------|---------|--------------|
-| `spec` | `get`, `list`, `create`, `update` | GetSpec, ListSpecs, CreateSpec, UpdateSpec |
+| `spec` | `get`, `list`, `create`, `update`, `changes`, `compare` | GetSpec, ListSpecs, CreateSpec, UpdateSpec, ListChanges, CompareVersions |
 | `decision` | `get`, `list`, `create`, `update` | GetDecision, ListDecisions, CreateDecision, UpdateDecision |
 | `edge` | `add`, `remove`, `list` | AddEdge, RemoveEdge, ListEdges |
 | `graph_query` | `dependencies`, `transitive_deps`, `impact`, `ready`, `critical_path`, `full` | GetDependencies, GetTransitiveDeps, GetImpact, GetReady, GetCriticalPath, GetFullGraph |
 | `constitution` | `get`, `update` | GetConstitution, UpdateConstitution |
-| `changes` | `list`, `compare` | ListChanges, CompareVersions |
 | `findings` | `list` | ListFindings |
 | `health` | — | Health |
 
@@ -240,7 +239,7 @@ URI-based read-only context for client context windows.
 | Constitution layer | `specgraph://constitution/{layer}` | GetConstitution (filtered) |
 | Graph | `specgraph://graph` | GetFullGraph |
 | Ready specs | `specgraph://graph/ready` | GetReady |
-| Findings | `specgraph://findings?pass_type={type}` | ListFindings |
+| Findings | `specgraph://findings` | ListFindings |
 | Changes | `specgraph://spec/{slug}/changes` | ListChanges |
 
 Constitution layers: `user`, `org`, `project`, `domain`.

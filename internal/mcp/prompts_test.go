@@ -401,6 +401,57 @@ func TestRegisterPrompts_Names(t *testing.T) {
 	require.True(t, names["dependency_review"], "dependency_review prompt missing")
 }
 
+func TestSparkPrompt_MissingTopic(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterPrompts(r, c)
+	var sparkDef *PromptDef
+	for _, p := range r.Prompts() {
+		if p.Name == "spark" {
+			sparkDef = &p
+			break
+		}
+	}
+	require.NotNil(t, sparkDef)
+	_, err := sparkDef.Handler(context.Background(), map[string]string{})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "topic is required")
+}
+
+func TestShapePrompt_MissingSpecSlug(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterPrompts(r, c)
+	var shapeDef *PromptDef
+	for _, p := range r.Prompts() {
+		if p.Name == "shape" {
+			shapeDef = &p
+			break
+		}
+	}
+	require.NotNil(t, shapeDef)
+	_, err := shapeDef.Handler(context.Background(), map[string]string{})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "spec_slug is required")
+}
+
+func TestConstitutionCheckPrompt_MissingSpecSlug(t *testing.T) {
+	c := &Client{AnalyticalPass: &mockAnalyticalPassService{}}
+	r := NewRegistry()
+	RegisterPrompts(r, c)
+	var def *PromptDef
+	for _, p := range r.Prompts() {
+		if p.Name == "constitution_check" {
+			def = &p
+			break
+		}
+	}
+	require.NotNil(t, def)
+	_, err := def.Handler(context.Background(), map[string]string{})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "spec_slug is required")
+}
+
 func TestRegisterPrompts_Arguments(t *testing.T) {
 	c := &Client{}
 	r := NewRegistry()

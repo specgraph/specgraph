@@ -230,8 +230,11 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	server.RegisterAuthHandlers(mux, compositeStore, auth.RequireAuth(compositeStore))
 
 	// Mount MCP streamable HTTP endpoint.
-	// Tier determined by X-Specgraph-MCP-Tier header, or ?tier= query param, defaulting to core.
-	mcpClient := mcppkg.NewClient(newHTTPClient(""), "http://"+cfg.Server.Listen)
+	// TODO(auth): Derive tier from authenticated identity once MCP auth is implemented.
+	// Currently tier is caller-supplied (header/query param). This is acceptable because
+	// the MCP endpoint shares the same auth middleware as ConnectRPC — an unauthenticated
+	// caller can't escalate beyond what the backend RPCs already enforce.
+	mcpClient := mcppkg.NewClient(newHTTPClient(""), selfBaseURL(cfg.Server.Listen))
 	mcpServer := mcppkg.NewServer(mcpClient)
 	mux.Handle("/mcp/", http.StripPrefix("/mcp", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tierStr := r.Header.Get("X-Specgraph-MCP-Tier")
@@ -287,6 +290,19 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	}
 
 	return nil
+}
+
+// selfBaseURL normalizes a listen address into a dialable HTTP base URL.
+// Empty or wildcard hosts (e.g., ":8080", "0.0.0.0:8080") are replaced with 127.0.0.1.
+func selfBaseURL(addr string) string {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "http://127.0.0.1"
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+	return "http://" + net.JoinHostPort(host, port)
 }
 
 // isLoopbackAddr reports whether the listen address refers to a loopback interface.

@@ -38,7 +38,15 @@ func init() {
 }
 
 func runMCP(cmd *cobra.Command, _ []string) error {
-	tierStr, _ := cmd.Flags().GetString("tier")
+	tierStr, err := cmd.Flags().GetString("tier")
+	if err != nil {
+		return fmt.Errorf("tier flag: %w", err)
+	}
+	switch tierStr {
+	case "core", "authoring", "execution":
+	default:
+		return fmt.Errorf("invalid --tier %q (must be core, authoring, or execution)", tierStr)
+	}
 	tier := mcppkg.ParseTier(tierStr)
 
 	baseURL, project, err := resolveBaseURL()

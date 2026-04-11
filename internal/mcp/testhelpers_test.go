@@ -297,6 +297,9 @@ func (m *mockAnalyticalPassService) StoreFindings(_ context.Context, req *connec
 type mockAuthoringService struct {
 	specgraphv1connect.AuthoringServiceClient // panics on unimplemented methods
 	spark              func(req *specv1.SparkRequest) (*specv1.SparkResponse, error)
+	shape              func(req *specv1.ShapeRequest) (*specv1.ShapeResponse, error)
+	specify            func(req *specv1.SpecifyRequest) (*specv1.SpecifyResponse, error)
+	decompose          func(req *specv1.DecomposeRequest) (*specv1.DecomposeResponse, error)
 	approve            func(slug string) (*specv1.ApproveResponse, error)
 	amend              func(req *specv1.AmendRequest) (*specv1.AmendResponse, error)
 	supersede          func(req *specv1.SupersedeRequest) (*specv1.SupersedeResponse, error)
@@ -310,6 +313,39 @@ func (m *mockAuthoringService) Spark(_ context.Context, req *connect.Request[spe
 		panic("mockAuthoringService.Spark not configured")
 	}
 	resp, err := m.spark(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockAuthoringService) Shape(_ context.Context, req *connect.Request[specv1.ShapeRequest]) (*connect.Response[specv1.ShapeResponse], error) {
+	if m.shape == nil {
+		panic("mockAuthoringService.Shape not configured")
+	}
+	resp, err := m.shape(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockAuthoringService) Specify(_ context.Context, req *connect.Request[specv1.SpecifyRequest]) (*connect.Response[specv1.SpecifyResponse], error) {
+	if m.specify == nil {
+		panic("mockAuthoringService.Specify not configured")
+	}
+	resp, err := m.specify(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockAuthoringService) Decompose(_ context.Context, req *connect.Request[specv1.DecomposeRequest]) (*connect.Response[specv1.DecomposeResponse], error) {
+	if m.decompose == nil {
+		panic("mockAuthoringService.Decompose not configured")
+	}
+	resp, err := m.decompose(req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -433,6 +469,7 @@ func (m *mockLifecycleService) Lint(_ context.Context, req *connect.Request[spec
 type mockSyncService struct {
 	specgraphv1connect.SyncServiceClient // panics on unimplemented methods
 	syncBeads     func() (*specv1.SyncResponse, error)
+	syncGitHub    func() (*specv1.SyncResponse, error)
 	getSyncStatus func() (*specv1.SyncStatusResponse, error)
 }
 
@@ -441,6 +478,17 @@ func (m *mockSyncService) SyncBeads(_ context.Context, _ *connect.Request[specv1
 		panic("mockSyncService.SyncBeads not configured")
 	}
 	resp, err := m.syncBeads()
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockSyncService) SyncGitHub(_ context.Context, _ *connect.Request[specv1.SyncGitHubRequest]) (*connect.Response[specv1.SyncResponse], error) {
+	if m.syncGitHub == nil {
+		panic("mockSyncService.SyncGitHub not configured")
+	}
+	resp, err := m.syncGitHub()
 	if err != nil {
 		return nil, err
 	}

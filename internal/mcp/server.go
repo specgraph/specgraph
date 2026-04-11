@@ -5,6 +5,7 @@ package mcp
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	sdkmcp "github.com/mark3labs/mcp-go/mcp"
@@ -58,7 +59,8 @@ func NewServer(client *Client) *Server {
 		}
 
 		// All tiers get all resources.
-		for _, rd := range reg.Resources() {
+		for i := range reg.Resources() {
+			rd := &reg.resources[i]
 			if rd.IsTemplate {
 				srv.AddResourceTemplate(toSDKResourceTemplate(rd), wrapResourceTemplateHandler(rd.Handler))
 			} else {
@@ -94,7 +96,10 @@ func (s *Server) ForTier(tier Tier) *server.MCPServer {
 // is cancelled or an error occurs.
 func (s *Server) ServeStdio(ctx context.Context, tier Tier, stdin io.Reader, stdout io.Writer) error {
 	stdio := server.NewStdioServer(s.ForTier(tier))
-	return stdio.Listen(ctx, stdin, stdout)
+	if err := stdio.Listen(ctx, stdin, stdout); err != nil {
+		return fmt.Errorf("mcp stdio: %w", err)
+	}
+	return nil
 }
 
 // HTTPHandler returns a StreamableHTTPServer for the given tier, suitable
@@ -106,7 +111,7 @@ func (s *Server) HTTPHandler(tier Tier) *server.StreamableHTTPServer {
 // wrapToolHandler adapts a SpecGraph ToolHandler to the mcp-go ToolHandlerFunc signature.
 func wrapToolHandler(h ToolHandler) server.ToolHandlerFunc {
 	return func(ctx context.Context, req sdkmcp.CallToolRequest) (*sdkmcp.CallToolResult, error) {
-		params := fromSDKParams(req)
+		params := fromSDKParams(&req)
 		result, err := h(ctx, params)
 		if err != nil {
 			return nil, err

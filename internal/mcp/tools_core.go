@@ -85,14 +85,21 @@ func (t *constitutionTool) handle(ctx context.Context, params map[string]any) (*
 }
 
 func (t *constitutionTool) handleGet(ctx context.Context, params map[string]any) (*ToolResult, error) {
-	layer := constitutionLayerFromString(stringParam(params, "layer"))
+	layerStr := stringParam(params, "layer")
+	layer := specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED
+	if layerStr != "" {
+		layer = constitutionLayerFromString(layerStr)
+		if layer == specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED {
+			return errResult("invalid layer (valid: user, org, project, domain)"), nil
+		}
+	}
 	resp, err := t.client.Constitution.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{
 		Layer: layer,
 	}))
 	if err != nil {
 		return connectErrResult(err)
 	}
-	return jsonResult(resp.Msg), nil
+	return jsonResult(resp.Msg.GetConstitution()), nil
 }
 
 func (t *constitutionTool) handleUpdate(ctx context.Context, params map[string]any) (*ToolResult, error) {
@@ -136,7 +143,7 @@ func (t *findingsTool) def() ToolDef {
 					"constitution-check", "red-team", "peripheral-vision", "consistency", "simplicity",
 				),
 			},
-			"action",
+			"action", "slug",
 		),
 		Handler: t.handle,
 	}
@@ -157,7 +164,14 @@ func (t *findingsTool) handleList(ctx context.Context, params map[string]any) (*
 	if slug == "" {
 		return errResult("slug is required for list"), nil
 	}
-	passType := passTypeFromString(stringParam(params, "pass_type"))
+	passTypeStr := stringParam(params, "pass_type")
+	passType := specv1.PassType_PASS_TYPE_UNSPECIFIED
+	if passTypeStr != "" {
+		passType = passTypeFromString(passTypeStr)
+		if passType == specv1.PassType_PASS_TYPE_UNSPECIFIED {
+			return errResult("invalid pass_type for list"), nil
+		}
+	}
 	resp, err := t.client.AnalyticalPass.ListFindings(ctx, connect.NewRequest(&specv1.ListFindingsRequest{
 		Slug:     slug,
 		PassType: passType,

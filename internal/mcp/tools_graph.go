@@ -83,10 +83,14 @@ func (t *edgeTool) handleAdd(ctx context.Context, params map[string]any) (*ToolR
 	if fromSlug == "" || toSlug == "" {
 		return errResult("from_slug and to_slug are required for add"), nil
 	}
+	edgeType := edgeTypeFromString(stringParam(params, "edge_type"))
+	if edgeType == specv1.EdgeType_EDGE_TYPE_UNSPECIFIED {
+		return errResult("valid edge_type is required for add"), nil
+	}
 	resp, err := t.client.Graph.AddEdge(ctx, connect.NewRequest(&specv1.AddEdgeRequest{
 		FromSlug: fromSlug,
 		ToSlug:   toSlug,
-		EdgeType: edgeTypeFromString(stringParam(params, "edge_type")),
+		EdgeType: edgeType,
 	}))
 	if err != nil {
 		return connectErrResult(err)
@@ -100,10 +104,14 @@ func (t *edgeTool) handleRemove(ctx context.Context, params map[string]any) (*To
 	if fromSlug == "" || toSlug == "" {
 		return errResult("from_slug and to_slug are required for remove"), nil
 	}
+	edgeType := edgeTypeFromString(stringParam(params, "edge_type"))
+	if edgeType == specv1.EdgeType_EDGE_TYPE_UNSPECIFIED {
+		return errResult("valid edge_type is required for remove"), nil
+	}
 	resp, err := t.client.Graph.RemoveEdge(ctx, connect.NewRequest(&specv1.RemoveEdgeRequest{
 		FromSlug: fromSlug,
 		ToSlug:   toSlug,
-		EdgeType: edgeTypeFromString(stringParam(params, "edge_type")),
+		EdgeType: edgeType,
 	}))
 	if err != nil {
 		return connectErrResult(err)
@@ -116,9 +124,17 @@ func (t *edgeTool) handleList(ctx context.Context, params map[string]any) (*Tool
 	if slug == "" {
 		return errResult("slug is required for list"), nil
 	}
+	edgeTypeStr := stringParam(params, "edge_type")
+	edgeType := specv1.EdgeType_EDGE_TYPE_UNSPECIFIED
+	if edgeTypeStr != "" {
+		edgeType = edgeTypeFromString(edgeTypeStr)
+		if edgeType == specv1.EdgeType_EDGE_TYPE_UNSPECIFIED {
+			return errResult("invalid edge_type for list"), nil
+		}
+	}
 	resp, err := t.client.Graph.ListEdges(ctx, connect.NewRequest(&specv1.ListEdgesRequest{
 		Slug:     slug,
-		EdgeType: edgeTypeFromString(stringParam(params, "edge_type")),
+		EdgeType: edgeType,
 	}))
 	if err != nil {
 		return connectErrResult(err)
