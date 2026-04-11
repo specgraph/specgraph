@@ -148,8 +148,6 @@ func intProp(desc string) map[string]any {
 }
 
 // boolProp builds a JSON Schema boolean property.
-//
-//nolint:unused // used by tool handler files added in subsequent tasks
 func boolProp(desc string) map[string]any {
 	return map[string]any{"type": "boolean", "description": desc}
 }

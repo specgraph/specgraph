@@ -255,11 +255,235 @@ func (m *mockConstitutionService) UpdateConstitution(_ context.Context, req *con
 
 type mockAnalyticalPassService struct {
 	specgraphv1connect.AnalyticalPassServiceClient // panics on unimplemented methods
-	listFindings func(slug string) (*specv1.ListFindingsResponse, error)
+	listFindings      func(slug string) (*specv1.ListFindingsResponse, error)
+	runAnalyticalPass func(req *specv1.RunAnalyticalPassRequest) (*specv1.RunAnalyticalPassResponse, error)
+	storeFindings     func(req *specv1.StoreFindingsRequest) (*specv1.StoreFindingsResponse, error)
 }
 
 func (m *mockAnalyticalPassService) ListFindings(_ context.Context, req *connect.Request[specv1.ListFindingsRequest]) (*connect.Response[specv1.ListFindingsResponse], error) {
 	resp, err := m.listFindings(req.Msg.GetSlug())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockAnalyticalPassService) RunAnalyticalPass(_ context.Context, req *connect.Request[specv1.RunAnalyticalPassRequest]) (*connect.Response[specv1.RunAnalyticalPassResponse], error) {
+	if m.runAnalyticalPass == nil {
+		panic("mockAnalyticalPassService.RunAnalyticalPass not configured")
+	}
+	resp, err := m.runAnalyticalPass(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockAnalyticalPassService) StoreFindings(_ context.Context, req *connect.Request[specv1.StoreFindingsRequest]) (*connect.Response[specv1.StoreFindingsResponse], error) {
+	if m.storeFindings == nil {
+		panic("mockAnalyticalPassService.StoreFindings not configured")
+	}
+	resp, err := m.storeFindings(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// ---------------------------------------------------------------------------
+// mockAuthoringService
+// ---------------------------------------------------------------------------
+
+type mockAuthoringService struct {
+	specgraphv1connect.AuthoringServiceClient // panics on unimplemented methods
+	spark              func(req *specv1.SparkRequest) (*specv1.SparkResponse, error)
+	approve            func(slug string) (*specv1.ApproveResponse, error)
+	amend              func(req *specv1.AmendRequest) (*specv1.AmendResponse, error)
+	supersede          func(req *specv1.SupersedeRequest) (*specv1.SupersedeResponse, error)
+	recordConversation func(req *specv1.RecordConversationRequest) (*specv1.RecordConversationResponse, error)
+	listConversations  func(req *specv1.ListConversationsRequest) (*specv1.ListConversationsResponse, error)
+}
+
+func (m *mockAuthoringService) Spark(_ context.Context, req *connect.Request[specv1.SparkRequest]) (*connect.Response[specv1.SparkResponse], error) {
+	if m.spark == nil {
+		panic("mockAuthoringService.Spark not configured")
+	}
+	resp, err := m.spark(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockAuthoringService) Approve(_ context.Context, req *connect.Request[specv1.ApproveRequest]) (*connect.Response[specv1.ApproveResponse], error) {
+	if m.approve == nil {
+		panic("mockAuthoringService.Approve not configured")
+	}
+	resp, err := m.approve(req.Msg.GetSlug())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockAuthoringService) Amend(_ context.Context, req *connect.Request[specv1.AmendRequest]) (*connect.Response[specv1.AmendResponse], error) {
+	if m.amend == nil {
+		panic("mockAuthoringService.Amend not configured")
+	}
+	resp, err := m.amend(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockAuthoringService) Supersede(_ context.Context, req *connect.Request[specv1.SupersedeRequest]) (*connect.Response[specv1.SupersedeResponse], error) {
+	if m.supersede == nil {
+		panic("mockAuthoringService.Supersede not configured")
+	}
+	resp, err := m.supersede(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockAuthoringService) RecordConversation(_ context.Context, req *connect.Request[specv1.RecordConversationRequest]) (*connect.Response[specv1.RecordConversationResponse], error) {
+	if m.recordConversation == nil {
+		panic("mockAuthoringService.RecordConversation not configured")
+	}
+	resp, err := m.recordConversation(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockAuthoringService) ListConversations(_ context.Context, req *connect.Request[specv1.ListConversationsRequest]) (*connect.Response[specv1.ListConversationsResponse], error) {
+	if m.listConversations == nil {
+		panic("mockAuthoringService.ListConversations not configured")
+	}
+	resp, err := m.listConversations(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// ---------------------------------------------------------------------------
+// mockLifecycleService
+// ---------------------------------------------------------------------------
+
+type mockLifecycleService struct {
+	specgraphv1connect.LifecycleServiceClient // panics on unimplemented methods
+	checkDrift       func(req *specv1.DriftCheckRequest) (*specv1.DriftCheckResponse, error)
+	acknowledgeDrift func(req *specv1.DriftAcknowledgeRequest) (*specv1.DriftAcknowledgeResponse, error)
+	lint             func(req *specv1.LintRequest) (*specv1.LintResponse, error)
+}
+
+func (m *mockLifecycleService) CheckDrift(_ context.Context, req *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
+	if m.checkDrift == nil {
+		panic("mockLifecycleService.CheckDrift not configured")
+	}
+	resp, err := m.checkDrift(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockLifecycleService) AcknowledgeDrift(_ context.Context, req *connect.Request[specv1.DriftAcknowledgeRequest]) (*connect.Response[specv1.DriftAcknowledgeResponse], error) {
+	if m.acknowledgeDrift == nil {
+		panic("mockLifecycleService.AcknowledgeDrift not configured")
+	}
+	resp, err := m.acknowledgeDrift(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockLifecycleService) Lint(_ context.Context, req *connect.Request[specv1.LintRequest]) (*connect.Response[specv1.LintResponse], error) {
+	if m.lint == nil {
+		panic("mockLifecycleService.Lint not configured")
+	}
+	resp, err := m.lint(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// ---------------------------------------------------------------------------
+// mockSyncService
+// ---------------------------------------------------------------------------
+
+type mockSyncService struct {
+	specgraphv1connect.SyncServiceClient // panics on unimplemented methods
+	syncBeads     func() (*specv1.SyncResponse, error)
+	getSyncStatus func() (*specv1.SyncStatusResponse, error)
+}
+
+func (m *mockSyncService) SyncBeads(_ context.Context, _ *connect.Request[specv1.SyncBeadsRequest]) (*connect.Response[specv1.SyncResponse], error) {
+	if m.syncBeads == nil {
+		panic("mockSyncService.SyncBeads not configured")
+	}
+	resp, err := m.syncBeads()
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockSyncService) GetSyncStatus(_ context.Context, _ *connect.Request[specv1.SyncStatusRequest]) (*connect.Response[specv1.SyncStatusResponse], error) {
+	if m.getSyncStatus == nil {
+		panic("mockSyncService.GetSyncStatus not configured")
+	}
+	resp, err := m.getSyncStatus()
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// ---------------------------------------------------------------------------
+// mockExportService
+// ---------------------------------------------------------------------------
+
+type mockExportService struct {
+	specgraphv1connect.ExportServiceClient // panics on unimplemented methods
+	exportProject func(projectSlug string) (*specv1.ExportProjectResponse, error)
+	importProject func(req *specv1.ImportProjectRequest) (*specv1.ImportProjectResponse, error)
+	verifyExport  func(req *specv1.VerifyExportRequest) (*specv1.VerifyExportResponse, error)
+}
+
+func (m *mockExportService) ExportProject(_ context.Context, req *connect.Request[specv1.ExportProjectRequest]) (*connect.Response[specv1.ExportProjectResponse], error) {
+	if m.exportProject == nil {
+		panic("mockExportService.ExportProject not configured")
+	}
+	resp, err := m.exportProject(req.Msg.GetProjectSlug())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockExportService) ImportProject(_ context.Context, req *connect.Request[specv1.ImportProjectRequest]) (*connect.Response[specv1.ImportProjectResponse], error) {
+	if m.importProject == nil {
+		panic("mockExportService.ImportProject not configured")
+	}
+	resp, err := m.importProject(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockExportService) VerifyExport(_ context.Context, req *connect.Request[specv1.VerifyExportRequest]) (*connect.Response[specv1.VerifyExportResponse], error) {
+	if m.verifyExport == nil {
+		panic("mockExportService.VerifyExport not configured")
+	}
+	resp, err := m.verifyExport(req.Msg)
 	if err != nil {
 		return nil, err
 	}
