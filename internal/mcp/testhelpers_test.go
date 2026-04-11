@@ -489,3 +489,183 @@ func (m *mockExportService) VerifyExport(_ context.Context, req *connect.Request
 	}
 	return connect.NewResponse(resp), nil
 }
+
+// ---------------------------------------------------------------------------
+// mockClaimService
+// ---------------------------------------------------------------------------
+
+type mockClaimService struct {
+	specgraphv1connect.ClaimServiceClient // panics on unimplemented methods
+	claimSpec   func(req *specv1.ClaimSpecRequest) (*specv1.ClaimSpecResponse, error)
+	unclaimSpec func(req *specv1.UnclaimSpecRequest) (*specv1.UnclaimSpecResponse, error)
+	heartbeat   func(req *specv1.HeartbeatRequest) (*specv1.HeartbeatResponse, error)
+}
+
+func (m *mockClaimService) ClaimSpec(_ context.Context, req *connect.Request[specv1.ClaimSpecRequest]) (*connect.Response[specv1.ClaimSpecResponse], error) {
+	if m.claimSpec == nil {
+		panic("mockClaimService.ClaimSpec not configured")
+	}
+	resp, err := m.claimSpec(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockClaimService) UnclaimSpec(_ context.Context, req *connect.Request[specv1.UnclaimSpecRequest]) (*connect.Response[specv1.UnclaimSpecResponse], error) {
+	if m.unclaimSpec == nil {
+		panic("mockClaimService.UnclaimSpec not configured")
+	}
+	resp, err := m.unclaimSpec(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockClaimService) Heartbeat(_ context.Context, req *connect.Request[specv1.HeartbeatRequest]) (*connect.Response[specv1.HeartbeatResponse], error) {
+	if m.heartbeat == nil {
+		panic("mockClaimService.Heartbeat not configured")
+	}
+	resp, err := m.heartbeat(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// ---------------------------------------------------------------------------
+// mockSliceService
+// ---------------------------------------------------------------------------
+
+type mockSliceService struct {
+	specgraphv1connect.SliceServiceClient // panics on unimplemented methods
+	listSlices    func(req *specv1.ListSlicesRequest) (*specv1.ListSlicesResponse, error)
+	getSlice      func(req *specv1.GetSliceRequest) (*specv1.GetSliceResponse, error)
+	claimSlice    func(req *specv1.ClaimSliceRequest) (*specv1.ClaimSliceResponse, error)
+	completeSlice func(req *specv1.CompleteSliceRequest) (*specv1.CompleteSliceResponse, error)
+}
+
+func (m *mockSliceService) ListSlices(_ context.Context, req *connect.Request[specv1.ListSlicesRequest]) (*connect.Response[specv1.ListSlicesResponse], error) {
+	if m.listSlices == nil {
+		panic("mockSliceService.ListSlices not configured")
+	}
+	resp, err := m.listSlices(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockSliceService) GetSlice(_ context.Context, req *connect.Request[specv1.GetSliceRequest]) (*connect.Response[specv1.GetSliceResponse], error) {
+	if m.getSlice == nil {
+		panic("mockSliceService.GetSlice not configured")
+	}
+	resp, err := m.getSlice(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockSliceService) ClaimSlice(_ context.Context, req *connect.Request[specv1.ClaimSliceRequest]) (*connect.Response[specv1.ClaimSliceResponse], error) {
+	if m.claimSlice == nil {
+		panic("mockSliceService.ClaimSlice not configured")
+	}
+	resp, err := m.claimSlice(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockSliceService) CompleteSlice(_ context.Context, req *connect.Request[specv1.CompleteSliceRequest]) (*connect.Response[specv1.CompleteSliceResponse], error) {
+	if m.completeSlice == nil {
+		panic("mockSliceService.CompleteSlice not configured")
+	}
+	resp, err := m.completeSlice(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// ---------------------------------------------------------------------------
+// mockExecutionService
+// ---------------------------------------------------------------------------
+
+type mockExecutionService struct {
+	specgraphv1connect.ExecutionServiceClient // panics on unimplemented methods
+	generateBundle   func(req *specv1.GenerateBundleRequest) (*specv1.GenerateBundleResponse, error)
+	getPrime         func(req *specv1.GetPrimeRequest) (*specv1.PrimeResponse, error)
+	reportProgress   func(req *specv1.ReportProgressRequest) (*specv1.ReportProgressResponse, error)
+	reportBlocker    func(req *specv1.ReportBlockerRequest) (*specv1.ReportBlockerResponse, error)
+	reportCompletion func(req *specv1.ReportCompletionRequest) (*specv1.ReportCompletionResponse, error)
+	getEvents        func(req *specv1.GetExecutionEventsRequest) (*specv1.GetExecutionEventsResponse, error)
+}
+
+func (m *mockExecutionService) GenerateBundle(_ context.Context, req *connect.Request[specv1.GenerateBundleRequest]) (*connect.Response[specv1.GenerateBundleResponse], error) {
+	if m.generateBundle == nil {
+		panic("mockExecutionService.GenerateBundle not configured")
+	}
+	resp, err := m.generateBundle(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockExecutionService) GetPrime(_ context.Context, req *connect.Request[specv1.GetPrimeRequest]) (*connect.Response[specv1.PrimeResponse], error) {
+	if m.getPrime == nil {
+		panic("mockExecutionService.GetPrime not configured")
+	}
+	resp, err := m.getPrime(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockExecutionService) ReportProgress(_ context.Context, req *connect.Request[specv1.ReportProgressRequest]) (*connect.Response[specv1.ReportProgressResponse], error) {
+	if m.reportProgress == nil {
+		panic("mockExecutionService.ReportProgress not configured")
+	}
+	resp, err := m.reportProgress(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockExecutionService) ReportBlocker(_ context.Context, req *connect.Request[specv1.ReportBlockerRequest]) (*connect.Response[specv1.ReportBlockerResponse], error) {
+	if m.reportBlocker == nil {
+		panic("mockExecutionService.ReportBlocker not configured")
+	}
+	resp, err := m.reportBlocker(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockExecutionService) ReportCompletion(_ context.Context, req *connect.Request[specv1.ReportCompletionRequest]) (*connect.Response[specv1.ReportCompletionResponse], error) {
+	if m.reportCompletion == nil {
+		panic("mockExecutionService.ReportCompletion not configured")
+	}
+	resp, err := m.reportCompletion(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockExecutionService) GetExecutionEvents(_ context.Context, req *connect.Request[specv1.GetExecutionEventsRequest]) (*connect.Response[specv1.GetExecutionEventsResponse], error) {
+	if m.getEvents == nil {
+		panic("mockExecutionService.GetExecutionEvents not configured")
+	}
+	resp, err := m.getEvents(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
