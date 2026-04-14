@@ -54,6 +54,11 @@ func CredentialsFile() string {
 	return filepath.Join(ConfigHome(), "credentials.yaml")
 }
 
+// OAuthTokenFile returns the path to the cached OAuth token file.
+func OAuthTokenFile() string {
+	return filepath.Join(ConfigHome(), "oauth_token.json")
+}
+
 // EnsureDirs creates all XDG directories if they don't exist.
 // Returns an error if any path is relative (e.g., $HOME is unset).
 func EnsureDirs() error {

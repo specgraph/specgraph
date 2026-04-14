@@ -11,6 +11,7 @@ import (
 
 	"github.com/specgraph/specgraph/internal/auth"
 	mcppkg "github.com/specgraph/specgraph/internal/mcp"
+	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/spf13/cobra"
 )
 
@@ -62,8 +63,14 @@ func runMCP(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	// Inject bearer token into context so loopback transport forwards it.
+	// Resolve credential: API key first, then cached OIDC token.
 	token := resolveAPIKey()
+	if token == "" {
+		tokenStore := auth.NewFileTokenStore(xdg.OAuthTokenFile())
+		if cached, err := tokenStore.GetToken(ctx); err == nil {
+			token = cached.AccessToken
+		}
+	}
 	ctx = auth.WithBearerToken(ctx, token)
 
 	return srv.ServeStdio(ctx, os.Stdin, os.Stdout)
