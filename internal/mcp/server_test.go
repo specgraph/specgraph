@@ -10,55 +10,50 @@ import (
 	sdkmcp "github.com/mark3labs/mcp-go/mcp"
 )
 
-func TestNewServer_ProfileToolCounts(t *testing.T) {
-	// NewServer accepts a *Client. The handlers are closures over the
-	// client's service stubs, but we only need to verify registration
-	// counts here — no actual RPCs are made.
+func TestNewServer_AllToolsRegistered(t *testing.T) {
+	srv := NewServer(&Client{})
+	tools := srv.MCPServer().ListTools()
+	if len(tools) != 20 {
+		t.Errorf("total tool count = %d, want 20", len(tools))
+	}
+}
+
+func TestNewServer_ProfileToolSets(t *testing.T) {
 	srv := NewServer(&Client{})
 
-	coreSrv := srv.ForProfile(ProfileCore)
-	authoringSrv := srv.ForProfile(ProfileAuthoring)
-	executionSrv := srv.ForProfile(ProfileExecution)
-
-	// Each profile should be a distinct MCPServer instance.
-	if coreSrv == authoringSrv {
-		t.Error("core and authoring servers are the same instance")
-	}
-	if authoringSrv == executionSrv {
-		t.Error("authoring and execution servers are the same instance")
-	}
-	if coreSrv == executionSrv {
-		t.Error("core and execution servers are the same instance")
+	tests := []struct {
+		profile Profile
+		want    int
+	}{
+		{ProfileCore, 7},
+		{ProfileAuthoring, 14},
+		{ProfileExecution, 20},
 	}
 
-	coreTools := coreSrv.ListTools()
-	authoringTools := authoringSrv.ListTools()
-	executionTools := executionSrv.ListTools()
-
-	// Core: spec (2) + graph (2) + core (3) = 7 tools
-	// Authoring: core (7) + authoring (3) + lifecycle (4) = 14 tools
-	// Execution: authoring (14) + execution (6) = 20 tools
-	if len(coreTools) != 7 {
-		t.Errorf("core tool count = %d, want 7", len(coreTools))
-	}
-	if len(authoringTools) != 14 {
-		t.Errorf("authoring tool count = %d, want 14", len(authoringTools))
-	}
-	if len(executionTools) != 20 {
-		t.Errorf("execution tool count = %d, want 20", len(executionTools))
+	for _, tt := range tests {
+		t.Run(tt.profile.String(), func(t *testing.T) {
+			tools := srv.ToolsForProfile(tt.profile)
+			if len(tools) != tt.want {
+				t.Errorf("ToolsForProfile(%s) count = %d, want %d", tt.profile, len(tools), tt.want)
+			}
+		})
 	}
 
-	// Higher profiles should be strict supersets of lower profiles.
-	for name := range coreTools {
-		if _, ok := authoringTools[name]; !ok {
+	// Higher profiles should be strict supersets.
+	core := srv.ToolsForProfile(ProfileCore)
+	authoring := srv.ToolsForProfile(ProfileAuthoring)
+	execution := srv.ToolsForProfile(ProfileExecution)
+
+	for name := range core {
+		if _, ok := authoring[name]; !ok {
 			t.Errorf("authoring profile missing core tool %q", name)
 		}
-		if _, ok := executionTools[name]; !ok {
+		if _, ok := execution[name]; !ok {
 			t.Errorf("execution profile missing core tool %q", name)
 		}
 	}
-	for name := range authoringTools {
-		if _, ok := executionTools[name]; !ok {
+	for name := range authoring {
+		if _, ok := execution[name]; !ok {
 			t.Errorf("execution profile missing authoring tool %q", name)
 		}
 	}
@@ -66,13 +61,10 @@ func TestNewServer_ProfileToolCounts(t *testing.T) {
 
 func TestNewServer_FallbackToCore(t *testing.T) {
 	srv := NewServer(&Client{})
-
-	// An unknown profile value should fall back to core.
-	unknown := srv.ForProfile(Profile(99))
-	core := srv.ForProfile(ProfileCore)
-
-	if unknown != core {
-		t.Error("ForProfile(99) did not fall back to core server")
+	unknown := srv.ToolsForProfile(Profile(99))
+	core := srv.ToolsForProfile(ProfileCore)
+	if len(unknown) != len(core) {
+		t.Errorf("ToolsForProfile(99) returned %d tools, want %d (core)", len(unknown), len(core))
 	}
 }
 

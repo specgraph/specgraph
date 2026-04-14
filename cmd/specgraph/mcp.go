@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/specgraph/specgraph/internal/auth"
 	mcppkg "github.com/specgraph/specgraph/internal/mcp"
 	"github.com/spf13/cobra"
 )
@@ -56,10 +57,14 @@ func runMCP(cmd *cobra.Command, _ []string) error {
 
 	httpClient := newHTTPClient(project)
 	client := mcppkg.NewClient(httpClient, baseURL)
-	srv := mcppkg.NewServer(client)
+	srv := mcppkg.NewServer(client, mcppkg.WithProfileOverride(profile))
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	return srv.ServeStdio(ctx, profile, os.Stdin, os.Stdout)
+	// Inject bearer token into context so loopback transport forwards it.
+	token := resolveAPIKey()
+	ctx = auth.WithBearerToken(ctx, token)
+
+	return srv.ServeStdio(ctx, os.Stdin, os.Stdout)
 }
