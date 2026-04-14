@@ -33,7 +33,7 @@ func (t *specTool) def() ToolDef {
 		Name: "spec",
 		Description: "Read and write SpecGraph specs. " +
 			"Actions: get, list, create, update, changes, compare.",
-		Tier: TierCore,
+		Profile: ProfileCore,
 		Schema: objectSchema(
 			props{
 				"action": stringProp("Operation to perform",
@@ -195,7 +195,7 @@ func (t *decisionTool) def() ToolDef {
 		Name: "decision",
 		Description: "Read and write SpecGraph decisions (ADRs). " +
 			"Actions: get, list, create, update.",
-		Tier: TierCore,
+		Profile: ProfileCore,
 		Schema: objectSchema(
 			props{
 				"action":    stringProp("Operation to perform", "get", "list", "create", "update"),

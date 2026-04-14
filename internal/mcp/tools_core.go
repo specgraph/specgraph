@@ -56,7 +56,7 @@ func (t *constitutionTool) def() ToolDef {
 		Name: "constitution",
 		Description: "Read and write the SpecGraph project constitution (layered ground truth). " +
 			"Actions: get, update.",
-		Tier: TierCore,
+		Profile: ProfileCore,
 		Schema: objectSchema(
 			props{
 				"action": stringProp("Operation to perform", "get", "update"),
@@ -133,7 +133,7 @@ func (t *findingsTool) def() ToolDef {
 		Name: "findings",
 		Description: "List analytical pass findings for a spec. " +
 			"Actions: list.",
-		Tier: TierCore,
+		Profile: ProfileCore,
 		Schema: objectSchema(
 			props{
 				"action": stringProp("Operation to perform", "list"),
@@ -194,7 +194,7 @@ func (t *healthTool) def() ToolDef {
 	return ToolDef{
 		Name:        "health",
 		Description: "Check SpecGraph server health and version.",
-		Tier:        TierCore,
+		Profile:     ProfileCore,
 		Schema:      objectSchema(props{}),
 		Handler:     t.handle,
 	}

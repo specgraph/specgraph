@@ -230,19 +230,19 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	server.RegisterAuthHandlers(mux, compositeStore, auth.RequireAuth(compositeStore))
 
 	// Mount MCP streamable HTTP endpoint.
-	// TODO(auth): Derive tier from authenticated identity once MCP auth is implemented.
-	// Currently tier is caller-supplied (header/query param). This is acceptable because
-	// the MCP endpoint shares the same auth middleware as ConnectRPC — an unauthenticated
-	// caller can't escalate beyond what the backend RPCs already enforce.
+	// TODO(auth): Derive profile from authenticated identity once MCP auth is implemented.
+	// Currently profile is caller-supplied (header/query param). This is acceptable
+	// because the MCP endpoint shares the same auth middleware as ConnectRPC — an
+	// unauthenticated caller can't escalate beyond what the backend RPCs already enforce.
 	mcpClient := mcppkg.NewClient(newHTTPClient(""), selfBaseURL(cfg.Server.Listen))
 	mcpServer := mcppkg.NewServer(mcpClient)
 	mux.Handle("/mcp/", http.StripPrefix("/mcp", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tierStr := r.Header.Get("X-Specgraph-MCP-Tier")
-		if tierStr == "" {
-			tierStr = r.URL.Query().Get("tier")
+		profileStr := r.Header.Get("X-Specgraph-MCP-Profile")
+		if profileStr == "" {
+			profileStr = r.URL.Query().Get("profile")
 		}
-		tier := mcppkg.ParseTier(tierStr)
-		mcpHandler := mcpServer.HTTPHandler(tier)
+		profile := mcppkg.ParseProfile(profileStr)
+		mcpHandler := mcpServer.HTTPHandler(profile)
 		mcpHandler.ServeHTTP(w, r)
 	})))
 

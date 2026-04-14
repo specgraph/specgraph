@@ -43,7 +43,7 @@ func (t *edgeTool) def() ToolDef {
 		Name: "edge",
 		Description: "Manage edges (relationships) between SpecGraph nodes. " +
 			"Actions: add, remove, list.",
-		Tier: TierCore,
+		Profile: ProfileCore,
 		Schema: objectSchema(
 			props{
 				"action": stringProp("Operation to perform", "add", "remove", "list"),
@@ -155,7 +155,7 @@ func (t *graphQueryTool) def() ToolDef {
 		Name: "graph_query",
 		Description: "Query the SpecGraph dependency graph. " +
 			"Actions: dependencies, transitive_deps, impact, ready, critical_path, full.",
-		Tier: TierCore,
+		Profile: ProfileCore,
 		Schema: objectSchema(
 			props{
 				"action": stringProp(

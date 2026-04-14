@@ -10,17 +10,17 @@ import (
 	sdkmcp "github.com/mark3labs/mcp-go/mcp"
 )
 
-func TestNewServer_TierToolCounts(t *testing.T) {
+func TestNewServer_ProfileToolCounts(t *testing.T) {
 	// NewServer accepts a *Client. The handlers are closures over the
 	// client's service stubs, but we only need to verify registration
 	// counts here — no actual RPCs are made.
 	srv := NewServer(&Client{})
 
-	coreSrv := srv.ForTier(TierCore)
-	authoringSrv := srv.ForTier(TierAuthoring)
-	executionSrv := srv.ForTier(TierExecution)
+	coreSrv := srv.ForProfile(ProfileCore)
+	authoringSrv := srv.ForProfile(ProfileAuthoring)
+	executionSrv := srv.ForProfile(ProfileExecution)
 
-	// Each tier should be a distinct MCPServer instance.
+	// Each profile should be a distinct MCPServer instance.
 	if coreSrv == authoringSrv {
 		t.Error("core and authoring servers are the same instance")
 	}
@@ -48,18 +48,18 @@ func TestNewServer_TierToolCounts(t *testing.T) {
 		t.Errorf("execution tool count = %d, want 20", len(executionTools))
 	}
 
-	// Higher tiers should be strict supersets of lower tiers.
+	// Higher profiles should be strict supersets of lower profiles.
 	for name := range coreTools {
 		if _, ok := authoringTools[name]; !ok {
-			t.Errorf("authoring tier missing core tool %q", name)
+			t.Errorf("authoring profile missing core tool %q", name)
 		}
 		if _, ok := executionTools[name]; !ok {
-			t.Errorf("execution tier missing core tool %q", name)
+			t.Errorf("execution profile missing core tool %q", name)
 		}
 	}
 	for name := range authoringTools {
 		if _, ok := executionTools[name]; !ok {
-			t.Errorf("execution tier missing authoring tool %q", name)
+			t.Errorf("execution profile missing authoring tool %q", name)
 		}
 	}
 }
@@ -67,12 +67,12 @@ func TestNewServer_TierToolCounts(t *testing.T) {
 func TestNewServer_FallbackToCore(t *testing.T) {
 	srv := NewServer(&Client{})
 
-	// An unknown tier value should fall back to core.
-	unknown := srv.ForTier(Tier(99))
-	core := srv.ForTier(TierCore)
+	// An unknown profile value should fall back to core.
+	unknown := srv.ForProfile(Profile(99))
+	core := srv.ForProfile(ProfileCore)
 
 	if unknown != core {
-		t.Error("ForTier(99) did not fall back to core server")
+		t.Error("ForProfile(99) did not fall back to core server")
 	}
 }
 

@@ -25,7 +25,7 @@ Configure in Claude Code's MCP settings:
     "mcpServers": {
       "specgraph": {
         "command": "specgraph",
-        "args": ["mcp", "--tier", "authoring"]
+        "args": ["mcp", "--profile", "authoring"]
       }
     }
   }`,
@@ -33,21 +33,21 @@ Configure in Claude Code's MCP settings:
 }
 
 func init() {
-	mcpCmd.Flags().String("tier", "core", "Tool tier: core, authoring, or execution")
+	mcpCmd.Flags().String("profile", "core", "Tool profile: core, authoring, or execution")
 	rootCmd.AddCommand(mcpCmd)
 }
 
 func runMCP(cmd *cobra.Command, _ []string) error {
-	tierStr, err := cmd.Flags().GetString("tier")
+	profileStr, err := cmd.Flags().GetString("profile")
 	if err != nil {
-		return fmt.Errorf("tier flag: %w", err)
+		return fmt.Errorf("profile flag: %w", err)
 	}
-	switch tierStr {
+	switch profileStr {
 	case "core", "authoring", "execution":
 	default:
-		return fmt.Errorf("invalid --tier %q (must be core, authoring, or execution)", tierStr)
+		return fmt.Errorf("invalid --profile %q (must be core, authoring, or execution)", profileStr)
 	}
-	tier := mcppkg.ParseTier(tierStr)
+	profile := mcppkg.ParseProfile(profileStr)
 
 	baseURL, project, err := resolveBaseURL()
 	if err != nil {
@@ -61,5 +61,5 @@ func runMCP(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	return srv.ServeStdio(ctx, tier, os.Stdin, os.Stdout)
+	return srv.ServeStdio(ctx, profile, os.Stdin, os.Stdout)
 }

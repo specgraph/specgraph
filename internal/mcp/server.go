@@ -17,17 +17,18 @@ const (
 	serverVersion = "0.1.0"
 )
 
-// Server wraps one MCPServer per tier. Each tier's MCPServer is pre-populated
-// with the tools, resources, and prompts appropriate for that tier.
+// Server wraps one MCPServer per profile. Each profile's MCPServer is
+// pre-populated with the tools, resources, and prompts appropriate for that
+// profile.
 type Server struct {
 	registry *Registry
-	servers  map[Tier]*server.MCPServer
+	servers  map[Profile]*server.MCPServer
 }
 
 // NewServer creates a fully wired MCP server backed by the given ConnectRPC client.
 // It registers all tools, resources, and prompts, then builds one MCPServer
-// per tier with the appropriate subset of tools (all tiers get all resources
-// and prompts).
+// per profile with the appropriate subset of tools (all profiles get all
+// resources and prompts).
 func NewServer(client *Client) *Server {
 	reg := NewRegistry()
 
@@ -41,10 +42,10 @@ func NewServer(client *Client) *Server {
 	RegisterResources(reg, client)
 	RegisterPrompts(reg, client)
 
-	tiers := []Tier{TierCore, TierAuthoring, TierExecution}
-	servers := make(map[Tier]*server.MCPServer, len(tiers))
+	profiles := []Profile{ProfileCore, ProfileAuthoring, ProfileExecution}
+	servers := make(map[Profile]*server.MCPServer, len(profiles))
 
-	for _, tier := range tiers {
+	for _, profile := range profiles {
 		srv := server.NewMCPServer(
 			serverName,
 			serverVersion,
@@ -53,12 +54,12 @@ func NewServer(client *Client) *Server {
 			server.WithPromptCapabilities(false),
 		)
 
-		// Add tier-appropriate tools.
-		for _, td := range reg.ToolsForTier(tier) {
+		// Add profile-appropriate tools.
+		for _, td := range reg.ToolsForProfile(profile) {
 			srv.AddTool(toSDKTool(td), wrapToolHandler(td.Handler))
 		}
 
-		// All tiers get all resources.
+		// All profiles get all resources.
 		for i := range reg.Resources() {
 			rd := &reg.resources[i]
 			if rd.IsTemplate {
@@ -68,12 +69,12 @@ func NewServer(client *Client) *Server {
 			}
 		}
 
-		// All tiers get all prompts.
+		// All profiles get all prompts.
 		for _, pd := range reg.Prompts() {
 			srv.AddPrompt(toSDKPrompt(pd), wrapPromptHandler(pd.Handler))
 		}
 
-		servers[tier] = srv
+		servers[profile] = srv
 	}
 
 	return &Server{
@@ -82,30 +83,31 @@ func NewServer(client *Client) *Server {
 	}
 }
 
-// ForTier returns the MCPServer for the given tier. Unknown tiers fall back to TierCore.
-func (s *Server) ForTier(tier Tier) *server.MCPServer {
-	srv, ok := s.servers[tier]
+// ForProfile returns the MCPServer for the given profile. Unknown profiles
+// fall back to ProfileCore.
+func (s *Server) ForProfile(profile Profile) *server.MCPServer {
+	srv, ok := s.servers[profile]
 	if !ok {
-		return s.servers[TierCore]
+		return s.servers[ProfileCore]
 	}
 	return srv
 }
 
-// ServeStdio runs a stdio transport for the given tier, reading JSON-RPC
+// ServeStdio runs a stdio transport for the given profile, reading JSON-RPC
 // messages from stdin and writing responses to stdout. It blocks until ctx
 // is cancelled or an error occurs.
-func (s *Server) ServeStdio(ctx context.Context, tier Tier, stdin io.Reader, stdout io.Writer) error {
-	stdio := server.NewStdioServer(s.ForTier(tier))
+func (s *Server) ServeStdio(ctx context.Context, profile Profile, stdin io.Reader, stdout io.Writer) error {
+	stdio := server.NewStdioServer(s.ForProfile(profile))
 	if err := stdio.Listen(ctx, stdin, stdout); err != nil {
 		return fmt.Errorf("mcp stdio: %w", err)
 	}
 	return nil
 }
 
-// HTTPHandler returns a StreamableHTTPServer for the given tier, suitable
+// HTTPHandler returns a StreamableHTTPServer for the given profile, suitable
 // for use as an http.Handler.
-func (s *Server) HTTPHandler(tier Tier) *server.StreamableHTTPServer {
-	return server.NewStreamableHTTPServer(s.ForTier(tier))
+func (s *Server) HTTPHandler(profile Profile) *server.StreamableHTTPServer {
+	return server.NewStreamableHTTPServer(s.ForProfile(profile))
 }
 
 // wrapToolHandler adapts a SpecGraph ToolHandler to the mcp-go ToolHandlerFunc signature.
