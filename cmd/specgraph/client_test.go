@@ -4,112 +4,165 @@
 package main
 
 import (
-	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
+	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestProjectTransport_InjectsHeader(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(r.Header.Get("X-Specgraph-Project"))) //nolint:gosec // test echo handler; taint is from controlled test input
-	}))
-	defer ts.Close()
+// roundTripFunc is an adapter to allow the use of ordinary functions as
+// http.RoundTripper.
+type roundTripFunc func(*http.Request) (*http.Response, error)
 
-	client := &http.Client{Transport: &clientTransport{
-		base:    http.DefaultTransport,
-		project: "test-proj",
-	}}
-	resp, err := client.Get(ts.URL) //nolint:noctx // test helper
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-	assert.Equal(t, "test-proj", string(body))
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }
 
-func TestProjectTransport_EmptyProject(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(r.Header.Get("X-Specgraph-Project"))) //nolint:gosec // test echo handler; taint is from controlled test input
-	}))
-	defer ts.Close()
+func TestClientTransport_ProjectHeader(t *testing.T) {
+	transport := &clientTransport{
+		base: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			got := req.Header.Get("X-Specgraph-Project")
+			assert.Equal(t, "my-project", got)
+			return &http.Response{StatusCode: http.StatusOK}, nil
+		}),
+		project: "my-project",
+	}
 
-	client := &http.Client{Transport: &clientTransport{
-		base:    http.DefaultTransport,
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost/test", nil)
+	require.NoError(t, err)
+
+	resp, err := transport.RoundTrip(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func TestClientTransport_EmptyProject(t *testing.T) {
+	transport := &clientTransport{
+		base: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			got := req.Header.Get("X-Specgraph-Project")
+			assert.Empty(t, got)
+			return &http.Response{StatusCode: http.StatusOK}, nil
+		}),
 		project: "",
-	}}
-	resp, err := client.Get(ts.URL) //nolint:noctx // test helper
-	require.NoError(t, err)
-	defer resp.Body.Close()
+	}
 
-	body, err := io.ReadAll(resp.Body)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost/test", nil)
 	require.NoError(t, err)
-	// Empty project slug — header is set but empty.
-	assert.Equal(t, "", string(body))
+
+	_, err = transport.RoundTrip(req)
+	require.NoError(t, err)
 }
 
-func TestProjectTransport_DoesNotMutateOriginalRequest(t *testing.T) {
-	var captured http.Header
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		captured = r.Header.Clone()
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer ts.Close()
+func TestClientTransport_TokenFromContext(t *testing.T) {
+	transport := &clientTransport{
+		base: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			got := req.Header.Get("Authorization")
+			assert.Equal(t, "Bearer ctx-token-123", got) //nolint:gosec // test assertion, not a real credential
+			return &http.Response{StatusCode: http.StatusOK}, nil
+		}),
+		project: "test-project",
+	}
 
-	orig, err := http.NewRequest(http.MethodGet, ts.URL, nil) //nolint:noctx // test helper
+	ctx := auth.WithBearerToken(t.Context(), "ctx-token-123") //nolint:gosec // test fixture, not a real credential
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/test", nil)
+	require.NoError(t, err)
+
+	_, err = transport.RoundTrip(req)
+	require.NoError(t, err)
+}
+
+func TestClientTransport_NoToken(t *testing.T) {
+	transport := &clientTransport{
+		base: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			got := req.Header.Get("Authorization")
+			assert.Empty(t, got)
+			return &http.Response{StatusCode: http.StatusOK}, nil
+		}),
+		project: "test-project",
+	}
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost/test", nil)
+	require.NoError(t, err)
+
+	_, err = transport.RoundTrip(req)
+	require.NoError(t, err)
+}
+
+func TestClientTransport_DoesNotMutateOriginalRequest(t *testing.T) {
+	var capturedProject string
+	transport := &clientTransport{
+		base: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			capturedProject = req.Header.Get("X-Specgraph-Project")
+			return &http.Response{StatusCode: http.StatusOK}, nil
+		}),
+		project: "injected",
+	}
+
+	ctx := auth.WithBearerToken(t.Context(), "some-token") //nolint:gosec // test fixture, not a real credential
+	orig, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/test", nil)
 	require.NoError(t, err)
 	orig.Header.Set("X-Custom", "original")
 
-	client := &http.Client{Transport: &clientTransport{
-		base:    http.DefaultTransport,
-		project: "injected",
-	}}
-	resp, err := client.Do(orig) //nolint:bodyclose // test helper
+	_, err = transport.RoundTrip(orig)
 	require.NoError(t, err)
-	defer resp.Body.Close()
 
-	assert.Equal(t, "injected", captured.Get("X-Specgraph-Project"))
+	assert.Equal(t, "injected", capturedProject)
 	// Original request header should not be modified.
 	assert.Empty(t, orig.Header.Get("X-Specgraph-Project"))
 }
 
-func TestClientTransport_InjectsBearerToken(t *testing.T) {
-	var captured http.Header
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		captured = r.Header.Clone()
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer ts.Close()
+func TestStaticTokenTransport_InjectsToken(t *testing.T) {
+	inner := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		token, ok := auth.BearerTokenFromContext(req.Context())
+		assert.True(t, ok, "expected bearer token in context")
+		assert.Equal(t, "static-key", token) //nolint:gosec // test assertion, not a real credential
+		return &http.Response{StatusCode: http.StatusOK}, nil
+	})
 
-	client := &http.Client{Transport: &clientTransport{ //nolint:gosec // test fixture, not a real credential
-		base:        http.DefaultTransport,
-		bearerToken: "spgr_sk_testkey",
-	}}
-	resp, err := client.Get(ts.URL) //nolint:noctx // test helper
+	transport := &staticTokenTransport{inner: inner, token: "static-key"} //nolint:gosec // test fixture, not a real credential
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost/test", nil)
 	require.NoError(t, err)
-	defer resp.Body.Close()
 
-	assert.Equal(t, "Bearer spgr_sk_testkey", captured.Get("Authorization"))
+	_, err = transport.RoundTrip(req)
+	require.NoError(t, err)
 }
 
-func TestClientTransport_NoBearerWhenEmpty(t *testing.T) {
-	var captured http.Header
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		captured = r.Header.Clone()
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer ts.Close()
+func TestStaticTokenTransport_EmptyTokenSkipsInjection(t *testing.T) {
+	inner := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		_, ok := auth.BearerTokenFromContext(req.Context())
+		assert.False(t, ok, "expected no bearer token in context")
+		return &http.Response{StatusCode: http.StatusOK}, nil
+	})
 
-	client := &http.Client{Transport: &clientTransport{
-		base: http.DefaultTransport,
-	}}
-	resp, err := client.Get(ts.URL) //nolint:noctx // test helper
+	transport := &staticTokenTransport{inner: inner, token: ""}
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost/test", nil)
 	require.NoError(t, err)
-	defer resp.Body.Close()
 
-	assert.Empty(t, captured.Get("Authorization"))
+	_, err = transport.RoundTrip(req)
+	require.NoError(t, err)
+}
+
+func TestStaticTokenTransport_ChainedWithClientTransport(t *testing.T) {
+	// Verify the full chain: staticTokenTransport puts token in context,
+	// clientTransport reads it and sets the Authorization header.
+	var capturedAuth string
+	base := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		capturedAuth = req.Header.Get("Authorization")
+		return &http.Response{StatusCode: http.StatusOK}, nil
+	})
+
+	transport := &staticTokenTransport{
+		inner: &clientTransport{base: base, project: "proj"},
+		token: "chained-key", //nolint:gosec // test fixture, not a real credential
+	}
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost/test", nil)
+	require.NoError(t, err)
+
+	_, err = transport.RoundTrip(req)
+	require.NoError(t, err)
+
+	assert.Equal(t, "Bearer chained-key", capturedAuth) //nolint:gosec // test assertion, not a real credential
 }
