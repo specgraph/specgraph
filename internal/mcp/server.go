@@ -88,8 +88,16 @@ func NewServer(client *Client, opts ...ServerOption) *Server {
 		profileToolSets[profile] = toolMap
 	}
 
-	// Register ALL tools on the MCPServer (execution = full superset).
-	for _, td := range reg.ToolsForProfile(ProfileExecution) {
+	// Register tools on the MCPServer. When a profile override is set
+	// (stdio transport), register only that profile's tools because
+	// stdioSession does not implement SessionWithTools — the
+	// OnAfterInitialize hook cannot narrow the tool set per session.
+	// For HTTP (no override), register all tools and let the hook filter.
+	registerProfile := ProfileExecution
+	if cfg.profileOverride != nil {
+		registerProfile = *cfg.profileOverride
+	}
+	for _, td := range reg.ToolsForProfile(registerProfile) {
 		srv.AddTool(toSDKTool(td), wrapToolHandler(td.Handler))
 	}
 

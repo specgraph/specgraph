@@ -43,7 +43,7 @@ func (s *FileTokenStore) GetToken(_ context.Context) (*transport.Token, error) {
 
 // SaveToken writes the token to disk with 0600 permissions.
 func (s *FileTokenStore) SaveToken(_ context.Context, token *transport.Token) error {
-	data, err := json.Marshal(token)
+	data, err := json.Marshal(token) //nolint:gosec // G117 false positive: token is an OAuth struct, not a secret literal
 	if err != nil {
 		return fmt.Errorf("marshal token: %w", err)
 	}

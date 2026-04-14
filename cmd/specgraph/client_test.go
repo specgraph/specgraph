@@ -59,13 +59,13 @@ func TestClientTransport_TokenFromContext(t *testing.T) {
 	transport := &clientTransport{
 		base: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			got := req.Header.Get("Authorization")
-			assert.Equal(t, "Bearer ctx-token-123", got) //nolint:gosec // test assertion, not a real credential
+			assert.Equal(t, "Bearer ctx-token-123", got)
 			return &http.Response{StatusCode: http.StatusOK}, nil
 		}),
 		project: "test-project",
 	}
 
-	ctx := auth.WithBearerToken(t.Context(), "ctx-token-123") //nolint:gosec // test fixture, not a real credential
+	ctx := auth.WithBearerToken(t.Context(), "ctx-token-123")
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/test", nil)
 	require.NoError(t, err)
 
@@ -100,7 +100,7 @@ func TestClientTransport_DoesNotMutateOriginalRequest(t *testing.T) {
 		project: "injected",
 	}
 
-	ctx := auth.WithBearerToken(t.Context(), "some-token") //nolint:gosec // test fixture, not a real credential
+	ctx := auth.WithBearerToken(t.Context(), "some-token")
 	orig, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost/test", nil)
 	require.NoError(t, err)
 	orig.Header.Set("X-Custom", "original")
@@ -117,11 +117,11 @@ func TestStaticTokenTransport_InjectsToken(t *testing.T) {
 	inner := roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		token, ok := auth.BearerTokenFromContext(req.Context())
 		assert.True(t, ok, "expected bearer token in context")
-		assert.Equal(t, "static-key", token) //nolint:gosec // test assertion, not a real credential
+		assert.Equal(t, "static-key", token)
 		return &http.Response{StatusCode: http.StatusOK}, nil
 	})
 
-	transport := &staticTokenTransport{inner: inner, token: "static-key"} //nolint:gosec // test fixture, not a real credential
+	transport := &staticTokenTransport{inner: inner, token: "static-key"}
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost/test", nil)
 	require.NoError(t, err)
 
@@ -155,7 +155,7 @@ func TestStaticTokenTransport_ChainedWithClientTransport(t *testing.T) {
 
 	transport := &staticTokenTransport{
 		inner: &clientTransport{base: base, project: "proj"},
-		token: "chained-key", //nolint:gosec // test fixture, not a real credential
+		token: "chained-key",
 	}
 
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://localhost/test", nil)
@@ -164,5 +164,5 @@ func TestStaticTokenTransport_ChainedWithClientTransport(t *testing.T) {
 	_, err = transport.RoundTrip(req)
 	require.NoError(t, err)
 
-	assert.Equal(t, "Bearer chained-key", capturedAuth) //nolint:gosec // test assertion, not a real credential
+	assert.Equal(t, "Bearer chained-key", capturedAuth)
 }

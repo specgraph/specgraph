@@ -239,9 +239,14 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	mcpHTTPHandler := mcpSrv.HTTPHandler(
 		mcpserver.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
 			// Forward the raw bearer token into context so loopback
-			// requests carry the caller's credentials.
-			if v := r.Header.Get("Authorization"); strings.HasPrefix(v, "Bearer ") {
-				ctx = auth.WithBearerToken(ctx, strings.TrimPrefix(v, "Bearer "))
+			// requests carry the caller's credentials. Mirror
+			// RequireAuth's case-insensitive scheme parsing.
+			if v := r.Header.Get("Authorization"); v != "" {
+				scheme, token, ok := strings.Cut(v, " ")
+				token = strings.TrimSpace(token)
+				if ok && strings.EqualFold(scheme, "Bearer") && token != "" {
+					ctx = auth.WithBearerToken(ctx, token)
+				}
 			}
 			return ctx
 		}),
