@@ -10,68 +10,68 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTierString(t *testing.T) {
+func TestProfileString(t *testing.T) {
 	tests := []struct {
-		tier Tier
-		want string
+		profile Profile
+		want    string
 	}{
-		{TierCore, "core"},
-		{TierAuthoring, "authoring"},
-		{TierExecution, "execution"},
+		{ProfileCore, "core"},
+		{ProfileAuthoring, "authoring"},
+		{ProfileExecution, "execution"},
 		// Unknown values fall back to "core" per the current implementation.
-		{Tier(99), "core"},
-		{Tier(-1), "core"},
+		{Profile(99), "core"},
+		{Profile(-1), "core"},
 	}
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("Tier(%d)", tt.tier), func(t *testing.T) {
-			require.Equal(t, tt.want, tt.tier.String())
+		t.Run(fmt.Sprintf("Profile(%d)", tt.profile), func(t *testing.T) {
+			require.Equal(t, tt.want, tt.profile.String())
 		})
 	}
 }
 
-func TestParseTier(t *testing.T) {
+func TestParseProfile(t *testing.T) {
 	tests := []struct {
 		input string
-		want  Tier
+		want  Profile
 	}{
-		{"core", TierCore},
-		{"authoring", TierAuthoring},
-		{"execution", TierExecution},
-		// Unknown strings default to TierCore.
-		{"unknown", TierCore},
-		{"", TierCore},
-		{"CORE", TierCore},
-		{"Authoring", TierCore},
+		{"core", ProfileCore},
+		{"authoring", ProfileAuthoring},
+		{"execution", ProfileExecution},
+		// Unknown strings default to ProfileCore.
+		{"unknown", ProfileCore},
+		{"", ProfileCore},
+		{"CORE", ProfileCore},
+		{"Authoring", ProfileCore},
 	}
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("ParseTier(%q)", tt.input), func(t *testing.T) {
-			require.Equal(t, tt.want, ParseTier(tt.input))
+		t.Run(fmt.Sprintf("ParseProfile(%q)", tt.input), func(t *testing.T) {
+			require.Equal(t, tt.want, ParseProfile(tt.input))
 		})
 	}
 }
 
-func TestTierIncludes(t *testing.T) {
+func TestProfileIncludes(t *testing.T) {
 	tests := []struct {
-		t     Tier
-		other Tier
+		p     Profile
+		other Profile
 		want  bool
 	}{
 		// Core includes only core.
-		{TierCore, TierCore, true},
-		{TierCore, TierAuthoring, false},
-		{TierCore, TierExecution, false},
+		{ProfileCore, ProfileCore, true},
+		{ProfileCore, ProfileAuthoring, false},
+		{ProfileCore, ProfileExecution, false},
 		// Authoring includes core and authoring.
-		{TierAuthoring, TierCore, true},
-		{TierAuthoring, TierAuthoring, true},
-		{TierAuthoring, TierExecution, false},
-		// Execution includes all tiers.
-		{TierExecution, TierCore, true},
-		{TierExecution, TierAuthoring, true},
-		{TierExecution, TierExecution, true},
+		{ProfileAuthoring, ProfileCore, true},
+		{ProfileAuthoring, ProfileAuthoring, true},
+		{ProfileAuthoring, ProfileExecution, false},
+		// Execution includes all profiles.
+		{ProfileExecution, ProfileCore, true},
+		{ProfileExecution, ProfileAuthoring, true},
+		{ProfileExecution, ProfileExecution, true},
 	}
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("Tier(%d).Includes(Tier(%d))", tt.t, tt.other), func(t *testing.T) {
-			require.Equal(t, tt.want, tt.t.Includes(tt.other))
+		t.Run(fmt.Sprintf("Profile(%d).Includes(Profile(%d))", tt.p, tt.other), func(t *testing.T) {
+			require.Equal(t, tt.want, tt.p.Includes(tt.other))
 		})
 	}
 }

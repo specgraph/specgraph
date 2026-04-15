@@ -17,18 +17,41 @@ const (
 	serverVersion = "0.1.0"
 )
 
-// Server wraps one MCPServer per tier. Each tier's MCPServer is pre-populated
-// with the tools, resources, and prompts appropriate for that tier.
+// ServerOption configures a Server.
+type ServerOption func(*serverConfig)
+
+type serverConfig struct {
+	profileOverride *Profile
+}
+
+// WithProfileOverride sets a fixed profile, overriding clientInfo-based
+// derivation in the OnAfterInitialize hook. Used by the stdio transport
+// where the operator selects the profile via --profile flag.
+func WithProfileOverride(p Profile) ServerOption {
+	return func(cfg *serverConfig) {
+		cfg.profileOverride = &p
+	}
+}
+
+// Server wraps a single MCPServer pre-populated with all tools, resources,
+// and prompts. Profile-based tool filtering happens per-session via the
+// OnAfterInitialize hook.
 type Server struct {
-	registry *Registry
-	servers  map[Tier]*server.MCPServer
+	registry        *Registry
+	mcpServer       *server.MCPServer
+	profileToolSets map[Profile]map[string]server.ServerTool
 }
 
 // NewServer creates a fully wired MCP server backed by the given ConnectRPC client.
-// It registers all tools, resources, and prompts, then builds one MCPServer
-// per tier with the appropriate subset of tools (all tiers get all resources
-// and prompts).
-func NewServer(client *Client) *Server {
+// It registers all tools, resources, and prompts onto a single MCPServer
+// (the execution-profile superset). An OnAfterInitialize hook narrows
+// session-visible tools based on the client's profile.
+func NewServer(client *Client, opts ...ServerOption) *Server {
+	var cfg serverConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	reg := NewRegistry()
 
 	// Register all handlers into the registry.
@@ -41,71 +64,115 @@ func NewServer(client *Client) *Server {
 	RegisterResources(reg, client)
 	RegisterPrompts(reg, client)
 
-	tiers := []Tier{TierCore, TierAuthoring, TierExecution}
-	servers := make(map[Tier]*server.MCPServer, len(tiers))
+	hooks := &server.Hooks{}
 
-	for _, tier := range tiers {
-		srv := server.NewMCPServer(
-			serverName,
-			serverVersion,
-			server.WithToolCapabilities(false),
-			server.WithResourceCapabilities(false, false),
-			server.WithPromptCapabilities(false),
-		)
+	srv := server.NewMCPServer(
+		serverName,
+		serverVersion,
+		server.WithToolCapabilities(true),
+		server.WithResourceCapabilities(false, false),
+		server.WithPromptCapabilities(false),
+		server.WithHooks(hooks),
+	)
 
-		// Add tier-appropriate tools.
-		for _, td := range reg.ToolsForTier(tier) {
-			srv.AddTool(toSDKTool(td), wrapToolHandler(td.Handler))
-		}
-
-		// All tiers get all resources.
-		for i := range reg.Resources() {
-			rd := &reg.resources[i]
-			if rd.IsTemplate {
-				srv.AddResourceTemplate(toSDKResourceTemplate(rd), wrapResourceTemplateHandler(rd.Handler))
-			} else {
-				srv.AddResource(toSDKResource(rd), wrapResourceHandler(rd.Handler))
+	// Build per-profile tool sets for session filtering.
+	profileToolSets := make(map[Profile]map[string]server.ServerTool, 3)
+	for _, profile := range []Profile{ProfileCore, ProfileAuthoring, ProfileExecution} {
+		toolMap := make(map[string]server.ServerTool)
+		for _, td := range reg.ToolsForProfile(profile) {
+			toolMap[td.Name] = server.ServerTool{
+				Tool:    toSDKTool(td),
+				Handler: wrapToolHandler(td.Handler),
 			}
 		}
+		profileToolSets[profile] = toolMap
+	}
 
-		// All tiers get all prompts.
-		for _, pd := range reg.Prompts() {
-			srv.AddPrompt(toSDKPrompt(pd), wrapPromptHandler(pd.Handler))
+	// Register tools on the MCPServer.
+	//
+	// WORKAROUND: mcp-go v0.45.0's stdioSession does not implement
+	// SessionWithTools, so the OnAfterInitialize hook cannot narrow tools
+	// for stdio sessions. When a profile override is set, we register only
+	// that profile's tools at construction time instead.
+	//
+	// The correct design is transport-agnostic: always register all tools,
+	// always filter via the hook. This workaround should be removed once
+	// stdioSession gains SessionWithTools support (upstream contribution
+	// tracked in spgr-igd9).
+	registerProfile := ProfileExecution
+	if cfg.profileOverride != nil {
+		registerProfile = *cfg.profileOverride
+	}
+	for _, td := range reg.ToolsForProfile(registerProfile) {
+		srv.AddTool(toSDKTool(td), wrapToolHandler(td.Handler))
+	}
+
+	// All resources and prompts (profile-independent).
+	for i := range reg.Resources() {
+		rd := &reg.resources[i]
+		if rd.IsTemplate {
+			srv.AddResourceTemplate(toSDKResourceTemplate(rd), wrapResourceTemplateHandler(rd.Handler))
+		} else {
+			srv.AddResource(toSDKResource(rd), wrapResourceHandler(rd.Handler))
 		}
-
-		servers[tier] = srv
+	}
+	for _, pd := range reg.Prompts() {
+		srv.AddPrompt(toSDKPrompt(pd), wrapPromptHandler(pd.Handler))
 	}
 
-	return &Server{
-		registry: reg,
-		servers:  servers,
+	s := &Server{
+		registry:        reg,
+		mcpServer:       srv,
+		profileToolSets: profileToolSets,
 	}
+
+	// Hook: after MCP initialize, narrow tools to the client's profile.
+	hooks.AddAfterInitialize(func(ctx context.Context, _ any, msg *sdkmcp.InitializeRequest, _ *sdkmcp.InitializeResult) {
+		var profile Profile
+		if cfg.profileOverride != nil {
+			profile = *cfg.profileOverride
+		} else {
+			profile = ProfileFromClientInfo(&msg.Params.ClientInfo)
+		}
+		if profile == ProfileExecution {
+			return // full access, no filtering needed
+		}
+		session := server.ClientSessionFromContext(ctx)
+		if swt, ok := session.(server.SessionWithTools); ok {
+			swt.SetSessionTools(s.profileToolSets[profile])
+		}
+	})
+
+	return s
 }
 
-// ForTier returns the MCPServer for the given tier. Unknown tiers fall back to TierCore.
-func (s *Server) ForTier(tier Tier) *server.MCPServer {
-	srv, ok := s.servers[tier]
+// MCPServer returns the underlying mcp-go server.
+func (s *Server) MCPServer() *server.MCPServer {
+	return s.mcpServer
+}
+
+// ToolsForProfile returns the pre-built ServerTool map for the given profile.
+// Unknown profiles fall back to ProfileCore.
+func (s *Server) ToolsForProfile(profile Profile) map[string]server.ServerTool {
+	tools, ok := s.profileToolSets[profile]
 	if !ok {
-		return s.servers[TierCore]
+		return s.profileToolSets[ProfileCore]
 	}
-	return srv
+	return tools
 }
 
-// ServeStdio runs a stdio transport for the given tier, reading JSON-RPC
-// messages from stdin and writing responses to stdout. It blocks until ctx
-// is cancelled or an error occurs.
-func (s *Server) ServeStdio(ctx context.Context, tier Tier, stdin io.Reader, stdout io.Writer) error {
-	stdio := server.NewStdioServer(s.ForTier(tier))
+// ServeStdio runs a stdio transport. It blocks until ctx is cancelled.
+func (s *Server) ServeStdio(ctx context.Context, stdin io.Reader, stdout io.Writer) error {
+	stdio := server.NewStdioServer(s.mcpServer)
 	if err := stdio.Listen(ctx, stdin, stdout); err != nil {
 		return fmt.Errorf("mcp stdio: %w", err)
 	}
 	return nil
 }
 
-// HTTPHandler returns a StreamableHTTPServer for the given tier, suitable
-// for use as an http.Handler.
-func (s *Server) HTTPHandler(tier Tier) *server.StreamableHTTPServer {
-	return server.NewStreamableHTTPServer(s.ForTier(tier))
+// HTTPHandler returns a StreamableHTTPServer suitable for use as an http.Handler.
+func (s *Server) HTTPHandler(opts ...server.StreamableHTTPOption) *server.StreamableHTTPServer {
+	return server.NewStreamableHTTPServer(s.mcpServer, opts...)
 }
 
 // wrapToolHandler adapts a SpecGraph ToolHandler to the mcp-go ToolHandlerFunc signature.

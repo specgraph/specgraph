@@ -16,11 +16,11 @@ import (
 	"github.com/specgraph/specgraph/internal/xdg"
 )
 
-// clientTransport injects the X-Specgraph-Project and Authorization headers on every request.
+// clientTransport injects the X-Specgraph-Project header and forwards the
+// bearer token from context on every request.
 type clientTransport struct {
-	base        http.RoundTripper
-	project     string
-	bearerToken string
+	base    http.RoundTripper
+	project string
 }
 
 func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -28,10 +28,25 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if t.project != "" {
 		req.Header.Set("X-Specgraph-Project", t.project)
 	}
-	if t.bearerToken != "" {
-		req.Header.Set("Authorization", "Bearer "+t.bearerToken)
+	if token, ok := auth.BearerTokenFromContext(req.Context()); ok {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	return t.base.RoundTrip(req)
+}
+
+// staticTokenTransport injects a fixed bearer token into context for
+// CLI commands where the token is resolved once at startup.
+type staticTokenTransport struct {
+	inner http.RoundTripper
+	token string
+}
+
+func (t *staticTokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if t.token != "" {
+		ctx := auth.WithBearerToken(req.Context(), t.token)
+		req = req.WithContext(ctx)
+	}
+	return t.inner.RoundTrip(req)
 }
 
 func resolveBaseURL() (baseURL, project string, err error) {
@@ -84,9 +99,21 @@ func resolveAPIKey() string {
 
 func newHTTPClient(project string) *http.Client {
 	return &http.Client{Transport: &clientTransport{
-		base:        http.DefaultTransport,
-		project:     project,
-		bearerToken: resolveAPIKey(),
+		base:    http.DefaultTransport,
+		project: project,
+	}}
+}
+
+// newAuthenticatedHTTPClient returns an HTTP client that injects a static
+// bearer token (resolved once at startup) into context before the
+// context-aware clientTransport picks it up. Used by CLI commands.
+func newAuthenticatedHTTPClient(project string) *http.Client {
+	return &http.Client{Transport: &staticTokenTransport{
+		inner: &clientTransport{
+			base:    http.DefaultTransport,
+			project: project,
+		},
+		token: resolveAPIKey(),
 	}}
 }
 
@@ -97,7 +124,7 @@ func newClient[C any](ctor func(httpClient connect.HTTPClient, baseURL string, o
 		var zero C
 		return zero, err
 	}
-	return ctor(newHTTPClient(project), baseURL), nil
+	return ctor(newAuthenticatedHTTPClient(project), baseURL), nil
 }
 
 // newClientWithProject creates a ConnectRPC client using an explicit project
@@ -111,7 +138,7 @@ func newClientWithProject[C any](ctor func(httpClient connect.HTTPClient, baseUR
 	if project != "" {
 		derivedProject = project
 	}
-	return ctor(newHTTPClient(derivedProject), baseURL), nil
+	return ctor(newAuthenticatedHTTPClient(derivedProject), baseURL), nil
 }
 
 func authoringClient() (specgraphv1connect.AuthoringServiceClient, error) {

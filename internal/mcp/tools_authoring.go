@@ -70,7 +70,7 @@ func (t *authorTool) def() ToolDef {
 		Name: "author",
 		Description: "Drive the SpecGraph authoring funnel for a spec. " +
 			"Actions: spark, shape, specify, decompose, approve, amend, supersede.",
-		Tier: TierAuthoring,
+		Profile: ProfileAuthoring,
 		Schema: objectSchema(
 			props{
 				"action": stringProp("Operation to perform",
@@ -293,7 +293,7 @@ func (t *conversationTool) def() ToolDef {
 		Name: "conversation",
 		Description: "Record and list authoring conversation logs for a spec. " +
 			"Actions: record, list.",
-		Tier: TierAuthoring,
+		Profile: ProfileAuthoring,
 		Schema: objectSchema(
 			props{
 				"action":    stringProp("Operation to perform", "record", "list"),
@@ -379,7 +379,7 @@ func (t *analyticalPassTool) def() ToolDef {
 		Name: "analytical_pass",
 		Description: "Run analytical passes and store findings for a spec. " +
 			"Actions: run, store.",
-		Tier: TierAuthoring,
+		Profile: ProfileAuthoring,
 		Schema: objectSchema(
 			props{
 				"action": stringProp("Operation to perform", "run", "store"),

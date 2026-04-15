@@ -48,7 +48,7 @@ func (t *claimTool) def() ToolDef {
 		Name: "claim",
 		Description: "Manage spec execution claims for agents. " +
 			"Actions: claim, unclaim, heartbeat.",
-		Tier: TierExecution,
+		Profile: ProfileExecution,
 		Schema: objectSchema(
 			props{
 				"action":         stringProp("Operation to perform", "claim", "unclaim", "heartbeat"),
@@ -154,7 +154,7 @@ func (t *sliceTool) def() ToolDef {
 		Name: "slice",
 		Description: "Manage execution slices (discrete work items from the decompose stage). " +
 			"Actions: list, get, claim, complete.",
-		Tier: TierExecution,
+		Profile: ProfileExecution,
 		Schema: objectSchema(
 			props{
 				"action":      stringProp("Operation to perform", "list", "get", "claim", "complete"),
@@ -258,7 +258,7 @@ func (t *bundleTool) def() ToolDef {
 		Name: "bundle",
 		Description: "Generate an execution bundle for a spec. " +
 			"The bundle includes the spec, linked decisions, bootstrap instructions, and callback config.",
-		Tier: TierExecution,
+		Profile: ProfileExecution,
 		Schema: objectSchema(
 			props{
 				"slug":     stringProp("Spec slug (required)"),
@@ -298,7 +298,7 @@ func (t *primeTool) def() ToolDef {
 		Name: "prime",
 		Description: "Retrieve project priming context for a spec: constitution summary, " +
 			"project context, decisions, coding conventions, and callback docs.",
-		Tier: TierExecution,
+		Profile: ProfileExecution,
 		Schema: objectSchema(
 			props{
 				"slug": stringProp("Spec slug (required)"),
@@ -336,7 +336,7 @@ func (t *reportTool) def() ToolDef {
 		Name: "report",
 		Description: "Report execution progress, blockers, or completion for a spec. " +
 			"Actions: progress, blocker, completion.",
-		Tier: TierExecution,
+		Profile: ProfileExecution,
 		Schema: objectSchema(
 			props{
 				"action":      stringProp("Operation to perform", "progress", "blocker", "completion"),
@@ -445,7 +445,7 @@ func (t *executionEventsTool) def() ToolDef {
 		Name: "execution_events",
 		Description: "List execution events (progress, blockers, completions) recorded against a spec. " +
 			"Returns events in reverse-chronological order.",
-		Tier: TierExecution,
+		Profile: ProfileExecution,
 		Schema: objectSchema(
 			props{
 				"slug":  stringProp("Spec slug (required)"),

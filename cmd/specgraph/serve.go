@@ -12,10 +12,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"connectrpc.com/connect"
+	mcpserver "github.com/mark3labs/mcp-go/server"
 
 	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/config"
@@ -229,22 +231,29 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(compositeStore))
 	server.RegisterAuthHandlers(mux, compositeStore, auth.RequireAuth(compositeStore))
 
-	// Mount MCP streamable HTTP endpoint.
-	// TODO(auth): Derive tier from authenticated identity once MCP auth is implemented.
-	// Currently tier is caller-supplied (header/query param). This is acceptable because
-	// the MCP endpoint shares the same auth middleware as ConnectRPC — an unauthenticated
-	// caller can't escalate beyond what the backend RPCs already enforce.
+	// Mount MCP streamable HTTP endpoint with auth gating.
+	// RequireAuth returns 401 for unauthenticated callers, which is the
+	// MCP spec's signal for clients to initiate OAuth.
 	mcpClient := mcppkg.NewClient(newHTTPClient(""), selfBaseURL(cfg.Server.Listen))
-	mcpServer := mcppkg.NewServer(mcpClient)
-	mux.Handle("/mcp/", http.StripPrefix("/mcp", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tierStr := r.Header.Get("X-Specgraph-MCP-Tier")
-		if tierStr == "" {
-			tierStr = r.URL.Query().Get("tier")
-		}
-		tier := mcppkg.ParseTier(tierStr)
-		mcpHandler := mcpServer.HTTPHandler(tier)
-		mcpHandler.ServeHTTP(w, r)
-	})))
+	mcpSrv := mcppkg.NewServer(mcpClient)
+	mcpHTTPHandler := mcpSrv.HTTPHandler(
+		mcpserver.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
+			// Forward the raw bearer token into context so loopback
+			// requests carry the caller's credentials. Mirror
+			// RequireAuth's case-insensitive scheme parsing.
+			if v := r.Header.Get("Authorization"); v != "" {
+				scheme, token, ok := strings.Cut(v, " ")
+				token = strings.TrimSpace(token)
+				if ok && strings.EqualFold(scheme, "Bearer") && token != "" {
+					ctx = auth.WithBearerToken(ctx, token)
+				}
+			}
+			return ctx
+		}),
+	)
+	mux.Handle("/mcp/", auth.RequireAuth(compositeStore)(
+		http.StripPrefix("/mcp", mcpHTTPHandler),
+	))
 
 	webFS, err := fs.Sub(web.Build, "build")
 	if err != nil {
