@@ -5,9 +5,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
+
+	"github.com/mark3labs/mcp-go/client/transport"
 
 	"github.com/specgraph/specgraph/internal/auth"
 	mcppkg "github.com/specgraph/specgraph/internal/mcp"
@@ -67,8 +70,14 @@ func runMCP(cmd *cobra.Command, _ []string) error {
 	token := resolveAPIKey()
 	if token == "" {
 		tokenStore := auth.NewFileTokenStore(xdg.OAuthTokenFile())
-		if cached, err := tokenStore.GetToken(ctx); err == nil {
+		cached, err := tokenStore.GetToken(ctx)
+		switch {
+		case err == nil:
 			token = cached.AccessToken
+		case errors.Is(err, transport.ErrNoToken):
+			// No cached token — continue unauthenticated.
+		default:
+			return fmt.Errorf("read cached OIDC token: %w", err)
 		}
 	}
 	ctx = auth.WithBearerToken(ctx, token)

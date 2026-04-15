@@ -53,5 +53,9 @@ func (s *FileTokenStore) SaveToken(_ context.Context, token *transport.Token) er
 	if err := os.WriteFile(s.path, data, 0o600); err != nil {
 		return fmt.Errorf("write token file: %w", err)
 	}
+	// os.WriteFile only sets mode on new files; enforce 0600 on overwrites.
+	if err := os.Chmod(s.path, 0o600); err != nil {
+		return fmt.Errorf("chmod token file: %w", err)
+	}
 	return nil
 }
