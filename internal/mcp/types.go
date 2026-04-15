@@ -7,54 +7,54 @@ package mcp
 
 import "context"
 
-// Tier controls which tools are visible to an MCP client.
-type Tier int
+// Profile controls which tools are visible to an MCP client.
+type Profile int
 
 const (
-	// TierCore exposes read-heavy tools: specs, graph queries, constitution.
-	TierCore Tier = iota
-	// TierAuthoring adds authoring funnel, decisions, drift, analytical passes.
-	TierAuthoring
-	// TierExecution adds claims, slices, progress reporting, bundles.
-	TierExecution
+	// ProfileCore exposes read-heavy tools: specs, graph queries, constitution.
+	ProfileCore Profile = iota
+	// ProfileAuthoring adds authoring funnel, decisions, drift, analytical passes.
+	ProfileAuthoring
+	// ProfileExecution adds claims, slices, progress reporting, bundles.
+	ProfileExecution
 )
 
-// String returns the tier name used in capability negotiation.
-func (t Tier) String() string {
-	switch t {
-	case TierCore:
+// String returns the profile name used in capability negotiation.
+func (p Profile) String() string {
+	switch p {
+	case ProfileCore:
 		return "core"
-	case TierAuthoring:
+	case ProfileAuthoring:
 		return "authoring"
-	case TierExecution:
+	case ProfileExecution:
 		return "execution"
 	default:
 		return "core"
 	}
 }
 
-// ParseTier converts a string to a Tier. Returns TierCore for unknown values.
-func ParseTier(s string) Tier {
+// ParseProfile converts a string to a Profile. Returns ProfileCore for unknown values.
+func ParseProfile(s string) Profile {
 	switch s {
 	case "authoring":
-		return TierAuthoring
+		return ProfileAuthoring
 	case "execution":
-		return TierExecution
+		return ProfileExecution
 	default:
-		return TierCore
+		return ProfileCore
 	}
 }
 
-// Includes reports whether tier t includes all tools visible at tier other.
-func (t Tier) Includes(other Tier) bool {
-	return t >= other
+// Includes reports whether profile p includes all tools visible at profile other.
+func (p Profile) Includes(other Profile) bool {
+	return p >= other
 }
 
 // ToolDef defines an MCP tool in SpecGraph's own types (no SDK dependency).
 type ToolDef struct {
 	Name        string
 	Description string
-	Tier        Tier
+	Profile     Profile
 	Schema      map[string]any // JSON Schema for parameters
 	Handler     ToolHandler
 }

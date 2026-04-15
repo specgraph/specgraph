@@ -50,7 +50,7 @@ func (t *driftTool) def() ToolDef {
 		Name: "drift",
 		Description: "Check for and acknowledge spec drift against upstream dependencies. " +
 			"Actions: check, acknowledge.",
-		Tier: TierAuthoring,
+		Profile: ProfileAuthoring,
 		Schema: objectSchema(
 			props{
 				"action":        stringProp("Operation to perform", "check", "acknowledge"),
@@ -122,7 +122,7 @@ func (t *lintTool) def() ToolDef {
 	return ToolDef{
 		Name:        "lint",
 		Description: "Lint one or all specs for structural and rule violations. Leave slug empty to lint all specs.",
-		Tier:        TierAuthoring,
+		Profile:     ProfileAuthoring,
 		Schema: objectSchema(
 			props{
 				"slug": stringProp("Spec slug to lint (empty = lint all specs)"),
@@ -155,7 +155,7 @@ func (t *syncTool) def() ToolDef {
 		Name: "sync",
 		Description: "Sync specs with external issue trackers and VCS. " +
 			"Actions: beads, github, status.",
-		Tier: TierAuthoring,
+		Profile: ProfileAuthoring,
 		Schema: objectSchema(
 			props{
 				"action": stringProp("Operation to perform", "beads", "github", "status"),
@@ -218,7 +218,7 @@ func (t *exportTool) def() ToolDef {
 		Description: "Export, import, and verify SpecGraph project bundles. " +
 			"Actions: export, import, verify. " +
 			"For import and verify, pass the export data as a base64-encoded string.",
-		Tier: TierAuthoring,
+		Profile: ProfileAuthoring,
 		Schema: objectSchema(
 			props{
 				"action":            stringProp("Operation to perform", "export", "import", "verify"),

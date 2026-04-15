@@ -13,7 +13,7 @@ func TestToSDKTool(t *testing.T) {
 	def := ToolDef{
 		Name:        "spec_get",
 		Description: "Get a spec by slug",
-		Tier:        TierCore,
+		Profile:     ProfileCore,
 		Schema: objectSchema(props{
 			"slug": stringProp("The spec slug"),
 		}, "slug"),

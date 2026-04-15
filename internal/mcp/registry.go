@@ -24,12 +24,12 @@ func (r *Registry) AddTool(def ToolDef) {
 	r.tools = append(r.tools, def)
 }
 
-// ToolsForTier returns all tools visible at the given tier.
-// Higher tiers include all tools from lower tiers.
-func (r *Registry) ToolsForTier(tier Tier) []ToolDef {
+// ToolsForProfile returns all tools visible at the given profile.
+// Higher profiles include all tools from lower profiles.
+func (r *Registry) ToolsForProfile(profile Profile) []ToolDef {
 	var out []ToolDef
 	for _, def := range r.tools {
-		if tier.Includes(def.Tier) {
+		if profile.Includes(def.Profile) {
 			out = append(out, def)
 		}
 	}
