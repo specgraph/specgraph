@@ -88,11 +88,17 @@ func NewServer(client *Client, opts ...ServerOption) *Server {
 		profileToolSets[profile] = toolMap
 	}
 
-	// Register tools on the MCPServer. When a profile override is set
-	// (stdio transport), register only that profile's tools because
-	// stdioSession does not implement SessionWithTools — the
-	// OnAfterInitialize hook cannot narrow the tool set per session.
-	// For HTTP (no override), register all tools and let the hook filter.
+	// Register tools on the MCPServer.
+	//
+	// WORKAROUND: mcp-go v0.45.0's stdioSession does not implement
+	// SessionWithTools, so the OnAfterInitialize hook cannot narrow tools
+	// for stdio sessions. When a profile override is set, we register only
+	// that profile's tools at construction time instead.
+	//
+	// The correct design is transport-agnostic: always register all tools,
+	// always filter via the hook. This workaround should be removed once
+	// stdioSession gains SessionWithTools support (upstream contribution
+	// tracked in spgr-igd9).
 	registerProfile := ProfileExecution
 	if cfg.profileOverride != nil {
 		registerProfile = *cfg.profileOverride
