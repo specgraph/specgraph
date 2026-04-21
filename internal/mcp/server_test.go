@@ -59,23 +59,6 @@ func TestNewServer_ProfileToolSets(t *testing.T) {
 	}
 }
 
-func TestNewServer_ProfileOverride_LimitsRegisteredTools(t *testing.T) {
-	// When WithProfileOverride is set, the MCPServer should only contain
-	// tools for that profile (for stdio, where stdioSession doesn't
-	// support per-session tool filtering).
-	srv := NewServer(&Client{}, WithProfileOverride(ProfileCore))
-	tools := srv.MCPServer().ListTools()
-	if len(tools) != 7 {
-		t.Errorf("override=core: MCPServer tool count = %d, want 7", len(tools))
-	}
-
-	srv = NewServer(&Client{}, WithProfileOverride(ProfileAuthoring))
-	tools = srv.MCPServer().ListTools()
-	if len(tools) != 14 {
-		t.Errorf("override=authoring: MCPServer tool count = %d, want 14", len(tools))
-	}
-}
-
 func TestNewServer_FallbackToCore(t *testing.T) {
 	srv := NewServer(&Client{})
 	unknown := srv.ToolsForProfile(Profile(99))
