@@ -233,6 +233,55 @@ type fakeConvBackend struct {
 	conv *fakeConversationBackend
 }
 
+// fakeFindingsBackend captures StoreFindings calls for assertions.
+type fakeFindingsBackend struct {
+	captured []struct {
+		Slug     string
+		PassType storage.PassType
+		Findings []storage.AnalyticalFindingInput
+	}
+}
+
+func (f *fakeFindingsBackend) StoreFindings(_ context.Context, slug string, pt storage.PassType, findings []storage.AnalyticalFindingInput) ([]string, error) {
+	f.captured = append(f.captured, struct {
+		Slug     string
+		PassType storage.PassType
+		Findings []storage.AnalyticalFindingInput
+	}{slug, pt, findings})
+	ids := make([]string, len(findings))
+	for i := range findings {
+		ids[i] = "finding-" + slug
+	}
+	return ids, nil
+}
+
+// fakeRejectBackend combines fakeBackend, fakeConversationBackend, and fakeFindingsBackend.
+type fakeRejectBackend struct {
+	fakeBackend
+	conv     *fakeConversationBackend
+	findings *fakeFindingsBackend
+}
+
+// rejectAuthoringTestBackend embeds authoringTestBackend, overrides RecordConversation
+// and StoreFindings so the reject path can capture calls for assertions.
+type rejectAuthoringTestBackend struct {
+	authoringTestBackend
+	conv     *fakeConversationBackend
+	findings *fakeFindingsBackend
+}
+
+func (r *rejectAuthoringTestBackend) RecordConversation(ctx context.Context, slug string, entry storage.ConversationLogEntry) (*storage.ConversationLogEntry, error) {
+	return r.conv.RecordConversation(ctx, slug, entry)
+}
+
+func (r *rejectAuthoringTestBackend) ListConversations(ctx context.Context, slug string, stage string) ([]*storage.ConversationLogEntry, error) {
+	return r.conv.ListConversations(ctx, slug, stage)
+}
+
+func (r *rejectAuthoringTestBackend) StoreFindings(ctx context.Context, slug string, pt storage.PassType, findings []storage.AnalyticalFindingInput) ([]string, error) {
+	return r.findings.StoreFindings(ctx, slug, pt, findings)
+}
+
 // convAuthoringTestBackend embeds authoringTestBackend and adds ConversationBackend.
 type convAuthoringTestBackend struct {
 	authoringTestBackend
@@ -289,6 +338,12 @@ func newAuthoringClient(t *testing.T, authoringStore *fakeAuthoringBackend, back
 		scopedBackend = &convAuthoringTestBackend{
 			authoringTestBackend: authoringTestBackend{authoring: authoringStore, backend: &b.fakeBackend},
 			conv:                 b.conv,
+		}
+	case *fakeRejectBackend:
+		scopedBackend = &rejectAuthoringTestBackend{
+			authoringTestBackend: authoringTestBackend{authoring: authoringStore, backend: &b.fakeBackend},
+			conv:                 b.conv,
+			findings:             b.findings,
 		}
 	case *fakeBackend:
 		scopedBackend = &authoringTestBackend{authoring: authoringStore, backend: b}
@@ -560,6 +615,62 @@ func TestAuthoringHandler_Approve_HappyPath(t *testing.T) {
 	require.Equal(t, "my-spec", resp.Msg.Slug)
 	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
 	require.NotNil(t, resp.Msg.ApprovedAt, "approved_at timestamp should be set")
+}
+
+func TestAuthoringHandler_Approve_AcceptUnchangedWithoutAction(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug:   "my-spec",
+		Action: "",
+	}))
+	require.NoError(t, err)
+	require.Equal(t, "my-spec", resp.Msg.Slug)
+	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
+}
+
+func TestAuthoringHandler_Approve_RejectRequiresExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeRejectBackend{
+		conv:     &fakeConversationBackend{},
+		findings: &fakeFindingsBackend{},
+	})
+	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug:   "my-spec",
+		Action: "reject",
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestAuthoringHandler_Approve_RejectRecordsFindingAndExchanges(t *testing.T) {
+	conv := &fakeConversationBackend{}
+	findings := &fakeFindingsBackend{}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeRejectBackend{
+		conv:     conv,
+		findings: findings,
+	})
+	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug:   "my-spec",
+		Action: "reject",
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "looks good?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "no, rejected", Stage: "approve", Sequence: 2},
+		},
+	}))
+	require.NoError(t, err)
+	// Stage must reflect current spec stage (Decompose → not transitioned to Approved)
+	require.NotEqual(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
+	require.Equal(t, "my-spec", resp.Msg.Slug)
+	// RecordConversation was called exactly once
+	require.Len(t, conv.entries, 1, "expected exactly one RecordConversation call")
+	require.Len(t, conv.entries[0].Exchanges, 2)
+	// StoreFindings was called exactly once with PassTypeApproveRejected and one critical finding
+	require.Len(t, findings.captured, 1, "expected exactly one StoreFindings call")
+	require.Equal(t, storage.PassTypeApproveRejected, findings.captured[0].PassType)
+	require.Equal(t, "my-spec", findings.captured[0].Slug)
+	require.Len(t, findings.captured[0].Findings, 1)
+	require.Equal(t, storage.SeverityCritical, findings.captured[0].Findings[0].Severity)
 }
 
 func TestAuthoringHandler_Amend_HappyPath(t *testing.T) {

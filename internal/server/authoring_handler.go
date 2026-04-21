@@ -424,6 +424,10 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 // Approve handles the Approve RPC, transitioning from decompose to approved stage.
 // After approval, linked decisions (via DECIDED_IN edges) are transitioned from
 // proposed to accepted per ADR-003 (decisions as first-class graph nodes).
+//
+// When action is "reject" (or any non-accept value), the stage is NOT transitioned.
+// Instead, conversation exchanges are recorded and an approve-rejected finding is
+// stored representing the rejection rationale. Exchanges are required for reject.
 func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[specv1.ApproveRequest]) (*connect.Response[specv1.ApproveResponse], error) {
 	store, scopeErr := scopeStore(ctx, h.scoper)
 	if scopeErr != nil {
@@ -432,39 +436,92 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	// Wrap TransitionStage and acceptLinkedDecisions in a transaction so that
-	// if decision promotion fails, the spec approval is rolled back.
-	var spec *storage.Spec
 	slug := req.Msg.Slug
-	if err := runInTxOrSequential(ctx, store,
-		func(txCtx context.Context) error {
-			return store.TransitionStage(txCtx, slug, storage.SpecStageDecompose, storage.SpecStageApproved)
-		},
-		func(txCtx context.Context) error {
-			return acceptLinkedDecisions(txCtx, h.logger, store, store, slug)
-		},
-		func(txCtx context.Context) error {
-			var err error
-			spec, err = store.GetSpec(txCtx, slug)
-			if err != nil {
-				return fmt.Errorf("get spec %q: %w", slug, err)
-			}
-			return nil
-		},
-	); err != nil {
-		return nil, h.stageError(err)
+	action := req.Msg.GetAction()
+	if action == "" {
+		action = "accept"
 	}
-	if spec.UpdatedAt.IsZero() {
-		h.logger.ErrorContext(ctx, "spec.UpdatedAt is zero after TransitionStage",
-			"slug", slug, "specID", spec.ID, "stage", "approved")
-		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
+
+	switch action {
+	case "accept":
+		// Wrap TransitionStage and acceptLinkedDecisions in a transaction so that
+		// if decision promotion fails, the spec approval is rolled back.
+		var spec *storage.Spec
+		if err := runInTxOrSequential(ctx, store,
+			func(txCtx context.Context) error {
+				return store.TransitionStage(txCtx, slug, storage.SpecStageDecompose, storage.SpecStageApproved)
+			},
+			func(txCtx context.Context) error {
+				return acceptLinkedDecisions(txCtx, h.logger, store, store, slug)
+			},
+			func(txCtx context.Context) error {
+				var err error
+				spec, err = store.GetSpec(txCtx, slug)
+				if err != nil {
+					return fmt.Errorf("get spec %q: %w", slug, err)
+				}
+				return nil
+			},
+		); err != nil {
+			return nil, h.stageError(err)
+		}
+		if spec.UpdatedAt.IsZero() {
+			h.logger.ErrorContext(ctx, "spec.UpdatedAt is zero after TransitionStage",
+				"slug", slug, "specID", spec.ID, "stage", "approved")
+			return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
+		}
+		approvedAt := timestamppb.New(spec.UpdatedAt)
+		return connect.NewResponse(&specv1.ApproveResponse{
+			Slug:       req.Msg.Slug,
+			Stage:      stageToProto(storage.SpecStageApproved),
+			ApprovedAt: approvedAt,
+		}), nil
+
+	case "reject":
+		if err := authoring.ValidateExchanges(req.Msg.GetConversationExchanges(), "approve"); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		exchanges := exchangesFromProto(req.Msg.GetConversationExchanges())
+		finding := storage.AnalyticalFindingInput{
+			Severity: storage.SeverityCritical,
+			Summary:  "approval rejected",
+			Detail:   "see conversation log for rationale",
+		}
+		var currentStage storage.SpecStage
+		entry := storage.ConversationLogEntry{
+			Exchanges:     exchanges,
+			ExchangeCount: int32(len(exchanges)),
+			IsAmend:       false,
+		}
+		if err := runInTxOrSequential(ctx, store,
+			func(txCtx context.Context) error {
+				s, err := store.GetSpec(txCtx, slug)
+				if err != nil {
+					return fmt.Errorf("get spec %q: %w", slug, err)
+				}
+				currentStage = s.Stage
+				entry.Stage = s.Stage
+				return nil
+			},
+			func(txCtx context.Context) error {
+				_, err := store.RecordConversation(txCtx, slug, entry)
+				return err
+			},
+			func(txCtx context.Context) error {
+				_, err := store.StoreFindings(txCtx, slug, storage.PassTypeApproveRejected, []storage.AnalyticalFindingInput{finding})
+				return err
+			},
+		); err != nil {
+			return nil, h.stageError(err)
+		}
+		return connect.NewResponse(&specv1.ApproveResponse{
+			Slug:  slug,
+			Stage: stageToProto(currentStage),
+		}), nil
+
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("action %q must be accept or reject", action))
 	}
-	approvedAt := timestamppb.New(spec.UpdatedAt)
-	return connect.NewResponse(&specv1.ApproveResponse{
-		Slug:       req.Msg.Slug,
-		Stage:      stageToProto(storage.SpecStageApproved),
-		ApprovedAt: approvedAt,
-	}), nil
 }
 
 // Amend handles the Amend RPC, rolling a spec back to an earlier stage.
