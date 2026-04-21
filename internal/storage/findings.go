@@ -18,13 +18,15 @@ const (
 	PassTypeRedTeam           PassType = "red_team"
 	PassTypeConsistencyCheck  PassType = "consistency_check"
 	PassTypeSimplicityCheck   PassType = "simplicity_check"
+	PassTypeApproveRejected   PassType = "approve-rejected"
 )
 
 // ValidPassType reports whether pt is a known pass type.
 func ValidPassType(pt PassType) bool {
 	switch pt {
 	case PassTypeConstitutionCheck, PassTypePeripheralVision,
-		PassTypeRedTeam, PassTypeConsistencyCheck, PassTypeSimplicityCheck:
+		PassTypeRedTeam, PassTypeConsistencyCheck, PassTypeSimplicityCheck,
+		PassTypeApproveRejected:
 		return true
 	}
 	return false
