@@ -367,7 +367,9 @@ func TestAuthoringHandler_Shape_HappyPath(t *testing.T) {
 }
 
 func TestAuthoringHandler_Specify_HappyPath(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug: "my-spec",
 		Output: &specv1.SpecifyOutput{
@@ -378,6 +380,10 @@ func TestAuthoringHandler_Specify_HappyPath(t *testing.T) {
 				{Category: "functional", Description: "returns 200 on valid credentials"},
 			},
 			Invariants: []string{"session token is opaque"},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "interfaces?", Stage: "specify", Sequence: 1},
+			{Role: "response", Content: "POST /api/login", Stage: "specify", Sequence: 2},
 		},
 	}))
 	require.NoError(t, err)
@@ -726,13 +732,18 @@ func TestAuthoringHandler_Shape_StoreOutputError(t *testing.T) {
 
 func TestAuthoringHandler_Specify_StoreOutputError(t *testing.T) {
 	authoringStore := &fakeAuthoringBackend{storeSpecifyOutputErr: errors.New("store failed")}
-	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
+	client := newAuthoringClient(t, authoringStore, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug: "my-spec",
 		Output: &specv1.SpecifyOutput{
 			Interfaces: []*specv1.InterfaceSection{
 				{Name: "API", Body: "POST /api/login"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "specify", Sequence: 1},
 		},
 	}))
 	require.Error(t, err)
@@ -1097,7 +1108,9 @@ func TestAuthoringHandler_Shape_StoreSafetyFlagsError(t *testing.T) {
 func TestAuthoringHandler_Specify_StoreSafetyFlagsError(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
 		storeSafetyFlagsErr: errors.New("db write failed"),
-	}, &fakeTxBackend{})
+	}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug: "safety-err-specify",
 		Output: &specv1.SpecifyOutput{
@@ -1108,6 +1121,9 @@ func TestAuthoringHandler_Specify_StoreSafetyFlagsError(t *testing.T) {
 				{Category: "functional", Description: "check 1"},
 			},
 			Invariants: []string{"inv 1"},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "specify", Sequence: 1},
 		},
 	}))
 	if err != nil {
@@ -1464,7 +1480,9 @@ func TestAuthoringHandler_Specify_TouchesMissingPath(t *testing.T) {
 }
 
 func TestAuthoringHandler_Specify_MultipleInterfaces(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug: "multi-iface",
 		Output: &specv1.SpecifyOutput{
@@ -1472,6 +1490,9 @@ func TestAuthoringHandler_Specify_MultipleInterfaces(t *testing.T) {
 				{Name: "ProtoService", Body: "service Webhook { rpc Send(...) }"},
 				{Name: "GoInterface", Body: "type EventBus interface { Publish(event) }"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "specify", Sequence: 1},
 		},
 	}))
 	require.NoError(t, err)
@@ -1666,5 +1687,166 @@ func validShapeOutput() *specv1.ShapeOutput {
 		ChosenApproach: "a",
 		Risks:          []string{"r"},
 		SuccessMust:    []string{"m"},
+	}
+}
+
+// --- Specify conversation_exchanges validation tests ---
+
+func TestAuthoringHandler_Specify_RequiresConversationExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+
+	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+		Slug:   "oauth-refresh",
+		Output: validSpecifyOutput(),
+		// conversation_exchanges omitted
+	}))
+	if err == nil {
+		t.Fatal("expected error for missing exchanges")
+	}
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Specify_RejectsEmptyExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+
+	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+		Slug:                  "oauth-refresh",
+		Output:                validSpecifyOutput(),
+		ConversationExchanges: []*specv1.ConversationExchange{},
+	}))
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Specify_PersistsAtomicallyWithExchanges(t *testing.T) {
+	convBackend := &fakeConversationBackend{}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: convBackend,
+	})
+
+	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+		Slug:   "oauth-refresh",
+		Output: validSpecifyOutput(),
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "interfaces?", Stage: "specify", Sequence: 1},
+			{Role: "response", Content: "POST /api/login", Stage: "specify", Sequence: 2},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Specify: %v", err)
+	}
+	if resp.Msg.GetOutput() == nil {
+		t.Error("expected output echoed back")
+	}
+
+	logs, err := client.ListConversations(context.Background(), connect.NewRequest(&specv1.ListConversationsRequest{
+		Slug:  "oauth-refresh",
+		Stage: "specify",
+	}))
+	if err != nil {
+		t.Fatalf("ListConversations: %v", err)
+	}
+	if len(logs.Msg.GetConversationLogs()) != 1 {
+		t.Errorf("expected 1 conversation log, got %d", len(logs.Msg.GetConversationLogs()))
+	}
+}
+
+// validSpecifyOutput returns a minimally-valid SpecifyOutput for tests.
+func validSpecifyOutput() *specv1.SpecifyOutput {
+	return &specv1.SpecifyOutput{
+		Interfaces: []*specv1.InterfaceSection{
+			{Name: "API", Body: "POST /api/login"},
+		},
+		VerifyCriteria: []*specv1.VerifyCriterion{
+			{Category: "functional", Description: "returns 200 on valid credentials"},
+		},
+		Invariants: []string{"session token is opaque"},
+		Touches: []*specv1.FileTouch{
+			{Path: "internal/auth/handler.go", Purpose: "add login endpoint"},
+		},
+	}
+}
+
+// --- Decompose conversation_exchanges validation tests ---
+
+func TestAuthoringHandler_Decompose_RequiresConversationExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+
+	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug:   "oauth-refresh",
+		Output: validDecomposeOutput(),
+		// conversation_exchanges omitted
+	}))
+	if err == nil {
+		t.Fatal("expected error for missing exchanges")
+	}
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Decompose_RejectsEmptyExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+
+	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug:                  "oauth-refresh",
+		Output:                validDecomposeOutput(),
+		ConversationExchanges: []*specv1.ConversationExchange{},
+	}))
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Decompose_PersistsAtomicallyWithExchanges(t *testing.T) {
+	convBackend := &fakeConversationBackend{}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: convBackend,
+	})
+
+	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug:   "oauth-refresh",
+		Output: validDecomposeOutput(),
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "slices?", Stage: "decompose", Sequence: 1},
+			{Role: "response", Content: "vertical slice", Stage: "decompose", Sequence: 2},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Decompose: %v", err)
+	}
+	if resp.Msg.GetOutput() == nil {
+		t.Error("expected output echoed back")
+	}
+	if len(resp.Msg.SliceSlugs) == 0 {
+		t.Error("expected slice slugs to be populated")
+	}
+
+	logs, err := client.ListConversations(context.Background(), connect.NewRequest(&specv1.ListConversationsRequest{
+		Slug:  "oauth-refresh",
+		Stage: "decompose",
+	}))
+	if err != nil {
+		t.Fatalf("ListConversations: %v", err)
+	}
+	if len(logs.Msg.GetConversationLogs()) != 1 {
+		t.Errorf("expected 1 conversation log, got %d", len(logs.Msg.GetConversationLogs()))
+	}
+}
+
+// validDecomposeOutput returns a minimally-valid DecomposeOutput for tests.
+func validDecomposeOutput() *specv1.DecomposeOutput {
+	return &specv1.DecomposeOutput{
+		Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
+		Slices: []*specv1.DecompositionSlice{
+			{Id: "s1", Intent: "login endpoint slice"},
+		},
 	}
 }

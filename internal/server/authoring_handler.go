@@ -201,6 +201,11 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
+	// Required conversation_exchanges per design §Conversation Recording Coupling.
+	if err := authoring.ValidateExchanges(msg.GetConversationExchanges(), "specify"); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	// Existing field-size validations (preserved verbatim from current handler).
 	if len(msg.Output.GetInterfaces()) > maxElements {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("interfaces exceeds maximum of %d elements", maxElements))
 	}
@@ -262,6 +267,17 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 		Invariants: msg.Output.GetInvariants(),
 	}
 	var safetyFlags []authoring.SafetyFlagResult
+	exchanges := exchangesFromProto(msg.GetConversationExchanges())
+	entry := buildConversationEntry(storage.SpecStageSpecify, msg.GetPosture(), exchanges, false /* isAmend */)
+
+	// Posture-absent warning (design §Posture).
+	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
+		h.logger.Warn("posture-absent", slog.String("stage", "specify"), slog.String("slug", msg.Slug))
+	}
+
+	// Four-op transaction: transition → store output → safety → record conversation.
+	// All four land in one transaction via RunInTransaction's context threading;
+	// any op failing rolls back all prior writes.
 	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
 			return store.TransitionStage(c, msg.Slug, storage.SpecStageShape, storage.SpecStageSpecify)
@@ -272,6 +288,10 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 		func(c context.Context) error {
 			var err error
 			safetyFlags, err = persistSafetyFlags(c, store, msg.Slug, safetyInput)
+			return err
+		},
+		func(c context.Context) error {
+			_, err := store.RecordConversation(c, msg.Slug, entry)
 			return err
 		},
 	); err != nil {
