@@ -95,10 +95,12 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 		},
 	}
 	if len(exchanges) > 0 {
-		entry := buildConversationEntry(storage.SpecStageSpark, msg.GetPosture(), exchanges, false /* isAmend */)
+		entry := buildConversationEntry(storage.SpecStageSpark, msg.GetPosture(), exchanges)
 		ops = append(ops, func(c context.Context) error {
-			_, err := store.RecordConversation(c, msg.Slug, entry)
-			return err
+			if _, err := store.RecordConversation(c, msg.Slug, entry); err != nil {
+				return fmt.Errorf("record conversation: %w", err)
+			}
+			return nil
 		})
 	}
 	if err := runInTxOrSequential(ctx, store, ops...); err != nil {
@@ -171,7 +173,7 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	}
 	var safetyFlags []authoring.SafetyFlagResult
 	exchanges := exchangesFromProto(msg.GetConversationExchanges())
-	entry := buildConversationEntry(storage.SpecStageShape, msg.GetPosture(), exchanges, false /* isAmend */)
+	entry := buildConversationEntry(storage.SpecStageShape, msg.GetPosture(), exchanges)
 
 	// Posture-absent warning (design §Posture).
 	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
@@ -194,8 +196,10 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 			return err
 		},
 		func(c context.Context) error {
-			_, err := store.RecordConversation(c, msg.Slug, entry)
-			return err
+			if _, err := store.RecordConversation(c, msg.Slug, entry); err != nil {
+				return fmt.Errorf("record conversation: %w", err)
+			}
+			return nil
 		},
 	); err != nil {
 		return nil, h.stageError(err)
@@ -288,7 +292,7 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	}
 	var safetyFlags []authoring.SafetyFlagResult
 	exchanges := exchangesFromProto(msg.GetConversationExchanges())
-	entry := buildConversationEntry(storage.SpecStageSpecify, msg.GetPosture(), exchanges, false /* isAmend */)
+	entry := buildConversationEntry(storage.SpecStageSpecify, msg.GetPosture(), exchanges)
 
 	// Posture-absent warning (design §Posture).
 	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
@@ -311,8 +315,10 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 			return err
 		},
 		func(c context.Context) error {
-			_, err := store.RecordConversation(c, msg.Slug, entry)
-			return err
+			if _, err := store.RecordConversation(c, msg.Slug, entry); err != nil {
+				return fmt.Errorf("record conversation: %w", err)
+			}
+			return nil
 		},
 	); err != nil {
 		return nil, h.stageError(err)
@@ -377,7 +383,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	var safetyFlags []authoring.SafetyFlagResult
 	var childSlugs []string
 	exchanges := exchangesFromProto(msg.GetConversationExchanges())
-	entry := buildConversationEntry(storage.SpecStageDecompose, msg.GetPosture(), exchanges, false /* isAmend */)
+	entry := buildConversationEntry(storage.SpecStageDecompose, msg.GetPosture(), exchanges)
 
 	// Posture-absent warning (design §Posture).
 	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
@@ -406,8 +412,10 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 			return err
 		},
 		func(c context.Context) error {
-			_, err := store.RecordConversation(c, msg.Slug, entry)
-			return err
+			if _, err := store.RecordConversation(c, msg.Slug, entry); err != nil {
+				return fmt.Errorf("record conversation: %w", err)
+			}
+			return nil
 		},
 	); err != nil {
 		return nil, h.stageError(err)
@@ -490,7 +498,7 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 		var currentStage storage.SpecStage
 		entry := storage.ConversationLogEntry{
 			Exchanges:     exchanges,
-			ExchangeCount: int32(len(exchanges)),
+			ExchangeCount: safeInt32(len(exchanges)),
 			IsAmend:       false,
 		}
 		if err := runInTxOrSequential(ctx, store,
@@ -504,12 +512,16 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 				return nil
 			},
 			func(txCtx context.Context) error {
-				_, err := store.RecordConversation(txCtx, slug, entry)
-				return err
+				if _, err := store.RecordConversation(txCtx, slug, entry); err != nil {
+					return fmt.Errorf("record conversation: %w", err)
+				}
+				return nil
 			},
 			func(txCtx context.Context) error {
-				_, err := store.StoreFindings(txCtx, slug, storage.PassTypeApproveRejected, []storage.AnalyticalFindingInput{finding})
-				return err
+				if _, err := store.StoreFindings(txCtx, slug, storage.PassTypeApproveRejected, []storage.AnalyticalFindingInput{finding}); err != nil {
+					return fmt.Errorf("store findings: %w", err)
+				}
+				return nil
 			},
 		); err != nil {
 			return nil, h.stageError(err)
@@ -873,12 +885,12 @@ func exchangesFromProto(ps []*specv1.ConversationExchange) []storage.Conversatio
 
 // buildConversationEntry constructs a ConversationLogEntry for RecordConversation.
 // posture is persisted alongside exchanges for future drift detection (design §Posture).
-func buildConversationEntry(stage storage.SpecStage, _ specv1.Posture, exchanges []storage.ConversationExchange, isAmend bool) storage.ConversationLogEntry {
+func buildConversationEntry(stage storage.SpecStage, _ specv1.Posture, exchanges []storage.ConversationExchange) storage.ConversationLogEntry {
 	return storage.ConversationLogEntry{
 		Stage:         stage,
 		Exchanges:     exchanges,
-		ExchangeCount: int32(len(exchanges)),
-		IsAmend:       isAmend,
+		ExchangeCount: safeInt32(len(exchanges)),
+		// IsAmend defaults to false; amend-originated entries use a separate code path.
 		// Posture recording: when ConversationLogEntry gains a Posture field
 		// (Task 10), wire it here. For now, captured as a metadata label if
 		// backend supports it.
