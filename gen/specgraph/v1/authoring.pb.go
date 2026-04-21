@@ -1246,9 +1246,12 @@ type SparkRequest struct {
 	// omitting this field returns INVALID_ARGUMENT.
 	Output *SparkOutput `protobuf:"bytes,2,opt,name=output,proto3" json:"output,omitempty"`
 	// AI collaboration posture requested for this authoring session.
-	Posture       Posture `protobuf:"varint,3,opt,name=posture,proto3,enum=specgraph.v1.Posture" json:"posture,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Posture Posture `protobuf:"varint,3,opt,name=posture,proto3,enum=specgraph.v1.Posture" json:"posture,omitempty"`
+	// Conversation exchanges captured during spark elicitation. Optional for
+	// spark (seed may be a single --seed argument); validated if present.
+	ConversationExchanges []*ConversationExchange `protobuf:"bytes,4,rep,name=conversation_exchanges,json=conversationExchanges,proto3" json:"conversation_exchanges,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *SparkRequest) Reset() {
@@ -1300,6 +1303,13 @@ func (x *SparkRequest) GetPosture() Posture {
 		return x.Posture
 	}
 	return Posture_POSTURE_UNSPECIFIED
+}
+
+func (x *SparkRequest) GetConversationExchanges() []*ConversationExchange {
+	if x != nil {
+		return x.ConversationExchanges
+	}
+	return nil
 }
 
 // SparkResponse returns the validated spark output along with analytical findings.
@@ -1374,9 +1384,13 @@ type ShapeRequest struct {
 	// Author-provided shape stage output to validate.
 	Output *ShapeOutput `protobuf:"bytes,2,opt,name=output,proto3" json:"output,omitempty"`
 	// AI collaboration posture requested for this authoring session.
-	Posture       Posture `protobuf:"varint,3,opt,name=posture,proto3,enum=specgraph.v1.Posture" json:"posture,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Posture Posture `protobuf:"varint,3,opt,name=posture,proto3,enum=specgraph.v1.Posture" json:"posture,omitempty"`
+	// REQUIRED. Conversation exchanges for shape elicitation. Server persists
+	// stage output and conversation log atomically via the existing
+	// runInTxOrSequential pattern.
+	ConversationExchanges []*ConversationExchange `protobuf:"bytes,4,rep,name=conversation_exchanges,json=conversationExchanges,proto3" json:"conversation_exchanges,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ShapeRequest) Reset() {
@@ -1428,6 +1442,13 @@ func (x *ShapeRequest) GetPosture() Posture {
 		return x.Posture
 	}
 	return Posture_POSTURE_UNSPECIFIED
+}
+
+func (x *ShapeRequest) GetConversationExchanges() []*ConversationExchange {
+	if x != nil {
+		return x.ConversationExchanges
+	}
+	return nil
 }
 
 // ShapeResponse returns the validated shape output along with analytical findings.
@@ -1502,9 +1523,11 @@ type SpecifyRequest struct {
 	// Author-provided specify stage output to validate.
 	Output *SpecifyOutput `protobuf:"bytes,2,opt,name=output,proto3" json:"output,omitempty"`
 	// AI collaboration posture requested for this authoring session.
-	Posture       Posture `protobuf:"varint,3,opt,name=posture,proto3,enum=specgraph.v1.Posture" json:"posture,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Posture Posture `protobuf:"varint,3,opt,name=posture,proto3,enum=specgraph.v1.Posture" json:"posture,omitempty"`
+	// REQUIRED. See ShapeRequest.conversation_exchanges.
+	ConversationExchanges []*ConversationExchange `protobuf:"bytes,4,rep,name=conversation_exchanges,json=conversationExchanges,proto3" json:"conversation_exchanges,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *SpecifyRequest) Reset() {
@@ -1556,6 +1579,13 @@ func (x *SpecifyRequest) GetPosture() Posture {
 		return x.Posture
 	}
 	return Posture_POSTURE_UNSPECIFIED
+}
+
+func (x *SpecifyRequest) GetConversationExchanges() []*ConversationExchange {
+	if x != nil {
+		return x.ConversationExchanges
+	}
+	return nil
 }
 
 // SpecifyResponse returns the validated specify output along with analytical findings.
@@ -1630,9 +1660,11 @@ type DecomposeRequest struct {
 	// Author-provided decompose stage output to validate.
 	Output *DecomposeOutput `protobuf:"bytes,2,opt,name=output,proto3" json:"output,omitempty"`
 	// AI collaboration posture requested for this authoring session.
-	Posture       Posture `protobuf:"varint,3,opt,name=posture,proto3,enum=specgraph.v1.Posture" json:"posture,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Posture Posture `protobuf:"varint,3,opt,name=posture,proto3,enum=specgraph.v1.Posture" json:"posture,omitempty"`
+	// REQUIRED. See ShapeRequest.conversation_exchanges.
+	ConversationExchanges []*ConversationExchange `protobuf:"bytes,4,rep,name=conversation_exchanges,json=conversationExchanges,proto3" json:"conversation_exchanges,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *DecomposeRequest) Reset() {
@@ -1684,6 +1716,13 @@ func (x *DecomposeRequest) GetPosture() Posture {
 		return x.Posture
 	}
 	return Posture_POSTURE_UNSPECIFIED
+}
+
+func (x *DecomposeRequest) GetConversationExchanges() []*ConversationExchange {
+	if x != nil {
+		return x.ConversationExchanges
+	}
+	return nil
 }
 
 // DecomposeResponse returns the validated decompose output along with analytical findings.
@@ -1763,9 +1802,16 @@ func (x *DecomposeResponse) GetSliceSlugs() []string {
 type ApproveRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Spec slug identifying the spec to approve.
-	Slug          string `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Slug string `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	// Approval action. "accept" (default) advances the spec to approved;
+	// "reject" records a rejection finding and conversation but does not
+	// transition the stage.
+	Action string `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
+	// REQUIRED when action == "reject". Conversation exchanges capturing the
+	// rejection rationale.
+	ConversationExchanges []*ConversationExchange `protobuf:"bytes,3,rep,name=conversation_exchanges,json=conversationExchanges,proto3" json:"conversation_exchanges,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ApproveRequest) Reset() {
@@ -1803,6 +1849,20 @@ func (x *ApproveRequest) GetSlug() string {
 		return x.Slug
 	}
 	return ""
+}
+
+func (x *ApproveRequest) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *ApproveRequest) GetConversationExchanges() []*ConversationExchange {
+	if x != nil {
+		return x.ConversationExchanges
+	}
+	return nil
 }
 
 // ApproveResponse confirms the approval and records when it occurred.
@@ -2661,44 +2721,50 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\x0ePromptTemplate\x122\n" +
 	"\x05stage\x18\x01 \x01(\x0e2\x1c.specgraph.v1.AuthoringStageR\x05stage\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1a\n" +
-	"\btemplate\x18\x03 \x01(\tR\btemplate\"\x86\x01\n" +
+	"\btemplate\x18\x03 \x01(\tR\btemplate\"\xe1\x01\n" +
 	"\fSparkRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x121\n" +
 	"\x06output\x18\x02 \x01(\v2\x19.specgraph.v1.SparkOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xdf\x01\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\x12Y\n" +
+	"\x16conversation_exchanges\x18\x04 \x03(\v2\".specgraph.v1.ConversationExchangeR\x15conversationExchanges\"\xdf\x01\n" +
 	"\rSparkResponse\x121\n" +
 	"\x06output\x18\x01 \x01(\v2\x19.specgraph.v1.SparkOutputR\x06output\x12;\n" +
 	"\fsafety_flags\x18\x02 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
-	"\fnext_prompts\x18\x04 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPromptsJ\x04\b\x03\x10\x04R\x17constitution_violations\"\x86\x01\n" +
+	"\fnext_prompts\x18\x04 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPromptsJ\x04\b\x03\x10\x04R\x17constitution_violations\"\xe1\x01\n" +
 	"\fShapeRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x121\n" +
 	"\x06output\x18\x02 \x01(\v2\x19.specgraph.v1.ShapeOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xf8\x01\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\x12Y\n" +
+	"\x16conversation_exchanges\x18\x04 \x03(\v2\".specgraph.v1.ConversationExchangeR\x15conversationExchanges\"\xf8\x01\n" +
 	"\rShapeResponse\x121\n" +
 	"\x06output\x18\x01 \x01(\v2\x19.specgraph.v1.ShapeOutputR\x06output\x12;\n" +
 	"\fsafety_flags\x18\x03 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
-	"\fnext_prompts\x18\x05 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPromptsJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x05R\x11peripheral_visionR\x17constitution_violations\"\x8a\x01\n" +
+	"\fnext_prompts\x18\x05 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPromptsJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x05R\x11peripheral_visionR\x17constitution_violations\"\xe5\x01\n" +
 	"\x0eSpecifyRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x123\n" +
 	"\x06output\x18\x02 \x01(\v2\x1b.specgraph.v1.SpecifyOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\x8d\x02\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\x12Y\n" +
+	"\x16conversation_exchanges\x18\x04 \x03(\v2\".specgraph.v1.ConversationExchangeR\x15conversationExchanges\"\x8d\x02\n" +
 	"\x0fSpecifyResponse\x123\n" +
 	"\x06output\x18\x01 \x01(\v2\x1b.specgraph.v1.SpecifyOutputR\x06output\x12;\n" +
 	"\fsafety_flags\x18\x04 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
-	"\fnext_prompts\x18\x06 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPromptsJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x05\x10\x06R\bred_teamR\x12consistency_issuesR\x17constitution_violations\"\x8e\x01\n" +
+	"\fnext_prompts\x18\x06 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPromptsJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x05\x10\x06R\bred_teamR\x12consistency_issuesR\x17constitution_violations\"\xe9\x01\n" +
 	"\x10DecomposeRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x125\n" +
 	"\x06output\x18\x02 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x06output\x12/\n" +
-	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\"\xb2\x02\n" +
+	"\aposture\x18\x03 \x01(\x0e2\x15.specgraph.v1.PostureR\aposture\x12Y\n" +
+	"\x16conversation_exchanges\x18\x04 \x03(\v2\".specgraph.v1.ConversationExchangeR\x15conversationExchanges\"\xb2\x02\n" +
 	"\x11DecomposeResponse\x125\n" +
 	"\x06output\x18\x01 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x06output\x12;\n" +
 	"\fsafety_flags\x18\x03 \x03(\v2\x18.specgraph.v1.SafetyFlagR\vsafetyFlags\x12?\n" +
 	"\fnext_prompts\x18\x05 \x03(\v2\x1c.specgraph.v1.PromptTemplateR\vnextPrompts\x12\x1f\n" +
 	"\vslice_slugs\x18\a \x03(\tR\n" +
 	"sliceSlugsJ\x04\b\x02\x10\x03J\x04\b\x04\x10\x05J\x04\b\x06\x10\aR\n" +
-	"simplicityR\x17constitution_violationsR\x10child_spec_slugs\"$\n" +
+	"simplicityR\x17constitution_violationsR\x10child_spec_slugs\"\x97\x01\n" +
 	"\x0eApproveRequest\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\"\x96\x01\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x16\n" +
+	"\x06action\x18\x02 \x01(\tR\x06action\x12Y\n" +
+	"\x16conversation_exchanges\x18\x03 \x03(\v2\".specgraph.v1.ConversationExchangeR\x15conversationExchanges\"\x96\x01\n" +
 	"\x0fApproveResponse\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x122\n" +
 	"\x05stage\x18\x02 \x01(\x0e2\x1c.specgraph.v1.AuthoringStageR\x05stage\x12;\n" +
@@ -2868,60 +2934,65 @@ var file_specgraph_v1_authoring_proto_depIdxs = []int32{
 	0,  // 10: specgraph.v1.PromptTemplate.stage:type_name -> specgraph.v1.AuthoringStage
 	6,  // 11: specgraph.v1.SparkRequest.output:type_name -> specgraph.v1.SparkOutput
 	1,  // 12: specgraph.v1.SparkRequest.posture:type_name -> specgraph.v1.Posture
-	6,  // 13: specgraph.v1.SparkResponse.output:type_name -> specgraph.v1.SparkOutput
-	16, // 14: specgraph.v1.SparkResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
-	17, // 15: specgraph.v1.SparkResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
-	8,  // 16: specgraph.v1.ShapeRequest.output:type_name -> specgraph.v1.ShapeOutput
-	1,  // 17: specgraph.v1.ShapeRequest.posture:type_name -> specgraph.v1.Posture
-	8,  // 18: specgraph.v1.ShapeResponse.output:type_name -> specgraph.v1.ShapeOutput
-	16, // 19: specgraph.v1.ShapeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
-	17, // 20: specgraph.v1.ShapeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
-	13, // 21: specgraph.v1.SpecifyRequest.output:type_name -> specgraph.v1.SpecifyOutput
-	1,  // 22: specgraph.v1.SpecifyRequest.posture:type_name -> specgraph.v1.Posture
-	13, // 23: specgraph.v1.SpecifyResponse.output:type_name -> specgraph.v1.SpecifyOutput
-	16, // 24: specgraph.v1.SpecifyResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
-	17, // 25: specgraph.v1.SpecifyResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
-	14, // 26: specgraph.v1.DecomposeRequest.output:type_name -> specgraph.v1.DecomposeOutput
-	1,  // 27: specgraph.v1.DecomposeRequest.posture:type_name -> specgraph.v1.Posture
-	14, // 28: specgraph.v1.DecomposeResponse.output:type_name -> specgraph.v1.DecomposeOutput
-	16, // 29: specgraph.v1.DecomposeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
-	17, // 30: specgraph.v1.DecomposeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
-	0,  // 31: specgraph.v1.ApproveResponse.stage:type_name -> specgraph.v1.AuthoringStage
-	40, // 32: specgraph.v1.ApproveResponse.approved_at:type_name -> google.protobuf.Timestamp
-	0,  // 33: specgraph.v1.AmendRequest.target_stage:type_name -> specgraph.v1.AuthoringStage
-	0,  // 34: specgraph.v1.AmendResponse.stage:type_name -> specgraph.v1.AuthoringStage
-	0,  // 35: specgraph.v1.GetPromptsRequest.stage:type_name -> specgraph.v1.AuthoringStage
-	17, // 36: specgraph.v1.GetPromptsResponse.prompts:type_name -> specgraph.v1.PromptTemplate
-	34, // 37: specgraph.v1.ConversationLog.exchanges:type_name -> specgraph.v1.ConversationExchange
-	40, // 38: specgraph.v1.ConversationLog.date:type_name -> google.protobuf.Timestamp
-	34, // 39: specgraph.v1.RecordConversationRequest.exchanges:type_name -> specgraph.v1.ConversationExchange
-	35, // 40: specgraph.v1.RecordConversationResponse.conversation_log:type_name -> specgraph.v1.ConversationLog
-	35, // 41: specgraph.v1.ListConversationsResponse.conversation_logs:type_name -> specgraph.v1.ConversationLog
-	18, // 42: specgraph.v1.AuthoringService.Spark:input_type -> specgraph.v1.SparkRequest
-	20, // 43: specgraph.v1.AuthoringService.Shape:input_type -> specgraph.v1.ShapeRequest
-	22, // 44: specgraph.v1.AuthoringService.Specify:input_type -> specgraph.v1.SpecifyRequest
-	24, // 45: specgraph.v1.AuthoringService.Decompose:input_type -> specgraph.v1.DecomposeRequest
-	26, // 46: specgraph.v1.AuthoringService.Approve:input_type -> specgraph.v1.ApproveRequest
-	28, // 47: specgraph.v1.AuthoringService.Amend:input_type -> specgraph.v1.AmendRequest
-	30, // 48: specgraph.v1.AuthoringService.Supersede:input_type -> specgraph.v1.SupersedeRequest
-	32, // 49: specgraph.v1.AuthoringService.GetPrompts:input_type -> specgraph.v1.GetPromptsRequest
-	36, // 50: specgraph.v1.AuthoringService.RecordConversation:input_type -> specgraph.v1.RecordConversationRequest
-	38, // 51: specgraph.v1.AuthoringService.ListConversations:input_type -> specgraph.v1.ListConversationsRequest
-	19, // 52: specgraph.v1.AuthoringService.Spark:output_type -> specgraph.v1.SparkResponse
-	21, // 53: specgraph.v1.AuthoringService.Shape:output_type -> specgraph.v1.ShapeResponse
-	23, // 54: specgraph.v1.AuthoringService.Specify:output_type -> specgraph.v1.SpecifyResponse
-	25, // 55: specgraph.v1.AuthoringService.Decompose:output_type -> specgraph.v1.DecomposeResponse
-	27, // 56: specgraph.v1.AuthoringService.Approve:output_type -> specgraph.v1.ApproveResponse
-	29, // 57: specgraph.v1.AuthoringService.Amend:output_type -> specgraph.v1.AmendResponse
-	31, // 58: specgraph.v1.AuthoringService.Supersede:output_type -> specgraph.v1.SupersedeResponse
-	33, // 59: specgraph.v1.AuthoringService.GetPrompts:output_type -> specgraph.v1.GetPromptsResponse
-	37, // 60: specgraph.v1.AuthoringService.RecordConversation:output_type -> specgraph.v1.RecordConversationResponse
-	39, // 61: specgraph.v1.AuthoringService.ListConversations:output_type -> specgraph.v1.ListConversationsResponse
-	52, // [52:62] is the sub-list for method output_type
-	42, // [42:52] is the sub-list for method input_type
-	42, // [42:42] is the sub-list for extension type_name
-	42, // [42:42] is the sub-list for extension extendee
-	0,  // [0:42] is the sub-list for field type_name
+	34, // 13: specgraph.v1.SparkRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
+	6,  // 14: specgraph.v1.SparkResponse.output:type_name -> specgraph.v1.SparkOutput
+	16, // 15: specgraph.v1.SparkResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
+	17, // 16: specgraph.v1.SparkResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
+	8,  // 17: specgraph.v1.ShapeRequest.output:type_name -> specgraph.v1.ShapeOutput
+	1,  // 18: specgraph.v1.ShapeRequest.posture:type_name -> specgraph.v1.Posture
+	34, // 19: specgraph.v1.ShapeRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
+	8,  // 20: specgraph.v1.ShapeResponse.output:type_name -> specgraph.v1.ShapeOutput
+	16, // 21: specgraph.v1.ShapeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
+	17, // 22: specgraph.v1.ShapeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
+	13, // 23: specgraph.v1.SpecifyRequest.output:type_name -> specgraph.v1.SpecifyOutput
+	1,  // 24: specgraph.v1.SpecifyRequest.posture:type_name -> specgraph.v1.Posture
+	34, // 25: specgraph.v1.SpecifyRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
+	13, // 26: specgraph.v1.SpecifyResponse.output:type_name -> specgraph.v1.SpecifyOutput
+	16, // 27: specgraph.v1.SpecifyResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
+	17, // 28: specgraph.v1.SpecifyResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
+	14, // 29: specgraph.v1.DecomposeRequest.output:type_name -> specgraph.v1.DecomposeOutput
+	1,  // 30: specgraph.v1.DecomposeRequest.posture:type_name -> specgraph.v1.Posture
+	34, // 31: specgraph.v1.DecomposeRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
+	14, // 32: specgraph.v1.DecomposeResponse.output:type_name -> specgraph.v1.DecomposeOutput
+	16, // 33: specgraph.v1.DecomposeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
+	17, // 34: specgraph.v1.DecomposeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
+	34, // 35: specgraph.v1.ApproveRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
+	0,  // 36: specgraph.v1.ApproveResponse.stage:type_name -> specgraph.v1.AuthoringStage
+	40, // 37: specgraph.v1.ApproveResponse.approved_at:type_name -> google.protobuf.Timestamp
+	0,  // 38: specgraph.v1.AmendRequest.target_stage:type_name -> specgraph.v1.AuthoringStage
+	0,  // 39: specgraph.v1.AmendResponse.stage:type_name -> specgraph.v1.AuthoringStage
+	0,  // 40: specgraph.v1.GetPromptsRequest.stage:type_name -> specgraph.v1.AuthoringStage
+	17, // 41: specgraph.v1.GetPromptsResponse.prompts:type_name -> specgraph.v1.PromptTemplate
+	34, // 42: specgraph.v1.ConversationLog.exchanges:type_name -> specgraph.v1.ConversationExchange
+	40, // 43: specgraph.v1.ConversationLog.date:type_name -> google.protobuf.Timestamp
+	34, // 44: specgraph.v1.RecordConversationRequest.exchanges:type_name -> specgraph.v1.ConversationExchange
+	35, // 45: specgraph.v1.RecordConversationResponse.conversation_log:type_name -> specgraph.v1.ConversationLog
+	35, // 46: specgraph.v1.ListConversationsResponse.conversation_logs:type_name -> specgraph.v1.ConversationLog
+	18, // 47: specgraph.v1.AuthoringService.Spark:input_type -> specgraph.v1.SparkRequest
+	20, // 48: specgraph.v1.AuthoringService.Shape:input_type -> specgraph.v1.ShapeRequest
+	22, // 49: specgraph.v1.AuthoringService.Specify:input_type -> specgraph.v1.SpecifyRequest
+	24, // 50: specgraph.v1.AuthoringService.Decompose:input_type -> specgraph.v1.DecomposeRequest
+	26, // 51: specgraph.v1.AuthoringService.Approve:input_type -> specgraph.v1.ApproveRequest
+	28, // 52: specgraph.v1.AuthoringService.Amend:input_type -> specgraph.v1.AmendRequest
+	30, // 53: specgraph.v1.AuthoringService.Supersede:input_type -> specgraph.v1.SupersedeRequest
+	32, // 54: specgraph.v1.AuthoringService.GetPrompts:input_type -> specgraph.v1.GetPromptsRequest
+	36, // 55: specgraph.v1.AuthoringService.RecordConversation:input_type -> specgraph.v1.RecordConversationRequest
+	38, // 56: specgraph.v1.AuthoringService.ListConversations:input_type -> specgraph.v1.ListConversationsRequest
+	19, // 57: specgraph.v1.AuthoringService.Spark:output_type -> specgraph.v1.SparkResponse
+	21, // 58: specgraph.v1.AuthoringService.Shape:output_type -> specgraph.v1.ShapeResponse
+	23, // 59: specgraph.v1.AuthoringService.Specify:output_type -> specgraph.v1.SpecifyResponse
+	25, // 60: specgraph.v1.AuthoringService.Decompose:output_type -> specgraph.v1.DecomposeResponse
+	27, // 61: specgraph.v1.AuthoringService.Approve:output_type -> specgraph.v1.ApproveResponse
+	29, // 62: specgraph.v1.AuthoringService.Amend:output_type -> specgraph.v1.AmendResponse
+	31, // 63: specgraph.v1.AuthoringService.Supersede:output_type -> specgraph.v1.SupersedeResponse
+	33, // 64: specgraph.v1.AuthoringService.GetPrompts:output_type -> specgraph.v1.GetPromptsResponse
+	37, // 65: specgraph.v1.AuthoringService.RecordConversation:output_type -> specgraph.v1.RecordConversationResponse
+	39, // 66: specgraph.v1.AuthoringService.ListConversations:output_type -> specgraph.v1.ListConversationsResponse
+	57, // [57:67] is the sub-list for method output_type
+	47, // [47:57] is the sub-list for method input_type
+	47, // [47:47] is the sub-list for extension type_name
+	47, // [47:47] is the sub-list for extension extendee
+	0,  // [0:47] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_authoring_proto_init() }
