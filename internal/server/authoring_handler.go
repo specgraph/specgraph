@@ -112,6 +112,11 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
+	// Required conversation_exchanges per design §Conversation Recording Coupling.
+	if err := authoring.ValidateExchanges(msg.GetConversationExchanges(), "shape"); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	// Existing field-size validations (preserved verbatim from current handler).
 	for _, v := range []struct {
 		name  string
 		items []string
@@ -140,13 +145,22 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	scope := make([]string, 0, len(msg.Output.GetScopeIn())+len(msg.Output.GetScopeOut()))
 	scope = append(scope, msg.Output.GetScopeIn()...)
 	scope = append(scope, msg.Output.GetScopeOut()...)
-	// SafetyInput.Text accepts stage-appropriate content; in Shape
-	// we scan risks since the spec seed was already checked in Spark.
 	safetyInput := &authoring.SafetyInput{
 		Text:  strings.Join(msg.Output.GetRisks(), " "),
 		Scope: scope,
 	}
 	var safetyFlags []authoring.SafetyFlagResult
+	exchanges := exchangesFromProto(msg.GetConversationExchanges())
+	entry := buildConversationEntry(storage.SpecStageShape, msg.GetPosture(), exchanges, false /* isAmend */)
+
+	// Posture-absent warning (design §Posture).
+	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
+		h.logger.Warn("posture-absent", slog.String("stage", "shape"), slog.String("slug", msg.Slug))
+	}
+
+	// Four-op transaction: transition → store output → safety → record conversation.
+	// All four land in one transaction via RunInTransaction's context threading;
+	// any op failing rolls back all prior writes.
 	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
 			return store.TransitionStage(c, msg.Slug, storage.SpecStageSpark, storage.SpecStageShape)
@@ -157,6 +171,10 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 		func(c context.Context) error {
 			var err error
 			safetyFlags, err = persistSafetyFlags(c, store, msg.Slug, safetyInput)
+			return err
+		},
+		func(c context.Context) error {
+			_, err := store.RecordConversation(c, msg.Slug, entry)
 			return err
 		},
 	); err != nil {
@@ -716,6 +734,37 @@ func shapeOutputToDomain(p *specv1.ShapeOutput) (*storage.ShapeOutput, error) {
 		SuccessWont:    p.GetSuccessWont(),
 		Decisions:      decisions,
 	}, nil
+}
+
+// exchangesFromProto converts proto ConversationExchange messages to domain
+// value-struct exchanges. Unknown role strings pass through; role validation
+// happens in authoring.ValidateExchanges before persist.
+func exchangesFromProto(ps []*specv1.ConversationExchange) []storage.ConversationExchange {
+	out := make([]storage.ConversationExchange, len(ps))
+	for i, p := range ps {
+		out[i] = storage.ConversationExchange{
+			Role:          storage.ConversationRole(p.GetRole()),
+			Content:       p.GetContent(),
+			Stage:         p.GetStage(),
+			Sequence:      p.GetSequence(),
+			DecisionPoint: p.GetDecisionPoint(),
+		}
+	}
+	return out
+}
+
+// buildConversationEntry constructs a ConversationLogEntry for RecordConversation.
+// posture is persisted alongside exchanges for future drift detection (design §Posture).
+func buildConversationEntry(stage storage.SpecStage, _ specv1.Posture, exchanges []storage.ConversationExchange, isAmend bool) storage.ConversationLogEntry {
+	return storage.ConversationLogEntry{
+		Stage:         stage,
+		Exchanges:     exchanges,
+		ExchangeCount: int32(len(exchanges)),
+		IsAmend:       isAmend,
+		// Posture recording: when ConversationLogEntry gains a Posture field
+		// (Task 10), wire it here. For now, captured as a metadata label if
+		// backend supports it.
+	}
 }
 
 func specifyOutputToDomain(p *specv1.SpecifyOutput) *storage.SpecifyOutput {

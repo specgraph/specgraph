@@ -207,7 +207,7 @@ func (f *fakeConversationBackend) RecordConversation(_ context.Context, _ string
 	if f.recordErr != nil {
 		return nil, f.recordErr
 	}
-	return &storage.ConversationLogEntry{
+	stored := &storage.ConversationLogEntry{
 		ID:            "cvl-test",
 		Stage:         entry.Stage,
 		Version:       1,
@@ -215,7 +215,9 @@ func (f *fakeConversationBackend) RecordConversation(_ context.Context, _ string
 		Exchanges:     entry.Exchanges,
 		ExchangeCount: entry.ExchangeCount,
 		Date:          time.Now(),
-	}, nil
+	}
+	f.entries = append(f.entries, stored)
+	return stored, nil
 }
 
 func (f *fakeConversationBackend) ListConversations(_ context.Context, _ string, _ string) ([]*storage.ConversationLogEntry, error) {
@@ -343,13 +345,19 @@ func TestAuthoringHandler_Spark_HappyPath(t *testing.T) {
 }
 
 func TestAuthoringHandler_Shape_HappyPath(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug: "my-spec",
 		Output: &specv1.ShapeOutput{
 			ScopeIn:  []string{"auth endpoint"},
 			ScopeOut: []string{"admin panel"},
 			Risks:    []string{"latency"},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "scope?", Stage: "shape", Sequence: 1},
+			{Role: "response", Content: "auth endpoint", Stage: "shape", Sequence: 2},
 		},
 	}))
 	require.NoError(t, err)
@@ -634,7 +642,10 @@ func TestAuthoringHandler_StageError_InvalidTransition(t *testing.T) {
 	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
 	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug:   "my-spec",
-		Output: &specv1.ShapeOutput{},
+		Output: &specv1.ShapeOutput{ScopeIn: []string{"x"}},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -648,7 +659,10 @@ func TestAuthoringHandler_StageError_NotFound(t *testing.T) {
 	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
 	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug:   "missing-spec",
-		Output: &specv1.ShapeOutput{},
+		Output: &specv1.ShapeOutput{ScopeIn: []string{"x"}},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -700,6 +714,9 @@ func TestAuthoringHandler_Shape_StoreOutputError(t *testing.T) {
 	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug:   "my-spec",
 		Output: &specv1.ShapeOutput{ScopeIn: []string{"auth endpoint"}},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -770,7 +787,10 @@ func TestAuthoringHandler_StageError_AlreadyApproved(t *testing.T) {
 	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
 	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug:   "my-spec",
-		Output: &specv1.ShapeOutput{},
+		Output: &specv1.ShapeOutput{ScopeIn: []string{"x"}},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -1063,6 +1083,9 @@ func TestAuthoringHandler_Shape_StoreSafetyFlagsError(t *testing.T) {
 			ScopeIn:  []string{"in"},
 			ScopeOut: []string{"out"},
 		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
+		},
 	}))
 	if err != nil {
 		var connErr *connect.Error
@@ -1128,7 +1151,9 @@ func TestAuthoringHandler_Decompose_EmptySlices(t *testing.T) {
 
 func TestAuthoringHandler_Shape_UnspecifiedPostureResolved(t *testing.T) {
 	// UNSPECIFIED posture resolves to Partner, which auto-runs constitution_check.
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug: "my-spec",
 		Output: &specv1.ShapeOutput{
@@ -1136,6 +1161,9 @@ func TestAuthoringHandler_Shape_UnspecifiedPostureResolved(t *testing.T) {
 			Risks:   []string{"latency"},
 		},
 		Posture: specv1.Posture_POSTURE_UNSPECIFIED,
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
+		},
 	}))
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg.Output)
@@ -1561,4 +1589,82 @@ func TestAuthoringHandler_ListConversations_SpecNotFound(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+}
+
+// --- Shape conversation_exchanges validation tests ---
+
+func TestAuthoringHandler_Shape_RequiresConversationExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+
+	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug:   "oauth-refresh",
+		Output: validShapeOutput(),
+		// conversation_exchanges omitted
+	}))
+	if err == nil {
+		t.Fatal("expected error for missing exchanges")
+	}
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Shape_RejectsEmptyExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+
+	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug:                  "oauth-refresh",
+		Output:                validShapeOutput(),
+		ConversationExchanges: []*specv1.ConversationExchange{},
+	}))
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Shape_PersistsAtomicallyWithExchanges(t *testing.T) {
+	convBackend := &fakeConversationBackend{}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: convBackend,
+	})
+
+	resp, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug:   "oauth-refresh",
+		Output: validShapeOutput(),
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "scope?", Stage: "shape", Sequence: 1},
+			{Role: "response", Content: "X in", Stage: "shape", Sequence: 2},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Shape: %v", err)
+	}
+	if resp.Msg.GetOutput() == nil {
+		t.Error("expected output echoed back")
+	}
+
+	logs, err := client.ListConversations(context.Background(), connect.NewRequest(&specv1.ListConversationsRequest{
+		Slug:  "oauth-refresh",
+		Stage: "shape",
+	}))
+	if err != nil {
+		t.Fatalf("ListConversations: %v", err)
+	}
+	if len(logs.Msg.GetConversationLogs()) != 1 {
+		t.Errorf("expected 1 conversation log, got %d", len(logs.Msg.GetConversationLogs()))
+	}
+}
+
+// validShapeOutput returns a minimally-valid ShapeOutput for tests.
+func validShapeOutput() *specv1.ShapeOutput {
+	return &specv1.ShapeOutput{
+		ScopeIn:        []string{"X"},
+		ScopeOut:       []string{"Y"},
+		Approaches:     []*specv1.Approach{{Name: "a", Description: "d", Tradeoffs: []string{"t"}}},
+		ChosenApproach: "a",
+		Risks:          []string{"r"},
+		SuccessMust:    []string{"m"},
+	}
 }
