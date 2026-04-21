@@ -1898,3 +1898,62 @@ func validDecomposeOutput() *specv1.DecomposeOutput {
 		},
 	}
 }
+
+// --- Spark conversation_exchanges tests (optional exchanges) ---
+
+func TestAuthoringHandler_Spark_ExchangesOptional(t *testing.T) {
+	// Spark without exchanges must succeed — exchanges are optional for Spark.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "new-spec",
+		Output: &specv1.SparkOutput{Seed: "seed", Signal: "signal"},
+	}))
+	if err != nil {
+		t.Fatalf("Spark without exchanges: %v", err)
+	}
+}
+
+func TestAuthoringHandler_Spark_ExchangesValidatedWhenPresent(t *testing.T) {
+	// When exchanges are present but invalid (empty role), expect CodeInvalidArgument.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "new-spec-2",
+		Output: &specv1.SparkOutput{Seed: "seed"},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "", Content: "x", Stage: "spark", Sequence: 1},
+		},
+	}))
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Spark_RecordsExchangesWhenPresent(t *testing.T) {
+	// When exchanges are valid and present, they must be persisted.
+	convBackend := &fakeConversationBackend{}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: convBackend,
+	})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "new-spec-3",
+		Output: &specv1.SparkOutput{Seed: "seed"},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "seed?", Stage: "spark", Sequence: 1},
+			{Role: "response", Content: "x", Stage: "spark", Sequence: 2},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Spark: %v", err)
+	}
+	logs, err := client.ListConversations(context.Background(), connect.NewRequest(&specv1.ListConversationsRequest{
+		Slug:  "new-spec-3",
+		Stage: "spark",
+	}))
+	if err != nil {
+		t.Fatalf("ListConversations: %v", err)
+	}
+	if len(logs.Msg.GetConversationLogs()) != 1 {
+		t.Errorf("expected 1 spark conversation log, got %d", len(logs.Msg.GetConversationLogs()))
+	}
+}

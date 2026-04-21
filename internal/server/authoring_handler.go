@@ -55,6 +55,18 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	if len(msg.Output.GetQuestions()) > maxElements {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("questions exceeds maximum of %d elements", maxElements))
 	}
+	// Conditional conversation_exchanges per design §Approve/spark coupling table.
+	// Exchanges are optional for Spark (may be invoked with just --seed and no LLM dialogue).
+	exchanges := exchangesFromProto(msg.GetConversationExchanges())
+	if len(exchanges) > 0 {
+		if err := authoring.ValidateExchanges(msg.GetConversationExchanges(), "spark"); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
+	// Posture-absent warning (design §Posture).
+	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
+		h.logger.Warn("posture-absent", slog.String("stage", "spark"), slog.String("slug", msg.Slug))
+	}
 	// CreateSpec sets stage to "spark" as part of spec creation; no separate
 	// TransitionStage call is needed because the initial stage is set atomically.
 	sparkDomain, err := sparkOutputToDomain(msg.Output)
@@ -63,7 +75,7 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	}
 	safetyInput := &authoring.SafetyInput{Text: msg.Output.GetSeed()}
 	var safetyFlags []authoring.SafetyFlagResult
-	if err := runInTxOrSequential(ctx, store,
+	ops := []func(context.Context) error{
 		func(c context.Context) error {
 			if _, err := store.CreateSpec(c, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
 				return fmt.Errorf("create spec: %w", err)
@@ -81,7 +93,15 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 			safetyFlags, err = persistSafetyFlags(c, store, msg.Slug, safetyInput)
 			return err
 		},
-	); err != nil {
+	}
+	if len(exchanges) > 0 {
+		entry := buildConversationEntry(storage.SpecStageSpark, msg.GetPosture(), exchanges, false /* isAmend */)
+		ops = append(ops, func(c context.Context) error {
+			_, err := store.RecordConversation(c, msg.Slug, entry)
+			return err
+		})
+	}
+	if err := runInTxOrSequential(ctx, store, ops...); err != nil {
 		if errors.Is(err, storage.ErrSpecAlreadyExists) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("spec with this slug already exists"))
 		}
