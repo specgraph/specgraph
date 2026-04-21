@@ -318,6 +318,11 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
+	// Required conversation_exchanges per design §Conversation Recording Coupling.
+	if err := authoring.ValidateExchanges(msg.GetConversationExchanges(), "decompose"); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	// Existing field-size validations (preserved verbatim from current handler).
 	if msg.Output.GetStrategy() == specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("strategy is required"))
 	}
@@ -351,6 +356,18 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	}
 	var safetyFlags []authoring.SafetyFlagResult
 	var childSlugs []string
+	exchanges := exchangesFromProto(msg.GetConversationExchanges())
+	entry := buildConversationEntry(storage.SpecStageDecompose, msg.GetPosture(), exchanges, false /* isAmend */)
+
+	// Posture-absent warning (design §Posture).
+	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
+		h.logger.Warn("posture-absent", slog.String("stage", "decompose"), slog.String("slug", msg.Slug))
+	}
+
+	// Four-op transaction: transition → store output → safety → record conversation.
+	// All four land in one transaction via RunInTransaction's context threading;
+	// any op failing rolls back all prior writes. SliceSlugs captured via closure
+	// from StoreDecomposeOutput and returned in the response.
 	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
 			return store.TransitionStage(c, msg.Slug, storage.SpecStageSpecify, storage.SpecStageDecompose)
@@ -366,6 +383,10 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 		func(c context.Context) error {
 			var err error
 			safetyFlags, err = persistSafetyFlags(c, store, msg.Slug, safetyInput)
+			return err
+		},
+		func(c context.Context) error {
+			_, err := store.RecordConversation(c, msg.Slug, entry)
 			return err
 		},
 	); err != nil {

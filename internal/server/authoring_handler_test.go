@@ -394,7 +394,9 @@ func TestAuthoringHandler_Specify_HappyPath(t *testing.T) {
 }
 
 func TestAuthoringHandler_Decompose_HappyPath(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "my-spec",
 		Output: &specv1.DecomposeOutput{
@@ -402,6 +404,10 @@ func TestAuthoringHandler_Decompose_HappyPath(t *testing.T) {
 			Slices: []*specv1.DecompositionSlice{
 				{Id: "s1", Intent: "auth endpoint"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "slices?", Stage: "decompose", Sequence: 1},
+			{Role: "response", Content: "auth endpoint slice", Stage: "decompose", Sequence: 2},
 		},
 	}))
 	require.NoError(t, err)
@@ -411,7 +417,9 @@ func TestAuthoringHandler_Decompose_HappyPath(t *testing.T) {
 }
 
 func TestAuthoringHandler_Decompose_SteelThread_HappyPath(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "my-spec",
 		Output: &specv1.DecomposeOutput{
@@ -420,6 +428,9 @@ func TestAuthoringHandler_Decompose_SteelThread_HappyPath(t *testing.T) {
 				{Id: "thread", Intent: "prove roundtrip"},
 				{Id: "broaden-a", Intent: "add feature A", DependsOn: []string{"thread"}},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.NoError(t, err)
@@ -437,6 +448,9 @@ func TestAuthoringHandler_Decompose_SteelThread_RootHasDeps(t *testing.T) {
 				{Id: "thread", Intent: "prove roundtrip", DependsOn: []string{"something"}},
 				{Id: "broaden", Intent: "add feature", DependsOn: []string{"thread"}},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.Error(t, err)
@@ -458,6 +472,9 @@ func TestAuthoringHandler_Decompose_SteelThread_DisconnectedSlice(t *testing.T) 
 				{Id: "island", Intent: "no path to thread"},
 			},
 		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -467,7 +484,9 @@ func TestAuthoringHandler_Decompose_SteelThread_DisconnectedSlice(t *testing.T) 
 }
 
 func TestAuthoringHandler_Decompose_SteelThread_ChainedBroadening(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "my-spec",
 		Output: &specv1.DecomposeOutput{
@@ -478,6 +497,9 @@ func TestAuthoringHandler_Decompose_SteelThread_ChainedBroadening(t *testing.T) 
 				{Id: "broaden-b", Intent: "depends on broaden-a", DependsOn: []string{"broaden-a"}},
 			},
 		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
+		},
 	}))
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg.Output)
@@ -487,7 +509,9 @@ func TestAuthoringHandler_Decompose_SteelThread_ChainedBroadening(t *testing.T) 
 func TestAuthoringHandler_Decompose_NonSteelThread_NoNewValidation(t *testing.T) {
 	// A vertical-slice decomposition with a disconnected slice should still pass
 	// (steel thread validation only applies to STEEL_THREAD strategy).
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "my-spec",
 		Output: &specv1.DecomposeOutput{
@@ -496,6 +520,9 @@ func TestAuthoringHandler_Decompose_NonSteelThread_NoNewValidation(t *testing.T)
 				{Id: "a", Intent: "independent slice A"},
 				{Id: "b", Intent: "independent slice B"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.NoError(t, err)
@@ -512,6 +539,9 @@ func TestAuthoringHandler_Decompose_SteelThread_DuplicateSliceID(t *testing.T) {
 				{Id: "thread", Intent: "prove roundtrip"},
 				{Id: "thread", Intent: "duplicate id", DependsOn: []string{"thread"}},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.Error(t, err)
@@ -754,7 +784,9 @@ func TestAuthoringHandler_Specify_StoreOutputError(t *testing.T) {
 
 func TestAuthoringHandler_Decompose_StoreOutputError(t *testing.T) {
 	authoringStore := &fakeAuthoringBackend{storeDecomposeOutputErr: errors.New("store failed")}
-	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
+	client := newAuthoringClient(t, authoringStore, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "my-spec",
 		Output: &specv1.DecomposeOutput{
@@ -762,6 +794,9 @@ func TestAuthoringHandler_Decompose_StoreOutputError(t *testing.T) {
 			Slices: []*specv1.DecompositionSlice{
 				{Id: "s1", Intent: "auth endpoint"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.Error(t, err)
@@ -881,6 +916,9 @@ func TestAuthoringHandler_Decompose_UnspecifiedStrategy(t *testing.T) {
 			Slices: []*specv1.DecompositionSlice{
 				{Id: "s1", Intent: "auth endpoint"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.Error(t, err)
@@ -1151,12 +1189,17 @@ func TestAuthoringHandler_Amend_StorageError(t *testing.T) {
 func TestAuthoringHandler_Decompose_EmptySlices(t *testing.T) {
 	// A DecomposeRequest with an empty Slices list produces an InvalidArgument error
 	// because SafetyInput.Validate() rejects inputs with no scannable content.
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeTxBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "my-spec",
 		Output: &specv1.DecomposeOutput{
 			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
 			Slices:   []*specv1.DecompositionSlice{},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.Error(t, err)
@@ -1220,7 +1263,9 @@ func TestAuthoringHandler_Spark_UnrecognizedScopeSniff(t *testing.T) {
 func TestAuthoringHandler_Decompose_StoreSafetyFlagsError(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
 		storeSafetyFlagsErr: errors.New("db write failed"),
-	}, &fakeTxBackend{})
+	}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "safety-err-decompose",
 		Output: &specv1.DecomposeOutput{
@@ -1228,6 +1273,9 @@ func TestAuthoringHandler_Decompose_StoreSafetyFlagsError(t *testing.T) {
 			Slices: []*specv1.DecompositionSlice{
 				{Id: "s1", Intent: "slice one"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	if err != nil {
