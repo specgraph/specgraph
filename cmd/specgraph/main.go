@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +40,28 @@ var rootCmd = &cobra.Command{
 var cfgFile string
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", ".specgraph/config.yaml", "config file path")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
+		"config file path (default: ~/.config/specgraph/config.yaml, "+
+			"or .specgraph/config.yaml when no project config is found)")
+}
+
+// globalConfigPath returns the global config path for server commands,
+// honoring --config when set. Server commands must use this instead of
+// xdg.ConfigFile() so the persistent root flag is respected.
+func globalConfigPath() string {
+	if cfgFile != "" {
+		return cfgFile
+	}
+	return xdg.ConfigFile()
+}
+
+// legacyConfigPath returns the config path used by resolveBaseURL when no
+// project .specgraph.yaml is found: --config if set, else .specgraph/config.yaml.
+func legacyConfigPath() string {
+	if cfgFile != "" {
+		return cfgFile
+	}
+	return ".specgraph/config.yaml"
 }
 
 func main() {

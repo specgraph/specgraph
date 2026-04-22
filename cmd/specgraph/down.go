@@ -29,7 +29,7 @@ func init() {
 }
 
 func runDown(_ *cobra.Command, _ []string) error {
-	cfg, err := config.LoadGlobal(xdg.ConfigFile())
+	cfg, err := config.LoadGlobal(globalConfigPath())
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
