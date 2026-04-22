@@ -46,46 +46,40 @@ type ServerSection struct {
 }
 
 // ProbesConfig configures the plain-HTTP Kubernetes/Knative probe listener.
-// When Listen is empty, the probe endpoints are disabled. Zero-valued
-// Interval and ProbeTimeout resolve to DefaultProbeInterval and
-// DefaultProbeTimeout via the Effective* methods.
+// When Listen is empty, the probe endpoints are disabled. Callers should
+// treat raw Interval/Timeout fields as untrusted and consume the result of
+// Resolved() — that's the single path that fuses defaulting and validation.
 type ProbesConfig struct {
-	Listen       string        `yaml:"listen,omitempty"`
-	Interval     time.Duration `yaml:"interval,omitempty"`
-	ProbeTimeout time.Duration `yaml:"probe_timeout,omitempty"`
+	Listen   string        `yaml:"listen,omitempty"`
+	Interval time.Duration `yaml:"interval,omitempty"`
+	Timeout  time.Duration `yaml:"timeout,omitempty"`
 }
 
-// EffectiveInterval returns Interval if set, else DefaultProbeInterval.
-func (p ProbesConfig) EffectiveInterval() time.Duration {
-	if p.Interval > 0 {
-		return p.Interval
-	}
-	return DefaultProbeInterval
-}
-
-// EffectiveProbeTimeout returns ProbeTimeout if set, else DefaultProbeTimeout.
-func (p ProbesConfig) EffectiveProbeTimeout() time.Duration {
-	if p.ProbeTimeout > 0 {
-		return p.ProbeTimeout
-	}
-	return DefaultProbeTimeout
-}
-
-// Validate rejects negative durations and a per-probe timeout that exceeds
-// the interval (probes would overlap and stack up behind a slow Postgres).
-// Zero values pass — they resolve to defaults via the Effective* methods.
-func (p ProbesConfig) Validate() error {
+// Resolved returns a copy with zero-valued Interval/Timeout filled from
+// DefaultProbeInterval/DefaultProbeTimeout, after rejecting negative
+// durations and a per-probe timeout that exceeds the interval (probes
+// would overlap and stack up behind a slow Postgres). Fusing defaulting
+// and validation prevents callers from reading raw fields and skipping
+// either step.
+func (p ProbesConfig) Resolved() (ProbesConfig, error) {
 	if p.Interval < 0 {
-		return fmt.Errorf("probes.interval must be non-negative, got %s", p.Interval)
+		return ProbesConfig{}, fmt.Errorf("probes.interval must be non-negative, got %s", p.Interval)
 	}
-	if p.ProbeTimeout < 0 {
-		return fmt.Errorf("probes.probe_timeout must be non-negative, got %s", p.ProbeTimeout)
+	if p.Timeout < 0 {
+		return ProbesConfig{}, fmt.Errorf("probes.timeout must be non-negative, got %s", p.Timeout)
 	}
-	if p.EffectiveProbeTimeout() > p.EffectiveInterval() {
-		return fmt.Errorf("probes.probe_timeout (%s) must not exceed probes.interval (%s)",
-			p.EffectiveProbeTimeout(), p.EffectiveInterval())
+	out := p
+	if out.Interval == 0 {
+		out.Interval = DefaultProbeInterval
 	}
-	return nil
+	if out.Timeout == 0 {
+		out.Timeout = DefaultProbeTimeout
+	}
+	if out.Timeout > out.Interval {
+		return ProbesConfig{}, fmt.Errorf("probes.timeout (%s) must not exceed probes.interval (%s)",
+			out.Timeout, out.Interval)
+	}
+	return out, nil
 }
 
 // ClientConfig configures how CLI commands connect to the server.

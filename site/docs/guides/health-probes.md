@@ -133,14 +133,14 @@ port (9091) is dialed directly by the kubelet against the pod IP.
   server:
     probes:
       listen: "0.0.0.0:9091"
-      interval: 10s        # how often to ping the DB (default 5s)
-      probe_timeout: 3s    # per-ping deadline (default 2s)
+      interval: 10s    # how often to ping the DB (default 5s)
+      timeout: 3s      # per-ping deadline (default 2s)
   ```
 
   Both durations use Go's `time.Duration` syntax (`500ms`, `2s`, `1m`).
-  `probe_timeout` must not exceed `interval` — otherwise probes would
-  overlap and stack up behind a slow Postgres; the server rejects such
-  configs at startup.
+  `timeout` must not exceed `interval` — otherwise probes would overlap
+  and stack up behind a slow Postgres; the server rejects such configs
+  at startup.
 - The first probe runs at startup, not after the first tick, so
   `initialDelaySeconds` can be as low as 2s for readiness without racing
   against "not yet probed" 503s.

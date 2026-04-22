@@ -283,15 +283,11 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		IdleTimeout:       120 * time.Second,
 	}
 
-	if validateErr := cfg.Server.Probes.Validate(); validateErr != nil {
-		return fmt.Errorf("probes config: %w", validateErr)
+	probesCfg, probesErr := cfg.Server.Probes.Resolved()
+	if probesErr != nil {
+		return fmt.Errorf("invalid probes config: %w", probesErr)
 	}
-	probeSrv, err := startProbeListener(
-		ctx, s,
-		cfg.Server.Probes.Listen,
-		cfg.Server.Probes.EffectiveInterval(),
-		cfg.Server.Probes.EffectiveProbeTimeout(),
-	)
+	probeSrv, err := startProbeListener(ctx, s, probesCfg.Listen, probesCfg.Interval, probesCfg.Timeout)
 	if err != nil {
 		return err
 	}
