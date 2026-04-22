@@ -166,4 +166,6 @@ type AuthoringSpecLifecycle interface {
 type AuthoringBackend interface {
 	StageWriter
 	AuthoringSpecLifecycle
+	ConversationBackend
+	FindingsWriter
 }

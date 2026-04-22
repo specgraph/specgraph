@@ -49,6 +49,10 @@ var _ = Describe("SliceService", Ordered, func() {
 				ChosenApproach: "test approach",
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "what is in scope?", Stage: "shape", Sequence: 1},
+				{Role: "response", Content: "slice testing", Stage: "shape", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
@@ -59,6 +63,10 @@ var _ = Describe("SliceService", Ordered, func() {
 				Interfaces: []*specv1.InterfaceSection{{Name: "API", Body: "REST"}},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "what are the interfaces?", Stage: "specify", Sequence: 1},
+				{Role: "response", Content: "API with REST body", Stage: "specify", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
@@ -73,6 +81,10 @@ var _ = Describe("SliceService", Ordered, func() {
 				},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "how to decompose?", Stage: "decompose", Sequence: 1},
+				{Role: "response", Content: "backend then frontend", Stage: "decompose", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 	})

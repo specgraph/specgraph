@@ -81,6 +81,16 @@ enum ScopeSniff {
   SCOPE_SNIFF_EPIC = 5;
 }
 
+// ApproveAction enumerates the allowed actions in ApproveRequest.
+enum ApproveAction {
+  // Default value; treated as APPROVE_ACTION_ACCEPT by the server.
+  APPROVE_ACTION_UNSPECIFIED = 0;
+  // Advance the spec to the approved stage.
+  APPROVE_ACTION_ACCEPT = 1;
+  // Record rejection rationale + conversation; do not transition stage.
+  APPROVE_ACTION_REJECT = 2;
+}
+
 // --- Stage Output Messages ---
 
 // SparkOutput captures the initial distillation of a raw idea into a structured seed.
@@ -244,6 +254,9 @@ message SparkRequest {
   SparkOutput output = 2;
   // AI collaboration posture requested for this authoring session.
   Posture posture = 3;
+  // Conversation exchanges captured during spark elicitation. Optional for
+  // spark (seed may be a single --seed argument); validated if present.
+  repeated ConversationExchange conversation_exchanges = 4;
 }
 
 // SparkResponse returns the validated spark output along with analytical findings.
@@ -266,6 +279,10 @@ message ShapeRequest {
   ShapeOutput output = 2;
   // AI collaboration posture requested for this authoring session.
   Posture posture = 3;
+  // REQUIRED. Conversation exchanges for shape elicitation. Server persists
+  // stage output and conversation log atomically via the existing
+  // runInTxOrSequential pattern.
+  repeated ConversationExchange conversation_exchanges = 4;
 }
 
 // ShapeResponse returns the validated shape output along with analytical findings.
@@ -288,6 +305,8 @@ message SpecifyRequest {
   SpecifyOutput output = 2;
   // AI collaboration posture requested for this authoring session.
   Posture posture = 3;
+  // REQUIRED. See ShapeRequest.conversation_exchanges.
+  repeated ConversationExchange conversation_exchanges = 4;
 }
 
 // SpecifyResponse returns the validated specify output along with analytical findings.
@@ -310,6 +329,8 @@ message DecomposeRequest {
   DecomposeOutput output = 2;
   // AI collaboration posture requested for this authoring session.
   Posture posture = 3;
+  // REQUIRED. See ShapeRequest.conversation_exchanges.
+  repeated ConversationExchange conversation_exchanges = 4;
 }
 
 // DecomposeResponse returns the validated decompose output along with analytical findings.
@@ -332,15 +353,22 @@ message DecomposeResponse {
 message ApproveRequest {
   // Spec slug identifying the spec to approve.
   string slug = 1;
+  // Approval action. Default (UNSPECIFIED) behaves as ACCEPT.
+  ApproveAction action = 2;
+  // REQUIRED when action == APPROVE_ACTION_REJECT. Conversation exchanges
+  // capturing the rejection rationale.
+  repeated ConversationExchange conversation_exchanges = 3;
 }
 
-// ApproveResponse confirms the approval and records when it occurred.
+// ApproveResponse is the result of an Approve RPC call. Content varies by
+// ApproveAction: accept sets approved_at; reject returns the current unchanged stage.
 message ApproveResponse {
   // Spec slug of the approved spec.
   string slug = 1;
   // Authoring stage the spec now occupies (always APPROVED on success).
   AuthoringStage stage = 2;
-  // Timestamp at which the spec was approved.
+  // Timestamp at which the spec was approved. Set only when action is
+  // APPROVE_ACTION_ACCEPT; absent (nil) when action is APPROVE_ACTION_REJECT.
   google.protobuf.Timestamp approved_at = 3;
 }
 
@@ -423,12 +451,15 @@ service AuthoringService {
 
 // --- Conversation Log ---
 
-// ConversationExchange represents a single probe/response pair from an authoring session.
+// ConversationExchange represents a single turn from an authoring session.
 message ConversationExchange {
   string role = 1;           // "probe" or "response"
   string content = 2;        // the text of the exchange
   string stage = 3;          // authoring stage (spark, shape, specify, decompose, approve)
-  int32 sequence = 4;        // pairs probes with their responses (same sequence = same pair)
+  // sequence is a strictly-increasing turn index. Each exchange must have a
+  // sequence greater than the previous one; the gap between sequences is not
+  // constrained. The server validates strict monotonicity across exchanges.
+  int32 sequence = 4;
   bool decision_point = 5;   // true if user made a judgment call between alternatives
 }
 

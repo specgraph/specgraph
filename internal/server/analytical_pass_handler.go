@@ -267,6 +267,8 @@ func passTypeFromProto(p specv1.PassType) (storage.PassType, error) {
 		return storage.PassTypeConsistencyCheck, nil
 	case specv1.PassType_PASS_TYPE_SIMPLICITY:
 		return storage.PassTypeSimplicityCheck, nil
+	case specv1.PassType_PASS_TYPE_APPROVE_REJECTED:
+		return storage.PassTypeApproveRejected, nil
 	default:
 		return "", fmt.Errorf("invalid pass_type %d", int32(p))
 	}
@@ -286,6 +288,8 @@ func passTypeToProto(p storage.PassType) (specv1.PassType, error) {
 		return specv1.PassType_PASS_TYPE_CONSISTENCY, nil
 	case storage.PassTypeSimplicityCheck:
 		return specv1.PassType_PASS_TYPE_SIMPLICITY, nil
+	case storage.PassTypeApproveRejected:
+		return specv1.PassType_PASS_TYPE_APPROVE_REJECTED, nil
 	default:
 		return specv1.PassType_PASS_TYPE_UNSPECIFIED, fmt.Errorf("unknown pass_type %q", p)
 	}

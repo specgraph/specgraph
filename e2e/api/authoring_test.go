@@ -67,6 +67,10 @@ var _ = Describe("Authoring funnel", Ordered, func() {
 				},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "what is in scope?", Stage: "shape", Sequence: 1},
+				{Role: "response", Content: "feature A in, feature B out", Stage: "shape", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Output).NotTo(BeNil())
@@ -100,6 +104,10 @@ var _ = Describe("Authoring funnel", Ordered, func() {
 				},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "what are the interfaces?", Stage: "specify", Sequence: 1},
+				{Role: "response", Content: "POST /api/v1/things", Stage: "specify", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Output).NotTo(BeNil())
@@ -117,6 +125,10 @@ var _ = Describe("Authoring funnel", Ordered, func() {
 				},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "how to decompose?", Stage: "decompose", Sequence: 1},
+				{Role: "response", Content: "two vertical slices", Stage: "decompose", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Output).NotTo(BeNil())
@@ -194,6 +206,10 @@ var _ = Describe("Authoring funnel — steel thread", Ordered, func() {
 				ScopeIn: []string{"interfaces"},
 				Risks:   []string{"integration risk"},
 			},
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "what is in scope?", Stage: "shape", Sequence: 1},
+				{Role: "response", Content: "interfaces only", Stage: "shape", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 	})
@@ -204,6 +220,10 @@ var _ = Describe("Authoring funnel — steel thread", Ordered, func() {
 			Output: &specv1.SpecifyOutput{
 				Interfaces:     []*specv1.InterfaceSection{{Name: "API", Body: "test"}},
 				VerifyCriteria: []*specv1.VerifyCriterion{{Description: "passes"}},
+			},
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "what are the interfaces?", Stage: "specify", Sequence: 1},
+				{Role: "response", Content: "API with test body", Stage: "specify", Sequence: 2},
 			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
@@ -219,6 +239,10 @@ var _ = Describe("Authoring funnel — steel thread", Ordered, func() {
 					{Id: "broaden-a", Intent: "Add feature A", Verify: []string{"feature A works"}, DependsOn: []string{"thread"}},
 					{Id: "broaden-b", Intent: "Add feature B", Verify: []string{"feature B works"}, DependsOn: []string{"thread"}},
 				},
+			},
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "how to decompose?", Stage: "decompose", Sequence: 1},
+				{Role: "response", Content: "steel thread with three slices", Stage: "decompose", Sequence: 2},
 			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
@@ -247,11 +271,19 @@ var _ = Describe("Authoring funnel — steel thread", Ordered, func() {
 		_, err = authoringClient.Shape(ctx, connect.NewRequest(&specv1.ShapeRequest{
 			Slug:   badSlug,
 			Output: &specv1.ShapeOutput{ScopeIn: []string{"test"}, Risks: []string{"none"}},
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "scope?", Stage: "shape", Sequence: 1},
+				{Role: "response", Content: "test only", Stage: "shape", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		_, err = authoringClient.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
 			Slug:   badSlug,
 			Output: &specv1.SpecifyOutput{Interfaces: []*specv1.InterfaceSection{{Name: "X", Body: "y"}}, VerifyCriteria: []*specv1.VerifyCriterion{{Description: "z"}}},
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "interfaces?", Stage: "specify", Sequence: 1},
+				{Role: "response", Content: "X with y", Stage: "specify", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 
@@ -263,6 +295,10 @@ var _ = Describe("Authoring funnel — steel thread", Ordered, func() {
 					{Id: "thread", Intent: "Prove roundtrip"},
 					{Id: "island", Intent: "No path to thread"},
 				},
+			},
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "decompose?", Stage: "decompose", Sequence: 1},
+				{Role: "response", Content: "steel thread", Stage: "decompose", Sequence: 2},
 			},
 		}))
 		Expect(err).To(HaveOccurred())
