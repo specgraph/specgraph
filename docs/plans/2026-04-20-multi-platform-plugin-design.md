@@ -213,11 +213,12 @@ These checks catch the trivially-fake cases (empty arrays, duplicated structural
 
 ### Interaction with the standalone `conversation.record` tool
 
-The standalone tool remains registered and keeps the existing `Authoring.RecordConversation` RPC. Its role narrows to three cases:
+The standalone tool remains registered and keeps the existing `Authoring.RecordConversation` RPC. Its role narrows to two cases:
 
-- **Approve-stage rejections**: `approve` records exchanges only on rejection per the existing skill rules (confirmed — see below). The standalone tool handles these.
 - **Amendments**: re-entering an already-approved stage records the amendment conversation via the standalone tool.
 - **Out-of-band additions**: explicit user requests to augment a prior stage's record.
+
+Approve-stage rejections are handled atomically via `Approve(action=APPROVE_ACTION_REJECT)`: the server records both the conversation log (under the `approved` stage) and the `approve-rejected` critical finding in a single transaction. The standalone `conversation.record` RPC is NOT used for approve-stage rejections — the atomic `Approve` RPC is the correct path.
 
 When `author.*` atomic recording has already written exchanges for a stage, calling `conversation.record` for the same stage + spec appends rather than replaces. The server does not dedupe — exchanges are additive.
 
