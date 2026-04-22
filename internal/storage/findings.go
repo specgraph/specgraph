@@ -18,7 +18,7 @@ const (
 	PassTypeRedTeam           PassType = "red_team"
 	PassTypeConsistencyCheck  PassType = "consistency_check"
 	PassTypeSimplicityCheck   PassType = "simplicity_check"
-	PassTypeApproveRejected   PassType = "approve-rejected"
+	PassTypeApproveRejected   PassType = "approve_rejected"
 )
 
 // ValidPassType reports whether pt is a known pass type.

@@ -34,6 +34,9 @@ const (
 	PassType_PASS_TYPE_PERIPHERAL_VISION  PassType = 3
 	PassType_PASS_TYPE_CONSISTENCY        PassType = 4
 	PassType_PASS_TYPE_SIMPLICITY         PassType = 5
+	// PASS_TYPE_APPROVE_REJECTED is emitted by the Approve handler when action is
+	// APPROVE_ACTION_REJECT. It records the rejection rationale as a critical finding.
+	PassType_PASS_TYPE_APPROVE_REJECTED PassType = 6
 )
 
 // Enum value maps for PassType.
@@ -45,6 +48,7 @@ var (
 		3: "PASS_TYPE_PERIPHERAL_VISION",
 		4: "PASS_TYPE_CONSISTENCY",
 		5: "PASS_TYPE_SIMPLICITY",
+		6: "PASS_TYPE_APPROVE_REJECTED",
 	}
 	PassType_value = map[string]int32{
 		"PASS_TYPE_UNSPECIFIED":        0,
@@ -53,6 +57,7 @@ var (
 		"PASS_TYPE_PERIPHERAL_VISION":  3,
 		"PASS_TYPE_CONSISTENCY":        4,
 		"PASS_TYPE_SIMPLICITY":         5,
+		"PASS_TYPE_APPROVE_REJECTED":   6,
 	}
 )
 
@@ -707,14 +712,15 @@ const file_specgraph_v1_analytical_pass_proto_rawDesc = "" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x123\n" +
 	"\tpass_type\x18\x02 \x01(\x0e2\x16.specgraph.v1.PassTypeR\bpassType\"S\n" +
 	"\x14ListFindingsResponse\x12;\n" +
-	"\bfindings\x18\x01 \x03(\v2\x1f.specgraph.v1.AnalyticalFindingR\bfindings*\xb5\x01\n" +
+	"\bfindings\x18\x01 \x03(\v2\x1f.specgraph.v1.AnalyticalFindingR\bfindings*\xd5\x01\n" +
 	"\bPassType\x12\x19\n" +
 	"\x15PASS_TYPE_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cPASS_TYPE_CONSTITUTION_CHECK\x10\x01\x12\x16\n" +
 	"\x12PASS_TYPE_RED_TEAM\x10\x02\x12\x1f\n" +
 	"\x1bPASS_TYPE_PERIPHERAL_VISION\x10\x03\x12\x19\n" +
 	"\x15PASS_TYPE_CONSISTENCY\x10\x04\x12\x18\n" +
-	"\x14PASS_TYPE_SIMPLICITY\x10\x052\xae\x02\n" +
+	"\x14PASS_TYPE_SIMPLICITY\x10\x05\x12\x1e\n" +
+	"\x1aPASS_TYPE_APPROVE_REJECTED\x10\x062\xae\x02\n" +
 	"\x15AnalyticalPassService\x12d\n" +
 	"\x11RunAnalyticalPass\x12&.specgraph.v1.RunAnalyticalPassRequest\x1a'.specgraph.v1.RunAnalyticalPassResponse\x12X\n" +
 	"\rStoreFindings\x12\".specgraph.v1.StoreFindingsRequest\x1a#.specgraph.v1.StoreFindingsResponse\x12U\n" +
