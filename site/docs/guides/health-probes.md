@@ -36,8 +36,19 @@ server:
 ```
 
 - `GET /livez` — 200 as long as the HTTP goroutine is alive. No DB touch.
-- `GET /readyz` — 200 when the last cached Postgres probe succeeded;
-  503 otherwise (including before the first probe completes).
+  Empty body.
+- `GET /readyz` — 200 (empty body) when the last cached Postgres probe
+  succeeded; 503 otherwise. On 503 the response body carries a plain-text
+  reason string (e.g. `not ready: postgres: ping: dial tcp: connect:
+  connection refused`) so `curl /readyz` identifies the failure cause
+  without tailing pod logs. Before the first probe completes the body
+  reads `not ready: probe has not yet completed`. kubelet's httpGet probe
+  ignores the body, so operators using Kubernetes probes see no change.
+
+Transitions between healthy and failing states log once each at `INFO`
+(`readiness probe recovered`) and `WARN` (`readiness probe failed` with
+the cause as an attribute) — steady-state probes are silent to avoid
+flooding logs when Postgres is out for an extended window.
 
 The probe server shuts down with the main server on SIGINT/SIGTERM.
 

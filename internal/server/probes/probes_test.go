@@ -4,10 +4,14 @@
 package probes_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -16,6 +20,25 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// syncBuffer wraps bytes.Buffer with a mutex so the probe goroutine writing
+// via slog and the test goroutine reading via String don't race.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
 
 // fakePinger returns the value stored in err and counts calls.
 type fakePinger struct {
@@ -138,6 +161,93 @@ func TestMux_RoutesBothEndpoints(t *testing.T) {
 		}
 		_ = r.Body.Close()
 		return r.StatusCode == http.StatusOK
+	})
+}
+
+func TestReadyz_BodyCarriesReason(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	pinger := &fakePinger{}
+	pinger.setErr(errors.New("postgres: ping: dial tcp: connect: connection refused"))
+	h := probes.New(ctx, pinger, 10*time.Millisecond, 50*time.Millisecond)
+
+	waitFor(t, func() bool { return pinger.calls.Load() >= 1 })
+
+	// Poll until the cache has flipped to the failing state so the reason
+	// string reflects the stored error rather than the pre-probe marker.
+	waitFor(t, func() bool {
+		w := httptest.NewRecorder()
+		h.Readyz(w, httptest.NewRequest(http.MethodGet, "/readyz", http.NoBody))
+		return w.Code == http.StatusServiceUnavailable &&
+			bytes.Contains(w.Body.Bytes(), []byte("connection refused"))
+	})
+
+	w := httptest.NewRecorder()
+	h.Readyz(w, httptest.NewRequest(http.MethodGet, "/readyz", http.NoBody))
+	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
+	assert.Contains(t, w.Header().Get("Content-Type"), "text/plain")
+	assert.Contains(t, w.Body.String(), "not ready:")
+	assert.Contains(t, w.Body.String(), "connection refused")
+}
+
+func TestReadyz_BodyReportsPrePingState(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Blocking pinger that never returns until ctx expires — first probe
+	// will time out and populate lastErr with context.DeadlineExceeded.
+	pinger := blockingPinger{block: make(chan struct{})}
+	h := probes.New(ctx, pinger, time.Hour, 10*time.Millisecond)
+
+	// Before the first probe window elapses the handler reports the
+	// pre-probe marker; after the timeout it reports the deadline error.
+	// Either message is acceptable; what we assert is that the body is
+	// never empty on 503.
+	waitFor(t, func() bool {
+		w := httptest.NewRecorder()
+		h.Readyz(w, httptest.NewRequest(http.MethodGet, "/readyz", http.NoBody))
+		return w.Code == http.StatusServiceUnavailable && w.Body.Len() > 0
+	})
+}
+
+func TestProbe_LogsTransitionsOnly(t *testing.T) {
+	buf := &syncBuffer{}
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	slog.SetDefault(slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	pinger := &fakePinger{}
+	h := probes.New(ctx, pinger, 5*time.Millisecond, 50*time.Millisecond)
+
+	// Let several healthy probes elapse — none should log. The first
+	// probe is silent (no prior state), subsequent healthy probes are
+	// steady-state.
+	waitFor(t, func() bool { return pinger.calls.Load() >= 3 })
+	assert.NotContains(t, buf.String(), "readiness probe", "steady-state healthy must not log")
+
+	pinger.setErr(errors.New("synthetic failure"))
+	waitFor(t, func() bool { return strings.Contains(buf.String(), "readiness probe failed") })
+	assert.Contains(t, buf.String(), "synthetic failure")
+
+	failCallsBefore := pinger.calls.Load()
+	waitFor(t, func() bool { return pinger.calls.Load() > failCallsBefore+2 })
+	assert.Equal(t, 1, strings.Count(buf.String(), "readiness probe failed"),
+		"failing steady state must not flood logs")
+
+	pinger.setErr(nil)
+	waitFor(t, func() bool { return strings.Contains(buf.String(), "readiness probe recovered") })
+	assert.Equal(t, 1, strings.Count(buf.String(), "readiness probe recovered"))
+
+	// After recovery /readyz is 200 and body reasons are silent — lastErr
+	// must be cleared so operators don't see a stale cause.
+	waitFor(t, func() bool {
+		w := httptest.NewRecorder()
+		h.Readyz(w, httptest.NewRequest(http.MethodGet, "/readyz", http.NoBody))
+		return w.Code == http.StatusOK
 	})
 }
 
