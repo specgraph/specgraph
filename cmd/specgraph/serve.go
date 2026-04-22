@@ -22,6 +22,7 @@ import (
 	mcpserver "github.com/mark3labs/mcp-go/server"
 
 	"github.com/specgraph/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/docker"
 	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/specgraph/specgraph/internal/linter"
@@ -287,13 +288,18 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	if probesErr != nil {
 		return fmt.Errorf("invalid probes config: %w", probesErr)
 	}
-	probeSrv, err := startProbeListener(ctx, s, probesCfg.Listen, probesCfg.Interval, probesCfg.Timeout)
+	probeSrv, probeErrCh, err := startProbeListener(ctx, s, probesCfg)
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		<-ctx.Done()
+		select {
+		case <-ctx.Done():
+		case probeErr := <-probeErrCh:
+			slog.Error("probe listener died; triggering shutdown", "error", probeErr)
+			cancel()
+		}
 		fmt.Println("\nShutting down...")
 		stopSweeper()
 		// Shut down main and probe servers in parallel so a slow main-server
@@ -373,31 +379,41 @@ func warnIfNoAuthOnPublicListen(listen string, hasAuth bool) {
 		"risk", "configure API keys or OIDC providers")
 }
 
-// startProbeListener binds a plain-HTTP listener serving /livez and /readyz.
-// Returns (nil, nil) when addr is empty so callers treat probes as off. Bind
-// errors (port in use, permission denied) abort startup rather than leaving a
-// running API that kubelet can never mark ready.
-func startProbeListener(ctx context.Context, pinger probes.Pinger, addr string, interval, timeout time.Duration) (*http.Server, error) {
-	if addr == "" {
-		return nil, nil
+// startProbeListener binds a plain-HTTP listener serving /livez and /readyz
+// using tuning from a resolved ProbesConfig. Returns (nil, nil, nil) when
+// Listen is empty so callers treat probes as off. Bind errors abort startup
+// rather than leaving a running API that kubelet can never mark ready.
+//
+// The returned error channel fires once if the background Serve returns a
+// non-ErrServerClosed error — a dead probe listener while the main server
+// keeps serving traffic is a silent split-brain that kubelet can't recover
+// from on its own, so the caller should treat a send on this channel as a
+// shutdown trigger.
+func startProbeListener(ctx context.Context, pinger probes.Pinger, cfg config.ProbesConfig) (*http.Server, <-chan error, error) {
+	if cfg.Listen == "" {
+		return nil, nil, nil
 	}
-	ln, err := net.Listen("tcp", addr)
+	ln, err := net.Listen("tcp", cfg.Listen)
 	if err != nil {
-		return nil, fmt.Errorf("probe listener bind %s: %w", addr, err)
+		return nil, nil, fmt.Errorf("probe listener bind %s: %w", cfg.Listen, err)
 	}
-	h := probes.New(ctx, pinger, interval, timeout)
+	h := probes.New(ctx, pinger, cfg.Interval, cfg.Timeout)
 	srv := &http.Server{
 		// Addr reflects the resolved listener address, not the caller's
-		// input — useful when addr was ":0" for an ephemeral port (tests).
+		// input — useful when cfg.Listen was ":0" for an ephemeral port.
 		Addr:              ln.Addr().String(),
 		Handler:           h.Mux(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	slog.Info("probe endpoints listening", "addr", srv.Addr, "livez", "/livez", "readyz", "/readyz")
+	errCh := make(chan error, 1)
 	go func() {
-		if serveErr := srv.Serve(ln); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
-			slog.Error("probe server failed", "addr", addr, "error", serveErr)
+		serveErr := srv.Serve(ln)
+		if serveErr == nil || errors.Is(serveErr, http.ErrServerClosed) {
+			return
 		}
+		slog.Error("probe server failed", "addr", srv.Addr, "error", serveErr)
+		errCh <- serveErr
 	}()
-	return srv, nil
+	return srv, errCh, nil
 }
