@@ -4,10 +4,43 @@
 package main
 
 import (
+	"bytes"
+	"log/slog"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+// syncBuffer protects a bytes.Buffer so concurrent slog Writes from any
+// probe or background goroutine do not race with the test goroutine reading
+// via String.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+func captureSlog(t *testing.T) *syncBuffer {
+	t.Helper()
+	buf := &syncBuffer{}
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	slog.SetDefault(slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	return buf
+}
 
 func TestIsLoopbackAddr(t *testing.T) {
 	tests := []struct {
@@ -30,4 +63,44 @@ func TestIsLoopbackAddr(t *testing.T) {
 			assert.Equal(t, tt.loopback, isLoopbackAddr(tt.addr))
 		})
 	}
+}
+
+func TestWarnIfNoAuthOnPublicListen(t *testing.T) {
+	cases := []struct {
+		name     string
+		listen   string
+		hasAuth  bool
+		wantWarn bool
+	}{
+		{name: "default listen without auth fires", listen: "0.0.0.0:9090", hasAuth: false, wantWarn: true},
+		{name: "default listen with auth silent", listen: "0.0.0.0:9090", hasAuth: true, wantWarn: false},
+		{name: "loopback without auth silent", listen: "127.0.0.1:9090", hasAuth: false, wantWarn: false},
+		{name: "loopback with auth silent", listen: "127.0.0.1:9090", hasAuth: true, wantWarn: false},
+		{name: "non-loopback IPv4 without auth fires", listen: "10.0.0.5:9090", hasAuth: false, wantWarn: true},
+		{name: "empty listen treated as non-loopback", listen: "", hasAuth: false, wantWarn: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf := captureSlog(t)
+			warnIfNoAuthOnPublicListen(tc.listen, tc.hasAuth)
+			out := buf.String()
+			if tc.wantWarn {
+				assert.Contains(t, out, "server listening without authentication on non-loopback interface")
+				assert.Contains(t, out, "level=WARN")
+				if tc.listen != "" {
+					assert.Contains(t, out, "addr="+tc.listen)
+				}
+			} else {
+				assert.NotContains(t, out, "server listening without authentication")
+			}
+		})
+	}
+}
+
+func TestWarnIfNoAuthOnPublicListen_EmitsOnceForDefault(t *testing.T) {
+	buf := captureSlog(t)
+	warnIfNoAuthOnPublicListen("0.0.0.0:9090", false)
+	out := buf.String()
+	assert.Equal(t, 1, strings.Count(out, "server listening without authentication"),
+		"warning must fire exactly once per call")
 }

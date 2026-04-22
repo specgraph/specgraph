@@ -206,11 +206,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("auth composite store: %w", csErr)
 	}
 
-	if !compositeStore.HasAuth() && !isLoopbackAddr(cfg.Server.Listen) {
-		slog.Warn("server listening without authentication on non-loopback interface",
-			"addr", cfg.Server.Listen,
-			"risk", "configure API keys or OIDC providers")
-	}
+	warnIfNoAuthOnPublicListen(cfg.Server.Listen, compositeStore.HasAuth())
 	interceptor := auth.NewAuthInterceptor(compositeStore)
 	maxBytes := connect.WithReadMaxBytes(4 << 20) // 4 MiB request body limit
 	opts := connect.WithInterceptors(interceptor)
@@ -365,6 +361,20 @@ func isLoopbackAddr(addr string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+// warnIfNoAuthOnPublicListen logs a single WARN line when the server is
+// bound to a non-loopback interface with no authentication configured.
+// The 0.0.0.0:9090 default combined with no API keys or OIDC providers is
+// the out-of-box shape for unconfigured operators post-#915 — the warning
+// is how they learn their instance is reachable without credentials.
+func warnIfNoAuthOnPublicListen(listen string, hasAuth bool) {
+	if hasAuth || isLoopbackAddr(listen) {
+		return
+	}
+	slog.Warn("server listening without authentication on non-loopback interface",
+		"addr", listen,
+		"risk", "configure API keys or OIDC providers")
 }
 
 // startProbeListener binds a plain-HTTP listener serving /livez and /readyz.
