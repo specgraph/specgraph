@@ -83,6 +83,29 @@ func TestLoadGlobal_MalformedYAML(t *testing.T) {
 	assert.Contains(t, err.Error(), "parse config")
 }
 
+func TestLoadGlobalExplicit_ErrorsWhenMissing(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "does-not-exist.yaml")
+
+	_, err := config.LoadGlobalExplicit(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "config file not found")
+	assert.Contains(t, err.Error(), path)
+
+	_, statErr := os.Stat(path)
+	assert.True(t, os.IsNotExist(statErr), "must not materialize defaults at operator-supplied path")
+}
+
+func TestLoadGlobalExplicit_LoadsExistingFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  mode: manual\n"), 0o600))
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.Equal(t, "manual", cfg.Server.Mode)
+}
+
 func TestLoadGlobal_ReadOnlyParentDir(t *testing.T) {
 	if os.Getuid() == 0 {
 		t.Skip("root bypasses permission checks")

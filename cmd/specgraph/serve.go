@@ -22,7 +22,6 @@ import (
 	mcpserver "github.com/mark3labs/mcp-go/server"
 
 	"github.com/specgraph/specgraph/internal/auth"
-	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/docker"
 	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/specgraph/specgraph/internal/linter"
@@ -64,7 +63,7 @@ func init() {
 }
 
 func runServe(cmd *cobra.Command, _ []string) error {
-	cfg, err := config.LoadGlobal(globalConfigPath())
+	cfg, err := loadGlobalCfg()
 	if err != nil {
 		return fmt.Errorf("load global config: %w", err)
 	}

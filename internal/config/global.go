@@ -93,14 +93,31 @@ type ClaimMapping struct {
 }
 
 // LoadGlobal loads the global config from path. If the file doesn't exist,
-// writes defaults and returns them.
+// writes defaults and returns them. Use LoadGlobalExplicit when path was
+// operator-supplied (via --config), where materializing defaults at a
+// typo'd path would silently mask the error.
 func LoadGlobal(path string) (*GlobalConfig, error) {
+	return loadGlobalAt(path, true)
+}
+
+// LoadGlobalExplicit loads the global config from an operator-supplied path,
+// returning an error if the file does not exist. Server commands call this
+// when --config is set so a missing or mistyped path fails loudly instead of
+// being materialized as a default config at an unexpected location.
+func LoadGlobalExplicit(path string) (*GlobalConfig, error) {
+	return loadGlobalAt(path, false)
+}
+
+func loadGlobalAt(path string, materializeDefaults bool) (*GlobalConfig, error) {
 	cfg := globalDefaults()
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return nil, fmt.Errorf("read config: %w", err)
+		}
+		if !materializeDefaults {
+			return nil, fmt.Errorf("config file not found at %s", path)
 		}
 		if writeErr := writeGlobal(path, cfg); writeErr != nil {
 			return nil, fmt.Errorf("write default config: %w", writeErr)
