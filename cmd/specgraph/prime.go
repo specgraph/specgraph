@@ -10,7 +10,6 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/internal/config"
-	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +38,7 @@ func runPrime(cmd *cobra.Command, args []string) error {
 	}
 
 	// 3. Load global config.
-	cfg, err := config.LoadGlobal(xdg.ConfigFile())
+	cfg, err := config.LoadGlobal(globalConfigPath())
 	if err != nil {
 		return fmt.Errorf("load global config: %w", err)
 	}

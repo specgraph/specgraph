@@ -60,7 +60,7 @@ func resolveBaseURL() (baseURL, project string, err error) {
 		if projErr != nil {
 			return "", "", fmt.Errorf("load project config: %w", projErr)
 		}
-		globalCfg, globalErr := config.LoadGlobal(xdg.ConfigFile())
+		globalCfg, globalErr := config.LoadGlobal(globalConfigPath())
 		if globalErr != nil {
 			return "", "", fmt.Errorf("load global config: %w", globalErr)
 		}
@@ -70,7 +70,7 @@ func resolveBaseURL() (baseURL, project string, err error) {
 	}
 
 	// No .specgraph.yaml found; fall back to old config.
-	cfg, err := config.Load(cfgFile)
+	cfg, err := config.Load(legacyConfigPath())
 	if err != nil {
 		return "", "", err
 	}

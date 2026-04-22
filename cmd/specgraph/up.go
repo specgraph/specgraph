@@ -37,7 +37,7 @@ func runUp(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("ensure XDG dirs: %w", err)
 	}
 
-	cfg, err := config.LoadGlobal(xdg.ConfigFile())
+	cfg, err := config.LoadGlobal(globalConfigPath())
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
@@ -77,7 +77,7 @@ func runUp(cmd *cobra.Command, _ []string) error {
 		}
 		svcCfg := service.Config{
 			BinaryPath: binaryPath,
-			ConfigPath: xdg.ConfigFile(),
+			ConfigPath: globalConfigPath(),
 			LogPath:    filepath.Join(xdg.StateHome(), "server.log"),
 		}
 		defPath, err := service.Generate(destDir, svcCfg)
