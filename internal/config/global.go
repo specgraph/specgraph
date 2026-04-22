@@ -33,6 +33,13 @@ type ServerSection struct {
 	Backend  string         `yaml:"backend"`
 	Postgres PostgresConfig `yaml:"postgres"`
 	Docker   bool           `yaml:"docker"`
+	Probes   ProbesConfig   `yaml:"probes,omitempty"`
+}
+
+// ProbesConfig configures the plain-HTTP Kubernetes/Knative probe listener.
+// When Listen is empty, the probe endpoints are disabled.
+type ProbesConfig struct {
+	Listen string `yaml:"listen,omitempty"`
 }
 
 // ClientConfig configures how CLI commands connect to the server.
