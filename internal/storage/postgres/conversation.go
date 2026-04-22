@@ -282,7 +282,7 @@ func (s *Store) ListAllConversations(ctx context.Context) ([]*storage.Conversati
 		)
 		if scanErr := rows.Scan(&id, &specSlug, &stageStr, &version, &isAmend,
 			&exchangesJSON, &exchangeCount, &posture, &date); scanErr != nil {
-			return nil, fmt.Errorf("postgres: list all conversations: scan: %w", scanErr)
+			return nil, fmt.Errorf("postgres: list all conversations: scan id=%q spec=%q: %w", id, specSlug, scanErr)
 		}
 		exchanges, uErr := unmarshalExchanges(exchangesJSON)
 		if uErr != nil {
@@ -321,7 +321,7 @@ func scanConversationLogEntry(rows pgx.Rows) (*storage.ConversationLogEntry, err
 	)
 	if err := rows.Scan(&id, &stageStr, &version, &isAmend,
 		&exchangesJSON, &exchangeCount, &posture, &date); err != nil {
-		return nil, fmt.Errorf("postgres: scan conversation log entry: %w", err)
+		return nil, fmt.Errorf("postgres: scan conversation log entry id=%q: %w", id, err)
 	}
 	exchanges, err := unmarshalExchanges(exchangesJSON)
 	if err != nil {
