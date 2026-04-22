@@ -447,7 +447,11 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	slug := req.Msg.Slug
 
 	switch req.Msg.GetAction() {
-	case specv1.ApproveAction_APPROVE_ACTION_UNSPECIFIED, specv1.ApproveAction_APPROVE_ACTION_ACCEPT:
+	case specv1.ApproveAction_APPROVE_ACTION_UNSPECIFIED:
+		h.logger.InfoContext(ctx, "approve action unspecified, defaulting to accept",
+			slog.String("slug", slug))
+		fallthrough
+	case specv1.ApproveAction_APPROVE_ACTION_ACCEPT:
 		// Wrap TransitionStage and acceptLinkedDecisions in a transaction so that
 		// if decision promotion fails, the spec approval is rolled back.
 		var spec *storage.Spec
@@ -528,6 +532,11 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 			},
 		); err != nil {
 			return nil, h.stageError(err)
+		}
+		if currentStage == "" {
+			h.logger.ErrorContext(ctx, "reject path: currentStage not populated after successful tx",
+				slog.String("slug", slug))
+			return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 		}
 		return connect.NewResponse(&specv1.ApproveResponse{
 			Slug:  slug,

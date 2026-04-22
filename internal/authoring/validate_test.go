@@ -63,6 +63,15 @@ func TestValidateExchanges(t *testing.T) {
 			wantErrContains: "stage",
 		},
 		{
+			name: "sequence zero rejected",
+			exchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "q1", Stage: "shape", Sequence: 0},
+			},
+			stage:           "shape",
+			wantErr:         true,
+			wantErrContains: "sequence",
+		},
+		{
 			name: "non-increasing sequence rejected",
 			exchanges: []*specv1.ConversationExchange{
 				{Role: "probe", Content: "q1", Stage: "shape", Sequence: 1},
