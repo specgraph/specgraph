@@ -264,6 +264,16 @@ type fakeRejectBackend struct {
 	stage    storage.SpecStage
 }
 
+// newFakeRejectBackend returns a fakeRejectBackend with non-nil embedded
+// conversation and findings fakes, avoiding nil-pointer panics in tests
+// that don't initialize the fields explicitly.
+func newFakeRejectBackend() *fakeRejectBackend {
+	return &fakeRejectBackend{
+		conv:     &fakeConversationBackend{},
+		findings: &fakeFindingsBackend{},
+	}
+}
+
 // rejectAuthoringTestBackend embeds authoringTestBackend, overrides RecordConversation
 // and StoreFindings so the reject path can capture calls for assertions.
 // GetSpec always returns SpecStageDecompose because reject is only valid from that stage.
@@ -642,10 +652,7 @@ func TestAuthoringHandler_Approve_AcceptUnchangedWithoutAction(t *testing.T) {
 }
 
 func TestAuthoringHandler_Approve_RejectRequiresExchanges(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeRejectBackend{
-		conv:     &fakeConversationBackend{},
-		findings: &fakeFindingsBackend{},
-	})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, newFakeRejectBackend())
 	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug:   "my-spec",
 		Action: specv1.ApproveAction_APPROVE_ACTION_REJECT,
@@ -657,12 +664,10 @@ func TestAuthoringHandler_Approve_RejectRequiresExchanges(t *testing.T) {
 }
 
 func TestAuthoringHandler_Approve_RejectRecordsFindingAndExchanges(t *testing.T) {
-	conv := &fakeConversationBackend{}
-	findings := &fakeFindingsBackend{}
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeRejectBackend{
-		conv:     conv,
-		findings: findings,
-	})
+	rb := newFakeRejectBackend()
+	conv := rb.conv
+	findings := rb.findings
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, rb)
 	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug:   "my-spec",
 		Action: specv1.ApproveAction_APPROVE_ACTION_REJECT,
@@ -689,14 +694,10 @@ func TestAuthoringHandler_Approve_RejectRecordsFindingAndExchanges(t *testing.T)
 }
 
 func TestAuthoringHandler_Approve_RejectRequiresDecomposeStage(t *testing.T) {
-	conv := &fakeConversationBackend{}
-	findings := &fakeFindingsBackend{}
 	// Seed the backend with a non-decompose stage (e.g., shape) to trigger the precondition.
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeRejectBackend{
-		conv:     conv,
-		findings: findings,
-		stage:    storage.SpecStageShape,
-	})
+	rb := newFakeRejectBackend()
+	rb.stage = storage.SpecStageShape
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, rb)
 	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug:   "my-spec",
 		Action: specv1.ApproveAction_APPROVE_ACTION_REJECT,
@@ -1273,27 +1274,31 @@ func TestAuthoringHandler_Spark_StoreSafetyFlagsError(t *testing.T) {
 }
 
 func TestAuthoringHandler_Shape_StoreSafetyFlagsError(t *testing.T) {
+	// "hardcoded secret in config" reliably triggers the security safety pattern,
+	// ensuring StoreSafetyFlags is always called and the error path is exercised.
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
 		storeSafetyFlagsErr: errors.New("db write failed"),
 	}, &fakeTxBackend{})
 	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug: "safety-err-shape",
 		Output: &specv1.ShapeOutput{
-			ScopeIn:  []string{"in"},
-			ScopeOut: []string{"out"},
+			ScopeIn:  []string{"auth endpoint"},
+			ScopeOut: []string{"admin panel"},
+			Risks:    []string{"hardcoded secret in config"},
 		},
 		ConversationExchanges: []*specv1.ConversationExchange{
 			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
 		},
 	}))
-	if err != nil {
-		var connErr *connect.Error
-		require.ErrorAs(t, err, &connErr)
-		require.Equal(t, connect.CodeInternal, connErr.Code())
-	}
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
 }
 
 func TestAuthoringHandler_Specify_StoreSafetyFlagsError(t *testing.T) {
+	// "hardcoded secret in config" in an interface body reliably triggers the
+	// security safety pattern, ensuring StoreSafetyFlags is always called.
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
 		storeSafetyFlagsErr: errors.New("db write failed"),
 	}, &fakeConvBackend{
@@ -1303,7 +1308,7 @@ func TestAuthoringHandler_Specify_StoreSafetyFlagsError(t *testing.T) {
 		Slug: "safety-err-specify",
 		Output: &specv1.SpecifyOutput{
 			Interfaces: []*specv1.InterfaceSection{
-				{Name: "API", Body: "interface contract"},
+				{Name: "API", Body: "hardcoded secret in config"},
 			},
 			VerifyCriteria: []*specv1.VerifyCriterion{
 				{Category: "functional", Description: "check 1"},
@@ -1314,11 +1319,10 @@ func TestAuthoringHandler_Specify_StoreSafetyFlagsError(t *testing.T) {
 			{Role: "probe", Content: "q", Stage: "specify", Sequence: 1},
 		},
 	}))
-	if err != nil {
-		var connErr *connect.Error
-		require.ErrorAs(t, err, &connErr)
-		require.Equal(t, connect.CodeInternal, connErr.Code())
-	}
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
 }
 
 func TestAuthoringHandler_Amend_StorageError(t *testing.T) {
@@ -1411,6 +1415,8 @@ func TestAuthoringHandler_Spark_UnrecognizedScopeSniff(t *testing.T) {
 }
 
 func TestAuthoringHandler_Decompose_StoreSafetyFlagsError(t *testing.T) {
+	// "hardcoded secret in config" in a slice intent reliably triggers the
+	// security safety pattern, ensuring StoreSafetyFlags is always called.
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
 		storeSafetyFlagsErr: errors.New("db write failed"),
 	}, &fakeConvBackend{
@@ -1421,18 +1427,17 @@ func TestAuthoringHandler_Decompose_StoreSafetyFlagsError(t *testing.T) {
 		Output: &specv1.DecomposeOutput{
 			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
 			Slices: []*specv1.DecompositionSlice{
-				{Id: "s1", Intent: "slice one"},
+				{Id: "s1", Intent: "hardcoded secret in config"},
 			},
 		},
 		ConversationExchanges: []*specv1.ConversationExchange{
 			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
-	if err != nil {
-		var connErr *connect.Error
-		require.ErrorAs(t, err, &connErr)
-		require.Equal(t, connect.CodeInternal, connErr.Code())
-	}
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
 }
 
 // --- fakeFullBackend: Backend + GraphBackend + DecisionBackend for acceptLinkedDecisions tests ---
@@ -2170,13 +2175,9 @@ func TestAuthoringHandler_Shape_RecordConversationFailureRollsBack(t *testing.T)
 func TestAuthoringHandler_Approve_RejectOfAlreadyApprovedFails(t *testing.T) {
 	// Reject is only valid from the decompose stage. Attempting to reject a spec
 	// that is already in the approved stage should fail with CodeFailedPrecondition.
-	conv := &fakeConversationBackend{}
-	findings := &fakeFindingsBackend{}
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeRejectBackend{
-		conv:     conv,
-		findings: findings,
-		stage:    storage.SpecStageApproved,
-	})
+	rb := newFakeRejectBackend()
+	rb.stage = storage.SpecStageApproved
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, rb)
 	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug:   "my-spec",
 		Action: specv1.ApproveAction_APPROVE_ACTION_REJECT,
