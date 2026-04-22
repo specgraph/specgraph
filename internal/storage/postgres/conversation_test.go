@@ -235,6 +235,62 @@ func TestListAllConversations(t *testing.T) {
 	assert.Equal(t, "conv-all-b", entries[1].SpecSlug)
 }
 
+func TestRecordConversation_PersistsPosture(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.CreateSpec(ctx, "spec-posture-1", "intent", "p2", "medium")
+	require.NoError(t, err)
+
+	entry := storage.ConversationLogEntry{
+		Stage:         storage.SpecStageShape,
+		Exchanges:     []storage.ConversationExchange{{Role: "probe", Content: "q", Stage: "shape", Sequence: 1}},
+		ExchangeCount: 1,
+		Posture:       "partner",
+	}
+	saved, err := store.RecordConversation(ctx, "spec-posture-1", entry)
+	require.NoError(t, err)
+	if saved.Posture != "partner" {
+		t.Errorf("expected posture=partner, got %q", saved.Posture)
+	}
+
+	// Read back via ListConversations too.
+	logs, err := store.ListConversations(ctx, "spec-posture-1", "shape")
+	require.NoError(t, err)
+	if len(logs) != 1 || logs[0].Posture != "partner" {
+		t.Errorf("expected 1 log with posture=partner, got %+v", logs)
+	}
+}
+
+func TestRecordConversation_PersistsEmptyPosture(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.CreateSpec(ctx, "spec-posture-empty", "intent", "p2", "medium")
+	require.NoError(t, err)
+
+	entry := storage.ConversationLogEntry{
+		Stage:         storage.SpecStageShape,
+		Exchanges:     []storage.ConversationExchange{{Role: "probe", Content: "q", Stage: "shape", Sequence: 1}},
+		ExchangeCount: 1,
+		Posture:       "",
+	}
+	saved, err := store.RecordConversation(ctx, "spec-posture-empty", entry)
+	require.NoError(t, err)
+	if saved.Posture != "" {
+		t.Errorf("expected posture=\"\" (unspecified), got %q", saved.Posture)
+	}
+
+	// Read back via ListConversations to verify the round-trip through the DB.
+	logs, err := store.ListConversations(ctx, "spec-posture-empty", "shape")
+	require.NoError(t, err)
+	if len(logs) != 1 || logs[0].Posture != "" {
+		t.Errorf("expected 1 log with posture=\"\", got %+v", logs)
+	}
+}
+
 func TestGetSpec_IncludesConversationLogs(t *testing.T) {
 	store := newStore(t)
 	clearDatabase(t, store)

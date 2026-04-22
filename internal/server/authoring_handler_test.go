@@ -214,6 +214,7 @@ func (f *fakeConversationBackend) RecordConversation(_ context.Context, _ string
 		IsAmend:       entry.IsAmend,
 		Exchanges:     entry.Exchanges,
 		ExchangeCount: entry.ExchangeCount,
+		Posture:       entry.Posture,
 		Date:          time.Now(),
 	}
 	f.entries = append(f.entries, stored)
