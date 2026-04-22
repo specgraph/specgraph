@@ -391,10 +391,13 @@ func startProbeListener(ctx context.Context, pinger probes.Pinger, addr string, 
 	}
 	h := probes.New(ctx, pinger, interval, timeout)
 	srv := &http.Server{
+		// Addr reflects the resolved listener address, not the caller's
+		// input — useful when addr was ":0" for an ephemeral port (tests).
+		Addr:              ln.Addr().String(),
 		Handler:           h.Mux(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	slog.Info("probe endpoints listening", "addr", addr, "livez", "/livez", "readyz", "/readyz")
+	slog.Info("probe endpoints listening", "addr", srv.Addr, "livez", "/livez", "readyz", "/readyz")
 	go func() {
 		if serveErr := srv.Serve(ln); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 			slog.Error("probe server failed", "addr", addr, "error", serveErr)
