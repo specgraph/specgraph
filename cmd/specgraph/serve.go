@@ -295,29 +295,9 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		IdleTimeout:       120 * time.Second,
 	}
 
-	// Probe listener (off by default). Readiness is cached — a background
-	// goroutine pings Postgres so probe traffic doesn't scale DB load with
-	// kubelet poll count.
-	var probeSrv *http.Server
-	if probesAddr := cfg.Server.Probes.Listen; probesAddr != "" {
-		// Bind eagerly so bind failures (port in use, permission denied) abort
-		// startup with a clear error rather than producing a running API that
-		// kubelet can never mark ready.
-		probeLn, lnErr := net.Listen("tcp", probesAddr)
-		if lnErr != nil {
-			return fmt.Errorf("probe listener bind %s: %w", probesAddr, lnErr)
-		}
-		probeH := probes.New(ctx, s, probeInterval, probeTimeout)
-		probeSrv = &http.Server{
-			Handler:           probeH.Mux(),
-			ReadHeaderTimeout: 5 * time.Second,
-		}
-		slog.Info("probe endpoints listening", "addr", probesAddr, "livez", "/livez", "readyz", "/readyz")
-		go func() {
-			if probeErr := probeSrv.Serve(probeLn); probeErr != nil && !errors.Is(probeErr, http.ErrServerClosed) {
-				slog.Error("probe server failed", "addr", probesAddr, "error", probeErr)
-			}
-		}()
+	probeSrv, err := startProbeListener(ctx, s, cfg.Server.Probes.Listen, probeInterval, probeTimeout)
+	if err != nil {
+		return err
 	}
 
 	go func() {
@@ -385,4 +365,30 @@ func isLoopbackAddr(addr string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+// startProbeListener binds a plain-HTTP listener serving /livez and /readyz.
+// Returns (nil, nil) when addr is empty so callers treat probes as off. Bind
+// errors (port in use, permission denied) abort startup rather than leaving a
+// running API that kubelet can never mark ready.
+func startProbeListener(ctx context.Context, pinger probes.Pinger, addr string, interval, timeout time.Duration) (*http.Server, error) {
+	if addr == "" {
+		return nil, nil
+	}
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("probe listener bind %s: %w", addr, err)
+	}
+	h := probes.New(ctx, pinger, interval, timeout)
+	srv := &http.Server{
+		Handler:           h.Mux(),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	slog.Info("probe endpoints listening", "addr", addr, "livez", "/livez", "readyz", "/readyz")
+	go func() {
+		if serveErr := srv.Serve(ln); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+			slog.Error("probe server failed", "addr", addr, "error", serveErr)
+		}
+	}()
+	return srv, nil
 }
