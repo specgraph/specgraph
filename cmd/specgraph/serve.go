@@ -48,7 +48,7 @@ func init() {
 }
 
 func runServe(cmd *cobra.Command, _ []string) error {
-	cfg, err := config.LoadGlobal(xdg.ConfigFile())
+	cfg, err := config.LoadGlobal(globalConfigPath())
 	if err != nil {
 		return fmt.Errorf("load global config: %w", err)
 	}
