@@ -256,18 +256,30 @@ func (f *fakeFindingsBackend) StoreFindings(_ context.Context, slug string, pt s
 }
 
 // fakeRejectBackend combines fakeBackend, fakeConversationBackend, and fakeFindingsBackend.
+// stage overrides the spec stage returned by GetSpec; defaults to SpecStageDecompose when zero.
 type fakeRejectBackend struct {
 	fakeBackend
 	conv     *fakeConversationBackend
 	findings *fakeFindingsBackend
+	stage    storage.SpecStage
 }
 
 // rejectAuthoringTestBackend embeds authoringTestBackend, overrides RecordConversation
 // and StoreFindings so the reject path can capture calls for assertions.
+// GetSpec always returns SpecStageDecompose because reject is only valid from that stage.
 type rejectAuthoringTestBackend struct {
 	authoringTestBackend
 	conv     *fakeConversationBackend
 	findings *fakeFindingsBackend
+	stage    storage.SpecStage // stage returned by GetSpec; defaults to SpecStageDecompose when zero
+}
+
+func (r *rejectAuthoringTestBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
+	stage := r.stage
+	if stage == "" {
+		stage = storage.SpecStageDecompose
+	}
+	return &storage.Spec{Slug: slug, Stage: stage, ContentHash: strings.Repeat("a", 32), UpdatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}, nil
 }
 
 func (r *rejectAuthoringTestBackend) RecordConversation(ctx context.Context, slug string, entry storage.ConversationLogEntry) (*storage.ConversationLogEntry, error) {
@@ -344,6 +356,7 @@ func newAuthoringClient(t *testing.T, authoringStore *fakeAuthoringBackend, back
 			authoringTestBackend: authoringTestBackend{authoring: authoringStore, backend: &b.fakeBackend},
 			conv:                 b.conv,
 			findings:             b.findings,
+			stage:                b.stage,
 		}
 	case *fakeBackend:
 		scopedBackend = &authoringTestBackend{authoring: authoringStore, backend: b}
@@ -621,7 +634,7 @@ func TestAuthoringHandler_Approve_AcceptUnchangedWithoutAction(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
 	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug:   "my-spec",
-		Action: "",
+		Action: specv1.ApproveAction_APPROVE_ACTION_UNSPECIFIED,
 	}))
 	require.NoError(t, err)
 	require.Equal(t, "my-spec", resp.Msg.Slug)
@@ -635,7 +648,7 @@ func TestAuthoringHandler_Approve_RejectRequiresExchanges(t *testing.T) {
 	})
 	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug:   "my-spec",
-		Action: "reject",
+		Action: specv1.ApproveAction_APPROVE_ACTION_REJECT,
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -652,25 +665,51 @@ func TestAuthoringHandler_Approve_RejectRecordsFindingAndExchanges(t *testing.T)
 	})
 	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug:   "my-spec",
-		Action: "reject",
+		Action: specv1.ApproveAction_APPROVE_ACTION_REJECT,
 		ConversationExchanges: []*specv1.ConversationExchange{
 			{Role: "probe", Content: "looks good?", Stage: "approve", Sequence: 1},
 			{Role: "response", Content: "no, rejected", Stage: "approve", Sequence: 2},
 		},
 	}))
 	require.NoError(t, err)
-	// Stage must reflect current spec stage (Decompose → not transitioned to Approved)
-	require.NotEqual(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
+	// Stage must reflect current spec stage (Decompose → not transitioned to Approved).
+	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE, resp.Msg.Stage)
 	require.Equal(t, "my-spec", resp.Msg.Slug)
-	// RecordConversation was called exactly once
+	// RecordConversation was called exactly once.
 	require.Len(t, conv.entries, 1, "expected exactly one RecordConversation call")
 	require.Len(t, conv.entries[0].Exchanges, 2)
-	// StoreFindings was called exactly once with PassTypeApproveRejected and one critical finding
+	// Conversation entry is recorded under the approved stage (the gate being rejected).
+	require.Equal(t, storage.SpecStageApproved, conv.entries[0].Stage)
+	// StoreFindings was called exactly once with PassTypeApproveRejected and one critical finding.
 	require.Len(t, findings.captured, 1, "expected exactly one StoreFindings call")
 	require.Equal(t, storage.PassTypeApproveRejected, findings.captured[0].PassType)
 	require.Equal(t, "my-spec", findings.captured[0].Slug)
 	require.Len(t, findings.captured[0].Findings, 1)
 	require.Equal(t, storage.SeverityCritical, findings.captured[0].Findings[0].Severity)
+}
+
+func TestAuthoringHandler_Approve_RejectRequiresDecomposeStage(t *testing.T) {
+	conv := &fakeConversationBackend{}
+	findings := &fakeFindingsBackend{}
+	// Seed the backend with a non-decompose stage (e.g., shape) to trigger the precondition.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeRejectBackend{
+		conv:     conv,
+		findings: findings,
+		stage:    storage.SpecStageShape,
+	})
+	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug:   "my-spec",
+		Action: specv1.ApproveAction_APPROVE_ACTION_REJECT,
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "looks good?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "no, rejected", Stage: "approve", Sequence: 2},
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+	require.Contains(t, connErr.Message(), "reject requires decompose")
 }
 
 func TestAuthoringHandler_Amend_HappyPath(t *testing.T) {

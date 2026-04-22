@@ -81,6 +81,15 @@ enum ScopeSniff {
   SCOPE_SNIFF_EPIC = 5;
 }
 
+// ApproveAction enumerates the allowed actions in ApproveRequest.
+enum ApproveAction {
+  APPROVE_ACTION_UNSPECIFIED = 0;
+  // Advance the spec to the approved stage.
+  APPROVE_ACTION_ACCEPT = 1;
+  // Record rejection rationale + conversation; do not transition stage.
+  APPROVE_ACTION_REJECT = 2;
+}
+
 // --- Stage Output Messages ---
 
 // SparkOutput captures the initial distillation of a raw idea into a structured seed.
@@ -343,12 +352,10 @@ message DecomposeResponse {
 message ApproveRequest {
   // Spec slug identifying the spec to approve.
   string slug = 1;
-  // Approval action. "accept" (default) advances the spec to approved;
-  // "reject" records a rejection finding and conversation but does not
-  // transition the stage.
-  string action = 2;
-  // REQUIRED when action == "reject". Conversation exchanges capturing the
-  // rejection rationale.
+  // Approval action. Default (UNSPECIFIED) behaves as ACCEPT.
+  ApproveAction action = 2;
+  // REQUIRED when action == APPROVE_ACTION_REJECT. Conversation exchanges
+  // capturing the rejection rationale.
   repeated ConversationExchange conversation_exchanges = 3;
 }
 
@@ -441,12 +448,15 @@ service AuthoringService {
 
 // --- Conversation Log ---
 
-// ConversationExchange represents a single probe/response pair from an authoring session.
+// ConversationExchange represents a single turn from an authoring session.
 message ConversationExchange {
   string role = 1;           // "probe" or "response"
   string content = 2;        // the text of the exchange
   string stage = 3;          // authoring stage (spark, shape, specify, decompose, approve)
-  int32 sequence = 4;        // pairs probes with their responses (same sequence = same pair)
+  // sequence is a strictly-increasing turn index. Probe and response in a
+  // turn get consecutive sequences (e.g., probe=1, response=2), NOT the
+  // same sequence. The server validates strict monotonicity across exchanges.
+  int32 sequence = 4;
   bool decision_point = 5;   // true if user made a judgment call between alternatives
 }
 

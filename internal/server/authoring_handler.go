@@ -445,13 +445,9 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	slug := req.Msg.Slug
-	action := req.Msg.GetAction()
-	if action == "" {
-		action = "accept"
-	}
 
-	switch action {
-	case "accept":
+	switch req.Msg.GetAction() {
+	case specv1.ApproveAction_APPROVE_ACTION_UNSPECIFIED, specv1.ApproveAction_APPROVE_ACTION_ACCEPT:
 		// Wrap TransitionStage and acceptLinkedDecisions in a transaction so that
 		// if decision promotion fails, the spec approval is rolled back.
 		var spec *storage.Spec
@@ -485,7 +481,7 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 			ApprovedAt: approvedAt,
 		}), nil
 
-	case "reject":
+	case specv1.ApproveAction_APPROVE_ACTION_REJECT:
 		if err := authoring.ValidateExchanges(req.Msg.GetConversationExchanges(), "approve"); err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
@@ -507,8 +503,15 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 				if err != nil {
 					return fmt.Errorf("get spec %q: %w", slug, err)
 				}
+				// Reject is only valid from the decompose stage (the approval gate).
+				if s.Stage != storage.SpecStageDecompose {
+					return connect.NewError(connect.CodeFailedPrecondition,
+						fmt.Errorf("spec %q is at stage %s; reject requires decompose", slug, s.Stage))
+				}
 				currentStage = s.Stage
-				entry.Stage = s.Stage
+				// Record under the approved stage so the conversation is associated
+				// with the approval gate being rejected, not the current (decompose) stage.
+				entry.Stage = storage.SpecStageApproved
 				return nil
 			},
 			func(txCtx context.Context) error {
@@ -532,7 +535,7 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 		}), nil
 
 	default:
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("action %q must be accept or reject", action))
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown approve action %v", req.Msg.GetAction()))
 	}
 }
 
@@ -884,7 +887,8 @@ func exchangesFromProto(ps []*specv1.ConversationExchange) []storage.Conversatio
 }
 
 // buildConversationEntry constructs a ConversationLogEntry for RecordConversation.
-// posture is persisted alongside exchanges for future drift detection (design §Posture).
+// The posture parameter is accepted to match stage-handler call sites but is
+// not yet persisted; Task 10 adds a Posture field to ConversationLogEntry.
 func buildConversationEntry(stage storage.SpecStage, _ specv1.Posture, exchanges []storage.ConversationExchange) storage.ConversationLogEntry {
 	return storage.ConversationLogEntry{
 		Stage:         stage,
