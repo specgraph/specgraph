@@ -377,6 +377,7 @@ func (ScopeSniff) EnumDescriptor() ([]byte, []int) {
 type ApproveAction int32
 
 const (
+	// Default value; treated as APPROVE_ACTION_ACCEPT by the server.
 	ApproveAction_APPROVE_ACTION_UNSPECIFIED ApproveAction = 0
 	// Advance the spec to the approved stage.
 	ApproveAction_APPROVE_ACTION_ACCEPT ApproveAction = 1
@@ -1915,14 +1916,16 @@ func (x *ApproveRequest) GetConversationExchanges() []*ConversationExchange {
 	return nil
 }
 
-// ApproveResponse confirms the approval and records when it occurred.
+// ApproveResponse is the result of an Approve RPC call. Content varies by
+// ApproveAction: accept sets approved_at; reject returns the current unchanged stage.
 type ApproveResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Spec slug of the approved spec.
 	Slug string `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
 	// Authoring stage the spec now occupies (always APPROVED on success).
 	Stage AuthoringStage `protobuf:"varint,2,opt,name=stage,proto3,enum=specgraph.v1.AuthoringStage" json:"stage,omitempty"`
-	// Timestamp at which the spec was approved.
+	// Timestamp at which the spec was approved. Set only when action is
+	// APPROVE_ACTION_ACCEPT; absent (nil) when action is APPROVE_ACTION_REJECT.
 	ApprovedAt    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=approved_at,json=approvedAt,proto3" json:"approved_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2326,9 +2329,9 @@ type ConversationExchange struct {
 	Role    string                 `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`       // "probe" or "response"
 	Content string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"` // the text of the exchange
 	Stage   string                 `protobuf:"bytes,3,opt,name=stage,proto3" json:"stage,omitempty"`     // authoring stage (spark, shape, specify, decompose, approve)
-	// sequence is a strictly-increasing turn index. Probe and response in a
-	// turn get consecutive sequences (e.g., probe=1, response=2), NOT the
-	// same sequence. The server validates strict monotonicity across exchanges.
+	// sequence is a strictly-increasing turn index. Each exchange must have a
+	// sequence greater than the previous one; the gap between sequences is not
+	// constrained. The server validates strict monotonicity across exchanges.
 	Sequence      int32 `protobuf:"varint,4,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	DecisionPoint bool  `protobuf:"varint,5,opt,name=decision_point,json=decisionPoint,proto3" json:"decision_point,omitempty"` // true if user made a judgment call between alternatives
 	unknownFields protoimpl.UnknownFields

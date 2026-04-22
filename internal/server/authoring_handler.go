@@ -433,9 +433,9 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 // After approval, linked decisions (via DECIDED_IN edges) are transitioned from
 // proposed to accepted per ADR-003 (decisions as first-class graph nodes).
 //
-// When action is "reject" (or any non-accept value), the stage is NOT transitioned.
-// Instead, conversation exchanges are recorded and an approve-rejected finding is
-// stored representing the rejection rationale. Exchanges are required for reject.
+// When action is APPROVE_ACTION_REJECT, the stage is NOT transitioned and a
+// critical approve-rejected finding is recorded alongside the rejection rationale.
+// Unknown action values return CodeInvalidArgument.
 func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[specv1.ApproveRequest]) (*connect.Response[specv1.ApproveResponse], error) {
 	store, scopeErr := scopeStore(ctx, h.scoper)
 	if scopeErr != nil {
@@ -889,15 +889,14 @@ func exchangesFromProto(ps []*specv1.ConversationExchange) []storage.Conversatio
 // buildConversationEntry constructs a ConversationLogEntry for RecordConversation.
 // The posture parameter is accepted to match stage-handler call sites but is
 // not yet persisted; Task 10 adds a Posture field to ConversationLogEntry.
+// Posture is silently discarded in this phase; Task 10 adds a Posture field to
+// ConversationLogEntry and wires it here.
 func buildConversationEntry(stage storage.SpecStage, _ specv1.Posture, exchanges []storage.ConversationExchange) storage.ConversationLogEntry {
 	return storage.ConversationLogEntry{
 		Stage:         stage,
 		Exchanges:     exchanges,
 		ExchangeCount: safeInt32(len(exchanges)),
 		// IsAmend defaults to false; amend-originated entries use a separate code path.
-		// Posture recording: when ConversationLogEntry gains a Posture field
-		// (Task 10), wire it here. For now, captured as a metadata label if
-		// backend supports it.
 	}
 }
 

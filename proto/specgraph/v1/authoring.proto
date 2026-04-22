@@ -83,6 +83,7 @@ enum ScopeSniff {
 
 // ApproveAction enumerates the allowed actions in ApproveRequest.
 enum ApproveAction {
+  // Default value; treated as APPROVE_ACTION_ACCEPT by the server.
   APPROVE_ACTION_UNSPECIFIED = 0;
   // Advance the spec to the approved stage.
   APPROVE_ACTION_ACCEPT = 1;
@@ -359,13 +360,15 @@ message ApproveRequest {
   repeated ConversationExchange conversation_exchanges = 3;
 }
 
-// ApproveResponse confirms the approval and records when it occurred.
+// ApproveResponse is the result of an Approve RPC call. Content varies by
+// ApproveAction: accept sets approved_at; reject returns the current unchanged stage.
 message ApproveResponse {
   // Spec slug of the approved spec.
   string slug = 1;
   // Authoring stage the spec now occupies (always APPROVED on success).
   AuthoringStage stage = 2;
-  // Timestamp at which the spec was approved.
+  // Timestamp at which the spec was approved. Set only when action is
+  // APPROVE_ACTION_ACCEPT; absent (nil) when action is APPROVE_ACTION_REJECT.
   google.protobuf.Timestamp approved_at = 3;
 }
 
@@ -453,9 +456,9 @@ message ConversationExchange {
   string role = 1;           // "probe" or "response"
   string content = 2;        // the text of the exchange
   string stage = 3;          // authoring stage (spark, shape, specify, decompose, approve)
-  // sequence is a strictly-increasing turn index. Probe and response in a
-  // turn get consecutive sequences (e.g., probe=1, response=2), NOT the
-  // same sequence. The server validates strict monotonicity across exchanges.
+  // sequence is a strictly-increasing turn index. Each exchange must have a
+  // sequence greater than the previous one; the gap between sequences is not
+  // constrained. The server validates strict monotonicity across exchanges.
   int32 sequence = 4;
   bool decision_point = 5;   // true if user made a judgment call between alternatives
 }

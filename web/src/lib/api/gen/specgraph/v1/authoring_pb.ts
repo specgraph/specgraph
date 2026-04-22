@@ -865,7 +865,8 @@ export const ApproveRequestSchema: GenMessage<ApproveRequest> = /*@__PURE__*/
   messageDesc(file_specgraph_v1_authoring, 20);
 
 /**
- * ApproveResponse confirms the approval and records when it occurred.
+ * ApproveResponse is the result of an Approve RPC call. Content varies by
+ * ApproveAction: accept sets approved_at; reject returns the current unchanged stage.
  *
  * @generated from message specgraph.v1.ApproveResponse
  */
@@ -885,7 +886,8 @@ export type ApproveResponse = Message<"specgraph.v1.ApproveResponse"> & {
   stage: AuthoringStage;
 
   /**
-   * Timestamp at which the spec was approved.
+   * Timestamp at which the spec was approved. Set only when action is
+   * APPROVE_ACTION_ACCEPT; absent (nil) when action is APPROVE_ACTION_REJECT.
    *
    * @generated from field: google.protobuf.Timestamp approved_at = 3;
    */
@@ -1104,9 +1106,9 @@ export type ConversationExchange = Message<"specgraph.v1.ConversationExchange"> 
   stage: string;
 
   /**
-   * sequence is a strictly-increasing turn index. Probe and response in a
-   * turn get consecutive sequences (e.g., probe=1, response=2), NOT the
-   * same sequence. The server validates strict monotonicity across exchanges.
+   * sequence is a strictly-increasing turn index. Each exchange must have a
+   * sequence greater than the previous one; the gap between sequences is not
+   * constrained. The server validates strict monotonicity across exchanges.
    *
    * @generated from field: int32 sequence = 4;
    */
@@ -1542,6 +1544,8 @@ export const ScopeSniffSchema: GenEnum<ScopeSniff> = /*@__PURE__*/
  */
 export enum ApproveAction {
   /**
+   * Default value; treated as APPROVE_ACTION_ACCEPT by the server.
+   *
    * @generated from enum value: APPROVE_ACTION_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
