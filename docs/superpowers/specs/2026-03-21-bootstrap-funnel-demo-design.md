@@ -146,4 +146,4 @@ The demo uses "webhook-stage-notifications" — a feature for SpecGraph itself t
 - The funnel skills run analytical passes automatically in Drive posture. The demo should call out when passes fire and what findings look like.
 - Constitution setup is done conversationally (Claude reads the codebase and crafts the YAML) rather than importing a pre-made fixture. This is more impressive for onboarding.
 - The runbook should note that the first run may take 30-60 seconds as Docker pulls the Memgraph image.
-- Include a teardown section: `specgraph down --rm` to stop the server and clean up.
+- Include a teardown section: `specgraph uninstall` to unregister the service and stop the container (data preserved), or `task dev:reset` for a full wipe-and-rebuild. Do not reference `specgraph down --rm` — it was retired in 2026-04-22-cli-lifecycle-split-design.md.

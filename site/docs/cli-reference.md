@@ -491,7 +491,7 @@ specgraph progress <slug> [flags]
 
 ### specgraph amend
 
-Amend a spec, returning it to an earlier authoring stage
+Amend an in-flight spec, returning it to an earlier authoring stage
 
 ```
 specgraph amend <slug> [flags]
@@ -500,13 +500,13 @@ specgraph amend <slug> [flags]
 **Flags:**
 
 ```
-      --re-entry string   authoring stage to re-enter (spark|shape|specify|decompose|approved|in_progress|review)
+      --re-entry string   authoring stage to re-enter (spark|shape|specify|decompose)
       --reason string     reason for amendment (required)
 ```
 
 ### specgraph supersede
 
-Supersede a spec with a new one
+Supersede a completed (done) spec with a new one
 
 ```
 specgraph supersede <slug> [flags]
@@ -872,7 +872,24 @@ specgraph down [flags]
 **Flags:**
 
 ```
-      --rm   uninstall the service definition after stopping
+      --purge   remove containers AND data volumes (destructive; prompts for confirmation)
+      --yes     skip the --purge confirmation prompt
+```
+
+### specgraph install
+
+Register SpecGraph as a user service (launchd/systemd) and start it
+
+```
+specgraph install
+```
+
+### specgraph uninstall
+
+Unregister the SpecGraph user service (launchd/systemd); preserves data
+
+```
+specgraph uninstall
 ```
 
 ### specgraph serve
@@ -888,6 +905,32 @@ specgraph serve [flags]
 ```
       --cors-origin string   Enable CORS for this origin (dev mode only)
       --pg-url string        PostgreSQL connection URL (overrides config; env: SPECGRAPH_PG_URL)
+```
+
+### specgraph mcp
+
+Start a Model Context Protocol server that communicates over stdin/stdout.
+This lightweight process translates MCP tool calls into ConnectRPC RPCs
+against a running specgraph serve instance.
+
+Configure in Claude Code's MCP settings:
+  {
+    "mcpServers": {
+      "specgraph": {
+        "command": "specgraph",
+        "args": ["mcp", "--profile", "authoring"]
+      }
+    }
+  }
+
+```
+specgraph mcp [flags]
+```
+
+**Flags:**
+
+```
+      --profile string   Tool profile: core, authoring, or execution (default "core")
 ```
 
 ### specgraph status
