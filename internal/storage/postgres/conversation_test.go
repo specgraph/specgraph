@@ -263,6 +263,34 @@ func TestRecordConversation_PersistsPosture(t *testing.T) {
 	}
 }
 
+func TestRecordConversation_PersistsEmptyPosture(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.CreateSpec(ctx, "spec-posture-empty", "intent", "p2", "medium")
+	require.NoError(t, err)
+
+	entry := storage.ConversationLogEntry{
+		Stage:         storage.SpecStageShape,
+		Exchanges:     []storage.ConversationExchange{{Role: "probe", Content: "q", Stage: "shape", Sequence: 1}},
+		ExchangeCount: 1,
+		Posture:       "",
+	}
+	saved, err := store.RecordConversation(ctx, "spec-posture-empty", entry)
+	require.NoError(t, err)
+	if saved.Posture != "" {
+		t.Errorf("expected posture=\"\" (unspecified), got %q", saved.Posture)
+	}
+
+	// Read back via ListConversations to verify the round-trip through the DB.
+	logs, err := store.ListConversations(ctx, "spec-posture-empty", "shape")
+	require.NoError(t, err)
+	if len(logs) != 1 || logs[0].Posture != "" {
+		t.Errorf("expected 1 log with posture=\"\", got %+v", logs)
+	}
+}
+
 func TestGetSpec_IncludesConversationLogs(t *testing.T) {
 	store := newStore(t)
 	clearDatabase(t, store)

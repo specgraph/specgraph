@@ -28,6 +28,9 @@ type failingOnSafetyFlagsStore struct {
 	*postgres.Store
 }
 
+// Compile-time assertion: failingOnSafetyFlagsStore must satisfy ScopedBackend.
+var _ storage.ScopedBackend = (*failingOnSafetyFlagsStore)(nil)
+
 func (f *failingOnSafetyFlagsStore) StoreSafetyFlags(_ context.Context, _ string, _ []storage.SafetyFlag) error {
 	return errors.New("injected safety-flags failure")
 }
@@ -111,12 +114,22 @@ func TestShape_AtomicRollback_ConversationNotPersistedOnSafetyFail(t *testing.T)
 		t.Fatal("expected Shape to return an error due to injected StoreSafetyFlags failure")
 	}
 
+	// Assert the error is a ConnectRPC CodeInternal (injected storage failure maps there).
+	var connErr *connect.Error
+	require.True(t, errors.As(err, &connErr), "expected connect.Error")
+	require.Equal(t, connect.CodeInternal, connErr.Code(),
+		"injected safety-flags failure must map to CodeInternal")
+
 	// Step 3: assert rollback — spec must still be at spark stage.
 	spec, specErr := realStore.GetSpec(ctx, "oauth-refresh")
 	require.NoError(t, specErr, "GetSpec after rollback")
 	if spec.Stage != storage.SpecStageSpark {
 		t.Errorf("expected spec stage %q after rollback, got %q", storage.SpecStageSpark, spec.Stage)
 	}
+
+	// Verify ShapeOutput was also rolled back — op 2 (StoreShapeOutput) was
+	// inside the same transaction as op 3 (StoreSafetyFlags), which failed.
+	require.Nil(t, spec.ShapeOutput, "ShapeOutput should be nil after rollback")
 
 	// Step 4: assert rollback — no conversation log for the shape stage.
 	logs, logsErr := realStore.ListConversations(ctx, "oauth-refresh", "shape")
