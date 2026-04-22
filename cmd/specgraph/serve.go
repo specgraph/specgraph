@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -13,6 +14,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -27,12 +29,26 @@ import (
 	mcppkg "github.com/specgraph/specgraph/internal/mcp"
 	"github.com/specgraph/specgraph/internal/notify"
 	"github.com/specgraph/specgraph/internal/server"
+	"github.com/specgraph/specgraph/internal/server/probes"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/specgraph/specgraph/internal/storage/postgres"
 	syncpkg "github.com/specgraph/specgraph/internal/sync"
 	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/specgraph/specgraph/web"
 	"github.com/spf13/cobra"
+)
+
+// Probe tuning. Hard-coded because kubelet's default periodSeconds=10 makes
+// a 5s interval comfortably fresh, and 2s is a generous per-ping budget for
+// a local pgxpool.Ping. Promote to ProbesConfig if operators need overrides.
+const (
+	probeInterval = 5 * time.Second
+	probeTimeout  = 2 * time.Second
+
+	// probeShutdownTimeout bounds graceful drain of the probe listener.
+	// Independent from the main server's budget so slow main-server drains
+	// don't starve the probe server's shutdown.
+	probeShutdownTimeout = 15 * time.Second
 )
 
 var serveCmd = &cobra.Command{
@@ -280,15 +296,59 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		IdleTimeout:       120 * time.Second,
 	}
 
+	// Probe listener (off by default). Readiness is cached — a background
+	// goroutine pings Postgres so probe traffic doesn't scale DB load with
+	// kubelet poll count.
+	var probeSrv *http.Server
+	if probesAddr := cfg.Server.Probes.Listen; probesAddr != "" {
+		// Bind eagerly so bind failures (port in use, permission denied) abort
+		// startup with a clear error rather than producing a running API that
+		// kubelet can never mark ready.
+		probeLn, lnErr := net.Listen("tcp", probesAddr)
+		if lnErr != nil {
+			return fmt.Errorf("probe listener bind %s: %w", probesAddr, lnErr)
+		}
+		probeH := probes.New(ctx, s, probeInterval, probeTimeout)
+		probeSrv = &http.Server{
+			Handler:           probeH.Mux(),
+			ReadHeaderTimeout: 5 * time.Second,
+		}
+		slog.Info("probe endpoints listening", "addr", probesAddr, "livez", "/livez", "readyz", "/readyz")
+		go func() {
+			if probeErr := probeSrv.Serve(probeLn); probeErr != nil && !errors.Is(probeErr, http.ErrServerClosed) {
+				slog.Error("probe server failed", "addr", probesAddr, "error", probeErr)
+			}
+		}()
+	}
+
 	go func() {
 		<-ctx.Done()
 		fmt.Println("\nShutting down...")
 		stopSweeper()
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer shutdownCancel()
-		if err := srv.Shutdown(shutdownCtx); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: server shutdown: %v\n", err)
+		// Shut down main and probe servers in parallel so a slow main-server
+		// drain can't starve the probe server's graceful close (and vice versa).
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			mainCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			if err := srv.Shutdown(mainCtx); err != nil {
+				slog.Warn("main server shutdown", "error", err)
+			}
+		}()
+		if probeSrv != nil {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				probeCtx, cancel := context.WithTimeout(context.Background(), probeShutdownTimeout)
+				defer cancel()
+				if err := probeSrv.Shutdown(probeCtx); err != nil {
+					slog.Warn("probe server shutdown", "error", err)
+				}
+			}()
 		}
+		wg.Wait()
 	}()
 
 	server.StartSweeper(sweeperCtx, store, 60*time.Second, slog.Default())

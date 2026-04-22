@@ -99,6 +99,12 @@ func New(ctx context.Context, connString string, opts ...Option) (*Store, error)
 	return s, nil
 }
 
+// Ping verifies Postgres connectivity by round-tripping a lightweight query
+// through the connection pool. Used by readiness probes.
+func (s *Store) Ping(ctx context.Context) error {
+	return s.pool.Ping(ctx) //nolint:wrapcheck // direct pool pass-through
+}
+
 // ensureProjectRow inserts the project row idempotently.
 func (s *Store) ensureProjectRow(ctx context.Context) error {
 	_, err := s.pool.Exec(ctx,

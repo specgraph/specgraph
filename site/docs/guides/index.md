@@ -23,4 +23,14 @@ jump to whichever workflow you need.
 
     [:octicons-arrow-right-24: Sync & Integration](sync.md)
 
+- :material-heart-pulse: **Health Probes (Kubernetes / Knative)**
+
+    ---
+
+    Enable plain-HTTP `/livez` and `/readyz` endpoints on a dedicated
+    listener for kubelet `httpGet` probes, with Knative and K8s YAML
+    examples.
+
+    [:octicons-arrow-right-24: Health Probes](health-probes.md)
+
 </div>
