@@ -114,6 +114,10 @@ var _ = Describe("error handling", func() {
 				},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "interfaces?", Stage: "specify", Sequence: 1},
+				{Role: "response", Content: "POST /api", Stage: "specify", Sequence: 2},
+			},
 		}))
 		Expect(err).To(HaveOccurred())
 	})

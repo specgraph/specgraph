@@ -207,7 +207,7 @@ func (f *fakeConversationBackend) RecordConversation(_ context.Context, _ string
 	if f.recordErr != nil {
 		return nil, f.recordErr
 	}
-	return &storage.ConversationLogEntry{
+	stored := &storage.ConversationLogEntry{
 		ID:            "cvl-test",
 		Stage:         entry.Stage,
 		Version:       1,
@@ -215,7 +215,9 @@ func (f *fakeConversationBackend) RecordConversation(_ context.Context, _ string
 		Exchanges:     entry.Exchanges,
 		ExchangeCount: entry.ExchangeCount,
 		Date:          time.Now(),
-	}, nil
+	}
+	f.entries = append(f.entries, stored)
+	return stored, nil
 }
 
 func (f *fakeConversationBackend) ListConversations(_ context.Context, _ string, _ string) ([]*storage.ConversationLogEntry, error) {
@@ -229,6 +231,77 @@ func (f *fakeConversationBackend) ListConversations(_ context.Context, _ string,
 type fakeConvBackend struct {
 	fakeBackend
 	conv *fakeConversationBackend
+}
+
+// fakeFindingsBackend captures StoreFindings calls for assertions.
+type fakeFindingsBackend struct {
+	captured []struct {
+		Slug     string
+		PassType storage.PassType
+		Findings []storage.AnalyticalFindingInput
+	}
+}
+
+func (f *fakeFindingsBackend) StoreFindings(_ context.Context, slug string, pt storage.PassType, findings []storage.AnalyticalFindingInput) ([]string, error) {
+	f.captured = append(f.captured, struct {
+		Slug     string
+		PassType storage.PassType
+		Findings []storage.AnalyticalFindingInput
+	}{slug, pt, findings})
+	ids := make([]string, len(findings))
+	for i := range findings {
+		ids[i] = "finding-" + slug
+	}
+	return ids, nil
+}
+
+// fakeRejectBackend combines fakeBackend, fakeConversationBackend, and fakeFindingsBackend.
+// stage overrides the spec stage returned by GetSpec; defaults to SpecStageDecompose when zero.
+type fakeRejectBackend struct {
+	fakeBackend
+	conv     *fakeConversationBackend
+	findings *fakeFindingsBackend
+	stage    storage.SpecStage
+}
+
+// newFakeRejectBackend returns a fakeRejectBackend with non-nil embedded
+// conversation and findings fakes, avoiding nil-pointer panics in tests
+// that don't initialize the fields explicitly.
+func newFakeRejectBackend() *fakeRejectBackend {
+	return &fakeRejectBackend{
+		conv:     &fakeConversationBackend{},
+		findings: &fakeFindingsBackend{},
+	}
+}
+
+// rejectAuthoringTestBackend embeds authoringTestBackend, overrides RecordConversation
+// and StoreFindings so the reject path can capture calls for assertions.
+// GetSpec always returns SpecStageDecompose because reject is only valid from that stage.
+type rejectAuthoringTestBackend struct {
+	authoringTestBackend
+	conv     *fakeConversationBackend
+	findings *fakeFindingsBackend
+	stage    storage.SpecStage // stage returned by GetSpec; defaults to SpecStageDecompose when zero
+}
+
+func (r *rejectAuthoringTestBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
+	stage := r.stage
+	if stage == "" {
+		stage = storage.SpecStageDecompose
+	}
+	return &storage.Spec{Slug: slug, Stage: stage, ContentHash: strings.Repeat("a", 32), UpdatedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}, nil
+}
+
+func (r *rejectAuthoringTestBackend) RecordConversation(ctx context.Context, slug string, entry storage.ConversationLogEntry) (*storage.ConversationLogEntry, error) {
+	return r.conv.RecordConversation(ctx, slug, entry)
+}
+
+func (r *rejectAuthoringTestBackend) ListConversations(ctx context.Context, slug string, stage string) ([]*storage.ConversationLogEntry, error) {
+	return r.conv.ListConversations(ctx, slug, stage)
+}
+
+func (r *rejectAuthoringTestBackend) StoreFindings(ctx context.Context, slug string, pt storage.PassType, findings []storage.AnalyticalFindingInput) ([]string, error) {
+	return r.findings.StoreFindings(ctx, slug, pt, findings)
 }
 
 // convAuthoringTestBackend embeds authoringTestBackend and adds ConversationBackend.
@@ -288,6 +361,13 @@ func newAuthoringClient(t *testing.T, authoringStore *fakeAuthoringBackend, back
 			authoringTestBackend: authoringTestBackend{authoring: authoringStore, backend: &b.fakeBackend},
 			conv:                 b.conv,
 		}
+	case *fakeRejectBackend:
+		scopedBackend = &rejectAuthoringTestBackend{
+			authoringTestBackend: authoringTestBackend{authoring: authoringStore, backend: &b.fakeBackend},
+			conv:                 b.conv,
+			findings:             b.findings,
+			stage:                b.stage,
+		}
 	case *fakeBackend:
 		scopedBackend = &authoringTestBackend{authoring: authoringStore, backend: b}
 	default:
@@ -343,13 +423,19 @@ func TestAuthoringHandler_Spark_HappyPath(t *testing.T) {
 }
 
 func TestAuthoringHandler_Shape_HappyPath(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug: "my-spec",
 		Output: &specv1.ShapeOutput{
 			ScopeIn:  []string{"auth endpoint"},
 			ScopeOut: []string{"admin panel"},
 			Risks:    []string{"latency"},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "scope?", Stage: "shape", Sequence: 1},
+			{Role: "response", Content: "auth endpoint", Stage: "shape", Sequence: 2},
 		},
 	}))
 	require.NoError(t, err)
@@ -359,7 +445,9 @@ func TestAuthoringHandler_Shape_HappyPath(t *testing.T) {
 }
 
 func TestAuthoringHandler_Specify_HappyPath(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug: "my-spec",
 		Output: &specv1.SpecifyOutput{
@@ -371,6 +459,10 @@ func TestAuthoringHandler_Specify_HappyPath(t *testing.T) {
 			},
 			Invariants: []string{"session token is opaque"},
 		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "interfaces?", Stage: "specify", Sequence: 1},
+			{Role: "response", Content: "POST /api/login", Stage: "specify", Sequence: 2},
+		},
 	}))
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg.Output)
@@ -380,7 +472,9 @@ func TestAuthoringHandler_Specify_HappyPath(t *testing.T) {
 }
 
 func TestAuthoringHandler_Decompose_HappyPath(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "my-spec",
 		Output: &specv1.DecomposeOutput{
@@ -388,6 +482,10 @@ func TestAuthoringHandler_Decompose_HappyPath(t *testing.T) {
 			Slices: []*specv1.DecompositionSlice{
 				{Id: "s1", Intent: "auth endpoint"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "slices?", Stage: "decompose", Sequence: 1},
+			{Role: "response", Content: "auth endpoint slice", Stage: "decompose", Sequence: 2},
 		},
 	}))
 	require.NoError(t, err)
@@ -397,7 +495,9 @@ func TestAuthoringHandler_Decompose_HappyPath(t *testing.T) {
 }
 
 func TestAuthoringHandler_Decompose_SteelThread_HappyPath(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "my-spec",
 		Output: &specv1.DecomposeOutput{
@@ -406,6 +506,9 @@ func TestAuthoringHandler_Decompose_SteelThread_HappyPath(t *testing.T) {
 				{Id: "thread", Intent: "prove roundtrip"},
 				{Id: "broaden-a", Intent: "add feature A", DependsOn: []string{"thread"}},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.NoError(t, err)
@@ -423,6 +526,9 @@ func TestAuthoringHandler_Decompose_SteelThread_RootHasDeps(t *testing.T) {
 				{Id: "thread", Intent: "prove roundtrip", DependsOn: []string{"something"}},
 				{Id: "broaden", Intent: "add feature", DependsOn: []string{"thread"}},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.Error(t, err)
@@ -444,6 +550,9 @@ func TestAuthoringHandler_Decompose_SteelThread_DisconnectedSlice(t *testing.T) 
 				{Id: "island", Intent: "no path to thread"},
 			},
 		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -453,7 +562,9 @@ func TestAuthoringHandler_Decompose_SteelThread_DisconnectedSlice(t *testing.T) 
 }
 
 func TestAuthoringHandler_Decompose_SteelThread_ChainedBroadening(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "my-spec",
 		Output: &specv1.DecomposeOutput{
@@ -464,6 +575,9 @@ func TestAuthoringHandler_Decompose_SteelThread_ChainedBroadening(t *testing.T) 
 				{Id: "broaden-b", Intent: "depends on broaden-a", DependsOn: []string{"broaden-a"}},
 			},
 		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
+		},
 	}))
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg.Output)
@@ -473,7 +587,9 @@ func TestAuthoringHandler_Decompose_SteelThread_ChainedBroadening(t *testing.T) 
 func TestAuthoringHandler_Decompose_NonSteelThread_NoNewValidation(t *testing.T) {
 	// A vertical-slice decomposition with a disconnected slice should still pass
 	// (steel thread validation only applies to STEEL_THREAD strategy).
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "my-spec",
 		Output: &specv1.DecomposeOutput{
@@ -482,6 +598,9 @@ func TestAuthoringHandler_Decompose_NonSteelThread_NoNewValidation(t *testing.T)
 				{Id: "a", Intent: "independent slice A"},
 				{Id: "b", Intent: "independent slice B"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.NoError(t, err)
@@ -498,6 +617,9 @@ func TestAuthoringHandler_Decompose_SteelThread_DuplicateSliceID(t *testing.T) {
 				{Id: "thread", Intent: "prove roundtrip"},
 				{Id: "thread", Intent: "duplicate id", DependsOn: []string{"thread"}},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.Error(t, err)
@@ -516,6 +638,79 @@ func TestAuthoringHandler_Approve_HappyPath(t *testing.T) {
 	require.Equal(t, "my-spec", resp.Msg.Slug)
 	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
 	require.NotNil(t, resp.Msg.ApprovedAt, "approved_at timestamp should be set")
+}
+
+func TestAuthoringHandler_Approve_AcceptUnchangedWithoutAction(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug:   "my-spec",
+		Action: specv1.ApproveAction_APPROVE_ACTION_UNSPECIFIED,
+	}))
+	require.NoError(t, err)
+	require.Equal(t, "my-spec", resp.Msg.Slug)
+	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
+}
+
+func TestAuthoringHandler_Approve_RejectRequiresExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, newFakeRejectBackend())
+	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug:   "my-spec",
+		Action: specv1.ApproveAction_APPROVE_ACTION_REJECT,
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
+}
+
+func TestAuthoringHandler_Approve_RejectRecordsFindingAndExchanges(t *testing.T) {
+	rb := newFakeRejectBackend()
+	conv := rb.conv
+	findings := rb.findings
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, rb)
+	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug:   "my-spec",
+		Action: specv1.ApproveAction_APPROVE_ACTION_REJECT,
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "looks good?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "no, rejected", Stage: "approve", Sequence: 2},
+		},
+	}))
+	require.NoError(t, err)
+	// Stage must reflect current spec stage (Decompose → not transitioned to Approved).
+	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE, resp.Msg.Stage)
+	require.Equal(t, "my-spec", resp.Msg.Slug)
+	// RecordConversation was called exactly once.
+	require.Len(t, conv.entries, 1, "expected exactly one RecordConversation call")
+	require.Len(t, conv.entries[0].Exchanges, 2)
+	// Conversation entry is recorded under the approved stage (the gate being rejected).
+	require.Equal(t, storage.SpecStageApproved, conv.entries[0].Stage)
+	// StoreFindings was called exactly once with PassTypeApproveRejected and one critical finding.
+	require.Len(t, findings.captured, 1, "expected exactly one StoreFindings call")
+	require.Equal(t, storage.PassTypeApproveRejected, findings.captured[0].PassType)
+	require.Equal(t, "my-spec", findings.captured[0].Slug)
+	require.Len(t, findings.captured[0].Findings, 1)
+	require.Equal(t, storage.SeverityCritical, findings.captured[0].Findings[0].Severity)
+}
+
+func TestAuthoringHandler_Approve_RejectRequiresDecomposeStage(t *testing.T) {
+	// Seed the backend with a non-decompose stage (e.g., shape) to trigger the precondition.
+	rb := newFakeRejectBackend()
+	rb.stage = storage.SpecStageShape
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, rb)
+	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug:   "my-spec",
+		Action: specv1.ApproveAction_APPROVE_ACTION_REJECT,
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "looks good?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "no, rejected", Stage: "approve", Sequence: 2},
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+	require.Contains(t, connErr.Message(), "reject requires decompose")
 }
 
 func TestAuthoringHandler_Amend_HappyPath(t *testing.T) {
@@ -634,7 +829,10 @@ func TestAuthoringHandler_StageError_InvalidTransition(t *testing.T) {
 	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
 	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug:   "my-spec",
-		Output: &specv1.ShapeOutput{},
+		Output: &specv1.ShapeOutput{ScopeIn: []string{"x"}},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -648,7 +846,10 @@ func TestAuthoringHandler_StageError_NotFound(t *testing.T) {
 	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
 	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug:   "missing-spec",
-		Output: &specv1.ShapeOutput{},
+		Output: &specv1.ShapeOutput{ScopeIn: []string{"x"}},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -700,6 +901,9 @@ func TestAuthoringHandler_Shape_StoreOutputError(t *testing.T) {
 	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug:   "my-spec",
 		Output: &specv1.ShapeOutput{ScopeIn: []string{"auth endpoint"}},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -709,13 +913,18 @@ func TestAuthoringHandler_Shape_StoreOutputError(t *testing.T) {
 
 func TestAuthoringHandler_Specify_StoreOutputError(t *testing.T) {
 	authoringStore := &fakeAuthoringBackend{storeSpecifyOutputErr: errors.New("store failed")}
-	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
+	client := newAuthoringClient(t, authoringStore, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug: "my-spec",
 		Output: &specv1.SpecifyOutput{
 			Interfaces: []*specv1.InterfaceSection{
 				{Name: "API", Body: "POST /api/login"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "specify", Sequence: 1},
 		},
 	}))
 	require.Error(t, err)
@@ -726,7 +935,9 @@ func TestAuthoringHandler_Specify_StoreOutputError(t *testing.T) {
 
 func TestAuthoringHandler_Decompose_StoreOutputError(t *testing.T) {
 	authoringStore := &fakeAuthoringBackend{storeDecomposeOutputErr: errors.New("store failed")}
-	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
+	client := newAuthoringClient(t, authoringStore, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "my-spec",
 		Output: &specv1.DecomposeOutput{
@@ -734,6 +945,9 @@ func TestAuthoringHandler_Decompose_StoreOutputError(t *testing.T) {
 			Slices: []*specv1.DecompositionSlice{
 				{Id: "s1", Intent: "auth endpoint"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.Error(t, err)
@@ -770,7 +984,10 @@ func TestAuthoringHandler_StageError_AlreadyApproved(t *testing.T) {
 	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
 	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug:   "my-spec",
-		Output: &specv1.ShapeOutput{},
+		Output: &specv1.ShapeOutput{ScopeIn: []string{"x"}},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -850,6 +1067,9 @@ func TestAuthoringHandler_Decompose_UnspecifiedStrategy(t *testing.T) {
 			Slices: []*specv1.DecompositionSlice{
 				{Id: "s1", Intent: "auth endpoint"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.Error(t, err)
@@ -1054,44 +1274,55 @@ func TestAuthoringHandler_Spark_StoreSafetyFlagsError(t *testing.T) {
 }
 
 func TestAuthoringHandler_Shape_StoreSafetyFlagsError(t *testing.T) {
+	// "hardcoded secret in config" reliably triggers the security safety pattern,
+	// ensuring StoreSafetyFlags is always called and the error path is exercised.
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
 		storeSafetyFlagsErr: errors.New("db write failed"),
 	}, &fakeTxBackend{})
 	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug: "safety-err-shape",
 		Output: &specv1.ShapeOutput{
-			ScopeIn:  []string{"in"},
-			ScopeOut: []string{"out"},
+			ScopeIn:  []string{"auth endpoint"},
+			ScopeOut: []string{"admin panel"},
+			Risks:    []string{"hardcoded secret in config"},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
 		},
 	}))
-	if err != nil {
-		var connErr *connect.Error
-		require.ErrorAs(t, err, &connErr)
-		require.Equal(t, connect.CodeInternal, connErr.Code())
-	}
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
 }
 
 func TestAuthoringHandler_Specify_StoreSafetyFlagsError(t *testing.T) {
+	// "hardcoded secret in config" in an interface body reliably triggers the
+	// security safety pattern, ensuring StoreSafetyFlags is always called.
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
 		storeSafetyFlagsErr: errors.New("db write failed"),
-	}, &fakeTxBackend{})
+	}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug: "safety-err-specify",
 		Output: &specv1.SpecifyOutput{
 			Interfaces: []*specv1.InterfaceSection{
-				{Name: "API", Body: "interface contract"},
+				{Name: "API", Body: "hardcoded secret in config"},
 			},
 			VerifyCriteria: []*specv1.VerifyCriterion{
 				{Category: "functional", Description: "check 1"},
 			},
 			Invariants: []string{"inv 1"},
 		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "specify", Sequence: 1},
+		},
 	}))
-	if err != nil {
-		var connErr *connect.Error
-		require.ErrorAs(t, err, &connErr)
-		require.Equal(t, connect.CodeInternal, connErr.Code())
-	}
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
 }
 
 func TestAuthoringHandler_Amend_StorageError(t *testing.T) {
@@ -1112,12 +1343,17 @@ func TestAuthoringHandler_Amend_StorageError(t *testing.T) {
 func TestAuthoringHandler_Decompose_EmptySlices(t *testing.T) {
 	// A DecomposeRequest with an empty Slices list produces an InvalidArgument error
 	// because SafetyInput.Validate() rejects inputs with no scannable content.
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeTxBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "my-spec",
 		Output: &specv1.DecomposeOutput{
 			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
 			Slices:   []*specv1.DecompositionSlice{},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
 		},
 	}))
 	require.Error(t, err)
@@ -1128,7 +1364,9 @@ func TestAuthoringHandler_Decompose_EmptySlices(t *testing.T) {
 
 func TestAuthoringHandler_Shape_UnspecifiedPostureResolved(t *testing.T) {
 	// UNSPECIFIED posture resolves to Partner, which auto-runs constitution_check.
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug: "my-spec",
 		Output: &specv1.ShapeOutput{
@@ -1136,6 +1374,9 @@ func TestAuthoringHandler_Shape_UnspecifiedPostureResolved(t *testing.T) {
 			Risks:   []string{"latency"},
 		},
 		Posture: specv1.Posture_POSTURE_UNSPECIFIED,
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "shape", Sequence: 1},
+		},
 	}))
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg.Output)
@@ -1174,23 +1415,29 @@ func TestAuthoringHandler_Spark_UnrecognizedScopeSniff(t *testing.T) {
 }
 
 func TestAuthoringHandler_Decompose_StoreSafetyFlagsError(t *testing.T) {
+	// "hardcoded secret in config" in a slice intent reliably triggers the
+	// security safety pattern, ensuring StoreSafetyFlags is always called.
 	client := newAuthoringClient(t, &fakeAuthoringBackend{
 		storeSafetyFlagsErr: errors.New("db write failed"),
-	}, &fakeTxBackend{})
+	}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug: "safety-err-decompose",
 		Output: &specv1.DecomposeOutput{
 			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
 			Slices: []*specv1.DecompositionSlice{
-				{Id: "s1", Intent: "slice one"},
+				{Id: "s1", Intent: "hardcoded secret in config"},
 			},
 		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "decompose", Sequence: 1},
+		},
 	}))
-	if err != nil {
-		var connErr *connect.Error
-		require.ErrorAs(t, err, &connErr)
-		require.Equal(t, connect.CodeInternal, connErr.Code())
-	}
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
 }
 
 // --- fakeFullBackend: Backend + GraphBackend + DecisionBackend for acceptLinkedDecisions tests ---
@@ -1436,7 +1683,9 @@ func TestAuthoringHandler_Specify_TouchesMissingPath(t *testing.T) {
 }
 
 func TestAuthoringHandler_Specify_MultipleInterfaces(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: &fakeConversationBackend{},
+	})
 	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug: "multi-iface",
 		Output: &specv1.SpecifyOutput{
@@ -1444,6 +1693,9 @@ func TestAuthoringHandler_Specify_MultipleInterfaces(t *testing.T) {
 				{Name: "ProtoService", Body: "service Webhook { rpc Send(...) }"},
 				{Name: "GoInterface", Body: "type EventBus interface { Publish(event) }"},
 			},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "q", Stage: "specify", Sequence: 1},
 		},
 	}))
 	require.NoError(t, err)
@@ -1561,4 +1813,395 @@ func TestAuthoringHandler_ListConversations_SpecNotFound(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+}
+
+// --- Shape conversation_exchanges validation tests ---
+
+func TestAuthoringHandler_Shape_RequiresConversationExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+
+	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug:   "oauth-refresh",
+		Output: validShapeOutput(),
+		// conversation_exchanges omitted
+	}))
+	if err == nil {
+		t.Fatal("expected error for missing exchanges")
+	}
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Shape_RejectsEmptyExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+
+	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug:                  "oauth-refresh",
+		Output:                validShapeOutput(),
+		ConversationExchanges: []*specv1.ConversationExchange{},
+	}))
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Shape_PersistsAtomicallyWithExchanges(t *testing.T) {
+	convBackend := &fakeConversationBackend{}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: convBackend,
+	})
+
+	resp, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug:   "oauth-refresh",
+		Output: validShapeOutput(),
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "scope?", Stage: "shape", Sequence: 1},
+			{Role: "response", Content: "X in", Stage: "shape", Sequence: 2},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Shape: %v", err)
+	}
+	if resp.Msg.GetOutput() == nil {
+		t.Error("expected output echoed back")
+	}
+
+	logs, err := client.ListConversations(context.Background(), connect.NewRequest(&specv1.ListConversationsRequest{
+		Slug:  "oauth-refresh",
+		Stage: "shape",
+	}))
+	if err != nil {
+		t.Fatalf("ListConversations: %v", err)
+	}
+	if len(logs.Msg.GetConversationLogs()) != 1 {
+		t.Errorf("expected 1 conversation log, got %d", len(logs.Msg.GetConversationLogs()))
+	}
+}
+
+// validShapeOutput returns a minimally-valid ShapeOutput for tests.
+func validShapeOutput() *specv1.ShapeOutput {
+	return &specv1.ShapeOutput{
+		ScopeIn:        []string{"X"},
+		ScopeOut:       []string{"Y"},
+		Approaches:     []*specv1.Approach{{Name: "a", Description: "d", Tradeoffs: []string{"t"}}},
+		ChosenApproach: "a",
+		Risks:          []string{"r"},
+		SuccessMust:    []string{"m"},
+	}
+}
+
+// --- Specify conversation_exchanges validation tests ---
+
+func TestAuthoringHandler_Specify_RequiresConversationExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+
+	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+		Slug:   "oauth-refresh",
+		Output: validSpecifyOutput(),
+		// conversation_exchanges omitted
+	}))
+	if err == nil {
+		t.Fatal("expected error for missing exchanges")
+	}
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Specify_RejectsEmptyExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+
+	_, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+		Slug:                  "oauth-refresh",
+		Output:                validSpecifyOutput(),
+		ConversationExchanges: []*specv1.ConversationExchange{},
+	}))
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Specify_PersistsAtomicallyWithExchanges(t *testing.T) {
+	convBackend := &fakeConversationBackend{}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: convBackend,
+	})
+
+	resp, err := client.Specify(context.Background(), connect.NewRequest(&specv1.SpecifyRequest{
+		Slug:   "oauth-refresh",
+		Output: validSpecifyOutput(),
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "interfaces?", Stage: "specify", Sequence: 1},
+			{Role: "response", Content: "POST /api/login", Stage: "specify", Sequence: 2},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Specify: %v", err)
+	}
+	if resp.Msg.GetOutput() == nil {
+		t.Error("expected output echoed back")
+	}
+
+	logs, err := client.ListConversations(context.Background(), connect.NewRequest(&specv1.ListConversationsRequest{
+		Slug:  "oauth-refresh",
+		Stage: "specify",
+	}))
+	if err != nil {
+		t.Fatalf("ListConversations: %v", err)
+	}
+	if len(logs.Msg.GetConversationLogs()) != 1 {
+		t.Errorf("expected 1 conversation log, got %d", len(logs.Msg.GetConversationLogs()))
+	}
+}
+
+// validSpecifyOutput returns a minimally-valid SpecifyOutput for tests.
+func validSpecifyOutput() *specv1.SpecifyOutput {
+	return &specv1.SpecifyOutput{
+		Interfaces: []*specv1.InterfaceSection{
+			{Name: "API", Body: "POST /api/login"},
+		},
+		VerifyCriteria: []*specv1.VerifyCriterion{
+			{Category: "functional", Description: "returns 200 on valid credentials"},
+		},
+		Invariants: []string{"session token is opaque"},
+		Touches: []*specv1.FileTouch{
+			{Path: "internal/auth/handler.go", Purpose: "add login endpoint"},
+		},
+	}
+}
+
+// --- Decompose conversation_exchanges validation tests ---
+
+func TestAuthoringHandler_Decompose_RequiresConversationExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+
+	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug:   "oauth-refresh",
+		Output: validDecomposeOutput(),
+		// conversation_exchanges omitted
+	}))
+	if err == nil {
+		t.Fatal("expected error for missing exchanges")
+	}
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Decompose_RejectsEmptyExchanges(t *testing.T) {
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+
+	_, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug:                  "oauth-refresh",
+		Output:                validDecomposeOutput(),
+		ConversationExchanges: []*specv1.ConversationExchange{},
+	}))
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Decompose_PersistsAtomicallyWithExchanges(t *testing.T) {
+	convBackend := &fakeConversationBackend{}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: convBackend,
+	})
+
+	resp, err := client.Decompose(context.Background(), connect.NewRequest(&specv1.DecomposeRequest{
+		Slug:   "oauth-refresh",
+		Output: validDecomposeOutput(),
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "slices?", Stage: "decompose", Sequence: 1},
+			{Role: "response", Content: "vertical slice", Stage: "decompose", Sequence: 2},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Decompose: %v", err)
+	}
+	if resp.Msg.GetOutput() == nil {
+		t.Error("expected output echoed back")
+	}
+	if len(resp.Msg.SliceSlugs) == 0 {
+		t.Error("expected slice slugs to be populated")
+	}
+
+	logs, err := client.ListConversations(context.Background(), connect.NewRequest(&specv1.ListConversationsRequest{
+		Slug:  "oauth-refresh",
+		Stage: "decompose",
+	}))
+	if err != nil {
+		t.Fatalf("ListConversations: %v", err)
+	}
+	if len(logs.Msg.GetConversationLogs()) != 1 {
+		t.Errorf("expected 1 conversation log, got %d", len(logs.Msg.GetConversationLogs()))
+	}
+}
+
+// validDecomposeOutput returns a minimally-valid DecomposeOutput for tests.
+func validDecomposeOutput() *specv1.DecomposeOutput {
+	return &specv1.DecomposeOutput{
+		Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE,
+		Slices: []*specv1.DecompositionSlice{
+			{Id: "s1", Intent: "login endpoint slice"},
+		},
+	}
+}
+
+// --- Spark conversation_exchanges tests (optional exchanges) ---
+
+func TestAuthoringHandler_Spark_ExchangesOptional(t *testing.T) {
+	// Spark without exchanges must succeed — exchanges are optional for Spark.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "new-spec",
+		Output: &specv1.SparkOutput{Seed: "seed", Signal: "signal"},
+	}))
+	if err != nil {
+		t.Fatalf("Spark without exchanges: %v", err)
+	}
+}
+
+func TestAuthoringHandler_Spark_ExchangesValidatedWhenPresent(t *testing.T) {
+	// When exchanges are present but invalid (empty role), expect CodeInvalidArgument.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "new-spec-2",
+		Output: &specv1.SparkOutput{Seed: "seed"},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "", Content: "x", Stage: "spark", Sequence: 1},
+		},
+	}))
+	var connErr *connect.Error
+	if !errors.As(err, &connErr) || connErr.Code() != connect.CodeInvalidArgument {
+		t.Errorf("want CodeInvalidArgument, got %v", err)
+	}
+}
+
+func TestAuthoringHandler_Spark_RecordsExchangesWhenPresent(t *testing.T) {
+	// When exchanges are valid and present, they must be persisted.
+	convBackend := &fakeConversationBackend{}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{
+		conv: convBackend,
+	})
+	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
+		Slug:   "new-spec-3",
+		Output: &specv1.SparkOutput{Seed: "seed"},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "seed?", Stage: "spark", Sequence: 1},
+			{Role: "response", Content: "x", Stage: "spark", Sequence: 2},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("Spark: %v", err)
+	}
+	logs, err := client.ListConversations(context.Background(), connect.NewRequest(&specv1.ListConversationsRequest{
+		Slug:  "new-spec-3",
+		Stage: "spark",
+	}))
+	if err != nil {
+		t.Fatalf("ListConversations: %v", err)
+	}
+	if len(logs.Msg.GetConversationLogs()) != 1 {
+		t.Errorf("expected 1 spark conversation log, got %d", len(logs.Msg.GetConversationLogs()))
+	}
+}
+
+// txConvAuthoringTestBackend combines txAuthoringTestBackend with ConversationBackend
+// support so Shape tests can exercise the full 4-op transactional path.
+type txConvAuthoringTestBackend struct {
+	txAuthoringTestBackend
+	conv *fakeConversationBackend
+}
+
+func (b *txConvAuthoringTestBackend) RecordConversation(ctx context.Context, slug string, entry storage.ConversationLogEntry) (*storage.ConversationLogEntry, error) {
+	return b.conv.RecordConversation(ctx, slug, entry)
+}
+
+func (b *txConvAuthoringTestBackend) ListConversations(ctx context.Context, slug string, stage string) ([]*storage.ConversationLogEntry, error) {
+	return b.conv.ListConversations(ctx, slug, stage)
+}
+
+// newTxConvAuthoringClient creates a test client whose backend supports both
+// RunInTransaction and ConversationBackend — enabling full Shape tx coverage.
+func newTxConvAuthoringClient(t *testing.T, authoringStore *fakeAuthoringBackend, conv *fakeConversationBackend) specgraphv1connect.AuthoringServiceClient {
+	t.Helper()
+	backend := &txConvAuthoringTestBackend{
+		txAuthoringTestBackend: txAuthoringTestBackend{
+			authoringTestBackend: authoringTestBackend{authoring: authoringStore, backend: &fakeBackend{}},
+		},
+		conv: conv,
+	}
+	scoper := &testScoper{backend: backend}
+	mux := http.NewServeMux()
+	server.RegisterAuthoringService(mux, scoper)
+	srv := httptest.NewServer(wrapTestProject(mux))
+	t.Cleanup(srv.Close)
+	return specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, srv.URL)
+}
+
+func TestAuthoringHandler_Shape_RecordConversationFailureRollsBack(t *testing.T) {
+	// When RecordConversation fails inside the 4-op Shape transaction, the error
+	// propagates and the response is CodeInternal. This mirrors the Spark rollback
+	// test and is the headline atomicity guarantee of this PR.
+	conv := &fakeConversationBackend{recordErr: errors.New("injected record error")}
+	authoringStore := &fakeAuthoringBackend{}
+	client := newTxConvAuthoringClient(t, authoringStore, conv)
+
+	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug: "rollback-spec",
+		Output: &specv1.ShapeOutput{
+			ScopeIn:  []string{"auth endpoint"},
+			ScopeOut: []string{"admin panel"},
+			Risks:    []string{"latency"},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "scope?", Stage: "shape", Sequence: 1},
+			{Role: "response", Content: "auth endpoint", Stage: "shape", Sequence: 2},
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestAuthoringHandler_Approve_RejectOfAlreadyApprovedFails(t *testing.T) {
+	// Reject is only valid from the decompose stage. Attempting to reject a spec
+	// that is already in the approved stage should fail with CodeFailedPrecondition.
+	rb := newFakeRejectBackend()
+	rb.stage = storage.SpecStageApproved
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, rb)
+	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug:   "my-spec",
+		Action: specv1.ApproveAction_APPROVE_ACTION_REJECT,
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "looks good?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "no, rejected", Stage: "approve", Sequence: 2},
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+	require.Contains(t, connErr.Message(), "reject requires decompose")
+}
+
+func TestAuthoringHandler_Approve_ExplicitAcceptSucceeds(t *testing.T) {
+	// Explicit APPROVE_ACTION_ACCEPT behaves identically to UNSPECIFIED.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug:   "my-spec",
+		Action: specv1.ApproveAction_APPROVE_ACTION_ACCEPT,
+	}))
+	require.NoError(t, err)
+	require.Equal(t, "my-spec", resp.Msg.Slug)
+	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
+	require.NotNil(t, resp.Msg.ApprovedAt, "approved_at should be set on explicit ACCEPT")
 }

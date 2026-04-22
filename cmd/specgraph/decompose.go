@@ -37,8 +37,9 @@ func runDecompose(cmd *cobra.Command, args []string) error {
 		}
 	}
 	resp, err := client.Decompose(cmd.Context(), connect.NewRequest(&specv1.DecomposeRequest{
-		Slug:   args[0],
-		Output: output,
+		Slug:                  args[0],
+		Output:                output,
+		ConversationExchanges: cliSyntheticExchanges("decompose"),
 	}))
 	if err != nil {
 		return fmt.Errorf("decompose: %w", err)

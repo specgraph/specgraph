@@ -16,6 +16,9 @@ enum PassType {
   PASS_TYPE_PERIPHERAL_VISION = 3;
   PASS_TYPE_CONSISTENCY = 4;
   PASS_TYPE_SIMPLICITY = 5;
+  // PASS_TYPE_APPROVE_REJECTED is emitted by the Approve handler when action is
+  // APPROVE_ACTION_REJECT. It records the rejection rationale as a critical finding.
+  PASS_TYPE_APPROVE_REJECTED = 6;
 }
 
 // AnalyticalPassService manages LLM-driven analytical passes for spec evaluation.

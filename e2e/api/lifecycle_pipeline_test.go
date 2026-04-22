@@ -74,12 +74,16 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 		resp, err := authoringClient.Shape(ctx, connect.NewRequest(&specv1.ShapeRequest{
 			Slug: pipelineSlug,
 			Output: &specv1.ShapeOutput{
-				ScopeIn:         []string{"amended scope"},
-				ScopeOut:        []string{"out of scope"},
-				SuccessMust:     []string{"amended behaviour works"},
-				ChosenApproach:  "revised-approach",
+				ScopeIn:        []string{"amended scope"},
+				ScopeOut:       []string{"out of scope"},
+				SuccessMust:    []string{"amended behaviour works"},
+				ChosenApproach: "revised-approach",
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "what changed in scope?", Stage: "shape", Sequence: 1},
+				{Role: "response", Content: "amended scope only", Stage: "shape", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Output).NotTo(BeNil())
@@ -102,6 +106,10 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 				},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "what are the amended interfaces?", Stage: "specify", Sequence: 1},
+				{Role: "response", Content: "POST /api/v1/amended", Stage: "specify", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Output).NotTo(BeNil())
@@ -118,6 +126,10 @@ var _ = Describe("Lifecycle Pipeline", Ordered, func() {
 				},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "how to decompose amended spec?", Stage: "decompose", Sequence: 1},
+				{Role: "response", Content: "single amended slice", Stage: "decompose", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Output).NotTo(BeNil())

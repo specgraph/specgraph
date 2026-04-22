@@ -96,18 +96,15 @@ var _ = Describe("Conversation logs", Ordered, func() {
 				SuccessMust:    []string{"works"},
 			},
 			Posture: specv1.Posture_POSTURE_DRIVE,
-		}))
-		Expect(err).NotTo(HaveOccurred())
-
-		// Record shape conversation.
-		_, err = authoringClient.RecordConversation(ctx, connect.NewRequest(&specv1.RecordConversationRequest{
-			Slug:  slug,
-			Stage: "shape",
-			Exchanges: []*specv1.ConversationExchange{
-				{Role: "probe", Content: "Shape probe", Stage: "shape"},
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "what is in scope?", Stage: "shape", Sequence: 1},
+				{Role: "response", Content: "feature A in, feature B out", Stage: "shape", Sequence: 2},
 			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
+
+		// Shape's ConversationExchanges land atomically via the Shape RPC; no
+		// separate RecordConversation call is needed for the shape stage.
 
 		// List all conversations.
 		listResp, err := authoringClient.ListConversations(ctx, connect.NewRequest(&specv1.ListConversationsRequest{

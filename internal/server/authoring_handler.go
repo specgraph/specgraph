@@ -55,6 +55,18 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	if len(msg.Output.GetQuestions()) > maxElements {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("questions exceeds maximum of %d elements", maxElements))
 	}
+	// Conditional conversation_exchanges per design §Approve/spark coupling table.
+	// Exchanges are optional for Spark (may be invoked with just --seed and no LLM dialogue).
+	exchanges := exchangesFromProto(msg.GetConversationExchanges())
+	if len(exchanges) > 0 {
+		if err := authoring.ValidateExchanges(msg.GetConversationExchanges(), "spark"); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
+	// Posture-absent warning (design §Posture).
+	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
+		h.logger.Warn("posture-absent", slog.String("stage", "spark"), slog.String("slug", msg.Slug))
+	}
 	// CreateSpec sets stage to "spark" as part of spec creation; no separate
 	// TransitionStage call is needed because the initial stage is set atomically.
 	sparkDomain, err := sparkOutputToDomain(msg.Output)
@@ -63,7 +75,7 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	}
 	safetyInput := &authoring.SafetyInput{Text: msg.Output.GetSeed()}
 	var safetyFlags []authoring.SafetyFlagResult
-	if err := runInTxOrSequential(ctx, store,
+	ops := []func(context.Context) error{
 		func(c context.Context) error {
 			if _, err := store.CreateSpec(c, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
 				return fmt.Errorf("create spec: %w", err)
@@ -81,7 +93,17 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 			safetyFlags, err = persistSafetyFlags(c, store, msg.Slug, safetyInput)
 			return err
 		},
-	); err != nil {
+	}
+	if len(exchanges) > 0 {
+		entry := buildConversationEntry(storage.SpecStageSpark, msg.GetPosture(), exchanges)
+		ops = append(ops, func(c context.Context) error {
+			if _, err := store.RecordConversation(c, msg.Slug, entry); err != nil {
+				return fmt.Errorf("record conversation: %w", err)
+			}
+			return nil
+		})
+	}
+	if err := runInTxOrSequential(ctx, store, ops...); err != nil {
 		if errors.Is(err, storage.ErrSpecAlreadyExists) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("spec with this slug already exists"))
 		}
@@ -112,6 +134,11 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
+	// Required conversation_exchanges per design §Conversation Recording Coupling.
+	if err := authoring.ValidateExchanges(msg.GetConversationExchanges(), "shape"); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	// Existing field-size validations (preserved verbatim from current handler).
 	for _, v := range []struct {
 		name  string
 		items []string
@@ -140,13 +167,22 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	scope := make([]string, 0, len(msg.Output.GetScopeIn())+len(msg.Output.GetScopeOut()))
 	scope = append(scope, msg.Output.GetScopeIn()...)
 	scope = append(scope, msg.Output.GetScopeOut()...)
-	// SafetyInput.Text accepts stage-appropriate content; in Shape
-	// we scan risks since the spec seed was already checked in Spark.
 	safetyInput := &authoring.SafetyInput{
 		Text:  strings.Join(msg.Output.GetRisks(), " "),
 		Scope: scope,
 	}
 	var safetyFlags []authoring.SafetyFlagResult
+	exchanges := exchangesFromProto(msg.GetConversationExchanges())
+	entry := buildConversationEntry(storage.SpecStageShape, msg.GetPosture(), exchanges)
+
+	// Posture-absent warning (design §Posture).
+	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
+		h.logger.Warn("posture-absent", slog.String("stage", "shape"), slog.String("slug", msg.Slug))
+	}
+
+	// Four-op transaction: transition → store output → safety → record conversation.
+	// All four land in one transaction via RunInTransaction's context threading;
+	// any op failing rolls back all prior writes.
 	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
 			return store.TransitionStage(c, msg.Slug, storage.SpecStageSpark, storage.SpecStageShape)
@@ -158,6 +194,12 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 			var err error
 			safetyFlags, err = persistSafetyFlags(c, store, msg.Slug, safetyInput)
 			return err
+		},
+		func(c context.Context) error {
+			if _, err := store.RecordConversation(c, msg.Slug, entry); err != nil {
+				return fmt.Errorf("record conversation: %w", err)
+			}
+			return nil
 		},
 	); err != nil {
 		return nil, h.stageError(err)
@@ -183,6 +225,11 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
+	// Required conversation_exchanges per design §Conversation Recording Coupling.
+	if err := authoring.ValidateExchanges(msg.GetConversationExchanges(), "specify"); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	// Existing field-size validations (preserved verbatim from current handler).
 	if len(msg.Output.GetInterfaces()) > maxElements {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("interfaces exceeds maximum of %d elements", maxElements))
 	}
@@ -244,6 +291,17 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 		Invariants: msg.Output.GetInvariants(),
 	}
 	var safetyFlags []authoring.SafetyFlagResult
+	exchanges := exchangesFromProto(msg.GetConversationExchanges())
+	entry := buildConversationEntry(storage.SpecStageSpecify, msg.GetPosture(), exchanges)
+
+	// Posture-absent warning (design §Posture).
+	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
+		h.logger.Warn("posture-absent", slog.String("stage", "specify"), slog.String("slug", msg.Slug))
+	}
+
+	// Four-op transaction: transition → store output → safety → record conversation.
+	// All four land in one transaction via RunInTransaction's context threading;
+	// any op failing rolls back all prior writes.
 	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
 			return store.TransitionStage(c, msg.Slug, storage.SpecStageShape, storage.SpecStageSpecify)
@@ -255,6 +313,12 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 			var err error
 			safetyFlags, err = persistSafetyFlags(c, store, msg.Slug, safetyInput)
 			return err
+		},
+		func(c context.Context) error {
+			if _, err := store.RecordConversation(c, msg.Slug, entry); err != nil {
+				return fmt.Errorf("record conversation: %w", err)
+			}
+			return nil
 		},
 	); err != nil {
 		return nil, h.stageError(err)
@@ -280,6 +344,11 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	if msg.Output == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output is required"))
 	}
+	// Required conversation_exchanges per design §Conversation Recording Coupling.
+	if err := authoring.ValidateExchanges(msg.GetConversationExchanges(), "decompose"); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	// Existing field-size validations (preserved verbatim from current handler).
 	if msg.Output.GetStrategy() == specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_UNSPECIFIED {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("strategy is required"))
 	}
@@ -313,6 +382,18 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	}
 	var safetyFlags []authoring.SafetyFlagResult
 	var childSlugs []string
+	exchanges := exchangesFromProto(msg.GetConversationExchanges())
+	entry := buildConversationEntry(storage.SpecStageDecompose, msg.GetPosture(), exchanges)
+
+	// Posture-absent warning (design §Posture).
+	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
+		h.logger.Warn("posture-absent", slog.String("stage", "decompose"), slog.String("slug", msg.Slug))
+	}
+
+	// Four-op transaction: transition → store output → safety → record conversation.
+	// All four land in one transaction via RunInTransaction's context threading;
+	// any op failing rolls back all prior writes. SliceSlugs captured via closure
+	// from StoreDecomposeOutput and returned in the response.
 	if err := runInTxOrSequential(ctx, store,
 		func(c context.Context) error {
 			return store.TransitionStage(c, msg.Slug, storage.SpecStageSpecify, storage.SpecStageDecompose)
@@ -330,6 +411,12 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 			safetyFlags, err = persistSafetyFlags(c, store, msg.Slug, safetyInput)
 			return err
 		},
+		func(c context.Context) error {
+			if _, err := store.RecordConversation(c, msg.Slug, entry); err != nil {
+				return fmt.Errorf("record conversation: %w", err)
+			}
+			return nil
+		},
 	); err != nil {
 		return nil, h.stageError(err)
 	}
@@ -345,6 +432,10 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 // Approve handles the Approve RPC, transitioning from decompose to approved stage.
 // After approval, linked decisions (via DECIDED_IN edges) are transitioned from
 // proposed to accepted per ADR-003 (decisions as first-class graph nodes).
+//
+// When action is APPROVE_ACTION_REJECT, the stage is NOT transitioned and a
+// critical approve-rejected finding is recorded alongside the rejection rationale.
+// Unknown action values return CodeInvalidArgument.
 func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[specv1.ApproveRequest]) (*connect.Response[specv1.ApproveResponse], error) {
 	store, scopeErr := scopeStore(ctx, h.scoper)
 	if scopeErr != nil {
@@ -353,39 +444,108 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 	if err := validateSlug(req.Msg.Slug); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	// Wrap TransitionStage and acceptLinkedDecisions in a transaction so that
-	// if decision promotion fails, the spec approval is rolled back.
-	var spec *storage.Spec
 	slug := req.Msg.Slug
-	if err := runInTxOrSequential(ctx, store,
-		func(txCtx context.Context) error {
-			return store.TransitionStage(txCtx, slug, storage.SpecStageDecompose, storage.SpecStageApproved)
-		},
-		func(txCtx context.Context) error {
-			return acceptLinkedDecisions(txCtx, h.logger, store, store, slug)
-		},
-		func(txCtx context.Context) error {
-			var err error
-			spec, err = store.GetSpec(txCtx, slug)
-			if err != nil {
-				return fmt.Errorf("get spec %q: %w", slug, err)
-			}
-			return nil
-		},
-	); err != nil {
-		return nil, h.stageError(err)
+
+	switch req.Msg.GetAction() {
+	case specv1.ApproveAction_APPROVE_ACTION_UNSPECIFIED:
+		h.logger.InfoContext(ctx, "approve action unspecified, defaulting to accept",
+			slog.String("slug", slug))
+		fallthrough
+	case specv1.ApproveAction_APPROVE_ACTION_ACCEPT:
+		// Wrap TransitionStage and acceptLinkedDecisions in a transaction so that
+		// if decision promotion fails, the spec approval is rolled back.
+		var spec *storage.Spec
+		if err := runInTxOrSequential(ctx, store,
+			func(txCtx context.Context) error {
+				return store.TransitionStage(txCtx, slug, storage.SpecStageDecompose, storage.SpecStageApproved)
+			},
+			func(txCtx context.Context) error {
+				return acceptLinkedDecisions(txCtx, h.logger, store, store, slug)
+			},
+			func(txCtx context.Context) error {
+				var err error
+				spec, err = store.GetSpec(txCtx, slug)
+				if err != nil {
+					return fmt.Errorf("get spec %q: %w", slug, err)
+				}
+				return nil
+			},
+		); err != nil {
+			return nil, h.stageError(err)
+		}
+		if spec.UpdatedAt.IsZero() {
+			h.logger.ErrorContext(ctx, "spec.UpdatedAt is zero after TransitionStage",
+				"slug", slug, "specID", spec.ID, "stage", "approved")
+			return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
+		}
+		approvedAt := timestamppb.New(spec.UpdatedAt)
+		return connect.NewResponse(&specv1.ApproveResponse{
+			Slug:       req.Msg.Slug,
+			Stage:      stageToProto(storage.SpecStageApproved),
+			ApprovedAt: approvedAt,
+		}), nil
+
+	case specv1.ApproveAction_APPROVE_ACTION_REJECT:
+		if err := authoring.ValidateExchanges(req.Msg.GetConversationExchanges(), "approve"); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		exchanges := exchangesFromProto(req.Msg.GetConversationExchanges())
+		finding := storage.AnalyticalFindingInput{
+			Severity: storage.SeverityCritical,
+			Summary:  "approval rejected",
+			Detail:   "see conversation log for rationale",
+		}
+		var currentStage storage.SpecStage
+		entry := storage.ConversationLogEntry{
+			Exchanges:     exchanges,
+			ExchangeCount: safeInt32(len(exchanges)),
+			IsAmend:       false,
+		}
+		if err := runInTxOrSequential(ctx, store,
+			func(txCtx context.Context) error {
+				s, err := store.GetSpec(txCtx, slug)
+				if err != nil {
+					return fmt.Errorf("get spec %q: %w", slug, err)
+				}
+				// Reject is only valid from the decompose stage (the approval gate).
+				if s.Stage != storage.SpecStageDecompose {
+					return connect.NewError(connect.CodeFailedPrecondition,
+						fmt.Errorf("spec %q is at stage %s; reject requires decompose", slug, s.Stage))
+				}
+				currentStage = s.Stage
+				// Record under the approved stage so the conversation is associated
+				// with the approval gate being rejected, not the current (decompose) stage.
+				entry.Stage = storage.SpecStageApproved
+				return nil
+			},
+			func(txCtx context.Context) error {
+				if _, err := store.RecordConversation(txCtx, slug, entry); err != nil {
+					return fmt.Errorf("record conversation: %w", err)
+				}
+				return nil
+			},
+			func(txCtx context.Context) error {
+				if _, err := store.StoreFindings(txCtx, slug, storage.PassTypeApproveRejected, []storage.AnalyticalFindingInput{finding}); err != nil {
+					return fmt.Errorf("store findings: %w", err)
+				}
+				return nil
+			},
+		); err != nil {
+			return nil, h.stageError(err)
+		}
+		if currentStage == "" {
+			h.logger.ErrorContext(ctx, "reject path: currentStage not populated after successful tx",
+				slog.String("slug", slug))
+			return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
+		}
+		return connect.NewResponse(&specv1.ApproveResponse{
+			Slug:  slug,
+			Stage: stageToProto(currentStage),
+		}), nil
+
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown approve action %v", req.Msg.GetAction()))
 	}
-	if spec.UpdatedAt.IsZero() {
-		h.logger.ErrorContext(ctx, "spec.UpdatedAt is zero after TransitionStage",
-			"slug", slug, "specID", spec.ID, "stage", "approved")
-		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
-	}
-	approvedAt := timestamppb.New(spec.UpdatedAt)
-	return connect.NewResponse(&specv1.ApproveResponse{
-		Slug:       req.Msg.Slug,
-		Stage:      stageToProto(storage.SpecStageApproved),
-		ApprovedAt: approvedAt,
-	}), nil
 }
 
 // Amend handles the Amend RPC, rolling a spec back to an earlier stage.
@@ -716,6 +876,37 @@ func shapeOutputToDomain(p *specv1.ShapeOutput) (*storage.ShapeOutput, error) {
 		SuccessWont:    p.GetSuccessWont(),
 		Decisions:      decisions,
 	}, nil
+}
+
+// exchangesFromProto converts proto ConversationExchange messages to domain
+// value-struct exchanges. Unknown role strings pass through; role validation
+// happens in authoring.ValidateExchanges before persist.
+func exchangesFromProto(ps []*specv1.ConversationExchange) []storage.ConversationExchange {
+	out := make([]storage.ConversationExchange, len(ps))
+	for i, p := range ps {
+		out[i] = storage.ConversationExchange{
+			Role:          storage.ConversationRole(p.GetRole()),
+			Content:       p.GetContent(),
+			Stage:         p.GetStage(),
+			Sequence:      p.GetSequence(),
+			DecisionPoint: p.GetDecisionPoint(),
+		}
+	}
+	return out
+}
+
+// buildConversationEntry constructs a ConversationLogEntry for RecordConversation.
+// The posture parameter is accepted to match stage-handler call sites but is
+// not yet persisted; Task 10 adds a Posture field to ConversationLogEntry.
+// Posture is silently discarded in this phase; Task 10 adds a Posture field to
+// ConversationLogEntry and wires it here.
+func buildConversationEntry(stage storage.SpecStage, _ specv1.Posture, exchanges []storage.ConversationExchange) storage.ConversationLogEntry {
+	return storage.ConversationLogEntry{
+		Stage:         stage,
+		Exchanges:     exchanges,
+		ExchangeCount: safeInt32(len(exchanges)),
+		// IsAmend defaults to false; amend-originated entries use a separate code path.
+	}
 }
 
 func specifyOutputToDomain(p *specv1.SpecifyOutput) *storage.SpecifyOutput {

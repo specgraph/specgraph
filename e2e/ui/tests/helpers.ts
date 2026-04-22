@@ -47,6 +47,16 @@ export async function seedSparkOutput(request: APIRequestContext, slug: string):
   }, `seedSparkOutput(${slug})`);
 }
 
+// syntheticExchanges returns a minimal probe/response pair marking that the
+// stage was advanced by the e2e UI harness (no LLM dialogue). The server
+// requires conversation_exchanges on shape/specify/decompose.
+function syntheticExchanges(stage: string): Array<Record<string, unknown>> {
+  return [
+    { role: 'probe', content: 'e2e ui harness invocation', stage, sequence: 1 },
+    { role: 'response', content: 'advanced via playwright helper', stage, sequence: 2 },
+  ];
+}
+
 // advanceToApproved transitions a spec through the authoring funnel up to
 // approved (shape → specify → decompose → approved). Does not claim or complete.
 // Use this when the spec needs to be in an amend-eligible stage (approved/in_progress/review).
@@ -59,6 +69,7 @@ export async function advanceToApproved(request: APIRequestContext, slug: string
       approaches: [{ name: 'default', description: 'test approach' }],
       chosenApproach: 'default',
     },
+    conversationExchanges: syntheticExchanges('shape'),
   }, `advanceToApproved shape(${slug})`);
 
   await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Specify`, {
@@ -67,6 +78,7 @@ export async function advanceToApproved(request: APIRequestContext, slug: string
       interfaces: [{ name: 'API', body: 'test' }],
       verifyCriteria: [{ description: 'passes' }],
     },
+    conversationExchanges: syntheticExchanges('specify'),
   }, `advanceToApproved specify(${slug})`);
 
   await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Decompose`, {
@@ -75,6 +87,7 @@ export async function advanceToApproved(request: APIRequestContext, slug: string
       strategy: 'DECOMPOSITION_STRATEGY_SINGLE_UNIT',
       slices: [{ id: 'main', intent: 'test' }],
     },
+    conversationExchanges: syntheticExchanges('decompose'),
   }, `advanceToApproved decompose(${slug})`);
 
   await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Approve`, {
@@ -93,6 +106,7 @@ export async function advanceToDone(request: APIRequestContext, slug: string): P
       approaches: [{ name: 'default', description: 'test approach' }],
       chosenApproach: 'default',
     },
+    conversationExchanges: syntheticExchanges('shape'),
   }, `advanceToDone shape(${slug})`);
 
   await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Specify`, {
@@ -101,6 +115,7 @@ export async function advanceToDone(request: APIRequestContext, slug: string): P
       interfaces: [{ name: 'API', body: 'test' }],
       verifyCriteria: [{ description: 'passes' }],
     },
+    conversationExchanges: syntheticExchanges('specify'),
   }, `advanceToDone specify(${slug})`);
 
   await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Decompose`, {
@@ -109,6 +124,7 @@ export async function advanceToDone(request: APIRequestContext, slug: string): P
       strategy: 'DECOMPOSITION_STRATEGY_SINGLE_UNIT',
       slices: [{ id: 'main', intent: 'test' }],
     },
+    conversationExchanges: syntheticExchanges('decompose'),
   }, `advanceToDone decompose(${slug})`);
 
   await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Approve`, {
