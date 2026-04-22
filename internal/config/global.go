@@ -127,7 +127,7 @@ func (c *GlobalConfig) ResolveServer(projectSlug, repoOverride string) string {
 func globalDefaults() *GlobalConfig {
 	return &GlobalConfig{
 		Server: ServerSection{
-			Listen:  "127.0.0.1:7890",
+			Listen:  "0.0.0.0:9090",
 			Mode:    "service",
 			Backend: "postgres",
 			Postgres: PostgresConfig{ //nolint:gosec // dev default, not a real credential
@@ -136,7 +136,7 @@ func globalDefaults() *GlobalConfig {
 			Docker: true,
 		},
 		Client: ClientConfig{
-			DefaultServer: "http://127.0.0.1:7890",
+			DefaultServer: "http://127.0.0.1:9090",
 		},
 	}
 }
