@@ -1,6 +1,8 @@
 # Slice 7: Global Daemon & Claude Code Plugin — Design
 
 > **Supersedes:** `2026-02-28-slice-7-claude-code-plugin-plan.md` (which assumed per-project server model)
+>
+> **Partially superseded:** The CLI command surface described in §`specgraph up` / §`specgraph down` (lines 151–193) was revised in `2026-04-22-cli-lifecycle-split-design.md`. `install`/`uninstall` are now dedicated verbs, `--rm` is retired, and `down --purge` is the confirmation-guarded destructive flag. Sections below that describe the original `up`/`down` surface are kept for historical record but should not be treated as current spec.
 
 **Goal:** Transform SpecGraph from a per-project tool into a global development daemon, then ship a Claude Code plugin that wraps the CLI in conversational skills.
 

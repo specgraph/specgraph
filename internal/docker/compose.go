@@ -12,12 +12,30 @@ import (
 	"path/filepath"
 )
 
+// composeUpArgs returns the argv passed to `docker` for `ComposeUp`. Extracted
+// as a pure function so tests can assert the exact flags without shelling out.
+func composeUpArgs(composeFile string) []string {
+	return []string{"compose", "-f", composeFile, "up", "-d", "--wait"}
+}
+
+// composeStopArgs returns the argv passed to `docker` for `ComposeStop`.
+func composeStopArgs(composeFile string) []string {
+	return []string{"compose", "-f", composeFile, "stop", "--timeout", "10"}
+}
+
+// composeDownWithVolumesArgs returns the argv passed to `docker` for
+// `ComposeDownWithVolumes`. The trailing -v is intentional and destructive;
+// only the user-guarded `specgraph down --purge` path calls this wrapper.
+func composeDownWithVolumesArgs(composeFile string) []string {
+	return []string{"compose", "-f", composeFile, "down", "--timeout", "10", "-v"}
+}
+
 // ComposeUp starts the Docker Compose stack defined in composeFile.
 func ComposeUp(composeFile string) error {
 	if _, err := os.Stat(composeFile); err != nil {
 		return fmt.Errorf("compose file not found: %s", composeFile)
 	}
-	cmd := exec.Command("docker", "compose", "-f", composeFile, "up", "-d", "--wait", "--force-recreate", "-V")
+	cmd := exec.Command("docker", composeUpArgs(composeFile)...) //nolint:gosec // argv assembled from pure function; composeFile is xdg-owned path, no shell involved
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -26,13 +44,30 @@ func ComposeUp(composeFile string) error {
 	return nil
 }
 
-// ComposeDown tears down the Docker Compose stack defined in composeFile.
-func ComposeDown(composeFile string) error {
-	cmd := exec.Command("docker", "compose", "-f", composeFile, "down", "--timeout", "10", "-v")
+// ComposeStop halts the stack without removing containers or volumes.
+// Idempotent when the stack exists: `docker compose stop` on already-stopped
+// containers exits 0. Callers should guard against a missing compose file
+// since this function does not (unlike ComposeUp); both `specgraph down` and
+// `specgraph uninstall` stat the file before invoking.
+func ComposeStop(composeFile string) error {
+	cmd := exec.Command("docker", composeStopArgs(composeFile)...) //nolint:gosec // argv assembled from pure function; composeFile is xdg-owned path, no shell involved
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("docker compose down: %w", err)
+		return fmt.Errorf("docker compose stop: %w", err)
+	}
+	return nil
+}
+
+// ComposeDownWithVolumes tears down the stack AND removes named volumes.
+// Destructive — callers must confirm with the user before invoking.
+// Today only `specgraph down --purge` calls this wrapper.
+func ComposeDownWithVolumes(composeFile string) error {
+	cmd := exec.Command("docker", composeDownWithVolumesArgs(composeFile)...) //nolint:gosec // argv assembled from pure function; composeFile is xdg-owned path, no shell involved
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("docker compose down -v: %w", err)
 	}
 	return nil
 }

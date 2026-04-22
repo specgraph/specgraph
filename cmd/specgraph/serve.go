@@ -81,8 +81,8 @@ func runServe(cmd *cobra.Command, _ []string) error {
 			return upErr
 		}
 		defer func() {
-			if downErr := docker.ComposeDown(composeFile); downErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: compose down: %v\n", downErr)
+			if stopErr := docker.ComposeStop(composeFile); stopErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: compose stop: %v\n", stopErr)
 			}
 		}()
 	}
