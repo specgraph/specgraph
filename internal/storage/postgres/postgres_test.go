@@ -523,9 +523,8 @@ func TestWithSliceOps_CanBeSet(t *testing.T) {
 
 // ---- Ping tests ----
 //
-// Store.Ping is a 3-line pgxpool pass-through used exclusively by the
-// readiness probe. Without real-pool coverage, a refactor could silently
-// reduce it to a no-op that always returns nil — making /readyz lie.
+// Without real-pool coverage a refactor could silently reduce Ping to a
+// no-op that always returns nil, making /readyz lie about readiness.
 
 func TestStore_Ping_ReturnsNilWhenPoolHealthy(t *testing.T) {
 	store := newStore(t)

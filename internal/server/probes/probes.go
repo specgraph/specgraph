@@ -30,8 +30,8 @@ type probeState struct {
 }
 
 // Handler serves /livez and /readyz. Readiness reflects the most recent
-// background probe of the Pinger; the most recent probe error is retained
-// so /readyz 503 bodies carry a reason string rather than going empty.
+// background probe of the Pinger; the last probe's error is retained for
+// the /readyz body (see Readyz).
 type Handler struct {
 	state atomic.Pointer[probeState]
 }

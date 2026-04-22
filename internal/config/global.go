@@ -14,9 +14,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// DefaultProbeInterval and DefaultProbeTimeout match kubelet's default
-// periodSeconds=10 (comfortably fresh) with a generous per-probe budget
-// for pgxpool.Ping against a local Postgres.
+// DefaultProbeInterval/Timeout are chosen so the 5s cache refresh stays
+// fresh against kubelet's default periodSeconds=10, with 2s headroom for
+// pgxpool.Ping.
 const (
 	DefaultProbeInterval = 5 * time.Second
 	DefaultProbeTimeout  = 2 * time.Second

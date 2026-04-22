@@ -65,10 +65,8 @@ func legacyConfigPath() string {
 	return ".specgraph/config.yaml"
 }
 
-// loadGlobalCfg loads the global config, erroring on a missing file when
-// --config was supplied so operators see a clear failure rather than a
-// default config materialized at their typo'd path. When --config is unset
-// the XDG default is auto-created on first run.
+// loadGlobalCfg dispatches to LoadGlobalExplicit when --config is set so
+// typo'd paths fail loudly; the XDG default path retains auto-create.
 func loadGlobalCfg() (*config.GlobalConfig, error) {
 	if cfgFile != "" {
 		return config.LoadGlobalExplicit(cfgFile)

@@ -9,8 +9,11 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/specgraph/specgraph/internal/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // syncBuffer protects a bytes.Buffer so concurrent slog Writes from any
@@ -63,6 +66,31 @@ func TestIsLoopbackAddr(t *testing.T) {
 			assert.Equal(t, tt.loopback, isLoopbackAddr(tt.addr))
 		})
 	}
+}
+
+func TestValidateServerConfig_RejectsInvalidProbes(t *testing.T) {
+	cfg := &config.GlobalConfig{
+		Server: config.ServerSection{
+			Probes: config.ProbesConfig{Interval: -1 * time.Second},
+		},
+	}
+	_, err := validateServerConfig(cfg)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid probes config")
+	assert.Contains(t, err.Error(), "probes.interval must be non-negative")
+}
+
+func TestValidateServerConfig_ResolvesValidProbes(t *testing.T) {
+	cfg := &config.GlobalConfig{
+		Server: config.ServerSection{
+			Probes: config.ProbesConfig{Listen: "127.0.0.1:9091"},
+		},
+	}
+	probesCfg, err := validateServerConfig(cfg)
+	require.NoError(t, err)
+	assert.Equal(t, "127.0.0.1:9091", probesCfg.Listen)
+	assert.Equal(t, config.DefaultProbeInterval, probesCfg.Interval)
+	assert.Equal(t, config.DefaultProbeTimeout, probesCfg.Timeout)
 }
 
 func TestWarnIfNoAuthOnPublicListen(t *testing.T) {

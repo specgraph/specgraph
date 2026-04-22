@@ -284,9 +284,9 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		IdleTimeout:       120 * time.Second,
 	}
 
-	probesCfg, probesErr := cfg.Server.Probes.Resolved()
-	if probesErr != nil {
-		return fmt.Errorf("invalid probes config: %w", probesErr)
+	probesCfg, err := validateServerConfig(cfg)
+	if err != nil {
+		return err
 	}
 	probeSrv, probeErrCh, err := startProbeListener(ctx, s, probesCfg)
 	if err != nil {
@@ -366,10 +366,9 @@ func isLoopbackAddr(addr string) bool {
 }
 
 // warnIfNoAuthOnPublicListen logs a single WARN line when the server is
-// bound to a non-loopback interface with no authentication configured.
-// The 0.0.0.0:9090 default combined with no API keys or OIDC providers is
-// the out-of-box shape for unconfigured operators post-#915 — the warning
-// is how they learn their instance is reachable without credentials.
+// bound to a non-loopback interface with no authentication configured —
+// the unconfigured default is reachable without credentials, and this
+// warning is the only boot-log signal operators get.
 func warnIfNoAuthOnPublicListen(listen string, hasAuth bool) {
 	if hasAuth || isLoopbackAddr(listen) {
 		return
@@ -377,6 +376,19 @@ func warnIfNoAuthOnPublicListen(listen string, hasAuth bool) {
 	slog.Warn("server listening without authentication on non-loopback interface",
 		"addr", listen,
 		"risk", "configure API keys or OIDC providers")
+}
+
+// validateServerConfig runs cross-section validation the main serve path
+// depends on. Extracted so tests can exercise validation failures without
+// spinning up the full runServe stack (config load, docker compose, auth
+// composite store, …). Returns the resolved ProbesConfig so the caller
+// doesn't re-resolve.
+func validateServerConfig(cfg *config.GlobalConfig) (config.ProbesConfig, error) {
+	probesCfg, err := cfg.Server.Probes.Resolved()
+	if err != nil {
+		return config.ProbesConfig{}, fmt.Errorf("invalid probes config: %w", err)
+	}
+	return probesCfg, nil
 }
 
 // startProbeListener binds a plain-HTTP listener serving /livez and /readyz
@@ -400,7 +412,7 @@ func startProbeListener(ctx context.Context, pinger probes.Pinger, cfg config.Pr
 	h := probes.New(ctx, pinger, cfg.Interval, cfg.Timeout)
 	srv := &http.Server{
 		// Addr reflects the resolved listener address, not the caller's
-		// input — useful when cfg.Listen was ":0" for an ephemeral port.
+		// input, so callers passing ":0" can observe the ephemeral port.
 		Addr:              ln.Addr().String(),
 		Handler:           h.Mux(),
 		ReadHeaderTimeout: 5 * time.Second,

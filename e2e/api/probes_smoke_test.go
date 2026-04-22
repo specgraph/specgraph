@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -83,6 +84,7 @@ var _ = Describe("Probes (smoke)", Label("probes"), func() {
 		shutCancel()
 		storeClosed = true
 
+		var lastBody string
 		Eventually(func() bool {
 			r, getErr := http.Get(base + "/readyz") //nolint:noctx // retried via Eventually
 			if getErr != nil {
@@ -90,8 +92,11 @@ var _ = Describe("Probes (smoke)", Label("probes"), func() {
 			}
 			body, _ := io.ReadAll(r.Body)
 			_ = r.Body.Close()
-			return r.StatusCode == http.StatusServiceUnavailable && len(body) > 0
+			lastBody = string(body)
+			return r.StatusCode == http.StatusServiceUnavailable &&
+				strings.Contains(lastBody, "not ready:") &&
+				strings.Contains(lastBody, "postgres")
 		}, 5*time.Second, 25*time.Millisecond).Should(BeTrue(),
-			"readyz must report 503 with a non-empty reason body once the pool is closed")
+			"readyz must report 503 with a reason body identifying the postgres failure; last body: %q", lastBody)
 	})
 })

@@ -99,10 +99,9 @@ func New(ctx context.Context, connString string, opts ...Option) (*Store, error)
 	return s, nil
 }
 
-// Ping verifies Postgres connectivity by round-tripping a lightweight query
-// through the connection pool. Used by readiness probes; the wrapped error
-// surfaces in /readyz bodies so operators can distinguish DNS/auth/pool
-// failures without tailing pod logs.
+// Ping verifies Postgres connectivity through the connection pool. The
+// wrapping is load-bearing: callers surface the message verbatim, and
+// unwrapped pgxpool errors are too opaque to diagnose in isolation.
 func (s *Store) Ping(ctx context.Context) error {
 	if err := s.pool.Ping(ctx); err != nil {
 		return fmt.Errorf("postgres: ping: %w", err)
