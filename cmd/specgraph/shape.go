@@ -37,8 +37,9 @@ func runShape(cmd *cobra.Command, args []string) error {
 		}
 	}
 	resp, err := client.Shape(cmd.Context(), connect.NewRequest(&specv1.ShapeRequest{
-		Slug:   args[0],
-		Output: output,
+		Slug:                  args[0],
+		Output:                output,
+		ConversationExchanges: cliSyntheticExchanges("shape"),
 	}))
 	if err != nil {
 		return fmt.Errorf("shape: %w", err)

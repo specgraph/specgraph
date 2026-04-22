@@ -37,8 +37,9 @@ func runSpecify(cmd *cobra.Command, args []string) error {
 		}
 	}
 	resp, err := client.Specify(cmd.Context(), connect.NewRequest(&specv1.SpecifyRequest{
-		Slug:   args[0],
-		Output: output,
+		Slug:                  args[0],
+		Output:                output,
+		ConversationExchanges: cliSyntheticExchanges("specify"),
 	}))
 	if err != nil {
 		return fmt.Errorf("specify: %w", err)
