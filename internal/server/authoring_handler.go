@@ -23,9 +23,9 @@ import (
 const maxElements = 100
 
 // AuthoringHandler implements the ConnectRPC AuthoringService.
-// When txBackend is non-nil, multi-step RPCs (Spark, Shape, Specify, Decompose)
-// wrap their operations in a transaction for atomicity. When nil, operations
-// execute sequentially without rollback on partial failure.
+// Multi-step RPCs (Spark, Shape, Specify, Decompose, Approve) wrap their
+// storage operations in a single transaction via runInTxOrSequential /
+// RunInTransaction, providing atomic rollback if any step fails.
 type AuthoringHandler struct {
 	scoper storage.Scoper
 	logger *slog.Logger
@@ -909,10 +909,13 @@ func buildConversationEntry(stage storage.SpecStage, posture specv1.Posture, exc
 }
 
 // postureToString maps the proto Posture enum to its canonical string form.
-// Unknown values map to the empty string, which the storage layer treats as
-// "posture unspecified".
+// POSTURE_UNSPECIFIED maps to "" (the storage layer's "no posture" sentinel).
+// Any unrecognized enum value also maps to "" but logs a warning so future
+// proto additions are surfaced at runtime rather than silently dropped.
 func postureToString(p specv1.Posture) string {
 	switch p {
+	case specv1.Posture_POSTURE_UNSPECIFIED:
+		return ""
 	case specv1.Posture_POSTURE_DRIVE:
 		return "drive"
 	case specv1.Posture_POSTURE_PARTNER:
@@ -920,6 +923,8 @@ func postureToString(p specv1.Posture) string {
 	case specv1.Posture_POSTURE_SUPPORT:
 		return "support"
 	default:
+		slog.Warn("postureToString: unrecognized posture enum, storing empty string",
+			slog.Int("posture_int", int(p)))
 		return ""
 	}
 }
