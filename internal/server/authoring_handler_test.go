@@ -2107,3 +2107,100 @@ func TestAuthoringHandler_Spark_RecordsExchangesWhenPresent(t *testing.T) {
 		t.Errorf("expected 1 spark conversation log, got %d", len(logs.Msg.GetConversationLogs()))
 	}
 }
+
+// txConvAuthoringTestBackend combines txAuthoringTestBackend with ConversationBackend
+// support so Shape tests can exercise the full 4-op transactional path.
+type txConvAuthoringTestBackend struct {
+	txAuthoringTestBackend
+	conv *fakeConversationBackend
+}
+
+func (b *txConvAuthoringTestBackend) RecordConversation(ctx context.Context, slug string, entry storage.ConversationLogEntry) (*storage.ConversationLogEntry, error) {
+	return b.conv.RecordConversation(ctx, slug, entry)
+}
+
+func (b *txConvAuthoringTestBackend) ListConversations(ctx context.Context, slug string, stage string) ([]*storage.ConversationLogEntry, error) {
+	return b.conv.ListConversations(ctx, slug, stage)
+}
+
+// newTxConvAuthoringClient creates a test client whose backend supports both
+// RunInTransaction and ConversationBackend — enabling full Shape tx coverage.
+func newTxConvAuthoringClient(t *testing.T, authoringStore *fakeAuthoringBackend, conv *fakeConversationBackend) specgraphv1connect.AuthoringServiceClient {
+	t.Helper()
+	backend := &txConvAuthoringTestBackend{
+		txAuthoringTestBackend: txAuthoringTestBackend{
+			authoringTestBackend: authoringTestBackend{authoring: authoringStore, backend: &fakeBackend{}},
+		},
+		conv: conv,
+	}
+	scoper := &testScoper{backend: backend}
+	mux := http.NewServeMux()
+	server.RegisterAuthoringService(mux, scoper)
+	srv := httptest.NewServer(wrapTestProject(mux))
+	t.Cleanup(srv.Close)
+	return specgraphv1connect.NewAuthoringServiceClient(http.DefaultClient, srv.URL)
+}
+
+func TestAuthoringHandler_Shape_RecordConversationFailureRollsBack(t *testing.T) {
+	// When RecordConversation fails inside the 4-op Shape transaction, the error
+	// propagates and the response is CodeInternal. This mirrors the Spark rollback
+	// test and is the headline atomicity guarantee of this PR.
+	conv := &fakeConversationBackend{recordErr: errors.New("injected record error")}
+	authoringStore := &fakeAuthoringBackend{}
+	client := newTxConvAuthoringClient(t, authoringStore, conv)
+
+	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
+		Slug: "rollback-spec",
+		Output: &specv1.ShapeOutput{
+			ScopeIn:  []string{"auth endpoint"},
+			ScopeOut: []string{"admin panel"},
+			Risks:    []string{"latency"},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "scope?", Stage: "shape", Sequence: 1},
+			{Role: "response", Content: "auth endpoint", Stage: "shape", Sequence: 2},
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeInternal, connErr.Code())
+}
+
+func TestAuthoringHandler_Approve_RejectOfAlreadyApprovedFails(t *testing.T) {
+	// Reject is only valid from the decompose stage. Attempting to reject a spec
+	// that is already in the approved stage should fail with CodeFailedPrecondition.
+	conv := &fakeConversationBackend{}
+	findings := &fakeFindingsBackend{}
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeRejectBackend{
+		conv:     conv,
+		findings: findings,
+		stage:    storage.SpecStageApproved,
+	})
+	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug:   "my-spec",
+		Action: specv1.ApproveAction_APPROVE_ACTION_REJECT,
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "looks good?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "no, rejected", Stage: "approve", Sequence: 2},
+		},
+	}))
+	require.Error(t, err)
+	var connErr *connect.Error
+	require.ErrorAs(t, err, &connErr)
+	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
+	require.Contains(t, connErr.Message(), "reject requires decompose")
+}
+
+func TestAuthoringHandler_Approve_ExplicitAcceptSucceeds(t *testing.T) {
+	// Explicit APPROVE_ACTION_ACCEPT behaves identically to UNSPECIFIED.
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
+		Slug:   "my-spec",
+		Action: specv1.ApproveAction_APPROVE_ACTION_ACCEPT,
+	}))
+	require.NoError(t, err)
+	require.Equal(t, "my-spec", resp.Msg.Slug)
+	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
+	require.NotNil(t, resp.Msg.ApprovedAt, "approved_at should be set on explicit ACCEPT")
+}

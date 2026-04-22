@@ -129,6 +129,22 @@ func TestValidateExchanges(t *testing.T) {
 			wantErr:         true,
 			wantErrContains: "exceeds maximum length",
 		},
+		{
+			name: "exactly max exchanges accepted",
+			exchanges: func() []*specv1.ConversationExchange {
+				out := make([]*specv1.ConversationExchange, MaxConversationExchanges)
+				for i := range out {
+					out[i] = &specv1.ConversationExchange{
+						Role:     "probe",
+						Content:  "q",
+						Stage:    "shape",
+						Sequence: int32(i + 1),
+					}
+				}
+				return out
+			}(),
+			stage: "shape",
+		},
 	}
 
 	for _, tt := range tests {
