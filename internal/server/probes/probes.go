@@ -20,21 +20,26 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
+// probeState is a consistent snapshot of the last probe's outcome. Storing
+// it behind a single atomic pointer means readers see a coherent triple
+// (probed, ready, err) without per-field ordering hazards, and the writer
+// publishes the entire transition in one Store.
+type probeState struct {
+	ready bool
+	err   error
+}
+
 // Handler serves /livez and /readyz. Readiness reflects the most recent
-// background probe of the Pinger. The most recent probe error (if any)
-// is retained so /readyz bodies surface the failure cause rather than an
-// empty 503 — operators curling the endpoint get a reason string without
-// having to correlate with pod logs.
+// background probe of the Pinger; the most recent probe error is retained
+// so /readyz 503 bodies carry a reason string rather than going empty.
 type Handler struct {
-	ready   atomic.Bool
-	probed  atomic.Bool
-	lastErr atomic.Pointer[error]
+	state atomic.Pointer[probeState]
 }
 
 // New starts a background goroutine that probes pinger every interval using
-// probeTimeout per call. The goroutine exits when ctx is cancelled.
-// The first probe runs immediately so readiness reflects current state
-// without waiting a full interval.
+// probeTimeout per call. The goroutine exits when ctx is cancelled. The
+// first probe runs immediately so readiness reflects current state without
+// waiting a full interval.
 func New(ctx context.Context, pinger Pinger, interval, probeTimeout time.Duration) *Handler {
 	h := &Handler{}
 	go h.run(ctx, pinger, interval, probeTimeout)
@@ -60,24 +65,18 @@ func (h *Handler) probe(ctx context.Context, pinger Pinger, timeout time.Duratio
 	defer cancel()
 
 	err := pinger.Ping(pingCtx)
-	// Write lastErr before flipping ready so a Readyz racing with this
-	// probe sees an accurate reason for its 503.
-	if err != nil {
-		h.lastErr.Store(&err)
-	} else {
-		h.lastErr.Store(nil)
-	}
-	prev := h.ready.Swap(err == nil)
-	// The first probe has no prior state — zero-value ready=false looks
-	// like "failing" but it's just uninitialized, so treat the flip as
-	// informational and skip the transition log.
-	if !h.probed.Swap(true) {
+	prev := h.state.Load()
+	h.state.Store(&probeState{ready: err == nil, err: err})
+
+	// First probe establishes state, not a transition — zero-value prev
+	// would otherwise make the initial healthy probe look like recovery.
+	if prev == nil {
 		return
 	}
 	switch {
-	case err != nil && prev:
+	case err != nil && prev.ready:
 		slog.Warn("readiness probe failed", "error", err)
-	case err == nil && !prev:
+	case err == nil && !prev.ready:
 		slog.Info("readiness probe recovered")
 	}
 }
@@ -88,25 +87,24 @@ func (h *Handler) Livez(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// Readyz reports readiness. 200 when the last Pinger probe succeeded,
-// 503 otherwise (including before the first probe completes). The 503
-// response body carries the retained probe error (or "not yet probed"
-// before the first probe) so operators curling /readyz see the cause
-// without tailing logs.
+// Readyz reports readiness. 200 when the last probe succeeded, 503 otherwise
+// (including before the first probe completes). The 503 body carries the
+// retained probe error so operators curling /readyz see the cause without
+// tailing pod logs.
 func (h *Handler) Readyz(w http.ResponseWriter, _ *http.Request) {
-	if h.ready.Load() {
+	s := h.state.Load()
+	if s != nil && s.ready {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusServiceUnavailable)
 	reason := "not ready: probe has not yet completed"
-	if e := h.lastErr.Load(); e != nil && *e != nil {
-		reason = fmt.Sprintf("not ready: %s", *e)
+	if s != nil && s.err != nil {
+		reason = fmt.Sprintf("not ready: %s", s.err)
 	}
-	// A failed body write here means the client has already disconnected;
-	// there is nothing left to tell them, so drop the error rather than
-	// taking on a log line on every half-open connection.
+	// A failed write here means the peer already disconnected; logging per
+	// half-open connection would flood during an outage.
 	_, _ = fmt.Fprintln(w, reason) //nolint:errcheck // client gone, nothing to do
 }
 
