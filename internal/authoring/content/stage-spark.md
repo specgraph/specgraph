@@ -10,7 +10,7 @@ the raw seed, the signal behind it, and a gut-feel size check.
 
 ## What Spark Captures
 
-A Spark record answers three questions:
+A Spark record answers four questions:
 
 1. **What is the idea?** — The seed: a plain-language description of what should
    exist that doesn't exist yet.

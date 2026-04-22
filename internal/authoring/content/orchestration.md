@@ -18,10 +18,10 @@ The agent knows the slug, stage (implicit), and posture (from persona module).
 - **Support:** Run `autoIn` passes only. Offer `offeredIn` passes in Step 5
   (note: `offeredIn` sets may differ from Partner per the registry).
 
-Pass types use CLI-friendly kebab-case names:
+Pass types carry both a client-facing kebab-case name and an internal snake_case identifier:
 
-| CLI name | Internal name |
-|----------|---------------|
+| Client-facing name | Internal name |
+|--------------------|---------------|
 | `constitution-check` | `constitution_check` |
 | `peripheral-vision` | `peripheral_vision` |
 | `red-team` | `red_team` |

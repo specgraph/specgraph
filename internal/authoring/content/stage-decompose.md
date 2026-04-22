@@ -9,9 +9,11 @@ The agent PROPOSES the decomposition. The user confirms, adjusts, or redirects.
 
 ## What Decompose Produces
 
-A Decompose record contains a chosen strategy and 2-5 slices. Each slice is an
-independently executable unit of work with a clear verify condition and an
-explicit dependency on any prior slices it requires.
+A Decompose record contains a chosen strategy and a slice list. Most strategies
+produce 2-5 slices. The **Single unit** strategy records 1 slice (the full spec
+delivered as-is without decomposition). Each slice is an independently
+executable unit of work with a clear verify condition and an explicit dependency
+on any prior slices it requires.
 
 ---
 
