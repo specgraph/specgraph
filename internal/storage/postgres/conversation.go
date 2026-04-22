@@ -128,11 +128,11 @@ func (s *Store) RecordConversation(ctx context.Context, slug string, entry stora
 
 		_, insertErr := s.exec(txCtx,
 			`INSERT INTO conversation_logs
-				(id, spec_slug, project_slug, stage, version, is_amend, exchanges, exchange_count, date)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+				(id, spec_slug, project_slug, stage, version, is_amend, exchanges, exchange_count, posture, date)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 			id, slug, s.project,
 			string(entry.Stage), version, entry.IsAmend,
-			exchangesJSON, entry.ExchangeCount, now,
+			exchangesJSON, entry.ExchangeCount, entry.Posture, now,
 		)
 		if insertErr != nil {
 			return fmt.Errorf("postgres: record conversation: insert: %w", insertErr)
@@ -182,6 +182,7 @@ func (s *Store) RecordConversation(ctx context.Context, slug string, entry stora
 			IsAmend:       entry.IsAmend,
 			Exchanges:     entry.Exchanges,
 			ExchangeCount: entry.ExchangeCount,
+			Posture:       entry.Posture,
 			Date:          now,
 		}
 		return nil
@@ -216,7 +217,7 @@ func (s *Store) ListConversations(ctx context.Context, slug, stage string) ([]*s
 	)
 	if stage != "" {
 		rows, queryErr = s.query(ctx,
-			`SELECT id, stage, version, is_amend, exchanges, exchange_count, date
+			`SELECT id, stage, version, is_amend, exchanges, exchange_count, posture, date
 			 FROM conversation_logs
 			 WHERE spec_slug = $1 AND project_slug = $2 AND stage = $3
 			 ORDER BY date ASC`,
@@ -224,7 +225,7 @@ func (s *Store) ListConversations(ctx context.Context, slug, stage string) ([]*s
 		)
 	} else {
 		rows, queryErr = s.query(ctx,
-			`SELECT id, stage, version, is_amend, exchanges, exchange_count, date
+			`SELECT id, stage, version, is_amend, exchanges, exchange_count, posture, date
 			 FROM conversation_logs
 			 WHERE spec_slug = $1 AND project_slug = $2
 			 ORDER BY date ASC`,
@@ -255,7 +256,7 @@ func (s *Store) ListConversations(ctx context.Context, slug, stage string) ([]*s
 // with SpecSlug populated. Ordered by spec_slug, date ascending.
 func (s *Store) ListAllConversations(ctx context.Context) ([]*storage.ConversationLogEntry, error) {
 	rows, err := s.query(ctx,
-		`SELECT id, spec_slug, stage, version, is_amend, exchanges, exchange_count, date
+		`SELECT id, spec_slug, stage, version, is_amend, exchanges, exchange_count, posture, date
 		 FROM conversation_logs
 		 WHERE project_slug = $1
 		 ORDER BY spec_slug, date ASC`,
@@ -276,10 +277,11 @@ func (s *Store) ListAllConversations(ctx context.Context) ([]*storage.Conversati
 			isAmend       bool
 			exchangesJSON []byte
 			exchangeCount int32
+			posture       string
 			date          time.Time
 		)
 		if scanErr := rows.Scan(&id, &specSlug, &stageStr, &version, &isAmend,
-			&exchangesJSON, &exchangeCount, &date); scanErr != nil {
+			&exchangesJSON, &exchangeCount, &posture, &date); scanErr != nil {
 			return nil, fmt.Errorf("postgres: list all conversations: scan: %w", scanErr)
 		}
 		exchanges, uErr := unmarshalExchanges(exchangesJSON)
@@ -294,6 +296,7 @@ func (s *Store) ListAllConversations(ctx context.Context) ([]*storage.Conversati
 			IsAmend:       isAmend,
 			Exchanges:     exchanges,
 			ExchangeCount: exchangeCount,
+			Posture:       posture,
 			Date:          date,
 		})
 	}
@@ -304,7 +307,7 @@ func (s *Store) ListAllConversations(ctx context.Context) ([]*storage.Conversati
 }
 
 // scanConversationLogEntry scans a single conversation log row (without spec_slug).
-// Expected column order: id, stage, version, is_amend, exchanges, exchange_count, date.
+// Expected column order: id, stage, version, is_amend, exchanges, exchange_count, posture, date.
 func scanConversationLogEntry(rows pgx.Rows) (*storage.ConversationLogEntry, error) {
 	var (
 		id            string
@@ -313,10 +316,11 @@ func scanConversationLogEntry(rows pgx.Rows) (*storage.ConversationLogEntry, err
 		isAmend       bool
 		exchangesJSON []byte
 		exchangeCount int32
+		posture       string
 		date          time.Time
 	)
 	if err := rows.Scan(&id, &stageStr, &version, &isAmend,
-		&exchangesJSON, &exchangeCount, &date); err != nil {
+		&exchangesJSON, &exchangeCount, &posture, &date); err != nil {
 		return nil, fmt.Errorf("postgres: scan conversation log entry: %w", err)
 	}
 	exchanges, err := unmarshalExchanges(exchangesJSON)
@@ -330,6 +334,7 @@ func scanConversationLogEntry(rows pgx.Rows) (*storage.ConversationLogEntry, err
 		IsAmend:       isAmend,
 		Exchanges:     exchanges,
 		ExchangeCount: exchangeCount,
+		Posture:       posture,
 		Date:          date,
 	}, nil
 }

@@ -45,6 +45,7 @@ type ConversationLogEntry struct {
 	IsAmend       bool
 	Exchanges     []ConversationExchange
 	ExchangeCount int32
+	Posture       string // "drive", "partner", "support", or "" when unspecified
 	Date          time.Time
 }
 

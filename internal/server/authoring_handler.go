@@ -896,16 +896,31 @@ func exchangesFromProto(ps []*specv1.ConversationExchange) []storage.Conversatio
 }
 
 // buildConversationEntry constructs a ConversationLogEntry for RecordConversation.
-// The posture parameter is accepted to match stage-handler call sites but is
-// not yet persisted; Task 10 adds a Posture field to ConversationLogEntry.
-// Posture is silently discarded in this phase; Task 10 adds a Posture field to
-// ConversationLogEntry and wires it here.
-func buildConversationEntry(stage storage.SpecStage, _ specv1.Posture, exchanges []storage.ConversationExchange) storage.ConversationLogEntry {
+// The posture enum is converted to its string form and stored alongside the
+// exchanges for future drift detection per design §Posture.
+func buildConversationEntry(stage storage.SpecStage, posture specv1.Posture, exchanges []storage.ConversationExchange) storage.ConversationLogEntry {
 	return storage.ConversationLogEntry{
 		Stage:         stage,
 		Exchanges:     exchanges,
 		ExchangeCount: safeInt32(len(exchanges)),
+		Posture:       postureToString(posture),
 		// IsAmend defaults to false; amend-originated entries use a separate code path.
+	}
+}
+
+// postureToString maps the proto Posture enum to its canonical string form.
+// Unknown values map to the empty string, which the storage layer treats as
+// "posture unspecified".
+func postureToString(p specv1.Posture) string {
+	switch p {
+	case specv1.Posture_POSTURE_DRIVE:
+		return "drive"
+	case specv1.Posture_POSTURE_PARTNER:
+		return "partner"
+	case specv1.Posture_POSTURE_SUPPORT:
+		return "support"
+	default:
+		return ""
 	}
 }
 
