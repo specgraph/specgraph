@@ -19,12 +19,12 @@ func TestLoadGlobal_Defaults(t *testing.T) {
 
 	cfg, err := config.LoadGlobal(path)
 	require.NoError(t, err)
-	assert.Equal(t, "127.0.0.1:7890", cfg.Server.Listen)
+	assert.Equal(t, "0.0.0.0:9090", cfg.Server.Listen)
 	assert.Equal(t, "service", cfg.Server.Mode)
 	assert.Equal(t, "postgres", cfg.Server.Backend)
 	assert.Equal(t, "postgres://specgraph:specgraph@localhost:5432/specgraph?sslmode=disable", cfg.Server.Postgres.URL)
 	assert.True(t, cfg.Server.Docker)
-	assert.Equal(t, "http://127.0.0.1:7890", cfg.Client.DefaultServer)
+	assert.Equal(t, "http://127.0.0.1:9090", cfg.Client.DefaultServer)
 	assert.Empty(t, cfg.Client.Routes)
 
 	_, err = os.Stat(path)

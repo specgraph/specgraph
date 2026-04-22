@@ -71,8 +71,14 @@ specgraph up
 ```
 
 This starts a PostgreSQL Docker container and installs a background service
-(launchd on macOS, systemd on Linux). The server listens at
-`http://localhost:9090` by default.
+(launchd on macOS, systemd on Linux). The server binds `0.0.0.0:9090` by
+default and is reachable at `http://localhost:9090` from the local machine.
+
+> **Heads-up:** With no auth configured, `0.0.0.0:9090` accepts non-loopback
+> traffic; SpecGraph logs a warning at startup. Set
+> `server.listen: "127.0.0.1:9090"` in `~/.config/specgraph/config.yaml` to
+> restrict to loopback, or configure API keys / OIDC before exposing the
+> server.
 
 <details><summary>Manual mode</summary>
 
