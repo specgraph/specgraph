@@ -89,6 +89,37 @@ func TestValidateExchanges(t *testing.T) {
 			},
 			stage: "shape",
 		},
+		{
+			name: "too many exchanges",
+			exchanges: func() []*specv1.ConversationExchange {
+				es := make([]*specv1.ConversationExchange, MaxConversationExchanges+1)
+				for i := range es {
+					role := "probe"
+					if i%2 == 1 {
+						role = "response"
+					}
+					es[i] = &specv1.ConversationExchange{
+						Role:     role,
+						Content:  "x",
+						Stage:    "shape",
+						Sequence: int32(i + 1),
+					}
+				}
+				return es
+			}(),
+			stage:           "shape",
+			wantErr:         true,
+			wantErrContains: "exceed maximum",
+		},
+		{
+			name: "content too long",
+			exchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: string(make([]byte, MaxExchangeContentLen+1)), Stage: "shape", Sequence: 1},
+			},
+			stage:           "shape",
+			wantErr:         true,
+			wantErrContains: "exceeds maximum length",
+		},
 	}
 
 	for _, tt := range tests {

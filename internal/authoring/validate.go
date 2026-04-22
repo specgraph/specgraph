@@ -9,6 +9,13 @@ import (
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 )
 
+const (
+	// MaxConversationExchanges is the maximum number of exchanges allowed per call.
+	MaxConversationExchanges = 100
+	// MaxExchangeContentLen is the maximum character length of a single exchange's content.
+	MaxExchangeContentLen = 4096
+)
+
 // ValidationError indicates conversation_exchanges failed a structural check.
 type ValidationError struct {
 	Reason string
@@ -25,6 +32,9 @@ func (e *ValidationError) Error() string { return "conversation_exchanges: " + e
 func ValidateExchanges(exchanges []*specv1.ConversationExchange, targetStage string) error {
 	if len(exchanges) == 0 {
 		return &ValidationError{Reason: "at least one exchange required"}
+	}
+	if len(exchanges) > MaxConversationExchanges {
+		return &ValidationError{Reason: fmt.Sprintf("exchanges exceed maximum of %d", MaxConversationExchanges)}
 	}
 
 	var lastSeq int32
@@ -43,6 +53,9 @@ func ValidateExchanges(exchanges []*specv1.ConversationExchange, targetStage str
 		}
 		if ex.GetContent() == "" {
 			return &ValidationError{Reason: fmt.Sprintf("exchange[%d] missing content", i)}
+		}
+		if len(ex.GetContent()) > MaxExchangeContentLen {
+			return &ValidationError{Reason: fmt.Sprintf("exchange[%d] content exceeds maximum length of %d characters", i, MaxExchangeContentLen)}
 		}
 		if s := ex.GetStage(); s != "" && s != targetStage {
 			return &ValidationError{Reason: fmt.Sprintf("exchange[%d] stage %q does not match target stage %q", i, s, targetStage)}
