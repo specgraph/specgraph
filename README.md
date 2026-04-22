@@ -119,7 +119,8 @@ See the [deployment guide](https://specgraph.io/deployment/) for team and produc
 | `specgraph init` | Initialize project config and optionally scan for constitution |
 | `specgraph serve` | Start the ConnectRPC API server |
 | `specgraph health` | Check server health |
-| `specgraph up/down` | Start or stop the database container |
+| `specgraph up/down` | Start or stop the database container (non-destructive; `down --purge` wipes data) |
+| `specgraph install/uninstall` | Register or remove the SpecGraph user service (launchd/systemd); data preserved |
 
 ## Contributing
 

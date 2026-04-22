@@ -20,16 +20,6 @@ func TestComposeUpArgsOmitsForceRecreateAndRenewVolumes(t *testing.T) {
 	}
 }
 
-func TestComposeDownArgsOmitsVolumeFlag(t *testing.T) {
-	got := composeDownArgs("/tmp/compose.yaml")
-	want := []string{"compose", "-f", "/tmp/compose.yaml", "down", "--timeout", "10"}
-	// CRITICAL: no -v. The -v flag removes named volumes and was the cause of
-	// silent data loss on every `specgraph down`. Do not re-add it here.
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("composeDownArgs produced wrong argv\n got:  %v\n want: %v", got, want)
-	}
-}
-
 func TestComposeStopArgsUsesStopNotDown(t *testing.T) {
 	got := composeStopArgs("/tmp/compose.yaml")
 	want := []string{"compose", "-f", "/tmp/compose.yaml", "stop", "--timeout", "10"}

@@ -18,14 +18,6 @@ func composeUpArgs(composeFile string) []string {
 	return []string{"compose", "-f", composeFile, "up", "-d", "--wait"}
 }
 
-// composeDownArgs returns the argv passed to `docker` for `ComposeDown`.
-// Must not contain -v: that flag removes named volumes and caused silent
-// data loss on every `specgraph down`. Destructive teardowns go through
-// composeDownWithVolumesArgs instead.
-func composeDownArgs(composeFile string) []string {
-	return []string{"compose", "-f", composeFile, "down", "--timeout", "10"}
-}
-
 // composeStopArgs returns the argv passed to `docker` for `ComposeStop`.
 func composeStopArgs(composeFile string) []string {
 	return []string{"compose", "-f", composeFile, "stop", "--timeout", "10"}
@@ -53,26 +45,16 @@ func ComposeUp(composeFile string) error {
 }
 
 // ComposeStop halts the stack without removing containers or volumes.
-// Idempotent: `docker compose stop` on an already-stopped stack exits 0.
+// Idempotent when the stack exists: `docker compose stop` on already-stopped
+// containers exits 0. Callers should guard against a missing compose file
+// since this function does not (unlike ComposeUp); both `specgraph down` and
+// `specgraph uninstall` stat the file before invoking.
 func ComposeStop(composeFile string) error {
 	cmd := exec.Command("docker", composeStopArgs(composeFile)...) //nolint:gosec // argv assembled from pure function; composeFile is xdg-owned path, no shell involved
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("docker compose stop: %w", err)
-	}
-	return nil
-}
-
-// ComposeDown tears down the Docker Compose stack defined in composeFile.
-// Removes containers but preserves named volumes. Callers that need to
-// destroy data must use ComposeDownWithVolumes instead.
-func ComposeDown(composeFile string) error {
-	cmd := exec.Command("docker", composeDownArgs(composeFile)...) //nolint:gosec // argv assembled from pure function; composeFile is xdg-owned path, no shell involved
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("docker compose down: %w", err)
 	}
 	return nil
 }

@@ -22,6 +22,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// upIsInstalled is the seam tests swap to exercise the service-mode hint
+// branch without touching the real launchd/systemd files. Kept as a bare
+// var (not a deps struct) because `up` has exactly one seam; promote to a
+// struct if a second seam ever appears.
+var upIsInstalled = service.IsInstalled
+
+// serviceModeHint returns the text `up` should print in service mode given
+// the installation state, or "" if nothing should be printed. Extracted so
+// tests can verify the branching without spinning up cobra/config machinery.
+func serviceModeHint(installed bool) string {
+	if installed {
+		return ""
+	}
+	return "Service not installed — running container only. Run `specgraph install` to enable auto-start."
+}
+
 var upCmd = &cobra.Command{
 	Use:   "up",
 	Short: "Start the SpecGraph server (daemon, service, or manual)",
@@ -63,29 +79,14 @@ func runUp(cmd *cobra.Command, _ []string) error {
 
 	switch cfg.Server.Mode {
 	case "service":
-		binaryPath, err := os.Executable()
-		if err != nil {
-			return fmt.Errorf("resolve binary path: %w", err)
-		}
-		binaryPath, err = filepath.Abs(binaryPath)
-		if err != nil {
-			return fmt.Errorf("resolve absolute binary path: %w", err)
-		}
-		destDir, err := serviceDestDir()
-		if err != nil {
-			return fmt.Errorf("service dest dir: %w", err)
-		}
-		svcCfg := service.Config{
-			BinaryPath: binaryPath,
-			ConfigPath: globalConfigPath(),
-			LogPath:    filepath.Join(xdg.StateHome(), "server.log"),
-		}
-		defPath, err := service.Generate(destDir, svcCfg)
-		if err != nil {
-			return fmt.Errorf("generate service definition: %w", err)
-		}
-		if err := service.Install(defPath); err != nil {
-			return fmt.Errorf("install service: %w", err)
+		// `up` no longer installs the service. Once registered, the OS service
+		// manager keeps it alive — launchd via RunAtLoad + KeepAlive (see
+		// internal/service/launchd.go), systemd via Restart=on-failure +
+		// WantedBy=default.target (see internal/service/systemd.go). No action
+		// needed here. If not installed, print a hint and continue so
+		// docker-only users still get a running container.
+		if hint := serviceModeHint(upIsInstalled()); hint != "" {
+			fmt.Println(hint)
 		}
 	case "manual":
 		fmt.Println("Manual mode: run `specgraph serve` in another terminal")
