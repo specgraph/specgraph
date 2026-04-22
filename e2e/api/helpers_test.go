@@ -114,6 +114,10 @@ func advanceStage(ctx context.Context, slug, target string, httpClients ...*http
 				Approaches:     []*specv1.Approach{{Name: "default", Description: "test approach"}},
 				ChosenApproach: "default",
 			},
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "what is in scope?", Stage: "shape", Sequence: 1},
+				{Role: "response", Content: "in-scope only", Stage: "shape", Sequence: 2},
+			},
 		}))
 		if err != nil {
 			return fmt.Errorf("advanceStage shape: %w", err)
@@ -130,6 +134,10 @@ func advanceStage(ctx context.Context, slug, target string, httpClients ...*http
 			Interfaces:     []*specv1.InterfaceSection{{Name: "API", Body: "test"}},
 			VerifyCriteria: []*specv1.VerifyCriterion{{Description: "passes"}},
 		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "what are the interfaces?", Stage: "specify", Sequence: 1},
+			{Role: "response", Content: "API with test body", Stage: "specify", Sequence: 2},
+		},
 	}))
 	if err != nil {
 		return fmt.Errorf("advanceStage specify: %w", err)
@@ -144,6 +152,10 @@ func advanceStage(ctx context.Context, slug, target string, httpClients ...*http
 		Output: &specv1.DecomposeOutput{
 			Strategy: specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_SINGLE_UNIT,
 			Slices:   []*specv1.DecompositionSlice{{Id: "main", Intent: "test"}},
+		},
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "how to decompose?", Stage: "decompose", Sequence: 1},
+			{Role: "response", Content: "single unit", Stage: "decompose", Sequence: 2},
 		},
 	}))
 	if err != nil {
