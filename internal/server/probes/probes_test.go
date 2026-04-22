@@ -211,6 +211,8 @@ func TestReadyz_BodyReportsPrePingState(t *testing.T) {
 	})
 }
 
+// slog.SetDefault is process-global; do not add t.Parallel() to these
+// logger-capturing tests.
 func TestProbe_LogsTransitionsOnly(t *testing.T) {
 	buf := &syncBuffer{}
 	prev := slog.Default()
@@ -223,9 +225,8 @@ func TestProbe_LogsTransitionsOnly(t *testing.T) {
 	pinger := &fakePinger{}
 	h := probes.New(ctx, pinger, 5*time.Millisecond, 50*time.Millisecond)
 
-	// Let several healthy probes elapse — none should log. The first
-	// probe is silent (no prior state), subsequent healthy probes are
-	// steady-state.
+	// First healthy probe is silent (happy-path boot); subsequent healthy
+	// probes stay silent too.
 	waitFor(t, func() bool { return pinger.calls.Load() >= 3 })
 	assert.NotContains(t, buf.String(), "readiness probe", "steady-state healthy must not log")
 
@@ -238,6 +239,12 @@ func TestProbe_LogsTransitionsOnly(t *testing.T) {
 	assert.Equal(t, 1, strings.Count(buf.String(), "readiness probe failed"),
 		"failing steady state must not flood logs")
 
+	// Error shape changes mid-outage must re-log so pod logs mirror what
+	// /readyz now returns.
+	pinger.setErr(errors.New("different cause"))
+	waitFor(t, func() bool { return strings.Contains(buf.String(), "readiness probe error changed") })
+	assert.Contains(t, buf.String(), "different cause")
+
 	pinger.setErr(nil)
 	waitFor(t, func() bool { return strings.Contains(buf.String(), "readiness probe recovered") })
 	assert.Equal(t, 1, strings.Count(buf.String(), "readiness probe recovered"))
@@ -249,6 +256,29 @@ func TestProbe_LogsTransitionsOnly(t *testing.T) {
 		h.Readyz(w, httptest.NewRequest(http.MethodGet, "/readyz", http.NoBody))
 		return w.Code == http.StatusOK
 	})
+}
+
+// slog.SetDefault is process-global; do not add t.Parallel() here.
+func TestProbe_LogsFirstProbeFailure(t *testing.T) {
+	buf := &syncBuffer{}
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	slog.SetDefault(slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	pinger := &fakePinger{}
+	pinger.setErr(errors.New("db unreachable on boot"))
+	probes.New(ctx, pinger, time.Hour, 50*time.Millisecond)
+
+	// First-probe-failing must produce a log line; a pod that never
+	// becomes ready would otherwise leave operators without any log
+	// signal that readiness is permanently failing.
+	waitFor(t, func() bool {
+		return strings.Contains(buf.String(), "readiness probe failed on first attempt")
+	})
+	assert.Contains(t, buf.String(), "db unreachable on boot")
 }
 
 type blockingPinger struct{ block <-chan struct{} }

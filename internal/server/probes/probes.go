@@ -65,19 +65,32 @@ func (h *Handler) probe(ctx context.Context, pinger Pinger, timeout time.Duratio
 	defer cancel()
 
 	err := pinger.Ping(pingCtx)
+	if ctx.Err() != nil {
+		// Parent ctx cancelled — we're shutting down. State updates and
+		// log lines would only add noise; the goroutine's next loop
+		// iteration will observe ctx.Done and exit.
+		return
+	}
 	prev := h.state.Load()
 	h.state.Store(&probeState{ready: err == nil, err: err})
 
-	// First probe establishes state, not a transition — zero-value prev
-	// would otherwise make the initial healthy probe look like recovery.
-	if prev == nil {
-		return
-	}
 	switch {
+	case prev == nil && err != nil:
+		// Pod starting against a dead dependency: log once so operators
+		// tailing for readiness failures see something. A silent boot
+		// against a permanently-down DB would otherwise reveal the
+		// failure only via 503 bodies on /readyz.
+		slog.Warn("readiness probe failed on first attempt", "error", err)
+	case prev == nil:
+		// First probe is healthy — happy path, stay silent.
 	case err != nil && prev.ready:
 		slog.Warn("readiness probe failed", "error", err)
 	case err == nil && !prev.ready:
 		slog.Info("readiness probe recovered")
+	case err != nil && prev.err != nil && prev.err.Error() != err.Error():
+		// Mid-outage error shape changed (e.g., connection-refused →
+		// auth-failed). Re-log so logs mirror what /readyz now returns.
+		slog.Warn("readiness probe error changed", "error", err)
 	}
 }
 
