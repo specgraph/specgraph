@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -119,6 +120,64 @@ func TestLoadGlobal_ReadOnlyParentDir(t *testing.T) {
 	_, err := config.LoadGlobal(path)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "write default config")
+}
+
+func TestProbesConfig_EffectiveDefaults(t *testing.T) {
+	var p config.ProbesConfig
+	assert.Equal(t, config.DefaultProbeInterval, p.EffectiveInterval())
+	assert.Equal(t, config.DefaultProbeTimeout, p.EffectiveProbeTimeout())
+}
+
+func TestProbesConfig_EffectiveOverrides(t *testing.T) {
+	p := config.ProbesConfig{Interval: 30 * time.Second, ProbeTimeout: 4 * time.Second}
+	assert.Equal(t, 30*time.Second, p.EffectiveInterval())
+	assert.Equal(t, 4*time.Second, p.EffectiveProbeTimeout())
+}
+
+func TestProbesConfig_Validate(t *testing.T) {
+	cases := []struct {
+		name    string
+		cfg     config.ProbesConfig
+		wantErr string
+	}{
+		{name: "zero values pass", cfg: config.ProbesConfig{}},
+		{name: "positive values pass", cfg: config.ProbesConfig{Interval: 10 * time.Second, ProbeTimeout: 3 * time.Second}},
+		{name: "timeout equals interval passes", cfg: config.ProbesConfig{Interval: 2 * time.Second, ProbeTimeout: 2 * time.Second}},
+		{name: "negative interval", cfg: config.ProbesConfig{Interval: -1 * time.Second}, wantErr: "probes.interval must be non-negative"},
+		{name: "negative timeout", cfg: config.ProbesConfig{ProbeTimeout: -1 * time.Second}, wantErr: "probes.probe_timeout must be non-negative"},
+		{name: "timeout exceeds interval", cfg: config.ProbesConfig{Interval: 2 * time.Second, ProbeTimeout: 5 * time.Second}, wantErr: "must not exceed probes.interval"},
+		{name: "timeout exceeds default interval", cfg: config.ProbesConfig{ProbeTimeout: 30 * time.Second}, wantErr: "must not exceed probes.interval"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.cfg.Validate()
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.wantErr)
+		})
+	}
+}
+
+func TestLoadGlobal_ProbesYAML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	yaml := `
+server:
+  probes:
+    listen: "0.0.0.0:9091"
+    interval: 10s
+    probe_timeout: 3s
+`
+	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600))
+
+	cfg, err := config.LoadGlobal(path)
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.0.0:9091", cfg.Server.Probes.Listen)
+	assert.Equal(t, 10*time.Second, cfg.Server.Probes.Interval)
+	assert.Equal(t, 3*time.Second, cfg.Server.Probes.ProbeTimeout)
 }
 
 func TestResolveServer_RouteMatch(t *testing.T) {

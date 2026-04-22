@@ -9,8 +9,17 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 
 	"gopkg.in/yaml.v3"
+)
+
+// DefaultProbeInterval and DefaultProbeTimeout match kubelet's default
+// periodSeconds=10 (comfortably fresh) with a generous per-probe budget
+// for pgxpool.Ping against a local Postgres.
+const (
+	DefaultProbeInterval = 5 * time.Second
+	DefaultProbeTimeout  = 2 * time.Second
 )
 
 // GlobalConfig is the new top-level config at ~/.config/specgraph/config.yaml.
@@ -37,9 +46,46 @@ type ServerSection struct {
 }
 
 // ProbesConfig configures the plain-HTTP Kubernetes/Knative probe listener.
-// When Listen is empty, the probe endpoints are disabled.
+// When Listen is empty, the probe endpoints are disabled. Zero-valued
+// Interval and ProbeTimeout resolve to DefaultProbeInterval and
+// DefaultProbeTimeout via the Effective* methods.
 type ProbesConfig struct {
-	Listen string `yaml:"listen,omitempty"`
+	Listen       string        `yaml:"listen,omitempty"`
+	Interval     time.Duration `yaml:"interval,omitempty"`
+	ProbeTimeout time.Duration `yaml:"probe_timeout,omitempty"`
+}
+
+// EffectiveInterval returns Interval if set, else DefaultProbeInterval.
+func (p ProbesConfig) EffectiveInterval() time.Duration {
+	if p.Interval > 0 {
+		return p.Interval
+	}
+	return DefaultProbeInterval
+}
+
+// EffectiveProbeTimeout returns ProbeTimeout if set, else DefaultProbeTimeout.
+func (p ProbesConfig) EffectiveProbeTimeout() time.Duration {
+	if p.ProbeTimeout > 0 {
+		return p.ProbeTimeout
+	}
+	return DefaultProbeTimeout
+}
+
+// Validate rejects negative durations and a per-probe timeout that exceeds
+// the interval (probes would overlap and stack up behind a slow Postgres).
+// Zero values pass — they resolve to defaults via the Effective* methods.
+func (p ProbesConfig) Validate() error {
+	if p.Interval < 0 {
+		return fmt.Errorf("probes.interval must be non-negative, got %s", p.Interval)
+	}
+	if p.ProbeTimeout < 0 {
+		return fmt.Errorf("probes.probe_timeout must be non-negative, got %s", p.ProbeTimeout)
+	}
+	if p.EffectiveProbeTimeout() > p.EffectiveInterval() {
+		return fmt.Errorf("probes.probe_timeout (%s) must not exceed probes.interval (%s)",
+			p.EffectiveProbeTimeout(), p.EffectiveInterval())
+	}
+	return nil
 }
 
 // ClientConfig configures how CLI commands connect to the server.

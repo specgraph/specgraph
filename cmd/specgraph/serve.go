@@ -37,18 +37,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Probe tuning. Hard-coded because kubelet's default periodSeconds=10 makes
-// a 5s interval comfortably fresh, and 2s is a generous per-ping budget for
-// a local pgxpool.Ping. Promote to ProbesConfig if operators need overrides.
-const (
-	probeInterval = 5 * time.Second
-	probeTimeout  = 2 * time.Second
-
-	// probeShutdownTimeout bounds graceful drain of the probe listener.
-	// Independent from the main server's budget so slow main-server drains
-	// don't starve the probe server's shutdown.
-	probeShutdownTimeout = 15 * time.Second
-)
+// probeShutdownTimeout bounds graceful drain of the probe listener,
+// independent from the main server's budget so a slow main-server drain
+// can't starve the probe server's shutdown.
+const probeShutdownTimeout = 15 * time.Second
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -295,7 +287,15 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		IdleTimeout:       120 * time.Second,
 	}
 
-	probeSrv, err := startProbeListener(ctx, s, cfg.Server.Probes.Listen, probeInterval, probeTimeout)
+	if validateErr := cfg.Server.Probes.Validate(); validateErr != nil {
+		return fmt.Errorf("probes config: %w", validateErr)
+	}
+	probeSrv, err := startProbeListener(
+		ctx, s,
+		cfg.Server.Probes.Listen,
+		cfg.Server.Probes.EffectiveInterval(),
+		cfg.Server.Probes.EffectiveProbeTimeout(),
+	)
 	if err != nil {
 		return err
 	}
