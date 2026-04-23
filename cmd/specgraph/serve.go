@@ -38,18 +38,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Probe tuning. Hard-coded because kubelet's default periodSeconds=10 makes
-// a 5s interval comfortably fresh, and 2s is a generous per-ping budget for
-// a local pgxpool.Ping. Promote to ProbesConfig if operators need overrides.
-const (
-	probeInterval = 5 * time.Second
-	probeTimeout  = 2 * time.Second
-
-	// probeShutdownTimeout bounds graceful drain of the probe listener.
-	// Independent from the main server's budget so slow main-server drains
-	// don't starve the probe server's shutdown.
-	probeShutdownTimeout = 15 * time.Second
-)
+// probeShutdownTimeout bounds graceful drain of the probe listener,
+// independent from the main server's budget so a slow main-server drain
+// can't starve the probe server's shutdown.
+const probeShutdownTimeout = 15 * time.Second
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -64,7 +56,7 @@ func init() {
 }
 
 func runServe(cmd *cobra.Command, _ []string) error {
-	cfg, err := config.LoadGlobal(globalConfigPath())
+	cfg, err := loadGlobalCfg()
 	if err != nil {
 		return fmt.Errorf("load global config: %w", err)
 	}
@@ -215,11 +207,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("auth composite store: %w", csErr)
 	}
 
-	if !compositeStore.HasAuth() && !isLoopbackAddr(cfg.Server.Listen) {
-		slog.Warn("server listening without authentication on non-loopback interface",
-			"addr", cfg.Server.Listen,
-			"risk", "configure API keys or OIDC providers")
-	}
+	warnIfNoAuthOnPublicListen(cfg.Server.Listen, compositeStore.HasAuth())
 	interceptor := auth.NewAuthInterceptor(compositeStore)
 	maxBytes := connect.WithReadMaxBytes(4 << 20) // 4 MiB request body limit
 	opts := connect.WithInterceptors(interceptor)
@@ -296,33 +284,22 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		IdleTimeout:       120 * time.Second,
 	}
 
-	// Probe listener (off by default). Readiness is cached — a background
-	// goroutine pings Postgres so probe traffic doesn't scale DB load with
-	// kubelet poll count.
-	var probeSrv *http.Server
-	if probesAddr := cfg.Server.Probes.Listen; probesAddr != "" {
-		// Bind eagerly so bind failures (port in use, permission denied) abort
-		// startup with a clear error rather than producing a running API that
-		// kubelet can never mark ready.
-		probeLn, lnErr := net.Listen("tcp", probesAddr)
-		if lnErr != nil {
-			return fmt.Errorf("probe listener bind %s: %w", probesAddr, lnErr)
-		}
-		probeH := probes.New(ctx, s, probeInterval, probeTimeout)
-		probeSrv = &http.Server{
-			Handler:           probeH.Mux(),
-			ReadHeaderTimeout: 5 * time.Second,
-		}
-		slog.Info("probe endpoints listening", "addr", probesAddr, "livez", "/livez", "readyz", "/readyz")
-		go func() {
-			if probeErr := probeSrv.Serve(probeLn); probeErr != nil && !errors.Is(probeErr, http.ErrServerClosed) {
-				slog.Error("probe server failed", "addr", probesAddr, "error", probeErr)
-			}
-		}()
+	probesCfg, err := validateServerConfig(cfg)
+	if err != nil {
+		return err
+	}
+	probeSrv, probeErrCh, err := startProbeListener(ctx, s, probesCfg)
+	if err != nil {
+		return err
 	}
 
 	go func() {
-		<-ctx.Done()
+		select {
+		case <-ctx.Done():
+		case probeErr := <-probeErrCh:
+			slog.Error("probe listener died; triggering shutdown", "error", probeErr)
+			cancel()
+		}
 		fmt.Println("\nShutting down...")
 		stopSweeper()
 		// Shut down main and probe servers in parallel so a slow main-server
@@ -386,4 +363,69 @@ func isLoopbackAddr(addr string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+// warnIfNoAuthOnPublicListen logs a single WARN line when the server is
+// bound to a non-loopback interface with no authentication configured —
+// the unconfigured default is reachable without credentials, and this
+// warning is the only boot-log signal operators get.
+func warnIfNoAuthOnPublicListen(listen string, hasAuth bool) {
+	if hasAuth || isLoopbackAddr(listen) {
+		return
+	}
+	slog.Warn("server listening without authentication on non-loopback interface",
+		"addr", listen,
+		"risk", "configure API keys or OIDC providers")
+}
+
+// validateServerConfig runs cross-section validation the main serve path
+// depends on. Extracted so tests can exercise validation failures without
+// spinning up the full runServe stack (config load, docker compose, auth
+// composite store, …). Returns the resolved ProbesConfig so the caller
+// doesn't re-resolve.
+func validateServerConfig(cfg *config.GlobalConfig) (config.ProbesConfig, error) {
+	probesCfg, err := cfg.Server.Probes.Resolved()
+	if err != nil {
+		return config.ProbesConfig{}, fmt.Errorf("invalid probes config: %w", err)
+	}
+	return probesCfg, nil
+}
+
+// startProbeListener binds a plain-HTTP listener serving /livez and /readyz
+// using tuning from a resolved ProbesConfig. Returns (nil, nil, nil) when
+// Listen is empty so callers treat probes as off. Bind errors abort startup
+// rather than leaving a running API that kubelet can never mark ready.
+//
+// The returned error channel fires once if the background Serve returns a
+// non-ErrServerClosed error — a dead probe listener while the main server
+// keeps serving traffic is a silent split-brain that kubelet can't recover
+// from on its own, so the caller should treat a send on this channel as a
+// shutdown trigger.
+func startProbeListener(ctx context.Context, pinger probes.Pinger, cfg config.ProbesConfig) (*http.Server, <-chan error, error) {
+	if cfg.Listen == "" {
+		return nil, nil, nil
+	}
+	ln, err := net.Listen("tcp", cfg.Listen)
+	if err != nil {
+		return nil, nil, fmt.Errorf("probe listener bind %s: %w", cfg.Listen, err)
+	}
+	h := probes.New(ctx, pinger, cfg.Interval, cfg.Timeout)
+	srv := &http.Server{
+		// Addr reflects the resolved listener address, not the caller's
+		// input, so callers passing ":0" can observe the ephemeral port.
+		Addr:              ln.Addr().String(),
+		Handler:           h.Mux(),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	slog.Info("probe endpoints listening", "addr", srv.Addr, "livez", "/livez", "readyz", "/readyz")
+	errCh := make(chan error, 1)
+	go func() {
+		serveErr := srv.Serve(ln)
+		if serveErr == nil || errors.Is(serveErr, http.ErrServerClosed) {
+			return
+		}
+		slog.Error("probe server failed", "addr", srv.Addr, "error", serveErr)
+		errCh <- serveErr
+	}()
+	return srv, errCh, nil
 }

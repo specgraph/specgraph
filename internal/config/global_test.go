@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -83,6 +84,29 @@ func TestLoadGlobal_MalformedYAML(t *testing.T) {
 	assert.Contains(t, err.Error(), "parse config")
 }
 
+func TestLoadGlobalExplicit_ErrorsWhenMissing(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "does-not-exist.yaml")
+
+	_, err := config.LoadGlobalExplicit(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "config file not found")
+	assert.Contains(t, err.Error(), path)
+
+	_, statErr := os.Stat(path)
+	assert.True(t, os.IsNotExist(statErr), "must not materialize defaults at operator-supplied path")
+}
+
+func TestLoadGlobalExplicit_LoadsExistingFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  mode: manual\n"), 0o600))
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.Equal(t, "manual", cfg.Server.Mode)
+}
+
 func TestLoadGlobal_ReadOnlyParentDir(t *testing.T) {
 	if os.Getuid() == 0 {
 		t.Skip("root bypasses permission checks")
@@ -96,6 +120,67 @@ func TestLoadGlobal_ReadOnlyParentDir(t *testing.T) {
 	_, err := config.LoadGlobal(path)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "write default config")
+}
+
+func TestProbesConfig_Resolved_FillsDefaults(t *testing.T) {
+	resolved, err := config.ProbesConfig{}.Resolved()
+	require.NoError(t, err)
+	assert.Equal(t, config.DefaultProbeInterval, resolved.Interval)
+	assert.Equal(t, config.DefaultProbeTimeout, resolved.Timeout)
+}
+
+func TestProbesConfig_Resolved_PreservesOverrides(t *testing.T) {
+	p := config.ProbesConfig{Interval: 30 * time.Second, Timeout: 4 * time.Second}
+	resolved, err := p.Resolved()
+	require.NoError(t, err)
+	assert.Equal(t, 30*time.Second, resolved.Interval)
+	assert.Equal(t, 4*time.Second, resolved.Timeout)
+}
+
+func TestProbesConfig_Resolved(t *testing.T) {
+	cases := []struct {
+		name    string
+		cfg     config.ProbesConfig
+		wantErr string
+	}{
+		{name: "zero values resolve to defaults", cfg: config.ProbesConfig{}},
+		{name: "positive values pass", cfg: config.ProbesConfig{Interval: 10 * time.Second, Timeout: 3 * time.Second}},
+		{name: "timeout equals interval passes", cfg: config.ProbesConfig{Interval: 2 * time.Second, Timeout: 2 * time.Second}},
+		{name: "negative interval", cfg: config.ProbesConfig{Interval: -1 * time.Second}, wantErr: "probes.interval must be non-negative"},
+		{name: "negative timeout", cfg: config.ProbesConfig{Timeout: -1 * time.Second}, wantErr: "probes.timeout must be non-negative"},
+		{name: "timeout exceeds interval", cfg: config.ProbesConfig{Interval: 2 * time.Second, Timeout: 5 * time.Second}, wantErr: "must not exceed probes.interval"},
+		{name: "timeout exceeds default interval", cfg: config.ProbesConfig{Timeout: 30 * time.Second}, wantErr: "must not exceed probes.interval"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.cfg.Resolved()
+			if tc.wantErr == "" {
+				assert.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.wantErr)
+		})
+	}
+}
+
+func TestLoadGlobal_ProbesYAML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	yaml := `
+server:
+  probes:
+    listen: "0.0.0.0:9091"
+    interval: 10s
+    timeout: 3s
+`
+	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600))
+
+	cfg, err := config.LoadGlobal(path)
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.0.0:9091", cfg.Server.Probes.Listen)
+	assert.Equal(t, 10*time.Second, cfg.Server.Probes.Interval)
+	assert.Equal(t, 3*time.Second, cfg.Server.Probes.Timeout)
 }
 
 func TestResolveServer_RouteMatch(t *testing.T) {

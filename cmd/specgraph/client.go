@@ -60,7 +60,7 @@ func resolveBaseURL() (baseURL, project string, err error) {
 		if projErr != nil {
 			return "", "", fmt.Errorf("load project config: %w", projErr)
 		}
-		globalCfg, globalErr := config.LoadGlobal(globalConfigPath())
+		globalCfg, globalErr := loadGlobalCfg()
 		if globalErr != nil {
 			return "", "", fmt.Errorf("load global config: %w", globalErr)
 		}

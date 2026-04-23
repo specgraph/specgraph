@@ -36,8 +36,19 @@ server:
 ```
 
 - `GET /livez` — 200 as long as the HTTP goroutine is alive. No DB touch.
-- `GET /readyz` — 200 when the last cached Postgres probe succeeded;
-  503 otherwise (including before the first probe completes).
+  Empty body.
+- `GET /readyz` — 200 (empty body) when the last cached Postgres probe
+  succeeded; 503 otherwise. On 503 the response body carries a plain-text
+  reason string (e.g. `not ready: postgres: ping: dial tcp: connect:
+  connection refused`) so `curl /readyz` identifies the failure cause
+  without tailing pod logs. Before the first probe completes the body
+  reads `not ready: probe has not yet completed`. kubelet's httpGet probe
+  ignores the body, so operators using Kubernetes probes see no change.
+
+Transitions between healthy and failing states log once each at `INFO`
+(`readiness probe recovered`) and `WARN` (`readiness probe failed` with
+the cause as an attribute) — steady-state probes are silent to avoid
+flooding logs when Postgres is out for an extended window.
 
 The probe server shuts down with the main server on SIGINT/SIGTERM.
 
@@ -114,9 +125,22 @@ port (9091) is dialed directly by the kubelet against the pod IP.
 
 ## Tuning Notes
 
-- The readiness cache refreshes every **5 seconds** with a **2-second**
-  per-probe timeout. This is hard-coded — there's been no need to expose
-  it. File an issue if your workload requires different timing.
+- The readiness cache refreshes every **5 seconds** by default with a
+  **2-second** per-probe timeout. Override via YAML when your workload
+  needs different timing:
+
+  ```yaml
+  server:
+    probes:
+      listen: "0.0.0.0:9091"
+      interval: 10s    # how often to ping the DB (default 5s)
+      timeout: 3s      # per-ping deadline (default 2s)
+  ```
+
+  Both durations use Go's `time.Duration` syntax (`500ms`, `2s`, `1m`).
+  `timeout` must not exceed `interval` — otherwise probes would overlap
+  and stack up behind a slow Postgres; the server rejects such configs
+  at startup.
 - The first probe runs at startup, not after the first tick, so
   `initialDelaySeconds` can be as low as 2s for readiness without racing
   against "not yet probed" 503s.

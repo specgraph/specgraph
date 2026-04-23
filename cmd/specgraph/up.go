@@ -15,7 +15,6 @@ import (
 	connect "connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/docker"
 	"github.com/specgraph/specgraph/internal/service"
 	"github.com/specgraph/specgraph/internal/xdg"
@@ -53,7 +52,7 @@ func runUp(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("ensure XDG dirs: %w", err)
 	}
 
-	cfg, err := config.LoadGlobal(globalConfigPath())
+	cfg, err := loadGlobalCfg()
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}
