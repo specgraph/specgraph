@@ -56,7 +56,7 @@ var downFns = downDeps{
 }
 
 func runDown(_ *cobra.Command, _ []string) error {
-	cfg, err := config.LoadGlobal(globalConfigPath())
+	cfg, err := loadGlobalCfg()
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
 	}

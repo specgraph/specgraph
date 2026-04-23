@@ -38,7 +38,7 @@ func runPrime(cmd *cobra.Command, args []string) error {
 	}
 
 	// 3. Load global config.
-	cfg, err := config.LoadGlobal(globalConfigPath())
+	cfg, err := loadGlobalCfg()
 	if err != nil {
 		return fmt.Errorf("load global config: %w", err)
 	}

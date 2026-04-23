@@ -7,6 +7,7 @@ package postgres_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/specgraph/specgraph/internal/storage/postgres"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -517,6 +519,38 @@ func TestWithSliceOps_CanBeSet(t *testing.T) {
 	scoped, err := store.Scoped(ctx, "sliceops-test")
 	require.NoError(t, err)
 	require.NotNil(t, scoped)
+}
+
+// ---- Ping tests ----
+//
+// Without real-pool coverage a refactor could silently reduce Ping to a
+// no-op that always returns nil, making /readyz lie about readiness.
+
+func TestStore_Ping_ReturnsNilWhenPoolHealthy(t *testing.T) {
+	store := newStore(t)
+	require.NoError(t, store.Ping(context.Background()))
+}
+
+func TestStore_Ping_ReturnsErrorWhenPoolClosed(t *testing.T) {
+	ctx := context.Background()
+	store, err := postgres.New(ctx, connString, postgres.WithProject("ping-closed"))
+	require.NoError(t, err)
+	require.NoError(t, store.Close(ctx))
+
+	err = store.Ping(ctx)
+	require.Error(t, err, "Ping against a closed pool must error — a silent nil would mask readiness regressions")
+	assert.Contains(t, err.Error(), "postgres: ping:", "wrapping is load-bearing — /readyz body surfaces it")
+}
+
+func TestStore_Ping_RespectsContextCancel(t *testing.T) {
+	store := newStore(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := store.Ping(ctx)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, context.Canceled),
+		"Ping must propagate ctx cancel so readiness times out cleanly during shutdown, got %v", err)
 }
 
 func TestNew_WithSliceOps_Option(t *testing.T) {

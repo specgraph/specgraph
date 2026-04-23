@@ -9,8 +9,17 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 
 	"gopkg.in/yaml.v3"
+)
+
+// DefaultProbeInterval/Timeout are chosen so the 5s cache refresh stays
+// fresh against kubelet's default periodSeconds=10, with 2s headroom for
+// pgxpool.Ping.
+const (
+	DefaultProbeInterval = 5 * time.Second
+	DefaultProbeTimeout  = 2 * time.Second
 )
 
 // GlobalConfig is the new top-level config at ~/.config/specgraph/config.yaml.
@@ -37,9 +46,40 @@ type ServerSection struct {
 }
 
 // ProbesConfig configures the plain-HTTP Kubernetes/Knative probe listener.
-// When Listen is empty, the probe endpoints are disabled.
+// When Listen is empty, the probe endpoints are disabled. Callers should
+// treat raw Interval/Timeout fields as untrusted and consume the result of
+// Resolved() — that's the single path that fuses defaulting and validation.
 type ProbesConfig struct {
-	Listen string `yaml:"listen,omitempty"`
+	Listen   string        `yaml:"listen,omitempty"`
+	Interval time.Duration `yaml:"interval,omitempty"`
+	Timeout  time.Duration `yaml:"timeout,omitempty"`
+}
+
+// Resolved returns a copy with zero-valued Interval/Timeout filled from
+// DefaultProbeInterval/DefaultProbeTimeout, after rejecting negative
+// durations and a per-probe timeout that exceeds the interval (probes
+// would overlap and stack up behind a slow Postgres). Fusing defaulting
+// and validation prevents callers from reading raw fields and skipping
+// either step.
+func (p ProbesConfig) Resolved() (ProbesConfig, error) {
+	if p.Interval < 0 {
+		return ProbesConfig{}, fmt.Errorf("probes.interval must be non-negative, got %s", p.Interval)
+	}
+	if p.Timeout < 0 {
+		return ProbesConfig{}, fmt.Errorf("probes.timeout must be non-negative, got %s", p.Timeout)
+	}
+	out := p
+	if out.Interval == 0 {
+		out.Interval = DefaultProbeInterval
+	}
+	if out.Timeout == 0 {
+		out.Timeout = DefaultProbeTimeout
+	}
+	if out.Timeout > out.Interval {
+		return ProbesConfig{}, fmt.Errorf("probes.timeout (%s) must not exceed probes.interval (%s)",
+			out.Timeout, out.Interval)
+	}
+	return out, nil
 }
 
 // ClientConfig configures how CLI commands connect to the server.
@@ -93,14 +133,31 @@ type ClaimMapping struct {
 }
 
 // LoadGlobal loads the global config from path. If the file doesn't exist,
-// writes defaults and returns them.
+// writes defaults and returns them. Use LoadGlobalExplicit when path was
+// operator-supplied (via --config), where materializing defaults at a
+// typo'd path would silently mask the error.
 func LoadGlobal(path string) (*GlobalConfig, error) {
+	return loadGlobalAt(path, true)
+}
+
+// LoadGlobalExplicit loads the global config from an operator-supplied path,
+// returning an error if the file does not exist. Server commands call this
+// when --config is set so a missing or mistyped path fails loudly instead of
+// being materialized as a default config at an unexpected location.
+func LoadGlobalExplicit(path string) (*GlobalConfig, error) {
+	return loadGlobalAt(path, false)
+}
+
+func loadGlobalAt(path string, materializeDefaults bool) (*GlobalConfig, error) {
 	cfg := globalDefaults()
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return nil, fmt.Errorf("read config: %w", err)
+		}
+		if !materializeDefaults {
+			return nil, fmt.Errorf("config file not found at %s", path)
 		}
 		if writeErr := writeGlobal(path, cfg); writeErr != nil {
 			return nil, fmt.Errorf("write default config: %w", writeErr)

@@ -4,10 +4,12 @@
 package main
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGlobalConfigPath_DefaultFallsBackToXDG(t *testing.T) {
@@ -40,4 +42,14 @@ func TestLegacyConfigPath_FlagOverride(t *testing.T) {
 	t.Cleanup(func() { cfgFile = old })
 
 	assert.Equal(t, "/tmp/custom.yaml", legacyConfigPath())
+}
+
+func TestLoadGlobalCfg_ExplicitMissingPathErrors(t *testing.T) {
+	old := cfgFile
+	t.Cleanup(func() { cfgFile = old })
+	cfgFile = filepath.Join(t.TempDir(), "missing.yaml")
+
+	_, err := loadGlobalCfg()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "config file not found")
 }

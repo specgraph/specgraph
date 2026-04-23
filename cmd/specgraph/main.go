@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/spf13/cobra"
 )
@@ -62,6 +63,15 @@ func legacyConfigPath() string {
 		return cfgFile
 	}
 	return ".specgraph/config.yaml"
+}
+
+// loadGlobalCfg dispatches to LoadGlobalExplicit when --config is set so
+// typo'd paths fail loudly; the XDG default path retains auto-create.
+func loadGlobalCfg() (*config.GlobalConfig, error) {
+	if cfgFile != "" {
+		return config.LoadGlobalExplicit(cfgFile)
+	}
+	return config.LoadGlobal(xdg.ConfigFile())
 }
 
 func main() {
