@@ -36,13 +36,14 @@ As the agent conducts elicitation, track each probe/response pair with an increm
 
 ## Persisting Exchanges
 
-> Conversation exchanges are persisted atomically as part of `author.shape` /
-> `author.specify` / `author.decompose` / `author.approve` tool calls via the
-> `conversation_exchanges` argument. No separate `conversation.record` call is
-> needed after a stage transition. The standalone `conversation.record` tool
-> is reserved for post-hoc amendments to prior recordings.
+> Conversation exchanges are persisted atomically with the stage output at
+> Shape, Specify, Decompose, and Approve transitions — pass the accumulated
+> exchange list as part of the same persistence call that saves the stage
+> output. No separate conversation-recording call is needed after a stage
+> transition. The standalone conversation-record tool is reserved for
+> post-hoc amendments to prior recordings.
 
-Pass the complete list of exchange objects as the `conversation_exchanges` argument when calling the relevant `author.*` tool. The stage output and the conversation log are committed together — either both succeed or neither does.
+Pass the complete list of exchange objects alongside the stage output on the same persistence call. The stage output and the conversation log are committed together — either both succeed or neither does.
 
 ## Amend Semantics
 
@@ -50,4 +51,4 @@ Omit the amend flag on first-pass recordings. Set `amend: true` (or the equivale
 
 ## Approve Special Case
 
-Record conversation only on rejection (hold or decline). The approval flow's discussion carries decision-trail value when the outcome is negative. Clean approvals are self-evident from the `author.approve` call itself and do not require a separate conversation record. For approve-stage rejections, pass the rejection-reason exchanges as the `conversation_exchanges` argument on the same `author.approve` call (with `action=reject`) — the coupling is atomic, same as the other stages.
+Record conversation only on rejection (hold or decline). The approval flow's discussion carries decision-trail value when the outcome is negative. Clean approvals are self-evident from the approval call itself and do not require a separate conversation record. For approve-stage rejections, pass the rejection-reason exchanges alongside the rejection on the same persistence call — the coupling is atomic, same as the other stages.

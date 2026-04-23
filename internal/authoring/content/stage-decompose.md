@@ -107,10 +107,11 @@ When the decompose conversation is complete, synthesize the conversation into a
 Show the user: "Here's the decomposition I'm going to save: [summary]. Look
 right?" Wait for confirmation before persisting.
 
-Call `author.decompose` with the structured output. `conversation_exchanges` is
-REQUIRED for this stage -- include the full probe/response history from the
-decompose conversation. Conversation recording is part of this step, not an
-optional follow-up.
+Persist the Decompose output with the accumulated conversation exchanges —
+they commit atomically with the stage output. Exchanges are REQUIRED for this
+stage: include the full probe/response history from the decompose
+conversation. Conversation recording is part of this step, not an optional
+follow-up.
 
 After persisting, confirm: "Decompose is saved. Want to continue to Approve?
 I'll run through a review checklist."

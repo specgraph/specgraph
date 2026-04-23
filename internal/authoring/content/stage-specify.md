@@ -145,10 +145,10 @@ When the specify conversation is complete, synthesize the conversation into a
 Show the user a human-readable summary and wait for their confirmation before
 persisting.
 
-Call `author.specify` with the structured output. `conversation_exchanges` is
-REQUIRED for this stage -- include the full probe/response history from the
-specify conversation. Conversation recording is part of this step, not an
-optional follow-up.
+Persist the Specify output with the accumulated conversation exchanges — they
+commit atomically with the stage output. Exchanges are REQUIRED for this
+stage: include the full probe/response history from the specify conversation.
+Conversation recording is part of this step, not an optional follow-up.
 
 After persisting, confirm: "Specify is saved. Want to continue to Decompose? I
 can propose how to break this into slices."

@@ -68,10 +68,10 @@ in the current context.
 
 ## Persistence Contract
 
-When elicitation is complete, call `author.spark` with the structured output.
-The required fields are `seed`, `signal`, `scopeSniff`, and `killTest`. Include
-`conversation_exchanges` if you recorded the elicitation conversation — the
-exchanges field carries the full probe/response history atomically with the
+When elicitation is complete, persist the Spark output. The required fields
+are `seed`, `signal`, `scopeSniff`, and `killTest`. If you recorded the
+elicitation conversation, pass the accumulated exchange list alongside the
+output on the same persistence call — exchanges commit atomically with the
 stage output.
 
 After persisting, show the user what was saved and offer to continue to Shape:

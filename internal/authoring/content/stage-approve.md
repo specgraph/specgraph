@@ -88,16 +88,16 @@ After ALL checklist items have been individually reviewed and the human has
 confirmed each one, present the final approval summary and ask: "All checkpoints
 reviewed. When you're ready, confirm approval and I'll record it."
 
-When the human confirms, call `author.approve` with `action=accept`. Record
-provenance: who reviewed, that the review was agent-facilitated, and any
-overrides noted.
+When the human confirms, persist the approval with the accept disposition.
+Record provenance: who reviewed, that the review was agent-facilitated, and
+any overrides noted.
 
 ### Reject path
 
-If the human declines or requests changes, call `author.approve` with
-`action=reject`. `conversation_exchanges` is REQUIRED on the reject path --
-the exchanges capturing the rejection reason and the checklist discussion are
-load-bearing for audit. Do NOT omit exchanges on rejection.
+If the human declines or requests changes, persist the approval with the
+reject disposition. Exchanges capturing the rejection reason and the checklist
+discussion are REQUIRED on the reject path — they commit atomically with the
+rejection and are load-bearing for audit. Do NOT omit exchanges on rejection.
 
 After recording a rejection: note the hold reason, suggest which stage to
 revisit, and do NOT re-offer approval.
