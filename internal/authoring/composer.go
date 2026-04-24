@@ -6,6 +6,7 @@ package authoring
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"strings"
 )
 
@@ -169,8 +170,22 @@ func approxTokens(s string) int {
 	return (len(words) * 3) / 4
 }
 
-// versionString returns the runtime build version or "dev" as fallback. Real
-// version injection happens in Task 22.
+// versionString returns the runtime build version for the composer footer.
+// Prefers module version, then short vcs.revision; falls back to "dev" when
+// no build info is available (e.g. `go run`).
 func versionString() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if info.Main.Version != "" && info.Main.Version != "(devel)" {
+			return info.Main.Version
+		}
+		for _, s := range info.Settings {
+			if s.Key == "vcs.revision" && s.Value != "" {
+				if len(s.Value) > 12 {
+					return s.Value[:12]
+				}
+				return s.Value
+			}
+		}
+	}
 	return "dev"
 }

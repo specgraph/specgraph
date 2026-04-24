@@ -31,6 +31,13 @@ func (f *fakeComposerBackend) GetRelatedSpecs(_ context.Context, _ string) ([]*R
 	return f.related, nil
 }
 
+func TestVersionString_RealOrDev(t *testing.T) {
+	v := versionString()
+	if v == "" {
+		t.Error("versionString returned empty")
+	}
+}
+
 func TestComposer_StageSectionsPresent(t *testing.T) {
 	c := NewComposer(&fakeComposerBackend{})
 	result, err := c.ComposeStagePrompt(context.Background(), ComposeInput{
