@@ -5,11 +5,25 @@ package authoring
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"runtime/debug"
 	"strings"
 )
+
+// ErrInvalidStage is returned when ComposeInput.Stage is empty or not one of
+// the five authoring-funnel stages (spark/shape/specify/decompose/approve).
+// Callers can map this to connect.CodeInvalidArgument at the RPC boundary.
+var ErrInvalidStage = errors.New("invalid authoring stage")
+
+var validStages = map[string]struct{}{
+	"spark":     {},
+	"shape":     {},
+	"specify":   {},
+	"decompose": {},
+	"approve":   {},
+}
 
 // ConstitutionSummary is a bounded digest of the current constitution for
 // inclusion in composed prompts. Full constitution available at specgraph://constitution.
@@ -46,8 +60,16 @@ type Composer struct {
 	backend ComposerBackend
 }
 
-// NewComposer returns a Composer wired to the given storage backend.
-func NewComposer(b ComposerBackend) *Composer { return &Composer{backend: b} }
+// NewComposer returns a Composer wired to the given storage backend. Panics
+// if backend is nil — the composer has no sensible behavior without one, and
+// a constructor-time panic pins the failure to the wiring bug rather than to
+// the first RPC that dereferences it.
+func NewComposer(b ComposerBackend) *Composer {
+	if b == nil {
+		panic("authoring.NewComposer: nil backend")
+	}
+	return &Composer{backend: b}
+}
 
 // ComposeInput selects which stage prompt to compose.
 type ComposeInput struct {
@@ -66,7 +88,25 @@ type ComposeResult struct {
 }
 
 // ComposeStagePrompt assembles the full composed prompt for the given stage.
-func (c *Composer) ComposeStagePrompt(ctx context.Context, in ComposeInput) (*ComposeResult, error) {
+func (c *Composer) ComposeStagePrompt(ctx context.Context, in ComposeInput) (result *ComposeResult, retErr error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("compose stage %q: %w", in.Stage, err)
+	}
+	if _, ok := validStages[in.Stage]; !ok {
+		return nil, fmt.Errorf("stage %q (valid: spark, shape, specify, decompose, approve): %w", in.Stage, ErrInvalidStage)
+	}
+
+	defer func() {
+		if retErr != nil {
+			slog.ErrorContext(ctx, "composer.invocation_failed",
+				slog.String("stage", in.Stage),
+				slog.String("slug", in.Slug),
+				slog.String("posture", in.Posture),
+				slog.String("err", retErr.Error()),
+			)
+		}
+	}()
+
 	var b strings.Builder
 
 	for _, name := range []string{
