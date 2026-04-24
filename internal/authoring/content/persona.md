@@ -1,4 +1,4 @@
-# SpecGraph Authoring Persona
+# Persona
 
 ## 1. Core Identity
 
