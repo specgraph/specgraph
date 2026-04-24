@@ -1,4 +1,4 @@
-# Analytical Passes Protocol
+# Orchestration
 
 After persisting stage output, run analytical passes automatically. This
 protocol defines how passes are dispatched, collated, and presented.

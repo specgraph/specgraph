@@ -2291,6 +2291,17 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 
 ## Task 26: Composer adapter + MCP prompts delegation
 
+> **Carry-over from Slice 3 (PR #922) review.** Before starting Slice 4,
+> run `bd show spgr-bncv` — the notes carry a list of deferred items from
+> the Slice 3 PR review that Task 26 should address naturally as the
+> composer gets real callers: typed `Stage`/`Relationship` enums at the
+> composer boundary, the `(nil, nil)` backend contract (document or switch
+> to sentinel errors), and uncovered render branches
+> (`PriorStageSummary`, multi-related-specs, nil constitution,
+> empty-slug-on-non-spark). Separate deferrals (drift-test camelCase pass,
+> visible truncation marker, tighter budgets) are independent follow-ups
+> that can land in their own small commits within the slice.
+
 **Files:**
 
 - Create: `internal/mcp/composer_adapter.go`
