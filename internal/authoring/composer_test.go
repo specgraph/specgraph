@@ -142,6 +142,18 @@ func TestComposer_BackendErrorsPropagate(t *testing.T) {
 	}
 }
 
+func TestComposer_SpecNotFoundIsSoftMiss(t *testing.T) {
+	backend := &errorBackend{specErr: ErrSpecNotFound}
+	c := NewComposer(backend)
+	result, err := c.ComposeStagePrompt(context.Background(), ComposeInput{Stage: StageShape, Slug: "missing-slug"})
+	if err != nil {
+		t.Fatalf("ComposeStagePrompt: expected no error on ErrSpecNotFound, got %v", err)
+	}
+	if strings.Contains(result.Body, "**Spec missing-slug**") {
+		t.Error("body should not contain spec block when ErrSpecNotFound is returned")
+	}
+}
+
 type bulkConstitutionBackend struct{ fakeComposerBackend }
 
 func (b *bulkConstitutionBackend) GetConstitution(_ context.Context) (*ConstitutionSummary, error) {

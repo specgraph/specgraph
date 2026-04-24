@@ -17,6 +17,12 @@ import (
 // Callers can map this to connect.CodeInvalidArgument at the RPC boundary.
 var ErrInvalidStage = errors.New("invalid authoring stage")
 
+// ErrSpecNotFound is returned by ComposerBackend.GetSpecSummary when the
+// requested slug has no corresponding spec. Callers should treat this as a
+// soft miss: the composed prompt succeeds but omits the spec state block.
+// GetSpecSummary MUST return this sentinel (never nil, nil) when the spec is absent.
+var ErrSpecNotFound = errors.New("spec not found")
+
 // Relationship is a typed edge-relationship label used in RelatedSpec.
 type Relationship string
 
@@ -61,6 +67,12 @@ type RelatedSpec struct {
 }
 
 // ComposerBackend is the read-only storage surface the composer needs.
+// GetSpecSummary returns ErrSpecNotFound if the slug has no spec; callers
+// receive a nil summary in that case and the compose succeeds without the
+// spec state block. Implementations MUST NOT return (nil, nil) — the nil
+// summary path is only valid when error is ErrSpecNotFound.
+// GetConstitution may return (nil, nil) to indicate no constitution is
+// configured; that is a distinct concept from "not found."
 type ComposerBackend interface {
 	GetConstitution(ctx context.Context) (*ConstitutionSummary, error)
 	GetSpecSummary(ctx context.Context, slug string) (*SpecSummary, error)
@@ -198,7 +210,7 @@ func (c *Composer) appendDynamicState(ctx context.Context, b *strings.Builder, i
 
 	if in.Slug != "" {
 		spec, err := c.backend.GetSpecSummary(ctx, in.Slug)
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrSpecNotFound) {
 			return truncated, fmt.Errorf("get spec summary: %w", err)
 		}
 		if spec != nil {
