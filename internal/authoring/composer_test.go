@@ -4,7 +4,10 @@
 package authoring
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"log/slog"
 	"strings"
 	"testing"
 )
@@ -29,6 +32,35 @@ func (f *fakeComposerBackend) GetSpecSummary(_ context.Context, slug string) (*S
 }
 func (f *fakeComposerBackend) GetRelatedSpecs(_ context.Context, _ string) ([]*RelatedSpec, error) {
 	return f.related, nil
+}
+
+func TestComposer_EmitsInvocationLog(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
+	defer slog.SetDefault(prev)
+
+	c := NewComposer(&fakeComposerBackend{})
+	if _, err := c.ComposeStagePrompt(context.Background(), ComposeInput{
+		Stage:   "shape",
+		Slug:    "oauth-refresh",
+		Posture: "partner",
+	}); err != nil {
+		t.Fatalf("ComposeStagePrompt: %v", err)
+	}
+
+	var record map[string]any
+	if err := json.Unmarshal(bytes.TrimSpace(buf.Bytes()), &record); err != nil {
+		t.Fatalf("decode log record: %v; raw=%q", err, buf.String())
+	}
+	if record["msg"] != "composer.invocation" {
+		t.Errorf("msg = %v, want composer.invocation", record["msg"])
+	}
+	for _, key := range []string{"stage", "slug", "posture", "stable_tokens", "dynamic_tokens", "total_tokens", "truncated_count"} {
+		if _, ok := record[key]; !ok {
+			t.Errorf("log record missing key %q; record=%v", key, record)
+		}
+	}
 }
 
 func TestVersionString_RealOrDev(t *testing.T) {

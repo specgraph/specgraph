@@ -6,6 +6,7 @@ package authoring
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"runtime/debug"
 	"strings"
 )
@@ -94,11 +95,22 @@ func (c *Composer) ComposeStagePrompt(ctx context.Context, in ComposeInput) (*Co
 	// Version footer (design §Embedded content versioning).
 	fmt.Fprintf(&b, "\n---\nserver-version: %s\n", versionString())
 
+	totalTokens := approxTokens(b.String())
+	slog.InfoContext(ctx, "composer.invocation",
+		slog.String("stage", in.Stage),
+		slog.String("slug", in.Slug),
+		slog.String("posture", in.Posture),
+		slog.Int("stable_tokens", stableLen),
+		slog.Int("dynamic_tokens", dynLen),
+		slog.Int("total_tokens", totalTokens),
+		slog.Int("truncated_count", truncated),
+	)
+
 	return &ComposeResult{
 		Body:           b.String(),
 		StableTokens:   stableLen,
 		DynamicTokens:  dynLen,
-		TotalTokens:    approxTokens(b.String()),
+		TotalTokens:    totalTokens,
 		TruncatedCount: truncated,
 	}, nil
 }
