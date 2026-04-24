@@ -17,12 +17,24 @@ import (
 // Callers can map this to connect.CodeInvalidArgument at the RPC boundary.
 var ErrInvalidStage = errors.New("invalid authoring stage")
 
-var validStages = map[string]struct{}{
-	"spark":     {},
-	"shape":     {},
-	"specify":   {},
-	"decompose": {},
-	"approve":   {},
+// Relationship is a typed edge-relationship label used in RelatedSpec.
+type Relationship string
+
+const (
+	// RelationshipDependsOn indicates a spec depends on another.
+	RelationshipDependsOn Relationship = "dependsOn"
+	// RelationshipBlocks indicates a spec blocks another.
+	RelationshipBlocks Relationship = "blocks"
+	// RelationshipComposes indicates a spec composes another.
+	RelationshipComposes Relationship = "composes"
+)
+
+var validStages = map[Stage]struct{}{
+	StageSpark:     {},
+	StageShape:     {},
+	StageSpecify:   {},
+	StageDecompose: {},
+	StageApprove:   {},
 }
 
 // ConstitutionSummary is a bounded digest of the current constitution for
@@ -45,7 +57,7 @@ type SpecSummary struct {
 type RelatedSpec struct {
 	Slug         string
 	Intent       string
-	Relationship string // "dependsOn", "blocks", "composes", etc.
+	Relationship Relationship // RelationshipDependsOn, RelationshipBlocks, RelationshipComposes, etc.
 }
 
 // ComposerBackend is the read-only storage surface the composer needs.
@@ -73,7 +85,7 @@ func NewComposer(b ComposerBackend) *Composer {
 
 // ComposeInput selects which stage prompt to compose.
 type ComposeInput struct {
-	Stage   string
+	Stage   Stage
 	Slug    string
 	Posture string
 }
@@ -90,16 +102,16 @@ type ComposeResult struct {
 // ComposeStagePrompt assembles the full composed prompt for the given stage.
 func (c *Composer) ComposeStagePrompt(ctx context.Context, in ComposeInput) (result *ComposeResult, retErr error) {
 	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("compose stage %q: %w", in.Stage, err)
+		return nil, fmt.Errorf("compose stage %q: %w", string(in.Stage), err)
 	}
 	if _, ok := validStages[in.Stage]; !ok {
-		return nil, fmt.Errorf("stage %q (valid: spark, shape, specify, decompose, approve): %w", in.Stage, ErrInvalidStage)
+		return nil, fmt.Errorf("stage %q (valid: spark, shape, specify, decompose, approve): %w", string(in.Stage), ErrInvalidStage)
 	}
 
 	defer func() {
 		if retErr != nil {
 			slog.ErrorContext(ctx, "composer.invocation_failed",
-				slog.String("stage", in.Stage),
+				slog.String("stage", string(in.Stage)),
 				slog.String("slug", in.Slug),
 				slog.String("posture", in.Posture),
 				slog.String("err", retErr.Error()),
@@ -114,7 +126,7 @@ func (c *Composer) ComposeStagePrompt(ctx context.Context, in ComposeInput) (res
 		"orchestration.md",
 		"conversation-recording.md",
 		"quality-heuristics.md",
-		"stage-" + in.Stage + ".md",
+		"stage-" + string(in.Stage) + ".md",
 	} {
 		data, err := Content(name)
 		if err != nil {
@@ -137,7 +149,7 @@ func (c *Composer) ComposeStagePrompt(ctx context.Context, in ComposeInput) (res
 
 	totalTokens := approxTokens(b.String())
 	slog.InfoContext(ctx, "composer.invocation",
-		slog.String("stage", in.Stage),
+		slog.String("stage", string(in.Stage)),
 		slog.String("slug", in.Slug),
 		slog.String("posture", in.Posture),
 		slog.Int("stable_tokens", stableLen),

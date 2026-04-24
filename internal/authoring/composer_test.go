@@ -43,7 +43,7 @@ func TestComposer_EmitsInvocationLog(t *testing.T) {
 
 	c := NewComposer(&fakeComposerBackend{})
 	if _, err := c.ComposeStagePrompt(context.Background(), ComposeInput{
-		Stage:   "shape",
+		Stage:   StageShape,
 		Slug:    "oauth-refresh",
 		Posture: "partner",
 	}); err != nil {
@@ -66,7 +66,7 @@ func TestComposer_EmitsInvocationLog(t *testing.T) {
 
 func TestComposer_InvalidStageReturnsErrInvalidStage(t *testing.T) {
 	c := NewComposer(&fakeComposerBackend{})
-	for _, stage := range []string{"", "Shape", "bogus", "APPROVE"} {
+	for _, stage := range []Stage{"", "Shape", "bogus", "APPROVE"} {
 		_, err := c.ComposeStagePrompt(context.Background(), ComposeInput{Stage: stage, Slug: "s"})
 		if !errors.Is(err, ErrInvalidStage) {
 			t.Errorf("Stage=%q: err = %v, want errors.Is(err, ErrInvalidStage)", stage, err)
@@ -87,7 +87,7 @@ func TestComposer_CanceledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	c := NewComposer(&fakeComposerBackend{})
-	_, err := c.ComposeStagePrompt(ctx, ComposeInput{Stage: "shape", Slug: "s"})
+	_, err := c.ComposeStagePrompt(ctx, ComposeInput{Stage: StageShape, Slug: "s"})
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("err = %v, want errors.Is(err, context.Canceled)", err)
 	}
@@ -131,7 +131,7 @@ func TestComposer_BackendErrorsPropagate(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			c := NewComposer(tc.backend)
-			result, err := c.ComposeStagePrompt(context.Background(), ComposeInput{Stage: "shape", Slug: "s"})
+			result, err := c.ComposeStagePrompt(context.Background(), ComposeInput{Stage: StageShape, Slug: "s"})
 			if result != nil {
 				t.Errorf("result = %v, want nil on error", result)
 			}
@@ -154,7 +154,7 @@ func (b *bulkConstitutionBackend) GetConstitution(_ context.Context) (*Constitut
 
 func TestComposer_TruncationCounter(t *testing.T) {
 	c := NewComposer(&bulkConstitutionBackend{})
-	result, err := c.ComposeStagePrompt(context.Background(), ComposeInput{Stage: "shape", Slug: "s"})
+	result, err := c.ComposeStagePrompt(context.Background(), ComposeInput{Stage: StageShape, Slug: "s"})
 	if err != nil {
 		t.Fatalf("ComposeStagePrompt: %v", err)
 	}
@@ -188,7 +188,7 @@ func TestVersionString_RealOrDev(t *testing.T) {
 func TestComposer_StageSectionsPresent(t *testing.T) {
 	c := NewComposer(&fakeComposerBackend{})
 	result, err := c.ComposeStagePrompt(context.Background(), ComposeInput{
-		Stage:   "shape",
+		Stage:   StageShape,
 		Slug:    "oauth-refresh",
 		Posture: "partner",
 	})

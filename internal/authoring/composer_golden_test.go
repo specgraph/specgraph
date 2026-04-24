@@ -16,16 +16,16 @@ var update = flag.Bool("update", false, "update golden files")
 func TestComposeGolden(t *testing.T) {
 	cases := []struct {
 		name      string
-		stage     string
+		stage     Stage
 		slug      string
 		maxStable int
 		maxTotal  int
 	}{
-		{"spark", "spark", "", 4000, 6000},
-		{"shape", "shape", "oauth-refresh", 4500, 7000},
-		{"specify", "specify", "oauth-refresh", 4500, 7000},
-		{"decompose", "decompose", "oauth-refresh", 4500, 7000},
-		{"approve", "approve", "oauth-refresh", 4500, 7000},
+		{"spark", StageSpark, "", 4000, 6000},
+		{"shape", StageShape, "oauth-refresh", 4500, 7000},
+		{"specify", StageSpecify, "oauth-refresh", 4500, 7000},
+		{"decompose", StageDecompose, "oauth-refresh", 4500, 7000},
+		{"approve", StageApprove, "oauth-refresh", 4500, 7000},
 	}
 	c := NewComposer(&fakeComposerBackend{
 		constitution: &ConstitutionSummary{

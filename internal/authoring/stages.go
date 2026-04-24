@@ -21,6 +21,10 @@ const (
 	StageSpecify   = storage.SpecStageSpecify
 	StageDecompose = storage.SpecStageDecompose
 	StageApproved  = storage.SpecStageApproved
+	// StageApprove is the authoring-funnel stage name for the approve phase,
+	// distinct from StageApproved (storage value "approved"). Used by the composer
+	// and MCP prompt handlers to select the embedded stage-approve.md content.
+	StageApprove Stage = "approve"
 )
 
 // authoringStages defines the ordered authoring funnel stages.
