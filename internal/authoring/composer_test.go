@@ -213,3 +213,92 @@ func TestComposer_StageSectionsPresent(t *testing.T) {
 		}
 	}
 }
+
+// TestComposer_PriorStageSummaryRendered verifies that a non-empty PriorStageSummary
+// produces the expected "**Prior stage summary**: <value>" line in the body.
+func TestComposer_PriorStageSummaryRendered(t *testing.T) {
+	b := &fakeComposerBackend{
+		specSummary: &SpecSummary{
+			Slug:              "my-spec",
+			Intent:            "Do something useful",
+			Stage:             "shape",
+			PriorStageSummary: "The spark identified a caching problem.",
+		},
+	}
+	c := NewComposer(b)
+	result, err := c.ComposeStagePrompt(context.Background(), ComposeInput{Stage: StageShape, Slug: "my-spec"})
+	if err != nil {
+		t.Fatalf("ComposeStagePrompt: %v", err)
+	}
+	want := "**Prior stage summary**: The spark identified a caching problem."
+	if !strings.Contains(result.Body, want) {
+		t.Errorf("body missing %q", want)
+	}
+}
+
+// TestComposer_MultipleRelatedSpecs verifies that three related specs appear
+// comma-separated in the body.
+func TestComposer_MultipleRelatedSpecs(t *testing.T) {
+	b := &fakeComposerBackend{
+		related: []*RelatedSpec{
+			{Slug: "alpha", Relationship: RelationshipDependsOn},
+			{Slug: "beta", Relationship: RelationshipBlocks},
+			{Slug: "gamma", Relationship: RelationshipComposes},
+		},
+	}
+	c := NewComposer(b)
+	result, err := c.ComposeStagePrompt(context.Background(), ComposeInput{Stage: StageShape, Slug: "root-spec"})
+	if err != nil {
+		t.Fatalf("ComposeStagePrompt: %v", err)
+	}
+	for _, slug := range []string{"alpha", "beta", "gamma"} {
+		if !strings.Contains(result.Body, slug) {
+			t.Errorf("body missing related spec slug %q", slug)
+		}
+	}
+	// Verify the ", " joiner between entries.
+	if !strings.Contains(result.Body, "alpha (dependsOn), beta (blocks), gamma (composes)") {
+		t.Errorf("related specs not comma-joined correctly")
+	}
+}
+
+// TestComposer_NilConstitutionSkipped verifies that a (nil, nil) return from
+// GetConstitution causes the body to have "# Current State" but no
+// "**Constitution summary**" line.
+func TestComposer_NilConstitutionSkipped(t *testing.T) {
+	b := &nilConstitutionBackend{}
+	c := NewComposer(b)
+	result, err := c.ComposeStagePrompt(context.Background(), ComposeInput{Stage: StageShape, Slug: "any-spec"})
+	if err != nil {
+		t.Fatalf("ComposeStagePrompt: %v", err)
+	}
+	if !strings.Contains(result.Body, "# Current State") {
+		t.Error("body missing '# Current State' section")
+	}
+	if strings.Contains(result.Body, "**Constitution summary**") {
+		t.Error("body should not contain '**Constitution summary**' when constitution is nil")
+	}
+}
+
+type nilConstitutionBackend struct{ fakeComposerBackend }
+
+func (n *nilConstitutionBackend) GetConstitution(_ context.Context) (*ConstitutionSummary, error) {
+	return nil, nil
+}
+
+// TestComposer_InvalidStageErrorFormat verifies that the error message for an
+// invalid stage contains both the offending value and the word "valid".
+func TestComposer_InvalidStageErrorFormat(t *testing.T) {
+	c := NewComposer(&fakeComposerBackend{})
+	_, err := c.ComposeStagePrompt(context.Background(), ComposeInput{Stage: "bogus-stage", Slug: "s"})
+	if err == nil {
+		t.Fatal("expected error for invalid stage, got nil")
+	}
+	if !strings.Contains(err.Error(), "bogus-stage") {
+		t.Errorf("error %q does not contain offending stage value %q", err.Error(), "bogus-stage")
+	}
+	if !strings.Contains(err.Error(), "valid") {
+		t.Errorf("error %q does not contain the word 'valid'", err.Error())
+	}
+}
+
