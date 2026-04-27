@@ -1,1 +1,0 @@
-../../specgraph/analytical-passes.md

@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+# Copyright 2026 SpecGraph Contributors
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2026 Sean Brandt
-exec specgraph prime 2>&1
+set -euo pipefail
+
+if ! command -v specgraph >/dev/null 2>&1; then
+  echo "specgraph CLI not found; skipping session prime" >&2
+  exit 0
+fi
+
+specgraph mcp read-resource specgraph://prime 2>&1 || {
+  echo "specgraph prime failed (server unreachable?); session starts without prime" >&2
+  exit 0
+}
