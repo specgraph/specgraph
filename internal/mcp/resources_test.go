@@ -493,6 +493,45 @@ func TestPrimeResource_FindingsSection(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// C.1 — primeResourceHandler empty Graph Overview guard
+// ---------------------------------------------------------------------------
+
+// defaultAnalyticalPassMock returns a minimal ListFindings mock that returns no findings.
+func defaultAnalyticalPassMock() *mockAnalyticalPassService {
+	return &mockAnalyticalPassService{
+		listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
+			return &specv1.ListFindingsResponse{}, nil
+		},
+	}
+}
+
+// TestPrimeResource_EmptyGraphSkipped verifies that when ListSpecs succeeds but
+// returns an empty list, the "## Graph Overview" heading is NOT emitted.
+// The Ready and Findings sections were already guarded; Graph Overview must match.
+func TestPrimeResource_EmptyGraphSkipped(t *testing.T) {
+	c := &Client{
+		Constitution: defaultConstitutionMock(), // succeeds — header rendered
+		Spec: &mockSpecService{
+			listSpecs: func() (*specv1.ListSpecsResponse, error) {
+				return &specv1.ListSpecsResponse{}, nil // empty list, no error
+			},
+		},
+		Graph: &mockGraphService{
+			getReady: func() (*specv1.GetReadyResponse, error) {
+				return &specv1.GetReadyResponse{}, nil // also empty
+			},
+		},
+		AnalyticalPass: defaultAnalyticalPassMock(), // empty findings
+	}
+	content, err := primeResourceHandler(c)(context.Background(), "specgraph://prime")
+	require.NoError(t, err)
+	require.NotEmpty(t, content)
+	text := content[0].Text
+	require.NotContains(t, text, "## Graph Overview",
+		"Graph Overview heading should not render for empty spec list")
+}
+
+// ---------------------------------------------------------------------------
 // extractSlugFromURI tests
 // ---------------------------------------------------------------------------
 

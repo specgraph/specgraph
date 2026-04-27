@@ -216,20 +216,22 @@ func primeResourceHandler(c *Client) ResourceHandler {
 		}
 
 		if listResp, err := c.Spec.ListSpecs(ctx, connect.NewRequest(&specv1.ListSpecsRequest{})); err == nil {
-			b.WriteString("## Graph Overview\n\n")
-			counts := map[string]int{}
-			for _, s := range listResp.Msg.GetSpecs() {
-				counts[s.GetStage()]++
+			if len(listResp.Msg.GetSpecs()) > 0 {
+				b.WriteString("## Graph Overview\n\n")
+				counts := map[string]int{}
+				for _, s := range listResp.Msg.GetSpecs() {
+					counts[s.GetStage()]++
+				}
+				stages := make([]string, 0, len(counts))
+				for stage := range counts {
+					stages = append(stages, stage)
+				}
+				sort.Strings(stages)
+				for _, stage := range stages {
+					fmt.Fprintf(&b, "- %s: %d\n", stage, counts[stage])
+				}
+				b.WriteString("\n")
 			}
-			stages := make([]string, 0, len(counts))
-			for stage := range counts {
-				stages = append(stages, stage)
-			}
-			sort.Strings(stages)
-			for _, stage := range stages {
-				fmt.Fprintf(&b, "- %s: %d\n", stage, counts[stage])
-			}
-			b.WriteString("\n")
 		}
 
 		if readyResp, err := c.Graph.GetReady(ctx, connect.NewRequest(&specv1.GetReadyRequest{})); err == nil {
