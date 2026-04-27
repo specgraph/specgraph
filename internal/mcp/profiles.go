@@ -18,7 +18,7 @@ func ProfileFromClientInfo(info *sdkmcp.Implementation) Profile {
 	switch info.Name {
 	case "polecat", "gastown":
 		return ProfileExecution
-	case "claude-code", "cursor", "windsurf":
+	case "claude-code", "cursor", "windsurf", "opencode", "codex":
 		return ProfileAuthoring
 	default:
 		return ProfileCore

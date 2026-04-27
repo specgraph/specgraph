@@ -17,13 +17,49 @@ import (
 // Callers can map this to connect.CodeInvalidArgument at the RPC boundary.
 var ErrInvalidStage = errors.New("invalid authoring stage")
 
-var validStages = map[string]struct{}{
-	"spark":     {},
-	"shape":     {},
-	"specify":   {},
-	"decompose": {},
-	"approve":   {},
+// ErrSpecNotFound is returned by ComposerBackend.GetSpecSummary when the
+// requested slug has no corresponding spec. Callers should treat this as a
+// soft miss: the composed prompt succeeds but omits the spec state block.
+// Implementations should return this sentinel rather than (nil, nil) when the spec is absent.
+var ErrSpecNotFound = errors.New("spec not found")
+
+// Relationship is a typed edge-relationship label used in RelatedSpec.
+type Relationship string
+
+const (
+	// RelationshipDependsOn indicates a spec depends on another.
+	RelationshipDependsOn Relationship = "dependsOn"
+	// RelationshipBlocks indicates a spec blocks another.
+	RelationshipBlocks Relationship = "blocks"
+	// RelationshipComposes indicates a spec composes another.
+	RelationshipComposes Relationship = "composes"
+)
+
+// IsValid reports whether r is one of the three exported Relationship constants.
+// Use a switch for O(1) performance with no allocations.
+func (r Relationship) IsValid() bool {
+	switch r {
+	case RelationshipDependsOn, RelationshipBlocks, RelationshipComposes:
+		return true
+	default:
+		return false
+	}
 }
+
+// composerValidStages is the ordered set of stages the Composer accepts for
+// content routing. This differs from authoringStages in stages.go: the
+// composer accepts StageApprove ("approve") as a content-file routing key,
+// while authoringStages uses StageApproved ("approved") for storage-side
+// transition validation. The two lists intentionally diverge at the final step.
+var composerValidStages = []Stage{StageSpark, StageShape, StageSpecify, StageDecompose, StageApprove}
+
+var validStages = func() map[Stage]struct{} {
+	m := make(map[Stage]struct{}, len(composerValidStages))
+	for _, s := range composerValidStages {
+		m[s] = struct{}{}
+	}
+	return m
+}()
 
 // ConstitutionSummary is a bounded digest of the current constitution for
 // inclusion in composed prompts. Full constitution available at specgraph://constitution.
@@ -45,10 +81,16 @@ type SpecSummary struct {
 type RelatedSpec struct {
 	Slug         string
 	Intent       string
-	Relationship string // "dependsOn", "blocks", "composes", etc.
+	Relationship Relationship // RelationshipDependsOn, RelationshipBlocks, or RelationshipComposes
 }
 
 // ComposerBackend is the read-only storage surface the composer needs.
+// GetSpecSummary returns ErrSpecNotFound when the slug has no spec.
+// Implementations should return ErrSpecNotFound rather than (nil, nil) when
+// the spec is absent; the composer treats both equivalently as soft-miss but
+// the sentinel preserves the not-found / not-configured distinction for callers.
+// GetConstitution may return (nil, nil) to indicate no constitution is
+// configured; that is a distinct concept from "not found."
 type ComposerBackend interface {
 	GetConstitution(ctx context.Context) (*ConstitutionSummary, error)
 	GetSpecSummary(ctx context.Context, slug string) (*SpecSummary, error)
@@ -73,7 +115,7 @@ func NewComposer(b ComposerBackend) *Composer {
 
 // ComposeInput selects which stage prompt to compose.
 type ComposeInput struct {
-	Stage   string
+	Stage   Stage
 	Slug    string
 	Posture string
 }
@@ -90,16 +132,20 @@ type ComposeResult struct {
 // ComposeStagePrompt assembles the full composed prompt for the given stage.
 func (c *Composer) ComposeStagePrompt(ctx context.Context, in ComposeInput) (result *ComposeResult, retErr error) {
 	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("compose stage %q: %w", in.Stage, err)
+		return nil, fmt.Errorf("compose stage %q: %w", string(in.Stage), err)
 	}
 	if _, ok := validStages[in.Stage]; !ok {
-		return nil, fmt.Errorf("stage %q (valid: spark, shape, specify, decompose, approve): %w", in.Stage, ErrInvalidStage)
+		validNames := make([]string, len(composerValidStages))
+		for i, s := range composerValidStages {
+			validNames[i] = string(s)
+		}
+		return nil, fmt.Errorf("stage %q (valid: %s): %w", string(in.Stage), strings.Join(validNames, ", "), ErrInvalidStage)
 	}
 
 	defer func() {
 		if retErr != nil {
 			slog.ErrorContext(ctx, "composer.invocation_failed",
-				slog.String("stage", in.Stage),
+				slog.String("stage", string(in.Stage)),
 				slog.String("slug", in.Slug),
 				slog.String("posture", in.Posture),
 				slog.String("err", retErr.Error()),
@@ -114,7 +160,7 @@ func (c *Composer) ComposeStagePrompt(ctx context.Context, in ComposeInput) (res
 		"orchestration.md",
 		"conversation-recording.md",
 		"quality-heuristics.md",
-		"stage-" + in.Stage + ".md",
+		"stage-" + string(in.Stage) + ".md",
 	} {
 		data, err := Content(name)
 		if err != nil {
@@ -137,7 +183,7 @@ func (c *Composer) ComposeStagePrompt(ctx context.Context, in ComposeInput) (res
 
 	totalTokens := approxTokens(b.String())
 	slog.InfoContext(ctx, "composer.invocation",
-		slog.String("stage", in.Stage),
+		slog.String("stage", string(in.Stage)),
 		slog.String("slug", in.Slug),
 		slog.String("posture", in.Posture),
 		slog.Int("stable_tokens", stableLen),
@@ -186,7 +232,7 @@ func (c *Composer) appendDynamicState(ctx context.Context, b *strings.Builder, i
 
 	if in.Slug != "" {
 		spec, err := c.backend.GetSpecSummary(ctx, in.Slug)
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrSpecNotFound) {
 			return truncated, fmt.Errorf("get spec summary: %w", err)
 		}
 		if spec != nil {
@@ -201,9 +247,20 @@ func (c *Composer) appendDynamicState(ctx context.Context, b *strings.Builder, i
 		if err != nil {
 			return truncated, fmt.Errorf("get related specs: %w", err)
 		}
-		if len(related) > 0 {
+		var validRelated []*RelatedSpec
+		for _, r := range related {
+			if !r.Relationship.IsValid() {
+				slog.WarnContext(ctx, "composer.invalid_relationship_skipped",
+					slog.String("slug", r.Slug),
+					slog.String("relationship", string(r.Relationship)),
+				)
+				continue
+			}
+			validRelated = append(validRelated, r)
+		}
+		if len(validRelated) > 0 {
 			b.WriteString("**Related specs**: ")
-			for i, r := range related {
+			for i, r := range validRelated {
 				if i > 0 {
 					b.WriteString(", ")
 				}

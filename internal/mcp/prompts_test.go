@@ -13,29 +13,66 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// newComposerClient builds a Client pre-wired with the three services that the
+// composerBackend calls: Constitution, Spec, and Graph.
+func newComposerClient(
+	constitution *mockConstitutionService,
+	spec *mockSpecService,
+	graph *mockGraphService,
+) *Client {
+	return &Client{
+		Constitution: constitution,
+		Spec:         spec,
+		Graph:        graph,
+	}
+}
+
+// defaultConstitutionMock returns a minimal GetConstitution mock.
+func defaultConstitutionMock() *mockConstitutionService {
+	return &mockConstitutionService{
+		getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+			return &specv1.GetConstitutionResponse{}, nil
+		},
+	}
+}
+
+// defaultSpecMock returns a minimal GetSpec mock for the given slug.
+func defaultSpecMock(slug string) *mockSpecService {
+	return &mockSpecService{
+		getSpec: func(s string) (*specv1.GetSpecResponse, error) {
+			if s == slug {
+				return &specv1.GetSpecResponse{
+					Spec: &specv1.Spec{Slug: slug, Intent: "test intent", Stage: "shape"},
+				}, nil
+			}
+			return &specv1.GetSpecResponse{}, nil
+		},
+	}
+}
+
+// defaultGraphMock returns an empty GetDependencies mock.
+func defaultGraphMock() *mockGraphService {
+	return &mockGraphService{
+		getDeps: func(_ string) (*specv1.GetDependenciesResponse, error) {
+			return &specv1.GetDependenciesResponse{}, nil
+		},
+	}
+}
+
 // ---------------------------------------------------------------------------
 // TestSparkPrompt
 // ---------------------------------------------------------------------------
 
 func TestSparkPrompt_WithTopicAndContext(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{
-		getPrompts: func(req *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error) {
-			require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SPARK, req.GetStage())
-			return &specv1.GetPromptsResponse{
-				Prompts: []*specv1.PromptTemplate{
-					{Stage: specv1.AuthoringStage_AUTHORING_STAGE_SPARK, Name: "spark", Template: "Generate a spec idea"},
-				},
-			}, nil
-		},
-	}}
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock(""), defaultGraphMock())
 
 	r := NewRegistry()
 	RegisterPrompts(r, c)
-	prompts := r.Prompts()
 	var sparkDef *PromptDef
-	for i := range prompts {
-		if prompts[i].Name == "spark" {
-			sparkDef = &prompts[i]
+	for _, p := range r.Prompts() {
+		if p.Name == "spark" {
+			d := p
+			sparkDef = &d
 			break
 		}
 	}
@@ -49,29 +86,25 @@ func TestSparkPrompt_WithTopicAndContext(t *testing.T) {
 	require.NotNil(t, result)
 	require.NotEmpty(t, result.Messages)
 	require.Equal(t, "user", result.Messages[0].Role)
-	require.Contains(t, result.Messages[0].Content, "Generate a spec idea")
+	// Composer produces rich content — verify stage marker and topic appendix.
+	require.Contains(t, result.Messages[0].Content, "# Persona")
 	require.Contains(t, result.Messages[0].Content, "OAuth token rotation")
 	require.Contains(t, result.Messages[0].Content, "Used by mobile apps")
+	// B.5: Assert the exact section headings are present with the supplied values.
+	require.Contains(t, result.Messages[0].Content, "# Topic\n\nOAuth token rotation")
+	require.Contains(t, result.Messages[0].Content, "# Additional Context\n\nUsed by mobile apps")
 }
 
 func TestSparkPrompt_TopicOnly(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{
-		getPrompts: func(_ *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error) {
-			return &specv1.GetPromptsResponse{
-				Prompts: []*specv1.PromptTemplate{
-					{Template: "Spark template text"},
-				},
-			}, nil
-		},
-	}}
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock(""), defaultGraphMock())
 
 	r := NewRegistry()
 	RegisterPrompts(r, c)
-	prompts := r.Prompts()
 	var sparkDef *PromptDef
-	for i := range prompts {
-		if prompts[i].Name == "spark" {
-			sparkDef = &prompts[i]
+	for _, p := range r.Prompts() {
+		if p.Name == "spark" {
+			d := p
+			sparkDef = &d
 			break
 		}
 	}
@@ -83,52 +116,25 @@ func TestSparkPrompt_TopicOnly(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Contains(t, result.Messages[0].Content, "rate limiting")
-	// No context provided; should not contain "Context:" line
-	require.NotContains(t, result.Messages[0].Content, "Context:")
-}
-
-func TestSparkPrompt_NoTemplates(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{
-		getPrompts: func(_ *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error) {
-			return &specv1.GetPromptsResponse{Prompts: nil}, nil
-		},
-	}}
-
-	r := NewRegistry()
-	RegisterPrompts(r, c)
-	prompts := r.Prompts()
-	var sparkDef *PromptDef
-	for i := range prompts {
-		if prompts[i].Name == "spark" {
-			sparkDef = &prompts[i]
-			break
-		}
-	}
-	require.NotNil(t, sparkDef)
-
-	result, err := sparkDef.Handler(context.Background(), map[string]string{
-		"topic": "something",
-	})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.NotEmpty(t, result.Messages)
-	require.Contains(t, result.Messages[0].Content, "spark")
+	// No context provided; should not contain Additional Context section.
+	require.NotContains(t, result.Messages[0].Content, "# Additional Context")
 }
 
 func TestSparkPrompt_RPCError(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{
-		getPrompts: func(_ *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error) {
+	constitutionMock := &mockConstitutionService{
+		getConstitution: func() (*specv1.GetConstitutionResponse, error) {
 			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("server error"))
 		},
-	}}
+	}
+	c := newComposerClient(constitutionMock, defaultSpecMock(""), defaultGraphMock())
 
 	r := NewRegistry()
 	RegisterPrompts(r, c)
-	prompts := r.Prompts()
 	var sparkDef *PromptDef
-	for i := range prompts {
-		if prompts[i].Name == "spark" {
-			sparkDef = &prompts[i]
+	for _, p := range r.Prompts() {
+		if p.Name == "spark" {
+			d := p
+			sparkDef = &d
 			break
 		}
 	}
@@ -143,24 +149,15 @@ func TestSparkPrompt_RPCError(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestShapePrompt(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{
-		getPrompts: func(req *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error) {
-			require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SHAPE, req.GetStage())
-			return &specv1.GetPromptsResponse{
-				Prompts: []*specv1.PromptTemplate{
-					{Template: "Shape this spec into a problem statement"},
-				},
-			}, nil
-		},
-	}}
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock("oauth-refresh"), defaultGraphMock())
 
 	r := NewRegistry()
 	RegisterPrompts(r, c)
-	prompts := r.Prompts()
 	var shapeDef *PromptDef
-	for i := range prompts {
-		if prompts[i].Name == "shape" {
-			shapeDef = &prompts[i]
+	for _, p := range r.Prompts() {
+		if p.Name == "shape" {
+			d := p
+			shapeDef = &d
 			break
 		}
 	}
@@ -172,34 +169,9 @@ func TestShapePrompt(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "user", result.Messages[0].Role)
-	require.Contains(t, result.Messages[0].Content, "Shape this spec into a problem statement")
-}
-
-func TestShapePrompt_NoTemplates(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{
-		getPrompts: func(_ *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error) {
-			return &specv1.GetPromptsResponse{}, nil
-		},
-	}}
-
-	r := NewRegistry()
-	RegisterPrompts(r, c)
-	prompts := r.Prompts()
-	var shapeDef *PromptDef
-	for i := range prompts {
-		if prompts[i].Name == "shape" {
-			shapeDef = &prompts[i]
-			break
-		}
-	}
-	require.NotNil(t, shapeDef)
-
-	result, err := shapeDef.Handler(context.Background(), map[string]string{
-		"spec_slug": "oauth-refresh",
-	})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Contains(t, result.Messages[0].Content, "shape")
+	// Verify composer markers are present.
+	require.Contains(t, result.Messages[0].Content, "# Persona")
+	require.Contains(t, result.Messages[0].Content, "# Stage:")
 }
 
 // ---------------------------------------------------------------------------
@@ -207,24 +179,15 @@ func TestShapePrompt_NoTemplates(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSpecifyPrompt(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{
-		getPrompts: func(req *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error) {
-			require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY, req.GetStage())
-			return &specv1.GetPromptsResponse{
-				Prompts: []*specv1.PromptTemplate{
-					{Template: "Add full specification detail"},
-				},
-			}, nil
-		},
-	}}
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock("oauth-refresh"), defaultGraphMock())
 
 	r := NewRegistry()
 	RegisterPrompts(r, c)
-	prompts := r.Prompts()
 	var specifyDef *PromptDef
-	for i := range prompts {
-		if prompts[i].Name == "specify" {
-			specifyDef = &prompts[i]
+	for _, p := range r.Prompts() {
+		if p.Name == "specify" {
+			d := p
+			specifyDef = &d
 			break
 		}
 	}
@@ -236,7 +199,8 @@ func TestSpecifyPrompt(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "user", result.Messages[0].Role)
-	require.Contains(t, result.Messages[0].Content, "Add full specification detail")
+	require.Contains(t, result.Messages[0].Content, "# Persona")
+	require.Contains(t, result.Messages[0].Content, "# Stage:")
 }
 
 // ---------------------------------------------------------------------------
@@ -244,24 +208,15 @@ func TestSpecifyPrompt(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestDecomposePrompt(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{
-		getPrompts: func(req *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error) {
-			require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE, req.GetStage())
-			return &specv1.GetPromptsResponse{
-				Prompts: []*specv1.PromptTemplate{
-					{Template: "Break into work slices"},
-				},
-			}, nil
-		},
-	}}
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock("oauth-refresh"), defaultGraphMock())
 
 	r := NewRegistry()
 	RegisterPrompts(r, c)
-	prompts := r.Prompts()
 	var decomposeDef *PromptDef
-	for i := range prompts {
-		if prompts[i].Name == "decompose" {
-			decomposeDef = &prompts[i]
+	for _, p := range r.Prompts() {
+		if p.Name == "decompose" {
+			d := p
+			decomposeDef = &d
 			break
 		}
 	}
@@ -273,7 +228,8 @@ func TestDecomposePrompt(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, "user", result.Messages[0].Role)
-	require.Contains(t, result.Messages[0].Content, "Break into work slices")
+	require.Contains(t, result.Messages[0].Content, "# Persona")
+	require.Contains(t, result.Messages[0].Content, "# Stage:")
 }
 
 // ---------------------------------------------------------------------------
@@ -293,11 +249,11 @@ func TestConstitutionCheckPrompt(t *testing.T) {
 
 	r := NewRegistry()
 	RegisterPrompts(r, c)
-	prompts := r.Prompts()
 	var checkDef *PromptDef
-	for i := range prompts {
-		if prompts[i].Name == "constitution_check" {
-			checkDef = &prompts[i]
+	for _, p := range r.Prompts() {
+		if p.Name == "constitution_check" {
+			d := p
+			checkDef = &d
 			break
 		}
 	}
@@ -321,11 +277,11 @@ func TestConstitutionCheckPrompt_RPCError(t *testing.T) {
 
 	r := NewRegistry()
 	RegisterPrompts(r, c)
-	prompts := r.Prompts()
 	var checkDef *PromptDef
-	for i := range prompts {
-		if prompts[i].Name == "constitution_check" {
-			checkDef = &prompts[i]
+	for _, p := range r.Prompts() {
+		if p.Name == "constitution_check" {
+			d := p
+			checkDef = &d
 			break
 		}
 	}
@@ -354,11 +310,11 @@ func TestDependencyReviewPrompt(t *testing.T) {
 
 	r := NewRegistry()
 	RegisterPrompts(r, c)
-	prompts := r.Prompts()
 	var depDef *PromptDef
-	for i := range prompts {
-		if prompts[i].Name == "dependency_review" {
-			depDef = &prompts[i]
+	for _, p := range r.Prompts() {
+		if p.Name == "dependency_review" {
+			d := p
+			depDef = &d
 			break
 		}
 	}
@@ -402,13 +358,14 @@ func TestRegisterPrompts_Names(t *testing.T) {
 }
 
 func TestSparkPrompt_MissingTopic(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{}}
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock(""), defaultGraphMock())
 	r := NewRegistry()
 	RegisterPrompts(r, c)
 	var sparkDef *PromptDef
 	for _, p := range r.Prompts() {
 		if p.Name == "spark" {
-			sparkDef = &p
+			d := p
+			sparkDef = &d
 			break
 		}
 	}
@@ -419,13 +376,14 @@ func TestSparkPrompt_MissingTopic(t *testing.T) {
 }
 
 func TestShapePrompt_MissingSpecSlug(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{}}
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock(""), defaultGraphMock())
 	r := NewRegistry()
 	RegisterPrompts(r, c)
 	var shapeDef *PromptDef
 	for _, p := range r.Prompts() {
 		if p.Name == "shape" {
-			shapeDef = &p
+			d := p
+			shapeDef = &d
 			break
 		}
 	}
@@ -442,7 +400,8 @@ func TestConstitutionCheckPrompt_MissingSpecSlug(t *testing.T) {
 	var def *PromptDef
 	for _, p := range r.Prompts() {
 		if p.Name == "constitution_check" {
-			def = &p
+			d := p
+			def = &d
 			break
 		}
 	}
