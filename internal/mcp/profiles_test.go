@@ -27,6 +27,8 @@ func TestProfileFromClientInfo(t *testing.T) {
 		{"claude-code gets authoring", "claude-code", ProfileAuthoring},
 		{"cursor gets authoring", "cursor", ProfileAuthoring},
 		{"windsurf gets authoring", "windsurf", ProfileAuthoring},
+		{"opencode gets authoring", "opencode", ProfileAuthoring},
+		{"codex gets authoring", "codex", ProfileAuthoring},
 		{"unknown gets core", "some-other-client", ProfileCore},
 		{"empty gets core", "", ProfileCore},
 	}
