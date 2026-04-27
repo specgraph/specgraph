@@ -5,8 +5,6 @@ package mcp
 
 import (
 	"context"
-	"fmt"
-	"io"
 
 	sdkmcp "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -17,25 +15,9 @@ const (
 	serverVersion = "0.1.0"
 )
 
-// ServerOption configures a Server.
-type ServerOption func(*serverConfig)
-
-type serverConfig struct {
-	profileOverride *Profile
-}
-
-// WithProfileOverride sets a fixed profile, overriding clientInfo-based
-// derivation in the OnAfterInitialize hook. Used by the stdio transport
-// where the operator selects the profile via --profile flag.
-func WithProfileOverride(p Profile) ServerOption {
-	return func(cfg *serverConfig) {
-		cfg.profileOverride = &p
-	}
-}
-
 // Server wraps a single MCPServer pre-populated with all tools, resources,
 // and prompts. Profile-based tool filtering happens per-session via the
-// OnAfterInitialize hook.
+// OnAfterInitialize hook based on the client's reported clientInfo.
 type Server struct {
 	registry        *Registry
 	mcpServer       *server.MCPServer
@@ -46,15 +28,9 @@ type Server struct {
 // It registers all tools, resources, and prompts onto a single MCPServer
 // (the execution-profile superset). An OnAfterInitialize hook narrows
 // session-visible tools based on the client's profile.
-func NewServer(client *Client, opts ...ServerOption) *Server {
-	var cfg serverConfig
-	for _, opt := range opts {
-		opt(&cfg)
-	}
-
+func NewServer(client *Client) *Server {
 	reg := NewRegistry()
 
-	// Register all handlers into the registry.
 	RegisterSpecTools(reg, client)
 	RegisterGraphTools(reg, client)
 	RegisterCoreTools(reg, client)
@@ -75,7 +51,6 @@ func NewServer(client *Client, opts ...ServerOption) *Server {
 		server.WithHooks(hooks),
 	)
 
-	// Build per-profile tool sets for session filtering.
 	profileToolSets := make(map[Profile]map[string]server.ServerTool, 3)
 	for _, profile := range []Profile{ProfileCore, ProfileAuthoring, ProfileExecution} {
 		toolMap := make(map[string]server.ServerTool)
@@ -88,26 +63,10 @@ func NewServer(client *Client, opts ...ServerOption) *Server {
 		profileToolSets[profile] = toolMap
 	}
 
-	// Register tools on the MCPServer.
-	//
-	// WORKAROUND: mcp-go v0.45.0's stdioSession does not implement
-	// SessionWithTools, so the OnAfterInitialize hook cannot narrow tools
-	// for stdio sessions. When a profile override is set, we register only
-	// that profile's tools at construction time instead.
-	//
-	// The correct design is transport-agnostic: always register all tools,
-	// always filter via the hook. This workaround should be removed once
-	// stdioSession gains SessionWithTools support (upstream contribution
-	// tracked in spgr-igd9).
-	registerProfile := ProfileExecution
-	if cfg.profileOverride != nil {
-		registerProfile = *cfg.profileOverride
-	}
-	for _, td := range reg.ToolsForProfile(registerProfile) {
+	for _, td := range reg.ToolsForProfile(ProfileExecution) {
 		srv.AddTool(toSDKTool(td), wrapToolHandler(td.Handler))
 	}
 
-	// All resources and prompts (profile-independent).
 	for i := range reg.Resources() {
 		rd := &reg.resources[i]
 		if rd.IsTemplate {
@@ -126,16 +85,10 @@ func NewServer(client *Client, opts ...ServerOption) *Server {
 		profileToolSets: profileToolSets,
 	}
 
-	// Hook: after MCP initialize, narrow tools to the client's profile.
 	hooks.AddAfterInitialize(func(ctx context.Context, _ any, msg *sdkmcp.InitializeRequest, _ *sdkmcp.InitializeResult) {
-		var profile Profile
-		if cfg.profileOverride != nil {
-			profile = *cfg.profileOverride
-		} else {
-			profile = ProfileFromClientInfo(&msg.Params.ClientInfo)
-		}
+		profile := ProfileFromClientInfo(&msg.Params.ClientInfo)
 		if profile == ProfileExecution {
-			return // full access, no filtering needed
+			return
 		}
 		session := server.ClientSessionFromContext(ctx)
 		if swt, ok := session.(server.SessionWithTools); ok {
@@ -159,15 +112,6 @@ func (s *Server) ToolsForProfile(profile Profile) map[string]server.ServerTool {
 		return s.profileToolSets[ProfileCore]
 	}
 	return tools
-}
-
-// ServeStdio runs a stdio transport. It blocks until ctx is cancelled.
-func (s *Server) ServeStdio(ctx context.Context, stdin io.Reader, stdout io.Writer) error {
-	stdio := server.NewStdioServer(s.mcpServer)
-	if err := stdio.Listen(ctx, stdin, stdout); err != nil {
-		return fmt.Errorf("mcp stdio: %w", err)
-	}
-	return nil
 }
 
 // HTTPHandler returns a StreamableHTTPServer suitable for use as an http.Handler.
