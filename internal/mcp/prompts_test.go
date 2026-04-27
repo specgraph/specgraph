@@ -69,9 +69,9 @@ func TestSparkPrompt_WithTopicAndContext(t *testing.T) {
 	r := NewRegistry()
 	RegisterPrompts(r, c)
 	var sparkDef *PromptDef
-	for i := range r.Prompts() {
-		if r.Prompts()[i].Name == "spark" {
-			d := r.Prompts()[i]
+	for _, p := range r.Prompts() {
+		if p.Name == "spark" {
+			d := p
 			sparkDef = &d
 			break
 		}
@@ -98,9 +98,9 @@ func TestSparkPrompt_TopicOnly(t *testing.T) {
 	r := NewRegistry()
 	RegisterPrompts(r, c)
 	var sparkDef *PromptDef
-	for i := range r.Prompts() {
-		if r.Prompts()[i].Name == "spark" {
-			d := r.Prompts()[i]
+	for _, p := range r.Prompts() {
+		if p.Name == "spark" {
+			d := p
 			sparkDef = &d
 			break
 		}
@@ -169,30 +169,6 @@ func TestShapePrompt(t *testing.T) {
 	// Verify composer markers are present.
 	require.Contains(t, result.Messages[0].Content, "# Persona")
 	require.Contains(t, result.Messages[0].Content, "# Stage:")
-}
-
-func TestShapePrompt_NoTemplates(t *testing.T) {
-	// Now delegates to composer — no "templates" concept. Verify round-trip succeeds.
-	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock("oauth-refresh"), defaultGraphMock())
-
-	r := NewRegistry()
-	RegisterPrompts(r, c)
-	var shapeDef *PromptDef
-	for _, p := range r.Prompts() {
-		if p.Name == "shape" {
-			d := p
-			shapeDef = &d
-			break
-		}
-	}
-	require.NotNil(t, shapeDef)
-
-	result, err := shapeDef.Handler(context.Background(), map[string]string{
-		"spec_slug": "oauth-refresh",
-	})
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Contains(t, result.Messages[0].Content, "shape")
 }
 
 // ---------------------------------------------------------------------------

@@ -45,20 +45,30 @@ func (b *composerBackend) GetConstitution(ctx context.Context) (*authoring.Const
 }
 
 // GetSpecSummary fetches a bounded view of the spec identified by slug.
-// Returns authoring.ErrSpecNotFound when the server reports the spec is absent.
+// Returns authoring.ErrSpecNotFound when the server reports the spec is absent
+// (either via connect.CodeNotFound or — defensively — via a nil Spec payload).
 func (b *composerBackend) GetSpecSummary(ctx context.Context, slug string) (*authoring.SpecSummary, error) {
 	resp, err := b.client.Spec.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{Slug: slug}))
 	if err != nil {
+		// The real server maps storage.ErrSpecNotFound → connect.CodeNotFound
+		// (see internal/server/authoring_handler.go). Translate that into the
+		// composer's soft-miss sentinel so callers can skip the spec block.
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return nil, authoring.ErrSpecNotFound
+		}
 		return nil, fmt.Errorf("get spec: %w", err)
 	}
 	s := resp.Msg.GetSpec()
 	if s == nil {
+		// Defense in depth: the real server never returns (success, nil-Spec),
+		// but a fake or future implementation might.
 		return nil, authoring.ErrSpecNotFound
 	}
 	return &authoring.SpecSummary{
 		Slug:   s.GetSlug(),
 		Intent: s.GetIntent(),
 		Stage:  s.GetStage(),
+		// PriorStageSummary intentionally left zero: no proto field yet (deferred).
 	}, nil
 }
 

@@ -9,8 +9,10 @@ import (
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
-// Stage is an alias for storage.SpecStage, kept for backward compatibility
-// within the authoring package. New code should use storage.SpecStage directly.
+// Stage is the typed authoring-stage value used by Composer and friends
+// (ComposeInput, validStages, RelatedSpec). Aliased to storage.SpecStage so
+// storage and authoring agree on the wire type — assignments flow both ways
+// without conversion.
 type Stage = storage.SpecStage
 
 // Stage name constants used across the authoring funnel.
