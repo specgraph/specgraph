@@ -6,11 +6,13 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/authoring"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -188,15 +190,25 @@ func changesResourceHandler(c *Client) ResourceHandler {
 
 // primeResourceHandler returns a session-priming digest in markdown. It
 // stitches together constitution summary, spec counts by stage, the top 10
-// ready specs, and open-findings counts by severity. Each section is
-// conditional: if the upstream RPC fails, that section is silently omitted so
-// partial connectivity still produces a useful digest.
+// ready specs, and open-findings counts by severity. Each section renders
+// its heading unconditionally; RPC failures log a warning and render a
+// visible "_(unable to load: ...)_" marker under the heading so partial
+// connectivity is observable rather than silently degrading the digest.
 func primeResourceHandler(c *Client) ResourceHandler {
 	return func(ctx context.Context, uri string) ([]ResourceContent, error) {
 		var b strings.Builder
 		b.WriteString("# SpecGraph Session Prime\n\n")
 
-		if conResp, err := c.Constitution.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{})); err == nil && conResp.Msg.GetConstitution() != nil {
+		conResp, err := c.Constitution.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{}))
+		switch {
+		case err != nil:
+			slog.WarnContext(ctx, "prime.section_failed",
+				slog.String("section", "constitution"),
+				slog.String("err", err.Error()))
+			b.WriteString("## Constitution\n\n_(unable to load: " + err.Error() + ")_\n\n")
+		case conResp.Msg.GetConstitution() == nil:
+			// No constitution configured — skip section silently. Distinct from RPC failure.
+		default:
 			con := conResp.Msg.GetConstitution()
 			b.WriteString("## Constitution\n\n")
 			if con.GetTech() != nil && con.GetTech().GetLanguages() != nil {
@@ -215,26 +227,45 @@ func primeResourceHandler(c *Client) ResourceHandler {
 			}
 		}
 
-		if listResp, err := c.Spec.ListSpecs(ctx, connect.NewRequest(&specv1.ListSpecsRequest{})); err == nil {
-			if len(listResp.Msg.GetSpecs()) > 0 {
-				b.WriteString("## Graph Overview\n\n")
-				counts := map[string]int{}
-				for _, s := range listResp.Msg.GetSpecs() {
-					counts[s.GetStage()]++
-				}
-				stages := make([]string, 0, len(counts))
-				for stage := range counts {
-					stages = append(stages, stage)
-				}
-				sort.Strings(stages)
-				for _, stage := range stages {
-					fmt.Fprintf(&b, "- %s: %d\n", stage, counts[stage])
-				}
-				b.WriteString("\n")
+		listResp, err := c.Spec.ListSpecs(ctx, connect.NewRequest(&specv1.ListSpecsRequest{}))
+		switch {
+		case err != nil:
+			slog.WarnContext(ctx, "prime.section_failed",
+				slog.String("section", "graph_overview"),
+				slog.String("err", err.Error()))
+			b.WriteString("## Graph Overview\n\n_(unable to load: " + err.Error() + ")_\n\n")
+		case len(listResp.Msg.GetSpecs()) > 0:
+			b.WriteString("## Graph Overview\n\n")
+			counts := map[string]int{}
+			for _, s := range listResp.Msg.GetSpecs() {
+				counts[s.GetStage()]++
 			}
+			// Render in funnel order, then any unexpected stages alphabetically.
+			for _, stage := range authoring.AllStages() {
+				if n, ok := counts[stage]; ok {
+					fmt.Fprintf(&b, "- %s: %d\n", stage, n)
+					delete(counts, stage)
+				}
+			}
+			leftover := make([]string, 0, len(counts))
+			for stage := range counts {
+				leftover = append(leftover, stage)
+			}
+			sort.Strings(leftover)
+			for _, stage := range leftover {
+				fmt.Fprintf(&b, "- %s: %d\n", stage, counts[stage])
+			}
+			b.WriteString("\n")
 		}
 
-		if readyResp, err := c.Graph.GetReady(ctx, connect.NewRequest(&specv1.GetReadyRequest{})); err == nil {
+		readyResp, err := c.Graph.GetReady(ctx, connect.NewRequest(&specv1.GetReadyRequest{}))
+		switch {
+		case err != nil:
+			slog.WarnContext(ctx, "prime.section_failed",
+				slog.String("section", "ready_to_work"),
+				slog.String("err", err.Error()))
+			b.WriteString("## Ready to Work\n\n_(unable to load: " + err.Error() + ")_\n\n")
+		default:
 			ready := readyResp.Msg.GetReady()
 			if len(ready) > 0 {
 				b.WriteString("## Ready to Work\n\n")
@@ -248,26 +279,50 @@ func primeResourceHandler(c *Client) ResourceHandler {
 			}
 		}
 
-		if findingsResp, err := c.AnalyticalPass.ListFindings(ctx, connect.NewRequest(&specv1.ListFindingsRequest{})); err == nil {
-			counts := map[string]int{}
+		findingsResp, err := c.AnalyticalPass.ListFindings(ctx, connect.NewRequest(&specv1.ListFindingsRequest{}))
+		switch {
+		case err != nil:
+			slog.WarnContext(ctx, "prime.section_failed",
+				slog.String("section", "open_findings"),
+				slog.String("err", err.Error()))
+			b.WriteString("## Open Findings\n\n_(unable to load: " + err.Error() + ")_\n\n")
+		default:
+			counts := map[specv1.FindingSeverity]int{}
 			for _, f := range findingsResp.Msg.GetFindings() {
-				counts[f.GetSeverity().String()]++
+				counts[f.GetSeverity()]++
 			}
 			if len(counts) > 0 {
 				b.WriteString("## Open Findings\n\n")
-				sevs := make([]string, 0, len(counts))
+				sevs := make([]specv1.FindingSeverity, 0, len(counts))
 				for sev := range counts {
 					sevs = append(sevs, sev)
 				}
-				sort.Strings(sevs)
+				sort.Slice(sevs, func(i, j int) bool {
+					return severityRank(sevs[i]) < severityRank(sevs[j])
+				})
 				for _, sev := range sevs {
-					fmt.Fprintf(&b, "- %s: %d\n", sev, counts[sev])
+					fmt.Fprintf(&b, "- %s: %d\n", sev.String(), counts[sev])
 				}
 				b.WriteString("\nFull at `specgraph://findings`.\n\n")
 			}
 		}
 
 		return []ResourceContent{{URI: uri, MimeType: "text/markdown", Text: b.String()}}, nil
+	}
+}
+
+// severityRank gives a display order for finding severities: critical first,
+// warning second, note third, anything else last. Lower rank renders earlier.
+func severityRank(s specv1.FindingSeverity) int {
+	switch s {
+	case specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL:
+		return 0
+	case specv1.FindingSeverity_FINDING_SEVERITY_WARNING:
+		return 1
+	case specv1.FindingSeverity_FINDING_SEVERITY_NOTE:
+		return 2
+	default:
+		return 99
 	}
 }
 

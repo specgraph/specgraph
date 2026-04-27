@@ -31,9 +31,9 @@ func RegisterAuthoringTools(r *Registry, c *Client) {
 			"Use when the client does not expose MCP prompts to users, or for mid-conversation re-entry into a stage.",
 		Profile: ProfileAuthoring,
 		Schema: objectSchema(props{
-			"stage":   stringProp("Stage: spark, shape, specify, decompose, approve"),
+			"stage":   stringProp("Stage", "spark", "shape", "specify", "decompose", "approve"),
 			"slug":    stringProp("Spec slug (required for shape/specify/decompose/approve; optional for spark)"),
-			"posture": stringProp("Posture: drive, partner, support"),
+			"posture": stringProp("Posture", "drive", "partner", "support"),
 		}, "stage"),
 		Handler: authoringStartStageHandler(c),
 	})

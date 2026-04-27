@@ -6,6 +6,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -485,11 +486,145 @@ func TestPrimeResource_FindingsSection(t *testing.T) {
 	// B.3: Assert per-severity counts rendered by the handler (f.GetSeverity().String()).
 	require.Contains(t, text, "FINDING_SEVERITY_CRITICAL: 2")
 	require.Contains(t, text, "FINDING_SEVERITY_WARNING: 1")
-	// Failed sections must NOT leak into the digest — section-by-section
-	// tolerance is the property this test exists to verify.
-	require.NotContains(t, text, "## Constitution")
-	require.NotContains(t, text, "## Graph Overview")
-	require.NotContains(t, text, "## Ready to Work")
+	// Failed sections render visible error markers (behavior change from PR #924 fixup):
+	// each section heading IS present, followed by an unable-to-load line.
+	require.Contains(t, text, "## Constitution")
+	require.Contains(t, text, "## Graph Overview")
+	require.Contains(t, text, "## Ready to Work")
+	require.Contains(t, text, "(unable to load")
+}
+
+// TestPrimeResource_SeverityOrdering verifies findings are rendered
+// in CRITICAL → WARNING → NOTE order (not alphabetical).
+func TestPrimeResource_SeverityOrdering(t *testing.T) {
+	c := &Client{
+		Constitution: &mockConstitutionService{
+			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+				return nil, fmt.Errorf("unavailable")
+			},
+		},
+		Spec: &mockSpecService{
+			listSpecs: func() (*specv1.ListSpecsResponse, error) {
+				return nil, fmt.Errorf("unavailable")
+			},
+		},
+		Graph: &mockGraphService{
+			getReady: func() (*specv1.GetReadyResponse, error) {
+				return nil, fmt.Errorf("unavailable")
+			},
+		},
+		AnalyticalPass: &mockAnalyticalPassService{
+			listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
+				return &specv1.ListFindingsResponse{
+					Findings: []*specv1.AnalyticalFinding{
+						{Id: "f1", Severity: specv1.FindingSeverity_FINDING_SEVERITY_NOTE},
+						{Id: "f2", Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL},
+						{Id: "f3", Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING},
+					},
+				}, nil
+			},
+		},
+	}
+
+	handler := primeResourceHandler(c)
+	contents, err := handler(context.Background(), "specgraph://prime")
+	require.NoError(t, err)
+	require.Len(t, contents, 1)
+
+	text := contents[0].Text
+	// Severity ordering: critical findings should render before warnings, warnings before notes.
+	criticalIdx := strings.Index(text, "FINDING_SEVERITY_CRITICAL")
+	warningIdx := strings.Index(text, "FINDING_SEVERITY_WARNING")
+	noteIdx := strings.Index(text, "FINDING_SEVERITY_NOTE")
+	require.Greater(t, warningIdx, criticalIdx, "WARNING should appear after CRITICAL")
+	require.Greater(t, noteIdx, warningIdx, "NOTE should appear after WARNING")
+}
+
+// TestPrimeResource_StageOrdering verifies that funnel stages are rendered
+// in spark → shape → specify → decompose → approved order, not alphabetically.
+func TestPrimeResource_StageOrdering(t *testing.T) {
+	c := &Client{
+		Constitution: &mockConstitutionService{
+			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+				return nil, fmt.Errorf("unavailable")
+			},
+		},
+		Spec: &mockSpecService{
+			listSpecs: func() (*specv1.ListSpecsResponse, error) {
+				return &specv1.ListSpecsResponse{
+					Specs: []*specv1.Spec{
+						{Slug: "spec-a", Stage: "spark"},
+						{Slug: "spec-b", Stage: "decompose"},
+						{Slug: "spec-c", Stage: "shape"},
+						{Slug: "spec-d", Stage: "specify"},
+					},
+				}, nil
+			},
+		},
+		Graph: &mockGraphService{
+			getReady: func() (*specv1.GetReadyResponse, error) {
+				return nil, fmt.Errorf("unavailable")
+			},
+		},
+		AnalyticalPass: defaultAnalyticalPassMock(),
+	}
+
+	handler := primeResourceHandler(c)
+	contents, err := handler(context.Background(), "specgraph://prime")
+	require.NoError(t, err)
+	require.Len(t, contents, 1)
+
+	text := contents[0].Text
+	sparkIdx := strings.Index(text, "spark:")
+	shapeIdx := strings.Index(text, "shape:")
+	specifyIdx := strings.Index(text, "specify:")
+	decomposeIdx := strings.Index(text, "decompose:")
+	require.Greater(t, shapeIdx, sparkIdx, "shape should appear after spark")
+	require.Greater(t, specifyIdx, shapeIdx, "specify should appear after shape")
+	require.Greater(t, decomposeIdx, specifyIdx, "decompose should appear after specify")
+}
+
+// TestPrimeResource_RPCFailureRendersErrorMarker verifies that when an RPC fails
+// the section heading is still rendered with a visible error marker rather than
+// silently omitting the section.
+func TestPrimeResource_RPCFailureRendersErrorMarker(t *testing.T) {
+	c := &Client{
+		Constitution: &mockConstitutionService{
+			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+				return nil, fmt.Errorf("backend connection refused")
+			},
+		},
+		Spec: &mockSpecService{
+			listSpecs: func() (*specv1.ListSpecsResponse, error) {
+				return nil, fmt.Errorf("backend connection refused")
+			},
+		},
+		Graph: &mockGraphService{
+			getReady: func() (*specv1.GetReadyResponse, error) {
+				return nil, fmt.Errorf("backend connection refused")
+			},
+		},
+		AnalyticalPass: &mockAnalyticalPassService{
+			listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
+				return nil, fmt.Errorf("backend connection refused")
+			},
+		},
+	}
+
+	handler := primeResourceHandler(c)
+	contents, err := handler(context.Background(), "specgraph://prime")
+	// The handler itself must not error — it returns the partial digest.
+	require.NoError(t, err)
+	require.Len(t, contents, 1)
+
+	text := contents[0].Text
+	// All four section headings must appear.
+	require.Contains(t, text, "## Constitution")
+	require.Contains(t, text, "## Graph Overview")
+	require.Contains(t, text, "## Ready to Work")
+	require.Contains(t, text, "## Open Findings")
+	// Failures are visible to the user.
+	require.Contains(t, text, "_(unable to load:")
 }
 
 // ---------------------------------------------------------------------------

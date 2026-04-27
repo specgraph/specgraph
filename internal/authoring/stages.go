@@ -43,9 +43,13 @@ const (
 // the composer's content-routing key, not a storage stage value.
 var authoringStages = []Stage{StageSpark, StageShape, StageSpecify, StageDecompose, StageApproved}
 
-// AsStorage returns s as a storage.SpecStage. Always safe — the underlying
-// string is identical; the conversion only re-types the value for storage
-// call sites.
+// AsStorage returns s as a storage.SpecStage. The conversion is type-safe
+// (same underlying string), but s == StageApprove yields storage.SpecStage("approve")
+// which is NOT a valid storage stage value — storage uses StageApproved
+// ("approved") for the post-funnel state. Callers persisting the result MUST
+// either ensure s != StageApprove or remap StageApprove → StageApproved at
+// the call site. This footgun is intentional: silently returning empty would
+// be worse (callers would write "" to storage thinking they wrote "approve").
 func (s Stage) AsStorage() storage.SpecStage { return storage.SpecStage(s) }
 
 // StageFromStorage narrows a storage.SpecStage to an authoring.Stage,

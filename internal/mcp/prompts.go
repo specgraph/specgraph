@@ -104,7 +104,11 @@ func sparkPromptHandler(c *Client) PromptHandler {
 		}
 		result, err := composer.ComposeStagePrompt(ctx, authoring.ComposeInput{
 			Stage: authoring.StageSpark,
-			Slug:  args["spec_slug"],
+			// Spark stage has no spec yet (PromptDef declares only topic + context).
+			// If mid-stream re-entry into spark with an existing slug becomes a
+			// requirement, declare spec_slug as an optional PromptArgument and read
+			// it here.
+			Slug: "",
 		})
 		if err != nil {
 			return nil, fmt.Errorf("compose spark prompt: %w", err)

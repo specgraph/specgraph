@@ -1,5 +1,5 @@
+// Copyright 2026 SpecGraph Contributors
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Brandt
 
 package mcp
 
@@ -19,10 +19,13 @@ import (
 // B.1 — composerBackend.GetConstitution tests
 // ---------------------------------------------------------------------------
 
-// TestComposerAdapter_GetConstitution_NilConstitutionMapsToEmpty verifies that
-// when GetConstitution returns a response with no Constitution field set, the
-// adapter returns an empty (non-nil) ConstitutionSummary rather than nil.
-func TestComposerAdapter_GetConstitution_NilConstitutionMapsToEmpty(t *testing.T) {
+// TestComposerAdapter_GetConstitution_NilConstitutionMapsToNil verifies that
+// the adapter returns a nil ConstitutionSummary when the GetConstitution RPC
+// succeeds but the response carries no Constitution field. This (nil, nil)
+// pattern is documented on the ComposerBackend.GetConstitution interface as
+// "no constitution configured" — distinct from the ErrSpecNotFound soft-miss
+// path used by GetSpecSummary.
+func TestComposerAdapter_GetConstitution_NilConstitutionMapsToNil(t *testing.T) {
 	c := &Client{
 		Constitution: &mockConstitutionService{
 			getConstitution: func() (*specv1.GetConstitutionResponse, error) {

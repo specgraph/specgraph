@@ -1,5 +1,5 @@
+// Copyright 2026 SpecGraph Contributors
 // SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Sean Brandt
 
 package mcp
 
