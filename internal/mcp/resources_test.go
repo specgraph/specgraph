@@ -348,7 +348,7 @@ func TestRegisterResources_Count(t *testing.T) {
 	c := &Client{}
 	r := NewRegistry()
 	RegisterResources(r, c)
-	require.Len(t, r.Resources(), 9)
+	require.Len(t, r.Resources(), 10)
 }
 
 func TestRegisterResources_Templates(t *testing.T) {
@@ -378,6 +378,106 @@ func TestRegisterResources_Templates(t *testing.T) {
 	require.True(t, exactURIs["specgraph://graph"], "graph exact URI missing")
 	require.True(t, exactURIs["specgraph://graph/ready"], "graph/ready exact URI missing")
 	require.True(t, exactURIs["specgraph://findings"], "findings exact URI missing")
+	require.True(t, exactURIs["specgraph://prime"], "prime exact URI missing")
+}
+
+// ---------------------------------------------------------------------------
+// primeResourceHandler tests
+// ---------------------------------------------------------------------------
+
+func TestPrimeResource(t *testing.T) {
+	c := &Client{
+		Constitution: &mockConstitutionService{
+			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+				return &specv1.GetConstitutionResponse{
+					Constitution: &specv1.Constitution{
+						Constraints: []string{"no GPL", "no circular deps"},
+					},
+				}, nil
+			},
+		},
+		Spec: &mockSpecService{
+			listSpecs: func() (*specv1.ListSpecsResponse, error) {
+				return &specv1.ListSpecsResponse{
+					Specs: []*specv1.Spec{
+						{Slug: "spec-a", Stage: "spark"},
+						{Slug: "spec-b", Stage: "shape"},
+					},
+				}, nil
+			},
+		},
+		Graph: &mockGraphService{
+			getReady: func() (*specv1.GetReadyResponse, error) {
+				return &specv1.GetReadyResponse{
+					Ready: []*specv1.NodeRef{
+						{Slug: "spec-a", Stage: "spark"},
+					},
+				}, nil
+			},
+		},
+		AnalyticalPass: &mockAnalyticalPassService{
+			listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
+				return &specv1.ListFindingsResponse{}, nil
+			},
+		},
+	}
+
+	handler := primeResourceHandler(c)
+	contents, err := handler(context.Background(), "specgraph://prime")
+	require.NoError(t, err)
+	require.Len(t, contents, 1)
+	require.Equal(t, "text/markdown", contents[0].MimeType)
+	require.Equal(t, "specgraph://prime", contents[0].URI)
+
+	text := contents[0].Text
+	for _, marker := range []string{"Constitution", "Graph", "Ready"} {
+		require.Contains(t, text, marker)
+	}
+	// Should contain constraint text
+	require.Contains(t, text, "no GPL")
+	// Should reference the full resources
+	require.Contains(t, text, "specgraph://constitution")
+	require.Contains(t, text, "specgraph://graph/ready")
+}
+
+func TestPrimeResource_FindingsSection(t *testing.T) {
+	c := &Client{
+		Constitution: &mockConstitutionService{
+			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+				return nil, fmt.Errorf("unavailable")
+			},
+		},
+		Spec: &mockSpecService{
+			listSpecs: func() (*specv1.ListSpecsResponse, error) {
+				return nil, fmt.Errorf("unavailable")
+			},
+		},
+		Graph: &mockGraphService{
+			getReady: func() (*specv1.GetReadyResponse, error) {
+				return nil, fmt.Errorf("unavailable")
+			},
+		},
+		AnalyticalPass: &mockAnalyticalPassService{
+			listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
+				return &specv1.ListFindingsResponse{
+					Findings: []*specv1.AnalyticalFinding{
+						{Id: "f1", Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL},
+						{Id: "f2", Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL},
+						{Id: "f3", Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING},
+					},
+				}, nil
+			},
+		},
+	}
+
+	handler := primeResourceHandler(c)
+	contents, err := handler(context.Background(), "specgraph://prime")
+	require.NoError(t, err)
+	require.Len(t, contents, 1)
+
+	text := contents[0].Text
+	require.Contains(t, text, "Open Findings")
+	require.Contains(t, text, "specgraph://findings")
 }
 
 // ---------------------------------------------------------------------------

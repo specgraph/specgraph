@@ -6,6 +6,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -182,7 +183,92 @@ func changesResourceHandler(c *Client) ResourceHandler {
 }
 
 // ---------------------------------------------------------------------------
-// RegisterResources adds all 9 MCP resources to the registry.
+// primeResourceHandler — specgraph://prime
+// ---------------------------------------------------------------------------
+
+// primeResourceHandler returns a session-priming digest in markdown. It
+// stitches together constitution summary, spec counts by stage, the top 10
+// ready specs, and open-findings counts by severity. Each section is
+// conditional: if the upstream RPC fails, that section is silently omitted so
+// partial connectivity still produces a useful digest.
+func primeResourceHandler(c *Client) ResourceHandler {
+	return func(ctx context.Context, uri string) ([]ResourceContent, error) {
+		var b strings.Builder
+		b.WriteString("# SpecGraph Session Prime\n\n")
+
+		if conResp, err := c.Constitution.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{})); err == nil && conResp.Msg.GetConstitution() != nil {
+			con := conResp.Msg.GetConstitution()
+			b.WriteString("## Constitution\n\n")
+			if con.GetTech() != nil && con.GetTech().GetLanguages() != nil {
+				fmt.Fprintf(&b, "Primary language: %s\n\n", con.GetTech().GetLanguages().GetPrimary())
+			}
+			if cs := con.GetConstraints(); len(cs) > 0 {
+				top := cs
+				if len(top) > 5 {
+					top = top[:5]
+				}
+				b.WriteString("Top constraints:\n")
+				for _, constraint := range top {
+					fmt.Fprintf(&b, "- %s\n", constraint)
+				}
+				b.WriteString("\nFull at `specgraph://constitution`.\n\n")
+			}
+		}
+
+		if listResp, err := c.Spec.ListSpecs(ctx, connect.NewRequest(&specv1.ListSpecsRequest{})); err == nil {
+			b.WriteString("## Graph Overview\n\n")
+			counts := map[string]int{}
+			for _, s := range listResp.Msg.GetSpecs() {
+				counts[s.GetStage()]++
+			}
+			stages := make([]string, 0, len(counts))
+			for stage := range counts {
+				stages = append(stages, stage)
+			}
+			sort.Strings(stages)
+			for _, stage := range stages {
+				fmt.Fprintf(&b, "- %s: %d\n", stage, counts[stage])
+			}
+			b.WriteString("\n")
+		}
+
+		if readyResp, err := c.Graph.GetReady(ctx, connect.NewRequest(&specv1.GetReadyRequest{})); err == nil {
+			b.WriteString("## Ready to Work\n\n")
+			ready := readyResp.Msg.GetReady()
+			if len(ready) > 10 {
+				ready = ready[:10]
+			}
+			for _, s := range ready {
+				fmt.Fprintf(&b, "- `%s` (%s)\n", s.GetSlug(), s.GetStage())
+			}
+			b.WriteString("\nFull list at `specgraph://graph/ready`.\n\n")
+		}
+
+		if findingsResp, err := c.AnalyticalPass.ListFindings(ctx, connect.NewRequest(&specv1.ListFindingsRequest{})); err == nil {
+			counts := map[string]int{}
+			for _, f := range findingsResp.Msg.GetFindings() {
+				counts[f.GetSeverity().String()]++
+			}
+			if len(counts) > 0 {
+				b.WriteString("## Open Findings\n\n")
+				sevs := make([]string, 0, len(counts))
+				for sev := range counts {
+					sevs = append(sevs, sev)
+				}
+				sort.Strings(sevs)
+				for _, sev := range sevs {
+					fmt.Fprintf(&b, "- %s: %d\n", sev, counts[sev])
+				}
+				b.WriteString("\nFull at `specgraph://findings`.\n\n")
+			}
+		}
+
+		return []ResourceContent{{URI: uri, MimeType: "text/markdown", Text: b.String()}}, nil
+	}
+}
+
+// ---------------------------------------------------------------------------
+// RegisterResources adds all 10 MCP resources to the registry.
 // ---------------------------------------------------------------------------
 
 // RegisterResources registers all SpecGraph MCP resources into r using the
@@ -260,5 +346,13 @@ func RegisterResources(r *Registry, c *Client) {
 		MimeType:    "application/json",
 		IsTemplate:  true,
 		Handler:     changesResourceHandler(c),
+	})
+	r.AddResource(ResourceDef{
+		URI:         "specgraph://prime",
+		Name:        "prime",
+		Description: "Session-priming digest: constitution summary, graph counts, ready specs, findings summary.",
+		MimeType:    "text/markdown",
+		IsTemplate:  false,
+		Handler:     primeResourceHandler(c),
 	})
 }
