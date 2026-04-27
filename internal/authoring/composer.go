@@ -35,6 +35,17 @@ const (
 	RelationshipComposes Relationship = "composes"
 )
 
+// IsValid reports whether r is one of the three exported Relationship constants.
+// Use a switch for O(1) performance with no allocations.
+func (r Relationship) IsValid() bool {
+	switch r {
+	case RelationshipDependsOn, RelationshipBlocks, RelationshipComposes:
+		return true
+	default:
+		return false
+	}
+}
+
 var validStages = map[Stage]struct{}{
 	StageSpark:     {},
 	StageShape:     {},
@@ -225,9 +236,20 @@ func (c *Composer) appendDynamicState(ctx context.Context, b *strings.Builder, i
 		if err != nil {
 			return truncated, fmt.Errorf("get related specs: %w", err)
 		}
-		if len(related) > 0 {
+		var validRelated []*RelatedSpec
+		for _, r := range related {
+			if !r.Relationship.IsValid() {
+				slog.WarnContext(ctx, "composer.invalid_relationship_skipped",
+					slog.String("slug", r.Slug),
+					slog.String("relationship", string(r.Relationship)),
+				)
+				continue
+			}
+			validRelated = append(validRelated, r)
+		}
+		if len(validRelated) > 0 {
 			b.WriteString("**Related specs**: ")
-			for i, r := range related {
+			for i, r := range validRelated {
 				if i > 0 {
 					b.WriteString(", ")
 				}
