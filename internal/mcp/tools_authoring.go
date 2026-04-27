@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/authoring"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -23,6 +24,43 @@ func RegisterAuthoringTools(r *Registry, c *Client) {
 
 	apt := &analyticalPassTool{client: c}
 	r.AddTool(apt.def())
+
+	r.AddTool(ToolDef{
+		Name: "author.start_stage",
+		Description: "Returns composed stage guidance (persona + orchestration + stage-specific content + current state). " +
+			"Use when the client does not expose MCP prompts to users, or for mid-conversation re-entry into a stage.",
+		Profile: ProfileAuthoring,
+		Schema: objectSchema(props{
+			"stage":   stringProp("Stage", "spark", "shape", "specify", "decompose", "approve"),
+			"slug":    stringProp("Spec slug (required for shape/specify/decompose/approve; optional for spark)"),
+			"posture": stringProp("Posture", "drive", "partner", "support"),
+		}, "stage"),
+		Handler: authoringStartStageHandler(c),
+	})
+}
+
+// authoringStartStageHandler returns a ToolHandler that composes and returns stage guidance.
+func authoringStartStageHandler(c *Client) ToolHandler {
+	composer := authoring.NewComposer(&composerBackend{client: c})
+	return func(ctx context.Context, params map[string]any) (*ToolResult, error) {
+		stage := stringParam(params, "stage")
+		if stage == "" {
+			return errResult("stage is required (spark|shape|specify|decompose|approve)"), nil
+		}
+		slug := stringParam(params, "slug")
+		if stage != "spark" && slug == "" {
+			return errResult(fmt.Sprintf("slug is required for stage %s", stage)), nil
+		}
+		result, err := composer.ComposeStagePrompt(ctx, authoring.ComposeInput{
+			Stage:   authoring.Stage(stage),
+			Slug:    slug,
+			Posture: stringParam(params, "posture"),
+		})
+		if err != nil {
+			return errResult(fmt.Sprintf("compose: %v", err)), nil
+		}
+		return &ToolResult{Content: []Content{{Type: "text", Text: result.Body}}}, nil
+	}
 }
 
 // validateOptionalPosture checks that a non-empty posture string maps to a known enum.

@@ -9,6 +9,7 @@ import (
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/authoring"
 )
 
 // RegisterPrompts registers all MCP prompt definitions into the registry.
@@ -69,66 +70,55 @@ func RegisterPrompts(r *Registry, c *Client) {
 	})
 }
 
-// stagePromptHandler returns a PromptHandler that fetches prompt templates for
-// the given authoring stage and returns the first template as a user message.
+// stagePromptHandler returns a PromptHandler that uses authoring.Composer to
+// assemble a rich composed prompt (persona + orchestration + recording +
+// heuristics + stage + dynamic state) for the given authoring stage.
 func stagePromptHandler(c *Client, stage string) PromptHandler {
+	composer := authoring.NewComposer(&composerBackend{client: c})
 	return func(ctx context.Context, args map[string]string) (*PromptResult, error) {
 		specSlug := args["spec_slug"]
 		if specSlug == "" {
 			return nil, fmt.Errorf("spec_slug is required for %s prompt", stage)
 		}
-		resp, err := c.Authoring.GetPrompts(ctx, connect.NewRequest(&specv1.GetPromptsRequest{
-			Stage: authoringStageFromString(stage),
-		}))
+		result, err := composer.ComposeStagePrompt(ctx, authoring.ComposeInput{
+			Stage: authoring.Stage(stage),
+			Slug:  specSlug,
+		})
 		if err != nil {
-			return nil, fmt.Errorf("get prompts for stage %s: %w", stage, err)
+			return nil, fmt.Errorf("compose %s prompt: %w", stage, err)
 		}
-		templates := resp.Msg.GetPrompts()
-		var text string
-		if len(templates) == 0 {
-			text = "No prompt template available for stage: " + stage
-		} else {
-			text = templates[0].GetTemplate()
-		}
-		text += "\n\nSpec: " + specSlug
 		return &PromptResult{
-			Messages: []PromptMessage{
-				{Role: "user", Content: text},
-			},
+			Messages: []PromptMessage{{Role: "user", Content: result.Body}},
 		}, nil
 	}
 }
 
-// sparkPromptHandler returns a PromptHandler for the spark stage that appends
-// the topic and optional context to the fetched template.
+// sparkPromptHandler returns a PromptHandler for the spark stage that composes
+// a rich prompt and appends the required topic and optional context.
 func sparkPromptHandler(c *Client) PromptHandler {
+	composer := authoring.NewComposer(&composerBackend{client: c})
 	return func(ctx context.Context, args map[string]string) (*PromptResult, error) {
-		if args["topic"] == "" {
+		topic := args["topic"]
+		if topic == "" {
 			return nil, fmt.Errorf("topic is required for spark prompt")
 		}
-		resp, err := c.Authoring.GetPrompts(ctx, connect.NewRequest(&specv1.GetPromptsRequest{
-			Stage: authoringStageFromString("spark"),
-		}))
+		result, err := composer.ComposeStagePrompt(ctx, authoring.ComposeInput{
+			Stage: authoring.StageSpark,
+			// Spark stage has no spec yet (PromptDef declares only topic + context).
+			// If mid-stream re-entry into spark with an existing slug becomes a
+			// requirement, declare spec_slug as an optional PromptArgument and read
+			// it here.
+			Slug: "",
+		})
 		if err != nil {
-			return nil, fmt.Errorf("get prompts for stage spark: %w", err)
+			return nil, fmt.Errorf("compose spark prompt: %w", err)
 		}
-		templates := resp.Msg.GetPrompts()
-		var text string
-		if len(templates) == 0 {
-			text = "No prompt template available for stage: spark"
-		} else {
-			text = templates[0].GetTemplate()
-		}
-		if topic := args["topic"]; topic != "" {
-			text += "\n\nTopic: " + topic
-		}
+		body := result.Body + "\n\n# Topic\n\n" + topic
 		if ctxVal := args["context"]; ctxVal != "" {
-			text += "\nContext: " + ctxVal
+			body += "\n\n# Additional Context\n\n" + ctxVal
 		}
 		return &PromptResult{
-			Messages: []PromptMessage{
-				{Role: "user", Content: text},
-			},
+			Messages: []PromptMessage{{Role: "user", Content: body}},
 		}, nil
 	}
 }

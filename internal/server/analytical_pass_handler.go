@@ -71,8 +71,9 @@ func (h *AnalyticalPassHandler) RunAnalyticalPass(ctx context.Context, req *conn
 		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 
-	stage := spec.Stage
-	offered := authoring.OfferedPasses(stage, authoring.PostureDrive)
+	// Lifecycle stages return empty Stage; OfferedPasses returns nil for unknown.
+	authoringStage, _ := authoring.StageFromStorage(spec.Stage)
+	offered := authoring.OfferedPasses(authoringStage, authoring.PostureDrive)
 
 	return connect.NewResponse(&specv1.RunAnalyticalPassResponse{
 		PassType:       msg.PassType,
