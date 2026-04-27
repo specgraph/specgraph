@@ -81,9 +81,8 @@ func stagePromptHandler(c *Client, stage string) PromptHandler {
 			return nil, fmt.Errorf("spec_slug is required for %s prompt", stage)
 		}
 		result, err := composer.ComposeStagePrompt(ctx, authoring.ComposeInput{
-			Stage:   authoring.Stage(stage),
-			Slug:    specSlug,
-			Posture: args["posture"],
+			Stage: authoring.Stage(stage),
+			Slug:  specSlug,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("compose %s prompt: %w", stage, err)
@@ -104,9 +103,8 @@ func sparkPromptHandler(c *Client) PromptHandler {
 			return nil, fmt.Errorf("topic is required for spark prompt")
 		}
 		result, err := composer.ComposeStagePrompt(ctx, authoring.ComposeInput{
-			Stage:   authoring.StageSpark,
-			Slug:    args["spec_slug"],
-			Posture: args["posture"],
+			Stage: authoring.StageSpark,
+			Slug:  args["spec_slug"],
 		})
 		if err != nil {
 			return nil, fmt.Errorf("compose spark prompt: %w", err)

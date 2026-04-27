@@ -10,9 +10,9 @@ import (
 )
 
 // TestClientIDContract documents the expected clientInfo.name each platform
-// reports during MCP initialize. Update when docs/verification/*.md captures
-// empirical findings; regressing any of these without updating the test
-// indicates a platform renamed itself and the profile mapping is stale.
+// reports during MCP initialize and the profile each name maps to. A failing
+// test indicates a platform renamed itself; update the case list here AND
+// update ProfileFromClientInfo in profiles.go to match.
 func TestClientIDContract(t *testing.T) {
 	cases := []struct {
 		platform string
@@ -31,7 +31,7 @@ func TestClientIDContract(t *testing.T) {
 		t.Run(tc.platform, func(t *testing.T) {
 			got := ProfileFromClientInfo(&sdkmcp.Implementation{Name: tc.name})
 			if got != tc.profile {
-				t.Errorf("%s reports %q → want %v, got %v (did the platform rename? See docs/verification/)",
+				t.Errorf("%s reports clientInfo.name=%q → want profile %v, got %v (platform may have renamed; update ProfileFromClientInfo and this test)",
 					tc.platform, tc.name, tc.profile, got)
 			}
 		})

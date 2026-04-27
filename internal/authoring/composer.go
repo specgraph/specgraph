@@ -20,7 +20,7 @@ var ErrInvalidStage = errors.New("invalid authoring stage")
 // ErrSpecNotFound is returned by ComposerBackend.GetSpecSummary when the
 // requested slug has no corresponding spec. Callers should treat this as a
 // soft miss: the composed prompt succeeds but omits the spec state block.
-// GetSpecSummary MUST return this sentinel (never nil, nil) when the spec is absent.
+// Implementations should return this sentinel rather than (nil, nil) when the spec is absent.
 var ErrSpecNotFound = errors.New("spec not found")
 
 // Relationship is a typed edge-relationship label used in RelatedSpec.
@@ -63,14 +63,14 @@ type SpecSummary struct {
 type RelatedSpec struct {
 	Slug         string
 	Intent       string
-	Relationship Relationship // RelationshipDependsOn, RelationshipBlocks, RelationshipComposes, etc.
+	Relationship Relationship // RelationshipDependsOn, RelationshipBlocks, or RelationshipComposes
 }
 
 // ComposerBackend is the read-only storage surface the composer needs.
-// GetSpecSummary returns ErrSpecNotFound if the slug has no spec; callers
-// receive a nil summary in that case and the compose succeeds without the
-// spec state block. Implementations MUST NOT return (nil, nil) — the nil
-// summary path is only valid when error is ErrSpecNotFound.
+// GetSpecSummary returns ErrSpecNotFound when the slug has no spec.
+// Implementations should return ErrSpecNotFound rather than (nil, nil) when
+// the spec is absent; the composer treats both equivalently as soft-miss but
+// the sentinel preserves the not-found / not-configured distinction for callers.
 // GetConstitution may return (nil, nil) to indicate no constitution is
 // configured; that is a distinct concept from "not found."
 type ComposerBackend interface {

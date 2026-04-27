@@ -438,6 +438,10 @@ func TestPrimeResource(t *testing.T) {
 	// Should reference the full resources
 	require.Contains(t, text, "specgraph://constitution")
 	require.Contains(t, text, "specgraph://graph/ready")
+	// B.3: Assert aggregated stage counts from the two specs in the fake.
+	// spec-a is stage "spark", spec-b is stage "shape" → each count 1.
+	require.Contains(t, text, "spark: 1")
+	require.Contains(t, text, "shape: 1")
 }
 
 func TestPrimeResource_FindingsSection(t *testing.T) {
@@ -478,6 +482,9 @@ func TestPrimeResource_FindingsSection(t *testing.T) {
 	text := contents[0].Text
 	require.Contains(t, text, "Open Findings")
 	require.Contains(t, text, "specgraph://findings")
+	// B.3: Assert per-severity counts rendered by the handler (f.GetSeverity().String()).
+	require.Contains(t, text, "FINDING_SEVERITY_CRITICAL: 2")
+	require.Contains(t, text, "FINDING_SEVERITY_WARNING: 1")
 	// Failed sections must NOT leak into the digest — section-by-section
 	// tolerance is the property this test exists to verify.
 	require.NotContains(t, text, "## Constitution")

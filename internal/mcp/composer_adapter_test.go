@@ -15,6 +15,135 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// ---------------------------------------------------------------------------
+// B.1 — composerBackend.GetConstitution tests
+// ---------------------------------------------------------------------------
+
+// TestComposerAdapter_GetConstitution_NilConstitutionMapsToEmpty verifies that
+// when GetConstitution returns a response with no Constitution field set, the
+// adapter returns an empty (non-nil) ConstitutionSummary rather than nil.
+func TestComposerAdapter_GetConstitution_NilConstitutionMapsToEmpty(t *testing.T) {
+	c := &Client{
+		Constitution: &mockConstitutionService{
+			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+				return &specv1.GetConstitutionResponse{}, nil
+			},
+		},
+	}
+	b := &composerBackend{client: c}
+
+	summary, err := b.GetConstitution(context.Background())
+	require.NoError(t, err)
+	// Nil constitution maps to (nil, nil) per the GetConstitution docstring —
+	// the adapter returns nil when no constitution is configured.
+	require.Nil(t, summary, "nil Constitution in response should produce nil summary")
+}
+
+// TestComposerAdapter_GetConstitution_RPCErrorWrapped verifies that an RPC error
+// is wrapped via "get constitution: %w" and the original error is reachable via errors.Is.
+func TestComposerAdapter_GetConstitution_RPCErrorWrapped(t *testing.T) {
+	inner := connect.NewError(connect.CodeInternal, fmt.Errorf("boom"))
+	c := &Client{
+		Constitution: &mockConstitutionService{
+			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+				return nil, inner
+			},
+		},
+	}
+	b := &composerBackend{client: c}
+
+	summary, err := b.GetConstitution(context.Background())
+	require.Nil(t, summary)
+	require.Error(t, err)
+	require.True(t, errors.Is(err, inner),
+		"expected errors.Is(err, inner), got %v", err)
+}
+
+// TestComposerAdapter_GetConstitution_PopulatesFields verifies that a populated
+// Constitution response is correctly mapped to ConstitutionSummary fields.
+func TestComposerAdapter_GetConstitution_PopulatesFields(t *testing.T) {
+	c := &Client{
+		Constitution: &mockConstitutionService{
+			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+				return &specv1.GetConstitutionResponse{
+					Constitution: &specv1.Constitution{
+						Tech: &specv1.TechConfig{
+							Languages: &specv1.LanguageConfig{
+								Primary: "Go",
+							},
+						},
+						Constraints:  []string{"c1", "c2"},
+						Antipatterns: []*specv1.Antipattern{{Pattern: "ap1"}, {Pattern: "ap2"}},
+					},
+				}, nil
+			},
+		},
+	}
+	b := &composerBackend{client: c}
+
+	summary, err := b.GetConstitution(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, summary)
+	require.Equal(t, "Go", summary.PrimaryLanguage)
+	require.Equal(t, []string{"c1", "c2"}, summary.KeyConstraints)
+	require.Equal(t, []string{"ap1", "ap2"}, summary.Antipatterns)
+}
+
+// ---------------------------------------------------------------------------
+// B.2 — composerBackend.GetRelatedSpecs tests
+// ---------------------------------------------------------------------------
+
+// TestComposerAdapter_GetRelatedSpecs_RPCErrorWrapped verifies that an RPC error
+// from GetDependencies is wrapped via "get dependencies: %w".
+func TestComposerAdapter_GetRelatedSpecs_RPCErrorWrapped(t *testing.T) {
+	inner := connect.NewError(connect.CodeInternal, fmt.Errorf("deps boom"))
+	c := &Client{
+		Graph: &mockGraphService{
+			getDeps: func(_ string) (*specv1.GetDependenciesResponse, error) {
+				return nil, inner
+			},
+		},
+	}
+	b := &composerBackend{client: c}
+
+	result, err := b.GetRelatedSpecs(context.Background(), "any-slug")
+	require.Nil(t, result)
+	require.Error(t, err)
+	require.True(t, errors.Is(err, inner),
+		"expected errors.Is(err, inner) to hold through wrap, got %v", err)
+}
+
+// TestComposerAdapter_GetRelatedSpecs_TranslatesDependencies verifies that
+// NodeRef.Slug/Label are mapped to RelatedSpec.Slug/Intent and that
+// Relationship is set to RelationshipDependsOn for all entries.
+func TestComposerAdapter_GetRelatedSpecs_TranslatesDependencies(t *testing.T) {
+	c := &Client{
+		Graph: &mockGraphService{
+			getDeps: func(_ string) (*specv1.GetDependenciesResponse, error) {
+				return &specv1.GetDependenciesResponse{
+					Dependencies: []*specv1.NodeRef{
+						{Slug: "alpha", Label: "Alpha intent"},
+						{Slug: "beta", Label: "Beta intent"},
+					},
+				}, nil
+			},
+		},
+	}
+	b := &composerBackend{client: c}
+
+	result, err := b.GetRelatedSpecs(context.Background(), "root")
+	require.NoError(t, err)
+	require.Len(t, result, 2)
+
+	require.Equal(t, "alpha", result[0].Slug)
+	require.Equal(t, "Alpha intent", result[0].Intent)
+	require.Equal(t, authoring.RelationshipDependsOn, result[0].Relationship)
+
+	require.Equal(t, "beta", result[1].Slug)
+	require.Equal(t, "Beta intent", result[1].Intent)
+	require.Equal(t, authoring.RelationshipDependsOn, result[1].Relationship)
+}
+
 // TestComposerAdapter_GetSpecSummary_NotFoundMaps verifies that a
 // connect.CodeNotFound error from the underlying GetSpec RPC is translated
 // into authoring.ErrSpecNotFound. Without this mapping the soft-miss path

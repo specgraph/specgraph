@@ -287,7 +287,8 @@ func (n *nilConstitutionBackend) GetConstitution(_ context.Context) (*Constituti
 }
 
 // TestComposer_InvalidStageErrorFormat verifies that the error message for an
-// invalid stage contains both the offending value and the word "valid".
+// invalid stage contains both the offending value and the word "valid",
+// and that the error wraps ErrInvalidStage so callers can sentinel-check it.
 func TestComposer_InvalidStageErrorFormat(t *testing.T) {
 	c := NewComposer(&fakeComposerBackend{})
 	_, err := c.ComposeStagePrompt(context.Background(), ComposeInput{Stage: "bogus-stage", Slug: "s"})
@@ -299,6 +300,10 @@ func TestComposer_InvalidStageErrorFormat(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "valid") {
 		t.Errorf("error %q does not contain the word 'valid'", err.Error())
+	}
+	// B.4: The error must wrap ErrInvalidStage so callers can use errors.Is.
+	if !errors.Is(err, ErrInvalidStage) {
+		t.Errorf("errors.Is(err, ErrInvalidStage) = false; got %v", err)
 	}
 }
 

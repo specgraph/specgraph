@@ -15,8 +15,9 @@ import (
 // without conversion.
 type Stage = storage.SpecStage
 
-// Stage name constants used across the authoring funnel.
-// These are aliases for the corresponding storage.SpecStage* constants.
+// Stage name constants used across the authoring funnel. Most are aliases for
+// the corresponding storage.SpecStage* constants; StageApprove is the one
+// exception — see its inline comment.
 const (
 	StageSpark     = storage.SpecStageSpark
 	StageShape     = storage.SpecStageShape

@@ -852,6 +852,10 @@ func TestAuthoringStartStageTool(t *testing.T) {
 	require.False(t, result.IsError, "expected no error result, got %+v", result)
 	require.NotEmpty(t, result.Content)
 	require.Contains(t, result.Content[0].Text, "# Shape")
+	// B.6: The dynamic state block must reflect the slug supplied.
+	// defaultSpecMock("test-slug") returns Slug="test-slug", so the composer renders
+	// "**Spec test-slug**" in the current state section.
+	require.Contains(t, result.Content[0].Text, "**Spec test-slug**")
 }
 
 func TestAuthoringStartStageTool_MissingStage(t *testing.T) {

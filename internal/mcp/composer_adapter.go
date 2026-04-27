@@ -18,6 +18,8 @@ type composerBackend struct {
 	client *Client
 }
 
+var _ authoring.ComposerBackend = (*composerBackend)(nil)
+
 // GetConstitution fetches the active constitution and returns a bounded summary.
 // Returns (nil, nil) when the server reports no constitution is configured.
 func (b *composerBackend) GetConstitution(ctx context.Context) (*authoring.ConstitutionSummary, error) {
@@ -50,8 +52,8 @@ func (b *composerBackend) GetConstitution(ctx context.Context) (*authoring.Const
 func (b *composerBackend) GetSpecSummary(ctx context.Context, slug string) (*authoring.SpecSummary, error) {
 	resp, err := b.client.Spec.GetSpec(ctx, connect.NewRequest(&specv1.GetSpecRequest{Slug: slug}))
 	if err != nil {
-		// The real server maps storage.ErrSpecNotFound → connect.CodeNotFound
-		// (see internal/server/authoring_handler.go). Translate that into the
+		// The real server's SpecService.GetSpec maps storage.ErrSpecNotFound → connect.CodeNotFound
+		// (see internal/server/spec_handler.go specError helper). Translate that into the
 		// composer's soft-miss sentinel so callers can skip the spec block.
 		if connect.CodeOf(err) == connect.CodeNotFound {
 			return nil, authoring.ErrSpecNotFound

@@ -90,6 +90,9 @@ func TestSparkPrompt_WithTopicAndContext(t *testing.T) {
 	require.Contains(t, result.Messages[0].Content, "# Persona")
 	require.Contains(t, result.Messages[0].Content, "OAuth token rotation")
 	require.Contains(t, result.Messages[0].Content, "Used by mobile apps")
+	// B.5: Assert the exact section headings are present with the supplied values.
+	require.Contains(t, result.Messages[0].Content, "# Topic\n\nOAuth token rotation")
+	require.Contains(t, result.Messages[0].Content, "# Additional Context\n\nUsed by mobile apps")
 }
 
 func TestSparkPrompt_TopicOnly(t *testing.T) {
