@@ -478,6 +478,11 @@ func TestPrimeResource_FindingsSection(t *testing.T) {
 	text := contents[0].Text
 	require.Contains(t, text, "Open Findings")
 	require.Contains(t, text, "specgraph://findings")
+	// Failed sections must NOT leak into the digest — section-by-section
+	// tolerance is the property this test exists to verify.
+	require.NotContains(t, text, "## Constitution")
+	require.NotContains(t, text, "## Graph Overview")
+	require.NotContains(t, text, "## Ready to Work")
 }
 
 // ---------------------------------------------------------------------------

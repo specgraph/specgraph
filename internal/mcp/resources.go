@@ -233,15 +233,17 @@ func primeResourceHandler(c *Client) ResourceHandler {
 		}
 
 		if readyResp, err := c.Graph.GetReady(ctx, connect.NewRequest(&specv1.GetReadyRequest{})); err == nil {
-			b.WriteString("## Ready to Work\n\n")
 			ready := readyResp.Msg.GetReady()
-			if len(ready) > 10 {
-				ready = ready[:10]
+			if len(ready) > 0 {
+				b.WriteString("## Ready to Work\n\n")
+				if len(ready) > 10 {
+					ready = ready[:10]
+				}
+				for _, s := range ready {
+					fmt.Fprintf(&b, "- `%s` (%s)\n", s.GetSlug(), s.GetStage())
+				}
+				b.WriteString("\nFull list at `specgraph://graph/ready`.\n\n")
 			}
-			for _, s := range ready {
-				fmt.Fprintf(&b, "- `%s` (%s)\n", s.GetSlug(), s.GetStage())
-			}
-			b.WriteString("\nFull list at `specgraph://graph/ready`.\n\n")
 		}
 
 		if findingsResp, err := c.AnalyticalPass.ListFindings(ctx, connect.NewRequest(&specv1.ListFindingsRequest{})); err == nil {
