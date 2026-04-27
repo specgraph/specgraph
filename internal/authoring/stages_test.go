@@ -174,3 +174,50 @@ func TestAllStages(t *testing.T) {
 	got[0] = "mutated"
 	require.Equal(t, expected, authoring.AllStages())
 }
+
+func TestStageFromStorage(t *testing.T) {
+	cases := []struct {
+		name      string
+		in        storage.SpecStage
+		wantStage authoring.Stage
+		wantOk    bool
+	}{
+		{"spark funnel value", storage.SpecStageSpark, authoring.StageSpark, true},
+		{"shape funnel value", storage.SpecStageShape, authoring.StageShape, true},
+		{"specify funnel value", storage.SpecStageSpecify, authoring.StageSpecify, true},
+		{"decompose funnel value", storage.SpecStageDecompose, authoring.StageDecompose, true},
+		{"approved funnel value", storage.SpecStageApproved, authoring.StageApproved, true},
+		{"in_progress lifecycle value rejected", storage.SpecStageInProgress, authoring.Stage(""), false},
+		{"done lifecycle value rejected", storage.SpecStageDone, authoring.Stage(""), false},
+		{"superseded lifecycle value rejected", storage.SpecStageSuperseded, authoring.Stage(""), false},
+		{"abandoned lifecycle value rejected", storage.SpecStageAbandoned, authoring.Stage(""), false},
+		{"review lifecycle value rejected", storage.SpecStageReview, authoring.Stage(""), false},
+		{"empty rejected", storage.SpecStage(""), authoring.Stage(""), false},
+		{"unknown rejected", storage.SpecStage("bogus"), authoring.Stage(""), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			gotStage, gotOk := authoring.StageFromStorage(tc.in)
+			if gotStage != tc.wantStage || gotOk != tc.wantOk {
+				t.Errorf("StageFromStorage(%q) = (%q, %v), want (%q, %v)",
+					string(tc.in), string(gotStage), gotOk, string(tc.wantStage), tc.wantOk)
+			}
+		})
+	}
+}
+
+func TestStage_AsStorage_RoundTrip(t *testing.T) {
+	for _, s := range []authoring.Stage{
+		authoring.StageSpark,
+		authoring.StageShape,
+		authoring.StageSpecify,
+		authoring.StageDecompose,
+		authoring.StageApproved,
+	} {
+		narrow, ok := authoring.StageFromStorage(s.AsStorage())
+		if !ok || narrow != s {
+			t.Errorf("round-trip Stage(%q).AsStorage().StageFromStorage = (%q, %v), want (%q, true)",
+				string(s), string(narrow), ok, string(s))
+		}
+	}
+}

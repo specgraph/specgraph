@@ -46,13 +46,20 @@ func (r Relationship) IsValid() bool {
 	}
 }
 
-var validStages = map[Stage]struct{}{
-	StageSpark:     {},
-	StageShape:     {},
-	StageSpecify:   {},
-	StageDecompose: {},
-	StageApprove:   {},
-}
+// composerValidStages is the ordered set of stages the Composer accepts for
+// content routing. This differs from authoringStages in stages.go: the
+// composer accepts StageApprove ("approve") as a content-file routing key,
+// while authoringStages uses StageApproved ("approved") for storage-side
+// transition validation. The two lists intentionally diverge at the final step.
+var composerValidStages = []Stage{StageSpark, StageShape, StageSpecify, StageDecompose, StageApprove}
+
+var validStages = func() map[Stage]struct{} {
+	m := make(map[Stage]struct{}, len(composerValidStages))
+	for _, s := range composerValidStages {
+		m[s] = struct{}{}
+	}
+	return m
+}()
 
 // ConstitutionSummary is a bounded digest of the current constitution for
 // inclusion in composed prompts. Full constitution available at specgraph://constitution.
@@ -128,7 +135,11 @@ func (c *Composer) ComposeStagePrompt(ctx context.Context, in ComposeInput) (res
 		return nil, fmt.Errorf("compose stage %q: %w", string(in.Stage), err)
 	}
 	if _, ok := validStages[in.Stage]; !ok {
-		return nil, fmt.Errorf("stage %q (valid: spark, shape, specify, decompose, approve): %w", string(in.Stage), ErrInvalidStage)
+		validNames := make([]string, len(composerValidStages))
+		for i, s := range composerValidStages {
+			validNames[i] = string(s)
+		}
+		return nil, fmt.Errorf("stage %q (valid: %s): %w", string(in.Stage), strings.Join(validNames, ", "), ErrInvalidStage)
 	}
 
 	defer func() {

@@ -9,29 +9,65 @@ import (
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
-// Stage is the typed authoring-stage value used by Composer and friends
-// (ComposeInput, validStages, RelatedSpec). Aliased to storage.SpecStage so
-// storage and authoring agree on the wire type — assignments flow both ways
-// without conversion.
-type Stage = storage.SpecStage
+// Stage is the typed authoring-stage value used by Composer and the funnel
+// helpers. It shares an underlying string with storage.SpecStage so values
+// flow through proto-string fields unchanged, but the defined type prevents
+// implicit assignment of lifecycle-only storage values (in_progress, done,
+// superseded, …) into authoring APIs. Use StageFromStorage to narrow a
+// storage value into an authoring Stage; use Stage.AsStorage() for the
+// reverse. The pair AsStorage / StageFromStorage are the only legitimate
+// crossings between the two types.
+type Stage string
 
-// Stage name constants used across the authoring funnel. Most are aliases for
-// the corresponding storage.SpecStage* constants; StageApprove is the one
-// exception — see its inline comment.
+// Authoring funnel stage constants. Most map 1:1 to storage.SpecStage* values;
+// StageApprove is the one exception — it is the composer's content-routing key
+// and is never written to storage (storage uses StageApproved).
 const (
-	StageSpark     = storage.SpecStageSpark
-	StageShape     = storage.SpecStageShape
-	StageSpecify   = storage.SpecStageSpecify
-	StageDecompose = storage.SpecStageDecompose
-	StageApproved  = storage.SpecStageApproved
-	// StageApprove is the authoring-funnel stage name for the approve phase,
-	// distinct from StageApproved (storage value "approved"). Used by the composer
-	// and MCP prompt handlers to select the embedded stage-approve.md content.
+	StageSpark     Stage = "spark"
+	StageShape     Stage = "shape"
+	StageSpecify   Stage = "specify"
+	StageDecompose Stage = "decompose"
+	// StageApprove is the authoring-funnel verb stage. Used only as a
+	// content-file routing key (stage-approve.md) and as a validStages
+	// member; never written to storage or returned in proto responses
+	// (storage uses StageApproved for the post-funnel state).
 	StageApprove Stage = "approve"
+	// StageApproved is the post-funnel storage state. Equal to
+	// storage.SpecStageApproved by value.
+	StageApproved Stage = "approved"
 )
 
-// authoringStages defines the ordered authoring funnel stages.
-var authoringStages = []storage.SpecStage{StageSpark, StageShape, StageSpecify, StageDecompose, StageApproved}
+// authoringStages defines the ordered authoring funnel stages used for
+// transition validation and storage-side operations. Note: this list uses
+// StageApproved ("approved"), not StageApprove ("approve") — the latter is
+// the composer's content-routing key, not a storage stage value.
+var authoringStages = []Stage{StageSpark, StageShape, StageSpecify, StageDecompose, StageApproved}
+
+// AsStorage returns s as a storage.SpecStage. Always safe — the underlying
+// string is identical; the conversion only re-types the value for storage
+// call sites.
+func (s Stage) AsStorage() storage.SpecStage { return storage.SpecStage(s) }
+
+// StageFromStorage narrows a storage.SpecStage to an authoring.Stage,
+// returning (Stage, false) when s is not one of the funnel stages
+// (i.e., lifecycle-only values like "in_progress", "done", "superseded").
+func StageFromStorage(s storage.SpecStage) (Stage, bool) {
+	candidate := Stage(s)
+	for _, stage := range authoringStages {
+		if candidate == stage {
+			return candidate, true
+		}
+	}
+	return "", false
+}
+
+// IsAuthoringStage reports whether s is one of the authoring funnel stages.
+// Thin wrapper over StageFromStorage; kept for backward-compatible callers
+// that only need a boolean.
+func IsAuthoringStage(s storage.SpecStage) bool {
+	_, ok := StageFromStorage(s)
+	return ok
+}
 
 // AllStages returns a copy of the ordered stage list as strings (for backward compat with callers that need []string).
 func AllStages() []string {
@@ -42,15 +78,9 @@ func AllStages() []string {
 	return out
 }
 
-// IsAuthoringStage reports whether the given SpecStage is one of the five
-// authoring funnel stages (spark, shape, specify, decompose, approved).
-func IsAuthoringStage(s storage.SpecStage) bool {
-	return indexOf(s) >= 0
-}
-
 // validateStageNames returns an error if from or to are unknown authoring stage names.
 // allowEmptyFrom controls whether from=="" is accepted (used for initial transitions).
-func validateStageNames(from, to storage.SpecStage, allowEmptyFrom bool) (fromIdx, toIdx int, err error) {
+func validateStageNames(from, to Stage, allowEmptyFrom bool) (fromIdx, toIdx int, err error) {
 	fromIdx = indexOf(from)
 	toIdx = indexOf(to)
 	var unknowns []string
@@ -70,7 +100,7 @@ func validateStageNames(from, to storage.SpecStage, allowEmptyFrom bool) (fromId
 // Forward transitions must follow the defined order (no skipping).
 // Backward (amend) transitions are allowed to any earlier stage.
 // Same-to-same transitions are not allowed.
-func ValidateTransition(from, to storage.SpecStage) error {
+func ValidateTransition(from, to Stage) error {
 	if from == to {
 		return fmt.Errorf("transition from %q to %q is a no-op", from, to)
 	}
@@ -98,7 +128,7 @@ func ValidateTransition(from, to storage.SpecStage) error {
 // ValidateAmendTransition checks whether an amend (backward) transition is valid.
 // It only allows moving to an earlier stage — forward transitions and same-to-same
 // are rejected. This is distinct from ValidateTransition which allows both directions.
-func ValidateAmendTransition(from, to storage.SpecStage) error {
+func ValidateAmendTransition(from, to Stage) error {
 	if from == to {
 		return fmt.Errorf("amend transition from %q to %q is a no-op", from, to)
 	}
@@ -116,7 +146,7 @@ func ValidateAmendTransition(from, to storage.SpecStage) error {
 }
 
 // indexOf returns the position of a stage in the ordered authoring funnel list, or -1 if not found.
-func indexOf(stage storage.SpecStage) int {
+func indexOf(stage Stage) int {
 	for i, s := range authoringStages {
 		if s == stage {
 			return i

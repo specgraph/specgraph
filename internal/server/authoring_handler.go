@@ -636,7 +636,9 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 	if req.Msg.Stage == specv1.AuthoringStage_AUTHORING_STAGE_APPROVED {
 		return connect.NewResponse(&specv1.GetPromptsResponse{}), nil
 	}
-	prompts := promptsToProto(stage)
+	// Direct coercion is safe: stage came from protoToStage, which only
+	// contains valid funnel stage values.
+	prompts := promptsToProto(authoring.Stage(stage))
 	if len(prompts) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no prompts defined for stage %q", stage))
 	}
@@ -1042,7 +1044,10 @@ func decomposeOutputToDomain(p *specv1.DecomposeOutput) (*storage.DecomposeOutpu
 
 // stageToProto delegates to the canonical mapping in authoring_convert.go.
 func stageToProto(stage storage.SpecStage) specv1.AuthoringStage {
-	return authoringStageToProto(stage)
+	// Direct coercion is safe here: stageToProto is only called with values
+	// returned from successful storage.TransitionStage calls, which always
+	// return one of the funnel stages.
+	return authoringStageToProto(authoring.Stage(stage))
 }
 
 var protoToStage = map[specv1.AuthoringStage]storage.SpecStage{
