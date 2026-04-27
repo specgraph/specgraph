@@ -13,8 +13,8 @@ import (
 func TestNewServer_AllToolsRegistered(t *testing.T) {
 	srv := NewServer(&Client{})
 	tools := srv.MCPServer().ListTools()
-	if len(tools) != 20 {
-		t.Errorf("total tool count = %d, want 20", len(tools))
+	if len(tools) != 21 {
+		t.Errorf("total tool count = %d, want 21", len(tools))
 	}
 }
 
@@ -26,8 +26,8 @@ func TestNewServer_ProfileToolSets(t *testing.T) {
 		want    int
 	}{
 		{ProfileCore, 7},
-		{ProfileAuthoring, 14},
-		{ProfileExecution, 20},
+		{ProfileAuthoring, 15},
+		{ProfileExecution, 21},
 	}
 
 	for _, tt := range tests {

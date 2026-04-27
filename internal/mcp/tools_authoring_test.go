@@ -833,6 +833,77 @@ func TestAnalyticalPassTool_UnknownAction(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// author.start_stage tool tests
+// ---------------------------------------------------------------------------
+
+func TestAuthoringStartStageTool(t *testing.T) {
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock("test-slug"), defaultGraphMock())
+	reg := NewRegistry()
+	RegisterAuthoringTools(reg, c)
+
+	tool, ok := reg.LookupTool("author.start_stage")
+	require.True(t, ok, "author.start_stage not registered")
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"stage": "shape",
+		"slug":  "test-slug",
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError, "expected no error result, got %+v", result)
+	require.NotEmpty(t, result.Content)
+	require.Contains(t, result.Content[0].Text, "# Shape")
+}
+
+func TestAuthoringStartStageTool_MissingStage(t *testing.T) {
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock(""), defaultGraphMock())
+	reg := NewRegistry()
+	RegisterAuthoringTools(reg, c)
+
+	tool, ok := reg.LookupTool("author.start_stage")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"slug": "test-slug",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "stage is required")
+}
+
+func TestAuthoringStartStageTool_MissingSlugForNonSpark(t *testing.T) {
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock(""), defaultGraphMock())
+	reg := NewRegistry()
+	RegisterAuthoringTools(reg, c)
+
+	tool, ok := reg.LookupTool("author.start_stage")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"stage": "shape",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "slug is required")
+}
+
+func TestAuthoringStartStageTool_SparkNoSlug(t *testing.T) {
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock(""), defaultGraphMock())
+	reg := NewRegistry()
+	RegisterAuthoringTools(reg, c)
+
+	tool, ok := reg.LookupTool("author.start_stage")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"stage": "spark",
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError, "spark without slug should succeed, got %+v", result)
+	require.NotEmpty(t, result.Content)
+	require.Contains(t, result.Content[0].Text, "# Persona")
+}
+
+// ---------------------------------------------------------------------------
 // enum helper tests
 // ---------------------------------------------------------------------------
 
