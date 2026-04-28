@@ -8,7 +8,7 @@ if ! command -v specgraph >/dev/null 2>&1; then
   exit 0
 fi
 
-specgraph mcp read-resource specgraph://prime 2>&1 || {
+specgraph read-mcp-resource specgraph://prime 2>&1 || {
   echo "specgraph prime failed (server unreachable?); session starts without prime" >&2
   exit 0
 }
