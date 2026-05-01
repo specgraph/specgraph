@@ -10,7 +10,7 @@ import (
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/specgraph/specgraph/internal/diff"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/spf13/cobra"
 )
 
@@ -61,7 +61,7 @@ func runChanges(cmd *cobra.Command, args []string) error {
 		if changesJSON {
 			return printJSON(cmd.OutOrStdout(), resp.Msg)
 		}
-		_, err = fmt.Fprint(cmd.OutOrStdout(), render.VersionComparison(resp.Msg))
+		_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.VersionComparison(resp.Msg))
 		return err
 	}
 
@@ -97,10 +97,10 @@ func runChanges(cmd *cobra.Command, args []string) error {
 			}
 			return pbs
 		}
-		_, err = fmt.Fprint(cmd.OutOrStdout(), render.ChangesWithDiff(resp.Msg.Entries, hunksProvider))
+		_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.ChangesWithDiff(resp.Msg.Entries, hunksProvider))
 		return err
 	}
 
-	_, err = fmt.Fprint(cmd.OutOrStdout(), render.Changes(resp.Msg.Entries))
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.Changes(resp.Msg.Entries))
 	return err
 }

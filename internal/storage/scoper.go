@@ -24,6 +24,7 @@ type ScopedBackend interface {
 	ChangeLogBackend
 	SpecVersionBackend
 	TransactionalBackend
+	PublishBackend
 }
 
 // Scoper creates project-scoped storage instances.

@@ -24,10 +24,11 @@ const (
 
 // GlobalConfig is the new top-level config at ~/.config/specgraph/config.yaml.
 type GlobalConfig struct {
-	Server ServerSection `yaml:"server"`
-	Client ClientConfig  `yaml:"client"`
-	Auth   AuthConfig    `yaml:"auth"`
-	Export ExportConfig  `yaml:"export"`
+	Server  ServerSection `yaml:"server"`
+	Client  ClientConfig  `yaml:"client"`
+	Auth    AuthConfig    `yaml:"auth"`
+	Export  ExportConfig  `yaml:"export"`
+	Publish PublishConfig `yaml:"publish"`
 }
 
 // ExportConfig holds settings for project export and import operations.

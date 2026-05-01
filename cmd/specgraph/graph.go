@@ -8,7 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/spf13/cobra"
 )
 
@@ -56,8 +56,8 @@ func runDeps(cmd *cobra.Command, args []string) error {
 		if depsJSON {
 			return printJSON(cmd.OutOrStdout(), resp.Msg)
 		}
-		fmt.Print(render.NodeRefList("Dependencies (transitive)", resp.Msg.Dependencies))
-		return nil
+		_, printErr := fmt.Fprint(cmd.OutOrStdout(), markdown.NodeRefList("Dependencies (transitive)", resp.Msg.Dependencies))
+		return printErr
 	}
 
 	resp, err := client.GetDependencies(ctx, connect.NewRequest(&specv1.GetDependenciesRequest{Slug: args[0]}))
@@ -67,8 +67,8 @@ func runDeps(cmd *cobra.Command, args []string) error {
 	if depsJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.NodeRefList("Dependencies", resp.Msg.Dependencies))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.NodeRefList("Dependencies", resp.Msg.Dependencies))
+	return err
 }
 
 // --- ready ---
@@ -91,8 +91,8 @@ func runReady(cmd *cobra.Command, _ []string) error {
 	if readyJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.NodeRefList("Ready Specs", resp.Msg.Ready))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.NodeRefList("Ready Specs", resp.Msg.Ready))
+	return err
 }
 
 // --- critical-path ---
@@ -116,8 +116,8 @@ func runCriticalPath(cmd *cobra.Command, args []string) error {
 	if criticalPathJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.NodeRefList("Critical Path", resp.Msg.Path))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.NodeRefList("Critical Path", resp.Msg.Path))
+	return err
 }
 
 // --- impact ---
@@ -141,6 +141,6 @@ func runImpact(cmd *cobra.Command, args []string) error {
 	if impactJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.NodeRefList("Impacted Specs", resp.Msg.Impacted))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.NodeRefList("Impacted Specs", resp.Msg.Impacted))
+	return err
 }

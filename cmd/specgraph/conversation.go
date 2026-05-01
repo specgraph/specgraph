@@ -8,7 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/spf13/cobra"
 )
 
@@ -132,7 +132,7 @@ func runConversationList(cmd *cobra.Command, args []string) error {
 	if convListJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	output := render.ConversationLogList(resp.Msg.ConversationLogs)
+	output := markdown.ConversationLogList(resp.Msg.ConversationLogs)
 	if output == "" {
 		fmt.Println("No conversation logs found.")
 		return nil

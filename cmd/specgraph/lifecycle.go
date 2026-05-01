@@ -10,7 +10,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/spf13/cobra"
 )
 
@@ -173,7 +173,7 @@ func runDrift(cmd *cobra.Command, args []string) error {
 			return jsonErr
 		}
 	} else {
-		if _, printErr := fmt.Fprint(cmd.OutOrStdout(), render.DriftReport(reports, resp.Msg.GetSkippedCount())); printErr != nil {
+		if _, printErr := fmt.Fprint(cmd.OutOrStdout(), markdown.DriftReport(reports, resp.Msg.GetSkippedCount())); printErr != nil {
 			return printErr
 		}
 	}

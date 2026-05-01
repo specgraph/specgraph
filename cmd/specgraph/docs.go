@@ -53,6 +53,7 @@ var commandGroups = []commandGroup{
 	{Name: "Conversations", Commands: []string{"conversation"}},
 	{Name: "Findings", Commands: []string{"findings", "pass"}},
 	{Name: "Sync", Commands: []string{"sync"}},
+	{Name: "Publishing", Commands: []string{"confluence"}},
 	{Name: "Export & Backup", Commands: []string{"export", "import", "verify"}},
 	{Name: "Server & Config", Commands: []string{"up", "down", "install", "uninstall", "serve", "status", "health", "init", "prime", "inject"}},
 }

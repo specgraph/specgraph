@@ -359,5 +359,35 @@ func (stubBackend) GetSpecAtVersion(_ context.Context, _ string, _ int32) (*stor
 	return nil, errNotImplemented
 }
 
+// --- PublishBackend ---
+
+func (stubBackend) UpsertPageMapping(_ context.Context, m *storage.PageMapping) (*storage.PageMapping, error) {
+	return m, errNotImplemented
+}
+
+func (stubBackend) GetPageMapping(_ context.Context, _ string, _ storage.DocumentKind, _ string) (*storage.PageMapping, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) ListPageMappings(_ context.Context, _ string) ([]*storage.PageMapping, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) DeletePageMappings(_ context.Context, _ string) (int, error) {
+	return 0, errNotImplemented
+}
+
+func (stubBackend) StoreFeedback(_ context.Context, entry *storage.FeedbackEntry) (*storage.FeedbackEntry, error) {
+	return entry, errNotImplemented
+}
+
+func (stubBackend) ListFeedback(_ context.Context, _ string, _ string) ([]*storage.FeedbackEntry, error) {
+	return nil, errNotImplemented
+}
+
+func (stubBackend) CountNewFeedback(_ context.Context, _ string) (int, error) {
+	return 0, errNotImplemented
+}
+
 // Verify stubBackend satisfies ScopedBackend at compile time.
 var _ storage.ScopedBackend = (*stubBackend)(nil)

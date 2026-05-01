@@ -28,6 +28,8 @@ import (
 	"github.com/specgraph/specgraph/internal/linter"
 	mcppkg "github.com/specgraph/specgraph/internal/mcp"
 	"github.com/specgraph/specgraph/internal/notify"
+	"github.com/specgraph/specgraph/internal/publish"
+	"github.com/specgraph/specgraph/internal/publish/confluence"
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/server/probes"
 	"github.com/specgraph/specgraph/internal/storage"
@@ -226,6 +228,35 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	driftEngine := drift.NewEngine(store, nil)
 	lintEngine := linter.NewEngine(store, nil)
 	server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts, maxBytes)
+
+	// Register PublishService. If Confluence is configured, wire up the real
+	// publisher and feedback source; otherwise pass nil so status RPCs still
+	// work while publish/unpublish return CodeUnimplemented.
+	var (
+		confluencePublisher publish.Publisher
+		confluenceFeedback  publish.FeedbackSource
+	)
+	if cfg.Publish.Confluence.CloudID != "" {
+		confCfg := confluence.Config{
+			CloudID:      cfg.Publish.Confluence.CloudID,
+			SpaceKey:     cfg.Publish.Confluence.SpaceKey,
+			ParentPageID: cfg.Publish.Confluence.ParentPageID,
+			APIToken:     os.Getenv("CONFLUENCE_API_TOKEN"),
+			UserEmail:    os.Getenv("CONFLUENCE_USER_EMAIL"),
+			Labels:       cfg.Publish.Confluence.Labels,
+		}
+		if confCfg.SpaceKey == "" || confCfg.APIToken == "" || confCfg.UserEmail == "" {
+			slog.Warn("publish: confluence is incompletely configured; disabling", //nolint:gosec // boolean values, not tainted strings
+				"missing_space_key", confCfg.SpaceKey == "",
+				"missing_api_token", confCfg.APIToken == "",
+				"missing_user_email", confCfg.UserEmail == "")
+		} else {
+			confClient := confluence.NewClient(&confCfg)
+			confluencePublisher = confluence.NewPublisher(confClient, store, &confCfg)
+			confluenceFeedback = confluence.NewFeedbackSource(confClient, store)
+		}
+	}
+	server.RegisterPublishService(mux, store, confluencePublisher, confluenceFeedback, opts, maxBytes)
 
 	syncHandler := server.RegisterSyncService(mux, store, "", opts, maxBytes)
 	runner := syncpkg.NewExecRunner()

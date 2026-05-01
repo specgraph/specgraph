@@ -1,0 +1,113 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Sean Brandt
+
+syntax = "proto3";
+
+package specgraph.v1;
+
+option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1";
+
+import "google/protobuf/timestamp.proto";
+
+// --- Enums ---
+
+enum PublishState {
+  PUBLISH_STATE_UNSPECIFIED = 0;
+  PUBLISH_STATE_DRAFT = 1;
+  PUBLISH_STATE_SYNCED = 2;
+  PUBLISH_STATE_ERROR = 3;
+  PUBLISH_STATE_UNPUBLISHED = 4;
+}
+
+enum DocumentKind {
+  DOCUMENT_KIND_UNSPECIFIED = 0;
+  DOCUMENT_KIND_PRD = 1;
+  DOCUMENT_KIND_SDD = 2;
+  DOCUMENT_KIND_ADR = 3;
+}
+
+enum FeedbackKind {
+  FEEDBACK_KIND_UNSPECIFIED = 0;
+  FEEDBACK_KIND_INLINE = 1;
+  FEEDBACK_KIND_FOOTER = 2;
+}
+
+// --- Messages ---
+
+message PageMapping {
+  string spec_slug = 1;
+  DocumentKind doc_kind = 2;
+  string decision_slug = 3;      // only for ADR
+  string page_id = 4;            // Confluence page ID
+  int32 page_version = 5;        // last published Confluence version
+  int32 spec_version = 6;        // spec version at last publish
+  PublishState state = 7;
+  string error_message = 8;
+  google.protobuf.Timestamp last_sync = 9;
+}
+
+message PublishStatusEntry {
+  string spec_slug = 1;
+  PageMapping prd = 2;
+  PageMapping sdd = 3;
+  repeated PageMapping adrs = 4;
+  int32 new_comments = 5;
+  google.protobuf.Timestamp last_sync = 6;
+}
+
+message Feedback {
+  string external_id = 1;
+  string author = 2;
+  string body = 3;
+  google.protobuf.Timestamp timestamp = 4;
+  FeedbackKind kind = 5;
+  string stage = 6;              // routed authoring stage (inline only)
+  bool is_question = 7;
+  string parent_id = 8;          // reply threading
+  string spec_slug = 9;
+}
+
+// --- Requests/Responses ---
+
+message PublishRequest {
+  string slug = 1;
+}
+
+message PublishResponse {
+  repeated PageMapping mappings = 1;
+}
+
+message GetPublishStatusRequest {
+  string slug = 1;               // optional: if empty, returns all
+}
+
+message GetPublishStatusResponse {
+  repeated PublishStatusEntry entries = 1;
+}
+
+message SyncCommentsRequest {
+  string slug = 1;               // optional: if empty, syncs all
+}
+
+message SyncCommentsResponse {
+  repeated Feedback feedback = 1;
+  int32 new_count = 2;
+  int32 spec_count = 3;
+}
+
+message UnpublishRequest {
+  string slug = 1;
+}
+
+message UnpublishResponse {
+  int32 pages_removed = 1;
+}
+
+// --- Service ---
+
+service PublishService {
+  rpc Publish(PublishRequest) returns (PublishResponse);
+  rpc GetPublishStatus(GetPublishStatusRequest) returns (GetPublishStatusResponse);
+  rpc SyncComments(SyncCommentsRequest) returns (SyncCommentsResponse);
+  rpc Unpublish(UnpublishRequest) returns (UnpublishResponse);
+}

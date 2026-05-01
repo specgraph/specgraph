@@ -10,7 +10,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/render/markdown"
 	"github.com/spf13/cobra"
 )
 
@@ -176,8 +176,8 @@ func runDecisionList(cmd *cobra.Command, _ []string) error {
 	if decisionListJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.DecisionList(resp.Msg.Decisions))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.DecisionList(resp.Msg.Decisions))
+	return err
 }
 
 // --- decision show ---
@@ -227,6 +227,6 @@ func runDecisionShow(cmd *cobra.Command, args []string) error {
 	if decisionShowJSON {
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.Decision(resp.Msg.GetDecision()))
-	return nil
+	_, err = fmt.Fprint(cmd.OutOrStdout(), markdown.Decision(resp.Msg.GetDecision()))
+	return err
 }
