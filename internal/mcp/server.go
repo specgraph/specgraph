@@ -5,6 +5,7 @@ package mcp
 
 import (
 	"context"
+	"log/slog"
 
 	sdkmcp "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -87,6 +88,11 @@ func NewServer(client *Client) *Server {
 
 	hooks.AddAfterInitialize(func(ctx context.Context, _ any, msg *sdkmcp.InitializeRequest, _ *sdkmcp.InitializeResult) {
 		profile := ProfileFromClientInfo(&msg.Params.ClientInfo)
+		slog.Info("mcp: client initialized",
+			"client_name", msg.Params.ClientInfo.Name,
+			"client_version", msg.Params.ClientInfo.Version,
+			"profile", profile,
+		)
 		if profile == ProfileExecution {
 			return
 		}

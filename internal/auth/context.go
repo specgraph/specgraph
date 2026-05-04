@@ -46,3 +46,24 @@ func BearerTokenFromContext(ctx context.Context) (string, bool) {
 	}
 	return token, true
 }
+
+type projectKey struct{}
+
+// WithProject returns a new context carrying the project slug.
+// An empty slug is treated as absent — the original context is returned unchanged.
+func WithProject(ctx context.Context, slug string) context.Context {
+	if slug == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, projectKey{}, slug)
+}
+
+// ProjectFromContext extracts the project slug from the context.
+// Returns "", false if no project slug is present.
+func ProjectFromContext(ctx context.Context) (string, bool) {
+	slug, ok := ctx.Value(projectKey{}).(string)
+	if !ok || slug == "" {
+		return "", false
+	}
+	return slug, true
+}

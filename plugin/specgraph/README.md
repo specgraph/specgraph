@@ -25,8 +25,9 @@ claude --plugin-dir ./plugin/specgraph
 The MCP server (`specgraph serve`) exposes:
 
 - Prompts for each authoring stage (`spark`, `shape`, `specify`, `decompose`, `approve`)
-- Tools: `author.start_stage`, `author.<stage>`, `spec.list`, `spec.get`,
-  `graph_query`, `constitution.update`, `analytical_pass.run`
+- Tools: `author_start_stage`, `author`, `spec`, `graph_query`,
+  `constitution`, `analytical_pass`, and others (see `Settings → Tools & MCPs`
+  for the full list once connected)
 - Resources: `specgraph://prime`, `specgraph://constitution`,
   `specgraph://graph/ready`
 

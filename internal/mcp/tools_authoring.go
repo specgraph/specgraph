@@ -26,7 +26,7 @@ func RegisterAuthoringTools(r *Registry, c *Client) {
 	r.AddTool(apt.def())
 
 	r.AddTool(ToolDef{
-		Name: "author.start_stage",
+		Name: "author_start_stage",
 		Description: "Returns composed stage guidance (persona + orchestration + stage-specific content + current state). " +
 			"Use when the client does not expose MCP prompts to users, or for mid-conversation re-entry into a stage.",
 		Profile: ProfileAuthoring,

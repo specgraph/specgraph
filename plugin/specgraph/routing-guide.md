@@ -6,7 +6,7 @@ this project. This guide tells you where to go; the MCP carries the how.
 ## When the user wants to author or update a spec
 
 - Invoke the MCP prompt for the stage (`spark`, `shape`, `specify`,
-  `decompose`, `approve`), or call the `author.start_stage` tool with the
+  `decompose`, `approve`), or call the `author_start_stage` tool with the
   same stage and spec slug.
 - Conduct the elicitation. Call the matching `author.<stage>` tool to
   persist stage output + conversation exchanges atomically in one call.
