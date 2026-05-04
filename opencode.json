@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "specgraph": {
+      "type": "remote",
+      "url": "http://127.0.0.1:7890/mcp/",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer {env:SPECGRAPH_API_KEY}",
+        "X-Specgraph-Project": "specgraph"
+      }
+    }
+  }
+}
