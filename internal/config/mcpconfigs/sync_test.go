@@ -4,10 +4,12 @@
 package mcpconfigs
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -214,6 +216,157 @@ func TestSync_PreservesUserCustomizationsUnderSpecgraph(t *testing.T) {
 	}
 	if headers["X-Specgraph-Project"] != "specgraph" {
 		t.Errorf("managed project was not updated: %v", headers["X-Specgraph-Project"])
+	}
+}
+
+func TestSync_RefusesOnOpencodeJSONCSibling(t *testing.T) {
+	dir := t.TempDir()
+	jsoncPath := filepath.Join(dir, "opencode.jsonc")
+	if err := os.WriteFile(jsoncPath, []byte(`{"mcp":{}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	configs := ManagedConfigs("specgraph", "http://127.0.0.1:7890")
+	results, err := Sync(dir, configs)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	wantSubstr := "opencode.jsonc"
+	if got := err.Error(); !strings.Contains(got, wantSubstr) {
+		t.Errorf("error %q does not contain %q", got, wantSubstr)
+	}
+
+	// Sync stops at OpenCode (the third config); the first two (Cursor,
+	// Claude Code) should have completed before the error.
+	gotPaths := make([]string, 0, len(results))
+	for _, r := range results {
+		gotPaths = append(gotPaths, r.Path)
+	}
+	wantPaths := []string{".cursor/mcp.json", ".mcp.json"}
+	if !reflect.DeepEqual(gotPaths, wantPaths) {
+		t.Errorf("partial results paths = %v, want %v", gotPaths, wantPaths)
+	}
+}
+
+func TestSync_RefusesOnMalformedJSON(t *testing.T) {
+	dir := t.TempDir()
+	cursorPath := filepath.Join(dir, ".cursor/mcp.json")
+	if err := os.MkdirAll(filepath.Dir(cursorPath), 0o755); err != nil { //nolint:gosec // 0755 is intentional for test fixture dirs
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cursorPath, []byte(`{not valid json`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	configs := ManagedConfigs("specgraph", "http://127.0.0.1:7890")
+	results, err := Sync(dir, configs)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if got := err.Error(); !strings.Contains(got, "parse") || !strings.Contains(got, ".cursor/mcp.json") {
+		t.Errorf("error %q should mention parse failure for .cursor/mcp.json", got)
+	}
+	if len(results) != 0 {
+		t.Errorf("results = %v, want empty (Sync stopped at first config)", results)
+	}
+
+	// File should be untouched.
+	got, err := os.ReadFile(cursorPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != `{not valid json` {
+		t.Errorf("file was modified: %q", got)
+	}
+}
+
+func TestSync_Idempotent(t *testing.T) {
+	dir := t.TempDir()
+	configs := ManagedConfigs("specgraph", "http://127.0.0.1:7890")
+
+	// Run 1: all three files created.
+	results1, err := Sync(dir, configs)
+	if err != nil {
+		t.Fatalf("Sync run 1: %v", err)
+	}
+	for _, r := range results1 {
+		if r.Action != "created" {
+			t.Errorf("run 1 %s: action = %q, want %q", r.Path, r.Action, "created")
+		}
+	}
+
+	// Snapshot bytes after run 1.
+	snapshots := map[string][]byte{}
+	for _, c := range configs {
+		data, readErr := os.ReadFile(filepath.Join(dir, c.Path))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		snapshots[c.Path] = data
+	}
+
+	// Run 2: all three should be no-ops, file bytes unchanged.
+	results2, err := Sync(dir, configs)
+	if err != nil {
+		t.Fatalf("Sync run 2: %v", err)
+	}
+	for _, r := range results2 {
+		if r.Action != "no-op" {
+			t.Errorf("run 2 %s: action = %q, want %q", r.Path, r.Action, "no-op")
+		}
+	}
+	for _, c := range configs {
+		got, readErr := os.ReadFile(filepath.Join(dir, c.Path))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if !bytes.Equal(got, snapshots[c.Path]) {
+			t.Errorf("%s: file bytes changed between run 1 and run 2", c.Path)
+		}
+	}
+}
+
+func TestSync_Idempotent_ReformatsThenStable(t *testing.T) {
+	// Existing file is valid JSON but not in canonical 2-space-indent form.
+	// Run 1 should rewrite it (action "updated"); run 2 should be no-op.
+	dir := t.TempDir()
+	cursorPath := filepath.Join(dir, ".cursor/mcp.json")
+	if err := os.MkdirAll(filepath.Dir(cursorPath), 0o755); err != nil { //nolint:gosec // 0755 is intentional for test fixture dirs
+		t.Fatal(err)
+	}
+	// 4-space-indent variant of the canonical specgraph entry — semantically
+	// equivalent, format different.
+	existing := []byte(`{
+    "mcpServers": {
+        "specgraph": {
+            "url": "http://127.0.0.1:7890/mcp/",
+            "headers": {
+                "Authorization": "Bearer ${env:SPECGRAPH_API_KEY}",
+                "X-Specgraph-Project": "specgraph"
+            }
+        }
+    }
+}
+`)
+	if err := os.WriteFile(cursorPath, existing, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	configs := ManagedConfigs("specgraph", "http://127.0.0.1:7890")
+	results1, err := Sync(dir, configs)
+	if err != nil {
+		t.Fatalf("Sync run 1: %v", err)
+	}
+	if got := actionFor(results1, ".cursor/mcp.json"); got != "updated" {
+		t.Errorf("run 1 .cursor/mcp.json: action = %q, want %q (format normalization)", got, "updated")
+	}
+
+	results2, err := Sync(dir, configs)
+	if err != nil {
+		t.Fatalf("Sync run 2: %v", err)
+	}
+	if got := actionFor(results2, ".cursor/mcp.json"); got != "no-op" {
+		t.Errorf("run 2 .cursor/mcp.json: action = %q, want %q (already canonical)", got, "no-op")
 	}
 }
 
