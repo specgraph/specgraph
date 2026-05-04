@@ -81,7 +81,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request, store auth.IdentityStor
 
 // handleLogout clears the session cookie.
 func handleLogout(w http.ResponseWriter, r *http.Request) {
-	c := sessionCookie("", r)
+	c := sessionCookie("", r) //nolint:gosec // G124: cookie comes from sessionCookie() which sets HttpOnly, SameSite, and dynamic Secure
 	c.MaxAge = -1
 	http.SetCookie(w, c)
 	w.WriteHeader(http.StatusNoContent)
@@ -126,7 +126,7 @@ func writeJSONError(w http.ResponseWriter, code int, msg string) {
 // Secure is set dynamically: true when the request arrived over TLS or via a
 // reverse proxy signaling HTTPS via X-Forwarded-Proto, false otherwise (local HTTP dev).
 func sessionCookie(value string, r *http.Request) *http.Cookie {
-	return &http.Cookie{ // nosemgrep: go.lang.security.audit.net.cookie-missing-secure.cookie-missing-secure
+	return &http.Cookie{ //nolint:gosec // G124: Secure is dynamic via r.TLS / X-Forwarded-Proto for dev/prod parity; HttpOnly+SameSite are set below // nosemgrep: go.lang.security.audit.net.cookie-missing-secure.cookie-missing-secure
 		Name:     sessionCookieName,
 		Value:    value,
 		Path:     "/",

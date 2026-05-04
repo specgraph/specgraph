@@ -71,7 +71,7 @@ func (s *OIDCStore) Issuer() string {
 func (s *OIDCStore) ResolveJWT(ctx context.Context, rawToken string) (*Identity, error) {
 	idToken, err := s.verifier.Verify(ctx, rawToken)
 	if err != nil {
-		slog.Warn("auth: OIDC token verification failed", //nolint:gosec // G706: structured logging sanitizes values
+		slog.Warn("auth: OIDC token verification failed",
 			"provider", s.providerID,
 			"error", err.Error(),
 		)
@@ -88,7 +88,7 @@ func (s *OIDCStore) ResolveJWT(ctx context.Context, rawToken string) (*Identity,
 
 	perms, ok := s.rolePerms[Role(role)]
 	if !ok {
-		slog.Warn("auth: OIDC mapped role not found, falling back to default", //nolint:gosec // G706: structured logging sanitizes values
+		slog.Warn("auth: OIDC mapped role not found, falling back to default",
 			"provider", s.providerID,
 			"role", role,
 			"default_role", s.defaultRole,
@@ -102,7 +102,7 @@ func (s *OIDCStore) ResolveJWT(ctx context.Context, rawToken string) (*Identity,
 		permMap[p] = true
 	}
 
-	slog.Debug("auth: OIDC authenticated", //nolint:gosec // G706: structured logging sanitizes values
+	slog.Debug("auth: OIDC authenticated",
 		"provider", s.providerID,
 		"subject", idToken.Subject,
 		"role", role,

@@ -148,7 +148,7 @@ func TestRequireAuth_SessionCookie_ValidKey_Returns200(t *testing.T) {
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/api/projects", nil)
-	req.AddCookie(&http.Cookie{Name: "specgraph_session", Value: "spgr_sk_test", HttpOnly: true, Secure: true})
+	req.AddCookie(&http.Cookie{Name: "specgraph_session", Value: "spgr_sk_test", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -179,7 +179,7 @@ func TestRequireAuth_HeaderTakesPrecedenceOverCookie(t *testing.T) {
 	// Valid header + invalid cookie: header wins → success.
 	req := httptest.NewRequest(http.MethodGet, "/api/projects", nil)
 	req.Header.Set("Authorization", "Bearer spgr_sk_valid")
-	req.AddCookie(&http.Cookie{Name: "specgraph_session", Value: "invalid_cookie_token", HttpOnly: true, Secure: true})
+	req.AddCookie(&http.Cookie{Name: "specgraph_session", Value: "invalid_cookie_token", HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 

@@ -24,6 +24,7 @@ func TestClientIDContract(t *testing.T) {
 		{"OpenCode", "opencode", ProfileAuthoring},
 		{"Codex", "codex", ProfileAuthoring},
 		{"Windsurf", "windsurf", ProfileAuthoring},
+		{"SpecGraph CLI", "specgraph-cli", ProfileAuthoring},
 		{"Polecat", "polecat", ProfileExecution},
 		{"Gastown", "gastown", ProfileExecution},
 	}
