@@ -833,7 +833,7 @@ func TestAnalyticalPassTool_UnknownAction(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// author.start_stage tool tests
+// author_start_stage tool tests
 // ---------------------------------------------------------------------------
 
 func TestAuthoringStartStageTool(t *testing.T) {
@@ -841,8 +841,8 @@ func TestAuthoringStartStageTool(t *testing.T) {
 	reg := NewRegistry()
 	RegisterAuthoringTools(reg, c)
 
-	tool, ok := reg.LookupTool("author.start_stage")
-	require.True(t, ok, "author.start_stage not registered")
+	tool, ok := reg.LookupTool("author_start_stage")
+	require.True(t, ok, "author_start_stage not registered")
 
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"stage": "shape",
@@ -863,7 +863,7 @@ func TestAuthoringStartStageTool_MissingStage(t *testing.T) {
 	reg := NewRegistry()
 	RegisterAuthoringTools(reg, c)
 
-	tool, ok := reg.LookupTool("author.start_stage")
+	tool, ok := reg.LookupTool("author_start_stage")
 	require.True(t, ok)
 
 	result, err := tool.Handler(context.Background(), map[string]any{
@@ -879,7 +879,7 @@ func TestAuthoringStartStageTool_MissingSlugForNonSpark(t *testing.T) {
 	reg := NewRegistry()
 	RegisterAuthoringTools(reg, c)
 
-	tool, ok := reg.LookupTool("author.start_stage")
+	tool, ok := reg.LookupTool("author_start_stage")
 	require.True(t, ok)
 
 	result, err := tool.Handler(context.Background(), map[string]any{
@@ -895,7 +895,7 @@ func TestAuthoringStartStageTool_SparkNoSlug(t *testing.T) {
 	reg := NewRegistry()
 	RegisterAuthoringTools(reg, c)
 
-	tool, ok := reg.LookupTool("author.start_stage")
+	tool, ok := reg.LookupTool("author_start_stage")
 	require.True(t, ok)
 
 	result, err := tool.Handler(context.Background(), map[string]any{

@@ -25,8 +25,18 @@ type clientTransport struct {
 
 func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req = req.Clone(req.Context())
-	if t.project != "" {
+	// Prefer a fixed project slug (CLI commands set this from .specgraph.yaml).
+	// Fall back to a context-derived slug for callers that route requests for
+	// multiple projects through a single transport — notably the MCP HTTP
+	// server's loopback client, which carries the slug from the inbound
+	// request's X-Specgraph-Project header through context.
+	switch {
+	case t.project != "":
 		req.Header.Set("X-Specgraph-Project", t.project)
+	default:
+		if slug, ok := auth.ProjectFromContext(req.Context()); ok {
+			req.Header.Set("X-Specgraph-Project", slug)
+		}
 	}
 	if token, ok := auth.BearerTokenFromContext(req.Context()); ok {
 		req.Header.Set("Authorization", "Bearer "+token)

@@ -252,12 +252,19 @@ func runServe(cmd *cobra.Command, _ []string) error {
 					ctx = auth.WithBearerToken(ctx, token)
 				}
 			}
+			// Forward the project slug into context so loopback requests
+			// to project-scoped RPC services satisfy the project middleware
+			// without the MCP loopback client knowing the project ahead
+			// of time.
+			if slug := r.Header.Get("X-Specgraph-Project"); slug != "" {
+				ctx = auth.WithProject(ctx, slug)
+			}
 			return ctx
 		}),
 	)
-	mux.Handle("/mcp/", auth.RequireAuth(compositeStore)(
+	mux.Handle("/mcp/", mcpHeaderLogger(auth.RequireAuth(compositeStore)(
 		http.StripPrefix("/mcp", mcpHTTPHandler),
-	))
+	)))
 
 	webFS, err := fs.Sub(web.Build, "build")
 	if err != nil {
@@ -428,4 +435,23 @@ func startProbeListener(ctx context.Context, pinger probes.Pinger, cfg config.Pr
 		errCh <- serveErr
 	}()
 	return srv, errCh, nil
+}
+
+// mcpHeaderLogger logs the names of every inbound header on the /mcp/ endpoint
+// for debugging client behavior. Logs only header names, not values, to avoid
+// leaking bearer tokens or other sensitive content.
+func mcpHeaderLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		keys := make([]string, 0, len(r.Header))
+		for k := range r.Header {
+			keys = append(keys, k)
+		}
+		slog.Debug("mcp: inbound request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"raw_query", r.URL.RawQuery,
+			"header_keys", keys,
+		)
+		next.ServeHTTP(w, r)
+	})
 }

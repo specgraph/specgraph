@@ -21,6 +21,7 @@ func TestClientIDContract(t *testing.T) {
 	}{
 		{"Claude Code", "claude-code", ProfileAuthoring},
 		{"Cursor", "cursor", ProfileAuthoring},
+		{"Cursor (VSCode-based)", "cursor-vscode", ProfileAuthoring},
 		{"OpenCode", "opencode", ProfileAuthoring},
 		{"Codex", "codex", ProfileAuthoring},
 		{"Windsurf", "windsurf", ProfileAuthoring},
