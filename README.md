@@ -64,11 +64,9 @@ SpecGraph closes these gaps by modeling specs as **nodes in a graph** with first
 Initialize a SpecGraph project in your repo:
 
 ```bash
-specgraph init              # interactive setup (storage backend, deployment mode)
-specgraph init --scan       # also scan codebase and draft a constitution
+specgraph init              # write .specgraph.yaml + per-harness MCP configs (idempotent; safe to re-run)
+specgraph init my-project   # use 'my-project' as the slug (otherwise derived from git remote / dir name)
 ```
-
-The `--scan` flag walks your codebase to detect primary language, frameworks (API, CLI, UI, testing), infrastructure (Docker, Kubernetes), and CI provider, then writes a `constitution.yaml` draft you can refine.
 
 Start the server and begin working with specs:
 
@@ -116,7 +114,7 @@ See the [deployment guide](https://specgraph.io/deployment/) for team and produc
 | `specgraph sync` | Sync specs to Beads or GitHub |
 | `specgraph inject` | Inject spec context into tool files (CLAUDE.md, .cursor/rules, AGENTS.md) |
 | **Infrastructure** | |
-| `specgraph init` | Initialize project config and optionally scan for constitution |
+| `specgraph init` | Initialize project config and per-harness MCP configs (.cursor/mcp.json, .mcp.json, opencode.json) |
 | `specgraph serve` | Start the ConnectRPC API server |
 | `specgraph health` | Check server health |
 | `specgraph up/down` | Start or stop the database container (non-destructive; `down --purge` wipes data) |
