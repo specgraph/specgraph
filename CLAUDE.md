@@ -112,8 +112,8 @@ jj workspace update-stale
 ## Documentation
 
 - **Example spec** — `site/docs/concepts/example-spec.md` is the canonical example spec on the public site. When proto messages for authoring stages change (`SparkOutput`, `ShapeOutput`, `SpecifyOutput`, `DecomposeOutput`), check if the example spec needs updating.
-- **Skill personas** — Authoring skills live in `plugin/specgraph/skills/specgraph-*/SKILL.md`. The shared persona source of truth is `plugin/specgraph/skills/specgraph/persona.md`, symlinked into each skill's `references/` directory. When posture system or judgment heuristics change, update `persona.md` at the canonical location — symlinks propagate automatically.
-- **Skill format references** — `plugin/specgraph/skills/specgraph-{shape,specify,decompose}/references/*-output-format.md` document the expected JSON schema for each stage's CLI command. When proto messages change (`ShapeOutput`, `SpecifyOutput`, `DecomposeOutput` in `proto/specgraph/v1/authoring.proto`), update both the `references/*-output-format.md` files AND the inline JSON examples in the corresponding `SKILL.md` files. Fields must use camelCase (proto3 JSON convention), types must match (e.g., `repeated string` = JSON string array, not object array).
+- **Authoring content** — workflow guidance (persona, orchestration, stage-specific instructions) lives in `internal/authoring/content/*.md`, embedded via `//go:embed` and composed into MCP prompt responses by `internal/authoring/composer.go`. When proto stage-output messages change (`ShapeOutput`, `SpecifyOutput`, `DecomposeOutput` in `proto/specgraph/v1/authoring.proto`), update both the proto AND any field references in `internal/authoring/content/stage-*.md`. The `TestContentProtoDrift` CI test catches drift for backticked snake_case tokens.
+- **Plugin** — `plugin/specgraph/` is the thin Claude Code plugin: `.claude-plugin/plugin.json`, `hooks/session-start.sh` (reads `specgraph://prime` via MCP using the `specgraph read-mcp-resource` CLI subcommand), and `routing-guide.md` (stable meta-knowledge routing for the LLM). The previous 13-skill layout is retired; see `docs/plans/2026-04-20-multi-platform-plugin-design.md`.
 
 ## Gotchas
 
@@ -152,7 +152,7 @@ jj workspace update-stale
 - **All multi-query write paths MUST use `RunInTransaction`** (ADR-004) — Pass `txCtx` (not `ctx`) to `executeQuery`, `GetSpec`, `createChangeLog` inside the transaction. Queries automatically join via context. Validation that doesn't hit the DB stays outside to reduce lock time. See `tx.go` for the pattern.
 - **Concurrent modifications return `ErrConcurrentModification`** — Mapped to `connect.CodeAborted` (retryable). Version guards in WHERE clauses detect conflicts. First writer wins; second fails fast.
 - **`content_hash_at_link` on DEPENDS_ON edges** — DEPENDS_ON edges carry a `content_hash_at_link` property recording the upstream's ContentHash when the dependency was baselined. Set automatically by `AddEdge`, `StoreDecomposeOutput`, and refreshed on done-transition (`RecordCompletion`, `TransitionStage`, `UpdateSpec`) and drift acknowledgment. Drift detection compares this edge hash against the upstream's current ContentHash. Empty edge hash (unmigrated edges) always triggers drift — use `specgraph drift acknowledge <slug> --all` to baseline.
-- **Use 4-backtick fences for nested code blocks** — when docs embed files containing ``` fences (e.g., SKILL.md content), use ````markdown for the outer block. Bare ``` nesting creates broken/orphaned fences.
+- **Use 4-backtick fences for nested code blocks** — when docs embed files containing ``` fences (e.g., implementation plan documents in `docs/plans/`), use ````markdown for the outer block. Bare ``` nesting creates broken/orphaned fences.
 
 ## Roadmap
 
