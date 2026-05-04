@@ -446,7 +446,7 @@ func mcpHeaderLogger(next http.Handler) http.Handler {
 		for k := range r.Header {
 			keys = append(keys, k)
 		}
-		slog.Info("mcp: inbound request",
+		slog.Debug("mcp: inbound request",
 			"method", r.Method,
 			"path", r.URL.Path,
 			"raw_query", r.URL.RawQuery,
