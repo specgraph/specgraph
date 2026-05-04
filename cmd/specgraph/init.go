@@ -4,18 +4,24 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/config/mcpconfigs"
 	"github.com/spf13/cobra"
 )
 
 var initCmd = &cobra.Command{
 	Use:   "init [project-slug]",
 	Short: "Initialize a SpecGraph project in the current directory",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runInit,
+	Long: "Writes .specgraph.yaml and the per-harness MCP config files " +
+		"(.cursor/mcp.json, .mcp.json, opencode.json) for the current project. " +
+		"Idempotent: safe to re-run on an already-initialized project; managed " +
+		"fields are reset to canonical values, user-added fields are preserved.",
+	Args: cobra.MaximumNArgs(1),
+	RunE: runInit,
 }
 
 var initYes bool
@@ -25,39 +31,84 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 }
 
-func runInit(cmd *cobra.Command, args []string) error {
-	if err := runUp(cmd, nil); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "warning: server not started: %v\n", err)
-	}
-
+func runInit(_ *cobra.Command, args []string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
-	// Reject re-init if .specgraph.yaml already exists.
-	if _, findErr := config.FindProjectRoot(cwd); findErr == nil {
-		return fmt.Errorf("project already initialized (found .specgraph.yaml)")
+	var argSlug string
+	if len(args) > 0 {
+		argSlug = args[0]
 	}
 
-	var slug string
-	if len(args) > 0 && args[0] != "" {
-		slug = args[0]
-	} else {
-		// LoadProject derives slug from git remote origin or dir name when no
-		// .specgraph.yaml exists yet.
-		derived, err := config.LoadProject(cwd)
-		if err != nil {
-			return fmt.Errorf("derive project slug: %w", err)
+	// Resolve project state: load existing .specgraph.yaml if present.
+	var existing *config.ProjectConfig
+	if root, findErr := config.FindProjectRoot(cwd); findErr == nil {
+		loaded, loadErr := config.LoadProject(root)
+		if loadErr != nil {
+			return fmt.Errorf("load existing project config: %w", loadErr)
 		}
-		slug = derived.Slug
+		existing = loaded
+		cwd = root
+	} else if !errors.Is(findErr, config.ErrProjectNotFound) {
+		return fmt.Errorf("find project root: %w", findErr)
 	}
 
-	pc := &config.ProjectConfig{Slug: slug}
-	if err := config.WriteProject(cwd, pc); err != nil {
-		return fmt.Errorf("write project config: %w", err)
+	// Slug-consistency check: if both an arg and an existing config are
+	// present and the slugs differ, refuse. The slug is identity-defining
+	// (storage partition key, X-Specgraph-Project header value) and silent
+	// mutation would orphan project data.
+	if argSlug != "" && existing != nil && argSlug != existing.Slug {
+		return fmt.Errorf(
+			"cannot change project slug from %q to %q; edit .specgraph.yaml directly or remove it",
+			existing.Slug, argSlug,
+		)
 	}
 
-	fmt.Printf("Initialized project %s. Config written to .specgraph.yaml\n", slug)
+	// Determine the slug for this run.
+	var pc *config.ProjectConfig
+	switch {
+	case existing != nil:
+		pc = existing
+	case argSlug != "":
+		pc = &config.ProjectConfig{Slug: argSlug}
+	default:
+		// Derive from git remote / dir name (config.LoadProject already does
+		// this when no .specgraph.yaml exists).
+		derived, derErr := config.LoadProject(cwd)
+		if derErr != nil {
+			return fmt.Errorf("derive project slug: %w", derErr)
+		}
+		pc = &config.ProjectConfig{Slug: derived.Slug}
+	}
+
+	// Resolve server URL via global config + project override BEFORE any
+	// writes. A malformed global config or unresolvable server URL should
+	// fail fast, before .specgraph.yaml is created on a fresh project.
+	globalCfg, err := loadGlobalCfg()
+	if err != nil {
+		return fmt.Errorf("load global config: %w", err)
+	}
+	serverURL := globalCfg.ResolveServer(pc.Slug, pc.Server)
+	configs := mcpconfigs.ManagedConfigs(pc.Slug, serverURL)
+
+	// Write .specgraph.yaml only if it doesn't exist; idempotent.
+	if existing == nil {
+		if writeErr := config.WriteProject(cwd, pc); writeErr != nil {
+			return fmt.Errorf("write project config: %w", writeErr)
+		}
+		fmt.Printf("Initialized project %s. Config written to .specgraph.yaml\n", pc.Slug)
+	}
+
+	// Sync the per-harness MCP configs.
+	results, syncErr := mcpconfigs.Sync(cwd, configs)
+	for _, r := range results {
+		fmt.Printf("%s: %s\n", r.Path, r.Action)
+	}
+	if syncErr != nil {
+		return fmt.Errorf("sync mcp configs: %w", syncErr)
+	}
+
 	return nil
 }
