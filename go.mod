@@ -5,6 +5,7 @@ go 1.26.2
 require (
 	connectrpc.com/connect v1.19.1
 	github.com/coreos/go-oidc/v3 v3.17.0
+	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/mark3labs/mcp-go v0.45.0
