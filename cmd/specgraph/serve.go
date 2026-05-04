@@ -252,6 +252,13 @@ func runServe(cmd *cobra.Command, _ []string) error {
 					ctx = auth.WithBearerToken(ctx, token)
 				}
 			}
+			// Forward the project slug into context so loopback requests
+			// to project-scoped RPC services satisfy the project middleware
+			// without the MCP loopback client knowing the project ahead
+			// of time.
+			if slug := r.Header.Get("X-Specgraph-Project"); slug != "" {
+				ctx = auth.WithProject(ctx, slug)
+			}
 			return ctx
 		}),
 	)
