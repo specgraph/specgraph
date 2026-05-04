@@ -6,6 +6,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 
 	"github.com/specgraph/specgraph/internal/config"
@@ -83,31 +84,52 @@ func runInit(_ *cobra.Command, args []string) error {
 		pc = &config.ProjectConfig{Slug: derived.Slug}
 	}
 
-	// Resolve server URL via global config + project override BEFORE any
-	// writes. A malformed global config or unresolvable server URL should
-	// fail fast, before .specgraph.yaml is created on a fresh project.
+	// Resolve and validate the server URL BEFORE any writes. A malformed
+	// global config or a non-absolute-HTTP(S) resolved URL must fail fast,
+	// before .specgraph.yaml is created on a fresh project. ResolveServer
+	// itself cannot fail (returns a string), and url.Parse is too lenient
+	// on its own: a bare "/api" parses with empty Scheme and Host;
+	// "example.com" parses with empty Scheme; "localhost:3000" parses with
+	// Scheme="localhost". We require Scheme ∈ {http, https} AND non-empty
+	// Host to reject all three.
 	globalCfg, err := loadGlobalCfg()
 	if err != nil {
 		return fmt.Errorf("load global config: %w", err)
 	}
 	serverURL := globalCfg.ResolveServer(pc.Slug, pc.Server)
+	parsed, parseErr := url.Parse(serverURL)
+	if parseErr != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		if parseErr != nil {
+			return fmt.Errorf("resolved server URL %q must be an absolute http or https URL: %w", serverURL, parseErr)
+		}
+		return fmt.Errorf("resolved server URL %q must be an absolute http or https URL", serverURL)
+	}
 	configs := mcpconfigs.ManagedConfigs(pc.Slug, serverURL)
 
 	// Write .specgraph.yaml only if it doesn't exist; idempotent.
+	projectCreated := false
 	if existing == nil {
 		if writeErr := config.WriteProject(cwd, pc); writeErr != nil {
 			return fmt.Errorf("write project config: %w", writeErr)
 		}
-		fmt.Printf("Initialized project %s. Config written to .specgraph.yaml\n", pc.Slug)
+		projectCreated = true
 	}
 
-	// Sync the per-harness MCP configs.
+	// Sync the per-harness MCP configs. Per-file actions are printed even
+	// on partial failure so the user can see which files made it to disk.
 	results, syncErr := mcpconfigs.Sync(cwd, configs)
 	for _, r := range results {
 		fmt.Printf("%s: %s\n", r.Path, r.Action)
 	}
 	if syncErr != nil {
 		return fmt.Errorf("sync mcp configs: %w", syncErr)
+	}
+
+	// Only emit the success banner after Sync succeeds — printing it
+	// alongside WriteProject would leave a success-sounding line on
+	// stdout ahead of a non-zero exit if a later Sync step fails.
+	if projectCreated {
+		fmt.Printf("Initialized project %s. Config written to .specgraph.yaml\n", pc.Slug)
 	}
 
 	return nil

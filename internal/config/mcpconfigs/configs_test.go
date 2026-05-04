@@ -16,7 +16,9 @@ func TestEnsureMCPSuffix(t *testing.T) {
 	}{
 		{"http://127.0.0.1:7890", "http://127.0.0.1:7890/mcp/"},
 		{"http://127.0.0.1:7890/", "http://127.0.0.1:7890/mcp/"},
-		{"http://127.0.0.1:7890/mcp/", "http://127.0.0.1:7890/mcp/"},
+		{"http://127.0.0.1:7890///", "http://127.0.0.1:7890/mcp/"},   // multiple trailing slashes
+		{"http://127.0.0.1:7890/mcp", "http://127.0.0.1:7890/mcp/"},  // suffix without trailing slash
+		{"http://127.0.0.1:7890/mcp/", "http://127.0.0.1:7890/mcp/"}, // suffix already present
 		{"https://specgraph.example.com", "https://specgraph.example.com/mcp/"},
 	}
 	for _, tc := range cases {

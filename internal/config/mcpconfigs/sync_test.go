@@ -66,13 +66,13 @@ func TestSync_CreatesMissingFiles(t *testing.T) {
 	}
 
 	wantPaths := []string{".cursor/mcp.json", ".mcp.json", "opencode.json"}
-	gotByPath := map[string]string{}
+	gotByPath := map[string]Action{}
 	for _, r := range results {
 		gotByPath[r.Path] = r.Action
 	}
 	for _, p := range wantPaths {
-		if got := gotByPath[p]; got != "created" {
-			t.Errorf("%s: action = %q, want %q", p, got, "created")
+		if got := gotByPath[p]; got != ActionCreated {
+			t.Errorf("%s: action = %q, want %q", p, got, ActionCreated)
 		}
 	}
 
@@ -106,8 +106,8 @@ func TestSync_PreservesOtherServers_Cursor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	if got := actionFor(results, ".cursor/mcp.json"); got != "updated" {
-		t.Errorf(".cursor/mcp.json action = %q, want %q", got, "updated")
+	if got := actionFor(results, ".cursor/mcp.json"); got != ActionUpdated {
+		t.Errorf(".cursor/mcp.json action = %q, want %q", got, ActionUpdated)
 	}
 
 	got := readJSON(t, cursorPath)
@@ -117,6 +117,91 @@ func TestSync_PreservesOtherServers_Cursor(t *testing.T) {
 	}
 	if _, ok := servers["specgraph"]; !ok {
 		t.Error("specgraph server was not added")
+	}
+}
+
+func TestSync_PreservesOtherServers_ClaudeCode(t *testing.T) {
+	// Claude Code uses the same `mcpServers` (plural) top-level key as
+	// Cursor — but it's a separate file with separate parsing, so an
+	// off-by-one in claudeCodeConfig would silently nuke a user's other
+	// Claude Code servers without this test.
+	dir := t.TempDir()
+	claudePath := filepath.Join(dir, ".mcp.json")
+	existing := []byte(`{
+  "mcpServers": {
+    "filesystem": {
+      "type": "http",
+      "url": "https://example.com/fs"
+    }
+  }
+}
+`)
+	if err := os.WriteFile(claudePath, existing, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	configs := ManagedConfigs("specgraph", "http://127.0.0.1:7890")
+	results, err := Sync(dir, configs)
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if got := actionFor(results, ".mcp.json"); got != ActionUpdated {
+		t.Errorf(".mcp.json action = %q, want %q", got, ActionUpdated)
+	}
+
+	got := readJSON(t, claudePath)
+	servers := got["mcpServers"].(map[string]any)
+	if _, ok := servers["filesystem"]; !ok {
+		t.Error("filesystem server was not preserved")
+	}
+	if _, ok := servers["specgraph"]; !ok {
+		t.Error("specgraph server was not added")
+	}
+}
+
+func TestSync_PreservesOtherServers_OpenCode(t *testing.T) {
+	// OpenCode wraps servers under `mcp` (SINGULAR), not `mcpServers`. The
+	// merge patch builder must target the correct top-level key; otherwise
+	// it would silently nuke a user's other OpenCode servers, leak under
+	// the wrong key, or both.
+	dir := t.TempDir()
+	opencodePath := filepath.Join(dir, "opencode.json")
+	existing := []byte(`{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "enabled": true
+    }
+  }
+}
+`)
+	if err := os.WriteFile(opencodePath, existing, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	configs := ManagedConfigs("specgraph", "http://127.0.0.1:7890")
+	results, err := Sync(dir, configs)
+	if err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if got := actionFor(results, "opencode.json"); got != ActionUpdated {
+		t.Errorf("opencode.json action = %q, want %q", got, ActionUpdated)
+	}
+
+	got := readJSON(t, opencodePath)
+	servers := got["mcp"].(map[string]any)
+	if _, ok := servers["context7"]; !ok {
+		t.Error("context7 server was not preserved")
+	}
+	if _, ok := servers["specgraph"]; !ok {
+		t.Error("specgraph server was not added")
+	}
+	// And the merge must NOT have also written the entry under the wrong
+	// "mcpServers" plural key by accident.
+	if _, ok := got["mcpServers"]; ok {
+		t.Error("opencode.json gained an unwanted mcpServers (plural) key")
 	}
 }
 
@@ -248,6 +333,33 @@ func TestSync_RefusesOnOpencodeJSONCSibling(t *testing.T) {
 	}
 }
 
+func TestSync_RefusesOnBrokenOpencodeJSONCSymlink(t *testing.T) {
+	// A dangling opencode.jsonc symlink is still a directory entry the
+	// user has set up; refusing on it prevents Sync from creating
+	// opencode.json next to a broken sibling that the user (or another
+	// tool) is presumably about to fix. Probing with os.Stat would
+	// follow the link, see ErrNotExist, and write opencode.json — the
+	// behavior os.Lstat fixes.
+	dir := t.TempDir()
+	jsoncPath := filepath.Join(dir, "opencode.jsonc")
+	if err := os.Symlink(filepath.Join(dir, "does-not-exist"), jsoncPath); err != nil {
+		t.Skipf("os.Symlink not supported here: %v", err)
+	}
+
+	configs := ManagedConfigs("specgraph", "http://127.0.0.1:7890")
+	_, err := Sync(dir, configs)
+	if err == nil {
+		t.Fatal("expected error for broken opencode.jsonc symlink, got nil")
+	}
+	if got := err.Error(); !strings.Contains(got, "opencode.jsonc") {
+		t.Errorf("error %q should mention opencode.jsonc", got)
+	}
+	// opencode.json must NOT have been written.
+	if _, statErr := os.Stat(filepath.Join(dir, "opencode.json")); !os.IsNotExist(statErr) {
+		t.Errorf("opencode.json should not exist when a (broken) jsonc sibling is present: %v", statErr)
+	}
+}
+
 func TestSync_RefusesOnMalformedJSON(t *testing.T) {
 	dir := t.TempDir()
 	cursorPath := filepath.Join(dir, ".cursor/mcp.json")
@@ -280,6 +392,120 @@ func TestSync_RefusesOnMalformedJSON(t *testing.T) {
 	}
 }
 
+func TestSync_RefusesSymlinkAtTargetFile(t *testing.T) {
+	// If .cursor/mcp.json is itself a symlink, follow-ing it on write
+	// would overwrite whatever the symlink points to (potentially outside
+	// projectDir). Sync must refuse before any FS write.
+	dir := t.TempDir()
+	cursorDir := filepath.Join(dir, ".cursor")
+	if err := os.MkdirAll(cursorDir, 0o755); err != nil { //nolint:gosec // 0755 is intentional for test fixture dirs
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.json")
+	if err := os.WriteFile(outside, []byte(`{"untouched":true}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cursorPath := filepath.Join(cursorDir, "mcp.json")
+	if err := os.Symlink(outside, cursorPath); err != nil {
+		t.Skipf("os.Symlink not supported here: %v", err)
+	}
+
+	configs := ManagedConfigs("specgraph", "http://127.0.0.1:7890")
+	results, err := Sync(dir, configs)
+	if err == nil {
+		t.Fatal("expected error for symlinked target, got nil")
+	}
+	if got := err.Error(); !strings.Contains(got, "symlink") {
+		t.Errorf("error %q should mention symlink refusal", got)
+	}
+	// Sync stopped at .cursor/mcp.json (the first config); no results.
+	if len(results) != 0 {
+		t.Errorf("results = %v, want empty", results)
+	}
+	// And the file outside projectDir is untouched.
+	got, err := os.ReadFile(outside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != `{"untouched":true}` {
+		t.Errorf("symlink target was modified: %q", got)
+	}
+}
+
+func TestSync_RefusesSymlinkAtParentDir(t *testing.T) {
+	// Same threat model as the file case, but the symlink is one
+	// component up: .cursor/ -> /elsewhere. A naive os.MkdirAll on
+	// .cursor/mcp.json would create files inside /elsewhere.
+	dir := t.TempDir()
+	elsewhere := t.TempDir()
+	cursorDir := filepath.Join(dir, ".cursor")
+	if err := os.Symlink(elsewhere, cursorDir); err != nil {
+		t.Skipf("os.Symlink not supported here: %v", err)
+	}
+
+	configs := ManagedConfigs("specgraph", "http://127.0.0.1:7890")
+	results, err := Sync(dir, configs)
+	if err == nil {
+		t.Fatal("expected error for symlinked parent dir, got nil")
+	}
+	if got := err.Error(); !strings.Contains(got, "symlink") {
+		t.Errorf("error %q should mention symlink refusal", got)
+	}
+	if len(results) != 0 {
+		t.Errorf("results = %v, want empty", results)
+	}
+	// Nothing got written into the symlink target.
+	entries, err := os.ReadDir(elsewhere)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("symlink target dir was written into: %v", entries)
+	}
+}
+
+func TestSync_PartialResults_WhenLaterFileFails(t *testing.T) {
+	// Pins the partial-results contract: when a later file fails for a
+	// non-jsonc-sibling reason (here, malformed JSON in .mcp.json), the
+	// already-synced earlier file (.cursor/mcp.json) must be reported in
+	// results so callers know its state. Without this test, a refactor
+	// could legitimately drop earlier results on any error and tests would
+	// still pass against the only existing case (first-file failure).
+	dir := t.TempDir()
+	claudePath := filepath.Join(dir, ".mcp.json")
+	if err := os.WriteFile(claudePath, []byte(`{not valid json`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	configs := ManagedConfigs("specgraph", "http://127.0.0.1:7890")
+	results, err := Sync(dir, configs)
+	if err == nil {
+		t.Fatal("expected error from malformed .mcp.json, got nil")
+	}
+	if got := err.Error(); !strings.Contains(got, "parse") || !strings.Contains(got, ".mcp.json") {
+		t.Errorf("error %q should mention parse failure for .mcp.json", got)
+	}
+
+	// .cursor/mcp.json (first config) should be reported as created.
+	if len(results) != 1 {
+		t.Fatalf("results = %v, want exactly one entry for the cursor config", results)
+	}
+	if results[0].Path != ".cursor/mcp.json" {
+		t.Errorf("results[0].Path = %q, want %q", results[0].Path, ".cursor/mcp.json")
+	}
+	if results[0].Action != ActionCreated {
+		t.Errorf("results[0].Action = %q, want %q", results[0].Action, ActionCreated)
+	}
+
+	// Cursor config was actually written; OpenCode (third) was NOT touched.
+	if _, statErr := os.Stat(filepath.Join(dir, ".cursor/mcp.json")); statErr != nil {
+		t.Errorf(".cursor/mcp.json should exist (reported as created): %v", statErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, "opencode.json")); !os.IsNotExist(statErr) {
+		t.Errorf("opencode.json should NOT exist (Sync stopped at .mcp.json): %v", statErr)
+	}
+}
+
 func TestSync_Idempotent(t *testing.T) {
 	dir := t.TempDir()
 	configs := ManagedConfigs("specgraph", "http://127.0.0.1:7890")
@@ -290,8 +516,8 @@ func TestSync_Idempotent(t *testing.T) {
 		t.Fatalf("Sync run 1: %v", err)
 	}
 	for _, r := range results1 {
-		if r.Action != "created" {
-			t.Errorf("run 1 %s: action = %q, want %q", r.Path, r.Action, "created")
+		if r.Action != ActionCreated {
+			t.Errorf("run 1 %s: action = %q, want %q", r.Path, r.Action, ActionCreated)
 		}
 	}
 
@@ -311,8 +537,8 @@ func TestSync_Idempotent(t *testing.T) {
 		t.Fatalf("Sync run 2: %v", err)
 	}
 	for _, r := range results2 {
-		if r.Action != "no-op" {
-			t.Errorf("run 2 %s: action = %q, want %q", r.Path, r.Action, "no-op")
+		if r.Action != ActionNoOp {
+			t.Errorf("run 2 %s: action = %q, want %q", r.Path, r.Action, ActionNoOp)
 		}
 	}
 	for _, c := range configs {
@@ -357,22 +583,22 @@ func TestSync_Idempotent_ReformatsThenStable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Sync run 1: %v", err)
 	}
-	if got := actionFor(results1, ".cursor/mcp.json"); got != "updated" {
-		t.Errorf("run 1 .cursor/mcp.json: action = %q, want %q (format normalization)", got, "updated")
+	if got := actionFor(results1, ".cursor/mcp.json"); got != ActionUpdated {
+		t.Errorf("run 1 .cursor/mcp.json: action = %q, want %q (format normalization)", got, ActionUpdated)
 	}
 
 	results2, err := Sync(dir, configs)
 	if err != nil {
 		t.Fatalf("Sync run 2: %v", err)
 	}
-	if got := actionFor(results2, ".cursor/mcp.json"); got != "no-op" {
-		t.Errorf("run 2 .cursor/mcp.json: action = %q, want %q (already canonical)", got, "no-op")
+	if got := actionFor(results2, ".cursor/mcp.json"); got != ActionNoOp {
+		t.Errorf("run 2 .cursor/mcp.json: action = %q, want %q (already canonical)", got, ActionNoOp)
 	}
 }
 
 // Helper functions used by sync tests.
 
-func actionFor(results []SyncResult, path string) string {
+func actionFor(results []SyncResult, path string) Action {
 	for _, r := range results {
 		if r.Path == path {
 			return r.Action

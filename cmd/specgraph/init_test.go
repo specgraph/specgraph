@@ -17,22 +17,29 @@ import (
 
 // runInitInDir executes runInit with the given args in workDir, capturing
 // stdout. Isolates the global config file (cfgFile package var) and CWD,
-// restoring them on cleanup.
+// restoring them on cleanup. Uses an empty global config (defaults).
 func runInitInDir(t *testing.T, workDir string, args []string) (stdout string, err error) {
+	t.Helper()
+	return runInitInDirWithGlobalCfg(t, workDir, args, "")
+}
+
+// runInitInDirWithGlobalCfg is like runInitInDir but lets the caller supply
+// the global-config YAML body (e.g. to set a non-default `client.default_server`
+// and assert that URL flows through to the rendered MCP configs).
+func runInitInDirWithGlobalCfg(t *testing.T, workDir string, args []string, globalCfgYAML string) (stdout string, err error) {
 	t.Helper()
 
 	// Isolate cfgFile so loadGlobalCfg() doesn't touch the developer's
 	// real ~/.config/specgraph/config.yaml. Mirrors the pattern in
 	// lifecycle_test.go and other tests in this package.
 	//
-	// We write an empty YAML file rather than just naming a path: when
-	// cfgFile != "" loadGlobalCfg dispatches to config.LoadGlobalExplicit,
-	// which errors with "config file not found" if the path doesn't exist.
-	// An empty YAML body parses to globalDefaults() (DefaultServer
-	// http://127.0.0.1:9090), which is fine for these tests.
+	// We write the body to a temp file: when cfgFile != "" loadGlobalCfg
+	// dispatches to config.LoadGlobalExplicit, which errors with "config
+	// file not found" if the path doesn't exist. An empty body parses to
+	// globalDefaults() (DefaultServer http://127.0.0.1:9090).
 	oldCfgFile := cfgFile
 	cfgPath := filepath.Join(t.TempDir(), "config.yaml")
-	if writeErr := os.WriteFile(cfgPath, []byte(""), 0o600); writeErr != nil {
+	if writeErr := os.WriteFile(cfgPath, []byte(globalCfgYAML), 0o600); writeErr != nil {
 		t.Fatal(writeErr)
 	}
 	cfgFile = cfgPath
@@ -87,6 +94,13 @@ func TestRunInit_FreshProject_NoArg(t *testing.T) {
 		if !strings.Contains(out, p+": created") {
 			t.Errorf("stdout missing %q: %s", p+": created", out)
 		}
+	}
+	// Success banner fires on the project-creating run regardless of whether
+	// the slug came from an arg or was derived. The slug itself is unstable
+	// across machines (depends on git remote / dir name), so we match only
+	// the constant prefix.
+	if !strings.Contains(out, "Initialized project") {
+		t.Errorf("stdout missing 'Initialized project' banner on fresh init: %s", out)
 	}
 }
 
@@ -201,6 +215,140 @@ func TestRunInit_Idempotent_ByteEqualSecondRun(t *testing.T) {
 		}
 		if !bytes.Equal(got, want) {
 			t.Errorf("%s: bytes changed between idempotent runs", p)
+		}
+	}
+}
+
+func TestRunInit_ResolvedServerURLFlowsIntoConfigs(t *testing.T) {
+	// Pin the wiring from globalCfg.ResolveServer through ManagedConfigs
+	// into the rendered file's `url` field. Without this test, a regression
+	// that hardcoded "127.0.0.1:9090" or skipped the resolution step would
+	// pass every other init test (they all use the default URL).
+	dir := t.TempDir()
+	const customServer = "https://specgraph.example.com:8443"
+	cfgYAML := "client:\n  default_server: " + customServer + "\n"
+
+	if _, err := runInitInDirWithGlobalCfg(t, dir, []string{"my-project"}, cfgYAML); err != nil {
+		t.Fatalf("runInit: %v", err)
+	}
+
+	// Each rendered config must carry the resolved URL with /mcp/ appended.
+	wantURL := customServer + "/mcp/"
+	for _, p := range []string{".cursor/mcp.json", ".mcp.json", "opencode.json"} {
+		data, readErr := os.ReadFile(filepath.Join(dir, p))
+		if readErr != nil {
+			t.Fatalf("read %s: %v", p, readErr)
+		}
+		if !strings.Contains(string(data), wantURL) {
+			t.Errorf("%s does not contain resolved URL %q; content:\n%s", p, wantURL, data)
+		}
+	}
+}
+
+func TestRunInit_RejectsInvalidServerURLs(t *testing.T) {
+	// Pin the URL-validation strictness contract: relative URLs, missing
+	// schemes, non-http(s) schemes, and the empty string must all be
+	// refused — and the refusal must happen BEFORE .specgraph.yaml is
+	// written, so a fresh project doesn't end up with a yaml on disk
+	// pointing at a global config we already know is broken.
+	// Note: an empty default_server in the YAML is defaulted to the
+	// loopback URL by globalDefaults() upstream of ResolveServer, so
+	// it never reaches the validator through the YAML path. The other
+	// invalid-URL cases all flow through.
+	cases := []struct {
+		name      string
+		serverURL string
+	}{
+		{"bare path", "/api"},
+		{"host:port no scheme", "localhost:3000"},
+		{"hostname only", "example.com"},
+		{"non-http scheme", "ftp://example.com"},
+		{"file scheme", "file:///tmp/x"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			cfgYAML := "client:\n  default_server: " + tc.serverURL + "\n"
+
+			_, err := runInitInDirWithGlobalCfg(t, dir, []string{"my-project"}, cfgYAML)
+			if err == nil {
+				t.Fatalf("expected error for %q, got nil", tc.serverURL)
+			}
+			if !strings.Contains(err.Error(), "absolute http or https URL") {
+				t.Errorf("error %q should mention 'absolute http or https URL'", err.Error())
+			}
+
+			// Validation runs before any writes — .specgraph.yaml must NOT
+			// exist after a refused init on a fresh project.
+			if _, statErr := os.Stat(filepath.Join(dir, ".specgraph.yaml")); !os.IsNotExist(statErr) {
+				t.Errorf(".specgraph.yaml should not exist after URL refusal: %v", statErr)
+			}
+			// Likewise none of the managed MCP configs.
+			for _, p := range []string{".cursor/mcp.json", ".mcp.json", "opencode.json"} {
+				if _, statErr := os.Stat(filepath.Join(dir, p)); !os.IsNotExist(statErr) {
+					t.Errorf("%s should not exist after URL refusal: %v", p, statErr)
+				}
+			}
+		})
+	}
+}
+
+func TestRunInit_NoSuccessBannerWhenSyncFails(t *testing.T) {
+	// Pre-create a malformed .cursor/mcp.json so Sync fails on the first
+	// file. .specgraph.yaml is still created (the success banner used to
+	// fire here, before Sync ran), but the user's exit is non-zero — so
+	// printing "Initialized project ..." would mislead. Banner must move
+	// to after a successful Sync.
+	dir := t.TempDir()
+	cursorDir := filepath.Join(dir, ".cursor")
+	if err := os.MkdirAll(cursorDir, 0o755); err != nil { //nolint:gosec // 0755 is intentional for test fixture dirs
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cursorDir, "mcp.json"), []byte(`{not valid json`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runInitInDir(t, dir, []string{"my-project"})
+	if err == nil {
+		t.Fatal("expected error from malformed .cursor/mcp.json, got nil")
+	}
+	if strings.Contains(out, "Initialized project") {
+		t.Errorf("stdout contains success banner despite Sync failure:\n%s", out)
+	}
+}
+
+func TestRunInit_ConflictingArg_DoesNotMutateMCPConfigs(t *testing.T) {
+	// The slug-conflict refusal must fire before any file is touched. A
+	// reordered runInit could write managed MCP configs with the conflicting
+	// slug before the slug check, leaving partial state. Snapshot all
+	// managed files before the conflicting call and assert byte-equality
+	// after.
+	dir := t.TempDir()
+	if _, err := runInitInDir(t, dir, []string{"original-slug"}); err != nil {
+		t.Fatalf("first runInit: %v", err)
+	}
+
+	managedPaths := []string{".specgraph.yaml", ".cursor/mcp.json", ".mcp.json", "opencode.json"}
+	snaps := make(map[string][]byte, len(managedPaths))
+	for _, p := range managedPaths {
+		data, readErr := os.ReadFile(filepath.Join(dir, p))
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		snaps[p] = data
+	}
+
+	if _, err := runInitInDir(t, dir, []string{"different-slug"}); err == nil {
+		t.Fatal("expected slug-conflict error, got nil")
+	}
+
+	for _, p := range managedPaths {
+		got, readErr := os.ReadFile(filepath.Join(dir, p))
+		if readErr != nil {
+			t.Fatalf("read %s after conflict: %v", p, readErr)
+		}
+		if !bytes.Equal(got, snaps[p]) {
+			t.Errorf("%s mutated by failed conflicting-slug init; got:\n%s\nwant:\n%s", p, got, snaps[p])
 		}
 	}
 }

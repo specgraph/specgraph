@@ -44,14 +44,22 @@ to a function of `.specgraph.yaml` + global config.
    arg / git remote / dirname if not.
 2. **Slug-consistency check:** if both an arg and an existing `.specgraph.yaml`
    are present and the slugs differ, return error and refuse to write.
-3. Write `.specgraph.yaml` (no-op if content unchanged).
-4. Resolve server URL via the existing `(*GlobalConfig).ResolveServer(slug, repoOverride)`
+3. Resolve server URL via the existing `(*GlobalConfig).ResolveServer(slug, repoOverride)`
    method on `internal/config/global.go`. The `repoOverride` argument is the
    optional `server:` field from `.specgraph.yaml`'s `ProjectConfig.Server`;
    if set, it takes precedence over global routing. The resolved URL is the
-   value baked into each per-harness config's `url` field.
-5. Sync the three per-harness MCP configs via JSON Merge Patch.
-6. Print per-file action (`created` / `updated` / `no-op`).
+   value baked into each per-harness config's `url` field. **All global-config
+   resolution and URL parsing happens before any writes** — a malformed global
+   config or unparseable server URL must fail fast, before `.specgraph.yaml`
+   is created on a fresh project.
+4. Build `ManagedConfigs(slug, serverURL)` (still no writes).
+5. Write `.specgraph.yaml` only if it doesn't already exist. Existing
+   project configs are not reconciled — slug changes are handled by the
+   step-2 conflict check; user edits to `server:` and other YAML fields
+   are preserved as-is.
+6. Sync each per-harness MCP config via JSON Merge Patch (the supported
+   set is currently three; Codex will land as a fourth in Task 36).
+7. Print per-file action (`created` / `updated` / `no-op`).
 
 **Behavior change vs current `runInit`:** the existing `runInit` calls `runUp`
 to bring the Docker compose stack online before writing `.specgraph.yaml`. The
@@ -94,8 +102,14 @@ fields are:
   (sibling of `mcp`, not under our entry)
 
 Anything else under our `specgraph` entry is the user's: custom headers
-(e.g., `X-Custom: foo`), comments, custom `timeout`, etc. — all preserved
-across `init` runs.
+(e.g., `X-Custom: foo`), pseudo-comment keys (e.g., `"_comment": "..."` or
+`"//": "..."`), custom `timeout`, etc. — all preserved across `init` runs
+because they're outside the managed-fields set listed above and RFC 7396
+merge-patch only replaces the keys named in our patch document. Note:
+standard JSON comment syntax (`//`, `/* */`) is not supported because
+`syncOne` calls `json.Unmarshal` on the existing file before any merge; a
+file containing C-style or line comments will fail to parse and `init`
+will error out.
 
 ### Per-developer overrides
 
