@@ -907,32 +907,6 @@ specgraph serve [flags]
       --pg-url string        PostgreSQL connection URL (overrides config; env: SPECGRAPH_PG_URL)
 ```
 
-### specgraph mcp
-
-Start a Model Context Protocol server that communicates over stdin/stdout.
-This lightweight process translates MCP tool calls into ConnectRPC RPCs
-against a running specgraph serve instance.
-
-Configure in Claude Code's MCP settings:
-  {
-    "mcpServers": {
-      "specgraph": {
-        "command": "specgraph",
-        "args": ["mcp", "--profile", "authoring"]
-      }
-    }
-  }
-
-```
-specgraph mcp [flags]
-```
-
-**Flags:**
-
-```
-      --profile string   Tool profile: core, authoring, or execution (default "core")
-```
-
 ### specgraph status
 
 Show server and service health
@@ -990,5 +964,13 @@ specgraph inject <slug> [flags]
 ```
   -o, --output string   output directory (default: current directory)
       --tool string     target tool (claude-code, cursor, agents-md) (default "claude-code")
+```
+
+### specgraph read-mcp-resource
+
+Reads the requested MCP resource via streamable-HTTP transport from the configured SpecGraph server (see resolveBaseURL) and prints the first text content body to stdout. Bearer auth comes from SPECGRAPH_API_KEY or the credentials file.
+
+```
+specgraph read-mcp-resource <uri>
 ```
 
