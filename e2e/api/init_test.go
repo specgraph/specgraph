@@ -51,13 +51,24 @@ var _ = Describe("init command", func() {
 		Expect(string(data)).To(ContainSubstring("test-project"))
 	})
 
-	It("rejects init when .specgraph.yaml already exists", func() {
-		// First init should succeed.
+	It("is idempotent when re-run with the same slug", func() {
+		// First init creates .specgraph.yaml.
 		result := cli.RunInDir(tmpDir, "init", "test-project", "--yes")
 		Expect(result.ExitCode).To(Equal(0), "first init stderr: %s", result.Stderr)
 
-		// Second init should fail.
+		// Second init with the same slug succeeds as a no-op.
 		result = cli.RunInDir(tmpDir, "init", "test-project", "--yes")
-		Expect(result.ExitCode).NotTo(Equal(0), "second init should fail")
+		Expect(result.ExitCode).To(Equal(0), "second init stderr: %s", result.Stderr)
+	})
+
+	It("rejects init when slug arg conflicts with existing .specgraph.yaml", func() {
+		// First init pins the slug.
+		result := cli.RunInDir(tmpDir, "init", "test-project", "--yes")
+		Expect(result.ExitCode).To(Equal(0), "first init stderr: %s", result.Stderr)
+
+		// Re-running with a different slug must refuse.
+		result = cli.RunInDir(tmpDir, "init", "other-project", "--yes")
+		Expect(result.ExitCode).NotTo(Equal(0), "conflicting-slug init should fail")
+		Expect(result.Stderr).To(ContainSubstring("cannot change project slug"))
 	})
 })
