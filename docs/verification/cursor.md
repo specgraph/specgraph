@@ -1,0 +1,159 @@
+# Cursor MCP verification
+
+Empirical verification artifact for Phase B Slice 5 Task 34 (`spgr-bncv`).
+Captures what Cursor's MCP integration actually does on the wire when
+connected to a local `specgraph serve`, and what we changed to make it work.
+
+Verification date: 2026-05-04. Cursor version: 1.26.2 (Enterprise plan).
+Server: `task dev` against `pgvector/pgvector:pg18` testcontainer.
+
+## Setup that worked
+
+### 1. Export the API key
+
+The repo's project-level MCP configs reference `SPECGRAPH_API_KEY` via env-var
+substitution so no secrets land in git. Read the key from the auto-generated
+admin entry in `~/.config/specgraph/credentials.yaml`:
+
+```bash
+export SPECGRAPH_API_KEY=$(yq '.api_keys[] | select(.id=="default-admin") | .key' ~/.config/specgraph/credentials.yaml)
+```
+
+Or paste it manually into your shell rc file. Cursor and Claude Code both
+inherit env from the shell that launched them, so on macOS launching from
+Spotlight may not pick up shell env unless the export is in your launchd
+environment. Easiest: launch Cursor from the same terminal where the export
+is live (`open -a Cursor .`), or add to your `.envrc` if you use direnv.
+
+### 2. Project-level `.cursor/mcp.json` (committed)
+
+Cursor reads `<project>/.cursor/mcp.json` automatically when the project root
+is open. The committed file uses Cursor's `${env:NAME}` substitution syntax:
+
+```json
+{
+  "mcpServers": {
+    "specgraph": {
+      "url": "http://127.0.0.1:7890/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${env:SPECGRAPH_API_KEY}",
+        "X-Specgraph-Project": "specgraph"
+      }
+    }
+  }
+}
+```
+
+After the file is in place, **Cursor → Settings → Tools & MCPs → toggle
+`specgraph` off then on** (or restart Cursor) to pick it up.
+
+Companion `.mcp.json` at the repo root works the same for Claude Code,
+with `${SPECGRAPH_API_KEY}` (Claude Code's syntax — no `env:` prefix) and
+an explicit `"type": "http"`.
+
+## Captured behavior
+
+### `clientInfo.Name = "cursor-vscode"`
+
+Captured via the `mcp: client initialized` log line emitted by the
+`OnAfterInitialize` hook in `internal/mcp/server.go`:
+
+```text
+2026/05/04 13:12:13 INFO mcp: client initialized client_name=cursor-vscode client_version=1.0.0 profile=authoring
+```
+
+This **does not match** the bare `"cursor"` previously listed in
+`internal/mcp/profiles.go:ProfileFromClientInfo`. Without the
+`cursor-vscode` row, Cursor sessions fall through to `ProfileCore` instead
+of `ProfileAuthoring`. Fixed in this PR's `feat(mcp)` commit by adding
+`"cursor-vscode"` to the authoring case and a row to the `TestClientIDContract`
+table.
+
+### Tool-name spec enforcement
+
+Cursor's MCP integration filters tool names that violate the spec's
+alphanumeric-and-underscores rule. The settings panel surfaced:
+
+> Some tools have naming issues and may be filtered out:
+> specgraph: author.start_stage - Tool name must only contain alphanumeric characters and underscores
+
+`author.start_stage` was the only offender. Renamed to `author_start_stage`
+in this PR's `fix(mcp)` commit (5 source/test/doc sites; historical mentions
+in the parent plan/design documents preserved as-is).
+
+### Project header propagation through loopback
+
+The MCP HTTP server runs a loopback ConnectRPC client at startup
+(`mcpClient = mcppkg.NewClient(newHTTPClient(""), selfBaseURL(...))` in
+`cmd/specgraph/serve.go`) so resources like `specgraph://prime` can compose
+content from project-scoped services (Constitution, Spec, Graph,
+AnalyticalPass).
+
+Until this PR, only the bearer token was forwarded from the inbound
+`/mcp/` request's HTTP headers into the request context. The
+`X-Specgraph-Project` header was dropped, so every loopback RPC failed
+the project middleware with `invalid_argument: X-Specgraph-Project header
+required`. Symptom: clicking `prime` in Cursor produced a degraded body
+where every section reported the same error.
+
+**The header empirically reaches the server.** Captured via a
+`mcpHeaderLogger` middleware (now at DEBUG):
+
+```text
+2026/05/04 13:18:02 INFO mcp: inbound request method=POST path=/mcp/ raw_query="" header_keys=[..., X-Specgraph-Project, ...]
+```
+
+So the bug was server-side: the loopback path didn't propagate the header.
+Fixed in this PR's `fix(mcp): propagate X-Specgraph-Project ...` commit
+(parallel to the existing bearer-token pattern: `auth.WithProject` /
+`auth.ProjectFromContext` plus a fallback in `clientTransport.RoundTrip`).
+
+After the fix, Cursor's `prime` resource composes successfully — the
+remaining warnings (`section=constitution err="not_found: constitution
+not found"` and `section=open_findings err="invalid_argument: slug is
+required"`) are unrelated and tracked separately:
+
+- `not_found: constitution not found` is data state — the project's
+  constitution hasn't been authored yet. Run `specgraph constitution set`
+  to populate.
+- `invalid_argument: slug is required` is a real bug in the prime composer:
+  the `open_findings` section calls `AnalyticalPassService.ListFindings`
+  without a slug parameter, but the handler requires one.
+  Filed as **`spgr-vabz`** (P2).
+
+## Profile registry confirmation
+
+Post-PR, `TestClientIDContract` covers nine clients — all SpecGraph
+profile mappings are now grounded in observed behavior or first-party
+declarations:
+
+| Platform                  | clientInfo.Name   | Profile           | Source                |
+| :------------------------ | :---------------- | :---------------- | :-------------------- |
+| Claude Code               | `claude-code`     | ProfileAuthoring  | first-party           |
+| Cursor (legacy/CLI?)      | `cursor`          | ProfileAuthoring  | retained for safety   |
+| Cursor (VSCode-based)     | `cursor-vscode`   | ProfileAuthoring  | empirical (this Task) |
+| OpenCode                  | `opencode`        | ProfileAuthoring  | declared (Slice 4)    |
+| Codex                     | `codex`           | ProfileAuthoring  | declared (Slice 4)    |
+| Windsurf                  | `windsurf`        | ProfileAuthoring  | declared (Slice 4)    |
+| SpecGraph CLI             | `specgraph-cli`   | ProfileAuthoring  | first-party (PR #925) |
+| Polecat                   | `polecat`         | ProfileExecution  | first-party           |
+| Gastown                   | `gastown`         | ProfileExecution  | first-party           |
+
+Tasks 35 and 36 will repeat this verification flow for OpenCode and Codex;
+each may surface additional `_vscode`-style suffixes or different bug
+shapes that this PR's tooling (slog logging in OnAfterInitialize, debug
+middleware on `/mcp/`) is now wired to capture.
+
+## What this PR does not address
+
+- **Constitution data is empty** for the `specgraph` project — out of scope
+  for verification; populate via `specgraph constitution set` if desired.
+- **`prime open_findings` slug bug** (`spgr-vabz`) — separate small PR.
+- **Routing-guide audit** — `plugin/specgraph/routing-guide.md` references
+  several tool names beyond `author.start_stage` that may also be stale
+  (e.g., `spec.list`, `constitution.update`); `README.md` cleaned up but
+  routing-guide kept minimal-scope to avoid mission creep.
+- **Cursor / Claude Code env-var ergonomics** — both clients require
+  `SPECGRAPH_API_KEY` exported in the launching shell; macOS Spotlight
+  launches don't inherit shell env. No code fix here, but worth a
+  follow-up doc note in the contributor README.
