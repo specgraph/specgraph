@@ -1,6 +1,8 @@
 # SpecGraph Claude Code Plugin
 
-Skills for the SpecGraph authoring funnel and graph queries.
+Thin Claude Code client for SpecGraph. Rich authoring workflow guidance —
+spark, shape, specify, decompose, approve — is delivered by the SpecGraph
+MCP server, not by skills bundled in this plugin.
 
 ## Install
 
@@ -12,19 +14,20 @@ claude --plugin-dir ./plugin/specgraph
 
 **For other projects:** Install via Claude Code plugin marketplace (coming soon).
 
-## Skills
+## Layout
 
-| Skill | Purpose |
-|-------|---------|
-| `specgraph` | Router and concierge — detects intent and routes to the right skill |
-| `specgraph-spark` | Capture a vague idea and create a spec in Spark stage |
-| `specgraph-shape` | Bound scope, explore approaches, surface risks |
-| `specgraph-specify` | Define interface contracts, acceptance criteria, invariants |
-| `specgraph-decompose` | Break a spec into independently deliverable slices |
-| `specgraph-approve` | Review and freeze a spec for execution |
-| `specgraph-list` | List specs with optional filtering |
-| `specgraph-show` | Show detailed information for a specific spec |
-| `specgraph-deps` | Show dependency tree for a spec |
-| `specgraph-ready` | Show specs ready to be claimed and implemented |
-| `specgraph-bundle` | Generate execution bundle and prime context for a spec |
-| `specgraph-constitution` | Create or update the project constitution (ground truth) |
+| Path | Purpose |
+|------|---------|
+| `.claude-plugin/plugin.json` | Plugin manifest |
+| `hooks/session-start.sh` | Reads `specgraph://prime` from the MCP server at session start |
+| `routing-guide.md` | Tells Claude which MCP prompts/tools/resources to use for each user intent |
+
+The MCP server (`specgraph serve`) exposes:
+
+- Prompts for each authoring stage (`spark`, `shape`, `specify`, `decompose`, `approve`)
+- Tools: `author.start_stage`, `author.<stage>`, `spec.list`, `spec.get`,
+  `graph_query`, `constitution.update`, `analytical_pass.run`
+- Resources: `specgraph://prime`, `specgraph://constitution`,
+  `specgraph://graph/ready`
+
+See `routing-guide.md` for routing rules.

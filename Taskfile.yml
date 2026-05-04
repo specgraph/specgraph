@@ -165,7 +165,7 @@ tasks:
       - task: lint:yaml
   lint:go:
     desc: Lint Go code
-    deps: [generate]
+    deps: [generate, 'web:build']
     cmds:
       - golangci-lint run
   lint:markdown:

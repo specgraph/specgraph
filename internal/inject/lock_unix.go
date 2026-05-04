@@ -20,7 +20,7 @@ func acquireFileLock(path string) (func(), error) {
 	if err != nil {
 		return nil, fmt.Errorf("create lock file: %w", err)
 	}
-	fd := int(lockFile.Fd()) //nolint:gosec // G115: Fd() returns a valid file descriptor; overflow is not possible on supported platforms
+	fd := int(lockFile.Fd())
 	if err := syscall.Flock(fd, syscall.LOCK_EX); err != nil {
 		lockFile.Close() //nolint:errcheck // lock acquisition failed; close is best-effort
 		return nil, fmt.Errorf("acquire file lock: %w", err)

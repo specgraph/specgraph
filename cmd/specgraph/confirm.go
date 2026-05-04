@@ -40,5 +40,5 @@ func confirmDestructive(in io.Reader, out io.Writer, isTTY, yes bool, prompt str
 // stdinIsTTY reports whether stdin is connected to a terminal. Production
 // callers pass this into confirmDestructive; tests inject a bool directly.
 func stdinIsTTY() bool {
-	return term.IsTerminal(int(os.Stdin.Fd())) //nolint:gosec // fd fits in int on all supported platforms
+	return term.IsTerminal(int(os.Stdin.Fd()))
 }
