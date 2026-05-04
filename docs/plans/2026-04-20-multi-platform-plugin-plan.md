@@ -2952,6 +2952,22 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 
 ## Task 32: `specgraph mcp read-resource` CLI subcommand
 
+> **⚠️ SUPERSEDED** — the prose below was invalidated by PR #923 (which dropped
+> stdio transport and removed the `specgraph mcp` parent command). Task 32 was
+> redesigned and re-planned in 2026-04-27 and shipped in PR #925 (merged
+> 2026-05-04).
+>
+> **Current design:** [`docs/plans/2026-04-27-task-32-read-mcp-resource-design.md`](2026-04-27-task-32-read-mcp-resource-design.md)
+>
+> **Current implementation plan:** [`docs/plans/2026-04-27-task-32-read-mcp-resource-plan.md`](2026-04-27-task-32-read-mcp-resource-plan.md)
+>
+> Key deltas vs. the prose below: top-level `specgraph read-mcp-resource <uri>`
+> command (no `mcp` parent), HTTP transport via `mark3labs/mcp-go` v0.45.0
+> against `<baseURL>/mcp/`, no new flags or env vars, and `specgraph-cli` added
+> to `internal/mcp/profiles.go:ProfileFromClientInfo`. The subcommand lives at
+> `cmd/specgraph/read_mcp_resource.go`, not `cmd/specgraph/mcp_read_resource.go`.
+> The prose is retained here for historical traceability only — do not follow it.
+
 **Files:**
 
 - Create: `cmd/specgraph/mcp_read_resource.go`
