@@ -147,6 +147,40 @@ func TestConstitutionResource(t *testing.T) {
 	require.Contains(t, contents[0].Text, "project-constitution")
 }
 
+func TestConstitutionResource_NotFoundRendersHint(t *testing.T) {
+	c := &Client{Constitution: &mockConstitutionService{
+		getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+			return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("constitution not found"))
+		},
+	}}
+
+	handler := constitutionResourceHandler(c)
+	contents, err := handler(context.Background(), "specgraph://constitution")
+	require.NoError(t, err)
+	require.Len(t, contents, 1)
+	require.Equal(t, "text/markdown", contents[0].MimeType)
+	require.Equal(t, "specgraph://constitution", contents[0].URI)
+	require.Contains(t, contents[0].Text, "No constitution configured")
+	require.Contains(t, contents[0].Text, "specgraph constitution set")
+}
+
+func TestConstitutionResource_SlugRequiredRendersHint(t *testing.T) {
+	c := &Client{Constitution: &mockConstitutionService{
+		getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug is required"))
+		},
+	}}
+
+	handler := constitutionResourceHandler(c)
+	contents, err := handler(context.Background(), "specgraph://constitution")
+	require.NoError(t, err)
+	require.Len(t, contents, 1)
+	require.Equal(t, "text/markdown", contents[0].MimeType)
+	require.Equal(t, "specgraph://constitution", contents[0].URI)
+	require.Contains(t, contents[0].Text, "No constitution configured")
+	require.Contains(t, contents[0].Text, "specgraph constitution set")
+}
+
 func TestConstitutionResource_Error(t *testing.T) {
 	c := &Client{Constitution: &mockConstitutionService{
 		getConstitution: func() (*specv1.GetConstitutionResponse, error) {
