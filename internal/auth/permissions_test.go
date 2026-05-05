@@ -74,6 +74,7 @@ var allProcedures = []string{
 	specgraphv1connect.AnalyticalPassServiceRunAnalyticalPassProcedure,
 	specgraphv1connect.AnalyticalPassServiceStoreFindingsProcedure,
 	specgraphv1connect.AnalyticalPassServiceListFindingsProcedure,
+	specgraphv1connect.AnalyticalPassServiceListProjectFindingsProcedure,
 	// ServerService (exempt)
 	specgraphv1connect.ServerServiceHealthProcedure,
 }

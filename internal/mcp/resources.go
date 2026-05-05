@@ -154,7 +154,7 @@ func readyResourceHandler(c *Client) ResourceHandler {
 
 func findingsResourceHandler(c *Client) ResourceHandler {
 	return func(ctx context.Context, uri string) ([]ResourceContent, error) {
-		resp, err := c.AnalyticalPass.ListFindings(ctx, connect.NewRequest(&specv1.ListFindingsRequest{}))
+		resp, err := c.AnalyticalPass.ListProjectFindings(ctx, connect.NewRequest(&specv1.ListProjectFindingsRequest{}))
 		if err != nil {
 			return nil, fmt.Errorf("list findings: %w", err)
 		}
@@ -284,13 +284,8 @@ func primeResourceHandler(c *Client) ResourceHandler {
 			}
 		}
 
-		findingsResp, err := c.AnalyticalPass.ListFindings(ctx, connect.NewRequest(&specv1.ListFindingsRequest{}))
+		findingsResp, err := c.AnalyticalPass.ListProjectFindings(ctx, connect.NewRequest(&specv1.ListProjectFindingsRequest{}))
 		switch {
-		case err != nil && connect.CodeOf(err) == connect.CodeInvalidArgument:
-			// ListFindings currently requires a per-spec slug; the prime
-			// composer wants project-wide findings but has no project-scoped
-			// query yet. Skip silently rather than render a confusing "slug
-			// is required" error to the agent. Tracked: spgr-vabz.
 		case err != nil:
 			slog.WarnContext(ctx, "prime.section_failed",
 				slog.String("section", "open_findings"),

@@ -167,6 +167,10 @@ func (errorBackend) ListFindings(context.Context, string, storage.PassType) ([]s
 	return nil, errRawDB
 }
 
+func (errorBackend) ListAllFindings(context.Context) ([]*storage.AnalyticalFinding, error) {
+	return nil, errRawDB
+}
+
 func (errorBackend) LifecycleAmendSpec(context.Context, string, string, string) (*storage.Spec, error) {
 	return nil, errRawDB
 }
@@ -537,6 +541,12 @@ func TestAnalyticalPassHandler_ErrorSanitization(t *testing.T) {
 		_, err := client.ListFindings(ctx, connect.NewRequest(&specv1.ListFindingsRequest{
 			Slug: "test-spec",
 		}))
+		require.Equal(t, connect.CodeInternal, connect.CodeOf(err))
+		assertSanitized(t, err)
+	})
+
+	t.Run("ListProjectFindings", func(t *testing.T) {
+		_, err := client.ListProjectFindings(ctx, connect.NewRequest(&specv1.ListProjectFindingsRequest{}))
 		require.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 		assertSanitized(t, err)
 	})
