@@ -34,7 +34,9 @@ func TestReadMCPResource_Prime(t *testing.T) {
 
 	cfgDir := t.TempDir()
 	cfgPath := filepath.Join(cfgDir, "config.yaml")
-	body := fmt.Sprintf("server:\n  remote: %s\n", srv.URL)
+	// Write both the new (client.default_server) and legacy (server.remote)
+	// schemas — see test_helpers_test.go for rationale.
+	body := fmt.Sprintf("client:\n  default_server: %s\nserver:\n  remote: %s\n", srv.URL, srv.URL)
 	if err := os.WriteFile(cfgPath, []byte(body), 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
