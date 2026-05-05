@@ -9,11 +9,11 @@ import (
 
 var rpcPermissions = map[string]string{
 	// SpecService
-	specgraphv1connect.SpecServiceGetSpecProcedure:     "spec:read",
-	specgraphv1connect.SpecServiceListSpecsProcedure:   "spec:read",
-	specgraphv1connect.SpecServiceCreateSpecProcedure:  "spec:write",
-	specgraphv1connect.SpecServiceUpdateSpecProcedure:  "spec:write",
-	specgraphv1connect.SpecServiceListChangesProcedure:    "spec:read",
+	specgraphv1connect.SpecServiceGetSpecProcedure:         "spec:read",
+	specgraphv1connect.SpecServiceListSpecsProcedure:       "spec:read",
+	specgraphv1connect.SpecServiceCreateSpecProcedure:      "spec:write",
+	specgraphv1connect.SpecServiceUpdateSpecProcedure:      "spec:write",
+	specgraphv1connect.SpecServiceListChangesProcedure:     "spec:read",
 	specgraphv1connect.SpecServiceCompareVersionsProcedure: "spec:read",
 	// DecisionService
 	specgraphv1connect.DecisionServiceGetDecisionProcedure:    "decision:read",
@@ -69,9 +69,10 @@ var rpcPermissions = map[string]string{
 	specgraphv1connect.SyncServiceSyncGitHubProcedure:    "sync:write",
 	specgraphv1connect.SyncServiceInjectProcedure:        "sync:write",
 	// AnalyticalPassService
-	specgraphv1connect.AnalyticalPassServiceRunAnalyticalPassProcedure: "analytical_pass:write",
-	specgraphv1connect.AnalyticalPassServiceStoreFindingsProcedure:     "analytical_pass:write",
-	specgraphv1connect.AnalyticalPassServiceListFindingsProcedure:      "analytical_pass:read",
+	specgraphv1connect.AnalyticalPassServiceRunAnalyticalPassProcedure:   "analytical_pass:write",
+	specgraphv1connect.AnalyticalPassServiceStoreFindingsProcedure:       "analytical_pass:write",
+	specgraphv1connect.AnalyticalPassServiceListFindingsProcedure:        "analytical_pass:read",
+	specgraphv1connect.AnalyticalPassServiceListProjectFindingsProcedure: "analytical_pass:read",
 	// ExportService
 	specgraphv1connect.ExportServiceExportProjectProcedure: "export:read",
 	specgraphv1connect.ExportServiceImportProjectProcedure: "export:write",

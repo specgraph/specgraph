@@ -186,32 +186,85 @@ func (h *AnalyticalPassHandler) ListFindings(ctx context.Context, req *connect.R
 		return nil, analyticalPassError(err)
 	}
 
-	proto := make([]*specv1.AnalyticalFinding, len(findings))
+	protoFindings := make([]*specv1.AnalyticalFinding, len(findings))
 	for i := range findings {
-		f := &findings[i]
-		protoSev, sevErr := findingSeverityToProto(f.Severity)
-		if sevErr != nil {
-			return nil, analyticalPassError(sevErr)
+		f := findings[i]
+		if f.SpecSlug == "" {
+			f.SpecSlug = msg.Slug
 		}
-		protoPassType, ptErr := passTypeToProto(f.PassType)
-		if ptErr != nil {
-			return nil, analyticalPassError(ptErr)
+		protoFinding, convErr := analyticalFindingToProto(&f)
+		if convErr != nil {
+			return nil, analyticalPassError(convErr)
 		}
-		proto[i] = &specv1.AnalyticalFinding{
-			Id:         f.ID,
-			PassType:   protoPassType,
-			Severity:   protoSev,
-			Summary:    f.Summary,
-			Detail:     f.Detail,
-			Constraint: f.Constraint,
-			Resolution: f.Resolution,
-			Version:    f.Version,
-		}
+		protoFindings[i] = protoFinding
 	}
 
 	return connect.NewResponse(&specv1.ListFindingsResponse{
-		Findings: proto,
+		Findings: protoFindings,
 	}), nil
+}
+
+// ListProjectFindings returns findings across all specs in the scoped project.
+func (h *AnalyticalPassHandler) ListProjectFindings(ctx context.Context, req *connect.Request[specv1.ListProjectFindingsRequest]) (*connect.Response[specv1.ListProjectFindingsResponse], error) {
+	store, err := scopeStore(ctx, h.scoper)
+	if err != nil {
+		return nil, err
+	}
+
+	var pt storage.PassType
+	if req.Msg.GetPassType() != specv1.PassType_PASS_TYPE_UNSPECIFIED {
+		var ptErr error
+		pt, ptErr = passTypeFromProto(req.Msg.GetPassType())
+		if ptErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, ptErr)
+		}
+	}
+
+	findings, err := store.ListAllFindings(ctx)
+	if err != nil {
+		return nil, analyticalPassError(err)
+	}
+
+	protoFindings := make([]*specv1.AnalyticalFinding, 0, len(findings))
+	for _, f := range findings {
+		if f == nil {
+			continue
+		}
+		if pt != "" && f.PassType != pt {
+			continue
+		}
+		protoFinding, convErr := analyticalFindingToProto(f)
+		if convErr != nil {
+			return nil, analyticalPassError(convErr)
+		}
+		protoFindings = append(protoFindings, protoFinding)
+	}
+
+	return connect.NewResponse(&specv1.ListProjectFindingsResponse{
+		Findings: protoFindings,
+	}), nil
+}
+
+func analyticalFindingToProto(f *storage.AnalyticalFinding) (*specv1.AnalyticalFinding, error) {
+	protoSev, sevErr := findingSeverityToProto(f.Severity)
+	if sevErr != nil {
+		return nil, sevErr
+	}
+	protoPassType, ptErr := passTypeToProto(f.PassType)
+	if ptErr != nil {
+		return nil, ptErr
+	}
+	return &specv1.AnalyticalFinding{
+		Id:         f.ID,
+		SpecSlug:   f.SpecSlug,
+		PassType:   protoPassType,
+		Severity:   protoSev,
+		Summary:    f.Summary,
+		Detail:     f.Detail,
+		Constraint: f.Constraint,
+		Resolution: f.Resolution,
+		Version:    f.Version,
+	}, nil
 }
 
 // passToolManifest returns the tool references for an analytical pass.

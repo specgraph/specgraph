@@ -119,6 +119,25 @@ func (b *analyticalPassTestBackend) ListFindings(_ context.Context, slug string,
 	return b.findings[key], nil
 }
 
+func (b *analyticalPassTestBackend) ListAllFindings(_ context.Context) ([]*storage.AnalyticalFinding, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	var all []*storage.AnalyticalFinding
+	for key, findings := range b.findings {
+		slug, _, ok := strings.Cut(key, ":")
+		if !ok {
+			continue
+		}
+		for i := range findings {
+			f := findings[i]
+			f.SpecSlug = slug
+			all = append(all, &f)
+		}
+	}
+	return all, nil
+}
+
 func setupAnalyticalPassServer(t *testing.T, backend storage.ScopedBackend) specgraphv1connect.AnalyticalPassServiceClient {
 	t.Helper()
 	scoper := &testScoper{backend: backend}
@@ -262,6 +281,103 @@ func TestListFindings_EmptyPassType(t *testing.T) {
 	require.Len(t, listResp.Msg.Findings, 2)
 }
 
+func TestListProjectFindings_EmptyProject(t *testing.T) {
+	backend := newAnalyticalPassTestBackend()
+	client := setupAnalyticalPassServer(t, backend)
+
+	resp, err := client.ListProjectFindings(context.Background(), connect.NewRequest(&specv1.ListProjectFindingsRequest{}))
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.GetFindings())
+}
+
+func TestListProjectFindings_OneSpecNoFindings(t *testing.T) {
+	backend := newAnalyticalPassTestBackend()
+	_, err := backend.CreateSpec(context.Background(), "spec-without-findings", "Test spec", "p1", "medium")
+	require.NoError(t, err)
+	client := setupAnalyticalPassServer(t, backend)
+
+	resp, err := client.ListProjectFindings(context.Background(), connect.NewRequest(&specv1.ListProjectFindingsRequest{}))
+	require.NoError(t, err)
+	require.Empty(t, resp.Msg.GetFindings())
+}
+
+func TestListProjectFindings_MultipleSpecs(t *testing.T) {
+	backend := newAnalyticalPassTestBackend()
+	_, err := backend.CreateSpec(context.Background(), "spec-a", "A", "p1", "medium")
+	require.NoError(t, err)
+	_, err = backend.CreateSpec(context.Background(), "spec-b", "B", "p1", "medium")
+	require.NoError(t, err)
+	client := setupAnalyticalPassServer(t, backend)
+
+	_, err = client.StoreFindings(context.Background(), connect.NewRequest(&specv1.StoreFindingsRequest{
+		Slug:     "spec-a",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
+		Findings: []*specv1.AnalyticalFindingInput{{
+			Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING,
+			Summary:  "A finding",
+		}},
+	}))
+	require.NoError(t, err)
+	_, err = client.StoreFindings(context.Background(), connect.NewRequest(&specv1.StoreFindingsRequest{
+		Slug:     "spec-b",
+		PassType: specv1.PassType_PASS_TYPE_RED_TEAM,
+		Findings: []*specv1.AnalyticalFindingInput{{
+			Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
+			Summary:  "B finding",
+		}},
+	}))
+	require.NoError(t, err)
+
+	resp, err := client.ListProjectFindings(context.Background(), connect.NewRequest(&specv1.ListProjectFindingsRequest{}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.GetFindings(), 2)
+
+	bySlug := map[string]*specv1.AnalyticalFinding{}
+	for _, f := range resp.Msg.GetFindings() {
+		bySlug[f.GetSpecSlug()] = f
+	}
+	require.Equal(t, "A finding", bySlug["spec-a"].GetSummary())
+	require.Equal(t, specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK, bySlug["spec-a"].GetPassType())
+	require.Equal(t, "B finding", bySlug["spec-b"].GetSummary())
+	require.Equal(t, specv1.PassType_PASS_TYPE_RED_TEAM, bySlug["spec-b"].GetPassType())
+}
+
+func TestListProjectFindings_FilterByPassType(t *testing.T) {
+	backend := newAnalyticalPassTestBackend()
+	_, err := backend.CreateSpec(context.Background(), "spec-a", "A", "p1", "medium")
+	require.NoError(t, err)
+	_, err = backend.CreateSpec(context.Background(), "spec-b", "B", "p1", "medium")
+	require.NoError(t, err)
+	client := setupAnalyticalPassServer(t, backend)
+
+	_, err = client.StoreFindings(context.Background(), connect.NewRequest(&specv1.StoreFindingsRequest{
+		Slug:     "spec-a",
+		PassType: specv1.PassType_PASS_TYPE_CONSTITUTION_CHECK,
+		Findings: []*specv1.AnalyticalFindingInput{{
+			Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING,
+			Summary:  "constitution",
+		}},
+	}))
+	require.NoError(t, err)
+	_, err = client.StoreFindings(context.Background(), connect.NewRequest(&specv1.StoreFindingsRequest{
+		Slug:     "spec-b",
+		PassType: specv1.PassType_PASS_TYPE_RED_TEAM,
+		Findings: []*specv1.AnalyticalFindingInput{{
+			Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL,
+			Summary:  "red team",
+		}},
+	}))
+	require.NoError(t, err)
+
+	resp, err := client.ListProjectFindings(context.Background(), connect.NewRequest(&specv1.ListProjectFindingsRequest{
+		PassType: specv1.PassType_PASS_TYPE_RED_TEAM,
+	}))
+	require.NoError(t, err)
+	require.Len(t, resp.Msg.GetFindings(), 1)
+	require.Equal(t, "spec-b", resp.Msg.GetFindings()[0].GetSpecSlug())
+	require.Equal(t, "red team", resp.Msg.GetFindings()[0].GetSummary())
+}
+
 func TestStoreFindings_UnknownPassType(t *testing.T) {
 	backend := newAnalyticalPassTestBackend()
 	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
@@ -374,6 +490,17 @@ func TestListFindings_UnknownPassType(t *testing.T) {
 
 	_, err = client.ListFindings(context.Background(), connect.NewRequest(&specv1.ListFindingsRequest{
 		Slug:     "my-spec",
+		PassType: specv1.PassType(999),
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestListProjectFindings_UnknownPassType(t *testing.T) {
+	backend := newAnalyticalPassTestBackend()
+	client := setupAnalyticalPassServer(t, backend)
+
+	_, err := client.ListProjectFindings(context.Background(), connect.NewRequest(&specv1.ListProjectFindingsRequest{
 		PassType: specv1.PassType(999),
 	}))
 	require.Error(t, err)

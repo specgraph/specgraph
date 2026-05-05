@@ -17,12 +17,12 @@ import (
 
 type mockSpecService struct {
 	specgraphv1connect.SpecServiceClient // panics on unimplemented methods
-	getSpec     func(slug string) (*specv1.GetSpecResponse, error)
-	listSpecs   func() (*specv1.ListSpecsResponse, error)
-	createSpec  func(slug, intent string) (*specv1.CreateSpecResponse, error)
-	updateSpec  func(req *specv1.UpdateSpecRequest) (*specv1.UpdateSpecResponse, error)
-	listChanges func(slug string) (*specv1.ListChangesResponse, error)
-	compareVer  func(req *specv1.CompareVersionsRequest) (*specv1.CompareVersionsResponse, error)
+	getSpec                              func(slug string) (*specv1.GetSpecResponse, error)
+	listSpecs                            func() (*specv1.ListSpecsResponse, error)
+	createSpec                           func(slug, intent string) (*specv1.CreateSpecResponse, error)
+	updateSpec                           func(req *specv1.UpdateSpecRequest) (*specv1.UpdateSpecResponse, error)
+	listChanges                          func(slug string) (*specv1.ListChangesResponse, error)
+	compareVer                           func(req *specv1.CompareVersionsRequest) (*specv1.CompareVersionsResponse, error)
 }
 
 func (m *mockSpecService) GetSpec(_ context.Context, req *connect.Request[specv1.GetSpecRequest]) (*connect.Response[specv1.GetSpecResponse], error) {
@@ -79,10 +79,10 @@ func (m *mockSpecService) CompareVersions(_ context.Context, req *connect.Reques
 
 type mockDecisionService struct {
 	specgraphv1connect.DecisionServiceClient // panics on unimplemented methods
-	getDecision    func(slug string) (*specv1.GetDecisionResponse, error)
-	listDecisions  func() (*specv1.ListDecisionsResponse, error)
-	createDecision func(req *specv1.CreateDecisionRequest) (*specv1.CreateDecisionResponse, error)
-	updateDecision func(req *specv1.UpdateDecisionRequest) (*specv1.UpdateDecisionResponse, error)
+	getDecision                              func(slug string) (*specv1.GetDecisionResponse, error)
+	listDecisions                            func() (*specv1.ListDecisionsResponse, error)
+	createDecision                           func(req *specv1.CreateDecisionRequest) (*specv1.CreateDecisionResponse, error)
+	updateDecision                           func(req *specv1.UpdateDecisionRequest) (*specv1.UpdateDecisionResponse, error)
 }
 
 func (m *mockDecisionService) GetDecision(_ context.Context, req *connect.Request[specv1.GetDecisionRequest]) (*connect.Response[specv1.GetDecisionResponse], error) {
@@ -123,15 +123,15 @@ func (m *mockDecisionService) UpdateDecision(_ context.Context, req *connect.Req
 
 type mockGraphService struct {
 	specgraphv1connect.GraphServiceClient // panics on unimplemented methods
-	addEdge         func(req *specv1.AddEdgeRequest) (*specv1.AddEdgeResponse, error)
-	removeEdge      func(req *specv1.RemoveEdgeRequest) (*specv1.RemoveEdgeResponse, error)
-	listEdges       func(slug string) (*specv1.ListEdgesResponse, error)
-	getDeps         func(slug string) (*specv1.GetDependenciesResponse, error)
-	getTransDeps    func(slug string) (*specv1.GetTransitiveDepsResponse, error)
-	getImpact       func(slug string) (*specv1.GetImpactResponse, error)
-	getReady        func() (*specv1.GetReadyResponse, error)
-	getCriticalPath func(slug string) (*specv1.GetCriticalPathResponse, error)
-	getFullGraph    func() (*specv1.GetFullGraphResponse, error)
+	addEdge                               func(req *specv1.AddEdgeRequest) (*specv1.AddEdgeResponse, error)
+	removeEdge                            func(req *specv1.RemoveEdgeRequest) (*specv1.RemoveEdgeResponse, error)
+	listEdges                             func(slug string) (*specv1.ListEdgesResponse, error)
+	getDeps                               func(slug string) (*specv1.GetDependenciesResponse, error)
+	getTransDeps                          func(slug string) (*specv1.GetTransitiveDepsResponse, error)
+	getImpact                             func(slug string) (*specv1.GetImpactResponse, error)
+	getReady                              func() (*specv1.GetReadyResponse, error)
+	getCriticalPath                       func(slug string) (*specv1.GetCriticalPathResponse, error)
+	getFullGraph                          func() (*specv1.GetFullGraphResponse, error)
 }
 
 func (m *mockGraphService) AddEdge(_ context.Context, req *connect.Request[specv1.AddEdgeRequest]) (*connect.Response[specv1.AddEdgeResponse], error) {
@@ -212,7 +212,7 @@ func (m *mockGraphService) GetFullGraph(_ context.Context, _ *connect.Request[sp
 
 type mockHealthService struct {
 	specgraphv1connect.ServerServiceClient // panics on unimplemented methods
-	health func() (*specv1.HealthResponse, error)
+	health                                 func() (*specv1.HealthResponse, error)
 }
 
 func (m *mockHealthService) Health(_ context.Context, _ *connect.Request[specv1.HealthRequest]) (*connect.Response[specv1.HealthResponse], error) {
@@ -229,8 +229,8 @@ func (m *mockHealthService) Health(_ context.Context, _ *connect.Request[specv1.
 
 type mockConstitutionService struct {
 	specgraphv1connect.ConstitutionServiceClient // panics on unimplemented methods
-	getConstitution    func() (*specv1.GetConstitutionResponse, error)
-	updateConstitution func(req *specv1.UpdateConstitutionRequest) (*specv1.UpdateConstitutionResponse, error)
+	getConstitution                              func() (*specv1.GetConstitutionResponse, error)
+	updateConstitution                           func(req *specv1.UpdateConstitutionRequest) (*specv1.UpdateConstitutionResponse, error)
 }
 
 func (m *mockConstitutionService) GetConstitution(_ context.Context, _ *connect.Request[specv1.GetConstitutionRequest]) (*connect.Response[specv1.GetConstitutionResponse], error) {
@@ -255,13 +255,25 @@ func (m *mockConstitutionService) UpdateConstitution(_ context.Context, req *con
 
 type mockAnalyticalPassService struct {
 	specgraphv1connect.AnalyticalPassServiceClient // panics on unimplemented methods
-	listFindings      func(slug string) (*specv1.ListFindingsResponse, error)
-	runAnalyticalPass func(req *specv1.RunAnalyticalPassRequest) (*specv1.RunAnalyticalPassResponse, error)
-	storeFindings     func(req *specv1.StoreFindingsRequest) (*specv1.StoreFindingsResponse, error)
+	listFindings                                   func(slug string) (*specv1.ListFindingsResponse, error)
+	listProjectFindings                            func(req *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error)
+	runAnalyticalPass                              func(req *specv1.RunAnalyticalPassRequest) (*specv1.RunAnalyticalPassResponse, error)
+	storeFindings                                  func(req *specv1.StoreFindingsRequest) (*specv1.StoreFindingsResponse, error)
 }
 
 func (m *mockAnalyticalPassService) ListFindings(_ context.Context, req *connect.Request[specv1.ListFindingsRequest]) (*connect.Response[specv1.ListFindingsResponse], error) {
 	resp, err := m.listFindings(req.Msg.GetSlug())
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockAnalyticalPassService) ListProjectFindings(_ context.Context, req *connect.Request[specv1.ListProjectFindingsRequest]) (*connect.Response[specv1.ListProjectFindingsResponse], error) {
+	if m.listProjectFindings == nil {
+		panic("mockAnalyticalPassService.ListProjectFindings not configured")
+	}
+	resp, err := m.listProjectFindings(req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -296,16 +308,16 @@ func (m *mockAnalyticalPassService) StoreFindings(_ context.Context, req *connec
 
 type mockAuthoringService struct {
 	specgraphv1connect.AuthoringServiceClient // panics on unimplemented methods
-	spark              func(req *specv1.SparkRequest) (*specv1.SparkResponse, error)
-	shape              func(req *specv1.ShapeRequest) (*specv1.ShapeResponse, error)
-	specify            func(req *specv1.SpecifyRequest) (*specv1.SpecifyResponse, error)
-	decompose          func(req *specv1.DecomposeRequest) (*specv1.DecomposeResponse, error)
-	approve            func(slug string) (*specv1.ApproveResponse, error)
-	amend              func(req *specv1.AmendRequest) (*specv1.AmendResponse, error)
-	supersede          func(req *specv1.SupersedeRequest) (*specv1.SupersedeResponse, error)
-	recordConversation func(req *specv1.RecordConversationRequest) (*specv1.RecordConversationResponse, error)
-	listConversations  func(req *specv1.ListConversationsRequest) (*specv1.ListConversationsResponse, error)
-	getPrompts         func(req *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error)
+	spark                                     func(req *specv1.SparkRequest) (*specv1.SparkResponse, error)
+	shape                                     func(req *specv1.ShapeRequest) (*specv1.ShapeResponse, error)
+	specify                                   func(req *specv1.SpecifyRequest) (*specv1.SpecifyResponse, error)
+	decompose                                 func(req *specv1.DecomposeRequest) (*specv1.DecomposeResponse, error)
+	approve                                   func(slug string) (*specv1.ApproveResponse, error)
+	amend                                     func(req *specv1.AmendRequest) (*specv1.AmendResponse, error)
+	supersede                                 func(req *specv1.SupersedeRequest) (*specv1.SupersedeResponse, error)
+	recordConversation                        func(req *specv1.RecordConversationRequest) (*specv1.RecordConversationResponse, error)
+	listConversations                         func(req *specv1.ListConversationsRequest) (*specv1.ListConversationsResponse, error)
+	getPrompts                                func(req *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error)
 }
 
 func (m *mockAuthoringService) Spark(_ context.Context, req *connect.Request[specv1.SparkRequest]) (*connect.Response[specv1.SparkResponse], error) {
@@ -424,9 +436,9 @@ func (m *mockAuthoringService) GetPrompts(_ context.Context, req *connect.Reques
 
 type mockLifecycleService struct {
 	specgraphv1connect.LifecycleServiceClient // panics on unimplemented methods
-	checkDrift       func(req *specv1.DriftCheckRequest) (*specv1.DriftCheckResponse, error)
-	acknowledgeDrift func(req *specv1.DriftAcknowledgeRequest) (*specv1.DriftAcknowledgeResponse, error)
-	lint             func(req *specv1.LintRequest) (*specv1.LintResponse, error)
+	checkDrift                                func(req *specv1.DriftCheckRequest) (*specv1.DriftCheckResponse, error)
+	acknowledgeDrift                          func(req *specv1.DriftAcknowledgeRequest) (*specv1.DriftAcknowledgeResponse, error)
+	lint                                      func(req *specv1.LintRequest) (*specv1.LintResponse, error)
 }
 
 func (m *mockLifecycleService) CheckDrift(_ context.Context, req *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
@@ -468,9 +480,9 @@ func (m *mockLifecycleService) Lint(_ context.Context, req *connect.Request[spec
 
 type mockSyncService struct {
 	specgraphv1connect.SyncServiceClient // panics on unimplemented methods
-	syncBeads     func() (*specv1.SyncResponse, error)
-	syncGitHub    func() (*specv1.SyncResponse, error)
-	getSyncStatus func() (*specv1.SyncStatusResponse, error)
+	syncBeads                            func() (*specv1.SyncResponse, error)
+	syncGitHub                           func() (*specv1.SyncResponse, error)
+	getSyncStatus                        func() (*specv1.SyncStatusResponse, error)
 }
 
 func (m *mockSyncService) SyncBeads(_ context.Context, _ *connect.Request[specv1.SyncBeadsRequest]) (*connect.Response[specv1.SyncResponse], error) {
@@ -512,9 +524,9 @@ func (m *mockSyncService) GetSyncStatus(_ context.Context, _ *connect.Request[sp
 
 type mockExportService struct {
 	specgraphv1connect.ExportServiceClient // panics on unimplemented methods
-	exportProject func(projectSlug string) (*specv1.ExportProjectResponse, error)
-	importProject func(req *specv1.ImportProjectRequest) (*specv1.ImportProjectResponse, error)
-	verifyExport  func(req *specv1.VerifyExportRequest) (*specv1.VerifyExportResponse, error)
+	exportProject                          func(projectSlug string) (*specv1.ExportProjectResponse, error)
+	importProject                          func(req *specv1.ImportProjectRequest) (*specv1.ImportProjectResponse, error)
+	verifyExport                           func(req *specv1.VerifyExportRequest) (*specv1.VerifyExportResponse, error)
 }
 
 func (m *mockExportService) ExportProject(_ context.Context, req *connect.Request[specv1.ExportProjectRequest]) (*connect.Response[specv1.ExportProjectResponse], error) {
@@ -556,9 +568,9 @@ func (m *mockExportService) VerifyExport(_ context.Context, req *connect.Request
 
 type mockClaimService struct {
 	specgraphv1connect.ClaimServiceClient // panics on unimplemented methods
-	claimSpec   func(req *specv1.ClaimSpecRequest) (*specv1.ClaimSpecResponse, error)
-	unclaimSpec func(req *specv1.UnclaimSpecRequest) (*specv1.UnclaimSpecResponse, error)
-	heartbeat   func(req *specv1.HeartbeatRequest) (*specv1.HeartbeatResponse, error)
+	claimSpec                             func(req *specv1.ClaimSpecRequest) (*specv1.ClaimSpecResponse, error)
+	unclaimSpec                           func(req *specv1.UnclaimSpecRequest) (*specv1.UnclaimSpecResponse, error)
+	heartbeat                             func(req *specv1.HeartbeatRequest) (*specv1.HeartbeatResponse, error)
 }
 
 func (m *mockClaimService) ClaimSpec(_ context.Context, req *connect.Request[specv1.ClaimSpecRequest]) (*connect.Response[specv1.ClaimSpecResponse], error) {
@@ -600,10 +612,10 @@ func (m *mockClaimService) Heartbeat(_ context.Context, req *connect.Request[spe
 
 type mockSliceService struct {
 	specgraphv1connect.SliceServiceClient // panics on unimplemented methods
-	listSlices    func(req *specv1.ListSlicesRequest) (*specv1.ListSlicesResponse, error)
-	getSlice      func(req *specv1.GetSliceRequest) (*specv1.GetSliceResponse, error)
-	claimSlice    func(req *specv1.ClaimSliceRequest) (*specv1.ClaimSliceResponse, error)
-	completeSlice func(req *specv1.CompleteSliceRequest) (*specv1.CompleteSliceResponse, error)
+	listSlices                            func(req *specv1.ListSlicesRequest) (*specv1.ListSlicesResponse, error)
+	getSlice                              func(req *specv1.GetSliceRequest) (*specv1.GetSliceResponse, error)
+	claimSlice                            func(req *specv1.ClaimSliceRequest) (*specv1.ClaimSliceResponse, error)
+	completeSlice                         func(req *specv1.CompleteSliceRequest) (*specv1.CompleteSliceResponse, error)
 }
 
 func (m *mockSliceService) ListSlices(_ context.Context, req *connect.Request[specv1.ListSlicesRequest]) (*connect.Response[specv1.ListSlicesResponse], error) {
@@ -656,12 +668,12 @@ func (m *mockSliceService) CompleteSlice(_ context.Context, req *connect.Request
 
 type mockExecutionService struct {
 	specgraphv1connect.ExecutionServiceClient // panics on unimplemented methods
-	generateBundle   func(req *specv1.GenerateBundleRequest) (*specv1.GenerateBundleResponse, error)
-	getPrime         func(req *specv1.GetPrimeRequest) (*specv1.PrimeResponse, error)
-	reportProgress   func(req *specv1.ReportProgressRequest) (*specv1.ReportProgressResponse, error)
-	reportBlocker    func(req *specv1.ReportBlockerRequest) (*specv1.ReportBlockerResponse, error)
-	reportCompletion func(req *specv1.ReportCompletionRequest) (*specv1.ReportCompletionResponse, error)
-	getEvents        func(req *specv1.GetExecutionEventsRequest) (*specv1.GetExecutionEventsResponse, error)
+	generateBundle                            func(req *specv1.GenerateBundleRequest) (*specv1.GenerateBundleResponse, error)
+	getPrime                                  func(req *specv1.GetPrimeRequest) (*specv1.PrimeResponse, error)
+	reportProgress                            func(req *specv1.ReportProgressRequest) (*specv1.ReportProgressResponse, error)
+	reportBlocker                             func(req *specv1.ReportBlockerRequest) (*specv1.ReportBlockerResponse, error)
+	reportCompletion                          func(req *specv1.ReportCompletionRequest) (*specv1.ReportCompletionResponse, error)
+	getEvents                                 func(req *specv1.GetExecutionEventsRequest) (*specv1.GetExecutionEventsResponse, error)
 }
 
 func (m *mockExecutionService) GenerateBundle(_ context.Context, req *connect.Request[specv1.GenerateBundleRequest]) (*connect.Response[specv1.GenerateBundleResponse], error) {
