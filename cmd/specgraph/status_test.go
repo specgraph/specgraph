@@ -71,7 +71,9 @@ func TestRunStatus_NotRunning(t *testing.T) {
 	// Point at a URL where nothing is listening — triggers the net.Error branch.
 	cfgDir := t.TempDir()
 	cfgPath := filepath.Join(cfgDir, "config.yaml")
-	require.NoError(t, os.WriteFile(cfgPath, []byte("server:\n  remote: http://127.0.0.1:1\n"), 0o600))
+	// Write both the new (client.default_server) and legacy (server.remote)
+	// schemas — see test_helpers_test.go for rationale.
+	require.NoError(t, os.WriteFile(cfgPath, []byte("client:\n  default_server: http://127.0.0.1:1\nserver:\n  remote: http://127.0.0.1:1\n"), 0o600))
 	old := cfgFile
 	cfgFile = cfgPath
 	t.Cleanup(func() { cfgFile = old })

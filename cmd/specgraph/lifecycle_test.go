@@ -7,10 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -177,21 +173,11 @@ func TestRunDriftAck_CannotSpecifyBoth(t *testing.T) {
 }
 
 // startFakeLifecycleServer registers handler with a fresh httptest.Server and
-// sets cfgFile to point at it.
+// sets cfgFile to point at it. Mirrors startFakeSpecServer / startFakeGraphServer /
+// etc. — see test_helpers_test.go for the dual-schema cfgFile rationale.
 func startFakeLifecycleServer(t *testing.T, h specgraphv1connect.LifecycleServiceHandler) {
 	t.Helper()
-	mux := http.NewServeMux()
-	path, hnd := specgraphv1connect.NewLifecycleServiceHandler(h)
-	mux.Handle(path, hnd)
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-
-	cfgDir := t.TempDir()
-	cfgPath := filepath.Join(cfgDir, "config.yaml")
-	require.NoError(t, os.WriteFile(cfgPath, []byte(fmt.Sprintf("server:\n  remote: %s\n", srv.URL)), 0o600))
-	old := cfgFile
-	cfgFile = cfgPath
-	t.Cleanup(func() { cfgFile = old })
+	startFakeServer[specgraphv1connect.LifecycleServiceHandler](t, h, specgraphv1connect.NewLifecycleServiceHandler)
 }
 
 // --- happy-path fake handlers ---
