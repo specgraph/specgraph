@@ -26,6 +26,7 @@ service AnalyticalPassService {
   rpc RunAnalyticalPass(RunAnalyticalPassRequest) returns (RunAnalyticalPassResponse);
   rpc StoreFindings(StoreFindingsRequest) returns (StoreFindingsResponse);
   rpc ListFindings(ListFindingsRequest) returns (ListFindingsResponse);
+  rpc ListProjectFindings(ListProjectFindingsRequest) returns (ListProjectFindingsResponse);
 }
 
 message RunAnalyticalPassRequest {
@@ -57,6 +58,7 @@ message AnalyticalFinding {
   string constraint = 6;
   string resolution = 7;
   int32 version = 8;
+  string spec_slug = 9;
 }
 
 message AnalyticalFindingInput {
@@ -83,5 +85,13 @@ message ListFindingsRequest {
 }
 
 message ListFindingsResponse {
+  repeated AnalyticalFinding findings = 1;
+}
+
+message ListProjectFindingsRequest {
+  PassType pass_type = 1;
+}
+
+message ListProjectFindingsResponse {
   repeated AnalyticalFinding findings = 1;
 }

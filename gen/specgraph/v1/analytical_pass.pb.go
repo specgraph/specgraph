@@ -294,6 +294,7 @@ type AnalyticalFinding struct {
 	Constraint    string                 `protobuf:"bytes,6,opt,name=constraint,proto3" json:"constraint,omitempty"`
 	Resolution    string                 `protobuf:"bytes,7,opt,name=resolution,proto3" json:"resolution,omitempty"`
 	Version       int32                  `protobuf:"varint,8,opt,name=version,proto3" json:"version,omitempty"`
+	SpecSlug      string                 `protobuf:"bytes,9,opt,name=spec_slug,json=specSlug,proto3" json:"spec_slug,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -382,6 +383,13 @@ func (x *AnalyticalFinding) GetVersion() int32 {
 		return x.Version
 	}
 	return 0
+}
+
+func (x *AnalyticalFinding) GetSpecSlug() string {
+	if x != nil {
+		return x.SpecSlug
+	}
+	return ""
 }
 
 type AnalyticalFindingInput struct {
@@ -660,6 +668,94 @@ func (x *ListFindingsResponse) GetFindings() []*AnalyticalFinding {
 	return nil
 }
 
+type ListProjectFindingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PassType      PassType               `protobuf:"varint,1,opt,name=pass_type,json=passType,proto3,enum=specgraph.v1.PassType" json:"pass_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListProjectFindingsRequest) Reset() {
+	*x = ListProjectFindingsRequest{}
+	mi := &file_specgraph_v1_analytical_pass_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListProjectFindingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListProjectFindingsRequest) ProtoMessage() {}
+
+func (x *ListProjectFindingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_analytical_pass_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListProjectFindingsRequest.ProtoReflect.Descriptor instead.
+func (*ListProjectFindingsRequest) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_analytical_pass_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ListProjectFindingsRequest) GetPassType() PassType {
+	if x != nil {
+		return x.PassType
+	}
+	return PassType_PASS_TYPE_UNSPECIFIED
+}
+
+type ListProjectFindingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Findings      []*AnalyticalFinding   `protobuf:"bytes,1,rep,name=findings,proto3" json:"findings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListProjectFindingsResponse) Reset() {
+	*x = ListProjectFindingsResponse{}
+	mi := &file_specgraph_v1_analytical_pass_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListProjectFindingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListProjectFindingsResponse) ProtoMessage() {}
+
+func (x *ListProjectFindingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_analytical_pass_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListProjectFindingsResponse.ProtoReflect.Descriptor instead.
+func (*ListProjectFindingsResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_analytical_pass_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ListProjectFindingsResponse) GetFindings() []*AnalyticalFinding {
+	if x != nil {
+		return x.Findings
+	}
+	return nil
+}
+
 var File_specgraph_v1_analytical_pass_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_analytical_pass_proto_rawDesc = "" +
@@ -678,7 +774,7 @@ const file_specgraph_v1_analytical_pass_proto_rawDesc = "" +
 	"\rToolReference\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\acommand\x18\x02 \x01(\tR\acommand\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\"\x9f\x02\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\"\xbc\x02\n" +
 	"\x11AnalyticalFinding\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x123\n" +
 	"\tpass_type\x18\x02 \x01(\x0e2\x16.specgraph.v1.PassTypeR\bpassType\x129\n" +
@@ -691,7 +787,8 @@ const file_specgraph_v1_analytical_pass_proto_rawDesc = "" +
 	"\n" +
 	"resolution\x18\a \x01(\tR\n" +
 	"resolution\x12\x18\n" +
-	"\aversion\x18\b \x01(\x05R\aversion\"\xc5\x01\n" +
+	"\aversion\x18\b \x01(\x05R\aversion\x12\x1b\n" +
+	"\tspec_slug\x18\t \x01(\tR\bspecSlug\"\xc5\x01\n" +
 	"\x16AnalyticalFindingInput\x129\n" +
 	"\bseverity\x18\x01 \x01(\x0e2\x1d.specgraph.v1.FindingSeverityR\bseverity\x12\x18\n" +
 	"\asummary\x18\x02 \x01(\tR\asummary\x12\x16\n" +
@@ -712,6 +809,10 @@ const file_specgraph_v1_analytical_pass_proto_rawDesc = "" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x123\n" +
 	"\tpass_type\x18\x02 \x01(\x0e2\x16.specgraph.v1.PassTypeR\bpassType\"S\n" +
 	"\x14ListFindingsResponse\x12;\n" +
+	"\bfindings\x18\x01 \x03(\v2\x1f.specgraph.v1.AnalyticalFindingR\bfindings\"Q\n" +
+	"\x1aListProjectFindingsRequest\x123\n" +
+	"\tpass_type\x18\x01 \x01(\x0e2\x16.specgraph.v1.PassTypeR\bpassType\"Z\n" +
+	"\x1bListProjectFindingsResponse\x12;\n" +
 	"\bfindings\x18\x01 \x03(\v2\x1f.specgraph.v1.AnalyticalFindingR\bfindings*\xd5\x01\n" +
 	"\bPassType\x12\x19\n" +
 	"\x15PASS_TYPE_UNSPECIFIED\x10\x00\x12 \n" +
@@ -720,11 +821,12 @@ const file_specgraph_v1_analytical_pass_proto_rawDesc = "" +
 	"\x1bPASS_TYPE_PERIPHERAL_VISION\x10\x03\x12\x19\n" +
 	"\x15PASS_TYPE_CONSISTENCY\x10\x04\x12\x18\n" +
 	"\x14PASS_TYPE_SIMPLICITY\x10\x05\x12\x1e\n" +
-	"\x1aPASS_TYPE_APPROVE_REJECTED\x10\x062\xae\x02\n" +
+	"\x1aPASS_TYPE_APPROVE_REJECTED\x10\x062\x9a\x03\n" +
 	"\x15AnalyticalPassService\x12d\n" +
 	"\x11RunAnalyticalPass\x12&.specgraph.v1.RunAnalyticalPassRequest\x1a'.specgraph.v1.RunAnalyticalPassResponse\x12X\n" +
 	"\rStoreFindings\x12\".specgraph.v1.StoreFindingsRequest\x1a#.specgraph.v1.StoreFindingsResponse\x12U\n" +
-	"\fListFindings\x12!.specgraph.v1.ListFindingsRequest\x1a\".specgraph.v1.ListFindingsResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\fListFindings\x12!.specgraph.v1.ListFindingsRequest\x1a\".specgraph.v1.ListFindingsResponse\x12j\n" +
+	"\x13ListProjectFindings\x12(.specgraph.v1.ListProjectFindingsRequest\x1a).specgraph.v1.ListProjectFindingsResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_analytical_pass_proto_rawDescOnce sync.Once
@@ -739,42 +841,48 @@ func file_specgraph_v1_analytical_pass_proto_rawDescGZIP() []byte {
 }
 
 var file_specgraph_v1_analytical_pass_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_specgraph_v1_analytical_pass_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_specgraph_v1_analytical_pass_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_specgraph_v1_analytical_pass_proto_goTypes = []any{
-	(PassType)(0),                     // 0: specgraph.v1.PassType
-	(*RunAnalyticalPassRequest)(nil),  // 1: specgraph.v1.RunAnalyticalPassRequest
-	(*RunAnalyticalPassResponse)(nil), // 2: specgraph.v1.RunAnalyticalPassResponse
-	(*ToolReference)(nil),             // 3: specgraph.v1.ToolReference
-	(*AnalyticalFinding)(nil),         // 4: specgraph.v1.AnalyticalFinding
-	(*AnalyticalFindingInput)(nil),    // 5: specgraph.v1.AnalyticalFindingInput
-	(*StoreFindingsRequest)(nil),      // 6: specgraph.v1.StoreFindingsRequest
-	(*StoreFindingsResponse)(nil),     // 7: specgraph.v1.StoreFindingsResponse
-	(*ListFindingsRequest)(nil),       // 8: specgraph.v1.ListFindingsRequest
-	(*ListFindingsResponse)(nil),      // 9: specgraph.v1.ListFindingsResponse
-	(FindingSeverity)(0),              // 10: specgraph.v1.FindingSeverity
+	(PassType)(0),                       // 0: specgraph.v1.PassType
+	(*RunAnalyticalPassRequest)(nil),    // 1: specgraph.v1.RunAnalyticalPassRequest
+	(*RunAnalyticalPassResponse)(nil),   // 2: specgraph.v1.RunAnalyticalPassResponse
+	(*ToolReference)(nil),               // 3: specgraph.v1.ToolReference
+	(*AnalyticalFinding)(nil),           // 4: specgraph.v1.AnalyticalFinding
+	(*AnalyticalFindingInput)(nil),      // 5: specgraph.v1.AnalyticalFindingInput
+	(*StoreFindingsRequest)(nil),        // 6: specgraph.v1.StoreFindingsRequest
+	(*StoreFindingsResponse)(nil),       // 7: specgraph.v1.StoreFindingsResponse
+	(*ListFindingsRequest)(nil),         // 8: specgraph.v1.ListFindingsRequest
+	(*ListFindingsResponse)(nil),        // 9: specgraph.v1.ListFindingsResponse
+	(*ListProjectFindingsRequest)(nil),  // 10: specgraph.v1.ListProjectFindingsRequest
+	(*ListProjectFindingsResponse)(nil), // 11: specgraph.v1.ListProjectFindingsResponse
+	(FindingSeverity)(0),                // 12: specgraph.v1.FindingSeverity
 }
 var file_specgraph_v1_analytical_pass_proto_depIdxs = []int32{
 	0,  // 0: specgraph.v1.RunAnalyticalPassRequest.pass_type:type_name -> specgraph.v1.PassType
 	0,  // 1: specgraph.v1.RunAnalyticalPassResponse.pass_type:type_name -> specgraph.v1.PassType
 	3,  // 2: specgraph.v1.RunAnalyticalPassResponse.tools:type_name -> specgraph.v1.ToolReference
 	0,  // 3: specgraph.v1.AnalyticalFinding.pass_type:type_name -> specgraph.v1.PassType
-	10, // 4: specgraph.v1.AnalyticalFinding.severity:type_name -> specgraph.v1.FindingSeverity
-	10, // 5: specgraph.v1.AnalyticalFindingInput.severity:type_name -> specgraph.v1.FindingSeverity
+	12, // 4: specgraph.v1.AnalyticalFinding.severity:type_name -> specgraph.v1.FindingSeverity
+	12, // 5: specgraph.v1.AnalyticalFindingInput.severity:type_name -> specgraph.v1.FindingSeverity
 	0,  // 6: specgraph.v1.StoreFindingsRequest.pass_type:type_name -> specgraph.v1.PassType
 	5,  // 7: specgraph.v1.StoreFindingsRequest.findings:type_name -> specgraph.v1.AnalyticalFindingInput
 	0,  // 8: specgraph.v1.ListFindingsRequest.pass_type:type_name -> specgraph.v1.PassType
 	4,  // 9: specgraph.v1.ListFindingsResponse.findings:type_name -> specgraph.v1.AnalyticalFinding
-	1,  // 10: specgraph.v1.AnalyticalPassService.RunAnalyticalPass:input_type -> specgraph.v1.RunAnalyticalPassRequest
-	6,  // 11: specgraph.v1.AnalyticalPassService.StoreFindings:input_type -> specgraph.v1.StoreFindingsRequest
-	8,  // 12: specgraph.v1.AnalyticalPassService.ListFindings:input_type -> specgraph.v1.ListFindingsRequest
-	2,  // 13: specgraph.v1.AnalyticalPassService.RunAnalyticalPass:output_type -> specgraph.v1.RunAnalyticalPassResponse
-	7,  // 14: specgraph.v1.AnalyticalPassService.StoreFindings:output_type -> specgraph.v1.StoreFindingsResponse
-	9,  // 15: specgraph.v1.AnalyticalPassService.ListFindings:output_type -> specgraph.v1.ListFindingsResponse
-	13, // [13:16] is the sub-list for method output_type
-	10, // [10:13] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	0,  // 10: specgraph.v1.ListProjectFindingsRequest.pass_type:type_name -> specgraph.v1.PassType
+	4,  // 11: specgraph.v1.ListProjectFindingsResponse.findings:type_name -> specgraph.v1.AnalyticalFinding
+	1,  // 12: specgraph.v1.AnalyticalPassService.RunAnalyticalPass:input_type -> specgraph.v1.RunAnalyticalPassRequest
+	6,  // 13: specgraph.v1.AnalyticalPassService.StoreFindings:input_type -> specgraph.v1.StoreFindingsRequest
+	8,  // 14: specgraph.v1.AnalyticalPassService.ListFindings:input_type -> specgraph.v1.ListFindingsRequest
+	10, // 15: specgraph.v1.AnalyticalPassService.ListProjectFindings:input_type -> specgraph.v1.ListProjectFindingsRequest
+	2,  // 16: specgraph.v1.AnalyticalPassService.RunAnalyticalPass:output_type -> specgraph.v1.RunAnalyticalPassResponse
+	7,  // 17: specgraph.v1.AnalyticalPassService.StoreFindings:output_type -> specgraph.v1.StoreFindingsResponse
+	9,  // 18: specgraph.v1.AnalyticalPassService.ListFindings:output_type -> specgraph.v1.ListFindingsResponse
+	11, // 19: specgraph.v1.AnalyticalPassService.ListProjectFindings:output_type -> specgraph.v1.ListProjectFindingsResponse
+	16, // [16:20] is the sub-list for method output_type
+	12, // [12:16] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_analytical_pass_proto_init() }
@@ -789,7 +897,7 @@ func file_specgraph_v1_analytical_pass_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_analytical_pass_proto_rawDesc), len(file_specgraph_v1_analytical_pass_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

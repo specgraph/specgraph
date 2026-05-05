@@ -274,10 +274,11 @@ func TestReadyResource_Error(t *testing.T) {
 
 func TestFindingsResource(t *testing.T) {
 	c := &Client{AnalyticalPass: &mockAnalyticalPassService{
-		listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
-			return &specv1.ListFindingsResponse{
+		listProjectFindings: func(req *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
+			require.Equal(t, specv1.PassType_PASS_TYPE_UNSPECIFIED, req.GetPassType())
+			return &specv1.ListProjectFindingsResponse{
 				Findings: []*specv1.AnalyticalFinding{
-					{Id: "finding-1", Summary: "missing constraint"},
+					{Id: "finding-1", SpecSlug: "spec-a", Summary: "missing constraint"},
 				},
 			}, nil
 		},
@@ -294,7 +295,7 @@ func TestFindingsResource(t *testing.T) {
 
 func TestFindingsResource_Error(t *testing.T) {
 	c := &Client{AnalyticalPass: &mockAnalyticalPassService{
-		listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
+		listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
 			return nil, fmt.Errorf("storage error")
 		},
 	}}
@@ -417,8 +418,8 @@ func TestPrimeResource(t *testing.T) {
 			},
 		},
 		AnalyticalPass: &mockAnalyticalPassService{
-			listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
-				return &specv1.ListFindingsResponse{}, nil
+			listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
+				return &specv1.ListProjectFindingsResponse{}, nil
 			},
 		},
 	}
@@ -463,12 +464,12 @@ func TestPrimeResource_FindingsSection(t *testing.T) {
 			},
 		},
 		AnalyticalPass: &mockAnalyticalPassService{
-			listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
-				return &specv1.ListFindingsResponse{
+			listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
+				return &specv1.ListProjectFindingsResponse{
 					Findings: []*specv1.AnalyticalFinding{
-						{Id: "f1", Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL},
-						{Id: "f2", Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL},
-						{Id: "f3", Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING},
+						{Id: "f1", SpecSlug: "spec-a", Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL},
+						{Id: "f2", SpecSlug: "spec-b", Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL},
+						{Id: "f3", SpecSlug: "spec-c", Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING},
 					},
 				}, nil
 			},
@@ -514,12 +515,12 @@ func TestPrimeResource_SeverityOrdering(t *testing.T) {
 			},
 		},
 		AnalyticalPass: &mockAnalyticalPassService{
-			listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
-				return &specv1.ListFindingsResponse{
+			listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
+				return &specv1.ListProjectFindingsResponse{
 					Findings: []*specv1.AnalyticalFinding{
-						{Id: "f1", Severity: specv1.FindingSeverity_FINDING_SEVERITY_NOTE},
-						{Id: "f2", Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL},
-						{Id: "f3", Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING},
+						{Id: "f1", SpecSlug: "spec-a", Severity: specv1.FindingSeverity_FINDING_SEVERITY_NOTE},
+						{Id: "f2", SpecSlug: "spec-b", Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL},
+						{Id: "f3", SpecSlug: "spec-c", Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING},
 					},
 				}, nil
 			},
@@ -605,7 +606,7 @@ func TestPrimeResource_RPCFailureRendersErrorMarker(t *testing.T) {
 			},
 		},
 		AnalyticalPass: &mockAnalyticalPassService{
-			listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
+			listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
 				return nil, fmt.Errorf("backend connection refused")
 			},
 		},
@@ -631,11 +632,14 @@ func TestPrimeResource_RPCFailureRendersErrorMarker(t *testing.T) {
 // C.1 — primeResourceHandler empty Graph Overview guard
 // ---------------------------------------------------------------------------
 
-// defaultAnalyticalPassMock returns a minimal ListFindings mock that returns no findings.
+// defaultAnalyticalPassMock returns minimal findings mocks that return no findings.
 func defaultAnalyticalPassMock() *mockAnalyticalPassService {
 	return &mockAnalyticalPassService{
 		listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
 			return &specv1.ListFindingsResponse{}, nil
+		},
+		listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
+			return &specv1.ListProjectFindingsResponse{}, nil
 		},
 	}
 }
@@ -695,11 +699,7 @@ func TestPrimeResource_ConstitutionNotFound_RendersHint(t *testing.T) {
 		"NotFound is an expected empty state, not an RPC failure")
 }
 
-// TestPrimeResource_FindingsInvalidArgument_SkippedSilently verifies that the
-// prime body skips the Open Findings section entirely when ListFindings
-// returns InvalidArgument (the current "slug is required" surface — tracked
-// in spgr-vabz). Other RPC failure modes still render the loud marker.
-func TestPrimeResource_FindingsInvalidArgument_SkippedSilently(t *testing.T) {
+func TestPrimeResource_ProjectFindingsDoesNotCallPerSpecListWithoutSlug(t *testing.T) {
 	c := &Client{
 		Constitution: defaultConstitutionMock(),
 		Spec:         &mockSpecService{listSpecs: func() (*specv1.ListSpecsResponse, error) { return &specv1.ListSpecsResponse{}, nil }},
@@ -707,6 +707,13 @@ func TestPrimeResource_FindingsInvalidArgument_SkippedSilently(t *testing.T) {
 		AnalyticalPass: &mockAnalyticalPassService{
 			listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
 				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug is required"))
+			},
+			listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
+				return &specv1.ListProjectFindingsResponse{
+					Findings: []*specv1.AnalyticalFinding{
+						{Id: "f1", SpecSlug: "spec-a", Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING},
+					},
+				}, nil
 			},
 		},
 	}
@@ -716,10 +723,10 @@ func TestPrimeResource_FindingsInvalidArgument_SkippedSilently(t *testing.T) {
 	require.NotEmpty(t, content)
 	text := content[0].Text
 
-	require.NotContains(t, text, "## Open Findings",
-		"InvalidArgument is the spgr-vabz interim state; render nothing rather than a confusing 'slug is required' error")
+	require.Contains(t, text, "## Open Findings")
+	require.Contains(t, text, "FINDING_SEVERITY_WARNING: 1")
 	require.NotContains(t, text, "slug is required",
-		"raw error message must not surface to the agent")
+		"prime should use project-wide findings instead of per-spec ListFindings without a slug")
 }
 
 // ---------------------------------------------------------------------------

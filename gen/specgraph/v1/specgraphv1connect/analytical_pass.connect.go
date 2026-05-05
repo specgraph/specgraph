@@ -45,6 +45,9 @@ const (
 	// AnalyticalPassServiceListFindingsProcedure is the fully-qualified name of the
 	// AnalyticalPassService's ListFindings RPC.
 	AnalyticalPassServiceListFindingsProcedure = "/specgraph.v1.AnalyticalPassService/ListFindings"
+	// AnalyticalPassServiceListProjectFindingsProcedure is the fully-qualified name of the
+	// AnalyticalPassService's ListProjectFindings RPC.
+	AnalyticalPassServiceListProjectFindingsProcedure = "/specgraph.v1.AnalyticalPassService/ListProjectFindings"
 )
 
 // AnalyticalPassServiceClient is a client for the specgraph.v1.AnalyticalPassService service.
@@ -52,6 +55,7 @@ type AnalyticalPassServiceClient interface {
 	RunAnalyticalPass(context.Context, *connect.Request[v1.RunAnalyticalPassRequest]) (*connect.Response[v1.RunAnalyticalPassResponse], error)
 	StoreFindings(context.Context, *connect.Request[v1.StoreFindingsRequest]) (*connect.Response[v1.StoreFindingsResponse], error)
 	ListFindings(context.Context, *connect.Request[v1.ListFindingsRequest]) (*connect.Response[v1.ListFindingsResponse], error)
+	ListProjectFindings(context.Context, *connect.Request[v1.ListProjectFindingsRequest]) (*connect.Response[v1.ListProjectFindingsResponse], error)
 }
 
 // NewAnalyticalPassServiceClient constructs a client for the specgraph.v1.AnalyticalPassService
@@ -83,14 +87,21 @@ func NewAnalyticalPassServiceClient(httpClient connect.HTTPClient, baseURL strin
 			connect.WithSchema(analyticalPassServiceMethods.ByName("ListFindings")),
 			connect.WithClientOptions(opts...),
 		),
+		listProjectFindings: connect.NewClient[v1.ListProjectFindingsRequest, v1.ListProjectFindingsResponse](
+			httpClient,
+			baseURL+AnalyticalPassServiceListProjectFindingsProcedure,
+			connect.WithSchema(analyticalPassServiceMethods.ByName("ListProjectFindings")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // analyticalPassServiceClient implements AnalyticalPassServiceClient.
 type analyticalPassServiceClient struct {
-	runAnalyticalPass *connect.Client[v1.RunAnalyticalPassRequest, v1.RunAnalyticalPassResponse]
-	storeFindings     *connect.Client[v1.StoreFindingsRequest, v1.StoreFindingsResponse]
-	listFindings      *connect.Client[v1.ListFindingsRequest, v1.ListFindingsResponse]
+	runAnalyticalPass   *connect.Client[v1.RunAnalyticalPassRequest, v1.RunAnalyticalPassResponse]
+	storeFindings       *connect.Client[v1.StoreFindingsRequest, v1.StoreFindingsResponse]
+	listFindings        *connect.Client[v1.ListFindingsRequest, v1.ListFindingsResponse]
+	listProjectFindings *connect.Client[v1.ListProjectFindingsRequest, v1.ListProjectFindingsResponse]
 }
 
 // RunAnalyticalPass calls specgraph.v1.AnalyticalPassService.RunAnalyticalPass.
@@ -108,12 +119,18 @@ func (c *analyticalPassServiceClient) ListFindings(ctx context.Context, req *con
 	return c.listFindings.CallUnary(ctx, req)
 }
 
+// ListProjectFindings calls specgraph.v1.AnalyticalPassService.ListProjectFindings.
+func (c *analyticalPassServiceClient) ListProjectFindings(ctx context.Context, req *connect.Request[v1.ListProjectFindingsRequest]) (*connect.Response[v1.ListProjectFindingsResponse], error) {
+	return c.listProjectFindings.CallUnary(ctx, req)
+}
+
 // AnalyticalPassServiceHandler is an implementation of the specgraph.v1.AnalyticalPassService
 // service.
 type AnalyticalPassServiceHandler interface {
 	RunAnalyticalPass(context.Context, *connect.Request[v1.RunAnalyticalPassRequest]) (*connect.Response[v1.RunAnalyticalPassResponse], error)
 	StoreFindings(context.Context, *connect.Request[v1.StoreFindingsRequest]) (*connect.Response[v1.StoreFindingsResponse], error)
 	ListFindings(context.Context, *connect.Request[v1.ListFindingsRequest]) (*connect.Response[v1.ListFindingsResponse], error)
+	ListProjectFindings(context.Context, *connect.Request[v1.ListProjectFindingsRequest]) (*connect.Response[v1.ListProjectFindingsResponse], error)
 }
 
 // NewAnalyticalPassServiceHandler builds an HTTP handler from the service implementation. It
@@ -141,6 +158,12 @@ func NewAnalyticalPassServiceHandler(svc AnalyticalPassServiceHandler, opts ...c
 		connect.WithSchema(analyticalPassServiceMethods.ByName("ListFindings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	analyticalPassServiceListProjectFindingsHandler := connect.NewUnaryHandler(
+		AnalyticalPassServiceListProjectFindingsProcedure,
+		svc.ListProjectFindings,
+		connect.WithSchema(analyticalPassServiceMethods.ByName("ListProjectFindings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/specgraph.v1.AnalyticalPassService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AnalyticalPassServiceRunAnalyticalPassProcedure:
@@ -149,6 +172,8 @@ func NewAnalyticalPassServiceHandler(svc AnalyticalPassServiceHandler, opts ...c
 			analyticalPassServiceStoreFindingsHandler.ServeHTTP(w, r)
 		case AnalyticalPassServiceListFindingsProcedure:
 			analyticalPassServiceListFindingsHandler.ServeHTTP(w, r)
+		case AnalyticalPassServiceListProjectFindingsProcedure:
+			analyticalPassServiceListProjectFindingsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -168,4 +193,8 @@ func (UnimplementedAnalyticalPassServiceHandler) StoreFindings(context.Context, 
 
 func (UnimplementedAnalyticalPassServiceHandler) ListFindings(context.Context, *connect.Request[v1.ListFindingsRequest]) (*connect.Response[v1.ListFindingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.AnalyticalPassService.ListFindings is not implemented"))
+}
+
+func (UnimplementedAnalyticalPassServiceHandler) ListProjectFindings(context.Context, *connect.Request[v1.ListProjectFindingsRequest]) (*connect.Response[v1.ListProjectFindingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.AnalyticalPassService.ListProjectFindings is not implemented"))
 }
