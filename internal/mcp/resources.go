@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/internal/authoring"
+	"github.com/specgraph/specgraph/internal/render"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -116,7 +117,11 @@ func constitutionResourceHandler(c *Client) ResourceHandler {
 		if resp.Msg.GetConstitution() == nil {
 			return constitutionEmptyResource(uri), nil
 		}
-		return resourceJSON(uri, resp.Msg)
+		return []ResourceContent{{
+			URI:      uri,
+			MimeType: "text/markdown",
+			Text:     render.Constitution(resp.Msg.GetConstitution()),
+		}}, nil
 	}
 }
 
@@ -388,7 +393,7 @@ func RegisterResources(r *Registry, c *Client) {
 		URI:         "specgraph://constitution",
 		Name:        "constitution",
 		Description: "Merged constitution (all layers).",
-		MimeType:    "application/json",
+		MimeType:    "text/markdown",
 		IsTemplate:  false,
 		Handler:     constitutionResourceHandler(c),
 	})
