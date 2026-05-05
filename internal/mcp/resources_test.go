@@ -666,6 +666,62 @@ func TestPrimeResource_EmptyGraphSkipped(t *testing.T) {
 		"Graph Overview heading should not render for empty spec list")
 }
 
+// TestPrimeResource_ConstitutionNotFound_RendersHint verifies that when
+// GetConstitution fails with connect.CodeNotFound (the expected fresh-project
+// state), the prime body renders a heading + actionable hint instead of the
+// loud "_(unable to load: ...)_" marker reserved for genuine RPC failures.
+func TestPrimeResource_ConstitutionNotFound_RendersHint(t *testing.T) {
+	c := &Client{
+		Constitution: &mockConstitutionService{
+			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("constitution not found"))
+			},
+		},
+		Spec:           &mockSpecService{listSpecs: func() (*specv1.ListSpecsResponse, error) { return &specv1.ListSpecsResponse{}, nil }},
+		Graph:          &mockGraphService{getReady: func() (*specv1.GetReadyResponse, error) { return &specv1.GetReadyResponse{}, nil }},
+		AnalyticalPass: defaultAnalyticalPassMock(),
+	}
+
+	content, err := primeResourceHandler(c)(context.Background(), "specgraph://prime")
+	require.NoError(t, err)
+	require.NotEmpty(t, content)
+	text := content[0].Text
+
+	require.Contains(t, text, "## Constitution",
+		"Constitution heading should render so the agent knows the slot exists")
+	require.Contains(t, text, "specgraph constitution set",
+		"NotFound state should hint at the command that populates the constitution")
+	require.NotContains(t, text, "unable to load",
+		"NotFound is an expected empty state, not an RPC failure")
+}
+
+// TestPrimeResource_FindingsInvalidArgument_SkippedSilently verifies that the
+// prime body skips the Open Findings section entirely when ListFindings
+// returns InvalidArgument (the current "slug is required" surface — tracked
+// in spgr-vabz). Other RPC failure modes still render the loud marker.
+func TestPrimeResource_FindingsInvalidArgument_SkippedSilently(t *testing.T) {
+	c := &Client{
+		Constitution: defaultConstitutionMock(),
+		Spec:         &mockSpecService{listSpecs: func() (*specv1.ListSpecsResponse, error) { return &specv1.ListSpecsResponse{}, nil }},
+		Graph:        &mockGraphService{getReady: func() (*specv1.GetReadyResponse, error) { return &specv1.GetReadyResponse{}, nil }},
+		AnalyticalPass: &mockAnalyticalPassService{
+			listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
+				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug is required"))
+			},
+		},
+	}
+
+	content, err := primeResourceHandler(c)(context.Background(), "specgraph://prime")
+	require.NoError(t, err)
+	require.NotEmpty(t, content)
+	text := content[0].Text
+
+	require.NotContains(t, text, "## Open Findings",
+		"InvalidArgument is the spgr-vabz interim state; render nothing rather than a confusing 'slug is required' error")
+	require.NotContains(t, text, "slug is required",
+		"raw error message must not surface to the agent")
+}
+
 // ---------------------------------------------------------------------------
 // extractSlugFromURI tests
 // ---------------------------------------------------------------------------

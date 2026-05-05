@@ -201,6 +201,11 @@ func primeResourceHandler(c *Client) ResourceHandler {
 
 		conResp, err := c.Constitution.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{}))
 		switch {
+		case err != nil && connect.CodeOf(err) == connect.CodeNotFound:
+			// Expected empty state on fresh projects: no constitution defined.
+			// Render a heading + hint so the agent knows the slot exists and
+			// how to populate it, rather than treating it as an RPC failure.
+			b.WriteString("## Constitution\n\n_No constitution configured. Run `specgraph constitution set` to define project ground truth._\n\n")
 		case err != nil:
 			slog.WarnContext(ctx, "prime.section_failed",
 				slog.String("section", "constitution"),
@@ -281,6 +286,11 @@ func primeResourceHandler(c *Client) ResourceHandler {
 
 		findingsResp, err := c.AnalyticalPass.ListFindings(ctx, connect.NewRequest(&specv1.ListFindingsRequest{}))
 		switch {
+		case err != nil && connect.CodeOf(err) == connect.CodeInvalidArgument:
+			// ListFindings currently requires a per-spec slug; the prime
+			// composer wants project-wide findings but has no project-scoped
+			// query yet. Skip silently rather than render a confusing "slug
+			// is required" error to the agent. Tracked: spgr-vabz.
 		case err != nil:
 			slog.WarnContext(ctx, "prime.section_failed",
 				slog.String("section", "open_findings"),
