@@ -32,7 +32,18 @@ func startFakeServer[H any](t *testing.T, h H, register func(H, ...connect.Handl
 
 	cfgDir := t.TempDir()
 	cfgPath := filepath.Join(cfgDir, "config.yaml")
-	require.NoError(t, os.WriteFile(cfgPath, []byte(fmt.Sprintf("server:\n  remote: %s\n", srv.URL)), 0o600))
+	// Write BOTH the current and legacy global-config schemas to the same
+	// file. resolveBaseURL takes one of two paths depending on whether a
+	// .specgraph.yaml is found upstack:
+	//   - new path: reads client.default_server via loadGlobalCfg.
+	//   - legacy path (no .specgraph.yaml): reads server.remote via
+	//     config.Load(legacyConfigPath()).
+	// Tests that Chdir into a temp dir (e.g. constitution-emit path-traversal)
+	// follow the legacy path; tests that run from the worktree root follow
+	// the new path (this repo ships a .specgraph.yaml at the root). Writing
+	// both keys keeps both paths pointed at srv.URL.
+	cfgYAML := fmt.Sprintf("client:\n  default_server: %s\nserver:\n  remote: %s\n", srv.URL, srv.URL)
+	require.NoError(t, os.WriteFile(cfgPath, []byte(cfgYAML), 0o600))
 	old := cfgFile
 	cfgFile = cfgPath
 	t.Cleanup(func() { cfgFile = old })

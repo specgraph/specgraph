@@ -6,6 +6,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -69,14 +71,26 @@ func TestInjectCmd_ToolAliases(t *testing.T) {
 		{"CLAUDE-CODE", false},
 	}
 
+	// Point cfgFile at a dead port so runInject errors with a controlled
+	// "connection refused" rather than dialing the contributor's real
+	// server (post-spgr-7htb dogfood, .specgraph.yaml exists at the repo
+	// root, so resolveBaseURL takes the new path and otherwise reads the
+	// user's ~/.config/specgraph/config.yaml).
+	oldCfgFile := cfgFile
+	cfgDir := t.TempDir()
+	cfgPath := filepath.Join(cfgDir, "config.yaml")
+	require.NoError(t, os.WriteFile(cfgPath, []byte("client:\n  default_server: http://127.0.0.1:1\nserver:\n  remote: http://127.0.0.1:1\n"), 0o600))
+	cfgFile = cfgPath
+	t.Cleanup(func() { cfgFile = oldCfgFile })
+
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			old := injectTool
 			defer func() { injectTool = old }()
 			injectTool = tt.input
 
-			err := runInject(injectCmd, []string{"test-slug"})
-			require.Error(t, err, "runInject should error (no server running)")
+			err := runInject(newCmdWithCtx(), []string{"test-slug"})
+			require.Error(t, err, "runInject should error (no server reachable)")
 			if tt.wantErr {
 				assert.Contains(t, err.Error(), "unsupported tool")
 			} else {

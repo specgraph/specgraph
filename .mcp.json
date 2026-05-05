@@ -1,12 +1,12 @@
 {
   "mcpServers": {
     "specgraph": {
-      "type": "http",
-      "url": "http://127.0.0.1:7890/mcp/",
       "headers": {
         "Authorization": "Bearer ${SPECGRAPH_API_KEY}",
         "X-Specgraph-Project": "specgraph"
-      }
+      },
+      "type": "http",
+      "url": "http://127.0.0.1:7890/mcp/"
     }
   }
 }
