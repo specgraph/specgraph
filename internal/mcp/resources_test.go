@@ -131,8 +131,9 @@ func TestConstitutionResource(t *testing.T) {
 		getConstitution: func() (*specv1.GetConstitutionResponse, error) {
 			return &specv1.GetConstitutionResponse{
 				Constitution: &specv1.Constitution{
-					Name:  "project-constitution",
-					Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
+					Name:        "project-constitution",
+					Layer:       specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT,
+					Constraints: []string{"no circular deps"},
 				},
 			}, nil
 		},
@@ -142,9 +143,11 @@ func TestConstitutionResource(t *testing.T) {
 	contents, err := handler(context.Background(), "specgraph://constitution")
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
-	require.Equal(t, "application/json", contents[0].MimeType)
+	require.Equal(t, "text/markdown", contents[0].MimeType)
 	require.Equal(t, "specgraph://constitution", contents[0].URI)
 	require.Contains(t, contents[0].Text, "project-constitution")
+	require.Contains(t, contents[0].Text, "## Constraints")
+	require.Contains(t, contents[0].Text, "no circular deps")
 }
 
 func TestConstitutionResource_NotFoundRendersHint(t *testing.T) {
