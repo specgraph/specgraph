@@ -31,6 +31,21 @@ func resourceJSON(uri string, msg proto.Message) ([]ResourceContent, error) {
 	}}, nil
 }
 
+func constitutionEmptyResource(uri string) []ResourceContent {
+	return []ResourceContent{{
+		URI:      uri,
+		MimeType: "text/markdown",
+		Text:     "# SpecGraph Constitution\n\n_No constitution configured. Run `specgraph constitution set` to define project ground truth._\n",
+	}}
+}
+
+func isConstitutionEmptyState(err error) bool {
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return true
+	}
+	return connect.CodeOf(err) == connect.CodeInvalidArgument && strings.Contains(err.Error(), "slug is required")
+}
+
 // extractSlugFromURI returns the last path segment of a specgraph:// URI.
 // e.g. "specgraph://spec/oauth-refresh" → "oauth-refresh"
 func extractSlugFromURI(uri string) string {
@@ -93,7 +108,13 @@ func constitutionResourceHandler(c *Client) ResourceHandler {
 	return func(ctx context.Context, uri string) ([]ResourceContent, error) {
 		resp, err := c.Constitution.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{}))
 		if err != nil {
+			if isConstitutionEmptyState(err) {
+				return constitutionEmptyResource(uri), nil
+			}
 			return nil, fmt.Errorf("get constitution: %w", err)
+		}
+		if resp.Msg.GetConstitution() == nil {
+			return constitutionEmptyResource(uri), nil
 		}
 		return resourceJSON(uri, resp.Msg)
 	}
