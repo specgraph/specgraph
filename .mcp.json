@@ -6,7 +6,7 @@
         "X-Specgraph-Project": "specgraph"
       },
       "type": "http",
-      "url": "http://127.0.0.1:7890/mcp/"
+      "url": "http://127.0.0.1:9090/mcp/"
     }
   }
 }

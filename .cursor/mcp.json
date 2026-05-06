@@ -5,7 +5,7 @@
         "Authorization": "Bearer ${env:SPECGRAPH_API_KEY}",
         "X-Specgraph-Project": "specgraph"
       },
-      "url": "http://127.0.0.1:7890/mcp/"
+      "url": "http://127.0.0.1:9090/mcp/"
     }
   }
 }
