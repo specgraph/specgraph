@@ -4,6 +4,12 @@
       "event": "SessionStart",
       "type": "command",
       "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
+    },
+    {
+      "event": "PostToolUse",
+      "matcher": "mcp__specgraph__author",
+      "type": "command",
+      "command": "${CLAUDE_PLUGIN_ROOT}/hooks/post-stage.sh"
     }
   ]
 }

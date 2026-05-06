@@ -1,5 +1,7 @@
 # Slice 7: Global Daemon & Claude Code Plugin — Design
 
+> **Status:** Superseded by [2026-04-20-multi-platform-plugin-design.md](2026-04-20-multi-platform-plugin-design.md) and [2026-05-06-harness-parity-epic-design.md](2026-05-06-harness-parity-epic-design.md). Retained for historical context.
+>
 > **Supersedes:** `2026-02-28-slice-7-claude-code-plugin-plan.md` (which assumed per-project server model)
 >
 > **Partially superseded:** The CLI command surface described in §`specgraph up` / §`specgraph down` (lines 151–193) was revised in `2026-04-22-cli-lifecycle-split-design.md`. `install`/`uninstall` are now dedicated verbs, `--rm` is retired, and `down --purge` is the confirmation-guarded destructive flag. Sections below that describe the original `up`/`down` surface are kept for historical record but should not be treated as current spec.

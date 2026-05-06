@@ -81,8 +81,10 @@ with teams that do not use SpecGraph directly.
 
 - **Tool Injection** — `specgraph inject <slug>` writes a spec's interface
   contracts, constraints, and relevant constitution layers into
-  `CLAUDE.md`, `.cursor/rules`, or `AGENTS.md` so any coding agent picks
-  up the right context automatically.
+  `.claude/specs/`, `.cursor/rules/`, or `AGENTS.md` so any coding agent
+  picks up the right context automatically. (Constitution-only emission to
+  `CLAUDE.md` is a separate command: `specgraph constitution emit
+  --format claude-md`.)
 
 ---
 
@@ -94,14 +96,17 @@ SpecGraph connects to the outside world through four interfaces:
   query the graph, generate execution bundles, run the linter, and manage
   the constitution from the terminal.
 
-- **Claude Code** (Shipped) — 13 skills and hooks integrate SpecGraph into
-  the IDE workflow. Author specs through conversational prompts, query the
-  graph, and generate execution bundles without leaving the editor.
+- **Claude Code, Cursor, and OpenCode** (Shipped) — Three thin per-harness
+  shims under `plugin/` consume a single shared `skills/` tree. Six skills
+  cover authoring, graph queries, analytical passes, drift, conventions,
+  and troubleshooting. Each shim adds harness-specific surface (Claude Code
+  hooks, Cursor rules, OpenCode TypeScript plugin) including a session
+  prime and post-stage analytical-pass automation.
 
-- **MCP Server** (Planned) — Exposes SpecGraph operations to any
-  MCP-compatible client. Authoring tools, coding agents, and custom
-  workflows can read specs, advance funnel stages, and query the graph
-  through the Model Context Protocol.
+- **MCP Server** (Shipped) — Exposes SpecGraph operations to MCP-compatible
+  clients via prompts, tools, and resources. Authoring tools, coding agents,
+  and custom workflows read specs, advance funnel stages, and query the
+  graph over the Model Context Protocol.
 
 - **ConnectRPC API** (Shipped) — JSON-over-HTTP API backed by protobuf
   schemas. Any language, any platform. gRPC-compatible for high-throughput

@@ -1,5 +1,7 @@
 # Skill Personas — Design
 
+> **Status:** Superseded by [2026-04-20-multi-platform-plugin-design.md](2026-04-20-multi-platform-plugin-design.md) and [2026-05-06-harness-parity-epic-design.md](2026-05-06-harness-parity-epic-design.md). The persona content described here lives in `internal/authoring/content/persona.md` and the embedded composer; per-stage SKILL.md packages now live in `skills/` shared across all three harnesses. Retained for historical context.
+
 **Goal:** Transform the five authoring plugin skills (spark, shape, specify, decompose, approve) from CLI reference cards into conversational spec development partners that embody domain expertise, judgment, and personality.
 
 **Tracked as:** spgr-e9z
