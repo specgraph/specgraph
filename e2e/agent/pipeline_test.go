@@ -40,9 +40,10 @@ func pluginDir() string {
 }
 
 // agentRun invokes `claude -p` with a natural language prompt and the
-// specgraph plugin loaded. The agent discovers available commands via
-// the plugin's skills. The prompt includes the binary path since the
-// test binary lives in a temp dir, not on the standard PATH.
+// specgraph plugin loaded. The thin plugin primes routing guidance while the
+// agent can still fall back to the CLI through Bash. The prompt includes the
+// binary path since the test binary lives in a temp dir, not on the standard
+// PATH.
 func agentRun(prompt string) (string, error) {
 	fullPrompt := fmt.Sprintf(
 		"The specgraph binary is at %s and the working directory is %s (which has a .specgraph.yaml configured). %s",
@@ -83,9 +84,9 @@ var _ = Describe("Agent pipeline", Ordered, func() {
 	const slug = "agent-pipeline-spec"
 
 	// Agent tests are non-deterministic smoke tests. We verify that the
-	// agent can discover and invoke specgraph commands via the plugin
-	// skills. Assertions check that the spec exists and the agent
-	// completed without hard errors — exact stage transitions may vary.
+	// agent can discover and invoke SpecGraph through the thin plugin
+	// guidance and CLI fallback. Assertions check that the spec exists and
+	// the agent completed without hard errors — exact stage transitions may vary.
 
 	It("creates a spec via agent", func(ctx SpecContext) {
 		_, err := agentRun(fmt.Sprintf(
@@ -102,7 +103,7 @@ var _ = Describe("Agent pipeline", Ordered, func() {
 
 	It("sparks the spec via agent", func(ctx SpecContext) {
 		_, err := agentRun(fmt.Sprintf(
-			"Use /specgraph-spark to spark the spec %q with the seed idea: %q.",
+			"Use SpecGraph to spark the spec %q with the seed idea: %q.",
 			slug, "Build a widget service for testing",
 		))
 		Expect(err).NotTo(HaveOccurred())
@@ -150,7 +151,7 @@ var _ = Describe("Agent pipeline", Ordered, func() {
 
 	It("shows the spec via agent", func(ctx SpecContext) {
 		out, err := agentRun(fmt.Sprintf(
-			"Use /specgraph-show to show details of spec %q.",
+			"Use SpecGraph to show details of spec %q.",
 			slug,
 		))
 		Expect(err).NotTo(HaveOccurred())

@@ -25,6 +25,9 @@ var _ authoring.ComposerBackend = (*composerBackend)(nil)
 func (b *composerBackend) GetConstitution(ctx context.Context) (*authoring.ConstitutionSummary, error) {
 	resp, err := b.client.Constitution.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{}))
 	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("get constitution: %w", err)
 	}
 	c := resp.Msg.GetConstitution()
