@@ -35,7 +35,7 @@ import (
 func TestDogfood_CheckedInConfigsAreCanonical(t *testing.T) {
 	const (
 		dogfoodSlug      = "specgraph"
-		dogfoodServerURL = "http://127.0.0.1:7890"
+		dogfoodServerURL = "http://127.0.0.1:9090"
 	)
 
 	root, err := config.FindProjectRoot(".")
