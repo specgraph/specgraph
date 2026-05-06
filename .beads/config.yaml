@@ -54,3 +54,7 @@
 # - github.repo
 
 dolt.shared-server: true
+
+export.auto: false
+
+export.git-add: false
