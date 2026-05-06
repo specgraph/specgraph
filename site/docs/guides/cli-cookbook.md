@@ -378,7 +378,7 @@ specgraph constitution show
 # View a single raw layer without merging
 specgraph constitution show --layer org
 
-# Emit the merged constitution as a CLAUDE.md inject
+# Emit the merged constitution as a CLAUDE.md file
 specgraph constitution emit --format claude-md
 ```
 
