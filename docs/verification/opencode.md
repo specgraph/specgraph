@@ -144,5 +144,6 @@ OpenCode requires no changes to `internal/mcp/profiles.go` or
 - **`slug=$1` placeholder behavior** — investigate OpenCode prompt-arg
   semantics. May be a docs-only fix on our side (declare prompt args more
   explicitly), or a no-op. Not blocking.
-- **Tasks 36 (Codex)** — same flow with a different client; expected to be
-  fast since the infrastructure is in place.
+- **Codex verification** — deferred until there are users asking for Codex
+  support. The profile mapping remains declared, but it is not empirically
+  exercised by Phase B.
