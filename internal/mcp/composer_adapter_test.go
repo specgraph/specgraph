@@ -42,6 +42,25 @@ func TestComposerAdapter_GetConstitution_NilConstitutionMapsToNil(t *testing.T) 
 	require.Nil(t, summary, "nil Constitution in response should produce nil summary")
 }
 
+// TestComposerAdapter_GetConstitution_NotFoundMapsToNil verifies that an empty
+// constitution state reported by the RPC layer is a soft miss for prompt
+// composition. Fresh projects should still receive stage guidance; the
+// constitution block is simply omitted.
+func TestComposerAdapter_GetConstitution_NotFoundMapsToNil(t *testing.T) {
+	c := &Client{
+		Constitution: &mockConstitutionService{
+			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
+				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("constitution not found"))
+			},
+		},
+	}
+	b := &composerBackend{client: c}
+
+	summary, err := b.GetConstitution(context.Background())
+	require.NoError(t, err)
+	require.Nil(t, summary, "not_found Constitution should produce nil summary")
+}
+
 // TestComposerAdapter_GetConstitution_RPCErrorWrapped verifies that an RPC error
 // is wrapped via "get constitution: %w" and the original error is reachable via errors.Is.
 func TestComposerAdapter_GetConstitution_RPCErrorWrapped(t *testing.T) {

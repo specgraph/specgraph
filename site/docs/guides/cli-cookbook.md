@@ -13,7 +13,7 @@ Practical recipes for common SpecGraph CLI workflows. Each recipe is self-contai
 specgraph spark auth-service --seed "JWT-based auth with refresh tokens"
 
 # Step 2 — shape: defines problem statement, goals, non-goals
-#   Run the specgraph-shape skill, save its JSON output, then commit it
+#   Use an MCP authoring prompt or another authoring harness to prepare JSON
 specgraph shape auth-service --json-file shape-output.json
 
 # Step 3 — specify: adds requirements, acceptance criteria, verify criteria
