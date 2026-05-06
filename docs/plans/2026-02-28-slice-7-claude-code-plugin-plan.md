@@ -1,5 +1,7 @@
 # Slice 7: Claude Code Plugin Implementation Plan
 
+> **Status:** Superseded by [2026-04-20-multi-platform-plugin-design.md](2026-04-20-multi-platform-plugin-design.md) and [2026-05-06-harness-parity-epic-design.md](2026-05-06-harness-parity-epic-design.md). Retained for historical context.
+>
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Run the full SpecGraph authoring and query workflow from Claude Code via skills, hooks, and a packaged plugin — making the CLI invisible behind conversational slash commands.

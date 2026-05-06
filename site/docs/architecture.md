@@ -27,7 +27,7 @@ graph TD
         Beads["Beads (spec→bead issue)"]
         GH["GitHub Issues"]
         Linear["Linear (planned)"]
-        Inject["Tool Injection<br/>(CLAUDE.md, .cursor/rules)"]
+        Inject["Tool Injection<br/>(.claude/specs, .cursor/rules, AGENTS.md)"]
     end
 
     Clients -->|"ConnectRPC (JSON/HTTP)"| Server
@@ -208,7 +208,7 @@ specgraph/
 │   ├── driftscope/         # Drift scope analysis
 │   ├── emitter/            # Constitution → tool file renderers
 │   ├── export/             # Project export/import/verify engine
-│   ├── inject/             # Tool injection (CLAUDE.md, .cursor/rules, AGENTS.md)
+│   ├── inject/             # Tool injection (.claude/specs, .cursor/rules, AGENTS.md)
 │   ├── linter/             # Spec linter (schema, edges, cycles)
 │   ├── notify/             # Change notification subscribers (impact logging)
 │   ├── render/             # Markdown renderers for CLI output

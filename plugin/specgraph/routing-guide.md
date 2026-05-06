@@ -1,45 +1,38 @@
 # SpecGraph Routing Guide
 
-You have access to the SpecGraph MCP server for spec-driven development on
-this project. This guide tells you where to go; the MCP carries the how.
+One-screen pointer to the SpecGraph MCP server. Detail lives in `skills/`.
 
-## When the user wants to author or update a spec
+## Authoring
 
-- Invoke the MCP prompt for the stage (`spark`, `shape`, `specify`,
-  `decompose`, `approve`), or call the `author_start_stage` tool with the
-  same `stage`, spec `slug`, and optional `posture`.
-- Conduct the elicitation. Persist stage output with the `author` tool by
-  setting `action` to `spark`, `shape`, `specify`, `decompose`, or `approve`.
+Invoke the MCP prompt for the stage (`spark`, `shape`, `specify`,
+`decompose`, `approve`) or call `author_start_stage`. Persist with the
+`author` tool. See `skills/specgraph-authoring/`.
 
-## When the user wants to query specs
+## Querying
 
-- `spec` with `action: "list"` and optional filters
-- `spec` with `action: "get"` for a single spec
-- `graph_query` for dependency or impact traversal
-- `specgraph://graph/ready` resource for "what can I work on"
+`spec`, `graph_query`, and the `specgraph://graph/ready` resource. See
+`skills/specgraph-graph-query/`.
 
-## When the user wants to see the constitution
+## Analytical review
 
-- `specgraph://constitution` resource for full content
-- `constitution` with `action: "get"` for JSON round-tripping
-- `constitution` with `action: "update"` to modify
+`analytical_pass` with `action: "run"`. See
+`skills/specgraph-analytical-passes/`.
 
-## When the user wants analytical review
+## Constitution
 
-- `analytical_pass` with `action: "run"` for constitution-check, red-team,
-  peripheral-vision, consistency, simplicity
+`specgraph://constitution` resource for content; `constitution` tool for
+get/update.
 
-## Never
-
-- Don't invent dotted tool names; the MCP tools are flat names with `action`
-  parameters.
-- Don't approve a spec on behalf of the user; approval requires explicit
-  user sign-off.
-
-## Project setup (server not yet running)
+## Setup
 
 ```bash
 docker info
 specgraph init
 specgraph serve
 ```
+
+## Never
+
+- Don't invent dotted tool names; tools are flat with `action` parameters.
+- Don't approve a spec on behalf of the user; approval requires explicit
+  user sign-off.

@@ -52,6 +52,15 @@ func RegisterPrompts(r *Registry, c *Client) {
 	})
 
 	r.AddPrompt(PromptDef{
+		Name:        "approve",
+		Description: "Walk a decomposed spec to approval, capturing decisions and edges.",
+		Arguments: []PromptArgument{
+			{Name: "spec_slug", Description: "Slug of the spec to approve.", Required: true},
+		},
+		Handler: stagePromptHandler(c, "approve"),
+	})
+
+	r.AddPrompt(PromptDef{
 		Name:        "constitution_check",
 		Description: "Check a spec against the project constitution for compliance.",
 		Arguments: []PromptArgument{

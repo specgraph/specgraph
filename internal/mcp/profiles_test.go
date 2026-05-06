@@ -26,9 +26,11 @@ func TestProfileFromClientInfo(t *testing.T) {
 		{"gastown gets execution", "gastown", ProfileExecution},
 		{"claude-code gets authoring", "claude-code", ProfileAuthoring},
 		{"cursor gets authoring", "cursor", ProfileAuthoring},
+		{"cursor-vscode gets authoring", "cursor-vscode", ProfileAuthoring},
 		{"windsurf gets authoring", "windsurf", ProfileAuthoring},
 		{"opencode gets authoring", "opencode", ProfileAuthoring},
 		{"codex gets authoring", "codex", ProfileAuthoring},
+		{"specgraph-cli gets authoring", "specgraph-cli", ProfileAuthoring},
 		{"unknown gets core", "some-other-client", ProfileCore},
 		{"empty gets core", "", ProfileCore},
 	}

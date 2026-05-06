@@ -1,5 +1,7 @@
 # Skill Personas — Implementation Plan
 
+> **Status:** Superseded by [2026-04-20-multi-platform-plugin-design.md](2026-04-20-multi-platform-plugin-design.md) and [2026-05-06-harness-parity-epic-design.md](2026-05-06-harness-parity-epic-design.md). Retained for historical context.
+>
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Rewrite the 5 authoring plugin skills and the router skill from CLI reference cards into conversational spec development partner personas with domain expertise, judgment, and posture awareness.

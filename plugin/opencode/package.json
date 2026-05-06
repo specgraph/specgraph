@@ -1,0 +1,21 @@
+{
+  "name": "@specgraph/opencode-plugin",
+  "version": "0.1.0",
+  "description": "OpenCode plugin for SpecGraph: session priming and post-stage analytical-pass nudges.",
+  "license": "Apache-2.0",
+  "main": ".opencode/plugins/specgraph.ts",
+  "type": "module",
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*"
+  },
+  "files": [
+    ".opencode/plugins/specgraph.ts",
+    ".opencode/skills",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/specgraph/specgraph.git",
+    "directory": "plugin/opencode"
+  }
+}

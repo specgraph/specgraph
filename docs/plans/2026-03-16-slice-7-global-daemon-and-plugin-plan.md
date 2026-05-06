@@ -1,5 +1,7 @@
 # Slice 7: Global Daemon & Claude Code Plugin — Implementation Plan
 
+> **Status:** Superseded by [2026-04-20-multi-platform-plugin-design.md](2026-04-20-multi-platform-plugin-design.md) and [2026-05-06-harness-parity-epic-design.md](2026-05-06-harness-parity-epic-design.md). Retained for historical context.
+>
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Transform SpecGraph from a per-project tool into a global daemon with multi-project graph namespacing, then ship a Claude Code plugin with 11 skills and a SessionStart hook.

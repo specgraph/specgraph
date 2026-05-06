@@ -337,7 +337,7 @@ func TestRegisterPrompts_Count(t *testing.T) {
 	c := &Client{}
 	r := NewRegistry()
 	RegisterPrompts(r, c)
-	require.Len(t, r.Prompts(), 6)
+	require.Len(t, r.Prompts(), 7)
 }
 
 func TestRegisterPrompts_Names(t *testing.T) {
@@ -353,8 +353,52 @@ func TestRegisterPrompts_Names(t *testing.T) {
 	require.True(t, names["shape"], "shape prompt missing")
 	require.True(t, names["specify"], "specify prompt missing")
 	require.True(t, names["decompose"], "decompose prompt missing")
+	require.True(t, names["approve"], "approve prompt missing")
 	require.True(t, names["constitution_check"], "constitution_check prompt missing")
 	require.True(t, names["dependency_review"], "dependency_review prompt missing")
+}
+
+func TestApprovePrompt(t *testing.T) {
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock("oauth-refresh"), defaultGraphMock())
+
+	r := NewRegistry()
+	RegisterPrompts(r, c)
+	var approveDef *PromptDef
+	for _, p := range r.Prompts() {
+		if p.Name == "approve" {
+			d := p
+			approveDef = &d
+			break
+		}
+	}
+	require.NotNil(t, approveDef)
+
+	result, err := approveDef.Handler(context.Background(), map[string]string{
+		"spec_slug": "oauth-refresh",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, "user", result.Messages[0].Role)
+	require.Contains(t, result.Messages[0].Content, "# Persona")
+	require.Contains(t, result.Messages[0].Content, "# Stage:")
+}
+
+func TestApprovePrompt_MissingSpecSlug(t *testing.T) {
+	c := newComposerClient(defaultConstitutionMock(), defaultSpecMock(""), defaultGraphMock())
+	r := NewRegistry()
+	RegisterPrompts(r, c)
+	var approveDef *PromptDef
+	for _, p := range r.Prompts() {
+		if p.Name == "approve" {
+			d := p
+			approveDef = &d
+			break
+		}
+	}
+	require.NotNil(t, approveDef)
+	_, err := approveDef.Handler(context.Background(), map[string]string{})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "spec_slug is required")
 }
 
 func TestSparkPrompt_MissingTopic(t *testing.T) {
@@ -426,7 +470,7 @@ func TestRegisterPrompts_Arguments(t *testing.T) {
 			}
 			require.True(t, argMap["topic"].Required, "spark: topic should be required")
 			require.False(t, argMap["context"].Required, "spark: context should be optional")
-		case "shape", "specify", "decompose", "constitution_check", "dependency_review":
+		case "shape", "specify", "decompose", "approve", "constitution_check", "dependency_review":
 			// all have spec_slug (required)
 			require.NotEmpty(t, p.Arguments, "%s should have arguments", p.Name)
 			var found bool
