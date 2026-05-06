@@ -1,5 +1,29 @@
 # Harness Parity Epic: Consolidate Claude Code, Cursor, and OpenCode Integration
 
+## Post-merge correction (2026-05-06)
+
+CodeRabbit flagged that the OpenCode plugin as originally implemented used
+hook names (`session.start`, `tool.use`) that do not exist in
+`@opencode-ai/plugin`. Verification against `index.d.ts` for the package
+confirmed the correct shape:
+
+- `Plugin = (input: PluginInput) => Promise<Hooks>` — async function, not a
+  plain object.
+- Session priming: `experimental.chat.system.transform` (prime appended to
+  the system prompt; cached for the plugin instance lifetime).
+- Post-stage nudge: `tool.execute.after` records the stage; the next
+  `experimental.chat.system.transform` appends the analytical-pass prompt.
+
+The implementation in `plugin/opencode/.opencode/plugins/specgraph.ts` and
+the cross-harness contract in `plugin/specgraph/README.md` reflect the
+corrected hooks. Mermaid diagrams and prose elsewhere in this document
+still reference the original (incorrect) hook names — they are kept as the
+historical record of what was attempted; treat the implementation files
+and `CLAUDE.md` as the current source of truth for the integration shape.
+
+A follow-up bead tracks end-to-end runtime validation of the OpenCode
+plugin inside a real OpenCode session.
+
 ## Context
 
 SpecGraph today has integration with three agent harnesses but the depth varies

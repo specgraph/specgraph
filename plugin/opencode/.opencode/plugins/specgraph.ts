@@ -3,19 +3,22 @@
 //
 // SpecGraph OpenCode plugin.
 //
-// Surface area:
-//   - session.start: read specgraph://prime via the specgraph CLI and append
-//     it to the session output, so the model starts with the same priming the
-//     Claude Code and Cursor harnesses get.
-//   - tool.use (after a successful mcp__specgraph__author with a stage action):
-//     surface a suggestion to run the analytical passes registered for that
-//     stage. The contract is "after stage transition, passes are surfaced",
-//     not "identical mechanism across harnesses".
+// Surface area (matched against `@opencode-ai/plugin` ≥ 1.3 — see Hooks
+// interface in the package's index.d.ts):
+//   - experimental.chat.system.transform: prepend `specgraph://prime` to the
+//     system prompt so the model starts each turn with the same priming the
+//     Claude Code and Cursor harnesses get. Runs on every turn, which keeps
+//     the priming current rather than going stale after the first message.
+//   - tool.execute.after: when the `mcp__specgraph__author` tool succeeds with
+//     a stage action (spark/shape/specify/decompose/approve), record the stage
+//     so the next system-prompt transform appends a nudge to run the
+//     analytical passes registered for that stage. The cross-harness contract
+//     is "after stage transition, passes are surfaced", not "identical
+//     mechanism" — Claude uses a PostToolUse hook, Cursor uses a rule, we
+//     thread it through the system-prompt transform here.
 //
-// We intentionally use execFile (argv array, no shell) to avoid shell
-// injection on user-supplied data. specgraph://prime is a fixed URI here, but
-// using execFile keeps this plugin safe by construction if arguments grow
-// later.
+// We use execFile (argv array, no shell) to avoid shell injection if the
+// argument list ever grows beyond the fixed `specgraph://prime` URI.
 
 import type { Plugin } from "@opencode-ai/plugin";
 import { execFile } from "node:child_process";
@@ -31,52 +34,60 @@ const STAGE_ACTIONS = new Set([
   "approve",
 ]);
 
-const plugin: Plugin = {
-  name: "specgraph",
-  hooks: {
-    "session.start": async (_ctx, output) => {
-      try {
-        const { stdout } = await execFileAsync("specgraph", [
-          "read-mcp-resource",
-          "specgraph://prime",
-        ]);
-        const trimmed = stdout.trim();
-        if (trimmed.length > 0) {
-          output.append(trimmed + "\n");
-        }
-      } catch (err) {
-        // Soft-fail: missing CLI or unreachable server should not block the
-        // session start. Match the bash session-start hook in the Claude
-        // shim.
-        const msg = err instanceof Error ? err.message : String(err);
-        output.append(
-          `# specgraph prime unavailable (${msg}); continuing without prime.\n`,
-        );
-      }
-    },
-    "tool.use": async (ctx) => {
-      // Field names are best-effort against @opencode-ai/plugin; verify
-      // against the version pinned in package.json. If the API uses
-      // different names (e.g., ctx.tool.name vs ctx.tool), update here.
-      const toolName = (ctx as { tool?: string }).tool;
-      const phase = (ctx as { phase?: string }).phase;
-      const action = (ctx as { input?: { action?: string } }).input?.action;
+const plugin: Plugin = async () => {
+  // Cache the prime output for the lifetime of this plugin instance. Reading
+  // it once on first system-prompt transform avoids a CLI invocation per
+  // turn; the prime is a session-priming digest, not per-turn live data.
+  let cachedPrime: string | null = null;
+  let primeAttempted = false;
 
-      if (
-        toolName === "mcp__specgraph__author" &&
-        phase === "after" &&
-        typeof action === "string" &&
-        STAGE_ACTIONS.has(action)
-      ) {
-        const suggest = (ctx as { suggest?: (msg: string) => void }).suggest;
-        if (typeof suggest === "function") {
-          suggest(
-            `Run analytical passes for the ${action} stage by calling analytical_pass with action=run for each pass type returned by passes_for_stage.`,
-          );
-        }
+  // One-shot stage nudge: set by tool.execute.after, consumed by the next
+  // chat.system.transform. Cleared after consumption so the nudge doesn't
+  // repeat indefinitely.
+  let pendingStageNudge: string | null = null;
+
+  const loadPrime = async (): Promise<string> => {
+    if (cachedPrime !== null) return cachedPrime;
+    if (primeAttempted) return "";
+    primeAttempted = true;
+    try {
+      const { stdout } = await execFileAsync("specgraph", [
+        "read-mcp-resource",
+        "specgraph://prime",
+      ]);
+      cachedPrime = stdout.trim();
+      return cachedPrime;
+    } catch (err) {
+      // Soft-fail: missing CLI or unreachable server should not block the
+      // session. Match the bash session-start hook in the Claude shim.
+      const msg = err instanceof Error ? err.message : String(err);
+      cachedPrime = `# specgraph prime unavailable (${msg}); continuing without prime.`;
+      return cachedPrime;
+    }
+  };
+
+  return {
+    "experimental.chat.system.transform": async (_input, output) => {
+      const prime = await loadPrime();
+      if (prime.length > 0) {
+        output.system.push(prime);
+      }
+      if (pendingStageNudge !== null) {
+        output.system.push(pendingStageNudge);
+        pendingStageNudge = null;
       }
     },
-  },
+    "tool.execute.after": async (input, _output) => {
+      if (input.tool !== "mcp__specgraph__author") return;
+      const action = input.args?.action;
+      if (typeof action !== "string" || !STAGE_ACTIONS.has(action)) return;
+      pendingStageNudge =
+        `Run the analytical passes registered for the ${action} stage. ` +
+        `Call the analytical_pass tool with action=run for each pass type ` +
+        `returned by passes_for_stage for stage=${action}. Surface findings ` +
+        `inline; do not silently swallow them.`;
+    },
+  };
 };
 
 export default plugin;

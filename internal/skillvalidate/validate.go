@@ -143,11 +143,18 @@ func splitFrontmatter(r *bufio.Reader) (frontmatter, body []byte, err error) {
 	var fm strings.Builder
 	for {
 		line, lineErr := r.ReadString('\n')
-		if lineErr != nil {
-			return nil, nil, fmt.Errorf("frontmatter not closed: %w", lineErr)
-		}
+		// bufio.Reader.ReadString returns both the partial line *and* io.EOF
+		// when the delimiter is missing at end-of-file. Check the line content
+		// before deciding whether the EOF is fatal — a SKILL.md ending with
+		// `---` and no final newline is well-formed.
 		if strings.TrimSpace(line) == "---" {
 			break
+		}
+		if lineErr != nil {
+			if errors.Is(lineErr, io.EOF) {
+				return nil, nil, fmt.Errorf("frontmatter not closed before EOF")
+			}
+			return nil, nil, fmt.Errorf("frontmatter not closed: %w", lineErr)
 		}
 		fm.WriteString(line)
 	}

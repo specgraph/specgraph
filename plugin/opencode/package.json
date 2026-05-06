@@ -5,6 +5,8 @@
   "license": "Apache-2.0",
   "main": ".opencode/plugins/specgraph.ts",
   "type": "module",
+  "private": true,
+  "_publishNote": "Set private:true until npm publishing lands (bd spgr-sa95). The .opencode/skills entry below is a symlink to ../../skills; npm packs symlinks pointing outside the package root as dead symlinks. spgr-sa95 covers adding a prepack step to materialize the skills directory before publishing.",
   "peerDependencies": {
     "@opencode-ai/plugin": "*"
   },

@@ -106,6 +106,54 @@ Body.
 	}
 }
 
+func TestValidateRoots_AcceptsValidSkillWithoutTrailingNewline(t *testing.T) {
+	// Regression: bufio.Reader.ReadString('\n') returns the partial line plus
+	// io.EOF when the delimiter is missing at end-of-file. Ensure a SKILL.md
+	// whose body ends without a trailing newline still validates — the
+	// closing `---` of the frontmatter is what matters, not whether the body
+	// happens to end with \n.
+	root := t.TempDir()
+	writeSkill(t, root, "no-trailing-nl-skill", "---\n"+
+		"name: no-trailing-nl-skill\n"+
+		"description: A skill whose body does not end with a newline.\n"+
+		"---\n"+
+		"Body without trailing newline.")
+
+	results, err := ValidateRoots([]string{root})
+	if err != nil {
+		t.Fatalf("ValidateRoots: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("got %d results, want 1", len(results))
+	}
+	if !results[0].OK {
+		t.Fatalf("expected OK, got reasons: %v", results[0].Reasons)
+	}
+}
+
+func TestValidateRoots_RejectsTruncatedFrontmatter(t *testing.T) {
+	// EOF inside the frontmatter (no closing ---) must still fail clearly.
+	root := t.TempDir()
+	writeSkill(t, root, "truncated-skill", "---\nname: truncated-skill\ndescription: missing closer\n")
+
+	results, err := ValidateRoots([]string{root})
+	if err != nil {
+		t.Fatalf("ValidateRoots: %v", err)
+	}
+	if len(results) != 1 || results[0].OK {
+		t.Fatalf("expected failure for truncated frontmatter, got %+v", results)
+	}
+	found := false
+	for _, r := range results[0].Reasons {
+		if strings.Contains(r, "frontmatter not closed") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected 'frontmatter not closed' reason, got %v", results[0].Reasons)
+	}
+}
+
 func TestValidateRoots_RejectsTooLongDescription(t *testing.T) {
 	root := t.TempDir()
 	long := strings.Repeat("a", maxDesc+1)
