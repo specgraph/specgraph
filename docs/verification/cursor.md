@@ -146,10 +146,9 @@ declarations:
 | Polecat                   | `polecat`         | ProfileExecution  | first-party           |
 | Gastown                   | `gastown`         | ProfileExecution  | first-party           |
 
-Tasks 35 and 36 will repeat this verification flow for OpenCode and Codex;
-each may surface additional `_vscode`-style suffixes or different bug
-shapes that this PR's tooling (slog logging in OnAfterInitialize, debug
-middleware on `/mcp/`) is now wired to capture.
+OpenCode and Claude Code now have their own empirical verification artifacts.
+Codex verification is deferred until there are users asking for Codex support;
+the profile mapping remains declared but not empirically exercised.
 
 ## What this PR does not address
 
