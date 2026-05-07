@@ -17,6 +17,7 @@ import (
 // render a unified "<path>: <action>" output.
 type Action string
 
+// Action values mirror mcpconfigs.Action string tags for unified init output.
 const (
 	ActionCreated Action = "created"
 	ActionUpdated Action = "updated"
