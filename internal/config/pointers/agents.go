@@ -66,7 +66,7 @@ func syncAgents(projectDir string, opts Options) SyncResult {
 
 	// Phase 1: validate existing init markers (corruption rules).
 	if len(existing) > 0 {
-		if err := validateInitMarkers(existing); err != nil {
+		if err := validateInitMarkers(agentsRel, existing); err != nil {
 			return errResult(agentsRel, err)
 		}
 	}
@@ -112,7 +112,7 @@ func syncAgents(projectDir string, opts Options) SyncResult {
 // validateInitMarkers returns an error for any of the four corruption rules:
 // (1) end before start, (2) start without end, (3) double start, (4)
 // init start marker missing the v=1 suffix.
-func validateInitMarkers(data []byte) error {
+func validateInitMarkers(displayName string, data []byte) error {
 	starts := bytes.Count(data, []byte(initStart))
 	ends := bytes.Count(data, []byte(initEnd))
 
@@ -125,7 +125,8 @@ func validateInitMarkers(data []byte) error {
 			continue
 		}
 		return fmt.Errorf(
-			"AGENTS.md contains an init marker without the expected v=1 suffix at offset %d; remove the marker or fix it manually",
+			"%s contains an init marker without the expected v=1 suffix at offset %d; remove the marker or fix it manually",
+			displayName,
 			m[0],
 		)
 	}
@@ -138,15 +139,15 @@ func validateInitMarkers(data []byte) error {
 		s := bytes.Index(data, []byte(initStart))
 		e := bytes.Index(data, []byte(initEnd))
 		if e < s {
-			return fmt.Errorf("AGENTS.md: init end marker appears before start marker")
+			return fmt.Errorf("%s: init end marker appears before start marker", displayName)
 		}
 		return nil
 	case starts > 1:
-		return fmt.Errorf("AGENTS.md: more than one init start marker")
+		return fmt.Errorf("%s: more than one init start marker", displayName)
 	case starts == 1 && ends == 0:
-		return fmt.Errorf("AGENTS.md: init start marker without matching end")
+		return fmt.Errorf("%s: init start marker without matching end", displayName)
 	default: // ends > 0, starts == 0
-		return fmt.Errorf("AGENTS.md: init end marker without matching start")
+		return fmt.Errorf("%s: init end marker without matching start", displayName)
 	}
 }
 

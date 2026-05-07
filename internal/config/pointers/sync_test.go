@@ -4,8 +4,10 @@
 package pointers
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -332,5 +334,94 @@ func TestSync_PreservesCursorRuleFrontmatter(t *testing.T) {
 	}
 	if !strings.Contains(bs, "extraField: kept") {
 		t.Errorf("user extra field not preserved:\n%s", bs)
+	}
+}
+
+func TestSync_CursorBodyCorruptionErrorMentionsPath(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, ".cursor", "rules"), 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	const fm = "---\ndescription: x\n---\n\n"
+	seed := "<!-- specgraph:init:start v=1 -->\nbody\n" // missing end
+	if err := os.WriteFile(filepath.Join(dir, cursorRel), []byte(fm+seed), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	r := Sync(dir, defaultOpts())[1]
+	if r.Action != ActionError {
+		t.Fatalf("Action = %q, want %q", r.Action, ActionError)
+	}
+	if r.Err == nil || !strings.Contains(r.Err.Error(), "specgraph-bootstrap.md") {
+		t.Errorf("expected error to mention bootstrap path; got %v", r.Err)
+	}
+}
+
+func TestSync_FailureOnOneFileDoesNotAbortOther(t *testing.T) {
+	dir := t.TempDir()
+	// Corrupt AGENTS.md so it errors; cursor file is fresh and should succeed.
+	seed := "<!-- specgraph:init:start v=1 -->\nbody\n" // missing end
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	results := Sync(dir, defaultOpts())
+	if len(results) != 2 {
+		t.Fatalf("len(results) = %d, want 2", len(results))
+	}
+	if results[0].Action != ActionError {
+		t.Errorf("results[0] (AGENTS.md): Action = %q, want %q", results[0].Action, ActionError)
+	}
+	if results[1].Action != ActionCreated {
+		t.Errorf("results[1] (cursor): Action = %q, want %q", results[1].Action, ActionCreated)
+	}
+}
+
+func TestSync_AtomicWriteOnFailure(t *testing.T) {
+	dir := t.TempDir()
+	// First write a baseline.
+	Sync(dir, defaultOpts())
+	original, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	// Make the project root read-only so atomicWrite's MkdirAll/Rename fails.
+	if err := os.Chmod(dir, 0o555); err != nil { //nolint:gosec // test-only readonly
+		t.Skipf("chmod restricted on this fs: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) //nolint:gosec // test-only restore
+	// Trigger an update by changing the serverURL.
+	r := Sync(dir, Options{ServerURL: "http://example.com:9999", ProjectSlug: "specgraph"})[0]
+	if r.Action != ActionError {
+		// The MkdirAll on the parent might succeed if it already exists; on
+		// some filesystems chmod 0o555 still allows existing-file writes via
+		// rename. Skip rather than false-fail.
+		t.Skipf("filesystem permitted write under 0o555 dir; cannot exercise atomic-rename failure: action = %q", r.Action)
+	}
+	cur, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if !bytes.Equal(original, cur) {
+		t.Errorf("AGENTS.md modified despite write failure")
+	}
+}
+
+func TestSync_ConcurrentInvocations(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("acquireFileLock is a no-op on Windows; cross-process concurrency is best-effort there")
+	}
+	dir := t.TempDir()
+	const N = 4
+	done := make(chan struct{}, N)
+	for i := 0; i < N; i++ {
+		go func() {
+			defer func() { done <- struct{}{} }()
+			Sync(dir, defaultOpts())
+		}()
+	}
+	for i := 0; i < N; i++ {
+		<-done
+	}
+	body, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	bs := string(body)
+	// Exactly one start marker and one end marker.
+	if c := strings.Count(bs, initStart); c != 1 {
+		t.Errorf("init start marker count = %d, want 1; concurrent runs interleaved\n%s", c, bs)
+	}
+	if c := strings.Count(bs, initEnd); c != 1 {
+		t.Errorf("init end marker count = %d, want 1; concurrent runs interleaved\n%s", c, bs)
 	}
 }

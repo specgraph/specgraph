@@ -61,7 +61,7 @@ func syncCursor(projectDir string, opts Options) SyncResult {
 	}
 
 	// Phase 1: corruption check on the body.
-	if err := validateInitMarkers(body); err != nil {
+	if err := validateInitMarkers(cursorRel, body); err != nil {
 		return errResult(cursorRel, err)
 	}
 
