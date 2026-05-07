@@ -79,13 +79,6 @@ with teams that do not use SpecGraph directly.
 - **Linear** (Planned) — Push-only or bidirectional sync to Linear issues
   and projects.
 
-- **Tool Injection** — `specgraph inject <slug>` writes a spec's interface
-  contracts, constraints, and relevant constitution layers into
-  `.claude/specs/`, `.cursor/rules/`, or `AGENTS.md` so any coding agent
-  picks up the right context automatically. (Constitution-only emission to
-  `CLAUDE.md` is a separate command: `specgraph constitution emit
-  --format claude-md`.)
-
 ---
 
 ## Integration Points
@@ -94,7 +87,9 @@ SpecGraph connects to the outside world through four interfaces:
 
 - **CLI** (Shipped) — `specgraph` is the primary interface. Author specs,
   query the graph, generate execution bundles, run the linter, and manage
-  the constitution from the terminal.
+  the constitution from the terminal. Use
+  `specgraph constitution emit --format claude-md` if you need the
+  constitution as static text outside the MCP integration.
 
 - **Claude Code, Cursor, and OpenCode** (Shipped) — Three thin per-harness
   shims under `plugin/` consume a single shared `skills/` tree. Six skills
@@ -122,7 +117,8 @@ author specs, query the graph, run the linter, generate bundles.
 
 Every integration is independently optional. Add an execution environment
 when you want automated implementation. Add GitHub sync for PM visibility.
-Add tool injection for coding-agent context. No combination is degraded —
+Wire your harness via `specgraph init`; the MCP integration provides spec
+and constitution resources directly. No combination is degraded —
 every configuration is first-class. The specification layer and the
 execution layer serve different purposes and evolve at different rates.
 Keeping them independent avoids coupling your design process to any

@@ -1,6 +1,35 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+## Unreleased
+
+### Removed
+
+- `specgraph inject` CLI subcommand and the `Inject` ConnectRPC method are
+  removed. Use `specgraph init` to wire harness configs (.mcp.json,
+  .cursor/mcp.json, opencode.json) and pointer files (AGENTS.md,
+  .cursor/rules/specgraph-bootstrap.md). Spec content is served live via the
+  MCP `specgraph://spec/{slug}` resource.
+
+### Migration
+
+- `specgraph init` automatically purges legacy per-slug blocks
+  (`<!-- specgraph:<slug>:start -->` / `<!-- specgraph:<slug>:end -->`) from
+  AGENTS.md on next run. The number purged is reported in the init output.
+- Orphan files under `.claude/specs/` and per-slug files under
+  `.cursor/rules/specgraph-<slug>.md` are **not** removed automatically.
+  Delete them manually if desired. The find invocation below skips
+  `specgraph.md` (plugin-shipped) and `specgraph-bootstrap.md`
+  (init-managed); a plain `rm specgraph-*.md` glob would catch the
+  bootstrap file too.
+
+  ```bash
+  rm -rf .claude/specs
+  find .cursor/rules -maxdepth 1 -type f -name 'specgraph-*.md' \
+    ! -name 'specgraph-bootstrap.md' -delete
+  ```
+
 ## [0.5.0](https://github.com/specgraph/specgraph/compare/v0.4.0...v0.5.0) - 2026-04-04
 
 ### Bug Fixes
