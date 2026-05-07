@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/config/mcpconfigs"
+	"github.com/specgraph/specgraph/internal/config/pointers"
 	"github.com/spf13/cobra"
 )
 
@@ -123,6 +125,31 @@ func runInit(_ *cobra.Command, args []string) error {
 	}
 	if syncErr != nil {
 		return fmt.Errorf("sync mcp configs: %w", syncErr)
+	}
+
+	// Pointer files (AGENTS.md, .cursor/rules/specgraph-bootstrap.md).
+	// Run only after mcpconfigs succeeded; per-file errors don't abort the
+	// pointer phase but do produce a non-zero exit.
+	pointerResults := pointers.Sync(cwd, pointers.Options{
+		ServerURL:   serverURL,
+		ProjectSlug: pc.Slug,
+	})
+	var failedPaths []string
+	for _, r := range pointerResults {
+		switch r.Action {
+		case pointers.ActionError:
+			fmt.Printf("%s: error: %v\n", r.Path, r.Err)
+			failedPaths = append(failedPaths, r.Path)
+		default:
+			line := fmt.Sprintf("%s: %s", r.Path, r.Action)
+			if r.LegacyBlocksPurged > 0 {
+				line += fmt.Sprintf(" (purged %d legacy blocks)", r.LegacyBlocksPurged)
+			}
+			fmt.Println(line)
+		}
+	}
+	if len(failedPaths) > 0 {
+		return fmt.Errorf("sync pointer files: %d failed: %s", len(failedPaths), strings.Join(failedPaths, ", "))
 	}
 
 	// Only emit the success banner after Sync succeeds — printing it

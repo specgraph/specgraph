@@ -420,3 +420,70 @@ func TestInitYesFlagAccepted(t *testing.T) {
 		}
 	})
 }
+
+func TestInit_FreshProject_WritesPointers(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := runInitInDir(t, dir, []string{"specgraph"}); err != nil {
+		t.Fatalf("runInit: %v", err)
+	}
+	for _, p := range []string{"AGENTS.md", ".cursor/rules/specgraph-bootstrap.md"} {
+		if _, err := os.Stat(filepath.Join(dir, p)); err != nil {
+			t.Errorf("expected %s to exist: %v", p, err)
+		}
+	}
+}
+
+func TestInit_RerunIsNoOp(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := runInitInDir(t, dir, []string{"specgraph"}); err != nil {
+		t.Fatalf("first runInit: %v", err)
+	}
+	files := []string{
+		".mcp.json", ".cursor/mcp.json", "opencode.json",
+		"AGENTS.md", ".cursor/rules/specgraph-bootstrap.md",
+	}
+	snaps := map[string][]byte{}
+	for _, f := range files {
+		data, err := os.ReadFile(filepath.Join(dir, f))
+		if err != nil {
+			t.Fatalf("read %s: %v", f, err)
+		}
+		snaps[f] = data
+	}
+	if _, err := runInitInDir(t, dir, []string{"specgraph"}); err != nil {
+		t.Fatalf("second runInit: %v", err)
+	}
+	for _, f := range files {
+		got, err := os.ReadFile(filepath.Join(dir, f))
+		if err != nil {
+			t.Fatalf("read %s after second run: %v", f, err)
+		}
+		if !bytes.Equal(got, snaps[f]) {
+			t.Errorf("%s: bytes changed between idempotent runs", f)
+		}
+	}
+}
+
+func TestInit_PurgesLegacyInjectArtifacts(t *testing.T) {
+	dir := t.TempDir()
+	seed := "# my AGENTS\n" +
+		"<!-- specgraph:foo:start -->\nA\n<!-- specgraph:foo:end -->\n" +
+		"<!-- specgraph:My.spec_v2:start -->\nB\n<!-- specgraph:My.spec_v2:end -->\n"
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if _, err := runInitInDir(t, dir, []string{"specgraph"}); err != nil {
+		t.Fatalf("runInit: %v", err)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("read AGENTS.md: %v", err)
+	}
+	bs := string(body)
+	if strings.Contains(bs, "specgraph:foo:") || strings.Contains(bs, "specgraph:My.spec_v2:") {
+		t.Errorf("legacy markers not purged:\n%s", bs)
+	}
+	if !strings.Contains(bs, "<!-- specgraph:init:start v=1 -->") {
+		t.Errorf("init block missing:\n%s", bs)
+	}
+}
