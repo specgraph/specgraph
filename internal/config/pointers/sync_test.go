@@ -268,3 +268,69 @@ func TestSync_RejectsSymlinkInPath(t *testing.T) {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
 	}
 }
+
+func TestSync_CreatesCursorRule(t *testing.T) {
+	dir := t.TempDir()
+	r := Sync(dir, defaultOpts())[1]
+	if r.Path != cursorRel {
+		t.Errorf("Path = %q, want %q", r.Path, cursorRel)
+	}
+	if r.Action != ActionCreated {
+		t.Errorf("Action = %q, want %q", r.Action, ActionCreated)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, cursorRel))
+	if err != nil {
+		t.Fatalf("read %s: %v", cursorRel, err)
+	}
+	bs := string(body)
+	if !strings.HasPrefix(bs, "---\n") {
+		t.Errorf("missing frontmatter header:\n%s", bs)
+	}
+	if !strings.Contains(bs, "alwaysApply: true") {
+		t.Errorf("alwaysApply: true not in frontmatter:\n%s", bs)
+	}
+	if !strings.Contains(bs, "<!-- specgraph:init:start v=1 -->") {
+		t.Errorf("init block missing in body:\n%s", bs)
+	}
+}
+
+func TestSync_RefusesCursorRuleWithoutFrontmatter(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, ".cursor", "rules"), 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, cursorRel), []byte("# bare\n"), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	r := Sync(dir, defaultOpts())[1]
+	if r.Action != ActionError {
+		t.Errorf("Action = %q, want %q", r.Action, ActionError)
+	}
+}
+
+func TestSync_PreservesCursorRuleFrontmatter(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, ".cursor", "rules"), 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	const userFM = "---\ndescription: my custom desc\nalwaysApply: false\nextraField: kept\n---\n\n"
+	const userBlock = "<!-- specgraph:init:start v=1 -->\nstale\n<!-- specgraph:init:end -->\n"
+	if err := os.WriteFile(filepath.Join(dir, cursorRel), []byte(userFM+userBlock), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	r := Sync(dir, defaultOpts())[1]
+	if r.Action != ActionUpdated {
+		t.Errorf("Action = %q, want %q", r.Action, ActionUpdated)
+	}
+	body, _ := os.ReadFile(filepath.Join(dir, cursorRel))
+	bs := string(body)
+	if !strings.Contains(bs, "description: my custom desc") {
+		t.Errorf("user description not preserved:\n%s", bs)
+	}
+	if !strings.Contains(bs, "alwaysApply: false") {
+		t.Errorf("user alwaysApply override not preserved:\n%s", bs)
+	}
+	if !strings.Contains(bs, "extraField: kept") {
+		t.Errorf("user extra field not preserved:\n%s", bs)
+	}
+}
