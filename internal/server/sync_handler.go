@@ -6,40 +6,32 @@ package server
 import (
 	"context"
 	"errors"
-	"io/fs"
 	"log/slog"
 	"net/http"
-	"path/filepath"
-	"strings"
 	"sync"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
-	"github.com/specgraph/specgraph/internal/inject"
 	"github.com/specgraph/specgraph/internal/storage"
 	syncpkg "github.com/specgraph/specgraph/internal/sync"
 )
 
 // SyncHandler implements the ConnectRPC SyncService.
 type SyncHandler struct {
-	mu                sync.RWMutex
-	scoper            storage.Scoper
-	adapters          map[storage.SyncAdapterType]syncpkg.Adapter
-	allowedOutputRoot string // if set, Inject validates outputDir is within this root
+	mu       sync.RWMutex
+	scoper   storage.Scoper
+	adapters map[storage.SyncAdapterType]syncpkg.Adapter
 }
 
 var _ specgraphv1connect.SyncServiceHandler = (*SyncHandler)(nil)
 
 // RegisterSyncService registers the SyncService handler on the mux and returns
 // the handler so callers can register adapters via RegisterAdapter.
-// allowedOutputRoot restricts Inject output_dir to paths within this root;
-// pass "" for unrestricted mode (not recommended for production).
-func RegisterSyncService(mux *http.ServeMux, scoper storage.Scoper, allowedOutputRoot string, opts ...connect.HandlerOption) *SyncHandler {
+func RegisterSyncService(mux *http.ServeMux, scoper storage.Scoper, opts ...connect.HandlerOption) *SyncHandler {
 	handler := &SyncHandler{
-		scoper:            scoper,
-		adapters:          map[storage.SyncAdapterType]syncpkg.Adapter{},
-		allowedOutputRoot: allowedOutputRoot,
+		scoper:   scoper,
+		adapters: map[storage.SyncAdapterType]syncpkg.Adapter{},
 	}
 	path, h := specgraphv1connect.NewSyncServiceHandler(handler, opts...)
 	mux.Handle(path, h)
@@ -51,14 +43,6 @@ func (h *SyncHandler) RegisterAdapter(adapter syncpkg.Adapter) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.adapters[adapter.Name()] = adapter
-}
-
-// SetAllowedOutputRoot restricts the Inject handler's output_dir to paths
-// within the given root directory. If not called, output_dir is unrestricted.
-func (h *SyncHandler) SetAllowedOutputRoot(root string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.allowedOutputRoot = root
 }
 
 // SyncBeads implements specgraphv1connect.SyncServiceHandler.
@@ -237,98 +221,4 @@ func (h *SyncHandler) GetSyncStatus(ctx context.Context, req *connect.Request[sp
 		protoMappings = append(protoMappings, pm)
 	}
 	return connect.NewResponse(&specv1.SyncStatusResponse{Mappings: protoMappings}), nil
-}
-
-// Inject implements specgraphv1connect.SyncServiceHandler.
-func (h *SyncHandler) Inject(ctx context.Context, req *connect.Request[specv1.InjectRequest]) (*connect.Response[specv1.InjectResponse], error) {
-	store, err := scopeStore(ctx, h.scoper)
-	if err != nil {
-		return nil, err
-	}
-	if req.Msg.SpecSlug == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("spec_slug is required"))
-	}
-	if req.Msg.Tool == specv1.InjectTool_INJECT_TOOL_UNSPECIFIED {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("tool is required"))
-	}
-
-	spec, err := store.GetSpec(ctx, req.Msg.SpecSlug)
-	if err != nil {
-		if errors.Is(err, storage.ErrSpecNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
-		}
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to retrieve spec"))
-	}
-
-	outputDir := req.Msg.OutputDir
-	if outputDir == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output_dir is required"))
-	}
-
-	h.mu.RLock()
-	allowedRoot := h.allowedOutputRoot
-	h.mu.RUnlock()
-
-	absDir, absErr := filepath.Abs(outputDir)
-	if absErr != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid output directory"))
-	}
-	// Resolve symlinks to prevent escape via symlinked directories.
-	realDir, evalErr := filepath.EvalSymlinks(absDir)
-	if evalErr != nil {
-		if !errors.Is(evalErr, fs.ErrNotExist) {
-			slog.WarnContext(ctx, "EvalSymlinks failed for output_dir, falling back to unresolved path",
-				"path", absDir, "error", evalErr)
-		}
-		// Directory may not exist yet — fall back to the unresolved absDir.
-		realDir = absDir
-	}
-
-	if allowedRoot != "" {
-		absRoot := filepath.Clean(allowedRoot)
-		// Resolve symlinks on the root too (e.g., /var -> /private/var on macOS).
-		if realRoot, rlErr := filepath.EvalSymlinks(absRoot); rlErr == nil {
-			absRoot = realRoot
-		}
-		if !strings.HasPrefix(realDir, absRoot+string(filepath.Separator)) && realDir != absRoot {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("output_dir must be within the allowed root directory"))
-		}
-	}
-
-	tool, toolErr := injectToolFromProto(req.Msg.Tool)
-	if toolErr != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("unsupported inject tool"))
-	}
-
-	// Constitution is optional for injection
-	var constitution *storage.Constitution
-	var warnings []string
-	constitution, conErr := store.GetConstitution(ctx)
-	if conErr != nil {
-		if errors.Is(conErr, storage.ErrConstitutionNotFound) {
-			slog.DebugContext(ctx, "no constitution seeded yet")
-			constitution = nil
-		} else {
-			slog.WarnContext(ctx, "failed to load constitution for injection", "error", conErr)
-			warnings = append(warnings, "constitution load failed: storage error")
-			constitution = nil
-		}
-	}
-
-	files, err := inject.Inject(spec, constitution, tool, realDir)
-	if err != nil {
-		slog.ErrorContext(ctx, "failed to inject spec context", "error", err)
-		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to inject spec context"))
-	}
-
-	summary := "Injected spec context for " + spec.Slug
-	if len(warnings) > 0 {
-		summary += " (warning: " + strings.Join(warnings, "; ") + ")"
-	}
-
-	return connect.NewResponse(&specv1.InjectResponse{
-		FilesWritten: files,
-		Summary:      summary,
-		Warnings:     warnings,
-	}), nil
 }

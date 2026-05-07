@@ -371,9 +371,3 @@ func TestConstitutionFromProto_UnknownReferenceType(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported reference type")
 }
-
-func TestInjectToolFromProto_Unknown(t *testing.T) {
-	_, err := injectToolFromProto(specv1.InjectTool(99))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown inject tool")
-}

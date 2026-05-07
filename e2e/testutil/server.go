@@ -57,7 +57,7 @@ func StartServer(ctx context.Context, connURL string, opts ...connect.HandlerOpt
 	driftEngine := drift.NewEngine(store, nil)
 	lintEngine := linter.NewEngine(store, nil)
 	server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts...)
-	server.RegisterSyncService(mux, store, "", opts...)
+	server.RegisterSyncService(mux, store, opts...)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

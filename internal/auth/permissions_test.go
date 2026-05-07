@@ -69,7 +69,6 @@ var allProcedures = []string{
 	specgraphv1connect.SyncServiceSyncBeadsProcedure,
 	specgraphv1connect.SyncServiceSyncGitHubProcedure,
 	specgraphv1connect.SyncServiceGetSyncStatusProcedure,
-	specgraphv1connect.SyncServiceInjectProcedure,
 	// AnalyticalPassService
 	specgraphv1connect.AnalyticalPassServiceRunAnalyticalPassProcedure,
 	specgraphv1connect.AnalyticalPassServiceStoreFindingsProcedure,
