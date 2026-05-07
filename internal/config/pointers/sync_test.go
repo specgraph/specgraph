@@ -129,3 +129,80 @@ func TestSync_AppendsBlockToFileWithoutMarkers(t *testing.T) {
 		t.Errorf("init block missing:\n%s", bs)
 	}
 }
+
+func TestSync_PurgesLegacyInjectBlocks_SimpleSlugs(t *testing.T) {
+	dir := t.TempDir()
+	seed := "<!-- specgraph:foo:start -->\ndigest A\n<!-- specgraph:foo:end -->\n" +
+		"<!-- specgraph:bar-baz:start -->\ndigest B\n<!-- specgraph:bar-baz:end -->\n"
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	r := Sync(dir, defaultOpts())[0]
+	if r.LegacyBlocksPurged != 2 {
+		t.Errorf("LegacyBlocksPurged = %d, want 2", r.LegacyBlocksPurged)
+	}
+	body, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if strings.Contains(string(body), "specgraph:foo:") || strings.Contains(string(body), "specgraph:bar-baz:") {
+		t.Errorf("legacy markers still present:\n%s", body)
+	}
+}
+
+func TestSync_PurgesLegacyInjectBlocks_RealisticSlugs(t *testing.T) {
+	dir := t.TempDir()
+	// inject's safeSlugPattern allows uppercase, dots, underscores.
+	seed := "<!-- specgraph:MySpec.v2:start -->\nA\n<!-- specgraph:MySpec.v2:end -->\n" +
+		"<!-- specgraph:my_spec:start -->\nB\n<!-- specgraph:my_spec:end -->\n"
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	r := Sync(dir, defaultOpts())[0]
+	if r.LegacyBlocksPurged != 2 {
+		t.Errorf("LegacyBlocksPurged = %d, want 2", r.LegacyBlocksPurged)
+	}
+	body, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if strings.Contains(string(body), "MySpec.v2") || strings.Contains(string(body), "my_spec") {
+		t.Errorf("realistic-slug legacy markers still present:\n%s", body)
+	}
+}
+
+func TestSync_LegacyMarkerWithInvalidSlugNotPurged(t *testing.T) {
+	dir := t.TempDir()
+	seed := "<!-- specgraph:has space:start -->\nbody\n<!-- specgraph:has space:end -->\n"
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	r := Sync(dir, defaultOpts())[0]
+	if r.LegacyBlocksPurged != 0 {
+		t.Errorf("LegacyBlocksPurged = %d, want 0", r.LegacyBlocksPurged)
+	}
+}
+
+func TestSync_DoesNotPurgeInitMarker(t *testing.T) {
+	dir := t.TempDir()
+	// First create canonical state.
+	Sync(dir, defaultOpts())
+	// Run again; init block must persist (NoOp).
+	r := Sync(dir, defaultOpts())[0]
+	if r.Action != ActionNoOp {
+		t.Errorf("Action = %q, want %q", r.Action, ActionNoOp)
+	}
+	if r.LegacyBlocksPurged != 0 {
+		t.Errorf("LegacyBlocksPurged = %d, want 0; the init block must not be matched by the legacy regex", r.LegacyBlocksPurged)
+	}
+}
+
+func TestSync_LegacyShapedInitMarkerIsCorruption(t *testing.T) {
+	dir := t.TempDir()
+	// init marker WITHOUT v=1 — corruption rule #4 must fire BEFORE legacy purge.
+	seed := "<!-- specgraph:init:start -->\nbody\n<!-- specgraph:init:end -->\n"
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	r := Sync(dir, defaultOpts())[0]
+	if r.Action != ActionError {
+		t.Errorf("Action = %q, want %q", r.Action, ActionError)
+	}
+	if r.Err == nil || !strings.Contains(r.Err.Error(), "v=1") {
+		t.Errorf("Err = %v, want a v=1 error", r.Err)
+	}
+}
