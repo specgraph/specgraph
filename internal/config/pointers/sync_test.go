@@ -206,3 +206,65 @@ func TestSync_LegacyShapedInitMarkerIsCorruption(t *testing.T) {
 		t.Errorf("Err = %v, want a v=1 error", r.Err)
 	}
 }
+
+func TestSync_RejectsCorruptedMarkers_EndBeforeStart(t *testing.T) {
+	dir := t.TempDir()
+	seed := "<!-- specgraph:init:end -->\n<!-- specgraph:init:start v=1 -->\n"
+	os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600)
+	r := Sync(dir, defaultOpts())[0]
+	if r.Action != ActionError {
+		t.Errorf("Action = %q, want %q", r.Action, ActionError)
+	}
+}
+
+func TestSync_RejectsCorruptedMarkers_StartWithoutEnd(t *testing.T) {
+	dir := t.TempDir()
+	seed := "<!-- specgraph:init:start v=1 -->\nbody\n"
+	os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600)
+	r := Sync(dir, defaultOpts())[0]
+	if r.Action != ActionError {
+		t.Errorf("Action = %q, want %q", r.Action, ActionError)
+	}
+}
+
+func TestSync_RejectsCorruptedMarkers_DoubleStart(t *testing.T) {
+	dir := t.TempDir()
+	seed := "<!-- specgraph:init:start v=1 -->\nbody\n<!-- specgraph:init:start v=1 -->\nmore\n<!-- specgraph:init:end -->\n"
+	os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600)
+	r := Sync(dir, defaultOpts())[0]
+	if r.Action != ActionError {
+		t.Errorf("Action = %q, want %q", r.Action, ActionError)
+	}
+}
+
+func TestSync_RejectsInitMarkerWithoutVersion(t *testing.T) {
+	// Same shape as TestSync_LegacyShapedInitMarkerIsCorruption but without
+	// the matching end marker — guards rule 4 in isolation.
+	dir := t.TempDir()
+	seed := "<!-- specgraph:init:start -->\nbody\n"
+	os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600)
+	r := Sync(dir, defaultOpts())[0]
+	if r.Action != ActionError {
+		t.Errorf("Action = %q, want %q", r.Action, ActionError)
+	}
+	if r.Err == nil || !strings.Contains(r.Err.Error(), "v=1") {
+		t.Errorf("Err = %v, want a v=1 error", r.Err)
+	}
+}
+
+func TestSync_RejectsSymlinkInPath(t *testing.T) {
+	dir := t.TempDir()
+	// Replace the project dir's AGENTS.md path with a symlink chain by
+	// putting AGENTS.md behind a symlinked subdir. We have to seat the
+	// symlink at projectDir level since AGENTS.md is at the root; instead
+	// symlink projectDir itself so rejectSymlinkComponents triggers when
+	// joining its name.
+	link := filepath.Join(t.TempDir(), "linked")
+	if err := os.Symlink(dir, link); err != nil {
+		t.Skipf("symlink unsupported on this filesystem: %v", err)
+	}
+	r := Sync(link, defaultOpts())[0]
+	if r.Action != ActionError {
+		t.Errorf("Action = %q, want %q", r.Action, ActionError)
+	}
+}

@@ -60,6 +60,9 @@ func Sync(projectDir string, opts Options) []SyncResult {
 		}
 		return []SyncResult{{Path: projectDir, Action: ActionError, Err: msg}}
 	}
+	if li, lerr := os.Lstat(projectDir); lerr == nil && li.Mode()&os.ModeSymlink != 0 {
+		return []SyncResult{{Path: projectDir, Action: ActionError, Err: fmt.Errorf("refusing to follow symlink %s", projectDir)}}
+	}
 	return []SyncResult{
 		syncAgents(projectDir, opts),
 		syncCursor(projectDir, opts),
