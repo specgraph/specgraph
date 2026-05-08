@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -55,7 +56,11 @@ func syncAgents(projectDir string, opts Options) SyncResult {
 	if lerr != nil {
 		return errResult(agentsRel, lerr)
 	}
-	defer unlock()
+	defer func() {
+		if uerr := unlock(); uerr != nil {
+			slog.Error("unlock failed", "path", full, "error", uerr)
+		}
+	}()
 
 	existing, rerr := os.ReadFile(full)
 	if rerr != nil && !errors.Is(rerr, fs.ErrNotExist) {

@@ -27,6 +27,12 @@ const (
 	ActionError   Action = "error"
 )
 
+// Unlocker releases a file lock acquired via acquireFileLock. It returns
+// any error from the underlying flock LOCK_UN (Unix) or LockFileEx
+// release (Windows) plus any error closing the lock-file handle. Callers
+// MUST invoke Unlocker via a deferred wrapper that propagates the error.
+type Unlocker func() error
+
 // SyncResult reports what Sync did to a single managed pointer file.
 //
 // Invariant: Action == ActionError ⇔ Err != nil. Constructed via

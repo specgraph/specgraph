@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -38,7 +39,11 @@ func syncCursor(projectDir string, opts Options) SyncResult {
 	if lerr != nil {
 		return errResult(cursorRel, lerr)
 	}
-	defer unlock()
+	defer func() {
+		if uerr := unlock(); uerr != nil {
+			slog.Error("unlock failed", "path", full, "error", uerr)
+		}
+	}()
 
 	existing, rerr := os.ReadFile(full)
 	if rerr != nil && !errors.Is(rerr, fs.ErrNotExist) {

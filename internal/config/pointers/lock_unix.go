@@ -6,17 +6,17 @@
 package pointers
 
 import (
+	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"syscall"
 )
 
 // acquireFileLock acquires an exclusive advisory lock on a sibling file
-// <path>.lock. Returns an unlock function that must be called to release.
+// <path>.lock. Returns an Unlocker that must be called to release.
 // The lock file is intentionally never removed: deleting it between unlock
 // and a concurrent open creates a new inode and breaks mutual exclusion.
-func acquireFileLock(path string) (func(), error) {
+func acquireFileLock(path string) (Unlocker, error) {
 	lockPath := path + ".lock"
 	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
@@ -24,13 +24,17 @@ func acquireFileLock(path string) (func(), error) {
 	}
 	fd := int(lockFile.Fd())
 	if err := syscall.Flock(fd, syscall.LOCK_EX); err != nil {
-		lockFile.Close() //nolint:errcheck // lock acquisition failed
-		return nil, fmt.Errorf("acquire file lock: %w", err)
+		return nil, errors.Join(
+			fmt.Errorf("acquire file lock: %w", err),
+			lockFile.Close(),
+		)
 	}
-	return func() {
-		if uerr := syscall.Flock(fd, syscall.LOCK_UN); uerr != nil {
-			slog.Error("failed to release file lock", "path", path, "error", uerr)
+	return func() error {
+		uerr := syscall.Flock(fd, syscall.LOCK_UN)
+		cerr := lockFile.Close()
+		if uerr != nil || cerr != nil {
+			return errors.Join(uerr, cerr)
 		}
-		lockFile.Close() //nolint:errcheck // best-effort close after unlock
+		return nil
 	}, nil
 }
