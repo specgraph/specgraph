@@ -62,7 +62,10 @@ func syncAgents(projectDir string, opts Options) SyncResult {
 		}
 	}()
 
-	existing, rerr := os.ReadFile(full)
+	existing, rerr := readFileNoFollow(full)
+	if rerr != nil && noFollowIsSymlink(rerr) {
+		return errResult(agentsRel, fmt.Errorf("%w: %s", ErrSymlinkRejected, full))
+	}
 	if rerr != nil && !errors.Is(rerr, fs.ErrNotExist) {
 		return errResult(agentsRel, fmt.Errorf("read %s: %w", full, rerr))
 	}

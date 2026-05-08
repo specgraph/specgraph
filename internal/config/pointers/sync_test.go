@@ -626,6 +626,27 @@ func TestSync_RejectsSymlinkAtIntermediateComponent(t *testing.T) {
 	}
 }
 
+func TestSync_NoFollowReadRejectsSymlinkSwappedAfterCheck(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("O_NOFOLLOW is Unix-only; Windows path documented as best-effort")
+	}
+	dir := t.TempDir()
+	target := filepath.Join(t.TempDir(), "decoy")
+	if err := os.WriteFile(target, []byte("decoy\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Plant a symlink AT the target path before any check runs.
+	// rejectSymlinkComponents will catch this; the test pins the secondary
+	// O_NOFOLLOW defense as well.
+	if err := os.Symlink(target, filepath.Join(dir, "AGENTS.md")); err != nil {
+		t.Fatal(err)
+	}
+	report := Sync(dir, defaultOpts())
+	if !errors.Is(report.Agents.Err, ErrSymlinkRejected) {
+		t.Errorf("err = %v; want errors.Is ErrSymlinkRejected", report.Agents.Err)
+	}
+}
+
 func TestSync_SentinelErrors(t *testing.T) {
 	t.Run("corrupted markers", func(t *testing.T) {
 		dir := t.TempDir()

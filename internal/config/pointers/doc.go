@@ -13,4 +13,12 @@
 // Sync also actively purges legacy per-slug blocks that the deprecated
 // specgraph inject command used to write into AGENTS.md (markers of the
 // shape <!-- specgraph:<slug>:start --> / <!-- specgraph:<slug>:end -->).
+//
+// Symlink rejection is best-effort, not a security boundary. The
+// rejectSymlinkComponents walk and the subsequent open are not atomic;
+// a process that can write to the project directory between the walk
+// and the open could swap a path component for a symlink. On Unix we
+// reduce the window by opening read targets with O_NOFOLLOW; on
+// Windows we rely on the walk only. Treat the project directory as a
+// trust boundary and run specgraph init from a directory you own.
 package pointers
