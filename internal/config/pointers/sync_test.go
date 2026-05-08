@@ -539,3 +539,47 @@ func TestSyncResult_NonErrorImpliesNilErr(t *testing.T) {
 		t.Errorf("Cursor.Err = %v on success path", report.Cursor.Err)
 	}
 }
+
+func TestSync_SentinelErrors(t *testing.T) {
+	t.Run("corrupted markers", func(t *testing.T) {
+		dir := t.TempDir()
+		full := filepath.Join(dir, "AGENTS.md")
+		if err := os.WriteFile(full, []byte(initStart+"\nbody\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		report := Sync(dir, defaultOpts())
+		if !errors.Is(report.Agents.Err, ErrCorruptedMarkers) {
+			t.Errorf("err = %v; want errors.Is ErrCorruptedMarkers", report.Agents.Err)
+		}
+	})
+
+	t.Run("symlink rejected", func(t *testing.T) {
+		dir := t.TempDir()
+		target := filepath.Join(t.TempDir(), "elsewhere")
+		if err := os.WriteFile(target, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(target, filepath.Join(dir, "AGENTS.md")); err != nil {
+			t.Fatal(err)
+		}
+		report := Sync(dir, defaultOpts())
+		if !errors.Is(report.Agents.Err, ErrSymlinkRejected) {
+			t.Errorf("err = %v; want errors.Is ErrSymlinkRejected", report.Agents.Err)
+		}
+	})
+
+	t.Run("missing frontmatter", func(t *testing.T) {
+		dir := t.TempDir()
+		full := filepath.Join(dir, ".cursor", "rules", "specgraph-bootstrap.md")
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte("no frontmatter\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		report := Sync(dir, defaultOpts())
+		if !errors.Is(report.Cursor.Err, ErrFrontmatterMissing) {
+			t.Errorf("err = %v; want errors.Is ErrFrontmatterMissing", report.Cursor.Err)
+		}
+	})
+}

@@ -109,7 +109,8 @@ func syncCursor(projectDir string, opts Options) SyncResult {
 func splitFrontmatter(data []byte) (front, body []byte, err error) {
 	if !bytes.HasPrefix(data, []byte("---\n")) {
 		return nil, nil, fmt.Errorf(
-			"%s: missing YAML frontmatter (must start with '---'); remove the file or add frontmatter manually",
+			"%w: %s (must start with '---'); remove the file or add frontmatter manually",
+			ErrFrontmatterMissing,
 			cursorRel,
 		)
 	}

@@ -113,7 +113,7 @@ func Sync(projectDir string, opts Options) SyncReport {
 		return SyncReport{Agents: errResult(projectDir, fmt.Errorf("lstat %s: %w", projectDir, lerr))}
 	}
 	if li.Mode()&os.ModeSymlink != 0 {
-		return SyncReport{Agents: errResult(projectDir, fmt.Errorf("refusing to follow symlink %s", projectDir))}
+		return SyncReport{Agents: errResult(projectDir, fmt.Errorf("%w: %s", ErrSymlinkRejected, projectDir))}
 	}
 	return SyncReport{
 		Agents: syncAgents(projectDir, opts),
@@ -151,7 +151,7 @@ func rejectSymlinkComponents(projectDir, relPath string) error {
 			return fmt.Errorf("lstat %s: %w", cur, err)
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("refusing to follow symlink %s", cur)
+			return fmt.Errorf("%w: %s", ErrSymlinkRejected, cur)
 		}
 	}
 	return nil

@@ -129,7 +129,8 @@ func validateInitMarkers(displayName string, data []byte) error {
 			continue
 		}
 		return fmt.Errorf(
-			"%s contains an init marker without the expected v=1 suffix at offset %d; remove the marker or fix it manually",
+			"%w: %s contains an init marker without the expected v=1 suffix at offset %d; remove the marker or fix it manually",
+			ErrCorruptedMarkers,
 			displayName,
 			m[0],
 		)
@@ -143,15 +144,15 @@ func validateInitMarkers(displayName string, data []byte) error {
 		s := bytes.Index(data, []byte(initStart))
 		e := bytes.Index(data, []byte(initEnd))
 		if e < s {
-			return fmt.Errorf("%s: init end marker appears before start marker", displayName)
+			return fmt.Errorf("%w: %s: init end marker appears before start marker", ErrCorruptedMarkers, displayName)
 		}
 		return nil
 	case starts > 1:
-		return fmt.Errorf("%s: more than one init start marker", displayName)
+		return fmt.Errorf("%w: %s: more than one init start marker", ErrCorruptedMarkers, displayName)
 	case starts == 1 && ends == 0:
-		return fmt.Errorf("%s: init start marker without matching end", displayName)
+		return fmt.Errorf("%w: %s: init start marker without matching end", ErrCorruptedMarkers, displayName)
 	default: // ends > 0, starts == 0
-		return fmt.Errorf("%s: init end marker without matching start", displayName)
+		return fmt.Errorf("%w: %s: init end marker without matching start", ErrCorruptedMarkers, displayName)
 	}
 }
 
