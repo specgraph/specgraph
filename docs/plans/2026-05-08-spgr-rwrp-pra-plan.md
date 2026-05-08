@@ -63,6 +63,7 @@ The strategies (`StrategyJSONKeyMerge`, `StrategyMarkdownBlock`, `StrategyWholeF
 ## Task 0: Pre-flight + bead creation
 
 **Files:**
+
 - Create: `spgr-rwrp-pra` bead (via `bd create`)
 
 - [ ] **Step 1: Confirm we're on the right branch and clean**
@@ -102,6 +103,7 @@ bd dolt push  # if push fails, run: gh auth switch -u seanb4t && bd dolt push
 ## Task 1: Add `xdg.CacheHome()`
 
 **Files:**
+
 - Modify: `internal/xdg/xdg.go`
 - Modify: `internal/xdg/xdg_test.go`
 
@@ -182,6 +184,7 @@ Refs spgr-XXXX (PR A scope), spgr-rwrp."
 ## Task 2: Bootstrap `managedfiles` package skeleton
 
 **Files:**
+
 - Create: `internal/config/managedfiles/doc.go`
 - Create: `internal/config/managedfiles/types.go`
 - Create: `internal/config/managedfiles/errors.go`
@@ -451,6 +454,7 @@ Refs spgr-XXXX (PR A scope), spgr-rwrp."
 ## Task 3: Sentinel parsing + rendering
 
 **Files:**
+
 - Create: `internal/config/managedfiles/sentinel.go`
 - Create: `internal/config/managedfiles/sentinel_test.go`
 
@@ -716,6 +720,7 @@ Refs spgr-XXXX (PR A scope), spgr-rwrp."
 ## Task 4: Hash computation excluding sentinel
 
 **Files:**
+
 - Create: `internal/config/managedfiles/hash.go`
 - Create: `internal/config/managedfiles/hash_test.go`
 
@@ -900,6 +905,7 @@ Refs spgr-XXXX (PR A scope), spgr-rwrp."
 ## Task 5: Port file locking primitives
 
 **Files:**
+
 - Create: `internal/config/managedfiles/lock.go`
 - Create: `internal/config/managedfiles/lock_unix.go`
 - Create: `internal/config/managedfiles/lock_windows.go`
@@ -1144,6 +1150,7 @@ Refs spgr-XXXX (PR A scope), spgr-rwrp."
 ## Task 6: Port atomic write
 
 **Files:**
+
 - Create: `internal/config/managedfiles/atomic.go`
 - Create: `internal/config/managedfiles/atomic_test.go`
 
@@ -1361,6 +1368,7 @@ Refs spgr-XXXX (PR A scope), spgr-rwrp."
 ## Task 7: Port symlink rejection
 
 **Files:**
+
 - Create: `internal/config/managedfiles/symlink.go`
 - Create: `internal/config/managedfiles/symlink_test.go`
 - Create: `internal/config/managedfiles/open_unix.go`
@@ -1572,6 +1580,7 @@ Refs spgr-XXXX (PR A scope), spgr-rwrp."
 ## Task 8: Source loader with `dev` build tag
 
 **Files:**
+
 - Create: `internal/config/managedfiles/source.go`
 - Create: `internal/config/managedfiles/source_release.go`
 - Create: `internal/config/managedfiles/source_dev.go`
@@ -1805,6 +1814,7 @@ Refs spgr-XXXX (PR A scope), spgr-rwrp."
 ## Task 9: Inspect single file (state classification)
 
 **Files:**
+
 - Create: `internal/config/managedfiles/inspect.go`
 - Create: `internal/config/managedfiles/inspect_test.go`
 
@@ -2022,6 +2032,7 @@ Refs spgr-XXXX (PR A scope), spgr-rwrp."
 ## Task 10: SupersedesPath guarded delete
 
 **Files:**
+
 - Create: `internal/config/managedfiles/supersedes.go`
 - Create: `internal/config/managedfiles/supersedes_test.go`
 
@@ -2197,6 +2208,7 @@ Refs spgr-XXXX (PR A scope), spgr-rwrp."
 ## Task 11: Strategy interface + dispatch stubs
 
 **Files:**
+
 - Create: `internal/config/managedfiles/strategy.go`
 - Create: `internal/config/managedfiles/strategy_test.go`
 
@@ -2360,6 +2372,7 @@ Refs spgr-XXXX (PR A scope), spgr-rwrp."
 ## Task 12: Manifest, Sync entry point, and end-to-end empty-manifest test
 
 **Files:**
+
 - Create: `internal/config/managedfiles/manifest.go`
 - Create: `internal/config/managedfiles/sync.go`
 - Create: `internal/config/managedfiles/integration_test.go`
