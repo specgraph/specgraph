@@ -25,9 +25,8 @@ enum SyncState {
   SYNC_STATE_ERROR = 4;
 }
 
-// Reserved: enum InjectTool removed when specgraph inject was deprecated.
-// (Field numbers within the deleted enum are not part of the proto wire
-// format, but we keep this comment as a paper trail.)
+// Removed in spgr-yyjf: enum InjectTool. Reusing the name later is harmless on
+// the wire; this comment is a historical pointer only.
 
 // --- Messages ---
 
