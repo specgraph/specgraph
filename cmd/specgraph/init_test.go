@@ -464,6 +464,16 @@ func TestInit_RerunIsNoOp(t *testing.T) {
 	}
 }
 
+func TestRunInit_RejectsInvalidProjectSlug(t *testing.T) {
+	dir := t.TempDir()
+	// Slug contains a newline — should be rejected by pointers.NewOptions.
+	// Pass the bad slug as an explicit arg.
+	_, err := runInitInDir(t, dir, []string{"bad\nslug"})
+	if err == nil {
+		t.Fatal("runInit accepted a slug with a newline; want rejection")
+	}
+}
+
 func TestInit_PurgesLegacyInjectArtifacts(t *testing.T) {
 	dir := t.TempDir()
 	seed := "# my AGENTS\n" +

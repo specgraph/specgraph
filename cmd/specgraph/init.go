@@ -6,7 +6,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 
@@ -86,25 +85,17 @@ func runInit(_ *cobra.Command, args []string) error {
 		pc = &config.ProjectConfig{Slug: derived.Slug}
 	}
 
-	// Resolve and validate the server URL BEFORE any writes. A malformed
-	// global config or a non-absolute-HTTP(S) resolved URL must fail fast,
-	// before .specgraph.yaml is created on a fresh project. ResolveServer
-	// itself cannot fail (returns a string), and url.Parse is too lenient
-	// on its own: a bare "/api" parses with empty Scheme and Host;
-	// "example.com" parses with empty Scheme; "localhost:3000" parses with
-	// Scheme="localhost". We require Scheme ∈ {http, https} AND non-empty
-	// Host to reject all three.
+	// Resolve and validate the server URL and slug BEFORE any writes via
+	// NewOptions. A malformed global config or an invalid slug must fail fast
+	// before .specgraph.yaml is created on a fresh project.
 	globalCfg, err := loadGlobalCfg()
 	if err != nil {
 		return fmt.Errorf("load global config: %w", err)
 	}
 	serverURL := globalCfg.ResolveServer(pc.Slug, pc.Server)
-	parsed, parseErr := url.Parse(serverURL)
-	if parseErr != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-		if parseErr != nil {
-			return fmt.Errorf("resolved server URL %q must be an absolute http or https URL: %w", serverURL, parseErr)
-		}
-		return fmt.Errorf("resolved server URL %q must be an absolute http or https URL", serverURL)
+	opts, optsErr := pointers.NewOptions(serverURL, pc.Slug)
+	if optsErr != nil {
+		return fmt.Errorf("validate pointer options: %w", optsErr)
 	}
 	configs := mcpconfigs.ManagedConfigs(pc.Slug, serverURL)
 
@@ -130,10 +121,7 @@ func runInit(_ *cobra.Command, args []string) error {
 	// Pointer files (AGENTS.md, .cursor/rules/specgraph-bootstrap.md).
 	// Run only after mcpconfigs succeeded; per-file errors don't abort the
 	// pointer phase but do produce a non-zero exit.
-	pointerReport := pointers.Sync(cwd, pointers.Options{
-		ServerURL:   serverURL,
-		ProjectSlug: pc.Slug,
-	})
+	pointerReport := pointers.Sync(cwd, opts)
 	var failedPaths []string
 	for _, r := range []pointers.SyncResult{pointerReport.Agents, pointerReport.Cursor} {
 		if r.Path == "" {
