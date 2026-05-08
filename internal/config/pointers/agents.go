@@ -66,6 +66,7 @@ func syncAgents(projectDir string, opts Options) SyncResult {
 	if rerr != nil && noFollowIsSymlink(rerr) {
 		return errResult(agentsRel, fmt.Errorf("%w: %s", ErrSymlinkRejected, full))
 	}
+	preexisted := !errors.Is(rerr, fs.ErrNotExist)
 	if rerr != nil && !errors.Is(rerr, fs.ErrNotExist) {
 		return errResult(agentsRel, fmt.Errorf("read %s: %w", full, rerr))
 	}
@@ -115,7 +116,7 @@ func syncAgents(projectDir string, opts Options) SyncResult {
 	}
 
 	action := ActionUpdated
-	if len(existing) == 0 {
+	if !preexisted {
 		action = ActionCreated
 	}
 	return okResult(agentsRel, action, purged)

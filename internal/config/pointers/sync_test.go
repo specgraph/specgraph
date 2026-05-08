@@ -690,3 +690,15 @@ func TestSync_SentinelErrors(t *testing.T) {
 		}
 	})
 }
+
+func TestSync_EmptyFileReportsUpdatedNotCreated(t *testing.T) {
+	dir := t.TempDir()
+	full := filepath.Join(dir, "AGENTS.md")
+	if err := os.WriteFile(full, []byte{}, 0o644); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+		t.Fatal(err)
+	}
+	report := Sync(dir, defaultOpts())
+	if report.Agents.Action != ActionUpdated {
+		t.Errorf("Agents.Action = %v, want %v (file existed but was empty)", report.Agents.Action, ActionUpdated)
+	}
+}
