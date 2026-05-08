@@ -560,9 +560,10 @@ func TestRunInit_PropagatesPointerSyncErrors(t *testing.T) {
 	dir := t.TempDir()
 
 	// Seed AGENTS.md with corrupted markers (start without end).
+	//nolint:gosec // intentional permissive mode for test fixture
 	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"),
 		[]byte("<!-- specgraph:init:start v=1 -->\nbody without end\n"),
-		0o644); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+		0o644); err != nil {
 		t.Fatal(err)
 	}
 

@@ -21,6 +21,8 @@ import (
 // error rather than per-file reporting.
 type Action string
 
+// Action constants. ActionCreated/Updated/NoOp/Error describe the four
+// outcomes of a single managed pointer file sync.
 const (
 	ActionCreated Action = "created"
 	ActionUpdated Action = "updated"
