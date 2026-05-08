@@ -44,6 +44,16 @@ func StateHome() string {
 	return filepath.Join(homeDir(), ".local", "state", appName)
 }
 
+// CacheHome returns XDG_CACHE_HOME/specgraph or ~/.cache/specgraph.
+// Cache holds non-essential data that can be regenerated on demand
+// (e.g. drift-nudge throttle files for `specgraph doctor`).
+func CacheHome() string {
+	if v := os.Getenv("XDG_CACHE_HOME"); v != "" {
+		return filepath.Join(v, appName)
+	}
+	return filepath.Join(homeDir(), ".cache", appName)
+}
+
 // ConfigFile returns the path to the global config file.
 func ConfigFile() string {
 	return filepath.Join(ConfigHome(), "config.yaml")
