@@ -113,7 +113,7 @@ See the [deployment guide](https://specgraph.io/deployment/) for team and produc
 | **Sync** | |
 | `specgraph sync` | Sync specs to Beads or GitHub |
 | **Infrastructure** | |
-| `specgraph init` | Initialize project config and per-harness MCP configs (.cursor/mcp.json, .mcp.json, opencode.json) |
+| `specgraph init` | Initialize project config, per-harness MCP configs (.cursor/mcp.json, .mcp.json, opencode.json), and pointer files (AGENTS.md, .cursor/rules/specgraph-bootstrap.md) |
 | `specgraph serve` | Start the ConnectRPC API server |
 | `specgraph health` | Check server health |
 | `specgraph up/down` | Start or stop the database container (non-destructive; `down --purge` wipes data) |

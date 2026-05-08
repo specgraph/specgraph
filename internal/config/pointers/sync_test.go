@@ -213,7 +213,9 @@ func TestSync_LegacyShapedInitMarkerIsCorruption(t *testing.T) {
 func TestSync_RejectsCorruptedMarkers_EndBeforeStart(t *testing.T) {
 	dir := t.TempDir()
 	seed := "<!-- specgraph:init:end -->\n<!-- specgraph:init:start v=1 -->\n"
-	os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600)
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
@@ -226,7 +228,9 @@ func TestSync_RejectsCorruptedMarkers_EndBeforeStart(t *testing.T) {
 func TestSync_RejectsCorruptedMarkers_StartWithoutEnd(t *testing.T) {
 	dir := t.TempDir()
 	seed := "<!-- specgraph:init:start v=1 -->\nbody\n"
-	os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600)
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
@@ -239,7 +243,9 @@ func TestSync_RejectsCorruptedMarkers_StartWithoutEnd(t *testing.T) {
 func TestSync_RejectsCorruptedMarkers_DoubleStart(t *testing.T) {
 	dir := t.TempDir()
 	seed := "<!-- specgraph:init:start v=1 -->\nbody\n<!-- specgraph:init:start v=1 -->\nmore\n<!-- specgraph:init:end -->\n"
-	os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600)
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
@@ -254,7 +260,9 @@ func TestSync_RejectsInitMarkerWithoutVersion(t *testing.T) {
 	// the matching end marker — guards rule 4 in isolation.
 	dir := t.TempDir()
 	seed := "<!-- specgraph:init:start -->\nbody\n"
-	os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600)
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
