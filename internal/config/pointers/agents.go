@@ -24,6 +24,11 @@ const initEnd = "<!-- specgraph:init:end -->"
 // Catches hand-rolled or pre-spec markers; treated as corruption.
 var initStartLoose = regexp.MustCompile(`<!--\s*specgraph:init:start\s*-->`)
 
+// initStartAnyVersion matches any specgraph:init:start marker, with or
+// without a v=N suffix. Used to detect future-versioned markers we don't
+// know how to migrate yet.
+var initStartAnyVersion = regexp.MustCompile(`<!--\s*specgraph:init:start(\s+v=\d+)?\s*-->`)
+
 // legacyBlock matches inject's per-slug blocks. Slug class mirrors inject's
 // safeSlugPattern: `[a-zA-Z0-9][a-zA-Z0-9._-]*`. The (?s) flag lets `.` match
 // newlines so the body is captured. Start and end slugs must match (Go regexp
@@ -123,12 +128,22 @@ func syncAgents(projectDir string, opts Options) SyncResult {
 	return okResult(agentsRel, action, purged, skipped)
 }
 
-// validateInitMarkers returns an error for any of the four corruption rules:
+// validateInitMarkers returns an error for any of the five corruption rules:
 // (1) end before start, (2) start without end, (3) double start, (4)
-// init start marker missing the v=1 suffix.
+// init start marker missing the v=1 suffix, (5) unknown-version init start.
 func validateInitMarkers(displayName string, data []byte) error {
 	starts := bytes.Count(data, []byte(initStart))
 	ends := bytes.Count(data, []byte(initEnd))
+
+	// Rule 5: any specgraph:init:start marker that isn't the canonical
+	// v=1 form is treated as an unknown version we can't migrate.
+	for _, m := range initStartAnyVersion.FindAllIndex(data, -1) {
+		fragment := data[m[0]:m[1]]
+		if !bytes.Equal(fragment, []byte(initStart)) {
+			return fmt.Errorf("%w: %s contains a non-v=1 init start marker at offset %d (%q); migrate or remove manually",
+				ErrCorruptedMarkers, displayName, m[0], string(fragment))
+		}
+	}
 
 	// Rule 4: init-shaped marker without the v=1 suffix.
 	loose := initStartLoose.FindAllIndex(data, -1)

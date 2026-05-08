@@ -758,3 +758,19 @@ func TestSync_ReadOnlyProjectDir(t *testing.T) {
 		t.Errorf("Cursor.Action = %v, want ActionError on read-only dir", report.Cursor.Action)
 	}
 }
+
+func TestSync_HypotheticalV2MarkerIsCorruption(t *testing.T) {
+	dir := t.TempDir()
+	full := filepath.Join(dir, "AGENTS.md")
+	bogus := "<!-- specgraph:init:start v=2 -->\nbody\n<!-- specgraph:init:end -->\n"
+	if err := os.WriteFile(full, []byte(bogus), 0o644); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+		t.Fatal(err)
+	}
+	report := Sync(dir, defaultOpts())
+	if report.Agents.Action != ActionError {
+		t.Errorf("Action = %v; want ActionError on unknown init version", report.Agents.Action)
+	}
+	if !errors.Is(report.Agents.Err, ErrCorruptedMarkers) {
+		t.Errorf("Err = %v; want errors.Is ErrCorruptedMarkers", report.Agents.Err)
+	}
+}
