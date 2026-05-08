@@ -14,12 +14,13 @@ import (
 	"strings"
 )
 
-// Action describes what Sync did to a single managed pointer file. The string
-// values are deliberately identical to mcpconfigs.Action values so init can
-// render a unified "<path>: <action>" output.
+// Action describes what Sync did to a single managed pointer file.
+// ActionCreated/ActionUpdated/ActionNoOp string values overlap with
+// mcpconfigs.Action so init can render a unified "<path>: <action>"
+// line. ActionError is pointers-only — mcpconfigs aborts on first
+// error rather than per-file reporting.
 type Action string
 
-// Action values mirror mcpconfigs.Action string tags for unified init output.
 const (
 	ActionCreated Action = "created"
 	ActionUpdated Action = "updated"
