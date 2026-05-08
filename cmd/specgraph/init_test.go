@@ -497,3 +497,42 @@ func TestInit_PurgesLegacyInjectArtifacts(t *testing.T) {
 		t.Errorf("init block missing:\n%s", bs)
 	}
 }
+
+func TestInit_LeavesLegacyOrphanFilesUntouched(t *testing.T) {
+	dir := t.TempDir()
+
+	// Seed orphan inject artifacts that the PR description explicitly
+	// promises to leave alone: per-slug AGENTS.md blocks were purged
+	// in-place, but per-slug files under .claude/specs/ and
+	// .cursor/rules/specgraph-<slug>.md (other than specgraph-bootstrap.md)
+	// must survive.
+	orphans := map[string][]byte{
+		filepath.Join(".claude", "specs", "old-spec.md"):              []byte("# orphan claude spec\n"),
+		filepath.Join(".cursor", "rules", "specgraph-old-feature.md"): []byte("---\n---\n# orphan per-slug rule\n"),
+		filepath.Join(".cursor", "rules", "specgraph.md"):             []byte("# plugin-shipped rule (must survive)\n"),
+	}
+	for rel, content := range orphans {
+		full := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, content, 0o644); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+			t.Fatal(err)
+		}
+	}
+
+	if _, err := runInitInDir(t, dir, []string{"specgraph"}); err != nil {
+		t.Fatalf("runInit: %v", err)
+	}
+
+	for rel, want := range orphans {
+		got, err := os.ReadFile(filepath.Join(dir, rel))
+		if err != nil {
+			t.Errorf("orphan %s: read failed: %v", rel, err)
+			continue
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("orphan %s mutated\n  got:  %q\n  want: %q", rel, got, want)
+		}
+	}
+}
