@@ -136,6 +136,9 @@ func runInit(_ *cobra.Command, args []string) error {
 			if r.LegacyBlocksPurged > 0 {
 				line += fmt.Sprintf(" (purged %d legacy blocks)", r.LegacyBlocksPurged)
 			}
+			if r.LegacyBlocksSkippedMalformed > 0 {
+				line += fmt.Sprintf(" (skipped %d malformed legacy blocks; repair manually)", r.LegacyBlocksSkippedMalformed)
+			}
 			fmt.Println(line)
 		}
 	}

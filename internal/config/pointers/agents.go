@@ -83,8 +83,9 @@ func syncAgents(projectDir string, opts Options) SyncResult {
 	// Phase 2: purge legacy per-slug blocks (post-filter excludes "init").
 	updated := existing
 	purged := 0
+	skipped := 0
 	if len(updated) > 0 {
-		updated, purged = purgeLegacyBlocks(updated)
+		updated, purged, skipped = purgeLegacyBlocks(updated)
 	}
 
 	// Phase 3: reconcile init managed block.
@@ -119,7 +120,7 @@ func syncAgents(projectDir string, opts Options) SyncResult {
 	if !preexisted {
 		action = ActionCreated
 	}
-	return okResult(agentsRel, action, purged)
+	return okResult(agentsRel, action, purged, skipped)
 }
 
 // validateInitMarkers returns an error for any of the four corruption rules:
@@ -165,7 +166,7 @@ func validateInitMarkers(displayName string, data []byte) error {
 	}
 }
 
-func purgeLegacyBlocks(data []byte) (out []byte, purged int) {
+func purgeLegacyBlocks(data []byte) (out []byte, purged, skippedMalformed int) {
 	out = legacyBlock.ReplaceAllFunc(data, func(match []byte) []byte {
 		sub := legacyBlock.FindSubmatch(match)
 		if len(sub) < 4 {
@@ -173,6 +174,7 @@ func purgeLegacyBlocks(data []byte) (out []byte, purged int) {
 		}
 		slugStart, slugEnd := string(sub[1]), string(sub[3])
 		if slugStart != slugEnd {
+			skippedMalformed++
 			return match
 		}
 		if slugStart == "init" {
@@ -181,7 +183,7 @@ func purgeLegacyBlocks(data []byte) (out []byte, purged int) {
 		purged++
 		return nil
 	})
-	return out, purged
+	return out, purged, skippedMalformed
 }
 
 func replaceInitBlock(data []byte, canonical string) []byte {

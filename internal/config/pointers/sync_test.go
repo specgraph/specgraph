@@ -702,3 +702,16 @@ func TestSync_EmptyFileReportsUpdatedNotCreated(t *testing.T) {
 		t.Errorf("Agents.Action = %v, want %v (file existed but was empty)", report.Agents.Action, ActionUpdated)
 	}
 }
+
+func TestSync_MismatchedSlugLegacyBlocksReported(t *testing.T) {
+	dir := t.TempDir()
+	full := filepath.Join(dir, "AGENTS.md")
+	corrupt := "<!-- specgraph:foo:start -->\nbody\n<!-- specgraph:bar:end -->\n"
+	if err := os.WriteFile(full, []byte(corrupt), 0o644); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+		t.Fatal(err)
+	}
+	report := Sync(dir, defaultOpts())
+	if report.Agents.LegacyBlocksSkippedMalformed == 0 {
+		t.Errorf("LegacyBlocksSkippedMalformed = 0; want >= 1")
+	}
+}

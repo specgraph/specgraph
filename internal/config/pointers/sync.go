@@ -42,11 +42,16 @@ type Unlocker func() error
 // LegacyBlocksPurged is the number of pre-init per-slug blocks removed
 // from AGENTS.md. Always 0 for the cursor pointer file. Meaningful only
 // when Action == ActionUpdated or ActionCreated.
+//
+// LegacyBlocksSkippedMalformed counts legacy slug-pair blocks that were
+// detected but not purged because the start and end slugs differ. They
+// remain in the file; the user must repair manually.
 type SyncResult struct {
-	Path               string
-	Action             Action
-	Err                error
-	LegacyBlocksPurged int
+	Path                         string
+	Action                       Action
+	Err                          error
+	LegacyBlocksPurged           int
+	LegacyBlocksSkippedMalformed int
 }
 
 // Options carries the canonical values that init derives once and threads
@@ -131,8 +136,8 @@ func errResult(path string, err error) SyncResult {
 	return SyncResult{Path: path, Action: ActionError, Err: err}
 }
 
-func okResult(path string, action Action, purged int) SyncResult {
-	return SyncResult{Path: path, Action: action, LegacyBlocksPurged: purged}
+func okResult(path string, action Action, purged, skipped int) SyncResult {
+	return SyncResult{Path: path, Action: action, LegacyBlocksPurged: purged, LegacyBlocksSkippedMalformed: skipped}
 }
 
 func noopResult(path string) SyncResult {
