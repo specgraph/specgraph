@@ -734,3 +734,27 @@ func TestSync_CursorFailureDoesNotAbortAgents(t *testing.T) {
 		t.Errorf("Agents.Action = %v, want ActionCreated despite cursor failure", report.Agents.Action)
 	}
 }
+
+func TestSync_ReadOnlyProjectDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("dir mode 0555 does not block writes the same way on Windows")
+	}
+	if runtime.GOOS == "darwin" {
+		// macOS APFS does not consistently enforce dir-write permission
+		// like Linux ext4/xfs. Linux CI exercises the path; skip on dev macs.
+		t.Skip("read-only dir test reliable on Linux only; skipped on darwin")
+	}
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o555); err != nil { //nolint:gosec // intentional read-only for test
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) //nolint:gosec // restore permissions after test
+
+	report := Sync(dir, defaultOpts())
+	if report.Agents.Action != ActionError {
+		t.Errorf("Agents.Action = %v, want ActionError on read-only dir", report.Agents.Action)
+	}
+	if report.Cursor.Action != ActionError {
+		t.Errorf("Cursor.Action = %v, want ActionError on read-only dir", report.Cursor.Action)
+	}
+}
