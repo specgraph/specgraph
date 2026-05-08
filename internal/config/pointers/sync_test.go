@@ -448,6 +448,22 @@ func TestSync_PreservesExistingFileMode(t *testing.T) {
 	}
 }
 
+func TestSync_SentinelErrors_FrontmatterUnclosed(t *testing.T) {
+	dir := t.TempDir()
+	full := filepath.Join(dir, ".cursor", "rules", "specgraph-bootstrap.md")
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+		t.Fatal(err)
+	}
+	// Frontmatter opens but never closes.
+	if err := os.WriteFile(full, []byte("---\ndescription: oops\n# missing closing ---\n"), 0o644); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+		t.Fatal(err)
+	}
+	report := Sync(dir, defaultOpts())
+	if !errors.Is(report.Cursor.Err, ErrFrontmatterMissing) {
+		t.Errorf("err = %v; want errors.Is ErrFrontmatterMissing", report.Cursor.Err)
+	}
+}
+
 func TestNewOptions_RejectsBadServerURL(t *testing.T) {
 	cases := []struct {
 		name, url string

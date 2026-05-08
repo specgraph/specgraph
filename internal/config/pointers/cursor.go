@@ -118,7 +118,7 @@ func splitFrontmatter(data []byte) (front, body []byte, err error) {
 	rest := data[len("---\n"):]
 	idx := bytes.Index(rest, []byte("\n---\n"))
 	if idx < 0 {
-		return nil, nil, fmt.Errorf("%s: frontmatter not closed before EOF", cursorRel)
+		return nil, nil, fmt.Errorf("%w: %s: frontmatter not closed before EOF", ErrFrontmatterMissing, cursorRel)
 	}
 	end := len("---\n") + idx + len("\n---\n")
 	// Include any single trailing blank line.
