@@ -501,9 +501,6 @@ func TestNewOptions_AcceptsValidInputs(t *testing.T) {
 	}
 }
 
-// Compile-time guard: ensure errors import is used (used in later tasks).
-var _ = errors.New
-
 func TestSync_ReturnsSyncReportStruct(t *testing.T) {
 	dir := t.TempDir()
 	report := Sync(dir, defaultOpts())
@@ -544,7 +541,7 @@ func TestSync_SentinelErrors(t *testing.T) {
 	t.Run("corrupted markers", func(t *testing.T) {
 		dir := t.TempDir()
 		full := filepath.Join(dir, "AGENTS.md")
-		if err := os.WriteFile(full, []byte(initStart+"\nbody\n"), 0o644); err != nil {
+		if err := os.WriteFile(full, []byte(initStart+"\nbody\n"), 0o644); err != nil { //nolint:gosec // intentional 0644 for test fixture
 			t.Fatal(err)
 		}
 		report := Sync(dir, defaultOpts())
@@ -556,7 +553,7 @@ func TestSync_SentinelErrors(t *testing.T) {
 	t.Run("symlink rejected", func(t *testing.T) {
 		dir := t.TempDir()
 		target := filepath.Join(t.TempDir(), "elsewhere")
-		if err := os.WriteFile(target, []byte("x"), 0o644); err != nil {
+		if err := os.WriteFile(target, []byte("x"), 0o644); err != nil { //nolint:gosec // intentional 0644 for test fixture
 			t.Fatal(err)
 		}
 		if err := os.Symlink(target, filepath.Join(dir, "AGENTS.md")); err != nil {
@@ -571,10 +568,10 @@ func TestSync_SentinelErrors(t *testing.T) {
 	t.Run("missing frontmatter", func(t *testing.T) {
 		dir := t.TempDir()
 		full := filepath.Join(dir, ".cursor", "rules", "specgraph-bootstrap.md")
-		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil { //nolint:gosec // intentional 0755 for test fixture dir
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(full, []byte("no frontmatter\n"), 0o644); err != nil {
+		if err := os.WriteFile(full, []byte("no frontmatter\n"), 0o644); err != nil { //nolint:gosec // intentional 0644 for test fixture
 			t.Fatal(err)
 		}
 		report := Sync(dir, defaultOpts())

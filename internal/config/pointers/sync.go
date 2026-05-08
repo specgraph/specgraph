@@ -82,7 +82,7 @@ type SyncReport struct {
 }
 
 // IsErr reports whether either pointer file failed.
-func (r SyncReport) IsErr() bool {
+func (r *SyncReport) IsErr() bool {
 	return r.Agents.Action == ActionError || r.Cursor.Action == ActionError
 }
 
