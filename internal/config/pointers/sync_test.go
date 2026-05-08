@@ -715,3 +715,22 @@ func TestSync_MismatchedSlugLegacyBlocksReported(t *testing.T) {
 		t.Errorf("LegacyBlocksSkippedMalformed = 0; want >= 1")
 	}
 }
+
+func TestSync_CursorFailureDoesNotAbortAgents(t *testing.T) {
+	dir := t.TempDir()
+	cursorPath := filepath.Join(dir, ".cursor", "rules", "specgraph-bootstrap.md")
+	if err := os.MkdirAll(filepath.Dir(cursorPath), 0o755); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cursorPath, []byte("body without frontmatter\n"), 0o644); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+		t.Fatal(err)
+	}
+
+	report := Sync(dir, defaultOpts())
+	if report.Cursor.Action != ActionError {
+		t.Fatalf("Cursor.Action = %v, want ActionError", report.Cursor.Action)
+	}
+	if report.Agents.Action != ActionCreated {
+		t.Errorf("Agents.Action = %v, want ActionCreated despite cursor failure", report.Agents.Action)
+	}
+}
