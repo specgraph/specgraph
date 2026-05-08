@@ -77,7 +77,7 @@ The marker namespace stays `specgraph:init:` to preserve continuity with the exi
 
 For `WholeFile` strategy (TypeScript / shell / markdown / mdc), a single sentinel line:
 
-```
+```text
 // specgraph:init v=2 sha256=abc123... rev=cef1ec3a
 ```
 
@@ -85,7 +85,7 @@ For `WholeFile` strategy (TypeScript / shell / markdown / mdc), a single sentine
 
 For `MarkdownBlock` strategy, the sentinel rides on the existing start/end markers:
 
-```
+```text
 <!-- specgraph:init:start v=2 sha256=abc... -->
 ...
 <!-- specgraph:init:end -->
@@ -166,9 +166,9 @@ The repo-root `<repo>/skills/` tree remains the authoring source; the embedded c
 | 6 | `.cursor/rules/specgraph-post-stage.mdc` | Cursor | `WholeFile` | |
 | 7 | `.mcp.json` | Claude | `JSONKeyMerge` | |
 | 8 | `AGENTS.md` | Claude | `MarkdownBlock` | |
-| 9 | `.claude/settings.json` | Claude | `JSONKeyMerge` | Managed keys: `extraKnownMarketplaces.specgraph-local`, `enabledPlugins["specgraph@specgraph-local"]`. |
+| 9 | `.claude/settings.json` | Claude | `JSONKeyMerge` | Managed keys: `extraKnownMarketplaces.specgraph-local` (with `source: { type: "directory", path: "./.specgraph/agents/claude" }` — note: the path is the **marketplace root**, the dir containing `.claude-plugin/`, NOT `.claude-plugin/` itself; verified in PR 0), `enabledPlugins["specgraph@specgraph-local"]`. |
 | 10 | `.specgraph/agents/claude/.claude-plugin/plugin.json` | Claude | `WholeFile` | |
-| 11 | `.specgraph/agents/claude/.claude-plugin/marketplace.json` | Claude | `WholeFile` | Single-plugin local marketplace. |
+| 11 | `.specgraph/agents/claude/.claude-plugin/marketplace.json` | Claude | `WholeFile` | Single-plugin local marketplace. `plugins[].source` is the directory path `"./"` (co-located plugin shares the marketplace root); NOT `"./.claude-plugin/plugin.json"`. `..` traversal is blocked, so any future multi-plugin layout must keep all plugins inside the marketplace root. |
 | 12 | `.specgraph/agents/claude/hooks/specgraph-session-start.sh` | Claude | `WholeFile` | |
 | 13 | `.specgraph/agents/claude/hooks/specgraph-post-stage.sh` | Claude | `WholeFile` | |
 | 14 | `.specgraph/agents/claude/routing-guide.md` | Claude | `WholeFile` | |
@@ -206,7 +206,7 @@ Hook paths inside `plugin.json` use `${CLAUDE_PLUGIN_ROOT}/hooks/specgraph-{sess
 
 ### `specgraph doctor`
 
-```
+```text
 specgraph doctor [flags]
 
 Flags:
@@ -224,7 +224,7 @@ Four check groups: **Binary** (version, build), **Server** (subsumes `specgraph 
 
 A `PersistentPreRun` hook on the root cobra command runs `InspectAll` and emits one stderr line if any file is not Synced:
 
-```
+```text
 note: 2 managed files out of date with this binary (1 stale, 1 drifted); run `specgraph init` to refresh, `specgraph doctor` for details
 ```
 
@@ -233,6 +233,7 @@ note: 2 managed files out of date with this binary (1 stale, 1 drifted); run `sp
 The `isatty(stderr)` gate has one well-known limitation: `specgraph list | less` keeps stderr as a TTY, so the nudge can smear across pager output. The escape hatch is the `SPECGRAPH_DRIFT_NUDGE=off` env var or `nudges: { quiet: true }` in `.specgraph.yaml`. Acceptable trade-off; documented for users who run pager pipelines frequently.
 
 Additional skip conditions (belt-and-suspenders):
+
 - Subcommands that handle reporting themselves: `init`, `doctor`, `health`, `read-mcp-resource`, `serve`, anything under `mcp` or `version`
 - `SPECGRAPH_DRIFT_NUDGE=off` env var (user-level mute)
 - `nudges: { quiet: true }` in `.specgraph.yaml` (project-level mute)
@@ -243,6 +244,7 @@ Additional skip conditions (belt-and-suspenders):
 The file's contents are empty; mtime drives the throttle window.
 
 **Throttle policy:**
+
 - First nudge ever for `(project, binary-version)`: emit, create file
 - Same `(project, binary-version)` within 24h: skip
 - Same project, *different* binary version: emit (binary upgraded; user sees one fresh nudge for the new version) — that path's throttle file is independent
@@ -258,7 +260,7 @@ The file's contents are empty; mtime drives the throttle window.
 
 ### Children of `spgr-rwrp`, in landing order
 
-```
+```text
 0 (Claude API verification spike)
      ↓
 A (foundation) → B (port existing) → ┬→ C (OpenCode)
@@ -287,6 +289,7 @@ If any claim fails, the spec changes before PR A. Most likely fallout if a claim
 **Output:** a verification report at `docs/plans/2026-05-08-spgr-rwrp-pr0-claude-api-verification.md` (date-prefixed slug, consistent with existing `docs/plans/` convention). The report greens or reds each of the three claims with a captured terminal transcript or test artifact.
 
 **Gating PR A:**
+
 - PR A's commit message includes `Depends on: docs/plans/2026-05-08-spgr-rwrp-pr0-claude-api-verification.md (all three claims green)`
 - PR A's pull request description repeats the dependency
 - Where feasible, PR A includes a `testdata/` fixture distilled from PR 0 that fails the build if any claim regresses (e.g., a `marketplace.json` + `plugin.json` pair tested via a synthetic Claude harness — if the harness API exists). If a build-time test isn't feasible (because Claude isn't available in CI), the dependency is honor-system but at least visibly recorded.
@@ -342,10 +345,10 @@ Existing `mcpconfigs/` and `pointers/` packages get folded in (their tests come 
 - Embed plugin shim sources (5 files) into binary
 - Add 5 entries to manifest as `WholeFile` under `.specgraph/agents/claude/`
 - Add `.claude/settings.json` to manifest with managed keys: `extraKnownMarketplaces.specgraph-local`, `enabledPlugins["specgraph@specgraph-local"]`
-- **Verify before committing the design** (smoke test gates the PR):
-  - `extraKnownMarketplaces` accepts `source: { type: "directory", path: "<relative>" }` with a project-relative path (claimed in design; cite the exact docs URL in the PR body)
-  - `autoUpdate: false` is honoured at the marketplace level (claimed in design; verify it's a real settings field on a marketplace entry vs only on individual plugin enablement)
-  - `${CLAUDE_PLUGIN_ROOT}` resolves to the plugin root directory (`.specgraph/agents/claude/`) when the marketplace source is `directory`-type. If Claude resolves it against the marketplace root rather than the plugin root, hooks break silently — must be verified end-to-end before relying on it
+- **Verified by PR 0** (see `2026-05-08-spgr-rwrp-pr0-claude-api-verification.md`):
+  - `extraKnownMarketplaces` accepts `source: { type: "directory", path: "<relative>" }` with a project-relative path. ✓ GREEN
+  - `autoUpdate: false` is honoured at the marketplace-entry level. ✓ GREEN with caveat — registry version is pinned, but for `directory`-source marketplaces Claude reads files live (no cache copy), so file-content drift is not blocked by the flag. Acceptable for our model: every `specgraph init` refresh is supposed to be visible to the next session.
+  - `${CLAUDE_PLUGIN_ROOT}` resolves to the plugin's own root directory regardless of marketplace shape. ✓ GREEN
 - Test: spin up `claude` in a fresh project, run `specgraph init`, verify the plugin shows in `/plugin list` and hooks fire on session start
 - Author `plugin/specgraph/SMOKE_TEST.md` analog to OpenCode's
 
@@ -454,6 +457,12 @@ Four tooling pieces, available to anyone (not dogfood-only):
   - **S6**: `task plugin:check` wired into `task check` to enforce dogfood discipline
   - **M1**: PR A explicitly ports (not stubs) locking, symlink rejection, atomic-write primitives
   - **M4**: preserve user-set `enabledPlugins: false` (don't silently re-enable)
+- **2026-05-08 v5**: PR 0 (Claude API verification spike) completed. All three claims green; two schema corrections folded in:
+  - **Spec correction 1:** `extraKnownMarketplaces.<name>.source.path` points at the **marketplace root** (the dir containing `.claude-plugin/`), NOT at `.claude-plugin/` itself. Manifest entry 9's note updated to clarify the path value is `./.specgraph/agents/claude` (not `./.specgraph/agents/claude/.claude-plugin`).
+  - **Spec correction 2:** `marketplace.json`'s `plugins[].source` is a directory path with mandatory `./` prefix (e.g. `"./"` for a co-located plugin), NOT a path to plugin.json. Manifest entry 11's note updated. `..` traversal is blocked, so any future multi-plugin layout must keep all plugins inside the marketplace root.
+  - **Bonus finding (informational):** `autoUpdate: false` is honoured at the registry layer (version stays pinned in `installed_plugins.json`) but for `directory`-source marketplaces Claude reads files live with no cache copy, so file-content drift is not gated. Acceptable for our model — every `specgraph init` refresh should be visible to the next session.
+  - **Bonus finding (informational):** Claude resolves symlinks on the plugin path. Spec's choice of `EvalSymlinks(projectRoot)` for the throttle file key matches Claude's internal behaviour.
+  - PR E's "verify before committing" subsection is now "verified by PR 0," referencing the verification report.
 - **2026-05-08 v4**: third adversarial review applied (diminishing-returns review; no critical findings). Revisions:
   - **v3-1 (vestigial v=1 renderer sunset)**: `mcpconfigs/` and `pointers/` rendering algorithms preserved as private helpers in `internal/config/managedfiles/` for the v=1 → v=2 hash-check and `SupersedesPath` "prior canonical" comparisons. Sunset triggers when `task plugin:check` reports zero v=1 files for two consecutive releases.
   - **v3-2 (PR F documentation cleanup)**: PR F now explicitly updates `CLAUDE.md`, `plugin/<harness>/README.md` files, and the top-level `README.md` to remove symlink + `task plugin:sync` references. Avoids stale docs after the symlink deletion lands.
