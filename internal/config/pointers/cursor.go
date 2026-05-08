@@ -52,7 +52,7 @@ func syncCursor(projectDir string, opts Options) SyncResult {
 		if werr := atomicWrite(full, out, 0o600); werr != nil {
 			return errResult(cursorRel, werr)
 		}
-		return SyncResult{Path: cursorRel, Action: ActionCreated}
+		return okResult(cursorRel, ActionCreated, 0)
 	}
 
 	frontmatter, body, ferr := splitFrontmatter(existing)
@@ -90,7 +90,7 @@ func syncCursor(projectDir string, opts Options) SyncResult {
 	updated = append(updated, newBody...)
 
 	if bytes.Equal(existing, updated) {
-		return SyncResult{Path: cursorRel, Action: ActionNoOp}
+		return noopResult(cursorRel)
 	}
 
 	mode := os.FileMode(0o600)
@@ -100,7 +100,7 @@ func syncCursor(projectDir string, opts Options) SyncResult {
 	if werr := atomicWrite(full, updated, mode); werr != nil {
 		return errResult(cursorRel, werr)
 	}
-	return SyncResult{Path: cursorRel, Action: ActionUpdated}
+	return okResult(cursorRel, ActionUpdated, 0)
 }
 
 // splitFrontmatter splits a Cursor rule file into (frontmatter-including-trailing-blank, body).

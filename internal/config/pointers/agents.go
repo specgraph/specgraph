@@ -95,7 +95,7 @@ func syncAgents(projectDir string, opts Options) SyncResult {
 	}
 
 	if len(existing) > 0 && bytes.Equal(existing, updated) {
-		return SyncResult{Path: agentsRel, Action: ActionNoOp}
+		return noopResult(agentsRel)
 	}
 
 	mode := os.FileMode(0o600)
@@ -110,7 +110,7 @@ func syncAgents(projectDir string, opts Options) SyncResult {
 	if len(existing) == 0 {
 		action = ActionCreated
 	}
-	return SyncResult{Path: agentsRel, Action: action, LegacyBlocksPurged: purged}
+	return okResult(agentsRel, action, purged)
 }
 
 // validateInitMarkers returns an error for any of the four corruption rules:

@@ -514,3 +514,28 @@ func TestSync_ReturnsSyncReportStruct(t *testing.T) {
 		t.Errorf("report.Cursor.Action = %v, want %v", report.Cursor.Action, ActionCreated)
 	}
 }
+
+func TestSyncResult_ActionErrorImpliesNonNilErr(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Symlink("/nonexistent", filepath.Join(dir, "link-to-nowhere")); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	report := Sync(filepath.Join(dir, "link-to-nowhere"), defaultOpts())
+	if report.Agents.Action != ActionError {
+		t.Fatalf("Action = %v, want ActionError", report.Agents.Action)
+	}
+	if report.Agents.Err == nil {
+		t.Errorf("ActionError but Err == nil — invariant broken")
+	}
+}
+
+func TestSyncResult_NonErrorImpliesNilErr(t *testing.T) {
+	dir := t.TempDir()
+	report := Sync(dir, defaultOpts())
+	if report.Agents.Err != nil {
+		t.Errorf("Agents.Err = %v on success path", report.Agents.Err)
+	}
+	if report.Cursor.Err != nil {
+		t.Errorf("Cursor.Err = %v on success path", report.Cursor.Err)
+	}
+}

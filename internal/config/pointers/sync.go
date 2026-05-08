@@ -28,6 +28,14 @@ const (
 )
 
 // SyncResult reports what Sync did to a single managed pointer file.
+//
+// Invariant: Action == ActionError ⇔ Err != nil. Constructed via
+// errResult / okResult / noopResult; do not build SyncResult literals
+// outside this package.
+//
+// LegacyBlocksPurged is the number of pre-init per-slug blocks removed
+// from AGENTS.md. Always 0 for the cursor pointer file. Meaningful only
+// when Action == ActionUpdated or ActionCreated.
 type SyncResult struct {
 	Path               string
 	Action             Action
@@ -113,9 +121,16 @@ func Sync(projectDir string, opts Options) SyncReport {
 	}
 }
 
-// errResult is a small convenience for syncAgents / syncCursor.
 func errResult(path string, err error) SyncResult {
 	return SyncResult{Path: path, Action: ActionError, Err: err}
+}
+
+func okResult(path string, action Action, purged int) SyncResult {
+	return SyncResult{Path: path, Action: action, LegacyBlocksPurged: purged}
+}
+
+func noopResult(path string) SyncResult {
+	return SyncResult{Path: path, Action: ActionNoOp}
 }
 
 // rejectSymlinkComponents copies the helper from internal/config/mcpconfigs/sync.go
