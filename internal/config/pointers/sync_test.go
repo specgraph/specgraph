@@ -759,6 +759,29 @@ func TestSync_ReadOnlyProjectDir(t *testing.T) {
 	}
 }
 
+func TestSync_CursorAppendsBlockWhenBodyHasNoMarkers(t *testing.T) {
+	dir := t.TempDir()
+	cursorPath := filepath.Join(dir, ".cursor", "rules", "specgraph-bootstrap.md")
+	if err := os.MkdirAll(filepath.Dir(cursorPath), 0o755); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+		t.Fatal(err)
+	}
+	seed := "---\ndescription: pre-existing rule\nalwaysApply: true\n---\n\n# user notes\n"
+	if err := os.WriteFile(cursorPath, []byte(seed), 0o644); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+		t.Fatal(err)
+	}
+	report := Sync(dir, defaultOpts())
+	if report.Cursor.Action != ActionUpdated {
+		t.Fatalf("Cursor.Action = %v, want ActionUpdated (err=%v)", report.Cursor.Action, report.Cursor.Err)
+	}
+	got, _ := os.ReadFile(cursorPath)
+	if !bytes.Contains(got, []byte("# user notes")) {
+		t.Errorf("user notes lost\n%s", got)
+	}
+	if !bytes.Contains(got, []byte(initStart)) || !bytes.Contains(got, []byte(initEnd)) {
+		t.Errorf("init markers not appended\n%s", got)
+	}
+}
+
 func TestSync_HypotheticalV2MarkerIsCorruption(t *testing.T) {
 	dir := t.TempDir()
 	full := filepath.Join(dir, "AGENTS.md")
