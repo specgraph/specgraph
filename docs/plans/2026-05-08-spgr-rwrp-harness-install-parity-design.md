@@ -102,7 +102,7 @@ This guards against silently destroying hand-edited content during the v=1 → v
 
 **Vestigial v=1 renderer (sunset policy).** PR B preserves the existing `pointers/` rendering logic as an unexported helper inside `internal/config/managedfiles/` (e.g. `classifyV1Disk`). The helper exists *only* to compute what a v=1 canonical would have written for the v=1 → v=2 hash-check above. It is not on the production write path — new writes always emit v=2. The helper is removed in a follow-up bead once `task plugin:check` reports zero `v=1` files in the dogfood repo for two consecutive releases. Same policy applies to `SupersedesPath` "prior canonical" computations (e.g., the old `.md` cursor-rule path's pre-PR-D rendering): preserve as a private helper, sunset on the same trigger.
 
-**Forward-compatibility:** the marker parser accepts `v=1` and `v=2`, rejects `v=3+` as `ErrCorruptedMarkers` (matches today's `pointers/agents.go` corruption-rejection behaviour for unknown versions). A future binary downgrade scenario surfaces as corruption rather than silent data loss.
+**Forward-compatibility:** the marker parser accepts `v=1` and `v=2`, rejects `v=3+` as `ErrCorruptedSentinel` — the canonical error name in the new framework, matching the existing pointers-era corruption-rejection behaviour for unknown versions. A future binary downgrade scenario surfaces as corruption rather than silent data loss.
 
 `JSONKeyMerge` does not need sentinels — the strategy already knows which keys it owns and overwrites them on every init. There's no `Drifted` state for merge-strategy files because managed keys are not user-owned by definition. **One exception:** `.claude/settings.json`'s `enabledPlugins["specgraph@specgraph-local"]` preserves a user-set `false` value (so `claude /plugin disable specgraph` survives subsequent `init` runs — see "Open questions / Resolved"). That key is "managed-presence" rather than "managed-value": init ensures the key exists; the value follows the user's last choice. It's the only such key in the manifest; the exception is local, not a general policy.
 
@@ -321,7 +321,7 @@ Migrate the 5 already-managed files into the new framework:
 
 Existing `mcpconfigs/` and `pointers/` packages get folded in (their tests come along, ported to use the new types). Both packages are deleted at the end of this PR — but their *rendering algorithms* are preserved as private helpers inside `internal/config/managedfiles/` for the v=1 → v=2 hash-check and `SupersedesPath` "prior canonical" comparisons. Those helpers sunset per the policy described in §"Drift detection / Vestigial v=1 renderer."
 
-`MarkdownBlock` strategy extends today's `<!-- specgraph:init:start v=1 -->` markers to `<!-- specgraph:init:start v=2 sha256=... -->`. The state machine recognizes `v=1` as `Stale` (no hash to check; trust-and-refresh, atomic-write `v=2`). `JSONKeyMerge` strategy needs no sentinel (managed keys are always overwritten on init).
+`MarkdownBlock` strategy extends today's `<!-- specgraph:init:start v=1 -->` markers to `<!-- specgraph:init:start v=2 sha256=... -->`. State classification follows the defensive hash/compare semantics from §"Drift detection / Upgrade path from v=1 markers to v=2": when a sentinel carries a hash (`v=2`), the state machine compares disk content to that hash — a mismatch is `Drifted` (refuse to overwrite without `--force`), a match is `Synced`. Only the `v=1` markers without a hash fall back to "trust-and-refresh" (recompute what this binary's `v=1` canonical would have produced, compare to disk; match → `Stale` and refresh to `v=2`, mismatch → `Drifted`). `JSONKeyMerge` strategy needs no sentinel (managed keys are always overwritten on init).
 
 #### PR C — OpenCode plugin under `.specgraph/agents/opencode/` (delivers `spgr-zqpb`)
 
@@ -426,6 +426,7 @@ Four tooling pieces, available to anyone (not dogfood-only):
   - The file carries a `specgraph:init:` sentinel.
 
   Both conditions must hold. Files under `.specgraph/agents/<harness>/` *without* a sentinel are user content (e.g., a developer's `notes.md`); doctor surfaces them as informational only and never offers to delete. `specgraph init --remove-orphans` only deletes sentinel-carrying files whose paths are absent from the current manifest — never user-authored content lacking a sentinel.
+
 - **Skills engagement measurement** (was: what threshold triggers the Claude-on-disk fallback): obsoleted by the v2 decision to commit to MCP-fetch as the chosen mechanism in PR F. No measurement window. If user feedback later indicates the regression is unacceptable, we add Claude on-disk writes as a chosen change, not an experimental one.
 
 ## References

@@ -6,7 +6,7 @@ package managedfiles
 import "fmt"
 
 // strategy is the interface implemented per-strategy in PR B+. PR A
-// registers stubs that return ErrNotImplemented for both methods.
+// registers stubs that return errNotImplemented for both methods.
 //
 // Inspect classifies the on-disk state for a single ManagedFile.
 // Sync writes (or refrains from writing) the canonical content per
@@ -34,32 +34,32 @@ func strategyImpl(s Strategy) strategy {
 	}
 }
 
-// PR A stubs. All three return ErrNotImplemented; PRs B/C/D/E replace
+// PR A stubs. All three return errNotImplemented; PRs B/C/D/E replace
 // each one with a real implementation.
 
 type jsonKeyMergeStrategy struct{}
 
 func (jsonKeyMergeStrategy) Inspect(_ string, _ ManagedFile) (FileState, error) {
-	return FileState{}, ErrNotImplemented
+	return FileState{}, errNotImplemented
 }
 func (jsonKeyMergeStrategy) Sync(_ string, _ ManagedFile, _ SyncOptions) (SyncResult, error) {
-	return SyncResult{}, ErrNotImplemented
+	return SyncResult{}, errNotImplemented
 }
 
 type markdownBlockStrategy struct{}
 
 func (markdownBlockStrategy) Inspect(_ string, _ ManagedFile) (FileState, error) {
-	return FileState{}, ErrNotImplemented
+	return FileState{}, errNotImplemented
 }
 func (markdownBlockStrategy) Sync(_ string, _ ManagedFile, _ SyncOptions) (SyncResult, error) {
-	return SyncResult{}, ErrNotImplemented
+	return SyncResult{}, errNotImplemented
 }
 
 type wholeFileStrategy struct{}
 
 func (wholeFileStrategy) Inspect(_ string, _ ManagedFile) (FileState, error) {
-	return FileState{}, ErrNotImplemented
+	return FileState{}, errNotImplemented
 }
 func (wholeFileStrategy) Sync(_ string, _ ManagedFile, _ SyncOptions) (SyncResult, error) {
-	return SyncResult{}, ErrNotImplemented
+	return SyncResult{}, errNotImplemented
 }

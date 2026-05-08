@@ -43,13 +43,21 @@ func TestAcquireFileLock_ContendedSerializes(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
+	// readyCh signals that g1 has acquired the lock. g2 waits on the channel
+	// before attempting its own acquire — this replaces a brittle time.Sleep
+	// with a deterministic happens-before edge so the test exercises true
+	// contention rather than relying on goroutine scheduling timing.
+	readyCh := make(chan struct{})
+
 	go func() {
 		defer wg.Done()
 		unlock, err := acquireFileLock(target)
 		if err != nil {
+			close(readyCh) // unblock g2 even on failure so it doesn't deadlock
 			t.Errorf("g1 acquire: %v", err)
 			return
 		}
+		close(readyCh) // g1 holds the lock; g2 may now contend
 		time.Sleep(50 * time.Millisecond)
 		firstReleased.Store(time.Now().UnixNano())
 		_ = unlock()
@@ -57,7 +65,7 @@ func TestAcquireFileLock_ContendedSerializes(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		time.Sleep(10 * time.Millisecond)
+		<-readyCh // wait until g1 holds the lock before contending
 		unlock, err := acquireFileLock(target)
 		if err != nil {
 			t.Errorf("g2 acquire: %v", err)

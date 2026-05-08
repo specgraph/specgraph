@@ -77,6 +77,28 @@ func TestParseSentinel_NotASentinel(t *testing.T) {
 	}
 }
 
+// TestParseSentinel_RejectsUnanchored guards the regex anchor: a body line
+// containing "specgraph:init v=2 ..." mid-text (no comment prefix at line
+// start) must NOT be parsed as a sentinel. Without the start-anchor and
+// comment-prefix gate, a markdown rule body documenting the sentinel format
+// would accidentally be treated as one.
+func TestParseSentinel_RejectsUnanchored(t *testing.T) {
+	cases := []string{
+		"garbage specgraph:init v=2 sha256=abc",
+		"prefix // specgraph:init v=2 sha256=abc",
+		"see specgraph:init:start v=2 sha256=abc -->",
+	}
+	for _, line := range cases {
+		got, err := ParseSentinel(CommentSlash, line)
+		if err != nil {
+			t.Errorf("line %q: unexpected error %v", line, err)
+		}
+		if got.Version != 0 {
+			t.Errorf("line %q: expected non-sentinel, got %+v", line, got)
+		}
+	}
+}
+
 func TestRenderParseRoundTrip(t *testing.T) {
 	for _, syntax := range []CommentSyntax{CommentSlash, CommentHash, CommentHTML} {
 		original := Sentinel{Version: 2, SHA256: "deadbeef", Rev: "abc1234"}

@@ -13,7 +13,9 @@ import (
 // after stripping the sentinel line(s).
 //
 // For CommentSlash and CommentHash: the FIRST line is dropped if it parses
-// as a sentinel. Other lines are preserved verbatim.
+// as a sentinel. Other lines are preserved verbatim — the sentinel is
+// always line 0 for these syntaxes; a body line containing
+// "specgraph:init" (e.g., an example inside a rule body) is not a sentinel.
 //
 // For CommentHTML (markdown-block strategy): every sentinel line in the
 // content (start and end markers) is dropped before hashing. This handles

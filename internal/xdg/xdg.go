@@ -47,6 +47,10 @@ func StateHome() string {
 // CacheHome returns XDG_CACHE_HOME/specgraph or ~/.cache/specgraph.
 // Cache holds non-essential data that can be regenerated on demand
 // (e.g. drift-nudge throttle files for `specgraph doctor`).
+//
+// Not pre-created — callers create lazily at use site per XDG convention
+// for cache directories. Removing the cache dir externally is always safe;
+// the next caller recreates it.
 func CacheHome() string {
 	if v := os.Getenv("XDG_CACHE_HOME"); v != "" {
 		return filepath.Join(v, appName)

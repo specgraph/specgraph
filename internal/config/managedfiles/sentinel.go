@@ -41,8 +41,13 @@ var supportedVersions = map[int]bool{1: true, 2: true}
 // Both `init` and `init:start` are accepted because the same parser is
 // used for both syntaxes; the caller's CommentSyntax decides which form
 // RenderSentinel emits.
+//
+// The pattern is start-anchored and requires a recognized comment prefix
+// (`//`, `#`, or `<!--`) so a body line containing "specgraph:init v=2 ..."
+// inside arbitrary text (e.g. an example in a markdown rule body) is NOT
+// matched. Only deliberate sentinel lines are picked up.
 var sentinelMatcher = regexp.MustCompile(
-	`specgraph:init(?::start)?\s+v=(\d+)(?:\s+sha256=([0-9a-fA-F]+))?(?:\s+rev=(\S+?))?\s*(?:-->)?$`,
+	`^\s*(?://|#|<!--)\s+specgraph:init(?::start)?\s+v=(\d+)(?:\s+sha256=([0-9a-fA-F]+))?(?:\s+rev=(\S+?))?\s*(?:-->)?$`,
 )
 
 // RenderSentinel formats a Sentinel as a single line in the given comment

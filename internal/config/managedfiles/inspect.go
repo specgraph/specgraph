@@ -28,8 +28,15 @@ func Inspect(cwd string, mf ManagedFile) (FileState, error) {
 	}
 
 	full := filepath.Join(cwd, mf.Path)
-	disk, readErr := os.ReadFile(full)
+	// Use the no-follow read primitive to close the TOCTOU window between
+	// rejectSymlinkComponents above and the actual file open. A symlink
+	// planted at the leaf between the two operations would slip past the
+	// component walk; O_NOFOLLOW on the open call surfaces it as ELOOP,
+	// which we translate to ErrSymlinkRejected here.
+	disk, readErr := readFileNoFollow(full)
 	switch {
+	case noFollowIsSymlink(readErr):
+		return FileState{}, fmt.Errorf("%w: %s", ErrSymlinkRejected, full)
 	case errors.Is(readErr, fs.ErrNotExist):
 		return FileState{
 			Path:     mf.Path,

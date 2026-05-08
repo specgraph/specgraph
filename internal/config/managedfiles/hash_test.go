@@ -6,7 +6,6 @@ package managedfiles
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"strings"
 	"testing"
 )
 
@@ -62,7 +61,3 @@ func hashOf(s string) string {
 	h := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(h[:])
 }
-
-// Compile-time assertion that strings.Contains is referenced — silences
-// the "imported and not used" lint if all tests are temporarily disabled.
-var _ = strings.Contains

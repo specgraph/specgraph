@@ -9,7 +9,7 @@ import "fmt"
 // honouring SyncOptions (Force, KeepEdits). Returns a SyncResult
 // describing what was done.
 //
-// PR A dispatches to per-strategy stubs that return ErrNotImplemented;
+// PR A dispatches to per-strategy stubs that return errNotImplemented;
 // the empty manifest means this is never called end-to-end. PRs B/C/D/E
 // implement each strategy.
 func Sync(cwd string, mf ManagedFile, opts SyncOptions) (SyncResult, error) {
