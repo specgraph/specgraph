@@ -49,7 +49,7 @@ func syncCursor(projectDir string, opts Options) SyncResult {
 
 	if errors.Is(rerr, fs.ErrNotExist) {
 		out := []byte(defaultCursorFrontmatter + canonicalBody)
-		if werr := atomicWrite(full, out); werr != nil {
+		if werr := atomicWrite(full, out, 0o600); werr != nil {
 			return errResult(cursorRel, werr)
 		}
 		return SyncResult{Path: cursorRel, Action: ActionCreated}
@@ -93,7 +93,11 @@ func syncCursor(projectDir string, opts Options) SyncResult {
 		return SyncResult{Path: cursorRel, Action: ActionNoOp}
 	}
 
-	if werr := atomicWrite(full, updated); werr != nil {
+	mode := os.FileMode(0o600)
+	if info, statErr := os.Stat(full); statErr == nil {
+		mode = info.Mode().Perm()
+	}
+	if werr := atomicWrite(full, updated, mode); werr != nil {
 		return errResult(cursorRel, werr)
 	}
 	return SyncResult{Path: cursorRel, Action: ActionUpdated}

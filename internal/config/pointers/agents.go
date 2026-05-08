@@ -98,7 +98,11 @@ func syncAgents(projectDir string, opts Options) SyncResult {
 		return SyncResult{Path: agentsRel, Action: ActionNoOp}
 	}
 
-	if werr := atomicWrite(full, updated); werr != nil {
+	mode := os.FileMode(0o600)
+	if info, statErr := os.Stat(full); statErr == nil {
+		mode = info.Mode().Perm()
+	}
+	if werr := atomicWrite(full, updated, mode); werr != nil {
 		return errResult(agentsRel, werr)
 	}
 

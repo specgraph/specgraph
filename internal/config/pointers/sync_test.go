@@ -425,3 +425,30 @@ func TestSync_ConcurrentInvocations(t *testing.T) {
 		t.Errorf("init end marker count = %d, want 1; concurrent runs interleaved\n%s", c, bs)
 	}
 }
+
+func TestSync_PreservesExistingFileMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file modes are not meaningful on Windows")
+	}
+	dir := t.TempDir()
+	full := filepath.Join(dir, "AGENTS.md")
+	if err := os.WriteFile(full, []byte("# user content\n"), 0o644); err != nil { //nolint:gosec // intentional 0644 to verify mode preservation
+		t.Fatalf("seed: %v", err)
+	}
+	if err := os.Chmod(full, 0o644); err != nil { //nolint:gosec // intentional 0644 to verify mode preservation
+		t.Fatalf("chmod: %v", err)
+	}
+
+	results := Sync(dir, defaultOpts())
+	if results[0].Action != ActionUpdated {
+		t.Fatalf("results[0].Action = %v, want %v (err=%v)", results[0].Action, ActionUpdated, results[0].Err)
+	}
+
+	info, err := os.Stat(full)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o644 {
+		t.Errorf("file mode after Sync = %o, want 0644 (existing mode preserved)", got)
+	}
+}
