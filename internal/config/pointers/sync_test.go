@@ -22,19 +22,16 @@ func defaultOpts() Options {
 
 func TestSync_CreatesAgentsMD(t *testing.T) {
 	dir := t.TempDir()
-	results := Sync(dir, defaultOpts())
-	if len(results) != 2 {
-		t.Fatalf("len(results) = %d, want 2", len(results))
-	}
-	r := results[0]
+	report := Sync(dir, defaultOpts())
+	r := report.Agents
 	if r.Path != "AGENTS.md" {
-		t.Errorf("results[0].Path = %q, want AGENTS.md", r.Path)
+		t.Errorf("report.Agents.Path = %q, want AGENTS.md", r.Path)
 	}
 	if r.Action != ActionCreated {
-		t.Errorf("results[0].Action = %q, want %q", r.Action, ActionCreated)
+		t.Errorf("report.Agents.Action = %q, want %q", r.Action, ActionCreated)
 	}
 	if r.Err != nil {
-		t.Errorf("results[0].Err = %v, want nil", r.Err)
+		t.Errorf("report.Agents.Err = %v, want nil", r.Err)
 	}
 
 	body, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
@@ -58,10 +55,10 @@ func TestSync_CreatesAgentsMD(t *testing.T) {
 
 func TestSync_NoOpWhenIdentical(t *testing.T) {
 	dir := t.TempDir()
-	if r := Sync(dir, defaultOpts())[0]; r.Action != ActionCreated {
+	if r := Sync(dir, defaultOpts()).Agents; r.Action != ActionCreated {
 		t.Fatalf("first run: Action = %q, want %q", r.Action, ActionCreated)
 	}
-	r := Sync(dir, defaultOpts())[0]
+	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionNoOp {
 		t.Errorf("second run: Action = %q, want %q", r.Action, ActionNoOp)
 	}
@@ -70,7 +67,7 @@ func TestSync_NoOpWhenIdentical(t *testing.T) {
 func TestSync_UpdatesWhenContentDiffers(t *testing.T) {
 	dir := t.TempDir()
 	Sync(dir, defaultOpts())
-	r := Sync(dir, Options{ServerURL: "http://example.com:8080", ProjectSlug: "specgraph"})[0]
+	r := Sync(dir, Options{ServerURL: "http://example.com:8080", ProjectSlug: "specgraph"}).Agents
 	if r.Action != ActionUpdated {
 		t.Errorf("Action = %q, want %q", r.Action, ActionUpdated)
 	}
@@ -87,7 +84,7 @@ func TestSync_PreservesUserContentAroundBlock(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(userTop+userBottom), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	r := Sync(dir, defaultOpts())[0]
+	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionUpdated {
 		t.Errorf("Action = %q, want %q", r.Action, ActionUpdated)
 	}
@@ -119,7 +116,7 @@ func TestSync_AppendsBlockToFileWithoutMarkers(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte("# User AGENTS\n\nbody.\n"), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	r := Sync(dir, defaultOpts())[0]
+	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionUpdated {
 		t.Errorf("Action = %q, want %q", r.Action, ActionUpdated)
 	}
@@ -140,7 +137,7 @@ func TestSync_PurgesLegacyInjectBlocks_SimpleSlugs(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	r := Sync(dir, defaultOpts())[0]
+	r := Sync(dir, defaultOpts()).Agents
 	if r.LegacyBlocksPurged != 2 {
 		t.Errorf("LegacyBlocksPurged = %d, want 2", r.LegacyBlocksPurged)
 	}
@@ -158,7 +155,7 @@ func TestSync_PurgesLegacyInjectBlocks_RealisticSlugs(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	r := Sync(dir, defaultOpts())[0]
+	r := Sync(dir, defaultOpts()).Agents
 	if r.LegacyBlocksPurged != 2 {
 		t.Errorf("LegacyBlocksPurged = %d, want 2", r.LegacyBlocksPurged)
 	}
@@ -174,7 +171,7 @@ func TestSync_LegacyMarkerWithInvalidSlugNotPurged(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	r := Sync(dir, defaultOpts())[0]
+	r := Sync(dir, defaultOpts()).Agents
 	if r.LegacyBlocksPurged != 0 {
 		t.Errorf("LegacyBlocksPurged = %d, want 0", r.LegacyBlocksPurged)
 	}
@@ -185,7 +182,7 @@ func TestSync_DoesNotPurgeInitMarker(t *testing.T) {
 	// First create canonical state.
 	Sync(dir, defaultOpts())
 	// Run again; init block must persist (NoOp).
-	r := Sync(dir, defaultOpts())[0]
+	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionNoOp {
 		t.Errorf("Action = %q, want %q", r.Action, ActionNoOp)
 	}
@@ -201,7 +198,7 @@ func TestSync_LegacyShapedInitMarkerIsCorruption(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	r := Sync(dir, defaultOpts())[0]
+	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
 	}
@@ -214,7 +211,7 @@ func TestSync_RejectsCorruptedMarkers_EndBeforeStart(t *testing.T) {
 	dir := t.TempDir()
 	seed := "<!-- specgraph:init:end -->\n<!-- specgraph:init:start v=1 -->\n"
 	os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600)
-	r := Sync(dir, defaultOpts())[0]
+	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
 	}
@@ -224,7 +221,7 @@ func TestSync_RejectsCorruptedMarkers_StartWithoutEnd(t *testing.T) {
 	dir := t.TempDir()
 	seed := "<!-- specgraph:init:start v=1 -->\nbody\n"
 	os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600)
-	r := Sync(dir, defaultOpts())[0]
+	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
 	}
@@ -234,7 +231,7 @@ func TestSync_RejectsCorruptedMarkers_DoubleStart(t *testing.T) {
 	dir := t.TempDir()
 	seed := "<!-- specgraph:init:start v=1 -->\nbody\n<!-- specgraph:init:start v=1 -->\nmore\n<!-- specgraph:init:end -->\n"
 	os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600)
-	r := Sync(dir, defaultOpts())[0]
+	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
 	}
@@ -246,7 +243,7 @@ func TestSync_RejectsInitMarkerWithoutVersion(t *testing.T) {
 	dir := t.TempDir()
 	seed := "<!-- specgraph:init:start -->\nbody\n"
 	os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600)
-	r := Sync(dir, defaultOpts())[0]
+	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
 	}
@@ -266,7 +263,7 @@ func TestSync_RejectsSymlinkInPath(t *testing.T) {
 	if err := os.Symlink(dir, link); err != nil {
 		t.Skipf("symlink unsupported on this filesystem: %v", err)
 	}
-	r := Sync(link, defaultOpts())[0]
+	r := Sync(link, defaultOpts()).Agents
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
 	}
@@ -274,7 +271,7 @@ func TestSync_RejectsSymlinkInPath(t *testing.T) {
 
 func TestSync_CreatesCursorRule(t *testing.T) {
 	dir := t.TempDir()
-	r := Sync(dir, defaultOpts())[1]
+	r := Sync(dir, defaultOpts()).Cursor
 	if r.Path != cursorRel {
 		t.Errorf("Path = %q, want %q", r.Path, cursorRel)
 	}
@@ -305,7 +302,7 @@ func TestSync_RefusesCursorRuleWithoutFrontmatter(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, cursorRel), []byte("# bare\n"), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	r := Sync(dir, defaultOpts())[1]
+	r := Sync(dir, defaultOpts()).Cursor
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
 	}
@@ -321,7 +318,7 @@ func TestSync_PreservesCursorRuleFrontmatter(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, cursorRel), []byte(userFM+userBlock), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	r := Sync(dir, defaultOpts())[1]
+	r := Sync(dir, defaultOpts()).Cursor
 	if r.Action != ActionUpdated {
 		t.Errorf("Action = %q, want %q", r.Action, ActionUpdated)
 	}
@@ -348,7 +345,7 @@ func TestSync_CursorBodyCorruptionErrorMentionsPath(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, cursorRel), []byte(fm+seed), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	r := Sync(dir, defaultOpts())[1]
+	r := Sync(dir, defaultOpts()).Cursor
 	if r.Action != ActionError {
 		t.Fatalf("Action = %q, want %q", r.Action, ActionError)
 	}
@@ -364,15 +361,12 @@ func TestSync_FailureOnOneFileDoesNotAbortOther(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	results := Sync(dir, defaultOpts())
-	if len(results) != 2 {
-		t.Fatalf("len(results) = %d, want 2", len(results))
+	report := Sync(dir, defaultOpts())
+	if report.Agents.Action != ActionError {
+		t.Errorf("report.Agents (AGENTS.md): Action = %q, want %q", report.Agents.Action, ActionError)
 	}
-	if results[0].Action != ActionError {
-		t.Errorf("results[0] (AGENTS.md): Action = %q, want %q", results[0].Action, ActionError)
-	}
-	if results[1].Action != ActionCreated {
-		t.Errorf("results[1] (cursor): Action = %q, want %q", results[1].Action, ActionCreated)
+	if report.Cursor.Action != ActionCreated {
+		t.Errorf("report.Cursor (cursor): Action = %q, want %q", report.Cursor.Action, ActionCreated)
 	}
 }
 
@@ -387,7 +381,7 @@ func TestSync_AtomicWriteOnFailure(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) }) //nolint:gosec // test-only restore
 	// Trigger an update by changing the serverURL.
-	r := Sync(dir, Options{ServerURL: "http://example.com:9999", ProjectSlug: "specgraph"})[0]
+	r := Sync(dir, Options{ServerURL: "http://example.com:9999", ProjectSlug: "specgraph"}).Agents
 	if r.Action != ActionError {
 		// The MkdirAll on the parent might succeed if it already exists; on
 		// some filesystems chmod 0o555 still allows existing-file writes via
@@ -440,9 +434,9 @@ func TestSync_PreservesExistingFileMode(t *testing.T) {
 		t.Fatalf("chmod: %v", err)
 	}
 
-	results := Sync(dir, defaultOpts())
-	if results[0].Action != ActionUpdated {
-		t.Fatalf("results[0].Action = %v, want %v (err=%v)", results[0].Action, ActionUpdated, results[0].Err)
+	report := Sync(dir, defaultOpts())
+	if report.Agents.Action != ActionUpdated {
+		t.Fatalf("report.Agents.Action = %v, want %v (err=%v)", report.Agents.Action, ActionUpdated, report.Agents.Err)
 	}
 
 	info, err := os.Stat(full)
@@ -509,3 +503,14 @@ func TestNewOptions_AcceptsValidInputs(t *testing.T) {
 
 // Compile-time guard: ensure errors import is used (used in later tasks).
 var _ = errors.New
+
+func TestSync_ReturnsSyncReportStruct(t *testing.T) {
+	dir := t.TempDir()
+	report := Sync(dir, defaultOpts())
+	if report.Agents.Action != ActionCreated {
+		t.Errorf("report.Agents.Action = %v, want %v", report.Agents.Action, ActionCreated)
+	}
+	if report.Cursor.Action != ActionCreated {
+		t.Errorf("report.Cursor.Action = %v, want %v", report.Cursor.Action, ActionCreated)
+	}
+}

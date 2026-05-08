@@ -65,32 +65,51 @@ func NewOptions(serverURL, projectSlug string) (Options, error) {
 	return Options{ServerURL: serverURL, ProjectSlug: projectSlug}, nil
 }
 
-// Sync reconciles all pointer files for the project. Returns a slice with
-// one SyncResult per file in the order [AGENTS.md, .cursor/rules/specgraph-bootstrap.md].
+// SyncReport is the per-file outcome of a Sync. The two fields are
+// always populated except in the projectDir-level early-error case where
+// Agents carries the projectDir error and Cursor is the zero value.
+type SyncReport struct {
+	Agents SyncResult
+	Cursor SyncResult
+}
+
+// IsErr reports whether either pointer file failed.
+func (r SyncReport) IsErr() bool {
+	return r.Agents.Action == ActionError || r.Cursor.Action == ActionError
+}
+
+// Sync reconciles all pointer files for the project. Returns a SyncReport
+// with one SyncResult per pointer file.
 //
-// If projectDir is missing or not a directory, Sync returns a single-element
-// slice with Action == ActionError and Path == "<projectDir>".
+// If projectDir is missing, is not a directory, or is itself a symlink,
+// Sync short-circuits: report.Agents carries the projectDir-level error
+// (Path == projectDir, Action == ActionError) and report.Cursor is the
+// zero value.
 //
-// A failure on one pointer file is reported via SyncResult.Err with
-// Action == ActionError; the other file is still processed. This differs
-// from mcpconfigs.Sync, which aborts on first error. The caller (init)
-// reconciles by running mcpconfigs first and only invoking pointers.Sync if
-// mcpconfigs succeeded.
-func Sync(projectDir string, opts Options) []SyncResult {
+// A failure on one pointer file is reported via the corresponding
+// SyncResult.Err with Action == ActionError; the other file is still
+// processed. This differs from mcpconfigs.Sync which aborts on first
+// error. The init caller reconciles by running mcpconfigs first and only
+// invoking pointers.Sync if mcpconfigs succeeded.
+func Sync(projectDir string, opts Options) SyncReport {
 	info, err := os.Stat(projectDir)
 	if err != nil || !info.IsDir() {
 		msg := fmt.Errorf("projectDir %q is not a directory", projectDir)
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			msg = fmt.Errorf("stat %s: %w", projectDir, err)
 		}
-		return []SyncResult{{Path: projectDir, Action: ActionError, Err: msg}}
+		return SyncReport{Agents: errResult(projectDir, msg)}
 	}
-	if li, lerr := os.Lstat(projectDir); lerr == nil && li.Mode()&os.ModeSymlink != 0 {
-		return []SyncResult{{Path: projectDir, Action: ActionError, Err: fmt.Errorf("refusing to follow symlink %s", projectDir)}}
+	li, lerr := os.Lstat(projectDir)
+	if lerr != nil {
+		return SyncReport{Agents: errResult(projectDir, fmt.Errorf("lstat %s: %w", projectDir, lerr))}
 	}
-	return []SyncResult{
-		syncAgents(projectDir, opts),
-		syncCursor(projectDir, opts),
+	if li.Mode()&os.ModeSymlink != 0 {
+		return SyncReport{Agents: errResult(projectDir, fmt.Errorf("refusing to follow symlink %s", projectDir))}
+	}
+	return SyncReport{
+		Agents: syncAgents(projectDir, opts),
+		Cursor: syncCursor(projectDir, opts),
 	}
 }
 

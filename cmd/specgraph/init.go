@@ -130,15 +130,18 @@ func runInit(_ *cobra.Command, args []string) error {
 	// Pointer files (AGENTS.md, .cursor/rules/specgraph-bootstrap.md).
 	// Run only after mcpconfigs succeeded; per-file errors don't abort the
 	// pointer phase but do produce a non-zero exit.
-	pointerResults := pointers.Sync(cwd, pointers.Options{
+	pointerReport := pointers.Sync(cwd, pointers.Options{
 		ServerURL:   serverURL,
 		ProjectSlug: pc.Slug,
 	})
 	var failedPaths []string
-	for _, r := range pointerResults {
+	for _, r := range []pointers.SyncResult{pointerReport.Agents, pointerReport.Cursor} {
+		if r.Path == "" {
+			continue // zero-value (projectDir-level error case)
+		}
 		switch r.Action {
 		case pointers.ActionError:
-			fmt.Printf("%s: error: %v\n", r.Path, r.Err)
+			fmt.Fprintf(os.Stderr, "%s: error: %v\n", r.Path, r.Err)
 			failedPaths = append(failedPaths, r.Path)
 		default:
 			line := fmt.Sprintf("%s: %s", r.Path, r.Action)
