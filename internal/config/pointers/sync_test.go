@@ -205,6 +205,9 @@ func TestSync_LegacyShapedInitMarkerIsCorruption(t *testing.T) {
 	if r.Err == nil || !strings.Contains(r.Err.Error(), "v=1") {
 		t.Errorf("Err = %v, want a v=1 error", r.Err)
 	}
+	if !errors.Is(r.Err, ErrCorruptedMarkers) {
+		t.Errorf("Err = %v; want errors.Is ErrCorruptedMarkers", r.Err)
+	}
 }
 
 func TestSync_RejectsCorruptedMarkers_EndBeforeStart(t *testing.T) {
@@ -214,6 +217,9 @@ func TestSync_RejectsCorruptedMarkers_EndBeforeStart(t *testing.T) {
 	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
+	}
+	if !errors.Is(r.Err, ErrCorruptedMarkers) {
+		t.Errorf("Err = %v; want errors.Is ErrCorruptedMarkers", r.Err)
 	}
 }
 
@@ -225,6 +231,9 @@ func TestSync_RejectsCorruptedMarkers_StartWithoutEnd(t *testing.T) {
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
 	}
+	if !errors.Is(r.Err, ErrCorruptedMarkers) {
+		t.Errorf("Err = %v; want errors.Is ErrCorruptedMarkers", r.Err)
+	}
 }
 
 func TestSync_RejectsCorruptedMarkers_DoubleStart(t *testing.T) {
@@ -234,6 +243,9 @@ func TestSync_RejectsCorruptedMarkers_DoubleStart(t *testing.T) {
 	r := Sync(dir, defaultOpts()).Agents
 	if r.Action != ActionError {
 		t.Errorf("Action = %q, want %q", r.Action, ActionError)
+	}
+	if !errors.Is(r.Err, ErrCorruptedMarkers) {
+		t.Errorf("Err = %v; want errors.Is ErrCorruptedMarkers", r.Err)
 	}
 }
 
@@ -249,6 +261,9 @@ func TestSync_RejectsInitMarkerWithoutVersion(t *testing.T) {
 	}
 	if r.Err == nil || !strings.Contains(r.Err.Error(), "v=1") {
 		t.Errorf("Err = %v, want a v=1 error", r.Err)
+	}
+	if !errors.Is(r.Err, ErrCorruptedMarkers) {
+		t.Errorf("Err = %v; want errors.Is ErrCorruptedMarkers", r.Err)
 	}
 }
 
