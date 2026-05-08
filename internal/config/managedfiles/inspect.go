@@ -66,10 +66,37 @@ func Inspect(cwd string, mf ManagedFile) (FileState, error) {
 	}, nil
 }
 
+// InspectAll iterates the manifest filtered by the user's enabled harnesses
+// and returns a FileState for each. Errors at the per-file level are
+// captured in the FileState (not surfaced as an error return) so callers
+// see all results, not just the first failure.
+//
+// In PR A, Manifest() returns an empty slice; InspectAll therefore returns
+// an empty slice. PRs B+ populate the manifest.
+func InspectAll(cwd string, harnesses []Harness) ([]FileState, error) {
+	if err := validateProjectDir(cwd); err != nil {
+		return nil, err
+	}
+	mfs := Manifest(harnesses)
+	out := make([]FileState, 0, len(mfs))
+	for _, mf := range mfs {
+		state, err := Inspect(cwd, mf)
+		if err != nil {
+			out = append(out, FileState{
+				Path:     mf.Path,
+				Strategy: mf.Strategy,
+				State:    StateDrifted, // conservative fallback
+				Detail:   fmt.Sprintf("inspect error: %v", err),
+			})
+			continue
+		}
+		out = append(out, state)
+	}
+	return out, nil
+}
+
 // validateProjectDir rejects non-existent dirs, non-dirs, and symlink-rooted
 // project directories. Mirrors pointers/sync.go's projectDir guard.
-//
-//nolint:unused // consumed by InspectAll/SyncAll added in Task 12
 func validateProjectDir(projectDir string) error {
 	info, err := os.Stat(projectDir)
 	if err != nil || !info.IsDir() {
