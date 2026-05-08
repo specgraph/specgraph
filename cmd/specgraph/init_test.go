@@ -555,3 +555,22 @@ func TestRunInit_ResolvedServerURLFlowsIntoAgentsMD(t *testing.T) {
 		t.Errorf("AGENTS.md does not contain resolved server URL %q\n%s", customServer, got)
 	}
 }
+
+func TestRunInit_PropagatesPointerSyncErrors(t *testing.T) {
+	dir := t.TempDir()
+
+	// Seed AGENTS.md with corrupted markers (start without end).
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"),
+		[]byte("<!-- specgraph:init:start v=1 -->\nbody without end\n"),
+		0o644); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+		t.Fatal(err)
+	}
+
+	_, err := runInitInDir(t, dir, []string{"specgraph"})
+	if err == nil {
+		t.Fatal("runInit returned nil; want non-nil pointer-sync error")
+	}
+	if !strings.Contains(err.Error(), "sync pointer files") {
+		t.Errorf("err = %q; want substring 'sync pointer files'", err.Error())
+	}
+}
