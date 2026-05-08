@@ -86,6 +86,17 @@ The plugin matches the `Hooks` interface shipped with `@opencode-ai/plugin`
 The plugin uses `execFile` (argv array, no shell) for the CLI invocation to
 avoid shell-injection footguns if the URI list ever grows.
 
-The OpenCode runtime integration has not yet been validated end-to-end inside
-a running OpenCode session — the structure matches the type definitions, but
-behavior verification is tracked as a follow-up bead.
+Tool-name matching is **structural**, not literal — the `tool.execute.after`
+hook gates on the `*_author` suffix plus the action-arg whitelist (the exact
+five SpecGraph stage actions). This is resilient to MCP-key renames, multiple
+specgraph instances in one config, and harness-naming-convention drift,
+where a hardcoded literal like `mcp__specgraph__author` (the Claude Code
+form) would silently break.
+
+## Smoke test
+
+Manual end-to-end procedure for verifying behavior against a running
+OpenCode session: see [SMOKE_TEST.md](SMOKE_TEST.md). The procedure was
+last walked end-to-end against `opencode 1.14.40` and surfaced the
+tool-name-matching bug fixed in commit history; subsequent reruns should
+reproduce the documented sequence.
