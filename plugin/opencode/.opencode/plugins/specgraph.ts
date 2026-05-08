@@ -9,13 +9,23 @@
 //     system prompt so the model starts each turn with the same priming the
 //     Claude Code and Cursor harnesses get. Runs on every turn, which keeps
 //     the priming current rather than going stale after the first message.
-//   - tool.execute.after: when the `mcp__specgraph__author` tool succeeds with
-//     a stage action (spark/shape/specify/decompose/approve), record the stage
-//     so the next system-prompt transform appends a nudge to run the
-//     analytical passes registered for that stage. The cross-harness contract
-//     is "after stage transition, passes are surfaced", not "identical
-//     mechanism" — Claude uses a PostToolUse hook, Cursor uses a rule, we
-//     thread it through the system-prompt transform here.
+//   - tool.execute.after: when an MCP `*_author` tool succeeds with a stage
+//     action (spark/shape/specify/decompose/approve), record the stage so the
+//     next system-prompt transform appends a nudge to run the analytical
+//     passes registered for that stage. The cross-harness contract is "after
+//     stage transition, passes are surfaced", not "identical mechanism" —
+//     Claude uses a PostToolUse hook, Cursor uses a rule, we thread it
+//     through the system-prompt transform here.
+//
+// Tool-name matching is structural, not literal. OpenCode names MCP tools
+// `<server-key>_<tool-name>` (e.g. `specgraph_author` for the default
+// opencode.json key, `specgraph-prod_author` if the user has renamed). The
+// hook matches the `*_author` suffix AND requires args.action to be one of
+// the five SpecGraph stage actions. The action whitelist is the actual
+// identity check — those exact strings as the action arg are uniquely
+// SpecGraph's surface — so the suffix + action gate is strictly more robust
+// than a hardcoded literal across MCP key renames, multiple specgraph
+// instances, or future cross-harness reuse.
 //
 // We use execFile (argv array, no shell) to avoid shell injection if the
 // argument list ever grows beyond the fixed `specgraph://prime` URI.
@@ -78,7 +88,7 @@ const plugin: Plugin = async () => {
       }
     },
     "tool.execute.after": async (input, _output) => {
-      if (input.tool !== "mcp__specgraph__author") return;
+      if (!input.tool.endsWith("_author")) return;
       const action = input.args?.action;
       if (typeof action !== "string" || !STAGE_ACTIONS.has(action)) return;
       pendingStageNudge =

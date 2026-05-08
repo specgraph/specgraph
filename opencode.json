@@ -10,5 +10,8 @@
       "type": "remote",
       "url": "http://127.0.0.1:9090/mcp/"
     }
-  }
+  },
+  "plugin": [
+    "./plugin/opencode/.opencode/plugins/specgraph.ts"
+  ]
 }
