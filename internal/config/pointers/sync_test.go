@@ -463,6 +463,41 @@ func TestSync_PreservesExistingFileMode(t *testing.T) {
 	}
 }
 
+func TestSyncReport_IsErr(t *testing.T) {
+	t.Run("both ok", func(t *testing.T) {
+		dir := t.TempDir()
+		report := Sync(dir, defaultOpts())
+		if report.IsErr() {
+			t.Errorf("IsErr() = true on success path")
+		}
+	})
+	t.Run("agents fails", func(t *testing.T) {
+		dir := t.TempDir()
+		full := filepath.Join(dir, "AGENTS.md")
+		if err := os.WriteFile(full, []byte(initStart+"\nbody\n"), 0o644); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+			t.Fatal(err)
+		}
+		report := Sync(dir, defaultOpts())
+		if !report.IsErr() {
+			t.Errorf("IsErr() = false; want true (Agents has corruption)")
+		}
+	})
+	t.Run("cursor fails", func(t *testing.T) {
+		dir := t.TempDir()
+		cursorPath := filepath.Join(dir, ".cursor", "rules", "specgraph-bootstrap.md")
+		if err := os.MkdirAll(filepath.Dir(cursorPath), 0o755); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(cursorPath, []byte("no frontmatter\n"), 0o644); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+			t.Fatal(err)
+		}
+		report := Sync(dir, defaultOpts())
+		if !report.IsErr() {
+			t.Errorf("IsErr() = false; want true (Cursor has missing frontmatter)")
+		}
+	})
+}
+
 func TestSync_SentinelErrors_FrontmatterUnclosed(t *testing.T) {
 	dir := t.TempDir()
 	full := filepath.Join(dir, ".cursor", "rules", "specgraph-bootstrap.md")
