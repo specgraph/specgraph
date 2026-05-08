@@ -129,58 +129,6 @@ func (SyncState) EnumDescriptor() ([]byte, []int) {
 	return file_specgraph_v1_sync_proto_rawDescGZIP(), []int{1}
 }
 
-type InjectTool int32
-
-const (
-	InjectTool_INJECT_TOOL_UNSPECIFIED InjectTool = 0
-	InjectTool_INJECT_TOOL_CLAUDE_CODE InjectTool = 1
-	InjectTool_INJECT_TOOL_CURSOR      InjectTool = 2
-	InjectTool_INJECT_TOOL_AGENTS_MD   InjectTool = 3
-)
-
-// Enum value maps for InjectTool.
-var (
-	InjectTool_name = map[int32]string{
-		0: "INJECT_TOOL_UNSPECIFIED",
-		1: "INJECT_TOOL_CLAUDE_CODE",
-		2: "INJECT_TOOL_CURSOR",
-		3: "INJECT_TOOL_AGENTS_MD",
-	}
-	InjectTool_value = map[string]int32{
-		"INJECT_TOOL_UNSPECIFIED": 0,
-		"INJECT_TOOL_CLAUDE_CODE": 1,
-		"INJECT_TOOL_CURSOR":      2,
-		"INJECT_TOOL_AGENTS_MD":   3,
-	}
-)
-
-func (x InjectTool) Enum() *InjectTool {
-	p := new(InjectTool)
-	*p = x
-	return p
-}
-
-func (x InjectTool) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (InjectTool) Descriptor() protoreflect.EnumDescriptor {
-	return file_specgraph_v1_sync_proto_enumTypes[2].Descriptor()
-}
-
-func (InjectTool) Type() protoreflect.EnumType {
-	return &file_specgraph_v1_sync_proto_enumTypes[2]
-}
-
-func (x InjectTool) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use InjectTool.Descriptor instead.
-func (InjectTool) EnumDescriptor() ([]byte, []int) {
-	return file_specgraph_v1_sync_proto_rawDescGZIP(), []int{2}
-}
-
 type SyncMapping struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SpecId        string                 `protobuf:"bytes,1,opt,name=spec_id,json=specId,proto3" json:"spec_id,omitempty"`
@@ -669,126 +617,6 @@ func (x *SyncStatusResponse) GetMappings() []*SyncMapping {
 	return nil
 }
 
-type InjectRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	SpecSlug      string                 `protobuf:"bytes,1,opt,name=spec_slug,json=specSlug,proto3" json:"spec_slug,omitempty"`
-	Tool          InjectTool             `protobuf:"varint,2,opt,name=tool,proto3,enum=specgraph.v1.InjectTool" json:"tool,omitempty"`
-	OutputDir     string                 `protobuf:"bytes,3,opt,name=output_dir,json=outputDir,proto3" json:"output_dir,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *InjectRequest) Reset() {
-	*x = InjectRequest{}
-	mi := &file_specgraph_v1_sync_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *InjectRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*InjectRequest) ProtoMessage() {}
-
-func (x *InjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_sync_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use InjectRequest.ProtoReflect.Descriptor instead.
-func (*InjectRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_sync_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *InjectRequest) GetSpecSlug() string {
-	if x != nil {
-		return x.SpecSlug
-	}
-	return ""
-}
-
-func (x *InjectRequest) GetTool() InjectTool {
-	if x != nil {
-		return x.Tool
-	}
-	return InjectTool_INJECT_TOOL_UNSPECIFIED
-}
-
-func (x *InjectRequest) GetOutputDir() string {
-	if x != nil {
-		return x.OutputDir
-	}
-	return ""
-}
-
-type InjectResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	FilesWritten  []string               `protobuf:"bytes,1,rep,name=files_written,json=filesWritten,proto3" json:"files_written,omitempty"`
-	Summary       string                 `protobuf:"bytes,2,opt,name=summary,proto3" json:"summary,omitempty"`
-	Warnings      []string               `protobuf:"bytes,3,rep,name=warnings,proto3" json:"warnings,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *InjectResponse) Reset() {
-	*x = InjectResponse{}
-	mi := &file_specgraph_v1_sync_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *InjectResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*InjectResponse) ProtoMessage() {}
-
-func (x *InjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_sync_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use InjectResponse.ProtoReflect.Descriptor instead.
-func (*InjectResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_sync_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *InjectResponse) GetFilesWritten() []string {
-	if x != nil {
-		return x.FilesWritten
-	}
-	return nil
-}
-
-func (x *InjectResponse) GetSummary() string {
-	if x != nil {
-		return x.Summary
-	}
-	return ""
-}
-
-func (x *InjectResponse) GetWarnings() []string {
-	if x != nil {
-		return x.Warnings
-	}
-	return nil
-}
-
 var File_specgraph_v1_sync_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_sync_proto_rawDesc = "" +
@@ -831,16 +659,7 @@ const file_specgraph_v1_sync_proto_rawDesc = "" +
 	"\aadapter\x18\x01 \x01(\x0e2\x19.specgraph.v1.SyncAdapterR\aadapter\x12\x1b\n" +
 	"\tspec_slug\x18\x02 \x01(\tR\bspecSlug\"K\n" +
 	"\x12SyncStatusResponse\x125\n" +
-	"\bmappings\x18\x01 \x03(\v2\x19.specgraph.v1.SyncMappingR\bmappings\"y\n" +
-	"\rInjectRequest\x12\x1b\n" +
-	"\tspec_slug\x18\x01 \x01(\tR\bspecSlug\x12,\n" +
-	"\x04tool\x18\x02 \x01(\x0e2\x18.specgraph.v1.InjectToolR\x04tool\x12\x1d\n" +
-	"\n" +
-	"output_dir\x18\x03 \x01(\tR\toutputDir\"k\n" +
-	"\x0eInjectResponse\x12#\n" +
-	"\rfiles_written\x18\x01 \x03(\tR\ffilesWritten\x12\x18\n" +
-	"\asummary\x18\x02 \x01(\tR\asummary\x12\x1a\n" +
-	"\bwarnings\x18\x03 \x03(\tR\bwarnings*\\\n" +
+	"\bmappings\x18\x01 \x03(\v2\x19.specgraph.v1.SyncMappingR\bmappings*\\\n" +
 	"\vSyncAdapter\x12\x1c\n" +
 	"\x18SYNC_ADAPTER_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SYNC_ADAPTER_BEADS\x10\x01\x12\x17\n" +
@@ -850,19 +669,12 @@ const file_specgraph_v1_sync_proto_rawDesc = "" +
 	"\x12SYNC_STATE_PENDING\x10\x01\x12\x15\n" +
 	"\x11SYNC_STATE_SYNCED\x10\x02\x12\x17\n" +
 	"\x13SYNC_STATE_CONFLICT\x10\x03\x12\x14\n" +
-	"\x10SYNC_STATE_ERROR\x10\x04*y\n" +
-	"\n" +
-	"InjectTool\x12\x1b\n" +
-	"\x17INJECT_TOOL_UNSPECIFIED\x10\x00\x12\x1b\n" +
-	"\x17INJECT_TOOL_CLAUDE_CODE\x10\x01\x12\x16\n" +
-	"\x12INJECT_TOOL_CURSOR\x10\x02\x12\x19\n" +
-	"\x15INJECT_TOOL_AGENTS_MD\x10\x032\xba\x02\n" +
+	"\x10SYNC_STATE_ERROR\x10\x042\xf5\x01\n" +
 	"\vSyncService\x12G\n" +
 	"\tSyncBeads\x12\x1e.specgraph.v1.SyncBeadsRequest\x1a\x1a.specgraph.v1.SyncResponse\x12I\n" +
 	"\n" +
 	"SyncGitHub\x12\x1f.specgraph.v1.SyncGitHubRequest\x1a\x1a.specgraph.v1.SyncResponse\x12R\n" +
-	"\rGetSyncStatus\x12\x1f.specgraph.v1.SyncStatusRequest\x1a .specgraph.v1.SyncStatusResponse\x12C\n" +
-	"\x06Inject\x12\x1b.specgraph.v1.InjectRequest\x1a\x1c.specgraph.v1.InjectResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\rGetSyncStatus\x12\x1f.specgraph.v1.SyncStatusRequest\x1a .specgraph.v1.SyncStatusResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_sync_proto_rawDescOnce sync.Once
@@ -876,49 +688,43 @@ func file_specgraph_v1_sync_proto_rawDescGZIP() []byte {
 	return file_specgraph_v1_sync_proto_rawDescData
 }
 
-var file_specgraph_v1_sync_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_specgraph_v1_sync_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_specgraph_v1_sync_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_specgraph_v1_sync_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_specgraph_v1_sync_proto_goTypes = []any{
 	(SyncAdapter)(0),              // 0: specgraph.v1.SyncAdapter
 	(SyncState)(0),                // 1: specgraph.v1.SyncState
-	(InjectTool)(0),               // 2: specgraph.v1.InjectTool
-	(*SyncMapping)(nil),           // 3: specgraph.v1.SyncMapping
-	(*SyncResult)(nil),            // 4: specgraph.v1.SyncResult
-	(*SyncConfig)(nil),            // 5: specgraph.v1.SyncConfig
-	(*SyncBeadsRequest)(nil),      // 6: specgraph.v1.SyncBeadsRequest
-	(*SyncGitHubRequest)(nil),     // 7: specgraph.v1.SyncGitHubRequest
-	(*SyncResponse)(nil),          // 8: specgraph.v1.SyncResponse
-	(*SyncStatusRequest)(nil),     // 9: specgraph.v1.SyncStatusRequest
-	(*SyncStatusResponse)(nil),    // 10: specgraph.v1.SyncStatusResponse
-	(*InjectRequest)(nil),         // 11: specgraph.v1.InjectRequest
-	(*InjectResponse)(nil),        // 12: specgraph.v1.InjectResponse
-	(*timestamppb.Timestamp)(nil), // 13: google.protobuf.Timestamp
+	(*SyncMapping)(nil),           // 2: specgraph.v1.SyncMapping
+	(*SyncResult)(nil),            // 3: specgraph.v1.SyncResult
+	(*SyncConfig)(nil),            // 4: specgraph.v1.SyncConfig
+	(*SyncBeadsRequest)(nil),      // 5: specgraph.v1.SyncBeadsRequest
+	(*SyncGitHubRequest)(nil),     // 6: specgraph.v1.SyncGitHubRequest
+	(*SyncResponse)(nil),          // 7: specgraph.v1.SyncResponse
+	(*SyncStatusRequest)(nil),     // 8: specgraph.v1.SyncStatusRequest
+	(*SyncStatusResponse)(nil),    // 9: specgraph.v1.SyncStatusResponse
+	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
 }
 var file_specgraph_v1_sync_proto_depIdxs = []int32{
 	0,  // 0: specgraph.v1.SyncMapping.adapter:type_name -> specgraph.v1.SyncAdapter
 	1,  // 1: specgraph.v1.SyncMapping.state:type_name -> specgraph.v1.SyncState
-	13, // 2: specgraph.v1.SyncMapping.last_sync:type_name -> google.protobuf.Timestamp
-	13, // 3: specgraph.v1.SyncMapping.created_at:type_name -> google.protobuf.Timestamp
+	10, // 2: specgraph.v1.SyncMapping.last_sync:type_name -> google.protobuf.Timestamp
+	10, // 3: specgraph.v1.SyncMapping.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 4: specgraph.v1.SyncResult.state:type_name -> specgraph.v1.SyncState
-	5,  // 5: specgraph.v1.SyncBeadsRequest.config:type_name -> specgraph.v1.SyncConfig
-	5,  // 6: specgraph.v1.SyncGitHubRequest.config:type_name -> specgraph.v1.SyncConfig
-	4,  // 7: specgraph.v1.SyncResponse.results:type_name -> specgraph.v1.SyncResult
+	4,  // 5: specgraph.v1.SyncBeadsRequest.config:type_name -> specgraph.v1.SyncConfig
+	4,  // 6: specgraph.v1.SyncGitHubRequest.config:type_name -> specgraph.v1.SyncConfig
+	3,  // 7: specgraph.v1.SyncResponse.results:type_name -> specgraph.v1.SyncResult
 	0,  // 8: specgraph.v1.SyncStatusRequest.adapter:type_name -> specgraph.v1.SyncAdapter
-	3,  // 9: specgraph.v1.SyncStatusResponse.mappings:type_name -> specgraph.v1.SyncMapping
-	2,  // 10: specgraph.v1.InjectRequest.tool:type_name -> specgraph.v1.InjectTool
-	6,  // 11: specgraph.v1.SyncService.SyncBeads:input_type -> specgraph.v1.SyncBeadsRequest
-	7,  // 12: specgraph.v1.SyncService.SyncGitHub:input_type -> specgraph.v1.SyncGitHubRequest
-	9,  // 13: specgraph.v1.SyncService.GetSyncStatus:input_type -> specgraph.v1.SyncStatusRequest
-	11, // 14: specgraph.v1.SyncService.Inject:input_type -> specgraph.v1.InjectRequest
-	8,  // 15: specgraph.v1.SyncService.SyncBeads:output_type -> specgraph.v1.SyncResponse
-	8,  // 16: specgraph.v1.SyncService.SyncGitHub:output_type -> specgraph.v1.SyncResponse
-	10, // 17: specgraph.v1.SyncService.GetSyncStatus:output_type -> specgraph.v1.SyncStatusResponse
-	12, // 18: specgraph.v1.SyncService.Inject:output_type -> specgraph.v1.InjectResponse
-	15, // [15:19] is the sub-list for method output_type
-	11, // [11:15] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	2,  // 9: specgraph.v1.SyncStatusResponse.mappings:type_name -> specgraph.v1.SyncMapping
+	5,  // 10: specgraph.v1.SyncService.SyncBeads:input_type -> specgraph.v1.SyncBeadsRequest
+	6,  // 11: specgraph.v1.SyncService.SyncGitHub:input_type -> specgraph.v1.SyncGitHubRequest
+	8,  // 12: specgraph.v1.SyncService.GetSyncStatus:input_type -> specgraph.v1.SyncStatusRequest
+	7,  // 13: specgraph.v1.SyncService.SyncBeads:output_type -> specgraph.v1.SyncResponse
+	7,  // 14: specgraph.v1.SyncService.SyncGitHub:output_type -> specgraph.v1.SyncResponse
+	9,  // 15: specgraph.v1.SyncService.GetSyncStatus:output_type -> specgraph.v1.SyncStatusResponse
+	13, // [13:16] is the sub-list for method output_type
+	10, // [10:13] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_sync_proto_init() }
@@ -931,8 +737,8 @@ func file_specgraph_v1_sync_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_sync_proto_rawDesc), len(file_specgraph_v1_sync_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   10,
+			NumEnums:      2,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

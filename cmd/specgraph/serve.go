@@ -227,7 +227,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	lintEngine := linter.NewEngine(store, nil)
 	server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts, maxBytes)
 
-	syncHandler := server.RegisterSyncService(mux, store, "", opts, maxBytes)
+	syncHandler := server.RegisterSyncService(mux, store, opts, maxBytes)
 	runner := syncpkg.NewExecRunner()
 	syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
 	syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))

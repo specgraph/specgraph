@@ -420,3 +420,158 @@ func TestInitYesFlagAccepted(t *testing.T) {
 		}
 	})
 }
+
+func TestInit_FreshProject_WritesPointers(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := runInitInDir(t, dir, []string{"specgraph"}); err != nil {
+		t.Fatalf("runInit: %v", err)
+	}
+	for _, p := range []string{"AGENTS.md", ".cursor/rules/specgraph-bootstrap.md"} {
+		if _, err := os.Stat(filepath.Join(dir, p)); err != nil {
+			t.Errorf("expected %s to exist: %v", p, err)
+		}
+	}
+}
+
+func TestInit_RerunIsNoOp(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := runInitInDir(t, dir, []string{"specgraph"}); err != nil {
+		t.Fatalf("first runInit: %v", err)
+	}
+	files := []string{
+		".mcp.json", ".cursor/mcp.json", "opencode.json",
+		"AGENTS.md", ".cursor/rules/specgraph-bootstrap.md",
+	}
+	snaps := map[string][]byte{}
+	for _, f := range files {
+		data, err := os.ReadFile(filepath.Join(dir, f))
+		if err != nil {
+			t.Fatalf("read %s: %v", f, err)
+		}
+		snaps[f] = data
+	}
+	if _, err := runInitInDir(t, dir, []string{"specgraph"}); err != nil {
+		t.Fatalf("second runInit: %v", err)
+	}
+	for _, f := range files {
+		got, err := os.ReadFile(filepath.Join(dir, f))
+		if err != nil {
+			t.Fatalf("read %s after second run: %v", f, err)
+		}
+		if !bytes.Equal(got, snaps[f]) {
+			t.Errorf("%s: bytes changed between idempotent runs", f)
+		}
+	}
+}
+
+func TestRunInit_RejectsInvalidProjectSlug(t *testing.T) {
+	dir := t.TempDir()
+	// Slug contains a newline — should be rejected by pointers.NewOptions.
+	// Pass the bad slug as an explicit arg.
+	_, err := runInitInDir(t, dir, []string{"bad\nslug"})
+	if err == nil {
+		t.Fatal("runInit accepted a slug with a newline; want rejection")
+	}
+}
+
+func TestInit_PurgesLegacyInjectArtifacts(t *testing.T) {
+	dir := t.TempDir()
+	seed := "# my AGENTS\n" +
+		"<!-- specgraph:foo:start -->\nA\n<!-- specgraph:foo:end -->\n" +
+		"<!-- specgraph:My.spec_v2:start -->\nB\n<!-- specgraph:My.spec_v2:end -->\n"
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(seed), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if _, err := runInitInDir(t, dir, []string{"specgraph"}); err != nil {
+		t.Fatalf("runInit: %v", err)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("read AGENTS.md: %v", err)
+	}
+	bs := string(body)
+	if strings.Contains(bs, "specgraph:foo:") || strings.Contains(bs, "specgraph:My.spec_v2:") {
+		t.Errorf("legacy markers not purged:\n%s", bs)
+	}
+	if !strings.Contains(bs, "<!-- specgraph:init:start v=1 -->") {
+		t.Errorf("init block missing:\n%s", bs)
+	}
+}
+
+func TestInit_LeavesLegacyOrphanFilesUntouched(t *testing.T) {
+	dir := t.TempDir()
+
+	// Seed orphan inject artifacts that the PR description explicitly
+	// promises to leave alone: per-slug AGENTS.md blocks were purged
+	// in-place, but per-slug files under .claude/specs/ and
+	// .cursor/rules/specgraph-<slug>.md (other than specgraph-bootstrap.md)
+	// must survive.
+	orphans := map[string][]byte{
+		filepath.Join(".claude", "specs", "old-spec.md"):              []byte("# orphan claude spec\n"),
+		filepath.Join(".cursor", "rules", "specgraph-old-feature.md"): []byte("---\n---\n# orphan per-slug rule\n"),
+		filepath.Join(".cursor", "rules", "specgraph.md"):             []byte("# plugin-shipped rule (must survive)\n"),
+	}
+	for rel, content := range orphans {
+		full := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, content, 0o644); err != nil { //nolint:gosec // intentional permissive mode for test fixture
+			t.Fatal(err)
+		}
+	}
+
+	if _, err := runInitInDir(t, dir, []string{"specgraph"}); err != nil {
+		t.Fatalf("runInit: %v", err)
+	}
+
+	for rel, want := range orphans {
+		got, err := os.ReadFile(filepath.Join(dir, rel))
+		if err != nil {
+			t.Errorf("orphan %s: read failed: %v", rel, err)
+			continue
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("orphan %s mutated\n  got:  %q\n  want: %q", rel, got, want)
+		}
+	}
+}
+
+func TestRunInit_ResolvedServerURLFlowsIntoAgentsMD(t *testing.T) {
+	dir := t.TempDir()
+
+	const customServer = "http://7.7.7.7:7890"
+	cfgYAML := "client:\n  default_server: " + customServer + "\n"
+
+	if _, err := runInitInDirWithGlobalCfg(t, dir, []string{"specgraph"}, cfgYAML); err != nil {
+		t.Fatalf("runInit: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(got, []byte(customServer)) {
+		t.Errorf("AGENTS.md does not contain resolved server URL %q\n%s", customServer, got)
+	}
+}
+
+func TestRunInit_PropagatesPointerSyncErrors(t *testing.T) {
+	dir := t.TempDir()
+
+	// Seed AGENTS.md with corrupted markers (start without end).
+	//nolint:gosec // intentional permissive mode for test fixture
+	if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"),
+		[]byte("<!-- specgraph:init:start v=1 -->\nbody without end\n"),
+		0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := runInitInDir(t, dir, []string{"specgraph"})
+	if err == nil {
+		t.Fatal("runInit returned nil; want non-nil pointer-sync error")
+	}
+	if !strings.Contains(err.Error(), "sync pointer files") {
+		t.Errorf("err = %q; want substring 'sync pointer files'", err.Error())
+	}
+}

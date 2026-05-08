@@ -110,11 +110,10 @@ See the [deployment guide](https://specgraph.io/deployment/) for team and produc
 | `specgraph report-progress/report-blocker/report-completion` | Report execution status |
 | **Constitution** | |
 | `specgraph constitution show/import/check/emit` | View, import, validate, and emit constitution |
-| **Sync & Injection** | |
+| **Sync** | |
 | `specgraph sync` | Sync specs to Beads or GitHub |
-| `specgraph inject` | Inject spec context into tool files (.claude/specs, .cursor/rules, AGENTS.md) |
 | **Infrastructure** | |
-| `specgraph init` | Initialize project config and per-harness MCP configs (.cursor/mcp.json, .mcp.json, opencode.json) |
+| `specgraph init` | Initialize project config, per-harness MCP configs (.cursor/mcp.json, .mcp.json, opencode.json), and pointer files (AGENTS.md, .cursor/rules/specgraph-bootstrap.md) |
 | `specgraph serve` | Start the ConnectRPC API server |
 | `specgraph health` | Check server health |
 | `specgraph up/down` | Start or stop the database container (non-destructive; `down --purge` wipes data) |

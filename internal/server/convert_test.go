@@ -529,25 +529,6 @@ func TestSyncStateToProto(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestInjectToolFromProto(t *testing.T) {
-	tests := []struct {
-		proto  specv1.InjectTool
-		domain storage.InjectToolType
-	}{
-		{specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE, storage.InjectToolClaudeCode},
-		{specv1.InjectTool_INJECT_TOOL_CURSOR, storage.InjectToolCursor},
-		{specv1.InjectTool_INJECT_TOOL_AGENTS_MD, storage.InjectToolAgentsMD},
-	}
-	for _, tt := range tests {
-		got, err := injectToolFromProto(tt.proto)
-		require.NoError(t, err)
-		assert.Equal(t, tt.domain, got)
-	}
-
-	_, err := injectToolFromProto(specv1.InjectTool(99))
-	assert.Error(t, err)
-}
-
 func TestSafeConvCount(t *testing.T) {
 	tests := []struct {
 		name string
