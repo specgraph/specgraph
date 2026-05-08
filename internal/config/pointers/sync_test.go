@@ -5,6 +5,7 @@ package pointers
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -452,3 +453,59 @@ func TestSync_PreservesExistingFileMode(t *testing.T) {
 		t.Errorf("file mode after Sync = %o, want 0644 (existing mode preserved)", got)
 	}
 }
+
+func TestNewOptions_RejectsBadServerURL(t *testing.T) {
+	cases := []struct {
+		name, url string
+	}{
+		{"empty", ""},
+		{"relative", "/api"},
+		{"hostname only", "example.com"},
+		{"host:port no scheme", "localhost:3000"},
+		{"non-http scheme", "ftp://example.com"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := NewOptions(c.url, "specgraph")
+			if err == nil {
+				t.Fatalf("NewOptions(%q) returned nil error; want validation failure", c.url)
+			}
+		})
+	}
+}
+
+func TestNewOptions_RejectsBadSlug(t *testing.T) {
+	cases := []struct {
+		name, slug string
+	}{
+		{"empty", ""},
+		{"leading dot", ".secret"},
+		{"contains slash", "foo/bar"},
+		{"contains newline", "foo\nbar"},
+		{"contains marker tail", "foo --> <!-- specgraph:init:end -->"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := NewOptions("http://127.0.0.1:7890", c.slug)
+			if err == nil {
+				t.Fatalf("NewOptions(slug=%q) returned nil error", c.slug)
+			}
+		})
+	}
+}
+
+func TestNewOptions_AcceptsValidInputs(t *testing.T) {
+	opts, err := NewOptions("https://specgraph.example.com:443", "my_proj.v2")
+	if err != nil {
+		t.Fatalf("NewOptions: %v", err)
+	}
+	if opts.ServerURL != "https://specgraph.example.com:443" {
+		t.Errorf("ServerURL round-trip failed: got %q", opts.ServerURL)
+	}
+	if opts.ProjectSlug != "my_proj.v2" {
+		t.Errorf("ProjectSlug round-trip failed: got %q", opts.ProjectSlug)
+	}
+}
+
+// Compile-time guard: ensure errors import is used (used in later tasks).
+var _ = errors.New

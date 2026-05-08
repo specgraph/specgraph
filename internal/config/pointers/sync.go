@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -34,10 +36,33 @@ type SyncResult struct {
 }
 
 // Options carries the canonical values that init derives once and threads
-// into the pointer templates.
+// into the pointer templates. Construct via NewOptions to validate inputs.
 type Options struct {
 	ServerURL   string
 	ProjectSlug string
+}
+
+// safeSlugPattern mirrors the inject-era slug class:
+// `[a-zA-Z0-9][a-zA-Z0-9._-]*`. Slugs flow into the rendered managed
+// block; rejecting newlines and marker-shaped fragments keeps the block
+// syntactically inviolable.
+var safeSlugPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
+
+// NewOptions validates serverURL and projectSlug then returns a usable
+// Options. serverURL must be an absolute http or https URL with a non-empty
+// host. projectSlug must match safeSlugPattern.
+func NewOptions(serverURL, projectSlug string) (Options, error) {
+	parsed, perr := url.Parse(serverURL)
+	if perr != nil {
+		return Options{}, fmt.Errorf("server URL %q: %w", serverURL, perr)
+	}
+	if parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return Options{}, fmt.Errorf("server URL %q must be an absolute http or https URL", serverURL)
+	}
+	if !safeSlugPattern.MatchString(projectSlug) {
+		return Options{}, fmt.Errorf("project slug %q does not match %s", projectSlug, safeSlugPattern)
+	}
+	return Options{ServerURL: serverURL, ProjectSlug: projectSlug}, nil
 }
 
 // Sync reconciles all pointer files for the project. Returns a slice with
