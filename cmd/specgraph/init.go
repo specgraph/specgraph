@@ -85,9 +85,9 @@ func runInit(_ *cobra.Command, args []string) error {
 		pc = &config.ProjectConfig{Slug: derived.Slug}
 	}
 
-	// Resolve and validate the server URL and slug BEFORE any writes via
-	// NewOptions. A malformed global config or an invalid slug must fail fast
-	// before .specgraph.yaml is created on a fresh project.
+	// Reject malformed/relative server URLs before any writes. url.Parse
+	// is lenient — bare "/api", "example.com", and "localhost:3000" all
+	// parse — so NewOptions requires Scheme ∈ {http,https} AND non-empty Host.
 	globalCfg, err := loadGlobalCfg()
 	if err != nil {
 		return fmt.Errorf("load global config: %w", err)
@@ -119,8 +119,8 @@ func runInit(_ *cobra.Command, args []string) error {
 	}
 
 	// Pointer files (AGENTS.md, .cursor/rules/specgraph-bootstrap.md).
-	// Run only after mcpconfigs succeeded; per-file errors don't abort the
-	// pointer phase but do produce a non-zero exit.
+	// Pointer-file errors don't abort the pointer phase, but produce a
+	// non-zero exit so CI surfaces them.
 	pointerReport := pointers.Sync(cwd, opts)
 	var failedPaths []string
 	for _, r := range []pointers.SyncResult{pointerReport.Agents, pointerReport.Cursor} {
@@ -146,9 +146,6 @@ func runInit(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("sync pointer files: %d failed: %s", len(failedPaths), strings.Join(failedPaths, ", "))
 	}
 
-	// Only emit the success banner after Sync succeeds — printing it
-	// alongside WriteProject would leave a success-sounding line on
-	// stdout ahead of a non-zero exit if a later Sync step fails.
 	if projectCreated {
 		fmt.Printf("Initialized project %s. Config written to .specgraph.yaml\n", pc.Slug)
 	}
