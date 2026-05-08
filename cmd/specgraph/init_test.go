@@ -536,3 +536,22 @@ func TestInit_LeavesLegacyOrphanFilesUntouched(t *testing.T) {
 		}
 	}
 }
+
+func TestRunInit_ResolvedServerURLFlowsIntoAgentsMD(t *testing.T) {
+	dir := t.TempDir()
+
+	const customServer = "http://7.7.7.7:7890"
+	cfgYAML := "client:\n  default_server: " + customServer + "\n"
+
+	if _, err := runInitInDirWithGlobalCfg(t, dir, []string{"specgraph"}, cfgYAML); err != nil {
+		t.Fatalf("runInit: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(got, []byte(customServer)) {
+		t.Errorf("AGENTS.md does not contain resolved server URL %q\n%s", customServer, got)
+	}
+}
