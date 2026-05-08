@@ -1,6 +1,62 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+## Unreleased
+
+### Fixed (post-PR-940 hardening)
+
+- `internal/config/pointers/atomicWrite` now `fsync`s the temp file and the
+  parent directory before returning, preserves the existing file's mode on
+  update, and composes cleanup errors via `errors.Join` instead of
+  `//nolint:errcheck`.
+- File-lock contract: `acquireFileLock` returns `Unlocker = func() error`
+  so unlock failures reach the caller. Windows now uses `LockFileEx` (no
+  more silent no-op).
+- TOCTOU mitigation: existing pointer files are read with `O_NOFOLLOW` on
+  Unix so a symlink swapped in after `rejectSymlinkComponents` is refused
+  at open time. Windows path documented as best-effort. `doc.go` now
+  states the project directory is a trust boundary.
+- `Sync` returns `SyncReport{Agents, Cursor}` instead of `[]SyncResult`;
+  callers stop indexing positionally. `pointers.NewOptions` validates
+  server URL and project slug. Sentinel errors `ErrCorruptedMarkers`,
+  `ErrSymlinkRejected`, `ErrFrontmatterMissing` enable caller branching.
+- Empty existing `AGENTS.md` correctly reports `Updated`, not `Created`.
+- Mismatched-slug legacy blocks are surfaced via
+  `SyncResult.LegacyBlocksSkippedMalformed`; init prints
+  `(skipped N malformed legacy blocks; repair manually)`.
+- `*.md.lock` sibling lock files now ignored by `.gitignore`.
+- `init` errors go to stderr; success-path output stays on stdout.
+- Forward-compat: future `<!-- specgraph:init:start v=N -->` markers (any
+  unknown version) are now rejected as corruption rather than silently
+  appending a duplicate `v=1` block.
+
+### Removed
+
+- `specgraph inject` CLI subcommand and the `Inject` ConnectRPC method are
+  removed. Use `specgraph init` to wire harness configs (.mcp.json,
+  .cursor/mcp.json, opencode.json) and pointer files (AGENTS.md,
+  .cursor/rules/specgraph-bootstrap.md). Spec content is served live via the
+  MCP `specgraph://spec/{slug}` resource.
+
+### Migration
+
+- `specgraph init` automatically purges legacy per-slug blocks
+  (`<!-- specgraph:<slug>:start -->` / `<!-- specgraph:<slug>:end -->`) from
+  AGENTS.md on next run. The number purged is reported in the init output.
+- Orphan files under `.claude/specs/` and per-slug files under
+  `.cursor/rules/specgraph-<slug>.md` are **not** removed automatically.
+  Delete them manually if desired. The find invocation below skips
+  `specgraph.md` (plugin-shipped) and `specgraph-bootstrap.md`
+  (init-managed); a plain `rm specgraph-*.md` glob would catch the
+  bootstrap file too.
+
+  ```bash
+  rm -rf .claude/specs
+  find .cursor/rules -maxdepth 1 -type f -name 'specgraph-*.md' \
+    ! -name 'specgraph-bootstrap.md' -delete
+  ```
+
 ## [0.5.0](https://github.com/specgraph/specgraph/compare/v0.4.0...v0.5.0) - 2026-04-04
 
 ### Bug Fixes

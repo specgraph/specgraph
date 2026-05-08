@@ -263,16 +263,3 @@ func provenanceToProto(prov map[string]storage.ConstitutionLayer) []*specv1.Prov
 	}
 	return entries
 }
-
-func injectToolFromProto(t specv1.InjectTool) (storage.InjectToolType, error) {
-	switch t {
-	case specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE:
-		return storage.InjectToolClaudeCode, nil
-	case specv1.InjectTool_INJECT_TOOL_CURSOR:
-		return storage.InjectToolCursor, nil
-	case specv1.InjectTool_INJECT_TOOL_AGENTS_MD:
-		return storage.InjectToolAgentsMD, nil
-	default:
-		return "", fmt.Errorf("unknown inject tool: %v", t)
-	}
-}

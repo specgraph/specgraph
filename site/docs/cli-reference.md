@@ -951,21 +951,6 @@ Ensure the server is running, then print project context and active specs for us
 specgraph prime
 ```
 
-### specgraph inject
-
-Inject spec execution context (bundle + constitution subset) into tool-specific workspace files.
-
-```
-specgraph inject <slug> [flags]
-```
-
-**Flags:**
-
-```
-  -o, --output string   output directory (default: current directory)
-      --tool string     target tool (claude-code, cursor, agents-md) (default "claude-code")
-```
-
 ### specgraph read-mcp-resource
 
 Reads the requested MCP resource via streamable-HTTP transport from the configured SpecGraph server (see resolveBaseURL) and prints the first text content body to stdout. Bearer auth comes from SPECGRAPH_API_KEY or the credentials file.

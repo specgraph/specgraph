@@ -6,8 +6,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -36,68 +34,6 @@ func TestSyncGitHubCmd_Flags(t *testing.T) {
 	assert.NotNil(t, f.Lookup("stage"))
 	assert.NotNil(t, f.Lookup("priority"))
 	assert.NotNil(t, f.Lookup("dry-run"))
-}
-
-func TestInjectCmd_Flags(t *testing.T) {
-	require.NotNil(t, injectCmd)
-	assert.Equal(t, "inject <slug>", injectCmd.Use)
-
-	f := injectCmd.Flags()
-	assert.NotNil(t, f.Lookup("tool"))
-	assert.NotNil(t, f.Lookup("output"))
-}
-
-func TestInjectCmd_RequiresSlug(t *testing.T) {
-	err := injectCmd.Args(injectCmd, []string{})
-	assert.Error(t, err)
-}
-
-func TestInjectCmd_AcceptsSlug(t *testing.T) {
-	err := injectCmd.Args(injectCmd, []string{"my-spec"})
-	assert.NoError(t, err)
-}
-
-func TestInjectCmd_ToolAliases(t *testing.T) {
-	tests := []struct {
-		input   string
-		wantErr bool
-	}{
-		{"claude-code", false},
-		{"claude", false},
-		{"cursor", false},
-		{"agents-md", false},
-		{"agents", false},
-		{"bogus", true},
-		{"CLAUDE-CODE", false},
-	}
-
-	// Point cfgFile at a dead port so runInject errors with a controlled
-	// "connection refused" rather than dialing the contributor's real
-	// server (post-spgr-7htb dogfood, .specgraph.yaml exists at the repo
-	// root, so resolveBaseURL takes the new path and otherwise reads the
-	// user's ~/.config/specgraph/config.yaml).
-	oldCfgFile := cfgFile
-	cfgDir := t.TempDir()
-	cfgPath := filepath.Join(cfgDir, "config.yaml")
-	require.NoError(t, os.WriteFile(cfgPath, []byte("client:\n  default_server: http://127.0.0.1:1\nserver:\n  remote: http://127.0.0.1:1\n"), 0o600))
-	cfgFile = cfgPath
-	t.Cleanup(func() { cfgFile = oldCfgFile })
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			old := injectTool
-			defer func() { injectTool = old }()
-			injectTool = tt.input
-
-			err := runInject(newCmdWithCtx(), []string{"test-slug"})
-			require.Error(t, err, "runInject should error (no server reachable)")
-			if tt.wantErr {
-				assert.Contains(t, err.Error(), "unsupported tool")
-			} else {
-				assert.NotContains(t, err.Error(), "unsupported tool")
-			}
-		})
-	}
 }
 
 func TestSyncStatusCmd_Flags(t *testing.T) {

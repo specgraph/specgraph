@@ -27,7 +27,6 @@ graph TD
         Beads["Beads (spec→bead issue)"]
         GH["GitHub Issues"]
         Linear["Linear (planned)"]
-        Inject["Tool Injection<br/>(.claude/specs, .cursor/rules, AGENTS.md)"]
     end
 
     Clients -->|"ConnectRPC (JSON/HTTP)"| Server
@@ -53,7 +52,7 @@ a single domain concern:
 | **ExecutionService** | Execution bundles, prime context, and progress/blocker/completion reporting. |
 | **SliceService** | List, get, claim, and complete decomposition slices. Slices are created by `AuthoringService.Decompose`. |
 | **AnalyticalPassService** | Run analytical passes and manage findings for specs. |
-| **SyncService** | Push specs to external systems (Beads, GitHub) and inject context into tool files. |
+| **SyncService** | Push specs to external systems (Beads, GitHub) and query sync status (`GetSyncStatus`). |
 | **ExportService** | Export a project to JSON, import from JSON, and verify export integrity. |
 | **ServerService** | Health checks. |
 
@@ -203,12 +202,12 @@ specgraph/
 │   ├── auth/               # Auth interceptor + OIDC provider config
 │   ├── authoring/          # Authoring funnel (stages, postures, passes)
 │   ├── config/             # YAML-based server configuration
+│   │   └── pointers/       # Init-managed pointer files (AGENTS.md, .cursor/rules/specgraph-bootstrap.md)
 │   ├── docker/             # Docker Compose templates for DB containers
 │   ├── drift/              # Drift detection engine
 │   ├── driftscope/         # Drift scope analysis
 │   ├── emitter/            # Constitution → tool file renderers
 │   ├── export/             # Project export/import/verify engine
-│   ├── inject/             # Tool injection (.claude/specs, .cursor/rules, AGENTS.md)
 │   ├── linter/             # Spec linter (schema, edges, cycles)
 │   ├── notify/             # Change notification subscribers (impact logging)
 │   ├── render/             # Markdown renderers for CLI output

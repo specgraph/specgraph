@@ -43,8 +43,6 @@ const (
 	// SyncServiceGetSyncStatusProcedure is the fully-qualified name of the SyncService's GetSyncStatus
 	// RPC.
 	SyncServiceGetSyncStatusProcedure = "/specgraph.v1.SyncService/GetSyncStatus"
-	// SyncServiceInjectProcedure is the fully-qualified name of the SyncService's Inject RPC.
-	SyncServiceInjectProcedure = "/specgraph.v1.SyncService/Inject"
 )
 
 // SyncServiceClient is a client for the specgraph.v1.SyncService service.
@@ -52,7 +50,6 @@ type SyncServiceClient interface {
 	SyncBeads(context.Context, *connect.Request[v1.SyncBeadsRequest]) (*connect.Response[v1.SyncResponse], error)
 	SyncGitHub(context.Context, *connect.Request[v1.SyncGitHubRequest]) (*connect.Response[v1.SyncResponse], error)
 	GetSyncStatus(context.Context, *connect.Request[v1.SyncStatusRequest]) (*connect.Response[v1.SyncStatusResponse], error)
-	Inject(context.Context, *connect.Request[v1.InjectRequest]) (*connect.Response[v1.InjectResponse], error)
 }
 
 // NewSyncServiceClient constructs a client for the specgraph.v1.SyncService service. By default, it
@@ -84,12 +81,6 @@ func NewSyncServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(syncServiceMethods.ByName("GetSyncStatus")),
 			connect.WithClientOptions(opts...),
 		),
-		inject: connect.NewClient[v1.InjectRequest, v1.InjectResponse](
-			httpClient,
-			baseURL+SyncServiceInjectProcedure,
-			connect.WithSchema(syncServiceMethods.ByName("Inject")),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
@@ -98,7 +89,6 @@ type syncServiceClient struct {
 	syncBeads     *connect.Client[v1.SyncBeadsRequest, v1.SyncResponse]
 	syncGitHub    *connect.Client[v1.SyncGitHubRequest, v1.SyncResponse]
 	getSyncStatus *connect.Client[v1.SyncStatusRequest, v1.SyncStatusResponse]
-	inject        *connect.Client[v1.InjectRequest, v1.InjectResponse]
 }
 
 // SyncBeads calls specgraph.v1.SyncService.SyncBeads.
@@ -116,17 +106,11 @@ func (c *syncServiceClient) GetSyncStatus(ctx context.Context, req *connect.Requ
 	return c.getSyncStatus.CallUnary(ctx, req)
 }
 
-// Inject calls specgraph.v1.SyncService.Inject.
-func (c *syncServiceClient) Inject(ctx context.Context, req *connect.Request[v1.InjectRequest]) (*connect.Response[v1.InjectResponse], error) {
-	return c.inject.CallUnary(ctx, req)
-}
-
 // SyncServiceHandler is an implementation of the specgraph.v1.SyncService service.
 type SyncServiceHandler interface {
 	SyncBeads(context.Context, *connect.Request[v1.SyncBeadsRequest]) (*connect.Response[v1.SyncResponse], error)
 	SyncGitHub(context.Context, *connect.Request[v1.SyncGitHubRequest]) (*connect.Response[v1.SyncResponse], error)
 	GetSyncStatus(context.Context, *connect.Request[v1.SyncStatusRequest]) (*connect.Response[v1.SyncStatusResponse], error)
-	Inject(context.Context, *connect.Request[v1.InjectRequest]) (*connect.Response[v1.InjectResponse], error)
 }
 
 // NewSyncServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -154,12 +138,6 @@ func NewSyncServiceHandler(svc SyncServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(syncServiceMethods.ByName("GetSyncStatus")),
 		connect.WithHandlerOptions(opts...),
 	)
-	syncServiceInjectHandler := connect.NewUnaryHandler(
-		SyncServiceInjectProcedure,
-		svc.Inject,
-		connect.WithSchema(syncServiceMethods.ByName("Inject")),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/specgraph.v1.SyncService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SyncServiceSyncBeadsProcedure:
@@ -168,8 +146,6 @@ func NewSyncServiceHandler(svc SyncServiceHandler, opts ...connect.HandlerOption
 			syncServiceSyncGitHubHandler.ServeHTTP(w, r)
 		case SyncServiceGetSyncStatusProcedure:
 			syncServiceGetSyncStatusHandler.ServeHTTP(w, r)
-		case SyncServiceInjectProcedure:
-			syncServiceInjectHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -189,8 +165,4 @@ func (UnimplementedSyncServiceHandler) SyncGitHub(context.Context, *connect.Requ
 
 func (UnimplementedSyncServiceHandler) GetSyncStatus(context.Context, *connect.Request[v1.SyncStatusRequest]) (*connect.Response[v1.SyncStatusResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.SyncService.GetSyncStatus is not implemented"))
-}
-
-func (UnimplementedSyncServiceHandler) Inject(context.Context, *connect.Request[v1.InjectRequest]) (*connect.Response[v1.InjectResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.SyncService.Inject is not implemented"))
 }

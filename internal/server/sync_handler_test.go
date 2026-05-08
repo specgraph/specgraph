@@ -209,8 +209,8 @@ func (s *syncTestBackend) UpdateConstitution(ctx context.Context, c *storage.Con
 }
 
 // newSyncScoper creates a testScoper from sync test components.
-func newSyncScoper(syncStore storage.SyncBackend, specStore storage.SpecReader, conStore storage.ConstitutionBackend) *testScoper {
-	return &testScoper{backend: &syncTestBackend{syncBackend: syncStore, spec: specStore, con: conStore}}
+func newSyncScoper(syncStore storage.SyncBackend, specStore storage.SpecReader) *testScoper {
+	return &testScoper{backend: &syncTestBackend{syncBackend: syncStore, spec: specStore, con: nil}}
 }
 
 func setupSyncServer(t *testing.T) specgraphv1connect.SyncServiceClient {
@@ -230,7 +230,7 @@ func setupSyncServer(t *testing.T) specgraphv1connect.SyncServiceClient {
 		},
 	}
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore))
 	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
@@ -256,7 +256,7 @@ func TestSyncHandler_GetSyncStatus_WithMappings(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, newSyncScoper(syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}, nil), "")
+	server.RegisterSyncService(mux, newSyncScoper(syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}))
 	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
@@ -266,131 +266,6 @@ func TestSyncHandler_GetSyncStatus_WithMappings(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resp.Msg.Mappings, 1)
 	require.Equal(t, "gh-1", resp.Msg.Mappings[0].ExternalId)
-}
-
-func TestSyncHandler_Inject_SpecNotFound(t *testing.T) {
-	client := setupSyncServer(t)
-	_, err := client.Inject(context.Background(),
-		connect.NewRequest(&specv1.InjectRequest{
-			SpecSlug: "nonexistent",
-			Tool:     specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
-		}))
-	require.Error(t, err)
-	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
-}
-
-func TestSyncHandler_Inject_MissingSlug(t *testing.T) {
-	client := setupSyncServer(t)
-	_, err := client.Inject(context.Background(),
-		connect.NewRequest(&specv1.InjectRequest{
-			Tool: specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
-		}))
-	require.Error(t, err)
-	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-}
-
-func TestSyncHandler_Inject_MissingTool(t *testing.T) {
-	client := setupSyncServer(t)
-	_, err := client.Inject(context.Background(),
-		connect.NewRequest(&specv1.InjectRequest{
-			SpecSlug: "test-spec",
-		}))
-	require.Error(t, err)
-	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-}
-
-func TestSyncHandler_Inject_Success(t *testing.T) {
-	outputDir := t.TempDir()
-	syncStore := newMockSyncBackend()
-	specStore := &mockSpecReader{
-		specs: map[string]*storage.Spec{
-			"test-spec": {
-				ID:          "spec-test123",
-				Slug:        "test-spec",
-				Intent:      "Test spec for sync",
-				Stage:       "approved",
-				Priority:    "p2",
-				Complexity:  "medium",
-				ContentHash: strings.Repeat("a", 32),
-			},
-		},
-	}
-	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
-	handler.SetAllowedOutputRoot(outputDir)
-	srv := httptest.NewServer(wrapTestProject(mux))
-	t.Cleanup(srv.Close)
-	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
-
-	resp, err := client.Inject(context.Background(),
-		connect.NewRequest(&specv1.InjectRequest{
-			SpecSlug:  "test-spec",
-			Tool:      specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
-			OutputDir: outputDir,
-		}))
-	require.NoError(t, err)
-	require.Len(t, resp.Msg.FilesWritten, 1)
-	require.Contains(t, resp.Msg.Summary, "test-spec")
-}
-
-func TestSyncHandler_Inject_SuccessCursor(t *testing.T) {
-	outputDir := t.TempDir()
-	syncStore := newMockSyncBackend()
-	specStore := &mockSpecReader{
-		specs: map[string]*storage.Spec{
-			"test-spec": {
-				ID: "spec-test123", Slug: "test-spec", Intent: "Test spec for sync",
-				Stage: "approved", Priority: "p2", Complexity: "medium",
-				ContentHash: strings.Repeat("a", 32),
-			},
-		},
-	}
-	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
-	handler.SetAllowedOutputRoot(outputDir)
-	srv := httptest.NewServer(wrapTestProject(mux))
-	t.Cleanup(srv.Close)
-	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
-
-	resp, err := client.Inject(context.Background(),
-		connect.NewRequest(&specv1.InjectRequest{
-			SpecSlug:  "test-spec",
-			Tool:      specv1.InjectTool_INJECT_TOOL_CURSOR,
-			OutputDir: outputDir,
-		}))
-	require.NoError(t, err)
-	require.Len(t, resp.Msg.FilesWritten, 1)
-	require.Contains(t, resp.Msg.Summary, "test-spec")
-}
-
-func TestSyncHandler_Inject_SuccessAgentsMD(t *testing.T) {
-	outputDir := t.TempDir()
-	syncStore := newMockSyncBackend()
-	specStore := &mockSpecReader{
-		specs: map[string]*storage.Spec{
-			"test-spec": {
-				ID: "spec-test123", Slug: "test-spec", Intent: "Test spec for sync",
-				Stage: "approved", Priority: "p2", Complexity: "medium",
-				ContentHash: strings.Repeat("a", 32),
-			},
-		},
-	}
-	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
-	handler.SetAllowedOutputRoot(outputDir)
-	srv := httptest.NewServer(wrapTestProject(mux))
-	t.Cleanup(srv.Close)
-	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
-
-	resp, err := client.Inject(context.Background(),
-		connect.NewRequest(&specv1.InjectRequest{
-			SpecSlug:  "test-spec",
-			Tool:      specv1.InjectTool_INJECT_TOOL_AGENTS_MD,
-			OutputDir: outputDir,
-		}))
-	require.NoError(t, err)
-	require.Len(t, resp.Msg.FilesWritten, 1)
-	require.Contains(t, resp.Msg.Summary, "test-spec")
 }
 
 // mockAdapter implements syncpkg.Adapter for testing syncWithAdapter.
@@ -441,7 +316,7 @@ func setupSyncServerWithAdapter(t *testing.T, adapter syncpkg.Adapter) specgraph
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore))
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
@@ -558,7 +433,7 @@ func TestSyncHandler_SyncBeads_AlreadySynced(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore))
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
@@ -656,7 +531,7 @@ func TestSyncHandler_SyncBeads_GetSyncMappingError(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore))
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
@@ -689,7 +564,7 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingError(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore))
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
@@ -750,7 +625,7 @@ func TestSyncHandler_SyncBeads_ListSpecsError(t *testing.T) {
 	}
 	syncStore := newMockSyncBackend()
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore))
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
@@ -775,7 +650,7 @@ func TestSyncHandler_GetSyncStatus_ListSyncMappingsError(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore))
 	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
@@ -798,7 +673,7 @@ func TestSyncHandler_GetSyncStatus_ConversionFailure(t *testing.T) {
 	}
 
 	mux := http.NewServeMux()
-	server.RegisterSyncService(mux, newSyncScoper(syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}, nil), "")
+	server.RegisterSyncService(mux, newSyncScoper(syncStore, &mockSpecReader{specs: map[string]*storage.Spec{}}))
 	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
 	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
@@ -827,7 +702,7 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingExists(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore))
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
@@ -840,118 +715,6 @@ func TestSyncHandler_SyncBeads_CreateSyncMappingExists(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int32(1), resp.Msg.Skipped)
 	require.Contains(t, resp.Msg.Results[0].Message, "already synced (concurrent sync detected)")
-}
-
-func TestSyncHandler_Inject_ConstitutionWarning(t *testing.T) {
-	syncStore := newMockSyncBackend()
-	specStore := &mockSpecReader{
-		specs: map[string]*storage.Spec{
-			"test-spec": {
-				ID:          "spec-test123",
-				Slug:        "test-spec",
-				Intent:      "Test spec",
-				Stage:       "approved",
-				Priority:    "p2",
-				Complexity:  "medium",
-				ContentHash: strings.Repeat("a", 32),
-			},
-		},
-	}
-	conStore := &mockConstitutionStore{err: fmt.Errorf("db connection lost")}
-	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, conStore), "")
-	outputDir := t.TempDir()
-	handler.SetAllowedOutputRoot(outputDir)
-	srv := httptest.NewServer(wrapTestProject(mux))
-	defer srv.Close()
-	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
-	resp, err := client.Inject(context.Background(),
-		connect.NewRequest(&specv1.InjectRequest{
-			SpecSlug:  "test-spec",
-			Tool:      specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
-			OutputDir: outputDir,
-		}))
-	require.NoError(t, err)
-	require.Contains(t, resp.Msg.Summary, "warning: constitution load failed: storage error")
-	require.Len(t, resp.Msg.Warnings, 1)
-	require.Equal(t, "constitution load failed: storage error", resp.Msg.Warnings[0])
-}
-
-// mockConstitutionStore always returns an error for GetConstitution.
-type mockConstitutionStore struct {
-	err error
-}
-
-func (m *mockConstitutionStore) GetConstitution(_ context.Context) (*storage.Constitution, error) {
-	return nil, m.err
-}
-
-func (m *mockConstitutionStore) GetConstitutionLayer(_ context.Context, _ storage.ConstitutionLayer) (*storage.Constitution, error) {
-	return nil, m.err
-}
-
-func (m *mockConstitutionStore) GetAllLayers(_ context.Context) ([]*storage.Constitution, error) {
-	return nil, m.err
-}
-
-func (m *mockConstitutionStore) UpdateConstitution(_ context.Context, c *storage.Constitution) (*storage.Constitution, error) {
-	return c, nil
-}
-
-func TestSyncHandler_Inject_ConstitutionNotFound_NoWarning(t *testing.T) {
-	syncStore := newMockSyncBackend()
-	specStore := &mockSpecReader{
-		specs: map[string]*storage.Spec{
-			"test-spec": {
-				ID: "spec-test123", Slug: "test-spec", Intent: "Test spec",
-				Stage: "approved", Priority: "p2", Complexity: "medium",
-				ContentHash: strings.Repeat("a", 32),
-			},
-		},
-	}
-	// ErrConstitutionNotFound is a normal state — should NOT produce a warning.
-	conStore := &mockConstitutionStore{err: storage.ErrConstitutionNotFound}
-	outputDir := t.TempDir()
-	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, conStore), "")
-	handler.SetAllowedOutputRoot(outputDir)
-	srv := httptest.NewServer(wrapTestProject(mux))
-	defer srv.Close()
-	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
-
-	resp, err := client.Inject(context.Background(),
-		connect.NewRequest(&specv1.InjectRequest{
-			SpecSlug:  "test-spec",
-			Tool:      specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
-			OutputDir: outputDir,
-		}))
-	require.NoError(t, err)
-	require.Empty(t, resp.Msg.Warnings, "ErrConstitutionNotFound should not produce warnings")
-	require.NotContains(t, resp.Msg.Summary, "warning:")
-}
-
-func TestSyncHandler_Inject_OutputDirOutsideRoot(t *testing.T) {
-	syncStore := newMockSyncBackend()
-	specStore := &mockSpecReader{
-		specs: map[string]*storage.Spec{
-			"test-spec": {ID: "spec-test123", Slug: "test-spec", Stage: "approved", ContentHash: strings.Repeat("a", 32)},
-		},
-	}
-	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
-	handler.SetAllowedOutputRoot(t.TempDir())
-	srv := httptest.NewServer(wrapTestProject(mux))
-	defer srv.Close()
-	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
-
-	_, err := client.Inject(context.Background(),
-		connect.NewRequest(&specv1.InjectRequest{
-			SpecSlug:  "test-spec",
-			Tool:      specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
-			OutputDir: "/tmp/evil-path",
-		}))
-	require.Error(t, err)
-	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
 // countingSyncBackend wraps mockSyncBackend to fail CreateSyncMapping N times then succeed.
@@ -989,7 +752,7 @@ func TestSyncHandler_SyncBeads_RetrySuccess(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore))
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
@@ -1036,7 +799,7 @@ func TestSyncHandler_SyncBeads_RetryExistsCountsAsSkipped(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore))
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(wrapTestProject(mux))
 	defer srv.Close()
@@ -1089,7 +852,7 @@ func TestSyncHandler_SyncBeads_ContextCancelledBeforeRetry(t *testing.T) {
 	// Call the handler method directly (not via HTTP) to avoid context
 	// cancellation affecting the transport layer.
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore))
 	handler.RegisterAdapter(adapter)
 
 	// Inject project into context since we're calling the handler directly,
@@ -1106,55 +869,6 @@ func TestSyncHandler_SyncBeads_ContextCancelledBeforeRetry(t *testing.T) {
 	require.Equal(t, specv1.SyncState_SYNC_STATE_ERROR, resp.Msg.Results[0].State)
 	require.NotEmpty(t, resp.Msg.Results[0].ExternalId)
 	require.Contains(t, resp.Msg.Results[0].Message, "reconciliation")
-}
-
-func TestSyncHandler_Inject_EmptyOutputDir(t *testing.T) {
-	client := setupSyncServer(t)
-	_, err := client.Inject(context.Background(),
-		connect.NewRequest(&specv1.InjectRequest{
-			SpecSlug: "test-spec",
-			Tool:     specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
-		}))
-	require.Error(t, err)
-	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-}
-
-// TestSyncHandler_Inject_NoAllowedOutputRoot verifies that when RegisterSyncService
-// is called with allowedOutputRoot="" the Inject handler accepts any output_dir
-// without path validation (unrestricted mode).
-func TestSyncHandler_Inject_NoAllowedOutputRoot(t *testing.T) {
-	outputDir := t.TempDir()
-	syncStore := newMockSyncBackend()
-	specStore := &mockSpecReader{
-		specs: map[string]*storage.Spec{
-			"test-spec": {
-				ID:          "spec-test123",
-				Slug:        "test-spec",
-				Intent:      "Test spec for sync",
-				Stage:       "approved",
-				Priority:    "p2",
-				Complexity:  "medium",
-				ContentHash: strings.Repeat("a", 32),
-			},
-		},
-	}
-	mux := http.NewServeMux()
-	// Pass allowedOutputRoot="" — no root restriction.
-	server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
-	srv := httptest.NewServer(wrapTestProject(mux))
-	t.Cleanup(srv.Close)
-	client := specgraphv1connect.NewSyncServiceClient(http.DefaultClient, srv.URL)
-
-	// Any output_dir should be accepted when allowedOutputRoot is empty.
-	resp, err := client.Inject(context.Background(),
-		connect.NewRequest(&specv1.InjectRequest{
-			SpecSlug:  "test-spec",
-			Tool:      specv1.InjectTool_INJECT_TOOL_CLAUDE_CODE,
-			OutputDir: outputDir,
-		}))
-	require.NoError(t, err)
-	require.Len(t, resp.Msg.FilesWritten, 1)
-	require.Contains(t, resp.Msg.Summary, "test-spec")
 }
 
 // TestSyncHandler_SyncBeads_DryRunCount verifies that syncWithAdapter correctly
@@ -1177,7 +891,7 @@ func TestSyncHandler_SyncBeads_DryRunCount(t *testing.T) {
 		},
 	}
 	mux := http.NewServeMux()
-	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore, nil), "")
+	handler := server.RegisterSyncService(mux, newSyncScoper(syncStore, specStore))
 	handler.RegisterAdapter(adapter)
 	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)

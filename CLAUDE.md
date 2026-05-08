@@ -59,7 +59,7 @@ task build          # Generate proto + build binary
 | `internal/drift/` | Drift detection engine |
 | `internal/driftscope/` | Drift scope analysis |
 | `internal/emitter/` | Event/output emitters |
-| `internal/inject/` | Tool injection (.claude/specs, .cursor/rules, AGENTS.md) with file locking |
+| `internal/config/pointers/` | Init-managed pointer files (AGENTS.md, .cursor/rules/specgraph-bootstrap.md) with managed-block fencing and file locking |
 | `internal/server/` | ConnectRPC handlers + proto↔domain converters |
 | `internal/storage/` | Storage interfaces (domain types, not protobuf) |
 | `internal/storage/postgres/` | PostgreSQL implementation (pgx v5, recursive CTEs, testcontainers) |

@@ -6,11 +6,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
+	"strings"
 
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/config/mcpconfigs"
+	"github.com/specgraph/specgraph/internal/config/pointers"
 	"github.com/spf13/cobra"
 )
 
@@ -84,25 +85,17 @@ func runInit(_ *cobra.Command, args []string) error {
 		pc = &config.ProjectConfig{Slug: derived.Slug}
 	}
 
-	// Resolve and validate the server URL BEFORE any writes. A malformed
-	// global config or a non-absolute-HTTP(S) resolved URL must fail fast,
-	// before .specgraph.yaml is created on a fresh project. ResolveServer
-	// itself cannot fail (returns a string), and url.Parse is too lenient
-	// on its own: a bare "/api" parses with empty Scheme and Host;
-	// "example.com" parses with empty Scheme; "localhost:3000" parses with
-	// Scheme="localhost". We require Scheme ∈ {http, https} AND non-empty
-	// Host to reject all three.
+	// Reject malformed/relative server URLs before any writes. url.Parse
+	// is lenient — bare "/api", "example.com", and "localhost:3000" all
+	// parse — so NewOptions requires Scheme ∈ {http,https} AND non-empty Host.
 	globalCfg, err := loadGlobalCfg()
 	if err != nil {
 		return fmt.Errorf("load global config: %w", err)
 	}
 	serverURL := globalCfg.ResolveServer(pc.Slug, pc.Server)
-	parsed, parseErr := url.Parse(serverURL)
-	if parseErr != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
-		if parseErr != nil {
-			return fmt.Errorf("resolved server URL %q must be an absolute http or https URL: %w", serverURL, parseErr)
-		}
-		return fmt.Errorf("resolved server URL %q must be an absolute http or https URL", serverURL)
+	opts, optsErr := pointers.NewOptions(serverURL, pc.Slug)
+	if optsErr != nil {
+		return fmt.Errorf("validate pointer options: %w", optsErr)
 	}
 	configs := mcpconfigs.ManagedConfigs(pc.Slug, serverURL)
 
@@ -125,9 +118,34 @@ func runInit(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("sync mcp configs: %w", syncErr)
 	}
 
-	// Only emit the success banner after Sync succeeds — printing it
-	// alongside WriteProject would leave a success-sounding line on
-	// stdout ahead of a non-zero exit if a later Sync step fails.
+	// Pointer files (AGENTS.md, .cursor/rules/specgraph-bootstrap.md).
+	// Pointer-file errors don't abort the pointer phase, but produce a
+	// non-zero exit so CI surfaces them.
+	pointerReport := pointers.Sync(cwd, opts)
+	var failedPaths []string
+	for _, r := range []pointers.SyncResult{pointerReport.Agents, pointerReport.Cursor} {
+		if r.Path == "" {
+			continue // zero-value (projectDir-level error case)
+		}
+		switch r.Action {
+		case pointers.ActionError:
+			fmt.Fprintf(os.Stderr, "%s: error: %v\n", r.Path, r.Err)
+			failedPaths = append(failedPaths, r.Path)
+		default:
+			line := fmt.Sprintf("%s: %s", r.Path, r.Action)
+			if r.LegacyBlocksPurged > 0 {
+				line += fmt.Sprintf(" (purged %d legacy blocks)", r.LegacyBlocksPurged)
+			}
+			if r.LegacyBlocksSkippedMalformed > 0 {
+				line += fmt.Sprintf(" (skipped %d malformed legacy blocks; repair manually)", r.LegacyBlocksSkippedMalformed)
+			}
+			fmt.Println(line)
+		}
+	}
+	if len(failedPaths) > 0 {
+		return fmt.Errorf("sync pointer files: %d failed: %s", len(failedPaths), strings.Join(failedPaths, ", "))
+	}
+
 	if projectCreated {
 		fmt.Printf("Initialized project %s. Config written to .specgraph.yaml\n", pc.Slug)
 	}

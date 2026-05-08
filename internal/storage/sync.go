@@ -28,16 +28,6 @@ const (
 	SyncStateError    SyncStateType = "error"
 )
 
-// InjectToolType identifies the target tool for injection.
-type InjectToolType string
-
-// InjectToolType values.
-const (
-	InjectToolClaudeCode InjectToolType = "claude-code"
-	InjectToolCursor     InjectToolType = "cursor"
-	InjectToolAgentsMD   InjectToolType = "agents-md"
-)
-
 // SyncMapping represents the relationship between a spec and an external reference.
 type SyncMapping struct {
 	SpecID       string

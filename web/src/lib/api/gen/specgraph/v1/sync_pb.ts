@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file specgraph/v1/sync.proto.
  */
 export const file_specgraph_v1_sync: GenFile = /*@__PURE__*/
-  fileDesc("ChdzcGVjZ3JhcGgvdjEvc3luYy5wcm90bxIMc3BlY2dyYXBoLnYxIpACCgtTeW5jTWFwcGluZxIPCgdzcGVjX2lkGAEgASgJEhEKCXNwZWNfc2x1ZxgCIAEoCRIqCgdhZGFwdGVyGAMgASgOMhkuc3BlY2dyYXBoLnYxLlN5bmNBZGFwdGVyEhMKC2V4dGVybmFsX2lkGAQgASgJEiYKBXN0YXRlGAUgASgOMhcuc3BlY2dyYXBoLnYxLlN5bmNTdGF0ZRIVCg1lcnJvcl9tZXNzYWdlGAYgASgJEi0KCWxhc3Rfc3luYxgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAibQoKU3luY1Jlc3VsdBIRCglzcGVjX3NsdWcYASABKAkSEwoLZXh0ZXJuYWxfaWQYAiABKAkSJgoFc3RhdGUYAyABKA4yFy5zcGVjZ3JhcGgudjEuU3luY1N0YXRlEg8KB21lc3NhZ2UYBCABKAkiWwoKU3luY0NvbmZpZxIUCgxmaWx0ZXJfc3RhZ2UYAiABKAkSFwoPZmlsdGVyX3ByaW9yaXR5GAMgASgJEg8KB2RyeV9ydW4YBCABKAhKBAgBEAJSB2FkYXB0ZXIiPAoQU3luY0JlYWRzUmVxdWVzdBIoCgZjb25maWcYASABKAsyGC5zcGVjZ3JhcGgudjEuU3luY0NvbmZpZyI9ChFTeW5jR2l0SHViUmVxdWVzdBIoCgZjb25maWcYASABKAsyGC5zcGVjZ3JhcGgudjEuU3luY0NvbmZpZyKBAQoMU3luY1Jlc3BvbnNlEikKB3Jlc3VsdHMYASADKAsyGC5zcGVjZ3JhcGgudjEuU3luY1Jlc3VsdBIOCgZzeW5jZWQYAiABKAUSDwoHc2tpcHBlZBgDIAEoBRIOCgZlcnJvcnMYBCABKAUSFQoNZHJ5X3J1bl9jb3VudBgFIAEoBSJSChFTeW5jU3RhdHVzUmVxdWVzdBIqCgdhZGFwdGVyGAEgASgOMhkuc3BlY2dyYXBoLnYxLlN5bmNBZGFwdGVyEhEKCXNwZWNfc2x1ZxgCIAEoCSJBChJTeW5jU3RhdHVzUmVzcG9uc2USKwoIbWFwcGluZ3MYASADKAsyGS5zcGVjZ3JhcGgudjEuU3luY01hcHBpbmciXgoNSW5qZWN0UmVxdWVzdBIRCglzcGVjX3NsdWcYASABKAkSJgoEdG9vbBgCIAEoDjIYLnNwZWNncmFwaC52MS5JbmplY3RUb29sEhIKCm91dHB1dF9kaXIYAyABKAkiSgoOSW5qZWN0UmVzcG9uc2USFQoNZmlsZXNfd3JpdHRlbhgBIAMoCRIPCgdzdW1tYXJ5GAIgASgJEhAKCHdhcm5pbmdzGAMgAygJKlwKC1N5bmNBZGFwdGVyEhwKGFNZTkNfQURBUFRFUl9VTlNQRUNJRklFRBAAEhYKElNZTkNfQURBUFRFUl9CRUFEUxABEhcKE1NZTkNfQURBUFRFUl9HSVRIVUIQAiqFAQoJU3luY1N0YXRlEhoKFlNZTkNfU1RBVEVfVU5TUEVDSUZJRUQQABIWChJTWU5DX1NUQVRFX1BFTkRJTkcQARIVChFTWU5DX1NUQVRFX1NZTkNFRBACEhcKE1NZTkNfU1RBVEVfQ09ORkxJQ1QQAxIUChBTWU5DX1NUQVRFX0VSUk9SEAQqeQoKSW5qZWN0VG9vbBIbChdJTkpFQ1RfVE9PTF9VTlNQRUNJRklFRBAAEhsKF0lOSkVDVF9UT09MX0NMQVVERV9DT0RFEAESFgoSSU5KRUNUX1RPT0xfQ1VSU09SEAISGQoVSU5KRUNUX1RPT0xfQUdFTlRTX01EEAMyugIKC1N5bmNTZXJ2aWNlEkcKCVN5bmNCZWFkcxIeLnNwZWNncmFwaC52MS5TeW5jQmVhZHNSZXF1ZXN0Ghouc3BlY2dyYXBoLnYxLlN5bmNSZXNwb25zZRJJCgpTeW5jR2l0SHViEh8uc3BlY2dyYXBoLnYxLlN5bmNHaXRIdWJSZXF1ZXN0Ghouc3BlY2dyYXBoLnYxLlN5bmNSZXNwb25zZRJSCg1HZXRTeW5jU3RhdHVzEh8uc3BlY2dyYXBoLnYxLlN5bmNTdGF0dXNSZXF1ZXN0GiAuc3BlY2dyYXBoLnYxLlN5bmNTdGF0dXNSZXNwb25zZRJDCgZJbmplY3QSGy5zcGVjZ3JhcGgudjEuSW5qZWN0UmVxdWVzdBocLnNwZWNncmFwaC52MS5JbmplY3RSZXNwb25zZUI9WjtnaXRodWIuY29tL3NwZWNncmFwaC9zcGVjZ3JhcGgvZ2VuL3NwZWNncmFwaC92MTtzcGVjZ3JhcGh2MWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("ChdzcGVjZ3JhcGgvdjEvc3luYy5wcm90bxIMc3BlY2dyYXBoLnYxIpACCgtTeW5jTWFwcGluZxIPCgdzcGVjX2lkGAEgASgJEhEKCXNwZWNfc2x1ZxgCIAEoCRIqCgdhZGFwdGVyGAMgASgOMhkuc3BlY2dyYXBoLnYxLlN5bmNBZGFwdGVyEhMKC2V4dGVybmFsX2lkGAQgASgJEiYKBXN0YXRlGAUgASgOMhcuc3BlY2dyYXBoLnYxLlN5bmNTdGF0ZRIVCg1lcnJvcl9tZXNzYWdlGAYgASgJEi0KCWxhc3Rfc3luYxgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAibQoKU3luY1Jlc3VsdBIRCglzcGVjX3NsdWcYASABKAkSEwoLZXh0ZXJuYWxfaWQYAiABKAkSJgoFc3RhdGUYAyABKA4yFy5zcGVjZ3JhcGgudjEuU3luY1N0YXRlEg8KB21lc3NhZ2UYBCABKAkiWwoKU3luY0NvbmZpZxIUCgxmaWx0ZXJfc3RhZ2UYAiABKAkSFwoPZmlsdGVyX3ByaW9yaXR5GAMgASgJEg8KB2RyeV9ydW4YBCABKAhKBAgBEAJSB2FkYXB0ZXIiPAoQU3luY0JlYWRzUmVxdWVzdBIoCgZjb25maWcYASABKAsyGC5zcGVjZ3JhcGgudjEuU3luY0NvbmZpZyI9ChFTeW5jR2l0SHViUmVxdWVzdBIoCgZjb25maWcYASABKAsyGC5zcGVjZ3JhcGgudjEuU3luY0NvbmZpZyKBAQoMU3luY1Jlc3BvbnNlEikKB3Jlc3VsdHMYASADKAsyGC5zcGVjZ3JhcGgudjEuU3luY1Jlc3VsdBIOCgZzeW5jZWQYAiABKAUSDwoHc2tpcHBlZBgDIAEoBRIOCgZlcnJvcnMYBCABKAUSFQoNZHJ5X3J1bl9jb3VudBgFIAEoBSJSChFTeW5jU3RhdHVzUmVxdWVzdBIqCgdhZGFwdGVyGAEgASgOMhkuc3BlY2dyYXBoLnYxLlN5bmNBZGFwdGVyEhEKCXNwZWNfc2x1ZxgCIAEoCSJBChJTeW5jU3RhdHVzUmVzcG9uc2USKwoIbWFwcGluZ3MYASADKAsyGS5zcGVjZ3JhcGgudjEuU3luY01hcHBpbmcqXAoLU3luY0FkYXB0ZXISHAoYU1lOQ19BREFQVEVSX1VOU1BFQ0lGSUVEEAASFgoSU1lOQ19BREFQVEVSX0JFQURTEAESFwoTU1lOQ19BREFQVEVSX0dJVEhVQhACKoUBCglTeW5jU3RhdGUSGgoWU1lOQ19TVEFURV9VTlNQRUNJRklFRBAAEhYKElNZTkNfU1RBVEVfUEVORElORxABEhUKEVNZTkNfU1RBVEVfU1lOQ0VEEAISFwoTU1lOQ19TVEFURV9DT05GTElDVBADEhQKEFNZTkNfU1RBVEVfRVJST1IQBDL1AQoLU3luY1NlcnZpY2USRwoJU3luY0JlYWRzEh4uc3BlY2dyYXBoLnYxLlN5bmNCZWFkc1JlcXVlc3QaGi5zcGVjZ3JhcGgudjEuU3luY1Jlc3BvbnNlEkkKClN5bmNHaXRIdWISHy5zcGVjZ3JhcGgudjEuU3luY0dpdEh1YlJlcXVlc3QaGi5zcGVjZ3JhcGgudjEuU3luY1Jlc3BvbnNlElIKDUdldFN5bmNTdGF0dXMSHy5zcGVjZ3JhcGgudjEuU3luY1N0YXR1c1JlcXVlc3QaIC5zcGVjZ3JhcGgudjEuU3luY1N0YXR1c1Jlc3BvbnNlQj1aO2dpdGh1Yi5jb20vc3BlY2dyYXBoL3NwZWNncmFwaC9nZW4vc3BlY2dyYXBoL3YxO3NwZWNncmFwaHYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * @generated from message specgraph.v1.SyncMapping
@@ -239,60 +239,6 @@ export const SyncStatusResponseSchema: GenMessage<SyncStatusResponse> = /*@__PUR
   messageDesc(file_specgraph_v1_sync, 7);
 
 /**
- * @generated from message specgraph.v1.InjectRequest
- */
-export type InjectRequest = Message<"specgraph.v1.InjectRequest"> & {
-  /**
-   * @generated from field: string spec_slug = 1;
-   */
-  specSlug: string;
-
-  /**
-   * @generated from field: specgraph.v1.InjectTool tool = 2;
-   */
-  tool: InjectTool;
-
-  /**
-   * @generated from field: string output_dir = 3;
-   */
-  outputDir: string;
-};
-
-/**
- * Describes the message specgraph.v1.InjectRequest.
- * Use `create(InjectRequestSchema)` to create a new message.
- */
-export const InjectRequestSchema: GenMessage<InjectRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_sync, 8);
-
-/**
- * @generated from message specgraph.v1.InjectResponse
- */
-export type InjectResponse = Message<"specgraph.v1.InjectResponse"> & {
-  /**
-   * @generated from field: repeated string files_written = 1;
-   */
-  filesWritten: string[];
-
-  /**
-   * @generated from field: string summary = 2;
-   */
-  summary: string;
-
-  /**
-   * @generated from field: repeated string warnings = 3;
-   */
-  warnings: string[];
-};
-
-/**
- * Describes the message specgraph.v1.InjectResponse.
- * Use `create(InjectResponseSchema)` to create a new message.
- */
-export const InjectResponseSchema: GenMessage<InjectResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_sync, 9);
-
-/**
  * @generated from enum specgraph.v1.SyncAdapter
  */
 export enum SyncAdapter {
@@ -355,37 +301,11 @@ export const SyncStateSchema: GenEnum<SyncState> = /*@__PURE__*/
   enumDesc(file_specgraph_v1_sync, 1);
 
 /**
- * @generated from enum specgraph.v1.InjectTool
- */
-export enum InjectTool {
-  /**
-   * @generated from enum value: INJECT_TOOL_UNSPECIFIED = 0;
-   */
-  UNSPECIFIED = 0,
-
-  /**
-   * @generated from enum value: INJECT_TOOL_CLAUDE_CODE = 1;
-   */
-  CLAUDE_CODE = 1,
-
-  /**
-   * @generated from enum value: INJECT_TOOL_CURSOR = 2;
-   */
-  CURSOR = 2,
-
-  /**
-   * @generated from enum value: INJECT_TOOL_AGENTS_MD = 3;
-   */
-  AGENTS_MD = 3,
-}
-
-/**
- * Describes the enum specgraph.v1.InjectTool.
- */
-export const InjectToolSchema: GenEnum<InjectTool> = /*@__PURE__*/
-  enumDesc(file_specgraph_v1_sync, 2);
-
-/**
+ * SyncService pushes specs to external systems (Beads, GitHub) and reports
+ * sync status. The Inject RPC was removed on 2026-05-06 (spgr-yyjf
+ * deprecate-inject); the same surface is now served live via the MCP
+ * `specgraph://spec/{slug}` resource.
+ *
  * @generated from service specgraph.v1.SyncService
  */
 export const SyncService: GenService<{
@@ -412,14 +332,6 @@ export const SyncService: GenService<{
     methodKind: "unary";
     input: typeof SyncStatusRequestSchema;
     output: typeof SyncStatusResponseSchema;
-  },
-  /**
-   * @generated from rpc specgraph.v1.SyncService.Inject
-   */
-  inject: {
-    methodKind: "unary";
-    input: typeof InjectRequestSchema;
-    output: typeof InjectResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_specgraph_v1_sync, 0);
