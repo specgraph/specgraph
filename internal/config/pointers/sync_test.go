@@ -603,6 +603,29 @@ func TestSyncResult_NonErrorImpliesNilErr(t *testing.T) {
 	}
 }
 
+func TestSync_RejectsSymlinkAtIntermediateComponent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink semantics differ on Windows; covered on Unix only")
+	}
+	dir := t.TempDir()
+	other := t.TempDir()
+	// Make .cursor a symlink to a directory outside the project.
+	if err := os.Symlink(other, filepath.Join(dir, ".cursor")); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	report := Sync(dir, defaultOpts())
+	if report.Cursor.Action != ActionError {
+		t.Fatalf("Cursor.Action = %v, want ActionError (err=%v)", report.Cursor.Action, report.Cursor.Err)
+	}
+	if !errors.Is(report.Cursor.Err, ErrSymlinkRejected) {
+		t.Errorf("Cursor.Err = %v; want errors.Is ErrSymlinkRejected", report.Cursor.Err)
+	}
+	// AGENTS.md should still be created — failure isolation between files.
+	if report.Agents.Action != ActionCreated {
+		t.Errorf("Agents.Action = %v, want ActionCreated despite cursor symlink", report.Agents.Action)
+	}
+}
+
 func TestSync_SentinelErrors(t *testing.T) {
 	t.Run("corrupted markers", func(t *testing.T) {
 		dir := t.TempDir()
