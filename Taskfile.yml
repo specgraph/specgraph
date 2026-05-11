@@ -337,10 +337,6 @@ tasks:
       - rm -rf gen/
       - rm -rf web/node_modules web/build web/.svelte-kit
       - rm -rf e2e/ui/node_modules e2e/ui/test-results
-  capture-goldens:
-    desc: One-shot capture of PR-B parity goldens.
-    cmds:
-      - go run ./internal/config/managedfiles/internal/captureimpl/main.go
   # Release
   release:check:
     desc: Validate goreleaser config
