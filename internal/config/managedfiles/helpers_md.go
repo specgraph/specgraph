@@ -60,6 +60,37 @@ var initStartAnyVersion = regexp.MustCompile(`<!--\s*specgraph:init:start(\s+v=\
 
 const initEndMarker = "<!-- specgraph:init:end -->"
 
+// legacyBlock matches inject-era per-slug blocks. Slug class mirrors
+// safeSlugPattern. The literal slug "init" is preserved (never purged).
+// (?s) lets `.` match newlines. Ported verbatim from pointers/agents.go:37-39.
+var legacyBlock = regexp.MustCompile(
+	`(?s)<!--\s*specgraph:([a-zA-Z0-9][a-zA-Z0-9._-]*):start\s*-->(.*?)<!--\s*specgraph:([a-zA-Z0-9][a-zA-Z0-9._-]*):end\s*-->\n?`,
+)
+
+// purgeLegacyBlocks removes per-slug pre-init blocks from data. Returns
+// (cleaned data, count purged, count skipped due to slug-mismatch).
+// The literal slug "init" is never purged. Ported verbatim from
+// pointers/agents.go:184-202.
+func purgeLegacyBlocks(data []byte) (out []byte, purged, skippedMalformed int) {
+	out = legacyBlock.ReplaceAllFunc(data, func(match []byte) []byte {
+		sub := legacyBlock.FindSubmatch(match)
+		if len(sub) < 4 {
+			return match
+		}
+		slugStart, slugEnd := string(sub[1]), string(sub[3])
+		if slugStart != slugEnd {
+			skippedMalformed++
+			return match
+		}
+		if slugStart == "init" {
+			return match
+		}
+		purged++
+		return nil
+	})
+	return out, purged, skippedMalformed
+}
+
 // validateInitMarkers checks five corruption rules:
 //
 //	(1) end before start

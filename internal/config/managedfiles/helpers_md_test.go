@@ -54,6 +54,40 @@ func TestSafeSlugPattern(t *testing.T) {
 	}
 }
 
+func TestPurgeLegacyBlocks(t *testing.T) {
+	t.Run("removes well-formed slug block", func(t *testing.T) {
+		in := []byte("before\n<!-- specgraph:foo:start -->\nfoo body\n<!-- specgraph:foo:end -->\nafter\n")
+		out, purged, skipped := purgeLegacyBlocks(in)
+		if purged != 1 || skipped != 0 {
+			t.Errorf("counts: purged=%d skipped=%d, want 1/0", purged, skipped)
+		}
+		want := []byte("before\nafter\n")
+		if !bytes.Equal(out, want) {
+			t.Errorf("out mismatch:\n  got %q\n want %q", out, want)
+		}
+	})
+	t.Run("preserves init block", func(t *testing.T) {
+		in := []byte("<!-- specgraph:init:start v=1 -->\nbody\n<!-- specgraph:init:end -->\n")
+		out, purged, _ := purgeLegacyBlocks(in)
+		if purged != 0 {
+			t.Errorf("init block must NOT be purged; got %d", purged)
+		}
+		if !bytes.Equal(out, in) {
+			t.Errorf("init block unchanged; got %q", out)
+		}
+	})
+	t.Run("skips malformed mismatched slugs", func(t *testing.T) {
+		in := []byte("<!-- specgraph:foo:start -->\nbody\n<!-- specgraph:bar:end -->\n")
+		out, purged, skipped := purgeLegacyBlocks(in)
+		if purged != 0 || skipped != 1 {
+			t.Errorf("counts: purged=%d skipped=%d, want 0/1", purged, skipped)
+		}
+		if !bytes.Equal(out, in) {
+			t.Errorf("malformed block unchanged; got %q", out)
+		}
+	})
+}
+
 func TestValidateInitMarkers(t *testing.T) {
 	cases := []struct {
 		name    string
