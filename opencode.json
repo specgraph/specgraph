@@ -12,6 +12,6 @@
     }
   },
   "plugin": [
-    "./plugin/opencode/.opencode/plugins/specgraph.ts"
+    "./.specgraph/agents/opencode/specgraph.ts"
   ]
 }
