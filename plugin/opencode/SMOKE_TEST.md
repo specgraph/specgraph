@@ -1,6 +1,6 @@
 # OpenCode plugin smoke test
 
-Manual end-to-end procedure for verifying `plugin/opencode/.opencode/plugins/specgraph.ts`
+Manual end-to-end procedure for verifying `.specgraph/agents/opencode/specgraph.ts`
 against a running OpenCode session. Captures the contract that has no
 automated test coverage today (bead `spgr-f0di`).
 
@@ -11,12 +11,27 @@ automated test coverage today (bead `spgr-f0di`).
 - specgraph server running (`specgraph serve &`) and reachable
 - `SPECGRAPH_API_KEY` set in environment
 - `opencode.json` in the project root with both an `mcp.specgraph` entry
-  and the plugin path in `plugin`:
+  and the plugin path in `plugin`. Run `specgraph init` to write both:
+
+  ```bash
+  specgraph init
+  ```
+
+  This writes `.specgraph/agents/opencode/specgraph.ts` from the embedded
+  source and adds `./.specgraph/agents/opencode/specgraph.ts` to
+  `opencode.json`'s `plugin` array via union-merge. Verify both landed:
+
+  ```bash
+  ls -la .specgraph/agents/opencode/specgraph.ts
+  grep -A 3 '"plugin"' opencode.json
+  ```
+
+  The resulting `opencode.json` should contain:
 
   ```json
   {
     "$schema": "https://opencode.ai/config.json",
-    "plugin": ["./plugin/opencode/.opencode/plugins/specgraph.ts"],
+    "plugin": ["./.specgraph/agents/opencode/specgraph.ts"],
     "mcp": {
       "specgraph": {
         "type": "remote",
@@ -31,8 +46,8 @@ automated test coverage today (bead `spgr-f0di`).
   }
   ```
 
-  The MCP fields are managed by `specgraph init` (idempotent); the `plugin`
-  array is a manual install step today.
+  Both the MCP fields and the `plugin` array entry are managed by
+  `specgraph init` (idempotent).
 
 ## Observation strategy
 
@@ -142,3 +157,7 @@ specgraph abandon <slug> --reason="smoke test cleanup"
 
 If you instrumented the plugin with `console.error` statements, revert
 those before committing.
+
+`.specgraph/agents/` is gitignored, so the written plugin file does not
+need to be removed from version control — it lives only in the local
+working tree.
