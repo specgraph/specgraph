@@ -16,8 +16,16 @@ import (
 // entries in their original order. Used by jsonKeyMergeStrategy as a
 // post-merge step for opencode.json so user-added plugin entries
 // survive RFC 7396's array-replace semantics.
+//
+// If canonical has no plugin field, canonical is returned unchanged
+// (no-op). This handles the case where the build function does not
+// yet emit a plugin key.
 func unionPluginArray(existing, canonical []byte) ([]byte, error) {
 	canonPlugins, err := readPluginArray(canonical)
+	if errors.Is(err, errNoPluginField) {
+		// Canonical emits no plugin array; nothing to union.
+		return canonical, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("read canonical plugin array: %w", err)
 	}
