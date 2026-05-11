@@ -29,7 +29,10 @@ func TestInspectAll_SingleHarness_ReturnsFiltered(t *testing.T) {
 	}
 	// HarnessOpenCode has 1 file: opencode.json
 	if len(got) != 1 {
-		t.Errorf("InspectAll for OpenCode should return 1 entry, got %d", len(got))
+		t.Fatalf("InspectAll for OpenCode should return 1 entry, got %d", len(got))
+	}
+	if got[0].Path != "opencode.json" {
+		t.Errorf("InspectAll[0].Path = %q, want \"opencode.json\"", got[0].Path)
 	}
 }
 
@@ -42,6 +45,12 @@ func TestSyncAll_SingleHarness_ReturnsFiltered(t *testing.T) {
 	}
 	// HarnessOpenCode has 1 file: opencode.json
 	if len(got) != 1 {
-		t.Errorf("SyncAll for OpenCode should return 1 entry, got %d", len(got))
+		t.Fatalf("SyncAll for OpenCode should return 1 entry, got %d", len(got))
+	}
+	if got[0].Path != "opencode.json" {
+		t.Errorf("SyncAll[0].Path = %q, want \"opencode.json\"", got[0].Path)
+	}
+	if got[0].Action == managedfiles.ActionError {
+		t.Errorf("SyncAll[0].Action = ActionError, err = %v", got[0].Err)
 	}
 }

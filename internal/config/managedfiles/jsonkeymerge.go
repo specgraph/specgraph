@@ -30,6 +30,12 @@ func (jsonKeyMergeStrategy) Inspect(cwd string, mf ManagedFile, params ProjectPa
 	case err != nil:
 		return FileState{}, fmt.Errorf("read %s: %w", full, err)
 	}
+	// Pre-validate JSON to surface parse errors with a clear message
+	// before they get wrapped inside jsonpatch.MergePatch.
+	var probe any
+	if jerr := json.Unmarshal(existing, &probe); jerr != nil {
+		return FileState{}, fmt.Errorf("parse %s: %w", full, jerr)
+	}
 	canonical, err := jsonKeyMergeCanonical(existing, mf, params)
 	if err != nil {
 		return FileState{}, err

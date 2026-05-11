@@ -21,13 +21,19 @@ func TestMigrationV1ToV2Upgrade(t *testing.T) {
 	// Seed AGENTS.md with v=1 markers + canonical v=1 body.
 	body := renderV1AgentsBlockBody(params)
 	agentsSeed := []byte("# User content above\n\n<!-- specgraph:init:start v=1 -->" + string(body) + "<!-- specgraph:init:end -->\n")
-	_ = os.WriteFile(filepath.Join(dir, "AGENTS.md"), agentsSeed, 0o600)
+	if werr := os.WriteFile(filepath.Join(dir, "AGENTS.md"), agentsSeed, 0o600); werr != nil {
+		t.Fatalf("seed AGENTS.md: %v", werr)
+	}
 
 	// Seed .cursor/rules/specgraph-bootstrap.md with frontmatter + v=1 block.
-	_ = os.MkdirAll(filepath.Join(dir, ".cursor/rules"), 0o750)
+	if mkerr := os.MkdirAll(filepath.Join(dir, ".cursor/rules"), 0o750); mkerr != nil {
+		t.Fatalf("mkdir .cursor/rules: %v", mkerr)
+	}
 	cursorBody := renderV1CursorBlockBody(params)
 	cursorSeed := []byte(defaultCursorFrontmatter + "<!-- specgraph:init:start v=1 -->" + string(cursorBody) + "<!-- specgraph:init:end -->\n")
-	_ = os.WriteFile(filepath.Join(dir, ".cursor/rules/specgraph-bootstrap.md"), cursorSeed, 0o600)
+	if werr := os.WriteFile(filepath.Join(dir, ".cursor/rules/specgraph-bootstrap.md"), cursorSeed, 0o600); werr != nil {
+		t.Fatalf("seed specgraph-bootstrap.md: %v", werr)
+	}
 
 	results, err := SyncAll(dir, []Harness{HarnessClaude, HarnessCursor, HarnessOpenCode}, params, SyncOptions{})
 	if err != nil {
@@ -40,7 +46,10 @@ func TestMigrationV1ToV2Upgrade(t *testing.T) {
 	}
 
 	// AGENTS.md: user content preserved, body unchanged, markers upgraded.
-	got, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	got, rerr := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if rerr != nil {
+		t.Fatalf("read AGENTS.md after sync: %v", rerr)
+	}
 	if !bytes.Contains(got, []byte("# User content above")) {
 		t.Error("user content above block was destroyed")
 	}
@@ -81,7 +90,9 @@ func TestMigrationDriftedV1Refuses(t *testing.T) {
 
 	// Seed AGENTS.md with v=1 markers but mangled body.
 	agentsSeed := []byte("<!-- specgraph:init:start v=1 -->\nUSER EDITED — do not lose me\n<!-- specgraph:init:end -->\n")
-	_ = os.WriteFile(filepath.Join(dir, "AGENTS.md"), agentsSeed, 0o600)
+	if werr := os.WriteFile(filepath.Join(dir, "AGENTS.md"), agentsSeed, 0o600); werr != nil {
+		t.Fatalf("seed AGENTS.md: %v", werr)
+	}
 
 	results, _ := SyncAll(dir, []Harness{HarnessClaude}, params, SyncOptions{})
 	var agents SyncResult
@@ -93,7 +104,10 @@ func TestMigrationDriftedV1Refuses(t *testing.T) {
 	if agents.Action != ActionSkipped {
 		t.Errorf("action = %v, want ActionSkipped", agents.Action)
 	}
-	got, _ := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	got, rerr := os.ReadFile(filepath.Join(dir, "AGENTS.md"))
+	if rerr != nil {
+		t.Fatalf("read AGENTS.md after drift-skip: %v", rerr)
+	}
 	if !strings.Contains(string(got), "USER EDITED") {
 		t.Error("drifted user content was overwritten")
 	}

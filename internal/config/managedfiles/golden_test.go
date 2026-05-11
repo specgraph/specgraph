@@ -31,8 +31,16 @@ func TestGoldenMissingFirstInit(t *testing.T) {
 	// JSON files: byte-identical.
 	jsonFiles := []string{".mcp.json", ".cursor/mcp.json", "opencode.json"}
 	for _, name := range jsonFiles {
-		got, _ := os.ReadFile(filepath.Join(dir, name))
-		want, _ := os.ReadFile(filepath.Join(goldenDir, filepath.Base(name)))
+		got, gerr := os.ReadFile(filepath.Join(dir, name))
+		if gerr != nil {
+			t.Errorf("read produced %s: %v", name, gerr)
+			continue
+		}
+		want, werr := os.ReadFile(filepath.Join(goldenDir, filepath.Base(name)))
+		if werr != nil {
+			t.Errorf("read golden %s: %v", name, werr)
+			continue
+		}
 		if !bytesEqualJSON(t, got, want) {
 			t.Errorf("%s mismatch\n got: %q\nwant: %q", name, got, want)
 		}
@@ -47,12 +55,20 @@ func TestGoldenMissingFirstInit(t *testing.T) {
 		{filepath.Join(dir, ".cursor/rules/specgraph-bootstrap.mdc"), filepath.Join(goldenDir, "specgraph-bootstrap.md")},
 	}
 	for _, c := range mdCases {
-		got, _ := os.ReadFile(c.got)
-		want, _ := os.ReadFile(c.golden)
+		got, gerr := os.ReadFile(c.got)
+		if gerr != nil {
+			t.Errorf("read %s: %v", c.got, gerr)
+			continue
+		}
+		want, werr := os.ReadFile(c.golden)
+		if werr != nil {
+			t.Errorf("read golden %s: %v", c.golden, werr)
+			continue
+		}
 		gotBody, ok1 := extractManagedBlockBody(got)
 		wantBody, ok2 := extractManagedBlockBody(want)
 		if !ok1 || !ok2 {
-			t.Errorf("%s: failed to extract block body", c.got)
+			t.Errorf("%s: failed to extract block body (got ok=%v want ok=%v)", c.got, ok1, ok2)
 			continue
 		}
 		if !bytes.Equal(gotBody, wantBody) {
@@ -68,12 +84,22 @@ func bytesEqualJSON(t *testing.T, a, b []byte) bool {
 	t.Helper()
 	var va, vb any
 	if err := json.Unmarshal(a, &va); err != nil {
+		t.Errorf("unmarshal a: %v", err)
 		return false
 	}
 	if err := json.Unmarshal(b, &vb); err != nil {
+		t.Errorf("unmarshal b: %v", err)
 		return false
 	}
-	ja, _ := json.Marshal(va)
-	jb, _ := json.Marshal(vb)
+	ja, err := json.Marshal(va)
+	if err != nil {
+		t.Errorf("re-marshal a: %v", err)
+		return false
+	}
+	jb, err := json.Marshal(vb)
+	if err != nil {
+		t.Errorf("re-marshal b: %v", err)
+		return false
+	}
 	return bytes.Equal(ja, jb)
 }

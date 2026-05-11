@@ -17,8 +17,9 @@ import (
 var initCmd = &cobra.Command{
 	Use:   "init [project-slug]",
 	Short: "Initialize a SpecGraph project in the current directory",
-	Long: "Writes .specgraph.yaml and the per-harness MCP config files " +
-		"(.cursor/mcp.json, .mcp.json, opencode.json) for the current project. " +
+	Long: "Writes .specgraph.yaml and the per-harness managed files " +
+		"(.cursor/mcp.json, .mcp.json, opencode.json, AGENTS.md, " +
+		".cursor/rules/specgraph-bootstrap.mdc) for the current project. " +
 		"Idempotent: safe to re-run on an already-initialized project; managed " +
 		"fields are reset to canonical values, user-added fields are preserved.",
 	Args: cobra.MaximumNArgs(1),

@@ -19,6 +19,10 @@ func TestActionName(t *testing.T) {
 			t.Errorf("ActionName(%v) = %q, want %q", a, got, want)
 		}
 	}
+	// Default branch: any Action value outside the enum returns "unknown".
+	if got := ActionName(Action(999)); got != "unknown" {
+		t.Errorf("ActionName(Action(999)) = %q, want \"unknown\"", got)
+	}
 }
 
 func TestCountErrors(t *testing.T) {

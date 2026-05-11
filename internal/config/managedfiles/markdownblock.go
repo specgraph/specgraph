@@ -73,18 +73,23 @@ func (markdownBlockStrategy) Sync(cwd string, mf ManagedFile, params ProjectPara
 	var action Action
 	switch state.State {
 	case StateSynced:
-		res := SyncResult{Path: mf.Path, Action: ActionNoOp, Detail: state.Detail}
-		if purgedCount > 0 {
-			res.Detail = fmt.Sprintf("purged %d legacy block%s", purgedCount, pluralS(purgedCount))
-		}
-		// If purging changed disk content, we need to write the purged content back.
+		// Skip the main atomicWrite below — Synced means no body rewrite
+		// needed. But if purgeLegacyBlocks removed something, we MUST
+		// write purgedAfter back (the file changed) and that's
+		// ActionRefreshed, not ActionNoOp.
 		if purgedCount > 0 && !bytes.Equal(existing, purgedAfter) {
 			mode := preserveMode(full)
 			if werr := atomicWrite(full, purgedAfter, mode); werr != nil {
 				return SyncResult{Path: mf.Path, Action: ActionError, Err: werr}, nil
 			}
+			action = ActionRefreshed
+		} else {
+			action = ActionNoOp
 		}
-		return res, nil
+		// Fall through to the supersedes block; both NoOp and Refreshed
+		// should run the guarded delete so steady-state cleanup happens
+		// even when the .mdc is already in canonical shape.
+		newContent = nil // signal: main atomicWrite below should be skipped
 
 	case StateMissing:
 		// Build full file: frontmatter (if .mdc) + canonical block.
@@ -123,13 +128,16 @@ func (markdownBlockStrategy) Sync(cwd string, mf ManagedFile, params ProjectPara
 		}
 	}
 
-	// Preserve mode.
-	mode := preserveMode(full)
-	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
-		return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
-	}
-	if err := atomicWrite(full, newContent, mode); err != nil {
-		return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
+	// Write canonical content. Skipped for the StateSynced+no-purge
+	// path which signals nil newContent.
+	if newContent != nil {
+		mode := preserveMode(full)
+		if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+			return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
+		}
+		if err := atomicWrite(full, newContent, mode); err != nil {
+			return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
+		}
 	}
 
 	res := SyncResult{Path: mf.Path, Action: action}
@@ -222,6 +230,13 @@ func markdownBlockClassify(cwd string, mf ManagedFile, params ProjectParams) (Fi
 
 	// Compare disk body hash against sentinel-recorded hash.
 	startIdx := initStartAnyVersion.FindIndex(purged)
+	if startIdx == nil {
+		// Defensive: extractManagedBlockBody just confirmed exactly one
+		// start marker exists, so this should be unreachable. If a
+		// future change invalidates that invariant, surface as
+		// corruption rather than panicking on nil-deref.
+		return FileState{}, nil, nil, fmt.Errorf("%w: %s: start marker matched once for body extract but not for sentinel parse", ErrCorruptedMarkers, mf.Path)
+	}
 	sentinelLine := string(purged[startIdx[0]:startIdx[1]])
 	sentinel, perr := ParseSentinel(CommentHTML, sentinelLine)
 	if perr != nil {

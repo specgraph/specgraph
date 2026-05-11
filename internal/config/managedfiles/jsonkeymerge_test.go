@@ -78,9 +78,14 @@ func TestJSONKeyMergeStalePreservesSiblings(t *testing.T) {
 	if res.Action != ActionRefreshed {
 		t.Errorf("action = %v, want ActionRefreshed", res.Action)
 	}
-	got, _ := os.ReadFile(filepath.Join(dir, "config.json"))
+	got, rerr := os.ReadFile(filepath.Join(dir, "config.json"))
+	if rerr != nil {
+		t.Fatalf("read config.json: %v", rerr)
+	}
 	var parsed map[string]any
-	_ = json.Unmarshal(got, &parsed)
+	if jerr := json.Unmarshal(got, &parsed); jerr != nil {
+		t.Fatalf("unmarshal config.json: %v", jerr)
+	}
 	if parsed["theme"] != "dark" {
 		t.Error("user-added theme sibling was destroyed")
 	}
@@ -110,7 +115,10 @@ func TestJSONKeyMergeModePreserved(t *testing.T) {
 	if _, err := s.Sync(dir, mf, ProjectParams{Slug: "p", ServerURL: "http://h"}, SyncOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	info, _ := os.Stat(filepath.Join(dir, "config.json"))
+	info, serr := os.Stat(filepath.Join(dir, "config.json"))
+	if serr != nil {
+		t.Fatalf("stat config.json: %v", serr)
+	}
 	if info.Mode().Perm() != 0o644 {
 		t.Errorf("mode = %v, want 0644", info.Mode().Perm())
 	}

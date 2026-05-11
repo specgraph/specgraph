@@ -24,8 +24,6 @@ alwaysApply: true
 
 `
 
-// Suppress unused lint until the cursor strategy Build closure (added in a later task) references it.
-var _ = defaultCursorFrontmatter
 
 // splitFrontmatter splits a Cursor rule file into
 // (frontmatter-including-trailing-blank, body). Returns

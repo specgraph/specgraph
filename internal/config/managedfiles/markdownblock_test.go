@@ -198,6 +198,54 @@ func TestMarkdownBlockSupersedesDeletesMatchingMD(t *testing.T) {
 	}
 }
 
+// TestMarkdownBlockSupersedesOnSecondInit covers the StateSynced
+// supersedes path: the .mdc is already canonical, but a stale .md
+// (matching prior canonical) has been re-introduced (e.g., from a
+// git history checkout) between init runs. The second init must
+// still delete the .md, not skip the supersedes step.
+func TestMarkdownBlockSupersedesOnSecondInit(t *testing.T) {
+	dir := t.TempDir()
+	cursorDir := filepath.Join(dir, ".cursor", "rules")
+	if err := os.MkdirAll(cursorDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	mf := ManagedFile{
+		Path:           ".cursor/rules/specgraph-bootstrap.mdc",
+		Strategy:       StrategyMarkdownBlock,
+		Comment:        CommentHTML,
+		Harness:        HarnessCursor,
+		SupersedesPath: ".cursor/rules/specgraph-bootstrap.md",
+		Build:          func(p ProjectParams) ([]byte, error) { return renderV1CursorBlockBody(p), nil },
+	}
+
+	// First init: creates .mdc, deletes .md (which doesn't exist yet).
+	s := markdownBlockStrategy{}
+	if _, err := s.Sync(dir, mf, testMDParams, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Simulate a stale .md re-appearing (e.g., git checkout of a pre-PR-B branch).
+	body := renderV1CursorBlockBody(testMDParams)
+	priorBlock := []byte("<!-- specgraph:init:start v=1 -->" + string(body) + "<!-- specgraph:init:end -->\n")
+	priorFull := append([]byte(defaultCursorFrontmatter), priorBlock...)
+	if err := os.WriteFile(filepath.Join(dir, ".cursor/rules/specgraph-bootstrap.md"), priorFull, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Second init: .mdc is Synced, but supersedes-delete must still run.
+	res, err := s.Sync(dir, mf, testMDParams, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionNoOp {
+		t.Errorf("action = %v, want ActionNoOp (mdc unchanged)", res.Action)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".cursor/rules/specgraph-bootstrap.md")); !os.IsNotExist(err) {
+		t.Error("stale .md must be deleted on second init even when .mdc is Synced")
+	}
+}
+
 func TestMarkdownBlockSupersedesPreservesEditedMD(t *testing.T) {
 	dir := t.TempDir()
 	cursorDir := filepath.Join(dir, ".cursor", "rules")
