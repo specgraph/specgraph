@@ -92,6 +92,7 @@ EOF
 ### Task 1: Embed-source symlink
 
 **Files:**
+
 - Create: `internal/config/managedfiles/plugin` (symlink → `../../../plugin`)
 
 - [ ] **Step 1: Create the symlink**
@@ -157,6 +158,7 @@ EOF
 ### Task 2: First `//go:embed` directive
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/source_release.go`
 
 - [ ] **Step 1: Read current source_release.go**
@@ -243,6 +245,7 @@ EOF
 ### Task 3: Implement `wholeFileStrategy`
 
 **Files:**
+
 - Create: `internal/config/managedfiles/wholefile.go`
 - Modify: `internal/config/managedfiles/wholefile_test.go` (replaces stub assertion)
 - Modify: `internal/config/managedfiles/strategy.go` (remove stub methods)
@@ -657,6 +660,7 @@ EOF
 ### Task 4: `unionPluginArray` helper
 
 **Files:**
+
 - Create: `internal/config/managedfiles/unionarray.go`
 - Create: `internal/config/managedfiles/unionarray_test.go`
 
@@ -880,6 +884,7 @@ EOF
 ### Task 5: Wire `unionPluginArray` into `jsonKeyMergeStrategy`
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/jsonkeymerge.go`
 - Modify: `internal/config/managedfiles/jsonkeymerge_test.go`
 
@@ -984,6 +989,7 @@ EOF
 ### Task 6: Add manifest entry + opencode.json plugin key
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/manifest.go`
 - Modify: `internal/config/managedfiles/manifest_test.go`
 
@@ -1083,6 +1089,7 @@ EOF
 ### Task 7: Add migration test for stale plugin entry
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/migration_test.go`
 
 - [ ] **Step 1: Add test case**
@@ -1185,6 +1192,7 @@ EOF
 ### Task 8: Remove `errNotImplemented`
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/errors.go`
 
 - [ ] **Step 1: Confirm no references remain**
@@ -1233,6 +1241,7 @@ EOF
 ### Task 9: Dogfood `.gitignore` + opencode.json cleanup
 
 **Files:**
+
 - Modify: `.gitignore`
 - Modify: `opencode.json`
 
@@ -1276,6 +1285,7 @@ task build
 ```
 
 This will:
+
 - Canonicalize opencode.json's formatting
 - Add `./.specgraph/agents/opencode/specgraph.ts` to the (now-empty) plugin array via union-merge
 - Write the .ts file to .specgraph/agents/opencode/specgraph.ts (which is gitignored — won't show up in `git status`)
@@ -1288,6 +1298,7 @@ git status --short
 ```
 
 Expected:
+
 - opencode.json's `plugin` array contains `./.specgraph/agents/opencode/specgraph.ts`.
 - `.specgraph/agents/opencode/specgraph.ts` exists but is gitignored (not in status).
 
@@ -1318,6 +1329,7 @@ EOF
 ### Task 10: SMOKE_TEST refresh
 
 **Files:**
+
 - Modify: `plugin/opencode/SMOKE_TEST.md`
 
 - [ ] **Step 1: Read current SMOKE_TEST.md**
@@ -1437,16 +1449,19 @@ EOF
 | Final gate + push + PR | Task 11 |
 
 **Placeholder scan:** Two intentional notes flagged inline:
+
 - Task 3 Step 1: a deliberate syntax error in `TestWholeFileStale` test boilerplate to prompt the implementer to simplify (commented in plan).
 - Task 3 Step 3: trailing `var _ = strings.Contains` marker — implementer deletes once import use is verified.
 
 Both are documented in their step text; an implementer reading the plan will catch them.
 
 **Type consistency:**
+
 - `wholeFileStrategy{}`, `ProjectParams`, `SyncOptions`, `ManagedFile.Source` — consistent across Tasks 3, 6.
 - `unionPluginArray(existing, canonical []byte) ([]byte, error)` signature consistent in Tasks 4, 5.
 - `readPluginArray(data []byte) ([]string, error)` defined in Task 4, used by tests via `extractPluginArray` helper (alias) — consistent.
 
 **Known limitations:**
+
 - Task 9's "run binary to canonicalize opencode.json" step assumes the binary builds clean. If something earlier broke that, the implementer will surface it before Task 9.
 - The plugin/ symlink in Task 1 is the only PR-wide architectural commitment that could surprise; documented in the spec's risks section.
