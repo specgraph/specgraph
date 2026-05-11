@@ -11,9 +11,14 @@ import (
 )
 
 // canonicalSources holds managed-file source content embedded at build time.
-// Source files are copied into embedded/ (go:embed cannot follow symlinks) and
-// kept in sync via task managedfiles:sync (wired into task build). PR C adds
-// the OpenCode plugin TS; PR D adds Cursor rules; PR E adds Claude rules.
+// Sources are real files under embedded/<harness>/ — the canonical location.
+// Where harness-convention demands a copy under plugin/<harness>/ (e.g. so
+// OpenCode's tooling discovers the .ts alongside its package.json and
+// SMOKE_TEST.md), that copy is a symlink BACK into embedded/. go:embed
+// rejects symlinks in its patterns, but a regular file at the embed path
+// with symlinks pointing INTO it from elsewhere is fine — the canonical
+// remains a single file. PR C adds the OpenCode plugin TS; PR D adds
+// Cursor rules; PR E adds Claude rules.
 //
 //go:embed embedded/opencode/specgraph.ts
 var canonicalSources embed.FS
