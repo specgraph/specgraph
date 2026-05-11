@@ -46,6 +46,16 @@ func unionPluginArray(existing, canonical []byte) ([]byte, error) {
 		return nil, fmt.Errorf("read existing plugin array: %w", existErr)
 	}
 
+	// Bound the plugin-array sizes to defuse the int-overflow path CodeQL
+	// flags on the `len(a)+len(b)` capacity hint below (CWE-190). A
+	// plugin array with >1M entries is never legitimate for the use
+	// case; refuse rather than risk a wraparound on absurd input.
+	const maxPlugins = 1 << 20
+	if len(canonPlugins) > maxPlugins || len(existingPlugins) > maxPlugins {
+		return nil, fmt.Errorf("plugin array too large: canon=%d existing=%d (max %d)",
+			len(canonPlugins), len(existingPlugins), maxPlugins)
+	}
+
 	seen := make(map[string]bool, len(canonPlugins))
 	union := make([]string, 0, len(canonPlugins)+len(existingPlugins))
 	for _, p := range canonPlugins {
