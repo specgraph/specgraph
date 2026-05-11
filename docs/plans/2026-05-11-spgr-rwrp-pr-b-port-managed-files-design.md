@@ -461,14 +461,17 @@ from a freshly-written canonical file.
      - If matches canonical hash → `StateSynced` / `ActionNoOp`.
      - Else → `StateStale` / `ActionRefreshed` (overwrite, fresh
        sentinel).
-   If disk hash doesn't match recorded sentinel hash → `StateDrifted`.
-   Skip without `--force`; `--force` rewrites; `--force --keep-edits`
-   refreshes the sentinel to match disk.
+
+     If disk hash doesn't match recorded sentinel hash →
+     `StateDrifted`. Skip without `--force`; `--force` rewrites;
+     `--force --keep-edits` refreshes the sentinel to match disk.
+
    - **v=1 markers.** Defensive recompute: call private
      `renderV1MarkdownBlockBody(mf, params)` for the same file's prior
      canonical, hash it, compare to disk block body.
      - Match → treat as `StateStale`, rewrite to v=2 with fresh hash.
      - Mismatch → `StateDrifted`. Refuse without `--force`.
+
 4. **Legacy `specgraph:<slug>:start/end` per-slug blocks.** Port
    `purgeLegacyBlocks` from `pointers/agents.go`. Applied only to
    `AGENTS.md` (the only file that ever had them). Cursor file skips
