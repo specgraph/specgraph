@@ -11,7 +11,7 @@ import (
 func TestStrategyImpl_Inspect_NotImplemented(t *testing.T) {
 	for _, s := range []Strategy{StrategyJSONKeyMerge, StrategyMarkdownBlock, StrategyWholeFile} {
 		impl := strategyImpl(s)
-		_, err := impl.Inspect("/tmp", ManagedFile{Strategy: s})
+		_, err := impl.Inspect("/tmp", ManagedFile{Strategy: s}, ProjectParams{})
 		if !errors.Is(err, errNotImplemented) {
 			t.Errorf("Strategy %d Inspect should return errNotImplemented, got %v", s, err)
 		}
@@ -21,7 +21,7 @@ func TestStrategyImpl_Inspect_NotImplemented(t *testing.T) {
 func TestStrategyImpl_Sync_NotImplemented(t *testing.T) {
 	for _, s := range []Strategy{StrategyJSONKeyMerge, StrategyMarkdownBlock, StrategyWholeFile} {
 		impl := strategyImpl(s)
-		_, err := impl.Sync("/tmp", ManagedFile{Strategy: s}, SyncOptions{})
+		_, err := impl.Sync("/tmp", ManagedFile{Strategy: s}, ProjectParams{}, SyncOptions{})
 		if !errors.Is(err, errNotImplemented) {
 			t.Errorf("Strategy %d Sync should return errNotImplemented, got %v", s, err)
 		}
@@ -44,7 +44,7 @@ func TestStrategyImpl_UnknownStrategy_Panics(t *testing.T) {
 // dispatch, this test fails.
 func TestSync_DispatchesAndWraps(t *testing.T) {
 	for _, s := range []Strategy{StrategyJSONKeyMerge, StrategyMarkdownBlock, StrategyWholeFile} {
-		_, err := Sync("/tmp", ManagedFile{Path: "x", Strategy: s}, SyncOptions{})
+		_, err := Sync("/tmp", ManagedFile{Path: "x", Strategy: s}, ProjectParams{}, SyncOptions{})
 		if !errors.Is(err, errNotImplemented) {
 			t.Errorf("Strategy %d: Sync should propagate errNotImplemented, got %v", s, err)
 		}

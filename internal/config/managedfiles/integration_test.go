@@ -22,7 +22,7 @@ func TestManifest_EmptyInPRA(t *testing.T) {
 
 func TestInspectAll_EmptyManifest_ReturnsEmpty(t *testing.T) {
 	dir := t.TempDir()
-	got, err := managedfiles.InspectAll(dir, []managedfiles.Harness{managedfiles.HarnessOpenCode})
+	got, err := managedfiles.InspectAll(dir, []managedfiles.Harness{managedfiles.HarnessOpenCode}, managedfiles.ProjectParams{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestInspectAll_EmptyManifest_ReturnsEmpty(t *testing.T) {
 
 func TestSyncAll_EmptyManifest_ReturnsEmpty(t *testing.T) {
 	dir := t.TempDir()
-	got, err := managedfiles.SyncAll(dir, []managedfiles.Harness{managedfiles.HarnessOpenCode}, managedfiles.SyncOptions{})
+	got, err := managedfiles.SyncAll(dir, []managedfiles.Harness{managedfiles.HarnessOpenCode}, managedfiles.ProjectParams{}, managedfiles.SyncOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
