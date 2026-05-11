@@ -24,6 +24,12 @@ func (markdownBlockStrategy) Sync(cwd string, mf ManagedFile, params ProjectPara
 	}
 	full := filepath.Join(cwd, mf.Path)
 
+	// Ensure the parent directory exists before acquiring the lock file
+	// (the lock sibling lives in the same directory).
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
+	}
+
 	unlock, lerr := acquireFileLock(full)
 	if lerr != nil {
 		return SyncResult{Path: mf.Path, Action: ActionError, Err: lerr}, nil
