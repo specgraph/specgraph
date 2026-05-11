@@ -9,35 +9,39 @@ import (
 	"github.com/specgraph/specgraph/internal/config/managedfiles"
 )
 
-func TestManifest_EmptyInPRA(t *testing.T) {
+func TestManifest_AllHarnesses(t *testing.T) {
 	all := managedfiles.Manifest([]managedfiles.Harness{
 		managedfiles.HarnessClaude,
 		managedfiles.HarnessCursor,
 		managedfiles.HarnessOpenCode,
 	})
-	if len(all) != 0 {
-		t.Errorf("Manifest() should be empty in PR A, got %d entries", len(all))
+	if len(all) != 5 {
+		t.Errorf("Manifest() should have 5 entries for all harnesses, got %d entries", len(all))
 	}
 }
 
-func TestInspectAll_EmptyManifest_ReturnsEmpty(t *testing.T) {
+func TestInspectAll_SingleHarness_ReturnsFiltered(t *testing.T) {
 	dir := t.TempDir()
-	got, err := managedfiles.InspectAll(dir, []managedfiles.Harness{managedfiles.HarnessOpenCode}, managedfiles.ProjectParams{})
+	params := managedfiles.ProjectParams{Slug: "test", ServerURL: "http://localhost:9090"}
+	got, err := managedfiles.InspectAll(dir, []managedfiles.Harness{managedfiles.HarnessOpenCode}, params)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 0 {
-		t.Errorf("InspectAll on empty manifest should be empty, got %d", len(got))
+	// HarnessOpenCode has 1 file: opencode.json
+	if len(got) != 1 {
+		t.Errorf("InspectAll for OpenCode should return 1 entry, got %d", len(got))
 	}
 }
 
-func TestSyncAll_EmptyManifest_ReturnsEmpty(t *testing.T) {
+func TestSyncAll_SingleHarness_ReturnsFiltered(t *testing.T) {
 	dir := t.TempDir()
-	got, err := managedfiles.SyncAll(dir, []managedfiles.Harness{managedfiles.HarnessOpenCode}, managedfiles.ProjectParams{}, managedfiles.SyncOptions{})
+	params := managedfiles.ProjectParams{Slug: "test", ServerURL: "http://localhost:9090"}
+	got, err := managedfiles.SyncAll(dir, []managedfiles.Harness{managedfiles.HarnessOpenCode}, params, managedfiles.SyncOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 0 {
-		t.Errorf("SyncAll on empty manifest should be empty, got %d", len(got))
+	// HarnessOpenCode has 1 file: opencode.json
+	if len(got) != 1 {
+		t.Errorf("SyncAll for OpenCode should return 1 entry, got %d", len(got))
 	}
 }
