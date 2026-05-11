@@ -11,12 +11,11 @@ import (
 )
 
 // TestInspect_DispatchesToStrategy verifies that Inspect dispatches through
-// strategyImpl and propagates errNotImplemented from the PR B stubs.
-// This pins the dispatch contract; real strategy implementations will replace
-// the expected error with actual FileState results.
+// strategyImpl and propagates errNotImplemented from the remaining stubs
+// (MarkdownBlock, WholeFile). JSONKeyMerge is implemented in PR B.
 func TestInspect_DispatchesToStrategy(t *testing.T) {
 	dir := t.TempDir()
-	for _, s := range []Strategy{StrategyJSONKeyMerge, StrategyMarkdownBlock, StrategyWholeFile} {
+	for _, s := range []Strategy{StrategyMarkdownBlock, StrategyWholeFile} {
 		mf := ManagedFile{
 			Path:     ".specgraph/agents/opencode/nope.ts",
 			Strategy: s,

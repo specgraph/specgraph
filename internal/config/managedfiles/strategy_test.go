@@ -9,7 +9,8 @@ import (
 )
 
 func TestStrategyImpl_Inspect_NotImplemented(t *testing.T) {
-	for _, s := range []Strategy{StrategyJSONKeyMerge, StrategyMarkdownBlock, StrategyWholeFile} {
+	// StrategyJSONKeyMerge is implemented in PR B; only the remaining stubs are checked here.
+	for _, s := range []Strategy{StrategyMarkdownBlock, StrategyWholeFile} {
 		impl := strategyImpl(s)
 		_, err := impl.Inspect("/tmp", ManagedFile{Strategy: s}, ProjectParams{})
 		if !errors.Is(err, errNotImplemented) {
@@ -19,7 +20,8 @@ func TestStrategyImpl_Inspect_NotImplemented(t *testing.T) {
 }
 
 func TestStrategyImpl_Sync_NotImplemented(t *testing.T) {
-	for _, s := range []Strategy{StrategyJSONKeyMerge, StrategyMarkdownBlock, StrategyWholeFile} {
+	// StrategyJSONKeyMerge is implemented in PR B; only the remaining stubs are checked here.
+	for _, s := range []Strategy{StrategyMarkdownBlock, StrategyWholeFile} {
 		impl := strategyImpl(s)
 		_, err := impl.Sync("/tmp", ManagedFile{Strategy: s}, ProjectParams{}, SyncOptions{})
 		if !errors.Is(err, errNotImplemented) {
@@ -38,12 +40,11 @@ func TestStrategyImpl_UnknownStrategy_Panics(t *testing.T) {
 }
 
 // TestSync_DispatchesAndWraps verifies the public Sync entry point
-// dispatches through strategyImpl and propagates the stub's
-// errNotImplemented. Pins the dispatch contract before PR B replaces
-// the stubs — if PR B accidentally drops the error wrapping or skips
-// dispatch, this test fails.
+// dispatches through strategyImpl and propagates errNotImplemented from
+// the remaining stubs (MarkdownBlock, WholeFile). JSONKeyMerge is
+// implemented in PR B and excluded from this check.
 func TestSync_DispatchesAndWraps(t *testing.T) {
-	for _, s := range []Strategy{StrategyJSONKeyMerge, StrategyMarkdownBlock, StrategyWholeFile} {
+	for _, s := range []Strategy{StrategyMarkdownBlock, StrategyWholeFile} {
 		_, err := Sync("/tmp", ManagedFile{Path: "x", Strategy: s}, ProjectParams{}, SyncOptions{})
 		if !errors.Is(err, errNotImplemented) {
 			t.Errorf("Strategy %d: Sync should propagate errNotImplemented, got %v", s, err)

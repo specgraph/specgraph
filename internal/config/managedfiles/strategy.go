@@ -39,13 +39,6 @@ func strategyImpl(s Strategy) strategy {
 
 type jsonKeyMergeStrategy struct{}
 
-func (jsonKeyMergeStrategy) Inspect(_ string, _ ManagedFile, _ ProjectParams) (FileState, error) {
-	return FileState{}, errNotImplemented
-}
-func (jsonKeyMergeStrategy) Sync(_ string, _ ManagedFile, _ ProjectParams, _ SyncOptions) (SyncResult, error) {
-	return SyncResult{}, errNotImplemented
-}
-
 type markdownBlockStrategy struct{}
 
 func (markdownBlockStrategy) Inspect(_ string, _ ManagedFile, _ ProjectParams) (FileState, error) {
