@@ -68,6 +68,35 @@ func TestUnionPluginArray(t *testing.T) {
 	}
 }
 
+// TestUnionPluginArrayCanonicalNoPluginField covers the guard at the
+// top of unionPluginArray: if canonical has no plugin field, return
+// canonical unchanged (no-op). Exercises the early-return branch the
+// other six cases don't reach.
+func TestUnionPluginArrayCanonicalNoPluginField(t *testing.T) {
+	existing := []byte(`{"plugin":["./user.ts"]}`)
+	canon := []byte(`{"mcp":{}}`)
+	out, err := unionPluginArray(existing, canon)
+	if err != nil {
+		t.Fatalf("unionPluginArray: %v", err)
+	}
+	if !bytes.Equal(out, canon) {
+		t.Errorf("canonical without plugin field should pass through unchanged\n got: %q\nwant: %q", out, canon)
+	}
+}
+
+// TestUnionPluginArrayMalformedExistingSurfacesError covers the
+// data-loss guard: if existing has a plugin field but it's structurally
+// wrong (non-array), surface an error rather than silently dropping
+// user content.
+func TestUnionPluginArrayMalformedExistingSurfacesError(t *testing.T) {
+	existing := []byte(`{"plugin":"not-an-array"}`)
+	canon := []byte(`{"plugin":["./.specgraph/agents/opencode/specgraph.ts"]}`)
+	_, err := unionPluginArray(existing, canon)
+	if err == nil {
+		t.Fatal("expected error from malformed existing plugin field; got nil")
+	}
+}
+
 func TestUnionPluginArrayTrailingNewline(t *testing.T) {
 	out, _ := unionPluginArray([]byte("{}"), []byte("{\"plugin\":[\"a\"]}\n"))
 	if !bytes.HasSuffix(out, []byte("\n")) {

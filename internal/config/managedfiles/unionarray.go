@@ -9,13 +9,14 @@ import (
 	"fmt"
 )
 
-// unionPluginArray takes the existing on-disk JSON and the
-// already-canonicalized merge output, and returns the canonical JSON
-// with `plugin` rewritten to the union of {canonical[plugin],
-// existing[plugin]} — canonical entries first, then existing-only
-// entries in their original order. Used by jsonKeyMergeStrategy as a
-// post-merge step for opencode.json so user-added plugin entries
-// survive RFC 7396's array-replace semantics.
+// unionPluginArray takes the existing on-disk JSON and the canonical
+// merge output, and returns the canonical JSON with `plugin` rewritten
+// to the union of {canonical[plugin], existing[plugin]} — canonical
+// entries first, then existing-only entries in their original order.
+// Used by jsonKeyMergeStrategy as a post-merge step for opencode.json
+// so user-added plugin entries survive RFC 7396's array-replace
+// semantics. The output is re-canonicalized internally; callers do not
+// need to canonicalize again.
 //
 // If canonical has no plugin field, canonical is returned unchanged
 // (no-op). This handles the case where the build function does not
@@ -30,10 +31,19 @@ func unionPluginArray(existing, canonical []byte) ([]byte, error) {
 		return nil, fmt.Errorf("read canonical plugin array: %w", err)
 	}
 	existingPlugins, existErr := readPluginArray(existing)
-	if existErr != nil {
-		// Missing plugin field, empty file, or malformed existing plugin
-		// array — all treated as absent. Return canonical unchanged.
-		return canonical, nil //nolint:nilerr // intentional: treat any existing-parse failure as "no existing plugins"
+	switch {
+	case existErr == nil:
+		// Happy path; fall through to union below.
+	case errors.Is(existErr, errNoPluginField):
+		// Missing plugin field on existing JSON, or empty input — nothing
+		// to union with. Return canonical unchanged.
+		return canonical, nil
+	default:
+		// Existing JSON has a plugin field but it's structurally wrong
+		// (non-array, non-string entries, malformed JSON). Surface as an
+		// error rather than silently dropping user-added entries — see
+		// PR review feedback for the data-loss risk.
+		return nil, fmt.Errorf("read existing plugin array: %w", existErr)
 	}
 
 	seen := make(map[string]bool, len(canonPlugins))
@@ -68,10 +78,15 @@ func unionPluginArray(existing, canonical []byte) ([]byte, error) {
 // "nothing to union", not an error.
 var errNoPluginField = errors.New("no plugin field")
 
-// readPluginArray reads the `plugin` field as a []string.
+// readPluginArray reads the `plugin` field as a []string. Returns
+// errNoPluginField if the input is empty OR has no plugin field —
+// the two cases are semantically equivalent for union-merge purposes
+// ("no existing plugins to preserve"). Other parse failures (malformed
+// JSON, non-array plugin, non-string entries) return distinct errors
+// so callers can surface them instead of silently dropping content.
 func readPluginArray(data []byte) ([]string, error) {
 	if len(data) == 0 {
-		return nil, fmt.Errorf("empty input")
+		return nil, errNoPluginField
 	}
 	var doc map[string]any
 	if err := json.Unmarshal(data, &doc); err != nil {

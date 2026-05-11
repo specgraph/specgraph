@@ -189,3 +189,90 @@ func TestWholeFileModePreserved(t *testing.T) {
 		t.Errorf("mode = %v, want 0644", info.Mode().Perm())
 	}
 }
+
+// TestWholeFileForceRestoresCanonical covers the StateDrifted +
+// Force=true, KeepEdits=false path. Seeds a file whose body is
+// user-edited (sentinel hash != disk hash); after --force, the file
+// must match canonical content with a fresh canonical sentinel.
+func TestWholeFileForceRestoresCanonical(t *testing.T) {
+	dir := t.TempDir()
+	mf := testWholeFileMF()
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+	full := filepath.Join(dir, ".specgraph/agents/opencode/specgraph.ts")
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// First sync produces a canonical v=2 file.
+	s := wholeFileStrategy{}
+	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	// User edits the body — sentinel hash no longer matches.
+	disk, _ := os.ReadFile(full)
+	firstLine := strings.SplitN(string(disk), "\n", 2)[0]
+	corrupted := []byte(firstLine + "\n// USER EDIT\n")
+	if err := os.WriteFile(full, corrupted, 0o600); err != nil { //nolint:gosec // full is filepath.Join(t.TempDir(), ...)
+		t.Fatal(err)
+	}
+	// --force without --keep-edits must restore canonical.
+	res, _ := s.Sync(dir, mf, params, SyncOptions{Force: true})
+	if res.Action != ActionForced {
+		t.Errorf("action = %v, want ActionForced", res.Action)
+	}
+	canonical, _ := readSource(mf)
+	canonHash := hashBytes(canonical)
+	after, _ := os.ReadFile(full)
+	if strings.Contains(string(after), "USER EDIT") {
+		t.Error("--force without --keep-edits preserved user edits (should have restored canonical)")
+	}
+	if !strings.Contains(string(after), "sha256="+canonHash) {
+		t.Errorf("restored file missing canonical hash; got:\n%s", after)
+	}
+}
+
+// TestWholeFileForceKeepEditsPreservesUserBody covers the
+// StateDrifted + Force=true, KeepEdits=true path. The user's body
+// content survives; the sentinel hash is refreshed to match.
+func TestWholeFileForceKeepEditsPreservesUserBody(t *testing.T) {
+	dir := t.TempDir()
+	mf := testWholeFileMF()
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+	full := filepath.Join(dir, ".specgraph/agents/opencode/specgraph.ts")
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	s := wholeFileStrategy{}
+	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	// Replace the body with user content (keep the old sentinel —
+	// makes the file Drifted).
+	disk, _ := os.ReadFile(full)
+	firstLine := strings.SplitN(string(disk), "\n", 2)[0]
+	userBody := "// USER CONTENT KEPT\n"
+	corrupted := []byte(firstLine + "\n" + userBody)
+	if err := os.WriteFile(full, corrupted, 0o600); err != nil { //nolint:gosec // full is filepath.Join(t.TempDir(), ...)
+		t.Fatal(err)
+	}
+	res, _ := s.Sync(dir, mf, params, SyncOptions{Force: true, KeepEdits: true})
+	if res.Action != ActionForced {
+		t.Errorf("action = %v, want ActionForced", res.Action)
+	}
+	after, _ := os.ReadFile(full)
+	if !strings.Contains(string(after), "USER CONTENT KEPT") {
+		t.Errorf("--force --keep-edits dropped user body; got:\n%s", after)
+	}
+	// Re-inspect: state is Stale (disk diverges from canonical), but
+	// the sentinel hash now matches the disk hash — confirming
+	// keep-edits refreshed the sentinel over the user body. Future
+	// inits will still see Stale on every inspect, which is the
+	// intended UX (user knows their file diverges from canonical;
+	// re-applying --keep-edits or accepting --force will rewrite).
+	state, _ := s.Inspect(dir, mf, params)
+	if state.State != StateStale {
+		t.Errorf("after force+keep-edits, state = %v, want StateStale (diverges from canonical)", state.State)
+	}
+	if state.SentinelHash != state.DiskHash {
+		t.Errorf("sentinel hash %q != disk hash %q; keep-edits should have refreshed sentinel", state.SentinelHash, state.DiskHash)
+	}
+}

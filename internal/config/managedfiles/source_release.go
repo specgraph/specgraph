@@ -17,8 +17,7 @@ import (
 // SMOKE_TEST.md), that copy is a symlink BACK into embedded/. go:embed
 // rejects symlinks in its patterns, but a regular file at the embed path
 // with symlinks pointing INTO it from elsewhere is fine — the canonical
-// remains a single file. PR C adds the OpenCode plugin TS; PR D adds
-// Cursor rules; PR E adds Claude rules.
+// remains a single file.
 //
 //go:embed embedded/opencode/specgraph.ts
 var canonicalSources embed.FS

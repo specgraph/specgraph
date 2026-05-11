@@ -52,10 +52,10 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 		return SyncResult{Path: mf.Path, Action: ActionNoOp}, nil
 
 	case StateMissing:
-		return wholeFileWrite(full, renderWholeFile(canonical), ActionCreated, mf.Path), nil
+		return wholeFileWrite(full, renderWholeFile(mf.Comment, canonical), ActionCreated, mf.Path), nil
 
 	case StateStale:
-		return wholeFileWrite(full, renderWholeFile(canonical), ActionRefreshed, mf.Path), nil
+		return wholeFileWrite(full, renderWholeFile(mf.Comment, canonical), ActionRefreshed, mf.Path), nil
 
 	case StateDrifted:
 		if !opts.Force {
@@ -63,9 +63,9 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 		}
 		if opts.KeepEdits {
 			body := stripFirstLine(existing)
-			return wholeFileWrite(full, renderWholeFile(body), ActionForced, mf.Path), nil
+			return wholeFileWrite(full, renderWholeFile(mf.Comment, body), ActionForced, mf.Path), nil
 		}
-		return wholeFileWrite(full, renderWholeFile(canonical), ActionForced, mf.Path), nil
+		return wholeFileWrite(full, renderWholeFile(mf.Comment, canonical), ActionForced, mf.Path), nil
 	}
 	return SyncResult{Path: mf.Path, Action: ActionError, Err: fmt.Errorf("unhandled state %v", state.State)}, nil
 }
@@ -95,15 +95,15 @@ func wholeFileClassify(cwd string, mf ManagedFile) (FileState, []byte, []byte, e
 
 	// Parse the first line as a sentinel.
 	firstLine, _, _ := bytes.Cut(existing, []byte("\n"))
-	sentinel, perr := ParseSentinel(CommentSlash, string(firstLine))
+	sentinel, perr := ParseSentinel(mf.Comment, string(firstLine))
 	if perr != nil {
-		return FileState{}, nil, nil, perr
+		return FileState{}, nil, nil, fmt.Errorf("parse sentinel for %s: %w", mf.Path, perr)
 	}
 	if sentinel.Version == 0 {
 		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: "no sentinel", EmbeddedHash: canonicalHash}, canonical, existing, nil
 	}
 
-	diskHash := HashExcludingSentinel(CommentSlash, existing)
+	diskHash := HashExcludingSentinel(mf.Comment, existing)
 
 	if sentinel.SHA256 != diskHash {
 		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: "sentinel hash != disk hash", DiskHash: diskHash, SentinelHash: sentinel.SHA256, EmbeddedHash: canonicalHash}, canonical, existing, nil
@@ -115,14 +115,15 @@ func wholeFileClassify(cwd string, mf ManagedFile) (FileState, []byte, []byte, e
 }
 
 // renderWholeFile emits the canonical content prefixed by a v=2 sentinel
-// line. The hash is over `canonical` verbatim; HashExcludingSentinel on
-// the rendered output drops the first line (the sentinel) and gets back
-// the same bytes, so disk-hash and sentinel-hash agree on re-inspect.
-func renderWholeFile(canonical []byte) []byte {
+// line using the manifest entry's comment syntax. The hash is over
+// `canonical` verbatim; HashExcludingSentinel on the rendered output
+// drops the first line (the sentinel) and gets back the same bytes, so
+// disk-hash and sentinel-hash agree on re-inspect.
+func renderWholeFile(syntax CommentSyntax, canonical []byte) []byte {
 	hash := hashBytes(canonical)
+	sentinel := RenderSentinel(syntax, Sentinel{Version: 2, SHA256: hash})
 	var b bytes.Buffer
-	b.WriteString("// specgraph:init v=2 sha256=")
-	b.WriteString(hash)
+	b.WriteString(sentinel)
 	b.WriteString("\n")
 	b.Write(canonical)
 	if len(canonical) == 0 || canonical[len(canonical)-1] != '\n' {
@@ -131,9 +132,10 @@ func renderWholeFile(canonical []byte) []byte {
 	return b.Bytes()
 }
 
-// stripFirstLine returns content with line 0 removed. Used in the
-// --force --keep-edits path to compute a fresh sentinel over the
-// user's (sentinel-less) body.
+// stripFirstLine returns content with line 0 (the existing sentinel
+// line) removed. Used in the --force --keep-edits path to peel off the
+// stale sentinel so renderWholeFile can compute a fresh one over the
+// user-edited body.
 func stripFirstLine(content []byte) []byte {
 	idx := bytes.IndexByte(content, '\n')
 	if idx < 0 {
