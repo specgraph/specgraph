@@ -91,6 +91,43 @@ func purgeLegacyBlocks(data []byte) (out []byte, purged, skippedMalformed int) {
 	return out, purged, skippedMalformed
 }
 
+// extractManagedBlockBody returns the bytes strictly between the
+// canonical start and end markers, or (nil, false) if no well-formed
+// pair is present. The bytes do NOT include the surrounding marker
+// lines or any leading/trailing newline adjacent to them.
+//
+// "Well-formed pair" means: exactly one start marker (v=1 OR v=2,
+// matched via initStartAnyVersion), exactly one end marker, end
+// strictly after start. Anything else returns (nil, false).
+// Empty body between markers returns ([]byte{}, true).
+func extractManagedBlockBody(content []byte) ([]byte, bool) {
+	starts := initStartAnyVersion.FindAllIndex(content, -1)
+	if len(starts) != 1 {
+		return nil, false
+	}
+	endOff := bytes.Index(content, []byte(initEndMarker))
+	if endOff < 0 {
+		return nil, false
+	}
+	startEnd := starts[0][1] // end offset of the start-marker line
+	// Skip the newline immediately after the start marker if present.
+	if startEnd < len(content) && content[startEnd] == '\n' {
+		startEnd++
+	}
+	if endOff < startEnd {
+		return nil, false
+	}
+	body := content[startEnd:endOff]
+	// Strip the trailing newline immediately before the end marker.
+	if len(body) > 0 && body[len(body)-1] == '\n' {
+		body = body[:len(body)-1]
+	}
+	if body == nil {
+		body = []byte{}
+	}
+	return body, true
+}
+
 // validateInitMarkers checks five corruption rules:
 //
 //	(1) end before start
