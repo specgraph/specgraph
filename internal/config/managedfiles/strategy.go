@@ -41,13 +41,6 @@ type jsonKeyMergeStrategy struct{}
 
 type markdownBlockStrategy struct{}
 
-func (markdownBlockStrategy) Inspect(_ string, _ ManagedFile, _ ProjectParams) (FileState, error) {
-	return FileState{}, errNotImplemented
-}
-func (markdownBlockStrategy) Sync(_ string, _ ManagedFile, _ ProjectParams, _ SyncOptions) (SyncResult, error) {
-	return SyncResult{}, errNotImplemented
-}
-
 type wholeFileStrategy struct{}
 
 func (wholeFileStrategy) Inspect(_ string, _ ManagedFile, _ ProjectParams) (FileState, error) {
