@@ -13,11 +13,13 @@ import (
 	"path/filepath"
 )
 
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func (markdownBlockStrategy) Inspect(cwd string, mf ManagedFile, params ProjectParams) (FileState, error) {
 	state, _, _, err := markdownBlockClassify(cwd, mf, params)
 	return state, err
 }
 
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func (markdownBlockStrategy) Sync(cwd string, mf ManagedFile, params ProjectParams, opts SyncOptions) (SyncResult, error) {
 	if err := rejectSymlinkComponents(cwd, mf.Path); err != nil {
 		return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
@@ -175,6 +177,7 @@ func pluralS(n int) string {
 // markdownBlockClassify returns (FileState, existing-bytes,
 // post-purge-bytes, error). The two byte-blobs are conveniences for
 // Sync; Inspect ignores them.
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func markdownBlockClassify(cwd string, mf ManagedFile, params ProjectParams) (FileState, []byte, []byte, error) {
 	if err := rejectSymlinkComponents(cwd, mf.Path); err != nil {
 		return FileState{}, nil, nil, err
@@ -338,6 +341,7 @@ func isMDCPath(p string) bool { return filepath.Ext(p) == ".mdc" }
 // computePriorCanonical returns the byte sequence the deleted pointers/
 // package would have written at mf.SupersedesPath. Used to hash-compare
 // against the on-disk supersedes file.
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func computePriorCanonical(mf ManagedFile, params ProjectParams) []byte {
 	if mf.SupersedesPath != ".cursor/rules/specgraph-bootstrap.md" {
 		// PR B has only one SupersedesPath; later PRs may add more.

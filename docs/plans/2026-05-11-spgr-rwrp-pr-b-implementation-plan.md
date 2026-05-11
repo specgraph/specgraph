@@ -93,6 +93,7 @@
 ### Task 1: `ProjectParams` type + `Validate()`
 
 **Files:**
+
 - Create: `internal/config/managedfiles/params.go`
 - Create: `internal/config/managedfiles/params_test.go`
 
@@ -193,6 +194,7 @@ Note: `safeSlugPattern` will be added in Task 2 (alongside other ports). The tes
 ### Task 2: Port `safeSlugPattern` + frontmatter helpers + error sentinels
 
 **Files:**
+
 - Create: `internal/config/managedfiles/helpers_md.go` (skeleton; more added in later tasks)
 - Create: `internal/config/managedfiles/errors_ports.go`
 - Create: `internal/config/managedfiles/helpers_md_test.go`
@@ -369,6 +371,7 @@ EOF
 ### Task 3: Port `validateInitMarkers` (v=1 + v=2 aware) + marker regexes
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/helpers_md.go` (append)
 - Modify: `internal/config/managedfiles/helpers_md_test.go` (append)
 
@@ -525,6 +528,7 @@ EOF
 ### Task 4: Port `purgeLegacyBlocks` + `legacyBlock` regex
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/helpers_md.go` (append)
 - Modify: `internal/config/managedfiles/helpers_md_test.go` (append)
 
@@ -642,6 +646,7 @@ EOF
 ### Task 5: Implement `extractManagedBlockBody`
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/helpers_md.go` (append)
 - Modify: `internal/config/managedfiles/helpers_md_test.go` (append)
 
@@ -782,6 +787,7 @@ EOF
 ### Task 6: Port `canonicalize` from mcpconfigs
 
 **Files:**
+
 - Create: `internal/config/managedfiles/helpers_json.go`
 - Create: `internal/config/managedfiles/helpers_json_test.go`
 
@@ -895,6 +901,7 @@ EOF
 ### Task 7: Port `renderV1AgentsBlockBody` + `renderV1CursorBlockBody`
 
 **Files:**
+
 - Create: `internal/config/managedfiles/vestigial_v1.go`
 - Create: `internal/config/managedfiles/vestigial_v1_test.go`
 
@@ -1044,6 +1051,7 @@ EOF
 ### Task 8: Add `ManagedFile.Build` field + `SyncResult.Detail` field
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/types.go`
 
 - [ ] **Step 1: Make the modification**
@@ -1107,6 +1115,7 @@ EOF
 ### Task 9: Cascade strategy interface signature for `ProjectParams`
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/strategy.go`
 - Modify: `internal/config/managedfiles/sync.go`
 - Modify: `internal/config/managedfiles/inspect.go`
@@ -1247,6 +1256,7 @@ EOF
 ### Task 10: Implement `jsonKeyMergeStrategy`
 
 **Files:**
+
 - Create: `internal/config/managedfiles/jsonkeymerge.go`
 - Create: `internal/config/managedfiles/jsonkeymerge_test.go`
 
@@ -1548,6 +1558,7 @@ EOF
 ### Task 11: Implement `markdownBlockStrategy`
 
 **Files:**
+
 - Create: `internal/config/managedfiles/markdownblock.go`
 - Create: `internal/config/managedfiles/markdownblock_test.go`
 - Modify: `internal/config/managedfiles/strategy.go` (remove markdown stub)
@@ -2062,6 +2073,7 @@ EOF
 The cursor `.mdc` entry sets `SupersedesPath: ".cursor/rules/specgraph-bootstrap.md"`. After a non-skipped, non-error sync of `.mdc`, the strategy should delete the old `.md` if its content matches what the prior canonical would have written.
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/markdownblock.go`
 - Modify: `internal/config/managedfiles/markdownblock_test.go`
 
@@ -2216,6 +2228,7 @@ EOF
 ### Task 13: Populate the manifest with 5 entries
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/manifest.go`
 - Create: `internal/config/managedfiles/manifest_test.go`
 
@@ -2495,6 +2508,7 @@ EOF
 ### Task 14: Add `ActionName` + `CountErrors` exported helpers
 
 **Files:**
+
 - Create: `internal/config/managedfiles/action_names.go`
 - Create: `internal/config/managedfiles/action_names_test.go`
 
@@ -2604,6 +2618,7 @@ EOF
 ### Task 15: Rewire `cmd/specgraph/init.go`
 
 **Files:**
+
 - Modify: `cmd/specgraph/init.go`
 
 - [ ] **Step 1: Read init.go to identify exact replacement region**
@@ -2719,6 +2734,7 @@ EOF
 ### Task 16: Capture-helper main.go + `task capture-goldens`
 
 **Files:**
+
 - Create: `internal/config/managedfiles/internal/captureimpl/doc.go`
 - Create: `internal/config/managedfiles/internal/captureimpl/main.go`
 - Create: `internal/config/managedfiles/testdata/golden/README.md`
@@ -2920,6 +2936,7 @@ EOF
 ### Task 17: Golden-parity test
 
 **Files:**
+
 - Create: `internal/config/managedfiles/golden_test.go`
 
 - [ ] **Step 1: Write the test**
@@ -3033,6 +3050,7 @@ EOF
 ### Task 18: Synthetic v=1 → v=2 migration integration test
 
 **Files:**
+
 - Create: `internal/config/managedfiles/migration_test.go`
 
 - [ ] **Step 1: Write the test**
@@ -3199,11 +3217,13 @@ EOF
 This is the **single atomic cleanup commit** per spec §"Cleanup."
 
 **Files deleted:**
+
 - `internal/config/mcpconfigs/` (whole dir)
 - `internal/config/pointers/` (whole dir)
 - `internal/config/managedfiles/internal/captureimpl/` (whole dir)
 
 **Files modified:**
+
 - `Taskfile.yml` — remove `capture-goldens` target
 
 - [ ] **Step 1: Delete the directories**

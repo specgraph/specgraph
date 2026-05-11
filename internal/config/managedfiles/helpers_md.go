@@ -150,7 +150,7 @@ func validateInitMarkers(displayName string, data []byte) error {
 		fragment := string(data[m[0]:m[1]])
 		s, perr := ParseSentinel(CommentHTML, fragment)
 		if perr != nil {
-			return fmt.Errorf("%w: %s contains unsupported init start marker at offset %d (%q): %v",
+			return fmt.Errorf("%w: %s contains unsupported init start marker at offset %d (%q): %w",
 				ErrCorruptedMarkers, displayName, m[0], fragment, perr)
 		}
 		if s.Version == 0 {

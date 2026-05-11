@@ -18,6 +18,7 @@ import (
 //
 // Strategy implementations own all classification logic; this function
 // dispatches to the appropriate strategy.
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the public API
 func Inspect(cwd string, mf ManagedFile, params ProjectParams) (FileState, error) {
 	state, err := strategyImpl(mf.Strategy).Inspect(cwd, mf, params)
 	if err != nil {

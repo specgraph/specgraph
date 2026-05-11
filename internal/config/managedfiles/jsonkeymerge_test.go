@@ -103,7 +103,7 @@ func TestJSONKeyMergeModePreserved(t *testing.T) {
 	dir := t.TempDir()
 	mf := testJSONMF("config.json")
 	// Seed at 0o644.
-	if err := os.WriteFile(filepath.Join(dir, "config.json"), []byte(`{}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "config.json"), []byte(`{}`), 0o644); err != nil { //nolint:gosec // intentional permissive mode for permission-preservation test
 		t.Fatal(err)
 	}
 	s := jsonKeyMergeStrategy{}

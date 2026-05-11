@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
 
+package managedfiles
+
 // Vestigial v=1 renderers. Reproduce the body bytes the deleted
 // pointers/ package would have written inside <!-- specgraph:init:start
 // v=1 --> ... <!-- specgraph:init:end --> markers.
@@ -17,7 +19,6 @@
 // Sunset trigger: parent design's "zero v=1 files for two consecutive
 // releases" AND "6 months elapsed since v=2 rollout" — see spec
 // §"Helpers ported" / "Sunset trigger correction."
-package managedfiles
 
 import (
 	"fmt"

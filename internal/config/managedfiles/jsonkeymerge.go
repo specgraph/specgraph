@@ -15,6 +15,7 @@ import (
 	jsonpatch "github.com/evanphx/json-patch/v5"
 )
 
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func (jsonKeyMergeStrategy) Inspect(cwd string, mf ManagedFile, params ProjectParams) (FileState, error) {
 	if err := rejectSymlinkComponents(cwd, mf.Path); err != nil {
 		return FileState{}, err
@@ -39,9 +40,10 @@ func (jsonKeyMergeStrategy) Inspect(cwd string, mf ManagedFile, params ProjectPa
 	return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateStale}, nil
 }
 
-func (jsonKeyMergeStrategy) Sync(cwd string, mf ManagedFile, params ProjectParams, opts SyncOptions) (SyncResult, error) {
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
+func (jsonKeyMergeStrategy) Sync(cwd string, mf ManagedFile, params ProjectParams, _ SyncOptions) (SyncResult, error) {
 	if err := rejectSymlinkComponents(cwd, mf.Path); err != nil {
-		return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
+		return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil //nolint:nilerr // err is carried in SyncResult.Err per framework contract
 	}
 	full := filepath.Join(cwd, mf.Path)
 
@@ -72,7 +74,7 @@ func (jsonKeyMergeStrategy) Sync(cwd string, mf ManagedFile, params ProjectParam
 
 	canonical, err := jsonKeyMergeCanonical(existing, mf, params)
 	if err != nil {
-		return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
+		return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil //nolint:nilerr // err is carried in SyncResult.Err per framework contract
 	}
 
 	if fileExisted && bytes.Equal(existing, canonical) {
@@ -87,7 +89,7 @@ func (jsonKeyMergeStrategy) Sync(cwd string, mf ManagedFile, params ProjectParam
 		return SyncResult{Path: mf.Path, Action: ActionError, Err: fmt.Errorf("mkdir %s: %w", filepath.Dir(full), err)}, nil
 	}
 	if err := atomicWrite(full, canonical, mode); err != nil {
-		return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
+		return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil //nolint:nilerr // err is carried in SyncResult.Err per framework contract
 	}
 	if fileExisted {
 		return SyncResult{Path: mf.Path, Action: ActionRefreshed}, nil
@@ -98,6 +100,7 @@ func (jsonKeyMergeStrategy) Sync(cwd string, mf ManagedFile, params ProjectParam
 // jsonKeyMergeCanonical computes the canonical disk content for an entry:
 // apply the patch from mf.Build to `existing` (or {} if missing), then
 // canonicalize.
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func jsonKeyMergeCanonical(existing []byte, mf ManagedFile, params ProjectParams) ([]byte, error) {
 	patch, err := mf.Build(params)
 	if err != nil {

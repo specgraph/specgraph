@@ -12,6 +12,7 @@ import "fmt"
 // PR A dispatches to per-strategy stubs that return errNotImplemented;
 // the empty manifest means this is never called end-to-end. PRs B/C/D/E
 // implement each strategy.
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the public API
 func Sync(cwd string, mf ManagedFile, params ProjectParams, opts SyncOptions) (SyncResult, error) {
 	r, err := strategyImpl(mf.Strategy).Sync(cwd, mf, params, opts)
 	if err != nil {

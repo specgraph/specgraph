@@ -107,7 +107,7 @@ func ensureMCPSuffix(serverURL string) string {
 }
 
 func buildCursorMCPJSON(p ProjectParams) ([]byte, error) {
-	return json.Marshal(map[string]any{
+	b, err := json.Marshal(map[string]any{
 		"mcpServers": map[string]any{
 			"specgraph": map[string]any{
 				"url": ensureMCPSuffix(p.ServerURL),
@@ -118,10 +118,14 @@ func buildCursorMCPJSON(p ProjectParams) ([]byte, error) {
 			},
 		},
 	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal cursor MCP JSON: %w", err)
+	}
+	return b, nil
 }
 
 func buildClaudeMCPJSON(p ProjectParams) ([]byte, error) {
-	return json.Marshal(map[string]any{
+	b, err := json.Marshal(map[string]any{
 		"mcpServers": map[string]any{
 			"specgraph": map[string]any{
 				"type": "http",
@@ -133,10 +137,14 @@ func buildClaudeMCPJSON(p ProjectParams) ([]byte, error) {
 			},
 		},
 	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal claude MCP JSON: %w", err)
+	}
+	return b, nil
 }
 
 func buildOpenCodeJSON(p ProjectParams) ([]byte, error) {
-	return json.Marshal(map[string]any{
+	b, err := json.Marshal(map[string]any{
 		"$schema": "https://opencode.ai/config.json",
 		"mcp": map[string]any{
 			"specgraph": map[string]any{
@@ -150,6 +158,10 @@ func buildOpenCodeJSON(p ProjectParams) ([]byte, error) {
 			},
 		},
 	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal opencode JSON: %w", err)
+	}
+	return b, nil
 }
 
 // Build closures — markdown block bodies. PR B uses v=1 body verbatim

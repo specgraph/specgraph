@@ -461,9 +461,9 @@ from a freshly-written canonical file.
      - If matches canonical hash → `StateSynced` / `ActionNoOp`.
      - Else → `StateStale` / `ActionRefreshed` (overwrite, fresh
        sentinel).
-     If disk hash doesn't match recorded sentinel hash → `StateDrifted`.
-     Skip without `--force`; `--force` rewrites; `--force --keep-edits`
-     refreshes the sentinel to match disk.
+   If disk hash doesn't match recorded sentinel hash → `StateDrifted`.
+   Skip without `--force`; `--force` rewrites; `--force --keep-edits`
+   refreshes the sentinel to match disk.
    - **v=1 markers.** Defensive recompute: call private
      `renderV1MarkdownBlockBody(mf, params)` for the same file's prior
      canonical, hash it, compare to disk block body.
@@ -585,7 +585,7 @@ exact bytes" below), hashes them, compares to on-disk hash. Match →
 delete. Mismatch → leave + surface as `Drifted` on the supersedes
 path in the SyncResult's `Detail`.
 
-##### Prior canonical exact bytes (cursor `.md`)
+#### Prior canonical exact bytes (cursor `.md`)
 
 The dogfood `.md` was written by `pointers/cursor.go` as:
 

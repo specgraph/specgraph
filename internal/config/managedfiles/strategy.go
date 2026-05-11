@@ -43,9 +43,12 @@ type markdownBlockStrategy struct{}
 
 type wholeFileStrategy struct{}
 
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func (wholeFileStrategy) Inspect(_ string, _ ManagedFile, _ ProjectParams) (FileState, error) {
 	return FileState{}, errNotImplemented
 }
+
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func (wholeFileStrategy) Sync(_ string, _ ManagedFile, _ ProjectParams, _ SyncOptions) (SyncResult, error) {
 	return SyncResult{}, errNotImplemented
 }
