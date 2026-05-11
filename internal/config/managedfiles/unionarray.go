@@ -29,36 +29,36 @@ func unionPluginArray(existing, canonical []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read canonical plugin array: %w", err)
 	}
-	existingPlugins, err := readPluginArray(existing)
-	if err != nil {
-		// Missing plugin field on existing is expected (first init,
-		// or user removed it); just return canonical unchanged.
-		return canonical, nil
+	existingPlugins, existErr := readPluginArray(existing)
+	if existErr != nil {
+		// Missing plugin field, empty file, or malformed existing plugin
+		// array — all treated as absent. Return canonical unchanged.
+		return canonical, nil //nolint:nilerr // intentional: treat any existing-parse failure as "no existing plugins"
 	}
 
 	seen := make(map[string]bool, len(canonPlugins))
-	out := make([]string, 0, len(canonPlugins)+len(existingPlugins))
+	union := make([]string, 0, len(canonPlugins)+len(existingPlugins))
 	for _, p := range canonPlugins {
 		if !seen[p] {
 			seen[p] = true
-			out = append(out, p)
+			union = append(union, p)
 		}
 	}
 	for _, p := range existingPlugins {
 		if !seen[p] {
 			seen[p] = true
-			out = append(out, p)
+			union = append(union, p)
 		}
 	}
 
 	var doc map[string]any
-	if err := json.Unmarshal(canonical, &doc); err != nil {
-		return nil, fmt.Errorf("unmarshal canonical: %w", err)
+	if unmarshalErr := json.Unmarshal(canonical, &doc); unmarshalErr != nil {
+		return nil, fmt.Errorf("unmarshal canonical: %w", unmarshalErr)
 	}
-	doc["plugin"] = out
-	marshaled, err := json.Marshal(doc)
-	if err != nil {
-		return nil, fmt.Errorf("marshal merged doc: %w", err)
+	doc["plugin"] = union
+	marshaled, marshalErr := json.Marshal(doc)
+	if marshalErr != nil {
+		return nil, fmt.Errorf("marshal merged doc: %w", marshalErr)
 	}
 	return canonicalize(marshaled)
 }
