@@ -20,8 +20,14 @@ var initCmd = &cobra.Command{
 	Long: "Writes .specgraph.yaml and the per-harness managed files " +
 		"(.cursor/mcp.json, .mcp.json, opencode.json, AGENTS.md, " +
 		".cursor/rules/specgraph-bootstrap.mdc) for the current project. " +
-		"Idempotent: safe to re-run on an already-initialized project; managed " +
-		"fields are reset to canonical values, user-added fields are preserved.",
+		"Idempotent: safe to re-run on an already-initialized project. " +
+		"JSON managed keys are reset to canonical values on every run; " +
+		"user-added sibling keys are preserved. Markdown managed blocks " +
+		"(AGENTS.md, .mdc) are rewritten only when canonical or stale — " +
+		"user-edited (drifted) blocks are SKIPPED to preserve hand edits. " +
+		"runInit calls SyncAll with zero-value SyncOptions, so there is no " +
+		"--force path in this command; use `specgraph doctor --fix` (PR G) " +
+		"to overwrite drifted blocks.",
 	Args: cobra.MaximumNArgs(1),
 	RunE: runInit,
 }

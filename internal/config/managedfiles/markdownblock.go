@@ -47,8 +47,12 @@ func (markdownBlockStrategy) Sync(cwd string, mf ManagedFile, params ProjectPara
 		return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
 	}
 
-	// Count purged legacy blocks for Detail reporting.
-	var purgedCount int
+	// Count purged + skipped-malformed legacy blocks for Detail reporting.
+	// purgeLegacyBlocks returns (cleaned-bytes, purged-count,
+	// skipped-malformed-count). The cleaned bytes are already captured
+	// upstream as purgedAfter inside markdownBlockClassify; we only need
+	// the two counts here for the Detail string.
+	var purgedCount, skippedMalformed int
 	if len(existing) > 0 {
 		var working []byte
 		if isMDCPath(mf.Path) {
@@ -60,7 +64,7 @@ func (markdownBlockStrategy) Sync(cwd string, mf ManagedFile, params ProjectPara
 		} else {
 			working = existing
 		}
-		_, purgedCount, _ = purgeLegacyBlocks(working)
+		_, purgedCount, skippedMalformed = purgeLegacyBlocks(working)
 	}
 
 	body, err := mf.Build(params)
@@ -141,9 +145,16 @@ func (markdownBlockStrategy) Sync(cwd string, mf ManagedFile, params ProjectPara
 	}
 
 	res := SyncResult{Path: mf.Path, Action: action}
-	if purgedCount > 0 {
+	switch {
+	case purgedCount > 0 && skippedMalformed > 0:
+		res.Detail = fmt.Sprintf("purged %d legacy block%s; skipped %d malformed",
+			purgedCount, pluralS(purgedCount), skippedMalformed)
+	case purgedCount > 0:
 		res.Detail = fmt.Sprintf("purged %d legacy block%s", purgedCount, pluralS(purgedCount))
-	} else if state.Detail != "" && state.Detail != "no markers" {
+	case skippedMalformed > 0:
+		res.Detail = fmt.Sprintf("skipped %d malformed legacy block%s",
+			skippedMalformed, pluralS(skippedMalformed))
+	case state.Detail != "" && state.Detail != "no markers":
 		res.Detail = state.Detail
 	}
 

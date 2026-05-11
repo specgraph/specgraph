@@ -850,8 +850,10 @@ enforces; see CLAUDE.md §"Quality Gates"):
   `cog` passes. The commit body references `spgr-rwrp` and the
   parent design doc.
 - **DCO sign-off.** Both commits carry `Signed-off-by: Sean Brandt
-  <SeBrandt@geico.com>` trailer (`git commit -s` or `jj describe`
-  with trailer set).
+  <SeBrandt@geico.com>` trailer. Use `jj describe` / `jj commit`
+  with the trailer set in the commit message (this repo is
+  jj-colocated; the CLAUDE.md workflow uses jj for all commit
+  operations).
 
 ### Cleanup
 
