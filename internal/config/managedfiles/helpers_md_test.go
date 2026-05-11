@@ -53,3 +53,29 @@ func TestSafeSlugPattern(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateInitMarkers(t *testing.T) {
+	cases := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"no markers", "no markers here\n", false},
+		{"valid v=1 pair", "<!-- specgraph:init:start v=1 -->\nbody\n<!-- specgraph:init:end -->\n", false},
+		{"valid v=2 pair", "<!-- specgraph:init:start v=2 sha256=abc123 -->\nbody\n<!-- specgraph:init:end -->\n", false},
+		{"end before start", "<!-- specgraph:init:end -->\nbody\n<!-- specgraph:init:start v=1 -->\n", true},
+		{"double start", "<!-- specgraph:init:start v=1 -->\n<!-- specgraph:init:start v=1 -->\n<!-- specgraph:init:end -->\n", true},
+		{"start without end", "<!-- specgraph:init:start v=1 -->\nbody\n", true},
+		{"end without start", "body\n<!-- specgraph:init:end -->\n", true},
+		{"naked start no version", "<!-- specgraph:init:start -->\nbody\n<!-- specgraph:init:end -->\n", true},
+		{"unknown version v=99", "<!-- specgraph:init:start v=99 -->\nbody\n<!-- specgraph:init:end -->\n", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateInitMarkers("test.md", []byte(tc.input))
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("validateInitMarkers err = %v, wantErr = %v", err, tc.wantErr)
+			}
+		})
+	}
+}
