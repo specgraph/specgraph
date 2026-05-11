@@ -130,6 +130,24 @@ func (markdownBlockStrategy) Sync(cwd string, mf ManagedFile, params ProjectPara
 	} else if state.Detail != "" && state.Detail != "no markers" {
 		res.Detail = state.Detail
 	}
+
+	// Supersedes-guarded delete. Runs on Created, Refreshed, Forced,
+	// and NoOp; skips Skipped and Error.
+	if mf.SupersedesPath != "" && (action == ActionCreated || action == ActionRefreshed || action == ActionForced || action == ActionNoOp) {
+		priorCanonical := computePriorCanonical(mf, params)
+		priorHash := hashBytes(priorCanonical)
+		if err := supersedesGuardedDelete(cwd, mf.SupersedesPath, priorHash); err != nil {
+			if errors.Is(err, ErrPriorCanonicalMismatch) {
+				if res.Detail != "" {
+					res.Detail += "; "
+				}
+				res.Detail += fmt.Sprintf("supersedes path %q left in place: prior-canonical mismatch", mf.SupersedesPath)
+			} else {
+				return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
+			}
+		}
+	}
+
 	return res, nil
 }
 
@@ -310,6 +328,25 @@ func refreshSentinelToDisk(existing []byte) []byte {
 }
 
 func isMDCPath(p string) bool { return filepath.Ext(p) == ".mdc" }
+
+// computePriorCanonical returns the byte sequence the deleted pointers/
+// package would have written at mf.SupersedesPath. Used to hash-compare
+// against the on-disk supersedes file.
+func computePriorCanonical(mf ManagedFile, params ProjectParams) []byte {
+	if mf.SupersedesPath != ".cursor/rules/specgraph-bootstrap.md" {
+		// PR B has only one SupersedesPath; later PRs may add more.
+		// Panic loud rather than silently producing zero bytes.
+		panic(fmt.Sprintf("no prior-canonical renderer for SupersedesPath %q", mf.SupersedesPath))
+	}
+	body := renderV1CursorBlockBody(params)
+	var b bytes.Buffer
+	b.WriteString(defaultCursorFrontmatter)
+	b.WriteString("<!-- specgraph:init:start v=1 -->")
+	b.Write(body)
+	b.WriteString(initEndMarker)
+	b.WriteString("\n")
+	return b.Bytes()
+}
 
 // trimEdgeNewlines strips at most one '\n' from the start and end of b.
 // This mirrors extractManagedBlockBody's newline-adjacent-to-marker

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -159,5 +160,68 @@ func TestMarkdownBlockModePreserved(t *testing.T) {
 	info, _ := os.Stat(filepath.Join(dir, "AGENTS.md"))
 	if info.Mode().Perm() != 0o644 {
 		t.Errorf("mode = %v, want 0644", info.Mode().Perm())
+	}
+}
+
+func TestMarkdownBlockSupersedesDeletesMatchingMD(t *testing.T) {
+	dir := t.TempDir()
+	cursorDir := filepath.Join(dir, ".cursor", "rules")
+	_ = os.MkdirAll(cursorDir, 0o750)
+
+	mf := ManagedFile{
+		Path:           ".cursor/rules/specgraph-bootstrap.mdc",
+		Strategy:       StrategyMarkdownBlock,
+		Comment:        CommentHTML,
+		Harness:        HarnessCursor,
+		SupersedesPath: ".cursor/rules/specgraph-bootstrap.md",
+		Build: func(p ProjectParams) ([]byte, error) {
+			return renderV1CursorBlockBody(p), nil
+		},
+	}
+	// Seed .md with what the prior canonical would have produced.
+	body := renderV1CursorBlockBody(testMDParams)
+	priorBlock := []byte("<!-- specgraph:init:start v=1 -->" + string(body) + "<!-- specgraph:init:end -->\n")
+	priorFull := append([]byte(defaultCursorFrontmatter), priorBlock...)
+	_ = os.WriteFile(filepath.Join(dir, ".cursor/rules/specgraph-bootstrap.md"), priorFull, 0o600)
+
+	s := markdownBlockStrategy{}
+	if _, err := s.Sync(dir, mf, testMDParams, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	// Old .md must be gone.
+	if _, err := os.Stat(filepath.Join(dir, ".cursor/rules/specgraph-bootstrap.md")); !os.IsNotExist(err) {
+		t.Error("old .md still exists after successful supersedes")
+	}
+	// New .mdc must exist.
+	if _, err := os.Stat(filepath.Join(dir, ".cursor/rules/specgraph-bootstrap.mdc")); err != nil {
+		t.Errorf("new .mdc not created: %v", err)
+	}
+}
+
+func TestMarkdownBlockSupersedesPreservesEditedMD(t *testing.T) {
+	dir := t.TempDir()
+	cursorDir := filepath.Join(dir, ".cursor", "rules")
+	_ = os.MkdirAll(cursorDir, 0o750)
+
+	mf := ManagedFile{
+		Path:           ".cursor/rules/specgraph-bootstrap.mdc",
+		Strategy:       StrategyMarkdownBlock,
+		Comment:        CommentHTML,
+		Harness:        HarnessCursor,
+		SupersedesPath: ".cursor/rules/specgraph-bootstrap.md",
+		Build:          func(p ProjectParams) ([]byte, error) { return renderV1CursorBlockBody(p), nil },
+	}
+	// Seed .md with edited content (does NOT match prior canonical).
+	edited := []byte("USER EDITED CONTENT\n")
+	_ = os.WriteFile(filepath.Join(dir, ".cursor/rules/specgraph-bootstrap.md"), edited, 0o600)
+
+	s := markdownBlockStrategy{}
+	res, _ := s.Sync(dir, mf, testMDParams, SyncOptions{})
+	if !strings.Contains(res.Detail, "supersedes path") {
+		t.Errorf("Detail should report supersedes-drifted; got %q", res.Detail)
+	}
+	// Old .md must still exist.
+	if _, err := os.Stat(filepath.Join(dir, ".cursor/rules/specgraph-bootstrap.md")); err != nil {
+		t.Error("user-edited .md was deleted")
 	}
 }
