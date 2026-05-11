@@ -62,7 +62,15 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 			return SyncResult{Path: mf.Path, Action: ActionSkipped, Detail: state.Detail}, nil
 		}
 		if opts.KeepEdits {
-			body := stripFirstLine(existing)
+			// Strip the first line ONLY when it's an actual sentinel.
+			// StateDrifted is reached two ways: (a) sentinel hash !=
+			// disk hash — first line is a sentinel, must strip;
+			// (b) state.Detail == "no sentinel" — first line is user
+			// content, must NOT strip (would silently drop content).
+			body := existing
+			if state.Detail != "no sentinel" {
+				body = stripFirstLine(existing)
+			}
 			return wholeFileWrite(full, renderWholeFile(mf.Comment, body), ActionForced, mf.Path), nil
 		}
 		return wholeFileWrite(full, renderWholeFile(mf.Comment, canonical), ActionForced, mf.Path), nil

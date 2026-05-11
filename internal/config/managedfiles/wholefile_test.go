@@ -230,6 +230,40 @@ func TestWholeFileForceRestoresCanonical(t *testing.T) {
 	}
 }
 
+// TestWholeFileForceKeepEditsOnNoSentinelPreservesAllContent covers
+// the keep-edits path when the existing file has no sentinel at all
+// (e.g., a user-authored file the framework hasn't claimed yet). The
+// fix is that we MUST NOT strip the first line in this case — it's
+// user content, not a sentinel. Stripping would silently drop the
+// first line of the user's file.
+func TestWholeFileForceKeepEditsOnNoSentinelPreservesAllContent(t *testing.T) {
+	dir := t.TempDir()
+	mf := testWholeFileMF()
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+	full := filepath.Join(dir, ".specgraph/agents/opencode/specgraph.ts")
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// User-authored file, no sentinel — every line is user content.
+	userContent := "// Line 1 — user wrote this\n// Line 2 — also user\n// Line 3 — and this\n"
+	if err := os.WriteFile(full, []byte(userContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := wholeFileStrategy{}
+	res, _ := s.Sync(dir, mf, params, SyncOptions{Force: true, KeepEdits: true})
+	if res.Action != ActionForced {
+		t.Errorf("action = %v, want ActionForced", res.Action)
+	}
+	after, _ := os.ReadFile(full)
+	// All three user lines must survive — stripping the first line
+	// would have dropped "Line 1".
+	for _, want := range []string{"Line 1", "Line 2", "Line 3"} {
+		if !strings.Contains(string(after), want) {
+			t.Errorf("--force --keep-edits on no-sentinel file dropped %q; got:\n%s", want, after)
+		}
+	}
+}
+
 // TestWholeFileForceKeepEditsPreservesUserBody covers the
 // StateDrifted + Force=true, KeepEdits=true path. The user's body
 // content survives; the sentinel hash is refreshed to match.

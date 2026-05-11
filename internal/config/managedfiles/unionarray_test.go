@@ -98,7 +98,10 @@ func TestUnionPluginArrayMalformedExistingSurfacesError(t *testing.T) {
 }
 
 func TestUnionPluginArrayTrailingNewline(t *testing.T) {
-	out, _ := unionPluginArray([]byte("{}"), []byte("{\"plugin\":[\"a\"]}\n"))
+	out, err := unionPluginArray([]byte("{}"), []byte("{\"plugin\":[\"a\"]}\n"))
+	if err != nil {
+		t.Fatalf("unionPluginArray: %v", err)
+	}
 	if !bytes.HasSuffix(out, []byte("\n")) {
 		t.Error("output missing trailing newline")
 	}
