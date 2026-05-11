@@ -10,14 +10,12 @@ import (
 	"fmt"
 )
 
-// canonicalSources is populated via //go:embed directives added in PR C+
-// when actual managed-file source content lands in the binary. PR A leaves
-// the FS empty, which means readSourceImpl returns fs.ErrNotExist for any
-// non-empty mf.Source.
+// canonicalSources holds managed-file source content embedded at build time.
+// Source files are copied into embedded/ (go:embed cannot follow symlinks) and
+// kept in sync via task managedfiles:sync (wired into task build). PR C adds
+// the OpenCode plugin TS; PR D adds Cursor rules; PR E adds Claude rules.
 //
-// The empty embed is intentional: it lets the framework compile and tests
-// run even before any //go:embed directive references real files. Adding
-// the first directive happens in PR C alongside the OpenCode plugin TS.
+//go:embed embedded/opencode/specgraph.ts
 var canonicalSources embed.FS
 
 // readSourceImpl reads from the embedded sources tree.
