@@ -75,6 +75,19 @@ type ManagedFile struct {
 	// Empty when the file has no predecessor. Init deletes this path
 	// after a successful guarded write — see supersedesGuardedDelete.
 	SupersedesPath string
+
+	// Build is a closure that returns the canonical content for this
+	// file given a ProjectParams. Mutually exclusive with Source: each
+	// manifest entry uses one or the other. JSONKeyMerge and
+	// MarkdownBlock strategies require Build (canonical depends on
+	// per-project params); WholeFile requires Source (canonical is a
+	// static embedded asset).
+	//
+	// Build MUST be a pure function of ProjectParams: same input →
+	// byte-identical output, no FS reads, no clock, no env, no
+	// randomness. TestManifestShape asserts this for every registered
+	// entry. Without purity, Inspect and Sync can disagree on state.
+	Build func(ProjectParams) ([]byte, error)
 }
 
 // FileState is the result of Inspect for a single ManagedFile.
@@ -106,6 +119,12 @@ type SyncResult struct {
 	Path   string
 	Action Action
 	Err    error
+
+	// Detail is a human-readable explanation populated by strategies
+	// for non-trivial cases (legacy-block purge counts, supersedes-path
+	// drifted, --force --keep-edits semantics). Exact strings pinned
+	// in testdata/detail-grammar.txt. Empty for the common case.
+	Detail string
 }
 
 // SyncOptions controls Sync behaviour.

@@ -426,7 +426,7 @@ func TestInit_FreshProject_WritesPointers(t *testing.T) {
 	if _, err := runInitInDir(t, dir, []string{"specgraph"}); err != nil {
 		t.Fatalf("runInit: %v", err)
 	}
-	for _, p := range []string{"AGENTS.md", ".cursor/rules/specgraph-bootstrap.md"} {
+	for _, p := range []string{"AGENTS.md", ".cursor/rules/specgraph-bootstrap.mdc"} {
 		if _, err := os.Stat(filepath.Join(dir, p)); err != nil {
 			t.Errorf("expected %s to exist: %v", p, err)
 		}
@@ -440,7 +440,7 @@ func TestInit_RerunIsNoOp(t *testing.T) {
 	}
 	files := []string{
 		".mcp.json", ".cursor/mcp.json", "opencode.json",
-		"AGENTS.md", ".cursor/rules/specgraph-bootstrap.md",
+		"AGENTS.md", ".cursor/rules/specgraph-bootstrap.mdc",
 	}
 	snaps := map[string][]byte{}
 	for _, f := range files {
@@ -493,7 +493,7 @@ func TestInit_PurgesLegacyInjectArtifacts(t *testing.T) {
 	if strings.Contains(bs, "specgraph:foo:") || strings.Contains(bs, "specgraph:My.spec_v2:") {
 		t.Errorf("legacy markers not purged:\n%s", bs)
 	}
-	if !strings.Contains(bs, "<!-- specgraph:init:start v=1 -->") {
+	if !strings.Contains(bs, "<!-- specgraph:init:start v=2 sha256=") {
 		t.Errorf("init block missing:\n%s", bs)
 	}
 }
@@ -571,7 +571,7 @@ func TestRunInit_PropagatesPointerSyncErrors(t *testing.T) {
 	if err == nil {
 		t.Fatal("runInit returned nil; want non-nil pointer-sync error")
 	}
-	if !strings.Contains(err.Error(), "sync pointer files") {
-		t.Errorf("err = %q; want substring 'sync pointer files'", err.Error())
+	if !strings.Contains(err.Error(), "sync managed files") {
+		t.Errorf("err = %q; want substring 'sync managed files'", err.Error())
 	}
 }

@@ -13,8 +13,8 @@ import "fmt"
 // SyncOptions. Both methods MUST be safe to call with mf.Strategy
 // matching the dispatched strategy; misuse is a programming error.
 type strategy interface {
-	Inspect(cwd string, mf ManagedFile) (FileState, error)
-	Sync(cwd string, mf ManagedFile, opts SyncOptions) (SyncResult, error)
+	Inspect(cwd string, mf ManagedFile, params ProjectParams) (FileState, error)
+	Sync(cwd string, mf ManagedFile, params ProjectParams, opts SyncOptions) (SyncResult, error)
 }
 
 // strategyImpl returns the strategy implementation for s.
@@ -39,27 +39,16 @@ func strategyImpl(s Strategy) strategy {
 
 type jsonKeyMergeStrategy struct{}
 
-func (jsonKeyMergeStrategy) Inspect(_ string, _ ManagedFile) (FileState, error) {
-	return FileState{}, errNotImplemented
-}
-func (jsonKeyMergeStrategy) Sync(_ string, _ ManagedFile, _ SyncOptions) (SyncResult, error) {
-	return SyncResult{}, errNotImplemented
-}
-
 type markdownBlockStrategy struct{}
-
-func (markdownBlockStrategy) Inspect(_ string, _ ManagedFile) (FileState, error) {
-	return FileState{}, errNotImplemented
-}
-func (markdownBlockStrategy) Sync(_ string, _ ManagedFile, _ SyncOptions) (SyncResult, error) {
-	return SyncResult{}, errNotImplemented
-}
 
 type wholeFileStrategy struct{}
 
-func (wholeFileStrategy) Inspect(_ string, _ ManagedFile) (FileState, error) {
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
+func (wholeFileStrategy) Inspect(_ string, _ ManagedFile, _ ProjectParams) (FileState, error) {
 	return FileState{}, errNotImplemented
 }
-func (wholeFileStrategy) Sync(_ string, _ ManagedFile, _ SyncOptions) (SyncResult, error) {
+
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
+func (wholeFileStrategy) Sync(_ string, _ ManagedFile, _ ProjectParams, _ SyncOptions) (SyncResult, error) {
 	return SyncResult{}, errNotImplemented
 }

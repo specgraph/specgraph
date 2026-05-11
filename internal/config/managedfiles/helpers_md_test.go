@@ -1,0 +1,167 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Sean Brandt
+
+package managedfiles
+
+import (
+	"bytes"
+	"errors"
+	"testing"
+)
+
+func TestSplitFrontmatter(t *testing.T) {
+	t.Run("valid frontmatter", func(t *testing.T) {
+		in := []byte("---\ndescription: hi\nalwaysApply: true\n---\n\nbody text\n")
+		front, body, err := splitFrontmatter(in)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		wantFront := []byte("---\ndescription: hi\nalwaysApply: true\n---\n\n")
+		wantBody := []byte("body text\n")
+		if !bytes.Equal(front, wantFront) {
+			t.Errorf("front mismatch:\n  got %q\n want %q", front, wantFront)
+		}
+		if !bytes.Equal(body, wantBody) {
+			t.Errorf("body mismatch:\n  got %q\n want %q", body, wantBody)
+		}
+	})
+	t.Run("missing frontmatter", func(t *testing.T) {
+		_, _, err := splitFrontmatter([]byte("body text\n"))
+		if !errors.Is(err, ErrFrontmatterMissing) {
+			t.Fatalf("want ErrFrontmatterMissing, got %v", err)
+		}
+	})
+	t.Run("unclosed frontmatter", func(t *testing.T) {
+		_, _, err := splitFrontmatter([]byte("---\ndescription: hi\nbody\n"))
+		if !errors.Is(err, ErrFrontmatterMissing) {
+			t.Fatalf("want ErrFrontmatterMissing, got %v", err)
+		}
+	})
+}
+
+func TestSafeSlugPattern(t *testing.T) {
+	good := []string{"a", "abc", "a.b", "a-b", "a_b", "a1.2_3-4"}
+	bad := []string{"", "-a", ".a", "a b", "a/b"}
+	for _, s := range good {
+		if !safeSlugPattern.MatchString(s) {
+			t.Errorf("expected %q to match", s)
+		}
+	}
+	for _, s := range bad {
+		if safeSlugPattern.MatchString(s) {
+			t.Errorf("expected %q NOT to match", s)
+		}
+	}
+}
+
+func TestPurgeLegacyBlocks(t *testing.T) {
+	t.Run("removes well-formed slug block", func(t *testing.T) {
+		in := []byte("before\n<!-- specgraph:foo:start -->\nfoo body\n<!-- specgraph:foo:end -->\nafter\n")
+		out, purged, skipped := purgeLegacyBlocks(in)
+		if purged != 1 || skipped != 0 {
+			t.Errorf("counts: purged=%d skipped=%d, want 1/0", purged, skipped)
+		}
+		want := []byte("before\nafter\n")
+		if !bytes.Equal(out, want) {
+			t.Errorf("out mismatch:\n  got %q\n want %q", out, want)
+		}
+	})
+	t.Run("preserves init block", func(t *testing.T) {
+		in := []byte("<!-- specgraph:init:start v=1 -->\nbody\n<!-- specgraph:init:end -->\n")
+		out, purged, _ := purgeLegacyBlocks(in)
+		if purged != 0 {
+			t.Errorf("init block must NOT be purged; got %d", purged)
+		}
+		if !bytes.Equal(out, in) {
+			t.Errorf("init block unchanged; got %q", out)
+		}
+	})
+	t.Run("skips malformed mismatched slugs", func(t *testing.T) {
+		in := []byte("<!-- specgraph:foo:start -->\nbody\n<!-- specgraph:bar:end -->\n")
+		out, purged, skipped := purgeLegacyBlocks(in)
+		if purged != 0 || skipped != 1 {
+			t.Errorf("counts: purged=%d skipped=%d, want 0/1", purged, skipped)
+		}
+		if !bytes.Equal(out, in) {
+			t.Errorf("malformed block unchanged; got %q", out)
+		}
+	})
+}
+
+func TestExtractManagedBlockBody(t *testing.T) {
+	t.Run("v=1 markers", func(t *testing.T) {
+		in := []byte("prelude\n<!-- specgraph:init:start v=1 -->\nbody line 1\nbody line 2\n<!-- specgraph:init:end -->\npostlude\n")
+		body, ok := extractManagedBlockBody(in)
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		want := []byte("body line 1\nbody line 2")
+		if !bytes.Equal(body, want) {
+			t.Errorf("body mismatch:\n  got %q\n want %q", body, want)
+		}
+	})
+	t.Run("v=2 markers", func(t *testing.T) {
+		in := []byte("<!-- specgraph:init:start v=2 sha256=abc -->\nx\n<!-- specgraph:init:end -->\n")
+		body, ok := extractManagedBlockBody(in)
+		if !ok || string(body) != "x" {
+			t.Errorf("got %q, ok=%v", body, ok)
+		}
+	})
+	t.Run("empty body", func(t *testing.T) {
+		in := []byte("<!-- specgraph:init:start v=2 sha256=abc -->\n<!-- specgraph:init:end -->\n")
+		body, ok := extractManagedBlockBody(in)
+		if !ok {
+			t.Fatal("empty body must return ok=true")
+		}
+		if body == nil {
+			t.Fatal("empty body must return non-nil empty slice")
+		}
+		if len(body) != 0 {
+			t.Errorf("body len = %d, want 0", len(body))
+		}
+	})
+	t.Run("no markers", func(t *testing.T) {
+		_, ok := extractManagedBlockBody([]byte("just prose\n"))
+		if ok {
+			t.Error("expected ok=false")
+		}
+	})
+	t.Run("end before start", func(t *testing.T) {
+		_, ok := extractManagedBlockBody([]byte("<!-- specgraph:init:end -->\n<!-- specgraph:init:start v=1 -->\n"))
+		if ok {
+			t.Error("expected ok=false")
+		}
+	})
+	t.Run("multiple starts", func(t *testing.T) {
+		_, ok := extractManagedBlockBody([]byte("<!-- specgraph:init:start v=1 -->\n<!-- specgraph:init:start v=1 -->\n<!-- specgraph:init:end -->\n"))
+		if ok {
+			t.Error("expected ok=false")
+		}
+	})
+}
+
+func TestValidateInitMarkers(t *testing.T) {
+	cases := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"no markers", "no markers here\n", false},
+		{"valid v=1 pair", "<!-- specgraph:init:start v=1 -->\nbody\n<!-- specgraph:init:end -->\n", false},
+		{"valid v=2 pair", "<!-- specgraph:init:start v=2 sha256=abc123 -->\nbody\n<!-- specgraph:init:end -->\n", false},
+		{"end before start", "<!-- specgraph:init:end -->\nbody\n<!-- specgraph:init:start v=1 -->\n", true},
+		{"double start", "<!-- specgraph:init:start v=1 -->\n<!-- specgraph:init:start v=1 -->\n<!-- specgraph:init:end -->\n", true},
+		{"start without end", "<!-- specgraph:init:start v=1 -->\nbody\n", true},
+		{"end without start", "body\n<!-- specgraph:init:end -->\n", true},
+		{"naked start no version", "<!-- specgraph:init:start -->\nbody\n<!-- specgraph:init:end -->\n", true},
+		{"unknown version v=99", "<!-- specgraph:init:start v=99 -->\nbody\n<!-- specgraph:init:end -->\n", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateInitMarkers("test.md", []byte(tc.input))
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("validateInitMarkers err = %v, wantErr = %v", err, tc.wantErr)
+			}
+		})
+	}
+}

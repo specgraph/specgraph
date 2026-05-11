@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/config"
-	"github.com/specgraph/specgraph/internal/config/mcpconfigs"
+	"github.com/specgraph/specgraph/internal/config/managedfiles"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,22 +56,35 @@ func TestDogfood_CheckedInConfigsAreCanonical(t *testing.T) {
 		require.NoError(t, os.WriteFile(dst, data, 0o600), "write fixture %s", dst) //nolint:gosec // dst is t.TempDir() joined with a literal path
 	}
 
-	configs := mcpconfigs.ManagedConfigs(dogfoodSlug, dogfoodServerURL)
-	results, err := mcpconfigs.Sync(tmp, configs)
-	require.NoError(t, err, "Sync against fixture copy")
+	params := managedfiles.ProjectParams{Slug: dogfoodSlug, ServerURL: dogfoodServerURL}
+	harnesses := []managedfiles.Harness{
+		managedfiles.HarnessClaude,
+		managedfiles.HarnessCursor,
+		managedfiles.HarnessOpenCode,
+	}
+	results, err := managedfiles.SyncAll(tmp, harnesses, params, managedfiles.SyncOptions{})
+	require.NoError(t, err, "SyncAll against fixture copy")
 
-	// Guard against ManagedConfigs accidentally dropping a managed file —
-	// without this the loop would iterate over fewer results and silently
-	// skip canonical-form checks for the missing path. If this fails,
-	// either managedPaths above is stale or ManagedConfigs lost an entry.
-	require.Len(t, results, len(managedPaths),
-		"expected one result per managed path; ManagedConfigs returned a different set")
-
+	// Filter to the three JSONKeyMerge paths under check; the manifest also
+	// includes AGENTS.md and the cursor .mdc which aren't part of the
+	// checked-in JSON-canonicalisation guard.
+	jsonResults := make(map[string]managedfiles.SyncResult, len(managedPaths))
 	for _, r := range results {
-		if r.Action != mcpconfigs.ActionNoOp {
-			t.Errorf("checked-in %s drifted from canonical form: action = %q, want %q. "+
-				"Run `specgraph init specgraph` from the repo root to re-canonicalize.",
-				r.Path, r.Action, mcpconfigs.ActionNoOp)
+		for _, p := range managedPaths {
+			if r.Path == p {
+				jsonResults[r.Path] = r
+			}
+		}
+	}
+	require.Len(t, jsonResults, len(managedPaths),
+		"expected one result per managed JSON path; manifest returned a different set")
+
+	for _, p := range managedPaths {
+		r := jsonResults[p]
+		if r.Action != managedfiles.ActionNoOp {
+			t.Errorf("checked-in %s drifted from canonical form: action = %v, want %v. "+
+				"Run `specgraph init` from the repo root to re-canonicalize.",
+				r.Path, managedfiles.ActionName(r.Action), managedfiles.ActionName(managedfiles.ActionNoOp))
 		}
 	}
 }

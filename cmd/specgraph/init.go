@@ -10,18 +10,24 @@ import (
 	"strings"
 
 	"github.com/specgraph/specgraph/internal/config"
-	"github.com/specgraph/specgraph/internal/config/mcpconfigs"
-	"github.com/specgraph/specgraph/internal/config/pointers"
+	"github.com/specgraph/specgraph/internal/config/managedfiles"
 	"github.com/spf13/cobra"
 )
 
 var initCmd = &cobra.Command{
 	Use:   "init [project-slug]",
 	Short: "Initialize a SpecGraph project in the current directory",
-	Long: "Writes .specgraph.yaml and the per-harness MCP config files " +
-		"(.cursor/mcp.json, .mcp.json, opencode.json) for the current project. " +
-		"Idempotent: safe to re-run on an already-initialized project; managed " +
-		"fields are reset to canonical values, user-added fields are preserved.",
+	Long: "Writes .specgraph.yaml and the per-harness managed files " +
+		"(.cursor/mcp.json, .mcp.json, opencode.json, AGENTS.md, " +
+		".cursor/rules/specgraph-bootstrap.mdc) for the current project. " +
+		"Idempotent: safe to re-run on an already-initialized project. " +
+		"JSON managed keys are reset to canonical values on every run; " +
+		"user-added sibling keys are preserved. Markdown managed blocks " +
+		"(AGENTS.md, .mdc) are rewritten only when canonical or stale — " +
+		"user-edited (drifted) blocks are SKIPPED to preserve hand edits. " +
+		"runInit calls SyncAll with zero-value SyncOptions, so there is no " +
+		"--force path in this command; use `specgraph doctor --fix` (PR G) " +
+		"to overwrite drifted blocks.",
 	Args: cobra.MaximumNArgs(1),
 	RunE: runInit,
 }
@@ -93,11 +99,10 @@ func runInit(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("load global config: %w", err)
 	}
 	serverURL := globalCfg.ResolveServer(pc.Slug, pc.Server)
-	opts, optsErr := pointers.NewOptions(serverURL, pc.Slug)
-	if optsErr != nil {
-		return fmt.Errorf("validate pointer options: %w", optsErr)
+	params := managedfiles.ProjectParams{Slug: pc.Slug, ServerURL: serverURL}
+	if err := params.Validate(); err != nil {
+		return fmt.Errorf("validate project params: %w", err)
 	}
-	configs := mcpconfigs.ManagedConfigs(pc.Slug, serverURL)
 
 	// Write .specgraph.yaml only if it doesn't exist; idempotent.
 	projectCreated := false
@@ -108,42 +113,33 @@ func runInit(_ *cobra.Command, args []string) error {
 		projectCreated = true
 	}
 
-	// Sync the per-harness MCP configs. Per-file actions are printed even
-	// on partial failure so the user can see which files made it to disk.
-	results, syncErr := mcpconfigs.Sync(cwd, configs)
-	for _, r := range results {
-		fmt.Printf("%s: %s\n", r.Path, r.Action)
-	}
-	if syncErr != nil {
-		return fmt.Errorf("sync mcp configs: %w", syncErr)
+	// Hard-coded for PR B; .specgraph.yaml-driven harnesses: list lands later.
+	harnesses := []managedfiles.Harness{
+		managedfiles.HarnessClaude,
+		managedfiles.HarnessCursor,
+		managedfiles.HarnessOpenCode,
 	}
 
-	// Pointer files (AGENTS.md, .cursor/rules/specgraph-bootstrap.md).
-	// Pointer-file errors don't abort the pointer phase, but produce a
-	// non-zero exit so CI surfaces them.
-	pointerReport := pointers.Sync(cwd, opts)
+	results, syncErr := managedfiles.SyncAll(cwd, harnesses, params, managedfiles.SyncOptions{})
 	var failedPaths []string
-	for _, r := range []pointers.SyncResult{pointerReport.Agents, pointerReport.Cursor} {
-		if r.Path == "" {
-			continue // zero-value (projectDir-level error case)
-		}
-		switch r.Action {
-		case pointers.ActionError:
+	for _, r := range results {
+		if r.Action == managedfiles.ActionError {
 			fmt.Fprintf(os.Stderr, "%s: error: %v\n", r.Path, r.Err)
 			failedPaths = append(failedPaths, r.Path)
-		default:
-			line := fmt.Sprintf("%s: %s", r.Path, r.Action)
-			if r.LegacyBlocksPurged > 0 {
-				line += fmt.Sprintf(" (purged %d legacy blocks)", r.LegacyBlocksPurged)
-			}
-			if r.LegacyBlocksSkippedMalformed > 0 {
-				line += fmt.Sprintf(" (skipped %d malformed legacy blocks; repair manually)", r.LegacyBlocksSkippedMalformed)
+		} else {
+			line := fmt.Sprintf("%s: %s", r.Path, managedfiles.ActionName(r.Action))
+			if r.Detail != "" {
+				line += " (" + r.Detail + ")"
 			}
 			fmt.Println(line)
 		}
 	}
+	if syncErr != nil {
+		return fmt.Errorf("sync managed files: %w", syncErr)
+	}
 	if len(failedPaths) > 0 {
-		return fmt.Errorf("sync pointer files: %d failed: %s", len(failedPaths), strings.Join(failedPaths, ", "))
+		return fmt.Errorf("sync managed files: %d failed: %s",
+			len(failedPaths), strings.Join(failedPaths, ", "))
 	}
 
 	if projectCreated {
