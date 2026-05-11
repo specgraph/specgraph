@@ -21,6 +21,7 @@ import (
 var canonicalSources embed.FS
 
 // readSourceImpl reads from the embedded sources tree.
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the internal API
 func readSourceImpl(mf ManagedFile) ([]byte, error) {
 	b, err := canonicalSources.ReadFile(mf.Source)
 	if err != nil {

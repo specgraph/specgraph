@@ -12,8 +12,9 @@ import "fmt"
 // PR A dispatches to per-strategy stubs that return errNotImplemented;
 // the empty manifest means this is never called end-to-end. PRs B/C/D/E
 // implement each strategy.
-func Sync(cwd string, mf ManagedFile, opts SyncOptions) (SyncResult, error) {
-	r, err := strategyImpl(mf.Strategy).Sync(cwd, mf, opts)
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the public API
+func Sync(cwd string, mf ManagedFile, params ProjectParams, opts SyncOptions) (SyncResult, error) {
+	r, err := strategyImpl(mf.Strategy).Sync(cwd, mf, params, opts)
 	if err != nil {
 		return r, fmt.Errorf("strategy sync: %w", err)
 	}
@@ -27,14 +28,14 @@ func Sync(cwd string, mf ManagedFile, opts SyncOptions) (SyncResult, error) {
 //
 // In PR A, Manifest() is empty, so SyncAll returns an empty slice
 // regardless of input.
-func SyncAll(cwd string, harnesses []Harness, opts SyncOptions) ([]SyncResult, error) {
+func SyncAll(cwd string, harnesses []Harness, params ProjectParams, opts SyncOptions) ([]SyncResult, error) {
 	if err := validateProjectDir(cwd); err != nil {
 		return nil, err
 	}
 	mfs := Manifest(harnesses)
 	out := make([]SyncResult, 0, len(mfs))
 	for _, mf := range mfs {
-		r, err := Sync(cwd, mf, opts)
+		r, err := Sync(cwd, mf, params, opts)
 		if err != nil {
 			out = append(out, SyncResult{
 				Path:   mf.Path,

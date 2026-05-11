@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "specgraph": {
+      "headers": {
+        "Authorization": "Bearer ${SPECGRAPH_API_KEY}",
+        "X-Specgraph-Project": "captureslug"
+      },
+      "type": "http",
+      "url": "http://localhost:9090/mcp/"
+    }
+  }
+}

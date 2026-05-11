@@ -18,6 +18,7 @@ package managedfiles
 //
 // Implementation lives in source_release.go (no build tag — default build)
 // or source_dev.go (`dev` build tag).
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the public API
 func readSource(mf ManagedFile) ([]byte, error) {
 	if mf.Source == "" {
 		return nil, nil
