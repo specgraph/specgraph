@@ -40,6 +40,18 @@ func TestStateHome_Default(t *testing.T) {
 	assert.Equal(t, filepath.Join(home, ".local", "state", "specgraph"), xdg.StateHome())
 }
 
+func TestCacheHome_Default(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", "")
+	home, err := os.UserHomeDir()
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(home, ".cache", "specgraph"), xdg.CacheHome())
+}
+
+func TestCacheHome_Override(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", "/tmp/xdg-test-cache")
+	assert.Equal(t, "/tmp/xdg-test-cache/specgraph", xdg.CacheHome())
+}
+
 func TestConfigFilePath(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "/tmp/xdg-test")
 	assert.Equal(t, "/tmp/xdg-test/specgraph/config.yaml", xdg.ConfigFile())
