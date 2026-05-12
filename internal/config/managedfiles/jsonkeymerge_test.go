@@ -136,3 +136,43 @@ func TestJSONKeyMergeInspectMissing(t *testing.T) {
 		t.Errorf("state = %v, want StateMissing", state.State)
 	}
 }
+
+func TestJSONKeyMergeOpencodePluginUnion(t *testing.T) {
+	dir := t.TempDir()
+	mf := ManagedFile{
+		Path:     "opencode.json",
+		Strategy: StrategyJSONKeyMerge,
+		Comment:  CommentNone,
+		Harness:  HarnessOpenCode,
+		Build: func(_ ProjectParams) ([]byte, error) {
+			return []byte(`{"plugin":["./.specgraph/agents/opencode/specgraph.ts"]}`), nil
+		},
+	}
+	// Seed with a user-added plugin entry.
+	seed := []byte(`{"plugin":["./user-plugin.ts"]}`)
+	if err := os.WriteFile(filepath.Join(dir, "opencode.json"), seed, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{Slug: "p", ServerURL: "http://h"}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, rerr := os.ReadFile(filepath.Join(dir, "opencode.json"))
+	if rerr != nil {
+		t.Fatalf("read result: %v", rerr)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(got, &doc); err != nil {
+		t.Fatalf("unmarshal output: %v", err)
+	}
+	plugins, _ := doc["plugin"].([]any)
+	if len(plugins) != 2 {
+		t.Fatalf("plugin array len = %d, want 2; got: %v", len(plugins), plugins)
+	}
+	if plugins[0] != "./.specgraph/agents/opencode/specgraph.ts" {
+		t.Errorf("[0] = %v, want our managed path first", plugins[0])
+	}
+	if plugins[1] != "./user-plugin.ts" {
+		t.Errorf("[1] = %v, want user path preserved", plugins[1])
+	}
+}

@@ -11,20 +11,23 @@ import (
 )
 
 // TestInspect_DispatchesToStrategy verifies that Inspect dispatches through
-// strategyImpl and propagates errNotImplemented from the remaining stub
-// (WholeFile). JSONKeyMerge and MarkdownBlock are implemented in PR B.
+// strategyImpl for WholeFile. PR C implements wholeFileStrategy so a missing
+// file now returns StateMissing (not errNotImplemented).
 func TestInspect_DispatchesToStrategy(t *testing.T) {
 	dir := t.TempDir()
-	for _, s := range []Strategy{StrategyWholeFile} {
-		mf := ManagedFile{
-			Path:     ".specgraph/agents/opencode/nope.ts",
-			Strategy: s,
-			Comment:  CommentSlash,
-		}
-		_, err := Inspect(dir, mf, ProjectParams{})
-		if !errors.Is(err, errNotImplemented) {
-			t.Errorf("Strategy %d: Inspect should propagate errNotImplemented, got %v", s, err)
-		}
+	mf := ManagedFile{
+		Path:     ".specgraph/agents/opencode/specgraph.ts",
+		Strategy: StrategyWholeFile,
+		Source:   "embedded/opencode/specgraph.ts",
+		Comment:  CommentSlash,
+		Harness:  HarnessOpenCode,
+	}
+	state, err := Inspect(dir, mf, ProjectParams{})
+	if err != nil {
+		t.Errorf("Inspect returned unexpected error: %v", err)
+	}
+	if state.State != StateMissing {
+		t.Errorf("Inspect state = %v, want StateMissing", state.State)
 	}
 }
 

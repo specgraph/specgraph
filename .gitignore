@@ -51,3 +51,6 @@ e2e/ui/node_modules/
 # Pointer-file lock siblings (managed by internal/config/pointers).
 # Persistent by design — see lock_unix.go for the rationale.
 *.md.lock
+
+# Init-written destinations for harness plugins (see spgr-rwrp PR C+)
+.specgraph/agents/

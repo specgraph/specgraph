@@ -22,11 +22,3 @@ var ErrSymlinkRejected = errors.New("symlink in managed-file path rejected")
 // at the old path; init refuses to delete it.
 var ErrPriorCanonicalMismatch = errors.New("supersedes-path content differs from prior canonical")
 
-// errNotImplemented is returned by strategy stubs in PR A. PRs B and onward
-// replace the stubs with real implementations; the manifest is empty in PR A
-// so this error is never surfaced end-to-end.
-//
-// Unexported because it's a transient, PR-A-only API surface — exposing it
-// would invite external callers to depend on a stub state that disappears
-// in PR B.
-var errNotImplemented = errors.New("strategy not implemented in this PR")

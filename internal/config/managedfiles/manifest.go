@@ -62,6 +62,13 @@ func allManagedFiles() []ManagedFile {
 			SupersedesPath: ".cursor/rules/specgraph-bootstrap.md",
 			Build:          buildCursorBootstrapBody,
 		},
+		{
+			Path:     ".specgraph/agents/opencode/specgraph.ts",
+			Strategy: StrategyWholeFile,
+			Source:   "embedded/opencode/specgraph.ts",
+			Comment:  CommentSlash,
+			Harness:  HarnessOpenCode,
+		},
 	}
 }
 
@@ -157,6 +164,7 @@ func buildOpenCodeJSON(p ProjectParams) ([]byte, error) {
 				},
 			},
 		},
+		"plugin": []any{"./.specgraph/agents/opencode/specgraph.ts"},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshal opencode JSON: %w", err)

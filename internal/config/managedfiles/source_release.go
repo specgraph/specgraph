@@ -10,14 +10,16 @@ import (
 	"fmt"
 )
 
-// canonicalSources is populated via //go:embed directives added in PR C+
-// when actual managed-file source content lands in the binary. PR A leaves
-// the FS empty, which means readSourceImpl returns fs.ErrNotExist for any
-// non-empty mf.Source.
+// canonicalSources holds managed-file source content embedded at build time.
+// Sources are real files under embedded/<harness>/ — the canonical location.
+// Where harness-convention demands a copy under plugin/<harness>/ (e.g. so
+// OpenCode's tooling discovers the .ts alongside its package.json and
+// SMOKE_TEST.md), that copy is a symlink BACK into embedded/. go:embed
+// rejects symlinks in its patterns, but a regular file at the embed path
+// with symlinks pointing INTO it from elsewhere is fine — the canonical
+// remains a single file.
 //
-// The empty embed is intentional: it lets the framework compile and tests
-// run even before any //go:embed directive references real files. Adding
-// the first directive happens in PR C alongside the OpenCode plugin TS.
+//go:embed embedded/opencode/specgraph.ts
 var canonicalSources embed.FS
 
 // readSourceImpl reads from the embedded sources tree.

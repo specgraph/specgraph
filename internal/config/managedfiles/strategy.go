@@ -5,8 +5,7 @@ package managedfiles
 
 import "fmt"
 
-// strategy is the interface implemented per-strategy in PR B+. PR A
-// registers stubs that return errNotImplemented for both methods.
+// strategy is the interface implemented per-strategy.
 //
 // Inspect classifies the on-disk state for a single ManagedFile.
 // Sync writes (or refrains from writing) the canonical content per
@@ -34,21 +33,9 @@ func strategyImpl(s Strategy) strategy {
 	}
 }
 
-// PR A stubs. All three return errNotImplemented; PRs B/C/D/E replace
-// each one with a real implementation.
-
 type jsonKeyMergeStrategy struct{}
 
 type markdownBlockStrategy struct{}
 
 type wholeFileStrategy struct{}
 
-//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
-func (wholeFileStrategy) Inspect(_ string, _ ManagedFile, _ ProjectParams) (FileState, error) {
-	return FileState{}, errNotImplemented
-}
-
-//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
-func (wholeFileStrategy) Sync(_ string, _ ManagedFile, _ ProjectParams, _ SyncOptions) (SyncResult, error) {
-	return SyncResult{}, errNotImplemented
-}
