@@ -71,7 +71,10 @@ func TestWholeFileStale(t *testing.T) {
 	}
 	// Seed with a v=2 sentinel that hashes the stale body (so disk
 	// matches sentinel) but the body doesn't match canonical.
-	canonical, _ := readSource(mf)
+	canonical, srcErr := readSource(mf)
+	if srcErr != nil {
+		t.Fatalf("readSource: %v", srcErr)
+	}
 	canonHash := hashBytes(canonical)
 	staleBody := []byte("// stale content not matching canonical\n")
 	staleSentinelHash := hashBytes(staleBody)
@@ -91,7 +94,10 @@ func TestWholeFileStale(t *testing.T) {
 		t.Errorf("action = %v, want ActionRefreshed", res.Action)
 	}
 	// File now matches canonical hash.
-	data, _ := os.ReadFile(full)
+	data, rerr := os.ReadFile(full)
+	if rerr != nil {
+		t.Fatalf("read refreshed file: %v", rerr)
+	}
 	if !strings.Contains(string(data), "sha256="+canonHash) {
 		t.Errorf("refreshed file missing canonical hash; got:\n%s", data)
 	}
@@ -111,7 +117,10 @@ func TestWholeFileDriftedUserEdited(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Now corrupt the body so the sentinel hash != actual body hash.
-	data, _ := os.ReadFile(full)
+	data, rerr := os.ReadFile(full)
+	if rerr != nil {
+		t.Fatalf("read initial file: %v", rerr)
+	}
 	firstLine := strings.SplitN(string(data), "\n", 2)[0]
 	corrupted := []byte(firstLine + "\n" + "USER EDITED BODY\n")
 	if err := os.WriteFile(full, corrupted, 0o600); err != nil { //nolint:gosec // full is constructed from t.TempDir() + constant path; no taint
@@ -121,7 +130,10 @@ func TestWholeFileDriftedUserEdited(t *testing.T) {
 	if res.Action != ActionSkipped {
 		t.Errorf("action = %v, want ActionSkipped (drifted)", res.Action)
 	}
-	after, _ := os.ReadFile(full)
+	after, aerr := os.ReadFile(full)
+	if aerr != nil {
+		t.Fatalf("read post-skip file: %v", aerr)
+	}
 	if !strings.Contains(string(after), "USER EDITED BODY") {
 		t.Error("drifted user content was overwritten")
 	}
@@ -184,7 +196,10 @@ func TestWholeFileModePreserved(t *testing.T) {
 	if _, err := s.Sync(dir, mf, params, SyncOptions{Force: true}); err != nil {
 		t.Fatal(err)
 	}
-	info, _ := os.Stat(full)
+	info, serr := os.Stat(full)
+	if serr != nil {
+		t.Fatalf("stat full: %v", serr)
+	}
 	if info.Mode().Perm() != 0o644 {
 		t.Errorf("mode = %v, want 0644", info.Mode().Perm())
 	}
@@ -208,7 +223,10 @@ func TestWholeFileForceRestoresCanonical(t *testing.T) {
 		t.Fatal(err)
 	}
 	// User edits the body — sentinel hash no longer matches.
-	disk, _ := os.ReadFile(full)
+	disk, rerr := os.ReadFile(full)
+	if rerr != nil {
+		t.Fatalf("read initial file: %v", rerr)
+	}
 	firstLine := strings.SplitN(string(disk), "\n", 2)[0]
 	corrupted := []byte(firstLine + "\n// USER EDIT\n")
 	if err := os.WriteFile(full, corrupted, 0o600); err != nil { //nolint:gosec // full is filepath.Join(t.TempDir(), ...)
@@ -219,9 +237,15 @@ func TestWholeFileForceRestoresCanonical(t *testing.T) {
 	if res.Action != ActionForced {
 		t.Errorf("action = %v, want ActionForced", res.Action)
 	}
-	canonical, _ := readSource(mf)
+	canonical, srcErr := readSource(mf)
+	if srcErr != nil {
+		t.Fatalf("readSource: %v", srcErr)
+	}
 	canonHash := hashBytes(canonical)
-	after, _ := os.ReadFile(full)
+	after, aerr := os.ReadFile(full)
+	if aerr != nil {
+		t.Fatalf("read post-force file: %v", aerr)
+	}
 	if strings.Contains(string(after), "USER EDIT") {
 		t.Error("--force without --keep-edits preserved user edits (should have restored canonical)")
 	}
@@ -254,7 +278,10 @@ func TestWholeFileForceKeepEditsOnNoSentinelPreservesAllContent(t *testing.T) {
 	if res.Action != ActionForced {
 		t.Errorf("action = %v, want ActionForced", res.Action)
 	}
-	after, _ := os.ReadFile(full)
+	after, rerr := os.ReadFile(full)
+	if rerr != nil {
+		t.Fatalf("read post-keep-edits file: %v", rerr)
+	}
 	// All three user lines must survive — stripping the first line
 	// would have dropped "Line 1".
 	for _, want := range []string{"Line 1", "Line 2", "Line 3"} {
@@ -281,7 +308,10 @@ func TestWholeFileForceKeepEditsPreservesUserBody(t *testing.T) {
 	}
 	// Replace the body with user content (keep the old sentinel —
 	// makes the file Drifted).
-	disk, _ := os.ReadFile(full)
+	disk, rerr := os.ReadFile(full)
+	if rerr != nil {
+		t.Fatalf("read initial file: %v", rerr)
+	}
 	firstLine := strings.SplitN(string(disk), "\n", 2)[0]
 	userBody := "// USER CONTENT KEPT\n"
 	corrupted := []byte(firstLine + "\n" + userBody)
@@ -292,7 +322,10 @@ func TestWholeFileForceKeepEditsPreservesUserBody(t *testing.T) {
 	if res.Action != ActionForced {
 		t.Errorf("action = %v, want ActionForced", res.Action)
 	}
-	after, _ := os.ReadFile(full)
+	after, aerr := os.ReadFile(full)
+	if aerr != nil {
+		t.Fatalf("read post-keep-edits file: %v", aerr)
+	}
 	if !strings.Contains(string(after), "USER CONTENT KEPT") {
 		t.Errorf("--force --keep-edits dropped user body; got:\n%s", after)
 	}
