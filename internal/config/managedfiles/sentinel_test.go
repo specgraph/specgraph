@@ -24,9 +24,9 @@ func TestRenderSentinel_Hash(t *testing.T) {
 	}
 }
 
-func TestRenderSentinel_HTMLBlockStart(t *testing.T) {
+func TestRenderSentinel_CommentHTML(t *testing.T) {
 	got := RenderSentinel(CommentHTML, Sentinel{Version: 2, SHA256: "abc", Rev: "cef"})
-	want := "<!-- specgraph:init:start v=2 sha256=abc rev=cef -->"
+	want := "<!-- specgraph:init v=2 sha256=abc rev=cef -->"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
@@ -110,5 +110,19 @@ func TestRenderParseRoundTrip(t *testing.T) {
 		if parsed != original {
 			t.Errorf("syntax %v: round-trip mismatch: got %+v, want %+v", syntax, parsed, original)
 		}
+	}
+}
+
+func TestParseSentinel_AcceptsLegacyStartForm(t *testing.T) {
+	// markdownblock.go writes "<!-- specgraph:init:start v=2 sha256=... -->"
+	// inline. Confirm the parser still accepts that form so block-strategy
+	// files written by older binaries remain readable.
+	legacy := "<!-- specgraph:init:start v=2 sha256=abc -->"
+	s, err := ParseSentinel(CommentHTML, legacy)
+	if err != nil {
+		t.Fatalf("parse legacy form: %v", err)
+	}
+	if s.Version != 2 || s.SHA256 != "abc" {
+		t.Errorf("parsed sentinel = %+v, want {Version:2, SHA256:abc}", s)
 	}
 }
