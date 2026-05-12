@@ -247,6 +247,75 @@ func presenceTestEntry(t *testing.T, defaultValue bool) ManagedFile {
 	}
 }
 
+func TestJSONKeyMerge_KeyManagedArrayUnion_AbsentArray(t *testing.T) {
+	mf := arrayUnionTestEntry()
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	_ = os.WriteFile(full, []byte(`{}`), 0o644) //nolint:gosec // intentional permissive mode for permission-preservation test
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(full)
+	if !strings.Contains(string(got), `"./.specgraph/agents/opencode/specgraph.ts"`) {
+		t.Errorf("expected canonical element written; got %s", got)
+	}
+}
+
+func TestJSONKeyMerge_KeyManagedArrayUnion_DisjointUnion(t *testing.T) {
+	mf := arrayUnionTestEntry()
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	_ = os.WriteFile(full, []byte(`{"plugin":["./user-plugin.ts"]}`), 0o644) //nolint:gosec // intentional permissive mode for permission-preservation test
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(full)
+	if !strings.Contains(string(got), `"./user-plugin.ts"`) ||
+		!strings.Contains(string(got), `"./.specgraph/agents/opencode/specgraph.ts"`) {
+		t.Errorf("expected both elements present; got %s", got)
+	}
+}
+
+func TestJSONKeyMerge_KeyManagedArrayUnion_DedupesOverlap(t *testing.T) {
+	mf := arrayUnionTestEntry()
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	seed := []byte(`{"plugin":["./.specgraph/agents/opencode/specgraph.ts","./user.ts"]}`)
+	_ = os.WriteFile(full, seed, 0o644) //nolint:gosec // intentional permissive mode for permission-preservation test
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(full)
+	var doc struct {
+		Plugin []string `json:"plugin"`
+	}
+	_ = json.Unmarshal(got, &doc)
+	if len(doc.Plugin) != 2 {
+		t.Errorf("expected 2 unique elements, got %d: %v", len(doc.Plugin), doc.Plugin)
+	}
+}
+
+func arrayUnionTestEntry() ManagedFile {
+	return ManagedFile{
+		Path:     "test.json",
+		Strategy: StrategyJSONKeyMerge,
+		Comment:  CommentNone,
+		Harness:  HarnessOpenCode,
+		JSONKeys: []JSONManagedKey{
+			{
+				Path: "/plugin",
+				Mode: KeyManagedArrayUnion,
+				Value: func(_ ProjectParams) (any, error) {
+					return []any{"./.specgraph/agents/opencode/specgraph.ts"}, nil
+				},
+			},
+		},
+	}
+}
+
 func TestJSONKeyMergeOpencodePluginUnion(t *testing.T) {
 	dir := t.TempDir()
 	mf := ManagedFile{

@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
 )
@@ -210,10 +211,47 @@ func jsonKeyMergeCanonicalFromKeys(existing []byte, mf ManagedFile, params Proje
 			return nil, fmt.Errorf("set %s: %w", k.Path, err)
 		}
 	}
+	// Phase 3: KeyManagedArrayUnion — union with existing array (DeepEqual dedupe).
+	for _, k := range mf.JSONKeys {
+		if k.Mode != KeyManagedArrayUnion {
+			continue
+		}
+		var canonicalAny any
+		canonicalAny, err = k.Value(params)
+		if err != nil {
+			return nil, fmt.Errorf("value for %s: %w", k.Path, err)
+		}
+		canonicalSlice, ok := canonicalAny.([]any)
+		if !ok {
+			return nil, fmt.Errorf("ArrayUnion value for %s must be []any, got %T", k.Path, canonicalAny)
+		}
+		var existingSlice []any
+		if v, present := jsonPointerGet(existingDoc, k.Path); present {
+			if s, ok := v.([]any); ok {
+				existingSlice = s
+			}
+		}
+		unioned := append([]any{}, existingSlice...)
+		for _, c := range canonicalSlice {
+			seen := false
+			for _, e := range unioned {
+				if reflect.DeepEqual(c, e) {
+					seen = true
+					break
+				}
+			}
+			if !seen {
+				unioned = append(unioned, c)
+			}
+		}
+		err = jsonPointerSet(mergedDoc, k.Path, unioned)
+		if err != nil {
+			return nil, fmt.Errorf("set %s: %w", k.Path, err)
+		}
+	}
 	merged, err = json.Marshal(mergedDoc)
 	if err != nil {
 		return nil, fmt.Errorf("remarshal %s: %w", mf.Path, err)
 	}
-	// Subsequent phases (ArrayUnion) added in Task 4.
 	return canonicalize(merged)
 }
