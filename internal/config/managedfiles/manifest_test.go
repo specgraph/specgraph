@@ -29,12 +29,12 @@ func TestManifestShape(t *testing.T) {
 			t.Errorf("unexpected path %q", mf.Path)
 		}
 		paths[mf.Path] = true
-		// Source-xor-Build invariant.
+		// Source-xor-Build-xor-JSONKeys invariant.
 		if mf.Source != "" && mf.Build != nil {
 			t.Errorf("%q: both Source and Build set", mf.Path)
 		}
-		if mf.Source == "" && mf.Build == nil {
-			t.Errorf("%q: neither Source nor Build set", mf.Path)
+		if mf.Source == "" && mf.Build == nil && len(mf.JSONKeys) == 0 {
+			t.Errorf("%q: neither Source nor Build nor JSONKeys set", mf.Path)
 		}
 	}
 	for path, seen := range paths {
@@ -87,7 +87,7 @@ func TestValidateManifestEntry(t *testing.T) {
 				Path: "x", Strategy: StrategyJSONKeyMerge,
 				Source: "s",
 			},
-			wantErr: "JSONKeyMerge strategy requires Build",
+			wantErr: "JSONKeyMerge strategy requires Build or JSONKeys",
 		},
 		{
 			name: "MarkdownBlock without Build",

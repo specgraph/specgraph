@@ -31,14 +31,43 @@ func allManagedFiles() []ManagedFile {
 			Strategy: StrategyJSONKeyMerge,
 			Comment:  CommentNone,
 			Harness:  HarnessClaude,
-			Build:    buildClaudeMCPJSON,
+			JSONKeys: []JSONManagedKey{
+				{
+					Path: "/mcpServers/specgraph",
+					Mode: KeyManagedValue,
+					Value: func(p ProjectParams) (any, error) {
+						return map[string]any{
+							"type": "http",
+							"url":  ensureMCPSuffix(p.ServerURL),
+							"headers": map[string]any{
+								"Authorization":       "Bearer ${SPECGRAPH_API_KEY}",
+								"X-Specgraph-Project": p.Slug,
+							},
+						}, nil
+					},
+				},
+			},
 		},
 		{
 			Path:     ".cursor/mcp.json",
 			Strategy: StrategyJSONKeyMerge,
 			Comment:  CommentNone,
 			Harness:  HarnessCursor,
-			Build:    buildCursorMCPJSON,
+			JSONKeys: []JSONManagedKey{
+				{
+					Path: "/mcpServers/specgraph",
+					Mode: KeyManagedValue,
+					Value: func(p ProjectParams) (any, error) {
+						return map[string]any{
+							"url": ensureMCPSuffix(p.ServerURL),
+							"headers": map[string]any{
+								"Authorization":       "Bearer ${env:SPECGRAPH_API_KEY}",
+								"X-Specgraph-Project": p.Slug,
+							},
+						}, nil
+					},
+				},
+			},
 		},
 		{
 			Path:     "opencode.json",
@@ -115,14 +144,19 @@ func init() {
 func validateManifestEntry(mf ManagedFile) error {
 	hasSource := mf.Source != ""
 	hasBuild := mf.Build != nil
+	hasJSONKeys := len(mf.JSONKeys) > 0
 	if hasSource && hasBuild {
 		return fmt.Errorf("manifest entry %q has both Source and Build", mf.Path)
 	}
-	if !hasSource && !hasBuild {
+	if !hasSource && !hasBuild && !hasJSONKeys {
 		return fmt.Errorf("manifest entry %q has neither Source nor Build", mf.Path)
 	}
 	switch mf.Strategy {
-	case StrategyJSONKeyMerge, StrategyMarkdownBlock:
+	case StrategyJSONKeyMerge:
+		if !hasBuild && !hasJSONKeys {
+			return fmt.Errorf("manifest entry %q: %s strategy requires Build or JSONKeys", mf.Path, mf.Strategy)
+		}
+	case StrategyMarkdownBlock:
 		if !hasBuild {
 			return fmt.Errorf("manifest entry %q: %s strategy requires Build", mf.Path, mf.Strategy)
 		}
@@ -155,43 +189,6 @@ func ensureMCPSuffix(serverURL string) string {
 		return trimmed + "/"
 	}
 	return trimmed + "/mcp/"
-}
-
-func buildCursorMCPJSON(p ProjectParams) ([]byte, error) {
-	b, err := json.Marshal(map[string]any{
-		"mcpServers": map[string]any{
-			"specgraph": map[string]any{
-				"url": ensureMCPSuffix(p.ServerURL),
-				"headers": map[string]any{
-					"Authorization":       "Bearer ${env:SPECGRAPH_API_KEY}",
-					"X-Specgraph-Project": p.Slug,
-				},
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("marshal cursor MCP JSON: %w", err)
-	}
-	return b, nil
-}
-
-func buildClaudeMCPJSON(p ProjectParams) ([]byte, error) {
-	b, err := json.Marshal(map[string]any{
-		"mcpServers": map[string]any{
-			"specgraph": map[string]any{
-				"type": "http",
-				"url":  ensureMCPSuffix(p.ServerURL),
-				"headers": map[string]any{
-					"Authorization":       "Bearer ${SPECGRAPH_API_KEY}",
-					"X-Specgraph-Project": p.Slug,
-				},
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("marshal claude MCP JSON: %w", err)
-	}
-	return b, nil
 }
 
 func buildOpenCodeJSON(p ProjectParams) ([]byte, error) {
