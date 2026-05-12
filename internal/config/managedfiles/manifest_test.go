@@ -168,7 +168,7 @@ func TestValidateManifestEntry(t *testing.T) {
 				HasFrontmatter: true,
 				SupersedesPath: ".cursor/rules/unknown.md",
 			},
-			wantErr: "is not registered in vestigialCursorRulePriorHash",
+			wantErr: "requires a registered prior canonical hash",
 		},
 	}
 	for _, tc := range cases {

@@ -219,8 +219,12 @@ func validateManifestEntry(mf ManagedFile) error {
 		return fmt.Errorf("manifest entry %q: HasFrontmatter requires WholeFile strategy, got %s", mf.Path, mf.Strategy)
 	}
 	if mf.Strategy == StrategyWholeFile && mf.SupersedesPath != "" {
-		if !vestigialCursorRulePriorHashRegistered(mf.SupersedesPath) {
-			return fmt.Errorf("manifest entry %q: SupersedesPath %q is not registered in vestigialCursorRulePriorHash (vestigial_cursor_rules.go)", mf.Path, mf.SupersedesPath)
+		// PR E Task 9: SupersedesPath entries must have a registered prior
+		// canonical hash in the unified priors registry (see priors.go and
+		// vestigial_cursor_rules.go). Without one, supersedesGuardedDelete
+		// can't safely identify and clean up pre-rename user copies.
+		if len(priorsFor(mf.Path)) == 0 {
+			return fmt.Errorf("manifest entry %q: SupersedesPath %q requires a registered prior canonical hash for %q in priorsRegistry (vestigial_cursor_rules.go)", mf.Path, mf.SupersedesPath, mf.Path)
 		}
 	}
 	return nil

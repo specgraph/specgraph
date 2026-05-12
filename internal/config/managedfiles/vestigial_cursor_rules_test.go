@@ -23,30 +23,37 @@ const (
 	pinnedHashCursorPostStageMD = "bc3a5d349a3ac1becfcaa509a72bb51fc4d9584126bf5d20c986227e8ec743f6"
 )
 
+// TestVestigialCursorRulePriorHashPinned verifies the priors registry
+// returns the pinned pre-PR-D hashes for the post-rename .mdc paths.
+// After PR E Task 9, vestigial cursor priors route through priorsFor
+// instead of the deleted vestigialCursorRulePriorHash function.
 func TestVestigialCursorRulePriorHashPinned(t *testing.T) {
 	cases := []struct {
 		path string
 		want string
 	}{
-		{".cursor/rules/specgraph.md", pinnedHashCursorSpecgraphMD},
-		{".cursor/rules/post-stage.md", pinnedHashCursorPostStageMD},
+		{".cursor/rules/specgraph.mdc", pinnedHashCursorSpecgraphMD},
+		{".cursor/rules/specgraph-post-stage.mdc", pinnedHashCursorPostStageMD},
 	}
 	for _, tc := range cases {
-		got := vestigialCursorRulePriorHash(tc.path)
-		if got != tc.want {
-			t.Errorf("vestigialCursorRulePriorHash(%q) = %s, want %s\n\nIf you intentionally changed pre-rename canonical bytes, update the pinnedHash constants in this file — but note this breaks SupersedesPath cleanup for any user with the old verbatim bytes on disk.",
-				tc.path, got, tc.want)
+		hashes := priorsFor(tc.path)
+		if len(hashes) == 0 {
+			t.Errorf("priorsFor(%q) returned no priors; expected pinned hash %s",
+				tc.path, tc.want)
+			continue
+		}
+		found := false
+		for _, h := range hashes {
+			if h == tc.want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("priorsFor(%q) = %v, want to contain %s\n\nIf you intentionally changed pre-rename canonical bytes, update the pinnedHash constants in this file — but note this breaks SupersedesPath cleanup for any user with the old verbatim bytes on disk.",
+				tc.path, hashes, tc.want)
 		}
 	}
-}
-
-func TestVestigialCursorRulePriorHash_UnknownPathPanics(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("expected panic on unknown path; got none")
-		}
-	}()
-	_ = vestigialCursorRulePriorHash("does/not/exist.md")
 }
 
 func TestVestigialBytesMatchTestdataFixtures(t *testing.T) {

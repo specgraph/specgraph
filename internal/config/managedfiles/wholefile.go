@@ -119,16 +119,31 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 	// NoOp) so a user who's already at Synced still gets cleanup if they
 	// happen to also have the old .md sitting around.
 	if mf.SupersedesPath != "" && (res.Action == ActionCreated || res.Action == ActionRefreshed || res.Action == ActionForced || res.Action == ActionNoOp) {
-		priorHash := vestigialCursorRulePriorHash(mf.SupersedesPath)
-		if err := supersedesGuardedDelete(cwd, mf.SupersedesPath, priorHash); err != nil {
-			if errors.Is(err, ErrPriorCanonicalMismatch) {
-				if res.Detail != "" {
-					res.Detail += "; "
-				}
-				res.Detail += fmt.Sprintf("supersedes path %q left in place: prior-canonical mismatch", mf.SupersedesPath)
-			} else {
+		// PR E Task 9: priors registry replaces vestigialCursorRulePriorHash.
+		// For SupersedesPath entries the manifest validator guarantees at
+		// least one registered prior for mf.Path.
+		// Iterate over every registered prior so that users on any historical
+		// version get cleanup, not just users on the first-registered hash.
+		priors := priorsFor(mf.Path)
+		if len(priors) == 0 {
+			return SyncResult{Path: mf.Path, Action: ActionError, Err: fmt.Errorf("no registered prior canonical hash for %q (SupersedesPath %q)", mf.Path, mf.SupersedesPath)}, nil
+		}
+		matched := false
+		for _, priorHash := range priors {
+			err := supersedesGuardedDelete(cwd, mf.SupersedesPath, priorHash)
+			if err == nil {
+				matched = true
+				break
+			}
+			if !errors.Is(err, ErrPriorCanonicalMismatch) {
 				return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
 			}
+		}
+		if !matched {
+			if res.Detail != "" {
+				res.Detail += "; "
+			}
+			res.Detail += fmt.Sprintf("supersedes path %q left in place: prior-canonical mismatch", mf.SupersedesPath)
 		}
 	}
 
@@ -419,8 +434,3 @@ func wholeFileSyncNoSentinel(full string, mf ManagedFile) SyncResult {
 	}
 	return SyncResult{Path: mf.Path, Action: ActionSkipped, Detail: "no sentinel"}
 }
-
-// priorsFor returns canonical hashes for `path` that should classify the
-// on-disk file as Stale-managed rather than Drifted-userowned. Stubbed
-// in this task; replaced by the full registry in Task 9.
-func priorsFor(_ string) []string { return nil }
