@@ -19,7 +19,7 @@ import (
 // with symlinks pointing INTO it from elsewhere is fine — the canonical
 // remains a single file.
 //
-//go:embed embedded/opencode/specgraph.ts embedded/cursor/test-rule.mdc embedded/cursor/specgraph.mdc embedded/cursor/specgraph-post-stage.mdc embedded/test/test.json
+//go:embed embedded/opencode/specgraph.ts embedded/cursor/test-rule.mdc embedded/cursor/specgraph.mdc embedded/cursor/specgraph-post-stage.mdc embedded/test/test.json all:embedded/claude/.claude-plugin embedded/claude/hooks/specgraph-session-start.sh embedded/claude/hooks/specgraph-post-stage.sh embedded/claude/routing-guide.md
 var canonicalSources embed.FS
 
 // readSourceImpl reads from the embedded sources tree.
