@@ -19,7 +19,7 @@ import (
 // with symlinks pointing INTO it from elsewhere is fine — the canonical
 // remains a single file.
 //
-//go:embed embedded/opencode/specgraph.ts
+//go:embed embedded/opencode/specgraph.ts embedded/cursor/test-rule.mdc
 var canonicalSources embed.FS
 
 // readSourceImpl reads from the embedded sources tree.

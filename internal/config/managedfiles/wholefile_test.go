@@ -23,6 +23,23 @@ func testWholeFileMF() ManagedFile {
 	}
 }
 
+const testMdcPath = ".cursor/rules/test-rule.mdc"
+
+func testMdcCanonical() []byte {
+	return []byte("---\ndescription: test rule\nalwaysApply: false\n---\n\n# Test Rule\n\nBody content here.\n")
+}
+
+func testMdcMF() ManagedFile {
+	return ManagedFile{
+		Path:           testMdcPath,
+		Strategy:       StrategyWholeFile,
+		Source:         "embedded/cursor/test-rule.mdc",
+		Comment:        CommentHTML,
+		Harness:        HarnessCursor,
+		HasFrontmatter: true,
+	}
+}
+
 func TestWholeFileMissing(t *testing.T) {
 	dir := t.TempDir()
 	mf := testWholeFileMF()
@@ -342,4 +359,217 @@ func TestWholeFileForceKeepEditsPreservesUserBody(t *testing.T) {
 	if state.SentinelHash != state.DiskHash {
 		t.Errorf("sentinel hash %q != disk hash %q; keep-edits should have refreshed sentinel", state.SentinelHash, state.DiskHash)
 	}
+}
+
+func TestWholeFileMdc_Missing_WritesSentinelAfterFrontmatter(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionCreated {
+		t.Fatalf("action = %v, want ActionCreated", res.Action)
+	}
+	full := filepath.Join(dir, testMdcPath)
+	data, rerr := os.ReadFile(full)
+	if rerr != nil {
+		t.Fatalf("read written file: %v", rerr)
+	}
+	got := string(data)
+	if !strings.HasPrefix(got, "---\ndescription: test rule\nalwaysApply: false\n---\n\n<!-- specgraph:init v=2 sha256=") {
+		t.Errorf("file does not start with frontmatter+sentinel:\n%s", got)
+	}
+	if !strings.Contains(got, "# Test Rule\n\nBody content here.\n") {
+		t.Errorf("body not preserved:\n%s", got)
+	}
+}
+
+func TestWholeFileMdc_Synced_NoOpOnSecondSync(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	s := wholeFileStrategy{}
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	res, err := s.Sync(dir, mf, params, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionNoOp {
+		t.Errorf("second sync action = %v, want ActionNoOp", res.Action)
+	}
+}
+
+func TestWholeFileMdc_DriftedOnEditedFrontmatter(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	s := wholeFileStrategy{}
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	full := filepath.Join(dir, testMdcPath)
+	data, _ := os.ReadFile(full)
+	edited := strings.Replace(string(data), "alwaysApply: false", "alwaysApply: true", 1)
+	if err := os.WriteFile(full, []byte(edited), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	res, err := s.Sync(dir, mf, params, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionSkipped {
+		t.Errorf("action on edited frontmatter = %v, want ActionSkipped", res.Action)
+	}
+	if !strings.Contains(res.Detail, "sentinel hash") {
+		t.Errorf("Detail should indicate sentinel-hash mismatch; got %q", res.Detail)
+	}
+}
+
+func TestWholeFileMdc_DriftedWhenFrontmatterMissing(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	full := filepath.Join(dir, testMdcPath)
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(full, []byte("just body content\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionSkipped {
+		t.Errorf("action on broken frontmatter = %v, want ActionSkipped", res.Action)
+	}
+	if !strings.Contains(res.Detail, "frontmatter") {
+		t.Errorf("Detail should mention frontmatter; got %q", res.Detail)
+	}
+}
+
+func TestWholeFileMdc_StaleRefreshes(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	full := filepath.Join(dir, testMdcPath)
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// Seed: a v=2 sentinel whose hash matches the disk content's
+	// HashExcludingSentinelAfterFrontmatter (front + body, sentinel stripped).
+	// The hash inputs are the frontmatter bytes (including the trailing blank
+	// line that splitFrontmatter consumes into `front`) concatenated with the
+	// post-sentinel body. Disk hash matches sentinel hash, but neither matches
+	// canonical hash — classifier returns Stale.
+	frontBytes := []byte("---\ndescription: test rule\nalwaysApply: false\n---\n\n")
+	postSentinelBody := []byte("# Stale Heading\n\nold body\n")
+	staleHash := hashBytes(append(append([]byte{}, frontBytes...), postSentinelBody...))
+	staleContent := []byte("---\ndescription: test rule\nalwaysApply: false\n---\n\n<!-- specgraph:init v=2 sha256=" + staleHash + " -->\n# Stale Heading\n\nold body\n")
+	if err := os.WriteFile(full, staleContent, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionRefreshed {
+		t.Errorf("action = %v, want ActionRefreshed", res.Action)
+	}
+	got, _ := os.ReadFile(full)
+	if !strings.Contains(string(got), "# Test Rule\n\nBody content here.\n") {
+		t.Errorf("refresh did not restore canonical body:\n%s", got)
+	}
+}
+
+// TestEmbeddedMdcCanonicalSplitsCleanly verifies that every embedded .mdc
+// canonical source has well-formed YAML frontmatter — splitFrontmatter must
+// succeed and the post-frontmatter body must be non-empty. Locks the
+// assumption that renderWholeFileWithFrontmatter never panics on canonical
+// input at runtime.
+//
+// Today only the test fixture is embedded; Task 7 will iterate over manifest
+// entries with HasFrontmatter==true to cover production .mdc canonicals.
+func TestEmbeddedMdcCanonicalSplitsCleanly(t *testing.T) {
+	mf := testMdcMF()
+	canonical, err := readSource(mf)
+	if err != nil {
+		t.Fatalf("readSource(%s): %v", mf.Path, err)
+	}
+	front, body, ferr := splitFrontmatter(canonical)
+	if ferr != nil {
+		t.Fatalf("splitFrontmatter(%s): %v", mf.Path, ferr)
+	}
+	if len(front) == 0 {
+		t.Errorf("%s: empty frontmatter", mf.Path)
+	}
+	if len(body) == 0 {
+		t.Errorf("%s: empty body after frontmatter", mf.Path)
+	}
+}
+
+func TestWholeFileMdc_ForceKeepEdits_PreservesUserBody(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	s := wholeFileStrategy{}
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+	// First sync: write canonical.
+	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	full := filepath.Join(dir, testMdcPath)
+	// User edits the body (everything after the sentinel).
+	data, _ := os.ReadFile(full)
+	edited := strings.Replace(string(data), "Body content here.", "USER REWROTE THIS.", 1)
+	if err := os.WriteFile(full, []byte(edited), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Force + KeepEdits: should preserve the user body and refresh the sentinel.
+	res, err := s.Sync(dir, mf, params, SyncOptions{Force: true, KeepEdits: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionForced {
+		t.Errorf("action = %v, want ActionForced", res.Action)
+	}
+	out, _ := os.ReadFile(full)
+	if !strings.Contains(string(out), "USER REWROTE THIS.") {
+		t.Errorf("KeepEdits dropped user edits:\n%s", out)
+	}
+	// Frontmatter must still be valid.
+	if !strings.HasPrefix(string(out), "---\ndescription: test rule\n") {
+		t.Errorf("KeepEdits broke frontmatter:\n%s", out)
+	}
+	// Sentinel must still be present on the first body line.
+	if !strings.Contains(string(out), "<!-- specgraph:init v=2 sha256=") {
+		t.Errorf("KeepEdits dropped sentinel:\n%s", out)
+	}
+}
+
+func TestWholeFileMdc_ForceKeepEdits_BrokenFrontmatterSkips(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	full := filepath.Join(dir, testMdcPath)
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(full, []byte("just body content\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := wholeFileStrategy{}
+	res, err := wholeFileStrategy{}.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{Force: true, KeepEdits: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionSkipped {
+		t.Errorf("action on broken frontmatter + KeepEdits = %v, want ActionSkipped", res.Action)
+	}
+	if !strings.Contains(res.Detail, "malformed frontmatter") {
+		t.Errorf("Detail should mention malformed frontmatter; got %q", res.Detail)
+	}
+	_ = s
 }

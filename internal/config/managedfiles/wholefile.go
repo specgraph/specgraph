@@ -52,16 +52,38 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 		return SyncResult{Path: mf.Path, Action: ActionNoOp}, nil
 
 	case StateMissing:
-		return wholeFileWrite(full, renderWholeFile(mf.Comment, canonical), ActionCreated, mf.Path), nil
+		return wholeFileWrite(full, renderWholeFile(mf, canonical), ActionCreated, mf.Path), nil
 
 	case StateStale:
-		return wholeFileWrite(full, renderWholeFile(mf.Comment, canonical), ActionRefreshed, mf.Path), nil
+		return wholeFileWrite(full, renderWholeFile(mf, canonical), ActionRefreshed, mf.Path), nil
 
 	case StateDrifted:
 		if !opts.Force {
 			return SyncResult{Path: mf.Path, Action: ActionSkipped, Detail: state.Detail}, nil
 		}
 		if opts.KeepEdits {
+			if mf.HasFrontmatter {
+				// For .mdc files, splitting on frontmatter and stripping the
+				// sentinel from the post-frontmatter body is the only safe way to
+				// preserve user edits. The default stripFirstLine path would strip
+				// the `---` frontmatter opener and break splitFrontmatter on the
+				// next call to renderWholeFile.
+				if state.Detail == "frontmatter missing or unclosed" {
+					// User broke the frontmatter shape — nothing recoverable for
+					// KeepEdits. Skip with an explanatory Detail.
+					return SyncResult{Path: mf.Path, Action: ActionSkipped, Detail: "force --keep-edits cannot preserve content with malformed frontmatter; remove or re-add `---` delimiters"}, nil
+				}
+				front, body, _ := splitFrontmatter(existing)
+				// Strip the sentinel from body[0] ONLY if there was a sentinel
+				// there. state.Detail == "no sentinel" means body[0] is user
+				// content; preserve it as-is.
+				if state.Detail != "no sentinel" {
+					body = stripFirstLine(body)
+				}
+				reassembled := append(append([]byte{}, front...), body...)
+				return wholeFileWrite(full, renderWholeFile(mf, reassembled), ActionForced, mf.Path), nil
+			}
+			// Non-frontmatter path: original behavior.
 			// Strip the first line ONLY when it's an actual sentinel.
 			// StateDrifted is reached two ways: (a) sentinel hash !=
 			// disk hash — first line is a sentinel, must strip;
@@ -71,9 +93,9 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 			if state.Detail != "no sentinel" {
 				body = stripFirstLine(existing)
 			}
-			return wholeFileWrite(full, renderWholeFile(mf.Comment, body), ActionForced, mf.Path), nil
+			return wholeFileWrite(full, renderWholeFile(mf, body), ActionForced, mf.Path), nil
 		}
-		return wholeFileWrite(full, renderWholeFile(mf.Comment, canonical), ActionForced, mf.Path), nil
+		return wholeFileWrite(full, renderWholeFile(mf, canonical), ActionForced, mf.Path), nil
 	}
 	return SyncResult{Path: mf.Path, Action: ActionError, Err: fmt.Errorf("unhandled state %v", state.State)}, nil
 }
@@ -89,7 +111,21 @@ func wholeFileClassify(cwd string, mf ManagedFile) (FileState, []byte, []byte, e
 	if srcErr != nil {
 		return FileState{}, nil, nil, fmt.Errorf("read source for %s: %w", mf.Path, srcErr)
 	}
-	canonicalHash := hashBytes(canonical)
+
+	var canonicalHash string
+	if mf.HasFrontmatter {
+		// Canonical .mdc lives on disk with frontmatter and no sentinel.
+		// Use the sibling hash function so canonical_hash on disk is
+		// computed the same way as disk_hash on a synced file (sentinel
+		// removed from body[0], everything else hashed).
+		h, herr := HashExcludingSentinelAfterFrontmatter(mf.Comment, canonical)
+		if herr != nil {
+			return FileState{}, nil, nil, fmt.Errorf("hash canonical %s: %w", mf.Path, herr)
+		}
+		canonicalHash = h
+	} else {
+		canonicalHash = hashBytes(canonical)
+	}
 
 	existing, rerr := readFileNoFollow(full)
 	switch {
@@ -101,7 +137,17 @@ func wholeFileClassify(cwd string, mf ManagedFile) (FileState, []byte, []byte, e
 		return FileState{}, nil, nil, fmt.Errorf("read %s: %w", full, rerr)
 	}
 
-	// Parse the first line as a sentinel.
+	if mf.HasFrontmatter {
+		return classifyMdcWholeFile(mf, existing, canonical, canonicalHash)
+	}
+	return classifyNonFrontmatterWholeFile(mf, existing, canonical, canonicalHash)
+}
+
+// classifyNonFrontmatterWholeFile mirrors the pre-HasFrontmatter behavior:
+// sentinel on line 1, hash via HashExcludingSentinel.
+//
+//nolint:gocritic // see wholeFileClassify
+func classifyNonFrontmatterWholeFile(mf ManagedFile, existing, canonical []byte, canonicalHash string) (FileState, []byte, []byte, error) {
 	firstLine, _, _ := bytes.Cut(existing, []byte("\n"))
 	sentinel, perr := ParseSentinel(mf.Comment, string(firstLine))
 	if perr != nil {
@@ -110,9 +156,7 @@ func wholeFileClassify(cwd string, mf ManagedFile) (FileState, []byte, []byte, e
 	if sentinel.Version == 0 {
 		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: "no sentinel", EmbeddedHash: canonicalHash}, canonical, existing, nil
 	}
-
 	diskHash := HashExcludingSentinel(mf.Comment, existing)
-
 	if sentinel.SHA256 != diskHash {
 		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: "sentinel hash != disk hash", DiskHash: diskHash, SentinelHash: sentinel.SHA256, EmbeddedHash: canonicalHash}, canonical, existing, nil
 	}
@@ -122,19 +166,80 @@ func wholeFileClassify(cwd string, mf ManagedFile) (FileState, []byte, []byte, e
 	return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateSynced, DiskHash: diskHash, SentinelHash: sentinel.SHA256, EmbeddedHash: canonicalHash}, canonical, existing, nil
 }
 
-// renderWholeFile emits the canonical content prefixed by a v=2 sentinel
-// line using the manifest entry's comment syntax. The hash is over
-// `canonical` verbatim; HashExcludingSentinel on the rendered output
-// drops the first line (the sentinel) and gets back the same bytes, so
-// disk-hash and sentinel-hash agree on re-inspect.
-func renderWholeFile(syntax CommentSyntax, canonical []byte) []byte {
+// classifyMdcWholeFile is the frontmatter-aware variant.
+//
+//nolint:gocritic // see wholeFileClassify
+func classifyMdcWholeFile(mf ManagedFile, existing, canonical []byte, canonicalHash string) (FileState, []byte, []byte, error) {
+	_, body, fmErr := splitFrontmatter(existing)
+	if fmErr != nil {
+		// User broke the frontmatter — refuse to mutate without --force.
+		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: "frontmatter missing or unclosed", EmbeddedHash: canonicalHash}, canonical, existing, nil
+	}
+	firstLine, _, _ := bytes.Cut(body, []byte("\n"))
+	sentinel, perr := ParseSentinel(mf.Comment, string(firstLine))
+	if perr != nil {
+		return FileState{}, nil, nil, fmt.Errorf("parse sentinel for %s: %w", mf.Path, perr)
+	}
+	if sentinel.Version == 0 {
+		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: "no sentinel", EmbeddedHash: canonicalHash}, canonical, existing, nil
+	}
+	diskHash, hashErr := HashExcludingSentinelAfterFrontmatter(mf.Comment, existing)
+	if hashErr != nil {
+		return FileState{}, nil, nil, fmt.Errorf("hash %s: %w", mf.Path, hashErr)
+	}
+	if sentinel.SHA256 != diskHash {
+		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: "sentinel hash != disk hash", DiskHash: diskHash, SentinelHash: sentinel.SHA256, EmbeddedHash: canonicalHash}, canonical, existing, nil
+	}
+	if diskHash != canonicalHash {
+		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateStale, DiskHash: diskHash, SentinelHash: sentinel.SHA256, EmbeddedHash: canonicalHash}, canonical, existing, nil
+	}
+	return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateSynced, DiskHash: diskHash, SentinelHash: sentinel.SHA256, EmbeddedHash: canonicalHash}, canonical, existing, nil
+}
+
+// renderWholeFile emits canonical content prefixed by a v=2 sentinel line.
+// For HasFrontmatter==false (default), the sentinel sits on line 1 of the
+// file. For HasFrontmatter==true, the sentinel sits on the first body line
+// after the leading YAML frontmatter — Cursor's .mdc parser requires
+// `---` on line 1, so the sentinel can't sit above frontmatter.
+//
+// The hash is computed over the canonical content using the same hashing
+// rules as classify: HashExcludingSentinel for line-1 sentinels,
+// HashExcludingSentinelAfterFrontmatter when HasFrontmatter==true. On
+// re-inspect, disk-hash equals sentinel-hash.
+func renderWholeFile(mf ManagedFile, canonical []byte) []byte {
+	if mf.HasFrontmatter {
+		return renderWholeFileWithFrontmatter(mf, canonical)
+	}
 	hash := hashBytes(canonical)
-	sentinel := RenderSentinel(syntax, Sentinel{Version: 2, SHA256: hash})
+	sentinel := RenderSentinel(mf.Comment, Sentinel{Version: 2, SHA256: hash})
 	var b bytes.Buffer
 	b.WriteString(sentinel)
 	b.WriteString("\n")
 	b.Write(canonical)
 	if len(canonical) == 0 || canonical[len(canonical)-1] != '\n' {
+		b.WriteString("\n")
+	}
+	return b.Bytes()
+}
+
+func renderWholeFileWithFrontmatter(mf ManagedFile, canonical []byte) []byte {
+	front, body, err := splitFrontmatter(canonical)
+	if err != nil {
+		panic(fmt.Sprintf("canonical %s has malformed frontmatter: %v", mf.Path, err))
+	}
+	// Hash input: front + body (no sentinel). HashExcludingSentinelAfter-
+	// Frontmatter on the rendered output drops the inserted sentinel and
+	// returns the same hash, so disk-hash agrees with sentinel-hash.
+	hashInput := bytes.Join([][]byte{front, body}, nil)
+	hash := hashBytes(hashInput)
+	sentinel := RenderSentinel(mf.Comment, Sentinel{Version: 2, SHA256: hash})
+
+	var b bytes.Buffer
+	b.Write(front)
+	b.WriteString(sentinel)
+	b.WriteString("\n")
+	b.Write(body)
+	if len(body) == 0 || body[len(body)-1] != '\n' {
 		b.WriteString("\n")
 	}
 	return b.Bytes()
