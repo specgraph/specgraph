@@ -137,6 +137,45 @@ func TestJSONKeyMergeInspectMissing(t *testing.T) {
 	}
 }
 
+func TestJSONKeyMerge_KeyManagedValue_Basic(t *testing.T) {
+	mf := ManagedFile{
+		Path:     "test.json",
+		Strategy: StrategyJSONKeyMerge,
+		Comment:  CommentNone,
+		Harness:  HarnessClaude,
+		JSONKeys: []JSONManagedKey{
+			{
+				Path: "/managed/value",
+				Mode: KeyManagedValue,
+				Value: func(_ ProjectParams) (any, error) {
+					return "canonical", nil
+				},
+			},
+		},
+	}
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	if err := os.WriteFile(full, []byte(`{"unrelated":"keep","managed":{"value":"old"}}`), 0o644); err != nil { //nolint:gosec // intentional permissive mode for permission-preservation test
+		t.Fatal(err)
+	}
+	res, err := jsonKeyMergeStrategy{}.Sync(dir, mf, ProjectParams{}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionRefreshed {
+		t.Errorf("got action %v, want Refreshed", res.Action)
+	}
+	got, _ := os.ReadFile(full)
+	var doc map[string]any
+	_ = json.Unmarshal(got, &doc)
+	if doc["unrelated"] != "keep" {
+		t.Errorf("unrelated key clobbered: %v", doc)
+	}
+	if m, _ := doc["managed"].(map[string]any); m["value"] != "canonical" {
+		t.Errorf("managed key not refreshed: %v", doc)
+	}
+}
+
 func TestJSONKeyMergeOpencodePluginUnion(t *testing.T) {
 	dir := t.TempDir()
 	mf := ManagedFile{

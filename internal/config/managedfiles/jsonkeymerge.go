@@ -103,11 +103,26 @@ func (jsonKeyMergeStrategy) Sync(cwd string, mf ManagedFile, params ProjectParam
 	return SyncResult{Path: mf.Path, Action: ActionCreated}, nil
 }
 
-// jsonKeyMergeCanonical computes the canonical disk content for an entry:
-// apply the patch from mf.Build to `existing` (or {} if missing), then
-// canonicalize.
+// jsonKeyMergeCanonical computes the canonical disk content for an entry.
+// Routes on whether the entry uses the new declarative JSONKeys field or
+// the legacy Build closure. JSONKeys path handles KeyManagedValue
+// (merge-patch), KeyManagedPresence (preserve existing), and
+// KeyManagedArrayUnion (set-union with existing array).
+//
 //nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func jsonKeyMergeCanonical(existing []byte, mf ManagedFile, params ProjectParams) ([]byte, error) {
+	if len(mf.JSONKeys) > 0 {
+		return jsonKeyMergeCanonicalFromKeys(existing, mf, params)
+	}
+	return jsonKeyMergeCanonicalFromBuild(existing, mf, params)
+}
+
+// jsonKeyMergeCanonicalFromBuild is the pre-PR-E legacy path retained
+// transitionally until the three remaining Build-style entries migrate.
+// Task 7 removes it.
+//
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
+func jsonKeyMergeCanonicalFromBuild(existing []byte, mf ManagedFile, params ProjectParams) ([]byte, error) {
 	patch, err := mf.Build(params)
 	if err != nil {
 		return nil, fmt.Errorf("build patch for %s: %w", mf.Path, err)
@@ -124,9 +139,6 @@ func jsonKeyMergeCanonical(existing []byte, mf ManagedFile, params ProjectParams
 	if err != nil {
 		return nil, err
 	}
-	// Path-keyed post-merge hooks. Currently only opencode.json's
-	// plugin array needs union-merge semantics; future entries can
-	// be added here.
 	if mf.Path == "opencode.json" {
 		canonical, err = unionPluginArray(existing, canonical)
 		if err != nil {
@@ -134,4 +146,36 @@ func jsonKeyMergeCanonical(existing []byte, mf ManagedFile, params ProjectParams
 		}
 	}
 	return canonical, nil
+}
+
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
+func jsonKeyMergeCanonicalFromKeys(existing []byte, mf ManagedFile, params ProjectParams) ([]byte, error) {
+	src := existing
+	if len(src) == 0 {
+		src = []byte(`{}`)
+	}
+	// Phase 1: build patch from KeyManagedValue keys.
+	patch := map[string]any{}
+	for _, k := range mf.JSONKeys {
+		if k.Mode != KeyManagedValue {
+			continue
+		}
+		v, err := k.Value(params)
+		if err != nil {
+			return nil, fmt.Errorf("value for %s: %w", k.Path, err)
+		}
+		if err := jsonPointerSet(patch, k.Path, v); err != nil {
+			return nil, fmt.Errorf("set %s: %w", k.Path, err)
+		}
+	}
+	patchBytes, err := json.Marshal(patch)
+	if err != nil {
+		return nil, fmt.Errorf("marshal patch for %s: %w", mf.Path, err)
+	}
+	merged, err := jsonpatch.MergePatch(src, patchBytes)
+	if err != nil {
+		return nil, fmt.Errorf("merge patch %s: %w", mf.Path, err)
+	}
+	// Subsequent phases (Presence, ArrayUnion) added in Tasks 3 and 4.
+	return canonicalize(merged)
 }
