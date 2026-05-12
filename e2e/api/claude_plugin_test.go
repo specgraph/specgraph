@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -52,10 +51,11 @@ var _ = Describe("Claude plugin shim install", func() {
 		settingsPath := filepath.Join(tmpDir, ".claude/settings.json")
 		body, err := os.ReadFile(settingsPath)
 		Expect(err).NotTo(HaveOccurred())
-		// Flip the enabled state to false.
+		// Flip the enabled state to false. The file is pretty-printed with
+		// 2-space indent and a space after ":", so match the canonical form.
 		body = []byte(strings.ReplaceAll(string(body),
-			`"specgraph@specgraph-local":true`,
-			`"specgraph@specgraph-local":false`))
+			`"specgraph@specgraph-local": true`,
+			`"specgraph@specgraph-local": false`))
 		Expect(os.WriteFile(settingsPath, body, 0o644)).To(Succeed()) //nolint:gosec // test fixture in t.TempDir; permissions are intentional
 		claudeRunInit(tmpDir)
 		body2, err := os.ReadFile(settingsPath)
@@ -93,7 +93,3 @@ func claudeRunInit(dir string) {
 	Expect(result.ExitCode).To(Equal(0), "init stderr: %s", result.Stderr)
 }
 
-func TestClaudePluginShim(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Claude plugin shim install")
-}
