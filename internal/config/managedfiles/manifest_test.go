@@ -10,15 +10,16 @@ import (
 
 func TestManifestShape(t *testing.T) {
 	all := allManagedFiles()
-	if len(all) != 5 {
-		t.Errorf("expected 5 entries, got %d", len(all))
+	if len(all) != 6 {
+		t.Errorf("expected 6 entries, got %d", len(all))
 	}
 	paths := map[string]bool{
-		".mcp.json":                            false,
-		".cursor/mcp.json":                     false,
-		"opencode.json":                        false,
-		"AGENTS.md":                            false,
-		".cursor/rules/specgraph-bootstrap.mdc": false,
+		".mcp.json":                                    false,
+		".cursor/mcp.json":                             false,
+		"opencode.json":                                false,
+		"AGENTS.md":                                    false,
+		".cursor/rules/specgraph-bootstrap.mdc":        false,
+		".specgraph/agents/opencode/specgraph.ts":      false,
 	}
 	for _, mf := range all {
 		if _, ok := paths[mf.Path]; !ok {

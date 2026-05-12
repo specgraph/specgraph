@@ -120,5 +120,18 @@ func jsonKeyMergeCanonical(existing []byte, mf ManagedFile, params ProjectParams
 	if err != nil {
 		return nil, fmt.Errorf("merge patch %s: %w", mf.Path, err)
 	}
-	return canonicalize(merged)
+	canonical, err := canonicalize(merged)
+	if err != nil {
+		return nil, err
+	}
+	// Path-keyed post-merge hooks. Currently only opencode.json's
+	// plugin array needs union-merge semantics; future entries can
+	// be added here.
+	if mf.Path == "opencode.json" {
+		canonical, err = unionPluginArray(existing, canonical)
+		if err != nil {
+			return nil, fmt.Errorf("union plugin array for %s: %w", mf.Path, err)
+		}
+	}
+	return canonical, nil
 }

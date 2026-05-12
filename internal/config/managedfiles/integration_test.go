@@ -15,8 +15,8 @@ func TestManifest_AllHarnesses(t *testing.T) {
 		managedfiles.HarnessCursor,
 		managedfiles.HarnessOpenCode,
 	})
-	if len(all) != 5 {
-		t.Errorf("Manifest() should have 5 entries for all harnesses, got %d entries", len(all))
+	if len(all) != 6 {
+		t.Errorf("Manifest() should have 6 entries for all harnesses, got %d entries", len(all))
 	}
 }
 
@@ -27,12 +27,19 @@ func TestInspectAll_SingleHarness_ReturnsFiltered(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// HarnessOpenCode has 1 file: opencode.json
-	if len(got) != 1 {
-		t.Fatalf("InspectAll for OpenCode should return 1 entry, got %d", len(got))
+	// HarnessOpenCode has 2 files: opencode.json + .specgraph/agents/opencode/specgraph.ts
+	if len(got) != 2 {
+		t.Fatalf("InspectAll for OpenCode should return 2 entries, got %d", len(got))
 	}
-	if got[0].Path != "opencode.json" {
-		t.Errorf("InspectAll[0].Path = %q, want \"opencode.json\"", got[0].Path)
+	paths := map[string]bool{}
+	for _, f := range got {
+		paths[f.Path] = true
+	}
+	if !paths["opencode.json"] {
+		t.Error("InspectAll missing opencode.json")
+	}
+	if !paths[".specgraph/agents/opencode/specgraph.ts"] {
+		t.Error("InspectAll missing .specgraph/agents/opencode/specgraph.ts")
 	}
 }
 
@@ -43,14 +50,13 @@ func TestSyncAll_SingleHarness_ReturnsFiltered(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// HarnessOpenCode has 1 file: opencode.json
-	if len(got) != 1 {
-		t.Fatalf("SyncAll for OpenCode should return 1 entry, got %d", len(got))
+	// HarnessOpenCode has 2 files: opencode.json + .specgraph/agents/opencode/specgraph.ts
+	if len(got) != 2 {
+		t.Fatalf("SyncAll for OpenCode should return 2 entries, got %d", len(got))
 	}
-	if got[0].Path != "opencode.json" {
-		t.Errorf("SyncAll[0].Path = %q, want \"opencode.json\"", got[0].Path)
-	}
-	if got[0].Action == managedfiles.ActionError {
-		t.Errorf("SyncAll[0].Action = ActionError, err = %v", got[0].Err)
+	for _, r := range got {
+		if r.Action == managedfiles.ActionError {
+			t.Errorf("SyncAll[%s].Action = ActionError, err = %v", r.Path, r.Err)
+		}
 	}
 }
