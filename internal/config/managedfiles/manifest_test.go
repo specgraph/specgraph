@@ -11,8 +11,8 @@ import (
 
 func TestManifestShape(t *testing.T) {
 	all := allManagedFiles()
-	if len(all) != 6 {
-		t.Errorf("expected 6 entries, got %d", len(all))
+	if len(all) != 8 {
+		t.Errorf("expected 8 entries, got %d", len(all))
 	}
 	paths := map[string]bool{
 		".mcp.json":                                    false,
@@ -21,6 +21,8 @@ func TestManifestShape(t *testing.T) {
 		"AGENTS.md":                                    false,
 		".cursor/rules/specgraph-bootstrap.mdc":        false,
 		".specgraph/agents/opencode/specgraph.ts":      false,
+		".cursor/rules/specgraph.mdc":                  false,
+		".cursor/rules/specgraph-post-stage.mdc":       false,
 	}
 	for _, mf := range all {
 		if _, ok := paths[mf.Path]; !ok {
@@ -124,6 +126,35 @@ func TestValidateManifestEntry(t *testing.T) {
 				Build: func(ProjectParams) ([]byte, error) { return nil, nil },
 			},
 		},
+		{
+			name: "HasFrontmatter on non-WholeFile",
+			mf: ManagedFile{
+				Path: "x", Strategy: StrategyMarkdownBlock,
+				Build:          func(ProjectParams) ([]byte, error) { return nil, nil },
+				Comment:        CommentHTML,
+				HasFrontmatter: true,
+			},
+			wantErr: "HasFrontmatter requires WholeFile",
+		},
+		{
+			name: "HasFrontmatter with CommentNone",
+			mf: ManagedFile{
+				Path: "x", Strategy: StrategyWholeFile,
+				Source:         "s",
+				Comment:        CommentNone,
+				HasFrontmatter: true,
+			},
+			wantErr: "HasFrontmatter requires non-empty comment syntax",
+		},
+		{
+			name: "valid HasFrontmatter entry",
+			mf: ManagedFile{
+				Path: "x", Strategy: StrategyWholeFile,
+				Source:         "s",
+				Comment:        CommentHTML,
+				HasFrontmatter: true,
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -141,5 +172,21 @@ func TestValidateManifestEntry(t *testing.T) {
 				t.Errorf("error = %v, want substring %q", err, tc.wantErr)
 			}
 		})
+	}
+}
+
+// TestNoLegacyWholeFileHTMLSentinels pins the back-compat reasoning for
+// PR D's RenderSentinel CommentHTML change. Before PR D, no shipped
+// manifest entry combined Strategy==StrategyWholeFile with Comment==
+// CommentHTML, so no file on disk anywhere carries the old `:start`-suffixed
+// CommentHTML whole-file sentinel form. PR D introduces the combination
+// only with HasFrontmatter==true. This test ensures a future entry can't
+// silently introduce a WholeFile+HTML+!HasFrontmatter combination, which
+// would suddenly produce the bare-`init` form by surprise.
+func TestNoLegacyWholeFileHTMLSentinels(t *testing.T) {
+	for _, mf := range allManagedFiles() {
+		if mf.Strategy == StrategyWholeFile && mf.Comment == CommentHTML && !mf.HasFrontmatter {
+			t.Errorf("entry %q: WholeFile+CommentHTML without HasFrontmatter is unsupported (see PR D back-compat anchor)", mf.Path)
+		}
 	}
 }

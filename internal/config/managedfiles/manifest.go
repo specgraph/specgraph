@@ -129,6 +129,14 @@ func validateManifestEntry(mf ManagedFile) error {
 			return fmt.Errorf("manifest entry %q: WholeFile strategy requires Source", mf.Path)
 		}
 	}
+	if mf.HasFrontmatter {
+		if mf.Strategy != StrategyWholeFile {
+			return fmt.Errorf("manifest entry %q: HasFrontmatter requires WholeFile strategy, got %s", mf.Path, mf.Strategy)
+		}
+		if mf.Comment == CommentNone {
+			return fmt.Errorf("manifest entry %q: HasFrontmatter requires non-empty comment syntax", mf.Path)
+		}
+	}
 	return nil
 }
 

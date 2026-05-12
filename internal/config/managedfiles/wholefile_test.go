@@ -486,16 +486,33 @@ func TestWholeFileMdc_StaleRefreshes(t *testing.T) {
 	}
 }
 
-// TestEmbeddedMdcCanonicalSplitsCleanly verifies that every embedded .mdc
-// canonical source has well-formed YAML frontmatter — splitFrontmatter must
-// succeed and the post-frontmatter body must be non-empty. Locks the
-// assumption that renderWholeFileWithFrontmatter never panics on canonical
-// input at runtime.
-//
-// Today only the test fixture is embedded; Task 7 will iterate over manifest
-// entries with HasFrontmatter==true to cover production .mdc canonicals.
+// TestEmbeddedMdcCanonicalSplitsCleanly verifies that every embedded
+// canonical for a HasFrontmatter==true entry has well-formed YAML
+// frontmatter — splitFrontmatter must succeed and the post-frontmatter
+// body must be non-empty. Locks the assumption that renderWholeFile
+// never panics on canonical input at runtime.
 func TestEmbeddedMdcCanonicalSplitsCleanly(t *testing.T) {
-	mf := testMdcMF()
+	// Cover the test fixture explicitly (it lives outside the manifest
+	// since production wouldn't sync test-rule.mdc to a project).
+	t.Run("testFixture", func(t *testing.T) {
+		mf := testMdcMF()
+		assertCanonicalSplitsCleanly(t, mf)
+	})
+
+	// Cover every production manifest entry with HasFrontmatter==true.
+	for _, mf := range allManagedFiles() {
+		if !mf.HasFrontmatter {
+			continue
+		}
+		mf := mf
+		t.Run(mf.Path, func(t *testing.T) {
+			assertCanonicalSplitsCleanly(t, mf)
+		})
+	}
+}
+
+func assertCanonicalSplitsCleanly(t *testing.T, mf ManagedFile) {
+	t.Helper()
 	canonical, err := readSource(mf)
 	if err != nil {
 		t.Fatalf("readSource(%s): %v", mf.Path, err)
