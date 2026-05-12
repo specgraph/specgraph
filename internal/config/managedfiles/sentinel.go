@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 )
 
 // Sentinel is the parsed payload of a managed-file sentinel line.
@@ -39,8 +38,9 @@ var supportedVersions = map[int]bool{1: true, 2: true}
 // Group 3 captures the optional rev value.
 //
 // Both `init` and `init:start` are accepted because the same parser is
-// used for both syntaxes; the caller's CommentSyntax decides which form
-// RenderSentinel emits.
+// used for both strategies. RenderSentinel always emits the bare `init`
+// form; the `:start` form is written inline by markdownblock.go (around
+// lines 319 and 380) and never goes through RenderSentinel.
 //
 // The pattern is start-anchored and requires a recognized comment prefix
 // (`//`, `#`, or `<!--`) so a body line containing "specgraph:init v=2 ..."
@@ -56,10 +56,9 @@ var sentinelMatcher = regexp.MustCompile(
 //
 // For CommentNone, returns the empty string (JSON files don't carry sentinels).
 //
-// For CommentHTML, the rendered line is the START marker only — callers writing
-// a MarkdownBlock are responsible for emitting the matching `<!-- specgraph:init:end -->`
-// terminator. Keeping this asymmetry inside the strategy implementation avoids
-// requiring sentinel.go to know about block structure.
+// CommentHTML renders a standalone whole-file sentinel (e.g.
+// "<!-- specgraph:init v=2 sha256=... -->"). The markdown-block strategy
+// writes its `:start`/`:end` markers inline and does not call this function.
 func RenderSentinel(syntax CommentSyntax, s Sentinel) string {
 	if syntax == CommentNone || s.Version == 0 {
 		return ""
@@ -77,9 +76,12 @@ func RenderSentinel(syntax CommentSyntax, s Sentinel) string {
 	case CommentHash:
 		return "# " + body
 	case CommentHTML:
-		// Block-strategy start marker. The end marker is emitted separately
-		// by the strategy code (it has no payload).
-		return "<!-- " + strings.Replace(body, "specgraph:init", "specgraph:init:start", 1) + " -->"
+		// Bare form: no `:start` suffix. Whole-file callers (wholefile.go)
+		// emit this as a single standalone sentinel line; the markdown-block
+		// strategy emits `<!-- specgraph:init:start ... -->` inline via
+		// string concatenation in markdownblock.go and does not go through
+		// RenderSentinel.
+		return "<!-- " + body + " -->"
 	default:
 		return ""
 	}

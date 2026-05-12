@@ -76,6 +76,16 @@ type ManagedFile struct {
 	// after a successful guarded write — see supersedesGuardedDelete.
 	SupersedesPath string
 
+	// HasFrontmatter, when true, instructs the WholeFile strategy to position
+	// the sentinel on the first body line *after* a leading YAML frontmatter
+	// block (`---\n...\n---\n`) instead of on line 1. Required for Cursor's
+	// .mdc rule format where the frontmatter must occupy line 1.
+	//
+	// Invariants (enforced by validateManifestEntry):
+	//   - HasFrontmatter==true requires Strategy==StrategyWholeFile.
+	//   - HasFrontmatter==true requires Comment != CommentNone.
+	HasFrontmatter bool
+
 	// Build is a closure that returns the canonical content for this
 	// file given a ProjectParams. Mutually exclusive with Source: each
 	// manifest entry uses one or the other. JSONKeyMerge and

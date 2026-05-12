@@ -3,11 +3,11 @@ description: SpecGraph MCP bootstrap — points the agent at the running SpecGra
 alwaysApply: true
 ---
 
-<!-- specgraph:init:start v=1 -->
+<!-- specgraph:init:start v=2 sha256=c03108b99e2fae00b697cae4b2d9d824ca9fd82dcabb75b44fc0aeb071d0947b -->
 ## SpecGraph project pointer
 
-Server: http://localhost:9090
-Project: captureslug (sent as the X-Specgraph-Project header)
+Server: http://127.0.0.1:7890
+Project: specgraph (sent as the X-Specgraph-Project header)
 
 This block is managed by `specgraph init`. Edit content outside the markers.
 Resources to consult: `specgraph://prime`, `specgraph://constitution`, `specgraph://spec/{slug}`.

@@ -13,7 +13,7 @@ func TestRenderV1AgentsBlockBody(t *testing.T) {
 	got := string(renderV1AgentsBlockBody(params))
 
 	mustContain := []string{
-		"# SpecGraph project pointer",
+		"## SpecGraph project pointer",
 		"Server: http://localhost:9090",
 		"Project: myproj (sent as the X-Specgraph-Project header)",
 		"This block is managed by `specgraph init`. Edit content outside the markers.",

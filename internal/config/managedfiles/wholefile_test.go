@@ -23,6 +23,19 @@ func testWholeFileMF() ManagedFile {
 	}
 }
 
+const testMdcPath = ".cursor/rules/test-rule.mdc"
+
+func testMdcMF() ManagedFile {
+	return ManagedFile{
+		Path:           testMdcPath,
+		Strategy:       StrategyWholeFile,
+		Source:         "embedded/cursor/test-rule.mdc",
+		Comment:        CommentHTML,
+		Harness:        HarnessCursor,
+		HasFrontmatter: true,
+	}
+}
+
 func TestWholeFileMissing(t *testing.T) {
 	dir := t.TempDir()
 	mf := testWholeFileMF()
@@ -341,5 +354,516 @@ func TestWholeFileForceKeepEditsPreservesUserBody(t *testing.T) {
 	}
 	if state.SentinelHash != state.DiskHash {
 		t.Errorf("sentinel hash %q != disk hash %q; keep-edits should have refreshed sentinel", state.SentinelHash, state.DiskHash)
+	}
+}
+
+func TestWholeFileMdc_Missing_WritesSentinelAfterFrontmatter(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionCreated {
+		t.Fatalf("action = %v, want ActionCreated", res.Action)
+	}
+	full := filepath.Join(dir, testMdcPath)
+	data, rerr := os.ReadFile(full)
+	if rerr != nil {
+		t.Fatalf("read written file: %v", rerr)
+	}
+	got := string(data)
+	if !strings.HasPrefix(got, "---\ndescription: test rule\nalwaysApply: false\n---\n\n<!-- specgraph:init v=2 sha256=") {
+		t.Errorf("file does not start with frontmatter+sentinel:\n%s", got)
+	}
+	if !strings.Contains(got, "# Test Rule\n\nBody content here.\n") {
+		t.Errorf("body not preserved:\n%s", got)
+	}
+}
+
+func TestWholeFileMdc_Synced_NoOpOnSecondSync(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	s := wholeFileStrategy{}
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	res, err := s.Sync(dir, mf, params, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionNoOp {
+		t.Errorf("second sync action = %v, want ActionNoOp", res.Action)
+	}
+}
+
+func TestWholeFileMdc_DriftedOnEditedFrontmatter(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	s := wholeFileStrategy{}
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	full := filepath.Join(dir, testMdcPath)
+	data, readErr := os.ReadFile(full)
+	if readErr != nil {
+		t.Fatalf("read %s: %v", full, readErr)
+	}
+	edited := strings.Replace(string(data), "alwaysApply: false", "alwaysApply: true", 1)
+	if err := os.WriteFile(full, []byte(edited), 0o600); err != nil { //nolint:gosec // test fixture mutation in t.TempDir; path is computed, not user-supplied
+		t.Fatal(err)
+	}
+	res, err := s.Sync(dir, mf, params, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionSkipped {
+		t.Errorf("action on edited frontmatter = %v, want ActionSkipped", res.Action)
+	}
+	if !strings.Contains(res.Detail, "sentinel hash") {
+		t.Errorf("Detail should indicate sentinel-hash mismatch; got %q", res.Detail)
+	}
+}
+
+func TestWholeFileMdc_DriftedWhenFrontmatterMissing(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	full := filepath.Join(dir, testMdcPath)
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(full, []byte("just body content\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionSkipped {
+		t.Errorf("action on broken frontmatter = %v, want ActionSkipped", res.Action)
+	}
+	if !strings.Contains(res.Detail, "frontmatter") {
+		t.Errorf("Detail should mention frontmatter; got %q", res.Detail)
+	}
+}
+
+func TestWholeFileMdc_StaleRefreshes(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	full := filepath.Join(dir, testMdcPath)
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// Seed: a v=2 sentinel whose hash matches the disk content's
+	// HashExcludingSentinelAfterFrontmatter (front + body, sentinel stripped).
+	// The hash inputs are the frontmatter bytes (including the trailing blank
+	// line that splitFrontmatter consumes into `front`) concatenated with the
+	// post-sentinel body. Disk hash matches sentinel hash, but neither matches
+	// canonical hash — classifier returns Stale.
+	frontBytes := []byte("---\ndescription: test rule\nalwaysApply: false\n---\n\n")
+	postSentinelBody := []byte("# Stale Heading\n\nold body\n")
+	staleHash := hashBytes(append(append([]byte{}, frontBytes...), postSentinelBody...))
+	staleContent := []byte("---\ndescription: test rule\nalwaysApply: false\n---\n\n<!-- specgraph:init v=2 sha256=" + staleHash + " -->\n# Stale Heading\n\nold body\n")
+	if err := os.WriteFile(full, staleContent, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionRefreshed {
+		t.Errorf("action = %v, want ActionRefreshed", res.Action)
+	}
+	got, _ := os.ReadFile(full)
+	if !strings.Contains(string(got), "# Test Rule\n\nBody content here.\n") {
+		t.Errorf("refresh did not restore canonical body:\n%s", got)
+	}
+}
+
+func TestWholeFileMdc_CorruptSentinelReturnsError(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	full := filepath.Join(dir, testMdcPath)
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// Valid frontmatter + corrupt sentinel (v=99 is unsupported).
+	seeded := []byte("---\ndescription: test rule\nalwaysApply: false\n---\n\n<!-- specgraph:init v=99 sha256=abc -->\nbody\n")
+	if err := os.WriteFile(full, seeded, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionError {
+		t.Errorf("action = %v, want ActionError", res.Action)
+	}
+	if !errors.Is(res.Err, ErrCorruptedSentinel) {
+		t.Errorf("res.Err = %v, want errors.Is(..., ErrCorruptedSentinel)", res.Err)
+	}
+}
+
+func TestWholeFileMdc_ForceRestoresCanonical(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	s := wholeFileStrategy{}
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+	// First sync to establish canonical.
+	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	full := filepath.Join(dir, testMdcPath)
+	// User edits the alwaysApply flag (becomes Drifted with sentinel-hash != disk-hash).
+	data, readErr := os.ReadFile(full)
+	if readErr != nil {
+		t.Fatalf("read %s: %v", full, readErr)
+	}
+	edited := strings.Replace(string(data), "alwaysApply: false", "alwaysApply: true", 1)
+	if err := os.WriteFile(full, []byte(edited), 0o600); err != nil { //nolint:gosec // test fixture mutation in t.TempDir; path is computed, not user-supplied
+		t.Fatal(err)
+	}
+	// Force (without KeepEdits) should restore canonical bytes.
+	res, err := s.Sync(dir, mf, params, SyncOptions{Force: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionForced {
+		t.Errorf("action = %v, want ActionForced", res.Action)
+	}
+	got, _ := os.ReadFile(full)
+	if !strings.Contains(string(got), "alwaysApply: false") {
+		t.Errorf("force did not restore canonical alwaysApply value:\n%s", got)
+	}
+	if strings.Contains(string(got), "alwaysApply: true") {
+		t.Errorf("force left user-edited alwaysApply on disk:\n%s", got)
+	}
+}
+
+func TestWholeFileMdc_ForceKeepEditsAlsoFiresSupersedes(t *testing.T) {
+	dir := t.TempDir()
+	mf := ManagedFile{
+		Path:           ".cursor/rules/specgraph.mdc",
+		Strategy:       StrategyWholeFile,
+		Source:         "embedded/cursor/specgraph.mdc",
+		Comment:        CommentHTML,
+		Harness:        HarnessCursor,
+		HasFrontmatter: true,
+		SupersedesPath: ".cursor/rules/specgraph.md",
+	}
+	s := wholeFileStrategy{}
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+	// First sync to land canonical .mdc.
+	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	full := filepath.Join(dir, ".cursor/rules/specgraph.mdc")
+	// User edits body.
+	data, readErr := os.ReadFile(full)
+	if readErr != nil {
+		t.Fatalf("read %s: %v", full, readErr)
+	}
+	edited := strings.Replace(string(data), "SpecGraph Routing", "USER REWROTE HEADING", 1)
+	if err := os.WriteFile(full, []byte(edited), 0o600); err != nil { //nolint:gosec // test fixture mutation in t.TempDir; path is computed, not user-supplied
+		t.Fatal(err)
+	}
+	// Seed a verbatim pre-rename .md that should be cleaned up.
+	oldFull := filepath.Join(dir, ".cursor/rules/specgraph.md")
+	if err := os.WriteFile(oldFull, vestigialCursorSpecgraphMD, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Force + KeepEdits: preserves user body, fires supersedes, deletes verbatim .md.
+	res, err := s.Sync(dir, mf, params, SyncOptions{Force: true, KeepEdits: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionForced {
+		t.Errorf("action = %v, want ActionForced", res.Action)
+	}
+	out, _ := os.ReadFile(full)
+	if !strings.Contains(string(out), "USER REWROTE HEADING") {
+		t.Errorf("KeepEdits dropped user edits:\n%s", out)
+	}
+	// Verbatim .md was deleted via supersedes.
+	if _, sErr := os.Stat(oldFull); !os.IsNotExist(sErr) {
+		t.Errorf(".md should be deleted (supersedes ran on ActionForced); stat err = %v", sErr)
+	}
+}
+
+// TestEmbeddedMdcCanonicalSplitsCleanly verifies that every embedded
+// canonical for a HasFrontmatter==true entry has well-formed YAML
+// frontmatter — splitFrontmatter must succeed and the post-frontmatter
+// body must be non-empty. Locks the assumption that renderWholeFile
+// never panics on canonical input at runtime.
+func TestEmbeddedMdcCanonicalSplitsCleanly(t *testing.T) {
+	// Cover the test fixture explicitly (it lives outside the manifest
+	// since production wouldn't sync test-rule.mdc to a project).
+	t.Run("testFixture", func(t *testing.T) {
+		mf := testMdcMF()
+		assertCanonicalSplitsCleanly(t, mf)
+	})
+
+	// Cover every production manifest entry with HasFrontmatter==true.
+	for _, mf := range allManagedFiles() {
+		if !mf.HasFrontmatter {
+			continue
+		}
+		mf := mf
+		t.Run(mf.Path, func(t *testing.T) {
+			assertCanonicalSplitsCleanly(t, mf)
+		})
+	}
+}
+
+func assertCanonicalSplitsCleanly(t *testing.T, mf ManagedFile) {
+	t.Helper()
+	canonical, err := readSource(mf)
+	if err != nil {
+		t.Fatalf("readSource(%s): %v", mf.Path, err)
+	}
+	front, body, ferr := splitFrontmatter(canonical)
+	if ferr != nil {
+		t.Fatalf("splitFrontmatter(%s): %v", mf.Path, ferr)
+	}
+	if len(front) == 0 {
+		t.Errorf("%s: empty frontmatter", mf.Path)
+	}
+	if len(body) == 0 {
+		t.Errorf("%s: empty body after frontmatter", mf.Path)
+	}
+}
+
+func TestWholeFileMdc_ForceKeepEdits_PreservesUserBody(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	s := wholeFileStrategy{}
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+	// First sync: write canonical.
+	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	full := filepath.Join(dir, testMdcPath)
+	// User edits the body (everything after the sentinel).
+	data, readErr := os.ReadFile(full)
+	if readErr != nil {
+		t.Fatalf("read %s: %v", full, readErr)
+	}
+	edited := strings.Replace(string(data), "Body content here.", "USER REWROTE THIS.", 1)
+	if err := os.WriteFile(full, []byte(edited), 0o600); err != nil { //nolint:gosec // test fixture mutation in t.TempDir; path is computed, not user-supplied
+		t.Fatal(err)
+	}
+	// Force + KeepEdits: should preserve the user body and refresh the sentinel.
+	res, err := s.Sync(dir, mf, params, SyncOptions{Force: true, KeepEdits: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionForced {
+		t.Errorf("action = %v, want ActionForced", res.Action)
+	}
+	out, _ := os.ReadFile(full)
+	if !strings.Contains(string(out), "USER REWROTE THIS.") {
+		t.Errorf("KeepEdits dropped user edits:\n%s", out)
+	}
+	// Frontmatter must still be valid.
+	if !strings.HasPrefix(string(out), "---\ndescription: test rule\n") {
+		t.Errorf("KeepEdits broke frontmatter:\n%s", out)
+	}
+	// Sentinel must still be present on the first body line.
+	if !strings.Contains(string(out), "<!-- specgraph:init v=2 sha256=") {
+		t.Errorf("KeepEdits dropped sentinel:\n%s", out)
+	}
+}
+
+func TestWholeFileMdc_ForceKeepEdits_BrokenFrontmatterSkips(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	full := filepath.Join(dir, testMdcPath)
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(full, []byte("just body content\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := wholeFileStrategy{}
+	res, err := wholeFileStrategy{}.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{Force: true, KeepEdits: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionSkipped {
+		t.Errorf("action on broken frontmatter + KeepEdits = %v, want ActionSkipped", res.Action)
+	}
+	if !strings.Contains(res.Detail, "malformed frontmatter") {
+		t.Errorf("Detail should mention malformed frontmatter; got %q", res.Detail)
+	}
+	_ = s
+}
+
+func TestWholeFileMdcSupersedes_DeletesVerbatim(t *testing.T) {
+	dir := t.TempDir()
+	mf := ManagedFile{
+		Path:           ".cursor/rules/specgraph.mdc",
+		Strategy:       StrategyWholeFile,
+		Source:         "embedded/cursor/specgraph.mdc",
+		Comment:        CommentHTML,
+		Harness:        HarnessCursor,
+		HasFrontmatter: true,
+		SupersedesPath: ".cursor/rules/specgraph.md",
+	}
+	// Seed the old path with verbatim pre-rename bytes.
+	oldFull := filepath.Join(dir, ".cursor/rules/specgraph.md")
+	if err := os.MkdirAll(filepath.Dir(oldFull), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(oldFull, vestigialCursorSpecgraphMD, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionCreated {
+		t.Errorf("action = %v, want ActionCreated", res.Action)
+	}
+	// .mdc exists.
+	if _, err := os.Stat(filepath.Join(dir, ".cursor/rules/specgraph.mdc")); err != nil {
+		t.Errorf("new .mdc missing: %v", err)
+	}
+	// .md was deleted.
+	if _, err := os.Stat(oldFull); !os.IsNotExist(err) {
+		t.Errorf(".md still present (stat err = %v)", err)
+	}
+}
+
+func TestWholeFileMdcSupersedes_PreservesEditedAndAddsDetail(t *testing.T) {
+	dir := t.TempDir()
+	mf := ManagedFile{
+		Path:           ".cursor/rules/specgraph.mdc",
+		Strategy:       StrategyWholeFile,
+		Source:         "embedded/cursor/specgraph.mdc",
+		Comment:        CommentHTML,
+		Harness:        HarnessCursor,
+		HasFrontmatter: true,
+		SupersedesPath: ".cursor/rules/specgraph.md",
+	}
+	oldFull := filepath.Join(dir, ".cursor/rules/specgraph.md")
+	if err := os.MkdirAll(filepath.Dir(oldFull), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// Seed an edited variant — append a comment.
+	edited := append([]byte{}, vestigialCursorSpecgraphMD...)
+	edited = append(edited, []byte("\n<!-- user note -->\n")...)
+	if err := os.WriteFile(oldFull, edited, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionCreated {
+		t.Errorf("action = %v, want ActionCreated", res.Action)
+	}
+	// .md is preserved.
+	if _, err := os.Stat(oldFull); err != nil {
+		t.Errorf(".md should be preserved on edited variant: %v", err)
+	}
+	if !strings.Contains(res.Detail, `supersedes path ".cursor/rules/specgraph.md" left in place: prior-canonical mismatch`) {
+		t.Errorf("Detail should mention prior-canonical mismatch; got %q", res.Detail)
+	}
+}
+
+func TestWholeFileMdc_ForceKeepEdits_NoSentinelPreservesAllPostFrontmatterContent(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	full := filepath.Join(dir, testMdcPath)
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// Seed: valid frontmatter, but no sentinel on the first body line.
+	// This is the StateDrifted{Detail: "no sentinel"} branch — the
+	// post-frontmatter body[0] is user content, not a sentinel.
+	seeded := []byte("---\ndescription: test rule\nalwaysApply: false\n---\n\n# User Heading\n\nuser-authored body\nsecond line\n")
+	if err := os.WriteFile(full, seeded, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{Force: true, KeepEdits: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionForced {
+		t.Errorf("action = %v, want ActionForced", res.Action)
+	}
+
+	got, _ := os.ReadFile(full)
+	gotStr := string(got)
+
+	// All user-authored post-frontmatter content must be preserved —
+	// `stripFirstLine` must NOT have been called on body[0] because the
+	// classifier returned Detail == "no sentinel".
+	if !strings.Contains(gotStr, "# User Heading") {
+		t.Errorf("# User Heading dropped — stripFirstLine was called when sentinel was absent:\n%s", gotStr)
+	}
+	if !strings.Contains(gotStr, "user-authored body\nsecond line\n") {
+		t.Errorf("user body lines dropped:\n%s", gotStr)
+	}
+
+	// Frontmatter must still be valid.
+	if !strings.HasPrefix(gotStr, "---\ndescription: test rule\nalwaysApply: false\n---\n") {
+		t.Errorf("frontmatter broken:\n%s", gotStr)
+	}
+
+	// A fresh sentinel must be present on the first body line.
+	if !strings.Contains(gotStr, "<!-- specgraph:init v=2 sha256=") {
+		t.Errorf("no fresh sentinel after KeepEdits refresh:\n%s", gotStr)
+	}
+}
+
+func TestWholeFileMdcSupersedes_NoOpStillCleansUpLateAppearingVerbatim(t *testing.T) {
+	dir := t.TempDir()
+	mf := ManagedFile{
+		Path:           ".cursor/rules/specgraph.mdc",
+		Strategy:       StrategyWholeFile,
+		Source:         "embedded/cursor/specgraph.mdc",
+		Comment:        CommentHTML,
+		Harness:        HarnessCursor,
+		HasFrontmatter: true,
+		SupersedesPath: ".cursor/rules/specgraph.md",
+	}
+	s := wholeFileStrategy{}
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+
+	// First sync: writes the .mdc cleanly with no .md present.
+	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+
+	// A user (or stale dotfiles backup) drops a verbatim .md back in
+	// between syncs. The next sync sees the .mdc as already-Synced
+	// (ActionNoOp), but supersedes cleanup should still fire.
+	oldFull := filepath.Join(dir, ".cursor/rules/specgraph.md")
+	if err := os.WriteFile(oldFull, vestigialCursorSpecgraphMD, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := s.Sync(dir, mf, params, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionNoOp {
+		t.Errorf("action = %v, want ActionNoOp (the .mdc itself is synced)", res.Action)
+	}
+	if _, sErr := os.Stat(oldFull); !os.IsNotExist(sErr) {
+		t.Errorf("late-appearing verbatim .md should have been deleted (stat err = %v)", sErr)
 	}
 }
