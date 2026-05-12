@@ -11,18 +11,23 @@ import (
 
 func TestManifestShape(t *testing.T) {
 	all := allManagedFiles()
-	if len(all) != 8 {
-		t.Errorf("expected 8 entries, got %d", len(all))
+	if len(all) != 13 {
+		t.Errorf("expected 13 entries, got %d", len(all))
 	}
 	paths := map[string]bool{
-		".mcp.json":                                    false,
-		".cursor/mcp.json":                             false,
-		"opencode.json":                                false,
-		"AGENTS.md":                                    false,
-		".cursor/rules/specgraph-bootstrap.mdc":        false,
-		".specgraph/agents/opencode/specgraph.ts":      false,
-		".cursor/rules/specgraph.mdc":                  false,
-		".cursor/rules/specgraph-post-stage.mdc":       false,
+		".mcp.json":                                                        false,
+		".cursor/mcp.json":                                                 false,
+		"opencode.json":                                                    false,
+		"AGENTS.md":                                                        false,
+		".cursor/rules/specgraph-bootstrap.mdc":                            false,
+		".specgraph/agents/opencode/specgraph.ts":                          false,
+		".cursor/rules/specgraph.mdc":                                      false,
+		".cursor/rules/specgraph-post-stage.mdc":                           false,
+		".specgraph/agents/claude/.claude-plugin/plugin.json":              false,
+		".specgraph/agents/claude/.claude-plugin/marketplace.json":         false,
+		".specgraph/agents/claude/hooks/specgraph-session-start.sh":        false,
+		".specgraph/agents/claude/hooks/specgraph-post-stage.sh":           false,
+		".specgraph/agents/claude/routing-guide.md":                        false,
 	}
 	for _, mf := range all {
 		if _, ok := paths[mf.Path]; !ok {
@@ -229,6 +234,25 @@ func TestValidator_JSONKeysOnWholeFileRejected(t *testing.T) {
 	}
 	if err := validateManifestEntry(mf); err == nil {
 		t.Error("expected validator to reject JSONKeys on WholeFile")
+	}
+}
+
+func TestManifest_ClaudePluginShimEntries(t *testing.T) {
+	wantPaths := []string{
+		".specgraph/agents/claude/.claude-plugin/plugin.json",
+		".specgraph/agents/claude/.claude-plugin/marketplace.json",
+		".specgraph/agents/claude/hooks/specgraph-session-start.sh",
+		".specgraph/agents/claude/hooks/specgraph-post-stage.sh",
+		".specgraph/agents/claude/routing-guide.md",
+	}
+	present := map[string]bool{}
+	for _, mf := range allManagedFiles() {
+		present[mf.Path] = true
+	}
+	for _, p := range wantPaths {
+		if !present[p] {
+			t.Errorf("manifest missing entry %q", p)
+		}
 	}
 }
 

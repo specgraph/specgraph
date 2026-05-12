@@ -145,6 +145,41 @@ func allManagedFiles() []ManagedFile {
 			HasFrontmatter: true,
 			SupersedesPath: ".cursor/rules/post-stage.md",
 		},
+		{
+			Path:     ".specgraph/agents/claude/.claude-plugin/plugin.json",
+			Strategy: StrategyWholeFile,
+			Comment:  CommentNone,
+			Harness:  HarnessClaude,
+			Source:   "embedded/claude/.claude-plugin/plugin.json",
+		},
+		{
+			Path:     ".specgraph/agents/claude/.claude-plugin/marketplace.json",
+			Strategy: StrategyWholeFile,
+			Comment:  CommentNone,
+			Harness:  HarnessClaude,
+			Source:   "embedded/claude/.claude-plugin/marketplace.json",
+		},
+		{
+			Path:     ".specgraph/agents/claude/hooks/specgraph-session-start.sh",
+			Strategy: StrategyWholeFile,
+			Comment:  CommentHash,
+			Harness:  HarnessClaude,
+			Source:   "embedded/claude/hooks/specgraph-session-start.sh",
+		},
+		{
+			Path:     ".specgraph/agents/claude/hooks/specgraph-post-stage.sh",
+			Strategy: StrategyWholeFile,
+			Comment:  CommentHash,
+			Harness:  HarnessClaude,
+			Source:   "embedded/claude/hooks/specgraph-post-stage.sh",
+		},
+		{
+			Path:     ".specgraph/agents/claude/routing-guide.md",
+			Strategy: StrategyWholeFile,
+			Comment:  CommentHTML,
+			Harness:  HarnessClaude,
+			Source:   "embedded/claude/routing-guide.md",
+		},
 	}
 }
 
