@@ -4,6 +4,9 @@
 package managedfiles_test
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/config/managedfiles"
@@ -57,6 +60,113 @@ func TestSyncAll_SingleHarness_ReturnsFiltered(t *testing.T) {
 	for _, r := range got {
 		if r.Action == managedfiles.ActionError {
 			t.Errorf("SyncAll[%s].Action = ActionError, err = %v", r.Path, r.Err)
+		}
+	}
+}
+
+func TestSyncAll_CursorMdcVerbatimSupersedes(t *testing.T) {
+	dir := t.TempDir()
+	// Seed both old .md files with verbatim pre-rename bytes (from testdata).
+	for _, name := range []string{"specgraph.md", "post-stage.md"} {
+		src := filepath.Join("testdata", "cursor-vestigial", name)
+		body, err := os.ReadFile(src)
+		if err != nil {
+			t.Fatalf("read fixture: %v", err)
+		}
+		target := filepath.Join(dir, ".cursor/rules", name)
+		if mkErr := os.MkdirAll(filepath.Dir(target), 0o750); mkErr != nil {
+			t.Fatal(mkErr)
+		}
+		if wErr := os.WriteFile(target, body, 0o600); wErr != nil {
+			t.Fatal(wErr)
+		}
+	}
+
+	params := managedfiles.ProjectParams{Slug: "test", ServerURL: "http://h"}
+	results, err := managedfiles.SyncAll(dir, []managedfiles.Harness{managedfiles.HarnessCursor}, params, managedfiles.SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// New .mdc files exist; old .md files are gone.
+	for _, p := range []string{".cursor/rules/specgraph.mdc", ".cursor/rules/specgraph-post-stage.mdc"} {
+		if _, sErr := os.Stat(filepath.Join(dir, p)); sErr != nil {
+			t.Errorf("expected %s to exist: %v", p, sErr)
+		}
+	}
+	for _, p := range []string{".cursor/rules/specgraph.md", ".cursor/rules/post-stage.md"} {
+		if _, sErr := os.Stat(filepath.Join(dir, p)); !os.IsNotExist(sErr) {
+			t.Errorf("%s should be deleted (stat err = %v)", p, sErr)
+		}
+	}
+
+	// No result reports an error.
+	for _, r := range results {
+		if r.Action == managedfiles.ActionError {
+			t.Errorf("result for %s reported error: %v", r.Path, r.Err)
+		}
+	}
+}
+
+func TestSyncAll_CursorMdcEditedMdPreserved(t *testing.T) {
+	dir := t.TempDir()
+	// Seed .cursor/rules/specgraph.md with edited content.
+	src := filepath.Join("testdata", "cursor-vestigial", "specgraph.md")
+	body, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	edited := append([]byte{}, body...)
+	edited = append(edited, []byte("\n<!-- user note -->\n")...)
+	target := filepath.Join(dir, ".cursor/rules/specgraph.md")
+	if mkErr := os.MkdirAll(filepath.Dir(target), 0o750); mkErr != nil {
+		t.Fatal(mkErr)
+	}
+	if wErr := os.WriteFile(target, edited, 0o600); wErr != nil {
+		t.Fatal(wErr)
+	}
+
+	params := managedfiles.ProjectParams{Slug: "test", ServerURL: "http://h"}
+	results, err := managedfiles.SyncAll(dir, []managedfiles.Harness{managedfiles.HarnessCursor}, params, managedfiles.SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Old .md preserved.
+	if _, sErr := os.Stat(target); sErr != nil {
+		t.Errorf("edited .md should be preserved: %v", sErr)
+	}
+
+	// Find the .mdc result and verify its Detail mentions the mismatch.
+	found := false
+	for _, r := range results {
+		if r.Path == ".cursor/rules/specgraph.mdc" {
+			found = true
+			if !strings.Contains(r.Detail, `supersedes path ".cursor/rules/specgraph.md" left in place: prior-canonical mismatch`) {
+				t.Errorf("Detail = %q, expected mismatch message", r.Detail)
+			}
+		}
+	}
+	if !found {
+		t.Errorf("no SyncResult for .cursor/rules/specgraph.mdc")
+	}
+}
+
+func TestSyncAll_CursorMdcIdempotent(t *testing.T) {
+	dir := t.TempDir()
+	params := managedfiles.ProjectParams{Slug: "test", ServerURL: "http://h"}
+
+	if _, err := managedfiles.SyncAll(dir, []managedfiles.Harness{managedfiles.HarnessCursor}, params, managedfiles.SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	// Second run: every cursor-managed file reports ActionNoOp.
+	results, err := managedfiles.SyncAll(dir, []managedfiles.Harness{managedfiles.HarnessCursor}, params, managedfiles.SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range results {
+		if r.Action != managedfiles.ActionNoOp {
+			t.Errorf("%s: action %v on second sync, want ActionNoOp", r.Path, r.Action)
 		}
 	}
 }
