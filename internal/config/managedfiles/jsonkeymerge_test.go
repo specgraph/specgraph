@@ -292,7 +292,9 @@ func TestJSONKeyMerge_KeyManagedArrayUnion_DedupesOverlap(t *testing.T) {
 	var doc struct {
 		Plugin []string `json:"plugin"`
 	}
-	_ = json.Unmarshal(got, &doc)
+	if err := json.Unmarshal(got, &doc); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
 	if len(doc.Plugin) != 2 {
 		t.Errorf("expected 2 unique elements, got %d: %v", len(doc.Plugin), doc.Plugin)
 	}

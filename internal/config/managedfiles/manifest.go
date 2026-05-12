@@ -275,6 +275,8 @@ func validateManifestEntry(mf ManagedFile) error {
 		//   CommentSlash + !HasFrontmatter → TypeScript / JS plugin source      [PR C]
 		//   CommentHTML  + !HasFrontmatter → plain Markdown                     [PR E]
 		//   CommentHTML  +  HasFrontmatter → Markdown with leading frontmatter  [PR D]
+	default:
+		return fmt.Errorf("manifest entry %q: unknown strategy %v", mf.Path, mf.Strategy)
 	}
 	if mf.HasFrontmatter && mf.Strategy != StrategyWholeFile {
 		return fmt.Errorf("manifest entry %q: HasFrontmatter requires WholeFile strategy, got %s", mf.Path, mf.Strategy)
