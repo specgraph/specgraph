@@ -232,18 +232,37 @@ func TestValidator_JSONKeysOnWholeFileRejected(t *testing.T) {
 	}
 }
 
-// TestNoLegacyWholeFileHTMLSentinels pins the back-compat reasoning for
-// PR D's RenderSentinel CommentHTML change. Before PR D, no shipped
-// manifest entry combined Strategy==StrategyWholeFile with Comment==
-// CommentHTML, so no file on disk anywhere carries the old `:start`-suffixed
-// CommentHTML whole-file sentinel form. PR D introduces the combination
-// only with HasFrontmatter==true. This test ensures a future entry can't
-// silently introduce a WholeFile+HTML+!HasFrontmatter combination, which
-// would suddenly produce the bare-`init` form by surprise.
-func TestNoLegacyWholeFileHTMLSentinels(t *testing.T) {
+// TestManifestValidator_WholeFileSupportedCombinations enumerates the five
+// supported WholeFile (Comment, HasFrontmatter) combinations as of PR E.
+// Every WholeFile manifest entry must match one of these. Replaces the
+// PR D back-compat anchor that rejected CommentHTML+!HasFrontmatter —
+// that combination is now first-class (plain Markdown like routing-guide.md).
+//
+//	CommentNone  + !HasFrontmatter → JSON files (no in-file sentinel)   [PR E]
+//	CommentHash  + !HasFrontmatter → shell / Python / YAML scripts
+//	CommentSlash + !HasFrontmatter → TypeScript / JS plugin source      [PR C]
+//	CommentHTML  + !HasFrontmatter → plain Markdown                     [PR E]
+//	CommentHTML  +  HasFrontmatter → Markdown with leading frontmatter  [PR D]
+func TestManifestValidator_WholeFileSupportedCombinations(t *testing.T) {
+	type combo struct {
+		comment CommentSyntax
+		hasFm   bool
+	}
+	supported := map[combo]bool{
+		{CommentNone, false}:  true,
+		{CommentHash, false}:  true,
+		{CommentSlash, false}: true,
+		{CommentHTML, false}:  true,
+		{CommentHTML, true}:   true,
+	}
 	for _, mf := range allManagedFiles() {
-		if mf.Strategy == StrategyWholeFile && mf.Comment == CommentHTML && !mf.HasFrontmatter {
-			t.Errorf("entry %q: WholeFile+CommentHTML without HasFrontmatter is unsupported (see PR D back-compat anchor)", mf.Path)
+		if mf.Strategy != StrategyWholeFile {
+			continue
+		}
+		k := combo{comment: mf.Comment, hasFm: mf.HasFrontmatter}
+		if !supported[k] {
+			t.Errorf("entry %q: unsupported WholeFile combo Comment=%v HasFrontmatter=%v",
+				mf.Path, mf.Comment, mf.HasFrontmatter)
 		}
 	}
 }

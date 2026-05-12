@@ -205,14 +205,18 @@ func validateManifestEntry(mf ManagedFile) error {
 		if hasBuild || hasJSONKeys {
 			return fmt.Errorf("manifest entry %q: WholeFile strategy must not set Build or JSONKeys", mf.Path)
 		}
-	}
-	if mf.HasFrontmatter {
-		if mf.Strategy != StrategyWholeFile {
-			return fmt.Errorf("manifest entry %q: HasFrontmatter requires WholeFile strategy, got %s", mf.Path, mf.Strategy)
-		}
-		if mf.Comment == CommentNone {
+		if mf.HasFrontmatter && mf.Comment == CommentNone {
 			return fmt.Errorf("manifest entry %q: HasFrontmatter requires non-empty comment syntax", mf.Path)
 		}
+		// Supported combinations:
+		//   CommentNone  + !HasFrontmatter → JSON files (no in-file sentinel)   [PR E]
+		//   CommentHash  + !HasFrontmatter → shell / Python / YAML scripts
+		//   CommentSlash + !HasFrontmatter → TypeScript / JS plugin source      [PR C]
+		//   CommentHTML  + !HasFrontmatter → plain Markdown                     [PR E]
+		//   CommentHTML  +  HasFrontmatter → Markdown with leading frontmatter  [PR D]
+	}
+	if mf.HasFrontmatter && mf.Strategy != StrategyWholeFile {
+		return fmt.Errorf("manifest entry %q: HasFrontmatter requires WholeFile strategy, got %s", mf.Path, mf.Strategy)
 	}
 	if mf.Strategy == StrategyWholeFile && mf.SupersedesPath != "" {
 		if !vestigialCursorRulePriorHashRegistered(mf.SupersedesPath) {
