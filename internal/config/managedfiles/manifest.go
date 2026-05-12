@@ -82,25 +82,36 @@ func harnessSet(harnesses []Harness) map[Harness]bool {
 
 func init() {
 	for _, mf := range allManagedFiles() {
-		hasSource := mf.Source != ""
-		hasBuild := mf.Build != nil
-		if hasSource && hasBuild {
-			panic(fmt.Sprintf("manifest entry %q has both Source and Build", mf.Path))
-		}
-		if !hasSource && !hasBuild {
-			panic(fmt.Sprintf("manifest entry %q has neither Source nor Build", mf.Path))
-		}
-		switch mf.Strategy {
-		case StrategyJSONKeyMerge, StrategyMarkdownBlock:
-			if !hasBuild {
-				panic(fmt.Sprintf("manifest entry %q: %v strategy requires Build", mf.Path, mf.Strategy))
-			}
-		case StrategyWholeFile:
-			if !hasSource {
-				panic(fmt.Sprintf("manifest entry %q: WholeFile strategy requires Source", mf.Path))
-			}
+		if err := validateManifestEntry(mf); err != nil {
+			panic(err.Error())
 		}
 	}
+}
+
+// validateManifestEntry returns nil if mf satisfies the package's manifest
+// invariants, or a descriptive error otherwise. Called from init() at package
+// load (where any error panics) and directly from tests that want to
+// exercise invariant rules without crashing the test binary.
+func validateManifestEntry(mf ManagedFile) error {
+	hasSource := mf.Source != ""
+	hasBuild := mf.Build != nil
+	if hasSource && hasBuild {
+		return fmt.Errorf("manifest entry %q has both Source and Build", mf.Path)
+	}
+	if !hasSource && !hasBuild {
+		return fmt.Errorf("manifest entry %q has neither Source nor Build", mf.Path)
+	}
+	switch mf.Strategy {
+	case StrategyJSONKeyMerge, StrategyMarkdownBlock:
+		if !hasBuild {
+			return fmt.Errorf("manifest entry %q: %s strategy requires Build", mf.Path, mf.Strategy)
+		}
+	case StrategyWholeFile:
+		if !hasSource {
+			return fmt.Errorf("manifest entry %q: WholeFile strategy requires Source", mf.Path)
+		}
+	}
+	return nil
 }
 
 // Build closures — JSON-merge patches.
