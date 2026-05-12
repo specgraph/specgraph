@@ -98,6 +98,11 @@ type ManagedFile struct {
 	// randomness. TestManifestShape asserts this for every registered
 	// entry. Without purity, Inspect and Sync can disagree on state.
 	Build func(ProjectParams) ([]byte, error)
+
+	// JSONKeys is the declarative form of managed JSON keys for
+	// JSONKeyMerge entries. Mutually exclusive with Build (validator
+	// enforces XOR). Only meaningful for StrategyJSONKeyMerge.
+	JSONKeys []JSONManagedKey
 }
 
 // FileState is the result of Inspect for a single ManagedFile.
