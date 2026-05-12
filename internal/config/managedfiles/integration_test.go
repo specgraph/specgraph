@@ -77,7 +77,7 @@ func TestSyncAll_CursorMdcVerbatimSupersedes(t *testing.T) {
 		if mkErr := os.MkdirAll(filepath.Dir(target), 0o750); mkErr != nil {
 			t.Fatal(mkErr)
 		}
-		if wErr := os.WriteFile(target, body, 0o600); wErr != nil {
+		if wErr := os.WriteFile(target, body, 0o600); wErr != nil { //nolint:gosec // test fixture seeding in t.TempDir; path is constructed, not user-supplied
 			t.Fatal(wErr)
 		}
 	}
@@ -122,7 +122,7 @@ func TestSyncAll_CursorMdcEditedMdPreserved(t *testing.T) {
 	if mkErr := os.MkdirAll(filepath.Dir(target), 0o750); mkErr != nil {
 		t.Fatal(mkErr)
 	}
-	if wErr := os.WriteFile(target, edited, 0o600); wErr != nil {
+	if wErr := os.WriteFile(target, edited, 0o600); wErr != nil { //nolint:gosec // test fixture seeding in t.TempDir; path is constructed, not user-supplied
 		t.Fatal(wErr)
 	}
 

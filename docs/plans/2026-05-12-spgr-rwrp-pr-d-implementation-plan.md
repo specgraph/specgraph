@@ -43,6 +43,7 @@ bd update <new-id> --claim
 **Why first:** the existing `init()` block (`manifest.go:83-104`) inlines invariant checks that panic at package load. Subsequent tasks add two new invariant rules; we need a way to test that bad manifests panic without breaking the test binary's load. Extract the inline logic into `validateManifestEntry(mf ManagedFile)` that returns an error; `init()` calls it and panics; tests call it directly.
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/manifest.go:83-104` (extract `init()` body into `validateManifestEntry`)
 - Test: `internal/config/managedfiles/manifest_test.go` (add `TestValidateManifestEntry`)
 
@@ -201,6 +202,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 **Why now:** the sentinel form is a building block used by every subsequent test. Get it correct before tests that depend on the rendered bytes are written.
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/sentinel.go:79-82` (`CommentHTML` branch)
 - Modify: `internal/config/managedfiles/sentinel_test.go:28-34, 105-115` (assertions on rendered form)
 
@@ -235,6 +237,7 @@ func TestParseSentinel_AcceptsLegacyStartForm(t *testing.T) {
 
 Run: `go test -run 'TestRenderSentinel_CommentHTML|TestParseSentinel_AcceptsLegacyStartForm' -v ./internal/config/managedfiles/`
 Expected:
+
 - `TestRenderSentinel_CommentHTML`: FAIL (rendered string still includes `:start`)
 - `TestParseSentinel_AcceptsLegacyStartForm`: PASS (parser already accepts both forms)
 
@@ -300,6 +303,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 **Why now:** Task 4 (frontmatter-aware classify/render) calls this function. It's an independent unit with a small surface — implement and test in isolation first.
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/hash.go` (add sibling function)
 - Modify: `internal/config/managedfiles/hash_test.go` (add test cases)
 
@@ -445,6 +449,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 **Why now:** the rest of the PR is about manifest entries that use the new flag. The strategy needs to honor it before those entries can be tested end-to-end.
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/types.go` (add `HasFrontmatter bool` field — also accepted by validation in Task 7)
 - Modify: `internal/config/managedfiles/wholefile.go` (`wholeFileClassify`, `renderWholeFile`)
 - Test: `internal/config/managedfiles/wholefile_test.go` (add new cases)
@@ -867,6 +872,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 **Why now:** Task 6 (manifest entries) references both the canonical Source paths and the vestigial-bytes helper.
 
 **Files:**
+
 - Move: `plugin/cursor/.cursor/rules/specgraph.md` → `internal/config/managedfiles/embedded/cursor/specgraph.mdc` (rename + relocate)
 - Move: `plugin/cursor/.cursor/rules/post-stage.md` → `internal/config/managedfiles/embedded/cursor/specgraph-post-stage.mdc` (rename + relocate)
 - Copy (byte-exact, pre-move): pre-rename `.md` content into `internal/config/managedfiles/embedded/cursor/vestigial/{specgraph.md,post-stage.md}`
@@ -1147,6 +1153,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 **Why now:** the two new entries depend on the strategy honoring SupersedesPath and on the vestigial helper from Task 5. Everything else is in place.
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/wholefile.go` (`Sync`: add supersedes block)
 - Modify: `internal/config/managedfiles/manifest.go` (add two entries)
 - Test: `internal/config/managedfiles/wholefile_test.go` (supersedes scenarios)
@@ -1390,6 +1397,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 **Why now:** the manifest is at its final 8-entry shape from Task 6. Bump the counts and lock the invariants.
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/manifest_test.go` (count bump + path map + new invariant cases + back-compat anchor)
 - Modify: `internal/config/managedfiles/integration_test.go:18` (count bump)
 - Test: same files
@@ -1578,6 +1586,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 **Why now:** dev convenience — developers editing under `plugin/cursor/.cursor/rules/` should land their changes in `embedded/cursor/`. Symmetric to PR C's OpenCode setup.
 
 **Files:**
+
 - Create symlinks: `plugin/cursor/.cursor/rules/specgraph.mdc`, `plugin/cursor/.cursor/rules/specgraph-post-stage.mdc`
 - Test: `internal/config/managedfiles/symlink_pluginshim_test.go` (new file)
 
@@ -1721,6 +1730,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 **Why now:** the unit tests cover individual transitions; the integration tests verify the cross-strategy + cross-entry interactions through `SyncAll`.
 
 **Files:**
+
 - Modify: `internal/config/managedfiles/integration_test.go` (add three scenarios)
 
 - [ ] **Step 9.1: Write the failing tests**
@@ -1869,6 +1879,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 ## Task 10: Documentation + SMOKE_TEST.md + final `task check`
 
 **Files:**
+
 - Modify: `plugin/cursor/README.md` (update table rows, note init-managed status)
 - Modify: `plugin/specgraph/README.md:58` (path update for Cursor row)
 - Create: `plugin/cursor/SMOKE_TEST.md`
@@ -1900,7 +1911,7 @@ Open `plugin/specgraph/README.md`. Find line 58 (the Cursor row, referencing `pl
 
 Create `plugin/cursor/SMOKE_TEST.md` (mirror PR C's structure, adapted for Cursor):
 
-```markdown
+````markdown
 # Cursor plugin smoke test
 
 Manual end-to-end procedure for verifying `.cursor/rules/specgraph.mdc` and
@@ -1993,7 +2004,7 @@ Both rule files should show as untouched (no diff). If a hash byte changed, the 
 ```bash
 rm -rf .cursor/ .specgraph/ opencode.json
 ```
-```
+````
 
 - [ ] **Step 10.4: Run `task check` end-to-end**
 
@@ -2005,6 +2016,7 @@ task check
 Expected: all gates PASS (fmt:check, license:check, lint, build, unit tests).
 
 Common failures and fixes:
+
 - `revive` complains about a missing package doc comment → unlikely, we didn't add new packages.
 - `addlicense` complains about a missing header on `vestigial_cursor_rules.go` or `symlink_pluginshim_test.go` → run `task license:add` to fix.
 - `wrapcheck` or `gosec` warns on `wholefile.go` — review the warning and either fix or add a targeted `//nolint` with a reason.
@@ -2127,6 +2139,7 @@ Note the PR URL on the bead's notes for traceability.
 Run this before saying "plan complete":
 
 **Spec coverage** — does the plan touch every section of the design doc?
+
 - [ ] `HasFrontmatter` field on `ManagedFile` → Task 4
 - [ ] `HasFrontmatter` invariants (Strategy + Comment) → Task 7
 - [ ] Frontmatter-aware classify + render → Task 4
@@ -2145,6 +2158,7 @@ Run this before saying "plan complete":
 **Placeholder scan** — search the plan for: "TBD", "TODO", "REPLACE-ME" (the only legitimate occurrence is in Step 5.4's test code, expected to be filled in Step 5.5).
 
 **Type consistency** —
+
 - `HasFrontmatter` (Task 4) referenced consistently as `HasFrontmatter` everywhere.
 - `vestigialCursorSpecgraphMD` / `vestigialCursorPostStageMD` (Task 5) referenced consistently.
 - `vestigialCursorRulePriorHash` (Task 5) signature `(supersedesPath string) string`.

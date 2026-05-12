@@ -31,7 +31,7 @@ import (
 func renderV1AgentsBlockBody(p ProjectParams) []byte {
 	var b strings.Builder
 	b.WriteString("\n")
-	b.WriteString("# SpecGraph project pointer\n\n")
+	b.WriteString("## SpecGraph project pointer\n\n")
 	fmt.Fprintf(&b, "Server: %s\n", p.ServerURL)
 	fmt.Fprintf(&b, "Project: %s (sent as the X-Specgraph-Project header)\n\n", p.ProjectSlug())
 	b.WriteString("This block is managed by `specgraph init`. Edit content outside the markers.\n")

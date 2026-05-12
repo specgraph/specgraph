@@ -55,7 +55,7 @@ contract is the same.
 | Harness | Mechanism | Source |
 |---|---|---|
 | Claude Code | `PostToolUse` hook on `mcp__specgraph__author` returning a `block` decision with the run-passes prompt | `plugin/specgraph/hooks/post-stage.sh` |
-| Cursor | A `.cursor/rules/post-stage.md` rule that the model consults after stage edits | `plugin/cursor/.cursor/rules/post-stage.md` |
+| Cursor | A `.cursor/rules/specgraph-post-stage.mdc` rule that the model consults after stage edits | `plugin/cursor/.cursor/rules/specgraph-post-stage.mdc` |
 | OpenCode | A `tool.execute.after` hook records the stage; the next `experimental.chat.system.transform` appends the run-passes prompt to the system prompt | `plugin/opencode/.opencode/plugins/specgraph.ts` |
 
 Per-stage pass list (the `passes_for_stage` MCP tool returns the same data

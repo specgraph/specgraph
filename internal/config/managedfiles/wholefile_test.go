@@ -25,10 +25,6 @@ func testWholeFileMF() ManagedFile {
 
 const testMdcPath = ".cursor/rules/test-rule.mdc"
 
-func testMdcCanonical() []byte {
-	return []byte("---\ndescription: test rule\nalwaysApply: false\n---\n\n# Test Rule\n\nBody content here.\n")
-}
-
 func testMdcMF() ManagedFile {
 	return ManagedFile{
 		Path:           testMdcPath,
@@ -414,7 +410,7 @@ func TestWholeFileMdc_DriftedOnEditedFrontmatter(t *testing.T) {
 	full := filepath.Join(dir, testMdcPath)
 	data, _ := os.ReadFile(full)
 	edited := strings.Replace(string(data), "alwaysApply: false", "alwaysApply: true", 1)
-	if err := os.WriteFile(full, []byte(edited), 0o600); err != nil {
+	if err := os.WriteFile(full, []byte(edited), 0o600); err != nil { //nolint:gosec // test fixture mutation in t.TempDir; path is computed, not user-supplied
 		t.Fatal(err)
 	}
 	res, err := s.Sync(dir, mf, params, SyncOptions{})
@@ -542,7 +538,7 @@ func TestWholeFileMdc_ForceKeepEdits_PreservesUserBody(t *testing.T) {
 	// User edits the body (everything after the sentinel).
 	data, _ := os.ReadFile(full)
 	edited := strings.Replace(string(data), "Body content here.", "USER REWROTE THIS.", 1)
-	if err := os.WriteFile(full, []byte(edited), 0o600); err != nil {
+	if err := os.WriteFile(full, []byte(edited), 0o600); err != nil { //nolint:gosec // test fixture mutation in t.TempDir; path is computed, not user-supplied
 		t.Fatal(err)
 	}
 	// Force + KeepEdits: should preserve the user body and refresh the sentinel.
@@ -665,6 +661,54 @@ func TestWholeFileMdcSupersedes_PreservesEditedAndAddsDetail(t *testing.T) {
 	}
 	if !strings.Contains(res.Detail, `supersedes path ".cursor/rules/specgraph.md" left in place: prior-canonical mismatch`) {
 		t.Errorf("Detail should mention prior-canonical mismatch; got %q", res.Detail)
+	}
+}
+
+func TestWholeFileMdc_ForceKeepEdits_NoSentinelPreservesAllPostFrontmatterContent(t *testing.T) {
+	dir := t.TempDir()
+	mf := testMdcMF()
+	full := filepath.Join(dir, testMdcPath)
+	if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// Seed: valid frontmatter, but no sentinel on the first body line.
+	// This is the StateDrifted{Detail: "no sentinel"} branch — the
+	// post-frontmatter body[0] is user content, not a sentinel.
+	seeded := []byte("---\ndescription: test rule\nalwaysApply: false\n---\n\n# User Heading\n\nuser-authored body\nsecond line\n")
+	if err := os.WriteFile(full, seeded, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{Force: true, KeepEdits: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionForced {
+		t.Errorf("action = %v, want ActionForced", res.Action)
+	}
+
+	got, _ := os.ReadFile(full)
+	gotStr := string(got)
+
+	// All user-authored post-frontmatter content must be preserved —
+	// `stripFirstLine` must NOT have been called on body[0] because the
+	// classifier returned Detail == "no sentinel".
+	if !strings.Contains(gotStr, "# User Heading") {
+		t.Errorf("# User Heading dropped — stripFirstLine was called when sentinel was absent:\n%s", gotStr)
+	}
+	if !strings.Contains(gotStr, "user-authored body\nsecond line\n") {
+		t.Errorf("user body lines dropped:\n%s", gotStr)
+	}
+
+	// Frontmatter must still be valid.
+	if !strings.HasPrefix(gotStr, "---\ndescription: test rule\nalwaysApply: false\n---\n") {
+		t.Errorf("frontmatter broken:\n%s", gotStr)
+	}
+
+	// A fresh sentinel must be present on the first body line.
+	if !strings.Contains(gotStr, "<!-- specgraph:init v=2 sha256=") {
+		t.Errorf("no fresh sentinel after KeepEdits refresh:\n%s", gotStr)
 	}
 }
 

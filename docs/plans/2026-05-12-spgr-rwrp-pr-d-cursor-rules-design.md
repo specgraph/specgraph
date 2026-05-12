@@ -32,7 +32,6 @@ After `specgraph init`:
 | `.cursor/rules/specgraph.md` | **deleted** if its content matches the hash of the pre-rename canonical (verbatim copy from `plugin/cursor/`); preserved if user-edited, with `SyncResult.Detail` for the new `.mdc` reading `supersedes path ".cursor/rules/specgraph.md" left in place: prior-canonical mismatch` so users see the retention reason at init time |
 | `.cursor/rules/post-stage.md` | **deleted** under the same hash guard; preserved if edited, with the same Detail emission |
 
-
 End-user file layout on `.mdc` files (frontmatter intact, sentinel between frontmatter and body). Note: the existing `splitFrontmatter` helper (`helpers_md.go:42-44`) consumes the blank line that follows the closing `---` into `front`, so on disk the blank line sits *between* `---` and the sentinel, and the sentinel is immediately followed by the body:
 
 ```text

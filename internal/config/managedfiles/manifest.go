@@ -110,6 +110,8 @@ func init() {
 // invariants, or a descriptive error otherwise. Called from init() at package
 // load (where any error panics) and directly from tests that want to
 // exercise invariant rules without crashing the test binary.
+//
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func validateManifestEntry(mf ManagedFile) error {
 	hasSource := mf.Source != ""
 	hasBuild := mf.Build != nil

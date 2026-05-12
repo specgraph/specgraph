@@ -74,7 +74,13 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 					// KeepEdits. Skip with an explanatory Detail.
 					return SyncResult{Path: mf.Path, Action: ActionSkipped, Detail: "force --keep-edits cannot preserve content with malformed frontmatter; remove or re-add `---` delimiters"}, nil
 				}
-				front, body, _ := splitFrontmatter(existing)
+				front, body, fmSplitErr := splitFrontmatter(existing)
+				if fmSplitErr != nil {
+					// Should not happen: state.Detail == "frontmatter missing or
+					// unclosed" was already handled above; this path is only
+					// reached when frontmatter is well-formed.
+					return SyncResult{Path: mf.Path, Action: ActionError, Err: fmt.Errorf("split frontmatter for keep-edits: %w", fmSplitErr)}, nil
+				}
 				// Strip the sentinel from body[0] ONLY if there was a sentinel
 				// there. state.Detail == "no sentinel" means body[0] is user
 				// content; preserve it as-is.
@@ -203,6 +209,9 @@ func classifyMdcWholeFile(mf ManagedFile, existing, canonical []byte, canonicalH
 	_, body, fmErr := splitFrontmatter(existing)
 	if fmErr != nil {
 		// User broke the frontmatter — refuse to mutate without --force.
+		// Return StateDrifted (not a Go error) so the caller can surface a
+		// human-readable skip detail rather than a hard failure.
+		//nolint:nilerr // intentional: broken frontmatter is a drift state, not a hard error
 		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: "frontmatter missing or unclosed", EmbeddedHash: canonicalHash}, canonical, existing, nil
 	}
 	firstLine, _, _ := bytes.Cut(body, []byte("\n"))
@@ -236,6 +245,8 @@ func classifyMdcWholeFile(mf ManagedFile, existing, canonical []byte, canonicalH
 // rules as classify: HashExcludingSentinel for line-1 sentinels,
 // HashExcludingSentinelAfterFrontmatter when HasFrontmatter==true. On
 // re-inspect, disk-hash equals sentinel-hash.
+//
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func renderWholeFile(mf ManagedFile, canonical []byte) []byte {
 	if mf.HasFrontmatter {
 		return renderWholeFileWithFrontmatter(mf, canonical)
@@ -252,6 +263,7 @@ func renderWholeFile(mf ManagedFile, canonical []byte) []byte {
 	return b.Bytes()
 }
 
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func renderWholeFileWithFrontmatter(mf ManagedFile, canonical []byte) []byte {
 	front, body, err := splitFrontmatter(canonical)
 	if err != nil {
