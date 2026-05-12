@@ -155,6 +155,19 @@ func TestValidateManifestEntry(t *testing.T) {
 				HasFrontmatter: true,
 			},
 		},
+		{
+			name: "WholeFile with unregistered SupersedesPath",
+			mf: ManagedFile{
+				Path:           "x.mdc",
+				Strategy:       StrategyWholeFile,
+				Source:         "embedded/cursor/x.mdc",
+				Comment:        CommentHTML,
+				Harness:        HarnessCursor,
+				HasFrontmatter: true,
+				SupersedesPath: ".cursor/rules/unknown.md",
+			},
+			wantErr: "is not registered in vestigialCursorRulePriorHash",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

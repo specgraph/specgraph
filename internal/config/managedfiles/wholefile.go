@@ -11,7 +11,15 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+// driftDetailFrontmatterBroken is the Detail-string prefix used when
+// classifyMdcWholeFile rejects a file because splitFrontmatter failed.
+// Sync's --force --keep-edits arm pattern-matches on this prefix to refuse
+// the keep-edits path (there's no recoverable body to preserve when the
+// frontmatter shape is broken).
+const driftDetailFrontmatterBroken = "frontmatter parse error: "
 
 //nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func (wholeFileStrategy) Inspect(cwd string, mf ManagedFile, _ ProjectParams) (FileState, error) {
@@ -69,7 +77,7 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 				// preserve user edits. The default stripFirstLine path would strip
 				// the `---` frontmatter opener and break splitFrontmatter on the
 				// next call to renderWholeFile.
-				if state.Detail == "frontmatter missing or unclosed" {
+				if strings.HasPrefix(state.Detail, driftDetailFrontmatterBroken) {
 					// User broke the frontmatter shape — nothing recoverable for
 					// KeepEdits. Skip with an explanatory Detail.
 					return SyncResult{Path: mf.Path, Action: ActionSkipped, Detail: "force --keep-edits cannot preserve content with malformed frontmatter; remove or re-add `---` delimiters"}, nil
@@ -212,7 +220,7 @@ func classifyMdcWholeFile(mf ManagedFile, existing, canonical []byte, canonicalH
 		// Return StateDrifted (not a Go error) so the caller can surface a
 		// human-readable skip detail rather than a hard failure.
 		//nolint:nilerr // intentional: broken frontmatter is a drift state, not a hard error
-		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: "frontmatter missing or unclosed", EmbeddedHash: canonicalHash}, canonical, existing, nil
+		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: driftDetailFrontmatterBroken + fmErr.Error(), EmbeddedHash: canonicalHash}, canonical, existing, nil
 	}
 	firstLine, _, _ := bytes.Cut(body, []byte("\n"))
 	sentinel, perr := ParseSentinel(mf.Comment, string(firstLine))

@@ -50,3 +50,16 @@ func vestigialCursorRulePriorHash(supersedesPath string) string {
 		panic(fmt.Sprintf("no vestigial prior-canonical bytes for SupersedesPath %q", supersedesPath))
 	}
 }
+
+// vestigialCursorRulePriorHashRegistered returns true if supersedesPath has
+// a registered prior-canonical bytes mapping. Used by validateManifestEntry
+// to fail at package init rather than runtime when a new SupersedesPath
+// entry is added to the manifest without a corresponding case here.
+func vestigialCursorRulePriorHashRegistered(supersedesPath string) bool {
+	switch supersedesPath {
+	case ".cursor/rules/specgraph.md", ".cursor/rules/post-stage.md":
+		return true
+	default:
+		return false
+	}
+}

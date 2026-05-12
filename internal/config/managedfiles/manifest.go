@@ -139,6 +139,11 @@ func validateManifestEntry(mf ManagedFile) error {
 			return fmt.Errorf("manifest entry %q: HasFrontmatter requires non-empty comment syntax", mf.Path)
 		}
 	}
+	if mf.Strategy == StrategyWholeFile && mf.SupersedesPath != "" {
+		if !vestigialCursorRulePriorHashRegistered(mf.SupersedesPath) {
+			return fmt.Errorf("manifest entry %q: SupersedesPath %q is not registered in vestigialCursorRulePriorHash (vestigial_cursor_rules.go)", mf.Path, mf.SupersedesPath)
+		}
+	}
 	return nil
 }
 
