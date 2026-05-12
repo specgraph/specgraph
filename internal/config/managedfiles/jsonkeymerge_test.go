@@ -321,3 +321,38 @@ func arrayUnionTestEntry() ManagedFile {
 // behavior (union of canonical + existing plugin entries) is now
 // covered generically by TestJSONKeyMerge_KeyManagedArrayUnion_*
 // and TestMigratedOpenCodeJSON_PreservesPluginUnion.
+
+func TestClaudeSettingsJSON_FreshInit(t *testing.T) {
+	dir := t.TempDir()
+	mf := findManifestEntry(t, ".claude/settings.json")
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{Slug: "x"}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(filepath.Join(dir, ".claude/settings.json"))
+	if !strings.Contains(string(got), `"specgraph-local"`) {
+		t.Errorf("marketplace entry not written: %s", got)
+	}
+	if !strings.Contains(string(got), `"./.specgraph/agents/claude"`) {
+		t.Errorf("marketplace path not set correctly: %s", got)
+	}
+	if !strings.Contains(string(got), `"specgraph@specgraph-local": true`) {
+		t.Errorf("enabledPlugin not written on fresh init: %s", got)
+	}
+}
+
+func TestClaudeSettingsJSON_PreservesUserDisable(t *testing.T) {
+	dir := t.TempDir()
+	settingsDir := filepath.Join(dir, ".claude")
+	_ = os.MkdirAll(settingsDir, 0o755)                                                                                        //nolint:gosec // test directory creation with permissive mode is intentional
+	_ = os.WriteFile(filepath.Join(settingsDir, "settings.json"), []byte(`{"enabledPlugins":{"specgraph@specgraph-local":false}}`), 0o644) //nolint:gosec // intentional permissive mode for permission-preservation test
+	mf := findManifestEntry(t, ".claude/settings.json")
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{Slug: "x"}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(filepath.Join(dir, ".claude/settings.json"))
+	if !strings.Contains(string(got), `"specgraph@specgraph-local": false`) {
+		t.Errorf("user's disable was overwritten: %s", got)
+	}
+}

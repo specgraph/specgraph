@@ -11,8 +11,8 @@ import (
 
 func TestManifestShape(t *testing.T) {
 	all := allManagedFiles()
-	if len(all) != 13 {
-		t.Errorf("expected 13 entries, got %d", len(all))
+	if len(all) != 14 {
+		t.Errorf("expected 14 entries, got %d", len(all))
 	}
 	paths := map[string]bool{
 		".mcp.json":                                                        false,
@@ -28,6 +28,7 @@ func TestManifestShape(t *testing.T) {
 		".specgraph/agents/claude/hooks/specgraph-session-start.sh":        false,
 		".specgraph/agents/claude/hooks/specgraph-post-stage.sh":           false,
 		".specgraph/agents/claude/routing-guide.md":                        false,
+		".claude/settings.json":                                            false,
 	}
 	for _, mf := range all {
 		if _, ok := paths[mf.Path]; !ok {

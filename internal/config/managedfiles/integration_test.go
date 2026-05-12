@@ -18,8 +18,8 @@ func TestManifest_AllHarnesses(t *testing.T) {
 		managedfiles.HarnessCursor,
 		managedfiles.HarnessOpenCode,
 	})
-	if len(all) != 13 {
-		t.Errorf("Manifest() should have 13 entries for all harnesses, got %d entries", len(all))
+	if len(all) != 14 {
+		t.Errorf("Manifest() should have 14 entries for all harnesses, got %d entries", len(all))
 	}
 }
 

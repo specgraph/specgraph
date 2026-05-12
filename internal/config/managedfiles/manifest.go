@@ -180,6 +180,32 @@ func allManagedFiles() []ManagedFile {
 			Harness:  HarnessClaude,
 			Source:   "embedded/claude/routing-guide.md",
 		},
+		{
+			Path:     ".claude/settings.json",
+			Strategy: StrategyJSONKeyMerge,
+			Comment:  CommentNone,
+			Harness:  HarnessClaude,
+			JSONKeys: []JSONManagedKey{
+				{
+					Path: "/extraKnownMarketplaces/specgraph-local",
+					Mode: KeyManagedValue,
+					Value: func(_ ProjectParams) (any, error) {
+						return map[string]any{
+							"source": map[string]any{
+								"type": "directory",
+								"path": "./.specgraph/agents/claude",
+							},
+							"autoUpdate": false,
+						}, nil
+					},
+				},
+				{
+					Path: "/enabledPlugins/specgraph@specgraph-local",
+					Mode: KeyManagedPresence,
+					Value: func(_ ProjectParams) (any, error) { return true, nil },
+				},
+			},
+		},
 	}
 }
 
