@@ -6,25 +6,16 @@ A thin Cursor integration for SpecGraph projects.
 
 | Path | Purpose |
 |------|---------|
-| `.cursor/rules/specgraph.md` | One-screen routing rule pointing to MCP prompts/tools/resources |
-| `.cursor/rules/post-stage.md` | Post-stage analytical-pass guidance |
+| `.cursor/rules/specgraph.mdc` | One-screen routing rule. Written by `specgraph init`; do not edit by hand. |
+| `.cursor/rules/specgraph-post-stage.mdc` | Post-stage analytical-pass guidance. Written by `specgraph init`; do not edit by hand. |
+| `.cursor/rules/specgraph-bootstrap.mdc` | Project pointer block. Written by `specgraph init` (markdown-block strategy — user owns the rest of the file). |
 | `.cursor/skills/` | Symlink to repo-root `skills/` (shared with Claude Code and OpenCode shims) |
 
 ## Install (per project)
 
-Two options.
-
-**Option 1 — copy in.** Copy the `.cursor/rules/*.md` files into your
-project's `.cursor/rules/`. Resolve the `skills/` symlink and copy the
-directory if you want skills available locally.
-
-**Option 2 — Cursor remote rules.** Cursor supports importing rules from a
-GitHub repository (Settings → Rules → Add). Point it at this repo's
-`plugin/cursor/.cursor/rules/` path.
-
-The MCP server itself is configured by `specgraph init`, which writes
-`.cursor/mcp.json` with the right URL and headers. You don't need to edit
-it by hand.
+Run `specgraph init` in the project root. This writes the three `.cursor/rules/*.mdc`
+files above and configures `.cursor/mcp.json` with the right URL and headers.
+No manual file copying required.
 
 ## What you get
 

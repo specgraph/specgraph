@@ -1,5 +1,5 @@
 <!-- specgraph:init:start v=1 -->
-# SpecGraph project pointer
+## SpecGraph project pointer
 
 Server: http://localhost:9090
 Project: captureslug (sent as the X-Specgraph-Project header)

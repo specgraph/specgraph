@@ -33,6 +33,24 @@ func strategyImpl(s Strategy) strategy {
 	}
 }
 
+// String returns the canonical name of the strategy. Used in error messages
+// from validateManifestEntry; useful anywhere a strategy needs to be named.
+//
+// Returns "Strategy(N)" for unknown values rather than panicking — this is
+// formatting, not dispatch.
+func (s Strategy) String() string {
+	switch s {
+	case StrategyJSONKeyMerge:
+		return "JSONKeyMerge"
+	case StrategyMarkdownBlock:
+		return "MarkdownBlock"
+	case StrategyWholeFile:
+		return "WholeFile"
+	default:
+		return fmt.Sprintf("Strategy(%d)", int(s))
+	}
+}
+
 type jsonKeyMergeStrategy struct{}
 
 type markdownBlockStrategy struct{}

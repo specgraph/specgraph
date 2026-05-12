@@ -69,6 +69,24 @@ func allManagedFiles() []ManagedFile {
 			Comment:  CommentSlash,
 			Harness:  HarnessOpenCode,
 		},
+		{
+			Path:           ".cursor/rules/specgraph.mdc",
+			Strategy:       StrategyWholeFile,
+			Source:         "embedded/cursor/specgraph.mdc",
+			Comment:        CommentHTML,
+			Harness:        HarnessCursor,
+			HasFrontmatter: true,
+			SupersedesPath: ".cursor/rules/specgraph.md",
+		},
+		{
+			Path:           ".cursor/rules/specgraph-post-stage.mdc",
+			Strategy:       StrategyWholeFile,
+			Source:         "embedded/cursor/specgraph-post-stage.mdc",
+			Comment:        CommentHTML,
+			Harness:        HarnessCursor,
+			HasFrontmatter: true,
+			SupersedesPath: ".cursor/rules/post-stage.md",
+		},
 	}
 }
 
@@ -82,25 +100,51 @@ func harnessSet(harnesses []Harness) map[Harness]bool {
 
 func init() {
 	for _, mf := range allManagedFiles() {
-		hasSource := mf.Source != ""
-		hasBuild := mf.Build != nil
-		if hasSource && hasBuild {
-			panic(fmt.Sprintf("manifest entry %q has both Source and Build", mf.Path))
-		}
-		if !hasSource && !hasBuild {
-			panic(fmt.Sprintf("manifest entry %q has neither Source nor Build", mf.Path))
-		}
-		switch mf.Strategy {
-		case StrategyJSONKeyMerge, StrategyMarkdownBlock:
-			if !hasBuild {
-				panic(fmt.Sprintf("manifest entry %q: %v strategy requires Build", mf.Path, mf.Strategy))
-			}
-		case StrategyWholeFile:
-			if !hasSource {
-				panic(fmt.Sprintf("manifest entry %q: WholeFile strategy requires Source", mf.Path))
-			}
+		if err := validateManifestEntry(mf); err != nil {
+			panic(err.Error())
 		}
 	}
+}
+
+// validateManifestEntry returns nil if mf satisfies the package's manifest
+// invariants, or a descriptive error otherwise. Called from init() at package
+// load (where any error panics) and directly from tests that want to
+// exercise invariant rules without crashing the test binary.
+//
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
+func validateManifestEntry(mf ManagedFile) error {
+	hasSource := mf.Source != ""
+	hasBuild := mf.Build != nil
+	if hasSource && hasBuild {
+		return fmt.Errorf("manifest entry %q has both Source and Build", mf.Path)
+	}
+	if !hasSource && !hasBuild {
+		return fmt.Errorf("manifest entry %q has neither Source nor Build", mf.Path)
+	}
+	switch mf.Strategy {
+	case StrategyJSONKeyMerge, StrategyMarkdownBlock:
+		if !hasBuild {
+			return fmt.Errorf("manifest entry %q: %s strategy requires Build", mf.Path, mf.Strategy)
+		}
+	case StrategyWholeFile:
+		if !hasSource {
+			return fmt.Errorf("manifest entry %q: WholeFile strategy requires Source", mf.Path)
+		}
+	}
+	if mf.HasFrontmatter {
+		if mf.Strategy != StrategyWholeFile {
+			return fmt.Errorf("manifest entry %q: HasFrontmatter requires WholeFile strategy, got %s", mf.Path, mf.Strategy)
+		}
+		if mf.Comment == CommentNone {
+			return fmt.Errorf("manifest entry %q: HasFrontmatter requires non-empty comment syntax", mf.Path)
+		}
+	}
+	if mf.Strategy == StrategyWholeFile && mf.SupersedesPath != "" {
+		if !vestigialCursorRulePriorHashRegistered(mf.SupersedesPath) {
+			return fmt.Errorf("manifest entry %q: SupersedesPath %q is not registered in vestigialCursorRulePriorHash (vestigial_cursor_rules.go)", mf.Path, mf.SupersedesPath)
+		}
+	}
+	return nil
 }
 
 // Build closures — JSON-merge patches.

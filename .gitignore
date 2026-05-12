@@ -51,6 +51,12 @@ e2e/ui/node_modules/
 # Pointer-file lock siblings (managed by internal/config/pointers).
 # Persistent by design — see lock_unix.go for the rationale.
 *.md.lock
+*.mdc.lock
 
 # Init-written destinations for harness plugins (see spgr-rwrp PR C+)
 .specgraph/agents/
+
+# Init-written Cursor rules (.mdc) (see spgr-rwrp PR D).
+# Lock siblings are covered by the *.mdc.lock pattern above.
+.cursor/rules/specgraph.mdc
+.cursor/rules/specgraph-post-stage.mdc

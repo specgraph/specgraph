@@ -87,3 +87,13 @@ bd close <id>         # Complete work
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
+
+<!-- specgraph:init:start v=2 sha256=c03108b99e2fae00b697cae4b2d9d824ca9fd82dcabb75b44fc0aeb071d0947b -->
+## SpecGraph project pointer
+
+Server: http://127.0.0.1:7890
+Project: specgraph (sent as the X-Specgraph-Project header)
+
+This block is managed by `specgraph init`. Edit content outside the markers.
+Resources to consult: `specgraph://prime`, `specgraph://constitution`, `specgraph://spec/{slug}`.
+<!-- specgraph:init:end -->
