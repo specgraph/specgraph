@@ -4,6 +4,7 @@
 package managedfiles
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"strings"
@@ -52,6 +53,44 @@ func HashExcludingSentinel(syntax CommentSyntax, content []byte) string {
 		kept = append(kept, line)
 	}
 	return hashBytes([]byte(strings.Join(kept, "\n")))
+}
+
+// HashExcludingSentinelAfterFrontmatter is the counterpart of
+// HashExcludingSentinel for files with leading YAML frontmatter — use it
+// when ManagedFile.HasFrontmatter is true.
+//
+// HashExcludingSentinelAfterFrontmatter splits leading YAML frontmatter off
+// content, removes the sentinel on the first line of the post-frontmatter
+// body (if present), and hashes the concatenation of front + remaining body.
+//
+// Returns ErrFrontmatterMissing if the content does not begin with `---\n` or
+// the frontmatter is unclosed — callers (the WholeFile strategy on entries
+// with HasFrontmatter==true) treat that as Drifted and refuse to mutate.
+//
+// If the first body line is not a sentinel (parses to Version 0), the body
+// is hashed unchanged — drift classification is the classifier's job, not
+// this hash function's.
+func HashExcludingSentinelAfterFrontmatter(syntax CommentSyntax, content []byte) (string, error) {
+	front, body, err := splitFrontmatter(content)
+	if err != nil {
+		return "", err
+	}
+	if len(body) == 0 {
+		return hashBytes(front), nil
+	}
+	firstLine, rest, _ := bytes.Cut(body, []byte("\n"))
+	s, perr := ParseSentinel(syntax, string(firstLine))
+	if perr != nil {
+		// Corrupt sentinel — surface it. Callers should classify the file
+		// as Drifted with the parse error in Detail.
+		return "", perr
+	}
+	if s.Version == 0 {
+		// No sentinel on body[0]. Hash the body unchanged.
+		return hashBytes(bytes.Join([][]byte{front, body}, nil)), nil
+	}
+	// Sentinel present — drop the first line.
+	return hashBytes(bytes.Join([][]byte{front, rest}, nil)), nil
 }
 
 func hashBytes(b []byte) string {
