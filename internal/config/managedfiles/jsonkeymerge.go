@@ -136,17 +136,7 @@ func jsonKeyMergeCanonicalFromBuild(existing []byte, mf ManagedFile, params Proj
 	if err != nil {
 		return nil, fmt.Errorf("merge patch %s: %w", mf.Path, err)
 	}
-	canonical, err := canonicalize(merged)
-	if err != nil {
-		return nil, err
-	}
-	if mf.Path == "opencode.json" {
-		canonical, err = unionPluginArray(existing, canonical)
-		if err != nil {
-			return nil, fmt.Errorf("union plugin array for %s: %w", mf.Path, err)
-		}
-	}
-	return canonical, nil
+	return canonicalize(merged)
 }
 
 //nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface

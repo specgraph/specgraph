@@ -26,7 +26,12 @@ const (
 
 	// KeyManagedArrayUnion treats the key as an array. Canonical elements
 	// are unioned with existing elements (set-union by reflect.DeepEqual;
-	// duplicates collapse). Formalizes the unionPluginArray hook in
+	// duplicates collapse). Existing elements precede canonical elements in
+	// the resulting array — user-added entries come first, then any
+	// not-yet-present canonical entries are appended after. This ordering
+	// differs from the historical opencode.json unionPluginArray hook that
+	// prepended canonical entries; PR E makes the order deterministic and
+	// caller-agnostic. Formalizes the unionPluginArray hook from
 	// jsonkeymerge.go.
 	KeyManagedArrayUnion
 )

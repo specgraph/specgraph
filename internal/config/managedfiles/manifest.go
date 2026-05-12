@@ -4,7 +4,6 @@
 package managedfiles
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -74,7 +73,37 @@ func allManagedFiles() []ManagedFile {
 			Strategy: StrategyJSONKeyMerge,
 			Comment:  CommentNone,
 			Harness:  HarnessOpenCode,
-			Build:    buildOpenCodeJSON,
+			JSONKeys: []JSONManagedKey{
+				{
+					Path: "/$schema",
+					Mode: KeyManagedValue,
+					Value: func(_ ProjectParams) (any, error) {
+						return "https://opencode.ai/config.json", nil
+					},
+				},
+				{
+					Path: "/mcp/specgraph",
+					Mode: KeyManagedValue,
+					Value: func(p ProjectParams) (any, error) {
+						return map[string]any{
+							"type":    "remote",
+							"url":     ensureMCPSuffix(p.ServerURL),
+							"enabled": true,
+							"headers": map[string]any{
+								"Authorization":       "Bearer {env:SPECGRAPH_API_KEY}",
+								"X-Specgraph-Project": p.Slug,
+							},
+						}, nil
+					},
+				},
+				{
+					Path: "/plugin",
+					Mode: KeyManagedArrayUnion,
+					Value: func(_ ProjectParams) (any, error) {
+						return []any{"./.specgraph/agents/opencode/specgraph.ts"}, nil
+					},
+				},
+			},
 		},
 		{
 			Path:     "AGENTS.md",
@@ -189,28 +218,6 @@ func ensureMCPSuffix(serverURL string) string {
 		return trimmed + "/"
 	}
 	return trimmed + "/mcp/"
-}
-
-func buildOpenCodeJSON(p ProjectParams) ([]byte, error) {
-	b, err := json.Marshal(map[string]any{
-		"$schema": "https://opencode.ai/config.json",
-		"mcp": map[string]any{
-			"specgraph": map[string]any{
-				"type":    "remote",
-				"url":     ensureMCPSuffix(p.ServerURL),
-				"enabled": true,
-				"headers": map[string]any{
-					"Authorization":       "Bearer {env:SPECGRAPH_API_KEY}",
-					"X-Specgraph-Project": p.Slug,
-				},
-			},
-		},
-		"plugin": []any{"./.specgraph/agents/opencode/specgraph.ts"},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("marshal opencode JSON: %w", err)
-	}
-	return b, nil
 }
 
 // Build closures — markdown block bodies. PR B uses v=1 body verbatim
