@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -173,6 +174,76 @@ func TestJSONKeyMerge_KeyManagedValue_Basic(t *testing.T) {
 	}
 	if m, _ := doc["managed"].(map[string]any); m["value"] != "canonical" {
 		t.Errorf("managed key not refreshed: %v", doc)
+	}
+}
+
+func TestJSONKeyMerge_KeyManagedPresence_WriteIfAbsent(t *testing.T) {
+	mf := presenceTestEntry(t, true)
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	if err := os.WriteFile(full, []byte(`{}`), 0o644); err != nil { //nolint:gosec // intentional permissive mode for permission-preservation test
+		t.Fatal(err)
+	}
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(full)
+	if !strings.Contains(string(got), `"specgraph@specgraph-local": true`) {
+		t.Errorf("expected key written with canonical value; got %s", got)
+	}
+}
+
+func TestJSONKeyMerge_KeyManagedPresence_PreservesUserFalse(t *testing.T) {
+	mf := presenceTestEntry(t, true)
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	if err := os.WriteFile(full, []byte(`{"enabledPlugins":{"specgraph@specgraph-local":false}}`), 0o644); err != nil { //nolint:gosec // intentional permissive mode for permission-preservation test
+		t.Fatal(err)
+	}
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(full)
+	if !strings.Contains(string(got), `"specgraph@specgraph-local": false`) {
+		t.Errorf("expected user's false to be preserved; got %s", got)
+	}
+}
+
+func TestJSONKeyMerge_KeyManagedPresence_PreservesUserCustomValue(t *testing.T) {
+	mf := presenceTestEntry(t, true)
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	if err := os.WriteFile(full, []byte(`{"enabledPlugins":{"specgraph@specgraph-local":"custom"}}`), 0o644); err != nil { //nolint:gosec // intentional permissive mode for permission-preservation test
+		t.Fatal(err)
+	}
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(full)
+	if !strings.Contains(string(got), `"specgraph@specgraph-local": "custom"`) {
+		t.Errorf("expected user's custom value to be preserved; got %s", got)
+	}
+}
+
+func presenceTestEntry(t *testing.T, defaultValue bool) ManagedFile {
+	t.Helper()
+	return ManagedFile{
+		Path:     "test.json",
+		Strategy: StrategyJSONKeyMerge,
+		Comment:  CommentNone,
+		Harness:  HarnessClaude,
+		JSONKeys: []JSONManagedKey{
+			{
+				Path: "/enabledPlugins/specgraph@specgraph-local",
+				Mode: KeyManagedPresence,
+				Value: func(_ ProjectParams) (any, error) {
+					return defaultValue, nil
+				},
+			},
+		},
 	}
 }
 

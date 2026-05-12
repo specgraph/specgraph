@@ -176,6 +176,44 @@ func jsonKeyMergeCanonicalFromKeys(existing []byte, mf ManagedFile, params Proje
 	if err != nil {
 		return nil, fmt.Errorf("merge patch %s: %w", mf.Path, err)
 	}
-	// Subsequent phases (Presence, ArrayUnion) added in Tasks 3 and 4.
+	// Phase 2: KeyManagedPresence — write if absent, preserve if present.
+	var existingDoc map[string]any
+	if len(existing) > 0 {
+		err = json.Unmarshal(existing, &existingDoc)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal existing %s: %w", mf.Path, err)
+		}
+	}
+	var mergedDoc map[string]any
+	err = json.Unmarshal(merged, &mergedDoc)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal merged %s: %w", mf.Path, err)
+	}
+	for _, k := range mf.JSONKeys {
+		if k.Mode != KeyManagedPresence {
+			continue
+		}
+		if existingValue, present := jsonPointerGet(existingDoc, k.Path); present {
+			err = jsonPointerSet(mergedDoc, k.Path, existingValue)
+			if err != nil {
+				return nil, fmt.Errorf("preserve %s: %w", k.Path, err)
+			}
+			continue
+		}
+		var v any
+		v, err = k.Value(params)
+		if err != nil {
+			return nil, fmt.Errorf("value for %s: %w", k.Path, err)
+		}
+		err = jsonPointerSet(mergedDoc, k.Path, v)
+		if err != nil {
+			return nil, fmt.Errorf("set %s: %w", k.Path, err)
+		}
+	}
+	merged, err = json.Marshal(mergedDoc)
+	if err != nil {
+		return nil, fmt.Errorf("remarshal %s: %w", mf.Path, err)
+	}
+	// Subsequent phases (ArrayUnion) added in Task 4.
 	return canonicalize(merged)
 }
