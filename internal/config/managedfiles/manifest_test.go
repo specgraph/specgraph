@@ -87,7 +87,7 @@ func TestValidateManifestEntry(t *testing.T) {
 				Path: "x", Strategy: StrategyJSONKeyMerge,
 				Source: "s",
 			},
-			wantErr: "JSONKeyMerge strategy requires Build or JSONKeys",
+			wantErr: "JSONKeyMerge strategy requires JSONKeys",
 		},
 		{
 			name: "MarkdownBlock without Build",
@@ -123,7 +123,9 @@ func TestValidateManifestEntry(t *testing.T) {
 			name: "valid JSONKeyMerge",
 			mf: ManagedFile{
 				Path: "x", Strategy: StrategyJSONKeyMerge,
-				Build: func(ProjectParams) ([]byte, error) { return nil, nil },
+				JSONKeys: []JSONManagedKey{
+					{Path: "/foo", Mode: KeyManagedValue, Value: func(_ ProjectParams) (any, error) { return "bar", nil }},
+				},
 			},
 		},
 		{
@@ -185,6 +187,48 @@ func TestValidateManifestEntry(t *testing.T) {
 				t.Errorf("error = %v, want substring %q", err, tc.wantErr)
 			}
 		})
+	}
+}
+
+func TestValidator_JSONKeyMergeRequiresJSONKeys(t *testing.T) {
+	mf := ManagedFile{
+		Path:     "x.json",
+		Strategy: StrategyJSONKeyMerge,
+		Comment:  CommentNone,
+		Harness:  HarnessClaude,
+		Build:    func(_ ProjectParams) ([]byte, error) { return []byte(`{}`), nil },
+	}
+	if err := validateManifestEntry(mf); err == nil {
+		t.Error("expected validator to reject JSONKeyMerge with Build (post-PR-E)")
+	}
+}
+
+func TestValidator_JSONKeyMergeAcceptsJSONKeys(t *testing.T) {
+	mf := ManagedFile{
+		Path:     "x.json",
+		Strategy: StrategyJSONKeyMerge,
+		Comment:  CommentNone,
+		Harness:  HarnessClaude,
+		JSONKeys: []JSONManagedKey{
+			{Path: "/foo", Mode: KeyManagedValue, Value: func(_ ProjectParams) (any, error) { return "bar", nil }},
+		},
+	}
+	if err := validateManifestEntry(mf); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestValidator_JSONKeysOnWholeFileRejected(t *testing.T) {
+	mf := ManagedFile{
+		Path:     "x.md",
+		Strategy: StrategyWholeFile,
+		Comment:  CommentHTML,
+		Harness:  HarnessClaude,
+		Source:   "embedded/x.md",
+		JSONKeys: []JSONManagedKey{{Path: "/x", Mode: KeyManagedValue, Value: func(_ ProjectParams) (any, error) { return "", nil }}},
+	}
+	if err := validateManifestEntry(mf); err == nil {
+		t.Error("expected validator to reject JSONKeys on WholeFile")
 	}
 }
 

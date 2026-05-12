@@ -104,39 +104,13 @@ func (jsonKeyMergeStrategy) Sync(cwd string, mf ManagedFile, params ProjectParam
 	return SyncResult{Path: mf.Path, Action: ActionCreated}, nil
 }
 
-// jsonKeyMergeCanonical computes the canonical disk content for an entry.
-// Routes on whether the entry uses the new declarative JSONKeys field or
-// the legacy Build closure. JSONKeys path handles KeyManagedValue
-// (merge-patch), KeyManagedPresence (preserve existing), and
-// KeyManagedArrayUnion (set-union with existing array).
+// jsonKeyMergeCanonical computes the canonical disk content for a JSONKeyMerge
+// entry. Handles KeyManagedValue (merge-patch), KeyManagedPresence (preserve
+// existing), and KeyManagedArrayUnion (set-union with existing array).
 //
 //nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func jsonKeyMergeCanonical(existing []byte, mf ManagedFile, params ProjectParams) ([]byte, error) {
-	if len(mf.JSONKeys) > 0 {
-		return jsonKeyMergeCanonicalFromKeys(existing, mf, params)
-	}
-	return jsonKeyMergeCanonicalFromBuild(existing, mf, params)
-}
-
-// jsonKeyMergeCanonicalFromBuild is the pre-PR-E legacy path retained
-// transitionally until the three remaining Build-style entries migrate.
-// Task 7 removes it.
-//
-//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
-func jsonKeyMergeCanonicalFromBuild(existing []byte, mf ManagedFile, params ProjectParams) ([]byte, error) {
-	patch, err := mf.Build(params)
-	if err != nil {
-		return nil, fmt.Errorf("build patch for %s: %w", mf.Path, err)
-	}
-	src := existing
-	if len(src) == 0 {
-		src = []byte(`{}`)
-	}
-	merged, err := jsonpatch.MergePatch(src, patch)
-	if err != nil {
-		return nil, fmt.Errorf("merge patch %s: %w", mf.Path, err)
-	}
-	return canonicalize(merged)
+	return jsonKeyMergeCanonicalFromKeys(existing, mf, params)
 }
 
 //nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface

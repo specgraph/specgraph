@@ -171,9 +171,9 @@ func init() {
 //
 //nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func validateManifestEntry(mf ManagedFile) error {
-	hasSource := mf.Source != ""
 	hasBuild := mf.Build != nil
 	hasJSONKeys := len(mf.JSONKeys) > 0
+	hasSource := mf.Source != ""
 	if hasSource && hasBuild {
 		return fmt.Errorf("manifest entry %q has both Source and Build", mf.Path)
 	}
@@ -182,16 +182,28 @@ func validateManifestEntry(mf ManagedFile) error {
 	}
 	switch mf.Strategy {
 	case StrategyJSONKeyMerge:
-		if !hasBuild && !hasJSONKeys {
-			return fmt.Errorf("manifest entry %q: %s strategy requires Build or JSONKeys", mf.Path, mf.Strategy)
+		if !hasJSONKeys {
+			return fmt.Errorf("manifest entry %q: JSONKeyMerge strategy requires JSONKeys", mf.Path)
+		}
+		if hasBuild {
+			return fmt.Errorf("manifest entry %q: JSONKeyMerge strategy must not set Build (use JSONKeys)", mf.Path)
+		}
+		if hasSource {
+			return fmt.Errorf("manifest entry %q: JSONKeyMerge strategy must not set Source", mf.Path)
 		}
 	case StrategyMarkdownBlock:
 		if !hasBuild {
-			return fmt.Errorf("manifest entry %q: %s strategy requires Build", mf.Path, mf.Strategy)
+			return fmt.Errorf("manifest entry %q: MarkdownBlock strategy requires Build", mf.Path)
+		}
+		if hasJSONKeys {
+			return fmt.Errorf("manifest entry %q: MarkdownBlock strategy must not set JSONKeys", mf.Path)
 		}
 	case StrategyWholeFile:
 		if !hasSource {
 			return fmt.Errorf("manifest entry %q: WholeFile strategy requires Source", mf.Path)
+		}
+		if hasBuild || hasJSONKeys {
+			return fmt.Errorf("manifest entry %q: WholeFile strategy must not set Build or JSONKeys", mf.Path)
 		}
 	}
 	if mf.HasFrontmatter {
