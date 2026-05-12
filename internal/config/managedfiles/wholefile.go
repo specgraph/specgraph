@@ -47,15 +47,16 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 		return SyncResult{Path: mf.Path, Action: ActionError, Err: cerr}, nil
 	}
 
+	var res SyncResult
 	switch state.State {
 	case StateSynced:
-		return SyncResult{Path: mf.Path, Action: ActionNoOp}, nil
+		res = SyncResult{Path: mf.Path, Action: ActionNoOp}
 
 	case StateMissing:
-		return wholeFileWrite(full, renderWholeFile(mf, canonical), ActionCreated, mf.Path), nil
+		res = wholeFileWrite(full, renderWholeFile(mf, canonical), ActionCreated, mf.Path)
 
 	case StateStale:
-		return wholeFileWrite(full, renderWholeFile(mf, canonical), ActionRefreshed, mf.Path), nil
+		res = wholeFileWrite(full, renderWholeFile(mf, canonical), ActionRefreshed, mf.Path)
 
 	case StateDrifted:
 		if !opts.Force {
@@ -81,23 +82,52 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 					body = stripFirstLine(body)
 				}
 				reassembled := append(append([]byte{}, front...), body...)
-				return wholeFileWrite(full, renderWholeFile(mf, reassembled), ActionForced, mf.Path), nil
+				res = wholeFileWrite(full, renderWholeFile(mf, reassembled), ActionForced, mf.Path)
+			} else {
+				// Non-frontmatter path: original behavior.
+				// Strip the first line ONLY when it's an actual sentinel.
+				// StateDrifted is reached two ways: (a) sentinel hash !=
+				// disk hash — first line is a sentinel, must strip;
+				// (b) state.Detail == "no sentinel" — first line is user
+				// content, must NOT strip (would silently drop content).
+				body := existing
+				if state.Detail != "no sentinel" {
+					body = stripFirstLine(existing)
+				}
+				res = wholeFileWrite(full, renderWholeFile(mf, body), ActionForced, mf.Path)
 			}
-			// Non-frontmatter path: original behavior.
-			// Strip the first line ONLY when it's an actual sentinel.
-			// StateDrifted is reached two ways: (a) sentinel hash !=
-			// disk hash — first line is a sentinel, must strip;
-			// (b) state.Detail == "no sentinel" — first line is user
-			// content, must NOT strip (would silently drop content).
-			body := existing
-			if state.Detail != "no sentinel" {
-				body = stripFirstLine(existing)
-			}
-			return wholeFileWrite(full, renderWholeFile(mf, body), ActionForced, mf.Path), nil
+		} else {
+			res = wholeFileWrite(full, renderWholeFile(mf, canonical), ActionForced, mf.Path)
 		}
-		return wholeFileWrite(full, renderWholeFile(mf, canonical), ActionForced, mf.Path), nil
+
+	default:
+		return SyncResult{Path: mf.Path, Action: ActionError, Err: fmt.Errorf("unhandled state %v", state.State)}, nil
 	}
-	return SyncResult{Path: mf.Path, Action: ActionError, Err: fmt.Errorf("unhandled state %v", state.State)}, nil
+
+	// Early-exit on write errors so supersedes cleanup doesn't run.
+	if res.Action == ActionError {
+		return res, nil
+	}
+
+	// Supersedes-guarded delete of any pre-rename path. Runs on the same
+	// action set as markdownblock.go:163-176 (Created, Refreshed, Forced,
+	// NoOp) so a user who's already at Synced still gets cleanup if they
+	// happen to also have the old .md sitting around.
+	if mf.SupersedesPath != "" && (res.Action == ActionCreated || res.Action == ActionRefreshed || res.Action == ActionForced || res.Action == ActionNoOp) {
+		priorHash := vestigialCursorRulePriorHash(mf.SupersedesPath)
+		if err := supersedesGuardedDelete(cwd, mf.SupersedesPath, priorHash); err != nil {
+			if errors.Is(err, ErrPriorCanonicalMismatch) {
+				if res.Detail != "" {
+					res.Detail += "; "
+				}
+				res.Detail += fmt.Sprintf("supersedes path %q left in place: prior-canonical mismatch", mf.SupersedesPath)
+			} else {
+				return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
+			}
+		}
+	}
+
+	return res, nil
 }
 
 //nolint:gocritic // ManagedFile is the framework's standard parameter shape

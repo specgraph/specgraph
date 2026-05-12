@@ -69,6 +69,24 @@ func allManagedFiles() []ManagedFile {
 			Comment:  CommentSlash,
 			Harness:  HarnessOpenCode,
 		},
+		{
+			Path:           ".cursor/rules/specgraph.mdc",
+			Strategy:       StrategyWholeFile,
+			Source:         "embedded/cursor/specgraph.mdc",
+			Comment:        CommentHTML,
+			Harness:        HarnessCursor,
+			HasFrontmatter: true,
+			SupersedesPath: ".cursor/rules/specgraph.md",
+		},
+		{
+			Path:           ".cursor/rules/specgraph-post-stage.mdc",
+			Strategy:       StrategyWholeFile,
+			Source:         "embedded/cursor/specgraph-post-stage.mdc",
+			Comment:        CommentHTML,
+			Harness:        HarnessCursor,
+			HasFrontmatter: true,
+			SupersedesPath: ".cursor/rules/post-stage.md",
+		},
 	}
 }
 

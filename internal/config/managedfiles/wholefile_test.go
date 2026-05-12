@@ -573,3 +573,119 @@ func TestWholeFileMdc_ForceKeepEdits_BrokenFrontmatterSkips(t *testing.T) {
 	}
 	_ = s
 }
+
+func TestWholeFileMdcSupersedes_DeletesVerbatim(t *testing.T) {
+	dir := t.TempDir()
+	mf := ManagedFile{
+		Path:           ".cursor/rules/specgraph.mdc",
+		Strategy:       StrategyWholeFile,
+		Source:         "embedded/cursor/specgraph.mdc",
+		Comment:        CommentHTML,
+		Harness:        HarnessCursor,
+		HasFrontmatter: true,
+		SupersedesPath: ".cursor/rules/specgraph.md",
+	}
+	// Seed the old path with verbatim pre-rename bytes.
+	oldFull := filepath.Join(dir, ".cursor/rules/specgraph.md")
+	if err := os.MkdirAll(filepath.Dir(oldFull), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(oldFull, vestigialCursorSpecgraphMD, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionCreated {
+		t.Errorf("action = %v, want ActionCreated", res.Action)
+	}
+	// .mdc exists.
+	if _, err := os.Stat(filepath.Join(dir, ".cursor/rules/specgraph.mdc")); err != nil {
+		t.Errorf("new .mdc missing: %v", err)
+	}
+	// .md was deleted.
+	if _, err := os.Stat(oldFull); !os.IsNotExist(err) {
+		t.Errorf(".md still present (stat err = %v)", err)
+	}
+}
+
+func TestWholeFileMdcSupersedes_PreservesEditedAndAddsDetail(t *testing.T) {
+	dir := t.TempDir()
+	mf := ManagedFile{
+		Path:           ".cursor/rules/specgraph.mdc",
+		Strategy:       StrategyWholeFile,
+		Source:         "embedded/cursor/specgraph.mdc",
+		Comment:        CommentHTML,
+		Harness:        HarnessCursor,
+		HasFrontmatter: true,
+		SupersedesPath: ".cursor/rules/specgraph.md",
+	}
+	oldFull := filepath.Join(dir, ".cursor/rules/specgraph.md")
+	if err := os.MkdirAll(filepath.Dir(oldFull), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// Seed an edited variant — append a comment.
+	edited := append([]byte{}, vestigialCursorSpecgraphMD...)
+	edited = append(edited, []byte("\n<!-- user note -->\n")...)
+	if err := os.WriteFile(oldFull, edited, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	s := wholeFileStrategy{}
+	res, err := s.Sync(dir, mf, ProjectParams{Slug: "test", ServerURL: "http://h"}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionCreated {
+		t.Errorf("action = %v, want ActionCreated", res.Action)
+	}
+	// .md is preserved.
+	if _, err := os.Stat(oldFull); err != nil {
+		t.Errorf(".md should be preserved on edited variant: %v", err)
+	}
+	if !strings.Contains(res.Detail, `supersedes path ".cursor/rules/specgraph.md" left in place: prior-canonical mismatch`) {
+		t.Errorf("Detail should mention prior-canonical mismatch; got %q", res.Detail)
+	}
+}
+
+func TestWholeFileMdcSupersedes_NoOpStillCleansUpLateAppearingVerbatim(t *testing.T) {
+	dir := t.TempDir()
+	mf := ManagedFile{
+		Path:           ".cursor/rules/specgraph.mdc",
+		Strategy:       StrategyWholeFile,
+		Source:         "embedded/cursor/specgraph.mdc",
+		Comment:        CommentHTML,
+		Harness:        HarnessCursor,
+		HasFrontmatter: true,
+		SupersedesPath: ".cursor/rules/specgraph.md",
+	}
+	s := wholeFileStrategy{}
+	params := ProjectParams{Slug: "test", ServerURL: "http://h"}
+
+	// First sync: writes the .mdc cleanly with no .md present.
+	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+
+	// A user (or stale dotfiles backup) drops a verbatim .md back in
+	// between syncs. The next sync sees the .mdc as already-Synced
+	// (ActionNoOp), but supersedes cleanup should still fire.
+	oldFull := filepath.Join(dir, ".cursor/rules/specgraph.md")
+	if err := os.WriteFile(oldFull, vestigialCursorSpecgraphMD, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := s.Sync(dir, mf, params, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionNoOp {
+		t.Errorf("action = %v, want ActionNoOp (the .mdc itself is synced)", res.Action)
+	}
+	if _, sErr := os.Stat(oldFull); !os.IsNotExist(sErr) {
+		t.Errorf("late-appearing verbatim .md should have been deleted (stat err = %v)", sErr)
+	}
+}
