@@ -1,5 +1,6 @@
 ---
 name: specgraph-drift
+summary: Detect, acknowledge, or fix drift between specs and their upstream dependencies.
 description: Use when the user wants to detect or acknowledge drift on a done spec — when a dependency's content has changed since baseline, when interface or verification claims are stale, or when running `specgraph drift` from the CLI.
 license: Apache-2.0
 metadata:

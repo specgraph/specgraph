@@ -1,5 +1,6 @@
 ---
 name: specgraph-graph-query
+summary: Query specs by relationships, status, or stage — ready work, blocked work, impact of a change.
 description: Use when the user wants to find specs, see what's ready to work on, trace dependencies, or assess the impact of changing a spec. Routes to spec, graph_query, and the relevant MCP resources.
 license: Apache-2.0
 metadata:

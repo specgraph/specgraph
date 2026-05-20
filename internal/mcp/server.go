@@ -5,10 +5,13 @@ package mcp
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	sdkmcp "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"github.com/specgraph/specgraph/internal/mcp/skills"
 )
 
 const (
@@ -32,14 +35,22 @@ type Server struct {
 func NewServer(client *Client) *Server {
 	reg := NewRegistry()
 
+	skillsSrc, err := skills.NewEmbedded()
+	if err != nil {
+		// The embedded catalog is compiled into the binary; a parse failure
+		// means the binary itself is broken. Panic immediately so CI catches it.
+		panic(fmt.Sprintf("load embedded skills: %v", err))
+	}
+
 	RegisterSpecTools(reg, client)
 	RegisterGraphTools(reg, client)
 	RegisterCoreTools(reg, client)
 	RegisterAuthoringTools(reg, client)
 	RegisterLifecycleTools(reg, client)
 	RegisterExecutionTools(reg, client)
-	RegisterResources(reg, client)
+	RegisterResources(reg, client, skillsSrc)
 	RegisterPrompts(reg, client)
+	RegisterSkillTools(reg, skillsSrc)
 
 	hooks := &server.Hooks{}
 

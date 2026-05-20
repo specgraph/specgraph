@@ -5,6 +5,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -13,7 +14,9 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/internal/authoring"
+	"github.com/specgraph/specgraph/internal/mcp/skills"
 	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/skillvalidate"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -55,6 +58,38 @@ func extractSlugFromURI(uri string) string {
 		return ""
 	}
 	return parts[len(parts)-1]
+}
+
+// errMalformedSkillURI is returned by extractSkillName when the URI is
+// structurally invalid (wrong segment count, wrong scheme, or name that
+// fails skillvalidate.NameRegex). Distinguished from skills.ErrNotFound
+// (which means "URI was well-formed but the name isn't in the catalog")
+// so the resource handler can map malformed URIs to
+// connect.CodeInvalidArgument and unknown names to connect.CodeNotFound.
+var errMalformedSkillURI = errors.New("malformed skill URI")
+
+// extractSkillName parses a specgraph://skills/<name> URI and validates
+// the name against skillvalidate.NameRegex. Returns the validated name
+// or errMalformedSkillURI wrapped with context. Mapped at the call site
+// to connect.CodeInvalidArgument.
+//
+// Strict by design: rejects subpaths (specgraph://skills/foo/bar),
+// trailing slashes, empty names, mixed-case scheme segment, and any
+// name failing the kebab-case regex. URL-encoded names are rejected
+// (skill names never need encoding by convention).
+func extractSkillName(uri string) (string, error) {
+	rest := strings.TrimPrefix(uri, "specgraph://")
+	parts := strings.Split(rest, "/")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("%w: %q has wrong segment count", errMalformedSkillURI, uri)
+	}
+	if parts[0] != "skills" {
+		return "", fmt.Errorf("%w: %q is not a skills URI", errMalformedSkillURI, uri)
+	}
+	if !skillvalidate.NameRegex.MatchString(parts[1]) {
+		return "", fmt.Errorf("%w: name %q in %q is not kebab-case ASCII", errMalformedSkillURI, parts[1], uri)
+	}
+	return parts[1], nil
 }
 
 // ---------------------------------------------------------------------------
@@ -215,12 +250,14 @@ func changesResourceHandler(c *Client) ResourceHandler {
 // ---------------------------------------------------------------------------
 
 // primeResourceHandler returns a session-priming digest in markdown. It
-// stitches together constitution summary, spec counts by stage, the top 10
-// ready specs, and open-findings counts by severity. Each section renders
-// its heading unconditionally; RPC failures log a warning and render a
-// visible "_(unable to load: ...)_" marker under the heading so partial
-// connectivity is observable rather than silently degrading the digest.
-func primeResourceHandler(c *Client) ResourceHandler {
+// stitches together constitution summary, spec counts by stage, the top
+// 10 ready specs, open-findings counts by severity, and a Skills pointer
+// (six skills served via MCP). On RPC failure each section logs a warning
+// and renders a visible "_(unable to load: ...)_" marker under its
+// heading so partial connectivity is observable. Empty-but-successful
+// responses suppress the section entirely (no heading, no placeholder)
+// to keep the digest concise.
+func primeResourceHandler(c *Client, src skills.Source) ResourceHandler {
 	return func(ctx context.Context, uri string) ([]ResourceContent, error) {
 		var b strings.Builder
 		b.WriteString("# SpecGraph Session Prime\n\n")
@@ -338,6 +375,21 @@ func primeResourceHandler(c *Client) ResourceHandler {
 			}
 		}
 
+		metas, err := src.List(ctx)
+		switch {
+		case err != nil:
+			slog.WarnContext(ctx, "prime.section_failed",
+				slog.String("section", "skills"),
+				slog.String("err", err.Error()))
+			b.WriteString("## Skills\n\n_(unable to load: " + err.Error() + ")_\n\n")
+		case len(metas) > 0:
+			fmt.Fprintf(&b, "## Skills\n\n%d skills exposed via MCP. ", len(metas))
+			b.WriteString("Use `specgraph_skills_list` to see the catalog, ")
+			b.WriteString("`specgraph_skills_search` to find one by keyword, ")
+			b.WriteString("and `specgraph_skills_get` / `specgraph://skills/<name>` ")
+			b.WriteString("to fetch a specific skill.\n\n")
+		}
+
 		return []ResourceContent{{URI: uri, MimeType: "text/markdown", Text: b.String()}}, nil
 	}
 }
@@ -358,13 +410,45 @@ func severityRank(s specv1.FindingSeverity) int {
 }
 
 // ---------------------------------------------------------------------------
-// RegisterResources adds all 10 MCP resources to the registry.
+// skillsResourceHandler — specgraph://skills/{name}
+// ---------------------------------------------------------------------------
+
+// skillsResourceHandler returns the verbatim SKILL.md bytes for a named
+// skill. The URI is parsed through extractSkillName (strict — see helper
+// docs). Malformed URIs map to connect.CodeInvalidArgument; unknown
+// names (URI well-formed but name not in catalog) map to
+// connect.CodeNotFound.
+func skillsResourceHandler(src skills.Source) ResourceHandler {
+	return func(ctx context.Context, uri string) ([]ResourceContent, error) {
+		name, err := extractSkillName(uri)
+		if err != nil {
+			// Malformed URI → CodeInvalidArgument; unknown name → CodeNotFound.
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		sk, err := src.Get(ctx, name)
+		if err != nil {
+			if errors.Is(err, skills.ErrNotFound) {
+				return nil, connect.NewError(connect.CodeNotFound, err)
+			}
+			return nil, fmt.Errorf("get %s: %w", name, err)
+		}
+		return []ResourceContent{{
+			URI:      uri,
+			MimeType: "text/markdown",
+			Text:     string(sk.Body),
+		}}, nil
+	}
+}
+
+// ---------------------------------------------------------------------------
+// RegisterResources adds all 11 MCP resources to the registry.
 // ---------------------------------------------------------------------------
 
 // RegisterResources registers all SpecGraph MCP resources into r using the
-// provided Client to make RPC calls. Resources are read-only context providers
-// for MCP clients.
-func RegisterResources(r *Registry, c *Client) {
+// provided Client for RPC calls and skills.Source for the
+// specgraph://skills/{name} handler. Resources are read-only context
+// providers for MCP clients.
+func RegisterResources(r *Registry, c *Client, src skills.Source) {
 	r.AddResource(ResourceDef{
 		URI:         "specgraph://spec/{slug}",
 		Name:        "spec",
@@ -443,6 +527,14 @@ func RegisterResources(r *Registry, c *Client) {
 		Description: "Session-priming digest: constitution summary, graph counts, ready specs, findings summary.",
 		MimeType:    "text/markdown",
 		IsTemplate:  false,
-		Handler:     primeResourceHandler(c),
+		Handler:     primeResourceHandler(c, src),
+	})
+	r.AddResource(ResourceDef{
+		URI:         "specgraph://skills/{name}",
+		Name:        "skill",
+		Description: "A single SpecGraph SKILL.md package by name (verbatim markdown bytes).",
+		MimeType:    "text/markdown",
+		IsTemplate:  true,
+		Handler:     skillsResourceHandler(src),
 	})
 }

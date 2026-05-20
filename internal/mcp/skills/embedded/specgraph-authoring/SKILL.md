@@ -1,5 +1,6 @@
 ---
 name: specgraph-authoring
+summary: Author a SpecGraph spec through the spark → shape → specify → decompose → approve funnel.
 description: Use when the user wants to author or update a SpecGraph spec — sparking an idea, shaping a problem statement, specifying detail, decomposing into work, or walking a spec to approval. Routes to the right MCP prompt for the current authoring stage.
 license: Apache-2.0
 metadata:

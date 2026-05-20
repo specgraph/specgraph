@@ -5,14 +5,30 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/mcp/skills"
 	"github.com/stretchr/testify/require"
 )
+
+// errSource is a skills.Source whose methods all return a fixed error.
+// Used to exercise the prime template's skills-error rendering path.
+type errSource struct{ err error }
+
+func (e *errSource) List(_ context.Context) ([]skills.Meta, error) {
+	return nil, e.err
+}
+func (e *errSource) Get(_ context.Context, _ string) (skills.Skill, error) {
+	return skills.Skill{}, e.err
+}
+func (e *errSource) Search(_ context.Context, _ string, _ skills.SearchOptions) ([]skills.Meta, error) {
+	return nil, e.err
+}
 
 // ---------------------------------------------------------------------------
 // specResourceHandler tests
@@ -386,14 +402,14 @@ func TestChangesResource_Error(t *testing.T) {
 func TestRegisterResources_Count(t *testing.T) {
 	c := &Client{}
 	r := NewRegistry()
-	RegisterResources(r, c)
-	require.Len(t, r.Resources(), 10)
+	RegisterResources(r, c, &fakeSource{})
+	require.Len(t, r.Resources(), 11)
 }
 
 func TestRegisterResources_Templates(t *testing.T) {
 	c := &Client{}
 	r := NewRegistry()
-	RegisterResources(r, c)
+	RegisterResources(r, c, &fakeSource{})
 
 	templateURIs := map[string]bool{}
 	exactURIs := map[string]bool{}
@@ -405,11 +421,12 @@ func TestRegisterResources_Templates(t *testing.T) {
 		}
 	}
 
-	// Templates: spec/{slug}, decision/{slug}, constitution/{layer}, spec/{slug}/changes
+	// Templates: spec/{slug}, decision/{slug}, constitution/{layer}, spec/{slug}/changes, skills/{name}
 	require.True(t, templateURIs["specgraph://spec/{slug}"], "spec template missing")
 	require.True(t, templateURIs["specgraph://decision/{slug}"], "decision template missing")
 	require.True(t, templateURIs["specgraph://constitution/{layer}"], "constitution layer template missing")
 	require.True(t, templateURIs["specgraph://spec/{slug}/changes"], "changes template missing")
+	require.True(t, templateURIs["specgraph://skills/{name}"], "skills template missing")
 
 	// Exact URIs
 	require.True(t, exactURIs["specgraph://specs"], "specs exact URI missing")
@@ -418,6 +435,144 @@ func TestRegisterResources_Templates(t *testing.T) {
 	require.True(t, exactURIs["specgraph://graph/ready"], "graph/ready exact URI missing")
 	require.True(t, exactURIs["specgraph://findings"], "findings exact URI missing")
 	require.True(t, exactURIs["specgraph://prime"], "prime exact URI missing")
+}
+
+// ---------------------------------------------------------------------------
+// skillsResourceHandler tests
+// ---------------------------------------------------------------------------
+
+func TestSkillsResourceHandler_KnownAndUnknown(t *testing.T) {
+	src := twoSkillFake()
+	r := NewRegistry()
+	RegisterResources(r, &Client{}, src)
+
+	var skillsHandler ResourceHandler
+	for _, res := range r.Resources() {
+		if res.URI == "specgraph://skills/{name}" {
+			skillsHandler = res.Handler
+			break
+		}
+	}
+	if skillsHandler == nil {
+		t.Fatal("skills resource not registered")
+	}
+
+	contents, err := skillsHandler(context.Background(), "specgraph://skills/alpha")
+	if err != nil {
+		t.Fatalf("known: %v", err)
+	}
+	if len(contents) != 1 || !strings.Contains(contents[0].Text, "body-a") {
+		t.Errorf("expected body-a; got %+v", contents)
+	}
+	if contents[0].MimeType != "text/markdown" {
+		t.Errorf("expected text/markdown; got %q", contents[0].MimeType)
+	}
+
+	_, err = skillsHandler(context.Background(), "specgraph://skills/no-such")
+	if err == nil {
+		t.Error("expected error for unknown name")
+	}
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("expected CodeNotFound for unknown name; got %v", connect.CodeOf(err))
+	}
+}
+
+func TestSkillsResourceHandler_RejectsMalformedURI(t *testing.T) {
+	src := twoSkillFake()
+	r := NewRegistry()
+	RegisterResources(r, &Client{}, src)
+
+	var h ResourceHandler
+	for _, res := range r.Resources() {
+		if res.URI == "specgraph://skills/{name}" {
+			h = res.Handler
+			break
+		}
+	}
+	if h == nil {
+		t.Fatal("skills resource not registered")
+	}
+
+	rejects := []string{
+		"specgraph://skills",
+		"specgraph://skills/",
+		"specgraph://skills//",
+		"specgraph://skills/foo/",
+		"specgraph://skills/foo/bar",
+		"specgraph://SKILLS/foo",
+		"specgraph://skills/Foo",
+		"specgraph://skills/foo%20bar",
+	}
+	for _, uri := range rejects {
+		_, err := h(context.Background(), uri)
+		if err == nil {
+			t.Errorf("expected reject for %q", uri)
+			continue
+		}
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("expected CodeInvalidArgument for %q; got %v", uri, connect.CodeOf(err))
+		}
+	}
+
+	if _, err := h(context.Background(), "specgraph://skills/alpha"); err != nil {
+		t.Errorf("expected accept for /alpha; got %v", err)
+	}
+}
+
+func TestSkillsResourceHandler_UnknownNameReturnsCodeNotFound(t *testing.T) {
+	src := twoSkillFake()
+	r := NewRegistry()
+	RegisterResources(r, &Client{}, src)
+
+	var h ResourceHandler
+	for _, res := range r.Resources() {
+		if res.URI == "specgraph://skills/{name}" {
+			h = res.Handler
+			break
+		}
+	}
+
+	// "no-such-skill" is well-formed kebab-case but not in the fake.
+	_, err := h(context.Background(), "specgraph://skills/no-such-skill")
+	if err == nil {
+		t.Fatal("expected error for unknown skill")
+	}
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("expected CodeNotFound; got %v", connect.CodeOf(err))
+	}
+}
+
+func TestPrime_SkillsListErrorRendersMarker(t *testing.T) {
+	src := &errSource{err: errors.New("simulated skills outage")}
+	r := NewRegistry()
+	RegisterResources(r, &Client{
+		Constitution:   defaultConstitutionMock(),
+		Spec:           &mockSpecService{listSpecs: func() (*specv1.ListSpecsResponse, error) { return &specv1.ListSpecsResponse{}, nil }},
+		Graph:          &mockGraphService{getReady: func() (*specv1.GetReadyResponse, error) { return &specv1.GetReadyResponse{}, nil }},
+		AnalyticalPass: defaultAnalyticalPassMock(),
+	}, src)
+
+	var primeHandler ResourceHandler
+	for _, res := range r.Resources() {
+		if res.URI == "specgraph://prime" {
+			primeHandler = res.Handler
+			break
+		}
+	}
+	if primeHandler == nil {
+		t.Fatal("prime resource not registered")
+	}
+	contents, err := primeHandler(context.Background(), "specgraph://prime")
+	if err != nil {
+		t.Fatalf("prime: %v", err)
+	}
+	body := contents[0].Text
+	if !strings.Contains(body, "## Skills") {
+		t.Errorf("prime missing '## Skills' heading on error path: %s", body)
+	}
+	if !strings.Contains(body, "_(unable to load:") {
+		t.Errorf("prime missing '_(unable to load:' marker on error path: %s", body)
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -461,7 +616,7 @@ func TestPrimeResource(t *testing.T) {
 		},
 	}
 
-	handler := primeResourceHandler(c)
+	handler := primeResourceHandler(c, &fakeSource{})
 	contents, err := handler(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
@@ -513,7 +668,7 @@ func TestPrimeResource_FindingsSection(t *testing.T) {
 		},
 	}
 
-	handler := primeResourceHandler(c)
+	handler := primeResourceHandler(c, &fakeSource{})
 	contents, err := handler(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
@@ -564,7 +719,7 @@ func TestPrimeResource_SeverityOrdering(t *testing.T) {
 		},
 	}
 
-	handler := primeResourceHandler(c)
+	handler := primeResourceHandler(c, &fakeSource{})
 	contents, err := handler(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
@@ -607,7 +762,7 @@ func TestPrimeResource_StageOrdering(t *testing.T) {
 		AnalyticalPass: defaultAnalyticalPassMock(),
 	}
 
-	handler := primeResourceHandler(c)
+	handler := primeResourceHandler(c, &fakeSource{})
 	contents, err := handler(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
@@ -649,7 +804,7 @@ func TestPrimeResource_RPCFailureRendersErrorMarker(t *testing.T) {
 		},
 	}
 
-	handler := primeResourceHandler(c)
+	handler := primeResourceHandler(c, &fakeSource{})
 	contents, err := handler(context.Background(), "specgraph://prime")
 	// The handler itself must not error — it returns the partial digest.
 	require.NoError(t, err)
@@ -699,7 +854,7 @@ func TestPrimeResource_EmptyGraphSkipped(t *testing.T) {
 		},
 		AnalyticalPass: defaultAnalyticalPassMock(), // empty findings
 	}
-	content, err := primeResourceHandler(c)(context.Background(), "specgraph://prime")
+	content, err := primeResourceHandler(c, &fakeSource{})(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.NotEmpty(t, content)
 	text := content[0].Text
@@ -723,7 +878,7 @@ func TestPrimeResource_ConstitutionNotFound_RendersHint(t *testing.T) {
 		AnalyticalPass: defaultAnalyticalPassMock(),
 	}
 
-	content, err := primeResourceHandler(c)(context.Background(), "specgraph://prime")
+	content, err := primeResourceHandler(c, &fakeSource{})(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.NotEmpty(t, content)
 	text := content[0].Text
@@ -755,7 +910,7 @@ func TestPrimeResource_ProjectFindingsDoesNotCallPerSpecListWithoutSlug(t *testi
 		},
 	}
 
-	content, err := primeResourceHandler(c)(context.Background(), "specgraph://prime")
+	content, err := primeResourceHandler(c, &fakeSource{})(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.NotEmpty(t, content)
 	text := content[0].Text
@@ -764,6 +919,46 @@ func TestPrimeResource_ProjectFindingsDoesNotCallPerSpecListWithoutSlug(t *testi
 	require.Contains(t, text, "FINDING_SEVERITY_WARNING: 1")
 	require.NotContains(t, text, "slug is required",
 		"prime should use project-wide findings instead of per-spec ListFindings without a slug")
+}
+
+func TestPrime_IncludesSkillsPointer(t *testing.T) {
+	src := twoSkillFake()
+	r := NewRegistry()
+	RegisterResources(r, &Client{
+		Constitution:   defaultConstitutionMock(),
+		Spec:           &mockSpecService{listSpecs: func() (*specv1.ListSpecsResponse, error) { return &specv1.ListSpecsResponse{}, nil }},
+		Graph:          &mockGraphService{getReady: func() (*specv1.GetReadyResponse, error) { return &specv1.GetReadyResponse{}, nil }},
+		AnalyticalPass: defaultAnalyticalPassMock(),
+	}, src)
+
+	var primeHandler ResourceHandler
+	for _, res := range r.Resources() {
+		if res.URI == "specgraph://prime" {
+			primeHandler = res.Handler
+			break
+		}
+	}
+	if primeHandler == nil {
+		t.Fatal("prime resource not registered")
+	}
+	contents, err := primeHandler(context.Background(), "specgraph://prime")
+	if err != nil {
+		t.Fatalf("prime: %v", err)
+	}
+	body := contents[0].Text
+
+	for _, want := range []string{
+		"## Skills",
+		"specgraph_skills_list",
+		"specgraph_skills_search",
+		"specgraph_skills_get",
+		"specgraph://skills/",
+		"2 skills",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("prime missing %q", want)
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------

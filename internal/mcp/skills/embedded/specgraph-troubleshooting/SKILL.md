@@ -1,5 +1,6 @@
 ---
 name: specgraph-troubleshooting
+summary: Diagnose stuck specs, drift loops, MCP errors, and other SpecGraph runtime issues.
 description: Use when SpecGraph operations fail — MCP connection errors, init failures, missing configs, validation rejections, drift surprises, or auth failures. Triages the symptom and routes to the fix.
 license: Apache-2.0
 metadata:

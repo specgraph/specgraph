@@ -1,5 +1,6 @@
 ---
 name: specgraph-conventions
+summary: SpecGraph slug, edge-type, and authoring conventions the model should follow.
 description: Use when you need slug, stage, edge, or approval rules — when validating user input, when naming a new spec, or when explaining why an operation is rejected.
 license: Apache-2.0
 metadata:
