@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
 )
@@ -103,35 +104,118 @@ func (jsonKeyMergeStrategy) Sync(cwd string, mf ManagedFile, params ProjectParam
 	return SyncResult{Path: mf.Path, Action: ActionCreated}, nil
 }
 
-// jsonKeyMergeCanonical computes the canonical disk content for an entry:
-// apply the patch from mf.Build to `existing` (or {} if missing), then
-// canonicalize.
+// jsonKeyMergeCanonical computes the canonical disk content for a JSONKeyMerge
+// entry. Handles KeyManagedValue (merge-patch), KeyManagedPresence (preserve
+// existing), and KeyManagedArrayUnion (set-union with existing array).
+//
 //nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func jsonKeyMergeCanonical(existing []byte, mf ManagedFile, params ProjectParams) ([]byte, error) {
-	patch, err := mf.Build(params)
-	if err != nil {
-		return nil, fmt.Errorf("build patch for %s: %w", mf.Path, err)
-	}
+	return jsonKeyMergeCanonicalFromKeys(existing, mf, params)
+}
+
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
+func jsonKeyMergeCanonicalFromKeys(existing []byte, mf ManagedFile, params ProjectParams) ([]byte, error) {
 	src := existing
 	if len(src) == 0 {
 		src = []byte(`{}`)
 	}
-	merged, err := jsonpatch.MergePatch(src, patch)
+	// Phase 1: build patch from KeyManagedValue keys.
+	patch := map[string]any{}
+	for _, k := range mf.JSONKeys {
+		if k.Mode != KeyManagedValue {
+			continue
+		}
+		v, err := k.Value(params)
+		if err != nil {
+			return nil, fmt.Errorf("value for %s: %w", k.Path, err)
+		}
+		if err := jsonPointerSet(patch, k.Path, v); err != nil {
+			return nil, fmt.Errorf("set %s: %w", k.Path, err)
+		}
+	}
+	patchBytes, err := json.Marshal(patch)
+	if err != nil {
+		return nil, fmt.Errorf("marshal patch for %s: %w", mf.Path, err)
+	}
+	merged, err := jsonpatch.MergePatch(src, patchBytes)
 	if err != nil {
 		return nil, fmt.Errorf("merge patch %s: %w", mf.Path, err)
 	}
-	canonical, err := canonicalize(merged)
-	if err != nil {
-		return nil, err
-	}
-	// Path-keyed post-merge hooks. Currently only opencode.json's
-	// plugin array needs union-merge semantics; future entries can
-	// be added here.
-	if mf.Path == "opencode.json" {
-		canonical, err = unionPluginArray(existing, canonical)
+	// Phase 2: KeyManagedPresence — write if absent, preserve if present.
+	var existingDoc map[string]any
+	if len(existing) > 0 {
+		err = json.Unmarshal(existing, &existingDoc)
 		if err != nil {
-			return nil, fmt.Errorf("union plugin array for %s: %w", mf.Path, err)
+			return nil, fmt.Errorf("unmarshal existing %s: %w", mf.Path, err)
 		}
 	}
-	return canonical, nil
+	var mergedDoc map[string]any
+	err = json.Unmarshal(merged, &mergedDoc)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal merged %s: %w", mf.Path, err)
+	}
+	for _, k := range mf.JSONKeys {
+		if k.Mode != KeyManagedPresence {
+			continue
+		}
+		if existingValue, present := jsonPointerGet(existingDoc, k.Path); present {
+			err = jsonPointerSet(mergedDoc, k.Path, existingValue)
+			if err != nil {
+				return nil, fmt.Errorf("preserve %s: %w", k.Path, err)
+			}
+			continue
+		}
+		var v any
+		v, err = k.Value(params)
+		if err != nil {
+			return nil, fmt.Errorf("value for %s: %w", k.Path, err)
+		}
+		err = jsonPointerSet(mergedDoc, k.Path, v)
+		if err != nil {
+			return nil, fmt.Errorf("set %s: %w", k.Path, err)
+		}
+	}
+	// Phase 3: KeyManagedArrayUnion — union with existing array (DeepEqual dedupe).
+	for _, k := range mf.JSONKeys {
+		if k.Mode != KeyManagedArrayUnion {
+			continue
+		}
+		var canonicalAny any
+		canonicalAny, err = k.Value(params)
+		if err != nil {
+			return nil, fmt.Errorf("value for %s: %w", k.Path, err)
+		}
+		canonicalSlice, ok := canonicalAny.([]any)
+		if !ok {
+			return nil, fmt.Errorf("ArrayUnion value for %s must be []any, got %T", k.Path, canonicalAny)
+		}
+		var existingSlice []any
+		if v, present := jsonPointerGet(existingDoc, k.Path); present {
+			if s, ok := v.([]any); ok {
+				existingSlice = s
+			}
+		}
+		unioned := append([]any{}, existingSlice...)
+		for _, c := range canonicalSlice {
+			seen := false
+			for _, e := range unioned {
+				if reflect.DeepEqual(c, e) {
+					seen = true
+					break
+				}
+			}
+			if !seen {
+				unioned = append(unioned, c)
+			}
+		}
+		err = jsonPointerSet(mergedDoc, k.Path, unioned)
+		if err != nil {
+			return nil, fmt.Errorf("set %s: %w", k.Path, err)
+		}
+	}
+	merged, err = json.Marshal(mergedDoc)
+	if err != nil {
+		return nil, fmt.Errorf("remarshal %s: %w", mf.Path, err)
+	}
+	return canonicalize(merged)
 }

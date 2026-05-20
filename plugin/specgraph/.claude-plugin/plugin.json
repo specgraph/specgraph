@@ -1,5 +1,0 @@
-{
-  "name": "specgraph",
-  "description": "Thin Claude Code client for SpecGraph. Rich authoring workflow guidance is delivered from the SpecGraph MCP server.",
-  "version": "0.3.0"
-}

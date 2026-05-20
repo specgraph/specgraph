@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -137,42 +138,262 @@ func TestJSONKeyMergeInspectMissing(t *testing.T) {
 	}
 }
 
-func TestJSONKeyMergeOpencodePluginUnion(t *testing.T) {
-	dir := t.TempDir()
+func TestJSONKeyMerge_KeyManagedValue_Basic(t *testing.T) {
 	mf := ManagedFile{
-		Path:     "opencode.json",
+		Path:     "test.json",
 		Strategy: StrategyJSONKeyMerge,
 		Comment:  CommentNone,
-		Harness:  HarnessOpenCode,
-		Build: func(_ ProjectParams) ([]byte, error) {
-			return []byte(`{"plugin":["./.specgraph/agents/opencode/specgraph.ts"]}`), nil
+		Harness:  HarnessClaude,
+		JSONKeys: []JSONManagedKey{
+			{
+				Path: "/managed/value",
+				Mode: KeyManagedValue,
+				Value: func(_ ProjectParams) (any, error) {
+					return "canonical", nil
+				},
+			},
 		},
 	}
-	// Seed with a user-added plugin entry.
-	seed := []byte(`{"plugin":["./user-plugin.ts"]}`)
-	if err := os.WriteFile(filepath.Join(dir, "opencode.json"), seed, 0o600); err != nil {
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	if err := os.WriteFile(full, []byte(`{"unrelated":"keep","managed":{"value":"old"}}`), 0o644); err != nil { //nolint:gosec // intentional permissive mode for permission-preservation test
+		t.Fatal(err)
+	}
+	res, err := jsonKeyMergeStrategy{}.Sync(dir, mf, ProjectParams{}, SyncOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Action != ActionRefreshed {
+		t.Errorf("got action %v, want Refreshed", res.Action)
+	}
+	got, _ := os.ReadFile(full)
+	var doc map[string]any
+	_ = json.Unmarshal(got, &doc)
+	if doc["unrelated"] != "keep" {
+		t.Errorf("unrelated key clobbered: %v", doc)
+	}
+	if m, _ := doc["managed"].(map[string]any); m["value"] != "canonical" {
+		t.Errorf("managed key not refreshed: %v", doc)
+	}
+}
+
+func TestJSONKeyMerge_KeyManagedPresence_WriteIfAbsent(t *testing.T) {
+	mf := presenceTestEntry(t, true)
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	if err := os.WriteFile(full, []byte(`{}`), 0o644); err != nil { //nolint:gosec // intentional permissive mode for permission-preservation test
 		t.Fatal(err)
 	}
 	s := jsonKeyMergeStrategy{}
-	if _, err := s.Sync(dir, mf, ProjectParams{Slug: "p", ServerURL: "http://h"}, SyncOptions{}); err != nil {
+	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	got, rerr := os.ReadFile(filepath.Join(dir, "opencode.json"))
-	if rerr != nil {
-		t.Fatalf("read result: %v", rerr)
+	if v, ok := readEnabledPlugin(t, full); !ok || v != true {
+		t.Errorf("expected enabledPlugins[\"specgraph@specgraph-local\"]=true on first init, got %v (present=%v)", v, ok)
+	}
+}
+
+func TestJSONKeyMerge_KeyManagedPresence_PreservesUserFalse(t *testing.T) {
+	mf := presenceTestEntry(t, true)
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	if err := os.WriteFile(full, []byte(`{"enabledPlugins":{"specgraph@specgraph-local":false}}`), 0o644); err != nil { //nolint:gosec // intentional permissive mode for permission-preservation test
+		t.Fatal(err)
+	}
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := readEnabledPlugin(t, full); !ok || v != false {
+		t.Errorf("expected user's false to be preserved, got %v (present=%v)", v, ok)
+	}
+}
+
+func TestJSONKeyMerge_KeyManagedPresence_PreservesUserCustomValue(t *testing.T) {
+	mf := presenceTestEntry(t, true)
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	if err := os.WriteFile(full, []byte(`{"enabledPlugins":{"specgraph@specgraph-local":"custom"}}`), 0o644); err != nil { //nolint:gosec // intentional permissive mode for permission-preservation test
+		t.Fatal(err)
+	}
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := readEnabledPlugin(t, full); !ok || v != "custom" {
+		t.Errorf("expected user's custom value to be preserved, got %v (present=%v)", v, ok)
+	}
+}
+
+// readEnabledPlugin loads the JSON at path, navigates enabledPlugins, and
+// returns the value at specgraph@specgraph-local plus a presence flag.
+// Structural lookup so tests don't break on JSON formatting changes.
+func readEnabledPlugin(t *testing.T, path string) (any, bool) {
+	t.Helper()
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
 	}
 	var doc map[string]any
 	if err := json.Unmarshal(got, &doc); err != nil {
-		t.Fatalf("unmarshal output: %v", err)
+		t.Fatalf("unmarshal %s: %v", path, err)
 	}
-	plugins, _ := doc["plugin"].([]any)
-	if len(plugins) != 2 {
-		t.Fatalf("plugin array len = %d, want 2; got: %v", len(plugins), plugins)
+	enabled, ok := doc["enabledPlugins"].(map[string]any)
+	if !ok {
+		return nil, false
 	}
-	if plugins[0] != "./.specgraph/agents/opencode/specgraph.ts" {
-		t.Errorf("[0] = %v, want our managed path first", plugins[0])
+	v, ok := enabled["specgraph@specgraph-local"]
+	return v, ok
+}
+
+func presenceTestEntry(t *testing.T, defaultValue bool) ManagedFile {
+	t.Helper()
+	return ManagedFile{
+		Path:     "test.json",
+		Strategy: StrategyJSONKeyMerge,
+		Comment:  CommentNone,
+		Harness:  HarnessClaude,
+		JSONKeys: []JSONManagedKey{
+			{
+				Path: "/enabledPlugins/specgraph@specgraph-local",
+				Mode: KeyManagedPresence,
+				Value: func(_ ProjectParams) (any, error) {
+					return defaultValue, nil
+				},
+			},
+		},
 	}
-	if plugins[1] != "./user-plugin.ts" {
-		t.Errorf("[1] = %v, want user path preserved", plugins[1])
+}
+
+func TestJSONKeyMerge_KeyManagedArrayUnion_AbsentArray(t *testing.T) {
+	mf := arrayUnionTestEntry()
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	_ = os.WriteFile(full, []byte(`{}`), 0o644) //nolint:gosec // intentional permissive mode for permission-preservation test
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(full)
+	if !strings.Contains(string(got), `"./.specgraph/agents/opencode/specgraph.ts"`) {
+		t.Errorf("expected canonical element written; got %s", got)
+	}
+}
+
+func TestJSONKeyMerge_KeyManagedArrayUnion_DisjointUnion(t *testing.T) {
+	mf := arrayUnionTestEntry()
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	_ = os.WriteFile(full, []byte(`{"plugin":["./user-plugin.ts"]}`), 0o644) //nolint:gosec // intentional permissive mode for permission-preservation test
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(full)
+	if !strings.Contains(string(got), `"./user-plugin.ts"`) ||
+		!strings.Contains(string(got), `"./.specgraph/agents/opencode/specgraph.ts"`) {
+		t.Errorf("expected both elements present; got %s", got)
+	}
+}
+
+func TestJSONKeyMerge_KeyManagedArrayUnion_DedupesOverlap(t *testing.T) {
+	mf := arrayUnionTestEntry()
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+	seed := []byte(`{"plugin":["./.specgraph/agents/opencode/specgraph.ts","./user.ts"]}`)
+	_ = os.WriteFile(full, seed, 0o644) //nolint:gosec // intentional permissive mode for permission-preservation test
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(full)
+	var doc struct {
+		Plugin []string `json:"plugin"`
+	}
+	if err := json.Unmarshal(got, &doc); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(doc.Plugin) != 2 {
+		t.Errorf("expected 2 unique elements, got %d: %v", len(doc.Plugin), doc.Plugin)
+	}
+}
+
+func arrayUnionTestEntry() ManagedFile {
+	return ManagedFile{
+		Path:     "test.json",
+		Strategy: StrategyJSONKeyMerge,
+		Comment:  CommentNone,
+		Harness:  HarnessOpenCode,
+		JSONKeys: []JSONManagedKey{
+			{
+				Path: "/plugin",
+				Mode: KeyManagedArrayUnion,
+				Value: func(_ ProjectParams) (any, error) {
+					return []any{"./.specgraph/agents/opencode/specgraph.ts"}, nil
+				},
+			},
+		},
+	}
+}
+
+// TestJSONKeyMergeOpencodePluginUnion was removed: the path-keyed
+// unionPluginArray hook it exercised has been deleted, and its
+// behavior (union of canonical + existing plugin entries) is now
+// covered generically by TestJSONKeyMerge_KeyManagedArrayUnion_*
+// and TestMigratedOpenCodeJSON_PreservesPluginUnion.
+
+func TestClaudeSettingsJSON_FreshInit(t *testing.T) {
+	dir := t.TempDir()
+	mf := findManifestEntry(t, ".claude/settings.json")
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{Slug: "x"}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(dir, ".claude/settings.json")
+	got, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", settingsPath, err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(got, &doc); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	ekm, ok := doc["extraKnownMarketplaces"].(map[string]any)
+	if !ok {
+		t.Fatalf("extraKnownMarketplaces missing or wrong type: %s", got)
+	}
+	entry, ok := ekm["specgraph-local"].(map[string]any)
+	if !ok {
+		t.Fatalf("extraKnownMarketplaces.specgraph-local missing or wrong type: %s", got)
+	}
+	source, ok := entry["source"].(map[string]any)
+	if !ok {
+		t.Fatalf("extraKnownMarketplaces.specgraph-local.source missing or wrong type: %s", got)
+	}
+	if source["path"] != "./.specgraph/agents/claude" {
+		t.Errorf("marketplace path = %v, want %q", source["path"], "./.specgraph/agents/claude")
+	}
+	if v, ok := readEnabledPlugin(t, settingsPath); !ok || v != true {
+		t.Errorf("expected enabledPlugins[\"specgraph@specgraph-local\"]=true on fresh init, got %v (present=%v)", v, ok)
+	}
+}
+
+func TestClaudeSettingsJSON_PreservesUserDisable(t *testing.T) {
+	dir := t.TempDir()
+	settingsDir := filepath.Join(dir, ".claude")
+	if err := os.MkdirAll(settingsDir, 0o755); err != nil { //nolint:gosec // test directory creation with permissive mode is intentional
+		t.Fatalf("mkdir %s: %v", settingsDir, err)
+	}
+	settingsFile := filepath.Join(settingsDir, "settings.json")
+	if err := os.WriteFile(settingsFile, []byte(`{"enabledPlugins":{"specgraph@specgraph-local":false}}`), 0o644); err != nil { //nolint:gosec // intentional permissive mode for permission-preservation test
+		t.Fatalf("write %s: %v", settingsFile, err)
+	}
+	mf := findManifestEntry(t, ".claude/settings.json")
+	s := jsonKeyMergeStrategy{}
+	if _, err := s.Sync(dir, mf, ProjectParams{Slug: "x"}, SyncOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := readEnabledPlugin(t, filepath.Join(dir, ".claude/settings.json")); !ok || v != false {
+		t.Errorf("user's disable was overwritten, got %v (present=%v)", v, ok)
 	}
 }
