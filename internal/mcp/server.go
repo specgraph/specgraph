@@ -48,7 +48,7 @@ func NewServer(client *Client) *Server {
 	RegisterAuthoringTools(reg, client)
 	RegisterLifecycleTools(reg, client)
 	RegisterExecutionTools(reg, client)
-	RegisterResources(reg, client)
+	RegisterResources(reg, client, skillsSrc)
 	RegisterPrompts(reg, client)
 	RegisterSkillTools(reg, skillsSrc)
 

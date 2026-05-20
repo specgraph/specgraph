@@ -386,14 +386,14 @@ func TestChangesResource_Error(t *testing.T) {
 func TestRegisterResources_Count(t *testing.T) {
 	c := &Client{}
 	r := NewRegistry()
-	RegisterResources(r, c)
-	require.Len(t, r.Resources(), 10)
+	RegisterResources(r, c, &fakeSource{})
+	require.Len(t, r.Resources(), 11)
 }
 
 func TestRegisterResources_Templates(t *testing.T) {
 	c := &Client{}
 	r := NewRegistry()
-	RegisterResources(r, c)
+	RegisterResources(r, c, &fakeSource{})
 
 	templateURIs := map[string]bool{}
 	exactURIs := map[string]bool{}
@@ -405,11 +405,12 @@ func TestRegisterResources_Templates(t *testing.T) {
 		}
 	}
 
-	// Templates: spec/{slug}, decision/{slug}, constitution/{layer}, spec/{slug}/changes
+	// Templates: spec/{slug}, decision/{slug}, constitution/{layer}, spec/{slug}/changes, skills/{name}
 	require.True(t, templateURIs["specgraph://spec/{slug}"], "spec template missing")
 	require.True(t, templateURIs["specgraph://decision/{slug}"], "decision template missing")
 	require.True(t, templateURIs["specgraph://constitution/{layer}"], "constitution layer template missing")
 	require.True(t, templateURIs["specgraph://spec/{slug}/changes"], "changes template missing")
+	require.True(t, templateURIs["specgraph://skills/{name}"], "skills template missing")
 
 	// Exact URIs
 	require.True(t, exactURIs["specgraph://specs"], "specs exact URI missing")
@@ -418,6 +419,83 @@ func TestRegisterResources_Templates(t *testing.T) {
 	require.True(t, exactURIs["specgraph://graph/ready"], "graph/ready exact URI missing")
 	require.True(t, exactURIs["specgraph://findings"], "findings exact URI missing")
 	require.True(t, exactURIs["specgraph://prime"], "prime exact URI missing")
+}
+
+// ---------------------------------------------------------------------------
+// skillsResourceHandler tests
+// ---------------------------------------------------------------------------
+
+func TestSkillsResourceHandler_KnownAndUnknown(t *testing.T) {
+	src := twoSkillFake()
+	r := NewRegistry()
+	RegisterResources(r, &Client{}, src)
+
+	var skillsHandler ResourceHandler
+	for _, res := range r.Resources() {
+		if res.URI == "specgraph://skills/{name}" {
+			skillsHandler = res.Handler
+			break
+		}
+	}
+	if skillsHandler == nil {
+		t.Fatal("skills resource not registered")
+	}
+
+	contents, err := skillsHandler(context.Background(), "specgraph://skills/alpha")
+	if err != nil {
+		t.Fatalf("known: %v", err)
+	}
+	if len(contents) != 1 || !strings.Contains(contents[0].Text, "body-a") {
+		t.Errorf("expected body-a; got %+v", contents)
+	}
+	if contents[0].MimeType != "text/markdown" {
+		t.Errorf("expected text/markdown; got %q", contents[0].MimeType)
+	}
+
+	_, err = skillsHandler(context.Background(), "specgraph://skills/no-such")
+	if err == nil {
+		t.Error("expected error for unknown name")
+	}
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("expected CodeNotFound for unknown name; got %v", connect.CodeOf(err))
+	}
+}
+
+func TestSkillsResourceHandler_RejectsMalformedURI(t *testing.T) {
+	src := twoSkillFake()
+	r := NewRegistry()
+	RegisterResources(r, &Client{}, src)
+
+	var h ResourceHandler
+	for _, res := range r.Resources() {
+		if res.URI == "specgraph://skills/{name}" {
+			h = res.Handler
+			break
+		}
+	}
+	if h == nil {
+		t.Fatal("skills resource not registered")
+	}
+
+	rejects := []string{
+		"specgraph://skills",
+		"specgraph://skills/",
+		"specgraph://skills//",
+		"specgraph://skills/foo/",
+		"specgraph://skills/foo/bar",
+		"specgraph://SKILLS/foo",
+		"specgraph://skills/Foo",
+		"specgraph://skills/foo%20bar",
+	}
+	for _, uri := range rejects {
+		if _, err := h(context.Background(), uri); err == nil {
+			t.Errorf("expected reject for %q", uri)
+		}
+	}
+
+	if _, err := h(context.Background(), "specgraph://skills/alpha"); err != nil {
+		t.Errorf("expected accept for /alpha; got %v", err)
+	}
 }
 
 // ---------------------------------------------------------------------------

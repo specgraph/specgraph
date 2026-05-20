@@ -5,6 +5,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -13,7 +14,9 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/internal/authoring"
+	"github.com/specgraph/specgraph/internal/mcp/skills"
 	"github.com/specgraph/specgraph/internal/render"
+	"github.com/specgraph/specgraph/internal/skillvalidate"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -55,6 +58,29 @@ func extractSlugFromURI(uri string) string {
 		return ""
 	}
 	return parts[len(parts)-1]
+}
+
+// extractSkillName parses a specgraph://skills/<name> URI and validates
+// the name against skillvalidate.NameRegex. Returns the validated name
+// or an error mapped at the call site to connect.CodeNotFound.
+//
+// Strict by design: rejects subpaths (specgraph://skills/foo/bar),
+// trailing slashes, empty names, mixed-case scheme segment, and any
+// name failing the kebab-case regex. URL-encoded names are rejected
+// (skill names never need encoding by convention).
+func extractSkillName(uri string) (string, error) {
+	rest := strings.TrimPrefix(uri, "specgraph://")
+	parts := strings.Split(rest, "/")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("malformed skills URI %q", uri)
+	}
+	if parts[0] != "skills" {
+		return "", fmt.Errorf("not a skills URI: %q", uri)
+	}
+	if !skillvalidate.NameRegex.MatchString(parts[1]) {
+		return "", fmt.Errorf("invalid skill name %q in URI", parts[1])
+	}
+	return parts[1], nil
 }
 
 // ---------------------------------------------------------------------------
@@ -358,13 +384,42 @@ func severityRank(s specv1.FindingSeverity) int {
 }
 
 // ---------------------------------------------------------------------------
-// RegisterResources adds all 10 MCP resources to the registry.
+// skillsResourceHandler — specgraph://skills/{name}
+// ---------------------------------------------------------------------------
+
+// skillsResourceHandler returns the verbatim SKILL.md bytes for a named
+// skill. The URI is parsed through extractSkillName (strict — see helper
+// docs). Unknown names and malformed URIs map to connect.CodeNotFound.
+func skillsResourceHandler(src skills.Source) ResourceHandler {
+	return func(ctx context.Context, uri string) ([]ResourceContent, error) {
+		name, err := extractSkillName(uri)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		sk, err := src.Get(ctx, name)
+		if err != nil {
+			if errors.Is(err, skills.ErrNotFound) {
+				return nil, connect.NewError(connect.CodeNotFound, err)
+			}
+			return nil, fmt.Errorf("get skill %s: %w", name, err)
+		}
+		return []ResourceContent{{
+			URI:      uri,
+			MimeType: "text/markdown",
+			Text:     string(sk.Body),
+		}}, nil
+	}
+}
+
+// ---------------------------------------------------------------------------
+// RegisterResources adds all 11 MCP resources to the registry.
 // ---------------------------------------------------------------------------
 
 // RegisterResources registers all SpecGraph MCP resources into r using the
-// provided Client to make RPC calls. Resources are read-only context providers
-// for MCP clients.
-func RegisterResources(r *Registry, c *Client) {
+// provided Client for RPC calls and skills.Source for the
+// specgraph://skills/{name} handler. Resources are read-only context
+// providers for MCP clients.
+func RegisterResources(r *Registry, c *Client, src skills.Source) {
 	r.AddResource(ResourceDef{
 		URI:         "specgraph://spec/{slug}",
 		Name:        "spec",
@@ -444,5 +499,13 @@ func RegisterResources(r *Registry, c *Client) {
 		MimeType:    "text/markdown",
 		IsTemplate:  false,
 		Handler:     primeResourceHandler(c),
+	})
+	r.AddResource(ResourceDef{
+		URI:         "specgraph://skills/{name}",
+		Name:        "skill",
+		Description: "A single SpecGraph SKILL.md package by name (verbatim markdown bytes).",
+		MimeType:    "text/markdown",
+		IsTemplate:  true,
+		Handler:     skillsResourceHandler(src),
 	})
 }
