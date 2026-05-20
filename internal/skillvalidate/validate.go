@@ -29,6 +29,7 @@ import (
 // fields the validator actively checks are typed; unknown keys are tolerated.
 type Frontmatter struct {
 	Name          string         `yaml:"name"`
+	Summary       string         `yaml:"summary"`
 	Description   string         `yaml:"description"`
 	License       string         `yaml:"license,omitempty"`
 	Compatibility []string       `yaml:"compatibility,omitempty"`
@@ -44,8 +45,9 @@ type Result struct {
 
 // minDesc and maxDesc match the agentskills.io spec.
 const (
-	minDesc = 1
-	maxDesc = 1024
+	minDesc    = 1
+	maxDesc    = 1024
+	maxSummary = 120
 )
 
 // ValidateRoots walks each root looking for SKILL.md files, validates them,
@@ -117,6 +119,11 @@ func validateFile(path string) Result {
 		res.Reasons = append(res.Reasons, fmt.Sprintf("frontmatter.name=%q must match directory name %q", parsed.Name, dirName))
 	}
 
+	if parsed.Name != "" && !NameRegex.MatchString(parsed.Name) {
+		res.Reasons = append(res.Reasons,
+			fmt.Sprintf("frontmatter.name=%q is not kebab-case ASCII (regex: %s)", parsed.Name, NameRegex.String()))
+	}
+
 	desc := strings.TrimSpace(parsed.Description)
 	switch {
 	case desc == "":
@@ -125,6 +132,15 @@ func validateFile(path string) Result {
 		res.Reasons = append(res.Reasons, fmt.Sprintf("frontmatter.description too short (%d < %d)", len(desc), minDesc))
 	case len(desc) > maxDesc:
 		res.Reasons = append(res.Reasons, fmt.Sprintf("frontmatter.description too long (%d > %d)", len(desc), maxDesc))
+	}
+
+	summary := strings.TrimSpace(parsed.Summary)
+	switch {
+	case summary == "":
+		res.Reasons = append(res.Reasons, "frontmatter.summary is required")
+	case len([]rune(summary)) > maxSummary:
+		res.Reasons = append(res.Reasons,
+			fmt.Sprintf("frontmatter.summary too long (%d > %d chars after YAML decode)", len([]rune(summary)), maxSummary))
 	}
 
 	if strings.TrimSpace(string(body)) == "" {

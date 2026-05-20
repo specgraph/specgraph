@@ -29,6 +29,7 @@ func TestValidateRoots_AcceptsValidSkill(t *testing.T) {
 	root := t.TempDir()
 	writeSkill(t, root, "good-skill", `---
 name: good-skill
+summary: A perfectly fine summary.
 description: A perfectly fine skill description.
 ---
 
@@ -115,6 +116,7 @@ func TestValidateRoots_AcceptsValidSkillWithoutTrailingNewline(t *testing.T) {
 	root := t.TempDir()
 	writeSkill(t, root, "no-trailing-nl-skill", "---\n"+
 		"name: no-trailing-nl-skill\n"+
+		"summary: A perfectly fine summary.\n"+
 		"description: A skill whose body does not end with a newline.\n"+
 		"---\n"+
 		"Body without trailing newline.")
@@ -171,6 +173,119 @@ Body.
 	}
 	if len(results) != 1 || results[0].OK {
 		t.Fatalf("expected too-long failure, got %+v", results)
+	}
+}
+
+func TestValidateRoots_RejectsMissingSummary(t *testing.T) {
+	root := t.TempDir()
+	writeSkill(t, root, "no-summary", `---
+name: no-summary
+description: A perfectly fine skill description.
+---
+
+Body.
+`)
+	results, err := ValidateRoots([]string{root})
+	if err != nil {
+		t.Fatalf("ValidateRoots: %v", err)
+	}
+	if len(results) != 1 || results[0].OK {
+		t.Fatalf("expected failure, got %+v", results)
+	}
+	joined := strings.Join(results[0].Reasons, "; ")
+	if !strings.Contains(joined, "summary") {
+		t.Errorf("expected 'summary' in failure reasons; got %q", joined)
+	}
+}
+
+func TestValidateRoots_RejectsOverlongSummary_FlowScalar(t *testing.T) {
+	root := t.TempDir()
+	long := strings.Repeat("a", 121) // single-line, 121 chars
+	writeSkill(t, root, "overlong-flow", `---
+name: overlong-flow
+summary: `+long+`
+description: ok
+---
+Body.
+`)
+	results, err := ValidateRoots([]string{root})
+	if err != nil {
+		t.Fatalf("ValidateRoots: %v", err)
+	}
+	if len(results) != 1 || results[0].OK {
+		t.Fatalf("expected failure, got %+v", results)
+	}
+}
+
+func TestValidateRoots_RejectsOverlongSummary_BlockScalar(t *testing.T) {
+	root := t.TempDir()
+	// Block-scalar source bytes are < 120 (four 25-char lines = 100) but
+	// decoded value (newlines fold to spaces) is > 120.
+	writeSkill(t, root, "overlong-block", `---
+name: overlong-block
+summary: >
+  aaaaaaaaaaaaaaaaaaaaaaaaa
+  bbbbbbbbbbbbbbbbbbbbbbbbb
+  ccccccccccccccccccccccccc
+  ddddddddddddddddddddddddd
+  eeeeeeeeeeeeeeeeeeeeeeeee
+description: ok
+---
+Body.
+`)
+	results, err := ValidateRoots([]string{root})
+	if err != nil {
+		t.Fatalf("ValidateRoots: %v", err)
+	}
+	if len(results) != 1 || results[0].OK {
+		t.Fatalf("expected failure for decoded-length>120; got %+v", results)
+	}
+}
+
+func TestValidateRoots_RejectsNonKebabName(t *testing.T) {
+	root := t.TempDir()
+	writeSkill(t, root, "Foo_Bar", `---
+name: Foo_Bar
+summary: A skill with a non-kebab name.
+description: ok
+---
+Body.
+`)
+	results, err := ValidateRoots([]string{root})
+	if err != nil {
+		t.Fatalf("ValidateRoots: %v", err)
+	}
+	if len(results) != 1 || results[0].OK {
+		t.Fatalf("expected failure, got %+v", results)
+	}
+	joined := strings.Join(results[0].Reasons, "; ")
+	if !strings.Contains(joined, "kebab") && !strings.Contains(joined, "name") {
+		t.Errorf("expected 'kebab' or 'name' in failure reasons; got %q", joined)
+	}
+}
+
+func TestValidateRoots_FollowsRepoSymlink(t *testing.T) {
+	// Stand in for the <repo>/skills symlink created in Task 1.
+	target := t.TempDir()
+	writeSkill(t, target, "valid-skill", `---
+name: valid-skill
+summary: A perfectly fine summary.
+description: A perfectly fine skill description.
+---
+Body.
+`)
+
+	linkDir := t.TempDir()
+	link := filepath.Join(linkDir, "skills-link")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	results, err := ValidateRoots([]string{link})
+	if err != nil {
+		t.Fatalf("ValidateRoots: %v", err)
+	}
+	if len(results) != 1 || !results[0].OK {
+		t.Fatalf("expected pass through symlink, got %+v", results)
 	}
 }
 
