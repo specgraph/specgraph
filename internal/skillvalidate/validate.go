@@ -63,7 +63,14 @@ func ValidateRoots(roots []string) ([]Result, error) {
 			results = append(results, validateFile(root))
 			continue
 		}
-		walkErr := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
+		// filepath.WalkDir does not follow symlinks; resolve the root first
+		// so that a repo-root reverse-symlink (e.g. skills →
+		// internal/mcp/skills/embedded) is walked correctly.
+		walkRoot, err := filepath.EvalSymlinks(root)
+		if err != nil {
+			return nil, fmt.Errorf("eval symlinks %s: %w", root, err)
+		}
+		walkErr := filepath.WalkDir(walkRoot, func(path string, d fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
 			}
