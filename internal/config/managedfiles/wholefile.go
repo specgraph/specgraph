@@ -14,15 +14,11 @@ import (
 	"strings"
 )
 
-// driftDetailFrontmatterBroken is the Detail-string prefix used when
-// classifyMdcWholeFile rejects a file because splitFrontmatter failed.
-// Sync's --force --keep-edits arm pattern-matches on this prefix to refuse
-// the keep-edits path (there's no recoverable body to preserve when the
-// frontmatter shape is broken).
-const driftDetailFrontmatterBroken = "frontmatter parse error: "
-
 //nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func (wholeFileStrategy) Inspect(cwd string, mf ManagedFile, _ ProjectParams) (FileState, error) {
+	if mf.Comment == CommentNone {
+		return wholeFileInspectNoSentinel(cwd, mf)
+	}
 	state, _, _, err := wholeFileClassify(cwd, mf)
 	return state, err
 }
@@ -49,6 +45,10 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 			slog.Error("unlock failed", "path", full, "error", uerr)
 		}
 	}()
+
+	if mf.Comment == CommentNone {
+		return wholeFileSyncNoSentinel(full, mf), nil
+	}
 
 	state, canonical, existing, cerr := wholeFileClassify(cwd, mf)
 	if cerr != nil {
@@ -77,37 +77,21 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 				// preserve user edits. The default stripFirstLine path would strip
 				// the `---` frontmatter opener and break splitFrontmatter on the
 				// next call to renderWholeFile.
-				if strings.HasPrefix(state.Detail, driftDetailFrontmatterBroken) {
+				if strings.HasPrefix(state.Detail, DriftDetailFrontmatterParseErrorPrefix) {
 					// User broke the frontmatter shape — nothing recoverable for
 					// KeepEdits. Skip with an explanatory Detail.
 					return SyncResult{Path: mf.Path, Action: ActionSkipped, Detail: "force --keep-edits cannot preserve content with malformed frontmatter; remove or re-add `---` delimiters"}, nil
 				}
-				front, body, fmSplitErr := splitFrontmatter(existing)
+				reassembled, fmSplitErr := keepEditsBodyForFrontmatter(existing, state.Detail)
 				if fmSplitErr != nil {
 					// Should not happen: state.Detail == "frontmatter missing or
 					// unclosed" was already handled above; this path is only
 					// reached when frontmatter is well-formed.
 					return SyncResult{Path: mf.Path, Action: ActionError, Err: fmt.Errorf("split frontmatter for keep-edits: %w", fmSplitErr)}, nil
 				}
-				// Strip the sentinel from body[0] ONLY if there was a sentinel
-				// there. state.Detail == "no sentinel" means body[0] is user
-				// content; preserve it as-is.
-				if state.Detail != "no sentinel" {
-					body = stripFirstLine(body)
-				}
-				reassembled := append(append([]byte{}, front...), body...)
 				res = wholeFileWrite(full, renderWholeFile(mf, reassembled), ActionForced, mf.Path)
 			} else {
-				// Non-frontmatter path: original behavior.
-				// Strip the first line ONLY when it's an actual sentinel.
-				// StateDrifted is reached two ways: (a) sentinel hash !=
-				// disk hash — first line is a sentinel, must strip;
-				// (b) state.Detail == "no sentinel" — first line is user
-				// content, must NOT strip (would silently drop content).
-				body := existing
-				if state.Detail != "no sentinel" {
-					body = stripFirstLine(existing)
-				}
+				body := keepEditsBodyPlain(existing, state.Detail)
 				res = wholeFileWrite(full, renderWholeFile(mf, body), ActionForced, mf.Path)
 			}
 		} else {
@@ -128,16 +112,31 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 	// NoOp) so a user who's already at Synced still gets cleanup if they
 	// happen to also have the old .md sitting around.
 	if mf.SupersedesPath != "" && (res.Action == ActionCreated || res.Action == ActionRefreshed || res.Action == ActionForced || res.Action == ActionNoOp) {
-		priorHash := vestigialCursorRulePriorHash(mf.SupersedesPath)
-		if err := supersedesGuardedDelete(cwd, mf.SupersedesPath, priorHash); err != nil {
-			if errors.Is(err, ErrPriorCanonicalMismatch) {
-				if res.Detail != "" {
-					res.Detail += "; "
-				}
-				res.Detail += fmt.Sprintf("supersedes path %q left in place: prior-canonical mismatch", mf.SupersedesPath)
-			} else {
+		// PR E Task 9: priors registry replaces vestigialCursorRulePriorHash.
+		// For SupersedesPath entries the manifest validator guarantees at
+		// least one registered prior for mf.Path.
+		// Iterate over every registered prior so that users on any historical
+		// version get cleanup, not just users on the first-registered hash.
+		priors := priorsFor(mf.Path)
+		if len(priors) == 0 {
+			return SyncResult{Path: mf.Path, Action: ActionError, Err: fmt.Errorf("no registered prior canonical hash for %q (SupersedesPath %q)", mf.Path, mf.SupersedesPath)}, nil
+		}
+		matched := false
+		for _, priorHash := range priors {
+			err := supersedesGuardedDelete(cwd, mf.SupersedesPath, priorHash)
+			if err == nil {
+				matched = true
+				break
+			}
+			if !errors.Is(err, ErrPriorCanonicalMismatch) {
 				return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
 			}
+		}
+		if !matched {
+			if res.Detail != "" {
+				res.Detail += "; "
+			}
+			res.Detail += fmt.Sprintf(DriftDetailSupersedesPath+"%q left in place: prior-canonical mismatch", mf.SupersedesPath)
 		}
 	}
 
@@ -198,7 +197,7 @@ func classifyNonFrontmatterWholeFile(mf ManagedFile, existing, canonical []byte,
 		return FileState{}, nil, nil, fmt.Errorf("parse sentinel for %s: %w", mf.Path, perr)
 	}
 	if sentinel.Version == 0 {
-		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: "no sentinel", EmbeddedHash: canonicalHash}, canonical, existing, nil
+		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: DriftDetailNoSentinel, EmbeddedHash: canonicalHash}, canonical, existing, nil
 	}
 	diskHash := HashExcludingSentinel(mf.Comment, existing)
 	if sentinel.SHA256 != diskHash {
@@ -220,7 +219,7 @@ func classifyMdcWholeFile(mf ManagedFile, existing, canonical []byte, canonicalH
 		// Return StateDrifted (not a Go error) so the caller can surface a
 		// human-readable skip detail rather than a hard failure.
 		//nolint:nilerr // intentional: broken frontmatter is a drift state, not a hard error
-		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: driftDetailFrontmatterBroken + fmErr.Error(), EmbeddedHash: canonicalHash}, canonical, existing, nil
+		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: DriftDetailFrontmatterParseErrorPrefix + fmErr.Error(), EmbeddedHash: canonicalHash}, canonical, existing, nil
 	}
 	firstLine, _, _ := bytes.Cut(body, []byte("\n"))
 	sentinel, perr := ParseSentinel(mf.Comment, string(firstLine))
@@ -228,7 +227,7 @@ func classifyMdcWholeFile(mf ManagedFile, existing, canonical []byte, canonicalH
 		return FileState{}, nil, nil, fmt.Errorf("parse sentinel for %s: %w", mf.Path, perr)
 	}
 	if sentinel.Version == 0 {
-		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: "no sentinel", EmbeddedHash: canonicalHash}, canonical, existing, nil
+		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: DriftDetailNoSentinel, EmbeddedHash: canonicalHash}, canonical, existing, nil
 	}
 	diskHash, hashErr := HashExcludingSentinelAfterFrontmatter(mf.Comment, existing)
 	if hashErr != nil {
@@ -316,4 +315,115 @@ func wholeFileWrite(full string, content []byte, action Action, displayPath stri
 		return SyncResult{Path: displayPath, Action: ActionError, Err: err}
 	}
 	return SyncResult{Path: displayPath, Action: action}
+}
+
+// keepEditsBodyForFrontmatter extracts the user-owned body from a file
+// that carries a YAML frontmatter block followed by a sentinel line and
+// reassembles front+body so renderWholeFile can compute a fresh sentinel.
+//
+// stateDetail comes from the FileState; when it equals "no sentinel" the
+// post-frontmatter body[0] is user content (not a sentinel) and must not
+// be stripped — stripping would silently drop the first line of user content.
+func keepEditsBodyForFrontmatter(existing []byte, stateDetail string) ([]byte, error) {
+	front, body, err := splitFrontmatter(existing)
+	if err != nil {
+		return nil, err
+	}
+	if stateDetail != DriftDetailNoSentinel {
+		body = stripFirstLine(body)
+	}
+	reassembled := append(append([]byte{}, front...), body...)
+	return reassembled, nil
+}
+
+// keepEditsBodyPlain extracts the user-owned body from a file that
+// carries a leading sentinel line (no frontmatter). When stateDetail
+// equals "no sentinel", the first line is user content and is preserved
+// verbatim; otherwise it's a stale sentinel and is stripped.
+func keepEditsBodyPlain(existing []byte, stateDetail string) []byte {
+	if stateDetail == DriftDetailNoSentinel {
+		return existing
+	}
+	return stripFirstLine(existing)
+}
+
+// wholeFileInspectNoSentinel classifies a WholeFile + CommentNone managed
+// file (e.g. JSON). There's no in-file sentinel, so state is determined
+// by byte-hash comparison against the canonical and the priors registry:
+//   - missing on disk → StateMissing
+//   - hash matches canonical → StateSynced
+//   - hash matches a prior canonical → StateStale (framework-managed; safe to overwrite)
+//   - otherwise → StateDrifted with Detail "no sentinel" (user-owned; refuse to overwrite)
+//
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
+func wholeFileInspectNoSentinel(cwd string, mf ManagedFile) (FileState, error) {
+	if err := rejectSymlinkComponents(cwd, mf.Path); err != nil {
+		return FileState{}, err
+	}
+	full := filepath.Join(cwd, mf.Path)
+
+	canonical, srcErr := readSource(mf)
+	if srcErr != nil {
+		return FileState{}, fmt.Errorf("read source for %s: %w", mf.Path, srcErr)
+	}
+	canonicalHash := hashBytes(canonical)
+
+	existing, rerr := readFileNoFollow(full)
+	switch {
+	case noFollowIsSymlink(rerr):
+		return FileState{}, fmt.Errorf("%w: %s", ErrSymlinkRejected, full)
+	case errors.Is(rerr, fs.ErrNotExist):
+		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateMissing, EmbeddedHash: canonicalHash}, nil
+	case rerr != nil:
+		return FileState{}, fmt.Errorf("read %s: %w", full, rerr)
+	}
+
+	diskHash := hashBytes(existing)
+	if diskHash == canonicalHash {
+		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateSynced, DiskHash: diskHash, EmbeddedHash: canonicalHash}, nil
+	}
+	for _, prior := range priorsFor(mf.Path) {
+		if diskHash == prior {
+			return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateStale, DiskHash: diskHash, EmbeddedHash: canonicalHash}, nil
+		}
+	}
+	return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateDrifted, Detail: DriftDetailNoSentinel, DiskHash: diskHash, EmbeddedHash: canonicalHash}, nil
+}
+
+// wholeFileSyncNoSentinel writes (or refuses to write) a WholeFile +
+// CommentNone managed file. Mirrors wholeFileInspectNoSentinel for state
+// classification:
+//   - file missing → write canonical, ActionCreated
+//   - hashes match → ActionNoOp
+//   - hash matches a prior → overwrite with canonical, ActionRefreshed
+//   - otherwise → ActionSkipped with Detail "no sentinel" (user-owned, refuse)
+//
+//nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
+func wholeFileSyncNoSentinel(full string, mf ManagedFile) SyncResult {
+	canonical, srcErr := readSource(mf)
+	if srcErr != nil {
+		return SyncResult{Path: mf.Path, Action: ActionError, Err: fmt.Errorf("read source for %s: %w", mf.Path, srcErr)}
+	}
+
+	existing, rerr := readFileNoFollow(full)
+	switch {
+	case noFollowIsSymlink(rerr):
+		return SyncResult{Path: mf.Path, Action: ActionError, Err: fmt.Errorf("%w: %s", ErrSymlinkRejected, full)}
+	case errors.Is(rerr, fs.ErrNotExist):
+		return wholeFileWrite(full, canonical, ActionCreated, mf.Path)
+	case rerr != nil:
+		return SyncResult{Path: mf.Path, Action: ActionError, Err: fmt.Errorf("read %s: %w", full, rerr)}
+	}
+
+	canonicalHash := hashBytes(canonical)
+	existingHash := hashBytes(existing)
+	if existingHash == canonicalHash {
+		return SyncResult{Path: mf.Path, Action: ActionNoOp}
+	}
+	for _, prior := range priorsFor(mf.Path) {
+		if existingHash == prior {
+			return wholeFileWrite(full, canonical, ActionRefreshed, mf.Path)
+		}
+	}
+	return SyncResult{Path: mf.Path, Action: ActionSkipped, Detail: DriftDetailNoSentinel}
 }

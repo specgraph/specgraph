@@ -4,7 +4,6 @@
 package managedfiles
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -31,21 +30,80 @@ func allManagedFiles() []ManagedFile {
 			Strategy: StrategyJSONKeyMerge,
 			Comment:  CommentNone,
 			Harness:  HarnessClaude,
-			Build:    buildClaudeMCPJSON,
+			JSONKeys: []JSONManagedKey{
+				{
+					Path: "/mcpServers/specgraph",
+					Mode: KeyManagedValue,
+					Value: func(p ProjectParams) (any, error) {
+						return map[string]any{
+							"type": "http",
+							"url":  ensureMCPSuffix(p.ServerURL),
+							"headers": map[string]any{
+								"Authorization":       "Bearer ${SPECGRAPH_API_KEY}",
+								"X-Specgraph-Project": p.Slug,
+							},
+						}, nil
+					},
+				},
+			},
 		},
 		{
 			Path:     ".cursor/mcp.json",
 			Strategy: StrategyJSONKeyMerge,
 			Comment:  CommentNone,
 			Harness:  HarnessCursor,
-			Build:    buildCursorMCPJSON,
+			JSONKeys: []JSONManagedKey{
+				{
+					Path: "/mcpServers/specgraph",
+					Mode: KeyManagedValue,
+					Value: func(p ProjectParams) (any, error) {
+						return map[string]any{
+							"url": ensureMCPSuffix(p.ServerURL),
+							"headers": map[string]any{
+								"Authorization":       "Bearer ${env:SPECGRAPH_API_KEY}",
+								"X-Specgraph-Project": p.Slug,
+							},
+						}, nil
+					},
+				},
+			},
 		},
 		{
 			Path:     "opencode.json",
 			Strategy: StrategyJSONKeyMerge,
 			Comment:  CommentNone,
 			Harness:  HarnessOpenCode,
-			Build:    buildOpenCodeJSON,
+			JSONKeys: []JSONManagedKey{
+				{
+					Path: "/$schema",
+					Mode: KeyManagedValue,
+					Value: func(_ ProjectParams) (any, error) {
+						return "https://opencode.ai/config.json", nil
+					},
+				},
+				{
+					Path: "/mcp/specgraph",
+					Mode: KeyManagedValue,
+					Value: func(p ProjectParams) (any, error) {
+						return map[string]any{
+							"type":    "remote",
+							"url":     ensureMCPSuffix(p.ServerURL),
+							"enabled": true,
+							"headers": map[string]any{
+								"Authorization":       "Bearer {env:SPECGRAPH_API_KEY}",
+								"X-Specgraph-Project": p.Slug,
+							},
+						}, nil
+					},
+				},
+				{
+					Path: "/plugin",
+					Mode: KeyManagedArrayUnion,
+					Value: func(_ ProjectParams) (any, error) {
+						return []any{"./.specgraph/agents/opencode/specgraph.ts"}, nil
+					},
+				},
+			},
 		},
 		{
 			Path:     "AGENTS.md",
@@ -87,6 +145,67 @@ func allManagedFiles() []ManagedFile {
 			HasFrontmatter: true,
 			SupersedesPath: ".cursor/rules/post-stage.md",
 		},
+		{
+			Path:     ".specgraph/agents/claude/.claude-plugin/plugin.json",
+			Strategy: StrategyWholeFile,
+			Comment:  CommentNone,
+			Harness:  HarnessClaude,
+			Source:   "embedded/claude/.claude-plugin/plugin.json",
+		},
+		{
+			Path:     ".specgraph/agents/claude/.claude-plugin/marketplace.json",
+			Strategy: StrategyWholeFile,
+			Comment:  CommentNone,
+			Harness:  HarnessClaude,
+			Source:   "embedded/claude/.claude-plugin/marketplace.json",
+		},
+		{
+			Path:     ".specgraph/agents/claude/hooks/specgraph-session-start.sh",
+			Strategy: StrategyWholeFile,
+			Comment:  CommentHash,
+			Harness:  HarnessClaude,
+			Source:   "embedded/claude/hooks/specgraph-session-start.sh",
+		},
+		{
+			Path:     ".specgraph/agents/claude/hooks/specgraph-post-stage.sh",
+			Strategy: StrategyWholeFile,
+			Comment:  CommentHash,
+			Harness:  HarnessClaude,
+			Source:   "embedded/claude/hooks/specgraph-post-stage.sh",
+		},
+		{
+			Path:     ".specgraph/agents/claude/routing-guide.md",
+			Strategy: StrategyWholeFile,
+			Comment:  CommentHTML,
+			Harness:  HarnessClaude,
+			Source:   "embedded/claude/routing-guide.md",
+		},
+		{
+			Path:     ".claude/settings.json",
+			Strategy: StrategyJSONKeyMerge,
+			Comment:  CommentNone,
+			Harness:  HarnessClaude,
+			JSONKeys: []JSONManagedKey{
+				{
+					Path: "/extraKnownMarketplaces/specgraph-local",
+					Mode: KeyManagedValue,
+					Value: func(_ ProjectParams) (any, error) {
+						return map[string]any{
+							"source": map[string]any{
+								"type": "directory",
+								"path": "./.specgraph/agents/claude",
+							},
+							"autoUpdate": false,
+						}, nil
+					},
+				},
+				{
+					Path: "/enabledPlugins/specgraph@specgraph-local",
+					Mode: KeyManagedPresence,
+					Value: func(_ ProjectParams) (any, error) { return true, nil },
+				},
+			},
+		},
 	}
 }
 
@@ -113,35 +232,62 @@ func init() {
 //
 //nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface
 func validateManifestEntry(mf ManagedFile) error {
-	hasSource := mf.Source != ""
 	hasBuild := mf.Build != nil
+	hasJSONKeys := len(mf.JSONKeys) > 0
+	hasSource := mf.Source != ""
 	if hasSource && hasBuild {
 		return fmt.Errorf("manifest entry %q has both Source and Build", mf.Path)
 	}
-	if !hasSource && !hasBuild {
+	if !hasSource && !hasBuild && !hasJSONKeys {
 		return fmt.Errorf("manifest entry %q has neither Source nor Build", mf.Path)
 	}
 	switch mf.Strategy {
-	case StrategyJSONKeyMerge, StrategyMarkdownBlock:
+	case StrategyJSONKeyMerge:
+		if !hasJSONKeys {
+			return fmt.Errorf("manifest entry %q: JSONKeyMerge strategy requires JSONKeys", mf.Path)
+		}
+		if hasBuild {
+			return fmt.Errorf("manifest entry %q: JSONKeyMerge strategy must not set Build (use JSONKeys)", mf.Path)
+		}
+		if hasSource {
+			return fmt.Errorf("manifest entry %q: JSONKeyMerge strategy must not set Source", mf.Path)
+		}
+	case StrategyMarkdownBlock:
 		if !hasBuild {
-			return fmt.Errorf("manifest entry %q: %s strategy requires Build", mf.Path, mf.Strategy)
+			return fmt.Errorf("manifest entry %q: MarkdownBlock strategy requires Build", mf.Path)
+		}
+		if hasJSONKeys {
+			return fmt.Errorf("manifest entry %q: MarkdownBlock strategy must not set JSONKeys", mf.Path)
 		}
 	case StrategyWholeFile:
 		if !hasSource {
 			return fmt.Errorf("manifest entry %q: WholeFile strategy requires Source", mf.Path)
 		}
-	}
-	if mf.HasFrontmatter {
-		if mf.Strategy != StrategyWholeFile {
-			return fmt.Errorf("manifest entry %q: HasFrontmatter requires WholeFile strategy, got %s", mf.Path, mf.Strategy)
+		if hasBuild || hasJSONKeys {
+			return fmt.Errorf("manifest entry %q: WholeFile strategy must not set Build or JSONKeys", mf.Path)
 		}
-		if mf.Comment == CommentNone {
+		if mf.HasFrontmatter && mf.Comment == CommentNone {
 			return fmt.Errorf("manifest entry %q: HasFrontmatter requires non-empty comment syntax", mf.Path)
 		}
+		// Supported combinations:
+		//   CommentNone  + !HasFrontmatter → JSON files (no in-file sentinel)   [PR E]
+		//   CommentHash  + !HasFrontmatter → shell / Python / YAML scripts
+		//   CommentSlash + !HasFrontmatter → TypeScript / JS plugin source      [PR C]
+		//   CommentHTML  + !HasFrontmatter → plain Markdown                     [PR E]
+		//   CommentHTML  +  HasFrontmatter → Markdown with leading frontmatter  [PR D]
+	default:
+		return fmt.Errorf("manifest entry %q: unknown strategy %v", mf.Path, mf.Strategy)
+	}
+	if mf.HasFrontmatter && mf.Strategy != StrategyWholeFile {
+		return fmt.Errorf("manifest entry %q: HasFrontmatter requires WholeFile strategy, got %s", mf.Path, mf.Strategy)
 	}
 	if mf.Strategy == StrategyWholeFile && mf.SupersedesPath != "" {
-		if !vestigialCursorRulePriorHashRegistered(mf.SupersedesPath) {
-			return fmt.Errorf("manifest entry %q: SupersedesPath %q is not registered in vestigialCursorRulePriorHash (vestigial_cursor_rules.go)", mf.Path, mf.SupersedesPath)
+		// PR E Task 9: SupersedesPath entries must have a registered prior
+		// canonical hash in the unified priors registry (see priors.go and
+		// vestigial_cursor_rules.go). Without one, supersedesGuardedDelete
+		// can't safely identify and clean up pre-rename user copies.
+		if len(priorsFor(mf.Path)) == 0 {
+			return fmt.Errorf("manifest entry %q: SupersedesPath %q requires a registered prior canonical hash for %q in priorsRegistry (vestigial_cursor_rules.go)", mf.Path, mf.SupersedesPath, mf.Path)
 		}
 	}
 	return nil
@@ -155,65 +301,6 @@ func ensureMCPSuffix(serverURL string) string {
 		return trimmed + "/"
 	}
 	return trimmed + "/mcp/"
-}
-
-func buildCursorMCPJSON(p ProjectParams) ([]byte, error) {
-	b, err := json.Marshal(map[string]any{
-		"mcpServers": map[string]any{
-			"specgraph": map[string]any{
-				"url": ensureMCPSuffix(p.ServerURL),
-				"headers": map[string]any{
-					"Authorization":       "Bearer ${env:SPECGRAPH_API_KEY}",
-					"X-Specgraph-Project": p.Slug,
-				},
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("marshal cursor MCP JSON: %w", err)
-	}
-	return b, nil
-}
-
-func buildClaudeMCPJSON(p ProjectParams) ([]byte, error) {
-	b, err := json.Marshal(map[string]any{
-		"mcpServers": map[string]any{
-			"specgraph": map[string]any{
-				"type": "http",
-				"url":  ensureMCPSuffix(p.ServerURL),
-				"headers": map[string]any{
-					"Authorization":       "Bearer ${SPECGRAPH_API_KEY}",
-					"X-Specgraph-Project": p.Slug,
-				},
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("marshal claude MCP JSON: %w", err)
-	}
-	return b, nil
-}
-
-func buildOpenCodeJSON(p ProjectParams) ([]byte, error) {
-	b, err := json.Marshal(map[string]any{
-		"$schema": "https://opencode.ai/config.json",
-		"mcp": map[string]any{
-			"specgraph": map[string]any{
-				"type":    "remote",
-				"url":     ensureMCPSuffix(p.ServerURL),
-				"enabled": true,
-				"headers": map[string]any{
-					"Authorization":       "Bearer {env:SPECGRAPH_API_KEY}",
-					"X-Specgraph-Project": p.Slug,
-				},
-			},
-		},
-		"plugin": []any{"./.specgraph/agents/opencode/specgraph.ts"},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("marshal opencode JSON: %w", err)
-	}
-	return b, nil
 }
 
 // Build closures — markdown block bodies. PR B uses v=1 body verbatim

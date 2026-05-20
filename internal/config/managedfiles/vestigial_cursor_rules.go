@@ -5,7 +5,6 @@ package managedfiles
 
 import (
 	_ "embed"
-	"fmt"
 )
 
 // Vestigial pre-rename Cursor rule bytes. Preserved for hash-guarded
@@ -33,33 +32,34 @@ var vestigialCursorSpecgraphMD []byte
 //go:embed embedded/cursor/vestigial/post-stage.md
 var vestigialCursorPostStageMD []byte
 
-// vestigialCursorRulePriorHash returns the expected prior-canonical hash
-// for a SupersedesPath value that points at one of the pre-rename Cursor
-// rule files. Mirrors computePriorCanonical in markdownblock.go but reads
-// from static embedded bytes (not a renderer + ProjectParams).
+// registerVestigialCursorPriors populates the unified priors registry
+// with the pre-PR-D Cursor rule canonical hashes. Each entry maps a
+// current managed-file Path (the post-rename `.mdc`) to the canonical
+// SHA256 hex of the pre-rename `.md` bytes. After PR E's unification
+// (Task 9), all priors lookups — PR C's computePriorCanonical, PR D's
+// vestigial map, and PR E's JSON priors — route through `priorsFor`.
 //
-// Panics on unknown supersedesPath — every SupersedesPath in the manifest
-// must have a corresponding case here.
-func vestigialCursorRulePriorHash(supersedesPath string) string {
-	switch supersedesPath {
-	case ".cursor/rules/specgraph.md":
-		return HashExcludingSentinel(CommentNone, vestigialCursorSpecgraphMD)
-	case ".cursor/rules/post-stage.md":
-		return HashExcludingSentinel(CommentNone, vestigialCursorPostStageMD)
-	default:
-		panic(fmt.Sprintf("no vestigial prior-canonical bytes for SupersedesPath %q", supersedesPath))
-	}
-}
-
-// vestigialCursorRulePriorHashRegistered returns true if supersedesPath has
-// a registered prior-canonical bytes mapping. Used by validateManifestEntry
-// to fail at package init rather than runtime when a new SupersedesPath
-// entry is added to the manifest without a corresponding case here.
-func vestigialCursorRulePriorHashRegistered(supersedesPath string) bool {
-	switch supersedesPath {
-	case ".cursor/rules/specgraph.md", ".cursor/rules/post-stage.md":
-		return true
-	default:
-		return false
-	}
-}
+// DO NOT change the embedded vestigial bytes without a deliberate
+// decision: doing so would regress SupersedesPath cleanup for any user
+// whose `.cursor/rules/specgraph.md` or `.cursor/rules/post-stage.md`
+// is a verbatim copy from the pre-PR-D repo. The pinned-hash regression
+// test in vestigial_cursor_rules_test.go guards against accidental
+// drift of the resulting hash values.
+//
+// Implemented as a package-level variable initializer (rather than an
+// init() function) so registration completes before any package init()
+// runs — in particular, before manifest.go's init() validates that each
+// WholeFile entry with a SupersedesPath has a registered prior. The `_`
+// receiver keeps the side-effect call alive while satisfying lint's
+// unused-variable check.
+var _ = func() bool {
+	registerPrior(
+		".cursor/rules/specgraph.mdc",
+		HashExcludingSentinel(CommentNone, vestigialCursorSpecgraphMD),
+	)
+	registerPrior(
+		".cursor/rules/specgraph-post-stage.mdc",
+		HashExcludingSentinel(CommentNone, vestigialCursorPostStageMD),
+	)
+	return true
+}()

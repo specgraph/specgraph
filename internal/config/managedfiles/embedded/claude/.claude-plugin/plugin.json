@@ -1,0 +1,18 @@
+{
+  "name": "specgraph",
+  "description": "Thin Claude Code client for SpecGraph. Rich authoring workflow guidance is delivered from the SpecGraph MCP server.",
+  "version": "0.4.0",
+  "hooks": [
+    {
+      "event": "SessionStart",
+      "type": "command",
+      "command": "${CLAUDE_PLUGIN_ROOT}/hooks/specgraph-session-start.sh"
+    },
+    {
+      "event": "PostToolUse",
+      "matcher": "mcp__specgraph__author",
+      "type": "command",
+      "command": "${CLAUDE_PLUGIN_ROOT}/hooks/specgraph-post-stage.sh"
+    }
+  ]
+}

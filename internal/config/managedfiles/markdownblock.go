@@ -168,7 +168,7 @@ func (markdownBlockStrategy) Sync(cwd string, mf ManagedFile, params ProjectPara
 				if res.Detail != "" {
 					res.Detail += "; "
 				}
-				res.Detail += fmt.Sprintf("supersedes path %q left in place: prior-canonical mismatch", mf.SupersedesPath)
+				res.Detail += fmt.Sprintf(DriftDetailSupersedesPath+"%q left in place: prior-canonical mismatch", mf.SupersedesPath)
 			} else {
 				return SyncResult{Path: mf.Path, Action: ActionError, Err: err}, nil
 			}

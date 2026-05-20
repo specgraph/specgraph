@@ -11,30 +11,36 @@ import (
 
 func TestManifestShape(t *testing.T) {
 	all := allManagedFiles()
-	if len(all) != 8 {
-		t.Errorf("expected 8 entries, got %d", len(all))
+	if len(all) != 14 {
+		t.Errorf("expected 14 entries, got %d", len(all))
 	}
 	paths := map[string]bool{
-		".mcp.json":                                    false,
-		".cursor/mcp.json":                             false,
-		"opencode.json":                                false,
-		"AGENTS.md":                                    false,
-		".cursor/rules/specgraph-bootstrap.mdc":        false,
-		".specgraph/agents/opencode/specgraph.ts":      false,
-		".cursor/rules/specgraph.mdc":                  false,
-		".cursor/rules/specgraph-post-stage.mdc":       false,
+		".mcp.json":                                                        false,
+		".cursor/mcp.json":                                                 false,
+		"opencode.json":                                                    false,
+		"AGENTS.md":                                                        false,
+		".cursor/rules/specgraph-bootstrap.mdc":                            false,
+		".specgraph/agents/opencode/specgraph.ts":                          false,
+		".cursor/rules/specgraph.mdc":                                      false,
+		".cursor/rules/specgraph-post-stage.mdc":                           false,
+		".specgraph/agents/claude/.claude-plugin/plugin.json":              false,
+		".specgraph/agents/claude/.claude-plugin/marketplace.json":         false,
+		".specgraph/agents/claude/hooks/specgraph-session-start.sh":        false,
+		".specgraph/agents/claude/hooks/specgraph-post-stage.sh":           false,
+		".specgraph/agents/claude/routing-guide.md":                        false,
+		".claude/settings.json":                                            false,
 	}
 	for _, mf := range all {
 		if _, ok := paths[mf.Path]; !ok {
 			t.Errorf("unexpected path %q", mf.Path)
 		}
 		paths[mf.Path] = true
-		// Source-xor-Build invariant.
+		// Source-xor-Build-xor-JSONKeys invariant.
 		if mf.Source != "" && mf.Build != nil {
 			t.Errorf("%q: both Source and Build set", mf.Path)
 		}
-		if mf.Source == "" && mf.Build == nil {
-			t.Errorf("%q: neither Source nor Build set", mf.Path)
+		if mf.Source == "" && mf.Build == nil && len(mf.JSONKeys) == 0 {
+			t.Errorf("%q: neither Source nor Build nor JSONKeys set", mf.Path)
 		}
 	}
 	for path, seen := range paths {
@@ -87,7 +93,7 @@ func TestValidateManifestEntry(t *testing.T) {
 				Path: "x", Strategy: StrategyJSONKeyMerge,
 				Source: "s",
 			},
-			wantErr: "JSONKeyMerge strategy requires Build",
+			wantErr: "JSONKeyMerge strategy requires JSONKeys",
 		},
 		{
 			name: "MarkdownBlock without Build",
@@ -123,7 +129,9 @@ func TestValidateManifestEntry(t *testing.T) {
 			name: "valid JSONKeyMerge",
 			mf: ManagedFile{
 				Path: "x", Strategy: StrategyJSONKeyMerge,
-				Build: func(ProjectParams) ([]byte, error) { return nil, nil },
+				JSONKeys: []JSONManagedKey{
+					{Path: "/foo", Mode: KeyManagedValue, Value: func(_ ProjectParams) (any, error) { return "bar", nil }},
+				},
 			},
 		},
 		{
@@ -166,7 +174,7 @@ func TestValidateManifestEntry(t *testing.T) {
 				HasFrontmatter: true,
 				SupersedesPath: ".cursor/rules/unknown.md",
 			},
-			wantErr: "is not registered in vestigialCursorRulePriorHash",
+			wantErr: "requires a registered prior canonical hash",
 		},
 	}
 	for _, tc := range cases {
@@ -188,18 +196,98 @@ func TestValidateManifestEntry(t *testing.T) {
 	}
 }
 
-// TestNoLegacyWholeFileHTMLSentinels pins the back-compat reasoning for
-// PR D's RenderSentinel CommentHTML change. Before PR D, no shipped
-// manifest entry combined Strategy==StrategyWholeFile with Comment==
-// CommentHTML, so no file on disk anywhere carries the old `:start`-suffixed
-// CommentHTML whole-file sentinel form. PR D introduces the combination
-// only with HasFrontmatter==true. This test ensures a future entry can't
-// silently introduce a WholeFile+HTML+!HasFrontmatter combination, which
-// would suddenly produce the bare-`init` form by surprise.
-func TestNoLegacyWholeFileHTMLSentinels(t *testing.T) {
+func TestValidator_JSONKeyMergeRequiresJSONKeys(t *testing.T) {
+	mf := ManagedFile{
+		Path:     "x.json",
+		Strategy: StrategyJSONKeyMerge,
+		Comment:  CommentNone,
+		Harness:  HarnessClaude,
+		Build:    func(_ ProjectParams) ([]byte, error) { return []byte(`{}`), nil },
+	}
+	if err := validateManifestEntry(mf); err == nil {
+		t.Error("expected validator to reject JSONKeyMerge with Build (post-PR-E)")
+	}
+}
+
+func TestValidator_JSONKeyMergeAcceptsJSONKeys(t *testing.T) {
+	mf := ManagedFile{
+		Path:     "x.json",
+		Strategy: StrategyJSONKeyMerge,
+		Comment:  CommentNone,
+		Harness:  HarnessClaude,
+		JSONKeys: []JSONManagedKey{
+			{Path: "/foo", Mode: KeyManagedValue, Value: func(_ ProjectParams) (any, error) { return "bar", nil }},
+		},
+	}
+	if err := validateManifestEntry(mf); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestValidator_JSONKeysOnWholeFileRejected(t *testing.T) {
+	mf := ManagedFile{
+		Path:     "x.md",
+		Strategy: StrategyWholeFile,
+		Comment:  CommentHTML,
+		Harness:  HarnessClaude,
+		Source:   "embedded/x.md",
+		JSONKeys: []JSONManagedKey{{Path: "/x", Mode: KeyManagedValue, Value: func(_ ProjectParams) (any, error) { return "", nil }}},
+	}
+	if err := validateManifestEntry(mf); err == nil {
+		t.Error("expected validator to reject JSONKeys on WholeFile")
+	}
+}
+
+func TestManifest_ClaudePluginShimEntries(t *testing.T) {
+	wantPaths := []string{
+		".specgraph/agents/claude/.claude-plugin/plugin.json",
+		".specgraph/agents/claude/.claude-plugin/marketplace.json",
+		".specgraph/agents/claude/hooks/specgraph-session-start.sh",
+		".specgraph/agents/claude/hooks/specgraph-post-stage.sh",
+		".specgraph/agents/claude/routing-guide.md",
+	}
+	present := map[string]bool{}
 	for _, mf := range allManagedFiles() {
-		if mf.Strategy == StrategyWholeFile && mf.Comment == CommentHTML && !mf.HasFrontmatter {
-			t.Errorf("entry %q: WholeFile+CommentHTML without HasFrontmatter is unsupported (see PR D back-compat anchor)", mf.Path)
+		present[mf.Path] = true
+	}
+	for _, p := range wantPaths {
+		if !present[p] {
+			t.Errorf("manifest missing entry %q", p)
+		}
+	}
+}
+
+// TestManifestValidator_WholeFileSupportedCombinations enumerates the five
+// supported WholeFile (Comment, HasFrontmatter) combinations as of PR E.
+// Every WholeFile manifest entry must match one of these. Replaces the
+// PR D back-compat anchor that rejected CommentHTML+!HasFrontmatter —
+// that combination is now first-class (plain Markdown like routing-guide.md).
+//
+//	CommentNone  + !HasFrontmatter → JSON files (no in-file sentinel)   [PR E]
+//	CommentHash  + !HasFrontmatter → shell / Python / YAML scripts
+//	CommentSlash + !HasFrontmatter → TypeScript / JS plugin source      [PR C]
+//	CommentHTML  + !HasFrontmatter → plain Markdown                     [PR E]
+//	CommentHTML  +  HasFrontmatter → Markdown with leading frontmatter  [PR D]
+func TestManifestValidator_WholeFileSupportedCombinations(t *testing.T) {
+	type combo struct {
+		comment CommentSyntax
+		hasFm   bool
+	}
+	supported := map[combo]bool{
+		{CommentNone, false}:  true,
+		{CommentHash, false}:  true,
+		{CommentSlash, false}: true,
+		{CommentHTML, false}:  true,
+		{CommentHTML, true}:   true,
+	}
+	for _, mf := range allManagedFiles() {
+		if mf.Strategy != StrategyWholeFile {
+			continue
+		}
+		k := combo{comment: mf.Comment, hasFm: mf.HasFrontmatter}
+		if !supported[k] {
+			t.Errorf("entry %q: unsupported WholeFile combo Comment=%v HasFrontmatter=%v",
+				mf.Path, mf.Comment, mf.HasFrontmatter)
 		}
 	}
 }
