@@ -1,5 +1,6 @@
 ---
 name: specgraph-analytical-passes
+summary: Run analytical passes (constitution check, dependency check, decision capture) on a spec.
 description: Use when the user wants analytical review of a spec — constitution compliance, peripheral vision, red-team, consistency, or simplicity checks. Also use immediately after a stage transition to surface auto-registered passes.
 license: Apache-2.0
 metadata:

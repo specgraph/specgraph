@@ -7,8 +7,9 @@ A thin OpenCode integration for SpecGraph projects.
 | Path | Purpose |
 |------|---------|
 | `.opencode/plugins/specgraph.ts` | System-prompt prime + post-stage nudges |
-| `.opencode/skills/` | Symlink to repo-root `skills/` (shared with Claude Code and Cursor shims) |
 | `package.json` | Publishable npm shape (peer-deps `@opencode-ai/plugin`) |
+
+Skills are not shipped on disk: SpecGraph serves them via MCP — `specgraph_skills_list` / `_get` / `_search` plus the `specgraph://skills/<name>` resource. Nothing to copy or symlink.
 
 ## Install (local path)
 
@@ -60,13 +61,8 @@ for the current state.
   addendum on the next turn that asks the model to run the registered
   analytical passes.
 - **Shared skills.** Authoring, graph queries, analytical passes, drift,
-  conventions, troubleshooting — same SKILL.md packages used by the
-  Claude Code and Cursor shims.
-
-## Refreshing the skills symlink
-
-`task plugin:sync` from the specgraph repo root recreates the symlink for
-all three harness shims. Run it after a fresh checkout.
+  conventions, troubleshooting — same SKILL.md packages, served via MCP
+  (no on-disk copy needed).
 
 ## Implementation notes
 
