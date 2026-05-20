@@ -293,22 +293,6 @@ tasks:
     desc: Validate skills/ packages against the agentskills.io minimal contract
     cmds:
       - go run ./internal/skillvalidate/cmd ./skills
-  # Plugin shims (per-harness adapters under plugin/<harness>/)
-  plugin:sync:
-    desc: Refresh per-harness skills/ symlinks to point at the in-tree skills/
-    cmds:
-      - |
-        set -e
-        sync_link() {
-          local link="$1" target="$2"
-          mkdir -p "$(dirname "$link")"
-          rm -rf "$link"
-          ln -sfn "$target" "$link"
-        }
-        sync_link plugin/specgraph/skills ../../skills
-        sync_link plugin/cursor/.cursor/skills ../../../skills
-        sync_link plugin/opencode/.opencode/skills ../../../skills
-        echo "Refreshed plugin/*/skills symlinks → skills/"
   # Quality gates
   check:
     desc: Fast local quality gate (no Docker required)

@@ -60,13 +60,8 @@ for the current state.
   addendum on the next turn that asks the model to run the registered
   analytical passes.
 - **Shared skills.** Authoring, graph queries, analytical passes, drift,
-  conventions, troubleshooting — same SKILL.md packages used by the
-  Claude Code and Cursor shims.
-
-## Refreshing the skills symlink
-
-`task plugin:sync` from the specgraph repo root recreates the symlink for
-all three harness shims. Run it after a fresh checkout.
+  conventions, troubleshooting — same SKILL.md packages, served via MCP
+  (no on-disk copy needed).
 
 ## Implementation notes
 

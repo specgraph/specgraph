@@ -9,7 +9,6 @@ A thin Cursor integration for SpecGraph projects.
 | `.cursor/rules/specgraph.mdc` | One-screen routing rule. Written by `specgraph init`; do not edit by hand. |
 | `.cursor/rules/specgraph-post-stage.mdc` | Post-stage analytical-pass guidance. Written by `specgraph init`; do not edit by hand. |
 | `.cursor/rules/specgraph-bootstrap.mdc` | Project pointer block. Written by `specgraph init` (markdown-block strategy — user owns the rest of the file). |
-| `.cursor/skills/` | Symlink to repo-root `skills/` (shared with Claude Code and OpenCode shims) |
 
 ## Install (per project)
 
@@ -25,9 +24,4 @@ No manual file copying required.
   registered analytical passes for that stage.
 - The shared SpecGraph skills (`specgraph-authoring`, `specgraph-graph-query`,
   `specgraph-analytical-passes`, `specgraph-drift`, `specgraph-conventions`,
-  `specgraph-troubleshooting`).
-
-## Refreshing the skills symlink
-
-`task plugin:sync` from the specgraph repo root recreates the symlink for
-all three harness shims. Run it after a fresh checkout.
+  `specgraph-troubleshooting`) served via MCP — no on-disk copy needed.
