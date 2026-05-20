@@ -48,12 +48,12 @@
 
 ### Relocations (the `git mv` in Task 1)
 
-- `skills/specgraph-authoring/SKILL.md`           → `internal/mcp/skills/embedded/specgraph-authoring/SKILL.md`
-- `skills/specgraph-graph-query/SKILL.md`         → `internal/mcp/skills/embedded/specgraph-graph-query/SKILL.md`
-- `skills/specgraph-analytical-passes/SKILL.md`   → `internal/mcp/skills/embedded/specgraph-analytical-passes/SKILL.md`
-- `skills/specgraph-drift/SKILL.md`               → `internal/mcp/skills/embedded/specgraph-drift/SKILL.md`
-- `skills/specgraph-conventions/SKILL.md`         → `internal/mcp/skills/embedded/specgraph-conventions/SKILL.md`
-- `skills/specgraph-troubleshooting/SKILL.md`     → `internal/mcp/skills/embedded/specgraph-troubleshooting/SKILL.md`
+- `skills/specgraph-authoring/SKILL.md` → `internal/mcp/skills/embedded/specgraph-authoring/SKILL.md`
+- `skills/specgraph-graph-query/SKILL.md` → `internal/mcp/skills/embedded/specgraph-graph-query/SKILL.md`
+- `skills/specgraph-analytical-passes/SKILL.md` → `internal/mcp/skills/embedded/specgraph-analytical-passes/SKILL.md`
+- `skills/specgraph-drift/SKILL.md` → `internal/mcp/skills/embedded/specgraph-drift/SKILL.md`
+- `skills/specgraph-conventions/SKILL.md` → `internal/mcp/skills/embedded/specgraph-conventions/SKILL.md`
+- `skills/specgraph-troubleshooting/SKILL.md` → `internal/mcp/skills/embedded/specgraph-troubleshooting/SKILL.md`
 
 ### Symlink created
 

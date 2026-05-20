@@ -250,6 +250,7 @@ The agentskills.io spec doesn't define `summary`. We add it as a SpecGraph-local
   - `specgraph://skills/specgraph-authoring` → accept, return `"specgraph-authoring"`
 
   `TestSkillsResourceHandler_RejectsMalformedURI` (see Tests) enumerates all of the rejection cases above plus a couple of accept cases.
+
 - Payload: identical to `specgraph_skills_get(name)`.
 
 ### Resource — `specgraph://prime` (modified)

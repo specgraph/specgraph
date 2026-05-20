@@ -5,6 +5,7 @@ package mcp
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -36,14 +37,27 @@ func (f *fakeSource) Get(_ context.Context, name string) (skills.Skill, error) {
 	return skills.Skill{}, skills.ErrNotFound
 }
 
-func (f *fakeSource) Search(_ context.Context, query string, _ skills.SearchOptions) ([]skills.Meta, error) {
+func (f *fakeSource) Search(_ context.Context, query string, opts skills.SearchOptions) ([]skills.Meta, error) {
 	if query == "" {
 		return nil, skills.ErrInvalidQuery
 	}
 	var out []skills.Meta
-	for _, e := range f.entries {
-		if strings.Contains(strings.ToLower(e.Name+" "+e.Summary), strings.ToLower(query)) {
-			out = append(out, e.Meta)
+	switch opts.Mode {
+	case skills.SearchRegex:
+		re, err := regexp.Compile(query)
+		if err != nil {
+			return nil, skills.ErrInvalidQuery
+		}
+		for _, e := range f.entries {
+			if re.MatchString(e.Name + " " + e.Summary) {
+				out = append(out, e.Meta)
+			}
+		}
+	default:
+		for _, e := range f.entries {
+			if strings.Contains(strings.ToLower(e.Name+" "+e.Summary), strings.ToLower(query)) {
+				out = append(out, e.Meta)
+			}
 		}
 	}
 	return out, nil
@@ -125,11 +139,30 @@ func TestSpecgraphSkillsSearch_TextAndRegex(t *testing.T) {
 		t.Errorf("text search should match alpha only; got %s", text)
 	}
 
+	// Regex branch: the tool reads `regex: true` and threads SearchRegex
+	// into SearchOptions.Mode. The fake source honours opts.Mode, so this
+	// genuinely exercises the bool plumbing through the handler.
+	res, err = def.Handler(context.Background(), map[string]any{"query": "^alpha", "regex": true})
+	if err != nil {
+		t.Fatalf("regex search: %v", err)
+	}
+	text = res.Content[0].Text
+	if !strings.Contains(text, "alpha") || strings.Contains(text, "beta") {
+		t.Errorf("regex search should match alpha only; got %s", text)
+	}
+
 	_, err = def.Handler(context.Background(), map[string]any{"query": ""})
 	if err == nil {
 		t.Error("expected error for empty query")
 	}
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Errorf("expected CodeInvalidArgument, got %v", connect.CodeOf(err))
+	}
+
+	// Invalid regex routes the source's ErrInvalidQuery through the
+	// handler's connect.CodeInvalidArgument mapping.
+	_, err = def.Handler(context.Background(), map[string]any{"query": "[unclosed", "regex": true})
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("expected CodeInvalidArgument for invalid regex, got %v", connect.CodeOf(err))
 	}
 }

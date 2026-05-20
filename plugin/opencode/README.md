@@ -7,8 +7,9 @@ A thin OpenCode integration for SpecGraph projects.
 | Path | Purpose |
 |------|---------|
 | `.opencode/plugins/specgraph.ts` | System-prompt prime + post-stage nudges |
-| `.opencode/skills/` | Symlink to repo-root `skills/` (shared with Claude Code and Cursor shims) |
 | `package.json` | Publishable npm shape (peer-deps `@opencode-ai/plugin`) |
+
+Skills are not shipped on disk: SpecGraph serves them via MCP — `specgraph_skills_list` / `_get` / `_search` plus the `specgraph://skills/<name>` resource. Nothing to copy or symlink.
 
 ## Install (local path)
 
