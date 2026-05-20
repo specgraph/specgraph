@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -76,11 +77,71 @@ func (s *embeddedSource) Get(_ context.Context, name string) (Skill, error) {
 	return sk, nil
 }
 
-// Search is not yet implemented; the body lands in commit 6 (Task 6).
-// The stub satisfies the Source interface so embeddedSource compiles
-// and NewEmbedded returns Source today.
-func (s *embeddedSource) Search(_ context.Context, _ string, _ SearchOptions) ([]Meta, error) {
-	return nil, fmt.Errorf("not implemented")
+// Search walks the prebuilt catalog in sorted order applying a predicate
+// built from SearchOptions. Empty query returns ErrInvalidQuery.
+// SearchRegex compiles query as RE2; invalid pattern wraps ErrInvalidQuery.
+// Fields defaults to {Name, Summary, Body}. Limit 0 = no cap.
+func (s *embeddedSource) Search(_ context.Context, query string, opts SearchOptions) ([]Meta, error) {
+	if query == "" {
+		return nil, ErrInvalidQuery
+	}
+	fields := opts.Fields
+	if len(fields) == 0 {
+		fields = []SearchField{FieldName, FieldSummary, FieldBody}
+	}
+
+	matchText := func(haystack, needle string) bool {
+		return strings.Contains(strings.ToLower(haystack), strings.ToLower(needle))
+	}
+
+	var rx *regexp.Regexp
+	if opts.Mode == SearchRegex {
+		var err error
+		rx, err = regexp.Compile(query)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrInvalidQuery, err)
+		}
+	}
+
+	matches := func(text string) bool {
+		if rx != nil {
+			return rx.MatchString(text)
+		}
+		return matchText(text, query)
+	}
+
+	matchesSkill := func(sk Skill) bool {
+		for _, f := range fields {
+			switch f {
+			case FieldName:
+				if matches(sk.Name) {
+					return true
+				}
+			case FieldSummary:
+				if matches(sk.Summary) {
+					return true
+				}
+			case FieldBody:
+				if matches(string(sk.Body)) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	out := make([]Meta, 0, len(s.order))
+	for _, name := range s.order {
+		sk := s.byName[name]
+		if !matchesSkill(sk) {
+			continue
+		}
+		out = append(out, sk.Meta)
+		if opts.Limit > 0 && len(out) >= opts.Limit {
+			break
+		}
+	}
+	return out, nil
 }
 
 // parseFrontmatter extracts the YAML frontmatter, validates required
