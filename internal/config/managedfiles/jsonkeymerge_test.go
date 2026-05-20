@@ -381,8 +381,13 @@ func TestClaudeSettingsJSON_FreshInit(t *testing.T) {
 func TestClaudeSettingsJSON_PreservesUserDisable(t *testing.T) {
 	dir := t.TempDir()
 	settingsDir := filepath.Join(dir, ".claude")
-	_ = os.MkdirAll(settingsDir, 0o755)                                                                                                       //nolint:gosec // test directory creation with permissive mode is intentional
-	_ = os.WriteFile(filepath.Join(settingsDir, "settings.json"), []byte(`{"enabledPlugins":{"specgraph@specgraph-local":false}}`), 0o644)    //nolint:gosec // intentional permissive mode for permission-preservation test
+	if err := os.MkdirAll(settingsDir, 0o755); err != nil { //nolint:gosec // test directory creation with permissive mode is intentional
+		t.Fatalf("mkdir %s: %v", settingsDir, err)
+	}
+	settingsFile := filepath.Join(settingsDir, "settings.json")
+	if err := os.WriteFile(settingsFile, []byte(`{"enabledPlugins":{"specgraph@specgraph-local":false}}`), 0o644); err != nil { //nolint:gosec // intentional permissive mode for permission-preservation test
+		t.Fatalf("write %s: %v", settingsFile, err)
+	}
 	mf := findManifestEntry(t, ".claude/settings.json")
 	s := jsonKeyMergeStrategy{}
 	if _, err := s.Sync(dir, mf, ProjectParams{Slug: "x"}, SyncOptions{}); err != nil {
