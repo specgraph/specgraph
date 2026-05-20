@@ -62,3 +62,20 @@ func TestInspectAll_SymlinkProjectDir(t *testing.T) {
 		t.Errorf("expected ErrSymlinkRejected, got %v", err)
 	}
 }
+
+func TestInspectAll_PopulatesFileStateHarness(t *testing.T) {
+	dir := t.TempDir()
+	params := ProjectParams{Slug: "test", ServerURL: "https://example.com/mcp/"}
+	states, err := InspectAll(dir, []Harness{HarnessClaude}, params)
+	if err != nil {
+		t.Fatalf("InspectAll: %v", err)
+	}
+	if len(states) == 0 {
+		t.Fatal("expected at least one FileState for HarnessClaude")
+	}
+	for _, s := range states {
+		if s.Harness != HarnessClaude {
+			t.Errorf("%s: Harness = %v, want HarnessClaude", s.Path, s.Harness)
+		}
+	}
+}

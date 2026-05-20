@@ -109,6 +109,7 @@ type ManagedFile struct {
 type FileState struct {
 	Path         string
 	Strategy     Strategy
+	Harness      Harness // which harness owns this entry; populated by InspectAll
 	State        State
 	DiskHash     string // sha256 of current disk content (empty if Missing)
 	SentinelHash string // hash recorded in disk sentinel (empty if no sentinel)

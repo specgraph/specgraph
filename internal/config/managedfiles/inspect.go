@@ -46,11 +46,16 @@ func InspectAll(cwd string, harnesses []Harness, params ProjectParams) ([]FileSt
 			out = append(out, FileState{
 				Path:     mf.Path,
 				Strategy: mf.Strategy,
+				Harness:  mf.Harness,
 				State:    StateDrifted,
 				Detail:   fmt.Sprintf("inspect error: %v", err),
 			})
 			continue
 		}
+		// Strategy literals don't know which harness owns the manifest
+		// entry; overwrite here so callers (doctor's --harness filter,
+		// JSON output, etc.) see the attribution. Per design §Managed files.
+		state.Harness = mf.Harness
 		out = append(out, state)
 	}
 	return out, nil
