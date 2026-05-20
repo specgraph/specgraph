@@ -5,14 +5,30 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/mcp/skills"
 	"github.com/stretchr/testify/require"
 )
+
+// errSource is a skills.Source whose methods all return a fixed error.
+// Used to exercise the prime template's skills-error rendering path.
+type errSource struct{ err error }
+
+func (e *errSource) List(_ context.Context) ([]skills.Meta, error) {
+	return nil, e.err
+}
+func (e *errSource) Get(_ context.Context, _ string) (skills.Skill, error) {
+	return skills.Skill{}, e.err
+}
+func (e *errSource) Search(_ context.Context, _ string, _ skills.SearchOptions) ([]skills.Meta, error) {
+	return nil, e.err
+}
 
 // ---------------------------------------------------------------------------
 // specResourceHandler tests
@@ -488,13 +504,74 @@ func TestSkillsResourceHandler_RejectsMalformedURI(t *testing.T) {
 		"specgraph://skills/foo%20bar",
 	}
 	for _, uri := range rejects {
-		if _, err := h(context.Background(), uri); err == nil {
+		_, err := h(context.Background(), uri)
+		if err == nil {
 			t.Errorf("expected reject for %q", uri)
+			continue
+		}
+		if connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("expected CodeInvalidArgument for %q; got %v", uri, connect.CodeOf(err))
 		}
 	}
 
 	if _, err := h(context.Background(), "specgraph://skills/alpha"); err != nil {
 		t.Errorf("expected accept for /alpha; got %v", err)
+	}
+}
+
+func TestSkillsResourceHandler_UnknownNameReturnsCodeNotFound(t *testing.T) {
+	src := twoSkillFake()
+	r := NewRegistry()
+	RegisterResources(r, &Client{}, src)
+
+	var h ResourceHandler
+	for _, res := range r.Resources() {
+		if res.URI == "specgraph://skills/{name}" {
+			h = res.Handler
+			break
+		}
+	}
+
+	// "no-such-skill" is well-formed kebab-case but not in the fake.
+	_, err := h(context.Background(), "specgraph://skills/no-such-skill")
+	if err == nil {
+		t.Fatal("expected error for unknown skill")
+	}
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("expected CodeNotFound; got %v", connect.CodeOf(err))
+	}
+}
+
+func TestPrime_SkillsListErrorRendersMarker(t *testing.T) {
+	src := &errSource{err: errors.New("simulated skills outage")}
+	r := NewRegistry()
+	RegisterResources(r, &Client{
+		Constitution:   defaultConstitutionMock(),
+		Spec:           &mockSpecService{listSpecs: func() (*specv1.ListSpecsResponse, error) { return &specv1.ListSpecsResponse{}, nil }},
+		Graph:          &mockGraphService{getReady: func() (*specv1.GetReadyResponse, error) { return &specv1.GetReadyResponse{}, nil }},
+		AnalyticalPass: defaultAnalyticalPassMock(),
+	}, src)
+
+	var primeHandler ResourceHandler
+	for _, res := range r.Resources() {
+		if res.URI == "specgraph://prime" {
+			primeHandler = res.Handler
+			break
+		}
+	}
+	if primeHandler == nil {
+		t.Fatal("prime resource not registered")
+	}
+	contents, err := primeHandler(context.Background(), "specgraph://prime")
+	if err != nil {
+		t.Fatalf("prime: %v", err)
+	}
+	body := contents[0].Text
+	if !strings.Contains(body, "## Skills") {
+		t.Errorf("prime missing '## Skills' heading on error path: %s", body)
+	}
+	if !strings.Contains(body, "_(unable to load:") {
+		t.Errorf("prime missing '_(unable to load:' marker on error path: %s", body)
 	}
 }
 

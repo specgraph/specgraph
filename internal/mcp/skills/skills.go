@@ -18,16 +18,26 @@ type Source interface {
 // Meta is one catalog row: what specgraph_skills_list and
 // specgraph_skills_search return per skill.
 type Meta struct {
-	Name    string
-	Summary string
-	URI     string // canonical fetch URI, e.g. "specgraph://skills/specgraph-authoring"
+	Name    string `json:"name"`
+	Summary string `json:"summary"`
+	// URI is the canonical fetch resource URI for this skill, always
+	// equal to "specgraph://skills/" + Name. The derivation is enforced
+	// by parseFrontmatter in embedded.go; future Source implementations
+	// must honour this invariant or callers that build URIs from Meta.Name
+	// directly may diverge from what Meta.URI reports.
+	URI string `json:"uri"`
 }
 
 // Skill is the full payload returned by Source.Get and by the
 // specgraph://skills/<name> resource handler.
 type Skill struct {
 	Meta
-	Body []byte // verbatim SKILL.md bytes (frontmatter + content)
+	// Body is the verbatim SKILL.md bytes (frontmatter + content). For
+	// the embedded source, this slice points into the //go:embed-loaded
+	// memory shared across all Get callers — do NOT mutate it. Callers
+	// that need to modify the bytes must Clone (e.g., bytes.Clone(sk.Body))
+	// first.
+	Body []byte
 }
 
 // SearchOptions tune Source.Search. Zero value = case-insensitive

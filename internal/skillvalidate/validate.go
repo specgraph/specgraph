@@ -2,9 +2,13 @@
 // Copyright 2026 Sean Brandt
 
 // Package skillvalidate validates agentskills.io-shaped SKILL.md packages
-// in the repo. The contract is intentionally minimal so it stays useful
-// across tooling churn: each <name>/SKILL.md must have YAML frontmatter
-// whose required keys (name, description) are present and well-formed.
+// in the repo. Each <name>/SKILL.md must have YAML frontmatter whose
+// required keys (name, summary, description) are present and well-formed,
+// with summary capped at 120 characters (a SpecGraph-local extension).
+// The name field must equal the containing directory and match the
+// kebab-case NameRegex exported by this package; the same regex is
+// imported by internal/mcp/skills and internal/mcp/resources.go so all
+// three layers agree on what counts as a valid skill name.
 //
 // The validator is invoked by `task skills:validate`; it walks the paths
 // passed on the command line and reports per-file pass/fail. Exit code is
@@ -25,8 +29,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Frontmatter is the parsed YAML frontmatter of a SKILL.md file. Only
-// fields the validator actively checks are typed; unknown keys are tolerated.
+// Frontmatter is the parsed YAML frontmatter of a SKILL.md file.
+// Fields used by validation logic (Name, Summary, Description) plus
+// common agentskills.io fields (License, Compatibility, Metadata) are
+// typed for clean deserialization; unknown keys beyond these are
+// tolerated.
 type Frontmatter struct {
 	Name          string         `yaml:"name"`
 	Summary       string         `yaml:"summary"`

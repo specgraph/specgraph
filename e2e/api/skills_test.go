@@ -121,6 +121,19 @@ var _ = Describe("Skills via MCP", func() {
 		}
 	})
 
+	It("fetches specgraph-authoring body via specgraph_skills_get", func() {
+		res, err := mcpCli.CallTool(ctx, mcp.CallToolRequest{
+			Params: mcp.CallToolParams{
+				Name:      "specgraph_skills_get",
+				Arguments: map[string]any{"name": "specgraph-authoring"},
+			},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		out := toolText(res)
+		Expect(out).To(ContainSubstring("name: specgraph-authoring"))
+		Expect(out).To(ContainSubstring("summary:"))
+	})
+
 	It("finds the drift skill via specgraph_skills_search", func() {
 		res, err := mcpCli.CallTool(ctx, mcp.CallToolRequest{
 			Params: mcp.CallToolParams{
