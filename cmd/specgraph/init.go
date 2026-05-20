@@ -113,12 +113,9 @@ func runInit(_ *cobra.Command, args []string) error {
 		projectCreated = true
 	}
 
-	// Hard-coded for PR B; .specgraph.yaml-driven harnesses: list lands later.
-	harnesses := []managedfiles.Harness{
-		managedfiles.HarnessClaude,
-		managedfiles.HarnessCursor,
-		managedfiles.HarnessOpenCode,
-	}
+	// Read harnesses from .specgraph.yaml when present; fall back to all
+	// three when the list is empty (legacy configs and no-config case).
+	harnesses := harnessSliceFromConfig(pc.Harnesses)
 
 	results, syncErr := managedfiles.SyncAll(cwd, harnesses, params, managedfiles.SyncOptions{})
 	var failedPaths []string
@@ -147,4 +144,30 @@ func runInit(_ *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// harnessSliceFromConfig maps strings from cfg.Harnesses to Harness enum
+// values. Unknown names are silently dropped (doctor's Project config
+// group surfaces them as drift). Empty input returns all three harnesses
+// — the legacy default before this commit.
+func harnessSliceFromConfig(names []string) []managedfiles.Harness {
+	if len(names) == 0 {
+		return []managedfiles.Harness{
+			managedfiles.HarnessClaude,
+			managedfiles.HarnessCursor,
+			managedfiles.HarnessOpenCode,
+		}
+	}
+	var out []managedfiles.Harness
+	for _, n := range names {
+		switch n {
+		case "claude":
+			out = append(out, managedfiles.HarnessClaude)
+		case "cursor":
+			out = append(out, managedfiles.HarnessCursor)
+		case "opencode":
+			out = append(out, managedfiles.HarnessOpenCode)
+		}
+	}
+	return out
 }

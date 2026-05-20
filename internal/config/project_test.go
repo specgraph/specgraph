@@ -6,6 +6,7 @@ package config_test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/config"
@@ -51,6 +52,54 @@ func TestFindProjectRoot_WalksUp(t *testing.T) {
 	found, err := config.FindProjectRoot(child)
 	require.NoError(t, err)
 	assert.Equal(t, root, found)
+}
+
+func TestProjectConfig_DecodesNewFields(t *testing.T) {
+	dir := t.TempDir()
+	yaml := `project: my-spec
+server: https://example.com
+harnesses:
+  - claude
+  - cursor
+nudges:
+  quiet: true
+`
+	if err := os.WriteFile(filepath.Join(dir, ".specgraph.yaml"), []byte(yaml), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	cfg, err := config.LoadProject(dir)
+	if err != nil {
+		t.Fatalf("LoadProject: %v", err)
+	}
+	if got := cfg.Slug; got != "my-spec" {
+		t.Errorf("Slug = %q, want my-spec", got)
+	}
+	if got := cfg.Server; got != "https://example.com" {
+		t.Errorf("Server = %q", got)
+	}
+	if !reflect.DeepEqual(cfg.Harnesses, []string{"claude", "cursor"}) {
+		t.Errorf("Harnesses = %v, want [claude cursor]", cfg.Harnesses)
+	}
+	if !cfg.Nudges.Quiet {
+		t.Errorf("Nudges.Quiet = false, want true")
+	}
+}
+
+func TestProjectConfig_EmptyHarnessesAcceptedAsLegacy(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".specgraph.yaml"), []byte("project: legacy\n"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	cfg, err := config.LoadProject(dir)
+	if err != nil {
+		t.Fatalf("LoadProject: %v", err)
+	}
+	if len(cfg.Harnesses) != 0 {
+		t.Errorf("Harnesses = %v, want empty", cfg.Harnesses)
+	}
+	if cfg.Nudges.Quiet {
+		t.Errorf("Nudges.Quiet = true, want false (zero value)")
+	}
 }
 
 func TestNormalizeSlug(t *testing.T) {

@@ -20,8 +20,17 @@ var ErrProjectNotFound = errors.New("project config not found")
 
 // ProjectConfig is the per-repo .specgraph.yaml.
 type ProjectConfig struct {
-	Slug   string `yaml:"project,omitempty"`
-	Server string `yaml:"server,omitempty"`
+	Slug      string   `yaml:"project,omitempty"`
+	Server    string   `yaml:"server,omitempty"`
+	Harnesses []string `yaml:"harnesses,omitempty"`
+	Nudges    Nudges   `yaml:"nudges,omitempty"`
+}
+
+// Nudges configures the drift-nudge that fires on every CLI invocation.
+// Quiet suppresses the nudge at the project level (the SPECGRAPH_DRIFT_NUDGE
+// environment variable does the same at the user level).
+type Nudges struct {
+	Quiet bool `yaml:"quiet,omitempty"`
 }
 
 const projectFileName = ".specgraph.yaml"
