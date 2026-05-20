@@ -539,7 +539,7 @@ func TestPrimeResource(t *testing.T) {
 		},
 	}
 
-	handler := primeResourceHandler(c)
+	handler := primeResourceHandler(c, &fakeSource{})
 	contents, err := handler(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
@@ -591,7 +591,7 @@ func TestPrimeResource_FindingsSection(t *testing.T) {
 		},
 	}
 
-	handler := primeResourceHandler(c)
+	handler := primeResourceHandler(c, &fakeSource{})
 	contents, err := handler(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
@@ -642,7 +642,7 @@ func TestPrimeResource_SeverityOrdering(t *testing.T) {
 		},
 	}
 
-	handler := primeResourceHandler(c)
+	handler := primeResourceHandler(c, &fakeSource{})
 	contents, err := handler(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
@@ -685,7 +685,7 @@ func TestPrimeResource_StageOrdering(t *testing.T) {
 		AnalyticalPass: defaultAnalyticalPassMock(),
 	}
 
-	handler := primeResourceHandler(c)
+	handler := primeResourceHandler(c, &fakeSource{})
 	contents, err := handler(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
@@ -727,7 +727,7 @@ func TestPrimeResource_RPCFailureRendersErrorMarker(t *testing.T) {
 		},
 	}
 
-	handler := primeResourceHandler(c)
+	handler := primeResourceHandler(c, &fakeSource{})
 	contents, err := handler(context.Background(), "specgraph://prime")
 	// The handler itself must not error — it returns the partial digest.
 	require.NoError(t, err)
@@ -777,7 +777,7 @@ func TestPrimeResource_EmptyGraphSkipped(t *testing.T) {
 		},
 		AnalyticalPass: defaultAnalyticalPassMock(), // empty findings
 	}
-	content, err := primeResourceHandler(c)(context.Background(), "specgraph://prime")
+	content, err := primeResourceHandler(c, &fakeSource{})(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.NotEmpty(t, content)
 	text := content[0].Text
@@ -801,7 +801,7 @@ func TestPrimeResource_ConstitutionNotFound_RendersHint(t *testing.T) {
 		AnalyticalPass: defaultAnalyticalPassMock(),
 	}
 
-	content, err := primeResourceHandler(c)(context.Background(), "specgraph://prime")
+	content, err := primeResourceHandler(c, &fakeSource{})(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.NotEmpty(t, content)
 	text := content[0].Text
@@ -833,7 +833,7 @@ func TestPrimeResource_ProjectFindingsDoesNotCallPerSpecListWithoutSlug(t *testi
 		},
 	}
 
-	content, err := primeResourceHandler(c)(context.Background(), "specgraph://prime")
+	content, err := primeResourceHandler(c, &fakeSource{})(context.Background(), "specgraph://prime")
 	require.NoError(t, err)
 	require.NotEmpty(t, content)
 	text := content[0].Text
@@ -842,6 +842,46 @@ func TestPrimeResource_ProjectFindingsDoesNotCallPerSpecListWithoutSlug(t *testi
 	require.Contains(t, text, "FINDING_SEVERITY_WARNING: 1")
 	require.NotContains(t, text, "slug is required",
 		"prime should use project-wide findings instead of per-spec ListFindings without a slug")
+}
+
+func TestPrime_IncludesSkillsPointer(t *testing.T) {
+	src := twoSkillFake()
+	r := NewRegistry()
+	RegisterResources(r, &Client{
+		Constitution:   defaultConstitutionMock(),
+		Spec:           &mockSpecService{listSpecs: func() (*specv1.ListSpecsResponse, error) { return &specv1.ListSpecsResponse{}, nil }},
+		Graph:          &mockGraphService{getReady: func() (*specv1.GetReadyResponse, error) { return &specv1.GetReadyResponse{}, nil }},
+		AnalyticalPass: defaultAnalyticalPassMock(),
+	}, src)
+
+	var primeHandler ResourceHandler
+	for _, res := range r.Resources() {
+		if res.URI == "specgraph://prime" {
+			primeHandler = res.Handler
+			break
+		}
+	}
+	if primeHandler == nil {
+		t.Fatal("prime resource not registered")
+	}
+	contents, err := primeHandler(context.Background(), "specgraph://prime")
+	if err != nil {
+		t.Fatalf("prime: %v", err)
+	}
+	body := contents[0].Text
+
+	for _, want := range []string{
+		"## Skills",
+		"specgraph_skills_list",
+		"specgraph_skills_search",
+		"specgraph_skills_get",
+		"specgraph://skills/",
+		"2 skills",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("prime missing %q", want)
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------

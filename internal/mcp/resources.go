@@ -246,7 +246,7 @@ func changesResourceHandler(c *Client) ResourceHandler {
 // its heading unconditionally; RPC failures log a warning and render a
 // visible "_(unable to load: ...)_" marker under the heading so partial
 // connectivity is observable rather than silently degrading the digest.
-func primeResourceHandler(c *Client) ResourceHandler {
+func primeResourceHandler(c *Client, src skills.Source) ResourceHandler {
 	return func(ctx context.Context, uri string) ([]ResourceContent, error) {
 		var b strings.Builder
 		b.WriteString("# SpecGraph Session Prime\n\n")
@@ -362,6 +362,21 @@ func primeResourceHandler(c *Client) ResourceHandler {
 				}
 				b.WriteString("\nFull at `specgraph://findings`.\n\n")
 			}
+		}
+
+		metas, err := src.List(ctx)
+		switch {
+		case err != nil:
+			slog.WarnContext(ctx, "prime.section_failed",
+				slog.String("section", "skills"),
+				slog.String("err", err.Error()))
+			b.WriteString("## Skills\n\n_(unable to load: " + err.Error() + ")_\n\n")
+		case len(metas) > 0:
+			fmt.Fprintf(&b, "## Skills\n\n%d skills exposed via MCP. ", len(metas))
+			b.WriteString("Use `specgraph_skills_list` to see the catalog, ")
+			b.WriteString("`specgraph_skills_search` to find one by keyword, ")
+			b.WriteString("and `specgraph_skills_get` / `specgraph://skills/<name>` ")
+			b.WriteString("to fetch a specific skill.\n\n")
 		}
 
 		return []ResourceContent{{URI: uri, MimeType: "text/markdown", Text: b.String()}}, nil
@@ -498,7 +513,7 @@ func RegisterResources(r *Registry, c *Client, src skills.Source) {
 		Description: "Session-priming digest: constitution summary, graph counts, ready specs, findings summary.",
 		MimeType:    "text/markdown",
 		IsTemplate:  false,
-		Handler:     primeResourceHandler(c),
+		Handler:     primeResourceHandler(c, src),
 	})
 	r.AddResource(ResourceDef{
 		URI:         "specgraph://skills/{name}",
