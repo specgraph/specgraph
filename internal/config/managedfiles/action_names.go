@@ -25,6 +25,23 @@ func ActionName(a Action) string {
 	}
 }
 
+// StateName returns the canonical lowercase string for a State,
+// suitable for human-readable CLI output. Mirrors ActionName for symmetry.
+func StateName(s State) string {
+	switch s {
+	case StateSynced:
+		return "synced"
+	case StateMissing:
+		return "missing"
+	case StateStale:
+		return "stale"
+	case StateDrifted:
+		return "drifted"
+	default:
+		return "unknown"
+	}
+}
+
 // CountErrors returns the number of SyncResults with Action == ActionError.
 func CountErrors(rs []SyncResult) int {
 	n := 0

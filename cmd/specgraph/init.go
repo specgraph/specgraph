@@ -32,10 +32,16 @@ var initCmd = &cobra.Command{
 	RunE: runInit,
 }
 
-var initYes bool
+var (
+	initYes   bool
+	initCheck bool
+	initQuiet bool
+)
 
 func init() {
 	initCmd.Flags().BoolVar(&initYes, "yes", false, "non-interactive (accepted for backward compat; init is always non-interactive)")
+	initCmd.Flags().BoolVar(&initCheck, "check", false, "Exit non-zero if any managed file would be modified (no writes)")
+	initCmd.Flags().BoolVar(&initQuiet, "quiet", false, "Suppress per-file action lines")
 	rootCmd.AddCommand(initCmd)
 }
 
@@ -117,13 +123,37 @@ func runInit(_ *cobra.Command, args []string) error {
 	// three when the list is empty (legacy configs and no-config case).
 	harnesses := harnessSliceFromConfig(pc.Harnesses)
 
+	// --check: inspect without writing; exit non-zero if any file is not Synced.
+	if initCheck {
+		states, err := managedfiles.InspectAll(cwd, harnesses, params)
+		if err != nil {
+			return fmt.Errorf("inspect for --check: %w", err)
+		}
+		nonSynced := 0
+		for _, s := range states {
+			if s.State != managedfiles.StateSynced {
+				nonSynced++
+				if !initQuiet {
+					fmt.Printf("%s: %s\n", s.Path, managedfiles.StateName(s.State))
+				}
+			}
+		}
+		if nonSynced > 0 {
+			return fmt.Errorf("%d managed file(s) not in sync", nonSynced)
+		}
+		if !initQuiet {
+			fmt.Printf("init --check: all %d managed file(s) synced\n", len(states))
+		}
+		return nil
+	}
+
 	results, syncErr := managedfiles.SyncAll(cwd, harnesses, params, managedfiles.SyncOptions{})
 	var failedPaths []string
 	for _, r := range results {
 		if r.Action == managedfiles.ActionError {
 			fmt.Fprintf(os.Stderr, "%s: error: %v\n", r.Path, r.Err)
 			failedPaths = append(failedPaths, r.Path)
-		} else {
+		} else if !initQuiet {
 			line := fmt.Sprintf("%s: %s", r.Path, managedfiles.ActionName(r.Action))
 			if r.Detail != "" {
 				line += " (" + r.Detail + ")"
