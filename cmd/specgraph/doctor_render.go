@@ -11,7 +11,7 @@ import (
 
 // renderText writes the compact-when-green / expanded-when-problems text
 // form of the report. verbose=true forces every group to expand.
-func renderText(w io.Writer, rep DoctorReport, verbose bool) {
+func renderText(w io.Writer, rep *DoctorReport, verbose bool) {
 	if rep.Binary.OK && !verbose {
 		_, _ = fmt.Fprintf(w, "Binary:         OK (v%s from %s)\n", rep.Binary.Version, rep.Binary.Commit) //nolint:errcheck // stdout write; not actionable
 	} else {
@@ -21,7 +21,21 @@ func renderText(w io.Writer, rep DoctorReport, verbose bool) {
 			_, _ = fmt.Fprintf(w, "  Commit:  %s\n", rep.Binary.Commit)  //nolint:errcheck // stdout write; not actionable
 		}
 	}
-	// Server, Project, Managed group rendering land in commits 4, 5, 6.
+	// Project group rendering
+	if rep.Project.OK && !verbose {
+		_, _ = fmt.Fprintf(w, "%s\n", projectStatusLine(rep.Project)) //nolint:errcheck // stdout write; not actionable
+	} else {
+		_, _ = fmt.Fprintf(w, "%s\n", projectStatusLine(rep.Project)) //nolint:errcheck // stdout write; not actionable
+		if verbose || !rep.Project.OK {
+			if rep.Project.StrictError != "" {
+				_, _ = fmt.Fprintf(w, "  StrictError:  %s\n", rep.Project.StrictError) //nolint:errcheck // stdout write; not actionable
+			}
+			for _, name := range rep.Project.UnknownNames {
+				_, _ = fmt.Fprintf(w, "  UnknownName:  %s\n", name) //nolint:errcheck // stdout write; not actionable
+			}
+		}
+	}
+	// Server, Managed group rendering land in commits 5, 6.
 }
 
 func binaryStatusText(b BinaryReport) string {
@@ -33,7 +47,7 @@ func binaryStatusText(b BinaryReport) string {
 
 // renderJSON writes the canonical machine-readable form. Schema stays
 // stable across versions; new fields may be added.
-func renderJSON(w io.Writer, rep DoctorReport) {
+func renderJSON(w io.Writer, rep *DoctorReport) {
 	wrapped := map[string]any{
 		"exitCode": rep.ExitCode,
 		"groups": map[string]any{

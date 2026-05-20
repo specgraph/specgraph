@@ -4,6 +4,7 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -113,6 +114,25 @@ func NormalizeSlug(raw string) string {
 	}
 	s = strings.ReplaceAll(s, "/", "-")
 	return strings.ToLower(s)
+}
+
+// ValidateProjectStrict re-reads the file at path and decodes it with
+// KnownFields(true). Returns nil if the file decodes cleanly; returns
+// an error naming the offending field(s) otherwise. Doctor's Project
+// config group is the only caller; init/nudge/everywhere else stays
+// on LoadProject (lenient).
+func ValidateProjectStrict(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read project config: %w", err)
+	}
+	var pc ProjectConfig
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(&pc); err != nil {
+		return fmt.Errorf("strict decode: %w", err)
+	}
+	return nil
 }
 
 func deriveSlug(dir string) string {

@@ -27,11 +27,6 @@ type ServerReport struct {
 	OK bool `json:"ok"`
 }
 
-// ProjectReport is a placeholder until commit 4 wires in the Project group.
-type ProjectReport struct {
-	OK bool `json:"ok"`
-}
-
 // ManagedReport is a placeholder until commit 6 wires in the Managed group.
 type ManagedReport struct {
 	OK bool `json:"ok"`
@@ -54,18 +49,24 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("exit-zero flag: %w", err)
 	}
 
-	rep := DoctorReport{
-		Binary: runBinaryGroup(),
-		// Server, Project, Managed wired in later commits.
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getwd: %w", err)
 	}
-	rep.ExitCode = computeExitCode(rep)
+
+	rep := DoctorReport{
+		Binary:  runBinaryGroup(),
+		Project: runProjectConfigGroup(cwd),
+		// Server, Managed wired in later commits.
+	}
+	rep.ExitCode = computeExitCode(&rep)
 
 	if jsonOut {
-		renderJSON(os.Stdout, rep)
+		renderJSON(os.Stdout, &rep)
 	} else {
-		renderText(os.Stdout, rep, verbose)
+		renderText(os.Stdout, &rep, verbose)
 	}
-	final := finalExitCode(rep, exitZero)
+	final := finalExitCode(&rep, exitZero)
 	if final == 0 {
 		return nil
 	}
@@ -79,15 +80,15 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 // computeExitCode picks among 0 (clean), 1 (any group unhealthy), 2
 // (infrastructure failure — reserved for the Server group's dial
 // errors etc.; filled in by commit 5).
-func computeExitCode(rep DoctorReport) int {
-	if !rep.Binary.OK {
+func computeExitCode(rep *DoctorReport) int {
+	if !rep.Binary.OK || !rep.Project.OK {
 		return 1
 	}
 	return 0
 }
 
 // finalExitCode applies the --exit-zero override.
-func finalExitCode(rep DoctorReport, exitZero bool) int {
+func finalExitCode(rep *DoctorReport, exitZero bool) int {
 	if exitZero {
 		return 0
 	}

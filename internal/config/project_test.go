@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/config"
@@ -99,6 +100,41 @@ func TestProjectConfig_EmptyHarnessesAcceptedAsLegacy(t *testing.T) {
 	}
 	if cfg.Nudges.Quiet {
 		t.Errorf("Nudges.Quiet = true, want false (zero value)")
+	}
+}
+
+func TestValidateProjectStrict_AcceptsKnownKeys(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".specgraph.yaml")
+	yaml := `project: x
+server: https://example.com
+harnesses: [claude]
+nudges:
+  quiet: false
+`
+	if err := os.WriteFile(path, []byte(yaml), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if err := config.ValidateProjectStrict(path); err != nil {
+		t.Errorf("ValidateProjectStrict on known-keys config: %v", err)
+	}
+}
+
+func TestValidateProjectStrict_RejectsUnknownKey(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".specgraph.yaml")
+	yaml := `project: x
+fnord: 42
+`
+	if err := os.WriteFile(path, []byte(yaml), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	err := config.ValidateProjectStrict(path)
+	if err == nil {
+		t.Fatal("expected strict-decode error on unknown key, got nil")
+	}
+	if !strings.Contains(err.Error(), "fnord") {
+		t.Errorf("error %q does not name the unknown key 'fnord'", err.Error())
 	}
 }
 
