@@ -188,9 +188,8 @@ func TestJSONKeyMerge_KeyManagedPresence_WriteIfAbsent(t *testing.T) {
 	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := os.ReadFile(full)
-	if !strings.Contains(string(got), `"specgraph@specgraph-local": true`) {
-		t.Errorf("expected key written with canonical value; got %s", got)
+	if v, ok := readEnabledPlugin(t, full); !ok || v != true {
+		t.Errorf("expected enabledPlugins[\"specgraph@specgraph-local\"]=true on first init, got %v (present=%v)", v, ok)
 	}
 }
 
@@ -205,9 +204,8 @@ func TestJSONKeyMerge_KeyManagedPresence_PreservesUserFalse(t *testing.T) {
 	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := os.ReadFile(full)
-	if !strings.Contains(string(got), `"specgraph@specgraph-local": false`) {
-		t.Errorf("expected user's false to be preserved; got %s", got)
+	if v, ok := readEnabledPlugin(t, full); !ok || v != false {
+		t.Errorf("expected user's false to be preserved, got %v (present=%v)", v, ok)
 	}
 }
 
@@ -222,10 +220,30 @@ func TestJSONKeyMerge_KeyManagedPresence_PreservesUserCustomValue(t *testing.T) 
 	if _, err := s.Sync(dir, mf, ProjectParams{}, SyncOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := os.ReadFile(full)
-	if !strings.Contains(string(got), `"specgraph@specgraph-local": "custom"`) {
-		t.Errorf("expected user's custom value to be preserved; got %s", got)
+	if v, ok := readEnabledPlugin(t, full); !ok || v != "custom" {
+		t.Errorf("expected user's custom value to be preserved, got %v (present=%v)", v, ok)
 	}
+}
+
+// readEnabledPlugin loads the JSON at path, navigates enabledPlugins, and
+// returns the value at specgraph@specgraph-local plus a presence flag.
+// Structural lookup so tests don't break on JSON formatting changes.
+func readEnabledPlugin(t *testing.T, path string) (any, bool) {
+	t.Helper()
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(got, &doc); err != nil {
+		t.Fatalf("unmarshal %s: %v", path, err)
+	}
+	enabled, ok := doc["enabledPlugins"].(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	v, ok := enabled["specgraph@specgraph-local"]
+	return v, ok
 }
 
 func presenceTestEntry(t *testing.T, defaultValue bool) ManagedFile {
@@ -331,30 +349,46 @@ func TestClaudeSettingsJSON_FreshInit(t *testing.T) {
 	if _, err := s.Sync(dir, mf, ProjectParams{Slug: "x"}, SyncOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := os.ReadFile(filepath.Join(dir, ".claude/settings.json"))
-	if !strings.Contains(string(got), `"specgraph-local"`) {
-		t.Errorf("marketplace entry not written: %s", got)
+	settingsPath := filepath.Join(dir, ".claude/settings.json")
+	got, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", settingsPath, err)
 	}
-	if !strings.Contains(string(got), `"./.specgraph/agents/claude"`) {
-		t.Errorf("marketplace path not set correctly: %s", got)
+	var doc map[string]any
+	if err := json.Unmarshal(got, &doc); err != nil {
+		t.Fatalf("unmarshal: %v", err)
 	}
-	if !strings.Contains(string(got), `"specgraph@specgraph-local": true`) {
-		t.Errorf("enabledPlugin not written on fresh init: %s", got)
+	ekm, ok := doc["extraKnownMarketplaces"].(map[string]any)
+	if !ok {
+		t.Fatalf("extraKnownMarketplaces missing or wrong type: %s", got)
+	}
+	entry, ok := ekm["specgraph-local"].(map[string]any)
+	if !ok {
+		t.Fatalf("extraKnownMarketplaces.specgraph-local missing or wrong type: %s", got)
+	}
+	source, ok := entry["source"].(map[string]any)
+	if !ok {
+		t.Fatalf("extraKnownMarketplaces.specgraph-local.source missing or wrong type: %s", got)
+	}
+	if source["path"] != "./.specgraph/agents/claude" {
+		t.Errorf("marketplace path = %v, want %q", source["path"], "./.specgraph/agents/claude")
+	}
+	if v, ok := readEnabledPlugin(t, settingsPath); !ok || v != true {
+		t.Errorf("expected enabledPlugins[\"specgraph@specgraph-local\"]=true on fresh init, got %v (present=%v)", v, ok)
 	}
 }
 
 func TestClaudeSettingsJSON_PreservesUserDisable(t *testing.T) {
 	dir := t.TempDir()
 	settingsDir := filepath.Join(dir, ".claude")
-	_ = os.MkdirAll(settingsDir, 0o755)                                                                                        //nolint:gosec // test directory creation with permissive mode is intentional
-	_ = os.WriteFile(filepath.Join(settingsDir, "settings.json"), []byte(`{"enabledPlugins":{"specgraph@specgraph-local":false}}`), 0o644) //nolint:gosec // intentional permissive mode for permission-preservation test
+	_ = os.MkdirAll(settingsDir, 0o755)                                                                                                       //nolint:gosec // test directory creation with permissive mode is intentional
+	_ = os.WriteFile(filepath.Join(settingsDir, "settings.json"), []byte(`{"enabledPlugins":{"specgraph@specgraph-local":false}}`), 0o644)    //nolint:gosec // intentional permissive mode for permission-preservation test
 	mf := findManifestEntry(t, ".claude/settings.json")
 	s := jsonKeyMergeStrategy{}
 	if _, err := s.Sync(dir, mf, ProjectParams{Slug: "x"}, SyncOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := os.ReadFile(filepath.Join(dir, ".claude/settings.json"))
-	if !strings.Contains(string(got), `"specgraph@specgraph-local": false`) {
-		t.Errorf("user's disable was overwritten: %s", got)
+	if v, ok := readEnabledPlugin(t, filepath.Join(dir, ".claude/settings.json")); !ok || v != false {
+		t.Errorf("user's disable was overwritten, got %v (present=%v)", v, ok)
 	}
 }

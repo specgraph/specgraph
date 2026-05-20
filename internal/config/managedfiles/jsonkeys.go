@@ -106,8 +106,9 @@ func jsonPointerGet(doc map[string]any, pointer string) (any, bool) {
 }
 
 // jsonPointerTokens splits an RFC 6901 JSON Pointer into segments and
-// unescapes ~1 → / and ~0 → ~ (order matters per the RFC: unescape ~1
-// before ~0 to avoid double-unescaping).
+// unescapes ~1 → / and ~0 → ~. Rejects malformed escapes (a trailing ~
+// or any ~X where X is not 0 or 1) so manifest authors get a hard error
+// on typos rather than silently passing through invalid input.
 func jsonPointerTokens(pointer string) ([]string, error) {
 	if pointer == "" {
 		return nil, nil
@@ -117,9 +118,27 @@ func jsonPointerTokens(pointer string) ([]string, error) {
 	}
 	parts := strings.Split(pointer[1:], "/")
 	for i, p := range parts {
-		p = strings.ReplaceAll(p, "~1", "/")
-		p = strings.ReplaceAll(p, "~0", "~")
-		parts[i] = p
+		var b strings.Builder
+		b.Grow(len(p))
+		for j := 0; j < len(p); j++ {
+			if p[j] != '~' {
+				b.WriteByte(p[j])
+				continue
+			}
+			if j+1 >= len(p) {
+				return nil, fmt.Errorf("jsonPointerTokens: %q has trailing ~ (invalid RFC 6901 escape)", pointer)
+			}
+			switch p[j+1] {
+			case '0':
+				b.WriteByte('~')
+			case '1':
+				b.WriteByte('/')
+			default:
+				return nil, fmt.Errorf("jsonPointerTokens: %q has invalid escape ~%c (only ~0 and ~1 are defined by RFC 6901)", pointer, p[j+1])
+			}
+			j++ // consume the escape character
+		}
+		parts[i] = b.String()
 	}
 	return parts, nil
 }

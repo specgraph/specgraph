@@ -87,11 +87,11 @@ type ManagedFile struct {
 	HasFrontmatter bool
 
 	// Build is a closure that returns the canonical content for this
-	// file given a ProjectParams. Mutually exclusive with Source: each
-	// manifest entry uses one or the other. JSONKeyMerge and
-	// MarkdownBlock strategies require Build (canonical depends on
-	// per-project params); WholeFile requires Source (canonical is a
-	// static embedded asset).
+	// file given a ProjectParams. Mutually exclusive with Source and
+	// JSONKeys: each manifest entry uses exactly one. MarkdownBlock
+	// requires Build (canonical depends on per-project params);
+	// WholeFile uses Source instead (canonical is a static embedded
+	// asset); JSONKeyMerge uses the declarative JSONKeys form.
 	//
 	// Build MUST be a pure function of ProjectParams: same input →
 	// byte-identical output, no FS reads, no clock, no env, no

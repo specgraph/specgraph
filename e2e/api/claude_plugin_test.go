@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -51,18 +50,23 @@ var _ = Describe("Claude plugin shim install", func() {
 		settingsPath := filepath.Join(tmpDir, ".claude/settings.json")
 		body, err := os.ReadFile(settingsPath)
 		Expect(err).NotTo(HaveOccurred())
-		// Flip the enabled state to false. The file is pretty-printed with
-		// 2-space indent and a space after ":", so match the canonical form.
-		body = []byte(strings.ReplaceAll(string(body),
-			`"specgraph@specgraph-local": true`,
-			`"specgraph@specgraph-local": false`))
+		// Flip the enabled state to false via structural JSON mutation —
+		// not strings.ReplaceAll — so the test doesn't silently no-op if
+		// the formatter ever changes spacing or indentation.
+		var settings map[string]any
+		Expect(json.Unmarshal(body, &settings)).To(Succeed())
+		enabled, ok := settings["enabledPlugins"].(map[string]any)
+		Expect(ok).To(BeTrue(), "enabledPlugins should be an object")
+		enabled["specgraph@specgraph-local"] = false
+		body, err = json.MarshalIndent(settings, "", "  ")
+		Expect(err).NotTo(HaveOccurred())
 		Expect(os.WriteFile(settingsPath, body, 0o644)).To(Succeed()) //nolint:gosec // test fixture in t.TempDir; permissions are intentional
 		claudeRunInit(tmpDir)
 		body2, err := os.ReadFile(settingsPath)
 		Expect(err).NotTo(HaveOccurred())
 		var doc map[string]any
 		Expect(json.Unmarshal(body2, &doc)).To(Succeed())
-		enabled, ok := doc["enabledPlugins"].(map[string]any)
+		enabled, ok = doc["enabledPlugins"].(map[string]any)
 		Expect(ok).To(BeTrue(), "enabledPlugins should be an object")
 		Expect(enabled["specgraph@specgraph-local"]).To(BeFalse(),
 			"expected user's disable to survive init")

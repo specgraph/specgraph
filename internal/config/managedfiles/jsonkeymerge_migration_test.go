@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -55,12 +54,25 @@ func TestMigratedMCPJSONsMatchLegacyOutput(t *testing.T) {
 			if res.Err != nil {
 				t.Fatalf("sync result error: %v", res.Err)
 			}
-			got, _ := os.ReadFile(full)
+			got, rerr := os.ReadFile(full)
+			if rerr != nil {
+				t.Fatalf("read %s: %v", full, rerr)
+			}
 			var gotDoc, wantDoc any
-			_ = json.Unmarshal(got, &gotDoc)
-			_ = json.Unmarshal(legacyPatchBytes(tc.goldenBuild), &wantDoc)
-			gotCanon, _ := json.Marshal(gotDoc)
-			wantCanon, _ := json.Marshal(wantDoc)
+			if jerr := json.Unmarshal(got, &gotDoc); jerr != nil {
+				t.Fatalf("unmarshal got: %v", jerr)
+			}
+			if jerr := json.Unmarshal(legacyPatchBytes(tc.goldenBuild), &wantDoc); jerr != nil {
+				t.Fatalf("unmarshal want: %v", jerr)
+			}
+			gotCanon, merr := json.Marshal(gotDoc)
+			if merr != nil {
+				t.Fatalf("marshal got: %v", merr)
+			}
+			wantCanon, merr := json.Marshal(wantDoc)
+			if merr != nil {
+				t.Fatalf("marshal want: %v", merr)
+			}
 			if !bytes.Equal(gotCanon, wantCanon) {
 				t.Errorf("migrated output differs from legacy:\n got:  %s\n want: %s", gotCanon, wantCanon)
 			}
@@ -146,18 +158,40 @@ func TestMigratedOpenCodeJSON_PreservesPluginUnion(t *testing.T) {
 	if _, err := s.Sync(dir, mf, params, SyncOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	got, _ := os.ReadFile(full)
-	// Assert containment only — the legacy unionPluginArray hook prepended
-	// canonical entries; KeyManagedArrayUnion (post-PR E) appends them.
-	// Both preserve user plugins, which is the user-visible contract.
-	// Order is implementation-defined and covered by the doc comment on
-	// KeyManagedArrayUnion.
-	if !strings.Contains(string(got), `"./user-plugin.ts"`) {
-		t.Errorf("user plugin entry lost: %s", got)
+	got, rerr := os.ReadFile(full)
+	if rerr != nil {
+		t.Fatalf("read %s: %v", full, rerr)
 	}
-	if !strings.Contains(string(got), `"./.specgraph/agents/opencode/specgraph.ts"`) {
-		t.Errorf("canonical plugin entry not added: %s", got)
+	// Assert array membership structurally — the legacy unionPluginArray
+	// hook prepended canonical entries; KeyManagedArrayUnion (post-PR E)
+	// appends them. Both preserve user plugins, which is the user-visible
+	// contract. Order is implementation-defined and covered by the doc
+	// comment on KeyManagedArrayUnion.
+	var doc struct {
+		Plugin []string `json:"plugin"`
 	}
+	if err := json.Unmarshal(got, &doc); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	for _, want := range []string{
+		"./user-plugin.ts",
+		"./.specgraph/agents/opencode/specgraph.ts",
+	} {
+		if !slicesContains(doc.Plugin, want) {
+			t.Errorf("plugin array missing %q: %v", want, doc.Plugin)
+		}
+	}
+}
+
+// slicesContains is a tiny local helper avoiding the slices import for
+// a single comparison so this test file stays self-contained.
+func slicesContains(s []string, v string) bool {
+	for _, x := range s {
+		if x == v {
+			return true
+		}
+	}
+	return false
 }
 
 // legacyPatchBytes returns the legacy Build closure's patch bytes
