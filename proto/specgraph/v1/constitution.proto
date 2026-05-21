@@ -210,6 +210,31 @@ message EmitToolFilesResponse {
   string filename = 2;
 }
 
+// RefreshConstitutionLayerRequest is the input for RefreshConstitutionLayer.
+message RefreshConstitutionLayerRequest {
+  // layer identifies which layer to refresh. Required, non-UNSPECIFIED.
+  ConstitutionLayer layer = 1;
+  // source_url is the URL to fetch from. Required. Must pass URL
+  // credential sanitization (no userinfo, no token-bearing query params).
+  string source_url = 2;
+  // dry_run skips the write and returns the diff only.
+  bool dry_run = 3;
+}
+
+// RefreshConstitutionLayerResponse is the output for RefreshConstitutionLayer.
+message RefreshConstitutionLayerResponse {
+  // before is the layer state prior to the refresh. nil if no prior layer.
+  Constitution before = 1;
+  // after is the newly fetched and parsed layer.
+  Constitution after = 2;
+  // previous_source_hash is the source_hash before the refresh. "" if no prior layer.
+  string previous_source_hash = 3;
+  // new_source_hash is the canonical hash of the newly fetched content.
+  string new_source_hash = 4;
+  // changed is false iff new_source_hash == previous_source_hash (no write performed).
+  bool changed = 5;
+}
+
 // --- Service ---
 
 // ConstitutionService manages the project constitution and related operations.
@@ -220,4 +245,9 @@ service ConstitutionService {
   rpc UpdateConstitution(UpdateConstitutionRequest) returns (UpdateConstitutionResponse);
   // EmitToolFiles generates a tool-specific configuration file from the constitution.
   rpc EmitToolFiles(EmitToolFilesRequest) returns (EmitToolFilesResponse);
+  // RefreshConstitutionLayer fetches a remote constitution and updates
+  // the specified layer. Used by `specgraph constitution import --from-url`
+  // and `specgraph constitution sync`.
+  rpc RefreshConstitutionLayer(RefreshConstitutionLayerRequest)
+      returns (RefreshConstitutionLayerResponse);
 }
