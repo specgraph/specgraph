@@ -5,6 +5,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -19,8 +20,107 @@ import (
 
 const (
 	defaultInitialStage = "spark"
-	defaultLifecycle    = storage.SpecLifecycleTask
 )
+
+// --- Provenance JSONB envelope helpers ---
+
+// decodeProvenanceDetail parses the JSONB envelope `{"type": "...", "data": {...}}`
+// into a domain detail struct. Empty input returns an empty (AUTHORED-shaped)
+// detail. Returns ErrProvenanceMismatch on envelope mismatch.
+func decodeProvenanceDetail(raw []byte) (storage.SpecProvenanceDetail, error) {
+	if len(raw) == 0 {
+		return storage.SpecProvenanceDetail{}, nil
+	}
+	var env struct {
+		Type string          `json:"type"`
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return storage.SpecProvenanceDetail{}, fmt.Errorf("decode provenance_detail envelope: %w", err)
+	}
+	switch storage.SpecProvenanceType(env.Type) {
+	case storage.SpecProvenanceAuthored, "":
+		return storage.SpecProvenanceDetail{}, nil
+	case storage.SpecProvenanceRetroactiveFromPR:
+		var d struct {
+			URL      string    `json:"url"`
+			SHA      string    `json:"sha"`
+			MergedAt time.Time `json:"merged_at"`
+			Title    string    `json:"title"`
+		}
+		if len(env.Data) > 0 && string(env.Data) != "null" {
+			if err := json.Unmarshal(env.Data, &d); err != nil {
+				return storage.SpecProvenanceDetail{}, fmt.Errorf("decode retroactive_from_pr: %w", err)
+			}
+		}
+		return storage.SpecProvenanceDetail{
+			RetroactiveFromPR: &storage.RetroactivePRProvenance{
+				URL: d.URL, SHA: d.SHA, MergedAt: d.MergedAt, Title: d.Title,
+			},
+		}, nil
+	case storage.SpecProvenanceDeclared:
+		var d struct {
+			DeclaredBy string `json:"declared_by"`
+			Note       string `json:"note"`
+		}
+		if len(env.Data) > 0 && string(env.Data) != "null" {
+			if err := json.Unmarshal(env.Data, &d); err != nil {
+				return storage.SpecProvenanceDetail{}, fmt.Errorf("decode declared: %w", err)
+			}
+		}
+		return storage.SpecProvenanceDetail{
+			Declared: &storage.DeclaredProvenance{DeclaredBy: d.DeclaredBy, Note: d.Note},
+		}, nil
+	default:
+		return storage.SpecProvenanceDetail{}, fmt.Errorf("unknown provenance type %q in detail envelope", env.Type)
+	}
+}
+
+// encodeProvenanceDetail produces the JSONB envelope for storage.
+// Returns storage.ErrProvenanceMismatch if the detail's variant pointer is
+// inconsistent with the declared provenance type.
+func encodeProvenanceDetail(p storage.SpecProvenanceType, d storage.SpecProvenanceDetail) ([]byte, error) {
+	type retroactivePayload struct {
+		URL      string    `json:"url"`
+		SHA      string    `json:"sha"`
+		MergedAt time.Time `json:"merged_at"`
+		Title    string    `json:"title"`
+	}
+	type declaredPayload struct {
+		DeclaredBy string `json:"declared_by"`
+		Note       string `json:"note"`
+	}
+	var data any
+	switch p {
+	case storage.SpecProvenanceAuthored:
+		if d.RetroactiveFromPR != nil || d.Declared != nil {
+			return nil, storage.ErrProvenanceMismatch
+		}
+		data = nil
+	case storage.SpecProvenanceRetroactiveFromPR:
+		if d.RetroactiveFromPR == nil {
+			return nil, storage.ErrProvenanceMismatch
+		}
+		data = retroactivePayload{
+			URL: d.RetroactiveFromPR.URL, SHA: d.RetroactiveFromPR.SHA,
+			MergedAt: d.RetroactiveFromPR.MergedAt, Title: d.RetroactiveFromPR.Title,
+		}
+	case storage.SpecProvenanceDeclared:
+		if d.Declared == nil {
+			return nil, storage.ErrProvenanceMismatch
+		}
+		data = declaredPayload{
+			DeclaredBy: d.Declared.DeclaredBy, Note: d.Declared.Note,
+		}
+	default:
+		return nil, fmt.Errorf("unknown provenance type %q", p)
+	}
+	env := struct {
+		Type string `json:"type"`
+		Data any    `json:"data"`
+	}{Type: string(p), Data: data}
+	return json.Marshal(env)
+}
 
 // CreateSpec stores a new spec in Postgres and returns it.
 // All DB operations run within a single transaction.
@@ -44,18 +144,25 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		}
 
 		// Insert spec row.
+		provDetailJSON, err := encodeProvenanceDetail(storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{})
+		if err != nil {
+			return fmt.Errorf("postgres: create spec: encode provenance: %w", err)
+		}
+
 		specID := newID("spec")
 		row := s.queryRow(txCtx,
 			`INSERT INTO specs
-				(id, slug, project_slug, intent, stage, priority, complexity, lifecycle, notes,
+				(id, slug, project_slug, intent, stage, priority, complexity,
+				 provenance_type, provenance_detail, notes,
 				 content_hash, version, created_at, updated_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, '', $9, 1, $10, $10)
-			 RETURNING id, slug, project_slug, intent, stage, priority, complexity, lifecycle,
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, '', $10, 1, $11, $11)
+			 RETURNING id, slug, project_slug, intent, stage, priority, complexity,
+			           provenance_type, provenance_detail,
 			           superseded_by, supersedes, notes, content_hash, version,
 			           spark_output, shape_output, specify_output, decompose_output,
 			           created_at, updated_at`,
 			specID, slug, s.project, intent, defaultInitialStage, priority, complexity,
-			string(defaultLifecycle), ch, now,
+			string(storage.SpecProvenanceAuthored), provDetailJSON, ch, now,
 		)
 
 		spec, err := scanSpec(row)
@@ -108,7 +215,8 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 func (s *Store) GetSpec(ctx context.Context, slug string) (*storage.Spec, error) {
 	row := s.queryRow(ctx,
 		`SELECT s.id, s.slug, s.project_slug, s.intent, s.stage, s.priority, s.complexity,
-		        s.lifecycle, s.superseded_by, s.supersedes, s.notes, s.content_hash, s.version,
+		        s.provenance_type, s.provenance_detail,
+		        s.superseded_by, s.supersedes, s.notes, s.content_hash, s.version,
 		        s.spark_output, s.shape_output, s.specify_output, s.decompose_output,
 		        s.created_at, s.updated_at,
 		        (SELECT count(*) FROM conversation_logs
@@ -145,7 +253,8 @@ func scanSpec(row pgx.Row) (*storage.Spec, error) {
 		stage           string
 		priority        string
 		complexity      string
-		lifecycle       string
+		provenanceType  string
+		provenanceDetail []byte
 		supersededBy    string
 		supersedes      string
 		notes           string
@@ -160,13 +269,19 @@ func scanSpec(row pgx.Row) (*storage.Spec, error) {
 	)
 	if err := row.Scan(
 		&id, &slug, &projectSlug, &intent, &stage, &priority, &complexity,
-		&lifecycle, &supersededBy, &supersedes, &notes, &contentHash, &version,
+		&provenanceType, &provenanceDetail,
+		&supersededBy, &supersedes, &notes, &contentHash, &version,
 		&sparkOutput, &shapeOutput, &specifyOutput, &decomposeOutput,
 		&createdAt, &updatedAt,
 	); err != nil {
 		return nil, fmt.Errorf("postgres: scan spec: %w", err)
 	}
-	return buildSpec(id, slug, intent, stage, priority, complexity, lifecycle,
+	detail, err := decodeProvenanceDetail(provenanceDetail)
+	if err != nil {
+		return nil, fmt.Errorf("scan spec %q: %w", slug, err)
+	}
+	return buildSpec(id, slug, intent, stage, priority, complexity,
+		storage.SpecProvenanceType(provenanceType), detail,
 		supersededBy, supersedes, notes, contentHash, version,
 		sparkOutput, shapeOutput, specifyOutput, decomposeOutput,
 		createdAt, updatedAt, 0), nil
@@ -175,44 +290,53 @@ func scanSpec(row pgx.Row) (*storage.Spec, error) {
 // scanSpecWithCount reads a Spec from a row that includes a trailing conversation_count column.
 func scanSpecWithCount(row pgx.Row) (*storage.Spec, error) {
 	var (
-		id              string
-		slug            string
-		projectSlug     string
-		intent          string
-		stage           string
-		priority        string
-		complexity      string
-		lifecycle       string
-		supersededBy    string
-		supersedes      string
-		notes           string
-		contentHash     string
-		version         int32
-		sparkOutput     *storage.SparkOutput
-		shapeOutput     *storage.ShapeOutput
-		specifyOutput   *storage.SpecifyOutput
-		decomposeOutput *storage.DecomposeOutput
-		createdAt       time.Time
-		updatedAt       time.Time
-		convCount       int
+		id               string
+		slug             string
+		projectSlug      string
+		intent           string
+		stage            string
+		priority         string
+		complexity       string
+		provenanceType   string
+		provenanceDetail []byte
+		supersededBy     string
+		supersedes       string
+		notes            string
+		contentHash      string
+		version          int32
+		sparkOutput      *storage.SparkOutput
+		shapeOutput      *storage.ShapeOutput
+		specifyOutput    *storage.SpecifyOutput
+		decomposeOutput  *storage.DecomposeOutput
+		createdAt        time.Time
+		updatedAt        time.Time
+		convCount        int
 	)
 	if err := row.Scan(
 		&id, &slug, &projectSlug, &intent, &stage, &priority, &complexity,
-		&lifecycle, &supersededBy, &supersedes, &notes, &contentHash, &version,
+		&provenanceType, &provenanceDetail,
+		&supersededBy, &supersedes, &notes, &contentHash, &version,
 		&sparkOutput, &shapeOutput, &specifyOutput, &decomposeOutput,
 		&createdAt, &updatedAt,
 		&convCount,
 	); err != nil {
 		return nil, fmt.Errorf("postgres: scan spec with count: %w", err)
 	}
-	return buildSpec(id, slug, intent, stage, priority, complexity, lifecycle,
+	detail, err := decodeProvenanceDetail(provenanceDetail)
+	if err != nil {
+		return nil, fmt.Errorf("scan spec %q: %w", slug, err)
+	}
+	return buildSpec(id, slug, intent, stage, priority, complexity,
+		storage.SpecProvenanceType(provenanceType), detail,
 		supersededBy, supersedes, notes, contentHash, version,
 		sparkOutput, shapeOutput, specifyOutput, decomposeOutput,
 		createdAt, updatedAt, convCount), nil
 }
 
 func buildSpec(
-	id, slug, intent, stage, priority, complexity, lifecycle,
+	id, slug, intent, stage, priority, complexity string,
+	provenance storage.SpecProvenanceType,
+	provenanceDetail storage.SpecProvenanceDetail,
 	supersededBy, supersedes, notes, contentHash string,
 	version int32,
 	sparkOutput *storage.SparkOutput,
@@ -230,7 +354,8 @@ func buildSpec(
 		Priority:          storage.SpecPriority(priority),
 		Complexity:        storage.SpecComplexity(complexity),
 		Version:           version,
-		Lifecycle:         storage.SpecLifecycle(lifecycle),
+		Provenance:        provenance,
+		ProvenanceDetail:  provenanceDetail,
 		SupersededBy:      supersededBy,
 		Supersedes:        supersedes,
 		Notes:             notes,
@@ -250,7 +375,8 @@ func buildSpec(
 func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int) ([]*storage.Spec, error) {
 	rows, err := s.query(ctx,
 		`SELECT s.id, s.slug, s.project_slug, s.intent, s.stage, s.priority, s.complexity,
-		        s.lifecycle, s.superseded_by, s.supersedes, s.notes, s.content_hash, s.version,
+		        s.provenance_type, s.provenance_detail,
+		        s.superseded_by, s.supersedes, s.notes, s.content_hash, s.version,
 		        s.spark_output, s.shape_output, s.specify_output, s.decompose_output,
 		        s.created_at, s.updated_at,
 		        (SELECT count(*) FROM conversation_logs cl
@@ -271,37 +397,44 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 	var specs []*storage.Spec
 	for rows.Next() {
 		var (
-			id              string
-			slug            string
-			projectSlug     string
-			intent          string
-			stageVal        string
-			priorityVal     string
-			complexity      string
-			lifecycle       string
-			supersededBy    string
-			supersedes      string
-			notes           string
-			contentHash     string
-			version         int32
-			sparkOutput     *storage.SparkOutput
-			shapeOutput     *storage.ShapeOutput
-			specifyOutput   *storage.SpecifyOutput
-			decomposeOutput *storage.DecomposeOutput
-			createdAt       time.Time
-			updatedAt       time.Time
-			convCount       int
+			id               string
+			slug             string
+			projectSlug      string
+			intent           string
+			stageVal         string
+			priorityVal      string
+			complexity       string
+			provenanceType   string
+			provenanceDetail []byte
+			supersededBy     string
+			supersedes       string
+			notes            string
+			contentHash      string
+			version          int32
+			sparkOutput      *storage.SparkOutput
+			shapeOutput      *storage.ShapeOutput
+			specifyOutput    *storage.SpecifyOutput
+			decomposeOutput  *storage.DecomposeOutput
+			createdAt        time.Time
+			updatedAt        time.Time
+			convCount        int
 		)
 		if err := rows.Scan(
 			&id, &slug, &projectSlug, &intent, &stageVal, &priorityVal, &complexity,
-			&lifecycle, &supersededBy, &supersedes, &notes, &contentHash, &version,
+			&provenanceType, &provenanceDetail,
+			&supersededBy, &supersedes, &notes, &contentHash, &version,
 			&sparkOutput, &shapeOutput, &specifyOutput, &decomposeOutput,
 			&createdAt, &updatedAt,
 			&convCount,
 		); err != nil {
 			return nil, fmt.Errorf("postgres: list specs: scan: %w", err)
 		}
-		specs = append(specs, buildSpec(id, slug, intent, stageVal, priorityVal, complexity, lifecycle,
+		detail, err := decodeProvenanceDetail(provenanceDetail)
+		if err != nil {
+			return nil, fmt.Errorf("postgres: list specs: decode provenance %q: %w", slug, err)
+		}
+		specs = append(specs, buildSpec(id, slug, intent, stageVal, priorityVal, complexity,
+			storage.SpecProvenanceType(provenanceType), detail,
 			supersededBy, supersedes, notes, contentHash, version,
 			sparkOutput, shapeOutput, specifyOutput, decomposeOutput,
 			createdAt, updatedAt, convCount))
@@ -325,7 +458,8 @@ func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*
 
 	rows, err := s.query(ctx,
 		`SELECT s.id, s.slug, s.project_slug, s.intent, s.stage, s.priority, s.complexity,
-		        s.lifecycle, s.superseded_by, s.supersedes, s.notes, s.content_hash, s.version,
+		        s.provenance_type, s.provenance_detail,
+		        s.superseded_by, s.supersedes, s.notes, s.content_hash, s.version,
 		        s.spark_output, s.shape_output, s.specify_output, s.decompose_output,
 		        s.created_at, s.updated_at,
 		        0 AS conversation_count
@@ -341,37 +475,44 @@ func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*
 	result := make(map[string]*storage.Spec, len(slugs))
 	for rows.Next() {
 		var (
-			id              string
-			slug            string
-			projectSlug     string
-			intent          string
-			stage           string
-			priority        string
-			complexity      string
-			lifecycle       string
-			supersededBy    string
-			supersedes      string
-			notes           string
-			contentHash     string
-			version         int32
-			sparkOutput     *storage.SparkOutput
-			shapeOutput     *storage.ShapeOutput
-			specifyOutput   *storage.SpecifyOutput
-			decomposeOutput *storage.DecomposeOutput
-			createdAt       time.Time
-			updatedAt       time.Time
-			convCount       int
+			id               string
+			slug             string
+			projectSlug      string
+			intent           string
+			stage            string
+			priority         string
+			complexity       string
+			provenanceType   string
+			provenanceDetail []byte
+			supersededBy     string
+			supersedes       string
+			notes            string
+			contentHash      string
+			version          int32
+			sparkOutput      *storage.SparkOutput
+			shapeOutput      *storage.ShapeOutput
+			specifyOutput    *storage.SpecifyOutput
+			decomposeOutput  *storage.DecomposeOutput
+			createdAt        time.Time
+			updatedAt        time.Time
+			convCount        int
 		)
 		if err := rows.Scan(
 			&id, &slug, &projectSlug, &intent, &stage, &priority, &complexity,
-			&lifecycle, &supersededBy, &supersedes, &notes, &contentHash, &version,
+			&provenanceType, &provenanceDetail,
+			&supersededBy, &supersedes, &notes, &contentHash, &version,
 			&sparkOutput, &shapeOutput, &specifyOutput, &decomposeOutput,
 			&createdAt, &updatedAt,
 			&convCount,
 		); err != nil {
 			return nil, fmt.Errorf("postgres: batch get specs: scan: %w", err)
 		}
-		result[slug] = buildSpec(id, slug, intent, stage, priority, complexity, lifecycle,
+		detail, err := decodeProvenanceDetail(provenanceDetail)
+		if err != nil {
+			return nil, fmt.Errorf("postgres: batch get specs: decode provenance %q: %w", slug, err)
+		}
+		result[slug] = buildSpec(id, slug, intent, stage, priority, complexity,
+			storage.SpecProvenanceType(provenanceType), detail,
 			supersededBy, supersedes, notes, contentHash, version,
 			sparkOutput, shapeOutput, specifyOutput, decomposeOutput,
 			createdAt, updatedAt, convCount)
