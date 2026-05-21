@@ -27,7 +27,7 @@ func Spec(s *specv1.Spec) string {
 		{"Priority", s.Priority},
 		{"Complexity", s.Complexity},
 		{"Version", fmt.Sprintf("%d", s.Version)},
-		{"Lifecycle", lifecycleString(s.Lifecycle)},
+		{"Provenance", provenanceString(s.GetProvenanceType())},
 	}
 	b.WriteString(metadataTable(pairs))
 
@@ -54,13 +54,38 @@ func SpecList(specs []*specv1.Spec) string {
 	return itemTable(headers, rows)
 }
 
-func lifecycleString(lc specv1.SpecLifecycle) string {
-	switch lc {
-	case specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK:
-		return "task"
-	case specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING:
-		return "living"
+func provenanceString(p specv1.SpecProvenance) string {
+	switch p {
+	case specv1.SpecProvenance_SPEC_PROVENANCE_AUTHORED:
+		return "AUTHORED"
+	case specv1.SpecProvenance_SPEC_PROVENANCE_RETROACTIVE_FROM_PR:
+		return "RETROACTIVE_FROM_PR"
+	case specv1.SpecProvenance_SPEC_PROVENANCE_DECLARED:
+		return "DECLARED"
 	default:
-		return "unspecified"
+		return "UNSPECIFIED"
+	}
+}
+
+// renderProvenanceBlock formats the provenance line(s) for spec render output.
+// Always renders at least one line — no silent-default for AUTHORED.
+func renderProvenanceBlock(s *specv1.Spec) string {
+	pt := s.GetProvenanceType()
+	switch d := s.GetProvenanceDetail().(type) {
+	case *specv1.Spec_RetroactiveFromPr:
+		r := d.RetroactiveFromPr
+		return fmt.Sprintf(
+			"provenance:   %s\n              %s\n              merged %s (commit %s)",
+			provenanceString(pt), r.GetUrl(),
+			r.GetMergedAt().AsTime().Format("2006-01-02"),
+			r.GetSha(),
+		)
+	case *specv1.Spec_Declared:
+		return fmt.Sprintf(
+			"provenance:   %s\n              declared by %s: %q",
+			provenanceString(pt), d.Declared.GetDeclaredBy(), d.Declared.GetNote(),
+		)
+	default:
+		return fmt.Sprintf("provenance:   %s", provenanceString(pt))
 	}
 }
