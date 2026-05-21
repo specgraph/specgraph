@@ -25,52 +25,58 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type SpecLifecycle int32
+// SpecProvenance records how a spec entered the graph. Replaces the
+// earlier SpecLifecycle field (task/living) at pre-1.0 with a clean
+// wire-break — see docs/superpowers/specs/2026-05-20-spec-provenance-model-design.md.
+type SpecProvenance int32
 
 const (
-	SpecLifecycle_SPEC_LIFECYCLE_UNSPECIFIED SpecLifecycle = 0
-	SpecLifecycle_SPEC_LIFECYCLE_TASK        SpecLifecycle = 1
-	SpecLifecycle_SPEC_LIFECYCLE_LIVING      SpecLifecycle = 2
+	SpecProvenance_SPEC_PROVENANCE_UNSPECIFIED         SpecProvenance = 0
+	SpecProvenance_SPEC_PROVENANCE_AUTHORED            SpecProvenance = 1 // forward-authored via the funnel
+	SpecProvenance_SPEC_PROVENANCE_RETROACTIVE_FROM_PR SpecProvenance = 2 // imported from a merged PR/commit
+	SpecProvenance_SPEC_PROVENANCE_DECLARED            SpecProvenance = 3 // human-declared as describing existing reality
 )
 
-// Enum value maps for SpecLifecycle.
+// Enum value maps for SpecProvenance.
 var (
-	SpecLifecycle_name = map[int32]string{
-		0: "SPEC_LIFECYCLE_UNSPECIFIED",
-		1: "SPEC_LIFECYCLE_TASK",
-		2: "SPEC_LIFECYCLE_LIVING",
+	SpecProvenance_name = map[int32]string{
+		0: "SPEC_PROVENANCE_UNSPECIFIED",
+		1: "SPEC_PROVENANCE_AUTHORED",
+		2: "SPEC_PROVENANCE_RETROACTIVE_FROM_PR",
+		3: "SPEC_PROVENANCE_DECLARED",
 	}
-	SpecLifecycle_value = map[string]int32{
-		"SPEC_LIFECYCLE_UNSPECIFIED": 0,
-		"SPEC_LIFECYCLE_TASK":        1,
-		"SPEC_LIFECYCLE_LIVING":      2,
+	SpecProvenance_value = map[string]int32{
+		"SPEC_PROVENANCE_UNSPECIFIED":         0,
+		"SPEC_PROVENANCE_AUTHORED":            1,
+		"SPEC_PROVENANCE_RETROACTIVE_FROM_PR": 2,
+		"SPEC_PROVENANCE_DECLARED":            3,
 	}
 )
 
-func (x SpecLifecycle) Enum() *SpecLifecycle {
-	p := new(SpecLifecycle)
+func (x SpecProvenance) Enum() *SpecProvenance {
+	p := new(SpecProvenance)
 	*p = x
 	return p
 }
 
-func (x SpecLifecycle) String() string {
+func (x SpecProvenance) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (SpecLifecycle) Descriptor() protoreflect.EnumDescriptor {
+func (SpecProvenance) Descriptor() protoreflect.EnumDescriptor {
 	return file_specgraph_v1_spec_proto_enumTypes[0].Descriptor()
 }
 
-func (SpecLifecycle) Type() protoreflect.EnumType {
+func (SpecProvenance) Type() protoreflect.EnumType {
 	return &file_specgraph_v1_spec_proto_enumTypes[0]
 }
 
-func (x SpecLifecycle) Number() protoreflect.EnumNumber {
+func (x SpecProvenance) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use SpecLifecycle.Descriptor instead.
-func (SpecLifecycle) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use SpecProvenance.Descriptor instead.
+func (SpecProvenance) EnumDescriptor() ([]byte, []int) {
 	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
@@ -120,38 +126,209 @@ func (x InlineDiff_Op) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use InlineDiff_Op.Descriptor instead.
 func (InlineDiff_Op) EnumDescriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{5, 0}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{8, 0}
+}
+
+// AuthoredProvenance is the empty payload variant for AUTHORED specs.
+// The audit trail for AUTHORED specs lives in stage outputs and conversation logs.
+type AuthoredProvenance struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AuthoredProvenance) Reset() {
+	*x = AuthoredProvenance{}
+	mi := &file_specgraph_v1_spec_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuthoredProvenance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuthoredProvenance) ProtoMessage() {}
+
+func (x *AuthoredProvenance) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_spec_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuthoredProvenance.ProtoReflect.Descriptor instead.
+func (*AuthoredProvenance) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{0}
+}
+
+type RetroactiveFromPrProvenance struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"` // PR URL
+	Sha           string                 `protobuf:"bytes,2,opt,name=sha,proto3" json:"sha,omitempty"` // merge commit SHA
+	MergedAt      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=merged_at,json=mergedAt,proto3" json:"merged_at,omitempty"`
+	Title         string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"` // PR title at import time
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetroactiveFromPrProvenance) Reset() {
+	*x = RetroactiveFromPrProvenance{}
+	mi := &file_specgraph_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetroactiveFromPrProvenance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetroactiveFromPrProvenance) ProtoMessage() {}
+
+func (x *RetroactiveFromPrProvenance) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetroactiveFromPrProvenance.ProtoReflect.Descriptor instead.
+func (*RetroactiveFromPrProvenance) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *RetroactiveFromPrProvenance) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *RetroactiveFromPrProvenance) GetSha() string {
+	if x != nil {
+		return x.Sha
+	}
+	return ""
+}
+
+func (x *RetroactiveFromPrProvenance) GetMergedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.MergedAt
+	}
+	return nil
+}
+
+func (x *RetroactiveFromPrProvenance) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+type DeclaredProvenance struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DeclaredBy    string                 `protobuf:"bytes,1,opt,name=declared_by,json=declaredBy,proto3" json:"declared_by,omitempty"` // human or system identifier
+	Note          string                 `protobuf:"bytes,2,opt,name=note,proto3" json:"note,omitempty"`                               // free-text rationale
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeclaredProvenance) Reset() {
+	*x = DeclaredProvenance{}
+	mi := &file_specgraph_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeclaredProvenance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeclaredProvenance) ProtoMessage() {}
+
+func (x *DeclaredProvenance) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeclaredProvenance.ProtoReflect.Descriptor instead.
+func (*DeclaredProvenance) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *DeclaredProvenance) GetDeclaredBy() string {
+	if x != nil {
+		return x.DeclaredBy
+	}
+	return ""
+}
+
+func (x *DeclaredProvenance) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
 }
 
 type Spec struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                 // stable ULID, e.g. "spec-01JQXYZ..."
-	Slug              string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`             // human-readable, e.g. "oauth-refresh-rotation"
-	Intent            string                 `protobuf:"bytes,3,opt,name=intent,proto3" json:"intent,omitempty"`         // what this spec is about
-	Stage             string                 `protobuf:"bytes,4,opt,name=stage,proto3" json:"stage,omitempty"`           // spark | shape | specify | decompose | approved | in_progress | done
-	Priority          string                 `protobuf:"bytes,5,opt,name=priority,proto3" json:"priority,omitempty"`     // p0 | p1 | p2 | p3
-	Complexity        string                 `protobuf:"bytes,6,opt,name=complexity,proto3" json:"complexity,omitempty"` // low | medium | high
-	Version           int32                  `protobuf:"varint,7,opt,name=version,proto3" json:"version,omitempty"`
-	CreatedAt         *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt         *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	Lifecycle         SpecLifecycle          `protobuf:"varint,10,opt,name=lifecycle,proto3,enum=specgraph.v1.SpecLifecycle" json:"lifecycle,omitempty"`          // task (default) | living
-	SupersededBy      string                 `protobuf:"bytes,11,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"`                 // slug of replacement spec, if superseded
-	Supersedes        string                 `protobuf:"bytes,12,opt,name=supersedes,proto3" json:"supersedes,omitempty"`                                         // slug of spec this replaced
-	Notes             string                 `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"`                                                   // free-text notes (conversation summaries, context)
-	ContentHash       string                 `protobuf:"bytes,15,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"`                    // Murmur3-128 hex digest of substantive fields; changes on every mutation
-	ConversationLogs  []*ConversationLog     `protobuf:"bytes,16,rep,name=conversation_logs,json=conversationLogs,proto3" json:"conversation_logs,omitempty"`     // authoring conversation audit trail
-	SparkOutput       *SparkOutput           `protobuf:"bytes,17,opt,name=spark_output,json=sparkOutput,proto3" json:"spark_output,omitempty"`                    // populated when stage >= spark
-	ShapeOutput       *ShapeOutput           `protobuf:"bytes,18,opt,name=shape_output,json=shapeOutput,proto3" json:"shape_output,omitempty"`                    // populated when stage >= shape
-	SpecifyOutput     *SpecifyOutput         `protobuf:"bytes,19,opt,name=specify_output,json=specifyOutput,proto3" json:"specify_output,omitempty"`              // populated when stage >= specify
-	DecomposeOutput   *DecomposeOutput       `protobuf:"bytes,20,opt,name=decompose_output,json=decomposeOutput,proto3" json:"decompose_output,omitempty"`        // populated when stage >= decompose
-	ConversationCount int32                  `protobuf:"varint,21,opt,name=conversation_count,json=conversationCount,proto3" json:"conversation_count,omitempty"` // count of conversation log entries (populated by ListSpecs)
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                 // stable ULID, e.g. "spec-01JQXYZ..."
+	Slug       string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`             // human-readable, e.g. "oauth-refresh-rotation"
+	Intent     string                 `protobuf:"bytes,3,opt,name=intent,proto3" json:"intent,omitempty"`         // what this spec is about
+	Stage      string                 `protobuf:"bytes,4,opt,name=stage,proto3" json:"stage,omitempty"`           // spark | shape | specify | decompose | approved | in_progress | review | done | superseded | abandoned
+	Priority   string                 `protobuf:"bytes,5,opt,name=priority,proto3" json:"priority,omitempty"`     // p0 | p1 | p2 | p3
+	Complexity string                 `protobuf:"bytes,6,opt,name=complexity,proto3" json:"complexity,omitempty"` // low | medium | high
+	Version    int32                  `protobuf:"varint,7,opt,name=version,proto3" json:"version,omitempty"`
+	CreatedAt  *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt  *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// WIRE-BREAK: field 10 was `SpecLifecycle lifecycle`. Repurposed at
+	// pre-1.0 (no production data); semantic intent preserved — it's still
+	// "how should the funnel treat this spec," with cleaner axes.
+	ProvenanceType    SpecProvenance     `protobuf:"varint,10,opt,name=provenance_type,json=provenanceType,proto3,enum=specgraph.v1.SpecProvenance" json:"provenance_type,omitempty"`
+	SupersededBy      string             `protobuf:"bytes,11,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"`                 // slug of replacement spec, if superseded
+	Supersedes        string             `protobuf:"bytes,12,opt,name=supersedes,proto3" json:"supersedes,omitempty"`                                         // slug of spec this replaced
+	Notes             string             `protobuf:"bytes,14,opt,name=notes,proto3" json:"notes,omitempty"`                                                   // free-text notes (conversation summaries, context)
+	ContentHash       string             `protobuf:"bytes,15,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"`                    // Murmur3-128 hex digest of substantive fields; changes on every mutation
+	ConversationLogs  []*ConversationLog `protobuf:"bytes,16,rep,name=conversation_logs,json=conversationLogs,proto3" json:"conversation_logs,omitempty"`     // authoring conversation audit trail
+	SparkOutput       *SparkOutput       `protobuf:"bytes,17,opt,name=spark_output,json=sparkOutput,proto3" json:"spark_output,omitempty"`                    // populated when stage >= spark
+	ShapeOutput       *ShapeOutput       `protobuf:"bytes,18,opt,name=shape_output,json=shapeOutput,proto3" json:"shape_output,omitempty"`                    // populated when stage >= shape
+	SpecifyOutput     *SpecifyOutput     `protobuf:"bytes,19,opt,name=specify_output,json=specifyOutput,proto3" json:"specify_output,omitempty"`              // populated when stage >= specify
+	DecomposeOutput   *DecomposeOutput   `protobuf:"bytes,20,opt,name=decompose_output,json=decomposeOutput,proto3" json:"decompose_output,omitempty"`        // populated when stage >= decompose
+	ConversationCount int32              `protobuf:"varint,21,opt,name=conversation_count,json=conversationCount,proto3" json:"conversation_count,omitempty"` // count of conversation log entries (populated by ListSpecs)
+	// provenance_detail carries the type-specific payload for non-AUTHORED specs.
+	// The populated variant MUST match provenance_type — enforced server-side
+	// with storage.ErrProvenanceMismatch.
+	//
+	// Types that are valid to be assigned to ProvenanceDetail:
+	//
+	//	*Spec_Authored
+	//	*Spec_RetroactiveFromPr
+	//	*Spec_Declared
+	ProvenanceDetail isSpec_ProvenanceDetail `protobuf_oneof:"provenance_detail"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *Spec) Reset() {
 	*x = Spec{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[0]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -163,7 +340,7 @@ func (x *Spec) String() string {
 func (*Spec) ProtoMessage() {}
 
 func (x *Spec) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[0]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -176,7 +353,7 @@ func (x *Spec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Spec.ProtoReflect.Descriptor instead.
 func (*Spec) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{0}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *Spec) GetId() string {
@@ -242,11 +419,11 @@ func (x *Spec) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-func (x *Spec) GetLifecycle() SpecLifecycle {
+func (x *Spec) GetProvenanceType() SpecProvenance {
 	if x != nil {
-		return x.Lifecycle
+		return x.ProvenanceType
 	}
-	return SpecLifecycle_SPEC_LIFECYCLE_UNSPECIFIED
+	return SpecProvenance_SPEC_PROVENANCE_UNSPECIFIED
 }
 
 func (x *Spec) GetSupersededBy() string {
@@ -319,6 +496,62 @@ func (x *Spec) GetConversationCount() int32 {
 	return 0
 }
 
+func (x *Spec) GetProvenanceDetail() isSpec_ProvenanceDetail {
+	if x != nil {
+		return x.ProvenanceDetail
+	}
+	return nil
+}
+
+func (x *Spec) GetAuthored() *AuthoredProvenance {
+	if x != nil {
+		if x, ok := x.ProvenanceDetail.(*Spec_Authored); ok {
+			return x.Authored
+		}
+	}
+	return nil
+}
+
+func (x *Spec) GetRetroactiveFromPr() *RetroactiveFromPrProvenance {
+	if x != nil {
+		if x, ok := x.ProvenanceDetail.(*Spec_RetroactiveFromPr); ok {
+			return x.RetroactiveFromPr
+		}
+	}
+	return nil
+}
+
+func (x *Spec) GetDeclared() *DeclaredProvenance {
+	if x != nil {
+		if x, ok := x.ProvenanceDetail.(*Spec_Declared); ok {
+			return x.Declared
+		}
+	}
+	return nil
+}
+
+type isSpec_ProvenanceDetail interface {
+	isSpec_ProvenanceDetail()
+}
+
+type Spec_Authored struct {
+	Authored *AuthoredProvenance `protobuf:"bytes,22,opt,name=authored,proto3,oneof"`
+}
+
+type Spec_RetroactiveFromPr struct {
+	RetroactiveFromPr *RetroactiveFromPrProvenance `protobuf:"bytes,23,opt,name=retroactive_from_pr,json=retroactiveFromPr,proto3,oneof"`
+}
+
+type Spec_Declared struct {
+	Declared *DeclaredProvenance `protobuf:"bytes,24,opt,name=declared,proto3,oneof"`
+}
+
+func (*Spec_Authored) isSpec_ProvenanceDetail() {}
+
+func (*Spec_RetroactiveFromPr) isSpec_ProvenanceDetail() {}
+
+func (*Spec_Declared) isSpec_ProvenanceDetail() {}
+
 type FieldChange struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Field         string                 `protobuf:"bytes,1,opt,name=field,proto3" json:"field,omitempty"`
@@ -330,7 +563,7 @@ type FieldChange struct {
 
 func (x *FieldChange) Reset() {
 	*x = FieldChange{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[1]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -342,7 +575,7 @@ func (x *FieldChange) String() string {
 func (*FieldChange) ProtoMessage() {}
 
 func (x *FieldChange) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[1]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -355,7 +588,7 @@ func (x *FieldChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FieldChange.ProtoReflect.Descriptor instead.
 func (*FieldChange) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{1}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *FieldChange) GetField() string {
@@ -396,7 +629,7 @@ type ChangeLogEntry struct {
 
 func (x *ChangeLogEntry) Reset() {
 	*x = ChangeLogEntry{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[2]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -408,7 +641,7 @@ func (x *ChangeLogEntry) String() string {
 func (*ChangeLogEntry) ProtoMessage() {}
 
 func (x *ChangeLogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[2]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -421,7 +654,7 @@ func (x *ChangeLogEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChangeLogEntry.ProtoReflect.Descriptor instead.
 func (*ChangeLogEntry) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ChangeLogEntry) GetId() string {
@@ -499,7 +732,7 @@ type ListChangesRequest struct {
 
 func (x *ListChangesRequest) Reset() {
 	*x = ListChangesRequest{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[3]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -511,7 +744,7 @@ func (x *ListChangesRequest) String() string {
 func (*ListChangesRequest) ProtoMessage() {}
 
 func (x *ListChangesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[3]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -524,7 +757,7 @@ func (x *ListChangesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChangesRequest.ProtoReflect.Descriptor instead.
 func (*ListChangesRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ListChangesRequest) GetSlug() string {
@@ -564,7 +797,7 @@ type ListChangesResponse struct {
 
 func (x *ListChangesResponse) Reset() {
 	*x = ListChangesResponse{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[4]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -576,7 +809,7 @@ func (x *ListChangesResponse) String() string {
 func (*ListChangesResponse) ProtoMessage() {}
 
 func (x *ListChangesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[4]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -589,7 +822,7 @@ func (x *ListChangesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListChangesResponse.ProtoReflect.Descriptor instead.
 func (*ListChangesResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListChangesResponse) GetEntries() []*ChangeLogEntry {
@@ -609,7 +842,7 @@ type InlineDiff struct {
 
 func (x *InlineDiff) Reset() {
 	*x = InlineDiff{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[5]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -621,7 +854,7 @@ func (x *InlineDiff) String() string {
 func (*InlineDiff) ProtoMessage() {}
 
 func (x *InlineDiff) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[5]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -634,7 +867,7 @@ func (x *InlineDiff) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InlineDiff.ProtoReflect.Descriptor instead.
 func (*InlineDiff) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *InlineDiff) GetOp() InlineDiff_Op {
@@ -663,7 +896,7 @@ type VersionDiff struct {
 
 func (x *VersionDiff) Reset() {
 	*x = VersionDiff{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[6]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -675,7 +908,7 @@ func (x *VersionDiff) String() string {
 func (*VersionDiff) ProtoMessage() {}
 
 func (x *VersionDiff) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[6]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -688,7 +921,7 @@ func (x *VersionDiff) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VersionDiff.ProtoReflect.Descriptor instead.
 func (*VersionDiff) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *VersionDiff) GetField() string {
@@ -730,7 +963,7 @@ type CompareVersionsRequest struct {
 
 func (x *CompareVersionsRequest) Reset() {
 	*x = CompareVersionsRequest{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[7]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -742,7 +975,7 @@ func (x *CompareVersionsRequest) String() string {
 func (*CompareVersionsRequest) ProtoMessage() {}
 
 func (x *CompareVersionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[7]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -755,7 +988,7 @@ func (x *CompareVersionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompareVersionsRequest.ProtoReflect.Descriptor instead.
 func (*CompareVersionsRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CompareVersionsRequest) GetSlug() string {
@@ -792,7 +1025,7 @@ type CompareVersionsResponse struct {
 
 func (x *CompareVersionsResponse) Reset() {
 	*x = CompareVersionsResponse{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[8]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -804,7 +1037,7 @@ func (x *CompareVersionsResponse) String() string {
 func (*CompareVersionsResponse) ProtoMessage() {}
 
 func (x *CompareVersionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[8]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -817,7 +1050,7 @@ func (x *CompareVersionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CompareVersionsResponse.ProtoReflect.Descriptor instead.
 func (*CompareVersionsResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CompareVersionsResponse) GetFromVersion() int32 {
@@ -867,7 +1100,7 @@ type CreateSpecRequest struct {
 
 func (x *CreateSpecRequest) Reset() {
 	*x = CreateSpecRequest{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[9]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -879,7 +1112,7 @@ func (x *CreateSpecRequest) String() string {
 func (*CreateSpecRequest) ProtoMessage() {}
 
 func (x *CreateSpecRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[9]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -892,7 +1125,7 @@ func (x *CreateSpecRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSpecRequest.ProtoReflect.Descriptor instead.
 func (*CreateSpecRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CreateSpecRequest) GetSlug() string {
@@ -932,7 +1165,7 @@ type GetSpecRequest struct {
 
 func (x *GetSpecRequest) Reset() {
 	*x = GetSpecRequest{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[10]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -944,7 +1177,7 @@ func (x *GetSpecRequest) String() string {
 func (*GetSpecRequest) ProtoMessage() {}
 
 func (x *GetSpecRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[10]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -957,7 +1190,7 @@ func (x *GetSpecRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSpecRequest.ProtoReflect.Descriptor instead.
 func (*GetSpecRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{10}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetSpecRequest) GetSlug() string {
@@ -978,7 +1211,7 @@ type ListSpecsRequest struct {
 
 func (x *ListSpecsRequest) Reset() {
 	*x = ListSpecsRequest{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[11]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -990,7 +1223,7 @@ func (x *ListSpecsRequest) String() string {
 func (*ListSpecsRequest) ProtoMessage() {}
 
 func (x *ListSpecsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[11]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1003,7 +1236,7 @@ func (x *ListSpecsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSpecsRequest.ProtoReflect.Descriptor instead.
 func (*ListSpecsRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{11}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListSpecsRequest) GetStage() string {
@@ -1036,7 +1269,7 @@ type ListSpecsResponse struct {
 
 func (x *ListSpecsResponse) Reset() {
 	*x = ListSpecsResponse{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[12]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1048,7 +1281,7 @@ func (x *ListSpecsResponse) String() string {
 func (*ListSpecsResponse) ProtoMessage() {}
 
 func (x *ListSpecsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[12]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1061,7 +1294,7 @@ func (x *ListSpecsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSpecsResponse.ProtoReflect.Descriptor instead.
 func (*ListSpecsResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{12}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListSpecsResponse) GetSpecs() []*Spec {
@@ -1085,7 +1318,7 @@ type UpdateSpecRequest struct {
 
 func (x *UpdateSpecRequest) Reset() {
 	*x = UpdateSpecRequest{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[13]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1097,7 +1330,7 @@ func (x *UpdateSpecRequest) String() string {
 func (*UpdateSpecRequest) ProtoMessage() {}
 
 func (x *UpdateSpecRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[13]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1110,7 +1343,7 @@ func (x *UpdateSpecRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSpecRequest.ProtoReflect.Descriptor instead.
 func (*UpdateSpecRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{13}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *UpdateSpecRequest) GetSlug() string {
@@ -1164,7 +1397,7 @@ type CreateSpecResponse struct {
 
 func (x *CreateSpecResponse) Reset() {
 	*x = CreateSpecResponse{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[14]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1176,7 +1409,7 @@ func (x *CreateSpecResponse) String() string {
 func (*CreateSpecResponse) ProtoMessage() {}
 
 func (x *CreateSpecResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[14]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1189,7 +1422,7 @@ func (x *CreateSpecResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSpecResponse.ProtoReflect.Descriptor instead.
 func (*CreateSpecResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{14}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CreateSpecResponse) GetSpec() *Spec {
@@ -1208,7 +1441,7 @@ type GetSpecResponse struct {
 
 func (x *GetSpecResponse) Reset() {
 	*x = GetSpecResponse{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[15]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1220,7 +1453,7 @@ func (x *GetSpecResponse) String() string {
 func (*GetSpecResponse) ProtoMessage() {}
 
 func (x *GetSpecResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[15]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1233,7 +1466,7 @@ func (x *GetSpecResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSpecResponse.ProtoReflect.Descriptor instead.
 func (*GetSpecResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{15}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetSpecResponse) GetSpec() *Spec {
@@ -1252,7 +1485,7 @@ type UpdateSpecResponse struct {
 
 func (x *UpdateSpecResponse) Reset() {
 	*x = UpdateSpecResponse{}
-	mi := &file_specgraph_v1_spec_proto_msgTypes[16]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1264,7 +1497,7 @@ func (x *UpdateSpecResponse) String() string {
 func (*UpdateSpecResponse) ProtoMessage() {}
 
 func (x *UpdateSpecResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_spec_proto_msgTypes[16]
+	mi := &file_specgraph_v1_spec_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1277,7 +1510,7 @@ func (x *UpdateSpecResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateSpecResponse.ProtoReflect.Descriptor instead.
 func (*UpdateSpecResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{16}
+	return file_specgraph_v1_spec_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *UpdateSpecResponse) GetSpec() *Spec {
@@ -1291,7 +1524,17 @@ var File_specgraph_v1_spec_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cspecgraph/v1/authoring.proto\"\xf1\x06\n" +
+	"\x17specgraph/v1/spec.proto\x12\fspecgraph.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1cspecgraph/v1/authoring.proto\"\x14\n" +
+	"\x12AuthoredProvenance\"\x90\x01\n" +
+	"\x1bRetroactiveFromPrProvenance\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12\x10\n" +
+	"\x03sha\x18\x02 \x01(\tR\x03sha\x127\n" +
+	"\tmerged_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\bmergedAt\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\"I\n" +
+	"\x12DeclaredProvenance\x12\x1f\n" +
+	"\vdeclared_by\x18\x01 \x01(\tR\n" +
+	"declaredBy\x12\x12\n" +
+	"\x04note\x18\x02 \x01(\tR\x04note\"\xef\b\n" +
 	"\x04Spec\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x16\n" +
@@ -1305,9 +1548,9 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x129\n" +
-	"\tlifecycle\x18\n" +
-	" \x01(\x0e2\x1b.specgraph.v1.SpecLifecycleR\tlifecycle\x12#\n" +
+	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12E\n" +
+	"\x0fprovenance_type\x18\n" +
+	" \x01(\x0e2\x1c.specgraph.v1.SpecProvenanceR\x0eprovenanceType\x12#\n" +
 	"\rsuperseded_by\x18\v \x01(\tR\fsupersededBy\x12\x1e\n" +
 	"\n" +
 	"supersedes\x18\f \x01(\tR\n" +
@@ -1319,7 +1562,11 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\fshape_output\x18\x12 \x01(\v2\x19.specgraph.v1.ShapeOutputR\vshapeOutput\x12B\n" +
 	"\x0especify_output\x18\x13 \x01(\v2\x1b.specgraph.v1.SpecifyOutputR\rspecifyOutput\x12H\n" +
 	"\x10decompose_output\x18\x14 \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x0fdecomposeOutput\x12-\n" +
-	"\x12conversation_count\x18\x15 \x01(\x05R\x11conversationCountJ\x04\b\r\x10\x0eR\ahistory\"]\n" +
+	"\x12conversation_count\x18\x15 \x01(\x05R\x11conversationCount\x12>\n" +
+	"\bauthored\x18\x16 \x01(\v2 .specgraph.v1.AuthoredProvenanceH\x00R\bauthored\x12[\n" +
+	"\x13retroactive_from_pr\x18\x17 \x01(\v2).specgraph.v1.RetroactiveFromPrProvenanceH\x00R\x11retroactiveFromPr\x12>\n" +
+	"\bdeclared\x18\x18 \x01(\v2 .specgraph.v1.DeclaredProvenanceH\x00R\bdeclaredB\x13\n" +
+	"\x11provenance_detailJ\x04\b\r\x10\x0eR\ahistory\"]\n" +
 	"\vFieldChange\x12\x14\n" +
 	"\x05field\x18\x01 \x01(\tR\x05field\x12\x1b\n" +
 	"\told_value\x18\x02 \x01(\tR\boldValue\x12\x1b\n" +
@@ -1405,11 +1652,12 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\x0fGetSpecResponse\x12&\n" +
 	"\x04spec\x18\x01 \x01(\v2\x12.specgraph.v1.SpecR\x04spec\"<\n" +
 	"\x12UpdateSpecResponse\x12&\n" +
-	"\x04spec\x18\x01 \x01(\v2\x12.specgraph.v1.SpecR\x04spec*c\n" +
-	"\rSpecLifecycle\x12\x1e\n" +
-	"\x1aSPEC_LIFECYCLE_UNSPECIFIED\x10\x00\x12\x17\n" +
-	"\x13SPEC_LIFECYCLE_TASK\x10\x01\x12\x19\n" +
-	"\x15SPEC_LIFECYCLE_LIVING\x10\x022\xf9\x03\n" +
+	"\x04spec\x18\x01 \x01(\v2\x12.specgraph.v1.SpecR\x04spec*\x96\x01\n" +
+	"\x0eSpecProvenance\x12\x1f\n" +
+	"\x1bSPEC_PROVENANCE_UNSPECIFIED\x10\x00\x12\x1c\n" +
+	"\x18SPEC_PROVENANCE_AUTHORED\x10\x01\x12'\n" +
+	"#SPEC_PROVENANCE_RETROACTIVE_FROM_PR\x10\x02\x12\x1c\n" +
+	"\x18SPEC_PROVENANCE_DECLARED\x10\x032\xf9\x03\n" +
 	"\vSpecService\x12O\n" +
 	"\n" +
 	"CreateSpec\x12\x1f.specgraph.v1.CreateSpecRequest\x1a .specgraph.v1.CreateSpecResponse\x12F\n" +
@@ -1433,70 +1681,77 @@ func file_specgraph_v1_spec_proto_rawDescGZIP() []byte {
 }
 
 var file_specgraph_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_specgraph_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_specgraph_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_specgraph_v1_spec_proto_goTypes = []any{
-	(SpecLifecycle)(0),              // 0: specgraph.v1.SpecLifecycle
-	(InlineDiff_Op)(0),              // 1: specgraph.v1.InlineDiff.Op
-	(*Spec)(nil),                    // 2: specgraph.v1.Spec
-	(*FieldChange)(nil),             // 3: specgraph.v1.FieldChange
-	(*ChangeLogEntry)(nil),          // 4: specgraph.v1.ChangeLogEntry
-	(*ListChangesRequest)(nil),      // 5: specgraph.v1.ListChangesRequest
-	(*ListChangesResponse)(nil),     // 6: specgraph.v1.ListChangesResponse
-	(*InlineDiff)(nil),              // 7: specgraph.v1.InlineDiff
-	(*VersionDiff)(nil),             // 8: specgraph.v1.VersionDiff
-	(*CompareVersionsRequest)(nil),  // 9: specgraph.v1.CompareVersionsRequest
-	(*CompareVersionsResponse)(nil), // 10: specgraph.v1.CompareVersionsResponse
-	(*CreateSpecRequest)(nil),       // 11: specgraph.v1.CreateSpecRequest
-	(*GetSpecRequest)(nil),          // 12: specgraph.v1.GetSpecRequest
-	(*ListSpecsRequest)(nil),        // 13: specgraph.v1.ListSpecsRequest
-	(*ListSpecsResponse)(nil),       // 14: specgraph.v1.ListSpecsResponse
-	(*UpdateSpecRequest)(nil),       // 15: specgraph.v1.UpdateSpecRequest
-	(*CreateSpecResponse)(nil),      // 16: specgraph.v1.CreateSpecResponse
-	(*GetSpecResponse)(nil),         // 17: specgraph.v1.GetSpecResponse
-	(*UpdateSpecResponse)(nil),      // 18: specgraph.v1.UpdateSpecResponse
-	(*timestamppb.Timestamp)(nil),   // 19: google.protobuf.Timestamp
-	(*ConversationLog)(nil),         // 20: specgraph.v1.ConversationLog
-	(*SparkOutput)(nil),             // 21: specgraph.v1.SparkOutput
-	(*ShapeOutput)(nil),             // 22: specgraph.v1.ShapeOutput
-	(*SpecifyOutput)(nil),           // 23: specgraph.v1.SpecifyOutput
-	(*DecomposeOutput)(nil),         // 24: specgraph.v1.DecomposeOutput
+	(SpecProvenance)(0),                 // 0: specgraph.v1.SpecProvenance
+	(InlineDiff_Op)(0),                  // 1: specgraph.v1.InlineDiff.Op
+	(*AuthoredProvenance)(nil),          // 2: specgraph.v1.AuthoredProvenance
+	(*RetroactiveFromPrProvenance)(nil), // 3: specgraph.v1.RetroactiveFromPrProvenance
+	(*DeclaredProvenance)(nil),          // 4: specgraph.v1.DeclaredProvenance
+	(*Spec)(nil),                        // 5: specgraph.v1.Spec
+	(*FieldChange)(nil),                 // 6: specgraph.v1.FieldChange
+	(*ChangeLogEntry)(nil),              // 7: specgraph.v1.ChangeLogEntry
+	(*ListChangesRequest)(nil),          // 8: specgraph.v1.ListChangesRequest
+	(*ListChangesResponse)(nil),         // 9: specgraph.v1.ListChangesResponse
+	(*InlineDiff)(nil),                  // 10: specgraph.v1.InlineDiff
+	(*VersionDiff)(nil),                 // 11: specgraph.v1.VersionDiff
+	(*CompareVersionsRequest)(nil),      // 12: specgraph.v1.CompareVersionsRequest
+	(*CompareVersionsResponse)(nil),     // 13: specgraph.v1.CompareVersionsResponse
+	(*CreateSpecRequest)(nil),           // 14: specgraph.v1.CreateSpecRequest
+	(*GetSpecRequest)(nil),              // 15: specgraph.v1.GetSpecRequest
+	(*ListSpecsRequest)(nil),            // 16: specgraph.v1.ListSpecsRequest
+	(*ListSpecsResponse)(nil),           // 17: specgraph.v1.ListSpecsResponse
+	(*UpdateSpecRequest)(nil),           // 18: specgraph.v1.UpdateSpecRequest
+	(*CreateSpecResponse)(nil),          // 19: specgraph.v1.CreateSpecResponse
+	(*GetSpecResponse)(nil),             // 20: specgraph.v1.GetSpecResponse
+	(*UpdateSpecResponse)(nil),          // 21: specgraph.v1.UpdateSpecResponse
+	(*timestamppb.Timestamp)(nil),       // 22: google.protobuf.Timestamp
+	(*ConversationLog)(nil),             // 23: specgraph.v1.ConversationLog
+	(*SparkOutput)(nil),                 // 24: specgraph.v1.SparkOutput
+	(*ShapeOutput)(nil),                 // 25: specgraph.v1.ShapeOutput
+	(*SpecifyOutput)(nil),               // 26: specgraph.v1.SpecifyOutput
+	(*DecomposeOutput)(nil),             // 27: specgraph.v1.DecomposeOutput
 }
 var file_specgraph_v1_spec_proto_depIdxs = []int32{
-	19, // 0: specgraph.v1.Spec.created_at:type_name -> google.protobuf.Timestamp
-	19, // 1: specgraph.v1.Spec.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 2: specgraph.v1.Spec.lifecycle:type_name -> specgraph.v1.SpecLifecycle
-	20, // 3: specgraph.v1.Spec.conversation_logs:type_name -> specgraph.v1.ConversationLog
-	21, // 4: specgraph.v1.Spec.spark_output:type_name -> specgraph.v1.SparkOutput
-	22, // 5: specgraph.v1.Spec.shape_output:type_name -> specgraph.v1.ShapeOutput
-	23, // 6: specgraph.v1.Spec.specify_output:type_name -> specgraph.v1.SpecifyOutput
-	24, // 7: specgraph.v1.Spec.decompose_output:type_name -> specgraph.v1.DecomposeOutput
-	3,  // 8: specgraph.v1.ChangeLogEntry.changes:type_name -> specgraph.v1.FieldChange
-	19, // 9: specgraph.v1.ChangeLogEntry.date:type_name -> google.protobuf.Timestamp
-	4,  // 10: specgraph.v1.ListChangesResponse.entries:type_name -> specgraph.v1.ChangeLogEntry
-	1,  // 11: specgraph.v1.InlineDiff.op:type_name -> specgraph.v1.InlineDiff.Op
-	7,  // 12: specgraph.v1.VersionDiff.hunks:type_name -> specgraph.v1.InlineDiff
-	8,  // 13: specgraph.v1.CompareVersionsResponse.diffs:type_name -> specgraph.v1.VersionDiff
-	2,  // 14: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
-	2,  // 15: specgraph.v1.CreateSpecResponse.spec:type_name -> specgraph.v1.Spec
-	2,  // 16: specgraph.v1.GetSpecResponse.spec:type_name -> specgraph.v1.Spec
-	2,  // 17: specgraph.v1.UpdateSpecResponse.spec:type_name -> specgraph.v1.Spec
-	11, // 18: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
-	12, // 19: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
-	13, // 20: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
-	15, // 21: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
-	5,  // 22: specgraph.v1.SpecService.ListChanges:input_type -> specgraph.v1.ListChangesRequest
-	9,  // 23: specgraph.v1.SpecService.CompareVersions:input_type -> specgraph.v1.CompareVersionsRequest
-	16, // 24: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.CreateSpecResponse
-	17, // 25: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.GetSpecResponse
-	14, // 26: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
-	18, // 27: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.UpdateSpecResponse
-	6,  // 28: specgraph.v1.SpecService.ListChanges:output_type -> specgraph.v1.ListChangesResponse
-	10, // 29: specgraph.v1.SpecService.CompareVersions:output_type -> specgraph.v1.CompareVersionsResponse
-	24, // [24:30] is the sub-list for method output_type
-	18, // [18:24] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	22, // 0: specgraph.v1.RetroactiveFromPrProvenance.merged_at:type_name -> google.protobuf.Timestamp
+	22, // 1: specgraph.v1.Spec.created_at:type_name -> google.protobuf.Timestamp
+	22, // 2: specgraph.v1.Spec.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 3: specgraph.v1.Spec.provenance_type:type_name -> specgraph.v1.SpecProvenance
+	23, // 4: specgraph.v1.Spec.conversation_logs:type_name -> specgraph.v1.ConversationLog
+	24, // 5: specgraph.v1.Spec.spark_output:type_name -> specgraph.v1.SparkOutput
+	25, // 6: specgraph.v1.Spec.shape_output:type_name -> specgraph.v1.ShapeOutput
+	26, // 7: specgraph.v1.Spec.specify_output:type_name -> specgraph.v1.SpecifyOutput
+	27, // 8: specgraph.v1.Spec.decompose_output:type_name -> specgraph.v1.DecomposeOutput
+	2,  // 9: specgraph.v1.Spec.authored:type_name -> specgraph.v1.AuthoredProvenance
+	3,  // 10: specgraph.v1.Spec.retroactive_from_pr:type_name -> specgraph.v1.RetroactiveFromPrProvenance
+	4,  // 11: specgraph.v1.Spec.declared:type_name -> specgraph.v1.DeclaredProvenance
+	6,  // 12: specgraph.v1.ChangeLogEntry.changes:type_name -> specgraph.v1.FieldChange
+	22, // 13: specgraph.v1.ChangeLogEntry.date:type_name -> google.protobuf.Timestamp
+	7,  // 14: specgraph.v1.ListChangesResponse.entries:type_name -> specgraph.v1.ChangeLogEntry
+	1,  // 15: specgraph.v1.InlineDiff.op:type_name -> specgraph.v1.InlineDiff.Op
+	10, // 16: specgraph.v1.VersionDiff.hunks:type_name -> specgraph.v1.InlineDiff
+	11, // 17: specgraph.v1.CompareVersionsResponse.diffs:type_name -> specgraph.v1.VersionDiff
+	5,  // 18: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
+	5,  // 19: specgraph.v1.CreateSpecResponse.spec:type_name -> specgraph.v1.Spec
+	5,  // 20: specgraph.v1.GetSpecResponse.spec:type_name -> specgraph.v1.Spec
+	5,  // 21: specgraph.v1.UpdateSpecResponse.spec:type_name -> specgraph.v1.Spec
+	14, // 22: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
+	15, // 23: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
+	16, // 24: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
+	18, // 25: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
+	8,  // 26: specgraph.v1.SpecService.ListChanges:input_type -> specgraph.v1.ListChangesRequest
+	12, // 27: specgraph.v1.SpecService.CompareVersions:input_type -> specgraph.v1.CompareVersionsRequest
+	19, // 28: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.CreateSpecResponse
+	20, // 29: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.GetSpecResponse
+	17, // 30: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
+	21, // 31: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.UpdateSpecResponse
+	9,  // 32: specgraph.v1.SpecService.ListChanges:output_type -> specgraph.v1.ListChangesResponse
+	13, // 33: specgraph.v1.SpecService.CompareVersions:output_type -> specgraph.v1.CompareVersionsResponse
+	28, // [28:34] is the sub-list for method output_type
+	22, // [22:28] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_spec_proto_init() }
@@ -1505,14 +1760,19 @@ func file_specgraph_v1_spec_proto_init() {
 		return
 	}
 	file_specgraph_v1_authoring_proto_init()
-	file_specgraph_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_specgraph_v1_spec_proto_msgTypes[3].OneofWrappers = []any{
+		(*Spec_Authored)(nil),
+		(*Spec_RetroactiveFromPr)(nil),
+		(*Spec_Declared)(nil),
+	}
+	file_specgraph_v1_spec_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_spec_proto_rawDesc), len(file_specgraph_v1_spec_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   17,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
