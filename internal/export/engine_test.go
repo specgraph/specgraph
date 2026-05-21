@@ -575,3 +575,58 @@ func TestImport_DecisionADR003Fields(t *testing.T) {
 	assert.Equal(t, "login-api", got.OriginSpec)
 	assert.Equal(t, "specify", got.OriginStage)
 }
+
+// ---------------------------------------------------------------------------
+// Round-trip migration: v1 import → v2 export
+// ---------------------------------------------------------------------------
+
+func TestExportImport_V1ToV2_RoundTrip(t *testing.T) {
+	// Hand-craft a v1 document, import it via the new code, re-export,
+	// verify the resulting v2 document preserves the single layer.
+
+	v1Source := Document{
+		SchemaVersion:    1,
+		ProjectSlug:      "rt-project",
+		SpecGraphVersion: "test-version",
+		Data: Data{
+			Project: &storage.Project{Slug: "rt-project"},
+			Constitution: &storage.Constitution{
+				Name:  "legacy",
+				Layer: storage.ConstitutionLayerProject,
+				Principles: []storage.Principle{
+					{ID: "legacy-p1", Statement: "Legacy principle"},
+				},
+				Constraints: []string{"legacy-constraint"},
+			},
+		},
+	}
+	v1Bytes, err := json.Marshal(v1Source)
+	require.NoError(t, err)
+
+	backend := newTestBackend(t)
+	ctx := context.Background()
+	engine := NewEngine(backend, "", "test-version")
+
+	// Import v1.
+	_, err = engine.Import(ctx, v1Bytes, false, false)
+	require.NoError(t, err)
+
+	// Re-export as v2.
+	v2Bytes, err := engine.Export(ctx, "rt-project")
+	require.NoError(t, err)
+
+	var v2 Document
+	require.NoError(t, json.Unmarshal(v2Bytes, &v2))
+
+	assert.Equal(t, 2, v2.SchemaVersion, "re-export uses CurrentSchemaVersion=2")
+	assert.Nil(t, v2.Data.Constitution, "v2 export never populates v1 field")
+	require.Len(t, v2.Data.Constitutions, 1, "exactly one layer preserved")
+
+	got := v2.Data.Constitutions[0]
+	assert.Equal(t, "legacy", got.Name)
+	assert.Equal(t, storage.ConstitutionLayerProject, got.Layer)
+	require.Len(t, got.Principles, 1)
+	assert.Equal(t, "legacy-p1", got.Principles[0].ID)
+	require.Len(t, got.Constraints, 1)
+	assert.Equal(t, "legacy-constraint", got.Constraints[0])
+}
