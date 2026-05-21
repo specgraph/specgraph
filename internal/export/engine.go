@@ -90,10 +90,13 @@ func (e *Engine) collect(ctx context.Context, projectSlug string) (*Document, er
 	}
 	doc.Data.Project = proj
 
-	// Constitution (optional — may not exist)
-	constitution, err := e.backend.GetConstitution(ctx)
-	if err == nil {
-		doc.Data.Constitution = constitution
+	// Constitutions (optional — may not exist; v2 emits the list field).
+	layers, err := e.backend.GetAllLayers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get constitution layers: %w", err)
+	}
+	if len(layers) > 0 {
+		doc.Data.Constitutions = layers
 	}
 
 	// Specs — list summaries, then fetch full data for each

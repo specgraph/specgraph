@@ -273,6 +273,114 @@ func (b *decisionCapturingBackend) CreateDecision(_ context.Context, slug, title
 	return dec, nil
 }
 
+// ---------------------------------------------------------------------------
+// Multi-layer constitution export (v2 schema)
+// ---------------------------------------------------------------------------
+
+// multiLayerExportBackend is a minimal in-memory backend for
+// TestExport_MultiLayerConstitution. It stubs every method called by
+// Engine.collect, returning empty data for everything except GetProject and
+// the constitution methods.
+type multiLayerExportBackend struct {
+	Backend
+	project    *storage.Project
+	layers     map[storage.ConstitutionLayer]*storage.Constitution
+	layerOrder []storage.ConstitutionLayer // insertion order for GetAllLayers
+}
+
+func newTestBackend(t *testing.T) *multiLayerExportBackend {
+	t.Helper()
+	return &multiLayerExportBackend{
+		project: &storage.Project{Slug: "test-project"},
+		layers:  make(map[storage.ConstitutionLayer]*storage.Constitution),
+	}
+}
+
+// UpdateConstitution stores a constitution layer in order of first insertion.
+func (b *multiLayerExportBackend) UpdateConstitution(_ context.Context, c *storage.Constitution) (*storage.Constitution, error) {
+	if _, exists := b.layers[c.Layer]; !exists {
+		b.layerOrder = append(b.layerOrder, c.Layer)
+	}
+	clone := *c
+	clone.Version = 1
+	b.layers[c.Layer] = &clone
+	return &clone, nil
+}
+
+func (b *multiLayerExportBackend) GetAllLayers(_ context.Context) ([]*storage.Constitution, error) {
+	out := make([]*storage.Constitution, 0, len(b.layerOrder))
+	for _, l := range b.layerOrder {
+		out = append(out, b.layers[l])
+	}
+	return out, nil
+}
+
+func (b *multiLayerExportBackend) GetProject(_ context.Context, _ string) (*storage.Project, error) {
+	return b.project, nil
+}
+
+func (b *multiLayerExportBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*storage.Spec, error) {
+	return nil, nil
+}
+
+func (b *multiLayerExportBackend) ListDecisions(_ context.Context, _ storage.DecisionStatus, _ int) ([]*storage.Decision, error) {
+	return nil, nil
+}
+
+func (b *multiLayerExportBackend) GetFullGraph(_ context.Context) (*storage.FullGraph, error) {
+	return &storage.FullGraph{}, nil
+}
+
+func (b *multiLayerExportBackend) ListAllFindings(_ context.Context) ([]*storage.AnalyticalFinding, error) {
+	return nil, nil
+}
+
+func (b *multiLayerExportBackend) ListAllChanges(_ context.Context) ([]*storage.ChangeLogEntry, error) {
+	return nil, nil
+}
+
+func (b *multiLayerExportBackend) ListAllConversations(_ context.Context) ([]*storage.ConversationLogEntry, error) {
+	return nil, nil
+}
+
+func (b *multiLayerExportBackend) ListSyncMappings(_ context.Context, _ storage.SyncAdapterType, _ string) ([]*storage.SyncMapping, error) {
+	return nil, nil
+}
+
+func TestExport_MultiLayerConstitution(t *testing.T) {
+	backend := newTestBackend(t)
+	ctx := context.Background()
+
+	// Seed two layers.
+	_, err := backend.UpdateConstitution(ctx, &storage.Constitution{
+		Name:  "org",
+		Layer: storage.ConstitutionLayerOrg,
+		Principles: []storage.Principle{{ID: "p-org", Statement: "Org"}},
+	})
+	require.NoError(t, err)
+
+	_, err = backend.UpdateConstitution(ctx, &storage.Constitution{
+		Name:  "project",
+		Layer: storage.ConstitutionLayerProject,
+		Principles: []storage.Principle{{ID: "p-proj", Statement: "Proj"}},
+	})
+	require.NoError(t, err)
+
+	engine := NewEngine(backend, "", "test-version")
+	out, err := engine.Export(ctx, "test-project")
+	require.NoError(t, err)
+
+	var doc Document
+	require.NoError(t, json.Unmarshal(out, &doc))
+
+	assert.Equal(t, 2, doc.SchemaVersion)
+	assert.Nil(t, doc.Data.Constitution, "v2 exports never populate the v1 field")
+	require.Len(t, doc.Data.Constitutions, 2, "v2 export must contain both layers")
+	assert.Equal(t, storage.ConstitutionLayerOrg, doc.Data.Constitutions[0].Layer,
+		"layers in precedence order: org before project")
+	assert.Equal(t, storage.ConstitutionLayerProject, doc.Data.Constitutions[1].Layer)
+}
+
 func TestImport_DecisionADR003Fields(t *testing.T) {
 	back := &decisionCapturingBackend{}
 
