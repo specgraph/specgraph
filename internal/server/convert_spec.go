@@ -13,7 +13,7 @@ import (
 // --- Spec ---
 
 func specToProto(s *storage.Spec) (*specv1.Spec, error) {
-	lc, err := lifecycleToProto(s.Lifecycle)
+	pt, err := specProvenanceToProto(s.Provenance)
 	if err != nil {
 		return nil, fmt.Errorf("spec %q: %w", s.Slug, err)
 	}
@@ -27,13 +27,14 @@ func specToProto(s *storage.Spec) (*specv1.Spec, error) {
 		Version:           s.Version,
 		CreatedAt:         timeToProto(s.CreatedAt),
 		UpdatedAt:         timeToProto(s.UpdatedAt),
-		Lifecycle:         lc,
+		ProvenanceType:    pt,
 		SupersededBy:      s.SupersededBy,
 		Supersedes:        s.Supersedes,
 		Notes:             s.Notes,
 		ContentHash:       s.ContentHash,
 		ConversationCount: safeConvCount(s.ConversationCount),
 	}
+	setSpecProvenanceDetailOnProto(pb, s.ProvenanceDetail)
 	if s.ConversationLogs != nil {
 		logs := make([]*specv1.ConversationLog, len(s.ConversationLogs))
 		for i, entry := range s.ConversationLogs {
@@ -67,20 +68,84 @@ func specsToProto(specs []*storage.Spec) ([]*specv1.Spec, error) {
 	return result, nil
 }
 
-// --- Lifecycle ---
+// --- Provenance ---
 
-// lifecycleToProtoMap maps storage lifecycle values to proto enums.
-// The empty-string entry handles pre-lifecycle specs (created before the field existed)
-// that have no lifecycle set in the graph — these map to UNSPECIFIED on the wire.
-var lifecycleToProtoMap = map[storage.SpecLifecycle]specv1.SpecLifecycle{
-	"":                          specv1.SpecLifecycle_SPEC_LIFECYCLE_UNSPECIFIED,
-	storage.SpecLifecycleTask:   specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK,
-	storage.SpecLifecycleLiving: specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING,
+// specProvenanceToProtoMap maps storage provenance values to proto enums.
+var specProvenanceToProtoMap = map[storage.SpecProvenanceType]specv1.SpecProvenance{
+	storage.SpecProvenanceAuthored:          specv1.SpecProvenance_SPEC_PROVENANCE_AUTHORED,
+	storage.SpecProvenanceRetroactiveFromPR: specv1.SpecProvenance_SPEC_PROVENANCE_RETROACTIVE_FROM_PR,
+	storage.SpecProvenanceDeclared:          specv1.SpecProvenance_SPEC_PROVENANCE_DECLARED,
 }
 
-func lifecycleToProto(l storage.SpecLifecycle) (specv1.SpecLifecycle, error) {
-	if v, ok := lifecycleToProtoMap[l]; ok {
+func specProvenanceToProto(p storage.SpecProvenanceType) (specv1.SpecProvenance, error) {
+	if v, ok := specProvenanceToProtoMap[p]; ok {
 		return v, nil
 	}
-	return specv1.SpecLifecycle_SPEC_LIFECYCLE_UNSPECIFIED, fmt.Errorf("unknown lifecycle: %q", l)
+	return specv1.SpecProvenance_SPEC_PROVENANCE_UNSPECIFIED, fmt.Errorf("unknown provenance: %q", p)
+}
+
+// setSpecProvenanceDetailOnProto sets the oneof field on the proto Spec based on
+// which variant pointer (if any) is populated in the domain detail struct.
+// The oneof interface (isSpec_ProvenanceDetail) is unexported from the gen
+// package, so we assign directly rather than returning an interface value.
+func setSpecProvenanceDetailOnProto(pb *specv1.Spec, d storage.SpecProvenanceDetail) {
+	switch {
+	case d.RetroactiveFromPR != nil:
+		pb.ProvenanceDetail = &specv1.Spec_RetroactiveFromPr{
+			RetroactiveFromPr: &specv1.RetroactiveFromPrProvenance{
+				Url:      d.RetroactiveFromPR.URL,
+				Sha:      d.RetroactiveFromPR.SHA,
+				MergedAt: timeToProto(d.RetroactiveFromPR.MergedAt),
+				Title:    d.RetroactiveFromPR.Title,
+			},
+		}
+	case d.Declared != nil:
+		pb.ProvenanceDetail = &specv1.Spec_Declared{
+			Declared: &specv1.DeclaredProvenance{
+				DeclaredBy: d.Declared.DeclaredBy,
+				Note:       d.Declared.Note,
+			},
+		}
+	default:
+		// AUTHORED — empty payload.
+		pb.ProvenanceDetail = &specv1.Spec_Authored{Authored: &specv1.AuthoredProvenance{}}
+	}
+}
+
+// specProvenanceFromProto converts a proto enum back to the storage discriminator.
+func specProvenanceFromProto(p specv1.SpecProvenance) (storage.SpecProvenanceType, error) {
+	for domainVal, protoVal := range specProvenanceToProtoMap {
+		if protoVal == p {
+			return domainVal, nil
+		}
+	}
+	return "", fmt.Errorf("unknown provenance enum: %q", p.String())
+}
+
+// specProvenanceDetailFromProto reads the oneof on a proto Spec and returns the
+// domain detail struct. The caller passes pb.GetProvenanceDetail() — same
+// unexported-interface caveat as above.
+func specProvenanceDetailFromProto(pb *specv1.Spec) storage.SpecProvenanceDetail {
+	switch v := pb.GetProvenanceDetail().(type) {
+	case *specv1.Spec_RetroactiveFromPr:
+		return storage.SpecProvenanceDetail{
+			RetroactiveFromPR: &storage.RetroactivePRProvenance{
+				URL:      v.RetroactiveFromPr.GetUrl(),
+				SHA:      v.RetroactiveFromPr.GetSha(),
+				MergedAt: v.RetroactiveFromPr.GetMergedAt().AsTime(),
+				Title:    v.RetroactiveFromPr.GetTitle(),
+			},
+		}
+	case *specv1.Spec_Declared:
+		return storage.SpecProvenanceDetail{
+			Declared: &storage.DeclaredProvenance{
+				DeclaredBy: v.Declared.GetDeclaredBy(),
+				Note:       v.Declared.GetNote(),
+			},
+		}
+	case *specv1.Spec_Authored:
+		return storage.SpecProvenanceDetail{}
+	default:
+		return storage.SpecProvenanceDetail{}
+	}
 }
