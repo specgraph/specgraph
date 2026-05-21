@@ -10,17 +10,18 @@ import (
 	"testing"
 )
 
-// Expected names match the six embedded canonicals (relocated in commit 1).
+// Expected names match the embedded canonicals.
 var wantNames = []string{
 	"specgraph-analytical-passes",
 	"specgraph-authoring",
+	"specgraph-constitution",
 	"specgraph-conventions",
 	"specgraph-drift",
 	"specgraph-graph-query",
 	"specgraph-troubleshooting",
 }
 
-func TestNewEmbedded_LoadsAllSixSkills(t *testing.T) {
+func TestNewEmbedded_LoadsAllEmbeddedSkills(t *testing.T) {
 	src, err := NewEmbedded()
 	if err != nil {
 		t.Fatalf("NewEmbedded: %v", err)
