@@ -5,6 +5,7 @@ package server_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/constitution/fetch"
 	"github.com/specgraph/specgraph/internal/constitution/merge"
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/storage"
@@ -270,4 +272,148 @@ func TestConstitutionHandler_EmitSuccess(t *testing.T) {
 	assert.Contains(t, resp.Msg.Content, "Constitution")
 	assert.Contains(t, resp.Msg.Content, "go")
 	assert.Contains(t, resp.Msg.Content, "ConnectRPC")
+}
+
+// fakeFetcher returns canned bytes or an error.
+type fakeFetcher struct {
+	body []byte
+	err  error
+}
+
+func (f *fakeFetcher) Fetch(_ context.Context, url string) (*fetch.Fetched, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return &fetch.Fetched{Body: f.body, ResolvedURL: url}, nil
+}
+
+// testScoperFor wraps a mockConstitutionBackend as a storage.Scoper.
+func testScoperFor(b *mockConstitutionBackend) *testScoper {
+	return &testScoper{backend: b}
+}
+
+func TestRefreshConstitutionLayer_NewLayer_HashUnset(t *testing.T) {
+	backend := newMockConstitutionBackend()
+	fake := &fakeFetcher{
+		body: []byte("name: imported\nlayer: org\nprinciples:\n  - id: p1\n    statement: from remote\n"),
+	}
+	handler := server.NewConstitutionHandlerForTest(testScoperFor(backend), fake)
+	ctx := server.TestInjectProject(context.Background(), testProject)
+
+	resp, err := handler.RefreshConstitutionLayer(ctx,
+		connect.NewRequest(&specv1.RefreshConstitutionLayerRequest{
+			Layer:     specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG,
+			SourceUrl: "https://example.com/c.yaml",
+		}))
+
+	require.NoError(t, err)
+	assert.True(t, resp.Msg.GetChanged(), "first refresh must be changed=true")
+	assert.Nil(t, resp.Msg.GetBefore(), "no prior layer; Before must be nil")
+	require.NotNil(t, resp.Msg.GetAfter())
+	assert.Equal(t, "imported", resp.Msg.GetAfter().GetName())
+	assert.NotEmpty(t, resp.Msg.GetNewSourceHash())
+}
+
+func TestRefreshConstitutionLayer_SameContent_NoChange(t *testing.T) {
+	backend := newMockConstitutionBackend()
+	body := []byte("name: cached\nlayer: org\n")
+	fake := &fakeFetcher{body: body}
+	handler := server.NewConstitutionHandlerForTest(testScoperFor(backend), fake)
+	ctx := server.TestInjectProject(context.Background(), testProject)
+
+	req := &specv1.RefreshConstitutionLayerRequest{
+		Layer:     specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG,
+		SourceUrl: "https://example.com/c.yaml",
+	}
+	_, err := handler.RefreshConstitutionLayer(ctx, connect.NewRequest(req))
+	require.NoError(t, err)
+
+	// Second refresh on identical content — must report unchanged.
+	resp, err := handler.RefreshConstitutionLayer(ctx, connect.NewRequest(req))
+	require.NoError(t, err)
+	assert.False(t, resp.Msg.GetChanged())
+	assert.Equal(t, resp.Msg.GetPreviousSourceHash(), resp.Msg.GetNewSourceHash())
+}
+
+func TestRefreshConstitutionLayer_DryRun_DoesNotWrite(t *testing.T) {
+	backend := newMockConstitutionBackend()
+	fake := &fakeFetcher{body: []byte("name: test\nlayer: org\n")}
+	handler := server.NewConstitutionHandlerForTest(testScoperFor(backend), fake)
+	ctx := server.TestInjectProject(context.Background(), testProject)
+
+	resp, err := handler.RefreshConstitutionLayer(ctx,
+		connect.NewRequest(&specv1.RefreshConstitutionLayerRequest{
+			Layer:     specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG,
+			SourceUrl: "https://example.com/c.yaml",
+			DryRun:    true,
+		}))
+
+	require.NoError(t, err)
+	assert.True(t, resp.Msg.GetChanged(), "dry-run still reports changed")
+
+	// Verify nothing was written by checking that GetConstitutionLayer
+	// still returns not-found.
+	_, err = backend.GetConstitutionLayer(context.Background(), storage.ConstitutionLayerOrg)
+	require.Error(t, err, "dry-run must not write to storage")
+}
+
+func TestRefreshConstitutionLayer_UnspecifiedLayer(t *testing.T) {
+	handler := server.NewConstitutionHandlerForTest(testScoperFor(newMockConstitutionBackend()), &fakeFetcher{body: []byte("name: x\n")})
+
+	_, err := handler.RefreshConstitutionLayer(context.Background(),
+		connect.NewRequest(&specv1.RefreshConstitutionLayerRequest{
+			Layer:     specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED,
+			SourceUrl: "https://example.com/c.yaml",
+		}))
+
+	require.Error(t, err)
+	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestRefreshConstitutionLayer_FetchError(t *testing.T) {
+	handler := server.NewConstitutionHandlerForTest(testScoperFor(newMockConstitutionBackend()), &fakeFetcher{err: errors.New("network down")})
+	ctx := server.TestInjectProject(context.Background(), testProject)
+
+	_, err := handler.RefreshConstitutionLayer(ctx,
+		connect.NewRequest(&specv1.RefreshConstitutionLayerRequest{
+			Layer:     specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG,
+			SourceUrl: "https://example.com/c.yaml",
+		}))
+
+	require.Error(t, err)
+	// Per Section 12: generic fetch failures map to CodeUnavailable.
+	assert.Equal(t, connect.CodeUnavailable, connect.CodeOf(err))
+}
+
+func TestRefreshConstitutionLayer_MalformedBody(t *testing.T) {
+	handler := server.NewConstitutionHandlerForTest(testScoperFor(newMockConstitutionBackend()), &fakeFetcher{body: []byte("name: [unclosed")})
+	ctx := server.TestInjectProject(context.Background(), testProject)
+
+	_, err := handler.RefreshConstitutionLayer(ctx,
+		connect.NewRequest(&specv1.RefreshConstitutionLayerRequest{
+			Layer:     specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG,
+			SourceUrl: "https://example.com/c.yaml",
+		}))
+
+	require.Error(t, err)
+	// Parse errors map to CodeInvalidArgument.
+	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+func TestRefreshConstitutionLayer_URLValidationError(t *testing.T) {
+	// Embedded credentials in URL — the real fetcher rejects with a
+	// message containing "embedded credentials". The fake here mimics
+	// that error so we can verify the handler maps it to InvalidArgument.
+	handler := server.NewConstitutionHandlerForTest(testScoperFor(newMockConstitutionBackend()),
+		&fakeFetcher{err: errors.New("URL contains embedded credentials; use SPECGRAPH_FETCH_GITHUB_TOKEN env var for authenticated GitHub access")})
+	ctx := server.TestInjectProject(context.Background(), testProject)
+
+	_, err := handler.RefreshConstitutionLayer(ctx,
+		connect.NewRequest(&specv1.RefreshConstitutionLayerRequest{
+			Layer:     specv1.ConstitutionLayer_CONSTITUTION_LAYER_ORG,
+			SourceUrl: "https://tok@example.com/c.yaml",
+		}))
+
+	require.Error(t, err)
+	assert.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }

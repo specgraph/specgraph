@@ -85,6 +85,31 @@ type ConstitutionReference struct {
 	Path string `yaml:"path"`
 }
 
+// ConstitutionProcess holds process configuration in the constitution YAML.
+type ConstitutionProcess struct {
+	SpecReview     string                          `yaml:"spec_review,omitempty"`
+	SecurityReview *ConstitutionSecurityReview     `yaml:"security_review,omitempty"`
+	Deployment     *ConstitutionDeployment         `yaml:"deployment,omitempty"`
+	Documentation  *ConstitutionDocumentation      `yaml:"documentation,omitempty"`
+}
+
+// ConstitutionSecurityReview holds security review configuration.
+type ConstitutionSecurityReview struct {
+	When string `yaml:"when,omitempty"`
+}
+
+// ConstitutionDeployment holds deployment configuration.
+type ConstitutionDeployment struct {
+	Strategy string `yaml:"strategy,omitempty"`
+	Rollback string `yaml:"rollback,omitempty"`
+}
+
+// ConstitutionDocumentation holds documentation requirements configuration.
+type ConstitutionDocumentation struct {
+	APIDocs string `yaml:"api_docs,omitempty"`
+	Runbook string `yaml:"runbook,omitempty"`
+}
+
 // ConstitutionConfig represents a constitution YAML document.
 type ConstitutionConfig struct {
 	Name         string                    `yaml:"name"`
@@ -94,6 +119,7 @@ type ConstitutionConfig struct {
 	Constraints  []string                  `yaml:"constraints,omitempty"`
 	Antipatterns []ConstitutionAntipattern `yaml:"antipatterns,omitempty"`
 	References   []ConstitutionReference   `yaml:"references,omitempty"`
+	Process      *ConstitutionProcess      `yaml:"process,omitempty"`
 }
 
 // ConstitutionTech holds technology stack configuration.
@@ -225,6 +251,7 @@ func (c *ConstitutionConfig) ToDomain() *storage.Constitution {
 		Constraints:  c.Constraints,
 		Antipatterns: antipatternsToDomain(c.Antipatterns),
 		References:   referencesToDomain(c.References),
+		Process:      processToDomain(c.Process),
 	}
 }
 
@@ -285,6 +312,40 @@ func referencesToDomain(refs []ConstitutionReference) []storage.Reference {
 	return result
 }
 
+func processToDomain(p *ConstitutionProcess) *storage.ProcessConfig {
+	if p == nil {
+		return nil
+	}
+	pc := &storage.ProcessConfig{
+		SpecReview: p.SpecReview,
+	}
+	if p.SecurityReview != nil {
+		pc.SecurityReview = &storage.SecurityReviewConfig{When: p.SecurityReview.When}
+	}
+	if p.Deployment != nil {
+		pc.Deployment = &storage.DeploymentConfig{
+			Strategy: p.Deployment.Strategy,
+			Rollback: p.Deployment.Rollback,
+		}
+	}
+	if p.Documentation != nil {
+		pc.Documentation = &storage.DocumentationConfig{
+			APIDocs: p.Documentation.APIDocs,
+			Runbook: p.Documentation.Runbook,
+		}
+	}
+	return pc
+}
+
+// ParseConstitutionConfig parses raw YAML/JSON bytes into a ConstitutionConfig.
+// Used by LoadConstitutionYAML (which adds file I/O) and by
+// internal/constitution/load (which works on bytes from remote fetches).
+// This is an alias for ParseConstitutionYAML for callers that prefer the
+// Config-centric naming convention.
+func ParseConstitutionConfig(data []byte) (*ConstitutionConfig, error) {
+	return ParseConstitutionYAML(data)
+}
+
 // ConstitutionConfigFromDomain converts a storage.Constitution domain type to a ConstitutionConfig (YAML).
 func ConstitutionConfigFromDomain(c *storage.Constitution) *ConstitutionConfig {
 	cfg := &ConstitutionConfig{
@@ -326,6 +387,26 @@ func ConstitutionConfigFromDomain(c *storage.Constitution) *ConstitutionConfig {
 			Type: r.Type,
 			Path: r.Path,
 		})
+	}
+
+	if c.Process != nil {
+		cp := &ConstitutionProcess{SpecReview: c.Process.SpecReview}
+		if c.Process.SecurityReview != nil {
+			cp.SecurityReview = &ConstitutionSecurityReview{When: c.Process.SecurityReview.When}
+		}
+		if c.Process.Deployment != nil {
+			cp.Deployment = &ConstitutionDeployment{
+				Strategy: c.Process.Deployment.Strategy,
+				Rollback: c.Process.Deployment.Rollback,
+			}
+		}
+		if c.Process.Documentation != nil {
+			cp.Documentation = &ConstitutionDocumentation{
+				APIDocs: c.Process.Documentation.APIDocs,
+				Runbook: c.Process.Documentation.Runbook,
+			}
+		}
+		cfg.Process = cp
 	}
 
 	return cfg

@@ -1277,6 +1277,153 @@ func (x *EmitToolFilesResponse) GetFilename() string {
 	return ""
 }
 
+// RefreshConstitutionLayerRequest is the input for RefreshConstitutionLayer.
+type RefreshConstitutionLayerRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// layer identifies which layer to refresh. Required, non-UNSPECIFIED.
+	Layer ConstitutionLayer `protobuf:"varint,1,opt,name=layer,proto3,enum=specgraph.v1.ConstitutionLayer" json:"layer,omitempty"`
+	// source_url is the URL to fetch from. Required. Must pass URL
+	// credential sanitization (no userinfo, no token-bearing query params).
+	SourceUrl string `protobuf:"bytes,2,opt,name=source_url,json=sourceUrl,proto3" json:"source_url,omitempty"`
+	// dry_run skips the write and returns the diff only.
+	DryRun        bool `protobuf:"varint,3,opt,name=dry_run,json=dryRun,proto3" json:"dry_run,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RefreshConstitutionLayerRequest) Reset() {
+	*x = RefreshConstitutionLayerRequest{}
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RefreshConstitutionLayerRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RefreshConstitutionLayerRequest) ProtoMessage() {}
+
+func (x *RefreshConstitutionLayerRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RefreshConstitutionLayerRequest.ProtoReflect.Descriptor instead.
+func (*RefreshConstitutionLayerRequest) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *RefreshConstitutionLayerRequest) GetLayer() ConstitutionLayer {
+	if x != nil {
+		return x.Layer
+	}
+	return ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED
+}
+
+func (x *RefreshConstitutionLayerRequest) GetSourceUrl() string {
+	if x != nil {
+		return x.SourceUrl
+	}
+	return ""
+}
+
+func (x *RefreshConstitutionLayerRequest) GetDryRun() bool {
+	if x != nil {
+		return x.DryRun
+	}
+	return false
+}
+
+// RefreshConstitutionLayerResponse is the output for RefreshConstitutionLayer.
+type RefreshConstitutionLayerResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// before is the layer state prior to the refresh. nil if no prior layer.
+	Before *Constitution `protobuf:"bytes,1,opt,name=before,proto3" json:"before,omitempty"`
+	// after is the newly fetched and parsed layer.
+	After *Constitution `protobuf:"bytes,2,opt,name=after,proto3" json:"after,omitempty"`
+	// previous_source_hash is the source_hash before the refresh. "" if no prior layer.
+	PreviousSourceHash string `protobuf:"bytes,3,opt,name=previous_source_hash,json=previousSourceHash,proto3" json:"previous_source_hash,omitempty"`
+	// new_source_hash is the canonical hash of the newly fetched content.
+	NewSourceHash string `protobuf:"bytes,4,opt,name=new_source_hash,json=newSourceHash,proto3" json:"new_source_hash,omitempty"`
+	// changed is false iff new_source_hash == previous_source_hash (no write performed).
+	Changed       bool `protobuf:"varint,5,opt,name=changed,proto3" json:"changed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RefreshConstitutionLayerResponse) Reset() {
+	*x = RefreshConstitutionLayerResponse{}
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RefreshConstitutionLayerResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RefreshConstitutionLayerResponse) ProtoMessage() {}
+
+func (x *RefreshConstitutionLayerResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_constitution_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RefreshConstitutionLayerResponse.ProtoReflect.Descriptor instead.
+func (*RefreshConstitutionLayerResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_constitution_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *RefreshConstitutionLayerResponse) GetBefore() *Constitution {
+	if x != nil {
+		return x.Before
+	}
+	return nil
+}
+
+func (x *RefreshConstitutionLayerResponse) GetAfter() *Constitution {
+	if x != nil {
+		return x.After
+	}
+	return nil
+}
+
+func (x *RefreshConstitutionLayerResponse) GetPreviousSourceHash() string {
+	if x != nil {
+		return x.PreviousSourceHash
+	}
+	return ""
+}
+
+func (x *RefreshConstitutionLayerResponse) GetNewSourceHash() string {
+	if x != nil {
+		return x.NewSourceHash
+	}
+	return ""
+}
+
+func (x *RefreshConstitutionLayerResponse) GetChanged() bool {
+	if x != nil {
+		return x.Changed
+	}
+	return false
+}
+
 var File_specgraph_v1_constitution_proto protoreflect.FileDescriptor
 
 const file_specgraph_v1_constitution_proto_rawDesc = "" +
@@ -1383,7 +1530,18 @@ const file_specgraph_v1_constitution_proto_rawDesc = "" +
 	"\x06format\x18\x01 \x01(\x0e2\x1a.specgraph.v1.OutputFormatR\x06format\"M\n" +
 	"\x15EmitToolFilesResponse\x12\x18\n" +
 	"\acontent\x18\x01 \x01(\tR\acontent\x12\x1a\n" +
-	"\bfilename\x18\x02 \x01(\tR\bfilename*\xaf\x01\n" +
+	"\bfilename\x18\x02 \x01(\tR\bfilename\"\x90\x01\n" +
+	"\x1fRefreshConstitutionLayerRequest\x125\n" +
+	"\x05layer\x18\x01 \x01(\x0e2\x1f.specgraph.v1.ConstitutionLayerR\x05layer\x12\x1d\n" +
+	"\n" +
+	"source_url\x18\x02 \x01(\tR\tsourceUrl\x12\x17\n" +
+	"\adry_run\x18\x03 \x01(\bR\x06dryRun\"\xfc\x01\n" +
+	" RefreshConstitutionLayerResponse\x122\n" +
+	"\x06before\x18\x01 \x01(\v2\x1a.specgraph.v1.ConstitutionR\x06before\x120\n" +
+	"\x05after\x18\x02 \x01(\v2\x1a.specgraph.v1.ConstitutionR\x05after\x120\n" +
+	"\x14previous_source_hash\x18\x03 \x01(\tR\x12previousSourceHash\x12&\n" +
+	"\x0fnew_source_hash\x18\x04 \x01(\tR\rnewSourceHash\x12\x18\n" +
+	"\achanged\x18\x05 \x01(\bR\achanged*\xaf\x01\n" +
 	"\x11ConstitutionLayer\x12\"\n" +
 	"\x1eCONSTITUTION_LAYER_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17CONSTITUTION_LAYER_USER\x10\x01\x12\x1a\n" +
@@ -1400,11 +1558,12 @@ const file_specgraph_v1_constitution_proto_rawDesc = "" +
 	"\x12REFERENCE_TYPE_ADR\x10\x01\x12\x17\n" +
 	"\x13REFERENCE_TYPE_SPEC\x10\x02\x12\x16\n" +
 	"\x12REFERENCE_TYPE_DOC\x10\x03\x12\x16\n" +
-	"\x12REFERENCE_TYPE_URL\x10\x042\xb8\x02\n" +
+	"\x12REFERENCE_TYPE_URL\x10\x042\xb3\x03\n" +
 	"\x13ConstitutionService\x12^\n" +
 	"\x0fGetConstitution\x12$.specgraph.v1.GetConstitutionRequest\x1a%.specgraph.v1.GetConstitutionResponse\x12g\n" +
 	"\x12UpdateConstitution\x12'.specgraph.v1.UpdateConstitutionRequest\x1a(.specgraph.v1.UpdateConstitutionResponse\x12X\n" +
-	"\rEmitToolFiles\x12\".specgraph.v1.EmitToolFilesRequest\x1a#.specgraph.v1.EmitToolFilesResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
+	"\rEmitToolFiles\x12\".specgraph.v1.EmitToolFilesRequest\x1a#.specgraph.v1.EmitToolFilesResponse\x12y\n" +
+	"\x18RefreshConstitutionLayer\x12-.specgraph.v1.RefreshConstitutionLayerRequest\x1a..specgraph.v1.RefreshConstitutionLayerResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
 
 var (
 	file_specgraph_v1_constitution_proto_rawDescOnce sync.Once
@@ -1419,34 +1578,36 @@ func file_specgraph_v1_constitution_proto_rawDescGZIP() []byte {
 }
 
 var file_specgraph_v1_constitution_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_specgraph_v1_constitution_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_specgraph_v1_constitution_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_specgraph_v1_constitution_proto_goTypes = []any{
-	(ConstitutionLayer)(0),             // 0: specgraph.v1.ConstitutionLayer
-	(OutputFormat)(0),                  // 1: specgraph.v1.OutputFormat
-	(ReferenceType)(0),                 // 2: specgraph.v1.ReferenceType
-	(*Constitution)(nil),               // 3: specgraph.v1.Constitution
-	(*TechConfig)(nil),                 // 4: specgraph.v1.TechConfig
-	(*LanguageConfig)(nil),             // 5: specgraph.v1.LanguageConfig
-	(*Principle)(nil),                  // 6: specgraph.v1.Principle
-	(*ProcessConfig)(nil),              // 7: specgraph.v1.ProcessConfig
-	(*SecurityReviewConfig)(nil),       // 8: specgraph.v1.SecurityReviewConfig
-	(*DeploymentConfig)(nil),           // 9: specgraph.v1.DeploymentConfig
-	(*DocumentationConfig)(nil),        // 10: specgraph.v1.DocumentationConfig
-	(*Antipattern)(nil),                // 11: specgraph.v1.Antipattern
-	(*Reference)(nil),                  // 12: specgraph.v1.Reference
-	(*GetConstitutionRequest)(nil),     // 13: specgraph.v1.GetConstitutionRequest
-	(*ProvenanceEntry)(nil),            // 14: specgraph.v1.ProvenanceEntry
-	(*GetConstitutionResponse)(nil),    // 15: specgraph.v1.GetConstitutionResponse
-	(*UpdateConstitutionRequest)(nil),  // 16: specgraph.v1.UpdateConstitutionRequest
-	(*UpdateConstitutionResponse)(nil), // 17: specgraph.v1.UpdateConstitutionResponse
-	(*EmitToolFilesRequest)(nil),       // 18: specgraph.v1.EmitToolFilesRequest
-	(*EmitToolFilesResponse)(nil),      // 19: specgraph.v1.EmitToolFilesResponse
-	nil,                                // 20: specgraph.v1.TechConfig.FrameworksEntry
-	nil,                                // 21: specgraph.v1.TechConfig.InfrastructureEntry
-	nil,                                // 22: specgraph.v1.TechConfig.ApiStandardsEntry
-	nil,                                // 23: specgraph.v1.TechConfig.DataEntry
-	nil,                                // 24: specgraph.v1.LanguageConfig.ForbiddenReasonsEntry
-	(*timestamppb.Timestamp)(nil),      // 25: google.protobuf.Timestamp
+	(ConstitutionLayer)(0),                   // 0: specgraph.v1.ConstitutionLayer
+	(OutputFormat)(0),                        // 1: specgraph.v1.OutputFormat
+	(ReferenceType)(0),                       // 2: specgraph.v1.ReferenceType
+	(*Constitution)(nil),                     // 3: specgraph.v1.Constitution
+	(*TechConfig)(nil),                       // 4: specgraph.v1.TechConfig
+	(*LanguageConfig)(nil),                   // 5: specgraph.v1.LanguageConfig
+	(*Principle)(nil),                        // 6: specgraph.v1.Principle
+	(*ProcessConfig)(nil),                    // 7: specgraph.v1.ProcessConfig
+	(*SecurityReviewConfig)(nil),             // 8: specgraph.v1.SecurityReviewConfig
+	(*DeploymentConfig)(nil),                 // 9: specgraph.v1.DeploymentConfig
+	(*DocumentationConfig)(nil),              // 10: specgraph.v1.DocumentationConfig
+	(*Antipattern)(nil),                      // 11: specgraph.v1.Antipattern
+	(*Reference)(nil),                        // 12: specgraph.v1.Reference
+	(*GetConstitutionRequest)(nil),           // 13: specgraph.v1.GetConstitutionRequest
+	(*ProvenanceEntry)(nil),                  // 14: specgraph.v1.ProvenanceEntry
+	(*GetConstitutionResponse)(nil),          // 15: specgraph.v1.GetConstitutionResponse
+	(*UpdateConstitutionRequest)(nil),        // 16: specgraph.v1.UpdateConstitutionRequest
+	(*UpdateConstitutionResponse)(nil),       // 17: specgraph.v1.UpdateConstitutionResponse
+	(*EmitToolFilesRequest)(nil),             // 18: specgraph.v1.EmitToolFilesRequest
+	(*EmitToolFilesResponse)(nil),            // 19: specgraph.v1.EmitToolFilesResponse
+	(*RefreshConstitutionLayerRequest)(nil),  // 20: specgraph.v1.RefreshConstitutionLayerRequest
+	(*RefreshConstitutionLayerResponse)(nil), // 21: specgraph.v1.RefreshConstitutionLayerResponse
+	nil,                                      // 22: specgraph.v1.TechConfig.FrameworksEntry
+	nil,                                      // 23: specgraph.v1.TechConfig.InfrastructureEntry
+	nil,                                      // 24: specgraph.v1.TechConfig.ApiStandardsEntry
+	nil,                                      // 25: specgraph.v1.TechConfig.DataEntry
+	nil,                                      // 26: specgraph.v1.LanguageConfig.ForbiddenReasonsEntry
+	(*timestamppb.Timestamp)(nil),            // 27: google.protobuf.Timestamp
 }
 var file_specgraph_v1_constitution_proto_depIdxs = []int32{
 	0,  // 0: specgraph.v1.Constitution.layer:type_name -> specgraph.v1.ConstitutionLayer
@@ -1455,14 +1616,14 @@ var file_specgraph_v1_constitution_proto_depIdxs = []int32{
 	7,  // 3: specgraph.v1.Constitution.process:type_name -> specgraph.v1.ProcessConfig
 	11, // 4: specgraph.v1.Constitution.antipatterns:type_name -> specgraph.v1.Antipattern
 	12, // 5: specgraph.v1.Constitution.references:type_name -> specgraph.v1.Reference
-	25, // 6: specgraph.v1.Constitution.created_at:type_name -> google.protobuf.Timestamp
-	25, // 7: specgraph.v1.Constitution.updated_at:type_name -> google.protobuf.Timestamp
+	27, // 6: specgraph.v1.Constitution.created_at:type_name -> google.protobuf.Timestamp
+	27, // 7: specgraph.v1.Constitution.updated_at:type_name -> google.protobuf.Timestamp
 	5,  // 8: specgraph.v1.TechConfig.languages:type_name -> specgraph.v1.LanguageConfig
-	20, // 9: specgraph.v1.TechConfig.frameworks:type_name -> specgraph.v1.TechConfig.FrameworksEntry
-	21, // 10: specgraph.v1.TechConfig.infrastructure:type_name -> specgraph.v1.TechConfig.InfrastructureEntry
-	22, // 11: specgraph.v1.TechConfig.api_standards:type_name -> specgraph.v1.TechConfig.ApiStandardsEntry
-	23, // 12: specgraph.v1.TechConfig.data:type_name -> specgraph.v1.TechConfig.DataEntry
-	24, // 13: specgraph.v1.LanguageConfig.forbidden_reasons:type_name -> specgraph.v1.LanguageConfig.ForbiddenReasonsEntry
+	22, // 9: specgraph.v1.TechConfig.frameworks:type_name -> specgraph.v1.TechConfig.FrameworksEntry
+	23, // 10: specgraph.v1.TechConfig.infrastructure:type_name -> specgraph.v1.TechConfig.InfrastructureEntry
+	24, // 11: specgraph.v1.TechConfig.api_standards:type_name -> specgraph.v1.TechConfig.ApiStandardsEntry
+	25, // 12: specgraph.v1.TechConfig.data:type_name -> specgraph.v1.TechConfig.DataEntry
+	26, // 13: specgraph.v1.LanguageConfig.forbidden_reasons:type_name -> specgraph.v1.LanguageConfig.ForbiddenReasonsEntry
 	8,  // 14: specgraph.v1.ProcessConfig.security_review:type_name -> specgraph.v1.SecurityReviewConfig
 	9,  // 15: specgraph.v1.ProcessConfig.deployment:type_name -> specgraph.v1.DeploymentConfig
 	10, // 16: specgraph.v1.ProcessConfig.documentation:type_name -> specgraph.v1.DocumentationConfig
@@ -1474,17 +1635,22 @@ var file_specgraph_v1_constitution_proto_depIdxs = []int32{
 	3,  // 22: specgraph.v1.UpdateConstitutionRequest.constitution:type_name -> specgraph.v1.Constitution
 	3,  // 23: specgraph.v1.UpdateConstitutionResponse.constitution:type_name -> specgraph.v1.Constitution
 	1,  // 24: specgraph.v1.EmitToolFilesRequest.format:type_name -> specgraph.v1.OutputFormat
-	13, // 25: specgraph.v1.ConstitutionService.GetConstitution:input_type -> specgraph.v1.GetConstitutionRequest
-	16, // 26: specgraph.v1.ConstitutionService.UpdateConstitution:input_type -> specgraph.v1.UpdateConstitutionRequest
-	18, // 27: specgraph.v1.ConstitutionService.EmitToolFiles:input_type -> specgraph.v1.EmitToolFilesRequest
-	15, // 28: specgraph.v1.ConstitutionService.GetConstitution:output_type -> specgraph.v1.GetConstitutionResponse
-	17, // 29: specgraph.v1.ConstitutionService.UpdateConstitution:output_type -> specgraph.v1.UpdateConstitutionResponse
-	19, // 30: specgraph.v1.ConstitutionService.EmitToolFiles:output_type -> specgraph.v1.EmitToolFilesResponse
-	28, // [28:31] is the sub-list for method output_type
-	25, // [25:28] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	0,  // 25: specgraph.v1.RefreshConstitutionLayerRequest.layer:type_name -> specgraph.v1.ConstitutionLayer
+	3,  // 26: specgraph.v1.RefreshConstitutionLayerResponse.before:type_name -> specgraph.v1.Constitution
+	3,  // 27: specgraph.v1.RefreshConstitutionLayerResponse.after:type_name -> specgraph.v1.Constitution
+	13, // 28: specgraph.v1.ConstitutionService.GetConstitution:input_type -> specgraph.v1.GetConstitutionRequest
+	16, // 29: specgraph.v1.ConstitutionService.UpdateConstitution:input_type -> specgraph.v1.UpdateConstitutionRequest
+	18, // 30: specgraph.v1.ConstitutionService.EmitToolFiles:input_type -> specgraph.v1.EmitToolFilesRequest
+	20, // 31: specgraph.v1.ConstitutionService.RefreshConstitutionLayer:input_type -> specgraph.v1.RefreshConstitutionLayerRequest
+	15, // 32: specgraph.v1.ConstitutionService.GetConstitution:output_type -> specgraph.v1.GetConstitutionResponse
+	17, // 33: specgraph.v1.ConstitutionService.UpdateConstitution:output_type -> specgraph.v1.UpdateConstitutionResponse
+	19, // 34: specgraph.v1.ConstitutionService.EmitToolFiles:output_type -> specgraph.v1.EmitToolFilesResponse
+	21, // 35: specgraph.v1.ConstitutionService.RefreshConstitutionLayer:output_type -> specgraph.v1.RefreshConstitutionLayerResponse
+	32, // [32:36] is the sub-list for method output_type
+	28, // [28:32] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_constitution_proto_init() }
@@ -1498,7 +1664,7 @@ func file_specgraph_v1_constitution_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_constitution_proto_rawDesc), len(file_specgraph_v1_constitution_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   22,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

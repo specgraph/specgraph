@@ -45,6 +45,9 @@ const (
 	// ConstitutionServiceEmitToolFilesProcedure is the fully-qualified name of the
 	// ConstitutionService's EmitToolFiles RPC.
 	ConstitutionServiceEmitToolFilesProcedure = "/specgraph.v1.ConstitutionService/EmitToolFiles"
+	// ConstitutionServiceRefreshConstitutionLayerProcedure is the fully-qualified name of the
+	// ConstitutionService's RefreshConstitutionLayer RPC.
+	ConstitutionServiceRefreshConstitutionLayerProcedure = "/specgraph.v1.ConstitutionService/RefreshConstitutionLayer"
 )
 
 // ConstitutionServiceClient is a client for the specgraph.v1.ConstitutionService service.
@@ -55,6 +58,10 @@ type ConstitutionServiceClient interface {
 	UpdateConstitution(context.Context, *connect.Request[v1.UpdateConstitutionRequest]) (*connect.Response[v1.UpdateConstitutionResponse], error)
 	// EmitToolFiles generates a tool-specific configuration file from the constitution.
 	EmitToolFiles(context.Context, *connect.Request[v1.EmitToolFilesRequest]) (*connect.Response[v1.EmitToolFilesResponse], error)
+	// RefreshConstitutionLayer fetches a remote constitution and updates
+	// the specified layer. Used by `specgraph constitution import --from-url`
+	// and `specgraph constitution sync`.
+	RefreshConstitutionLayer(context.Context, *connect.Request[v1.RefreshConstitutionLayerRequest]) (*connect.Response[v1.RefreshConstitutionLayerResponse], error)
 }
 
 // NewConstitutionServiceClient constructs a client for the specgraph.v1.ConstitutionService
@@ -86,14 +93,21 @@ func NewConstitutionServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(constitutionServiceMethods.ByName("EmitToolFiles")),
 			connect.WithClientOptions(opts...),
 		),
+		refreshConstitutionLayer: connect.NewClient[v1.RefreshConstitutionLayerRequest, v1.RefreshConstitutionLayerResponse](
+			httpClient,
+			baseURL+ConstitutionServiceRefreshConstitutionLayerProcedure,
+			connect.WithSchema(constitutionServiceMethods.ByName("RefreshConstitutionLayer")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // constitutionServiceClient implements ConstitutionServiceClient.
 type constitutionServiceClient struct {
-	getConstitution    *connect.Client[v1.GetConstitutionRequest, v1.GetConstitutionResponse]
-	updateConstitution *connect.Client[v1.UpdateConstitutionRequest, v1.UpdateConstitutionResponse]
-	emitToolFiles      *connect.Client[v1.EmitToolFilesRequest, v1.EmitToolFilesResponse]
+	getConstitution          *connect.Client[v1.GetConstitutionRequest, v1.GetConstitutionResponse]
+	updateConstitution       *connect.Client[v1.UpdateConstitutionRequest, v1.UpdateConstitutionResponse]
+	emitToolFiles            *connect.Client[v1.EmitToolFilesRequest, v1.EmitToolFilesResponse]
+	refreshConstitutionLayer *connect.Client[v1.RefreshConstitutionLayerRequest, v1.RefreshConstitutionLayerResponse]
 }
 
 // GetConstitution calls specgraph.v1.ConstitutionService.GetConstitution.
@@ -111,6 +125,11 @@ func (c *constitutionServiceClient) EmitToolFiles(ctx context.Context, req *conn
 	return c.emitToolFiles.CallUnary(ctx, req)
 }
 
+// RefreshConstitutionLayer calls specgraph.v1.ConstitutionService.RefreshConstitutionLayer.
+func (c *constitutionServiceClient) RefreshConstitutionLayer(ctx context.Context, req *connect.Request[v1.RefreshConstitutionLayerRequest]) (*connect.Response[v1.RefreshConstitutionLayerResponse], error) {
+	return c.refreshConstitutionLayer.CallUnary(ctx, req)
+}
+
 // ConstitutionServiceHandler is an implementation of the specgraph.v1.ConstitutionService service.
 type ConstitutionServiceHandler interface {
 	// GetConstitution returns the active constitution.
@@ -119,6 +138,10 @@ type ConstitutionServiceHandler interface {
 	UpdateConstitution(context.Context, *connect.Request[v1.UpdateConstitutionRequest]) (*connect.Response[v1.UpdateConstitutionResponse], error)
 	// EmitToolFiles generates a tool-specific configuration file from the constitution.
 	EmitToolFiles(context.Context, *connect.Request[v1.EmitToolFilesRequest]) (*connect.Response[v1.EmitToolFilesResponse], error)
+	// RefreshConstitutionLayer fetches a remote constitution and updates
+	// the specified layer. Used by `specgraph constitution import --from-url`
+	// and `specgraph constitution sync`.
+	RefreshConstitutionLayer(context.Context, *connect.Request[v1.RefreshConstitutionLayerRequest]) (*connect.Response[v1.RefreshConstitutionLayerResponse], error)
 }
 
 // NewConstitutionServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -146,6 +169,12 @@ func NewConstitutionServiceHandler(svc ConstitutionServiceHandler, opts ...conne
 		connect.WithSchema(constitutionServiceMethods.ByName("EmitToolFiles")),
 		connect.WithHandlerOptions(opts...),
 	)
+	constitutionServiceRefreshConstitutionLayerHandler := connect.NewUnaryHandler(
+		ConstitutionServiceRefreshConstitutionLayerProcedure,
+		svc.RefreshConstitutionLayer,
+		connect.WithSchema(constitutionServiceMethods.ByName("RefreshConstitutionLayer")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/specgraph.v1.ConstitutionService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ConstitutionServiceGetConstitutionProcedure:
@@ -154,6 +183,8 @@ func NewConstitutionServiceHandler(svc ConstitutionServiceHandler, opts ...conne
 			constitutionServiceUpdateConstitutionHandler.ServeHTTP(w, r)
 		case ConstitutionServiceEmitToolFilesProcedure:
 			constitutionServiceEmitToolFilesHandler.ServeHTTP(w, r)
+		case ConstitutionServiceRefreshConstitutionLayerProcedure:
+			constitutionServiceRefreshConstitutionLayerHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -173,4 +204,8 @@ func (UnimplementedConstitutionServiceHandler) UpdateConstitution(context.Contex
 
 func (UnimplementedConstitutionServiceHandler) EmitToolFiles(context.Context, *connect.Request[v1.EmitToolFilesRequest]) (*connect.Response[v1.EmitToolFilesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.ConstitutionService.EmitToolFiles is not implemented"))
+}
+
+func (UnimplementedConstitutionServiceHandler) RefreshConstitutionLayer(context.Context, *connect.Request[v1.RefreshConstitutionLayerRequest]) (*connect.Response[v1.RefreshConstitutionLayerResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.ConstitutionService.RefreshConstitutionLayer is not implemented"))
 }
