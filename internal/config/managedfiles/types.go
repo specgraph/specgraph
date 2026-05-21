@@ -29,12 +29,39 @@ const (
 // Harness is the agent-harness a ManagedFile belongs to.
 type Harness int
 
-// Harness values.
+// Harness values. The integer values are part of the doctor --json
+// wire format (FileState.Harness serializes as a raw int); do not
+// reorder. New harnesses MUST be appended.
 const (
 	HarnessClaude Harness = iota
 	HarnessCursor
 	HarnessOpenCode
 )
+
+// Valid reports whether h is a recognised Harness value. The zero
+// value (HarnessClaude) is valid by definition of iota, so callers
+// that need to distinguish "unset" from "explicitly Claude" should
+// track that out-of-band rather than relying on the zero value.
+func (h Harness) Valid() bool {
+	return h >= HarnessClaude && h <= HarnessOpenCode
+}
+
+// String returns the canonical lowercase name for a Harness, suitable
+// for display and matching the names accepted by `--harness` and the
+// `.specgraph.yaml` `harnesses:` list. Returns "unknown" for out-of-
+// range values.
+func (h Harness) String() string {
+	switch h {
+	case HarnessClaude:
+		return "claude"
+	case HarnessCursor:
+		return "cursor"
+	case HarnessOpenCode:
+		return "opencode"
+	default:
+		return "unknown"
+	}
+}
 
 // CommentSyntax describes the comment style used to embed a sentinel
 // line in a file. Each value maps to a (open, close) pair — close is
@@ -109,11 +136,12 @@ type ManagedFile struct {
 type FileState struct {
 	Path         string
 	Strategy     Strategy
+	Harness      Harness // which harness owns this entry; populated by InspectAll
 	State        State
 	DiskHash     string // sha256 of current disk content (empty if Missing)
 	SentinelHash string // hash recorded in disk sentinel (empty if no sentinel)
 	EmbeddedHash string // sha256 of canonical source content
-	Detail       string // human-readable explanation, used in doctor output
+	Detail       string // human-readable classification explanation; surfaced in both `specgraph init` and `specgraph doctor` output
 }
 
 // Action is the outcome of a write attempt for a single ManagedFile.

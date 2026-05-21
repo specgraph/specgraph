@@ -44,6 +44,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
 		"config file path (default: ~/.config/specgraph/config.yaml, "+
 			"or .specgraph/config.yaml when no project config is found)")
+	// Wired in init() to avoid an initialization cycle (nudgePreRun
+	// closes over rootCmd via the top-level allow-list walk).
+	rootCmd.PersistentPreRunE = nudgePreRun
 }
 
 // globalConfigPath returns the global config path for server commands,

@@ -31,20 +31,109 @@ func (jsonKeyMergeStrategy) Inspect(cwd string, mf ManagedFile, params ProjectPa
 	case err != nil:
 		return FileState{}, fmt.Errorf("read %s: %w", full, err)
 	}
-	// Pre-validate JSON to surface parse errors with a clear message
-	// before they get wrapped inside jsonpatch.MergePatch.
-	var probe any
-	if jerr := json.Unmarshal(existing, &probe); jerr != nil {
+	var existingDoc map[string]any
+	if jerr := json.Unmarshal(existing, &existingDoc); jerr != nil {
 		return FileState{}, fmt.Errorf("parse %s: %w", full, jerr)
 	}
-	canonical, err := jsonKeyMergeCanonical(existing, mf, params)
+	// JSONKeyMerge is the partial-management strategy: it only owns the keys
+	// declared in mf.JSONKeys, not the file's overall shape or formatting.
+	// Inspect therefore checks each managed key directly against canonical
+	// rather than byte-comparing the whole file. This protects user-edited
+	// un-managed siblings (custom hooks, env vars, etc.) AND avoids spurious
+	// "stale" verdicts when the on-disk file was produced by a JSON encoder
+	// whose whitespace doesn't match Go's encoding/json (a real failure mode
+	// we hit on CI before this change).
+	for _, k := range mf.JSONKeys {
+		stale, detail, kerr := jsonKeyMergeKeyDrift(k, existingDoc, params)
+		if kerr != nil {
+			return FileState{}, kerr
+		}
+		if stale {
+			return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateStale, Detail: detail}, nil
+		}
+	}
+	return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateSynced}, nil
+}
+
+// jsonKeyMergeKeyDrift returns (true, reason, nil) when the managed key has
+// drifted from canonical and Sync would need to refresh it. KeyManagedValue
+// requires a deep-equal match to the canonical value; KeyManagedPresence is
+// satisfied by any value being present; KeyManagedArrayUnion requires every
+// canonical entry to appear in the existing array (extras allowed). All
+// comparisons round-trip the canonical value through json.Marshal+Unmarshal
+// so the type shapes match what jsonPointerGet returns (map[string]any,
+// []any, float64, bool, string, nil).
+func jsonKeyMergeKeyDrift(k JSONManagedKey, existingDoc map[string]any, params ProjectParams) (stale bool, detail string, err error) {
+	switch k.Mode {
+	case KeyManagedValue:
+		wantVal, err := k.Value(params)
+		if err != nil {
+			return false, "", fmt.Errorf("value for %s: %w", k.Path, err)
+		}
+		wantNorm, err := jsonRoundTrip(wantVal)
+		if err != nil {
+			return false, "", fmt.Errorf("normalize want for %s: %w", k.Path, err)
+		}
+		gotVal, present := jsonPointerGet(existingDoc, k.Path)
+		if !present {
+			return true, k.Path + " (managed key absent)", nil
+		}
+		if !reflect.DeepEqual(gotVal, wantNorm) {
+			return true, k.Path + " (managed value differs from canonical)", nil
+		}
+	case KeyManagedPresence:
+		if _, present := jsonPointerGet(existingDoc, k.Path); !present {
+			return true, k.Path + " (managed presence key absent)", nil
+		}
+	case KeyManagedArrayUnion:
+		wantVal, err := k.Value(params)
+		if err != nil {
+			return false, "", fmt.Errorf("value for %s: %w", k.Path, err)
+		}
+		wantNorm, err := jsonRoundTrip(wantVal)
+		if err != nil {
+			return false, "", fmt.Errorf("normalize want for %s: %w", k.Path, err)
+		}
+		wantSlice, ok := wantNorm.([]any)
+		if !ok {
+			return false, "", fmt.Errorf("ArrayUnion value for %s must be []any, got %T", k.Path, wantVal)
+		}
+		var gotSlice []any
+		if gotVal, present := jsonPointerGet(existingDoc, k.Path); present {
+			if gs, ok := gotVal.([]any); ok {
+				gotSlice = gs
+			}
+		}
+		for _, w := range wantSlice {
+			found := false
+			for _, g := range gotSlice {
+				if reflect.DeepEqual(w, g) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return true, k.Path + " (canonical entry missing from union)", nil
+			}
+		}
+	}
+	return false, "", nil
+}
+
+// jsonRoundTrip marshals v to JSON and unmarshals back into any, normalizing
+// the in-memory shape so DeepEqual comparisons match values returned by
+// jsonPointerGet (which always yields map[string]any, []any, float64, etc.,
+// rather than the typed Go values a Value func might return).
+func jsonRoundTrip(v any) (any, error) {
+	data, err := json.Marshal(v)
 	if err != nil {
-		return FileState{}, err
+		return nil, fmt.Errorf("marshal: %w", err)
 	}
-	if bytes.Equal(existing, canonical) {
-		return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateSynced}, nil
+	var out any
+	if err := json.Unmarshal(data, &out); err != nil {
+		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
-	return FileState{Path: mf.Path, Strategy: mf.Strategy, State: StateStale}, nil
+	return out, nil
 }
 
 //nolint:gocritic // ManagedFile is the framework's standard parameter shape; pointer would change the strategy interface

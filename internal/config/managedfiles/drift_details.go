@@ -4,8 +4,10 @@
 package managedfiles
 
 // Detail strings emitted in SyncResult.Detail and FileState.Detail.
-// PR G's `specgraph doctor` regex-matches these prefixes to render
-// user-facing classifications; keep them stable and exported.
+// Strategy implementations populate these in SyncResult.Detail (surfaced
+// by `specgraph init`'s per-file output) and FileState.Detail (surfaced
+// by `specgraph doctor`'s expanded output). Kept stable and exported so
+// downstream consumers can match prefixes if needed.
 const (
 	// DriftDetailNoSentinel is emitted when WholeFile + CommentNone
 	// finds an on-disk file whose hash matches neither the canonical

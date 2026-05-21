@@ -31,9 +31,6 @@ func Inspect(cwd string, mf ManagedFile, params ProjectParams) (FileState, error
 // and returns a FileState for each. Errors at the per-file level are
 // captured in the FileState (not surfaced as an error return) so callers
 // see all results, not just the first failure.
-//
-// In PR A, Manifest() returns an empty slice; InspectAll therefore returns
-// an empty slice. PRs B+ populate the manifest.
 func InspectAll(cwd string, harnesses []Harness, params ProjectParams) ([]FileState, error) {
 	if err := validateProjectDir(cwd); err != nil {
 		return nil, err
@@ -46,11 +43,16 @@ func InspectAll(cwd string, harnesses []Harness, params ProjectParams) ([]FileSt
 			out = append(out, FileState{
 				Path:     mf.Path,
 				Strategy: mf.Strategy,
+				Harness:  mf.Harness,
 				State:    StateDrifted,
 				Detail:   fmt.Sprintf("inspect error: %v", err),
 			})
 			continue
 		}
+		// Strategy literals don't know which harness owns the manifest
+		// entry; overwrite here so callers (doctor's --harness filter,
+		// JSON output, etc.) see the attribution. Per design §Managed files.
+		state.Harness = mf.Harness
 		out = append(out, state)
 	}
 	return out, nil

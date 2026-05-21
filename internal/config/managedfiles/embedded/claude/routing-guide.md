@@ -46,6 +46,11 @@ specgraph init
 specgraph serve
 ```
 
+## Troubleshooting
+
+If something seems off (drift, server unreachable, harness misconfigured),
+run `specgraph doctor` for the full report.
+
 ## Never
 
 - Don't invent dotted tool names; tools are flat with `action` parameters.
