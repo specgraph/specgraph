@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -244,19 +245,33 @@ func (s *Store) GetPrimeData(ctx context.Context, slug string) (*storage.PrimeDa
 		return nil, fmt.Errorf("postgres: get prime data decisions: %w", err)
 	}
 
-	var constitution *storage.Constitution
-	constitution, err = s.GetConstitution(ctx)
-	if err != nil {
-		if !errors.Is(err, storage.ErrConstitutionNotFound) {
-			return nil, fmt.Errorf("postgres: get prime data constitution: %w", err)
-		}
+	pd := &storage.PrimeData{
+		Spec:      spec,
+		Decisions: decisions,
 	}
 
-	return &storage.PrimeData{
-		Spec:         spec,
-		Decisions:    decisions,
-		Constitution: constitution,
-	}, nil
+	merged, err := s.GetMergedConstitution(ctx)
+	switch {
+	case err == nil:
+		pd.Constitution = merged.Constitution
+		pd.ConstitutionProvenance = make([]storage.ProvenanceEntry, 0, len(merged.Provenance))
+		for path, layer := range merged.Provenance {
+			pd.ConstitutionProvenance = append(pd.ConstitutionProvenance, storage.ProvenanceEntry{
+				Path:  path,
+				Layer: layer,
+			})
+		}
+		sort.Slice(pd.ConstitutionProvenance, func(i, j int) bool {
+			return pd.ConstitutionProvenance[i].Path < pd.ConstitutionProvenance[j].Path
+		})
+	case errors.Is(err, storage.ErrConstitutionNotFound):
+		// No layers exist — leave Constitution nil and Provenance empty.
+		// Matches existing no-constitution behavior.
+	default:
+		return nil, fmt.Errorf("postgres: get prime data constitution: %w", err)
+	}
+
+	return pd, nil
 }
 
 // ReleaseExpiredClaims finds and releases all claims past their lease expiry.

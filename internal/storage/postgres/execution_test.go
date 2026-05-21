@@ -393,6 +393,88 @@ func TestReleaseExpiredClaims_NoneExpired(t *testing.T) {
 	assert.Equal(t, 0, released)
 }
 
+func TestGetPrimeData_MultiLayerProvenance(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	// Org layer with one principle.
+	_, err := store.UpdateConstitution(ctx, &storage.Constitution{
+		Name:  "org",
+		Layer: storage.ConstitutionLayerOrg,
+		Principles: []storage.Principle{
+			{ID: "p-org", Statement: "Org rule"},
+		},
+	})
+	require.NoError(t, err)
+
+	// Project layer with another principle.
+	_, err = store.UpdateConstitution(ctx, &storage.Constitution{
+		Name:  "project",
+		Layer: storage.ConstitutionLayerProject,
+		Principles: []storage.Principle{
+			{ID: "p-proj", Statement: "Project rule"},
+		},
+	})
+	require.NoError(t, err)
+
+	// Seed a spec so GetPrimeData has something to find.
+	_, err = store.CreateSpec(ctx, "prime-prov-spec", "intent", "P2", "M",
+		storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	pd, err := store.GetPrimeData(ctx, "prime-prov-spec")
+
+	require.NoError(t, err)
+	require.NotNil(t, pd.Constitution)
+
+	// Assert presence of both expected principles by ID — more precise than
+	// a count-only check, and resilient to merge insertion order.
+	var principleIDs []string
+	for _, p := range pd.Constitution.Principles {
+		principleIDs = append(principleIDs, p.ID)
+	}
+	assert.ElementsMatch(t, []string{"p-org", "p-proj"}, principleIDs,
+		"merged constitution must carry principles from both layers")
+
+	// Build a provenance lookup for assertion clarity.
+	provByPath := map[string]storage.ConstitutionLayer{}
+	for _, e := range pd.ConstitutionProvenance {
+		provByPath[e.Path] = e.Layer
+	}
+	assert.Equal(t, storage.ConstitutionLayerOrg, provByPath["principles[p-org]"])
+	assert.Equal(t, storage.ConstitutionLayerProject, provByPath["principles[p-proj]"])
+
+	// Sort invariant: require non-empty first so an empty slice can't
+	// silently pass the loop below.
+	require.NotEmpty(t, pd.ConstitutionProvenance,
+		"provenance must not be empty when constitution is present")
+	for i := 1; i < len(pd.ConstitutionProvenance); i++ {
+		assert.LessOrEqual(t,
+			pd.ConstitutionProvenance[i-1].Path,
+			pd.ConstitutionProvenance[i].Path,
+			"ConstitutionProvenance must be sorted by Path for deterministic output")
+	}
+}
+
+func TestGetPrimeData_NoConstitution_EmptyProvenance(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.CreateSpec(ctx, "no-prov-spec", "intent", "P2", "M",
+		storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	pd, err := store.GetPrimeData(ctx, "no-prov-spec")
+
+	require.NoError(t, err)
+	assert.Nil(t, pd.Constitution,
+		"invariant: Constitution nil when no layers exist")
+	assert.Empty(t, pd.ConstitutionProvenance,
+		"invariant: provenance empty iff Constitution nil")
+}
+
 func TestFullExecutionLifecycle(t *testing.T) {
 	store := newStore(t)
 	clearDatabase(t, store)

@@ -96,6 +96,10 @@ func (errorBackend) GetConstitution(context.Context) (*storage.Constitution, err
 	return nil, errRawDB
 }
 
+func (errorBackend) GetMergedConstitution(context.Context) (*storage.MergedResult, error) {
+	return nil, errRawDB
+}
+
 func (errorBackend) UpdateConstitution(context.Context, *storage.Constitution) (*storage.Constitution, error) {
 	return nil, errRawDB
 }

@@ -90,10 +90,13 @@ func (e *Engine) collect(ctx context.Context, projectSlug string) (*Document, er
 	}
 	doc.Data.Project = proj
 
-	// Constitution (optional — may not exist)
-	constitution, err := e.backend.GetConstitution(ctx)
-	if err == nil {
-		doc.Data.Constitution = constitution
+	// Constitutions (optional — may not exist; v2 emits the list field).
+	layers, err := e.backend.GetAllLayers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get constitution layers: %w", err)
+	}
+	if len(layers) > 0 {
+		doc.Data.Constitutions = layers
 	}
 
 	// Specs — list summaries, then fetch full data for each
@@ -376,12 +379,30 @@ func (e *Engine) writeEntities(ctx context.Context, doc *Document) (*ImportResul
 		res.Project = 1
 	}
 
-	// 2. Constitution
-	if doc.Data.Constitution != nil {
-		if _, err := e.backend.UpdateConstitution(ctx, doc.Data.Constitution); err != nil {
-			return nil, fmt.Errorf("update constitution: %w", err)
+	// 2. Constitutions — handle schema v1 (single) and v2 (list) with strict
+	// cross-field validation to prevent silent data loss from mismatched docs.
+	var layers []*storage.Constitution
+	switch doc.SchemaVersion {
+	case 1:
+		if doc.Data.Constitutions != nil {
+			return nil, fmt.Errorf("v1 documents must use 'constitution' field, not 'constitutions'")
 		}
-		res.Constitution = 1
+		if doc.Data.Constitution != nil {
+			layers = []*storage.Constitution{doc.Data.Constitution}
+		}
+	case 2:
+		if doc.Data.Constitution != nil {
+			return nil, fmt.Errorf("v2 documents must use 'constitutions' field, not 'constitution'")
+		}
+		layers = doc.Data.Constitutions
+	default:
+		return nil, fmt.Errorf("unsupported schema version %d for constitution import", doc.SchemaVersion)
+	}
+	for _, layer := range layers {
+		if _, err := e.backend.UpdateConstitution(ctx, layer); err != nil {
+			return nil, fmt.Errorf("update constitution layer %s: %w", layer.Layer, err)
+		}
+		res.Constitution++
 	}
 
 	// 3. Specs — create then restore stage via Store*Output + TransitionStage.
