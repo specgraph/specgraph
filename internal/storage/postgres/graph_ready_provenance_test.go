@@ -65,7 +65,6 @@ func TestGetReady_ProvenanceAndStageFilters(t *testing.T) {
 		},
 		nil, nil, nil, nil)
 	require.NoError(t, err)
-	approvedStage := string(storage.SpecStageApproved)
 	_, err = store.UpdateSpec(ctx, "d2-declared-approved", nil, &approvedStage, nil, nil, nil)
 	require.NoError(t, err)
 
