@@ -359,7 +359,15 @@ func (s *Store) GetReady(ctx context.Context) ([]storage.NodeRef, error) {
 	rows, err := s.query(ctx,
 		`SELECT s.slug, 'Spec' AS label, s.stage
 		 FROM specs s
-		 WHERE s.project_slug = $1 AND s.stage <> 'done'
+		 WHERE s.project_slug = $1
+		   AND s.stage = 'approved'
+		   AND s.provenance_type = 'authored'
+		   AND NOT EXISTS (
+		       -- Active claim by any agent
+		       SELECT 1 FROM claims c
+		       WHERE c.project_slug = $1 AND c.spec_slug = s.slug
+		         AND c.lease_expires > NOW()
+		   )
 		   AND NOT EXISTS (
 		       -- Only Spec deps are checked by design; see function comment.
 		       SELECT 1 FROM edges e
