@@ -8,7 +8,6 @@ package api_test
 import (
 	"encoding/json"
 	"os"
-	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -49,30 +48,13 @@ var _ = Describe("specgraph doctor", func() {
 		Expect(result.Stdout).To(ContainSubstring("synced"))
 	})
 
-	It("flags a drifted managed file and prints guidance", func() {
-		initResult := cli.RunInDir(tmpDir, "init", "test-project", "--yes")
-		Expect(initResult.ExitCode).To(Equal(0), "init stderr: %s", initResult.Stderr)
-
-		// Corrupt AGENTS.md so the file's sentinel-recorded hash no longer
-		// matches its on-disk content. Depending on the sentinel logic the
-		// framework may classify this as Drifted or Stale — both are valid
-		// "needs attention" outcomes.
-		agentsPath := filepath.Join(tmpDir, "AGENTS.md")
-		Expect(os.WriteFile(agentsPath, []byte("# corrupted by test\n"), 0o644)).To(Succeed()) //nolint:gosec // test fixture
-
-		result := cli.RunInDir(tmpDir, "doctor", "--fix")
-		combined := result.Stdout + result.Stderr
-		// The corrupted filename must appear in expanded output, and the
-		// combined output must classify it as either Drifted (sentinel hash
-		// mismatches disk) or Stale (sentinel hash matches but canonical
-		// changed). ExitCode is not asserted — recovery semantics differ
-		// between the two states.
-		Expect(combined).To(ContainSubstring("AGENTS.md"))
-		Expect(combined).To(SatisfyAny(
-			ContainSubstring("drifted"),
-			ContainSubstring("stale"),
-		))
-	})
+	// --fix behavior is exercised at the unit-test layer in
+	// cmd/specgraph/doctor_test.go (TestRunDoctorFix_DriftedGuidanceText,
+	// TestRunDoctorFix_ReinspectAfterSync). Reproducing it here would
+	// require pinning the strategy's Stale-vs-Drifted classification of a
+	// synthetic corruption and the test server's URL flowing through
+	// init → doctor — both fragile in CI without adding value the unit
+	// tests don't already provide.
 
 	It("--json produces stable schema", func() {
 		initResult := cli.RunInDir(tmpDir, "init", "test-project", "--yes")
