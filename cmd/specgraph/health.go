@@ -5,9 +5,8 @@ package main
 
 import (
 	"fmt"
+	"os"
 
-	"connectrpc.com/connect"
-	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/spf13/cobra"
 )
@@ -26,16 +25,12 @@ func healthClient() (specgraphv1connect.ServerServiceClient, error) {
 	return newClient(specgraphv1connect.NewServerServiceClient)
 }
 
-func runHealth(cmd *cobra.Command, _ []string) error {
-	client, err := healthClient()
-	if err != nil {
-		return err
-	}
-	resp, err := client.Health(cmd.Context(), connect.NewRequest(&specv1.HealthRequest{}))
-	if err != nil {
-		return fmt.Errorf("health check: %w", err)
-	}
-	fmt.Printf("Status:  %s\n", resp.Msg.Status)
-	fmt.Printf("Version: %s\n", resp.Msg.Version)
-	return nil
+func runHealth(_ *cobra.Command, args []string) error {
+	// `specgraph health` is deprecated; it now dispatches to
+	// `specgraph doctor server`. The deprecation notice goes to stderr
+	// so script consumers reading stdout don't see it. The doctor
+	// server runE preserves the original health exit codes.
+	fmt.Fprintln(os.Stderr,
+		"specgraph health: deprecated, use `specgraph doctor server` (this command will be removed in a future release)")
+	return doctorServerCmd.RunE(doctorServerCmd, args)
 }
