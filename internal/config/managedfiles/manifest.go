@@ -192,8 +192,8 @@ func allManagedFiles() []ManagedFile {
 					Value: func(_ ProjectParams) (any, error) {
 						return map[string]any{
 							"source": map[string]any{
-								"type": "directory",
-								"path": "./.specgraph/agents/claude",
+								"source": "directory",
+								"path":   "./.specgraph/agents/claude",
 							},
 							"autoUpdate": false,
 						}, nil
