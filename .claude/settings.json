@@ -1,18 +1,6 @@
 {
-  "enabledPlugins": {
-    "specgraph@specgraph-local": true
-  },
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  },
-  "extraKnownMarketplaces": {
-    "specgraph-local": {
-      "autoUpdate": false,
-      "source": {
-        "path": "./.specgraph/agents/claude",
-        "type": "directory"
-      }
-    }
   },
   "hooks": {
     "PostToolUse": [

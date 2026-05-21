@@ -54,12 +54,6 @@ the subcommand allow-list (`init`, `doctor`, `health`, etc.),
 `nudges.quiet: true`, and a 24h throttle file at
 `xdg.CacheHome()/nudges/`.
 
-`task plugin:refresh` rebuilds + re-init's against the current
-project. `task plugin:check` runs `init --check` and exits non-zero
-if any managed file would be modified — it's wired into `task check`
-so a contributor who edited `plugin/<harness>/...` without rebuilding
-sees the failure during the same `task check` they run pre-push.
-
 `.specgraph.yaml` gains two fields:
 
 - `harnesses: [claude, cursor, opencode]` — per-project allow-list
