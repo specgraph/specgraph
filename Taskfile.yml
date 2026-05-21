@@ -301,6 +301,7 @@ tasks:
       - task: fmt:check
       - task: license:check
       - task: lint
+      - task: plugin:check
       - task: skills:validate
       - task: build
       - go test -short -race ./...
@@ -330,3 +331,20 @@ tasks:
     desc: Build snapshot locally (no publish, local arch only)
     cmds:
       - goreleaser build --snapshot --clean --single-target
+  # Plugin / dogfood (drift-nudge canonical sync)
+  #
+  # `--config /dev/null` pins both targets to the binary's defaults
+  # (DefaultServer=http://127.0.0.1:9090) so the check is reproducible
+  # regardless of the contributor's ~/.config/specgraph/config.yaml. The
+  # dogfood test (TestDogfood_CheckedInConfigsAreCanonical) pins 9090 as
+  # the canonical URL for this repo; both helpers honor that contract.
+  plugin:refresh:
+    desc: Rebuild specgraph and re-run init against the current project to pick up plugin canonical edits
+    cmds:
+      - task: build
+      - go run ./cmd/specgraph --config /dev/null init --quiet
+  plugin:check:
+    desc: Verify the embedded canonicals match what specgraph init would write
+    cmds:
+      - task: build
+      - go run ./cmd/specgraph --config /dev/null init --check

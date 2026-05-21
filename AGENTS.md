@@ -88,10 +88,10 @@ bd close <id>         # Complete work
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
 
-<!-- specgraph:init:start v=2 sha256=c03108b99e2fae00b697cae4b2d9d824ca9fd82dcabb75b44fc0aeb071d0947b -->
+<!-- specgraph:init:start v=2 sha256=796ca7042789a913da170be3707b7f92a4dcba4b1a6a421acf0ef52d379db1c3 -->
 ## SpecGraph project pointer
 
-Server: http://127.0.0.1:7890
+Server: http://127.0.0.1:9090
 Project: specgraph (sent as the X-Specgraph-Project header)
 
 This block is managed by `specgraph init`. Edit content outside the markers.

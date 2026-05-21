@@ -38,6 +38,34 @@ task hooks:install  # Install git hooks (pre-commit, pre-push, commit-msg)
 task build          # Generate proto + build binary
 ```
 
+### Doctor + drift-nudge
+
+`specgraph doctor` reports four check groups (Binary, Server, Project
+config, Managed files). Default output is compact when everything is
+green; sections expand when problems exist. `--json` for
+machine-readable output; `--fix` auto-init's Stale/Missing rows and
+prints guidance for Drifted; `--harness <name>` narrows; `--exit-zero`
+suppresses non-zero exit for advisory use.
+
+Every CLI invocation runs a drift-nudge in `PersistentPreRun` that
+emits one stderr line if any managed file is non-Synced. Skip gates:
+the subcommand allow-list (`init`, `doctor`, `health`, etc.),
+`isatty(stderr)`, `SPECGRAPH_DRIFT_NUDGE=off`, `.specgraph.yaml`'s
+`nudges.quiet: true`, and a 24h throttle file at
+`xdg.CacheHome()/nudges/`.
+
+`task plugin:refresh` rebuilds + re-init's against the current
+project. `task plugin:check` runs `init --check` and exits non-zero
+if any managed file would be modified — it's wired into `task check`
+so a contributor who edited `plugin/<harness>/...` without rebuilding
+sees the failure during the same `task check` they run pre-push.
+
+`.specgraph.yaml` gains two fields:
+
+- `harnesses: [claude, cursor, opencode]` — per-project allow-list
+  (empty = all three, matching the legacy behaviour).
+- `nudges: { quiet: true }` — project-level mute for the drift-nudge.
+
 ## Domain Concepts
 
 - **Specs are graph nodes** with first-class edges (dependencies, blocks, compositions)
