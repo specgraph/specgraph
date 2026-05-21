@@ -123,14 +123,24 @@ func runInit(_ *cobra.Command, args []string) error {
 	// three when the list is empty (legacy configs and no-config case).
 	harnesses := harnessSliceFromConfig(pc.Harnesses)
 
-	// --check: inspect without writing; exit non-zero if any file is not Synced.
+	// --check: inspect without writing; exit non-zero if any tracked managed
+	// file is not Synced. Init-only destinations that the repo's .gitignore
+	// covers (harness shims under .specgraph/agents/ and the cursor .mdc rules)
+	// are skipped: they're meant to materialize on a contributor's machine via
+	// `specgraph init`, never to be checked into git, so reporting them as
+	// "missing" on a fresh checkout would be a false positive that fails CI.
 	if initCheck {
 		states, err := managedfiles.InspectAll(cwd, harnesses, params)
 		if err != nil {
 			return fmt.Errorf("inspect for --check: %w", err)
 		}
 		nonSynced := 0
+		checked := 0
 		for _, s := range states {
+			if isCheckIgnored(s.Path) {
+				continue
+			}
+			checked++
 			if s.State != managedfiles.StateSynced {
 				nonSynced++
 				if !initQuiet {
@@ -142,7 +152,7 @@ func runInit(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("%d managed file(s) not in sync", nonSynced)
 		}
 		if !initQuiet {
-			fmt.Printf("init --check: all %d managed file(s) synced\n", len(states))
+			fmt.Printf("init --check: all %d tracked managed file(s) synced\n", checked)
 		}
 		return nil
 	}
@@ -174,6 +184,31 @@ func runInit(_ *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// checkIgnoredPrefixes lists path prefixes for init-only destinations that
+// the repo's .gitignore covers: harness shims under .specgraph/agents/ and
+// the two cursor .mdc rules. `init --check` skips these because they're
+// expected to be absent on a fresh checkout (CI, new contributor clone) and
+// only materialize when the contributor runs `specgraph init`. Keep in sync
+// with the relevant blocks in .gitignore.
+var checkIgnoredPrefixes = []string{
+	".specgraph/agents/",
+	".cursor/rules/specgraph.mdc",
+	".cursor/rules/specgraph-post-stage.mdc",
+}
+
+// isCheckIgnored returns true if path matches one of the .gitignore-covered
+// init-only destinations enumerated in checkIgnoredPrefixes. Used by
+// init --check so plugin:check (in `task check`) doesn't fail CI for files
+// that aren't tracked in git.
+func isCheckIgnored(path string) bool {
+	for _, p := range checkIgnoredPrefixes {
+		if path == p || strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // harnessSliceFromConfig maps strings from cfg.Harnesses to Harness enum
