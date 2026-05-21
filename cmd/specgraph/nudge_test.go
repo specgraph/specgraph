@@ -312,7 +312,10 @@ func TestRunDoctorFix_ReinspectAfterSync(t *testing.T) {
 	// Redirect stdout because runDoctorFix prints guidance lines for the
 	// AGENTS.md drifted file.
 	origStdout := os.Stdout
-	devNull, _ := os.Open(os.DevNull)
+	devNull, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatalf("open devnull: %v", err)
+	}
 	os.Stdout = devNull
 	t.Cleanup(func() {
 		os.Stdout = origStdout

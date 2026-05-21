@@ -143,14 +143,26 @@ func runServerGroup(timeout time.Duration) ServerReport {
 	res, err := c.CallTool(listCtx, mcp.CallToolRequest{
 		Params: mcp.CallToolParams{Name: "specgraph_skills_list"},
 	})
-	if err != nil {
+	switch {
+	case err != nil:
 		rep.SkillsCount = -1
-	} else if len(res.Content) > 0 {
-		if tc, ok := res.Content[0].(mcp.TextContent); ok {
-			rep.SkillsCount = countSkillsFromJSON(tc.Text)
-		} else {
-			rep.SkillsCount = -1
-		}
+		rep.Error = fmt.Sprintf("skills list: %s", err)
+		return rep
+	case len(res.Content) == 0:
+		rep.SkillsCount = -1
+		rep.Error = "skills list: empty response"
+		return rep
+	}
+	tc, ok := res.Content[0].(mcp.TextContent)
+	if !ok {
+		rep.SkillsCount = -1
+		rep.Error = "skills list: first content item is not text"
+		return rep
+	}
+	rep.SkillsCount = countSkillsFromJSON(tc.Text)
+	if rep.SkillsCount < 0 {
+		rep.Error = "skills list: invalid JSON payload"
+		return rep
 	}
 
 	rep.OK = true

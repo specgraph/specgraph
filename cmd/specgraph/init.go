@@ -123,7 +123,15 @@ func runInit(_ *cobra.Command, args []string) error {
 
 	// Read harnesses from .specgraph.yaml when present; fall back to all
 	// three when the list is empty (legacy configs and no-config case).
+	// Refuse to proceed when a non-empty harnesses: list resolves to nothing
+	// — that means every entry is a typo or removed harness, and silently
+	// no-op'ing would let init/--check pass while managed files stay out of
+	// sync. doctor's Project config group separately surfaces the offending
+	// names via UnknownNames; init keeps the discipline of refusing to run.
 	harnesses := harnessSliceFromConfig(pc.Harnesses)
+	if len(pc.Harnesses) > 0 && len(harnesses) == 0 {
+		return fmt.Errorf("no supported harnesses in .specgraph.yaml; got %v, expected at least one of: claude, cursor, opencode", pc.Harnesses)
+	}
 
 	// --check: inspect without writing; exit non-zero if any tracked managed
 	// file is not Synced. Init-only destinations that the repo's .gitignore
@@ -147,6 +155,9 @@ func runInit(_ *cobra.Command, args []string) error {
 				nonSynced++
 				if !initQuiet {
 					fmt.Printf("%s: %s", s.Path, managedfiles.StateName(s.State))
+					if s.Detail != "" {
+						fmt.Printf(" — %s", s.Detail)
+					}
 					// Stale + Drifted: append size + sha256 of on-disk content to
 					// aid debugging across machines. When a file is reported stale
 					// on CI but synced locally (or vice versa), comparing these

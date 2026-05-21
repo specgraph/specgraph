@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/specgraph/specgraph/internal/config"
 )
@@ -61,7 +62,10 @@ func runProjectConfigGroup(cwd string) ProjectReport {
 	return rep
 }
 
-// projectStatusLine renders the compact form.
+// projectStatusLine renders the compact form. When validation fails only
+// because of unknown harness names (StrictError empty), the message would
+// otherwise render as "PROBLEM ()" — we include the offending names so
+// the contributor sees what to fix.
 func projectStatusLine(rep ProjectReport) string {
 	if rep.OK {
 		if len(rep.Harnesses) == 0 {
@@ -69,5 +73,16 @@ func projectStatusLine(rep ProjectReport) string {
 		}
 		return fmt.Sprintf("Project config: OK (%d harnesses enabled)", len(rep.Harnesses))
 	}
-	return fmt.Sprintf("Project config: PROBLEM (%s)", rep.StrictError)
+	switch {
+	case rep.StrictError != "" && len(rep.UnknownNames) > 0:
+		return fmt.Sprintf("Project config: PROBLEM (%s; unknown harnesses: %s)",
+			rep.StrictError, strings.Join(rep.UnknownNames, ", "))
+	case rep.StrictError != "":
+		return fmt.Sprintf("Project config: PROBLEM (%s)", rep.StrictError)
+	case len(rep.UnknownNames) > 0:
+		return fmt.Sprintf("Project config: PROBLEM (unknown harnesses: %s)",
+			strings.Join(rep.UnknownNames, ", "))
+	default:
+		return "Project config: PROBLEM"
+	}
 }

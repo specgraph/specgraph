@@ -81,11 +81,7 @@ func nudgePreRun(cmd *cobra.Command, _ []string) error {
 	if pc.Nudges.Quiet {
 		return nil
 	}
-	// 5. Throttle.
-	if !shouldEmitAfterThrottle(root) {
-		return nil
-	}
-	// Build ProjectParams matching init's path so sentinel hashes line
+	// 5. Build ProjectParams matching init's path so sentinel hashes line
 	// up (harnessSliceFromConfig + ResolveServer).
 	globalCfg, err := loadGlobalCfg()
 	if err != nil {
@@ -111,6 +107,13 @@ func nudgePreRun(cmd *cobra.Command, _ []string) error {
 		}
 	}
 	if stale == 0 && drifted == 0 {
+		return nil
+	}
+	// 6. Throttle — consulted ONLY when we'd otherwise emit. Checking it
+	// before drift detection would have every clean invocation create the
+	// throttle file, suppressing the first real nudge for up to 24h after
+	// drift actually appears.
+	if !shouldEmitAfterThrottle(root) {
 		return nil
 	}
 	fmt.Fprintf(os.Stderr,
