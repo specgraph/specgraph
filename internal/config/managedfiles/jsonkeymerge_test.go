@@ -397,3 +397,81 @@ func TestClaudeSettingsJSON_PreservesUserDisable(t *testing.T) {
 		t.Errorf("user's disable was overwritten, got %v (present=%v)", v, ok)
 	}
 }
+
+// TestJSONKeyMergeInspect_KeyLevelNotByteLevel pins the contract that Inspect
+// verifies the managed keys' VALUES, not the file's overall byte-level
+// formatting. A file whose managed keys match canonical but whose non-managed
+// keys are formatted differently (extra whitespace, different key order, etc.)
+// must report StateSynced — otherwise plugin:check fails for tracked files
+// that round-tripped through a JSON encoder whose output doesn't match Go's.
+// The bug this guards against: CI reported .claude/settings.json as stale even
+// though its bytes were byte-identical to what Go's encoder produces locally,
+// because the strategy used to compare the WHOLE file bytes rather than just
+// the managed keys.
+func TestJSONKeyMergeInspect_KeyLevelNotByteLevel(t *testing.T) {
+	mf := ManagedFile{
+		Path:     "test.json",
+		Strategy: StrategyJSONKeyMerge,
+		Comment:  CommentNone,
+		Harness:  HarnessClaude,
+		JSONKeys: []JSONManagedKey{
+			{
+				Path: "/managed",
+				Mode: KeyManagedValue,
+				Value: func(_ ProjectParams) (any, error) {
+					return map[string]any{"value": "canonical"}, nil
+				},
+			},
+			{
+				Path: "/presence",
+				Mode: KeyManagedPresence,
+				Value: func(_ ProjectParams) (any, error) { return true, nil },
+			},
+		},
+	}
+	dir := t.TempDir()
+	full := filepath.Join(dir, "test.json")
+
+	// On-disk content has managed keys with canonical values, but a non-managed
+	// "user" key with unusual whitespace and key ordering that Go's encoder
+	// wouldn't reproduce on a re-marshal. Byte-level Inspect would flag this
+	// as stale; key-level Inspect must report Synced.
+	disk := `{"presence":42,"user":{"z":1,"a":2},"managed":{"value":"canonical"}}`
+	if werr := os.WriteFile(full, []byte(disk), 0o600); werr != nil {
+		t.Fatal(werr)
+	}
+	state, err := jsonKeyMergeStrategy{}.Inspect(dir, mf, ProjectParams{})
+	if err != nil {
+		t.Fatalf("Inspect: %v", err)
+	}
+	if state.State != StateSynced {
+		t.Errorf("state = %v (%q), want StateSynced — managed keys all match canonical, formatting differences should be ignored",
+			state.State, state.Detail)
+	}
+
+	// Now flip the managed value to drift; Inspect must report Stale.
+	disk = `{"presence":42,"managed":{"value":"WRONG"}}`
+	if werr := os.WriteFile(full, []byte(disk), 0o600); werr != nil {
+		t.Fatal(werr)
+	}
+	state, err = jsonKeyMergeStrategy{}.Inspect(dir, mf, ProjectParams{})
+	if err != nil {
+		t.Fatalf("Inspect (drifted): %v", err)
+	}
+	if state.State != StateStale {
+		t.Errorf("state = %v (%q), want StateStale on drifted managed value", state.State, state.Detail)
+	}
+
+	// And: remove the presence key; Inspect must report Stale.
+	disk = `{"managed":{"value":"canonical"}}`
+	if werr := os.WriteFile(full, []byte(disk), 0o600); werr != nil {
+		t.Fatal(werr)
+	}
+	state, err = jsonKeyMergeStrategy{}.Inspect(dir, mf, ProjectParams{})
+	if err != nil {
+		t.Fatalf("Inspect (presence absent): %v", err)
+	}
+	if state.State != StateStale {
+		t.Errorf("state = %v (%q), want StateStale when presence key is absent", state.State, state.Detail)
+	}
+}
