@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/config/managedfiles"
 )
 
 // DoctorReport is the canonical structure all output modes (text +
@@ -20,11 +23,6 @@ type DoctorReport struct {
 	Server   ServerReport  `json:"server"`  // populated in commit 5
 	Project  ProjectReport `json:"project"` // populated in commit 4
 	Managed  ManagedReport `json:"managed"` // populated in commit 6
-}
-
-// ManagedReport is a placeholder until commit 6 wires in the Managed group.
-type ManagedReport struct {
-	OK bool `json:"ok"`
 }
 
 // runDoctor is doctorCmd's RunE entry point. It builds the report,
@@ -54,12 +52,49 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("timeout flag: %w", err)
 	}
 
+	fix, err := cmd.Flags().GetBool("fix")
+	if err != nil {
+		return fmt.Errorf("fix flag: %w", err)
+	}
+	harnessFlag, err := cmd.Flags().GetString("harness")
+	if err != nil {
+		return fmt.Errorf("harness flag: %w", err)
+	}
+
+	// Load the project config so we can resolve harnesses and server
+	// URL for the Managed group. LoadProject derives a slug even when
+	// no .specgraph.yaml exists, so the returned *ProjectConfig is
+	// non-nil on success. Treat any load error as "no project config"
+	// for the purposes of the Managed group — the Project group has
+	// already surfaced the underlying problem.
+	pc, pcErr := config.LoadProject(cwd)
+	if pcErr != nil {
+		pc = &config.ProjectConfig{}
+	}
+	harnesses := harnessesFromFlag(pc, harnessFlag)
+
+	globalCfg, gErr := loadGlobalCfg()
+	var serverURL string
+	if gErr == nil {
+		serverURL = globalCfg.ResolveServer(pc.Slug, pc.Server)
+	}
+	params := managedfiles.ProjectParams{Slug: pc.Slug, ServerURL: serverURL}
+
 	rep := DoctorReport{
 		Binary:  runBinaryGroup(),
 		Project: runProjectConfigGroup(cwd),
 		Server:  runServerGroup(timeout),
-		// Managed wired in commit 6.
+		Managed: runManagedGroup(cwd, harnesses, params),
 	}
+
+	if fix {
+		if err := runDoctorFix(cwd, rep.Managed, harnesses, params); err != nil {
+			return fmt.Errorf("doctor --fix: %w", err)
+		}
+		// Re-inspect after fix so the exit code reflects the new state.
+		rep.Managed = runManagedGroup(cwd, harnesses, params)
+	}
+
 	rep.ExitCode = computeExitCode(&rep)
 
 	if jsonOut {
@@ -82,7 +117,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 // (infrastructure failure — reserved for the Server group's dial
 // errors etc.; filled in by commit 5).
 func computeExitCode(rep *DoctorReport) int {
-	if !rep.Binary.OK || !rep.Project.OK || !rep.Server.OK {
+	if !rep.Binary.OK || !rep.Project.OK || !rep.Server.OK || !rep.Managed.OK {
 		return 1
 	}
 	return 0

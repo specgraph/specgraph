@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/specgraph/specgraph/internal/config/managedfiles"
 )
 
 // renderText writes the compact-when-green / expanded-when-problems text
@@ -50,7 +52,42 @@ func renderText(w io.Writer, rep *DoctorReport, verbose bool) {
 			}
 		}
 	}
-	// Managed group rendering lands in commit 6.
+	// Managed group rendering
+	if rep.Managed.OK && !verbose {
+		_, _ = fmt.Fprintf(w, "%s\n", managedStatusLine(rep.Managed)) //nolint:errcheck // stdout write; not actionable
+	} else {
+		_, _ = fmt.Fprintf(w, "%s\n", managedStatusLine(rep.Managed)) //nolint:errcheck // stdout write; not actionable
+		if verbose || !rep.Managed.OK {
+			renderManagedExpanded(w, rep.Managed)
+		}
+	}
+}
+
+// renderManagedExpanded prints the per-file table for the Managed
+// group, partitioned into host-pinned (project-root) and
+// SpecGraph-owned (under .specgraph/agents/) subsections. Within
+// each subsection, rows preserve manifest order.
+func renderManagedExpanded(w io.Writer, rep ManagedReport) {
+	var hostPinned, owned []managedfiles.FileState
+	for _, f := range rep.Files {
+		if isHostPinned(f.Path) {
+			hostPinned = append(hostPinned, f)
+		} else {
+			owned = append(owned, f)
+		}
+	}
+	if len(hostPinned) > 0 {
+		_, _ = fmt.Fprintln(w, "  Host-pinned:") //nolint:errcheck // stdout write; not actionable
+		for _, f := range hostPinned {
+			_, _ = fmt.Fprintf(w, "    %-50s %s\n", f.Path, managedfiles.StateName(f.State)) //nolint:errcheck // stdout write; not actionable
+		}
+	}
+	if len(owned) > 0 {
+		_, _ = fmt.Fprintln(w, "  SpecGraph-owned:") //nolint:errcheck // stdout write; not actionable
+		for _, f := range owned {
+			_, _ = fmt.Fprintf(w, "    %-50s %s\n", f.Path, managedfiles.StateName(f.State)) //nolint:errcheck // stdout write; not actionable
+		}
+	}
 }
 
 func binaryStatusText(b BinaryReport) string {

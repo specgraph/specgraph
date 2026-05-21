@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/specgraph/specgraph/internal/config/managedfiles"
 )
 
 func TestDoctorReport_BinaryGroupAllHealthy(t *testing.T) {
@@ -143,6 +145,71 @@ func TestCountSkillsFromJSON(t *testing.T) {
 	}
 	if got := countSkillsFromJSON("not-json"); got != -1 {
 		t.Errorf("countSkillsFromJSON(invalid) = %d, want -1", got)
+	}
+}
+
+func TestManagedStatusLine_AllSynced(t *testing.T) {
+	rep := ManagedReport{
+		OK:     true,
+		Synced: 14,
+		Total:  14,
+	}
+	line := managedStatusLine(rep)
+	if !strings.Contains(line, "14/14 synced") {
+		t.Errorf("expected '14/14 synced' in line: %s", line)
+	}
+	if strings.Contains(line, "—") {
+		t.Errorf("expected no breakdown when all synced: %s", line)
+	}
+}
+
+func TestManagedStatusLine_Mixed(t *testing.T) {
+	rep := ManagedReport{
+		OK:     false,
+		Synced: 11,
+		Total:  14,
+		Files: []managedfiles.FileState{
+			{Path: "a", State: managedfiles.StateMissing},
+			{Path: "b", State: managedfiles.StateStale},
+			{Path: "c", State: managedfiles.StateDrifted},
+			// 11 synced files omitted from the slice for brevity; the
+			// breakdown derives from non-Synced entries only.
+		},
+	}
+	line := managedStatusLine(rep)
+	if !strings.Contains(line, "11/14 synced") {
+		t.Errorf("expected '11/14 synced' in line: %s", line)
+	}
+	if !strings.Contains(line, "1 missing") {
+		t.Errorf("expected '1 missing' in line: %s", line)
+	}
+	if !strings.Contains(line, "1 stale") {
+		t.Errorf("expected '1 stale' in line: %s", line)
+	}
+	if !strings.Contains(line, "1 drifted") {
+		t.Errorf("expected '1 drifted' in line: %s", line)
+	}
+}
+
+func TestIsHostPinned(t *testing.T) {
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{"AGENTS.md", true},
+		{".cursor/rules/specgraph.mdc", true},
+		{".mcp.json", true},
+		{".cursor/mcp.json", true},
+		{"opencode.json", true},
+		{".claude/settings.json", true},
+		{".specgraph/agents/claude/routing-guide.md", false},
+		{".specgraph/agents/opencode/specgraph.ts", false},
+		{".specgraph/agents/claude/hooks/specgraph-post-stage.sh", false},
+	}
+	for _, c := range cases {
+		if got := isHostPinned(c.path); got != c.want {
+			t.Errorf("isHostPinned(%q) = %v, want %v", c.path, got, c.want)
+		}
 	}
 }
 
