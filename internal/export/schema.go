@@ -10,8 +10,10 @@ import (
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
-// CurrentSchemaVersion is the only supported version.
-const CurrentSchemaVersion = 1
+// CurrentSchemaVersion is bumped to 2 with the multi-layer constitution
+// migration. v2 documents use the Constitutions list field; v1 documents
+// (still importable) use the singular Constitution field.
+const CurrentSchemaVersion = 2
 
 // Document is the top-level export structure.
 type Document struct {
@@ -31,8 +33,18 @@ type Signature struct {
 
 // Data contains all exported entities in dependency order.
 type Data struct {
-	Project         *storage.Project                `json:"project"`
-	Constitution    *storage.Constitution           `json:"constitution,omitempty"`
+	Project *storage.Project `json:"project"`
+
+	// Constitution is the v1 single-layer field. Always nil in v2-emitted
+	// documents (omitempty drops it). Populated when importing v1 documents
+	// for the legacy single-layer case.
+	Constitution *storage.Constitution `json:"constitution,omitempty"`
+
+	// Constitutions is the v2 list of constitution layers in precedence
+	// order (user, org, project, domain). Populated by v2 exports; consumed
+	// by v2 imports.
+	Constitutions []*storage.Constitution `json:"constitutions,omitempty"`
+
 	Specs           []*storage.Spec                 `json:"specs"`
 	Decisions       []*storage.Decision             `json:"decisions"`
 	Slices          []*storage.Slice                `json:"slices"`
