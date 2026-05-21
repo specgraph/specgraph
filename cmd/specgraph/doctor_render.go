@@ -115,7 +115,7 @@ func binaryStatusText(b BinaryReport) string {
 // stable across versions; new fields may be added.
 func renderJSON(w io.Writer, rep *DoctorReport) {
 	wrapped := map[string]any{
-		"exitCode": rep.ExitCode,
+		"exitCode": rep.ExitCode(),
 		"groups": map[string]any{
 			"binary":  rep.Binary,
 			"server":  rep.Server,

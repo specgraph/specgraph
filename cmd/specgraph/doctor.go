@@ -18,7 +18,6 @@ import (
 // JSON) emit. Schema is stable across versions; new fields may be
 // added but existing ones don't change shape.
 type DoctorReport struct {
-	ExitCode    int           `json:"exitCode"`
 	ConfigError string        `json:"configError,omitempty"`
 	Binary      BinaryReport  `json:"binary"`
 	Server      ServerReport  `json:"server"`
@@ -72,7 +71,11 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	if pcErr != nil {
 		pc = &config.ProjectConfig{}
 	}
-	harnesses := harnessesFromFlag(pc, harnessFlag)
+	harnesses, hErr := harnessesFromFlag(pc, harnessFlag)
+	if hErr != nil {
+		cmd.SilenceUsage = true
+		return hErr
+	}
 
 	globalCfg, gErr := loadGlobalCfg()
 	var serverURL string
@@ -99,8 +102,6 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		rep.Managed = runManagedGroup(cwd, harnesses, params)
 	}
 
-	rep.ExitCode = computeExitCode(&rep)
-
 	if jsonOut {
 		renderJSON(os.Stdout, &rep)
 	} else {
@@ -117,13 +118,15 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	return fmt.Errorf("doctor: exit %d", final)
 }
 
-// computeExitCode returns 1 if any group reports non-OK or if the
-// global config failed to load, else 0.
-func computeExitCode(rep *DoctorReport) int {
-	if rep.ConfigError != "" {
+// ExitCode returns 1 if any group reports non-OK or if the global
+// config failed to load, else 0. Computed on demand rather than stored
+// so callers constructing DoctorReport literals can't get the field out
+// of sync with the underlying group OKs.
+func (r *DoctorReport) ExitCode() int {
+	if r.ConfigError != "" {
 		return 1
 	}
-	if !rep.Binary.OK || !rep.Project.OK || !rep.Server.OK || !rep.Managed.OK {
+	if !r.Binary.OK || !r.Project.OK || !r.Server.OK || !r.Managed.OK {
 		return 1
 	}
 	return 0
@@ -134,7 +137,7 @@ func finalExitCode(rep *DoctorReport, exitZero bool) int {
 	if exitZero {
 		return 0
 	}
-	return rep.ExitCode
+	return rep.ExitCode()
 }
 
 var doctorCmd = &cobra.Command{

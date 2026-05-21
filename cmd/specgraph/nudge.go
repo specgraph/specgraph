@@ -21,6 +21,12 @@ import (
 	"github.com/specgraph/specgraph/internal/xdg"
 )
 
+// nudgeIsTerminal is the function used to detect whether stderr is a
+// TTY. It exists as a package-level variable so unit tests can stub it
+// out — `go test` runs with stderr not attached to a TTY, which would
+// otherwise prevent any test exercising the emit path.
+var nudgeIsTerminal = func() bool { return term.IsTerminal(int(os.Stderr.Fd())) }
+
 // driftNudgeAllowList enumerates the top-level command names whose
 // subtrees skip the drift-nudge entirely. Matched against the
 // top-level command (one level under rootCmd) per design.
@@ -50,7 +56,7 @@ func nudgePreRun(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 	// 2. isatty(stderr).
-	if !term.IsTerminal(int(os.Stderr.Fd())) {
+	if !nudgeIsTerminal() {
 		return nil
 	}
 	// 3. Env-var mute.

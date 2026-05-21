@@ -136,22 +136,23 @@ func runDoctorFix(cwd string, rep ManagedReport, harnesses []managedfiles.Harnes
 // harnessesFromFlag turns the --harness flag value into a slice of
 // Harness enum values. Empty flag falls back to the harness set
 // resolved from the project config (via harnessSliceFromConfig from
-// the init command). An unknown name yields an empty slice; the
-// Managed group will then report 0/0 synced.
-func harnessesFromFlag(pc *config.ProjectConfig, flag string) []managedfiles.Harness {
+// the init command). An unknown name returns an error so the caller
+// can fail fast — silently dropping to an empty slice would let the
+// Managed group report 0/0 synced and exit-0 green for a user typo.
+func harnessesFromFlag(pc *config.ProjectConfig, flag string) ([]managedfiles.Harness, error) {
 	switch flag {
 	case "":
 		if pc == nil {
-			return harnessSliceFromConfig(nil)
+			return harnessSliceFromConfig(nil), nil
 		}
-		return harnessSliceFromConfig(pc.Harnesses)
+		return harnessSliceFromConfig(pc.Harnesses), nil
 	case "claude":
-		return []managedfiles.Harness{managedfiles.HarnessClaude}
+		return []managedfiles.Harness{managedfiles.HarnessClaude}, nil
 	case "cursor":
-		return []managedfiles.Harness{managedfiles.HarnessCursor}
+		return []managedfiles.Harness{managedfiles.HarnessCursor}, nil
 	case "opencode":
-		return []managedfiles.Harness{managedfiles.HarnessOpenCode}
+		return []managedfiles.Harness{managedfiles.HarnessOpenCode}, nil
 	default:
-		return nil
+		return nil, fmt.Errorf("unknown harness: %q (valid: claude, cursor, opencode)", flag)
 	}
 }

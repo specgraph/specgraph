@@ -37,8 +37,10 @@ func TestDoctorReport_Render_CompactWhenAllGreen(t *testing.T) {
 
 func TestDoctorReport_Render_JSONStableSchema(t *testing.T) {
 	rep := DoctorReport{
-		ExitCode: 0,
-		Binary:   BinaryReport{OK: true, Version: "0.7.3", Commit: "abc1234"},
+		Binary:  BinaryReport{OK: true, Version: "0.7.3", Commit: "abc1234"},
+		Project: ProjectReport{OK: true},
+		Server:  ServerReport{OK: true},
+		Managed: ManagedReport{OK: true},
 	}
 	var buf bytes.Buffer
 	renderJSON(&buf, &rep)
@@ -59,7 +61,9 @@ func TestDoctorReport_Render_JSONStableSchema(t *testing.T) {
 }
 
 func TestDoctorReport_ExitZeroForcesZero(t *testing.T) {
-	rep := DoctorReport{ExitCode: 1}
+	// Construct a report whose ExitCode() method returns 1 (Binary not
+	// OK) so we can verify --exit-zero suppresses the non-zero exit.
+	rep := DoctorReport{Binary: BinaryReport{OK: false}}
 	if code := finalExitCode(&rep, true /*exitZero*/); code != 0 {
 		t.Errorf("--exit-zero with unhealthy state: exit = %d, want 0", code)
 	}
@@ -333,5 +337,91 @@ func TestRenderManagedExpanded_IncludesDetail(t *testing.T) {
 	}
 	if !strings.Contains(out, "no sentinel") {
 		t.Errorf("expanded output missing Detail text: %q", out)
+	}
+}
+
+// TestHarnessesFromFlag_UnknownReturnsError pins the new behaviour:
+// unknown --harness values surface as an error rather than silently
+// dropping to a nil slice and exiting green.
+func TestHarnessesFromFlag_UnknownReturnsError(t *testing.T) {
+	_, err := harnessesFromFlag(nil, "bogus")
+	if err == nil {
+		t.Fatal("expected error for unknown harness, got nil")
+	}
+	if !strings.Contains(err.Error(), "bogus") {
+		t.Errorf("error message missing input value: %v", err)
+	}
+	if !strings.Contains(err.Error(), "claude") || !strings.Contains(err.Error(), "cursor") || !strings.Contains(err.Error(), "opencode") {
+		t.Errorf("error message missing valid options: %v", err)
+	}
+}
+
+// TestHarnessesFromFlag_KnownValues exercises the happy paths.
+func TestHarnessesFromFlag_KnownValues(t *testing.T) {
+	cases := []struct {
+		flag string
+		want managedfiles.Harness
+	}{
+		{"claude", managedfiles.HarnessClaude},
+		{"cursor", managedfiles.HarnessCursor},
+		{"opencode", managedfiles.HarnessOpenCode},
+	}
+	for _, c := range cases {
+		hs, err := harnessesFromFlag(nil, c.flag)
+		if err != nil {
+			t.Errorf("flag %q returned unexpected error: %v", c.flag, err)
+			continue
+		}
+		if len(hs) != 1 || hs[0] != c.want {
+			t.Errorf("flag %q: got %v, want [%v]", c.flag, hs, c.want)
+		}
+	}
+}
+
+// TestDoctorReport_ExitCode_Method pins that ExitCode is computed from
+// the underlying group OKs (and ConfigError) each call, not a stored
+// field that can drift.
+func TestDoctorReport_ExitCode_Method(t *testing.T) {
+	allOK := DoctorReport{
+		Binary:  BinaryReport{OK: true},
+		Project: ProjectReport{OK: true},
+		Server:  ServerReport{OK: true},
+		Managed: ManagedReport{OK: true},
+	}
+	if code := allOK.ExitCode(); code != 0 {
+		t.Errorf("all-OK report ExitCode = %d, want 0", code)
+	}
+	withConfigErr := allOK
+	withConfigErr.ConfigError = "boom"
+	if code := withConfigErr.ExitCode(); code != 1 {
+		t.Errorf("ConfigError set ExitCode = %d, want 1", code)
+	}
+	withBadServer := allOK
+	withBadServer.Server.OK = false
+	if code := withBadServer.ExitCode(); code != 1 {
+		t.Errorf("Server.OK=false ExitCode = %d, want 1", code)
+	}
+}
+
+// TestHarness_StringValid pins the Harness display-name + validity.
+func TestHarness_StringValid(t *testing.T) {
+	cases := []struct {
+		h     managedfiles.Harness
+		name  string
+		valid bool
+	}{
+		{managedfiles.HarnessClaude, "claude", true},
+		{managedfiles.HarnessCursor, "cursor", true},
+		{managedfiles.HarnessOpenCode, "opencode", true},
+		{managedfiles.Harness(99), "unknown", false},
+		{managedfiles.Harness(-1), "unknown", false},
+	}
+	for _, c := range cases {
+		if got := c.h.String(); got != c.name {
+			t.Errorf("Harness(%d).String() = %q, want %q", int(c.h), got, c.name)
+		}
+		if got := c.h.Valid(); got != c.valid {
+			t.Errorf("Harness(%d).Valid() = %v, want %v", int(c.h), got, c.valid)
+		}
 	}
 }
