@@ -39,6 +39,31 @@ func TestImport_RejectsUnsupportedSchemaVersion(t *testing.T) {
 	}
 }
 
+// TestImport_RejectsSchemaVersionZero guards against silent data-loss on
+// unversioned/hand-crafted documents. SchemaVersion: 0 (e.g. omitted field)
+// passes the high-version check but must be rejected at the constitution
+// switch's default branch so any constitution data isn't silently dropped.
+func TestImport_RejectsSchemaVersionZero(t *testing.T) {
+	backend := newTestBackend(t)
+	doc := Document{
+		SchemaVersion: 0,
+		ProjectSlug:   "test-project",
+		Data: Data{
+			Project: &storage.Project{Slug: "test-project"},
+			Constitution: &storage.Constitution{
+				Layer: storage.ConstitutionLayerProject,
+			},
+		},
+	}
+	data, err := json.Marshal(doc)
+	require.NoError(t, err)
+
+	engine := NewEngine(backend, "", "test-version")
+	_, err = engine.Import(context.Background(), data, false, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported schema version 0")
+}
+
 // ---------------------------------------------------------------------------
 // HMAC signature — tested via verifySignature directly to avoid nil backend
 // ---------------------------------------------------------------------------
@@ -345,6 +370,123 @@ func (b *multiLayerExportBackend) ListAllConversations(_ context.Context) ([]*st
 
 func (b *multiLayerExportBackend) ListSyncMappings(_ context.Context, _ storage.SyncAdapterType, _ string) ([]*storage.SyncMapping, error) {
 	return nil, nil
+}
+
+func (b *multiLayerExportBackend) EnsureProject(_ context.Context, slug string) (*storage.Project, error) {
+	if b.project == nil {
+		b.project = &storage.Project{Slug: slug}
+	}
+	return b.project, nil
+}
+
+// ---------------------------------------------------------------------------
+// Import — schema-version-aware constitution import (Task 7)
+// ---------------------------------------------------------------------------
+
+func TestImport_V1Document_SingleLayer(t *testing.T) {
+	backend := newTestBackend(t)
+	ctx := context.Background()
+
+	// Hand-crafted v1 document with the legacy singular field.
+	v1Doc := Document{
+		SchemaVersion:    1,
+		ProjectSlug:      "test-project",
+		SpecGraphVersion: "test-version",
+		Data: Data{
+			Project: &storage.Project{Slug: "test-project"},
+			Constitution: &storage.Constitution{
+				Name:  "v1-only",
+				Layer: storage.ConstitutionLayerProject,
+				Principles: []storage.Principle{{ID: "p1", Statement: "P1"}},
+			},
+		},
+	}
+	data, err := json.Marshal(v1Doc)
+	require.NoError(t, err)
+
+	engine := NewEngine(backend, "", "test-version")
+	result, err := engine.Import(ctx, data, false, false)
+	require.NoError(t, err)
+	assert.Equal(t, 1, result.Constitution, "exactly one layer imported")
+
+	layers, err := backend.GetAllLayers(ctx)
+	require.NoError(t, err)
+	require.Len(t, layers, 1)
+	assert.Equal(t, "v1-only", layers[0].Name)
+	assert.Equal(t, storage.ConstitutionLayerProject, layers[0].Layer)
+}
+
+func TestImport_V2Document_MultipleLayers(t *testing.T) {
+	backend := newTestBackend(t)
+	ctx := context.Background()
+
+	v2Doc := Document{
+		SchemaVersion:    2,
+		ProjectSlug:      "test-project",
+		SpecGraphVersion: "test-version",
+		Data: Data{
+			Project: &storage.Project{Slug: "test-project"},
+			Constitutions: []*storage.Constitution{
+				{Name: "org", Layer: storage.ConstitutionLayerOrg, Principles: []storage.Principle{{ID: "po"}}},
+				{Name: "proj", Layer: storage.ConstitutionLayerProject, Principles: []storage.Principle{{ID: "pp"}}},
+			},
+		},
+	}
+	data, err := json.Marshal(v2Doc)
+	require.NoError(t, err)
+
+	engine := NewEngine(backend, "", "test-version")
+	result, err := engine.Import(ctx, data, false, false)
+	require.NoError(t, err)
+	assert.Equal(t, 2, result.Constitution, "both layers imported")
+
+	layers, err := backend.GetAllLayers(ctx)
+	require.NoError(t, err)
+	assert.Len(t, layers, 2)
+}
+
+func TestImport_V1Document_WithV2Field_Rejected(t *testing.T) {
+	backend := newTestBackend(t)
+
+	mismatched := Document{
+		SchemaVersion: 1,
+		ProjectSlug:   "test-project",
+		Data: Data{
+			Project: &storage.Project{Slug: "test-project"},
+			Constitutions: []*storage.Constitution{
+				{Layer: storage.ConstitutionLayerProject},
+			},
+		},
+	}
+	data, err := json.Marshal(mismatched)
+	require.NoError(t, err)
+
+	engine := NewEngine(backend, "", "test-version")
+	_, err = engine.Import(context.Background(), data, false, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "v1 documents must use 'constitution' field, not 'constitutions'")
+}
+
+func TestImport_V2Document_WithV1Field_Rejected(t *testing.T) {
+	backend := newTestBackend(t)
+
+	mismatched := Document{
+		SchemaVersion: 2,
+		ProjectSlug:   "test-project",
+		Data: Data{
+			Project: &storage.Project{Slug: "test-project"},
+			Constitution: &storage.Constitution{
+				Layer: storage.ConstitutionLayerProject,
+			},
+		},
+	}
+	data, err := json.Marshal(mismatched)
+	require.NoError(t, err)
+
+	engine := NewEngine(backend, "", "test-version")
+	_, err = engine.Import(context.Background(), data, false, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "v2 documents must use 'constitutions' field, not 'constitution'")
 }
 
 func TestExport_MultiLayerConstitution(t *testing.T) {
