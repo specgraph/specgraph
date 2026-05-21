@@ -2,7 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## [Unreleased]
+
+### Changed (BREAKING)
+
+- **Replaced `SpecLifecycle` (task/living) with `SpecProvenance`** (AUTHORED / RETROACTIVE_FROM_PR / DECLARED). Wire-break at proto field 10 plus a new `provenance_detail` oneof. Postgres column `lifecycle` removed; `provenance_type` and `provenance_detail` columns added. See `docs/decisions/ADR-006-spec-provenance-model.md`.
+- **`specgraph ready` now requires `stage=approved` AND `provenance=authored`**. Previously surfaced any spec at `stage <> done`, including mid-design and superseded/abandoned specs.
+- **`claim` and `report-completion` reject non-AUTHORED specs** with `ErrClaimRequiresAuthored` / `ErrCompletionRequiresAuthored`.
 
 ### Fixed (post-PR-940 hardening)
 

@@ -68,12 +68,22 @@ func ValidateSchema(spec *storage.Spec) []storage.LintViolation {
 		})
 	}
 
-	// Validate lifecycle enum
-	if spec.Lifecycle != "" && !spec.Lifecycle.IsValid() {
+	// Validate provenance type
+	if spec.Provenance != "" && !spec.Provenance.IsValid() {
 		violations = append(violations, storage.LintViolation{
 			Rule: "schema.enum", Severity: storage.LintSeverityError,
-			Message:  fmt.Sprintf("invalid lifecycle %q", spec.Lifecycle),
-			Location: "lifecycle",
+			Message:  fmt.Sprintf("invalid provenance %q", spec.Provenance),
+			Location: "provenance",
+		})
+	}
+
+	// Provenance and stage consistency: non-AUTHORED specs must be at done.
+	if spec.Provenance != storage.SpecProvenanceAuthored && spec.Provenance != "" &&
+		spec.Stage != storage.SpecStageDone {
+		violations = append(violations, storage.LintViolation{
+			Rule: "schema.conditional", Severity: storage.LintSeverityError,
+			Message:  fmt.Sprintf("provenance %q requires stage=done (got %q)", spec.Provenance, spec.Stage),
+			Location: "provenance",
 		})
 	}
 

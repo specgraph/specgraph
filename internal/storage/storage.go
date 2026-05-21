@@ -23,7 +23,18 @@ type SpecReader interface {
 // Backend is the interface that all storage backends must implement.
 type Backend interface {
 	// CreateSpec stores a new spec and returns it with generated ID and timestamps.
-	CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*Spec, error)
+	// provenance, detail, and stage outputs support all three creation flows:
+	// AUTHORED (spark only), RETROACTIVE_FROM_PR, and DECLARED (born at done).
+	CreateSpec(
+		ctx context.Context,
+		slug, intent, priority, complexity string,
+		provenance SpecProvenanceType,
+		detail SpecProvenanceDetail,
+		spark *SparkOutput,
+		shape *ShapeOutput,
+		specify *SpecifyOutput,
+		decompose *DecomposeOutput,
+	) (*Spec, error)
 
 	// GetSpec retrieves a spec by slug.
 	GetSpec(ctx context.Context, slug string) (*Spec, error)

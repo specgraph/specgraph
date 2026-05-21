@@ -384,9 +384,28 @@ func (e *Engine) writeEntities(ctx context.Context, doc *Document) (*ImportResul
 		res.Constitution = 1
 	}
 
-	// 3. Specs — create then restore stage via Store*Output + TransitionStage
+	// 3. Specs — create then restore stage via Store*Output + TransitionStage.
+	// Preserves the original provenance and provenance detail from the imported
+	// document so DECLARED/RETROACTIVE specs don't get rewritten as AUTHORED.
 	for _, spec := range doc.Data.Specs {
-		if _, err := e.backend.CreateSpec(ctx, spec.Slug, spec.Intent, string(spec.Priority), string(spec.Complexity)); err != nil {
+		provenance := spec.Provenance
+		if provenance == "" {
+			provenance = storage.SpecProvenanceAuthored
+		}
+		// For AUTHORED specs, the stage outputs are replayed below to advance the
+		// funnel — pass nil at create. For RETROACTIVE/DECLARED specs, all four
+		// outputs must be present at create (validateProvenance enforces this).
+		var spark *storage.SparkOutput
+		var shape *storage.ShapeOutput
+		var specifyOut *storage.SpecifyOutput
+		var decompose *storage.DecomposeOutput
+		if provenance != storage.SpecProvenanceAuthored {
+			spark = spec.SparkOutput
+			shape = spec.ShapeOutput
+			specifyOut = spec.SpecifyOutput
+			decompose = spec.DecomposeOutput
+		}
+		if _, err := e.backend.CreateSpec(ctx, spec.Slug, spec.Intent, string(spec.Priority), string(spec.Complexity), provenance, spec.ProvenanceDetail, spark, shape, specifyOut, decompose); err != nil {
 			return nil, fmt.Errorf("create spec %q: %w", spec.Slug, err)
 		}
 
@@ -445,24 +464,15 @@ func (e *Engine) writeEntities(ctx context.Context, doc *Document) (*ImportResul
 			}
 		}
 
-		// Restore lifecycle and notes via UpdateSpec.
-		if spec.Lifecycle != "" || spec.Notes != "" || spec.SupersededBy != "" || spec.Supersedes != "" {
-			var lifecycle, notes *string
-			if spec.Lifecycle != "" {
-				l := string(spec.Lifecycle)
-				lifecycle = &l
-			}
+		// Restore notes via UpdateSpec. (Lifecycle field removed in migration 007;
+		// provenance is now stored at create time, not replayed here.)
+		if spec.Notes != "" || spec.SupersededBy != "" || spec.Supersedes != "" {
 			if spec.Notes != "" {
-				notes = &spec.Notes
-			}
-			// UpdateSpec only supports intent, stage, priority, complexity, notes.
-			// lifecycle/supersededBy/supersedes are set via other paths.
-			if notes != nil {
-				if _, err := e.backend.UpdateSpec(ctx, spec.Slug, nil, nil, nil, nil, notes); err != nil {
+				notes := spec.Notes
+				if _, err := e.backend.UpdateSpec(ctx, spec.Slug, nil, nil, nil, nil, &notes); err != nil {
 					res.Warnings = append(res.Warnings, fmt.Sprintf("update notes for %q: %v", spec.Slug, err))
 				}
 			}
-			_ = lifecycle // lifecycle is set implicitly by storage layer
 		}
 
 		res.Specs++

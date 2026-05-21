@@ -160,6 +160,7 @@ func TestExecutionHandler_GenerateBundle(t *testing.T) {
 			Slug:        "my-spec",
 			Intent:      "build a widget",
 			Stage:       storage.SpecStageApproved,
+			Provenance:  storage.SpecProvenanceAuthored,
 			ContentHash: strings.Repeat("a", 32),
 		},
 		Decisions: []*storage.Decision{

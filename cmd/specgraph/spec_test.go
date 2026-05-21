@@ -117,7 +117,9 @@ func (fakeGetSpecErrHandler) GetSpec(_ context.Context, _ *connect.Request[specv
 
 func TestRunCreate_HappyPath(t *testing.T) {
 	startFakeSpecServer(t, fakeCreateSpecHandler{})
-	err := runCreate(newCmdWithCtx(), []string{"my-spec"})
+	cmd := newCmdWithCtx()
+	registerCreateFlags(cmd)
+	err := runCreate(cmd, []string{"my-spec"})
 	require.NoError(t, err)
 }
 
@@ -201,7 +203,9 @@ func TestRunShow_HappyPath_JSON(t *testing.T) {
 
 func TestRunCreate_RPCError(t *testing.T) {
 	startFakeSpecServer(t, fakeCreateSpecErrHandler{})
-	err := runCreate(newCmdWithCtx(), []string{"my-spec"})
+	cmd := newCmdWithCtx()
+	registerCreateFlags(cmd)
+	err := runCreate(cmd, []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "create spec")
 }

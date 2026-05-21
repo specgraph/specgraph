@@ -40,7 +40,7 @@ type errorBackend struct {
 	stubBackend
 }
 
-func (errorBackend) CreateSpec(context.Context, string, string, string, string) (*storage.Spec, error) {
+func (errorBackend) CreateSpec(_ context.Context, _, _, _, _ string, _ storage.SpecProvenanceType, _ storage.SpecProvenanceDetail, _ *storage.SparkOutput, _ *storage.ShapeOutput, _ *storage.SpecifyOutput, _ *storage.DecomposeOutput) (*storage.Spec, error) {
 	return nil, errRawDB
 }
 

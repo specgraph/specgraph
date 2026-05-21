@@ -55,6 +55,14 @@ var _ = Describe("graph queries", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// gq-d is standalone (no dependencies).
+
+		// Transition all four specs to stage=approved so GetReady's
+		// stage=approved filter (added by the provenance model change)
+		// surfaces gq-c and gq-d. gq-a and gq-b stay excluded by the
+		// dependency check, not by the stage filter.
+		for _, slug := range []string{"gq-a", "gq-b", "gq-c", "gq-d"} {
+			Expect(advanceStage(ctx, slug, "approved")).To(Succeed())
+		}
 	})
 
 	It("shows dependencies with GetDependencies", func() {

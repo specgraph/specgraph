@@ -27,7 +27,7 @@ func Spec(s *specv1.Spec) string {
 		{"Priority", s.Priority},
 		{"Complexity", s.Complexity},
 		{"Version", fmt.Sprintf("%d", s.Version)},
-		{"Lifecycle", lifecycleString(s.Lifecycle)},
+		{"Provenance", provenanceString(s.GetProvenanceType())},
 	}
 	b.WriteString(metadataTable(pairs))
 
@@ -54,13 +54,22 @@ func SpecList(specs []*specv1.Spec) string {
 	return itemTable(headers, rows)
 }
 
-func lifecycleString(lc specv1.SpecLifecycle) string {
-	switch lc {
-	case specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK:
-		return "task"
-	case specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING:
-		return "living"
+func provenanceString(p specv1.SpecProvenance) string {
+	switch p {
+	case specv1.SpecProvenance_SPEC_PROVENANCE_AUTHORED:
+		return "AUTHORED"
+	case specv1.SpecProvenance_SPEC_PROVENANCE_RETROACTIVE_FROM_PR:
+		return "RETROACTIVE_FROM_PR"
+	case specv1.SpecProvenance_SPEC_PROVENANCE_DECLARED:
+		return "DECLARED"
 	default:
-		return "unspecified"
+		return "UNSPECIFIED"
 	}
 }
+
+// Note: a richer renderProvenanceBlock that includes RETROACTIVE/DECLARED
+// detail was prototyped but not wired into the metadata table. The table
+// format displays only the provenance type via provenanceString; the
+// structured detail surfaces in the corresponding stage outputs and via
+// the spec's notes. Re-introduce a block renderer if a future use case
+// needs the detail rendered separately from the table.

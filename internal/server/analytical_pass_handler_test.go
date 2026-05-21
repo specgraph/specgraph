@@ -41,7 +41,7 @@ func newAnalyticalPassTestBackend() *analyticalPassTestBackend {
 	}
 }
 
-func (b *analyticalPassTestBackend) CreateSpec(_ context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
+func (b *analyticalPassTestBackend) CreateSpec(_ context.Context, slug, intent, priority, complexity string, _ storage.SpecProvenanceType, _ storage.SpecProvenanceDetail, _ *storage.SparkOutput, _ *storage.ShapeOutput, _ *storage.SpecifyOutput, _ *storage.DecomposeOutput) (*storage.Spec, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	spec := &storage.Spec{
@@ -50,6 +50,7 @@ func (b *analyticalPassTestBackend) CreateSpec(_ context.Context, slug, intent, 
 		Stage:       storage.SpecStageSpark,
 		Priority:    storage.SpecPriority(priority),
 		Complexity:  storage.SpecComplexity(complexity),
+		Provenance:  storage.SpecProvenanceAuthored,
 		Version:     1,
 		ContentHash: strings.Repeat("a", 32),
 		CreatedAt:   time.Now(),
@@ -150,7 +151,7 @@ func setupAnalyticalPassServer(t *testing.T, backend storage.ScopedBackend) spec
 
 func TestRunAnalyticalPass_ReturnsPromptAndTools(t *testing.T) {
 	backend := newAnalyticalPassTestBackend()
-	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	client := setupAnalyticalPassServer(t, backend)
@@ -175,7 +176,7 @@ func TestRunAnalyticalPass_ReturnsPromptAndTools(t *testing.T) {
 
 func TestRunAnalyticalPass_UnknownPassType(t *testing.T) {
 	backend := newAnalyticalPassTestBackend()
-	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	client := setupAnalyticalPassServer(t, backend)
@@ -202,7 +203,7 @@ func TestRunAnalyticalPass_SpecNotFound(t *testing.T) {
 
 func TestStoreAndListFindings_RoundTrip(t *testing.T) {
 	backend := newAnalyticalPassTestBackend()
-	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	client := setupAnalyticalPassServer(t, backend)
@@ -243,7 +244,7 @@ func TestStoreAndListFindings_RoundTrip(t *testing.T) {
 
 func TestListFindings_EmptyPassType(t *testing.T) {
 	backend := newAnalyticalPassTestBackend()
-	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	client := setupAnalyticalPassServer(t, backend)
@@ -292,7 +293,7 @@ func TestListProjectFindings_EmptyProject(t *testing.T) {
 
 func TestListProjectFindings_OneSpecNoFindings(t *testing.T) {
 	backend := newAnalyticalPassTestBackend()
-	_, err := backend.CreateSpec(context.Background(), "spec-without-findings", "Test spec", "p1", "medium")
+	_, err := backend.CreateSpec(context.Background(), "spec-without-findings", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	client := setupAnalyticalPassServer(t, backend)
 
@@ -303,9 +304,9 @@ func TestListProjectFindings_OneSpecNoFindings(t *testing.T) {
 
 func TestListProjectFindings_MultipleSpecs(t *testing.T) {
 	backend := newAnalyticalPassTestBackend()
-	_, err := backend.CreateSpec(context.Background(), "spec-a", "A", "p1", "medium")
+	_, err := backend.CreateSpec(context.Background(), "spec-a", "A", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = backend.CreateSpec(context.Background(), "spec-b", "B", "p1", "medium")
+	_, err = backend.CreateSpec(context.Background(), "spec-b", "B", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	client := setupAnalyticalPassServer(t, backend)
 
@@ -344,9 +345,9 @@ func TestListProjectFindings_MultipleSpecs(t *testing.T) {
 
 func TestListProjectFindings_FilterByPassType(t *testing.T) {
 	backend := newAnalyticalPassTestBackend()
-	_, err := backend.CreateSpec(context.Background(), "spec-a", "A", "p1", "medium")
+	_, err := backend.CreateSpec(context.Background(), "spec-a", "A", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = backend.CreateSpec(context.Background(), "spec-b", "B", "p1", "medium")
+	_, err = backend.CreateSpec(context.Background(), "spec-b", "B", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	client := setupAnalyticalPassServer(t, backend)
 
@@ -380,7 +381,7 @@ func TestListProjectFindings_FilterByPassType(t *testing.T) {
 
 func TestStoreFindings_UnknownPassType(t *testing.T) {
 	backend := newAnalyticalPassTestBackend()
-	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	client := setupAnalyticalPassServer(t, backend)
@@ -419,7 +420,7 @@ func TestStoreFindings_SpecNotFound(t *testing.T) {
 
 func TestStoreFindings_NullFindingElement(t *testing.T) {
 	backend := newAnalyticalPassTestBackend()
-	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	client := setupAnalyticalPassServer(t, backend)
@@ -435,7 +436,7 @@ func TestStoreFindings_NullFindingElement(t *testing.T) {
 
 func TestStoreFindings_TooManyFindings(t *testing.T) {
 	backend := newAnalyticalPassTestBackend()
-	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	client := setupAnalyticalPassServer(t, backend)
@@ -483,7 +484,7 @@ func TestListFindings_EmptySlug(t *testing.T) {
 
 func TestListFindings_UnknownPassType(t *testing.T) {
 	backend := newAnalyticalPassTestBackend()
-	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	client := setupAnalyticalPassServer(t, backend)
@@ -524,7 +525,7 @@ func TestRunAnalyticalPass_TemplateOverride(t *testing.T) {
 	require.NoError(t, err)
 
 	backend := newAnalyticalPassTestBackend()
-	_, err = backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	_, err = backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	client := setupAnalyticalPassServerWithOverrideDir(t, backend, overrideDir)
@@ -542,7 +543,7 @@ func TestRunAnalyticalPass_TemplateOverrideFallback(t *testing.T) {
 	overrideDir := t.TempDir()
 
 	backend := newAnalyticalPassTestBackend()
-	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium")
+	_, err := backend.CreateSpec(context.Background(), "my-spec", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	client := setupAnalyticalPassServerWithOverrideDir(t, backend, overrideDir)

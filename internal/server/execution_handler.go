@@ -177,6 +177,14 @@ func (h *ExecutionHandler) ReportCompletion(ctx context.Context, req *connect.Re
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("agent is required"))
 	}
 
+	spec, err := store.GetSpec(ctx, msg.Slug)
+	if err != nil {
+		return nil, executionError(err)
+	}
+	if spec.Provenance != storage.SpecProvenanceAuthored {
+		return nil, connect.NewError(connect.CodeInvalidArgument, storage.ErrCompletionRequiresAuthored)
+	}
+
 	if err := store.RecordCompletion(ctx, msg.Slug, msg.Agent); err != nil {
 		return nil, executionError(err)
 	}

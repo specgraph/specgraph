@@ -18,7 +18,7 @@ func TestCreateSlice(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "parent-spec", "Parent intent", "", "")
+	_, err := store.CreateSpec(ctx, "parent-spec", "Parent intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	sl := &storage.Slice{
@@ -50,7 +50,7 @@ func TestListSlices(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "list-parent", "Parent", "", "")
+	_, err := store.CreateSpec(ctx, "list-parent", "Parent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	for _, id := range []string{"sl-a", "sl-b", "sl-c"} {
@@ -82,7 +82,7 @@ func TestClaimSlice(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "claim-parent", "Parent", "", "")
+	_, err := store.CreateSpec(ctx, "claim-parent", "Parent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	sl := &storage.Slice{
@@ -108,7 +108,7 @@ func TestCompleteSlice(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "complete-parent", "Parent", "", "")
+	_, err := store.CreateSpec(ctx, "complete-parent", "Parent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	sl := &storage.Slice{
@@ -163,7 +163,7 @@ func TestClaimSlice_AlreadyDone_ReturnsWrongStatus(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "done-parent", "Parent", "", "")
+	_, err := store.CreateSpec(ctx, "done-parent", "Parent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	sl := &storage.Slice{

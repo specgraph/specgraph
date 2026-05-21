@@ -131,23 +131,48 @@ func (p SpecPriority) IsValid() bool {
 	}
 }
 
-// SpecLifecycle represents the lifecycle model of a spec.
-type SpecLifecycle string
+// SpecProvenanceType is the string-typed discriminator for how a spec
+// entered the graph. Mirrors the SpecProvenance proto enum.
+type SpecProvenanceType string
 
-// Spec lifecycle model values.
+// Spec provenance discriminator values.
 const (
-	SpecLifecycleTask   SpecLifecycle = "task"
-	SpecLifecycleLiving SpecLifecycle = "living"
+	SpecProvenanceAuthored          SpecProvenanceType = "authored"
+	SpecProvenanceRetroactiveFromPR SpecProvenanceType = "retroactive_from_pr"
+	SpecProvenanceDeclared          SpecProvenanceType = "declared"
 )
 
-// IsValid reports whether l is a known spec lifecycle.
-func (l SpecLifecycle) IsValid() bool {
-	switch l {
-	case SpecLifecycleTask, SpecLifecycleLiving:
+// IsValid reports whether p is a known spec provenance type.
+func (p SpecProvenanceType) IsValid() bool {
+	switch p {
+	case SpecProvenanceAuthored, SpecProvenanceRetroactiveFromPR, SpecProvenanceDeclared:
 		return true
 	default:
 		return false
 	}
+}
+
+// SpecProvenanceDetail is the structured payload for non-AUTHORED specs.
+// Exactly one of the embedded pointers is non-nil; both nil is valid (AUTHORED).
+// The populated variant must match the Spec.Provenance discriminator —
+// enforced at the server boundary with storage.ErrProvenanceMismatch.
+type SpecProvenanceDetail struct {
+	RetroactiveFromPR *RetroactivePRProvenance // populated when type == retroactive_from_pr
+	Declared          *DeclaredProvenance      // populated when type == declared
+}
+
+// RetroactivePRProvenance carries PR metadata for retroactive-import specs.
+type RetroactivePRProvenance struct {
+	URL      string
+	SHA      string
+	MergedAt time.Time
+	Title    string
+}
+
+// DeclaredProvenance carries declaration metadata for human-declared specs.
+type DeclaredProvenance struct {
+	DeclaredBy string
+	Note       string
 }
 
 // SpecComplexity represents the complexity level of a spec.
@@ -182,7 +207,8 @@ type Spec struct {
 	Version           int32
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
-	Lifecycle         SpecLifecycle           // "task" (default) or "living"
+	Provenance        SpecProvenanceType
+	ProvenanceDetail  SpecProvenanceDetail
 	SupersededBy      string                  // slug of replacement spec
 	Supersedes        string                  // slug of spec this replaced
 	Notes             string                  // free-text notes (conversation summaries, context)
