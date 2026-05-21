@@ -63,6 +63,23 @@ func authoringStartStageHandler(c *Client) ToolHandler {
 	}
 }
 
+// parseOptionalExchanges parses the "exchanges" param as a JSON array of
+// ConversationExchange objects. Returns nil exchanges and nil errResult if the
+// param is absent (caller decides whether that is acceptable for the stage).
+// Returns an errResult on malformed JSON.
+func parseOptionalExchanges(params map[string]any) ([]*specv1.ConversationExchange, *ToolResult) {
+	raw := stringParam(params, "exchanges")
+	if raw == "" {
+		return nil, nil
+	}
+	// Parse exchanges array in isolation to prevent JSON injection.
+	var wrapper specv1.RecordConversationRequest
+	if err := protojson.Unmarshal([]byte(`{"exchanges":`+raw+`}`), &wrapper); err != nil {
+		return nil, errResult(fmt.Sprintf("invalid exchanges JSON: %v", err))
+	}
+	return wrapper.Exchanges, nil
+}
+
 // validateOptionalPosture checks that a non-empty posture string maps to a known enum.
 // Returns the parsed posture and nil, or zero and an errResult if invalid.
 func validateOptionalPosture(params map[string]any) (specv1.Posture, *ToolResult) {
@@ -115,6 +132,7 @@ func (t *authorTool) def() ToolDef {
 					"spark", "shape", "specify", "decompose", "approve", "amend", "supersede"),
 				"slug":         stringProp("Spec slug (required for all actions)"),
 				"output":       stringProp("Stage output as a JSON string (required for spark/shape/specify/decompose)"),
+				"exchanges":    stringProp("JSON array of ConversationExchange objects (required for shape/specify/decompose; optional for spark)"),
 				"posture":      stringProp("AI collaboration posture: drive, partner, support"),
 				"reason":       stringProp("Reason for amend or supersede"),
 				"target_stage": stringProp("Target stage for amend: spark, shape, specify, decompose"),
@@ -193,10 +211,15 @@ func (t *authorTool) handleShape(ctx context.Context, params map[string]any) (*T
 	if posErr != nil {
 		return posErr, nil
 	}
+	exchanges, exErr := parseOptionalExchanges(params)
+	if exErr != nil {
+		return exErr, nil
+	}
 	resp, err := t.client.Authoring.Shape(ctx, connect.NewRequest(&specv1.ShapeRequest{
-		Slug:    slug,
-		Output:  &out,
-		Posture: posture,
+		Slug:                  slug,
+		Output:                &out,
+		Posture:               posture,
+		ConversationExchanges: exchanges,
 	}))
 	if err != nil {
 		return connectErrResult(err)
@@ -221,10 +244,15 @@ func (t *authorTool) handleSpecify(ctx context.Context, params map[string]any) (
 	if posErr != nil {
 		return posErr, nil
 	}
+	exchanges, exErr := parseOptionalExchanges(params)
+	if exErr != nil {
+		return exErr, nil
+	}
 	resp, err := t.client.Authoring.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
-		Slug:    slug,
-		Output:  &out,
-		Posture: posture,
+		Slug:                  slug,
+		Output:                &out,
+		Posture:               posture,
+		ConversationExchanges: exchanges,
 	}))
 	if err != nil {
 		return connectErrResult(err)
@@ -249,10 +277,15 @@ func (t *authorTool) handleDecompose(ctx context.Context, params map[string]any)
 	if posErr != nil {
 		return posErr, nil
 	}
+	exchanges, exErr := parseOptionalExchanges(params)
+	if exErr != nil {
+		return exErr, nil
+	}
 	resp, err := t.client.Authoring.Decompose(ctx, connect.NewRequest(&specv1.DecomposeRequest{
-		Slug:    slug,
-		Output:  &out,
-		Posture: posture,
+		Slug:                  slug,
+		Output:                &out,
+		Posture:               posture,
+		ConversationExchanges: exchanges,
 	}))
 	if err != nil {
 		return connectErrResult(err)
