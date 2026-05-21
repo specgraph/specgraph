@@ -182,7 +182,7 @@ func (s *syncTestBackend) DeleteSyncMapping(ctx context.Context, specSlug string
 
 func (s *syncTestBackend) GetConstitution(ctx context.Context) (*storage.Constitution, error) {
 	if s.con != nil {
-		return s.con.GetConstitution(ctx)
+		return s.con.GetConstitution(ctx) //nolint:staticcheck // mock must implement the deprecated interface method until Piece D
 	}
 	return nil, storage.ErrConstitutionNotFound
 }
@@ -199,6 +199,13 @@ func (s *syncTestBackend) GetAllLayers(ctx context.Context) ([]*storage.Constitu
 		return s.con.GetAllLayers(ctx)
 	}
 	return []*storage.Constitution{}, nil
+}
+
+func (s *syncTestBackend) GetMergedConstitution(ctx context.Context) (*storage.MergedResult, error) {
+	if s.con != nil {
+		return s.con.GetMergedConstitution(ctx)
+	}
+	return nil, storage.ErrConstitutionNotFound
 }
 
 func (s *syncTestBackend) UpdateConstitution(ctx context.Context, c *storage.Constitution) (*storage.Constitution, error) {

@@ -102,3 +102,13 @@ type Reference struct {
 	Path   string `json:"path,omitempty"`
 	Delete bool   `json:"$delete,omitempty"`
 }
+
+// MergedResult holds the merged constitution and per-field provenance.
+// It is the return type of GetMergedConstitution.
+type MergedResult struct {
+	// Constitution is the merged result of all input layers.
+	Constitution *Constitution
+	// Provenance maps dot/bracket-notation keys to the layer that last set them.
+	// Examples: "process.spec_review", "principles[p1]", "tech_config.frameworks[rpc]"
+	Provenance map[string]ConstitutionLayer
+}
