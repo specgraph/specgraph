@@ -201,6 +201,13 @@ func (s *syncTestBackend) GetAllLayers(ctx context.Context) ([]*storage.Constitu
 	return []*storage.Constitution{}, nil
 }
 
+func (s *syncTestBackend) GetMergedConstitution(ctx context.Context) (*storage.MergedResult, error) {
+	if s.con != nil {
+		return s.con.GetMergedConstitution(ctx)
+	}
+	return nil, storage.ErrConstitutionNotFound
+}
+
 func (s *syncTestBackend) UpdateConstitution(ctx context.Context, c *storage.Constitution) (*storage.Constitution, error) {
 	if s.con != nil {
 		return s.con.UpdateConstitution(ctx, c)

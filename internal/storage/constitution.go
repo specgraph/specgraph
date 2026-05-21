@@ -10,7 +10,11 @@ import (
 // ConstitutionBackend defines storage operations for the project constitution.
 type ConstitutionBackend interface {
 	// GetConstitution returns the active constitution.
-	// For backward compatibility, returns the single highest-precedence layer.
+	//
+	// Deprecated: returns only the single highest-precedence layer with no
+	// provenance. Use GetMergedConstitution for the effective constitution
+	// across all layers. This method is removed in spgr-8ar Piece D once all
+	// callers migrate.
 	GetConstitution(ctx context.Context) (*Constitution, error)
 
 	// GetConstitutionLayer returns a single layer's raw constitution data.
@@ -21,6 +25,13 @@ type ConstitutionBackend interface {
 	// ordered by precedence (user, org, project, domain).
 	// Returns an empty slice (not error) if no layers exist.
 	GetAllLayers(ctx context.Context) ([]*Constitution, error)
+
+	// GetMergedConstitution returns all layers composed into a single
+	// constitution plus per-field provenance. The single source of truth
+	// for "the effective constitution."
+	//
+	// Returns ErrConstitutionNotFound if no layers exist.
+	GetMergedConstitution(ctx context.Context) (*MergedResult, error)
 
 	// UpdateConstitution stores or replaces a constitution layer,
 	// bumping its version. The layer is determined by constitution.Layer.

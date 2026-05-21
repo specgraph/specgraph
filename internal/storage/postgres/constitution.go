@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/specgraph/specgraph/internal/constitution/merge"
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
@@ -212,6 +213,24 @@ func (s *Store) UpdateConstitution(ctx context.Context, constitution *storage.Co
 	}
 
 	return constitutionFromRow(retID, retLayer, retName, retVersion, retDataJSON, retSourceURL, retSourceHash, retCreatedAt, retUpdatedAt)
+}
+
+// GetMergedConstitution returns all layers composed into a single
+// constitution plus per-field provenance.
+// Returns ErrConstitutionNotFound if no layers exist.
+func (s *Store) GetMergedConstitution(ctx context.Context) (*storage.MergedResult, error) {
+	layers, err := s.GetAllLayers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: get merged constitution: %w", err)
+	}
+	if len(layers) == 0 {
+		return nil, fmt.Errorf("postgres: %w", storage.ErrConstitutionNotFound)
+	}
+	result, mergeErr := merge.Layers(layers)
+	if mergeErr != nil {
+		return nil, fmt.Errorf("postgres: merge layers: %w", mergeErr)
+	}
+	return result, nil
 }
 
 // constitutionFromRow assembles a *storage.Constitution from scanned column values.

@@ -155,6 +155,10 @@ func (stubBackend) GetAllLayers(_ context.Context) ([]*storage.Constitution, err
 	return nil, errNotImplemented
 }
 
+func (stubBackend) GetMergedConstitution(_ context.Context) (*storage.MergedResult, error) {
+	return nil, errNotImplemented
+}
+
 func (stubBackend) UpdateConstitution(context.Context, *storage.Constitution) (*storage.Constitution, error) {
 	return nil, errNotImplemented
 }

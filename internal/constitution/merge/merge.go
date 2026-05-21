@@ -12,14 +12,9 @@ import (
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
-// Result holds the merged constitution and provenance tracking.
-type Result struct {
-	// Constitution is the merged result of all input layers.
-	Constitution *storage.Constitution
-	// Provenance maps dot/bracket-notation keys to the layer that last set them.
-	// Examples: "process.spec_review", "principles[p1]", "tech_config.frameworks[rpc]"
-	Provenance map[string]storage.ConstitutionLayer
-}
+// Result is an alias for storage.MergedResult.
+// It holds the merged constitution and per-field provenance.
+type Result = storage.MergedResult
 
 // Layers merges a slice of constitutions ordered lowest-to-highest precedence
 // (user < org < project < domain). It returns the merged Result or an error.
