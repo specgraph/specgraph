@@ -14,6 +14,9 @@ import (
 // renderText writes the compact-when-green / expanded-when-problems text
 // form of the report. verbose=true forces every group to expand.
 func renderText(w io.Writer, rep *DoctorReport, verbose bool) {
+	if rep.ConfigError != "" {
+		_, _ = fmt.Fprintf(w, "Global config:  PROBLEM (%s)\n", rep.ConfigError) //nolint:errcheck // stdout write; not actionable
+	}
 	if rep.Binary.OK && !verbose {
 		_, _ = fmt.Fprintf(w, "Binary:         OK (v%s from %s)\n", rep.Binary.Version, rep.Binary.Commit) //nolint:errcheck // stdout write; not actionable
 	} else {
@@ -78,16 +81,27 @@ func renderManagedExpanded(w io.Writer, rep ManagedReport) {
 	}
 	if len(hostPinned) > 0 {
 		_, _ = fmt.Fprintln(w, "  Host-pinned:") //nolint:errcheck // stdout write; not actionable
-		for _, f := range hostPinned {
-			_, _ = fmt.Fprintf(w, "    %-50s %s\n", f.Path, managedfiles.StateName(f.State)) //nolint:errcheck // stdout write; not actionable
+		for i := range hostPinned {
+			writeManagedRow(w, &hostPinned[i])
 		}
 	}
 	if len(owned) > 0 {
 		_, _ = fmt.Fprintln(w, "  SpecGraph-owned:") //nolint:errcheck // stdout write; not actionable
-		for _, f := range owned {
-			_, _ = fmt.Fprintf(w, "    %-50s %s\n", f.Path, managedfiles.StateName(f.State)) //nolint:errcheck // stdout write; not actionable
+		for i := range owned {
+			writeManagedRow(w, &owned[i])
 		}
 	}
+}
+
+// writeManagedRow renders a single FileState row in the expanded
+// per-file table. When Detail is non-empty, it follows the State column
+// in parentheses, mirroring `specgraph init`'s per-file output.
+func writeManagedRow(w io.Writer, f *managedfiles.FileState) {
+	if f.Detail != "" {
+		_, _ = fmt.Fprintf(w, "    %-50s %s (%s)\n", f.Path, managedfiles.StateName(f.State), f.Detail) //nolint:errcheck // stdout write; not actionable
+		return
+	}
+	_, _ = fmt.Fprintf(w, "    %-50s %s\n", f.Path, managedfiles.StateName(f.State)) //nolint:errcheck // stdout write; not actionable
 }
 
 func binaryStatusText(b BinaryReport) string {
@@ -108,6 +122,9 @@ func renderJSON(w io.Writer, rep *DoctorReport) {
 			"project": rep.Project,
 			"managed": rep.Managed,
 		},
+	}
+	if rep.ConfigError != "" {
+		wrapped["configError"] = rep.ConfigError
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")

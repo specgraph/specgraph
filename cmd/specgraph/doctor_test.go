@@ -253,3 +253,85 @@ func TestHealthAlias_DispatchesAndEmitsDeprecationNotice(t *testing.T) {
 		t.Errorf("stderr missing deprecation notice: %q", buf.String())
 	}
 }
+
+// TestRunDoctorFix_DriftedGuidanceText pins the regression guard against
+// the prior broken guidance that pointed users at `specgraph init
+// --force` / `--keep-edits` (neither flag exists on init).
+func TestRunDoctorFix_DriftedGuidanceText(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldStdout := os.Stdout
+	os.Stdout = w
+	t.Cleanup(func() { os.Stdout = oldStdout })
+
+	rep := ManagedReport{
+		OK: false,
+		Files: []managedfiles.FileState{
+			{Path: "AGENTS.md", State: managedfiles.StateDrifted},
+		},
+	}
+	// No harnesses + drifted-only entry → Sync is not called for the
+	// drifted row; only the guidance is printed. Pass an empty cwd; the
+	// drifted branch doesn't touch the filesystem.
+	if err := runDoctorFix(t.TempDir(), rep, nil, managedfiles.ProjectParams{}); err != nil {
+		t.Fatalf("runDoctorFix: %v", err)
+	}
+
+	_ = w.Close()
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(r); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if strings.Contains(out, "--force") {
+		t.Errorf("guidance still references non-existent --force flag: %q", out)
+	}
+	if strings.Contains(out, "--keep-edits") {
+		t.Errorf("guidance still references non-existent --keep-edits flag: %q", out)
+	}
+	if !strings.Contains(out, "AGENTS.md") {
+		t.Errorf("guidance missing drifted file path: %q", out)
+	}
+}
+
+// TestManagedStatusLine_TotalZeroButNotOK pins the new fall-through:
+// Total=0 + OK=false (e.g. InspectAll failed) must NOT print a
+// misleading "0/0 synced" green line.
+func TestManagedStatusLine_TotalZeroButNotOK(t *testing.T) {
+	rep := ManagedReport{
+		OK:    false,
+		Total: 0,
+		Files: []managedfiles.FileState{
+			{Path: "(inspect)", State: managedfiles.StateDrifted, Detail: "boom"},
+		},
+	}
+	line := managedStatusLine(rep)
+	// The misleading "0/0 synced" line (with no breakdown) is what we
+	// guard against. The new path either renders a breakdown or some
+	// other non-misleading text. Either way it MUST NOT equal the
+	// all-synced template exactly.
+	if line == "Managed files: 0/0 synced" {
+		t.Errorf("Total=0 + !OK incorrectly rendered as all-synced: %q", line)
+	}
+}
+
+// TestRenderManagedExpanded_IncludesDetail pins that FileState.Detail is
+// surfaced in expanded doctor output (alongside the State column).
+func TestRenderManagedExpanded_IncludesDetail(t *testing.T) {
+	rep := ManagedReport{
+		Files: []managedfiles.FileState{
+			{Path: "AGENTS.md", State: managedfiles.StateDrifted, Detail: "no sentinel"},
+		},
+	}
+	var buf bytes.Buffer
+	renderManagedExpanded(&buf, rep)
+	out := buf.String()
+	if !strings.Contains(out, "AGENTS.md") {
+		t.Errorf("expanded output missing path: %q", out)
+	}
+	if !strings.Contains(out, "no sentinel") {
+		t.Errorf("expanded output missing Detail text: %q", out)
+	}
+}

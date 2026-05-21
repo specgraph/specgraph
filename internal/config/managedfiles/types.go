@@ -114,7 +114,7 @@ type FileState struct {
 	DiskHash     string // sha256 of current disk content (empty if Missing)
 	SentinelHash string // hash recorded in disk sentinel (empty if no sentinel)
 	EmbeddedHash string // sha256 of canonical source content
-	Detail       string // human-readable explanation of the classification
+	Detail       string // human-readable classification explanation; surfaced in both `specgraph init` and `specgraph doctor` output
 }
 
 // Action is the outcome of a write attempt for a single ManagedFile.

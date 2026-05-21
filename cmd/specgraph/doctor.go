@@ -18,11 +18,12 @@ import (
 // JSON) emit. Schema is stable across versions; new fields may be
 // added but existing ones don't change shape.
 type DoctorReport struct {
-	ExitCode int           `json:"exitCode"`
-	Binary   BinaryReport  `json:"binary"`
-	Server   ServerReport  `json:"server"`
-	Project  ProjectReport `json:"project"`
-	Managed  ManagedReport `json:"managed"`
+	ExitCode    int           `json:"exitCode"`
+	ConfigError string        `json:"configError,omitempty"`
+	Binary      BinaryReport  `json:"binary"`
+	Server      ServerReport  `json:"server"`
+	Project     ProjectReport `json:"project"`
+	Managed     ManagedReport `json:"managed"`
 }
 
 // runDoctor is doctorCmd's RunE entry point. It builds the report,
@@ -86,6 +87,9 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		Server:  runServerGroup(timeout),
 		Managed: runManagedGroup(cwd, harnesses, params),
 	}
+	if gErr != nil {
+		rep.ConfigError = gErr.Error()
+	}
 
 	if fix {
 		if err := runDoctorFix(cwd, rep.Managed, harnesses, params); err != nil {
@@ -113,8 +117,12 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	return fmt.Errorf("doctor: exit %d", final)
 }
 
-// computeExitCode returns 1 if any group reports non-OK, else 0.
+// computeExitCode returns 1 if any group reports non-OK or if the
+// global config failed to load, else 0.
 func computeExitCode(rep *DoctorReport) int {
+	if rep.ConfigError != "" {
+		return 1
+	}
 	if !rep.Binary.OK || !rep.Project.OK || !rep.Server.OK || !rep.Managed.OK {
 		return 1
 	}

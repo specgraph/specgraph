@@ -54,7 +54,7 @@ func runManagedGroup(cwd string, harnesses []managedfiles.Harness, params manage
 // file is off, it appends a breakdown like
 // "12/14 synced — 1 missing, 1 drifted".
 func managedStatusLine(rep ManagedReport) string {
-	if rep.Total == 0 {
+	if rep.Total == 0 && rep.OK {
 		return "Managed files: 0/0 synced"
 	}
 	if rep.OK {
@@ -99,9 +99,10 @@ func isHostPinned(path string) bool {
 }
 
 // runDoctorFix re-syncs every Stale or Missing managed file via
-// managedfiles.Sync and prints one guidance line per Drifted file
-// pointing the user at `specgraph init --force` (with/without
-// --keep-edits) for recovery. Synced rows are left alone.
+// managedfiles.Sync and prints actionable guidance per Drifted file.
+// `specgraph init` does not expose --force / --keep-edits flags, so the
+// guidance describes the manual reconciliation paths users actually
+// have. Synced rows are left alone.
 func runDoctorFix(cwd string, rep ManagedReport, harnesses []managedfiles.Harness, params managedfiles.ProjectParams) error {
 	mfsByPath := map[string]managedfiles.ManagedFile{}
 	for _, mf := range managedfiles.Manifest(harnesses) {
@@ -125,8 +126,9 @@ func runDoctorFix(cwd string, rep ManagedReport, harnesses []managedfiles.Harnes
 		}
 	}
 	for _, path := range drifted {
-		fmt.Printf("%s (drifted): run `specgraph init --force --keep-edits %s`\n", path, path)
-		fmt.Printf("  to keep your changes, or `specgraph init --force %s` to discard them.\n", path)
+		fmt.Printf("%s (drifted): the file has local edits that don't match the canonical form.\n", path)
+		fmt.Printf("  Inspect the diff (e.g. `specgraph doctor --json --verbose` and compare against the embedded canonical),\n")
+		fmt.Printf("  then either edit %s in place to reconcile, or delete it and run `specgraph init` to regenerate.\n", path)
 	}
 	return nil
 }
