@@ -22,11 +22,6 @@ type DoctorReport struct {
 	Managed  ManagedReport `json:"managed"` // populated in commit 6
 }
 
-// ServerReport is a placeholder until commit 5 wires in the Server group.
-type ServerReport struct {
-	OK bool `json:"ok"`
-}
-
 // ManagedReport is a placeholder until commit 6 wires in the Managed group.
 type ManagedReport struct {
 	OK bool `json:"ok"`
@@ -54,10 +49,16 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("getwd: %w", err)
 	}
 
+	timeout, err := cmd.Flags().GetDuration("timeout")
+	if err != nil {
+		return fmt.Errorf("timeout flag: %w", err)
+	}
+
 	rep := DoctorReport{
 		Binary:  runBinaryGroup(),
 		Project: runProjectConfigGroup(cwd),
-		// Server, Managed wired in later commits.
+		Server:  runServerGroup(timeout),
+		// Managed wired in commit 6.
 	}
 	rep.ExitCode = computeExitCode(&rep)
 
@@ -81,7 +82,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 // (infrastructure failure — reserved for the Server group's dial
 // errors etc.; filled in by commit 5).
 func computeExitCode(rep *DoctorReport) int {
-	if !rep.Binary.OK || !rep.Project.OK {
+	if !rep.Binary.OK || !rep.Project.OK || !rep.Server.OK {
 		return 1
 	}
 	return 0

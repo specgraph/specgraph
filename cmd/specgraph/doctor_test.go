@@ -90,6 +90,62 @@ fnord: 42
 	}
 }
 
+func TestDoctorReport_Render_ServerOKLine(t *testing.T) {
+	rep := DoctorReport{
+		Binary:  BinaryReport{OK: true, Version: "0.7.3", Commit: "abc1234"},
+		Project: ProjectReport{OK: true},
+		Server: ServerReport{
+			OK:           true,
+			Reachable:    true,
+			Version:      "0.7.3",
+			MCPHandshake: "ok",
+			SkillsCount:  6,
+		},
+	}
+	var buf bytes.Buffer
+	renderText(&buf, &rep, false /*verbose*/)
+	out := buf.String()
+	if !strings.Contains(out, "Server:") {
+		t.Errorf("render missing Server line: %s", out)
+	}
+	if !strings.Contains(out, "OK") {
+		t.Errorf("render missing OK in Server line: %s", out)
+	}
+	if !strings.Contains(out, "0.7.3") {
+		t.Errorf("render missing version in Server line: %s", out)
+	}
+	if !strings.Contains(out, "skills=6") {
+		t.Errorf("render missing skills count in Server line: %s", out)
+	}
+}
+
+func TestServerStatusLine_UnreachableExpanded(t *testing.T) {
+	rep := ServerReport{
+		OK:           false,
+		Reachable:    false,
+		MCPHandshake: "skipped",
+		Error:        "connection refused",
+	}
+	line := serverStatusLine(rep)
+	if !strings.Contains(line, "UNREACHABLE") {
+		t.Errorf("expected UNREACHABLE in line: %s", line)
+	}
+	if !strings.Contains(line, "connection refused") {
+		t.Errorf("expected error text in line: %s", line)
+	}
+}
+
+func TestCountSkillsFromJSON(t *testing.T) {
+	input := `[{"name":"a","summary":"s1","uri":"specgraph://skills/a"},{"name":"b","summary":"s2","uri":"specgraph://skills/b"}]`
+	count := countSkillsFromJSON(input)
+	if count != 2 {
+		t.Errorf("countSkillsFromJSON = %d, want 2", count)
+	}
+	if got := countSkillsFromJSON("not-json"); got != -1 {
+		t.Errorf("countSkillsFromJSON(invalid) = %d, want -1", got)
+	}
+}
+
 func TestDoctorReport_ProjectGroup_UnknownHarnessReported(t *testing.T) {
 	dir := t.TempDir()
 	yaml := `project: x

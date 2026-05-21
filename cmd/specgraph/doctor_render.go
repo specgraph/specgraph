@@ -35,7 +35,22 @@ func renderText(w io.Writer, rep *DoctorReport, verbose bool) {
 			}
 		}
 	}
-	// Server, Managed group rendering land in commits 5, 6.
+	// Server group rendering
+	if rep.Server.OK && !verbose {
+		_, _ = fmt.Fprintf(w, "%s\n", serverStatusLine(rep.Server)) //nolint:errcheck // stdout write; not actionable
+	} else {
+		_, _ = fmt.Fprintf(w, "%s\n", serverStatusLine(rep.Server)) //nolint:errcheck // stdout write; not actionable
+		if verbose || !rep.Server.OK {
+			_, _ = fmt.Fprintf(w, "  Reachable:    %v\n", rep.Server.Reachable)    //nolint:errcheck // stdout write; not actionable
+			_, _ = fmt.Fprintf(w, "  Version:      %s\n", rep.Server.Version)      //nolint:errcheck // stdout write; not actionable
+			_, _ = fmt.Fprintf(w, "  MCPHandshake: %s\n", rep.Server.MCPHandshake) //nolint:errcheck // stdout write; not actionable
+			_, _ = fmt.Fprintf(w, "  SkillsCount:  %d\n", rep.Server.SkillsCount)  //nolint:errcheck // stdout write; not actionable
+			if rep.Server.Error != "" {
+				_, _ = fmt.Fprintf(w, "  Error:        %s\n", rep.Server.Error) //nolint:errcheck // stdout write; not actionable
+			}
+		}
+	}
+	// Managed group rendering lands in commit 6.
 }
 
 func binaryStatusText(b BinaryReport) string {
