@@ -141,7 +141,19 @@ var importProjectSlug string
 
 var importLayerFlag string
 
+var importFromURLFlag string
+
 func runConstitutionImport(cmd *cobra.Command, args []string) error {
+	if importFromURLFlag != "" {
+		if len(args) > 0 {
+			return fmt.Errorf("cannot specify both <path> argument and --from-url flag")
+		}
+		if importLayerFlag == "" {
+			return fmt.Errorf("--layer is required when using --from-url")
+		}
+		return runImportFromURL(cmd, importFromURLFlag, importLayerFlag)
+	}
+
 	var data []byte
 	var err error
 
@@ -204,6 +216,41 @@ func runConstitutionImport(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Constitution imported for project %s\n", slug)
+	return nil
+}
+
+func runImportFromURL(cmd *cobra.Command, sourceURL, layerStr string) error {
+	layer := constitutionLayerStringToProto(layerStr)
+	if layer == specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED {
+		return fmt.Errorf("invalid layer %q; must be user, org, project, or domain", layerStr)
+	}
+
+	var (
+		client specgraphv1connect.ConstitutionServiceClient
+		err    error
+	)
+	if importProjectSlug != "" {
+		client, err = constitutionClientWithProject(importProjectSlug)
+	} else {
+		client, err = constitutionClient()
+	}
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.RefreshConstitutionLayer(cmd.Context(), connect.NewRequest(&specv1.RefreshConstitutionLayerRequest{
+		Layer:     layer,
+		SourceUrl: sourceURL,
+	}))
+	if err != nil {
+		return fmt.Errorf("refresh constitution layer: %w", err)
+	}
+
+	sha := resp.Msg.GetNewSourceHash()
+	if len(sha) > 12 {
+		sha = sha[:12] + "..."
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "Imported as '%s' layer (sha: %s)\n", layerStr, sha) //nolint:errcheck // stdout write
 	return nil
 }
 
@@ -292,6 +339,7 @@ func init() {
 
 	constitutionImportCmd.Flags().StringVar(&importProjectSlug, "project", "", "project slug (defaults to slug from .specgraph.yaml)")
 	constitutionImportCmd.Flags().StringVar(&importLayerFlag, "layer", "", "constitution layer (user|org|project|domain; default: project)")
+	constitutionImportCmd.Flags().StringVar(&importFromURLFlag, "from-url", "", "fetch constitution from URL (alternative to local file argument)")
 
 	constitutionShowCmd.Flags().BoolVar(&constitutionShowJSON, "json", false, "output as JSON")
 	constitutionShowCmd.Flags().StringVar(&constitutionShowLayer, "layer", "", "show specific layer (user|org|project|domain; default: merged)")
