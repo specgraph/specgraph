@@ -182,7 +182,7 @@
   <MetadataBar
     createdAt={spec.createdAt}
     updatedAt={spec.updatedAt}
-    lifecycle={spec.lifecycle}
+    provenanceType={spec.provenanceType}
     contentHash={spec.contentHash}
   />
 

@@ -1,24 +1,25 @@
 <script lang="ts">
-  import { SpecLifecycle } from '$lib/api/gen/specgraph/v1/spec_pb';
+  import { SpecProvenance } from '$lib/api/gen/specgraph/v1/spec_pb';
 
   interface Props {
     createdAt?: { seconds: bigint };
     updatedAt?: { seconds: bigint };
-    lifecycle?: SpecLifecycle;
+    provenanceType?: SpecProvenance;
     contentHash?: string;
   }
-  let { createdAt, updatedAt, lifecycle, contentHash }: Props = $props();
+  let { createdAt, updatedAt, provenanceType, contentHash }: Props = $props();
 
-  function lifecycleLabel(lc: SpecLifecycle | undefined): string | undefined {
-    if (lc === undefined || lc === SpecLifecycle.UNSPECIFIED) return undefined;
+  function provenanceLabel(p: SpecProvenance | undefined): string | undefined {
+    if (p === undefined || p === SpecProvenance.UNSPECIFIED) return undefined;
     const labels: Record<number, string> = {
-      [SpecLifecycle.TASK]: 'task',
-      [SpecLifecycle.LIVING]: 'living',
+      [SpecProvenance.AUTHORED]: 'AUTHORED',
+      [SpecProvenance.RETROACTIVE_FROM_PR]: 'RETROACTIVE_FROM_PR',
+      [SpecProvenance.DECLARED]: 'DECLARED',
     };
-    return labels[lc];
+    return labels[p];
   }
 
-  let displayLifecycle = $derived(lifecycleLabel(lifecycle));
+  let displayProvenance = $derived(provenanceLabel(provenanceType));
 
   function formatDate(ts: { seconds: bigint } | undefined): string {
     if (!ts) return '—';
@@ -43,9 +44,9 @@
   <span>Created: <strong>{formatDate(createdAt)}</strong></span>
   <span class="sep">·</span>
   <span>Updated: <strong>{relativeTime(updatedAt)}</strong></span>
-  {#if displayLifecycle}
+  {#if displayProvenance}
     <span class="sep">·</span>
-    <span>Lifecycle: <span class="lifecycle-badge">{displayLifecycle}</span></span>
+    <span>Provenance: <span class="provenance-badge">{displayProvenance}</span></span>
   {/if}
   {#if contentHash}
     <span class="sep">·</span>
@@ -73,7 +74,7 @@
     font-weight: 500;
   }
 
-  .lifecycle-badge {
+  .provenance-badge {
     background: #dbeafe;
     color: #2563eb;
     padding: 0.05rem 0.3rem;
