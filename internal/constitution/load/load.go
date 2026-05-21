@@ -16,10 +16,10 @@ import (
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
-// LoadFromYAML parses YAML or JSON bytes into *storage.Constitution.
+// FromYAML parses YAML or JSON bytes into *storage.Constitution.
 // Layer validation: if a layer field is present, it must be one of
 // user|org|project|domain. Empty layer is allowed (caller may set it).
-func LoadFromYAML(data []byte) (*storage.Constitution, error) {
+func FromYAML(data []byte) (*storage.Constitution, error) {
 	cc, err := config.ParseConstitutionConfig(data)
 	if err != nil {
 		// Map the config package's "unknown constitution layer" error to the

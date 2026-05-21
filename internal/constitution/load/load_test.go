@@ -23,7 +23,7 @@ principles:
 constraints:
   - never use eval
 `)
-	c, err := load.LoadFromYAML(yaml)
+	c, err := load.FromYAML(yaml)
 	require.NoError(t, err)
 	assert.Equal(t, "test-constitution", c.Name)
 	assert.Equal(t, storage.ConstitutionLayerProject, c.Layer)
@@ -36,12 +36,12 @@ constraints:
 
 func TestLoadFromYAML_MalformedYAML(t *testing.T) {
 	yaml := []byte(`name: [unclosed`)
-	_, err := load.LoadFromYAML(yaml)
+	_, err := load.FromYAML(yaml)
 	require.Error(t, err)
 }
 
 func TestLoadFromYAML_EmptyDoc(t *testing.T) {
-	c, err := load.LoadFromYAML([]byte("{}"))
+	c, err := load.FromYAML([]byte("{}"))
 	require.NoError(t, err)
 	require.NotNil(t, c)
 	assert.Equal(t, "", c.Name)
@@ -50,7 +50,7 @@ func TestLoadFromYAML_EmptyDoc(t *testing.T) {
 
 func TestLoadFromYAML_InvalidLayer(t *testing.T) {
 	yaml := []byte(`layer: not-a-real-layer`)
-	_, err := load.LoadFromYAML(yaml)
+	_, err := load.FromYAML(yaml)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid layer")
 }
@@ -58,7 +58,7 @@ func TestLoadFromYAML_InvalidLayer(t *testing.T) {
 func TestLoadFromYAML_AllLayers(t *testing.T) {
 	for _, layer := range []string{"user", "org", "project", "domain"} {
 		yaml := []byte("layer: " + layer + "\n")
-		c, err := load.LoadFromYAML(yaml)
+		c, err := load.FromYAML(yaml)
 		require.NoError(t, err, "layer=%s", layer)
 		assert.Equal(t, storage.ConstitutionLayer(layer), c.Layer)
 	}
@@ -93,7 +93,7 @@ tech:
 process:
   spec_review: pr
 `)
-	c, err := load.LoadFromYAML(yaml)
+	c, err := load.FromYAML(yaml)
 	require.NoError(t, err)
 	assert.Equal(t, "full", c.Name)
 	assert.Equal(t, storage.ConstitutionLayerOrg, c.Layer)
@@ -120,7 +120,7 @@ principles:
   - id: p1
     statement: S
 `)
-	c, err := load.LoadFromYAML(yaml)
+	c, err := load.FromYAML(yaml)
 	require.NoError(t, err)
 
 	pb := load.ToProto(c)

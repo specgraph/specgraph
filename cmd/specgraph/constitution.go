@@ -157,7 +157,7 @@ func runConstitutionImport(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	c, err := load.LoadFromYAML(data)
+	c, err := load.FromYAML(data)
 	if err != nil {
 		return fmt.Errorf("parse constitution: %w", err)
 	}

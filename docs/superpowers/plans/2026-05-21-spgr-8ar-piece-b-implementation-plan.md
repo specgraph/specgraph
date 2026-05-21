@@ -112,6 +112,7 @@ Then `jj --no-pager new @ -m "(working)"` for a clean child.
 ## Task 1: `internal/constitution/hash` package
 
 **Files:**
+
 - Create: `internal/constitution/hash/hash.go`
 - Create: `internal/constitution/hash/hash_test.go`
 
@@ -349,6 +350,7 @@ Then `jj --no-pager new @ -m "(working)"`.
 ## Task 2: `internal/constitution/load` package
 
 **Files:**
+
 - Create: `internal/constitution/load/load.go`
 - Create: `internal/constitution/load/load_test.go`
 - Modify: `cmd/specgraph/constitution.go` (switch the existing CLI import to use the new helper)
@@ -358,6 +360,7 @@ The current YAML→domain path is split: CLI does YAML→`config.ConstitutionCon
 - [ ] **Step 1: Read the existing path**
 
 Locate:
+
 - `cmd/specgraph/constitution.go:constitutionConfigToProto` — converts YAML's `ConstitutionConfig` to proto
 - `internal/server/convert_constitution.go:constitutionFromProto` — converts proto to domain
 
@@ -531,6 +534,7 @@ pb := constitutionToProto(c) // existing function, lives in convert_constitution
 This means we also need a `*storage.Constitution → *specv1.Constitution` converter. If `constitutionToProto` already exists in `internal/server/convert_constitution.go`, expose it. If not, write a thin one — it's the inverse of `constitutionFromProto` and mostly mechanical.
 
 Actually simpler: the CLI sends the proto via RPC `UpdateConstitution`. So the CLI needs `domain → proto`. Either:
+
 - (a) Expose the existing `constitutionToProto` from `internal/server/` (move to a shared location)
 - (b) Write a local converter in `cmd/specgraph/`
 
@@ -571,6 +575,7 @@ Then `jj --no-pager new @ -m "(working)"`.
 ## Task 3: `internal/constitution/fetch` package (core, no security tests yet)
 
 **Files:**
+
 - Create: `internal/constitution/fetch/fetch.go`
 - Create: `internal/constitution/fetch/fetch_test.go`
 
@@ -912,6 +917,7 @@ Then `jj --no-pager new @ -m "(working)"`.
 ## Task 4: Security tests for `internal/constitution/fetch`
 
 **Files:**
+
 - Create: `internal/constitution/fetch/fetch_security_test.go`
 
 Section 13's security checklist becomes explicit tests. Each must use real network behavior (httptest.Server) where applicable; do not stub out the transport layer.
@@ -1123,6 +1129,7 @@ Then `jj --no-pager new @ -m "(working)"`.
 ## Task 5: Proto definition + regeneration
 
 **Files:**
+
 - Modify: `proto/specgraph/v1/constitution.proto`
 - Regenerated: `gen/specgraph/v1/constitution.pb.go`, `gen/specgraph/v1/specgraphv1connect/constitution.connect.go`
 
@@ -1210,6 +1217,7 @@ Then `jj --no-pager new @ -m "(working)"`.
 ## Task 6: `RefreshConstitutionLayer` RPC handler
 
 **Files:**
+
 - Modify: `internal/server/constitution_handler.go`
 - Modify: `internal/server/constitution_handler_test.go`
 - Modify: `internal/auth/permissions.go`
@@ -1258,6 +1266,7 @@ func (f *fakeFetcher) Fetch(ctx context.Context, url string) (*fetch.Fetched, er
 ```
 
 Cover at minimum:
+
 - New layer (no prior): writes, changed=true
 - Same content (hash match against prior): no write, changed=false
 - Modified content: writes new, changed=true, before populated
@@ -1446,6 +1455,7 @@ Then `jj --no-pager new @ -m "(working)"`.
 ## Task 7: CLI `constitution import --from-url`
 
 **Files:**
+
 - Modify: `cmd/specgraph/constitution.go`
 
 - [ ] **Step 1: Add the flag and the new code path**
@@ -1544,6 +1554,7 @@ Then `jj --no-pager new @ -m "(working)"`.
 ## Task 8: CLI `constitution sync`
 
 **Files:**
+
 - Modify: `cmd/specgraph/constitution.go`
 
 - [ ] **Step 1: Add the sync subcommand**
@@ -1724,6 +1735,7 @@ Then `jj --no-pager new @ -m "(working)"`.
 ## Task 9: E2E test for full refresh flow
 
 **Files:**
+
 - Create: `e2e/api/constitution_refresh_test.go`
 
 - [ ] **Step 1: Write the E2E test**
@@ -1895,6 +1907,7 @@ gh pr create --head spgr-8ar-piece-b --base main \
 ```
 
 PR body should summarize:
+
 - New packages (hash, load, fetch)
 - New RPC + handler + permission
 - New CLI commands (--from-url, sync with --check/--dry-run)

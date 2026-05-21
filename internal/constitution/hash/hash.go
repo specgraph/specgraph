@@ -43,8 +43,8 @@ func Hash(c *storage.Constitution) (string, error) {
 	// stable hex output across architectures.
 	var sum [16]byte
 	for i := 0; i < 8; i++ {
-		sum[i] = byte(h1 >> (56 - 8*i))
-		sum[i+8] = byte(h2 >> (56 - 8*i))
+		sum[i] = byte(h1 >> (56 - 8*i))   //nolint:gosec // G115: safe byte extraction from uint64 bit-shift
+		sum[i+8] = byte(h2 >> (56 - 8*i)) //nolint:gosec // G115: safe byte extraction from uint64 bit-shift
 	}
 	return hex.EncodeToString(sum[:]), nil
 }
