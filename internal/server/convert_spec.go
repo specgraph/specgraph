@@ -149,3 +149,30 @@ func specProvenanceDetailFromProto(pb *specv1.Spec) storage.SpecProvenanceDetail
 		return storage.SpecProvenanceDetail{}
 	}
 }
+
+// createSpecProvenanceDetailFromProto reads the provenance_detail oneof from a
+// CreateSpecRequest and returns the domain detail struct.
+func createSpecProvenanceDetailFromProto(msg *specv1.CreateSpecRequest) storage.SpecProvenanceDetail {
+	switch v := msg.GetProvenanceDetail().(type) {
+	case *specv1.CreateSpecRequest_RetroactiveFromPr:
+		return storage.SpecProvenanceDetail{
+			RetroactiveFromPR: &storage.RetroactivePRProvenance{
+				URL:      v.RetroactiveFromPr.GetUrl(),
+				SHA:      v.RetroactiveFromPr.GetSha(),
+				MergedAt: v.RetroactiveFromPr.GetMergedAt().AsTime(),
+				Title:    v.RetroactiveFromPr.GetTitle(),
+			},
+		}
+	case *specv1.CreateSpecRequest_Declared:
+		return storage.SpecProvenanceDetail{
+			Declared: &storage.DeclaredProvenance{
+				DeclaredBy: v.Declared.GetDeclaredBy(),
+				Note:       v.Declared.GetNote(),
+			},
+		}
+	case *specv1.CreateSpecRequest_Authored:
+		return storage.SpecProvenanceDetail{}
+	default:
+		return storage.SpecProvenanceDetail{}
+	}
+}

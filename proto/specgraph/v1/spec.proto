@@ -141,6 +141,16 @@ message CreateSpecRequest {
   string intent = 2;
   string priority = 3;     // optional, defaults to "p2"
   string complexity = 4;   // optional, defaults to "medium"
+  SpecProvenance provenance_type = 5;  // optional, defaults to AUTHORED
+  oneof provenance_detail {
+    AuthoredProvenance          authored             = 6;
+    RetroactiveFromPrProvenance retroactive_from_pr  = 7;
+    DeclaredProvenance          declared             = 8;
+  }
+  SparkOutput     spark_output     = 9;
+  ShapeOutput     shape_output     = 10;
+  SpecifyOutput   specify_output   = 11;
+  DecomposeOutput decompose_output = 12;
 }
 
 message GetSpecRequest {

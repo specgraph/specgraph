@@ -1089,13 +1089,24 @@ func (x *CompareVersionsResponse) GetDiffs() []*VersionDiff {
 }
 
 type CreateSpecRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	Intent        string                 `protobuf:"bytes,2,opt,name=intent,proto3" json:"intent,omitempty"`
-	Priority      string                 `protobuf:"bytes,3,opt,name=priority,proto3" json:"priority,omitempty"`     // optional, defaults to "p2"
-	Complexity    string                 `protobuf:"bytes,4,opt,name=complexity,proto3" json:"complexity,omitempty"` // optional, defaults to "medium"
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Slug           string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	Intent         string                 `protobuf:"bytes,2,opt,name=intent,proto3" json:"intent,omitempty"`
+	Priority       string                 `protobuf:"bytes,3,opt,name=priority,proto3" json:"priority,omitempty"`                                                                     // optional, defaults to "p2"
+	Complexity     string                 `protobuf:"bytes,4,opt,name=complexity,proto3" json:"complexity,omitempty"`                                                                 // optional, defaults to "medium"
+	ProvenanceType SpecProvenance         `protobuf:"varint,5,opt,name=provenance_type,json=provenanceType,proto3,enum=specgraph.v1.SpecProvenance" json:"provenance_type,omitempty"` // optional, defaults to AUTHORED
+	// Types that are valid to be assigned to ProvenanceDetail:
+	//
+	//	*CreateSpecRequest_Authored
+	//	*CreateSpecRequest_RetroactiveFromPr
+	//	*CreateSpecRequest_Declared
+	ProvenanceDetail isCreateSpecRequest_ProvenanceDetail `protobuf_oneof:"provenance_detail"`
+	SparkOutput      *SparkOutput                         `protobuf:"bytes,9,opt,name=spark_output,json=sparkOutput,proto3" json:"spark_output,omitempty"`
+	ShapeOutput      *ShapeOutput                         `protobuf:"bytes,10,opt,name=shape_output,json=shapeOutput,proto3" json:"shape_output,omitempty"`
+	SpecifyOutput    *SpecifyOutput                       `protobuf:"bytes,11,opt,name=specify_output,json=specifyOutput,proto3" json:"specify_output,omitempty"`
+	DecomposeOutput  *DecomposeOutput                     `protobuf:"bytes,12,opt,name=decompose_output,json=decomposeOutput,proto3" json:"decompose_output,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CreateSpecRequest) Reset() {
@@ -1155,6 +1166,97 @@ func (x *CreateSpecRequest) GetComplexity() string {
 	}
 	return ""
 }
+
+func (x *CreateSpecRequest) GetProvenanceType() SpecProvenance {
+	if x != nil {
+		return x.ProvenanceType
+	}
+	return SpecProvenance_SPEC_PROVENANCE_UNSPECIFIED
+}
+
+func (x *CreateSpecRequest) GetProvenanceDetail() isCreateSpecRequest_ProvenanceDetail {
+	if x != nil {
+		return x.ProvenanceDetail
+	}
+	return nil
+}
+
+func (x *CreateSpecRequest) GetAuthored() *AuthoredProvenance {
+	if x != nil {
+		if x, ok := x.ProvenanceDetail.(*CreateSpecRequest_Authored); ok {
+			return x.Authored
+		}
+	}
+	return nil
+}
+
+func (x *CreateSpecRequest) GetRetroactiveFromPr() *RetroactiveFromPrProvenance {
+	if x != nil {
+		if x, ok := x.ProvenanceDetail.(*CreateSpecRequest_RetroactiveFromPr); ok {
+			return x.RetroactiveFromPr
+		}
+	}
+	return nil
+}
+
+func (x *CreateSpecRequest) GetDeclared() *DeclaredProvenance {
+	if x != nil {
+		if x, ok := x.ProvenanceDetail.(*CreateSpecRequest_Declared); ok {
+			return x.Declared
+		}
+	}
+	return nil
+}
+
+func (x *CreateSpecRequest) GetSparkOutput() *SparkOutput {
+	if x != nil {
+		return x.SparkOutput
+	}
+	return nil
+}
+
+func (x *CreateSpecRequest) GetShapeOutput() *ShapeOutput {
+	if x != nil {
+		return x.ShapeOutput
+	}
+	return nil
+}
+
+func (x *CreateSpecRequest) GetSpecifyOutput() *SpecifyOutput {
+	if x != nil {
+		return x.SpecifyOutput
+	}
+	return nil
+}
+
+func (x *CreateSpecRequest) GetDecomposeOutput() *DecomposeOutput {
+	if x != nil {
+		return x.DecomposeOutput
+	}
+	return nil
+}
+
+type isCreateSpecRequest_ProvenanceDetail interface {
+	isCreateSpecRequest_ProvenanceDetail()
+}
+
+type CreateSpecRequest_Authored struct {
+	Authored *AuthoredProvenance `protobuf:"bytes,6,opt,name=authored,proto3,oneof"`
+}
+
+type CreateSpecRequest_RetroactiveFromPr struct {
+	RetroactiveFromPr *RetroactiveFromPrProvenance `protobuf:"bytes,7,opt,name=retroactive_from_pr,json=retroactiveFromPr,proto3,oneof"`
+}
+
+type CreateSpecRequest_Declared struct {
+	Declared *DeclaredProvenance `protobuf:"bytes,8,opt,name=declared,proto3,oneof"`
+}
+
+func (*CreateSpecRequest_Authored) isCreateSpecRequest_ProvenanceDetail() {}
+
+func (*CreateSpecRequest_RetroactiveFromPr) isCreateSpecRequest_ProvenanceDetail() {}
+
+func (*CreateSpecRequest_Declared) isCreateSpecRequest_ProvenanceDetail() {}
 
 type GetSpecRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1617,14 +1719,24 @@ const file_specgraph_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"from_stage\x18\x03 \x01(\tR\tfromStage\x12\x19\n" +
 	"\bto_stage\x18\x04 \x01(\tR\atoStage\x12/\n" +
-	"\x05diffs\x18\x05 \x03(\v2\x19.specgraph.v1.VersionDiffR\x05diffs\"{\n" +
+	"\x05diffs\x18\x05 \x03(\v2\x19.specgraph.v1.VersionDiffR\x05diffs\"\xbe\x05\n" +
 	"\x11CreateSpecRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x16\n" +
 	"\x06intent\x18\x02 \x01(\tR\x06intent\x12\x1a\n" +
 	"\bpriority\x18\x03 \x01(\tR\bpriority\x12\x1e\n" +
 	"\n" +
 	"complexity\x18\x04 \x01(\tR\n" +
-	"complexity\"$\n" +
+	"complexity\x12E\n" +
+	"\x0fprovenance_type\x18\x05 \x01(\x0e2\x1c.specgraph.v1.SpecProvenanceR\x0eprovenanceType\x12>\n" +
+	"\bauthored\x18\x06 \x01(\v2 .specgraph.v1.AuthoredProvenanceH\x00R\bauthored\x12[\n" +
+	"\x13retroactive_from_pr\x18\a \x01(\v2).specgraph.v1.RetroactiveFromPrProvenanceH\x00R\x11retroactiveFromPr\x12>\n" +
+	"\bdeclared\x18\b \x01(\v2 .specgraph.v1.DeclaredProvenanceH\x00R\bdeclared\x12<\n" +
+	"\fspark_output\x18\t \x01(\v2\x19.specgraph.v1.SparkOutputR\vsparkOutput\x12<\n" +
+	"\fshape_output\x18\n" +
+	" \x01(\v2\x19.specgraph.v1.ShapeOutputR\vshapeOutput\x12B\n" +
+	"\x0especify_output\x18\v \x01(\v2\x1b.specgraph.v1.SpecifyOutputR\rspecifyOutput\x12H\n" +
+	"\x10decompose_output\x18\f \x01(\v2\x1d.specgraph.v1.DecomposeOutputR\x0fdecomposeOutputB\x13\n" +
+	"\x11provenance_detail\"$\n" +
 	"\x0eGetSpecRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\"Z\n" +
 	"\x10ListSpecsRequest\x12\x14\n" +
@@ -1731,27 +1843,35 @@ var file_specgraph_v1_spec_proto_depIdxs = []int32{
 	1,  // 15: specgraph.v1.InlineDiff.op:type_name -> specgraph.v1.InlineDiff.Op
 	10, // 16: specgraph.v1.VersionDiff.hunks:type_name -> specgraph.v1.InlineDiff
 	11, // 17: specgraph.v1.CompareVersionsResponse.diffs:type_name -> specgraph.v1.VersionDiff
-	5,  // 18: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
-	5,  // 19: specgraph.v1.CreateSpecResponse.spec:type_name -> specgraph.v1.Spec
-	5,  // 20: specgraph.v1.GetSpecResponse.spec:type_name -> specgraph.v1.Spec
-	5,  // 21: specgraph.v1.UpdateSpecResponse.spec:type_name -> specgraph.v1.Spec
-	14, // 22: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
-	15, // 23: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
-	16, // 24: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
-	18, // 25: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
-	8,  // 26: specgraph.v1.SpecService.ListChanges:input_type -> specgraph.v1.ListChangesRequest
-	12, // 27: specgraph.v1.SpecService.CompareVersions:input_type -> specgraph.v1.CompareVersionsRequest
-	19, // 28: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.CreateSpecResponse
-	20, // 29: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.GetSpecResponse
-	17, // 30: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
-	21, // 31: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.UpdateSpecResponse
-	9,  // 32: specgraph.v1.SpecService.ListChanges:output_type -> specgraph.v1.ListChangesResponse
-	13, // 33: specgraph.v1.SpecService.CompareVersions:output_type -> specgraph.v1.CompareVersionsResponse
-	28, // [28:34] is the sub-list for method output_type
-	22, // [22:28] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	0,  // 18: specgraph.v1.CreateSpecRequest.provenance_type:type_name -> specgraph.v1.SpecProvenance
+	2,  // 19: specgraph.v1.CreateSpecRequest.authored:type_name -> specgraph.v1.AuthoredProvenance
+	3,  // 20: specgraph.v1.CreateSpecRequest.retroactive_from_pr:type_name -> specgraph.v1.RetroactiveFromPrProvenance
+	4,  // 21: specgraph.v1.CreateSpecRequest.declared:type_name -> specgraph.v1.DeclaredProvenance
+	24, // 22: specgraph.v1.CreateSpecRequest.spark_output:type_name -> specgraph.v1.SparkOutput
+	25, // 23: specgraph.v1.CreateSpecRequest.shape_output:type_name -> specgraph.v1.ShapeOutput
+	26, // 24: specgraph.v1.CreateSpecRequest.specify_output:type_name -> specgraph.v1.SpecifyOutput
+	27, // 25: specgraph.v1.CreateSpecRequest.decompose_output:type_name -> specgraph.v1.DecomposeOutput
+	5,  // 26: specgraph.v1.ListSpecsResponse.specs:type_name -> specgraph.v1.Spec
+	5,  // 27: specgraph.v1.CreateSpecResponse.spec:type_name -> specgraph.v1.Spec
+	5,  // 28: specgraph.v1.GetSpecResponse.spec:type_name -> specgraph.v1.Spec
+	5,  // 29: specgraph.v1.UpdateSpecResponse.spec:type_name -> specgraph.v1.Spec
+	14, // 30: specgraph.v1.SpecService.CreateSpec:input_type -> specgraph.v1.CreateSpecRequest
+	15, // 31: specgraph.v1.SpecService.GetSpec:input_type -> specgraph.v1.GetSpecRequest
+	16, // 32: specgraph.v1.SpecService.ListSpecs:input_type -> specgraph.v1.ListSpecsRequest
+	18, // 33: specgraph.v1.SpecService.UpdateSpec:input_type -> specgraph.v1.UpdateSpecRequest
+	8,  // 34: specgraph.v1.SpecService.ListChanges:input_type -> specgraph.v1.ListChangesRequest
+	12, // 35: specgraph.v1.SpecService.CompareVersions:input_type -> specgraph.v1.CompareVersionsRequest
+	19, // 36: specgraph.v1.SpecService.CreateSpec:output_type -> specgraph.v1.CreateSpecResponse
+	20, // 37: specgraph.v1.SpecService.GetSpec:output_type -> specgraph.v1.GetSpecResponse
+	17, // 38: specgraph.v1.SpecService.ListSpecs:output_type -> specgraph.v1.ListSpecsResponse
+	21, // 39: specgraph.v1.SpecService.UpdateSpec:output_type -> specgraph.v1.UpdateSpecResponse
+	9,  // 40: specgraph.v1.SpecService.ListChanges:output_type -> specgraph.v1.ListChangesResponse
+	13, // 41: specgraph.v1.SpecService.CompareVersions:output_type -> specgraph.v1.CompareVersionsResponse
+	36, // [36:42] is the sub-list for method output_type
+	30, // [30:36] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_spec_proto_init() }
@@ -1764,6 +1884,11 @@ func file_specgraph_v1_spec_proto_init() {
 		(*Spec_Authored)(nil),
 		(*Spec_RetroactiveFromPr)(nil),
 		(*Spec_Declared)(nil),
+	}
+	file_specgraph_v1_spec_proto_msgTypes[12].OneofWrappers = []any{
+		(*CreateSpecRequest_Authored)(nil),
+		(*CreateSpecRequest_RetroactiveFromPr)(nil),
+		(*CreateSpecRequest_Declared)(nil),
 	}
 	file_specgraph_v1_spec_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}

@@ -188,7 +188,7 @@ type fakeAmendHandler struct {
 
 func (fakeAmendHandler) TransitionAmend(_ context.Context, _ *connect.Request[specv1.TransitionAmendRequest]) (*connect.Response[specv1.TransitionAmendResponse], error) {
 	return connect.NewResponse(&specv1.TransitionAmendResponse{
-		Spec: &specv1.Spec{Slug: "my-spec", Stage: "shape", Lifecycle: specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING, Version: 2},
+		Spec: &specv1.Spec{Slug: "my-spec", Stage: "shape", ProvenanceType: specv1.SpecProvenance_SPEC_PROVENANCE_AUTHORED, Version: 2},
 	}), nil
 }
 
@@ -207,8 +207,8 @@ type fakeSupersedeHandler struct {
 
 func (fakeSupersedeHandler) TransitionSupersede(_ context.Context, _ *connect.Request[specv1.TransitionSupersedeRequest]) (*connect.Response[specv1.TransitionSupersedeResponse], error) {
 	return connect.NewResponse(&specv1.TransitionSupersedeResponse{
-		OldSpec: &specv1.Spec{Slug: "old-spec", Lifecycle: specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK},
-		NewSpec: &specv1.Spec{Slug: "new-spec", Stage: "spark", Lifecycle: specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING},
+		OldSpec: &specv1.Spec{Slug: "old-spec", ProvenanceType: specv1.SpecProvenance_SPEC_PROVENANCE_AUTHORED},
+		NewSpec: &specv1.Spec{Slug: "new-spec", Stage: "spark", ProvenanceType: specv1.SpecProvenance_SPEC_PROVENANCE_AUTHORED},
 	}), nil
 }
 
@@ -227,7 +227,7 @@ type fakeAbandonHandler struct {
 
 func (fakeAbandonHandler) TransitionAbandon(_ context.Context, _ *connect.Request[specv1.TransitionAbandonRequest]) (*connect.Response[specv1.TransitionAbandonResponse], error) {
 	return connect.NewResponse(&specv1.TransitionAbandonResponse{
-		Spec: &specv1.Spec{Slug: "my-spec", Stage: "abandoned", Lifecycle: specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK, Version: 1},
+		Spec: &specv1.Spec{Slug: "my-spec", Stage: "abandoned", ProvenanceType: specv1.SpecProvenance_SPEC_PROVENANCE_AUTHORED, Version: 1},
 	}), nil
 }
 

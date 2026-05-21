@@ -19,7 +19,7 @@ func TestTransitionStage_Basic(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "funnel-test", "Test the funnel", "p1", "low")
+	_, err := store.CreateSpec(ctx, "funnel-test", "Test the funnel", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// CreateSpec sets stage to "spark", so transition spark → shape.
@@ -43,7 +43,7 @@ func TestTransitionStage_InvalidTransition(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "wrong-stage", "Wrong stage test", "p1", "low")
+	_, err := store.CreateSpec(ctx, "wrong-stage", "Wrong stage test", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// Spec is at "spark", but we claim it's at "shape" → should fail.
@@ -65,7 +65,7 @@ func TestTransitionStage_ApprovedGuard(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "approved-guard", "Approved guard test", "p1", "low")
+	_, err := store.CreateSpec(ctx, "approved-guard", "Approved guard test", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	require.NoError(t, store.TransitionStage(ctx, "approved-guard", storage.SpecStageSpark, storage.SpecStageShape))
@@ -83,7 +83,7 @@ func TestTransitionStage_UpdatesContentHash(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	spec, err := store.CreateSpec(ctx, "stage-hash", "Test", "p1", "medium")
+	spec, err := store.CreateSpec(ctx, "stage-hash", "Test", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	initialHash := spec.ContentHash
 
@@ -101,7 +101,7 @@ func TestStoreSparkOutput(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "spark-out", "Spark output test", "p1", "low")
+	_, err := store.CreateSpec(ctx, "spark-out", "Spark output test", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	err = store.StoreSparkOutput(ctx, "spark-out", &storage.SparkOutput{
@@ -127,7 +127,7 @@ func TestStoreSparkOutput_UpdatesContentHash(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	spec, err := store.CreateSpec(ctx, "authoring-hash", "Test", "p1", "medium")
+	spec, err := store.CreateSpec(ctx, "authoring-hash", "Test", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	initialHash := spec.ContentHash
 	require.NotEmpty(t, initialHash)
@@ -155,7 +155,7 @@ func TestStoreShapeOutput_PromotesDecisions(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "shape-decisions-test", "test spec", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "shape-decisions-test", "test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	shapeOut := &storage.ShapeOutput{
@@ -193,7 +193,7 @@ func TestStoreShapeOutput_IdempotentDecisions(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "idempotent-test", "test spec", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "idempotent-test", "test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	shapeOut := &storage.ShapeOutput{
@@ -223,7 +223,7 @@ func TestStoreSpecifyOutput(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "specify-out", "Specify test", "p1", "low")
+	_, err := store.CreateSpec(ctx, "specify-out", "Specify test", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	err = store.StoreSpecifyOutput(ctx, "specify-out", &storage.SpecifyOutput{
@@ -249,7 +249,7 @@ func TestStoreDecomposeOutput_CreatesSlices(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "decomp-parent", "Parent spec", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "decomp-parent", "Parent spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	children, err := store.StoreDecomposeOutput(ctx, "decomp-parent", &storage.DecomposeOutput{
@@ -309,7 +309,7 @@ func TestStoreDecomposeOutput_Idempotent(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "idem-parent", "Idempotency parent", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "idem-parent", "Idempotency parent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	output := &storage.DecomposeOutput{
@@ -351,7 +351,7 @@ func TestStoreDecomposeOutput_DuplicateSliceID(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "dup-parent", "Duplicate slice test", "p1", "low")
+	_, err := store.CreateSpec(ctx, "dup-parent", "Duplicate slice test", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.StoreDecomposeOutput(ctx, "dup-parent", &storage.DecomposeOutput{
@@ -370,7 +370,7 @@ func TestStoreDecomposeOutput_UnknownDependency(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "dep-parent", "Unknown dep test", "p1", "low")
+	_, err := store.CreateSpec(ctx, "dep-parent", "Unknown dep test", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.StoreDecomposeOutput(ctx, "dep-parent", &storage.DecomposeOutput{
@@ -389,7 +389,7 @@ func TestStoreSafetyFlags(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "safety-flags-spec", "Safety flags test", "p1", "low")
+	_, err := store.CreateSpec(ctx, "safety-flags-spec", "Safety flags test", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	flags := []storage.SafetyFlag{
@@ -425,9 +425,9 @@ func TestSupersedeSpec_Authoring(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "old-spec", "Original spec", "p1", "low")
+	_, err := store.CreateSpec(ctx, "old-spec", "Original spec", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "new-spec", "Replacement spec", "p1", "low")
+	_, err = store.CreateSpec(ctx, "new-spec", "Replacement spec", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	err = store.SupersedeSpec(ctx, "old-spec", "new-spec", "better approach found")
@@ -444,7 +444,7 @@ func TestSupersedeSpec_NotFound(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "existing-spec", "Exists", "p1", "low")
+	_, err := store.CreateSpec(ctx, "existing-spec", "Exists", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// Non-existent old spec.
@@ -461,7 +461,7 @@ func TestAmendSpec(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "amend-test", "Amend test", "p1", "low")
+	_, err := store.CreateSpec(ctx, "amend-test", "Amend test", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	require.NoError(t, store.TransitionStage(ctx, "amend-test", storage.SpecStageSpark, storage.SpecStageShape))
 	require.NoError(t, store.TransitionStage(ctx, "amend-test", storage.SpecStageShape, storage.SpecStageSpecify))
@@ -478,7 +478,7 @@ func TestAmendSpec_AlreadyApproved(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "approved-spec", "Will be approved", "p1", "low")
+	_, err := store.CreateSpec(ctx, "approved-spec", "Will be approved", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.SpecStageSpark, storage.SpecStageShape))
 	require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.SpecStageShape, storage.SpecStageSpecify))
@@ -494,7 +494,7 @@ func TestAmendSpec_InvalidTransition(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "amend-invalid", "Invalid amend", "p1", "low")
+	_, err := store.CreateSpec(ctx, "amend-invalid", "Invalid amend", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	require.NoError(t, store.TransitionStage(ctx, "amend-invalid", storage.SpecStageSpark, storage.SpecStageShape))
 
@@ -517,7 +517,7 @@ func TestAmendSpec_UpdatesContentHash(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "amend-hash", "Test", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "amend-hash", "Test", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	err = store.TransitionStage(ctx, "amend-hash", storage.SpecStageSpark, storage.SpecStageShape)
@@ -540,7 +540,7 @@ func TestTransitionStage_BackwardViaAmend(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "backward-test", "Backward transition", "p1", "low")
+	_, err := store.CreateSpec(ctx, "backward-test", "Backward transition", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// Advance spark → shape → specify.
@@ -561,9 +561,9 @@ func TestTransitionStage_SupersededGuard(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "superseded-old", "Will be superseded", "p1", "low")
+	_, err := store.CreateSpec(ctx, "superseded-old", "Will be superseded", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "superseded-new", "Replacement", "p1", "low")
+	_, err = store.CreateSpec(ctx, "superseded-new", "Replacement", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	err = store.SupersedeSpec(ctx, "superseded-old", "superseded-new", "better approach")

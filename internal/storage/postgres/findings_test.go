@@ -18,7 +18,7 @@ func TestStoreFindings_CreatesAndReplacesExisting(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "findings-spec", "Intent", "", "")
+	_, err := store.CreateSpec(ctx, "findings-spec", "Intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// Store initial findings.
@@ -62,7 +62,7 @@ func TestListFindings_FilterByPassType(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "filter-spec", "Intent", "", "")
+	_, err := store.CreateSpec(ctx, "filter-spec", "Intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.StoreFindings(ctx, "filter-spec", storage.PassTypeConstitutionCheck, []storage.AnalyticalFindingInput{
@@ -101,9 +101,9 @@ func TestListAllFindings(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "all-spec-a", "A", "", "")
+	_, err := store.CreateSpec(ctx, "all-spec-a", "A", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "all-spec-b", "B", "", "")
+	_, err = store.CreateSpec(ctx, "all-spec-b", "B", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.StoreFindings(ctx, "all-spec-a", storage.PassTypeConstitutionCheck, []storage.AnalyticalFindingInput{

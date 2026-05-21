@@ -20,9 +20,9 @@ func TestAddEdge_Basic(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "spec-x", "Spec X", "p1", "low")
+	_, err := store.CreateSpec(ctx, "spec-x", "Spec X", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "spec-y", "Spec Y", "p2", "medium")
+	_, err = store.CreateSpec(ctx, "spec-y", "Spec Y", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	edge, err := store.AddEdge(ctx, "spec-x", "spec-y", storage.EdgeTypeDependsOn)
@@ -52,11 +52,11 @@ func TestAddEdge_DependsOn_CapturesContentHash(t *testing.T) {
 	ctx := context.Background()
 
 	// Create upstream with a known content hash.
-	upstream, err := store.CreateSpec(ctx, "upstream", "Upstream intent", "p1", "low")
+	upstream, err := store.CreateSpec(ctx, "upstream", "Upstream intent", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, upstream.ContentHash)
 
-	_, err = store.CreateSpec(ctx, "downstream", "Downstream intent", "p2", "low")
+	_, err = store.CreateSpec(ctx, "downstream", "Downstream intent", "p2", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	edge, err := store.AddEdge(ctx, "downstream", "upstream", storage.EdgeTypeDependsOn)
@@ -69,9 +69,9 @@ func TestAddEdge_Idempotent(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "a", "A", "", "")
+	_, err := store.CreateSpec(ctx, "a", "A", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "b", "B", "", "")
+	_, err = store.CreateSpec(ctx, "b", "B", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.AddEdge(ctx, "a", "b", storage.EdgeTypeRelatesTo)
@@ -86,7 +86,7 @@ func TestAddEdge_NodeNotFound(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "exists", "Exists", "", "")
+	_, err := store.CreateSpec(ctx, "exists", "Exists", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.AddEdge(ctx, "exists", "missing", storage.EdgeTypeDependsOn)
@@ -99,9 +99,9 @@ func TestRemoveEdge(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "rm-from", "From", "", "")
+	_, err := store.CreateSpec(ctx, "rm-from", "From", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "rm-to", "To", "", "")
+	_, err = store.CreateSpec(ctx, "rm-to", "To", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.AddEdge(ctx, "rm-from", "rm-to", storage.EdgeTypeDependsOn)
@@ -121,9 +121,9 @@ func TestRemoveEdge_InTransaction_RollsBack(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "tx-from", "From", "", "")
+	_, err := store.CreateSpec(ctx, "tx-from", "From", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "tx-to", "To", "", "")
+	_, err = store.CreateSpec(ctx, "tx-to", "To", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	_, err = store.AddEdge(ctx, "tx-from", "tx-to", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
@@ -148,7 +148,7 @@ func TestListEdges_ExcludesInternalTypes(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "internal-test", "Test", "", "")
+	_, err := store.CreateSpec(ctx, "internal-test", "Test", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// CreateSpec already creates a BELONGS_TO edge internally.
@@ -166,9 +166,9 @@ func TestListEdges_Bidirectional(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "bidir-a", "A", "", "")
+	_, err := store.CreateSpec(ctx, "bidir-a", "A", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "bidir-b", "B", "", "")
+	_, err = store.CreateSpec(ctx, "bidir-b", "B", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// A -> B
@@ -195,9 +195,9 @@ func TestGetDependencies(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "parent", "Parent", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "parent", "Parent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "child", "Child", "p2", "low")
+	_, err = store.CreateSpec(ctx, "child", "Child", "p2", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.AddEdge(ctx, "parent", "child", storage.EdgeTypeDependsOn)
@@ -215,9 +215,9 @@ func TestGetDependencies_IncludesBlocksSources(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "blocker", "Blocker", "", "")
+	_, err := store.CreateSpec(ctx, "blocker", "Blocker", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "blocked", "Blocked", "", "")
+	_, err = store.CreateSpec(ctx, "blocked", "Blocked", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// blocker BLOCKS blocked
@@ -235,9 +235,9 @@ func TestGetDependenciesWithEdgeData(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	upstream, err := store.CreateSpec(ctx, "up", "Upstream", "", "")
+	upstream, err := store.CreateSpec(ctx, "up", "Upstream", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "down", "Downstream", "", "")
+	_, err = store.CreateSpec(ctx, "down", "Downstream", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.AddEdge(ctx, "down", "up", storage.EdgeTypeDependsOn)
@@ -256,9 +256,9 @@ func TestRefreshDependencyHashes(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "refresh-up", "Upstream", "", "")
+	_, err := store.CreateSpec(ctx, "refresh-up", "Upstream", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "refresh-down", "Downstream", "", "")
+	_, err = store.CreateSpec(ctx, "refresh-down", "Downstream", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.AddEdge(ctx, "refresh-down", "refresh-up", storage.EdgeTypeDependsOn)
@@ -295,7 +295,7 @@ func TestGetTransitiveDeps(t *testing.T) {
 
 	// Chain: A -> B -> C -> D
 	for _, slug := range []string{"a", "b", "c", "d"} {
-		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "")
+		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 	}
 	_, err := store.AddEdge(ctx, "a", "b", storage.EdgeTypeDependsOn)
@@ -325,7 +325,7 @@ func TestGetTransitiveDeps_Diamond(t *testing.T) {
 
 	// Diamond: A -> B, A -> C, B -> D, C -> D
 	for _, slug := range []string{"a", "b", "c", "d"} {
-		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "")
+		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 	}
 	_, err := store.AddEdge(ctx, "a", "b", storage.EdgeTypeDependsOn)
@@ -354,7 +354,7 @@ func TestGetTransitiveDeps_BoundedChain(t *testing.T) {
 		slugs = append(slugs, fmt.Sprintf("n%02d", i))
 	}
 	for _, slug := range slugs {
-		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "")
+		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 	}
 	// Chain: n54 -> n53 -> ... -> n00
@@ -375,7 +375,7 @@ func TestGetImpact(t *testing.T) {
 
 	// Chain: A -> B -> C -> D
 	for _, slug := range []string{"a", "b", "c", "d"} {
-		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "")
+		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 	}
 	_, err := store.AddEdge(ctx, "a", "b", storage.EdgeTypeDependsOn)
@@ -406,7 +406,7 @@ func TestGetImpact_Diamond(t *testing.T) {
 
 	// Diamond: A -> B, A -> C, B -> D, C -> D
 	for _, slug := range []string{"a", "b", "c", "d"} {
-		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "")
+		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 	}
 	_, err := store.AddEdge(ctx, "a", "b", storage.EdgeTypeDependsOn)
@@ -429,11 +429,11 @@ func TestGetReady(t *testing.T) {
 	ctx := context.Background()
 
 	// Create: blocked depends on blocker, free has no deps.
-	_, err := store.CreateSpec(ctx, "blocked", "Blocked", "", "")
+	_, err := store.CreateSpec(ctx, "blocked", "Blocked", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "blocker", "Blocker", "", "")
+	_, err = store.CreateSpec(ctx, "blocker", "Blocker", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "free", "Free", "", "")
+	_, err = store.CreateSpec(ctx, "free", "Free", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.AddEdge(ctx, "blocked", "blocker", storage.EdgeTypeDependsOn)
@@ -456,9 +456,9 @@ func TestGetReady_BlocksEdgePreventsReady(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "block-target", "Target", "", "")
+	_, err := store.CreateSpec(ctx, "block-target", "Target", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "block-source", "Source", "", "")
+	_, err = store.CreateSpec(ctx, "block-source", "Source", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// block-source BLOCKS block-target
@@ -481,7 +481,7 @@ func TestGetReady_DoneSpecsDontAppear(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "done-spec", "Done", "", "")
+	_, err := store.CreateSpec(ctx, "done-spec", "Done", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	done := "done"
@@ -504,7 +504,7 @@ func TestGetCriticalPath(t *testing.T) {
 	// Diamond: A -> B -> D, A -> C -> D
 	// Both paths have length 3, so critical path from A should be one of them.
 	for _, slug := range []string{"a", "b", "c", "d"} {
-		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "")
+		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 	}
 	_, err := store.AddEdge(ctx, "a", "b", storage.EdgeTypeDependsOn)
@@ -532,7 +532,7 @@ func TestGetCriticalPath_LinearChain(t *testing.T) {
 
 	// A -> B -> C
 	for _, slug := range []string{"a", "b", "c"} {
-		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "")
+		_, err := store.CreateSpec(ctx, slug, "Spec "+slug, "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 	}
 	_, err := store.AddEdge(ctx, "a", "b", storage.EdgeTypeDependsOn)
@@ -553,7 +553,7 @@ func TestGetCriticalPath_NoDeps(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "lonely", "No deps", "", "")
+	_, err := store.CreateSpec(ctx, "lonely", "No deps", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	path, err := store.GetCriticalPath(ctx, "lonely")
@@ -568,9 +568,9 @@ func TestGetFullGraph(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "fg-a", "A", "p1", "")
+	_, err := store.CreateSpec(ctx, "fg-a", "A", "p1", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "fg-b", "B", "p2", "")
+	_, err = store.CreateSpec(ctx, "fg-b", "B", "p2", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.AddEdge(ctx, "fg-a", "fg-b", storage.EdgeTypeDependsOn)
@@ -606,7 +606,7 @@ func TestGetFullGraph_ExcludesInternalEdges(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "fg-internal", "Internal test", "", "")
+	_, err := store.CreateSpec(ctx, "fg-internal", "Internal test", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	graph, err := store.GetFullGraph(ctx)
@@ -637,9 +637,9 @@ func TestBlocksEdgeDirection(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "spec-alpha", "Alpha", "", "")
+	_, err := store.CreateSpec(ctx, "spec-alpha", "Alpha", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "spec-beta", "Beta", "", "")
+	_, err = store.CreateSpec(ctx, "spec-beta", "Beta", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	edge, err := store.AddEdge(ctx, "spec-alpha", "spec-beta", storage.EdgeTypeBlocks)
@@ -667,9 +667,9 @@ func TestRemoveEdge_Idempotent(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "idem-from", "From", "", "")
+	_, err := store.CreateSpec(ctx, "idem-from", "From", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "idem-to", "To", "", "")
+	_, err = store.CreateSpec(ctx, "idem-to", "To", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// Remove an edge that does not exist — should not error.

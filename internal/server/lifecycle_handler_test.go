@@ -114,6 +114,7 @@ func TestLifecycleHandler_Amend(t *testing.T) {
 		return &storage.Spec{
 			Slug:        slug,
 			Stage:       storage.SpecStageShape,
+			Provenance:  storage.SpecProvenanceAuthored,
 			Version:     2,
 			ContentHash: strings.Repeat("a", 32),
 		}, nil
@@ -132,13 +133,13 @@ func TestLifecycleHandler_Amend(t *testing.T) {
 	require.Equal(t, int32(2), s.GetVersion())
 }
 
-func TestLifecycleHandler_Amend_UnknownLifecycleReturnsInternal(t *testing.T) {
+func TestLifecycleHandler_Amend_UnknownProvenanceReturnsInternal(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.amendSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, error) {
 		return &storage.Spec{
 			Slug:        "my-spec",
 			Stage:       storage.SpecStageShape,
-			Lifecycle:   storage.SpecLifecycle("bogus"),
+			Provenance:  storage.SpecProvenanceType("bogus"),
 			Version:     2,
 			ContentHash: strings.Repeat("a", 32),
 		}, nil
@@ -213,12 +214,14 @@ func TestLifecycleHandler_Supersede(t *testing.T) {
 		return &storage.Spec{
 				Slug:         oldSlug,
 				Stage:        storage.SpecStageSuperseded,
+				Provenance:   storage.SpecProvenanceAuthored,
 				SupersededBy: newSlug,
 				Version:      3,
 				ContentHash:  strings.Repeat("a", 32),
 			}, &storage.Spec{
 				Slug:        newSlug,
 				Stage:       storage.SpecStageSpark,
+				Provenance:  storage.SpecProvenanceAuthored,
 				Supersedes:  oldSlug,
 				Version:     1,
 				ContentHash: strings.Repeat("a", 32),
@@ -244,6 +247,7 @@ func TestLifecycleHandler_Abandon(t *testing.T) {
 		return &storage.Spec{
 			Slug:        slug,
 			Stage:       storage.SpecStageAbandoned,
+			Provenance:  storage.SpecProvenanceAuthored,
 			Version:     2,
 			ContentHash: strings.Repeat("a", 32),
 		}, nil
@@ -1193,19 +1197,19 @@ func TestLifecycleHandler_Supersede_StorageErrSameSlugs(t *testing.T) {
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
-func TestLifecycleHandler_Supersede_InvalidOldSpecLifecycleReturnsInternal(t *testing.T) {
+func TestLifecycleHandler_Supersede_InvalidOldSpecProvenanceReturnsInternal(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.supersedeSpec = func(_ context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error) {
 		return &storage.Spec{
 				Slug:        oldSlug,
 				Stage:       storage.SpecStageSuperseded,
-				Lifecycle:   storage.SpecLifecycle("bogus"),
+				Provenance:  storage.SpecProvenanceType("bogus"),
 				Version:     2,
 				ContentHash: strings.Repeat("a", 32),
 			}, &storage.Spec{
 				Slug:        newSlug,
 				Stage:       storage.SpecStageSpark,
-				Lifecycle:   storage.SpecLifecycleTask,
+				Provenance:  storage.SpecProvenanceAuthored,
 				Version:     1,
 				ContentHash: strings.Repeat("a", 32),
 			}, nil
@@ -1222,13 +1226,13 @@ func TestLifecycleHandler_Supersede_InvalidOldSpecLifecycleReturnsInternal(t *te
 	require.Equal(t, connect.CodeInternal, connErr.Code())
 }
 
-func TestLifecycleHandler_Abandon_UnknownLifecycleReturnsInternal(t *testing.T) {
+func TestLifecycleHandler_Abandon_UnknownProvenanceReturnsInternal(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.store.abandonSpec = func(_ context.Context, slug, _ string) (*storage.Spec, error) {
 		return &storage.Spec{
 			Slug:        slug,
 			Stage:       storage.SpecStageAbandoned,
-			Lifecycle:   storage.SpecLifecycle("bogus"),
+			Provenance:  storage.SpecProvenanceType("bogus"),
 			Version:     2,
 			ContentHash: strings.Repeat("a", 32),
 		}, nil

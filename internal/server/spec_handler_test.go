@@ -34,7 +34,7 @@ func newMockBackend() *mockBackend {
 	return &mockBackend{specs: make(map[string]*storage.Spec)}
 }
 
-func (m *mockBackend) CreateSpec(_ context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
+func (m *mockBackend) CreateSpec(_ context.Context, slug, intent, priority, complexity string, _ storage.SpecProvenanceType, _ storage.SpecProvenanceDetail, _ *storage.SparkOutput, _ *storage.ShapeOutput, _ *storage.SpecifyOutput, _ *storage.DecomposeOutput) (*storage.Spec, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.seq++
@@ -46,6 +46,7 @@ func (m *mockBackend) CreateSpec(_ context.Context, slug, intent, priority, comp
 		Stage:       storage.SpecStageSpark,
 		Priority:    storage.SpecPriority(priority),
 		Complexity:  storage.SpecComplexity(complexity),
+		Provenance:  storage.SpecProvenanceAuthored,
 		Version:     1,
 		ContentHash: strings.Repeat("a", 32),
 		CreatedAt:   now,
@@ -213,16 +214,16 @@ func TestSpecHandler_UpdateSpec_StageIgnored(t *testing.T) {
 	require.Equal(t, "spark", updateResp.Msg.GetSpec().GetStage(), "UpdateSpec must not mutate stage")
 }
 
-func TestSpecHandler_GetSpec_InvalidLifecycle(t *testing.T) {
+func TestSpecHandler_GetSpec_InvalidProvenance(t *testing.T) {
 	mb := newMockBackend()
-	// Inject a spec with an invalid lifecycle directly.
-	mb.specs["bad-lifecycle"] = &storage.Spec{
+	// Inject a spec with an invalid provenance directly.
+	mb.specs["bad-provenance"] = &storage.Spec{
 		ID:          "spec-bad",
-		Slug:        "bad-lifecycle",
-		Intent:      "test invalid lifecycle",
+		Slug:        "bad-provenance",
+		Intent:      "test invalid provenance",
 		Stage:       storage.SpecStageSpark,
 		Version:     1,
-		Lifecycle:   storage.SpecLifecycle("bogus"),
+		Provenance:  storage.SpecProvenanceType("bogus"),
 		ContentHash: strings.Repeat("a", 32),
 		CreatedAt:   time.Now().UTC(),
 		UpdatedAt:   time.Now().UTC(),
@@ -232,7 +233,7 @@ func TestSpecHandler_GetSpec_InvalidLifecycle(t *testing.T) {
 
 	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)
 	_, err := client.GetSpec(context.Background(), connect.NewRequest(&specv1.GetSpecRequest{
-		Slug: "bad-lifecycle",
+		Slug: "bad-provenance",
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInternal, connect.CodeOf(err))

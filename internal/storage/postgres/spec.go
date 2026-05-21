@@ -124,9 +124,44 @@ func encodeProvenanceDetail(p storage.SpecProvenanceType, d storage.SpecProvenan
 
 // CreateSpec stores a new spec in Postgres and returns it.
 // All DB operations run within a single transaction.
-func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
+//
+// provenance, detail, and stage outputs support all three creation flows:
+//   - AUTHORED (or empty): starts at spark stage; only spark_output may be
+//     supplied (or none). The content_hash is computed from the bare fields.
+//   - RETROACTIVE_FROM_PR / DECLARED: born at done; all four stage outputs
+//     are required. The content_hash is pre-computed from the full outputs
+//     before INSERT.
+//
+// Callers MUST validate these invariants via server.validateProvenance before
+// calling this method.
+func (s *Store) CreateSpec(
+	ctx context.Context,
+	slug, intent, priority, complexity string,
+	provenance storage.SpecProvenanceType,
+	detail storage.SpecProvenanceDetail,
+	spark *storage.SparkOutput,
+	shape *storage.ShapeOutput,
+	specify *storage.SpecifyOutput,
+	decompose *storage.DecomposeOutput,
+) (*storage.Spec, error) {
+	// Normalize empty provenance to AUTHORED.
+	if provenance == "" {
+		provenance = storage.SpecProvenanceAuthored
+	}
+
+	// Determine initial stage and content hash based on provenance.
+	bornAtDone := provenance == storage.SpecProvenanceRetroactiveFromPR ||
+		provenance == storage.SpecProvenanceDeclared
+	initialStage := defaultInitialStage
+	if bornAtDone {
+		initialStage = "done"
+	}
+
+	// Pre-compute content hash including stage outputs.
+	outputs := buildOutputsMap(spark, shape, specify, decompose)
+	ch := contenthash.Spec(intent, initialStage, priority, complexity, outputs)
+
 	now := s.now()
-	ch := contenthash.Spec(intent, defaultInitialStage, priority, complexity, nil)
 
 	var result *storage.Spec
 	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
@@ -143,8 +178,8 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 			return fmt.Errorf("postgres: check existing spec: %w", err)
 		}
 
-		// Insert spec row.
-		provDetailJSON, err := encodeProvenanceDetail(storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{})
+		// Encode provenance detail envelope.
+		provDetailJSON, err := encodeProvenanceDetail(provenance, detail)
 		if err != nil {
 			return fmt.Errorf("postgres: create spec: encode provenance: %w", err)
 		}
@@ -154,15 +189,20 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 			`INSERT INTO specs
 				(id, slug, project_slug, intent, stage, priority, complexity,
 				 provenance_type, provenance_detail, notes,
+				 spark_output, shape_output, specify_output, decompose_output,
 				 content_hash, version, created_at, updated_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, '', $10, 1, $11, $11)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, '',
+			         $10, $11, $12, $13,
+			         $14, 1, $15, $15)
 			 RETURNING id, slug, project_slug, intent, stage, priority, complexity,
 			           provenance_type, provenance_detail,
 			           superseded_by, supersedes, notes, content_hash, version,
 			           spark_output, shape_output, specify_output, decompose_output,
 			           created_at, updated_at`,
-			specID, slug, s.project, intent, defaultInitialStage, priority, complexity,
-			string(storage.SpecProvenanceAuthored), provDetailJSON, ch, now,
+			specID, slug, s.project, intent, initialStage, priority, complexity,
+			string(provenance), provDetailJSON,
+			spark, shape, specify, decompose,
+			ch, now,
 		)
 
 		spec, err := scanSpec(row)
@@ -177,17 +217,21 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		// Initial changelog entry.
 		allFields := storage.SpecFields{
 			Intent:     intent,
-			Stage:      defaultInitialStage,
+			Stage:      initialStage,
 			Priority:   priority,
 			Complexity: complexity,
 		}
 		deltas := storage.ComputeFieldDeltas(&storage.SpecFields{}, &allFields)
+		summary := "Spec created"
+		if bornAtDone {
+			summary = "Spec created (born at done)"
+		}
 		clEntry := &storage.ChangeLogEntry{
 			Version:     spec.Version,
 			Stage:       string(spec.Stage),
 			ContentHash: spec.ContentHash,
 			Checkpoint:  true,
-			Summary:     "Spec created",
+			Summary:     summary,
 			Date:        spec.CreatedAt,
 		}
 		if clErr := s.createChangeLog(txCtx, slug, clEntry, deltas); clErr != nil {
@@ -208,6 +252,40 @@ func (s *Store) CreateSpec(ctx context.Context, slug, intent, priority, complexi
 		return nil
 	})
 	return result, err
+}
+
+// buildOutputsMap marshals non-nil stage outputs into the map expected by
+// contenthash.Spec. Returns nil if all outputs are nil.
+func buildOutputsMap(
+	spark *storage.SparkOutput,
+	shape *storage.ShapeOutput,
+	specify *storage.SpecifyOutput,
+	decompose *storage.DecomposeOutput,
+) map[string]string {
+	var outputs map[string]string
+	addOutput := func(key string, v any) {
+		b, err := json.Marshal(v)
+		if err != nil {
+			return
+		}
+		if outputs == nil {
+			outputs = make(map[string]string)
+		}
+		outputs[key] = string(b)
+	}
+	if spark != nil {
+		addOutput("spark_output", spark)
+	}
+	if shape != nil {
+		addOutput("shape_output", shape)
+	}
+	if specify != nil {
+		addOutput("specify_output", specify)
+	}
+	if decompose != nil {
+		addOutput("decompose_output", decompose)
+	}
+	return outputs
 }
 
 // GetSpec retrieves a spec by slug within the store's project.

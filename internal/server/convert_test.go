@@ -20,6 +20,7 @@ func TestSpecToProto(t *testing.T) {
 	spec := &storage.Spec{
 		ID: "spec-abc", Slug: "login", Intent: "Login API",
 		Stage: "spark", Priority: "p1", Complexity: "medium",
+		Provenance: storage.SpecProvenanceAuthored,
 		Version: 1, CreatedAt: now, UpdatedAt: now,
 	}
 	pb, err := specToProto(spec)
@@ -44,6 +45,7 @@ func TestSpecToProto_LifecycleFields(t *testing.T) {
 		Stage:        "superseded",
 		Priority:     "p1",
 		Complexity:   "medium",
+		Provenance:   storage.SpecProvenanceAuthored,
 		Version:      3,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -58,8 +60,8 @@ func TestSpecToProto_LifecycleFields(t *testing.T) {
 
 func TestSpecsToProto(t *testing.T) {
 	specs := []*storage.Spec{
-		{ID: "a", Slug: "a"},
-		{ID: "b", Slug: "b"},
+		{ID: "a", Slug: "a", Provenance: storage.SpecProvenanceAuthored},
+		{ID: "b", Slug: "b", Provenance: storage.SpecProvenanceAuthored},
 	}
 	pbs, err := specsToProto(specs)
 	require.NoError(t, err)
@@ -76,6 +78,7 @@ func TestSpecToProto_ZeroTimes(t *testing.T) {
 	spec := &storage.Spec{
 		ID: "spec-zero", Slug: "zero-time", Intent: "test",
 		Stage: "spark", Priority: "p2", Complexity: "low",
+		Provenance: storage.SpecProvenanceAuthored,
 	}
 	pb, err := specToProto(spec)
 	require.NoError(t, err)
@@ -205,29 +208,23 @@ func TestEdgeTypeToProto(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestLifecycleToProto(t *testing.T) {
-	t.Run("task lifecycle", func(t *testing.T) {
-		got, err := lifecycleToProto(storage.SpecLifecycleTask)
+func TestSpecProvenanceToProto(t *testing.T) {
+	t.Run("authored provenance", func(t *testing.T) {
+		got, err := specProvenanceToProto(storage.SpecProvenanceAuthored)
 		require.NoError(t, err)
-		assert.Equal(t, specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK, got)
+		assert.Equal(t, specv1.SpecProvenance_SPEC_PROVENANCE_AUTHORED, got)
 	})
 
-	t.Run("living lifecycle", func(t *testing.T) {
-		got, err := lifecycleToProto(storage.SpecLifecycleLiving)
+	t.Run("declared provenance", func(t *testing.T) {
+		got, err := specProvenanceToProto(storage.SpecProvenanceDeclared)
 		require.NoError(t, err)
-		assert.Equal(t, specv1.SpecLifecycle_SPEC_LIFECYCLE_LIVING, got)
+		assert.Equal(t, specv1.SpecProvenance_SPEC_PROVENANCE_DECLARED, got)
 	})
 
-	t.Run("empty string maps to unspecified", func(t *testing.T) {
-		got, err := lifecycleToProto("")
-		require.NoError(t, err)
-		assert.Equal(t, specv1.SpecLifecycle_SPEC_LIFECYCLE_UNSPECIFIED, got)
-	})
-
-	t.Run("unknown lifecycle returns error", func(t *testing.T) {
-		_, err := lifecycleToProto("bogus")
+	t.Run("unknown provenance returns error", func(t *testing.T) {
+		_, err := specProvenanceToProto("bogus")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unknown lifecycle")
+		assert.Contains(t, err.Error(), "unknown provenance")
 	})
 }
 
@@ -314,11 +311,11 @@ func TestDriftItemToProto(t *testing.T) {
 	}
 }
 
-func TestSpecToProto_InvalidLifecycle(t *testing.T) {
+func TestSpecToProto_InvalidProvenance(t *testing.T) {
 	spec := &storage.Spec{
-		ID: "spec-bad", Slug: "bad-lifecycle", Intent: "test",
+		ID: "spec-bad", Slug: "bad-provenance", Intent: "test",
 		Stage: "spark", Priority: "p1", Complexity: "low",
-		Lifecycle: storage.SpecLifecycle("bogus"),
+		Provenance: storage.SpecProvenanceType("bogus"),
 	}
 	_, err := specToProto(spec)
 	assert.Error(t, err)
@@ -552,6 +549,7 @@ func TestSpecToProto_ConversationCount(t *testing.T) {
 	spec := &storage.Spec{
 		ID: "spec-conv", Slug: "conv-test", Intent: "test",
 		Stage: "spark", Priority: "p2", Complexity: "low",
+		Provenance:        storage.SpecProvenanceAuthored,
 		ConversationCount: 5,
 	}
 	pb, err := specToProto(spec)

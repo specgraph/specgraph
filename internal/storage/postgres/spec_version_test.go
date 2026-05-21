@@ -22,7 +22,7 @@ func TestGetSpecAtVersion(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		created, err := store.CreateSpec(ctx, "sv-current", "initial intent", "p1", "medium")
+		created, err := store.CreateSpec(ctx, "sv-current", "initial intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		result, err := store.GetSpecAtVersion(ctx, "sv-current", created.Version)
@@ -36,7 +36,7 @@ func TestGetSpecAtVersion(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "sv-history", "original intent", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "sv-history", "original intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = store.UpdateSpec(ctx, "sv-history", strPtr("updated intent"), nil, nil, nil, nil)
@@ -60,7 +60,7 @@ func TestGetSpecAtVersion(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "sv-zero", "some intent", "p2", "low")
+		_, err := store.CreateSpec(ctx, "sv-zero", "some intent", "p2", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = store.UpdateSpec(ctx, "sv-zero", strPtr("newer intent"), nil, nil, nil, nil)
@@ -87,7 +87,7 @@ func TestGetSpecAtVersion(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "sv-toohigh", "intent", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "sv-toohigh", "intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = store.GetSpecAtVersion(ctx, "sv-toohigh", 999)

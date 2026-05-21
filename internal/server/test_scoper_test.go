@@ -48,7 +48,7 @@ type stubBackend struct{}
 
 // --- Backend ---
 
-func (stubBackend) CreateSpec(context.Context, string, string, string, string) (*storage.Spec, error) {
+func (stubBackend) CreateSpec(_ context.Context, _, _, _, _ string, _ storage.SpecProvenanceType, _ storage.SpecProvenanceDetail, _ *storage.SparkOutput, _ *storage.ShapeOutput, _ *storage.SpecifyOutput, _ *storage.DecomposeOutput) (*storage.Spec, error) {
 	return nil, errNotImplemented
 }
 

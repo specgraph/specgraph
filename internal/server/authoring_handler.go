@@ -77,7 +77,7 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	var safetyFlags []authoring.SafetyFlagResult
 	ops := []func(context.Context) error{
 		func(c context.Context) error {
-			if _, err := store.CreateSpec(c, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity); err != nil {
+			if _, err := store.CreateSpec(c, msg.Slug, msg.Output.GetSeed(), defaultSpecPriority, defaultSpecComplexity, storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil); err != nil {
 				return fmt.Errorf("create spec: %w", err)
 			}
 			return nil

@@ -68,7 +68,53 @@ func (h *SpecHandler) CreateSpec(ctx context.Context, req *connect.Request[specv
 			fmt.Errorf("invalid complexity %q; valid values: low, medium, high", complexity))
 	}
 
-	spec, err := store.CreateSpec(ctx, msg.Slug, msg.Intent, priority, complexity)
+	// Decode provenance fields from the request.
+	pt := storage.SpecProvenanceAuthored
+	if msg.GetProvenanceType() != specv1.SpecProvenance_SPEC_PROVENANCE_UNSPECIFIED {
+		var ptErr error
+		pt, ptErr = specProvenanceFromProto(msg.GetProvenanceType())
+		if ptErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, ptErr)
+		}
+	}
+	pd := createSpecProvenanceDetailFromProto(msg)
+
+	// Convert stage outputs from proto to domain (nil if not set).
+	var spark *storage.SparkOutput
+	if msg.SparkOutput != nil {
+		var sparkErr error
+		spark, sparkErr = sparkOutputToDomain(msg.SparkOutput)
+		if sparkErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, sparkErr)
+		}
+	}
+	var shape *storage.ShapeOutput
+	if msg.ShapeOutput != nil {
+		var shapeErr error
+		shape, shapeErr = shapeOutputToDomain(msg.ShapeOutput)
+		if shapeErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, shapeErr)
+		}
+	}
+	var specify *storage.SpecifyOutput
+	if msg.SpecifyOutput != nil {
+		specify = specifyOutputToDomain(msg.SpecifyOutput)
+	}
+	var decompose *storage.DecomposeOutput
+	if msg.DecomposeOutput != nil {
+		var decompErr error
+		decompose, decompErr = decomposeOutputToDomain(msg.DecomposeOutput)
+		if decompErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, decompErr)
+		}
+	}
+
+	// Validate provenance invariants.
+	if valErr := validateProvenance(pt, pd, spark, shape, specify, decompose); valErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, valErr)
+	}
+
+	spec, err := store.CreateSpec(ctx, msg.Slug, msg.Intent, priority, complexity, pt, pd, spark, shape, specify, decompose)
 	if err != nil {
 		return nil, specError(err)
 	}

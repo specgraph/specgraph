@@ -17,7 +17,87 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file specgraph/v1/spec.proto.
  */
 export const file_specgraph_v1_spec: GenFile = /*@__PURE__*/
-  fileDesc("ChdzcGVjZ3JhcGgvdjEvc3BlYy5wcm90bxIMc3BlY2dyYXBoLnYxIosFCgRTcGVjEgoKAmlkGAEgASgJEgwKBHNsdWcYAiABKAkSDgoGaW50ZW50GAMgASgJEg0KBXN0YWdlGAQgASgJEhAKCHByaW9yaXR5GAUgASgJEhIKCmNvbXBsZXhpdHkYBiABKAkSDwoHdmVyc2lvbhgHIAEoBRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCglsaWZlY3ljbGUYCiABKA4yGy5zcGVjZ3JhcGgudjEuU3BlY0xpZmVjeWNsZRIVCg1zdXBlcnNlZGVkX2J5GAsgASgJEhIKCnN1cGVyc2VkZXMYDCABKAkSDQoFbm90ZXMYDiABKAkSFAoMY29udGVudF9oYXNoGA8gASgJEjgKEWNvbnZlcnNhdGlvbl9sb2dzGBAgAygLMh0uc3BlY2dyYXBoLnYxLkNvbnZlcnNhdGlvbkxvZxIvCgxzcGFya19vdXRwdXQYESABKAsyGS5zcGVjZ3JhcGgudjEuU3BhcmtPdXRwdXQSLwoMc2hhcGVfb3V0cHV0GBIgASgLMhkuc3BlY2dyYXBoLnYxLlNoYXBlT3V0cHV0EjMKDnNwZWNpZnlfb3V0cHV0GBMgASgLMhsuc3BlY2dyYXBoLnYxLlNwZWNpZnlPdXRwdXQSNwoQZGVjb21wb3NlX291dHB1dBgUIAEoCzIdLnNwZWNncmFwaC52MS5EZWNvbXBvc2VPdXRwdXQSGgoSY29udmVyc2F0aW9uX2NvdW50GBUgASgFSgQIDRAOUgdoaXN0b3J5IkIKC0ZpZWxkQ2hhbmdlEg0KBWZpZWxkGAEgASgJEhEKCW9sZF92YWx1ZRgCIAEoCRIRCgluZXdfdmFsdWUYAyABKAki3QEKDkNoYW5nZUxvZ0VudHJ5EgoKAmlkGAEgASgJEg8KB3ZlcnNpb24YAiABKAUSDQoFc3RhZ2UYAyABKAkSFAoMY29udGVudF9oYXNoGAQgASgJEhIKCmNoZWNrcG9pbnQYBSABKAgSDwoHc3VtbWFyeRgGIAEoCRIOCgZyZWFzb24YByABKAkSKgoHY2hhbmdlcxgIIAMoCzIZLnNwZWNncmFwaC52MS5GaWVsZENoYW5nZRIoCgRkYXRlGAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJiChJMaXN0Q2hhbmdlc1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIYChBjaGVja3BvaW50c19vbmx5GAIgASgIEhUKDXNpbmNlX3ZlcnNpb24YAyABKAUSDQoFbGltaXQYBCABKAUiRAoTTGlzdENoYW5nZXNSZXNwb25zZRItCgdlbnRyaWVzGAEgAygLMhwuc3BlY2dyYXBoLnYxLkNoYW5nZUxvZ0VudHJ5ImwKCklubGluZURpZmYSJwoCb3AYASABKA4yGy5zcGVjZ3JhcGgudjEuSW5saW5lRGlmZi5PcBIMCgR0ZXh0GAIgASgJIicKAk9wEgkKBUVRVUFMEAASCgoGSU5TRVJUEAESCgoGREVMRVRFEAIiawoLVmVyc2lvbkRpZmYSDQoFZmllbGQYASABKAkSEQoJb2xkX3ZhbHVlGAIgASgJEhEKCW5ld192YWx1ZRgDIAEoCRInCgVodW5rcxgEIAMoCzIYLnNwZWNncmFwaC52MS5JbmxpbmVEaWZmIlAKFkNvbXBhcmVWZXJzaW9uc1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIUCgxmcm9tX3ZlcnNpb24YAiABKAUSEgoKdG9fdmVyc2lvbhgDIAEoBSKTAQoXQ29tcGFyZVZlcnNpb25zUmVzcG9uc2USFAoMZnJvbV92ZXJzaW9uGAEgASgFEhIKCnRvX3ZlcnNpb24YAiABKAUSEgoKZnJvbV9zdGFnZRgDIAEoCRIQCgh0b19zdGFnZRgEIAEoCRIoCgVkaWZmcxgFIAMoCzIZLnNwZWNncmFwaC52MS5WZXJzaW9uRGlmZiJXChFDcmVhdGVTcGVjUmVxdWVzdBIMCgRzbHVnGAEgASgJEg4KBmludGVudBgCIAEoCRIQCghwcmlvcml0eRgDIAEoCRISCgpjb21wbGV4aXR5GAQgASgJIh4KDkdldFNwZWNSZXF1ZXN0EgwKBHNsdWcYASABKAkiQgoQTGlzdFNwZWNzUmVxdWVzdBINCgVzdGFnZRgBIAEoCRIQCghwcmlvcml0eRgCIAEoCRINCgVsaW1pdBgDIAEoBSI2ChFMaXN0U3BlY3NSZXNwb25zZRIhCgVzcGVjcxgBIAMoCzISLnNwZWNncmFwaC52MS5TcGVjIskBChFVcGRhdGVTcGVjUmVxdWVzdBIMCgRzbHVnGAEgASgJEhMKBmludGVudBgCIAEoCUgAiAEBEhIKBXN0YWdlGAMgASgJSAGIAQESFQoIcHJpb3JpdHkYBCABKAlIAogBARIXCgpjb21wbGV4aXR5GAUgASgJSAOIAQESEgoFbm90ZXMYBiABKAlIBIgBAUIJCgdfaW50ZW50QggKBl9zdGFnZUILCglfcHJpb3JpdHlCDQoLX2NvbXBsZXhpdHlCCAoGX25vdGVzIjYKEkNyZWF0ZVNwZWNSZXNwb25zZRIgCgRzcGVjGAEgASgLMhIuc3BlY2dyYXBoLnYxLlNwZWMiMwoPR2V0U3BlY1Jlc3BvbnNlEiAKBHNwZWMYASABKAsyEi5zcGVjZ3JhcGgudjEuU3BlYyI2ChJVcGRhdGVTcGVjUmVzcG9uc2USIAoEc3BlYxgBIAEoCzISLnNwZWNncmFwaC52MS5TcGVjKmMKDVNwZWNMaWZlY3ljbGUSHgoaU1BFQ19MSUZFQ1lDTEVfVU5TUEVDSUZJRUQQABIXChNTUEVDX0xJRkVDWUNMRV9UQVNLEAESGQoVU1BFQ19MSUZFQ1lDTEVfTElWSU5HEAIy+QMKC1NwZWNTZXJ2aWNlEk8KCkNyZWF0ZVNwZWMSHy5zcGVjZ3JhcGgudjEuQ3JlYXRlU3BlY1JlcXVlc3QaIC5zcGVjZ3JhcGgudjEuQ3JlYXRlU3BlY1Jlc3BvbnNlEkYKB0dldFNwZWMSHC5zcGVjZ3JhcGgudjEuR2V0U3BlY1JlcXVlc3QaHS5zcGVjZ3JhcGgudjEuR2V0U3BlY1Jlc3BvbnNlEkwKCUxpc3RTcGVjcxIeLnNwZWNncmFwaC52MS5MaXN0U3BlY3NSZXF1ZXN0Gh8uc3BlY2dyYXBoLnYxLkxpc3RTcGVjc1Jlc3BvbnNlEk8KClVwZGF0ZVNwZWMSHy5zcGVjZ3JhcGgudjEuVXBkYXRlU3BlY1JlcXVlc3QaIC5zcGVjZ3JhcGgudjEuVXBkYXRlU3BlY1Jlc3BvbnNlElIKC0xpc3RDaGFuZ2VzEiAuc3BlY2dyYXBoLnYxLkxpc3RDaGFuZ2VzUmVxdWVzdBohLnNwZWNncmFwaC52MS5MaXN0Q2hhbmdlc1Jlc3BvbnNlEl4KD0NvbXBhcmVWZXJzaW9ucxIkLnNwZWNncmFwaC52MS5Db21wYXJlVmVyc2lvbnNSZXF1ZXN0GiUuc3BlY2dyYXBoLnYxLkNvbXBhcmVWZXJzaW9uc1Jlc3BvbnNlQj1aO2dpdGh1Yi5jb20vc3BlY2dyYXBoL3NwZWNncmFwaC9nZW4vc3BlY2dyYXBoL3YxO3NwZWNncmFwaHYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_specgraph_v1_authoring]);
+  fileDesc("ChdzcGVjZ3JhcGgvdjEvc3BlYy5wcm90bxIMc3BlY2dyYXBoLnYxIhQKEkF1dGhvcmVkUHJvdmVuYW5jZSJ1ChtSZXRyb2FjdGl2ZUZyb21QclByb3ZlbmFuY2USCwoDdXJsGAEgASgJEgsKA3NoYRgCIAEoCRItCgltZXJnZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEg0KBXRpdGxlGAQgASgJIjcKEkRlY2xhcmVkUHJvdmVuYW5jZRITCgtkZWNsYXJlZF9ieRgBIAEoCRIMCgRub3RlGAIgASgJIt0GCgRTcGVjEgoKAmlkGAEgASgJEgwKBHNsdWcYAiABKAkSDgoGaW50ZW50GAMgASgJEg0KBXN0YWdlGAQgASgJEhAKCHByaW9yaXR5GAUgASgJEhIKCmNvbXBsZXhpdHkYBiABKAkSDwoHdmVyc2lvbhgHIAEoBRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgp1cGRhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI1Cg9wcm92ZW5hbmNlX3R5cGUYCiABKA4yHC5zcGVjZ3JhcGgudjEuU3BlY1Byb3ZlbmFuY2USFQoNc3VwZXJzZWRlZF9ieRgLIAEoCRISCgpzdXBlcnNlZGVzGAwgASgJEg0KBW5vdGVzGA4gASgJEhQKDGNvbnRlbnRfaGFzaBgPIAEoCRI4ChFjb252ZXJzYXRpb25fbG9ncxgQIAMoCzIdLnNwZWNncmFwaC52MS5Db252ZXJzYXRpb25Mb2cSLwoMc3Bhcmtfb3V0cHV0GBEgASgLMhkuc3BlY2dyYXBoLnYxLlNwYXJrT3V0cHV0Ei8KDHNoYXBlX291dHB1dBgSIAEoCzIZLnNwZWNncmFwaC52MS5TaGFwZU91dHB1dBIzCg5zcGVjaWZ5X291dHB1dBgTIAEoCzIbLnNwZWNncmFwaC52MS5TcGVjaWZ5T3V0cHV0EjcKEGRlY29tcG9zZV9vdXRwdXQYFCABKAsyHS5zcGVjZ3JhcGgudjEuRGVjb21wb3NlT3V0cHV0EhoKEmNvbnZlcnNhdGlvbl9jb3VudBgVIAEoBRI0CghhdXRob3JlZBgWIAEoCzIgLnNwZWNncmFwaC52MS5BdXRob3JlZFByb3ZlbmFuY2VIABJIChNyZXRyb2FjdGl2ZV9mcm9tX3ByGBcgASgLMikuc3BlY2dyYXBoLnYxLlJldHJvYWN0aXZlRnJvbVByUHJvdmVuYW5jZUgAEjQKCGRlY2xhcmVkGBggASgLMiAuc3BlY2dyYXBoLnYxLkRlY2xhcmVkUHJvdmVuYW5jZUgAQhMKEXByb3ZlbmFuY2VfZGV0YWlsSgQIDRAOUgdoaXN0b3J5IkIKC0ZpZWxkQ2hhbmdlEg0KBWZpZWxkGAEgASgJEhEKCW9sZF92YWx1ZRgCIAEoCRIRCgluZXdfdmFsdWUYAyABKAki3QEKDkNoYW5nZUxvZ0VudHJ5EgoKAmlkGAEgASgJEg8KB3ZlcnNpb24YAiABKAUSDQoFc3RhZ2UYAyABKAkSFAoMY29udGVudF9oYXNoGAQgASgJEhIKCmNoZWNrcG9pbnQYBSABKAgSDwoHc3VtbWFyeRgGIAEoCRIOCgZyZWFzb24YByABKAkSKgoHY2hhbmdlcxgIIAMoCzIZLnNwZWNncmFwaC52MS5GaWVsZENoYW5nZRIoCgRkYXRlGAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJiChJMaXN0Q2hhbmdlc1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIYChBjaGVja3BvaW50c19vbmx5GAIgASgIEhUKDXNpbmNlX3ZlcnNpb24YAyABKAUSDQoFbGltaXQYBCABKAUiRAoTTGlzdENoYW5nZXNSZXNwb25zZRItCgdlbnRyaWVzGAEgAygLMhwuc3BlY2dyYXBoLnYxLkNoYW5nZUxvZ0VudHJ5ImwKCklubGluZURpZmYSJwoCb3AYASABKA4yGy5zcGVjZ3JhcGgudjEuSW5saW5lRGlmZi5PcBIMCgR0ZXh0GAIgASgJIicKAk9wEgkKBUVRVUFMEAASCgoGSU5TRVJUEAESCgoGREVMRVRFEAIiawoLVmVyc2lvbkRpZmYSDQoFZmllbGQYASABKAkSEQoJb2xkX3ZhbHVlGAIgASgJEhEKCW5ld192YWx1ZRgDIAEoCRInCgVodW5rcxgEIAMoCzIYLnNwZWNncmFwaC52MS5JbmxpbmVEaWZmIlAKFkNvbXBhcmVWZXJzaW9uc1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIUCgxmcm9tX3ZlcnNpb24YAiABKAUSEgoKdG9fdmVyc2lvbhgDIAEoBSKTAQoXQ29tcGFyZVZlcnNpb25zUmVzcG9uc2USFAoMZnJvbV92ZXJzaW9uGAEgASgFEhIKCnRvX3ZlcnNpb24YAiABKAUSEgoKZnJvbV9zdGFnZRgDIAEoCRIQCgh0b19zdGFnZRgEIAEoCRIoCgVkaWZmcxgFIAMoCzIZLnNwZWNncmFwaC52MS5WZXJzaW9uRGlmZiKpBAoRQ3JlYXRlU3BlY1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRIOCgZpbnRlbnQYAiABKAkSEAoIcHJpb3JpdHkYAyABKAkSEgoKY29tcGxleGl0eRgEIAEoCRI1Cg9wcm92ZW5hbmNlX3R5cGUYBSABKA4yHC5zcGVjZ3JhcGgudjEuU3BlY1Byb3ZlbmFuY2USNAoIYXV0aG9yZWQYBiABKAsyIC5zcGVjZ3JhcGgudjEuQXV0aG9yZWRQcm92ZW5hbmNlSAASSAoTcmV0cm9hY3RpdmVfZnJvbV9wchgHIAEoCzIpLnNwZWNncmFwaC52MS5SZXRyb2FjdGl2ZUZyb21QclByb3ZlbmFuY2VIABI0CghkZWNsYXJlZBgIIAEoCzIgLnNwZWNncmFwaC52MS5EZWNsYXJlZFByb3ZlbmFuY2VIABIvCgxzcGFya19vdXRwdXQYCSABKAsyGS5zcGVjZ3JhcGgudjEuU3BhcmtPdXRwdXQSLwoMc2hhcGVfb3V0cHV0GAogASgLMhkuc3BlY2dyYXBoLnYxLlNoYXBlT3V0cHV0EjMKDnNwZWNpZnlfb3V0cHV0GAsgASgLMhsuc3BlY2dyYXBoLnYxLlNwZWNpZnlPdXRwdXQSNwoQZGVjb21wb3NlX291dHB1dBgMIAEoCzIdLnNwZWNncmFwaC52MS5EZWNvbXBvc2VPdXRwdXRCEwoRcHJvdmVuYW5jZV9kZXRhaWwiHgoOR2V0U3BlY1JlcXVlc3QSDAoEc2x1ZxgBIAEoCSJCChBMaXN0U3BlY3NSZXF1ZXN0Eg0KBXN0YWdlGAEgASgJEhAKCHByaW9yaXR5GAIgASgJEg0KBWxpbWl0GAMgASgFIjYKEUxpc3RTcGVjc1Jlc3BvbnNlEiEKBXNwZWNzGAEgAygLMhIuc3BlY2dyYXBoLnYxLlNwZWMiyQEKEVVwZGF0ZVNwZWNSZXF1ZXN0EgwKBHNsdWcYASABKAkSEwoGaW50ZW50GAIgASgJSACIAQESEgoFc3RhZ2UYAyABKAlIAYgBARIVCghwcmlvcml0eRgEIAEoCUgCiAEBEhcKCmNvbXBsZXhpdHkYBSABKAlIA4gBARISCgVub3RlcxgGIAEoCUgEiAEBQgkKB19pbnRlbnRCCAoGX3N0YWdlQgsKCV9wcmlvcml0eUINCgtfY29tcGxleGl0eUIICgZfbm90ZXMiNgoSQ3JlYXRlU3BlY1Jlc3BvbnNlEiAKBHNwZWMYASABKAsyEi5zcGVjZ3JhcGgudjEuU3BlYyIzCg9HZXRTcGVjUmVzcG9uc2USIAoEc3BlYxgBIAEoCzISLnNwZWNncmFwaC52MS5TcGVjIjYKElVwZGF0ZVNwZWNSZXNwb25zZRIgCgRzcGVjGAEgASgLMhIuc3BlY2dyYXBoLnYxLlNwZWMqlgEKDlNwZWNQcm92ZW5hbmNlEh8KG1NQRUNfUFJPVkVOQU5DRV9VTlNQRUNJRklFRBAAEhwKGFNQRUNfUFJPVkVOQU5DRV9BVVRIT1JFRBABEicKI1NQRUNfUFJPVkVOQU5DRV9SRVRST0FDVElWRV9GUk9NX1BSEAISHAoYU1BFQ19QUk9WRU5BTkNFX0RFQ0xBUkVEEAMy+QMKC1NwZWNTZXJ2aWNlEk8KCkNyZWF0ZVNwZWMSHy5zcGVjZ3JhcGgudjEuQ3JlYXRlU3BlY1JlcXVlc3QaIC5zcGVjZ3JhcGgudjEuQ3JlYXRlU3BlY1Jlc3BvbnNlEkYKB0dldFNwZWMSHC5zcGVjZ3JhcGgudjEuR2V0U3BlY1JlcXVlc3QaHS5zcGVjZ3JhcGgudjEuR2V0U3BlY1Jlc3BvbnNlEkwKCUxpc3RTcGVjcxIeLnNwZWNncmFwaC52MS5MaXN0U3BlY3NSZXF1ZXN0Gh8uc3BlY2dyYXBoLnYxLkxpc3RTcGVjc1Jlc3BvbnNlEk8KClVwZGF0ZVNwZWMSHy5zcGVjZ3JhcGgudjEuVXBkYXRlU3BlY1JlcXVlc3QaIC5zcGVjZ3JhcGgudjEuVXBkYXRlU3BlY1Jlc3BvbnNlElIKC0xpc3RDaGFuZ2VzEiAuc3BlY2dyYXBoLnYxLkxpc3RDaGFuZ2VzUmVxdWVzdBohLnNwZWNncmFwaC52MS5MaXN0Q2hhbmdlc1Jlc3BvbnNlEl4KD0NvbXBhcmVWZXJzaW9ucxIkLnNwZWNncmFwaC52MS5Db21wYXJlVmVyc2lvbnNSZXF1ZXN0GiUuc3BlY2dyYXBoLnYxLkNvbXBhcmVWZXJzaW9uc1Jlc3BvbnNlQj1aO2dpdGh1Yi5jb20vc3BlY2dyYXBoL3NwZWNncmFwaC9nZW4vc3BlY2dyYXBoL3YxO3NwZWNncmFwaHYxYgZwcm90bzM", [file_google_protobuf_timestamp, file_specgraph_v1_authoring]);
+
+/**
+ * AuthoredProvenance is the empty payload variant for AUTHORED specs.
+ * The audit trail for AUTHORED specs lives in stage outputs and conversation logs.
+ *
+ * @generated from message specgraph.v1.AuthoredProvenance
+ */
+export type AuthoredProvenance = Message<"specgraph.v1.AuthoredProvenance"> & {
+};
+
+/**
+ * Describes the message specgraph.v1.AuthoredProvenance.
+ * Use `create(AuthoredProvenanceSchema)` to create a new message.
+ */
+export const AuthoredProvenanceSchema: GenMessage<AuthoredProvenance> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_spec, 0);
+
+/**
+ * @generated from message specgraph.v1.RetroactiveFromPrProvenance
+ */
+export type RetroactiveFromPrProvenance = Message<"specgraph.v1.RetroactiveFromPrProvenance"> & {
+  /**
+   * PR URL
+   *
+   * @generated from field: string url = 1;
+   */
+  url: string;
+
+  /**
+   * merge commit SHA
+   *
+   * @generated from field: string sha = 2;
+   */
+  sha: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp merged_at = 3;
+   */
+  mergedAt?: Timestamp | undefined;
+
+  /**
+   * PR title at import time
+   *
+   * @generated from field: string title = 4;
+   */
+  title: string;
+};
+
+/**
+ * Describes the message specgraph.v1.RetroactiveFromPrProvenance.
+ * Use `create(RetroactiveFromPrProvenanceSchema)` to create a new message.
+ */
+export const RetroactiveFromPrProvenanceSchema: GenMessage<RetroactiveFromPrProvenance> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_spec, 1);
+
+/**
+ * @generated from message specgraph.v1.DeclaredProvenance
+ */
+export type DeclaredProvenance = Message<"specgraph.v1.DeclaredProvenance"> & {
+  /**
+   * human or system identifier
+   *
+   * @generated from field: string declared_by = 1;
+   */
+  declaredBy: string;
+
+  /**
+   * free-text rationale
+   *
+   * @generated from field: string note = 2;
+   */
+  note: string;
+};
+
+/**
+ * Describes the message specgraph.v1.DeclaredProvenance.
+ * Use `create(DeclaredProvenanceSchema)` to create a new message.
+ */
+export const DeclaredProvenanceSchema: GenMessage<DeclaredProvenance> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_spec, 2);
 
 /**
  * @generated from message specgraph.v1.Spec
@@ -45,7 +125,7 @@ export type Spec = Message<"specgraph.v1.Spec"> & {
   intent: string;
 
   /**
-   * spark | shape | specify | decompose | approved | in_progress | done
+   * spark | shape | specify | decompose | approved | in_progress | review | done | superseded | abandoned
    *
    * @generated from field: string stage = 4;
    */
@@ -81,11 +161,13 @@ export type Spec = Message<"specgraph.v1.Spec"> & {
   updatedAt?: Timestamp | undefined;
 
   /**
-   * task (default) | living
+   * WIRE-BREAK: field 10 was `SpecLifecycle lifecycle`. Repurposed at
+   * pre-1.0 (no production data); semantic intent preserved — it's still
+   * "how should the funnel treat this spec," with cleaner axes.
    *
-   * @generated from field: specgraph.v1.SpecLifecycle lifecycle = 10;
+   * @generated from field: specgraph.v1.SpecProvenance provenance_type = 10;
    */
-  lifecycle: SpecLifecycle;
+  provenanceType: SpecProvenance;
 
   /**
    * slug of replacement spec, if superseded
@@ -156,6 +238,33 @@ export type Spec = Message<"specgraph.v1.Spec"> & {
    * @generated from field: int32 conversation_count = 21;
    */
   conversationCount: number;
+
+  /**
+   * provenance_detail carries the type-specific payload for non-AUTHORED specs.
+   * The populated variant MUST match provenance_type — enforced server-side
+   * with storage.ErrProvenanceMismatch.
+   *
+   * @generated from oneof specgraph.v1.Spec.provenance_detail
+   */
+  provenanceDetail: {
+    /**
+     * @generated from field: specgraph.v1.AuthoredProvenance authored = 22;
+     */
+    value: AuthoredProvenance;
+    case: "authored";
+  } | {
+    /**
+     * @generated from field: specgraph.v1.RetroactiveFromPrProvenance retroactive_from_pr = 23;
+     */
+    value: RetroactiveFromPrProvenance;
+    case: "retroactiveFromPr";
+  } | {
+    /**
+     * @generated from field: specgraph.v1.DeclaredProvenance declared = 24;
+     */
+    value: DeclaredProvenance;
+    case: "declared";
+  } | { case: undefined; value?: undefined };
 };
 
 /**
@@ -163,7 +272,7 @@ export type Spec = Message<"specgraph.v1.Spec"> & {
  * Use `create(SpecSchema)` to create a new message.
  */
 export const SpecSchema: GenMessage<Spec> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 0);
+  messageDesc(file_specgraph_v1_spec, 3);
 
 /**
  * @generated from message specgraph.v1.FieldChange
@@ -190,7 +299,7 @@ export type FieldChange = Message<"specgraph.v1.FieldChange"> & {
  * Use `create(FieldChangeSchema)` to create a new message.
  */
 export const FieldChangeSchema: GenMessage<FieldChange> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 1);
+  messageDesc(file_specgraph_v1_spec, 4);
 
 /**
  * @generated from message specgraph.v1.ChangeLogEntry
@@ -247,7 +356,7 @@ export type ChangeLogEntry = Message<"specgraph.v1.ChangeLogEntry"> & {
  * Use `create(ChangeLogEntrySchema)` to create a new message.
  */
 export const ChangeLogEntrySchema: GenMessage<ChangeLogEntry> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 2);
+  messageDesc(file_specgraph_v1_spec, 5);
 
 /**
  * @generated from message specgraph.v1.ListChangesRequest
@@ -279,7 +388,7 @@ export type ListChangesRequest = Message<"specgraph.v1.ListChangesRequest"> & {
  * Use `create(ListChangesRequestSchema)` to create a new message.
  */
 export const ListChangesRequestSchema: GenMessage<ListChangesRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 3);
+  messageDesc(file_specgraph_v1_spec, 6);
 
 /**
  * @generated from message specgraph.v1.ListChangesResponse
@@ -296,7 +405,7 @@ export type ListChangesResponse = Message<"specgraph.v1.ListChangesResponse"> & 
  * Use `create(ListChangesResponseSchema)` to create a new message.
  */
 export const ListChangesResponseSchema: GenMessage<ListChangesResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 4);
+  messageDesc(file_specgraph_v1_spec, 7);
 
 /**
  * @generated from message specgraph.v1.InlineDiff
@@ -318,7 +427,7 @@ export type InlineDiff = Message<"specgraph.v1.InlineDiff"> & {
  * Use `create(InlineDiffSchema)` to create a new message.
  */
 export const InlineDiffSchema: GenMessage<InlineDiff> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 5);
+  messageDesc(file_specgraph_v1_spec, 8);
 
 /**
  * @generated from enum specgraph.v1.InlineDiff.Op
@@ -344,7 +453,7 @@ export enum InlineDiff_Op {
  * Describes the enum specgraph.v1.InlineDiff.Op.
  */
 export const InlineDiff_OpSchema: GenEnum<InlineDiff_Op> = /*@__PURE__*/
-  enumDesc(file_specgraph_v1_spec, 5, 0);
+  enumDesc(file_specgraph_v1_spec, 8, 0);
 
 /**
  * @generated from message specgraph.v1.VersionDiff
@@ -376,7 +485,7 @@ export type VersionDiff = Message<"specgraph.v1.VersionDiff"> & {
  * Use `create(VersionDiffSchema)` to create a new message.
  */
 export const VersionDiffSchema: GenMessage<VersionDiff> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 6);
+  messageDesc(file_specgraph_v1_spec, 9);
 
 /**
  * @generated from message specgraph.v1.CompareVersionsRequest
@@ -403,7 +512,7 @@ export type CompareVersionsRequest = Message<"specgraph.v1.CompareVersionsReques
  * Use `create(CompareVersionsRequestSchema)` to create a new message.
  */
 export const CompareVersionsRequestSchema: GenMessage<CompareVersionsRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 7);
+  messageDesc(file_specgraph_v1_spec, 10);
 
 /**
  * @generated from message specgraph.v1.CompareVersionsResponse
@@ -440,7 +549,7 @@ export type CompareVersionsResponse = Message<"specgraph.v1.CompareVersionsRespo
  * Use `create(CompareVersionsResponseSchema)` to create a new message.
  */
 export const CompareVersionsResponseSchema: GenMessage<CompareVersionsResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 8);
+  messageDesc(file_specgraph_v1_spec, 11);
 
 /**
  * @generated from message specgraph.v1.CreateSpecRequest
@@ -469,6 +578,56 @@ export type CreateSpecRequest = Message<"specgraph.v1.CreateSpecRequest"> & {
    * @generated from field: string complexity = 4;
    */
   complexity: string;
+
+  /**
+   * optional, defaults to AUTHORED
+   *
+   * @generated from field: specgraph.v1.SpecProvenance provenance_type = 5;
+   */
+  provenanceType: SpecProvenance;
+
+  /**
+   * @generated from oneof specgraph.v1.CreateSpecRequest.provenance_detail
+   */
+  provenanceDetail: {
+    /**
+     * @generated from field: specgraph.v1.AuthoredProvenance authored = 6;
+     */
+    value: AuthoredProvenance;
+    case: "authored";
+  } | {
+    /**
+     * @generated from field: specgraph.v1.RetroactiveFromPrProvenance retroactive_from_pr = 7;
+     */
+    value: RetroactiveFromPrProvenance;
+    case: "retroactiveFromPr";
+  } | {
+    /**
+     * @generated from field: specgraph.v1.DeclaredProvenance declared = 8;
+     */
+    value: DeclaredProvenance;
+    case: "declared";
+  } | { case: undefined; value?: undefined };
+
+  /**
+   * @generated from field: specgraph.v1.SparkOutput spark_output = 9;
+   */
+  sparkOutput?: SparkOutput | undefined;
+
+  /**
+   * @generated from field: specgraph.v1.ShapeOutput shape_output = 10;
+   */
+  shapeOutput?: ShapeOutput | undefined;
+
+  /**
+   * @generated from field: specgraph.v1.SpecifyOutput specify_output = 11;
+   */
+  specifyOutput?: SpecifyOutput | undefined;
+
+  /**
+   * @generated from field: specgraph.v1.DecomposeOutput decompose_output = 12;
+   */
+  decomposeOutput?: DecomposeOutput | undefined;
 };
 
 /**
@@ -476,7 +635,7 @@ export type CreateSpecRequest = Message<"specgraph.v1.CreateSpecRequest"> & {
  * Use `create(CreateSpecRequestSchema)` to create a new message.
  */
 export const CreateSpecRequestSchema: GenMessage<CreateSpecRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 9);
+  messageDesc(file_specgraph_v1_spec, 12);
 
 /**
  * @generated from message specgraph.v1.GetSpecRequest
@@ -493,7 +652,7 @@ export type GetSpecRequest = Message<"specgraph.v1.GetSpecRequest"> & {
  * Use `create(GetSpecRequestSchema)` to create a new message.
  */
 export const GetSpecRequestSchema: GenMessage<GetSpecRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 10);
+  messageDesc(file_specgraph_v1_spec, 13);
 
 /**
  * @generated from message specgraph.v1.ListSpecsRequest
@@ -526,7 +685,7 @@ export type ListSpecsRequest = Message<"specgraph.v1.ListSpecsRequest"> & {
  * Use `create(ListSpecsRequestSchema)` to create a new message.
  */
 export const ListSpecsRequestSchema: GenMessage<ListSpecsRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 11);
+  messageDesc(file_specgraph_v1_spec, 14);
 
 /**
  * @generated from message specgraph.v1.ListSpecsResponse
@@ -543,7 +702,7 @@ export type ListSpecsResponse = Message<"specgraph.v1.ListSpecsResponse"> & {
  * Use `create(ListSpecsResponseSchema)` to create a new message.
  */
 export const ListSpecsResponseSchema: GenMessage<ListSpecsResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 12);
+  messageDesc(file_specgraph_v1_spec, 15);
 
 /**
  * @generated from message specgraph.v1.UpdateSpecRequest
@@ -587,7 +746,7 @@ export type UpdateSpecRequest = Message<"specgraph.v1.UpdateSpecRequest"> & {
  * Use `create(UpdateSpecRequestSchema)` to create a new message.
  */
 export const UpdateSpecRequestSchema: GenMessage<UpdateSpecRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 13);
+  messageDesc(file_specgraph_v1_spec, 16);
 
 /**
  * @generated from message specgraph.v1.CreateSpecResponse
@@ -604,7 +763,7 @@ export type CreateSpecResponse = Message<"specgraph.v1.CreateSpecResponse"> & {
  * Use `create(CreateSpecResponseSchema)` to create a new message.
  */
 export const CreateSpecResponseSchema: GenMessage<CreateSpecResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 14);
+  messageDesc(file_specgraph_v1_spec, 17);
 
 /**
  * @generated from message specgraph.v1.GetSpecResponse
@@ -621,7 +780,7 @@ export type GetSpecResponse = Message<"specgraph.v1.GetSpecResponse"> & {
  * Use `create(GetSpecResponseSchema)` to create a new message.
  */
 export const GetSpecResponseSchema: GenMessage<GetSpecResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 15);
+  messageDesc(file_specgraph_v1_spec, 18);
 
 /**
  * @generated from message specgraph.v1.UpdateSpecResponse
@@ -638,32 +797,47 @@ export type UpdateSpecResponse = Message<"specgraph.v1.UpdateSpecResponse"> & {
  * Use `create(UpdateSpecResponseSchema)` to create a new message.
  */
 export const UpdateSpecResponseSchema: GenMessage<UpdateSpecResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_spec, 16);
+  messageDesc(file_specgraph_v1_spec, 19);
 
 /**
- * @generated from enum specgraph.v1.SpecLifecycle
+ * SpecProvenance records how a spec entered the graph. Replaces the
+ * earlier SpecLifecycle field (task/living) at pre-1.0 with a clean
+ * wire-break — see docs/superpowers/specs/2026-05-20-spec-provenance-model-design.md.
+ *
+ * @generated from enum specgraph.v1.SpecProvenance
  */
-export enum SpecLifecycle {
+export enum SpecProvenance {
   /**
-   * @generated from enum value: SPEC_LIFECYCLE_UNSPECIFIED = 0;
+   * @generated from enum value: SPEC_PROVENANCE_UNSPECIFIED = 0;
    */
   UNSPECIFIED = 0,
 
   /**
-   * @generated from enum value: SPEC_LIFECYCLE_TASK = 1;
+   * forward-authored via the funnel
+   *
+   * @generated from enum value: SPEC_PROVENANCE_AUTHORED = 1;
    */
-  TASK = 1,
+  AUTHORED = 1,
 
   /**
-   * @generated from enum value: SPEC_LIFECYCLE_LIVING = 2;
+   * imported from a merged PR/commit
+   *
+   * @generated from enum value: SPEC_PROVENANCE_RETROACTIVE_FROM_PR = 2;
    */
-  LIVING = 2,
+  RETROACTIVE_FROM_PR = 2,
+
+  /**
+   * human-declared as describing existing reality
+   *
+   * @generated from enum value: SPEC_PROVENANCE_DECLARED = 3;
+   */
+  DECLARED = 3,
 }
 
 /**
- * Describes the enum specgraph.v1.SpecLifecycle.
+ * Describes the enum specgraph.v1.SpecProvenance.
  */
-export const SpecLifecycleSchema: GenEnum<SpecLifecycle> = /*@__PURE__*/
+export const SpecProvenanceSchema: GenEnum<SpecProvenance> = /*@__PURE__*/
   enumDesc(file_specgraph_v1_spec, 0);
 
 /**

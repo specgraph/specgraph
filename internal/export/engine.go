@@ -386,7 +386,7 @@ func (e *Engine) writeEntities(ctx context.Context, doc *Document) (*ImportResul
 
 	// 3. Specs — create then restore stage via Store*Output + TransitionStage
 	for _, spec := range doc.Data.Specs {
-		if _, err := e.backend.CreateSpec(ctx, spec.Slug, spec.Intent, string(spec.Priority), string(spec.Complexity)); err != nil {
+		if _, err := e.backend.CreateSpec(ctx, spec.Slug, spec.Intent, string(spec.Priority), string(spec.Complexity), storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil); err != nil {
 			return nil, fmt.Errorf("create spec %q: %w", spec.Slug, err)
 		}
 
@@ -445,24 +445,15 @@ func (e *Engine) writeEntities(ctx context.Context, doc *Document) (*ImportResul
 			}
 		}
 
-		// Restore lifecycle and notes via UpdateSpec.
-		if spec.Lifecycle != "" || spec.Notes != "" || spec.SupersededBy != "" || spec.Supersedes != "" {
-			var lifecycle, notes *string
-			if spec.Lifecycle != "" {
-				l := string(spec.Lifecycle)
-				lifecycle = &l
-			}
+		// Restore notes via UpdateSpec. (Lifecycle field removed in migration 007;
+		// provenance is now stored at create time, not replayed here.)
+		if spec.Notes != "" || spec.SupersededBy != "" || spec.Supersedes != "" {
 			if spec.Notes != "" {
-				notes = &spec.Notes
-			}
-			// UpdateSpec only supports intent, stage, priority, complexity, notes.
-			// lifecycle/supersededBy/supersedes are set via other paths.
-			if notes != nil {
-				if _, err := e.backend.UpdateSpec(ctx, spec.Slug, nil, nil, nil, nil, notes); err != nil {
+				notes := spec.Notes
+				if _, err := e.backend.UpdateSpec(ctx, spec.Slug, nil, nil, nil, nil, &notes); err != nil {
 					res.Warnings = append(res.Warnings, fmt.Sprintf("update notes for %q: %v", spec.Slug, err))
 				}
 			}
-			_ = lifecycle // lifecycle is set implicitly by storage layer
 		}
 
 		res.Specs++
