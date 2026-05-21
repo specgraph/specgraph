@@ -4,9 +4,11 @@
 package main
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/specgraph/specgraph/internal/config"
@@ -26,16 +28,22 @@ var initCmd = &cobra.Command{
 		"(AGENTS.md, .mdc) are rewritten only when canonical or stale — " +
 		"user-edited (drifted) blocks are SKIPPED to preserve hand edits. " +
 		"runInit calls SyncAll with zero-value SyncOptions, so there is no " +
-		"--force path in this command; use `specgraph doctor --fix` (PR G) " +
+		"--force path in this command; use `specgraph doctor --fix` " +
 		"to overwrite drifted blocks.",
 	Args: cobra.MaximumNArgs(1),
 	RunE: runInit,
 }
 
-var initYes bool
+var (
+	initYes   bool
+	initCheck bool
+	initQuiet bool
+)
 
 func init() {
 	initCmd.Flags().BoolVar(&initYes, "yes", false, "non-interactive (accepted for backward compat; init is always non-interactive)")
+	initCmd.Flags().BoolVar(&initCheck, "check", false, "Exit non-zero if any managed file would be modified (no writes)")
+	initCmd.Flags().BoolVar(&initQuiet, "quiet", false, "Suppress per-file action lines")
 	rootCmd.AddCommand(initCmd)
 }
 
@@ -113,11 +121,65 @@ func runInit(_ *cobra.Command, args []string) error {
 		projectCreated = true
 	}
 
-	// Hard-coded for PR B; .specgraph.yaml-driven harnesses: list lands later.
-	harnesses := []managedfiles.Harness{
-		managedfiles.HarnessClaude,
-		managedfiles.HarnessCursor,
-		managedfiles.HarnessOpenCode,
+	// Read harnesses from .specgraph.yaml when present; fall back to all
+	// three when the list is empty (legacy configs and no-config case).
+	// Refuse to proceed when a non-empty harnesses: list resolves to nothing
+	// — that means every entry is a typo or removed harness, and silently
+	// no-op'ing would let init/--check pass while managed files stay out of
+	// sync. doctor's Project config group separately surfaces the offending
+	// names via UnknownNames; init keeps the discipline of refusing to run.
+	harnesses := harnessSliceFromConfig(pc.Harnesses)
+	if len(pc.Harnesses) > 0 && len(harnesses) == 0 {
+		return fmt.Errorf("no supported harnesses in .specgraph.yaml; got %v, expected at least one of: claude, cursor, opencode", pc.Harnesses)
+	}
+
+	// --check: inspect without writing; exit non-zero if any tracked managed
+	// file is not Synced. Init-only destinations that the repo's .gitignore
+	// covers (harness shims under .specgraph/agents/ and the cursor .mdc rules)
+	// are skipped: they're meant to materialize on a contributor's machine via
+	// `specgraph init`, never to be checked into git, so reporting them as
+	// "missing" on a fresh checkout would be a false positive that fails CI.
+	if initCheck {
+		states, err := managedfiles.InspectAll(cwd, harnesses, params)
+		if err != nil {
+			return fmt.Errorf("inspect for --check: %w", err)
+		}
+		nonSynced := 0
+		checked := 0
+		for _, s := range states {
+			if isCheckIgnored(s.Path) {
+				continue
+			}
+			checked++
+			if s.State != managedfiles.StateSynced {
+				nonSynced++
+				if !initQuiet {
+					fmt.Printf("%s: %s", s.Path, managedfiles.StateName(s.State))
+					if s.Detail != "" {
+						fmt.Printf(" — %s", s.Detail)
+					}
+					// Stale + Drifted: append size + sha256 of on-disk content to
+					// aid debugging across machines. When a file is reported stale
+					// on CI but synced locally (or vice versa), comparing these
+					// fingerprints quickly tells you whether the disk bytes differ
+					// or the canonical computation does.
+					if s.State == managedfiles.StateStale || s.State == managedfiles.StateDrifted {
+						if data, rerr := os.ReadFile(filepath.Join(cwd, s.Path)); rerr == nil {
+							h := sha256.Sum256(data)
+							fmt.Printf(" (size=%d sha256=%x)", len(data), h[:8])
+						}
+					}
+					fmt.Println()
+				}
+			}
+		}
+		if nonSynced > 0 {
+			return fmt.Errorf("%d managed file(s) not in sync", nonSynced)
+		}
+		if !initQuiet {
+			fmt.Printf("init --check: all %d tracked managed file(s) synced\n", checked)
+		}
+		return nil
 	}
 
 	results, syncErr := managedfiles.SyncAll(cwd, harnesses, params, managedfiles.SyncOptions{})
@@ -126,7 +188,7 @@ func runInit(_ *cobra.Command, args []string) error {
 		if r.Action == managedfiles.ActionError {
 			fmt.Fprintf(os.Stderr, "%s: error: %v\n", r.Path, r.Err)
 			failedPaths = append(failedPaths, r.Path)
-		} else {
+		} else if !initQuiet {
 			line := fmt.Sprintf("%s: %s", r.Path, managedfiles.ActionName(r.Action))
 			if r.Detail != "" {
 				line += " (" + r.Detail + ")"
@@ -147,4 +209,55 @@ func runInit(_ *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// checkIgnoredPrefixes lists path prefixes for init-only destinations that
+// the repo's .gitignore covers: harness shims under .specgraph/agents/ and
+// the two cursor .mdc rules. `init --check` skips these because they're
+// expected to be absent on a fresh checkout (CI, new contributor clone) and
+// only materialize when the contributor runs `specgraph init`. Keep in sync
+// with the relevant blocks in .gitignore.
+var checkIgnoredPrefixes = []string{
+	".specgraph/agents/",
+	".cursor/rules/specgraph.mdc",
+	".cursor/rules/specgraph-post-stage.mdc",
+}
+
+// isCheckIgnored returns true if path matches one of the .gitignore-covered
+// init-only destinations enumerated in checkIgnoredPrefixes. Used by
+// init --check so plugin:check (in `task check`) doesn't fail CI for files
+// that aren't tracked in git.
+func isCheckIgnored(path string) bool {
+	for _, p := range checkIgnoredPrefixes {
+		if path == p || strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// harnessSliceFromConfig maps strings from cfg.Harnesses to Harness enum
+// values. Unknown names are silently dropped (doctor's Project config
+// group surfaces them as drift). Empty input returns all three harnesses
+// — the legacy default when no harnesses are configured.
+func harnessSliceFromConfig(names []string) []managedfiles.Harness {
+	if len(names) == 0 {
+		return []managedfiles.Harness{
+			managedfiles.HarnessClaude,
+			managedfiles.HarnessCursor,
+			managedfiles.HarnessOpenCode,
+		}
+	}
+	var out []managedfiles.Harness
+	for _, n := range names {
+		switch n {
+		case "claude":
+			out = append(out, managedfiles.HarnessClaude)
+		case "cursor":
+			out = append(out, managedfiles.HarnessCursor)
+		case "opencode":
+			out = append(out, managedfiles.HarnessOpenCode)
+		}
+	}
+	return out
 }

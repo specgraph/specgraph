@@ -556,6 +556,92 @@ func TestRunInit_ResolvedServerURLFlowsIntoAgentsMD(t *testing.T) {
 	}
 }
 
+func TestInit_CheckFlag_ExitsZeroOnSyncedProject(t *testing.T) {
+	dir := t.TempDir()
+	// First, sync the project so all managed files are in a Synced state.
+	if _, err := runInitInDir(t, dir, []string{"my-project"}); err != nil {
+		t.Fatalf("initial sync: %v", err)
+	}
+	// Then run with --check; should exit 0 (nothing out of sync).
+	prev := initCheck
+	initCheck = true
+	t.Cleanup(func() { initCheck = prev })
+
+	out, err := runInitInDir(t, dir, nil)
+	if err != nil {
+		t.Errorf("--check on Synced project returned %v, want nil", err)
+	}
+	if !strings.Contains(out, "all") || !strings.Contains(out, "synced") {
+		t.Errorf("--check on Synced project missing summary line; stdout: %s", out)
+	}
+}
+
+func TestInit_CheckFlag_ExitsNonZeroOnStaleProject(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := runInitInDir(t, dir, []string{"my-project"}); err != nil {
+		t.Fatalf("initial sync: %v", err)
+	}
+	// Corrupt one managed file so it is no longer Synced.
+	if err := os.WriteFile(filepath.Join(dir, ".mcp.json"), []byte("not-json-anymore"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	prev := initCheck
+	initCheck = true
+	t.Cleanup(func() { initCheck = prev })
+
+	_, err := runInitInDir(t, dir, nil)
+	if err == nil {
+		t.Error("--check on stale project returned nil, want non-nil")
+	}
+}
+
+func TestInit_CheckFlag_QuietSuppressesOutput(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := runInitInDir(t, dir, []string{"my-project"}); err != nil {
+		t.Fatalf("initial sync: %v", err)
+	}
+
+	prevCheck := initCheck
+	prevQuiet := initQuiet
+	initCheck = true
+	initQuiet = true
+	t.Cleanup(func() {
+		initCheck = prevCheck
+		initQuiet = prevQuiet
+	})
+
+	out, err := runInitInDir(t, dir, nil)
+	if err != nil {
+		t.Errorf("--check --quiet on Synced project returned %v, want nil", err)
+	}
+	if out != "" {
+		t.Errorf("--check --quiet produced output, want none; got: %s", out)
+	}
+}
+
+func TestInit_QuietFlag_SuppressesPerFileLines(t *testing.T) {
+	dir := t.TempDir()
+
+	prev := initQuiet
+	initQuiet = true
+	t.Cleanup(func() { initQuiet = prev })
+
+	out, err := runInitInDir(t, dir, []string{"my-project"})
+	if err != nil {
+		t.Fatalf("--quiet init: %v", err)
+	}
+	// Per-file action lines must be absent (e.g. ".mcp.json: created").
+	for _, p := range []string{".cursor/mcp.json", ".mcp.json", "opencode.json"} {
+		if strings.Contains(out, p+": created") {
+			t.Errorf("--quiet still emitted per-file line for %s; stdout: %s", p, out)
+		}
+	}
+	// The "Initialized project" banner should still appear (it's not a per-file line).
+	if !strings.Contains(out, "Initialized project") {
+		t.Errorf("--quiet suppressed the init banner; stdout: %s", out)
+	}
+}
+
 func TestRunInit_PropagatesPointerSyncErrors(t *testing.T) {
 	dir := t.TempDir()
 
