@@ -19,7 +19,7 @@ func TestListChanges_ReturnsEntries(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "cl-entries", "initial intent", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "cl-entries", "initial intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	newIntent := "updated intent"
@@ -48,7 +48,7 @@ func TestListChanges_CheckpointsOnly(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "cl-checkpoints", "intent", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "cl-checkpoints", "intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	newIntent := "updated"
@@ -70,7 +70,7 @@ func TestListChanges_SinceVersion(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "cl-since", "intent", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "cl-since", "intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	newIntent := "v2"
@@ -88,7 +88,7 @@ func TestListChanges_Limit(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "cl-limit", "intent", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "cl-limit", "intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	for i := range 5 {
@@ -118,9 +118,9 @@ func TestListAllChanges(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "all-cl-alpha", "alpha intent", "p1", "low")
+	_, err := store.CreateSpec(ctx, "all-cl-alpha", "alpha intent", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "all-cl-beta", "beta intent", "p2", "high")
+	_, err = store.CreateSpec(ctx, "all-cl-beta", "beta intent", "p2", "high", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	newIntent := "alpha updated"
@@ -163,7 +163,7 @@ func TestListChanges_AfterAmend(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "amend-changelog", "original intent", "p2", "medium")
+	_, err := store.CreateSpec(ctx, "amend-changelog", "original intent", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	inProgressStage := "in_progress"
@@ -208,12 +208,12 @@ func TestListChanges_AfterSupersede(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "old-spec", "old intent", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "old-spec", "old intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	doneStage := "done"
 	_, err = store.UpdateSpec(ctx, "old-spec", nil, &doneStage, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "new-spec", "new intent", "p1", "medium")
+	_, err = store.CreateSpec(ctx, "new-spec", "new intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, _, err = store.LifecycleSupersedeSpec(ctx, "old-spec", "new-spec")
@@ -278,7 +278,7 @@ func TestListChanges_AfterAbandon(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "abandon-changelog", "original intent", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "abandon-changelog", "original intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.LifecycleAbandonSpec(ctx, "abandon-changelog", "no longer needed")

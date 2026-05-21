@@ -115,3 +115,29 @@ var (
 	// ErrSyncMappingExists is returned when a sync mapping already exists for the spec+adapter pair.
 	ErrSyncMappingExists = errors.New("sync mapping already exists for this spec and adapter")
 )
+
+// --- Provenance ---
+
+// ErrProvenanceMismatch is returned when provenance_type and provenance_detail are inconsistent.
+var ErrProvenanceMismatch = errors.New("provenance_type does not match populated provenance_detail variant")
+
+// ErrAuthoredRequiresSparkOnly is returned when an AUTHORED spec create includes stage outputs beyond spark.
+var ErrAuthoredRequiresSparkOnly = errors.New("AUTHORED provenance: only spark_output may be set at create")
+
+// ErrRetroactiveRequiresAllOutputs is returned when a RETROACTIVE_FROM_PR create is missing one or more funnel outputs.
+var ErrRetroactiveRequiresAllOutputs = errors.New("RETROACTIVE_FROM_PR provenance: spark/shape/specify/decompose outputs all required")
+
+// ErrRetroactiveRequiresPRRef is returned when a RETROACTIVE_FROM_PR create is missing url or sha.
+var ErrRetroactiveRequiresPRRef = errors.New("RETROACTIVE_FROM_PR provenance: url and sha are required")
+
+// ErrDeclaredRequiresAllOutputs is returned when a DECLARED create is missing one or more funnel outputs.
+var ErrDeclaredRequiresAllOutputs = errors.New("DECLARED provenance: spark/shape/specify/decompose outputs all required")
+
+// ErrDeclaredRequiresDeclaredBy is returned when a DECLARED create is missing declared_by.
+var ErrDeclaredRequiresDeclaredBy = errors.New("DECLARED provenance: declared_by is required")
+
+// ErrClaimRequiresAuthored is returned when claim is invoked on a non-AUTHORED spec.
+var ErrClaimRequiresAuthored = errors.New("claim requires provenance_type = AUTHORED")
+
+// ErrCompletionRequiresAuthored is returned when report-completion is invoked on a non-AUTHORED spec.
+var ErrCompletionRequiresAuthored = errors.New("report-completion requires provenance_type = AUTHORED")

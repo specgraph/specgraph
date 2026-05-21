@@ -31,6 +31,15 @@ func newMockClaimBackend() *mockClaimBackend {
 	return &mockClaimBackend{claims: make(map[string]*storage.Claim)}
 }
 
+// GetSpec returns a minimal AUTHORED spec so the claim handler's provenance
+// gate passes without requiring a full storage backend.
+func (m *mockClaimBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
+	return &storage.Spec{
+		Slug:       slug,
+		Provenance: storage.SpecProvenanceAuthored,
+	}, nil
+}
+
 func (m *mockClaimBackend) ClaimSpec(_ context.Context, slug, agent string, leaseDuration time.Duration) (*storage.Claim, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

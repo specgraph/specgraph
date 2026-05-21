@@ -12,13 +12,13 @@ import (
 
 func TestSpec(t *testing.T) {
 	s := &specv1.Spec{
-		Slug:       "login-api",
-		Intent:     "Implement OAuth2 login flow",
-		Stage:      "specify",
-		Priority:   "p1",
-		Complexity: "medium",
-		Version:    3,
-		Lifecycle:  specv1.SpecLifecycle_SPEC_LIFECYCLE_TASK,
+		Slug:           "login-api",
+		Intent:         "Implement OAuth2 login flow",
+		Stage:          "specify",
+		Priority:       "p1",
+		Complexity:     "medium",
+		Version:        3,
+		ProvenanceType: specv1.SpecProvenance_SPEC_PROVENANCE_AUTHORED,
 	}
 	got := Spec(s)
 	if !strings.Contains(got, "# login-api") {
@@ -33,8 +33,8 @@ func TestSpec(t *testing.T) {
 	if !strings.Contains(got, "| Priority | p1 |") {
 		t.Error("missing priority row")
 	}
-	if !strings.Contains(got, "| Lifecycle | task |") {
-		t.Error("missing lifecycle row")
+	if !strings.Contains(got, "| Provenance | AUTHORED |") {
+		t.Error("missing provenance row")
 	}
 }
 

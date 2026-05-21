@@ -139,19 +139,20 @@ func TestSpecStage_PrecedingAuthStage(t *testing.T) {
 	}
 }
 
-func TestSpecLifecycle_IsValid(t *testing.T) {
+func TestSpecProvenanceType_IsValid(t *testing.T) {
 	tests := []struct {
-		lifecycle storage.SpecLifecycle
-		expected  bool
+		provenance storage.SpecProvenanceType
+		expected   bool
 	}{
-		{storage.SpecLifecycleTask, true},
-		{storage.SpecLifecycleLiving, true},
-		{storage.SpecLifecycle("bogus"), false},
-		{storage.SpecLifecycle(""), false},
+		{storage.SpecProvenanceAuthored, true},
+		{storage.SpecProvenanceDeclared, true},
+		{storage.SpecProvenanceRetroactiveFromPR, true},
+		{storage.SpecProvenanceType("bogus"), false},
+		{storage.SpecProvenanceType(""), false},
 	}
 	for _, tc := range tests {
-		t.Run(string(tc.lifecycle), func(t *testing.T) {
-			assert.Equal(t, tc.expected, tc.lifecycle.IsValid())
+		t.Run(string(tc.provenance), func(t *testing.T) {
+			assert.Equal(t, tc.expected, tc.provenance.IsValid())
 		})
 	}
 }

@@ -21,7 +21,7 @@ func TestRecordConversation_Basic(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "conv-basic", "test intent", "p2", "medium")
+	_, err := store.CreateSpec(ctx, "conv-basic", "test intent", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	entry := storage.ConversationLogEntry{
@@ -58,7 +58,7 @@ func TestRecordConversation_ChainEdges(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "conv-chain", "test intent", "p2", "medium")
+	_, err := store.CreateSpec(ctx, "conv-chain", "test intent", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// First log — should create AUTHORED_VIA edge.
@@ -116,7 +116,7 @@ func TestListConversations_FilterByStage(t *testing.T) {
 	}))
 	clearDatabase(t, clockStore)
 
-	_, err := clockStore.CreateSpec(ctx, "conv-filter", "test", "p2", "medium")
+	_, err := clockStore.CreateSpec(ctx, "conv-filter", "test", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = clockStore.RecordConversation(ctx, "conv-filter", storage.ConversationLogEntry{
@@ -153,7 +153,7 @@ func TestListConversations_OrderByDate(t *testing.T) {
 	}))
 	clearDatabase(t, clockStore)
 
-	_, err := clockStore.CreateSpec(ctx, "conv-order", "test", "p2", "medium")
+	_, err := clockStore.CreateSpec(ctx, "conv-order", "test", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	for i := range 3 {
@@ -188,7 +188,7 @@ func TestListConversations_EmptySlice(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "conv-empty", "test", "p2", "medium")
+	_, err := store.CreateSpec(ctx, "conv-empty", "test", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	entries, err := store.ListConversations(ctx, "conv-empty", "")
@@ -201,9 +201,9 @@ func TestListAllConversations(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "conv-all-a", "intent a", "p1", "low")
+	_, err := store.CreateSpec(ctx, "conv-all-a", "intent a", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "conv-all-b", "intent b", "p2", "medium")
+	_, err = store.CreateSpec(ctx, "conv-all-b", "intent b", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.RecordConversation(ctx, "conv-all-a", storage.ConversationLogEntry{
@@ -240,7 +240,7 @@ func TestRecordConversation_PersistsPosture(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "spec-posture-1", "intent", "p2", "medium")
+	_, err := store.CreateSpec(ctx, "spec-posture-1", "intent", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	entry := storage.ConversationLogEntry{
@@ -268,7 +268,7 @@ func TestRecordConversation_PersistsEmptyPosture(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "spec-posture-empty", "intent", "p2", "medium")
+	_, err := store.CreateSpec(ctx, "spec-posture-empty", "intent", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	entry := storage.ConversationLogEntry{
@@ -296,7 +296,7 @@ func TestGetSpec_IncludesConversationLogs(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "conv-getspec", "test intent", "p2", "medium")
+	_, err := store.CreateSpec(ctx, "conv-getspec", "test intent", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.RecordConversation(ctx, "conv-getspec", storage.ConversationLogEntry{

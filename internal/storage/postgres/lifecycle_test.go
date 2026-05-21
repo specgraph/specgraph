@@ -20,7 +20,7 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "amend-me", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "amend-me", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 		inProgressStage := "in_progress"
 		_, err = store.UpdateSpec(ctx, "amend-me", nil, &inProgressStage, nil, nil, nil)
@@ -44,7 +44,7 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "amend-noreentry", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "amend-noreentry", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 		inProgressStage := "in_progress"
 		_, err = store.UpdateSpec(ctx, "amend-noreentry", nil, &inProgressStage, nil, nil, nil)
@@ -59,7 +59,7 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "not-amendable-spark", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "not-amendable-spark", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 		// Spec is at "spark" -- not amend-eligible, so amend should fail.
 		_, err = store.LifecycleAmendSpec(ctx, "not-amendable-spark", "reason", "shape")
@@ -71,7 +71,7 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "not-amendable-done", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "not-amendable-done", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 		doneStage := "done"
 		_, err = store.UpdateSpec(ctx, "not-amendable-done", nil, &doneStage, nil, nil, nil)
@@ -95,7 +95,7 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "amend-terminal", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "amend-terminal", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Abandon the spec to make it terminal.
@@ -114,7 +114,7 @@ func TestLifecycle(t *testing.T) {
 
 		for _, stage := range []string{"approved", "in_progress", "review"} {
 			slug := "amend-eligible-" + stage
-			_, err := store.CreateSpec(ctx, slug, "Test spec", "p1", "medium")
+			_, err := store.CreateSpec(ctx, slug, "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 			require.NoError(t, err)
 			_, err = store.UpdateSpec(ctx, slug, nil, &stage, nil, nil, nil)
 			require.NoError(t, err)
@@ -131,7 +131,7 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "toctou-amend", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "toctou-amend", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 		inProgressStage := "in_progress"
 		_, err = store.UpdateSpec(ctx, "toctou-amend", nil, &inProgressStage, nil, nil, nil)
@@ -169,7 +169,7 @@ func TestLifecycle(t *testing.T) {
 
 		for _, stage := range []string{"done", "superseded", "abandoned"} {
 			slug := "amend-reentry-" + stage
-			_, err := store.CreateSpec(ctx, slug, "Test spec", "p1", "medium")
+			_, err := store.CreateSpec(ctx, slug, "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 			require.NoError(t, err)
 			inProgressStage := "in_progress"
 			_, err = store.UpdateSpec(ctx, slug, nil, &inProgressStage, nil, nil, nil)
@@ -185,12 +185,12 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "old-lifecycle", "Old spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "old-lifecycle", "Old spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 		doneStage := "done"
 		_, err = store.UpdateSpec(ctx, "old-lifecycle", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
-		_, err = store.CreateSpec(ctx, "new-lifecycle", "New spec", "p1", "medium")
+		_, err = store.CreateSpec(ctx, "new-lifecycle", "New spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		old, newSpec, err := store.LifecycleSupersedeSpec(ctx, "old-lifecycle", "new-lifecycle")
@@ -205,12 +205,12 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "edge-old", "Old spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "edge-old", "Old spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 		doneStage := "done"
 		_, err = store.UpdateSpec(ctx, "edge-old", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
-		_, err = store.CreateSpec(ctx, "edge-new", "New spec", "p1", "medium")
+		_, err = store.CreateSpec(ctx, "edge-new", "New spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, _, err = store.LifecycleSupersedeSpec(ctx, "edge-old", "edge-new")
@@ -229,7 +229,7 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "exists-new", "New spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "exists-new", "New spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, _, err = store.LifecycleSupersedeSpec(ctx, "nonexistent-old", "exists-new")
@@ -241,7 +241,7 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "exists-old", "Old spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "exists-old", "Old spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 		doneStage := "done"
 		_, err = store.UpdateSpec(ctx, "exists-old", nil, &doneStage, nil, nil, nil)
@@ -256,9 +256,9 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "not-done-old", "Old spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "not-done-old", "Old spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
-		_, err = store.CreateSpec(ctx, "not-done-new", "New spec", "p1", "medium")
+		_, err = store.CreateSpec(ctx, "not-done-new", "New spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Old spec is at spark -- not done, supersede should fail.
@@ -271,9 +271,9 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "terminal-old", "Old spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "terminal-old", "Old spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
-		_, err = store.CreateSpec(ctx, "replacement", "New spec", "p1", "medium")
+		_, err = store.CreateSpec(ctx, "replacement", "New spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Abandon the old spec first to make it terminal.
@@ -290,12 +290,12 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "old-sup-aband", "Old spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "old-sup-aband", "Old spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 		doneStage := "done"
 		_, err = store.UpdateSpec(ctx, "old-sup-aband", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
-		_, err = store.CreateSpec(ctx, "new-sup-aband", "New spec", "p1", "medium")
+		_, err = store.CreateSpec(ctx, "new-sup-aband", "New spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 		_, err = store.LifecycleAbandonSpec(ctx, "new-sup-aband", "no longer needed")
 		require.NoError(t, err)
@@ -309,7 +309,7 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "same-slug", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "same-slug", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, _, err = store.LifecycleSupersedeSpec(ctx, "same-slug", "same-slug")
@@ -321,7 +321,7 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "abandon-me", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "abandon-me", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		abandoned, err := store.LifecycleAbandonSpec(ctx, "abandon-me", "no longer needed")
@@ -335,7 +335,7 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "abandon-twice", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "abandon-twice", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = store.LifecycleAbandonSpec(ctx, "abandon-twice", "first abandon")
@@ -360,7 +360,7 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "toctou-abandon", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "toctou-abandon", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		// Two goroutines race to abandon the same spec.
@@ -394,9 +394,9 @@ func TestLifecycle(t *testing.T) {
 		ctx := context.Background()
 
 		// Create upstream and downstream, link with DEPENDS_ON.
-		_, err := store.CreateSpec(ctx, "ack-upstream", "Upstream", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "ack-upstream", "Upstream", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
-		_, err = store.CreateSpec(ctx, "ack-drift", "Test spec", "p1", "medium")
+		_, err = store.CreateSpec(ctx, "ack-drift", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 		_, err = store.AddEdge(ctx, "ack-drift", "ack-upstream", storage.EdgeTypeDependsOn)
 		require.NoError(t, err)
@@ -427,11 +427,11 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		_, err := store.CreateSpec(ctx, "all-up1", "Upstream 1", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "all-up1", "Upstream 1", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
-		_, err = store.CreateSpec(ctx, "all-up2", "Upstream 2", "p1", "medium")
+		_, err = store.CreateSpec(ctx, "all-up2", "Upstream 2", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
-		_, err = store.CreateSpec(ctx, "all-down", "Downstream", "p1", "medium")
+		_, err = store.CreateSpec(ctx, "all-down", "Downstream", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		_, err = store.AddEdge(ctx, "all-down", "all-up1", storage.EdgeTypeDependsOn)
@@ -477,7 +477,7 @@ func TestLifecycle(t *testing.T) {
 		ctx := context.Background()
 
 		// Spec at spark stage is not eligible.
-		_, err := store.CreateSpec(ctx, "ack-ineligible", "Test spec", "p1", "medium")
+		_, err := store.CreateSpec(ctx, "ack-ineligible", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
 		err = store.LifecycleAcknowledgeDrift(ctx, "ack-ineligible", "", "should fail")
@@ -502,9 +502,9 @@ func TestLifecycle_AmendRefreshesEdgeHash(t *testing.T) {
 	ctx := context.Background()
 
 	// Create upstream and downstream specs.
-	_, err := store.CreateSpec(ctx, "upstream-hash", "Upstream spec", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "upstream-hash", "Upstream spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "downstream-hash", "Downstream spec", "p1", "medium")
+	_, err = store.CreateSpec(ctx, "downstream-hash", "Downstream spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// Link downstream -> upstream with a DEPENDS_ON edge.

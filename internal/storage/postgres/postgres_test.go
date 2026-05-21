@@ -317,7 +317,7 @@ func TestCreateSpec_Basic(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	spec, err := store.CreateSpec(ctx, "test-spec", "Test intent", "p1", "medium")
+	spec, err := store.CreateSpec(ctx, "test-spec", "Test intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, "test-spec", spec.Slug)
 	require.Equal(t, storage.SpecStage("spark"), spec.Stage)
@@ -330,9 +330,9 @@ func TestCreateSpec_DuplicateSlug(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "dup-spec", "intent", "", "")
+	_, err := store.CreateSpec(ctx, "dup-spec", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "dup-spec", "intent", "", "")
+	_, err = store.CreateSpec(ctx, "dup-spec", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.ErrorIs(t, err, storage.ErrSpecAlreadyExists)
 }
 
@@ -341,7 +341,7 @@ func TestGetSpec_Basic(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	created, err := store.CreateSpec(ctx, "get-spec", "Get intent", "p2", "low")
+	created, err := store.CreateSpec(ctx, "get-spec", "Get intent", "p2", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	got, err := store.GetSpec(ctx, "get-spec")
 	require.NoError(t, err)
@@ -363,11 +363,11 @@ func TestListSpecs_WithFilters(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "spec-a", "A intent", "p1", "low")
+	_, err := store.CreateSpec(ctx, "spec-a", "A intent", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "spec-b", "B intent", "p2", "medium")
+	_, err = store.CreateSpec(ctx, "spec-b", "B intent", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "spec-c", "C intent", "p1", "high")
+	_, err = store.CreateSpec(ctx, "spec-c", "C intent", "p1", "high", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// No filters — all three returned.
@@ -391,9 +391,9 @@ func TestBatchGetSpecs_ReturnsMap(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "batch-a", "Intent A", "", "")
+	_, err := store.CreateSpec(ctx, "batch-a", "Intent A", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "batch-b", "Intent B", "", "")
+	_, err = store.CreateSpec(ctx, "batch-b", "Intent B", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	result, err := store.BatchGetSpecs(ctx, []string{"batch-a", "batch-b", "missing-slug"})
@@ -417,7 +417,7 @@ func TestUpdateSpec_PartialUpdate(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "update-spec", "Original", "p1", "low")
+	_, err := store.CreateSpec(ctx, "update-spec", "Original", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	newIntent := "Updated"
@@ -432,7 +432,7 @@ func TestUpdateSpec_NoChangeSkipsChangelog(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "noop-spec", "Intent", "", "")
+	_, err := store.CreateSpec(ctx, "noop-spec", "Intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// Update with same intent value — content hash unchanged, no changelog entry added.
@@ -460,9 +460,9 @@ func TestClearAll_WipesDataAndPreservesProject(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a spec and an edge so ClearAll has something to remove.
-	_, err := store.CreateSpec(ctx, "ca-spec", "Intent", "", "")
+	_, err := store.CreateSpec(ctx, "ca-spec", "Intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "ca-spec2", "Intent2", "", "")
+	_, err = store.CreateSpec(ctx, "ca-spec2", "Intent2", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	_, err = store.AddEdge(ctx, "ca-spec", "ca-spec2", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)

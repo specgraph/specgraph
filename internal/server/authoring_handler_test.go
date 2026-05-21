@@ -93,14 +93,14 @@ func (f *fakeTxBackend) RunInTransaction(_ context.Context, fn func(ctx context.
 	return fn(context.Background())
 }
 
-func (f *fakeBackend) CreateSpec(_ context.Context, slug, _, _, _ string) (*storage.Spec, error) {
+func (f *fakeBackend) CreateSpec(_ context.Context, slug, _, _, _ string, _ storage.SpecProvenanceType, _ storage.SpecProvenanceDetail, _ *storage.SparkOutput, _ *storage.ShapeOutput, _ *storage.SpecifyOutput, _ *storage.DecomposeOutput) (*storage.Spec, error) {
 	if f.createSpecErr != nil {
 		return nil, f.createSpecErr
 	}
 	if f.createSpecResult != nil {
 		return f.createSpecResult, nil
 	}
-	return &storage.Spec{Slug: slug, ContentHash: strings.Repeat("a", 32)}, nil
+	return &storage.Spec{Slug: slug, Provenance: storage.SpecProvenanceAuthored, ContentHash: strings.Repeat("a", 32)}, nil
 }
 
 func (f *fakeBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
@@ -144,8 +144,8 @@ func (a *txAuthoringTestBackend) RunInTransaction(_ context.Context, fn func(con
 	return fn(context.Background())
 }
 
-func (a *authoringTestBackend) CreateSpec(ctx context.Context, slug, intent, priority, complexity string) (*storage.Spec, error) {
-	return a.backend.CreateSpec(ctx, slug, intent, priority, complexity)
+func (a *authoringTestBackend) CreateSpec(ctx context.Context, slug, intent, priority, complexity string, provenance storage.SpecProvenanceType, detail storage.SpecProvenanceDetail, spark *storage.SparkOutput, shape *storage.ShapeOutput, specify *storage.SpecifyOutput, decompose *storage.DecomposeOutput) (*storage.Spec, error) {
+	return a.backend.CreateSpec(ctx, slug, intent, priority, complexity, provenance, detail, spark, shape, specify, decompose)
 }
 
 func (a *authoringTestBackend) GetSpec(ctx context.Context, slug string) (*storage.Spec, error) {

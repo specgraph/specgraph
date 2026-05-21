@@ -56,7 +56,7 @@ func runAmend(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("amend: %w", err)
 	}
 	s := resp.Msg.GetSpec()
-	fmt.Printf("Amended: %s (stage=%s, lifecycle=%s, version=%d)\n", s.GetSlug(), s.GetStage(), s.GetLifecycle().String(), s.GetVersion())
+	fmt.Printf("Amended: %s (stage=%s, provenance=%s, version=%d)\n", s.GetSlug(), s.GetStage(), s.GetProvenanceType().String(), s.GetVersion())
 	return nil
 }
 
@@ -85,8 +85,8 @@ func runSupersede(cmd *cobra.Command, args []string) error {
 	}
 	old := resp.Msg.GetOldSpec()
 	newSpec := resp.Msg.GetNewSpec()
-	fmt.Printf("Superseded: %s (lifecycle=%s)\n", old.GetSlug(), old.GetLifecycle().String())
-	fmt.Printf("Created:    %s (lifecycle=%s, stage=%s)\n", newSpec.GetSlug(), newSpec.GetLifecycle().String(), newSpec.GetStage())
+	fmt.Printf("Superseded: %s (provenance=%s)\n", old.GetSlug(), old.GetProvenanceType().String())
+	fmt.Printf("Created:    %s (provenance=%s, stage=%s)\n", newSpec.GetSlug(), newSpec.GetProvenanceType().String(), newSpec.GetStage())
 	return nil
 }
 
@@ -114,7 +114,7 @@ func runAbandon(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("abandon: %w", err)
 	}
 	s := resp.Msg.GetSpec()
-	fmt.Printf("Abandoned: %s (lifecycle=%s, version=%d)\n", s.GetSlug(), s.GetLifecycle().String(), s.GetVersion())
+	fmt.Printf("Abandoned: %s (provenance=%s, version=%d)\n", s.GetSlug(), s.GetProvenanceType().String(), s.GetVersion())
 	return nil
 }
 

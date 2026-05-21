@@ -21,7 +21,7 @@ func TestClaimSpec_Basic(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "claim-basic", "intent", "p1", "low")
+	_, err := store.CreateSpec(ctx, "claim-basic", "intent", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	claim, err := store.ClaimSpec(ctx, "claim-basic", "agent-a", 5*time.Minute)
@@ -41,7 +41,7 @@ func TestClaimSpec_ExpiredReleasedFirst(t *testing.T) {
 	fixedPast := time.Now().Add(-30 * time.Minute)
 	pastStore := newStore(t, postgres.WithClock(func() time.Time { return fixedPast }))
 
-	_, err := pastStore.CreateSpec(ctx, "claim-expired", "intent", "", "")
+	_, err := pastStore.CreateSpec(ctx, "claim-expired", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// Claim with 1-second lease from past clock — already expired by now.
@@ -58,7 +58,7 @@ func TestClaimSpec_DuplicateReturnsError(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "claim-dup", "intent", "", "")
+	_, err := store.CreateSpec(ctx, "claim-dup", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.ClaimSpec(ctx, "claim-dup", "agent-a", 5*time.Minute)
@@ -73,7 +73,7 @@ func TestClaimSpec_SameAgentRefreshesLease(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "claim-refresh", "intent", "", "")
+	_, err := store.CreateSpec(ctx, "claim-refresh", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	c1, err := store.ClaimSpec(ctx, "claim-refresh", "agent-a", 5*time.Minute)
@@ -89,7 +89,7 @@ func TestUnclaimSpec(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "unclaim-spec", "intent", "", "")
+	_, err := store.CreateSpec(ctx, "unclaim-spec", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.ClaimSpec(ctx, "unclaim-spec", "agent-a", 5*time.Minute)
@@ -108,7 +108,7 @@ func TestUnclaimSpec_NotClaimed(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "unclaim-none", "intent", "", "")
+	_, err := store.CreateSpec(ctx, "unclaim-none", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	err = store.UnclaimSpec(ctx, "unclaim-none", "agent-a")
@@ -120,7 +120,7 @@ func TestUnclaimSpec_WrongAgent(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "unclaim-wrong", "intent", "", "")
+	_, err := store.CreateSpec(ctx, "unclaim-wrong", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.ClaimSpec(ctx, "unclaim-wrong", "agent-a", 5*time.Minute)
@@ -135,7 +135,7 @@ func TestHeartbeat(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "heartbeat-spec", "intent", "", "")
+	_, err := store.CreateSpec(ctx, "heartbeat-spec", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	c1, err := store.ClaimSpec(ctx, "heartbeat-spec", "agent-a", 5*time.Minute)
@@ -152,7 +152,7 @@ func TestHeartbeat_NoActiveClaim(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "heartbeat-none", "intent", "", "")
+	_, err := store.CreateSpec(ctx, "heartbeat-none", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.Heartbeat(ctx, "heartbeat-none", "agent-a", 5*time.Minute)

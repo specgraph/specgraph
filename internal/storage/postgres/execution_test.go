@@ -22,7 +22,7 @@ func approveAndClaim(t *testing.T, store *postgres.Store, slug, agent string) {
 	ctx := context.Background()
 	ptr := func(s string) *string { return &s }
 
-	_, err := store.CreateSpec(ctx, slug, "test intent for "+slug, "p1", "medium")
+	_, err := store.CreateSpec(ctx, slug, "test intent for "+slug, "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.UpdateSpec(ctx, slug, nil, ptr("approved"), nil, nil, nil)
@@ -57,7 +57,7 @@ func TestRecordProgress_NoClaim(t *testing.T) {
 	ctx := context.Background()
 	ptr := func(s string) *string { return &s }
 
-	_, err := store.CreateSpec(ctx, "unclaimed-spec", "unclaimed", "p1", "low")
+	_, err := store.CreateSpec(ctx, "unclaimed-spec", "unclaimed", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	_, err = store.UpdateSpec(ctx, "unclaimed-spec", nil, ptr("approved"), nil, nil, nil)
 	require.NoError(t, err)
@@ -154,10 +154,10 @@ func TestRecordCompletion_HashRefreshed(t *testing.T) {
 	// RefreshDependencyHashes(slug) refreshes the completing spec's outgoing
 	// DEPENDS_ON edges — i.e. the hash recorded on edges FROM the completing spec.
 
-	_, err := store.CreateSpec(ctx, "dep-target", "dep target", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "dep-target", "dep target", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	_, err = store.CreateSpec(ctx, "completing-spec", "completing", "p1", "medium")
+	_, err = store.CreateSpec(ctx, "completing-spec", "completing", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	// completing-spec depends on dep-target.
@@ -258,7 +258,7 @@ func TestGenerateBundle_NotApproved(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "spark-spec", "spark stage spec", "p1", "low")
+	_, err := store.CreateSpec(ctx, "spark-spec", "spark stage spec", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.GenerateBundle(ctx, "spark-spec")
@@ -280,9 +280,9 @@ func TestGenerateBundle_IncludesDependencies(t *testing.T) {
 	ctx := context.Background()
 	ptr := func(s string) *string { return &s }
 
-	_, err := store.CreateSpec(ctx, "upstream-dep", "upstream", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "upstream-dep", "upstream", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "downstream-dep", "downstream", "p1", "medium")
+	_, err = store.CreateSpec(ctx, "downstream-dep", "downstream", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.AddEdge(ctx, "downstream-dep", "upstream-dep", storage.EdgeTypeDependsOn)
@@ -302,7 +302,7 @@ func TestGetPrimeData(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "prime-spec", "prime intent", "p1", "medium")
+	_, err := store.CreateSpec(ctx, "prime-spec", "prime intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.CreateDecision(ctx, "prime-dec", "Use Redis", "Redis for caching", "Speed",
@@ -332,7 +332,7 @@ func TestGetPrimeData_NoConstitution(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "no-con-spec", "spec without constitution", "p1", "low")
+	_, err := store.CreateSpec(ctx, "no-con-spec", "spec without constitution", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	pd, err := store.GetPrimeData(ctx, "no-con-spec")
@@ -362,7 +362,7 @@ func TestReleaseExpiredClaims(t *testing.T) {
 		return time.Now().Add(-5 * time.Minute)
 	}))
 
-	_, err := pastStore.CreateSpec(ctx, "expiring-spec", "expiring", "p1", "low")
+	_, err := pastStore.CreateSpec(ctx, "expiring-spec", "expiring", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = pastStore.ClaimSpec(ctx, "expiring-spec", "agent-slow", 1*time.Second)
@@ -383,7 +383,7 @@ func TestReleaseExpiredClaims_NoneExpired(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "live-spec", "live claim spec", "p1", "low")
+	_, err := store.CreateSpec(ctx, "live-spec", "live claim spec", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 	_, err = store.ClaimSpec(ctx, "live-spec", "agent-live", 15*time.Minute)
 	require.NoError(t, err)

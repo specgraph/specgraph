@@ -41,6 +41,14 @@ func (h *ClaimHandler) ClaimSpec(ctx context.Context, req *connect.Request[specv
 		leaseDuration = msg.LeaseDuration.AsDuration()
 	}
 
+	spec, err := store.GetSpec(ctx, msg.SpecSlug)
+	if err != nil {
+		return nil, claimError(err)
+	}
+	if spec.Provenance != storage.SpecProvenanceAuthored {
+		return nil, connect.NewError(connect.CodeInvalidArgument, storage.ErrClaimRequiresAuthored)
+	}
+
 	claim, err := store.ClaimSpec(ctx, msg.SpecSlug, msg.Agent, leaseDuration)
 	if err != nil {
 		return nil, claimError(err)

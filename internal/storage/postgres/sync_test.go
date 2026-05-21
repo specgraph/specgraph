@@ -18,7 +18,7 @@ func TestCreateSyncMapping(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "sync-spec", "Sync intent", "", "")
+	_, err := store.CreateSpec(ctx, "sync-spec", "Sync intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	m, err := store.CreateSyncMapping(ctx, "sync-spec", storage.SyncAdapterBeads, "bead-42")
@@ -35,7 +35,7 @@ func TestCreateSyncMapping_Duplicate(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "sync-dup", "Dup", "", "")
+	_, err := store.CreateSpec(ctx, "sync-dup", "Dup", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.CreateSyncMapping(ctx, "sync-dup", storage.SyncAdapterBeads, "ext-1")
@@ -50,7 +50,7 @@ func TestUpdateSyncState(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "sync-update", "Update", "", "")
+	_, err := store.CreateSpec(ctx, "sync-update", "Update", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.CreateSyncMapping(ctx, "sync-update", storage.SyncAdapterGitHub, "gh-99")
@@ -76,9 +76,9 @@ func TestListSyncMappings_Filter(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "list-sync-a", "A", "", "")
+	_, err := store.CreateSpec(ctx, "list-sync-a", "A", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "list-sync-b", "B", "", "")
+	_, err = store.CreateSpec(ctx, "list-sync-b", "B", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.CreateSyncMapping(ctx, "list-sync-a", storage.SyncAdapterBeads, "bead-a")
@@ -115,7 +115,7 @@ func TestDeleteSyncMapping_Idempotent(t *testing.T) {
 	clearDatabase(t, store)
 	ctx := context.Background()
 
-	_, err := store.CreateSpec(ctx, "del-sync", "Del", "", "")
+	_, err := store.CreateSpec(ctx, "del-sync", "Del", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	_, err = store.CreateSyncMapping(ctx, "del-sync", storage.SyncAdapterBeads, "bead-del")

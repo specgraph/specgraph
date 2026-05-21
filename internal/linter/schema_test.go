@@ -106,13 +106,13 @@ func TestValidateSchema_InvalidComplexity(t *testing.T) {
 	require.Equal(t, "complexity", violations[0].Location)
 }
 
-func TestValidateSchema_LivingLifecycle(t *testing.T) {
+func TestValidateSchema_DeclaredProvenance(t *testing.T) {
 	spec := &storage.Spec{
-		Slug:      "living-spec",
-		Intent:    "Always evolving",
-		Stage:     storage.SpecStageApproved,
-		Lifecycle: "living",
-		Version:   1,
+		Slug:       "declared-spec",
+		Intent:     "Always evolving",
+		Stage:      storage.SpecStageDone,
+		Provenance: storage.SpecProvenanceDeclared,
+		Version:    1,
 	}
 	violations := linter.ValidateSchema(spec)
 	require.Empty(t, violations)
@@ -142,18 +142,18 @@ func TestValidateSchema_VersionZero(t *testing.T) {
 	require.Contains(t, minViolations[0].Message, "version must be >= 1")
 }
 
-func TestValidateSchema_InvalidLifecycle(t *testing.T) {
+func TestValidateSchema_InvalidProvenance(t *testing.T) {
 	spec := &storage.Spec{
-		Slug:      "bad-lifecycle",
-		Intent:    "Has invalid lifecycle",
-		Stage:     storage.SpecStageSpark,
-		Version:   1,
-		Lifecycle: storage.SpecLifecycle("bogus"),
+		Slug:       "bad-provenance",
+		Intent:     "Has invalid provenance",
+		Stage:      storage.SpecStageSpark,
+		Version:    1,
+		Provenance: storage.SpecProvenanceType("bogus"),
 	}
 	violations := linter.ValidateSchema(spec)
 	enumViolations := filterByRule(violations, "schema.enum")
 	require.Len(t, enumViolations, 1)
-	require.Contains(t, enumViolations[0].Message, "invalid lifecycle")
+	require.Contains(t, enumViolations[0].Message, "invalid provenance")
 }
 
 func TestValidateSchema_NilSpec(t *testing.T) {
