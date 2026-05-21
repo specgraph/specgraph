@@ -5,6 +5,7 @@ package server
 
 import (
 	"fmt"
+	"time"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/internal/storage"
@@ -127,11 +128,15 @@ func specProvenanceFromProto(p specv1.SpecProvenance) (storage.SpecProvenanceTyp
 func createSpecProvenanceDetailFromProto(msg *specv1.CreateSpecRequest) storage.SpecProvenanceDetail {
 	switch v := msg.GetProvenanceDetail().(type) {
 	case *specv1.CreateSpecRequest_RetroactiveFromPr:
+		var mergedAt time.Time
+		if ts := v.RetroactiveFromPr.GetMergedAt(); ts != nil {
+			mergedAt = ts.AsTime()
+		}
 		return storage.SpecProvenanceDetail{
 			RetroactiveFromPR: &storage.RetroactivePRProvenance{
 				URL:      v.RetroactiveFromPr.GetUrl(),
 				SHA:      v.RetroactiveFromPr.GetSha(),
-				MergedAt: v.RetroactiveFromPr.GetMergedAt().AsTime(),
+				MergedAt: mergedAt,
 				Title:    v.RetroactiveFromPr.GetTitle(),
 			},
 		}

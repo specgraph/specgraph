@@ -384,9 +384,28 @@ func (e *Engine) writeEntities(ctx context.Context, doc *Document) (*ImportResul
 		res.Constitution = 1
 	}
 
-	// 3. Specs — create then restore stage via Store*Output + TransitionStage
+	// 3. Specs — create then restore stage via Store*Output + TransitionStage.
+	// Preserves the original provenance and provenance detail from the imported
+	// document so DECLARED/RETROACTIVE specs don't get rewritten as AUTHORED.
 	for _, spec := range doc.Data.Specs {
-		if _, err := e.backend.CreateSpec(ctx, spec.Slug, spec.Intent, string(spec.Priority), string(spec.Complexity), storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil); err != nil {
+		provenance := spec.Provenance
+		if provenance == "" {
+			provenance = storage.SpecProvenanceAuthored
+		}
+		// For AUTHORED specs, the stage outputs are replayed below to advance the
+		// funnel — pass nil at create. For RETROACTIVE/DECLARED specs, all four
+		// outputs must be present at create (validateProvenance enforces this).
+		var spark *storage.SparkOutput
+		var shape *storage.ShapeOutput
+		var specifyOut *storage.SpecifyOutput
+		var decompose *storage.DecomposeOutput
+		if provenance != storage.SpecProvenanceAuthored {
+			spark = spec.SparkOutput
+			shape = spec.ShapeOutput
+			specifyOut = spec.SpecifyOutput
+			decompose = spec.DecomposeOutput
+		}
+		if _, err := e.backend.CreateSpec(ctx, spec.Slug, spec.Intent, string(spec.Priority), string(spec.Complexity), provenance, spec.ProvenanceDetail, spark, shape, specifyOut, decompose); err != nil {
 			return nil, fmt.Errorf("create spec %q: %w", spec.Slug, err)
 		}
 

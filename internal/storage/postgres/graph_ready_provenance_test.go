@@ -54,6 +54,21 @@ func TestGetReady_ProvenanceAndStageFilters(t *testing.T) {
 	_, err = store.UpdateSpec(ctx, "d-declared-done", nil, &doneStage, nil, nil, nil)
 	require.NoError(t, err)
 
+	// 4b. DECLARED + approved — not ready (wrong provenance type even at the
+	// correct stage). This fixture isolates the provenance filter: if the
+	// stage=approved predicate were the only gate, this would incorrectly
+	// appear in ready.
+	_, err = store.CreateSpec(ctx, "d2-declared-approved", "declared at approved", "p1", "medium",
+		storage.SpecProvenanceDeclared,
+		storage.SpecProvenanceDetail{
+			Declared: &storage.DeclaredProvenance{DeclaredBy: "platform-team"},
+		},
+		nil, nil, nil, nil)
+	require.NoError(t, err)
+	approvedStage := string(storage.SpecStageApproved)
+	_, err = store.UpdateSpec(ctx, "d2-declared-approved", nil, &approvedStage, nil, nil, nil)
+	require.NoError(t, err)
+
 	// 5. AUTHORED + superseded — not ready (fully terminal).
 	_, err = store.CreateSpec(ctx, "e-authored-superseded-old", "to be superseded", "p1", "medium",
 		storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)

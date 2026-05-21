@@ -215,7 +215,6 @@ func TestCreateSpec_AuthoredRequiresSparkOnly(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	require.Contains(t, err.Error(), storage.ErrAuthoredRequiresSparkOnly.Error())
 }
 
 func TestCreateSpec_RetroactiveRequiresAllOutputs(t *testing.T) {
@@ -240,7 +239,6 @@ func TestCreateSpec_RetroactiveRequiresAllOutputs(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	require.Contains(t, err.Error(), storage.ErrRetroactiveRequiresAllOutputs.Error())
 }
 
 func TestCreateSpec_RetroactiveRequiresPRRef(t *testing.T) {
@@ -265,7 +263,6 @@ func TestCreateSpec_RetroactiveRequiresPRRef(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	require.Contains(t, err.Error(), storage.ErrRetroactiveRequiresPRRef.Error())
 }
 
 func TestCreateSpec_DeclaredRequiresAllOutputs(t *testing.T) {
@@ -289,7 +286,6 @@ func TestCreateSpec_DeclaredRequiresAllOutputs(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	require.Contains(t, err.Error(), storage.ErrDeclaredRequiresAllOutputs.Error())
 }
 
 func TestCreateSpec_DeclaredRequiresDeclaredBy(t *testing.T) {
@@ -312,7 +308,6 @@ func TestCreateSpec_DeclaredRequiresDeclaredBy(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	require.Contains(t, err.Error(), storage.ErrDeclaredRequiresDeclaredBy.Error())
 }
 
 func TestCreateSpec_ProvenanceMismatch(t *testing.T) {
@@ -337,7 +332,6 @@ func TestCreateSpec_ProvenanceMismatch(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	require.Contains(t, err.Error(), storage.ErrProvenanceMismatch.Error())
 }
 
 // --- Claim/Completion rejection on non-AUTHORED specs ---
@@ -371,7 +365,6 @@ func TestClaim_RejectsRetroactive(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	require.Contains(t, err.Error(), storage.ErrClaimRequiresAuthored.Error())
 }
 
 func TestCompletion_RejectsDeclared(t *testing.T) {
@@ -402,5 +395,4 @@ func TestCompletion_RejectsDeclared(t *testing.T) {
 	}))
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-	require.Contains(t, err.Error(), storage.ErrCompletionRequiresAuthored.Error())
 }

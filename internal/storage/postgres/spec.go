@@ -27,7 +27,11 @@ const (
 // decodeProvenanceDetail parses the JSONB envelope `{"type": "...", "data": {...}}`
 // into a domain detail struct. Empty input returns an empty (AUTHORED-shaped)
 // detail. Returns ErrProvenanceMismatch on envelope mismatch.
-func decodeProvenanceDetail(raw []byte) (storage.SpecProvenanceDetail, error) {
+//
+// If columnType is non-empty, the envelope's "type" field must match the
+// column's provenance_type value — guards against contradictory rows where
+// the column says one thing and the JSONB body says another.
+func decodeProvenanceDetail(raw []byte, columnType storage.SpecProvenanceType) (storage.SpecProvenanceDetail, error) {
 	if len(raw) == 0 {
 		return storage.SpecProvenanceDetail{}, nil
 	}
@@ -37,6 +41,11 @@ func decodeProvenanceDetail(raw []byte) (storage.SpecProvenanceDetail, error) {
 	}
 	if err := json.Unmarshal(raw, &env); err != nil {
 		return storage.SpecProvenanceDetail{}, fmt.Errorf("decode provenance_detail envelope: %w", err)
+	}
+	if columnType != "" && env.Type != "" && storage.SpecProvenanceType(env.Type) != columnType {
+		return storage.SpecProvenanceDetail{}, fmt.Errorf(
+			"decode provenance_detail: envelope type %q != column type %q: %w",
+			env.Type, columnType, storage.ErrProvenanceMismatch)
 	}
 	switch storage.SpecProvenanceType(env.Type) {
 	case storage.SpecProvenanceAuthored, "":
@@ -98,7 +107,7 @@ func encodeProvenanceDetail(p storage.SpecProvenanceType, d storage.SpecProvenan
 		}
 		data = nil
 	case storage.SpecProvenanceRetroactiveFromPR:
-		if d.RetroactiveFromPR == nil {
+		if d.RetroactiveFromPR == nil || d.Declared != nil {
 			return nil, storage.ErrProvenanceMismatch
 		}
 		data = retroactivePayload{
@@ -106,7 +115,7 @@ func encodeProvenanceDetail(p storage.SpecProvenanceType, d storage.SpecProvenan
 			MergedAt: d.RetroactiveFromPR.MergedAt, Title: d.RetroactiveFromPR.Title,
 		}
 	case storage.SpecProvenanceDeclared:
-		if d.Declared == nil {
+		if d.Declared == nil || d.RetroactiveFromPR != nil {
 			return nil, storage.ErrProvenanceMismatch
 		}
 		data = declaredPayload{
@@ -358,7 +367,7 @@ func scanSpec(row pgx.Row) (*storage.Spec, error) {
 	); err != nil {
 		return nil, fmt.Errorf("postgres: scan spec: %w", err)
 	}
-	detail, err := decodeProvenanceDetail(provenanceDetail)
+	detail, err := decodeProvenanceDetail(provenanceDetail, storage.SpecProvenanceType(provenanceType))
 	if err != nil {
 		return nil, fmt.Errorf("scan spec %q: %w", slug, err)
 	}
@@ -404,7 +413,7 @@ func scanSpecWithCount(row pgx.Row) (*storage.Spec, error) {
 	); err != nil {
 		return nil, fmt.Errorf("postgres: scan spec with count: %w", err)
 	}
-	detail, err := decodeProvenanceDetail(provenanceDetail)
+	detail, err := decodeProvenanceDetail(provenanceDetail, storage.SpecProvenanceType(provenanceType))
 	if err != nil {
 		return nil, fmt.Errorf("scan spec %q: %w", slug, err)
 	}
@@ -511,7 +520,7 @@ func (s *Store) ListSpecs(ctx context.Context, stage, priority string, limit int
 		); err != nil {
 			return nil, fmt.Errorf("postgres: list specs: scan: %w", err)
 		}
-		detail, err := decodeProvenanceDetail(provenanceDetail)
+		detail, err := decodeProvenanceDetail(provenanceDetail, storage.SpecProvenanceType(provenanceType))
 		if err != nil {
 			return nil, fmt.Errorf("postgres: list specs: decode provenance %q: %w", slug, err)
 		}
@@ -589,7 +598,7 @@ func (s *Store) BatchGetSpecs(ctx context.Context, slugs []string) (map[string]*
 		); err != nil {
 			return nil, fmt.Errorf("postgres: batch get specs: scan: %w", err)
 		}
-		detail, err := decodeProvenanceDetail(provenanceDetail)
+		detail, err := decodeProvenanceDetail(provenanceDetail, storage.SpecProvenanceType(provenanceType))
 		if err != nil {
 			return nil, fmt.Errorf("postgres: batch get specs: decode provenance %q: %w", slug, err)
 		}

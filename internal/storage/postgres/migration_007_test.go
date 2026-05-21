@@ -45,7 +45,7 @@ func TestMigration007_RefusesNonEmptyTable(t *testing.T) {
 			"POSTGRES_PASSWORD": "mig007",
 			"POSTGRES_DB":       "mig007db",
 		},
-		WaitingFor: wait.ForLog("database system is ready to accept connections").
+		WaitingFor: wait.ForLog("database system is ready").
 			WithOccurrence(2).
 			WithStartupTimeout(60 * time.Second),
 	}
