@@ -14,6 +14,7 @@ import (
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/constitution/load"
 	"github.com/specgraph/specgraph/internal/render"
 	"github.com/spf13/cobra"
 )
@@ -156,12 +157,12 @@ func runConstitutionImport(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	cc, err := config.ParseConstitutionYAML(data)
+	c, err := load.LoadFromYAML(data)
 	if err != nil {
 		return fmt.Errorf("parse constitution: %w", err)
 	}
 
-	pb := constitutionConfigToProto(cc)
+	pb := load.ToProto(c)
 
 	// Layer resolution: --layer flag > YAML layer field > default "project".
 	if importLayerFlag != "" {
