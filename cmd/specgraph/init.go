@@ -4,9 +4,11 @@
 package main
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/specgraph/specgraph/internal/config"
@@ -144,7 +146,19 @@ func runInit(_ *cobra.Command, args []string) error {
 			if s.State != managedfiles.StateSynced {
 				nonSynced++
 				if !initQuiet {
-					fmt.Printf("%s: %s\n", s.Path, managedfiles.StateName(s.State))
+					fmt.Printf("%s: %s", s.Path, managedfiles.StateName(s.State))
+					// Stale + Drifted: append size + sha256 of on-disk content to
+					// aid debugging across machines. When a file is reported stale
+					// on CI but synced locally (or vice versa), comparing these
+					// fingerprints quickly tells you whether the disk bytes differ
+					// or the canonical computation does.
+					if s.State == managedfiles.StateStale || s.State == managedfiles.StateDrifted {
+						if data, rerr := os.ReadFile(filepath.Join(cwd, s.Path)); rerr == nil {
+							h := sha256.Sum256(data)
+							fmt.Printf(" (size=%d sha256=%x)", len(data), h[:8])
+						}
+					}
+					fmt.Println()
 				}
 			}
 		}
