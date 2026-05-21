@@ -119,7 +119,7 @@ The full spec schema is organized into five categories:
 |---|---|
 | **Identity** | `id`, `slug`, `version`, `content_hash`, `created_at`, `updated_at` |
 | **Intent** | `intent`, `stage` (spark / shape / specify / decompose / approved / in_progress / review / done / superseded / abandoned), `priority` (p0-p3), `complexity`, `notes` — see [Lifecycle Transitions](lifecycle.md) for lifecycle transitions |
-| **Lifecycle** | `lifecycle` (task / living), `superseded_by`, `supersedes` |
+| **Provenance** | `provenance` (AUTHORED / RETROACTIVE_FROM_PR / DECLARED), `superseded_by`, `supersedes` |
 | **Edges** | `depends_on`, `blocks`, `composes`, `relates_to`, `supersedes` |
 | **Authoring Outputs** | `spark_output`, `shape_output`, `specify_output`, `decompose_output`, `conversation_logs` |
 | **Verification** | `verify` (acceptance criteria), `invariants` (conditions that must hold before and after execution) |
@@ -127,6 +127,28 @@ The full spec schema is organized into five categories:
 Not every field is required. The minimal spec uses only `slug` (as the `spec`
 key), `intent`, and `verify`. Additional fields appear as the spec moves through
 the authoring funnel and as team needs grow.
+
+### Provenance
+
+`provenance` records **how a spec entered the graph**, not how it behaves after
+`done`. Three values:
+
+- **`AUTHORED`** — the spec walked the full authoring funnel (Spark → Shape →
+  Specify → Decompose → Approved). This is the normal path for new work.
+- **`RETROACTIVE_FROM_PR`** — a pull-request sync adapter created the spec from
+  an already-merged PR. The spec is born at `done` with full content populated
+  atomically.
+- **`DECLARED`** — a spec was injected directly (e.g. from a design doc or
+  import) and also born at `done`. No funnel history.
+
+Only AUTHORED specs are surfaced by `specgraph ready` and are eligible for
+`claim` / `report-completion`. RETROACTIVE_FROM_PR and DECLARED specs are
+`done` from birth; drift detection, dependency edges, and supersession semantics
+apply to all three variants equally.
+
+See `docs/decisions/ADR-006-spec-provenance-model.md` and the design doc at
+`docs/superpowers/specs/2026-05-20-spec-provenance-model-design.md` for full
+detail.
 
 ---
 
