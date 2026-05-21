@@ -439,6 +439,13 @@ func TestGetReady(t *testing.T) {
 	_, err = store.AddEdge(ctx, "blocked", "blocker", storage.EdgeTypeDependsOn)
 	require.NoError(t, err)
 
+	approvedStage := "approved"
+	_, err = store.UpdateSpec(ctx, "free", nil, &approvedStage, nil, nil, nil)
+	require.NoError(t, err)
+	_, err = store.UpdateSpec(ctx, "blocker", nil, &approvedStage, nil, nil, nil)
+	require.NoError(t, err)
+	// blocked stays at spark — should not be ready (dependency check)
+
 	ready, err := store.GetReady(ctx)
 	require.NoError(t, err)
 
@@ -464,6 +471,11 @@ func TestGetReady_BlocksEdgePreventsReady(t *testing.T) {
 	// block-source BLOCKS block-target
 	_, err = store.AddEdge(ctx, "block-source", "block-target", storage.EdgeTypeBlocks)
 	require.NoError(t, err)
+
+	approvedStage := "approved"
+	_, err = store.UpdateSpec(ctx, "block-source", nil, &approvedStage, nil, nil, nil)
+	require.NoError(t, err)
+	// block-target stays at spark — not ready due to BLOCKS edge
 
 	ready, err := store.GetReady(ctx)
 	require.NoError(t, err)

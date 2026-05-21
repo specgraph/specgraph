@@ -16,8 +16,8 @@ END
 $$;
 
 ALTER TABLE specs DROP COLUMN lifecycle;
-ALTER TABLE specs ADD COLUMN provenance_type TEXT NOT NULL;
-ALTER TABLE specs ADD COLUMN provenance_detail JSONB NOT NULL;
+ALTER TABLE specs ADD COLUMN provenance_type TEXT NOT NULL DEFAULT 'authored';
+ALTER TABLE specs ADD COLUMN provenance_detail JSONB NOT NULL DEFAULT '{"type":"authored","data":null}'::jsonb;
 
 -- +goose StatementEnd
 

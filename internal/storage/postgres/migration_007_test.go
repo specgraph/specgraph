@@ -92,6 +92,13 @@ func TestMigration007_RefusesNonEmptyTable(t *testing.T) {
 	err = goose.UpTo(db, migrationsDir, 6)
 	require.NoError(t, err, "migrations 001–006 must apply cleanly")
 
+	// Insert a project row to satisfy the project_slug FK constraint on specs.
+	_, err = db.ExecContext(ctx,
+		`INSERT INTO projects (slug) VALUES ($1)`,
+		"test-project",
+	)
+	require.NoError(t, err, "inserting project row must succeed")
+
 	// Insert a spec row using the pre-007 schema (has lifecycle column, no provenance columns).
 	_, err = db.ExecContext(ctx,
 		`INSERT INTO specs (slug, project_slug, intent, stage, priority, complexity, lifecycle, notes, content_hash, version, created_at, updated_at)

@@ -72,6 +72,8 @@ func TestGetReady_ProvenanceAndStageFilters(t *testing.T) {
 	_, err = store.CreateSpec(ctx, "e-authored-superseded-old", "to be superseded", "p1", "medium",
 		storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
+	_, err = store.UpdateSpec(ctx, "e-authored-superseded-old", nil, &doneStage, nil, nil, nil)
+	require.NoError(t, err)
 	_, err = store.CreateSpec(ctx, "e-authored-superseded-new", "superseding spec", "p1", "medium",
 		storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
