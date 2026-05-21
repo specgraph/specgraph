@@ -35,9 +35,10 @@ var rpcPermissions = map[string]string{
 	specgraphv1connect.ClaimServiceHeartbeatProcedure:   "claim:write",
 	specgraphv1connect.ClaimServiceUnclaimSpecProcedure: "claim:write",
 	// ConstitutionService
-	specgraphv1connect.ConstitutionServiceGetConstitutionProcedure:    "constitution:read",
-	specgraphv1connect.ConstitutionServiceUpdateConstitutionProcedure: "constitution:write",
-	specgraphv1connect.ConstitutionServiceEmitToolFilesProcedure:      "constitution:write",
+	specgraphv1connect.ConstitutionServiceGetConstitutionProcedure:             "constitution:read",
+	specgraphv1connect.ConstitutionServiceUpdateConstitutionProcedure:          "constitution:write",
+	specgraphv1connect.ConstitutionServiceEmitToolFilesProcedure:               "constitution:read",
+	specgraphv1connect.ConstitutionServiceRefreshConstitutionLayerProcedure:    "constitution:write",
 	// AuthoringService
 	specgraphv1connect.AuthoringServiceGetPromptsProcedure:         "authoring:read",
 	specgraphv1connect.AuthoringServiceSparkProcedure:              "authoring:write",
