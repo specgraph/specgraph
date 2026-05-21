@@ -67,25 +67,9 @@ func provenanceString(p specv1.SpecProvenance) string {
 	}
 }
 
-// renderProvenanceBlock formats the provenance line(s) for spec render output.
-// Always renders at least one line — no silent-default for AUTHORED.
-func renderProvenanceBlock(s *specv1.Spec) string {
-	pt := s.GetProvenanceType()
-	switch d := s.GetProvenanceDetail().(type) {
-	case *specv1.Spec_RetroactiveFromPr:
-		r := d.RetroactiveFromPr
-		return fmt.Sprintf(
-			"provenance:   %s\n              %s\n              merged %s (commit %s)",
-			provenanceString(pt), r.GetUrl(),
-			r.GetMergedAt().AsTime().Format("2006-01-02"),
-			r.GetSha(),
-		)
-	case *specv1.Spec_Declared:
-		return fmt.Sprintf(
-			"provenance:   %s\n              declared by %s: %q",
-			provenanceString(pt), d.Declared.GetDeclaredBy(), d.Declared.GetNote(),
-		)
-	default:
-		return fmt.Sprintf("provenance:   %s", provenanceString(pt))
-	}
-}
+// Note: a richer renderProvenanceBlock that includes RETROACTIVE/DECLARED
+// detail was prototyped but not wired into the metadata table. The table
+// format displays only the provenance type via provenanceString; the
+// structured detail surfaces in the corresponding stage outputs and via
+// the spec's notes. Re-introduce a block renderer if a future use case
+// needs the detail rendered separately from the table.

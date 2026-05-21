@@ -119,7 +119,11 @@ func encodeProvenanceDetail(p storage.SpecProvenanceType, d storage.SpecProvenan
 		Type string `json:"type"`
 		Data any    `json:"data"`
 	}{Type: string(p), Data: data}
-	return json.Marshal(env)
+	out, err := json.Marshal(env)
+	if err != nil {
+		return nil, fmt.Errorf("encode provenance_detail envelope: %w", err)
+	}
+	return out, nil
 }
 
 // CreateSpec stores a new spec in Postgres and returns it.

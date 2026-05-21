@@ -122,34 +122,6 @@ func specProvenanceFromProto(p specv1.SpecProvenance) (storage.SpecProvenanceTyp
 	return "", fmt.Errorf("unknown provenance enum: %q", p.String())
 }
 
-// specProvenanceDetailFromProto reads the oneof on a proto Spec and returns the
-// domain detail struct. The caller passes pb.GetProvenanceDetail() — same
-// unexported-interface caveat as above.
-func specProvenanceDetailFromProto(pb *specv1.Spec) storage.SpecProvenanceDetail {
-	switch v := pb.GetProvenanceDetail().(type) {
-	case *specv1.Spec_RetroactiveFromPr:
-		return storage.SpecProvenanceDetail{
-			RetroactiveFromPR: &storage.RetroactivePRProvenance{
-				URL:      v.RetroactiveFromPr.GetUrl(),
-				SHA:      v.RetroactiveFromPr.GetSha(),
-				MergedAt: v.RetroactiveFromPr.GetMergedAt().AsTime(),
-				Title:    v.RetroactiveFromPr.GetTitle(),
-			},
-		}
-	case *specv1.Spec_Declared:
-		return storage.SpecProvenanceDetail{
-			Declared: &storage.DeclaredProvenance{
-				DeclaredBy: v.Declared.GetDeclaredBy(),
-				Note:       v.Declared.GetNote(),
-			},
-		}
-	case *specv1.Spec_Authored:
-		return storage.SpecProvenanceDetail{}
-	default:
-		return storage.SpecProvenanceDetail{}
-	}
-}
-
 // createSpecProvenanceDetailFromProto reads the provenance_detail oneof from a
 // CreateSpecRequest and returns the domain detail struct.
 func createSpecProvenanceDetailFromProto(msg *specv1.CreateSpecRequest) storage.SpecProvenanceDetail {

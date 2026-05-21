@@ -60,6 +60,7 @@ The proto change is first because every other layer compiles against the new typ
 ### Task 1.1: Add new sentinel errors
 
 **Files:**
+
 - Modify: `internal/storage/errors.go`
 
 Adding sentinels first so handler code in later phases can reference them without forward declarations.
@@ -120,6 +121,7 @@ Adding sentinels first so handler code in later phases can reference them withou
 ### Task 1.2: Add ADR-006 stub
 
 **Files:**
+
 - Create: `docs/decisions/ADR-006-spec-provenance-model.md`
 
 Stub now so the touch surface is complete; finalize content in Task 8.3.
@@ -164,6 +166,7 @@ Stub now so the touch surface is complete; finalize content in Task 8.3.
 ### Task 1.3: Update the proto schema
 
 **Files:**
+
 - Modify: `proto/specgraph/v1/spec.proto`
 
 - [ ] **Step 1: Replace the SpecLifecycle enum block with SpecProvenance**
@@ -273,6 +276,7 @@ Stub now so the touch surface is complete; finalize content in Task 8.3.
 ### Task 2.1: Update storage domain types
 
 **Files:**
+
 - Modify: `internal/storage/spec_domain.go`
 
 - [ ] **Step 1: Remove the SpecLifecycle type and constants**
@@ -393,6 +397,7 @@ Stub now so the touch surface is complete; finalize content in Task 8.3.
 ### Task 2.2: Update server convert layer
 
 **Files:**
+
 - Modify: `internal/server/convert_spec.go`
 
 - [ ] **Step 1: Remove the lifecycle conversion**
@@ -540,6 +545,7 @@ Stub now so the touch surface is complete; finalize content in Task 8.3.
 ### Task 3.1: Postgres migration 007
 
 **Files:**
+
 - Create: `internal/storage/postgres/migrations/007_spec_provenance.sql`
 
 - [ ] **Step 1: Write the migration**
@@ -589,6 +595,7 @@ Stub now so the touch surface is complete; finalize content in Task 8.3.
 ### Task 3.2: Update postgres spec.go insert/select
 
 **Files:**
+
 - Modify: `internal/storage/postgres/spec.go`
 
 - [ ] **Step 1: Update the insert in CreateSpec**
@@ -757,6 +764,7 @@ Stub now so the touch surface is complete; finalize content in Task 8.3.
 ### Task 3.3: Rewrite GetReady query
 
 **Files:**
+
 - Modify: `internal/storage/postgres/graph.go` (function `GetReady` at line 358)
 
 - [ ] **Step 1: Replace the GetReady query body**
@@ -833,6 +841,7 @@ Stub now so the touch surface is complete; finalize content in Task 8.3.
 ### Task 4.1: Spec_handler create validation
 
 **Files:**
+
 - Modify: `internal/server/spec_handler.go`
 
 The existing `CreateSpec` RPC takes only slug + intent + priority + complexity. The new design requires extending it to optionally accept provenance + provenance_detail + all four stage outputs (for non-AUTHORED creates).
@@ -965,6 +974,7 @@ The existing `CreateSpec` RPC takes only slug + intent + priority + complexity. 
 ### Task 4.2: Claim and completion gating
 
 **Files:**
+
 - Modify: `internal/server/claim_handler.go`, `internal/server/execution_handler.go`
 
 - [ ] **Step 1: Gate Claim on provenance**
@@ -1006,6 +1016,7 @@ The existing `CreateSpec` RPC takes only slug + intent + priority + complexity. 
 ### Task 5.1: CLI lifecycle.go output
 
 **Files:**
+
 - Modify: `cmd/specgraph/lifecycle.go`
 
 The CLI subcommands for amend/supersede/abandon print `lifecycle=...` in their output. Replace with `provenance=...`.
@@ -1040,6 +1051,7 @@ The CLI subcommands for amend/supersede/abandon print `lifecycle=...` in their o
 ### Task 5.2: CLI spec create flags
 
 **Files:**
+
 - Modify: `cmd/specgraph/spec.go` (or `cmd/specgraph/create.go` — search first)
 
 - [ ] **Step 1: Locate the create command and any existing --lifecycle flag**
@@ -1084,6 +1096,7 @@ The CLI subcommands for amend/supersede/abandon print `lifecycle=...` in their o
 ### Task 5.3: MCP tools_spec.go
 
 **Files:**
+
 - Modify: `internal/mcp/tools_spec.go`
 
 - [ ] **Step 1: Update the MCP spec tool's create-action schema**
@@ -1114,6 +1127,7 @@ The CLI subcommands for amend/supersede/abandon print `lifecycle=...` in their o
 ### Task 5.4: Render layer
 
 **Files:**
+
 - Modify: `internal/render/spec.go`
 
 The existing `lifecycleString` function (line 57-66) is dead code after this change. Replace with a provenance-aware render.
@@ -1192,6 +1206,7 @@ The existing `lifecycleString` function (line 57-66) is dead code after this cha
 ### Task 6.1: Linter schema.go
 
 **Files:**
+
 - Modify: `internal/linter/schema.go`
 
 - [ ] **Step 1: Replace the lifecycle validation block**
@@ -1245,6 +1260,7 @@ The existing `lifecycleString` function (line 57-66) is dead code after this cha
 ### Task 6.2: Export engine
 
 **Files:**
+
 - Modify: `internal/export/engine.go`
 
 - [ ] **Step 1: Replace lifecycle handling in the export path**
@@ -1281,6 +1297,7 @@ The existing `lifecycleString` function (line 57-66) is dead code after this cha
 ### Task 7.1: Provenance creation-path integration tests
 
 **Files:**
+
 - Create: `internal/server/spec_handler_provenance_test.go`
 
 - [ ] **Step 1: Write the AUTHORED-create test**
@@ -1404,6 +1421,7 @@ The existing `lifecycleString` function (line 57-66) is dead code after this cha
 ### Task 7.2: GetReady mixed-seed integration test
 
 **Files:**
+
 - Create: `internal/storage/postgres/graph_ready_provenance_test.go`
 
 - [ ] **Step 1: Write the seed-and-assert test**
@@ -1466,6 +1484,7 @@ The existing `lifecycleString` function (line 57-66) is dead code after this cha
 ### Task 7.3: Migration precondition test
 
 **Files:**
+
 - Create: `internal/storage/postgres/migration_007_test.go`
 
 - [ ] **Step 1: Write the precondition test**
@@ -1524,6 +1543,7 @@ The existing `lifecycleString` function (line 57-66) is dead code after this cha
 ### Task 7.4: Update existing tests that referenced lifecycle
 
 **Files:**
+
 - Modify: any `*_test.go` file currently referencing `Lifecycle`, `SpecLifecycle`, `LIFECYCLE_TASK`, `LIFECYCLE_LIVING`, etc.
 
 - [ ] **Step 1: Find all stragglers**
@@ -1570,6 +1590,7 @@ The existing `lifecycleString` function (line 57-66) is dead code after this cha
 ### Task 8.1: CHANGELOG entry
 
 **Files:**
+
 - Modify: `CHANGELOG.md`
 
 - [ ] **Step 1: Add a breaking-change entry**
@@ -1597,6 +1618,7 @@ The existing `lifecycleString` function (line 57-66) is dead code after this cha
 ### Task 8.2: Concept doc
 
 **Files:**
+
 - Modify: `site/docs/concepts/spec-graph.md`
 
 - [ ] **Step 1: Find and update the lifecycle row**
@@ -1626,6 +1648,7 @@ The existing `lifecycleString` function (line 57-66) is dead code after this cha
 ### Task 8.3: Finalize ADR-006
 
 **Files:**
+
 - Modify: `docs/decisions/ADR-006-spec-provenance-model.md`
 
 - [ ] **Step 1: Replace the stub with full content**
