@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -154,12 +155,13 @@ func TestManagedStatusLine_AllSynced(t *testing.T) {
 		Synced: 14,
 		Total:  14,
 	}
-	line := managedStatusLine(rep)
-	if !strings.Contains(line, "14/14 synced") {
-		t.Errorf("expected '14/14 synced' in line: %s", line)
+	want := fmt.Sprintf("Managed files: %d/%d synced", rep.Synced, rep.Total)
+	got := managedStatusLine(rep)
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
 	}
-	if strings.Contains(line, "—") {
-		t.Errorf("expected no breakdown when all synced: %s", line)
+	if strings.Contains(got, "—") {
+		t.Errorf("expected no breakdown when all synced: %s", got)
 	}
 }
 

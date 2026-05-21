@@ -26,7 +26,7 @@ var initCmd = &cobra.Command{
 		"(AGENTS.md, .mdc) are rewritten only when canonical or stale — " +
 		"user-edited (drifted) blocks are SKIPPED to preserve hand edits. " +
 		"runInit calls SyncAll with zero-value SyncOptions, so there is no " +
-		"--force path in this command; use `specgraph doctor --fix` (PR G) " +
+		"--force path in this command; use `specgraph doctor --fix` " +
 		"to overwrite drifted blocks.",
 	Args: cobra.MaximumNArgs(1),
 	RunE: runInit,
@@ -179,7 +179,7 @@ func runInit(_ *cobra.Command, args []string) error {
 // harnessSliceFromConfig maps strings from cfg.Harnesses to Harness enum
 // values. Unknown names are silently dropped (doctor's Project config
 // group surfaces them as drift). Empty input returns all three harnesses
-// — the legacy default before this commit.
+// — the legacy default when no harnesses are configured.
 func harnessSliceFromConfig(names []string) []managedfiles.Harness {
 	if len(names) == 0 {
 		return []managedfiles.Harness{

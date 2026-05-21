@@ -10,9 +10,9 @@ type BinaryReport struct {
 	Commit  string `json:"commit"`
 }
 
-// runBinaryGroup reports the running binary's identity. Inputs are
-// the build-time ldflags-injected values already populated for
-// `specgraph health`. OK iff both are non-empty.
+// runBinaryGroup reports the running binary's identity. version and
+// commit are goreleaser-injected ldflags variables declared in main.go.
+// OK iff both are non-empty.
 func runBinaryGroup() BinaryReport {
 	rep := BinaryReport{
 		Version: version, // existing ldflags var

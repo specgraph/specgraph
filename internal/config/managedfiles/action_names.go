@@ -4,7 +4,7 @@
 package managedfiles
 
 // ActionName returns the canonical lowercase string for an Action,
-// suitable for human-readable CLI output. PR G's doctor uses the
+// suitable for human-readable CLI output. The doctor command uses the
 // same names to keep init and doctor output aligned.
 func ActionName(a Action) string {
 	switch a {

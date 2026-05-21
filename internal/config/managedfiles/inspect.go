@@ -31,9 +31,6 @@ func Inspect(cwd string, mf ManagedFile, params ProjectParams) (FileState, error
 // and returns a FileState for each. Errors at the per-file level are
 // captured in the FileState (not surfaced as an error return) so callers
 // see all results, not just the first failure.
-//
-// In PR A, Manifest() returns an empty slice; InspectAll therefore returns
-// an empty slice. PRs B+ populate the manifest.
 func InspectAll(cwd string, harnesses []Harness, params ProjectParams) ([]FileState, error) {
 	if err := validateProjectDir(cwd); err != nil {
 		return nil, err

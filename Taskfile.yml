@@ -336,8 +336,8 @@ tasks:
   # `--config /dev/null` pins both targets to the binary's defaults
   # (DefaultServer=http://127.0.0.1:9090) so the check is reproducible
   # regardless of the contributor's ~/.config/specgraph/config.yaml. The
-  # dogfood test (TestDogfood_CheckedInConfigsAreCanonical) pins 9090 as
-  # the canonical URL for this repo; both helpers honor that contract.
+  # dogfood canonicality test pins 9090 as the canonical URL for this
+  # repo; both helpers honor that contract.
   plugin:refresh:
     desc: Rebuild specgraph and re-run init against the current project to pick up plugin canonical edits
     cmds:

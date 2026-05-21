@@ -62,9 +62,15 @@ var _ = Describe("specgraph doctor", func() {
 
 		result := cli.RunInDir(tmpDir, "doctor", "--fix")
 		combined := result.Stdout + result.Stderr
+		// The corrupted filename must appear in expanded output, and the
+		// combined output must classify it as either Drifted (sentinel hash
+		// mismatches disk) or Stale (sentinel hash matches but canonical
+		// changed). ExitCode is not asserted — recovery semantics differ
+		// between the two states.
+		Expect(combined).To(ContainSubstring("AGENTS.md"))
 		Expect(combined).To(SatisfyAny(
 			ContainSubstring("drifted"),
-			ContainSubstring("synced"),
+			ContainSubstring("stale"),
 		))
 	})
 

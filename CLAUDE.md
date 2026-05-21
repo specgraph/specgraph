@@ -47,7 +47,7 @@ machine-readable output; `--fix` auto-init's Stale/Missing rows and
 prints guidance for Drifted; `--harness <name>` narrows; `--exit-zero`
 suppresses non-zero exit for advisory use.
 
-Every CLI invocation runs a drift-nudge in `PersistentPreRun` that
+Every CLI invocation runs a drift-nudge in `PersistentPreRunE` that
 emits one stderr line if any managed file is non-Synced. Skip gates:
 the subcommand allow-list (`init`, `doctor`, `health`, etc.),
 `isatty(stderr)`, `SPECGRAPH_DRIFT_NUDGE=off`, `.specgraph.yaml`'s

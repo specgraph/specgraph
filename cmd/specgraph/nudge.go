@@ -37,7 +37,7 @@ var driftNudgeAllowList = map[string]bool{
 }
 
 // nudgePreRun is rootCmd.PersistentPreRunE. Runs InspectAll and emits
-// one stderr line if any file is non-Synced. Multiple skip gates
+// one stderr line if any file is Stale or Drifted. Multiple skip gates
 // (subcommand allow-list, isatty, env, config, throttle) keep the
 // fast path cheap.
 func nudgePreRun(cmd *cobra.Command, _ []string) error {
@@ -80,7 +80,7 @@ func nudgePreRun(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 	// Build ProjectParams matching init's path so sentinel hashes line
-	// up (Task 1's harnessSliceFromConfig + ResolveServer).
+	// up (harnessSliceFromConfig + ResolveServer).
 	globalCfg, err := loadGlobalCfg()
 	if err != nil {
 		return nil //nolint:nilerr // advisory: global config error not our problem
@@ -143,8 +143,8 @@ func shouldEmitAfterThrottle(projectRoot string) bool {
 }
 
 // throttleFilePath builds the per-(project, binary-version) path under
-// xdg.CacheHome()/nudges. buildTime is not declared in this build, so
-// the version hash is over version+commit only.
+// xdg.CacheHome()/nudges. buildTime is not a declared ldflags variable,
+// so the version hash covers version+commit only.
 func throttleFilePath(projectRoot string) string {
 	resolved, err := filepath.EvalSymlinks(projectRoot)
 	if err != nil {

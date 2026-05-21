@@ -20,9 +20,9 @@ import (
 type DoctorReport struct {
 	ExitCode int           `json:"exitCode"`
 	Binary   BinaryReport  `json:"binary"`
-	Server   ServerReport  `json:"server"`  // populated in commit 5
-	Project  ProjectReport `json:"project"` // populated in commit 4
-	Managed  ManagedReport `json:"managed"` // populated in commit 6
+	Server   ServerReport  `json:"server"`
+	Project  ProjectReport `json:"project"`
+	Managed  ManagedReport `json:"managed"`
 }
 
 // runDoctor is doctorCmd's RunE entry point. It builds the report,
@@ -113,9 +113,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	return fmt.Errorf("doctor: exit %d", final)
 }
 
-// computeExitCode picks among 0 (clean), 1 (any group unhealthy), 2
-// (infrastructure failure — reserved for the Server group's dial
-// errors etc.; filled in by commit 5).
+// computeExitCode returns 1 if any group reports non-OK, else 0.
 func computeExitCode(rep *DoctorReport) int {
 	if !rep.Binary.OK || !rep.Project.OK || !rep.Server.OK || !rep.Managed.OK {
 		return 1
