@@ -39,6 +39,31 @@ func TestImport_RejectsUnsupportedSchemaVersion(t *testing.T) {
 	}
 }
 
+// TestImport_RejectsSchemaVersionZero guards against silent data-loss on
+// unversioned/hand-crafted documents. SchemaVersion: 0 (e.g. omitted field)
+// passes the high-version check but must be rejected at the constitution
+// switch's default branch so any constitution data isn't silently dropped.
+func TestImport_RejectsSchemaVersionZero(t *testing.T) {
+	backend := newTestBackend(t)
+	doc := Document{
+		SchemaVersion: 0,
+		ProjectSlug:   "test-project",
+		Data: Data{
+			Project: &storage.Project{Slug: "test-project"},
+			Constitution: &storage.Constitution{
+				Layer: storage.ConstitutionLayerProject,
+			},
+		},
+	}
+	data, err := json.Marshal(doc)
+	require.NoError(t, err)
+
+	engine := NewEngine(backend, "", "test-version")
+	_, err = engine.Import(context.Background(), data, false, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported schema version 0")
+}
+
 // ---------------------------------------------------------------------------
 // HMAC signature — tested via verifySignature directly to avoid nil backend
 // ---------------------------------------------------------------------------
@@ -273,6 +298,231 @@ func (b *decisionCapturingBackend) CreateDecision(_ context.Context, slug, title
 	return dec, nil
 }
 
+// ---------------------------------------------------------------------------
+// Multi-layer constitution export (v2 schema)
+// ---------------------------------------------------------------------------
+
+// multiLayerExportBackend is a minimal in-memory backend for
+// TestExport_MultiLayerConstitution. It stubs every method called by
+// Engine.collect, returning empty data for everything except GetProject and
+// the constitution methods.
+type multiLayerExportBackend struct {
+	Backend
+	project    *storage.Project
+	layers     map[storage.ConstitutionLayer]*storage.Constitution
+	layerOrder []storage.ConstitutionLayer // insertion order for GetAllLayers
+}
+
+func newTestBackend(t *testing.T) *multiLayerExportBackend {
+	t.Helper()
+	return &multiLayerExportBackend{
+		project: &storage.Project{Slug: "test-project"},
+		layers:  make(map[storage.ConstitutionLayer]*storage.Constitution),
+	}
+}
+
+// UpdateConstitution stores a constitution layer in order of first insertion.
+func (b *multiLayerExportBackend) UpdateConstitution(_ context.Context, c *storage.Constitution) (*storage.Constitution, error) {
+	if _, exists := b.layers[c.Layer]; !exists {
+		b.layerOrder = append(b.layerOrder, c.Layer)
+	}
+	clone := *c
+	clone.Version = 1
+	b.layers[c.Layer] = &clone
+	return &clone, nil
+}
+
+func (b *multiLayerExportBackend) GetAllLayers(_ context.Context) ([]*storage.Constitution, error) {
+	out := make([]*storage.Constitution, 0, len(b.layerOrder))
+	for _, l := range b.layerOrder {
+		out = append(out, b.layers[l])
+	}
+	return out, nil
+}
+
+func (b *multiLayerExportBackend) GetProject(_ context.Context, _ string) (*storage.Project, error) {
+	return b.project, nil
+}
+
+func (b *multiLayerExportBackend) ListSpecs(_ context.Context, _, _ string, _ int) ([]*storage.Spec, error) {
+	return nil, nil
+}
+
+func (b *multiLayerExportBackend) ListDecisions(_ context.Context, _ storage.DecisionStatus, _ int) ([]*storage.Decision, error) {
+	return nil, nil
+}
+
+func (b *multiLayerExportBackend) GetFullGraph(_ context.Context) (*storage.FullGraph, error) {
+	return &storage.FullGraph{}, nil
+}
+
+func (b *multiLayerExportBackend) ListAllFindings(_ context.Context) ([]*storage.AnalyticalFinding, error) {
+	return nil, nil
+}
+
+func (b *multiLayerExportBackend) ListAllChanges(_ context.Context) ([]*storage.ChangeLogEntry, error) {
+	return nil, nil
+}
+
+func (b *multiLayerExportBackend) ListAllConversations(_ context.Context) ([]*storage.ConversationLogEntry, error) {
+	return nil, nil
+}
+
+func (b *multiLayerExportBackend) ListSyncMappings(_ context.Context, _ storage.SyncAdapterType, _ string) ([]*storage.SyncMapping, error) {
+	return nil, nil
+}
+
+func (b *multiLayerExportBackend) EnsureProject(_ context.Context, slug string) (*storage.Project, error) {
+	if b.project == nil {
+		b.project = &storage.Project{Slug: slug}
+	}
+	return b.project, nil
+}
+
+// ---------------------------------------------------------------------------
+// Import — schema-version-aware constitution import (Task 7)
+// ---------------------------------------------------------------------------
+
+func TestImport_V1Document_SingleLayer(t *testing.T) {
+	backend := newTestBackend(t)
+	ctx := context.Background()
+
+	// Hand-crafted v1 document with the legacy singular field.
+	v1Doc := Document{
+		SchemaVersion:    1,
+		ProjectSlug:      "test-project",
+		SpecGraphVersion: "test-version",
+		Data: Data{
+			Project: &storage.Project{Slug: "test-project"},
+			Constitution: &storage.Constitution{
+				Name:  "v1-only",
+				Layer: storage.ConstitutionLayerProject,
+				Principles: []storage.Principle{{ID: "p1", Statement: "P1"}},
+			},
+		},
+	}
+	data, err := json.Marshal(v1Doc)
+	require.NoError(t, err)
+
+	engine := NewEngine(backend, "", "test-version")
+	result, err := engine.Import(ctx, data, false, false)
+	require.NoError(t, err)
+	assert.Equal(t, 1, result.Constitution, "exactly one layer imported")
+
+	layers, err := backend.GetAllLayers(ctx)
+	require.NoError(t, err)
+	require.Len(t, layers, 1)
+	assert.Equal(t, "v1-only", layers[0].Name)
+	assert.Equal(t, storage.ConstitutionLayerProject, layers[0].Layer)
+}
+
+func TestImport_V2Document_MultipleLayers(t *testing.T) {
+	backend := newTestBackend(t)
+	ctx := context.Background()
+
+	v2Doc := Document{
+		SchemaVersion:    2,
+		ProjectSlug:      "test-project",
+		SpecGraphVersion: "test-version",
+		Data: Data{
+			Project: &storage.Project{Slug: "test-project"},
+			Constitutions: []*storage.Constitution{
+				{Name: "org", Layer: storage.ConstitutionLayerOrg, Principles: []storage.Principle{{ID: "po"}}},
+				{Name: "proj", Layer: storage.ConstitutionLayerProject, Principles: []storage.Principle{{ID: "pp"}}},
+			},
+		},
+	}
+	data, err := json.Marshal(v2Doc)
+	require.NoError(t, err)
+
+	engine := NewEngine(backend, "", "test-version")
+	result, err := engine.Import(ctx, data, false, false)
+	require.NoError(t, err)
+	assert.Equal(t, 2, result.Constitution, "both layers imported")
+
+	layers, err := backend.GetAllLayers(ctx)
+	require.NoError(t, err)
+	assert.Len(t, layers, 2)
+}
+
+func TestImport_V1Document_WithV2Field_Rejected(t *testing.T) {
+	backend := newTestBackend(t)
+
+	mismatched := Document{
+		SchemaVersion: 1,
+		ProjectSlug:   "test-project",
+		Data: Data{
+			Project: &storage.Project{Slug: "test-project"},
+			Constitutions: []*storage.Constitution{
+				{Layer: storage.ConstitutionLayerProject},
+			},
+		},
+	}
+	data, err := json.Marshal(mismatched)
+	require.NoError(t, err)
+
+	engine := NewEngine(backend, "", "test-version")
+	_, err = engine.Import(context.Background(), data, false, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "v1 documents must use 'constitution' field, not 'constitutions'")
+}
+
+func TestImport_V2Document_WithV1Field_Rejected(t *testing.T) {
+	backend := newTestBackend(t)
+
+	mismatched := Document{
+		SchemaVersion: 2,
+		ProjectSlug:   "test-project",
+		Data: Data{
+			Project: &storage.Project{Slug: "test-project"},
+			Constitution: &storage.Constitution{
+				Layer: storage.ConstitutionLayerProject,
+			},
+		},
+	}
+	data, err := json.Marshal(mismatched)
+	require.NoError(t, err)
+
+	engine := NewEngine(backend, "", "test-version")
+	_, err = engine.Import(context.Background(), data, false, false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "v2 documents must use 'constitutions' field, not 'constitution'")
+}
+
+func TestExport_MultiLayerConstitution(t *testing.T) {
+	backend := newTestBackend(t)
+	ctx := context.Background()
+
+	// Seed two layers.
+	_, err := backend.UpdateConstitution(ctx, &storage.Constitution{
+		Name:  "org",
+		Layer: storage.ConstitutionLayerOrg,
+		Principles: []storage.Principle{{ID: "p-org", Statement: "Org"}},
+	})
+	require.NoError(t, err)
+
+	_, err = backend.UpdateConstitution(ctx, &storage.Constitution{
+		Name:  "project",
+		Layer: storage.ConstitutionLayerProject,
+		Principles: []storage.Principle{{ID: "p-proj", Statement: "Proj"}},
+	})
+	require.NoError(t, err)
+
+	engine := NewEngine(backend, "", "test-version")
+	out, err := engine.Export(ctx, "test-project")
+	require.NoError(t, err)
+
+	var doc Document
+	require.NoError(t, json.Unmarshal(out, &doc))
+
+	assert.Equal(t, 2, doc.SchemaVersion)
+	assert.Nil(t, doc.Data.Constitution, "v2 exports never populate the v1 field")
+	require.Len(t, doc.Data.Constitutions, 2, "v2 export must contain both layers")
+	assert.Equal(t, storage.ConstitutionLayerOrg, doc.Data.Constitutions[0].Layer,
+		"layers in precedence order: org before project")
+	assert.Equal(t, storage.ConstitutionLayerProject, doc.Data.Constitutions[1].Layer)
+}
+
 func TestImport_DecisionADR003Fields(t *testing.T) {
 	back := &decisionCapturingBackend{}
 
@@ -324,4 +574,59 @@ func TestImport_DecisionADR003Fields(t *testing.T) {
 	assert.Equal(t, storage.DecisionScopeProject, got.Scope)
 	assert.Equal(t, "login-api", got.OriginSpec)
 	assert.Equal(t, "specify", got.OriginStage)
+}
+
+// ---------------------------------------------------------------------------
+// Round-trip migration: v1 import → v2 export
+// ---------------------------------------------------------------------------
+
+func TestExportImport_V1ToV2_RoundTrip(t *testing.T) {
+	// Hand-craft a v1 document, import it via the new code, re-export,
+	// verify the resulting v2 document preserves the single layer.
+
+	v1Source := Document{
+		SchemaVersion:    1,
+		ProjectSlug:      "rt-project",
+		SpecGraphVersion: "test-version",
+		Data: Data{
+			Project: &storage.Project{Slug: "rt-project"},
+			Constitution: &storage.Constitution{
+				Name:  "legacy",
+				Layer: storage.ConstitutionLayerProject,
+				Principles: []storage.Principle{
+					{ID: "legacy-p1", Statement: "Legacy principle"},
+				},
+				Constraints: []string{"legacy-constraint"},
+			},
+		},
+	}
+	v1Bytes, err := json.Marshal(v1Source)
+	require.NoError(t, err)
+
+	backend := newTestBackend(t)
+	ctx := context.Background()
+	engine := NewEngine(backend, "", "test-version")
+
+	// Import v1.
+	_, err = engine.Import(ctx, v1Bytes, false, false)
+	require.NoError(t, err)
+
+	// Re-export as v2.
+	v2Bytes, err := engine.Export(ctx, "rt-project")
+	require.NoError(t, err)
+
+	var v2 Document
+	require.NoError(t, json.Unmarshal(v2Bytes, &v2))
+
+	assert.Equal(t, 2, v2.SchemaVersion, "re-export uses CurrentSchemaVersion=2")
+	assert.Nil(t, v2.Data.Constitution, "v2 export never populates v1 field")
+	require.Len(t, v2.Data.Constitutions, 1, "exactly one layer preserved")
+
+	got := v2.Data.Constitutions[0]
+	assert.Equal(t, "legacy", got.Name)
+	assert.Equal(t, storage.ConstitutionLayerProject, got.Layer)
+	require.Len(t, got.Principles, 1)
+	assert.Equal(t, "legacy-p1", got.Principles[0].ID)
+	require.Len(t, got.Constraints, 1)
+	assert.Equal(t, "legacy-constraint", got.Constraints[0])
 }

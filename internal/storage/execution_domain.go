@@ -84,9 +84,18 @@ type DependencyInfo struct {
 	Note    string
 }
 
+// ProvenanceEntry maps a constitution field path to the layer that set its value.
+type ProvenanceEntry struct {
+	Path  string
+	Layer ConstitutionLayer
+}
+
 // PrimeData holds the raw data needed to compose a prime response.
 type PrimeData struct {
 	Spec         *Spec
 	Decisions    []*Decision
 	Constitution *Constitution
+	// ConstitutionProvenance maps constitution field paths to the layer
+	// that set each value. Empty iff Constitution is nil.
+	ConstitutionProvenance []ProvenanceEntry
 }

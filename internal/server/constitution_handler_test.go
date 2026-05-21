@@ -13,6 +13,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/constitution/merge"
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/assert"
@@ -82,6 +83,17 @@ func (m *mockConstitutionBackend) GetAllLayers(_ context.Context) ([]*storage.Co
 		}
 	}
 	return result, nil
+}
+
+func (m *mockConstitutionBackend) GetMergedConstitution(ctx context.Context) (*storage.MergedResult, error) {
+	layers, err := m.GetAllLayers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(layers) == 0 {
+		return nil, storage.ErrConstitutionNotFound
+	}
+	return merge.Layers(layers)
 }
 
 func (m *mockConstitutionBackend) UpdateConstitution(_ context.Context, c *storage.Constitution) (*storage.Constitution, error) {
