@@ -203,10 +203,10 @@ Add positional `{slug}` arg + flags. Preserve `runUp`. Call `GetPrime` and rende
 Single test seeds a unique constitution name + principle ID, then asserts each of RPC / MCP resource / CLI for the same scope contains those literal strings. This is the integration-level safety net the design calls out (Section 13 line 819+).
 
 - [ ] Create `e2e/api/prime_cross_surface_test.go` (Ginkgo/Gomega, build tag `e2e`):
-  - Seed constitution layer with a unique name `test-cross-surface-{random}` and principle id `p-cross-surface-1`
-  - Call `ExecutionService.GetPrime(slug="")` → assert `project_view.constitution.name` contains the unique name; project_view.constitution_provenance contains `p-cross-surface-1`
-  - Read `specgraph://prime` (markdown form) → assert the unique name appears in output
-  - Shell out to `specgraph prime` (no slug) → assert the unique name appears in stdout
+  - Seed constitution layer with a unique name `test-cross-surface-{random}` AND a unique top constraint string (the project markdown digest renders top-5 constraints but not the constitution name, so markdown surfaces need a constraint-anchored fact)
+  - Call `ExecutionService.GetPrime(slug="")` → assert the full `PrimeResponse` (via `prototext.Format`) contains the unique name (proto carries Constitution.Name in the structured response)
+  - Read `specgraph://prime` (markdown form) → assert the unique constraint string appears in output
+  - Shell out to `specgraph prime` (no slug) → assert the unique constraint string appears in stdout
   - Repeat for spec scope: seed a spec, call GetPrime(slug=...), read `specgraph://prime/spec/{slug}`, run `specgraph prime <slug>`
 - [ ] Run `go test -tags e2e ./e2e/api/ -count=1`. Commit as `test(e2e): cross-surface prime fact-presence (spgr-8ar piece E)`
 

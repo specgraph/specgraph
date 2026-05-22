@@ -10,6 +10,7 @@ import (
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/internal/render"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -75,19 +76,15 @@ func runPrime(cmd *cobra.Command, args []string) error {
 
 func writePrime(cmd *cobra.Command, project *specv1.ProjectView, spec *specv1.SpecView, opts render.RenderOpts) error {
 	if primeJSON {
-		var (
-			data []byte
-			err  error
-		)
+		var msg proto.Message
 		if project != nil {
-			data, err = render.RenderProjectJSON(project, opts)
+			msg = render.ProjectViewForJSON(project, opts)
 		} else {
-			data, err = render.RenderSpecJSON(spec, opts)
+			msg = render.SpecViewForJSON(spec, opts)
 		}
-		if err != nil {
+		if err := printJSON(cmd.OutOrStdout(), msg); err != nil {
 			return fmt.Errorf("render json: %w", err)
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), string(data)) //nolint:errcheck // stdout write
 		return nil
 	}
 	var body string

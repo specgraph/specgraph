@@ -137,46 +137,61 @@ func RenderSpecMarkdown(v *specv1.SpecView, opts RenderOpts) string {
 	return b.String()
 }
 
-// RenderProjectJSON returns the JSON serialization of a ProjectView using
-// protojson. When opts.ShowProvenance is false, the constitution_provenance
-// field is omitted (invariant: callers that don't ask for provenance see
-// no key change in the output).
-//
-//nolint:revive // Public name per the spgr-8ar Piece E task contract.
-func RenderProjectJSON(v *specv1.ProjectView, opts RenderOpts) ([]byte, error) {
+// ProjectViewForJSON returns a proto.Message form of v suitable for JSON
+// serialization, honoring opts.ShowProvenance: when false, the returned
+// message is a clone with ConstitutionProvenance cleared so callers see no
+// provenance key in the output. This lets the CLI route prime output
+// through cmd/specgraph/output.go's shared printJSON helper.
+func ProjectViewForJSON(v *specv1.ProjectView, opts RenderOpts) proto.Message {
 	if v == nil {
-		return marshalProtoJSON(&specv1.ProjectView{})
+		return &specv1.ProjectView{}
 	}
 	if opts.ShowProvenance {
-		return marshalProtoJSON(v)
+		return v
 	}
 	clone, ok := proto.Clone(v).(*specv1.ProjectView)
 	if !ok {
 		// Defensive: should be impossible because proto.Clone preserves type.
-		return nil, fmt.Errorf("clone ProjectView: unexpected type %T", proto.Clone(v))
+		return v
 	}
 	clone.ConstitutionProvenance = nil
-	return marshalProtoJSON(clone)
+	return clone
 }
 
-// RenderSpecJSON returns the JSON serialization of a SpecView using
-// protojson. When opts.ShowProvenance is false, the constitution_provenance
-// field is omitted.
-//
-//nolint:revive // Public name per the spgr-8ar Piece E task contract.
-func RenderSpecJSON(v *specv1.SpecView, opts RenderOpts) ([]byte, error) {
+// SpecViewForJSON is the SpecView counterpart of ProjectViewForJSON.
+func SpecViewForJSON(v *specv1.SpecView, opts RenderOpts) proto.Message {
 	if v == nil {
-		return marshalProtoJSON(&specv1.SpecView{})
+		return &specv1.SpecView{}
 	}
 	if opts.ShowProvenance {
-		return marshalProtoJSON(v)
+		return v
 	}
 	clone, ok := proto.Clone(v).(*specv1.SpecView)
 	if !ok {
-		return nil, fmt.Errorf("clone SpecView: unexpected type %T", proto.Clone(v))
+		return v
 	}
 	clone.ConstitutionProvenance = nil
-	return marshalProtoJSON(clone)
+	return clone
+}
+
+// RenderProjectJSON returns the JSON serialization of a ProjectView using
+// protojson. When opts.ShowProvenance is false, the constitution_provenance
+// field is omitted (invariant: callers that don't ask for provenance see
+// no key change in the output). Used by the MCP resource handler, which
+// needs []byte+mime-type for the resource body; CLI callers should prefer
+// ProjectViewForJSON + cmd/specgraph/output.go's printJSON to keep CLI
+// JSON behavior consistent across read commands.
+//
+//nolint:revive // Public name per the spgr-8ar Piece E task contract.
+func RenderProjectJSON(v *specv1.ProjectView, opts RenderOpts) ([]byte, error) {
+	return marshalProtoJSON(ProjectViewForJSON(v, opts))
+}
+
+// RenderSpecJSON is the SpecView counterpart of RenderProjectJSON.
+//
+//nolint:revive // Public name per the spgr-8ar Piece E task contract.
+func RenderSpecJSON(v *specv1.SpecView, opts RenderOpts) ([]byte, error) {
+	return marshalProtoJSON(SpecViewForJSON(v, opts))
 }
 
 // ---------------------------------------------------------------------------
@@ -276,7 +291,11 @@ func writeFindings(b *strings.Builder, bySev map[int32]int32) {
 		sevs = append(sevs, specv1.FindingSeverity(raw))
 	}
 	sort.Slice(sevs, func(i, j int) bool {
-		return severityRank(sevs[i]) < severityRank(sevs[j])
+		ri, rj := severityRank(sevs[i]), severityRank(sevs[j])
+		if ri != rj {
+			return ri < rj
+		}
+		return sevs[i] < sevs[j]
 	})
 	for _, sev := range sevs {
 		fmt.Fprintf(b, "- %s: %d\n", sev.String(), bySev[int32(sev)])
