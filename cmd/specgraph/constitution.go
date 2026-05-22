@@ -46,6 +46,8 @@ var constitutionShowJSON bool
 
 var constitutionShowLayer string
 
+var constitutionShowProvenance bool
+
 func runConstitutionShow(cmd *cobra.Command, _ []string) error {
 	client, err := constitutionClient()
 	if err != nil {
@@ -64,9 +66,20 @@ func runConstitutionShow(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("get constitution: %w", err)
 	}
 	if constitutionShowJSON {
+		if !constitutionShowProvenance {
+			// Without --show-provenance, omit the provenance array from JSON
+			// output for byte-stability with today's behavior. protojson omits
+			// empty fields by default, so clearing the slice removes the
+			// "provenance": [...] key entirely.
+			resp.Msg.Provenance = nil
+		}
 		return printJSON(cmd.OutOrStdout(), resp.Msg)
 	}
-	fmt.Print(render.Constitution(resp.Msg.Constitution))
+	if constitutionShowProvenance {
+		fmt.Print(render.ConstitutionWithProvenance(resp.Msg.GetConstitution(), resp.Msg.GetProvenance()))
+	} else {
+		fmt.Print(render.Constitution(resp.Msg.GetConstitution()))
+	}
 	return nil
 }
 
@@ -511,6 +524,7 @@ func init() {
 
 	constitutionShowCmd.Flags().BoolVar(&constitutionShowJSON, "json", false, "output as JSON")
 	constitutionShowCmd.Flags().StringVar(&constitutionShowLayer, "layer", "", "show specific layer (user|org|project|domain; default: merged)")
+	constitutionShowCmd.Flags().BoolVar(&constitutionShowProvenance, "show-provenance", false, "annotate each field with the layer that set it (text mode); include provenance array (JSON mode)")
 	constitutionCmd.AddCommand(constitutionShowCmd)
 	constitutionCmd.AddCommand(constitutionEmitCmd)
 	constitutionCmd.AddCommand(constitutionImportCmd)
