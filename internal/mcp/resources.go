@@ -7,13 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"sort"
+	"net/url"
 	"strings"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-	"github.com/specgraph/specgraph/internal/authoring"
 	"github.com/specgraph/specgraph/internal/mcp/skills"
 	"github.com/specgraph/specgraph/internal/render"
 	"github.com/specgraph/specgraph/internal/skillvalidate"
@@ -247,166 +245,169 @@ func changesResourceHandler(c *Client) ResourceHandler {
 
 // ---------------------------------------------------------------------------
 // primeResourceHandler — specgraph://prime
+// specSpecificPrimeResourceHandler — specgraph://prime/spec/{slug}
 // ---------------------------------------------------------------------------
 
-// primeResourceHandler returns a session-priming digest in markdown. It
-// stitches together constitution summary, spec counts by stage, the top
-// 10 ready specs, open-findings counts by severity, and a Skills pointer
-// (six skills served via MCP). On RPC failure each section logs a warning
-// and renders a visible "_(unable to load: ...)_" marker under its
-// heading so partial connectivity is observable. Empty-but-successful
-// responses suppress the section entirely (no heading, no placeholder)
-// to keep the digest concise.
-func primeResourceHandler(c *Client, src skills.Source) ResourceHandler {
+// primeResourceHandler returns a session-priming digest by calling
+// ExecutionService.GetPrime with an empty slug (project scope) and
+// rendering the returned ProjectView via internal/render. Composition
+// lives server-side in the prime.Composer; this handler is a thin
+// proto-to-markdown (or proto-to-JSON) translator.
+//
+// Query params:
+//
+//	?provenance=true — annotate constitution fields with "(set by: <layer>)"
+//	?format=json     — return application/json instead of markdown
+func primeResourceHandler(c *Client) ResourceHandler {
 	return func(ctx context.Context, uri string) ([]ResourceContent, error) {
-		var b strings.Builder
-		b.WriteString("# SpecGraph Session Prime\n\n")
-
-		conResp, err := c.Constitution.GetConstitution(ctx, connect.NewRequest(&specv1.GetConstitutionRequest{}))
-		switch {
-		case err != nil && connect.CodeOf(err) == connect.CodeNotFound:
-			// Expected empty state on fresh projects: no constitution defined.
-			// Render a heading + hint so the agent knows the slot exists and
-			// how to populate it, rather than treating it as an RPC failure.
-			b.WriteString("## Constitution\n\n_No constitution configured. Run `specgraph constitution set` to define project ground truth._\n\n")
-		case err != nil:
-			slog.WarnContext(ctx, "prime.section_failed",
-				slog.String("section", "constitution"),
-				slog.String("err", err.Error()))
-			b.WriteString("## Constitution\n\n_(unable to load: " + err.Error() + ")_\n\n")
-		case conResp.Msg.GetConstitution() == nil:
-			// No constitution configured — skip section silently. Distinct from RPC failure.
-		default:
-			con := conResp.Msg.GetConstitution()
-			b.WriteString("## Constitution\n\n")
-			if con.GetTech() != nil && con.GetTech().GetLanguages() != nil {
-				fmt.Fprintf(&b, "Primary language: %s\n\n", con.GetTech().GetLanguages().GetPrimary())
-			}
-			if cs := con.GetConstraints(); len(cs) > 0 {
-				top := cs
-				if len(top) > 5 {
-					top = top[:5]
-				}
-				b.WriteString("Top constraints:\n")
-				for _, constraint := range top {
-					fmt.Fprintf(&b, "- %s\n", constraint)
-				}
-				b.WriteString("\nFull at `specgraph://constitution`.\n\n")
-			}
+		opts, format, err := parsePrimeURI(uri)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
-
-		listResp, err := c.Spec.ListSpecs(ctx, connect.NewRequest(&specv1.ListSpecsRequest{}))
-		switch {
-		case err != nil:
-			slog.WarnContext(ctx, "prime.section_failed",
-				slog.String("section", "graph_overview"),
-				slog.String("err", err.Error()))
-			b.WriteString("## Graph Overview\n\n_(unable to load: " + err.Error() + ")_\n\n")
-		case len(listResp.Msg.GetSpecs()) > 0:
-			b.WriteString("## Graph Overview\n\n")
-			counts := map[string]int{}
-			for _, s := range listResp.Msg.GetSpecs() {
-				counts[s.GetStage()]++
-			}
-			// Render in funnel order, then any unexpected stages alphabetically.
-			for _, stage := range authoring.AllStages() {
-				if n, ok := counts[stage]; ok {
-					fmt.Fprintf(&b, "- %s: %d\n", stage, n)
-					delete(counts, stage)
-				}
-			}
-			leftover := make([]string, 0, len(counts))
-			for stage := range counts {
-				leftover = append(leftover, stage)
-			}
-			sort.Strings(leftover)
-			for _, stage := range leftover {
-				fmt.Fprintf(&b, "- %s: %d\n", stage, counts[stage])
-			}
-			b.WriteString("\n")
+		resp, err := c.Execution.GetPrime(ctx, connect.NewRequest(&specv1.GetPrimeRequest{Slug: ""}))
+		if err != nil {
+			return nil, fmt.Errorf("get prime: %w", err)
 		}
-
-		readyResp, err := c.Graph.GetReady(ctx, connect.NewRequest(&specv1.GetReadyRequest{}))
-		switch {
-		case err != nil:
-			slog.WarnContext(ctx, "prime.section_failed",
-				slog.String("section", "ready_to_work"),
-				slog.String("err", err.Error()))
-			b.WriteString("## Ready to Work\n\n_(unable to load: " + err.Error() + ")_\n\n")
-		default:
-			ready := readyResp.Msg.GetReady()
-			if len(ready) > 0 {
-				b.WriteString("## Ready to Work\n\n")
-				if len(ready) > 10 {
-					ready = ready[:10]
-				}
-				for _, s := range ready {
-					fmt.Fprintf(&b, "- `%s` (%s)\n", s.GetSlug(), s.GetStage())
-				}
-				b.WriteString("\nFull list at `specgraph://graph/ready`.\n\n")
-			}
+		pview := resp.Msg.GetProjectView()
+		if pview == nil {
+			return nil, fmt.Errorf("prime response missing project view")
 		}
-
-		findingsResp, err := c.AnalyticalPass.ListProjectFindings(ctx, connect.NewRequest(&specv1.ListProjectFindingsRequest{}))
-		switch {
-		case err != nil:
-			slog.WarnContext(ctx, "prime.section_failed",
-				slog.String("section", "open_findings"),
-				slog.String("err", err.Error()))
-			b.WriteString("## Open Findings\n\n_(unable to load: " + err.Error() + ")_\n\n")
-		default:
-			counts := map[specv1.FindingSeverity]int{}
-			for _, f := range findingsResp.Msg.GetFindings() {
-				counts[f.GetSeverity()]++
-			}
-			if len(counts) > 0 {
-				b.WriteString("## Open Findings\n\n")
-				sevs := make([]specv1.FindingSeverity, 0, len(counts))
-				for sev := range counts {
-					sevs = append(sevs, sev)
-				}
-				sort.Slice(sevs, func(i, j int) bool {
-					return severityRank(sevs[i]) < severityRank(sevs[j])
-				})
-				for _, sev := range sevs {
-					fmt.Fprintf(&b, "- %s: %d\n", sev.String(), counts[sev])
-				}
-				b.WriteString("\nFull at `specgraph://findings`.\n\n")
-			}
-		}
-
-		metas, err := src.List(ctx)
-		switch {
-		case err != nil:
-			slog.WarnContext(ctx, "prime.section_failed",
-				slog.String("section", "skills"),
-				slog.String("err", err.Error()))
-			b.WriteString("## Skills\n\n_(unable to load: " + err.Error() + ")_\n\n")
-		case len(metas) > 0:
-			fmt.Fprintf(&b, "## Skills\n\n%d skills exposed via MCP. ", len(metas))
-			b.WriteString("Use `specgraph_skills_list` to see the catalog, ")
-			b.WriteString("`specgraph_skills_search` to find one by keyword, ")
-			b.WriteString("and `specgraph_skills_get` / `specgraph://skills/<name>` ")
-			b.WriteString("to fetch a specific skill.\n\n")
-		}
-
-		return []ResourceContent{{URI: uri, MimeType: "text/markdown", Text: b.String()}}, nil
+		return renderPrimeResource(uri, pview, nil, opts, format)
 	}
 }
 
-// severityRank gives a display order for finding severities: critical first,
-// warning second, note third, anything else last. Lower rank renders earlier.
-func severityRank(s specv1.FindingSeverity) int {
-	switch s {
-	case specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL:
-		return 0
-	case specv1.FindingSeverity_FINDING_SEVERITY_WARNING:
-		return 1
-	case specv1.FindingSeverity_FINDING_SEVERITY_NOTE:
-		return 2
-	default:
-		return 99
+// specSpecificPrimeResourceHandler returns a spec-scoped priming digest by
+// calling ExecutionService.GetPrime with the slug parsed from the URI and
+// rendering the returned SpecView via internal/render.
+//
+// Same query params as the project-scope handler.
+func specSpecificPrimeResourceHandler(c *Client) ResourceHandler {
+	return func(ctx context.Context, uri string) ([]ResourceContent, error) {
+		slug, opts, format, err := parsePrimeSpecURI(uri)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		resp, err := c.Execution.GetPrime(ctx, connect.NewRequest(&specv1.GetPrimeRequest{Slug: slug}))
+		if err != nil {
+			return nil, fmt.Errorf("get prime: %w", err)
+		}
+		sview := resp.Msg.GetSpecView()
+		if sview == nil {
+			return nil, fmt.Errorf("prime response missing spec view for slug %q", slug)
+		}
+		return renderPrimeResource(uri, nil, sview, opts, format)
 	}
+}
+
+// parsePrimeURI parses "specgraph://prime" optionally followed by
+// "?provenance=true&format=json". Returns the parsed render options
+// and format ("json" or "markdown") on success.
+func parsePrimeURI(uri string) (render.RenderOpts, string, error) {
+	rest := strings.TrimPrefix(uri, "specgraph://prime")
+	if rest != "" && !strings.HasPrefix(rest, "?") {
+		return render.RenderOpts{}, "", fmt.Errorf("malformed prime URI %q", uri)
+	}
+	return parsePrimeQuery(strings.TrimPrefix(rest, "?"))
+}
+
+// parsePrimeSpecURI parses "specgraph://prime/spec/{slug}" optionally
+// followed by a query string. Returns the slug, render options, and
+// format.
+func parsePrimeSpecURI(uri string) (slug string, opts render.RenderOpts, format string, err error) {
+	const prefix = "specgraph://prime/spec/"
+	if !strings.HasPrefix(uri, prefix) {
+		return "", render.RenderOpts{}, "", fmt.Errorf("malformed prime spec URI %q", uri)
+	}
+	rest := strings.TrimPrefix(uri, prefix)
+	slug = rest
+	query := ""
+	if i := strings.IndexByte(rest, '?'); i >= 0 {
+		slug = rest[:i]
+		query = rest[i+1:]
+	}
+	if slug == "" {
+		return "", render.RenderOpts{}, "", fmt.Errorf("malformed prime spec URI %q: empty slug", uri)
+	}
+	if strings.ContainsAny(slug, "/") {
+		return "", render.RenderOpts{}, "", fmt.Errorf("malformed prime spec URI %q: slug must not contain '/'", uri)
+	}
+	opts, format, err = parsePrimeQuery(query)
+	if err != nil {
+		return "", render.RenderOpts{}, "", err
+	}
+	return slug, opts, format, nil
+}
+
+// parsePrimeQuery decodes the supported prime resource query parameters.
+// Recognises:
+//
+//	provenance=true (case-insensitive truthy values per strconv.ParseBool)
+//	format=json     (anything else falls back to markdown)
+func parsePrimeQuery(raw string) (render.RenderOpts, string, error) {
+	opts := render.RenderOpts{}
+	format := "markdown"
+	if raw == "" {
+		return opts, format, nil
+	}
+	values, err := url.ParseQuery(raw)
+	if err != nil {
+		return render.RenderOpts{}, "", fmt.Errorf("parse query %q: %w", raw, err)
+	}
+	if v := values.Get("provenance"); v != "" {
+		switch strings.ToLower(v) {
+		case "1", "t", "true", "y", "yes":
+			opts.ShowProvenance = true
+		case "0", "f", "false", "n", "no":
+			opts.ShowProvenance = false
+		default:
+			return render.RenderOpts{}, "", fmt.Errorf("invalid provenance value %q", v)
+		}
+	}
+	if v := values.Get("format"); v != "" {
+		switch strings.ToLower(v) {
+		case "json":
+			format = "json"
+		case "markdown", "md":
+			format = "markdown"
+		default:
+			return render.RenderOpts{}, "", fmt.Errorf("invalid format value %q", v)
+		}
+	}
+	return opts, format, nil
+}
+
+// renderPrimeResource dispatches rendering based on which view is non-nil
+// and the requested format. Exactly one of project or spec must be non-nil.
+func renderPrimeResource(uri string, project *specv1.ProjectView, spec *specv1.SpecView, opts render.RenderOpts, format string) ([]ResourceContent, error) {
+	var (
+		body     string
+		mimeType string
+	)
+	switch format {
+	case "json":
+		var (
+			data []byte
+			err  error
+		)
+		if project != nil {
+			data, err = render.RenderProjectJSON(project, opts)
+		} else {
+			data, err = render.RenderSpecJSON(spec, opts)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("render prime json: %w", err)
+		}
+		body = string(data)
+		mimeType = "application/json"
+	default:
+		if project != nil {
+			body = render.RenderProjectMarkdown(project, opts)
+		} else {
+			body = render.RenderSpecMarkdown(spec, opts)
+		}
+		mimeType = "text/markdown"
+	}
+	return []ResourceContent{{URI: uri, MimeType: mimeType, Text: body}}, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -441,7 +442,7 @@ func skillsResourceHandler(src skills.Source) ResourceHandler {
 }
 
 // ---------------------------------------------------------------------------
-// RegisterResources adds all 11 MCP resources to the registry.
+// RegisterResources adds all SpecGraph MCP resources to the registry.
 // ---------------------------------------------------------------------------
 
 // RegisterResources registers all SpecGraph MCP resources into r using the
@@ -524,10 +525,18 @@ func RegisterResources(r *Registry, c *Client, src skills.Source) {
 	r.AddResource(ResourceDef{
 		URI:         "specgraph://prime",
 		Name:        "prime",
-		Description: "Session-priming digest: constitution summary, graph counts, ready specs, findings summary.",
+		Description: "Session-priming digest: constitution summary, graph counts, ready specs, findings summary. Supports ?provenance=true and ?format=json.",
 		MimeType:    "text/markdown",
 		IsTemplate:  false,
-		Handler:     primeResourceHandler(c, src),
+		Handler:     primeResourceHandler(c),
+	})
+	r.AddResource(ResourceDef{
+		URI:         "specgraph://prime/spec/{slug}",
+		Name:        "prime-spec",
+		Description: "Spec-scoped priming digest: constitution, related decisions, slices, claims, and blockers for a single spec. Supports ?provenance=true and ?format=json.",
+		MimeType:    "text/markdown",
+		IsTemplate:  true,
+		Handler:     specSpecificPrimeResourceHandler(c),
 	})
 	r.AddResource(ResourceDef{
 		URI:         "specgraph://skills/{name}",

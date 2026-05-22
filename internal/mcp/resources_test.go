@@ -5,6 +5,7 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,23 +13,9 @@ import (
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-	"github.com/specgraph/specgraph/internal/mcp/skills"
 	"github.com/stretchr/testify/require"
 )
 
-// errSource is a skills.Source whose methods all return a fixed error.
-// Used to exercise the prime template's skills-error rendering path.
-type errSource struct{ err error }
-
-func (e *errSource) List(_ context.Context) ([]skills.Meta, error) {
-	return nil, e.err
-}
-func (e *errSource) Get(_ context.Context, _ string) (skills.Skill, error) {
-	return skills.Skill{}, e.err
-}
-func (e *errSource) Search(_ context.Context, _ string, _ skills.SearchOptions) ([]skills.Meta, error) {
-	return nil, e.err
-}
 
 // ---------------------------------------------------------------------------
 // specResourceHandler tests
@@ -403,7 +390,8 @@ func TestRegisterResources_Count(t *testing.T) {
 	c := &Client{}
 	r := NewRegistry()
 	RegisterResources(r, c, &fakeSource{})
-	require.Len(t, r.Resources(), 11)
+	// 11 original resources + the new templated specgraph://prime/spec/{slug}.
+	require.Len(t, r.Resources(), 12)
 }
 
 func TestRegisterResources_Templates(t *testing.T) {
@@ -421,12 +409,15 @@ func TestRegisterResources_Templates(t *testing.T) {
 		}
 	}
 
-	// Templates: spec/{slug}, decision/{slug}, constitution/{layer}, spec/{slug}/changes, skills/{name}
+	// Templates: spec/{slug}, decision/{slug}, constitution/{layer}, spec/{slug}/changes, skills/{name}, prime/spec/{slug}
 	require.True(t, templateURIs["specgraph://spec/{slug}"], "spec template missing")
 	require.True(t, templateURIs["specgraph://decision/{slug}"], "decision template missing")
 	require.True(t, templateURIs["specgraph://constitution/{layer}"], "constitution layer template missing")
 	require.True(t, templateURIs["specgraph://spec/{slug}/changes"], "changes template missing")
 	require.True(t, templateURIs["specgraph://skills/{name}"], "skills template missing")
+	require.True(t, templateURIs["specgraph://prime/spec/{slug}"], "prime spec template missing")
+	// Prime exact should NOT be registered as a template.
+	require.False(t, templateURIs["specgraph://prime"], "prime should be exact, not templated")
 
 	// Exact URIs
 	require.True(t, exactURIs["specgraph://specs"], "specs exact URI missing")
@@ -542,423 +533,189 @@ func TestSkillsResourceHandler_UnknownNameReturnsCodeNotFound(t *testing.T) {
 	}
 }
 
-func TestPrime_SkillsListErrorRendersMarker(t *testing.T) {
-	src := &errSource{err: errors.New("simulated skills outage")}
-	r := NewRegistry()
-	RegisterResources(r, &Client{
-		Constitution:   defaultConstitutionMock(),
-		Spec:           &mockSpecService{listSpecs: func() (*specv1.ListSpecsResponse, error) { return &specv1.ListSpecsResponse{}, nil }},
-		Graph:          &mockGraphService{getReady: func() (*specv1.GetReadyResponse, error) { return &specv1.GetReadyResponse{}, nil }},
-		AnalyticalPass: defaultAnalyticalPassMock(),
-	}, src)
+// (legacy prime per-section error-rendering tests removed — composition
+// and error handling now live in the server-side prime.Composer; see
+// internal/prime and internal/server tests for that coverage.)
 
-	var primeHandler ResourceHandler
-	for _, res := range r.Resources() {
-		if res.URI == "specgraph://prime" {
-			primeHandler = res.Handler
-			break
-		}
-	}
-	if primeHandler == nil {
-		t.Fatal("prime resource not registered")
-	}
-	contents, err := primeHandler(context.Background(), "specgraph://prime")
-	if err != nil {
-		t.Fatalf("prime: %v", err)
-	}
-	body := contents[0].Text
-	if !strings.Contains(body, "## Skills") {
-		t.Errorf("prime missing '## Skills' heading on error path: %s", body)
-	}
-	if !strings.Contains(body, "_(unable to load:") {
-		t.Errorf("prime missing '_(unable to load:' marker on error path: %s", body)
+// ---------------------------------------------------------------------------
+// primeResourceHandler / specSpecificPrimeResourceHandler tests
+// ---------------------------------------------------------------------------
+
+// primeClient builds a Client whose ExecutionService returns the supplied
+// response (and optional error). All other RPC clients are left nil since
+// the prime handlers should not touch them.
+func primeClient(resp *specv1.PrimeResponse, callErr error) *Client {
+	return &Client{
+		Execution: &mockExecutionService{
+			getPrime: func(_ *specv1.GetPrimeRequest) (*specv1.PrimeResponse, error) {
+				if callErr != nil {
+					return nil, callErr
+				}
+				return resp, nil
+			},
+		},
 	}
 }
 
-// ---------------------------------------------------------------------------
-// primeResourceHandler tests
-// ---------------------------------------------------------------------------
+func projectViewFixture() *specv1.ProjectView {
+	return &specv1.ProjectView{
+		Constitution: &specv1.Constitution{
+			Constraints: []string{"no GPL"},
+		},
+		ConstitutionProvenance: []*specv1.ProvenanceEntry{
+			{Path: "constraints[no GPL]", Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT},
+		},
+		GraphOverview: &specv1.GraphOverview{CountsByStage: map[string]int32{"spark": 1}},
+		Ready:         []*specv1.Spec{{Slug: "spec-a", Stage: "spark"}},
+		FindingsBySeverity: map[int32]int32{
+			int32(specv1.FindingSeverity_FINDING_SEVERITY_WARNING): 1,
+		},
+		SkillsCount: 7,
+	}
+}
 
-func TestPrimeResource(t *testing.T) {
-	c := &Client{
-		Constitution: &mockConstitutionService{
-			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
-				return &specv1.GetConstitutionResponse{
-					Constitution: &specv1.Constitution{
-						Constraints: []string{"no GPL", "no circular deps"},
-					},
-				}, nil
-			},
+func specViewFixture(slug string) *specv1.SpecView {
+	return &specv1.SpecView{
+		Spec: &specv1.Spec{Slug: slug, Stage: "spark"},
+		Constitution: &specv1.Constitution{
+			Constraints: []string{"no GPL"},
 		},
-		Spec: &mockSpecService{
-			listSpecs: func() (*specv1.ListSpecsResponse, error) {
-				return &specv1.ListSpecsResponse{
-					Specs: []*specv1.Spec{
-						{Slug: "spec-a", Stage: "spark"},
-						{Slug: "spec-b", Stage: "shape"},
-					},
-				}, nil
-			},
-		},
-		Graph: &mockGraphService{
-			getReady: func() (*specv1.GetReadyResponse, error) {
-				return &specv1.GetReadyResponse{
-					Ready: []*specv1.NodeRef{
-						{Slug: "spec-a", Stage: "spark"},
-					},
-				}, nil
-			},
-		},
-		AnalyticalPass: &mockAnalyticalPassService{
-			listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
-				return &specv1.ListProjectFindingsResponse{}, nil
-			},
+		ConstitutionProvenance: []*specv1.ProvenanceEntry{
+			{Path: "constraints[no GPL]", Layer: specv1.ConstitutionLayer_CONSTITUTION_LAYER_PROJECT},
 		},
 	}
+}
 
-	handler := primeResourceHandler(c, &fakeSource{})
-	contents, err := handler(context.Background(), "specgraph://prime")
+func TestPrimeResource_ProjectMarkdown_Default(t *testing.T) {
+	c := primeClient(&specv1.PrimeResponse{
+		View: &specv1.PrimeResponse_ProjectView{ProjectView: projectViewFixture()},
+	}, nil)
+
+	contents, err := primeResourceHandler(c)(context.Background(), "specgraph://prime")
+	require.NoError(t, err)
+	require.Len(t, contents, 1)
+	require.Equal(t, "specgraph://prime", contents[0].URI)
+	require.Equal(t, "text/markdown", contents[0].MimeType)
+	require.Contains(t, contents[0].Text, "# SpecGraph Session Prime")
+	// Default markdown should NOT include provenance annotations.
+	require.NotContains(t, contents[0].Text, "(set by:")
+}
+
+func TestPrimeResource_ProjectJSON(t *testing.T) {
+	c := primeClient(&specv1.PrimeResponse{
+		View: &specv1.PrimeResponse_ProjectView{ProjectView: projectViewFixture()},
+	}, nil)
+
+	contents, err := primeResourceHandler(c)(context.Background(), "specgraph://prime?format=json")
+	require.NoError(t, err)
+	require.Len(t, contents, 1)
+	require.Equal(t, "application/json", contents[0].MimeType)
+
+	var parsed map[string]any
+	require.NoError(t, json.Unmarshal([]byte(contents[0].Text), &parsed))
+	// ShowProvenance=false strips constitution_provenance.
+	_, hasProv := parsed["constitutionProvenance"]
+	require.False(t, hasProv, "constitutionProvenance must be omitted when provenance flag is off")
+}
+
+func TestPrimeResource_ProjectMarkdown_WithProvenance(t *testing.T) {
+	c := primeClient(&specv1.PrimeResponse{
+		View: &specv1.PrimeResponse_ProjectView{ProjectView: projectViewFixture()},
+	}, nil)
+
+	contents, err := primeResourceHandler(c)(context.Background(), "specgraph://prime?provenance=true")
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
 	require.Equal(t, "text/markdown", contents[0].MimeType)
-	require.Equal(t, "specgraph://prime", contents[0].URI)
-
-	text := contents[0].Text
-	for _, marker := range []string{"Constitution", "Graph", "Ready"} {
-		require.Contains(t, text, marker)
-	}
-	// Should contain constraint text
-	require.Contains(t, text, "no GPL")
-	// Should reference the full resources
-	require.Contains(t, text, "specgraph://constitution")
-	require.Contains(t, text, "specgraph://graph/ready")
-	// B.3: Assert aggregated stage counts from the two specs in the fake.
-	// spec-a is stage "spark", spec-b is stage "shape" → each count 1.
-	require.Contains(t, text, "spark: 1")
-	require.Contains(t, text, "shape: 1")
+	require.Contains(t, contents[0].Text, "(set by:",
+		"provenance flag should surface (set by: <layer>) annotations from the renderer")
 }
 
-func TestPrimeResource_FindingsSection(t *testing.T) {
-	c := &Client{
-		Constitution: &mockConstitutionService{
-			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
-				return nil, fmt.Errorf("unavailable")
-			},
-		},
-		Spec: &mockSpecService{
-			listSpecs: func() (*specv1.ListSpecsResponse, error) {
-				return nil, fmt.Errorf("unavailable")
-			},
-		},
-		Graph: &mockGraphService{
-			getReady: func() (*specv1.GetReadyResponse, error) {
-				return nil, fmt.Errorf("unavailable")
-			},
-		},
-		AnalyticalPass: &mockAnalyticalPassService{
-			listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
-				return &specv1.ListProjectFindingsResponse{
-					Findings: []*specv1.AnalyticalFinding{
-						{Id: "f1", SpecSlug: "spec-a", Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL},
-						{Id: "f2", SpecSlug: "spec-b", Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL},
-						{Id: "f3", SpecSlug: "spec-c", Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING},
-					},
-				}, nil
-			},
-		},
-	}
+func TestPrimeResource_Spec_Markdown(t *testing.T) {
+	c := primeClient(&specv1.PrimeResponse{
+		View: &specv1.PrimeResponse_SpecView{SpecView: specViewFixture("foo")},
+	}, nil)
 
-	handler := primeResourceHandler(c, &fakeSource{})
-	contents, err := handler(context.Background(), "specgraph://prime")
+	contents, err := specSpecificPrimeResourceHandler(c)(context.Background(), "specgraph://prime/spec/foo")
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
-
-	text := contents[0].Text
-	require.Contains(t, text, "Open Findings")
-	require.Contains(t, text, "specgraph://findings")
-	// B.3: Assert per-severity counts rendered by the handler (f.GetSeverity().String()).
-	require.Contains(t, text, "FINDING_SEVERITY_CRITICAL: 2")
-	require.Contains(t, text, "FINDING_SEVERITY_WARNING: 1")
-	// Failed sections render visible error markers (behavior change from PR #924 fixup):
-	// each section heading IS present, followed by an unable-to-load line.
-	require.Contains(t, text, "## Constitution")
-	require.Contains(t, text, "## Graph Overview")
-	require.Contains(t, text, "## Ready to Work")
-	require.Contains(t, text, "(unable to load")
+	require.Equal(t, "specgraph://prime/spec/foo", contents[0].URI)
+	require.Equal(t, "text/markdown", contents[0].MimeType)
+	// Spec markdown header includes the slug ("# Prime: foo").
+	require.Contains(t, contents[0].Text, "# Prime: foo")
+	require.NotContains(t, contents[0].Text, "(set by:")
 }
 
-// TestPrimeResource_SeverityOrdering verifies findings are rendered
-// in CRITICAL → WARNING → NOTE order (not alphabetical).
-func TestPrimeResource_SeverityOrdering(t *testing.T) {
-	c := &Client{
-		Constitution: &mockConstitutionService{
-			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
-				return nil, fmt.Errorf("unavailable")
-			},
-		},
-		Spec: &mockSpecService{
-			listSpecs: func() (*specv1.ListSpecsResponse, error) {
-				return nil, fmt.Errorf("unavailable")
-			},
-		},
-		Graph: &mockGraphService{
-			getReady: func() (*specv1.GetReadyResponse, error) {
-				return nil, fmt.Errorf("unavailable")
-			},
-		},
-		AnalyticalPass: &mockAnalyticalPassService{
-			listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
-				return &specv1.ListProjectFindingsResponse{
-					Findings: []*specv1.AnalyticalFinding{
-						{Id: "f1", SpecSlug: "spec-a", Severity: specv1.FindingSeverity_FINDING_SEVERITY_NOTE},
-						{Id: "f2", SpecSlug: "spec-b", Severity: specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL},
-						{Id: "f3", SpecSlug: "spec-c", Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING},
-					},
-				}, nil
-			},
-		},
-	}
+func TestPrimeResource_Spec_JSON_WithProvenance(t *testing.T) {
+	c := primeClient(&specv1.PrimeResponse{
+		View: &specv1.PrimeResponse_SpecView{SpecView: specViewFixture("foo")},
+	}, nil)
 
-	handler := primeResourceHandler(c, &fakeSource{})
-	contents, err := handler(context.Background(), "specgraph://prime")
+	contents, err := specSpecificPrimeResourceHandler(c)(context.Background(), "specgraph://prime/spec/foo?format=json&provenance=true")
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
+	require.Equal(t, "application/json", contents[0].MimeType)
 
-	text := contents[0].Text
-	// Severity ordering: critical findings should render before warnings, warnings before notes.
-	criticalIdx := strings.Index(text, "FINDING_SEVERITY_CRITICAL")
-	warningIdx := strings.Index(text, "FINDING_SEVERITY_WARNING")
-	noteIdx := strings.Index(text, "FINDING_SEVERITY_NOTE")
-	require.Greater(t, warningIdx, criticalIdx, "WARNING should appear after CRITICAL")
-	require.Greater(t, noteIdx, warningIdx, "NOTE should appear after WARNING")
+	var parsed map[string]any
+	require.NoError(t, json.Unmarshal([]byte(contents[0].Text), &parsed))
+	// provenance=true keeps the constitution_provenance field in the JSON payload.
+	_, hasProv := parsed["constitutionProvenance"]
+	require.True(t, hasProv, "constitutionProvenance must be present when provenance flag is true")
 }
 
-// TestPrimeResource_StageOrdering verifies that funnel stages are rendered
-// in spark → shape → specify → decompose → approved order, not alphabetically.
-func TestPrimeResource_StageOrdering(t *testing.T) {
-	c := &Client{
-		Constitution: &mockConstitutionService{
-			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
-				return nil, fmt.Errorf("unavailable")
-			},
-		},
-		Spec: &mockSpecService{
-			listSpecs: func() (*specv1.ListSpecsResponse, error) {
-				return &specv1.ListSpecsResponse{
-					Specs: []*specv1.Spec{
-						{Slug: "spec-a", Stage: "spark"},
-						{Slug: "spec-b", Stage: "decompose"},
-						{Slug: "spec-c", Stage: "shape"},
-						{Slug: "spec-d", Stage: "specify"},
-					},
-				}, nil
-			},
-		},
-		Graph: &mockGraphService{
-			getReady: func() (*specv1.GetReadyResponse, error) {
-				return nil, fmt.Errorf("unavailable")
-			},
-		},
-		AnalyticalPass: defaultAnalyticalPassMock(),
-	}
-
-	handler := primeResourceHandler(c, &fakeSource{})
-	contents, err := handler(context.Background(), "specgraph://prime")
-	require.NoError(t, err)
-	require.Len(t, contents, 1)
-
-	text := contents[0].Text
-	sparkIdx := strings.Index(text, "spark:")
-	shapeIdx := strings.Index(text, "shape:")
-	specifyIdx := strings.Index(text, "specify:")
-	decomposeIdx := strings.Index(text, "decompose:")
-	require.Greater(t, shapeIdx, sparkIdx, "shape should appear after spark")
-	require.Greater(t, specifyIdx, shapeIdx, "specify should appear after shape")
-	require.Greater(t, decomposeIdx, specifyIdx, "decompose should appear after specify")
+func TestPrimeResource_Spec_UnknownSlug(t *testing.T) {
+	c := primeClient(nil, connect.NewError(connect.CodeNotFound, errors.New("spec not found")))
+	_, err := specSpecificPrimeResourceHandler(c)(context.Background(), "specgraph://prime/spec/missing")
+	require.Error(t, err)
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err),
+		"NotFound from the RPC must propagate through the handler")
 }
 
-// TestPrimeResource_RPCFailureRendersErrorMarker verifies that when an RPC fails
-// the section heading is still rendered with a visible error marker rather than
-// silently omitting the section.
-func TestPrimeResource_RPCFailureRendersErrorMarker(t *testing.T) {
-	c := &Client{
-		Constitution: &mockConstitutionService{
-			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
-				return nil, fmt.Errorf("backend connection refused")
-			},
-		},
-		Spec: &mockSpecService{
-			listSpecs: func() (*specv1.ListSpecsResponse, error) {
-				return nil, fmt.Errorf("backend connection refused")
-			},
-		},
-		Graph: &mockGraphService{
-			getReady: func() (*specv1.GetReadyResponse, error) {
-				return nil, fmt.Errorf("backend connection refused")
-			},
-		},
-		AnalyticalPass: &mockAnalyticalPassService{
-			listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
-				return nil, fmt.Errorf("backend connection refused")
-			},
-		},
-	}
-
-	handler := primeResourceHandler(c, &fakeSource{})
-	contents, err := handler(context.Background(), "specgraph://prime")
-	// The handler itself must not error — it returns the partial digest.
-	require.NoError(t, err)
-	require.Len(t, contents, 1)
-
-	text := contents[0].Text
-	// All four section headings must appear.
-	require.Contains(t, text, "## Constitution")
-	require.Contains(t, text, "## Graph Overview")
-	require.Contains(t, text, "## Ready to Work")
-	require.Contains(t, text, "## Open Findings")
-	// Failures are visible to the user.
-	require.Contains(t, text, "_(unable to load:")
-}
-
-// ---------------------------------------------------------------------------
-// C.1 — primeResourceHandler empty Graph Overview guard
-// ---------------------------------------------------------------------------
-
-// defaultAnalyticalPassMock returns minimal findings mocks that return no findings.
-func defaultAnalyticalPassMock() *mockAnalyticalPassService {
-	return &mockAnalyticalPassService{
-		listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
-			return &specv1.ListFindingsResponse{}, nil
-		},
-		listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
-			return &specv1.ListProjectFindingsResponse{}, nil
-		},
-	}
-}
-
-// TestPrimeResource_EmptyGraphSkipped verifies that when ListSpecs succeeds but
-// returns an empty list, the "## Graph Overview" heading is NOT emitted.
-// The Ready and Findings sections were already guarded; Graph Overview must match.
-func TestPrimeResource_EmptyGraphSkipped(t *testing.T) {
-	c := &Client{
-		Constitution: defaultConstitutionMock(), // succeeds — header rendered
-		Spec: &mockSpecService{
-			listSpecs: func() (*specv1.ListSpecsResponse, error) {
-				return &specv1.ListSpecsResponse{}, nil // empty list, no error
-			},
-		},
-		Graph: &mockGraphService{
-			getReady: func() (*specv1.GetReadyResponse, error) {
-				return &specv1.GetReadyResponse{}, nil // also empty
-			},
-		},
-		AnalyticalPass: defaultAnalyticalPassMock(), // empty findings
-	}
-	content, err := primeResourceHandler(c, &fakeSource{})(context.Background(), "specgraph://prime")
-	require.NoError(t, err)
-	require.NotEmpty(t, content)
-	text := content[0].Text
-	require.NotContains(t, text, "## Graph Overview",
-		"Graph Overview heading should not render for empty spec list")
-}
-
-// TestPrimeResource_ConstitutionNotFound_RendersHint verifies that when
-// GetConstitution fails with connect.CodeNotFound (the expected fresh-project
-// state), the prime body renders a heading + actionable hint instead of the
-// loud "_(unable to load: ...)_" marker reserved for genuine RPC failures.
-func TestPrimeResource_ConstitutionNotFound_RendersHint(t *testing.T) {
-	c := &Client{
-		Constitution: &mockConstitutionService{
-			getConstitution: func() (*specv1.GetConstitutionResponse, error) {
-				return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("constitution not found"))
-			},
-		},
-		Spec:           &mockSpecService{listSpecs: func() (*specv1.ListSpecsResponse, error) { return &specv1.ListSpecsResponse{}, nil }},
-		Graph:          &mockGraphService{getReady: func() (*specv1.GetReadyResponse, error) { return &specv1.GetReadyResponse{}, nil }},
-		AnalyticalPass: defaultAnalyticalPassMock(),
-	}
-
-	content, err := primeResourceHandler(c, &fakeSource{})(context.Background(), "specgraph://prime")
-	require.NoError(t, err)
-	require.NotEmpty(t, content)
-	text := content[0].Text
-
-	require.Contains(t, text, "## Constitution",
-		"Constitution heading should render so the agent knows the slot exists")
-	require.Contains(t, text, "specgraph constitution set",
-		"NotFound state should hint at the command that populates the constitution")
-	require.NotContains(t, text, "unable to load",
-		"NotFound is an expected empty state, not an RPC failure")
-}
-
-func TestPrimeResource_ProjectFindingsDoesNotCallPerSpecListWithoutSlug(t *testing.T) {
-	c := &Client{
-		Constitution: defaultConstitutionMock(),
-		Spec:         &mockSpecService{listSpecs: func() (*specv1.ListSpecsResponse, error) { return &specv1.ListSpecsResponse{}, nil }},
-		Graph:        &mockGraphService{getReady: func() (*specv1.GetReadyResponse, error) { return &specv1.GetReadyResponse{}, nil }},
-		AnalyticalPass: &mockAnalyticalPassService{
-			listFindings: func(_ string) (*specv1.ListFindingsResponse, error) {
-				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug is required"))
-			},
-			listProjectFindings: func(_ *specv1.ListProjectFindingsRequest) (*specv1.ListProjectFindingsResponse, error) {
-				return &specv1.ListProjectFindingsResponse{
-					Findings: []*specv1.AnalyticalFinding{
-						{Id: "f1", SpecSlug: "spec-a", Severity: specv1.FindingSeverity_FINDING_SEVERITY_WARNING},
-					},
-				}, nil
-			},
-		},
-	}
-
-	content, err := primeResourceHandler(c, &fakeSource{})(context.Background(), "specgraph://prime")
-	require.NoError(t, err)
-	require.NotEmpty(t, content)
-	text := content[0].Text
-
-	require.Contains(t, text, "## Open Findings")
-	require.Contains(t, text, "FINDING_SEVERITY_WARNING: 1")
-	require.NotContains(t, text, "slug is required",
-		"prime should use project-wide findings instead of per-spec ListFindings without a slug")
-}
-
-func TestPrime_IncludesSkillsPointer(t *testing.T) {
-	src := twoSkillFake()
+// TestPrimeResource_Spec_ExactURIvsTemplated verifies the registry exposes both
+// shapes: the exact specgraph://prime handler resolves project-scope and the
+// templated specgraph://prime/spec/{slug} handler resolves spec-scope. Tests
+// match handlers by URI and confirm each refuses the other's path.
+func TestPrimeResource_Spec_ExactURIvsTemplated(t *testing.T) {
 	r := NewRegistry()
-	RegisterResources(r, &Client{
-		Constitution:   defaultConstitutionMock(),
-		Spec:           &mockSpecService{listSpecs: func() (*specv1.ListSpecsResponse, error) { return &specv1.ListSpecsResponse{}, nil }},
-		Graph:          &mockGraphService{getReady: func() (*specv1.GetReadyResponse, error) { return &specv1.GetReadyResponse{}, nil }},
-		AnalyticalPass: defaultAnalyticalPassMock(),
-	}, src)
+	RegisterResources(r, &Client{}, &fakeSource{})
 
-	var primeHandler ResourceHandler
-	for _, res := range r.Resources() {
-		if res.URI == "specgraph://prime" {
-			primeHandler = res.Handler
-			break
+	var exactDef, tmplDef *ResourceDef
+	for i := range r.Resources() {
+		res := &r.resources[i]
+		switch res.URI {
+		case "specgraph://prime":
+			exactDef = res
+		case "specgraph://prime/spec/{slug}":
+			tmplDef = res
 		}
 	}
-	if primeHandler == nil {
-		t.Fatal("prime resource not registered")
-	}
-	contents, err := primeHandler(context.Background(), "specgraph://prime")
-	if err != nil {
-		t.Fatalf("prime: %v", err)
-	}
-	body := contents[0].Text
+	require.NotNil(t, exactDef, "exact specgraph://prime resource must be registered")
+	require.NotNil(t, tmplDef, "templated specgraph://prime/spec/{slug} resource must be registered")
+	require.False(t, exactDef.IsTemplate, "specgraph://prime must NOT be a template")
+	require.True(t, tmplDef.IsTemplate, "specgraph://prime/spec/{slug} must be a template")
+}
 
-	for _, want := range []string{
-		"## Skills",
-		"specgraph_skills_list",
-		"specgraph_skills_search",
-		"specgraph_skills_get",
-		"specgraph://skills/",
-		"2 skills",
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("prime missing %q", want)
-		}
-	}
+// TestPrimeResource_MalformedURIs verifies bad query strings and malformed
+// spec URIs surface as CodeInvalidArgument.
+func TestPrimeResource_MalformedURIs(t *testing.T) {
+	c := primeClient(&specv1.PrimeResponse{
+		View: &specv1.PrimeResponse_ProjectView{ProjectView: projectViewFixture()},
+	}, nil)
+
+	// Bad suffix on the exact URI (not "" and not "?...") is rejected.
+	_, err := primeResourceHandler(c)(context.Background(), "specgraph://prime/extra")
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
+	// Empty slug on the templated URI is rejected.
+	_, err = specSpecificPrimeResourceHandler(c)(context.Background(), "specgraph://prime/spec/")
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+
+	// Invalid format value is rejected.
+	_, err = primeResourceHandler(c)(context.Background(), "specgraph://prime?format=xml")
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
 // ---------------------------------------------------------------------------
