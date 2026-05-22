@@ -5,85 +5,94 @@ package main
 
 import (
 	"fmt"
-	"text/tabwriter"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/render"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 )
 
+var (
+	primeShowProvenance bool
+	primeJSON           bool
+)
+
+// runUpFn is the seam tests swap to verify that prime preserves the
+// server-start side effect (Claude Code's SessionStart hook depends on
+// it; design Section 10 line 681 mandates preservation). Production
+// code points it at runUp.
+var runUpFn = runUp
+
 var primeCmd = &cobra.Command{
-	Use:   "prime",
-	Short: "Orient Claude Code to the current project",
-	Long:  "Ensure the server is running, then print project context and active specs for use by Claude Code's SessionStart hook.",
-	RunE:  runPrime,
+	Use:   "prime [slug]",
+	Short: "Orient Claude Code to the current project (or to a specific spec)",
+	Long: `Ensure the server is running, then print the project prime (constitution summary,
+graph overview, ready specs, findings, skills) or, when a slug is given, the spec prime.
+Used by Claude Code's SessionStart hook (no-arg form).`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runPrime,
 }
 
 func init() {
+	primeCmd.Flags().BoolVar(&primeShowProvenance, "show-provenance", false, "Annotate constitution sections with provenance (set by: <layer>) markers")
+	primeCmd.Flags().BoolVar(&primeJSON, "json", false, "Output the proto-native JSON form")
 	rootCmd.AddCommand(primeCmd)
 }
 
 func runPrime(cmd *cobra.Command, args []string) error {
-	// 1. Ensure server is running (idempotent).
-	if err := runUp(cmd, args); err != nil {
+	// runUp is the SessionStart-hook ergonomic; removing it breaks
+	// Claude Code's session prime (spgr-8ar Piece E design §10).
+	if err := runUpFn(cmd, args); err != nil {
 		// Non-fatal: server may already be running via manual mode.
 		fmt.Fprintf(cmd.ErrOrStderr(), "warning: up: %v\n", err) //nolint:errcheck // best-effort warning output
 	}
 
-	// 2. Load project config from CWD.
-	project, err := config.LoadProject(".")
-	if err != nil {
-		return fmt.Errorf("load project config: %w", err)
+	slug := ""
+	if len(args) == 1 {
+		slug = args[0]
 	}
 
-	// 3. Load global config.
-	cfg, err := loadGlobalCfg()
+	client, err := executionClient()
 	if err != nil {
-		return fmt.Errorf("load global config: %w", err)
+		return fmt.Errorf("create execution client: %w", err)
+	}
+	resp, err := client.GetPrime(cmd.Context(), connect.NewRequest(&specv1.GetPrimeRequest{Slug: slug}))
+	if err != nil {
+		return fmt.Errorf("get prime: %w", err)
 	}
 
-	// 4. Resolve server URL.
-	serverURL := cfg.ResolveServer(project.Slug, project.Server)
+	opts := render.RenderOpts{ShowProvenance: primeShowProvenance}
 
-	// 5. Print orientation header.
-	fmt.Fprintf(cmd.OutOrStdout(), "Project: %s\n", project.Slug) //nolint:errcheck // stdout write
-	fmt.Fprintf(cmd.OutOrStdout(), "Server:  %s\n", serverURL)    //nolint:errcheck // stdout write
-
-	// 6. List non-terminal specs.
-	client, err := specClient()
-	if err != nil {
-		return fmt.Errorf("create spec client: %w", err)
+	switch v := resp.Msg.GetView().(type) {
+	case *specv1.PrimeResponse_ProjectView:
+		return writePrime(cmd, v.ProjectView, nil, opts)
+	case *specv1.PrimeResponse_SpecView:
+		return writePrime(cmd, nil, v.SpecView, opts)
+	default:
+		return fmt.Errorf("prime response missing view")
 	}
-	resp, err := client.ListSpecs(cmd.Context(), connect.NewRequest(&specv1.ListSpecsRequest{}))
-	if err != nil {
-		return fmt.Errorf("list specs: %w", err)
-	}
+}
 
-	var active []*specv1.Spec
-	for _, s := range resp.Msg.Specs {
-		switch s.Stage {
-		case "done", "abandoned", "superseded":
-			// skip terminal stages
-		default:
-			active = append(active, s)
+func writePrime(cmd *cobra.Command, project *specv1.ProjectView, spec *specv1.SpecView, opts render.RenderOpts) error {
+	if primeJSON {
+		var msg proto.Message
+		if project != nil {
+			msg = render.ProjectViewForJSON(project, opts)
+		} else {
+			msg = render.SpecViewForJSON(spec, opts)
 		}
-	}
-
-	if len(active) == 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "\nNo active specs.") //nolint:errcheck // stdout write
+		if err := printJSON(cmd.OutOrStdout(), msg); err != nil {
+			return fmt.Errorf("render json: %w", err)
+		}
 		return nil
 	}
-
-	fmt.Fprintln(cmd.OutOrStdout()) //nolint:errcheck // stdout write
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
-	tw := &tableWriter{w: w}
-	tw.println("SLUG\tSTAGE\tPRIORITY")
-	for _, s := range active {
-		tw.printf("%s\t%s\t%s\n", s.Slug, s.Stage, s.Priority)
+	var body string
+	if project != nil {
+		body = render.RenderProjectMarkdown(project, opts)
+	} else {
+		body = render.RenderSpecMarkdown(spec, opts)
 	}
-	if tw.err != nil {
-		return tw.err
-	}
-	return w.Flush()
+	fmt.Fprint(cmd.OutOrStdout(), body) //nolint:errcheck // stdout write
+	return nil
 }

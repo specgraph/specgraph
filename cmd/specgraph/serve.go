@@ -27,6 +27,7 @@ import (
 	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/specgraph/specgraph/internal/linter"
 	mcppkg "github.com/specgraph/specgraph/internal/mcp"
+	"github.com/specgraph/specgraph/internal/mcp/skills"
 	"github.com/specgraph/specgraph/internal/notify"
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/server/probes"
@@ -212,6 +213,14 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	maxBytes := connect.WithReadMaxBytes(4 << 20) // 4 MiB request body limit
 	opts := connect.WithInterceptors(interceptor)
 
+	// Load embedded skills catalog once for the lifetime of the server.
+	// The catalog is compiled into the binary; a parse failure means the
+	// binary is broken, so fail fast here.
+	skillsSrc, skillsErr := skills.NewEmbedded()
+	if skillsErr != nil {
+		return fmt.Errorf("load embedded skills: %w", skillsErr)
+	}
+
 	mux := server.NewMux(store, opts, maxBytes)
 	server.RegisterHealthService(mux, opts, maxBytes)
 	server.RegisterDecisionService(mux, store, opts, maxBytes)
@@ -220,7 +229,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	server.RegisterConstitutionService(mux, store, opts, maxBytes)
 	server.RegisterAuthoringService(mux, store, opts, maxBytes)
 	server.RegisterAnalyticalPassService(mux, store, ".specgraph/templates", opts, maxBytes)
-	server.RegisterExecutionService(mux, store, opts, maxBytes)
+	server.RegisterExecutionService(mux, store, skillsSrc, opts, maxBytes)
 	server.RegisterSliceService(mux, store, opts, maxBytes)
 	server.RegisterExportService(mux, store, cfg.Export.SigningKey, buildVersion(), opts, maxBytes)
 	driftEngine := drift.NewEngine(store, nil)

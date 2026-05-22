@@ -98,7 +98,7 @@ func setupProvenanceServer(t *testing.T) (specgraphv1connect.SpecServiceClient, 
 	scoper := &testScoper{backend: mb}
 	mux := server.NewMux(scoper)
 	server.RegisterClaimService(mux, scoper)
-	server.RegisterExecutionService(mux, scoper)
+	server.RegisterExecutionService(mux, scoper, nil)
 	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	specClient := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)

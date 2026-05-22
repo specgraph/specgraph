@@ -14,6 +14,8 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/mcp/skills"
+	"github.com/specgraph/specgraph/internal/prime"
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
@@ -22,13 +24,22 @@ const maxEventsLimit = 500
 // ExecutionHandler implements the ConnectRPC ExecutionService.
 type ExecutionHandler struct {
 	scoper storage.Scoper
+	// skills is consumed by the prime Composer when assembling
+	// ProjectView responses (project-scope GetPrime). It may be nil in
+	// tests that never exercise the empty-slug code path; production
+	// wire-up always provides a non-nil source.
+	skills skills.Source
 }
 
 var _ specgraphv1connect.ExecutionServiceHandler = (*ExecutionHandler)(nil)
 
 // RegisterExecutionService registers the ExecutionService on the given mux.
-func RegisterExecutionService(mux *http.ServeMux, scoper storage.Scoper, opts ...connect.HandlerOption) {
-	handler := &ExecutionHandler{scoper: scoper}
+//
+// skillsSrc is required for project-scope GetPrime (empty slug) which
+// surfaces a skills count in the ProjectView. Passing nil is permitted
+// for tests that never invoke the project-scope path.
+func RegisterExecutionService(mux *http.ServeMux, scoper storage.Scoper, skillsSrc skills.Source, opts ...connect.HandlerOption) {
+	handler := &ExecutionHandler{scoper: scoper, skills: skillsSrc}
 	path, h := specgraphv1connect.NewExecutionServiceHandler(handler, opts...)
 	mux.Handle(path, h)
 }
@@ -70,49 +81,100 @@ func (h *ExecutionHandler) GenerateBundle(ctx context.Context, req *connect.Requ
 }
 
 // GetPrime handles the GetPrime RPC.
+//
+// Routing by request scope:
+//   - Empty slug returns a project-scope response with the
+//     project_view oneof populated by the prime Composer. Legacy
+//     summary fields (1–5) are intentionally left zero per design
+//     Section 10 ("Legacy summary fields populated only for spec
+//     scope").
+//   - Non-empty slug returns a spec-scope response: the spec_view
+//     oneof is populated, AND the legacy summary fields (1–5) are
+//     populated as before for backward compatibility with existing
+//     polecat consumers.
+//
+// Unknown slugs surface as connect.CodeNotFound.
 func (h *ExecutionHandler) GetPrime(ctx context.Context, req *connect.Request[specv1.GetPrimeRequest]) (*connect.Response[specv1.PrimeResponse], error) {
 	store, err := scopeStore(ctx, h.scoper)
 	if err != nil {
 		return nil, err
 	}
+	composer := prime.New(store, h.skills)
 	msg := req.Msg
+
 	if msg.Slug == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("slug is required"))
+		return h.getPrimeProject(ctx, composer)
 	}
+	return h.getPrimeSpec(ctx, store, composer, msg.Slug)
+}
 
-	pd, err := store.GetPrimeData(ctx, msg.Slug)
+// getPrimeProject composes the project-scope PrimeResponse. Legacy
+// summary fields 1–5 are left zero by design (Section 10).
+func (h *ExecutionHandler) getPrimeProject(ctx context.Context, composer *prime.Composer) (*connect.Response[specv1.PrimeResponse], error) {
+	view, err := composer.Project(ctx)
 	if err != nil {
 		return nil, executionError(err)
 	}
+	pview, err := primeProjectViewToProto(view)
+	if err != nil {
+		slog.Error("GetPrime: convert project view", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
+	}
+	return connect.NewResponse(&specv1.PrimeResponse{
+		View: &specv1.PrimeResponse_ProjectView{ProjectView: pview},
+	}), nil
+}
 
-	decisions, err := decisionsToProto(pd.Decisions)
+// getPrimeSpec composes the spec-scope PrimeResponse. Populates both
+// the spec_view oneof and the legacy summary fields (1–5) so older
+// polecats that read the legacy shape continue to work.
+func (h *ExecutionHandler) getPrimeSpec(ctx context.Context, store storage.ScopedBackend, composer *prime.Composer, slug string) (*connect.Response[specv1.PrimeResponse], error) {
+	sview, err := composer.Spec(ctx, slug)
 	if err != nil {
 		return nil, executionError(err)
 	}
-
-	var constitutionSummary string
-	var codingConventions string
-	if pd.Constitution != nil {
-		constitutionSummary = fmt.Sprintf("%s (%s layer)", pd.Constitution.Name, pd.Constitution.Layer)
-		var parts []string
-		for _, p := range pd.Constitution.Principles {
-			parts = append(parts, p.Statement)
-		}
-		if len(pd.Constitution.Constraints) > 0 {
-			parts = append(parts, pd.Constitution.Constraints...)
-		}
-		codingConventions = strings.Join(parts, "; ")
+	pSpecView, err := primeSpecViewToProto(sview)
+	if err != nil {
+		slog.Error("GetPrime: convert spec view", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 
-	resp := &specv1.PrimeResponse{
+	// Legacy summary fields — preserved for backward compatibility.
+	pd, err := store.GetPrimeData(ctx, slug)
+	if err != nil {
+		return nil, executionError(err)
+	}
+	legacyDecisions, err := decisionsToProto(pd.Decisions)
+	if err != nil {
+		return nil, executionError(err)
+	}
+	constitutionSummary, codingConventions := legacyConstitutionSummary(pd.Constitution)
+
+	return connect.NewResponse(&specv1.PrimeResponse{
 		ConstitutionSummary: constitutionSummary,
 		ProjectContext:      pd.Spec.Intent,
-		Decisions:           decisions,
+		Decisions:           legacyDecisions,
 		CodingConventions:   codingConventions,
 		CallbackDocs:        "Use ReportProgress, ReportBlocker, and ReportCompletion RPCs to report execution status.",
-	}
+		View:                &specv1.PrimeResponse_SpecView{SpecView: pSpecView},
+	}), nil
+}
 
-	return connect.NewResponse(resp), nil
+// legacyConstitutionSummary reproduces the pre-Piece-E formatting used
+// by older polecats: "<name> (<layer> layer)" and a semicolon-joined
+// list of principle statements + constraints. Returns zero strings
+// when c is nil.
+func legacyConstitutionSummary(c *storage.Constitution) (summary, conventions string) {
+	if c == nil {
+		return "", ""
+	}
+	summary = fmt.Sprintf("%s (%s layer)", c.Name, c.Layer)
+	parts := make([]string, 0, len(c.Principles)+len(c.Constraints))
+	for _, p := range c.Principles {
+		parts = append(parts, p.Statement)
+	}
+	parts = append(parts, c.Constraints...)
+	return summary, strings.Join(parts, "; ")
 }
 
 // ReportProgress handles the ReportProgress RPC.
