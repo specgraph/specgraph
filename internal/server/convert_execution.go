@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/prime"
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
@@ -133,5 +134,121 @@ func bundleToProto(b *storage.Bundle) (*specv1.Bundle, error) {
 		Decisions: decisions,
 		Bootstrap: b.Bootstrap,
 		Callbacks: callbacks,
+	}, nil
+}
+
+// --- Prime views ---
+
+// provenanceEntriesToProto converts an ordered slice of domain
+// ProvenanceEntry values to their proto representation. Order is
+// preserved so callers can rely on backend-defined sort.
+func provenanceEntriesToProto(entries []storage.ProvenanceEntry) []*specv1.ProvenanceEntry {
+	if len(entries) == 0 {
+		return nil
+	}
+	out := make([]*specv1.ProvenanceEntry, 0, len(entries))
+	for _, e := range entries {
+		layer, ok := constitutionLayerToProtoMap[e.Layer]
+		if !ok {
+			layer = specv1.ConstitutionLayer_CONSTITUTION_LAYER_UNSPECIFIED
+		}
+		out = append(out, &specv1.ProvenanceEntry{
+			Path:  e.Path,
+			Layer: layer,
+		})
+	}
+	return out
+}
+
+// convertStageCounts casts a domain map[string]int to the proto
+// map[string]int32 shape.
+func convertStageCounts(in map[string]int) map[string]int32 {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]int32, len(in))
+	for k, v := range in {
+		out[k] = int32(v) //nolint:gosec // bucket counts are bounded by spec count and non-negative
+	}
+	return out
+}
+
+// convertFindingsBySeverity converts a domain map keyed by
+// FindingSeverity (a string) to the proto map keyed by the
+// FindingSeverity enum's int32 value. Unknown severities are mapped to
+// FINDING_SEVERITY_UNSPECIFIED so the conversion is lossy-but-total.
+func convertFindingsBySeverity(in map[storage.FindingSeverity]int) map[int32]int32 {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[int32]int32, len(in))
+	for k, v := range in {
+		pb, err := findingSeverityToProto(k)
+		if err != nil {
+			pb = specv1.FindingSeverity_FINDING_SEVERITY_UNSPECIFIED
+		}
+		out[int32(pb)] += int32(v) //nolint:gosec // finding counts are non-negative and bounded
+	}
+	return out
+}
+
+// primeProjectViewToProto converts a domain ProjectView to its proto
+// representation for inclusion in a PrimeResponse.
+func primeProjectViewToProto(v *prime.ProjectView) (*specv1.ProjectView, error) {
+	if v == nil {
+		return nil, nil
+	}
+	ready, err := specsToProto(v.Ready)
+	if err != nil {
+		return nil, fmt.Errorf("primeProjectViewToProto: ready: %w", err)
+	}
+	out := &specv1.ProjectView{
+		Constitution:           constitutionToProto(v.Constitution),
+		ConstitutionProvenance: provenanceEntriesToProto(v.ConstitutionProvenance),
+		GraphOverview: &specv1.GraphOverview{
+			CountsByStage: convertStageCounts(v.GraphOverview.CountsByStage),
+		},
+		Ready:              ready,
+		FindingsBySeverity: convertFindingsBySeverity(v.FindingsBySeverity),
+		SkillsCount:        int32(v.SkillsCount), //nolint:gosec // skills count is bounded and non-negative
+	}
+	return out, nil
+}
+
+// primeSpecViewToProto converts a domain SpecView to its proto
+// representation.
+//
+// Claims is intentionally left nil because the storage layer exposes no
+// public read for the active claim; the renderer in internal/render
+// skips the section when Claims is empty. See internal/prime/prime.go
+// for the rationale and follow-up.
+func primeSpecViewToProto(v *prime.SpecView) (*specv1.SpecView, error) {
+	if v == nil {
+		return nil, nil
+	}
+	spec, err := specToProto(v.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("primeSpecViewToProto: spec: %w", err)
+	}
+	decisions, err := decisionsToProto(v.Decisions)
+	if err != nil {
+		return nil, fmt.Errorf("primeSpecViewToProto: decisions: %w", err)
+	}
+	slices, err := slicesToProto(v.Slices)
+	if err != nil {
+		return nil, fmt.Errorf("primeSpecViewToProto: slices: %w", err)
+	}
+	blockers, err := executionEventsToProto(v.Blockers)
+	if err != nil {
+		return nil, fmt.Errorf("primeSpecViewToProto: blockers: %w", err)
+	}
+	return &specv1.SpecView{
+		Spec:                   spec,
+		Constitution:           constitutionToProto(v.Constitution),
+		ConstitutionProvenance: provenanceEntriesToProto(v.ConstitutionProvenance),
+		Decisions:              decisions,
+		Slices:                 slices,
+		// Claims intentionally left nil — see doc comment above.
+		Blockers: blockers,
 	}, nil
 }

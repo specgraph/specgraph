@@ -18,6 +18,7 @@ import (
 
 	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/specgraph/specgraph/internal/linter"
+	"github.com/specgraph/specgraph/internal/mcp/skills"
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/storage/postgres"
 )
@@ -52,7 +53,12 @@ func StartServer(ctx context.Context, connURL string, opts ...connect.HandlerOpt
 	server.RegisterClaimService(mux, store, opts...)
 	server.RegisterConstitutionService(mux, store, opts...)
 	server.RegisterAuthoringService(mux, store, opts...)
-	server.RegisterExecutionService(mux, store, opts...)
+	skillsSrc, err := skills.NewEmbedded()
+	if err != nil {
+		_ = store.Close(ctx)
+		return nil, nil, fmt.Errorf("load embedded skills: %w", err)
+	}
+	server.RegisterExecutionService(mux, store, skillsSrc, opts...)
 	server.RegisterSliceService(mux, store, opts...)
 	driftEngine := drift.NewEngine(store, nil)
 	lintEngine := linter.NewEngine(store, nil)

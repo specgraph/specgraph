@@ -16,10 +16,31 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/specgraph/specgraph/internal/mcp/skills"
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
+
+// stubSkillsSource is a minimal skills.Source for tests that exercise
+// project-scope GetPrime (which surfaces a skills count). List returns
+// a fixed, configurable slice; Get/Search are unused by Composer.Project.
+type stubSkillsSource struct {
+	metas []skills.Meta
+	err   error
+}
+
+func (s *stubSkillsSource) List(context.Context) ([]skills.Meta, error) {
+	return s.metas, s.err
+}
+
+func (*stubSkillsSource) Get(context.Context, string) (skills.Skill, error) {
+	return skills.Skill{}, skills.ErrNotFound
+}
+
+func (*stubSkillsSource) Search(context.Context, string, skills.SearchOptions) ([]skills.Meta, error) {
+	return nil, nil
+}
 
 // mockExecutionBackend implements storage.ExecutionBackend for unit tests.
 type mockExecutionBackend struct {
@@ -123,6 +144,67 @@ func (m *mockExecutionBackend) GetPrimeData(_ context.Context, slug string) (*st
 	return pd, nil
 }
 
+// GetSpec serves the Spec inside the seeded PrimeData for slug, so the
+// new Composer-driven GetPrime spec-scope path can reach the legacy
+// summary fields without additional seeding.
+func (m *mockExecutionBackend) GetSpec(_ context.Context, slug string) (*storage.Spec, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	pd, ok := m.primes[slug]
+	if !ok || pd == nil || pd.Spec == nil {
+		return nil, fmt.Errorf("mock: %w", storage.ErrSpecNotFound)
+	}
+	return pd.Spec, nil
+}
+
+// GetMergedConstitution returns the seeded constitution (wrapped in a
+// trivial MergedResult) for the most recently seeded prime, so
+// Composer.Spec can populate the SpecView constitution.
+func (m *mockExecutionBackend) GetMergedConstitution(_ context.Context) (*storage.MergedResult, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, pd := range m.primes {
+		if pd != nil && pd.Constitution != nil {
+			return &storage.MergedResult{Constitution: pd.Constitution}, nil
+		}
+	}
+	// Soft empty state — no error so Composer.Spec doesn't bail.
+	return nil, storage.ErrConstitutionNotFound
+}
+
+// ListSlices returns no slices for any spec — Composer.Spec then leaves
+// SpecView.Slices empty. Overridden so we don't fall through to the
+// stubBackend's errNotImplemented.
+func (m *mockExecutionBackend) ListSlices(context.Context, string) ([]*storage.Slice, error) {
+	return nil, nil
+}
+
+// ListSpecs returns all specs seeded via seedPrime. Composer.Project
+// reads through this method to bucket specs by stage; without the
+// override the embedded stubBackend returns errNotImplemented.
+func (m *mockExecutionBackend) ListSpecs(context.Context, string, string, int) ([]*storage.Spec, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]*storage.Spec, 0, len(m.primes))
+	for _, pd := range m.primes {
+		if pd != nil && pd.Spec != nil {
+			out = append(out, pd.Spec)
+		}
+	}
+	return out, nil
+}
+
+// GetReady returns no ready specs by default — sufficient for the
+// project-scope tests in this file.
+func (m *mockExecutionBackend) GetReady(context.Context) ([]storage.NodeRef, error) {
+	return nil, nil
+}
+
+// ListAllFindings returns no findings by default.
+func (m *mockExecutionBackend) ListAllFindings(context.Context) ([]*storage.AnalyticalFinding, error) {
+	return nil, nil
+}
+
 func (m *mockExecutionBackend) ReleaseExpiredClaims(_ context.Context) (int, error) {
 	return 0, nil
 }
@@ -143,10 +225,19 @@ func (m *mockExecutionBackend) seedPrime(slug string, pd *storage.PrimeData) {
 
 func setupExecutionServer(t *testing.T, mb storage.ExecutionBackend) specgraphv1connect.ExecutionServiceClient {
 	t.Helper()
+	return setupExecutionServerWithSkills(t, mb, nil)
+}
+
+// setupExecutionServerWithSkills wires the ExecutionService with a
+// caller-supplied skills.Source. Tests that exercise project-scope
+// GetPrime must pass a non-nil source because Composer.Project lists
+// the catalog.
+func setupExecutionServerWithSkills(t *testing.T, mb storage.ExecutionBackend, src skills.Source) specgraphv1connect.ExecutionServiceClient {
+	t.Helper()
 	// mb must implement ScopedBackend (mockExecutionBackend embeds stubBackend).
 	scoper := &testScoper{backend: mb.(storage.ScopedBackend)}
 	mux := http.NewServeMux()
-	server.RegisterExecutionService(mux, scoper)
+	server.RegisterExecutionService(mux, scoper, src)
 	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewExecutionServiceClient(http.DefaultClient, srv.URL)
@@ -299,7 +390,7 @@ func TestExecutionHandler_GetExecutionEvents_LimitCapped(t *testing.T) {
 func TestExecutionHandler_GetPrime(t *testing.T) {
 	mb := newMockExecutionBackend()
 	mb.seedPrime("my-spec", &storage.PrimeData{
-		Spec: &storage.Spec{Slug: "my-spec", Intent: "build a widget", Stage: storage.SpecStageApproved, ContentHash: strings.Repeat("a", 32)},
+		Spec: &storage.Spec{Slug: "my-spec", Intent: "build a widget", Stage: storage.SpecStageApproved, Provenance: storage.SpecProvenanceAuthored, ContentHash: strings.Repeat("a", 32)},
 		Decisions: []*storage.Decision{
 			{Slug: "adr-001", Title: "Use Go", Status: storage.DecisionStatusAccepted, ContentHash: strings.Repeat("a", 32)},
 		},
@@ -318,12 +409,145 @@ func TestExecutionHandler_GetPrime(t *testing.T) {
 		Slug: "my-spec",
 	}))
 	require.NoError(t, err)
-	require.Equal(t, "MyProject (project layer)", resp.Msg.ConstitutionSummary)
-	require.Equal(t, "build a widget", resp.Msg.ProjectContext)
-	require.Len(t, resp.Msg.Decisions, 1)
-	require.Contains(t, resp.Msg.CodingConventions, "Keep it simple")
-	require.Contains(t, resp.Msg.CodingConventions, "No global state")
-	require.NotEmpty(t, resp.Msg.CallbackDocs)
+
+	// Legacy summary fields (1–5) — preserved for backward compatibility
+	// with older polecat consumers.
+	require.Equal(t, "MyProject (project layer)", resp.Msg.GetConstitutionSummary())
+	require.Equal(t, "build a widget", resp.Msg.GetProjectContext())
+	require.Len(t, resp.Msg.GetDecisions(), 1)
+	require.Contains(t, resp.Msg.GetCodingConventions(), "Keep it simple")
+	require.Contains(t, resp.Msg.GetCodingConventions(), "No global state")
+	require.NotEmpty(t, resp.Msg.GetCallbackDocs())
+
+	// New view oneof — spec_view populated for spec-scope responses.
+	require.NotNil(t, resp.Msg.GetSpecView(), "spec-scope response must populate spec_view oneof")
+	require.Nil(t, resp.Msg.GetProjectView(), "spec-scope response must not populate project_view oneof")
+	require.Equal(t, "my-spec", resp.Msg.GetSpecView().GetSpec().GetSlug())
+}
+
+func TestGetPrime_EmptySlug_ProjectView(t *testing.T) {
+	mb := newMockExecutionBackend()
+	src := &stubSkillsSource{
+		metas: []skills.Meta{
+			{Name: "skill-a", URI: "specgraph://skills/skill-a"},
+			{Name: "skill-b", URI: "specgraph://skills/skill-b"},
+		},
+	}
+	client := setupExecutionServerWithSkills(t, mb, src)
+
+	resp, err := client.GetPrime(context.Background(), connect.NewRequest(&specv1.GetPrimeRequest{
+		Slug: "",
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, resp.Msg.GetProjectView(), "empty-slug response must populate project_view oneof")
+	require.Nil(t, resp.Msg.GetSpecView(), "empty-slug response must not populate spec_view oneof")
+	require.Equal(t, int32(2), resp.Msg.GetProjectView().GetSkillsCount())
+
+	// Legacy summary fields are intentionally left zero on project-scope
+	// responses (design Section 10).
+	require.Empty(t, resp.Msg.GetConstitutionSummary())
+	require.Empty(t, resp.Msg.GetProjectContext())
+	require.Empty(t, resp.Msg.GetCodingConventions())
+	require.Empty(t, resp.Msg.GetCallbackDocs())
+	require.Empty(t, resp.Msg.GetDecisions())
+}
+
+func TestGetPrime_NonEmptySlug_SpecView_PopulatesLegacyFields(t *testing.T) {
+	mb := newMockExecutionBackend()
+	mb.seedPrime("widget", &storage.PrimeData{
+		Spec: &storage.Spec{Slug: "widget", Intent: "build a widget", Stage: storage.SpecStageApproved, Provenance: storage.SpecProvenanceAuthored, ContentHash: strings.Repeat("a", 32)},
+		Decisions: []*storage.Decision{
+			{Slug: "adr-001", Title: "Use Go", Status: storage.DecisionStatusAccepted, ContentHash: strings.Repeat("a", 32)},
+		},
+		Constitution: &storage.Constitution{
+			Name:        "MyProject",
+			Layer:       storage.ConstitutionLayerProject,
+			Principles:  []storage.Principle{{Statement: "Keep it simple"}},
+			Constraints: []string{"No global state"},
+		},
+	})
+	client := setupExecutionServer(t, mb)
+
+	resp, err := client.GetPrime(context.Background(), connect.NewRequest(&specv1.GetPrimeRequest{
+		Slug: "widget",
+	}))
+	require.NoError(t, err)
+
+	// spec_view populated.
+	sv := resp.Msg.GetSpecView()
+	require.NotNil(t, sv)
+	require.Equal(t, "widget", sv.GetSpec().GetSlug())
+
+	// Legacy summary fields populated (back-compat).
+	require.Equal(t, "MyProject (project layer)", resp.Msg.GetConstitutionSummary())
+	require.Equal(t, "build a widget", resp.Msg.GetProjectContext())
+	require.Len(t, resp.Msg.GetDecisions(), 1)
+	require.Contains(t, resp.Msg.GetCodingConventions(), "Keep it simple")
+	require.NotEmpty(t, resp.Msg.GetCallbackDocs())
+}
+
+func TestGetPrime_ViewOneofInvariant(t *testing.T) {
+	t.Run("empty slug -> exactly project_view", func(t *testing.T) {
+		mb := newMockExecutionBackend()
+		client := setupExecutionServerWithSkills(t, mb, &stubSkillsSource{})
+		resp, err := client.GetPrime(context.Background(), connect.NewRequest(&specv1.GetPrimeRequest{
+			Slug: "",
+		}))
+		require.NoError(t, err)
+		assertExactlyOneView(t, resp.Msg, viewKindProject)
+	})
+
+	t.Run("non-empty slug -> exactly spec_view", func(t *testing.T) {
+		mb := newMockExecutionBackend()
+		mb.seedPrime("widget", &storage.PrimeData{
+			Spec: &storage.Spec{Slug: "widget", Intent: "x", Stage: storage.SpecStageApproved, Provenance: storage.SpecProvenanceAuthored, ContentHash: strings.Repeat("a", 32)},
+		})
+		client := setupExecutionServer(t, mb)
+		resp, err := client.GetPrime(context.Background(), connect.NewRequest(&specv1.GetPrimeRequest{
+			Slug: "widget",
+		}))
+		require.NoError(t, err)
+		assertExactlyOneView(t, resp.Msg, viewKindSpec)
+	})
+}
+
+func TestGetPrime_UnknownSlug_NotFound(t *testing.T) {
+	mb := newMockExecutionBackend()
+	client := setupExecutionServer(t, mb)
+
+	_, err := client.GetPrime(context.Background(), connect.NewRequest(&specv1.GetPrimeRequest{
+		Slug: "no-such-spec",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeNotFound, connect.CodeOf(err))
+}
+
+type viewKind int
+
+const (
+	viewKindProject viewKind = iota
+	viewKindSpec
+)
+
+// assertExactlyOneView asserts that resp.View is set to exactly the
+// expected oneof arm: type-switching on the typed View field ensures
+// the other arm is nil.
+func assertExactlyOneView(t *testing.T, resp *specv1.PrimeResponse, want viewKind) {
+	t.Helper()
+	switch v := resp.GetView().(type) {
+	case *specv1.PrimeResponse_ProjectView:
+		require.Equal(t, viewKindProject, want, "got project_view, expected spec_view")
+		require.NotNil(t, v.ProjectView)
+		require.Nil(t, resp.GetSpecView())
+	case *specv1.PrimeResponse_SpecView:
+		require.Equal(t, viewKindSpec, want, "got spec_view, expected project_view")
+		require.NotNil(t, v.SpecView)
+		require.Nil(t, resp.GetProjectView())
+	case nil:
+		t.Fatalf("view oneof must be set, got nil")
+	default:
+		t.Fatalf("unexpected view oneof arm: %T", v)
+	}
 }
 
 // mockExecutionBackendNotApproved wraps mockExecutionBackend but returns

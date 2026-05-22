@@ -9,17 +9,23 @@ import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobu
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
-import type { Spec } from "./spec_pb";
-import { file_specgraph_v1_spec } from "./spec_pb";
+import type { Claim } from "./claim_pb";
+import { file_specgraph_v1_claim } from "./claim_pb";
+import type { Constitution, ProvenanceEntry } from "./constitution_pb";
+import { file_specgraph_v1_constitution } from "./constitution_pb";
 import type { Decision } from "./decision_pb";
 import { file_specgraph_v1_decision } from "./decision_pb";
+import type { Slice } from "./slice_pb";
+import { file_specgraph_v1_slice } from "./slice_pb";
+import type { Spec } from "./spec_pb";
+import { file_specgraph_v1_spec } from "./spec_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file specgraph/v1/execution.proto.
  */
 export const file_specgraph_v1_execution: GenFile = /*@__PURE__*/
-  fileDesc("ChxzcGVjZ3JhcGgvdjEvZXhlY3V0aW9uLnByb3RvEgxzcGVjZ3JhcGgudjEiaAoOQ2FsbGJhY2tDb25maWcSEAoIZW5kcG9pbnQYASABKAkSDQoFcHJpbWUYAiABKAkSEAoIcHJvZ3Jlc3MYAyABKAkSDwoHYmxvY2tlchgEIAEoCRISCgpjb21wbGV0aW9uGAUgASgJItUBCgZCdW5kbGUSDwoHdmVyc2lvbhgBIAEoBRIgCgRzcGVjGAIgASgLMhIuc3BlY2dyYXBoLnYxLlNwZWMSKQoJZGVjaXNpb25zGAMgAygLMhYuc3BlY2dyYXBoLnYxLkRlY2lzaW9uEhEKCWJvb3RzdHJhcBgEIAEoCRIvCgljYWxsYmFja3MYBSABKAsyHC5zcGVjZ3JhcGgudjEuQ2FsbGJhY2tDb25maWcSFgoOYnVuZGxlX2NvbnRlbnQYByABKAlKBAgGEAdSC2J1bmRsZV95YW1sIqQBCg1QcmltZVJlc3BvbnNlEhwKFGNvbnN0aXR1dGlvbl9zdW1tYXJ5GAEgASgJEhcKD3Byb2plY3RfY29udGV4dBgCIAEoCRIpCglkZWNpc2lvbnMYAyADKAsyFi5zcGVjZ3JhcGgudjEuRGVjaXNpb24SGgoSY29kaW5nX2NvbnZlbnRpb25zGAQgASgJEhUKDWNhbGxiYWNrX2RvY3MYBSABKAkirwEKDkV4ZWN1dGlvbkV2ZW50EgoKAmlkGAEgASgJEhEKCXNwZWNfc2x1ZxgCIAEoCRINCgVhZ2VudBgDIAEoCRIuCgR0eXBlGAQgASgOMiAuc3BlY2dyYXBoLnYxLkV4ZWN1dGlvbkV2ZW50VHlwZRIPCgdtZXNzYWdlGAUgASgJEi4KCmNyZWF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIjcKFUdlbmVyYXRlQnVuZGxlUmVxdWVzdBIMCgRzbHVnGAEgASgJEhAKCGVuZHBvaW50GAIgASgJIj4KFkdlbmVyYXRlQnVuZGxlUmVzcG9uc2USJAoGYnVuZGxlGAEgASgLMhQuc3BlY2dyYXBoLnYxLkJ1bmRsZSIfCg9HZXRQcmltZVJlcXVlc3QSDAoEc2x1ZxgBIAEoCSJFChVSZXBvcnRQcm9ncmVzc1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRINCgVhZ2VudBgCIAEoCRIPCgdtZXNzYWdlGAMgASgJIi4KFlJlcG9ydFByb2dyZXNzUmVzcG9uc2USFAoMYWNrbm93bGVkZ2VkGAEgASgIIkgKFFJlcG9ydEJsb2NrZXJSZXF1ZXN0EgwKBHNsdWcYASABKAkSDQoFYWdlbnQYAiABKAkSEwoLZGVzY3JpcHRpb24YAyABKAkiLQoVUmVwb3J0QmxvY2tlclJlc3BvbnNlEhQKDGFja25vd2xlZGdlZBgBIAEoCCI2ChdSZXBvcnRDb21wbGV0aW9uUmVxdWVzdBIMCgRzbHVnGAEgASgJEg0KBWFnZW50GAIgASgJIkMKGFJlcG9ydENvbXBsZXRpb25SZXNwb25zZRIUCgxhY2tub3dsZWRnZWQYASABKAgSEQoJbmV3X3N0YWdlGAIgASgJIjgKGUdldEV4ZWN1dGlvbkV2ZW50c1JlcXVlc3QSDAoEc2x1ZxgBIAEoCRINCgVsaW1pdBgCIAEoDSJKChpHZXRFeGVjdXRpb25FdmVudHNSZXNwb25zZRIsCgZldmVudHMYASADKAsyHC5zcGVjZ3JhcGgudjEuRXhlY3V0aW9uRXZlbnQqpAEKEkV4ZWN1dGlvbkV2ZW50VHlwZRIkCiBFWEVDVVRJT05fRVZFTlRfVFlQRV9VTlNQRUNJRklFRBAAEiEKHUVYRUNVVElPTl9FVkVOVF9UWVBFX1BST0dSRVNTEAESIAocRVhFQ1VUSU9OX0VWRU5UX1RZUEVfQkxPQ0tFUhACEiMKH0VYRUNVVElPTl9FVkVOVF9UWVBFX0NPTVBMRVRJT04QAzK6BAoQRXhlY3V0aW9uU2VydmljZRJbCg5HZW5lcmF0ZUJ1bmRsZRIjLnNwZWNncmFwaC52MS5HZW5lcmF0ZUJ1bmRsZVJlcXVlc3QaJC5zcGVjZ3JhcGgudjEuR2VuZXJhdGVCdW5kbGVSZXNwb25zZRJGCghHZXRQcmltZRIdLnNwZWNncmFwaC52MS5HZXRQcmltZVJlcXVlc3QaGy5zcGVjZ3JhcGgudjEuUHJpbWVSZXNwb25zZRJbCg5SZXBvcnRQcm9ncmVzcxIjLnNwZWNncmFwaC52MS5SZXBvcnRQcm9ncmVzc1JlcXVlc3QaJC5zcGVjZ3JhcGgudjEuUmVwb3J0UHJvZ3Jlc3NSZXNwb25zZRJYCg1SZXBvcnRCbG9ja2VyEiIuc3BlY2dyYXBoLnYxLlJlcG9ydEJsb2NrZXJSZXF1ZXN0GiMuc3BlY2dyYXBoLnYxLlJlcG9ydEJsb2NrZXJSZXNwb25zZRJhChBSZXBvcnRDb21wbGV0aW9uEiUuc3BlY2dyYXBoLnYxLlJlcG9ydENvbXBsZXRpb25SZXF1ZXN0GiYuc3BlY2dyYXBoLnYxLlJlcG9ydENvbXBsZXRpb25SZXNwb25zZRJnChJHZXRFeGVjdXRpb25FdmVudHMSJy5zcGVjZ3JhcGgudjEuR2V0RXhlY3V0aW9uRXZlbnRzUmVxdWVzdBooLnNwZWNncmFwaC52MS5HZXRFeGVjdXRpb25FdmVudHNSZXNwb25zZUI9WjtnaXRodWIuY29tL3NwZWNncmFwaC9zcGVjZ3JhcGgvZ2VuL3NwZWNncmFwaC92MTtzcGVjZ3JhcGh2MWIGcHJvdG8z", [file_google_protobuf_timestamp, file_specgraph_v1_spec, file_specgraph_v1_decision]);
+  fileDesc("ChxzcGVjZ3JhcGgvdjEvZXhlY3V0aW9uLnByb3RvEgxzcGVjZ3JhcGgudjEiaAoOQ2FsbGJhY2tDb25maWcSEAoIZW5kcG9pbnQYASABKAkSDQoFcHJpbWUYAiABKAkSEAoIcHJvZ3Jlc3MYAyABKAkSDwoHYmxvY2tlchgEIAEoCRISCgpjb21wbGV0aW9uGAUgASgJItUBCgZCdW5kbGUSDwoHdmVyc2lvbhgBIAEoBRIgCgRzcGVjGAIgASgLMhIuc3BlY2dyYXBoLnYxLlNwZWMSKQoJZGVjaXNpb25zGAMgAygLMhYuc3BlY2dyYXBoLnYxLkRlY2lzaW9uEhEKCWJvb3RzdHJhcBgEIAEoCRIvCgljYWxsYmFja3MYBSABKAsyHC5zcGVjZ3JhcGgudjEuQ2FsbGJhY2tDb25maWcSFgoOYnVuZGxlX2NvbnRlbnQYByABKAlKBAgGEAdSC2J1bmRsZV95YW1sIo4BCg1HcmFwaE92ZXJ2aWV3EkcKD2NvdW50c19ieV9zdGFnZRgBIAMoCzIuLnNwZWNncmFwaC52MS5HcmFwaE92ZXJ2aWV3LkNvdW50c0J5U3RhZ2VFbnRyeRo0ChJDb3VudHNCeVN0YWdlRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgFOgI4ASL5AgoLUHJvamVjdFZpZXcSMAoMY29uc3RpdHV0aW9uGAEgASgLMhouc3BlY2dyYXBoLnYxLkNvbnN0aXR1dGlvbhI+Chdjb25zdGl0dXRpb25fcHJvdmVuYW5jZRgCIAMoCzIdLnNwZWNncmFwaC52MS5Qcm92ZW5hbmNlRW50cnkSMwoOZ3JhcGhfb3ZlcnZpZXcYAyABKAsyGy5zcGVjZ3JhcGgudjEuR3JhcGhPdmVydmlldxIhCgVyZWFkeRgEIAMoCzISLnNwZWNncmFwaC52MS5TcGVjEk8KFGZpbmRpbmdzX2J5X3NldmVyaXR5GAUgAygLMjEuc3BlY2dyYXBoLnYxLlByb2plY3RWaWV3LkZpbmRpbmdzQnlTZXZlcml0eUVudHJ5EhQKDHNraWxsc19jb3VudBgGIAEoBRo5ChdGaW5kaW5nc0J5U2V2ZXJpdHlFbnRyeRILCgNrZXkYASABKAUSDQoFdmFsdWUYAiABKAU6AjgBIsMCCghTcGVjVmlldxIgCgRzcGVjGAEgASgLMhIuc3BlY2dyYXBoLnYxLlNwZWMSMAoMY29uc3RpdHV0aW9uGAIgASgLMhouc3BlY2dyYXBoLnYxLkNvbnN0aXR1dGlvbhI+Chdjb25zdGl0dXRpb25fcHJvdmVuYW5jZRgDIAMoCzIdLnNwZWNncmFwaC52MS5Qcm92ZW5hbmNlRW50cnkSKQoJZGVjaXNpb25zGAQgAygLMhYuc3BlY2dyYXBoLnYxLkRlY2lzaW9uEiMKBnNsaWNlcxgFIAMoCzITLnNwZWNncmFwaC52MS5TbGljZRIjCgZjbGFpbXMYBiADKAsyEy5zcGVjZ3JhcGgudjEuQ2xhaW0SLgoIYmxvY2tlcnMYByADKAsyHC5zcGVjZ3JhcGgudjEuRXhlY3V0aW9uRXZlbnQijAIKDVByaW1lUmVzcG9uc2USHAoUY29uc3RpdHV0aW9uX3N1bW1hcnkYASABKAkSFwoPcHJvamVjdF9jb250ZXh0GAIgASgJEikKCWRlY2lzaW9ucxgDIAMoCzIWLnNwZWNncmFwaC52MS5EZWNpc2lvbhIaChJjb2RpbmdfY29udmVudGlvbnMYBCABKAkSFQoNY2FsbGJhY2tfZG9jcxgFIAEoCRIxCgxwcm9qZWN0X3ZpZXcYCiABKAsyGS5zcGVjZ3JhcGgudjEuUHJvamVjdFZpZXdIABIrCglzcGVjX3ZpZXcYCyABKAsyFi5zcGVjZ3JhcGgudjEuU3BlY1ZpZXdIAEIGCgR2aWV3Iq8BCg5FeGVjdXRpb25FdmVudBIKCgJpZBgBIAEoCRIRCglzcGVjX3NsdWcYAiABKAkSDQoFYWdlbnQYAyABKAkSLgoEdHlwZRgEIAEoDjIgLnNwZWNncmFwaC52MS5FeGVjdXRpb25FdmVudFR5cGUSDwoHbWVzc2FnZRgFIAEoCRIuCgpjcmVhdGVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI3ChVHZW5lcmF0ZUJ1bmRsZVJlcXVlc3QSDAoEc2x1ZxgBIAEoCRIQCghlbmRwb2ludBgCIAEoCSI+ChZHZW5lcmF0ZUJ1bmRsZVJlc3BvbnNlEiQKBmJ1bmRsZRgBIAEoCzIULnNwZWNncmFwaC52MS5CdW5kbGUiHwoPR2V0UHJpbWVSZXF1ZXN0EgwKBHNsdWcYASABKAkiRQoVUmVwb3J0UHJvZ3Jlc3NSZXF1ZXN0EgwKBHNsdWcYASABKAkSDQoFYWdlbnQYAiABKAkSDwoHbWVzc2FnZRgDIAEoCSIuChZSZXBvcnRQcm9ncmVzc1Jlc3BvbnNlEhQKDGFja25vd2xlZGdlZBgBIAEoCCJIChRSZXBvcnRCbG9ja2VyUmVxdWVzdBIMCgRzbHVnGAEgASgJEg0KBWFnZW50GAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJIi0KFVJlcG9ydEJsb2NrZXJSZXNwb25zZRIUCgxhY2tub3dsZWRnZWQYASABKAgiNgoXUmVwb3J0Q29tcGxldGlvblJlcXVlc3QSDAoEc2x1ZxgBIAEoCRINCgVhZ2VudBgCIAEoCSJDChhSZXBvcnRDb21wbGV0aW9uUmVzcG9uc2USFAoMYWNrbm93bGVkZ2VkGAEgASgIEhEKCW5ld19zdGFnZRgCIAEoCSI4ChlHZXRFeGVjdXRpb25FdmVudHNSZXF1ZXN0EgwKBHNsdWcYASABKAkSDQoFbGltaXQYAiABKA0iSgoaR2V0RXhlY3V0aW9uRXZlbnRzUmVzcG9uc2USLAoGZXZlbnRzGAEgAygLMhwuc3BlY2dyYXBoLnYxLkV4ZWN1dGlvbkV2ZW50KqQBChJFeGVjdXRpb25FdmVudFR5cGUSJAogRVhFQ1VUSU9OX0VWRU5UX1RZUEVfVU5TUEVDSUZJRUQQABIhCh1FWEVDVVRJT05fRVZFTlRfVFlQRV9QUk9HUkVTUxABEiAKHEVYRUNVVElPTl9FVkVOVF9UWVBFX0JMT0NLRVIQAhIjCh9FWEVDVVRJT05fRVZFTlRfVFlQRV9DT01QTEVUSU9OEAMyugQKEEV4ZWN1dGlvblNlcnZpY2USWwoOR2VuZXJhdGVCdW5kbGUSIy5zcGVjZ3JhcGgudjEuR2VuZXJhdGVCdW5kbGVSZXF1ZXN0GiQuc3BlY2dyYXBoLnYxLkdlbmVyYXRlQnVuZGxlUmVzcG9uc2USRgoIR2V0UHJpbWUSHS5zcGVjZ3JhcGgudjEuR2V0UHJpbWVSZXF1ZXN0Ghsuc3BlY2dyYXBoLnYxLlByaW1lUmVzcG9uc2USWwoOUmVwb3J0UHJvZ3Jlc3MSIy5zcGVjZ3JhcGgudjEuUmVwb3J0UHJvZ3Jlc3NSZXF1ZXN0GiQuc3BlY2dyYXBoLnYxLlJlcG9ydFByb2dyZXNzUmVzcG9uc2USWAoNUmVwb3J0QmxvY2tlchIiLnNwZWNncmFwaC52MS5SZXBvcnRCbG9ja2VyUmVxdWVzdBojLnNwZWNncmFwaC52MS5SZXBvcnRCbG9ja2VyUmVzcG9uc2USYQoQUmVwb3J0Q29tcGxldGlvbhIlLnNwZWNncmFwaC52MS5SZXBvcnRDb21wbGV0aW9uUmVxdWVzdBomLnNwZWNncmFwaC52MS5SZXBvcnRDb21wbGV0aW9uUmVzcG9uc2USZwoSR2V0RXhlY3V0aW9uRXZlbnRzEicuc3BlY2dyYXBoLnYxLkdldEV4ZWN1dGlvbkV2ZW50c1JlcXVlc3QaKC5zcGVjZ3JhcGgudjEuR2V0RXhlY3V0aW9uRXZlbnRzUmVzcG9uc2VCPVo7Z2l0aHViLmNvbS9zcGVjZ3JhcGgvc3BlY2dyYXBoL2dlbi9zcGVjZ3JhcGgvdjE7c3BlY2dyYXBodjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_specgraph_v1_claim, file_specgraph_v1_constitution, file_specgraph_v1_decision, file_specgraph_v1_slice, file_specgraph_v1_spec]);
 
 /**
  * @generated from message specgraph.v1.CallbackConfig
@@ -101,10 +107,124 @@ export const BundleSchema: GenMessage<Bundle> = /*@__PURE__*/
   messageDesc(file_specgraph_v1_execution, 1);
 
 /**
+ * @generated from message specgraph.v1.GraphOverview
+ */
+export type GraphOverview = Message<"specgraph.v1.GraphOverview"> & {
+  /**
+   * @generated from field: map<string, int32> counts_by_stage = 1;
+   */
+  countsByStage: { [key: string]: number };
+};
+
+/**
+ * Describes the message specgraph.v1.GraphOverview.
+ * Use `create(GraphOverviewSchema)` to create a new message.
+ */
+export const GraphOverviewSchema: GenMessage<GraphOverview> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_execution, 2);
+
+/**
+ * @generated from message specgraph.v1.ProjectView
+ */
+export type ProjectView = Message<"specgraph.v1.ProjectView"> & {
+  /**
+   * @generated from field: specgraph.v1.Constitution constitution = 1;
+   */
+  constitution?: Constitution | undefined;
+
+  /**
+   * @generated from field: repeated specgraph.v1.ProvenanceEntry constitution_provenance = 2;
+   */
+  constitutionProvenance: ProvenanceEntry[];
+
+  /**
+   * @generated from field: specgraph.v1.GraphOverview graph_overview = 3;
+   */
+  graphOverview?: GraphOverview | undefined;
+
+  /**
+   * @generated from field: repeated specgraph.v1.Spec ready = 4;
+   */
+  ready: Spec[];
+
+  /**
+   * findings_by_severity is keyed by FindingSeverity enum value (int32).
+   *
+   * @generated from field: map<int32, int32> findings_by_severity = 5;
+   */
+  findingsBySeverity: { [key: number]: number };
+
+  /**
+   * @generated from field: int32 skills_count = 6;
+   */
+  skillsCount: number;
+};
+
+/**
+ * Describes the message specgraph.v1.ProjectView.
+ * Use `create(ProjectViewSchema)` to create a new message.
+ */
+export const ProjectViewSchema: GenMessage<ProjectView> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_execution, 3);
+
+/**
+ * @generated from message specgraph.v1.SpecView
+ */
+export type SpecView = Message<"specgraph.v1.SpecView"> & {
+  /**
+   * @generated from field: specgraph.v1.Spec spec = 1;
+   */
+  spec?: Spec | undefined;
+
+  /**
+   * @generated from field: specgraph.v1.Constitution constitution = 2;
+   */
+  constitution?: Constitution | undefined;
+
+  /**
+   * @generated from field: repeated specgraph.v1.ProvenanceEntry constitution_provenance = 3;
+   */
+  constitutionProvenance: ProvenanceEntry[];
+
+  /**
+   * @generated from field: repeated specgraph.v1.Decision decisions = 4;
+   */
+  decisions: Decision[];
+
+  /**
+   * @generated from field: repeated specgraph.v1.Slice slices = 5;
+   */
+  slices: Slice[];
+
+  /**
+   * @generated from field: repeated specgraph.v1.Claim claims = 6;
+   */
+  claims: Claim[];
+
+  /**
+   * Blockers are surfaced as ExecutionEvents filtered to
+   * EXECUTION_EVENT_TYPE_BLOCKER. There is no separate Blocker entity.
+   *
+   * @generated from field: repeated specgraph.v1.ExecutionEvent blockers = 7;
+   */
+  blockers: ExecutionEvent[];
+};
+
+/**
+ * Describes the message specgraph.v1.SpecView.
+ * Use `create(SpecViewSchema)` to create a new message.
+ */
+export const SpecViewSchema: GenMessage<SpecView> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_execution, 4);
+
+/**
  * @generated from message specgraph.v1.PrimeResponse
  */
 export type PrimeResponse = Message<"specgraph.v1.PrimeResponse"> & {
   /**
+   * Legacy summary fields (1-5) preserved for backward compatibility with
+   * older polecats. New clients should read the `view` oneof.
+   *
    * @generated from field: string constitution_summary = 1;
    */
   constitutionSummary: string;
@@ -128,6 +248,23 @@ export type PrimeResponse = Message<"specgraph.v1.PrimeResponse"> & {
    * @generated from field: string callback_docs = 5;
    */
   callbackDocs: string;
+
+  /**
+   * @generated from oneof specgraph.v1.PrimeResponse.view
+   */
+  view: {
+    /**
+     * @generated from field: specgraph.v1.ProjectView project_view = 10;
+     */
+    value: ProjectView;
+    case: "projectView";
+  } | {
+    /**
+     * @generated from field: specgraph.v1.SpecView spec_view = 11;
+     */
+    value: SpecView;
+    case: "specView";
+  } | { case: undefined; value?: undefined };
 };
 
 /**
@@ -135,7 +272,7 @@ export type PrimeResponse = Message<"specgraph.v1.PrimeResponse"> & {
  * Use `create(PrimeResponseSchema)` to create a new message.
  */
 export const PrimeResponseSchema: GenMessage<PrimeResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 2);
+  messageDesc(file_specgraph_v1_execution, 5);
 
 /**
  * @generated from message specgraph.v1.ExecutionEvent
@@ -177,7 +314,7 @@ export type ExecutionEvent = Message<"specgraph.v1.ExecutionEvent"> & {
  * Use `create(ExecutionEventSchema)` to create a new message.
  */
 export const ExecutionEventSchema: GenMessage<ExecutionEvent> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 3);
+  messageDesc(file_specgraph_v1_execution, 6);
 
 /**
  * @generated from message specgraph.v1.GenerateBundleRequest
@@ -199,7 +336,7 @@ export type GenerateBundleRequest = Message<"specgraph.v1.GenerateBundleRequest"
  * Use `create(GenerateBundleRequestSchema)` to create a new message.
  */
 export const GenerateBundleRequestSchema: GenMessage<GenerateBundleRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 4);
+  messageDesc(file_specgraph_v1_execution, 7);
 
 /**
  * @generated from message specgraph.v1.GenerateBundleResponse
@@ -216,13 +353,17 @@ export type GenerateBundleResponse = Message<"specgraph.v1.GenerateBundleRespons
  * Use `create(GenerateBundleResponseSchema)` to create a new message.
  */
 export const GenerateBundleResponseSchema: GenMessage<GenerateBundleResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 5);
+  messageDesc(file_specgraph_v1_execution, 8);
 
 /**
  * @generated from message specgraph.v1.GetPrimeRequest
  */
 export type GetPrimeRequest = Message<"specgraph.v1.GetPrimeRequest"> & {
   /**
+   * slug identifies a spec to prime against. When empty, the handler returns
+   * a project-level view (PrimeResponse.project_view) rather than a
+   * spec-level view (PrimeResponse.spec_view).
+   *
    * @generated from field: string slug = 1;
    */
   slug: string;
@@ -233,7 +374,7 @@ export type GetPrimeRequest = Message<"specgraph.v1.GetPrimeRequest"> & {
  * Use `create(GetPrimeRequestSchema)` to create a new message.
  */
 export const GetPrimeRequestSchema: GenMessage<GetPrimeRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 6);
+  messageDesc(file_specgraph_v1_execution, 9);
 
 /**
  * @generated from message specgraph.v1.ReportProgressRequest
@@ -260,7 +401,7 @@ export type ReportProgressRequest = Message<"specgraph.v1.ReportProgressRequest"
  * Use `create(ReportProgressRequestSchema)` to create a new message.
  */
 export const ReportProgressRequestSchema: GenMessage<ReportProgressRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 7);
+  messageDesc(file_specgraph_v1_execution, 10);
 
 /**
  * @generated from message specgraph.v1.ReportProgressResponse
@@ -277,7 +418,7 @@ export type ReportProgressResponse = Message<"specgraph.v1.ReportProgressRespons
  * Use `create(ReportProgressResponseSchema)` to create a new message.
  */
 export const ReportProgressResponseSchema: GenMessage<ReportProgressResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 8);
+  messageDesc(file_specgraph_v1_execution, 11);
 
 /**
  * @generated from message specgraph.v1.ReportBlockerRequest
@@ -304,7 +445,7 @@ export type ReportBlockerRequest = Message<"specgraph.v1.ReportBlockerRequest"> 
  * Use `create(ReportBlockerRequestSchema)` to create a new message.
  */
 export const ReportBlockerRequestSchema: GenMessage<ReportBlockerRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 9);
+  messageDesc(file_specgraph_v1_execution, 12);
 
 /**
  * @generated from message specgraph.v1.ReportBlockerResponse
@@ -321,7 +462,7 @@ export type ReportBlockerResponse = Message<"specgraph.v1.ReportBlockerResponse"
  * Use `create(ReportBlockerResponseSchema)` to create a new message.
  */
 export const ReportBlockerResponseSchema: GenMessage<ReportBlockerResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 10);
+  messageDesc(file_specgraph_v1_execution, 13);
 
 /**
  * @generated from message specgraph.v1.ReportCompletionRequest
@@ -343,7 +484,7 @@ export type ReportCompletionRequest = Message<"specgraph.v1.ReportCompletionRequ
  * Use `create(ReportCompletionRequestSchema)` to create a new message.
  */
 export const ReportCompletionRequestSchema: GenMessage<ReportCompletionRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 11);
+  messageDesc(file_specgraph_v1_execution, 14);
 
 /**
  * @generated from message specgraph.v1.ReportCompletionResponse
@@ -365,7 +506,7 @@ export type ReportCompletionResponse = Message<"specgraph.v1.ReportCompletionRes
  * Use `create(ReportCompletionResponseSchema)` to create a new message.
  */
 export const ReportCompletionResponseSchema: GenMessage<ReportCompletionResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 12);
+  messageDesc(file_specgraph_v1_execution, 15);
 
 /**
  * @generated from message specgraph.v1.GetExecutionEventsRequest
@@ -387,7 +528,7 @@ export type GetExecutionEventsRequest = Message<"specgraph.v1.GetExecutionEvents
  * Use `create(GetExecutionEventsRequestSchema)` to create a new message.
  */
 export const GetExecutionEventsRequestSchema: GenMessage<GetExecutionEventsRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 13);
+  messageDesc(file_specgraph_v1_execution, 16);
 
 /**
  * @generated from message specgraph.v1.GetExecutionEventsResponse
@@ -404,7 +545,7 @@ export type GetExecutionEventsResponse = Message<"specgraph.v1.GetExecutionEvent
  * Use `create(GetExecutionEventsResponseSchema)` to create a new message.
  */
 export const GetExecutionEventsResponseSchema: GenMessage<GetExecutionEventsResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_execution, 14);
+  messageDesc(file_specgraph_v1_execution, 17);
 
 /**
  * @generated from enum specgraph.v1.ExecutionEventType

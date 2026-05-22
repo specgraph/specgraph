@@ -8,8 +8,11 @@ package specgraph.v1;
 option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1";
 
 import "google/protobuf/timestamp.proto";
-import "specgraph/v1/spec.proto";
+import "specgraph/v1/claim.proto";
+import "specgraph/v1/constitution.proto";
 import "specgraph/v1/decision.proto";
+import "specgraph/v1/slice.proto";
+import "specgraph/v1/spec.proto";
 
 // --- Enums ---
 
@@ -41,12 +44,45 @@ message Bundle {
   string bundle_content = 7;
 }
 
+message GraphOverview {
+  map<string, int32> counts_by_stage = 1;
+}
+
+message ProjectView {
+  Constitution constitution = 1;
+  repeated ProvenanceEntry constitution_provenance = 2;
+  GraphOverview graph_overview = 3;
+  repeated Spec ready = 4;
+  // findings_by_severity is keyed by FindingSeverity enum value (int32).
+  map<int32, int32> findings_by_severity = 5;
+  int32 skills_count = 6;
+}
+
+message SpecView {
+  Spec spec = 1;
+  Constitution constitution = 2;
+  repeated ProvenanceEntry constitution_provenance = 3;
+  repeated Decision decisions = 4;
+  repeated Slice slices = 5;
+  repeated Claim claims = 6;
+  // Blockers are surfaced as ExecutionEvents filtered to
+  // EXECUTION_EVENT_TYPE_BLOCKER. There is no separate Blocker entity.
+  repeated ExecutionEvent blockers = 7;
+}
+
 message PrimeResponse {
+  // Legacy summary fields (1-5) preserved for backward compatibility with
+  // older polecats. New clients should read the `view` oneof.
   string constitution_summary = 1;
   string project_context = 2;
   repeated Decision decisions = 3;
   string coding_conventions = 4;
   string callback_docs = 5;
+
+  oneof view {
+    ProjectView project_view = 10;
+    SpecView spec_view = 11;
+  }
 }
 
 message ExecutionEvent {
@@ -68,6 +104,9 @@ message GenerateBundleRequest {
 message GenerateBundleResponse { Bundle bundle = 1; }
 
 message GetPrimeRequest {
+  // slug identifies a spec to prime against. When empty, the handler returns
+  // a project-level view (PrimeResponse.project_view) rather than a
+  // spec-level view (PrimeResponse.spec_view).
   string slug = 1;
 }
 
