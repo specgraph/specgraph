@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -253,4 +254,53 @@ func TestComposer_Spec_EmptyConstitution(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, view.Constitution)
 	require.Empty(t, view.ConstitutionProvenance)
+}
+
+func TestComposer_Spec_NoActiveClaim(t *testing.T) {
+	be := &prime.StubBackend{
+		GetSpecFn: func(_ context.Context, slug string) (*storage.Spec, error) {
+			return &storage.Spec{Slug: slug}, nil
+		},
+		// GetActiveClaimFn unset → StubBackend default returns (nil, nil)
+		// (unclaimed). Composer should leave Claims empty.
+	}
+	view, err := newComposer(t, be, nil).Spec(context.Background(), "demo")
+	require.NoError(t, err)
+	require.Empty(t, view.Claims, "Claims should be empty when spec is unclaimed")
+}
+
+func TestComposer_Spec_WithActiveClaim(t *testing.T) {
+	want := &storage.Claim{
+		Slug:         "demo",
+		Agent:        "polecat-7",
+		ClaimedAt:    time.Date(2026, 5, 22, 10, 0, 0, 0, time.UTC),
+		LeaseExpires: time.Date(2026, 5, 22, 10, 30, 0, 0, time.UTC),
+	}
+	be := &prime.StubBackend{
+		GetSpecFn: func(_ context.Context, slug string) (*storage.Spec, error) {
+			return &storage.Spec{Slug: slug}, nil
+		},
+		GetActiveClaimFn: func(_ context.Context, slug string) (*storage.Claim, error) {
+			require.Equal(t, "demo", slug)
+			return want, nil
+		},
+	}
+	view, err := newComposer(t, be, nil).Spec(context.Background(), "demo")
+	require.NoError(t, err)
+	require.Len(t, view.Claims, 1, "Claims should carry exactly one entry when claimed")
+	require.Same(t, want, view.Claims[0], "Claims should preserve the storage pointer")
+}
+
+func TestComposer_Spec_GetActiveClaimError_BubblesUp(t *testing.T) {
+	be := &prime.StubBackend{
+		GetSpecFn: func(_ context.Context, slug string) (*storage.Spec, error) {
+			return &storage.Spec{Slug: slug}, nil
+		},
+		GetActiveClaimFn: func(context.Context, string) (*storage.Claim, error) {
+			return nil, errors.New("db unavailable")
+		},
+	}
+	_, err := newComposer(t, be, nil).Spec(context.Background(), "demo")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "get active claim")
 }

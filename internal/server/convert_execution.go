@@ -216,12 +216,8 @@ func primeProjectViewToProto(v *prime.ProjectView) (*specv1.ProjectView, error) 
 }
 
 // primeSpecViewToProto converts a domain SpecView to its proto
-// representation.
-//
-// Claims is intentionally left nil because the storage layer exposes no
-// public read for the active claim; the renderer in internal/render
-// skips the section when Claims is empty. See internal/prime/prime.go
-// for the rationale and follow-up.
+// representation. The semantically 1:1 Claims slice carries zero or one
+// active claim (populated by Composer.Spec from ClaimBackend.GetActiveClaim).
 func primeSpecViewToProto(v *prime.SpecView) (*specv1.SpecView, error) {
 	if v == nil {
 		return nil, nil
@@ -242,13 +238,20 @@ func primeSpecViewToProto(v *prime.SpecView) (*specv1.SpecView, error) {
 	if err != nil {
 		return nil, fmt.Errorf("primeSpecViewToProto: blockers: %w", err)
 	}
+	claims := make([]*specv1.Claim, 0, len(v.Claims))
+	for _, c := range v.Claims {
+		if c == nil {
+			continue
+		}
+		claims = append(claims, claimToProto(c))
+	}
 	return &specv1.SpecView{
 		Spec:                   spec,
 		Constitution:           constitutionToProto(v.Constitution),
 		ConstitutionProvenance: provenanceEntriesToProto(v.ConstitutionProvenance),
 		Decisions:              decisions,
 		Slices:                 slices,
-		// Claims intentionally left nil — see doc comment above.
-		Blockers: blockers,
+		Claims:                 claims,
+		Blockers:               blockers,
 	}, nil
 }

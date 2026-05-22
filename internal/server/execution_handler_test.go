@@ -209,6 +209,12 @@ func (m *mockExecutionBackend) ReleaseExpiredClaims(_ context.Context) (int, err
 	return 0, nil
 }
 
+// GetActiveClaim returns nil (unclaimed) by default — sufficient for the
+// existing prime-handler tests that don't exercise the claims path.
+func (m *mockExecutionBackend) GetActiveClaim(_ context.Context, _ string) (*storage.Claim, error) {
+	return nil, nil
+}
+
 // seedBundle adds a bundle to the mock for a given slug.
 func (m *mockExecutionBackend) seedBundle(slug string, b *storage.Bundle) { //nolint:unparam // test helper; slug param kept for clarity
 	m.mu.Lock()

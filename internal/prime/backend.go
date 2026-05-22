@@ -18,4 +18,5 @@ type Backend interface {
 	storage.ExecutionBackend
 	storage.DecisionBackend
 	storage.SliceBackend
+	storage.ClaimBackend
 }
