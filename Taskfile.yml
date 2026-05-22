@@ -163,6 +163,7 @@ tasks:
       - task: lint:go
       - task: lint:markdown
       - task: lint:yaml
+      - task: lint:constitution-callers
   lint:go:
     desc: Lint Go code
     deps: [generate, 'web:build']
@@ -176,6 +177,31 @@ tasks:
     desc: Lint YAML files
     cmds:
       - yamlfmt -lint .
+  lint:constitution-callers:
+    desc: Guard against reintroducing the deprecated Store.GetConstitution method (spgr-8ar piece D)
+    cmds:
+      - |
+        # Fails the build if anyone reintroduces the storage-layer
+        # GetConstitution method that piece D removed. Detects the
+        # method declaration's unique signature on a *Store or any
+        # ConstitutionBackend implementer:
+        #   func (<recv>) GetConstitution(<ctx>) (*storage.Constitution|*Constitution, error)
+        #
+        # If the method declaration reappears, callers can compile
+        # against it again and the silent-layer-dropping bug
+        # piece A fixed is back. By blocking the declaration, we
+        # transitively block the calls.
+        #
+        # The RPC handler's GetConstitution on *ConstitutionHandler
+        # takes a connect.Request, so it doesn't match this regex. The
+        # composer's GetConstitution returns *authoring.ConstitutionSummary,
+        # so it doesn't match either. Only the deprecated storage form
+        # is caught.
+        if rg -nP 'func\s*\([^)]+\)\s*GetConstitution\s*\(\s*ctx[^)]*\)\s*\(\s*\*(?:storage\.)?Constitution\s*,\s*error\s*\)' --type go . 2>/dev/null; then
+          echo "ERROR: Store.GetConstitution was removed in spgr-8ar piece D." >&2
+          echo "Use GetMergedConstitution (merged + provenance) or GetConstitutionLayer (single layer)." >&2
+          exit 1
+        fi
   # License headers
   license:check:
     desc: Check SPDX license headers

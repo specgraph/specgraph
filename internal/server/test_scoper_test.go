@@ -143,10 +143,6 @@ func (stubBackend) Heartbeat(context.Context, string, string, time.Duration) (*s
 
 // --- ConstitutionBackend ---
 
-func (stubBackend) GetConstitution(context.Context) (*storage.Constitution, error) {
-	return nil, errNotImplemented
-}
-
 func (stubBackend) GetConstitutionLayer(_ context.Context, _ storage.ConstitutionLayer) (*storage.Constitution, error) {
 	return nil, errNotImplemented
 }
