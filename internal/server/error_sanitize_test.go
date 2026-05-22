@@ -422,7 +422,7 @@ func TestClaimHandler_ErrorSanitization(t *testing.T) {
 func TestExecutionHandler_ErrorSanitization(t *testing.T) {
 	scoper := &testScoper{backend: errorBackend{}}
 	mux := http.NewServeMux()
-	server.RegisterExecutionService(mux, scoper)
+	server.RegisterExecutionService(mux, scoper, nil)
 	srv := httptest.NewServer(wrapTestProject(mux))
 	t.Cleanup(srv.Close)
 	client := specgraphv1connect.NewExecutionServiceClient(http.DefaultClient, srv.URL)
