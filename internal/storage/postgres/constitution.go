@@ -16,6 +16,13 @@ import (
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
+// Compile-time interface assertion. Matches the convention used by every
+// other postgres storage file (authoring.go, graph.go, decision.go, etc.).
+// If a future change adds a method to ConstitutionBackend, this line forces
+// the compiler to verify *Store implements it directly — without it the
+// missing method would only surface at the ScopedBackend composite boundary.
+var _ storage.ConstitutionBackend = (*Store)(nil)
+
 // constitutionData is the intermediate struct marshaled into the JSONB data column.
 // It excludes identity/version fields that are stored as explicit columns.
 type constitutionData struct {
@@ -25,44 +32,6 @@ type constitutionData struct {
 	Constraints  []string               `json:"constraints,omitempty"`
 	Antipatterns []storage.Antipattern  `json:"antipatterns,omitempty"`
 	References   []storage.Reference    `json:"references,omitempty"`
-}
-
-// GetConstitution returns the active constitution for the current project.
-// Returns ErrConstitutionNotFound if none exists.
-func (s *Store) GetConstitution(ctx context.Context) (*storage.Constitution, error) {
-	var (
-		id         string
-		layer      string
-		name       string
-		version    int32
-		dataJSON   []byte
-		sourceURL  string
-		sourceHash string
-		createdAt  time.Time
-		updatedAt  time.Time
-	)
-
-	err := s.queryRow(ctx,
-		`SELECT id, layer, name, version, data, source_url, source_hash, created_at, updated_at
-		 FROM constitutions WHERE project_slug = $1
-		 ORDER BY CASE layer
-		   WHEN 'domain' THEN 1
-		   WHEN 'project' THEN 2
-		   WHEN 'org' THEN 3
-		   WHEN 'user' THEN 4
-		   ELSE 5
-		 END, version DESC
-		 LIMIT 1`,
-		s.project,
-	).Scan(&id, &layer, &name, &version, &dataJSON, &sourceURL, &sourceHash, &createdAt, &updatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, fmt.Errorf("postgres: %w", storage.ErrConstitutionNotFound)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("postgres: get constitution: %w", err)
-	}
-
-	return constitutionFromRow(id, layer, name, version, dataJSON, sourceURL, sourceHash, createdAt, updatedAt)
 }
 
 // GetConstitutionLayer returns a single layer's raw constitution data.

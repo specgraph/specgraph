@@ -92,11 +92,21 @@ func (errorBackend) GetFullGraph(context.Context) (*storage.FullGraph, error) {
 	return nil, errRawDB
 }
 
-func (errorBackend) GetConstitution(context.Context) (*storage.Constitution, error) {
+func (errorBackend) GetMergedConstitution(context.Context) (*storage.MergedResult, error) {
 	return nil, errRawDB
 }
 
-func (errorBackend) GetMergedConstitution(context.Context) (*storage.MergedResult, error) {
+// GetConstitutionLayer + GetAllLayers overrides preserve the test intent
+// of TestConstitutionHandler_ErrorSanitization: every storage path that
+// the constitution RPC handler can hit must surface a raw DB error so
+// the test verifies sanitization happens before the client sees it.
+// Without these, the embedded stubBackend returns errNotImplemented and
+// the test exercises a weaker assertion path.
+func (errorBackend) GetConstitutionLayer(context.Context, storage.ConstitutionLayer) (*storage.Constitution, error) {
+	return nil, errRawDB
+}
+
+func (errorBackend) GetAllLayers(context.Context) ([]*storage.Constitution, error) {
 	return nil, errRawDB
 }
 

@@ -180,13 +180,6 @@ func (s *syncTestBackend) DeleteSyncMapping(ctx context.Context, specSlug string
 	return s.syncBackend.DeleteSyncMapping(ctx, specSlug, adapter)
 }
 
-func (s *syncTestBackend) GetConstitution(ctx context.Context) (*storage.Constitution, error) {
-	if s.con != nil {
-		return s.con.GetConstitution(ctx) //nolint:staticcheck // mock must implement the deprecated interface method until Piece D
-	}
-	return nil, storage.ErrConstitutionNotFound
-}
-
 func (s *syncTestBackend) GetConstitutionLayer(ctx context.Context, layer storage.ConstitutionLayer) (*storage.Constitution, error) {
 	if s.con != nil {
 		return s.con.GetConstitutionLayer(ctx, layer)
