@@ -126,6 +126,10 @@ func (errorBackend) Heartbeat(context.Context, string, string, time.Duration) (*
 	return nil, errRawDB
 }
 
+func (errorBackend) GetActiveClaim(context.Context, string) (*storage.Claim, error) {
+	return nil, errRawDB
+}
+
 func (errorBackend) CreateDecision(context.Context, string, string, string, string, string,
 	[]storage.RejectedAlternative, storage.DecisionConfidence,
 	[]string, storage.DecisionScope, string, string,

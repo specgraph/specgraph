@@ -5,6 +5,7 @@ package prime
 
 import (
 	"context"
+	"time"
 
 	"github.com/specgraph/specgraph/internal/storage"
 )
@@ -75,6 +76,12 @@ type StubBackend struct {
 	GetSliceFn      func(ctx context.Context, slug string) (*storage.Slice, error)
 	ClaimSliceFn    func(ctx context.Context, slug, assignee string) (*storage.Slice, error)
 	CompleteSliceFn func(ctx context.Context, slug string) (*storage.Slice, error)
+
+	// Claim.
+	ClaimSpecFn      func(ctx context.Context, slug, agent string, leaseDuration time.Duration) (*storage.Claim, error)
+	UnclaimSpecFn    func(ctx context.Context, slug, agent string) error
+	HeartbeatFn      func(ctx context.Context, slug, agent string, extendBy time.Duration) (*storage.Claim, error)
+	GetActiveClaimFn func(ctx context.Context, slug string) (*storage.Claim, error)
 }
 
 // --- ConstitutionBackend ---
@@ -412,6 +419,42 @@ func (s *StubBackend) ClaimSlice(ctx context.Context, slug, assignee string) (*s
 func (s *StubBackend) CompleteSlice(ctx context.Context, slug string) (*storage.Slice, error) {
 	if s.CompleteSliceFn != nil {
 		return s.CompleteSliceFn(ctx, slug)
+	}
+	return nil, nil
+}
+
+// --- ClaimBackend ---
+
+// ClaimSpec dispatches to ClaimSpecFn.
+func (s *StubBackend) ClaimSpec(ctx context.Context, slug, agent string, leaseDuration time.Duration) (*storage.Claim, error) {
+	if s.ClaimSpecFn != nil {
+		return s.ClaimSpecFn(ctx, slug, agent, leaseDuration)
+	}
+	return nil, nil
+}
+
+// UnclaimSpec dispatches to UnclaimSpecFn.
+func (s *StubBackend) UnclaimSpec(ctx context.Context, slug, agent string) error {
+	if s.UnclaimSpecFn != nil {
+		return s.UnclaimSpecFn(ctx, slug, agent)
+	}
+	return nil
+}
+
+// Heartbeat dispatches to HeartbeatFn.
+func (s *StubBackend) Heartbeat(ctx context.Context, slug, agent string, extendBy time.Duration) (*storage.Claim, error) {
+	if s.HeartbeatFn != nil {
+		return s.HeartbeatFn(ctx, slug, agent, extendBy)
+	}
+	return nil, nil
+}
+
+// GetActiveClaim dispatches to GetActiveClaimFn. Unset returns nil
+// (unclaimed) and no error, matching the production semantics on a
+// spec that has no active lease.
+func (s *StubBackend) GetActiveClaim(ctx context.Context, slug string) (*storage.Claim, error) {
+	if s.GetActiveClaimFn != nil {
+		return s.GetActiveClaimFn(ctx, slug)
 	}
 	return nil, nil
 }
