@@ -59,16 +59,11 @@ func TestUpdateConstitution_IncrementsVersion(t *testing.T) {
 	require.Equal(t, v1.ID, v2.ID)
 }
 
-func TestGetConstitution_NotFound(t *testing.T) {
-	store := newStore(t)
-	clearDatabase(t, store)
-	ctx := context.Background()
-
-	_, err := store.GetConstitution(ctx)
-	require.ErrorIs(t, err, storage.ErrConstitutionNotFound)
-}
-
-func TestGetConstitution_RoundTrip(t *testing.T) {
+func TestGetConstitutionLayer_RoundTripAllFields(t *testing.T) {
+	// Migrated from the pre-Piece-D TestGetConstitution_RoundTrip: exercises
+	// full field round-trip through UpdateConstitution + GetConstitutionLayer
+	// for the org layer specifically. Field-level assertions are unique to
+	// this test (other layer-aware tests check structure but not every field).
 	store := newStore(t)
 	clearDatabase(t, store)
 	ctx := context.Background()
@@ -101,7 +96,7 @@ func TestGetConstitution_RoundTrip(t *testing.T) {
 	stored, err := store.UpdateConstitution(ctx, input)
 	require.NoError(t, err)
 
-	got, err := store.GetConstitution(ctx)
+	got, err := store.GetConstitutionLayer(ctx, storage.ConstitutionLayerOrg)
 	require.NoError(t, err)
 
 	require.Equal(t, stored.ID, got.ID)
