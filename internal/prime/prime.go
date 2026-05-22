@@ -41,16 +41,13 @@ type SpecView struct {
 	ConstitutionProvenance []storage.ProvenanceEntry
 	Decisions              []*storage.Decision
 	Slices                 []*storage.Slice
+	// Claims carries the currently active lease for this spec.
+	// Semantically there is at most one (the lease model is 1:1) and the
+	// composer populates either zero or one entry from
+	// ClaimBackend.GetActiveClaim. Exposed as a slice to match the proto
+	// SpecView.claims repeated field.
+	Claims []*storage.Claim
 	// Blockers contains only execution events with
 	// Type=storage.ExecutionEventTypeBlocker for this spec.
 	Blockers []*storage.ExecutionEvent
 }
-
-// NOTE on Claims: the proto SpecView includes a claims repeated field
-// (forward compat), but the storage layer currently exposes no public
-// read path for the active claim — only the private fetchActiveClaim
-// in internal/storage/postgres. ClaimBackend's public surface is
-// ClaimSpec/UnclaimSpec/Heartbeat only. Adding GetActiveClaim is a
-// schema/storage change, out of scope for this bead per its acceptance
-// criteria. The proto field stays empty; renderers skip the section.
-// A follow-up bead can expose the active claim and populate this view.

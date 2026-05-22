@@ -161,11 +161,59 @@ func TestPrimeSpecViewToProto_Basic(t *testing.T) {
 	assert.Equal(t, "use-x", pb.Decisions[0].Slug)
 	require.Len(t, pb.Slices, 1)
 	assert.Equal(t, "build-thing/slice-1", pb.Slices[0].Slug)
-	// Claims intentionally not populated by the converter.
+	// Claims left empty in this fixture; TestPrimeSpecViewToProto_WithClaim
+	// covers the populated path.
 	assert.Empty(t, pb.Claims)
 	require.Len(t, pb.Blockers, 1)
 	assert.Equal(t, "evt-1", pb.Blockers[0].Id)
 	assert.Equal(t, specv1.ExecutionEventType_EXECUTION_EVENT_TYPE_BLOCKER, pb.Blockers[0].Type)
+}
+
+func TestPrimeSpecViewToProto_WithClaim(t *testing.T) {
+	claimedAt := time.Date(2026, 5, 22, 10, 0, 0, 0, time.UTC)
+	expires := time.Date(2026, 5, 22, 10, 30, 0, 0, time.UTC)
+	v := &prime.SpecView{
+		Spec: &storage.Spec{
+			ID:         "spec-1",
+			Slug:       "claimed-thing",
+			Intent:     "x",
+			Stage:      storage.SpecStageApproved,
+			Provenance: storage.SpecProvenanceAuthored,
+			Version:    1,
+			CreatedAt:  claimedAt,
+			UpdatedAt:  claimedAt,
+		},
+		Claims: []*storage.Claim{
+			{
+				Slug:         "claimed-thing",
+				Agent:        "polecat-7",
+				ClaimedAt:    claimedAt,
+				LeaseExpires: expires,
+			},
+		},
+	}
+	pb, err := primeSpecViewToProto(v)
+	require.NoError(t, err)
+	require.Len(t, pb.Claims, 1)
+	assert.Equal(t, "polecat-7", pb.Claims[0].GetAgent())
+	assert.Equal(t, expires, pb.Claims[0].GetLeaseExpires().AsTime())
+}
+
+func TestPrimeSpecViewToProto_NilClaimSkipped(t *testing.T) {
+	v := &prime.SpecView{
+		Spec: &storage.Spec{
+			ID:         "spec-1",
+			Slug:       "demo",
+			Intent:     "x",
+			Stage:      storage.SpecStageApproved,
+			Provenance: storage.SpecProvenanceAuthored,
+			Version:    1,
+		},
+		Claims: []*storage.Claim{nil},
+	}
+	pb, err := primeSpecViewToProto(v)
+	require.NoError(t, err)
+	assert.Empty(t, pb.Claims, "nil entries must not be carried into the proto slice")
 }
 
 func TestPrimeSpecViewToProto_BlockersOnly(t *testing.T) {

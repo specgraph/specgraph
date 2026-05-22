@@ -163,6 +163,16 @@ func (c *Composer) Spec(ctx context.Context, slug string) (*SpecView, error) {
 	}
 	view.Slices = slices
 
+	// Active claim (lease). 1:1 in the data model; we wrap the zero-or-one
+	// active claim in a slice to match SpecView.Claims' shape.
+	claim, err := c.backend.GetActiveClaim(ctx, slug)
+	if err != nil {
+		return nil, fmt.Errorf("prime: get active claim for %q: %w", slug, err)
+	}
+	if claim != nil {
+		view.Claims = []*storage.Claim{claim}
+	}
+
 	// Blocker events. GetExecutionEvents returns all event types; we
 	// filter to blockers only here so callers do not have to.
 	events, err := c.backend.GetExecutionEvents(ctx, slug, 0)

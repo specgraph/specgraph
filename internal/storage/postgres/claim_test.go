@@ -159,3 +159,55 @@ func TestHeartbeat_NoActiveClaim(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no active claim")
 }
+
+func TestGetActiveClaim_Unclaimed(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.CreateSpec(ctx, "gac-unclaimed", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	claim, err := store.GetActiveClaim(ctx, "gac-unclaimed")
+	require.NoError(t, err)
+	require.Nil(t, claim, "unclaimed spec should return nil + no error")
+}
+
+func TestGetActiveClaim_Active(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.CreateSpec(ctx, "gac-active", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	_, err = store.ClaimSpec(ctx, "gac-active", "agent-a", 5*time.Minute)
+	require.NoError(t, err)
+
+	claim, err := store.GetActiveClaim(ctx, "gac-active")
+	require.NoError(t, err)
+	require.NotNil(t, claim)
+	require.Equal(t, "gac-active", claim.Slug)
+	require.Equal(t, "agent-a", claim.Agent)
+	require.True(t, claim.LeaseExpires.After(time.Now()))
+}
+
+func TestGetActiveClaim_ExpiredFilteredOut(t *testing.T) {
+	ctx := context.Background()
+	// Use a fixed past clock so the lease is written with lease_expires in
+	// the past relative to wall-clock "now".
+	fixedPast := time.Now().Add(-30 * time.Minute)
+	pastStore := newStore(t, postgres.WithClock(func() time.Time { return fixedPast }))
+	clearDatabase(t, pastStore)
+
+	_, err := pastStore.CreateSpec(ctx, "gac-expired", "intent", "", "", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+	require.NoError(t, err)
+	_, err = pastStore.ClaimSpec(ctx, "gac-expired", "agent-a", 5*time.Minute)
+	require.NoError(t, err)
+
+	// Real-time store sees lease_expires < now → no active claim.
+	store := newStore(t)
+	claim, err := store.GetActiveClaim(ctx, "gac-expired")
+	require.NoError(t, err)
+	require.Nil(t, claim, "expired lease should be filtered out at the storage layer")
+}

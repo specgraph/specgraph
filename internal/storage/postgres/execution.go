@@ -35,7 +35,7 @@ func (s *Store) GenerateBundle(ctx context.Context, slug string) (*storage.Bundl
 		return nil, fmt.Errorf("postgres: generate bundle decisions: %w", err)
 	}
 
-	claim, err := s.fetchActiveClaim(ctx, slug)
+	claim, err := s.GetActiveClaim(ctx, slug)
 	if err != nil {
 		return nil, fmt.Errorf("postgres: generate bundle claim: %w", err)
 	}
@@ -321,8 +321,9 @@ func (s *Store) ReleaseExpiredClaims(ctx context.Context) (int, error) {
 	return count, err
 }
 
-// fetchActiveClaim returns the active (non-expired) claim for a spec, or nil if unclaimed.
-func (s *Store) fetchActiveClaim(ctx context.Context, slug string) (*storage.Claim, error) {
+// GetActiveClaim returns the active (non-expired) claim for a spec, or nil
+// if the spec is unclaimed. Implements storage.ClaimBackend.GetActiveClaim.
+func (s *Store) GetActiveClaim(ctx context.Context, slug string) (*storage.Claim, error) {
 	now := s.now()
 	var agent string
 	var claimedAt, leaseExpires time.Time
