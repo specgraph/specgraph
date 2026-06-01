@@ -136,22 +136,6 @@ func (s *AuthStore) now() time.Time { return s.nowFunc() }
 // in tests fails loudly with a recognizable message rather than returning
 // a zero value.
 
-func (s *AuthStore) LookupAPIKeyByPrefix(ctx context.Context, prefix string) (*storage.APIKey, error) {
-	return nil, errors.New("LookupAPIKeyByPrefix not implemented")
-}
-
-func (s *AuthStore) LookupOIDCBinding(ctx context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
-	return nil, errors.New("LookupOIDCBinding not implemented")
-}
-
-func (s *AuthStore) GetUserByID(ctx context.Context, id string) (*storage.User, error) {
-	return nil, errors.New("GetUserByID not implemented")
-}
-
-func (s *AuthStore) GetBootstrap(ctx context.Context) (*storage.User, error) {
-	return nil, errors.New("GetBootstrap not implemented")
-}
-
 func (s *AuthStore) CreateHuman(ctx context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, error) {
 	return nil, errors.New("CreateHuman not implemented")
 }
