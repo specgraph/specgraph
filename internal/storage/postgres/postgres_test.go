@@ -3,6 +3,7 @@
 
 //go:build integration
 
+// Package postgres_test exercises the postgres storage package via its public API using integration tests backed by a real Postgres container.
 package postgres_test
 
 import (

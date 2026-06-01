@@ -77,9 +77,10 @@ type UsersBackend interface {
 	// RevokeAPIKey marks the key revoked. Idempotent on already-revoked keys.
 	RevokeAPIKey(ctx context.Context, keyID string) error
 
-	// RotateAPIKey revokes the old key and creates a new one with the same
-	// metadata (label, role_downgrade, expires_at) in one transaction.
-	// Returns the new key.
+	// RotateAPIKey revokes the old key and creates a new one in one transaction.
+	// Only newKey.PHCHash is consumed from the caller; owner (user_id),
+	// role_downgrade, label, and expires_at are inherited from the old key.
+	// Returns the new key with a freshly generated prefix and new ID.
 	RotateAPIKey(ctx context.Context, oldKeyID string, newKey *APIKey) (*APIKey, error)
 
 	// ListAPIKeys returns keys for the given user; pass userID="" to list

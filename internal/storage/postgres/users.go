@@ -166,24 +166,31 @@ func (s *AuthStore) CreateHuman(ctx context.Context, u *storage.User, b *storage
 }
 
 // CreateServiceAccount inserts a ServiceAccount row. OwnerUserID must
-// reference an existing user (FK enforced).
+// reference an existing, active (not soft-deleted) Human user; the check
+// is enforced atomically by the INSERT … SELECT so there is no TOCTOU window.
 func (s *AuthStore) CreateServiceAccount(ctx context.Context, u *storage.User) (*storage.User, error) {
 	if u.OwnerUserID == "" {
 		return nil, fmt.Errorf("CreateServiceAccount: OwnerUserID required: %w", storage.ErrUserNotFound)
 	}
+	// The INSERT … SELECT enforces that the owner exists, is a human, and is
+	// not soft-deleted. If the WHERE EXISTS sub-select matches no row (owner
+	// missing, deleted, or not a human), QueryRow returns pgx.ErrNoRows.
 	const q = `
 		INSERT INTO users (kind, display_name, email, role, owner_user_id)
-		VALUES ('service_account', $1, $2, $3, $4::uuid)
+		SELECT 'service_account', $1, $2, $3, $4::uuid
+		WHERE EXISTS (
+			SELECT 1 FROM users
+			WHERE id = $4::uuid AND kind = 'human' AND deleted_at IS NULL
+		)
 		RETURNING id, created_at`
 	var id string
 	var createdAt time.Time
 	err := s.pool.QueryRow(ctx, q, u.DisplayName, u.Email, u.Role, u.OwnerUserID).
 		Scan(&id, &createdAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("insert service account: %w", storage.ErrUserNotFound)
+	}
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
-			return nil, fmt.Errorf("insert service account: %w", storage.ErrUserNotFound)
-		}
 		return nil, fmt.Errorf("insert service account: %w", err)
 	}
 	u.ID = id
@@ -327,9 +334,16 @@ func (s *AuthStore) CreateAPIKey(ctx context.Context, k *storage.APIKey) (*stora
 		if err != nil {
 			return nil, fmt.Errorf("generate prefix: %w", err)
 		}
+		// INSERT … SELECT guards that the user exists and is not soft-deleted.
+		// Both humans and service accounts may hold keys; only deleted_at IS NULL
+		// matters. If the WHERE EXISTS sub-select matches no row, QueryRow
+		// returns pgx.ErrNoRows — break out immediately (do NOT retry).
 		const q = `
 			INSERT INTO api_keys (user_id, prefix, phc_hash, role_downgrade, label, expires_at)
-			VALUES ($1::uuid, $2, $3, $4, $5, $6)
+			SELECT $1::uuid, $2, $3, $4, $5, $6
+			WHERE EXISTS (
+				SELECT 1 FROM users WHERE id = $1::uuid AND deleted_at IS NULL
+			)
 			RETURNING id, created_at`
 		var id string
 		var createdAt time.Time
@@ -340,6 +354,9 @@ func (s *AuthStore) CreateAPIKey(ctx context.Context, k *storage.APIKey) (*stora
 			k.Prefix = prefix
 			k.CreatedAt = createdAt
 			return k, nil
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("insert api key: %w", storage.ErrUserNotFound)
 		}
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "api_keys_prefix_key" {
@@ -362,9 +379,10 @@ func (s *AuthStore) RevokeAPIKey(ctx context.Context, keyID string) error {
 	return nil
 }
 
-// RotateAPIKey revokes the old key and inserts a new one with the supplied
-// metadata in one transaction. Returns the new key with generated prefix
-// and ID populated.
+// RotateAPIKey revokes the old key and inserts a new one in one transaction.
+// Only newKey.PHCHash is consumed from the caller; owner (user_id),
+// role_downgrade, label, and expires_at are inherited from the old key.
+// Returns the new key with generated prefix and ID populated.
 func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *storage.APIKey) (*storage.APIKey, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -372,14 +390,28 @@ func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *s
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // deferred rollback is a no-op after commit
 
-	tag, err := tx.Exec(ctx, `
+	// Read the old key's metadata first so the new key inherits owner +
+	// metadata, not the potentially bogus values from the caller.
+	var oldUserID, oldRoleDowngrade, oldLabel string
+	var oldExpiresAt *time.Time
+	err = tx.QueryRow(ctx, `
+		SELECT user_id, coalesce(role_downgrade, ''), coalesce(label, ''), expires_at
+		FROM api_keys
+		WHERE id = $1::uuid AND revoked_at IS NULL`, oldKeyID).
+		Scan(&oldUserID, &oldRoleDowngrade, &oldLabel, &oldExpiresAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, storage.ErrAPIKeyNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read old key: %w", err)
+	}
+
+	// Revoke the old key now that we know it exists and is active.
+	_, err = tx.Exec(ctx, `
 		UPDATE api_keys SET revoked_at = $1
 		WHERE id = $2::uuid AND revoked_at IS NULL`, s.now(), oldKeyID)
 	if err != nil {
 		return nil, fmt.Errorf("revoke old key: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return nil, storage.ErrAPIKeyNotFound
 	}
 
 	// Insert new key inside the same tx with collision retry.
@@ -400,12 +432,9 @@ func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *s
 			INSERT INTO api_keys (user_id, prefix, phc_hash, role_downgrade, label, expires_at)
 			VALUES ($1::uuid, $2, $3, $4, $5, $6)
 			RETURNING id, created_at`,
-			newKey.UserID, prefix, newKey.PHCHash, newKey.RoleDowngrade,
-			newKey.Label, newKey.ExpiresAt).Scan(&id, &createdAt)
+			oldUserID, prefix, newKey.PHCHash, oldRoleDowngrade,
+			oldLabel, oldExpiresAt).Scan(&id, &createdAt)
 		if err == nil {
-			newKey.ID = id
-			newKey.Prefix = prefix
-			newKey.CreatedAt = createdAt
 			// Explicitly release the savepoint so its lifecycle is balanced
 			// (Commit would auto-release, but the explicit RELEASE keeps a
 			// future in-tx edit from leaving an orphaned savepoint).
@@ -415,7 +444,17 @@ func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *s
 			if commitErr := tx.Commit(ctx); commitErr != nil {
 				return nil, fmt.Errorf("commit tx: %w", commitErr)
 			}
-			return newKey, nil
+			out := &storage.APIKey{
+				ID:            id,
+				UserID:        oldUserID,
+				Prefix:        prefix,
+				PHCHash:       newKey.PHCHash,
+				RoleDowngrade: oldRoleDowngrade,
+				Label:         oldLabel,
+				ExpiresAt:     oldExpiresAt,
+				CreatedAt:     createdAt,
+			}
+			return out, nil
 		}
 		if _, rbErr := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT rotate_insert`); rbErr != nil {
 			return nil, fmt.Errorf("rollback savepoint: %w", rbErr)

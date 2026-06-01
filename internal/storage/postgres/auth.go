@@ -90,9 +90,12 @@ func NewAuth(ctx context.Context, pool *pgxpool.Pool, opts ...AuthOption) (*Auth
 }
 
 // runAuthMigrations runs the embedded auth migrations using a dedicated
-// goose version table. Goose state is package-global; do not call
-// concurrently with the existing runMigrations from migrate.go.
+// goose version table. Goose state is package-global; the shared gooseMu
+// mutex (declared in migrate.go) prevents interleaving with runMigrations.
 func (s *AuthStore) runAuthMigrations(ctx context.Context) error {
+	gooseMu.Lock()
+	defer gooseMu.Unlock()
+
 	db := stdlib.OpenDBFromPool(s.pool)
 	// stdlib.OpenDBFromPool wraps the pool in a *sql.DB facade; closing
 	// the *sql.DB does NOT close the underlying pgxpool. Verified via pgx

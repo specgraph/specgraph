@@ -240,6 +240,30 @@ func TestAuthStore_CreateServiceAccount(t *testing.T) {
 		Kind: storage.KindServiceAccount, DisplayName: "no-owner", Role: "writer",
 	})
 	require.ErrorIs(t, err, storage.ErrUserNotFound)
+
+	// Soft-deleted human owner must be rejected with ErrUserNotFound.
+	deletedOwner, err := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "deleted-owner", Role: "admin",
+	}, nil)
+	require.NoError(t, err)
+	require.NoError(t, auth.SoftDeleteUser(ctx, deletedOwner.ID))
+	_, err = auth.CreateServiceAccount(ctx, &storage.User{
+		Kind: storage.KindServiceAccount, DisplayName: "sa-for-deleted", Role: "writer",
+		OwnerUserID: deletedOwner.ID,
+	})
+	require.ErrorIs(t, err, storage.ErrUserNotFound, "soft-deleted human owner must be rejected")
+
+	// Service-account owner must be rejected with ErrUserNotFound (only humans may own).
+	saOwner, err := auth.CreateServiceAccount(ctx, &storage.User{
+		Kind: storage.KindServiceAccount, DisplayName: "sa-owner-attempt", Role: "writer",
+		OwnerUserID: owner.ID,
+	})
+	require.NoError(t, err)
+	_, err = auth.CreateServiceAccount(ctx, &storage.User{
+		Kind: storage.KindServiceAccount, DisplayName: "sa-of-sa", Role: "writer",
+		OwnerUserID: saOwner.ID,
+	})
+	require.ErrorIs(t, err, storage.ErrUserNotFound, "service-account owner must be rejected — only active humans may own")
 }
 
 func TestAuthStore_UpdateUserRole(t *testing.T) {
@@ -401,6 +425,18 @@ func TestAuthStore_CreateAPIKey(t *testing.T) {
 	require.Len(t, k.Prefix, 8)
 	require.NotEmpty(t, k.ID)
 	require.Equal(t, "first key", k.Label)
+
+	// Soft-deleted user must be rejected with ErrUserNotFound.
+	deleted, err := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "gone", Role: "reader",
+	}, nil)
+	require.NoError(t, err)
+	require.NoError(t, auth.SoftDeleteUser(ctx, deleted.ID))
+	_, err = auth.CreateAPIKey(ctx, &storage.APIKey{
+		UserID:  deleted.ID,
+		PHCHash: "phc-stub-padded-to-meet-min-length-ok",
+	})
+	require.ErrorIs(t, err, storage.ErrUserNotFound, "CreateAPIKey for soft-deleted user must return ErrUserNotFound")
 }
 
 func TestAuthStore_CreateAPIKey_CollisionRetry(t *testing.T) {
@@ -478,22 +514,45 @@ func TestAuthStore_RotateAPIKey(t *testing.T) {
 	u, _ := auth.CreateHuman(ctx, &storage.User{
 		Kind: storage.KindHuman, DisplayName: "alice", Role: "writer",
 	}, nil)
+	// Create a second user to supply as a "bogus" caller-side owner — the
+	// rotate must NOT use this; it must inherit the old key's owner.
+	other, _ := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "impostor", Role: "reader",
+	}, nil)
 	old, _ := auth.CreateAPIKey(ctx, &storage.APIKey{
-		UserID: u.ID, PHCHash: "phc-old-padded-to-meet-min-length-ok-00", Label: "ci-bot",
+		UserID:        u.ID,
+		PHCHash:       "phc-old-padded-to-meet-min-length-ok-00",
+		Label:         "ci-bot",
+		RoleDowngrade: "reader",
 	})
 
+	// Pass a newKey with completely different metadata to prove the impl
+	// ignores everything except PHCHash.
 	newKey, err := auth.RotateAPIKey(ctx, old.ID, &storage.APIKey{
-		UserID: u.ID, PHCHash: "phc-new-padded-to-meet-min-length-ok-00", Label: "ci-bot",
+		UserID:        other.ID, // bogus — must be overridden
+		PHCHash:       "phc-new-padded-to-meet-min-length-ok-00",
+		Label:         "WRONG-LABEL", // bogus — must be overridden
+		RoleDowngrade: "admin",       // bogus — must be overridden
 	})
 	require.NoError(t, err)
 	require.NotEqual(t, old.Prefix, newKey.Prefix)
-	require.Equal(t, "ci-bot", newKey.Label)
 
-	// Old key is revoked, new key is active.
+	// Owner, label, and role_downgrade must be inherited from the OLD key.
+	require.Equal(t, u.ID, newKey.UserID, "UserID must be inherited from old key, not caller's newKey.UserID")
+	require.Equal(t, "ci-bot", newKey.Label, "Label must be inherited from old key")
+	require.Equal(t, "reader", newKey.RoleDowngrade, "RoleDowngrade must be inherited from old key")
+
+	// Verify the persisted row also has the correct owner and metadata.
+	newReload, err := auth.LookupAPIKeyByPrefix(ctx, newKey.Prefix)
+	require.NoError(t, err)
+	require.Equal(t, u.ID, newReload.UserID)
+	require.Equal(t, "ci-bot", newReload.Label)
+	require.Equal(t, "reader", newReload.RoleDowngrade)
+	require.Nil(t, newReload.RevokedAt)
+
+	// Old key is revoked.
 	oldReload, _ := auth.LookupAPIKeyByPrefix(ctx, old.Prefix)
 	require.NotNil(t, oldReload.RevokedAt)
-	newReload, _ := auth.LookupAPIKeyByPrefix(ctx, newKey.Prefix)
-	require.Nil(t, newReload.RevokedAt)
 }
 
 func TestAuthStore_RotateAPIKey_RollbackOnInsertFailure(t *testing.T) {
