@@ -164,3 +164,109 @@ func TestAuthStore_GetBootstrap(t *testing.T) {
 	require.True(t, u.Bootstrap)
 	require.Equal(t, "admin", u.DisplayName)
 }
+
+func TestAuthStore_CreateHuman(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u := &storage.User{
+		Kind:        storage.KindHuman,
+		DisplayName: "alice",
+		Email:       "alice@example.com",
+		Role:        "reader",
+	}
+	created, err := auth.CreateHuman(ctx, u, nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, created.ID)
+	require.Equal(t, "alice", created.DisplayName)
+	require.True(t, created.IsHuman())
+	require.True(t, created.IsActive())
+
+	// With binding atomically.
+	u2 := &storage.User{Kind: storage.KindHuman, DisplayName: "bob", Role: "reader"}
+	b := &storage.OIDCBinding{
+		Issuer: "https://login.microsoftonline.com/t/v2.0", Subject: "sub-bob",
+		EmailAtBind: "bob@example.com",
+	}
+	created2, err := auth.CreateHuman(ctx, u2, b)
+	require.NoError(t, err)
+
+	// Verify the binding via direct SQL — ListOIDCBindings is implemented
+	// later in Task 25, so we don't depend on it here.
+	var bindingCount int
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM oidc_bindings
+		WHERE user_id = $1::uuid AND subject = 'sub-bob'`, created2.ID).
+		Scan(&bindingCount))
+	require.Equal(t, 1, bindingCount)
+
+	// Bootstrap dedup: first bootstrap insert succeeds.
+	boot := &storage.User{Kind: storage.KindHuman, DisplayName: "admin", Role: "admin", Bootstrap: true}
+	_, err = auth.CreateHuman(ctx, boot, nil)
+	require.NoError(t, err)
+	// Second bootstrap insert fails.
+	boot2 := &storage.User{Kind: storage.KindHuman, DisplayName: "admin", Role: "admin", Bootstrap: true}
+	_, err = auth.CreateHuman(ctx, boot2, nil)
+	require.ErrorIs(t, err, storage.ErrBootstrapExists)
+}
+
+func TestAuthStore_CreateServiceAccount(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	// Owner first.
+	owner, err := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "owner", Role: "admin",
+	}, nil)
+	require.NoError(t, err)
+
+	sa, err := auth.CreateServiceAccount(ctx, &storage.User{
+		Kind: storage.KindServiceAccount, DisplayName: "ci-bot",
+		Role: "writer", OwnerUserID: owner.ID,
+	})
+	require.NoError(t, err)
+	require.True(t, sa.IsServiceAccount())
+	require.Equal(t, owner.ID, sa.OwnerUserID)
+
+	// Missing owner rejected.
+	_, err = auth.CreateServiceAccount(ctx, &storage.User{
+		Kind: storage.KindServiceAccount, DisplayName: "no-owner", Role: "writer",
+	})
+	require.ErrorIs(t, err, storage.ErrUserNotFound)
+}
+
+func TestAuthStore_UpdateUserRole(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u, err := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "alice", Role: "reader",
+	}, nil)
+	require.NoError(t, err)
+
+	err = auth.UpdateUserRole(ctx, u.ID, "writer")
+	require.NoError(t, err)
+
+	reloaded, err := auth.GetUserByID(ctx, u.ID)
+	require.NoError(t, err)
+	require.Equal(t, "writer", reloaded.Role)
+
+	// Soft-deleted user is not updateable. Set deleted_at via direct SQL
+	// rather than calling SoftDeleteUser (Task 16) to avoid a forward
+	// reference; soft-delete cascade semantics are exercised in Task 16's
+	// own test.
+	_, err = pool.Exec(ctx, `UPDATE users SET deleted_at = now() WHERE id = $1::uuid`, u.ID)
+	require.NoError(t, err)
+	err = auth.UpdateUserRole(ctx, u.ID, "admin")
+	require.ErrorIs(t, err, storage.ErrUserNotFound)
+
+	// Nonexistent.
+	err = auth.UpdateUserRole(ctx, "00000000-0000-0000-0000-aaaaaaaaaaaa", "reader")
+	require.ErrorIs(t, err, storage.ErrUserNotFound)
+}

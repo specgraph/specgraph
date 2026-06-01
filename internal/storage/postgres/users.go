@@ -6,8 +6,11 @@ package postgres
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/specgraph/specgraph/internal/storage"
 )
@@ -105,4 +108,97 @@ func (s *AuthStore) GetBootstrap(ctx context.Context) (*storage.User, error) {
 	}
 	u.Kind = storage.Kind(kindStr)
 	return &u, nil
+}
+
+// CreateHuman inserts a Human row and (optionally) an OIDCBinding in one tx.
+// Returns ErrBootstrapExists if u.Bootstrap is true and another active
+// bootstrap user already exists (caught via the partial unique index).
+func (s *AuthStore) CreateHuman(ctx context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, error) {
+	if u.Kind != "" && u.Kind != storage.KindHuman {
+		return nil, errors.New("CreateHuman: u.Kind must be KindHuman or empty")
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	const insertUser = `
+		INSERT INTO users (kind, display_name, email, role, bootstrap)
+		VALUES ('human', $1, $2, $3, $4)
+		RETURNING id, created_at`
+	var id string
+	var createdAt time.Time
+	err = tx.QueryRow(ctx, insertUser, u.DisplayName, u.Email, u.Role, u.Bootstrap).
+		Scan(&id, &createdAt)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" /* unique_violation */ &&
+			pgErr.ConstraintName == "users_one_bootstrap" {
+			return nil, storage.ErrBootstrapExists
+		}
+		return nil, fmt.Errorf("insert user: %w", err)
+	}
+
+	if b != nil {
+		const insertBinding = `
+			INSERT INTO oidc_bindings (user_id, issuer, subject, email_at_bind)
+			VALUES ($1::uuid, $2, $3, $4)`
+		_, err = tx.Exec(ctx, insertBinding, id, b.Issuer, b.Subject, b.EmailAtBind)
+		if err != nil {
+			return nil, fmt.Errorf("insert binding: %w", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	u.ID = id
+	u.Kind = storage.KindHuman
+	u.CreatedAt = createdAt
+	return u, nil
+}
+
+// CreateServiceAccount inserts a ServiceAccount row. OwnerUserID must
+// reference an existing user (FK enforced).
+func (s *AuthStore) CreateServiceAccount(ctx context.Context, u *storage.User) (*storage.User, error) {
+	if u.OwnerUserID == "" {
+		return nil, fmt.Errorf("CreateServiceAccount: OwnerUserID required: %w", storage.ErrUserNotFound)
+	}
+	const q = `
+		INSERT INTO users (kind, display_name, email, role, owner_user_id)
+		VALUES ('service_account', $1, $2, $3, $4::uuid)
+		RETURNING id, created_at`
+	var id string
+	var createdAt time.Time
+	err := s.pool.QueryRow(ctx, q, u.DisplayName, u.Email, u.Role, u.OwnerUserID).
+		Scan(&id, &createdAt)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return nil, fmt.Errorf("insert service account: %w", storage.ErrUserNotFound)
+		}
+		return nil, fmt.Errorf("insert service account: %w", err)
+	}
+	u.ID = id
+	u.Kind = storage.KindServiceAccount
+	u.CreatedAt = createdAt
+	return u, nil
+}
+
+// UpdateUserRole sets the role on an active user. Returns ErrUserNotFound
+// if no active user has the given ID.
+func (s *AuthStore) UpdateUserRole(ctx context.Context, userID, role string) error {
+	const q = `
+		UPDATE users SET role = $1
+		WHERE id = $2::uuid AND deleted_at IS NULL`
+	tag, err := s.pool.Exec(ctx, q, role, userID)
+	if err != nil {
+		return fmt.Errorf("update role: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return storage.ErrUserNotFound
+	}
+	return nil
 }

@@ -136,18 +136,6 @@ func (s *AuthStore) now() time.Time { return s.nowFunc() }
 // in tests fails loudly with a recognizable message rather than returning
 // a zero value.
 
-func (s *AuthStore) CreateHuman(ctx context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, error) {
-	return nil, errors.New("CreateHuman not implemented")
-}
-
-func (s *AuthStore) CreateServiceAccount(ctx context.Context, u *storage.User) (*storage.User, error) {
-	return nil, errors.New("CreateServiceAccount not implemented")
-}
-
-func (s *AuthStore) UpdateUserRole(ctx context.Context, userID, role string) error {
-	return errors.New("UpdateUserRole not implemented")
-}
-
 func (s *AuthStore) SoftDeleteUser(ctx context.Context, userID string) error {
 	return errors.New("SoftDeleteUser not implemented")
 }
