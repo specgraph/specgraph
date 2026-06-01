@@ -1881,7 +1881,7 @@ var knownVerbs = map[string]bool{"read": true, "write": true, "delete": true, "m
 
 Append to `internal/auth/policies/base.cedar`:
 
-```
+```text
 // Identity-management operations (IdentityService): admin-only. The "manage"
 // verb is reserved for sensitive operations that must NOT inherit the
 // read/write/delete role gates (e.g. ListUsers is a read but must be admin).
