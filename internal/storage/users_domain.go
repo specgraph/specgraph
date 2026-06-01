@@ -14,6 +14,7 @@ import (
 // identically for both kinds.
 type Kind string
 
+// Kind constants for the two supported user discriminators.
 const (
 	KindHuman          Kind = "human"
 	KindServiceAccount Kind = "service_account"

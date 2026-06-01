@@ -38,7 +38,7 @@ func (s *AuthStore) LookupAPIKeyByPrefix(ctx context.Context, prefix string) (*s
 		return nil, storage.ErrAPIKeyNotFound
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("scan api key: %w", err)
 	}
 	return &k, nil
 }
@@ -57,7 +57,7 @@ func (s *AuthStore) LookupOIDCBinding(ctx context.Context, issuer, subject strin
 		return nil, storage.ErrOIDCBindingNotFound
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("scan oidc binding: %w", err)
 	}
 	return &b, nil
 }
@@ -82,7 +82,7 @@ func (s *AuthStore) GetUserByID(ctx context.Context, id string) (*storage.User, 
 		return nil, storage.ErrUserNotFound
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("scan user: %w", err)
 	}
 	u.Kind = storage.Kind(kindStr)
 	return &u, nil
@@ -109,7 +109,7 @@ func (s *AuthStore) GetBootstrap(ctx context.Context) (*storage.User, error) {
 		return nil, storage.ErrUserNotFound
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("scan user: %w", err)
 	}
 	u.Kind = storage.Kind(kindStr)
 	return &u, nil
@@ -124,9 +124,9 @@ func (s *AuthStore) CreateHuman(ctx context.Context, u *storage.User, b *storage
 	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	defer tx.Rollback(ctx) //nolint:errcheck // deferred rollback is a no-op after commit
 
 	const insertUser = `
 		INSERT INTO users (kind, display_name, email, role, bootstrap)
@@ -156,7 +156,7 @@ func (s *AuthStore) CreateHuman(ctx context.Context, u *storage.User, b *storage
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("commit tx: %w", err)
 	}
 
 	u.ID = id
@@ -215,9 +215,9 @@ func (s *AuthStore) UpdateUserRole(ctx context.Context, userID, role string) err
 func (s *AuthStore) SoftDeleteUser(ctx context.Context, userID string) error {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	defer tx.Rollback(ctx) //nolint:errcheck // deferred rollback is a no-op after commit
 
 	now := s.now()
 
@@ -235,7 +235,10 @@ func (s *AuthStore) SoftDeleteUser(ctx context.Context, userID string) error {
 		return fmt.Errorf("revoke keys: %w", err)
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	return nil
 }
 
 // PurgeUser hard-deletes the user; CASCADE constraints handle bindings
@@ -293,12 +296,15 @@ func (s *AuthStore) ListUsers(ctx context.Context, f storage.ListUsersFilter) ([
 		err := rows.Scan(&u.ID, &kindStr, &u.DisplayName, &u.Email, &u.Role,
 			&u.OwnerUserID, &u.Bootstrap, &u.CreatedAt, &u.DeletedAt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan user: %w", err)
 		}
 		u.Kind = storage.Kind(kindStr)
 		out = append(out, &u)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows: %w", err)
+	}
+	return out, nil
 }
 
 // CreateAPIKey inserts a new API key with a generated prefix. Retries up to
@@ -362,9 +368,9 @@ func (s *AuthStore) RevokeAPIKey(ctx context.Context, keyID string) error {
 func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *storage.APIKey) (*storage.APIKey, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	defer tx.Rollback(ctx) //nolint:errcheck // deferred rollback is a no-op after commit
 
 	tag, err := tx.Exec(ctx, `
 		UPDATE api_keys SET revoked_at = $1
@@ -385,8 +391,8 @@ func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *s
 		if err != nil {
 			return nil, fmt.Errorf("generate prefix: %w", err)
 		}
-		if _, err := tx.Exec(ctx, `SAVEPOINT rotate_insert`); err != nil {
-			return nil, fmt.Errorf("savepoint: %w", err)
+		if _, spErr := tx.Exec(ctx, `SAVEPOINT rotate_insert`); spErr != nil {
+			return nil, fmt.Errorf("savepoint: %w", spErr)
 		}
 		var id string
 		var createdAt time.Time
@@ -406,8 +412,8 @@ func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *s
 			if _, relErr := tx.Exec(ctx, `RELEASE SAVEPOINT rotate_insert`); relErr != nil {
 				return nil, fmt.Errorf("release savepoint: %w", relErr)
 			}
-			if err := tx.Commit(ctx); err != nil {
-				return nil, err
+			if commitErr := tx.Commit(ctx); commitErr != nil {
+				return nil, fmt.Errorf("commit tx: %w", commitErr)
 			}
 			return newKey, nil
 		}
@@ -455,11 +461,14 @@ func (s *AuthStore) ListAPIKeys(ctx context.Context, f storage.ListAPIKeysFilter
 		var k storage.APIKey
 		if err := rows.Scan(&k.ID, &k.UserID, &k.Prefix, &k.PHCHash, &k.RoleDowngrade,
 			&k.Label, &k.ExpiresAt, &k.LastUsedAt, &k.RevokedAt, &k.CreatedAt); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan api key: %w", err)
 		}
 		out = append(out, &k)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows: %w", err)
+	}
+	return out, nil
 }
 
 // TouchLastUsed sets last_used_at = now() for the key. Nonexistent or
@@ -495,9 +504,9 @@ func (s *AuthStore) JITCreateHuman(ctx context.Context, u *storage.User, b *stor
 	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck
+	defer tx.Rollback(ctx) //nolint:errcheck // deferred rollback is a no-op after commit
 
 	var userID string
 	var createdAt time.Time
@@ -525,7 +534,7 @@ func (s *AuthStore) JITCreateHuman(ctx context.Context, u *storage.User, b *stor
 			// Explicit rollback discards the just-inserted (uncommitted) user
 			// row and frees the connection for the pool re-read below; the
 			// deferred Rollback then no-ops on the already-closed tx.
-			_ = tx.Rollback(ctx)
+			_ = tx.Rollback(ctx) //nolint:errcheck // best-effort rollback before read-back; tx is already aborted by the constraint violation
 			existing, lookupErr := s.LookupOIDCBinding(ctx, b.Issuer, b.Subject)
 			if lookupErr != nil {
 				return nil, nil, fmt.Errorf("race recovery: %w", lookupErr)
@@ -540,7 +549,7 @@ func (s *AuthStore) JITCreateHuman(ctx context.Context, u *storage.User, b *stor
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("commit tx: %w", err)
 	}
 
 	u.ID = userID
@@ -568,11 +577,14 @@ func (s *AuthStore) ListOIDCBindings(ctx context.Context, userID string) ([]*sto
 	for rows.Next() {
 		var b storage.OIDCBinding
 		if err := rows.Scan(&b.ID, &b.UserID, &b.Issuer, &b.Subject, &b.EmailAtBind, &b.CreatedAt); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan oidc binding: %w", err)
 		}
 		out = append(out, &b)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows: %w", err)
+	}
+	return out, nil
 }
 
 // UnbindOIDC deletes the binding. Idempotent on already-deleted.

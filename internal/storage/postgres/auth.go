@@ -98,7 +98,7 @@ func (s *AuthStore) runAuthMigrations(ctx context.Context) error {
 	// the *sql.DB does NOT close the underlying pgxpool. Verified via pgx
 	// docs (jackc/pgx#1023) — pool ownership stays with the original
 	// caller.
-	defer func() { _ = db.Close() }()
+	defer func() { _ = db.Close() }() //nolint:errcheck // closing the sql.DB facade does not close the underlying pgxpool
 
 	goose.SetBaseFS(authMigrations)
 	if err := goose.SetDialect("postgres"); err != nil {
@@ -132,7 +132,7 @@ func defaultGenerateKeyPrefix() (string, error) {
 	const prefixLen = 8
 	buf := make([]byte, 5) // 5 bytes -> 8 base32 chars
 	if _, err := cryptorand.Read(buf); err != nil {
-		return "", err
+		return "", fmt.Errorf("rand read: %w", err)
 	}
 	return base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(buf)[:prefixLen], nil
 }
