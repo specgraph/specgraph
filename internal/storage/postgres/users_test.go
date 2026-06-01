@@ -270,3 +270,113 @@ func TestAuthStore_UpdateUserRole(t *testing.T) {
 	err = auth.UpdateUserRole(ctx, "00000000-0000-0000-0000-aaaaaaaaaaaa", "reader")
 	require.ErrorIs(t, err, storage.ErrUserNotFound)
 }
+
+func TestAuthStore_SoftDeleteUser(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u, err := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "alice", Role: "reader",
+	}, &storage.OIDCBinding{Issuer: "iss1", Subject: "sub1"})
+	require.NoError(t, err)
+
+	// Seed two API keys directly (phc_hash >= 32 chars per schema CHECK).
+	_, err = pool.Exec(ctx, `
+		INSERT INTO api_keys (user_id, prefix, phc_hash, label)
+		VALUES ($1::uuid, 'pre00001', '$argon2id$v=19$m=65536,t=1,p=4$stub-salt-padded-to-32chars', 'k1'),
+		       ($1::uuid, 'pre00002', '$argon2id$v=19$m=65536,t=1,p=4$stub-salt-padded-to-32chars', 'k2')`, u.ID)
+	require.NoError(t, err)
+
+	require.NoError(t, auth.SoftDeleteUser(ctx, u.ID))
+
+	// User deleted_at set.
+	reloaded, err := auth.GetUserByID(ctx, u.ID)
+	require.NoError(t, err)
+	require.False(t, reloaded.IsActive())
+
+	// Both keys revoked in the same tx (same revoked_at timestamp).
+	var count int
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM api_keys
+		WHERE user_id = $1::uuid AND revoked_at IS NOT NULL`, u.ID).Scan(&count))
+	require.Equal(t, 2, count)
+
+	// Bindings rows remain (they're history).
+	var bindingCount int
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM oidc_bindings WHERE user_id = $1::uuid`, u.ID).Scan(&bindingCount))
+	require.Equal(t, 1, bindingCount)
+
+	// Idempotent: re-deleting is a no-op.
+	require.NoError(t, auth.SoftDeleteUser(ctx, u.ID))
+
+	// Unknown/nonexistent userID is also a no-op (returns nil, NOT
+	// ErrUserNotFound) — intentional idempotent-delete semantics, distinct
+	// from UpdateUserRole.
+	require.NoError(t, auth.SoftDeleteUser(ctx, "00000000-0000-0000-0000-aaaaaaaaaaaa"))
+}
+
+func TestAuthStore_PurgeUser(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u, err := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "alice", Role: "reader",
+	}, &storage.OIDCBinding{Issuer: "iss1", Subject: "sub1"})
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `
+		INSERT INTO api_keys (user_id, prefix, phc_hash, label)
+		VALUES ($1::uuid, 'pre00003', '$argon2id$v=19$m=65536,t=1,p=4$stub-salt-padded-to-32chars', 'k')`, u.ID)
+	require.NoError(t, err)
+
+	require.NoError(t, auth.PurgeUser(ctx, u.ID))
+
+	// User gone.
+	_, err = auth.GetUserByID(ctx, u.ID)
+	require.ErrorIs(t, err, storage.ErrUserNotFound)
+
+	// Cascaded keys + bindings gone.
+	var n int
+	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM api_keys WHERE user_id = $1::uuid`, u.ID).Scan(&n))
+	require.Equal(t, 0, n)
+	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM oidc_bindings WHERE user_id = $1::uuid`, u.ID).Scan(&n))
+	require.Equal(t, 0, n)
+
+	// Idempotent.
+	require.NoError(t, auth.PurgeUser(ctx, u.ID))
+}
+
+func TestAuthStore_ListUsers(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	// Three humans, one service account.
+	owner, _ := auth.CreateHuman(ctx, &storage.User{Kind: storage.KindHuman, DisplayName: "h1", Role: "admin"}, nil)
+	_, _ = auth.CreateHuman(ctx, &storage.User{Kind: storage.KindHuman, DisplayName: "h2", Role: "reader"}, nil)
+	deleted, _ := auth.CreateHuman(ctx, &storage.User{Kind: storage.KindHuman, DisplayName: "h3", Role: "writer"}, nil)
+	require.NoError(t, auth.SoftDeleteUser(ctx, deleted.ID))
+	_, _ = auth.CreateServiceAccount(ctx, &storage.User{Kind: storage.KindServiceAccount, DisplayName: "sa1", Role: "writer", OwnerUserID: owner.ID})
+
+	all, err := auth.ListUsers(ctx, storage.ListUsersFilter{})
+	require.NoError(t, err)
+	require.Len(t, all, 3) // excludes deleted by default
+
+	withDeleted, err := auth.ListUsers(ctx, storage.ListUsersFilter{IncludeDeleted: true})
+	require.NoError(t, err)
+	require.Len(t, withDeleted, 4)
+
+	humansOnly, err := auth.ListUsers(ctx, storage.ListUsersFilter{Kind: storage.KindHuman})
+	require.NoError(t, err)
+	require.Len(t, humansOnly, 2) // h3 deleted, sa1 excluded
+
+	readers, err := auth.ListUsers(ctx, storage.ListUsersFilter{Role: "reader"})
+	require.NoError(t, err)
+	require.Len(t, readers, 1)
+	require.Equal(t, "h2", readers[0].DisplayName)
+}

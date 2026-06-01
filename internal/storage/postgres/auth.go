@@ -136,18 +136,6 @@ func (s *AuthStore) now() time.Time { return s.nowFunc() }
 // in tests fails loudly with a recognizable message rather than returning
 // a zero value.
 
-func (s *AuthStore) SoftDeleteUser(ctx context.Context, userID string) error {
-	return errors.New("SoftDeleteUser not implemented")
-}
-
-func (s *AuthStore) PurgeUser(ctx context.Context, userID string) error {
-	return errors.New("PurgeUser not implemented")
-}
-
-func (s *AuthStore) ListUsers(ctx context.Context, f storage.ListUsersFilter) ([]*storage.User, error) {
-	return nil, errors.New("ListUsers not implemented")
-}
-
 func (s *AuthStore) CreateAPIKey(ctx context.Context, k *storage.APIKey) (*storage.APIKey, error) {
 	return nil, errors.New("CreateAPIKey not implemented")
 }

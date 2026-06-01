@@ -51,7 +51,13 @@ type UsersBackend interface {
 	UpdateUserRole(ctx context.Context, userID, role string) error
 
 	// SoftDeleteUser sets deleted_at and revokes all active keys in one tx.
-	// Idempotent (re-deleting already-deleted user is a no-op).
+	// Idempotent (re-deleting already-deleted user is a no-op). An
+	// unknown/nonexistent userID is also treated as a no-op: it returns nil,
+	// NOT ErrUserNotFound. This intentional idempotent-delete behavior is
+	// distinct from UpdateUserRole, which returns ErrUserNotFound for a
+	// missing target. (The deleted_at IS NULL guard means an already-deleted
+	// user matches zero rows too, so erroring on zero rows would break the
+	// documented re-delete idempotency.)
 	SoftDeleteUser(ctx context.Context, userID string) error
 
 	// PurgeUser hard-deletes the user; cascades through bindings and keys.

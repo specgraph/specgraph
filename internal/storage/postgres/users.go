@@ -202,3 +202,96 @@ func (s *AuthStore) UpdateUserRole(ctx context.Context, userID, role string) err
 	}
 	return nil
 }
+
+// SoftDeleteUser sets deleted_at on the user and revokes all their active
+// keys in the same transaction. Idempotent on already-deleted users (the
+// user UPDATE matches zero rows, the keys UPDATE matches zero rows; both
+// silently succeed).
+func (s *AuthStore) SoftDeleteUser(ctx context.Context, userID string) error {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	now := s.now()
+
+	_, err = tx.Exec(ctx, `
+		UPDATE users SET deleted_at = $1
+		WHERE id = $2::uuid AND deleted_at IS NULL`, now, userID)
+	if err != nil {
+		return fmt.Errorf("soft-delete user: %w", err)
+	}
+
+	_, err = tx.Exec(ctx, `
+		UPDATE api_keys SET revoked_at = $1
+		WHERE user_id = $2::uuid AND revoked_at IS NULL`, now, userID)
+	if err != nil {
+		return fmt.Errorf("revoke keys: %w", err)
+	}
+
+	return tx.Commit(ctx)
+}
+
+// PurgeUser hard-deletes the user; CASCADE constraints handle bindings
+// and keys. Idempotent on already-purged users.
+func (s *AuthStore) PurgeUser(ctx context.Context, userID string) error {
+	_, err := s.pool.Exec(ctx, `DELETE FROM users WHERE id = $1::uuid`, userID)
+	if err != nil {
+		return fmt.Errorf("purge user: %w", err)
+	}
+	return nil
+}
+
+// ListUsers returns users matching the filter. Default limit is 100.
+func (s *AuthStore) ListUsers(ctx context.Context, f storage.ListUsersFilter) ([]*storage.User, error) {
+	q := `
+		SELECT id, kind, display_name, email, role,
+		       coalesce(owner_user_id::text, ''), bootstrap,
+		       created_at, deleted_at
+		FROM users WHERE 1=1`
+	args := []any{}
+	if !f.IncludeDeleted {
+		q += ` AND deleted_at IS NULL`
+	}
+	if f.Kind != "" {
+		args = append(args, string(f.Kind))
+		q += fmt.Sprintf(` AND kind = $%d`, len(args))
+	}
+	if f.Role != "" {
+		args = append(args, f.Role)
+		q += fmt.Sprintf(` AND role = $%d`, len(args))
+	}
+	if f.CreatedAfter != nil {
+		args = append(args, *f.CreatedAfter)
+		q += fmt.Sprintf(` AND created_at > $%d`, len(args))
+	}
+	limit := f.Limit
+	if limit <= 0 {
+		limit = 100
+	}
+	args = append(args, limit)
+	q += fmt.Sprintf(` ORDER BY created_at DESC LIMIT $%d`, len(args))
+	args = append(args, f.Offset)
+	q += fmt.Sprintf(` OFFSET $%d`, len(args))
+
+	rows, err := s.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	defer rows.Close()
+
+	var out []*storage.User
+	for rows.Next() {
+		var u storage.User
+		var kindStr string
+		err := rows.Scan(&u.ID, &kindStr, &u.DisplayName, &u.Email, &u.Role,
+			&u.OwnerUserID, &u.Bootstrap, &u.CreatedAt, &u.DeletedAt)
+		if err != nil {
+			return nil, err
+		}
+		u.Kind = storage.Kind(kindStr)
+		out = append(out, &u)
+	}
+	return out, rows.Err()
+}
