@@ -7,6 +7,8 @@ package postgres_test
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -695,4 +697,161 @@ func TestAuthStore_UnbindOIDC(t *testing.T) {
 
 	// Idempotent.
 	require.NoError(t, auth.UnbindOIDC(ctx, bindings[0].ID))
+}
+
+// TestAuthStore_BootstrapRace verifies that N concurrent CreateHuman calls with
+// Bootstrap=true result in exactly one success and N-1 ErrBootstrapExists
+// errors, proving the partial unique index users_one_bootstrap is correctly
+// mapped at runtime.
+func TestAuthStore_BootstrapRace(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	const concurrent = 5
+	// Each goroutine writes its own result into a dedicated slot, so no
+	// synchronization beyond the WaitGroup is needed (race-free).
+	errs := make([]error, concurrent)
+	var wg sync.WaitGroup
+	wg.Add(concurrent)
+	for i := 0; i < concurrent; i++ {
+		go func(idx int) {
+			defer wg.Done()
+			_, err := auth.CreateHuman(ctx, &storage.User{
+				Kind: storage.KindHuman, DisplayName: "admin",
+				Role: "admin", Bootstrap: true,
+			}, nil)
+			errs[idx] = err
+		}(i)
+	}
+	wg.Wait()
+
+	var successes, expectsBootstrapExists int
+	for _, err := range errs {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, storage.ErrBootstrapExists):
+			expectsBootstrapExists++
+		default:
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+	require.Equal(t, 1, successes, "exactly one bootstrap insert should succeed")
+	require.Equal(t, concurrent-1, expectsBootstrapExists)
+}
+
+// TestAuthStore_JITRace verifies that N concurrent JITCreateHuman calls for
+// the same (issuer, subject) all resolve to the same user and binding, proving
+// the race-recovery relookup path maintains the (issuer,subject) uniqueness
+// invariant.
+func TestAuthStore_JITRace(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	const concurrent = 5
+	type result struct {
+		userID    string
+		bindingID string
+		err       error
+	}
+	// Each goroutine writes its own result into a dedicated slot, so no
+	// synchronization beyond the WaitGroup is needed (race-free).
+	results := make([]result, concurrent)
+	var wg sync.WaitGroup
+	wg.Add(concurrent)
+	for i := 0; i < concurrent; i++ {
+		go func(idx int) {
+			defer wg.Done()
+			u, b, err := auth.JITCreateHuman(ctx,
+				&storage.User{Kind: storage.KindHuman, DisplayName: "alice", Role: "reader"},
+				&storage.OIDCBinding{Issuer: "iss1", Subject: "alice-sub"})
+			if err != nil {
+				results[idx] = result{err: err}
+				return
+			}
+			results[idx] = result{userID: u.ID, bindingID: b.ID}
+		}(i)
+	}
+	wg.Wait()
+
+	userIDs := map[string]struct{}{}
+	bindingIDs := map[string]struct{}{}
+	for _, r := range results {
+		require.NoError(t, r.err)
+		userIDs[r.userID] = struct{}{}
+		bindingIDs[r.bindingID] = struct{}{}
+	}
+	require.Len(t, userIDs, 1, "all callers should resolve to the same user")
+	require.Len(t, bindingIDs, 1, "all callers should resolve to the same binding")
+}
+
+// TestAuthStore_FullLifecycle is an end-to-end smoke test walking the complete
+// identity lifecycle: bootstrap → JIT-create real user → mint key → rotate key
+// → promote role → soft-delete bootstrap, asserting final state is coherent.
+//
+// Plan note: the PHCHash values in the plan ("phc", "phc-rot") are shorter than
+// the schema CHECK constraint (length(phc_hash) >= 32). They are replaced here
+// with valid 32+ character strings.
+func TestAuthStore_FullLifecycle(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	// Bootstrap admin.
+	admin, err := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "admin", Role: "admin", Bootstrap: true,
+	}, nil)
+	require.NoError(t, err)
+
+	got, err := auth.GetBootstrap(ctx)
+	require.NoError(t, err)
+	require.Equal(t, admin.ID, got.ID)
+
+	// JIT a real person via OIDC.
+	person, binding, err := auth.JITCreateHuman(ctx,
+		&storage.User{Kind: storage.KindHuman, DisplayName: "alice", Email: "alice@x.com", Role: "reader"},
+		&storage.OIDCBinding{Issuer: "entra", Subject: "alice-sub", EmailAtBind: "alice@x.com"})
+	require.NoError(t, err)
+
+	// Mint an API key. PHCHash must be >= 32 chars (schema CHECK constraint).
+	key, err := auth.CreateAPIKey(ctx, &storage.APIKey{
+		UserID: person.ID, PHCHash: "phc-stub-padded-to-meet-min-length-ok", Label: "personal",
+	})
+	require.NoError(t, err)
+
+	// Rotate it. PHCHash must be >= 32 chars (schema CHECK constraint).
+	newKey, err := auth.RotateAPIKey(ctx, key.ID, &storage.APIKey{
+		UserID: person.ID, PHCHash: "phc-rot-stub-padded-to-meet-min-length", Label: "personal",
+	})
+	require.NoError(t, err)
+	require.NotEqual(t, key.Prefix, newKey.Prefix)
+
+	// Promote alice via UpdateUserRole.
+	require.NoError(t, auth.UpdateUserRole(ctx, person.ID, "admin"))
+
+	// Soft-delete bootstrap admin (force-flag policy enforced at handler layer, not here).
+	require.NoError(t, auth.SoftDeleteUser(ctx, admin.ID))
+
+	// GetBootstrap now empty.
+	_, err = auth.GetBootstrap(ctx)
+	require.ErrorIs(t, err, storage.ErrUserNotFound)
+
+	// Final state: alice is admin with one active key, one binding.
+	reloaded, err := auth.GetUserByID(ctx, person.ID)
+	require.NoError(t, err)
+	require.Equal(t, "admin", reloaded.Role)
+
+	keys, err := auth.ListAPIKeys(ctx, storage.ListAPIKeysFilter{UserID: person.ID})
+	require.NoError(t, err)
+	require.Len(t, keys, 1)
+
+	bindings, err := auth.ListOIDCBindings(ctx, person.ID)
+	require.NoError(t, err)
+	require.Len(t, bindings, 1)
+	require.Equal(t, binding.ID, bindings[0].ID)
 }
