@@ -24,10 +24,6 @@ var authMigrations embed.FS
 
 // Compile-time assertion that *AuthStore implements UsersBackend.
 // Mirrors the convention used by *Store for ConstitutionBackend etc.
-// Note: this assertion forces every UsersBackend method to exist on
-// *AuthStore. Stubs for every method are declared further down in this
-// file to satisfy the assertion; real implementations land in tasks 9–26
-// which replace the stubs one at a time.
 var _ storage.UsersBackend = (*AuthStore)(nil)
 
 // AuthStore is the Postgres implementation of UsersBackend. It is a sibling
@@ -128,25 +124,6 @@ func (s *AuthStore) Close(_ context.Context) error {
 
 // now returns the wall clock time used for explicit mutation timestamps.
 func (s *AuthStore) now() time.Time { return s.nowFunc() }
-
-// --- UsersBackend method stubs ---
-// These satisfy the compile-time assertion above; real implementations land
-// in tasks 9–26, which replace each stub with a SQL-backed method one at a
-// time. Stubs return errors.New("not implemented") so that accidental use
-// in tests fails loudly with a recognizable message rather than returning
-// a zero value.
-
-func (s *AuthStore) JITCreateHuman(ctx context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, *storage.OIDCBinding, error) {
-	return nil, nil, errors.New("JITCreateHuman not implemented")
-}
-
-func (s *AuthStore) ListOIDCBindings(ctx context.Context, userID string) ([]*storage.OIDCBinding, error) {
-	return nil, errors.New("ListOIDCBindings not implemented")
-}
-
-func (s *AuthStore) UnbindOIDC(ctx context.Context, bindingID string) error {
-	return errors.New("UnbindOIDC not implemented")
-}
 
 // defaultGenerateKeyPrefix produces 8 random URL-safe base32 characters.
 // Overridable via WithAuthKeyPrefixGenerator. Per-instance (not package-

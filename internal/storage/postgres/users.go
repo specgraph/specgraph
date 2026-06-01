@@ -475,3 +475,108 @@ func (s *AuthStore) TouchLastUsed(ctx context.Context, keyID string) error {
 	}
 	return nil
 }
+
+// JITCreateHuman creates a Human + OIDC binding atomically. If the (issuer,
+// subject) already exists (race with another JIT), re-reads and returns the
+// winning binding's user.
+//
+// Race recovery semantics: when a concurrent JIT wins the (issuer, subject)
+// uniqueness contest, this caller's INSERT receives a 23505. Postgres
+// guarantees the winner has already COMMITTED before the loser's INSERT can
+// observe the constraint violation (the winner's tx held a row lock until
+// commit, after which the loser's insert attempt resolves to "duplicate
+// key"). At READ COMMITTED isolation, the loser's subsequent SELECT for
+// the binding will see the committed row. No retry loop is needed. The user
+// row inserted before the failed binding INSERT is discarded by the
+// transaction rollback, so no orphan user accrues.
+func (s *AuthStore) JITCreateHuman(ctx context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, *storage.OIDCBinding, error) {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, nil, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	var userID string
+	var createdAt time.Time
+	err = tx.QueryRow(ctx, `
+		INSERT INTO users (kind, display_name, email, role)
+		VALUES ('human', $1, $2, $3)
+		RETURNING id, created_at`,
+		u.DisplayName, u.Email, u.Role).Scan(&userID, &createdAt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("insert user (jit): %w", err)
+	}
+
+	var bindingID string
+	var bindingCreatedAt time.Time
+	err = tx.QueryRow(ctx, `
+		INSERT INTO oidc_bindings (user_id, issuer, subject, email_at_bind)
+		VALUES ($1::uuid, $2, $3, $4)
+		RETURNING id, created_at`,
+		userID, b.Issuer, b.Subject, b.EmailAtBind).Scan(&bindingID, &bindingCreatedAt)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" &&
+			pgErr.ConstraintName == "oidc_bindings_issuer_subject_key" {
+			// Race: another JIT won. Rollback, re-read.
+			// Explicit rollback discards the just-inserted (uncommitted) user
+			// row and frees the connection for the pool re-read below; the
+			// deferred Rollback then no-ops on the already-closed tx.
+			_ = tx.Rollback(ctx)
+			existing, lookupErr := s.LookupOIDCBinding(ctx, b.Issuer, b.Subject)
+			if lookupErr != nil {
+				return nil, nil, fmt.Errorf("race recovery: %w", lookupErr)
+			}
+			existingUser, lookupErr := s.GetUserByID(ctx, existing.UserID)
+			if lookupErr != nil {
+				return nil, nil, fmt.Errorf("race recovery user: %w", lookupErr)
+			}
+			return existingUser, existing, nil
+		}
+		return nil, nil, fmt.Errorf("insert binding (jit): %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, nil, err
+	}
+
+	u.ID = userID
+	u.Kind = storage.KindHuman
+	u.CreatedAt = createdAt
+	b.ID = bindingID
+	b.UserID = userID
+	b.CreatedAt = bindingCreatedAt
+	return u, b, nil
+}
+
+// ListOIDCBindings returns bindings for the given user.
+func (s *AuthStore) ListOIDCBindings(ctx context.Context, userID string) ([]*storage.OIDCBinding, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, user_id, issuer, subject, email_at_bind, created_at
+		FROM oidc_bindings
+		WHERE user_id = $1::uuid
+		ORDER BY created_at`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list bindings: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]*storage.OIDCBinding, 0)
+	for rows.Next() {
+		var b storage.OIDCBinding
+		if err := rows.Scan(&b.ID, &b.UserID, &b.Issuer, &b.Subject, &b.EmailAtBind, &b.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, &b)
+	}
+	return out, rows.Err()
+}
+
+// UnbindOIDC deletes the binding. Idempotent on already-deleted.
+func (s *AuthStore) UnbindOIDC(ctx context.Context, bindingID string) error {
+	_, err := s.pool.Exec(ctx, `DELETE FROM oidc_bindings WHERE id = $1::uuid`, bindingID)
+	if err != nil {
+		return fmt.Errorf("unbind oidc: %w", err)
+	}
+	return nil
+}

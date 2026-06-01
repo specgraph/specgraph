@@ -630,3 +630,69 @@ func TestAuthStore_TouchLastUsed(t *testing.T) {
 	reloaded, _ := auth.LookupAPIKeyByPrefix(ctx, k.Prefix)
 	require.NotNil(t, reloaded.LastUsedAt)
 }
+
+func TestAuthStore_JITCreateHuman(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u := &storage.User{Kind: storage.KindHuman, DisplayName: "alice", Email: "alice@x.com", Role: "reader"}
+	b := &storage.OIDCBinding{Issuer: "iss1", Subject: "alice-sub", EmailAtBind: "alice@x.com"}
+
+	user, binding, err := auth.JITCreateHuman(ctx, u, b)
+	require.NoError(t, err)
+	require.NotEmpty(t, user.ID)
+	require.NotEmpty(t, binding.ID)
+	require.Equal(t, user.ID, binding.UserID)
+
+	// Second JIT for same (issuer, subject) returns the existing user.
+	user2, binding2, err := auth.JITCreateHuman(ctx, &storage.User{Kind: storage.KindHuman, DisplayName: "alice-dup", Role: "reader"}, b)
+	require.NoError(t, err)
+	require.Equal(t, user.ID, user2.ID)
+	require.Equal(t, binding.ID, binding2.ID)
+}
+
+func TestAuthStore_ListOIDCBindings(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u, _ := auth.CreateHuman(ctx, &storage.User{Kind: storage.KindHuman, DisplayName: "alice", Role: "reader"},
+		&storage.OIDCBinding{Issuer: "entra", Subject: "alice-entra"})
+	// Add a second binding (different provider).
+	_, _ = pool.Exec(ctx, `INSERT INTO oidc_bindings (user_id, issuer, subject)
+	                      VALUES ($1::uuid, 'github', 'alice-gh')`, u.ID)
+
+	bindings, err := auth.ListOIDCBindings(ctx, u.ID)
+	require.NoError(t, err)
+	require.Len(t, bindings, 2)
+
+	// Empty list for unbound user.
+	other, _ := auth.CreateHuman(ctx, &storage.User{Kind: storage.KindHuman, DisplayName: "bob", Role: "reader"}, nil)
+	bindings, err = auth.ListOIDCBindings(ctx, other.ID)
+	require.NoError(t, err)
+	require.NotNil(t, bindings)
+	require.Empty(t, bindings)
+}
+
+func TestAuthStore_UnbindOIDC(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u, _ := auth.CreateHuman(ctx, &storage.User{Kind: storage.KindHuman, DisplayName: "alice", Role: "reader"},
+		&storage.OIDCBinding{Issuer: "entra", Subject: "alice-entra"})
+	bindings, _ := auth.ListOIDCBindings(ctx, u.ID)
+	require.Len(t, bindings, 1)
+
+	require.NoError(t, auth.UnbindOIDC(ctx, bindings[0].ID))
+
+	after, _ := auth.ListOIDCBindings(ctx, u.ID)
+	require.Empty(t, after)
+
+	// Idempotent.
+	require.NoError(t, auth.UnbindOIDC(ctx, bindings[0].ID))
+}
