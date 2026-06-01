@@ -1,7 +1,7 @@
-//go:build integration
-
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
+
+//go:build integration
 
 package postgres_test
 
@@ -13,20 +13,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/specgraph/specgraph/internal/storage/postgres"
+	"github.com/specgraph/specgraph/internal/storage/postgres/postgrestest"
 )
 
 // sharedTestPool returns a fresh pgxpool against the testcontainers Postgres
-// started in postgres_test.go's TestMain. The pool is closed via t.Cleanup;
+// managed by postgrestest.SharedPool. The pool is closed via t.Cleanup;
 // callers do not need to manage lifecycle.
 //
-// Each call opens a new pool. This is the same pattern clearDatabase uses
-// (see postgres_test.go:108). The container is shared; the pools are not.
+// Delegates to postgrestest.SharedPool so there is ONE container-start
+// implementation, importable cross-package (Task 32).
 func sharedTestPool(t *testing.T, ctx context.Context) *pgxpool.Pool {
 	t.Helper()
-	pool, err := pgxpool.New(ctx, connString)
-	require.NoError(t, err)
-	t.Cleanup(pool.Close)
-	return pool
+	return postgrestest.SharedPool(t, ctx)
 }
 
 // authTestSetup constructs an AuthStore against the test container's

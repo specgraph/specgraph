@@ -1,13 +1,14 @@
-//go:build integration
-
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 Sean Brandt
+
+//go:build integration
 
 package postgres_test
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -854,4 +855,129 @@ func TestAuthStore_FullLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, bindings, 1)
 	require.Equal(t, binding.ID, bindings[0].ID)
+}
+
+// ---- Task 30: Invariant sweep — ServiceAccount has no OIDC bindings ----
+
+// TestAuthStore_ServiceAccountNoBindingInvariant verifies that neither
+// CreateHuman nor JITCreateHuman will accept Kind=ServiceAccount, so a
+// ServiceAccount can never acquire an OIDC binding via these write surfaces.
+func TestAuthStore_ServiceAccountNoBindingInvariant(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	// CreateHuman already rejects Kind=ServiceAccount (per Task 13's
+	// existing check). Verify that property survived.
+	_, err := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindServiceAccount, DisplayName: "wrong", Role: "writer",
+	}, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "KindHuman")
+
+	// JITCreateHuman with Kind=ServiceAccount must refuse explicitly.
+	_, _, err = auth.JITCreateHuman(ctx,
+		&storage.User{Kind: storage.KindServiceAccount, DisplayName: "wrong", Role: "reader"},
+		&storage.OIDCBinding{Issuer: "iss", Subject: "sub"})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "KindHuman")
+
+	// Defense in depth: no rows created by either failed call.
+	var n int
+	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE kind='service_account'`).Scan(&n))
+	require.Equal(t, 0, n)
+	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM oidc_bindings`).Scan(&n))
+	require.Equal(t, 0, n)
+}
+
+// ---- Task 31: Boundary sweep — pagination, empty/null, missing-required ----
+
+// TestAuthStore_Pagination_DefaultLimit verifies that Limit=0 is treated as the
+// default (100), and that an offset beyond the result set returns a non-nil
+// empty slice.
+func TestAuthStore_Pagination_DefaultLimit(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	// Insert 5 users; default limit is 100 so all are returned.
+	for i := 0; i < 5; i++ {
+		_, err := auth.CreateHuman(ctx, &storage.User{
+			Kind: storage.KindHuman, DisplayName: fmt.Sprintf("u%d", i), Role: "reader",
+		}, nil)
+		require.NoError(t, err)
+	}
+
+	// Limit=0 means "use default" (100), not "return zero".
+	users, err := auth.ListUsers(ctx, storage.ListUsersFilter{Limit: 0})
+	require.NoError(t, err)
+	require.Len(t, users, 5)
+
+	// Offset beyond rows returns empty slice (not nil, not error).
+	users, err = auth.ListUsers(ctx, storage.ListUsersFilter{Offset: 100})
+	require.NoError(t, err)
+	require.Empty(t, users)
+	require.True(t, users != nil, "empty result must be []*User{}, never nil")
+}
+
+// TestAuthStore_EmptyResults_NotNil verifies that ListOIDCBindings and
+// ListAPIKeys return non-nil empty slices (not nil) when no rows match,
+// and that ListUsers does the same.
+func TestAuthStore_EmptyResults_NotNil(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u, err := auth.CreateHuman(ctx, &storage.User{Kind: storage.KindHuman, DisplayName: "alice", Role: "reader"}, nil)
+	require.NoError(t, err)
+
+	// User with no bindings returns empty slice, not nil.
+	bindingSlice, err := auth.ListOIDCBindings(ctx, u.ID)
+	require.NoError(t, err)
+	require.Empty(t, bindingSlice)
+	require.NotNil(t, bindingSlice, "ListOIDCBindings empty result must be non-nil slice")
+
+	// User with no keys returns empty slice, not nil.
+	keys, err := auth.ListAPIKeys(ctx, storage.ListAPIKeysFilter{UserID: u.ID})
+	require.NoError(t, err)
+	require.Empty(t, keys)
+	require.NotNil(t, keys, "ListAPIKeys empty result must be non-nil slice")
+
+	// ListUsers on an empty filter (after truncate) returns non-nil empty.
+	truncateAuthTables(t, pool)
+	allUsers, err := auth.ListUsers(ctx, storage.ListUsersFilter{})
+	require.NoError(t, err)
+	require.Empty(t, allUsers)
+	require.True(t, allUsers != nil, "ListUsers empty result must be non-nil slice")
+}
+
+// TestAuthStore_RequiredFields verifies that CreateAPIKey returns clear errors
+// for missing UserID and missing PHCHash, and that CreateServiceAccount
+// rejects a missing OwnerUserID.
+func TestAuthStore_RequiredFields(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	// CreateAPIKey requires UserID.
+	_, err := auth.CreateAPIKey(ctx, &storage.APIKey{PHCHash: "phc-stub-padded-to-meet-min-length-ok"})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "UserID required")
+
+	// CreateAPIKey requires PHCHash.
+	u, err := auth.CreateHuman(ctx, &storage.User{Kind: storage.KindHuman, DisplayName: "alice", Role: "writer"}, nil)
+	require.NoError(t, err)
+	_, err = auth.CreateAPIKey(ctx, &storage.APIKey{UserID: u.ID})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "PHCHash required")
+
+	// CreateServiceAccount requires OwnerUserID (also covered in Task 14).
+	_, err = auth.CreateServiceAccount(ctx, &storage.User{
+		Kind: storage.KindServiceAccount, DisplayName: "no-owner", Role: "writer",
+	})
+	require.Error(t, err)
 }

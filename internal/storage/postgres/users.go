@@ -286,7 +286,7 @@ func (s *AuthStore) ListUsers(ctx context.Context, f storage.ListUsersFilter) ([
 	}
 	defer rows.Close()
 
-	var out []*storage.User
+	out := make([]*storage.User, 0)
 	for rows.Next() {
 		var u storage.User
 		var kindStr string
@@ -450,7 +450,7 @@ func (s *AuthStore) ListAPIKeys(ctx context.Context, f storage.ListAPIKeysFilter
 	}
 	defer rows.Close()
 
-	var out []*storage.APIKey
+	out := make([]*storage.APIKey, 0)
 	for rows.Next() {
 		var k storage.APIKey
 		if err := rows.Scan(&k.ID, &k.UserID, &k.Prefix, &k.PHCHash, &k.RoleDowngrade,
@@ -490,6 +490,9 @@ func (s *AuthStore) TouchLastUsed(ctx context.Context, keyID string) error {
 // row inserted before the failed binding INSERT is discarded by the
 // transaction rollback, so no orphan user accrues.
 func (s *AuthStore) JITCreateHuman(ctx context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, *storage.OIDCBinding, error) {
+	if u.Kind != "" && u.Kind != storage.KindHuman {
+		return nil, nil, fmt.Errorf("JITCreateHuman: u.Kind must be KindHuman or empty, got %q", u.Kind)
+	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return nil, nil, err
