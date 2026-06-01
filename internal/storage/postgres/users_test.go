@@ -380,3 +380,253 @@ func TestAuthStore_ListUsers(t *testing.T) {
 	require.Len(t, readers, 1)
 	require.Equal(t, "h2", readers[0].DisplayName)
 }
+
+func TestAuthStore_CreateAPIKey(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u, _ := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "alice", Role: "writer",
+	}, nil)
+
+	k, err := auth.CreateAPIKey(ctx, &storage.APIKey{
+		UserID: u.ID, PHCHash: "phc-stub-padded-to-meet-min-length-ok", Label: "first key",
+	})
+	require.NoError(t, err)
+	require.Len(t, k.Prefix, 8)
+	require.NotEmpty(t, k.ID)
+	require.Equal(t, "first key", k.Label)
+}
+
+func TestAuthStore_CreateAPIKey_CollisionRetry(t *testing.T) {
+	ctx := context.Background()
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	// Build a dedicated AuthStore with a stubbed prefix generator.
+	calls := 0
+	gen := func() (string, error) {
+		calls++
+		if calls <= 2 {
+			return "collide1", nil
+		}
+		return "newpre23", nil
+	}
+	auth, err := postgres.NewAuth(ctx, pool, postgres.WithAuthKeyPrefixGenerator(gen))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = auth.Close(ctx) })
+
+	u, _ := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "alice", Role: "writer",
+	}, nil)
+
+	// Seed a key with the prefix the generator will collide against.
+	_, err = pool.Exec(ctx, `INSERT INTO api_keys (user_id, prefix, phc_hash)
+	                         VALUES ($1::uuid, 'collide1', 'phc-seed-string-padding-to-meet-length-check')`, u.ID)
+	require.NoError(t, err)
+
+	k, err := auth.CreateAPIKey(ctx, &storage.APIKey{UserID: u.ID, PHCHash: "phc-stub-string-padding-to-meet-length-check"})
+	require.NoError(t, err)
+	require.Equal(t, "newpre23", k.Prefix)
+	require.GreaterOrEqual(t, calls, 3)
+
+	// Exhaustion: a generator that always returns the same colliding prefix.
+	authExhaust, err := postgres.NewAuth(ctx, pool, postgres.WithAuthKeyPrefixGenerator(
+		func() (string, error) { return "collide1", nil }))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = authExhaust.Close(ctx) })
+	_, err = authExhaust.CreateAPIKey(ctx, &storage.APIKey{UserID: u.ID, PHCHash: "phc-stub-string-padding-to-meet-length-check"})
+	require.ErrorIs(t, err, storage.ErrAPIKeyPrefixExists)
+}
+
+func TestAuthStore_RevokeAPIKey(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u, _ := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "alice", Role: "writer",
+	}, nil)
+	k, _ := auth.CreateAPIKey(ctx, &storage.APIKey{UserID: u.ID, PHCHash: "phc-stub-padded-to-meet-min-length-ok"})
+
+	require.NoError(t, auth.RevokeAPIKey(ctx, k.ID))
+
+	reloaded, err := auth.LookupAPIKeyByPrefix(ctx, k.Prefix)
+	require.NoError(t, err)
+	require.NotNil(t, reloaded.RevokedAt)
+	require.False(t, reloaded.IsActive(time.Now()))
+
+	// Idempotent on already-revoked.
+	require.NoError(t, auth.RevokeAPIKey(ctx, k.ID))
+
+	// Nonexistent ID is also a no-op (no error).
+	require.NoError(t, auth.RevokeAPIKey(ctx, "00000000-0000-0000-0000-aaaaaaaaaaaa"))
+}
+
+func TestAuthStore_RotateAPIKey(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u, _ := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "alice", Role: "writer",
+	}, nil)
+	old, _ := auth.CreateAPIKey(ctx, &storage.APIKey{
+		UserID: u.ID, PHCHash: "phc-old-padded-to-meet-min-length-ok-00", Label: "ci-bot",
+	})
+
+	newKey, err := auth.RotateAPIKey(ctx, old.ID, &storage.APIKey{
+		UserID: u.ID, PHCHash: "phc-new-padded-to-meet-min-length-ok-00", Label: "ci-bot",
+	})
+	require.NoError(t, err)
+	require.NotEqual(t, old.Prefix, newKey.Prefix)
+	require.Equal(t, "ci-bot", newKey.Label)
+
+	// Old key is revoked, new key is active.
+	oldReload, _ := auth.LookupAPIKeyByPrefix(ctx, old.Prefix)
+	require.NotNil(t, oldReload.RevokedAt)
+	newReload, _ := auth.LookupAPIKeyByPrefix(ctx, newKey.Prefix)
+	require.Nil(t, newReload.RevokedAt)
+}
+
+func TestAuthStore_RotateAPIKey_RollbackOnInsertFailure(t *testing.T) {
+	ctx := context.Background()
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	auth := authTestSetup(t)
+	u, _ := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "alice", Role: "writer",
+	}, nil)
+	old, _ := auth.CreateAPIKey(ctx, &storage.APIKey{
+		UserID: u.ID, PHCHash: "phc-old-padding-to-meet-min-length-check",
+	})
+
+	// Build a SECOND store with a bad generator — returns empty string
+	// which violates the prefix length CHECK constraint (23514), forcing
+	// the INSERT to fail on the FIRST attempt (not via the 23505 retry
+	// loop) and rolling back the entire tx including the revoke of `old`.
+	badAuth, err := postgres.NewAuth(ctx, pool, postgres.WithAuthKeyPrefixGenerator(
+		func() (string, error) { return "", nil }))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = badAuth.Close(ctx) })
+
+	_, err = badAuth.RotateAPIKey(ctx, old.ID, &storage.APIKey{
+		UserID: u.ID, PHCHash: "phc-new-padding-to-meet-min-length-check",
+	})
+	require.Error(t, err)
+
+	// Old key MUST still be live (rollback worked) and no new row exists.
+	// `auth` and `badAuth` deliberately share the same pool/tables, so this
+	// read-back via `auth` verifies committed/rolled-back DB state — not any
+	// in-memory store state — of the rotate performed through `badAuth`.
+	oldReload, _ := auth.LookupAPIKeyByPrefix(ctx, old.Prefix)
+	require.Nil(t, oldReload.RevokedAt, "old key must still be live after rollback")
+	var keyCount int
+	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM api_keys WHERE user_id = $1::uuid`, u.ID).Scan(&keyCount))
+	require.Equal(t, 1, keyCount, "only old key exists; no orphan from failed insert")
+}
+
+func TestAuthStore_RotateAPIKey_PrefixCollisionRetry(t *testing.T) {
+	ctx := context.Background()
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	auth := authTestSetup(t)
+	u, _ := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "alice", Role: "writer",
+	}, nil)
+	old, _ := auth.CreateAPIKey(ctx, &storage.APIKey{
+		UserID: u.ID, PHCHash: "phc-old-padding-to-meet-min-length-check",
+	})
+
+	// Seed a separate user with a key whose prefix the rotate generator
+	// will collide against. Using a different user keeps the test focused
+	// on the rotate path (not on the user's own key inventory).
+	other, _ := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "bob", Role: "writer",
+	}, nil)
+	_, err := pool.Exec(ctx, `
+		INSERT INTO api_keys (user_id, prefix, phc_hash)
+		VALUES ($1::uuid, 'collidex', 'phc-bob-padding-to-meet-min-length-check')`, other.ID)
+	require.NoError(t, err)
+
+	// Generator returns the colliding prefix twice (triggers 23505 +
+	// retry both times), then a fresh prefix on attempt 3.
+	calls := 0
+	gen := func() (string, error) {
+		calls++
+		if calls <= 2 {
+			return "collidex", nil
+		}
+		return "rotated2", nil
+	}
+	rotateAuth, err := postgres.NewAuth(ctx, pool, postgres.WithAuthKeyPrefixGenerator(gen))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = rotateAuth.Close(ctx) })
+
+	newKey, err := rotateAuth.RotateAPIKey(ctx, old.ID, &storage.APIKey{
+		UserID: u.ID, PHCHash: "phc-rot-padding-to-meet-min-length-check",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "rotated2", newKey.Prefix)
+	require.GreaterOrEqual(t, calls, 3, "retry loop should have invoked the generator at least 3 times")
+
+	// Old key is revoked, new key is active — same invariant as the happy
+	// path, but the path through the retry loop is now exercised.
+	oldReload, _ := auth.LookupAPIKeyByPrefix(ctx, old.Prefix)
+	require.NotNil(t, oldReload.RevokedAt)
+	newReload, _ := auth.LookupAPIKeyByPrefix(ctx, newKey.Prefix)
+	require.Nil(t, newReload.RevokedAt)
+}
+
+func TestAuthStore_ListAPIKeys(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u1, _ := auth.CreateHuman(ctx, &storage.User{Kind: storage.KindHuman, DisplayName: "alice", Role: "writer"}, nil)
+	u2, _ := auth.CreateHuman(ctx, &storage.User{Kind: storage.KindHuman, DisplayName: "bob", Role: "writer"}, nil)
+
+	k1, _ := auth.CreateAPIKey(ctx, &storage.APIKey{UserID: u1.ID, PHCHash: "phc1-padded-to-meet-min-length-ok-xxx", Label: "k1"})
+	_, _ = auth.CreateAPIKey(ctx, &storage.APIKey{UserID: u1.ID, PHCHash: "phc2-padded-to-meet-min-length-ok-xxx", Label: "k2"})
+	_, _ = auth.CreateAPIKey(ctx, &storage.APIKey{UserID: u2.ID, PHCHash: "phc3-padded-to-meet-min-length-ok-xxx", Label: "k3"})
+	require.NoError(t, auth.RevokeAPIKey(ctx, k1.ID))
+
+	// Per-user, excluding revoked by default.
+	keys, err := auth.ListAPIKeys(ctx, storage.ListAPIKeysFilter{UserID: u1.ID})
+	require.NoError(t, err)
+	require.Len(t, keys, 1)
+	require.Equal(t, "k2", keys[0].Label)
+
+	// IncludeRevoked.
+	keys, err = auth.ListAPIKeys(ctx, storage.ListAPIKeysFilter{UserID: u1.ID, IncludeRevoked: true})
+	require.NoError(t, err)
+	require.Len(t, keys, 2)
+
+	// All users (admin).
+	all, err := auth.ListAPIKeys(ctx, storage.ListAPIKeysFilter{})
+	require.NoError(t, err)
+	require.Len(t, all, 2) // k1 revoked excluded, k2 and k3 remain
+}
+
+func TestAuthStore_TouchLastUsed(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u, _ := auth.CreateHuman(ctx, &storage.User{Kind: storage.KindHuman, DisplayName: "alice", Role: "writer"}, nil)
+	k, _ := auth.CreateAPIKey(ctx, &storage.APIKey{UserID: u.ID, PHCHash: "phc-stub-padded-to-meet-min-length-ok"})
+
+	require.Nil(t, k.LastUsedAt)
+	require.NoError(t, auth.TouchLastUsed(ctx, k.ID))
+
+	reloaded, _ := auth.LookupAPIKeyByPrefix(ctx, k.Prefix)
+	require.NotNil(t, reloaded.LastUsedAt)
+}

@@ -136,26 +136,6 @@ func (s *AuthStore) now() time.Time { return s.nowFunc() }
 // in tests fails loudly with a recognizable message rather than returning
 // a zero value.
 
-func (s *AuthStore) CreateAPIKey(ctx context.Context, k *storage.APIKey) (*storage.APIKey, error) {
-	return nil, errors.New("CreateAPIKey not implemented")
-}
-
-func (s *AuthStore) RevokeAPIKey(ctx context.Context, keyID string) error {
-	return errors.New("RevokeAPIKey not implemented")
-}
-
-func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *storage.APIKey) (*storage.APIKey, error) {
-	return nil, errors.New("RotateAPIKey not implemented")
-}
-
-func (s *AuthStore) ListAPIKeys(ctx context.Context, f storage.ListAPIKeysFilter) ([]*storage.APIKey, error) {
-	return nil, errors.New("ListAPIKeys not implemented")
-}
-
-func (s *AuthStore) TouchLastUsed(ctx context.Context, keyID string) error {
-	return errors.New("TouchLastUsed not implemented")
-}
-
 func (s *AuthStore) JITCreateHuman(ctx context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, *storage.OIDCBinding, error) {
 	return nil, nil, errors.New("JITCreateHuman not implemented")
 }

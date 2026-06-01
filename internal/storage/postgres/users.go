@@ -15,6 +15,11 @@ import (
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
+// maxPrefixRetries bounds prefix-collision regeneration before returning
+// ErrAPIKeyPrefixExists. With ~40 bits of prefix entropy a collision is
+// astronomically unlikely, so 3 attempts is ample.
+const maxPrefixRetries = 3
+
 // LookupAPIKeyByPrefix returns the api_keys row whose prefix matches.
 func (s *AuthStore) LookupAPIKeyByPrefix(ctx context.Context, prefix string) (*storage.APIKey, error) {
 	const q = `
@@ -294,4 +299,179 @@ func (s *AuthStore) ListUsers(ctx context.Context, f storage.ListUsersFilter) ([
 		out = append(out, &u)
 	}
 	return out, rows.Err()
+}
+
+// CreateAPIKey inserts a new API key with a generated prefix. Retries up to
+// 3 times on prefix-uniqueness violation; returns ErrAPIKeyPrefixExists if
+// all retries collide (essentially impossible at 40 bits of entropy).
+//
+// The plaintext prefix and secret are NOT taken from the caller; the
+// caller passes only metadata (UserID, PHCHash, RoleDowngrade, Label,
+// ExpiresAt). Prefix is generated via s.genPrefix (overridable per-
+// instance via WithAuthKeyPrefixGenerator for tests; never package-global).
+func (s *AuthStore) CreateAPIKey(ctx context.Context, k *storage.APIKey) (*storage.APIKey, error) {
+	if k.UserID == "" {
+		return nil, errors.New("CreateAPIKey: UserID required")
+	}
+	if k.PHCHash == "" {
+		return nil, errors.New("CreateAPIKey: PHCHash required")
+	}
+	for attempt := 0; attempt < maxPrefixRetries; attempt++ {
+		prefix, err := s.genPrefix()
+		if err != nil {
+			return nil, fmt.Errorf("generate prefix: %w", err)
+		}
+		const q = `
+			INSERT INTO api_keys (user_id, prefix, phc_hash, role_downgrade, label, expires_at)
+			VALUES ($1::uuid, $2, $3, $4, $5, $6)
+			RETURNING id, created_at`
+		var id string
+		var createdAt time.Time
+		err = s.pool.QueryRow(ctx, q, k.UserID, prefix, k.PHCHash, k.RoleDowngrade, k.Label, k.ExpiresAt).
+			Scan(&id, &createdAt)
+		if err == nil {
+			k.ID = id
+			k.Prefix = prefix
+			k.CreatedAt = createdAt
+			return k, nil
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "api_keys_prefix_key" {
+			continue // retry with new prefix
+		}
+		return nil, fmt.Errorf("insert api key: %w", err)
+	}
+	return nil, storage.ErrAPIKeyPrefixExists
+}
+
+// RevokeAPIKey marks the key revoked. Idempotent on already-revoked or
+// nonexistent IDs (does not error).
+func (s *AuthStore) RevokeAPIKey(ctx context.Context, keyID string) error {
+	_, err := s.pool.Exec(ctx, `
+		UPDATE api_keys SET revoked_at = $1
+		WHERE id = $2::uuid AND revoked_at IS NULL`, s.now(), keyID)
+	if err != nil {
+		return fmt.Errorf("revoke key: %w", err)
+	}
+	return nil
+}
+
+// RotateAPIKey revokes the old key and inserts a new one with the supplied
+// metadata in one transaction. Returns the new key with generated prefix
+// and ID populated.
+func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *storage.APIKey) (*storage.APIKey, error) {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	tag, err := tx.Exec(ctx, `
+		UPDATE api_keys SET revoked_at = $1
+		WHERE id = $2::uuid AND revoked_at IS NULL`, s.now(), oldKeyID)
+	if err != nil {
+		return nil, fmt.Errorf("revoke old key: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return nil, storage.ErrAPIKeyNotFound
+	}
+
+	// Insert new key inside the same tx with collision retry.
+	// Use savepoints to roll back only the failed INSERT on collision,
+	// keeping the revoke above intact. Postgres aborts the whole tx on
+	// any error without a savepoint, so we need one per attempt.
+	for attempt := 0; attempt < maxPrefixRetries; attempt++ {
+		prefix, err := s.genPrefix()
+		if err != nil {
+			return nil, fmt.Errorf("generate prefix: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `SAVEPOINT rotate_insert`); err != nil {
+			return nil, fmt.Errorf("savepoint: %w", err)
+		}
+		var id string
+		var createdAt time.Time
+		err = tx.QueryRow(ctx, `
+			INSERT INTO api_keys (user_id, prefix, phc_hash, role_downgrade, label, expires_at)
+			VALUES ($1::uuid, $2, $3, $4, $5, $6)
+			RETURNING id, created_at`,
+			newKey.UserID, prefix, newKey.PHCHash, newKey.RoleDowngrade,
+			newKey.Label, newKey.ExpiresAt).Scan(&id, &createdAt)
+		if err == nil {
+			newKey.ID = id
+			newKey.Prefix = prefix
+			newKey.CreatedAt = createdAt
+			// Explicitly release the savepoint so its lifecycle is balanced
+			// (Commit would auto-release, but the explicit RELEASE keeps a
+			// future in-tx edit from leaving an orphaned savepoint).
+			if _, relErr := tx.Exec(ctx, `RELEASE SAVEPOINT rotate_insert`); relErr != nil {
+				return nil, fmt.Errorf("release savepoint: %w", relErr)
+			}
+			if err := tx.Commit(ctx); err != nil {
+				return nil, err
+			}
+			return newKey, nil
+		}
+		if _, rbErr := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT rotate_insert`); rbErr != nil {
+			return nil, fmt.Errorf("rollback savepoint: %w", rbErr)
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "api_keys_prefix_key" {
+			continue
+		}
+		return nil, fmt.Errorf("insert new key: %w", err)
+	}
+	return nil, storage.ErrAPIKeyPrefixExists
+}
+
+// ListAPIKeys returns keys matching the filter.
+func (s *AuthStore) ListAPIKeys(ctx context.Context, f storage.ListAPIKeysFilter) ([]*storage.APIKey, error) {
+	q := `
+		SELECT id, user_id, prefix, phc_hash, role_downgrade, label,
+		       expires_at, last_used_at, revoked_at, created_at
+		FROM api_keys WHERE 1=1`
+	args := []any{}
+	if f.UserID != "" {
+		args = append(args, f.UserID)
+		q += fmt.Sprintf(` AND user_id = $%d::uuid`, len(args))
+	}
+	if !f.IncludeRevoked {
+		q += ` AND revoked_at IS NULL`
+	}
+	limit := f.Limit
+	if limit <= 0 {
+		limit = 100
+	}
+	args = append(args, limit, f.Offset)
+	q += fmt.Sprintf(` ORDER BY created_at DESC LIMIT $%d OFFSET $%d`, len(args)-1, len(args))
+
+	rows, err := s.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list api keys: %w", err)
+	}
+	defer rows.Close()
+
+	var out []*storage.APIKey
+	for rows.Next() {
+		var k storage.APIKey
+		if err := rows.Scan(&k.ID, &k.UserID, &k.Prefix, &k.PHCHash, &k.RoleDowngrade,
+			&k.Label, &k.ExpiresAt, &k.LastUsedAt, &k.RevokedAt, &k.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, &k)
+	}
+	return out, rows.Err()
+}
+
+// TouchLastUsed sets last_used_at = now() for the key. Nonexistent or
+// already-revoked IDs are silent no-ops (fire-and-forget semantics).
+// Excluding revoked keys prevents audit-log confusion when a key is
+// revoked between a successful verify and the async last-used update.
+func (s *AuthStore) TouchLastUsed(ctx context.Context, keyID string) error {
+	_, err := s.pool.Exec(ctx, `
+		UPDATE api_keys SET last_used_at = $1
+		WHERE id = $2::uuid AND revoked_at IS NULL`, s.now(), keyID)
+	if err != nil {
+		return fmt.Errorf("touch last_used_at: %w", err)
+	}
+	return nil
 }
