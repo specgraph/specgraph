@@ -14,11 +14,11 @@ import (
 	"github.com/specgraph/specgraph/internal/auth"
 )
 
-// mockStore implements auth.IdentityStore for tests.
-// "valid-test-key" resolves to a known identity; everything else returns ErrUnknownKey.
-type mockStore struct{}
+// mockResolver implements auth.Resolver for tests.
+// "valid-test-key" resolves to a known identity; everything else returns ErrUnauthenticated.
+type mockResolver struct{}
 
-func (m *mockStore) ResolveAPIKey(_ context.Context, key string) (*auth.Identity, error) {
+func (m *mockResolver) Resolve(_ context.Context, key string) (*auth.Identity, error) {
 	if key == "valid-test-key" {
 		return &auth.Identity{
 			Subject:     "apikey:test",
@@ -26,14 +26,10 @@ func (m *mockStore) ResolveAPIKey(_ context.Context, key string) (*auth.Identity
 			Role:        auth.RoleReader,
 		}, nil
 	}
-	return nil, auth.ErrUnknownKey
+	return nil, auth.ErrUnauthenticated
 }
 
-func (m *mockStore) ResolveJWT(_ context.Context, _ string) (*auth.Identity, error) {
-	return nil, auth.ErrNoOIDC
-}
-
-func (m *mockStore) HasAuth() bool { return true }
+func (m *mockResolver) HasAuth(_ context.Context) (bool, error) { return true, nil }
 
 // noopMW is a pass-through auth middleware used for routes that pre-populate the context.
 func noopMW(next http.Handler) http.Handler { return next }
@@ -47,14 +43,14 @@ func identityMW(id *auth.Identity) func(http.Handler) http.Handler {
 	}
 }
 
-func newTestMux(store auth.IdentityStore, authMW func(http.Handler) http.Handler) *http.ServeMux {
+func newTestMux(resolver auth.Resolver, authMW func(http.Handler) http.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
-	RegisterAuthHandlers(mux, store, authMW)
+	RegisterAuthHandlers(mux, resolver, authMW)
 	return mux
 }
 
 func TestHandleLogin_ValidKey(t *testing.T) {
-	mux := newTestMux(&mockStore{}, noopMW)
+	mux := newTestMux(&mockResolver{}, noopMW)
 
 	body := `{"key":"valid-test-key"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
@@ -102,7 +98,7 @@ func TestHandleLogin_ValidKey(t *testing.T) {
 }
 
 func TestHandleLogin_InvalidKey(t *testing.T) {
-	mux := newTestMux(&mockStore{}, noopMW)
+	mux := newTestMux(&mockResolver{}, noopMW)
 
 	body := `{"key":"wrong-key"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
@@ -117,7 +113,7 @@ func TestHandleLogin_InvalidKey(t *testing.T) {
 }
 
 func TestHandleLogin_MissingBody(t *testing.T) {
-	mux := newTestMux(&mockStore{}, noopMW)
+	mux := newTestMux(&mockResolver{}, noopMW)
 
 	// Empty JSON body — key field absent → empty string → treated as missing.
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{}`))
@@ -132,7 +128,7 @@ func TestHandleLogin_MissingBody(t *testing.T) {
 }
 
 func TestHandleLogin_WrongContentType(t *testing.T) {
-	mux := newTestMux(&mockStore{}, noopMW)
+	mux := newTestMux(&mockResolver{}, noopMW)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader("key=valid-test-key"))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -146,7 +142,7 @@ func TestHandleLogin_WrongContentType(t *testing.T) {
 }
 
 func TestHandleLogout(t *testing.T) {
-	mux := newTestMux(&mockStore{}, noopMW)
+	mux := newTestMux(&mockResolver{}, noopMW)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 	w := httptest.NewRecorder()
@@ -179,7 +175,7 @@ func TestHandleWhoami_WithIdentity(t *testing.T) {
 		DisplayName: "Test User",
 		Role:        auth.RoleReader,
 	}
-	mux := newTestMux(&mockStore{}, identityMW(id))
+	mux := newTestMux(&mockResolver{}, identityMW(id))
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/whoami", nil)
 	w := httptest.NewRecorder()
@@ -204,7 +200,7 @@ func TestHandleWhoami_WithIdentity(t *testing.T) {
 }
 
 func TestHandleWhoami_NoIdentity(t *testing.T) {
-	mux := newTestMux(&mockStore{}, noopMW)
+	mux := newTestMux(&mockResolver{}, noopMW)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/whoami", nil)
 	w := httptest.NewRecorder()

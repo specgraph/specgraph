@@ -22,6 +22,7 @@ import (
 	mcpserver "github.com/mark3labs/mcp-go/server"
 
 	"github.com/specgraph/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/auth/usagetracker"
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/docker"
 	"github.com/specgraph/specgraph/internal/drift"
@@ -128,88 +129,92 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	// Register change notification subscribers.
 	store.Subscribe(notify.NewImpactLogger())
 
-	credPath := xdg.CredentialsFile()
-	authStore, err := auth.NewConfigStore(cfg.Auth, credPath)
+	// Build the auth store via the existing postgres.Store.Pool() accessor.
+	// s is the concrete *postgres.Store from which Pool() is accessible;
+	// store is the narrower backendStore interface used everywhere else.
+	authStore, err := postgres.NewAuth(ctx, s.Pool())
 	if err != nil {
-		return fmt.Errorf("auth config: %w", err)
+		return fmt.Errorf("auth store: %w", err)
 	}
-
-	mode := cfg.Auth.Mode
-	if mode == "" {
-		mode = "local"
-	}
-
-	// Validate auth mode.
-	switch mode {
-	case "local", "oidc", "mixed":
-	default:
-		return fmt.Errorf("invalid auth.mode %q (must be local, oidc, or mixed)", mode)
-	}
-	if mode == "oidc" && len(cfg.Auth.OIDCProviders) == 0 {
-		return fmt.Errorf("auth.mode=oidc requires at least one oidc_providers entry")
-	}
-
-	// Bootstrap: generate default admin key in local mode if none configured.
-	if mode == "local" && !authStore.HasKeys() {
-		key, bootstrapErr := auth.Bootstrap(credPath)
-		if bootstrapErr != nil {
-			slog.Warn("auth bootstrap skipped (credentials directory not writable)",
-				"path", credPath,
-				"error", bootstrapErr.Error())
-		} else {
-			fmt.Fprintf(os.Stderr, "\n  SpecGraph generated a default admin API key:\n\n    %s\n\n  Save this key — it won't be shown again.\n  Stored in: %s\n\n", key, credPath)
-
-			// Reload store with the new key.
-			authStore, err = auth.NewConfigStore(cfg.Auth, credPath)
-			if err != nil {
-				return fmt.Errorf("reload auth after bootstrap: %w", err)
-			}
+	defer func() {
+		if closeErr := authStore.Close(ctx); closeErr != nil {
+			slog.Warn("auth store close", "error", closeErr)
 		}
-	} else if mode == "local" {
-		if _, statErr := os.Stat(credPath); statErr == nil {
-			fmt.Fprintf(os.Stderr, "  Auth: using credentials from %s\n", credPath)
+	}()
+
+	// Construct OIDC verifiers (one per provider).
+	// Iterate cfg.Auth.OIDC.Providers — the canonical field. The config loader
+	// copies any legacy cfg.Auth.OIDCProviders entries into this field, so
+	// reading the legacy field here would yield ZERO verifiers for any config
+	// that uses the auth.oidc.providers shape (silently breaking all JWT/JIT
+	// auth). Must match the claims-mapping source below.
+	verifiers := make([]*auth.OIDCVerifier, 0, len(cfg.Auth.OIDC.Providers))
+	for _, pc := range cfg.Auth.OIDC.Providers {
+		issuerCtx, issuerCancel := context.WithTimeout(ctx, 10*time.Second)
+		v, oidcErr := auth.NewOIDCVerifier(issuerCtx, pc)
+		issuerCancel()
+		if oidcErr != nil {
+			return fmt.Errorf("OIDC provider %s: %w", pc.ID, oidcErr)
 		}
+		verifiers = append(verifiers, v)
+		slog.Info("auth: OIDC provider configured", "id", pc.ID, "issuer", pc.Issuer)
 	}
 
-	if warning := auth.CheckCredentialPermissions(credPath); warning != "" {
-		slog.Warn(warning)
+	// usagetracker for async TouchLastUsed.
+	tracker := usagetracker.NewManager(authStore, usagetracker.Config{
+		BufferSize:    256,
+		FlushInterval: 5 * time.Second,
+	})
+	defer func() {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer shutdownCancel()
+		if trackerErr := tracker.Close(shutdownCtx); trackerErr != nil {
+			slog.Warn("usagetracker close", "error", trackerErr)
+		}
+		if dropped := tracker.Dropped(); dropped > 0 {
+			slog.Warn("usagetracker dropped touches over session lifetime",
+				"count", dropped,
+				"hint", "increase auth usagetracker BufferSize or decrease FlushInterval")
+		}
+	}()
+
+	// Role→permissions snapshot (built-ins ∪ cfg.Auth.Roles). Shared by the
+	// authorizer and used to derive KnownRoles for JIT validation.
+	rolePerms := auth.LoadRolePerms(cfg.Auth.Roles)
+	knownRoles := make(map[auth.Role]bool, len(rolePerms))
+	for r := range rolePerms {
+		knownRoles[r] = true
 	}
 
-	// Set up OIDC providers (only for oidc/mixed modes).
-	var oidcStores []*auth.OIDCStore
-	if mode != "local" {
-		defaultRole := cfg.Auth.DefaultRole
-		if defaultRole == "" {
-			defaultRole = "reader"
-		}
-
-		rolePerms := make(map[auth.Role][]string)
-		for role, perms := range auth.DefaultRolePermissions {
-			rolePerms[role] = perms
-		}
-		for name, rc := range cfg.Auth.Roles {
-			rolePerms[auth.Role(name)] = rc.Permissions
-		}
-
-		for _, pc := range cfg.Auth.OIDCProviders {
-			issuerCtx, issuerCancel := context.WithTimeout(ctx, 10*time.Second)
-			oidcStore, oidcErr := auth.NewOIDCStore(issuerCtx, pc, defaultRole, rolePerms)
-			issuerCancel()
-			if oidcErr != nil {
-				return fmt.Errorf("OIDC provider %s: %w", pc.ID, oidcErr)
-			}
-			oidcStores = append(oidcStores, oidcStore)
-			slog.Info("auth: OIDC provider configured", "id", pc.ID, "issuer", pc.Issuer)
-		}
+	// Build the Resolver (pgIdentityStore backed by Postgres).
+	resolver, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users:                   authStore,
+		Verifiers:               verifiers,
+		Tracker:                 tracker,
+		KnownRoles:              knownRoles,
+		JITEnabled:              cfg.Auth.OIDC.JITCreate.Enabled,
+		JITDefaultRole:          auth.Role(cfg.Auth.OIDC.JITCreate.DefaultRole),
+		JITClaimsMapping:        buildClaimsMappingByIssuer(cfg.Auth.OIDC.Providers),
+		JITRateBurstPerHour:     cfg.Auth.OIDC.JITCreate.RateLimitPerHour,
+		JITEmailDomainAllowlist: cfg.Auth.OIDC.JITCreate.EmailDomainAllowlist,
+	})
+	if err != nil {
+		return fmt.Errorf("identity store: %w", err)
 	}
 
-	compositeStore, csErr := auth.NewCompositeStore(authStore, oidcStores, mode)
-	if csErr != nil {
-		return fmt.Errorf("auth composite store: %w", csErr)
-	}
+	// Authorizer (static table for now; Cedar plan swaps).
+	authorizer := auth.NewStaticTableAuthorizer(rolePerms)
 
-	warnIfNoAuthOnPublicListen(cfg.Server.Listen, compositeStore.HasAuth())
-	interceptor := auth.NewAuthInterceptor(compositeStore)
+	interceptor := auth.NewAuthInterceptor(resolver, authorizer)
+
+	// HasAuth signal for the existing warn path.
+	hasAuth, hasAuthErr := resolver.HasAuth(ctx)
+	if hasAuthErr != nil {
+		slog.Warn("auth: HasAuth check failed at startup", "error", hasAuthErr)
+	}
+	if !hasAuth {
+		warnIfNoAuthOnPublicListen(cfg.Server.Listen, false)
+	}
 	maxBytes := connect.WithReadMaxBytes(4 << 20) // 4 MiB request body limit
 	opts := connect.WithInterceptors(interceptor)
 
@@ -241,8 +246,8 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
 	syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
 
-	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(compositeStore))
-	server.RegisterAuthHandlers(mux, compositeStore, auth.RequireAuth(compositeStore))
+	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(resolver))
+	server.RegisterAuthHandlers(mux, resolver, auth.RequireAuth(resolver))
 
 	// Mount MCP streamable HTTP endpoint with auth gating.
 	// RequireAuth returns 401 for unauthenticated callers, which is the
@@ -271,7 +276,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 			return ctx
 		}),
 	)
-	mux.Handle("/mcp/", mcpHeaderLogger(auth.RequireAuth(compositeStore)(
+	mux.Handle("/mcp/", mcpHeaderLogger(auth.RequireAuth(resolver)(
 		http.StripPrefix("/mcp", mcpHTTPHandler),
 	)))
 
@@ -463,4 +468,17 @@ func mcpHeaderLogger(next http.Handler) http.Handler {
 		)
 		next.ServeHTTP(w, r)
 	})
+}
+
+// buildClaimsMappingByIssuer converts a slice of OIDCProviderConfig into a
+// map keyed by issuer URL, where each value is the provider's ClaimsMapping
+// slice. Consumed by auth.IdentityStoreConfig.JITClaimsMapping at startup.
+func buildClaimsMappingByIssuer(providers []config.OIDCProviderConfig) map[string][]config.ClaimMapping {
+	out := make(map[string][]config.ClaimMapping, len(providers))
+	for _, pc := range providers {
+		if len(pc.ClaimsMapping) > 0 {
+			out[pc.Issuer] = pc.ClaimsMapping
+		}
+	}
+	return out
 }
