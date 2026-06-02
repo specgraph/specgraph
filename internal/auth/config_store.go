@@ -19,13 +19,6 @@ import (
 	"github.com/specgraph/specgraph/internal/config"
 )
 
-// DefaultRolePermissions defines the built-in role permission bundles.
-var DefaultRolePermissions = map[Role][]string{
-	RoleReader: {"*:read"},
-	RoleWriter: {"*:read", "*:write"},
-	RoleAdmin:  {"*:*"},
-}
-
 // ConfigStore implements IdentityStore backed by static config file entries.
 type ConfigStore struct {
 	identities map[string]*Identity

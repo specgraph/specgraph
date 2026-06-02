@@ -11,6 +11,23 @@ import (
 // ErrUnknownKey is returned when an API key is not recognized.
 var ErrUnknownKey = errors.New("unknown API key")
 
+// ErrUnauthenticated indicates a credential failure: missing, malformed,
+// expired, revoked, soft-deleted user, JIT-rate-limited, allowlist
+// mismatch, or any other "this principal isn't allowed to authenticate"
+// condition. The interceptor maps this to connect.CodeUnauthenticated.
+//
+// Produced by the new Resolver impl (pgIdentityStore). The legacy
+// IdentityStore methods still produce ErrUnknownKey etc. until Phase C.
+var ErrUnauthenticated = errors.New("auth: unauthenticated")
+
+// ErrTransient indicates a backend failure unrelated to the credential:
+// database unavailable, pool exhausted, network timeout. The interceptor
+// maps this to connect.CodeUnavailable so callers know to retry.
+//
+// Errors of this kind wrap the underlying cause; tests use errors.Is to
+// detect ErrTransient.
+var ErrTransient = errors.New("auth: transient backend error")
+
 // ErrNoOIDC is returned by stores that don't support OIDC token resolution.
 var ErrNoOIDC = errors.New("OIDC not configured")
 
