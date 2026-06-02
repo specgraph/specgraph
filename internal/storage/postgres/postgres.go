@@ -99,6 +99,14 @@ func New(ctx context.Context, connString string, opts ...Option) (*Store, error)
 	return s, nil
 }
 
+// Pool returns the underlying pgxpool.Pool. Intended for the AuthStore
+// constructor to share the database connection without owning a second
+// pool. NOT a general-purpose escape hatch — code outside the auth and
+// project storage layers should never reach into the pool directly.
+func (s *Store) Pool() *pgxpool.Pool {
+	return s.pool
+}
+
 // Ping verifies Postgres connectivity through the connection pool. The
 // wrapping is load-bearing: callers surface the message verbatim, and
 // unwrapped pgxpool errors are too opaque to diagnose in isolation.

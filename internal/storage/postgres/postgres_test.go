@@ -3,6 +3,7 @@
 
 //go:build integration
 
+// Package postgres_test exercises the postgres storage package via its public API using integration tests backed by a real Postgres container.
 package postgres_test
 
 import (
@@ -16,60 +17,27 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/specgraph/specgraph/internal/storage/postgres"
+	"github.com/specgraph/specgraph/internal/storage/postgres/postgrestest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 // connString is set once by TestMain and shared across all tests.
+// The container is started by postgrestest.ConnString (Task 32); there is now
+// ONE container-start implementation importable cross-package.
 var connString string
 
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 
-	req := testcontainers.ContainerRequest{
-		Image:        "pgvector/pgvector:pg18",
-		ExposedPorts: []string{"5432/tcp"},
-		Env: map[string]string{
-			"POSTGRES_USER":     "test",
-			"POSTGRES_PASSWORD": "test",
-			"POSTGRES_DB":       "testdb",
-		},
-		WaitingFor: wait.ForLog("database system is ready to accept connections").
-			WithOccurrence(2).
-			WithStartupTimeout(60 * time.Second),
-	}
-
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
+	var err error
+	connString, err = postgrestest.ConnString(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to start postgres container: %v\n", err)
 		os.Exit(1)
 	}
 
-	host, err := container.Host(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to get container host: %v\n", err)
-		_ = container.Terminate(ctx)
-		os.Exit(1)
-	}
-
-	port, err := container.MappedPort(ctx, "5432")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to get mapped port: %v\n", err)
-		_ = container.Terminate(ctx)
-		os.Exit(1)
-	}
-
-	connString = fmt.Sprintf("postgres://test:test@%s:%s/testdb", host, port.Port())
-
-	code := m.Run()
-
-	_ = container.Terminate(ctx)
-	os.Exit(code)
+	os.Exit(m.Run())
 }
 
 // newStore creates a postgres Store with retry logic and registers cleanup.

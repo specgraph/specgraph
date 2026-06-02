@@ -141,3 +141,20 @@ var ErrClaimRequiresAuthored = errors.New("claim requires provenance_type = AUTH
 
 // ErrCompletionRequiresAuthored is returned when report-completion is invoked on a non-AUTHORED spec.
 var ErrCompletionRequiresAuthored = errors.New("report-completion requires provenance_type = AUTHORED")
+
+// --- Identity errors ---
+
+// ErrUserNotFound is returned when a user does not exist.
+var ErrUserNotFound = errors.New("user not found")
+
+// ErrAPIKeyNotFound is returned when an API key does not exist.
+var ErrAPIKeyNotFound = errors.New("api key not found")
+
+// ErrOIDCBindingNotFound is returned when an OIDC binding does not exist.
+var ErrOIDCBindingNotFound = errors.New("oidc binding not found")
+
+// ErrBootstrapExists is returned when a bootstrap user already exists.
+var ErrBootstrapExists = errors.New("bootstrap user already exists")
+
+// ErrAPIKeyPrefixExists is returned when an API key prefix collides with an existing key.
+var ErrAPIKeyPrefixExists = errors.New("api key prefix collision")
