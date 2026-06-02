@@ -240,6 +240,13 @@ func loadGlobalAt(path string, materializeDefaults bool, opts ...LoadOption) (*G
 		return nil, fmt.Errorf("load defaults: %w", err)
 	}
 
+	// Build the env-key mapper from the defaults-only schema, BEFORE the file
+	// loads. Deriving it from post-file state would let an unexpected file key
+	// (e.g. a nested client.default.server) inject a colliding env form and
+	// steal SPECGRAPH_CLIENT_DEFAULT_SERVER from the real client.default_server
+	// key, breaking env-over-file precedence nondeterministically.
+	mapper := envKeyMapper(k)
+
 	// 2. file — materialize defaults or fail loudly when absent.
 	// Note: only stat failures other than ENOENT surface as "read config"; an
 	// existing-but-unreadable file stats fine and its read error surfaces below
@@ -258,10 +265,9 @@ func loadGlobalAt(path string, materializeDefaults bool, opts ...LoadOption) (*G
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
-	// 3. env — SPECGRAPH_* via known-key mapper. The mapper returns a dotted
-	// koanf key for recognized vars and "" (ignored) otherwise; values pass
-	// through unchanged.
-	mapper := envKeyMapper(k)
+	// 3. env — SPECGRAPH_* via the defaults-derived mapper (built above). The
+	// mapper returns a dotted koanf key for recognized vars and "" (ignored)
+	// otherwise; values pass through unchanged.
 	if err := k.Load(env.Provider("SPECGRAPH_", ".", mapper), nil); err != nil {
 		return nil, fmt.Errorf("load env: %w", err)
 	}

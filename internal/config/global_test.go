@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
@@ -390,12 +392,32 @@ func TestLoadGlobal_MaterializedFileMatchesDefaults(t *testing.T) {
 
 	cfg, err := config.LoadGlobal(path) // missing -> materialize
 	require.NoError(t, err)
-	assert.Equal(t, "0.0.0.0:9090", cfg.Server.Listen) // matches globalDefaults()
+	assert.Equal(t, "0.0.0.0:9090", cfg.Server.Listen) // sanity: matches globalDefaults()
 
 	reread, err := config.LoadGlobalExplicit(path) // now exists
 	require.NoError(t, err)
-	assert.Equal(t, "postgres://specgraph:specgraph@localhost:5432/specgraph?sslmode=disable",
-		reread.Server.Postgres.URL)
+	// Full struct comparison catches nested default drift and serialization
+	// omissions, not just the sentinel field above. EquateEmpty: the two load
+	// paths differ harmlessly in nil-vs-empty slices for file-omitted keys.
+	if diff := cmp.Diff(cfg, reread, cmpopts.EquateEmpty()); diff != "" {
+		t.Errorf("materialized config differs from reread (-materialized +reread):\n%s", diff)
+	}
+}
+
+// A file key whose env form collides with a real scalar key (here a nested
+// client.default.server vs the real client.default_server) must NOT pollute the
+// env mapper: the mapper is built from the defaults-only schema, so env still
+// resolves deterministically to the real key and beats the file value.
+func TestLoadGlobal_FileKeyDoesNotPolluteEnvMapper(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	doc := "client:\n  default:\n    server: junk\n  default_server: http://file:1\n"
+	require.NoError(t, os.WriteFile(path, []byte(doc), 0o600))
+	t.Setenv("SPECGRAPH_CLIENT_DEFAULT_SERVER", "http://env:2")
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.Equal(t, "http://env:2", cfg.Client.DefaultServer) // env beats file, deterministically
 }
 
 // Env values are always strings; this guards the WeaklyTypedInput + duration
