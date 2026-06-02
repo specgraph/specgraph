@@ -1,6 +1,6 @@
 import { test as base } from '@playwright/test';
 
-const E2E_API_KEY = 'spgr_sk_e2e00000000000000000000000000000';
+const E2E_API_KEY = 'spgr_sk_e2eadmin_e2esecret32charsfixedpaddingaaa0'; // matches helpers.ts + e2e/ui/seed.sql
 
 // Extend the base test to log in via the UI before each test.
 export const test = base.extend({
