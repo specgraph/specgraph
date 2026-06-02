@@ -4,6 +4,7 @@ go 1.26.3
 
 require (
 	connectrpc.com/connect v1.19.1
+	github.com/cedar-policy/cedar-go v1.7.0
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/go-jose/go-jose/v4 v4.1.4
@@ -66,7 +67,6 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
-	github.com/cedar-policy/cedar-go v1.7.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
