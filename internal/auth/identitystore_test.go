@@ -5,6 +5,7 @@ package auth_test
 
 import (
 	"context"
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -77,12 +78,39 @@ func TestResolve_EmptyTokenUnauthenticated(t *testing.T) {
 	require.ErrorIs(t, err, auth.ErrUnauthenticated)
 }
 
+// TestResolve_JWTShapeRoutesToOIDC verifies that a JWT-shaped token (three
+// dot-separated segments) is routed to the OIDC path rather than the API-key
+// path. Routing is observed by confirming that LookupOIDCBinding is called
+// (not LookupAPIKeyByPrefix) when the token carries a known issuer and passes
+// signature verification.
 func TestResolve_JWTShapeRoutesToOIDC(t *testing.T) {
-	store := newTestIdentityStore(t)
-	// 3-segment string but garbage payload — dispatches to OIDC, which
-	// will fail because no verifier matches the issuer.
-	_, err := store.Resolve(context.Background(), "abc.def.ghi")
-	require.ErrorIs(t, err, auth.ErrUnauthenticated)
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	oidcCalled := false
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, issuer, _ string) (*storage.OIDCBinding, error) {
+			oidcCalled = true
+			require.Equal(t, p.server.URL, issuer, "peek issuer must match verifier issuer")
+			return nil, storage.ErrOIDCBindingNotFound
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+	})
+	require.NoError(t, err)
+
+	token := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "route-probe", "aud": "aud-1",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+	})
+	_, resolveErr := store.Resolve(context.Background(), token)
+	// No binding → ErrUnauthenticated (JIT path not yet enabled)
+	require.ErrorIs(t, resolveErr, auth.ErrUnauthenticated)
+	require.True(t, oidcCalled, "LookupOIDCBinding must be called: proves JWT was routed to OIDC path, not API-key path")
 }
 
 // TestResolve_APIKeyShapeRoutesToKeyPath verifies that a well-formed
@@ -377,4 +405,149 @@ func TestResolveAPIKey_DowngradeAboveRoleNoEscalation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, auth.Role("reader"), id.Role)
 	require.Equal(t, auth.Role("reader"), id.EffectiveRole, "downgrade above role must not escalate")
+}
+
+// --- Task 16: JWT issuer peek + verifier routing ---
+
+func TestResolveJWT_UnknownIssuerUnauthenticated(t *testing.T) {
+	store := newTestIdentityStore(t) // no verifiers configured
+	// JWT-shaped token (exactly 2 dots) whose middle segment is valid
+	// base64url-encoded JSON carrying an iss claim. peekIssuerV2 succeeds and
+	// extracts the issuer, but no verifier is configured for it, so the
+	// verifier-map lookup misses → ErrUnauthenticated.
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256","typ":"JWT"}`))
+	payload := base64.RawURLEncoding.EncodeToString([]byte(`{"iss":"https://unknown.example/","sub":"u"}`))
+	token := header + "." + payload + ".sig"
+	_, err := store.Resolve(context.Background(), token)
+	require.ErrorIs(t, err, auth.ErrUnauthenticated)
+}
+
+func TestResolveJWT_UndecodablePayloadUnauthenticated(t *testing.T) {
+	store := newTestIdentityStore(t)
+	// JWT-shaped token (exactly 2 dots) whose middle segment is NOT valid
+	// base64url, so peekIssuerV2's base64-decode branch fails →
+	// ErrUnauthenticated. Exercises the decode-error path via the real JWT route.
+	_, err := store.Resolve(context.Background(), "eyJhbGciOiJSUzI1NiJ9.!!!.sig")
+	require.ErrorIs(t, err, auth.ErrUnauthenticated)
+}
+
+func TestResolve_FourSegmentTokenRoutesToAPIKeyPath(t *testing.T) {
+	store := newTestIdentityStore(t)
+	// Four segments (three dots) is NOT JWT-shaped (isJWTShaped requires
+	// exactly two dots), so it falls through to the API-key resolver, which
+	// rejects it as malformed → ErrUnauthenticated. This never reaches
+	// peekIssuerV2 or the OIDC path.
+	_, err := store.Resolve(context.Background(), "not.a.valid.jwt")
+	require.ErrorIs(t, err, auth.ErrUnauthenticated)
+}
+
+// TestResolveJWT_KnownIssuerRoutes verifies that a valid JWT from a configured
+// issuer reaches the OIDCVerifier (issuer peek + verify both executed) and then
+// proceeds to LookupOIDCBinding. No existing binding → returns ErrUnauthenticated
+// because JIT is not yet enabled (Task 18).
+func TestResolveJWT_KnownIssuerRoutes(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	bindingLookupCalled := false
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
+			bindingLookupCalled = true
+			require.Equal(t, p.server.URL, issuer)
+			require.Equal(t, "user-123", subject)
+			return nil, storage.ErrOIDCBindingNotFound // forces stub JIT path (Task 18)
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users:     stub,
+		Verifiers: []*auth.OIDCVerifier{v},
+		Tracker:   &noopTracker{},
+		// JITEnabled: false (Task 18 enables and tests JIT)
+	})
+	require.NoError(t, err)
+	token := p.mintToken(t, map[string]any{
+		"iss":   p.server.URL,
+		"sub":   "user-123",
+		"aud":   "aud-1",
+		"exp":   time.Now().Add(time.Hour).Unix(),
+		"iat":   time.Now().Unix(),
+		"email": "alice@example.com",
+	})
+	_, resolveErr := store.Resolve(context.Background(), token)
+	require.ErrorIs(t, resolveErr, auth.ErrUnauthenticated) // JIT disabled → reject on binding miss
+	require.True(t, bindingLookupCalled, "LookupOIDCBinding must be reached: confirms issuer peek, verifier routing, and token verification all succeeded")
+}
+
+// --- Task 17: JWT existing binding resolves to owner ---
+
+func TestResolveJWT_ExistingBindingResolves(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{
+				ID: "b1", UserID: "u1", Issuer: issuer, Subject: subject,
+			}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			u := activeUser(id, "writer", storage.KindHuman)
+			u.Email = "alice@example.com"
+			return u, nil
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+	})
+	require.NoError(t, err)
+	token := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "user-123", "aud": "aud-1",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+		"email": "alice@example.com",
+		// Claims that would map to "admin" if evaluated — but claims-mapping
+		// is JIT-only, so the DB role (writer) must win.
+		"groups": []string{"specgraph-admins"},
+	})
+	id, err := store.Resolve(context.Background(), token)
+	require.NoError(t, err)
+	require.Equal(t, "u1", id.UserID)
+	require.Equal(t, "oidc:user-123", id.Subject)
+	require.Equal(t, auth.Role("writer"), id.Role) // NOT admin from claims
+	require.Equal(t, auth.Role("writer"), id.EffectiveRole)
+	require.Equal(t, "oidc", id.Source)
+}
+
+func TestResolveJWT_SoftDeletedUserUnauthenticated(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+	deletedAt := time.Now()
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{ID: "b1", UserID: "u-del"}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			u := activeUser(id, "writer", storage.KindHuman)
+			u.DeletedAt = &deletedAt
+			return u, nil
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+	})
+	require.NoError(t, err)
+	token := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "u", "aud": "aud-1",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+	})
+	_, err = store.Resolve(context.Background(), token)
+	require.ErrorIs(t, err, auth.ErrUnauthenticated)
 }

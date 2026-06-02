@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -296,9 +297,94 @@ func (s *pgIdentityStore) resolveAPIKey(ctx context.Context, token string) (*Ide
 	}, nil
 }
 
-// resolveJWT is implemented in Tasks 16–21.
-func (s *pgIdentityStore) resolveJWT(_ context.Context, _ string) (*Identity, error) {
-	return nil, ErrUnauthenticated
+// peekIssuerV2 extracts the iss claim from an unverified JWT payload. Used
+// only to route to the correct OIDCVerifier; the verifier subsequently
+// validates signature+audience+expiry.
+//
+// Named "V2" during Phase A because the legacy composite_store.go already
+// defines an identical `peekIssuer` in this package; two same-name
+// package functions would not compile. Task 30b renames this back to
+// `peekIssuer` after composite_store.go is deleted (Task 30).
+func peekIssuerV2(token string) (string, error) {
+	parts := strings.SplitN(token, ".", 3)
+	if len(parts) != 3 {
+		return "", errors.New("not a JWT")
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", fmt.Errorf("decode payload: %w", err)
+	}
+	var claims struct {
+		Issuer string `json:"iss"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return "", fmt.Errorf("unmarshal payload: %w", err)
+	}
+	if claims.Issuer == "" {
+		return "", errors.New("missing iss claim")
+	}
+	return claims.Issuer, nil
+}
+
+// resolveJWT implements Tasks 16–21: issuer peek, verifier routing,
+// binding lookup, owner load, soft-delete check, and JIT provisioning.
+func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identity, error) {
+	issuer, err := peekIssuerV2(token) // renamed to peekIssuer in Task 30b
+	if err != nil {
+		return nil, ErrUnauthenticated
+	}
+	verifier, ok := s.verifiers[issuer]
+	if !ok {
+		return nil, ErrUnauthenticated
+	}
+	claims, err := verifier.Verify(ctx, token)
+	if err != nil {
+		return nil, ErrUnauthenticated
+	}
+	// Defense-in-depth: the unverified peek issuer (used only for routing)
+	// must equal the verified issuer. go-oidc already binds verification to
+	// the configured issuer, so a mismatch should be impossible — but
+	// asserting it closes the door on a token that claims iss:A in its
+	// (unverified) payload while being validly signed under verifier A's
+	// configured issuer differing from the embedded claim.
+	if claims.Issuer != issuer {
+		slog.Warn("auth: JWT issuer mismatch between peek and verified claim",
+			"peek", issuer, "verified", claims.Issuer)
+		return nil, ErrUnauthenticated
+	}
+	// Binding lookup + user load (Task 17). JIT happens in Task 18.
+	binding, err := s.users.LookupOIDCBinding(ctx, claims.Issuer, claims.Subject)
+	if err != nil {
+		if errors.Is(err, storage.ErrOIDCBindingNotFound) {
+			// Task 18 will replace this with the JIT path.
+			return nil, ErrUnauthenticated
+		}
+		return nil, fmt.Errorf("%w: %w", ErrTransient, err)
+	}
+	user, err := s.users.GetUserByID(ctx, binding.UserID)
+	if err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			return nil, ErrUnauthenticated
+		}
+		return nil, fmt.Errorf("%w: %w", ErrTransient, err)
+	}
+	if user.DeletedAt != nil {
+		// Security-observable: a valid OIDC binding for a soft-deleted user.
+		// The binding wasn't unbound at offboarding; the deleted_at gate
+		// catches it, but log so operators can notice the gap.
+		slog.Warn("auth: token resolved to soft-deleted user (oidc)",
+			"user_id", user.ID, "subject", claims.Subject)
+		return nil, ErrUnauthenticated
+	}
+	return &Identity{
+		UserID:        user.ID,
+		Subject:       "oidc:" + claims.Subject,
+		DisplayName:   user.DisplayName,
+		Email:         user.Email,
+		Role:          Role(user.Role),
+		EffectiveRole: Role(user.Role), // OIDC has no per-key downgrade
+		Source:        "oidc",
+	}, nil
 }
 
 // HasAuth is implemented in Task 22.
