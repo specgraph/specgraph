@@ -117,8 +117,16 @@ type AuthConfig struct {
 	DefaultRole   string                `yaml:"default_role"`   // deprecated; ignored after Authn plan
 	APIKeys       []APIKeyConfig        `yaml:"api_keys"`       // ignored after Authn plan (storage owns)
 	OIDCProviders []OIDCProviderConfig  `yaml:"oidc_providers"` // deprecated; superseded by OIDC.Providers
-	Roles         map[string]RoleConfig `yaml:"roles"`
+	Roles         []string              `yaml:"roles"`
+	Policies      PolicyConfig          `yaml:"policies"`
 	OIDC          OIDCConfig            `yaml:"oidc"`
+}
+
+// PolicyConfig configures the Cedar authorization engine's policy
+// sources. Built-in policies are always loaded; ExtraDirs adds operator
+// policy directories (each *.cedar file becomes a DirectoryPolicySource).
+type PolicyConfig struct {
+	ExtraDirs []string `yaml:"extra_dirs"`
 }
 
 // APIKeyConfig defines a single API key and its associated role.
@@ -127,11 +135,6 @@ type APIKeyConfig struct {
 	Key  string `yaml:"key"`
 	Name string `yaml:"name"`
 	Role string `yaml:"role"`
-}
-
-// RoleConfig defines a custom role with explicit permissions.
-type RoleConfig struct {
-	Permissions []string `yaml:"permissions"`
 }
 
 // OIDCProviderConfig defines a single OIDC identity provider.
