@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"testing"
 	"time"
 
 	"golang.org/x/crypto/argon2"
@@ -17,6 +18,15 @@ import (
 
 // compile-time assertion: usersBackendStub must implement storage.UsersBackend.
 var _ storage.UsersBackend = (*usersBackendStub)(nil)
+
+// TestStubSecretLength guards the 32-char invariant on stubPHCSecret, which
+// the API-key parser (apiKeySecretLen in identitystore.go) depends on. Every
+// test token is built from this constant via stubAPIKeyToken.
+func TestStubSecretLength(t *testing.T) {
+	if len(stubPHCSecret) != 32 {
+		t.Fatalf("stubPHCSecret must be exactly 32 chars (got %d); update all callers", len(stubPHCSecret))
+	}
+}
 
 // --- Shared API-key test fixtures ---
 
@@ -43,7 +53,7 @@ func init() {
 // stubAPIKeyToken builds a well-formed API-key token whose secret is
 // stubPHCSecret, so it verifies against stubPHCHash. Callers pass an
 // 8-char prefix.
-func stubAPIKeyToken(prefix string) string { //nolint:unused // forward-declared for Tasks 11–15; referenced once those files are added
+func stubAPIKeyToken(prefix string) string { //nolint:unparam // prefix varies by test; kept as parameter for clarity
 	return "spgr_sk_" + prefix + "_" + stubPHCSecret
 }
 
@@ -151,7 +161,7 @@ func errUnexpectedCall(method string) error {
 }
 
 // activeUser builds an active user for tests.
-func activeUser(id, role string, kind storage.Kind) *storage.User { //nolint:unused // forward-declared for Tasks 12–15; referenced once those files are added
+func activeUser(id, role string, kind storage.Kind) *storage.User { //nolint:unparam // kind parameter kept for future tests using service accounts
 	return &storage.User{
 		ID: id, Kind: kind, Role: role, DisplayName: "test-" + id,
 		CreatedAt: time.Now(),
@@ -161,7 +171,7 @@ func activeUser(id, role string, kind storage.Kind) *storage.User { //nolint:unu
 // activeKey builds an active API key for tests. PHCHash is the verifiable
 // stubPHCHash (computed in init() from stubPHCSecret), so a token built via
 // stubAPIKeyToken(prefix) will successfully argon2id-verify against it.
-func activeKey(id, userID, prefix string) *storage.APIKey { //nolint:unused // forward-declared for Tasks 12–15; referenced once those files are added
+func activeKey(id, userID, prefix string) *storage.APIKey { //nolint:unused // available for future tasks that need a pre-built key fixture
 	return &storage.APIKey{
 		ID: id, UserID: userID, Prefix: prefix,
 		PHCHash:   stubPHCHash,

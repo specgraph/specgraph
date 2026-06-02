@@ -5,12 +5,16 @@ package auth
 
 import (
 	"context"
+	"crypto/subtle"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
+	"golang.org/x/crypto/argon2"
 	"golang.org/x/time/rate"
 
 	"github.com/specgraph/specgraph/internal/config"
@@ -162,9 +166,134 @@ func isJWTShaped(token string) bool {
 	return strings.Count(token, ".") == 2 && !strings.HasPrefix(token, "spgr_sk_")
 }
 
-// resolveAPIKey is implemented in Tasks 11–15.
-func (s *pgIdentityStore) resolveAPIKey(_ context.Context, _ string) (*Identity, error) {
-	return nil, ErrUnauthenticated
+const (
+	apiKeyPrefix    = "spgr_sk_" //nolint:gosec // G101: token-format prefix, not a credential
+	apiKeyPrefixLen = 8          // characters
+	apiKeySecretLen = 32         // characters
+)
+
+// parseAPIKey splits a token of the form spgr_sk_<prefix>_<secret> into
+// its components. Returns ("", "", false) for any malformed input.
+func parseAPIKey(token string) (prefix, secret string, ok bool) {
+	if !strings.HasPrefix(token, apiKeyPrefix) {
+		return "", "", false
+	}
+	rest := token[len(apiKeyPrefix):]
+	// Expect <8-char-prefix>_<32-char-secret>
+	sep := strings.IndexByte(rest, '_')
+	if sep != apiKeyPrefixLen {
+		return "", "", false
+	}
+	prefix = rest[:sep]
+	secret = rest[sep+1:]
+	if len(secret) != apiKeySecretLen {
+		return "", "", false
+	}
+	return prefix, secret, true
+}
+
+// argon2idVerify checks whether secret matches the stored PHC-encoded
+// argon2id hash. Returns false on any parse or mismatch error (callers
+// map all failures to ErrUnauthenticated).
+//
+// PHC format: $argon2id$v=19$m=<m>,t=<t>,p=<p>$<salt-b64>$<hash-b64>
+func argon2idVerify(phc, secret string) bool {
+	parts := strings.Split(phc, "$")
+	// Expected: ["", "argon2id", "v=19", "m=...,t=...,p=...", "<salt>", "<hash>"]
+	if len(parts) != 6 || parts[1] != "argon2id" {
+		return false
+	}
+	var m, t uint32
+	var p uint8
+	if _, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &m, &t, &p); err != nil {
+		return false
+	}
+	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
+	if err != nil {
+		return false
+	}
+	storedHash, err := base64.RawStdEncoding.DecodeString(parts[5])
+	if err != nil {
+		return false
+	}
+	computed := argon2.IDKey([]byte(secret), salt, t, m, p, uint32(len(storedHash))) //nolint:gosec // G115: len(storedHash) is derived from PHC-encoded hash; value is always in [0, 2^31-1]
+	return subtle.ConstantTimeCompare(storedHash, computed) == 1
+}
+
+// roleRank gives the privilege ordering of the built-in roles:
+// reader < writer < admin. Custom/unranked roles are absent from the map.
+var roleRank = map[Role]int{RoleReader: 1, RoleWriter: 2, RoleAdmin: 3}
+
+// roleLessThan reports whether a is strictly less privileged than b.
+// Built-in roles are linearly ordered: reader < writer < admin. Custom
+// roles return false in either direction (see Storage design's roleLessThan).
+func roleLessThan(a, b Role) bool {
+	ra, oka := roleRank[a]
+	rb, okb := roleRank[b]
+	if !oka || !okb {
+		return false
+	}
+	return ra < rb
+}
+
+// clampedRole returns the lesser of userRole and downgrade, but only for
+// built-in roles. A downgrade on a custom/unranked role has no defined
+// ordering, so it is silently a no-op: EffectiveRole equals userRole.
+func clampedRole(userRole, downgrade Role) Role {
+	if downgrade == "" {
+		return userRole
+	}
+	if roleLessThan(downgrade, userRole) {
+		return downgrade
+	}
+	return userRole
+}
+
+// resolveAPIKey implements Tasks 11–15: parse, verify, owner-load,
+// EffectiveRole clamp, and fire-and-forget TouchLastUsed.
+func (s *pgIdentityStore) resolveAPIKey(ctx context.Context, token string) (*Identity, error) {
+	prefix, secret, ok := parseAPIKey(token)
+	if !ok {
+		return nil, ErrUnauthenticated
+	}
+	key, err := s.users.LookupAPIKeyByPrefix(ctx, prefix)
+	if err != nil {
+		if errors.Is(err, storage.ErrAPIKeyNotFound) {
+			return nil, ErrUnauthenticated
+		}
+		return nil, fmt.Errorf("%w: %w", ErrTransient, err)
+	}
+	if !argon2idVerify(key.PHCHash, secret) {
+		return nil, ErrUnauthenticated
+	}
+	if key.RevokedAt != nil || (key.ExpiresAt != nil && !key.ExpiresAt.After(s.now())) {
+		return nil, ErrUnauthenticated
+	}
+	user, err := s.users.GetUserByID(ctx, key.UserID)
+	if err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			return nil, ErrUnauthenticated
+		}
+		return nil, fmt.Errorf("%w: %w", ErrTransient, err)
+	}
+	if user.DeletedAt != nil {
+		// Security-observable: a valid credential for a soft-deleted user.
+		// Worth a warn — could indicate a credential that should have been
+		// revoked, or an offboarding gap.
+		slog.Warn("auth: credential resolved to soft-deleted user (api-key)",
+			"user_id", user.ID, "key_id", key.ID)
+		return nil, ErrUnauthenticated
+	}
+	s.tracker.Touch(key.ID)
+	return &Identity{
+		UserID:        user.ID,
+		Subject:       "apikey:" + key.ID,
+		DisplayName:   user.DisplayName,
+		Email:         user.Email,
+		Role:          Role(user.Role),
+		EffectiveRole: clampedRole(Role(user.Role), Role(key.RoleDowngrade)),
+		Source:        "apikey",
+	}, nil
 }
 
 // resolveJWT is implemented in Tasks 16–21.
