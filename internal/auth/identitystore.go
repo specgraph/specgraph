@@ -23,8 +23,10 @@ import (
 )
 
 // LastUsedTracker is the asynchronous TouchLastUsed surface consumed by
-// pgIdentityStore after a successful API-key resolve. The interface is
-// satisfied by usagetracker.Manager (Task 23) and by test stubs.
+// pgIdentityStore after a successful API-key resolve.
+//
+// The canonical implementation is *usagetracker.Manager. Tests may use
+// other implementations (stubs, no-ops) that satisfy the interface.
 type LastUsedTracker interface {
 	Touch(keyID string)
 }
@@ -514,9 +516,32 @@ func matchClaimValueV2(raw json.RawMessage, target string) bool {
 	return false
 }
 
-// HasAuth is implemented in Task 22.
-func (s *pgIdentityStore) HasAuth(_ context.Context) (bool, error) {
-	return false, errors.New("HasAuth not implemented")
+// HasAuth reports whether any non-bootstrap, non-deleted human user exists.
+// Used by warnIfNoAuthOnPublicListen at startup to decide whether to warn
+// operators that no credentials are configured.
+//
+// Single-page safety: HasAuth scans only the first ListUsers page (default
+// limit 100) of active humans and post-filters out the bootstrap user. One
+// page is sufficient because the storage layer enforces AT MOST ONE active
+// bootstrap user (the users_one_bootstrap partial unique index). A 100-row
+// page of humans therefore contains at most one bootstrap row, so if any
+// non-bootstrap human exists at all, at least one is guaranteed to appear on
+// the first page. This is correct by construction, not a truncation bug.
+func (s *pgIdentityStore) HasAuth(ctx context.Context) (bool, error) {
+	users, err := s.users.ListUsers(ctx, storage.ListUsersFilter{
+		Kind: storage.KindHuman,
+		// Note: ListUsers does not filter by Bootstrap directly; we filter
+		// post-fetch since the bootstrap rows are rare and small in count.
+	})
+	if err != nil {
+		return false, fmt.Errorf("%w: %w", ErrTransient, err)
+	}
+	for _, u := range users {
+		if !u.Bootstrap {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // rateLimiterFor returns (or lazily creates) the per-issuer token-bucket

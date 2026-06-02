@@ -670,3 +670,40 @@ func TestResolveJWT_SoftDeletedUserUnauthenticated(t *testing.T) {
 	_, err = store.Resolve(context.Background(), token)
 	require.ErrorIs(t, err, auth.ErrUnauthenticated)
 }
+
+// --- Task 22: HasAuth ---
+
+func TestHasAuth_OnlyBootstrapReturnsFalse(t *testing.T) {
+	stub := &usersBackendStub{
+		listUsers: func(_ context.Context, f storage.ListUsersFilter) ([]*storage.User, error) {
+			require.Equal(t, storage.KindHuman, f.Kind)
+			require.False(t, f.IncludeDeleted)
+			// Return ONLY the bootstrap user.
+			u := activeUser("u-boot", "admin", storage.KindHuman)
+			u.Bootstrap = true
+			return []*storage.User{u}, nil
+		},
+	}
+	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Tracker: &noopTracker{},
+	})
+	has, err := store.HasAuth(context.Background())
+	require.NoError(t, err)
+	require.False(t, has)
+}
+
+func TestHasAuth_NonBootstrapUserReturnsTrue(t *testing.T) {
+	stub := &usersBackendStub{
+		listUsers: func(_ context.Context, _ storage.ListUsersFilter) ([]*storage.User, error) {
+			return []*storage.User{
+				activeUser("u1", "reader", storage.KindHuman),
+			}, nil
+		},
+	}
+	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Tracker: &noopTracker{},
+	})
+	has, err := store.HasAuth(context.Background())
+	require.NoError(t, err)
+	require.True(t, has)
+}
