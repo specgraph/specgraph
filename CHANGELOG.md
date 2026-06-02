@@ -1,68 +1,52 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.6.0](https://github.com/specgraph/specgraph/compare/v0.5.0...v0.6.0) - 2026-06-02
 
-## [Unreleased]
+### Bug Fixes
 
-### Changed (BREAKING)
+- **mcp:** Pass conversation_exchanges through author tool (#952) ([#952](https://github.com/specgraph/specgraph/pull/952)) ([a45e150](https://github.com/specgraph/specgraph/commit/a45e15027fb3b8115f4d1a33db6b3fb7213dbb58))
+- Broken claude manifest setup (#949) ([#949](https://github.com/specgraph/specgraph/pull/949)) ([1cfecc0](https://github.com/specgraph/specgraph/commit/1cfecc065e456bf6d895eeb62f74e0fd58effef6))
+- **plugin/opencode:** Match author tool structurally; add E2E smoke procedure (#941) ([#941](https://github.com/specgraph/specgraph/pull/941)) ([99c1f99](https://github.com/specgraph/specgraph/commit/99c1f994ee92b6919adf1344570f60046f2b0fc7))
+- **mcp:** Render constitution resource as markdown (#934) ([#934](https://github.com/specgraph/specgraph/pull/934)) ([9d9cd8d](https://github.com/specgraph/specgraph/commit/9d9cd8ddec9dad294c5fcfe1475b17235db81169))
+- **mcp:** Render constitution empty state nicely (#933) ([#933](https://github.com/specgraph/specgraph/pull/933)) ([3ed2d19](https://github.com/specgraph/specgraph/commit/3ed2d19392d7f82ed3280109d119d5436679cddf))
+- **mcp:** Add project-wide findings API (#932) ([#932](https://github.com/specgraph/specgraph/pull/932)) ([c33bb9d](https://github.com/specgraph/specgraph/commit/c33bb9dff0aff6dca4c32823d54432726d15c6cd))
+- **mcp:** Friendlier empty-state rendering in prime resource (#931) ([#931](https://github.com/specgraph/specgraph/pull/931)) ([21460b6](https://github.com/specgraph/specgraph/commit/21460b647fa66ef9c595eb300f5cf8baf91dae88))
+- Change default server.listen to 0.0.0.0:9090 (#915) ([#915](https://github.com/specgraph/specgraph/pull/915)) ([7ed2b91](https://github.com/specgraph/specgraph/commit/7ed2b916bef9be3c74051ca1185b2aab34275995))
+- **cli:** Honor --config flag on server commands (#914) ([#914](https://github.com/specgraph/specgraph/pull/914)) ([e743fb4](https://github.com/specgraph/specgraph/commit/e743fb4abc978f66fff6f464e509d3511037287c))
+- **skills:** Make conversation recording structurally inseparable from stage persistence (#894) ([#894](https://github.com/specgraph/specgraph/pull/894)) ([7a88e6c](https://github.com/specgraph/specgraph/commit/7a88e6c48ff1c4e62c4b73b1e4c566633dfe8c05))
+- Amend re-entry lands one stage before target so authoring commands succeed (#892) ([#892](https://github.com/specgraph/specgraph/pull/892)) ([2d88e75](https://github.com/specgraph/specgraph/commit/2d88e75b26449864e99196443f95d9fed8b072ae))
 
-- **Global config now loads via koanf with explicit precedence** (flag > env > file > default). Every scalar field in `~/.config/specgraph/config.yaml` is now overridable by a `SPECGRAPH_<SECTION>_<KEY>` environment variable (e.g. `SPECGRAPH_SERVER_LISTEN`, `SPECGRAPH_CLIENT_DEFAULT_SERVER`); slice/map-valued settings (e.g. `auth.oidc.providers`, `auth.roles`) are not env-overridable. As part of this, the server env var **`SPECGRAPH_PG_URL` is renamed to `SPECGRAPH_SERVER_POSTGRES_URL`**; the old name is no longer read and `specgraph serve` logs a warning if it is still set. `SPECGRAPH_API_KEY` is unchanged. The `serve` command gains a `--listen` flag.
-- **Replaced `SpecLifecycle` (task/living) with `SpecProvenance`** (AUTHORED / RETROACTIVE_FROM_PR / DECLARED). Wire-break at proto field 10 plus a new `provenance_detail` oneof. Postgres column `lifecycle` removed; `provenance_type` and `provenance_detail` columns added. See `docs/decisions/ADR-006-spec-provenance-model.md`.
-- **`specgraph ready` now requires `stage=approved` AND `provenance=authored`**. Previously surfaced any spec at `stage <> done`, including mid-design and superseded/abandoned specs.
-- **`claim` and `report-completion` reject non-AUTHORED specs** with `ErrClaimRequiresAuthored` / `ErrCompletionRequiresAuthored`.
+### Features
 
-### Fixed (post-PR-940 hardening)
+- **config:** [**breaking**] Koanf config loader with flag>env>file>default precedence (#969) ([#969](https://github.com/specgraph/specgraph/pull/969)) ([47d0761](https://github.com/specgraph/specgraph/commit/47d0761585afbea61a7de4e0e9c181df79d2163c))
+- **auth:** [**breaking**] Identity Policy Engine — Cedar adoption (spgr-rjrt.4) (#968) ([#968](https://github.com/specgraph/specgraph/pull/968)) ([ebfde99](https://github.com/specgraph/specgraph/commit/ebfde993063b47ac3e26d13365a440555e9dbf0d))
+- **authn:** Identity Authn — Resolver + JIT + Authorizer seam [spgr-rjrt.3] (#967) ([#967](https://github.com/specgraph/specgraph/pull/967)) ([9c2bc84](https://github.com/specgraph/specgraph/commit/9c2bc846537f0b36dd8163a7ed3e7f6fab717fd3))
+- **storage:** Identity Storage layer (UsersBackend + postgres) [spgr-rjrt.2] (#966) ([#966](https://github.com/specgraph/specgraph/pull/966)) ([0d68ba2](https://github.com/specgraph/specgraph/commit/0d68ba2447518d54cc90f6fffd07ef174bdbc7ca))
+- [**breaking**] Replace SpecLifecycle with SpecProvenance model (#954) ([#954](https://github.com/specgraph/specgraph/pull/954)) ([426728f](https://github.com/specgraph/specgraph/commit/426728f0dd1d076feb58ab7361bec54dc70cfab1))
+- **skills:** Restore specgraph-constitution skill (#950) ([#950](https://github.com/specgraph/specgraph/pull/950)) ([9f38ca3](https://github.com/specgraph/specgraph/commit/9f38ca3bf651a676f665723086d86c727d43d2fd))
+- **harness:** Consolidate Claude / Cursor / OpenCode integration (spgr-cceg) (#939) ([#939](https://github.com/specgraph/specgraph/pull/939)) ([65f44c4](https://github.com/specgraph/specgraph/commit/65f44c454da38281eaa9aa22fc63b9b59d31dc12))
+- **cli:** Specgraph read-mcp-resource (Phase B Slice 5 Task 32) (#925) ([#925](https://github.com/specgraph/specgraph/pull/925)) ([73932ef](https://github.com/specgraph/specgraph/commit/73932ef4a2c2de04fa5be0303a8aab3c1ab3ee32))
+- **authoring:** Composer adapter and MCP prompt delegation (phase B slice 4) (#924) ([#924](https://github.com/specgraph/specgraph/pull/924)) ([d67e813](https://github.com/specgraph/specgraph/commit/d67e8133dd0fe0a5fdc1462ede9be9724d2d3d98))
+- **mcp:** [**breaking**] Drop stdio transport, HTTP-only (#923) ([#923](https://github.com/specgraph/specgraph/pull/923)) ([941a0b1](https://github.com/specgraph/specgraph/commit/941a0b1663d030efa81bb44ca37a86c2a5fd5a08))
+- **authoring:** Composer with embedded-content assembly and observability (phase B slice 3) (#922) ([#922](https://github.com/specgraph/specgraph/pull/922)) ([f3115eb](https://github.com/specgraph/specgraph/commit/f3115eb1b18ebdefb138671ec24e7bd119949a4f))
+- **authoring:** Migrate workflow content to server-embedded files (phase B slice 2) (#920) ([#920](https://github.com/specgraph/specgraph/pull/920)) ([b83e97c](https://github.com/specgraph/specgraph/commit/b83e97c89eb42323f0c800e2d062489580ffbce5))
+- **serve:** Add /livez and /readyz probe endpoints on dedicated listener (#916) ([#916](https://github.com/specgraph/specgraph/pull/916)) ([a1d2760](https://github.com/specgraph/specgraph/commit/a1d27603bb9b1ac1d2728831e1da5ca8c3079780))
+- **cli:** [**breaking**] Split install/uninstall from up/down; retire --rm (#918) ([#918](https://github.com/specgraph/specgraph/pull/918)) ([9967fc4](https://github.com/specgraph/specgraph/commit/9967fc455733610537dfe39c80164cec7cfdb2f0))
+- **authoring:** Server-side polish for conversation coupling (phase B slice 1) (#917) ([#917](https://github.com/specgraph/specgraph/pull/917)) ([9012bc1](https://github.com/specgraph/specgraph/commit/9012bc1cabdcaeb84c0e133b1977091647c45f29))
+- **authoring:** Atomic conversation recording in stage handlers (phase A) (#910) ([#910](https://github.com/specgraph/specgraph/pull/910)) ([cdae2c6](https://github.com/specgraph/specgraph/commit/cdae2c6b1a69779e01c84cefb61c95342351c98d))
+- **mcp:** Add auth gating and profile-based tool filtering (#898) ([53ae211](https://github.com/specgraph/specgraph/commit/53ae211b8adc8f34c3affa9710da04663e56fa29))
+- **mcp:** Add MCP server with tiered tool access (#897) ([#897](https://github.com/specgraph/specgraph/pull/897)) ([ae63551](https://github.com/specgraph/specgraph/commit/ae63551f1bc94cd5dd9b2f2de93a67795e31a2a7))
+- Lifecycle nomenclature inversion — amend from in-flight, supersede from done (#889) ([#889](https://github.com/specgraph/specgraph/pull/889)) ([6eac0dd](https://github.com/specgraph/specgraph/commit/6eac0dd9b65101ddccfd8db3e6e3b90da5d4b163))
+- Multi-layer constitution with strategic merge and provenance (#888) ([#888](https://github.com/specgraph/specgraph/pull/888)) ([992fcc5](https://github.com/specgraph/specgraph/commit/992fcc56d59c65bede11145a8c3aae957e43a9ae))
+- Optional extra CA cert injection for Docker builds (#886) ([#886](https://github.com/specgraph/specgraph/pull/886)) ([3f22d74](https://github.com/specgraph/specgraph/commit/3f22d74497513bd4e032885a1d4308072fde73ec))
+- Lifecycle amendment/supersede — diffs, changelog UI, docs, E2E (#885) ([#885](https://github.com/specgraph/specgraph/pull/885)) ([ce08a8a](https://github.com/specgraph/specgraph/commit/ce08a8ac4eeea5c05ad133c1e4946e1a5fe05417))
 
-- `internal/config/pointers/atomicWrite` now `fsync`s the temp file and the
-  parent directory before returning, preserves the existing file's mode on
-  update, and composes cleanup errors via `errors.Join` instead of
-  `//nolint:errcheck`.
-- File-lock contract: `acquireFileLock` returns `Unlocker = func() error`
-  so unlock failures reach the caller. Windows now uses `LockFileEx` (no
-  more silent no-op).
-- TOCTOU mitigation: existing pointer files are read with `O_NOFOLLOW` on
-  Unix so a symlink swapped in after `rejectSymlinkComponents` is refused
-  at open time. Windows path documented as best-effort. `doc.go` now
-  states the project directory is a trust boundary.
-- `Sync` returns `SyncReport{Agents, Cursor}` instead of `[]SyncResult`;
-  callers stop indexing positionally. `pointers.NewOptions` validates
-  server URL and project slug. Sentinel errors `ErrCorruptedMarkers`,
-  `ErrSymlinkRejected`, `ErrFrontmatterMissing` enable caller branching.
-- Empty existing `AGENTS.md` correctly reports `Updated`, not `Created`.
-- Mismatched-slug legacy blocks are surfaced via
-  `SyncResult.LegacyBlocksSkippedMalformed`; init prints
-  `(skipped N malformed legacy blocks; repair manually)`.
-- `*.md.lock` sibling lock files now ignored by `.gitignore`.
-- `init` errors go to stderr; success-path output stays on stdout.
-- Forward-compat: future `<!-- specgraph:init:start v=N -->` markers (any
-  unknown version) are now rejected as corruption rather than silently
-  appending a duplicate `v=1` block.
+### Miscellaneous
 
-### Removed
-
-- `specgraph inject` CLI subcommand and the `Inject` ConnectRPC method are
-  removed. Use `specgraph init` to wire harness configs (.mcp.json,
-  .cursor/mcp.json, opencode.json) and pointer files (AGENTS.md,
-  .cursor/rules/specgraph-bootstrap.md). Spec content is served live via the
-  MCP `specgraph://spec/{slug}` resource.
-
-### Migration
-
-- `specgraph init` automatically purges legacy per-slug blocks
-  (`<!-- specgraph:<slug>:start -->` / `<!-- specgraph:<slug>:end -->`) from
-  AGENTS.md on next run. The number purged is reported in the init output.
-- Orphan files under `.claude/specs/` and per-slug files under
-  `.cursor/rules/specgraph-<slug>.md` are **not** removed automatically.
-  Delete them manually if desired. The find invocation below skips
-  `specgraph.md` (plugin-shipped) and `specgraph-bootstrap.md`
-  (init-managed); a plain `rm specgraph-*.md` glob would catch the
-  bootstrap file too.
-
-  ```bash
-  rm -rf .claude/specs
-  find .cursor/rules -maxdepth 1 -type f -name 'specgraph-*.md' \
-    ! -name 'specgraph-bootstrap.md' -delete
-  ```
+- Wire active claims through SpecView via ClaimBackend.GetActiveClaim (#961) ([#961](https://github.com/specgraph/specgraph/pull/961)) ([e9ce76c](https://github.com/specgraph/specgraph/commit/e9ce76c75bc93b672e6db2e3233b270e69640847))
+- Deprecate specgraph inject in favor of MCP + extended init (#940) ([#940](https://github.com/specgraph/specgraph/pull/940)) ([7300112](https://github.com/specgraph/specgraph/commit/7300112f5e7b25f8ee463b837c8ff7cc13046bef))
+- Idempotent 'specgraph init' with managed per-harness MCP configs (#929) ([#929](https://github.com/specgraph/specgraph/pull/929)) ([f8ace7b](https://github.com/specgraph/specgraph/commit/f8ace7b3639b74f381fc921b54fcf765722d4f59))
 
 ## [0.5.0](https://github.com/specgraph/specgraph/compare/v0.4.0...v0.5.0) - 2026-04-04
 
