@@ -61,6 +61,66 @@ func TestIntegration_APIKeyResolve(t *testing.T) {
 	require.Equal(t, "apikey", id.Source)
 }
 
+// TestIntegration_E2ESeedCredential verifies the exact user + api_key INSERT that
+// e2e/ui/seed.sql performs. If this test passes, the seed SQL will produce a
+// credential that the pgIdentityStore can resolve to role admin.
+//
+// Credential chosen:
+//
+//	token:  spgr_sk_e2eadmin_e2esecret32charsfixedpaddingaaa0
+//	prefix: e2eadmin  (8 chars)
+//	secret: e2esecret32charsfixedpaddingaaa0  (32 chars)
+//	phc:    $argon2id$v=19$m=19456,t=2,p=1$ZTJlc2FsdGUyZXNhbHQxNg$Zc9Glm0pc9ozY/IU2gdEFm+7T9DLuvBVgsvMeBbVOVw
+func TestIntegration_E2ESeedCredential(t *testing.T) {
+	ctx := context.Background()
+	pool := postgrestest.SharedPool(t, ctx)
+	authStore, err := postgres.NewAuth(ctx, pool)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = authStore.Close(ctx) })
+
+	// Truncate and re-seed exactly as seed.sql does (idempotent ON CONFLICT skipped
+	// here since TRUNCATE gives us a clean slate for isolation).
+	_, err = pool.Exec(ctx, `TRUNCATE users CASCADE`)
+	require.NoError(t, err)
+
+	const (
+		e2eUserID  = "e2e00000-0000-0000-0000-000000000001"
+		e2eKeyID   = "e2e00000-0000-0000-0000-000000000002"
+		e2ePrefix  = "e2eadmin"
+		e2ePHCHash = "$argon2id$v=19$m=19456,t=2,p=1$ZTJlc2FsdGUyZXNhbHQxNg$Zc9Glm0pc9ozY/IU2gdEFm+7T9DLuvBVgsvMeBbVOVw"
+		e2eToken   = "spgr_sk_e2eadmin_e2esecret32charsfixedpaddingaaa0"
+	)
+
+	// Mirror the exact SQL from e2e/ui/seed.sql.
+	_, err = pool.Exec(ctx,
+		`INSERT INTO users (id, kind, display_name, role)
+		 VALUES ($1::uuid, 'human', 'E2E Admin', 'admin')`,
+		e2eUserID)
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx,
+		`INSERT INTO api_keys (id, user_id, prefix, phc_hash, role_downgrade, label)
+		 VALUES ($1::uuid, $2::uuid, $3, $4, '', 'e2e')`,
+		e2eKeyID, e2eUserID, e2ePrefix, e2ePHCHash)
+	require.NoError(t, err)
+
+	tracker := usagetracker.NewManager(authStore, usagetracker.Config{})
+	t.Cleanup(func() { _ = tracker.Close(ctx) })
+
+	resolver, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users:   authStore,
+		Tracker: tracker,
+	})
+	require.NoError(t, err)
+
+	id, err := resolver.Resolve(ctx, e2eToken)
+	require.NoError(t, err)
+	require.Equal(t, e2eUserID, id.UserID)
+	require.Equal(t, auth.RoleAdmin, id.Role)
+	require.Equal(t, auth.RoleAdmin, id.EffectiveRole)
+	require.Equal(t, "apikey", id.Source)
+}
+
 func TestIntegration_Lifecycle(t *testing.T) {
 	ctx := context.Background()
 	pool := postgrestest.SharedPool(t, ctx)

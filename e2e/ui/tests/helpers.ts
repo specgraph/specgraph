@@ -3,7 +3,7 @@ import { type APIRequestContext, expect } from '@playwright/test';
 // Must match the project in web/src/lib/api/client.ts interceptor
 const PROJECT = 'default';
 const BASE_URL = process.env.SPECGRAPH_BASE_URL ?? 'http://specgraph:9090';
-const E2E_API_KEY = 'spgr_sk_e2e00000000000000000000000000000';
+const E2E_API_KEY = 'spgr_sk_e2eadmin_e2esecret32charsfixedpaddingaaa0'; //nolint // test credential seeded by e2e/ui/seed.sql
 const BASE_HEADERS = { 'Content-Type': 'application/json', 'Connect-Protocol-Version': '1', 'X-Specgraph-Project': PROJECT, 'Authorization': `Bearer ${E2E_API_KEY}` };
 
 // Retry wrapper for transient Memgraph transaction conflicts (500).

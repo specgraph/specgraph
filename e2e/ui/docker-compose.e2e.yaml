@@ -31,6 +31,16 @@ services:
       interval: 3s
       timeout: 5s
       retries: 10
+  seeder:
+    image: pgvector/pgvector:pg18
+    depends_on:
+      specgraph:
+        condition: service_healthy
+    volumes:
+      - ./seed.sql:/seed.sql:ro
+    command: >
+      psql "postgres://specgraph:specgraph@postgres:5432/specgraph?sslmode=disable" -v ON_ERROR_STOP=1 -f /seed.sql
+
   playwright:
     build:
       context: .
@@ -38,8 +48,8 @@ services:
       secrets:
         - extra-certs
     depends_on:
-      specgraph:
-        condition: service_healthy
+      seeder:
+        condition: service_completed_successfully
     environment:
       - SPECGRAPH_BASE_URL=http://specgraph:9090
     volumes:
