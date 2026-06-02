@@ -4,46 +4,49 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/auth"
-	"github.com/specgraph/specgraph/internal/config"
 )
 
-// newMCPAuthStore returns a ConfigStore pre-loaded with a single admin API key
-// for use in MCP endpoint auth tests.
-func newMCPAuthStore(t *testing.T) *auth.ConfigStore {
-	t.Helper()
-	store, err := auth.NewConfigStore(config.AuthConfig{
-		APIKeys: []config.APIKeyConfig{
-			{ID: "test-admin", Key: "spgr_sk_valid_mcp_key", Name: "Test Admin", Role: "admin"},
-		},
-	}, "")
-	if err != nil {
-		t.Fatalf("NewConfigStore: %v", err)
-	}
-	return store
+// stubResolver is a simple Resolver for MCP endpoint auth tests.
+// It accepts exactly one valid token (validToken) and rejects everything else.
+type stubResolver struct {
+	validToken string
+	identity   *auth.Identity
 }
 
-// mcpHandler wraps a simple OK handler in RequireAuth to simulate the /mcp/ endpoint.
-func mcpHandler(store auth.IdentityStore) http.Handler {
-	return auth.RequireAuth(store)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
+func (r *stubResolver) Resolve(_ context.Context, token string) (*auth.Identity, error) {
+	if token == r.validToken {
+		return r.identity, nil
+	}
+	return nil, auth.ErrUnauthenticated
+}
+
+func (r *stubResolver) HasAuth(_ context.Context) (bool, error) { return true, nil }
+
+// newMCPAuthResolver returns a Resolver pre-loaded with a single admin identity.
+func newMCPAuthResolver() *stubResolver {
+	return &stubResolver{ //nolint:gosec // G101: test fixture struct; validToken is a test-only placeholder, not a real credential
+		validToken: "spgr_sk_valid_mcp_key",
+		identity: &auth.Identity{
+			Subject:       "apikey:test-admin",
+			DisplayName:   "Test Admin",
+			Role:          auth.RoleAdmin,
+			EffectiveRole: auth.RoleAdmin,
+			Source:        "apikey",
+		},
+	}
 }
 
 func TestMCPEndpoint_Unauthenticated(t *testing.T) {
-	store, err := auth.NewConfigStore(config.AuthConfig{
-		APIKeys: []config.APIKeyConfig{
-			{ID: "test-admin", Key: "spgr_sk_valid_mcp_key", Name: "Test Admin", Role: "admin"},
-		},
-	}, "")
-	if err != nil {
-		t.Fatalf("NewConfigStore: %v", err)
-	}
-	handler := mcpHandler(store)
+	resolver := newMCPAuthResolver()
+	handler := auth.RequireAuth(resolver)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
 
 	req := httptest.NewRequest(http.MethodPost, "/mcp/", nil)
 	rec := httptest.NewRecorder()
@@ -55,10 +58,10 @@ func TestMCPEndpoint_Unauthenticated(t *testing.T) {
 }
 
 func TestMCPEndpoint_ValidAPIKey(t *testing.T) {
-	store := newMCPAuthStore(t)
+	resolver := newMCPAuthResolver()
 
 	var gotIdentity *auth.Identity
-	handler := auth.RequireAuth(store)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := auth.RequireAuth(resolver)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, ok := auth.IdentityFromContext(r.Context())
 		if !ok {
 			t.Error("no identity in context after successful auth")
@@ -87,8 +90,10 @@ func TestMCPEndpoint_ValidAPIKey(t *testing.T) {
 }
 
 func TestMCPEndpoint_InvalidToken(t *testing.T) {
-	store := newMCPAuthStore(t)
-	handler := mcpHandler(store)
+	resolver := newMCPAuthResolver()
+	handler := auth.RequireAuth(resolver)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
 
 	req := httptest.NewRequest(http.MethodPost, "/mcp/", nil)
 	req.Header.Set("Authorization", "Bearer wrong-key")
