@@ -14,9 +14,35 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
+	koanfyaml "github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/confmap"
+	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
+	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
+
+// LoadOption configures optional inputs to the global config loader.
+type LoadOption func(*loadOptions)
+
+type loadOptions struct {
+	flags *pflag.FlagSet
+}
+
+// WithFlags supplies a command's flag set so set flags take highest precedence.
+func WithFlags(flags *pflag.FlagSet) LoadOption {
+	return func(o *loadOptions) { o.flags = flags }
+}
+
+// flagKeyMap maps serve-command flag names to dotted koanf keys. Flags absent
+// from this map (e.g. cors-origin) are not config keys and are ignored.
+var flagKeyMap = map[string]string{
+	"listen": "server.listen",
+	"pg-url": "server.postgres.url",
+}
 
 // DefaultProbeInterval/Timeout are chosen so the 5s cache refresh stays
 // fresh against kubelet's default periodSeconds=10, with 2s headroom for
@@ -160,47 +186,108 @@ type ClaimMapping struct {
 // writes defaults and returns them. Use LoadGlobalExplicit when path was
 // operator-supplied (via --config), where materializing defaults at a
 // typo'd path would silently mask the error.
-func LoadGlobal(path string) (*GlobalConfig, error) {
-	return loadGlobalAt(path, true)
+func LoadGlobal(path string, opts ...LoadOption) (*GlobalConfig, error) {
+	return loadGlobalAt(path, true, opts...)
 }
 
 // LoadGlobalExplicit loads the global config from an operator-supplied path,
 // returning an error if the file does not exist. Server commands call this
 // when --config is set so a missing or mistyped path fails loudly instead of
 // being materialized as a default config at an unexpected location.
-func LoadGlobalExplicit(path string) (*GlobalConfig, error) {
-	return loadGlobalAt(path, false)
+func LoadGlobalExplicit(path string, opts ...LoadOption) (*GlobalConfig, error) {
+	return loadGlobalAt(path, false, opts...)
 }
 
-func loadGlobalAt(path string, materializeDefaults bool) (*GlobalConfig, error) {
-	cfg := globalDefaults()
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if !errors.Is(err, fs.ErrNotExist) {
-			return nil, fmt.Errorf("read config: %w", err)
-		}
-		if !materializeDefaults {
-			return nil, fmt.Errorf("config file not found at %s", path)
-		}
-		if writeErr := writeGlobal(path, cfg); writeErr != nil {
-			return nil, fmt.Errorf("write default config: %w", writeErr)
-		}
-		return cfg, nil
+// decoderConf wires the mapstructure decode hook so YAML/env duration strings
+// (e.g. "5s") decode into time.Duration fields (ProbesConfig.Interval/Timeout).
+func decoderConf(out *GlobalConfig) koanf.UnmarshalConf {
+	return koanf.UnmarshalConf{
+		Tag: "koanf",
+		DecoderConfig: &mapstructure.DecoderConfig{
+			DecodeHook:       mapstructure.StringToTimeDurationHookFunc(),
+			WeaklyTypedInput: true,
+			Result:           out,
+		},
 	}
+}
 
-	if err := yaml.Unmarshal(data, cfg); err != nil {
-		return nil, fmt.Errorf("parse config: %w", err)
-	}
-
-	// Migrate the deprecated flat auth.oidc_providers into auth.oidc.providers.
-	// New path wins if both are set (no migration in that case).
+// applyPostLoad runs transforms that must happen after unmarshal: the OIDC
+// providers migration and postgres backend coercion.
+func applyPostLoad(cfg *GlobalConfig) {
 	if len(cfg.Auth.OIDCProviders) > 0 && len(cfg.Auth.OIDC.Providers) == 0 {
 		cfg.Auth.OIDC.Providers = cfg.Auth.OIDCProviders
 		slog.Warn("auth.oidc_providers is deprecated; move providers under auth.oidc.providers")
 	}
+	// Edge-case guard: if an operator explicitly clears the backend but leaves a
+	// postgres URL, default the backend to postgres. The common case never hits
+	// this — globalDefaults() sets Backend="postgres" — and an explicit non-empty
+	// backend (e.g. "memory") is never overridden.
+	if cfg.Server.Postgres.URL != "" && cfg.Server.Backend == "" {
+		cfg.Server.Backend = "postgres"
+	}
+}
 
-	return cfg, nil
+func loadGlobalAt(path string, materializeDefaults bool, opts ...LoadOption) (*GlobalConfig, error) {
+	var o loadOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	k := koanf.New(".")
+
+	// 1. defaults — single source of truth (shared with writeGlobal).
+	if err := k.Load(structs.Provider(globalDefaults(), "koanf"), nil); err != nil {
+		return nil, fmt.Errorf("load defaults: %w", err)
+	}
+
+	// 2. file — materialize defaults or fail loudly when absent.
+	// Note: only stat failures other than ENOENT surface as "read config"; an
+	// existing-but-unreadable file stats fine and its read error surfaces below
+	// as "parse config". Both are loud — neither is silently swallowed.
+	if _, statErr := os.Stat(path); statErr != nil {
+		if !errors.Is(statErr, fs.ErrNotExist) {
+			return nil, fmt.Errorf("read config: %w", statErr)
+		}
+		if !materializeDefaults {
+			return nil, fmt.Errorf("config file not found at %s", path)
+		}
+		if writeErr := writeGlobal(path, globalDefaults()); writeErr != nil {
+			return nil, fmt.Errorf("write default config: %w", writeErr)
+		}
+	} else if err := k.Load(file.Provider(path), koanfyaml.Parser()); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+
+	// 3. env — SPECGRAPH_* via known-key mapper. The mapper returns a dotted
+	// koanf key for recognized vars and "" (ignored) otherwise; values pass
+	// through unchanged.
+	mapper := envKeyMapper(k)
+	if err := k.Load(env.Provider("SPECGRAPH_", ".", mapper), nil); err != nil {
+		return nil, fmt.Errorf("load env: %w", err)
+	}
+
+	// 4. set flags only (flags.Visit skips unset flags -> no default clobbering).
+	if o.flags != nil {
+		overrides := map[string]interface{}{}
+		o.flags.Visit(func(f *pflag.Flag) {
+			if key, ok := flagKeyMap[f.Name]; ok {
+				overrides[key] = f.Value.String()
+			}
+		})
+		if len(overrides) > 0 {
+			if err := k.Load(confmap.Provider(overrides, "."), nil); err != nil {
+				return nil, fmt.Errorf("load flags: %w", err)
+			}
+		}
+	}
+
+	var cfg GlobalConfig
+	if err := k.UnmarshalWithConf("", &cfg, decoderConf(&cfg)); err != nil {
+		return nil, fmt.Errorf("unmarshal config: %w", err)
+	}
+
+	applyPostLoad(&cfg)
+	return &cfg, nil
 }
 
 // ResolveServer determines the server URL for a given project slug.
