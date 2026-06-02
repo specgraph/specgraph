@@ -172,18 +172,20 @@ func TestEnvKeyMapper_MapsUnderscoreKeys(t *testing.T) {
 func TestEnvKeyMapper_NoEnvFormCollisions(t *testing.T) {
 	k := koanf.New(".")
 	require.NoError(t, k.Load(structs.Provider(globalDefaults(), "koanf"), nil))
-	seen := map[string]string{}
+	m := envKeyMapper(k)
+	// Every env-settable (scalar) key must round-trip through its env form.
+	// A collision would make one key fail to map back to itself.
 	for _, key := range k.Keys() {
-		form := strings.ToUpper(strings.ReplaceAll(key, ".", "_"))
-		if prev, ok := seen[form]; ok {
-			t.Fatalf("env-form collision: %q and %q both map to %q", prev, key, form)
+		if !isEnvSettable(k.Get(key)) {
+			continue
 		}
-		seen[form] = key
+		form := "SPECGRAPH_" + strings.ToUpper(strings.ReplaceAll(key, ".", "_"))
+		assert.Equal(t, key, m(form), "scalar key %q must round-trip via its env form", key)
 	}
 }
 ```
 
-Note: `k.Keys()` only enumerates keys present after loading defaults. Keys whose default is a zero value the `structs` provider omits (e.g. empty slices) won't appear — that is fine, since env only targets scalar keys that have defaults. If a needed scalar key is missing from the lookup, give it a non-zero default in `globalDefaults()` or seed the lookup from a static key list; the collision test will still pass.
+**Collision discovery (resolved):** the deprecated `auth.oidc_providers` and its replacement `auth.oidc.providers` both flatten to env-form `AUTH_OIDC_PROVIDERS`. Both are slice-of-struct, which cannot be expressed as a single env var — so the fix is to exclude non-scalar keys from env mapping (consistent with the design's "env handles scalars only"). `envKeyMapper` (Step 3) filters via `isEnvSettable`. This also means slice keys (`auth.roles`, `client.routes`, `auth.api_keys`, `*.extra_dirs`, `*.email_domain_allowlist`) are not env-settable, by design.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -199,9 +201,14 @@ Add to `internal/config/global.go` (and the koanf/structs imports):
 // variable names to dotted koanf keys. It derives the mapping FROM the known
 // keys (defaults are loaded first), avoiding the lossy `_`->`.` replacement
 // that would mangle keys containing underscores (e.g. client.default_server).
+// Only scalar keys participate; slice/map keys cannot be set from a single env
+// var and would otherwise collide (e.g. auth.oidc_providers vs auth.oidc.providers).
 func envKeyMapper(k *koanf.Koanf) func(string) string {
 	lookup := make(map[string]string, len(k.Keys()))
 	for _, key := range k.Keys() {
+		if !isEnvSettable(k.Get(key)) {
+			continue
+		}
 		lookup[strings.ToUpper(strings.ReplaceAll(key, ".", "_"))] = key
 	}
 	return func(envName string) string {
@@ -209,9 +216,21 @@ func envKeyMapper(k *koanf.Koanf) func(string) string {
 		return lookup[trimmed] // "" (ignored) when unknown
 	}
 }
+
+// isEnvSettable reports whether a config value can be set from a single
+// environment variable. Only scalars qualify; slices, maps, and nil-valued
+// keys are excluded.
+func isEnvSettable(v any) bool {
+	switch reflect.ValueOf(v).Kind() {
+	case reflect.Slice, reflect.Map, reflect.Array, reflect.Invalid:
+		return false
+	default:
+		return true
+	}
+}
 ```
 
-Add imports: `"strings"`, `"github.com/knadh/koanf/v2"`, `"github.com/knadh/koanf/providers/structs"`.
+Add imports to `global.go`: `"reflect"`, `"strings"`, `"github.com/knadh/koanf/v2"`. (`structs` is imported only by the test file.)
 
 - [ ] **Step 4: Run test to verify it passes**
 

@@ -10,8 +10,11 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"time"
 
+	"github.com/knadh/koanf/v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -231,6 +234,38 @@ func globalDefaults() *GlobalConfig {
 		Client: ClientConfig{
 			DefaultServer: "http://127.0.0.1:9090",
 		},
+	}
+}
+
+// envKeyMapper returns a callback that maps SPECGRAPH_-prefixed environment
+// variable names to dotted koanf keys. It derives the mapping FROM the known
+// keys (defaults are loaded first), avoiding the lossy `_`->`.` replacement
+// that would mangle keys containing underscores (e.g. client.default_server).
+// Only scalar keys participate; slice/map keys cannot be set from a single env
+// var and would otherwise collide (e.g. auth.oidc_providers vs auth.oidc.providers).
+func envKeyMapper(k *koanf.Koanf) func(string) string {
+	lookup := make(map[string]string, len(k.Keys()))
+	for _, key := range k.Keys() {
+		if !isEnvSettable(k.Get(key)) {
+			continue
+		}
+		lookup[strings.ToUpper(strings.ReplaceAll(key, ".", "_"))] = key
+	}
+	return func(envName string) string {
+		trimmed := strings.TrimPrefix(envName, "SPECGRAPH_")
+		return lookup[trimmed] // "" (ignored) when unknown
+	}
+}
+
+// isEnvSettable reports whether a config value can be set from a single
+// environment variable. Only scalars qualify; slices, maps, and nil-valued
+// keys are excluded.
+func isEnvSettable(v any) bool {
+	switch reflect.ValueOf(v).Kind() {
+	case reflect.Slice, reflect.Map, reflect.Array, reflect.Invalid:
+		return false
+	default:
+		return true
 	}
 }
 
