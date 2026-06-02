@@ -523,6 +523,125 @@ func TestResolveJWT_ExistingBindingResolves(t *testing.T) {
 	require.Equal(t, "oidc", id.Source)
 }
 
+// TestResolveJWT_ExistingBinding_IgnoresClaimsMapping is the real
+// security-invariant test for "ClaimsMapping fires ONLY at JIT creation."
+// Unlike TestResolveJWT_ExistingBindingResolves (which configures no mapping,
+// making "DB role wins" trivially true), this test configures a live
+// JITClaimsMapping for the token's issuer mapping groups:["specgraph-admins"]
+// → admin, AND an existing binding whose owner has DB role "writer". If the
+// re-login (existing-binding) path ever applied claims-mapping, id.Role would
+// become "admin" — a privilege-escalation regression. Asserting "writer"
+// proves the mapping was NOT applied on the binding path.
+func TestResolveJWT_ExistingBinding_IgnoresClaimsMapping(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{
+				ID: "b1", UserID: "u1", Issuer: issuer, Subject: subject,
+			}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			u := activeUser(id, "writer", storage.KindHuman) // DB role: writer
+			u.Email = "alice@example.com"
+			return u, nil
+		},
+		// jitCreateHuman intentionally unset: the binding path must never call
+		// it. usersBackendStub flags an unexpected JITCreateHuman call as a bug.
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+		JITEnabled:     true,
+		JITDefaultRole: auth.RoleReader,
+		// Live mapping that WOULD elevate to admin if evaluated on this path.
+		JITClaimsMapping: map[string][]config.ClaimMapping{
+			p.server.URL: {
+				{Claim: "groups", Value: "specgraph-admins", Role: "admin"},
+			},
+		},
+		KnownRoles: map[auth.Role]bool{auth.RoleReader: true, auth.RoleWriter: true, auth.RoleAdmin: true},
+	})
+	require.NoError(t, err)
+	token := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "user-123", "aud": "aud-1",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+		"email":  "alice@example.com",
+		"groups": []string{"specgraph-admins"}, // maps to admin IF evaluated
+	})
+	id, err := store.Resolve(context.Background(), token)
+	require.NoError(t, err)
+	require.Equal(t, "u1", id.UserID)
+	require.Equal(t, auth.Role("writer"), id.Role, "claims-mapping must NOT apply on the existing-binding path")
+	require.Equal(t, auth.Role("writer"), id.EffectiveRole, "claims-mapping must NOT apply on the existing-binding path")
+}
+
+// --- Task 18: JIT happy path ---
+
+func TestResolveJWT_JITCreatesNewUser(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, _ := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	var capturedUser *storage.User
+	var capturedBinding *storage.OIDCBinding
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
+			return nil, storage.ErrOIDCBindingNotFound
+		},
+		jitCreateHuman: func(_ context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, *storage.OIDCBinding, error) {
+			u.ID = "new-user"
+			b.ID = "new-binding"
+			b.UserID = u.ID
+			capturedUser, capturedBinding = u, b
+			return u, b, nil
+		},
+	}
+	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+		JITEnabled:     true,
+		JITDefaultRole: auth.RoleReader,
+	})
+	token := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "new-sub", "aud": "aud-1",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+		"email": "new@example.com",
+	})
+	id, err := store.Resolve(context.Background(), token)
+	require.NoError(t, err)
+	require.Equal(t, "new-user", id.UserID)
+	require.Equal(t, auth.Role("reader"), id.Role)
+	require.NotNil(t, capturedUser)
+	require.Equal(t, "new@example.com", capturedUser.Email)
+	require.NotNil(t, capturedBinding)
+	require.Equal(t, "new-sub", capturedBinding.Subject)
+}
+
+func TestResolveJWT_JITDisabledRejects(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, _ := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
+			return nil, storage.ErrOIDCBindingNotFound
+		},
+	}
+	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+		JITEnabled: false,
+	})
+	token := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "x", "aud": "aud-1",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+	})
+	_, err := store.Resolve(context.Background(), token)
+	require.ErrorIs(t, err, auth.ErrUnauthenticated)
+}
+
 func TestResolveJWT_SoftDeletedUserUnauthenticated(t *testing.T) {
 	p := newOIDCTestIssuer(t)
 	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{

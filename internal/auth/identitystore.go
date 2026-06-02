@@ -39,7 +39,7 @@ type pgIdentityStore struct {
 	jitEnabled         bool
 	jitDefaultRole     Role
 	jitClaimsMapping   map[string][]config.ClaimMapping // issuer -> mappings
-	jitRateLimiters    sync.Map                         //nolint:unused // forward-declared for Tasks 16–21; used by rateLimiterFor
+	jitRateLimiters    sync.Map                         // per-issuer token-bucket limiters; keyed by issuer string
 	jitRateBurst       int
 	jitRateRefillPerHr int
 	jitEmailAllowlist  map[string]bool // domain -> true; empty = no allowlist
@@ -352,14 +352,17 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 			"peek", issuer, "verified", claims.Issuer)
 		return nil, ErrUnauthenticated
 	}
-	// Binding lookup + user load (Task 17). JIT happens in Task 18.
+	// Binding lookup + user load. JIT path fires on binding miss (Task 18).
 	binding, err := s.users.LookupOIDCBinding(ctx, claims.Issuer, claims.Subject)
 	if err != nil {
-		if errors.Is(err, storage.ErrOIDCBindingNotFound) {
-			// Task 18 will replace this with the JIT path.
+		if !errors.Is(err, storage.ErrOIDCBindingNotFound) {
+			return nil, fmt.Errorf("%w: %w", ErrTransient, err)
+		}
+		// Binding miss → JIT path.
+		if !s.jitEnabled {
 			return nil, ErrUnauthenticated
 		}
-		return nil, fmt.Errorf("%w: %w", ErrTransient, err)
+		return s.jitResolve(ctx, claims)
 	}
 	user, err := s.users.GetUserByID(ctx, binding.UserID)
 	if err != nil {
@@ -387,16 +390,138 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 	}, nil
 }
 
+// jitResolve creates a new Human + OIDC binding for an unknown subject.
+// Gate order (Tasks 18–21):
+//
+//  1. Email-domain allowlist (Task 20) — cheap, no budget spent; refused tokens
+//     never reach the rate limiter.
+//  2. Per-issuer rate-limit gate (Task 19) — bounds eligible creation attempts.
+//  3. ClaimsMapping role derivation (Task 21) — only fires at JIT creation; not
+//     on subsequent sign-ins, which resolve via the stored binding.
+//  4. JITCreateHuman (Task 18) — atomic user + binding creation.
+func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims) (*Identity, error) {
+	// (1) Allowlist gate — refused tokens never consume a rate-limit token.
+	if len(s.jitEmailAllowlist) > 0 {
+		domain := emailDomain(claims.Email)
+		if domain == "" {
+			slog.Warn("auth: JIT refused — empty email claim with non-empty allowlist",
+				"issuer", claims.Issuer)
+			return nil, ErrUnauthenticated
+		}
+		if !s.jitEmailAllowlist[domain] {
+			slog.Warn("auth: JIT refused — email domain not in allowlist",
+				"issuer", claims.Issuer, "domain", domain)
+			return nil, ErrUnauthenticated
+		}
+	}
+
+	// (2) Per-issuer rate-limit gate — bounds eligible creation attempts.
+	// The token is consumed here, BEFORE JITCreateHuman: a transient create
+	// failure still spends a token. This is deliberate — it dampens retry
+	// storms during DB degradation rather than letting failed attempts retry
+	// against the backend for free.
+	limiter := s.rateLimiterFor(claims.Issuer)
+	if !limiter.Allow() {
+		slog.Warn("auth: JIT rate-limit exceeded",
+			"issuer", claims.Issuer, "subject", claims.Subject)
+		return nil, ErrUnauthenticated
+	}
+
+	// (3) ClaimsMapping: derive role from token claims at JIT time only.
+	// Subsequent sign-ins resolve via the binding and use the DB-persisted role.
+	role := s.jitDefaultRole
+	if role == "" {
+		role = RoleReader
+	}
+	if mappings, ok := s.jitClaimsMapping[claims.Issuer]; ok {
+		if mapped := applyClaimsMapping(claims.Raw, mappings); mapped != "" {
+			role = Role(mapped)
+		}
+	}
+
+	// (4) Atomically create user + binding.
+	u := &storage.User{
+		Kind:        storage.KindHuman,
+		DisplayName: claims.Subject, // operator can rename later
+		Email:       claims.Email,
+		Role:        string(role),
+	}
+	b := &storage.OIDCBinding{
+		Issuer:      claims.Issuer,
+		Subject:     claims.Subject,
+		EmailAtBind: claims.Email,
+	}
+	user, _, err := s.users.JITCreateHuman(ctx, u, b)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrTransient, err)
+	}
+	return &Identity{
+		UserID:        user.ID,
+		Subject:       "oidc:" + claims.Subject,
+		DisplayName:   user.DisplayName,
+		Email:         user.Email,
+		Role:          Role(user.Role),
+		EffectiveRole: Role(user.Role),
+		Source:        "oidc",
+	}, nil
+}
+
+// emailDomain extracts the lowercase domain part from an email address.
+// Returns "" if the address has no '@', or if '@' is the last character.
+func emailDomain(email string) string {
+	i := strings.LastIndexByte(email, '@')
+	if i < 0 || i == len(email)-1 {
+		return ""
+	}
+	return strings.ToLower(email[i+1:])
+}
+
+// applyClaimsMapping evaluates the mapping rules in order. Returns the
+// first matching role, or "" if no rule matches.
+func applyClaimsMapping(claims map[string]json.RawMessage, rules []config.ClaimMapping) string {
+	for _, m := range rules {
+		raw, ok := claims[m.Claim]
+		if !ok {
+			continue
+		}
+		if matchClaimValueV2(raw, m.Value) {
+			return m.Role
+		}
+	}
+	return ""
+}
+
+// matchClaimValueV2 checks whether a claim value matches the target.
+// Supports string claims and string-array claims.
+//
+// Named "V2" during Phase A because the legacy oidc_store.go already
+// defines an identical matchClaimValue in this package. Task 30b
+// renames this back to matchClaimValue after oidc_store.go is
+// deleted (Task 30).
+func matchClaimValueV2(raw json.RawMessage, target string) bool {
+	var str string
+	if err := json.Unmarshal(raw, &str); err == nil {
+		return str == target
+	}
+	var arr []string
+	if err := json.Unmarshal(raw, &arr); err == nil {
+		for _, v := range arr {
+			if v == target {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // HasAuth is implemented in Task 22.
 func (s *pgIdentityStore) HasAuth(_ context.Context) (bool, error) {
 	return false, errors.New("HasAuth not implemented")
 }
 
-// rateLimiterFor returns (or lazily creates) the per-issuer limiter.
-// Forward-declared for Tasks 16–21 (JIT OIDC path). The jitRateLimiters
-// field and this function are used once those tasks are implemented.
-//
-//nolint:unused // forward-declared for Tasks 16–21; referenced once JIT OIDC is wired
+// rateLimiterFor returns (or lazily creates) the per-issuer token-bucket
+// limiter. Called by jitResolve (Task 19) to bound JIT creation attempts
+// per OIDC issuer.
 func (s *pgIdentityStore) rateLimiterFor(issuer string) *rate.Limiter {
 	if l, ok := s.jitRateLimiters.Load(issuer); ok {
 		return l.(*rate.Limiter) //nolint:errcheck // type assertion: sync.Map always stores *rate.Limiter
