@@ -38,9 +38,15 @@ services:
         condition: service_healthy
     volumes:
       - ./seed.sql:/seed.sql:ro
-    command: >
-      psql "postgres://specgraph:specgraph@postgres:5432/specgraph?sslmode=disable" -v ON_ERROR_STOP=1 -f /seed.sql
-
+    command:
+      - sh
+      - -c
+      - 'psql "postgres://specgraph:specgraph@postgres:5432/specgraph?sslmode=disable" -v ON_ERROR_STOP=1 -f /seed.sql && touch /tmp/seeded && tail -f /dev/null'
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/seeded"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
   playwright:
     build:
       context: .
@@ -49,7 +55,7 @@ services:
         - extra-certs
     depends_on:
       seeder:
-        condition: service_completed_successfully
+        condition: service_healthy
     environment:
       - SPECGRAPH_BASE_URL=http://specgraph:9090
     volumes:
