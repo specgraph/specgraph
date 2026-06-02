@@ -66,8 +66,8 @@ func TestNewIdentityStore_RejectsUnknownClaimsMappingRole(t *testing.T) {
 	require.Contains(t, err.Error(), "unknown role")
 }
 
-// noopTracker implements auth.LastUsedTracker as a no-op stub used until
-// Task 25 wires usagetracker.Manager.
+// noopTracker implements auth.LastUsedTracker as a no-op stub. Tests use it
+// for isolation so they never spin up the real async usagetracker.Manager.
 type noopTracker struct{}
 
 func (noopTracker) Touch(string) {}
@@ -412,7 +412,7 @@ func TestResolveAPIKey_DowngradeAboveRoleNoEscalation(t *testing.T) {
 func TestResolveJWT_UnknownIssuerUnauthenticated(t *testing.T) {
 	store := newTestIdentityStore(t) // no verifiers configured
 	// JWT-shaped token (exactly 2 dots) whose middle segment is valid
-	// base64url-encoded JSON carrying an iss claim. peekIssuerV2 succeeds and
+	// base64url-encoded JSON carrying an iss claim. peekIssuer succeeds and
 	// extracts the issuer, but no verifier is configured for it, so the
 	// verifier-map lookup misses → ErrUnauthenticated.
 	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256","typ":"JWT"}`))
@@ -425,7 +425,7 @@ func TestResolveJWT_UnknownIssuerUnauthenticated(t *testing.T) {
 func TestResolveJWT_UndecodablePayloadUnauthenticated(t *testing.T) {
 	store := newTestIdentityStore(t)
 	// JWT-shaped token (exactly 2 dots) whose middle segment is NOT valid
-	// base64url, so peekIssuerV2's base64-decode branch fails →
+	// base64url, so peekIssuer's base64-decode branch fails →
 	// ErrUnauthenticated. Exercises the decode-error path via the real JWT route.
 	_, err := store.Resolve(context.Background(), "eyJhbGciOiJSUzI1NiJ9.!!!.sig")
 	require.ErrorIs(t, err, auth.ErrUnauthenticated)
@@ -436,7 +436,7 @@ func TestResolve_FourSegmentTokenRoutesToAPIKeyPath(t *testing.T) {
 	// Four segments (three dots) is NOT JWT-shaped (isJWTShaped requires
 	// exactly two dots), so it falls through to the API-key resolver, which
 	// rejects it as malformed → ErrUnauthenticated. This never reaches
-	// peekIssuerV2 or the OIDC path.
+	// peekIssuer or the OIDC path.
 	_, err := store.Resolve(context.Background(), "not.a.valid.jwt")
 	require.ErrorIs(t, err, auth.ErrUnauthenticated)
 }
@@ -706,4 +706,39 @@ func TestHasAuth_NonBootstrapUserReturnsTrue(t *testing.T) {
 	has, err := store.HasAuth(context.Background())
 	require.NoError(t, err)
 	require.True(t, has)
+}
+
+// --- Identity context helpers ---
+
+func TestIdentityFromContext(t *testing.T) {
+	id := &auth.Identity{
+		Subject:     "test:user",
+		DisplayName: "Test User",
+		Role:        auth.RoleAdmin,
+		Source:      "test",
+	}
+
+	ctx := auth.WithIdentity(context.Background(), id)
+	got, ok := auth.IdentityFromContext(ctx)
+	if !ok {
+		t.Fatal("IdentityFromContext returned false")
+	}
+	if got.Subject != "test:user" {
+		t.Errorf("subject = %q, want test:user", got.Subject)
+	}
+}
+
+func TestIdentityFromContext_Missing(t *testing.T) {
+	_, ok := auth.IdentityFromContext(context.Background())
+	if ok {
+		t.Error("IdentityFromContext returned true for empty context")
+	}
+}
+
+func TestWithIdentity_Nil(t *testing.T) {
+	ctx := auth.WithIdentity(context.Background(), nil)
+	_, ok := auth.IdentityFromContext(ctx)
+	if ok {
+		t.Error("IdentityFromContext returned true after WithIdentity(nil)")
+	}
 }

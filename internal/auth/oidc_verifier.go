@@ -24,10 +24,10 @@ type OIDCClaims struct {
 	Raw     map[string]json.RawMessage
 }
 
-// OIDCVerifier verifies JWTs against a single OIDC provider. Successor to
-// OIDCStore: no DB dependency, no role computation, no Identity construction.
-// The resolver materializes the Identity from claims; the verifier just
-// validates signature/audience/expiry.
+// OIDCVerifier verifies JWTs against a single OIDC provider. It has no DB
+// dependency and performs no role computation or Identity construction — the
+// resolver materializes the Identity from claims; the verifier just validates
+// signature/audience/expiry.
 type OIDCVerifier struct {
 	providerID string
 	issuer     string

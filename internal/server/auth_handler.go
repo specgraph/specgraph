@@ -65,7 +65,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request, resolver auth.Resolver)
 
 	id, err := resolver.Resolve(r.Context(), req.Key)
 	if err != nil {
-		if errors.Is(err, auth.ErrUnauthenticated) || errors.Is(err, auth.ErrUnknownKey) {
+		if errors.Is(err, auth.ErrUnauthenticated) {
 			writeJSONError(w, http.StatusUnauthorized, "invalid API key")
 			return
 		}

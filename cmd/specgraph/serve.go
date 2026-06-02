@@ -142,12 +142,12 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		}
 	}()
 
-	// Construct OIDC verifiers (one per provider; renamed from OIDCStore).
-	// Iterate cfg.Auth.OIDC.Providers — the post-migration canonical field.
-	// Task 28b's loader copies legacy cfg.Auth.OIDCProviders into this field,
-	// so reading the legacy field here would yield ZERO verifiers for any
-	// config that uses the new auth.oidc.providers shape (silently breaking
-	// all JWT/JIT auth). Must match the claims-mapping source below.
+	// Construct OIDC verifiers (one per provider).
+	// Iterate cfg.Auth.OIDC.Providers — the canonical field. The config loader
+	// copies any legacy cfg.Auth.OIDCProviders entries into this field, so
+	// reading the legacy field here would yield ZERO verifiers for any config
+	// that uses the auth.oidc.providers shape (silently breaking all JWT/JIT
+	// auth). Must match the claims-mapping source below.
 	verifiers := make([]*auth.OIDCVerifier, 0, len(cfg.Auth.OIDC.Providers))
 	for _, pc := range cfg.Auth.OIDC.Providers {
 		issuerCtx, issuerCancel := context.WithTimeout(ctx, 10*time.Second)
@@ -186,7 +186,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		knownRoles[r] = true
 	}
 
-	// IdentityStore (Resolver).
+	// Build the Resolver (pgIdentityStore backed by Postgres).
 	resolver, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users:                   authStore,
 		Verifiers:               verifiers,
@@ -205,7 +205,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	// Authorizer (static table for now; Cedar plan swaps).
 	authorizer := auth.NewStaticTableAuthorizer(rolePerms)
 
-	interceptor := auth.NewAuthInterceptorV2(resolver, authorizer) // renamed in cleanup task
+	interceptor := auth.NewAuthInterceptor(resolver, authorizer)
 
 	// HasAuth signal for the existing warn path.
 	hasAuth, hasAuthErr := resolver.HasAuth(ctx)
@@ -246,8 +246,8 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
 	syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
 
-	server.RegisterAPIHandlers(mux, store, auth.RequireAuthV2(resolver))
-	server.RegisterAuthHandlers(mux, resolver, auth.RequireAuthV2(resolver))
+	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(resolver))
+	server.RegisterAuthHandlers(mux, resolver, auth.RequireAuth(resolver))
 
 	// Mount MCP streamable HTTP endpoint with auth gating.
 	// RequireAuth returns 401 for unauthenticated callers, which is the
@@ -276,7 +276,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 			return ctx
 		}),
 	)
-	mux.Handle("/mcp/", mcpHeaderLogger(auth.RequireAuthV2(resolver)(
+	mux.Handle("/mcp/", mcpHeaderLogger(auth.RequireAuth(resolver)(
 		http.StripPrefix("/mcp", mcpHTTPHandler),
 	)))
 

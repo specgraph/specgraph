@@ -5,9 +5,8 @@ package auth
 
 import "context"
 
-// Resolver dispatches an authentication token to an Identity. Successor
-// to the legacy IdentityStore interface (which routed across multiple
-// stores). The interceptor depends on Resolver after the Phase B cutover.
+// Resolver dispatches an authentication token to an Identity.
+// The interceptor and HTTP middleware depend on Resolver.
 type Resolver interface {
 	// Resolve returns the Identity for the given bearer token.
 	//

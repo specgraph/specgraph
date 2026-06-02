@@ -12,13 +12,6 @@ import (
 )
 
 // DefaultRolePermissions defines the built-in role permission bundles.
-//
-// RELOCATED here from config_store.go in this task. config_store.go is
-// deleted in Task 30, but LoadRolePerms (below) and the legacy code both
-// reference DefaultRolePermissions, so it must live in a file that
-// survives. static_authorizer.go is the natural home (it owns role→perm
-// policy) and itself survives until the Cedar plan. See Step 3b for the
-// matching removal from config_store.go.
 var DefaultRolePermissions = map[Role][]string{
 	RoleReader: {"*:read"},
 	RoleWriter: {"*:read", "*:write"},
@@ -80,13 +73,8 @@ func (a *StaticTableAuthorizer) Authorize(_ context.Context, id *Identity, proce
 }
 
 // hasPermissionInternal is the wildcard-matching helper used by
-// StaticTableAuthorizer. The same logic is temporarily duplicated in the
-// exported auth.HasPermission (still consumed by legacy code in Phase A).
-// The duplication is intentional and short-lived: Task 31 removes the
-// exported HasPermission once the legacy stores are gone, leaving this
-// package-private copy as the sole implementation. Package-private here
-// because no caller outside this struct should do raw perm checks — they
-// go through Authorize.
+// StaticTableAuthorizer. Package-private because no caller outside this
+// struct should do raw perm checks — they go through Authorize.
 func hasPermissionInternal(perms map[string]bool, required string) bool {
 	if len(perms) == 0 {
 		return false

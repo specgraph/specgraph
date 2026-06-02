@@ -299,15 +299,10 @@ func (s *pgIdentityStore) resolveAPIKey(ctx context.Context, token string) (*Ide
 	}, nil
 }
 
-// peekIssuerV2 extracts the iss claim from an unverified JWT payload. Used
+// peekIssuer extracts the iss claim from an unverified JWT payload. Used
 // only to route to the correct OIDCVerifier; the verifier subsequently
 // validates signature+audience+expiry.
-//
-// Named "V2" during Phase A because the legacy composite_store.go already
-// defines an identical `peekIssuer` in this package; two same-name
-// package functions would not compile. Task 30b renames this back to
-// `peekIssuer` after composite_store.go is deleted (Task 30).
-func peekIssuerV2(token string) (string, error) {
+func peekIssuer(token string) (string, error) {
 	parts := strings.SplitN(token, ".", 3)
 	if len(parts) != 3 {
 		return "", errors.New("not a JWT")
@@ -331,7 +326,7 @@ func peekIssuerV2(token string) (string, error) {
 // resolveJWT implements Tasks 16–21: issuer peek, verifier routing,
 // binding lookup, owner load, soft-delete check, and JIT provisioning.
 func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identity, error) {
-	issuer, err := peekIssuerV2(token) // renamed to peekIssuer in Task 30b
+	issuer, err := peekIssuer(token)
 	if err != nil {
 		return nil, ErrUnauthenticated
 	}
@@ -486,21 +481,16 @@ func applyClaimsMapping(claims map[string]json.RawMessage, rules []config.ClaimM
 		if !ok {
 			continue
 		}
-		if matchClaimValueV2(raw, m.Value) {
+		if matchClaimValue(raw, m.Value) {
 			return m.Role
 		}
 	}
 	return ""
 }
 
-// matchClaimValueV2 checks whether a claim value matches the target.
+// matchClaimValue checks whether a claim value matches the target.
 // Supports string claims and string-array claims.
-//
-// Named "V2" during Phase A because the legacy oidc_store.go already
-// defines an identical matchClaimValue in this package. Task 30b
-// renames this back to matchClaimValue after oidc_store.go is
-// deleted (Task 30).
-func matchClaimValueV2(raw json.RawMessage, target string) bool {
+func matchClaimValue(raw json.RawMessage, target string) bool {
 	var str string
 	if err := json.Unmarshal(raw, &str); err == nil {
 		return str == target
