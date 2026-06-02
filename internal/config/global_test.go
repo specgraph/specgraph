@@ -397,3 +397,18 @@ func TestLoadGlobal_MaterializedFileMatchesDefaults(t *testing.T) {
 	assert.Equal(t, "postgres://specgraph:specgraph@localhost:5432/specgraph?sslmode=disable",
 		reread.Server.Postgres.URL)
 }
+
+// Env values are always strings; this guards the WeaklyTypedInput + duration
+// decode-hook coercion that lets non-string scalars be set from the environment.
+func TestLoadGlobal_EnvCoercesNonStringScalars(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  docker: true\n"), 0o600))
+	t.Setenv("SPECGRAPH_SERVER_DOCKER", "false")       // string -> bool
+	t.Setenv("SPECGRAPH_SERVER_PROBES_INTERVAL", "7s") // string -> time.Duration
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.False(t, cfg.Server.Docker)
+	assert.Equal(t, 7*time.Second, cfg.Server.Probes.Interval)
+}
