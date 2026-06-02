@@ -40,6 +40,42 @@ func authProjectClient() *http.Client {
 	return projectClientFor(e2eProject)
 }
 
+// staticResolver is an in-process Resolver backed by a token→Identity map.
+// Used in e2e tests in place of the database-backed pgIdentityStore so that
+// auth tests can spin up isolated servers with known credentials without
+// touching the users table.
+type staticResolver struct {
+	tokens map[string]*auth.Identity
+}
+
+// newStaticResolver builds a staticResolver from an auth config.
+// It resolves tokens exactly as configured (no hashing — e2e tests use
+// short, well-known tokens to keep test fixtures readable).
+func newStaticResolver(cfg config.AuthConfig) (auth.Resolver, auth.Authorizer) {
+	rolePerms := auth.LoadRolePerms(cfg.Roles)
+	resolver := &staticResolver{tokens: make(map[string]*auth.Identity, len(cfg.APIKeys))}
+	for _, ak := range cfg.APIKeys {
+		resolver.tokens[ak.Key] = &auth.Identity{
+			Subject:       "apikey:" + ak.ID,
+			DisplayName:   ak.Name,
+			Role:          auth.Role(ak.Role),
+			EffectiveRole: auth.Role(ak.Role),
+			Source:        "apikey",
+		}
+	}
+	authorizer := auth.NewStaticTableAuthorizer(rolePerms)
+	return resolver, authorizer
+}
+
+func (r *staticResolver) Resolve(_ context.Context, token string) (*auth.Identity, error) {
+	if id, ok := r.tokens[token]; ok { //nolint:gosec // G101: token used as map key, not compared to literal credential
+		return id, nil
+	}
+	return nil, auth.ErrUnauthenticated
+}
+
+func (r *staticResolver) HasAuth(_ context.Context) (bool, error) { return len(r.tokens) > 0, nil }
+
 var _ = Describe("Auth", Label("auth"), func() {
 	var ctx context.Context
 
@@ -55,10 +91,10 @@ var _ = Describe("Auth", Label("auth"), func() {
 
 		BeforeEach(func() {
 			// Start server with auth interceptor but no API keys configured.
-			store, err := auth.NewConfigStore(config.AuthConfig{}, "")
-			Expect(err).NotTo(HaveOccurred())
-			interceptor := auth.NewAuthInterceptor(store)
+			resolver, authorizer := newStaticResolver(config.AuthConfig{})
+			interceptor := auth.NewAuthInterceptor(resolver, authorizer)
 
+			var err error
 			info, cleanup, err = testutil.StartServer(ctx, pgConnURL,
 				connect.WithInterceptors(interceptor),
 			)
@@ -100,10 +136,10 @@ var _ = Describe("Auth", Label("auth"), func() {
 					{ID: "k1", Key: "secret-admin-key", Name: "Admin", Role: "admin"},
 				},
 			}
-			store, err := auth.NewConfigStore(authCfg, "")
-			Expect(err).NotTo(HaveOccurred())
-			interceptor := auth.NewAuthInterceptor(store)
+			resolver, authorizer := newStaticResolver(authCfg)
+			interceptor := auth.NewAuthInterceptor(resolver, authorizer)
 
+			var err error
 			info, cleanup, err = testutil.StartServer(ctx, pgConnURL,
 				connect.WithInterceptors(interceptor),
 			)
@@ -161,10 +197,10 @@ var _ = Describe("Auth", Label("auth"), func() {
 					{ID: "reader1", Key: readerKey, Name: "Reader", Role: "reader"},
 				},
 			}
-			store, err := auth.NewConfigStore(authCfg, "")
-			Expect(err).NotTo(HaveOccurred())
-			interceptor := auth.NewAuthInterceptor(store)
+			resolver, authorizer := newStaticResolver(authCfg)
+			interceptor := auth.NewAuthInterceptor(resolver, authorizer)
 
+			var err error
 			info, cleanup, err = testutil.StartServer(ctx, pgConnURL,
 				connect.WithInterceptors(interceptor),
 			)
@@ -223,10 +259,10 @@ var _ = Describe("Auth", Label("auth"), func() {
 					{ID: "admin1", Key: adminKey, Name: "Admin", Role: "admin"},
 				},
 			}
-			store, err := auth.NewConfigStore(authCfg, "")
-			Expect(err).NotTo(HaveOccurred())
-			interceptor := auth.NewAuthInterceptor(store)
+			resolver, authorizer := newStaticResolver(authCfg)
+			interceptor := auth.NewAuthInterceptor(resolver, authorizer)
 
+			var err error
 			info, cleanup, err = testutil.StartServer(ctx, pgConnURL,
 				connect.WithInterceptors(interceptor),
 			)
@@ -297,10 +333,10 @@ var _ = Describe("Auth", Label("auth"), func() {
 					"spec-reader": {Permissions: []string{"spec:read"}},
 				},
 			}
-			store, err := auth.NewConfigStore(authCfg, "")
-			Expect(err).NotTo(HaveOccurred())
-			interceptor := auth.NewAuthInterceptor(store)
+			resolver, authorizer := newStaticResolver(authCfg)
+			interceptor := auth.NewAuthInterceptor(resolver, authorizer)
 
+			var err error
 			info, cleanup, err = testutil.StartServer(ctx, pgConnURL,
 				connect.WithInterceptors(interceptor),
 			)
@@ -358,9 +394,8 @@ var _ = Describe("Auth", Label("auth"), func() {
 					{ID: "h1", Key: "health-test-key", Name: "Test", Role: "admin"},
 				},
 			}
-			store, err := auth.NewConfigStore(authCfg, "")
-			Expect(err).NotTo(HaveOccurred())
-			interceptor := auth.NewAuthInterceptor(store)
+			resolver, authorizer := newStaticResolver(authCfg)
+			interceptor := auth.NewAuthInterceptor(resolver, authorizer)
 
 			info, cleanup, err := testutil.StartServer(ctx, pgConnURL,
 				connect.WithInterceptors(interceptor),

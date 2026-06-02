@@ -16,7 +16,8 @@ const sessionCookieName = "specgraph_session"
 
 // RegisterAuthHandlers registers login, logout, and whoami endpoints.
 // authMW is applied to protected routes (whoami). It must not be nil.
-func RegisterAuthHandlers(mux *http.ServeMux, store auth.IdentityStore, authMW func(http.Handler) http.Handler) {
+// resolver is the Resolver used to validate credentials at the login endpoint.
+func RegisterAuthHandlers(mux *http.ServeMux, resolver auth.Resolver, authMW func(http.Handler) http.Handler) {
 	if authMW == nil {
 		panic("RegisterAuthHandlers: authMW must not be nil")
 	}
@@ -26,7 +27,7 @@ func RegisterAuthHandlers(mux *http.ServeMux, store auth.IdentityStore, authMW f
 			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
-		handleLogin(w, r, store)
+		handleLogin(w, r, resolver)
 	})
 
 	mux.HandleFunc("/api/auth/logout", func(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +49,7 @@ func RegisterAuthHandlers(mux *http.ServeMux, store auth.IdentityStore, authMW f
 }
 
 // handleLogin validates the API key and sets a session cookie on success.
-func handleLogin(w http.ResponseWriter, r *http.Request, store auth.IdentityStore) {
+func handleLogin(w http.ResponseWriter, r *http.Request, resolver auth.Resolver) {
 	if ct := r.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
 		writeJSONError(w, http.StatusUnsupportedMediaType, "unsupported media type")
 		return
@@ -62,9 +63,9 @@ func handleLogin(w http.ResponseWriter, r *http.Request, store auth.IdentityStor
 		return
 	}
 
-	id, err := store.ResolveAPIKey(r.Context(), req.Key)
+	id, err := resolver.Resolve(r.Context(), req.Key)
 	if err != nil {
-		if errors.Is(err, auth.ErrUnknownKey) {
+		if errors.Is(err, auth.ErrUnauthenticated) {
 			writeJSONError(w, http.StatusUnauthorized, "invalid API key")
 			return
 		}

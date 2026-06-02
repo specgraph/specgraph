@@ -196,6 +196,49 @@ func TestResolveServer_RouteMatch(t *testing.T) {
 	assert.Equal(t, "http://localhost:7890", cfg.ResolveServer("my-project", ""))
 }
 
+func TestLoadGlobal_OIDCJITConfig(t *testing.T) {
+	yamlBody := []byte(`
+auth:
+  oidc:
+    providers:
+      - id: entra
+        issuer: https://login.microsoftonline.com/tenant/v2.0
+        client_id: app-id
+    jit_create:
+      enabled: true
+      default_role: reader
+      rate_limit_per_hour: 200
+      email_domain_allowlist: [example.com, other.com]
+`)
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(path, yamlBody, 0o600))
+
+	cfg, err := config.LoadGlobal(path)
+	require.NoError(t, err)
+	require.True(t, cfg.Auth.OIDC.JITCreate.Enabled)
+	require.Equal(t, "reader", cfg.Auth.OIDC.JITCreate.DefaultRole)
+	require.Equal(t, 200, cfg.Auth.OIDC.JITCreate.RateLimitPerHour)
+	require.Len(t, cfg.Auth.OIDC.JITCreate.EmailDomainAllowlist, 2)
+	require.Len(t, cfg.Auth.OIDC.Providers, 1)
+}
+
+func TestLoadGlobal_LegacyOIDCProvidersStillWorks(t *testing.T) {
+	yamlBody := []byte(`
+auth:
+  oidc_providers:
+    - id: legacy-entra
+      issuer: https://login.microsoftonline.com/old/v2.0
+      client_id: app-id
+`)
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(path, yamlBody, 0o600))
+
+	cfg, err := config.LoadGlobal(path)
+	require.NoError(t, err)
+	require.Len(t, cfg.Auth.OIDC.Providers, 1, "legacy path should migrate transparently")
+	require.Equal(t, "legacy-entra", cfg.Auth.OIDC.Providers[0].ID)
+}
+
 func TestLoadGlobal_AuthConfig(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")

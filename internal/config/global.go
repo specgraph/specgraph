@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -94,13 +95,30 @@ type Route struct {
 	Server  string `yaml:"server"`
 }
 
+// OIDCConfig wraps the OIDC provider list and JIT settings under a
+// nested auth.oidc key. Replaces the flat AuthConfig.OIDCProviders.
+type OIDCConfig struct {
+	Providers []OIDCProviderConfig `yaml:"providers"`
+	JITCreate JITCreateConfig      `yaml:"jit_create"`
+}
+
+// JITCreateConfig parametrizes just-in-time Human creation on first
+// OIDC sign-in. Consumed by the identity resolver (Authn plan).
+type JITCreateConfig struct {
+	Enabled              bool     `yaml:"enabled"`
+	DefaultRole          string   `yaml:"default_role"`
+	RateLimitPerHour     int      `yaml:"rate_limit_per_hour"`
+	EmailDomainAllowlist []string `yaml:"email_domain_allowlist"`
+}
+
 // AuthConfig configures authentication and authorization.
 type AuthConfig struct {
-	Mode          string                `yaml:"mode"`
-	DefaultRole   string                `yaml:"default_role"`
-	APIKeys       []APIKeyConfig        `yaml:"api_keys"`
-	OIDCProviders []OIDCProviderConfig  `yaml:"oidc_providers"`
+	Mode          string                `yaml:"mode"`           // deprecated; ignored after Authn plan
+	DefaultRole   string                `yaml:"default_role"`   // deprecated; ignored after Authn plan
+	APIKeys       []APIKeyConfig        `yaml:"api_keys"`       // ignored after Authn plan (storage owns)
+	OIDCProviders []OIDCProviderConfig  `yaml:"oidc_providers"` // deprecated; superseded by OIDC.Providers
 	Roles         map[string]RoleConfig `yaml:"roles"`
+	OIDC          OIDCConfig            `yaml:"oidc"`
 }
 
 // APIKeyConfig defines a single API key and its associated role.
@@ -168,6 +186,14 @@ func loadGlobalAt(path string, materializeDefaults bool) (*GlobalConfig, error) 
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
+
+	// Migrate the deprecated flat auth.oidc_providers into auth.oidc.providers.
+	// New path wins if both are set (no migration in that case).
+	if len(cfg.Auth.OIDCProviders) > 0 && len(cfg.Auth.OIDC.Providers) == 0 {
+		cfg.Auth.OIDC.Providers = cfg.Auth.OIDCProviders
+		slog.Warn("auth.oidc_providers is deprecated; move providers under auth.oidc.providers")
+	}
+
 	return cfg, nil
 }
 

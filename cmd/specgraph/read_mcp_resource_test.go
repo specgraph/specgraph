@@ -17,7 +17,6 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"
 	"github.com/specgraph/specgraph/internal/auth"
-	"github.com/specgraph/specgraph/internal/config"
 )
 
 const testAPIKey = "spgr_sk_test_key" //nolint:gosec // test fixture key, not a real credential
@@ -72,13 +71,15 @@ func TestReadMCPResource_Prime(t *testing.T) {
 // in auth.RequireAuth so the test also exercises the bearer-token round trip.
 func newStubMCPHandler(t *testing.T) http.Handler {
 	t.Helper()
-	store, err := auth.NewConfigStore(config.AuthConfig{
-		APIKeys: []config.APIKeyConfig{
-			{ID: "test", Key: testAPIKey, Name: "test", Role: "admin"},
+	resolver := &stubResolver{
+		validToken: testAPIKey,
+		identity: &auth.Identity{
+			Subject:       "apikey:test",
+			DisplayName:   "test",
+			Role:          auth.RoleAdmin,
+			EffectiveRole: auth.RoleAdmin,
+			Source:        "apikey",
 		},
-	}, "")
-	if err != nil {
-		t.Fatalf("auth store: %v", err)
 	}
 
 	srv := mcpserver.NewMCPServer(
@@ -102,5 +103,5 @@ func newStubMCPHandler(t *testing.T) http.Handler {
 		},
 	)
 	httpSrv := mcpserver.NewStreamableHTTPServer(srv)
-	return auth.RequireAuth(store)(http.StripPrefix("/mcp", httpSrv))
+	return auth.RequireAuth(resolver)(http.StripPrefix("/mcp", httpSrv))
 }
