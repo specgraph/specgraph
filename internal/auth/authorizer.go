@@ -22,9 +22,10 @@ type Authorizer interface {
 // Allowed=true means the handler should run. Allowed=false means the
 // interceptor returns connect.CodePermissionDenied.
 //
-// Reason carries a short structured tag for audit emission and logging
-// (e.g., "cedar-allow:spec.read", "cedar-deny:no-policy-matched").
-// The interceptor does not parse it.
+// Reason carries a short structured tag for audit emission and logging.
+// CedarAuthorizer emits "cedar-allow:<comma-joined matched policy IDs>"
+// (e.g., "cedar-allow:embedded:base.cedar#policy0") and "cedar-deny:<action>"
+// (e.g., "cedar-deny:spec.write"). The interceptor does not parse it.
 type Decision struct {
 	Allowed bool
 	Reason  string

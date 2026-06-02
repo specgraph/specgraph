@@ -295,6 +295,7 @@ func (e *cedarEngine) Evaluate(_ context.Context, req EvalRequest) (PolicyDecisi
 		"role", string(req.Identity.EffectiveRole),
 		"allowed", decision == cedar.Allow,
 		"policies", matched,
+		"errors", evalErrs,
 	)
 
 	return PolicyDecision{
