@@ -51,6 +51,8 @@ Expected: no errors. `go.sum` now contains `github.com/knadh/koanf/v2`.
 
 Do **not** run `go mod tidy` yet — no code imports these packages, so tidy would strip them. They land as `// indirect` and become direct in Tasks 2–6; a final `go mod tidy` runs in Task 8. In this corporate environment (`packageregistry.geico.net` proxy) sumdb lookups can 404; if `go get`/`go mod tidy` fails on checksum verification, set `GOFLAGS=-mod=mod` and `GONOSUMCHECK`/`GOSUMDB=off` as needed.
 
+**Env provider version:** pin `github.com/knadh/koanf/providers/env` to **v1.1.0**, NOT `@latest`. The latest tag (`v2.0.0+incompatible`) has a go.mod with no `go` directive, defaults to go1.16, and fails to compile (`any` unsupported). v1.1.0 exposes `Provider(prefix, delim string, cb func(string) string)`, which Task 4 uses. Run `go get github.com/knadh/koanf/providers/env@v1.1.0` explicitly.
+
 - [ ] **Step 3: Confirm the env provider callback signature** (guards against v2 API drift)
 
 Run: `go doc github.com/knadh/koanf/providers/env.Provider`
@@ -360,20 +362,13 @@ func loadGlobalAt(path string, materializeDefaults bool, opts ...LoadOption) (*G
 	}
 
 	// 3. env — SPECGRAPH_* via known-key mapper.
-	// koanf env provider v2.x uses the Opt-struct API:
-	//   env.Provider(delim string, env.Opt{Prefix, TransformFunc func(k,v string)(string,any)})
-	// TransformFunc receives the full env name (incl. prefix); "" key => ignored.
+	// NOTE: env provider is pinned to v1.1.0 (see Task 1 note). The v2.0.0
+	// (+incompatible) tag ships a go.mod with no `go` directive, so it defaults
+	// to go1.16 and rejects `any` — unbuildable. v1.1.0's API is
+	// env.Provider(prefix, delim string, cb func(string) string), which matches
+	// envKeyMapper's shape directly (returns "" to drop unrecognized vars).
 	mapper := envKeyMapper(k)
-	if err := k.Load(env.Provider(".", env.Opt{
-		Prefix: "SPECGRAPH_",
-		TransformFunc: func(name, value string) (string, any) {
-			key := mapper(name)
-			if key == "" {
-				return "", nil
-			}
-			return key, value
-		},
-	}), nil); err != nil {
+	if err := k.Load(env.Provider("SPECGRAPH_", ".", mapper), nil); err != nil {
 		return nil, fmt.Errorf("load env: %w", err)
 	}
 
