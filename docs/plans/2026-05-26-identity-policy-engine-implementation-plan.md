@@ -89,7 +89,7 @@ Unit tests use an inline `stubSource` (Task 6) so the engine is exercised indepe
 
 ## Symbol-lifetime sweep (the bug class that bit the Authn plan three times)
 
-Go has one namespace per package and no overloading. Before finalizing, every NEW package-level identifier Cedar introduces was greppe�d against the post-Authn `internal/auth/*.go` surface. Results:
+Go has one namespace per package and no overloading. Before finalizing, every NEW package-level identifier Cedar introduces was grepped against the post-Authn `internal/auth/*.go` surface. Results:
 
 | New identifier | Collision? | Notes |
 |---|---|---|
@@ -315,7 +315,7 @@ The built-in policies, compiled into the binary. This is also where the `rpcPerm
 
 Create `internal/auth/policies/base.cedar` (no SPDX header — `.cedar` is not a license-checked extension):
 
-```
+```text
 // SpecGraph base authorization policies.
 //
 // Migrated from the static rpcPermissions table. Roles gate VERBS via action
@@ -897,7 +897,7 @@ func loadPolicySet(ctx context.Context, sources []PolicySource) (*cedar.PolicySe
 > // Temporary stubs — real impls land in Tasks 7 and 9.
 > func buildActionEntities(_ []string) (cedar.EntityMap, error) { return cedar.EntityMap{}, nil }
 > func (e *cedarEngine) Evaluate(_ context.Context, _ EvalRequest) (PolicyDecision, error) {
-> 	return PolicyDecision{}, fmt.Errorf("Evaluate not implemented")
+>     return PolicyDecision{}, fmt.Errorf("Evaluate not implemented")
 > }
 > ```
 
@@ -2099,16 +2099,20 @@ Expected: FAIL — `c.Auth.Roles` is still `map[string]RoleConfig`; `c.Auth.Poli
 In `internal/config/global.go`:
 
 1. Change the `Roles` field in `AuthConfig` from:
+
    ```go
    Roles map[string]RoleConfig `yaml:"roles"`
    ```
+
    to:
+
    ```go
    Roles    []string     `yaml:"roles"`
    Policies PolicyConfig `yaml:"policies"`
    ```
 
 2. Delete the `RoleConfig` type entirely:
+
    ```go
    // DELETE:
    // RoleConfig defines a custom role with explicit permissions.
@@ -2118,6 +2122,7 @@ In `internal/config/global.go`:
    ```
 
 3. Add the `PolicyConfig` type near the other auth config types:
+
    ```go
    // PolicyConfig configures the Cedar authorization engine's policy
    // sources. Built-in policies are always loaded; ExtraDirs adds operator
@@ -2495,7 +2500,7 @@ git commit -s -m "test(auth): integration test for discrete ownership policy lay
 
 **4. Build-discipline check:** Every task ends with `go build ./... && go test ./...` green at the package level; Tasks 6, 9, 14, 16, 17 additionally run the whole-project build+test (and Task 17 runs `task lint`). The one deliberate exception is Task 15 → 16: Task 15 leaves the whole project non-building (serve.go still references the old config shape) and is explicitly flagged as a coupled pair with Task 16 — they execute in one batch / before the next push. Phase A (1–14) is purely additive: `StaticTableAuthorizer` continues to serve authorization the entire time. Phase B (15–16) switches `serve.go` with a byte-identical interceptor line. Phase C (17) deletes the now-dead static authorizer and table together, after a pre-deletion survivor grep and a post-deletion clean grep plus `task lint` to catch any orphaned unexported symbol. Integration tests (18–19) are additive `//go:build integration` files.
 
-**5. Symbol-lifetime sweep:** Completed in the dedicated section above — every new identifier greppe�d against the post-Authn surface (no collisions; `PolicyDecision` and `PolicyDocument` chosen specifically to avoid `Decision`/`cedar.Policy` clashes), and every deleted symbol's consumers verified to be either switched (`serve.go`) or co-deleted (the four Task-17 files). The single survivor that the handoff's literal "delete permissions.go" would have broken — `IsExempt`/`exemptProcedures`, called by the interceptor — is relocated to `exempt.go` in Task 12 before `permissions.go` is deleted in Task 17.
+**5. Symbol-lifetime sweep:** Completed in the dedicated section above — every new identifier grepped against the post-Authn surface (no collisions; `PolicyDecision` and `PolicyDocument` chosen specifically to avoid `Decision`/`cedar.Policy` clashes), and every deleted symbol's consumers verified to be either switched (`serve.go`) or co-deleted (the four Task-17 files). The single survivor that the handoff's literal "delete permissions.go" would have broken — `IsExempt`/`exemptProcedures`, called by the interceptor — is relocated to `exempt.go` in Task 12 before `permissions.go` is deleted in Task 17.
 
 ---
 

@@ -1024,6 +1024,7 @@ Run: `cd internal/server && go build ./... && go test -run 'TestSoftDeleteUser|T
 Expected: PASS (new guard tests + the 4a tests, after the one stub fix below).
 
 > **Cross-task note (ripple into 4a tests):** The guard adds a `GetUserByID` call before the backend mutation. Auditing 4a's three delete/purge tests:
+>
 > - `TestSoftDeleteUser_Happy` — its stub sets only `softDeleteUser`; the default `getUserByID` returns `ErrUserNotFound`, so the guard now returns `CodeNotFound` and the test fails. **Fix:** add `getUserByID: func(_ context.Context, id string) (*storage.User, error) { return &storage.User{ID: id, Bootstrap: false}, nil }` to its stub.
 > - `TestSoftDeleteUser_RequiresID` — unaffected (the empty-id check runs before the guard).
 > - `TestPurgeUser_NotFound` — still passes unchanged: the guard's `GetUserByID` hits the default `ErrUserNotFound` and returns `CodeNotFound`, which is exactly what the test asserts (the `purgeUser` stub is simply never reached).

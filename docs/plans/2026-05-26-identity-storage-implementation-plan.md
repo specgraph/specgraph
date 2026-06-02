@@ -27,6 +27,7 @@ Example: "CreateHuman with a valid User struct returns the inserted row with a p
 Properties that must always hold regardless of input: structural rules enforced by the system. Invariants come from the design (e.g., "at most one bootstrap admin"); they're not method-specific — they're system-wide. Often invariants need their own dedicated tests rather than fitting inside a happy-path test.
 
 Examples:
+
 - *Bootstrap uniqueness* — at most one user has `bootstrap=true AND deleted_at IS NULL`. Tested via concurrent CreateHuman calls in Task 27.
 - *(issuer, subject) globally unique* — two providers with the same `sub` for different people can't collide. Tested via concurrent JIT calls in Task 28.
 - *Soft-delete cascades to key revocation in one tx* — never an intermediate state where the user is deleted but their keys still pass auth. Tested in Task 16.
@@ -39,6 +40,7 @@ When in doubt: if the property is "always true regardless of which method you ca
 Edges of the input space and behavior space: NotFound, idempotent re-calls, missing-required-fields, pagination edges (limit=0, very large offset, empty result), empty-vs-null distinctions, very-long strings. Boundary tests catch the "what if" cases that happy tests skip.
 
 Examples:
+
 - *NotFound* — every Lookup/Get method returns the appropriate sentinel error.
 - *Idempotent re-call* — calling Revoke / SoftDelete / Purge / Unbind twice is not an error.
 - *Empty filter* — ListUsers with no filter returns all (non-deleted) rows; an empty filter is not "no rows."
