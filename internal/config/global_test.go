@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/specgraph/specgraph/internal/config"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -314,4 +315,85 @@ auth:
 
 	_, err := config.LoadGlobal(path)
 	require.Error(t, err, "legacy map-shaped roles must fail to parse, not be silently dropped")
+}
+
+func TestLoadGlobal_EnvOverridesFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  listen: \"0.0.0.0:1111\"\n"), 0o600))
+	t.Setenv("SPECGRAPH_SERVER_LISTEN", "0.0.0.0:2222")
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.0.0:2222", cfg.Server.Listen) // env beats file
+}
+
+func TestLoadGlobal_SetFlagBeatsEnvAndFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  listen: \"0.0.0.0:1111\"\n"), 0o600))
+	t.Setenv("SPECGRAPH_SERVER_LISTEN", "0.0.0.0:2222")
+
+	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	fs.String("listen", "", "")
+	require.NoError(t, fs.Parse([]string{"--listen", "0.0.0.0:3333"}))
+
+	cfg, err := config.LoadGlobalExplicit(path, config.WithFlags(fs))
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.0.0:3333", cfg.Server.Listen) // set flag wins
+}
+
+func TestLoadGlobal_UnsetFlagDoesNotClobber(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  listen: \"0.0.0.0:1111\"\n"), 0o600))
+
+	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	fs.String("listen", "0.0.0.0:9999", "") // non-empty DEFAULT, not set on cmdline
+	require.NoError(t, fs.Parse([]string{}))
+
+	cfg, err := config.LoadGlobalExplicit(path, config.WithFlags(fs))
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.0.0:1111", cfg.Server.Listen) // file wins; flag default ignored
+}
+
+func TestLoadGlobal_PgURLCoercesBackend(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  backend: \"\"\n"), 0o600))
+	t.Setenv("SPECGRAPH_SERVER_POSTGRES_URL", "postgres://x/y")
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.Equal(t, "postgres://x/y", cfg.Server.Postgres.URL)
+	assert.Equal(t, "postgres", cfg.Server.Backend) // coerced
+}
+
+func TestLoadGlobal_SliceRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	doc := "auth:\n  oidc:\n    providers:\n      - id: p1\n        client_id: cid\n        claims_mapping:\n          - claim: groups\n            value: admins\n            role: admin\n"
+	require.NoError(t, os.WriteFile(path, []byte(doc), 0o600))
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	require.Len(t, cfg.Auth.OIDC.Providers, 1)
+	assert.Equal(t, "p1", cfg.Auth.OIDC.Providers[0].ID)
+	assert.Equal(t, "cid", cfg.Auth.OIDC.Providers[0].ClientID)
+	require.Len(t, cfg.Auth.OIDC.Providers[0].ClaimsMapping, 1)
+	assert.Equal(t, "admin", cfg.Auth.OIDC.Providers[0].ClaimsMapping[0].Role)
+}
+
+func TestLoadGlobal_MaterializedFileMatchesDefaults(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+
+	cfg, err := config.LoadGlobal(path) // missing -> materialize
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.0.0:9090", cfg.Server.Listen) // matches globalDefaults()
+
+	reread, err := config.LoadGlobalExplicit(path) // now exists
+	require.NoError(t, err)
+	assert.Equal(t, "postgres://specgraph:specgraph@localhost:5432/specgraph?sslmode=disable",
+		reread.Server.Postgres.URL)
 }
