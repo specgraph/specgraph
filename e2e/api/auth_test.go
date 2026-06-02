@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"connectrpc.com/connect"
@@ -51,8 +53,7 @@ type staticResolver struct {
 // newStaticResolver builds a staticResolver from an auth config.
 // It resolves tokens exactly as configured (no hashing — e2e tests use
 // short, well-known tokens to keep test fixtures readable).
-func newStaticResolver(cfg config.AuthConfig) (auth.Resolver, auth.Authorizer) {
-	rolePerms := auth.LoadRolePerms(cfg.Roles)
+func newStaticResolver(cfg config.AuthConfig, policyDirs ...string) (auth.Resolver, auth.Authorizer) {
 	resolver := &staticResolver{tokens: make(map[string]*auth.Identity, len(cfg.APIKeys))}
 	for _, ak := range cfg.APIKeys {
 		resolver.tokens[ak.Key] = &auth.Identity{
@@ -63,8 +64,13 @@ func newStaticResolver(cfg config.AuthConfig) (auth.Resolver, auth.Authorizer) {
 			Source:        "apikey",
 		}
 	}
-	authorizer := auth.NewStaticTableAuthorizer(rolePerms)
-	return resolver, authorizer
+	sources := []auth.PolicySource{auth.NewEmbeddedPolicySource()}
+	for _, dir := range policyDirs {
+		sources = append(sources, auth.NewDirectoryPolicySource(dir))
+	}
+	engine, err := auth.NewCedarEngine(context.Background(), sources, auth.ActionNames())
+	Expect(err).NotTo(HaveOccurred()) // ginkgo Expect is fine — helper is always called within a spec node
+	return resolver, auth.NewCedarAuthorizer(engine)
 }
 
 func (r *staticResolver) Resolve(_ context.Context, token string) (*auth.Identity, error) {
@@ -325,15 +331,24 @@ var _ = Describe("Auth", Label("auth"), func() {
 		)
 
 		BeforeEach(func() {
+			// spec-reader is a custom role: under Cedar its authority comes from
+			// a discrete policy, not a YAML permission list. action == (concrete)
+			// grants ONLY spec.read — not decision.read/graph.read — matching the
+			// old spec:read-only semantics.
+			policyDir := GinkgoT().TempDir()
+			specReaderPolicy := `permit (
+	principal,
+	action == SpecGraph::Action::"spec.read",
+	resource
+) when { principal has role && principal.role == "spec-reader" };`
+			Expect(os.WriteFile(filepath.Join(policyDir, "spec-reader.cedar"), []byte(specReaderPolicy), 0o600)).To(Succeed())
+
 			authCfg := config.AuthConfig{
 				APIKeys: []config.APIKeyConfig{
 					{ID: "custom1", Key: customKey, Name: "SpecOnly", Role: "spec-reader"},
 				},
-				Roles: map[string]config.RoleConfig{
-					"spec-reader": {Permissions: []string{"spec:read"}},
-				},
 			}
-			resolver, authorizer := newStaticResolver(authCfg)
+			resolver, authorizer := newStaticResolver(authCfg, policyDir)
 			interceptor := auth.NewAuthInterceptor(resolver, authorizer)
 
 			var err error

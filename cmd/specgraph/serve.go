@@ -178,13 +178,10 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		}
 	}()
 
-	// Role→permissions snapshot (built-ins ∪ cfg.Auth.Roles). Shared by the
-	// authorizer and used to derive KnownRoles for JIT validation.
-	rolePerms := auth.LoadRolePerms(cfg.Auth.Roles)
-	knownRoles := make(map[auth.Role]bool, len(rolePerms))
-	for r := range rolePerms {
-		knownRoles[r] = true
-	}
+	// KnownRoles for JIT validation (built-ins ∪ custom role names). Under
+	// Cedar, custom roles carry no permission list; their authorization is
+	// expressed as Cedar policies, not YAML.
+	knownRoles := auth.KnownRolesFrom(cfg.Auth.Roles)
 
 	// Build the Resolver (pgIdentityStore backed by Postgres).
 	resolver, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
@@ -202,8 +199,17 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("identity store: %w", err)
 	}
 
-	// Authorizer (static table for now; Cedar plan swaps).
-	authorizer := auth.NewStaticTableAuthorizer(rolePerms)
+	// Authorizer: Cedar policy engine. Built-in policies are always loaded;
+	// operators add directories via auth.policies.extra_dirs.
+	policySources := []auth.PolicySource{auth.NewEmbeddedPolicySource()}
+	for _, dir := range cfg.Auth.Policies.ExtraDirs {
+		policySources = append(policySources, auth.NewDirectoryPolicySource(dir))
+	}
+	engine, err := auth.NewCedarEngine(ctx, policySources, auth.ActionNames())
+	if err != nil {
+		return fmt.Errorf("policy engine: %w", err)
+	}
+	authorizer := auth.NewCedarAuthorizer(engine)
 
 	interceptor := auth.NewAuthInterceptor(resolver, authorizer)
 

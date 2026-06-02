@@ -6,14 +6,13 @@ package auth
 import "context"
 
 // Authorizer decides whether a resolved Identity may invoke procedure
-// with the given request body. The current StaticTableAuthorizer impl
-// (static_authorizer.go) consults the static rpcPermissions table;
-// the Cedar plan will add a CedarAuthorizer impl that swaps in without
-// any caller changes.
+// with the given request body. The active CedarAuthorizer impl
+// (cedar_authorizer.go) delegates to a PolicyEngine that evaluates the
+// request against the loaded Cedar policy set.
 //
 // req carries the unmarshaled request body so future authorizers
-// (Cedar, ownership rules) can inspect resource attributes. Today's
-// StaticTableAuthorizer ignores req.
+// (ownership rules) can inspect resource attributes. Today's
+// CedarAuthorizer ignores req.
 type Authorizer interface {
 	Authorize(ctx context.Context, id *Identity, procedure string, req any) (Decision, error)
 }
@@ -23,9 +22,10 @@ type Authorizer interface {
 // Allowed=true means the handler should run. Allowed=false means the
 // interceptor returns connect.CodePermissionDenied.
 //
-// Reason carries a short structured tag for audit emission and logging
-// (e.g., "static-table-allow:spec:read", "cedar-deny:no-policy-matched").
-// The interceptor does not parse it.
+// Reason carries a short structured tag for audit emission and logging.
+// CedarAuthorizer emits "cedar-allow:<comma-joined matched policy IDs>"
+// (e.g., "cedar-allow:embedded:base.cedar#policy0") and "cedar-deny:<action>"
+// (e.g., "cedar-deny:spec.write"). The interceptor does not parse it.
 type Decision struct {
 	Allowed bool
 	Reason  string

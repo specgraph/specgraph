@@ -260,9 +260,7 @@ auth:
         - claim: groups
           value: specgraph-admins
           role: admin
-  roles:
-    deployer:
-      permissions: ["spec:read", "execution:*"]
+  roles: [deployer]
 `
 	require.NoError(t, os.WriteFile(path, []byte(yaml), 0o600))
 
@@ -279,4 +277,41 @@ auth:
 	assert.Equal(t, "groups", cfg.Auth.OIDCProviders[0].ClaimsMapping[0].Claim)
 	assert.Equal(t, "specgraph-admins", cfg.Auth.OIDCProviders[0].ClaimsMapping[0].Value)
 	assert.Equal(t, "admin", cfg.Auth.OIDCProviders[0].ClaimsMapping[0].Role)
+}
+
+func TestLoadGlobal_RolesAndPolicies(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	body := `
+auth:
+  roles: [auditor, releaser]
+  policies:
+    extra_dirs: ["/etc/specgraph/policies"]
+`
+	require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
+
+	cfg, err := config.LoadGlobal(path)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"auditor", "releaser"}, cfg.Auth.Roles)
+	assert.Equal(t, []string{"/etc/specgraph/policies"}, cfg.Auth.Policies.ExtraDirs)
+}
+
+// TestLoadGlobal_LegacyMapRolesRejected verifies that the OLD map-with-
+// permissions roles shape fails to parse under the Cedar list shape. This
+// is deliberate: silently dropping a mapping value would strip authorization
+// intent. The YAML type mismatch (mapping vs sequence) must surface as an
+// error rather than be quietly ignored.
+func TestLoadGlobal_LegacyMapRolesRejected(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	body := `
+auth:
+  roles:
+    deployer:
+      permissions: ["spec:read", "execution:*"]
+`
+	require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
+
+	_, err := config.LoadGlobal(path)
+	require.Error(t, err, "legacy map-shaped roles must fail to parse, not be silently dropped")
 }
