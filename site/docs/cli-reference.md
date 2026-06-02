@@ -34,8 +34,19 @@ specgraph create <slug> [flags]
 **Flags:**
 
 ```
-      --intent string     intent for the spec (required)
-      --priority string   priority (p0-p3) (default "p2")
+      --declared-by string      human or system identifier (required when --provenance=declared)
+      --declared-note string    free-text rationale (optional, declared only)
+      --decompose-json string   path to decompose_output JSON file (required for non-AUTHORED)
+      --intent string           intent for the spec (required)
+      --pr-merged-at string     RFC3339 timestamp of PR merge (optional, retroactive_from_pr only)
+      --pr-sha string           merge commit SHA (required when --provenance=retroactive_from_pr)
+      --pr-title string         PR title at import time (optional, retroactive_from_pr only)
+      --pr-url string           PR URL (required when --provenance=retroactive_from_pr)
+      --priority string         priority (p0-p3) (default "p2")
+      --provenance string       provenance type: authored | retroactive_from_pr | declared (default "authored")
+      --shape-json string       path to shape_output JSON file (required for non-AUTHORED)
+      --spark-json string       path to spark_output JSON file (required for non-AUTHORED)
+      --specify-json string     path to specify_output JSON file (required for non-AUTHORED)
 ```
 
 ### specgraph show
@@ -630,8 +641,9 @@ specgraph constitution import [file] [flags]
 **Flags:**
 
 ```
-      --layer string     constitution layer (user|org|project|domain; default: project)
-      --project string   project slug (defaults to slug from .specgraph.yaml)
+      --from-url string   fetch constitution from URL (alternative to local file argument)
+      --layer string      constitution layer (user|org|project|domain; default: project)
+      --project string    project slug (defaults to slug from .specgraph.yaml)
 ```
 
 #### specgraph constitution show
@@ -645,8 +657,31 @@ specgraph constitution show [flags]
 **Flags:**
 
 ```
-      --json           output as JSON
-      --layer string   show specific layer (user|org|project|domain; default: merged)
+      --json              output as JSON
+      --layer string      show specific layer (user|org|project|domain; default: merged)
+      --show-provenance   annotate each field with the layer that set it (text mode); include provenance array (JSON mode)
+```
+
+#### specgraph constitution sync
+
+Re-fetch each constitution layer that has a configured source_url
+and detect drift via content hash comparison.
+
+By default exits 0 regardless of drift. Use --check to exit 1 when drift
+is detected (useful in CI). Always exits 2 if any fetch fails.
+
+Layers without a configured source_url are reported but not synced.
+
+```
+specgraph constitution sync [flags]
+```
+
+**Flags:**
+
+```
+      --check          exit 1 if drift detected; useful in CI
+      --dry-run        fetch and compare but do not write
+      --layer string   sync only this layer (default: all layers with source_url)
 ```
 
 ## Conversations
@@ -904,7 +939,8 @@ specgraph serve [flags]
 
 ```
       --cors-origin string   Enable CORS for this origin (dev mode only)
-      --pg-url string        PostgreSQL connection URL (overrides config; env: SPECGRAPH_PG_URL)
+      --listen string        Address to listen on (overrides config; env: SPECGRAPH_SERVER_LISTEN)
+      --pg-url string        PostgreSQL connection URL (overrides config; env: SPECGRAPH_SERVER_POSTGRES_URL)
 ```
 
 ### specgraph status
@@ -929,9 +965,42 @@ Check server health
 specgraph health
 ```
 
+### specgraph doctor
+
+Check SpecGraph integration health (binary, server, project config, managed files)
+
+```
+specgraph doctor [flags]
+```
+
+**Flags:**
+
+```
+      --exit-zero          Always exit 0 (advisory-only mode)
+      --fix                Auto-init for Stale/Missing; print guidance for Drifted
+      --harness string     Narrow Managed Files group to one harness (claude | cursor | opencode)
+      --json               Machine-readable output (full structure, never compacted)
+      --timeout duration   Per-RPC timeout for the Server group (default 2s)
+      --verbose            Force per-row expansion of all four groups
+```
+
+#### specgraph doctor server
+
+Run only the Server group (used by `specgraph health`)
+
+```
+specgraph doctor server [flags]
+```
+
+**Flags:**
+
+```
+      --timeout duration   Per-RPC timeout (default 2s)
+```
+
 ### specgraph init
 
-Initialize a SpecGraph project in the current directory
+Writes .specgraph.yaml and the per-harness managed files (.cursor/mcp.json, .mcp.json, opencode.json, AGENTS.md, .cursor/rules/specgraph-bootstrap.mdc) for the current project. Idempotent: safe to re-run on an already-initialized project. JSON managed keys are reset to canonical values on every run; user-added sibling keys are preserved. Markdown managed blocks (AGENTS.md, .mdc) are rewritten only when canonical or stale — user-edited (drifted) blocks are SKIPPED to preserve hand edits. runInit calls SyncAll with zero-value SyncOptions, so there is no --force path in this command; use `specgraph doctor --fix` to overwrite drifted blocks.
 
 ```
 specgraph init [project-slug] [flags]
@@ -940,15 +1009,26 @@ specgraph init [project-slug] [flags]
 **Flags:**
 
 ```
-      --yes   non-interactive (accepted for backward compat; init is always non-interactive)
+      --check   Exit non-zero if any managed file would be modified (no writes)
+      --quiet   Suppress per-file action lines
+      --yes     non-interactive (accepted for backward compat; init is always non-interactive)
 ```
 
 ### specgraph prime
 
-Ensure the server is running, then print project context and active specs for use by Claude Code's SessionStart hook.
+Ensure the server is running, then print the project prime (constitution summary,
+graph overview, ready specs, findings, skills) or, when a slug is given, the spec prime.
+Used by Claude Code's SessionStart hook (no-arg form).
 
 ```
-specgraph prime
+specgraph prime [slug] [flags]
+```
+
+**Flags:**
+
+```
+      --json              Output the proto-native JSON form
+      --show-provenance   Annotate constitution sections with provenance (set by: <layer>) markers
 ```
 
 ### specgraph read-mcp-resource

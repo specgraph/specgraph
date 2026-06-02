@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed (BREAKING)
 
+- **Global config now loads via koanf with explicit precedence** (flag > env > file > default). Every scalar field in `~/.config/specgraph/config.yaml` is now overridable by a `SPECGRAPH_<SECTION>_<KEY>` environment variable (e.g. `SPECGRAPH_SERVER_LISTEN`, `SPECGRAPH_CLIENT_DEFAULT_SERVER`); slice/map-valued settings (e.g. `auth.oidc.providers`, `auth.roles`) are not env-overridable. As part of this, the server env var **`SPECGRAPH_PG_URL` is renamed to `SPECGRAPH_SERVER_POSTGRES_URL`**; the old name is no longer read and `specgraph serve` logs a warning if it is still set. `SPECGRAPH_API_KEY` is unchanged. The `serve` command gains a `--listen` flag.
 - **Replaced `SpecLifecycle` (task/living) with `SpecProvenance`** (AUTHORED / RETROACTIVE_FROM_PR / DECLARED). Wire-break at proto field 10 plus a new `provenance_detail` oneof. Postgres column `lifecycle` removed; `provenance_type` and `provenance_detail` columns added. See `docs/decisions/ADR-006-spec-provenance-model.md`.
 - **`specgraph ready` now requires `stage=approved` AND `provenance=authored`**. Previously surfaced any spec at `stage <> done`, including mid-design and superseded/abandoned specs.
 - **`claim` and `report-completion` reject non-AUTHORED specs** with `ErrClaimRequiresAuthored` / `ErrCompletionRequiresAuthored`.

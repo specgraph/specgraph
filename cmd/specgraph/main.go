@@ -70,11 +70,11 @@ func legacyConfigPath() string {
 
 // loadGlobalCfg dispatches to LoadGlobalExplicit when --config is set so
 // typo'd paths fail loudly; the XDG default path retains auto-create.
-func loadGlobalCfg() (*config.GlobalConfig, error) {
+func loadGlobalCfg(opts ...config.LoadOption) (*config.GlobalConfig, error) {
 	if cfgFile != "" {
-		return config.LoadGlobalExplicit(cfgFile)
+		return config.LoadGlobalExplicit(cfgFile, opts...)
 	}
-	return config.LoadGlobal(xdg.ConfigFile())
+	return config.LoadGlobal(xdg.ConfigFile(), opts...)
 }
 
 func main() {

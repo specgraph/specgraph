@@ -9,7 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/specgraph/specgraph/internal/config"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -314,4 +317,120 @@ auth:
 
 	_, err := config.LoadGlobal(path)
 	require.Error(t, err, "legacy map-shaped roles must fail to parse, not be silently dropped")
+}
+
+func TestLoadGlobal_EnvOverridesFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  listen: \"0.0.0.0:1111\"\n"), 0o600))
+	t.Setenv("SPECGRAPH_SERVER_LISTEN", "0.0.0.0:2222")
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.0.0:2222", cfg.Server.Listen) // env beats file
+}
+
+func TestLoadGlobal_SetFlagBeatsEnvAndFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  listen: \"0.0.0.0:1111\"\n"), 0o600))
+	t.Setenv("SPECGRAPH_SERVER_LISTEN", "0.0.0.0:2222")
+
+	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	fs.String("listen", "", "")
+	require.NoError(t, fs.Parse([]string{"--listen", "0.0.0.0:3333"}))
+
+	cfg, err := config.LoadGlobalExplicit(path, config.WithFlags(fs))
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.0.0:3333", cfg.Server.Listen) // set flag wins
+}
+
+func TestLoadGlobal_UnsetFlagDoesNotClobber(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  listen: \"0.0.0.0:1111\"\n"), 0o600))
+
+	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	fs.String("listen", "0.0.0.0:9999", "") // non-empty DEFAULT, not set on cmdline
+	require.NoError(t, fs.Parse([]string{}))
+
+	cfg, err := config.LoadGlobalExplicit(path, config.WithFlags(fs))
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.0.0:1111", cfg.Server.Listen) // file wins; flag default ignored
+}
+
+func TestLoadGlobal_PgURLCoercesBackend(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  backend: \"\"\n"), 0o600))
+	t.Setenv("SPECGRAPH_SERVER_POSTGRES_URL", "postgres://x/y")
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.Equal(t, "postgres://x/y", cfg.Server.Postgres.URL)
+	assert.Equal(t, "postgres", cfg.Server.Backend) // coerced
+}
+
+func TestLoadGlobal_SliceRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	doc := "auth:\n  oidc:\n    providers:\n      - id: p1\n        client_id: cid\n        claims_mapping:\n          - claim: groups\n            value: admins\n            role: admin\n"
+	require.NoError(t, os.WriteFile(path, []byte(doc), 0o600))
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	require.Len(t, cfg.Auth.OIDC.Providers, 1)
+	assert.Equal(t, "p1", cfg.Auth.OIDC.Providers[0].ID)
+	assert.Equal(t, "cid", cfg.Auth.OIDC.Providers[0].ClientID)
+	require.Len(t, cfg.Auth.OIDC.Providers[0].ClaimsMapping, 1)
+	assert.Equal(t, "admin", cfg.Auth.OIDC.Providers[0].ClaimsMapping[0].Role)
+}
+
+func TestLoadGlobal_MaterializedFileMatchesDefaults(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+
+	cfg, err := config.LoadGlobal(path) // missing -> materialize
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.0.0:9090", cfg.Server.Listen) // sanity: matches globalDefaults()
+
+	reread, err := config.LoadGlobalExplicit(path) // now exists
+	require.NoError(t, err)
+	// Full struct comparison catches nested default drift and serialization
+	// omissions, not just the sentinel field above. EquateEmpty: the two load
+	// paths differ harmlessly in nil-vs-empty slices for file-omitted keys.
+	if diff := cmp.Diff(cfg, reread, cmpopts.EquateEmpty()); diff != "" {
+		t.Errorf("materialized config differs from reread (-materialized +reread):\n%s", diff)
+	}
+}
+
+// A file key whose env form collides with a real scalar key (here a nested
+// client.default.server vs the real client.default_server) must NOT pollute the
+// env mapper: the mapper is built from the defaults-only schema, so env still
+// resolves deterministically to the real key and beats the file value.
+func TestLoadGlobal_FileKeyDoesNotPolluteEnvMapper(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	doc := "client:\n  default:\n    server: junk\n  default_server: http://file:1\n"
+	require.NoError(t, os.WriteFile(path, []byte(doc), 0o600))
+	t.Setenv("SPECGRAPH_CLIENT_DEFAULT_SERVER", "http://env:2")
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.Equal(t, "http://env:2", cfg.Client.DefaultServer) // env beats file, deterministically
+}
+
+// Env values are always strings; this guards the WeaklyTypedInput + duration
+// decode-hook coercion that lets non-string scalars be set from the environment.
+func TestLoadGlobal_EnvCoercesNonStringScalars(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  docker: true\n"), 0o600))
+	t.Setenv("SPECGRAPH_SERVER_DOCKER", "false")       // string -> bool
+	t.Setenv("SPECGRAPH_SERVER_PROBES_INTERVAL", "7s") // string -> time.Duration
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.False(t, cfg.Server.Docker)
+	assert.Equal(t, 7*time.Second, cfg.Server.Probes.Interval)
 }

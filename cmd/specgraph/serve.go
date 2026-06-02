@@ -53,12 +53,17 @@ var serveCmd = &cobra.Command{
 
 func init() {
 	serveCmd.Flags().String("cors-origin", "", "Enable CORS for this origin (dev mode only)")
-	serveCmd.Flags().String("pg-url", "", "PostgreSQL connection URL (overrides config; env: SPECGRAPH_PG_URL)")
+	serveCmd.Flags().String("pg-url", "", "PostgreSQL connection URL (overrides config; env: SPECGRAPH_SERVER_POSTGRES_URL)")
+	serveCmd.Flags().String("listen", "", "Address to listen on (overrides config; env: SPECGRAPH_SERVER_LISTEN)")
 	rootCmd.AddCommand(serveCmd)
 }
 
 func runServe(cmd *cobra.Command, _ []string) error {
-	cfg, err := loadGlobalCfg()
+	if os.Getenv("SPECGRAPH_PG_URL") != "" {
+		slog.Warn("SPECGRAPH_PG_URL is no longer read; use SPECGRAPH_SERVER_POSTGRES_URL")
+	}
+
+	cfg, err := loadGlobalCfg(config.WithFlags(cmd.Flags()))
 	if err != nil {
 		return fmt.Errorf("load global config: %w", err)
 	}
@@ -66,20 +71,8 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	// Resolve --pg-url flag / SPECGRAPH_PG_URL env override before Docker compose
-	// so the correct backend URL is used when starting the compose stack.
-	pgURL, err := cmd.Flags().GetString("pg-url")
-	if err != nil {
-		return fmt.Errorf("pg-url flag: %w", err)
-	}
-	if pgURL == "" {
-		pgURL = os.Getenv("SPECGRAPH_PG_URL")
-	}
-	// Flag/env override selects postgres backend automatically.
-	if pgURL != "" {
-		cfg.Server.Backend = "postgres"
-		cfg.Server.Postgres.URL = pgURL
-	}
+	// --pg-url / SPECGRAPH_SERVER_POSTGRES_URL and backend coercion are now
+	// resolved inside the loader (cfg.Server.Postgres.URL, cfg.Server.Backend).
 
 	if cfg.Server.Docker {
 		composeFile, dockerErr := docker.EnsureComposeFile(xdg.DataHome())

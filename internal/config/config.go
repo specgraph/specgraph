@@ -141,7 +141,7 @@ type ConstitutionLangs struct {
 
 // PostgresConfig holds Postgres-specific connection settings.
 type PostgresConfig struct {
-	URL string `yaml:"url"`
+	URL string `yaml:"url" koanf:"url"`
 }
 
 // DockerConfig holds Docker Compose settings.
