@@ -84,17 +84,8 @@ var rpcPermissions = map[string]string{
 	specgraphv1connect.SliceServiceCompleteSliceProcedure: "slice:write",
 }
 
-var exemptProcedures = map[string]bool{
-	specgraphv1connect.ServerServiceHealthProcedure: true,
-}
-
 // RPCPermission returns the required permission for a procedure.
 func RPCPermission(procedure string) (string, bool) {
 	perm, ok := rpcPermissions[procedure]
 	return perm, ok
-}
-
-// IsExempt reports whether a procedure is exempt from authentication.
-func IsExempt(procedure string) bool {
-	return exemptProcedures[procedure]
 }

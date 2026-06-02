@@ -154,6 +154,15 @@ const (
 // authorized and is a programming error (caught at engine construction).
 var knownVerbs = map[string]bool{"read": true, "write": true, "delete": true}
 
+// actionDomain returns the domain prefix of an action name
+// ("spec.read" -> "spec"). Used to derive the placeholder resource id.
+func actionDomain(action string) string {
+	if idx := strings.Index(action, "."); idx >= 0 {
+		return action[:idx]
+	}
+	return action
+}
+
 // actionVerb returns the verb suffix of an action name ("spec.read" -> "read").
 func actionVerb(action string) (string, error) {
 	idx := strings.LastIndex(action, ".")
