@@ -44,10 +44,12 @@ go get github.com/knadh/koanf/v2@latest \
   github.com/go-viper/mapstructure/v2
 ```
 
-- [ ] **Step 2: Tidy and verify build**
+- [ ] **Step 2: Verify build (defer `go mod tidy`)**
 
-Run: `go mod tidy && go build ./...`
+Run: `go build ./...`
 Expected: no errors. `go.sum` now contains `github.com/knadh/koanf/v2`.
+
+Do **not** run `go mod tidy` yet — no code imports these packages, so tidy would strip them. They land as `// indirect` and become direct in Tasks 2–6; a final `go mod tidy` runs in Task 8. In this corporate environment (`packageregistry.geico.net` proxy) sumdb lookups can 404; if `go get`/`go mod tidy` fails on checksum verification, set `GOFLAGS=-mod=mod` and `GONOSUMCHECK`/`GOSUMDB=off` as needed.
 
 - [ ] **Step 3: Confirm the env provider callback signature** (guards against v2 API drift)
 
@@ -339,7 +341,20 @@ func loadGlobalAt(path string, materializeDefaults bool, opts ...LoadOption) (*G
 	}
 
 	// 3. env — SPECGRAPH_* via known-key mapper.
-	if err := k.Load(env.Provider("SPECGRAPH_", ".", envKeyMapper(k)), nil); err != nil {
+	// koanf env provider v2.x uses the Opt-struct API:
+	//   env.Provider(delim string, env.Opt{Prefix, TransformFunc func(k,v string)(string,any)})
+	// TransformFunc receives the full env name (incl. prefix); "" key => ignored.
+	mapper := envKeyMapper(k)
+	if err := k.Load(env.Provider(".", env.Opt{
+		Prefix: "SPECGRAPH_",
+		TransformFunc: func(name, value string) (string, any) {
+			key := mapper(name)
+			if key == "" {
+				return "", nil
+			}
+			return key, value
+		},
+	}), nil); err != nil {
 		return nil, fmt.Errorf("load env: %w", err)
 	}
 
@@ -618,10 +633,13 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 
 ## Task 8: Full quality gate
 
-- [ ] **Step 1: License headers (new code lives in existing headered files, but verify)**
+- [ ] **Step 1: Tidy modules + license headers**
+
+Run: `go mod tidy && go build ./...`
+Expected: koanf deps move from `// indirect` to direct require; build passes. (If sumdb 404s, see Task 1 Step 2's proxy note.)
 
 Run: `task license:check`
-Expected: PASS. If it flags a file, run `task license:add`.
+Expected: PASS. The new `internal/config/loader_internal_test.go` must carry the SPDX header (it does per Task 3). If anything is flagged, run `task license:add`.
 
 - [ ] **Step 2: Run the full check**
 
