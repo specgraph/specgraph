@@ -90,6 +90,9 @@ func NewIdentityStore(cfg IdentityStoreConfig) (Resolver, error) { //nolint:gocr
 	}
 	verifiers := make(map[string]*OIDCVerifier, len(cfg.Verifiers))
 	for _, v := range cfg.Verifiers {
+		if v == nil {
+			return nil, errors.New("auth: NewIdentityStore: nil verifier in cfg.Verifiers")
+		}
 		if _, dup := verifiers[v.Issuer()]; dup {
 			return nil, fmt.Errorf("auth: duplicate verifier for issuer %q", v.Issuer())
 		}

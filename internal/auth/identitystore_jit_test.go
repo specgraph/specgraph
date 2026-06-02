@@ -20,9 +20,10 @@ import (
 
 func TestJIT_RateLimitExhaustion(t *testing.T) {
 	p := newOIDCTestIssuer(t)
-	v, _ := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
 		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
 	})
+	require.NoError(t, err)
 	stub := &usersBackendStub{
 		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
 			return nil, storage.ErrOIDCBindingNotFound
@@ -34,12 +35,13 @@ func TestJIT_RateLimitExhaustion(t *testing.T) {
 			return u, b, nil
 		},
 	}
-	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
 		JITEnabled:          true,
 		JITDefaultRole:      auth.RoleReader,
 		JITRateBurstPerHour: 5, // small burst so the test runs fast
 	})
+	require.NoError(t, err)
 
 	// First 5 JITs succeed (bucket capacity = 5).
 	for i := 0; i < 5; i++ {
@@ -57,8 +59,9 @@ func TestJIT_RateLimitExhaustion(t *testing.T) {
 		"aud": "aud-1", "exp": time.Now().Add(time.Hour).Unix(),
 		"iat": time.Now().Unix(),
 	})
-	_, err := store.Resolve(context.Background(), tok)
-	require.ErrorIs(t, err, auth.ErrUnauthenticated)
+	var resolveErr error
+	_, resolveErr = store.Resolve(context.Background(), tok)
+	require.ErrorIs(t, resolveErr, auth.ErrUnauthenticated)
 }
 
 // TestJIT_RateLimitIsolation_TwoIssuers proves rate-limit buckets are
@@ -119,9 +122,10 @@ func TestJIT_RateLimitIsolation_TwoIssuers(t *testing.T) {
 
 func TestJIT_EmailAllowlist_Match(t *testing.T) {
 	p := newOIDCTestIssuer(t)
-	v, _ := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
 		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
 	})
+	require.NoError(t, err)
 	stub := &usersBackendStub{
 		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
 			return nil, storage.ErrOIDCBindingNotFound
@@ -133,26 +137,28 @@ func TestJIT_EmailAllowlist_Match(t *testing.T) {
 			return u, b, nil
 		},
 	}
-	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
 		JITEnabled:              true,
 		JITDefaultRole:          auth.RoleReader,
 		JITEmailDomainAllowlist: []string{"example.com"},
 	})
+	require.NoError(t, err)
 	tok := p.mintToken(t, map[string]any{
 		"iss": p.server.URL, "sub": "x", "aud": "aud-1",
 		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
 		"email": "alice@example.com",
 	})
-	_, err := store.Resolve(context.Background(), tok)
+	_, err = store.Resolve(context.Background(), tok)
 	require.NoError(t, err)
 }
 
 func TestJIT_EmailAllowlist_Mismatch(t *testing.T) {
 	p := newOIDCTestIssuer(t)
-	v, _ := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
 		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
 	})
+	require.NoError(t, err)
 	stub := &usersBackendStub{
 		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
 			return nil, storage.ErrOIDCBindingNotFound
@@ -164,26 +170,28 @@ func TestJIT_EmailAllowlist_Mismatch(t *testing.T) {
 			return u, b, nil
 		},
 	}
-	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
 		JITEnabled:              true,
 		JITDefaultRole:          auth.RoleReader,
 		JITEmailDomainAllowlist: []string{"example.com"},
 	})
+	require.NoError(t, err)
 	tok := p.mintToken(t, map[string]any{
 		"iss": p.server.URL, "sub": "x", "aud": "aud-1",
 		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
 		"email": "bob@other.com",
 	})
-	_, err := store.Resolve(context.Background(), tok)
+	_, err = store.Resolve(context.Background(), tok)
 	require.ErrorIs(t, err, auth.ErrUnauthenticated)
 }
 
 func TestJIT_EmailAllowlist_MissingClaimRefuses(t *testing.T) {
 	p := newOIDCTestIssuer(t)
-	v, _ := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
 		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
 	})
+	require.NoError(t, err)
 	stub := &usersBackendStub{
 		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
 			return nil, storage.ErrOIDCBindingNotFound
@@ -195,26 +203,28 @@ func TestJIT_EmailAllowlist_MissingClaimRefuses(t *testing.T) {
 			return u, b, nil
 		},
 	}
-	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
 		JITEnabled:              true,
 		JITDefaultRole:          auth.RoleReader,
 		JITEmailDomainAllowlist: []string{"example.com"},
 	})
+	require.NoError(t, err)
 	// Token has no "email" claim; allowlist non-empty → refuse.
 	tok := p.mintToken(t, map[string]any{
 		"iss": p.server.URL, "sub": "x", "aud": "aud-1",
 		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
 	})
-	_, err := store.Resolve(context.Background(), tok)
+	_, err = store.Resolve(context.Background(), tok)
 	require.ErrorIs(t, err, auth.ErrUnauthenticated)
 }
 
 func TestJIT_EmptyAllowlistAllowsMissingClaim(t *testing.T) {
 	p := newOIDCTestIssuer(t)
-	v, _ := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
 		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
 	})
+	require.NoError(t, err)
 	stub := &usersBackendStub{
 		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
 			return nil, storage.ErrOIDCBindingNotFound
@@ -226,12 +236,13 @@ func TestJIT_EmptyAllowlistAllowsMissingClaim(t *testing.T) {
 			return u, b, nil
 		},
 	}
-	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
 		JITEnabled:     true,
 		JITDefaultRole: auth.RoleReader,
 		// JITEmailDomainAllowlist: nil (empty = no allowlist)
 	})
+	require.NoError(t, err)
 	// Token has no "email" claim; empty allowlist → JIT succeeds; user.Email = "".
 	tok := p.mintToken(t, map[string]any{
 		"iss": p.server.URL, "sub": "x", "aud": "aud-1",
@@ -246,9 +257,10 @@ func TestJIT_EmptyAllowlistAllowsMissingClaim(t *testing.T) {
 
 func TestJIT_ClaimsMapping_AppliesRole(t *testing.T) {
 	p := newOIDCTestIssuer(t)
-	v, _ := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
 		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
 	})
+	require.NoError(t, err)
 	var capturedRole string
 	stub := &usersBackendStub{
 		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
@@ -262,7 +274,7 @@ func TestJIT_ClaimsMapping_AppliesRole(t *testing.T) {
 			return u, b, nil
 		},
 	}
-	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
 		JITEnabled:     true,
 		JITDefaultRole: auth.RoleReader,
@@ -272,6 +284,7 @@ func TestJIT_ClaimsMapping_AppliesRole(t *testing.T) {
 			},
 		},
 	})
+	require.NoError(t, err)
 	tok := p.mintToken(t, map[string]any{
 		"iss": p.server.URL, "sub": "x", "aud": "aud-1",
 		"exp":    time.Now().Add(time.Hour).Unix(),
@@ -279,7 +292,7 @@ func TestJIT_ClaimsMapping_AppliesRole(t *testing.T) {
 		"email":  "a@example.com",
 		"groups": []string{"specgraph-admins"},
 	})
-	_, err := store.Resolve(context.Background(), tok)
+	_, err = store.Resolve(context.Background(), tok)
 	require.NoError(t, err)
 	require.Equal(t, "admin", capturedRole, "claims-mapping should override default-role")
 }
@@ -288,9 +301,10 @@ func TestJIT_ClaimsMapping_AppliesRole(t *testing.T) {
 // mapping rule fires, the JIT user gets the configured default role.
 func TestJIT_ClaimsMapping_NoMatchFallsBackToDefault(t *testing.T) {
 	p := newOIDCTestIssuer(t)
-	v, _ := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
 		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
 	})
+	require.NoError(t, err)
 	var capturedRole string
 	stub := &usersBackendStub{
 		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
@@ -304,7 +318,7 @@ func TestJIT_ClaimsMapping_NoMatchFallsBackToDefault(t *testing.T) {
 			return u, b, nil
 		},
 	}
-	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
 		JITEnabled:     true,
 		JITDefaultRole: auth.RoleWriter,
@@ -314,6 +328,7 @@ func TestJIT_ClaimsMapping_NoMatchFallsBackToDefault(t *testing.T) {
 			},
 		},
 	})
+	require.NoError(t, err)
 	tok := p.mintToken(t, map[string]any{
 		"iss": p.server.URL, "sub": "x", "aud": "aud-1",
 		"exp":    time.Now().Add(time.Hour).Unix(),
@@ -321,7 +336,7 @@ func TestJIT_ClaimsMapping_NoMatchFallsBackToDefault(t *testing.T) {
 		"email":  "a@example.com",
 		"groups": []string{"some-other-group"}, // no match
 	})
-	_, err := store.Resolve(context.Background(), tok)
+	_, err = store.Resolve(context.Background(), tok)
 	require.NoError(t, err)
 	require.Equal(t, "writer", capturedRole, "no claims-mapping match should fall back to default role")
 }

@@ -6,6 +6,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/specgraph/specgraph/internal/config"
@@ -113,7 +114,13 @@ func LoadRolePerms(custom map[string]config.RoleConfig) map[Role][]string {
 		out[role] = append([]string(nil), perms...)
 	}
 	for name, rc := range custom {
-		out[Role(name)] = append([]string(nil), rc.Permissions...)
+		merged := out[Role(name)] // built-in defaults if redefining a built-in, else nil
+		for _, p := range rc.Permissions {
+			if !slices.Contains(merged, p) {
+				merged = append(merged, p)
+			}
+		}
+		out[Role(name)] = merged
 	}
 	return out
 }

@@ -5,7 +5,6 @@ package usagetracker_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -123,30 +122,36 @@ func TestManager_CloseDrainsUnderLoad(t *testing.T) {
 }
 
 func TestManager_CloseRespectsCtxCancellation(t *testing.T) {
-	// Backend with intentional slowness.
-	slowStore := &slowFakeStorage{delay: 10 * time.Millisecond}
+	// Each key takes 20 ms to persist; 100 keys × 20 ms = 2 s total drain time.
+	// The deadline is 50 ms — far shorter than the drain, so the ctx reliably
+	// wins and Close must return context.DeadlineExceeded.
+	slowStore := &slowFakeStorage{delay: 20 * time.Millisecond}
 	mgr := usagetracker.NewManager(slowStore, usagetracker.Config{
 		BufferSize:    1024,
 		FlushInterval: time.Hour,
 	})
-	// Distinct keys so the slow backend is actually invoked 100 times during
-	// the drain (a repeated key would coalesce to a single fast call).
+	// Distinct keys so each persists independently and the slow backend is
+	// actually invoked once per key (coalescing doesn't reduce the work here).
 	for i := 0; i < 100; i++ {
 		mgr.Touch(fmt.Sprintf("k%d", i))
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	err := mgr.Close(ctx)
-	// Either the close completes (fast enough) OR the ctx wins.
-	// Both are acceptable; the assertion is "Close does not hang".
-	require.True(t, err == nil || errors.Is(err, context.DeadlineExceeded))
+	// The deadline (50 ms) is much shorter than the total drain time (≥2 s),
+	// so Close must return before draining everything — proving it honors ctx.
+	require.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 type slowFakeStorage struct {
 	delay time.Duration
 }
 
-func (s *slowFakeStorage) TouchLastUsed(_ context.Context, _ string) error {
-	time.Sleep(s.delay)
-	return nil
+func (s *slowFakeStorage) TouchLastUsed(ctx context.Context, _ string) error {
+	select {
+	case <-time.After(s.delay):
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

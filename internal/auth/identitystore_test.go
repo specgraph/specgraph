@@ -583,9 +583,10 @@ func TestResolveJWT_ExistingBinding_IgnoresClaimsMapping(t *testing.T) {
 
 func TestResolveJWT_JITCreatesNewUser(t *testing.T) {
 	p := newOIDCTestIssuer(t)
-	v, _ := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
 		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
 	})
+	require.NoError(t, err)
 	var capturedUser *storage.User
 	var capturedBinding *storage.OIDCBinding
 	stub := &usersBackendStub{
@@ -600,11 +601,12 @@ func TestResolveJWT_JITCreatesNewUser(t *testing.T) {
 			return u, b, nil
 		},
 	}
-	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
 		JITEnabled:     true,
 		JITDefaultRole: auth.RoleReader,
 	})
+	require.NoError(t, err)
 	token := p.mintToken(t, map[string]any{
 		"iss": p.server.URL, "sub": "new-sub", "aud": "aud-1",
 		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
@@ -622,23 +624,25 @@ func TestResolveJWT_JITCreatesNewUser(t *testing.T) {
 
 func TestResolveJWT_JITDisabledRejects(t *testing.T) {
 	p := newOIDCTestIssuer(t)
-	v, _ := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
 		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
 	})
+	require.NoError(t, err)
 	stub := &usersBackendStub{
 		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
 			return nil, storage.ErrOIDCBindingNotFound
 		},
 	}
-	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
 		JITEnabled: false,
 	})
+	require.NoError(t, err)
 	token := p.mintToken(t, map[string]any{
 		"iss": p.server.URL, "sub": "x", "aud": "aud-1",
 		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
 	})
-	_, err := store.Resolve(context.Background(), token)
+	_, err = store.Resolve(context.Background(), token)
 	require.ErrorIs(t, err, auth.ErrUnauthenticated)
 }
 
@@ -684,9 +688,10 @@ func TestHasAuth_OnlyBootstrapReturnsFalse(t *testing.T) {
 			return []*storage.User{u}, nil
 		},
 	}
-	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users: stub, Tracker: &noopTracker{},
 	})
+	require.NoError(t, err)
 	has, err := store.HasAuth(context.Background())
 	require.NoError(t, err)
 	require.False(t, has)
@@ -700,9 +705,10 @@ func TestHasAuth_NonBootstrapUserReturnsTrue(t *testing.T) {
 			}, nil
 		},
 	}
-	store, _ := auth.NewIdentityStore(auth.IdentityStoreConfig{
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users: stub, Tracker: &noopTracker{},
 	})
+	require.NoError(t, err)
 	has, err := store.HasAuth(context.Background())
 	require.NoError(t, err)
 	require.True(t, has)
