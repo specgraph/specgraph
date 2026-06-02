@@ -29,11 +29,13 @@ Each task ends with `jj --no-pager commit`. All commit messages MUST include the
 ## Task 1: Add koanf dependencies
 
 **Files:**
+
 - Modify: `go.mod`, `go.sum`
 
 - [ ] **Step 1: Add the modules**
 
 Run:
+
 ```bash
 go get github.com/knadh/koanf/v2@latest \
   github.com/knadh/koanf/providers/structs \
@@ -73,6 +75,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 koanf `Unmarshal` reads `koanf:` tags (mapstructure-style), not `yaml:`. Tags mirror the existing yaml names exactly so on-disk YAML is unchanged.
 
 **Files:**
+
 - Modify: `internal/config/global.go:26-154`
 - Modify: `internal/config/config.go:143-145`
 
@@ -136,6 +139,7 @@ A naive `_`→`.` mapping mangles keys like `default_server`. Instead, build a l
 `envKeyMapper`/`globalDefaults` are unexported and `internal/config/global_test.go` is `package config_test` (external) — it cannot reach them. These unit tests therefore live in a **new internal test file** `internal/config/loader_internal_test.go` declared `package config`.
 
 **Files:**
+
 - Modify: `internal/config/global.go` (new functions)
 - Create: `internal/config/loader_internal_test.go`
 
@@ -252,6 +256,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 ## Task 4: Rewrite `loadGlobalAt` on koanf
 
 **Files:**
+
 - Modify: `internal/config/global.go` (`loadGlobalAt`, `LoadGlobal`, `LoadGlobalExplicit`, new `decoderConf`, `applyPostLoad`, `flagKeyMap`)
 - Modify: `cmd/specgraph/main.go:73` (`loadGlobalCfg` accepts options)
 
@@ -439,6 +444,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 These tests use only exported APIs, so they go in the existing external-package file `internal/config/global_test.go` (`package config_test`) — every loader call is qualified with `config.`, and expected defaults use the known literals (not `globalDefaults()`, which is unexported).
 
 **Files:**
+
 - Modify: `internal/config/global_test.go` (add `"github.com/spf13/pflag"` to imports)
 
 - [ ] **Step 1: Write the failing tests**
@@ -549,6 +555,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 ## Task 6: Wire serve flags + deprecation warning
 
 **Files:**
+
 - Modify: `cmd/specgraph/serve.go:54-83`
 
 - [ ] **Step 1: Register `--listen` and pass flags to the loader; replace the manual pg-url block**
@@ -615,6 +622,7 @@ Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 ## Task 7: Docs and migration references
 
 **Files:**
+
 - Modify: `docs/verification/claude.md`, `docs/verification/cursor.md`, `docs/verification/opencode.md` (only `SPECGRAPH_PG_URL` references, if any)
 - Modify: any compose/k8s file setting `SPECGRAPH_PG_URL`
 
@@ -630,9 +638,11 @@ Replace `SPECGRAPH_PG_URL` with `SPECGRAPH_SERVER_POSTGRES_URL` in docs and comp
 - [ ] **Step 3: Add a CHANGELOG/release note entry**
 
 If a `CHANGELOG.md` exists, add under Unreleased:
-```
+
+```text
 - **BREAKING:** server env var `SPECGRAPH_PG_URL` renamed to `SPECGRAPH_SERVER_POSTGRES_URL`. All global config fields are now env-overridable via `SPECGRAPH_<SECTION>_<KEY>`.
 ```
+
 If no CHANGELOG exists, skip (note it in the PR description instead).
 
 - [ ] **Step 4: Commit**
@@ -672,6 +682,7 @@ jj --no-pager commit -m "chore: formatting from task check
 
 Signed-off-by: Sean Brandt <SeBrandt@geico.com>"
 ```
+
 (Skip if the working copy is clean.)
 
 ---
