@@ -5,6 +5,8 @@ package auth_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,6 +19,55 @@ import (
 	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/config"
 )
+
+// fakeResolver is a stub Resolver for V2 interceptor tests.
+type fakeResolver struct {
+	resolve func(ctx context.Context, token string) (*auth.Identity, error)
+}
+
+func (f *fakeResolver) Resolve(ctx context.Context, token string) (*auth.Identity, error) {
+	return f.resolve(ctx, token)
+}
+
+func (f *fakeResolver) HasAuth(_ context.Context) (bool, error) { return true, nil }
+
+// fakeAuthorizer is a stub Authorizer for V2 interceptor tests.
+type fakeAuthorizer struct {
+	authorize func(ctx context.Context, id *auth.Identity, proc string, req any) (auth.Decision, error)
+}
+
+func (f *fakeAuthorizer) Authorize(ctx context.Context, id *auth.Identity, proc string, req any) (auth.Decision, error) {
+	return f.authorize(ctx, id, proc, req)
+}
+
+// newTestServerV2 builds a test server using NewAuthInterceptorV2.
+func newTestServerV2(t *testing.T, resolver auth.Resolver, authorizer auth.Authorizer) (*httptest.Server, specgraphv1connect.SpecServiceClient, specgraphv1connect.ServerServiceClient) {
+	t.Helper()
+	interceptor := auth.NewAuthInterceptorV2(resolver, authorizer)
+	opts := connect.WithInterceptors(interceptor)
+
+	mux := http.NewServeMux()
+	path, handler := specgraphv1connect.NewServerServiceHandler(&stubHealthHandler{}, opts)
+	mux.Handle(path, handler)
+	path, handler = specgraphv1connect.NewSpecServiceHandler(&stubSpecHandler{}, opts)
+	mux.Handle(path, handler)
+
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	specClient := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL)
+	healthClient := specgraphv1connect.NewServerServiceClient(http.DefaultClient, srv.URL)
+	return srv, specClient, healthClient
+}
+
+// allowAllAuthorizer returns an authorizer that always allows.
+func allowAllAuthorizer() *fakeAuthorizer {
+	return &fakeAuthorizer{
+		authorize: func(_ context.Context, _ *auth.Identity, _ string, _ any) (auth.Decision, error) {
+			return auth.Decision{Allowed: true, Reason: "test-allow"}, nil
+		},
+	}
+}
 
 type stubHealthHandler struct {
 	specgraphv1connect.UnimplementedServerServiceHandler
@@ -230,5 +281,158 @@ func TestInterceptor_JWTToken(t *testing.T) {
 	}
 	if connect.CodeOf(err) != connect.CodeUnauthenticated {
 		t.Errorf("code = %v, want Unauthenticated", connect.CodeOf(err))
+	}
+}
+
+// --- V2 interceptor tests (NewAuthInterceptorV2) ---
+
+func TestInterceptorV2_ValidResolve_AllowedDecision_Passes(t *testing.T) {
+	id := &auth.Identity{Subject: "apikey:k1", Role: auth.RoleAdmin, EffectiveRole: auth.RoleAdmin}
+	resolver := &fakeResolver{
+		resolve: func(_ context.Context, _ string) (*auth.Identity, error) { return id, nil },
+	}
+	srv, _, _ := newTestServerV2(t, resolver, allowAllAuthorizer())
+	client := newSpecClientWithAuth(srv.URL, "spgr_sk_somekey")
+	_, err := client.GetSpec(context.Background(), connect.NewRequest(&specgraphv1.GetSpecRequest{}))
+	if err != nil {
+		t.Fatalf("expected success, got: %v", err)
+	}
+}
+
+func TestInterceptorV2_NoToken_Returns401(t *testing.T) {
+	resolver := &fakeResolver{
+		resolve: func(_ context.Context, _ string) (*auth.Identity, error) {
+			t.Error("Resolve must not be called when no token is provided")
+			return nil, auth.ErrUnauthenticated
+		},
+	}
+	_, specClient, _ := newTestServerV2(t, resolver, allowAllAuthorizer())
+	_, err := specClient.GetSpec(context.Background(), connect.NewRequest(&specgraphv1.GetSpecRequest{}))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Errorf("code = %v, want Unauthenticated", connect.CodeOf(err))
+	}
+}
+
+func TestInterceptorV2_ErrUnauthenticated_MapsToCodeUnauthenticated(t *testing.T) {
+	resolver := &fakeResolver{
+		resolve: func(_ context.Context, _ string) (*auth.Identity, error) {
+			return nil, auth.ErrUnauthenticated
+		},
+	}
+	srv, _, _ := newTestServerV2(t, resolver, allowAllAuthorizer())
+	client := newSpecClientWithAuth(srv.URL, "bad_token")
+	_, err := client.GetSpec(context.Background(), connect.NewRequest(&specgraphv1.GetSpecRequest{}))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if connect.CodeOf(err) != connect.CodeUnauthenticated {
+		t.Errorf("code = %v, want Unauthenticated", connect.CodeOf(err))
+	}
+}
+
+func TestInterceptorV2_ErrTransient_MapsToCodeUnavailable(t *testing.T) {
+	resolver := &fakeResolver{
+		resolve: func(_ context.Context, _ string) (*auth.Identity, error) {
+			return nil, fmt.Errorf("%w: pool exhausted", auth.ErrTransient)
+		},
+	}
+	srv, _, _ := newTestServerV2(t, resolver, allowAllAuthorizer())
+	client := newSpecClientWithAuth(srv.URL, "spgr_sk_sometoken")
+	_, err := client.GetSpec(context.Background(), connect.NewRequest(&specgraphv1.GetSpecRequest{}))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Errorf("code = %v, want Unavailable (503)", connect.CodeOf(err))
+	}
+}
+
+func TestInterceptorV2_ContextCanceled_Propagates(t *testing.T) {
+	resolver := &fakeResolver{
+		resolve: func(_ context.Context, _ string) (*auth.Identity, error) {
+			return nil, context.Canceled
+		},
+	}
+	srv, _, _ := newTestServerV2(t, resolver, allowAllAuthorizer())
+	client := newSpecClientWithAuth(srv.URL, "spgr_sk_sometoken")
+	_, err := client.GetSpec(context.Background(), connect.NewRequest(&specgraphv1.GetSpecRequest{}))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if connect.CodeOf(err) != connect.CodeCanceled {
+		t.Errorf("code = %v, want Canceled", connect.CodeOf(err))
+	}
+}
+
+func TestInterceptorV2_UnexpectedResolverError_MapsToCodeInternal(t *testing.T) {
+	resolver := &fakeResolver{
+		resolve: func(_ context.Context, _ string) (*auth.Identity, error) {
+			return nil, errors.New("some unexpected error")
+		},
+	}
+	srv, _, _ := newTestServerV2(t, resolver, allowAllAuthorizer())
+	client := newSpecClientWithAuth(srv.URL, "spgr_sk_sometoken")
+	_, err := client.GetSpec(context.Background(), connect.NewRequest(&specgraphv1.GetSpecRequest{}))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if connect.CodeOf(err) != connect.CodeInternal {
+		t.Errorf("code = %v, want Internal", connect.CodeOf(err))
+	}
+}
+
+func TestInterceptorV2_AuthorizerDenies_ReturnsPermissionDenied(t *testing.T) {
+	id := &auth.Identity{Subject: "apikey:k1", Role: auth.RoleReader, EffectiveRole: auth.RoleReader}
+	resolver := &fakeResolver{
+		resolve: func(_ context.Context, _ string) (*auth.Identity, error) { return id, nil },
+	}
+	denyAll := &fakeAuthorizer{
+		authorize: func(_ context.Context, _ *auth.Identity, _ string, _ any) (auth.Decision, error) {
+			return auth.Decision{Allowed: false, Reason: "test-deny"}, nil
+		},
+	}
+	srv, _, _ := newTestServerV2(t, resolver, denyAll)
+	client := newSpecClientWithAuth(srv.URL, "spgr_sk_sometoken")
+	_, err := client.GetSpec(context.Background(), connect.NewRequest(&specgraphv1.GetSpecRequest{}))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Errorf("code = %v, want PermissionDenied", connect.CodeOf(err))
+	}
+}
+
+func TestInterceptorV2_ExemptRPC_BypassesAuth(t *testing.T) {
+	resolver := &fakeResolver{
+		resolve: func(_ context.Context, _ string) (*auth.Identity, error) {
+			t.Error("Resolve should not be called for exempt procedure")
+			return nil, auth.ErrUnauthenticated
+		},
+	}
+	_, _, healthClient := newTestServerV2(t, resolver, allowAllAuthorizer())
+	_, err := healthClient.Health(context.Background(), connect.NewRequest(&specgraphv1.HealthRequest{}))
+	if err != nil {
+		t.Fatalf("Health should be exempt: %v", err)
+	}
+}
+
+func TestInterceptorV2_SessionCookie_Valid(t *testing.T) {
+	id := &auth.Identity{Subject: "apikey:k1", Role: auth.RoleAdmin, EffectiveRole: auth.RoleAdmin}
+	resolver := &fakeResolver{
+		resolve: func(_ context.Context, token string) (*auth.Identity, error) {
+			if token == "spgr_sk_cookietoken" { //nolint:gosec // G101: test fixture token; not a real credential
+				return id, nil
+			}
+			return nil, auth.ErrUnauthenticated
+		},
+	}
+	srv, _, _ := newTestServerV2(t, resolver, allowAllAuthorizer())
+	client := specgraphv1connect.NewSpecServiceClient(http.DefaultClient, srv.URL, withSessionCookie("spgr_sk_cookietoken"))
+	_, err := client.GetSpec(context.Background(), connect.NewRequest(&specgraphv1.GetSpecRequest{}))
+	if err != nil {
+		t.Fatalf("expected success with session cookie, got: %v", err)
 	}
 }

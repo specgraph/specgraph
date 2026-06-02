@@ -5,6 +5,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 )
@@ -54,4 +55,28 @@ func authenticate(ctx context.Context, store IdentityStore, r *http.Request) (*I
 	}
 
 	return nil, false
+}
+
+// RequireAuthV2 returns HTTP middleware that authenticates requests via
+// Bearer header or session cookie using a Resolver. Renamed back to
+// RequireAuth in the Phase C cleanup task once the legacy version is
+// removed.
+func RequireAuthV2(resolver Resolver) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			id, err := authenticateV2(r.Context(), resolver, r.Header) // shared with NewAuthInterceptorV2; renamed in Task 30b
+			if err != nil {
+				switch {
+				case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+					return // client gone / deadline; nothing to write
+				case errors.Is(err, ErrTransient):
+					http.Error(w, `{"error":"transient"}`, http.StatusServiceUnavailable)
+				default:
+					http.Error(w, `{"error":"unauthenticated"}`, http.StatusUnauthorized)
+				}
+				return
+			}
+			next.ServeHTTP(w, r.WithContext(WithIdentity(r.Context(), id)))
+		})
+	}
 }
