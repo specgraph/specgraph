@@ -6,6 +6,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync/atomic"
 
@@ -278,6 +279,14 @@ func (e *cedarEngine) Evaluate(_ context.Context, req EvalRequest) (PolicyDecisi
 	for _, de := range diag.Errors {
 		evalErrs = append(evalErrs, de.String())
 	}
+
+	slog.Debug("cedar decision",
+		"action", req.Action,
+		"principal", req.Identity.Subject,
+		"role", string(req.Identity.EffectiveRole),
+		"allowed", decision == cedar.Allow,
+		"policies", matched,
+	)
 
 	return PolicyDecision{
 		Allowed:         decision == cedar.Allow,
