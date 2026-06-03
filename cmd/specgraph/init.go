@@ -4,15 +4,22 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/specgraph/specgraph/internal/bootstrap"
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/config/managedfiles"
+	"github.com/specgraph/specgraph/internal/credentials"
+	"github.com/specgraph/specgraph/internal/storage/postgres"
+	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/spf13/cobra"
 )
 
@@ -35,19 +42,21 @@ var initCmd = &cobra.Command{
 }
 
 var (
-	initYes   bool
-	initCheck bool
-	initQuiet bool
+	initYes           bool
+	initCheck         bool
+	initQuiet         bool
+	initSkipBootstrap bool
 )
 
 func init() {
 	initCmd.Flags().BoolVar(&initYes, "yes", false, "non-interactive (accepted for backward compat; init is always non-interactive)")
 	initCmd.Flags().BoolVar(&initCheck, "check", false, "Exit non-zero if any managed file would be modified (no writes)")
 	initCmd.Flags().BoolVar(&initQuiet, "quiet", false, "Suppress per-file action lines")
+	initCmd.Flags().BoolVar(&initSkipBootstrap, "skip-bootstrap", false, "skip local admin bootstrap (managed files only)")
 	rootCmd.AddCommand(initCmd)
 }
 
-func runInit(_ *cobra.Command, args []string) error {
+func runInit(cmd *cobra.Command, args []string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get working directory: %w", err)
@@ -204,10 +213,101 @@ func runInit(_ *cobra.Command, args []string) error {
 			len(failedPaths), strings.Join(failedPaths, ", "))
 	}
 
+	if !initSkipBootstrap {
+		// cmd.Context() is nil when the command is invoked directly (e.g. in
+		// tests) rather than through cobra's Execute, which seeds a background
+		// context. Default to Background so the bootstrap dial has a valid
+		// parent context to derive its timeout from.
+		bootCtx := cmd.Context()
+		if bootCtx == nil {
+			bootCtx = context.Background()
+		}
+		if err := bootstrapOnInit(bootCtx, cmd.OutOrStdout()); err != nil {
+			return err
+		}
+	}
+
 	if projectCreated {
 		fmt.Printf("Initialized project %s. Config written to .specgraph.yaml\n", pc.Slug)
 	}
 
+	return nil
+}
+
+// bootstrapOnInit runs the local admin-bootstrap path for `specgraph init`.
+// It dials the configured Postgres directly (the local/dev shape, where the
+// operator has DB access) and ensures a bootstrap admin exists, saving the
+// minted API key into the CLI credentials file. Every degradation path —
+// no DB URL configured, DB unreachable, admin already present — prints a
+// short hint and returns nil so `init` always succeeds at writing managed
+// files. The hosted path (serve.go) does its own bootstrap and writes no
+// credentials file.
+func bootstrapOnInit(ctx context.Context, w io.Writer) error {
+	cfg, err := loadGlobalCfg()
+	if err != nil {
+		return fmt.Errorf("load global config for bootstrap: %w", err)
+	}
+
+	if cfg.Server.Postgres.URL == "" {
+		_, _ = fmt.Fprintln(w, "No Postgres URL configured; the server's first start will create the admin.") //nolint:errcheck // user stream write
+		return nil
+	}
+
+	// Bound the dial: a misconfigured or down DB must not hang `init`.
+	dialCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	store, err := postgres.New(dialCtx, cfg.Server.Postgres.URL, postgres.WithProject("_server"))
+	if err != nil {
+		_, _ = fmt.Fprintf(w, "Postgres not reachable (%v); the server's first start will create the admin.\n", err) //nolint:errcheck // user stream write
+		return nil
+	}
+	// Close with a fresh context: dialCtx may already be expired by the time
+	// the defer runs.
+	defer func() { _ = store.Close(context.Background()) }() //nolint:errcheck // best-effort close on the init path
+
+	authStore, err := postgres.NewAuth(dialCtx, store.Pool())
+	if err != nil {
+		return fmt.Errorf("build auth store for bootstrap: %w", err)
+	}
+	defer func() { _ = authStore.Close(context.Background()) }() //nolint:errcheck // best-effort close on the init path
+
+	res, err := bootstrap.Ensure(dialCtx, authStore, bootstrap.Options{})
+	if err != nil {
+		return fmt.Errorf("bootstrap admin: %w", err)
+	}
+	if !res.Created {
+		_, _ = fmt.Fprintln(w, "Admin already exists; leaving credentials untouched.") //nolint:errcheck // user stream write
+		return nil
+	}
+
+	// Resolve the server URL the CLI should associate the token with; fall
+	// back to the configured listen address when no project URL resolves.
+	serverURL, _, urlErr := resolveBaseURL()
+	if urlErr != nil || serverURL == "" {
+		// resolveBaseURL failed — fall back to the local listen address, but map
+		// a bind-all host (0.0.0.0 / ::) to loopback so the written key matches
+		// what the CLI later resolves (127.0.0.1). credentials.TokenFor
+		// normalizes only trailing slashes, not host, so a token keyed under a
+		// bind-all host would be unfindable on lookup.
+		host := cfg.Server.Listen
+		host = strings.Replace(host, "0.0.0.0", "127.0.0.1", 1)
+		host = strings.Replace(host, "[::]", "127.0.0.1", 1)
+		serverURL = "http://" + host
+	}
+
+	credPath := xdg.CredentialsFile()
+	f, err := credentials.Load(credPath)
+	if err != nil {
+		return fmt.Errorf("load credentials file: %w", err)
+	}
+	f.Upsert(serverURL, credentials.ServerCreds{Token: res.Token, Label: "bootstrap"})
+	if err := f.Save(credPath); err != nil {
+		return fmt.Errorf("save credentials file: %w", err)
+	}
+
+	_, _ = fmt.Fprintf(w, "Created admin and saved its API key to %s (server %s).\n", credPath, serverURL) //nolint:errcheck // user stream write
+	_, _ = fmt.Fprintln(w, "Rotate it after configuring OIDC: specgraph auth keys rotate.")                //nolint:errcheck // user stream write
 	return nil
 }
 

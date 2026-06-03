@@ -89,6 +89,21 @@ var procedureActions = map[string]string{
 	specgraphv1connect.SliceServiceGetSliceProcedure:      "slice.read",
 	specgraphv1connect.SliceServiceClaimSliceProcedure:    "slice.write",
 	specgraphv1connect.SliceServiceCompleteSliceProcedure: "slice.write",
+	// IdentityService — whoami is a self-read; all admin-management
+	// operations use the "manage" verb (admin-only via base.cedar).
+	specgraphv1connect.IdentityServiceWhoamiProcedure:               "identity.read",
+	specgraphv1connect.IdentityServiceListUsersProcedure:            "user.manage",
+	specgraphv1connect.IdentityServiceGetUserProcedure:              "user.manage",
+	specgraphv1connect.IdentityServiceUpdateUserRoleProcedure:       "user.manage",
+	specgraphv1connect.IdentityServiceSoftDeleteUserProcedure:       "user.manage",
+	specgraphv1connect.IdentityServicePurgeUserProcedure:            "user.manage",
+	specgraphv1connect.IdentityServiceCreateServiceAccountProcedure: "serviceaccount.manage",
+	specgraphv1connect.IdentityServiceCreateAPIKeyProcedure:         "apikey.manage",
+	specgraphv1connect.IdentityServiceRevokeAPIKeyProcedure:         "apikey.manage",
+	specgraphv1connect.IdentityServiceRotateAPIKeyProcedure:         "apikey.manage",
+	specgraphv1connect.IdentityServiceListAPIKeysProcedure:          "apikey.manage",
+	specgraphv1connect.IdentityServiceListOIDCBindingsProcedure:     "oidc.manage",
+	specgraphv1connect.IdentityServiceUnbindOIDCProcedure:           "oidc.manage",
 }
 
 // ActionForProcedure returns the stable action name for an RPC procedure.

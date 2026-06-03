@@ -1,6 +1,6 @@
 module github.com/specgraph/specgraph
 
-go 1.26.3
+go 1.26.4
 
 require (
 	connectrpc.com/connect v1.19.1

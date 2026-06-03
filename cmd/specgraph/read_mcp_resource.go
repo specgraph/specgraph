@@ -36,7 +36,7 @@ func runReadMCPResource(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("resolve server URL: %w", err)
 	}
 	mcpURL := strings.TrimRight(baseURL, "/") + "/mcp/"
-	httpClient := newAuthenticatedHTTPClient(project)
+	httpClient := newAuthenticatedHTTPClient(baseURL, project)
 
 	c, err := client.NewStreamableHttpClient(mcpURL, transport.WithHTTPBasicClient(httpClient))
 	if err != nil {

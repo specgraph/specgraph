@@ -45,6 +45,14 @@ func runInitInDirWithGlobalCfg(t *testing.T, workDir string, args []string, glob
 	cfgFile = cfgPath
 	t.Cleanup(func() { cfgFile = oldCfgFile })
 
+	// These tests exercise only managed-file sync, not the local admin
+	// bootstrap path (which would dial Postgres and, on a developer machine
+	// with a reachable DB, write to the real CLI credentials file). Force
+	// --skip-bootstrap for the duration of the test.
+	oldSkipBootstrap := initSkipBootstrap
+	initSkipBootstrap = true
+	t.Cleanup(func() { initSkipBootstrap = oldSkipBootstrap })
+
 	origDir, dirErr := os.Getwd()
 	if dirErr != nil {
 		t.Fatal(dirErr)

@@ -91,3 +91,28 @@ func TestEvaluate_DowngradedRoleIsEnforced(t *testing.T) {
 	// And the downgraded role's own permission still works (read allowed).
 	require.True(t, evalRole(t, eng, auth.RoleReader, "spec.read"))
 }
+
+const basePoliciesWithManage = basePolicies + `
+permit (principal, action in SpecGraph::Action::"manage", resource)
+when { principal has role && principal.role == "admin" };
+`
+
+func TestEvaluate_ManageVerbAdminOnly(t *testing.T) {
+	eng, err := auth.NewCedarEngine(context.Background(),
+		[]auth.PolicySource{stubSource{name: "test", docs: []auth.PolicyDocument{{Source: "test:base.cedar", Text: basePoliciesWithManage}}}},
+		[]string{"spec.read", "spec.write", "graph.delete", "user.manage"})
+	require.NoError(t, err)
+
+	check := func(role auth.Role) bool {
+		dec, evalErr := eng.Evaluate(context.Background(), auth.EvalRequest{
+			Identity: &auth.Identity{UserID: "u1", EffectiveRole: role, Role: role},
+			Action:   "user.manage",
+			Resource: auth.ResourceRef{Type: "user"},
+		})
+		require.NoError(t, evalErr)
+		return dec.Allowed
+	}
+	require.True(t, check(auth.RoleAdmin), "admin allowed manage")
+	require.False(t, check(auth.RoleWriter), "writer denied manage")
+	require.False(t, check(auth.RoleReader), "reader denied manage")
+}

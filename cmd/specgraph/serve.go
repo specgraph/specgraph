@@ -23,6 +23,7 @@ import (
 
 	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/auth/usagetracker"
+	"github.com/specgraph/specgraph/internal/bootstrap"
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/docker"
 	"github.com/specgraph/specgraph/internal/drift"
@@ -135,6 +136,24 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		}
 	}()
 
+	// Hosted bootstrap: ensure a backstop admin identity + key exist on first
+	// start. Idempotent — a no-op (and silent) on every subsequent restart.
+	// Unlike the `init` path, the hosted path writes NO credentials file: the
+	// operator copies the token from this one-time boot banner.
+	if res, bErr := bootstrap.Ensure(ctx, authStore, bootstrap.Options{}); bErr != nil {
+		return fmt.Errorf("bootstrap admin: %w", bErr)
+	} else if res.Created {
+		fmt.Fprintf(os.Stderr,
+			"\n========================================================================\n"+
+				"SpecGraph created a bootstrap admin on first start.\n"+
+				"  API key: %s\n"+
+				"  Server:  http://%s\n"+
+				"Copy this key into your CLI credentials now. Rotate it after you\n"+
+				"configure OIDC. This key is shown ONCE and will not be displayed again.\n"+
+				"========================================================================\n\n",
+			res.Token, cfg.Server.Listen)
+	}
+
 	// Construct OIDC verifiers (one per provider).
 	// Iterate cfg.Auth.OIDC.Providers — the canonical field. The config loader
 	// copies any legacy cfg.Auth.OIDCProviders entries into this field, so
@@ -235,6 +254,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	server.RegisterAnalyticalPassService(mux, store, ".specgraph/templates", opts, maxBytes)
 	server.RegisterExecutionService(mux, store, skillsSrc, opts, maxBytes)
 	server.RegisterSliceService(mux, store, opts, maxBytes)
+	server.RegisterIdentityService(mux, authStore, opts, maxBytes)
 	server.RegisterExportService(mux, store, cfg.Export.SigningKey, buildVersion(), opts, maxBytes)
 	driftEngine := drift.NewEngine(store, nil)
 	lintEngine := linter.NewEngine(store, nil)

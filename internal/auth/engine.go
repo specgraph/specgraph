@@ -152,7 +152,7 @@ const (
 // knownVerbs are the action suffixes that map to verb groups. The base
 // policies gate roles per verb; an action whose suffix is not here cannot be
 // authorized and is a programming error (caught at engine construction).
-var knownVerbs = map[string]bool{"read": true, "write": true, "delete": true}
+var knownVerbs = map[string]bool{"read": true, "write": true, "delete": true, "manage": true}
 
 // actionDomain returns the domain prefix of an action name
 // ("spec.read" -> "spec"). Used to derive the placeholder resource id.

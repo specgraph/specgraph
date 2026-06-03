@@ -37,13 +37,36 @@ func TestActionNames_AllParseToKnownVerb(t *testing.T) {
 		idx := strings.LastIndex(n, ".")
 		require.Greater(t, idx, 0, "action %q must be domain.verb", n)
 		verb := n[idx+1:]
-		require.Contains(t, []string{"read", "write", "delete"}, verb, "action %q", n)
+		require.Contains(t, []string{"read", "write", "delete", "manage"}, verb, "action %q", n)
 	}
 }
 
 func TestActionNames_DecoupledFromMethodNames(t *testing.T) {
 	for _, n := range auth.ActionNames() {
 		require.NotContains(t, n, "Service", "action %q leaks an RPC service name", n)
+	}
+}
+
+func TestActionForProcedure_Identity(t *testing.T) {
+	cases := map[string]string{
+		specgraphv1connect.IdentityServiceWhoamiProcedure:               "identity.read",
+		specgraphv1connect.IdentityServiceListUsersProcedure:            "user.manage",
+		specgraphv1connect.IdentityServiceGetUserProcedure:              "user.manage",
+		specgraphv1connect.IdentityServiceUpdateUserRoleProcedure:       "user.manage",
+		specgraphv1connect.IdentityServiceSoftDeleteUserProcedure:       "user.manage",
+		specgraphv1connect.IdentityServicePurgeUserProcedure:            "user.manage",
+		specgraphv1connect.IdentityServiceCreateServiceAccountProcedure: "serviceaccount.manage",
+		specgraphv1connect.IdentityServiceCreateAPIKeyProcedure:         "apikey.manage",
+		specgraphv1connect.IdentityServiceRevokeAPIKeyProcedure:         "apikey.manage",
+		specgraphv1connect.IdentityServiceRotateAPIKeyProcedure:         "apikey.manage",
+		specgraphv1connect.IdentityServiceListAPIKeysProcedure:          "apikey.manage",
+		specgraphv1connect.IdentityServiceListOIDCBindingsProcedure:     "oidc.manage",
+		specgraphv1connect.IdentityServiceUnbindOIDCProcedure:           "oidc.manage",
+	}
+	for proc, want := range cases {
+		got, ok := auth.ActionForProcedure(proc)
+		require.Truef(t, ok, "procedure %s must map", proc)
+		require.Equalf(t, want, got, "procedure %s", proc)
 	}
 }
 

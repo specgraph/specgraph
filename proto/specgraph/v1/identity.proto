@@ -1,0 +1,172 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 Sean Brandt
+
+syntax = "proto3";
+
+package specgraph.v1;
+
+option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1";
+
+import "google/protobuf/timestamp.proto";
+
+// IdentityService manages users, service accounts, API keys, and OIDC
+// bindings. It is a GLOBAL service (not project-scoped). All RPCs except
+// Whoami require the admin role (enforced by Cedar via the "manage" verb);
+// Whoami is self-scoped and available to any authenticated principal.
+service IdentityService {
+  rpc Whoami(WhoamiRequest) returns (WhoamiResponse);
+
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc CreateServiceAccount(CreateServiceAccountRequest) returns (CreateServiceAccountResponse);
+  rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
+  rpc SoftDeleteUser(SoftDeleteUserRequest) returns (SoftDeleteUserResponse);
+  rpc PurgeUser(PurgeUserRequest) returns (PurgeUserResponse);
+
+  rpc CreateAPIKey(CreateAPIKeyRequest) returns (CreateAPIKeyResponse);
+  rpc RevokeAPIKey(RevokeAPIKeyRequest) returns (RevokeAPIKeyResponse);
+  rpc RotateAPIKey(RotateAPIKeyRequest) returns (RotateAPIKeyResponse);
+  rpc ListAPIKeys(ListAPIKeysRequest) returns (ListAPIKeysResponse);
+
+  rpc ListOIDCBindings(ListOIDCBindingsRequest) returns (ListOIDCBindingsResponse);
+  rpc UnbindOIDC(UnbindOIDCRequest) returns (UnbindOIDCResponse);
+}
+
+enum UserKind {
+  USER_KIND_UNSPECIFIED = 0;
+  USER_KIND_HUMAN = 1;
+  USER_KIND_SERVICE_ACCOUNT = 2;
+}
+
+// User mirrors storage.User. deleted_at is unset for active users.
+message User {
+  string id = 1;
+  UserKind kind = 2;
+  string display_name = 3;
+  string email = 4;
+  string role = 5;
+  string owner_user_id = 6;
+  bool bootstrap = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp deleted_at = 9;
+}
+
+// APIKey mirrors storage.APIKey MINUS the secret material. The PHC hash is
+// never serialized; the plaintext token appears only in Create/Rotate
+// responses, never here.
+message APIKey {
+  string id = 1;
+  string user_id = 2;
+  string prefix = 3;
+  string role_downgrade = 4;
+  string label = 5;
+  google.protobuf.Timestamp expires_at = 6;
+  google.protobuf.Timestamp last_used_at = 7;
+  google.protobuf.Timestamp revoked_at = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message OIDCBinding {
+  string id = 1;
+  string user_id = 2;
+  string issuer = 3;
+  string subject = 4;
+  string email_at_bind = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message WhoamiRequest {}
+message WhoamiResponse {
+  string subject = 1;
+  string user_id = 2;
+  string display_name = 3;
+  string role = 4;
+  string effective_role = 5;
+  string email = 6;
+  string source = 7;
+}
+
+message ListUsersRequest {
+  UserKind kind = 1;          // UNSPECIFIED = all kinds
+  string role = 2;            // empty = all roles
+  bool include_deleted = 3;
+  int32 limit = 4;            // 0 = default
+  int32 offset = 5;
+}
+message ListUsersResponse { repeated User users = 1; }
+
+message GetUserRequest { string id = 1; }
+message GetUserResponse { User user = 1; }
+
+message CreateServiceAccountRequest {
+  string display_name = 1;
+  string role = 2;
+  string owner_user_id = 3;  // must reference an active Human
+}
+message CreateServiceAccountResponse { User user = 1; }
+
+message UpdateUserRoleRequest {
+  string id = 1;
+  string role = 2;
+}
+message UpdateUserRoleResponse { User user = 1; }
+
+message SoftDeleteUserRequest {
+  string id = 1;
+  bool force = 2; // required to soft-delete the bootstrap admin
+}
+message SoftDeleteUserResponse {}
+
+message PurgeUserRequest {
+  string id = 1;
+  bool force = 2; // required to purge the bootstrap admin
+}
+message PurgeUserResponse {}
+
+message CreateAPIKeyRequest {
+  string user_id = 1;
+  string label = 2;
+  string role_downgrade = 3;            // empty = no downgrade
+  google.protobuf.Timestamp expires_at = 4; // unset = no expiry
+}
+// plaintext is the full token (spgr_sk_<prefix>_<secret>); shown ONCE.
+message CreateAPIKeyResponse {
+  APIKey key = 1;
+  string plaintext = 2;
+}
+
+message RevokeAPIKeyRequest { string key_id = 1; }
+message RevokeAPIKeyResponse {}
+
+// RotateAPIKey revokes the old key and mints a replacement. storage's
+// RotateAPIKey requires the new key's UserID + metadata (it does NOT copy
+// from the old key, and there is no get-key-by-id backend method), so the
+// caller supplies user_id and the new key's metadata explicitly.
+message RotateAPIKeyRequest {
+  string key_id = 1;
+  string user_id = 2;        // owner of the key being rotated (required)
+  string label = 3;          // new key's label (caller-specified)
+  string role_downgrade = 4; // new key's role downgrade (empty = none)
+}
+message RotateAPIKeyResponse {
+  APIKey key = 1;
+  string plaintext = 2;
+}
+
+message ListAPIKeysRequest {
+  string user_id = 1;        // empty = all users (admin)
+  bool include_revoked = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+}
+message ListAPIKeysResponse { repeated APIKey keys = 1; }
+
+message ListOIDCBindingsRequest { string user_id = 1; }
+message ListOIDCBindingsResponse { repeated OIDCBinding bindings = 1; }
+
+message UnbindOIDCRequest {
+  string binding_id = 1;
+  string user_id = 2; // owner of the binding (required for the last-credential check)
+  bool force = 3;     // required to remove a user's only credential
+}
+message UnbindOIDCResponse {}

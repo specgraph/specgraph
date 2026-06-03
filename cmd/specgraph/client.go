@@ -13,6 +13,7 @@ import (
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/credentials"
 	"github.com/specgraph/specgraph/internal/xdg"
 )
 
@@ -94,17 +95,18 @@ func resolveBaseURL() (baseURL, project string, err error) {
 	return fmt.Sprintf("%s://%s:%d", scheme, cfg.Server.Host, cfg.Server.Port), "", nil
 }
 
-// resolveAPIKey returns the API key to use for CLI requests.
-// Precedence: SPECGRAPH_API_KEY env var > credentials file > empty (no auth).
-func resolveAPIKey() string {
+// resolveAPIKey returns the API key to use for CLI requests against the given
+// server URL. Precedence: SPECGRAPH_API_KEY env var > credentials file entry
+// for serverURL > empty (no auth).
+func resolveAPIKey(serverURL string) string {
 	if key := os.Getenv("SPECGRAPH_API_KEY"); key != "" {
 		return key
 	}
-	key, err := auth.ReadDefaultKey(xdg.CredentialsFile())
+	creds, err := credentials.Load(xdg.CredentialsFile())
 	if err != nil {
 		return ""
 	}
-	return key
+	return creds.TokenFor(serverURL)
 }
 
 func newHTTPClient(project string) *http.Client {
@@ -115,15 +117,15 @@ func newHTTPClient(project string) *http.Client {
 }
 
 // newAuthenticatedHTTPClient returns an HTTP client that injects a static
-// bearer token (resolved once at startup) into context before the
-// context-aware clientTransport picks it up. Used by CLI commands.
-func newAuthenticatedHTTPClient(project string) *http.Client {
+// bearer token (resolved once at startup, scoped to serverURL) into context
+// before the context-aware clientTransport picks it up. Used by CLI commands.
+func newAuthenticatedHTTPClient(serverURL, project string) *http.Client {
 	return &http.Client{Transport: &staticTokenTransport{
 		inner: &clientTransport{
 			base:    http.DefaultTransport,
 			project: project,
 		},
-		token: resolveAPIKey(),
+		token: resolveAPIKey(serverURL),
 	}}
 }
 
@@ -134,7 +136,7 @@ func newClient[C any](ctor func(httpClient connect.HTTPClient, baseURL string, o
 		var zero C
 		return zero, err
 	}
-	return ctor(newAuthenticatedHTTPClient(project), baseURL), nil
+	return ctor(newAuthenticatedHTTPClient(baseURL, project), baseURL), nil
 }
 
 // newClientWithProject creates a ConnectRPC client using an explicit project
@@ -148,7 +150,7 @@ func newClientWithProject[C any](ctor func(httpClient connect.HTTPClient, baseUR
 	if project != "" {
 		derivedProject = project
 	}
-	return ctor(newAuthenticatedHTTPClient(derivedProject), baseURL), nil
+	return ctor(newAuthenticatedHTTPClient(baseURL, derivedProject), baseURL), nil
 }
 
 func authoringClient() (specgraphv1connect.AuthoringServiceClient, error) {

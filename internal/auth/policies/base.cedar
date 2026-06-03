@@ -35,3 +35,14 @@ permit (
 ) when {
 	principal has role && principal.role == "admin"
 };
+
+// Identity-management operations (IdentityService): admin-only. The "manage"
+// verb is reserved for sensitive operations that must NOT inherit the
+// read/write/delete role gates (e.g. ListUsers is a read but must be admin).
+permit (
+	principal,
+	action in SpecGraph::Action::"manage",
+	resource
+) when {
+	principal has role && principal.role == "admin"
+};
