@@ -20,6 +20,27 @@ import (
 // astronomically unlikely, so 3 attempts is ample.
 const maxPrefixRetries = 3
 
+// defaultListLimit is applied when a list filter's Limit is <= 0.
+// maxListLimit caps an over-large caller-supplied Limit so an admin passing
+// a huge value cannot trigger an unbounded fetch. Both ListUsers and
+// ListAPIKeys clamp to [1, maxListLimit] via clampListLimit.
+const (
+	defaultListLimit = 100
+	maxListLimit     = 1000
+)
+
+// clampListLimit normalizes a caller-supplied list limit: a non-positive
+// limit becomes defaultListLimit; a limit above maxListLimit is capped.
+func clampListLimit(limit int) int {
+	if limit <= 0 {
+		return defaultListLimit
+	}
+	if limit > maxListLimit {
+		return maxListLimit
+	}
+	return limit
+}
+
 // LookupAPIKeyByPrefix returns the api_keys row whose prefix matches.
 func (s *AuthStore) LookupAPIKeyByPrefix(ctx context.Context, prefix string) (*storage.APIKey, error) {
 	const q = `
@@ -258,7 +279,9 @@ func (s *AuthStore) PurgeUser(ctx context.Context, userID string) error {
 	return nil
 }
 
-// ListUsers returns users matching the filter. Default limit is 100.
+// ListUsers returns users matching the filter. The limit is clamped to
+// [1, maxListLimit]: a non-positive Limit defaults to defaultListLimit (100),
+// and a Limit above maxListLimit (1000) is capped.
 func (s *AuthStore) ListUsers(ctx context.Context, f storage.ListUsersFilter) ([]*storage.User, error) {
 	q := `
 		SELECT id, kind, display_name, email, role,
@@ -281,10 +304,7 @@ func (s *AuthStore) ListUsers(ctx context.Context, f storage.ListUsersFilter) ([
 		args = append(args, *f.CreatedAfter)
 		q += fmt.Sprintf(` AND created_at > $%d`, len(args))
 	}
-	limit := f.Limit
-	if limit <= 0 {
-		limit = 100
-	}
+	limit := clampListLimit(f.Limit)
 	args = append(args, limit)
 	q += fmt.Sprintf(` ORDER BY created_at DESC LIMIT $%d`, len(args))
 	args = append(args, f.Offset)
@@ -380,9 +400,12 @@ func (s *AuthStore) RevokeAPIKey(ctx context.Context, keyID string) error {
 }
 
 // RotateAPIKey revokes the old key and inserts a new one in one transaction.
-// Only newKey.PHCHash is consumed from the caller; owner (user_id),
-// role_downgrade, label, and expires_at are inherited from the old key.
-// Returns the new key with generated prefix and ID populated.
+// Rotation preserves the key's identity and authority: owner (user_id),
+// role_downgrade, and label are always inherited from the old key (never the
+// caller's newKey values). The caller supplies newKey.PHCHash (the new secret)
+// and MAY supply newKey.ExpiresAt to set the new secret's validity window; a
+// nil ExpiresAt inherits the old key's expiry (fail-safe — never silently
+// clears it). Returns the new key with generated prefix and ID populated.
 func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *storage.APIKey) (*storage.APIKey, error) {
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -414,6 +437,15 @@ func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *s
 		return nil, fmt.Errorf("revoke old key: %w", err)
 	}
 
+	// Expiry is the one attribute the caller may set on rotation: it describes
+	// the freshness of the NEW secret. Fail-safe semantics: a non-nil
+	// newKey.ExpiresAt overrides; a nil one inherits the old expiry and never
+	// silently clears it (clearing would relax a security constraint).
+	expiresAt := oldExpiresAt
+	if newKey.ExpiresAt != nil {
+		expiresAt = newKey.ExpiresAt
+	}
+
 	// Insert new key inside the same tx with collision retry.
 	// Use savepoints to roll back only the failed INSERT on collision,
 	// keeping the revoke above intact. Postgres aborts the whole tx on
@@ -433,7 +465,7 @@ func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *s
 			VALUES ($1::uuid, $2, $3, $4, $5, $6)
 			RETURNING id, created_at`,
 			oldUserID, prefix, newKey.PHCHash, oldRoleDowngrade,
-			oldLabel, oldExpiresAt).Scan(&id, &createdAt)
+			oldLabel, expiresAt).Scan(&id, &createdAt)
 		if err == nil {
 			// Explicitly release the savepoint so its lifecycle is balanced
 			// (Commit would auto-release, but the explicit RELEASE keeps a
@@ -451,7 +483,7 @@ func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *s
 				PHCHash:       newKey.PHCHash,
 				RoleDowngrade: oldRoleDowngrade,
 				Label:         oldLabel,
-				ExpiresAt:     oldExpiresAt,
+				ExpiresAt:     expiresAt,
 				CreatedAt:     createdAt,
 			}
 			return out, nil
@@ -468,7 +500,8 @@ func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *s
 	return nil, storage.ErrAPIKeyPrefixExists
 }
 
-// ListAPIKeys returns keys matching the filter.
+// ListAPIKeys returns keys matching the filter. The limit is clamped to
+// [1, maxListLimit] with the same semantics as ListUsers.
 func (s *AuthStore) ListAPIKeys(ctx context.Context, f storage.ListAPIKeysFilter) ([]*storage.APIKey, error) {
 	q := `
 		SELECT id, user_id, prefix, phc_hash, role_downgrade, label,
@@ -482,10 +515,7 @@ func (s *AuthStore) ListAPIKeys(ctx context.Context, f storage.ListAPIKeysFilter
 	if !f.IncludeRevoked {
 		q += ` AND revoked_at IS NULL`
 	}
-	limit := f.Limit
-	if limit <= 0 {
-		limit = 100
-	}
+	limit := clampListLimit(f.Limit)
 	args = append(args, limit, f.Offset)
 	q += fmt.Sprintf(` ORDER BY created_at DESC LIMIT $%d OFFSET $%d`, len(args)-1, len(args))
 

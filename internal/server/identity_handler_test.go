@@ -13,6 +13,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
@@ -386,14 +387,15 @@ func TestCreateAPIKey_RequiresUserID(t *testing.T) {
 }
 
 func TestRotateAPIKey_ReturnsNewPlaintext(t *testing.T) {
-	const (
-		oldKeyID = "old-key-id"
-		userID   = "u-rotate"
-	)
+	const oldKeyID = "old-key-id"
 	stub := &usersBackendStub{
 		rotateAPIKey: func(_ context.Context, oldID string, newKey *storage.APIKey) (*storage.APIKey, error) {
 			require.Equal(t, oldKeyID, oldID)
-			require.Equal(t, userID, newKey.UserID)
+			// Rotation preserves identity/authority: the handler must NOT set
+			// owner/label/role_downgrade — storage inherits them from the old key.
+			require.Empty(t, newKey.UserID, "handler must not set UserID on rotate; storage inherits it")
+			require.Empty(t, newKey.Label, "handler must not set Label on rotate; storage inherits it")
+			require.Empty(t, newKey.RoleDowngrade, "handler must not set RoleDowngrade on rotate; storage inherits it")
 			// Handler must NOT pass a prefix — storage assigns it.
 			require.Empty(t, newKey.Prefix, "handler must not supply a prefix; storage assigns it")
 			out := *newKey
@@ -405,28 +407,77 @@ func TestRotateAPIKey_ReturnsNewPlaintext(t *testing.T) {
 	}
 	client := newTestIdentityHandler(t, stub)
 	resp, err := client.RotateAPIKey(context.Background(), connect.NewRequest(&specv1.RotateAPIKeyRequest{
-		KeyId:  oldKeyID,
-		UserId: userID,
+		KeyId: oldKeyID,
 	}))
 	require.NoError(t, err)
 	require.NotEmpty(t, resp.Msg.GetPlaintext(), "new plaintext token must be returned")
 	require.True(t, strings.HasPrefix(resp.Msg.GetPlaintext(), auth.APIKeyTokenPrefix()))
 }
 
-func TestRotateAPIKey_RequiresKeyAndUser(t *testing.T) {
+func TestRotateAPIKey_RequiresKey(t *testing.T) {
 	client := newTestIdentityHandler(t, &usersBackendStub{})
 
-	// Missing key_id.
-	_, err := client.RotateAPIKey(context.Background(), connect.NewRequest(&specv1.RotateAPIKeyRequest{
-		UserId: "u1",
-	}))
+	// Missing key_id is the only required-field error now that user_id is gone.
+	_, err := client.RotateAPIKey(context.Background(), connect.NewRequest(&specv1.RotateAPIKeyRequest{}))
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
 
-	// Missing user_id.
-	_, err = client.RotateAPIKey(context.Background(), connect.NewRequest(&specv1.RotateAPIKeyRequest{
-		KeyId: "k1",
+// TestRotateAPIKey_ThreadsExpiresAt asserts the handler forwards a provided
+// expires_at to storage as newKey.ExpiresAt, and leaves it nil when unset (so
+// storage's fail-safe inherit kicks in).
+func TestRotateAPIKey_ThreadsExpiresAt(t *testing.T) {
+	want := time.Now().Add(48 * time.Hour).UTC().Truncate(time.Second)
+
+	var gotExpiresAt *time.Time
+	newStub := func() *usersBackendStub {
+		return &usersBackendStub{
+			rotateAPIKey: func(_ context.Context, _ string, newKey *storage.APIKey) (*storage.APIKey, error) {
+				gotExpiresAt = newKey.ExpiresAt
+				out := *newKey
+				out.ID, out.Prefix, out.CreatedAt = "k2", "efgh5678", time.Now()
+				return &out, nil
+			},
+		}
+	}
+
+	// Provided expires_at is threaded through.
+	client := newTestIdentityHandler(t, newStub())
+	_, err := client.RotateAPIKey(context.Background(), connect.NewRequest(&specv1.RotateAPIKeyRequest{
+		KeyId: "k1", ExpiresAt: timestamppb.New(want),
 	}))
-	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+	require.NoError(t, err)
+	require.NotNil(t, gotExpiresAt, "provided expires_at must be threaded to storage")
+	require.WithinDuration(t, want, *gotExpiresAt, time.Second)
+
+	// Unset expires_at stays nil so storage inherits the old expiry.
+	gotExpiresAt = nil
+	client = newTestIdentityHandler(t, newStub())
+	_, err = client.RotateAPIKey(context.Background(), connect.NewRequest(&specv1.RotateAPIKeyRequest{KeyId: "k1"}))
+	require.NoError(t, err)
+	require.Nil(t, gotExpiresAt, "unset expires_at must remain nil (storage inherits)")
+}
+
+// TestCreateAPIKey_ThreadsExpiresAt asserts the handler forwards a provided
+// expires_at to storage on create.
+func TestCreateAPIKey_ThreadsExpiresAt(t *testing.T) {
+	want := time.Now().Add(72 * time.Hour).UTC().Truncate(time.Second)
+
+	var gotExpiresAt *time.Time
+	stub := &usersBackendStub{
+		createAPIKey: func(_ context.Context, k *storage.APIKey) (*storage.APIKey, error) {
+			gotExpiresAt = k.ExpiresAt
+			out := *k
+			out.ID, out.Prefix, out.CreatedAt = "k1", "abcd1234", time.Now()
+			return &out, nil
+		},
+	}
+	client := newTestIdentityHandler(t, stub)
+	_, err := client.CreateAPIKey(context.Background(), connect.NewRequest(&specv1.CreateAPIKeyRequest{
+		UserId: "u1", ExpiresAt: timestamppb.New(want),
+	}))
+	require.NoError(t, err)
+	require.NotNil(t, gotExpiresAt, "provided expires_at must be threaded to storage")
+	require.WithinDuration(t, want, *gotExpiresAt, time.Second)
 }
 
 // --- Task 9: RevokeAPIKey + ListAPIKeys ---

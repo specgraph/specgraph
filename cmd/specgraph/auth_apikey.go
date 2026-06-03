@@ -5,24 +5,39 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/internal/render"
 )
 
 var (
-	apiKeyListUser    string
-	apiKeyListRevoked bool
-	apiKeyCreateUser  string
-	apiKeyCreateLabel string
-	apiKeyCreateDown  string
-	apiKeyRotateUser  string
-	apiKeyRotateLabel string
-	apiKeyRotateDown  string
+	apiKeyListUser      string
+	apiKeyListRevoked   bool
+	apiKeyCreateUser    string
+	apiKeyCreateLabel   string
+	apiKeyCreateDown    string
+	apiKeyCreateExpires string
+	apiKeyRotateExpires string
 )
+
+// parseExpiresAt converts an --expires-at flag value to a protobuf timestamp.
+// An empty value yields (nil, nil), meaning "no expiry" on create and "inherit
+// the old key's expiry" on rotate. A non-empty value must be RFC3339.
+func parseExpiresAt(s string) (*timestamppb.Timestamp, error) {
+	if s == "" {
+		return nil, nil
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return nil, fmt.Errorf("invalid --expires-at %q (want RFC3339, e.g. 2026-01-02T15:04:05Z): %w", s, err)
+	}
+	return timestamppb.New(t), nil
+}
 
 var authAPIKeyCmd = &cobra.Command{Use: "api-key", Short: "Manage API keys"}
 
@@ -55,12 +70,17 @@ var authAPIKeyCreateCmd = &cobra.Command{
 		if apiKeyCreateUser == "" {
 			return fmt.Errorf("--user is required")
 		}
+		expiresAt, err := parseExpiresAt(apiKeyCreateExpires)
+		if err != nil {
+			return err
+		}
 		client, err := identityClient()
 		if err != nil {
 			return err
 		}
 		resp, err := client.CreateAPIKey(cmd.Context(), connect.NewRequest(&specv1.CreateAPIKeyRequest{
 			UserId: apiKeyCreateUser, Label: apiKeyCreateLabel, RoleDowngrade: apiKeyCreateDown,
+			ExpiresAt: expiresAt,
 		}))
 		if err != nil {
 			return fmt.Errorf("create api key: %w", err)
@@ -100,19 +120,21 @@ var authAPIKeyRevokeCmd = &cobra.Command{
 var authAPIKeyRotateCmd = &cobra.Command{
 	Use:   "rotate <key-id>",
 	Short: "Rotate an API key (revokes the old, prints the new secret once)",
-	Args:  cobra.ExactArgs(1),
+	Long: "Rotate an API key: mints a new secret and revokes the old key. Owner, " +
+		"label, and role-downgrade are preserved from the old key. Use --expires-at " +
+		"to set the new secret's validity window (omit to keep the old expiry).",
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// storage's RotateAPIKey requires the new key's owner + metadata (it
-		// does not copy from the old key; there is no get-key-by-id method).
-		if apiKeyRotateUser == "" {
-			return fmt.Errorf("--user is required (owner of the key being rotated)")
+		expiresAt, err := parseExpiresAt(apiKeyRotateExpires)
+		if err != nil {
+			return err
 		}
 		client, err := identityClient()
 		if err != nil {
 			return err
 		}
 		resp, err := client.RotateAPIKey(cmd.Context(), connect.NewRequest(&specv1.RotateAPIKeyRequest{
-			KeyId: args[0], UserId: apiKeyRotateUser, Label: apiKeyRotateLabel, RoleDowngrade: apiKeyRotateDown,
+			KeyId: args[0], ExpiresAt: expiresAt,
 		}))
 		if err != nil {
 			return fmt.Errorf("rotate api key: %w", err)
@@ -139,10 +161,11 @@ func init() {
 	authAPIKeyCreateCmd.Flags().StringVar(&apiKeyCreateUser, "user", "", "user ID to own the key (required)")
 	authAPIKeyCreateCmd.Flags().StringVar(&apiKeyCreateLabel, "label", "", "human-friendly label")
 	authAPIKeyCreateCmd.Flags().StringVar(&apiKeyCreateDown, "role-downgrade", "", "cap the key's effective role")
+	authAPIKeyCreateCmd.Flags().StringVar(&apiKeyCreateExpires, "expires-at", "", "expiry as RFC3339 (e.g. 2026-01-02T15:04:05Z); omit for no expiry")
 	authAPIKeyCreateCmd.Flags().BoolVar(&authJSON, "json", false, "output as JSON")
-	authAPIKeyRotateCmd.Flags().StringVar(&apiKeyRotateUser, "user", "", "owner of the key being rotated (required)")
-	authAPIKeyRotateCmd.Flags().StringVar(&apiKeyRotateLabel, "label", "", "label for the new key")
-	authAPIKeyRotateCmd.Flags().StringVar(&apiKeyRotateDown, "role-downgrade", "", "role downgrade for the new key")
+	// Rotation preserves owner/label/role-downgrade from the old key, so only
+	// the new secret's expiry is settable here.
+	authAPIKeyRotateCmd.Flags().StringVar(&apiKeyRotateExpires, "expires-at", "", "new secret's expiry as RFC3339; omit to keep the old key's expiry")
 	authAPIKeyRotateCmd.Flags().BoolVar(&authJSON, "json", false, "output as JSON")
 	authAPIKeyCmd.AddCommand(authAPIKeyListCmd, authAPIKeyCreateCmd, authAPIKeyRevokeCmd, authAPIKeyRotateCmd)
 	authCmd.AddCommand(authAPIKeyCmd)

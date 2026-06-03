@@ -78,8 +78,10 @@ type UsersBackend interface {
 	RevokeAPIKey(ctx context.Context, keyID string) error
 
 	// RotateAPIKey revokes the old key and creates a new one in one transaction.
-	// Only newKey.PHCHash is consumed from the caller; owner (user_id),
-	// role_downgrade, label, and expires_at are inherited from the old key.
+	// Owner (user_id), role_downgrade, and label are always inherited from the
+	// old key. The caller supplies newKey.PHCHash (the new secret) and MAY set
+	// newKey.ExpiresAt to override the new key's expiry; a nil ExpiresAt inherits
+	// the old key's expiry (fail-safe — never silently cleared).
 	// Returns the new key with a freshly generated prefix and new ID.
 	RotateAPIKey(ctx context.Context, oldKeyID string, newKey *APIKey) (*APIKey, error)
 
@@ -115,7 +117,7 @@ type ListUsersFilter struct {
 	Role           string // empty = all roles
 	IncludeDeleted bool
 	CreatedAfter   *time.Time
-	Limit          int // 0 = default 100
+	Limit          int // <= 0 = default (100); values above the store max are capped
 	Offset         int
 }
 
@@ -123,6 +125,6 @@ type ListUsersFilter struct {
 type ListAPIKeysFilter struct {
 	UserID         string // empty = all users (admin)
 	IncludeRevoked bool
-	Limit          int
+	Limit          int // <= 0 = default (100); values above the store max are capped
 	Offset         int
 }

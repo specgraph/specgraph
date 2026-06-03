@@ -1291,16 +1291,17 @@ func (*RevokeAPIKeyResponse) Descriptor() ([]byte, []int) {
 	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{20}
 }
 
-// RotateAPIKey revokes the old key and mints a replacement. storage's
-// RotateAPIKey requires the new key's UserID + metadata (it does NOT copy
-// from the old key, and there is no get-key-by-id backend method), so the
-// caller supplies user_id and the new key's metadata explicitly.
+// RotateAPIKey mints a new secret for an existing key and revokes the old one.
+// Rotation PRESERVES the key's identity and authority: owner, role_downgrade,
+// and label are inherited from the old key and cannot be changed here — that
+// keeps a rotated key recognizable and prevents a rotation from silently
+// relaxing an authority cap. To change a key's authority, revoke it and create
+// a new key. The caller MAY set expires_at to choose the new secret's validity
+// window; unset inherits the old key's expiry (never silently cleared).
 type RotateAPIKeyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	KeyId         string                 `protobuf:"bytes,1,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`                      // owner of the key being rotated (required)
-	Label         string                 `protobuf:"bytes,3,opt,name=label,proto3" json:"label,omitempty"`                                      // new key's label (caller-specified)
-	RoleDowngrade string                 `protobuf:"bytes,4,opt,name=role_downgrade,json=roleDowngrade,proto3" json:"role_downgrade,omitempty"` // new key's role downgrade (empty = none)
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"` // unset = inherit old key's expiry
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1342,25 +1343,11 @@ func (x *RotateAPIKeyRequest) GetKeyId() string {
 	return ""
 }
 
-func (x *RotateAPIKeyRequest) GetUserId() string {
+func (x *RotateAPIKeyRequest) GetExpiresAt() *timestamppb.Timestamp {
 	if x != nil {
-		return x.UserId
+		return x.ExpiresAt
 	}
-	return ""
-}
-
-func (x *RotateAPIKeyRequest) GetLabel() string {
-	if x != nil {
-		return x.Label
-	}
-	return ""
-}
-
-func (x *RotateAPIKeyRequest) GetRoleDowngrade() string {
-	if x != nil {
-		return x.RoleDowngrade
-	}
-	return ""
+	return nil
 }
 
 type RotateAPIKeyResponse struct {
@@ -1801,12 +1788,11 @@ const file_specgraph_v1_identity_proto_rawDesc = "" +
 	"\tplaintext\x18\x02 \x01(\tR\tplaintext\",\n" +
 	"\x13RevokeAPIKeyRequest\x12\x15\n" +
 	"\x06key_id\x18\x01 \x01(\tR\x05keyId\"\x16\n" +
-	"\x14RevokeAPIKeyResponse\"\x82\x01\n" +
+	"\x14RevokeAPIKeyResponse\"\x99\x01\n" +
 	"\x13RotateAPIKeyRequest\x12\x15\n" +
-	"\x06key_id\x18\x01 \x01(\tR\x05keyId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
-	"\x05label\x18\x03 \x01(\tR\x05label\x12%\n" +
-	"\x0erole_downgrade\x18\x04 \x01(\tR\rroleDowngrade\"\\\n" +
+	"\x06key_id\x18\x01 \x01(\tR\x05keyId\x129\n" +
+	"\n" +
+	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAtJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\auser_idR\x05labelR\x0erole_downgrade\"\\\n" +
 	"\x14RotateAPIKeyResponse\x12&\n" +
 	"\x03key\x18\x01 \x01(\v2\x14.specgraph.v1.APIKeyR\x03key\x12\x1c\n" +
 	"\tplaintext\x18\x02 \x01(\tR\tplaintext\"\x84\x01\n" +
@@ -1910,40 +1896,41 @@ var file_specgraph_v1_identity_proto_depIdxs = []int32{
 	1,  // 12: specgraph.v1.UpdateUserRoleResponse.user:type_name -> specgraph.v1.User
 	30, // 13: specgraph.v1.CreateAPIKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
 	2,  // 14: specgraph.v1.CreateAPIKeyResponse.key:type_name -> specgraph.v1.APIKey
-	2,  // 15: specgraph.v1.RotateAPIKeyResponse.key:type_name -> specgraph.v1.APIKey
-	2,  // 16: specgraph.v1.ListAPIKeysResponse.keys:type_name -> specgraph.v1.APIKey
-	3,  // 17: specgraph.v1.ListOIDCBindingsResponse.bindings:type_name -> specgraph.v1.OIDCBinding
-	4,  // 18: specgraph.v1.IdentityService.Whoami:input_type -> specgraph.v1.WhoamiRequest
-	6,  // 19: specgraph.v1.IdentityService.ListUsers:input_type -> specgraph.v1.ListUsersRequest
-	8,  // 20: specgraph.v1.IdentityService.GetUser:input_type -> specgraph.v1.GetUserRequest
-	10, // 21: specgraph.v1.IdentityService.CreateServiceAccount:input_type -> specgraph.v1.CreateServiceAccountRequest
-	12, // 22: specgraph.v1.IdentityService.UpdateUserRole:input_type -> specgraph.v1.UpdateUserRoleRequest
-	14, // 23: specgraph.v1.IdentityService.SoftDeleteUser:input_type -> specgraph.v1.SoftDeleteUserRequest
-	16, // 24: specgraph.v1.IdentityService.PurgeUser:input_type -> specgraph.v1.PurgeUserRequest
-	18, // 25: specgraph.v1.IdentityService.CreateAPIKey:input_type -> specgraph.v1.CreateAPIKeyRequest
-	20, // 26: specgraph.v1.IdentityService.RevokeAPIKey:input_type -> specgraph.v1.RevokeAPIKeyRequest
-	22, // 27: specgraph.v1.IdentityService.RotateAPIKey:input_type -> specgraph.v1.RotateAPIKeyRequest
-	24, // 28: specgraph.v1.IdentityService.ListAPIKeys:input_type -> specgraph.v1.ListAPIKeysRequest
-	26, // 29: specgraph.v1.IdentityService.ListOIDCBindings:input_type -> specgraph.v1.ListOIDCBindingsRequest
-	28, // 30: specgraph.v1.IdentityService.UnbindOIDC:input_type -> specgraph.v1.UnbindOIDCRequest
-	5,  // 31: specgraph.v1.IdentityService.Whoami:output_type -> specgraph.v1.WhoamiResponse
-	7,  // 32: specgraph.v1.IdentityService.ListUsers:output_type -> specgraph.v1.ListUsersResponse
-	9,  // 33: specgraph.v1.IdentityService.GetUser:output_type -> specgraph.v1.GetUserResponse
-	11, // 34: specgraph.v1.IdentityService.CreateServiceAccount:output_type -> specgraph.v1.CreateServiceAccountResponse
-	13, // 35: specgraph.v1.IdentityService.UpdateUserRole:output_type -> specgraph.v1.UpdateUserRoleResponse
-	15, // 36: specgraph.v1.IdentityService.SoftDeleteUser:output_type -> specgraph.v1.SoftDeleteUserResponse
-	17, // 37: specgraph.v1.IdentityService.PurgeUser:output_type -> specgraph.v1.PurgeUserResponse
-	19, // 38: specgraph.v1.IdentityService.CreateAPIKey:output_type -> specgraph.v1.CreateAPIKeyResponse
-	21, // 39: specgraph.v1.IdentityService.RevokeAPIKey:output_type -> specgraph.v1.RevokeAPIKeyResponse
-	23, // 40: specgraph.v1.IdentityService.RotateAPIKey:output_type -> specgraph.v1.RotateAPIKeyResponse
-	25, // 41: specgraph.v1.IdentityService.ListAPIKeys:output_type -> specgraph.v1.ListAPIKeysResponse
-	27, // 42: specgraph.v1.IdentityService.ListOIDCBindings:output_type -> specgraph.v1.ListOIDCBindingsResponse
-	29, // 43: specgraph.v1.IdentityService.UnbindOIDC:output_type -> specgraph.v1.UnbindOIDCResponse
-	31, // [31:44] is the sub-list for method output_type
-	18, // [18:31] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	30, // 15: specgraph.v1.RotateAPIKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
+	2,  // 16: specgraph.v1.RotateAPIKeyResponse.key:type_name -> specgraph.v1.APIKey
+	2,  // 17: specgraph.v1.ListAPIKeysResponse.keys:type_name -> specgraph.v1.APIKey
+	3,  // 18: specgraph.v1.ListOIDCBindingsResponse.bindings:type_name -> specgraph.v1.OIDCBinding
+	4,  // 19: specgraph.v1.IdentityService.Whoami:input_type -> specgraph.v1.WhoamiRequest
+	6,  // 20: specgraph.v1.IdentityService.ListUsers:input_type -> specgraph.v1.ListUsersRequest
+	8,  // 21: specgraph.v1.IdentityService.GetUser:input_type -> specgraph.v1.GetUserRequest
+	10, // 22: specgraph.v1.IdentityService.CreateServiceAccount:input_type -> specgraph.v1.CreateServiceAccountRequest
+	12, // 23: specgraph.v1.IdentityService.UpdateUserRole:input_type -> specgraph.v1.UpdateUserRoleRequest
+	14, // 24: specgraph.v1.IdentityService.SoftDeleteUser:input_type -> specgraph.v1.SoftDeleteUserRequest
+	16, // 25: specgraph.v1.IdentityService.PurgeUser:input_type -> specgraph.v1.PurgeUserRequest
+	18, // 26: specgraph.v1.IdentityService.CreateAPIKey:input_type -> specgraph.v1.CreateAPIKeyRequest
+	20, // 27: specgraph.v1.IdentityService.RevokeAPIKey:input_type -> specgraph.v1.RevokeAPIKeyRequest
+	22, // 28: specgraph.v1.IdentityService.RotateAPIKey:input_type -> specgraph.v1.RotateAPIKeyRequest
+	24, // 29: specgraph.v1.IdentityService.ListAPIKeys:input_type -> specgraph.v1.ListAPIKeysRequest
+	26, // 30: specgraph.v1.IdentityService.ListOIDCBindings:input_type -> specgraph.v1.ListOIDCBindingsRequest
+	28, // 31: specgraph.v1.IdentityService.UnbindOIDC:input_type -> specgraph.v1.UnbindOIDCRequest
+	5,  // 32: specgraph.v1.IdentityService.Whoami:output_type -> specgraph.v1.WhoamiResponse
+	7,  // 33: specgraph.v1.IdentityService.ListUsers:output_type -> specgraph.v1.ListUsersResponse
+	9,  // 34: specgraph.v1.IdentityService.GetUser:output_type -> specgraph.v1.GetUserResponse
+	11, // 35: specgraph.v1.IdentityService.CreateServiceAccount:output_type -> specgraph.v1.CreateServiceAccountResponse
+	13, // 36: specgraph.v1.IdentityService.UpdateUserRole:output_type -> specgraph.v1.UpdateUserRoleResponse
+	15, // 37: specgraph.v1.IdentityService.SoftDeleteUser:output_type -> specgraph.v1.SoftDeleteUserResponse
+	17, // 38: specgraph.v1.IdentityService.PurgeUser:output_type -> specgraph.v1.PurgeUserResponse
+	19, // 39: specgraph.v1.IdentityService.CreateAPIKey:output_type -> specgraph.v1.CreateAPIKeyResponse
+	21, // 40: specgraph.v1.IdentityService.RevokeAPIKey:output_type -> specgraph.v1.RevokeAPIKeyResponse
+	23, // 41: specgraph.v1.IdentityService.RotateAPIKey:output_type -> specgraph.v1.RotateAPIKeyResponse
+	25, // 42: specgraph.v1.IdentityService.ListAPIKeys:output_type -> specgraph.v1.ListAPIKeysResponse
+	27, // 43: specgraph.v1.IdentityService.ListOIDCBindings:output_type -> specgraph.v1.ListOIDCBindingsResponse
+	29, // 44: specgraph.v1.IdentityService.UnbindOIDC:output_type -> specgraph.v1.UnbindOIDCResponse
+	32, // [32:45] is the sub-list for method output_type
+	19, // [19:32] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_identity_proto_init() }

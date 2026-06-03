@@ -138,15 +138,21 @@ message CreateAPIKeyResponse {
 message RevokeAPIKeyRequest { string key_id = 1; }
 message RevokeAPIKeyResponse {}
 
-// RotateAPIKey revokes the old key and mints a replacement. storage's
-// RotateAPIKey requires the new key's UserID + metadata (it does NOT copy
-// from the old key, and there is no get-key-by-id backend method), so the
-// caller supplies user_id and the new key's metadata explicitly.
+// RotateAPIKey mints a new secret for an existing key and revokes the old one.
+// Rotation PRESERVES the key's identity and authority: owner, role_downgrade,
+// and label are inherited from the old key and cannot be changed here — that
+// keeps a rotated key recognizable and prevents a rotation from silently
+// relaxing an authority cap. To change a key's authority, revoke it and create
+// a new key. The caller MAY set expires_at to choose the new secret's validity
+// window; unset inherits the old key's expiry (never silently cleared).
 message RotateAPIKeyRequest {
   string key_id = 1;
-  string user_id = 2;        // owner of the key being rotated (required)
-  string label = 3;          // new key's label (caller-specified)
-  string role_downgrade = 4; // new key's role downgrade (empty = none)
+  // Fields 2-4 (user_id, label, role_downgrade) were removed: storage inherits
+  // them from the old key, so accepting them invited silent no-ops and an
+  // authority-downgrade footgun.
+  reserved 2, 3, 4;
+  reserved "user_id", "label", "role_downgrade";
+  google.protobuf.Timestamp expires_at = 5; // unset = inherit old key's expiry
 }
 message RotateAPIKeyResponse {
   APIKey key = 1;

@@ -266,15 +266,14 @@ func (h *IdentityHandler) RevokeAPIKey(ctx context.Context, req *connect.Request
 	return connect.NewResponse(&specv1.RevokeAPIKeyResponse{}), nil
 }
 
-// RotateAPIKey atomically revokes the old key and issues a new one. The
-// plaintext bearer token is returned exactly once in the response.
+// RotateAPIKey atomically revokes the old key and issues a new one. Rotation
+// preserves identity/authority — storage inherits owner/label/role_downgrade
+// from the old key — so the request carries only key_id and an optional
+// expires_at. The plaintext bearer token is returned exactly once.
 func (h *IdentityHandler) RotateAPIKey(ctx context.Context, req *connect.Request[specv1.RotateAPIKeyRequest]) (*connect.Response[specv1.RotateAPIKeyResponse], error) {
 	msg := req.Msg
 	if msg.GetKeyId() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("key_id is required"))
-	}
-	if msg.GetUserId() == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id is required"))
 	}
 
 	secret, phc, err := auth.GenerateAPIKeySecret()
@@ -283,11 +282,12 @@ func (h *IdentityHandler) RotateAPIKey(ctx context.Context, req *connect.Request
 		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 
-	newKey := &storage.APIKey{
-		UserID:        msg.GetUserId(),
-		PHCHash:       phc,
-		Label:         msg.GetLabel(),
-		RoleDowngrade: msg.GetRoleDowngrade(),
+	// Only PHCHash (new secret) and an optional ExpiresAt override are set;
+	// owner/label/role_downgrade are inherited by storage from the old key.
+	newKey := &storage.APIKey{PHCHash: phc}
+	if ts := msg.GetExpiresAt(); ts != nil {
+		t := ts.AsTime()
+		newKey.ExpiresAt = &t
 	}
 
 	created, err := h.users.RotateAPIKey(ctx, msg.GetKeyId(), newKey)

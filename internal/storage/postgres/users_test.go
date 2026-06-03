@@ -555,6 +555,56 @@ func TestAuthStore_RotateAPIKey(t *testing.T) {
 	require.NotNil(t, oldReload.RevokedAt)
 }
 
+// TestAuthStore_RotateAPIKey_ExpiresAt verifies the fail-safe expiry semantics
+// on rotation: a non-nil newKey.ExpiresAt overrides; a nil one inherits the old
+// key's expiry (never silently clears it). Owner/label/role_downgrade remain
+// inherited regardless.
+func TestAuthStore_RotateAPIKey_ExpiresAt(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u, _ := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "alice", Role: "writer",
+	}, nil)
+
+	oldExpiry := time.Now().Add(24 * time.Hour).UTC()
+	newExpiry := time.Now().Add(720 * time.Hour).UTC()
+
+	t.Run("non-nil ExpiresAt overrides the old expiry", func(t *testing.T) {
+		old, err := auth.CreateAPIKey(ctx, &storage.APIKey{
+			UserID: u.ID, PHCHash: "phc-old-padded-to-meet-min-length-ok-00",
+			Label: "ci-bot", ExpiresAt: &oldExpiry,
+		})
+		require.NoError(t, err)
+
+		rotated, err := auth.RotateAPIKey(ctx, old.ID, &storage.APIKey{
+			PHCHash: "phc-new-padded-to-meet-min-length-ok-01", ExpiresAt: &newExpiry,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, rotated.ExpiresAt)
+		require.WithinDuration(t, newExpiry, *rotated.ExpiresAt, time.Second,
+			"a provided ExpiresAt must override the old key's expiry")
+		require.Equal(t, "ci-bot", rotated.Label, "label still inherited")
+	})
+
+	t.Run("nil ExpiresAt inherits the old expiry", func(t *testing.T) {
+		old, err := auth.CreateAPIKey(ctx, &storage.APIKey{
+			UserID: u.ID, PHCHash: "phc-old-padded-to-meet-min-length-ok-02",
+			ExpiresAt: &oldExpiry,
+		})
+		require.NoError(t, err)
+
+		rotated, err := auth.RotateAPIKey(ctx, old.ID, &storage.APIKey{
+			PHCHash: "phc-new-padded-to-meet-min-length-ok-03", // ExpiresAt nil
+		})
+		require.NoError(t, err)
+		require.NotNil(t, rotated.ExpiresAt, "a nil ExpiresAt must inherit, never clear, the old expiry")
+		require.WithinDuration(t, oldExpiry, *rotated.ExpiresAt, time.Second)
+	})
+}
+
 func TestAuthStore_RotateAPIKey_RollbackOnInsertFailure(t *testing.T) {
 	ctx := context.Background()
 	pool := sharedTestPool(t, ctx)
@@ -979,6 +1029,44 @@ func TestAuthStore_Pagination_DefaultLimit(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, users)
 	require.True(t, users != nil, "empty result must be []*User{}, never nil")
+}
+
+// TestAuthStore_Pagination_MaxLimit verifies that a caller-supplied Limit
+// above the storage maximum (maxListLimit = 1000) is clamped, so an admin
+// passing Limit: 1_000_000 cannot trigger an unbounded fetch. Applies to both
+// ListUsers and ListAPIKeys.
+func TestAuthStore_Pagination_MaxLimit(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	// Seed 1001 users (one over the clamp) via a single batch insert.
+	_, err := pool.Exec(ctx, `
+		INSERT INTO users (kind, display_name, role)
+		SELECT 'human', 'u' || g, 'reader'
+		FROM generate_series(1, 1001) AS g`)
+	require.NoError(t, err)
+
+	// A Limit far above the max is clamped to maxListLimit (1000), not honored
+	// verbatim and not reset to the default 100.
+	users, err := auth.ListUsers(ctx, storage.ListUsersFilter{Limit: 1_000_000})
+	require.NoError(t, err)
+	require.Len(t, users, 1000, "ListUsers must clamp an over-max Limit to maxListLimit")
+
+	// Seed 1001 API keys for one user via a single batch insert. phc_hash must
+	// satisfy CHECK(length(phc_hash) >= 32); prefixes must be unique.
+	owner := users[0]
+	_, err = pool.Exec(ctx, `
+		INSERT INTO api_keys (user_id, prefix, phc_hash)
+		SELECT $1::uuid, 'pfx' || lpad(g::text, 12, '0'),
+		       '$argon2id$v=19$m=65536,t=1,p=4$stub-salt-padded-to-32chars'
+		FROM generate_series(1, 1001) AS g`, owner.ID)
+	require.NoError(t, err)
+
+	keys, err := auth.ListAPIKeys(ctx, storage.ListAPIKeysFilter{Limit: 1_000_000})
+	require.NoError(t, err)
+	require.Len(t, keys, 1000, "ListAPIKeys must clamp an over-max Limit to maxListLimit")
 }
 
 // TestAuthStore_EmptyResults_NotNil verifies that ListOIDCBindings and

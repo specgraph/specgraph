@@ -12,6 +12,7 @@ import (
 
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/config/managedfiles"
+	"github.com/specgraph/specgraph/internal/xdg"
 )
 
 // DoctorReport is the canonical structure all output modes (text +
@@ -107,6 +108,11 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	} else {
 		renderText(os.Stdout, &rep, verbose)
 	}
+
+	// Advisory: warn (to stderr, off the report stream) if the credentials
+	// file is group/other-accessible. Silent when secure or absent.
+	warnLooseCredentialFile(cmd.ErrOrStderr(), xdg.CredentialsFile())
+
 	final := finalExitCode(&rep, exitZero)
 	if final == 0 {
 		return nil
