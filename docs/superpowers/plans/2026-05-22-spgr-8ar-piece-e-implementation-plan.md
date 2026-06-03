@@ -239,7 +239,7 @@ Belt-and-suspenders: a focused regression test that fails if `runUp` is removed 
 - **Legacy summary fields zero for project scope** (Section 10 line 654): Task 4 test
 - **No schema/storage changes**: composer reads through existing backends (bead scope: "Out of scope: Schema or storage changes")
 - **Cross-surface fact-presence**: Task 8 E2E
-- **DCO signoff** on every commit: `Signed-off-by: Sean Brandt <4678+seanb4t@users.noreply.github.com>` (NOT corporate email — DCO check fails on `4678+seanb4t@users.noreply.github.com`)
+- **DCO signoff** on every commit: `Signed-off-by: Sean Brandt <4678+seanb4t@users.noreply.github.com>` (NOT a corporate email — DCO check fails on non-noreply addresses)
 - **jj-colocated workflow**: `jj describe @ -m`, then `jj new @ -m "(working)"`; no `git commit`
 
 ## Plan complete

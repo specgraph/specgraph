@@ -51,7 +51,7 @@ go get github.com/knadh/koanf/v2@latest \
 Run: `go build ./...`
 Expected: no errors. `go.sum` now contains `github.com/knadh/koanf/v2`.
 
-Do **not** run `go mod tidy` yet — no code imports these packages, so tidy would strip them. They land as `// indirect` and become direct in Tasks 2–6; a final `go mod tidy` runs in Task 8. In this corporate environment (`internal-module-proxy` proxy) sumdb lookups can 404; if `go get`/`go mod tidy` fails on checksum verification, set `GOFLAGS=-mod=mod` and `GONOSUMCHECK`/`GOSUMDB=off` as needed.
+Do **not** run `go mod tidy` yet — no code imports these packages, so tidy would strip them. They land as `// indirect` and become direct in Tasks 2–6; a final `go mod tidy` runs in Task 8. Behind an internal Go module proxy, sumdb lookups can 404; if `go get`/`go mod tidy` fails on checksum verification, set `GOFLAGS=-mod=mod` and `GONOSUMCHECK`/`GOSUMDB=off` as needed.
 
 **Env provider version:** pin `github.com/knadh/koanf/providers/env` to **v1.1.0**, NOT `@latest`. The latest tag (`v2.0.0+incompatible`) has a go.mod with no `go` directive, defaults to go1.16, and fails to compile (`any` unsupported). v1.1.0 exposes `Provider(prefix, delim string, cb func(string) string)`, which Task 4 uses. Run `go get github.com/knadh/koanf/providers/env@v1.1.0` explicitly.
 

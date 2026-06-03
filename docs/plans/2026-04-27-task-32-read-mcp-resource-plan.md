@@ -15,7 +15,7 @@
 - **Working directory:** `~/Code/github.com/.worktrees/specgraph/cursor-plugin`
 - **Bead:** `spgr-bncv` (Phase B Slice 5 umbrella). This plan covers Task 32 of the parent plan `docs/plans/2026-04-20-multi-platform-plugin-plan.md`.
 - **Expected stack at start:** `@` is empty, parent is `ktulmvpr 3f9ab37b docs(plans): task 32 design adjustment for read-mcp-resource`, grandparent is `zppkyxtu de33a079 feat(plugin): replace 13-skill Claude Code plugin with thin MCP client`, great-grandparent is `main`. Verify with `jj --no-pager log -r 'main..@' --no-graph -T 'change_id.short() ++ "  " ++ description.first_line() ++ "\n"'`.
-- **DCO email:** `Sean Brandt <4678+seanb4t@users.noreply.github.com>` (noreply form). The plan's parent doc uses `4678+seanb4t@users.noreply.github.com` — that fails the DCO hook; do NOT copy it.
+- **DCO email:** `Sean Brandt <4678+seanb4t@users.noreply.github.com>` (noreply form). The plan's parent doc uses a corporate email — that fails the DCO hook; do NOT copy it.
 - **License header order on `.go` files:** `Copyright 2026 SpecGraph Contributors` first, then `SPDX-License-Identifier: Apache-2.0`. Match the existing pattern in `cmd/specgraph/client.go:1-2`.
 - **Pre-commit ritual** (apply before EVERY `jj commit`):
   1. `jj --no-pager status`
