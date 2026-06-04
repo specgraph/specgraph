@@ -108,8 +108,10 @@ func TestEnsure_RecoversKeylessBootstrap(t *testing.T) {
 // (the winner created it concurrently), and the re-fetch GetBootstrap returns
 // the winner.
 type raceStub struct {
-	winner   *storage.User
-	getCalls int
+	winner     *storage.User
+	getCalls   int
+	keys       []*storage.APIKey // active keys the winner already has
+	createdKey *storage.APIKey
 }
 
 func (r *raceStub) GetBootstrap(context.Context) (*storage.User, error) {
@@ -122,20 +124,46 @@ func (r *raceStub) GetBootstrap(context.Context) (*storage.User, error) {
 func (r *raceStub) CreateHuman(context.Context, *storage.User, *storage.OIDCBinding) (*storage.User, error) {
 	return nil, storage.ErrBootstrapExists
 }
-func (r *raceStub) CreateAPIKey(context.Context, *storage.APIKey) (*storage.APIKey, error) {
-	panic("CreateAPIKey must not be called when the create race is lost")
+func (r *raceStub) CreateAPIKey(_ context.Context, k *storage.APIKey) (*storage.APIKey, error) {
+	k.ID = "race-key"
+	k.Prefix = "race5678"
+	r.createdKey = k
+	return k, nil
 }
 func (r *raceStub) ListAPIKeys(context.Context, storage.ListAPIKeysFilter) ([]*storage.APIKey, error) {
-	panic("ListAPIKeys must not be called on the create-race path")
+	return r.keys, nil
 }
 
 func TestEnsure_RaceLosesGracefully(t *testing.T) {
-	r := &raceStub{winner: &storage.User{ID: "winner", DisplayName: "admin", Bootstrap: true}}
+	// Winner already minted its key → loser observes a complete bootstrap.
+	r := &raceStub{
+		winner: &storage.User{ID: "winner", DisplayName: "admin", Bootstrap: true},
+		keys:   []*storage.APIKey{{ID: "winner-key", UserID: "winner"}},
+	}
 	res, err := bootstrap.Ensure(context.Background(), r, bootstrap.Options{})
 	require.NoError(t, err)
-	require.False(t, res.Created, "race loser observes the winner's bootstrap")
+	require.False(t, res.Created, "race loser observes the winner's complete bootstrap")
 	require.Equal(t, "winner", res.UserID)
-	require.Empty(t, res.Token, "loser mints no key")
+	require.Empty(t, res.Token, "loser mints no key when the winner already has one")
+	require.Nil(t, r.createdKey)
+}
+
+// TestEnsure_RaceRecoversKeylessWinner covers the worst-case race: the loser
+// re-reads the winner's user, but the winner died between CreateHuman and
+// CreateAPIKey, so the winner is keyless. The loser must recover it in-call
+// rather than no-op'ing and deferring recovery to a hypothetical next Ensure.
+func TestEnsure_RaceRecoversKeylessWinner(t *testing.T) {
+	r := &raceStub{
+		winner: &storage.User{ID: "winner", DisplayName: "admin", Bootstrap: true},
+		keys:   nil, // winner crashed before minting → keyless
+	}
+	res, err := bootstrap.Ensure(context.Background(), r, bootstrap.Options{})
+	require.NoError(t, err)
+	require.True(t, res.Created, "the race loser must recover a keyless winner")
+	require.NotEmpty(t, res.Token)
+	require.Equal(t, "winner", res.UserID)
+	require.NotNil(t, r.createdKey, "a recovery key was minted for the winner")
+	require.Equal(t, "winner", r.createdKey.UserID)
 }
 
 // errStub returns a non-sentinel error from GetBootstrap; Ensure must surface
