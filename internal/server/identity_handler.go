@@ -225,6 +225,13 @@ func (h *IdentityHandler) CreateAPIKey(ctx context.Context, req *connect.Request
 	if msg.GetUserId() == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("user_id is required"))
 	}
+	// RoleDowngrade is a privilege cap and is only meaningful among the ranked
+	// built-in roles; a custom target would fail closed to reader at resolve
+	// time, so reject it here with a clear error (spgr-rjrt.9).
+	if d := msg.GetRoleDowngrade(); d != "" && !auth.IsBuiltinRole(auth.Role(d)) {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			errors.New("role_downgrade must be one of: reader, writer, admin"))
+	}
 
 	secret, phc, err := auth.GenerateAPIKeySecret()
 	if err != nil {

@@ -386,6 +386,41 @@ func TestCreateAPIKey_RequiresUserID(t *testing.T) {
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
+// TestCreateAPIKey_RejectsCustomRoleDowngrade asserts a non-built-in
+// role_downgrade is rejected before touching the backend — RoleDowngrade is a
+// cap and is only meaningful among the ranked built-in roles (spgr-rjrt.9).
+func TestCreateAPIKey_RejectsCustomRoleDowngrade(t *testing.T) {
+	stub := &usersBackendStub{
+		createAPIKey: func(context.Context, *storage.APIKey) (*storage.APIKey, error) {
+			t.Fatal("backend CreateAPIKey must not be called for an invalid role_downgrade")
+			return nil, nil
+		},
+	}
+	client := newTestIdentityHandler(t, stub)
+	_, err := client.CreateAPIKey(context.Background(), connect.NewRequest(&specv1.CreateAPIKeyRequest{
+		UserId: "u1", RoleDowngrade: "ops", // custom, unranked
+	}))
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
+
+// TestCreateAPIKey_AcceptsBuiltinRoleDowngrade asserts a built-in role_downgrade
+// is threaded through to the backend unchanged.
+func TestCreateAPIKey_AcceptsBuiltinRoleDowngrade(t *testing.T) {
+	stub := &usersBackendStub{
+		createAPIKey: func(_ context.Context, k *storage.APIKey) (*storage.APIKey, error) {
+			require.Equal(t, "reader", k.RoleDowngrade)
+			out := *k
+			out.ID, out.Prefix, out.CreatedAt = "k1", "abcd1234", time.Now()
+			return &out, nil
+		},
+	}
+	client := newTestIdentityHandler(t, stub)
+	_, err := client.CreateAPIKey(context.Background(), connect.NewRequest(&specv1.CreateAPIKeyRequest{
+		UserId: "u1", RoleDowngrade: "reader",
+	}))
+	require.NoError(t, err)
+}
+
 func TestRotateAPIKey_ReturnsNewPlaintext(t *testing.T) {
 	const oldKeyID = "old-key-id"
 	stub := &usersBackendStub{

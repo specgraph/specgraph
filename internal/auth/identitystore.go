@@ -230,6 +230,15 @@ func argon2idVerify(phc, secret string) bool {
 // reader < writer < admin. Custom/unranked roles are absent from the map.
 var roleRank = map[Role]int{RoleReader: 1, RoleWriter: 2, RoleAdmin: 3}
 
+// IsBuiltinRole reports whether r is one of the ranked built-in roles
+// (reader, writer, admin). It is the single source of truth for "ranked" —
+// callers validating a RoleDowngrade target (a cap, which must be orderable)
+// use it rather than duplicating the role list.
+func IsBuiltinRole(r Role) bool {
+	_, ok := roleRank[r]
+	return ok
+}
+
 // roleLessThan reports whether a is strictly less privileged than b.
 // Built-in roles are linearly ordered: reader < writer < admin. Custom
 // roles return false in either direction (see Storage design's roleLessThan).
@@ -242,12 +251,24 @@ func roleLessThan(a, b Role) bool {
 	return ra < rb
 }
 
-// clampedRole returns the lesser of userRole and downgrade, but only for
-// built-in roles. A downgrade on a custom/unranked role has no defined
-// ordering, so it is silently a no-op: EffectiveRole equals userRole.
+// clampedRole computes a key's EffectiveRole from its owner's role and the
+// key's RoleDowngrade cap. An empty downgrade is no cap (the key is its owner's
+// role). When both roles are ranked built-ins it returns the lesser, so a cap
+// never escalates. Otherwise — a cap is set but a custom/unranked role on
+// either side makes the pair incomparable — it fails CLOSED to the
+// most-restrictive built-in (reader) rather than silently keeping the owner's
+// fuller role (the spgr-rjrt.9 fail-open bug). RoleDowngrade is validated to a
+// built-in at key creation; the floor still contains legacy keys and
+// custom-role owners. See
+// docs/superpowers/specs/2026-06-04-spgr-rjrt-9-role-downgrade-failclosed-design.md.
 func clampedRole(userRole, downgrade Role) Role {
 	if downgrade == "" {
 		return userRole
+	}
+	_, ownerRanked := roleRank[userRole]
+	_, downgradeRanked := roleRank[downgrade]
+	if !ownerRanked || !downgradeRanked {
+		return RoleReader
 	}
 	if roleLessThan(downgrade, userRole) {
 		return downgrade
