@@ -23,6 +23,10 @@ type Backend interface {
 	GetBootstrap(ctx context.Context) (*storage.User, error)
 	CreateHuman(ctx context.Context, u *storage.User, binding *storage.OIDCBinding) (*storage.User, error)
 	CreateAPIKey(ctx context.Context, k *storage.APIKey) (*storage.APIKey, error)
+	// ListAPIKeys is used to detect a keyless bootstrap admin (a user that
+	// persisted after CreateHuman but before CreateAPIKey) so Ensure can mint a
+	// recovery key. A zero-Limit filter relies on the storage default page size.
+	ListAPIKeys(ctx context.Context, f storage.ListAPIKeysFilter) ([]*storage.APIKey, error)
 }
 
 // Options parametrizes Ensure.
@@ -33,7 +37,11 @@ type Options struct {
 
 // Result reports what Ensure did.
 type Result struct {
-	Created bool   // true if this call created the bootstrap user + key
+	// Created is true when this call produced a fresh plaintext token the
+	// operator must save — either because it created the bootstrap user + key,
+	// or because it recovered a pre-existing keyless bootstrap admin by minting
+	// a new key. False on a true no-op (bootstrap user already has a key).
+	Created bool
 	Token   string // plaintext token (only set when Created; show once)
 	UserID  string // bootstrap user id (set whether created or pre-existing)
 }
@@ -48,9 +56,11 @@ func Ensure(ctx context.Context, b Backend, opts Options) (Result, error) {
 		role = "admin"
 	}
 
-	// Idempotency check.
+	// Idempotency check. A pre-existing bootstrap user is normally a no-op, but
+	// recoverIfKeyless re-mints a key if the user persisted without one (an
+	// earlier Ensure died between CreateHuman and CreateAPIKey).
 	if existing, err := b.GetBootstrap(ctx); err == nil {
-		return Result{Created: false, UserID: existing.ID}, nil
+		return recoverIfKeyless(ctx, b, existing)
 	} else if !errors.Is(err, storage.ErrUserNotFound) {
 		return Result{}, fmt.Errorf("check bootstrap: %w", err)
 	}
@@ -63,40 +73,66 @@ func Ensure(ctx context.Context, b Backend, opts Options) (Result, error) {
 		Bootstrap:   true,
 	}, nil)
 	if err != nil {
-		// Lost a race: another caller created the bootstrap first.
+		// Lost a race: another caller created the bootstrap first. Re-read it and
+		// run the same keyless-recovery check — if the race WINNER died between
+		// CreateHuman and CreateAPIKey, the user is keyless and we must mint here
+		// rather than no-op and defer recovery to a later Ensure.
 		if errors.Is(err, storage.ErrBootstrapExists) {
 			existing, getErr := b.GetBootstrap(ctx)
 			if getErr != nil {
 				return Result{}, fmt.Errorf("re-read bootstrap after race: %w", getErr)
 			}
-			return Result{Created: false, UserID: existing.ID}, nil
+			return recoverIfKeyless(ctx, b, existing)
 		}
 		return Result{}, fmt.Errorf("create bootstrap user: %w", err)
 	}
 
-	// Mint an admin key. Storage owns the prefix (see 4a Task 7); build the
-	// token from the storage-assigned prefix.
-	//
-	// NOTE: if key minting fails after the bootstrap user was created, the user
-	// persists with no key and a later Ensure short-circuits on idempotency
-	// (GetBootstrap finds the user) — it will NOT retry the key. Recovering a
-	// keyless bootstrap admin is tracked as a follow-up (spgr-rjrt orphaned-
-	// bootstrap recovery); for now a mint failure here requires operator action.
+	// Mint the admin key. If this fails after CreateHuman committed, the user
+	// persists keyless — but a later Ensure now recovers it via the idempotency
+	// branch above (it re-mints when ListAPIKeys finds no active key).
+	token, err := mintBootstrapKey(ctx, b, user.ID)
+	if err != nil {
+		return Result{}, err
+	}
+	return Result{Created: true, Token: token, UserID: user.ID}, nil
+}
+
+// recoverIfKeyless returns a no-op Result for an existing bootstrap user that
+// still has an active key, or mints a recovery key (Created + Token) if it has
+// none. It closes the mint-failure-after-create window: a bootstrap user that
+// persisted without a key would otherwise be unrecoverable, since every later
+// Ensure short-circuits on the idempotency check or the race re-read. Shared by
+// both of those paths so they recover identically.
+func recoverIfKeyless(ctx context.Context, b Backend, existing *storage.User) (Result, error) {
+	keys, err := b.ListAPIKeys(ctx, storage.ListAPIKeysFilter{UserID: existing.ID})
+	if err != nil {
+		return Result{}, fmt.Errorf("list bootstrap keys: %w", err)
+	}
+	if len(keys) > 0 {
+		return Result{Created: false, UserID: existing.ID}, nil
+	}
+	token, err := mintBootstrapKey(ctx, b, existing.ID)
+	if err != nil {
+		return Result{}, err
+	}
+	return Result{Created: true, Token: token, UserID: existing.ID}, nil
+}
+
+// mintBootstrapKey generates a secret and persists an admin API key for userID,
+// returning the one-time plaintext token. Storage owns the prefix (see 4a Task
+// 7); the token is assembled from the storage-assigned prefix.
+func mintBootstrapKey(ctx context.Context, b Backend, userID string) (string, error) {
 	secret, phc, err := auth.GenerateAPIKeySecret()
 	if err != nil {
-		return Result{}, fmt.Errorf("generate bootstrap key: %w", err)
+		return "", fmt.Errorf("generate bootstrap key: %w", err)
 	}
 	key, err := b.CreateAPIKey(ctx, &storage.APIKey{
-		UserID:  user.ID,
+		UserID:  userID,
 		PHCHash: phc,
 		Label:   "bootstrap admin key",
 	})
 	if err != nil {
-		return Result{}, fmt.Errorf("create bootstrap key: %w", err)
+		return "", fmt.Errorf("create bootstrap key: %w", err)
 	}
-	return Result{
-		Created: true,
-		Token:   auth.FormatAPIKeyToken(key.Prefix, secret),
-		UserID:  user.ID,
-	}, nil
+	return auth.FormatAPIKeyToken(key.Prefix, secret), nil
 }
