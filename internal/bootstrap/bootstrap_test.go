@@ -22,6 +22,7 @@ type stub struct {
 	bootstrapUser *storage.User
 	createHuman   func(*storage.User) (*storage.User, error)
 	createdKey    *storage.APIKey
+	keys          []*storage.APIKey // active keys returned by ListAPIKeys
 }
 
 func (s *stub) GetBootstrap(context.Context) (*storage.User, error) {
@@ -38,6 +39,9 @@ func (s *stub) CreateAPIKey(_ context.Context, k *storage.APIKey) (*storage.APIK
 	k.Prefix = "boot1234" // simulate storage-assigned prefix
 	s.createdKey = k
 	return k, nil
+}
+func (s *stub) ListAPIKeys(_ context.Context, _ storage.ListAPIKeysFilter) ([]*storage.APIKey, error) {
+	return s.keys, nil
 }
 
 // stub satisfies bootstrap.Backend with exactly these three methods — no
@@ -64,11 +68,39 @@ func TestEnsure_CreatesBootstrapAdmin(t *testing.T) {
 }
 
 func TestEnsure_IdempotentWhenExists(t *testing.T) {
-	s := &stub{bootstrapUser: &storage.User{ID: "boot-user", DisplayName: "admin", Bootstrap: true, Role: "admin"}}
+	// Existing bootstrap user that ALREADY has an active key → true no-op.
+	s := &stub{
+		bootstrapUser: &storage.User{ID: "boot-user", DisplayName: "admin", Bootstrap: true, Role: "admin"},
+		keys:          []*storage.APIKey{{ID: "existing-key", UserID: "boot-user"}},
+	}
 	res, err := bootstrap.Ensure(context.Background(), s, bootstrap.Options{})
 	require.NoError(t, err)
-	require.False(t, res.Created, "existing bootstrap is a no-op")
-	require.Empty(t, res.Token, "no token minted when bootstrap already exists")
+	require.False(t, res.Created, "existing bootstrap with a key is a no-op")
+	require.Empty(t, res.Token, "no token minted when the bootstrap admin already has a key")
+	require.Nil(t, s.createdKey, "no key minted when one already exists")
+}
+
+// TestEnsure_RecoversKeylessBootstrap covers the mint-failure-after-create
+// window: a bootstrap user persisted with NO active key (an earlier Ensure
+// crashed between CreateHuman and CreateAPIKey). A later Ensure must mint a key
+// and return it, rather than no-op'ing forever on idempotency.
+func TestEnsure_RecoversKeylessBootstrap(t *testing.T) {
+	s := &stub{
+		bootstrapUser: &storage.User{ID: "boot-user", DisplayName: "admin", Bootstrap: true, Role: "admin"},
+		keys:          nil, // no active keys → unrecoverable without this fix
+		createHuman: func(*storage.User) (*storage.User, error) {
+			panic("CreateHuman must not be called when the bootstrap user already exists")
+		},
+	}
+	res, err := bootstrap.Ensure(context.Background(), s, bootstrap.Options{})
+	require.NoError(t, err)
+	require.True(t, res.Created, "a keyless bootstrap must mint a recovery key")
+	require.NotEmpty(t, res.Token, "the recovery token must be returned for the operator to save")
+	require.True(t, strings.HasPrefix(res.Token, auth.APIKeyTokenPrefix()))
+	require.Contains(t, res.Token, "boot1234", "token embeds the storage-assigned prefix")
+	require.Equal(t, "boot-user", res.UserID)
+	require.NotNil(t, s.createdKey, "a key must have been minted")
+	require.Equal(t, "boot-user", s.createdKey.UserID, "the recovery key belongs to the existing bootstrap user")
 }
 
 // raceStub models losing the create race: GetBootstrap misses first (so
@@ -93,6 +125,9 @@ func (r *raceStub) CreateHuman(context.Context, *storage.User, *storage.OIDCBind
 func (r *raceStub) CreateAPIKey(context.Context, *storage.APIKey) (*storage.APIKey, error) {
 	panic("CreateAPIKey must not be called when the create race is lost")
 }
+func (r *raceStub) ListAPIKeys(context.Context, storage.ListAPIKeysFilter) ([]*storage.APIKey, error) {
+	panic("ListAPIKeys must not be called on the create-race path")
+}
 
 func TestEnsure_RaceLosesGracefully(t *testing.T) {
 	r := &raceStub{winner: &storage.User{ID: "winner", DisplayName: "admin", Bootstrap: true}}
@@ -113,6 +148,9 @@ func (e *errStub) CreateHuman(context.Context, *storage.User, *storage.OIDCBindi
 }
 func (e *errStub) CreateAPIKey(context.Context, *storage.APIKey) (*storage.APIKey, error) {
 	panic("CreateAPIKey must not be called when GetBootstrap errors")
+}
+func (e *errStub) ListAPIKeys(context.Context, storage.ListAPIKeysFilter) ([]*storage.APIKey, error) {
+	panic("ListAPIKeys must not be called when GetBootstrap errors")
 }
 
 func TestEnsure_GetBootstrapErrorSurfaced(t *testing.T) {
