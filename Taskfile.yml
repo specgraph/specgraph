@@ -3,6 +3,11 @@ version: "3"
 vars:
   BINARY_NAME: specgraph
   MAIN_PKG: ./cmd/specgraph
+  # Local buf codegen plugins (pinned to match gen/ output + go.mod). Kept local
+  # rather than remote (buf.build/...) so `buf generate` never hits the Buf
+  # Schema Registry, which rate-limits unauthenticated requests in CI (spgr-3zs0).
+  PROTOC_GEN_GO_VERSION: v1.36.11
+  PROTOC_GEN_CONNECT_GO_VERSION: v1.19.1
 tasks:
   default:
     desc: Show available tasks
@@ -34,8 +39,19 @@ tasks:
   generate:
     desc: Generate all code (protobuf)
     deps: [proto]
+  web:deps:
+    desc: Install web dependencies required by local TS proto plugin
+    dir: web
+    sources:
+      - web/package.json
+      - web/pnpm-lock.yaml
+    generates:
+      - web/node_modules/.bin/protoc-gen-es
+    cmds:
+      - pnpm install --frozen-lockfile
   proto:
     desc: Generate Go code from protobuf definitions
+    deps: ['web:deps']
     sources:
       - proto/**/*.proto
       - buf.yaml
@@ -46,6 +62,7 @@ tasks:
       - buf generate
   proto:check:
     desc: Verify generated proto code is up to date (side-effect-free)
+    deps: ['web:deps']
     cmds:
       - |
         tmpdir=$(mktemp -d)
@@ -313,6 +330,10 @@ tasks:
     cmds:
       - brew install golangci-lint gofumpt lefthook actionlint goreleaser dprint cocogitto rumdl yamlfmt buf
       - brew install steveyegge/beads/bd
+      # Local buf codegen plugins (see buf.gen.yaml). The TypeScript es plugin
+      # (protoc-gen-es) is installed into web/node_modules via `pnpm install`.
+      - go install google.golang.org/protobuf/cmd/protoc-gen-go@{{.PROTOC_GEN_GO_VERSION}}
+      - go install connectrpc.com/connect/cmd/protoc-gen-connect-go@{{.PROTOC_GEN_CONNECT_GO_VERSION}}
       - echo "Tools installed. Run 'task hooks:install' to set up git hooks."
   # Skills (agentskills.io-shaped SKILL.md packages under skills/)
   skills:validate:

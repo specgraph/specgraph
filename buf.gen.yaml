@@ -1,11 +1,15 @@
 version: v2
 plugins:
-  - remote: buf.build/protocolbuffers/go
+  # Local plugins (no Buf Schema Registry round-trip) — keeps proto codegen
+  # offline and immune to BSR rate limits. Versions are pinned via the tools
+  # that install them: protoc-gen-go/connect-go from `task tools` (go install,
+  # versions tracked in Taskfile.yml), protoc-gen-es from web/package.json.
+  - local: protoc-gen-go
     out: gen
     opt: paths=source_relative
-  - remote: buf.build/connectrpc/go
+  - local: protoc-gen-connect-go
     out: gen
     opt: paths=source_relative
-  - remote: buf.build/bufbuild/es
+  - local: web/node_modules/.bin/protoc-gen-es
     out: web/src/lib/api/gen
     opt: target=ts
