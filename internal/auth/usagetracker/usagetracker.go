@@ -70,8 +70,8 @@ func (m *Manager) Touch(keyID string) {
 	case m.ch <- keyID:
 	default:
 		m.dropped.Add(1)
-		slog.Warn("usagetracker: touch dropped on overflow",
-			"keyID", keyID, "total_dropped", m.dropped.Load())
+		slog.LogAttrs(context.Background(), slog.LevelWarn, "usagetracker: touch dropped on overflow",
+			slog.String("keyID", keyID), slog.Uint64("total_dropped", m.dropped.Load()))
 	}
 }
 
@@ -113,7 +113,8 @@ func (m *Manager) flushAll() {
 	for id := range pending {
 		// Per-key error isolation: a failed key logs and the loop continues.
 		if err := m.backend.TouchLastUsed(ctx, id); err != nil {
-			slog.Warn("usagetracker: TouchLastUsed failed", "keyID", id, "error", err)
+			slog.LogAttrs(ctx, slog.LevelWarn, "usagetracker: TouchLastUsed failed",
+				slog.String("keyID", id), slog.Any("error", err))
 		}
 	}
 }

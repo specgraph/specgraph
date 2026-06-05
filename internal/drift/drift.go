@@ -82,7 +82,7 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) (*CheckResult, e
 	for _, spec := range specs {
 		report, err := e.checkSpec(ctx, spec, scope)
 		if err != nil {
-			e.logger.Warn("drift check failed for spec",
+			slog.LogAttrs(ctx, slog.LevelWarn, "drift check failed for spec",
 				slog.String("slug", spec.Slug),
 				slog.Any("error", err))
 			reports = append(reports, storage.DriftReport{

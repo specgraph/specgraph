@@ -50,7 +50,7 @@ func (s *Store) RunInTransaction(ctx context.Context, fn func(ctx context.Contex
 	txCtx := txToContext(ctx, tx)
 	if fnErr := fn(txCtx); fnErr != nil {
 		if rbErr := tx.Rollback(ctx); rbErr != nil {
-			slog.Error("postgres: rollback failed", "error", rbErr)
+			slog.LogAttrs(ctx, slog.LevelError, "postgres: rollback failed", slog.Any("error", rbErr))
 		}
 		return fnErr
 	}
@@ -117,10 +117,10 @@ func (s *Store) dispatchChangeEvents(ctx context.Context) {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						slog.Error("change subscriber panicked",
-							"subscriber", fmt.Sprintf("%T", sub),
-							"slug", events[i].Slug,
-							"panic", r,
+						slog.LogAttrs(context.Background(), slog.LevelError, "change subscriber panicked",
+							slog.String("subscriber", fmt.Sprintf("%T", sub)),
+							slog.String("slug", events[i].Slug),
+							slog.Any("panic", r),
 						)
 					}
 				}()

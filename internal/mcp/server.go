@@ -99,10 +99,10 @@ func NewServer(client *Client) *Server {
 
 	hooks.AddAfterInitialize(func(ctx context.Context, _ any, msg *sdkmcp.InitializeRequest, _ *sdkmcp.InitializeResult) {
 		profile := ProfileFromClientInfo(&msg.Params.ClientInfo)
-		slog.Info("mcp: client initialized",
-			"client_name", msg.Params.ClientInfo.Name,
-			"client_version", msg.Params.ClientInfo.Version,
-			"profile", profile,
+		slog.LogAttrs(ctx, slog.LevelInfo, "mcp: client initialized",
+			slog.String("client_name", msg.Params.ClientInfo.Name),
+			slog.String("client_version", msg.Params.ClientInfo.Version),
+			slog.Any("profile", profile),
 		)
 		if profile == ProfileExecution {
 			return

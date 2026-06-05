@@ -304,7 +304,7 @@ func specError(err error) error {
 	case errors.Is(err, storage.ErrVersionNotFound):
 		return connect.NewError(connect.CodeNotFound, errors.New("version not found"))
 	default:
-		slog.Error("specError: internal error", slog.Any("error", err))
+		slog.LogAttrs(context.Background(), slog.LevelError, "specError: internal error", slog.Any("error", err))
 		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 }

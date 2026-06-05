@@ -28,7 +28,6 @@ const maxElements = 100
 // RunInTransaction, providing atomic rollback if any step fails.
 type AuthoringHandler struct {
 	scoper storage.Scoper
-	logger *slog.Logger
 }
 
 var _ specgraphv1connect.AuthoringServiceHandler = (*AuthoringHandler)(nil)
@@ -65,7 +64,7 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 	}
 	// Posture-absent warning (design §Posture).
 	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
-		h.logger.Warn("posture-absent", slog.String("stage", "spark"), slog.String("slug", msg.Slug))
+		slog.LogAttrs(ctx, slog.LevelWarn, "posture-absent", slog.String("stage", "spark"), slog.String("slug", msg.Slug))
 	}
 	// CreateSpec sets stage to "spark" as part of spec creation; no separate
 	// TransitionStage call is needed because the initial stage is set atomically.
@@ -177,7 +176,7 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 
 	// Posture-absent warning (design §Posture).
 	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
-		h.logger.Warn("posture-absent", slog.String("stage", "shape"), slog.String("slug", msg.Slug))
+		slog.LogAttrs(ctx, slog.LevelWarn, "posture-absent", slog.String("stage", "shape"), slog.String("slug", msg.Slug))
 	}
 
 	// Four-op transaction: transition → store output → safety → record conversation.
@@ -296,7 +295,7 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 
 	// Posture-absent warning (design §Posture).
 	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
-		h.logger.Warn("posture-absent", slog.String("stage", "specify"), slog.String("slug", msg.Slug))
+		slog.LogAttrs(ctx, slog.LevelWarn, "posture-absent", slog.String("stage", "specify"), slog.String("slug", msg.Slug))
 	}
 
 	// Four-op transaction: transition → store output → safety → record conversation.
@@ -387,7 +386,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 
 	// Posture-absent warning (design §Posture).
 	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
-		h.logger.Warn("posture-absent", slog.String("stage", "decompose"), slog.String("slug", msg.Slug))
+		slog.LogAttrs(ctx, slog.LevelWarn, "posture-absent", slog.String("stage", "decompose"), slog.String("slug", msg.Slug))
 	}
 
 	// Four-op transaction: transition → store output → safety → record conversation.
@@ -448,7 +447,7 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 
 	switch req.Msg.GetAction() {
 	case specv1.ApproveAction_APPROVE_ACTION_UNSPECIFIED:
-		h.logger.InfoContext(ctx, "approve action unspecified, defaulting to accept",
+		slog.LogAttrs(ctx, slog.LevelInfo, "approve action unspecified, defaulting to accept",
 			slog.String("slug", slug))
 		fallthrough
 	case specv1.ApproveAction_APPROVE_ACTION_ACCEPT:
@@ -460,7 +459,7 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 				return store.TransitionStage(txCtx, slug, storage.SpecStageDecompose, storage.SpecStageApproved)
 			},
 			func(txCtx context.Context) error {
-				return acceptLinkedDecisions(txCtx, h.logger, store, store, slug)
+				return acceptLinkedDecisions(txCtx, store, store, slug)
 			},
 			func(txCtx context.Context) error {
 				var err error
@@ -474,8 +473,8 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 			return nil, h.stageError(err)
 		}
 		if spec.UpdatedAt.IsZero() {
-			h.logger.ErrorContext(ctx, "spec.UpdatedAt is zero after TransitionStage",
-				"slug", slug, "specID", spec.ID, "stage", "approved")
+			slog.LogAttrs(ctx, slog.LevelError, "spec.UpdatedAt is zero after TransitionStage",
+				slog.String("slug", slug), slog.String("specID", spec.ID), slog.String("stage", "approved"))
 			return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 		}
 		approvedAt := timestamppb.New(spec.UpdatedAt)
@@ -534,7 +533,7 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 			return nil, h.stageError(err)
 		}
 		if currentStage == "" {
-			h.logger.ErrorContext(ctx, "reject path: currentStage not populated after successful tx",
+			slog.LogAttrs(ctx, slog.LevelError, "reject path: currentStage not populated after successful tx",
 				slog.String("slug", slug))
 			return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 		}
@@ -579,7 +578,8 @@ func (h *AuthoringHandler) Amend(ctx context.Context, req *connect.Request[specv
 	}
 	protoStage := stageToProto(result.Stage)
 	if protoStage == specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED {
-		h.logger.Error("unknown stage returned from storage", slog.String("stage", string(result.Stage)), slog.String("slug", req.Msg.Slug))
+		slog.LogAttrs(ctx, slog.LevelError, "unknown stage returned from storage",
+			slog.String("stage", string(result.Stage)), slog.String("slug", req.Msg.Slug))
 		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 	return connect.NewResponse(&specv1.AmendResponse{
@@ -651,7 +651,7 @@ func (h *AuthoringHandler) GetPrompts(_ context.Context, req *connect.Request[sp
 // DECIDED_IN edges and transitions them from proposed to accepted. Returns an
 // error if any decision acceptance fails. graphBackend and decisionBackend are
 // obtained from the scoped store (ScopedBackend embeds both interfaces).
-func acceptLinkedDecisions(ctx context.Context, logger *slog.Logger, graphBackend storage.GraphBackend, decisionBackend storage.DecisionBackend, slug string) error {
+func acceptLinkedDecisions(ctx context.Context, graphBackend storage.GraphBackend, decisionBackend storage.DecisionBackend, slug string) error {
 	edges, err := graphBackend.ListEdges(ctx, slug, storage.EdgeTypeDecidedIn)
 	if err != nil {
 		return fmt.Errorf("list DECIDED_IN edges for %q: %w", slug, err)
@@ -662,8 +662,8 @@ func acceptLinkedDecisions(ctx context.Context, logger *slog.Logger, graphBacken
 		// Use ToID as the decision slug; FromID should be the spec.
 		decisionSlug := edge.ToID
 		if decisionSlug == slug {
-			logger.WarnContext(ctx, "DECIDED_IN edge has unexpected direction (ToID is spec, not decision)",
-				"slug", slug, "fromID", edge.FromID, "toID", edge.ToID)
+			slog.LogAttrs(ctx, slog.LevelWarn, "DECIDED_IN edge has unexpected direction (ToID is spec, not decision)",
+				slog.String("slug", slug), slog.String("fromID", edge.FromID), slog.String("toID", edge.ToID))
 			decisionSlug = edge.FromID
 		}
 		if decisionSlug == "" || decisionSlug == slug {
@@ -763,7 +763,7 @@ func RegisterAuthoringService(mux *http.ServeMux, scoper storage.Scoper, opts ..
 	if scoper == nil {
 		panic("RegisterAuthoringService: scoper must not be nil")
 	}
-	handler := &AuthoringHandler{scoper: scoper, logger: slog.Default()}
+	handler := &AuthoringHandler{scoper: scoper}
 	path, h := specgraphv1connect.NewAuthoringServiceHandler(handler, opts...)
 	mux.Handle(path, h)
 }
@@ -925,7 +925,7 @@ func postureToString(p specv1.Posture) string {
 	case specv1.Posture_POSTURE_SUPPORT:
 		return "support"
 	default:
-		slog.Warn("postureToString: unrecognized posture enum, storing empty string",
+		slog.LogAttrs(context.Background(), slog.LevelWarn, "postureToString: unrecognized posture enum, storing empty string",
 			slog.Int("posture_int", int(p)))
 		return ""
 	}
@@ -1097,7 +1097,7 @@ func (h *AuthoringHandler) stageError(err error) error {
 	if errors.Is(err, storage.ErrSpecSuperseded) {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec has been superseded"))
 	}
-	h.logger.Error("stageError: internal error", slog.Any("error", err))
+	slog.LogAttrs(context.Background(), slog.LevelError, "stageError: internal error", slog.Any("error", err))
 	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 }
 

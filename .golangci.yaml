@@ -24,6 +24,8 @@ linters:
     - unparam
     - gocritic
     - nolintlint
+    # Logging
+    - sloglint
   exclusions:
     # Default exclusion presets
     presets:
@@ -39,6 +41,7 @@ linters:
           - gocritic
           - wrapcheck
           - errcheck
+          - sloglint
       # Main package doesn't need to wrap errors
       - path: cmd/
         linters:
@@ -104,6 +107,11 @@ linters:
     nolintlint:
       require-explanation: true
       require-specific: true
+    sloglint:
+      no-mixed-args: true
+      attr-only: true
+      context: scope
+      static-msg: true
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0

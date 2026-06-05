@@ -80,17 +80,17 @@ func (h *Handler) probe(ctx context.Context, pinger Pinger, timeout time.Duratio
 		// tailing for readiness failures see something. A silent boot
 		// against a permanently-down DB would otherwise reveal the
 		// failure only via 503 bodies on /readyz.
-		slog.Warn("readiness probe failed on first attempt", "error", err)
+		slog.LogAttrs(ctx, slog.LevelWarn, "readiness probe failed on first attempt", slog.Any("error", err))
 	case prev == nil:
 		// First probe is healthy — happy path, stay silent.
 	case err != nil && prev.ready:
-		slog.Warn("readiness probe failed", "error", err)
+		slog.LogAttrs(ctx, slog.LevelWarn, "readiness probe failed", slog.Any("error", err))
 	case err == nil && !prev.ready:
-		slog.Info("readiness probe recovered")
+		slog.LogAttrs(ctx, slog.LevelInfo, "readiness probe recovered")
 	case err != nil && prev.err != nil && prev.err.Error() != err.Error():
 		// Mid-outage error shape changed (e.g., connection-refused →
 		// auth-failed). Re-log so logs mirror what /readyz now returns.
-		slog.Warn("readiness probe error changed", "error", err)
+		slog.LogAttrs(ctx, slog.LevelWarn, "readiness probe error changed", slog.Any("error", err))
 	}
 }
 

@@ -67,7 +67,7 @@ func (h *AnalyticalPassHandler) RunAnalyticalPass(ctx context.Context, req *conn
 
 	tmplBytes, err := h.loadTemplate(pt)
 	if err != nil {
-		slog.Error("analyticalPassError: template load failed", slog.Any("error", err))
+		slog.LogAttrs(ctx, slog.LevelError, "analyticalPassError: template load failed", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 
@@ -359,7 +359,7 @@ func analyticalPassError(err error) error {
 	case errors.Is(err, storage.ErrSpecNotFound):
 		return connect.NewError(connect.CodeNotFound, errors.New("spec not found"))
 	default:
-		slog.Error("analyticalPassError: internal error", slog.Any("error", err))
+		slog.LogAttrs(context.Background(), slog.LevelError, "analyticalPassError: internal error", slog.Any("error", err))
 		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 }

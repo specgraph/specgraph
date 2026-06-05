@@ -29,9 +29,9 @@ func (l *ImpactLogger) OnSpecChanged(ctx context.Context, event *storage.ChangeE
 
 	refs, err := graph.GetImpact(ctx, event.Slug)
 	if err != nil {
-		slog.Warn("impact analysis failed",
-			"slug", event.Slug,
-			"error", err.Error(),
+		slog.LogAttrs(ctx, slog.LevelWarn, "impact analysis failed",
+			slog.String("slug", event.Slug),
+			slog.Any("error", err),
 		)
 		return
 	}
@@ -41,10 +41,10 @@ func (l *ImpactLogger) OnSpecChanged(ctx context.Context, event *storage.ChangeE
 		slugs[i] = r.Slug
 	}
 
-	slog.Info("spec change impact",
-		"slug", event.Slug,
-		"version", event.Version,
-		"impacted_count", len(refs),
-		"impacted", slugs,
+	slog.LogAttrs(ctx, slog.LevelInfo, "spec change impact",
+		slog.String("slug", event.Slug),
+		slog.Int("version", int(event.Version)),
+		slog.Int("impacted_count", len(refs)),
+		slog.Any("impacted", slugs),
 	)
 }

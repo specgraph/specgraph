@@ -4,8 +4,10 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -40,8 +42,11 @@ func WithFlags(flags *pflag.FlagSet) LoadOption {
 // flagKeyMap maps serve-command flag names to dotted koanf keys. Flags absent
 // from this map (e.g. cors-origin) are not config keys and are ignored.
 var flagKeyMap = map[string]string{
-	"listen": "server.listen",
-	"pg-url": "server.postgres.url",
+	"listen":     "server.listen",
+	"pg-url":     "server.postgres.url",
+	"log-level":  "log.level",
+	"log-format": "log.format",
+	"log-output": "log.output",
 }
 
 // DefaultProbeInterval/Timeout are chosen so the 5s cache refresh stays
@@ -58,6 +63,69 @@ type GlobalConfig struct {
 	Client ClientConfig  `yaml:"client" koanf:"client"`
 	Auth   AuthConfig    `yaml:"auth" koanf:"auth"`
 	Export ExportConfig  `yaml:"export" koanf:"export"`
+	Log    LogConfig     `yaml:"log" koanf:"log"`
+}
+
+// LogConfig configures the server's structured-logging output. All three
+// fields are settable via YAML, environment variable (SPECGRAPH_LOG_LEVEL,
+// SPECGRAPH_LOG_FORMAT, SPECGRAPH_LOG_OUTPUT), or the --log-level /
+// --log-format / --log-output serve flags.
+type LogConfig struct {
+	// Level is the minimum log level: debug, info, warn, or error.
+	Level string `yaml:"level" koanf:"level"`
+	// Format selects the handler: json (default) or text (logfmt).
+	Format string `yaml:"format" koanf:"format"`
+	// Output selects the destination stream: stdout (default) or stderr.
+	Output string `yaml:"output" koanf:"output"`
+}
+
+// Build constructs a [slog.Logger] writing to the stream named by lc.Output
+// (stdout or stderr). It returns an error for unrecognised Level, Format, or
+// Output values. Call [slog.SetDefault] on the returned logger to activate it
+// globally.
+func (lc LogConfig) Build() (*slog.Logger, error) {
+	var w io.Writer
+	switch strings.ToLower(lc.Output) {
+	case "", "stdout":
+		w = os.Stdout
+	case "stderr":
+		w = os.Stderr
+	default:
+		return nil, fmt.Errorf("invalid log output %q: must be stdout or stderr", lc.Output)
+	}
+	return lc.BuildWith(w)
+}
+
+// BuildWith is like [LogConfig.Build] but writes to w instead of the
+// configured output stream. Useful in tests and when an explicit [io.Writer]
+// is already available.
+func (lc LogConfig) BuildWith(w io.Writer) (*slog.Logger, error) {
+	levelStr := lc.Level
+	if levelStr == "" {
+		levelStr = "info"
+	}
+	var level slog.Level
+	if err := level.UnmarshalText([]byte(levelStr)); err != nil {
+		return nil, fmt.Errorf("invalid log level %q: must be debug, info, warn, or error", lc.Level)
+	}
+
+	formatStr := strings.ToLower(lc.Format)
+	if formatStr == "" {
+		formatStr = "json"
+	}
+
+	opts := &slog.HandlerOptions{Level: level}
+	var h slog.Handler
+	switch formatStr {
+	case "json":
+		h = slog.NewJSONHandler(w, opts)
+	case "text", "logfmt":
+		h = slog.NewTextHandler(w, opts)
+	default:
+		return nil, fmt.Errorf("invalid log format %q: must be json or text", lc.Format)
+	}
+
+	return slog.New(h), nil
 }
 
 // ExportConfig holds settings for project export and import operations.
@@ -216,7 +284,7 @@ func decoderConf(out *GlobalConfig) koanf.UnmarshalConf {
 func applyPostLoad(cfg *GlobalConfig) {
 	if len(cfg.Auth.OIDCProviders) > 0 && len(cfg.Auth.OIDC.Providers) == 0 {
 		cfg.Auth.OIDC.Providers = cfg.Auth.OIDCProviders
-		slog.Warn("auth.oidc_providers is deprecated; move providers under auth.oidc.providers")
+		slog.LogAttrs(context.Background(), slog.LevelWarn, "auth.oidc_providers is deprecated; move providers under auth.oidc.providers")
 	}
 	// Edge-case guard: if an operator explicitly clears the backend but leaves a
 	// postgres URL, default the backend to postgres. The common case never hits
@@ -326,6 +394,11 @@ func globalDefaults() *GlobalConfig {
 		},
 		Client: ClientConfig{
 			DefaultServer: "http://127.0.0.1:9090",
+		},
+		Log: LogConfig{
+			Level:  "info",
+			Format: "json",
+			Output: "stdout",
 		},
 	}
 }

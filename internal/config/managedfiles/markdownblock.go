@@ -5,6 +5,7 @@ package managedfiles
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -38,7 +39,8 @@ func (markdownBlockStrategy) Sync(cwd string, mf ManagedFile, params ProjectPara
 	}
 	defer func() {
 		if uerr := unlock(); uerr != nil {
-			slog.Error("unlock failed", "path", full, "error", uerr)
+			slog.LogAttrs(context.Background(), slog.LevelError, "unlock failed",
+				slog.String("path", full), slog.Any("error", uerr))
 		}
 	}()
 

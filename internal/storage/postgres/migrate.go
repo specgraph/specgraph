@@ -4,6 +4,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
@@ -32,7 +33,8 @@ func runMigrations(connString string) error {
 	}
 	defer func() {
 		if cErr := db.Close(); cErr != nil {
-			slog.Error("close migration connection", "error", cErr)
+			slog.LogAttrs(context.Background(), slog.LevelError, "close migration connection",
+				slog.Any("error", cErr))
 		}
 	}()
 

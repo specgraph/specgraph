@@ -77,7 +77,8 @@ func (h *SyncHandler) SyncGitHub(ctx context.Context, req *connect.Request[specv
 
 func (h *SyncHandler) syncWithAdapter(ctx context.Context, store storage.ScopedBackend, adapter syncpkg.Adapter, config *specv1.SyncConfig) (*connect.Response[specv1.SyncResponse], error) {
 	if err := adapter.Available(ctx); err != nil {
-		slog.ErrorContext(ctx, "adapter unavailable", "adapter", adapter.Name(), "error", err)
+		slog.LogAttrs(ctx, slog.LevelError, "adapter unavailable",
+			slog.Any("adapter", adapter.Name()), slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeUnavailable, errors.New("sync adapter not available"))
 	}
 
@@ -91,7 +92,7 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, store storage.ScopedB
 
 	specs, err := store.ListSpecs(ctx, stage, priority, 0)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to list specs", "error", err)
+		slog.LogAttrs(ctx, slog.LevelError, "failed to list specs", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list specs"))
 	}
 
@@ -110,7 +111,8 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, store storage.ScopedB
 			continue
 		}
 		if getErr != nil && !errors.Is(getErr, storage.ErrSyncMappingNotFound) {
-			slog.WarnContext(ctx, "failed to check sync state", "spec", spec.Slug, "adapter", adapter.Name(), "error", getErr)
+			slog.LogAttrs(ctx, slog.LevelWarn, "failed to check sync state",
+				slog.String("spec", spec.Slug), slog.Any("adapter", adapter.Name()), slog.Any("error", getErr))
 			result.State = specv1.SyncState_SYNC_STATE_ERROR
 			result.Message = "failed to check sync state"
 			resp.Errors++
@@ -128,7 +130,8 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, store storage.ScopedB
 
 		externalID, created, pushErr := adapter.FindOrCreate(ctx, spec)
 		if pushErr != nil {
-			slog.WarnContext(ctx, "failed to push spec to adapter", "spec", spec.Slug, "adapter", adapter.Name(), "error", pushErr)
+			slog.LogAttrs(ctx, slog.LevelWarn, "failed to push spec to adapter",
+				slog.String("spec", spec.Slug), slog.Any("adapter", adapter.Name()), slog.Any("error", pushErr))
 			result.State = specv1.SyncState_SYNC_STATE_ERROR
 			result.Message = "failed to push to adapter"
 			resp.Errors++
@@ -148,9 +151,9 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, store storage.ScopedB
 			}
 			// Retry once — transient store failures should not orphan external items.
 			if ctx.Err() != nil {
-				slog.ErrorContext(ctx, "sync mapping record failed after push (context cancelled before retry)",
-					"spec", spec.Slug, "adapter", adapter.Name(), "external_id", externalID,
-					"error", createErr)
+				slog.LogAttrs(ctx, slog.LevelError, "sync mapping record failed after push (context cancelled before retry)",
+					slog.String("spec", spec.Slug), slog.Any("adapter", adapter.Name()), slog.String("external_id", externalID),
+					slog.Any("error", createErr))
 				result.ExternalId = externalID
 				result.State = specv1.SyncState_SYNC_STATE_ERROR
 				result.Message = "pushed to adapter but failed to record mapping - external_id preserved for reconciliation"
@@ -169,9 +172,9 @@ func (h *SyncHandler) syncWithAdapter(ctx context.Context, store storage.ScopedB
 					resp.Results = append(resp.Results, result)
 					continue
 				}
-				slog.ErrorContext(ctx, "sync mapping record failed after push (orphaned external item)",
-					"spec", spec.Slug, "adapter", adapter.Name(), "external_id", externalID,
-					"initial_error", createErr, "error", retryErr)
+				slog.LogAttrs(ctx, slog.LevelError, "sync mapping record failed after push (orphaned external item)",
+					slog.String("spec", spec.Slug), slog.Any("adapter", adapter.Name()), slog.String("external_id", externalID),
+					slog.Any("initial_error", createErr), slog.Any("error", retryErr))
 				result.ExternalId = externalID
 				result.State = specv1.SyncState_SYNC_STATE_ERROR
 				result.Message = "pushed to adapter but failed to record mapping - external_id preserved for reconciliation"
@@ -207,7 +210,7 @@ func (h *SyncHandler) GetSyncStatus(ctx context.Context, req *connect.Request[sp
 	}
 	mappings, err := store.ListSyncMappings(ctx, adapterFilter, req.Msg.SpecSlug)
 	if err != nil {
-		slog.ErrorContext(ctx, "failed to list sync mappings", "error", err)
+		slog.LogAttrs(ctx, slog.LevelError, "failed to list sync mappings", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list sync mappings"))
 	}
 
@@ -215,7 +218,7 @@ func (h *SyncHandler) GetSyncStatus(ctx context.Context, req *connect.Request[sp
 	for _, m := range mappings {
 		pm, convErr := syncMappingToProto(m)
 		if convErr != nil {
-			slog.ErrorContext(ctx, "failed to convert sync mapping", "error", convErr)
+			slog.LogAttrs(ctx, slog.LevelError, "failed to convert sync mapping", slog.Any("error", convErr))
 			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to convert sync mapping"))
 		}
 		protoMappings = append(protoMappings, pm)
