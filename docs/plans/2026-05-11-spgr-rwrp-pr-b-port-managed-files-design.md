@@ -462,9 +462,9 @@ from a freshly-written canonical file.
      - Else → `StateStale` / `ActionRefreshed` (overwrite, fresh
        sentinel).
 
-     If disk hash doesn't match recorded sentinel hash →
-     `StateDrifted`. Skip without `--force`; `--force` rewrites;
-     `--force --keep-edits` refreshes the sentinel to match disk.
+   If disk hash doesn't match recorded sentinel hash →
+   `StateDrifted`. Skip without `--force`; `--force` rewrites;
+   `--force --keep-edits` refreshes the sentinel to match disk.
 
    - **v=1 markers.** Defensive recompute: call private
      `renderV1MarkdownBlockBody(mf, params)` for the same file's prior
