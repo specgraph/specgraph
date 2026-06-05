@@ -1,313 +1,206 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [0.7.0](https://github.com/specgraph/specgraph/compare/v0.6.0...v0.7.0) - 2026-06-05
+
+### Bug Fixes
+
+- **ci:** Switch buf to local plugins to eliminate BSR rate-limit flakes (spgr-3zs0) (#977) ([#977](https://github.com/specgraph/specgraph/pull/977)) ([b2ffc36](https://github.com/specgraph/specgraph/commit/b2ffc367433d33abeaf3fa76e68684b30b90bf17))
+- **auth:** Fail-closed role-downgrade clamp for custom/unranked roles (spgr-rjrt.9) (#974) ([#974](https://github.com/specgraph/specgraph/pull/974)) ([934f623](https://github.com/specgraph/specgraph/commit/934f623e85dfcc06ea8be9a5231e14f1aac48e8e))
+- **bootstrap:** Recover a keyless bootstrap admin by minting a key on Ensure (spgr-rjrt.12) (#973) ([#973](https://github.com/specgraph/specgraph/pull/973)) ([a9380ec](https://github.com/specgraph/specgraph/commit/a9380ec4fcf50d2c84b83dd638ccd5ae88ec2b58))
+
+### Features
+
+- **identity:** [**breaking**] Api-key hardening — limit clamp, --expires-at, rotate contract fix, loose-creds warning (spgr-rjrt.7/.10/.11) (#971) ([a63ddd7](https://github.com/specgraph/specgraph/commit/a63ddd7639f61b7691127cc15819bbbba4acbbfe))
+- **identity:** Bootstrap & UX — IdentityService RPC/CLI + bootstrap flows + protections (spgr-rjrt.5+.6) (#970) ([1a49b42](https://github.com/specgraph/specgraph/commit/1a49b42b6a28c03956d43c828a44737647da3580))
+
+### Tests
+
+- **authn:** OIDC coverage — full-stack interceptor, CLI oidc cmds, verifier branches (#976) ([#976](https://github.com/specgraph/specgraph/pull/976)) ([db715db](https://github.com/specgraph/specgraph/commit/db715dba32cba96b6e2183594c27ed29977421bd))
+- **authn:** JWT/JIT end-to-end integration coverage for identity authn (spgr-rjrt.8) (#972) ([#972](https://github.com/specgraph/specgraph/pull/972)) ([9d739bb](https://github.com/specgraph/specgraph/commit/9d739bb5ff8f6857f2cfe6b080177f35bdbc98a8))
+
 ## [0.6.0](https://github.com/specgraph/specgraph/compare/v0.5.0...v0.6.0) - 2026-06-02
 
 ### Bug Fixes
 
-- **mcp:** Pass conversation_exchanges through author tool (#952) ([#952](https://github.com/specgraph/specgraph/pull/952)) ([a45e150](https://github.com/specgraph/specgraph/commit/a45e15027fb3b8115f4d1a33db6b3fb7213dbb58))
-- Broken claude manifest setup (#949) ([#949](https://github.com/specgraph/specgraph/pull/949)) ([1cfecc0](https://github.com/specgraph/specgraph/commit/1cfecc065e456bf6d895eeb62f74e0fd58effef6))
-- **plugin/opencode:** Match author tool structurally; add E2E smoke procedure (#941) ([#941](https://github.com/specgraph/specgraph/pull/941)) ([99c1f99](https://github.com/specgraph/specgraph/commit/99c1f994ee92b6919adf1344570f60046f2b0fc7))
-- **mcp:** Render constitution resource as markdown (#934) ([#934](https://github.com/specgraph/specgraph/pull/934)) ([9d9cd8d](https://github.com/specgraph/specgraph/commit/9d9cd8ddec9dad294c5fcfe1475b17235db81169))
-- **mcp:** Render constitution empty state nicely (#933) ([#933](https://github.com/specgraph/specgraph/pull/933)) ([3ed2d19](https://github.com/specgraph/specgraph/commit/3ed2d19392d7f82ed3280109d119d5436679cddf))
-- **mcp:** Add project-wide findings API (#932) ([#932](https://github.com/specgraph/specgraph/pull/932)) ([c33bb9d](https://github.com/specgraph/specgraph/commit/c33bb9dff0aff6dca4c32823d54432726d15c6cd))
-- **mcp:** Friendlier empty-state rendering in prime resource (#931) ([#931](https://github.com/specgraph/specgraph/pull/931)) ([21460b6](https://github.com/specgraph/specgraph/commit/21460b647fa66ef9c595eb300f5cf8baf91dae88))
-- Change default server.listen to 0.0.0.0:9090 (#915) ([#915](https://github.com/specgraph/specgraph/pull/915)) ([7ed2b91](https://github.com/specgraph/specgraph/commit/7ed2b916bef9be3c74051ca1185b2aab34275995))
-- **cli:** Honor --config flag on server commands (#914) ([#914](https://github.com/specgraph/specgraph/pull/914)) ([e743fb4](https://github.com/specgraph/specgraph/commit/e743fb4abc978f66fff6f464e509d3511037287c))
-- **skills:** Make conversation recording structurally inseparable from stage persistence (#894) ([#894](https://github.com/specgraph/specgraph/pull/894)) ([7a88e6c](https://github.com/specgraph/specgraph/commit/7a88e6c48ff1c4e62c4b73b1e4c566633dfe8c05))
-- Amend re-entry lands one stage before target so authoring commands succeed (#892) ([#892](https://github.com/specgraph/specgraph/pull/892)) ([2d88e75](https://github.com/specgraph/specgraph/commit/2d88e75b26449864e99196443f95d9fed8b072ae))
+- **mcp:** Pass conversation_exchanges through author tool (#952) ([c8a8a2b](https://github.com/specgraph/specgraph/commit/c8a8a2bf7897b3e11e1c2c39ed9d04d2c2419c04))
+- Broken claude manifest setup (#949) ([f67d459](https://github.com/specgraph/specgraph/commit/f67d459b3a98450d28d45f0b3530a98cb9dddeed))
+- **plugin/opencode:** Match author tool structurally; add E2E smoke procedure (#941) ([f68ebae](https://github.com/specgraph/specgraph/commit/f68ebae2651b8d77d9ce1c50ff011166097ea0af))
+- **mcp:** Render constitution resource as markdown (#934) ([60dcd37](https://github.com/specgraph/specgraph/commit/60dcd37974cc6a6cd2391729d66296b863714cc5))
+- **mcp:** Render constitution empty state nicely (#933) ([4f74281](https://github.com/specgraph/specgraph/commit/4f742811aa79308ea5a41a5f56b2002b5b00686f))
+- **mcp:** Add project-wide findings API (#932) ([0a78a46](https://github.com/specgraph/specgraph/commit/0a78a4662b1f4446fb89b5f17d31133a53b0a316))
+- **mcp:** Friendlier empty-state rendering in prime resource (#931) ([c784cc8](https://github.com/specgraph/specgraph/commit/c784cc8fe71d76db36b0a92d9c4e370db352a870))
+- Change default server.listen to 0.0.0.0:9090 (#915) ([c3fed3b](https://github.com/specgraph/specgraph/commit/c3fed3be418de0a9683bea6b8ea57dc927b929c7))
+- **cli:** Honor --config flag on server commands (#914) ([e8a3642](https://github.com/specgraph/specgraph/commit/e8a3642d8ac60eeb8743c647ea73a830d6bea9ca))
+- **skills:** Make conversation recording structurally inseparable from stage persistence (#894) ([4b1de11](https://github.com/specgraph/specgraph/commit/4b1de119162820647686b9bffcdd16310da14600))
+- Amend re-entry lands one stage before target so authoring commands succeed (#892) ([d3dc8b7](https://github.com/specgraph/specgraph/commit/d3dc8b74464737b590282545322214d6ef4a6571))
+- **auth:** Add missing permission mappings for conversation RPCs (#829) ([5b3311f](https://github.com/specgraph/specgraph/commit/5b3311f3b15c1f98b3356f758a924a6e3b7e22a9))
+- **auth:** CLI loads API key from credentials file (#828) ([274a05b](https://github.com/specgraph/specgraph/commit/274a05b033d06a93949bb4d78354c2b9e984f555))
+- **auth:** Always show admin token path on dev server startup (#827) ([2988951](https://github.com/specgraph/specgraph/commit/298895138f6bb49483cd87666d5b93484d7cda0d))
+- **storage:** Handle duplicate slug constraint in CreateDecision and CreateSpec (spgr-dn7) (#826) ([e2367c5](https://github.com/specgraph/specgraph/commit/e2367c54ca112ea635cb9ee6102bfd872a8f2673))
+- Dev:reset removes stale compose file, fix XDG data paths (#823) ([fa19b20](https://github.com/specgraph/specgraph/commit/fa19b209baa0989586a76bbc2dd08bf56f9d692b))
+- Pass ADR-003 fields through export engine import path (spgr-389) (#820) ([5a8eb45](https://github.com/specgraph/specgraph/commit/5a8eb45e10a46533731334efee87e75b3e83b951))
+- Remove redundant .specgraph subdir in EnsureComposeFile path (spgr-2p5) (#808) ([2480161](https://github.com/specgraph/specgraph/commit/24801615a492bff390b40468ad128cc5a62eea8b))
+- **ci:** Dockerfile TARGETPLATFORM for dockers_v2 + skip no-op re-runs (#795) ([cc0f547](https://github.com/specgraph/specgraph/commit/cc0f5477416b8f5a560b6064979278189a7e75be))
+- **ci:** Skip release on no-op re-runs, switch to dockers_v2 (#794) ([fd915e2](https://github.com/specgraph/specgraph/commit/fd915e2f58555df56502eaf3447a19911a835f9b))
+- Remove shadowing renovate.json root config (#793) ([52a356f](https://github.com/specgraph/specgraph/commit/52a356f350f15646cbbd90236dcf4a8401c565c7))
+- **security:** Upgrade Go 1.26.1, add Trivy FS scan to CI (#792) ([9a88756](https://github.com/specgraph/specgraph/commit/9a887566e7c86da318bc6763aa2ab0cb5522b0e0))
+- **ci:** Goreleaser Docker build — use dockers with buildx + multi-arch (#791) ([1e08acc](https://github.com/specgraph/specgraph/commit/1e08acc0a255794827b723160a61ef36d4b7cd28))
+- **ci:** Make tag and release creation fully idempotent (#790) ([5dfb8d1](https://github.com/specgraph/specgraph/commit/5dfb8d18f4c2b2f964127af1e167674d1cc2c91a))
+- **ci:** Make release workflow idempotent and advance past v0.3.0 (#789) ([98059cd](https://github.com/specgraph/specgraph/commit/98059cdc456a00dd28f880cb464fdbad3ac5af6c))
+- **ci:** Skip changelog commit when nothing changed (idempotent re-runs) (#788) ([60f6a6e](https://github.com/specgraph/specgraph/commit/60f6a6e7bb42db87a19bf79cb99b6cfb4e1f4668))
+- **ci:** Bump the version (#787) ([68fa212](https://github.com/specgraph/specgraph/commit/68fa2126da459848f0d9b77ee4ba23746fca6ecc))
+- **ci:** Specify pnpm version in goreleaser release job (#786) ([d07f129](https://github.com/specgraph/specgraph/commit/d07f129c7c74f1db9c6dd6ee04fe7a5f15701d50))
+- **ci:** Use cliff action output for release notes (#785) ([4227e68](https://github.com/specgraph/specgraph/commit/4227e680780eb2312015ea1b130cb55f4e6bee0e))
+- **ci:** Disable persist-credentials so app token works for push (#784) ([94df4b4](https://github.com/specgraph/specgraph/commit/94df4b4bb5db4c8b0d81ef0522843085bb9c69d9))
+- **ci:** Use app token via git remote URL for branch protection bypass (#783) ([76e1026](https://github.com/specgraph/specgraph/commit/76e1026a022504aadfb1812fec48837a984df86d))
+- **ci:** Use GitHub App token for release workflow pushes (#782) ([d48a26b](https://github.com/specgraph/specgraph/commit/d48a26b702e6cef30245f12397b9596855fbb0d5))
+- **ci:** Cap version bumps at 0.x while pre-1.0 (#781) ([73ad662](https://github.com/specgraph/specgraph/commit/73ad6624e49f70ecde37e366b94f068129cb96f1))
+- **ci:** Git-cliff action output is 'version' not 'tag' (#780) ([b36e110](https://github.com/specgraph/specgraph/commit/b36e110c62b9124d845fee04716e7bd3a39307fb))
+- **server:** Codebase review wave 1 — security fixes + foundations (spgr-dec) (#694) ([febd1b7](https://github.com/specgraph/specgraph/commit/febd1b72934eb233217873064f254e0815fabbd5))
+- **web:** Dashboard counts all specs, remove slice filtering, UX label fixes (spgr-scd) (#685) ([961356e](https://github.com/specgraph/specgraph/commit/961356e9da388993050504533e0a637e792ddfc9))
+- **ci:** Revert cancel-in-progress to false for release workflow (#679) ([7742983](https://github.com/specgraph/specgraph/commit/77429833a5656c68988af5211dd4877de18d2af9))
+- **ci:** Set cancel-in-progress to unblock stuck release run (#678) ([8d74204](https://github.com/specgraph/specgraph/commit/8d7420471a95f6ce5a27b2c86a0a8f0e588a7ff7))
+- **ci:** Build web UI before goreleaser in release workflow (#674) ([570fd75](https://github.com/specgraph/specgraph/commit/570fd75bb84d28fa6a9754f011b85599c316ccaa))
+- Approve self-approval guardrails + CLI usage dump silence (spgr-8ec, spgr-5sd) (#669) ([8226d57](https://github.com/specgraph/specgraph/commit/8226d57a1bd3fac098d8b8c7a822f87ecd363d58))
+- Add explicit step gating to shape skill (#618) ([50ada80](https://github.com/specgraph/specgraph/commit/50ada80fe8e15cd45ed5e2dcebe53c5340c0abc4))
+- Resolve absolute binary path and quote slugs in tool commands (#616) ([4378fdb](https://github.com/specgraph/specgraph/commit/4378fdbf77fcdb1a47d6a442259373cb2d505719))
+- Enforce slug uniqueness in CreateSpec (#615) ([ca4dd3f](https://github.com/specgraph/specgraph/commit/ca4dd3fd387b84061ff0beaa5480e87f92455c6c))
+- Pin cosign-installer to v4.1.0 (no floating v4 tag) (#567) ([571a257](https://github.com/specgraph/specgraph/commit/571a25753ed18e7ac9293aa69959dda8fab95fbb))
+- Correct trivy-action version tag (v0.35.0) (#564) ([e515a86](https://github.com/specgraph/specgraph/commit/e515a86d0d0275d3b55a20b8627d7d98a97171d9))
+- Push git tag to remote before goreleaser changelog (#533) ([145491d](https://github.com/specgraph/specgraph/commit/145491d129218ad232aa2d2c8c7efe8205b9d7ca))
+- Release-please creates release+tag, goreleaser replaces with assets (#530) ([c0c12dd](https://github.com/specgraph/specgraph/commit/c0c12dd79d5d9d19b12fcc52e6f5d5acd67582e0))
+- Let goreleaser own GitHub releases, release-please only tags (#528) ([e1138c8](https://github.com/specgraph/specgraph/commit/e1138c88143ecfa2bbda2101f3a78b384d2a1b7a))
+- Remove draft:true from release-please config (#525) ([9d9137b](https://github.com/specgraph/specgraph/commit/9d9137b93493a833c47d6bb6db098391f6723f37))
+- Simple release flow — release-please creates release, goreleaser uploads assets (#524) ([338b5e8](https://github.com/specgraph/specgraph/commit/338b5e8bb206e87edddaabcc4956002230e4cd65))
+- Coordinate release-please and goreleaser — draft release handoff (#521) ([0f8a803](https://github.com/specgraph/specgraph/commit/0f8a803f6efa079f079a623739848b511d62ee0b))
+- Dockerfile for goreleaser — use pre-built binary (#519) ([f63f24a](https://github.com/specgraph/specgraph/commit/f63f24a4671d9b22b0102563d8c2d31f251bd327))
+- **deps:** Update module golang.org/x/text to v0.35.0 (#29) ([17f6469](https://github.com/specgraph/specgraph/commit/17f6469c4f19d5c888e41f85abf48d0a62c2ff61))
+- **deps:** Update module github.com/testcontainers/testcontainers-go to v0.41.0 (#28) ([a278f76](https://github.com/specgraph/specgraph/commit/a278f763ea2d762f47ed87a363121d739c85847f))
+- **e2e:** Address 4 open test suite findings (#44) ([87613a5](https://github.com/specgraph/specgraph/commit/87613a5ecced3d3c66dfc829a666ff5e0b2cefd3))
+- Wrap all multi-query write paths in RunInTransaction (#42) ([313dcfc](https://github.com/specgraph/specgraph/commit/313dcfce42ddd0449200621f97bd2069f2bc189a))
+
+### Build
+
+- **deps:** Bump github.com/go-jose/go-jose/v4 from 4.1.3 to 4.1.4 in the go_modules group across 1 directory (#825) ([a357d43](https://github.com/specgraph/specgraph/commit/a357d43ff45550f57b717a1c960adab3c26ad4f8))
+- Migrate release pipeline from release-please to git-cliff + goreleaser v2 (#677) ([08f1b68](https://github.com/specgraph/specgraph/commit/08f1b68237d7765ad86d5ea15b2902d72cd4502d))
+- **deps:** Bump golang.org/x/crypto from 0.43.0 to 0.45.0 (#2) ([2c17f36](https://github.com/specgraph/specgraph/commit/2c17f36145bdd049a03d3f490ab2f808f941c55c))
+
+### CI
+
+- Skip build and test for docs-only changes (#682) ([ae78a38](https://github.com/specgraph/specgraph/commit/ae78a3856ac5a51ed0faf4cee0bd9f965a5a9e85))
+- Use PAT for release-please to trigger CI on release PRs (#518) ([20a9eb8](https://github.com/specgraph/specgraph/commit/20a9eb842a2b2a3f5952fc4a0c3cf72f853b34e7))
+- Exclude auto-generated CHANGELOG.md from markdown lint (#517) ([1ef88eb](https://github.com/specgraph/specgraph/commit/1ef88eba0ff8d5fc91d59c26ef56355cd61f0121))
+- Add release-please + goreleaser infrastructure (#46) ([60c82e7](https://github.com/specgraph/specgraph/commit/60c82e75ebac52c4043a28aa2d68369311797c72))
+
+### Code Refactoring
+
+- Broaden ChangeLogEntry.Stage from SpecStage to string (spgr-egu) (#813) ([57d2a49](https://github.com/specgraph/specgraph/commit/57d2a498559a7c00e7a556a53835155f82ed4a28))
+- **server:** Remove redundant ConversationBackend type assertions (#798) ([e50a7ae](https://github.com/specgraph/specgraph/commit/e50a7aefff57c3dc9bab0d78ff0e846f03f78327))
+- Codebase review wave 3 — cleanup + hardening (spgr-dec) (#696) ([2b1c24a](https://github.com/specgraph/specgraph/commit/2b1c24a63c21f66ac064df674dc0cb4f905b9176))
+- Codebase review wave 2 — layering + type safety (spgr-dec) (#698) ([db2526c](https://github.com/specgraph/specgraph/commit/db2526ca84b5fce76f15fd72d47424f4afe1ad63))
+- **proto:** Wrap bare-entity RPC returns in Response messages (#622) ([28efc1c](https://github.com/specgraph/specgraph/commit/28efc1ccb110b06e3fd214b2e826763d33192c24))
+- Split AnalyticalFinding into input/output types (#617) ([ddc40af](https://github.com/specgraph/specgraph/commit/ddc40afbd83aeb8a6339b3b92abb8941c80d4a03))
+- Storage domain types and decision promotion (#24) ([151b783](https://github.com/specgraph/specgraph/commit/151b783624e71f9d015c51b13e1786a0504ab86c))
+- Slice 3.5 — Scanner removal & documentation cleanup (#22) ([a3ffca1](https://github.com/specgraph/specgraph/commit/a3ffca12da27297eae0c15d29662f481b77f4394))
 
 ### Features
 
-- **config:** [**breaking**] Koanf config loader with flag>env>file>default precedence (#969) ([#969](https://github.com/specgraph/specgraph/pull/969)) ([47d0761](https://github.com/specgraph/specgraph/commit/47d0761585afbea61a7de4e0e9c181df79d2163c))
-- **auth:** [**breaking**] Identity Policy Engine — Cedar adoption (spgr-rjrt.4) (#968) ([#968](https://github.com/specgraph/specgraph/pull/968)) ([ebfde99](https://github.com/specgraph/specgraph/commit/ebfde993063b47ac3e26d13365a440555e9dbf0d))
-- **authn:** Identity Authn — Resolver + JIT + Authorizer seam [spgr-rjrt.3] (#967) ([#967](https://github.com/specgraph/specgraph/pull/967)) ([9c2bc84](https://github.com/specgraph/specgraph/commit/9c2bc846537f0b36dd8163a7ed3e7f6fab717fd3))
-- **storage:** Identity Storage layer (UsersBackend + postgres) [spgr-rjrt.2] (#966) ([#966](https://github.com/specgraph/specgraph/pull/966)) ([0d68ba2](https://github.com/specgraph/specgraph/commit/0d68ba2447518d54cc90f6fffd07ef174bdbc7ca))
-- [**breaking**] Replace SpecLifecycle with SpecProvenance model (#954) ([#954](https://github.com/specgraph/specgraph/pull/954)) ([426728f](https://github.com/specgraph/specgraph/commit/426728f0dd1d076feb58ab7361bec54dc70cfab1))
-- **skills:** Restore specgraph-constitution skill (#950) ([#950](https://github.com/specgraph/specgraph/pull/950)) ([9f38ca3](https://github.com/specgraph/specgraph/commit/9f38ca3bf651a676f665723086d86c727d43d2fd))
-- **harness:** Consolidate Claude / Cursor / OpenCode integration (spgr-cceg) (#939) ([#939](https://github.com/specgraph/specgraph/pull/939)) ([65f44c4](https://github.com/specgraph/specgraph/commit/65f44c454da38281eaa9aa22fc63b9b59d31dc12))
-- **cli:** Specgraph read-mcp-resource (Phase B Slice 5 Task 32) (#925) ([#925](https://github.com/specgraph/specgraph/pull/925)) ([73932ef](https://github.com/specgraph/specgraph/commit/73932ef4a2c2de04fa5be0303a8aab3c1ab3ee32))
-- **authoring:** Composer adapter and MCP prompt delegation (phase B slice 4) (#924) ([#924](https://github.com/specgraph/specgraph/pull/924)) ([d67e813](https://github.com/specgraph/specgraph/commit/d67e8133dd0fe0a5fdc1462ede9be9724d2d3d98))
-- **mcp:** [**breaking**] Drop stdio transport, HTTP-only (#923) ([#923](https://github.com/specgraph/specgraph/pull/923)) ([941a0b1](https://github.com/specgraph/specgraph/commit/941a0b1663d030efa81bb44ca37a86c2a5fd5a08))
-- **authoring:** Composer with embedded-content assembly and observability (phase B slice 3) (#922) ([#922](https://github.com/specgraph/specgraph/pull/922)) ([f3115eb](https://github.com/specgraph/specgraph/commit/f3115eb1b18ebdefb138671ec24e7bd119949a4f))
-- **authoring:** Migrate workflow content to server-embedded files (phase B slice 2) (#920) ([#920](https://github.com/specgraph/specgraph/pull/920)) ([b83e97c](https://github.com/specgraph/specgraph/commit/b83e97c89eb42323f0c800e2d062489580ffbce5))
-- **serve:** Add /livez and /readyz probe endpoints on dedicated listener (#916) ([#916](https://github.com/specgraph/specgraph/pull/916)) ([a1d2760](https://github.com/specgraph/specgraph/commit/a1d27603bb9b1ac1d2728831e1da5ca8c3079780))
-- **cli:** [**breaking**] Split install/uninstall from up/down; retire --rm (#918) ([#918](https://github.com/specgraph/specgraph/pull/918)) ([9967fc4](https://github.com/specgraph/specgraph/commit/9967fc455733610537dfe39c80164cec7cfdb2f0))
-- **authoring:** Server-side polish for conversation coupling (phase B slice 1) (#917) ([#917](https://github.com/specgraph/specgraph/pull/917)) ([9012bc1](https://github.com/specgraph/specgraph/commit/9012bc1cabdcaeb84c0e133b1977091647c45f29))
-- **authoring:** Atomic conversation recording in stage handlers (phase A) (#910) ([#910](https://github.com/specgraph/specgraph/pull/910)) ([cdae2c6](https://github.com/specgraph/specgraph/commit/cdae2c6b1a69779e01c84cefb61c95342351c98d))
-- **mcp:** Add auth gating and profile-based tool filtering (#898) ([53ae211](https://github.com/specgraph/specgraph/commit/53ae211b8adc8f34c3affa9710da04663e56fa29))
-- **mcp:** Add MCP server with tiered tool access (#897) ([#897](https://github.com/specgraph/specgraph/pull/897)) ([ae63551](https://github.com/specgraph/specgraph/commit/ae63551f1bc94cd5dd9b2f2de93a67795e31a2a7))
-- Lifecycle nomenclature inversion — amend from in-flight, supersede from done (#889) ([#889](https://github.com/specgraph/specgraph/pull/889)) ([6eac0dd](https://github.com/specgraph/specgraph/commit/6eac0dd9b65101ddccfd8db3e6e3b90da5d4b163))
-- Multi-layer constitution with strategic merge and provenance (#888) ([#888](https://github.com/specgraph/specgraph/pull/888)) ([992fcc5](https://github.com/specgraph/specgraph/commit/992fcc56d59c65bede11145a8c3aae957e43a9ae))
-- Optional extra CA cert injection for Docker builds (#886) ([#886](https://github.com/specgraph/specgraph/pull/886)) ([3f22d74](https://github.com/specgraph/specgraph/commit/3f22d74497513bd4e032885a1d4308072fde73ec))
-- Lifecycle amendment/supersede — diffs, changelog UI, docs, E2E (#885) ([#885](https://github.com/specgraph/specgraph/pull/885)) ([ce08a8a](https://github.com/specgraph/specgraph/commit/ce08a8ac4eeea5c05ad133c1e4946e1a5fe05417))
+- **config:** [**breaking**] Koanf config loader with flag>env>file>default precedence (#969) ([6eb6685](https://github.com/specgraph/specgraph/commit/6eb668595ee0ca7c16d259eeac14d1c415147d37))
+- **auth:** [**breaking**] Identity Policy Engine — Cedar adoption (spgr-rjrt.4) (#968) ([1939428](https://github.com/specgraph/specgraph/commit/193942849b3e79b8efd766a25aa6b7cb1b3f2862))
+- **authn:** Identity Authn — Resolver + JIT + Authorizer seam [spgr-rjrt.3] (#967) ([62cb353](https://github.com/specgraph/specgraph/commit/62cb3530c983433f29f64b65d80344bd464e67ca))
+- **storage:** Identity Storage layer (UsersBackend + postgres) [spgr-rjrt.2] (#966) ([6e2b93d](https://github.com/specgraph/specgraph/commit/6e2b93d5c9fa126c41c90467dc8c49e5b94f65e6))
+- [**breaking**] Replace SpecLifecycle with SpecProvenance model (#954) ([8fdec6d](https://github.com/specgraph/specgraph/commit/8fdec6d4eef7e63fe91ca94bf41571ce9017ab00))
+- **skills:** Restore specgraph-constitution skill (#950) ([e11cae4](https://github.com/specgraph/specgraph/commit/e11cae4814be5b6c7685b82c9615186610928435))
+- **harness:** Consolidate Claude / Cursor / OpenCode integration (spgr-cceg) (#939) ([e174d4c](https://github.com/specgraph/specgraph/commit/e174d4c019361d259ef3411f873d29879f793754))
+- **cli:** Specgraph read-mcp-resource (Phase B Slice 5 Task 32) (#925) ([7d1c02c](https://github.com/specgraph/specgraph/commit/7d1c02c7c616a04805cca5c0eacbeed03652fcca))
+- **authoring:** Composer adapter and MCP prompt delegation (phase B slice 4) (#924) ([aaa7cec](https://github.com/specgraph/specgraph/commit/aaa7cec9294f7cb0c89a69f47d62d499cc396e6d))
+- **mcp:** [**breaking**] Drop stdio transport, HTTP-only (#923) ([b3275da](https://github.com/specgraph/specgraph/commit/b3275dad75b3866654c5cc0029148f3f39e1a147))
+- **authoring:** Composer with embedded-content assembly and observability (phase B slice 3) (#922) ([c54c9c4](https://github.com/specgraph/specgraph/commit/c54c9c4c2076eaab1d782f5b00fc03d026ea0a80))
+- **authoring:** Migrate workflow content to server-embedded files (phase B slice 2) (#920) ([0552cf5](https://github.com/specgraph/specgraph/commit/0552cf5b577cef6192b6051b094b52f7d1829fdf))
+- **serve:** Add /livez and /readyz probe endpoints on dedicated listener (#916) ([981cd9a](https://github.com/specgraph/specgraph/commit/981cd9a7824ed791119baa515f2d3136155991c0))
+- **cli:** [**breaking**] Split install/uninstall from up/down; retire --rm (#918) ([0128533](https://github.com/specgraph/specgraph/commit/0128533479f02ac368dee11b70b15af013ec1f90))
+- **authoring:** Server-side polish for conversation coupling (phase B slice 1) (#917) ([3315c10](https://github.com/specgraph/specgraph/commit/3315c1010913d732dd47baae61bf1380a1cd8a50))
+- **authoring:** Atomic conversation recording in stage handlers (phase A) (#910) ([20c69d6](https://github.com/specgraph/specgraph/commit/20c69d6fe9910980cad3f4a552f5ab46b15a1ee4))
+- **mcp:** Add auth gating and profile-based tool filtering (#898) ([d300ac0](https://github.com/specgraph/specgraph/commit/d300ac0b9e0c83a9a1026410d25d1d0ebf045b4d))
+- **mcp:** Add MCP server with tiered tool access (#897) ([ea35789](https://github.com/specgraph/specgraph/commit/ea357891012d65f6dad1bf541053f6b787880b60))
+- Lifecycle nomenclature inversion — amend from in-flight, supersede from done (#889) ([7e7a4cd](https://github.com/specgraph/specgraph/commit/7e7a4cdc213121b6bc76defecf45c963604cc35a))
+- Multi-layer constitution with strategic merge and provenance (#888) ([c52068d](https://github.com/specgraph/specgraph/commit/c52068dfd372ab5a3dd9f019db5d5118bce3bdca))
+- Optional extra CA cert injection for Docker builds (#886) ([0759545](https://github.com/specgraph/specgraph/commit/075954528b89d1dae489f32f34df92f43af80600))
+- Lifecycle amendment/supersede — diffs, changelog UI, docs, E2E (#885) ([33bf386](https://github.com/specgraph/specgraph/commit/33bf38671f29ae6e7ba861d413e571a69febef4f))
+- **authoring:** Add steel thread decomposition strategy (spgr-47v) (#878) ([2cfdee2](https://github.com/specgraph/specgraph/commit/2cfdee2053a3ebec88a765b231999fa5a941b484))
+- Auto-run analytical passes after authoring stage transitions (spgr-iap) (#830) ([9153e2a](https://github.com/specgraph/specgraph/commit/9153e2a9998ae6529ba338ae0dd2f6eeb2ce64e0))
+- **auth:** Add dashboard authentication with cookie-based sessions (#824) ([610df15](https://github.com/specgraph/specgraph/commit/610df1594043e25ab0def65baf52fa039e6b9930))
+- **storage:** Replace Memgraph with Postgres backend (spgr-khy) (#821) ([fbbad2e](https://github.com/specgraph/specgraph/commit/fbbad2e9c438cf2f5b8a049bff5e4255bfa9ef9b))
+- Add optimistic concurrency version guard to UpdateDecision (spgr-ejd) (#819) ([1fca945](https://github.com/specgraph/specgraph/commit/1fca94569e6f39969a9d096d96c3c75e632d5c6e))
+- Extend Decision type with ADR-003 fields (spgr-bk8) (#812) ([2947692](https://github.com/specgraph/specgraph/commit/2947692247f2ccb50d583dbe921a78ffcf2263c2))
+- Add skipped-spec count to all-specs drift check (spgr-col) (#810) ([6d739e1](https://github.com/specgraph/specgraph/commit/6d739e1da8164ecc0f5d823209d608a77bdb9ba6))
+- Impact notification service for spec changes (spgr-w6o) (#806) ([b87be62](https://github.com/specgraph/specgraph/commit/b87be62ec50097d0205694f340b1edf3cd5a07e9))
+- **server:** Expose ListChanges via ConnectRPC API (spgr-fn5) (#804) ([a3f63c4](https://github.com/specgraph/specgraph/commit/a3f63c4a9e9bc85ebbe96e84ec1ce46c1dc09267))
+- **e2e:** Coverage-instrumented CLI binary (spgr-6n8) (#803) ([d532977](https://github.com/specgraph/specgraph/commit/d5329775250dbf8305433226f8d8808d20474f24))
+- **auth:** OIDC authentication with multi-provider support (spgr-0az) (#802) ([80004d5](https://github.com/specgraph/specgraph/commit/80004d5d19052c06d77cfd465705e497d0d60932))
+- Export/import/verify — full project backup and restore (spgr-m56) (#699) ([2265aa4](https://github.com/specgraph/specgraph/commit/2265aa4585c2498be1f80bb81b6ab9f51820c948))
+- **web:** Slice support — client, spec detail, graph pills (spgr-6sw.7) (#692) ([c6cea3b](https://github.com/specgraph/specgraph/commit/c6cea3bba55b8dafbae5e64e7ab78d47936f934a))
+- **cli:** Add slice list/get/claim/complete commands (spgr-6sw.6) (#691) ([930beca](https://github.com/specgraph/specgraph/commit/930becae90552dfa285d87fc37189fac016e2cc8))
+- **server:** SliceService handler + ClaimSlice/CompleteSlice return (*Slice, error) (spgr-6sw.4) (#690) ([461d26d](https://github.com/specgraph/specgraph/commit/461d26d0fe55d8ff9293c5386ff92fcf1b1b8972))
+- **storage:** [**breaking**] StoreDecomposeOutput creates Slices + GetFullGraph includes Slices (spgr-6sw.3) (#689) ([4b17cea](https://github.com/specgraph/specgraph/commit/4b17cea52cad154ceca2ba8cf8e82161a0bb6e7d))
+- **storage:** Implement Memgraph Slice CRUD + integration tests (spgr-6sw.2) (#688) ([6db9457](https://github.com/specgraph/specgraph/commit/6db9457d486aa496bd8a87be40025efe10ea81e4))
+- **proto:** Add Slice message, SliceService, and storage interface (spgr-6sw.1) (#687) ([8fa786b](https://github.com/specgraph/specgraph/commit/8fa786b236a1fdfed9c9488825504870a2d5135b))
+- **execution:** Redesign bundle as agent-actionable markdown launchpad (spgr-755) (#686) ([5be164b](https://github.com/specgraph/specgraph/commit/5be164b444b58f931494efc0b4fcf28e28699dc8))
+- **skills:** Wire authoring skills to RecordConversation + enable conversation_count (spgr-cdd) (#684) ([b9cc58d](https://github.com/specgraph/specgraph/commit/b9cc58d1d884f447669a6ced63bc439febb666d6))
+- **web:** Dashboard overhaul + detail page enhancements for demo-readiness (spgr-5re) (#683) ([4b0c5f2](https://github.com/specgraph/specgraph/commit/4b0c5f2ee34307fc5c87b8c25028773f125edf00))
+- **sync:** Idempotent push — FindOrCreate to prevent orphaned external items (spgr-ylq) (#681) ([3f28794](https://github.com/specgraph/specgraph/commit/3f287947ce91b7efa5f8e918e7d553cf498972e1))
+- **cmd:** Add comprehensive unit tests for CLI commands (spgr-dvb) (#672) ([c029edb](https://github.com/specgraph/specgraph/commit/c029edbd88143a8a4ef0a021c630518897b54c88))
+- Batch improvements — dashboard stats, constitution view, status command, template overrides, bug fixes (#670) ([aa76826](https://github.com/specgraph/specgraph/commit/aa76826681ead827f53201f6b50accf8d195b262))
+- **web:** Expand spec detail page with stage outputs, edges, conversations (spgr-zn1) (#668) ([36656fb](https://github.com/specgraph/specgraph/commit/36656fb7a8faba818eeb9857a1ac0cee3f8ab87b))
+- Expand specgraph show with full authoring stage detail (spgr-0dg) (#665) ([063a523](https://github.com/specgraph/specgraph/commit/063a523b978f245023c65decca2d9e4394a8f36a))
+- ConversationLog graph nodes for authoring audit trail (spgr-9mz) (#664) ([0fce64f](https://github.com/specgraph/specgraph/commit/0fce64ff40289e12983e0b563fa2fa11f82479c3))
+- Graph visualization UI with embedded SvelteKit SPA (spgr-p1l) (#644) ([de84cd9](https://github.com/specgraph/specgraph/commit/de84cd95a7bd99322d5e63b2cb438126fa79e4f3))
+- Markdown CLI output with --json flags (#496) (#642) ([9d766bd](https://github.com/specgraph/specgraph/commit/9d766bd17fe073052b1d55c25048c78e750a4212))
+- Add duplicate slug check to spark skill (#620) ([5800234](https://github.com/specgraph/specgraph/commit/580023454779278801ad7f683a232cc217a3be6f))
+- Restructure SpecifyOutput with InterfaceSection, VerifyCriterion, FileTouch (#619) ([c2241d9](https://github.com/specgraph/specgraph/commit/c2241d955d91d0898bec8fb42c3bf534a3113173))
+- Plugin restructure, authoring skills, and demo runbook (#609) ([97b9654](https://github.com/specgraph/specgraph/commit/97b96549462421d9755552e7c0801ddb1863fd5a))
+- Add prompt templates for remaining analytical passes (#572) ([a4810b5](https://github.com/specgraph/specgraph/commit/a4810b5d0a0112a45c36a74e04010da26f4196d0))
+- Analytical pass system with unified findings (#571) ([b60e15a](https://github.com/specgraph/specgraph/commit/b60e15aa38a3f4e1c7b93748776e4cdf97247f2e))
+- Supply chain security — cosign, SBOMs, attestations, Trivy scan (#562) ([3810dcf](https://github.com/specgraph/specgraph/commit/3810dcf2d17102c29724fca8d691f819afb378d3))
+- Content hash drift detection on DEPENDS_ON edges (#43) ([b0752f1](https://github.com/specgraph/specgraph/commit/b0752f1a7d9b8f2a09bcd9914396e3207f01eb26))
+- ChangeLog graph nodes for version tracking (#41) ([81aa512](https://github.com/specgraph/specgraph/commit/81aa5129dcdadfec3e7760ab3397f18f983c89ff))
+- Add Murmur3-128 content hash for change detection (#39) ([5a7dfe6](https://github.com/specgraph/specgraph/commit/5a7dfe6a1e2494f7e92dcd47ea094a624d82ddd5))
+- **auth:** Add authentication and authorization interceptor (#38) ([a5b1750](https://github.com/specgraph/specgraph/commit/a5b1750a79a4825d8322cd6f40dedc96b5270677))
+- **cli:** Add report-progress, report-blocker, report-completion commands (#36) ([f62c02a](https://github.com/specgraph/specgraph/commit/f62c02a9927115474c8cae9a26893ebb229975bc))
+- **proto:** Add notes field to Spec + JSON output for show (#35) ([a8cbdaf](https://github.com/specgraph/specgraph/commit/a8cbdafc924097318d1918fd502b94a6bf6ecfd6))
+- **plugin:** Evolve authoring skills into partner personas (#34) ([030733d](https://github.com/specgraph/specgraph/commit/030733de892b823238863ee8d3f9c6406a6c9e24))
+- **plugin:** Slice 7 — global daemon and Claude Code plugin (#31) ([260b58d](https://github.com/specgraph/specgraph/commit/260b58d4edddfdcb6a8704c084907f393d182bb0))
+- **sync:** Slice 6 — sync adapters, tool injection, and CLI (#30) ([ed391a1](https://github.com/specgraph/specgraph/commit/ed391a1250f24b812b69c9951869f6726a3a21ee))
+- **lifecycle:** Slice 5 — spec lifecycle operations (#27) ([4a430ca](https://github.com/specgraph/specgraph/commit/4a430caac9e664e686d5b5a1320ed5a72d6b8572))
+- **execution:** Slice 4 — domain types consistency & execution bundles (#26) ([c13a9ae](https://github.com/specgraph/specgraph/commit/c13a9aef8fc24a7486989e22d3a6eae87ba46276))
+- **docker:** Add Memgraph sizing profiles and persistence (#23) ([46e67d1](https://github.com/specgraph/specgraph/commit/46e67d1326115787216ae4a006c3839b047e6943))
+- Slice 3 — Authoring Funnel (#8) ([ebc6a1e](https://github.com/specgraph/specgraph/commit/ebc6a1ea971e0a5b5899661f1c036469ade0c0b5))
+- Add constitution subsystem (Slice 2) (#7) ([65be2d7](https://github.com/specgraph/specgraph/commit/65be2d7fe61a8adbf8511f07d3fb0754c5276852))
+- Add extended services (health, claim, decision, graph) (#4) ([383c8c3](https://github.com/specgraph/specgraph/commit/383c8c3ec9ac38ec5fb647cdad960978b7bc4e36))
+- Add code quality and lefthook setup (#3) ([ec56341](https://github.com/specgraph/specgraph/commit/ec56341fec798b0364f772b6c3c3899154cd836c))
+- Vertical slice — client/server architecture (#1) ([649cd0e](https://github.com/specgraph/specgraph/commit/649cd0e78b9eea07f5f23748c7baedb9d66caa3b))
+- Include design docs as hidden pages on site ([536ec6f](https://github.com/specgraph/specgraph/commit/536ec6f3ed53006bc3116cfc4a1456d6ba442efa))
+- Add Zensical doc site with GitHub Pages deployment ([a9f677f](https://github.com/specgraph/specgraph/commit/a9f677fbf3824150746c2369eae6201d6a4ab8f1))
+- Initial ([d402bc9](https://github.com/specgraph/specgraph/commit/d402bc9c3c72bd8a40f5ac4cb3c876df05f40b5b))
 
 ### Miscellaneous
 
-- Wire active claims through SpecView via ClaimBackend.GetActiveClaim (#961) ([#961](https://github.com/specgraph/specgraph/pull/961)) ([e9ce76c](https://github.com/specgraph/specgraph/commit/e9ce76c75bc93b672e6db2e3233b270e69640847))
-- Deprecate specgraph inject in favor of MCP + extended init (#940) ([#940](https://github.com/specgraph/specgraph/pull/940)) ([7300112](https://github.com/specgraph/specgraph/commit/7300112f5e7b25f8ee463b837c8ff7cc13046bef))
-- Idempotent 'specgraph init' with managed per-harness MCP configs (#929) ([#929](https://github.com/specgraph/specgraph/pull/929)) ([f8ace7b](https://github.com/specgraph/specgraph/commit/f8ace7b3639b74f381fc921b54fcf765722d4f59))
-
-## [0.5.0](https://github.com/specgraph/specgraph/compare/v0.4.0...v0.5.0) - 2026-04-04
-
-### Bug Fixes
-
-- **auth:** Add missing permission mappings for conversation RPCs (#829) ([#829](https://github.com/specgraph/specgraph/pull/829)) ([66ce95d](https://github.com/specgraph/specgraph/commit/66ce95d10622a12ab2a165aea0ef539eb343f7f2))
-- **auth:** CLI loads API key from credentials file (#828) ([#828](https://github.com/specgraph/specgraph/pull/828)) ([6b24f39](https://github.com/specgraph/specgraph/commit/6b24f3937b1d61d262b84fb4a756cc052ecfbe25))
-- **auth:** Always show admin token path on dev server startup (#827) ([#827](https://github.com/specgraph/specgraph/pull/827)) ([6abb371](https://github.com/specgraph/specgraph/commit/6abb371250669e36701a6147b9dd6675c5f76856))
-- **storage:** Handle duplicate slug constraint in CreateDecision and CreateSpec (spgr-dn7) (#826) ([#826](https://github.com/specgraph/specgraph/pull/826)) ([2ec2422](https://github.com/specgraph/specgraph/commit/2ec24228995d7d4c5ffdfe23a79f476549d06878))
-- Dev:reset removes stale compose file, fix XDG data paths (#823) ([#823](https://github.com/specgraph/specgraph/pull/823)) ([6a4d34a](https://github.com/specgraph/specgraph/commit/6a4d34afad9f74e8184104f97040abbcc88c8f4a))
-- Pass ADR-003 fields through export engine import path (spgr-389) (#820) ([#820](https://github.com/specgraph/specgraph/pull/820)) ([650751c](https://github.com/specgraph/specgraph/commit/650751c58c3c575ceb2839a39916bd585307a0b6))
-- Remove redundant .specgraph subdir in EnsureComposeFile path (spgr-2p5) (#808) ([#808](https://github.com/specgraph/specgraph/pull/808)) ([963f86c](https://github.com/specgraph/specgraph/commit/963f86cce2703ffbffc7118ebbdc959dc7ec4e49))
-
-### Build
-
-- **deps:** Bump github.com/go-jose/go-jose/v4 from 4.1.3 to 4.1.4 in the go_modules group across 1 directory (#825) ([#825](https://github.com/specgraph/specgraph/pull/825)) ([06d035c](https://github.com/specgraph/specgraph/commit/06d035c4953c7f44ba7d0a684c9a9ee07fb71f2b))
-
-### Code Refactoring
-
-- Broaden ChangeLogEntry.Stage from SpecStage to string (spgr-egu) (#813) ([#813](https://github.com/specgraph/specgraph/pull/813)) ([b9aeb3b](https://github.com/specgraph/specgraph/commit/b9aeb3b72db9ac7e6a93aeb300dab96d50759e33))
-
-### Features
-
-- **authoring:** Add steel thread decomposition strategy (spgr-47v) (#878) ([#878](https://github.com/specgraph/specgraph/pull/878)) ([786cf18](https://github.com/specgraph/specgraph/commit/786cf18be0f8c5d5ffa2bea5c7c2b9778ce7c8f6))
-- Auto-run analytical passes after authoring stage transitions (spgr-iap) (#830) ([#830](https://github.com/specgraph/specgraph/pull/830)) ([18386e1](https://github.com/specgraph/specgraph/commit/18386e1f6907e6ab788f4c6f6de976ceee8b7256))
-- **auth:** Add dashboard authentication with cookie-based sessions (#824) ([#824](https://github.com/specgraph/specgraph/pull/824)) ([4283946](https://github.com/specgraph/specgraph/commit/4283946102d3cf72da65d2cde88384f6851110bf))
-- **storage:** Replace Memgraph with Postgres backend (spgr-khy) (#821) ([#821](https://github.com/specgraph/specgraph/pull/821)) ([48d659a](https://github.com/specgraph/specgraph/commit/48d659ad44cb078f049d3662b5ac3d00f6eab1ea))
-- Add optimistic concurrency version guard to UpdateDecision (spgr-ejd) (#819) ([#819](https://github.com/specgraph/specgraph/pull/819)) ([4858e7f](https://github.com/specgraph/specgraph/commit/4858e7fd412588f5e2c428a58d84670ef8acf90a))
-- Extend Decision type with ADR-003 fields (spgr-bk8) (#812) ([#812](https://github.com/specgraph/specgraph/pull/812)) ([92fccb3](https://github.com/specgraph/specgraph/commit/92fccb303e9e18ff7723bedc222acf0073f03a82))
-- Add skipped-spec count to all-specs drift check (spgr-col) (#810) ([#810](https://github.com/specgraph/specgraph/pull/810)) ([740d61b](https://github.com/specgraph/specgraph/commit/740d61b38c2f1b6eea7b648edbab63fe0fac292a))
-
-### Tests
-
-- **integration:** Concurrent duplicate-detection for CreateSyncMapping (spgr-5xt) (#809) ([#809](https://github.com/specgraph/specgraph/pull/809)) ([2de2cd4](https://github.com/specgraph/specgraph/commit/2de2cd4097f0dcc508c757fc009001f52174067d))
-
-## [0.4.0](https://github.com/specgraph/specgraph/compare/v0.3.7...v0.4.0) - 2026-03-31
-
-### Code Refactoring
-
-- **server:** Remove redundant ConversationBackend type assertions (#798) ([#798](https://github.com/specgraph/specgraph/pull/798)) ([36d1ee5](https://github.com/specgraph/specgraph/commit/36d1ee5129f90a1fbae22f2abd68b2b12e85352a))
-
-### Features
-
-- Impact notification service for spec changes (spgr-w6o) (#806) ([#806](https://github.com/specgraph/specgraph/pull/806)) ([f349911](https://github.com/specgraph/specgraph/commit/f34991184493b9e6b94faf2c2134528bb3ddfe8e))
-- **server:** Expose ListChanges via ConnectRPC API (spgr-fn5) (#804) ([#804](https://github.com/specgraph/specgraph/pull/804)) ([d66c9eb](https://github.com/specgraph/specgraph/commit/d66c9ebf1489440caee25ebefd51236c130704be))
-- **e2e:** Coverage-instrumented CLI binary (spgr-6n8) (#803) ([#803](https://github.com/specgraph/specgraph/pull/803)) ([b7034bd](https://github.com/specgraph/specgraph/commit/b7034bdd2c50d837d288b50a0b0615a546ffc1e6))
-- **auth:** OIDC authentication with multi-provider support (spgr-0az) (#802) ([#802](https://github.com/specgraph/specgraph/pull/802)) ([a99871d](https://github.com/specgraph/specgraph/commit/a99871d686412a85fc3b9d3a53236f87a4df6347))
-
-### Tests
-
-- **cli:** Add lifecycle RPC error tests (spgr-a7t.15) (#800) ([#800](https://github.com/specgraph/specgraph/pull/800)) ([00c4711](https://github.com/specgraph/specgraph/commit/00c4711b5c80669f5743714219dc3170e437e06f))
-
-## [0.3.7](https://github.com/specgraph/specgraph/compare/v0.3.6...v0.3.7) - 2026-03-28
-
-### Bug Fixes
-
-- **ci:** Dockerfile TARGETPLATFORM for dockers_v2 + skip no-op re-runs (#795) ([#795](https://github.com/specgraph/specgraph/pull/795)) ([0b65633](https://github.com/specgraph/specgraph/commit/0b656330c1dd33fb88c39dad0e3757bf597c1c50))
-
-## [0.3.6](https://github.com/specgraph/specgraph/compare/v0.3.5...v0.3.6) - 2026-03-28
-
-### Bug Fixes
-
-- **ci:** Skip release on no-op re-runs, switch to dockers_v2 (#794) ([#794](https://github.com/specgraph/specgraph/pull/794)) ([6819133](https://github.com/specgraph/specgraph/commit/6819133f7d848043cfc86e48dd8b387a48389711))
-
-## [0.3.5](https://github.com/specgraph/specgraph/compare/v0.3.4...v0.3.5) - 2026-03-28
-
-### Bug Fixes
-
-- Remove shadowing renovate.json root config (#793) ([#793](https://github.com/specgraph/specgraph/pull/793)) ([b0d509e](https://github.com/specgraph/specgraph/commit/b0d509e8b13bfc636f8f4b28fd6f515ed0f858eb))
-
-## [0.3.4](https://github.com/specgraph/specgraph/compare/v0.3.3...v0.3.4) - 2026-03-28
-
-### Bug Fixes
-
-- **security:** Upgrade Go 1.26.1, add Trivy FS scan to CI (#792) ([#792](https://github.com/specgraph/specgraph/pull/792)) ([f934fbe](https://github.com/specgraph/specgraph/commit/f934fbecc55dde03fa6927eeb145f8c5d776955f))
-
-## [0.3.3](https://github.com/specgraph/specgraph/compare/v0.3.2...v0.3.3) - 2026-03-28
-
-### Bug Fixes
-
-- **ci:** Goreleaser Docker build — use dockers with buildx + multi-arch (#791) ([#791](https://github.com/specgraph/specgraph/pull/791)) ([860a6ac](https://github.com/specgraph/specgraph/commit/860a6ac19c4c892d2b9ccc5552a4ecc4caa2b0f7))
-
-## [0.3.2](https://github.com/specgraph/specgraph/compare/v0.3.1...v0.3.2) - 2026-03-28
-
-### Bug Fixes
-
-- **ci:** Make tag and release creation fully idempotent (#790) ([#790](https://github.com/specgraph/specgraph/pull/790)) ([c38f490](https://github.com/specgraph/specgraph/commit/c38f4908f3f9c2e7ca3765686d897f01673c9d33))
-
-## [0.3.1](https://github.com/specgraph/specgraph/compare/v0.2.1...v0.3.1) - 2026-03-28
-
-### Bug Fixes
-
-- **ci:** Make release workflow idempotent and advance past v0.3.0 (#789) ([#789](https://github.com/specgraph/specgraph/pull/789)) ([ec48765](https://github.com/specgraph/specgraph/commit/ec487654e753bbd386818cb3528eaa3385f6d3da))
-- **ci:** Skip changelog commit when nothing changed (idempotent re-runs) (#788) ([#788](https://github.com/specgraph/specgraph/pull/788)) ([d95cb4d](https://github.com/specgraph/specgraph/commit/d95cb4dd96fb5782f53a2786591ebaaf3e8c70b2))
-- **ci:** Bump the version (#787) ([#787](https://github.com/specgraph/specgraph/pull/787)) ([6dfd5da](https://github.com/specgraph/specgraph/commit/6dfd5da7884ab3e3e1363b998242fccc093b8f32))
-- **ci:** Specify pnpm version in goreleaser release job (#786) ([#786](https://github.com/specgraph/specgraph/pull/786)) ([81d28d2](https://github.com/specgraph/specgraph/commit/81d28d20356a632b1f2f1a6fb24b10932ce3fdae))
-- **ci:** Use cliff action output for release notes (#785) ([#785](https://github.com/specgraph/specgraph/pull/785)) ([1c4bac0](https://github.com/specgraph/specgraph/commit/1c4bac074513310bd7db44481ae3383ec0fbff16))
-- **ci:** Disable persist-credentials so app token works for push (#784) ([#784](https://github.com/specgraph/specgraph/pull/784)) ([3bd38db](https://github.com/specgraph/specgraph/commit/3bd38dbad7cd7b66c12cd3f166e8b929b90d2769))
-- **ci:** Use app token via git remote URL for branch protection bypass (#783) ([#783](https://github.com/specgraph/specgraph/pull/783)) ([8cebf51](https://github.com/specgraph/specgraph/commit/8cebf512326f3091831bd6bbf44d2ee8d80e0e87))
-- **ci:** Use GitHub App token for release workflow pushes (#782) ([#782](https://github.com/specgraph/specgraph/pull/782)) ([138b9c5](https://github.com/specgraph/specgraph/commit/138b9c5d1ae8d68a34ca25622270590ffcca6dfb))
-- **ci:** Cap version bumps at 0.x while pre-1.0 (#781) ([#781](https://github.com/specgraph/specgraph/pull/781)) ([72319ad](https://github.com/specgraph/specgraph/commit/72319ad0f942331cc18616433f9a2a3e08924a1a))
-- **ci:** Git-cliff action output is 'version' not 'tag' (#780) ([#780](https://github.com/specgraph/specgraph/pull/780)) ([28f4cb7](https://github.com/specgraph/specgraph/commit/28f4cb78380633a60bd225a484fae9aedcc1f3eb))
-- **server:** Codebase review wave 1 — security fixes + foundations (spgr-dec) (#694) ([#694](https://github.com/specgraph/specgraph/pull/694)) ([2869dce](https://github.com/specgraph/specgraph/commit/2869dceedb17983aa93201caee5fbc28bafd134d))
-- **web:** Dashboard counts all specs, remove slice filtering, UX label fixes (spgr-scd) (#685) ([#685](https://github.com/specgraph/specgraph/pull/685)) ([8f225a9](https://github.com/specgraph/specgraph/commit/8f225a9a33f6c6df604e3342f859d139a2048819))
-- **ci:** Revert cancel-in-progress to false for release workflow (#679) ([#679](https://github.com/specgraph/specgraph/pull/679)) ([c9ad431](https://github.com/specgraph/specgraph/commit/c9ad4315a8565b8aaa81033fc4e0bc1cd2d46efa))
-- **ci:** Set cancel-in-progress to unblock stuck release run (#678) ([#678](https://github.com/specgraph/specgraph/pull/678)) ([e0f95fd](https://github.com/specgraph/specgraph/commit/e0f95fd94db808c51b26f4943f856bf5002f3c3a))
-
-### Build
-
-- Migrate release pipeline from release-please to git-cliff + goreleaser v2 (#677) ([#677](https://github.com/specgraph/specgraph/pull/677)) ([dd0ceec](https://github.com/specgraph/specgraph/commit/dd0ceecfe1bf9035dd4f9bdbfe0d69e53402de2d))
-
-### CI
-
-- Skip build and test for docs-only changes (#682) ([#682](https://github.com/specgraph/specgraph/pull/682)) ([b8a0978](https://github.com/specgraph/specgraph/commit/b8a0978b8efc85f740f087319fc60912fe0686b1))
-
-### Code Refactoring
-
-- Codebase review wave 3 — cleanup + hardening (spgr-dec) (#696) ([#696](https://github.com/specgraph/specgraph/pull/696)) ([697238e](https://github.com/specgraph/specgraph/commit/697238e7d9ec5d85e2c3d4e7aceb6ecf55945671))
-- Codebase review wave 2 — layering + type safety (spgr-dec) (#698) ([#698](https://github.com/specgraph/specgraph/pull/698)) ([63d73fd](https://github.com/specgraph/specgraph/commit/63d73fd8c3768fcb0401d39881b56e994955c020))
-
-### Features
-
-- Export/import/verify — full project backup and restore (spgr-m56) (#699) ([#699](https://github.com/specgraph/specgraph/pull/699)) ([eabfac9](https://github.com/specgraph/specgraph/commit/eabfac954f2ee38f783974b4b6ce8def043f8ba9))
-- **web:** Slice support — client, spec detail, graph pills (spgr-6sw.7) (#692) ([#692](https://github.com/specgraph/specgraph/pull/692)) ([f2e1d47](https://github.com/specgraph/specgraph/commit/f2e1d47fc003626c38be7f0e9c5ba6ce2156229e))
-- **cli:** Add slice list/get/claim/complete commands (spgr-6sw.6) (#691) ([#691](https://github.com/specgraph/specgraph/pull/691)) ([10f2262](https://github.com/specgraph/specgraph/commit/10f2262a246587ee46d21c0a51d091a5efbc9fdb))
-- **server:** SliceService handler + ClaimSlice/CompleteSlice return (*Slice, error) (spgr-6sw.4) (#690) ([#690](https://github.com/specgraph/specgraph/pull/690)) ([de9bd8d](https://github.com/specgraph/specgraph/commit/de9bd8d3f87fc622606ca2aa0ae1ec098b4c313c))
-- **storage:** [**breaking**] StoreDecomposeOutput creates Slices + GetFullGraph includes Slices (spgr-6sw.3) (#689) ([#689](https://github.com/specgraph/specgraph/pull/689)) ([0a66af1](https://github.com/specgraph/specgraph/commit/0a66af1340fa24fa15e16be08420be5884d77a52))
-- **storage:** Implement Memgraph Slice CRUD + integration tests (spgr-6sw.2) (#688) ([#688](https://github.com/specgraph/specgraph/pull/688)) ([576c746](https://github.com/specgraph/specgraph/commit/576c746ce754babdda34768ce2aa583215eb9239))
-- **proto:** Add Slice message, SliceService, and storage interface (spgr-6sw.1) (#687) ([#687](https://github.com/specgraph/specgraph/pull/687)) ([5a87e84](https://github.com/specgraph/specgraph/commit/5a87e849d3ecf3153812fe337ce5d0b41671c631))
-- **execution:** Redesign bundle as agent-actionable markdown launchpad (spgr-755) (#686) ([#686](https://github.com/specgraph/specgraph/pull/686)) ([87205ac](https://github.com/specgraph/specgraph/commit/87205ac1713f017a150f9491de16aba23110fd97))
-- **skills:** Wire authoring skills to RecordConversation + enable conversation_count (spgr-cdd) (#684) ([#684](https://github.com/specgraph/specgraph/pull/684)) ([ef2ea4f](https://github.com/specgraph/specgraph/commit/ef2ea4f81b1668f15bcd59475f58d4f20694428e))
-- **web:** Dashboard overhaul + detail page enhancements for demo-readiness (spgr-5re) (#683) ([#683](https://github.com/specgraph/specgraph/pull/683)) ([bdb2fa8](https://github.com/specgraph/specgraph/commit/bdb2fa8b5c5f9366d316eee5ce391b065ff06ced))
-- **sync:** Idempotent push — FindOrCreate to prevent orphaned external items (spgr-ylq) (#681) ([#681](https://github.com/specgraph/specgraph/pull/681)) ([9fbdf29](https://github.com/specgraph/specgraph/commit/9fbdf29a663ba3e267208e7c5918365707a8499b))
-
-### Tests
-
-- **e2e:** Add SliceService E2E tests + update decompose assertions (spgr-6sw.8) (#693) ([#693](https://github.com/specgraph/specgraph/pull/693)) ([3bacc11](https://github.com/specgraph/specgraph/commit/3bacc110e2b0a771f657d2dd2c3ea488e4ec1f23))
-
-## [0.2.1](https://github.com/specgraph/specgraph/compare/v0.2.0...v0.2.1) - 2026-03-26
-
-### Bug Fixes
-
-- **ci:** Build web UI before goreleaser in release workflow (#674) ([#674](https://github.com/specgraph/specgraph/pull/674)) ([0d9b96e](https://github.com/specgraph/specgraph/commit/0d9b96e49b08deb4a868fcc0cba439b8924f9993))
-
-## [0.2.0](https://github.com/specgraph/specgraph/compare/v0.1.6...v0.2.0) - 2026-03-26
-
-### Bug Fixes
-
-- Approve self-approval guardrails + CLI usage dump silence (spgr-8ec, spgr-5sd) (#669) ([#669](https://github.com/specgraph/specgraph/pull/669)) ([b984856](https://github.com/specgraph/specgraph/commit/b984856ea422b28e03835bc8915fe033517cb62d))
-- Add explicit step gating to shape skill (#618) ([#618](https://github.com/specgraph/specgraph/pull/618)) ([ca2cedc](https://github.com/specgraph/specgraph/commit/ca2cedcdf2f2be0a7c81542f36c4aaddc6fa5a6a))
-- Resolve absolute binary path and quote slugs in tool commands (#616) ([#616](https://github.com/specgraph/specgraph/pull/616)) ([e2e08f4](https://github.com/specgraph/specgraph/commit/e2e08f4d69272a4f2687d8cd054c2afeb9d9311c))
-- Enforce slug uniqueness in CreateSpec (#615) ([#615](https://github.com/specgraph/specgraph/pull/615)) ([5d57110](https://github.com/specgraph/specgraph/commit/5d57110e5c58372833a5a2197fd34d85190abe1d))
-
-### Code Refactoring
-
-- **proto:** Wrap bare-entity RPC returns in Response messages (#622) ([#622](https://github.com/specgraph/specgraph/pull/622)) ([b724308](https://github.com/specgraph/specgraph/commit/b72430893fdf36f04ee9b54e6f3046c87f733faf))
-- Split AnalyticalFinding into input/output types (#617) ([#617](https://github.com/specgraph/specgraph/pull/617)) ([12a558d](https://github.com/specgraph/specgraph/commit/12a558dc305dba503a3ad4b1a73be90c6c8e5afd))
-
-### Features
-
-- **cmd:** Add comprehensive unit tests for CLI commands (spgr-dvb) (#672) ([#672](https://github.com/specgraph/specgraph/pull/672)) ([eb4d5f4](https://github.com/specgraph/specgraph/commit/eb4d5f4516830389275c4986af03b2fdd1bdfe15))
-- Batch improvements — dashboard stats, constitution view, status command, template overrides, bug fixes (#670) ([#670](https://github.com/specgraph/specgraph/pull/670)) ([c8aa122](https://github.com/specgraph/specgraph/commit/c8aa1224980209cb44317c8c4407c1ba8aa0284d))
-- **web:** Expand spec detail page with stage outputs, edges, conversations (spgr-zn1) (#668) ([#668](https://github.com/specgraph/specgraph/pull/668)) ([2638edd](https://github.com/specgraph/specgraph/commit/2638edd9c8cccca1d24e261476fdb4ed8487e0bf))
-- Expand specgraph show with full authoring stage detail (spgr-0dg) (#665) ([#665](https://github.com/specgraph/specgraph/pull/665)) ([8fc8412](https://github.com/specgraph/specgraph/commit/8fc8412dbc3fad04b59e1e83ecd9e47fdd06bda9))
-- ConversationLog graph nodes for authoring audit trail (spgr-9mz) (#664) ([#664](https://github.com/specgraph/specgraph/pull/664)) ([140341b](https://github.com/specgraph/specgraph/commit/140341be9a1986d07ef2a8c1b76d5f96184a1847))
-- Graph visualization UI with embedded SvelteKit SPA (spgr-p1l) (#644) ([#644](https://github.com/specgraph/specgraph/pull/644)) ([d66606a](https://github.com/specgraph/specgraph/commit/d66606adb84e2e4a5a9238691b11bac3c31e0f0f))
-- Markdown CLI output with --json flags (#496) (#642) ([#642](https://github.com/specgraph/specgraph/pull/642)) ([0f3bbe8](https://github.com/specgraph/specgraph/commit/0f3bbe81779981eb11d56431117efab75324012c))
-- Add duplicate slug check to spark skill (#620) ([#620](https://github.com/specgraph/specgraph/pull/620)) ([4655650](https://github.com/specgraph/specgraph/commit/4655650785be3436126e709bd0d8ba5b8f5980f2))
-- Restructure SpecifyOutput with InterfaceSection, VerifyCriterion, FileTouch (#619) ([#619](https://github.com/specgraph/specgraph/pull/619)) ([5ba9999](https://github.com/specgraph/specgraph/commit/5ba9999d255ef556472713c4fe09386af4569cda))
-- Plugin restructure, authoring skills, and demo runbook (#609) ([#609](https://github.com/specgraph/specgraph/pull/609)) ([b12f199](https://github.com/specgraph/specgraph/commit/b12f1992c22fe24789070dfa172c2852e08f83ea))
-- Add prompt templates for remaining analytical passes (#572) ([#572](https://github.com/specgraph/specgraph/pull/572)) ([e28ab1c](https://github.com/specgraph/specgraph/commit/e28ab1cae0ac3e1635a053b823e7f4b76b0333ab))
-- Analytical pass system with unified findings (#571) ([#571](https://github.com/specgraph/specgraph/pull/571)) ([e8f455e](https://github.com/specgraph/specgraph/commit/e8f455e0198740bd0caf01cd024ed8f54b313f1a))
-
-## [0.1.6](https://github.com/specgraph/specgraph/compare/v0.1.5...v0.1.6) - 2026-03-21
-
-### Bug Fixes
-
-- Pin cosign-installer to v4.1.0 (no floating v4 tag) (#567) ([#567](https://github.com/specgraph/specgraph/pull/567)) ([009ce40](https://github.com/specgraph/specgraph/commit/009ce40262766254ca003cd6e08c4be537dbe06f))
-- Correct trivy-action version tag (v0.35.0) (#564) ([#564](https://github.com/specgraph/specgraph/pull/564)) ([b55924d](https://github.com/specgraph/specgraph/commit/b55924d9b19fa5b7988a19006b42034b0727816c))
-
-### Features
-
-- Supply chain security — cosign, SBOMs, attestations, Trivy scan (#562) ([#562](https://github.com/specgraph/specgraph/pull/562)) ([070e014](https://github.com/specgraph/specgraph/commit/070e014ccf4f4aa5cef41fbc80ddeba9b2e1c267))
-
-## [0.1.5](https://github.com/specgraph/specgraph/compare/v0.1.3...v0.1.5) - 2026-03-21
-
-### Bug Fixes
-
-- Push git tag to remote before goreleaser changelog (#533) ([#533](https://github.com/specgraph/specgraph/pull/533)) ([2f40fd2](https://github.com/specgraph/specgraph/commit/2f40fd2fb0cfd71f2cbb03b01c88bea89b69158c))
-- Release-please creates release+tag, goreleaser replaces with assets (#530) ([#530](https://github.com/specgraph/specgraph/pull/530)) ([8439c3a](https://github.com/specgraph/specgraph/commit/8439c3a7c6a510a1442be5b35d2ca61b22365178))
-- Let goreleaser own GitHub releases, release-please only tags (#528) ([#528](https://github.com/specgraph/specgraph/pull/528)) ([56051cf](https://github.com/specgraph/specgraph/commit/56051cfe16c34f680ae457388a741578e872679e))
-
-## [0.1.3](https://github.com/specgraph/specgraph/compare/v0.1.1...v0.1.3) - 2026-03-21
-
-### Bug Fixes
-
-- Remove draft:true from release-please config (#525) ([#525](https://github.com/specgraph/specgraph/pull/525)) ([7f2f138](https://github.com/specgraph/specgraph/commit/7f2f1389aec66fa060d6e87290bab9a51670e353))
-- Simple release flow — release-please creates release, goreleaser uploads assets (#524) ([#524](https://github.com/specgraph/specgraph/pull/524)) ([7f7b024](https://github.com/specgraph/specgraph/commit/7f7b024a5ea36acef6152778f821be00f0281112))
-- Coordinate release-please and goreleaser — draft release handoff (#521) ([#521](https://github.com/specgraph/specgraph/pull/521)) ([fc299c4](https://github.com/specgraph/specgraph/commit/fc299c49d5bc91037cdaa955e734d6a5a3c42fd4))
-
-## [0.1.1](https://github.com/specgraph/specgraph/compare/v0.1.0...v0.1.1) - 2026-03-21
-
-### Bug Fixes
-
-- Dockerfile for goreleaser — use pre-built binary (#519) ([#519](https://github.com/specgraph/specgraph/pull/519)) ([92c243b](https://github.com/specgraph/specgraph/commit/92c243bf2ae5626d70c6e0f84b4f9240b6a48275))
-
-## [0.1.0](https://github.com/specgraph/specgraph/compare/...v0.1.0) - 2026-03-21
-
-### Bug Fixes
-
-- **deps:** Update module golang.org/x/text to v0.35.0 (#29) ([#29](https://github.com/specgraph/specgraph/pull/29)) ([81fb5bf](https://github.com/specgraph/specgraph/commit/81fb5bff3ebaeffcfce4ea255444ee65a0841d09))
-- **deps:** Update module github.com/testcontainers/testcontainers-go to v0.41.0 (#28) ([#28](https://github.com/specgraph/specgraph/pull/28)) ([2de880e](https://github.com/specgraph/specgraph/commit/2de880e92923fa4e8accb0a32793656ecd323db5))
-- **e2e:** Address 4 open test suite findings (#44) ([#44](https://github.com/specgraph/specgraph/pull/44)) ([a029036](https://github.com/specgraph/specgraph/commit/a0290368fd4a56618187358b082fc8974aeff185))
-- Wrap all multi-query write paths in RunInTransaction (#42) ([#42](https://github.com/specgraph/specgraph/pull/42)) ([04045e8](https://github.com/specgraph/specgraph/commit/04045e82e64d0cf49af5531c2cbf48d3cd2d4888))
-
-### Build
-
-- **deps:** Bump golang.org/x/crypto from 0.43.0 to 0.45.0 (#2) ([#2](https://github.com/specgraph/specgraph/pull/2)) ([a4b88f8](https://github.com/specgraph/specgraph/commit/a4b88f82d2c7b71fbd89a48db4fb48a1d34b5b87))
-
-### CI
-
-- Use PAT for release-please to trigger CI on release PRs (#518) ([#518](https://github.com/specgraph/specgraph/pull/518)) ([92805cf](https://github.com/specgraph/specgraph/commit/92805cfff0727fa5287349ab7faec36ecbef6c0f))
-- Exclude auto-generated CHANGELOG.md from markdown lint (#517) ([#517](https://github.com/specgraph/specgraph/pull/517)) ([7106861](https://github.com/specgraph/specgraph/commit/71068619c63a7a7f9749fa98e44287dceed001e3))
-- Add release-please + goreleaser infrastructure (#46) ([#46](https://github.com/specgraph/specgraph/pull/46)) ([1fd22d3](https://github.com/specgraph/specgraph/commit/1fd22d3d9ab3c80360a5e0d9117741192ddd26b8))
-
-### Code Refactoring
-
-- Storage domain types and decision promotion (#24) ([#24](https://github.com/specgraph/specgraph/pull/24)) ([836abee](https://github.com/specgraph/specgraph/commit/836abeea8a96d04898d874aaddc6b4a574850690))
-- Slice 3.5 — Scanner removal & documentation cleanup (#22) ([#22](https://github.com/specgraph/specgraph/pull/22)) ([f06a476](https://github.com/specgraph/specgraph/commit/f06a47685fe1ce27ed5a265ff209448bd04b414c))
-
-### Features
-
-- Content hash drift detection on DEPENDS_ON edges (#43) ([#43](https://github.com/specgraph/specgraph/pull/43)) ([6c86b33](https://github.com/specgraph/specgraph/commit/6c86b33fe59326557a309d1fcddf098bef0b5df3))
-- ChangeLog graph nodes for version tracking (#41) ([#41](https://github.com/specgraph/specgraph/pull/41)) ([e5c00dc](https://github.com/specgraph/specgraph/commit/e5c00dc2def9d8cd408e327afdf5b38f94b3c212))
-- Add Murmur3-128 content hash for change detection (#39) ([#39](https://github.com/specgraph/specgraph/pull/39)) ([b3c10b2](https://github.com/specgraph/specgraph/commit/b3c10b2f37f3ab1a9de5a6553ce63a656e48bb52))
-- **auth:** Add authentication and authorization interceptor (#38) ([#38](https://github.com/specgraph/specgraph/pull/38)) ([f4fc6bf](https://github.com/specgraph/specgraph/commit/f4fc6bf2338020d521fe5ef626da2f8f5be2e1d5))
-- **cli:** Add report-progress, report-blocker, report-completion commands (#36) ([#36](https://github.com/specgraph/specgraph/pull/36)) ([18b09bb](https://github.com/specgraph/specgraph/commit/18b09bb8fb6a6a878fb8c4cc87baad8d9acfb640))
-- **proto:** Add notes field to Spec + JSON output for show (#35) ([#35](https://github.com/specgraph/specgraph/pull/35)) ([524b09c](https://github.com/specgraph/specgraph/commit/524b09c990999f6c8840c9ab171ccbc776fe042f))
-- **plugin:** Evolve authoring skills into partner personas (#34) ([#34](https://github.com/specgraph/specgraph/pull/34)) ([c260969](https://github.com/specgraph/specgraph/commit/c260969862c3e536765ec26a15700f5d39eed1a5))
-- **plugin:** Slice 7 — global daemon and Claude Code plugin (#31) ([#31](https://github.com/specgraph/specgraph/pull/31)) ([a8a07b4](https://github.com/specgraph/specgraph/commit/a8a07b47ed18fcc5e52de4c7423a7be30e772914))
-- **sync:** Slice 6 — sync adapters, tool injection, and CLI (#30) ([#30](https://github.com/specgraph/specgraph/pull/30)) ([c4c6ae7](https://github.com/specgraph/specgraph/commit/c4c6ae716dfc3bad7418085a75b42c1b1a81a93b))
-- **lifecycle:** Slice 5 — spec lifecycle operations (#27) ([#27](https://github.com/specgraph/specgraph/pull/27)) ([5adf681](https://github.com/specgraph/specgraph/commit/5adf6813d3bccc7bd16b7279a90e9f451a8dc634))
-- **execution:** Slice 4 — domain types consistency & execution bundles (#26) ([#26](https://github.com/specgraph/specgraph/pull/26)) ([9942813](https://github.com/specgraph/specgraph/commit/9942813353c8afeb930d5de68aec808079fc338b))
-- **docker:** Add Memgraph sizing profiles and persistence (#23) ([#23](https://github.com/specgraph/specgraph/pull/23)) ([9a2ab3f](https://github.com/specgraph/specgraph/commit/9a2ab3f82367204c9c880086b0f69e4bdb810a6a))
-- Slice 3 — Authoring Funnel (#8) ([#8](https://github.com/specgraph/specgraph/pull/8)) ([8d15fd1](https://github.com/specgraph/specgraph/commit/8d15fd19d9e3df1102c6a2f5e4a1b17b1a077fca))
-- Add constitution subsystem (Slice 2) (#7) ([#7](https://github.com/specgraph/specgraph/pull/7)) ([10c2ee3](https://github.com/specgraph/specgraph/commit/10c2ee3180a2bf11dd8c179cb4ea4e018f54ace7))
-- Add extended services (health, claim, decision, graph) (#4) ([#4](https://github.com/specgraph/specgraph/pull/4)) ([9fd18e5](https://github.com/specgraph/specgraph/commit/9fd18e5496d5d664c9be4f72e04a583d573f4d5e))
-- Add code quality and lefthook setup (#3) ([#3](https://github.com/specgraph/specgraph/pull/3)) ([970664e](https://github.com/specgraph/specgraph/commit/970664ea5a5a44ece3557eff3c9e247e1e009a88))
-- Vertical slice — client/server architecture (#1) ([#1](https://github.com/specgraph/specgraph/pull/1)) ([50b504c](https://github.com/specgraph/specgraph/commit/50b504c67167cd52ab43fd956536a38ca8bacc08))
-- Include design docs as hidden pages on site ([3f986a1](https://github.com/specgraph/specgraph/commit/3f986a1753269629b69c8c2baf2cfc8cfde0abe5))
-- Add Zensical doc site with GitHub Pages deployment ([7a1410e](https://github.com/specgraph/specgraph/commit/7a1410e0ae39485c3f7540ddaf8affc21cfd6cbd))
-- Initial ([a46c950](https://github.com/specgraph/specgraph/commit/a46c950af7c44cf0d101bb9895878698dd5bf0d1))
+- Wire active claims through SpecView via ClaimBackend.GetActiveClaim (#961) ([84209a9](https://github.com/specgraph/specgraph/commit/84209a9009ce6592f3858fd6c61ef0be1f398044))
+- Deprecate specgraph inject in favor of MCP + extended init (#940) ([6ba53ba](https://github.com/specgraph/specgraph/commit/6ba53ba7ba1cb0a11467f176276ef209eb346d4c))
+- Idempotent 'specgraph init' with managed per-harness MCP configs (#929) ([f3d44c8](https://github.com/specgraph/specgraph/commit/f3d44c8183fb1b0f74f671dc925014e42bcb02c9))
 
 ### Performance
 
-- Share single memgraph container across integration tests (#516) ([#516](https://github.com/specgraph/specgraph/pull/516)) ([a95ac45](https://github.com/specgraph/specgraph/commit/a95ac459e6fe63457cb957ec44d0444edb891b87))
+- Share single memgraph container across integration tests (#516) ([1615001](https://github.com/specgraph/specgraph/commit/1615001aae2cc82a7339cb2ed0c0dd44e4c90b14))
 
 ### Tests
 
-- **integration:** Add DISTINCT regression test for GetExecutionEvents (#37) ([#37](https://github.com/specgraph/specgraph/pull/37)) ([2b17445](https://github.com/specgraph/specgraph/commit/2b17445a8421f114d6f34ef3f1fca361afa32dcc))
-- **e2e:** Implement 3-tier E2E test suite (#32) ([#32](https://github.com/specgraph/specgraph/pull/32)) ([de12bbc](https://github.com/specgraph/specgraph/commit/de12bbceaa1f437ee37d98f4d76e7f2f7817611f))
-- Add comprehensive E2E test system (#19) ([#19](https://github.com/specgraph/specgraph/pull/19)) ([6ecf4e5](https://github.com/specgraph/specgraph/commit/6ecf4e585a21a252fdc18e16e4a6ebcfc109310c))
+- **integration:** Concurrent duplicate-detection for CreateSyncMapping (spgr-5xt) (#809) ([fad9951](https://github.com/specgraph/specgraph/commit/fad99515f88ecebf0c9629ed8ae2dce7a3912697))
+- **cli:** Add lifecycle RPC error tests (spgr-a7t.15) (#800) ([c1ea857](https://github.com/specgraph/specgraph/commit/c1ea857b081966d04c286530846179138692bb92))
+- **e2e:** Add SliceService E2E tests + update decompose assertions (spgr-6sw.8) (#693) ([460a397](https://github.com/specgraph/specgraph/commit/460a397f63b92cc7f27f63a5497bb5467a27a30f))
+- **integration:** Add DISTINCT regression test for GetExecutionEvents (#37) ([ca716b5](https://github.com/specgraph/specgraph/commit/ca716b593c223df5cee8379030653cd63c4c7785))
+- **e2e:** Implement 3-tier E2E test suite (#32) ([b12e1f7](https://github.com/specgraph/specgraph/commit/b12e1f7e3d3ec45daf67b4dcfd984d630bcda754))
+- Add comprehensive E2E test system (#19) ([7e99d69](https://github.com/specgraph/specgraph/commit/7e99d69be913325efac891a9d4d4a4b007aaaeef))
 
 
