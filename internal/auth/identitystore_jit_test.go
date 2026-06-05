@@ -340,3 +340,49 @@ func TestJIT_ClaimsMapping_NoMatchFallsBackToDefault(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "writer", capturedRole, "no claims-mapping match should fall back to default role")
 }
+
+// TestJIT_ClaimsMapping_ScalarStringClaim covers matchClaimValue's scalar-string
+// branch: a claim carrying a single JSON string (not a []string array) must
+// still match a mapping rule. The existing mapping tests only use array claims,
+// leaving the string path — common for single-valued claims like "role" — uncovered.
+func TestJIT_ClaimsMapping_ScalarStringClaim(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+	var capturedRole string
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
+			return nil, storage.ErrOIDCBindingNotFound
+		},
+		jitCreateHuman: func(_ context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, *storage.OIDCBinding, error) {
+			capturedRole = u.Role
+			u.ID = "u"
+			b.ID = "b"
+			b.UserID = "u"
+			return u, b, nil
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+		JITEnabled:     true,
+		JITDefaultRole: auth.RoleReader,
+		JITClaimsMapping: map[string][]config.ClaimMapping{
+			p.server.URL: {
+				{Claim: "role", Value: "platform-admin", Role: "admin"},
+			},
+		},
+	})
+	require.NoError(t, err)
+	tok := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "x", "aud": "aud-1",
+		"exp":   time.Now().Add(time.Hour).Unix(),
+		"iat":   time.Now().Unix(),
+		"email": "a@example.com",
+		"role":  "platform-admin", // scalar string, not an array
+	})
+	_, err = store.Resolve(context.Background(), tok)
+	require.NoError(t, err)
+	require.Equal(t, "admin", capturedRole, "a scalar-string claim must match a mapping rule")
+}

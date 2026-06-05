@@ -126,3 +126,52 @@ func TestOIDCVerifier_RejectsMalformed(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorContains(t, err, "oidc verify: oidc: malformed jwt")
 }
+
+// TestOIDCVerifier_ExplicitAudienceOverridesClientID proves the audience
+// precedence in NewOIDCVerifier: when cfg.Audience is set it is the expected
+// audience, NOT cfg.ClientID. A token whose aud matches Audience verifies;
+// one matching only ClientID is rejected. Guards against an aud/client_id swap.
+func TestOIDCVerifier_ExplicitAudienceOverridesClientID(t *testing.T) {
+	ctx := context.Background()
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(ctx, config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "the-client", Audience: "explicit-aud",
+	})
+	require.NoError(t, err)
+
+	// aud == Audience → verifies.
+	okToken := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "u", "aud": "explicit-aud",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+	})
+	_, err = v.Verify(ctx, okToken)
+	require.NoError(t, err, "token whose aud matches the explicit Audience must verify")
+
+	// aud == ClientID (but != Audience) → rejected, proving Audience wins.
+	clientIDToken := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "u", "aud": "the-client",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+	})
+	_, err = v.Verify(ctx, clientIDToken)
+	require.Error(t, err, "ClientID must not be accepted when an explicit Audience is configured")
+	require.ErrorContains(t, err, "expected audience")
+}
+
+// TestOIDCVerifier_DiscoveryFailure asserts NewOIDCVerifier surfaces a wrapped
+// error (rather than a nil verifier) when the issuer's discovery endpoint is
+// unreachable/absent. The error is wrapped with the provider ID for operator
+// diagnosis at startup.
+func TestOIDCVerifier_DiscoveryFailure(t *testing.T) {
+	ctx := context.Background()
+	// A bare server with no discovery handler returns 404 for
+	// /.well-known/openid-configuration, so provider discovery fails.
+	srv := httptest.NewServer(http.NewServeMux())
+	t.Cleanup(srv.Close)
+
+	v, err := auth.NewOIDCVerifier(ctx, config.OIDCProviderConfig{
+		ID: "broken-idp", Issuer: srv.URL, ClientID: "aud-1",
+	})
+	require.Error(t, err)
+	require.Nil(t, v, "no verifier should be returned on discovery failure")
+	require.ErrorContains(t, err, "discover OIDC provider broken-idp")
+}
