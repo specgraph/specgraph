@@ -78,6 +78,25 @@ docker_signs:
       - "${artifact}@${digest}"
       - "--yes"
 release:
-  mode: append
+  github:
+    owner: specgraph
+    name: specgraph
+  draft: false
+  prerelease: auto
+  # cog creates the v* tag LOCALLY (cog bump --disable-bump-commit) and does NOT
+  # push it before GoReleaser runs. target_commitish tells the Releases API which
+  # commit to create the tag from, so GoReleaser creates the remote tag as part
+  # of publishing — atomically. Without this, `goreleaser release` against a
+  # local-only tag fails at the API call.
+  target_commitish: "{{ .Commit }}"
 changelog:
-  disable: true
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - "^build:"
+      - "Merge pull request"
+      - "Merge branch"

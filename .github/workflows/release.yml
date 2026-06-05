@@ -2,19 +2,34 @@
 # Copyright 2026 Sean Brandt
 name: Release
 on:
-  workflow_dispatch: {}
-permissions: {}
+  workflow_dispatch:
+    inputs:
+      expected_increment:
+        description: "Guard: fail if cog computes a different bump (auto = no guard)"
+        required: false
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - major
+          - minor
+          - patch
+permissions:
+  contents: read
 concurrency:
   group: release
   cancel-in-progress: false
 jobs:
-  release:
+  goreleaser:
+    name: Build, Sign, and Release
+    runs-on: namespace-profile-linux-amd64-4x8
     permissions:
       contents: write
-    runs-on: namespace-profile-linux-amd64-4x8
+      packages: write
+      id-token: write
+      attestations: write
     outputs:
-      new_tag: ${{ steps.push.outputs.new_tag || steps.check.outputs.new_tag }}
-      version: ${{ steps.check.outputs.version }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -26,94 +41,67 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
-      - name: Install git-cliff
-        uses: orhun/git-cliff-action@c93ef52f3d0ddcdcc9bd5447d98d458a11cd4f72 # v4
-        id: cliff
-        with:
-          args: --bump
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OUTPUT: CHANGELOG.md
-      - name: Check if version bumped
-        id: check
+          permission-contents: write
+          permission-packages: write
+      - name: Install cog
         run: |
-          TAG="${{ steps.cliff.outputs.version }}"
-          if [ -z "$TAG" ]; then
-            echo "No releasable commits since last tag. Exiting."
-            echo "new_tag=" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          VERSION="${TAG#v}"
-          echo "new_tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - name: Commit changelog and push
-        id: push
-        if: steps.check.outputs.new_tag != ''
+          set -euo pipefail
+          COG_VERSION="7.0.0"
+          COG_TARBALL="cocogitto-${COG_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          COG_URL="https://github.com/cocogitto/cocogitto/releases/download/${COG_VERSION}/${COG_TARBALL}"
+          COG_SHA256="e03938ff2c4c86d71c00c0f3284dbbe95c5ca76fe34a51f33e945c23010d59bb"
+          curl -LsSfO "${COG_URL}"
+          echo "${COG_SHA256}  ${COG_TARBALL}" | sha256sum -c -
+          sudo tar xzf "${COG_TARBALL}" --overwrite --strip-components=1 \
+            -C /usr/local/bin x86_64-unknown-linux-musl/cog
+          rm "${COG_TARBALL}"
+          cog --version
+      - name: Configure git identity for tagging
         run: |
-          # Override the remote URL to use the app token for authentication.
-          # actions/checkout bakes the default GITHUB_TOKEN into git credentials;
-          # we must replace it with the app token to bypass branch protection.
-          git remote set-url origin "https://x-access-token:${APP_TOKEN}@github.com/${{ github.repository }}.git"
           git config user.name "specgraph-release-bot[bot]"
           git config user.email "specgraph-release-bot[bot]@users.noreply.github.com"
-          git add CHANGELOG.md
-
-          CHANGED=false
-
-          # Commit only if changelog actually changed.
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(release): ${TAG}"
-            git push
-            CHANGED=true
-          fi
-
-          # Create tag if it doesn't already exist.
-          if ! git rev-parse "${TAG}" >/dev/null 2>&1; then
-            git tag "${TAG}"
-            git push origin "${TAG}"
-            CHANGED=true
-          fi
-
-          # If nothing changed, this is a no-op re-run. Clear the tag so
-          # downstream steps (release creation, goreleaser) are skipped.
-          if [ "$CHANGED" = "false" ]; then
-            echo "Tag ${TAG} and changelog already exist. Nothing to do."
-            echo "new_tag=" >> "$GITHUB_OUTPUT"
-          else
-            echo "new_tag=${TAG}" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Preview + guard version bump
         env:
-          APP_TOKEN: ${{ steps.app-token.outputs.token }}
-          TAG: ${{ steps.check.outputs.new_tag }}
-      - name: Create GitHub release
-        if: steps.push.outputs.new_tag != ''
+          EXPECTED: ${{ inputs.expected_increment }}
         run: |
-          # Create release if it doesn't already exist (idempotent).
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" \
-              --title "$TAG" \
-              --notes "$NOTES" \
-              --verify-tag \
-              --draft
+          set -euo pipefail
+          echo "Computed next version (dry-run):"
+          cog bump --auto --dry-run
+          if [ "${EXPECTED}" != "auto" ]; then
+            CURRENT="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
+            TARGET="$(cog bump --auto --dry-run 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | tail -n1 || true)"
+            if [ -z "${CURRENT}" ] || [ -z "${TARGET}" ]; then
+              echo "::error::could not determine version (current='${CURRENT}' target='${TARGET}'); cannot validate expected_increment=${EXPECTED}"
+              exit 1
+            fi
+            IFS=. read -r cmaj cmin cpat <<< "${CURRENT}"
+            IFS=. read -r tmaj tmin tpat <<< "${TARGET}"
+            if   [ "${tmaj}" -gt "${cmaj}" ]; then KIND="major"
+            elif [ "${tmin}" -gt "${cmin}" ]; then KIND="minor"
+            elif [ "${tpat}" -gt "${cpat}" ]; then KIND="patch"
+            else KIND="none"; fi
+            if [ "${KIND}" != "${EXPECTED}" ]; then
+              echo "::error::expected ${EXPECTED} bump but cog computed ${KIND} (${CURRENT} -> ${TARGET})"
+              exit 1
+            fi
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.push.outputs.new_tag }}
-          NOTES: ${{ steps.cliff.outputs.content }}
-  goreleaser:
-    permissions:
-      contents: write
-      packages: write
-      id-token: write
-      attestations: write
-    needs: release
-    if: needs.release.outputs.new_tag != ''
-    runs-on: namespace-profile-linux-amd64-4x8
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          fetch-depth: 0
-          ref: ${{ needs.release.outputs.new_tag }}
+      - name: Cut tag (cog bump, tag-only)
+        run: |
+          set -euo pipefail
+          cog bump --auto --disable-bump-commit
+          git describe --tags --abbrev=0
+      - name: Get version
+        id: version
+        run: |
+          set -euo pipefail
+          TAG="$(git describe --tags --abbrev=0)"
+          if ! printf '%s' "${TAG}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::resolved tag '${TAG}' is not a v-prefixed semver; refusing to build a malformed release"
+            exit 1
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "new_tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Building version: ${TAG#v}"
       - uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
       - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
       - uses: namespacelabs/nscloud-setup-buildx-action@d059ed7184f0bc7c8b27e8810cea153d02bcc6dd # v0.0.23
@@ -145,12 +133,12 @@ jobs:
           version: "~> v2"
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
       - name: Scan Docker image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
-          image-ref: "ghcr.io/specgraph/specgraph:${{ needs.release.outputs.version }}"
+          image-ref: "ghcr.io/specgraph/specgraph:${{ steps.version.outputs.version }}"
           format: table
           exit-code: "1"
           ignore-unfixed: true
@@ -163,8 +151,3 @@ jobs:
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
         with:
           subject-checksums: ./dist/digests.txt
-      - name: Publish release
-        run: gh release edit "$TAG" --draft=false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.release.outputs.new_tag }}
