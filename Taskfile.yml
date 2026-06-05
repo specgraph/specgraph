@@ -328,8 +328,7 @@ tasks:
   tools:
     desc: Install development tools
     cmds:
-      - brew install golangci-lint gofumpt lefthook actionlint goreleaser dprint cocogitto rumdl yamlfmt buf
-      - brew install steveyegge/beads/bd
+      - brew install golangci-lint gofumpt lefthook actionlint goreleaser dprint cocogitto rumdl yamlfmt buf beads
       # Local buf codegen plugins (see buf.gen.yaml). The TypeScript es plugin
       # (protoc-gen-es) is installed into web/node_modules via `pnpm install`.
       - go install google.golang.org/protobuf/cmd/protoc-gen-go@{{.PROTOC_GEN_GO_VERSION}}
