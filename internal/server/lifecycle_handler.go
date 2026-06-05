@@ -208,7 +208,7 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	if h.driftChecker != nil {
 		result, driftErr := h.driftChecker.Check(ctx, msg.Slug, "")
 		if driftErr != nil {
-			h.logger.Error("AcknowledgeDrift: drift re-check failed",
+			slog.LogAttrs(ctx, slog.LevelError, "AcknowledgeDrift: drift re-check failed",
 				slog.String("slug", msg.Slug), slog.Any("error", driftErr))
 			report.ErrorMessage = "drift re-check failed after acknowledgment"
 		} else if result != nil {

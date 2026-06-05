@@ -117,7 +117,7 @@ func (h *ExecutionHandler) getPrimeProject(ctx context.Context, composer *prime.
 	}
 	pview, err := primeProjectViewToProto(view)
 	if err != nil {
-		slog.Error("GetPrime: convert project view", slog.Any("error", err))
+		slog.LogAttrs(ctx, slog.LevelError, "GetPrime: convert project view", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 	return connect.NewResponse(&specv1.PrimeResponse{
@@ -135,7 +135,7 @@ func (h *ExecutionHandler) getPrimeSpec(ctx context.Context, store storage.Scope
 	}
 	pSpecView, err := primeSpecViewToProto(sview)
 	if err != nil {
-		slog.Error("GetPrime: convert spec view", slog.Any("error", err))
+		slog.LogAttrs(ctx, slog.LevelError, "GetPrime: convert spec view", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 
@@ -304,7 +304,7 @@ func executionError(err error) error {
 	case errors.Is(err, storage.ErrAgentNotClaimOwner):
 		return connect.NewError(connect.CodePermissionDenied, errors.New("agent does not hold the claim for this spec"))
 	default:
-		slog.Error("executionError: internal error", slog.Any("error", err))
+		slog.LogAttrs(context.Background(), slog.LevelError, "executionError: internal error", slog.Any("error", err))
 		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 }

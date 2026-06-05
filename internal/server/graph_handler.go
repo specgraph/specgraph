@@ -210,7 +210,7 @@ func graphError(err error) error {
 	case errors.Is(err, storage.ErrEdgeNotFound):
 		return connect.NewError(connect.CodeNotFound, errors.New("edge not found"))
 	default:
-		slog.Error("graphError: internal error", slog.Any("error", err))
+		slog.LogAttrs(context.Background(), slog.LevelError, "graphError: internal error", slog.Any("error", err))
 		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 }

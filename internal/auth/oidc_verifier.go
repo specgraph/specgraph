@@ -67,8 +67,8 @@ func (v *OIDCVerifier) ProviderID() string { return v.providerID }
 func (v *OIDCVerifier) Verify(ctx context.Context, rawToken string) (*OIDCClaims, error) {
 	idToken, err := v.verifier.Verify(ctx, rawToken)
 	if err != nil {
-		slog.Warn("auth: OIDC token verification failed",
-			"provider", v.providerID, "error", err.Error())
+		slog.LogAttrs(ctx, slog.LevelWarn, "auth: OIDC token verification failed",
+			slog.String("provider", v.providerID), slog.Any("error", err))
 		return nil, fmt.Errorf("oidc verify: %w", err)
 	}
 	var raw map[string]json.RawMessage

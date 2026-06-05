@@ -4,6 +4,9 @@
 package config_test
 
 import (
+	"bytes"
+	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -433,4 +436,176 @@ func TestLoadGlobal_EnvCoercesNonStringScalars(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, cfg.Server.Docker)
 	assert.Equal(t, 7*time.Second, cfg.Server.Probes.Interval)
+}
+
+// ---------------------------------------------------------------------------
+// LogConfig tests
+// ---------------------------------------------------------------------------
+
+func TestLoadGlobal_LogDefaults(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+
+	cfg, err := config.LoadGlobal(path)
+	require.NoError(t, err)
+	assert.Equal(t, "info", cfg.Log.Level)
+	assert.Equal(t, "json", cfg.Log.Format)
+	assert.Equal(t, "stdout", cfg.Log.Output)
+}
+
+func TestLoadGlobal_LogFromYAML(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	body := `
+log:
+  level: debug
+  format: text
+  output: stderr
+`
+	require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
+
+	cfg, err := config.LoadGlobal(path)
+	require.NoError(t, err)
+	assert.Equal(t, "debug", cfg.Log.Level)
+	assert.Equal(t, "text", cfg.Log.Format)
+	assert.Equal(t, "stderr", cfg.Log.Output)
+}
+
+func TestLoadGlobal_EnvOverridesLogLevel(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(""), 0o600))
+	t.Setenv("SPECGRAPH_LOG_LEVEL", "debug")
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.Equal(t, "debug", cfg.Log.Level)
+}
+
+func TestLoadGlobal_EnvOverridesLogFormat(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(""), 0o600))
+	t.Setenv("SPECGRAPH_LOG_FORMAT", "text")
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.Equal(t, "text", cfg.Log.Format)
+}
+
+func TestLoadGlobal_EnvOverridesLogOutput(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(""), 0o600))
+	t.Setenv("SPECGRAPH_LOG_OUTPUT", "stderr")
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.Equal(t, "stderr", cfg.Log.Output)
+}
+
+func TestLogConfig_BuildWith_JSONFormat(t *testing.T) {
+	lc := config.LogConfig{Level: "info", Format: "json", Output: "stdout"}
+	var buf bytes.Buffer
+	logger, err := lc.BuildWith(&buf)
+	require.NoError(t, err)
+	require.NotNil(t, logger)
+
+	logger.Info("hello", "key", "value")
+	out := buf.String()
+	assert.Contains(t, out, `"msg":"hello"`)
+	assert.Contains(t, out, `"key":"value"`)
+}
+
+func TestLogConfig_BuildWith_TextFormat(t *testing.T) {
+	lc := config.LogConfig{Level: "info", Format: "text", Output: "stderr"}
+	var buf bytes.Buffer
+	logger, err := lc.BuildWith(&buf)
+	require.NoError(t, err)
+	require.NotNil(t, logger)
+
+	logger.Info("hello", "key", "value")
+	out := buf.String()
+	assert.Contains(t, out, "hello")
+	assert.Contains(t, out, "key=value")
+	assert.NotContains(t, out, `"msg"`) // not JSON
+}
+
+func TestLogConfig_BuildWith_LogfmtAlias(t *testing.T) {
+	lc := config.LogConfig{Level: "info", Format: "logfmt"}
+	var buf bytes.Buffer
+	logger, err := lc.BuildWith(&buf)
+	require.NoError(t, err)
+	require.NotNil(t, logger)
+
+	logger.Info("ping")
+	assert.NotContains(t, buf.String(), `"msg"`) // logfmt, not JSON
+}
+
+func TestLogConfig_BuildWith_DebugLevel(t *testing.T) {
+	lc := config.LogConfig{Level: "debug", Format: "json"}
+	var buf bytes.Buffer
+	logger, err := lc.BuildWith(&buf)
+	require.NoError(t, err)
+
+	assert.True(t, logger.Enabled(context.Background(), slog.LevelDebug))
+	assert.True(t, logger.Enabled(context.Background(), slog.LevelInfo))
+}
+
+func TestLogConfig_BuildWith_InfoLevelSuppressesDebug(t *testing.T) {
+	lc := config.LogConfig{Level: "info", Format: "json"}
+	var buf bytes.Buffer
+	logger, err := lc.BuildWith(&buf)
+	require.NoError(t, err)
+
+	logger.Debug("should not appear")
+	assert.Empty(t, buf.String())
+
+	logger.Info("should appear")
+	assert.NotEmpty(t, buf.String())
+}
+
+func TestLogConfig_BuildWith_WarnLevel(t *testing.T) {
+	lc := config.LogConfig{Level: "warn", Format: "json"}
+	var buf bytes.Buffer
+	logger, err := lc.BuildWith(&buf)
+	require.NoError(t, err)
+
+	assert.False(t, logger.Enabled(context.Background(), slog.LevelInfo))
+	assert.True(t, logger.Enabled(context.Background(), slog.LevelWarn))
+	assert.True(t, logger.Enabled(context.Background(), slog.LevelError))
+}
+
+func TestLogConfig_BuildWith_EmptyLevelDefaultsToInfo(t *testing.T) {
+	lc := config.LogConfig{Level: "", Format: "json"}
+	var buf bytes.Buffer
+	logger, err := lc.BuildWith(&buf)
+	require.NoError(t, err)
+
+	assert.False(t, logger.Enabled(context.Background(), slog.LevelDebug))
+	assert.True(t, logger.Enabled(context.Background(), slog.LevelInfo))
+}
+
+func TestLogConfig_BuildWith_InvalidLevel(t *testing.T) {
+	lc := config.LogConfig{Level: "verbose", Format: "json"}
+	_, err := lc.BuildWith(&bytes.Buffer{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid log level")
+	assert.Contains(t, err.Error(), "verbose")
+}
+
+func TestLogConfig_BuildWith_InvalidFormat(t *testing.T) {
+	lc := config.LogConfig{Level: "info", Format: "yaml"}
+	_, err := lc.BuildWith(&bytes.Buffer{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid log format")
+	assert.Contains(t, err.Error(), "yaml")
+}
+
+func TestLogConfig_Build_InvalidOutput(t *testing.T) {
+	lc := config.LogConfig{Level: "info", Format: "json", Output: "file"}
+	_, err := lc.Build()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid log output")
+	assert.Contains(t, err.Error(), "file")
 }

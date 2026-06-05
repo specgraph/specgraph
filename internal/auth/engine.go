@@ -244,7 +244,7 @@ func resourceEntity(r ResourceRef) (uid cedar.EntityUID, ent cedar.Entity) {
 // Evaluate maps the EvalRequest into a cedar.Request, merges the principal,
 // resource, and precomputed action entities, and calls cedar.Authorize
 // against the current policy set (loaded lock-free from the atomic pointer).
-func (e *cedarEngine) Evaluate(_ context.Context, req EvalRequest) (PolicyDecision, error) {
+func (e *cedarEngine) Evaluate(ctx context.Context, req EvalRequest) (PolicyDecision, error) {
 	if req.Identity == nil {
 		return PolicyDecision{}, fmt.Errorf("cedar: Evaluate: nil Identity")
 	}
@@ -289,13 +289,13 @@ func (e *cedarEngine) Evaluate(_ context.Context, req EvalRequest) (PolicyDecisi
 		evalErrs = append(evalErrs, de.String())
 	}
 
-	slog.Debug("cedar decision",
-		"action", req.Action,
-		"principal", req.Identity.Subject,
-		"role", string(req.Identity.EffectiveRole),
-		"allowed", decision == cedar.Allow,
-		"policies", matched,
-		"errors", evalErrs,
+	slog.LogAttrs(ctx, slog.LevelDebug, "cedar decision",
+		slog.String("action", req.Action),
+		slog.String("principal", req.Identity.Subject),
+		slog.String("role", string(req.Identity.EffectiveRole)),
+		slog.Bool("allowed", decision == cedar.Allow),
+		slog.Any("policies", matched),
+		slog.Any("errors", evalErrs),
 	)
 
 	return PolicyDecision{

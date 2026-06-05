@@ -269,7 +269,7 @@ func constitutionError(err error) error {
 	case errors.Is(err, storage.ErrConstitutionNotFound):
 		return connect.NewError(connect.CodeNotFound, errors.New("constitution not found"))
 	default:
-		slog.Error("constitutionError: internal error", slog.Any("error", err))
+		slog.LogAttrs(context.Background(), slog.LevelError, "constitutionError: internal error", slog.Any("error", err))
 		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 }

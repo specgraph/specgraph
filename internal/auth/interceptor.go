@@ -31,18 +31,18 @@ func NewAuthInterceptor(resolver Resolver, authorizer Authorizer) connect.UnaryI
 
 			decision, err := authorizer.Authorize(ctx, id, procedure, req.Any())
 			if err != nil {
-				slog.Error("auth: authorizer error",
-					"procedure", procedure, "error", err.Error())
+				slog.LogAttrs(ctx, slog.LevelError, "auth: authorizer error",
+					slog.String("procedure", procedure), slog.Any("error", err))
 				return nil, connect.NewError(connect.CodeInternal, nil)
 			}
 			if !decision.Allowed {
-				slog.Warn("auth: permission denied",
-					"subject", id.Subject, "procedure", procedure, "reason", decision.Reason)
+				slog.LogAttrs(ctx, slog.LevelWarn, "auth: permission denied",
+					slog.String("subject", id.Subject), slog.String("procedure", procedure), slog.String("reason", decision.Reason))
 				return nil, connect.NewError(connect.CodePermissionDenied, nil)
 			}
 
-			slog.Info("auth: authenticated",
-				"subject", id.Subject, "procedure", procedure)
+			slog.LogAttrs(ctx, slog.LevelInfo, "auth: authenticated",
+				slog.String("subject", id.Subject), slog.String("procedure", procedure))
 			return next(WithIdentity(ctx, id), req)
 		}
 	}
@@ -94,19 +94,24 @@ func extractBearerToken(headers http.Header) string {
 func mapAuthError(procedure string, err error) error {
 	switch {
 	case errors.Is(err, context.Canceled):
-		slog.Debug("auth: request canceled", "procedure", procedure)
+		slog.LogAttrs(context.Background(), slog.LevelDebug, "auth: request canceled",
+			slog.String("procedure", procedure))
 		return connect.NewError(connect.CodeCanceled, nil)
 	case errors.Is(err, context.DeadlineExceeded):
-		slog.Debug("auth: request deadline exceeded", "procedure", procedure)
+		slog.LogAttrs(context.Background(), slog.LevelDebug, "auth: request deadline exceeded",
+			slog.String("procedure", procedure))
 		return connect.NewError(connect.CodeDeadlineExceeded, nil)
 	case errors.Is(err, ErrTransient):
-		slog.Warn("auth: transient backend error", "procedure", procedure, "error", err.Error())
+		slog.LogAttrs(context.Background(), slog.LevelWarn, "auth: transient backend error",
+			slog.String("procedure", procedure), slog.Any("error", err))
 		return connect.NewError(connect.CodeUnavailable, nil)
 	case errors.Is(err, ErrUnauthenticated):
-		slog.Info("auth: unauthenticated", "procedure", procedure)
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "auth: unauthenticated",
+			slog.String("procedure", procedure))
 		return connect.NewError(connect.CodeUnauthenticated, nil)
 	default:
-		slog.Error("auth: unexpected error category", "procedure", procedure, "error", err.Error())
+		slog.LogAttrs(context.Background(), slog.LevelError, "auth: unexpected error category",
+			slog.String("procedure", procedure), slog.Any("error", err))
 		return connect.NewError(connect.CodeInternal, nil)
 	}
 }

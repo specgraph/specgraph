@@ -5,6 +5,7 @@ package managedfiles
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -42,7 +43,8 @@ func (wholeFileStrategy) Sync(cwd string, mf ManagedFile, _ ProjectParams, opts 
 	}
 	defer func() {
 		if uerr := unlock(); uerr != nil {
-			slog.Error("unlock failed", "path", full, "error", uerr)
+			slog.LogAttrs(context.Background(), slog.LevelError, "unlock failed",
+				slog.String("path", full), slog.Any("error", uerr))
 		}
 	}()
 

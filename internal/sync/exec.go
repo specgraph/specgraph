@@ -48,7 +48,8 @@ func (r *ExecRunner) Run(ctx context.Context, name string, args ...string) ([]by
 		return out, fmt.Errorf("exec %s: %w", name, err)
 	}
 	if stderr.Len() > 0 {
-		slog.Debug("exec stderr (non-fatal)", "cmd", name, "stderr", stderr.String())
+		slog.LogAttrs(ctx, slog.LevelDebug, "exec stderr (non-fatal)",
+			slog.String("cmd", name), slog.String("stderr", stderr.String()))
 	}
 	return out, nil
 }

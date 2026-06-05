@@ -61,7 +61,7 @@ func scopeStore(ctx context.Context, scoper storage.Scoper) (storage.ScopedBacke
 	}
 	store, err := scoper.Scoped(ctx, project)
 	if err != nil {
-		slog.Error("scopeStore: failed to scope storage", slog.Any("error", err))
+		slog.LogAttrs(ctx, slog.LevelError, "scopeStore: failed to scope storage", slog.Any("error", err))
 		return nil, connect.NewError(connect.CodeInternal,
 			errors.New("internal error"))
 	}

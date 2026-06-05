@@ -307,8 +307,8 @@ func (s *pgIdentityStore) resolveAPIKey(ctx context.Context, token string) (*Ide
 		// Security-observable: a valid credential for a soft-deleted user.
 		// Worth a warn — could indicate a credential that should have been
 		// revoked, or an offboarding gap.
-		slog.Warn("auth: credential resolved to soft-deleted user (api-key)",
-			"user_id", user.ID, "key_id", key.ID)
+		slog.LogAttrs(ctx, slog.LevelWarn, "auth: credential resolved to soft-deleted user (api-key)",
+			slog.String("user_id", user.ID), slog.String("key_id", key.ID))
 		return nil, ErrUnauthenticated
 	}
 	s.tracker.Touch(key.ID)
@@ -369,8 +369,8 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 	// (unverified) payload while being validly signed under verifier A's
 	// configured issuer differing from the embedded claim.
 	if claims.Issuer != issuer {
-		slog.Warn("auth: JWT issuer mismatch between peek and verified claim",
-			"peek", issuer, "verified", claims.Issuer)
+		slog.LogAttrs(ctx, slog.LevelWarn, "auth: JWT issuer mismatch between peek and verified claim",
+			slog.String("peek", issuer), slog.String("verified", claims.Issuer))
 		return nil, ErrUnauthenticated
 	}
 	// Binding lookup + user load. JIT path fires on binding miss (Task 18).
@@ -396,8 +396,8 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 		// Security-observable: a valid OIDC binding for a soft-deleted user.
 		// The binding wasn't unbound at offboarding; the deleted_at gate
 		// catches it, but log so operators can notice the gap.
-		slog.Warn("auth: token resolved to soft-deleted user (oidc)",
-			"user_id", user.ID, "subject", claims.Subject)
+		slog.LogAttrs(ctx, slog.LevelWarn, "auth: token resolved to soft-deleted user (oidc)",
+			slog.String("user_id", user.ID), slog.String("subject", claims.Subject))
 		return nil, ErrUnauthenticated
 	}
 	return &Identity{
@@ -425,13 +425,13 @@ func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims) (*
 	if len(s.jitEmailAllowlist) > 0 {
 		domain := emailDomain(claims.Email)
 		if domain == "" {
-			slog.Warn("auth: JIT refused — empty email claim with non-empty allowlist",
-				"issuer", claims.Issuer)
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: JIT refused — empty email claim with non-empty allowlist",
+				slog.String("issuer", claims.Issuer))
 			return nil, ErrUnauthenticated
 		}
 		if !s.jitEmailAllowlist[domain] {
-			slog.Warn("auth: JIT refused — email domain not in allowlist",
-				"issuer", claims.Issuer, "domain", domain)
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: JIT refused — email domain not in allowlist",
+				slog.String("issuer", claims.Issuer), slog.String("domain", domain))
 			return nil, ErrUnauthenticated
 		}
 	}
@@ -443,8 +443,8 @@ func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims) (*
 	// against the backend for free.
 	limiter := s.rateLimiterFor(claims.Issuer)
 	if !limiter.Allow() {
-		slog.Warn("auth: JIT rate-limit exceeded",
-			"issuer", claims.Issuer, "subject", claims.Subject)
+		slog.LogAttrs(ctx, slog.LevelWarn, "auth: JIT rate-limit exceeded",
+			slog.String("issuer", claims.Issuer), slog.String("subject", claims.Subject))
 		return nil, ErrUnauthenticated
 	}
 

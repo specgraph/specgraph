@@ -493,7 +493,8 @@ func (s *Store) GetFullGraph(ctx context.Context) (*storage.FullGraph, error) {
 			return nil, fmt.Errorf("postgres: get full graph nodes: scan: %w", scanErr)
 		}
 		if seen[slug] {
-			slog.Warn("duplicate node slug in project — data integrity issue", "slug", slug, "project", s.project)
+			slog.LogAttrs(ctx, slog.LevelWarn, "duplicate node slug in project — data integrity issue",
+				slog.String("slug", slug), slog.String("project", s.project))
 			continue
 		}
 		seen[slug] = true

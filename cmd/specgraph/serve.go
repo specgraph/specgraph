@@ -56,18 +56,38 @@ func init() {
 	serveCmd.Flags().String("cors-origin", "", "Enable CORS for this origin (dev mode only)")
 	serveCmd.Flags().String("pg-url", "", "PostgreSQL connection URL (overrides config; env: SPECGRAPH_SERVER_POSTGRES_URL)")
 	serveCmd.Flags().String("listen", "", "Address to listen on (overrides config; env: SPECGRAPH_SERVER_LISTEN)")
+	serveCmd.Flags().String("log-level", "", "Log level: debug, info, warn, error (overrides config; env: SPECGRAPH_LOG_LEVEL)")
+	serveCmd.Flags().String("log-format", "", "Log format: json, text (overrides config; env: SPECGRAPH_LOG_FORMAT)")
+	serveCmd.Flags().String("log-output", "", "Log output stream: stdout, stderr (overrides config; env: SPECGRAPH_LOG_OUTPUT)")
 	rootCmd.AddCommand(serveCmd)
 }
 
 func runServe(cmd *cobra.Command, _ []string) error {
 	if os.Getenv("SPECGRAPH_PG_URL") != "" {
-		slog.Warn("SPECGRAPH_PG_URL is no longer read; use SPECGRAPH_SERVER_POSTGRES_URL")
+		slog.LogAttrs(context.Background(), slog.LevelWarn, "SPECGRAPH_PG_URL is no longer read; use SPECGRAPH_SERVER_POSTGRES_URL")
 	}
 
 	cfg, err := loadGlobalCfg(config.WithFlags(cmd.Flags()))
 	if err != nil {
 		return fmt.Errorf("load global config: %w", err)
 	}
+
+	// Initialise structured logging as early as possible so every subsequent
+	// slog call in this process uses the configured handler. All handlers
+	// downstream capture slog.Default() at construction time, so this must
+	// happen before any service is registered.
+	logger, err := cfg.Log.Build()
+	if err != nil {
+		return fmt.Errorf("configure logger: %w", err)
+	}
+	slog.SetDefault(logger)
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "specgraph server starting",
+		slog.String("version", buildVersion()),
+		slog.String("listen", cfg.Server.Listen),
+		slog.String("log_level", cfg.Log.Level),
+		slog.String("log_format", cfg.Log.Format),
+		slog.String("log_output", cfg.Log.Output),
+	)
 
 	ctx, cancel := signal.NotifyContext(cmd.Context(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
@@ -80,13 +100,13 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		if dockerErr != nil {
 			return dockerErr
 		}
-		fmt.Println("Starting Docker Compose stack...")
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "starting Docker Compose stack")
 		if upErr := docker.ComposeUp(composeFile); upErr != nil {
 			return upErr
 		}
 		defer func() {
 			if stopErr := docker.ComposeStop(composeFile); stopErr != nil {
-				fmt.Fprintf(os.Stderr, "warning: compose stop: %v\n", stopErr)
+				slog.LogAttrs(context.Background(), slog.LevelWarn, "compose stop", slog.Any("error", stopErr))
 			}
 		}()
 	}
@@ -114,7 +134,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	// where the sweeper goroutine calls ReleaseExpiredClaims on a closed store.
 	defer func() {
 		if closeErr := store.Close(ctx); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: close store: %v\n", closeErr)
+			slog.LogAttrs(context.Background(), slog.LevelWarn, "close store", slog.Any("error", closeErr))
 		}
 	}()
 	sweeperCtx, stopSweeper := context.WithCancel(ctx)
@@ -132,7 +152,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	}
 	defer func() {
 		if closeErr := authStore.Close(ctx); closeErr != nil {
-			slog.Warn("auth store close", "error", closeErr)
+			slog.LogAttrs(context.Background(), slog.LevelWarn, "auth store close", slog.Any("error", closeErr))
 		}
 	}()
 
@@ -169,7 +189,10 @@ func runServe(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("OIDC provider %s: %w", pc.ID, oidcErr)
 		}
 		verifiers = append(verifiers, v)
-		slog.Info("auth: OIDC provider configured", "id", pc.ID, "issuer", pc.Issuer)
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "auth: OIDC provider configured",
+			slog.String("id", pc.ID),
+			slog.String("issuer", pc.Issuer),
+		)
 	}
 
 	// usagetracker for async TouchLastUsed.
@@ -181,12 +204,13 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer shutdownCancel()
 		if trackerErr := tracker.Close(shutdownCtx); trackerErr != nil {
-			slog.Warn("usagetracker close", "error", trackerErr)
+			slog.LogAttrs(context.Background(), slog.LevelWarn, "usagetracker close", slog.Any("error", trackerErr))
 		}
 		if dropped := tracker.Dropped(); dropped > 0 {
-			slog.Warn("usagetracker dropped touches over session lifetime",
-				"count", dropped,
-				"hint", "increase auth usagetracker BufferSize or decrease FlushInterval")
+			slog.LogAttrs(context.Background(), slog.LevelWarn, "usagetracker dropped touches over session lifetime",
+				slog.Uint64("count", dropped),
+				slog.String("hint", "increase auth usagetracker BufferSize or decrease FlushInterval"),
+			)
 		}
 	}()
 
@@ -228,7 +252,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	// HasAuth signal for the existing warn path.
 	hasAuth, hasAuthErr := resolver.HasAuth(ctx)
 	if hasAuthErr != nil {
-		slog.Warn("auth: HasAuth check failed at startup", "error", hasAuthErr)
+		slog.LogAttrs(context.Background(), slog.LevelWarn, "auth: HasAuth check failed at startup", slog.Any("error", hasAuthErr))
 	}
 	if !hasAuth {
 		warnIfNoAuthOnPublicListen(cfg.Server.Listen, false)
@@ -337,10 +361,10 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		select {
 		case <-ctx.Done():
 		case probeErr := <-probeErrCh:
-			slog.Error("probe listener died; triggering shutdown", "error", probeErr)
+			slog.LogAttrs(context.Background(), slog.LevelError, "probe listener died; triggering shutdown", slog.Any("error", probeErr))
 			cancel()
 		}
-		fmt.Println("\nShutting down...")
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "server shutting down")
 		stopSweeper()
 		// Shut down main and probe servers in parallel so a slow main-server
 		// drain can't starve the probe server's graceful close (and vice versa).
@@ -351,7 +375,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 			mainCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			if err := srv.Shutdown(mainCtx); err != nil {
-				slog.Warn("main server shutdown", "error", err)
+				slog.LogAttrs(context.Background(), slog.LevelWarn, "main server shutdown", slog.Any("error", err))
 			}
 		}()
 		if probeSrv != nil {
@@ -361,16 +385,16 @@ func runServe(cmd *cobra.Command, _ []string) error {
 				probeCtx, cancel := context.WithTimeout(context.Background(), probeShutdownTimeout)
 				defer cancel()
 				if err := probeSrv.Shutdown(probeCtx); err != nil {
-					slog.Warn("probe server shutdown", "error", err)
+					slog.LogAttrs(context.Background(), slog.LevelWarn, "probe server shutdown", slog.Any("error", err))
 				}
 			}()
 		}
 		wg.Wait()
 	}()
 
-	server.StartSweeper(sweeperCtx, store, 60*time.Second, slog.Default())
-	fmt.Printf("SpecGraph server running at http://%s\n", addr)
-	slog.Info("MCP endpoint available", "path", "/mcp/")
+	server.StartSweeper(sweeperCtx, store, 60*time.Second)
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "server listening", slog.String("addr", "http://"+addr))
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "MCP endpoint available", slog.String("path", "/mcp/"))
 	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}
@@ -413,9 +437,10 @@ func warnIfNoAuthOnPublicListen(listen string, hasAuth bool) {
 	if hasAuth || isLoopbackAddr(listen) {
 		return
 	}
-	slog.Warn("server listening without authentication on non-loopback interface",
-		"addr", listen,
-		"risk", "configure API keys or OIDC providers")
+	slog.LogAttrs(context.Background(), slog.LevelWarn, "server listening without authentication on non-loopback interface",
+		slog.String("addr", listen),
+		slog.String("risk", "configure API keys or OIDC providers"),
+	)
 }
 
 // validateServerConfig runs cross-section validation the main serve path
@@ -457,14 +482,21 @@ func startProbeListener(ctx context.Context, pinger probes.Pinger, cfg config.Pr
 		Handler:           h.Mux(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	slog.Info("probe endpoints listening", "addr", srv.Addr, "livez", "/livez", "readyz", "/readyz")
+	slog.LogAttrs(ctx, slog.LevelInfo, "probe endpoints listening",
+		slog.String("addr", srv.Addr),
+		slog.String("livez", "/livez"),
+		slog.String("readyz", "/readyz"),
+	)
 	errCh := make(chan error, 1)
 	go func() {
 		serveErr := srv.Serve(ln)
 		if serveErr == nil || errors.Is(serveErr, http.ErrServerClosed) {
 			return
 		}
-		slog.Error("probe server failed", "addr", srv.Addr, "error", serveErr)
+		slog.LogAttrs(ctx, slog.LevelError, "probe server failed",
+			slog.String("addr", srv.Addr),
+			slog.Any("error", serveErr),
+		)
 		errCh <- serveErr
 	}()
 	return srv, errCh, nil
@@ -479,11 +511,11 @@ func mcpHeaderLogger(next http.Handler) http.Handler {
 		for k := range r.Header {
 			keys = append(keys, k)
 		}
-		slog.Debug("mcp: inbound request",
-			"method", r.Method,
-			"path", r.URL.Path,
-			"raw_query", r.URL.RawQuery,
-			"header_keys", keys,
+		slog.LogAttrs(r.Context(), slog.LevelDebug, "mcp: inbound request",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.String("raw_query", r.URL.RawQuery),
+			slog.Any("header_keys", keys),
 		)
 		next.ServeHTTP(w, r)
 	})

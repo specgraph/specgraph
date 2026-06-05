@@ -106,7 +106,7 @@ func claimError(err error) error {
 	case errors.Is(err, storage.ErrSpecNotClaimed):
 		return connect.NewError(connect.CodeNotFound, errors.New("spec is not claimed"))
 	default:
-		slog.Error("claimError: internal error", slog.Any("error", err))
+		slog.LogAttrs(context.Background(), slog.LevelError, "claimError: internal error", slog.Any("error", err))
 		return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 	}
 }

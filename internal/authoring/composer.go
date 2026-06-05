@@ -144,7 +144,7 @@ func (c *Composer) ComposeStagePrompt(ctx context.Context, in ComposeInput) (res
 
 	defer func() {
 		if retErr != nil {
-			slog.ErrorContext(ctx, "composer.invocation_failed",
+			slog.LogAttrs(ctx, slog.LevelError, "composer.invocation_failed",
 				slog.String("stage", string(in.Stage)),
 				slog.String("slug", in.Slug),
 				slog.String("posture", in.Posture),
@@ -182,7 +182,7 @@ func (c *Composer) ComposeStagePrompt(ctx context.Context, in ComposeInput) (res
 	fmt.Fprintf(&b, "\n---\nserver-version: %s\n", versionString())
 
 	totalTokens := approxTokens(b.String())
-	slog.InfoContext(ctx, "composer.invocation",
+	slog.LogAttrs(ctx, slog.LevelInfo, "composer.invocation",
 		slog.String("stage", string(in.Stage)),
 		slog.String("slug", in.Slug),
 		slog.String("posture", in.Posture),
@@ -250,7 +250,7 @@ func (c *Composer) appendDynamicState(ctx context.Context, b *strings.Builder, i
 		var validRelated []*RelatedSpec
 		for _, r := range related {
 			if !r.Relationship.IsValid() {
-				slog.WarnContext(ctx, "composer.invalid_relationship_skipped",
+				slog.LogAttrs(ctx, slog.LevelWarn, "composer.invalid_relationship_skipped",
 					slog.String("slug", r.Slug),
 					slog.String("relationship", string(r.Relationship)),
 				)
