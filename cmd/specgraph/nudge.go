@@ -4,11 +4,13 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"hash/crc32"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -18,6 +20,7 @@ import (
 
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/config/managedfiles"
+	"github.com/specgraph/specgraph/internal/telemetry"
 	"github.com/specgraph/specgraph/internal/xdg"
 )
 
@@ -47,6 +50,11 @@ var driftNudgeAllowList = map[string]bool{
 // (subcommand allow-list, isatty, env, config, throttle) keep the
 // fast path cheap.
 func nudgePreRun(cmd *cobra.Command, _ []string) error {
+	// Telemetry bootstrap: flags are parsed by now (cobra parses before
+	// PersistentPreRunE) and the command/role is known. Init once here; the
+	// handle + root span are stashed in telState for run()'s deferred flush.
+	initTelemetry(cmd)
+
 	// 1. Subcommand allow-list: walk to the top-level command.
 	top := cmd
 	for top.HasParent() && top.Parent() != rootCmd {
@@ -122,6 +130,46 @@ func nudgePreRun(cmd *cobra.Command, _ []string) error {
 	gcOldNudgeFiles()
 	return nil
 }
+
+// initTelemetry resolves telemetry config from the parsed persistent flags +
+// env, initializes the providers, starts a root command span, and stashes the
+// result in telState. Best-effort: any failure logs a warning and continues.
+func initTelemetry(cmd *cobra.Command) {
+	cfg := telemetry.ResolveConfig(rootCmd.PersistentFlags(), os.Getenv)
+	cfg.Role = telemetry.RoleCLI
+	cfg.Version = buildVersion()
+	// CLI base handler writes to STDERR so --json output on stdout stays clean.
+	cfg.LogHandler = slog.NewJSONHandler(os.Stderr, nil)
+	cfg.ProjectFromContext = telemetryProjectAccessor
+	cfg.IdentityFromContext = telemetryIdentityAccessor
+
+	// cmd.Context() is non-nil under ExecuteContext (production path); guard
+	// the nil case so direct unit-test invocations of nudgePreRun don't panic.
+	baseCtx := cmd.Context()
+	if baseCtx == nil {
+		baseCtx = context.Background()
+	}
+
+	tel, err := telemetry.Init(baseCtx, cfg)
+	if err != nil {
+		// Fall back to a plain stderr logger; never block the CLI.
+		fmt.Fprintln(os.Stderr, "warning: telemetry init failed:", err)
+		return
+	}
+	telState.tel = tel
+	telState.enabled = cfg.Enabled
+	slog.SetDefault(tel.Logger)
+
+	ctx, span := tel.Tracer.Start(baseCtx, "cli "+cmd.CommandPath())
+	telState.rootSpan = span
+	cmd.SetContext(ctx) // children (RPC spans) parent off the root span
+}
+
+// telemetryProjectAccessor / telemetryIdentityAccessor bridge server/auth
+// context keys into telemetry without telemetry importing those packages.
+// Phase 3 fills these in; Phase 2 uses no-op stubs.
+func telemetryProjectAccessor(_ context.Context) (string, bool)  { return "", false }
+func telemetryIdentityAccessor(_ context.Context) (string, bool) { return "", false }
 
 // shouldEmitAfterThrottle returns true if the throttle file for
 // (projectRoot, binaryVersionHash) is missing or older than 24h.

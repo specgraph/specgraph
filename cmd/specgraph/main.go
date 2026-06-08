@@ -5,9 +5,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/telemetry"
@@ -56,6 +58,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
 		"config file path (default: ~/.config/specgraph/config.yaml, "+
 			"or .specgraph/config.yaml when no project config is found)")
+	telemetry.RegisterFlags(rootCmd.PersistentFlags())
 	// Wired in init() to avoid an initialization cycle (nudgePreRun
 	// closes over rootCmd via the top-level allow-list walk).
 	rootCmd.PersistentPreRunE = nudgePreRun
@@ -90,12 +93,35 @@ func loadGlobalCfg(opts ...config.LoadOption) (*config.GlobalConfig, error) {
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
+	os.Exit(run())
+}
+
+// run executes the root command and returns the process exit code. Telemetry
+// is initialized in nudgePreRun (after flag parse); here we only ensure the
+// root span is ended and providers are flushed on EVERY exit branch — only
+// ended spans export, so End must precede Shutdown or failure traces are lost.
+func run() int {
+	ctx := context.Background()
+	defer func() {
+		if telState.rootSpan != nil {
+			telState.rootSpan.End()
+		}
+		if telState.tel != nil {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := telState.tel.Shutdown(shutdownCtx); err != nil {
+				fmt.Fprintln(os.Stderr, "warning: telemetry shutdown:", err)
+			}
+		}
+	}()
+
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		var ee *exitError
 		if errors.As(err, &ee) {
-			os.Exit(ee.code)
+			return ee.code
 		}
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
