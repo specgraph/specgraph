@@ -23,18 +23,14 @@ import (
 
 	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/auth/usagetracker"
-	"github.com/specgraph/specgraph/internal/bootstrap"
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/docker"
 	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/specgraph/specgraph/internal/linter"
 	mcppkg "github.com/specgraph/specgraph/internal/mcp"
 	"github.com/specgraph/specgraph/internal/mcp/skills"
-	"github.com/specgraph/specgraph/internal/notify"
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/server/probes"
-	"github.com/specgraph/specgraph/internal/storage"
-	"github.com/specgraph/specgraph/internal/storage/postgres"
 	syncpkg "github.com/specgraph/specgraph/internal/sync"
 	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/specgraph/specgraph/web"
@@ -60,6 +56,189 @@ func init() {
 	serveCmd.Flags().String("log-format", "", "Log format: json, text (overrides config; env: SPECGRAPH_LOG_FORMAT)")
 	serveCmd.Flags().String("log-output", "", "Log output stream: stdout, stderr (overrides config; env: SPECGRAPH_LOG_OUTPUT)")
 	rootCmd.AddCommand(serveCmd)
+}
+
+// appDeps holds everything constructed before (and independent of) the
+// Postgres connection. Build failures here are fatal at startup, exactly as
+// before this refactor: a broken binary, bad OIDC config, or bad CORS flag
+// should fail fast on every boot regardless of database availability.
+type appDeps struct {
+	verifiers  []*auth.OIDCVerifier
+	authorizer *auth.CedarAuthorizer
+	knownRoles map[auth.Role]bool
+	skillsSrc  skills.Source
+	webFS      fs.FS
+	corsOrigin string
+}
+
+func buildAppDeps(ctx context.Context, cfg *config.GlobalConfig, cmd *cobra.Command) (appDeps, error) {
+	verifiers := make([]*auth.OIDCVerifier, 0, len(cfg.Auth.OIDC.Providers))
+	for _, pc := range cfg.Auth.OIDC.Providers {
+		issuerCtx, issuerCancel := context.WithTimeout(ctx, 10*time.Second)
+		v, oidcErr := auth.NewOIDCVerifier(issuerCtx, pc)
+		issuerCancel()
+		if oidcErr != nil {
+			return appDeps{}, fmt.Errorf("OIDC provider %s: %w", pc.ID, oidcErr)
+		}
+		verifiers = append(verifiers, v)
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "auth: OIDC provider configured",
+			slog.String("id", pc.ID), slog.String("issuer", pc.Issuer))
+	}
+
+	knownRoles := auth.KnownRolesFrom(cfg.Auth.Roles)
+
+	policySources := []auth.PolicySource{auth.NewEmbeddedPolicySource()}
+	for _, dir := range cfg.Auth.Policies.ExtraDirs {
+		policySources = append(policySources, auth.NewDirectoryPolicySource(dir))
+	}
+	engine, err := auth.NewCedarEngine(ctx, policySources, auth.ActionNames())
+	if err != nil {
+		return appDeps{}, fmt.Errorf("policy engine: %w", err)
+	}
+	authorizer := auth.NewCedarAuthorizer(engine)
+
+	skillsSrc, skillsErr := skills.NewEmbedded()
+	if skillsErr != nil {
+		return appDeps{}, fmt.Errorf("load embedded skills: %w", skillsErr)
+	}
+
+	webFS, err := fs.Sub(web.Build, "build")
+	if err != nil {
+		return appDeps{}, fmt.Errorf("embedded web FS: %w", err)
+	}
+
+	corsOrigin, err := cmd.Flags().GetString("cors-origin")
+	if err != nil {
+		return appDeps{}, fmt.Errorf("cors-origin flag: %w", err)
+	}
+
+	return appDeps{
+		verifiers:  verifiers,
+		authorizer: authorizer,
+		knownRoles: knownRoles,
+		skillsSrc:  skillsSrc,
+		webFS:      webFS,
+		corsOrigin: corsOrigin,
+	}, nil
+}
+
+// appHandler is the result of wiring the application once a live connection
+// exists.
+type appHandler struct {
+	handler  http.Handler
+	resolver auth.Resolver // for the post-listen no-auth warn
+	cleanup  func()        // drains the usagetracker; call after server drain
+}
+
+func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps, res connectResult) (appHandler, error) {
+	store := res.store // *postgres.Store satisfies the storage interfaces used below
+
+	// usagetracker for async TouchLastUsed.
+	tracker := usagetracker.NewManager(res.authStore, usagetracker.Config{
+		BufferSize:    256,
+		FlushInterval: 5 * time.Second,
+	})
+	cleanup := func() {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer shutdownCancel()
+		if trackerErr := tracker.Close(shutdownCtx); trackerErr != nil {
+			slog.LogAttrs(context.Background(), slog.LevelWarn, "usagetracker close", slog.Any("error", trackerErr))
+		}
+		if dropped := tracker.Dropped(); dropped > 0 {
+			slog.LogAttrs(context.Background(), slog.LevelWarn, "usagetracker dropped touches over session lifetime",
+				slog.Uint64("count", dropped),
+				slog.String("hint", "increase auth usagetracker BufferSize or decrease FlushInterval"))
+		}
+	}
+
+	resolver, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users:                   res.authStore,
+		Verifiers:               deps.verifiers,
+		Tracker:                 tracker,
+		KnownRoles:              deps.knownRoles,
+		JITEnabled:              cfg.Auth.OIDC.JITCreate.Enabled,
+		JITDefaultRole:          auth.Role(cfg.Auth.OIDC.JITCreate.DefaultRole),
+		JITClaimsMapping:        buildClaimsMappingByIssuer(cfg.Auth.OIDC.Providers),
+		JITRateBurstPerHour:     cfg.Auth.OIDC.JITCreate.RateLimitPerHour,
+		JITEmailDomainAllowlist: cfg.Auth.OIDC.JITCreate.EmailDomainAllowlist,
+	})
+	if err != nil {
+		cleanup() // drain the tracker goroutine we just started
+		return appHandler{}, fmt.Errorf("identity store: %w", err)
+	}
+
+	interceptor := auth.NewAuthInterceptor(resolver, deps.authorizer)
+	maxBytes := connect.WithReadMaxBytes(4 << 20)
+	opts := connect.WithInterceptors(interceptor)
+
+	mux := server.NewMux(store, opts, maxBytes)
+	server.RegisterHealthService(mux, opts, maxBytes)
+	server.RegisterDecisionService(mux, store, opts, maxBytes)
+	server.RegisterGraphService(mux, store, opts, maxBytes)
+	server.RegisterClaimService(mux, store, opts, maxBytes)
+	server.RegisterConstitutionService(mux, store, opts, maxBytes)
+	server.RegisterAuthoringService(mux, store, opts, maxBytes)
+	server.RegisterAnalyticalPassService(mux, store, ".specgraph/templates", opts, maxBytes)
+	server.RegisterExecutionService(mux, store, deps.skillsSrc, opts, maxBytes)
+	server.RegisterSliceService(mux, store, opts, maxBytes)
+	server.RegisterIdentityService(mux, res.authStore, opts, maxBytes)
+	server.RegisterExportService(mux, store, cfg.Export.SigningKey, buildVersion(), opts, maxBytes)
+	driftEngine := drift.NewEngine(store, nil)
+	lintEngine := linter.NewEngine(store, nil)
+	server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts, maxBytes)
+
+	syncHandler := server.RegisterSyncService(mux, store, opts, maxBytes)
+	runner := syncpkg.NewExecRunner()
+	syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
+	syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
+
+	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(resolver))
+	server.RegisterAuthHandlers(mux, resolver, auth.RequireAuth(resolver))
+
+	mcpClient := mcppkg.NewClient(newHTTPClient(""), selfBaseURL(cfg.Server.Listen))
+	mcpSrv := mcppkg.NewServer(mcpClient)
+	mcpHTTPHandler := mcpSrv.HTTPHandler(
+		mcpserver.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
+			if v := r.Header.Get("Authorization"); v != "" {
+				scheme, token, ok := strings.Cut(v, " ")
+				token = strings.TrimSpace(token)
+				if ok && strings.EqualFold(scheme, "Bearer") && token != "" {
+					ctx = auth.WithBearerToken(ctx, token)
+				}
+			}
+			if slug := r.Header.Get("X-Specgraph-Project"); slug != "" {
+				ctx = auth.WithProject(ctx, slug)
+			}
+			return ctx
+		}),
+	)
+	mux.Handle("/mcp/", mcpHeaderLogger(auth.RequireAuth(resolver)(
+		http.StripPrefix("/mcp", mcpHTTPHandler),
+	)))
+
+	mux.Handle("/", server.StaticHandler(deps.webFS))
+
+	handler := server.SecurityHeaders(server.ProjectMiddleware(mux))
+	if deps.corsOrigin != "" {
+		handler = server.CORSMiddleware(deps.corsOrigin, handler)
+	}
+
+	return appHandler{handler: handler, resolver: resolver, cleanup: cleanup}, nil
+}
+
+// startMainServer runs srv.Serve in a goroutine and returns a channel that
+// fires once if Serve returns a non-ErrServerClosed error, so the caller can
+// trigger shutdown (a dead main listener is unrecoverable).
+func startMainServer(srv *http.Server, ln net.Listener) <-chan error {
+	errCh := make(chan error, 1)
+	go func() {
+		serveErr := srv.Serve(ln)
+		if serveErr == nil || errors.Is(serveErr, http.ErrServerClosed) {
+			return
+		}
+		errCh <- serveErr
+	}()
+	return errCh
 }
 
 func runServe(cmd *cobra.Command, _ []string) error {
@@ -112,294 +291,261 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Create backend store.
-	type backendStore interface {
-		storage.Scoper
-		storage.ScopedBackend
-		server.ClaimSweeper
-		Close(context.Context) error
-	}
-	var store backendStore
-
 	connURL := cfg.Server.Postgres.URL
 	if connURL == "" {
 		return fmt.Errorf("postgres backend requires a connection URL (set server.postgres.url in config or use --pg-url)")
 	}
-	s, pgErr := postgres.New(ctx, connURL, postgres.WithProject("_server"))
-	if pgErr != nil {
-		return fmt.Errorf("connect to postgres: %w", pgErr)
-	}
-	store = s
 
-	// Defers run LIFO: stopSweeper runs before store.Close, preventing races
-	// where the sweeper goroutine calls ReleaseExpiredClaims on a closed store.
-	defer func() {
-		if closeErr := store.Close(ctx); closeErr != nil {
-			slog.LogAttrs(context.Background(), slog.LevelWarn, "close store", slog.Any("error", closeErr))
-		}
-	}()
-	sweeperCtx, stopSweeper := context.WithCancel(ctx)
-	defer stopSweeper()
-
-	// Register change notification subscribers.
-	store.Subscribe(notify.NewImpactLogger())
-
-	// Build the auth store via the existing postgres.Store.Pool() accessor.
-	// s is the concrete *postgres.Store from which Pool() is accessible;
-	// store is the narrower backendStore interface used everywhere else.
-	authStore, err := postgres.NewAuth(ctx, s.Pool())
+	// PG-independent construction is fatal up front (unchanged behavior).
+	deps, err := buildAppDeps(ctx, cfg, cmd)
 	if err != nil {
-		return fmt.Errorf("auth store: %w", err)
-	}
-	defer func() {
-		if closeErr := authStore.Close(ctx); closeErr != nil {
-			slog.LogAttrs(context.Background(), slog.LevelWarn, "auth store close", slog.Any("error", closeErr))
-		}
-	}()
-
-	// Hosted bootstrap: ensure a backstop admin identity + key exist on first
-	// start. Idempotent — a no-op (and silent) on every subsequent restart.
-	// Unlike the `init` path, the hosted path writes NO credentials file: the
-	// operator copies the token from this one-time boot banner.
-	if res, bErr := bootstrap.Ensure(ctx, authStore, bootstrap.Options{}); bErr != nil {
-		return fmt.Errorf("bootstrap admin: %w", bErr)
-	} else if res.Created {
-		fmt.Fprintf(os.Stderr,
-			"\n========================================================================\n"+
-				"SpecGraph created a bootstrap admin on first start.\n"+
-				"  API key: %s\n"+
-				"  Server:  http://%s\n"+
-				"Copy this key into your CLI credentials now. Rotate it after you\n"+
-				"configure OIDC. This key is shown ONCE and will not be displayed again.\n"+
-				"========================================================================\n\n",
-			res.Token, cfg.Server.Listen)
-	}
-
-	// Construct OIDC verifiers (one per provider).
-	// Iterate cfg.Auth.OIDC.Providers — the canonical field. The config loader
-	// copies any legacy cfg.Auth.OIDCProviders entries into this field, so
-	// reading the legacy field here would yield ZERO verifiers for any config
-	// that uses the auth.oidc.providers shape (silently breaking all JWT/JIT
-	// auth). Must match the claims-mapping source below.
-	verifiers := make([]*auth.OIDCVerifier, 0, len(cfg.Auth.OIDC.Providers))
-	for _, pc := range cfg.Auth.OIDC.Providers {
-		issuerCtx, issuerCancel := context.WithTimeout(ctx, 10*time.Second)
-		v, oidcErr := auth.NewOIDCVerifier(issuerCtx, pc)
-		issuerCancel()
-		if oidcErr != nil {
-			return fmt.Errorf("OIDC provider %s: %w", pc.ID, oidcErr)
-		}
-		verifiers = append(verifiers, v)
-		slog.LogAttrs(context.Background(), slog.LevelInfo, "auth: OIDC provider configured",
-			slog.String("id", pc.ID),
-			slog.String("issuer", pc.Issuer),
-		)
-	}
-
-	// usagetracker for async TouchLastUsed.
-	tracker := usagetracker.NewManager(authStore, usagetracker.Config{
-		BufferSize:    256,
-		FlushInterval: 5 * time.Second,
-	})
-	defer func() {
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer shutdownCancel()
-		if trackerErr := tracker.Close(shutdownCtx); trackerErr != nil {
-			slog.LogAttrs(context.Background(), slog.LevelWarn, "usagetracker close", slog.Any("error", trackerErr))
-		}
-		if dropped := tracker.Dropped(); dropped > 0 {
-			slog.LogAttrs(context.Background(), slog.LevelWarn, "usagetracker dropped touches over session lifetime",
-				slog.Uint64("count", dropped),
-				slog.String("hint", "increase auth usagetracker BufferSize or decrease FlushInterval"),
-			)
-		}
-	}()
-
-	// KnownRoles for JIT validation (built-ins ∪ custom role names). Under
-	// Cedar, custom roles carry no permission list; their authorization is
-	// expressed as Cedar policies, not YAML.
-	knownRoles := auth.KnownRolesFrom(cfg.Auth.Roles)
-
-	// Build the Resolver (pgIdentityStore backed by Postgres).
-	resolver, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
-		Users:                   authStore,
-		Verifiers:               verifiers,
-		Tracker:                 tracker,
-		KnownRoles:              knownRoles,
-		JITEnabled:              cfg.Auth.OIDC.JITCreate.Enabled,
-		JITDefaultRole:          auth.Role(cfg.Auth.OIDC.JITCreate.DefaultRole),
-		JITClaimsMapping:        buildClaimsMappingByIssuer(cfg.Auth.OIDC.Providers),
-		JITRateBurstPerHour:     cfg.Auth.OIDC.JITCreate.RateLimitPerHour,
-		JITEmailDomainAllowlist: cfg.Auth.OIDC.JITCreate.EmailDomainAllowlist,
-	})
-	if err != nil {
-		return fmt.Errorf("identity store: %w", err)
-	}
-
-	// Authorizer: Cedar policy engine. Built-in policies are always loaded;
-	// operators add directories via auth.policies.extra_dirs.
-	policySources := []auth.PolicySource{auth.NewEmbeddedPolicySource()}
-	for _, dir := range cfg.Auth.Policies.ExtraDirs {
-		policySources = append(policySources, auth.NewDirectoryPolicySource(dir))
-	}
-	engine, err := auth.NewCedarEngine(ctx, policySources, auth.ActionNames())
-	if err != nil {
-		return fmt.Errorf("policy engine: %w", err)
-	}
-	authorizer := auth.NewCedarAuthorizer(engine)
-
-	interceptor := auth.NewAuthInterceptor(resolver, authorizer)
-
-	// HasAuth signal for the existing warn path.
-	hasAuth, hasAuthErr := resolver.HasAuth(ctx)
-	if hasAuthErr != nil {
-		slog.LogAttrs(context.Background(), slog.LevelWarn, "auth: HasAuth check failed at startup", slog.Any("error", hasAuthErr))
-	}
-	if !hasAuth {
-		warnIfNoAuthOnPublicListen(cfg.Server.Listen, false)
-	}
-	maxBytes := connect.WithReadMaxBytes(4 << 20) // 4 MiB request body limit
-	opts := connect.WithInterceptors(interceptor)
-
-	// Load embedded skills catalog once for the lifetime of the server.
-	// The catalog is compiled into the binary; a parse failure means the
-	// binary is broken, so fail fast here.
-	skillsSrc, skillsErr := skills.NewEmbedded()
-	if skillsErr != nil {
-		return fmt.Errorf("load embedded skills: %w", skillsErr)
-	}
-
-	mux := server.NewMux(store, opts, maxBytes)
-	server.RegisterHealthService(mux, opts, maxBytes)
-	server.RegisterDecisionService(mux, store, opts, maxBytes)
-	server.RegisterGraphService(mux, store, opts, maxBytes)
-	server.RegisterClaimService(mux, store, opts, maxBytes)
-	server.RegisterConstitutionService(mux, store, opts, maxBytes)
-	server.RegisterAuthoringService(mux, store, opts, maxBytes)
-	server.RegisterAnalyticalPassService(mux, store, ".specgraph/templates", opts, maxBytes)
-	server.RegisterExecutionService(mux, store, skillsSrc, opts, maxBytes)
-	server.RegisterSliceService(mux, store, opts, maxBytes)
-	server.RegisterIdentityService(mux, authStore, opts, maxBytes)
-	server.RegisterExportService(mux, store, cfg.Export.SigningKey, buildVersion(), opts, maxBytes)
-	driftEngine := drift.NewEngine(store, nil)
-	lintEngine := linter.NewEngine(store, nil)
-	server.RegisterLifecycleService(mux, store, driftEngine, lintEngine, nil, opts, maxBytes)
-
-	syncHandler := server.RegisterSyncService(mux, store, opts, maxBytes)
-	runner := syncpkg.NewExecRunner()
-	syncHandler.RegisterAdapter(syncpkg.NewBeadsAdapter(runner))
-	syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
-
-	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(resolver))
-	server.RegisterAuthHandlers(mux, resolver, auth.RequireAuth(resolver))
-
-	// Mount MCP streamable HTTP endpoint with auth gating.
-	// RequireAuth returns 401 for unauthenticated callers, which is the
-	// MCP spec's signal for clients to initiate OAuth.
-	mcpClient := mcppkg.NewClient(newHTTPClient(""), selfBaseURL(cfg.Server.Listen))
-	mcpSrv := mcppkg.NewServer(mcpClient)
-	mcpHTTPHandler := mcpSrv.HTTPHandler(
-		mcpserver.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
-			// Forward the raw bearer token into context so loopback
-			// requests carry the caller's credentials. Mirror
-			// RequireAuth's case-insensitive scheme parsing.
-			if v := r.Header.Get("Authorization"); v != "" {
-				scheme, token, ok := strings.Cut(v, " ")
-				token = strings.TrimSpace(token)
-				if ok && strings.EqualFold(scheme, "Bearer") && token != "" {
-					ctx = auth.WithBearerToken(ctx, token)
-				}
-			}
-			// Forward the project slug into context so loopback requests
-			// to project-scoped RPC services satisfy the project middleware
-			// without the MCP loopback client knowing the project ahead
-			// of time.
-			if slug := r.Header.Get("X-Specgraph-Project"); slug != "" {
-				ctx = auth.WithProject(ctx, slug)
-			}
-			return ctx
-		}),
-	)
-	mux.Handle("/mcp/", mcpHeaderLogger(auth.RequireAuth(resolver)(
-		http.StripPrefix("/mcp", mcpHTTPHandler),
-	)))
-
-	webFS, err := fs.Sub(web.Build, "build")
-	if err != nil {
-		return fmt.Errorf("embedded web FS: %w", err)
-	}
-	mux.Handle("/", server.StaticHandler(webFS))
-
-	handler := server.SecurityHeaders(server.ProjectMiddleware(mux))
-
-	corsOrigin, err := cmd.Flags().GetString("cors-origin")
-	if err != nil {
-		return fmt.Errorf("cors-origin flag: %w", err)
-	}
-	if corsOrigin != "" {
-		handler = server.CORSMiddleware(corsOrigin, handler)
-	}
-	addr := cfg.Server.Listen
-	srv := &http.Server{
-		Addr:              addr,
-		Handler:           handler,
-		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      60 * time.Second,
-		IdleTimeout:       120 * time.Second,
+		return err
 	}
 
 	probesCfg, err := validateServerConfig(cfg)
 	if err != nil {
 		return err
 	}
-	probeSrv, probeErrCh, err := startProbeListener(ctx, s, probesCfg)
-	if err != nil {
-		return err
+
+	pol := defaultBackoffPolicy()
+
+	// Decide the boot path BEFORE starting any server or shutdown goroutine, so
+	// a fatal docker:true / credential failure starts nothing (unchanged).
+	var (
+		res      connectResult
+		haveConn bool
+	)
+	if cfg.Server.Docker {
+		r, connErr := connectStore(ctx, connURL)
+		if connErr != nil {
+			return fmt.Errorf("connect to postgres: %w", connErr)
+		}
+		res, haveConn = r, true
+	} else {
+		r, degrade, connErr := firstConnect(ctx, connURL, pol)
+		if connErr != nil {
+			return connErr // credential-exhausted fatal, or ctx cancelled
+		}
+		if !degrade {
+			res, haveConn = r, true
+		} else {
+			slog.LogAttrs(context.Background(), slog.LevelWarn,
+				"postgres unavailable at startup; serving 503 until it connects",
+				slog.String("listen", cfg.Server.Listen))
+			if probesCfg.Listen == "" {
+				slog.LogAttrs(context.Background(), slog.LevelWarn,
+					"readiness is not observable: set server.probes.listen to expose /readyz")
+			}
+		}
 	}
 
-	go func() {
+	// Shared activation: wires the app once a live connection exists, swaps in
+	// the real handler, publishes the store to the probe pinger, prints the
+	// bootstrap banner, and starts the sweeper. Returns the post-drain cleanup.
+	pinger := newReadinessPinger()
+	handlerRef := newAtomicHandler(notReadyHandler())
+	addr := cfg.Server.Listen
+
+	sweeperCtx, stopSweeper := context.WithCancel(ctx)
+	var (
+		cleanupMu sync.Mutex
+		cleanup   func() // store/auth/tracker teardown; nil until activation
+	)
+
+	// closeStores releases the auth store (borrows the pool) then the store
+	// (owns the pool), logging any error. Shared by the activation cleanup and
+	// the shutdown-before-activation paths so a connection is never leaked when
+	// wiring fails or shutdown races a late connect.
+	closeStores := func(r connectResult) {
+		if closeErr := r.authStore.Close(context.Background()); closeErr != nil {
+			slog.LogAttrs(context.Background(), slog.LevelWarn, "auth store close", slog.Any("error", closeErr))
+		}
+		if closeErr := r.store.Close(context.Background()); closeErr != nil {
+			slog.LogAttrs(context.Background(), slog.LevelWarn, "close store", slog.Any("error", closeErr))
+		}
+	}
+
+	// runCleanup invokes the registered post-drain teardown if activation has
+	// happened; it is a no-op before activation (cleanup is nil).
+	runCleanup := func() {
+		cleanupMu.Lock()
+		cl := cleanup
+		cleanupMu.Unlock()
+		if cl != nil {
+			cl()
+		}
+	}
+
+	activate := func(r connectResult) error {
+		// If shutdown began before we could wire this connection, release it
+		// rather than opening a store/tracker that nothing will close.
 		select {
 		case <-ctx.Done():
-		case probeErr := <-probeErrCh:
-			slog.LogAttrs(context.Background(), slog.LevelError, "probe listener died; triggering shutdown", slog.Any("error", probeErr))
+			closeStores(r)
+			return nil
+		default:
+		}
+		// Print the one-time bootstrap banner immediately on a successful
+		// connect — BEFORE the fallible post-connect wiring below — so a later
+		// failure (e.g. an invalid identity-store config in buildAppHandler)
+		// can never strand the admin token, which bootstrap.Ensure has already
+		// minted and committed inside connectStore.
+		if r.bootstrap.Created {
+			fmt.Fprintf(os.Stderr,
+				"\n========================================================================\n"+
+					"SpecGraph created a bootstrap admin on first start.\n"+
+					"  API key: %s\n"+
+					"  Server:  http://%s\n"+
+					"Copy this key into your CLI credentials now. Rotate it after you\n"+
+					"configure OIDC. This key is shown ONCE and will not be displayed again.\n"+
+					"========================================================================\n\n",
+				r.bootstrap.Token, addr)
+		}
+		ah, buildErr := buildAppHandler(ctx, cfg, &deps, r)
+		if buildErr != nil {
+			closeStores(r)
+			return buildErr
+		}
+
+		// Swap in the real handler BEFORE marking readiness healthy, so a
+		// reconnect can never report ready (/readyz 200) while the main port
+		// is still serving the blanket 503 handler.
+		handlerRef.set(ah.handler)
+		pinger.set(r.store)
+
+		if hasAuth, hasAuthErr := ah.resolver.HasAuth(ctx); hasAuthErr != nil {
+			slog.LogAttrs(context.Background(), slog.LevelWarn, "auth: HasAuth check failed at startup", slog.Any("error", hasAuthErr))
+		} else if !hasAuth {
+			warnIfNoAuthOnPublicListen(cfg.Server.Listen, false)
+		}
+
+		server.StartSweeper(sweeperCtx, r.store, 60*time.Second)
+
+		cleanupMu.Lock()
+		cleanup = func() {
+			// Post-drain teardown order (sweeper already stopped):
+			// tracker → authStore → store.
+			ah.cleanup()
+			closeStores(r)
+		}
+		cleanupMu.Unlock()
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "storage connected; serving")
+		return nil
+	}
+
+	// Happy path: wire and swap in the real handler BEFORE opening the port,
+	// so clients never observe a 503 window. activate also sets the pinger's
+	// store, so the probe listener's first probe is healthy (no spurious WARN).
+	// If activation fails here, no listener has been opened yet — clean return.
+	if haveConn {
+		if actErr := activate(res); actErr != nil {
+			stopSweeper()
+			return actErr
+		}
+	}
+
+	// Open the ports. On the happy path handlerRef already holds the real
+	// handler; in the degraded window it holds the blanket-503 handler.
+	mainLn, err := net.Listen("tcp", addr)
+	if err != nil {
+		stopSweeper()
+		runCleanup()
+		return fmt.Errorf("main listener bind %s: %w", addr, err)
+	}
+	srv := &http.Server{
+		Handler:           handlerRef,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
+	probeSrv, probeErrCh, err := startProbeListener(ctx, pinger, probesCfg)
+	if err != nil {
+		stopSweeper()
+		if closeErr := mainLn.Close(); closeErr != nil {
+			slog.LogAttrs(context.Background(), slog.LevelWarn, "main listener close", slog.Any("error", closeErr))
+		}
+		runCleanup()
+		return err
+	}
+	mainErrCh := startMainServer(srv, mainLn)
+
+	// fatalErr is published by the shutdown goroutine; read after <-done.
+	var fatalErr error
+	wiringFatalCh := make(chan error, 1)
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		select {
+		case <-ctx.Done():
+		case e := <-probeErrCh:
+			slog.LogAttrs(context.Background(), slog.LevelError, "probe listener died; triggering shutdown", slog.Any("error", e))
+			cancel()
+		case e := <-mainErrCh:
+			slog.LogAttrs(context.Background(), slog.LevelError, "main listener died; triggering shutdown", slog.Any("error", e))
+			fatalErr = e
+			cancel()
+		case e := <-wiringFatalCh:
+			slog.LogAttrs(context.Background(), slog.LevelError, "fatal wiring error; triggering shutdown", slog.Any("error", e))
+			fatalErr = e
 			cancel()
 		}
 		slog.LogAttrs(context.Background(), slog.LevelInfo, "server shutting down")
 		stopSweeper()
-		// Shut down main and probe servers in parallel so a slow main-server
-		// drain can't starve the probe server's graceful close (and vice versa).
+
 		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			mainCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-			defer cancel()
-			if err := srv.Shutdown(mainCtx); err != nil {
-				slog.LogAttrs(context.Background(), slog.LevelWarn, "main server shutdown", slog.Any("error", err))
+			mainCtx, c := context.WithTimeout(context.Background(), 15*time.Second)
+			defer c()
+			if shErr := srv.Shutdown(mainCtx); shErr != nil {
+				slog.LogAttrs(context.Background(), slog.LevelWarn, "main server shutdown", slog.Any("error", shErr))
 			}
 		}()
 		if probeSrv != nil {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				probeCtx, cancel := context.WithTimeout(context.Background(), probeShutdownTimeout)
-				defer cancel()
-				if err := probeSrv.Shutdown(probeCtx); err != nil {
-					slog.LogAttrs(context.Background(), slog.LevelWarn, "probe server shutdown", slog.Any("error", err))
+				probeCtx, c := context.WithTimeout(context.Background(), probeShutdownTimeout)
+				defer c()
+				if shErr := probeSrv.Shutdown(probeCtx); shErr != nil {
+					slog.LogAttrs(context.Background(), slog.LevelWarn, "probe server shutdown", slog.Any("error", shErr))
 				}
 			}()
 		}
 		wg.Wait()
+
+		// Post-drain store/auth/tracker teardown (nil until activation).
+		runCleanup()
 	}()
 
-	server.StartSweeper(sweeperCtx, store, 60*time.Second)
 	slog.LogAttrs(context.Background(), slog.LevelInfo, "server listening", slog.String("addr", "http://"+addr))
 	slog.LogAttrs(context.Background(), slog.LevelInfo, "MCP endpoint available", slog.String("path", "/mcp/"))
-	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-		return err
+
+	// Degraded path: retry in the background; activate on first success. The
+	// ports are already open (serving 503) before this goroutine starts.
+	if !haveConn {
+		go func() {
+			r, connErr := runConnector(ctx, func(c context.Context) (connectResult, error) {
+				return connectStore(c, connURL)
+			}, pol, ctxSleep)
+			if connErr != nil {
+				if ctx.Err() == nil { // genuine fatal (credential exhaustion), not shutdown
+					wiringFatalCh <- connErr
+				}
+				return
+			}
+			if actErr := activate(r); actErr != nil {
+				wiringFatalCh <- actErr
+			}
+		}()
 	}
 
-	return nil
+	<-done
+	return fatalErr
 }
 
 // selfBaseURL normalizes a listen address into a dialable HTTP base URL.
