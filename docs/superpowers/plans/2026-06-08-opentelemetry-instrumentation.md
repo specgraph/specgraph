@@ -15,10 +15,12 @@
 ## Conventions (apply to EVERY new file)
 
 - First two lines of every new `.go` file:
+
   ```go
   // SPDX-License-Identifier: Apache-2.0
   // Copyright 2026 Sean Brandt
   ```
+
 - New package `internal/telemetry` needs a `// Package telemetry ...` doc comment on the first declaration in the first file (`telemetry.go`) or `revive` fails.
 - Commit messages are Conventional Commits with a DCO sign-off. Use `git commit -s -m "..."`. (Repo is jj-colocated; `git commit` works through the colocation. Do NOT `git push`.)
 - After each phase, run `task check` (fmt:check → license:check → lint → build → unit tests). Fix lint before moving on. `task license:add` fixes missing headers; `task fmt` fixes formatting.
@@ -33,6 +35,7 @@
 ### Task 1: Add and pin dependencies
 
 **Files:**
+
 - Modify: `go.mod`, `go.sum`
 
 - [ ] **Step 1: Add the GA direct deps**
@@ -59,18 +62,22 @@ go get go.opentelemetry.io/otel/sdk/log@latest
 - [ ] **Step 3: Tidy and verify the matrix resolves**
 
 Run:
+
 ```bash
 go mod tidy
 go build ./...
 ```
+
 Expected: clean build. If `go mod tidy` cannot resolve a GCP-compatible matrix (conflict against `opentelemetry-operations-go/exporter/metric v0.55.0` or `contrib/detectors/gcp v1.42.0`), STOP and fall back to enrichment-only logs (skip `autoexport`'s log exporter + `sdk/log` + `otelslog`); record the decision in the commit message and proceed — Phase 3's OTLP-log-export step becomes a no-op behind `--otel-logs`.
 
 - [ ] **Step 4: Confirm the expected version bumps happened**
 
 Run:
+
 ```bash
 go list -m github.com/jackc/pgx/v5 go.opentelemetry.io/otel
 ```
+
 Expected: `pgx/v5` is now `v5.9.2` (bumped from v5.9.1 by otelpgx v0.11.1); `otel` is `v1.43.0`. The otel core modules (`otel`, `otel/sdk`, `otel/sdk/metric`, `otel/trace`, `otel/metric`, `otelhttp`) should now be direct (no `// indirect`).
 
 - [ ] **Step 5: Commit**
@@ -83,6 +90,7 @@ git commit -s -m "build(deps): add OpenTelemetry, otelconnect, otelpgx, slog-mul
 ### Task 2: Telemetry package skeleton (Config, Telemetry struct)
 
 **Files:**
+
 - Create: `internal/telemetry/telemetry.go`
 
 - [ ] **Step 1: Write the skeleton with the public seam**
@@ -160,6 +168,7 @@ git commit -s -m "feat(telemetry): add package skeleton and public Config seam"
 ### Task 3: Config resolver (flag + env, standalone)
 
 **Files:**
+
 - Create: `internal/telemetry/config.go`
 - Test: `internal/telemetry/config_test.go`
 
@@ -326,6 +335,7 @@ git commit -s -m "feat(telemetry): add standalone flag+env config resolver"
 ### Task 4: Providers and resource builders
 
 **Files:**
+
 - Create: `internal/telemetry/providers.go`
 
 > **Beta-API note:** the `sdk/log` and `otelslog` symbols below are from beta modules. If a symbol name differs in the resolved version, adjust to the equivalent constructor — the shape (NewLoggerProvider + batch processor + exporter) is stable. Do NOT invent fields; check the godoc of the pinned version.
@@ -437,6 +447,7 @@ git commit -s -m "feat(telemetry): add resource/tracer/meter/logger provider bui
 ### Task 5: Init / Shutdown with no-op path
 
 **Files:**
+
 - Modify: `internal/telemetry/telemetry.go`
 - Create: `internal/telemetry/telemetry_test.go`
 
@@ -617,6 +628,7 @@ git commit -s -m "feat(telemetry): add Init/Shutdown with no-op default path"
 ### Task 6: otelconnect server interceptor (gated)
 
 **Files:**
+
 - Create: `internal/telemetry/connect.go`
 - Test: `internal/telemetry/connect_test.go`
 
@@ -735,6 +747,7 @@ git commit -s -m "feat(telemetry): add gated otelconnect interceptors + loopback
 ### Task 7: Wire otelconnect client interceptor into CLI clients (gated)
 
 **Files:**
+
 - Modify: `cmd/specgraph/client.go:133-154` (the `newClient`/`newClientWithProject` ctors)
 - Modify: `cmd/specgraph/main.go` (add a package var for the resolved enabled flag — set in Task 8)
 
@@ -812,6 +825,7 @@ git commit -s -m "feat(cli): wire gated otelconnect client interceptor into RPC 
 ### Task 8: CLI bootstrap — holder, nudgePreRun Init, run() refactor
 
 **Files:**
+
 - Modify: `cmd/specgraph/main.go:43-50` (register flags), `cmd/specgraph/main.go:80-89` (`main`→`run`)
 - Modify: `cmd/specgraph/nudge.go:49` (`nudgePreRun` — prepend telemetry init)
 
@@ -926,9 +940,11 @@ Add imports to `main.go`: `"context"`, `"time"`.
 - [ ] **Step 5: Build and smoke-test disabled path**
 
 Run:
+
 ```bash
 go build -o /tmp/specgraph ./cmd/specgraph/ && /tmp/specgraph version
 ```
+
 Expected: prints version, exit 0, NO telemetry output (disabled by default).
 
 - [ ] **Step 6: Verify existing CLI tests still pass**
@@ -946,6 +962,7 @@ git commit -s -m "feat(cli): bootstrap telemetry in nudgePreRun with run()-defer
 ### Task 9: serve consumes the shared handle (no re-Init) + server interceptor + otelhttp
 
 **Files:**
+
 - Modify: `cmd/specgraph/serve.go:79-90` (logger), `:261` (interceptor opts), `:332` (handler wrap), `:360-393` (shutdown)
 
 - [ ] **Step 1: Re-Init telemetry with server role + metrics inside runServe**
@@ -1070,6 +1087,7 @@ git commit -s -m "feat(server): consume shared telemetry handle, add server inte
 ### Task 10: otelpgx pool refactor
 
 **Files:**
+
 - Modify: `internal/storage/postgres/postgres.go:64-89` (`New`)
 - Modify: `cmd/specgraph/serve.go:127` (pass enabled flag into postgres.New)
 
@@ -1129,6 +1147,7 @@ git commit -s -m "feat(storage): add gated otelpgx query tracer to the pool"
 ### Task 11: MCP loopback transport wrap + four wrap*Handler spans
 
 **Files:**
+
 - Modify: `cmd/specgraph/serve.go:298` (loopback client transport)
 - Modify: `internal/mcp/server.go:139-183` (four wrap adapters)
 
@@ -1242,6 +1261,7 @@ git commit -s -m "feat(mcp): add loopback trace propagation + per-operation span
 ### Task 12: Propagation round-trip integration test
 
 **Files:**
+
 - Create: `internal/telemetry/propagation_test.go`
 
 - [ ] **Step 1: Write the connected-trace test**
@@ -1333,6 +1353,7 @@ git commit -s -m "test(telemetry): assert client→server trace propagation roun
 ### Task 13: Context accessor closures (real implementations)
 
 **Files:**
+
 - Modify: `cmd/specgraph/nudge.go` (replace the Task 8 stubs)
 
 - [ ] **Step 1: Implement the accessors over both project keys + identity**
@@ -1382,6 +1403,7 @@ git commit -s -m "feat(cli): implement telemetry context accessors (both project
 ### Task 14: enrichHandler (Handle + Enabled + WithAttrs + WithGroup)
 
 **Files:**
+
 - Create: `internal/telemetry/logging.go`
 - Test: `internal/telemetry/logging_test.go`
 
@@ -1556,6 +1578,7 @@ git commit -s -m "feat(telemetry): add context-enriching slog handler"
 ### Task 15: Fanout (slog-multi) + otelslog bridge
 
 **Files:**
+
 - Modify: `internal/telemetry/logging.go`
 - Modify: `internal/telemetry/telemetry.go` (build the logger in Init)
 
@@ -1635,6 +1658,7 @@ git commit -s -m "feat(telemetry): fan logs to stdout + otelslog OTLP bridge"
 ### Task 16: Activate the enriched logger on server + CLI
 
 **Files:**
+
 - Modify: `cmd/specgraph/serve.go:79-83` (use enriched logger)
 - Modify: `cmd/specgraph/nudge.go` (server LogHandler = cfg.Log handler)
 
@@ -1668,12 +1692,14 @@ Expected: success.
 - [ ] **Step 3: Manual smoke test — CLI logs to stderr, --json clean on stdout**
 
 Run:
+
 ```bash
 go build -o /tmp/specgraph ./cmd/specgraph/
 SPECGRAPH_OTEL_ENABLED=true OTEL_TRACES_EXPORTER=none OTEL_METRICS_EXPORTER=none OTEL_LOGS_EXPORTER=none /tmp/specgraph version 2>/tmp/err.log 1>/tmp/out.log
 cat /tmp/out.log   # version only, no log lines
 cat /tmp/err.log   # any slog output lands here
 ```
+
 Expected: stdout has only command output; logs (if any) are on stderr.
 
 - [ ] **Step 4: Commit**
@@ -1694,6 +1720,7 @@ git commit -s -m "feat(server): activate enriched logger; keep CLI logs on stder
 ### Task 17: Metrics registry with lazy global instruments
 
 **Files:**
+
 - Create: `internal/telemetry/metrics.go`
 - Test: `internal/telemetry/metrics_test.go`
 
@@ -1856,6 +1883,7 @@ git commit -s -m "feat(telemetry): add app metric instruments + record helpers"
 ### Task 18: Hand-rolled tx, drift, and startup metrics + spans
 
 **Files:**
+
 - Modify: `internal/storage/postgres/tx.go:38-64` (`RunInTransaction`)
 - Modify: `internal/drift/drift.go:49` (`Check`)
 - Modify: `cmd/specgraph/serve.go` (startup timing)
@@ -1935,6 +1963,7 @@ git commit -s -m "feat: add tx/drift/startup spans and duration metrics"
 ### Task 19: Tier-2 metrics subscriber
 
 **Files:**
+
 - Create: `internal/telemetry/subscriber.go`
 - Test: `internal/telemetry/subscriber_test.go`
 - Modify: `cmd/specgraph/serve.go:144` (register subscriber)
@@ -2024,6 +2053,7 @@ git commit -s -m "feat(telemetry): add Tier-2 change-event metrics subscriber"
 ### Task 20: Tier-3 curated storage counters
 
 **Files:**
+
 - Modify: `internal/storage/postgres/graph.go:24` (AddEdge), `:79` (RemoveEdge)
 - Modify: `internal/storage/postgres/authoring.go:26` (TransitionStage)
 - Modify: `internal/storage/postgres/findings.go:22` (StoreFindings)
@@ -2093,6 +2123,7 @@ git commit -s -m "feat(storage): add Tier-3 curated domain counters"
 ### Task 21: Cardinality guard test + metric-seam integration test
 
 **Files:**
+
 - Create: `internal/telemetry/cardinality_test.go`
 
 - [ ] **Step 1: Write the cardinality guard**
@@ -2187,10 +2218,12 @@ Expected: check → integration (validates otelpgx + Tier-3 counters against rea
 - [ ] **Step 3: Disabled-overhead sanity**
 
 Run:
+
 ```bash
 go build -o /tmp/specgraph ./cmd/specgraph/
 /tmp/specgraph spec list 2>&1 | head   # no otel output, original behavior
 ```
+
 Expected: identical to pre-telemetry behavior; no exporter attempts.
 
 - [ ] **Step 4: Update docs**
