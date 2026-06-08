@@ -9,9 +9,14 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 
 	"github.com/specgraph/specgraph/internal/driftscope"
 	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/telemetry"
 )
 
 // Backend is the subset of storage needed by the drift engine.
@@ -47,8 +52,21 @@ func NewEngine(backend Backend, logger *slog.Logger) *Engine {
 // Check runs drift detection for a single spec (by slug) or all eligible specs (empty slug).
 // The scope parameter filters which drift checks to run: "deps", "interfaces", "verify", or "" (all).
 func (e *Engine) Check(ctx context.Context, slug, scope string) (*CheckResult, error) {
+	ctx, span := otel.Tracer("specgraph.drift").Start(ctx, "drift.detect")
+	start := time.Now()
+	var checkErr error
+	defer func() {
+		telemetry.RecordDrift(ctx, time.Since(start))
+		if checkErr != nil {
+			span.RecordError(checkErr)
+			span.SetStatus(codes.Error, checkErr.Error())
+		}
+		span.End()
+	}()
+
 	if !driftscope.IsValid(scope) {
-		return nil, fmt.Errorf("drift: unknown scope %q (valid: deps, interfaces, verify)", scope)
+		checkErr = fmt.Errorf("drift: unknown scope %q (valid: deps, interfaces, verify)", scope)
+		return nil, checkErr
 	}
 	var specs []*storage.Spec
 	var skipped int32
@@ -56,21 +74,25 @@ func (e *Engine) Check(ctx context.Context, slug, scope string) (*CheckResult, e
 	if slug != "" {
 		spec, err := e.backend.GetSpec(ctx, slug)
 		if err != nil {
-			return nil, fmt.Errorf("drift: get spec %q: %w", slug, err)
+			checkErr = fmt.Errorf("drift: get spec %q: %w", slug, err)
+			return nil, checkErr
 		}
 		// Only done specs are eligible for drift detection.
 		if spec.Stage != storage.SpecStageDone {
-			return nil, fmt.Errorf("drift: spec %q stage %q: %w", slug, spec.Stage, storage.ErrSpecIneligibleForDrift)
+			checkErr = fmt.Errorf("drift: spec %q stage %q: %w", slug, spec.Stage, storage.ErrSpecIneligibleForDrift)
+			return nil, checkErr
 		}
 		specs = []*storage.Spec{spec}
 	} else {
 		doneSpecs, err := e.backend.ListSpecs(ctx, string(storage.SpecStageDone), "", maxSpecsPerCheck)
 		if err != nil {
-			return nil, fmt.Errorf("drift: list done specs: %w", err)
+			checkErr = fmt.Errorf("drift: list done specs: %w", err)
+			return nil, checkErr
 		}
 		allSpecs, err := e.backend.ListSpecs(ctx, "", "", maxSpecsPerCheck)
 		if err != nil {
-			return nil, fmt.Errorf("drift: list all specs: %w", err)
+			checkErr = fmt.Errorf("drift: list all specs: %w", err)
+			return nil, checkErr
 		}
 		specs = append(specs, doneSpecs...)
 		if diff := len(allSpecs) - len(specs); diff > 0 {

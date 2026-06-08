@@ -257,6 +257,7 @@ func startMainServer(srv *http.Server, ln net.Listener) <-chan error {
 }
 
 func runServe(cmd *cobra.Command, _ []string) error {
+	startupBegin := time.Now()
 	if os.Getenv("SPECGRAPH_PG_URL") != "" {
 		slog.LogAttrs(context.Background(), slog.LevelWarn, "SPECGRAPH_PG_URL is no longer read; use SPECGRAPH_SERVER_POSTGRES_URL")
 	}
@@ -557,6 +558,10 @@ func runServe(cmd *cobra.Command, _ []string) error {
 
 	slog.LogAttrs(context.Background(), slog.LevelInfo, "server listening", slog.String("addr", "http://"+addr))
 	slog.LogAttrs(context.Background(), slog.LevelInfo, "MCP endpoint available", slog.String("path", "/mcp/"))
+
+	if telState.tel != nil {
+		telemetry.RecordStartup(ctx, time.Since(startupBegin))
+	}
 
 	// Degraded path: retry in the background; activate on first success. The
 	// ports are already open (serving 503) before this goroutine starts.
