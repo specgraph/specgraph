@@ -33,4 +33,14 @@ jump to whichever workflow you need.
 
     [:octicons-arrow-right-24: Health Probes](health-probes.md)
 
+- :material-chart-line: **Observability (OpenTelemetry)**
+
+    ---
+
+    Enable OpenTelemetry traces, metrics, and logs for the server and CLI —
+    master switch, sampling, context-aware logging, and the emitted signal
+    inventory.
+
+    [:octicons-arrow-right-24: Observability](observability.md)
+
 </div>

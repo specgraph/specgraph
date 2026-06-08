@@ -89,6 +89,7 @@ the subcommand allow-list (`init`, `doctor`, `health`, etc.),
 | `internal/storage/postgres/tx.go` | Transaction support (RunInTransaction, context-threaded tx via pgx) |
 | `internal/render/` | Markdown renderers for CLI output — one file per entity type, functions accept proto types and return strings |
 | `internal/sync/` | Sync adapters (beads, GitHub) with exec runner |
+| `internal/telemetry/` | OpenTelemetry lifecycle: trace/metric/log providers, context-enriching slog handler, otelconnect/otelpgx/otelhttp wiring, app metric instruments (single Init/Shutdown; no-op when disabled) |
 | `e2e/` | End-to-end tests (Ginkgo/Gomega, require Docker) |
 | `docs/plans/` | Implementation plan documents |
 
