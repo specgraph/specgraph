@@ -56,10 +56,7 @@ func nudgePreRun(cmd *cobra.Command, _ []string) error {
 	initTelemetry(cmd)
 
 	// 1. Subcommand allow-list: walk to the top-level command.
-	top := cmd
-	for top.HasParent() && top.Parent() != rootCmd {
-		top = top.Parent()
-	}
+	top := topLevelCommand(cmd)
 	if driftNudgeAllowList[top.Name()] {
 		return nil
 	}
@@ -131,6 +128,17 @@ func nudgePreRun(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+// topLevelCommand returns the command one level under rootCmd that owns cmd's
+// subtree (cmd itself if it is already top-level). Used to classify commands
+// for the drift-nudge allow-list and the telemetry role.
+func topLevelCommand(cmd *cobra.Command) *cobra.Command {
+	top := cmd
+	for top.HasParent() && top.Parent() != rootCmd {
+		top = top.Parent()
+	}
+	return top
+}
+
 // initTelemetry resolves telemetry config from the parsed persistent flags +
 // env, initializes the providers, starts a root command span, and stashes the
 // result in telState. Best-effort: any failure logs a warning and continues.
@@ -140,6 +148,14 @@ func initTelemetry(cmd *cobra.Command) {
 	cfg.Version = buildVersion()
 	// CLI base handler writes to STDERR so --json output on stdout stays clean.
 	cfg.LogHandler = slog.NewJSONHandler(os.Stderr, nil)
+	// serve runs the long-lived server: full role (traces+metrics+logs) and
+	// logs to stdout (the CLI stderr JSON handler is for short-lived commands).
+	// Walk to the top-level command (one level under rootCmd) to classify.
+	top := topLevelCommand(cmd)
+	if top.Name() == "serve" {
+		cfg.Role = telemetry.RoleServer
+		cfg.LogHandler = slog.NewJSONHandler(os.Stdout, nil)
+	}
 	cfg.ProjectFromContext = telemetryProjectAccessor
 	cfg.IdentityFromContext = telemetryIdentityAccessor
 

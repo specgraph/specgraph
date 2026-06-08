@@ -32,6 +32,7 @@ import (
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/server/probes"
 	syncpkg "github.com/specgraph/specgraph/internal/sync"
+	"github.com/specgraph/specgraph/internal/telemetry"
 	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/specgraph/specgraph/web"
 	"github.com/spf13/cobra"
@@ -169,7 +170,16 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 
 	interceptor := auth.NewAuthInterceptor(resolver, deps.authorizer)
 	maxBytes := connect.WithReadMaxBytes(4 << 20)
-	opts := connect.WithInterceptors(interceptor)
+	interceptors := []connect.Interceptor{}
+	otelIC, otelErr := telemetry.ServerInterceptor(telState.enabled)
+	if otelErr != nil {
+		return appHandler{}, fmt.Errorf("otel interceptor: %w", otelErr)
+	}
+	if otelIC != nil {
+		interceptors = append(interceptors, otelIC) // outermost: before auth
+	}
+	interceptors = append(interceptors, interceptor) // existing auth interceptor
+	opts := connect.WithInterceptors(interceptors...)
 
 	mux := server.NewMux(store, opts, maxBytes)
 	server.RegisterHealthService(mux, opts, maxBytes)
@@ -219,6 +229,9 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 	mux.Handle("/", server.StaticHandler(deps.webFS))
 
 	handler := server.SecurityHeaders(server.ProjectMiddleware(mux))
+	if telState.enabled {
+		handler = telemetry.WrapHTTPHandler(handler)
+	}
 	if deps.corsOrigin != "" {
 		handler = server.CORSMiddleware(deps.corsOrigin, handler)
 	}
@@ -520,6 +533,16 @@ func runServe(cmd *cobra.Command, _ []string) error {
 
 		// Post-drain store/auth/tracker teardown (nil until activation).
 		runCleanup()
+
+		// Primary telemetry flush after the servers drain. run()'s deferred
+		// Shutdown is a safe, concurrency-serialized no-op afterward.
+		if telState.tel != nil {
+			shutdownCtx, c := context.WithTimeout(context.Background(), 5*time.Second)
+			defer c()
+			if shErr := telState.tel.Shutdown(shutdownCtx); shErr != nil {
+				slog.LogAttrs(context.Background(), slog.LevelWarn, "telemetry shutdown", slog.Any("error", shErr))
+			}
+		}
 	}()
 
 	slog.LogAttrs(context.Background(), slog.LevelInfo, "server listening", slog.String("addr", "http://"+addr))

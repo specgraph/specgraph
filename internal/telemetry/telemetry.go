@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
@@ -57,6 +58,9 @@ type Telemetry struct {
 	Meter  metric.Meter
 
 	// shutdownFuncs are called in reverse order by Shutdown. Empty when no-op.
+	// mu serializes concurrent Shutdown callers (serve's graceful flush vs.
+	// run()'s deferred flush).
+	mu            sync.Mutex
 	shutdownFuncs []func(context.Context) error
 }
 
@@ -136,9 +140,14 @@ func Init(ctx context.Context, cfg Config) (*Telemetry, error) { //nolint:gocrit
 }
 
 // Shutdown flushes and shuts down each provider in reverse registration
-// order, aggregating errors. Idempotent: a second call is a no-op. Bound the
+// order, aggregating errors. Idempotent and safe for concurrent use: the
+// mutex serializes callers, so a second (possibly concurrent) call blocks
+// until the first completes and then is a no-op. This lets serve's
+// graceful-shutdown flush and run()'s deferred flush race safely. Bound the
 // caller's ctx with a timeout (the caller owns the budget).
 func (t *Telemetry) Shutdown(ctx context.Context) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	var errs []error
 	for i := len(t.shutdownFuncs) - 1; i >= 0; i-- {
 		if err := t.shutdownFuncs[i](ctx); err != nil {

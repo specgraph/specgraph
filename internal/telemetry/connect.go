@@ -6,6 +6,7 @@ package telemetry
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"connectrpc.com/connect"
 	"connectrpc.com/otelconnect"
@@ -56,4 +57,21 @@ func LoopbackTransport(enabled bool, base http.RoundTripper) http.RoundTripper {
 		return base
 	}
 	return otelhttp.NewTransport(base, otelhttp.WithPropagators(loopbackPropagator()))
+}
+
+// WrapHTTPHandler wraps h with otelhttp to produce the root server HTTP span.
+// The long-lived /mcp/ GET notification stream (SSE) is excluded from span
+// creation: its span would stay open for the whole session and never export
+// under a batch processor, inflating active-request counts. otelhttp wraps the
+// ResponseWriter via httpsnoop, which preserves http.Flusher/Hijacker, so the
+// /mcp/ streamable endpoint keeps working.
+func WrapHTTPHandler(h http.Handler) http.Handler {
+	return otelhttp.NewHandler(h, "specgraph.http",
+		otelhttp.WithFilter(func(r *http.Request) bool {
+			if strings.HasPrefix(r.URL.Path, "/mcp/") && r.Method == http.MethodGet {
+				return false // long-lived SSE notification stream
+			}
+			return true
+		}),
+	)
 }
