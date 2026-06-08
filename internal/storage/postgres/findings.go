@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/telemetry"
 )
 
 // Compile-time interface assertion.
@@ -98,7 +99,11 @@ func (s *Store) StoreFindings(ctx context.Context, slug string, passType storage
 		}
 		return nil
 	})
-	return ids, err
+	if err != nil {
+		return ids, err
+	}
+	telemetry.RecordFindingsStored(ctx, string(passType), int64(len(findings)))
+	return ids, nil
 }
 
 // ListFindings returns findings for a spec, optionally filtered by passType.
