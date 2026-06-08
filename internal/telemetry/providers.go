@@ -17,7 +17,7 @@ import (
 
 // buildResource merges SDK detectors (env/process/host) with explicit
 // service.name/version. service.name is "specgraph-server" or "specgraph-cli".
-func buildResource(ctx context.Context, cfg Config) (*resource.Resource, error) {
+func buildResource(ctx context.Context, cfg *Config) (*resource.Resource, error) {
 	name := "specgraph-" + string(cfg.Role)
 	if cfg.ServiceName != "" {
 		name = cfg.ServiceName
@@ -39,7 +39,7 @@ func buildResource(ctx context.Context, cfg Config) (*resource.Resource, error) 
 
 // buildTracerProvider returns a TracerProvider. CLI role uses a synchronous
 // span processor (short-lived process); server role uses a batch processor.
-func buildTracerProvider(ctx context.Context, cfg Config, r *resource.Resource) (*sdktrace.TracerProvider, error) {
+func buildTracerProvider(ctx context.Context, cfg *Config, r *resource.Resource) (*sdktrace.TracerProvider, error) {
 	exp, err := autoexport.NewSpanExporter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("telemetry: span exporter: %w", err)
@@ -72,7 +72,7 @@ func buildMeterProvider(ctx context.Context, r *resource.Resource) (*sdkmetric.M
 
 // buildLoggerProvider returns a LoggerProvider with a batch processor, or
 // nil if log export is disabled.
-func buildLoggerProvider(ctx context.Context, cfg Config, r *resource.Resource) (*sdklog.LoggerProvider, error) {
+func buildLoggerProvider(ctx context.Context, cfg *Config, r *resource.Resource) (*sdklog.LoggerProvider, error) {
 	if !cfg.LogsExport {
 		return nil, nil
 	}
