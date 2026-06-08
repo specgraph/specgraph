@@ -274,7 +274,15 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("configure logger: %w", err)
 	}
-	slog.SetDefault(logger)
+	if telState.tel != nil {
+		// Layer enrichment (trace_id/span_id/project/identity) + OTLP log
+		// export over the server's CONFIGURED handler, honoring cfg.Log knobs
+		// (--log-format/--log-level/--log-output). When telemetry is disabled,
+		// NewLogger returns the plain configured logger unchanged.
+		slog.SetDefault(telState.tel.NewLogger(logger.Handler()))
+	} else {
+		slog.SetDefault(logger)
+	}
 	slog.LogAttrs(context.Background(), slog.LevelInfo, "specgraph server starting",
 		slog.String("version", buildVersion()),
 		slog.String("listen", cfg.Server.Listen),
