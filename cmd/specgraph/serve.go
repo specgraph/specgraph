@@ -205,7 +205,9 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(resolver))
 	server.RegisterAuthHandlers(mux, resolver, auth.RequireAuth(resolver))
 
-	mcpClient := mcppkg.NewClient(newHTTPClient(""), selfBaseURL(cfg.Server.Listen))
+	loopbackClient := newHTTPClient("")
+	loopbackClient.Transport = telemetry.LoopbackTransport(telState.enabled, loopbackClient.Transport)
+	mcpClient := mcppkg.NewClient(loopbackClient, selfBaseURL(cfg.Server.Listen))
 	mcpSrv := mcppkg.NewServer(mcpClient)
 	mcpHTTPHandler := mcpSrv.HTTPHandler(
 		mcpserver.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
