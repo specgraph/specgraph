@@ -6,6 +6,8 @@ package main
 import (
 	"context"
 	"errors"
+	"io"
+	"net/http"
 	"sync/atomic"
 
 	"github.com/specgraph/specgraph/internal/server/probes"
@@ -38,4 +40,34 @@ func (rp *readinessPinger) Ping(ctx context.Context) error {
 		return errStoreNotReady
 	}
 	return lp.p.Ping(ctx)
+}
+
+// atomicHandler is a fixed http.Handler whose delegate is swapped atomically.
+// srv.Handler is set to the atomicHandler once and never reassigned; only the
+// internal pointer changes, so concurrent swaps never race the http.Server's
+// per-request Handler read.
+type atomicHandler struct {
+	h atomic.Pointer[http.Handler]
+}
+
+func newAtomicHandler(initial http.Handler) *atomicHandler {
+	a := &atomicHandler{}
+	a.set(initial)
+	return a
+}
+
+func (a *atomicHandler) set(h http.Handler) { a.h.Store(&h) }
+
+func (a *atomicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	(*a.h.Load()).ServeHTTP(w, r)
+}
+
+// notReadyHandler responds 503 to every request while Postgres is unavailable.
+func notReadyHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", "5")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = io.WriteString(w, "storage not ready\n")
+	})
 }
