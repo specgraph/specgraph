@@ -333,6 +333,32 @@ func runServe(cmd *cobra.Command, _ []string) error {
 
 	pol := defaultBackoffPolicy()
 
+	// Bind the probe listener BEFORE the first (potentially slow) Postgres
+	// connect. Liveness must never wait on storage: /livez answers 200 from
+	// t≈0 and /readyz is a truthful 503 while we connect, so a kubelet liveness
+	// probe can't kill the pod during a degraded boot. The dial is bounded
+	// (postgres.defaultConnectTimeout), but even a bounded stall must not delay
+	// the port binding past the liveness window. The readiness probe LOOP is
+	// started later (probeHandler.Start, after the path decision) so a healthy
+	// boot stays log-silent.
+	probeHandler := probes.NewHandler()
+	probeSrv, probeErrCh, err := startProbeListener(ctx, probeHandler, probesCfg)
+	if err != nil {
+		return err
+	}
+	// stopProbe shuts the probe listener down on a fatal early return that
+	// happens before the shutdown goroutine (which otherwise owns it) is wired.
+	stopProbe := func() {
+		if probeSrv == nil {
+			return
+		}
+		shutCtx, c := context.WithTimeout(context.Background(), probeShutdownTimeout)
+		defer c()
+		if shErr := probeSrv.Shutdown(shutCtx); shErr != nil {
+			slog.LogAttrs(context.Background(), slog.LevelWarn, "probe server shutdown", slog.Any("error", shErr))
+		}
+	}
+
 	// Decide the boot path BEFORE starting any server or shutdown goroutine, so
 	// a fatal docker:true / credential failure starts nothing (unchanged).
 	var (
@@ -342,12 +368,14 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	if cfg.Server.Docker {
 		r, connErr := connectStore(ctx, connURL)
 		if connErr != nil {
+			stopProbe()
 			return fmt.Errorf("connect to postgres: %w", connErr)
 		}
 		res, haveConn = r, true
 	} else {
 		r, degrade, connErr := firstConnect(ctx, connURL, pol)
 		if connErr != nil {
+			stopProbe()
 			return connErr // credential-exhausted fatal, or ctx cancelled
 		}
 		if !degrade {
@@ -457,22 +485,25 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	// Happy path: wire and swap in the real handler BEFORE opening the port,
-	// so clients never observe a 503 window. activate also sets the pinger's
-	// store, so the probe listener's first probe is healthy (no spurious WARN).
-	// If activation fails here, no listener has been opened yet — clean return.
+	// Happy path: wire and swap in the real handler BEFORE opening the main
+	// port, so clients never observe a 503 window. activate also sets the
+	// pinger's store, so the probe loop's first probe (started below) is
+	// healthy (no spurious WARN). The probe listener is already bound, so a
+	// failure here must stop it before returning.
 	if haveConn {
 		if actErr := activate(res); actErr != nil {
 			stopSweeper()
+			stopProbe()
 			return actErr
 		}
 	}
 
-	// Open the ports. On the happy path handlerRef already holds the real
+	// Open the main port. On the happy path handlerRef already holds the real
 	// handler; in the degraded window it holds the blanket-503 handler.
 	mainLn, err := net.Listen("tcp", addr)
 	if err != nil {
 		stopSweeper()
+		stopProbe()
 		runCleanup()
 		return fmt.Errorf("main listener bind %s: %w", addr, err)
 	}
@@ -484,14 +515,13 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		IdleTimeout:       120 * time.Second,
 	}
 
-	probeSrv, probeErrCh, err := startProbeListener(ctx, pinger, probesCfg)
-	if err != nil {
-		stopSweeper()
-		if closeErr := mainLn.Close(); closeErr != nil {
-			slog.LogAttrs(context.Background(), slog.LevelWarn, "main listener close", slog.Any("error", closeErr))
-		}
-		runCleanup()
-		return err
+	// Now start the readiness probe loop. The listener was bound up front; on
+	// the happy path the pinger's store is already set (silent first probe), on
+	// the degraded path it is nil (first probe legitimately fails → one WARN).
+	// Skip when probes are disabled (no listener) to preserve "probes off → no
+	// probe goroutine, readiness not observable".
+	if probeSrv != nil {
+		probeHandler.Start(ctx, pinger, probesCfg.Interval, probesCfg.Timeout)
 	}
 	mainErrCh := startMainServer(srv, mainLn)
 
@@ -640,17 +670,22 @@ func validateServerConfig(cfg *config.GlobalConfig) (config.ProbesConfig, error)
 	return probesCfg, nil
 }
 
-// startProbeListener binds a plain-HTTP listener serving /livez and /readyz
-// using tuning from a resolved ProbesConfig. Returns (nil, nil, nil) when
-// Listen is empty so callers treat probes as off. Bind errors abort startup
-// rather than leaving a running API that kubelet can never mark ready.
+// startProbeListener binds a plain-HTTP listener serving the handler's /livez
+// and /readyz on the resolved ProbesConfig address. Returns (nil, nil, nil)
+// when Listen is empty so callers treat probes as off. Bind errors abort
+// startup rather than leaving a running API that kubelet can never mark ready.
+//
+// The listener is bound but the readiness probe loop is NOT started here — the
+// caller owns that (handler.Start) so it can bring liveness up early (before
+// the dependency connects) yet defer readiness probing until the dependency
+// wiring is ready, keeping a healthy boot log-silent.
 //
 // The returned error channel fires once if the background Serve returns a
 // non-ErrServerClosed error — a dead probe listener while the main server
 // keeps serving traffic is a silent split-brain that kubelet can't recover
 // from on its own, so the caller should treat a send on this channel as a
 // shutdown trigger.
-func startProbeListener(ctx context.Context, pinger probes.Pinger, cfg config.ProbesConfig) (*http.Server, <-chan error, error) {
+func startProbeListener(ctx context.Context, handler *probes.Handler, cfg config.ProbesConfig) (*http.Server, <-chan error, error) {
 	if cfg.Listen == "" {
 		return nil, nil, nil
 	}
@@ -658,12 +693,11 @@ func startProbeListener(ctx context.Context, pinger probes.Pinger, cfg config.Pr
 	if err != nil {
 		return nil, nil, fmt.Errorf("probe listener bind %s: %w", cfg.Listen, err)
 	}
-	h := probes.New(ctx, pinger, cfg.Interval, cfg.Timeout)
 	srv := &http.Server{
 		// Addr reflects the resolved listener address, not the caller's
 		// input, so callers passing ":0" can observe the ephemeral port.
 		Addr:              ln.Addr().String(),
-		Handler:           h.Mux(),
+		Handler:           handler.Mux(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	slog.LogAttrs(ctx, slog.LevelInfo, "probe endpoints listening",

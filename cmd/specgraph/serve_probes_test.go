@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/server/probes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,17 +34,50 @@ func TestStartProbeListener_DisabledWhenEmpty(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	srv, errCh, err := startProbeListener(ctx, &stubPinger{}, probesCfg(""))
+	srv, errCh, err := startProbeListener(ctx, probes.NewHandler(), probesCfg(""))
 	require.NoError(t, err)
 	assert.Nil(t, srv, "empty addr disables probes — no listener should be created")
 	assert.Nil(t, errCh, "no death channel when probes are disabled")
+}
+
+// TestStartProbeListener_LivezUpBeforeProbing is the core liveness-decoupling
+// guarantee: the listener answers /livez with 200 and /readyz with 503 as soon
+// as it binds — before Start runs any probe. This is what keeps kubelet from
+// killing the pod while Postgres is still connecting.
+func TestStartProbeListener_LivezUpBeforeProbing(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	srv, _, err := startProbeListener(ctx, probes.NewHandler(), probesCfg("127.0.0.1:0"))
+	require.NoError(t, err)
+	require.NotNil(t, srv)
+	t.Cleanup(func() {
+		shutCtx, shutCancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer shutCancel()
+		_ = srv.Shutdown(shutCtx)
+	})
+	base := "http://" + srv.Addr
+
+	resp, err := http.Get(base + "/livez") //nolint:noctx // test probe, no ctx threading needed
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	assert.Equal(t, http.StatusOK, resp.StatusCode,
+		"/livez must be 200 immediately on bind, with no probe loop started")
+
+	ready, err := http.Get(base + "/readyz") //nolint:noctx // test probe
+	require.NoError(t, err)
+	require.NoError(t, ready.Body.Close())
+	assert.Equal(t, http.StatusServiceUnavailable, ready.StatusCode,
+		"/readyz must be 503 until a probe runs")
 }
 
 func TestStartProbeListener_ServesLivezAndReadyz(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	srv, _, err := startProbeListener(ctx, &stubPinger{}, probesCfg("127.0.0.1:0"))
+	cfg := probesCfg("127.0.0.1:0")
+	h := probes.NewHandler()
+	srv, _, err := startProbeListener(ctx, h, cfg)
 	require.NoError(t, err)
 	require.NotNil(t, srv)
 	t.Cleanup(func() {
@@ -59,6 +93,8 @@ func TestStartProbeListener_ServesLivezAndReadyz(t *testing.T) {
 	require.NoError(t, resp.Body.Close())
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
+	// Readiness only flips once the probe loop is started with a healthy pinger.
+	h.Start(ctx, &stubPinger{}, cfg.Interval, cfg.Timeout)
 	require.Eventually(t, func() bool {
 		r, getErr := http.Get(base + "/readyz") //nolint:noctx // retried via Eventually
 		if getErr != nil {
@@ -78,7 +114,7 @@ func TestStartProbeListener_BindFailureReturnsError(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	srv, errCh, err := startProbeListener(ctx, &stubPinger{}, probesCfg(addr))
+	srv, errCh, err := startProbeListener(ctx, probes.NewHandler(), probesCfg(addr))
 	assert.Nil(t, srv)
 	assert.Nil(t, errCh)
 	require.Error(t, err)
@@ -90,7 +126,7 @@ func TestStartProbeListener_ShutdownClosesListener(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	srv, errCh, err := startProbeListener(ctx, &stubPinger{}, probesCfg("127.0.0.1:0"))
+	srv, errCh, err := startProbeListener(ctx, probes.NewHandler(), probesCfg("127.0.0.1:0"))
 	require.NoError(t, err)
 	require.NotNil(t, srv)
 
@@ -126,8 +162,9 @@ func TestStartProbeListener_ReadyzReportsPingerFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pinger := &stubPinger{err: errors.New("db unreachable")}
-	srv, _, err := startProbeListener(ctx, pinger, probesCfg("127.0.0.1:0"))
+	cfg := probesCfg("127.0.0.1:0")
+	h := probes.NewHandler()
+	srv, _, err := startProbeListener(ctx, h, cfg)
 	require.NoError(t, err)
 	require.NotNil(t, srv)
 	t.Cleanup(func() {
@@ -136,6 +173,7 @@ func TestStartProbeListener_ReadyzReportsPingerFailure(t *testing.T) {
 		_ = srv.Shutdown(shutCtx)
 	})
 
+	h.Start(ctx, &stubPinger{err: errors.New("db unreachable")}, cfg.Interval, cfg.Timeout)
 	require.Eventually(t, func() bool {
 		r, getErr := http.Get("http://" + srv.Addr + "/readyz") //nolint:noctx // retried
 		if getErr != nil {
@@ -150,7 +188,7 @@ func TestStartProbeListener_ListenerDeathSignalsErrCh(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	srv, errCh, err := startProbeListener(ctx, &stubPinger{}, probesCfg("127.0.0.1:0"))
+	srv, errCh, err := startProbeListener(ctx, probes.NewHandler(), probesCfg("127.0.0.1:0"))
 	require.NoError(t, err)
 	require.NotNil(t, srv)
 	t.Cleanup(func() {
@@ -169,6 +207,6 @@ func TestStartProbeListener_ListenerDeathSignalsErrCh(t *testing.T) {
 		t.Fatalf("Close → ErrServerClosed must not signal death, got %v", deadErr)
 	case <-time.After(100 * time.Millisecond):
 	}
-	// Drain any lingering stubPinger goroutines.
+	// Drain any lingering goroutines.
 	_, _ = io.Copy(io.Discard, new(strings.Reader))
 }

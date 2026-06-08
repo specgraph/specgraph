@@ -69,6 +69,37 @@ func WithSliceOps(ops storage.SliceBackend) Option {
 	return func(s *Store) { s.sliceOps = ops }
 }
 
+// defaultConnectTimeout bounds each connection dial. Without it pgx inherits
+// the caller's context deadline, and the server's startup connect runs under an
+// unbounded context — so a blackholed host (TCP SYN silently dropped by a
+// NetworkPolicy, security group, or a database that is reachable by DNS but not
+// yet accepting connections) blocks for the OS SYN-retransmit budget (~127s on
+// Linux). That stalls server startup long past the Kubernetes liveness window,
+// because the /livez+/readyz probe listeners only bind after the first connect
+// returns. Bounding the dial turns a hang into a fast, retryable error so the
+// degraded-startup path engages and the probe listeners come up.
+const defaultConnectTimeout = 5 * time.Second
+
+// buildPoolConfig parses connString into a pgxpool.Config and applies a default
+// per-dial ConnectTimeout when the parsed value is zero.
+//
+// A zero ConnectTimeout means either "unset" or an explicit connect_timeout=0
+// (libpq's "wait indefinitely") — pgconn parses both to the same zero value, so
+// they are indistinguishable here. Both are intentionally clamped to
+// defaultConnectTimeout: an unbounded dial is exactly the startup hang this
+// guards against, so honoring an explicit "infinite" would reintroduce the
+// liveness hazard. A non-zero connect_timeout in the DSN is preserved.
+func buildPoolConfig(connString string) (*pgxpool.Config, error) {
+	poolCfg, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: parse config: %w", err)
+	}
+	if poolCfg.ConnConfig.ConnectTimeout == 0 {
+		poolCfg.ConnConfig.ConnectTimeout = defaultConnectTimeout
+	}
+	return poolCfg, nil
+}
+
 // New creates a new PostgreSQL-backed Store, runs migrations, and ensures the
 // project row exists.
 func New(ctx context.Context, connString string, opts ...Option) (*Store, error) {
@@ -81,9 +112,9 @@ func New(ctx context.Context, connString string, opts ...Option) (*Store, error)
 		return nil, fmt.Errorf("postgres: project slug required: use postgres.WithProject(slug)")
 	}
 
-	poolCfg, err := pgxpool.ParseConfig(connString)
+	poolCfg, err := buildPoolConfig(connString)
 	if err != nil {
-		return nil, fmt.Errorf("postgres: parse config: %w", err)
+		return nil, err
 	}
 	if s.tracingEnabled {
 		poolCfg.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithTrimSQLInSpanName())

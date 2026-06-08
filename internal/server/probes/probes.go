@@ -36,13 +36,28 @@ type Handler struct {
 	state atomic.Pointer[probeState]
 }
 
-// New starts a background goroutine that probes pinger every interval using
-// probeTimeout per call. The goroutine exits when ctx is cancelled. The
-// first probe runs immediately so readiness reflects current state without
-// waiting a full interval.
-func New(ctx context.Context, pinger Pinger, interval, probeTimeout time.Duration) *Handler {
-	h := &Handler{}
+// NewHandler returns a Handler that serves /livez (always 200) and /readyz
+// (503 until the first probe completes). It does NOT probe — bind it to a
+// listener to bring liveness up immediately, independent of the gated
+// dependency, then call Start once the dependency wiring is ready. Until Start
+// runs, /readyz is a truthful, silent 503 ("probe has not yet completed").
+func NewHandler() *Handler {
+	return &Handler{}
+}
+
+// Start launches the background probe loop: it probes pinger every interval
+// using probeTimeout per call, updating /readyz. The first probe runs
+// immediately so readiness reflects current state without waiting a full
+// interval. The goroutine exits when ctx is cancelled. Call Start at most once.
+func (h *Handler) Start(ctx context.Context, pinger Pinger, interval, probeTimeout time.Duration) {
 	go h.run(ctx, pinger, interval, probeTimeout)
+}
+
+// New binds and starts in one call: NewHandler followed immediately by Start.
+// Retained for callers whose pinger is already live when the listener binds.
+func New(ctx context.Context, pinger Pinger, interval, probeTimeout time.Duration) *Handler {
+	h := NewHandler()
+	h.Start(ctx, pinger, interval, probeTimeout)
 	return h
 }
 
