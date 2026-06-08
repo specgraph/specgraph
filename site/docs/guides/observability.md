@@ -112,8 +112,10 @@ remain trace-enriched — only traces and metrics are exported.
   query parameters are **not** included.
 - `storage.transaction`
 - `drift.detect`
-- **MCP spans** — `mcp.tool/<name>`, `mcp.resource/<uri>`,
-  `mcp.resource_template/<uri>`, `mcp.prompt/<name>`.
+- **MCP spans** — `mcp.tool/<name>`, `mcp.resource`, `mcp.resource_template`,
+  `mcp.prompt/<name>`. Resource span names are kept low-cardinality; the
+  concrete URI is carried on the `mcp.resource.uri` /
+  `mcp.resource_template.uri` span attribute rather than in the span name.
 - **CLI command root span** — `cli <command path>`.
 
 ### Metrics (server only)
