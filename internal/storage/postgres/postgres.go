@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oklog/ulid/v2"
 
@@ -36,6 +37,8 @@ type Store struct {
 	project  string
 	ownsPool bool
 	shared   *sharedState
+
+	tracingEnabled bool
 }
 
 // Option configures a Store.
@@ -51,6 +54,13 @@ func WithClock(fn func() time.Time) Option {
 // Required — New() returns an error if no project is set.
 func WithProject(slug string) Option {
 	return func(s *Store) { s.project = slug }
+}
+
+// WithTracing enables the otelpgx query tracer on the pool. Off by default;
+// callers (serve) pass the telemetry-enabled flag. When off, the pool is
+// constructed exactly as before (no tracer), preserving the original hot path.
+func WithTracing(enabled bool) Option {
+	return func(s *Store) { s.tracingEnabled = enabled }
 }
 
 // WithSliceOps overrides the default SliceBackend used by StoreDecomposeOutput.
@@ -71,7 +81,14 @@ func New(ctx context.Context, connString string, opts ...Option) (*Store, error)
 		return nil, fmt.Errorf("postgres: project slug required: use postgres.WithProject(slug)")
 	}
 
-	pool, err := pgxpool.New(ctx, connString)
+	poolCfg, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: parse config: %w", err)
+	}
+	if s.tracingEnabled {
+		poolCfg.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithTrimSQLInSpanName())
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		return nil, fmt.Errorf("postgres: create pool: %w", err)
 	}

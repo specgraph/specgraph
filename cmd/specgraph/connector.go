@@ -57,7 +57,7 @@ type connectResult struct {
 // repeated retries never leak a pgxpool.Pool. postgres.New self-cleans its own
 // internal failures; this covers the steps after it.
 func connectStore(ctx context.Context, connURL string) (connectResult, error) {
-	s, err := postgres.New(ctx, connURL, postgres.WithProject("_server"))
+	s, err := postgres.New(ctx, connURL, postgres.WithProject("_server"), postgres.WithTracing(telState.enabled))
 	if err != nil {
 		return connectResult{}, err
 	}
