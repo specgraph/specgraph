@@ -8,6 +8,9 @@ import (
 	"testing"
 
 	sdkmcp "github.com/mark3labs/mcp-go/mcp"
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 func TestNewServer_AllToolsRegistered(t *testing.T) {
@@ -163,5 +166,78 @@ func readResourceRequest(uri string) sdkmcp.ReadResourceRequest {
 		Params: sdkmcp.ReadResourceParams{
 			URI: uri,
 		},
+	}
+}
+
+// recordSpans installs an in-memory SpanRecorder as the global tracer provider
+// for the duration of a test, restoring the previous provider on cleanup. The
+// MCP span helper resolves the global tracer, so this captures the spans it
+// emits.
+func recordSpans(t *testing.T) *tracetest.SpanRecorder {
+	t.Helper()
+	rec := tracetest.NewSpanRecorder()
+	prev := otel.GetTracerProvider()
+	otel.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(rec)))
+	t.Cleanup(func() { otel.SetTracerProvider(prev) })
+	return rec
+}
+
+// TestMCPSpan_ResourceURIBoundedName asserts that resource span names stay
+// low-cardinality (the concrete URI is a span attribute, not part of the span
+// name), so an unbounded set of resource URIs can never explode span-name
+// cardinality in trace backends.
+func TestMCPSpan_ResourceURIBoundedName(t *testing.T) {
+	rec := recordSpans(t)
+
+	const uri = "specgraph://spec/oauth-refresh"
+	handler := func(_ context.Context, u string) ([]ResourceContent, error) {
+		return []ResourceContent{{URI: u, MimeType: "text/plain", Text: "x"}}, nil
+	}
+	if _, err := wrapResourceHandler(handler)(context.Background(), readResourceRequest(uri)); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+
+	spans := rec.Ended()
+	if len(spans) != 1 {
+		t.Fatalf("recorded %d spans, want 1", len(spans))
+	}
+	span := spans[0]
+	if span.Name() != "mcp.resource" {
+		t.Errorf("span name = %q, want %q (the URI must NOT be in the span name)", span.Name(), "mcp.resource")
+	}
+	var gotURI string
+	var found bool
+	for _, kv := range span.Attributes() {
+		if string(kv.Key) == "mcp.resource.uri" {
+			found, gotURI = true, kv.Value.AsString()
+		}
+	}
+	if !found {
+		t.Fatalf("span missing mcp.resource.uri attribute; attrs=%v", span.Attributes())
+	}
+	if gotURI != uri {
+		t.Errorf("mcp.resource.uri = %q, want %q", gotURI, uri)
+	}
+}
+
+// TestMCPSpan_ToolNameInBoundedName asserts that tool span names keep the tool
+// name in the span name (tool names come from a fixed compiled-in registry, so
+// they are bounded — unlike resource URIs).
+func TestMCPSpan_ToolNameInBoundedName(t *testing.T) {
+	rec := recordSpans(t)
+
+	handler := func(_ context.Context, _ map[string]any) (*ToolResult, error) {
+		return textResult("ok"), nil
+	}
+	if _, err := wrapToolHandler(handler)(context.Background(), callToolRequest("author", nil)); err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+
+	spans := rec.Ended()
+	if len(spans) != 1 {
+		t.Fatalf("recorded %d spans, want 1", len(spans))
+	}
+	if got := spans[0].Name(); got != "mcp.tool/author" {
+		t.Errorf("span name = %q, want %q", got, "mcp.tool/author")
 	}
 }

@@ -4,11 +4,13 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"hash/crc32"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -16,8 +18,11 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/config/managedfiles"
+	"github.com/specgraph/specgraph/internal/server"
+	"github.com/specgraph/specgraph/internal/telemetry"
 	"github.com/specgraph/specgraph/internal/xdg"
 )
 
@@ -47,11 +52,13 @@ var driftNudgeAllowList = map[string]bool{
 // (subcommand allow-list, isatty, env, config, throttle) keep the
 // fast path cheap.
 func nudgePreRun(cmd *cobra.Command, _ []string) error {
+	// Telemetry bootstrap: flags are parsed by now (cobra parses before
+	// PersistentPreRunE) and the command/role is known. Init once here; the
+	// handle + root span are stashed in telState for run()'s deferred flush.
+	initTelemetry(cmd)
+
 	// 1. Subcommand allow-list: walk to the top-level command.
-	top := cmd
-	for top.HasParent() && top.Parent() != rootCmd {
-		top = top.Parent()
-	}
+	top := topLevelCommand(cmd)
 	if driftNudgeAllowList[top.Name()] {
 		return nil
 	}
@@ -121,6 +128,84 @@ func nudgePreRun(cmd *cobra.Command, _ []string) error {
 		stale+drifted, stale, drifted)
 	gcOldNudgeFiles()
 	return nil
+}
+
+// topLevelCommand returns the command one level under rootCmd that owns cmd's
+// subtree (cmd itself if it is already top-level). Used to classify commands
+// for the drift-nudge allow-list and the telemetry role.
+func topLevelCommand(cmd *cobra.Command) *cobra.Command {
+	top := cmd
+	for top.HasParent() && top.Parent() != rootCmd {
+		top = top.Parent()
+	}
+	return top
+}
+
+// initTelemetry resolves telemetry config from the parsed persistent flags +
+// env, initializes the providers, starts a root command span, and stashes the
+// result in telState. Best-effort: any failure logs a warning and continues.
+func initTelemetry(cmd *cobra.Command) {
+	cfg := telemetry.ResolveConfig(rootCmd.PersistentFlags(), os.Getenv)
+	cfg.Role = telemetry.RoleCLI
+	cfg.Version = buildVersion()
+	// CLI base handler writes to STDERR so --json output on stdout stays clean.
+	cfg.LogHandler = slog.NewJSONHandler(os.Stderr, nil)
+	// serve runs the long-lived server: full role (traces+metrics+logs) and
+	// logs to stdout (the CLI stderr JSON handler is for short-lived commands).
+	// Walk to the top-level command (one level under rootCmd) to classify.
+	top := topLevelCommand(cmd)
+	if top.Name() == "serve" {
+		cfg.Role = telemetry.RoleServer
+		cfg.LogHandler = slog.NewJSONHandler(os.Stdout, nil)
+	}
+	cfg.ProjectFromContext = telemetryProjectAccessor
+	cfg.IdentityFromContext = telemetryIdentityAccessor
+
+	// cmd.Context() is non-nil under ExecuteContext (production path); guard
+	// the nil case so direct unit-test invocations of nudgePreRun don't panic.
+	baseCtx := cmd.Context()
+	if baseCtx == nil {
+		baseCtx = context.Background()
+	}
+
+	tel, err := telemetry.Init(baseCtx, cfg)
+	if err != nil {
+		// Fall back to a plain stderr logger; never block the CLI.
+		fmt.Fprintln(os.Stderr, "warning: telemetry init failed:", err)
+		return
+	}
+	telState.tel = tel
+	telState.enabled = cfg.Enabled
+	slog.SetDefault(tel.Logger)
+
+	ctx, span := tel.Tracer.Start(baseCtx, "cli "+cmd.CommandPath())
+	telState.rootSpan = span
+	cmd.SetContext(ctx) // children (RPC spans) parent off the root span
+}
+
+// telemetryProjectAccessor reads the project slug from EITHER context key:
+// server.ProjectFromContext (request path) or auth.ProjectFromContext (MCP
+// path). Reading only one drops `project` on MCP-path logs.
+func telemetryProjectAccessor(ctx context.Context) (string, bool) {
+	if slug := server.ProjectFromContext(ctx); slug != "" {
+		return slug, true
+	}
+	if slug, ok := auth.ProjectFromContext(ctx); ok && slug != "" {
+		return slug, true
+	}
+	return "", false
+}
+
+// telemetryIdentityAccessor reads the authenticated identity's stable subject,
+// if any. Subject ("apikey:<id>" | "oidc:<sub>") is a stable, non-PII
+// identifier; it stays a LOCAL log attribute and is never propagated over the
+// wire.
+func telemetryIdentityAccessor(ctx context.Context) (string, bool) {
+	id, ok := auth.IdentityFromContext(ctx)
+	if !ok || id == nil {
+		return "", false
+	}
+	return id.Subject, true
 }
 
 // shouldEmitAfterThrottle returns true if the throttle file for

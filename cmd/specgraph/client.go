@@ -14,6 +14,7 @@ import (
 	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/credentials"
+	"github.com/specgraph/specgraph/internal/telemetry"
 	"github.com/specgraph/specgraph/internal/xdg"
 )
 
@@ -136,7 +137,7 @@ func newClient[C any](ctor func(httpClient connect.HTTPClient, baseURL string, o
 		var zero C
 		return zero, err
 	}
-	return ctor(newAuthenticatedHTTPClient(baseURL, project), baseURL), nil
+	return ctor(newAuthenticatedHTTPClient(baseURL, project), baseURL, clientOpts()...), nil
 }
 
 // newClientWithProject creates a ConnectRPC client using an explicit project
@@ -150,7 +151,19 @@ func newClientWithProject[C any](ctor func(httpClient connect.HTTPClient, baseUR
 	if project != "" {
 		derivedProject = project
 	}
-	return ctor(newAuthenticatedHTTPClient(baseURL, derivedProject), baseURL), nil
+	return ctor(newAuthenticatedHTTPClient(baseURL, derivedProject), baseURL, clientOpts()...), nil
+}
+
+// clientOpts returns the connect client options, including the otelconnect
+// interceptor when telemetry is enabled. With no MeterProvider on the CLI,
+// the interceptor's metric instruments resolve against the global no-op
+// meter — they record nothing and never error.
+func clientOpts() []connect.ClientOption {
+	ic, err := telemetry.ClientInterceptor(telState.enabled)
+	if err != nil || ic == nil {
+		return nil
+	}
+	return []connect.ClientOption{connect.WithInterceptors(ic)}
 }
 
 func authoringClient() (specgraphv1connect.AuthoringServiceClient, error) {

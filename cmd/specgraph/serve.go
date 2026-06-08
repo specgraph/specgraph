@@ -32,6 +32,7 @@ import (
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/server/probes"
 	syncpkg "github.com/specgraph/specgraph/internal/sync"
+	"github.com/specgraph/specgraph/internal/telemetry"
 	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/specgraph/specgraph/web"
 	"github.com/spf13/cobra"
@@ -169,7 +170,16 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 
 	interceptor := auth.NewAuthInterceptor(resolver, deps.authorizer)
 	maxBytes := connect.WithReadMaxBytes(4 << 20)
-	opts := connect.WithInterceptors(interceptor)
+	interceptors := []connect.Interceptor{}
+	otelIC, otelErr := telemetry.ServerInterceptor(telState.enabled)
+	if otelErr != nil {
+		return appHandler{}, fmt.Errorf("otel interceptor: %w", otelErr)
+	}
+	if otelIC != nil {
+		interceptors = append(interceptors, otelIC) // outermost: before auth
+	}
+	interceptors = append(interceptors, interceptor) // existing auth interceptor
+	opts := connect.WithInterceptors(interceptors...)
 
 	mux := server.NewMux(store, opts, maxBytes)
 	server.RegisterHealthService(mux, opts, maxBytes)
@@ -195,7 +205,9 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(resolver))
 	server.RegisterAuthHandlers(mux, resolver, auth.RequireAuth(resolver))
 
-	mcpClient := mcppkg.NewClient(newHTTPClient(""), selfBaseURL(cfg.Server.Listen))
+	loopbackClient := newHTTPClient("")
+	loopbackClient.Transport = telemetry.LoopbackTransport(telState.enabled, loopbackClient.Transport)
+	mcpClient := mcppkg.NewClient(loopbackClient, selfBaseURL(cfg.Server.Listen))
 	mcpSrv := mcppkg.NewServer(mcpClient)
 	mcpHTTPHandler := mcpSrv.HTTPHandler(
 		mcpserver.WithHTTPContextFunc(func(ctx context.Context, r *http.Request) context.Context {
@@ -219,6 +231,9 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 	mux.Handle("/", server.StaticHandler(deps.webFS))
 
 	handler := server.SecurityHeaders(server.ProjectMiddleware(mux))
+	if telState.enabled {
+		handler = telemetry.WrapHTTPHandler(handler)
+	}
 	if deps.corsOrigin != "" {
 		handler = server.CORSMiddleware(deps.corsOrigin, handler)
 	}
@@ -242,6 +257,7 @@ func startMainServer(srv *http.Server, ln net.Listener) <-chan error {
 }
 
 func runServe(cmd *cobra.Command, _ []string) error {
+	startupBegin := time.Now()
 	if os.Getenv("SPECGRAPH_PG_URL") != "" {
 		slog.LogAttrs(context.Background(), slog.LevelWarn, "SPECGRAPH_PG_URL is no longer read; use SPECGRAPH_SERVER_POSTGRES_URL")
 	}
@@ -259,7 +275,15 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("configure logger: %w", err)
 	}
-	slog.SetDefault(logger)
+	if telState.tel != nil {
+		// Layer enrichment (trace_id/span_id/project/identity) + OTLP log
+		// export over the server's CONFIGURED handler, honoring cfg.Log knobs
+		// (--log-format/--log-level/--log-output). When telemetry is disabled,
+		// NewLogger returns the plain configured logger unchanged.
+		slog.SetDefault(telState.tel.NewLogger(logger.Handler()))
+	} else {
+		slog.SetDefault(logger)
+	}
 	slog.LogAttrs(context.Background(), slog.LevelInfo, "specgraph server starting",
 		slog.String("version", buildVersion()),
 		slog.String("listen", cfg.Server.Listen),
@@ -520,10 +544,24 @@ func runServe(cmd *cobra.Command, _ []string) error {
 
 		// Post-drain store/auth/tracker teardown (nil until activation).
 		runCleanup()
+
+		// Primary telemetry flush after the servers drain. run()'s deferred
+		// Shutdown is a safe, concurrency-serialized no-op afterward.
+		if telState.tel != nil {
+			shutdownCtx, c := context.WithTimeout(context.Background(), 5*time.Second)
+			defer c()
+			if shErr := telState.tel.Shutdown(shutdownCtx); shErr != nil {
+				slog.LogAttrs(context.Background(), slog.LevelWarn, "telemetry shutdown", slog.Any("error", shErr))
+			}
+		}
 	}()
 
 	slog.LogAttrs(context.Background(), slog.LevelInfo, "server listening", slog.String("addr", "http://"+addr))
 	slog.LogAttrs(context.Background(), slog.LevelInfo, "MCP endpoint available", slog.String("path", "/mcp/"))
+
+	if telState.tel != nil {
+		telemetry.RecordStartup(ctx, time.Since(startupBegin))
+	}
 
 	// Degraded path: retry in the background; activate on first success. The
 	// ports are already open (serving 503) before this goroutine starts.

@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/telemetry"
 )
 
 // Compile-time interface assertion.
@@ -72,6 +73,7 @@ func (s *Store) AddEdge(ctx context.Context, fromSlug, toSlug string, edgeType s
 	if err != nil {
 		return nil, err
 	}
+	telemetry.RecordEdgeMutation(ctx, string(edgeType), "add")
 	return result, nil
 }
 
@@ -89,6 +91,7 @@ func (s *Store) RemoveEdge(ctx context.Context, fromSlug, toSlug string, edgeTyp
 	if err != nil {
 		return fmt.Errorf("postgres: remove edge: %w", err)
 	}
+	telemetry.RecordEdgeMutation(ctx, string(edgeType), "remove")
 	return nil
 }
 

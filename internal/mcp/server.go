@@ -10,6 +10,10 @@ import (
 
 	sdkmcp "github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/specgraph/specgraph/internal/mcp/skills"
 )
@@ -18,6 +22,24 @@ const (
 	serverName    = "specgraph"
 	serverVersion = "0.1.0"
 )
+
+// mcpSpan starts a span with the given low-cardinality name and optional
+// attributes, returning the child ctx plus an end func that records the
+// outcome. High-cardinality identifiers (e.g. resource URIs) MUST be passed as
+// attributes, not embedded in the span name, to keep span-name cardinality
+// bounded. It uses the OTel global tracer, which is the built-in no-op when
+// telemetry is disabled, so this is always safe to call regardless of
+// telemetry configuration.
+func mcpSpan(ctx context.Context, spanName string, attrs ...attribute.KeyValue) (spanCtx context.Context, end func(err error)) {
+	ctx, span := otel.Tracer("specgraph.mcp").Start(ctx, spanName, trace.WithAttributes(attrs...))
+	return ctx, func(err error) {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}
+}
 
 // Server wraps a single MCPServer pre-populated with all tools, resources,
 // and prompts. Profile-based tool filtering happens per-session via the
@@ -139,8 +161,10 @@ func (s *Server) HTTPHandler(opts ...server.StreamableHTTPOption) *server.Stream
 // wrapToolHandler adapts a SpecGraph ToolHandler to the mcp-go ToolHandlerFunc signature.
 func wrapToolHandler(h ToolHandler) server.ToolHandlerFunc {
 	return func(ctx context.Context, req sdkmcp.CallToolRequest) (*sdkmcp.CallToolResult, error) {
+		ctx, end := mcpSpan(ctx, "mcp.tool/"+req.Params.Name)
 		params := fromSDKParams(&req)
 		result, err := h(ctx, params)
+		end(err)
 		if err != nil {
 			return nil, err
 		}
@@ -151,7 +175,9 @@ func wrapToolHandler(h ToolHandler) server.ToolHandlerFunc {
 // wrapResourceHandler adapts a SpecGraph ResourceHandler to the mcp-go ResourceHandlerFunc.
 func wrapResourceHandler(h ResourceHandler) server.ResourceHandlerFunc {
 	return func(ctx context.Context, req sdkmcp.ReadResourceRequest) ([]sdkmcp.ResourceContents, error) {
+		ctx, end := mcpSpan(ctx, "mcp.resource", attribute.String("mcp.resource.uri", req.Params.URI))
 		contents, err := h(ctx, req.Params.URI)
+		end(err)
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +189,9 @@ func wrapResourceHandler(h ResourceHandler) server.ResourceHandlerFunc {
 // ResourceTemplateHandlerFunc (same signature as ResourceHandlerFunc).
 func wrapResourceTemplateHandler(h ResourceHandler) server.ResourceTemplateHandlerFunc {
 	return func(ctx context.Context, req sdkmcp.ReadResourceRequest) ([]sdkmcp.ResourceContents, error) {
+		ctx, end := mcpSpan(ctx, "mcp.resource_template", attribute.String("mcp.resource_template.uri", req.Params.URI))
 		contents, err := h(ctx, req.Params.URI)
+		end(err)
 		if err != nil {
 			return nil, err
 		}
@@ -174,7 +202,9 @@ func wrapResourceTemplateHandler(h ResourceHandler) server.ResourceTemplateHandl
 // wrapPromptHandler adapts a SpecGraph PromptHandler to the mcp-go PromptHandlerFunc.
 func wrapPromptHandler(h PromptHandler) server.PromptHandlerFunc {
 	return func(ctx context.Context, req sdkmcp.GetPromptRequest) (*sdkmcp.GetPromptResult, error) {
+		ctx, end := mcpSpan(ctx, "mcp.prompt/"+req.Params.Name)
 		result, err := h(ctx, req.Params.Arguments)
+		end(err)
 		if err != nil {
 			return nil, err
 		}

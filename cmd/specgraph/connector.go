@@ -16,6 +16,7 @@ import (
 	"github.com/specgraph/specgraph/internal/bootstrap"
 	"github.com/specgraph/specgraph/internal/notify"
 	"github.com/specgraph/specgraph/internal/storage/postgres"
+	"github.com/specgraph/specgraph/internal/telemetry"
 )
 
 // errClass distinguishes connect failures that warrant different retry policies.
@@ -57,7 +58,7 @@ type connectResult struct {
 // repeated retries never leak a pgxpool.Pool. postgres.New self-cleans its own
 // internal failures; this covers the steps after it.
 func connectStore(ctx context.Context, connURL string) (connectResult, error) {
-	s, err := postgres.New(ctx, connURL, postgres.WithProject("_server"))
+	s, err := postgres.New(ctx, connURL, postgres.WithProject("_server"), postgres.WithTracing(telState.enabled))
 	if err != nil {
 		return connectResult{}, err
 	}
@@ -81,6 +82,9 @@ func connectStore(ctx context.Context, connURL string) (connectResult, error) {
 	}()
 
 	s.Subscribe(notify.NewImpactLogger())
+	if telState.enabled {
+		s.Subscribe(telemetry.NewMetricsSubscriber())
+	}
 
 	authStore, err = postgres.NewAuth(ctx, s.Pool())
 	if err != nil {

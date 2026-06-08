@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/telemetry"
 )
 
 // Compile-time interface assertion.
@@ -31,7 +32,7 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 		return fmt.Errorf("postgres: %w: %w", storage.ErrInvalidStageTransition, err)
 	}
 
-	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+	if err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
 		now := s.now()
 		fromStr := string(from)
 		toStr := string(to)
@@ -98,7 +99,11 @@ func (s *Store) TransitionStage(ctx context.Context, slug string, from, to stora
 			}
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	telemetry.RecordStageTransition(ctx, string(from), string(to))
+	return nil
 }
 
 // StoreSparkOutput persists the spark stage output as JSONB on the spec row.

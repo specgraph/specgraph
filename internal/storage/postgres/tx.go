@@ -7,11 +7,15 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 
 	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/telemetry"
 )
 
 // txKey is the context key used to thread a pgx.Tx through storage calls.
@@ -40,11 +44,24 @@ func (s *Store) RunInTransaction(ctx context.Context, fn func(ctx context.Contex
 		return fn(ctx)
 	}
 
+	ctx, span := otel.Tracer("specgraph.storage").Start(ctx, "storage.transaction")
+	start := time.Now()
+	var txErr error
+	defer func() {
+		telemetry.RecordTransaction(ctx, time.Since(start))
+		if txErr != nil {
+			span.RecordError(txErr)
+			span.SetStatus(codes.Error, txErr.Error())
+		}
+		span.End()
+	}()
+
 	ctx = storage.InitChangeEvents(ctx)
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("postgres: begin transaction: %w", err)
+		txErr = fmt.Errorf("postgres: begin transaction: %w", err)
+		return txErr
 	}
 
 	txCtx := txToContext(ctx, tx)
@@ -52,11 +69,13 @@ func (s *Store) RunInTransaction(ctx context.Context, fn func(ctx context.Contex
 		if rbErr := tx.Rollback(ctx); rbErr != nil {
 			slog.LogAttrs(ctx, slog.LevelError, "postgres: rollback failed", slog.Any("error", rbErr))
 		}
-		return fnErr
+		txErr = fnErr
+		return txErr
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("postgres: commit transaction: %w", err)
+		txErr = fmt.Errorf("postgres: commit transaction: %w", err)
+		return txErr
 	}
 
 	s.dispatchChangeEvents(ctx)
