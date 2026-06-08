@@ -128,3 +128,18 @@ func TestEnrichHandler_EnabledDelegates(t *testing.T) {
 		t.Fatal("Enabled = true, want false (should delegate to downstream)")
 	}
 }
+
+func TestBuildLogger_FanoutPreservesAttrsAndGroup(t *testing.T) {
+	var buf bytes.Buffer
+	base := slog.NewJSONHandler(&buf, nil)
+	cfg := Config{} // no accessors, no lp
+	logger := buildLogger(&cfg, base, nil).With("svc", "x").WithGroup("g").With("k", "v")
+	logger.InfoContext(context.Background(), "msg")
+	out := buf.String()
+	if !strings.Contains(out, `"svc":"x"`) {
+		t.Fatalf("WithAttrs dropped through fanout: %s", out)
+	}
+	if !strings.Contains(out, `"g":{"k":"v"}`) {
+		t.Fatalf("WithGroup dropped through fanout: %s", out)
+	}
+}

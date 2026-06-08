@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/propagation"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/trace"
 	tracenoop "go.opentelemetry.io/otel/trace/noop"
 )
@@ -62,6 +63,9 @@ type Telemetry struct {
 	// run()'s deferred flush).
 	mu            sync.Mutex
 	shutdownFuncs []func(context.Context) error
+
+	cfg Config                 // retained for NewLogger
+	lp  *sdklog.LoggerProvider // retained for NewLogger (nil when LogsExport off)
 }
 
 // Init wires the configured providers. On Enabled=false it returns working
@@ -127,16 +131,28 @@ func Init(ctx context.Context, cfg Config) (*Telemetry, error) { //nolint:gocrit
 	if lp != nil {
 		tel.shutdownFuncs = append(tel.shutdownFuncs, lp.Shutdown)
 	}
+	tel.cfg = cfg
+	tel.lp = lp
 
 	// Global propagator is TraceContext only (safe at the untrusted edge).
 	// Baggage is applied per-transport on internal/loopback hops, not here.
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
-	// Logger is wired in Phase 3 (enrichHandler + fanout over lp). For now
-	// the base handler is used so Phase 1/2 have a working logger.
-	tel.Logger = slog.New(cfg.LogHandler)
+	// Production logger: enrichHandler → fanout(base, otelslog bridge over lp).
+	tel.Logger = buildLogger(&cfg, cfg.LogHandler, lp)
 
 	return tel, nil
+}
+
+// NewLogger re-wraps base with the same enrichment + OTLP fanout pipeline as
+// the handle's default logger. The server uses this to layer enrichment over
+// its configured cfg.Log handler (format/level/output) without a second Init.
+// When telemetry is disabled (or t is nil) it returns slog.New(base) unchanged.
+func (t *Telemetry) NewLogger(base slog.Handler) *slog.Logger {
+	if t == nil || !t.cfg.Enabled {
+		return slog.New(base)
+	}
+	return buildLogger(&t.cfg, base, t.lp)
 }
 
 // Shutdown flushes and shuts down each provider in reverse registration

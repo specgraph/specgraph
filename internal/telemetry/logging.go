@@ -7,6 +7,9 @@ import (
 	"context"
 	"log/slog"
 
+	slogmulti "github.com/samber/slog-multi"
+	"go.opentelemetry.io/contrib/bridges/otelslog"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -70,4 +73,16 @@ func (h *enrichHandler) WithGroup(name string) slog.Handler {
 		projectFromContext:  h.projectFromContext,
 		identityFromContext: h.identityFromContext,
 	}
+}
+
+// buildLogger composes the production logger: enrichHandler → fanout(base,
+// otelslog bridge). When lp is nil (LogsExport off) the fanout collapses to the
+// base handler only (still trace-enriched). The returned logger is never nil.
+func buildLogger(cfg *Config, base slog.Handler, lp *sdklog.LoggerProvider) *slog.Logger {
+	handlers := []slog.Handler{base}
+	if lp != nil {
+		handlers = append(handlers, otelslog.NewHandler("specgraph", otelslog.WithLoggerProvider(lp)))
+	}
+	fan := slogmulti.Fanout(handlers...)
+	return slog.New(newEnrichHandler(fan, cfg.ProjectFromContext, cfg.IdentityFromContext))
 }
