@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"sync/atomic"
 
@@ -64,10 +65,12 @@ func (a *atomicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // notReadyHandler responds 503 to every request while Postgres is unavailable.
 func notReadyHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Retry-After", "5")
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		_, _ = io.WriteString(w, "storage not ready\n")
+		if _, werr := io.WriteString(w, "storage not ready\n"); werr != nil {
+			slog.LogAttrs(r.Context(), slog.LevelDebug, "write not-ready body", slog.Any("error", werr))
+		}
 	})
 }

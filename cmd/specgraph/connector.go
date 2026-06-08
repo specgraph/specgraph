@@ -71,9 +71,13 @@ func connectStore(ctx context.Context, connURL string) (connectResult, error) {
 		// Teardown order mirrors shutdown: auth (borrows pool) before store
 		// (owns pool).
 		if authStore != nil {
-			_ = authStore.Close(ctx)
+			if cerr := authStore.Close(ctx); cerr != nil {
+				slog.LogAttrs(ctx, slog.LevelWarn, "auth store close during connect cleanup", slog.Any("error", cerr))
+			}
 		}
-		_ = s.Close(ctx)
+		if cerr := s.Close(ctx); cerr != nil {
+			slog.LogAttrs(ctx, slog.LevelWarn, "store close during connect cleanup", slog.Any("error", cerr))
+		}
 	}()
 
 	s.Subscribe(notify.NewImpactLogger())
