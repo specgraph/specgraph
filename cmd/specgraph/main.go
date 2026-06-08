@@ -10,8 +10,10 @@ import (
 	"os"
 
 	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/telemetry"
 	"github.com/specgraph/specgraph/internal/xdg"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Set by goreleaser ldflags at build time.
@@ -39,6 +41,16 @@ var rootCmd = &cobra.Command{
 }
 
 var cfgFile string
+
+// telState holds the process-wide telemetry handle and root span, set once
+// in nudgePreRun (after cobra parses flags) and read by run()'s defer and by
+// the client ctors. Single-threaded CLI: PreRun -> ExecuteContext -> run-defer
+// is strictly sequential on one goroutine, so plain vars are race-free.
+var telState struct {
+	tel      *telemetry.Telemetry
+	rootSpan trace.Span
+	enabled  bool
+}
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
