@@ -18,8 +18,10 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/config/managedfiles"
+	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/telemetry"
 	"github.com/specgraph/specgraph/internal/xdg"
 )
@@ -181,11 +183,30 @@ func initTelemetry(cmd *cobra.Command) {
 	cmd.SetContext(ctx) // children (RPC spans) parent off the root span
 }
 
-// telemetryProjectAccessor / telemetryIdentityAccessor bridge server/auth
-// context keys into telemetry without telemetry importing those packages.
-// Phase 3 fills these in; Phase 2 uses no-op stubs.
-func telemetryProjectAccessor(_ context.Context) (string, bool)  { return "", false }
-func telemetryIdentityAccessor(_ context.Context) (string, bool) { return "", false }
+// telemetryProjectAccessor reads the project slug from EITHER context key:
+// server.ProjectFromContext (request path) or auth.ProjectFromContext (MCP
+// path). Reading only one drops `project` on MCP-path logs.
+func telemetryProjectAccessor(ctx context.Context) (string, bool) {
+	if slug := server.ProjectFromContext(ctx); slug != "" {
+		return slug, true
+	}
+	if slug, ok := auth.ProjectFromContext(ctx); ok && slug != "" {
+		return slug, true
+	}
+	return "", false
+}
+
+// telemetryIdentityAccessor reads the authenticated identity's stable subject,
+// if any. Subject ("apikey:<id>" | "oidc:<sub>") is a stable, non-PII
+// identifier; it stays a LOCAL log attribute and is never propagated over the
+// wire.
+func telemetryIdentityAccessor(ctx context.Context) (string, bool) {
+	id, ok := auth.IdentityFromContext(ctx)
+	if !ok || id == nil {
+		return "", false
+	}
+	return id.Subject, true
+}
 
 // shouldEmitAfterThrottle returns true if the throttle file for
 // (projectRoot, binaryVersionHash) is missing or older than 24h.
