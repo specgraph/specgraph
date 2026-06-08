@@ -21,13 +21,17 @@ func loopbackPropagator() propagation.TextMapPropagator {
 }
 
 // ServerInterceptor returns the otelconnect server interceptor, or nil when
-// telemetry is disabled (callers must skip nil; connect.WithInterceptors
-// tolerates none but we gate at the call site for zero overhead).
+// telemetry is disabled. WithTrustRemote makes the server span a CHILD of the
+// incoming client span (one connected trace) rather than otelconnect's default
+// of starting a new trace linked to the remote. The design accepts trusting
+// the inbound traceparent at the edge (bounded by RequireAuth); baggage is NOT
+// trusted here — the global propagator is TraceContext-only, so no
+// attacker-supplied baggage is extracted at the public edge.
 func ServerInterceptor(enabled bool) (connect.Interceptor, error) {
 	if !enabled {
 		return nil, nil
 	}
-	ic, err := otelconnect.NewInterceptor()
+	ic, err := otelconnect.NewInterceptor(otelconnect.WithTrustRemote())
 	if err != nil {
 		return nil, fmt.Errorf("telemetry: otelconnect server interceptor: %w", err)
 	}
