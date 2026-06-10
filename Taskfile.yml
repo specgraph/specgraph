@@ -3,6 +3,15 @@ version: "3"
 vars:
   BINARY_NAME: specgraph
   MAIN_PKG: ./cmd/specgraph
+  # Version stamping for non-goreleaser builds (local dev, hand-built images).
+  # The vars live in `package main`, so the linker symbol is `main.version` /
+  # `main.commit` — the full import path is silently ignored by the Go linker.
+  # Falls back to dev/none when git is unavailable (preserving prior behavior).
+  VERSION:
+    sh: v=$(git describe --tags --always --dirty 2>/dev/null) && echo "${v#v}" || echo dev
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo none
+  LDFLAGS: -X main.version={{.VERSION}} -X main.commit={{.COMMIT}}
   # Local buf codegen plugins (pinned to match gen/ output + go.mod). Kept local
   # rather than remote (buf.build/...) so `buf generate` never hits the Buf
   # Schema Registry, which rate-limits unauthenticated requests in CI (spgr-3zs0).
@@ -92,7 +101,7 @@ tasks:
     desc: Build the specgraph binary
     deps: [generate, 'web:build']
     cmds:
-      - go build -o {{.BINARY_NAME}} {{.MAIN_PKG}}
+      - go build -ldflags '{{.LDFLAGS}}' -o {{.BINARY_NAME}} {{.MAIN_PKG}}
   build:all:
     desc: Build for all platforms
     deps: [generate, 'web:build']
@@ -103,14 +112,31 @@ tasks:
     desc: Build for Linux
     deps: [generate, 'web:build']
     cmds:
-      - GOOS=linux GOARCH=amd64 go build -o dist/{{.BINARY_NAME}}-linux-amd64 {{.MAIN_PKG}}
-      - GOOS=linux GOARCH=arm64 go build -o dist/{{.BINARY_NAME}}-linux-arm64 {{.MAIN_PKG}}
+      - GOOS=linux GOARCH=amd64 go build -ldflags '{{.LDFLAGS}}' -o dist/{{.BINARY_NAME}}-linux-amd64 {{.MAIN_PKG}}
+      - GOOS=linux GOARCH=arm64 go build -ldflags '{{.LDFLAGS}}' -o dist/{{.BINARY_NAME}}-linux-arm64 {{.MAIN_PKG}}
   build:darwin:
     desc: Build for macOS
     deps: [generate, 'web:build']
     cmds:
-      - GOOS=darwin GOARCH=amd64 go build -o dist/{{.BINARY_NAME}}-darwin-amd64 {{.MAIN_PKG}}
-      - GOOS=darwin GOARCH=arm64 go build -o dist/{{.BINARY_NAME}}-darwin-arm64 {{.MAIN_PKG}}
+      - GOOS=darwin GOARCH=amd64 go build -ldflags '{{.LDFLAGS}}' -o dist/{{.BINARY_NAME}}-darwin-amd64 {{.MAIN_PKG}}
+      - GOOS=darwin GOARCH=arm64 go build -ldflags '{{.LDFLAGS}}' -o dist/{{.BINARY_NAME}}-darwin-arm64 {{.MAIN_PKG}}
+  verify:version-stamp:
+    desc: Guard that the version ldflag actually applies (catches a wrong -X symbol path)
+    deps: [generate, 'web:build']
+    cmds:
+      # The version/commit vars live in `package main`, so the linker symbol is
+      # `main.version`. A wrong import path is SILENTLY ignored by the linker and
+      # ships a `0.0.0-dev+none` binary. Build with a sentinel and assert it
+      # propagates so that regression can never reach a release again.
+      - |
+        go build -ldflags "-X main.version=ldflag-probe -X main.commit=probecommit" \
+          -o dist/{{.BINARY_NAME}}-versioncheck {{.MAIN_PKG}}
+        out="$(dist/{{.BINARY_NAME}}-versioncheck --version)"
+        echo "version stamp: $out"
+        case "$out" in
+          *ldflag-probe*) echo "OK: -X main.version is honored" ;;
+          *) echo "FAIL: version ldflag was ignored (wrong -X symbol path?). Got: $out" >&2; exit 1 ;;
+        esac
   # Testing
   test:
     desc: Run all tests
@@ -349,6 +375,7 @@ tasks:
       - task: lint
       - task: skills:validate
       - task: build
+      - task: verify:version-stamp
       - go test -short -race ./...
   pr-prep:
     desc: Full pre-push quality gate (requires Docker)

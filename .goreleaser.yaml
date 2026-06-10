@@ -15,8 +15,12 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/specgraph/specgraph/cmd/specgraph.version={{.Version}}
-      - -X github.com/specgraph/specgraph/cmd/specgraph.commit={{.ShortCommit}}
+      # NOTE: the vars live in `package main` (cmd/specgraph/main.go), so the
+      # linker symbol is `main.version` / `main.commit`. Using the full import
+      # path here is silently ignored by the Go linker, leaving the binary at
+      # its `0.0.0-dev+none` defaults.
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
 archives:
   - id: default
     formats:
