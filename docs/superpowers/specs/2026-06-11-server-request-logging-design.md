@@ -80,24 +80,29 @@ Rationale for the split:
 
 ### 1. Per-request carrier
 
-A small mutable struct behind a context key in `internal/server`:
+A small mutable struct behind a context key in a leaf package `internal/reqctx`
+(it imports only `context`). It lives in its own package — not `internal/server`
+— because both `internal/server` (the middleware) and `internal/auth` (the
+identity write) must reference it, and `internal/server` already imports
+`internal/auth`; a shared leaf package avoids the import cycle.
 
 ```go
-type requestInfo struct {
-    procedure string // RPC procedure, e.g. /specgraph.v1.GraphService/AddEdge
-    code      string // connect code string: "ok", "invalid_argument", ...
-    identity  string // authenticated principal, set by the auth layer
+type RequestInfo struct {
+    Procedure string // RPC procedure, e.g. /specgraph.v1.GraphService/AddEdge
+    Code      string // connect code string: "ok", "invalid_argument", ...
+    Identity  string // authenticated principal, set by the auth layer
 }
 ```
 
-- `AccessLog` allocates a `requestInfo`, keeps a **local pointer**, and seeds
-  that same pointer into the request context before calling `next`.
-- Inner layers look it up via `requestInfoFromContext(ctx) *requestInfo` and
+- `AccessLog` calls `reqctx.NewContext(ctx)`, which returns a context carrying a
+  fresh `*RequestInfo` plus that pointer; it keeps the **local pointer** and
+  passes the context to `next`.
+- Inner layers look it up via `reqctx.FromContext(ctx) *RequestInfo` and
   mutate it **through the pointer**. Connect's handler context descends from
   `r.Context()` (verified), so the pointer is visible to the interceptor and
   to the auth layer. `AccessLog` reads its local pointer after `next` returns —
   pointer mutation is visible without re-injection.
-- `requestInfoFromContext` returns `nil` when absent (e.g. on the probe
+- `reqctx.FromContext` returns `nil` when absent (e.g. on the probe
   listener, which runs no interceptor and seeds no carrier unless logging is
   enabled).
 
@@ -111,7 +116,8 @@ func AccessLog(next http.Handler) http.Handler
 
 Per request:
 
-1. Allocate `info := &requestInfo{}`; seed it into the context.
+1. Allocate the carrier via `reqctx.NewContext(r.Context())`; keep the
+   returned `*RequestInfo` pointer and use the returned context for `next`.
 2. Wrap the `ResponseWriter` with a lightweight recorder (status defaulting to
    200, plus a byte counter), composed via `httpsnoop.Wrap` so optional
    interfaces (`http.Flusher`/`http.Hijacker`) are preserved — required for the
@@ -154,7 +160,7 @@ A `connect.Interceptor` (unary + streaming) that, around each call:
   the `nil` check must come first; a plain non-connect handler error yields
   `Unknown` → ERROR, which is the desired "unexpected failure" signal).
 
-It looks up the carrier via `requestInfoFromContext`; if absent it is a no-op.
+It looks up the carrier via `reqctx.FromContext`; if absent it is a no-op.
 It **never logs** — it only enriches. **It MUST be registered as the OUTERMOST
 interceptor** (prepended to the list), because connect runs the first
 interceptor outermost (see `cmd/specgraph/serve.go`, where the otel interceptor
@@ -162,7 +168,7 @@ is prepended "outermost: before auth"). The auth interceptor returns
 `Unauthenticated`/`PermissionDenied` **without calling `next`**, so an
 innermost access-log interceptor would never run for rejected RPCs — exactly
 the security-relevant denials we most want logged. Outermost placement
-guarantees it runs and observes the final outcome code.
+guarantees it runs and observes the outcome code.
 
 ### 4. Identity capture (auth layer)
 
@@ -172,7 +178,7 @@ principal, best-effort:
 - the auth **interceptor** (RPC path), after it resolves the identity, and
 - `RequireAuth` (REST/MCP path),
 
-each do a guarded `if info := requestInfoFromContext(ctx); info != nil { info.identity = id.Subject }`.
+each do a guarded `if info := reqctx.FromContext(ctx); info != nil { info.Identity = id.Subject }`.
 No auth signatures change; this is a single additive write on each path. When a
 request is unauthenticated/rejected, `identity` is simply empty.
 
@@ -315,8 +321,11 @@ Probe listener (via `startProbeListener` + `httptest`):
 
 ## Files touched
 
-- `internal/server/access_log.go` (new) — `requestInfo` carrier, accessor,
-  `AccessLog` middleware (recorder + recover-based panic path), level mapping.
+- `internal/reqctx/reqctx.go` (new) — the `RequestInfo` carrier + `NewContext`/
+  `FromContext` helpers (leaf package; imports only `context`).
+- `internal/server/access_log.go` (new) — `AccessLog` middleware
+  (recorder + recover-based panic path) + level mapping + `remoteIP`; uses the
+  `RequestInfo` carrier from `internal/reqctx`.
 - `internal/server/access_log_interceptor.go` (new) — `AccessLogInterceptor`
   - `connectCode` helper.
 - `internal/auth/` — one guarded carrier write each in the auth interceptor and
