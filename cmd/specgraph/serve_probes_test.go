@@ -4,9 +4,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"strings"
@@ -209,4 +211,56 @@ func TestStartProbeListener_ListenerDeathSignalsErrCh(t *testing.T) {
 	}
 	// Drain any lingering goroutines.
 	_, _ = io.Copy(io.Discard, new(strings.Reader))
+}
+
+func TestStartProbeListener_LogsWhenEnabled(t *testing.T) {
+	buf := &bytes.Buffer{}
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	slog.SetDefault(slog.New(slog.NewJSONHandler(buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cfg := probesCfg("127.0.0.1:0")
+	cfg.LogRequests = true
+	srv, _, err := startProbeListener(ctx, probes.NewHandler(), cfg)
+	require.NoError(t, err)
+	require.NotNil(t, srv)
+	t.Cleanup(func() {
+		shutCtx, c := context.WithTimeout(context.Background(), 2*time.Second)
+		defer c()
+		_ = srv.Shutdown(shutCtx)
+	})
+
+	resp, err := http.Get("http://" + srv.Addr + "/livez") //nolint:noctx // test probe
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	require.Eventually(t, func() bool { return strings.Contains(buf.String(), `"path":"/livez"`) },
+		2*time.Second, 10*time.Millisecond, "probe access line must appear when LogRequests is true")
+}
+
+func TestStartProbeListener_SilentWhenDisabled(t *testing.T) {
+	buf := &bytes.Buffer{}
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	slog.SetDefault(slog.New(slog.NewJSONHandler(buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	srv, _, err := startProbeListener(ctx, probes.NewHandler(), probesCfg("127.0.0.1:0")) // LogRequests false
+	require.NoError(t, err)
+	require.NotNil(t, srv)
+	t.Cleanup(func() {
+		shutCtx, c := context.WithTimeout(context.Background(), 2*time.Second)
+		defer c()
+		_ = srv.Shutdown(shutCtx)
+	})
+	resp, err := http.Get("http://" + srv.Addr + "/livez") //nolint:noctx // test probe
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+
+	assert.NotContains(t, buf.String(), `"path":"/livez"`, "probe logging must be off by default")
 }

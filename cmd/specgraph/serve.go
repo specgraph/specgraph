@@ -697,11 +697,15 @@ func startProbeListener(ctx context.Context, handler *probes.Handler, cfg config
 	if err != nil {
 		return nil, nil, fmt.Errorf("probe listener bind %s: %w", cfg.Listen, err)
 	}
+	probeHandler := handler.Mux()
+	if cfg.LogRequests {
+		probeHandler = server.AccessLog(probeHandler)
+	}
 	srv := &http.Server{
 		// Addr reflects the resolved listener address, not the caller's
 		// input, so callers passing ":0" can observe the ephemeral port.
 		Addr:              ln.Addr().String(),
-		Handler:           handler.Mux(),
+		Handler:           probeHandler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	slog.LogAttrs(ctx, slog.LevelInfo, "probe endpoints listening",
