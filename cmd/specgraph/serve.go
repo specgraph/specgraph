@@ -170,13 +170,13 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 
 	interceptor := auth.NewAuthInterceptor(resolver, deps.authorizer)
 	maxBytes := connect.WithReadMaxBytes(4 << 20)
-	interceptors := []connect.Interceptor{}
+	interceptors := []connect.Interceptor{server.AccessLogInterceptor()} // outermost: always runs, sees final code
 	otelIC, otelErr := telemetry.ServerInterceptor(telState.enabled)
 	if otelErr != nil {
 		return appHandler{}, fmt.Errorf("otel interceptor: %w", otelErr)
 	}
 	if otelIC != nil {
-		interceptors = append(interceptors, otelIC) // outermost: before auth
+		interceptors = append(interceptors, otelIC) // before auth (AccessLogInterceptor is outermost)
 	}
 	interceptors = append(interceptors, interceptor) // existing auth interceptor
 	opts := connect.WithInterceptors(interceptors...)
@@ -230,7 +230,11 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 
 	mux.Handle("/", server.StaticHandler(deps.webFS))
 
-	handler := server.SecurityHeaders(server.ProjectMiddleware(mux))
+	var rootHandler http.Handler = mux
+	if cfg.Log.Requests {
+		rootHandler = server.AccessLog(mux)
+	}
+	handler := server.SecurityHeaders(server.ProjectMiddleware(rootHandler))
 	if telState.enabled {
 		handler = telemetry.WrapHTTPHandler(handler)
 	}
@@ -693,11 +697,15 @@ func startProbeListener(ctx context.Context, handler *probes.Handler, cfg config
 	if err != nil {
 		return nil, nil, fmt.Errorf("probe listener bind %s: %w", cfg.Listen, err)
 	}
+	probeHandler := handler.Mux()
+	if cfg.LogRequests {
+		probeHandler = server.AccessLog(probeHandler)
+	}
 	srv := &http.Server{
 		// Addr reflects the resolved listener address, not the caller's
 		// input, so callers passing ":0" can observe the ephemeral port.
 		Addr:              ln.Addr().String(),
-		Handler:           handler.Mux(),
+		Handler:           probeHandler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	slog.LogAttrs(ctx, slog.LevelInfo, "probe endpoints listening",

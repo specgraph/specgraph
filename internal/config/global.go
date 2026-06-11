@@ -77,6 +77,8 @@ type LogConfig struct {
 	Format string `yaml:"format" koanf:"format"`
 	// Output selects the destination stream: stdout (default) or stderr.
 	Output string `yaml:"output" koanf:"output"`
+	// Requests enables one access-log line per request on the main listener.
+	Requests bool `yaml:"requests" koanf:"requests"`
 }
 
 // Build constructs a [slog.Logger] writing to the stream named by lc.Output
@@ -151,6 +153,9 @@ type ProbesConfig struct {
 	Listen   string        `yaml:"listen,omitempty" koanf:"listen"`
 	Interval time.Duration `yaml:"interval,omitempty" koanf:"interval"`
 	Timeout  time.Duration `yaml:"timeout,omitempty" koanf:"timeout"`
+	// LogRequests enables access logging on the probe listener. Off by default
+	// so kubelet's frequent /livez,/readyz polls don't flood the logs.
+	LogRequests bool `yaml:"log_requests,omitempty" koanf:"log_requests"`
 }
 
 // Resolved returns a copy with zero-valued Interval/Timeout filled from
@@ -396,9 +401,10 @@ func globalDefaults() *GlobalConfig {
 			DefaultServer: "http://127.0.0.1:9090",
 		},
 		Log: LogConfig{
-			Level:  "info",
-			Format: "json",
-			Output: "stdout",
+			Level:    "info",
+			Format:   "json",
+			Output:   "stdout",
+			Requests: true,
 		},
 	}
 }
