@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+
+	"github.com/specgraph/specgraph/internal/reqctx"
 )
 
 // NewAuthInterceptor returns a ConnectRPC unary interceptor that
@@ -27,6 +29,10 @@ func NewAuthInterceptor(resolver Resolver, authorizer Authorizer) connect.UnaryI
 			id, err := authenticate(ctx, resolver, req.Header())
 			if err != nil {
 				return nil, mapAuthError(procedure, err)
+			}
+
+			if info := reqctx.FromContext(ctx); info != nil {
+				info.Identity = id.Subject
 			}
 
 			decision, err := authorizer.Authorize(ctx, id, procedure, req.Any())

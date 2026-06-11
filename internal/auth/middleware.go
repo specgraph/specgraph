@@ -7,6 +7,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+
+	"github.com/specgraph/specgraph/internal/reqctx"
 )
 
 // RequireAuth returns HTTP middleware that authenticates requests via
@@ -25,6 +27,9 @@ func RequireAuth(resolver Resolver) func(http.Handler) http.Handler {
 					http.Error(w, `{"error":"unauthenticated"}`, http.StatusUnauthorized)
 				}
 				return
+			}
+			if info := reqctx.FromContext(r.Context()); info != nil {
+				info.Identity = id.Subject
 			}
 			next.ServeHTTP(w, r.WithContext(WithIdentity(r.Context(), id)))
 		})
