@@ -40,3 +40,14 @@ func TestBearerToken_Empty(t *testing.T) {
 		t.Error("BearerTokenFromContext returned true for empty token")
 	}
 }
+
+func TestInteractiveLoginContext(t *testing.T) {
+	ctx := context.Background()
+	if InteractiveLoginFromContext(ctx) {
+		t.Fatal("plain context must not be marked interactive")
+	}
+	ctx = WithInteractiveLogin(ctx)
+	if !InteractiveLoginFromContext(ctx) {
+		t.Fatal("marked context must report interactive")
+	}
+}

@@ -67,3 +67,21 @@ func ProjectFromContext(ctx context.Context) (string, bool) {
 	}
 	return slug, true
 }
+
+type interactiveLoginKey struct{}
+
+// WithInteractiveLogin marks the context as originating from the interactive
+// OIDC login callback. Consumed by jitResolve to bypass the per-issuer JIT
+// rate limiter (the limiter targets unsolicited bearer-JWT JIT; an interactive
+// login is user-driven and IdP+PKCE+nonce authenticated). Set ONLY by the
+// callback handler — bearer entry points never set it.
+func WithInteractiveLogin(ctx context.Context) context.Context {
+	return context.WithValue(ctx, interactiveLoginKey{}, true)
+}
+
+// InteractiveLoginFromContext reports whether the context was marked by
+// WithInteractiveLogin.
+func InteractiveLoginFromContext(ctx context.Context) bool {
+	v, _ := ctx.Value(interactiveLoginKey{}).(bool)
+	return v
+}
