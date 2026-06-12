@@ -80,10 +80,20 @@ func (v *OIDCVerifier) Verify(ctx context.Context, rawToken string) (*OIDCClaims
 		Subject: idToken.Subject,
 		Raw:     raw,
 	}
-	if rawEmail, ok := raw["email"]; ok {
-		var email string
-		if jsonErr := json.Unmarshal(rawEmail, &email); jsonErr == nil {
-			c.Email = email
+	// Prefer the authoritative "email" claim. Fall back to "preferred_username"
+	// for providers that omit "email" by default — notably Microsoft Entra
+	// (Azure AD) v2.0 access tokens, where "preferred_username" carries the
+	// user's UPN in email format. An empty or absent "email" claim falls
+	// through to the next candidate. See GitHub issue #990.
+	for _, claim := range []string{"email", "preferred_username"} {
+		rawVal, ok := raw[claim]
+		if !ok {
+			continue
+		}
+		var s string
+		if jsonErr := json.Unmarshal(rawVal, &s); jsonErr == nil && s != "" {
+			c.Email = s
+			break
 		}
 	}
 	return c, nil

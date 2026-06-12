@@ -83,6 +83,82 @@ func TestOIDCVerifier_VerifyValidToken(t *testing.T) {
 	require.Equal(t, "alice@example.com", claims.Email)
 }
 
+// TestOIDCVerifier_PreferredUsernameFallback proves that when an access token
+// omits the email claim (the common Microsoft Entra v2.0 configuration), the
+// verifier falls back to preferred_username, which carries the user's UPN in
+// email format. Without this fallback, OIDCClaims.Email is empty and JIT user
+// creation fails at the email-domain allowlist check.
+func TestOIDCVerifier_PreferredUsernameFallback(t *testing.T) {
+	ctx := context.Background()
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(ctx, config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	token := p.mintToken(t, map[string]any{
+		"iss":                p.server.URL,
+		"sub":                "user-123",
+		"aud":                "aud-1",
+		"exp":                time.Now().Add(time.Hour).Unix(),
+		"iat":                time.Now().Unix(),
+		"preferred_username": "bob@example.com",
+	})
+	claims, err := v.Verify(ctx, token)
+	require.NoError(t, err)
+	require.Equal(t, "bob@example.com", claims.Email)
+}
+
+// TestOIDCVerifier_EmailTakesPrecedenceOverPreferredUsername proves that when
+// both claims are present, the authoritative email claim wins. This preserves
+// standard OIDC correctness while still handling Entra's email-less tokens.
+func TestOIDCVerifier_EmailTakesPrecedenceOverPreferredUsername(t *testing.T) {
+	ctx := context.Background()
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(ctx, config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	token := p.mintToken(t, map[string]any{
+		"iss":                p.server.URL,
+		"sub":                "user-123",
+		"aud":                "aud-1",
+		"exp":                time.Now().Add(time.Hour).Unix(),
+		"iat":                time.Now().Unix(),
+		"email":              "authoritative@example.com",
+		"preferred_username": "fallback@example.com",
+	})
+	claims, err := v.Verify(ctx, token)
+	require.NoError(t, err)
+	require.Equal(t, "authoritative@example.com", claims.Email)
+}
+
+// TestOIDCVerifier_EmptyEmailFallsThroughToPreferredUsername proves that an
+// empty-string email claim does not shadow a usable preferred_username. Entra
+// can emit an empty email when the directory mail attribute is unset.
+func TestOIDCVerifier_EmptyEmailFallsThroughToPreferredUsername(t *testing.T) {
+	ctx := context.Background()
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(ctx, config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	token := p.mintToken(t, map[string]any{
+		"iss":                p.server.URL,
+		"sub":                "user-123",
+		"aud":                "aud-1",
+		"exp":                time.Now().Add(time.Hour).Unix(),
+		"iat":                time.Now().Unix(),
+		"email":              "",
+		"preferred_username": "fallback@example.com",
+	})
+	claims, err := v.Verify(ctx, token)
+	require.NoError(t, err)
+	require.Equal(t, "fallback@example.com", claims.Email)
+}
+
 func TestOIDCVerifier_RejectsBadAudience(t *testing.T) {
 	ctx := context.Background()
 	p := newOIDCTestIssuer(t)
