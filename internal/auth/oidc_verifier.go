@@ -5,7 +5,9 @@ package auth
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -21,6 +23,7 @@ type OIDCClaims struct {
 	Issuer  string
 	Subject string
 	Email   string
+	Nonce   string
 	Raw     map[string]json.RawMessage
 }
 
@@ -96,5 +99,30 @@ func (v *OIDCVerifier) Verify(ctx context.Context, rawToken string) (*OIDCClaims
 			break
 		}
 	}
+	c.Nonce = idToken.Nonce
 	return c, nil
+}
+
+// nonceMatches reports whether got equals want in constant time. An empty
+// want is never a match (a login flow always sets a non-empty nonce).
+func nonceMatches(got, want string) bool {
+	if want == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
+}
+
+// VerifyWithNonce validates the token like Verify and additionally requires
+// the id_token's nonce claim to equal expectedNonce. Used by the interactive
+// login callback; the bearer-token path uses Verify (no nonce).
+func (v *OIDCVerifier) VerifyWithNonce(ctx context.Context, rawToken, expectedNonce string) (*OIDCClaims, error) {
+	claims, err := v.Verify(ctx, rawToken)
+	if err != nil {
+		return nil, err
+	}
+	if !nonceMatches(claims.Nonce, expectedNonce) {
+		slog.LogAttrs(ctx, slog.LevelWarn, "auth: OIDC nonce mismatch", slog.String("provider", v.providerID))
+		return nil, errors.New("oidc verify: nonce mismatch")
+	}
+	return claims, nil
 }
