@@ -26,6 +26,9 @@ var authMigrations embed.FS
 // Mirrors the convention used by *Store for ConstitutionBackend etc.
 var _ storage.UsersBackend = (*AuthStore)(nil)
 
+// Compile-time assertion that *AuthStore implements WebAuthStore.
+var _ storage.WebAuthStore = (*AuthStore)(nil)
+
 // AuthStore is the Postgres implementation of UsersBackend. It is a sibling
 // to *Store: shares the database pool, holds no project scope, owns the
 // identity tables exclusively.
