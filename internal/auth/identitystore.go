@@ -5,6 +5,7 @@ package auth
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
@@ -35,6 +36,7 @@ type LastUsedTracker interface {
 // + per-issuer OIDCVerifiers; enforces JIT rate-limit and allowlist.
 type pgIdentityStore struct {
 	users     storage.UsersBackend
+	webAuth   storage.WebAuthStore
 	verifiers map[string]*OIDCVerifier // issuer -> verifier
 	tracker   LastUsedTracker
 
@@ -54,6 +56,10 @@ type IdentityStoreConfig struct {
 	Users     storage.UsersBackend
 	Verifiers []*OIDCVerifier
 	Tracker   LastUsedTracker
+
+	// WebAuth persists/looks up interactive-login web sessions. Optional: when
+	// nil, spgr_ws_-prefixed tokens resolve to ErrUnauthenticated.
+	WebAuth storage.WebAuthStore
 
 	// KnownRoles is the set of role names valid for assignment. Validated
 	// against at construction time: any JITDefaultRole or
@@ -133,6 +139,7 @@ func NewIdentityStore(cfg IdentityStoreConfig) (Resolver, error) { //nolint:gocr
 	}
 	return &pgIdentityStore{
 		users:              cfg.Users,
+		webAuth:            cfg.WebAuth,
 		verifiers:          verifiers,
 		tracker:            cfg.Tracker,
 		jitEnabled:         cfg.JITEnabled,
@@ -154,6 +161,9 @@ func (s *pgIdentityStore) Resolve(ctx context.Context, token string) (*Identity,
 	if isJWTShaped(token) {
 		return s.resolveJWT(ctx, token)
 	}
+	if strings.HasPrefix(token, sessionTokenPrefix) {
+		return s.resolveSession(ctx, token)
+	}
 	return s.resolveAPIKey(ctx, token)
 }
 
@@ -165,11 +175,14 @@ func (s *pgIdentityStore) Resolve(ctx context.Context, token string) (*Identity,
 // The spgr_sk_ prefix is excluded in addition to the dot-count check so a
 // (hypothetical) API key whose secret happens to contain two dots is never
 // misrouted to the OIDC/JWT path: an spgr_sk_-prefixed token always goes to
-// the API-key resolver regardless of its dot count. Any future API-key
-// prefix that could contain dots MUST be added to this guard, or such keys
-// risk being treated as JWTs.
+// the API-key resolver regardless of its dot count. The spgr_ws_ session
+// prefix is excluded for the same reason. Any future credential prefix that
+// could contain dots MUST be added to this guard, or such tokens risk being
+// treated as JWTs.
 func isJWTShaped(token string) bool {
-	return strings.Count(token, ".") == 2 && !strings.HasPrefix(token, "spgr_sk_")
+	return strings.Count(token, ".") == 2 &&
+		!strings.HasPrefix(token, apiKeyPrefix) &&
+		!strings.HasPrefix(token, sessionTokenPrefix)
 }
 
 const (
@@ -177,6 +190,8 @@ const (
 	apiKeyPrefixLen = 8          // characters
 	apiKeySecretLen = 32         // characters
 )
+
+const sessionTokenPrefix = "spgr_ws_" //nolint:gosec // G101: token-format prefix, not a credential
 
 // parseAPIKey splits a token of the form spgr_sk_<prefix>_<secret> into
 // its components. Returns ("", "", false) for any malformed input.
@@ -323,6 +338,47 @@ func (s *pgIdentityStore) resolveAPIKey(ctx context.Context, token string) (*Ide
 	}, nil
 }
 
+// resolveSession resolves an opaque web-session token (spgr_ws_...). Mirrors
+// resolveAPIKey's error discipline: not-found/revoked/expired/soft-deleted →
+// ErrUnauthenticated; any other backend error → ErrTransient.
+func (s *pgIdentityStore) resolveSession(ctx context.Context, token string) (*Identity, error) {
+	if s.webAuth == nil {
+		return nil, ErrUnauthenticated
+	}
+	sum := sha256.Sum256([]byte(token))
+	sess, err := s.webAuth.LookupSessionByHash(ctx, sum[:])
+	if err != nil {
+		if errors.Is(err, storage.ErrSessionNotFound) {
+			return nil, ErrUnauthenticated
+		}
+		return nil, fmt.Errorf("%w: %w", ErrTransient, err)
+	}
+	if !sess.IsActive(s.now()) {
+		return nil, ErrUnauthenticated
+	}
+	user, err := s.users.GetUserByID(ctx, sess.UserID)
+	if err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			return nil, ErrUnauthenticated
+		}
+		return nil, fmt.Errorf("%w: %w", ErrTransient, err)
+	}
+	if user.DeletedAt != nil {
+		slog.LogAttrs(ctx, slog.LevelWarn, "auth: session resolved to soft-deleted user",
+			slog.String("user_id", user.ID), slog.String("subject", sess.OIDCSubject))
+		return nil, ErrUnauthenticated
+	}
+	return &Identity{
+		UserID:        user.ID,
+		Subject:       "oidc:" + sess.OIDCSubject,
+		DisplayName:   user.DisplayName,
+		Email:         user.Email,
+		Role:          Role(user.Role),
+		EffectiveRole: Role(user.Role),
+		Source:        "oidc",
+	}, nil
+}
+
 // peekIssuer extracts the iss claim from an unverified JWT payload. Used
 // only to route to the correct OIDCVerifier; the verifier subsequently
 // validates signature+audience+expiry.
@@ -441,11 +497,17 @@ func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims) (*
 	// failure still spends a token. This is deliberate — it dampens retry
 	// storms during DB degradation rather than letting failed attempts retry
 	// against the backend for free.
-	limiter := s.rateLimiterFor(claims.Issuer)
-	if !limiter.Allow() {
-		slog.LogAttrs(ctx, slog.LevelWarn, "auth: JIT rate-limit exceeded",
-			slog.String("issuer", claims.Issuer), slog.String("subject", claims.Subject))
-		return nil, ErrUnauthenticated
+	//
+	// Skipped for interactive logins (user-driven, IdP+PKCE+nonce verified);
+	// the limiter targets unsolicited bearer-JWT JIT. The email-domain
+	// allowlist (step 1, above) still applies.
+	if !InteractiveLoginFromContext(ctx) {
+		limiter := s.rateLimiterFor(claims.Issuer)
+		if !limiter.Allow() {
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: JIT rate-limit exceeded",
+				slog.String("issuer", claims.Issuer), slog.String("subject", claims.Subject))
+			return nil, ErrUnauthenticated
+		}
 	}
 
 	// (3) ClaimsMapping: derive role from token claims at JIT time only.
