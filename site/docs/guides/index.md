@@ -23,6 +23,16 @@ jump to whichever workflow you need.
 
     [:octicons-arrow-right-24: Sync & Integration](sync.md)
 
+- :material-login: **Interactive OIDC Login**
+
+    ---
+
+    Enable browser-based "Sign in with &lt;provider&gt;" login (Authorization
+    Code + PKCE → opaque server session) with Microsoft Entra ID, Okta, and
+    GitHub-via-broker configuration examples.
+
+    [:octicons-arrow-right-24: Interactive OIDC Login](oidc-login.md)
+
 - :material-heart-pulse: **Health Probes (Kubernetes / Knative)**
 
     ---
