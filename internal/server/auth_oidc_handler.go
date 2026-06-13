@@ -6,6 +6,7 @@ package server
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -158,7 +159,7 @@ func (h *oidcLoginHandler) handleCallback(w http.ResponseWriter, r *http.Request
 		}
 		return
 	}
-	if r.URL.Query().Get("state") != flow.State {
+	if subtle.ConstantTimeCompare([]byte(r.URL.Query().Get("state")), []byte(flow.State)) != 1 {
 		fail("state")
 		return
 	}
