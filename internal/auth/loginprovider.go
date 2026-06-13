@@ -106,7 +106,7 @@ var defaultScopes = []string{"openid", "email", "profile"}
 // keep the signature stable for the serve.go call site.
 func BuildLoginProviders(ctx context.Context, providers []config.OIDCProviderConfig, _ string) ([]LoginProvider, error) {
 	var out []LoginProvider
-	for _, pc := range providers {
+	for _, pc := range providers { //nolint:gocritic // rangeValCopy: provider list is small and startup-only
 		if !pc.Interactive {
 			continue
 		}

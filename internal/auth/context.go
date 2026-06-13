@@ -82,6 +82,6 @@ func WithInteractiveLogin(ctx context.Context) context.Context {
 // InteractiveLoginFromContext reports whether the context was marked by
 // WithInteractiveLogin.
 func InteractiveLoginFromContext(ctx context.Context) bool {
-	v, _ := ctx.Value(interactiveLoginKey{}).(bool)
-	return v
+	v, ok := ctx.Value(interactiveLoginKey{}).(bool)
+	return ok && v
 }

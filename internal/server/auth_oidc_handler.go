@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -44,7 +45,7 @@ type oidcLoginHandler struct {
 // RegisterOIDCLoginHandlers wires /api/auth/oidc/{providers,start,callback}.
 // Endpoints are public (no RequireAuth); start/callback are per-IP rate
 // limited. No-op when no interactive providers are configured.
-func RegisterOIDCLoginHandlers(mux *http.ServeMux, cfg OIDCLoginConfig) {
+func RegisterOIDCLoginHandlers(mux *http.ServeMux, cfg OIDCLoginConfig) { //nolint:gocritic // hugeParam: cfg is one-shot startup wiring, not a hot path
 	if len(cfg.Providers) == 0 {
 		return
 	}
@@ -124,6 +125,7 @@ func (h *oidcLoginHandler) handleStart(w http.ResponseWriter, r *http.Request) {
 
 	redirectURI := auth.RedirectURI(h.baseURL, r.TLS != nil, r.Host,
 		r.Header.Get("X-Forwarded-Proto"), r.Header.Get("X-Forwarded-Host"))
+	//nolint:gosec // G710: redirect target is the configured IdP authorize URL (from discovery) + opaque params, not user-controlled
 	http.Redirect(w, r, p.AuthCodeURL(state, nonce, challenge, redirectURI), http.StatusFound)
 }
 
@@ -204,7 +206,7 @@ func (h *oidcLoginHandler) handleCallback(w http.ResponseWriter, r *http.Request
 }
 
 func (h *oidcLoginHandler) txCookie(value string, r *http.Request) *http.Cookie {
-	return &http.Cookie{
+	return &http.Cookie{ //nolint:gosec // G124: Secure is dynamic via r.TLS / X-Forwarded-Proto for dev/prod parity; HttpOnly+SameSite are set here
 		Name:     txCookieName,
 		Value:    value,
 		Path:     "/api/auth/oidc",
@@ -216,7 +218,7 @@ func (h *oidcLoginHandler) txCookie(value string, r *http.Request) *http.Cookie 
 }
 
 func (h *oidcLoginHandler) deleteTxCookie(r *http.Request) *http.Cookie {
-	c := h.txCookie("", r)
+	c := h.txCookie("", r) //nolint:gosec // G124: cookie comes from txCookie() which sets HttpOnly/SameSite/dynamic Secure
 	c.MaxAge = -1
 	return c
 }
@@ -233,7 +235,7 @@ func subjectOnly(subject string) string {
 func randToken() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		return "", err
+		return "", fmt.Errorf("read random bytes: %w", err)
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
@@ -242,7 +244,7 @@ func randToken() (string, error) {
 func randSessionToken() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		return "", err
+		return "", fmt.Errorf("read random bytes: %w", err)
 	}
 	return "spgr_ws_" + base64.RawURLEncoding.EncodeToString(b), nil
 }

@@ -57,7 +57,7 @@ func (f *fakeWebAuth) DeleteExpiredLoginFlows(_ context.Context) (int64, error) 
 // TestResolveSession resolves a seeded active session whose UserID maps to an
 // active user, asserting the returned Identity mirrors the OIDC shape.
 func TestResolveSession(t *testing.T) {
-	const token = "spgr_ws_TOKEN"
+	const token = "spgr_ws_TOKEN" //nolint:gosec // G101: test token literal, not a real credential
 	wantHash := sha256.Sum256([]byte(token))
 
 	web := &fakeWebAuth{
@@ -98,7 +98,7 @@ func TestResolveSession(t *testing.T) {
 
 // TestResolveSession_Errors covers the error discipline of resolveSession.
 func TestResolveSession_Errors(t *testing.T) {
-	const token = "spgr_ws_TOKEN"
+	const token = "spgr_ws_TOKEN" //nolint:gosec // G101: test token literal, not a real credential
 
 	t.Run("missing session → Unauthenticated", func(t *testing.T) {
 		web := &fakeWebAuth{

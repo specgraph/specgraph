@@ -145,7 +145,7 @@ func TestOIDCCallback_HappyPath(t *testing.T) {
 	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", idToken: "tok"}}, wa, res)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?state=S&code=abc", nil)
-	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"})
+	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"}) //nolint:gosec // G124: test request cookie
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -200,7 +200,7 @@ func TestOIDCCallback_Failures(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?"+tc.query, nil)
 			if tc.withTx {
-				req.AddCookie(&http.Cookie{Name: txCookieName, Value: tc.txValue})
+				req.AddCookie(&http.Cookie{Name: txCookieName, Value: tc.txValue}) //nolint:gosec // G124: test request cookie
 			}
 			rec := httptest.NewRecorder()
 			mux.ServeHTTP(rec, req)
@@ -227,7 +227,7 @@ func TestOIDCCallback_ConsumeTransient(t *testing.T) {
 	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", idToken: "tok"}}, wa, res)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?state=S&code=abc", nil)
-	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"})
+	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"}) //nolint:gosec // G124: test request cookie
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -246,7 +246,7 @@ func TestOIDCCallback_Unauthorized(t *testing.T) {
 	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", idToken: "tok"}}, wa, res)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?state=S&code=abc", nil)
-	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"})
+	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"}) //nolint:gosec // G124: test request cookie
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -288,7 +288,7 @@ func callbackWithFlow(t *testing.T, prov auth.LoginProvider, res auth.Resolver, 
 	}
 	mux := newTestOIDCMux([]auth.LoginProvider{prov}, wa, res)
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?state=S&code=abc", nil)
-	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"})
+	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"}) //nolint:gosec // G124: test request cookie
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	return rec

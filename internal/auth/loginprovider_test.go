@@ -4,6 +4,7 @@
 package auth
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 )
 
 func TestBuildLoginProviders_SkipsNonInteractive(t *testing.T) {
-	provs, err := BuildLoginProviders(nil, []config.OIDCProviderConfig{
+	provs, err := BuildLoginProviders(context.Background(), []config.OIDCProviderConfig{
 		{ID: "verify-only", Issuer: "https://x", ClientID: "c"}, // interactive=false
 	}, "")
 	if err != nil {
@@ -23,7 +24,7 @@ func TestBuildLoginProviders_SkipsNonInteractive(t *testing.T) {
 }
 
 func TestBuildLoginProviders_MissingSecret(t *testing.T) {
-	_, err := BuildLoginProviders(nil, []config.OIDCProviderConfig{
+	_, err := BuildLoginProviders(context.Background(), []config.OIDCProviderConfig{
 		{ID: "entra", Interactive: true, Issuer: "https://x", ClientID: "c"},
 	}, "")
 	if err == nil || !strings.Contains(err.Error(), "client secret") {
@@ -33,7 +34,7 @@ func TestBuildLoginProviders_MissingSecret(t *testing.T) {
 
 func TestBuildLoginProviders_AudienceMismatch(t *testing.T) {
 	t.Setenv("TEST_SECRET", "shh")
-	_, err := BuildLoginProviders(nil, []config.OIDCProviderConfig{
+	_, err := BuildLoginProviders(context.Background(), []config.OIDCProviderConfig{
 		{ID: "entra", Interactive: true, Issuer: "https://x", ClientID: "c",
 			Audience: "different", ClientSecretEnv: "TEST_SECRET"},
 	}, "")
@@ -52,7 +53,7 @@ func TestResolveClientSecret(t *testing.T) {
 	if err != nil || got != "plain" {
 		t.Fatalf("plaintext fallback: got %q err %v", got, err)
 	}
-	if _, err := resolveClientSecret(config.OIDCProviderConfig{ClientSecretEnv: "UNSET_VAR_XYZ"}); err == nil {
+	if _, err := resolveClientSecret(config.OIDCProviderConfig{ClientSecretEnv: "UNSET_VAR_XYZ"}); err == nil { //nolint:gosec // G101: env var name, not a credential
 		t.Fatal("unset env var must error")
 	}
 }

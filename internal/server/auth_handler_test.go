@@ -259,7 +259,7 @@ func TestLogout_RevokesSession(t *testing.T) {
 	RegisterAuthHandlers(mux, &mockResolver{}, wa, noopMW)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
-	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "spgr_ws_abc"})
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "spgr_ws_abc"}) //nolint:gosec // G124: test request cookie
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -283,7 +283,7 @@ func TestLogout_NonSessionCookie_NoRevoke(t *testing.T) {
 
 	// A legacy API-key cookie value must never be hashed/revoked.
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
-	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "spgr_sk_legacy"})
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "spgr_sk_legacy"}) //nolint:gosec // G124: test request cookie
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
