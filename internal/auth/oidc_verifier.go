@@ -12,6 +12,7 @@ import (
 	"log/slog"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"golang.org/x/oauth2"
 
 	"github.com/specgraph/specgraph/internal/config"
 )
@@ -34,6 +35,7 @@ type OIDCClaims struct {
 type OIDCVerifier struct {
 	providerID string
 	issuer     string
+	provider   *oidc.Provider
 	verifier   *oidc.IDTokenVerifier
 }
 
@@ -52,12 +54,18 @@ func NewOIDCVerifier(ctx context.Context, cfg config.OIDCProviderConfig) (*OIDCV
 	return &OIDCVerifier{
 		providerID: cfg.ID,
 		issuer:     cfg.Issuer,
+		provider:   provider,
 		verifier:   verifier,
 	}, nil
 }
 
 // Issuer returns the OIDC issuer URL.
 func (v *OIDCVerifier) Issuer() string { return v.issuer }
+
+// Endpoint returns the provider's OAuth2 authorization and token endpoints
+// (from discovery), so callers building an interactive login flow do not need
+// a second discovery round-trip.
+func (v *OIDCVerifier) Endpoint() oauth2.Endpoint { return v.provider.Endpoint() }
 
 // ProviderID returns the configured provider ID (used in logs).
 func (v *OIDCVerifier) ProviderID() string { return v.providerID }
