@@ -35,6 +35,12 @@ func newIPRateLimiter(perSec float64, burst int, trustedProxy bool) *ipRateLimit
 	}
 }
 
+// NewIPRateLimiterForOIDC returns the rate limiter used for the public OIDC
+// start/callback endpoints: 10 requests/min, burst 20, per client IP.
+func NewIPRateLimiterForOIDC(trustedProxy bool) *ipRateLimiter {
+	return newIPRateLimiter(10.0/60.0, 20, trustedProxy)
+}
+
 func (l *ipRateLimiter) limiterFor(ip string) *rate.Limiter {
 	l.mu.Lock()
 	defer l.mu.Unlock()

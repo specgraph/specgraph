@@ -64,12 +64,13 @@ func init() {
 // before this refactor: a broken binary, bad OIDC config, or bad CORS flag
 // should fail fast on every boot regardless of database availability.
 type appDeps struct {
-	verifiers  []*auth.OIDCVerifier
-	authorizer *auth.CedarAuthorizer
-	knownRoles map[auth.Role]bool
-	skillsSrc  skills.Source
-	webFS      fs.FS
-	corsOrigin string
+	verifiers      []*auth.OIDCVerifier
+	loginProviders []auth.LoginProvider
+	authorizer     *auth.CedarAuthorizer
+	knownRoles     map[auth.Role]bool
+	skillsSrc      skills.Source
+	webFS          fs.FS
+	corsOrigin     string
 }
 
 func buildAppDeps(ctx context.Context, cfg *config.GlobalConfig, cmd *cobra.Command) (appDeps, error) {
@@ -84,6 +85,11 @@ func buildAppDeps(ctx context.Context, cfg *config.GlobalConfig, cmd *cobra.Comm
 		verifiers = append(verifiers, v)
 		slog.LogAttrs(context.Background(), slog.LevelInfo, "auth: OIDC provider configured",
 			slog.String("id", pc.ID), slog.String("issuer", pc.Issuer))
+	}
+
+	loginProviders, lpErr := auth.BuildLoginProviders(ctx, cfg.Auth.OIDC.Providers, cfg.Auth.OIDC.BaseURL)
+	if lpErr != nil {
+		return appDeps{}, fmt.Errorf("OIDC login providers: %w", lpErr)
 	}
 
 	knownRoles := auth.KnownRolesFrom(cfg.Auth.Roles)
@@ -114,12 +120,13 @@ func buildAppDeps(ctx context.Context, cfg *config.GlobalConfig, cmd *cobra.Comm
 	}
 
 	return appDeps{
-		verifiers:  verifiers,
-		authorizer: authorizer,
-		knownRoles: knownRoles,
-		skillsSrc:  skillsSrc,
-		webFS:      webFS,
-		corsOrigin: corsOrigin,
+		verifiers:      verifiers,
+		loginProviders: loginProviders,
+		authorizer:     authorizer,
+		knownRoles:     knownRoles,
+		skillsSrc:      skillsSrc,
+		webFS:          webFS,
+		corsOrigin:     corsOrigin,
 	}, nil
 }
 
@@ -154,6 +161,7 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 
 	resolver, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users:                   res.authStore,
+		WebAuth:                 res.authStore,
 		Verifiers:               deps.verifiers,
 		Tracker:                 tracker,
 		KnownRoles:              deps.knownRoles,
@@ -203,7 +211,16 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 	syncHandler.RegisterAdapter(syncpkg.NewGitHubAdapter(runner, ""))
 
 	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(resolver))
-	server.RegisterAuthHandlers(mux, resolver, auth.RequireAuth(resolver))
+	server.RegisterAuthHandlers(mux, resolver, res.authStore, auth.RequireAuth(resolver))
+	server.RegisterOIDCLoginHandlers(mux, server.OIDCLoginConfig{
+		Providers:  deps.loginProviders,
+		Resolver:   resolver,
+		WebAuth:    res.authStore,
+		BaseURL:    cfg.Auth.OIDC.BaseURL,
+		SessionTTL: cfg.Auth.OIDC.SessionTTL,
+		FlowTTL:    5 * time.Minute,
+		Limiter:    server.NewIPRateLimiterForOIDC(cfg.Server.TrustedProxy),
+	})
 
 	loopbackClient := newHTTPClient("")
 	loopbackClient.Transport = telemetry.LoopbackTransport(telState.enabled, loopbackClient.Transport)
@@ -476,6 +493,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		}
 
 		server.StartSweeper(sweeperCtx, r.store, 60*time.Second)
+		server.StartWebAuthSweeper(sweeperCtx, r.authStore, 60*time.Second)
 
 		cleanupMu.Lock()
 		cleanup = func() {
