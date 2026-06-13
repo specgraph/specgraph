@@ -7,9 +7,18 @@
 
   let { children } = $props();
   let ready = $state(false);
+  let authError = $state(null);
 
   onMount(async () => {
     await checkAuth();
+    const params = new URLSearchParams(window.location.search);
+    const ae = params.get('auth_error');
+    if (ae) {
+      authError = ae;
+      params.delete('auth_error');
+      const qs = params.toString();
+      history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
+    }
     if (auth.authenticated) {
       await loadProjects();
     }
@@ -24,7 +33,7 @@
 {#if !ready}
   <main><p class="loading">Connecting...</p></main>
 {:else if !auth.authenticated}
-  <LoginModal onSuccess={handleLoginSuccess} />
+  <LoginModal onSuccess={handleLoginSuccess} {authError} />
 {:else}
   <nav>
     <a href="/" class:active={$page.url.pathname === '/'}>Dashboard</a>

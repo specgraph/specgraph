@@ -1,11 +1,19 @@
 <script lang="ts">
   import { login } from '$lib/auth.svelte';
+  import { fetchProviders, authErrorMessage, type OidcProvider } from '$lib/oidc.svelte';
+  import { onMount } from 'svelte';
 
   let key = $state('');
   let error = $state('');
   let loading = $state(false);
+  let providers = $state<OidcProvider[]>([]);
 
-  let { onSuccess } = $props();
+  let { onSuccess, authError = null }: { onSuccess: () => Promise<void>; authError?: string | null } = $props();
+
+  onMount(async () => {
+    providers = await fetchProviders();
+    if (authError) error = authErrorMessage(authError);
+  });
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
@@ -30,6 +38,14 @@
 <div class="overlay">
   <form class="login-card" onsubmit={handleSubmit}>
     <h2>SpecGraph</h2>
+    {#if providers.length > 0}
+      <div class="providers">
+        {#each providers as p}
+          <a class="oidc-btn" href={`/api/auth/oidc/${p.id}/start`}>Sign in with {p.displayName}</a>
+        {/each}
+      </div>
+      <div class="divider"><span>or</span></div>
+    {/if}
     <p>Enter your API key to continue.</p>
     <input
       type="password"
@@ -89,4 +105,14 @@
   }
   button:hover:not(:disabled) { background: #2d2d4e; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .providers { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem; }
+  .oidc-btn {
+    display: block; text-align: center; text-decoration: none;
+    padding: 0.5rem; border: 1px solid #1a1a2e; border-radius: 4px;
+    color: #1a1a2e; font-size: 0.9rem;
+  }
+  .oidc-btn:hover { background: #f1f5f9; }
+  .divider { display: flex; align-items: center; text-align: center; color: #94a3b8; font-size: 0.8rem; margin: 0.25rem 0 0.75rem; }
+  .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid #e2e8f0; }
+  .divider span { padding: 0 0.5rem; }
 </style>

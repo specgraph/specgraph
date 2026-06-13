@@ -1,3 +1,5 @@
+allowBuilds:
+  esbuild: true
 # Exclude svelte@5.56.2 from the pnpm minimumReleaseAge supply-chain policy.
 # The version is newer than the policy's age cutoff but is a trusted upstream
 # release; without this exclude `pnpm install --frozen-lockfile` fails in CI
