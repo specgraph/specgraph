@@ -75,7 +75,7 @@ type appDeps struct {
 
 func buildAppDeps(ctx context.Context, cfg *config.GlobalConfig, cmd *cobra.Command) (appDeps, error) {
 	verifiers := make([]*auth.OIDCVerifier, 0, len(cfg.Auth.OIDC.Providers))
-	for _, pc := range cfg.Auth.OIDC.Providers {
+	for _, pc := range cfg.Auth.OIDC.Providers { //nolint:gocritic // rangeValCopy: provider list is small and startup-only
 		issuerCtx, issuerCancel := context.WithTimeout(ctx, 10*time.Second)
 		v, oidcErr := auth.NewOIDCVerifier(issuerCtx, pc)
 		issuerCancel()
@@ -770,7 +770,7 @@ func mcpHeaderLogger(next http.Handler) http.Handler {
 // slice. Consumed by auth.IdentityStoreConfig.JITClaimsMapping at startup.
 func buildClaimsMappingByIssuer(providers []config.OIDCProviderConfig) map[string][]config.ClaimMapping {
 	out := make(map[string][]config.ClaimMapping, len(providers))
-	for _, pc := range providers {
+	for _, pc := range providers { //nolint:gocritic // rangeValCopy: provider list is small and startup-only
 		if len(pc.ClaimsMapping) > 0 {
 			out[pc.Issuer] = pc.ClaimsMapping
 		}
