@@ -64,3 +64,19 @@ func TestLoadGlobal_LogRequestsExplicitFalseOverrides(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, cfg.Log.Requests, "explicit log.requests:false must override the true default")
 }
+
+func TestDefault_CLILoginEnabled(t *testing.T) {
+	assert.True(t, globalDefaults().Auth.OIDC.CLILoginEnabled,
+		"CLILoginEnabled should default to true")
+}
+
+func TestLoadGlobal_CLILoginEnabledExplicitFalseOverrides(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("auth:\n  oidc:\n    cli_login_enabled: false\n"), 0o600))
+
+	cfg, err := LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	assert.False(t, cfg.Auth.OIDC.CLILoginEnabled,
+		"explicit auth.oidc.cli_login_enabled:false must override the true default")
+}

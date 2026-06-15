@@ -213,13 +213,14 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 	server.RegisterAPIHandlers(mux, store, auth.RequireAuth(resolver))
 	server.RegisterAuthHandlers(mux, resolver, res.authStore, auth.RequireAuth(resolver))
 	server.RegisterOIDCLoginHandlers(mux, server.OIDCLoginConfig{
-		Providers:  deps.loginProviders,
-		Resolver:   resolver,
-		WebAuth:    res.authStore,
-		BaseURL:    cfg.Auth.OIDC.BaseURL,
-		SessionTTL: cfg.Auth.OIDC.SessionTTL,
-		FlowTTL:    5 * time.Minute,
-		Limiter:    server.NewIPRateLimiterForOIDC(cfg.Server.TrustedProxy),
+		Providers:       deps.loginProviders,
+		Resolver:        resolver,
+		WebAuth:         res.authStore,
+		BaseURL:         cfg.Auth.OIDC.BaseURL,
+		SessionTTL:      cfg.Auth.OIDC.SessionTTL,
+		FlowTTL:         5 * time.Minute,
+		Limiter:         server.NewIPRateLimiterForOIDC(cfg.Server.TrustedProxy),
+		CLILoginEnabled: cfg.Auth.OIDC.CLILoginEnabled,
 	})
 
 	loopbackClient := newHTTPClient("")
