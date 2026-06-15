@@ -5,9 +5,11 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +38,9 @@ type fakeWA struct {
 	sessions   map[string]*storage.Session
 	createErr  error
 	consumeErr error // when set, ConsumeLoginFlow returns it (for the existing flow id)
+
+	exchangeSubject string
+	exchangeErr     error
 }
 
 func (f *fakeWA) CreateSession(_ context.Context, s *storage.Session) (*storage.Session, error) {
@@ -77,8 +82,12 @@ func (f *fakeWA) DeleteExpiredLoginFlows(context.Context) (int64, error) { retur
 func (f *fakeWA) CreateCLICode(context.Context, []byte, string, string, string, time.Time) error {
 	return nil
 }
-func (f *fakeWA) ExchangeCLICode(context.Context, []byte, *storage.Session, string) (*storage.Session, error) {
-	return nil, nil
+func (f *fakeWA) ExchangeCLICode(_ context.Context, _ []byte, sess *storage.Session, _ string) (*storage.Session, error) {
+	if f.exchangeErr != nil {
+		return nil, f.exchangeErr
+	}
+	sess.OIDCSubject = f.exchangeSubject
+	return sess, nil
 }
 func (f *fakeWA) DeleteExpiredCLICodes(context.Context) (int64, error) { return 0, nil }
 
@@ -98,6 +107,24 @@ func newTestOIDCMux(provs []auth.LoginProvider, wa storage.WebAuthStore, res aut
 		Providers: provs, Resolver: res, WebAuth: wa,
 		SessionTTL: time.Hour, FlowTTL: time.Minute,
 		Limiter: newIPRateLimiter(1000, 1000, false),
+	})
+	return mux
+}
+
+func newTestOIDCMuxCLI(t *testing.T, enabled bool) *http.ServeMux {
+	t.Helper()
+	return newTestOIDCMuxWith(t, enabled, &fakeWA{})
+}
+
+func newTestOIDCMuxWith(t *testing.T, enabled bool, wa storage.WebAuthStore) *http.ServeMux {
+	t.Helper()
+	mux := http.NewServeMux()
+	RegisterOIDCLoginHandlers(mux, OIDCLoginConfig{
+		Providers: []auth.LoginProvider{&fakeProvider{id: "entra"}},
+		Resolver:  &fakeResolver{}, WebAuth: wa,
+		SessionTTL: time.Hour, FlowTTL: time.Minute,
+		Limiter:         newIPRateLimiter(1000, 1000, false),
+		CLILoginEnabled: enabled,
 	})
 	return mux
 }
@@ -179,6 +206,52 @@ func TestOIDCCallback_HappyPath(t *testing.T) {
 		if s.OIDCSubject != "sub-1" {
 			t.Fatalf("OIDCSubject = %q, want sub-1", s.OIDCSubject)
 		}
+	}
+}
+
+func TestHandleCallback_CLIRedirect(t *testing.T) {
+	wa := &fakeWA{
+		flows: map[string]*storage.LoginFlow{
+			"flow-1": {
+				ID: "flow-1", State: "S", ProviderID: "entra", Nonce: "n", CodeVerifier: "v",
+				CLICallback: "http://127.0.0.1:5000/callback", CLIState: "CLISTATE", CLIChallenge: "CHAL",
+			},
+		},
+	}
+	res := &fakeResolver{id: &auth.Identity{UserID: "u1", Subject: "oidc:sub-1"}}
+	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", idToken: "tok"}}, wa, res)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?state=S&code=abc", nil)
+	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"}) //nolint:gosec // G124: test request cookie
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusFound)
+	}
+	loc := rec.Header().Get("Location")
+	u, err := url.Parse(loc)
+	if err != nil {
+		t.Fatalf("Location %q parse error: %v", loc, err)
+	}
+	if u.Scheme != "http" || u.Host != "127.0.0.1:5000" || u.Path != "/callback" {
+		t.Fatalf("Location = %q, want http://127.0.0.1:5000/callback", loc)
+	}
+	q := u.Query()
+	if got := q.Get("cli_state"); got != "CLISTATE" {
+		t.Fatalf("cli_state = %q, want CLISTATE", got)
+	}
+	if got := q.Get("code"); got == "" {
+		t.Fatalf("code is empty, want non-empty")
+	}
+	// No server session cookie must be established on the CLI leg.
+	for _, ck := range rec.Result().Cookies() {
+		if ck.Name == sessionCookieName && ck.Value != "" {
+			t.Fatalf("unexpected session cookie %q=%q on CLI redirect", ck.Name, ck.Value)
+		}
+	}
+	if len(wa.sessions) != 0 {
+		t.Fatalf("sessions created = %d, want 0 on CLI redirect", len(wa.sessions))
 	}
 }
 
@@ -335,5 +408,117 @@ func TestOIDCCallback_ProviderRemovedMidFlow(t *testing.T) {
 	rec := callbackWithFlow(t, &fakeProvider{id: "entra", idToken: "tok"}, &fakeResolver{}, wa)
 	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "auth_error=exchange") {
 		t.Fatalf("Location = %q, want auth_error=exchange", loc)
+	}
+}
+
+func TestValidateCLICallback(t *testing.T) {
+	t.Parallel()
+	ok := []string{"http://127.0.0.1:5000/callback", "http://[::1]:5000/callback"}
+	for _, s := range ok {
+		if _, valid := validateCLICallback(s); !valid {
+			t.Errorf("want valid: %s", s)
+		}
+	}
+	bad := []string{
+		"https://127.0.0.1:5000/callback", "http://localhost:5000/callback",
+		"http://127.0.0.1.evil.com/callback", "http://user@127.0.0.1/callback",
+		"http://127.0.0.1/other", "http://127.0.0.1/callback?x=1", "http://127.0.0.1/callback#y",
+	}
+	for _, s := range bad {
+		if _, valid := validateCLICallback(s); valid {
+			t.Errorf("want invalid: %s", s)
+		}
+	}
+}
+
+func TestHandleStart_CLIDisabled(t *testing.T) {
+	t.Parallel()
+	mux := newTestOIDCMuxCLI(t, false)
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/entra/start?cli_callback=http://127.0.0.1:5000/callback&cli_state=s&cli_challenge=c", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+}
+
+func TestHandleCLIExchange_Success(t *testing.T) {
+	t.Parallel()
+	wa := &fakeWA{exchangeSubject: "subj"}
+	mux := newTestOIDCMuxWith(t, true, wa)
+	body := `{"code":"abc","cli_verifier":"verifier"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/cli/exchange", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if cc := rec.Header().Get("Cache-Control"); cc != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", cc)
+	}
+	var resp cliExchangeResponse
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(resp.Token, "spgr_ws_") || resp.OIDCSubject != "subj" {
+		t.Fatalf("bad response: %+v", resp)
+	}
+}
+
+func TestHandleCLIExchange_BadCode(t *testing.T) {
+	t.Parallel()
+	wa := &fakeWA{exchangeErr: storage.ErrCLICodeNotFound}
+	mux := newTestOIDCMuxWith(t, true, wa)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/cli/exchange", strings.NewReader(`{"code":"x","cli_verifier":"y"}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestHandleCLIExchange_Method(t *testing.T) {
+	t.Parallel()
+	mux := newTestOIDCMuxWith(t, true, &fakeWA{})
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/cli/exchange", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want 405", rec.Code)
+	}
+}
+
+func TestHandleCLIExchange_MissingFields(t *testing.T) {
+	t.Parallel()
+	mux := newTestOIDCMuxWith(t, true, &fakeWA{})
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/cli/exchange", strings.NewReader(`{}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestHandleCLIExchange_UserUnavailable(t *testing.T) {
+	t.Parallel()
+	wa := &fakeWA{exchangeErr: storage.ErrUserNotFound}
+	mux := newTestOIDCMuxWith(t, true, wa)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/cli/exchange", strings.NewReader(`{"code":"x","cli_verifier":"y"}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", rec.Code)
+	}
+}
+
+func TestHandleCLIExchange_ChallengeMismatch(t *testing.T) {
+	t.Parallel()
+	wa := &fakeWA{exchangeErr: storage.ErrCLIChallengeMismatch}
+	mux := newTestOIDCMuxWith(t, true, wa)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/cli/exchange", strings.NewReader(`{"code":"x","cli_verifier":"y"}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
 	}
 }
