@@ -126,6 +126,12 @@ func (h *oidcLoginHandler) handleStart(w http.ResponseWriter, r *http.Request) {
 			writeJSONError(w, http.StatusBadRequest, "cli_challenge and cli_state required")
 			return
 		}
+		// Bound lengths to the storage CHECK constraints so oversized params
+		// surface as 400 rather than a generic 503 from the failed INSERT.
+		if len(cliCallback) > 512 || len(cliState) > 512 || len(cliChallenge) > 256 {
+			writeJSONError(w, http.StatusBadRequest, "cli parameter too long")
+			return
+		}
 	}
 	state, err := randToken()
 	if err != nil {

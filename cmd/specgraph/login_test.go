@@ -56,6 +56,32 @@ func TestLoopbackHandler_Success(t *testing.T) {
 	}
 }
 
+func TestLoopbackHandler_IgnoresOtherPaths(t *testing.T) {
+	t.Parallel()
+	codeCh := make(chan string, 1)
+	errCh := make(chan error, 1)
+	h := loopbackHandler(5000, "secret", codeCh, errCh)
+	req := httptest.NewRequest(http.MethodGet, "/favicon.ico", nil)
+	req.Host = "127.0.0.1:5000"
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rec.Code)
+	}
+	select {
+	case <-errCh:
+		t.Fatal("a non-callback request must not abort the login")
+	default:
+	}
+}
+
+func TestGuardRemote_SSHRejected(t *testing.T) {
+	t.Setenv("SSH_CONNECTION", "10.0.0.1 22 10.0.0.2 22")
+	if err := guardRemote(); err == nil {
+		t.Fatal("expected guardRemote to reject an SSH session")
+	}
+}
+
 func TestPickProvider(t *testing.T) {
 	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

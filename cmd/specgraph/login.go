@@ -128,6 +128,12 @@ func loopbackHandler(port int, cliState string, codeCh chan<- string, errCh chan
 			http.Error(w, "bad host", http.StatusBadRequest)
 			return
 		}
+		// Ignore stray requests (favicon, prefetch, loopback port scans) without
+		// aborting the login — only /callback drives the flow.
+		if r.URL.Path != "/callback" {
+			http.NotFound(w, r)
+			return
+		}
 		q := r.URL.Query()
 		if subtle.ConstantTimeCompare([]byte(q.Get("cli_state")), []byte(cliState)) != 1 {
 			http.Error(w, "state mismatch", http.StatusBadRequest)
@@ -156,10 +162,11 @@ func guardHTTPS(serverURL string) error {
 	return fmt.Errorf("refusing to log in over plain http to a non-loopback server (%s); use https", serverURL)
 }
 
+// guardRemote rejects SSH/headless sessions where the loopback redirect cannot
+// reach the CLI host. Applies regardless of --no-browser: over SSH a loopback
+// login can never complete (the browser runs on a different machine), so we
+// fail fast with actionable guidance instead of hanging until the timeout.
 func guardRemote() error {
-	if loginNoBrowser {
-		return nil
-	}
 	if os.Getenv("SSH_CONNECTION") != "" || os.Getenv("SSH_TTY") != "" {
 		return errors.New("browser-based login isn't available over SSH/headless sessions; create an API key instead: specgraph auth api-key create")
 	}

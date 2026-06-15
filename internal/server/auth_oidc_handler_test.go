@@ -442,6 +442,18 @@ func TestHandleStart_CLIDisabled(t *testing.T) {
 	}
 }
 
+func TestHandleStart_CLIParamTooLong(t *testing.T) {
+	t.Parallel()
+	mux := newTestOIDCMuxCLI(t, true)
+	long := strings.Repeat("a", 513)
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/entra/start?cli_callback=http://127.0.0.1:5000/callback&cli_state="+long+"&cli_challenge=c", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rec.Code)
+	}
+}
+
 func TestHandleCLIExchange_Success(t *testing.T) {
 	t.Parallel()
 	wa := &fakeWA{exchangeSubject: "subj"}
