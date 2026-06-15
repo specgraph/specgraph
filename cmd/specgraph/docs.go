@@ -55,7 +55,7 @@ var commandGroups = []commandGroup{
 	{Name: "Sync", Commands: []string{"sync"}},
 	{Name: "Export & Backup", Commands: []string{"export", "import", "verify"}},
 	{Name: "Server & Config", Commands: []string{"up", "down", "install", "uninstall", "serve", "status", "health", "doctor", "init", "prime", "read-mcp-resource"}},
-	{Name: "Identity & Auth", Commands: []string{"login", "auth"}},
+	{Name: "Identity & Auth", Commands: []string{"login", "logout", "auth"}},
 }
 
 func runDocsCli(_ *cobra.Command, args []string) error {
