@@ -14,7 +14,7 @@ nav = [
   "how-it-works.md",
   "quickstart.md",
   { "Concepts" = ["concepts/index.md", "concepts/ground-truth.md", "concepts/spec-graph.md", "concepts/decisions.md", "concepts/authoring.md", "concepts/passes.md", "concepts/slices.md", "concepts/drift.md", "concepts/lifecycle.md", "concepts/linting.md", "concepts/example-spec.md"] },
-  { "Guides" = ["guides/index.md", "guides/cli-cookbook.md", "guides/sync.md", "guides/health-probes.md", "guides/observability.md"] },
+  { "Guides" = ["guides/index.md", "guides/cli-cookbook.md", "guides/sync.md", "guides/oidc-login.md", "guides/health-probes.md", "guides/observability.md"] },
   "cli-reference.md",
   "architecture.md",
   "ecosystem.md",

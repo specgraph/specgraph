@@ -158,3 +158,9 @@ var ErrBootstrapExists = errors.New("bootstrap user already exists")
 
 // ErrAPIKeyPrefixExists is returned when an API key prefix collides with an existing key.
 var ErrAPIKeyPrefixExists = errors.New("api key prefix collision")
+
+// ErrSessionNotFound is returned when a web session does not exist (or is expired/revoked at lookup).
+var ErrSessionNotFound = errors.New("web session not found")
+
+// ErrLoginFlowNotFound is returned when an OIDC login-flow row does not exist or has expired.
+var ErrLoginFlowNotFound = errors.New("oidc login flow not found")

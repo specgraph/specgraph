@@ -4,7 +4,9 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // mockResolver implements auth.Resolver for tests.
@@ -45,7 +48,7 @@ func identityMW(id *auth.Identity) func(http.Handler) http.Handler {
 
 func newTestMux(resolver auth.Resolver, authMW func(http.Handler) http.Handler) *http.ServeMux {
 	mux := http.NewServeMux()
-	RegisterAuthHandlers(mux, resolver, authMW)
+	RegisterAuthHandlers(mux, resolver, nil, authMW)
 	return mux
 }
 
@@ -209,5 +212,85 @@ func TestHandleWhoami_NoIdentity(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", w.Code)
+	}
+}
+
+// logoutFakeWA is a minimal storage.WebAuthStore for logout-revocation tests.
+// Only RevokeSession has a meaningful body; the rest return zero values.
+type logoutFakeWA struct {
+	onRevoke   func()
+	gotRevoked []byte // the token hash passed to the most recent RevokeSession
+}
+
+var _ storage.WebAuthStore = (*logoutFakeWA)(nil)
+
+func (f *logoutFakeWA) RevokeSession(_ context.Context, tokenHash []byte) error {
+	f.gotRevoked = tokenHash
+	if f.onRevoke != nil {
+		f.onRevoke()
+	}
+	return nil
+}
+
+func (f *logoutFakeWA) CreateSession(_ context.Context, _ *storage.Session) (*storage.Session, error) {
+	return nil, nil
+}
+
+func (f *logoutFakeWA) LookupSessionByHash(_ context.Context, _ []byte) (*storage.Session, error) {
+	return nil, nil
+}
+
+func (f *logoutFakeWA) DeleteExpiredSessions(_ context.Context) (int64, error) { return 0, nil }
+
+func (f *logoutFakeWA) CreateLoginFlow(_ context.Context, _ *storage.LoginFlow) (string, error) {
+	return "", nil
+}
+
+func (f *logoutFakeWA) ConsumeLoginFlow(_ context.Context, _ string) (*storage.LoginFlow, error) {
+	return nil, nil
+}
+
+func (f *logoutFakeWA) DeleteExpiredLoginFlows(_ context.Context) (int64, error) { return 0, nil }
+
+func TestLogout_RevokesSession(t *testing.T) {
+	revoked := false
+	wa := &logoutFakeWA{onRevoke: func() { revoked = true }}
+	mux := http.NewServeMux()
+	RegisterAuthHandlers(mux, &mockResolver{}, wa, noopMW)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "spgr_ws_abc"}) //nolint:gosec // G124: test request cookie
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("want 204, got %d", rec.Code)
+	}
+	if !revoked {
+		t.Fatal("expected RevokeSession to be called")
+	}
+	want := sha256.Sum256([]byte("spgr_ws_abc"))
+	if !bytes.Equal(wa.gotRevoked, want[:]) {
+		t.Fatalf("RevokeSession got wrong hash: %x want %x", wa.gotRevoked, want[:])
+	}
+}
+
+func TestLogout_NonSessionCookie_NoRevoke(t *testing.T) {
+	revoked := false
+	wa := &logoutFakeWA{onRevoke: func() { revoked = true }}
+	mux := http.NewServeMux()
+	RegisterAuthHandlers(mux, &mockResolver{}, wa, noopMW)
+
+	// A legacy API-key cookie value must never be hashed/revoked.
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: "spgr_sk_legacy"}) //nolint:gosec // G124: test request cookie
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("want 204, got %d", rec.Code)
+	}
+	if revoked {
+		t.Fatal("expected RevokeSession NOT to be called for non-spgr_ws_ cookie")
 	}
 }

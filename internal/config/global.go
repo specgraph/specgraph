@@ -143,6 +143,10 @@ type ServerSection struct {
 	Postgres PostgresConfig `yaml:"postgres" koanf:"postgres"`
 	Docker   bool           `yaml:"docker" koanf:"docker"`
 	Probes   ProbesConfig   `yaml:"probes,omitempty" koanf:"probes"`
+	// TrustedProxy, when true, lets request-IP extraction trust
+	// X-Forwarded-For/X-Real-Ip (e.g. behind a load balancer) for the OIDC
+	// per-IP rate limiter. Default false → use RemoteAddr.
+	TrustedProxy bool `yaml:"trusted_proxy" koanf:"trusted_proxy"`
 }
 
 // ProbesConfig configures the plain-HTTP Kubernetes/Knative probe listener.
@@ -202,6 +206,13 @@ type Route struct {
 type OIDCConfig struct {
 	Providers []OIDCProviderConfig `yaml:"providers" koanf:"providers"`
 	JITCreate JITCreateConfig      `yaml:"jit_create" koanf:"jit_create"`
+	// BaseURL overrides the request-derived origin used to build the OIDC
+	// redirect_uri. Required behind a proxy that rewrites Host. Empty = derive
+	// from the request.
+	BaseURL string `yaml:"base_url" koanf:"base_url"`
+	// SessionTTL is the absolute lifetime of a web session minted by the
+	// interactive login flow. Zero = default (12h, applied in applyPostLoad).
+	SessionTTL time.Duration `yaml:"session_ttl" koanf:"session_ttl"`
 }
 
 // JITCreateConfig parametrizes just-in-time Human creation on first
@@ -215,9 +226,9 @@ type JITCreateConfig struct {
 
 // AuthConfig configures authentication and authorization.
 type AuthConfig struct {
-	Mode          string               `yaml:"mode" koanf:"mode"`                   // deprecated; ignored after Authn plan
-	DefaultRole   string               `yaml:"default_role" koanf:"default_role"`   // deprecated; ignored after Authn plan
-	APIKeys       []APIKeyConfig       `yaml:"api_keys" koanf:"api_keys"`           // ignored after Authn plan (storage owns)
+	Mode          string               `yaml:"mode" koanf:"mode"`                     // deprecated; ignored after Authn plan
+	DefaultRole   string               `yaml:"default_role" koanf:"default_role"`     // deprecated; ignored after Authn plan
+	APIKeys       []APIKeyConfig       `yaml:"api_keys" koanf:"api_keys"`             // ignored after Authn plan (storage owns)
 	OIDCProviders []OIDCProviderConfig `yaml:"oidc_providers" koanf:"oidc_providers"` // deprecated; superseded by OIDC.Providers
 	Roles         []string             `yaml:"roles" koanf:"roles"`
 	Policies      PolicyConfig         `yaml:"policies" koanf:"policies"`
@@ -241,11 +252,17 @@ type APIKeyConfig struct {
 
 // OIDCProviderConfig defines a single OIDC identity provider.
 type OIDCProviderConfig struct {
-	ID            string         `yaml:"id" koanf:"id"`
-	Issuer        string         `yaml:"issuer" koanf:"issuer"`
-	ClientID      string         `yaml:"client_id" koanf:"client_id"`
-	Audience      string         `yaml:"audience" koanf:"audience"`
-	ClaimsMapping []ClaimMapping `yaml:"claims_mapping" koanf:"claims_mapping"`
+	ID              string         `yaml:"id" koanf:"id"`
+	Kind            string         `yaml:"kind" koanf:"kind"`               // "oidc" (default); reserved for "oauth2"
+	Interactive     bool           `yaml:"interactive" koanf:"interactive"` // opt-in to the UI login flow
+	DisplayName     string         `yaml:"display_name" koanf:"display_name"`
+	Issuer          string         `yaml:"issuer" koanf:"issuer"`
+	ClientID        string         `yaml:"client_id" koanf:"client_id"`
+	ClientSecret    string         `yaml:"client_secret" koanf:"client_secret"`         // dev-only plaintext fallback
+	ClientSecretEnv string         `yaml:"client_secret_env" koanf:"client_secret_env"` // preferred: env var name
+	Audience        string         `yaml:"audience" koanf:"audience"`
+	Scopes          []string       `yaml:"scopes" koanf:"scopes"`
+	ClaimsMapping   []ClaimMapping `yaml:"claims_mapping" koanf:"claims_mapping"`
 }
 
 // ClaimMapping maps a JWT claim value to a SpecGraph role.
@@ -285,7 +302,8 @@ func decoderConf(out *GlobalConfig) koanf.UnmarshalConf {
 }
 
 // applyPostLoad runs transforms that must happen after unmarshal: the OIDC
-// providers migration and postgres backend coercion.
+// providers migration, postgres backend coercion, and the OIDC session-TTL
+// default.
 func applyPostLoad(cfg *GlobalConfig) {
 	if len(cfg.Auth.OIDCProviders) > 0 && len(cfg.Auth.OIDC.Providers) == 0 {
 		cfg.Auth.OIDC.Providers = cfg.Auth.OIDCProviders
@@ -297,6 +315,9 @@ func applyPostLoad(cfg *GlobalConfig) {
 	// backend (e.g. "memory") is never overridden.
 	if cfg.Server.Postgres.URL != "" && cfg.Server.Backend == "" {
 		cfg.Server.Backend = "postgres"
+	}
+	if cfg.Auth.OIDC.SessionTTL <= 0 {
+		cfg.Auth.OIDC.SessionTTL = 12 * time.Hour
 	}
 }
 

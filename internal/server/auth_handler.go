@@ -4,20 +4,24 @@
 package server
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/specgraph/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 const sessionCookieName = "specgraph_session"
 
 // RegisterAuthHandlers registers login, logout, and whoami endpoints.
 // authMW is applied to protected routes (whoami). It must not be nil.
-// resolver is the Resolver used to validate credentials at the login endpoint.
-func RegisterAuthHandlers(mux *http.ServeMux, resolver auth.Resolver, authMW func(http.Handler) http.Handler) {
+// resolver validates credentials at login. webAuth (may be nil) is used to
+// revoke the server session on logout.
+func RegisterAuthHandlers(mux *http.ServeMux, resolver auth.Resolver, webAuth storage.WebAuthStore, authMW func(http.Handler) http.Handler) {
 	if authMW == nil {
 		panic("RegisterAuthHandlers: authMW must not be nil")
 	}
@@ -35,7 +39,7 @@ func RegisterAuthHandlers(mux *http.ServeMux, resolver auth.Resolver, authMW fun
 			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
-		handleLogout(w, r)
+		handleLogout(w, r, webAuth)
 	})
 
 	// whoami: GET only, translate session cookie → Authorization header, then apply authMW.
@@ -80,9 +84,18 @@ func handleLogin(w http.ResponseWriter, r *http.Request, resolver auth.Resolver)
 	json.NewEncoder(w).Encode(newIdentityResponse(id)) //nolint:errcheck // best-effort write to http.ResponseWriter
 }
 
-// handleLogout clears the session cookie.
-func handleLogout(w http.ResponseWriter, r *http.Request) {
-	c := sessionCookie("", r) //nolint:gosec // G124: cookie comes from sessionCookie() which sets HttpOnly, SameSite, and dynamic Secure
+// handleLogout revokes the server session (if the cookie holds a spgr_ws_
+// token) and clears the session cookie. A legacy API-key cookie value is
+// never hashed/looked-up.
+func handleLogout(w http.ResponseWriter, r *http.Request, webAuth storage.WebAuthStore) {
+	if c, err := r.Cookie(sessionCookieName); err == nil && webAuth != nil &&
+		strings.HasPrefix(c.Value, "spgr_ws_") {
+		sum := sha256.Sum256([]byte(c.Value))
+		if revErr := webAuth.RevokeSession(r.Context(), sum[:]); revErr != nil {
+			slog.LogAttrs(r.Context(), slog.LevelWarn, "logout: revoke session", slog.Any("error", revErr))
+		}
+	}
+	c := sessionCookie("", r) //nolint:gosec // G124: sessionCookie sets HttpOnly/SameSite/dynamic Secure
 	c.MaxAge = -1
 	http.SetCookie(w, c)
 	w.WriteHeader(http.StatusNoContent)
@@ -123,16 +136,29 @@ func writeJSONError(w http.ResponseWriter, code int, msg string) {
 	json.NewEncoder(w).Encode(map[string]string{"error": msg}) //nolint:errcheck // best-effort write to http.ResponseWriter
 }
 
+// establishSession sets the session cookie to the given token value. It is the
+// single seam that seats a web session (OIDC flow uses it). MUST reuse
+// sessionCookie()'s exact name and Path so a callback's Set-Cookie
+// deterministically overwrites any pre-existing session cookie and logout's
+// clear always deletes it.
+func establishSession(w http.ResponseWriter, r *http.Request, token string) {
+	http.SetCookie(w, sessionCookie(token, r))
+}
+
 // sessionCookie returns a configured session cookie with the given value.
 // Secure is set dynamically: true when the request arrived over TLS or via a
 // reverse proxy signaling HTTPS via X-Forwarded-Proto, false otherwise (local HTTP dev).
+// SameSite=Lax so the cookie is sent on the post-IdP redirect top-level
+// navigation; safe because no GET endpoint mutates state. This relaxation is
+// intentionally global: it applies to the legacy API-key session cookie too,
+// which is acceptable under the same "no GET mutates state" invariant.
 func sessionCookie(value string, r *http.Request) *http.Cookie {
 	return &http.Cookie{ //nolint:gosec // G124: Secure is dynamic via r.TLS / X-Forwarded-Proto for dev/prod parity; HttpOnly+SameSite are set below // nosemgrep: go.lang.security.audit.net.cookie-missing-secure.cookie-missing-secure
 		Name:     sessionCookieName,
 		Value:    value,
 		Path:     "/",
 		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		Secure:   r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https",
 	}
 }

@@ -228,6 +228,46 @@ auth:
 	require.Len(t, cfg.Auth.OIDC.Providers, 1)
 }
 
+func TestLoadGlobal_OIDCInteractiveFields(t *testing.T) {
+	yamlBody := []byte(`
+auth:
+  oidc:
+    base_url: https://specgraph.example.com
+    session_ttl: 8h
+    providers:
+      - id: entra
+        kind: oidc
+        interactive: true
+        display_name: Microsoft Entra
+        issuer: https://login.microsoftonline.com/tenant/v2.0
+        client_id: app-id
+        client_secret_env: SPECGRAPH_OIDC_ENTRA_SECRET
+        scopes: [openid, profile, email]
+`)
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(path, yamlBody, 0o600))
+
+	cfg, err := config.LoadGlobal(path)
+	require.NoError(t, err)
+	require.Equal(t, "https://specgraph.example.com", cfg.Auth.OIDC.BaseURL)
+	require.Equal(t, 8*time.Hour, cfg.Auth.OIDC.SessionTTL)
+	require.Len(t, cfg.Auth.OIDC.Providers, 1)
+	p := cfg.Auth.OIDC.Providers[0]
+	require.Equal(t, "oidc", p.Kind)
+	require.True(t, p.Interactive)
+	require.Equal(t, "Microsoft Entra", p.DisplayName)
+	require.Equal(t, "SPECGRAPH_OIDC_ENTRA_SECRET", p.ClientSecretEnv)
+	require.Equal(t, []string{"openid", "profile", "email"}, p.Scopes)
+}
+
+func TestLoadGlobal_SessionTTLDefault(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("server:\n  backend: memory\n"), 0o600))
+	cfg, err := config.LoadGlobal(path)
+	require.NoError(t, err)
+	require.Equal(t, 12*time.Hour, cfg.Auth.OIDC.SessionTTL)
+}
+
 func TestLoadGlobal_LegacyOIDCProvidersStillWorks(t *testing.T) {
 	yamlBody := []byte(`
 auth:

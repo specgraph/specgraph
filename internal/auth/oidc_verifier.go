@@ -5,11 +5,14 @@ package auth
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"golang.org/x/oauth2"
 
 	"github.com/specgraph/specgraph/internal/config"
 )
@@ -21,6 +24,7 @@ type OIDCClaims struct {
 	Issuer  string
 	Subject string
 	Email   string
+	Nonce   string
 	Raw     map[string]json.RawMessage
 }
 
@@ -31,6 +35,7 @@ type OIDCClaims struct {
 type OIDCVerifier struct {
 	providerID string
 	issuer     string
+	provider   *oidc.Provider
 	verifier   *oidc.IDTokenVerifier
 }
 
@@ -49,12 +54,18 @@ func NewOIDCVerifier(ctx context.Context, cfg config.OIDCProviderConfig) (*OIDCV
 	return &OIDCVerifier{
 		providerID: cfg.ID,
 		issuer:     cfg.Issuer,
+		provider:   provider,
 		verifier:   verifier,
 	}, nil
 }
 
 // Issuer returns the OIDC issuer URL.
 func (v *OIDCVerifier) Issuer() string { return v.issuer }
+
+// Endpoint returns the provider's OAuth2 authorization and token endpoints
+// (from discovery), so callers building an interactive login flow do not need
+// a second discovery round-trip.
+func (v *OIDCVerifier) Endpoint() oauth2.Endpoint { return v.provider.Endpoint() }
 
 // ProviderID returns the configured provider ID (used in logs).
 func (v *OIDCVerifier) ProviderID() string { return v.providerID }
@@ -96,5 +107,30 @@ func (v *OIDCVerifier) Verify(ctx context.Context, rawToken string) (*OIDCClaims
 			break
 		}
 	}
+	c.Nonce = idToken.Nonce
 	return c, nil
+}
+
+// nonceMatches reports whether got equals want in constant time. An empty
+// want is never a match (a login flow always sets a non-empty nonce).
+func nonceMatches(got, want string) bool {
+	if want == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
+}
+
+// VerifyWithNonce validates the token like Verify and additionally requires
+// the id_token's nonce claim to equal expectedNonce. Used by the interactive
+// login callback; the bearer-token path uses Verify (no nonce).
+func (v *OIDCVerifier) VerifyWithNonce(ctx context.Context, rawToken, expectedNonce string) (*OIDCClaims, error) {
+	claims, err := v.Verify(ctx, rawToken)
+	if err != nil {
+		return nil, err
+	}
+	if !nonceMatches(claims.Nonce, expectedNonce) {
+		slog.LogAttrs(ctx, slog.LevelWarn, "auth: OIDC nonce mismatch", slog.String("provider", v.providerID))
+		return nil, errors.New("oidc verify: nonce mismatch")
+	}
+	return claims, nil
 }

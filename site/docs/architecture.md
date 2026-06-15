@@ -187,6 +187,15 @@ validates requests before they reach service handlers.
   extracts and validates credentials from request headers or cookies before
   forwarding to handlers.
 
+Beyond bearer-token verification, SpecGraph also offers an **interactive
+browser login** for human operators. Providers marked `interactive: true` run
+a server-side OAuth2 Authorization Code flow with PKCE: SpecGraph drives the
+handshake against the IdP, validates the returned ID token, and mints an
+opaque server-side session (the browser cookie holds only the session id, so
+the flow needs no sticky sessions across replicas). See the
+[Interactive OIDC Login guide](guides/oidc-login.md) for provider setup and
+configuration.
+
 Authentication is optional — the server runs without it for local
 development. Enable it in the server configuration.
 
