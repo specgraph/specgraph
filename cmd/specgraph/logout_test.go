@@ -35,3 +35,11 @@ func TestRevokeSession_ServerError(t *testing.T) {
 		t.Fatal("expected error on 500")
 	}
 }
+
+func TestRevokeSession_RefusesPlaintextRemote(t *testing.T) {
+	t.Parallel()
+	// A non-loopback plaintext URL must be refused before the token is sent.
+	if err := revokeSession(t.Context(), "http://api.example.com", "spgr_ws_abc"); err == nil {
+		t.Fatal("expected revokeSession to refuse plaintext remote transport")
+	}
+}

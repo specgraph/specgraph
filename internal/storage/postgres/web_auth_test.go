@@ -219,3 +219,22 @@ func TestLoginFlow_WebStillWorks(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "", got.CLICallback)
 }
+
+func TestDeleteExpiredCLICodes(t *testing.T) {
+	auth, userID := newAuthStoreWithUser(t)
+	ctx := context.Background()
+
+	expired := sha256.Sum256([]byte("expired-code"))
+	live := sha256.Sum256([]byte("live-code"))
+	require.NoError(t, auth.CreateCLICode(ctx, expired[:], userID, "", "c1", time.Now().Add(-time.Minute)))
+	require.NoError(t, auth.CreateCLICode(ctx, live[:], userID, "", "c2", time.Now().Add(time.Minute)))
+
+	n, err := auth.DeleteExpiredCLICodes(ctx)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), n)
+
+	// The live code still exchanges; the expired one is gone.
+	tokenHash := sha256.Sum256([]byte("tok"))
+	_, err = auth.ExchangeCLICode(ctx, live[:], &storage.Session{TokenHash: tokenHash[:], ExpiresAt: time.Now().Add(time.Hour)}, "c2")
+	require.NoError(t, err)
+}

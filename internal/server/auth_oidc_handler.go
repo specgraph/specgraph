@@ -340,7 +340,8 @@ func (h *oidcLoginHandler) handleCLIExchange(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	var req cliExchangeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Code == "" || req.CLIVerifier == "" {
+	// Bound the public endpoint's request body; {code, cli_verifier} is tiny.
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&req); err != nil || req.Code == "" || req.CLIVerifier == "" {
 		writeJSONError(w, http.StatusBadRequest, "missing code or verifier")
 		return
 	}

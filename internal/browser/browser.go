@@ -26,8 +26,12 @@ func openCommand(goos, url string) (name string, args []string) {
 // opener cannot be started; callers should fall back to printing the URL.
 func Open(url string) error {
 	name, args := openCommand(runtime.GOOS, url)
-	if err := exec.Command(name, args...).Start(); err != nil {
+	cmd := exec.Command(name, args...)
+	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("open browser: %w", err)
 	}
+	// Reap the opener once it exits so it doesn't linger as a zombie for the
+	// lifetime of the (potentially minutes-long) login wait.
+	go func() { _ = cmd.Wait() }() //nolint:errcheck // best-effort reap
 	return nil
 }

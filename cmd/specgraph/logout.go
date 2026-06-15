@@ -64,6 +64,10 @@ func runLogout(cmd *cobra.Command, _ []string) error {
 }
 
 func revokeSession(ctx context.Context, serverURL, token string) error {
+	// Never send the session token over plaintext to a non-loopback server.
+	if err := guardHTTPS(serverURL); err != nil {
+		return fmt.Errorf("refusing insecure revoke transport: %w", err)
+	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, serverURL+"/api/auth/logout", http.NoBody)

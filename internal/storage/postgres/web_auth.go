@@ -171,6 +171,9 @@ func (s *AuthStore) CreateCLICode(ctx context.Context, codeHash []byte, userID, 
 // statements run on the transaction handle; it MUST NOT call CreateSession
 // (which runs on the pool and would break atomicity).
 func (s *AuthStore) ExchangeCLICode(ctx context.Context, codeHash []byte, sess *storage.Session, gotChallenge string) (*storage.Session, error) {
+	if sess == nil {
+		return nil, errors.New("ExchangeCLICode: sess required")
+	}
 	if len(sess.TokenHash) == 0 || sess.ExpiresAt.IsZero() {
 		return nil, errors.New("ExchangeCLICode: sess.TokenHash and ExpiresAt required")
 	}

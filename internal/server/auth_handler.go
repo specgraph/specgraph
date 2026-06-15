@@ -103,15 +103,16 @@ func handleLogout(w http.ResponseWriter, r *http.Request, webAuth storage.WebAut
 }
 
 // bearerSessionToken returns a spgr_ws_ session token from the cookie or an
-// Authorization: Bearer header. Non-session values (e.g. API keys) yield "".
+// Authorization: Bearer header. The auth scheme is matched case-insensitively
+// (RFC 7235), consistent with auth.extractBearerToken. Non-session values
+// (e.g. API keys) yield "".
 func bearerSessionToken(r *http.Request) string {
 	if c, err := r.Cookie(sessionCookieName); err == nil && strings.HasPrefix(c.Value, "spgr_ws_") {
 		return c.Value
 	}
-	const prefix = "Bearer "
-	h := r.Header.Get("Authorization")
-	if strings.HasPrefix(h, prefix) {
-		if tok := strings.TrimSpace(h[len(prefix):]); strings.HasPrefix(tok, "spgr_ws_") {
+	scheme, tok, ok := strings.Cut(r.Header.Get("Authorization"), " ")
+	if ok && strings.EqualFold(scheme, "Bearer") {
+		if tok = strings.TrimSpace(tok); strings.HasPrefix(tok, "spgr_ws_") {
 			return tok
 		}
 	}

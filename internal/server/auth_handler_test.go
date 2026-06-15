@@ -339,7 +339,28 @@ func TestHandleLogout_BearerAPIKeyIgnored(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer spgr_sk_key")
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rec.Code)
+	}
 	if wa.revokeCalled {
 		t.Fatal("RevokeSession must NOT be called for a non-spgr_ws_ bearer")
+	}
+}
+
+func TestHandleLogout_BearerLowercaseScheme(t *testing.T) {
+	t.Parallel()
+	wa := &logoutFakeWA{}
+	mux := http.NewServeMux()
+	RegisterAuthHandlers(mux, &mockResolver{}, wa, noopMW)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	req.Header.Set("Authorization", "bearer spgr_ws_abc") // lowercase scheme (RFC 7235)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rec.Code)
+	}
+	want := sha256.Sum256([]byte("spgr_ws_abc"))
+	if !wa.revokedWith(want[:]) {
+		t.Fatal("expected RevokeSession for a lowercase-scheme bearer session token")
 	}
 }
