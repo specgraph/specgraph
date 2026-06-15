@@ -3,7 +3,10 @@
 
 package storage
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // WebAuthStore persists interactive-login web sessions and short-lived OAuth2
 // login-flow handshake state. Kept separate from UsersBackend so existing
@@ -37,4 +40,22 @@ type WebAuthStore interface {
 
 	// DeleteExpiredLoginFlows removes expired flow rows; returns count.
 	DeleteExpiredLoginFlows(ctx context.Context) (int64, error)
+
+	// --- CLI one-time login codes ---
+
+	// CreateCLICode inserts a one-time CLI login code. codeHash is the SHA-256
+	// of the opaque code; the raw code never reaches storage.
+	CreateCLICode(ctx context.Context, codeHash []byte, userID, subject, challenge string, expiresAt time.Time) error
+
+	// ExchangeCLICode atomically consumes an unexpired code and mints a session
+	// in one transaction. gotChallenge is S256(verifier) precomputed by the
+	// caller; it is constant-time compared against the stored challenge.
+	// sess must carry TokenHash and ExpiresAt; UserID/OIDCSubject/ID/CreatedAt
+	// are filled from the consumed code and the inserted row.
+	// Returns ErrCLICodeNotFound (unknown/expired), ErrCLIChallengeMismatch
+	// (PKCE mismatch), or ErrUserNotFound (user soft-deleted mid-flow).
+	ExchangeCLICode(ctx context.Context, codeHash []byte, sess *Session, gotChallenge string) (*Session, error)
+
+	// DeleteExpiredCLICodes removes expired code rows; returns count.
+	DeleteExpiredCLICodes(ctx context.Context) (int64, error)
 }

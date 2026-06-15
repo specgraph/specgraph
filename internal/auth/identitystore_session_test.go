@@ -51,6 +51,15 @@ func (f *fakeWebAuth) ConsumeLoginFlow(_ context.Context, _ string) (*storage.Lo
 func (f *fakeWebAuth) DeleteExpiredLoginFlows(_ context.Context) (int64, error) {
 	return 0, nil
 }
+func (f *fakeWebAuth) CreateCLICode(_ context.Context, _ []byte, _, _, _ string, _ time.Time) error {
+	return nil
+}
+func (f *fakeWebAuth) ExchangeCLICode(_ context.Context, _ []byte, _ *storage.Session, _ string) (*storage.Session, error) {
+	return nil, nil
+}
+func (f *fakeWebAuth) DeleteExpiredCLICodes(_ context.Context) (int64, error) {
+	return 0, nil
+}
 
 // --- Task 9: opaque web-session resolution (spgr_ws_...) ---
 

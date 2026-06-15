@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/storage"
@@ -218,18 +219,25 @@ func TestHandleWhoami_NoIdentity(t *testing.T) {
 // logoutFakeWA is a minimal storage.WebAuthStore for logout-revocation tests.
 // Only RevokeSession has a meaningful body; the rest return zero values.
 type logoutFakeWA struct {
-	onRevoke   func()
-	gotRevoked []byte // the token hash passed to the most recent RevokeSession
+	onRevoke     func()
+	gotRevoked   []byte // the token hash passed to the most recent RevokeSession
+	revokeCalled bool   // true once RevokeSession has been invoked
 }
 
 var _ storage.WebAuthStore = (*logoutFakeWA)(nil)
 
 func (f *logoutFakeWA) RevokeSession(_ context.Context, tokenHash []byte) error {
 	f.gotRevoked = tokenHash
+	f.revokeCalled = true
 	if f.onRevoke != nil {
 		f.onRevoke()
 	}
 	return nil
+}
+
+// revokedWith reports whether the most recent RevokeSession received hash.
+func (f *logoutFakeWA) revokedWith(hash []byte) bool {
+	return bytes.Equal(f.gotRevoked, hash)
 }
 
 func (f *logoutFakeWA) CreateSession(_ context.Context, _ *storage.Session) (*storage.Session, error) {
@@ -251,6 +259,13 @@ func (f *logoutFakeWA) ConsumeLoginFlow(_ context.Context, _ string) (*storage.L
 }
 
 func (f *logoutFakeWA) DeleteExpiredLoginFlows(_ context.Context) (int64, error) { return 0, nil }
+func (f *logoutFakeWA) CreateCLICode(_ context.Context, _ []byte, _, _, _ string, _ time.Time) error {
+	return nil
+}
+func (f *logoutFakeWA) ExchangeCLICode(_ context.Context, _ []byte, _ *storage.Session, _ string) (*storage.Session, error) {
+	return nil, nil
+}
+func (f *logoutFakeWA) DeleteExpiredCLICodes(_ context.Context) (int64, error) { return 0, nil }
 
 func TestLogout_RevokesSession(t *testing.T) {
 	revoked := false
@@ -292,5 +307,60 @@ func TestLogout_NonSessionCookie_NoRevoke(t *testing.T) {
 	}
 	if revoked {
 		t.Fatal("expected RevokeSession NOT to be called for non-spgr_ws_ cookie")
+	}
+}
+
+func TestHandleLogout_BearerSession(t *testing.T) {
+	t.Parallel()
+	wa := &logoutFakeWA{}
+	mux := http.NewServeMux()
+	RegisterAuthHandlers(mux, &mockResolver{}, wa, noopMW)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	req.Header.Set("Authorization", "Bearer spgr_ws_abc")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rec.Code)
+	}
+	want := sha256.Sum256([]byte("spgr_ws_abc"))
+	if !wa.revokedWith(want[:]) {
+		t.Fatal("expected RevokeSession for the bearer session token")
+	}
+}
+
+func TestHandleLogout_BearerAPIKeyIgnored(t *testing.T) {
+	t.Parallel()
+	wa := &logoutFakeWA{}
+	mux := http.NewServeMux()
+	RegisterAuthHandlers(mux, &mockResolver{}, wa, noopMW)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	req.Header.Set("Authorization", "Bearer spgr_sk_key")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rec.Code)
+	}
+	if wa.revokeCalled {
+		t.Fatal("RevokeSession must NOT be called for a non-spgr_ws_ bearer")
+	}
+}
+
+func TestHandleLogout_BearerLowercaseScheme(t *testing.T) {
+	t.Parallel()
+	wa := &logoutFakeWA{}
+	mux := http.NewServeMux()
+	RegisterAuthHandlers(mux, &mockResolver{}, wa, noopMW)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	req.Header.Set("Authorization", "bearer spgr_ws_abc") // lowercase scheme (RFC 7235)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rec.Code)
+	}
+	want := sha256.Sum256([]byte("spgr_ws_abc"))
+	if !wa.revokedWith(want[:]) {
+		t.Fatal("expected RevokeSession for a lowercase-scheme bearer session token")
 	}
 }

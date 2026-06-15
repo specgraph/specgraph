@@ -14,10 +14,11 @@ type ClaimSweeper interface {
 	ReleaseExpiredClaims(ctx context.Context) (int, error)
 }
 
-// WebAuthSweeper releases expired web sessions and login flows.
+// WebAuthSweeper releases expired web sessions, login flows, and CLI codes.
 type WebAuthSweeper interface {
 	DeleteExpiredSessions(ctx context.Context) (int64, error)
 	DeleteExpiredLoginFlows(ctx context.Context) (int64, error)
+	DeleteExpiredCLICodes(ctx context.Context) (int64, error)
 }
 
 // StartWebAuthSweeper launches a goroutine that periodically GCs expired web
@@ -40,6 +41,11 @@ func StartWebAuthSweeper(ctx context.Context, store WebAuthSweeper, interval tim
 					slog.LogAttrs(ctx, slog.LevelError, "sweep expired login flows", slog.Any("error", err))
 				} else if n > 0 {
 					slog.LogAttrs(ctx, slog.LevelDebug, "swept expired login flows", slog.Int64("count", n))
+				}
+				if n, err := store.DeleteExpiredCLICodes(ctx); err != nil {
+					slog.LogAttrs(ctx, slog.LevelError, "sweep expired cli codes", slog.Any("error", err))
+				} else if n > 0 {
+					slog.LogAttrs(ctx, slog.LevelDebug, "swept expired cli codes", slog.Int64("count", n))
 				}
 			}
 		}

@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -23,24 +24,29 @@ import (
 
 const txCookieName = "specgraph_oidc_tx"
 
+// cliCodeTTL bounds the lifetime of a one-time CLI login code (machine leg).
+const cliCodeTTL = 60 * time.Second
+
 // OIDCLoginConfig parametrizes the interactive login handlers.
 type OIDCLoginConfig struct {
-	Providers  []auth.LoginProvider
-	Resolver   auth.Resolver
-	WebAuth    storage.WebAuthStore
-	BaseURL    string
-	SessionTTL time.Duration
-	FlowTTL    time.Duration // default 5m
-	Limiter    *ipRateLimiter
+	Providers       []auth.LoginProvider
+	Resolver        auth.Resolver
+	WebAuth         storage.WebAuthStore
+	BaseURL         string
+	SessionTTL      time.Duration
+	FlowTTL         time.Duration // default 5m
+	Limiter         *ipRateLimiter
+	CLILoginEnabled bool
 }
 
 type oidcLoginHandler struct {
-	byID       map[string]auth.LoginProvider
-	resolver   auth.Resolver
-	webAuth    storage.WebAuthStore
-	baseURL    string
-	sessionTTL time.Duration
-	flowTTL    time.Duration
+	byID            map[string]auth.LoginProvider
+	resolver        auth.Resolver
+	webAuth         storage.WebAuthStore
+	baseURL         string
+	sessionTTL      time.Duration
+	flowTTL         time.Duration
+	cliLoginEnabled bool
 }
 
 // RegisterOIDCLoginHandlers wires /api/auth/oidc/{providers,start,callback}.
@@ -55,12 +61,13 @@ func RegisterOIDCLoginHandlers(mux *http.ServeMux, cfg OIDCLoginConfig) { //noli
 		flowTTL = 5 * time.Minute
 	}
 	h := &oidcLoginHandler{
-		byID:       map[string]auth.LoginProvider{},
-		resolver:   cfg.Resolver,
-		webAuth:    cfg.WebAuth,
-		baseURL:    cfg.BaseURL,
-		sessionTTL: cfg.SessionTTL,
-		flowTTL:    flowTTL,
+		byID:            map[string]auth.LoginProvider{},
+		resolver:        cfg.Resolver,
+		webAuth:         cfg.WebAuth,
+		baseURL:         cfg.BaseURL,
+		sessionTTL:      cfg.SessionTTL,
+		flowTTL:         flowTTL,
+		cliLoginEnabled: cfg.CLILoginEnabled,
 	}
 	for _, p := range cfg.Providers {
 		h.byID[p.ID()] = p
@@ -70,6 +77,9 @@ func RegisterOIDCLoginHandlers(mux *http.ServeMux, cfg OIDCLoginConfig) { //noli
 	mux.HandleFunc("/api/auth/oidc/providers", h.handleProviders)
 	mux.Handle("/api/auth/oidc/callback", limit(http.HandlerFunc(h.handleCallback)))
 	mux.Handle("/api/auth/oidc/{provider}/start", limit(http.HandlerFunc(h.handleStart)))
+	if cfg.CLILoginEnabled {
+		mux.Handle("/api/auth/cli/exchange", limit(http.HandlerFunc(h.handleCLIExchange)))
+	}
 }
 
 type providerInfo struct {
@@ -100,6 +110,29 @@ func (h *oidcLoginHandler) handleStart(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusNotFound, "unknown provider")
 		return
 	}
+	cliCallback := r.URL.Query().Get("cli_callback")
+	cliState := r.URL.Query().Get("cli_state")
+	cliChallenge := r.URL.Query().Get("cli_challenge")
+	if cliCallback != "" {
+		if !h.cliLoginEnabled {
+			writeJSONError(w, http.StatusForbidden, "cli_login_disabled")
+			return
+		}
+		if _, ok := validateCLICallback(cliCallback); !ok {
+			writeJSONError(w, http.StatusBadRequest, "invalid cli_callback")
+			return
+		}
+		if cliChallenge == "" || cliState == "" {
+			writeJSONError(w, http.StatusBadRequest, "cli_challenge and cli_state required")
+			return
+		}
+		// Bound lengths to the storage CHECK constraints so oversized params
+		// surface as 400 rather than a generic 503 from the failed INSERT.
+		if len(cliCallback) > 512 || len(cliState) > 512 || len(cliChallenge) > 256 {
+			writeJSONError(w, http.StatusBadRequest, "cli parameter too long")
+			return
+		}
+	}
 	state, err := randToken()
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "internal")
@@ -115,6 +148,7 @@ func (h *oidcLoginHandler) handleStart(w http.ResponseWriter, r *http.Request) {
 
 	flowID, err := h.webAuth.CreateLoginFlow(r.Context(), &storage.LoginFlow{
 		State: state, Nonce: nonce, CodeVerifier: verifier, ProviderID: p.ID(),
+		CLICallback: cliCallback, CLIState: cliState, CLIChallenge: cliChallenge,
 		ExpiresAt: time.Now().Add(h.flowTTL),
 	})
 	if err != nil {
@@ -187,7 +221,34 @@ func (h *oidcLoginHandler) handleCallback(w http.ResponseWriter, r *http.Request
 		fail("unauthorized")
 		return
 	}
-	// Mint the server session.
+	// CLI flow: deliver a one-time code to the validated loopback, no cookie.
+	if flow.CLICallback != "" {
+		cb, ok := validateCLICallback(flow.CLICallback) // re-validate; never trust stored value into a redirect
+		if !ok {
+			fail("exchange")
+			return
+		}
+		code, codeErr := randToken()
+		if codeErr != nil {
+			fail("temporary")
+			return
+		}
+		sum := sha256.Sum256([]byte(code))
+		if createErr := h.webAuth.CreateCLICode(r.Context(), sum[:], id.UserID, subjectOnly(id.Subject), flow.CLIChallenge, time.Now().Add(cliCodeTTL)); createErr != nil {
+			if errors.Is(createErr, storage.ErrUserNotFound) {
+				fail("unauthorized")
+				return
+			}
+			fail("temporary")
+			return
+		}
+		q := url.Values{"cli_state": {flow.CLIState}, "code": {code}}
+		cb.RawQuery = q.Encode()
+		http.Redirect(w, r, cb.String(), http.StatusFound) //nolint:gosec // G710: target validated to literal loopback via validateCLICallback
+		return
+	}
+
+	// Web flow: mint the server session (unchanged).
 	token, err := randSessionToken()
 	if err != nil {
 		fail("temporary")
@@ -224,6 +285,18 @@ func (h *oidcLoginHandler) deleteTxCookie(r *http.Request) *http.Cookie {
 	return c
 }
 
+// validateCLICallback enforces a strict loopback redirect target. Returns the
+// parsed URL (query/fragment-free, path "/callback") or false.
+func validateCLICallback(raw string) (*url.URL, bool) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "http" || u.User != nil ||
+		u.RawQuery != "" || u.Fragment != "" || u.Path != "/callback" ||
+		!auth.IsLiteralLoopbackHost(u.Hostname()) {
+		return nil, false
+	}
+	return u, true
+}
+
 // subjectOnly strips the "oidc:" prefix the resolver adds to Identity.Subject.
 func subjectOnly(subject string) string {
 	const p = "oidc:"
@@ -248,4 +321,58 @@ func randSessionToken() (string, error) {
 		return "", fmt.Errorf("read random bytes: %w", err)
 	}
 	return "spgr_ws_" + base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+type cliExchangeRequest struct {
+	Code        string `json:"code"`
+	CLIVerifier string `json:"cli_verifier"`
+}
+
+type cliExchangeResponse struct {
+	Token       string    `json:"token"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	OIDCSubject string    `json:"oidc_subject"`
+}
+
+func (h *oidcLoginHandler) handleCLIExchange(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var req cliExchangeRequest
+	// Bound the public endpoint's request body; {code, cli_verifier} is tiny.
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&req); err != nil || req.Code == "" || req.CLIVerifier == "" {
+		writeJSONError(w, http.StatusBadRequest, "missing code or verifier")
+		return
+	}
+	token, err := randSessionToken()
+	if err != nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "temporary")
+		return
+	}
+	tokenHash := sha256.Sum256([]byte(token))
+	codeHash := sha256.Sum256([]byte(req.Code))
+	gotChallenge := oauth2.S256ChallengeFromVerifier(req.CLIVerifier)
+	expiresAt := time.Now().Add(h.sessionTTL)
+
+	sess, err := h.webAuth.ExchangeCLICode(r.Context(), codeHash[:], &storage.Session{
+		TokenHash: tokenHash[:], ExpiresAt: expiresAt,
+	}, gotChallenge)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.ErrCLICodeNotFound), errors.Is(err, storage.ErrCLIChallengeMismatch):
+			writeJSONError(w, http.StatusBadRequest, "invalid or expired code")
+		case errors.Is(err, storage.ErrUserNotFound):
+			writeJSONError(w, http.StatusForbidden, "account_unavailable")
+		default:
+			slog.LogAttrs(r.Context(), slog.LevelError, "oidc: cli exchange", slog.Any("error", err))
+			writeJSONError(w, http.StatusServiceUnavailable, "temporary")
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	json.NewEncoder(w).Encode(cliExchangeResponse{ //nolint:errcheck // best-effort write
+		Token: token, ExpiresAt: sess.ExpiresAt, OIDCSubject: sess.OIDCSubject,
+	})
 }

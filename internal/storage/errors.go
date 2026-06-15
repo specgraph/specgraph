@@ -164,3 +164,11 @@ var ErrSessionNotFound = errors.New("web session not found")
 
 // ErrLoginFlowNotFound is returned when an OIDC login-flow row does not exist or has expired.
 var ErrLoginFlowNotFound = errors.New("oidc login flow not found")
+
+// ErrCLICodeNotFound is returned when a CLI one-time login code does not exist
+// or has expired.
+var ErrCLICodeNotFound = errors.New("cli login code not found")
+
+// ErrCLIChallengeMismatch is returned when the PKCE verifier presented at the
+// CLI exchange does not match the challenge stored with the code.
+var ErrCLIChallengeMismatch = errors.New("cli login challenge mismatch")

@@ -213,6 +213,9 @@ type OIDCConfig struct {
 	// SessionTTL is the absolute lifetime of a web session minted by the
 	// interactive login flow. Zero = default (12h, applied in applyPostLoad).
 	SessionTTL time.Duration `yaml:"session_ttl" koanf:"session_ttl"`
+	// CLILoginEnabled gates the `specgraph login` broker (loopback redirect +
+	// /api/auth/cli/exchange). Defaults to true (set in globalDefaults).
+	CLILoginEnabled bool `yaml:"cli_login_enabled" koanf:"cli_login_enabled"`
 }
 
 // JITCreateConfig parametrizes just-in-time Human creation on first
@@ -420,6 +423,9 @@ func globalDefaults() *GlobalConfig {
 		},
 		Client: ClientConfig{
 			DefaultServer: "http://127.0.0.1:9090",
+		},
+		Auth: AuthConfig{
+			OIDC: OIDCConfig{CLILoginEnabled: true},
 		},
 		Log: LogConfig{
 			Level:    "info",

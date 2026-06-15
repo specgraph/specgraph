@@ -35,6 +35,13 @@ type LoginFlow struct {
 	Nonce        string
 	CodeVerifier string // PKCE
 	ProviderID   string
+	// CLI-login fields. Empty for the web flow; set when the flow originated
+	// from `specgraph login`. CLICallback is a validated loopback URL,
+	// CLIState a CSRF token round-tripped to the CLI, CLIChallenge the PKCE
+	// S256 challenge bound to the one-time code.
+	CLICallback  string
+	CLIState     string
+	CLIChallenge string
 	CreatedAt    time.Time
 	ExpiresAt    time.Time
 }

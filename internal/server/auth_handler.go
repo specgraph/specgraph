@@ -88,17 +88,35 @@ func handleLogin(w http.ResponseWriter, r *http.Request, resolver auth.Resolver)
 // token) and clears the session cookie. A legacy API-key cookie value is
 // never hashed/looked-up.
 func handleLogout(w http.ResponseWriter, r *http.Request, webAuth storage.WebAuthStore) {
-	if c, err := r.Cookie(sessionCookieName); err == nil && webAuth != nil &&
-		strings.HasPrefix(c.Value, "spgr_ws_") {
-		sum := sha256.Sum256([]byte(c.Value))
-		if revErr := webAuth.RevokeSession(r.Context(), sum[:]); revErr != nil {
-			slog.LogAttrs(r.Context(), slog.LevelWarn, "logout: revoke session", slog.Any("error", revErr))
+	if webAuth != nil {
+		if tok := bearerSessionToken(r); tok != "" {
+			sum := sha256.Sum256([]byte(tok))
+			if revErr := webAuth.RevokeSession(r.Context(), sum[:]); revErr != nil {
+				slog.LogAttrs(r.Context(), slog.LevelWarn, "logout: revoke session", slog.Any("error", revErr))
+			}
 		}
 	}
 	c := sessionCookie("", r) //nolint:gosec // G124: sessionCookie sets HttpOnly/SameSite/dynamic Secure
 	c.MaxAge = -1
 	http.SetCookie(w, c)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// bearerSessionToken returns a spgr_ws_ session token from the cookie or an
+// Authorization: Bearer header. The auth scheme is matched case-insensitively
+// (RFC 7235), consistent with auth.extractBearerToken. Non-session values
+// (e.g. API keys) yield "".
+func bearerSessionToken(r *http.Request) string {
+	if c, err := r.Cookie(sessionCookieName); err == nil && strings.HasPrefix(c.Value, "spgr_ws_") {
+		return c.Value
+	}
+	scheme, tok, ok := strings.Cut(r.Header.Get("Authorization"), " ")
+	if ok && strings.EqualFold(scheme, "Bearer") {
+		if tok = strings.TrimSpace(tok); strings.HasPrefix(tok, "spgr_ws_") {
+			return tok
+		}
+	}
+	return ""
 }
 
 // handleWhoami returns the identity from the request context (set by authMW).
