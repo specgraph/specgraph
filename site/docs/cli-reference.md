@@ -18,6 +18,7 @@
 - [Sync](#sync)
 - [Export & Backup](#export-backup)
 - [Server & Config](#server-config)
+- [Identity & Auth](#identity-auth)
 
 ---
 
@@ -940,6 +941,9 @@ specgraph serve [flags]
 ```
       --cors-origin string   Enable CORS for this origin (dev mode only)
       --listen string        Address to listen on (overrides config; env: SPECGRAPH_SERVER_LISTEN)
+      --log-format string    Log format: json, text (overrides config; env: SPECGRAPH_LOG_FORMAT)
+      --log-level string     Log level: debug, info, warn, error (overrides config; env: SPECGRAPH_LOG_LEVEL)
+      --log-output string    Log output stream: stdout, stderr (overrides config; env: SPECGRAPH_LOG_OUTPUT)
       --pg-url string        PostgreSQL connection URL (overrides config; env: SPECGRAPH_SERVER_POSTGRES_URL)
 ```
 
@@ -1009,9 +1013,10 @@ specgraph init [project-slug] [flags]
 **Flags:**
 
 ```
-      --check   Exit non-zero if any managed file would be modified (no writes)
-      --quiet   Suppress per-file action lines
-      --yes     non-interactive (accepted for backward compat; init is always non-interactive)
+      --check            Exit non-zero if any managed file would be modified (no writes)
+      --quiet            Suppress per-file action lines
+      --skip-bootstrap   skip local admin bootstrap (managed files only)
+      --yes              non-interactive (accepted for backward compat; init is always non-interactive)
 ```
 
 ### specgraph prime
@@ -1037,5 +1042,243 @@ Reads the requested MCP resource via streamable-HTTP transport from the configur
 
 ```
 specgraph read-mcp-resource <uri>
+```
+
+## Identity & Auth
+
+### specgraph login
+
+Log in via OIDC in the browser and store a session token
+
+```
+specgraph login [flags]
+```
+
+**Flags:**
+
+```
+      --no-browser        print the URL instead of opening a browser
+      --provider string   OIDC provider id (skips the picker)
+      --server string     server base URL (overrides resolved)
+```
+
+### specgraph logout
+
+Revoke the stored session and remove local credentials
+
+```
+specgraph logout [flags]
+```
+
+**Flags:**
+
+```
+      --server string   server base URL (overrides resolved)
+```
+
+### specgraph auth
+
+Manage identity: users, service accounts, API keys, and OIDC bindings
+
+```
+specgraph auth
+```
+
+#### specgraph auth api-key
+
+Manage API keys
+
+```
+specgraph auth api-key
+```
+
+##### specgraph auth api-key create
+
+Create an API key (prints the secret once)
+
+```
+specgraph auth api-key create [flags]
+```
+
+**Flags:**
+
+```
+      --expires-at string       expiry as RFC3339 (e.g. 2026-01-02T15:04:05Z); omit for no expiry
+      --json                    output as JSON
+      --label string            human-friendly label
+      --role-downgrade string   cap the key's effective role
+      --user string             user ID to own the key (required)
+```
+
+##### specgraph auth api-key list
+
+List API keys
+
+```
+specgraph auth api-key list [flags]
+```
+
+**Flags:**
+
+```
+      --include-revoked   include revoked keys
+      --json              output as JSON
+      --user string       filter by user ID (omit to list all keys, admin only)
+```
+
+##### specgraph auth api-key revoke
+
+Revoke an API key
+
+```
+specgraph auth api-key revoke <key-id>
+```
+
+##### specgraph auth api-key rotate
+
+Rotate an API key: mints a new secret and revokes the old key. Owner, label, and role-downgrade are preserved from the old key. Use --expires-at to set the new secret's validity window (omit to keep the old expiry).
+
+```
+specgraph auth api-key rotate <key-id> [flags]
+```
+
+**Flags:**
+
+```
+      --expires-at string   new secret's expiry as RFC3339; omit to keep the old key's expiry
+      --json                output as JSON
+```
+
+#### specgraph auth oidc
+
+Manage OIDC bindings
+
+```
+specgraph auth oidc
+```
+
+##### specgraph auth oidc list
+
+List a user's OIDC bindings
+
+```
+specgraph auth oidc list [flags]
+```
+
+**Flags:**
+
+```
+      --json          output as JSON
+      --user string   user ID (required)
+```
+
+##### specgraph auth oidc unbind
+
+Remove an OIDC binding
+
+```
+specgraph auth oidc unbind <binding-id> [flags]
+```
+
+**Flags:**
+
+```
+      --force         allow removing the user's only credential
+      --user string   owner of the binding (required)
+```
+
+#### specgraph auth user
+
+Manage users
+
+```
+specgraph auth user
+```
+
+##### specgraph auth user delete
+
+Soft-delete a user (revokes their keys)
+
+```
+specgraph auth user delete <user-id> [flags]
+```
+
+**Flags:**
+
+```
+      --force   allow deleting the bootstrap admin
+```
+
+##### specgraph auth user list
+
+List users
+
+```
+specgraph auth user list [flags]
+```
+
+**Flags:**
+
+```
+      --include-deleted   include soft-deleted users
+      --json              output as JSON
+      --kind string       filter by kind: human|service_account
+      --role string       filter by role
+```
+
+##### specgraph auth user purge
+
+Permanently delete a user (irreversible)
+
+```
+specgraph auth user purge <user-id> [flags]
+```
+
+**Flags:**
+
+```
+      --force   allow purging the bootstrap admin
+```
+
+##### specgraph auth user set-role
+
+Change a user's role
+
+```
+specgraph auth user set-role <user-id> <role> [flags]
+```
+
+**Flags:**
+
+```
+      --json   output as JSON
+```
+
+##### specgraph auth user show
+
+Show a single user
+
+```
+specgraph auth user show <user-id> [flags]
+```
+
+**Flags:**
+
+```
+      --json   output as JSON
+```
+
+#### specgraph auth whoami
+
+Show the identity of the current credential
+
+```
+specgraph auth whoami [flags]
+```
+
+**Flags:**
+
+```
+      --json   output as JSON
 ```
 
