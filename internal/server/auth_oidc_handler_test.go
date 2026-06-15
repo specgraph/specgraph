@@ -74,6 +74,13 @@ func (f *fakeWA) ConsumeLoginFlow(_ context.Context, id string) (*storage.LoginF
 	return fl, nil
 }
 func (f *fakeWA) DeleteExpiredLoginFlows(context.Context) (int64, error) { return 0, nil }
+func (f *fakeWA) CreateCLICode(context.Context, []byte, string, string, string, time.Time) error {
+	return nil
+}
+func (f *fakeWA) ExchangeCLICode(context.Context, []byte, *storage.Session, string) (*storage.Session, error) {
+	return nil, nil
+}
+func (f *fakeWA) DeleteExpiredCLICodes(context.Context) (int64, error) { return 0, nil }
 
 type fakeResolver struct {
 	id  *auth.Identity

@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/storage"
@@ -251,6 +252,13 @@ func (f *logoutFakeWA) ConsumeLoginFlow(_ context.Context, _ string) (*storage.L
 }
 
 func (f *logoutFakeWA) DeleteExpiredLoginFlows(_ context.Context) (int64, error) { return 0, nil }
+func (f *logoutFakeWA) CreateCLICode(_ context.Context, _ []byte, _, _, _ string, _ time.Time) error {
+	return nil
+}
+func (f *logoutFakeWA) ExchangeCLICode(_ context.Context, _ []byte, _ *storage.Session, _ string) (*storage.Session, error) {
+	return nil, nil
+}
+func (f *logoutFakeWA) DeleteExpiredCLICodes(_ context.Context) (int64, error) { return 0, nil }
 
 func TestLogout_RevokesSession(t *testing.T) {
 	revoked := false
