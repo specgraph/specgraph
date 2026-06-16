@@ -466,6 +466,13 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 			slog.String("user_id", user.ID), slog.String("subject", claims.Subject))
 		return nil, ErrUnauthenticated
 	}
+	if s.loginSyncEnabled && InteractiveLoginFromContext(ctx) {
+		synced, syncErr := s.applyLoginSync(ctx, claims, user)
+		if syncErr != nil {
+			return nil, syncErr // deny: allowlist miss or failed demotion
+		}
+		user = synced
+	}
 	return &Identity{
 		UserID:        user.ID,
 		Subject:       "oidc:" + claims.Subject,

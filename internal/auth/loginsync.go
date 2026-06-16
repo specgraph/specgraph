@@ -4,9 +4,13 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"log/slog"
 
 	"github.com/specgraph/specgraph/internal/config"
+	"github.com/specgraph/specgraph/internal/storage"
 )
 
 // resolveLoginRole computes the role for an interactive login from the issuer's
@@ -16,9 +20,9 @@ import (
 // conflating "no mappings" with "no match" would mass-demote mapping-less
 // providers):
 //
-//	1. len(mappings) == 0           -> currentRole unchanged.
-//	2. a rule matches               -> that rule's role.
-//	3. mappings exist, none match   -> defaultRole (or "reader" if unset).
+//  1. len(mappings) == 0           -> currentRole unchanged.
+//  2. a rule matches               -> that rule's role.
+//  3. mappings exist, none match   -> defaultRole (or "reader" if unset).
 func resolveLoginRole(mappings []config.ClaimMapping, claims map[string]json.RawMessage, currentRole, defaultRole string) (string, bool) {
 	if len(mappings) == 0 {
 		return currentRole, false // rule 1
@@ -41,4 +45,78 @@ func resolveLoginRole(mappings []config.ClaimMapping, claims map[string]json.Raw
 // for incomparable custom roles.
 func isPromotion(current, next string) bool {
 	return roleLessThan(Role(current), Role(next))
+}
+
+// applyLoginSync re-enforces the email allowlist, refreshes profile metadata,
+// and re-derives the role from the issuer just authenticated for an existing
+// OIDC user on interactive login. Returns the user to surface as the resolved
+// Identity. On a successful change it mutates the passed-in user in place AND
+// returns it; callers must pass a non-shared instance (resolveJWT passes the
+// freshly-scanned struct from GetUserByID). Returns an error that DENIES the
+// login on an allowlist miss or a failed demotion.
+//
+// Error model (classification is gated on `changed` FIRST):
+//   - allowlist domain miss (present email)   -> deny (ErrUnauthenticated)
+//   - changed && !isPromotion, persist fails  -> deny (ErrTransient), fail closed
+//   - changed && isPromotion, persist fails   -> best-effort, old role
+//   - !changed (metadata-only), persist fails -> best-effort
+func (s *pgIdentityStore) applyLoginSync(ctx context.Context, claims *OIDCClaims, user *storage.User) (*storage.User, error) {
+	// 1. Re-enforce the email-domain allowlist. Skip when the token carries no
+	// email claim — an existing binding already passed at bind time, and some
+	// providers intermittently omit email.
+	if len(s.jitEmailAllowlist) > 0 && claims.Email != "" {
+		domain := emailDomain(claims.Email)
+		if domain == "" || !s.jitEmailAllowlist[domain] {
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: login-sync refused — email domain not in allowlist",
+				slog.String("issuer", claims.Issuer), slog.String("domain", domain))
+			return nil, ErrUnauthenticated
+		}
+	}
+
+	// 2. Compute the new role and metadata.
+	newRole, changed := resolveLoginRole(s.jitClaimsMapping[claims.Issuer], claims.Raw, user.Role, string(s.jitDefaultRole))
+
+	newDisplay := user.DisplayName
+	if user.DisplayName == claims.Subject && claims.Name != "" {
+		newDisplay = claims.Name // update only if never renamed by an operator
+	}
+	newEmail := user.Email
+	if claims.Email != "" {
+		newEmail = claims.Email
+	}
+
+	// 3. No-op skip: nothing to persist.
+	if newDisplay == user.DisplayName && newEmail == user.Email && newRole == user.Role {
+		return user, nil
+	}
+
+	// 4. Persist (single atomic UPDATE).
+	if err := s.users.UpdateUserOnLogin(ctx, user.ID, newDisplay, newEmail, newRole); err != nil {
+		// 5. Classify on `changed` first.
+		if !changed {
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: login-sync metadata update failed (proceeding)",
+				slog.String("user_id", user.ID), slog.Any("error", err))
+			return user, nil // best-effort
+		}
+		if isPromotion(user.Role, newRole) {
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: login-sync promotion persist failed (proceeding at old role)",
+				slog.String("user_id", user.ID), slog.String("old", user.Role), slog.String("new", newRole), slog.Any("error", err))
+			return user, nil // best-effort, OLD (lower) role
+		}
+		slog.LogAttrs(ctx, slog.LevelError, "auth: login-sync demotion persist failed — denying login",
+			slog.Bool("audit", true), slog.String("user_id", user.ID), slog.String("subject", claims.Subject),
+			slog.String("issuer", claims.Issuer), slog.String("old", user.Role), slog.String("new", newRole), slog.Any("error", err))
+		return nil, fmt.Errorf("%w: login-sync demotion persist failed", ErrTransient) // fail closed
+	}
+
+	// Success: mutate the returned user from the persisted values; audit role changes.
+	if changed {
+		slog.LogAttrs(ctx, slog.LevelInfo, "auth: login-sync role change",
+			slog.Bool("audit", true), slog.String("user_id", user.ID), slog.String("subject", claims.Subject),
+			slog.String("issuer", claims.Issuer), slog.String("old", user.Role), slog.String("new", newRole))
+	}
+	user.DisplayName = newDisplay
+	user.Email = newEmail
+	user.Role = newRole
+	return user, nil
 }
