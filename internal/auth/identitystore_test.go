@@ -748,3 +748,18 @@ func TestWithIdentity_Nil(t *testing.T) {
 		t.Error("IdentityFromContext returned true after WithIdentity(nil)")
 	}
 }
+
+func TestNewIdentityStore_ValidatesMappingRoles_WhenLoginSyncOnAndJITOff(t *testing.T) {
+	_, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users:            &usersBackendStub{},
+		Tracker:          &noopTracker{},
+		JITEnabled:       false, // JIT off…
+		LoginSyncEnabled: true,  // …but login-sync on
+		KnownRoles:       map[auth.Role]bool{auth.RoleReader: true, auth.RoleWriter: true, auth.RoleAdmin: true},
+		JITClaimsMapping: map[string][]config.ClaimMapping{
+			"https://issuer": {{Claim: "roles", Value: "x", Role: "admln"}}, // typo
+		},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unknown role")
+}

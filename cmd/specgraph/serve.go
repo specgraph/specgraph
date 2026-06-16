@@ -170,6 +170,7 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 		JITClaimsMapping:        buildClaimsMappingByIssuer(cfg.Auth.OIDC.Providers),
 		JITRateBurstPerHour:     cfg.Auth.OIDC.JITCreate.RateLimitPerHour,
 		JITEmailDomainAllowlist: cfg.Auth.OIDC.JITCreate.EmailDomainAllowlist,
+		LoginSyncEnabled:        cfg.Auth.OIDC.SyncOnLogin,
 	})
 	if err != nil {
 		cleanup() // drain the tracker goroutine we just started
