@@ -24,6 +24,7 @@ type OIDCClaims struct {
 	Issuer  string
 	Subject string
 	Email   string
+	Name    string // parsed display name: "name" claim, falling back to "preferred_username"
 	Nonce   string
 	Raw     map[string]json.RawMessage
 }
@@ -107,6 +108,7 @@ func (v *OIDCVerifier) Verify(ctx context.Context, rawToken string) (*OIDCClaims
 			break
 		}
 	}
+	c.Name = nameFromClaims(raw)
 	c.Nonce = idToken.Nonce
 	return c, nil
 }
@@ -118,6 +120,23 @@ func nonceMatches(got, want string) bool {
 		return false
 	}
 	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
+}
+
+// nameFromClaims resolves a human-friendly display name from the claims,
+// preferring the standard "name" claim and falling back to
+// "preferred_username". Returns "" when neither is present or both are empty.
+func nameFromClaims(raw map[string]json.RawMessage) string {
+	for _, claim := range []string{"name", "preferred_username"} {
+		rawVal, ok := raw[claim]
+		if !ok {
+			continue
+		}
+		var s string
+		if err := json.Unmarshal(rawVal, &s); err == nil && s != "" {
+			return s
+		}
+	}
+	return ""
 }
 
 // VerifyWithNonce validates the token like Verify and additionally requires

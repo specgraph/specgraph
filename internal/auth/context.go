@@ -71,10 +71,15 @@ func ProjectFromContext(ctx context.Context) (string, bool) {
 type interactiveLoginKey struct{}
 
 // WithInteractiveLogin marks the context as originating from the interactive
-// OIDC login callback. Consumed by jitResolve to bypass the per-issuer JIT
-// rate limiter (the limiter targets unsolicited bearer-JWT JIT; an interactive
-// login is user-driven and IdP+PKCE+nonce authenticated). Set ONLY by the
-// callback handler — bearer entry points never set it.
+// OIDC login callback. It is the SOLE gate distinguishing a login event from a
+// per-request bearer JWT: jitResolve uses it to bypass the per-issuer JIT rate
+// limiter, and login-sync (applyLoginSync — metadata + role re-evaluation) fires
+// only when it is set.
+//
+// SECURITY: set ONLY by the OIDC callback handler
+// (internal/server/auth_oidc_handler.go). Do NOT call it on any
+// per-request/bearer/API-key/MCP path — a single misplaced caller would let an
+// ordinary request mutate a user's role.
 func WithInteractiveLogin(ctx context.Context) context.Context {
 	return context.WithValue(ctx, interactiveLoginKey{}, true)
 }

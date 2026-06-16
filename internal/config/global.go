@@ -216,6 +216,11 @@ type OIDCConfig struct {
 	// CLILoginEnabled gates the `specgraph login` broker (loopback redirect +
 	// /api/auth/cli/exchange). Defaults to true (set in globalDefaults).
 	CLILoginEnabled bool `yaml:"cli_login_enabled" koanf:"cli_login_enabled"`
+	// SyncOnLogin enables refreshing DisplayName/Email and re-evaluating the
+	// role from token claims on each interactive login. Default true (set in
+	// globalDefaults). MUST NOT be defaulted in applyPostLoad: a default-true
+	// bool cannot be distinguished there from an explicit `false`.
+	SyncOnLogin bool `yaml:"sync_on_login" koanf:"sync_on_login"`
 }
 
 // JITCreateConfig parametrizes just-in-time Human creation on first
@@ -425,7 +430,7 @@ func globalDefaults() *GlobalConfig {
 			DefaultServer: "http://127.0.0.1:9090",
 		},
 		Auth: AuthConfig{
-			OIDC: OIDCConfig{CLILoginEnabled: true},
+			OIDC: OIDCConfig{CLILoginEnabled: true, SyncOnLogin: true},
 		},
 		Log: LogConfig{
 			Level:    "info",

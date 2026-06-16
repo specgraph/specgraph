@@ -69,6 +69,7 @@ type usersBackendStub struct {
 	jitCreateHuman    func(ctx context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, *storage.OIDCBinding, error)
 	touchLastUsed     func(ctx context.Context, keyID string) error
 	listUsers         func(ctx context.Context, f storage.ListUsersFilter) ([]*storage.User, error)
+	updateUserOnLogin func(ctx context.Context, userID, displayName, email, role string) error
 }
 
 func (s *usersBackendStub) LookupAPIKeyByPrefix(ctx context.Context, prefix string) (*storage.APIKey, error) {
@@ -130,6 +131,12 @@ func (s *usersBackendStub) CreateServiceAccount(_ context.Context, _ *storage.Us
 }
 func (s *usersBackendStub) UpdateUserRole(_ context.Context, _, _ string) error {
 	return errUnexpectedCall("UpdateUserRole")
+}
+func (s *usersBackendStub) UpdateUserOnLogin(ctx context.Context, userID, displayName, email, role string) error {
+	if s.updateUserOnLogin != nil {
+		return s.updateUserOnLogin(ctx, userID, displayName, email, role)
+	}
+	return errUnexpectedCall("UpdateUserOnLogin")
 }
 func (s *usersBackendStub) SoftDeleteUser(_ context.Context, _ string) error {
 	return errUnexpectedCall("SoftDeleteUser")

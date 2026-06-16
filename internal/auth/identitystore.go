@@ -47,6 +47,7 @@ type pgIdentityStore struct {
 	jitRateBurst       int
 	jitRateRefillPerHr int
 	jitEmailAllowlist  map[string]bool // domain -> true; empty = no allowlist
+	loginSyncEnabled   bool
 
 	now func() time.Time
 }
@@ -81,6 +82,11 @@ type IdentityStoreConfig struct {
 	JITRateBurstPerHour     int      // bucket capacity AND refill rate (1:1)
 	JITEmailDomainAllowlist []string // empty = no allowlist
 
+	// LoginSyncEnabled turns on metadata + role re-evaluation on interactive
+	// login (see loginsync.go). When true, claims-mapping roles are validated
+	// at startup even if JITEnabled is false.
+	LoginSyncEnabled bool
+
 	Now func() time.Time // optional; defaults to time.Now
 }
 
@@ -106,13 +112,16 @@ func NewIdentityStore(cfg IdentityStoreConfig) (Resolver, error) { //nolint:gocr
 	}
 	// Validate JIT-related role references against KnownRoles. Catches
 	// operator typos (e.g. "reder" instead of "reader") that would create
-	// users whose role can never match any rolePerms entry.
+	// users whose role can never match any rolePerms entry. Login-sync
+	// consumes the same JITClaimsMapping/JITDefaultRole, so validation also
+	// runs when login-sync is enabled even if JIT is off.
 	//
-	// The len(cfg.KnownRoles) > 0 guard is deliberate: when JIT is enabled
-	// but no known-role set is supplied, validation is skipped rather than
-	// failing closed. Callers SHOULD pass KnownRoles whenever JIT is enabled
-	// (see the field doc) so these typos are caught here.
-	if cfg.JITEnabled && len(cfg.KnownRoles) > 0 {
+	// The len(cfg.KnownRoles) > 0 guard is deliberate: when JIT or login-sync
+	// is enabled but no known-role set is supplied, validation is skipped
+	// rather than failing closed. Callers SHOULD pass KnownRoles whenever JIT
+	// or login-sync is enabled (see the field docs) so these typos are caught
+	// here.
+	if (cfg.JITEnabled || cfg.LoginSyncEnabled) && len(cfg.KnownRoles) > 0 {
 		if cfg.JITDefaultRole != "" && !cfg.KnownRoles[cfg.JITDefaultRole] {
 			return nil, fmt.Errorf("auth: JITDefaultRole %q not in KnownRoles", cfg.JITDefaultRole)
 		}
@@ -148,6 +157,7 @@ func NewIdentityStore(cfg IdentityStoreConfig) (Resolver, error) { //nolint:gocr
 		jitRateBurst:       burst,
 		jitRateRefillPerHr: burst,
 		jitEmailAllowlist:  allowlist,
+		loginSyncEnabled:   cfg.LoginSyncEnabled,
 		now:                now,
 	}, nil
 }
@@ -455,6 +465,13 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 		slog.LogAttrs(ctx, slog.LevelWarn, "auth: token resolved to soft-deleted user (oidc)",
 			slog.String("user_id", user.ID), slog.String("subject", claims.Subject))
 		return nil, ErrUnauthenticated
+	}
+	if s.loginSyncEnabled && InteractiveLoginFromContext(ctx) {
+		synced, syncErr := s.applyLoginSync(ctx, claims, user)
+		if syncErr != nil {
+			return nil, syncErr // deny: allowlist miss or failed demotion
+		}
+		user = synced
 	}
 	return &Identity{
 		UserID:        user.ID,

@@ -649,3 +649,23 @@ func TestLogConfig_Build_InvalidOutput(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid log output")
 	assert.Contains(t, err.Error(), "file")
 }
+
+func TestSyncOnLogin_DefaultsTrue_WhenAbsent(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("auth:\n  oidc:\n    providers: []\n"), 0o600))
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	require.True(t, cfg.Auth.OIDC.SyncOnLogin, "absent sync_on_login must default to true")
+}
+
+func TestSyncOnLogin_ExplicitFalse_Honored(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	require.NoError(t, os.WriteFile(path, []byte("auth:\n  oidc:\n    sync_on_login: false\n"), 0o600))
+
+	cfg, err := config.LoadGlobalExplicit(path)
+	require.NoError(t, err)
+	require.False(t, cfg.Auth.OIDC.SyncOnLogin, "explicit false must survive the default merge")
+}
