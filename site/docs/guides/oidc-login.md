@@ -301,7 +301,7 @@ auth:
       - id: entra
         issuer: "https://login.microsoftonline.com/<tenant>/v2.0"
         client_id: "<client-id>"
-        audience: "<client-id>"
+        audience: "<client-id>"   # optional; defaults to client_id
         client_secret: "<secret>"
         interactive: true
         display_name: "Entra"
