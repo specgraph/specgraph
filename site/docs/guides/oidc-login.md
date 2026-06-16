@@ -272,6 +272,114 @@ registered at the **broker**, not at GitHub.
     does not require an ID token — is a deferred follow-up and is not yet
     available.
 
+## App roles and login-sync
+
+`claims_mapping` derives a SpecGraph role from an inbound token claim. Two
+related concerns make this robust against the Entra "groups overage" problem and
+keep roles current across logins: **prefer app roles over `groups`**, and
+**`sync_on_login`**, which re-derives the role on every interactive login rather
+than only at first sign-in.
+
+### Prefer app roles over `groups`
+
+Entra caps how many group memberships it will emit inline in a token. Once a
+user belongs to more groups than that cap, Entra replaces the inline list with a
+**"groups overage"** pointer to the Graph API, and a `claims_mapping` on
+`groups` silently stops matching for exactly those users. **App roles** are the
+Microsoft-recommended fix: they ride inline in the `roles` array claim and are
+**never** subject to overage — assigning an app role to a large group still
+emits the flattened role values in `roles`.
+
+Target `claim: "roles"` and set `value` to the app role's **Value** string from
+the Entra app registration (e.g. `specgraph.admin`), **not** its display name:
+
+```yaml
+auth:
+  oidc:
+    sync_on_login: true   # default true
+    providers:
+      - id: entra
+        issuer: "https://login.microsoftonline.com/<tenant>/v2.0"
+        client_id: "<client-id>"
+        audience: "<client-id>"
+        client_secret: "<secret>"
+        interactive: true
+        display_name: "Entra"
+        claims_mapping:
+          - claim: "roles"
+            value: "specgraph.admin"
+            role: "admin"
+          - claim: "roles"
+            value: "specgraph.user"
+            role: "writer"
+```
+
+`admin` and `writer` are built-in roles, validated at startup against the known
+roles. Define the matching app roles under **App registration → App roles**, and
+assign them to users or groups under **Enterprise application → Users and
+groups**.
+
+### `sync_on_login`
+
+`auth.oidc.sync_on_login` (default `true`) controls whether SpecGraph refreshes
+an existing user on each **interactive** login. When on, every interactive
+login (the web sign-in callback or `specgraph login`) refreshes the user's
+`DisplayName` and `Email` from the verified token and **re-derives the role**
+from the login issuer's `claims_mapping`. (`DisplayName` is only refreshed while
+it still matches the OIDC subject — a name an operator set manually is never
+overwritten.) Set it to `false` to keep the legacy
+behavior, where the role and metadata are only set once, at just-in-time (JIT)
+account creation.
+
+```yaml
+auth:
+  oidc:
+    sync_on_login: false   # legacy: only set role/metadata at JIT creation
+```
+
+### Demotion semantics
+
+Re-derivation is two-sided. If an issuer has a `claims_mapping` configured and
+**no rule matches** the token, the user is set to `default_role` (from
+`jit_create.default_role`, falling back to `reader`) on their next login through
+that issuer. Losing an app role therefore demotes the user on their next
+interactive login — that is how revocation propagates.
+
+To **revoke** access via app roles, keep **at least one** rule in
+`claims_mapping`. Deleting the whole block means "no mappings configured," which
+freezes existing roles (no rule ever runs) rather than demoting anyone.
+
+### Migrating an existing deployment
+
+!!! warning "A bad migration can demote every OIDC admin"
+    Enabling `sync_on_login` against a live deployment re-evaluates roles on the
+    next login, and a misconfigured mapping demotes real admins. Work through the
+    checklist below before enabling.
+
+Before enabling `sync_on_login` against an existing deployment:
+
+1. **Re-target rules from `groups` to `roles`** so admins keep matching.
+2. **Verify every `value` exactly** — matching is **case-sensitive** against the
+   app role's **Value** string.
+3. **Assign the app roles to your admins** in the directory before they next log
+   in.
+4. **Keep the bootstrap admin key** so you can recover if a mapping is wrong and
+   locks you out of the dashboard.
+
+### Requirements and caveats
+
+- **`value`s must be strings.** Numeric claim values never match; the app role
+  **Value** is a string (e.g. `specgraph.admin`).
+- **Order rules most-privileged-first.** The **first** matching rule wins, so
+  list `admin` before `writer` before `reader`.
+- **The issuer must be tenant-pinned.** Use a tenant-specific Entra issuer
+  (`.../<tenant-id>/v2.0`), **not** the multi-tenant `common` or `organizations`
+  endpoints — SpecGraph routes by exact `iss` match.
+- **MCP and API-key boundary.** A role change only reaches MCP and API-key usage
+  after the user next logs in **interactively** (the web dashboard or `specgraph
+  login`). Sessions established by pasting an API key in the web UI never sync,
+  and per-request bearer/API-key calls never sync.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
