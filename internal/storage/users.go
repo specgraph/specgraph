@@ -50,6 +50,12 @@ type UsersBackend interface {
 	// against the YAML config is the caller's responsibility.
 	UpdateUserRole(ctx context.Context, userID, role string) error
 
+	// UpdateUserOnLogin sets display_name, email, AND role on an active user in
+	// a single UPDATE (deleted_at IS NULL guard, like UpdateUserRole). Used by
+	// the OIDC login-sync path. Returns ErrUserNotFound if no active row matched.
+	// Role validation is the caller's responsibility.
+	UpdateUserOnLogin(ctx context.Context, userID, displayName, email, role string) error
+
 	// SoftDeleteUser sets deleted_at and revokes all active keys in one tx.
 	// Idempotent (re-deleting already-deleted user is a no-op). An
 	// unknown/nonexistent userID is also treated as a no-op: it returns nil,

@@ -298,6 +298,35 @@ func TestAuthStore_UpdateUserRole(t *testing.T) {
 	require.ErrorIs(t, err, storage.ErrUserNotFound)
 }
 
+func TestAuthStore_UpdateUserOnLogin(t *testing.T) {
+	ctx := context.Background()
+	auth := authTestSetup(t)
+	pool := sharedTestPool(t, ctx)
+	truncateAuthTables(t, pool)
+
+	u, err := auth.CreateHuman(ctx, &storage.User{
+		Kind: storage.KindHuman, DisplayName: "old-sub", Email: "old@x.io", Role: "reader",
+	}, nil)
+	require.NoError(t, err)
+
+	// Happy path: all three columns update.
+	require.NoError(t, auth.UpdateUserOnLogin(ctx, u.ID, "Ada", "ada@x.io", "admin"))
+	got, err := auth.GetUserByID(ctx, u.ID)
+	require.NoError(t, err)
+	require.Equal(t, "Ada", got.DisplayName)
+	require.Equal(t, "ada@x.io", got.Email)
+	require.Equal(t, "admin", got.Role)
+
+	// Unknown user -> ErrUserNotFound.
+	err = auth.UpdateUserOnLogin(ctx, "00000000-0000-0000-0000-aaaaaaaaaaaa", "x", "x@x.io", "reader")
+	require.ErrorIs(t, err, storage.ErrUserNotFound)
+
+	// Soft-deleted user -> ErrUserNotFound (active-row guard).
+	require.NoError(t, auth.SoftDeleteUser(ctx, u.ID))
+	err = auth.UpdateUserOnLogin(ctx, u.ID, "y", "y@x.io", "writer")
+	require.ErrorIs(t, err, storage.ErrUserNotFound)
+}
+
 func TestAuthStore_SoftDeleteUser(t *testing.T) {
 	ctx := context.Background()
 	auth := authTestSetup(t)

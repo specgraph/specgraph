@@ -41,6 +41,7 @@ type usersBackendStub struct {
 	getUserByID          func(ctx context.Context, id string) (*storage.User, error)
 	createServiceAccount func(ctx context.Context, u *storage.User) (*storage.User, error)
 	updateUserRole       func(ctx context.Context, userID, role string) error
+	updateUserOnLogin    func(ctx context.Context, userID, displayName, email, role string) error
 	softDeleteUser       func(ctx context.Context, userID string) error
 	purgeUser            func(ctx context.Context, userID string) error
 	createAPIKey         func(ctx context.Context, k *storage.APIKey) (*storage.APIKey, error)
@@ -82,6 +83,13 @@ func (s *usersBackendStub) UpdateUserRole(ctx context.Context, userID, role stri
 		return s.updateUserRole(ctx, userID, role)
 	}
 	return errUnexpected("UpdateUserRole")
+}
+
+func (s *usersBackendStub) UpdateUserOnLogin(ctx context.Context, userID, displayName, email, role string) error {
+	if s.updateUserOnLogin != nil {
+		return s.updateUserOnLogin(ctx, userID, displayName, email, role)
+	}
+	return errUnexpected("UpdateUserOnLogin")
 }
 
 func (s *usersBackendStub) SoftDeleteUser(ctx context.Context, userID string) error {

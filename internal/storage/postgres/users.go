@@ -236,6 +236,22 @@ func (s *AuthStore) UpdateUserRole(ctx context.Context, userID, role string) err
 	return nil
 }
 
+// UpdateUserOnLogin sets display_name, email, and role on an active user in a
+// single statement. Returns ErrUserNotFound if no active user has the given ID.
+func (s *AuthStore) UpdateUserOnLogin(ctx context.Context, userID, displayName, email, role string) error {
+	const q = `
+		UPDATE users SET display_name = $1, email = $2, role = $3
+		WHERE id = $4::uuid AND deleted_at IS NULL`
+	tag, err := s.pool.Exec(ctx, q, displayName, email, role, userID)
+	if err != nil {
+		return fmt.Errorf("update user on login: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return storage.ErrUserNotFound
+	}
+	return nil
+}
+
 // SoftDeleteUser sets deleted_at on the user and revokes all their active
 // keys in the same transaction. Idempotent on already-deleted users (the
 // user UPDATE matches zero rows, the keys UPDATE matches zero rows; both
