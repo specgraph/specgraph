@@ -169,6 +169,25 @@ func TestApplyLoginSync_DemotionPersistFailure_Denies(t *testing.T) {
 	require.ErrorIs(t, err, ErrTransient)
 }
 
+func TestApplyLoginSync_UserNotFound_Denies(t *testing.T) {
+	// User concurrently soft-deleted between load and write: the active-row
+	// guard makes UpdateUserOnLogin return ErrUserNotFound. Must fail closed
+	// even on a best-effort (metadata-only) change, not let the user through.
+	fake := loginSyncFakeBackend{updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
+		return storage.ErrUserNotFound
+	}}
+	s := newSyncStore(t, fake, nil, nil) // no mappings -> role unchanged (metadata-only path)
+	user := &storage.User{ID: "u1", DisplayName: "sub-1", Email: "old@x.io", Role: "admin"}
+	claims := &OIDCClaims{
+		Issuer: "iss", Subject: "sub-1", Email: "new@x.io", // metadata-only change
+		Raw: map[string]json.RawMessage{},
+	}
+	out, err := s.applyLoginSync(context.Background(), claims, user)
+	require.Error(t, err)
+	require.Nil(t, out)
+	require.ErrorIs(t, err, ErrUnauthenticated)
+}
+
 func TestApplyLoginSync_DemotionSucceeds(t *testing.T) {
 	var gotRole string
 	fake := loginSyncFakeBackend{updateUserOnLogin: func(_ context.Context, _, _, _, role string) error {
@@ -199,7 +218,7 @@ func TestApplyLoginSync_PromotionPersistFailure_BestEffort(t *testing.T) {
 		Raw: map[string]json.RawMessage{"roles": rawArr("app.admin")},
 	}
 	out, err := s.applyLoginSync(context.Background(), claims, user)
-	require.NoError(t, err)                      // login proceeds
+	require.NoError(t, err)              // login proceeds
 	require.Equal(t, "reader", out.Role) // at the OLD lower role
 }
 

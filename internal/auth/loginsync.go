@@ -6,6 +6,7 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -57,6 +58,9 @@ func isPromotion(current, next string) bool {
 //
 // Error model (classification is gated on `changed` FIRST):
 //   - allowlist domain miss (present email)   -> deny (ErrUnauthenticated)
+//   - persist returns ErrUserNotFound         -> deny (ErrUnauthenticated): the
+//     user was concurrently soft-deleted between load and write; fail closed
+//     regardless of changed/promotion
 //   - changed && !isPromotion, persist fails  -> deny (ErrTransient), fail closed
 //   - changed && isPromotion, persist fails   -> best-effort, old role
 //   - !changed (metadata-only), persist fails -> best-effort
@@ -92,6 +96,15 @@ func (s *pgIdentityStore) applyLoginSync(ctx context.Context, claims *OIDCClaims
 
 	// 4. Persist (single atomic UPDATE).
 	if err := s.users.UpdateUserOnLogin(ctx, user.ID, newDisplay, newEmail, newRole); err != nil {
+		// ErrUserNotFound means the active-row guard (deleted_at IS NULL) matched
+		// nothing: the user was concurrently soft-deleted between the load in
+		// resolveJWT and this write. Fail closed regardless of changed/promotion —
+		// a deleted user must not finish authenticating.
+		if errors.Is(err, storage.ErrUserNotFound) {
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: login-sync target user not active — denying login",
+				slog.String("user_id", user.ID), slog.String("issuer", claims.Issuer), slog.String("subject", claims.Subject))
+			return nil, ErrUnauthenticated
+		}
 		// 5. Classify on `changed` first.
 		if !changed {
 			slog.LogAttrs(ctx, slog.LevelWarn, "auth: login-sync metadata update failed (proceeding)",
