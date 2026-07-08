@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-06-08-non-fatal-postgres-startup.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Non-fatal Postgres Startup Implementation Plan",
+  "summary": "Task-by-task TDD implementation plan for making specgraph serve stay alive with 503s when external Postgres is unreachable at boot.",
+  "scope": ["cmd/specgraph/serve.go", "postgres startup", "readiness probes", "connect backoff/retry", "bootstrap", "integration tests"],
+  "cross_refs": ["docs/superpowers/specs/2026-06-08-non-fatal-postgres-startup-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Implementation plan (task checklist), not a PRD/ADR/SPEC itself; references a companion design SPEC doc."
+}

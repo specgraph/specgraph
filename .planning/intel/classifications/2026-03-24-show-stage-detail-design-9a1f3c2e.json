@@ -1,0 +1,20 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-24-show-stage-detail-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Show Stage Detail Design Spec",
+  "summary": "Design for extending specgraph show to render authoring stage outputs (Spark, Shape, Specify, Decompose) via proto, storage, and render pipeline changes.",
+  "scope": ["specgraph show command", "GetSpec query", "Spec proto message", "render package", "authoring stage outputs", "memgraph.go", "convert.go"],
+  "cross_refs": [
+    "proto/specgraph/v1/spec.proto",
+    "internal/storage/spec_domain.go",
+    "internal/storage/memgraph/memgraph.go",
+    "internal/server/convert.go",
+    "internal/render/authoring.go",
+    "internal/authoring/authoring_handler.go"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-04-10-site-narrative-restructure.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Site Narrative Restructure — Implementation Plan",
+  "summary": "Step-by-step plan to restructure site/docs around the SDD enterprise narrative: renames, nav reorder, and link fixups.",
+  "scope": ["site/docs", "zensical.toml", "concepts pages", "navigation", "landing page", "How It Works page", "Quickstart page"],
+  "cross_refs": ["docs/superpowers/specs/2026-04-10-site-narrative-restructure-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

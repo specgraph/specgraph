@@ -1,0 +1,23 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-04-20-multi-platform-plugin-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Multi-Platform Plugin — Phase A Implementation Plan (revised)",
+  "summary": "Implementation plan migrating Claude Code plugin skills into server-embedded MCP-composed content with atomic conversation recording.",
+  "scope": ["authoring.Composer", "MCP prompts", "Claude Code plugin", "conversation recording", "proto authoring messages", "runInTxOrSequential"],
+  "cross_refs": [
+    "docs/plans/2026-04-20-multi-platform-plugin-design.md",
+    "proto/specgraph/v1/authoring.proto",
+    "internal/mcp/",
+    "internal/authoring/",
+    "internal/server/authoring_handler.go",
+    "plugin/specgraph/",
+    "docs/verification/cursor-mcp-verification.md",
+    "docs/verification/opencode-mcp-verification.md",
+    "docs/verification/codex-mcp-verification.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

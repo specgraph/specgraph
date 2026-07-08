@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-03-17-full-pipeline-e2e-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Full Pipeline E2E Test Suite — Implementation Plan",
+  "summary": "Implementation plan for a 3-tier Ginkgo/Gomega E2E test suite covering the SpecGraph authoring-to-execution pipeline.",
+  "scope": ["E2E tests", "Ginkgo/Gomega", "ConnectRPC", "testcontainers", "Memgraph", "authoring funnel", "execution pipeline", "project isolation", "constitution integration", "lifecycle transitions"],
+  "cross_refs": ["docs/plans/2026-03-17-full-pipeline-e2e-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

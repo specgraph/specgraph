@@ -1,0 +1,14 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-06-12-oidc-interactive-ui-login.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Interactive OIDC Login for the Web UI — Implementation Plan",
+  "summary": "Task-by-task implementation plan for adding OIDC Authorization Code + PKCE login to the SpecGraph web UI.",
+  "scope": ["OIDC login", "web UI", "session management", "Postgres auth store", "identity resolver", "rate limiter"],
+  "cross_refs": ["docs/superpowers/specs/2026-06-12-oidc-interactive-ui-login-design.md"],
+  "locked_markers": null,
+  "locked": false,
+  "precedence": null,
+  "notes": "This is an implementation plan (task list with file structure and step-by-step checkboxes), not a PRD/ADR/SPEC in the standard taxonomy sense. Closest fit is DOC (context/process artifact); the actual technical contract lives in the referenced design spec (docs/superpowers/specs/2026-06-12-oidc-interactive-ui-login-design.md), which should likely be classified as SPEC separately."
+}

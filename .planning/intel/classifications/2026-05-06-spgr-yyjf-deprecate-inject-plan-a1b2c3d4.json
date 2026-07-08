@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-06-spgr-yyjf-deprecate-inject-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Deprecate `specgraph inject` Implementation Plan",
+  "summary": "Implementation plan to replace specgraph inject with pointer files written by init and delete inject end-to-end.",
+  "scope": ["specgraph inject", "internal/config/pointers", "SyncService", "Inject RPC", "AGENTS.md", ".cursor/rules/specgraph-bootstrap.md"],
+  "cross_refs": ["docs/plans/2026-05-06-spgr-yyjf-deprecate-inject-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

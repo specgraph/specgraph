@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-07-pr940-review-fixes-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "PR #940 Review-Fix Implementation Plan",
+  "summary": "Phased TDD implementation plan addressing review findings for internal/config/pointers atomicWrite and init caller hardening.",
+  "scope": ["internal/config/pointers", "atomicWrite", "cmd/specgraph/init", "PR #940", "file locking", "symlink TOCTOU"],
+  "cross_refs": ["docs/plans/2026-05-07-pr940-review-fixes-plan.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

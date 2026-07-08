@@ -1,0 +1,17 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-03-17-skill-personas-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Skill Personas — Implementation Plan",
+  "summary": "Implementation plan to rewrite authoring plugin skills into conversational persona-driven spec development partners; superseded.",
+  "scope": ["authoring skills", "router skill", "SKILL.md files", "spec development personas", "posture detection", "specgraph CLI plugin"],
+  "cross_refs": [
+    "2026-04-20-multi-platform-plugin-design.md",
+    "2026-05-06-harness-parity-epic-design.md",
+    "docs/plans/2026-03-17-skill-personas-design.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Document is explicitly marked Superseded and retained for historical context only; treated as DOC (context-only) rather than an active plan/spec."
+}

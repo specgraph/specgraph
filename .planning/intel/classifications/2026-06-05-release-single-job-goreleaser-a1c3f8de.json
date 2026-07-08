@@ -1,0 +1,15 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-06-05-release-single-job-goreleaser.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Release Single-Job GoReleaser Implementation Plan",
+  "summary": "Step-by-step implementation plan to replace the two-job git-cliff+GoReleaser release pipeline with a single GoReleaser-owned job.",
+  "scope": ["cog.toml", ".goreleaser.yaml", ".github/workflows/release.yml", "cliff.toml", "CHANGELOG.md", "Taskfile.yml", "release pipeline", "GoReleaser", "cocogitto"],
+  "cross_refs": [
+    "docs/superpowers/specs/2026-06-05-release-single-job-goreleaser-design.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "This is a task-by-task implementation plan (checkbox steps, verification commands, commit messages), not a pure narrative doc. It contains architectural rationale but defers the actual decision to the referenced design/spec doc; classified as DOC (execution playbook / supporting context) rather than SPEC since it describes a sequence of edits rather than a technical contract to be honored by the system."
+}

@@ -1,0 +1,19 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-04-22-cli-lifecycle-split-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "CLI Lifecycle Split — Implementation Plan",
+  "summary": "Task-by-task implementation plan for splitting specgraph CLI registration from runtime and fixing a down-command data-loss bug.",
+  "scope": ["specgraph CLI", "docker compose lifecycle", "install/uninstall commands", "up/down commands", "data-loss bug fix"],
+  "cross_refs": [
+    "docs/plans/2026-04-22-cli-lifecycle-split-design.md",
+    "docs/plans/2026-03-16-slice-7-global-daemon-and-plugin-design.md",
+    "docs/superpowers/specs/2026-03-21-bootstrap-funnel-demo-design.md",
+    "site/docs/cli-reference.md",
+    "README.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

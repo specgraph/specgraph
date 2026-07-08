@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-02-28-slice-3-authoring-funnel-plan.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Slice 3: Authoring Funnel Implementation Plan",
+  "summary": "Task-by-task implementation plan for the AuthoringService (Spark-Shape-Specify-Decompose-Approve funnel) with postures and analytical passes.",
+  "scope": ["AuthoringService", "ConnectRPC", "Memgraph", "authoring funnel", "analytical passes", "posture detection", "CLI commands"],
+  "cross_refs": ["docs/plans/2026-02-28-vertical-slice-roadmap-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Implementation plan with proto/code scaffolding rather than a formal PRD/ADR/SPEC; contains technical contract details (proto messages) that could partially inform SPEC-level constraints, but overall structure is task-by-task execution guidance, so classified as DOC."
+}

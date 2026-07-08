@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-06-08-non-fatal-postgres-startup-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Non-fatal Postgres at startup (`docker: false`)",
+  "summary": "Design for making SpecGraph server startup non-fatal when an external Postgres is unreachable, with degraded readiness and self-healing.",
+  "scope": ["postgres startup", "server readiness", "docker: false mode", "connect retry loop", "probe listener", "swappable main handler"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

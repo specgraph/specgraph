@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-26-conversation-recording-wiring-design.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Wire Authoring Skills to Call RecordConversation",
+  "summary": "Design for wiring authoring skills to call the RecordConversation RPC via a shared conversation-recording reference and CLI invocation.",
+  "scope": ["RecordConversation RPC", "Memgraph storage", "authoring skills", "conversation-recording.md reference", "specgraph conversation record CLI"],
+  "cross_refs": ["plugin/specgraph/skills/specgraph/conversation-recording.md", "plugin/specgraph/skills/specgraph/persona.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Filed under docs/superpowers/specs with 'Status: Approved' (ADR-like) but content is a prescriptive technical/implementation contract (JSON schema, CLI invocation, file wiring) rather than a single architectural decision or user-facing requirements; classified SPEC over ADR/PRD."
+}

@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-04-10-site-narrative-restructure-design.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Site Narrative Restructure — Design",
+  "summary": "Design plan for restructuring the SpecGraph marketing/docs site narrative, IA, and landing page copy for enterprise tech leads.",
+  "scope": ["site/docs", "landing page", "information architecture", "concept page reordering", "SDD narrative/messaging"],
+  "cross_refs": ["concepts/constitution.md", "concepts/ground-truth.md", "concepts/specs.md", "concepts/spec-graph.md", "index.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Filename says 'design' and it has Context/structured tables similar to an ADR, but subject is documentation-site content/marketing narrative, not a software architecture decision or product requirement — classified as DOC (design rationale for content)."
+}

@@ -1,0 +1,28 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-18-content-hash.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Content Hash Implementation Plan",
+  "summary": "Implementation plan to add a Murmur3-128 content hash field to Spec and Decision nodes for change detection.",
+  "scope": ["content_hash", "Spec", "Decision", "Murmur3", "Memgraph", "proto API", "ADR-002"],
+  "cross_refs": [
+    "docs/decisions/ADR-002-stable-ulid-ids-content-hash.md",
+    "docs/decisions/ADR-001-principle-statement-field-naming.md",
+    "proto/specgraph/v1/spec.proto",
+    "proto/specgraph/v1/decision.proto",
+    "internal/storage/spec_domain.go",
+    "internal/storage/decision.go",
+    "internal/storage/contenthash/contenthash.go",
+    "internal/storage/memgraph/memgraph.go",
+    "internal/storage/memgraph/decision.go",
+    "internal/server/convert.go",
+    "site/docs/concepts/specs.md",
+    "site/docs/how-it-works.md",
+    "docs/plans/2026-02-28-client-server-architecture-design.md",
+    "docs/plans/2026-02-28-vertical-slice-plan.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "This is a step-by-step implementation plan (checklists, file structure, chunked tasks) rather than a decision/requirements/spec document itself; it embeds and drives creation of ADR-002 but is not the ADR itself. Classified as DOC (plan/context artifact) with medium confidence due to embedded ADR content and proto change descriptions that could suggest SPEC-like signals."
+}

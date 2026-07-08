@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-03-06-storage-domain-types-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Storage Domain Types & Decision Promotion Implementation Plan",
+  "summary": "Task-by-task implementation plan to decouple storage interfaces from proto types and promote ShapeOutput decisions to Decision graph nodes.",
+  "scope": ["Backend interface", "DecisionBackend interface", "GraphBackend interface", "Memgraph implementation", "ShapeOutput", "Decision graph nodes", "DECIDED_IN edges", "storage domain types"],
+  "cross_refs": ["docs/plans/2026-03-06-storage-domain-types-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-05-21-spgr-8ar-piece-c-implementation-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "spgr-8ar Piece C — Surface Provenance in `constitution show`",
+  "summary": "Implementation plan for adding a --show-provenance flag to specgraph constitution show, annotating fields by layer.",
+  "scope": ["constitution show CLI command", "internal/render/constitution.go", "cmd/specgraph/constitution.go", "provenance annotation", "constitution layers"],
+  "cross_refs": ["internal/constitution/merge", "Section 9 of reference spec", "invariant 11 (CLI byte-stability)", "invariant 12 (Renderer behavior)", "Section 14 of the spgr-8ar design"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

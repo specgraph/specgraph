@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/verification/claude.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Claude Code MCP verification",
+  "summary": "Empirical verification of Claude Code's MCP integration behavior with a local specgraph serve instance.",
+  "scope": ["Claude Code", "MCP", "specgraph serve", ".mcp.json", "API key auth", "profile registry"],
+  "cross_refs": ["internal/mcp/profiles.go", "~/.config/specgraph/credentials.yaml"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

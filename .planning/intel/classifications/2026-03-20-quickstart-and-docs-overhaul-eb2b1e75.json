@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-20-quickstart-and-docs-overhaul.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Quick Start Guide & Documentation Overhaul Implementation Plan",
+  "summary": "Implementation plan for shipping a new Quick Start guide and reviewing all site docs for the 0.1.0 release.",
+  "scope": ["quickstart.md", "site docs", "release-please config", "changelog", "zensical.toml", "nav updates"],
+  "cross_refs": ["docs/superpowers/specs/2026-03-20-quickstart-and-docs-overhaul-design.md", "site/docs/quickstart.md", "site/docs/index.md", "site/docs/roadmap.md", "release-please-config.json"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Task/checklist-style implementation plan referencing a separate design spec; no decision-record or requirements-schema structure, so classified as DOC despite referencing a linked SPEC-like design doc."
+}

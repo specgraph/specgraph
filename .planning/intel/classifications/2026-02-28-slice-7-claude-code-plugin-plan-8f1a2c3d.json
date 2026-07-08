@@ -1,0 +1,17 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-02-28-slice-7-claude-code-plugin-plan.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Slice 7: Claude Code Plugin Implementation Plan",
+  "summary": "Task-by-task implementation plan for building a Claude Code plugin exposing SpecGraph's authoring workflow via skills and hooks.",
+  "scope": ["Claude Code plugin", "SKILL.md files", "plugin.json manifest", "session-start hook", "authoring workflow", "specgraph CLI"],
+  "cross_refs": [
+    "2026-04-20-multi-platform-plugin-design.md",
+    "2026-05-06-harness-parity-epic-design.md",
+    "docs/plans/2026-02-28-vertical-slice-roadmap-design.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Document is an implementation plan (task breakdown with file/code steps), not a decision record or user-facing PRD; marked Status: Superseded in-doc, retained for historical context only. Classified DOC since it's project execution documentation rather than a locked architectural decision, product requirement, or technical contract."
+}

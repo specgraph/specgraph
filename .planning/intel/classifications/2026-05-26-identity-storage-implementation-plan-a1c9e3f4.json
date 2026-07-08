@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-26-identity-storage-implementation-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Identity Storage Implementation Plan",
+  "summary": "Task-by-task implementation plan for a Postgres-backed identity storage layer (UsersBackend) with migrations and tests.",
+  "scope": ["UsersBackend", "AuthStore", "identity storage", "postgres migrations", "OIDC bindings", "API keys", "testcontainers"],
+  "cross_refs": ["docs/plans/2026-05-22-identity-storage-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

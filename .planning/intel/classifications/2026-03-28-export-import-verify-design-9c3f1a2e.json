@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-28-export-import-verify-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Full Text Export/Import with Verification",
+  "summary": "Design for a signed, versioned JSON export/import/verify pipeline for SpecGraph project data via ConnectRPC.",
+  "scope": ["ExportService", "ImportProject", "VerifyExport", "export.Engine", "HMAC signing", "referential integrity validation", "CLI export/import/verify commands"],
+  "cross_refs": ["proto/specgraph/v1/export.proto", "internal/export/", "internal/server/export_handler.go", "cmd/specgraph/export.go"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

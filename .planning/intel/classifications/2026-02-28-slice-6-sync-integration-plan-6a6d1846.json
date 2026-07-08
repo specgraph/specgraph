@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-02-28-slice-6-sync-integration-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Slice 6: Sync & Integration Implementation Plan",
+  "summary": "Task-by-task implementation plan for a pluggable sync/tool-injection system connecting SpecGraph to Beads and GitHub Issues.",
+  "scope": ["SyncService", "SyncAdapter", "Beads adapter", "GitHub adapter", "tool injection", "Memgraph SYNCED_TO edges", "ConnectRPC handler", "CLI sync/inject commands"],
+  "cross_refs": ["docs/plans/2026-02-28-vertical-slice-roadmap-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

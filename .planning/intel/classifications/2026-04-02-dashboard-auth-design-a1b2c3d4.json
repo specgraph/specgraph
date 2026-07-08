@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-04-02-dashboard-auth-design.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Dashboard Authentication Design",
+  "summary": "Adds cookie-based session authentication to the SpecGraph web dashboard, removing the local-mode auth bypass.",
+  "scope": ["dashboard authentication", "session cookie", "login modal", "ConnectRPC interceptor", "REST middleware", "CSRF protection", "OIDC migration path"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "Contains a Decisions table with rationale (ADR-like) alongside detailed endpoint/request-response/schema specs and file-change lists (SPEC-like). Classified as SPEC because the bulk of content is implementation contract detail (endpoints, cookie config, interceptor flow) rather than a single locked architectural decision; the Decisions table reads as embedded rationale within the broader technical design rather than a standalone ADR structure (no separate Context/Consequences sections). Status: Approved but no ADR numbering convention or path."
+}

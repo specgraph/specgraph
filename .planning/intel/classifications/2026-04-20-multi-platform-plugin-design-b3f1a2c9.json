@@ -1,0 +1,19 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-04-20-multi-platform-plugin-design.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Multi-Platform Plugin Design",
+  "summary": "Technical design for replacing the Claude-only SpecGraph plugin with thin, structurally-equivalent plugins across Cursor, OpenCode, Codex, and Claude that consume shared MCP-delivered workflow content.",
+  "scope": ["MCP server", "plugin architecture", "Claude Code", "Cursor", "OpenCode", "Codex", "authoring content composition", "prompt composition", "conversation recording", "profiles", "migration"],
+  "cross_refs": [
+    "plugin/specgraph/skills/",
+    "internal/authoring/prompts.go",
+    "internal/mcp/prompts.go",
+    "internal/mcp/profiles.go",
+    "docs/plans/2026-04-10-mcp-server-design.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Filename/path is docs/plans/ (design doc), not spec/ or adr/. Status: Draft (not an accepted decision). Content is heavily architectural/implementation-contract (delivery flow, resource schemas, content boundary tables, error handling, security) which outweighs prose/tutorial signals typical of DOC, so classified SPEC over DOC. No user-story/acceptance-criteria language, ruling out PRD; no single locked Decision/Consequences structure, ruling out ADR."
+}

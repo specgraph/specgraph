@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-06-05-release-single-job-goreleaser-design.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Release Pipeline: Single-Job, GoReleaser-Owns-Release",
+  "summary": "Decision to make GoReleaser the sole owner of GitHub Releases, removing git-cliff and the two-job draft architecture.",
+  "scope": ["release pipeline", "GoReleaser", "cog", "git-cliff", "GitHub Actions release.yml", "CHANGELOG.md"],
+  "cross_refs": ["2026-03-26-release-tooling-migration-design.md"],
+  "locked": true,
+  "precedence": null,
+  "notes": ""
+}

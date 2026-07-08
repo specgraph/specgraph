@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-05-05-project-wide-findings-api.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Project-Wide Findings API Implementation Plan",
+  "summary": "Implementation plan adding a ListProjectFindings RPC so MCP findings resources can list findings without an invalid per-spec request.",
+  "scope": ["ListProjectFindings RPC", "AnalyticalFinding", "analytical_pass.proto", "MCP resources", "specgraph://findings", "specgraph://prime"],
+  "cross_refs": [".cursor/plans/findings_api_fix_18de2513.plan.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

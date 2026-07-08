@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-05-21-spgr-8ar-piece-d-implementation-plan.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "spgr-8ar Piece D — Retire Single-Layer Compat Method",
+  "summary": "Implementation plan to delete deprecated Store.GetConstitution method, its impl, mocks, and add a CI grep guard.",
+  "scope": ["Store.GetConstitution", "ConstitutionBackend interface", "Postgres constitution implementation", "test mocks", "CI lint guard"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "Task-list implementation plan, not a PRD/ADR/SPEC per taxonomy; contains mechanical deletion steps and file structure tables rather than requirements or architectural decisions."
+}

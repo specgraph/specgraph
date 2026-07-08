@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-04-07-layered-constitution.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Layered Constitution Implementation Plan",
+  "summary": "Implementation plan for multi-layer constitution support with strategic merge, $delete directives, and provenance tracking.",
+  "scope": ["constitution", "merge engine", "provenance tracking", "database migration", "ConnectRPC", "constitution CLI", "web constitution page"],
+  "cross_refs": ["docs/superpowers/specs/2026-04-07-layered-constitution-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "This is a task-by-task implementation plan (file map, phased checkboxes) rather than prose documentation, but does not match ADR/PRD/SPEC hallmarks (no decision/consequences, no user stories, no endpoint/schema contracts standalone from implementation steps). Classified as DOC for context-only precedence; the referenced design spec at docs/superpowers/specs/2026-04-07-layered-constitution-design.md is a stronger SPEC candidate and should be classified separately if present in the ingest set."
+}

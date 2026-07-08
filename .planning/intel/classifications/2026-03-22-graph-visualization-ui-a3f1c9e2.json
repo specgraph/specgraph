@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-22-graph-visualization-ui.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Graph Visualization UI Implementation Plan",
+  "summary": "Implementation plan for embedding an interactive SvelteKit graph visualization UI into the specgraph binary.",
+  "scope": ["GetFullGraph RPC", "SvelteKit SPA", "Dagre graph layout", "ConnectRPC", "embedded static assets", "Playwright e2e tests"],
+  "cross_refs": ["docs/superpowers/specs/2026-03-22-graph-visualization-ui-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Structured as a step-by-step implementation/task plan with checkboxes and file-by-file breakdown, not a decision record, product requirements doc, or formal API/schema spec. Contains code snippets and technical contracts (proto message definitions) similar to a SPEC, but the dominant structure is a task execution plan referencing a separate linked design spec document. Classified as DOC (supporting/planning context) since it documents 'how to implement' rather than declaring a locked decision or user-facing requirement."
+}

@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-25-spec-detail-page-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Spec Detail Page Design Spec",
+  "summary": "Technical design for expanding the web UI spec detail page with collapsible sections for stage outputs, edges, and conversations.",
+  "scope": ["spec detail page", "AccordionSection.svelte", "GetSpec", "listEdges", "authoring stage outputs", "web UI"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

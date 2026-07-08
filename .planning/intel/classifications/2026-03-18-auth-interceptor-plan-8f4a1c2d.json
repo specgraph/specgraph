@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-03-18-auth-interceptor-plan.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Auth Interceptor Implementation Plan",
+  "summary": "Step-by-step TDD implementation plan for a ConnectRPC auth interceptor with API keys and implicit local identity fallback.",
+  "scope": ["auth interceptor", "ConnectRPC", "API keys", "IdentityStore", "permission table", "server wiring", "e2e tests"],
+  "cross_refs": ["docs/plans/2026-03-18-auth-interceptor-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "This is an execution/implementation plan (task checklist with code snippets), not a PRD/SPEC/ADR. It references a companion design doc (2026-03-18-auth-interceptor-design.md) which likely holds the actual decisions/spec content; that doc should be classified separately as SPEC or ADR."
+}

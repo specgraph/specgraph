@@ -1,0 +1,533 @@
+# Full manifest of all 177 docs ingested from docs/ (excludes docs/designs/template-system-design.md placeholder)
+docs:
+  - path: docs/decisions/ADR-001-principle-statement-field-naming.md
+    type: ADR
+    confidence: high
+  - path: docs/decisions/ADR-002-stable-ulid-ids-content-hash.md
+    type: ADR
+    confidence: high
+  - path: docs/decisions/ADR-004-optimistic-concurrency-transactions.md
+    type: ADR
+    confidence: high
+  - path: docs/decisions/ADR-005-no-native-windows-support.md
+    type: ADR
+    confidence: high
+  - path: docs/decisions/ADR-006-spec-provenance-model.md
+    type: ADR
+    confidence: high
+  - path: docs/designs/2026-03-26-confluence-to-specgraph-design-bridge.md
+    type: PRD
+    confidence: medium
+  - path: docs/initial-design-session/specgraph-v1.0-draft-adr-001-storage.md
+    type: ADR
+    confidence: medium
+  - path: docs/initial-design-session/specgraph-v1.0-draft-adr-002-gastown.md
+    type: ADR
+    confidence: medium
+  - path: docs/initial-design-session/specgraph-v1.0-draft-adr-003-decisions.md
+    type: ADR
+    confidence: high
+  - path: docs/initial-design-session/specgraph-v1.0-draft-roadmap.md
+    type: DOC
+    confidence: high
+  - path: docs/initial-design-session/specgraph-v1.0-draft-spec.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-02-28-client-server-architecture-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-02-28-implementation-tracker.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-02-28-slice-2-constitution-plan.md
+    type: DOC
+    confidence: medium
+  - path: docs/plans/2026-02-28-slice-3-authoring-funnel-plan.md
+    type: DOC
+    confidence: medium
+  - path: docs/plans/2026-02-28-slice-4-execution-bundles-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-02-28-slice-5-spec-lifecycle-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-02-28-slice-6-sync-integration-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-02-28-slice-7-claude-code-plugin-plan.md
+    type: DOC
+    confidence: medium
+  - path: docs/plans/2026-02-28-vertical-slice-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-02-28-vertical-slice-roadmap-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-03-03-slice-3.5-scanner-cleanup-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-03-05-e2e-test-system-design.md
+    type: SPEC
+    confidence: medium
+  - path: docs/plans/2026-03-05-e2e-test-system-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-03-06-storage-domain-types-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-03-06-storage-domain-types-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-03-07-domain-types-and-slice4-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-03-07-domain-types-consistency-design.md
+    type: SPEC
+    confidence: medium
+  - path: docs/plans/2026-03-07-slice-5-spec-lifecycle-revised-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-03-16-slice-7-global-daemon-and-plugin-design.md
+    type: SPEC
+    confidence: medium
+  - path: docs/plans/2026-03-16-slice-7-global-daemon-and-plugin-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-03-17-full-pipeline-e2e-design.md
+    type: SPEC
+    confidence: medium
+  - path: docs/plans/2026-03-17-full-pipeline-e2e-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-03-17-skill-personas-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-03-17-skill-personas-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-03-18-auth-interceptor-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-03-18-auth-interceptor-plan.md
+    type: DOC
+    confidence: medium
+  - path: docs/plans/2026-04-10-mcp-server-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-04-10-mcp-server-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-04-20-multi-platform-plugin-design.md
+    type: SPEC
+    confidence: medium
+  - path: docs/plans/2026-04-20-multi-platform-plugin-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-04-22-cli-lifecycle-split-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-04-22-cli-lifecycle-split-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-04-27-task-32-read-mcp-resource-design.md
+    type: ADR
+    confidence: medium
+  - path: docs/plans/2026-04-27-task-32-read-mcp-resource-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-04-spgr-7htb-init-idempotent-mcp-configs-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-04-spgr-7htb-init-idempotent-mcp-configs-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-06-harness-parity-epic-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-06-harness-parity-epic-plan.md
+    type: DOC
+    confidence: medium
+  - path: docs/plans/2026-05-06-spgr-yyjf-deprecate-inject-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-06-spgr-yyjf-deprecate-inject-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-07-pr940-review-fixes-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-08-spgr-rwrp-harness-install-parity-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-08-spgr-rwrp-pr0-claude-api-verification.md
+    type: DOC
+    confidence: medium
+  - path: docs/plans/2026-05-08-spgr-rwrp-pr0-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-08-spgr-rwrp-pra-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-11-spgr-rwrp-pr-b-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-11-spgr-rwrp-pr-b-port-managed-files-design.md
+    type: SPEC
+    confidence: medium
+  - path: docs/plans/2026-05-11-spgr-rwrp-pr-c-implementation-plan.md
+    type: DOC
+    confidence: medium
+  - path: docs/plans/2026-05-11-spgr-rwrp-pr-c-opencode-plugin-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-12-spgr-rwrp-pr-d-cursor-rules-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-12-spgr-rwrp-pr-d-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-12-spgr-rwrp-pr-e-claude-plugin-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-12-spgr-rwrp-pr-e-implementation-plan.md
+    type: DOC
+    confidence: medium
+  - path: docs/plans/2026-05-20-spgr-rwrp-pr-f-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-20-spgr-rwrp-pr-f-skills-mcp-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-20-spgr-rwrp-pr-g-doctor-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-20-spgr-rwrp-pr-g-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-22-identity-authn-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-22-identity-bootstrap-ux-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-22-identity-storage-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-26-identity-authn-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-26-identity-bootstrap-ux-4a-rpc-surface-implementation-plan.md
+    type: DOC
+    confidence: medium
+  - path: docs/plans/2026-05-26-identity-bootstrap-ux-4b-bootstrap-protections-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-26-identity-policy-engine-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-05-26-identity-policy-engine-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-05-26-identity-storage-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-06-02-koanf-config-loader-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-06-02-koanf-config-loader-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-06-15-cli-oidc-login-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-06-15-cli-oidc-login-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/2026-06-15-oidc-app-roles-login-sync-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/plans/2026-06-15-oidc-app-roles-login-sync-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/plans/README.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-18-changelog-graph-nodes.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-18-content-hash.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-03-19-transaction-wrapped-write-paths.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-03-20-analytical-pass-system-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-20-quickstart-and-docs-overhaul.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-03-20-release-please-goreleaser.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-20-repo-org-move.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-03-22-graph-visualization-ui.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-03-22-markdown-cli-output.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-22-structured-specify-output.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-03-24-conversation-log-graph-nodes.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-24-show-stage-detail.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-03-25-spec-detail-page.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-26-agent-actionable-execution-bundle-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-26-conversation-recording-wiring.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-26-idempotent-push.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-26-release-tooling-migration.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-26-web-ui-demo-readiness.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-27-site-docs-feature-coverage.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-03-27-slice-cli-commands.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-03-27-slice-service-handler.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-27-slice-web-ui.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-28-export-import-verify.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-28-oidc-authentication.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-03-29-list-changes-rpc.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-03-30-impact-notification.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-03-31-decision-adr003-fields.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-04-01-postgres-storage-backend.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-04-02-dashboard-auth.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-04-03-site-docs-overhaul.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-04-03-steel-thread-decomposition.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-04-06-lifecycle-amendment-supersede.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-04-07-layered-constitution.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-04-08-lifecycle-nomenclature-inversion.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-04-10-site-narrative-restructure.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-05-05-project-wide-findings-api.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-05-20-spec-provenance-model.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-05-21-spgr-8ar-piece-a-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-05-21-spgr-8ar-piece-b-implementation-plan.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-05-21-spgr-8ar-piece-c-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-05-21-spgr-8ar-piece-d-implementation-plan.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-05-22-spgr-8ar-piece-e-implementation-plan.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-06-05-release-single-job-goreleaser.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-06-08-non-fatal-postgres-startup.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-06-08-opentelemetry-instrumentation.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-06-11-server-request-logging.md
+    type: DOC
+    confidence: high
+  - path: docs/superpowers/plans/2026-06-12-oidc-interactive-ui-login.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/plans/2026-06-16-spgr-g7st-self-service-api-keys.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/specs/2026-03-18-changelog-graph-nodes-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-19-transaction-wrapped-write-paths-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-20-analytical-pass-system-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-20-quickstart-and-docs-overhaul-design.md
+    type: PRD
+    confidence: medium
+  - path: docs/superpowers/specs/2026-03-20-release-please-goreleaser-design.md
+    type: ADR
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-20-repo-org-move-design.md
+    type: ADR
+    confidence: medium
+  - path: docs/superpowers/specs/2026-03-21-bootstrap-funnel-demo-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-22-graph-visualization-ui-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-22-markdown-cli-output-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-22-structured-specify-output-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-24-conversation-log-graph-nodes-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-24-show-stage-detail-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-25-spec-detail-page-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-26-agent-actionable-execution-bundle-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-26-conversation-recording-wiring-design.md
+    type: SPEC
+    confidence: medium
+  - path: docs/superpowers/specs/2026-03-26-idempotent-push-design.md
+    type: ADR
+    confidence: medium
+  - path: docs/superpowers/specs/2026-03-26-release-tooling-migration-design.md
+    type: ADR
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-26-slice-first-class-vertex-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-26-web-ui-demo-readiness-design.md
+    type: SPEC
+    confidence: medium
+  - path: docs/superpowers/specs/2026-03-27-site-docs-feature-coverage-design.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/specs/2026-03-28-export-import-verify-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-28-oidc-authentication-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-29-list-changes-rpc-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-03-30-impact-notification-design.md
+    type: SPEC
+    confidence: medium
+  - path: docs/superpowers/specs/2026-03-31-decision-adr003-fields-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-04-01-postgres-storage-backend-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-04-02-dashboard-auth-design.md
+    type: SPEC
+    confidence: medium
+  - path: docs/superpowers/specs/2026-04-03-site-docs-overhaul-design.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/specs/2026-04-03-steel-thread-decomposition-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-04-06-lifecycle-amendment-supersede-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-04-07-layered-constitution-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-04-08-lifecycle-nomenclature-inversion-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-04-10-site-narrative-restructure-design.md
+    type: DOC
+    confidence: medium
+  - path: docs/superpowers/specs/2026-05-20-spec-provenance-model-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-05-21-multi-layer-constitution-completion-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-06-04-spgr-rjrt-9-role-downgrade-failclosed-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-06-05-opentelemetry-instrumentation-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-06-05-release-single-job-goreleaser-design.md
+    type: ADR
+    confidence: high
+  - path: docs/superpowers/specs/2026-06-08-non-fatal-postgres-startup-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-06-11-server-request-logging-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-06-12-oidc-interactive-ui-login-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/superpowers/specs/2026-06-16-spgr-g7st-self-service-api-keys-design.md
+    type: SPEC
+    confidence: high
+  - path: docs/verification/claude.md
+    type: DOC
+    confidence: high
+  - path: docs/verification/cursor.md
+    type: DOC
+    confidence: high
+  - path: docs/verification/opencode.md
+    type: DOC
+    confidence: high

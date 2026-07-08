@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-26-conversation-recording-wiring.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Conversation Recording Wiring Implementation Plan",
+  "scope": ["conversation recording", "RecordConversation RPC", "authoring skills", "ListSpecs", "Memgraph Cypher query"],
+  "summary": "Implementation plan wiring authoring skills to RecordConversation RPC and enabling real conversation_count Cypher query.",
+  "cross_refs": ["docs/superpowers/specs/2026-03-26-conversation-recording-wiring-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

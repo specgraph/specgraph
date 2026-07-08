@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-20-analytical-pass-system-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Analytical Pass System Implementation Plan",
+  "summary": "Implementation plan replacing placeholder analytical pass execution with an agent-driven LLM system using unified findings and a new RPC service.",
+  "scope": ["AnalyticalPassService", "AnalyticalFinding", "prompt templates", "ConnectRPC", "Memgraph", "proto definitions", "constitution checks"],
+  "cross_refs": ["docs/superpowers/specs/2026-03-20-analytical-pass-system-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "This is an implementation plan (task checklist + file map), distinct from the referenced design spec; classified as DOC since it describes execution steps rather than decisions, requirements, or technical contracts itself."
+}

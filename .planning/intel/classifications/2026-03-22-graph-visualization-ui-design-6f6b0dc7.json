@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-22-graph-visualization-ui-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Graph Visualization UI",
+  "summary": "Design for an embedded read-only SvelteKit graph explorer UI served alongside the SpecGraph ConnectRPC API.",
+  "scope": ["graph visualization", "SvelteKit UI", "embedded SPA", "GetFullGraph RPC", "ConnectRPC API", "GraphService", "static file serving", "CORS middleware"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

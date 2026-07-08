@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-04-06-lifecycle-amendment-supersede.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Lifecycle Amendment & Supersede Implementation Plan",
+  "summary": "Implementation plan for CLI/web visibility of spec amendment and supersede lifecycle events with diffs and E2E tests.",
+  "scope": ["spec lifecycle", "amendment", "supersede", "CompareVersions RPC", "changelog", "diff engine", "web dashboard", "E2E tests"],
+  "cross_refs": ["docs/superpowers/specs/2026-04-06-lifecycle-amendment-supersede-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

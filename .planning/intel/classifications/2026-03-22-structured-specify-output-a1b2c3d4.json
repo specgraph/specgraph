@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-22-structured-specify-output.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Structured SpecifyOutput Implementation Plan",
+  "summary": "Implementation plan to replace flat string fields in SpecifyOutput proto with structured sub-messages for multi-surface APIs and criteria.",
+  "scope": ["SpecifyOutput", "authoring.proto", "InterfaceSection", "VerifyCriterion", "FileTouch", "proto codegen", "handler validation", "safety scanner"],
+  "cross_refs": ["docs/superpowers/specs/2026-03-22-structured-specify-output-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "This is a task-checklist implementation plan, not one of the core four types. It references a companion SPEC document (design.md) which likely carries the actual technical contract; this plan itself is execution-oriented context and was classified DOC by elimination."
+}

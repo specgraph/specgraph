@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-05-21-spgr-8ar-piece-a-implementation-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "spgr-8ar Piece A — Storage Gap + Export Round-Trip Fix",
+  "summary": "Task-by-task implementation plan for closing constitution-read storage gaps and fixing export schema round-trip bug.",
+  "scope": ["GetMergedConstitution", "PrimeData", "ConstitutionProvenance", "export schema v2", "constitution merge", "storage backend"],
+  "cross_refs": ["docs/superpowers/specs/2026-05-21-multi-layer-constitution-completion-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

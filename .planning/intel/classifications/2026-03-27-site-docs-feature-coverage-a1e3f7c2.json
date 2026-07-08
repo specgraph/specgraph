@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-27-site-docs-feature-coverage.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Site Documentation Feature Coverage Plan",
+  "summary": "Implementation plan for closing site documentation gaps: CLI reference generator plus new concept and guide pages.",
+  "scope": ["specgraph docs command", "CLI reference generation", "site documentation", "MkDocs Material pages", "slices", "drift", "linting", "sync guide"],
+  "cross_refs": ["docs/superpowers/specs/2026-03-27-site-docs-feature-coverage-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Structured as a checkbox-driven implementation plan with embedded Go code, not a pure narrative doc; leans DOC over SPEC because it implements/documents rather than defining external contracts, but could be argued as SPEC-adjacent."
+}

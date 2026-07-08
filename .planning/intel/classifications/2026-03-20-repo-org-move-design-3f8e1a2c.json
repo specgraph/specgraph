@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-20-repo-org-move-design.md",
+  "type": "ADR",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Repository Organization Move",
+  "summary": "Decision and two-phase plan to transfer the specgraph repo to the specgraph GitHub org and update all module/import references.",
+  "scope": ["GitHub repository transfer", "Go module path", "proto go_package options", "site configuration", "Docker/GHCR references"],
+  "cross_refs": [],
+  "locked": true,
+  "precedence": null,
+  "notes": "Filename lives under specs/ with a '-design' suffix (SPEC-like path) but content structure is Status/Problem/Decision typical of ADRs, lacking a Consequences section. Classified as ADR (Status: Approved = locked) due to explicit Decision statement outranking the ambiguous path signal."
+}

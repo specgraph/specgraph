@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-03-07-domain-types-consistency-design.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Storage Domain Types Consistency & Slice 4 Execution",
+  "summary": "Design for eliminating proto type leaks from storage backends and implementing Slice 4 ExecutionBackend with domain types.",
+  "scope": ["ConstitutionBackend", "ClaimBackend", "ExecutionBackend", "storage domain types", "proto conversion boundary"],
+  "cross_refs": ["internal/storage/constitution_domain.go", "internal/server/convert.go"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Doc is a technical design/implementation plan (docs/plans/ path) with current-state tables and phased implementation detail rather than user stories; classified SPEC over PRD due to implementation-contract nature (interface signatures, type definitions). No frontmatter status field present."
+}

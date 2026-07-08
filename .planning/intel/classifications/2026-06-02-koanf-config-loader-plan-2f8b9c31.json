@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-06-02-koanf-config-loader-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Koanf Config Loader Implementation Plan",
+  "summary": "Task-by-task implementation plan to replace plain YAML config loading with a koanf-based flag/env/file/default precedence loader.",
+  "scope": ["internal/config", "koanf", "GlobalConfig", "cmd/specgraph/serve.go", "cmd/specgraph/main.go", "env var precedence", "config loader"],
+  "cross_refs": ["docs/plans/2026-06-02-koanf-config-loader-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

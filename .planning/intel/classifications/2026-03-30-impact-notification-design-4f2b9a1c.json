@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-30-impact-notification-design.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Impact Notification Service Design",
+  "summary": "Technical design for an event-driven impact notification service that fires subscriber callbacks after spec changelog commits.",
+  "scope": ["ChangeEvent", "ChangeSubscriber", "Subscribable interface", "RunInTransaction post-commit hook", "ImpactLogger subscriber", "memgraph storage backend"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "Path is docs/superpowers/specs/ and file has Status: Draft plus a Decision Summary table, giving it ADR-like flavor, but it lacks a numbered ADR filename and 'Context/Decision/Consequences' structure; content is dominated by interface definitions, architecture, file-change lists, and test plans (implementation contract), so classified as SPEC over ADR/PRD."
+}

@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-03-05-e2e-test-system-design.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "E2E Test System Design",
+  "summary": "Technical design for a two-tier Ginkgo/Gomega E2E test system covering CLI/API and Docker-mode server lifecycle.",
+  "scope": ["e2e testing", "Ginkgo v2", "Gomega", "ConnectRPC", "Memgraph testcontainers", "Docker compose mode", "CLI test coverage", "Taskfile targets"],
+  "cross_refs": ["e2e/smoke_test.sh"],
+  "locked": false,
+  "precedence": null,
+  "notes": "No frontmatter type field; 'Status: Approved' and Problem/Design structure resemble ADR but lack Decision/Consequences sections. Content is dominated by concrete implementation contracts (file layout, helper signatures, Taskfile tasks, test coverage tables), so classified as SPEC over DOC/ADR."
+}

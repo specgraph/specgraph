@@ -1,0 +1,18 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-04-27-task-32-read-mcp-resource-design.md",
+  "type": "ADR",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Task 32 Design Adjustment: `specgraph read-mcp-resource`",
+  "summary": "Corrects the design for a new `read-mcp-resource` CLI subcommand after PR #923 removed stdio MCP transport in favor of HTTP-only.",
+  "scope": ["specgraph CLI", "MCP HTTP transport", "read-mcp-resource command", "session-start hook", "resolveBaseURL", "mark3labs/mcp-go client"],
+  "cross_refs": [
+    "docs/plans/2026-04-20-multi-platform-plugin-plan.md",
+    "cmd/specgraph/serve.go",
+    "cmd/specgraph/client.go",
+    "plugin/specgraph/hooks/session-start.sh"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Not filename/path ADR convention (lives under docs/plans, no ADR-#### naming, no explicit Status field), but content is a set of numbered locked design Decisions (D1-D6) with rationale/consequences per decision, closer to ADR than a PRD/SPEC/plan. Classified as ADR on content signal strength; not marked locked since there is no explicit Accepted/Proposed status field to confirm."
+}
