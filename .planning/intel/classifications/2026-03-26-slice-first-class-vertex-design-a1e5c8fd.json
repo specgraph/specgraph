@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-26-slice-first-class-vertex-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Introduce Slice as First-Class Graph Vertex",
+  "summary": "Defines a new Slice proto entity, service, and status enum to replace Spec-based decomposition slice modeling.",
+  "scope": ["Slice", "SliceService", "DecomposeOutput", "slice.proto", "authoring.proto", "graph vertex model"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

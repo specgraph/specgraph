@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-04-22-cli-lifecycle-split-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "CLI Lifecycle Split — Design",
+  "summary": "Splits specgraph up/down lifecycle from service install/uninstall to fix data-destroying bugs in compose teardown.",
+  "scope": ["specgraph up", "specgraph down", "specgraph install/uninstall", "docker compose lifecycle", "serve.go", "compose.go", "launchd/systemd service registration"],
+  "cross_refs": ["docs/plans/2026-03-16-slice-7-global-daemon-and-plugin-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

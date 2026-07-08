@@ -1,0 +1,16 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-02-28-vertical-slice-roadmap-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "SpecGraph Vertical Slice Roadmap",
+  "summary": "Vertical-slice implementation roadmap for SpecGraph covering constitution, authoring, execution bundles, lifecycle, sync, and the Claude Code plugin.",
+  "scope": ["Constitution", "Authoring", "Execution Bundles", "Lifecycle", "Sync", "Claude Code Plugin", "Memgraph", "ConnectRPC", "protobuf services"],
+  "cross_refs": [
+    "docs/plans/2026-02-28-client-server-architecture-design.md",
+    "docs/initial-design-session/specgraph-v1.0-draft-spec.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

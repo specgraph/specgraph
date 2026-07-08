@@ -1,0 +1,116 @@
+docs:
+  # Locked ADRs (highest precedence)
+  - path: docs/decisions/ADR-001-principle-statement-field-naming.md
+    type: ADR
+  - path: docs/decisions/ADR-002-stable-ulid-ids-content-hash.md
+    type: ADR
+  - path: docs/decisions/ADR-004-optimistic-concurrency-transactions.md
+    type: ADR
+  - path: docs/decisions/ADR-005-no-native-windows-support.md
+    type: ADR
+  - path: docs/decisions/ADR-006-spec-provenance-model.md
+    type: ADR
+
+  # Initial design session (foundational drafts)
+  - path: docs/initial-design-session/specgraph-v1.0-draft-adr-001-storage.md
+    type: ADR
+  - path: docs/initial-design-session/specgraph-v1.0-draft-adr-002-gastown.md
+    type: ADR
+  - path: docs/initial-design-session/specgraph-v1.0-draft-adr-003-decisions.md
+    type: ADR
+  - path: docs/initial-design-session/specgraph-v1.0-draft-spec.md
+    type: SPEC
+  - path: docs/initial-design-session/specgraph-v1.0-draft-roadmap.md
+    type: DOC
+
+  # Core domain model / storage
+  - path: docs/plans/2026-02-28-client-server-architecture-design.md
+    type: SPEC
+  - path: docs/plans/2026-03-06-storage-domain-types-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-04-01-postgres-storage-backend-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-03-19-transaction-wrapped-write-paths-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-05-20-spec-provenance-model-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-03-31-decision-adr003-fields-design.md
+    type: SPEC
+
+  # Constitution
+  - path: docs/superpowers/specs/2026-04-07-layered-constitution-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-05-21-multi-layer-constitution-completion-design.md
+    type: SPEC
+
+  # Authoring funnel / lifecycle
+  - path: docs/superpowers/specs/2026-03-20-analytical-pass-system-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-04-06-lifecycle-amendment-supersede-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-04-08-lifecycle-nomenclature-inversion-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-04-03-steel-thread-decomposition-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-03-21-bootstrap-funnel-demo-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-03-26-slice-first-class-vertex-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-03-26-agent-actionable-execution-bundle-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-03-18-changelog-graph-nodes-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-03-24-conversation-log-graph-nodes-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-03-22-structured-specify-output-design.md
+    type: SPEC
+
+  # MCP server / harness plugin parity
+  - path: docs/plans/2026-04-10-mcp-server-design.md
+    type: SPEC
+  - path: docs/plans/2026-05-06-harness-parity-epic-design.md
+    type: SPEC
+  - path: docs/plans/2026-05-08-spgr-rwrp-harness-install-parity-design.md
+    type: SPEC
+  - path: docs/plans/2026-05-20-spgr-rwrp-pr-f-skills-mcp-design.md
+    type: SPEC
+  - path: docs/plans/2026-05-20-spgr-rwrp-pr-g-doctor-design.md
+    type: SPEC
+  - path: docs/plans/2026-05-06-spgr-yyjf-deprecate-inject-design.md
+    type: SPEC
+  - path: docs/plans/2026-05-04-spgr-7htb-init-idempotent-mcp-configs-design.md
+    type: SPEC
+
+  # CLI / config
+  - path: docs/plans/2026-04-22-cli-lifecycle-split-design.md
+    type: SPEC
+  - path: docs/plans/2026-06-02-koanf-config-loader-design.md
+    type: SPEC
+  - path: docs/plans/2026-03-18-auth-interceptor-design.md
+    type: SPEC
+  - path: docs/plans/2026-02-28-vertical-slice-roadmap-design.md
+    type: SPEC
+  - path: docs/plans/2026-03-17-skill-personas-design.md
+    type: SPEC
+
+  # Identity / auth
+  - path: docs/plans/2026-05-22-identity-authn-design.md
+    type: SPEC
+  - path: docs/plans/2026-05-22-identity-storage-design.md
+    type: SPEC
+  - path: docs/plans/2026-05-22-identity-bootstrap-ux-design.md
+    type: SPEC
+  - path: docs/plans/2026-05-26-identity-policy-engine-design.md
+    type: SPEC
+  - path: docs/plans/2026-06-15-cli-oidc-login-design.md
+    type: SPEC
+  - path: docs/plans/2026-06-15-oidc-app-roles-login-sync-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-03-28-oidc-authentication-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-06-12-oidc-interactive-ui-login-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-06-16-spgr-g7st-self-service-api-keys-design.md
+    type: SPEC
+  - path: docs/superpowers/specs/2026-06-04-spgr-rjrt-9-role-downgrade-failclosed-design.md
+    type: SPEC

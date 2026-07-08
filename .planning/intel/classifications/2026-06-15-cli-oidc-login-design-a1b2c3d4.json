@@ -1,0 +1,30 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-06-15-cli-oidc-login-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "CLI OIDC Login Design",
+  "summary": "Design for a browser-based OIDC login/logout flow for the SpecGraph CLI via loopback redirect and credentials-file token storage.",
+  "scope": [
+    "specgraph login",
+    "specgraph logout",
+    "OIDC",
+    "loopback redirect",
+    "credentials file",
+    "CLI authentication",
+    "PKCE",
+    "session token",
+    "auth_oidc_handler.go",
+    "identitystore.go"
+  ],
+  "cross_refs": [
+    "internal/server/auth_oidc_handler.go",
+    "internal/credentials/",
+    "internal/auth/identitystore.go",
+    "cmd/specgraph/client.go",
+    "loginprovider.go"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

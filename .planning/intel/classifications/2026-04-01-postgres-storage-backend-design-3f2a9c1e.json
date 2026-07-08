@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-04-01-postgres-storage-backend-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Postgres Storage Backend Design",
+  "summary": "Design and schema for replacing the Memgraph storage backend with a pure Postgres/SQL implementation.",
+  "scope": ["internal/storage/postgres", "internal/storage/memgraph", "storage interface layer", "schema design", "pgx driver", "goose migrations", "pgvector"],
+  "cross_refs": ["ADR-001", "spgr-khy", "spgr-khy.1", "spgr-8nf"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

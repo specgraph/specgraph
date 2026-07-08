@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/decisions/ADR-002-stable-ulid-ids-content-hash.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "ADR-002: Stable ULID IDs with Murmur3-128 Content Hash",
+  "summary": "Decision to keep ULIDs as stable spec/decision node IDs and add a Murmur3-128 content_hash field for change detection.",
+  "scope": ["Spec", "Decision", "ULID", "content_hash", "drift detection", "sync adapters", "graph edges"],
+  "cross_refs": [],
+  "locked": true,
+  "precedence": null,
+  "notes": ""
+}

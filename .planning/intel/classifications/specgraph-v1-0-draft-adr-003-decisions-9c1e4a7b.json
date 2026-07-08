@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/initial-design-session/specgraph-v1.0-draft-adr-003-decisions.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "SpecGraph ADR-003: Decisions as First-Class Graph Entities",
+  "summary": "Decisions become first-class graph nodes with identity, schema, lifecycle, and bidirectional edges to specs instead of embedded arrays.",
+  "scope": ["decisions", "spec graph", "ADR export", "decision schema", "Beads", "Postgres", "spec-decision edges"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

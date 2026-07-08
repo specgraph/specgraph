@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/initial-design-session/specgraph-v1.0-draft-roadmap.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "SpecGraph Implementation Roadmap",
+  "summary": "Four-phase implementation roadmap and phase-dependency diagrams for building SpecGraph, companion to the v1.0 draft spec.",
+  "scope": ["Spec schema", "Constitution", "Beads backend", "Postgres backend", "Claim protocol", "Execution bundles", "CLI", "Spec linter", "Authoring flow", "Claude Code plugin", "Cursor rules", "MCP server", "Drift detection", "Document export", "Gastown integration", "Federation"],
+  "cross_refs": ["specgraph-v1.0-draft-spec.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

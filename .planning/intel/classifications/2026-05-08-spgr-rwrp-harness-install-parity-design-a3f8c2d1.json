@@ -1,0 +1,24 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-08-spgr-rwrp-harness-install-parity-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Harness install parity via embed-and-write — design",
+  "summary": "Design for a unified embed-and-write managed-files package achieving install parity across Claude, Cursor, and OpenCode harnesses.",
+  "scope": [
+    "specgraph init",
+    "internal/config/managedfiles",
+    "internal/config/mcpconfigs",
+    "internal/config/pointers",
+    "specgraph doctor",
+    "drift detection",
+    "Claude harness shim",
+    "Cursor harness shim",
+    "OpenCode harness shim",
+    "skills delivery via MCP resource"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

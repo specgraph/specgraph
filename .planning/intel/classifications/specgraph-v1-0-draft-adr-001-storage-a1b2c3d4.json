@@ -1,0 +1,13 @@
+{
+  "source_path": "docs/initial-design-session/specgraph-v1.0-draft-adr-001-storage.md",
+  "type": "ADR",
+  "confidence": "medium",
+  "manifest_override": true,
+  "title": "SpecGraph ADR-001 (v3): Architecture & Storage",
+  "summary": "Draft ADR defining SpecGraph's composable core plus pluggable storage backends, integrations, and spec schema.",
+  "scope": ["storage backend", "Beads+Dolt", "Postgres+AGE", "Gastown integration", "issue tracker sync", "tool injection", "spec schema", "authoring funnel"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "No explicit Status field found in scanned content; filename marks this 'draft', so treated as not locked despite manifest-declared ADR type."
+}

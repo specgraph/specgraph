@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-24-conversation-log-graph-nodes-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "ConversationLog Graph Nodes for Authoring Audit Trail",
+  "summary": "Design for a ConversationLog graph node capturing probe-and-response exchanges during authoring stages for audit trail.",
+  "scope": ["ConversationLog", "graph nodes", "authoring skills", "ChangeLog", "AUTHORED_VIA edges", "EXPLAINS edges", "CONTINUES edges", "specgraph conversation record CLI"],
+  "cross_refs": ["spgr-9mz", "spgr-0dg", "spgr-zn1"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

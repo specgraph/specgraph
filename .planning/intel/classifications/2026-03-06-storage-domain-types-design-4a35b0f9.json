@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-03-06-storage-domain-types-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Storage Domain Types & Decision Promotion Design",
+  "summary": "Design to decouple storage interfaces from proto types and promote ShapeOutput decisions to first-class Decision graph nodes.",
+  "scope": ["storage.Backend interface", "DecisionBackend", "AuthoringBackend", "Spec domain type", "Decision domain type", "ShapeOutput", "DECIDED_IN edges", "ADR-003"],
+  "cross_refs": ["internal/storage/storage.go", "internal/storage/spec_domain.go", "internal/storage/decision.go"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

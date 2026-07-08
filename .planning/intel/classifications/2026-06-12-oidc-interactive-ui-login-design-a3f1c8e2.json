@@ -1,0 +1,24 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-06-12-oidc-interactive-ui-login-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Interactive OIDC login for the web UI",
+  "summary": "Design for adding a server-side OAuth2 Authorization Code + PKCE OIDC login flow to the SpecGraph web dashboard.",
+  "scope": [
+    "OIDC verifier",
+    "web dashboard",
+    "LoginModal.svelte",
+    "auth_handler.go",
+    "server-side session",
+    "Entra ID",
+    "Okta",
+    "GitHub OIDC broker",
+    "identity resolver",
+    "cookie session"
+  ],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

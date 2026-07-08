@@ -1,0 +1,16 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-03-17-skill-personas-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Skill Personas — Design",
+  "summary": "Design for transforming SpecGraph's five authoring skills into conversational, persona-driven spec development partners with layered posture, tone, and judgment heuristics.",
+  "scope": ["authoring skills", "persona layer", "posture system", "pushback protocol", "tone calibration", "judgment heuristics", "router skill", "analytical passes"],
+  "cross_refs": [
+    "2026-04-20-multi-platform-plugin-design.md",
+    "2026-05-06-harness-parity-epic-design.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Document marked Status: Superseded; content is a design doc (persona/architecture layers), not a decision-log ADR. MANIFEST_TYPE=SPEC applied as authoritative override; heuristic/content signals lean DOC/design-note but manifest override takes precedence per process."
+}

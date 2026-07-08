@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/decisions/ADR-006-spec-provenance-model.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "ADR-006: Spec Provenance Model",
+  "summary": "Replaces SpecLifecycle with a SpecProvenance enum capturing how a spec entered the graph (AUTHORED, RETROACTIVE_FROM_PR, DECLARED).",
+  "scope": ["SpecLifecycle", "SpecProvenance", "GetReady", "drift detection", "claim", "report-completion", "proto schema"],
+  "cross_refs": ["docs/superpowers/specs/2026-05-20-spec-provenance-model-design.md"],
+  "locked": true,
+  "precedence": null,
+  "notes": ""
+}

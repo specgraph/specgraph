@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-06-04-spgr-rjrt-9-role-downgrade-failclosed-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Custom-role downgrade: fail-closed clamp (spgr-rjrt.9)",
+  "summary": "Design for fixing fail-open RoleDowngrade clamping so unorderable custom roles fail closed to reader instead of the user's fuller role.",
+  "scope": ["RoleDowngrade", "clampedRole", "EffectiveRole", "Cedar policy engine", "API key resolver", "roleRank", "roleLessThan"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

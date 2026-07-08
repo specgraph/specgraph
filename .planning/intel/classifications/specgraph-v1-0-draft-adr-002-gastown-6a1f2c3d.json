@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/initial-design-session/specgraph-v1.0-draft-adr-002-gastown.md",
+  "type": "ADR",
+  "confidence": "medium",
+  "manifest_override": true,
+  "title": "SpecGraph ADR-002: Gastown Integration",
+  "summary": "Describes how SpecGraph specs become Beads consumed by Gastown's multi-agent execution system (Mayor, Polecats, Refinery).",
+  "scope": ["Gastown", "Beads", "Dolt", "SpecGraph", "authoring funnel", "polecats", "Mayor", "Refinery"],
+  "cross_refs": ["ADR-001"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Filename and manifest indicate ADR, but no explicit Status field (Accepted/Proposed) or dedicated Decision/Consequences sections were found in the scanned content; classified as ADR per manifest but not marked locked absent an Accepted status marker."
+}

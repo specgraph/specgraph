@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-06-harness-parity-epic-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Harness Parity Epic: Consolidate Claude Code, Cursor, and OpenCode Integration",
+  "summary": "Design for unifying skill discovery, session priming, and MCP config parity across Claude Code, Cursor, and OpenCode harnesses.",
+  "scope": ["Claude Code plugin", "Cursor rules pack", "OpenCode plugin", "MCP config writers", "skill discovery", "session priming", "internal/mcp/profiles.go", "internal/config/mcpconfigs"],
+  "cross_refs": ["../../plugin/specgraph/", "../../internal/mcp/profiles.go", "../../internal/config/mcpconfigs/configs.go", "plugin/opencode/.opencode/plugins/specgraph.ts", "plugin/specgraph/README.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

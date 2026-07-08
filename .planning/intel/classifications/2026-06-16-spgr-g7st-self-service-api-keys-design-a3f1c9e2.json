@@ -1,0 +1,23 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-06-16-spgr-g7st-self-service-api-keys-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Self-Service MCP API-Key Provisioning for OIDC Users",
+  "summary": "Design for non-admin OIDC users to self-provision role-capped, expiring MCP API keys via a new Cedar `apikey.self` verb.",
+  "scope": ["API keys", "Cedar authorization policies", "OIDC", "MCP", "self-service provisioning", "role-capping", "identitystore", "login-sync"],
+  "cross_refs": [
+    "spgr-tmqm",
+    "spgr-1rq9",
+    "spgr-c2lb",
+    "gh #996",
+    "internal/auth/policies/base.cedar",
+    "internal/auth/engine.go",
+    "identitystore.go",
+    "loginsync.go",
+    "actions_test.go"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

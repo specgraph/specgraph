@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-19-transaction-wrapped-write-paths-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Transaction-Wrapped Write Paths for Atomicity",
+  "summary": "Design to wrap multi-query storage write paths in RunInTransaction for atomicity and consistent audit trails.",
+  "scope": ["RunInTransaction", "CreateSpec", "UpdateSpec", "TransitionStage", "StoreSparkOutput", "StoreShapeOutput", "StoreSpecifyOutput", "StoreDecomposeOutput", "AmendSpec", "LifecycleAmendSpec", "LifecycleSupersedeSpec", "LifecycleAbandonSpec", "UpdateDecision", "ChangeLog", "ErrConcurrentModification"],
+  "cross_refs": ["PR #41 (ChangeLog graph nodes)", "memgraph.go", "authoring.go", "lifecycle.go", "decision.go", "tx.go"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}
