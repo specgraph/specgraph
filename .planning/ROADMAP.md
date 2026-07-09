@@ -36,12 +36,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal**: Maintainers can cut a tagged release and trust the build/lint tooling without manual intervention or double-published/broken artifacts
 **Depends on**: Nothing (first phase)
 **Requirements**: REL-01, CFG-01, CFG-02
-**Status**: In progress — REL-01 and CFG-01 confirmed already shipped on `main` (PR #981 and the koanf loader in `internal/config/global.go`; beads status had lagged actual repo state); only CFG-02 remains open
+**Status**: Complete — REL-01 and CFG-01 confirmed already shipped on `main` (PR #981 and the koanf loader in `internal/config/global.go`; beads status had lagged actual repo state); CFG-02 closed by 01-01-PLAN.md
 **Success Criteria** (what must be TRUE):
 
   1. ✓ A pushed release tag produces exactly one coherent GitHub Release (correct changelog notes and artifacts) via a single goreleaser-owned job — no dual-path race, no empty release notes. **Met** — verified against `v0.12.0`'s actual release.
   2. ✓ All SpecGraph server/CLI config is sourced through one layered koanf loader (flag > env > file > default), with the legacy `SPECGRAPH_PG_URL` env var emitting a deprecation warning instead of silently breaking config. **Met** — verified in `internal/config/global.go` and `cmd/specgraph/serve.go`.
-  3. `task check`'s golangci-lint run uses the same pinned version as CI, so a clean local `task check` guarantees a clean CI lint run. **Open** — CI pins `v2.12.1` (`ci.yml`); `task tools` installs via unpinned `brew install golangci-lint`, currently drifted to `2.12.2`.
+  3. ✓ `task check`'s golangci-lint run uses the same pinned version as CI, so a clean local `task check` guarantees a clean CI lint run. **Met** — `Taskfile.yml` pins `GOLANGCI_LINT_VERSION: v2.12.1` and installs it via `go install`; `ci.yml`'s "Install Go tools" step reads that same value via `$(task tools:golangci-lint-version)`.
 
 **Plans**: 1/1 plans complete
 
