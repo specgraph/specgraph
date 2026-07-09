@@ -10,9 +10,14 @@ option go_package = "github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1
 import "google/protobuf/timestamp.proto";
 
 // IdentityService manages users, service accounts, API keys, and OIDC
-// bindings. It is a GLOBAL service (not project-scoped). All RPCs except
-// Whoami require the admin role (enforced by Cedar via the "manage" verb);
-// Whoami is self-scoped and available to any authenticated principal.
+// bindings. It is a GLOBAL service (not project-scoped). Most management RPCs
+// require the admin role (enforced by Cedar via the "manage" verb), including
+// ResyncUserRole (user.manage). Two categories are NOT admin-only: Whoami is
+// self-scoped and available to any authenticated principal; and the four
+// *MyAPIKey RPCs (CreateMyAPIKey/ListMyAPIKeys/RotateMyAPIKey/RevokeMyAPIKey)
+// are SELF-scoped — any authenticated principal may call them for their own
+// keys, gated by the Cedar "apikey.self" verb and further restricted in the
+// handler (owner derived from context, never client-supplied).
 service IdentityService {
   rpc Whoami(WhoamiRequest) returns (WhoamiResponse);
 
@@ -20,6 +25,7 @@ service IdentityService {
   rpc GetUser(GetUserRequest) returns (GetUserResponse);
   rpc CreateServiceAccount(CreateServiceAccountRequest) returns (CreateServiceAccountResponse);
   rpc UpdateUserRole(UpdateUserRoleRequest) returns (UpdateUserRoleResponse);
+  rpc ResyncUserRole(ResyncUserRoleRequest) returns (ResyncUserRoleResponse);
   rpc SoftDeleteUser(SoftDeleteUserRequest) returns (SoftDeleteUserResponse);
   rpc PurgeUser(PurgeUserRequest) returns (PurgeUserResponse);
 
@@ -27,6 +33,13 @@ service IdentityService {
   rpc RevokeAPIKey(RevokeAPIKeyRequest) returns (RevokeAPIKeyResponse);
   rpc RotateAPIKey(RotateAPIKeyRequest) returns (RotateAPIKeyResponse);
   rpc ListAPIKeys(ListAPIKeysRequest) returns (ListAPIKeysResponse);
+
+  // Self-scoped API-key RPCs (AUTH-03): owner is derived from context; the
+  // request messages carry NO user_id/target field by design.
+  rpc CreateMyAPIKey(CreateMyAPIKeyRequest) returns (CreateMyAPIKeyResponse);
+  rpc ListMyAPIKeys(ListMyAPIKeysRequest) returns (ListMyAPIKeysResponse);
+  rpc RotateMyAPIKey(RotateMyAPIKeyRequest) returns (RotateMyAPIKeyResponse);
+  rpc RevokeMyAPIKey(RevokeMyAPIKeyRequest) returns (RevokeMyAPIKeyResponse);
 
   rpc ListOIDCBindings(ListOIDCBindingsRequest) returns (ListOIDCBindingsResponse);
   rpc UnbindOIDC(UnbindOIDCRequest) returns (UnbindOIDCResponse);
@@ -111,6 +124,17 @@ message UpdateUserRoleRequest {
 }
 message UpdateUserRoleResponse { User user = 1; }
 
+// ResyncUserRole re-applies a user's authoritative role (AUTH-02). When
+// revoke_keys is true it drives the hard off-board: the user's API keys are
+// revoked as part of the role change so a downgraded/off-boarded principal
+// cannot keep minting or using pre-existing keys. Admin-only (user.manage).
+message ResyncUserRoleRequest {
+  string id = 1;
+  string role = 2;
+  bool revoke_keys = 3;
+}
+message ResyncUserRoleResponse { User user = 1; }
+
 message SoftDeleteUserRequest {
   string id = 1;
   bool force = 2; // required to soft-delete the bootstrap admin
@@ -166,6 +190,40 @@ message ListAPIKeysRequest {
   int32 offset = 4;
 }
 message ListAPIKeysResponse { repeated APIKey keys = 1; }
+
+// Self-service API-key messages (AUTH-03). These mirror the admin CreateAPIKey/
+// Rotate/Revoke/List surface but carry NO user_id/target field: the owner is
+// always derived from the authenticated context in the handler, so a caller can
+// never name another owner at the wire level (T-02-01 mitigation).
+message CreateMyAPIKeyRequest {
+  string label = 1;
+  string role_downgrade = 2;                // empty = no downgrade
+  google.protobuf.Timestamp expires_at = 3; // unset = policy default expiry
+}
+// plaintext is the full token (spgr_sk_<prefix>_<secret>); shown ONCE.
+message CreateMyAPIKeyResponse {
+  APIKey key = 1;
+  string plaintext = 2;
+}
+
+message ListMyAPIKeysRequest {}
+message ListMyAPIKeysResponse { repeated APIKey keys = 1; }
+
+// RotateMyAPIKey mints a new secret for one of the caller's own keys and
+// revokes the old one, preserving the key's identity and authority (owner,
+// role_downgrade, label are inherited). The caller MAY set expires_at to choose
+// the new secret's validity window; unset inherits the old key's expiry.
+message RotateMyAPIKeyRequest {
+  string key_id = 1;
+  google.protobuf.Timestamp expires_at = 2; // unset = inherit old key's expiry
+}
+message RotateMyAPIKeyResponse {
+  APIKey key = 1;
+  string plaintext = 2;
+}
+
+message RevokeMyAPIKeyRequest { string key_id = 1; }
+message RevokeMyAPIKeyResponse {}
 
 message ListOIDCBindingsRequest { string user_id = 1; }
 message ListOIDCBindingsResponse { repeated OIDCBinding bindings = 1; }
