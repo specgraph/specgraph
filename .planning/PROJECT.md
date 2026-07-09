@@ -21,14 +21,14 @@ Specs stay live and queryable as a graph — with locked architectural decisions
 - ✓ OIDC login (CLI `specgraph login`/`logout`, web UI), OIDC app-roles + login-sync
 - ✓ Storage backend migration: Memgraph+AGE → pure Postgres/pgx (Memgraph fully removed)
 - ✓ v0.12.0 released
+- ✓ Single-job goreleaser-owns-release model (`spgr-7r6g`) — merged PR #981; verified against `v0.12.0`'s actual GitHub Release (single publish, populated notes, signed/SBOM'd assets)
+- ✓ Koanf layered config loader (`spgr-5kd5`) — `internal/config/global.go` implements the full flag>env>file>default precedence, including the `SPECGRAPH_PG_URL` deprecation warning
 
 ### Active
 
 <!-- v1 scope — see REQUIREMENTS.md for full detail with REQ-IDs. Sourced from currently open/in-progress beads issues, P1+P2 priority. -->
 
-- [ ] Adopt holomush single-job goreleaser-owns-release model (in progress — `spgr-7r6g`)
 - [ ] Native generic OAuth2 + userinfo login provider (GitHub-direct) (`spgr-1rq9`)
-- [ ] Adopt koanf for layered config + env provider (`spgr-5kd5`)
 - [ ] Populate `web_sessions.issuer` for audit / future RP-logout (`spgr-bbp2`)
 - [ ] Enforce app-role revocation on standing API/MCP keys (`spgr-c2lb`)
 - [ ] Self-service / auto MCP API-key provisioning for OIDC users (in progress — `spgr-g7st`)
@@ -69,4 +69,4 @@ Full architectural history — locked ADRs, three-generation storage-backend lin
 | Migrate issue tracking from `bd`/beads to GSD `.planning/` | consolidate on one planning/tracking system | — Pending |
 
 ---
-*Last updated: 2026-07-08 after beads-to-GSD tracking migration ingest*
+*Last updated: 2026-07-08 during Phase 1 discuss — REL-01/CFG-01 found already shipped on `main` (beads status had lagged), reclassified as Validated*

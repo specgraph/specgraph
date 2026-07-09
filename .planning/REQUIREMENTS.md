@@ -11,7 +11,7 @@ Sourced from beads issues at priority P1 (in-progress) and P2 (open). Each maps 
 
 ### Release
 
-- [ ] **REL-01**: Adopt the holomush single-job goreleaser-owns-release model (`spgr-7r6g`, in progress)
+- [x] **REL-01**: Adopt the holomush single-job goreleaser-owns-release model (`spgr-7r6g`) — done: PR #981 merged; verified against `v0.12.0`'s actual GitHub Release
 
 ### Auth & Identity
 
@@ -23,8 +23,8 @@ Sourced from beads issues at priority P1 (in-progress) and P2 (open). Each maps 
 
 ### Config & Build
 
-- [ ] **CFG-01**: Adopt koanf for layered config + env provider (`spgr-5kd5`)
-- [ ] **CFG-02**: Pin task tools' golangci-lint to match the CI version (`spgr-vpmg`)
+- [x] **CFG-01**: Adopt koanf for layered config + env provider (`spgr-5kd5`) — done: `internal/config/global.go` implements full precedence + deprecation warning
+- [ ] **CFG-02**: Pin task tools' golangci-lint to match the CI version (`spgr-vpmg`) — confirmed still open: CI pins `v2.12.1`, local `task tools` uses unpinned `brew install` (currently drifted to `2.12.2`)
 
 ### Drift Detection
 
@@ -107,13 +107,13 @@ detail (goals, success criteria, dependencies).
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REL-01 | Phase 1 | In progress |
+| REL-01 | Phase 1 | Done |
 | AUTH-01 | Phase 3 | Pending |
 | AUTH-02 | Phase 2 | Pending |
 | AUTH-03 | Phase 2 | In progress |
 | AUTH-04 | Phase 3 | Pending |
 | AUTH-05 | Phase 3 | Pending |
-| CFG-01 | Phase 1 | Pending |
+| CFG-01 | Phase 1 | Done |
 | CFG-02 | Phase 1 | Pending |
 | DRFT-01 | Phase 4 | Pending |
 | INTG-01 | Phase 4 | Pending |
@@ -131,4 +131,4 @@ detail (goals, success criteria, dependencies).
 
 ---
 *Requirements defined: 2026-07-08*
-*Last updated: 2026-07-08 after ROADMAP.md creation — traceability populated, 10/10 mapped*
+*Last updated: 2026-07-08 during Phase 1 discuss — REL-01 and CFG-01 found already shipped on `main` (verified against actual repo state, not just beads status); marked Done*
