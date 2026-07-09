@@ -1,7 +1,0 @@
-{
-  "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "server",
-  "dolt_database": "specgraph",
-  "project_id": "a1b8ebf4-1ff6-4481-8dd3-f956e518204a"
-}
