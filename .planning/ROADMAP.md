@@ -64,7 +64,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] 02-01-PLAN.md — Proto & codegen: five IdentityService RPCs (4 self + ResyncUserRole) + task proto (AUTH-02, AUTH-03)
 - [ ] 02-02-PLAN.md — Storage: owner-scoped mutations + quota-safe mint + ErrQuotaExceeded + integration tests (AUTH-03)
-- [ ] 02-03-PLAN.md — Server foundation: self-service key-policy config (90d/180d/quota 10) + double-submit CSRF middleware (AUTH-03)
+- [ ] 02-03-PLAN.md — Server foundation: self-service key-policy config (90d/180d/quota 10) + double-submit CSRF middleware (validate + issue-on-whoami-GET) (AUTH-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -72,11 +72,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 02-05-PLAN.md — Server: four self-mint handlers with source-gate + RoleMin floor + rate limit + expiry cap (AUTH-03)
+- [ ] 02-05-PLAN.md — Server: four self-mint handlers with source-gate + RoleMin floor + rate limit + expiry cap + CSRF-validator mount + ErrQuotaExceeded→ResourceExhausted (AUTH-03)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 02-06-PLAN.md — AUTH-02 forced re-sync: ResyncUserRole seam + `auth user resync --revoke-keys` CLI (AUTH-02)
+- [ ] 02-06-PLAN.md — AUTH-02 forced re-sync: ResyncUserRole seam + `auth user resync --revoke-keys` CLI + standing-key live-floor integration test (AUTH-02)
 - [ ] 02-07-PLAN.md — CLI: self-variants of auth api-key + session-preferring resolver (Finding D) (AUTH-03)
 - [ ] 02-08-PLAN.md — Web: MCP Keys dashboard panel + one-time reveal modal + CSRF echo (AUTH-03)
 

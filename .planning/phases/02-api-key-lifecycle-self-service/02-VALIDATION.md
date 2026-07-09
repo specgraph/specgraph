@@ -47,14 +47,16 @@ from each task's `<automated>` verify. Task 2-08-03 is the sole manual checkpoin
 | 2-02-02 | 02 | 1 | AUTH-03 | Owner-scoped + quota-safe methods on *AuthStore compile | build gate | `go build ./internal/storage/...` | n/a (build) | ⬜ pending |
 | 2-02-03 | 02 | 1 | AUTH-03 | Ownership NotFound (non-owner) + quota TOCTOU under real Postgres | integration | `go test -tags integration ./internal/storage/postgres/ -run 'TestAuthStore_.*ForUser\|TestAuthStore_SelfMintQuota\|TestAuthStore_RotateAPIKeyForUser_ExplicitArgs'` | creates | ⬜ pending |
 | 2-03-01 | 03 | 1 | AUTH-03 | Self-service key-policy config struct + 90d/180d/quota defaults | unit | `go build ./internal/config/ && go test ./internal/config/ -run TestGlobalDefaults` | modifies | ⬜ pending |
-| 2-03-02 | 03 | 1 | AUTH-03 | Double-submit CSRF middleware rejects missing/mismatched token | unit | `go test ./internal/server/ -run TestCSRF` | creates | ⬜ pending |
+| 2-03-02 | 03 | 1 | AUTH-03 | Double-submit CSRF middleware (validate + issue) rejects missing/mismatched token, exempts Bearer, issues cookie on whoami GET | unit | `go test ./internal/server/ -run TestCSRF` | creates | ⬜ pending |
 | 2-04-01 | 04 | 2 | AUTH-03, AUTH-02 | Exported auth.RoleMin fail-closed floor | unit | `go test ./internal/auth/ -run TestRoleMin` | creates | ⬜ pending |
 | 2-04-02 | 04 | 2 | AUTH-03 | apikey.self verb registered (knownVerbs + base.cedar permit) | unit + grep | `go test ./internal/auth/ -run 'TestNewCedarEngine\|TestEngine' && grep -c 'apikey.self' internal/auth/policies/base.cedar` | modifies | ⬜ pending |
 | 2-04-03 | 04 | 2 | AUTH-03 | Procedure→action map + mirror/drift tests | unit | `go test ./internal/auth/ -run 'TestActionNames_AllParseToKnownVerb\|TestActionForProcedure_Identity\|TestActionName'` | modifies | ⬜ pending |
 | 2-05-01 | 05 | 3 | AUTH-03 | Mint pair: owner-from-ctx, source gate, RoleMin floor (create+rotate), expiry cap, rate limit; constructor threaded through serve.go | unit + build | `go test ./internal/server/ -run 'TestCreateMyAPIKey\|TestRotateMyAPIKey\|TestSelfMint_RejectsApikeySource\|TestSelfMint_ExpiryCap' && go build ./...` | creates | ⬜ pending |
 | 2-05-02 | 05 | 3 | AUTH-03 | Owner-scoped list (no cross-user leak) + revoke NotFound on foreign key | unit | `go test ./internal/server/ -run 'TestListMyAPIKeys_ScopedToCaller\|TestRevokeMyAPIKey'` | creates | ⬜ pending |
+| 2-05-03 | 05 | 3 | AUTH-03 | CSRF validator MOUNTED on Connect handler (cookie-authed self-key POST → 403 without token; Bearer exempt) + storage.ErrQuotaExceeded → CodeResourceExhausted | unit + build | `go test ./internal/server/ -run 'TestSelfMint_CSRFMount\|TestCreateMyAPIKey_QuotaExceeded' && go build ./...` | creates | ⬜ pending |
 | 2-06-01 | 06 | 4 | AUTH-02 | ResyncUserRole writes live role; revoke_keys revokes active keys; unknown → NotFound | unit | `go test ./internal/server/ -run 'TestResync'` | creates | ⬜ pending |
 | 2-06-02 | 06 | 4 | AUTH-02 | `auth user resync` CLI calls RPC with id/role/revoke-keys; JSON path | unit + build | `go test ./cmd/specgraph/ -run 'TestAuthUserResync' && go build ./cmd/specgraph/` | creates | ⬜ pending |
+| 2-06-03 | 06 | 4 | AUTH-02 | Standing-key live floor: EffectiveRole drops from writer→reader after UpdateUserRole, no re-mint (SC#3) | integration | `go test -tags integration ./internal/auth/ -run 'TestResync_LiveRoleClamp'` | creates | ⬜ pending |
 | 2-07-01 | 07 | 4 | AUTH-03 | Session-preferring credential resolver (Finding D) | unit + build | `go build ./cmd/specgraph/ && go test ./cmd/specgraph/ -run 'TestSelfMint_SessionPrecedence'` | creates | ⬜ pending |
 | 2-07-02 | 07 | 4 | AUTH-03 | Self-variants of auth api-key create/list/rotate/revoke | unit + build | `go test ./cmd/specgraph/ -run 'TestAuthAPIKey' && go build ./cmd/specgraph/` | creates | ⬜ pending |
 | 2-08-01 | 08 | 4 | AUTH-03 | identityClient + CSRF interceptor sets X-CSRF-Token; keys state; plaintext surfaced once | unit (vitest) | `pnpm -C web test -- --run keys.test.ts` | creates | ⬜ pending |
@@ -65,8 +67,10 @@ from each task's `<automated>` verify. Task 2-08-03 is the sole manual checkpoin
 
 **Sampling continuity:** No 3 consecutive tasks lack an automated verify — the only manual task
 (2-08-03) is a terminal human-verify checkpoint, preceded by two automated web tasks (2-08-01 vitest,
-2-08-02 build). Integration behavior for AUTH-02 live-role-clamp is deferred to the phase-gate
-`task pr-prep` run (see Plan 06 deferred-coverage note).
+2-08-02 build). AUTH-02 live-role-clamp now has a scheduled integration test (2-06-03,
+`TestResync_LiveRoleClamp`, `internal/auth`, `//go:build integration`) rather than being deferred to
+`task pr-prep`. The CSRF validator mount is verified by 2-05-03 (previously the middleware was
+defined in 2-03-02 but never mounted).
 
 ---
 
@@ -88,7 +92,7 @@ RED before GREEN), so no separate pre-execution scaffold is outstanding. Coverag
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
 | Web "MCP Keys" panel one-time reveal modal (task 2-08-03) | AUTH-03 | SvelteKit UI interaction | Log in via `specgraph_session` cookie, create key, confirm single reveal + CSRF-protected mutations |
-| Operator forced re-sync immediacy on standing keys | AUTH-02 | Cross-session propagation (live-role clamp) | `auth user resync <id> --role <lower>`, then call MCP with standing key → reduced privilege without re-login. Also exercised by the deferred `task pr-prep` integration run (`TestResync_LiveRoleClamp` / `TestResync_RevokeKeys`). |
+| Operator forced re-sync immediacy on standing keys | AUTH-02 | Cross-session propagation (live-role clamp) | `auth user resync <id> --role <lower>`, then call MCP with standing key → reduced privilege without re-login. Now also gated by the scheduled integration test `TestResync_LiveRoleClamp` (task 2-06-03) plus the phase-gate `task pr-prep` run (`TestResync_RevokeKeys`). |
 
 *Remaining phase behaviors have automated verification.*
 
