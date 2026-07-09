@@ -914,6 +914,114 @@ func (x *UpdateUserRoleResponse) GetUser() *User {
 	return nil
 }
 
+// ResyncUserRole re-applies a user's authoritative role (AUTH-02). When
+// revoke_keys is true it drives the hard off-board: the user's API keys are
+// revoked as part of the role change so a downgraded/off-boarded principal
+// cannot keep minting or using pre-existing keys. Admin-only (user.manage).
+type ResyncUserRoleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Role          string                 `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	RevokeKeys    bool                   `protobuf:"varint,3,opt,name=revoke_keys,json=revokeKeys,proto3" json:"revoke_keys,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResyncUserRoleRequest) Reset() {
+	*x = ResyncUserRoleRequest{}
+	mi := &file_specgraph_v1_identity_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResyncUserRoleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResyncUserRoleRequest) ProtoMessage() {}
+
+func (x *ResyncUserRoleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_identity_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResyncUserRoleRequest.ProtoReflect.Descriptor instead.
+func (*ResyncUserRoleRequest) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ResyncUserRoleRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ResyncUserRoleRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *ResyncUserRoleRequest) GetRevokeKeys() bool {
+	if x != nil {
+		return x.RevokeKeys
+	}
+	return false
+}
+
+type ResyncUserRoleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResyncUserRoleResponse) Reset() {
+	*x = ResyncUserRoleResponse{}
+	mi := &file_specgraph_v1_identity_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResyncUserRoleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResyncUserRoleResponse) ProtoMessage() {}
+
+func (x *ResyncUserRoleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_identity_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResyncUserRoleResponse.ProtoReflect.Descriptor instead.
+func (*ResyncUserRoleResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *ResyncUserRoleResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
 type SoftDeleteUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -924,7 +1032,7 @@ type SoftDeleteUserRequest struct {
 
 func (x *SoftDeleteUserRequest) Reset() {
 	*x = SoftDeleteUserRequest{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[13]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -936,7 +1044,7 @@ func (x *SoftDeleteUserRequest) String() string {
 func (*SoftDeleteUserRequest) ProtoMessage() {}
 
 func (x *SoftDeleteUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[13]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -949,7 +1057,7 @@ func (x *SoftDeleteUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SoftDeleteUserRequest.ProtoReflect.Descriptor instead.
 func (*SoftDeleteUserRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{13}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *SoftDeleteUserRequest) GetId() string {
@@ -974,7 +1082,7 @@ type SoftDeleteUserResponse struct {
 
 func (x *SoftDeleteUserResponse) Reset() {
 	*x = SoftDeleteUserResponse{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[14]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -986,7 +1094,7 @@ func (x *SoftDeleteUserResponse) String() string {
 func (*SoftDeleteUserResponse) ProtoMessage() {}
 
 func (x *SoftDeleteUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[14]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -999,7 +1107,7 @@ func (x *SoftDeleteUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SoftDeleteUserResponse.ProtoReflect.Descriptor instead.
 func (*SoftDeleteUserResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{14}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{16}
 }
 
 type PurgeUserRequest struct {
@@ -1012,7 +1120,7 @@ type PurgeUserRequest struct {
 
 func (x *PurgeUserRequest) Reset() {
 	*x = PurgeUserRequest{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[15]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1024,7 +1132,7 @@ func (x *PurgeUserRequest) String() string {
 func (*PurgeUserRequest) ProtoMessage() {}
 
 func (x *PurgeUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[15]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1037,7 +1145,7 @@ func (x *PurgeUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurgeUserRequest.ProtoReflect.Descriptor instead.
 func (*PurgeUserRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{15}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PurgeUserRequest) GetId() string {
@@ -1062,7 +1170,7 @@ type PurgeUserResponse struct {
 
 func (x *PurgeUserResponse) Reset() {
 	*x = PurgeUserResponse{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[16]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1074,7 +1182,7 @@ func (x *PurgeUserResponse) String() string {
 func (*PurgeUserResponse) ProtoMessage() {}
 
 func (x *PurgeUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[16]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1087,7 +1195,7 @@ func (x *PurgeUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurgeUserResponse.ProtoReflect.Descriptor instead.
 func (*PurgeUserResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{16}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{18}
 }
 
 type CreateAPIKeyRequest struct {
@@ -1102,7 +1210,7 @@ type CreateAPIKeyRequest struct {
 
 func (x *CreateAPIKeyRequest) Reset() {
 	*x = CreateAPIKeyRequest{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[17]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1114,7 +1222,7 @@ func (x *CreateAPIKeyRequest) String() string {
 func (*CreateAPIKeyRequest) ProtoMessage() {}
 
 func (x *CreateAPIKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[17]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1127,7 +1235,7 @@ func (x *CreateAPIKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAPIKeyRequest.ProtoReflect.Descriptor instead.
 func (*CreateAPIKeyRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{17}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CreateAPIKeyRequest) GetUserId() string {
@@ -1169,7 +1277,7 @@ type CreateAPIKeyResponse struct {
 
 func (x *CreateAPIKeyResponse) Reset() {
 	*x = CreateAPIKeyResponse{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[18]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1181,7 +1289,7 @@ func (x *CreateAPIKeyResponse) String() string {
 func (*CreateAPIKeyResponse) ProtoMessage() {}
 
 func (x *CreateAPIKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[18]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1194,7 +1302,7 @@ func (x *CreateAPIKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAPIKeyResponse.ProtoReflect.Descriptor instead.
 func (*CreateAPIKeyResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{18}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CreateAPIKeyResponse) GetKey() *APIKey {
@@ -1220,7 +1328,7 @@ type RevokeAPIKeyRequest struct {
 
 func (x *RevokeAPIKeyRequest) Reset() {
 	*x = RevokeAPIKeyRequest{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[19]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1232,7 +1340,7 @@ func (x *RevokeAPIKeyRequest) String() string {
 func (*RevokeAPIKeyRequest) ProtoMessage() {}
 
 func (x *RevokeAPIKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[19]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1245,7 +1353,7 @@ func (x *RevokeAPIKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeAPIKeyRequest.ProtoReflect.Descriptor instead.
 func (*RevokeAPIKeyRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{19}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *RevokeAPIKeyRequest) GetKeyId() string {
@@ -1263,7 +1371,7 @@ type RevokeAPIKeyResponse struct {
 
 func (x *RevokeAPIKeyResponse) Reset() {
 	*x = RevokeAPIKeyResponse{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[20]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1275,7 +1383,7 @@ func (x *RevokeAPIKeyResponse) String() string {
 func (*RevokeAPIKeyResponse) ProtoMessage() {}
 
 func (x *RevokeAPIKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[20]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1288,7 +1396,7 @@ func (x *RevokeAPIKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeAPIKeyResponse.ProtoReflect.Descriptor instead.
 func (*RevokeAPIKeyResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{20}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{22}
 }
 
 // RotateAPIKey mints a new secret for an existing key and revokes the old one.
@@ -1308,7 +1416,7 @@ type RotateAPIKeyRequest struct {
 
 func (x *RotateAPIKeyRequest) Reset() {
 	*x = RotateAPIKeyRequest{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[21]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1320,7 +1428,7 @@ func (x *RotateAPIKeyRequest) String() string {
 func (*RotateAPIKeyRequest) ProtoMessage() {}
 
 func (x *RotateAPIKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[21]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1333,7 +1441,7 @@ func (x *RotateAPIKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateAPIKeyRequest.ProtoReflect.Descriptor instead.
 func (*RotateAPIKeyRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{21}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *RotateAPIKeyRequest) GetKeyId() string {
@@ -1360,7 +1468,7 @@ type RotateAPIKeyResponse struct {
 
 func (x *RotateAPIKeyResponse) Reset() {
 	*x = RotateAPIKeyResponse{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[22]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1372,7 +1480,7 @@ func (x *RotateAPIKeyResponse) String() string {
 func (*RotateAPIKeyResponse) ProtoMessage() {}
 
 func (x *RotateAPIKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[22]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1385,7 +1493,7 @@ func (x *RotateAPIKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateAPIKeyResponse.ProtoReflect.Descriptor instead.
 func (*RotateAPIKeyResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{22}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *RotateAPIKeyResponse) GetKey() *APIKey {
@@ -1414,7 +1522,7 @@ type ListAPIKeysRequest struct {
 
 func (x *ListAPIKeysRequest) Reset() {
 	*x = ListAPIKeysRequest{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[23]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1426,7 +1534,7 @@ func (x *ListAPIKeysRequest) String() string {
 func (*ListAPIKeysRequest) ProtoMessage() {}
 
 func (x *ListAPIKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[23]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1439,7 +1547,7 @@ func (x *ListAPIKeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAPIKeysRequest.ProtoReflect.Descriptor instead.
 func (*ListAPIKeysRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{23}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ListAPIKeysRequest) GetUserId() string {
@@ -1479,7 +1587,7 @@ type ListAPIKeysResponse struct {
 
 func (x *ListAPIKeysResponse) Reset() {
 	*x = ListAPIKeysResponse{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[24]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1491,7 +1599,7 @@ func (x *ListAPIKeysResponse) String() string {
 func (*ListAPIKeysResponse) ProtoMessage() {}
 
 func (x *ListAPIKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[24]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1504,7 +1612,7 @@ func (x *ListAPIKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAPIKeysResponse.ProtoReflect.Descriptor instead.
 func (*ListAPIKeysResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{24}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ListAPIKeysResponse) GetKeys() []*APIKey {
@@ -1512,6 +1620,391 @@ func (x *ListAPIKeysResponse) GetKeys() []*APIKey {
 		return x.Keys
 	}
 	return nil
+}
+
+// Self-service API-key messages (AUTH-03). These mirror the admin CreateAPIKey/
+// Rotate/Revoke/List surface but carry NO user_id/target field: the owner is
+// always derived from the authenticated context in the handler, so a caller can
+// never name another owner at the wire level (T-02-01 mitigation).
+type CreateMyAPIKeyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Label         string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	RoleDowngrade string                 `protobuf:"bytes,2,opt,name=role_downgrade,json=roleDowngrade,proto3" json:"role_downgrade,omitempty"` // empty = no downgrade
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`             // unset = policy default expiry
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateMyAPIKeyRequest) Reset() {
+	*x = CreateMyAPIKeyRequest{}
+	mi := &file_specgraph_v1_identity_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateMyAPIKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateMyAPIKeyRequest) ProtoMessage() {}
+
+func (x *CreateMyAPIKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_identity_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateMyAPIKeyRequest.ProtoReflect.Descriptor instead.
+func (*CreateMyAPIKeyRequest) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *CreateMyAPIKeyRequest) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *CreateMyAPIKeyRequest) GetRoleDowngrade() string {
+	if x != nil {
+		return x.RoleDowngrade
+	}
+	return ""
+}
+
+func (x *CreateMyAPIKeyRequest) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+// plaintext is the full token (spgr_sk_<prefix>_<secret>); shown ONCE.
+type CreateMyAPIKeyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           *APIKey                `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Plaintext     string                 `protobuf:"bytes,2,opt,name=plaintext,proto3" json:"plaintext,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateMyAPIKeyResponse) Reset() {
+	*x = CreateMyAPIKeyResponse{}
+	mi := &file_specgraph_v1_identity_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateMyAPIKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateMyAPIKeyResponse) ProtoMessage() {}
+
+func (x *CreateMyAPIKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_identity_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateMyAPIKeyResponse.ProtoReflect.Descriptor instead.
+func (*CreateMyAPIKeyResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *CreateMyAPIKeyResponse) GetKey() *APIKey {
+	if x != nil {
+		return x.Key
+	}
+	return nil
+}
+
+func (x *CreateMyAPIKeyResponse) GetPlaintext() string {
+	if x != nil {
+		return x.Plaintext
+	}
+	return ""
+}
+
+type ListMyAPIKeysRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMyAPIKeysRequest) Reset() {
+	*x = ListMyAPIKeysRequest{}
+	mi := &file_specgraph_v1_identity_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMyAPIKeysRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMyAPIKeysRequest) ProtoMessage() {}
+
+func (x *ListMyAPIKeysRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_identity_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMyAPIKeysRequest.ProtoReflect.Descriptor instead.
+func (*ListMyAPIKeysRequest) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{29}
+}
+
+type ListMyAPIKeysResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Keys          []*APIKey              `protobuf:"bytes,1,rep,name=keys,proto3" json:"keys,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMyAPIKeysResponse) Reset() {
+	*x = ListMyAPIKeysResponse{}
+	mi := &file_specgraph_v1_identity_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMyAPIKeysResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMyAPIKeysResponse) ProtoMessage() {}
+
+func (x *ListMyAPIKeysResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_identity_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMyAPIKeysResponse.ProtoReflect.Descriptor instead.
+func (*ListMyAPIKeysResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *ListMyAPIKeysResponse) GetKeys() []*APIKey {
+	if x != nil {
+		return x.Keys
+	}
+	return nil
+}
+
+// RotateMyAPIKey mints a new secret for one of the caller's own keys and
+// revokes the old one, preserving the key's identity and authority (owner,
+// role_downgrade, label are inherited). The caller MAY set expires_at to choose
+// the new secret's validity window; unset inherits the old key's expiry.
+type RotateMyAPIKeyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	KeyId         string                 `protobuf:"bytes,1,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"` // unset = inherit old key's expiry
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RotateMyAPIKeyRequest) Reset() {
+	*x = RotateMyAPIKeyRequest{}
+	mi := &file_specgraph_v1_identity_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RotateMyAPIKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RotateMyAPIKeyRequest) ProtoMessage() {}
+
+func (x *RotateMyAPIKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_identity_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RotateMyAPIKeyRequest.ProtoReflect.Descriptor instead.
+func (*RotateMyAPIKeyRequest) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *RotateMyAPIKeyRequest) GetKeyId() string {
+	if x != nil {
+		return x.KeyId
+	}
+	return ""
+}
+
+func (x *RotateMyAPIKeyRequest) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+type RotateMyAPIKeyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Key           *APIKey                `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Plaintext     string                 `protobuf:"bytes,2,opt,name=plaintext,proto3" json:"plaintext,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RotateMyAPIKeyResponse) Reset() {
+	*x = RotateMyAPIKeyResponse{}
+	mi := &file_specgraph_v1_identity_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RotateMyAPIKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RotateMyAPIKeyResponse) ProtoMessage() {}
+
+func (x *RotateMyAPIKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_identity_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RotateMyAPIKeyResponse.ProtoReflect.Descriptor instead.
+func (*RotateMyAPIKeyResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *RotateMyAPIKeyResponse) GetKey() *APIKey {
+	if x != nil {
+		return x.Key
+	}
+	return nil
+}
+
+func (x *RotateMyAPIKeyResponse) GetPlaintext() string {
+	if x != nil {
+		return x.Plaintext
+	}
+	return ""
+}
+
+type RevokeMyAPIKeyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	KeyId         string                 `protobuf:"bytes,1,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeMyAPIKeyRequest) Reset() {
+	*x = RevokeMyAPIKeyRequest{}
+	mi := &file_specgraph_v1_identity_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeMyAPIKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeMyAPIKeyRequest) ProtoMessage() {}
+
+func (x *RevokeMyAPIKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_identity_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeMyAPIKeyRequest.ProtoReflect.Descriptor instead.
+func (*RevokeMyAPIKeyRequest) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *RevokeMyAPIKeyRequest) GetKeyId() string {
+	if x != nil {
+		return x.KeyId
+	}
+	return ""
+}
+
+type RevokeMyAPIKeyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RevokeMyAPIKeyResponse) Reset() {
+	*x = RevokeMyAPIKeyResponse{}
+	mi := &file_specgraph_v1_identity_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RevokeMyAPIKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RevokeMyAPIKeyResponse) ProtoMessage() {}
+
+func (x *RevokeMyAPIKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_specgraph_v1_identity_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RevokeMyAPIKeyResponse.ProtoReflect.Descriptor instead.
+func (*RevokeMyAPIKeyResponse) Descriptor() ([]byte, []int) {
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{34}
 }
 
 type ListOIDCBindingsRequest struct {
@@ -1523,7 +2016,7 @@ type ListOIDCBindingsRequest struct {
 
 func (x *ListOIDCBindingsRequest) Reset() {
 	*x = ListOIDCBindingsRequest{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[25]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1535,7 +2028,7 @@ func (x *ListOIDCBindingsRequest) String() string {
 func (*ListOIDCBindingsRequest) ProtoMessage() {}
 
 func (x *ListOIDCBindingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[25]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1548,7 +2041,7 @@ func (x *ListOIDCBindingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOIDCBindingsRequest.ProtoReflect.Descriptor instead.
 func (*ListOIDCBindingsRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{25}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ListOIDCBindingsRequest) GetUserId() string {
@@ -1567,7 +2060,7 @@ type ListOIDCBindingsResponse struct {
 
 func (x *ListOIDCBindingsResponse) Reset() {
 	*x = ListOIDCBindingsResponse{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[26]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1579,7 +2072,7 @@ func (x *ListOIDCBindingsResponse) String() string {
 func (*ListOIDCBindingsResponse) ProtoMessage() {}
 
 func (x *ListOIDCBindingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[26]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1592,7 +2085,7 @@ func (x *ListOIDCBindingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOIDCBindingsResponse.ProtoReflect.Descriptor instead.
 func (*ListOIDCBindingsResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{26}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ListOIDCBindingsResponse) GetBindings() []*OIDCBinding {
@@ -1613,7 +2106,7 @@ type UnbindOIDCRequest struct {
 
 func (x *UnbindOIDCRequest) Reset() {
 	*x = UnbindOIDCRequest{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[27]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1625,7 +2118,7 @@ func (x *UnbindOIDCRequest) String() string {
 func (*UnbindOIDCRequest) ProtoMessage() {}
 
 func (x *UnbindOIDCRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[27]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1638,7 +2131,7 @@ func (x *UnbindOIDCRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnbindOIDCRequest.ProtoReflect.Descriptor instead.
 func (*UnbindOIDCRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{27}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *UnbindOIDCRequest) GetBindingId() string {
@@ -1670,7 +2163,7 @@ type UnbindOIDCResponse struct {
 
 func (x *UnbindOIDCResponse) Reset() {
 	*x = UnbindOIDCResponse{}
-	mi := &file_specgraph_v1_identity_proto_msgTypes[28]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1682,7 +2175,7 @@ func (x *UnbindOIDCResponse) String() string {
 func (*UnbindOIDCResponse) ProtoMessage() {}
 
 func (x *UnbindOIDCResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_identity_proto_msgTypes[28]
+	mi := &file_specgraph_v1_identity_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1695,7 +2188,7 @@ func (x *UnbindOIDCResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnbindOIDCResponse.ProtoReflect.Descriptor instead.
 func (*UnbindOIDCResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{28}
+	return file_specgraph_v1_identity_proto_rawDescGZIP(), []int{38}
 }
 
 var File_specgraph_v1_identity_proto protoreflect.FileDescriptor
@@ -1768,6 +2261,13 @@ const file_specgraph_v1_identity_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04role\x18\x02 \x01(\tR\x04role\"@\n" +
 	"\x16UpdateUserRoleResponse\x12&\n" +
+	"\x04user\x18\x01 \x01(\v2\x12.specgraph.v1.UserR\x04user\"\\\n" +
+	"\x15ResyncUserRoleRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04role\x18\x02 \x01(\tR\x04role\x12\x1f\n" +
+	"\vrevoke_keys\x18\x03 \x01(\bR\n" +
+	"revokeKeys\"@\n" +
+	"\x16ResyncUserRoleResponse\x12&\n" +
 	"\x04user\x18\x01 \x01(\v2\x12.specgraph.v1.UserR\x04user\"=\n" +
 	"\x15SoftDeleteUserRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
@@ -1802,7 +2302,28 @@ const file_specgraph_v1_identity_proto_rawDesc = "" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x04 \x01(\x05R\x06offset\"?\n" +
 	"\x13ListAPIKeysResponse\x12(\n" +
-	"\x04keys\x18\x01 \x03(\v2\x14.specgraph.v1.APIKeyR\x04keys\"2\n" +
+	"\x04keys\x18\x01 \x03(\v2\x14.specgraph.v1.APIKeyR\x04keys\"\x8f\x01\n" +
+	"\x15CreateMyAPIKeyRequest\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x12%\n" +
+	"\x0erole_downgrade\x18\x02 \x01(\tR\rroleDowngrade\x129\n" +
+	"\n" +
+	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"^\n" +
+	"\x16CreateMyAPIKeyResponse\x12&\n" +
+	"\x03key\x18\x01 \x01(\v2\x14.specgraph.v1.APIKeyR\x03key\x12\x1c\n" +
+	"\tplaintext\x18\x02 \x01(\tR\tplaintext\"\x16\n" +
+	"\x14ListMyAPIKeysRequest\"A\n" +
+	"\x15ListMyAPIKeysResponse\x12(\n" +
+	"\x04keys\x18\x01 \x03(\v2\x14.specgraph.v1.APIKeyR\x04keys\"i\n" +
+	"\x15RotateMyAPIKeyRequest\x12\x15\n" +
+	"\x06key_id\x18\x01 \x01(\tR\x05keyId\x129\n" +
+	"\n" +
+	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"^\n" +
+	"\x16RotateMyAPIKeyResponse\x12&\n" +
+	"\x03key\x18\x01 \x01(\v2\x14.specgraph.v1.APIKeyR\x03key\x12\x1c\n" +
+	"\tplaintext\x18\x02 \x01(\tR\tplaintext\".\n" +
+	"\x15RevokeMyAPIKeyRequest\x12\x15\n" +
+	"\x06key_id\x18\x01 \x01(\tR\x05keyId\"\x18\n" +
+	"\x16RevokeMyAPIKeyResponse\"2\n" +
 	"\x17ListOIDCBindingsRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"Q\n" +
 	"\x18ListOIDCBindingsResponse\x125\n" +
@@ -1816,19 +2337,24 @@ const file_specgraph_v1_identity_proto_rawDesc = "" +
 	"\bUserKind\x12\x19\n" +
 	"\x15USER_KIND_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fUSER_KIND_HUMAN\x10\x01\x12\x1d\n" +
-	"\x19USER_KIND_SERVICE_ACCOUNT\x10\x022\xf0\b\n" +
+	"\x19USER_KIND_SERVICE_ACCOUNT\x10\x022\xbe\f\n" +
 	"\x0fIdentityService\x12C\n" +
 	"\x06Whoami\x12\x1b.specgraph.v1.WhoamiRequest\x1a\x1c.specgraph.v1.WhoamiResponse\x12L\n" +
 	"\tListUsers\x12\x1e.specgraph.v1.ListUsersRequest\x1a\x1f.specgraph.v1.ListUsersResponse\x12F\n" +
 	"\aGetUser\x12\x1c.specgraph.v1.GetUserRequest\x1a\x1d.specgraph.v1.GetUserResponse\x12m\n" +
 	"\x14CreateServiceAccount\x12).specgraph.v1.CreateServiceAccountRequest\x1a*.specgraph.v1.CreateServiceAccountResponse\x12[\n" +
 	"\x0eUpdateUserRole\x12#.specgraph.v1.UpdateUserRoleRequest\x1a$.specgraph.v1.UpdateUserRoleResponse\x12[\n" +
+	"\x0eResyncUserRole\x12#.specgraph.v1.ResyncUserRoleRequest\x1a$.specgraph.v1.ResyncUserRoleResponse\x12[\n" +
 	"\x0eSoftDeleteUser\x12#.specgraph.v1.SoftDeleteUserRequest\x1a$.specgraph.v1.SoftDeleteUserResponse\x12L\n" +
 	"\tPurgeUser\x12\x1e.specgraph.v1.PurgeUserRequest\x1a\x1f.specgraph.v1.PurgeUserResponse\x12U\n" +
 	"\fCreateAPIKey\x12!.specgraph.v1.CreateAPIKeyRequest\x1a\".specgraph.v1.CreateAPIKeyResponse\x12U\n" +
 	"\fRevokeAPIKey\x12!.specgraph.v1.RevokeAPIKeyRequest\x1a\".specgraph.v1.RevokeAPIKeyResponse\x12U\n" +
 	"\fRotateAPIKey\x12!.specgraph.v1.RotateAPIKeyRequest\x1a\".specgraph.v1.RotateAPIKeyResponse\x12R\n" +
-	"\vListAPIKeys\x12 .specgraph.v1.ListAPIKeysRequest\x1a!.specgraph.v1.ListAPIKeysResponse\x12a\n" +
+	"\vListAPIKeys\x12 .specgraph.v1.ListAPIKeysRequest\x1a!.specgraph.v1.ListAPIKeysResponse\x12[\n" +
+	"\x0eCreateMyAPIKey\x12#.specgraph.v1.CreateMyAPIKeyRequest\x1a$.specgraph.v1.CreateMyAPIKeyResponse\x12X\n" +
+	"\rListMyAPIKeys\x12\".specgraph.v1.ListMyAPIKeysRequest\x1a#.specgraph.v1.ListMyAPIKeysResponse\x12[\n" +
+	"\x0eRotateMyAPIKey\x12#.specgraph.v1.RotateMyAPIKeyRequest\x1a$.specgraph.v1.RotateMyAPIKeyResponse\x12[\n" +
+	"\x0eRevokeMyAPIKey\x12#.specgraph.v1.RevokeMyAPIKeyRequest\x1a$.specgraph.v1.RevokeMyAPIKeyResponse\x12a\n" +
 	"\x10ListOIDCBindings\x12%.specgraph.v1.ListOIDCBindingsRequest\x1a&.specgraph.v1.ListOIDCBindingsResponse\x12O\n" +
 	"\n" +
 	"UnbindOIDC\x12\x1f.specgraph.v1.UnbindOIDCRequest\x1a .specgraph.v1.UnbindOIDCResponseB=Z;github.com/specgraph/specgraph/gen/specgraph/v1;specgraphv1b\x06proto3"
@@ -1846,7 +2372,7 @@ func file_specgraph_v1_identity_proto_rawDescGZIP() []byte {
 }
 
 var file_specgraph_v1_identity_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_specgraph_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_specgraph_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_specgraph_v1_identity_proto_goTypes = []any{
 	(UserKind)(0),                        // 0: specgraph.v1.UserKind
 	(*User)(nil),                         // 1: specgraph.v1.User
@@ -1862,75 +2388,101 @@ var file_specgraph_v1_identity_proto_goTypes = []any{
 	(*CreateServiceAccountResponse)(nil), // 11: specgraph.v1.CreateServiceAccountResponse
 	(*UpdateUserRoleRequest)(nil),        // 12: specgraph.v1.UpdateUserRoleRequest
 	(*UpdateUserRoleResponse)(nil),       // 13: specgraph.v1.UpdateUserRoleResponse
-	(*SoftDeleteUserRequest)(nil),        // 14: specgraph.v1.SoftDeleteUserRequest
-	(*SoftDeleteUserResponse)(nil),       // 15: specgraph.v1.SoftDeleteUserResponse
-	(*PurgeUserRequest)(nil),             // 16: specgraph.v1.PurgeUserRequest
-	(*PurgeUserResponse)(nil),            // 17: specgraph.v1.PurgeUserResponse
-	(*CreateAPIKeyRequest)(nil),          // 18: specgraph.v1.CreateAPIKeyRequest
-	(*CreateAPIKeyResponse)(nil),         // 19: specgraph.v1.CreateAPIKeyResponse
-	(*RevokeAPIKeyRequest)(nil),          // 20: specgraph.v1.RevokeAPIKeyRequest
-	(*RevokeAPIKeyResponse)(nil),         // 21: specgraph.v1.RevokeAPIKeyResponse
-	(*RotateAPIKeyRequest)(nil),          // 22: specgraph.v1.RotateAPIKeyRequest
-	(*RotateAPIKeyResponse)(nil),         // 23: specgraph.v1.RotateAPIKeyResponse
-	(*ListAPIKeysRequest)(nil),           // 24: specgraph.v1.ListAPIKeysRequest
-	(*ListAPIKeysResponse)(nil),          // 25: specgraph.v1.ListAPIKeysResponse
-	(*ListOIDCBindingsRequest)(nil),      // 26: specgraph.v1.ListOIDCBindingsRequest
-	(*ListOIDCBindingsResponse)(nil),     // 27: specgraph.v1.ListOIDCBindingsResponse
-	(*UnbindOIDCRequest)(nil),            // 28: specgraph.v1.UnbindOIDCRequest
-	(*UnbindOIDCResponse)(nil),           // 29: specgraph.v1.UnbindOIDCResponse
-	(*timestamppb.Timestamp)(nil),        // 30: google.protobuf.Timestamp
+	(*ResyncUserRoleRequest)(nil),        // 14: specgraph.v1.ResyncUserRoleRequest
+	(*ResyncUserRoleResponse)(nil),       // 15: specgraph.v1.ResyncUserRoleResponse
+	(*SoftDeleteUserRequest)(nil),        // 16: specgraph.v1.SoftDeleteUserRequest
+	(*SoftDeleteUserResponse)(nil),       // 17: specgraph.v1.SoftDeleteUserResponse
+	(*PurgeUserRequest)(nil),             // 18: specgraph.v1.PurgeUserRequest
+	(*PurgeUserResponse)(nil),            // 19: specgraph.v1.PurgeUserResponse
+	(*CreateAPIKeyRequest)(nil),          // 20: specgraph.v1.CreateAPIKeyRequest
+	(*CreateAPIKeyResponse)(nil),         // 21: specgraph.v1.CreateAPIKeyResponse
+	(*RevokeAPIKeyRequest)(nil),          // 22: specgraph.v1.RevokeAPIKeyRequest
+	(*RevokeAPIKeyResponse)(nil),         // 23: specgraph.v1.RevokeAPIKeyResponse
+	(*RotateAPIKeyRequest)(nil),          // 24: specgraph.v1.RotateAPIKeyRequest
+	(*RotateAPIKeyResponse)(nil),         // 25: specgraph.v1.RotateAPIKeyResponse
+	(*ListAPIKeysRequest)(nil),           // 26: specgraph.v1.ListAPIKeysRequest
+	(*ListAPIKeysResponse)(nil),          // 27: specgraph.v1.ListAPIKeysResponse
+	(*CreateMyAPIKeyRequest)(nil),        // 28: specgraph.v1.CreateMyAPIKeyRequest
+	(*CreateMyAPIKeyResponse)(nil),       // 29: specgraph.v1.CreateMyAPIKeyResponse
+	(*ListMyAPIKeysRequest)(nil),         // 30: specgraph.v1.ListMyAPIKeysRequest
+	(*ListMyAPIKeysResponse)(nil),        // 31: specgraph.v1.ListMyAPIKeysResponse
+	(*RotateMyAPIKeyRequest)(nil),        // 32: specgraph.v1.RotateMyAPIKeyRequest
+	(*RotateMyAPIKeyResponse)(nil),       // 33: specgraph.v1.RotateMyAPIKeyResponse
+	(*RevokeMyAPIKeyRequest)(nil),        // 34: specgraph.v1.RevokeMyAPIKeyRequest
+	(*RevokeMyAPIKeyResponse)(nil),       // 35: specgraph.v1.RevokeMyAPIKeyResponse
+	(*ListOIDCBindingsRequest)(nil),      // 36: specgraph.v1.ListOIDCBindingsRequest
+	(*ListOIDCBindingsResponse)(nil),     // 37: specgraph.v1.ListOIDCBindingsResponse
+	(*UnbindOIDCRequest)(nil),            // 38: specgraph.v1.UnbindOIDCRequest
+	(*UnbindOIDCResponse)(nil),           // 39: specgraph.v1.UnbindOIDCResponse
+	(*timestamppb.Timestamp)(nil),        // 40: google.protobuf.Timestamp
 }
 var file_specgraph_v1_identity_proto_depIdxs = []int32{
 	0,  // 0: specgraph.v1.User.kind:type_name -> specgraph.v1.UserKind
-	30, // 1: specgraph.v1.User.created_at:type_name -> google.protobuf.Timestamp
-	30, // 2: specgraph.v1.User.deleted_at:type_name -> google.protobuf.Timestamp
-	30, // 3: specgraph.v1.APIKey.expires_at:type_name -> google.protobuf.Timestamp
-	30, // 4: specgraph.v1.APIKey.last_used_at:type_name -> google.protobuf.Timestamp
-	30, // 5: specgraph.v1.APIKey.revoked_at:type_name -> google.protobuf.Timestamp
-	30, // 6: specgraph.v1.APIKey.created_at:type_name -> google.protobuf.Timestamp
-	30, // 7: specgraph.v1.OIDCBinding.created_at:type_name -> google.protobuf.Timestamp
+	40, // 1: specgraph.v1.User.created_at:type_name -> google.protobuf.Timestamp
+	40, // 2: specgraph.v1.User.deleted_at:type_name -> google.protobuf.Timestamp
+	40, // 3: specgraph.v1.APIKey.expires_at:type_name -> google.protobuf.Timestamp
+	40, // 4: specgraph.v1.APIKey.last_used_at:type_name -> google.protobuf.Timestamp
+	40, // 5: specgraph.v1.APIKey.revoked_at:type_name -> google.protobuf.Timestamp
+	40, // 6: specgraph.v1.APIKey.created_at:type_name -> google.protobuf.Timestamp
+	40, // 7: specgraph.v1.OIDCBinding.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 8: specgraph.v1.ListUsersRequest.kind:type_name -> specgraph.v1.UserKind
 	1,  // 9: specgraph.v1.ListUsersResponse.users:type_name -> specgraph.v1.User
 	1,  // 10: specgraph.v1.GetUserResponse.user:type_name -> specgraph.v1.User
 	1,  // 11: specgraph.v1.CreateServiceAccountResponse.user:type_name -> specgraph.v1.User
 	1,  // 12: specgraph.v1.UpdateUserRoleResponse.user:type_name -> specgraph.v1.User
-	30, // 13: specgraph.v1.CreateAPIKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
-	2,  // 14: specgraph.v1.CreateAPIKeyResponse.key:type_name -> specgraph.v1.APIKey
-	30, // 15: specgraph.v1.RotateAPIKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
-	2,  // 16: specgraph.v1.RotateAPIKeyResponse.key:type_name -> specgraph.v1.APIKey
-	2,  // 17: specgraph.v1.ListAPIKeysResponse.keys:type_name -> specgraph.v1.APIKey
-	3,  // 18: specgraph.v1.ListOIDCBindingsResponse.bindings:type_name -> specgraph.v1.OIDCBinding
-	4,  // 19: specgraph.v1.IdentityService.Whoami:input_type -> specgraph.v1.WhoamiRequest
-	6,  // 20: specgraph.v1.IdentityService.ListUsers:input_type -> specgraph.v1.ListUsersRequest
-	8,  // 21: specgraph.v1.IdentityService.GetUser:input_type -> specgraph.v1.GetUserRequest
-	10, // 22: specgraph.v1.IdentityService.CreateServiceAccount:input_type -> specgraph.v1.CreateServiceAccountRequest
-	12, // 23: specgraph.v1.IdentityService.UpdateUserRole:input_type -> specgraph.v1.UpdateUserRoleRequest
-	14, // 24: specgraph.v1.IdentityService.SoftDeleteUser:input_type -> specgraph.v1.SoftDeleteUserRequest
-	16, // 25: specgraph.v1.IdentityService.PurgeUser:input_type -> specgraph.v1.PurgeUserRequest
-	18, // 26: specgraph.v1.IdentityService.CreateAPIKey:input_type -> specgraph.v1.CreateAPIKeyRequest
-	20, // 27: specgraph.v1.IdentityService.RevokeAPIKey:input_type -> specgraph.v1.RevokeAPIKeyRequest
-	22, // 28: specgraph.v1.IdentityService.RotateAPIKey:input_type -> specgraph.v1.RotateAPIKeyRequest
-	24, // 29: specgraph.v1.IdentityService.ListAPIKeys:input_type -> specgraph.v1.ListAPIKeysRequest
-	26, // 30: specgraph.v1.IdentityService.ListOIDCBindings:input_type -> specgraph.v1.ListOIDCBindingsRequest
-	28, // 31: specgraph.v1.IdentityService.UnbindOIDC:input_type -> specgraph.v1.UnbindOIDCRequest
-	5,  // 32: specgraph.v1.IdentityService.Whoami:output_type -> specgraph.v1.WhoamiResponse
-	7,  // 33: specgraph.v1.IdentityService.ListUsers:output_type -> specgraph.v1.ListUsersResponse
-	9,  // 34: specgraph.v1.IdentityService.GetUser:output_type -> specgraph.v1.GetUserResponse
-	11, // 35: specgraph.v1.IdentityService.CreateServiceAccount:output_type -> specgraph.v1.CreateServiceAccountResponse
-	13, // 36: specgraph.v1.IdentityService.UpdateUserRole:output_type -> specgraph.v1.UpdateUserRoleResponse
-	15, // 37: specgraph.v1.IdentityService.SoftDeleteUser:output_type -> specgraph.v1.SoftDeleteUserResponse
-	17, // 38: specgraph.v1.IdentityService.PurgeUser:output_type -> specgraph.v1.PurgeUserResponse
-	19, // 39: specgraph.v1.IdentityService.CreateAPIKey:output_type -> specgraph.v1.CreateAPIKeyResponse
-	21, // 40: specgraph.v1.IdentityService.RevokeAPIKey:output_type -> specgraph.v1.RevokeAPIKeyResponse
-	23, // 41: specgraph.v1.IdentityService.RotateAPIKey:output_type -> specgraph.v1.RotateAPIKeyResponse
-	25, // 42: specgraph.v1.IdentityService.ListAPIKeys:output_type -> specgraph.v1.ListAPIKeysResponse
-	27, // 43: specgraph.v1.IdentityService.ListOIDCBindings:output_type -> specgraph.v1.ListOIDCBindingsResponse
-	29, // 44: specgraph.v1.IdentityService.UnbindOIDC:output_type -> specgraph.v1.UnbindOIDCResponse
-	32, // [32:45] is the sub-list for method output_type
-	19, // [19:32] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	1,  // 13: specgraph.v1.ResyncUserRoleResponse.user:type_name -> specgraph.v1.User
+	40, // 14: specgraph.v1.CreateAPIKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
+	2,  // 15: specgraph.v1.CreateAPIKeyResponse.key:type_name -> specgraph.v1.APIKey
+	40, // 16: specgraph.v1.RotateAPIKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
+	2,  // 17: specgraph.v1.RotateAPIKeyResponse.key:type_name -> specgraph.v1.APIKey
+	2,  // 18: specgraph.v1.ListAPIKeysResponse.keys:type_name -> specgraph.v1.APIKey
+	40, // 19: specgraph.v1.CreateMyAPIKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
+	2,  // 20: specgraph.v1.CreateMyAPIKeyResponse.key:type_name -> specgraph.v1.APIKey
+	2,  // 21: specgraph.v1.ListMyAPIKeysResponse.keys:type_name -> specgraph.v1.APIKey
+	40, // 22: specgraph.v1.RotateMyAPIKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
+	2,  // 23: specgraph.v1.RotateMyAPIKeyResponse.key:type_name -> specgraph.v1.APIKey
+	3,  // 24: specgraph.v1.ListOIDCBindingsResponse.bindings:type_name -> specgraph.v1.OIDCBinding
+	4,  // 25: specgraph.v1.IdentityService.Whoami:input_type -> specgraph.v1.WhoamiRequest
+	6,  // 26: specgraph.v1.IdentityService.ListUsers:input_type -> specgraph.v1.ListUsersRequest
+	8,  // 27: specgraph.v1.IdentityService.GetUser:input_type -> specgraph.v1.GetUserRequest
+	10, // 28: specgraph.v1.IdentityService.CreateServiceAccount:input_type -> specgraph.v1.CreateServiceAccountRequest
+	12, // 29: specgraph.v1.IdentityService.UpdateUserRole:input_type -> specgraph.v1.UpdateUserRoleRequest
+	14, // 30: specgraph.v1.IdentityService.ResyncUserRole:input_type -> specgraph.v1.ResyncUserRoleRequest
+	16, // 31: specgraph.v1.IdentityService.SoftDeleteUser:input_type -> specgraph.v1.SoftDeleteUserRequest
+	18, // 32: specgraph.v1.IdentityService.PurgeUser:input_type -> specgraph.v1.PurgeUserRequest
+	20, // 33: specgraph.v1.IdentityService.CreateAPIKey:input_type -> specgraph.v1.CreateAPIKeyRequest
+	22, // 34: specgraph.v1.IdentityService.RevokeAPIKey:input_type -> specgraph.v1.RevokeAPIKeyRequest
+	24, // 35: specgraph.v1.IdentityService.RotateAPIKey:input_type -> specgraph.v1.RotateAPIKeyRequest
+	26, // 36: specgraph.v1.IdentityService.ListAPIKeys:input_type -> specgraph.v1.ListAPIKeysRequest
+	28, // 37: specgraph.v1.IdentityService.CreateMyAPIKey:input_type -> specgraph.v1.CreateMyAPIKeyRequest
+	30, // 38: specgraph.v1.IdentityService.ListMyAPIKeys:input_type -> specgraph.v1.ListMyAPIKeysRequest
+	32, // 39: specgraph.v1.IdentityService.RotateMyAPIKey:input_type -> specgraph.v1.RotateMyAPIKeyRequest
+	34, // 40: specgraph.v1.IdentityService.RevokeMyAPIKey:input_type -> specgraph.v1.RevokeMyAPIKeyRequest
+	36, // 41: specgraph.v1.IdentityService.ListOIDCBindings:input_type -> specgraph.v1.ListOIDCBindingsRequest
+	38, // 42: specgraph.v1.IdentityService.UnbindOIDC:input_type -> specgraph.v1.UnbindOIDCRequest
+	5,  // 43: specgraph.v1.IdentityService.Whoami:output_type -> specgraph.v1.WhoamiResponse
+	7,  // 44: specgraph.v1.IdentityService.ListUsers:output_type -> specgraph.v1.ListUsersResponse
+	9,  // 45: specgraph.v1.IdentityService.GetUser:output_type -> specgraph.v1.GetUserResponse
+	11, // 46: specgraph.v1.IdentityService.CreateServiceAccount:output_type -> specgraph.v1.CreateServiceAccountResponse
+	13, // 47: specgraph.v1.IdentityService.UpdateUserRole:output_type -> specgraph.v1.UpdateUserRoleResponse
+	15, // 48: specgraph.v1.IdentityService.ResyncUserRole:output_type -> specgraph.v1.ResyncUserRoleResponse
+	17, // 49: specgraph.v1.IdentityService.SoftDeleteUser:output_type -> specgraph.v1.SoftDeleteUserResponse
+	19, // 50: specgraph.v1.IdentityService.PurgeUser:output_type -> specgraph.v1.PurgeUserResponse
+	21, // 51: specgraph.v1.IdentityService.CreateAPIKey:output_type -> specgraph.v1.CreateAPIKeyResponse
+	23, // 52: specgraph.v1.IdentityService.RevokeAPIKey:output_type -> specgraph.v1.RevokeAPIKeyResponse
+	25, // 53: specgraph.v1.IdentityService.RotateAPIKey:output_type -> specgraph.v1.RotateAPIKeyResponse
+	27, // 54: specgraph.v1.IdentityService.ListAPIKeys:output_type -> specgraph.v1.ListAPIKeysResponse
+	29, // 55: specgraph.v1.IdentityService.CreateMyAPIKey:output_type -> specgraph.v1.CreateMyAPIKeyResponse
+	31, // 56: specgraph.v1.IdentityService.ListMyAPIKeys:output_type -> specgraph.v1.ListMyAPIKeysResponse
+	33, // 57: specgraph.v1.IdentityService.RotateMyAPIKey:output_type -> specgraph.v1.RotateMyAPIKeyResponse
+	35, // 58: specgraph.v1.IdentityService.RevokeMyAPIKey:output_type -> specgraph.v1.RevokeMyAPIKeyResponse
+	37, // 59: specgraph.v1.IdentityService.ListOIDCBindings:output_type -> specgraph.v1.ListOIDCBindingsResponse
+	39, // 60: specgraph.v1.IdentityService.UnbindOIDC:output_type -> specgraph.v1.UnbindOIDCResponse
+	43, // [43:61] is the sub-list for method output_type
+	25, // [25:43] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_identity_proto_init() }
@@ -1944,7 +2496,7 @@ func file_specgraph_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_identity_proto_rawDesc), len(file_specgraph_v1_identity_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   29,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

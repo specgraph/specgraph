@@ -15,7 +15,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file specgraph/v1/identity.proto.
  */
 export const file_specgraph_v1_identity: GenFile = /*@__PURE__*/
-  fileDesc("ChtzcGVjZ3JhcGgvdjEvaWRlbnRpdHkucHJvdG8SDHNwZWNncmFwaC52MSL1AQoEVXNlchIKCgJpZBgBIAEoCRIkCgRraW5kGAIgASgOMhYuc3BlY2dyYXBoLnYxLlVzZXJLaW5kEhQKDGRpc3BsYXlfbmFtZRgDIAEoCRINCgVlbWFpbBgEIAEoCRIMCgRyb2xlGAUgASgJEhUKDW93bmVyX3VzZXJfaWQYBiABKAkSEQoJYm9vdHN0cmFwGAcgASgIEi4KCmNyZWF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmRlbGV0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIp4CCgZBUElLZXkSCgoCaWQYASABKAkSDwoHdXNlcl9pZBgCIAEoCRIOCgZwcmVmaXgYAyABKAkSFgoOcm9sZV9kb3duZ3JhZGUYBCABKAkSDQoFbGFiZWwYBSABKAkSLgoKZXhwaXJlc19hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMbGFzdF91c2VkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpyZXZva2VkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKSAQoLT0lEQ0JpbmRpbmcSCgoCaWQYASABKAkSDwoHdXNlcl9pZBgCIAEoCRIOCgZpc3N1ZXIYAyABKAkSDwoHc3ViamVjdBgEIAEoCRIVCg1lbWFpbF9hdF9iaW5kGAUgASgJEi4KCmNyZWF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIg8KDVdob2FtaVJlcXVlc3QijQEKDldob2FtaVJlc3BvbnNlEg8KB3N1YmplY3QYASABKAkSDwoHdXNlcl9pZBgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSDAoEcm9sZRgEIAEoCRIWCg5lZmZlY3RpdmVfcm9sZRgFIAEoCRINCgVlbWFpbBgGIAEoCRIOCgZzb3VyY2UYByABKAkifgoQTGlzdFVzZXJzUmVxdWVzdBIkCgRraW5kGAEgASgOMhYuc3BlY2dyYXBoLnYxLlVzZXJLaW5kEgwKBHJvbGUYAiABKAkSFwoPaW5jbHVkZV9kZWxldGVkGAMgASgIEg0KBWxpbWl0GAQgASgFEg4KBm9mZnNldBgFIAEoBSI2ChFMaXN0VXNlcnNSZXNwb25zZRIhCgV1c2VycxgBIAMoCzISLnNwZWNncmFwaC52MS5Vc2VyIhwKDkdldFVzZXJSZXF1ZXN0EgoKAmlkGAEgASgJIjMKD0dldFVzZXJSZXNwb25zZRIgCgR1c2VyGAEgASgLMhIuc3BlY2dyYXBoLnYxLlVzZXIiWAobQ3JlYXRlU2VydmljZUFjY291bnRSZXF1ZXN0EhQKDGRpc3BsYXlfbmFtZRgBIAEoCRIMCgRyb2xlGAIgASgJEhUKDW93bmVyX3VzZXJfaWQYAyABKAkiQAocQ3JlYXRlU2VydmljZUFjY291bnRSZXNwb25zZRIgCgR1c2VyGAEgASgLMhIuc3BlY2dyYXBoLnYxLlVzZXIiMQoVVXBkYXRlVXNlclJvbGVSZXF1ZXN0EgoKAmlkGAEgASgJEgwKBHJvbGUYAiABKAkiOgoWVXBkYXRlVXNlclJvbGVSZXNwb25zZRIgCgR1c2VyGAEgASgLMhIuc3BlY2dyYXBoLnYxLlVzZXIiMgoVU29mdERlbGV0ZVVzZXJSZXF1ZXN0EgoKAmlkGAEgASgJEg0KBWZvcmNlGAIgASgIIhgKFlNvZnREZWxldGVVc2VyUmVzcG9uc2UiLQoQUHVyZ2VVc2VyUmVxdWVzdBIKCgJpZBgBIAEoCRINCgVmb3JjZRgCIAEoCCITChFQdXJnZVVzZXJSZXNwb25zZSJ9ChNDcmVhdGVBUElLZXlSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSDQoFbGFiZWwYAiABKAkSFgoOcm9sZV9kb3duZ3JhZGUYAyABKAkSLgoKZXhwaXJlc19hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiTAoUQ3JlYXRlQVBJS2V5UmVzcG9uc2USIQoDa2V5GAEgASgLMhQuc3BlY2dyYXBoLnYxLkFQSUtleRIRCglwbGFpbnRleHQYAiABKAkiJQoTUmV2b2tlQVBJS2V5UmVxdWVzdBIOCgZrZXlfaWQYASABKAkiFgoUUmV2b2tlQVBJS2V5UmVzcG9uc2UihwEKE1JvdGF0ZUFQSUtleVJlcXVlc3QSDgoGa2V5X2lkGAEgASgJEi4KCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSgQIAhADSgQIAxAESgQIBBAFUgd1c2VyX2lkUgVsYWJlbFIOcm9sZV9kb3duZ3JhZGUiTAoUUm90YXRlQVBJS2V5UmVzcG9uc2USIQoDa2V5GAEgASgLMhQuc3BlY2dyYXBoLnYxLkFQSUtleRIRCglwbGFpbnRleHQYAiABKAkiXQoSTGlzdEFQSUtleXNSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSFwoPaW5jbHVkZV9yZXZva2VkGAIgASgIEg0KBWxpbWl0GAMgASgFEg4KBm9mZnNldBgEIAEoBSI5ChNMaXN0QVBJS2V5c1Jlc3BvbnNlEiIKBGtleXMYASADKAsyFC5zcGVjZ3JhcGgudjEuQVBJS2V5IioKF0xpc3RPSURDQmluZGluZ3NSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkiRwoYTGlzdE9JRENCaW5kaW5nc1Jlc3BvbnNlEisKCGJpbmRpbmdzGAEgAygLMhkuc3BlY2dyYXBoLnYxLk9JRENCaW5kaW5nIkcKEVVuYmluZE9JRENSZXF1ZXN0EhIKCmJpbmRpbmdfaWQYASABKAkSDwoHdXNlcl9pZBgCIAEoCRINCgVmb3JjZRgDIAEoCCIUChJVbmJpbmRPSURDUmVzcG9uc2UqWQoIVXNlcktpbmQSGQoVVVNFUl9LSU5EX1VOU1BFQ0lGSUVEEAASEwoPVVNFUl9LSU5EX0hVTUFOEAESHQoZVVNFUl9LSU5EX1NFUlZJQ0VfQUNDT1VOVBACMvAICg9JZGVudGl0eVNlcnZpY2USQwoGV2hvYW1pEhsuc3BlY2dyYXBoLnYxLldob2FtaVJlcXVlc3QaHC5zcGVjZ3JhcGgudjEuV2hvYW1pUmVzcG9uc2USTAoJTGlzdFVzZXJzEh4uc3BlY2dyYXBoLnYxLkxpc3RVc2Vyc1JlcXVlc3QaHy5zcGVjZ3JhcGgudjEuTGlzdFVzZXJzUmVzcG9uc2USRgoHR2V0VXNlchIcLnNwZWNncmFwaC52MS5HZXRVc2VyUmVxdWVzdBodLnNwZWNncmFwaC52MS5HZXRVc2VyUmVzcG9uc2USbQoUQ3JlYXRlU2VydmljZUFjY291bnQSKS5zcGVjZ3JhcGgudjEuQ3JlYXRlU2VydmljZUFjY291bnRSZXF1ZXN0Giouc3BlY2dyYXBoLnYxLkNyZWF0ZVNlcnZpY2VBY2NvdW50UmVzcG9uc2USWwoOVXBkYXRlVXNlclJvbGUSIy5zcGVjZ3JhcGgudjEuVXBkYXRlVXNlclJvbGVSZXF1ZXN0GiQuc3BlY2dyYXBoLnYxLlVwZGF0ZVVzZXJSb2xlUmVzcG9uc2USWwoOU29mdERlbGV0ZVVzZXISIy5zcGVjZ3JhcGgudjEuU29mdERlbGV0ZVVzZXJSZXF1ZXN0GiQuc3BlY2dyYXBoLnYxLlNvZnREZWxldGVVc2VyUmVzcG9uc2USTAoJUHVyZ2VVc2VyEh4uc3BlY2dyYXBoLnYxLlB1cmdlVXNlclJlcXVlc3QaHy5zcGVjZ3JhcGgudjEuUHVyZ2VVc2VyUmVzcG9uc2USVQoMQ3JlYXRlQVBJS2V5EiEuc3BlY2dyYXBoLnYxLkNyZWF0ZUFQSUtleVJlcXVlc3QaIi5zcGVjZ3JhcGgudjEuQ3JlYXRlQVBJS2V5UmVzcG9uc2USVQoMUmV2b2tlQVBJS2V5EiEuc3BlY2dyYXBoLnYxLlJldm9rZUFQSUtleVJlcXVlc3QaIi5zcGVjZ3JhcGgudjEuUmV2b2tlQVBJS2V5UmVzcG9uc2USVQoMUm90YXRlQVBJS2V5EiEuc3BlY2dyYXBoLnYxLlJvdGF0ZUFQSUtleVJlcXVlc3QaIi5zcGVjZ3JhcGgudjEuUm90YXRlQVBJS2V5UmVzcG9uc2USUgoLTGlzdEFQSUtleXMSIC5zcGVjZ3JhcGgudjEuTGlzdEFQSUtleXNSZXF1ZXN0GiEuc3BlY2dyYXBoLnYxLkxpc3RBUElLZXlzUmVzcG9uc2USYQoQTGlzdE9JRENCaW5kaW5ncxIlLnNwZWNncmFwaC52MS5MaXN0T0lEQ0JpbmRpbmdzUmVxdWVzdBomLnNwZWNncmFwaC52MS5MaXN0T0lEQ0JpbmRpbmdzUmVzcG9uc2USTwoKVW5iaW5kT0lEQxIfLnNwZWNncmFwaC52MS5VbmJpbmRPSURDUmVxdWVzdBogLnNwZWNncmFwaC52MS5VbmJpbmRPSURDUmVzcG9uc2VCPVo7Z2l0aHViLmNvbS9zcGVjZ3JhcGgvc3BlY2dyYXBoL2dlbi9zcGVjZ3JhcGgvdjE7c3BlY2dyYXBodjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChtzcGVjZ3JhcGgvdjEvaWRlbnRpdHkucHJvdG8SDHNwZWNncmFwaC52MSL1AQoEVXNlchIKCgJpZBgBIAEoCRIkCgRraW5kGAIgASgOMhYuc3BlY2dyYXBoLnYxLlVzZXJLaW5kEhQKDGRpc3BsYXlfbmFtZRgDIAEoCRINCgVlbWFpbBgEIAEoCRIMCgRyb2xlGAUgASgJEhUKDW93bmVyX3VzZXJfaWQYBiABKAkSEQoJYm9vdHN0cmFwGAcgASgIEi4KCmNyZWF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmRlbGV0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIp4CCgZBUElLZXkSCgoCaWQYASABKAkSDwoHdXNlcl9pZBgCIAEoCRIOCgZwcmVmaXgYAyABKAkSFgoOcm9sZV9kb3duZ3JhZGUYBCABKAkSDQoFbGFiZWwYBSABKAkSLgoKZXhwaXJlc19hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMbGFzdF91c2VkX2F0GAcgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpyZXZva2VkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIuCgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKSAQoLT0lEQ0JpbmRpbmcSCgoCaWQYASABKAkSDwoHdXNlcl9pZBgCIAEoCRIOCgZpc3N1ZXIYAyABKAkSDwoHc3ViamVjdBgEIAEoCRIVCg1lbWFpbF9hdF9iaW5kGAUgASgJEi4KCmNyZWF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIg8KDVdob2FtaVJlcXVlc3QijQEKDldob2FtaVJlc3BvbnNlEg8KB3N1YmplY3QYASABKAkSDwoHdXNlcl9pZBgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSDAoEcm9sZRgEIAEoCRIWCg5lZmZlY3RpdmVfcm9sZRgFIAEoCRINCgVlbWFpbBgGIAEoCRIOCgZzb3VyY2UYByABKAkifgoQTGlzdFVzZXJzUmVxdWVzdBIkCgRraW5kGAEgASgOMhYuc3BlY2dyYXBoLnYxLlVzZXJLaW5kEgwKBHJvbGUYAiABKAkSFwoPaW5jbHVkZV9kZWxldGVkGAMgASgIEg0KBWxpbWl0GAQgASgFEg4KBm9mZnNldBgFIAEoBSI2ChFMaXN0VXNlcnNSZXNwb25zZRIhCgV1c2VycxgBIAMoCzISLnNwZWNncmFwaC52MS5Vc2VyIhwKDkdldFVzZXJSZXF1ZXN0EgoKAmlkGAEgASgJIjMKD0dldFVzZXJSZXNwb25zZRIgCgR1c2VyGAEgASgLMhIuc3BlY2dyYXBoLnYxLlVzZXIiWAobQ3JlYXRlU2VydmljZUFjY291bnRSZXF1ZXN0EhQKDGRpc3BsYXlfbmFtZRgBIAEoCRIMCgRyb2xlGAIgASgJEhUKDW93bmVyX3VzZXJfaWQYAyABKAkiQAocQ3JlYXRlU2VydmljZUFjY291bnRSZXNwb25zZRIgCgR1c2VyGAEgASgLMhIuc3BlY2dyYXBoLnYxLlVzZXIiMQoVVXBkYXRlVXNlclJvbGVSZXF1ZXN0EgoKAmlkGAEgASgJEgwKBHJvbGUYAiABKAkiOgoWVXBkYXRlVXNlclJvbGVSZXNwb25zZRIgCgR1c2VyGAEgASgLMhIuc3BlY2dyYXBoLnYxLlVzZXIiRgoVUmVzeW5jVXNlclJvbGVSZXF1ZXN0EgoKAmlkGAEgASgJEgwKBHJvbGUYAiABKAkSEwoLcmV2b2tlX2tleXMYAyABKAgiOgoWUmVzeW5jVXNlclJvbGVSZXNwb25zZRIgCgR1c2VyGAEgASgLMhIuc3BlY2dyYXBoLnYxLlVzZXIiMgoVU29mdERlbGV0ZVVzZXJSZXF1ZXN0EgoKAmlkGAEgASgJEg0KBWZvcmNlGAIgASgIIhgKFlNvZnREZWxldGVVc2VyUmVzcG9uc2UiLQoQUHVyZ2VVc2VyUmVxdWVzdBIKCgJpZBgBIAEoCRINCgVmb3JjZRgCIAEoCCITChFQdXJnZVVzZXJSZXNwb25zZSJ9ChNDcmVhdGVBUElLZXlSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSDQoFbGFiZWwYAiABKAkSFgoOcm9sZV9kb3duZ3JhZGUYAyABKAkSLgoKZXhwaXJlc19hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiTAoUQ3JlYXRlQVBJS2V5UmVzcG9uc2USIQoDa2V5GAEgASgLMhQuc3BlY2dyYXBoLnYxLkFQSUtleRIRCglwbGFpbnRleHQYAiABKAkiJQoTUmV2b2tlQVBJS2V5UmVxdWVzdBIOCgZrZXlfaWQYASABKAkiFgoUUmV2b2tlQVBJS2V5UmVzcG9uc2UihwEKE1JvdGF0ZUFQSUtleVJlcXVlc3QSDgoGa2V5X2lkGAEgASgJEi4KCmV4cGlyZXNfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wSgQIAhADSgQIAxAESgQIBBAFUgd1c2VyX2lkUgVsYWJlbFIOcm9sZV9kb3duZ3JhZGUiTAoUUm90YXRlQVBJS2V5UmVzcG9uc2USIQoDa2V5GAEgASgLMhQuc3BlY2dyYXBoLnYxLkFQSUtleRIRCglwbGFpbnRleHQYAiABKAkiXQoSTGlzdEFQSUtleXNSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkSFwoPaW5jbHVkZV9yZXZva2VkGAIgASgIEg0KBWxpbWl0GAMgASgFEg4KBm9mZnNldBgEIAEoBSI5ChNMaXN0QVBJS2V5c1Jlc3BvbnNlEiIKBGtleXMYASADKAsyFC5zcGVjZ3JhcGgudjEuQVBJS2V5Im4KFUNyZWF0ZU15QVBJS2V5UmVxdWVzdBINCgVsYWJlbBgBIAEoCRIWCg5yb2xlX2Rvd25ncmFkZRgCIAEoCRIuCgpleHBpcmVzX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJOChZDcmVhdGVNeUFQSUtleVJlc3BvbnNlEiEKA2tleRgBIAEoCzIULnNwZWNncmFwaC52MS5BUElLZXkSEQoJcGxhaW50ZXh0GAIgASgJIhYKFExpc3RNeUFQSUtleXNSZXF1ZXN0IjsKFUxpc3RNeUFQSUtleXNSZXNwb25zZRIiCgRrZXlzGAEgAygLMhQuc3BlY2dyYXBoLnYxLkFQSUtleSJXChVSb3RhdGVNeUFQSUtleVJlcXVlc3QSDgoGa2V5X2lkGAEgASgJEi4KCmV4cGlyZXNfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIk4KFlJvdGF0ZU15QVBJS2V5UmVzcG9uc2USIQoDa2V5GAEgASgLMhQuc3BlY2dyYXBoLnYxLkFQSUtleRIRCglwbGFpbnRleHQYAiABKAkiJwoVUmV2b2tlTXlBUElLZXlSZXF1ZXN0Eg4KBmtleV9pZBgBIAEoCSIYChZSZXZva2VNeUFQSUtleVJlc3BvbnNlIioKF0xpc3RPSURDQmluZGluZ3NSZXF1ZXN0Eg8KB3VzZXJfaWQYASABKAkiRwoYTGlzdE9JRENCaW5kaW5nc1Jlc3BvbnNlEisKCGJpbmRpbmdzGAEgAygLMhkuc3BlY2dyYXBoLnYxLk9JRENCaW5kaW5nIkcKEVVuYmluZE9JRENSZXF1ZXN0EhIKCmJpbmRpbmdfaWQYASABKAkSDwoHdXNlcl9pZBgCIAEoCRINCgVmb3JjZRgDIAEoCCIUChJVbmJpbmRPSURDUmVzcG9uc2UqWQoIVXNlcktpbmQSGQoVVVNFUl9LSU5EX1VOU1BFQ0lGSUVEEAASEwoPVVNFUl9LSU5EX0hVTUFOEAESHQoZVVNFUl9LSU5EX1NFUlZJQ0VfQUNDT1VOVBACMr4MCg9JZGVudGl0eVNlcnZpY2USQwoGV2hvYW1pEhsuc3BlY2dyYXBoLnYxLldob2FtaVJlcXVlc3QaHC5zcGVjZ3JhcGgudjEuV2hvYW1pUmVzcG9uc2USTAoJTGlzdFVzZXJzEh4uc3BlY2dyYXBoLnYxLkxpc3RVc2Vyc1JlcXVlc3QaHy5zcGVjZ3JhcGgudjEuTGlzdFVzZXJzUmVzcG9uc2USRgoHR2V0VXNlchIcLnNwZWNncmFwaC52MS5HZXRVc2VyUmVxdWVzdBodLnNwZWNncmFwaC52MS5HZXRVc2VyUmVzcG9uc2USbQoUQ3JlYXRlU2VydmljZUFjY291bnQSKS5zcGVjZ3JhcGgudjEuQ3JlYXRlU2VydmljZUFjY291bnRSZXF1ZXN0Giouc3BlY2dyYXBoLnYxLkNyZWF0ZVNlcnZpY2VBY2NvdW50UmVzcG9uc2USWwoOVXBkYXRlVXNlclJvbGUSIy5zcGVjZ3JhcGgudjEuVXBkYXRlVXNlclJvbGVSZXF1ZXN0GiQuc3BlY2dyYXBoLnYxLlVwZGF0ZVVzZXJSb2xlUmVzcG9uc2USWwoOUmVzeW5jVXNlclJvbGUSIy5zcGVjZ3JhcGgudjEuUmVzeW5jVXNlclJvbGVSZXF1ZXN0GiQuc3BlY2dyYXBoLnYxLlJlc3luY1VzZXJSb2xlUmVzcG9uc2USWwoOU29mdERlbGV0ZVVzZXISIy5zcGVjZ3JhcGgudjEuU29mdERlbGV0ZVVzZXJSZXF1ZXN0GiQuc3BlY2dyYXBoLnYxLlNvZnREZWxldGVVc2VyUmVzcG9uc2USTAoJUHVyZ2VVc2VyEh4uc3BlY2dyYXBoLnYxLlB1cmdlVXNlclJlcXVlc3QaHy5zcGVjZ3JhcGgudjEuUHVyZ2VVc2VyUmVzcG9uc2USVQoMQ3JlYXRlQVBJS2V5EiEuc3BlY2dyYXBoLnYxLkNyZWF0ZUFQSUtleVJlcXVlc3QaIi5zcGVjZ3JhcGgudjEuQ3JlYXRlQVBJS2V5UmVzcG9uc2USVQoMUmV2b2tlQVBJS2V5EiEuc3BlY2dyYXBoLnYxLlJldm9rZUFQSUtleVJlcXVlc3QaIi5zcGVjZ3JhcGgudjEuUmV2b2tlQVBJS2V5UmVzcG9uc2USVQoMUm90YXRlQVBJS2V5EiEuc3BlY2dyYXBoLnYxLlJvdGF0ZUFQSUtleVJlcXVlc3QaIi5zcGVjZ3JhcGgudjEuUm90YXRlQVBJS2V5UmVzcG9uc2USUgoLTGlzdEFQSUtleXMSIC5zcGVjZ3JhcGgudjEuTGlzdEFQSUtleXNSZXF1ZXN0GiEuc3BlY2dyYXBoLnYxLkxpc3RBUElLZXlzUmVzcG9uc2USWwoOQ3JlYXRlTXlBUElLZXkSIy5zcGVjZ3JhcGgudjEuQ3JlYXRlTXlBUElLZXlSZXF1ZXN0GiQuc3BlY2dyYXBoLnYxLkNyZWF0ZU15QVBJS2V5UmVzcG9uc2USWAoNTGlzdE15QVBJS2V5cxIiLnNwZWNncmFwaC52MS5MaXN0TXlBUElLZXlzUmVxdWVzdBojLnNwZWNncmFwaC52MS5MaXN0TXlBUElLZXlzUmVzcG9uc2USWwoOUm90YXRlTXlBUElLZXkSIy5zcGVjZ3JhcGgudjEuUm90YXRlTXlBUElLZXlSZXF1ZXN0GiQuc3BlY2dyYXBoLnYxLlJvdGF0ZU15QVBJS2V5UmVzcG9uc2USWwoOUmV2b2tlTXlBUElLZXkSIy5zcGVjZ3JhcGgudjEuUmV2b2tlTXlBUElLZXlSZXF1ZXN0GiQuc3BlY2dyYXBoLnYxLlJldm9rZU15QVBJS2V5UmVzcG9uc2USYQoQTGlzdE9JRENCaW5kaW5ncxIlLnNwZWNncmFwaC52MS5MaXN0T0lEQ0JpbmRpbmdzUmVxdWVzdBomLnNwZWNncmFwaC52MS5MaXN0T0lEQ0JpbmRpbmdzUmVzcG9uc2USTwoKVW5iaW5kT0lEQxIfLnNwZWNncmFwaC52MS5VbmJpbmRPSURDUmVxdWVzdBogLnNwZWNncmFwaC52MS5VbmJpbmRPSURDUmVzcG9uc2VCPVo7Z2l0aHViLmNvbS9zcGVjZ3JhcGgvc3BlY2dyYXBoL2dlbi9zcGVjZ3JhcGgvdjE7c3BlY2dyYXBodjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * User mirrors storage.User. deleted_at is unset for active users.
@@ -419,6 +419,55 @@ export const UpdateUserRoleResponseSchema: GenMessage<UpdateUserRoleResponse> = 
   messageDesc(file_specgraph_v1_identity, 12);
 
 /**
+ * ResyncUserRole re-applies a user's authoritative role (AUTH-02). When
+ * revoke_keys is true it drives the hard off-board: the user's API keys are
+ * revoked as part of the role change so a downgraded/off-boarded principal
+ * cannot keep minting or using pre-existing keys. Admin-only (user.manage).
+ *
+ * @generated from message specgraph.v1.ResyncUserRoleRequest
+ */
+export type ResyncUserRoleRequest = Message<"specgraph.v1.ResyncUserRoleRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string role = 2;
+   */
+  role: string;
+
+  /**
+   * @generated from field: bool revoke_keys = 3;
+   */
+  revokeKeys: boolean;
+};
+
+/**
+ * Describes the message specgraph.v1.ResyncUserRoleRequest.
+ * Use `create(ResyncUserRoleRequestSchema)` to create a new message.
+ */
+export const ResyncUserRoleRequestSchema: GenMessage<ResyncUserRoleRequest> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_identity, 13);
+
+/**
+ * @generated from message specgraph.v1.ResyncUserRoleResponse
+ */
+export type ResyncUserRoleResponse = Message<"specgraph.v1.ResyncUserRoleResponse"> & {
+  /**
+   * @generated from field: specgraph.v1.User user = 1;
+   */
+  user?: User | undefined;
+};
+
+/**
+ * Describes the message specgraph.v1.ResyncUserRoleResponse.
+ * Use `create(ResyncUserRoleResponseSchema)` to create a new message.
+ */
+export const ResyncUserRoleResponseSchema: GenMessage<ResyncUserRoleResponse> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_identity, 14);
+
+/**
  * @generated from message specgraph.v1.SoftDeleteUserRequest
  */
 export type SoftDeleteUserRequest = Message<"specgraph.v1.SoftDeleteUserRequest"> & {
@@ -440,7 +489,7 @@ export type SoftDeleteUserRequest = Message<"specgraph.v1.SoftDeleteUserRequest"
  * Use `create(SoftDeleteUserRequestSchema)` to create a new message.
  */
 export const SoftDeleteUserRequestSchema: GenMessage<SoftDeleteUserRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 13);
+  messageDesc(file_specgraph_v1_identity, 15);
 
 /**
  * @generated from message specgraph.v1.SoftDeleteUserResponse
@@ -453,7 +502,7 @@ export type SoftDeleteUserResponse = Message<"specgraph.v1.SoftDeleteUserRespons
  * Use `create(SoftDeleteUserResponseSchema)` to create a new message.
  */
 export const SoftDeleteUserResponseSchema: GenMessage<SoftDeleteUserResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 14);
+  messageDesc(file_specgraph_v1_identity, 16);
 
 /**
  * @generated from message specgraph.v1.PurgeUserRequest
@@ -477,7 +526,7 @@ export type PurgeUserRequest = Message<"specgraph.v1.PurgeUserRequest"> & {
  * Use `create(PurgeUserRequestSchema)` to create a new message.
  */
 export const PurgeUserRequestSchema: GenMessage<PurgeUserRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 15);
+  messageDesc(file_specgraph_v1_identity, 17);
 
 /**
  * @generated from message specgraph.v1.PurgeUserResponse
@@ -490,7 +539,7 @@ export type PurgeUserResponse = Message<"specgraph.v1.PurgeUserResponse"> & {
  * Use `create(PurgeUserResponseSchema)` to create a new message.
  */
 export const PurgeUserResponseSchema: GenMessage<PurgeUserResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 16);
+  messageDesc(file_specgraph_v1_identity, 18);
 
 /**
  * @generated from message specgraph.v1.CreateAPIKeyRequest
@@ -526,7 +575,7 @@ export type CreateAPIKeyRequest = Message<"specgraph.v1.CreateAPIKeyRequest"> & 
  * Use `create(CreateAPIKeyRequestSchema)` to create a new message.
  */
 export const CreateAPIKeyRequestSchema: GenMessage<CreateAPIKeyRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 17);
+  messageDesc(file_specgraph_v1_identity, 19);
 
 /**
  * plaintext is the full token (spgr_sk_<prefix>_<secret>); shown ONCE.
@@ -550,7 +599,7 @@ export type CreateAPIKeyResponse = Message<"specgraph.v1.CreateAPIKeyResponse"> 
  * Use `create(CreateAPIKeyResponseSchema)` to create a new message.
  */
 export const CreateAPIKeyResponseSchema: GenMessage<CreateAPIKeyResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 18);
+  messageDesc(file_specgraph_v1_identity, 20);
 
 /**
  * @generated from message specgraph.v1.RevokeAPIKeyRequest
@@ -567,7 +616,7 @@ export type RevokeAPIKeyRequest = Message<"specgraph.v1.RevokeAPIKeyRequest"> & 
  * Use `create(RevokeAPIKeyRequestSchema)` to create a new message.
  */
 export const RevokeAPIKeyRequestSchema: GenMessage<RevokeAPIKeyRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 19);
+  messageDesc(file_specgraph_v1_identity, 21);
 
 /**
  * @generated from message specgraph.v1.RevokeAPIKeyResponse
@@ -580,7 +629,7 @@ export type RevokeAPIKeyResponse = Message<"specgraph.v1.RevokeAPIKeyResponse"> 
  * Use `create(RevokeAPIKeyResponseSchema)` to create a new message.
  */
 export const RevokeAPIKeyResponseSchema: GenMessage<RevokeAPIKeyResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 20);
+  messageDesc(file_specgraph_v1_identity, 22);
 
 /**
  * RotateAPIKey mints a new secret for an existing key and revokes the old one.
@@ -612,7 +661,7 @@ export type RotateAPIKeyRequest = Message<"specgraph.v1.RotateAPIKeyRequest"> & 
  * Use `create(RotateAPIKeyRequestSchema)` to create a new message.
  */
 export const RotateAPIKeyRequestSchema: GenMessage<RotateAPIKeyRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 21);
+  messageDesc(file_specgraph_v1_identity, 23);
 
 /**
  * @generated from message specgraph.v1.RotateAPIKeyResponse
@@ -634,7 +683,7 @@ export type RotateAPIKeyResponse = Message<"specgraph.v1.RotateAPIKeyResponse"> 
  * Use `create(RotateAPIKeyResponseSchema)` to create a new message.
  */
 export const RotateAPIKeyResponseSchema: GenMessage<RotateAPIKeyResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 22);
+  messageDesc(file_specgraph_v1_identity, 24);
 
 /**
  * @generated from message specgraph.v1.ListAPIKeysRequest
@@ -668,7 +717,7 @@ export type ListAPIKeysRequest = Message<"specgraph.v1.ListAPIKeysRequest"> & {
  * Use `create(ListAPIKeysRequestSchema)` to create a new message.
  */
 export const ListAPIKeysRequestSchema: GenMessage<ListAPIKeysRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 23);
+  messageDesc(file_specgraph_v1_identity, 25);
 
 /**
  * @generated from message specgraph.v1.ListAPIKeysResponse
@@ -685,7 +734,178 @@ export type ListAPIKeysResponse = Message<"specgraph.v1.ListAPIKeysResponse"> & 
  * Use `create(ListAPIKeysResponseSchema)` to create a new message.
  */
 export const ListAPIKeysResponseSchema: GenMessage<ListAPIKeysResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 24);
+  messageDesc(file_specgraph_v1_identity, 26);
+
+/**
+ * Self-service API-key messages (AUTH-03). These mirror the admin CreateAPIKey/
+ * Rotate/Revoke/List surface but carry NO user_id/target field: the owner is
+ * always derived from the authenticated context in the handler, so a caller can
+ * never name another owner at the wire level (T-02-01 mitigation).
+ *
+ * @generated from message specgraph.v1.CreateMyAPIKeyRequest
+ */
+export type CreateMyAPIKeyRequest = Message<"specgraph.v1.CreateMyAPIKeyRequest"> & {
+  /**
+   * @generated from field: string label = 1;
+   */
+  label: string;
+
+  /**
+   * empty = no downgrade
+   *
+   * @generated from field: string role_downgrade = 2;
+   */
+  roleDowngrade: string;
+
+  /**
+   * unset = policy default expiry
+   *
+   * @generated from field: google.protobuf.Timestamp expires_at = 3;
+   */
+  expiresAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message specgraph.v1.CreateMyAPIKeyRequest.
+ * Use `create(CreateMyAPIKeyRequestSchema)` to create a new message.
+ */
+export const CreateMyAPIKeyRequestSchema: GenMessage<CreateMyAPIKeyRequest> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_identity, 27);
+
+/**
+ * plaintext is the full token (spgr_sk_<prefix>_<secret>); shown ONCE.
+ *
+ * @generated from message specgraph.v1.CreateMyAPIKeyResponse
+ */
+export type CreateMyAPIKeyResponse = Message<"specgraph.v1.CreateMyAPIKeyResponse"> & {
+  /**
+   * @generated from field: specgraph.v1.APIKey key = 1;
+   */
+  key?: APIKey | undefined;
+
+  /**
+   * @generated from field: string plaintext = 2;
+   */
+  plaintext: string;
+};
+
+/**
+ * Describes the message specgraph.v1.CreateMyAPIKeyResponse.
+ * Use `create(CreateMyAPIKeyResponseSchema)` to create a new message.
+ */
+export const CreateMyAPIKeyResponseSchema: GenMessage<CreateMyAPIKeyResponse> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_identity, 28);
+
+/**
+ * @generated from message specgraph.v1.ListMyAPIKeysRequest
+ */
+export type ListMyAPIKeysRequest = Message<"specgraph.v1.ListMyAPIKeysRequest"> & {
+};
+
+/**
+ * Describes the message specgraph.v1.ListMyAPIKeysRequest.
+ * Use `create(ListMyAPIKeysRequestSchema)` to create a new message.
+ */
+export const ListMyAPIKeysRequestSchema: GenMessage<ListMyAPIKeysRequest> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_identity, 29);
+
+/**
+ * @generated from message specgraph.v1.ListMyAPIKeysResponse
+ */
+export type ListMyAPIKeysResponse = Message<"specgraph.v1.ListMyAPIKeysResponse"> & {
+  /**
+   * @generated from field: repeated specgraph.v1.APIKey keys = 1;
+   */
+  keys: APIKey[];
+};
+
+/**
+ * Describes the message specgraph.v1.ListMyAPIKeysResponse.
+ * Use `create(ListMyAPIKeysResponseSchema)` to create a new message.
+ */
+export const ListMyAPIKeysResponseSchema: GenMessage<ListMyAPIKeysResponse> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_identity, 30);
+
+/**
+ * RotateMyAPIKey mints a new secret for one of the caller's own keys and
+ * revokes the old one, preserving the key's identity and authority (owner,
+ * role_downgrade, label are inherited). The caller MAY set expires_at to choose
+ * the new secret's validity window; unset inherits the old key's expiry.
+ *
+ * @generated from message specgraph.v1.RotateMyAPIKeyRequest
+ */
+export type RotateMyAPIKeyRequest = Message<"specgraph.v1.RotateMyAPIKeyRequest"> & {
+  /**
+   * @generated from field: string key_id = 1;
+   */
+  keyId: string;
+
+  /**
+   * unset = inherit old key's expiry
+   *
+   * @generated from field: google.protobuf.Timestamp expires_at = 2;
+   */
+  expiresAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message specgraph.v1.RotateMyAPIKeyRequest.
+ * Use `create(RotateMyAPIKeyRequestSchema)` to create a new message.
+ */
+export const RotateMyAPIKeyRequestSchema: GenMessage<RotateMyAPIKeyRequest> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_identity, 31);
+
+/**
+ * @generated from message specgraph.v1.RotateMyAPIKeyResponse
+ */
+export type RotateMyAPIKeyResponse = Message<"specgraph.v1.RotateMyAPIKeyResponse"> & {
+  /**
+   * @generated from field: specgraph.v1.APIKey key = 1;
+   */
+  key?: APIKey | undefined;
+
+  /**
+   * @generated from field: string plaintext = 2;
+   */
+  plaintext: string;
+};
+
+/**
+ * Describes the message specgraph.v1.RotateMyAPIKeyResponse.
+ * Use `create(RotateMyAPIKeyResponseSchema)` to create a new message.
+ */
+export const RotateMyAPIKeyResponseSchema: GenMessage<RotateMyAPIKeyResponse> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_identity, 32);
+
+/**
+ * @generated from message specgraph.v1.RevokeMyAPIKeyRequest
+ */
+export type RevokeMyAPIKeyRequest = Message<"specgraph.v1.RevokeMyAPIKeyRequest"> & {
+  /**
+   * @generated from field: string key_id = 1;
+   */
+  keyId: string;
+};
+
+/**
+ * Describes the message specgraph.v1.RevokeMyAPIKeyRequest.
+ * Use `create(RevokeMyAPIKeyRequestSchema)` to create a new message.
+ */
+export const RevokeMyAPIKeyRequestSchema: GenMessage<RevokeMyAPIKeyRequest> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_identity, 33);
+
+/**
+ * @generated from message specgraph.v1.RevokeMyAPIKeyResponse
+ */
+export type RevokeMyAPIKeyResponse = Message<"specgraph.v1.RevokeMyAPIKeyResponse"> & {
+};
+
+/**
+ * Describes the message specgraph.v1.RevokeMyAPIKeyResponse.
+ * Use `create(RevokeMyAPIKeyResponseSchema)` to create a new message.
+ */
+export const RevokeMyAPIKeyResponseSchema: GenMessage<RevokeMyAPIKeyResponse> = /*@__PURE__*/
+  messageDesc(file_specgraph_v1_identity, 34);
 
 /**
  * @generated from message specgraph.v1.ListOIDCBindingsRequest
@@ -702,7 +922,7 @@ export type ListOIDCBindingsRequest = Message<"specgraph.v1.ListOIDCBindingsRequ
  * Use `create(ListOIDCBindingsRequestSchema)` to create a new message.
  */
 export const ListOIDCBindingsRequestSchema: GenMessage<ListOIDCBindingsRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 25);
+  messageDesc(file_specgraph_v1_identity, 35);
 
 /**
  * @generated from message specgraph.v1.ListOIDCBindingsResponse
@@ -719,7 +939,7 @@ export type ListOIDCBindingsResponse = Message<"specgraph.v1.ListOIDCBindingsRes
  * Use `create(ListOIDCBindingsResponseSchema)` to create a new message.
  */
 export const ListOIDCBindingsResponseSchema: GenMessage<ListOIDCBindingsResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 26);
+  messageDesc(file_specgraph_v1_identity, 36);
 
 /**
  * @generated from message specgraph.v1.UnbindOIDCRequest
@@ -750,7 +970,7 @@ export type UnbindOIDCRequest = Message<"specgraph.v1.UnbindOIDCRequest"> & {
  * Use `create(UnbindOIDCRequestSchema)` to create a new message.
  */
 export const UnbindOIDCRequestSchema: GenMessage<UnbindOIDCRequest> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 27);
+  messageDesc(file_specgraph_v1_identity, 37);
 
 /**
  * @generated from message specgraph.v1.UnbindOIDCResponse
@@ -763,7 +983,7 @@ export type UnbindOIDCResponse = Message<"specgraph.v1.UnbindOIDCResponse"> & {
  * Use `create(UnbindOIDCResponseSchema)` to create a new message.
  */
 export const UnbindOIDCResponseSchema: GenMessage<UnbindOIDCResponse> = /*@__PURE__*/
-  messageDesc(file_specgraph_v1_identity, 28);
+  messageDesc(file_specgraph_v1_identity, 38);
 
 /**
  * @generated from enum specgraph.v1.UserKind
@@ -793,9 +1013,14 @@ export const UserKindSchema: GenEnum<UserKind> = /*@__PURE__*/
 
 /**
  * IdentityService manages users, service accounts, API keys, and OIDC
- * bindings. It is a GLOBAL service (not project-scoped). All RPCs except
- * Whoami require the admin role (enforced by Cedar via the "manage" verb);
- * Whoami is self-scoped and available to any authenticated principal.
+ * bindings. It is a GLOBAL service (not project-scoped). Most management RPCs
+ * require the admin role (enforced by Cedar via the "manage" verb), including
+ * ResyncUserRole (user.manage). Two categories are NOT admin-only: Whoami is
+ * self-scoped and available to any authenticated principal; and the four
+ * *MyAPIKey RPCs (CreateMyAPIKey/ListMyAPIKeys/RotateMyAPIKey/RevokeMyAPIKey)
+ * are SELF-scoped — any authenticated principal may call them for their own
+ * keys, gated by the Cedar "apikey.self" verb and further restricted in the
+ * handler (owner derived from context, never client-supplied).
  *
  * @generated from service specgraph.v1.IdentityService
  */
@@ -839,6 +1064,14 @@ export const IdentityService: GenService<{
     methodKind: "unary";
     input: typeof UpdateUserRoleRequestSchema;
     output: typeof UpdateUserRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc specgraph.v1.IdentityService.ResyncUserRole
+   */
+  resyncUserRole: {
+    methodKind: "unary";
+    input: typeof ResyncUserRoleRequestSchema;
+    output: typeof ResyncUserRoleResponseSchema;
   },
   /**
    * @generated from rpc specgraph.v1.IdentityService.SoftDeleteUser
@@ -887,6 +1120,41 @@ export const IdentityService: GenService<{
     methodKind: "unary";
     input: typeof ListAPIKeysRequestSchema;
     output: typeof ListAPIKeysResponseSchema;
+  },
+  /**
+   * Self-scoped API-key RPCs (AUTH-03): owner is derived from context; the
+   * request messages carry NO user_id/target field by design.
+   *
+   * @generated from rpc specgraph.v1.IdentityService.CreateMyAPIKey
+   */
+  createMyAPIKey: {
+    methodKind: "unary";
+    input: typeof CreateMyAPIKeyRequestSchema;
+    output: typeof CreateMyAPIKeyResponseSchema;
+  },
+  /**
+   * @generated from rpc specgraph.v1.IdentityService.ListMyAPIKeys
+   */
+  listMyAPIKeys: {
+    methodKind: "unary";
+    input: typeof ListMyAPIKeysRequestSchema;
+    output: typeof ListMyAPIKeysResponseSchema;
+  },
+  /**
+   * @generated from rpc specgraph.v1.IdentityService.RotateMyAPIKey
+   */
+  rotateMyAPIKey: {
+    methodKind: "unary";
+    input: typeof RotateMyAPIKeyRequestSchema;
+    output: typeof RotateMyAPIKeyResponseSchema;
+  },
+  /**
+   * @generated from rpc specgraph.v1.IdentityService.RevokeMyAPIKey
+   */
+  revokeMyAPIKey: {
+    methodKind: "unary";
+    input: typeof RevokeMyAPIKeyRequestSchema;
+    output: typeof RevokeMyAPIKeyResponseSchema;
   },
   /**
    * @generated from rpc specgraph.v1.IdentityService.ListOIDCBindings

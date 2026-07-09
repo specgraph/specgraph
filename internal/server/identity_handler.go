@@ -390,3 +390,34 @@ func (h *IdentityHandler) UnbindOIDC(ctx context.Context, req *connect.Request[s
 	}
 	return connect.NewResponse(&specv1.UnbindOIDCResponse{}), nil
 }
+
+// The methods below are compile stubs added in plan 02-01 (proto/gen only) so
+// the tree builds against the expanded IdentityServiceHandler interface. Real
+// logic is implemented downstream in this phase: the four self-service handlers
+// and ResyncUserRole (owner derived from context, quota/rate-limit, hard
+// off-board). Until then they return CodeUnimplemented.
+
+// CreateMyAPIKey is a compile stub; implemented downstream (AUTH-03).
+func (h *IdentityHandler) CreateMyAPIKey(_ context.Context, _ *connect.Request[specv1.CreateMyAPIKeyRequest]) (*connect.Response[specv1.CreateMyAPIKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("CreateMyAPIKey not implemented"))
+}
+
+// ListMyAPIKeys is a compile stub; implemented downstream (AUTH-03).
+func (h *IdentityHandler) ListMyAPIKeys(_ context.Context, _ *connect.Request[specv1.ListMyAPIKeysRequest]) (*connect.Response[specv1.ListMyAPIKeysResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListMyAPIKeys not implemented"))
+}
+
+// RotateMyAPIKey is a compile stub; implemented downstream (AUTH-03).
+func (h *IdentityHandler) RotateMyAPIKey(_ context.Context, _ *connect.Request[specv1.RotateMyAPIKeyRequest]) (*connect.Response[specv1.RotateMyAPIKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("RotateMyAPIKey not implemented"))
+}
+
+// RevokeMyAPIKey is a compile stub; implemented downstream (AUTH-03).
+func (h *IdentityHandler) RevokeMyAPIKey(_ context.Context, _ *connect.Request[specv1.RevokeMyAPIKeyRequest]) (*connect.Response[specv1.RevokeMyAPIKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("RevokeMyAPIKey not implemented"))
+}
+
+// ResyncUserRole is a compile stub; implemented downstream (AUTH-02).
+func (h *IdentityHandler) ResyncUserRole(_ context.Context, _ *connect.Request[specv1.ResyncUserRoleRequest]) (*connect.Response[specv1.ResyncUserRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ResyncUserRole not implemented"))
+}

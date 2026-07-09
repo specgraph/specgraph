@@ -49,6 +49,9 @@ const (
 	// IdentityServiceUpdateUserRoleProcedure is the fully-qualified name of the IdentityService's
 	// UpdateUserRole RPC.
 	IdentityServiceUpdateUserRoleProcedure = "/specgraph.v1.IdentityService/UpdateUserRole"
+	// IdentityServiceResyncUserRoleProcedure is the fully-qualified name of the IdentityService's
+	// ResyncUserRole RPC.
+	IdentityServiceResyncUserRoleProcedure = "/specgraph.v1.IdentityService/ResyncUserRole"
 	// IdentityServiceSoftDeleteUserProcedure is the fully-qualified name of the IdentityService's
 	// SoftDeleteUser RPC.
 	IdentityServiceSoftDeleteUserProcedure = "/specgraph.v1.IdentityService/SoftDeleteUser"
@@ -67,6 +70,18 @@ const (
 	// IdentityServiceListAPIKeysProcedure is the fully-qualified name of the IdentityService's
 	// ListAPIKeys RPC.
 	IdentityServiceListAPIKeysProcedure = "/specgraph.v1.IdentityService/ListAPIKeys"
+	// IdentityServiceCreateMyAPIKeyProcedure is the fully-qualified name of the IdentityService's
+	// CreateMyAPIKey RPC.
+	IdentityServiceCreateMyAPIKeyProcedure = "/specgraph.v1.IdentityService/CreateMyAPIKey"
+	// IdentityServiceListMyAPIKeysProcedure is the fully-qualified name of the IdentityService's
+	// ListMyAPIKeys RPC.
+	IdentityServiceListMyAPIKeysProcedure = "/specgraph.v1.IdentityService/ListMyAPIKeys"
+	// IdentityServiceRotateMyAPIKeyProcedure is the fully-qualified name of the IdentityService's
+	// RotateMyAPIKey RPC.
+	IdentityServiceRotateMyAPIKeyProcedure = "/specgraph.v1.IdentityService/RotateMyAPIKey"
+	// IdentityServiceRevokeMyAPIKeyProcedure is the fully-qualified name of the IdentityService's
+	// RevokeMyAPIKey RPC.
+	IdentityServiceRevokeMyAPIKeyProcedure = "/specgraph.v1.IdentityService/RevokeMyAPIKey"
 	// IdentityServiceListOIDCBindingsProcedure is the fully-qualified name of the IdentityService's
 	// ListOIDCBindings RPC.
 	IdentityServiceListOIDCBindingsProcedure = "/specgraph.v1.IdentityService/ListOIDCBindings"
@@ -82,12 +97,19 @@ type IdentityServiceClient interface {
 	GetUser(context.Context, *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.GetUserResponse], error)
 	CreateServiceAccount(context.Context, *connect.Request[v1.CreateServiceAccountRequest]) (*connect.Response[v1.CreateServiceAccountResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
+	ResyncUserRole(context.Context, *connect.Request[v1.ResyncUserRoleRequest]) (*connect.Response[v1.ResyncUserRoleResponse], error)
 	SoftDeleteUser(context.Context, *connect.Request[v1.SoftDeleteUserRequest]) (*connect.Response[v1.SoftDeleteUserResponse], error)
 	PurgeUser(context.Context, *connect.Request[v1.PurgeUserRequest]) (*connect.Response[v1.PurgeUserResponse], error)
 	CreateAPIKey(context.Context, *connect.Request[v1.CreateAPIKeyRequest]) (*connect.Response[v1.CreateAPIKeyResponse], error)
 	RevokeAPIKey(context.Context, *connect.Request[v1.RevokeAPIKeyRequest]) (*connect.Response[v1.RevokeAPIKeyResponse], error)
 	RotateAPIKey(context.Context, *connect.Request[v1.RotateAPIKeyRequest]) (*connect.Response[v1.RotateAPIKeyResponse], error)
 	ListAPIKeys(context.Context, *connect.Request[v1.ListAPIKeysRequest]) (*connect.Response[v1.ListAPIKeysResponse], error)
+	// Self-scoped API-key RPCs (AUTH-03): owner is derived from context; the
+	// request messages carry NO user_id/target field by design.
+	CreateMyAPIKey(context.Context, *connect.Request[v1.CreateMyAPIKeyRequest]) (*connect.Response[v1.CreateMyAPIKeyResponse], error)
+	ListMyAPIKeys(context.Context, *connect.Request[v1.ListMyAPIKeysRequest]) (*connect.Response[v1.ListMyAPIKeysResponse], error)
+	RotateMyAPIKey(context.Context, *connect.Request[v1.RotateMyAPIKeyRequest]) (*connect.Response[v1.RotateMyAPIKeyResponse], error)
+	RevokeMyAPIKey(context.Context, *connect.Request[v1.RevokeMyAPIKeyRequest]) (*connect.Response[v1.RevokeMyAPIKeyResponse], error)
 	ListOIDCBindings(context.Context, *connect.Request[v1.ListOIDCBindingsRequest]) (*connect.Response[v1.ListOIDCBindingsResponse], error)
 	UnbindOIDC(context.Context, *connect.Request[v1.UnbindOIDCRequest]) (*connect.Response[v1.UnbindOIDCResponse], error)
 }
@@ -133,6 +155,12 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(identityServiceMethods.ByName("UpdateUserRole")),
 			connect.WithClientOptions(opts...),
 		),
+		resyncUserRole: connect.NewClient[v1.ResyncUserRoleRequest, v1.ResyncUserRoleResponse](
+			httpClient,
+			baseURL+IdentityServiceResyncUserRoleProcedure,
+			connect.WithSchema(identityServiceMethods.ByName("ResyncUserRole")),
+			connect.WithClientOptions(opts...),
+		),
 		softDeleteUser: connect.NewClient[v1.SoftDeleteUserRequest, v1.SoftDeleteUserResponse](
 			httpClient,
 			baseURL+IdentityServiceSoftDeleteUserProcedure,
@@ -169,6 +197,30 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(identityServiceMethods.ByName("ListAPIKeys")),
 			connect.WithClientOptions(opts...),
 		),
+		createMyAPIKey: connect.NewClient[v1.CreateMyAPIKeyRequest, v1.CreateMyAPIKeyResponse](
+			httpClient,
+			baseURL+IdentityServiceCreateMyAPIKeyProcedure,
+			connect.WithSchema(identityServiceMethods.ByName("CreateMyAPIKey")),
+			connect.WithClientOptions(opts...),
+		),
+		listMyAPIKeys: connect.NewClient[v1.ListMyAPIKeysRequest, v1.ListMyAPIKeysResponse](
+			httpClient,
+			baseURL+IdentityServiceListMyAPIKeysProcedure,
+			connect.WithSchema(identityServiceMethods.ByName("ListMyAPIKeys")),
+			connect.WithClientOptions(opts...),
+		),
+		rotateMyAPIKey: connect.NewClient[v1.RotateMyAPIKeyRequest, v1.RotateMyAPIKeyResponse](
+			httpClient,
+			baseURL+IdentityServiceRotateMyAPIKeyProcedure,
+			connect.WithSchema(identityServiceMethods.ByName("RotateMyAPIKey")),
+			connect.WithClientOptions(opts...),
+		),
+		revokeMyAPIKey: connect.NewClient[v1.RevokeMyAPIKeyRequest, v1.RevokeMyAPIKeyResponse](
+			httpClient,
+			baseURL+IdentityServiceRevokeMyAPIKeyProcedure,
+			connect.WithSchema(identityServiceMethods.ByName("RevokeMyAPIKey")),
+			connect.WithClientOptions(opts...),
+		),
 		listOIDCBindings: connect.NewClient[v1.ListOIDCBindingsRequest, v1.ListOIDCBindingsResponse](
 			httpClient,
 			baseURL+IdentityServiceListOIDCBindingsProcedure,
@@ -191,12 +243,17 @@ type identityServiceClient struct {
 	getUser              *connect.Client[v1.GetUserRequest, v1.GetUserResponse]
 	createServiceAccount *connect.Client[v1.CreateServiceAccountRequest, v1.CreateServiceAccountResponse]
 	updateUserRole       *connect.Client[v1.UpdateUserRoleRequest, v1.UpdateUserRoleResponse]
+	resyncUserRole       *connect.Client[v1.ResyncUserRoleRequest, v1.ResyncUserRoleResponse]
 	softDeleteUser       *connect.Client[v1.SoftDeleteUserRequest, v1.SoftDeleteUserResponse]
 	purgeUser            *connect.Client[v1.PurgeUserRequest, v1.PurgeUserResponse]
 	createAPIKey         *connect.Client[v1.CreateAPIKeyRequest, v1.CreateAPIKeyResponse]
 	revokeAPIKey         *connect.Client[v1.RevokeAPIKeyRequest, v1.RevokeAPIKeyResponse]
 	rotateAPIKey         *connect.Client[v1.RotateAPIKeyRequest, v1.RotateAPIKeyResponse]
 	listAPIKeys          *connect.Client[v1.ListAPIKeysRequest, v1.ListAPIKeysResponse]
+	createMyAPIKey       *connect.Client[v1.CreateMyAPIKeyRequest, v1.CreateMyAPIKeyResponse]
+	listMyAPIKeys        *connect.Client[v1.ListMyAPIKeysRequest, v1.ListMyAPIKeysResponse]
+	rotateMyAPIKey       *connect.Client[v1.RotateMyAPIKeyRequest, v1.RotateMyAPIKeyResponse]
+	revokeMyAPIKey       *connect.Client[v1.RevokeMyAPIKeyRequest, v1.RevokeMyAPIKeyResponse]
 	listOIDCBindings     *connect.Client[v1.ListOIDCBindingsRequest, v1.ListOIDCBindingsResponse]
 	unbindOIDC           *connect.Client[v1.UnbindOIDCRequest, v1.UnbindOIDCResponse]
 }
@@ -224,6 +281,11 @@ func (c *identityServiceClient) CreateServiceAccount(ctx context.Context, req *c
 // UpdateUserRole calls specgraph.v1.IdentityService.UpdateUserRole.
 func (c *identityServiceClient) UpdateUserRole(ctx context.Context, req *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error) {
 	return c.updateUserRole.CallUnary(ctx, req)
+}
+
+// ResyncUserRole calls specgraph.v1.IdentityService.ResyncUserRole.
+func (c *identityServiceClient) ResyncUserRole(ctx context.Context, req *connect.Request[v1.ResyncUserRoleRequest]) (*connect.Response[v1.ResyncUserRoleResponse], error) {
+	return c.resyncUserRole.CallUnary(ctx, req)
 }
 
 // SoftDeleteUser calls specgraph.v1.IdentityService.SoftDeleteUser.
@@ -256,6 +318,26 @@ func (c *identityServiceClient) ListAPIKeys(ctx context.Context, req *connect.Re
 	return c.listAPIKeys.CallUnary(ctx, req)
 }
 
+// CreateMyAPIKey calls specgraph.v1.IdentityService.CreateMyAPIKey.
+func (c *identityServiceClient) CreateMyAPIKey(ctx context.Context, req *connect.Request[v1.CreateMyAPIKeyRequest]) (*connect.Response[v1.CreateMyAPIKeyResponse], error) {
+	return c.createMyAPIKey.CallUnary(ctx, req)
+}
+
+// ListMyAPIKeys calls specgraph.v1.IdentityService.ListMyAPIKeys.
+func (c *identityServiceClient) ListMyAPIKeys(ctx context.Context, req *connect.Request[v1.ListMyAPIKeysRequest]) (*connect.Response[v1.ListMyAPIKeysResponse], error) {
+	return c.listMyAPIKeys.CallUnary(ctx, req)
+}
+
+// RotateMyAPIKey calls specgraph.v1.IdentityService.RotateMyAPIKey.
+func (c *identityServiceClient) RotateMyAPIKey(ctx context.Context, req *connect.Request[v1.RotateMyAPIKeyRequest]) (*connect.Response[v1.RotateMyAPIKeyResponse], error) {
+	return c.rotateMyAPIKey.CallUnary(ctx, req)
+}
+
+// RevokeMyAPIKey calls specgraph.v1.IdentityService.RevokeMyAPIKey.
+func (c *identityServiceClient) RevokeMyAPIKey(ctx context.Context, req *connect.Request[v1.RevokeMyAPIKeyRequest]) (*connect.Response[v1.RevokeMyAPIKeyResponse], error) {
+	return c.revokeMyAPIKey.CallUnary(ctx, req)
+}
+
 // ListOIDCBindings calls specgraph.v1.IdentityService.ListOIDCBindings.
 func (c *identityServiceClient) ListOIDCBindings(ctx context.Context, req *connect.Request[v1.ListOIDCBindingsRequest]) (*connect.Response[v1.ListOIDCBindingsResponse], error) {
 	return c.listOIDCBindings.CallUnary(ctx, req)
@@ -273,12 +355,19 @@ type IdentityServiceHandler interface {
 	GetUser(context.Context, *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.GetUserResponse], error)
 	CreateServiceAccount(context.Context, *connect.Request[v1.CreateServiceAccountRequest]) (*connect.Response[v1.CreateServiceAccountResponse], error)
 	UpdateUserRole(context.Context, *connect.Request[v1.UpdateUserRoleRequest]) (*connect.Response[v1.UpdateUserRoleResponse], error)
+	ResyncUserRole(context.Context, *connect.Request[v1.ResyncUserRoleRequest]) (*connect.Response[v1.ResyncUserRoleResponse], error)
 	SoftDeleteUser(context.Context, *connect.Request[v1.SoftDeleteUserRequest]) (*connect.Response[v1.SoftDeleteUserResponse], error)
 	PurgeUser(context.Context, *connect.Request[v1.PurgeUserRequest]) (*connect.Response[v1.PurgeUserResponse], error)
 	CreateAPIKey(context.Context, *connect.Request[v1.CreateAPIKeyRequest]) (*connect.Response[v1.CreateAPIKeyResponse], error)
 	RevokeAPIKey(context.Context, *connect.Request[v1.RevokeAPIKeyRequest]) (*connect.Response[v1.RevokeAPIKeyResponse], error)
 	RotateAPIKey(context.Context, *connect.Request[v1.RotateAPIKeyRequest]) (*connect.Response[v1.RotateAPIKeyResponse], error)
 	ListAPIKeys(context.Context, *connect.Request[v1.ListAPIKeysRequest]) (*connect.Response[v1.ListAPIKeysResponse], error)
+	// Self-scoped API-key RPCs (AUTH-03): owner is derived from context; the
+	// request messages carry NO user_id/target field by design.
+	CreateMyAPIKey(context.Context, *connect.Request[v1.CreateMyAPIKeyRequest]) (*connect.Response[v1.CreateMyAPIKeyResponse], error)
+	ListMyAPIKeys(context.Context, *connect.Request[v1.ListMyAPIKeysRequest]) (*connect.Response[v1.ListMyAPIKeysResponse], error)
+	RotateMyAPIKey(context.Context, *connect.Request[v1.RotateMyAPIKeyRequest]) (*connect.Response[v1.RotateMyAPIKeyResponse], error)
+	RevokeMyAPIKey(context.Context, *connect.Request[v1.RevokeMyAPIKeyRequest]) (*connect.Response[v1.RevokeMyAPIKeyResponse], error)
 	ListOIDCBindings(context.Context, *connect.Request[v1.ListOIDCBindingsRequest]) (*connect.Response[v1.ListOIDCBindingsResponse], error)
 	UnbindOIDC(context.Context, *connect.Request[v1.UnbindOIDCRequest]) (*connect.Response[v1.UnbindOIDCResponse], error)
 }
@@ -320,6 +409,12 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 		connect.WithSchema(identityServiceMethods.ByName("UpdateUserRole")),
 		connect.WithHandlerOptions(opts...),
 	)
+	identityServiceResyncUserRoleHandler := connect.NewUnaryHandler(
+		IdentityServiceResyncUserRoleProcedure,
+		svc.ResyncUserRole,
+		connect.WithSchema(identityServiceMethods.ByName("ResyncUserRole")),
+		connect.WithHandlerOptions(opts...),
+	)
 	identityServiceSoftDeleteUserHandler := connect.NewUnaryHandler(
 		IdentityServiceSoftDeleteUserProcedure,
 		svc.SoftDeleteUser,
@@ -356,6 +451,30 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 		connect.WithSchema(identityServiceMethods.ByName("ListAPIKeys")),
 		connect.WithHandlerOptions(opts...),
 	)
+	identityServiceCreateMyAPIKeyHandler := connect.NewUnaryHandler(
+		IdentityServiceCreateMyAPIKeyProcedure,
+		svc.CreateMyAPIKey,
+		connect.WithSchema(identityServiceMethods.ByName("CreateMyAPIKey")),
+		connect.WithHandlerOptions(opts...),
+	)
+	identityServiceListMyAPIKeysHandler := connect.NewUnaryHandler(
+		IdentityServiceListMyAPIKeysProcedure,
+		svc.ListMyAPIKeys,
+		connect.WithSchema(identityServiceMethods.ByName("ListMyAPIKeys")),
+		connect.WithHandlerOptions(opts...),
+	)
+	identityServiceRotateMyAPIKeyHandler := connect.NewUnaryHandler(
+		IdentityServiceRotateMyAPIKeyProcedure,
+		svc.RotateMyAPIKey,
+		connect.WithSchema(identityServiceMethods.ByName("RotateMyAPIKey")),
+		connect.WithHandlerOptions(opts...),
+	)
+	identityServiceRevokeMyAPIKeyHandler := connect.NewUnaryHandler(
+		IdentityServiceRevokeMyAPIKeyProcedure,
+		svc.RevokeMyAPIKey,
+		connect.WithSchema(identityServiceMethods.ByName("RevokeMyAPIKey")),
+		connect.WithHandlerOptions(opts...),
+	)
 	identityServiceListOIDCBindingsHandler := connect.NewUnaryHandler(
 		IdentityServiceListOIDCBindingsProcedure,
 		svc.ListOIDCBindings,
@@ -380,6 +499,8 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 			identityServiceCreateServiceAccountHandler.ServeHTTP(w, r)
 		case IdentityServiceUpdateUserRoleProcedure:
 			identityServiceUpdateUserRoleHandler.ServeHTTP(w, r)
+		case IdentityServiceResyncUserRoleProcedure:
+			identityServiceResyncUserRoleHandler.ServeHTTP(w, r)
 		case IdentityServiceSoftDeleteUserProcedure:
 			identityServiceSoftDeleteUserHandler.ServeHTTP(w, r)
 		case IdentityServicePurgeUserProcedure:
@@ -392,6 +513,14 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 			identityServiceRotateAPIKeyHandler.ServeHTTP(w, r)
 		case IdentityServiceListAPIKeysProcedure:
 			identityServiceListAPIKeysHandler.ServeHTTP(w, r)
+		case IdentityServiceCreateMyAPIKeyProcedure:
+			identityServiceCreateMyAPIKeyHandler.ServeHTTP(w, r)
+		case IdentityServiceListMyAPIKeysProcedure:
+			identityServiceListMyAPIKeysHandler.ServeHTTP(w, r)
+		case IdentityServiceRotateMyAPIKeyProcedure:
+			identityServiceRotateMyAPIKeyHandler.ServeHTTP(w, r)
+		case IdentityServiceRevokeMyAPIKeyProcedure:
+			identityServiceRevokeMyAPIKeyHandler.ServeHTTP(w, r)
 		case IdentityServiceListOIDCBindingsProcedure:
 			identityServiceListOIDCBindingsHandler.ServeHTTP(w, r)
 		case IdentityServiceUnbindOIDCProcedure:
@@ -425,6 +554,10 @@ func (UnimplementedIdentityServiceHandler) UpdateUserRole(context.Context, *conn
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.IdentityService.UpdateUserRole is not implemented"))
 }
 
+func (UnimplementedIdentityServiceHandler) ResyncUserRole(context.Context, *connect.Request[v1.ResyncUserRoleRequest]) (*connect.Response[v1.ResyncUserRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.IdentityService.ResyncUserRole is not implemented"))
+}
+
 func (UnimplementedIdentityServiceHandler) SoftDeleteUser(context.Context, *connect.Request[v1.SoftDeleteUserRequest]) (*connect.Response[v1.SoftDeleteUserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.IdentityService.SoftDeleteUser is not implemented"))
 }
@@ -447,6 +580,22 @@ func (UnimplementedIdentityServiceHandler) RotateAPIKey(context.Context, *connec
 
 func (UnimplementedIdentityServiceHandler) ListAPIKeys(context.Context, *connect.Request[v1.ListAPIKeysRequest]) (*connect.Response[v1.ListAPIKeysResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.IdentityService.ListAPIKeys is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) CreateMyAPIKey(context.Context, *connect.Request[v1.CreateMyAPIKeyRequest]) (*connect.Response[v1.CreateMyAPIKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.IdentityService.CreateMyAPIKey is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) ListMyAPIKeys(context.Context, *connect.Request[v1.ListMyAPIKeysRequest]) (*connect.Response[v1.ListMyAPIKeysResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.IdentityService.ListMyAPIKeys is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) RotateMyAPIKey(context.Context, *connect.Request[v1.RotateMyAPIKeyRequest]) (*connect.Response[v1.RotateMyAPIKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.IdentityService.RotateMyAPIKey is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) RevokeMyAPIKey(context.Context, *connect.Request[v1.RevokeMyAPIKeyRequest]) (*connect.Response[v1.RevokeMyAPIKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.IdentityService.RevokeMyAPIKey is not implemented"))
 }
 
 func (UnimplementedIdentityServiceHandler) ListOIDCBindings(context.Context, *connect.Request[v1.ListOIDCBindingsRequest]) (*connect.Response[v1.ListOIDCBindingsResponse], error) {
