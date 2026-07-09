@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: api-key-lifecycle-self-service
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-07-09T16:33:00.406Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-07-09T16:44:06.811Z"
 last_activity: 2026-07-09
 last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 9
-  completed_plans: 2
-  percent: 22
+  completed_plans: 3
+  percent: 25
 ---
 
 # Project State
@@ -32,7 +32,7 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 ## Current Position
 
 Phase: 02 (api-key-lifecycle-self-service) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-07-09 — Phase 02 execution started
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01 P01 | 7min | 2 tasks | 2 files |
 | Phase 02 P01 | 4min | 2 tasks | 5 files |
+| Phase 02 P02 | 7 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
   no other natural cluster-mate.
 
 - [Phase 01]: CFG-02: pinned golangci-lint via a single Taskfile.yml var + go install (matching CI's existing method), with a silent leaf task exposing it to CI via command substitution — Closes local (brew, unpinned) vs CI (pinned) version drift structurally — one declaration, one install method for both sides
+- [Phase 02]: RotateAPIKeyForUser takes an explicit newKey (handler-owned secret + floored downgrade + capped expiry), never inheriting the old key ceiling
+- [Phase 02]: Quota-safe self-mint serializes a user's mints via a parent users-row FOR UPDATE lock (not count(*) FOR UPDATE); count+insert inside the tx
 
 ### Pending Todos
 
@@ -103,6 +106,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T16:33:00.400Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-07-09T16:44:06.805Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
