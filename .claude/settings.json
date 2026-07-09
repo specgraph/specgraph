@@ -7,44 +7,22 @@
       {
         "hooks": [
           {
-            "command": "task lint 2\u003e/dev/null || true",
+            "command": "task lint 2>/dev/null || true",
             "type": "command"
           }
         ],
         "matcher": "Bash"
       }
     ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "command": "bd prime",
-            "type": "command"
-          }
-        ],
-        "matcher": ""
-      }
-    ],
     "PreToolUse": [
       {
         "hooks": [
           {
-            "command": "if echo \"$CLAUDE_TOOL_PARAM_file_path\" | grep -q '/gen/'; then echo 'BLOCK: gen/ files are auto-generated — edit .proto files instead'; exit 2; fi",
+            "command": "if echo \"$CLAUDE_TOOL_PARAM_file_path\" | grep -q '/gen/'; then echo 'BLOCK: gen/ files are auto-generated \u2014 edit .proto files instead'; exit 2; fi",
             "type": "command"
           }
         ],
         "matcher": "Edit|Write"
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "command": "bd prime",
-            "type": "command"
-          }
-        ],
-        "matcher": ""
       }
     ]
   }
