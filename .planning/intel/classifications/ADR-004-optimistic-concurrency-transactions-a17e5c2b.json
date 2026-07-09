@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/decisions/ADR-004-optimistic-concurrency-transactions.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "ADR-004: Optimistic Concurrency with Transaction-Wrapped Write Paths",
+  "summary": "Decision to wrap multi-query write paths in transactions with version-guard optimistic concurrency for conflict detection.",
+  "scope": ["RunInTransaction", "ConnectRPC server", "spec mutation", "ChangeLog", "version guards", "ErrConcurrentModification"],
+  "cross_refs": [],
+  "locked": true,
+  "precedence": null,
+  "notes": ""
+}

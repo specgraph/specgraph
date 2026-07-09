@@ -1,0 +1,14 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-29-list-changes-rpc.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "ListChanges RPC Implementation Plan",
+  "summary": "Step-by-step implementation plan to expose ChangeLogBackend.ListChanges via a new ConnectRPC endpoint, CLI command, and renderer.",
+  "scope": ["ListChanges RPC", "SpecService", "ChangeLogBackend", "CLI changes command", "changelog renderer"],
+  "cross_refs": ["docs/superpowers/specs/2026-03-29-list-changes-rpc-design.md"],
+  "locked_markers": null,
+  "locked": false,
+  "precedence": null,
+  "notes": "Task-checklist implementation plan, not itself a decision/requirement/spec contract; it implements a separate linked design spec. Classified as DOC (context/execution guidance) rather than SPEC since it contains no independent API/schema contract beyond restating the linked design."
+}

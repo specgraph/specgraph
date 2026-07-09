@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-11-spgr-rwrp-pr-b-implementation-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "PR B — Port existing managed files implementation plan",
+  "summary": "Task-by-task implementation plan to migrate specgraph's five managed files onto the managedfiles framework and delete legacy packages.",
+  "scope": ["internal/config/managedfiles", "mcpconfigs", "pointers", "cmd/specgraph/init.go", "managed files sync"],
+  "cross_refs": ["docs/plans/2026-05-11-spgr-rwrp-pr-b-port-managed-files-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

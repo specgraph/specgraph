@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-20-repo-org-move.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Repository Organization Move Implementation Plan",
+  "summary": "Step-by-step plan to bulk-update repo/module/org references after transferring the GitHub repo to the specgraph org.",
+  "scope": ["go.mod", "proto go_package options", "gen/ regeneration", "site config", "plugin.json", "docker compose", "README/CLAUDE.md", "docs/plans"],
+  "cross_refs": ["docs/superpowers/specs/2026-03-20-repo-org-move-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Implementation plan/checklist, not a PRD or ADR; no decision rationale or user-facing requirements, purely mechanical migration tasks."
+}

@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-28-oidc-authentication-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "OIDC Authentication Design",
+  "summary": "Technical design for multi-provider OIDC authentication (Azure Entra ID, GitHub) plus local accounts in SpecGraph's auth system.",
+  "scope": ["OIDC authentication", "IdentityStore", "CompositeStore", "JWKS validation", "auth config schema", "credentials.yaml", "claims mapping", "bootstrap admin API key"],
+  "cross_refs": ["PR #38", "spgr-0az", "spgr-5wb"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

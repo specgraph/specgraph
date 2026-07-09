@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-12-spgr-rwrp-pr-e-claude-plugin-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "spgr-rwrp PR E — Claude plugin shim via embed-and-write",
+  "summary": "Technical design for writing the Claude Code plugin shim to end-user projects via embed-and-write, extending managed JSON/file strategies.",
+  "scope": ["Claude plugin shim", "internal/config/managedfiles", "JSONKeyMerge", "WholeFile strategy", "specgraph init", ".claude/settings.json", "marketplace.json", "plugin.json", "hooks"],
+  "cross_refs": ["2026-05-08-spgr-rwrp-harness-install-parity-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

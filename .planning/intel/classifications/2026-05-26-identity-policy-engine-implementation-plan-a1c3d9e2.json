@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-26-identity-policy-engine-implementation-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Identity Policy Engine (Cedar) Implementation Plan",
+  "summary": "Task-by-task implementation plan for replacing StaticTableAuthorizer with a Cedar-based CedarAuthorizer/PolicyEngine.",
+  "scope": ["cedar-go", "auth.Authorizer", "PolicyEngine", "CedarAuthorizer", "StaticTableAuthorizer", "interceptor", "internal/auth", "internal/config/global.go", "cmd/specgraph/serve.go"],
+  "cross_refs": ["docs/plans/2026-05-26-identity-policy-engine-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

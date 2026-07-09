@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-26-web-ui-demo-readiness-design.md",
+  "type": "SPEC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Web UI Demo-Readiness: Dashboard Overhaul + Detail Page Enhancements",
+  "summary": "Design for dashboard tabs, detail-page metadata/findings, and proto/backend changes to close web UI data gaps before demos.",
+  "scope": ["web UI dashboard", "spec detail page", "decision detail page", "conversation_count proto field", "SpecTable/TabBar/FindingsSection/MetadataBar components", "ListSpecs query", "analyticalPassClient"],
+  "cross_refs": ["spgr-5re", "spgr-cdd", "proto/specgraph/v1/spec.proto"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Filed under docs/superpowers/specs/ with 'design' in filename and Status: Approved (ADR-like), but content is implementation contract (proto fields, file changes, component tables) rather than a single architectural decision or user-facing requirements list; classified SPEC over ADR/PRD due to concrete technical contract signals dominating."
+}

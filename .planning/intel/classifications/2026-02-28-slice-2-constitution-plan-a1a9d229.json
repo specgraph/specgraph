@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-02-28-slice-2-constitution-plan.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Slice 2: Constitution Implementation Plan",
+  "summary": "Task-by-task implementation plan for adding constitution create/store/query/validate/emit support and specgraph init generation.",
+  "scope": ["ConstitutionService", "Memgraph storage", "ConnectRPC handler", "CLI commands", "emitters", "specgraph init"],
+  "cross_refs": ["docs/plans/2026-02-28-vertical-slice-roadmap-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Structured as sequential implementation tasks with file lists and code snippets, not a decision record, requirements doc, or standalone technical spec; classified DOC by process of elimination."
+}

@@ -1,0 +1,24 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-26-identity-bootstrap-ux-4b-bootstrap-protections-implementation-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Identity Bootstrap & UX — Plan 4b: Bootstrap Flows, Credentials File & Protections",
+  "summary": "Implementation plan for DB-backed bootstrap helper, multi-server credentials file, and operator-protection guards for identity system.",
+  "scope": ["bootstrap.Ensure", "credentials file", "IdentityService RPCs", "SoftDeleteUser", "PurgeUser", "UnbindOIDC", "specgraph init", "serve.go"],
+  "cross_refs": [
+    "docs/plans/2026-05-22-identity-bootstrap-ux-design.md",
+    "internal/auth/bootstrap.go",
+    "internal/storage/postgres/postgrestest",
+    "proto/specgraph/v1/identity.proto",
+    "cmd/specgraph/client.go",
+    "cmd/specgraph/init.go",
+    "cmd/specgraph/serve.go",
+    "internal/server/identity_handler.go",
+    "cmd/specgraph/auth_user.go",
+    "cmd/specgraph/auth_oidc.go"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

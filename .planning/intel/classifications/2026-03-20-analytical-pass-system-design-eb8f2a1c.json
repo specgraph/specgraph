@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-20-analytical-pass-system-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Analytical Pass System Design",
+  "summary": "Design for a new AnalyticalPassService RPC system replacing hardcoded constitution checks with LLM-driven pass execution and findings storage.",
+  "scope": ["AnalyticalPassService", "RunAnalyticalPass RPC", "StoreFindings RPC", "ListFindings RPC", "AnalyticalFinding type", "constitution_check pass", "pass registry", "prompt templates"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

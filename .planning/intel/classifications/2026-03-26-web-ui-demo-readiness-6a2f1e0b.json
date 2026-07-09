@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-26-web-ui-demo-readiness.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Web UI Demo-Readiness Implementation Plan",
+  "summary": "Implementation plan adding a browseable spec table, findings, linked specs, and metadata to the web UI dashboard and detail pages.",
+  "scope": ["web UI", "dashboard", "spec detail page", "decision detail page", "conversation_count field", "AnalyticalPassService", "Svelte components"],
+  "cross_refs": ["docs/superpowers/specs/2026-03-26-web-ui-demo-readiness-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

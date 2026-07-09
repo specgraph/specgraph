@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-04-08-lifecycle-nomenclature-inversion-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Lifecycle Nomenclature Inversion — Design Spec",
+  "summary": "Design spec fixing inverted amend/supersede semantics and removing the amended parking stage in the spec lifecycle model.",
+  "scope": ["spec lifecycle", "amend transition", "supersede transition", "SpecStage", "stage validation", "storage domain", "lifecycle handler", "error sentinels"],
+  "cross_refs": ["internal/storage/spec_domain.go", "internal/storage/stage_validation.go", "internal/storage/postgres/lifecycle.go", "internal/storage/lifecycle.go", "internal/server/lifecycle_handler.go"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

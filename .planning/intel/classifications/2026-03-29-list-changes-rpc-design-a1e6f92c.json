@@ -1,0 +1,23 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-29-list-changes-rpc-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "ListChanges RPC Design",
+  "summary": "Technical design for exposing ChangeLogBackend.ListChanges via a new ConnectRPC endpoint, proto messages, handler, CLI, and renderer.",
+  "scope": ["SpecService", "ListChanges RPC", "ChangeLogEntry proto message", "spec_handler.go", "changelog renderer", "changes CLI command", "permissions"],
+  "cross_refs": [
+    "proto/specgraph/v1/spec.proto",
+    "internal/server/spec_handler.go",
+    "internal/server/convert_changelog.go",
+    "internal/server/convert_changelog_test.go",
+    "internal/auth/permissions.go",
+    "internal/render/changelog.go",
+    "internal/render/changelog_test.go",
+    "cmd/specgraph/changes.go",
+    "internal/server/spec_handler_test.go"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

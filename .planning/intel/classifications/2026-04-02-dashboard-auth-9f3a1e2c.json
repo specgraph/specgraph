@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-04-02-dashboard-auth.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Dashboard Authentication Implementation Plan",
+  "summary": "Step-by-step implementation plan adding cookie-based session auth to the SpecGraph web dashboard alongside API key auth.",
+  "scope": ["dashboard authentication", "session cookies", "ConnectRPC interceptor", "REST middleware", "SvelteKit frontend", "login modal"],
+  "cross_refs": ["docs/superpowers/specs/2026-04-02-dashboard-auth-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

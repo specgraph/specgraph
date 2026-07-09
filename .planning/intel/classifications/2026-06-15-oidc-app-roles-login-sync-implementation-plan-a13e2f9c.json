@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-06-15-oidc-app-roles-login-sync-implementation-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "OIDC App-Roles + Login-Sync Implementation Plan",
+  "summary": "Implementation plan detailing file changes and task steps to refresh user metadata and re-derive roles on OIDC login.",
+  "scope": ["OIDC login sync", "app-roles", "pgIdentityStore", "resolveJWT", "UpdateUserOnLogin", "sync_on_login config flag"],
+  "cross_refs": ["docs/plans/2026-06-15-oidc-app-roles-login-sync-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

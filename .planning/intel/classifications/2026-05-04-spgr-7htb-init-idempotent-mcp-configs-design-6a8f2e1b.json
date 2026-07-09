@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-04-spgr-7htb-init-idempotent-mcp-configs-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "spgr-7htb: idempotent `specgraph init` with managed per-harness MCP configs",
+  "summary": "Design for making `specgraph init` idempotently generate and reconcile per-harness MCP config files via JSON Merge Patch.",
+  "scope": ["specgraph init", ".cursor/mcp.json", ".mcp.json", "opencode.json", "ManagedConfigs", "GlobalConfig.ResolveServer", ".specgraph.yaml"],
+  "cross_refs": ["internal/config/global.go", "internal/config/mcpconfigs/"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

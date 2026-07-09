@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-27-slice-service-handler.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "SliceService Handler + Decompose Handler Update Implementation Plan",
+  "summary": "Implementation plan to wire the SliceService ConnectRPC handler for listing, getting, claiming, and completing decomposition slices.",
+  "scope": ["SliceService", "ConnectRPC handler", "Memgraph storage", "slice_handler.go", "decompose handler"],
+  "cross_refs": ["docs/superpowers/specs/2026-03-26-slice-first-class-vertex-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

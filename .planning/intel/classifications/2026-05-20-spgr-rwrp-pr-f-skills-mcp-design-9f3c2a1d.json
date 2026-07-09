@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-20-spgr-rwrp-pr-f-skills-mcp-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "spgr-rwrp PR F — Skills via MCP resource handler",
+  "summary": "Design for embedding SpecGraph skills into the binary and serving them via MCP tools and a templated resource.",
+  "scope": ["skills", "MCP server", "internal/mcp/skills", "embeddedSource", "specgraph_skills_list", "specgraph_skills_get", "specgraph_skills_search", "specgraph://skills resource", "harness shims", "prime template"],
+  "cross_refs": ["2026-05-08-spgr-rwrp-harness-install-parity-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

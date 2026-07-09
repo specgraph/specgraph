@@ -1,0 +1,21 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-05-20-spec-provenance-model-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Spec Provenance Model — Design",
+  "summary": "Replaces SpecLifecycle enum with a SpecProvenance field to fix stage/provenance conflation and the specgraph ready query.",
+  "scope": ["SpecProvenance enum", "SpecLifecycle", "specgraph ready query", "GetReady", "spec stage taxonomy", "amend vs supersede", "GenerateBundle", "spec_domain.go"],
+  "cross_refs": [
+    "internal/storage/postgres/graph.go",
+    "docs/plans/2026-03-07-slice-5-spec-lifecycle-revised-plan.md",
+    "internal/storage/postgres/migrations/005_remove_amended_stage.sql",
+    "proto/specgraph/v1/authoring.proto",
+    "internal/storage/spec_domain.go",
+    "internal/storage/postgres/execution.go",
+    "internal/storage/postgres/lifecycle.go"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

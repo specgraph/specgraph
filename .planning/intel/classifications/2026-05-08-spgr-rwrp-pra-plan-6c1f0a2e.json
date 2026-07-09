@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-08-spgr-rwrp-pra-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "PR A — managedfiles framework foundation implementation plan",
+  "summary": "Implementation plan for building the internal/config/managedfiles package foundation with types, primitives, and safety guarantees.",
+  "scope": ["internal/config/managedfiles", "xdg.CacheHome", "ManagedFile", "drift detection", "harness install parity"],
+  "cross_refs": ["docs/plans/2026-05-08-spgr-rwrp-harness-install-parity-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

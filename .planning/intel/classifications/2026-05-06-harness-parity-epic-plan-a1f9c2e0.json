@@ -1,0 +1,21 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-06-harness-parity-epic-plan.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Harness Parity Epic Implementation Plan",
+  "summary": "Task-by-task implementation plan for shared skills layer and per-harness shims across Claude Code, Cursor, and OpenCode.",
+  "scope": ["skills layer", "Claude Code shim", "Cursor shim", "OpenCode shim", "MCP approve prompt", "post-stage analytical passes"],
+  "cross_refs": [
+    "docs/plans/2026-05-06-harness-parity-epic-design.md",
+    "docs/plans/2026-02-28-slice-7-claude-code-plugin-plan.md",
+    "docs/plans/2026-03-16-slice-7-global-daemon-and-plugin-design.md",
+    "docs/plans/2026-03-16-slice-7-global-daemon-and-plugin-plan.md",
+    "docs/plans/2026-03-17-skill-personas-design.md",
+    "docs/plans/2026-03-17-skill-personas-plan.md",
+    "docs/plans/README.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Implementation plan document (task list/checkboxes, file structure, task ordering) rather than prose guide; does not fit ADR/PRD/SPEC hallmarks so classified as DOC, but is more procedural than typical DOC context material."
+}

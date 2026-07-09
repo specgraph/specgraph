@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-22-structured-specify-output-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Structured SpecifyOutput",
+  "summary": "Proto schema redesign replacing flat SpecifyOutput fields with structured sub-messages for programmatic navigation.",
+  "scope": ["SpecifyOutput", "proto schema", "InterfaceSection", "VerifyCriterion", "FileTouch", "specify skill", "execution bundles"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

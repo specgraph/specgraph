@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-27-site-docs-feature-coverage-design.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Site Documentation Feature Coverage Gaps",
+  "summary": "Design plan to close gaps between site/docs/ and the implemented codebase via CLI reference generation, new concept/guide pages, and content fixes.",
+  "scope": ["site/docs", "CLI reference generation", "slices", "drift detection", "spec linting", "sync adapters", "documentation guides"],
+  "cross_refs": ["site/docs/", "cmd/specgraph/docs.go", "site/docs/cli-reference.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Structured like a design/planning doc (Context/Goals/Non-Goals/Workstreams, Status: Approved) rather than a PRD or ADR; no user stories or single locked architectural decision, so classified as DOC."
+}

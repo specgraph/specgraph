@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-06-05-opentelemetry-instrumentation-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "OpenTelemetry Instrumentation: Traces, Metrics & Context-Aware Logging",
+  "summary": "Technical design for end-to-end OpenTelemetry traces, metrics, and context-aware logging across the SpecGraph CLI and server.",
+  "scope": ["internal/telemetry", "OpenTelemetry", "OTLP export", "context propagation", "slog logging", "ConnectRPC interceptors", "MCP server", "CLI bootstrap"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

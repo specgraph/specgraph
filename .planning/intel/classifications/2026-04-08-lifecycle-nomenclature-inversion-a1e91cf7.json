@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-04-08-lifecycle-nomenclature-inversion.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Lifecycle Nomenclature Inversion Implementation Plan",
+  "summary": "Task-by-task implementation plan fixing inverted amend/supersede lifecycle semantics and removing the amended parking stage.",
+  "scope": ["spec lifecycle", "amend/supersede eligibility", "SpecStage", "storage layer", "handler/CLI", "internal/storage"],
+  "cross_refs": ["internal/storage/errors.go", "internal/storage/spec_domain.go", "internal/storage/spec_domain_test.go"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Implementation plan with checkbox task steps; not a decision record (no Context/Decision/Consequences), not a PRD (no user stories/acceptance criteria), not a SPEC (no API/schema contract) — classified as DOC (context/plan) though it contains code-level implementation detail rather than prose guidance."
+}

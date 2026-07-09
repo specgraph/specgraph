@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-27-slice-cli-commands.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Slice CLI Commands Implementation Plan",
+  "summary": "Implementation plan for adding specgraph slice list/get/claim/complete CLI commands and renderers.",
+  "scope": ["cmd/specgraph/slice.go", "internal/render/slice.go", "decompose.go", "slice_slugs", "CLI commands"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": "Task/implementation plan with file map and checkbox steps; not an ADR (no decision/consequences), not a PRD (no user stories/acceptance criteria from user perspective), not a SPEC (no API/schema contract, just internal CLI task breakdown). Classified as DOC (implementation plan / supporting context)."
+}

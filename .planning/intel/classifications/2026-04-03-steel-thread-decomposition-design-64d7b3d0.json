@@ -1,0 +1,16 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-04-03-steel-thread-decomposition-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Steel Thread Decomposition Strategy",
+  "summary": "Adds a steel-thread decomposition strategy enum value and server-side validation to SpecGraph's authoring stage.",
+  "scope": ["decompose stage", "DecompositionStrategy enum", "authoring handler validation", "CLI", "reference docs"],
+  "cross_refs": [
+    "proto/specgraph/v1/authoring.proto",
+    "plugin/specgraph/skills/specgraph-decompose/references/decompose-output-format.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

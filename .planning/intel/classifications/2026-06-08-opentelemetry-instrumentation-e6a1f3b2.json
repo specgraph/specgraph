@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-06-08-opentelemetry-instrumentation.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "OpenTelemetry Instrumentation Implementation Plan",
+  "summary": "Task-by-task implementation plan for adding OpenTelemetry traces, metrics, and logging to the SpecGraph CLI and server.",
+  "scope": ["internal/telemetry", "OpenTelemetry", "ConnectRPC", "otelconnect", "otelpgx", "OTLP export", "CLI", "server"],
+  "cross_refs": ["docs/superpowers/specs/2026-06-05-opentelemetry-instrumentation-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

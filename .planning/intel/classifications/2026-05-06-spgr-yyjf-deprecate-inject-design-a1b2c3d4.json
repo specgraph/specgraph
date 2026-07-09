@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-06-spgr-yyjf-deprecate-inject-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Deprecate `specgraph inject` in favor of MCP + extended `init`",
+  "summary": "Design to remove the specgraph inject command and replace it with MCP-pointer files managed by specgraph init.",
+  "scope": ["specgraph inject", "specgraph init", "MCP", "AGENTS.md", ".cursor/rules/specgraph-bootstrap.md", "internal/inject/", "internal/config/mcpconfigs/"],
+  "cross_refs": ["../../internal/inject/", "../../plugin/cursor/.cursor/rules/specgraph.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

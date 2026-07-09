@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-04-06-lifecycle-amendment-supersede-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Lifecycle Amendment & Supersede — Design Spec",
+  "summary": "Design spec for CLI/web diff, changelog, and CompareVersions RPC supporting amendment and supersede lifecycle transitions.",
+  "scope": ["CompareVersions RPC", "spec lifecycle", "amendment", "supersede", "CLI changes command", "web dashboard changelog UI", "diff engine", "SUPERSEDES edges"],
+  "cross_refs": ["proto/specgraph/v1/spec.proto", "site/docs/concepts/lifecycle.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

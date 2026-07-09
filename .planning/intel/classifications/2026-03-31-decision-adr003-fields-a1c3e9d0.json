@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-31-decision-adr003-fields.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Decision ADR-003 Fields Implementation Plan",
+  "summary": "Step-by-step implementation plan extending the Decision domain type with ADR-003 fields and generalizing ChangeLog for Decision nodes.",
+  "scope": ["Decision domain type", "ADR-003 fields", "content hash", "proto schema", "Memgraph storage", "ChangeLog", "CLI decision create", "render decision"],
+  "cross_refs": ["docs/superpowers/specs/2026-03-31-decision-adr003-fields-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

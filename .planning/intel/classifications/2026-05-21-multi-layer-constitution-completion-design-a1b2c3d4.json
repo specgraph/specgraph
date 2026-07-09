@@ -1,0 +1,30 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-05-21-multi-layer-constitution-completion-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Multi-Layer Constitution Completion + Prime Unification — Design Spec",
+  "summary": "Design spec closing the multi-layer constitution gap in PrimeData/export and unifying the three prime surfaces onto one composer.",
+  "scope": [
+    "ConstitutionBackend",
+    "GetMergedConstitution",
+    "PrimeData",
+    "merge.Layers",
+    "export.engine",
+    "ConstitutionService.GetConstitution RPC",
+    "specgraph://prime MCP resource",
+    "specgraph prime CLI",
+    "internal/prime composer",
+    "remote-source import and sync",
+    "provenance tracking"
+  ],
+  "cross_refs": [
+    "2026-04-07-layered-constitution-design.md",
+    "https://github.com/hashicorp/go-getter",
+    "https://github.com/spaolacci/murmur3",
+    "https://gopkg.in/yaml.v3"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

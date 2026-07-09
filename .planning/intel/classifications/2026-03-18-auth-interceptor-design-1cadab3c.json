@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-03-18-auth-interceptor-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Authentication & Authorization Design",
+  "summary": "Design for a single ConnectRPC interceptor providing auth/authz via API keys, roles, and permissions, with future OIDC support.",
+  "scope": ["ConnectRPC interceptor", "Identity model", "API keys", "Roles", "Permissions", "OIDC (future)"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

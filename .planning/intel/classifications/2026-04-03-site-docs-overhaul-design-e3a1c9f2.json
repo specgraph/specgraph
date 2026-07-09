@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-04-03-site-docs-overhaul-design.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Site Documentation Overhaul",
+  "summary": "Plan to correct and update the SpecGraph docs site to reflect the Postgres migration and new features.",
+  "scope": ["site docs", "architecture.md", "quickstart.md", "how-it-works.md", "authoring.md", "constitution.md", "PostgreSQL", "Memgraph terminology removal", "steel_thread decomposition"],
+  "cross_refs": ["architecture.md", "quickstart.md", "how-it-works.md", "authoring.md", "constitution.md", "index.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Filed under docs/superpowers/specs with 'design' in filename, resembling a design/spec doc, but content is a documentation-content revision plan (Problem/Design Decisions/Scope) rather than an architectural decision, product requirement, or technical contract; classified as DOC over SPEC due to lack of implementation contracts."
+}

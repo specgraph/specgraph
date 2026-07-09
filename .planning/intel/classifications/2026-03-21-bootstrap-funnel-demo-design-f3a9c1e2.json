@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-21-bootstrap-funnel-demo-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Bootstrap & Authoring Funnel Demo — Design Spec",
+  "summary": "Runbook design for demoing SpecGraph's bootstrap, constitution setup, and authoring funnel flow inside Claude Code.",
+  "scope": ["bootstrap", "constitution", "authoring funnel", "SpecGraph plugin skills", "demo runbook", "Claude Code"],
+  "cross_refs": ["demo/bootstrap-funnel-runbook.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

@@ -1,0 +1,16 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-08-spgr-rwrp-pr0-claude-api-verification.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "spgr-rwrp PR 0 — Claude API verification report",
+  "summary": "Spike report verifying Claude Code plugin marketplace path and CLAUDE_PLUGIN_ROOT behavior, correcting the harness install parity spec schema.",
+  "scope": ["Claude Code plugin marketplace", "extraKnownMarketplaces schema", "CLAUDE_PLUGIN_ROOT resolution", "autoUpdate field", "specgraph init harness install parity"],
+  "cross_refs": [
+    "docs/plans/2026-05-08-spgr-rwrp-harness-install-parity-design.md",
+    "docs/plans/2026-05-08-spgr-rwrp-pr0-plan.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Verification/spike report with GREEN/RED verdicts and required spec corrections feeding back into a design doc; not itself an ADR/PRD/SPEC but contains technical-constraint-like corrections. Classified DOC (context) since it documents findings rather than declaring the decision or contract itself."
+}

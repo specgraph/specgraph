@@ -1,0 +1,21 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-04-spgr-7htb-init-idempotent-mcp-configs-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Idempotent `specgraph init` with managed MCP configs (spgr-7htb) Implementation Plan",
+  "summary": "Task-by-task implementation plan for making specgraph init idempotent and generating per-harness MCP config files via JSON merge patch.",
+  "scope": ["specgraph init", "mcpconfigs package", "Cursor .cursor/mcp.json", "Claude Code .mcp.json", "OpenCode opencode.json", "JSON Merge Patch RFC 7396"],
+  "cross_refs": [
+    "docs/plans/2026-05-04-spgr-7htb-init-idempotent-mcp-configs-design.md",
+    "internal/config/mcpconfigs/configs.go",
+    "internal/config/mcpconfigs/sync.go",
+    "cmd/specgraph/init.go",
+    "CLAUDE.md",
+    "docs/verification/cursor.md",
+    "docs/verification/opencode.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

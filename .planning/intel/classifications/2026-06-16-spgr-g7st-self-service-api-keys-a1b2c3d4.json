@@ -1,0 +1,14 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-06-16-spgr-g7st-self-service-api-keys.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Self-Service MCP API-Key Provisioning (spgr-g7st) Implementation Plan",
+  "summary": "Task-by-task implementation plan for self-service, role-capped, expiring MCP API key creation/rotation/revocation via CLI and web.",
+  "scope": ["IdentityService RPCs", "Cedar apikey.self verb", "API key quota", "CLI auth apikey", "web Keys panel", "storage users backend"],
+  "cross_refs": ["docs/superpowers/specs/2026-06-16-spgr-g7st-self-service-api-keys-design.md"],
+  "locked_markers": null,
+  "locked": false,
+  "precedence": null,
+  "notes": "Implementation plan with task checklists and file maps rather than requirements/decision/spec prose; references a separate design SPEC doc which likely holds the actual technical contract."
+}

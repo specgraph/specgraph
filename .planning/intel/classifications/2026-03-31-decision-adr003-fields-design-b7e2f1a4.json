@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-31-decision-adr003-fields-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Design: Extend Decision Domain Type with ADR-003 Fields",
+  "summary": "Adds ADR-003 fields (question, rejected alternatives, confidence, tags, scope, origin) to the Decision domain type, backend, and proto schema.",
+  "scope": ["Decision domain type", "DecisionBackend interface", "ChangeLog system", "decision.proto", "Memgraph node properties"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

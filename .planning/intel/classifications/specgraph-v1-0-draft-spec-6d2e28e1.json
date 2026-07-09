@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/initial-design-session/specgraph-v1.0-draft-spec.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "SpecGraph: Live Spec-Driven Development Framework",
+  "summary": "Draft v1.0 technical spec defining SpecGraph's constitution, spec schema, authoring process, and storage/query layer for spec-driven development.",
+  "scope": ["constitution", "spec schema", "authoring process", "storage layer", "query layer", "Gastown integration", "Beads", "Postgres", "Dolt"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

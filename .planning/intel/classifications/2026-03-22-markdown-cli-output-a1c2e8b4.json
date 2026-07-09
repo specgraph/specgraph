@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-03-22-markdown-cli-output.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Markdown CLI Output Implementation Plan",
+  "summary": "Implementation plan to replace tab-writer CLI output with markdown rendering, add --json flags, and a findings list command.",
+  "scope": ["internal/render package", "CLI read commands", "printJSON helper", "findings list command", "markdown rendering"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-18-changelog-graph-nodes-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "ChangeLog Graph Nodes for Version Tracking",
+  "summary": "Introduces ChangeLog graph nodes and HAS_CHANGE edges to replace the opaque history_json field for spec version tracking.",
+  "scope": ["ChangeLog node", "HAS_CHANGE edge", "FieldChange proto message", "Spec history_json field", "content hash", "drift detection"],
+  "cross_refs": ["spgr-3uh", "spgr-1p6", "spgr-lmt", "spgr-3ei", "internal/drift/"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

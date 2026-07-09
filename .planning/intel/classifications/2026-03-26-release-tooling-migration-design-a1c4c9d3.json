@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-26-release-tooling-migration-design.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Release Tooling Migration: git-cliff + goreleaser v2",
+  "summary": "Replaces release-please with git-cliff and migrates goreleaser to v2 APIs for a simpler, manual-trigger release pipeline.",
+  "scope": ["release-please", "git-cliff", "goreleaser", "GitHub Actions release workflow", "CHANGELOG.md", "Homebrew formula", "Docker images", "cosign signing", "SBOM generation"],
+  "cross_refs": ["2026-03-20-release-please-goreleaser-design.md"],
+  "locked": true,
+  "precedence": null,
+  "notes": ""
+}

@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-04-10-mcp-server-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "MCP Server Implementation Plan",
+  "summary": "Task-by-task implementation plan for adding a full-featured MCP server exposing SpecGraph tools/resources/prompts.",
+  "scope": ["internal/mcp package", "MCP server", "ConnectRPC", "mcp-go SDK", "tool tiers", "stdio/HTTP transports"],
+  "cross_refs": ["docs/plans/2026-04-10-mcp-server-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-26-idempotent-push-design.md",
+  "type": "ADR",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Idempotent Push: FindOrCreate for Sync Adapters",
+  "summary": "Adds a FindOrCreate method to sync adapters to prevent duplicate external items when CreateSyncMapping fails after Push.",
+  "scope": ["Adapter interface", "GitHubAdapter", "BeadsAdapter", "sync_handler.go", "CreateSyncMapping", "sync mappings"],
+  "cross_refs": ["internal/sync/adapter.go", "internal/sync/github.go", "internal/sync/beads.go", "internal/server/sync_handler.go", "internal/sync/github_test.go", "internal/sync/beads_test.go"],
+  "locked": true,
+  "precedence": null,
+  "notes": "Located under docs/superpowers/specs/ with date-prefixed filename (not conventional ADR path/naming), but content has Status: Approved plus Problem/Decision/Scope sections matching ADR structure; classified as ADR over SPEC due to explicit single locked decision framing."
+}

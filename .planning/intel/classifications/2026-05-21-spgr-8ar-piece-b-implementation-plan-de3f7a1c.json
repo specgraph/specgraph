@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-05-21-spgr-8ar-piece-b-implementation-plan.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "spgr-8ar Piece B — Remote-Source Import + Sync (env-var auth)",
+  "summary": "Task-by-task implementation plan for a RefreshConstitutionLayer RPC and CLI commands for remote constitution import/sync.",
+  "scope": ["RefreshConstitutionLayer RPC", "constitution import --from-url", "constitution sync", "go-getter", "internal/constitution packages"],
+  "cross_refs": ["docs/superpowers/specs/2026-05-21-multi-layer-constitution-completion-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "Implementation plan (task checklist) rather than pure requirements/spec/decision doc; defers to referenced design spec for actual requirements and decisions. Classified as DOC (context/process artifact) rather than SPEC since it doesn't itself define contracts, only implements ones defined elsewhere."
+}

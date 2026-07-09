@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-06-11-server-request-logging-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Per-request access logging",
+  "summary": "Design for a standard per-request access log line across ConnectRPC, REST, /mcp/, and static UI traffic with outcome-based levels.",
+  "scope": ["access logging", "AccessLog middleware", "AccessLogInterceptor", "reqctx carrier", "probe listener", "connect interceptors", "config (log.requests, server.probes.log_requests)"],
+  "cross_refs": ["internal/telemetry/logging.go", "internal/server/access_log.go", "internal/server/access_log_interceptor.go", "internal/reqctx/reqctx.go", "internal/config/global.go", "cmd/specgraph/serve.go", "internal/constitution/fetch"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

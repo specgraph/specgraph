@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-20-release-please-goreleaser-design.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Release Infrastructure: release-please + goreleaser + cocogito",
+  "summary": "Decision to use release-please, goreleaser, and cocogito for SpecGraph versioning, changelog, and cross-platform release distribution.",
+  "scope": ["release-please", "goreleaser", "cocogito", "GitHub Actions", "Homebrew tap", "Docker image", "changelog", "versioning"],
+  "cross_refs": [".github/workflows/release.yml", ".github/workflows/goreleaser.yml", ".goreleaser.yaml", ".release-please-manifest.json", "release-please-config.json", "cog.toml", "Dockerfile"],
+  "locked": true,
+  "precedence": null,
+  "notes": "Filename/path uses 'design' and lives under specs/, suggesting SPEC, but content has Status/Decision/Consequences-style structure typical of an ADR; classified as ADR based on stronger content signal (Status: Approved + explicit Decision section)."
+}

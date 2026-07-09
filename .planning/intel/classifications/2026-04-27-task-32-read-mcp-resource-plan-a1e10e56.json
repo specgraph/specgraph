@@ -1,0 +1,20 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-04-27-task-32-read-mcp-resource-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Task 32 Implementation Plan: `specgraph read-mcp-resource`",
+  "summary": "Step-by-step implementation plan for a new specgraph CLI subcommand that reads MCP resources over HTTP.",
+  "scope": ["specgraph read-mcp-resource CLI subcommand", "mark3labs/mcp-go client", "Claude Code plugin session-start hook", "cmd/specgraph/client.go", "internal/mcp/profiles.go"],
+  "cross_refs": [
+    "docs/plans/2026-04-27-task-32-read-mcp-resource-design.md",
+    "docs/plans/2026-04-20-multi-platform-plugin-plan.md",
+    "plugin/specgraph/hooks/session-start.sh",
+    "cmd/specgraph/client.go",
+    "internal/mcp/profiles.go",
+    "internal/mcp/client_id_contract_test.go"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

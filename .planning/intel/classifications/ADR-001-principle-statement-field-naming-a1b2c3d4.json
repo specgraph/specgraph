@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/decisions/ADR-001-principle-statement-field-naming.md",
+  "type": "ADR",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "ADR-001: Use 'statement' instead of 'principle' for Principle proto field",
+  "summary": "Decision to name the Principle proto field 'statement' instead of the tautological 'principle'.",
+  "scope": ["Principle proto message", "constitution schema", "Go structs", "emitter", "CLI show", "YAML bootstrap", "storage"],
+  "cross_refs": ["docs/plans/2026-02-28-slice-2-constitution-plan.md"],
+  "locked": true,
+  "precedence": null,
+  "notes": ""
+}

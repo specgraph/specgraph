@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-22-markdown-cli-output-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Markdown CLI Output",
+  "summary": "Design for replacing CLI text output with Markdown rendering via a new internal/render package for AI agent readability.",
+  "scope": ["internal/render package", "specgraph CLI read commands", "GetSpec RPC", "Spec proto", "Edge proto", "Decision proto", "DriftReport", "AnalyticalFinding", "NodeRefList"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-04-07-layered-constitution-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "Layered Constitution — Design Spec",
+  "summary": "Design spec for multi-layer constitution support with strategic merge, $delete directives, provenance tracking, and storage schema changes.",
+  "scope": ["constitution", "merge engine", "storage schema", "layers", "provenance tracking", "internal/constitution/merge"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

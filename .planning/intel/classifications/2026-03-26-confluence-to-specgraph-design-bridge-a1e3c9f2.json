@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/designs/2026-03-26-confluence-to-specgraph-design-bridge.md",
+  "type": "PRD",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Confluence-to-SpecGraph Design Bridge",
+  "summary": "Defines a Confluence/markdown system design template mapping to SpecGraph's Spark and Shape authoring stages for zero-rework migration.",
+  "scope": ["Confluence template", "SpecGraph authoring funnel", "Spark stage", "Shape stage", "Page Properties macro", "markdown template variant", "migration path"],
+  "cross_refs": ["docs/designs/template-system-design.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": "RFC/DRAFT status with an Approach & Decisions table resembling an ADR, but subject matter is a template/process artifact rather than a codebase architecture decision, and document also carries PRD-style Scope/Success-Criteria (MoSCoW) structure. Classified as PRD due to requirements/scope framing; not locked since status is DRAFT, not Accepted."
+}

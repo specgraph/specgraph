@@ -1,0 +1,18 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/verification/opencode.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "OpenCode MCP verification",
+  "summary": "Empirical verification of OpenCode's MCP integration behavior with a local specgraph serve instance.",
+  "scope": ["OpenCode", "MCP", "opencode.json", "specgraph serve", "profile registry", "constitution"],
+  "cross_refs": [
+    "internal/mcp/server.go",
+    "internal/mcp/profiles.go",
+    ".cursor/mcp.json",
+    "spgr-bncv"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

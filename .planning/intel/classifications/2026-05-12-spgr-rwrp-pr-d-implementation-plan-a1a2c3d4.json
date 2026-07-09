@@ -1,0 +1,17 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-05-12-spgr-rwrp-pr-d-implementation-plan.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "spgr-rwrp PR D — Cursor rule files implementation plan",
+  "summary": "Implementation plan for shipping Cursor rule files as init-managed WholeFile entries with sentinel positioning and guarded cleanup.",
+  "scope": ["internal/config/managedfiles", "Cursor rule files", "ManagedFile manifest", "harness install parity"],
+  "cross_refs": [
+    "2026-05-12-spgr-rwrp-pr-d-cursor-rules-design.md",
+    "2026-05-08-spgr-rwrp-harness-install-parity-design.md",
+    "2026-05-11-spgr-rwrp-pr-c-implementation-plan.md"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

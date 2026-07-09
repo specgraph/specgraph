@@ -1,0 +1,33 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/specs/2026-03-20-quickstart-and-docs-overhaul-design.md",
+  "type": "PRD",
+  "confidence": "medium",
+  "manifest_override": false,
+  "title": "Quick Start Guide and Documentation Overhaul for 0.1.0",
+  "summary": "Design plan for a Quick Start guide and full documentation accuracy overhaul ahead of the 0.1.0 public release.",
+  "scope": ["site/docs", "quickstart.md", "documentation overhaul", "release-please", "zensical nav", "Claude Code plugin", "authoring funnel", "roadmap.md removal"],
+  "cross_refs": [
+    "site/docs/quickstart.md",
+    "site/docs/index.md",
+    "site/docs/problem.md",
+    "site/docs/how-it-works.md",
+    "site/docs/architecture.md",
+    "site/docs/ecosystem.md",
+    "site/docs/concepts/authoring.md",
+    "site/docs/concepts/passes.md",
+    "site/docs/concepts/specs.md",
+    "site/docs/concepts/constitution.md",
+    "site/docs/concepts/decisions.md",
+    "site/docs/concepts/example-spec.md",
+    "site/docs/concepts/index.md",
+    "site/docs/roadmap.md",
+    "site/docs/changelog.md",
+    "zensical.toml",
+    "release-please-config.json",
+    "CHANGELOG.md",
+    "ADR-003"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": "Has goals/non-goals and success criteria like a PRD, but is scoped to documentation deliverables rather than product features; also carries some SPEC-like implementation detail (config file changes, nav structure). Classified PRD due to goals/non-goals/success-criteria structure outweighing the narrower SPEC signals."
+}

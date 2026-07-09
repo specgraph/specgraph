@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/superpowers/plans/2026-04-03-steel-thread-decomposition.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Steel Thread Decomposition Strategy Implementation Plan",
+  "summary": "Implementation plan adding a STEEL_THREAD decomposition strategy enum value with proto, server validation, and doc updates.",
+  "scope": ["DecompositionStrategy enum", "decompose stage", "proto authoring.proto", "server authoring handler", "steel thread strategy"],
+  "cross_refs": ["docs/superpowers/specs/2026-04-03-steel-thread-decomposition-design.md", "proto/specgraph/v1/authoring.proto", "internal/storage/authoring.go", "internal/server/authoring_handler.go", "internal/server/convert_authoring.go"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

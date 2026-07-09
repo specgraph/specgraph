@@ -1,0 +1,13 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/plans/2026-02-28-client-server-architecture-design.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "SpecGraph v2 Design: Client/Server Architecture",
+  "summary": "Redesigns SpecGraph into a client/server system with ConnectRPC API, Memgraph storage, and Beads as a sync adapter.",
+  "scope": ["ConnectRPC API", "Memgraph", "Postgres+AGE", "Beads sync adapter", "Agent callbacks", "Execution bundles", "Storage backend", "Spec schema", "Constitution", "Authoring funnel"],
+  "cross_refs": ["specgraph-v1.0-draft-spec.md", "specgraph-v1.0-draft-adr-001-storage.md", "specgraph-v1.0-draft-adr-002-gastown.md", "specgraph-v1.0-draft-adr-003-decisions.md", "specgraph-v1.0-draft-roadmap.md"],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}

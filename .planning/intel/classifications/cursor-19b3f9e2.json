@@ -1,0 +1,19 @@
+{
+  "source_path": "/Volumes/Code/github.com/specgraph/.claude/worktrees/joyful-crunching-cook/docs/verification/cursor.md",
+  "type": "DOC",
+  "confidence": "high",
+  "manifest_override": false,
+  "title": "Cursor MCP verification",
+  "summary": "Empirical verification artifact documenting Cursor MCP integration behavior against specgraph serve and fixes made.",
+  "scope": ["Cursor", "MCP", "specgraph serve", "client profile registry", "X-Specgraph-Project header", "tool naming"],
+  "cross_refs": [
+    "internal/mcp/server.go",
+    "internal/mcp/profiles.go",
+    "cmd/specgraph/serve.go",
+    ".cursor/mcp.json",
+    ".mcp.json"
+  ],
+  "locked": false,
+  "precedence": null,
+  "notes": ""
+}
