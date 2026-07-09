@@ -1,52 +1,56 @@
 ---
 phase: 2
+review_round: 2
 reviewers: [cursor]
-reviewed_at: 2026-07-09T15:24:22Z
+reviewed_at: 2026-07-09T15:50:50Z
 plans_reviewed: [02-01-PLAN.md, 02-02-PLAN.md, 02-03-PLAN.md, 02-04-PLAN.md, 02-05-PLAN.md, 02-06-PLAN.md, 02-07-PLAN.md, 02-08-PLAN.md]
+supersedes: "round 1 (cursor) — findings incorporated via /gsd-plan-phase 2 --reviews, commit c5ac551b"
 ---
 
-# Cross-AI Plan Review — Phase 2
+# Cross-AI Plan Review — Phase 2 (Round 2, post-incorporation convergence check)
 
-> Reviewer independence note: this review was produced by the **cursor-agent** CLI
-> (a separate model/session), invoked from an OpenCode orchestration session. The
-> requested `--opencode` reviewer was skipped for independence (the orchestrator IS
-> OpenCode); `--cursor` was substituted as a genuinely independent reviewer. Single
-> external reviewer this run — the Consensus section below reflects one grounded
-> review, not a multi-reviewer vote.
+> Reviewer: **cursor-agent** CLI (independent session; `--opencode` skipped because the
+> orchestrator IS OpenCode). This is a SECOND pass verifying that round-1 findings were
+> correctly incorporated by the `--reviews` replan, plus new-issue detection. Single
+> external reviewer.
 
 ---
 
 ## Cursor Review
 
-# Phase 2 Plan Review: API Key Lifecycle & Self-Service
+# Phase 2 Plan Review (Round 2 — Post-Incorporation)
 
 ## Summary
 
-The eight-plan set is unusually well grounded in the brownfield codebase: research line references match current sources (with only minor drift), security invariants are correctly derived from real mechanisms (`resolveAPIKey` live-role clamp, `ListAPIKeys` empty-`user_id` leak, `actions_test.go` dual hard-coded verb lists, `SPECGRAPH_API_KEY` precedence), and wave ordering (proto → auth → storage/config → handlers → CLI/web) is sound. No implementation has landed yet — `identity.proto` still ends at `UnbindOIDC` and none of the five new RPCs exist. The plans should achieve SC#1–SC#3 if executed faithfully, but two integration gaps — **CSRF middleware mounting/token bootstrap** and **web Connect auth path documentation** — need explicit tasks before the web surface can work end-to-end.
+Round 1’s actionable findings are **substantively addressed in the eight revised execution plans** (`02-01` through `02-08`) and in `02-VALIDATION.md`. The split between Plan 03 (CSRF issue + unit tests + whoami bootstrap) and Plan 05 Task 3 (actual `csrfValidate` mount on the Connect handler) is sound and matches the real wiring surface at `internal/server/identity_handler.go:29-35`. **No implementation has landed** — `identity.proto` still ends at `UnbindOIDC` (`proto/specgraph/v1/identity.proto:32`), there is no `internal/server/csrf.go`, no `storage.ErrQuotaExceeded`, and no self RPC symbols in `gen/`.
+
+The plans remain well grounded against brownfield mechanisms (`resolveAPIKey` live-role clamp at `internal/auth/identitystore.go:324-346`, `ListAPIKeys` empty-`user_id` leak at `internal/server/identity_handler.go:319-324`, handler-owned secret generation at `identity_handler.go:236-253`). Round 1 is **not fully converged in supporting docs**: `02-RESEARCH.md` and parts of `02-PATTERNS.md` still describe Connect web auth via `cookieToAuthHeader`, which the live tree does not use. **Recommendation: proceed with execution after syncing those docs; overall risk is MEDIUM (down from round 1’s blockers, but credential-minting scope keeps stakes high).**
+
+---
+
+## Round-1 Fix Verification
+
+| Round-1 finding | Status | Evidence |
+|-----------------|--------|----------|
+| **HIGH — CSRF middleware never wired / token never issued** | **RESOLVED (in plans)** | Plan 03 Task 2 wires issuance onto REST whoami (`internal/server/auth_handler.go:45-46`); dashboard already calls it via `web/src/lib/auth.svelte.ts:17`, gated by `+layout.svelte:12-13` before children render. Plan 05 Task 3 mounts `csrfValidate(h)` in `RegisterIdentityService` (`identity_handler.go:29-35`). Validated by `02-VALIDATION.md` task `2-05-03` (`TestSelfMint_CSRFMount`). No `csrf.go` exists yet — expected pre-implementation. |
+| **HIGH — Web session auth path mis-documented (`cookieToAuthHeader` vs Connect interceptor)** | **PARTIAL** | **Plans fixed:** `02-03-PLAN.md` key_links, `02-05-PLAN.md` Task 3, `02-08-PLAN.md` must_haves cite `internal/auth/interceptor.go:57-81` (`authenticate` → `sessionCookieValue` reading `specgraph_session`). **Live source confirms:** Connect uses `sessionCookieValue` (`interceptor.go:70-81`); `cookieToAuthHeader` wraps only REST whoami (`auth_handler.go:45-46`, `:133-147`). **Still stale:** `02-RESEARCH.md:204-222` and `02-PATTERNS.md:343-344` still claim web mutations flow through `cookieToAuthHeader`. |
+| **MEDIUM — Storage signature mismatch (plaintext from storage vs handler-owned PHC)** | **RESOLVED (in plans)** | Plan 02 Task 1 explicitly aligns on handler-owned secret generation, matching admin `CreateAPIKey` (`identity_handler.go:236-253`) and `AuthStore.CreateAPIKey` accepting caller `PHCHash` (`internal/storage/postgres/users.go:357-367`). `CreateAPIKeyForUser` returns `(*APIKey, error)` only. |
+| **MEDIUM — `identityError` lacks `ErrQuotaExceeded` → `CodeResourceExhausted`** | **RESOLVED (in plans)** | Plan 02 adds sentinel; Plan 05 Task 3 extends `identityError` switch (`identity_handler.go:61-75`). Current switch has no quota case; `internal/storage/errors.go` has no `ErrQuotaExceeded` yet. |
+| **MEDIUM — AUTH-02 live-floor lacks integration proof** | **RESOLVED (in plans)** | Plan 06 Task 3 schedules `TestResync_LiveRoleClamp` (`internal/auth/resync_integration_test.go`, `//go:build integration`), modeled on `mint_integration_test.go:25-73`. `02-VALIDATION.md:59-71` no longer defers this to `task pr-prep` alone. Mechanism verified in source: `resolveAPIKey` reloads `users.role` every request (`identitystore.go:324-346`). |
+| **MEDIUM — CSRF scope for `ListMyAPIKeys` (also POST) unspecified** | **RESOLVED (in plans)** | Plan 03 Task 2 explicitly includes `/ListMyAPIKeys` in the enforced procedure set (cursor #6). Connect procedure path shape confirmed: `/specgraph.v1.IdentityService/ListAPIKeys` (`gen/specgraph/v1/specgraphv1connect/identity.connect.go:67-69`). |
+| **LOW — `identity.proto` service comment drift; mandatory self expiry; revoke WHERE semantics** | **RESOLVED (in plans)** | Plan 01 Task 1 updates service comment (`identity.proto:12-15` still wrong in tree). Plan 07 Task 2 documents mandatory 90d/180d self expiry vs optional admin mint (`auth_apikey.go:28-39`). Plan 02 Task 2 distinguishes owner-scoped revoke from admin `RevokeAPIKey` (`postgres/users.go:406-415`, no `RowsAffected` check). |
 
 ---
 
 ## Strengths
 
-- **Research grounding is accurate.** The drift ledger matches the tree: `resolveAPIKey` reads live `users.role` every request and clamps at mint time via `clampedRole` (`internal/auth/identitystore.go:306-348`), `UpdateUserRole` already writes `users.role` (`internal/server/identity_handler.go:155-175`, `internal/storage/postgres/users.go:225-236`), and standing keys pick up demotions on the next call without new schema.
-
-- **Critical enumeration pitfall is real and called out.** `ListAPIKeys` passes `msg.GetUserId()` straight through; empty `user_id` lists all keys (`internal/server/identity_handler.go:319-324`). Plan 05’s hard-set-from-context requirement for `ListMyAPIKeys` is essential.
-
-- **Boot invariant for Cedar `self` verb is correctly identified.** `knownVerbs` today is only `read|write|delete|manage` (`internal/auth/engine.go:155-176`); `TestActionNames_AllParseToKnownVerb` hard-codes the same four verbs (`internal/auth/actions_test.go:33-41`); `TestActionForProcedure_Identity` mirrors the procedure map (`internal/auth/actions_test.go:50-70`). Plan 04’s single-commit requirement for `knownVerbs` + `base.cedar` + `actions.go` is correct — `base.cedar` currently has no `self` permit (`internal/auth/policies/base.cedar:13-48`).
-
-- **Role laundering fix targets the right field.** `Identity` exposes both `Role` and `EffectiveRole`; apikey callers get `EffectiveRole = clampedRole(Role(user.Role), Role(key.RoleDowngrade))` (`internal/auth/identitystore.go:340-348`). Flooring at `caller.EffectiveRole` via exported `RoleMin` (reusing `roleRank` at `:256-277`) closes the downgraded-apikey-caller hole the design describes.
-
-- **Anti-key-chaining gate is implementable.** `Source` is only `"apikey"` or `"oidc"` (`internal/auth/auth.go:19-27`); apikey resolution sets `Source: "apikey"` (`internal/auth/identitystore.go:347`), sessions/JWT paths set `Source: "oidc"` (`:388`, `:483`). Rejecting `Source == "apikey"` on self-mint is coherent.
-
-- **Finding D (CLI precedence) is verified and mandatory.** `resolveAPIKey` prefers `SPECGRAPH_API_KEY` over stored credentials (`cmd/specgraph/client.go:102-111`); login stores `spgr_ws_` sessions (`cmd/specgraph/login.go:257-260`). Without Plan 07’s session-preferring path, self-mint would authenticate as the bootstrap key and hit the source gate.
-
-- **Storage/quota design respects ADR-004 reality.** `AuthStore` uses `s.pool` directly (`internal/storage/postgres/users.go:361-426`); `RunInTransaction` lives on `*Store` (`internal/storage/postgres/tx.go:35-42`). Explicit `pool.BeginTx` + `FOR UPDATE` on `users` is the right pattern; invalid `count(*) FOR UPDATE` is correctly avoided.
-
-- **No migration needed — schema supports the design.** `api_keys` already has `user_id`, `role_downgrade`, `expires_at`, `revoked_at` and partial index `api_keys_active` (`internal/storage/postgres/auth_migrations/001_initial.sql:36-50`).
-
-- **AUTH-02 is appropriately thin.** Forced re-sync reuses `UpdateUserRole`; propagation is automatic via the live read in `resolveAPIKey`. Plan 06’s `ResyncUserRole` + optional `--revoke-keys` is the right seam without over-building IdP fetch logic.
-
-- **Test map and adversarial cases are first-class.** Source gate, laundering floor, list scoping, quota TOCTOU integration, CSRF, and CLI precedence all have named tests in the validation architecture — appropriate for a credential-minting phase.
+- **Round-1 feedback is traceable in plan tasks**, not just REVIEWS.md — CSRF mount, quota mapping, storage contract, integration test, and `ListMyAPIKeys` CSRF scope each have acceptance criteria and validation rows (`02-VALIDATION.md:54-59`).
+- **Security invariants match live code.** Empty `user_id` on admin `ListAPIKeys` lists all keys (`identity_handler.go:319-324`). Standing keys pick up DB role changes via per-request `GetUserByID` + `clampedRole` (`identitystore.go:324-346`). Cedar boot coupling is real: `knownVerbs` lacks `"self"` (`engine.go:155`) and `TestActionNames_AllParseToKnownVerb` hard-codes four verbs (`actions_test.go:33-41`).
+- **CSRF bootstrap path is viable.** Whoami is a safe GET (`auth_handler.go:45-46`); layout awaits `checkAuth()` before rendering (`+layout.svelte:12-26`), so `specgraph_csrf` can exist before `/keys` mutations (Plan 08).
+- **Handler-owned secret generation is the established pattern** (`identity_handler.go:236-253`, `:286-300`; storage never returns plaintext).
+- **Wave ordering remains sound:** proto → storage/config → auth verbs → handlers → CLI/web/AUTH-02; Plan 05 correctly grows `RegisterIdentityService` and threads config through `cmd/specgraph/serve.go:203` (`buildAppHandler` has `cfg *config.GlobalConfig` at `:141`).
+- **`mint_integration_test.go` is a proven integration template** for `TestResync_LiveRoleClamp` (`internal/auth/mint_integration_test.go:25-73`).
+- **No schema migration required** — `api_keys` already has `user_id`, `role_downgrade`, `expires_at`, `revoked_at` (`auth_migrations/001_initial.sql:36-50`).
 
 ---
 
@@ -54,51 +58,29 @@ The eight-plan set is unusually well grounded in the brownfield codebase: resear
 
 ### HIGH
 
-- **CSRF middleware has no wiring or issuance task.** Plan 03 creates `internal/server/csrf.go` and unit tests but does not modify `cmd/specgraph/serve.go` or `RegisterIdentityService` to mount the middleware. Plan 08 assumes a `specgraph_csrf` cookie exists and the interceptor echoes it, but nothing in Plans 03, 05, or 08 defines *when* the cookie is first issued (e.g. on GET `/keys`, layout load, or a bootstrap endpoint). Without that, human-verify Task 3 in Plan 08 will fail on first mutation.
-
-- **Web session auth path is mis-documented in research/plans.** Research cites `cookieToAuthHeader` (`internal/server/auth_handler.go:133-147`) for web RPC auth, but Connect RPCs authenticate via `authenticate()` → `sessionCookieValue()` reading `specgraph_session` from request headers (`internal/auth/interceptor.go:57-67`, `:70-81`). `cookieToAuthHeader` only wraps `/api/auth/whoami` (`internal/server/auth_handler.go:45-46`). CSRF middleware must wrap the **Connect IdentityService handler path**, not the REST whoami path.
+*(None new — round-1 HIGH items are addressed in plan text; risk shifts to faithful execution.)*
 
 ### MEDIUM
 
-- **Plan 02 / Plan 05 storage interface mismatch.** Plan 02 Task 1 declares `CreateAPIKeyForUser(...) (*APIKey, secret string, err error)` and similar for rotate, but Plan 05 generates secrets in the handler (`auth.GenerateAPIKeySecret`) and passes `PHCHash` into storage — matching the existing admin `CreateAPIKey` pattern (`internal/server/identity_handler.go:236-253`). Implementers need one contract; returning plaintext from storage would diverge from established style.
-
-- **`identityError` has no `ErrQuotaExceeded` mapping yet.** Current switch handles `ErrAPIKeyNotFound`, `ErrUserNotFound`, etc. (`internal/server/identity_handler.go:61-75`) but not quota exhaustion. Plan 05 expects `CodeResourceExhausted` for quota/rate-limit; that case must be added explicitly or quota errors surface as `CodeInternal`.
-
-- **AUTH-02 “live floor” lacks integration proof.** Plan 06 tests use fake `UsersBackend` stubs; the validation map lists `TestResync_LiveRoleClamp` as integration (`02-RESEARCH.md` validation table) but Plan 06 only specifies unit tests. The `resolveAPIKey` mechanism is real (`identitystore.go:324-346`), but nothing in the plans proves standing-key effective role changes after `UpdateUserRole` without an integration or e2e test.
-
-- **Connect RPC list is also POST — CSRF scope ambiguous.** Plan 03 limits CSRF to “mutating POST requests to the self-key routes.” In Connect, `ListMyAPIKeys` is also POST. Cross-site key-metadata reads are lower risk than minting (no plaintext in list response per `APIKey` proto comment, `identity.proto:54-56`), but the CSRF middleware design should state whether `ListMyAPIKeys` is included for defense-in-depth.
-
-- **`identity.proto` service comment will become wrong.** Lines 12–15 state all RPCs except `Whoami` require admin; self RPCs break that. Plan 01 does not mention updating the comment — easy to miss and misleading for future readers.
+- **Supporting research docs still contradict corrected plans on web auth.** `02-RESEARCH.md:204` and the architecture diagram at `:218-222` still route web mutations through `cookieToAuthHeader`; Connect actually authenticates via `interceptor.go:57-81`. Implementers reading RESEARCH/PATTERNS before PATTERNS’ plan cross-refs could mount CSRF on the wrong mental model.
+- **Structured audit logging for self-mint is specified in research but not gated in Plan 05.** `02-RESEARCH.md:150-151` and validation row V7 require audit lines on create/rotate/revoke; Plan 05 threat model mentions untrusted `label` in logs (`T-02-19`) but has no acceptance criterion for structured audit emission. Plan 06 threat model covers resync audit only (`02-06-PLAN.md:T-02-22`).
+- **`TestResync_LiveRoleClamp` proves storage+resolver, not the `ResyncUserRole` RPC seam.** Plan 06 Task 3 calls `authStore.UpdateUserRole` directly — correct for isolating SC#3 propagation, but SC#3’s operator path still depends on Plan 06 Task 1 unit tests + manual validation (`02-VALIDATION.md:95`).
 
 ### LOW
 
-- **Admin vs self revoke semantics differ by design but need care.** Admin `RevokeAPIKey` storage has no `RowsAffected` check (`internal/storage/postgres/users.go:408-415`). Self `RevokeAPIKeyForUser` intentionally omits `revoked_at IS NULL` for idempotent re-revoke (Plan 02) while using `RowsAffected()==0 → NotFound` for foreign keys — correct, but implementers must not copy the admin WHERE clause verbatim.
-
-- **Mandatory expiry is a behavior change from admin mint.** Admin `CreateAPIKey` allows unset `expires_at` (`identity.proto:130`, handler `identity_handler.go:248-251`). Self-mint mandating 90d default / 180d max (D-08) is intentional but should be noted in CLI help when self path lands (`auth_apikey.go` today documents optional expiry via `parseExpiresAt` at `:28-39`).
-
-- **Parallel Wave 1 plans (01/02/03) are safe** — no file conflicts — but Plan 04 (Wave 2) only depends on 01, so auth-layer work could start as soon as proto lands; current sequencing is conservative, not wrong.
-
-- **Research “minor drift” on `principalEntity` is confirmed** (`engine.go:212` vs cited `:218`) — negligible.
+- **Dashboard users who authenticated via legacy API-key paste cannot self-mint from web.** `handleLogin` stores the raw key in `specgraph_session` (`auth_handler.go:80-81`); resolution yields `Source: "apikey"` (`identitystore.go:347`); Plan 05 correctly rejects that for anti-chaining — but UX is undocumented.
+- **`serve.go:203` citation is slightly imprecise.** `maxBytes` is `connect.WithReadMaxBytes` (`serve.go:181`), passed as a variadic `HandlerOption` alongside `opts` — not a separate parameter. Harmless for implementers, but line-number references should note variadic bundling.
+- **Plan 03 threat model typo:** artifacts table in `02-01-PLAN.md` once referenced Plan 03 for `ResyncUserRole` → `user.manage`; that mapping belongs in Plan 04 (`02-04-PLAN.md:21`).
 
 ---
 
 ## Suggestions
 
-1. **Add an explicit CSRF integration task** (Plan 03 or 05): mount CSRF validate middleware on the IdentityService Connect handler in `serve.go` (near `server.RegisterIdentityService(mux, res.authStore, opts, maxBytes)` at `cmd/specgraph/serve.go:203`), and issue the `specgraph_csrf` cookie on a safe GET (layout, `/keys`, or middleware that sets cookie when absent).
-
-2. **Correct web auth documentation** to cite `internal/auth/interceptor.go:57-67` as the session-cookie path for Connect, not `cookieToAuthHeader`.
-
-3. **Align `CreateAPIKeyForUser` / `RotateAPIKeyForUser` signatures** with handler-owned secret generation: storage accepts `PHCHash`, returns `*APIKey` only (mirror `CreateAPIKey` at `postgres/users.go:361-404`).
-
-4. **Extend `identityError`** with `errors.Is(err, storage.ErrQuotaExceeded) → connect.CodeResourceExhausted` (and rate-limit similarly) before Plan 05 ships.
-
-5. **Add one integration test** for AUTH-02: write role via `UpdateUserRole`, resolve a standing key through `pgIdentityStore.resolveAPIKey`, assert `EffectiveRole` reflects the new floor — closes the gap between Plan 06 unit tests and SC#3.
-
-6. **Update `identity.proto` service comment** in Plan 01 when adding self RPCs (lines 12–15).
-
-7. **Clarify CSRF coverage** for `ListMyAPIKeys` POST in Plan 03 threat model.
-
-8. **Plan 01 only:** after proto regen, grep confirms no `user_id` inside `CreateMyAPIKeyRequest` — good gate; also verify generated web TS client is imported only from Plan 08 paths to avoid unused-import churn.
+1. **Sync `02-RESEARCH.md` and `02-PATTERNS.md` web-auth sections** to cite `internal/auth/interceptor.go:57-81` for Connect/dashboard RPCs; reserve `cookieToAuthHeader` for REST `/api/auth/whoami` only (`auth_handler.go:45-46`).
+2. **Add an explicit Plan 05 acceptance criterion** for structured audit log lines on self create/rotate/revoke (actor = self identity, never log plaintext or unescaped `label`), matching `02-RESEARCH.md` V7.
+3. **Optional end-to-end complement:** after Plan 06 lands, add one handler-level or CLI test that calls `ResyncUserRole` then resolves a standing key — closes the gap between unit stubs and the operator seam.
+4. **Document web self-mint eligibility** in Plan 08 or CLI help: OIDC/`spgr_ws_` session required; legacy API-key dashboard login is intentionally blocked by `Source=="apikey"` gate.
+5. **Keep `go build ./...` in Plan 05 verify steps** — `serve.go:203` is not exercised by `go test ./internal/server/` alone (plans already note this; worth enforcing in CI mindset).
 
 ---
 
@@ -106,45 +88,40 @@ The eight-plan set is unusually well grounded in the brownfield codebase: resear
 
 **Overall risk: MEDIUM**
 
-**Justification:** Security design quality is **high** — the plans correctly identify real vulnerabilities in the current tree (list leak, laundering via `EffectiveRole` vs `Role`, env-key precedence, Cedar boot coupling, quota TOCTOU) and propose mechanisms that match existing patterns (`clampedRole`, `AuthStore` txs, emit-once responses). Implementation scope is **large but bounded** (no new deps, no migration).
+**Justification:** Round-1 **blockers are resolved in plan text** — CSRF has a credible issue point (whoami GET), mount point (`RegisterIdentityService`), and automated mount test (`2-05-03`); storage contract, quota mapping, and AUTH-02 integration proof are scheduled. Security design quality remains **high** and matches verified mechanisms in the tree.
 
-Risk is **medium** rather than low because: (1) CSRF is specified as middleware code but not wired or bootstrapped — a common failure mode for cookie-authenticated POST RPCs; (2) web auth assumptions in research point at the wrong middleware layer; (3) AUTH-02’s core value proposition (standing keys clamp immediately) is asserted from code reading but not fully test-gated at integration depth; (4) this phase mints credentials — any gap in owner scoping, floor, or source gate has high blast radius.
+Risk stays **medium** (not low) because: (1) **no code has landed yet** for a credential-minting phase; (2) **research doc drift** on the Connect auth path could cause implementation mistakes despite corrected plans; (3) **audit logging** is underspecified relative to the canonical design; (4) any bug in owner scoping, `RoleMin` floor, or CSRF mount has high blast radius.
 
-**Phase success criteria outlook:**
+| Success criterion | Plans cover it? | Confidence |
+|-------------------|-----------------|------------|
+| **SC#1** — Self-provision without bootstrap key | Yes (RPCs + CLI session resolver + web panel + CSRF) | **Medium–High** (was Medium; CSRF wiring now explicit) |
+| **SC#2** — Role capped at mint/rotate, no laundering | Yes (`RoleMin`, explicit rotate args, adversarial tests) | **High** |
+| **SC#3** — Forced re-sync reaches standing keys | Yes (`ResyncUserRole` + `UpdateUserRole` + live `resolveAPIKey`) | **Medium–High** (integration test scheduled; RPC seam mostly unit-tested) |
 
-| Criterion | Plans cover it? | Confidence |
-|-----------|-----------------|------------|
-| SC#1 — Self-provision without bootstrap key | Yes (RPCs + CLI session resolver + web panel) | Medium (blocked on CSRF wiring + web client) |
-| SC#2 — Role capped at mint/rotate, no laundering | Yes (`RoleMin` + storage explicit rotate args + tests) | High |
-| SC#3 — Forced re-sync reaches standing keys | Yes (reuse `UpdateUserRole` + live `resolveAPIKey`) | Medium–High (mechanism verified in code; integration test gap) |
-
-**Recommendation:** Proceed with execution after adding CSRF mount/issuance tasks and fixing the web-auth/ storage-signature inconsistencies above. Run `task pr-prep` (integration + e2e) before marking the phase complete — quota TOCTOU and owner-scoped SQL especially need Docker-backed tests per the plans’ own validation architecture.
+**Recommendation:** Proceed with execution. Before marking the phase complete, run `task pr-prep` (Docker integration + e2e), reconcile `02-RESEARCH.md` with the interceptor-based Connect auth path, and treat Plan 05 CSRF mount + `TestResync_LiveRoleClamp` as hard gates alongside the Plan 08 human-verify checkpoint.
 
 ---
 
 ## Consensus Summary
 
-Only one external reviewer (cursor-agent) ran this pass, so there is no cross-reviewer
-vote. Cursor performed a source-grounded review against the live tree and its findings
-are cited with `file:line` evidence, so they are weighted as high-value.
+Single reviewer (cursor-agent), source-grounded (findings cited to `file:line`). This round
+verified convergence of the round-1 incorporation.
 
-### Agreed Strengths
-_(single reviewer — strengths cursor validated against source)_
-- Research/drift grounding is accurate: `resolveAPIKey` live-role clamp (`internal/auth/identitystore.go:306-348`), `UpdateUserRole` writes `users.role`, no new schema/migration needed (`auth_migrations/001_initial.sql:36-50`).
-- Security invariants derive from real mechanisms: `ListAPIKeys` empty-`user_id` enumeration leak (`identity_handler.go:319-324`), Cedar `self`-verb boot invariant with the dual hard-coded lists in `actions_test.go:33-41` / `:50-70`, `RoleMin` laundering floor on `EffectiveRole`, `Source=="apikey"` anti-key-chaining gate, `SPECGRAPH_API_KEY` precedence (Finding D, `client.go:102-111`), and the ADR-004 `AuthStore`-tx + `FOR UPDATE` quota pattern.
-- Wave ordering (proto → auth → storage/config → handlers → CLI/web) is sound.
+### Round-1 Convergence Verdict
+- **6 of 7 findings RESOLVED in plan text**, verified against live source (CSRF mount at the real `RegisterIdentityService`/`identity_handler.go:29-35` shape; cookie issuance on the whoami GET that `web/src/lib/auth.svelte.ts:17` already calls; storage-signature alignment; `ErrQuotaExceeded → CodeResourceExhausted`; `TestResync_LiveRoleClamp` scheduled; `ListMyAPIKeys` CSRF scope stated; proto/CLI/revoke LOW fixes).
+- **1 finding PARTIAL:** the web-auth-path correction landed in the PLANs (03/05/08 cite `interceptor.go:57-81`) but the supporting **`02-RESEARCH.md:204-222` and `02-PATTERNS.md:343-344` still describe Connect web mutations via `cookieToAuthHeader`** — stale mental model for an implementer who reads research before the plan cross-refs.
 
-### Agreed Concerns (highest priority — actionable via `/gsd-plan-phase 2 --reviews`)
-- **[HIGH] CSRF middleware is defined but never wired or bootstrapped.** Plan 03 creates `internal/server/csrf.go` + unit tests but no task mounts the middleware in `cmd/specgraph/serve.go` (near `RegisterIdentityService` at `serve.go:203`), and nothing defines *when* the `specgraph_csrf` cookie is first issued. Plan 08's human-verify mutation will fail on first POST. → add an explicit CSRF mount + issuance task.
-- **[HIGH] Web session auth path mis-documented.** Connect RPCs authenticate via `authenticate()` → `sessionCookieValue()` reading `specgraph_session` (`internal/auth/interceptor.go:57-81`), NOT `cookieToAuthHeader` (which only wraps REST `/api/auth/whoami`, `auth_handler.go:45-46`). CSRF must wrap the **Connect IdentityService handler path**. → correct research/plan wording and target the right layer.
-- **[MEDIUM] Storage-signature mismatch:** Plan 02 declares `CreateAPIKeyForUser`/`RotateAPIKeyForUser` returning a plaintext secret, but Plan 05 (matching the existing admin `CreateAPIKey`) generates the secret in the handler and passes `PHCHash` to storage. → pick one contract (handler-owned secret, storage returns `*APIKey`).
-- **[MEDIUM] `identityError` lacks an `ErrQuotaExceeded` → `CodeResourceExhausted` mapping** (`identity_handler.go:61-75`); Plan 05 expects it or quota errors surface as `CodeInternal`. → add the mapping before Plan 05 ships.
-- **[MEDIUM] AUTH-02 live-floor (SC#3) has no integration proof** — Plan 06 uses fake `UsersBackend` stubs; the research validation map lists `TestResync_LiveRoleClamp` as integration but no plan schedules it. → add one integration test (write role via `UpdateUserRole`, resolve a standing key, assert new `EffectiveRole`).
-- **[MEDIUM] CSRF scope for `ListMyAPIKeys`** (also POST in Connect) is unspecified. → state inclusion/exclusion in Plan 03 threat model.
-- **[LOW]** Update the `identity.proto` service comment (`:12-15`) that claims all non-`Whoami` RPCs require admin; note the self-mint mandatory-expiry behavior change vs admin mint; don't copy the admin `RevokeAPIKey` WHERE clause verbatim into the owner-scoped variant.
+### Agreed Concerns (actionable for a follow-up `/gsd-plan-phase 2 --reviews` or a doc sync)
+- **[MEDIUM] Doc drift:** sync `02-RESEARCH.md` + `02-PATTERNS.md` web-auth sections to `interceptor.go:57-81` (Connect/`specgraph_session`); reserve `cookieToAuthHeader` for REST `/api/auth/whoami` only.
+- **[MEDIUM] Audit logging underspecified in Plan 05:** RESEARCH V7 requires structured audit lines on self create/rotate/revoke, but Plan 05 has no acceptance criterion for structured audit emission (only the untrusted-`label` threat row T-02-19). Add an explicit criterion (actor = self identity; never log plaintext/unescaped label).
+- **[MEDIUM] `TestResync_LiveRoleClamp` proves storage+resolver, not the `ResyncUserRole` RPC seam** — Plan 06 Task 3 calls `authStore.UpdateUserRole` directly. Optional: add one handler/CLI test that calls `ResyncUserRole` then resolves a standing key to cover the operator path end-to-end.
+- **[LOW]** Document web self-mint eligibility (legacy API-key `specgraph_session` login is intentionally blocked by the `Source=="apikey"` gate); note `serve.go:203` `maxBytes` is a variadic `HandlerOption` bundled with `opts`, not a separate param; fix the artifacts-table mapping (`ResyncUserRole → user.manage` belongs in Plan 04, not Plan 03).
+
+### New HIGH concerns
+None — round-1 HIGH blockers are resolved in plan text; residual risk is faithful execution.
 
 ### Divergent Views
 None — single reviewer.
 
 ### Overall
-Cursor's verdict: **MEDIUM risk. Proceed after adding the CSRF mount/issuance task and fixing the web-auth/storage-signature inconsistencies.** SC#2 (no laundering) is HIGH confidence; SC#1 and SC#3 are Medium pending the CSRF wiring and an AUTH-02 integration test. Run `task pr-prep` (Docker integration + e2e) before marking the phase complete.
+Cursor round-2 verdict: **MEDIUM risk (down from round 1). Proceed with execution.** SC#2 HIGH confidence; SC#1 and SC#3 Medium–High (CSRF wiring now explicit; AUTH-02 integration test scheduled). Before phase completion: run `task pr-prep` (Docker integration + e2e), reconcile the RESEARCH/PATTERNS web-auth drift, and treat the Plan 05 CSRF mount + `TestResync_LiveRoleClamp` + Plan 08 human-verify as hard gates.
