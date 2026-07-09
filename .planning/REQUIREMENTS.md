@@ -16,8 +16,8 @@ Sourced from beads issues at priority P1 (in-progress) and P2 (open). Each maps 
 ### Auth & Identity
 
 - [ ] **AUTH-01**: Native generic OAuth2 + userinfo login provider (GitHub-direct) (`spgr-1rq9`)
-- [ ] **AUTH-02**: Enforce app-role revocation on standing API/MCP keys, forcing re-sync (`spgr-c2lb`)
-- [ ] **AUTH-03**: Self-service / automatic MCP API-key provisioning for OIDC users (`spgr-g7st`, in progress)
+- [x] **AUTH-02**: Enforce app-role revocation on standing API/MCP keys, forcing re-sync (`spgr-c2lb`)
+- [x] **AUTH-03**: Self-service / automatic MCP API-key provisioning for OIDC users (`spgr-g7st`, in progress)
 - [ ] **AUTH-04**: MCP OAuth 2.1 resource server delegating auth to a real IdP (`spgr-tmqm`)
 - [ ] **AUTH-05**: Populate `web_sessions.issuer` for audit / future RP-logout (`spgr-bbp2`)
 
@@ -109,7 +109,7 @@ detail (goals, success criteria, dependencies).
 |-------------|-------|--------|
 | REL-01 | Phase 1 | Done |
 | AUTH-01 | Phase 3 | Pending |
-| AUTH-02 | Phase 2 | Pending |
+| AUTH-02 | Phase 2 | Complete |
 | AUTH-03 | Phase 2 | In progress |
 | AUTH-04 | Phase 3 | Pending |
 | AUTH-05 | Phase 3 | Pending |

@@ -59,10 +59,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. A self-minted key's effective role is capped at the caller's own current role at mint/rotate time — no privilege-escalation "laundering" through a stale or elevated role
   3. When a user's app role is revoked or downgraded upstream, their standing API/MCP keys stop carrying the old privilege on forced re-sync, not only on next interactive login
 
-**Plans**: 8 plans
+**Plans**: 1/8 plans executed
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Proto & codegen: five IdentityService RPCs (4 self + ResyncUserRole) + task proto (AUTH-02, AUTH-03)
+- [x] 02-01-PLAN.md — Proto & codegen: five IdentityService RPCs (4 self + ResyncUserRole) + task proto (AUTH-02, AUTH-03)
 - [ ] 02-02-PLAN.md — Storage: owner-scoped mutations + quota-safe mint + ErrQuotaExceeded + integration tests (AUTH-03)
 - [ ] 02-03-PLAN.md — Server foundation: self-service key-policy config (90d/180d/quota 10) + double-submit CSRF middleware (validate + issue-on-whoami-GET) (AUTH-03)
 
@@ -114,7 +114,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Release & Build Tooling | 1/1 | Complete    | 2026-07-09 |
-| 2. API Key Lifecycle & Self-Service | 0/8 | In progress | - |
+| 2. API Key Lifecycle & Self-Service | 1/8 | In Progress|  |
 | 3. External Identity Provider Integration | 0/TBD | Not started | - |
 | 4. Verification & Integration Reliability | 0/TBD | Not started | - |
 
