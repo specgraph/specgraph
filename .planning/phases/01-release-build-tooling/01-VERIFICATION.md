@@ -1,11 +1,12 @@
 ---
 phase: 01-release-build-tooling
 verified: 2026-07-09T00:00:00Z
-status: human_needed
+status: passed
 score: 7/7 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Confirm ROADMAP.md Phase 1 detail section (lines 34-48) is updated to reflect completion"
     expected: "Status line should read 'Complete' (not 'In progress — ... only CFG-02 remains open') and Success Criterion 3 should be marked Met (not Open, and not still citing the pre-fix '2.12.2 drift' fact as current)."
     why_human: "This is a documentation/roadmap-bookkeeping decision (what text to write, when to update it) rather than a code-verifiable fact. The underlying code fully satisfies SC3 (verified below) — only the roadmap narrative text is stale."
