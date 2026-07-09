@@ -201,7 +201,7 @@ No `role_source` column, no migration. A forced demotion persists until the user
 **Web (net-new; dashboard is read-only today)**
 - `web/src/routes/`: current routes are `constitution/`, `decision/`, `graph/`, `spec/` (all read-only). Add an "MCP Keys" panel/route. `[VERIFIED: web/src/routes]`
 - `web/src/lib/`: client wiring in `web/src/lib/api/client.ts` (+ generated client under `web/src/lib/api/gen/specgraph`); auth state in `auth.svelte.ts`; existing `LoginModal.svelte` component as a modal reference. Add a one-time-reveal modal component. `[VERIFIED: web/src/lib]`
-- **CSRF (D-09):** mutations flow cookie→bearer via `cookieToAuthHeader` (`auth_handler.go:136`) with `SameSite=Lax` session cookie (`auth_handler.go:179`). Add POST-only CSRF token issuance/validation at the `internal/server` HTTP boundary. `[VERIFIED: auth_handler.go]`
+- **CSRF (D-09):** the MCP Keys panel's Connect self-key RPCs authenticate via the **Connect auth interceptor**, which reads the `SameSite=Lax` `specgraph_session` cookie directly in `authenticate` → `sessionCookieValue` (`internal/auth/interceptor.go:57-81`) — NOT via `cookieToAuthHeader`. `cookieToAuthHeader` (`auth_handler.go:45-46,133-147`) only wraps the REST `/api/auth/whoami` GET endpoint; it is not in the Connect IdentityService request path. Add POST-only CSRF token issuance/validation at the `internal/server` HTTP boundary: issue the double-submit token on the safe whoami GET the dashboard already calls on load, and mount the validator on the Connect IdentityService handler (in `RegisterIdentityService`) in front of the interceptor's session path. `[VERIFIED: interceptor.go:57-81, auth_handler.go:45-46]`
 
 **Config**
 - New self-service key-policy config struct (expiry default 90d / max 180d, quota 10, rate-limit thresholds), defaulted in `globalDefaults()` (`global.go:433` sets `OIDC` defaults today). **Do NOT reuse legacy `APIKeyConfig` (`:254`)** — it's the deprecated static-key model. `[VERIFIED: global.go:226-259,433]`
@@ -219,9 +219,9 @@ No `role_source` column, no migration. A forced demotion persists until the user
         cookie + CSRF)    │                                              │
         │                 │  IdentityService.CreateMyAPIKey (apikey.self)│
         ▼                 │                    │                         │
-  cookieToAuthHeader ─────┼──► authMW ──► Cedar gate (EffectiveRole)     │
-  (cookie → Bearer)       │      │              │ permit any auth'd role │
-        │                 │      ▼              ▼                        │
+  Connect interceptor ────┼──► authMW ──► Cedar gate (EffectiveRole)     │
+  (interceptor.go:57-81,  │      │              │ permit any auth'd role │
+   reads specgraph_session)│      ▼              ▼                        │
    CSRF token check ──────┼─► handler:  [1] reject Source=="apikey"      │
    (web mutations)        │             [2] owner = IdentityFromContext  │
                           │             [3] role_downgrade =             │
@@ -312,7 +312,7 @@ func RoleMin(a, b Role) Role { // fail-closed for unranked
 | API-key secret + PHC hash | New crypto | `auth.GenerateAPIKeySecret` / `FormatAPIKeyToken` / `argon2idVerify` | Existing, constant-time, PHC-encoded. |
 | Rotate atomicity | New tx logic | Model on `AuthStore.RotateAPIKey` (`postgres/users.go:425`) savepoint pattern | Handles prefix-collision retry + rollback. |
 | Role write for AUTH-02 | A new update path | Existing `UpdateUserRole` (handler `:155`, storage `RowsAffected` guard `:233`) | The propagation is already automatic via `resolveAPIKey`. |
-| Session cookie → bearer | New middleware | Existing `cookieToAuthHeader` (`auth_handler.go:136`) | Web mutations already route through it. |
+| REST whoami cookie → bearer | New middleware | Existing `cookieToAuthHeader` (`auth_handler.go:45-46,136`) | Only the REST `/api/auth/whoami` GET routes through it; Connect RPCs use the interceptor's `sessionCookieValue` path (`interceptor.go:57-81`) instead. |
 
 **Key insight:** This domain has *already* been hardened across multiple adversarial review rounds. The failure mode here is **re-inventing** a comparator/limiter/tx that diverges from the reviewed fail-closed behavior — not a missing library. Extend, don't replace.
 
@@ -420,7 +420,7 @@ func (h *IdentityHandler) ResyncUserRole(ctx context.Context, req ...) (...) {
 | A1 | CSRF (D-09) is best implemented as a hand-rolled double-submit/synchronizer token (no new dependency) | Standard Stack / Alternatives | If a library is mandated, planner must add a legitimacy-gate + `checkpoint:human-verify` task. Low risk — POST-only + `SameSite=Lax` + JSON preflight already mitigate. |
 | A2 | The AUTH-02 seam is a new `IdentityService` RPC (e.g. `ResyncUserRole`) mapped to `user.manage` | AUTH-02 Approach | If a different service placement is chosen, the actions-map/mirror-test wiring differs. Naming is explicitly planner discretion (D-04). |
 | A3 | A new self-service config struct is required (not reusing `APIKeyConfig`) | Config touch-surface | If config is threaded differently, defaults location changes. Grounded in `global.go` reading — low risk. |
-| A4 | Web mutations authenticate via `cookieToAuthHeader` (`specgraph_session`) exactly like `whoami`; the MCP Keys panel reuses that path | Web touch-surface | If a separate auth path is chosen for the panel, CSRF wiring differs. Grounded — low risk. |
+| A4 | Web (Connect) self-key mutations authenticate via the Connect auth interceptor reading `specgraph_session` (`interceptor.go:57-81`), the same cookie `whoami` uses; `cookieToAuthHeader` wraps ONLY the REST whoami GET, not the Connect path | Web touch-surface | If a separate auth path is chosen for the panel, CSRF wiring differs. Grounded against live source (interceptor session-cookie fallback) — low risk. |
 | A5 | Rate-limit thresholds for self-mint follow the JIT limiter's config shape (per-hour refill + burst) | AUTH-03 gates | Exact numbers are implementation-review discretion per the design; wrong defaults are tunable, not structural. |
 
 **Note:** AUTH-03's substantive decisions are **not** assumptions — they are locked in the canonical rev-5 design (D-06). The items above are the genuinely open, planner-discretion points.

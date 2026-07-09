@@ -337,11 +337,16 @@ Also add the mandated **`self`-verb-only-on-`apikey.*` drift test** here (assert
 
 **Analog:** `internal/server/auth_handler.go:136-148` (`cookieToAuthHeader`) — same middleware shape
 
-Model a POST-only CSRF-token middleware on `cookieToAuthHeader`'s `http.Handler` wrapper. RESEARCH
-recommendation (D-09): double-submit — a `crypto/rand` token set as a non-HttpOnly cookie + echoed header,
-validated in a small wrapper around the mutating routes. Cookie config to mirror is `sessionCookie`
-(`auth_handler.go:173-182`, `SameSite=Lax`, dynamic `Secure`). Only web mutations need it; the cookie→bearer
-promotion already flows through `cookieToAuthHeader`.
+Model a POST-only CSRF-token middleware on `cookieToAuthHeader`'s `http.Handler` wrapper shape (a plain
+`http.Handler` decorator). RESEARCH recommendation (D-09): double-submit — a `crypto/rand` token set as a
+non-HttpOnly cookie + echoed header, validated in a small wrapper around the mutating routes. Cookie config to
+mirror is `sessionCookie` (`auth_handler.go:173-182`, `SameSite=Lax`, dynamic `Secure`). **Mount point (do NOT
+confuse with the REST path):** the validator is mounted on the **Connect IdentityService handler** in
+`RegisterIdentityService` (Plan 05), sitting in front of the Connect auth interceptor's session path — the
+interceptor reads `specgraph_session` in `authenticate` → `sessionCookieValue` (`internal/auth/interceptor.go:57-81`).
+`cookieToAuthHeader` (`auth_handler.go:45-46,133-147`) wraps ONLY the REST `/api/auth/whoami` GET; it is NOT in
+the Connect self-key request path. Issue the CSRF cookie on that safe whoami GET (Plan 03); validate on the
+Connect self-key POSTs. Only cookie-authed web mutations need enforcement; Bearer (CLI/MCP) callers are exempt.
 ```go
 func cookieToAuthHeader(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
