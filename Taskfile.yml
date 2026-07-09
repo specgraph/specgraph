@@ -17,6 +17,7 @@ vars:
   # Schema Registry, which rate-limits unauthenticated requests in CI (spgr-3zs0).
   PROTOC_GEN_GO_VERSION: v1.36.11
   PROTOC_GEN_CONNECT_GO_VERSION: v1.19.1
+  GOLANGCI_LINT_VERSION: v2.12.1
 tasks:
   default:
     desc: Show available tasks
@@ -354,12 +355,18 @@ tasks:
   tools:
     desc: Install development tools
     cmds:
-      - brew install golangci-lint gofumpt lefthook actionlint goreleaser dprint cocogitto rumdl yamlfmt buf beads
+      - brew install gofumpt lefthook actionlint goreleaser dprint cocogitto rumdl yamlfmt buf beads
       # Local buf codegen plugins (see buf.gen.yaml). The TypeScript es plugin
       # (protoc-gen-es) is installed into web/node_modules via `pnpm install`.
       - go install google.golang.org/protobuf/cmd/protoc-gen-go@{{.PROTOC_GEN_GO_VERSION}}
       - go install connectrpc.com/connect/cmd/protoc-gen-connect-go@{{.PROTOC_GEN_CONNECT_GO_VERSION}}
+      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{.GOLANGCI_LINT_VERSION}}
       - echo "Tools installed. Run 'task hooks:install' to set up git hooks."
+  tools:golangci-lint-version:
+    desc: Print the pinned golangci-lint version (single source of truth; ci.yml reads this)
+    silent: true
+    cmds:
+      - echo '{{.GOLANGCI_LINT_VERSION}}'
   # Skills (agentskills.io-shaped SKILL.md packages under skills/)
   skills:validate:
     desc: Validate skills/ packages against the agentskills.io minimal contract
