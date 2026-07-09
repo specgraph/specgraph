@@ -23,6 +23,7 @@ Specs stay live and queryable as a graph — with locked architectural decisions
 - ✓ v0.12.0 released
 - ✓ Single-job goreleaser-owns-release model (`spgr-7r6g`) — merged PR #981; verified against `v0.12.0`'s actual GitHub Release (single publish, populated notes, signed/SBOM'd assets)
 - ✓ Koanf layered config loader (`spgr-5kd5`) — `internal/config/global.go` implements the full flag>env>file>default precedence, including the `SPECGRAPH_PG_URL` deprecation warning
+- ✓ Pin `task tools`' golangci-lint to match CI version (`spgr-vpmg`) — Phase 1: single `GOLANGCI_LINT_VERSION` var in `Taskfile.yml`, installed via `go install` (not unpinned `brew install`); `ci.yml` reads the same value via `$(task tools:golangci-lint-version)` command substitution instead of an independent env var
 
 ### Active
 
@@ -35,7 +36,6 @@ Specs stay live and queryable as a graph — with locked architectural decisions
 - [ ] Fix Confluence comment polling pagination bug (`spgr-jwbj`)
 - [ ] MCP OAuth 2.1 resource server delegating auth to a real IdP (`spgr-tmqm`)
 - [ ] Interface and verify drift detection (`spgr-vch`)
-- [ ] Pin task tools golangci-lint to match CI version (`spgr-vpmg`)
 
 ### Out of Scope
 
@@ -67,6 +67,7 @@ Full architectural history — locked ADRs, three-generation storage-backend lin
 | ADR-006: `SpecProvenance` replaces `SpecLifecycle` (task/living) | task/living distinction proved insufficient | ✓ Good |
 | Storage backend: pure Postgres/pgx (not Memgraph+AGE) | simplify ops, drop graph-DB dependency | ✓ Good |
 | Migrate issue tracking from `bd`/beads to GSD `.planning/` | consolidate on one planning/tracking system | — Pending |
+| CFG-02: Taskfile-as-source-of-truth for pinned tool versions (silent leaf task + CI command substitution, not a duplicated env var) | single declaration closes local/CI version drift structurally, not just for golangci-lint | ✓ Good — pattern flagged in code review (IN-01) as worth generalizing to `PROTOC_GEN_*` vars in a future phase |
 
 ---
-*Last updated: 2026-07-08 during Phase 1 discuss — REL-01/CFG-01 found already shipped on `main` (beads status had lagged), reclassified as Validated*
+*Last updated: 2026-07-09 after Phase 1 complete — CFG-02 (golangci-lint pinning) shipped and reclassified from Active to Validated; Phase 1 fully closed (all three requirements: REL-01, CFG-01, CFG-02)*
