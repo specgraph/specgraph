@@ -39,7 +39,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. ✓ A pushed release tag produces exactly one coherent GitHub Release (correct changelog notes and artifacts) via a single goreleaser-owned job — no dual-path race, no empty release notes. **Met** — verified against `v0.12.0`'s actual release.
   2. ✓ All SpecGraph server/CLI config is sourced through one layered koanf loader (flag > env > file > default), with the legacy `SPECGRAPH_PG_URL` env var emitting a deprecation warning instead of silently breaking config. **Met** — verified in `internal/config/global.go` and `cmd/specgraph/serve.go`.
   3. `task check`'s golangci-lint run uses the same pinned version as CI, so a clean local `task check` guarantees a clean CI lint run. **Open** — CI pins `v2.12.1` (`ci.yml`); `task tools` installs via unpinned `brew install golangci-lint`, currently drifted to `2.12.2`.
-**Plans**: TBD — planning will scope to CFG-02 only
+**Plans**: 1 plan
+- [ ] 01-01-PLAN.md — Pin `task tools`' golangci-lint to CI's version via a single Taskfile.yml var read back by ci.yml (CFG-02; REL-01/CFG-01 traceability-only, already shipped)
 
 ### Phase 2: API Key Lifecycle & Self-Service
 **Goal**: OIDC users can safely self-provision scoped MCP API keys, and a revoked app-role can no longer be exploited via an already-issued key
