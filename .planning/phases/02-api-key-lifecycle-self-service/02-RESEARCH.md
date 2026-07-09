@@ -425,21 +425,24 @@ func (h *IdentityHandler) ResyncUserRole(ctx context.Context, req ...) (...) {
 
 **Note:** AUTH-03's substantive decisions are **not** assumptions — they are locked in the canonical rev-5 design (D-06). The items above are the genuinely open, planner-discretion points.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **CSRF token mechanism (D-09 discretion).**
    - What we know: POST-only mutations, `SameSite=Lax` cookie, JSON preflight already in place; token must be added on top.
    - What's unclear: synchronizer (server-stored) vs double-submit (cookie+header) — issuance/validation wiring at the `internal/server` HTTP boundary.
    - Recommendation: double-submit with a `crypto/rand` token set as a non-HttpOnly cookie + echoed header, validated in a small middleware wrapping the mutating routes. Avoids server-side token storage and a new dependency.
+   - **RESOLVED:** double-submit CSRF (non-HttpOnly `specgraph_csrf` cookie echoed into `X-CSRF-Token`) per D-09, with key expiry caps 90d default / 180d max per D-08. Middleware lands in Plan 03; web interceptor + enforcement verified in Plan 08.
 
 2. **Self-mint rate-limit thresholds.**
    - What we know: reuse `rateLimiterFor` (`golang.org/x/time/rate`) pattern; needs per-identity keying (not per-issuer).
    - What's unclear: refill/burst values.
    - Recommendation: conservative (e.g. burst 5, refill ~30/hr) as server-configurable defaults; tune at review.
+   - **RESOLVED:** per-identity limiter with burst ≈ 5, refill ≈ 30·hr⁻¹ as server-configurable defaults (`SelfServiceKeysConfig`), landed in Plan 03 and enforced by the `selfMintLimiter` in Plan 05.
 
 3. **AUTH-02 `--revoke-keys` scope: active-only or include-expired?**
    - What we know: off-boarding intent is "kill their standing keys."
    - Recommendation: revoke all **active** (non-revoked) keys via `ListAPIKeys{UserID}` + `RevokeAPIKey`; already-revoked/expired are no-ops.
+   - **RESOLVED:** active-only — `--revoke-keys` revokes all non-revoked keys via `ListAPIKeys{UserID}` + `RevokeAPIKey`; already-revoked/expired are no-ops. Implemented in Plan 06.
 
 ## Environment Availability
 
