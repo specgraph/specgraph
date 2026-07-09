@@ -4,8 +4,8 @@ milestone: v0.12.0
 milestone_name: milestone
 current_phase: 2
 current_phase_name: API Key Lifecycle & Self-Service
-status: verifying
-stopped_at: Phase 01 Plan 01 complete — CFG-02 golangci-lint pinning closed; phase 01 fully done
+status: planning
+stopped_at: Phase 01 complete (planned, executed, reviewed, security-verified, UAT-passed); ready to plan Phase 2
 last_updated: "2026-07-09T03:51:22.482Z"
 last_activity: 2026-07-09
 last_activity_desc: Phase 01 complete, transitioned to Phase 2
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 drift detection, and a durable storage/query layer — so both humans and agent-based execution
 engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
-**Current focus:** Phase 01 — release-build-tooling
+**Current focus:** Phase 2 — API Key Lifecycle & Self-Service
 
 ## Current Position
 
@@ -85,9 +85,9 @@ None yet.
 
 ### Blockers/Concerns
 
-- REL-01 (`spgr-7r6g`, Phase 1) and AUTH-03 (`spgr-g7st`, Phase 2) are already in progress per
-  beads status, prior to any GSD plan existing. When planning Phase 1 and Phase 2, check
-  current repo state / open PRs first to avoid re-doing work already underway.
+- AUTH-03 (`spgr-g7st`, Phase 2) is already in progress per beads status, prior to any GSD plan
+  existing. When planning Phase 2, check current repo state / open PRs first to avoid re-doing
+  work already underway. (REL-01's equivalent Phase 1 concern is resolved — Phase 1 is complete.)
 
 - DRFT-01 and INTG-01 (Phase 4) are not covered by the 177-doc intel corpus (both are newer/
   smaller items) — plan-phase should scope these from current code, not from `.planning/intel/`.
@@ -102,6 +102,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T03:22:44.443Z
-Stopped at: Phase 01 Plan 01 complete — CFG-02 golangci-lint pinning closed; phase 01 fully done
+Last session: 2026-07-09
+Stopped at: Phase 01 complete, ready to plan Phase 2
 Resume file: None
