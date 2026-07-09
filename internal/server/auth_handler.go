@@ -43,13 +43,15 @@ func RegisterAuthHandlers(mux *http.ServeMux, resolver auth.Resolver, webAuth st
 	})
 
 	// whoami: GET only, translate session cookie → Authorization header, then apply authMW.
-	mux.Handle("/api/auth/whoami", authMW(cookieToAuthHeader(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// csrfIssue wraps the GET so a dashboard load bootstraps the specgraph_csrf
+	// double-submit cookie before the first self-key mutation (cursor #1).
+	mux.Handle("/api/auth/whoami", csrfIssue(authMW(cookieToAuthHeader(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
 		handleWhoami(w, r)
-	}))))
+	})))))
 }
 
 // handleLogin validates the API key and sets a session cookie on success.
