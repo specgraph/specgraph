@@ -59,7 +59,16 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. A self-minted key's effective role is capped at the caller's own current role at mint/rotate time — no privilege-escalation "laundering" through a stale or elevated role
   3. When a user's app role is revoked or downgraded upstream, their standing API/MCP keys stop carrying the old privilege on forced re-sync, not only on next interactive login
 
-**Plans**: TBD
+**Plans**: 8 plans
+
+- [ ] 02-01-PLAN.md — Proto & codegen: five IdentityService RPCs (4 self + ResyncUserRole) + task proto (AUTH-02, AUTH-03)
+- [ ] 02-02-PLAN.md — Storage: owner-scoped mutations + quota-safe mint + ErrQuotaExceeded + integration tests (AUTH-03)
+- [ ] 02-03-PLAN.md — Server foundation: self-service key-policy config (90d/180d/quota 10) + double-submit CSRF middleware (AUTH-03)
+- [ ] 02-04-PLAN.md — Auth: exported RoleMin floor + apikey.self Cedar verb + action map + mirror/drift tests (AUTH-03, AUTH-02)
+- [ ] 02-05-PLAN.md — Server: four self-mint handlers with source-gate + RoleMin floor + rate limit + expiry cap (AUTH-03)
+- [ ] 02-06-PLAN.md — AUTH-02 forced re-sync: ResyncUserRole seam + `auth user resync --revoke-keys` CLI (AUTH-02)
+- [ ] 02-07-PLAN.md — CLI: self-variants of auth api-key + session-preferring resolver (Finding D) (AUTH-03)
+- [ ] 02-08-PLAN.md — Web: MCP Keys dashboard panel + one-time reveal modal + CSRF echo (AUTH-03)
 
 ### Phase 3: External Identity Provider Integration
 
@@ -95,7 +104,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Release & Build Tooling | 1/1 | Complete    | 2026-07-09 |
-| 2. API Key Lifecycle & Self-Service | 0/TBD | In progress | - |
+| 2. API Key Lifecycle & Self-Service | 0/8 | In progress | - |
 | 3. External Identity Provider Integration | 0/TBD | Not started | - |
 | 4. Verification & Integration Reliability | 0/TBD | Not started | - |
 
