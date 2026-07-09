@@ -152,7 +152,14 @@ const (
 // knownVerbs are the action suffixes that map to verb groups. The base
 // policies gate roles per verb; an action whose suffix is not here cannot be
 // authorized and is a programming error (caught at engine construction).
-var knownVerbs = map[string]bool{"read": true, "write": true, "delete": true, "manage": true}
+//
+// The "self" verb authorizes an authenticated principal acting on their own
+// resources (apikey.self). base.cedar permits it for any authenticated role;
+// the handler further restricts it (rejects Source == "apikey", floors the
+// minted role via RoleMin) because principalEntity exposes only role/id/email.
+// This entry MUST land in the same commit as the base.cedar permit and the
+// apikey.self action map entries (actions.go) or NewCedarEngine fails at boot.
+var knownVerbs = map[string]bool{"read": true, "write": true, "delete": true, "manage": true, "self": true}
 
 // actionDomain returns the domain prefix of an action name
 // ("spec.read" -> "spec"). Used to derive the placeholder resource id.

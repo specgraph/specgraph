@@ -104,6 +104,16 @@ var procedureActions = map[string]string{
 	specgraphv1connect.IdentityServiceListAPIKeysProcedure:          "apikey.manage",
 	specgraphv1connect.IdentityServiceListOIDCBindingsProcedure:     "oidc.manage",
 	specgraphv1connect.IdentityServiceUnbindOIDCProcedure:           "oidc.manage",
+	// Self-service API-key operations (AUTH-03, D-06): the caller acts on
+	// their OWN keys. Gated by the "self" verb (apikey.self) — base.cedar
+	// permits any authenticated role; the handler enforces the source/floor
+	// Cedar cannot see. ResyncUserRole (AUTH-02, D-04) is an admin-only
+	// reconciliation and uses the "manage" verb like the other user.* ops.
+	specgraphv1connect.IdentityServiceCreateMyAPIKeyProcedure: "apikey.self",
+	specgraphv1connect.IdentityServiceListMyAPIKeysProcedure:  "apikey.self",
+	specgraphv1connect.IdentityServiceRotateMyAPIKeyProcedure: "apikey.self",
+	specgraphv1connect.IdentityServiceRevokeMyAPIKeyProcedure: "apikey.self",
+	specgraphv1connect.IdentityServiceResyncUserRoleProcedure: "user.manage",
 }
 
 // ActionForProcedure returns the stable action name for an RPC procedure.

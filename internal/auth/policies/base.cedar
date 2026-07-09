@@ -46,3 +46,19 @@ permit (
 ) when {
 	principal has role && principal.role == "admin"
 };
+
+// Self-service operations (apikey.self): any AUTHENTICATED principal may act on
+// their OWN API keys. Cedar only sees principal.role/id/email — it cannot see
+// Source or the minted role floor — so this permit is deliberately broad and
+// does NOT gate on principal.role == "admin". The handler further restricts it:
+// it rejects Source == "apikey" (no key-mints-key laundering) and floors the
+// minted role via auth.RoleMin. Landed in the same commit as the "self" verb in
+// knownVerbs (engine.go) and the apikey.self action map (actions.go) so the
+// engine boots consistently.
+permit (
+	principal,
+	action in SpecGraph::Action::"self",
+	resource
+) when {
+	principal has role
+};

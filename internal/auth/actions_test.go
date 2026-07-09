@@ -37,8 +37,27 @@ func TestActionNames_AllParseToKnownVerb(t *testing.T) {
 		idx := strings.LastIndex(n, ".")
 		require.Greater(t, idx, 0, "action %q must be domain.verb", n)
 		verb := n[idx+1:]
-		require.Contains(t, []string{"read", "write", "delete", "manage"}, verb, "action %q", n)
+		require.Contains(t, []string{"read", "write", "delete", "manage", "self"}, verb, "action %q", n)
 	}
+}
+
+// TestActionNames_SelfVerbConfinedToAPIKey is a drift guard: the "self" verb
+// must appear ONLY on apikey.* actions. It keeps base.cedar's broad
+// "any authenticated role" self permit from silently leaking onto some other
+// domain's action (an elevation-of-privilege regression, T-02-13).
+func TestActionNames_SelfVerbConfinedToAPIKey(t *testing.T) {
+	sawSelf := false
+	for _, n := range auth.ActionNames() {
+		idx := strings.LastIndex(n, ".")
+		require.Greater(t, idx, 0, "action %q must be domain.verb", n)
+		if n[idx+1:] != "self" {
+			continue
+		}
+		sawSelf = true
+		require.Equalf(t, "apikey", n[:idx],
+			"self verb must be confined to apikey.* actions; found %q", n)
+	}
+	require.True(t, sawSelf, "expected at least one apikey.self action to exist")
 }
 
 func TestActionNames_DecoupledFromMethodNames(t *testing.T) {
@@ -62,6 +81,11 @@ func TestActionForProcedure_Identity(t *testing.T) {
 		specgraphv1connect.IdentityServiceListAPIKeysProcedure:          "apikey.manage",
 		specgraphv1connect.IdentityServiceListOIDCBindingsProcedure:     "oidc.manage",
 		specgraphv1connect.IdentityServiceUnbindOIDCProcedure:           "oidc.manage",
+		specgraphv1connect.IdentityServiceCreateMyAPIKeyProcedure:       "apikey.self",
+		specgraphv1connect.IdentityServiceListMyAPIKeysProcedure:        "apikey.self",
+		specgraphv1connect.IdentityServiceRotateMyAPIKeyProcedure:       "apikey.self",
+		specgraphv1connect.IdentityServiceRevokeMyAPIKeyProcedure:       "apikey.self",
+		specgraphv1connect.IdentityServiceResyncUserRoleProcedure:       "user.manage",
 	}
 	for proc, want := range cases {
 		got, ok := auth.ActionForProcedure(proc)
