@@ -101,6 +101,49 @@ type UsersBackend interface {
 	// (but returns them for tests).
 	TouchLastUsed(ctx context.Context, keyID string) error
 
+	// --- owner-scoped (self-service) API key CRUD ---
+	//
+	// These methods enforce ownership in the SQL WHERE clause so a caller can
+	// only ever act on keys they own. A key that exists but is owned by
+	// someone else is indistinguishable from a missing key: every owner-scoped
+	// method returns ErrAPIKeyNotFound uniformly (enumeration-hardening, T-02-04).
+	// Storage NEVER generates or returns the plaintext secret — the handler
+	// owns secret generation (mirrors the admin CreateAPIKey/RotateAPIKey). The
+	// caller supplies key.PHCHash; storage returns *APIKey only.
+
+	// GetAPIKeyForUser returns the caller's key. Returns ErrAPIKeyNotFound if
+	// the key does not exist OR belongs to another user (uniform NotFound).
+	// Used by rotate to re-floor the old key's downgrade at the handler.
+	GetAPIKeyForUser(ctx context.Context, userID, keyID string) (*APIKey, error)
+
+	// RevokeAPIKeyForUser marks the caller's own key revoked. Re-revoking an
+	// already-revoked key you own is an idempotent no-op success. A foreign or
+	// missing key returns ErrAPIKeyNotFound (uniform NotFound, T-02-04).
+	RevokeAPIKeyForUser(ctx context.Context, userID, keyID string) error
+
+	// RotateAPIKeyForUser revokes the caller's own active key and mints a new
+	// one in one transaction, scoped to userID. The new key is built ENTIRELY
+	// from the explicit newKey argument: newKey.PHCHash (the new secret),
+	// newKey.RoleDowngrade (already floored by the handler), and
+	// newKey.ExpiresAt (already capped by the handler). It NEVER inherits the
+	// old key's role_downgrade or expires_at (prevents re-pinning a stale
+	// higher ceiling, T-02-06). Returns the populated new key (no plaintext),
+	// or ErrAPIKeyNotFound if the old key is foreign/missing/already-revoked.
+	RotateAPIKeyForUser(ctx context.Context, userID, keyID string, newKey *APIKey) (*APIKey, error)
+
+	// CreateAPIKeyForUser mints a key for key.UserID under a quota-safe
+	// transaction: it locks the parent users row FOR UPDATE to serialize a
+	// single user's concurrent mints, counts the user's active keys, and
+	// rejects with ErrQuotaExceeded when the active count is already >= quota
+	// (closes the quota TOCTOU race, T-02-05). The caller sets key.PHCHash;
+	// storage assigns the prefix and inserts, returning the populated *APIKey.
+	CreateAPIKeyForUser(ctx context.Context, key *APIKey, quota int) (*APIKey, error)
+
+	// CountActiveAPIKeys returns the number of the user's keys that are
+	// neither revoked nor expired (as of now). Standalone count, outside any
+	// quota transaction.
+	CountActiveAPIKeys(ctx context.Context, userID string) (int, error)
+
 	// --- OIDC binding CRUD ---
 
 	// JITCreateHuman creates a Human + its OIDCBinding atomically. Used by
