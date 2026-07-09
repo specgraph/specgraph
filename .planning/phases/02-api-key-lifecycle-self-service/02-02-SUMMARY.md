@@ -155,3 +155,9 @@ None - no external service configuration required.
 ---
 *Phase: 02-api-key-lifecycle-self-service*
 *Completed: 2026-07-09*
+
+## Self-Check: PASSED
+
+- All 4 commits present (d6718c7d, 98d9a698, 26a8ed2f, 5897b59d)
+- All key files exist on disk
+- Integration suite: 6/6 pass against testcontainers Postgres
