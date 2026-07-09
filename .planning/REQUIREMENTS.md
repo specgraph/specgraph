@@ -24,7 +24,7 @@ Sourced from beads issues at priority P1 (in-progress) and P2 (open). Each maps 
 ### Config & Build
 
 - [x] **CFG-01**: Adopt koanf for layered config + env provider (`spgr-5kd5`) — done: `internal/config/global.go` implements full precedence + deprecation warning
-- [ ] **CFG-02**: Pin task tools' golangci-lint to match the CI version (`spgr-vpmg`) — confirmed still open: CI pins `v2.12.1`, local `task tools` uses unpinned `brew install` (currently drifted to `2.12.2`)
+- [x] **CFG-02**: Pin task tools' golangci-lint to match the CI version (`spgr-vpmg`) — done: `task tools` now installs via `go install` at the Taskfile.yml-pinned version; CI reads that same value via `$(task tools:golangci-lint-version)`
 
 ### Drift Detection
 
@@ -114,16 +114,18 @@ detail (goals, success criteria, dependencies).
 | AUTH-04 | Phase 3 | Pending |
 | AUTH-05 | Phase 3 | Pending |
 | CFG-01 | Phase 1 | Done |
-| CFG-02 | Phase 1 | Pending |
+| CFG-02 | Phase 1 | Complete |
 | DRFT-01 | Phase 4 | Pending |
 | INTG-01 | Phase 4 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 10 total
 - Mapped to phases: 10/10 ✓
 - Unmapped: 0 ✓
 
 **Phase summary:**
+
 - Phase 1 — Release & Build Tooling: REL-01, CFG-01, CFG-02
 - Phase 2 — API Key Lifecycle & Self-Service: AUTH-02, AUTH-03
 - Phase 3 — External Identity Provider Integration: AUTH-01, AUTH-04, AUTH-05

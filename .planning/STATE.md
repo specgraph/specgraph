@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v0.12.0
 milestone_name: milestone
-current_phase: 1
-current_phase_name: Release & Build Tooling
-status: executing
-stopped_at: Phase 1 context gathered — REL-01/CFG-01 found already shipped, CFG-02 only remaining scope
-last_updated: "2026-07-09T03:04:58.316Z"
-last_activity: 2026-07-08
-last_activity_desc: ROADMAP.md and REQUIREMENTS.md traceability created from beads-to-GSD migration intel
+current_phase: 01
+current_phase_name: release-build-tooling
+status: verifying
+stopped_at: Phase 01 Plan 01 complete — CFG-02 golangci-lint pinning closed; phase 01 fully done
+last_updated: "2026-07-09T03:22:59.807Z"
+last_activity: 2026-07-09
+last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -27,14 +27,14 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 drift detection, and a durable storage/query layer — so both humans and agent-based execution
 engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
-**Current focus:** Phase 1 — Release & Build Tooling (in progress via beads; not yet planned in GSD)
+**Current focus:** Phase 01 — release-build-tooling
 
 ## Current Position
 
-Phase: 1 of 4 (Release & Build Tooling)
-Plan: 0 of TBD in current phase
-Status: Ready to execute
-Last activity: 2026-07-08 — ROADMAP.md and REQUIREMENTS.md traceability created from beads-to-GSD migration intel
+Phase: 01 (release-build-tooling) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-07-09 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: N/A (no plans executed yet)
 
 *Updated after each plan completion*
+| Phase 01 P01 | 7min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - Roadmap: DRFT-01 and INTG-01 merged into one "Verification & Integration Reliability" phase
   rather than two single-requirement phases — both are small, isolated reliability items with
   no other natural cluster-mate.
+
+- [Phase 01]: CFG-02: pinned golangci-lint via a single Taskfile.yml var + go install (matching CI's existing method), with a silent leaf task exposing it to CI via command substitution — Closes local (brew, unpinned) vs CI (pinned) version drift structurally — one declaration, one install method for both sides
 
 ### Pending Todos
 
@@ -99,6 +102,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T02:14:18.437Z
-Stopped at: Phase 1 context gathered — REL-01/CFG-01 found already shipped, CFG-02 only remaining scope
-Resume file: .planning/phases/01-release-build-tooling/01-CONTEXT.md
+Last session: 2026-07-09T03:22:44.443Z
+Stopped at: Phase 01 Plan 01 complete — CFG-02 golangci-lint pinning closed; phase 01 fully done
+Resume file: None
