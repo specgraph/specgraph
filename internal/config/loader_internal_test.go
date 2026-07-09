@@ -65,6 +65,15 @@ func TestLoadGlobal_LogRequestsExplicitFalseOverrides(t *testing.T) {
 	assert.False(t, cfg.Log.Requests, "explicit log.requests:false must override the true default")
 }
 
+func TestGlobalDefaults_SelfServiceKeys(t *testing.T) {
+	ssk := globalDefaults().Auth.SelfServiceKeys
+	assert.Equal(t, 90, ssk.DefaultTTLDays, "self-service default TTL must be 90d (D-08)")
+	assert.Equal(t, 180, ssk.MaxTTLDays, "self-service max TTL must be 180d (D-08)")
+	assert.Equal(t, 10, ssk.Quota, "self-service active-key quota must be 10 (D-08)")
+	assert.Positive(t, ssk.RateLimitPerHour, "self-service rate-limit refill must be positive")
+	assert.Positive(t, ssk.RateLimitBurst, "self-service rate-limit burst must be positive")
+}
+
 func TestDefault_CLILoginEnabled(t *testing.T) {
 	assert.True(t, globalDefaults().Auth.OIDC.CLILoginEnabled,
 		"CLILoginEnabled should default to true")

@@ -232,15 +232,39 @@ type JITCreateConfig struct {
 	EmailDomainAllowlist []string `yaml:"email_domain_allowlist" koanf:"email_domain_allowlist"`
 }
 
+// SelfServiceKeysConfig is the server-configurable policy for the self-service
+// API-key lifecycle (AUTH-03): the expiry ceiling, the per-user active-key
+// quota, and the per-identity self-mint rate limit. It is consumed by the
+// self-mint handlers (Plan 05) to clamp expiry, enforce the quota, and rate-limit
+// minting. This is a dedicated struct — the deprecated APIKeyConfig is NOT
+// extended for self-service policy (storage owns API keys after the Authn plan).
+type SelfServiceKeysConfig struct {
+	// DefaultTTLDays is the default key lifetime (days) applied when a
+	// self-mint request omits an explicit expiry. Default 90 (D-08).
+	DefaultTTLDays int `yaml:"default_ttl_days" koanf:"default_ttl_days"`
+	// MaxTTLDays is the hard ceiling (days) a self-minted key may live; a
+	// request over this cap is rejected. Default 180 (D-08).
+	MaxTTLDays int `yaml:"max_ttl_days" koanf:"max_ttl_days"`
+	// Quota is the maximum number of active (non-revoked, non-expired) keys a
+	// single user may hold. Default 10 (D-08).
+	Quota int `yaml:"quota" koanf:"quota"`
+	// RateLimitPerHour is the steady-state self-mint refill rate per identity
+	// (tokens per hour). Default 30.
+	RateLimitPerHour int `yaml:"rate_limit_per_hour" koanf:"rate_limit_per_hour"`
+	// RateLimitBurst is the per-identity self-mint burst allowance. Default 5.
+	RateLimitBurst int `yaml:"rate_limit_burst" koanf:"rate_limit_burst"`
+}
+
 // AuthConfig configures authentication and authorization.
 type AuthConfig struct {
-	Mode          string               `yaml:"mode" koanf:"mode"`                     // deprecated; ignored after Authn plan
-	DefaultRole   string               `yaml:"default_role" koanf:"default_role"`     // deprecated; ignored after Authn plan
-	APIKeys       []APIKeyConfig       `yaml:"api_keys" koanf:"api_keys"`             // ignored after Authn plan (storage owns)
-	OIDCProviders []OIDCProviderConfig `yaml:"oidc_providers" koanf:"oidc_providers"` // deprecated; superseded by OIDC.Providers
-	Roles         []string             `yaml:"roles" koanf:"roles"`
-	Policies      PolicyConfig         `yaml:"policies" koanf:"policies"`
-	OIDC          OIDCConfig           `yaml:"oidc" koanf:"oidc"`
+	Mode            string                `yaml:"mode" koanf:"mode"`                     // deprecated; ignored after Authn plan
+	DefaultRole     string                `yaml:"default_role" koanf:"default_role"`     // deprecated; ignored after Authn plan
+	APIKeys         []APIKeyConfig        `yaml:"api_keys" koanf:"api_keys"`             // ignored after Authn plan (storage owns)
+	OIDCProviders   []OIDCProviderConfig  `yaml:"oidc_providers" koanf:"oidc_providers"` // deprecated; superseded by OIDC.Providers
+	Roles           []string              `yaml:"roles" koanf:"roles"`
+	Policies        PolicyConfig          `yaml:"policies" koanf:"policies"`
+	OIDC            OIDCConfig            `yaml:"oidc" koanf:"oidc"`
+	SelfServiceKeys SelfServiceKeysConfig `yaml:"self_service_keys" koanf:"self_service_keys"`
 }
 
 // PolicyConfig configures the Cedar authorization engine's policy
@@ -431,6 +455,13 @@ func globalDefaults() *GlobalConfig {
 		},
 		Auth: AuthConfig{
 			OIDC: OIDCConfig{CLILoginEnabled: true, SyncOnLogin: true},
+			SelfServiceKeys: SelfServiceKeysConfig{
+				DefaultTTLDays:   90,
+				MaxTTLDays:       180,
+				Quota:            10,
+				RateLimitPerHour: 30,
+				RateLimitBurst:   5,
+			},
 		},
 		Log: LogConfig{
 			Level:    "info",
