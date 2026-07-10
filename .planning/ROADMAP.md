@@ -91,7 +91,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. An MCP client can authenticate to SpecGraph's MCP server via a standard OAuth 2.1 resource-server flow, with token validation delegated to the configured external IdP rather than a SpecGraph-issued API key
   3. Every web session record stores which issuer authenticated it, so an operator can audit login-provider usage per session and a future RP-initiated logout can target the correct issuer
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 
 **Wave 1**
 
@@ -100,7 +100,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 03-02-PLAN.md — AUTH-01 native oauth2 + userinfo login provider (GitHub-direct): kind gate relax + oauth2LoginProvider + verified-email fallback (AUTH-01)
-- [ ] 03-03-PLAN.md — AUTH-04 protocol surface: RFC 9728 protected-resource metadata + WWW-Authenticate challenge scoped to /mcp/ (AUTH-04)
+- [x] 03-03-PLAN.md — AUTH-04 protocol surface: RFC 9728 protected-resource metadata + WWW-Authenticate challenge scoped to /mcp/ (AUTH-04)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -140,7 +140,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Release & Build Tooling | 1/1 | Complete    | 2026-07-09 |
 | 2. API Key Lifecycle & Self-Service | 8/8 | Complete    | 2026-07-10 |
-| 3. External Identity Provider Integration | 2/4 | In Progress|  |
+| 3. External Identity Provider Integration | 3/4 | In Progress|  |
 | 4. Verification & Integration Reliability | 0/TBD | Not started | - |
 
 ---
