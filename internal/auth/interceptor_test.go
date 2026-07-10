@@ -28,6 +28,13 @@ func (f *fakeResolver) Resolve(ctx context.Context, token string) (*auth.Identit
 	return f.resolve(ctx, token)
 }
 
+// ResolveLogin satisfies the Resolver interface. The interceptor tests never
+// drive the interactive-login path, so it delegates to the same stub as
+// Resolve (via a sentinel token) to return the fake's canned identity/error.
+func (f *fakeResolver) ResolveLogin(ctx context.Context, _ *auth.OIDCClaims) (*auth.Identity, error) {
+	return f.resolve(ctx, "")
+}
+
 func (f *fakeResolver) HasAuth(_ context.Context) (bool, error) { return true, nil }
 
 // fakeAuthorizer is a stub Authorizer for interceptor tests.

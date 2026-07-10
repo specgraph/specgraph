@@ -18,6 +18,63 @@ import (
 
 // --- Task 19: per-issuer JIT rate limit ---
 
+// TestResolveLogin_ThreadsIssuerOnBindingHit proves the claims-based
+// interactive-login entrypoint (ResolveLogin → materializeIdentity) returns an
+// Identity carrying Issuer = claims.Issuer for an existing binding (AUTH-05 /
+// D-09), and that it never touches the JIT path when a binding exists.
+func TestResolveLogin_ThreadsIssuerOnBindingHit(t *testing.T) {
+	const issuer = "https://idp.example.com"
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, iss, sub string) (*storage.OIDCBinding, error) {
+			require.Equal(t, issuer, iss)
+			require.Equal(t, "sub-1", sub)
+			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: iss, Subject: sub}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			require.Equal(t, "u1", id)
+			return activeUser("u1", "reader", storage.KindHuman), nil
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Tracker: &noopTracker{},
+	})
+	require.NoError(t, err)
+
+	id, err := store.ResolveLogin(context.Background(), &auth.OIDCClaims{Issuer: issuer, Subject: "sub-1"})
+	require.NoError(t, err)
+	require.Equal(t, issuer, id.Issuer, "ResolveLogin must thread the verified issuer onto the Identity")
+	require.Equal(t, "oidc:sub-1", id.Subject)
+	require.Equal(t, "u1", id.UserID)
+}
+
+// TestResolveLogin_ThreadsIssuerOnJIT proves the JIT branch of
+// materializeIdentity (binding miss, interactive) also stamps Issuer, and that
+// interactive JIT bypasses the rate limiter (burst would otherwise be spent).
+func TestResolveLogin_ThreadsIssuerOnJIT(t *testing.T) {
+	const issuer = "https://idp.example.com"
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
+			return nil, storage.ErrOIDCBindingNotFound
+		},
+		jitCreateHuman: func(_ context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, *storage.OIDCBinding, error) {
+			u.ID = "u-new"
+			b.ID = "b-new"
+			b.UserID = "u-new"
+			return u, b, nil
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Tracker: &noopTracker{},
+		JITEnabled: true, JITDefaultRole: auth.RoleReader,
+	})
+	require.NoError(t, err)
+
+	id, err := store.ResolveLogin(context.Background(), &auth.OIDCClaims{Issuer: issuer, Subject: "sub-new", Email: "a@x.com"})
+	require.NoError(t, err)
+	require.Equal(t, issuer, id.Issuer, "JIT-created Identity must carry the issuer")
+	require.Equal(t, "u-new", id.UserID)
+}
+
 func TestJIT_RateLimitExhaustion(t *testing.T) {
 	p := newOIDCTestIssuer(t)
 	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{

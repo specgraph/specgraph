@@ -44,12 +44,20 @@ func (r *apiTestResolver) Resolve(_ context.Context, token string) (*auth.Identi
 	return nil, auth.ErrUnauthenticated
 }
 
+func (r *apiTestResolver) ResolveLogin(_ context.Context, _ *auth.OIDCClaims) (*auth.Identity, error) {
+	return r.identity, nil
+}
+
 func (r *apiTestResolver) HasAuth(_ context.Context) (bool, error) { return true, nil }
 
 // noAuthResolver always returns ErrUnauthenticated.
 type noAuthResolver struct{}
 
 func (r *noAuthResolver) Resolve(_ context.Context, _ string) (*auth.Identity, error) {
+	return nil, auth.ErrUnauthenticated
+}
+
+func (r *noAuthResolver) ResolveLogin(_ context.Context, _ *auth.OIDCClaims) (*auth.Identity, error) {
 	return nil, auth.ErrUnauthenticated
 }
 

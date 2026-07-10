@@ -51,3 +51,27 @@ func TestInteractiveLoginContext(t *testing.T) {
 		t.Fatal("marked context must report interactive")
 	}
 }
+
+func TestMCPRequestContext(t *testing.T) {
+	ctx := context.Background()
+	if MCPRequestFromContext(ctx) {
+		t.Fatal("plain context must not be marked as an MCP request")
+	}
+	ctx = WithMCPRequest(ctx)
+	if !MCPRequestFromContext(ctx) {
+		t.Fatal("marked context must report an MCP request")
+	}
+}
+
+// TestMCPRequestContext_IndependentFromInteractive guards that the two
+// per-request markers use distinct keys and never alias each other.
+func TestMCPRequestContext_IndependentFromInteractive(t *testing.T) {
+	ctx := WithInteractiveLogin(context.Background())
+	if MCPRequestFromContext(ctx) {
+		t.Fatal("interactive-login marker must not imply the MCP-request marker")
+	}
+	ctx = WithMCPRequest(context.Background())
+	if InteractiveLoginFromContext(ctx) {
+		t.Fatal("MCP-request marker must not imply the interactive-login marker")
+	}
+}

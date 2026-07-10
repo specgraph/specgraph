@@ -177,6 +177,12 @@ func (s *pgIdentityStore) Resolve(ctx context.Context, token string) (*Identity,
 	return s.resolveAPIKey(ctx, token)
 }
 
+// ResolveLogin materializes an Identity from already-verified interactive-login
+// claims (Task 2 replaces this bridge with the shared materializeIdentity path).
+func (s *pgIdentityStore) ResolveLogin(ctx context.Context, claims *OIDCClaims) (*Identity, error) {
+	return s.materializeIdentity(ctx, claims, true)
+}
+
 // isJWTShaped reports whether token looks like a JWS Compact Serialization
 // (three dot-separated base64 segments). Non-strict — a token that LOOKS
 // like a JWT but isn't will fail at the verify step, which also maps to
@@ -439,6 +445,19 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 			slog.String("peek", issuer), slog.String("verified", claims.Issuer))
 		return nil, ErrUnauthenticated
 	}
+	// The interactive flag is derived ONCE here (the SINGLE derivation point)
+	// and threaded by value through materializeIdentity into jitResolve, so no
+	// downstream helper re-reads the context for interactivity.
+	return s.materializeIdentity(ctx, claims, InteractiveLoginFromContext(ctx))
+}
+
+// materializeIdentity is the shared binding-lookup → JIT-on-miss → user load →
+// soft-delete check → login-sync → Identity tail. It is called by BOTH
+// resolveJWT (bearer-JWT path, interactive derived from context) and
+// ResolveLogin (interactive login callback, interactive == true). The
+// interactive flag drives both the jitResolve rate-limit bypass and the
+// login-sync gate; it is passed by value and never re-read from context here.
+func (s *pgIdentityStore) materializeIdentity(ctx context.Context, claims *OIDCClaims, interactive bool) (*Identity, error) {
 	// Binding lookup + user load. JIT path fires on binding miss (Task 18).
 	binding, err := s.users.LookupOIDCBinding(ctx, claims.Issuer, claims.Subject)
 	if err != nil {
@@ -449,7 +468,7 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 		if !s.jitEnabled {
 			return nil, ErrUnauthenticated
 		}
-		return s.jitResolve(ctx, claims)
+		return s.jitResolve(ctx, claims, interactive)
 	}
 	user, err := s.users.GetUserByID(ctx, binding.UserID)
 	if err != nil {
@@ -466,7 +485,7 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 			slog.String("user_id", user.ID), slog.String("subject", claims.Subject))
 		return nil, ErrUnauthenticated
 	}
-	if s.loginSyncEnabled && InteractiveLoginFromContext(ctx) {
+	if s.loginSyncEnabled && interactive {
 		synced, syncErr := s.applyLoginSync(ctx, claims, user)
 		if syncErr != nil {
 			return nil, syncErr // deny: allowlist miss or failed demotion
@@ -481,6 +500,7 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 		Role:          Role(user.Role),
 		EffectiveRole: Role(user.Role), // OIDC has no per-key downgrade
 		Source:        "oidc",
+		Issuer:        claims.Issuer,
 	}, nil
 }
 
@@ -493,7 +513,7 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 //  3. ClaimsMapping role derivation (Task 21) — only fires at JIT creation; not
 //     on subsequent sign-ins, which resolve via the stored binding.
 //  4. JITCreateHuman (Task 18) — atomic user + binding creation.
-func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims) (*Identity, error) {
+func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims, interactive bool) (*Identity, error) {
 	// (1) Allowlist gate — refused tokens never consume a rate-limit token.
 	if len(s.jitEmailAllowlist) > 0 {
 		domain := emailDomain(claims.Email)
@@ -517,8 +537,10 @@ func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims) (*
 	//
 	// Skipped for interactive logins (user-driven, IdP+PKCE+nonce verified);
 	// the limiter targets unsolicited bearer-JWT JIT. The email-domain
-	// allowlist (step 1, above) still applies.
-	if !InteractiveLoginFromContext(ctx) {
+	// allowlist (step 1, above) still applies. The interactive flag is passed
+	// by value from materializeIdentity (single source of truth); jitResolve
+	// no longer reads InteractiveLoginFromContext itself.
+	if !interactive {
 		limiter := s.rateLimiterFor(claims.Issuer)
 		if !limiter.Allow() {
 			slog.LogAttrs(ctx, slog.LevelWarn, "auth: JIT rate-limit exceeded",
@@ -563,6 +585,7 @@ func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims) (*
 		Role:          Role(user.Role),
 		EffectiveRole: Role(user.Role),
 		Source:        "oidc",
+		Issuer:        claims.Issuer,
 	}, nil
 }
 

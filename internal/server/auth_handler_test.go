@@ -35,6 +35,10 @@ func (m *mockResolver) Resolve(_ context.Context, key string) (*auth.Identity, e
 
 func (m *mockResolver) HasAuth(_ context.Context) (bool, error) { return true, nil }
 
+func (m *mockResolver) ResolveLogin(_ context.Context, _ *auth.OIDCClaims) (*auth.Identity, error) {
+	return &auth.Identity{Subject: "oidc:test", DisplayName: "Test User", Role: auth.RoleReader}, nil
+}
+
 // noopMW is a pass-through auth middleware used for routes that pre-populate the context.
 func noopMW(next http.Handler) http.Handler { return next }
 

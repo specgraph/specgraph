@@ -99,6 +99,9 @@ type fakeResolver struct {
 func (f *fakeResolver) Resolve(context.Context, string) (*auth.Identity, error) {
 	return f.id, f.err
 }
+func (f *fakeResolver) ResolveLogin(context.Context, *auth.OIDCClaims) (*auth.Identity, error) {
+	return f.id, f.err
+}
 func (f *fakeResolver) HasAuth(context.Context) (bool, error) { return true, nil }
 
 func newTestOIDCMux(provs []auth.LoginProvider, wa storage.WebAuthStore, res auth.Resolver) *http.ServeMux {

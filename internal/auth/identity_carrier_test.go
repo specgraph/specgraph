@@ -18,6 +18,10 @@ type stubResolver struct{ id *Identity }
 
 func (s stubResolver) Resolve(context.Context, string) (*Identity, error) { return s.id, nil }
 
+func (s stubResolver) ResolveLogin(context.Context, *OIDCClaims) (*Identity, error) {
+	return s.id, nil
+}
+
 func (s stubResolver) HasAuth(context.Context) (bool, error) { return true, nil }
 
 func TestRequireAuth_WritesIdentityToCarrier(t *testing.T) {

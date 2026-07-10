@@ -82,6 +82,10 @@ func (r *staticResolver) Resolve(_ context.Context, token string) (*auth.Identit
 
 func (r *staticResolver) HasAuth(_ context.Context) (bool, error) { return len(r.tokens) > 0, nil }
 
+func (r *staticResolver) ResolveLogin(_ context.Context, _ *auth.OIDCClaims) (*auth.Identity, error) {
+	return nil, auth.ErrUnauthenticated
+}
+
 var _ = Describe("Auth", Label("auth"), func() {
 	var ctx context.Context
 

@@ -90,3 +90,25 @@ func InteractiveLoginFromContext(ctx context.Context) bool {
 	v, ok := ctx.Value(interactiveLoginKey{}).(bool)
 	return ok && v
 }
+
+type mcpRequestKey struct{}
+
+// WithMCPRequest marks the context as originating from the /mcp/ OAuth 2.1
+// resource-server boundary. It is a per-request marker (mirroring
+// WithInteractiveLogin) that lets the resource-URI audience assertion (Plan 04)
+// be path-scoped: the assertion fires ONLY when this marker is set, so ordinary
+// ConnectRPC bearer-JWT callers are never subjected to the MCP resource-URI
+// audience check and Resolve's signature stays untouched (review HIGH #2, D-08).
+//
+// SECURITY: set ONLY by the /mcp/ challenge wrapper (Plan 03). It is unconsumed
+// today; Plan 04 wires the audience check that reads it.
+func WithMCPRequest(ctx context.Context) context.Context {
+	return context.WithValue(ctx, mcpRequestKey{}, true)
+}
+
+// MCPRequestFromContext reports whether the context was marked by
+// WithMCPRequest. An unmarked context reports false.
+func MCPRequestFromContext(ctx context.Context) bool {
+	v, ok := ctx.Value(mcpRequestKey{}).(bool)
+	return ok && v
+}
