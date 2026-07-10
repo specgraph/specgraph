@@ -201,6 +201,14 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 		mcpAudienceURI = mcpResourceURI
 	}
 
+	// RFC 7662 introspection-capable providers (those with an IntrospectionURL).
+	// A configured endpoint with no resolvable client secret is startup-fatal.
+	introspectors, err := auth.BuildIntrospectors(cfg.Auth.OIDC.Providers)
+	if err != nil {
+		cleanup() // drain the tracker goroutine we just started
+		return appHandler{}, fmt.Errorf("introspection providers: %w", err)
+	}
+
 	resolver, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users:                   res.authStore,
 		WebAuth:                 res.authStore,
@@ -214,6 +222,7 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 		JITEmailDomainAllowlist: cfg.Auth.OIDC.JITCreate.EmailDomainAllowlist,
 		LoginSyncEnabled:        cfg.Auth.OIDC.SyncOnLogin,
 		MCPResourceURI:          mcpAudienceURI,
+		Introspectors:           introspectors,
 	})
 	if err != nil {
 		cleanup() // drain the tracker goroutine we just started

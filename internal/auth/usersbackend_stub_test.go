@@ -53,7 +53,7 @@ func init() {
 // stubAPIKeyToken builds a well-formed API-key token whose secret is
 // stubPHCSecret, so it verifies against stubPHCHash. Callers pass an
 // 8-char prefix.
-func stubAPIKeyToken(prefix string) string { //nolint:unparam // prefix varies by test; kept as parameter for clarity
+func stubAPIKeyToken(prefix string) string {
 	return "spgr_sk_" + prefix + "_" + stubPHCSecret
 }
 

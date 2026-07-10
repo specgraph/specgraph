@@ -56,6 +56,12 @@ type pgIdentityStore struct {
 	// configured; the extra audience assertion never fires (additive, D-08).
 	mcpResourceURI string
 
+	// introspectors are the RFC 7662 introspection-capable providers (those
+	// configured with an IntrospectionURL). When non-empty, an opaque bearer
+	// that is neither an API key, a session, nor JWT-shaped is validated by
+	// trial introspection (D-06). Empty = introspection disabled.
+	introspectors []*Introspector
+
 	now func() time.Time
 }
 
@@ -100,6 +106,11 @@ type IdentityStoreConfig struct {
 	// 03's single hoisted mcpResourceURI). Empty = the resource-URI audience
 	// assertion is disabled (additive; ConnectRPC and web-login unaffected).
 	MCPResourceURI string
+
+	// Introspectors are the RFC 7662 introspection-capable providers used to
+	// validate opaque (non-JWT) bearer tokens on the MCP path (D-06). Empty =
+	// introspection disabled; opaque non-credential tokens reject as today.
+	Introspectors []*Introspector
 
 	Now func() time.Time // optional; defaults to time.Now
 }
@@ -173,12 +184,20 @@ func NewIdentityStore(cfg IdentityStoreConfig) (Resolver, error) { //nolint:gocr
 		jitEmailAllowlist:  allowlist,
 		loginSyncEnabled:   cfg.LoginSyncEnabled,
 		mcpResourceURI:     cfg.MCPResourceURI,
+		introspectors:      cfg.Introspectors,
 		now:                now,
 	}, nil
 }
 
 // Resolve dispatches on token shape and produces an Identity (or
 // returns ErrUnauthenticated / ErrTransient).
+//
+// Dispatch order is EXPLICIT (review HIGH #3, D-08): JWT-shaped → resolveJWT;
+// spgr_ws_ → resolveSession; spgr_sk_ → resolveAPIKey (an explicit prefix
+// guard, NOT a fallthrough); then, only for anything else, introspection when
+// configured; else the final resolveAPIKey reject. The spgr_sk_ guard runs
+// BEFORE the introspection branch so an API-key secret is never POSTed to an
+// external IdP introspection endpoint even when introspectors are configured.
 func (s *pgIdentityStore) Resolve(ctx context.Context, token string) (*Identity, error) {
 	if token == "" {
 		return nil, ErrUnauthenticated
@@ -189,6 +208,18 @@ func (s *pgIdentityStore) Resolve(ctx context.Context, token string) (*Identity,
 	if strings.HasPrefix(token, sessionTokenPrefix) {
 		return s.resolveSession(ctx, token)
 	}
+	// Explicit API-key guard (review HIGH #3): route spgr_sk_ to the API-key
+	// resolver BEFORE introspection so static credentials never reach the IdP.
+	if strings.HasPrefix(token, apiKeyPrefix) {
+		return s.resolveAPIKey(ctx, token)
+	}
+	// Opaque, non-credential bearer: try RFC 7662 introspection when any
+	// introspection-capable provider is configured (D-06).
+	if len(s.introspectors) > 0 {
+		return s.resolveIntrospection(ctx, token)
+	}
+	// Nothing matched — resolveAPIKey rejects (parseAPIKey fails on the
+	// missing prefix), preserving the pre-introspection reject behavior.
 	return s.resolveAPIKey(ctx, token)
 }
 
@@ -533,6 +564,65 @@ func (s *pgIdentityStore) materializeIdentity(ctx context.Context, claims *OIDCC
 		Source:        "oidc",
 		Issuer:        claims.Issuer,
 	}, nil
+}
+
+// resolveIntrospection validates an opaque (non-JWT, non-credential) bearer via
+// RFC 7662 introspection (D-06). It is reached only from Resolve's introspection
+// branch, AFTER the explicit spgr_sk_/spgr_ws_ prefix guards, so static
+// credentials never arrive here.
+//
+// Selection (multi-IdP): opaque tokens carry no verifiable issuer to peek, so
+// selection is by trial — each configured introspector is tried in config
+// order. The first introspector returning active==true AND (when an MCP
+// resource URI is configured) an aud containing that URI wins and materializes
+// identity via the shared helper. If any introspector answers DECISIVELY
+// (inactive, or active-but-wrong-audience) and none accepts → ErrUnauthenticated
+// (fail-closed). If every introspector failed non-decisively (5xx/timeout/rate-
+// limited) with no decisive answer → ErrTransient (retryable).
+func (s *pgIdentityStore) resolveIntrospection(ctx context.Context, token string) (*Identity, error) {
+	var sawDecisive, anyErrored bool
+	for _, c := range s.introspectors {
+		// Per-issuer rate limit (reuse the JIT limiter buckets). A denied
+		// call is non-decisive — it contributes to a transient outcome if
+		// nothing else answers.
+		if !s.rateLimiterFor(c.issuer).Allow() {
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: introspection rate-limit exceeded",
+				slog.String("issuer", c.issuer))
+			anyErrored = true
+			continue
+		}
+		res, err := c.Introspect(ctx, token)
+		if err != nil {
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: introspection call failed",
+				slog.String("issuer", c.issuer), slog.Any("error", err))
+			anyErrored = true
+			continue
+		}
+		sawDecisive = true
+		if !res.Active {
+			continue
+		}
+		// RFC 8707 audience binding: an active token must still be bound to
+		// this resource server. A confused-deputy token (active elsewhere but
+		// not aud'd to us) is not accepted.
+		if s.mcpResourceURI != "" && !audienceContains(res.Raw, s.mcpResourceURI) {
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: introspected token rejected — aud missing canonical resource URI",
+				slog.String("issuer", c.issuer), slog.String("resource", s.mcpResourceURI))
+			continue
+		}
+		claims := &OIDCClaims{
+			Issuer:  res.Issuer,
+			Subject: res.Subject,
+			Raw:     res.Raw,
+		}
+		// Opaque-token introspection is never an interactive login.
+		return s.materializeIdentity(ctx, claims, false)
+	}
+	if !sawDecisive && anyErrored {
+		// Every introspector failed non-decisively — fail closed, retryable.
+		return nil, ErrTransient
+	}
+	return nil, ErrUnauthenticated
 }
 
 // jitResolve creates a new Human + OIDC binding for an unknown subject.
