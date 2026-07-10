@@ -95,8 +95,11 @@ func (p *oauth2LoginProvider) Exchange(ctx context.Context, code, codeVerifier, 
 
 	email := ""
 	if p.emailField != "" {
-		// Best-effort: a private/null userinfo email yields "" (no error).
-		email, _ = selectStringField(userinfo, p.emailField)
+		// Best-effort: a private/null userinfo email yields "" (no error path
+		// needed — the verified-email fallback below handles a blank).
+		if v, selErr := selectStringField(userinfo, p.emailField); selErr == nil {
+			email = v
+		}
 	}
 	if email == "" && p.emailsURL != "" {
 		email, err = p.fetchPrimaryVerifiedEmail(ctx, tok.AccessToken)
@@ -150,7 +153,7 @@ func (p *oauth2LoginProvider) fetchPrimaryVerifiedEmail(ctx context.Context, acc
 // body into out. It fails closed on transport error, non-2xx status, or a
 // malformed body.
 func (p *oauth2LoginProvider) getJSON(ctx context.Context, url, accessToken string, out any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("request: %w", err)
 	}
@@ -160,7 +163,7 @@ func (p *oauth2LoginProvider) getJSON(ctx context.Context, url, accessToken stri
 	if err != nil {
 		return fmt.Errorf("fetch: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer func() { _ = resp.Body.Close() }() //nolint:errcheck // best-effort close on read path
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unexpected status %d", resp.StatusCode)
 	}

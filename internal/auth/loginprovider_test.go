@@ -5,11 +5,116 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/specgraph/specgraph/internal/config"
 )
+
+// githubOAuth2Config returns a fully-populated oauth2 provider config for the
+// BuildLoginProviders tests; individual tests mutate a copy to exercise the
+// startup-fatal validation branches.
+func githubOAuth2Config() config.OIDCProviderConfig {
+	return config.OIDCProviderConfig{ //nolint:gosec // G101: ClientSecretEnv is an env var name, not a credential
+		ID: "github", Kind: "oauth2", Interactive: true, ClientID: "c",
+		ClientSecretEnv: "GH_SECRET",
+		AuthURL:         "https://github.com/login/oauth/authorize",
+		TokenURL:        "https://github.com/login/oauth/access_token",
+		UserinfoURL:     "https://api.github.com/user",
+		EmailsURL:       "https://api.github.com/user/emails",
+		SubjectField:    "id",
+		Scopes:          []string{"read:user", "user:email"},
+	}
+}
+
+func TestBuildLoginProviders_OAuth2_Constructed(t *testing.T) {
+	t.Setenv("GH_SECRET", "shh")
+	provs, err := BuildLoginProviders(context.Background(),
+		[]config.OIDCProviderConfig{githubOAuth2Config()}, "")
+	require.NoError(t, err)
+	require.Len(t, provs, 1)
+	require.Equal(t, "github", provs[0].ID())
+	require.Equal(t, "github", provs[0].DisplayName(), "display defaults to id when unset")
+	if _, ok := provs[0].(*oauth2LoginProvider); !ok {
+		t.Fatalf("expected *oauth2LoginProvider, got %T", provs[0])
+	}
+}
+
+func TestBuildLoginProviders_OAuth2_MissingUserinfoURL(t *testing.T) {
+	t.Setenv("GH_SECRET", "shh")
+	pc := githubOAuth2Config()
+	pc.UserinfoURL = ""
+	_, err := BuildLoginProviders(context.Background(), []config.OIDCProviderConfig{pc}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "userinfo_url", "missing userinfo_url must be startup-fatal")
+}
+
+func TestBuildLoginProviders_OAuth2_MissingSubjectField(t *testing.T) {
+	t.Setenv("GH_SECRET", "shh")
+	pc := githubOAuth2Config()
+	pc.SubjectField = ""
+	_, err := BuildLoginProviders(context.Background(), []config.OIDCProviderConfig{pc}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "subject_field")
+}
+
+func TestBuildLoginProviders_OAuth2_EmailsURLWithoutEmailScope(t *testing.T) {
+	t.Setenv("GH_SECRET", "shh")
+	pc := githubOAuth2Config()
+	pc.Scopes = []string{"read:user"} // EmailsURL set but no email scope
+	_, err := BuildLoginProviders(context.Background(), []config.OIDCProviderConfig{pc}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "email scope",
+		"emails_url without an email scope must be startup-fatal")
+}
+
+func TestBuildLoginProviders_OAuth2_IssuerFromProviderIssuer(t *testing.T) {
+	t.Setenv("GH_SECRET", "shh")
+	pc := githubOAuth2Config()
+	provs, err := BuildLoginProviders(context.Background(), []config.OIDCProviderConfig{pc}, "")
+	require.NoError(t, err)
+	op, ok := provs[0].(*oauth2LoginProvider)
+	require.True(t, ok)
+	require.Equal(t, config.ProviderIssuer(pc), op.issuerID,
+		"issuerID must be set from config.ProviderIssuer (single canonical issuer, HIGH #1)")
+}
+
+func TestBuildLoginProviders_UnsupportedKind(t *testing.T) {
+	t.Setenv("GH_SECRET", "shh")
+	_, err := BuildLoginProviders(context.Background(), []config.OIDCProviderConfig{
+		{ID: "weird", Kind: "saml", Interactive: true, ClientID: "c", ClientSecretEnv: "GH_SECRET"},
+	}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unsupported kind")
+}
+
+// TestOAuth2ClaimsMapping_KeyedByProviderIssuer proves D-04 reuse AND the
+// review HIGH #1 runtime-key alignment: the userinfo Raw drives a
+// claims_mapping role match when the mapping map is keyed by
+// config.ProviderIssuer(pc) — the SAME value the oauth2 provider stamps onto
+// claims.Issuer, which the runtime role lookup (jitClaimsMapping[claims.Issuer])
+// keys by. No mapping code changes are needed.
+func TestOAuth2ClaimsMapping_KeyedByProviderIssuer(t *testing.T) {
+	pc := config.OIDCProviderConfig{ID: "github", Kind: "oauth2"}
+	issuer := config.ProviderIssuer(pc)
+
+	// The startup builder keys the map by ProviderIssuer; the runtime looks up
+	// by claims.Issuer. Both are `issuer`, so the lookup hits.
+	mappingByIssuer := map[string][]config.ClaimMapping{
+		issuer: {{Claim: "role", Value: "platform-admin", Role: "admin"}},
+	}
+	userinfo := map[string]json.RawMessage{
+		"id":   json.RawMessage(`583231`),
+		"role": json.RawMessage(`"platform-admin"`),
+	}
+
+	claimsIssuer := issuer // stamped by oauth2LoginProvider.Exchange
+	role := applyClaimsMapping(userinfo, mappingByIssuer[claimsIssuer])
+	require.Equal(t, "admin", role, "userinfo Raw must drive a claims_mapping role keyed by ProviderIssuer")
+}
 
 func TestBuildLoginProviders_SkipsNonInteractive(t *testing.T) {
 	provs, err := BuildLoginProviders(context.Background(), []config.OIDCProviderConfig{
