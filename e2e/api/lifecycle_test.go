@@ -383,6 +383,66 @@ var _ = Describe("Lifecycle", Ordered, func() {
 		})
 	})
 
+	// SC#2 headline: editing a spec that is NOT an upstream dependency must NOT
+	// produce drift on a downstream done-spec. Seeds three distinct done specs,
+	// wires only downstream→upstream, then mutates the unrelated spec (changing
+	// its content hash) and asserts the downstream stays clean. Uniquely-named
+	// specs (nfp-*) avoid colliding with the "Drift detection" block above and the
+	// "(all specs)" blanket-zero assertion below; nfp-downstream never drifts and
+	// nfp-unrelated has no downstream, so no residual un-acked drift is left.
+	Describe("Drift detection (no false-positive on unrelated edit)", func() {
+		const (
+			nfpDownstream = "nfp-downstream"
+			nfpUpstream   = "nfp-upstream"
+			nfpUnrelated  = "nfp-unrelated"
+		)
+
+		It("seeds three done specs and wires only downstream→upstream", func() {
+			for _, slug := range []string{nfpDownstream, nfpUpstream, nfpUnrelated} {
+				_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+					Slug:   slug,
+					Intent: "No-false-positive drift test spec " + slug,
+				}))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(advanceStage(ctx, slug, "done")).To(Succeed())
+			}
+
+			// Only downstream DEPENDS_ON upstream — this baselines content_hash_at_link.
+			// nfp-unrelated is deliberately left with no edge to anything. Keeping this
+			// edge in the seed means the test would fail if the drift path were not
+			// genuinely exercised (Pitfall 2 sanity guard).
+			_, err := graphClient.AddEdge(ctx, connect.NewRequest(&specv1.AddEdgeRequest{
+				FromSlug: nfpDownstream,
+				ToSlug:   nfpUpstream,
+				EdgeType: specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("editing an unrelated spec does not drift the downstream", func() {
+			// Mutate ONLY the unrelated spec with a real Intent change so its
+			// ContentHash genuinely changes. Sleep timestampSkew first to match the
+			// mutate-then-check ordering guard used elsewhere in this file.
+			time.Sleep(timestampSkew)
+			_, err := specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
+				Slug:   nfpUnrelated,
+				Intent: proto.String("Updated unrelated intent to change its content hash"),
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			// The downstream depends only on the (untouched) upstream, so editing an
+			// unrelated spec must NOT surface any drift items.
+			resp, err := lifecycleClient.CheckDrift(ctx, connect.NewRequest(&specv1.DriftCheckRequest{
+				Slug: nfpDownstream,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			if len(resp.Msg.Reports) > 0 {
+				Expect(resp.Msg.Reports[0].Items).To(BeEmpty(),
+					"editing an unrelated spec must NOT drift the downstream")
+			}
+		})
+	})
+
 	// Depends on "Drift detection" Describe above (order guaranteed by outer Ordered container).
 	// After blanket AcknowledgeDrift, edge hashes match upstream — no drift expected.
 	Describe("Drift detection (all specs)", func() {
