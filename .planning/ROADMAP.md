@@ -125,7 +125,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Goal:** [Captured for future planning]
 **Requirements:** TBD
-**Plans:** 0 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 
@@ -140,7 +140,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Release & Build Tooling | 1/1 | Complete    | 2026-07-09 |
 | 2. API Key Lifecycle & Self-Service | 8/8 | Complete    | 2026-07-10 |
-| 3. External Identity Provider Integration | 4/4 | Complete | 2026-07-10 |
+| 3. External Identity Provider Integration | 4/4 | Complete    | 2026-07-10 |
 | 4. Verification & Integration Reliability | 0/TBD | Not started | - |
 
 ---

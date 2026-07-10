@@ -26,15 +26,15 @@ Specs stay live and queryable as a graph — with locked architectural decisions
 - ✓ Pin `task tools`' golangci-lint to match CI version (`spgr-vpmg`) — Phase 1: single `GOLANGCI_LINT_VERSION` var in `Taskfile.yml`, installed via `go install` (not unpinned `brew install`); `ci.yml` reads the same value via `$(task tools:golangci-lint-version)` command substitution instead of an independent env var
 - ✓ Self-service / auto MCP API-key provisioning for OIDC users (`spgr-g7st`, AUTH-03) — Phase 2: owner-scoped self-mint/list/rotate/revoke handlers with RoleMin floor (create+rotate), quota-safe mint, expiry clamp (90d/180d), CSRF double-submit, anti-key-chaining, plus CLI self-variants and a `/keys` web dashboard
 - ✓ Enforce app-role revocation on standing API/MCP keys (`spgr-c2lb`, AUTH-02) — Phase 2: operator `ResyncUserRole` RPC + `auth user resync` CLI writes the live DB role (clamping standing keys on next request) with optional `--revoke-keys` hard off-board; proven by live-floor integration tests
+- ✓ Native generic OAuth2 + userinfo login provider (GitHub-direct) (`spgr-1rq9`, AUTH-01) — Phase 3: `oauth2LoginProvider` (Exchange→userinfo→`*OIDCClaims`, verified-email fallback, stable numeric subject) reusing the OIDC binding/JIT/claims-mapping machinery via a single canonical `ProviderIssuer` helper; live GitHub browser login verified
+- ✓ MCP OAuth 2.1 resource server delegating auth to a real IdP (`spgr-tmqm`, AUTH-04) — Phase 3: RFC 9728 protected-resource metadata + `/mcp/`-scoped `WWW-Authenticate` challenge, RFC 8707 resource-URI audience binding (MCP-request-gated), RFC 7662 opaque-token introspection with multi-IdP trial and `spgr_sk_` guard-before-introspection; dev/prod https policy (RS disabled on http loopback)
+- ✓ Populate `web_sessions.issuer` for audit / future RP-logout (`spgr-bbp2`, AUTH-05) — Phase 3: `Identity.Issuer` threaded through `materializeIdentity`; callback resolves via `ResolveLogin` and stamps the session issuer before `CreateSession`; verified by Docker integration test (no backfill of pre-existing empty-issuer rows, D-10)
 
 ### Active
 
 <!-- v1 scope — see REQUIREMENTS.md for full detail with REQ-IDs. Sourced from currently open/in-progress beads issues, P1+P2 priority. -->
 
-- [ ] Native generic OAuth2 + userinfo login provider (GitHub-direct) (`spgr-1rq9`)
-- [ ] Populate `web_sessions.issuer` for audit / future RP-logout (`spgr-bbp2`)
 - [ ] Fix Confluence comment polling pagination bug (`spgr-jwbj`)
-- [ ] MCP OAuth 2.1 resource server delegating auth to a real IdP (`spgr-tmqm`)
 - [ ] Interface and verify drift detection (`spgr-vch`)
 
 ### Out of Scope
@@ -70,4 +70,4 @@ Full architectural history — locked ADRs, three-generation storage-backend lin
 | CFG-02: Taskfile-as-source-of-truth for pinned tool versions (silent leaf task + CI command substitution, not a duplicated env var) | single declaration closes local/CI version drift structurally, not just for golangci-lint | ✓ Good — pattern flagged in code review (IN-01) as worth generalizing to `PROTOC_GEN_*` vars in a future phase |
 
 ---
-*Last updated: 2026-07-10 after Phase 2 complete — AUTH-02 (`spgr-c2lb`, app-role revocation on standing keys) and AUTH-03 (`spgr-g7st`, self-service MCP API-key provisioning) shipped and reclassified from Active to Validated; all Phase 2 requirements closed*
+*Last updated: 2026-07-10 after Phase 3 complete — AUTH-01 (`spgr-1rq9`, native GitHub OAuth2+userinfo login), AUTH-04 (`spgr-tmqm`, MCP OAuth 2.1 resource server: RFC 9728/8707/7662), and AUTH-05 (`spgr-bbp2`, session-issuer audit data) shipped and reclassified from Active to Validated; all Phase 3 requirements closed*
