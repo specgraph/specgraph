@@ -4,8 +4,8 @@ milestone: v0.12.0
 milestone_name: milestone
 current_phase: 3
 current_phase_name: External Identity Provider Integration
-status: verifying
-stopped_at: Completed 02-02-PLAN.md
+status: ready to plan
+stopped_at: Phase 02 complete, ready to plan Phase 3
 last_updated: "2026-07-10T02:36:06.469Z"
 last_activity: 2026-07-10
 last_activity_desc: Phase 02 complete, transitioned to Phase 3
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 drift detection, and a durable storage/query layer — so both humans and agent-based execution
 engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
-**Current focus:** Phase 02 — api-key-lifecycle-self-service
+**Current focus:** Phase 3 — External Identity Provider Integration
 
 ## Current Position
 
 Phase: 3 — External Identity Provider Integration
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-10 — Phase 02 complete, transitioned to Phase 3
+Status: Ready to plan
+Last activity: 2026-07-10 — Phase 02 complete (UAT passed, 3/3), transitioned to Phase 3
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
