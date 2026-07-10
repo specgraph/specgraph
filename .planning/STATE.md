@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v0.12.0
 milestone_name: milestone
-current_phase: 4
-current_phase_name: Verification & Integration Reliability
+current_phase: 999.1
+current_phase_name: constitution, etc
 status: verifying
 stopped_at: Phase 4 context gathered
-last_updated: "2026-07-10T16:17:02.422Z"
+last_updated: "2026-07-10T16:23:00.234Z"
 last_activity: 2026-07-10
-last_activity_desc: Phase 4 execution started
+last_activity_desc: Phase 4 complete, transitioned to Phase 999.1
 progress:
   total_phases: 4
   completed_phases: 4
@@ -31,10 +31,10 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 
 ## Current Position
 
-Phase: 4 (Verification & Integration Reliability) — EXECUTING
-Plan: 2 of 2
+Phase: 999.1 — UI needs a project selector, and default, as well as UI refinements around project specifics ( constitution, etc ) (BACKLOG)
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-10 — Phase 4 execution started
+Last activity: 2026-07-10 — Phase 4 complete, transitioned to Phase 999.1
 
 Progress: [███████████████░░░░░] 75%
 
@@ -42,7 +42,7 @@ Progress: [███████████████░░░░░] 75%
 
 **Velocity:**
 
-- Total plans completed: 13
+- Total plans completed: 15
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -53,6 +53,7 @@ Progress: [███████████████░░░░░] 75%
 | 01 | 1 | - | - |
 | 02 | 8 | - | - |
 | 03 | 4 | - | - |
+| 4 | 2 | - | - |
 
 **Recent Trend:**
 
