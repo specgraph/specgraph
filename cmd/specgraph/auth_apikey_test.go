@@ -197,7 +197,7 @@ func TestAuthAPIKeyCreate_SelfPrintsPlaintextOnce(t *testing.T) {
 	}(apiKeyCreateUser, apiKeyCreateLabel, apiKeyCreateDown, apiKeyCreateExpires, authJSON)
 	apiKeyCreateUser, apiKeyCreateLabel, apiKeyCreateDown, apiKeyCreateExpires, authJSON = "", "", "", "", false
 
-	const secret = "spgr_sk_self_ONLYONCE_9f3a"
+	const secret = "spgr_sk_self_ONLYONCE_9f3a" //nolint:gosec // test fixture, not a real credential
 	h := &apiKeyStubHandler{plaintext: secret}
 	withAPIKeyStubClient(t, h)
 

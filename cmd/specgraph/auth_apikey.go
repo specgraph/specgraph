@@ -122,15 +122,15 @@ var authAPIKeyCreateCmd = &cobra.Command{
 		// owner derived server-side from the session (no user_id on the wire).
 		if apiKeyCreateUser == "" {
 			warnIfEnvKeyIgnored(cmd.ErrOrStderr())
-			client, err := identitySessionClient()
-			if err != nil {
-				return err
+			client, clientErr := identitySessionClient()
+			if clientErr != nil {
+				return clientErr
 			}
-			resp, err := client.CreateMyAPIKey(cmd.Context(), connect.NewRequest(&specv1.CreateMyAPIKeyRequest{
+			resp, callErr := client.CreateMyAPIKey(cmd.Context(), connect.NewRequest(&specv1.CreateMyAPIKeyRequest{
 				Label: apiKeyCreateLabel, RoleDowngrade: apiKeyCreateDown, ExpiresAt: expiresAt,
 			}))
-			if err != nil {
-				return fmt.Errorf("create my api key: %w", err)
+			if callErr != nil {
+				return fmt.Errorf("create my api key: %w", callErr)
 			}
 			if authJSON {
 				return printJSON(cmd.OutOrStdout(), resp.Msg)
@@ -215,15 +215,15 @@ var authAPIKeyRotateCmd = &cobra.Command{
 		// No --user → self path: rotate one of the caller's own keys.
 		if apiKeyRotateUser == "" {
 			warnIfEnvKeyIgnored(cmd.ErrOrStderr())
-			client, err := identitySessionClient()
-			if err != nil {
-				return err
+			client, clientErr := identitySessionClient()
+			if clientErr != nil {
+				return clientErr
 			}
-			resp, err := client.RotateMyAPIKey(cmd.Context(), connect.NewRequest(&specv1.RotateMyAPIKeyRequest{
+			resp, callErr := client.RotateMyAPIKey(cmd.Context(), connect.NewRequest(&specv1.RotateMyAPIKeyRequest{
 				KeyId: args[0], ExpiresAt: expiresAt,
 			}))
-			if err != nil {
-				return fmt.Errorf("rotate my api key: %w", err)
+			if callErr != nil {
+				return fmt.Errorf("rotate my api key: %w", callErr)
 			}
 			if authJSON {
 				return printJSON(cmd.OutOrStdout(), resp.Msg)

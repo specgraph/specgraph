@@ -184,6 +184,7 @@ func TestSelfMint_SessionPrecedence(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", cfgHome)
 	credPath := filepath.Join(cfgHome, "specgraph", "credentials.yaml")
 	f := &credentials.File{}
+	//nolint:gosec // test fixture token, not a real credential
 	f.Upsert(serverURL, credentials.ServerCreds{Token: "spgr_ws_session_abc", Label: "oidc:alice"})
 	require.NoError(t, f.Save(credPath))
 
