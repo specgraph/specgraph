@@ -2,7 +2,7 @@
 phase: 3
 slug: external-identity-provider-integration
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-07-10
 ---
@@ -37,9 +37,19 @@ created: 2026-07-10
 
 ## Per-Task Verification Map
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| _TBD — populated by planner / gsd-nyquist-auditor_ | | | AUTH-01/04/05 | | | | | | ⬜ pending |
+| Task ID | Plan | Wave | Requirement | Secure Behavior | Test Type | Automated Command | Status |
+|---------|------|------|-------------|-----------------|-----------|-------------------|--------|
+| 03-01-01 | 03-01 | 1 | AUTH-01, AUTH-05 | Fail-closed resolution preserved; `Identity.Issuer` + `ResolveLogin` seam added without changing `Resolve` dispatch (D-08) | unit | `task test` | ⬜ pending |
+| 03-01-02 | 03-01 | 1 | AUTH-01 | Shared `materializeIdentity`; `Exchange`→`*OIDCClaims` reshape keeps OIDC path intact | unit | `go test ./internal/auth/ -run 'Resolve\|JIT\|ClaimsMapping\|LoginSync'` | ⬜ pending |
+| 03-01-03 | 03-01 | 1 | AUTH-05 | Browser-callback session mint carries verified iss (OIDC) / synthetic issuer (oauth2) | integration | `go test -tags integration ./internal/server/ -run SessionIssuer` | ⬜ pending |
+| 03-02-01 | 03-02 | 2 | AUTH-01 | Only verified primary email trusted (D-02); stable numeric subject | unit (httptest) | `go test ./internal/auth/ -run OAuth2Provider` | ⬜ pending |
+| 03-02-02 | 03-02 | 2 | AUTH-01 | Missing userinfo URL is startup-fatal; kind-gate relaxed safely | unit | `go test ./internal/auth/ -run 'BuildLoginProviders\|ClaimsMapping\|OAuth2Provider'` | ⬜ pending |
+| 03-03-01 | 03-03 | 2 | AUTH-04 | Unauth `/mcp/` → 401 + `WWW-Authenticate`; metadata lists all IdP issuers + canonical resource | unit (httptest) | `go test ./internal/server/ -run 'ProtectedResourceMetadata\|MCPChallenge'` | ⬜ pending |
+| 03-03-02 | 03-03 | 2 | AUTH-04 | Canonical resource URI computed once, `https`+no-fragment startup-validated; challenge scoped to `/mcp/` only | build/unit | `task test && go build ./cmd/...` | ⬜ pending |
+| 03-04-01 | 03-04 | 3 | AUTH-04 | Token bound only to `client_id` (not resource URI) rejected — RFC 8707 no-passthrough (D-05.3) | unit/integration | `go test ./internal/auth/ -run 'AudienceBinding\|Resolve'` | ⬜ pending |
+| 03-04-02 | 03-04 | 3 | AUTH-04 | Opaque token → introspection → active+aud → identity; inactive → 401 (D-06) | unit (stub) | `go test ./internal/auth/ -run 'Introspection\|Resolve'` | ⬜ pending |
+
+*All tasks are `tdd`-tagged (except 03-03-02) and co-create their Wave 0 test files listed below.*
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -83,11 +93,11 @@ created: 2026-07-10
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-07-10 (plan-time; `wave_0_complete` flips true once execution writes the Wave 0 test files)
