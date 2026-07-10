@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: external-identity-provider-integration
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-07-10T13:01:50.911Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-07-10T13:14:24.241Z"
 last_activity: 2026-07-10
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 11
   percent: 50
 ---
 
@@ -32,7 +32,7 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 ## Current Position
 
 Phase: 03 (external-identity-provider-integration) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-10 — Phase 03 execution started
 
@@ -69,6 +69,7 @@ Progress: [█████░░░░░] 50%
 | Phase 02-api-key-lifecycle-self-service P07 | 9min | 2 tasks | 5 files |
 | Phase 02 P08 | 35min | 2 tasks | 6 files |
 | Phase 03 P01 | 30 min | 3 tasks | 9 files |
+| Phase 03 P02 | 40 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase 02]: RegisterIdentityService takes a non-variadic SelfServiceKeysConfig param so self-service key policy is threaded, not swallowed by the opts variadic — Adding it as another HandlerOption would lose the config
 - [Phase 02]: Web CSRF via double-submit interceptor echoing the specgraph_csrf cookie into X-CSRF-Token; enforcement scoping is the server's job
 - [Phase 02]: One-time minted plaintext returned to the caller and held only in the page's transient reveal state, never in the keys.svelte.ts module state
+- [Phase 03]: oauth2 provider issuerID stamped from config.ProviderIssuer(pc) so claims.Issuer, the (issuer,subject) binding, and the claims-mapping key cannot diverge (review HIGH #1)
+- [Phase 03]: Verified-email fallback: null/private userinfo email fetches primary&&verified from the emails endpoint; unverified/absent leaves Email blank (D-02)
 
 ### Pending Todos
 
@@ -118,6 +121,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-10T13:01:50.797Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-07-10T13:14:17.906Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
