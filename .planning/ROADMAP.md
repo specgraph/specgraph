@@ -28,6 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: API Key Lifecycle & Self-Service** - OIDC users self-provision MCP API keys; revoked roles can't survive on standing keys (completed 2026-07-10)
 - [x] **Phase 3: External Identity Provider Integration** - Add native GitHub OAuth2, MCP OAuth 2.1 resource-server delegation, and session-issuer audit data
 - [x] **Phase 4: Verification & Integration Reliability** - Drift detection gets a verified interface (INTG-01 descoped — Confluence poller not in this repo) (completed 2026-07-10)
+- [ ] **Phase 5: UI Project Selector & Refinements** - Web UI gains a project selector with a sensible default, plus project-specific UI refinements (constitution view, etc.) — promoted from backlog 999.1
 
 ## Phase Details
 
@@ -125,17 +126,20 @@ Plans:
 - [x] 04-01-PLAN.md — DRFT-01 SC#2 verification tests (no-false-positive e2e, full-graph SkippedCount integration, per-upstream ack round-trip e2e)
 - [x] 04-02-PLAN.md — DRFT-01 SC#1 doc note: drift interface reachable via API (`LifecycleService.CheckDrift`/`AcknowledgeDrift`) and MCP `drift` tool
 
+### Phase 5: UI Project Selector & Refinements
+
+**Goal**: The web UI lets users select which project they're viewing (with a sensible default) and surfaces project-specific views/refinements (constitution, etc.) instead of assuming a single implicit project
+**Depends on**: Nothing (promoted from backlog 999.1; builds on the existing SvelteKit web app + ConnectRPC surface)
+**Requirements**: TBD (define during /gsd-discuss-phase 5)
+**Status**: Not started — promoted from backlog 2026-07-10
+**Success Criteria** (what must be TRUE): _(to be defined during discuss/spec)_
+
+  1. TBD — a user can pick the active project from the UI, with a default selection when none is chosen
+  2. TBD — project-specific UI (e.g. constitution view) reflects the selected project
+
+**Plans**: TBD
+
 ## Backlog
-
-### Phase 999.1: UI needs a project selector, and default, as well as UI refinements around project specifics ( constitution, etc ) (BACKLOG)
-
-**Goal:** [Captured for future planning]
-**Requirements:** TBD
-**Plans:** 2/2 plans complete
-
-Plans:
-
-- [ ] TBD (promote with /gsd-review-backlog when ready)
 
 ### Phase 999.2: confluence integration (BACKLOG)
 
@@ -150,7 +154,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -158,6 +162,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. API Key Lifecycle & Self-Service | 8/8 | Complete    | 2026-07-10 |
 | 3. External Identity Provider Integration | 4/4 | Complete    | 2026-07-10 |
 | 4. Verification & Integration Reliability | 2/2 | Complete    | 2026-07-10 |
+| 5. UI Project Selector & Refinements | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-07-08*
