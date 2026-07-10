@@ -141,8 +141,13 @@ Plans:
 **Plans**: 13 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 05-01-PLAN.md — Wave 1: shadcn-svelte + Tailwind v4 foundation, Slate tokens, primitive set, badge-variants map
 - [ ] 05-02-PLAN.md — Wave 1: project store default precedence + case-insensitive sort + stale fallback (D-04/05/06) + tests
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 05-03-PLAN.md — Wave 2: app shell — +layout.ts load bootstrap, shadcn nav/selector/switch, active-project breadcrumb, dark mode (D-01/02/03/07/08/11/14)
 - [ ] 05-04-PLAN.md — Wave 2: migrate AccordionSection, TabBar, FindingsSection
 - [ ] 05-05-PLAN.md — Wave 2: migrate SpecTable, StatsBar, FunnelBar
@@ -150,6 +155,9 @@ Plans:
 - [ ] 05-07-PLAN.md — Wave 2: migrate LoginModal, RevealKeyModal
 - [ ] 05-08-PLAN.md — Wave 2: migrate DiffView, VersionCompare
 - [ ] 05-09-PLAN.md — Wave 2: reframe Graph, GraphMini on Card + theme tokens
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 05-10-PLAN.md — Wave 3: load-ify Dashboard + Graph pages with skeleton/empty/error states (D-01/02/09)
 - [ ] 05-11-PLAN.md — Wave 3: load-ify Spec + Decision detail pages (D-01/02/09)
 - [ ] 05-12-PLAN.md — Wave 3: Keys page shadcn restyle (user-scoped, no load refactor — D-09)
