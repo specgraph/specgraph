@@ -91,7 +91,20 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. An MCP client can authenticate to SpecGraph's MCP server via a standard OAuth 2.1 resource-server flow, with token validation delegated to the configured external IdP rather than a SpecGraph-issued API key
   3. Every web session record stores which issuer authenticated it, so an operator can audit login-provider usage per session and a future RP-initiated logout can target the correct issuer
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Identity-materialization seam (Exchange→*OIDCClaims, shared materializeIdentity, ResolveLogin) + AUTH-05 session issuer population (AUTH-01, AUTH-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-02-PLAN.md — AUTH-01 native oauth2 + userinfo login provider (GitHub-direct): kind gate relax + oauth2LoginProvider + verified-email fallback (AUTH-01)
+- [ ] 03-03-PLAN.md — AUTH-04 protocol surface: RFC 9728 protected-resource metadata + WWW-Authenticate challenge scoped to /mcp/ (AUTH-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-04-PLAN.md — AUTH-04 token validation: RFC 8707 resource-URI audience binding + RFC 7662 opaque-token introspection (AUTH-04)
 
 ### Phase 4: Verification & Integration Reliability
 
@@ -126,7 +139,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Release & Build Tooling | 1/1 | Complete    | 2026-07-09 |
 | 2. API Key Lifecycle & Self-Service | 8/8 | Complete    | 2026-07-10 |
-| 3. External Identity Provider Integration | 0/TBD | Not started | - |
+| 3. External Identity Provider Integration | 0/4 | Not started | - |
 | 4. Verification & Integration Reliability | 0/TBD | Not started | - |
 
 ---
