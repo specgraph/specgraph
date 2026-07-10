@@ -6,6 +6,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 
@@ -110,6 +111,34 @@ func resolveAPIKey(serverURL string) string {
 	return creds.TokenFor(serverURL)
 }
 
+// resolveSessionCredential returns the stored login-session credential (the
+// spgr_ws_ bearer token written by `specgraph login`) for the given server URL,
+// deliberately IGNORING SPECGRAPH_API_KEY. The self-service `auth api-key`
+// commands use this so they always authenticate as the logged-in user's OIDC
+// session: the server's self-mint handlers reject an api-key-sourced caller
+// (Source=="apikey", anti key-chaining), so preferring the env key here would
+// hard-fail PermissionDenied on a normal dev box that has SPECGRAPH_API_KEY set
+// (Finding D). Precedence is session-only — no env fallback.
+func resolveSessionCredential(serverURL string) string {
+	creds, err := credentials.Load(xdg.CredentialsFile())
+	if err != nil {
+		return ""
+	}
+	return creds.TokenFor(serverURL)
+}
+
+// warnIfEnvKeyIgnored writes a one-line stderr warning to w when
+// SPECGRAPH_API_KEY is set while a session-preferring (self-service) command
+// runs, so the user understands the env key is being ignored in favor of their
+// stored login session and is not surprised by the Source=="apikey" rejection.
+// It is a no-op when the env var is unset.
+func warnIfEnvKeyIgnored(w io.Writer) {
+	if os.Getenv("SPECGRAPH_API_KEY") != "" {
+		//nolint:errcheck // best-effort warning to the user's stderr
+		fmt.Fprintln(w, "warning: SPECGRAPH_API_KEY is set but ignored for self-service api-key commands; authenticating with your stored login session instead")
+	}
+}
+
 func newHTTPClient(project string) *http.Client {
 	return &http.Client{Transport: &clientTransport{
 		base:    http.DefaultTransport,
@@ -130,6 +159,21 @@ func newAuthenticatedHTTPClient(serverURL, project string) *http.Client {
 	}}
 }
 
+// newSessionAuthenticatedHTTPClient is like newAuthenticatedHTTPClient but
+// authenticates with the stored login session (resolveSessionCredential), never
+// SPECGRAPH_API_KEY. Used by the self-service `auth api-key` commands so the
+// server's Source=="apikey" self-mint gate never hard-fails on a dev box that
+// has an env key set (Finding D).
+func newSessionAuthenticatedHTTPClient(serverURL, project string) *http.Client {
+	return &http.Client{Transport: &staticTokenTransport{
+		inner: &clientTransport{
+			base:    http.DefaultTransport,
+			project: project,
+		},
+		token: resolveSessionCredential(serverURL),
+	}}
+}
+
 // newClient creates a ConnectRPC client using the configured base URL.
 func newClient[C any](ctor func(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) C) (C, error) {
 	baseURL, project, err := resolveBaseURL()
@@ -138,6 +182,19 @@ func newClient[C any](ctor func(httpClient connect.HTTPClient, baseURL string, o
 		return zero, err
 	}
 	return ctor(newAuthenticatedHTTPClient(baseURL, project), baseURL, clientOpts()...), nil
+}
+
+// newSessionClient creates a ConnectRPC client that authenticates with the
+// stored login session (never SPECGRAPH_API_KEY). Used by the self-service
+// `auth api-key` commands so the Source=="apikey" self-mint gate never
+// hard-fails on a dev box with an env key set (Finding D).
+func newSessionClient[C any](ctor func(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) C) (C, error) {
+	baseURL, project, err := resolveBaseURL()
+	if err != nil {
+		var zero C
+		return zero, err
+	}
+	return ctor(newSessionAuthenticatedHTTPClient(baseURL, project), baseURL, clientOpts()...), nil
 }
 
 // newClientWithProject creates a ConnectRPC client using an explicit project

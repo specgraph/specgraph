@@ -4,10 +4,13 @@
 package main
 
 import (
+	"bytes"
 	"net/http"
+	"path/filepath"
 	"testing"
 
 	"github.com/specgraph/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/credentials"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -165,4 +168,46 @@ func TestStaticTokenTransport_ChainedWithClientTransport(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "Bearer chained-key", capturedAuth)
+}
+
+// TestSelfMint_SessionPrecedence covers the Finding-D credential-precedence fix
+// used by the self-service `auth api-key` commands: the session-preferring
+// resolver must return the stored login session and ignore SPECGRAPH_API_KEY,
+// and setting the env key while a self command runs must emit a stderr warning —
+// while the default env-first resolveAPIKey stays unchanged for admin/other
+// commands.
+func TestSelfMint_SessionPrecedence(t *testing.T) {
+	const serverURL = "https://specgraph.example.com"
+
+	// Point the credentials file at a temp XDG config dir with a stored session.
+	cfgHome := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", cfgHome)
+	credPath := filepath.Join(cfgHome, "specgraph", "credentials.yaml")
+	f := &credentials.File{}
+	f.Upsert(serverURL, credentials.ServerCreds{Token: "spgr_ws_session_abc", Label: "oidc:alice"})
+	require.NoError(t, f.Save(credPath))
+
+	t.Run("session resolver ignores SPECGRAPH_API_KEY", func(t *testing.T) {
+		t.Setenv("SPECGRAPH_API_KEY", "spgr_sk_envkey_should_be_ignored")
+
+		// Session-preferring path returns the stored session, not the env key.
+		assert.Equal(t, "spgr_ws_session_abc", resolveSessionCredential(serverURL))
+		// The default env-first resolver is unchanged: it still prefers the env key.
+		assert.Equal(t, "spgr_sk_envkey_should_be_ignored", resolveAPIKey(serverURL))
+	})
+
+	t.Run("warns to stderr when env key is set", func(t *testing.T) {
+		t.Setenv("SPECGRAPH_API_KEY", "spgr_sk_envkey_should_be_ignored")
+		var buf bytes.Buffer
+		warnIfEnvKeyIgnored(&buf)
+		assert.Contains(t, buf.String(), "SPECGRAPH_API_KEY")
+		assert.Contains(t, buf.String(), "ignored")
+	})
+
+	t.Run("no warning when env key is unset", func(t *testing.T) {
+		t.Setenv("SPECGRAPH_API_KEY", "")
+		var buf bytes.Buffer
+		warnIfEnvKeyIgnored(&buf)
+		assert.Empty(t, buf.String())
+	})
 }
