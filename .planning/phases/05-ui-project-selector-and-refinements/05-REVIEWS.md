@@ -1,49 +1,47 @@
 ---
 phase: 5
+round: 2
 reviewers: [cursor]
-reviewed_at: 2026-07-10T21:46:58Z
+reviewed_at: 2026-07-10T22:19:51Z
 plans_reviewed: [05-01-PLAN.md, 05-02-PLAN.md, 05-03-PLAN.md, 05-04-PLAN.md, 05-05-PLAN.md, 05-06-PLAN.md, 05-07-PLAN.md, 05-08-PLAN.md, 05-09-PLAN.md, 05-10-PLAN.md, 05-11-PLAN.md, 05-12-PLAN.md, 05-13-PLAN.md]
+supersedes: "round 1 (commit b9f8dbec)"
 ---
 
-# Cross-AI Plan Review — Phase 5
+# Cross-AI Plan Review — Phase 5 (Round 2, post-revision)
+
+> Round 2 re-review of the plans after the `--reviews` revision pass addressed Round 1.
+> Round 1 findings are preserved in git history (commit `b9f8dbec`).
 
 ## Cursor Review
 
-# Phase 5 Plan Review: UI Project Selector & Refinements
+# Phase 5 Plan Review (Round 2)
 
 ## Summary
 
-The plans are well grounded in the actual codebase: they correctly identify the root failure mode (project picker updates `project.current` but views never re-fetch), document the static-SPA constraints (`ssr = false`, `adapter-static`, `embed.go`), and propose a coherent fix (`+layout.ts` bootstrap → universal `load()` → `invalidateAll()` on switch). Wave ordering and pitfall callouts (Pitfalls 3–6, constitution stale badges, FOUC, shadcn CLI flags) show strong research quality. The main risks are **Wave 2 dependency ordering** (Tailwind styles before `app.css` is imported), **a functional gap between Wave 2 shell and Wave 3 page loads**, **duplicate breadcrumbs for D-11**, and **heavy reliance on manual UAT** for the phase’s core success criteria.
+The revisions are **sound and materially address Round 1**. The plans still match the repo (static SPA, `bind:value` switch bug, `onMount`/`$effect` fetches, constitution stale-badge anti-pattern, `_server` filter in Go). Round 1 fixes are encoded as concrete tasks: `app.css` import in 05-01, Go `_server` test in 05-02, explicit Wave 3 scope boundary for D-01, layout-owned breadcrumb with Wave 3 removals, default skeleton strategy, and documented manual-UAT appetite. Remaining risk is **execution-order UX** (transient double breadcrumbs mid-wave) and **still-heavy manual verification** for the phase’s core outcomes—not architectural flaws.
+
+---
+
+## Resolution Check
+
+| Round-1 finding | Verdict | Evidence |
+|-----------------|---------|----------|
+| **HIGH — Wave 2 runs before Tailwind is active** | **RESOLVED** | Current tree has no Tailwind deps (`web/package.json:12-28`), no `app.css`, and no stylesheet import in `web/src/routes/+layout.svelte:1-6`. Revised **05-01** adds `web/src/app.css` in Task 2, wires `@tailwindcss/vite` in Task 1, and adds `import '../app.css'` in Task 3 *before* Wave 2 migrations (05-04..09 still `depends_on: ["05-01"]` only, which is now sufficient). |
+| **HIGH — Project switch not end-to-end until Wave 3** | **RESOLVED** (planning) | Bug still real today: picker binds `project.current` without invalidation (`web/src/routes/+layout.svelte:44-49`); pages fetch once via `onMount`/`$effect` (`web/src/routes/+page.svelte:95`, `graph/+page.svelte:13`, `constitution/+page.svelte:26`, `decision/[...slug]/+page.svelte:45`). **05-03** explicitly disclaims end-to-end D-01; **05-10/11/13** add `+page.ts` + `depends('app:project')`. |
+| **MEDIUM — D-11 breadcrumb duplication** | **PARTIAL** | **05-03** declares layout as single owner; **05-11/13** require removing per-page `<nav class="breadcrumb">` with automated checks (spec at `web/src/routes/spec/[...slug]/+page.svelte:171-173`, decision at `:48-50`, constitution at `:68-70`). Keys correctly excluded (`web/src/routes/keys/+page.svelte:75-77`; 05-12). **Gap:** 05-03 lands in Wave 2 while removals are Wave 3 → **transient double breadcrumbs** on constitution/spec/decision between waves. **05-03** does not specify `{View}` derivation from `$page.url` (pathname vs slug for detail routes). |
+| **MEDIUM — Pitfall 3 skeleton strategy implicit** | **RESOLVED** | RESEARCH Open Questions #2 locked streamed `{#await}` as default; **05-10** Task 1 mandates it; graph may use `switching` flag only (`05-10` Task 2). **05-PATTERNS.md** forbids `$navigating` for switch skeletons. |
+| **MEDIUM — `/api/projects` `_server` exclusion untested** | **RESOLVED** | Filter exists at `internal/server/api_handler.go:33-36`. **05-02** Task 3 adds `TestAPIHandler_ExcludesServerProject` using existing `apiTestResolver` / `RegisterAPIHandlers` pattern (`internal/server/api_handler_test.go:17-111`). `storage.Project.Slug` field matches plan (`internal/storage/project.go:12-14`). |
+| **MEDIUM — Core switch behavior manual-UAT only** | **PARTIAL** (explicit tradeoff) | **05-VALIDATION.md** records component-test harness **out of appetite**; `nyquist_compliant: false` retained. Added automation: `project.test.ts` (05-02) + Go test + structural `+page.ts` string verifies—not end-to-end switch refetch. `web/package.json` still has only Vitest, no `@testing-library/svelte` (`:12-21`). |
 
 ---
 
 ## Strengths
 
-- **Accurate diagnosis of the switch bug.** `+layout.svelte` binds the picker to `project.current` but never invalidates loads:
-
-```44:49:web/src/routes/+layout.svelte
-    {#if project.available.length > 1}
-      <select bind:value={project.current} class="project-picker">
-        {#each project.available as slug}
-          <option value={slug}>{slug}</option>
-        {/each}
-```
-
-  Meanwhile every project-scoped page fetches once via `onMount` or a mount-only `$effect` (e.g. `+page.svelte:95`, `graph/+page.svelte:13`, `constitution/+page.svelte:26`). The `load()` + `invalidateAll()` approach in 05-03/05-10–13 directly addresses this.
-
-- **Correct static-SPA assumptions.** `+layout.ts` already sets `ssr = false` and `prerender = false` (`web/src/routes/+layout.ts:3-4`), matching the plan’s universal `+page.ts` loads and `embed.go`’s `//go:embed all:build` (`web/embed.go:12`). No server `load()` is proposed.
-
-- **Existing seams reused, not rewritten.** Plans extend `project.svelte.ts`, keep `projectInterceptor` (`client.ts:15-17`), and align D-04 with the `'default'` fallback already in the interceptor. `/api/projects` already excludes `_server` (`api_handler.go:33-36`).
-
-- **Pitfall 4 (constitution badges) is evidenced in code.** Constitution stores `provenance` in `$state` and loads via `$effect(() => { load(); })` (`constitution/+page.svelte:7-26,53-58`) with no dependency on `project.current`—exactly the stale-badge scenario 05-13 targets.
-
-- **D-09 Keys fence is explicit.** Keys uses `onMount` + user-scoped `keys.svelte.ts` (`keys/+page.svelte:17-18`); 05-12 forbids `+page.ts`, `invalidateAll()`, and project breadcrumb—appropriate for user-scoped data.
-
-- **Sensible wave structure.** Foundation (05-01/02) → shell + component migration (05-03–09) → load-ification (05-10–13) keeps `task web:build` viable at wave boundaries. TDD for D-04/D-05/D-06 in 05-02 matches the real gap in `loadProjects()` (`project.svelte.ts:26-30`: unsorted `available[0]`, no `'default'` tier).
-
-- **Supply-chain awareness.** Plans reference `pnpm-workspace.yaml` `minimumReleaseAgeExclude` (`web/pnpm-workspace.yaml:9-9`), Pitfall 2 (`--base-color` has no `slate`), and `@lucide/svelte` vs deprecated `lucide-svelte`.
-
-- **Threat model is mostly honest.** T-05-04 correctly treats `X-Specgraph-Project` as client-selected; server scopes via `ProjectMiddleware` + `scopeStore` (`project.go:32-62`). Stale-render threats map to real UI bugs.
+- **Root-cause diagnosis still accurate.** `projectInterceptor` threads header from `project.current` (`web/src/lib/api/client.ts:15-17`); picker updates state without reload (`+layout.svelte:44-49`); constitution `$effect(() => { load(); })` has no project dependency (`constitution/+page.svelte:12-26`)—exactly Pitfall 4 / D-10 target.
+- **Static-SPA constraints preserved.** `ssr = false` / `prerender = false` (`web/src/routes/+layout.ts:3-4`); `adapter-static` (`web/svelte.config.js:6-8`); `//go:embed all:build` (`web/embed.go:12`)—no server `load()` proposed.
+- **Round 1 suggestions incorporated systematically.** `onValueChange` → `switchProject` → `invalidateAll()` (05-03); `depends('app:project')` escape hatch (05-10/11/13); TDD for D-04/05/06 (05-02); graph dark-mode pairs called out (05-09).
+- **Go test design is correct.** Handler scopes via `_server` then filters slugs (`api_handler.go:21-36`); new test should use a **separate** backend variant (not mutating `fakeProjectBackend` that returns `nil` at `api_handler_test.go:30-31`).
+- **Keys fence remains tight.** User-scoped `onMount` fetch (`keys/+page.svelte:17-18`); 05-12 forbids `+page.ts` / `invalidateAll()`.
 
 ---
 
@@ -51,72 +49,63 @@ The plans are well grounded in the actual codebase: they correctly identify the 
 
 | Severity | Issue | Evidence / mechanism |
 |----------|-------|-------------------|
-| **HIGH** | **Wave 2 component plans can run before Tailwind is active in the app.** 05-04–09 depend only on `05-01`; `import '../app.css'` is deferred to `05-03`. Migrated components will use Tailwind utilities while pages still use scoped CSS—build passes, UI is unstyled until 05-03 lands. | `05-04` `depends_on: ["05-01"]`; 05-03 adds `import '../app.css'` in layout. No `app.css` exists today; `package.json` has no Tailwind deps (`web/package.json:12-28`). |
-| **HIGH** | **Project switch is not end-to-end until Wave 3 completes.** After 05-03, `invalidateAll()` re-runs layout load but project pages still use `onMount`/`$effect`—switching will refresh shell state but **not** dashboard/graph/constitution/detail data. | All five scoped routes lack `+page.ts` today; load-ification is 05-10–13 only. |
-| **MEDIUM** | **D-11 breadcrumb likely duplicates page breadcrumbs.** Layout will add `{project} / {View}` (05-03); spec, constitution, decision, and keys pages already render their own `<nav class="breadcrumb">` (`constitution/+page.svelte:68-70`, `spec/[...slug]/+page.svelte:171`, etc.). 05-10–13 do not say to remove them. Keys correctly excludes project breadcrumb (05-12); others do not. | Double breadcrumb on four project-scoped views unless consolidated. |
-| **MEDIUM** | **Core switch behavior is manual-UAT only.** Validation map marks D-01/D-07/D-08/D-10/D-11 as component/manual; no `@testing-library/svelte`, no jsdom harness (`web/package.json` only has `vitest`). `nyquist_compliant: false` in embedded VALIDATION.md. | Automated verifies are mostly `node -e` string checks + `pnpm build`; they won’t catch stale data after switch. |
-| **MEDIUM** | **`/api/projects` `_server` exclusion untested.** Research flags “verify existing coverage”; `api_handler_test.go` only tests auth (401/200), not slug filtering. | `api_handler.go:34` filters `_server`; no test asserts response slugs. |
-| **MEDIUM** | **Pitfall 3 (switch skeletons) left implicit in Wave 3.** Plans say “streamed `{#await}` OR `switching` flag” but don’t pick one; wrong choice leaves stale data visible during switch (UI-SPEC violation). | RESEARCH Pitfall 3; 05-10 tasks list both options without a default. |
-| **MEDIUM** | **`invalidateAll()` re-runs `checkAuth()` + `loadProjects()` every switch.** 05-03 moves bootstrap to `+layout.ts` load; each switch triggers whoami + `/api/projects` again. Acceptable but adds latency; `invalidate('app:project')` alternative is documented but CONTEXT locked `invalidateAll()`. | `auth.svelte.ts:15-30`, Pattern 2 tradeoff in RESEARCH. |
-| **LOW** | **Decision detail doesn’t reload on slug change today; plan fixes it but current gap is worse than spec.** Spec uses `$effect` on slug (`spec/[...slug]/+page.svelte:72-77`); decision uses `onMount(() => loadDecision(slug))` only (`decision/[...slug]/+page.svelte:45`)—slug nav within project is already broken. | 05-11 correctly moves to `+page.ts` keyed on `params.slug`. |
-| **LOW** | **D-12 CONTEXT still mentions “PostCSS”.** Plans/RESEARCH correctly use Tailwind v4 CSS-first (no `postcss.config.js`). Minor upstream doc drift, not plan error. | `05-CONTEXT.md` D-12 vs RESEARCH Pitfall 1. |
-| **LOW** | **Security claim “server authorizes via Scoper” is slightly overstated.** `ProjectMiddleware` only injects the header into context (`project.go:35-38`); enforcement is per-handler via `scopeStore`. Client can request any valid kebab-case slug; access control depends on `scoper.Scoped` implementation, not header validation alone. | Acceptable for trusted UI; worth noting for multi-tenant hardening. |
+| **MEDIUM** | **Transient double breadcrumbs during execution.** 05-03 adds layout `{project} / {View}` in Wave 2; per-page breadcrumbs removed only in Wave 3 (05-11/13). Constitution/spec/decision still have page breadcrumbs today (`constitution/+page.svelte:68-70`, `spec/[...slug]/+page.svelte:171-173`, `decision/[...slug]/+page.svelte:48-50`). | Implementers finishing Wave 2 before Wave 3 ship duplicated indicators despite Round 1 fix intent. |
+| **MEDIUM** | **`{View}` label mapping underspecified for dynamic routes.** UI-SPEC shows `{project} / {View}` (`05-UI-SPEC.md:130`) but 05-03 does not define View for `/spec/[slug]` or `/decision/[slug]` (static "Spec" vs slug). Removing page breadcrumbs drops current nav trail (`Dashboard / Graph / {slug}` at spec/decision pages). | D-11 satisfied for *project visibility*; wayfinding regression vs today unless page titles compensate. |
+| **MEDIUM** | **Manual UAT remains the gate for D-01/D-10/D-11.** Documented in VALIDATION.md; no integration test for `invalidateAll()` → page reload (Round 1 suggestion #8 not adopted). | Structural `node -e` checks won't catch stale data after switch. |
+| **LOW** | **ROADMAP still tags 05-03 with D-01** while plan disclaims end-to-end switch until Wave 3 (`.planning/ROADMAP.md:151` vs `05-03-PLAN.md` scope boundary). | Could mislead wave sign-off. |
+| **LOW** | **05-01 Task 2 verify runs `pnpm build` before layout imports `app.css`.** Task 3 adds the import; within-plan order is safe, but Task 2 acceptance "Tailwind active" is weaker until Task 3. | Unreferenced `app.css` may not ship in bundle until import lands. |
+| **LOW** | **mode-watcher localStorage key marked `[ASSUMED]`** in 05-03 Task 1. | FOUC guard fails silently if key wrong. |
+| **LOW** | **05-02 Task 3 wording ties Go test to "D-05 server-side slug contract."** D-05 is client sort; server only filters `_server`. | Harmless intent; wording slip only. |
 
 ---
 
 ## Suggestions
 
-1. **Import `app.css` in 05-01 (one line) or make 05-04–09 depend on 05-03.** Minimal fix: add `import '../app.css'` to `+layout.svelte` at end of 05-01 Task 2 so Tailwind is live before any component migration. Otherwise Wave 2 parallel execution produces visually broken intermediate states.
-
-2. **Consolidate breadcrumbs in Wave 3 page plans.** Either (a) layout owns `{project} / {View}` and page plans must delete per-page `<nav class="breadcrumb">`, or (b) pages own full breadcrumb including project segment and 05-03 should not add a layout-level duplicate. Pick one pattern in 05-UI-SPEC and reference it in 05-10–13 task actions.
-
-3. **Pick a default skeleton strategy for Pitfall 3.** Recommend streamed promises from `load()` (idiomatic SvelteKit) and document it in 05-PATTERNS so implementers don’t mix approaches across pages.
-
-4. **Add Go test for `_server` exclusion** in `api_handler_test.go` (Wave 0 item): fake backend returns `{_server, alpha}` → response `["alpha"]`. Low effort, closes validation gap.
-
-5. **Gate Wave 2 “switch works” demos until Wave 3.** Mark intermediate success as “build green + shadcn visual” only; defer D-01 acceptance until 05-10–13 merge to avoid false confidence.
-
-6. **05-03 Select wiring:** use explicit `onValueChange` → `switchProject` rather than `bind:value` alone, so every user change guarantees `invalidateAll()` (current `bind:value` is the bug pattern).
-
-7. **Graph dark-mode legibility:** `Graph.svelte` hardcodes many light-theme hex fills (`Graph.svelte:17-48`). 05-09 says “theme tokens” but dagre/SVG may need explicit light/dark pairs or CSS variables—call out a manual UAT checklist item for graph contrast in both themes.
-
-8. **Consider one integration test** after Wave 3: mock `fetch` + Connect transport, flip `project.current`, call `invalidateAll()`, assert dashboard `load()` re-invoked. Even a single test would anchor D-01 better than string-matching verifies.
+1. **Add a Wave 2 completion note to ROADMAP / 05-03:** "D-01 not accepted until Wave 3 merges" so 05-03’s D-01 tag doesn’t imply false confidence.
+2. **Specify `{View}` mapping in 05-03 or PATTERNS** (e.g. pathname → Dashboard/Graph/Constitution/Spec/Decision; detail pages use static view name, slug stays in `<h1>`).
+3. **Order Wave 3 breadcrumb removals early** within the wave (05-11/13 before or with 05-03 sign-off), or add a 05-03 follow-up task to strip page breadcrumbs immediately when layout breadcrumb lands.
+4. **Document `project.test.ts` module-reset pattern** (reset `project.current` / `localStorage` between cases) since `project.svelte.ts` uses module-level `$state` (`project.svelte.ts:4-8`).
+5. **Confirm mode-watcher key in 05-03 Task 1** before FOUC script ships (plan already flags this—make it a hard verify).
+6. **Optional post-Wave-3:** one Vitest test mocking transport + calling `invalidateAll()` (Round 1 #8)—even a single test would anchor D-01 better than manual UAT alone.
 
 ---
 
 ## Risk Assessment
 
-**Overall: MEDIUM**
+**Overall: LOW–MEDIUM**
 
-**Justification:** Architecture and file-level claims match the repo closely; the phased approach is executable and build gates (`task web:build` → `task build` → `task check`) are realistic. Risk is elevated because (1) Wave 2 dependency ordering can ship broken styling and a shell that “switches” without refreshing data until Wave 3, (2) the phase’s primary user-visible outcomes (switch refresh, constitution badges, dark mode, empty states) depend heavily on manual UAT and weak automated verifies, and (3) D-11 breadcrumb consolidation is underspecified. None of these are fundamental design flaws—they are ordering, test-coverage, and UX-consistency gaps that are fixable in plan edits before execution.
-
-With the suggested dependency and breadcrumb clarifications, the plans should achieve the phase goal: selectable project with correct defaults, views that re-fetch on switch, shadcn-Slate redesign, and constitution polish across switches.
+**Justification:** Round 1 architectural risks are addressed in plan text with repo-grounded mechanisms. The switch/load/`invalidateAll()` design is coherent against current code. Risk is now primarily **execution sequencing** (double breadcrumbs mid-wave, Wave 2 “switch works” misread from ROADMAP tags) and **verification depth** (manual UAT for the phase’s defining behaviors). No fundamental design flaws; revisions are correct enough to execute with the clarifications above.
 
 ---
 
 ## Consensus Summary
 
-Only one reviewer (Cursor, `cursor-agent` 2026.07.09) was invoked for this phase, so
-there is no cross-reviewer consensus to triangulate. The findings below are Cursor's
-source-grounded assessment (it verified plan claims against the actual `web/` and
-`internal/server/` files). Overall verdict: **MEDIUM risk — no fundamental design flaws;
-ordering, test-coverage, and UX-consistency gaps fixable via plan edits before execution.**
+Single reviewer (Cursor, `cursor-agent` 2026.07.09), source-grounded against the real
+`web/` and `internal/server/` files. **Overall verdict: LOW–MEDIUM risk — revisions are
+sound and correct enough to execute.** Both Round-1 HIGH findings are RESOLVED; the two
+MEDIUM items that remain are execution-sequencing and verification-depth, not design flaws.
 
-### Agreed Strengths
-_(single reviewer — strengths as cited by Cursor)_
-- Accurate diagnosis of the switch bug (picker updates `project.current` but views never re-fetch); `load()` + `invalidateAll()` directly fixes it.
-- Correct static-SPA assumptions (`ssr = false`, `prerender = false`, `embed.go` `all:build`); no server `load()`.
-- Existing seams reused not rewritten (`project.svelte.ts`, `projectInterceptor`, `/api/projects` already excludes `_server`).
-- D-09 Keys fence explicit; supply-chain awareness (`minimumReleaseAgeExclude`, `--base-color` no `slate`, `@lucide/svelte`); mostly-honest threat model.
+### Round-1 Resolution Scorecard
+- **[HIGH] Tailwind before Wave 2** → **RESOLVED** (05-01 imports `app.css` in Wave 1; Wave 2 `depends_on: [05-01]` now sufficient).
+- **[HIGH] Switch not e2e until Wave 3** → **RESOLVED** (05-03 disclaims e2e D-01; 05-10/11/13 add `+page.ts` + `depends('app:project')`).
+- **[MED] Breadcrumb duplication** → **PARTIAL** (owner = layout; per-page removals in Wave 3 → transient double breadcrumbs mid-wave; `{View}` mapping underspecified).
+- **[MED] Skeleton strategy** → **RESOLVED** (streamed `{#await}` default; `switching` flag graph-only).
+- **[MED] `_server` untested** → **RESOLVED** (05-02 Go test using existing `apiTestResolver` pattern).
+- **[MED] Manual-UAT only** → **PARTIAL** (explicit accepted tradeoff; `nyquist_compliant: false`; no e2e switch test).
 
-### Agreed Concerns (highest priority for `--reviews` replan)
-- **HIGH — Wave 2 can run before Tailwind is active.** 05-04..05-09 depend only on 05-01, but `import '../app.css'` is deferred to 05-03 → migrated components use Tailwind utilities while the app has no active stylesheet (build passes, UI unstyled until 05-03). Fix: import `app.css` in 05-01, or make 05-04..09 depend on 05-03.
-- **HIGH — Project switch is not end-to-end until Wave 3.** After 05-03, `invalidateAll()` refreshes shell state but pages still use `onMount`/`$effect` until load-ification (05-10..13). Mark intermediate "switch works" as false confidence; defer D-01 acceptance to Wave 3.
-- **MEDIUM — D-11 breadcrumb likely duplicates existing per-page breadcrumbs** (constitution/spec/decision). 05-10..13 don't remove them. Pick one owner (layout vs page) in UI-SPEC and reference it.
-- **MEDIUM — Core switch behavior is manual-UAT only.** No component test harness (`@testing-library/svelte`/jsdom); `nyquist_compliant: false`. Add at least one integration test anchoring D-01.
-- **MEDIUM — `/api/projects` `_server` exclusion untested** — add a Go test (Wave 0).
-- **MEDIUM — Pitfall 3 skeleton strategy left implicit** (streamed `{#await}` vs `switching` flag) — pick a default (recommend streamed) and record in PATTERNS.
-- **MEDIUM — `invalidateAll()` re-runs `checkAuth()` + `loadProjects()` every switch** — acceptable latency cost; `invalidate('app:project')` escape hatch already wired.
+### Remaining Concerns (for optional Round-3 replan or execution-time attention)
+- **[MED] Transient double breadcrumbs mid-wave** — 05-03 adds layout breadcrumb (Wave 2) but per-page removals are Wave 3. Fix: order 05-11/13 breadcrumb strips early in Wave 3, or strip immediately when the layout breadcrumb lands.
+- **[MED] `{View}` label mapping underspecified** for `/spec/[slug]` & `/decision/[slug]` — removing page breadcrumbs risks a wayfinding regression unless `{View}` derivation (pathname → static view name, slug stays in `<h1>`) is specified in 05-03/PATTERNS.
+- **[MED] Manual UAT remains the gate for D-01/D-10/D-11** — accepted, but one Vitest test mocking transport + `invalidateAll()` would anchor D-01.
+- **[LOW]** ROADMAP still tags 05-03 with D-01 while the plan disclaims e2e switch until Wave 3 — add a "D-01 not accepted until Wave 3" note.
+- **[LOW]** `project.test.ts` should document a module-reset pattern (module-level `$state` in `project.svelte.ts`).
+- **[LOW]** Confirm the `mode-watcher` localStorage key (currently `[ASSUMED]`) before the FOUC script ships.
+- **[LOW]** 05-02 Task 3 wording ties the Go `_server` test to "D-05 server-side slug contract" — D-05 is client sort; wording slip only.
 
 ### Divergent Views
 _(none — single reviewer)_
+
+### Disposition
+These are refinements, not blockers. They can be folded in via `/gsd-plan-phase 5 --reviews`
+(cheap plan edits: breadcrumb-strip ordering, `{View}` mapping, ROADMAP note) or simply
+attended to during execution. The plans are executable as-is.
