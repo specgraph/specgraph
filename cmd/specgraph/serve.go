@@ -192,6 +192,15 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 		}
 	}
 
+	// Audience config for the RFC 8707 resource-URI check reuses the SINGLE
+	// hoisted mcpResourceURI above (so metadata `resource` and the aud check
+	// agree byte-for-byte). Pass it only when the MCP OAuth RS is enabled;
+	// otherwise leave it empty so the audience assertion stays disabled.
+	mcpAudienceURI := ""
+	if mcpRSEnabled {
+		mcpAudienceURI = mcpResourceURI
+	}
+
 	resolver, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users:                   res.authStore,
 		WebAuth:                 res.authStore,
@@ -204,6 +213,7 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 		JITRateBurstPerHour:     cfg.Auth.OIDC.JITCreate.RateLimitPerHour,
 		JITEmailDomainAllowlist: cfg.Auth.OIDC.JITCreate.EmailDomainAllowlist,
 		LoginSyncEnabled:        cfg.Auth.OIDC.SyncOnLogin,
+		MCPResourceURI:          mcpAudienceURI,
 	})
 	if err != nil {
 		cleanup() // drain the tracker goroutine we just started

@@ -113,6 +113,34 @@ func (v *OIDCVerifier) Verify(ctx context.Context, rawToken string) (*OIDCClaims
 	return c, nil
 }
 
+// audienceContains reports whether the JWT/introspection "aud" claim in raw
+// contains want. Per RFC 7519 §4.1.3 the "aud" claim is EITHER a single string
+// OR an array of case-sensitive strings; this helper accepts both shapes,
+// mirroring matchClaimValue's string/[]string handling. It is used to enforce
+// the RFC 8707 resource-URI audience binding on the MCP resource-server path
+// (D-05.3): a token whose aud does not contain the canonical MCP resource URI
+// is rejected as a confused-deputy signal. Absent/empty/unparseable aud → false
+// (fail-closed).
+func audienceContains(raw map[string]json.RawMessage, want string) bool {
+	rawAud, ok := raw["aud"]
+	if !ok {
+		return false
+	}
+	var single string
+	if err := json.Unmarshal(rawAud, &single); err == nil {
+		return single == want
+	}
+	var arr []string
+	if err := json.Unmarshal(rawAud, &arr); err == nil {
+		for _, a := range arr {
+			if a == want {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // nonceMatches reports whether got equals want in constant time. An empty
 // want is never a match (a login flow always sets a non-empty nonce).
 func nonceMatches(got, want string) bool {

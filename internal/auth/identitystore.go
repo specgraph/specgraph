@@ -49,6 +49,13 @@ type pgIdentityStore struct {
 	jitEmailAllowlist  map[string]bool // domain -> true; empty = no allowlist
 	loginSyncEnabled   bool
 
+	// mcpResourceURI is the canonical RFC 8707 resource identifier for the MCP
+	// resource server. When non-empty AND the request is marked WithMCPRequest,
+	// resolveJWT (and, in Task 2, resolveIntrospection) additionally requires
+	// the token's aud to contain this URI (D-05.3). Empty = OAuth-RS not
+	// configured; the extra audience assertion never fires (additive, D-08).
+	mcpResourceURI string
+
 	now func() time.Time
 }
 
@@ -86,6 +93,13 @@ type IdentityStoreConfig struct {
 	// login (see loginsync.go). When true, claims-mapping roles are validated
 	// at startup even if JITEnabled is false.
 	LoginSyncEnabled bool
+
+	// MCPResourceURI is the canonical RFC 8707 resource identifier enforced as
+	// the required token audience on the /mcp/ boundary (D-05.3). It MUST be
+	// the SAME value advertised as `resource` in the RFC 9728 metadata (Plan
+	// 03's single hoisted mcpResourceURI). Empty = the resource-URI audience
+	// assertion is disabled (additive; ConnectRPC and web-login unaffected).
+	MCPResourceURI string
 
 	Now func() time.Time // optional; defaults to time.Now
 }
@@ -158,6 +172,7 @@ func NewIdentityStore(cfg IdentityStoreConfig) (Resolver, error) { //nolint:gocr
 		jitRateRefillPerHr: burst,
 		jitEmailAllowlist:  allowlist,
 		loginSyncEnabled:   cfg.LoginSyncEnabled,
+		mcpResourceURI:     cfg.MCPResourceURI,
 		now:                now,
 	}, nil
 }
@@ -443,6 +458,22 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 	if claims.Issuer != issuer {
 		slog.LogAttrs(ctx, slog.LevelWarn, "auth: JWT issuer mismatch between peek and verified claim",
 			slog.String("peek", issuer), slog.String("verified", claims.Issuer))
+		return nil, ErrUnauthenticated
+	}
+	// RFC 8707 resource-URI audience binding (D-05.3), scoped to the /mcp/
+	// path. The verifier above already asserted aud==client_id (web-login
+	// semantics, unchanged). This ADDITIONAL check fires ONLY when the request
+	// arrived on the /mcp/ boundary (marked WithMCPRequest by Plan 03's
+	// challenge wrapper) AND an MCP resource URI is configured: the already-
+	// verified claims must carry the canonical resource URI in aud, else the
+	// token is a confused-deputy risk (bound to the client, not to this
+	// resource server) and is rejected. The MCPRequestFromContext gate is
+	// REQUIRED — without it every ConnectRPC JWT caller (aud=client_id) sharing
+	// this Resolve path would be regressed (review HIGH #2, D-08). No second
+	// verifier and no extra network round-trip: it reads claims.Raw directly.
+	if s.mcpResourceURI != "" && MCPRequestFromContext(ctx) && !audienceContains(claims.Raw, s.mcpResourceURI) {
+		slog.LogAttrs(ctx, slog.LevelWarn, "auth: MCP token rejected — aud missing canonical resource URI (confused-deputy signal)",
+			slog.String("issuer", claims.Issuer), slog.String("resource", s.mcpResourceURI))
 		return nil, ErrUnauthenticated
 	}
 	// The interactive flag is derived ONCE here (the SINGLE derivation point)
