@@ -20,13 +20,17 @@ import (
 
 // LoginProvider drives the interactive OAuth2 Authorization Code flow for one
 // provider. The oidc implementation verifies the returned id_token (incl.
-// nonce) and returns the raw token for the resolver to materialize identity.
+// nonce) and returns the normalized, verified claims for the resolver to
+// materialize identity via Resolver.ResolveLogin.
 type LoginProvider interface {
 	ID() string
 	DisplayName() string
 	AuthCodeURL(state, nonce, codeChallenge, redirectURI string) string
-	// Exchange swaps the authorization code for a nonce-verified raw id_token.
-	Exchange(ctx context.Context, code, codeVerifier, nonce, redirectURI string) (idToken string, err error)
+	// Exchange swaps the authorization code for verified, normalized claims.
+	// The oidc provider verifies the id_token (signature + nonce) and returns
+	// the parsed *OIDCClaims; a future oauth2 provider returns claims built
+	// from the userinfo response with a synthetic issuer.
+	Exchange(ctx context.Context, code, codeVerifier, nonce, redirectURI string) (claims *OIDCClaims, err error)
 }
 
 type oidcLoginProvider struct {
@@ -52,20 +56,21 @@ func (p *oidcLoginProvider) AuthCodeURL(state, nonce, codeChallenge, redirectURI
 	)
 }
 
-func (p *oidcLoginProvider) Exchange(ctx context.Context, code, codeVerifier, nonce, redirectURI string) (string, error) {
+func (p *oidcLoginProvider) Exchange(ctx context.Context, code, codeVerifier, nonce, redirectURI string) (*OIDCClaims, error) {
 	cfg := p.oauth2Config(redirectURI)
 	tok, err := cfg.Exchange(ctx, code, oauth2.SetAuthURLParam("code_verifier", codeVerifier))
 	if err != nil {
-		return "", fmt.Errorf("oidc exchange: %w", err)
+		return nil, fmt.Errorf("oidc exchange: %w", err)
 	}
 	rawID, ok := tok.Extra("id_token").(string)
 	if !ok || rawID == "" {
-		return "", errors.New("oidc exchange: no id_token in response")
+		return nil, errors.New("oidc exchange: no id_token in response")
 	}
-	if _, err := p.verifier.VerifyWithNonce(ctx, rawID, nonce); err != nil {
-		return "", err
+	claims, err := p.verifier.VerifyWithNonce(ctx, rawID, nonce)
+	if err != nil {
+		return nil, err
 	}
-	return rawID, nil
+	return claims, nil
 }
 
 func (p *oidcLoginProvider) oauth2Config(redirectURI string) oauth2.Config {

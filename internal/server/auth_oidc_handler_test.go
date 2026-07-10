@@ -21,7 +21,7 @@ import (
 type fakeProvider struct {
 	id          string
 	exchangeErr error
-	idToken     string
+	claims      *auth.OIDCClaims
 }
 
 func (f *fakeProvider) ID() string          { return f.id }
@@ -29,8 +29,8 @@ func (f *fakeProvider) DisplayName() string { return "Fake" }
 func (f *fakeProvider) AuthCodeURL(state, _, _, _ string) string {
 	return "https://idp/authorize?state=" + state
 }
-func (f *fakeProvider) Exchange(_ context.Context, _, _, _, _ string) (string, error) {
-	return f.idToken, f.exchangeErr
+func (f *fakeProvider) Exchange(_ context.Context, _, _, _, _ string) (*auth.OIDCClaims, error) {
+	return f.claims, f.exchangeErr
 }
 
 type fakeWA struct {
@@ -179,7 +179,7 @@ func TestOIDCCallback_HappyPath(t *testing.T) {
 		},
 	}
 	res := &fakeResolver{id: &auth.Identity{UserID: "u1", Subject: "oidc:sub-1"}}
-	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", idToken: "tok"}}, wa, res)
+	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", claims: &auth.OIDCClaims{Issuer: "https://idp", Subject: "sub-1"}}}, wa, res)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?state=S&code=abc", nil)
 	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"}) //nolint:gosec // G124: test request cookie
@@ -222,7 +222,7 @@ func TestHandleCallback_CLIRedirect(t *testing.T) {
 		},
 	}
 	res := &fakeResolver{id: &auth.Identity{UserID: "u1", Subject: "oidc:sub-1"}}
-	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", idToken: "tok"}}, wa, res)
+	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", claims: &auth.OIDCClaims{Issuer: "https://idp", Subject: "sub-1"}}}, wa, res)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?state=S&code=abc", nil)
 	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"}) //nolint:gosec // G124: test request cookie
@@ -279,7 +279,7 @@ func TestOIDCCallback_Failures(t *testing.T) {
 				},
 			}
 			res := &fakeResolver{id: &auth.Identity{UserID: "u1", Subject: "oidc:sub-1"}}
-			mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", idToken: "tok"}}, wa, res)
+			mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", claims: &auth.OIDCClaims{Issuer: "https://idp", Subject: "sub-1"}}}, wa, res)
 
 			req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?"+tc.query, nil)
 			if tc.withTx {
@@ -307,7 +307,7 @@ func TestOIDCCallback_ConsumeTransient(t *testing.T) {
 		consumeErr: errors.New("db down"),
 	}
 	res := &fakeResolver{id: &auth.Identity{UserID: "u1", Subject: "oidc:sub-1"}}
-	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", idToken: "tok"}}, wa, res)
+	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", claims: &auth.OIDCClaims{Issuer: "https://idp", Subject: "sub-1"}}}, wa, res)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?state=S&code=abc", nil)
 	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"}) //nolint:gosec // G124: test request cookie
@@ -326,7 +326,7 @@ func TestOIDCCallback_Unauthorized(t *testing.T) {
 		},
 	}
 	res := &fakeResolver{err: auth.ErrUnauthenticated}
-	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", idToken: "tok"}}, wa, res)
+	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", claims: &auth.OIDCClaims{Issuer: "https://idp", Subject: "sub-1"}}}, wa, res)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?state=S&code=abc", nil)
 	req.AddCookie(&http.Cookie{Name: txCookieName, Value: "flow-1"}) //nolint:gosec // G124: test request cookie
@@ -380,7 +380,7 @@ func callbackWithFlow(t *testing.T, prov auth.LoginProvider, res auth.Resolver, 
 func TestOIDCCallback_ResolverTransient(t *testing.T) {
 	wa := &fakeWA{}
 	res := &fakeResolver{err: auth.ErrTransient}
-	rec := callbackWithFlow(t, &fakeProvider{id: "entra", idToken: "tok"}, res, wa)
+	rec := callbackWithFlow(t, &fakeProvider{id: "entra", claims: &auth.OIDCClaims{Issuer: "https://idp", Subject: "sub-1"}}, res, wa)
 	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "auth_error=temporary") {
 		t.Fatalf("Location = %q, want auth_error=temporary", loc)
 	}
@@ -408,7 +408,7 @@ func TestOIDCCallback_ProviderRemovedMidFlow(t *testing.T) {
 			"flow-1": {ID: "flow-1", State: "S", ProviderID: "ghost", Nonce: "n", CodeVerifier: "v"},
 		},
 	}
-	rec := callbackWithFlow(t, &fakeProvider{id: "entra", idToken: "tok"}, &fakeResolver{}, wa)
+	rec := callbackWithFlow(t, &fakeProvider{id: "entra", claims: &auth.OIDCClaims{Issuer: "https://idp", Subject: "sub-1"}}, &fakeResolver{}, wa)
 	if loc := rec.Header().Get("Location"); !strings.Contains(loc, "auth_error=exchange") {
 		t.Fatalf("Location = %q, want auth_error=exchange", loc)
 	}

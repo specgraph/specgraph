@@ -205,14 +205,14 @@ func (h *oidcLoginHandler) handleCallback(w http.ResponseWriter, r *http.Request
 	}
 	redirectURI := auth.RedirectURI(h.baseURL, r.TLS != nil, r.Host,
 		r.Header.Get("X-Forwarded-Proto"), r.Header.Get("X-Forwarded-Host"))
-	idToken, err := p.Exchange(r.Context(), r.URL.Query().Get("code"), flow.CodeVerifier, flow.Nonce, redirectURI)
+	claims, err := p.Exchange(r.Context(), r.URL.Query().Get("code"), flow.CodeVerifier, flow.Nonce, redirectURI)
 	if err != nil {
 		slog.LogAttrs(r.Context(), slog.LevelWarn, "oidc: exchange failed", slog.String("provider", p.ID()), slog.Any("error", err))
 		fail("exchange")
 		return
 	}
-	// Resolve identity (triggers binding lookup / JIT), limiter bypassed.
-	id, err := h.resolver.Resolve(auth.WithInteractiveLogin(r.Context()), idToken)
+	// Resolve identity from verified claims (binding lookup / JIT), limiter bypassed.
+	id, err := h.resolver.ResolveLogin(auth.WithInteractiveLogin(r.Context()), claims)
 	if err != nil {
 		if errors.Is(err, auth.ErrTransient) {
 			fail("temporary")
