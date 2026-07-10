@@ -8,12 +8,17 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"sync"
+	"time"
 
 	"connectrpc.com/connect"
+	"golang.org/x/time/rate"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/specgraph/specgraph/internal/auth"
+	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/storage"
 )
 
@@ -21,18 +26,74 @@ import (
 type IdentityHandler struct {
 	users  storage.UsersBackend
 	logger *slog.Logger
+	// selfKeys is the self-service key policy (expiry caps, quota, rate limit)
+	// consumed by the four self-mint handlers (AUTH-03).
+	selfKeys config.SelfServiceKeysConfig
+	// selfMintLimiters holds one token-bucket limiter per identity (userID ->
+	// *rate.Limiter), bounding argon2id compute spent on self-mint/rotate
+	// (T-02-17). Lazily populated by selfMintLimiter.
+	selfMintLimiters sync.Map
 }
 
 var _ specgraphv1connect.IdentityServiceHandler = (*IdentityHandler)(nil)
 
 // RegisterIdentityService mounts the IdentityService on the given mux.
-func RegisterIdentityService(mux *http.ServeMux, users storage.UsersBackend, opts ...connect.HandlerOption) {
+// selfKeys carries the self-service key policy (expiry caps, quota, rate limit)
+// consumed by the self-mint handlers (AUTH-03).
+func RegisterIdentityService(mux *http.ServeMux, users storage.UsersBackend, selfKeys config.SelfServiceKeysConfig, opts ...connect.HandlerOption) {
 	handler := &IdentityHandler{
-		users:  users,
-		logger: slog.Default(),
+		users:    users,
+		logger:   slog.Default(),
+		selfKeys: selfKeys,
 	}
 	path, h := specgraphv1connect.NewIdentityServiceHandler(handler, opts...)
-	mux.Handle(path, h)
+	// Mount the Plan 03 double-submit CSRF validator IN FRONT of the Connect
+	// IdentityService handler (T-02-31b). It self-scopes to cookie-authed POSTs
+	// on the four self-key procedures and exempts Bearer/CLI callers, so admin
+	// RPCs and CLI usage are unaffected.
+	mux.Handle(path, csrfValidate(h))
+}
+
+// selfMintLimiter returns (or lazily creates) the per-identity token-bucket
+// limiter that bounds self-mint/rotate attempts for a single user, reusing the
+// sync.Map pattern from the OIDC JIT limiter (identitystore.go). Thresholds come
+// from selfKeys; non-positive values fall back to safe defaults (30/hr, burst 5).
+func (h *IdentityHandler) selfMintLimiter(userID string) *rate.Limiter {
+	if l, ok := h.selfMintLimiters.Load(userID); ok {
+		return l.(*rate.Limiter) //nolint:errcheck // sync.Map always stores *rate.Limiter
+	}
+	perHr := h.selfKeys.RateLimitPerHour
+	if perHr <= 0 {
+		perHr = 30
+	}
+	burst := h.selfKeys.RateLimitBurst
+	if burst <= 0 {
+		burst = 5
+	}
+	refill := rate.Every(time.Hour / time.Duration(perHr))
+	l := rate.NewLimiter(refill, burst)
+	actual, _ := h.selfMintLimiters.LoadOrStore(userID, l)
+	return actual.(*rate.Limiter) //nolint:errcheck // sync.Map always stores *rate.Limiter
+}
+
+// clampExpiry resolves a self-mint request's expiry against the policy caps
+// (D-08). An absent request timestamp defaults to now+defaultDays; a timestamp
+// beyond now+maxDays is rejected with CodeInvalidArgument (T-02-18). The
+// returned time is always non-nil on success so self-minted keys never live
+// forever.
+func clampExpiry(reqTs *timestamppb.Timestamp, defaultDays, maxDays int) (*time.Time, error) {
+	now := time.Now().UTC()
+	if reqTs == nil {
+		exp := now.Add(time.Duration(defaultDays) * 24 * time.Hour)
+		return &exp, nil
+	}
+	req := reqTs.AsTime()
+	maxAllowed := now.Add(time.Duration(maxDays) * 24 * time.Hour)
+	if req.After(maxAllowed) {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			errors.New("expires_at exceeds the maximum allowed key lifetime"))
+	}
+	return &req, nil
 }
 
 // Whoami returns the identity of the authenticated caller.
@@ -63,6 +124,8 @@ func (h *IdentityHandler) identityError(ctx context.Context, err error) error {
 		return connect.NewError(connect.CodeNotFound, errors.New("user not found"))
 	case errors.Is(err, storage.ErrAPIKeyNotFound):
 		return connect.NewError(connect.CodeNotFound, errors.New("api key not found"))
+	case errors.Is(err, storage.ErrQuotaExceeded):
+		return connect.NewError(connect.CodeResourceExhausted, errors.New("api key quota exceeded"))
 	case errors.Is(err, storage.ErrOIDCBindingNotFound):
 		return connect.NewError(connect.CodeNotFound, errors.New("oidc binding not found"))
 	case errors.Is(err, storage.ErrBootstrapExists):
@@ -397,24 +460,177 @@ func (h *IdentityHandler) UnbindOIDC(ctx context.Context, req *connect.Request[s
 // and ResyncUserRole (owner derived from context, quota/rate-limit, hard
 // off-board). Until then they return CodeUnimplemented.
 
-// CreateMyAPIKey is a compile stub; implemented downstream (AUTH-03).
-func (h *IdentityHandler) CreateMyAPIKey(_ context.Context, _ *connect.Request[specv1.CreateMyAPIKeyRequest]) (*connect.Response[specv1.CreateMyAPIKeyResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("CreateMyAPIKey not implemented"))
+// CreateMyAPIKey mints an API key owned by the authenticated caller. The owner
+// is derived from context (never a request field); an api-key caller is
+// rejected to prevent key-chaining (T-02-15); the minted role is floored at the
+// caller's live effective role (T-02-14); expiry is clamped to the policy caps
+// (T-02-18); and minting is per-identity rate limited (T-02-17). The plaintext
+// bearer token is returned exactly once and never stored.
+func (h *IdentityHandler) CreateMyAPIKey(ctx context.Context, req *connect.Request[specv1.CreateMyAPIKeyRequest]) (*connect.Response[specv1.CreateMyAPIKeyResponse], error) {
+	msg := req.Msg
+	id, ok := auth.IdentityFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("no identity in context"))
+	}
+	if id.Source == "apikey" {
+		return nil, connect.NewError(connect.CodePermissionDenied,
+			errors.New("api keys may not mint keys; sign in to provision a key"))
+	}
+	if !h.selfMintLimiter(id.UserID).Allow() {
+		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("self-mint rate limit exceeded"))
+	}
+
+	// RoleDowngrade is a privilege cap meaningful only among the ranked
+	// built-in roles; reject a custom target early.
+	if d := msg.GetRoleDowngrade(); d != "" && !auth.IsBuiltinRole(auth.Role(d)) {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			errors.New("role_downgrade must be one of: reader, writer, admin"))
+	}
+	downgrade := msg.GetRoleDowngrade()
+	if downgrade == "" {
+		downgrade = string(id.EffectiveRole)
+	}
+	floored := auth.RoleMin(auth.Role(downgrade), id.EffectiveRole)
+
+	expiry, err := clampExpiry(msg.GetExpiresAt(), h.selfKeys.DefaultTTLDays, h.selfKeys.MaxTTLDays)
+	if err != nil {
+		return nil, err
+	}
+
+	secret, phc, err := auth.GenerateAPIKeySecret()
+	if err != nil {
+		h.logger.ErrorContext(ctx, "CreateMyAPIKey: generate secret", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
+	}
+
+	created, err := h.users.CreateAPIKeyForUser(ctx, &storage.APIKey{
+		UserID:        id.UserID,
+		PHCHash:       phc,
+		Label:         msg.GetLabel(),
+		RoleDowngrade: string(floored),
+		ExpiresAt:     expiry,
+	}, h.selfKeys.Quota)
+	if err != nil {
+		return nil, h.identityError(ctx, err)
+	}
+
+	// Structured audit line: server-derived fields ONLY. The plaintext secret
+	// and the raw user-supplied label are never logged (log-injection / PII
+	// guard, RESEARCH §6 / T-02-33).
+	h.logger.InfoContext(ctx, "apikey.self.create",
+		slog.String("actor", id.UserID),
+		slog.String("key_id", created.ID),
+		slog.String("action", "create"))
+
+	return connect.NewResponse(&specv1.CreateMyAPIKeyResponse{
+		Key:       apiKeyToProto(created),
+		Plaintext: auth.FormatAPIKeyToken(created.Prefix, secret),
+	}), nil
 }
 
-// ListMyAPIKeys is a compile stub; implemented downstream (AUTH-03).
-func (h *IdentityHandler) ListMyAPIKeys(_ context.Context, _ *connect.Request[specv1.ListMyAPIKeysRequest]) (*connect.Response[specv1.ListMyAPIKeysResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ListMyAPIKeys not implemented"))
+// ListMyAPIKeys returns only the authenticated caller's API keys. The storage
+// filter's UserID is HARD-SET from context — never from the request — so an
+// empty filter can never leak every user's keys (T-02-16).
+func (h *IdentityHandler) ListMyAPIKeys(ctx context.Context, _ *connect.Request[specv1.ListMyAPIKeysRequest]) (*connect.Response[specv1.ListMyAPIKeysResponse], error) {
+	id, ok := auth.IdentityFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("no identity in context"))
+	}
+	keys, err := h.users.ListAPIKeys(ctx, storage.ListAPIKeysFilter{UserID: id.UserID})
+	if err != nil {
+		return nil, h.identityError(ctx, err)
+	}
+	return connect.NewResponse(&specv1.ListMyAPIKeysResponse{Keys: apiKeysToProto(keys)}), nil
 }
 
-// RotateMyAPIKey is a compile stub; implemented downstream (AUTH-03).
-func (h *IdentityHandler) RotateMyAPIKey(_ context.Context, _ *connect.Request[specv1.RotateMyAPIKeyRequest]) (*connect.Response[specv1.RotateMyAPIKeyResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("RotateMyAPIKey not implemented"))
+// RotateMyAPIKey mints a fresh secret for one of the caller's own keys and
+// revokes the old one. The role ceiling and expiry are RE-DERIVED here — never
+// inherited from the old key: the new role is floored at the caller's live
+// effective role (T-02-14) and expiry is re-clamped to the policy caps
+// (defaulting to DefaultTTLDays, not the old window). Owner-from-context,
+// api-key rejection, and rate limiting mirror CreateMyAPIKey. The plaintext
+// bearer token is returned exactly once.
+func (h *IdentityHandler) RotateMyAPIKey(ctx context.Context, req *connect.Request[specv1.RotateMyAPIKeyRequest]) (*connect.Response[specv1.RotateMyAPIKeyResponse], error) {
+	msg := req.Msg
+	id, ok := auth.IdentityFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("no identity in context"))
+	}
+	if id.Source == "apikey" {
+		return nil, connect.NewError(connect.CodePermissionDenied,
+			errors.New("api keys may not rotate keys; sign in to rotate a key"))
+	}
+	if msg.GetKeyId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("key_id is required"))
+	}
+	if !h.selfMintLimiter(id.UserID).Allow() {
+		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("self-mint rate limit exceeded"))
+	}
+
+	old, err := h.users.GetAPIKeyForUser(ctx, id.UserID, msg.GetKeyId())
+	if err != nil {
+		return nil, h.identityError(ctx, err)
+	}
+	// Re-floor at the caller's live effective role; never re-pin the old
+	// key's stale ceiling.
+	floored := auth.RoleMin(auth.Role(old.RoleDowngrade), id.EffectiveRole)
+
+	// A ttl-less rotate defaults to DefaultTTLDays; it does NOT inherit the
+	// old key's window.
+	expiry, err := clampExpiry(msg.GetExpiresAt(), h.selfKeys.DefaultTTLDays, h.selfKeys.MaxTTLDays)
+	if err != nil {
+		return nil, err
+	}
+
+	secret, phc, err := auth.GenerateAPIKeySecret()
+	if err != nil {
+		h.logger.ErrorContext(ctx, "RotateMyAPIKey: generate secret", slog.Any("error", err))
+		return nil, connect.NewError(connect.CodeInternal, errors.New("internal error"))
+	}
+
+	newKey := &storage.APIKey{PHCHash: phc, RoleDowngrade: string(floored), ExpiresAt: expiry}
+	rotated, err := h.users.RotateAPIKeyForUser(ctx, id.UserID, msg.GetKeyId(), newKey)
+	if err != nil {
+		return nil, h.identityError(ctx, err)
+	}
+
+	h.logger.InfoContext(ctx, "apikey.self.rotate",
+		slog.String("actor", id.UserID),
+		slog.String("key_id", rotated.ID),
+		slog.String("action", "rotate"))
+
+	return connect.NewResponse(&specv1.RotateMyAPIKeyResponse{
+		Key:       apiKeyToProto(rotated),
+		Plaintext: auth.FormatAPIKeyToken(rotated.Prefix, secret),
+	}), nil
 }
 
-// RevokeMyAPIKey is a compile stub; implemented downstream (AUTH-03).
-func (h *IdentityHandler) RevokeMyAPIKey(_ context.Context, _ *connect.Request[specv1.RevokeMyAPIKeyRequest]) (*connect.Response[specv1.RevokeMyAPIKeyResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("RevokeMyAPIKey not implemented"))
+// RevokeMyAPIKey revokes one of the authenticated caller's own keys. The
+// owner is derived from context and passed to the owner-scoped storage call, so
+// a foreign or missing key surfaces as CodeNotFound and can never touch another
+// user's key (T-02-16). Re-revoking the caller's own key is an idempotent
+// success (Finding F4).
+func (h *IdentityHandler) RevokeMyAPIKey(ctx context.Context, req *connect.Request[specv1.RevokeMyAPIKeyRequest]) (*connect.Response[specv1.RevokeMyAPIKeyResponse], error) {
+	id, ok := auth.IdentityFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("no identity in context"))
+	}
+	if req.Msg.GetKeyId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("key_id is required"))
+	}
+	if err := h.users.RevokeAPIKeyForUser(ctx, id.UserID, req.Msg.GetKeyId()); err != nil {
+		return nil, h.identityError(ctx, err)
+	}
+
+	// Structured audit line: server-derived fields ONLY. The plaintext secret
+	// and the raw user-supplied label are never logged (log-injection / PII
+	// guard, RESEARCH §6 / T-02-33).
+	h.logger.InfoContext(ctx, "apikey.self.revoke",
+		slog.String("actor", id.UserID),
+		slog.String("key_id", req.Msg.GetKeyId()),
+		slog.String("action", "revoke"))
+
+	return connect.NewResponse(&specv1.RevokeMyAPIKeyResponse{}), nil
 }
 
 // ResyncUserRole is a compile stub; implemented downstream (AUTH-02).

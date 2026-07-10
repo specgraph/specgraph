@@ -26,7 +26,7 @@ import (
 func newTestIdentityHandler(t *testing.T, stub *usersBackendStub) specgraphv1connect.IdentityServiceClient {
 	t.Helper()
 	mux := http.NewServeMux()
-	RegisterIdentityService(mux, stub)
+	RegisterIdentityService(mux, stub, testSelfServiceKeysConfig())
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return specgraphv1connect.NewIdentityServiceClient(http.DefaultClient, srv.URL)
@@ -48,7 +48,7 @@ func TestWhoami_ReturnsContextIdentity(t *testing.T) {
 	// Wrap the handler with identity-injecting middleware so the server
 	// receives the identity in the request context.
 	mux := http.NewServeMux()
-	RegisterIdentityService(mux, stub)
+	RegisterIdentityService(mux, stub, testSelfServiceKeysConfig())
 	wrapped := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r = r.WithContext(auth.WithIdentity(r.Context(), id))
 		mux.ServeHTTP(w, r)

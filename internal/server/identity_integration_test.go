@@ -18,6 +18,7 @@ import (
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
 	"github.com/specgraph/specgraph/internal/auth"
 	"github.com/specgraph/specgraph/internal/auth/usagetracker"
+	"github.com/specgraph/specgraph/internal/config"
 	"github.com/specgraph/specgraph/internal/server"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/specgraph/specgraph/internal/storage/postgres"
@@ -47,7 +48,9 @@ func buildIdentityTestServer(t *testing.T, ctx context.Context) (string, *postgr
 	interceptor := auth.NewAuthInterceptor(resolver, authorizer)
 
 	mux := http.NewServeMux()
-	server.RegisterIdentityService(mux, authStore, connect.WithInterceptors(interceptor))
+	server.RegisterIdentityService(mux, authStore, config.SelfServiceKeysConfig{
+		DefaultTTLDays: 90, MaxTTLDays: 180, Quota: 10, RateLimitPerHour: 30, RateLimitBurst: 5,
+	}, connect.WithInterceptors(interceptor))
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv.URL, authStore
