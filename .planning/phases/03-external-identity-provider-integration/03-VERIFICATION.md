@@ -1,17 +1,20 @@
 ---
 phase: 03-external-identity-provider-integration
 verified: 2026-07-10T00:00:00Z
-status: human_needed
+status: passed
 score: 3/3 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Register a GitHub OAuth App (callback <base>/api/auth/oidc/callback, scopes read:user + user:email), set SPECGRAPH_GITHUB_CLIENT_SECRET, and log in via the browser through the provider start → GitHub consent → callback."
     expected: "A spgr_ws_ session cookie is issued and an oidc_bindings row exists with issuer=oauth2:<id> (synthetic) and subject=the GitHub numeric id; the web_sessions row carries that same issuer."
     why_human: "The full front-channel OAuth2 round-trip requires a registered GitHub OAuth App + live browser consent against the real GitHub IdP. Unit tests stub /user and /user/emails via httptest, so the real IdP handshake is not exercised by any automated test (SUMMARY 03-02 coverage D6, human_judgment: true)."
+
   - test: "Deploy behind https (or set an explicit https mcp_resource_uri), point a standard MCP client with no token at /mcp/, then have it fetch /.well-known/oauth-protected-resource and obtain a resource-bound access token from the configured external IdP."
     expected: "The tokenless /mcp/ request returns 401 + WWW-Authenticate: Bearer resource_metadata=\"…\"; the well-known doc lists all configured issuers; a token whose aud contains the canonical resource URI authenticates while a client_id-only token is rejected; an opaque token validates via the IdP introspection endpoint."
     why_human: "Requires an https-terminated deployment (MCP RS is intentionally disabled on the http loopback default) and a real MCP client + live external IdP issuing RFC 8707 resource-bound tokens and a live RFC 7662 introspection endpoint. Unit tests use httptest stubs for the IdP, so the live cross-service handshake is manual UAT (SUMMARY 03-03 D5 / 03-04 D5, human_judgment: true)."
+
   - test: "Run the Docker-gated integration test: go test -tags integration ./internal/server/ -run SessionIssuer"
     expected: "TestIntegration_SessionIssuer passes — a session minted via the interactive path persists a non-empty web_sessions.issuer matching the authenticating provider, and any pre-existing empty-issuer row is left untouched (no backfill, D-10)."
     why_human: "Postgres integration tests require Docker (testcontainers), which was not available in this verification session. The test exists at internal/server/identity_integration_test.go:169 and the full unit suite (go test ./...) passes green; only the DB-round-trip assertion is Docker-gated."
