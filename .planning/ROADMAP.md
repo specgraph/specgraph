@@ -27,7 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Release & Build Tooling** - Ship the single-job goreleaser release pipeline and centralize config/lint tooling (completed 2026-07-09)
 - [x] **Phase 2: API Key Lifecycle & Self-Service** - OIDC users self-provision MCP API keys; revoked roles can't survive on standing keys (completed 2026-07-10)
 - [x] **Phase 3: External Identity Provider Integration** - Add native GitHub OAuth2, MCP OAuth 2.1 resource-server delegation, and session-issuer audit data
-- [ ] **Phase 4: Verification & Integration Reliability** - Drift detection gets a verified interface (INTG-01 descoped — Confluence poller not in this repo)
+- [x] **Phase 4: Verification & Integration Reliability** - Drift detection gets a verified interface (INTG-01 descoped — Confluence poller not in this repo) (completed 2026-07-10)
 
 ## Phase Details
 
@@ -118,12 +118,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **INTG-01 descoped (2026-07-10):** Phase 4 discuss-phase scouting found the Confluence comment-polling code (`spgr-jwbj`) does not exist anywhere in this repository — no adapter, poller, or pagination code; `internal/sync/` has only beads + github adapters. The bug targets a separate system/repo. INTG-01 is removed from this phase pending identification of its owning repository; see `04-CONTEXT.md` D-05. It should either be re-homed to that repo's planning or formally deferred.
 
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
 
 - [x] 04-01-PLAN.md — DRFT-01 SC#2 verification tests (no-false-positive e2e, full-graph SkippedCount integration, per-upstream ack round-trip e2e)
-- [ ] 04-02-PLAN.md — DRFT-01 SC#1 doc note: drift interface reachable via API (`LifecycleService.CheckDrift`/`AcknowledgeDrift`) and MCP `drift` tool
+- [x] 04-02-PLAN.md — DRFT-01 SC#1 doc note: drift interface reachable via API (`LifecycleService.CheckDrift`/`AcknowledgeDrift`) and MCP `drift` tool
 
 ## Backlog
 
@@ -147,7 +147,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Release & Build Tooling | 1/1 | Complete    | 2026-07-09 |
 | 2. API Key Lifecycle & Self-Service | 8/8 | Complete    | 2026-07-10 |
 | 3. External Identity Provider Integration | 4/4 | Complete    | 2026-07-10 |
-| 4. Verification & Integration Reliability | 0/TBD | Not started | - |
+| 4. Verification & Integration Reliability | 2/2 | Complete   | 2026-07-10 |
 
 ---
 *Roadmap created: 2026-07-08*
