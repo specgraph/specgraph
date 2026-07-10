@@ -633,7 +633,70 @@ func (h *IdentityHandler) RevokeMyAPIKey(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(&specv1.RevokeMyAPIKeyResponse{}), nil
 }
 
-// ResyncUserRole is a compile stub; implemented downstream (AUTH-02).
-func (h *IdentityHandler) ResyncUserRole(_ context.Context, _ *connect.Request[specv1.ResyncUserRoleRequest]) (*connect.Response[specv1.ResyncUserRoleResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ResyncUserRole not implemented"))
+// ResyncUserRole forces a re-application of a user's authoritative role
+// (AUTH-02). It is admin-gated (mapped to user.manage in the Plan 04 action
+// map). The role write goes through the EXISTING UpdateUserRole path — the
+// single reusable server-side seam (D-01/D-04) — which sets users.role, the
+// live floor that every standing key clamps to on its next request via
+// resolveAPIKey's per-request live-role read (no re-mint, no re-login). When
+// revoke_keys is set it additionally hard-revokes the user's active standing
+// keys for a full off-board (D-02). The input role stays explicit
+// (operator-supplied) so a future automation driver can reuse this same
+// entrypoint with a derived role (D-01 seam); no IdP derivation this phase
+// (D-05). No schema change (D-03).
+func (h *IdentityHandler) ResyncUserRole(ctx context.Context, req *connect.Request[specv1.ResyncUserRoleRequest]) (*connect.Response[specv1.ResyncUserRoleResponse], error) {
+	msg := req.Msg
+	if msg.GetId() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
+	}
+	if msg.GetRole() == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("role is required"))
+	}
+
+	// Write users.role via the reusable seam → live floor for all standing keys.
+	if err := h.users.UpdateUserRole(ctx, msg.GetId(), msg.GetRole()); err != nil {
+		return nil, h.identityError(ctx, err)
+	}
+
+	// D-02 hard off-board: revoke every active standing key for the user.
+	// RevokeAPIKey is idempotent (already-revoked keys are no-ops), and we skip
+	// inactive keys so a spurious revoke never fires on the convergence path.
+	revoked := 0
+	if msg.GetRevokeKeys() {
+		keys, err := h.users.ListAPIKeys(ctx, storage.ListAPIKeysFilter{UserID: msg.GetId()})
+		if err != nil {
+			return nil, h.identityError(ctx, err)
+		}
+		now := time.Now()
+		for _, k := range keys {
+			if !k.IsActive(now) {
+				continue
+			}
+			if err := h.users.RevokeAPIKey(ctx, k.ID); err != nil {
+				return nil, h.identityError(ctx, err)
+			}
+			revoked++
+		}
+	}
+
+	u, err := h.users.GetUserByID(ctx, msg.GetId())
+	if err != nil {
+		return nil, h.identityError(ctx, err)
+	}
+	pb, err := userToProto(u)
+	if err != nil {
+		return nil, h.identityError(ctx, err)
+	}
+
+	// Structured audit line for the forced demotion / off-board (T-02-22):
+	// server-derived fields ONLY — target user, applied role, revoke intent, and
+	// the count of keys revoked. No token material is ever logged.
+	h.logger.InfoContext(ctx, "user.resync",
+		slog.String("target", msg.GetId()),
+		slog.String("role", msg.GetRole()),
+		slog.Bool("revoke_keys", msg.GetRevokeKeys()),
+		slog.Int("keys_revoked", revoked),
+		slog.String("action", "resync"))
+
+	return connect.NewResponse(&specv1.ResyncUserRoleResponse{User: pb}), nil
 }
