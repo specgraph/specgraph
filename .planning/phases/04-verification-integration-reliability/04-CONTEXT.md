@@ -131,7 +131,7 @@ verification of existing (DRFT-01) or externally-located (INTG-01) behavior.
 
 ### INTG-01 — Confluence comment polling pagination (`spgr-jwbj`)
 
-- **D-05 (RESOLVED — INTG-01 descoped from Phase 4):** The Confluence
+- **D-05 [informational] (RESOLVED — INTG-01 descoped from Phase 4):** The Confluence
   comment-polling code is **not present in this repository** (confirmed by
   exhaustive scout). The user descoped INTG-01 from Phase 4 on 2026-07-10;
   ROADMAP.md and REQUIREMENTS.md updated accordingly. **Planning ignores INTG-01.**

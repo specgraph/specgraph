@@ -360,7 +360,7 @@ deprecated — leave as-is (D-03).
 
 **Note:** A1 is a restatement of CONTEXT.md D-01's own ⚠️ — surface it to the user at plan-review.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the no-false-positive proof be e2e, integration, or both?**
    - What we know: D-02 says "prefer real-DB verification" for SC#2. e2e (`e2e/api/lifecycle_test.go`)
@@ -369,6 +369,9 @@ deprecated — leave as-is (D-03).
    - What's unclear: whether one e2e test suffices or a mirrored unit test is also wanted for fast `task test`.
    - Recommendation: **one e2e test** (authoritative, exercises CLI/API/MCP-equivalent path) + optionally a
      cheap `drift_test.go` unit mirror. Planner's discretion (D-02 discretion clause).
+   - **RESOLVED:** 04-01-PLAN.md — Task 1 delivers the e2e no-false-positive spec; Task 2 delivers the
+     full-graph `SkippedCount` proof at the integration layer (isolated `clearDatabase` per subtest) to
+     avoid colliding with the existing "Drift detection (all specs)" blanket-zero assertion.
 
 2. **Where does the D-04 API/MCP note land?**
    - What we know: `site/docs/concepts/drift.md` is CLI-only; `site/docs/architecture.md:51` already says
@@ -376,6 +379,7 @@ deprecated — leave as-is (D-03).
    - Recommendation: add a short "## Accessing drift via API / MCP" subsection to `drift.md` naming
      `LifecycleService.CheckDrift`/`AcknowledgeDrift` and the MCP `drift` tool (actions `check`,
      `acknowledge`). No `cli-reference.md` regeneration needed. Planner's call (D-04 discretion).
+   - **RESOLVED:** 04-02-PLAN.md — adds the "Accessing Drift via API / MCP" section to `drift.md`.
 
 ## Environment Availability
 
