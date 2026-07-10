@@ -18,6 +18,9 @@ var (
 	userListRole       string
 	userListIncludeDel bool
 	userForce          bool
+
+	userResyncRole       string
+	userResyncRevokeKeys bool
 )
 
 var authUserCmd = &cobra.Command{Use: "user", Short: "Manage users"}
@@ -98,6 +101,39 @@ var authUserSetRoleCmd = &cobra.Command{
 	},
 }
 
+var authUserResyncCmd = &cobra.Command{
+	Use:   "resync <user-id>",
+	Short: "Force re-apply a user's role and optionally revoke their keys (AUTH-02)",
+	Long: "Force a re-sync of a user's authoritative role. The role write clamps " +
+		"every standing API key on its next request via the live-role read; pass " +
+		"--revoke-keys for a hard off-board that also revokes the user's active keys.",
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client, err := identityClient()
+		if err != nil {
+			return err
+		}
+		resp, err := client.ResyncUserRole(cmd.Context(), connect.NewRequest(&specv1.ResyncUserRoleRequest{
+			Id:         args[0],
+			Role:       userResyncRole,
+			RevokeKeys: userResyncRevokeKeys,
+		}))
+		if err != nil {
+			return fmt.Errorf("resync user role: %w", err)
+		}
+		if authJSON {
+			return printJSON(cmd.OutOrStdout(), resp.Msg)
+		}
+		keyNote := "keys left active"
+		if userResyncRevokeKeys {
+			keyNote = "keys revoked"
+		}
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Re-synced %s → role %s (%s)\n",
+			args[0], resp.Msg.GetUser().GetRole(), keyNote)
+		return err
+	},
+}
+
 var authUserDeleteCmd = &cobra.Command{
 	Use:   "delete <user-id>",
 	Short: "Soft-delete a user (revokes their keys)",
@@ -140,8 +176,12 @@ func init() {
 	authUserListCmd.Flags().BoolVar(&authJSON, "json", false, "output as JSON")
 	authUserShowCmd.Flags().BoolVar(&authJSON, "json", false, "output as JSON")
 	authUserSetRoleCmd.Flags().BoolVar(&authJSON, "json", false, "output as JSON")
+	authUserResyncCmd.Flags().StringVar(&userResyncRole, "role", "", "authoritative role to re-apply (required)")
+	cobra.CheckErr(authUserResyncCmd.MarkFlagRequired("role"))
+	authUserResyncCmd.Flags().BoolVar(&userResyncRevokeKeys, "revoke-keys", false, "also revoke the user's active API keys (hard off-board)")
+	authUserResyncCmd.Flags().BoolVar(&authJSON, "json", false, "output as JSON")
 	authUserDeleteCmd.Flags().BoolVar(&userForce, "force", false, "allow deleting the bootstrap admin")
 	authUserPurgeCmd.Flags().BoolVar(&userForce, "force", false, "allow purging the bootstrap admin")
-	authUserCmd.AddCommand(authUserListCmd, authUserShowCmd, authUserSetRoleCmd, authUserDeleteCmd, authUserPurgeCmd)
+	authUserCmd.AddCommand(authUserListCmd, authUserShowCmd, authUserSetRoleCmd, authUserResyncCmd, authUserDeleteCmd, authUserPurgeCmd)
 	authCmd.AddCommand(authUserCmd)
 }
