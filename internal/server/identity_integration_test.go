@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/require"
@@ -158,4 +159,65 @@ func TestIntegration_LastCredentialUnbindProtected(t *testing.T) {
 	// With force: allowed.
 	_, err = client.UnbindOIDC(ctx, connect.NewRequest(&specv1.UnbindOIDCRequest{BindingId: bindings[0].ID, UserId: u.ID, Force: true}))
 	require.NoError(t, err)
+}
+
+// TestIntegration_SessionIssuer proves AUTH-05 / D-09 end-to-end: an interactive
+// resolve (ResolveLogin) surfaces the verified issuer on the Identity, and a web
+// session minted from it persists issuer = the authenticating provider's issuer.
+// It also asserts the no-backfill invariant (D-10): a pre-existing empty-issuer
+// session is left untouched.
+func TestIntegration_SessionIssuer(t *testing.T) {
+	ctx := context.Background()
+	pool := postgrestest.SharedPool(t, ctx)
+	authStore, err := postgres.NewAuth(ctx, pool)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = authStore.Close(ctx) })
+	_, err = pool.Exec(ctx, `TRUNCATE users CASCADE`)
+	require.NoError(t, err)
+
+	const issuer = "https://idp.example.com"
+	// Existing user + OIDC binding so ResolveLogin hits the binding path.
+	u, err := authStore.CreateHuman(ctx,
+		&storage.User{Kind: storage.KindHuman, DisplayName: "person", Role: "reader"},
+		&storage.OIDCBinding{Issuer: issuer, Subject: "sub-1"})
+	require.NoError(t, err)
+
+	// A pre-existing session with an EMPTY issuer (the pre-AUTH-05 shape).
+	staleHash := []byte("stale-session-hash-000000000000000")
+	stale, err := authStore.CreateSession(ctx, &storage.Session{
+		TokenHash: staleHash, UserID: u.ID, OIDCSubject: "sub-1",
+		ExpiresAt: time.Now().Add(time.Hour),
+	})
+	require.NoError(t, err)
+	require.Empty(t, stale.Issuer, "precondition: stale session starts with empty issuer")
+
+	tracker := usagetracker.NewManager(authStore, usagetracker.Config{})
+	t.Cleanup(func() { _ = tracker.Close(ctx) })
+	resolver, err := auth.NewIdentityStore(auth.IdentityStoreConfig{Users: authStore, Tracker: tracker})
+	require.NoError(t, err)
+
+	// Interactive resolve from verified claims → Identity carries the issuer.
+	id, err := resolver.ResolveLogin(auth.WithInteractiveLogin(ctx),
+		&auth.OIDCClaims{Issuer: issuer, Subject: "sub-1"})
+	require.NoError(t, err)
+	require.Equal(t, issuer, id.Issuer, "ResolveLogin must surface the verified issuer")
+
+	// Mint a session threading the issuer, exactly as handleCallback does.
+	freshHash := []byte("fresh-session-hash-0000000000000000")
+	_, err = authStore.CreateSession(ctx, &storage.Session{
+		TokenHash: freshHash, UserID: id.UserID, OIDCSubject: "sub-1",
+		Issuer:    id.Issuer,
+		ExpiresAt: time.Now().Add(time.Hour),
+	})
+	require.NoError(t, err)
+
+	// The freshly-minted session persists the issuer.
+	got, err := authStore.LookupSessionByHash(ctx, freshHash)
+	require.NoError(t, err)
+	require.Equal(t, issuer, got.Issuer, "minted web session must persist the authenticating issuer")
+
+	// No backfill (D-10): the pre-existing empty-issuer session is untouched.
+	stillStale, err := authStore.LookupSessionByHash(ctx, staleHash)
+	require.NoError(t, err)
+	require.Empty(t, stillStale.Issuer, "no-backfill: pre-existing empty-issuer session must remain empty")
 }

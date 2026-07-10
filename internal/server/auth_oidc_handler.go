@@ -257,6 +257,7 @@ func (h *oidcLoginHandler) handleCallback(w http.ResponseWriter, r *http.Request
 	sum := sha256.Sum256([]byte(token))
 	if _, err := h.webAuth.CreateSession(r.Context(), &storage.Session{
 		TokenHash: sum[:], UserID: id.UserID, OIDCSubject: subjectOnly(id.Subject),
+		Issuer:    id.Issuer,
 		ExpiresAt: time.Now().Add(h.sessionTTL),
 	}); err != nil {
 		slog.LogAttrs(r.Context(), slog.LevelError, "oidc: create session", slog.Any("error", err))

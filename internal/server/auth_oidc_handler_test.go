@@ -178,7 +178,7 @@ func TestOIDCCallback_HappyPath(t *testing.T) {
 			"flow-1": {ID: "flow-1", State: "S", ProviderID: "entra", Nonce: "n", CodeVerifier: "v"},
 		},
 	}
-	res := &fakeResolver{id: &auth.Identity{UserID: "u1", Subject: "oidc:sub-1"}}
+	res := &fakeResolver{id: &auth.Identity{UserID: "u1", Subject: "oidc:sub-1", Issuer: "https://idp"}}
 	mux := newTestOIDCMux([]auth.LoginProvider{&fakeProvider{id: "entra", claims: &auth.OIDCClaims{Issuer: "https://idp", Subject: "sub-1"}}}, wa, res)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/oidc/callback?state=S&code=abc", nil)
@@ -204,10 +204,14 @@ func TestOIDCCallback_HappyPath(t *testing.T) {
 	if !strings.HasPrefix(sessionVal, "spgr_ws_") {
 		t.Fatalf("session cookie value = %q, want prefix spgr_ws_", sessionVal)
 	}
-	// Verify subject prefix stripped for storage.
+	// Verify subject prefix stripped for storage, and the issuer threaded in
+	// at mint time (AUTH-05 / D-09).
 	for _, s := range wa.sessions {
 		if s.OIDCSubject != "sub-1" {
 			t.Fatalf("OIDCSubject = %q, want sub-1", s.OIDCSubject)
+		}
+		if s.Issuer != "https://idp" {
+			t.Fatalf("session Issuer = %q, want https://idp", s.Issuer)
 		}
 	}
 }
