@@ -118,7 +118,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **INTG-01 descoped (2026-07-10):** Phase 4 discuss-phase scouting found the Confluence comment-polling code (`spgr-jwbj`) does not exist anywhere in this repository — no adapter, poller, or pagination code; `internal/sync/` has only beads + github adapters. The bug targets a separate system/repo. INTG-01 is removed from this phase pending identification of its owning repository; see `04-CONTEXT.md` D-05. It should either be re-homed to that repo's planning or formally deferred.
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+
+- [ ] 04-01-PLAN.md — DRFT-01 SC#2 verification tests (no-false-positive e2e, full-graph SkippedCount integration, per-upstream ack round-trip e2e)
+- [ ] 04-02-PLAN.md — DRFT-01 SC#1 doc note: drift interface reachable via API (`LifecycleService.CheckDrift`/`AcknowledgeDrift`) and MCP `drift` tool
 
 ## Backlog
 
