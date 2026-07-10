@@ -39,6 +39,7 @@
     <a href="/" class:active={$page.url.pathname === '/'}>Dashboard</a>
     <a href="/graph" class:active={$page.url.pathname === '/graph'}>Graph</a>
     <a href="/constitution" class:active={$page.url.pathname === '/constitution'}>Constitution</a>
+    <a href="/keys" class:active={$page.url.pathname === '/keys'}>Keys</a>
     <span class="spacer"></span>
     {#if project.available.length > 1}
       <select bind:value={project.current} class="project-picker">
