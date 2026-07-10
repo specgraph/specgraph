@@ -4,17 +4,17 @@ milestone: v0.12.0
 milestone_name: milestone
 current_phase: 03
 current_phase_name: external-identity-provider-integration
-status: executing
-stopped_at: Completed 03-03-PLAN.md
+status: phase-complete
+stopped_at: Completed 03-04-PLAN.md
 last_updated: "2026-07-10T13:24:23.528Z"
 last_activity: 2026-07-10
-last_activity_desc: Phase 03 execution started
+last_activity_desc: Phase 03 plan 04 (audience + introspection) complete
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 13
-  completed_plans: 12
-  percent: 50
+  completed_plans: 13
+  percent: 54
 ---
 
 # Project State
@@ -31,12 +31,12 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 
 ## Current Position
 
-Phase: 03 (external-identity-provider-integration) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-07-10 — Phase 03 execution started
+Phase: 03 (external-identity-provider-integration) — ALL PLANS COMPLETE
+Plan: 4 of 4 (complete)
+Status: Phase complete — ready for verification
+Last activity: 2026-07-10 — Phase 03 plan 04 (audience + introspection) complete
 
-Progress: [█████░░░░░] 50%
+Progress: [█████░░░░░] 54%
 
 ## Performance Metrics
 
@@ -70,6 +70,8 @@ Progress: [█████░░░░░] 50%
 | Phase 02 P08 | 35min | 2 tasks | 6 files |
 | Phase 03 P01 | 30 min | 3 tasks | 9 files |
 | Phase 03 P02 | 40 min | 2 tasks | 4 files |
+| Phase 03 P03 | 15 min | 2 tasks | 4 files |
+| Phase 03 P04 | 25 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -97,6 +99,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase 02]: One-time minted plaintext returned to the caller and held only in the page's transient reveal state, never in the keys.svelte.ts module state
 - [Phase 03]: oauth2 provider issuerID stamped from config.ProviderIssuer(pc) so claims.Issuer, the (issuer,subject) binding, and the claims-mapping key cannot diverge (review HIGH #1)
 - [Phase 03]: Verified-email fallback: null/private userinfo email fetches primary&&verified from the emails endpoint; unverified/absent leaves Email blank (D-02)
+- [Phase 03]: RFC 8707 resource-URI audience check is additive and path-scoped — fires only when MCPRequestFromContext(ctx) AND mcpResourceURI set, so ConnectRPC/web-login aud==client_id semantics are untouched (OQ2, review HIGH #2, D-05.3)
+- [Phase 03]: Resolve dispatch is explicit — spgr_sk_/spgr_ws_ prefix guards run BEFORE the introspection branch so static API-key/session secrets are never POSTed to an external IdP (review HIGH #3, D-08)
+- [Phase 03]: Introspection fail-closed algebra — decisive inactive/wrong-aud → ErrUnauthenticated, all-non-decisive (5xx/timeout/rate-limited) → ErrTransient; bounded by client timeout + active-result cache + per-issuer rate limiter (D-06)
 
 ### Pending Todos
 
@@ -122,5 +127,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-07-10T13:24:23.520Z
-Stopped at: Completed 03-03-PLAN.md
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None

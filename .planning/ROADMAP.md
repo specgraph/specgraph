@@ -26,7 +26,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Release & Build Tooling** - Ship the single-job goreleaser release pipeline and centralize config/lint tooling (completed 2026-07-09)
 - [x] **Phase 2: API Key Lifecycle & Self-Service** - OIDC users self-provision MCP API keys; revoked roles can't survive on standing keys (completed 2026-07-10)
-- [ ] **Phase 3: External Identity Provider Integration** - Add native GitHub OAuth2, MCP OAuth 2.1 resource-server delegation, and session-issuer audit data
+- [x] **Phase 3: External Identity Provider Integration** - Add native GitHub OAuth2, MCP OAuth 2.1 resource-server delegation, and session-issuer audit data
 - [ ] **Phase 4: Verification & Integration Reliability** - Drift detection gets a verified interface; Confluence comment polling stops dropping pages
 
 ## Phase Details
@@ -91,7 +91,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. An MCP client can authenticate to SpecGraph's MCP server via a standard OAuth 2.1 resource-server flow, with token validation delegated to the configured external IdP rather than a SpecGraph-issued API key
   3. Every web session record stores which issuer authenticated it, so an operator can audit login-provider usage per session and a future RP-initiated logout can target the correct issuer
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans executed
 
 **Wave 1**
 
@@ -104,7 +104,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-04-PLAN.md — AUTH-04 token validation: RFC 8707 resource-URI audience binding + RFC 7662 opaque-token introspection (AUTH-04)
+- [x] 03-04-PLAN.md — AUTH-04 token validation: RFC 8707 resource-URI audience binding + RFC 7662 opaque-token introspection (AUTH-04)
 
 ### Phase 4: Verification & Integration Reliability
 
@@ -140,7 +140,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Release & Build Tooling | 1/1 | Complete    | 2026-07-09 |
 | 2. API Key Lifecycle & Self-Service | 8/8 | Complete    | 2026-07-10 |
-| 3. External Identity Provider Integration | 3/4 | In Progress|  |
+| 3. External Identity Provider Integration | 4/4 | Complete | 2026-07-10 |
 | 4. Verification & Integration Reliability | 0/TBD | Not started | - |
 
 ---
