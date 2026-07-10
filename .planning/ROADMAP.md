@@ -106,6 +106,17 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Plans**: TBD
 
+## Backlog
+
+### Phase 999.1: UI needs a project selector, and default, as well as UI refinements around project specifics ( constitution, etc ) (BACKLOG)
+
+**Goal:** [Captured for future planning]
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ## Progress
 
 **Execution Order:**
