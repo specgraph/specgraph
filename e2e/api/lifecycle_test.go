@@ -443,6 +443,82 @@ var _ = Describe("Lifecycle", Ordered, func() {
 		})
 	})
 
+	// SC#2 ack interface: a per-upstream (UpstreamSlug) AcknowledgeDrift must
+	// re-baseline content_hash_at_link so a subsequent CheckDrift reports clean —
+	// proven end-to-end through the interface. Uses uniquely-named pua-* specs and
+	// fully resolves the drift it creates, leaving no residual for the "(all specs)"
+	// block below.
+	Describe("Drift detection (per-upstream acknowledge)", func() {
+		const (
+			puaDownstream = "pua-downstream"
+			puaUpstream   = "pua-upstream"
+		)
+
+		It("seeds two done specs, wires the dependency, and mutates upstream to drift", func() {
+			for _, slug := range []string{puaUpstream, puaDownstream} {
+				_, err := specClient.CreateSpec(ctx, connect.NewRequest(&specv1.CreateSpecRequest{
+					Slug:   slug,
+					Intent: "Per-upstream ack drift test spec " + slug,
+				}))
+				Expect(err).NotTo(HaveOccurred())
+				Expect(advanceStage(ctx, slug, "done")).To(Succeed())
+			}
+
+			_, err := graphClient.AddEdge(ctx, connect.NewRequest(&specv1.AddEdgeRequest{
+				FromSlug: puaDownstream,
+				ToSlug:   puaUpstream,
+				EdgeType: specv1.EdgeType_EDGE_TYPE_DEPENDS_ON,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+
+			time.Sleep(timestampSkew)
+			_, err = specClient.UpdateSpec(ctx, connect.NewRequest(&specv1.UpdateSpecRequest{
+				Slug:   puaUpstream,
+				Intent: proto.String("Updated upstream intent to trigger drift"),
+			}))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("detects drift on the downstream spec", func() {
+			// Retry to handle second-precision timestamp races (same idiom as the
+			// primary "Drift detection" block).
+			var driftFound bool
+			for attempt := 0; attempt < 3; attempt++ {
+				resp, err := lifecycleClient.CheckDrift(ctx, connect.NewRequest(&specv1.DriftCheckRequest{
+					Slug: puaDownstream,
+				}))
+				Expect(err).NotTo(HaveOccurred())
+				if len(resp.Msg.Reports) > 0 && len(resp.Msg.Reports[0].Items) > 0 {
+					Expect(resp.Msg.Reports[0].SpecSlug).To(Equal(puaDownstream))
+					driftFound = true
+					break
+				}
+				time.Sleep(time.Duration(attempt+1) * 500 * time.Millisecond)
+			}
+			Expect(driftFound).To(BeTrue(), "expected drift to be detected within retries")
+		})
+
+		It("acknowledges a single upstream and re-checks clean", func() {
+			resp, err := lifecycleClient.AcknowledgeDrift(ctx, connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+				Slug:         puaDownstream,
+				Note:         "Reviewed single upstream change",
+				UpstreamSlug: puaUpstream, // per-upstream (mutually exclusive with All)
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Msg.Report.SpecSlug).To(Equal(puaDownstream))
+
+			// After the per-upstream ack, that edge's hash matches upstream — no items.
+			check, err := lifecycleClient.CheckDrift(ctx, connect.NewRequest(&specv1.DriftCheckRequest{
+				Slug: puaDownstream,
+			}))
+			Expect(err).NotTo(HaveOccurred())
+			if len(check.Msg.Reports) > 0 {
+				Expect(check.Msg.Reports[0].Items).To(BeEmpty(),
+					"per-upstream ack should re-baseline content_hash_at_link — no drift")
+			}
+		})
+	})
+
 	// Depends on "Drift detection" Describe above (order guaranteed by outer Ordered container).
 	// After blanket AcknowledgeDrift, edge hashes match upstream — no drift expected.
 	Describe("Drift detection (all specs)", func() {
