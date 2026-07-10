@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: API Key Lifecycle & Self-Service** - OIDC users self-provision MCP API keys; revoked roles can't survive on standing keys (completed 2026-07-10)
 - [x] **Phase 3: External Identity Provider Integration** - Add native GitHub OAuth2, MCP OAuth 2.1 resource-server delegation, and session-issuer audit data
 - [x] **Phase 4: Verification & Integration Reliability** - Drift detection gets a verified interface (INTG-01 descoped — Confluence poller not in this repo) (completed 2026-07-10)
-- [ ] **Phase 5: UI Project Selector & Refinements** - Web UI gains a project selector with a sensible default, plus project-specific UI refinements (constitution view, etc.) — promoted from backlog 999.1
+- [ ] **Phase 5: UI Project Selector & Refinements** - Web UI gains a project selector with a sensible default, plus project-specific UI refinements (constitution view, etc.) and a full shadcn-svelte + dark-mode migration — promoted from backlog 999.1 (13 plans, 3 waves)
 
 ## Phase Details
 
@@ -130,14 +130,30 @@ Plans:
 
 **Goal**: The web UI lets users select which project they're viewing (with a sensible default) and surfaces project-specific views/refinements (constitution, etc.) instead of assuming a single implicit project
 **Depends on**: Nothing (promoted from backlog 999.1; builds on the existing SvelteKit web app + ConnectRPC surface)
-**Requirements**: TBD (define during /gsd-discuss-phase 5)
-**Status**: Not started — promoted from backlog 2026-07-10
-**Success Criteria** (what must be TRUE): _(to be defined during discuss/spec)_
+**Requirements**: D-01..D-14 (defined in 05-CONTEXT.md; no formal REQ-IDs — CONTEXT decisions are the scope contract)
+**Status**: Planned — 13 plans across 3 waves (2026-07-10)
+**Success Criteria** (what must be TRUE):
 
-  1. TBD — a user can pick the active project from the UI, with a default selection when none is chosen
-  2. TBD — project-specific UI (e.g. constitution view) reflects the selected project
+  1. A user can pick the active project from the UI, with a sensible default (last-used → `default` → alpha-first), and switching re-fetches every project-scoped view (D-01..D-08)
+  2. Project-scoped views (dashboard, graph, constitution, spec/decision detail) reflect the selected project with correct empty/error states and an active-project indicator; constitution badges re-derive across switches (D-09/D-10/D-11)
+  3. The full web UI is migrated to shadcn-svelte (Tailwind v4, Slate theme) with light/dark mode (D-12/D-13/D-14)
 
-**Plans**: TBD
+**Plans**: 13 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Wave 1: shadcn-svelte + Tailwind v4 foundation, Slate tokens, primitive set, badge-variants map
+- [ ] 05-02-PLAN.md — Wave 1: project store default precedence + case-insensitive sort + stale fallback (D-04/05/06) + tests
+- [ ] 05-03-PLAN.md — Wave 2: app shell — +layout.ts load bootstrap, shadcn nav/selector/switch, active-project breadcrumb, dark mode (D-01/02/03/07/08/11/14)
+- [ ] 05-04-PLAN.md — Wave 2: migrate AccordionSection, TabBar, FindingsSection
+- [ ] 05-05-PLAN.md — Wave 2: migrate SpecTable, StatsBar, FunnelBar
+- [ ] 05-06-PLAN.md — Wave 2: migrate SearchFilter, MetadataBar, ChangelogTimeline
+- [ ] 05-07-PLAN.md — Wave 2: migrate LoginModal, RevealKeyModal
+- [ ] 05-08-PLAN.md — Wave 2: migrate DiffView, VersionCompare
+- [ ] 05-09-PLAN.md — Wave 2: reframe Graph, GraphMini on Card + theme tokens
+- [ ] 05-10-PLAN.md — Wave 3: load-ify Dashboard + Graph pages with skeleton/empty/error states (D-01/02/09)
+- [ ] 05-11-PLAN.md — Wave 3: load-ify Spec + Decision detail pages (D-01/02/09)
+- [ ] 05-12-PLAN.md — Wave 3: Keys page shadcn restyle (user-scoped, no load refactor — D-09)
+- [ ] 05-13-PLAN.md — Wave 3: Constitution polish — load-ify, provenance-derived badges, empty state (D-10)
 
 ## Backlog
 
