@@ -28,7 +28,7 @@ Sourced from beads issues at priority P1 (in-progress) and P2 (open). Each maps 
 
 ### Drift Detection
 
-- [ ] **DRFT-01**: Interface and verify drift detection (`spgr-vch`)
+- [x] **DRFT-01**: Interface and verify drift detection (`spgr-vch`)
 
 ### Integrations
 
@@ -115,7 +115,7 @@ detail (goals, success criteria, dependencies).
 | AUTH-05 | Phase 3 | Complete |
 | CFG-01 | Phase 1 | Done |
 | CFG-02 | Phase 1 | Complete |
-| DRFT-01 | Phase 4 | Pending |
+| DRFT-01 | Phase 4 | Complete |
 | INTG-01 | Phase 4 | Descoped (code not in this repo) |
 
 **Coverage:**

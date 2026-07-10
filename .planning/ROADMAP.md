@@ -122,7 +122,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 
-- [ ] 04-01-PLAN.md — DRFT-01 SC#2 verification tests (no-false-positive e2e, full-graph SkippedCount integration, per-upstream ack round-trip e2e)
+- [x] 04-01-PLAN.md — DRFT-01 SC#2 verification tests (no-false-positive e2e, full-graph SkippedCount integration, per-upstream ack round-trip e2e)
 - [ ] 04-02-PLAN.md — DRFT-01 SC#1 doc note: drift interface reachable via API (`LifecycleService.CheckDrift`/`AcknowledgeDrift`) and MCP `drift` tool
 
 ## Backlog
