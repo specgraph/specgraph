@@ -110,7 +110,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Goal**: Maintainers can trust that reported drift signals are correct and verifiable
 **Depends on**: Nothing
-**Requirements**: DRFT-01 (INTG-01 descoped — see note)
+**Requirements**: DRFT-01
 **Success Criteria** (what must be TRUE):
 
   1. Drift status for any spec (or the full graph) is queryable through a stable, documented interface (CLI/API/MCP), not only inferable by reading code
