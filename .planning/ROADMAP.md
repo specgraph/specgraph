@@ -27,7 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Release & Build Tooling** - Ship the single-job goreleaser release pipeline and centralize config/lint tooling (completed 2026-07-09)
 - [x] **Phase 2: API Key Lifecycle & Self-Service** - OIDC users self-provision MCP API keys; revoked roles can't survive on standing keys (completed 2026-07-10)
 - [x] **Phase 3: External Identity Provider Integration** - Add native GitHub OAuth2, MCP OAuth 2.1 resource-server delegation, and session-issuer audit data
-- [ ] **Phase 4: Verification & Integration Reliability** - Drift detection gets a verified interface; Confluence comment polling stops dropping pages
+- [ ] **Phase 4: Verification & Integration Reliability** - Drift detection gets a verified interface (INTG-01 descoped — Confluence poller not in this repo)
 
 ## Phase Details
 
@@ -108,14 +108,15 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 4: Verification & Integration Reliability
 
-**Goal**: Maintainers can trust that reported drift signals are correct and verifiable, and external polling integrations don't silently drop data
+**Goal**: Maintainers can trust that reported drift signals are correct and verifiable
 **Depends on**: Nothing
-**Requirements**: DRFT-01, INTG-01
+**Requirements**: DRFT-01 (INTG-01 descoped — see note)
 **Success Criteria** (what must be TRUE):
 
   1. Drift status for any spec (or the full graph) is queryable through a stable, documented interface (CLI/API/MCP), not only inferable by reading code
   2. The drift interface is verified against real content-hash and DEPENDS_ON-edge scenarios — a test suite (or equivalent verification) confirms it flags true drift and doesn't false-positive on unrelated edits
-  3. Confluence comment polling walks every page of results — no comments are silently skipped when a thread's comment count spans multiple pages
+
+**INTG-01 descoped (2026-07-10):** Phase 4 discuss-phase scouting found the Confluence comment-polling code (`spgr-jwbj`) does not exist anywhere in this repository — no adapter, poller, or pagination code; `internal/sync/` has only beads + github adapters. The bug targets a separate system/repo. INTG-01 is removed from this phase pending identification of its owning repository; see `04-CONTEXT.md` D-05. It should either be re-homed to that repo's planning or formally deferred.
 
 **Plans**: TBD
 

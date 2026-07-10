@@ -32,7 +32,7 @@ Sourced from beads issues at priority P1 (in-progress) and P2 (open). Each maps 
 
 ### Integrations
 
-- [ ] **INTG-01**: Fix Confluence comment polling pagination bug (`spgr-jwbj`)
+- [ ] **INTG-01**: Fix Confluence comment polling pagination bug (`spgr-jwbj`) — **descoped from Phase 4 (2026-07-10):** target code is not present in this repo (no Confluence adapter/poller); belongs to a separate system/repo. Re-home or defer.
 
 ## v2 Requirements
 
@@ -116,7 +116,7 @@ detail (goals, success criteria, dependencies).
 | CFG-01 | Phase 1 | Done |
 | CFG-02 | Phase 1 | Complete |
 | DRFT-01 | Phase 4 | Pending |
-| INTG-01 | Phase 4 | Pending |
+| INTG-01 | Phase 4 | Descoped (code not in this repo) |
 
 **Coverage:**
 

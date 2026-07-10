@@ -3,6 +3,9 @@
 **Gathered:** 2026-07-10
 **Status:** Ready for planning
 **Mode:** `--auto` (decisions auto-selected to the recommended option; audit and adjust before/after planning)
+**Scope update (2026-07-10):** After scouting, the user **descoped INTG-01** from
+this phase — the Confluence poller is not in this repo (D-05). **Phase 4 now plans
+DRFT-01 only.** INTG-01 removed from ROADMAP.md/REQUIREMENTS.md pending its owning repo.
 
 <domain>
 ## Phase Boundary
@@ -128,24 +131,14 @@ verification of existing (DRFT-01) or externally-located (INTG-01) behavior.
 
 ### INTG-01 — Confluence comment polling pagination (`spgr-jwbj`)
 
-- **D-05 (BLOCKER — locate the code before planning):** The Confluence
-  comment-polling code is **not present in this repository**. Recommended
-  disposition, in order:
-  1. **Research MUST first confirm** (independently) that no Confluence
-     polling/pagination code exists in-repo — re-run the scout; check for any
-     vendored/submodule/sibling tooling and any `go.mod` replace directives.
-  2. If confirmed absent, **INTG-01 cannot be implemented in the SpecGraph repo.**
-     Surface to the user: identify the actual repository/system that owns the
-     Confluence comment poller (the `spgr-jwbj` bug), and either (a) re-home
-     INTG-01 to that repo's planning, or (b) descope it from this phase and note
-     it in the roadmap.
-  3. Do **NOT** scaffold a net-new Confluence connector to "satisfy" INTG-01 —
-     that would be new-capability scope creep (a whole integration), not a
-     pagination bug fix. The requirement is explicitly "*fix* the pagination
-     bug," which presupposes existing code.
-  - If the user *does* point to in-repo code that the scout missed, the fix is
-    almost certainly the standard cursor/`_links.next` (or `start`+`limit`)
-    pagination loop — walk until no next page instead of reading only page 1.
+- **D-05 (RESOLVED — INTG-01 descoped from Phase 4):** The Confluence
+  comment-polling code is **not present in this repository** (confirmed by
+  exhaustive scout). The user descoped INTG-01 from Phase 4 on 2026-07-10;
+  ROADMAP.md and REQUIREMENTS.md updated accordingly. **Planning ignores INTG-01.**
+  Remaining disposition (outside this phase): identify the repository/system that
+  owns the `spgr-jwbj` Confluence poller and either re-home INTG-01 there or
+  formally defer it. Do **NOT** scaffold a net-new Confluence connector in this
+  repo — that is new-capability scope creep, not a pagination bug fix.
 
 ### the agent's Discretion (planner/researcher)
 - Exact set of verification tests to add vs. confirm-already-covered for DRFT-01
