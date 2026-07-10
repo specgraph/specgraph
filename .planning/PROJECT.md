@@ -24,6 +24,8 @@ Specs stay live and queryable as a graph — with locked architectural decisions
 - ✓ Single-job goreleaser-owns-release model (`spgr-7r6g`) — merged PR #981; verified against `v0.12.0`'s actual GitHub Release (single publish, populated notes, signed/SBOM'd assets)
 - ✓ Koanf layered config loader (`spgr-5kd5`) — `internal/config/global.go` implements the full flag>env>file>default precedence, including the `SPECGRAPH_PG_URL` deprecation warning
 - ✓ Pin `task tools`' golangci-lint to match CI version (`spgr-vpmg`) — Phase 1: single `GOLANGCI_LINT_VERSION` var in `Taskfile.yml`, installed via `go install` (not unpinned `brew install`); `ci.yml` reads the same value via `$(task tools:golangci-lint-version)` command substitution instead of an independent env var
+- ✓ Self-service / auto MCP API-key provisioning for OIDC users (`spgr-g7st`, AUTH-03) — Phase 2: owner-scoped self-mint/list/rotate/revoke handlers with RoleMin floor (create+rotate), quota-safe mint, expiry clamp (90d/180d), CSRF double-submit, anti-key-chaining, plus CLI self-variants and a `/keys` web dashboard
+- ✓ Enforce app-role revocation on standing API/MCP keys (`spgr-c2lb`, AUTH-02) — Phase 2: operator `ResyncUserRole` RPC + `auth user resync` CLI writes the live DB role (clamping standing keys on next request) with optional `--revoke-keys` hard off-board; proven by live-floor integration tests
 
 ### Active
 
@@ -31,8 +33,6 @@ Specs stay live and queryable as a graph — with locked architectural decisions
 
 - [ ] Native generic OAuth2 + userinfo login provider (GitHub-direct) (`spgr-1rq9`)
 - [ ] Populate `web_sessions.issuer` for audit / future RP-logout (`spgr-bbp2`)
-- [ ] Enforce app-role revocation on standing API/MCP keys (`spgr-c2lb`)
-- [ ] Self-service / auto MCP API-key provisioning for OIDC users (in progress — `spgr-g7st`)
 - [ ] Fix Confluence comment polling pagination bug (`spgr-jwbj`)
 - [ ] MCP OAuth 2.1 resource server delegating auth to a real IdP (`spgr-tmqm`)
 - [ ] Interface and verify drift detection (`spgr-vch`)
@@ -70,4 +70,4 @@ Full architectural history — locked ADRs, three-generation storage-backend lin
 | CFG-02: Taskfile-as-source-of-truth for pinned tool versions (silent leaf task + CI command substitution, not a duplicated env var) | single declaration closes local/CI version drift structurally, not just for golangci-lint | ✓ Good — pattern flagged in code review (IN-01) as worth generalizing to `PROTOC_GEN_*` vars in a future phase |
 
 ---
-*Last updated: 2026-07-09 after Phase 1 complete — CFG-02 (golangci-lint pinning) shipped and reclassified from Active to Validated; Phase 1 fully closed (all three requirements: REL-01, CFG-01, CFG-02)*
+*Last updated: 2026-07-10 after Phase 2 complete — AUTH-02 (`spgr-c2lb`, app-role revocation on standing keys) and AUTH-03 (`spgr-g7st`, self-service MCP API-key provisioning) shipped and reclassified from Active to Validated; all Phase 2 requirements closed*

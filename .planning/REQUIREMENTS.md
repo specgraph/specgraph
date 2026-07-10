@@ -110,7 +110,7 @@ detail (goals, success criteria, dependencies).
 | REL-01 | Phase 1 | Done |
 | AUTH-01 | Phase 3 | Pending |
 | AUTH-02 | Phase 2 | Complete |
-| AUTH-03 | Phase 2 | In progress |
+| AUTH-03 | Phase 2 | Complete |
 | AUTH-04 | Phase 3 | Pending |
 | AUTH-05 | Phase 3 | Pending |
 | CFG-01 | Phase 1 | Done |
