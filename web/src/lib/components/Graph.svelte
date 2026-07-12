@@ -4,6 +4,7 @@
   import type { Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
   import { EdgeType } from '$lib/api/gen/specgraph/v1/graph_pb';
   import { stageColors } from '$lib/colors';
+  import * as Card from '$lib/components/ui/card/index.js';
 
   interface Props {
     nodes: GraphNode[];
@@ -29,10 +30,10 @@
   const SLICE_W = 130;
   const SLICE_H = 36;
 
-  const sliceColors: Record<string, { fill: string; stroke: string }> = {
-    open: { fill: '#f0f9ff', stroke: '#0ea5e9' },
-    claimed: { fill: '#fff7ed', stroke: '#ea580c' },
-    done: { fill: '#f0fdf4', stroke: '#16a34a' },
+  const sliceStrokes: Record<string, string> = {
+    open: '#0ea5e9',
+    claimed: '#ea580c',
+    done: '#16a34a',
   };
 
   function edgeStyle(et: EdgeType): { dash: string; color: string } {
@@ -199,6 +200,7 @@
   }
 </script>
 
+<Card.Root class="graph-card p-0">
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <svg
   class="graph-svg"
@@ -211,7 +213,7 @@
 >
   <defs>
     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#475569" />
+      <polygon points="0 0, 10 3.5, 0 7" style="fill: var(--muted-foreground)" />
     </marker>
   </defs>
 
@@ -246,7 +248,7 @@
                 width={DECISION_SIZE}
                 height={DECISION_SIZE}
                 rx="4"
-                fill="white"
+                style="fill: var(--card)"
                 stroke={color}
                 stroke-width="2"
                 transform="rotate(45)"
@@ -256,15 +258,15 @@
               </text>
             </g>
           {:else if node.isSlice}
-            {@const sc = sliceColors[node.stage] ?? { fill: '#f8fafc', stroke: '#6b7280' }}
+            {@const stroke = sliceStrokes[node.stage] ?? '#6b7280'}
             <rect
               x={node.x - SLICE_W / 2}
               y={node.y - SLICE_H / 2}
               width={SLICE_W}
               height={SLICE_H}
               rx="18"
-              fill={sc.fill}
-              stroke={sc.stroke}
+              style="fill: var(--muted)"
+              stroke={stroke}
               stroke-width="1.5"
             />
             <text
@@ -273,7 +275,7 @@
               text-anchor="middle"
               font-size="10"
               font-weight="500"
-              fill="#1a1a2e"
+              style="fill: var(--foreground)"
             >
               {truncate(node.slug.split('/').pop() ?? node.slug, 16)}
             </text>
@@ -282,7 +284,7 @@
               y={node.y + 10}
               text-anchor="middle"
               font-size="8"
-              fill={sc.stroke}
+              fill={stroke}
             >
               {node.stage}
             </text>
@@ -293,7 +295,7 @@
               width={NODE_W}
               height={NODE_H}
               rx="8"
-              fill="white"
+              style="fill: var(--card)"
               stroke={color}
               stroke-width="2"
             />
@@ -303,7 +305,7 @@
               text-anchor="middle"
               font-size="12"
               font-weight="600"
-              fill="#1a1a2e"
+              style="fill: var(--foreground)"
             >
               {truncate(node.slug, 22)}
             </text>
@@ -323,19 +325,19 @@
           <g transform="translate({node.x + NODE_W / 2 + 8},{node.y - 40})">
             <rect
               x="0" y="0" width="220" height="80" rx="6"
-              fill="white" stroke="#e2e8f0" stroke-width="1"
+              style="fill: var(--popover); stroke: var(--border)" stroke-width="1"
               filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
             />
-            <text x="10" y="18" font-size="11" font-weight="600" fill="#1a1a2e">
+            <text x="10" y="18" font-size="11" font-weight="600" style="fill: var(--popover-foreground)">
               {node.slug}
             </text>
-            <text x="10" y="34" font-size="10" fill="#64748b">
+            <text x="10" y="34" font-size="10" style="fill: var(--muted-foreground)">
               {truncate(node.intent, 30)}
             </text>
             <text x="10" y="50" font-size="10" fill={color}>
               Stage: {node.stage}
             </text>
-            <text x="10" y="66" font-size="10" fill="#64748b">
+            <text x="10" y="66" font-size="10" style="fill: var(--muted-foreground)">
               Priority: {node.priority || 'n/a'}
             </text>
           </g>
@@ -344,14 +346,14 @@
     {/each}
   </g>
 </svg>
+</Card.Root>
 
 <style>
   .graph-svg {
     width: 100%;
     height: 500px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    background: #fafbfc;
+    border-radius: var(--radius);
+    background: var(--card);
     cursor: grab;
     user-select: none;
   }
