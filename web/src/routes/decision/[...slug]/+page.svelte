@@ -45,10 +45,6 @@
   onMount(() => { loadDecision(slug); });
 </script>
 
-<nav class="breadcrumb">
-  <a href="/">Dashboard</a> / <a href="/graph">Graph</a> / <span>{slug}</span>
-</nav>
-
 {#if loading}
   <p class="status">Loading...</p>
 {:else if error}

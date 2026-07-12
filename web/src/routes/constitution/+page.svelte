@@ -65,10 +65,6 @@
     {/if}
 {/snippet}
 
-<nav class="breadcrumb">
-  <a href="/">Dashboard</a> / <span>Constitution</span>
-</nav>
-
 {#if loading}
   <p class="status">Loading...</p>
 {:else if error}
