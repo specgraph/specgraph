@@ -24,3 +24,11 @@ Items discovered during execution that are out of scope for the current plan.
   The three migrated Svelte files touch nothing in `.planning/`; `dprint` has no
   Svelte plugin so it does not format them. `task web:build`, `task build`, and
   `pnpm build` all pass. Same remediation: `dprint fmt` on `.planning/intel/`.
+
+## 05-07
+
+- **Same pre-existing `dprint fmt` drift in `.planning/intel/classifications/*.json`
+  (139 files) still blocks `task check` at `fmt:check`.** Confirmed unrelated to
+  05-07 (modal migration: `LoginModal`, `RevealKeyModal`). Both migrated Svelte
+  files touch nothing in `.planning/`; `dprint` has no Svelte plugin. `task web:build`
+  and `pnpm build` pass. Same remediation: `dprint fmt` on `.planning/intel/`.
