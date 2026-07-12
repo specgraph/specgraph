@@ -15,3 +15,12 @@ Items discovered during execution that are out of scope for the current plan.
   (139 files) still blocks `task check` at `fmt:check`.** Confirmed unrelated to
   05-03 (web shell rebuild); all 05-03 web files pass `task fmt:check`,
   `pnpm build`, and `pnpm test`. Same remediation: `dprint fmt` on `.planning/intel/`.
+
+## 05-05
+
+- **Same pre-existing `dprint fmt` drift in `.planning/intel/classifications/*.json`
+  (138 files) + `.planning/research/.cache` (1 file) still blocks `task check` at
+  `fmt:check`.** Confirmed unrelated to 05-05 (data-display component migration).
+  The three migrated Svelte files touch nothing in `.planning/`; `dprint` has no
+  Svelte plugin so it does not format them. `task web:build`, `task build`, and
+  `pnpm build` all pass. Same remediation: `dprint fmt` on `.planning/intel/`.
