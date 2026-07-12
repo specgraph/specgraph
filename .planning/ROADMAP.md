@@ -158,8 +158,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 05-10-PLAN.md — Wave 3: load-ify Dashboard + Graph pages with skeleton/empty/error states (D-01/02/09)
-- [ ] 05-11-PLAN.md — Wave 3: load-ify Spec + Decision detail pages (D-01/02/09)
+- [x] 05-10-PLAN.md — Wave 3: load-ify Dashboard + Graph pages with skeleton/empty/error states (D-01/02/09)
+- [x] 05-11-PLAN.md — Wave 3: load-ify Spec + Decision detail pages (D-01/02/09)
 - [ ] 05-12-PLAN.md — Wave 3: Keys page shadcn restyle (user-scoped, no load refactor — D-09)
 - [ ] 05-13-PLAN.md — Wave 3: Constitution polish — load-ify, provenance-derived badges, empty state (D-10)
 
