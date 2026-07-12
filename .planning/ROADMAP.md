@@ -138,13 +138,13 @@ Plans:
   2. Project-scoped views (dashboard, graph, constitution, spec/decision detail) reflect the selected project with correct empty/error states and an active-project indicator; constitution badges re-derive across switches (D-09/D-10/D-11)
   3. The full web UI is migrated to shadcn-svelte (Tailwind v4, Slate theme) with light/dark mode (D-12/D-13/D-14)
 
-**Plans**: 1/13 plans executed
+**Plans**: 2/13 plans executed
 
 Plans:
 **Wave 1**
 
 - [x] 05-01-PLAN.md — Wave 1: shadcn-svelte + Tailwind v4 foundation, Slate tokens, primitive set, badge-variants map
-- [ ] 05-02-PLAN.md — Wave 1: project store default precedence + case-insensitive sort + stale fallback (D-04/05/06) + tests
+- [x] 05-02-PLAN.md — Wave 1: project store default precedence + case-insensitive sort + stale fallback (D-04/05/06) + tests
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -186,7 +186,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. API Key Lifecycle & Self-Service | 8/8 | Complete    | 2026-07-10 |
 | 3. External Identity Provider Integration | 4/4 | Complete    | 2026-07-10 |
 | 4. Verification & Integration Reliability | 2/2 | Complete    | 2026-07-10 |
-| 5. UI Project Selector & Refinements | 1/13 | In Progress|  |
+| 5. UI Project Selector & Refinements | 2/13 | In Progress|  |
 
 ---
 *Roadmap created: 2026-07-08*
