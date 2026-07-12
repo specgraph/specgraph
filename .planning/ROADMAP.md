@@ -148,7 +148,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 05-03-PLAN.md — Wave 2: app shell — +layout.ts load bootstrap, shadcn nav/selector/switch, active-project breadcrumb, dark mode (D-01/02/03/07/08/11/14)
+- [x] 05-03-PLAN.md — Wave 2: app shell — +layout.ts load bootstrap, shadcn nav/selector/switch, active-project breadcrumb, dark mode (D-01/02/03/07/08/11/14)
 - [ ] 05-04-PLAN.md — Wave 2: migrate AccordionSection, TabBar, FindingsSection
 - [ ] 05-05-PLAN.md — Wave 2: migrate SpecTable, StatsBar, FunnelBar
 - [ ] 05-06-PLAN.md — Wave 2: migrate SearchFilter, MetadataBar, ChangelogTimeline

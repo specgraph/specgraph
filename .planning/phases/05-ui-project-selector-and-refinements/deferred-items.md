@@ -8,3 +8,10 @@ Items discovered during execution that are out of scope for the current plan.
   `task check` fails at `fmt:check` because these committed JSON classification
   files are not dprint-formatted. Unrelated to plan 05-02 changes (web store +
   Go handler test). Fix separately with `dprint fmt` on `.planning/intel/`.
+
+## 05-03
+
+- **Same pre-existing `dprint fmt` drift in `.planning/intel/classifications/*.json`
+  (139 files) still blocks `task check` at `fmt:check`.** Confirmed unrelated to
+  05-03 (web shell rebuild); all 05-03 web files pass `task fmt:check`,
+  `pnpm build`, and `pnpm test`. Same remediation: `dprint fmt` on `.planning/intel/`.

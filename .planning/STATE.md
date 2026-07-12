@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 05
 current_phase_name: ui-project-selector-and-refinements
 status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-07-12T13:46:26.412Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-07-12T13:57:49.545Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 28
-  completed_plans: 17
-  percent: 61
+  completed_plans: 18
+  percent: 64
 ---
 
 # Project State
@@ -32,7 +32,7 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 ## Current Position
 
 Phase: 05 (ui-project-selector-and-refinements) — EXECUTING
-Plan: 3 of 13
+Plan: 4 of 13
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 05 execution started
 
@@ -78,6 +78,7 @@ Progress: [███████████████░░░░░] 75%
 | Phase 04 P02 | 2 min | 1 tasks | 1 files |
 | Phase 05 P01 | ~10 min | 3 tasks | 115 files |
 | Phase 05 P02 | 5 min | 3 tasks | 3 files |
+| Phase 05-ui-project-selector-and-refinements P03 | 7 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase 03]: Introspection fail-closed algebra — decisive inactive/wrong-aud → ErrUnauthenticated, all-non-decisive (5xx/timeout/rate-limited) → ErrTransient; bounded by client timeout + active-result cache + per-issuer rate limiter (D-06)
 - [Phase 05]: Manual-fallback shadcn install: init 1.4.1 blocks on an interactive preset prompt, so components.json/app.css/utils.ts authored by hand + primitives via 'shadcn-svelte add -y -o --no-deps'
 - [Phase 05]: Slate delivered via the verified OKLCH token block in app.css (CLI base-color enum has no 'slate'); components.json baseColor:slate is cosmetic metadata
+- [Phase 05-ui-project-selector-and-refinements]: D-01 is mechanism-only after 05-03: the layout invalidates on switch but project-scoped pages still fetch via onMount/$effect until Wave 3 (05-10..13) adds +page.ts loads. Layout is single owner of the active-project breadcrumb. — Prevents Wave 3 from reintroducing per-page breadcrumbs or claiming end-to-end switch re-fetch prematurely.
 
 ### Pending Todos
 
@@ -134,6 +136,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T13:46:26.317Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-07-12T13:57:41.925Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
