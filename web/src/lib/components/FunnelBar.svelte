@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { stageColors } from '$lib/colors';
+  import { Badge } from '$lib/components/ui/badge/index.js';
+  import { stageBadgeClass } from './badge-variants';
 
   interface Props {
     stageCounts: Record<string, number>;
@@ -9,104 +10,45 @@
 
   const stages = ['spark', 'shape', 'specify', 'decompose', 'approved', 'done'];
 
+  // Funnel segments use the accent token at descending opacity (muted/accent
+  // token rule, UI-SPEC FunnelBar). Stage identity/colour is carried by the
+  // categorical Badge chips (D-10 palette), not the segment fill.
+  const segmentFills = [
+    'bg-primary',
+    'bg-primary/75',
+    'bg-primary/60',
+    'bg-primary/45',
+    'bg-primary/30',
+    'bg-primary/20',
+  ];
+
   let total = $derived(stages.reduce((sum, s) => sum + (stageCounts[s] ?? 0), 0));
 </script>
 
-<a class="funnel-bar" href="/graph">
-  <h3>Authoring Funnel</h3>
-  <div class="bar-container">
-    {#each stages as stage (stage)}
-      {@const count = stageCounts[stage] ?? 0}
-      {@const pct = total > 0 ? (count / total) * 100 : 0}
-      {#if count > 0}
-        <div
-          class="bar-segment"
-          style="width: {pct}%; background: {stageColors[stage] ?? '#6b7280'}"
-          title="{stage}: {count}"
-        >
-          {#if pct > 8}
-            <span class="bar-label">{stage} ({count})</span>
-          {/if}
-        </div>
-      {/if}
-    {/each}
-  </div>
-  <div class="legend">
-    {#each stages as stage (stage)}
-      <span class="legend-item">
-        <span class="legend-dot" style="background: {stageColors[stage]}"></span>
-        {stage}: {stageCounts[stage] ?? 0}
-      </span>
-    {/each}
+<a href="/graph" class="block rounded-xl focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2">
+  <div class="rounded-xl bg-card p-5 text-card-foreground ring-1 ring-foreground/10 transition-shadow hover:shadow-md">
+    <h3 class="mb-3 text-sm font-semibold text-foreground">Authoring Funnel</h3>
+    <div class="flex h-8 w-full overflow-hidden rounded-md border border-border">
+      {#each stages as stage, i (stage)}
+        {@const count = stageCounts[stage] ?? 0}
+        {@const pct = total > 0 ? (count / total) * 100 : 0}
+        {#if count > 0}
+          <div
+            class="flex min-w-0.5 items-center justify-center {segmentFills[i]}"
+            style="width: {pct}%"
+            title="{stage}: {count}"
+          >
+            {#if pct > 8}
+              <span class="truncate px-1 text-xs font-semibold text-primary-foreground">{stage} ({count})</span>
+            {/if}
+          </div>
+        {/if}
+      {/each}
+    </div>
+    <div class="mt-3 flex flex-wrap gap-2">
+      {#each stages as stage (stage)}
+        <Badge class={stageBadgeClass(stage)}>{stage}: {stageCounts[stage] ?? 0}</Badge>
+      {/each}
+    </div>
   </div>
 </a>
-
-<style>
-  .funnel-bar {
-    display: block;
-    background: white;
-    border-radius: 8px;
-    padding: 1.25rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-    text-decoration: none;
-    color: inherit;
-    transition: box-shadow 0.15s;
-  }
-
-  .funnel-bar:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  }
-
-  h3 {
-    margin: 0 0 0.75rem;
-    font-size: 0.95rem;
-    color: #1a1a2e;
-  }
-
-  .bar-container {
-    display: flex;
-    height: 32px;
-    border-radius: 6px;
-    overflow: hidden;
-  }
-
-  .bar-segment {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 2px;
-    transition: width 0.3s ease;
-  }
-
-  .bar-label {
-    font-size: 0.7rem;
-    color: white;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 0 4px;
-  }
-
-  .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 0.75rem;
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: 0.8rem;
-    color: #64748b;
-  }
-
-  .legend-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-</style>
