@@ -6,14 +6,14 @@ current_phase: 05
 current_phase_name: ui-project-selector-and-refinements
 status: executing
 stopped_at: Completed 05-11-PLAN.md
-last_updated: "2026-07-12T14:47:03.610Z"
+last_updated: "2026-07-12T14:51:05.134Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 28
-  completed_plans: 26
+  completed_plans: 27
   percent: 80
 ---
 
@@ -32,7 +32,7 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 ## Current Position
 
 Phase: 05 (ui-project-selector-and-refinements) — EXECUTING
-Plan: 12 of 13
+Plan: 13 of 13
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 05 execution started
 
@@ -87,6 +87,7 @@ Progress: [███████████████░░░░░] 75%
 | Phase 05-ui-project-selector-and-refinements P09 | 8min | 2 tasks | 2 files |
 | Phase 05 P10 | 12 min | 2 tasks | 4 files |
 | Phase 05-ui-project-selector-and-refinements P11 | 15min | 2 tasks | 4 files |
+| Phase 05 P12 | 8 min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase 05-ui-project-selector-and-refinements]: SVG graph coloring uses inline style var(--token), not fill= attributes (SVG attrs don't resolve var())
 - [Phase ?]: 05-11: NotFound RPC routes to empty not-found card; other errors route to inline Retry card (T-05-15) — Preserves UI-SPEC State Matrix empty-vs-error distinction, keeps errors off +error.svelte
 - [Phase ?]: 05-11: Spec/decision detail load-ified via streamed +page.ts detail promise + {#await}; activeSlug stale-guard removed (T-05-05) — SvelteKit load re-run on params.slug + invalidateAll replaces manual stale-guard
+- [Phase 05]: Keys page stays user-scoped (no load()/invalidateAll) per D-09 — Prevents cross-scope leakage of user key state (T-05-16)
 
 ### Pending Todos
 
@@ -147,6 +149,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T14:46:50.104Z
+Last session: 2026-07-12T14:50:59.232Z
 Stopped at: Completed 05-11-PLAN.md
 Resume file: None
