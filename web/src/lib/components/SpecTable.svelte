@@ -1,5 +1,8 @@
 <script lang="ts">
   import type { Spec } from '$lib/api/gen/specgraph/v1/spec_pb';
+  import * as Table from '$lib/components/ui/table/index.js';
+  import { Badge } from '$lib/components/ui/badge/index.js';
+  import { stageBadgeClass } from './badge-variants';
 
   interface Props {
     specs: Spec[];
@@ -52,124 +55,50 @@
   }
 </script>
 
-<table class="spec-table">
-  <thead>
-    <tr>
-      <th aria-sort={ariaSort('slug')}><button type="button" class="sort-btn" onclick={() => toggleSort('slug')}>Spec {sortIndicator('slug')}</button></th>
-      <th aria-sort={ariaSort('stage')}><button type="button" class="sort-btn" onclick={() => toggleSort('stage')}>Stage {sortIndicator('stage')}</button></th>
-      <th aria-sort={ariaSort('priority')}><button type="button" class="sort-btn" onclick={() => toggleSort('priority')}>Pri {sortIndicator('priority')}</button></th>
-      {#if showConversations}<th>💬</th>{/if}
-      <th>Intent</th>
-      <th aria-sort={ariaSort('updated')}><button type="button" class="sort-btn" onclick={() => toggleSort('updated')}>Updated {sortIndicator('updated')}</button></th>
-    </tr>
-  </thead>
-  <tbody>
+<Table.Root class="text-sm">
+  <Table.Header>
+    <Table.Row class="bg-muted">
+      <Table.Head aria-sort={ariaSort('slug')}>
+        <button type="button" class="w-full text-left font-medium hover:text-primary focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-1 rounded-sm" onclick={() => toggleSort('slug')}>Spec {sortIndicator('slug')}</button>
+      </Table.Head>
+      <Table.Head aria-sort={ariaSort('stage')}>
+        <button type="button" class="w-full text-left font-medium hover:text-primary focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-1 rounded-sm" onclick={() => toggleSort('stage')}>Stage {sortIndicator('stage')}</button>
+      </Table.Head>
+      <Table.Head aria-sort={ariaSort('priority')}>
+        <button type="button" class="w-full text-left font-medium hover:text-primary focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-1 rounded-sm" onclick={() => toggleSort('priority')}>Pri {sortIndicator('priority')}</button>
+      </Table.Head>
+      {#if showConversations}<Table.Head class="text-center">💬</Table.Head>{/if}
+      <Table.Head>Intent</Table.Head>
+      <Table.Head aria-sort={ariaSort('updated')}>
+        <button type="button" class="w-full text-left font-medium hover:text-primary focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-1 rounded-sm" onclick={() => toggleSort('updated')}>Updated {sortIndicator('updated')}</button>
+      </Table.Head>
+    </Table.Row>
+  </Table.Header>
+  <Table.Body>
     {#each rows as spec}
-      <tr>
-        <td><a href="/spec/{spec.slug}">{spec.slug}</a></td>
-        <td><span class="badge stage-{spec.stage}">{spec.stage}</span></td>
-        <td>{spec.priority || '—'}</td>
-        {#if showConversations}<td class="count">{spec.conversationCount}</td>{/if}
-        <td class="intent">{spec.intent}</td>
-        <td class="time">{relativeTime(spec.updatedAt)}</td>
-      </tr>
+      <Table.Row>
+        <Table.Cell>
+          <a href="/spec/{spec.slug}" class="font-medium text-primary hover:underline">{spec.slug}</a>
+        </Table.Cell>
+        <Table.Cell>
+          <Badge class={stageBadgeClass(spec.stage)}>{spec.stage}</Badge>
+        </Table.Cell>
+        <Table.Cell>
+          {#if spec.priority}
+            <Badge variant="secondary">{spec.priority}</Badge>
+          {:else}
+            <span class="text-muted-foreground">—</span>
+          {/if}
+        </Table.Cell>
+        {#if showConversations}<Table.Cell class="text-center text-muted-foreground">{spec.conversationCount}</Table.Cell>{/if}
+        <Table.Cell class="max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap">{spec.intent}</Table.Cell>
+        <Table.Cell class="whitespace-nowrap text-muted-foreground">{relativeTime(spec.updatedAt)}</Table.Cell>
+      </Table.Row>
     {/each}
     {#if rows.length === 0}
-      <tr><td colspan={showConversations ? 6 : 5} class="empty">No specs found</td></tr>
+      <Table.Row>
+        <Table.Cell colspan={showConversations ? 6 : 5} class="py-6 text-center text-muted-foreground">No specs found</Table.Cell>
+      </Table.Row>
     {/if}
-  </tbody>
-</table>
-
-<style>
-  .spec-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
-  }
-
-  th {
-    text-align: left;
-    padding: 0.4rem 0.5rem;
-    background: #f8fafc;
-    color: #475569;
-    font-weight: 600;
-    border-bottom: 1px solid #e2e8f0;
-    white-space: nowrap;
-  }
-
-  .sort-btn {
-    all: unset;
-    cursor: pointer;
-    user-select: none;
-    font: inherit;
-    color: inherit;
-    font-weight: inherit;
-    width: 100%;
-    text-align: left;
-  }
-
-  .sort-btn:hover {
-    color: #2563eb;
-  }
-
-  .sort-btn:focus-visible {
-    outline: 2px solid #2563eb;
-    outline-offset: 1px;
-    border-radius: 2px;
-  }
-
-  td {
-    padding: 0.4rem 0.5rem;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: top;
-  }
-
-  td a {
-    color: #2563eb;
-    text-decoration: none;
-    font-weight: 500;
-  }
-
-  td a:hover {
-    text-decoration: underline;
-  }
-
-  .badge {
-    display: inline-block;
-    padding: 0.1rem 0.4rem;
-    border-radius: 3px;
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
-
-  .badge.stage-spark { background: #ede9fe; color: #7c3aed; }
-  .badge.stage-shape { background: #dbeafe; color: #2563eb; }
-  .badge.stage-specify { background: #dcfce7; color: #16a34a; }
-  .badge.stage-decompose { background: #fef9c3; color: #ca8a04; }
-  .badge.stage-approved { background: #ccfbf1; color: #0d9488; }
-  .badge.stage-in_progress { background: #ffedd5; color: #ea580c; }
-  .badge.stage-done { background: #f1f5f9; color: #6b7280; }
-
-  .intent {
-    max-width: 300px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .time {
-    color: #64748b;
-    white-space: nowrap;
-  }
-
-  .count {
-    text-align: center;
-    color: #64748b;
-  }
-
-  .empty {
-    text-align: center;
-    color: #94a3b8;
-    padding: 1.5rem;
-  }
-</style>
+  </Table.Body>
+</Table.Root>
