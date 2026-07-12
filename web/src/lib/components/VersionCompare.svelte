@@ -6,6 +6,9 @@
   import type { ChangeLogEntry, CompareVersionsResponse } from '$lib/api/gen/specgraph/v1/spec_pb';
   import { specClient } from '$lib/api/client';
   import DiffView from './DiffView.svelte';
+  import * as Card from '$lib/components/ui/card/index.js';
+  import * as Select from '$lib/components/ui/select/index.js';
+  import { Button } from '$lib/components/ui/button/index.js';
 
   interface Props {
     slug: string;
@@ -20,6 +23,12 @@
   let error: string = $state('');
 
   let versions = $derived(entries.map((e) => e.version).sort((a, b) => b - a));
+
+  // shadcn Select binds string values; bridge to the numeric version state.
+  let fromValue = $derived(String(fromVersion));
+  let toValue = $derived(String(toVersion));
+  let fromLabel = $derived(fromVersion === 0 ? 'auto (previous)' : `v${fromVersion}`);
+  let toLabel = $derived(toVersion === 0 ? 'latest' : `v${toVersion}`);
 
   async function compare() {
     if (fromVersion === 0 && toVersion === 0) return;
@@ -41,112 +50,76 @@
   }
 </script>
 
-<div class="version-compare">
-  <div class="compare-controls">
-    <label class="compare-label">
-      From:
-      <select bind:value={fromVersion}>
-        <option value={0}>auto (previous)</option>
-        {#each versions as v}
-          <option value={v}>v{v}</option>
-        {/each}
-      </select>
-    </label>
-    <label class="compare-label">
-      To:
-      <select bind:value={toVersion}>
-        <option value={0}>latest</option>
-        {#each versions as v}
-          <option value={v}>v{v}</option>
-        {/each}
-      </select>
-    </label>
-    <button class="compare-btn" onclick={compare} disabled={comparing}>
+<div class="mb-4">
+  <div class="mb-3 flex flex-wrap items-end gap-3">
+    <div class="flex flex-col gap-1.5">
+      <span class="text-xs font-semibold text-muted-foreground">From</span>
+      <Select.Root
+        type="single"
+        value={fromValue}
+        onValueChange={(v) => (fromVersion = Number(v))}
+      >
+        <Select.Trigger class="w-[160px]" aria-label="From version">
+          {fromLabel}
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="0" label="auto (previous)">auto (previous)</Select.Item>
+          {#each versions as v (v)}
+            <Select.Item value={String(v)} label={`v${v}`}>v{v}</Select.Item>
+          {/each}
+        </Select.Content>
+      </Select.Root>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <span class="text-xs font-semibold text-muted-foreground">To</span>
+      <Select.Root
+        type="single"
+        value={toValue}
+        onValueChange={(v) => (toVersion = Number(v))}
+      >
+        <Select.Trigger class="w-[160px]" aria-label="To version">
+          {toLabel}
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="0" label="latest">latest</Select.Item>
+          {#each versions as v (v)}
+            <Select.Item value={String(v)} label={`v${v}`}>v{v}</Select.Item>
+          {/each}
+        </Select.Content>
+      </Select.Root>
+    </div>
+    <Button onclick={compare} disabled={comparing}>
       {comparing ? 'Comparing...' : 'Compare'}
-    </button>
+    </Button>
   </div>
 
   {#if error}
-    <div class="compare-error">{error}</div>
+    <div class="mb-2 text-sm text-destructive">{error}</div>
   {/if}
 
   {#if result}
-    <div class="compare-result">
-      <div class="compare-header">
-        v{result.fromVersion} ({result.fromStage}) → v{result.toVersion} ({result.toStage})
-      </div>
-      {#if result.diffs.length === 0}
-        <div class="compare-empty">No differences between these versions.</div>
-      {:else}
-        {#each result.diffs as d}
-          <DiffView
-            field={d.field}
-            oldValue={d.oldValue}
-            newValue={d.newValue}
-            hunks={d.hunks}
-          />
-        {/each}
-      {/if}
-    </div>
+    <Card.Root>
+      <Card.Header>
+        <Card.Title class="text-sm font-bold">
+          v{result.fromVersion} ({result.fromStage}) → v{result.toVersion} ({result.toStage})
+        </Card.Title>
+      </Card.Header>
+      <Card.Content>
+        {#if result.diffs.length === 0}
+          <div class="py-4 text-center text-sm text-muted-foreground">
+            No differences between these versions.
+          </div>
+        {:else}
+          {#each result.diffs as d}
+            <DiffView
+              field={d.field}
+              oldValue={d.oldValue}
+              newValue={d.newValue}
+              hunks={d.hunks}
+            />
+          {/each}
+        {/if}
+      </Card.Content>
+    </Card.Root>
   {/if}
 </div>
-
-<style>
-  .version-compare {
-    margin-bottom: 1rem;
-  }
-  .compare-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    margin-bottom: 0.75rem;
-  }
-  .compare-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-secondary, #6b7280);
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-  }
-  .compare-label select {
-    padding: 0.25rem 0.5rem;
-    border: 1px solid var(--border-color, #d1d5db);
-    border-radius: 0.375rem;
-    font-size: 0.8rem;
-    background: var(--bg-surface, #fff);
-  }
-  .compare-btn {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8rem;
-    font-weight: 600;
-    background: var(--accent-color, #6366f1);
-    color: #fff;
-    border: none;
-    border-radius: 0.375rem;
-    cursor: pointer;
-  }
-  .compare-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  .compare-header {
-    font-weight: 700;
-    font-size: 0.9rem;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color, #e5e7eb);
-  }
-  .compare-error {
-    color: #dc2626;
-    font-size: 0.85rem;
-    margin-bottom: 0.5rem;
-  }
-  .compare-empty {
-    color: var(--text-secondary, #6b7280);
-    font-size: 0.85rem;
-    text-align: center;
-    padding: 1rem;
-  }
-</style>
