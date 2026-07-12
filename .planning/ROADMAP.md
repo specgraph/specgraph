@@ -154,7 +154,7 @@ Plans:
 - [x] 05-06-PLAN.md — Wave 2: migrate SearchFilter, MetadataBar, ChangelogTimeline
 - [x] 05-07-PLAN.md — Wave 2: migrate LoginModal, RevealKeyModal
 - [x] 05-08-PLAN.md — Wave 2: migrate DiffView, VersionCompare
-- [ ] 05-09-PLAN.md — Wave 2: reframe Graph, GraphMini on Card + theme tokens
+- [x] 05-09-PLAN.md — Wave 2: reframe Graph, GraphMini on Card + theme tokens
 
 **Wave 3** *(blocked on Wave 2 completion)*
 

@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 05
 current_phase_name: ui-project-selector-and-refinements
 status: executing
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-07-12T14:25:21.119Z"
+stopped_at: Completed 05-09-PLAN.md
+last_updated: "2026-07-12T14:31:43.527Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 28
-  completed_plans: 23
+  completed_plans: 24
   percent: 80
 ---
 
@@ -32,7 +32,7 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 ## Current Position
 
 Phase: 05 (ui-project-selector-and-refinements) — EXECUTING
-Plan: 9 of 13
+Plan: 10 of 13
 Status: Ready to execute
 Last activity: 2026-07-12 — Phase 05 execution started
 
@@ -84,6 +84,7 @@ Progress: [███████████████░░░░░] 75%
 | Phase 05 P06 | 12 min | 3 tasks | 3 files |
 | Phase 05 P07 | 18min | 2 tasks | 2 files |
 | Phase 05 P08 | 8 min | 2 tasks | 2 files |
+| Phase 05-ui-project-selector-and-refinements P09 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase 05]: Manual-fallback shadcn install: init 1.4.1 blocks on an interactive preset prompt, so components.json/app.css/utils.ts authored by hand + primitives via 'shadcn-svelte add -y -o --no-deps'
 - [Phase 05]: Slate delivered via the verified OKLCH token block in app.css (CLI base-color enum has no 'slate'); components.json baseColor:slate is cosmetic metadata
 - [Phase 05-ui-project-selector-and-refinements]: D-01 is mechanism-only after 05-03: the layout invalidates on switch but project-scoped pages still fetch via onMount/$effect until Wave 3 (05-10..13) adds +page.ts loads. Layout is single owner of the active-project breadcrumb. — Prevents Wave 3 from reintroducing per-page breadcrumbs or claiming end-to-end switch re-fetch prematurely.
+- [Phase 05-ui-project-selector-and-refinements]: SVG graph coloring uses inline style var(--token), not fill= attributes (SVG attrs don't resolve var())
 
 ### Pending Todos
 
@@ -141,6 +143,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T14:25:15.236Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-07-12T14:31:34.551Z
+Stopped at: Completed 05-09-PLAN.md
 Resume file: None
