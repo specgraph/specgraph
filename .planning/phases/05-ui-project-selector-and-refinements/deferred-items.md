@@ -32,3 +32,11 @@ Items discovered during execution that are out of scope for the current plan.
   05-07 (modal migration: `LoginModal`, `RevealKeyModal`). Both migrated Svelte
   files touch nothing in `.planning/`; `dprint` has no Svelte plugin. `task web:build`
   and `pnpm build` pass. Same remediation: `dprint fmt` on `.planning/intel/`.
+
+## 05-09
+
+- **Same pre-existing `dprint fmt` drift in `.planning/intel/classifications/*.json`
+  (139 files) still blocks `task check` at `fmt:check`.** Confirmed unrelated to
+  05-09 (Graph/GraphMini reframe on Card + theme tokens). Both migrated Svelte
+  files touch nothing in `.planning/`; `dprint` has no Svelte plugin. `task web:build`
+  and `pnpm build` pass. Same remediation: `dprint fmt` on `.planning/intel/`.
