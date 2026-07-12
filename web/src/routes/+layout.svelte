@@ -1,4 +1,5 @@
 <script>
+  import '../app.css';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { auth, checkAuth } from '$lib/auth.svelte';
