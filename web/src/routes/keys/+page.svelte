@@ -4,6 +4,11 @@
   import type { APIKey } from '$lib/api/gen/specgraph/v1/identity_pb';
   import { timestampDate } from '@bufbuild/protobuf/wkt';
   import RevealKeyModal from '$lib/components/RevealKeyModal.svelte';
+  import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
+  import * as Card from '$lib/components/ui/card/index.js';
+  import * as Table from '$lib/components/ui/table/index.js';
+  import { Button } from '$lib/components/ui/button/index.js';
+  import { Input } from '$lib/components/ui/input/index.js';
 
   let label = $state('');
   let roleDowngrade = $state('');
@@ -13,6 +18,12 @@
   // The one-time plaintext lives here only while the reveal modal is open; it is
   // cleared on close and never re-fetched.
   let revealed = $state<string | null>(null);
+
+  // Destructive-revoke path is driven through the migrated RevealKeyModal
+  // AlertDialog (05-07). We hold the pending key id and an open flag; the modal
+  // binds `revokeOpen` and fires `onRevoke` on confirm.
+  let revokeTarget = $state<string | null>(null);
+  let revokeOpen = $state(false);
 
   onMount(() => {
     listKeys();
@@ -50,8 +61,15 @@
     if (pt) revealed = pt;
   }
 
-  async function handleRevoke(keyId: string) {
-    await revokeKey(keyId);
+  function askRevoke(keyId: string) {
+    revokeTarget = keyId;
+    revokeOpen = true;
+  }
+
+  async function confirmRevoke() {
+    if (revokeTarget) await revokeKey(revokeTarget);
+    revokeTarget = null;
+    revokeOpen = false;
   }
 
   function closeReveal() {
@@ -72,227 +90,138 @@
   }
 </script>
 
-<nav class="breadcrumb">
-  <a href="/">Dashboard</a> / <span>MCP Keys</span>
-</nav>
+<!-- Keys keeps its OWN user-scoped breadcrumb (D-09): no active-project indicator,
+     and it is suppressed from the layout-owned {project} / {View} breadcrumb. -->
+<Breadcrumb.Root class="mb-5">
+  <Breadcrumb.List>
+    <Breadcrumb.Item>
+      <Breadcrumb.Link href="/">Dashboard</Breadcrumb.Link>
+    </Breadcrumb.Item>
+    <Breadcrumb.Separator />
+    <Breadcrumb.Item>
+      <Breadcrumb.Page class="text-muted-foreground">MCP Keys</Breadcrumb.Page>
+    </Breadcrumb.Item>
+  </Breadcrumb.List>
+</Breadcrumb.Root>
 
-<h1>MCP Keys</h1>
+<h1 class="mb-3 text-xl font-semibold text-foreground">MCP Keys</h1>
 
-<p class="eligibility">
-  Self-minting keys requires an interactive <strong>OIDC</strong> or workspace
-  (<code>spgr_ws_</code>) session. If you signed in by pasting a raw API key, creating or rotating a
-  key is intentionally blocked (anti key-chaining) — re-authenticate via your OIDC provider to
-  manage keys.
+<p
+  class="mb-5 rounded-lg border-l-2 border-primary bg-muted px-3.5 py-2.5 text-sm leading-relaxed text-muted-foreground"
+>
+  Self-minting keys requires an interactive <strong class="font-semibold text-foreground">OIDC</strong>
+  or workspace (<code class="rounded bg-background px-1 py-0.5 font-mono text-xs text-foreground"
+    >spgr_ws_</code
+  >) session. If you signed in by pasting a raw API key, creating or rotating a key is intentionally
+  blocked (anti key-chaining) — re-authenticate via your OIDC provider to manage keys.
 </p>
 
 {#if keys.error}
-  <p class="status error">{keys.error}</p>
+  <p
+    class="mb-4 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+    role="alert"
+  >
+    {keys.error}
+  </p>
 {/if}
 
-<section class="create">
-  <h2>Create a key</h2>
-  <form onsubmit={handleCreate}>
-    <label>
-      Label
-      <input type="text" bind:value={label} placeholder="ci-runner" disabled={submitting} />
-    </label>
-    <label>
-      Role downgrade <span class="opt">(optional)</span>
-      <input type="text" bind:value={roleDowngrade} placeholder="reader" disabled={submitting} />
-    </label>
-    <label>
-      Expires <span class="opt">(optional)</span>
-      <input type="date" bind:value={expiresAt} disabled={submitting} />
-    </label>
-    <button type="submit" disabled={!label.trim() || submitting}>
-      {submitting ? 'Creating…' : 'Create key'}
-    </button>
-  </form>
-</section>
+<Card.Root class="mb-7">
+  <Card.Header>
+    <Card.Title>Create a key</Card.Title>
+  </Card.Header>
+  <Card.Content>
+    <form onsubmit={handleCreate} class="flex flex-wrap items-end gap-3">
+      <label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        Label
+        <Input
+          type="text"
+          bind:value={label}
+          placeholder="ci-runner"
+          disabled={submitting}
+          class="w-44"
+        />
+      </label>
+      <label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        Role downgrade <span class="font-normal text-muted-foreground/70">(optional)</span>
+        <Input
+          type="text"
+          bind:value={roleDowngrade}
+          placeholder="reader"
+          disabled={submitting}
+          class="w-44"
+        />
+      </label>
+      <label class="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
+        Expires <span class="font-normal text-muted-foreground/70">(optional)</span>
+        <Input type="date" bind:value={expiresAt} disabled={submitting} class="w-44" />
+      </label>
+      <Button type="submit" disabled={!label.trim() || submitting}>
+        {submitting ? 'Creating…' : 'Create key'}
+      </Button>
+    </form>
+  </Card.Content>
+</Card.Root>
 
-<section class="list">
-  <h2>Your keys</h2>
-  {#if keys.loading}
-    <p class="status">Loading…</p>
-  {:else if keys.list.length === 0}
-    <p class="status">You have no API keys yet.</p>
-  {:else}
-    <table>
-      <thead>
-        <tr>
-          <th>Prefix</th>
-          <th>Label</th>
-          <th>Role downgrade</th>
-          <th>Expires</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each keys.list as k (k.id)}
-          <tr class:revoked={isRevoked(k)}>
-            <td><code>{k.prefix}</code></td>
-            <td>{k.label || '—'}</td>
-            <td>{k.roleDowngrade || '—'}</td>
-            <td>{fmt(k.expiresAt)}</td>
-            <td>{isRevoked(k) ? 'Revoked' : 'Active'}</td>
-            <td class="actions">
-              {#if !isRevoked(k)}
-                <button type="button" class="rotate" onclick={() => handleRotate(k.id)}>Rotate</button>
-                <button type="button" class="revoke" onclick={() => handleRevoke(k.id)}>Revoke</button>
-              {/if}
-            </td>
-          </tr>
-        {/each}
-      </tbody>
-    </table>
-  {/if}
-</section>
+<Card.Root>
+  <Card.Header>
+    <Card.Title>Your keys</Card.Title>
+  </Card.Header>
+  <Card.Content>
+    {#if keys.loading}
+      <p class="text-sm text-muted-foreground">Loading…</p>
+    {:else if keys.list.length === 0}
+      <p class="text-sm text-muted-foreground">You have no API keys yet.</p>
+    {:else}
+      <Table.Root class="text-sm">
+        <Table.Header>
+          <Table.Row class="bg-muted">
+            <Table.Head>Prefix</Table.Head>
+            <Table.Head>Label</Table.Head>
+            <Table.Head>Role downgrade</Table.Head>
+            <Table.Head>Expires</Table.Head>
+            <Table.Head>Status</Table.Head>
+            <Table.Head></Table.Head>
+          </Table.Row>
+        </Table.Header>
+        <Table.Body>
+          {#each keys.list as k (k.id)}
+            <Table.Row class={isRevoked(k) ? 'text-muted-foreground' : undefined}>
+              <Table.Cell>
+                <code class="font-mono text-xs text-foreground">{k.prefix}</code>
+              </Table.Cell>
+              <Table.Cell>{k.label || '—'}</Table.Cell>
+              <Table.Cell>{k.roleDowngrade || '—'}</Table.Cell>
+              <Table.Cell class="whitespace-nowrap">{fmt(k.expiresAt)}</Table.Cell>
+              <Table.Cell>{isRevoked(k) ? 'Revoked' : 'Active'}</Table.Cell>
+              <Table.Cell>
+                {#if !isRevoked(k)}
+                  <div class="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onclick={() => handleRotate(k.id)}>Rotate</Button
+                    >
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onclick={() => askRevoke(k.id)}>Revoke</Button
+                    >
+                  </div>
+                {/if}
+              </Table.Cell>
+            </Table.Row>
+          {/each}
+        </Table.Body>
+      </Table.Root>
+    {/if}
+  </Card.Content>
+</Card.Root>
 
-{#if revealed}
-  <RevealKeyModal plaintext={revealed} onClose={closeReveal} />
-{/if}
-
-<style>
-  .breadcrumb {
-    font-size: 0.85rem;
-    color: #64748b;
-    margin-bottom: 1.25rem;
-  }
-  .breadcrumb a {
-    color: #2563eb;
-    text-decoration: none;
-  }
-  .breadcrumb a:hover {
-    text-decoration: underline;
-  }
-  .breadcrumb span {
-    color: #1a1a2e;
-    font-weight: 500;
-  }
-  h1 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0 0 0.75rem;
-    color: #1a1a2e;
-  }
-  h2 {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #374151;
-    margin: 0 0 0.75rem;
-  }
-  .eligibility {
-    background: #eff6ff;
-    border-left: 3px solid #2563eb;
-    border-radius: 4px;
-    padding: 0.6rem 0.85rem;
-    font-size: 0.85rem;
-    color: #334155;
-    line-height: 1.5;
-    margin: 0 0 1.25rem;
-  }
-  .eligibility code {
-    background: #dbeafe;
-    padding: 0.05rem 0.3rem;
-    border-radius: 3px;
-    font-size: 0.8rem;
-  }
-  .status {
-    color: #64748b;
-    font-size: 0.9rem;
-  }
-  .status.error {
-    color: #dc2626;
-    background: #fef2f2;
-    border-radius: 4px;
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 1rem;
-  }
-  section {
-    margin-bottom: 1.75rem;
-  }
-  form {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    align-items: flex-end;
-  }
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    font-size: 0.8rem;
-    color: #475569;
-  }
-  .opt {
-    color: #94a3b8;
-    font-weight: 400;
-  }
-  input {
-    padding: 0.4rem 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    font-size: 0.85rem;
-  }
-  input:focus {
-    outline: 2px solid #3b82f6;
-    border-color: transparent;
-  }
-  form button {
-    padding: 0.45rem 1rem;
-    background: #1a1a2e;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    cursor: pointer;
-    height: fit-content;
-  }
-  form button:hover:not(:disabled) {
-    background: #2d2d4e;
-  }
-  form button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
-  }
-  th {
-    text-align: left;
-    padding: 0.4rem 0.6rem;
-    background: #f1f5f9;
-    color: #475569;
-    font-weight: 600;
-  }
-  td {
-    padding: 0.4rem 0.6rem;
-    border-bottom: 1px solid #f1f5f9;
-  }
-  tr.revoked {
-    color: #94a3b8;
-  }
-  .actions {
-    display: flex;
-    gap: 0.4rem;
-  }
-  .actions button {
-    padding: 0.25rem 0.6rem;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    background: white;
-    font-size: 0.8rem;
-    cursor: pointer;
-  }
-  .actions .rotate:hover {
-    border-color: #2563eb;
-    color: #2563eb;
-  }
-  .actions .revoke:hover {
-    border-color: #dc2626;
-    color: #dc2626;
-  }
-</style>
+<RevealKeyModal
+  plaintext={revealed}
+  onClose={closeReveal}
+  bind:revokeOpen
+  onRevoke={confirmRevoke}
+/>
