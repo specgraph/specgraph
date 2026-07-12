@@ -4,6 +4,19 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SpecGraph</title>
+  <script>
+    // FOUC guard (D-14): apply the persisted theme before first paint. In this
+    // static SPA (ssr=false) mode-watcher's no-flash head injection only runs
+    // after hydration, so read its localStorage key here and toggle `.dark`
+    // synchronously. Key confirmed against installed mode-watcher@1.1.0
+    // (dist/storage-keys.svelte.js → box("mode-watcher-mode")).
+    try {
+      var m = localStorage.getItem('mode-watcher-mode') || 'system';
+      var d = m === 'dark' || (m === 'system' &&
+        matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.classList.toggle('dark', d);
+    } catch (e) {}
+  </script>
   %sveltekit.head%
 </head>
 <body data-sveltekit-prerender="false">
