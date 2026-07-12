@@ -138,7 +138,7 @@ Plans:
   2. Project-scoped views (dashboard, graph, constitution, spec/decision detail) reflect the selected project with correct empty/error states and an active-project indicator; constitution badges re-derive across switches (D-09/D-10/D-11)
   3. The full web UI is migrated to shadcn-svelte (Tailwind v4, Slate theme) with light/dark mode (D-12/D-13/D-14)
 
-**Plans**: 13/13 plans complete
+**Plans**: 13/13 plans complete + 1 gap-closure plan (05-14)
 
 Plans:
 **Wave 1**
@@ -162,6 +162,10 @@ Plans:
 - [x] 05-11-PLAN.md — Wave 3: load-ify Spec + Decision detail pages (D-01/02/09)
 - [x] 05-12-PLAN.md — Wave 3: Keys page shadcn restyle (user-scoped, no load refactor — D-09)
 - [x] 05-13-PLAN.md — Wave 3: Constitution polish — load-ify, provenance-derived badges, empty state (D-10)
+
+**Gap closure** *(from 05-VERIFICATION.md — truth #3, dark-mode migration)*
+
+- [ ] 05-14-PLAN.md — Migrate Spec + Decision detail body content off the old light-only navy/blue plain-CSS palette to shadcn theme tokens so dark mode renders readably (D-12/D-13/D-14)
 
 ## Backlog
 
