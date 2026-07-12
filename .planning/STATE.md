@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v0.12.0
 milestone_name: milestone
-current_phase: 999.1
-current_phase_name: constitution, etc
+current_phase: 05
+current_phase_name: ui-project-selector-and-refinements
 status: executing
 stopped_at: Phase 5 UI-SPEC approved
-last_updated: "2026-07-10T21:39:02.029Z"
-last_activity: 2026-07-10
-last_activity_desc: Phase 4 complete, transitioned to Phase 999.1
+last_updated: "2026-07-12T13:40:40.768Z"
+last_activity: 2026-07-12
+last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
-  percent: 80
+  total_plans: 28
+  completed_plans: 16
+  percent: 57
 ---
 
 # Project State
@@ -27,14 +27,14 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 drift detection, and a durable storage/query layer — so both humans and agent-based execution
 engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
-**Current focus:** Phase 4 — Verification & Integration Reliability
+**Current focus:** Phase 05 — ui-project-selector-and-refinements
 
 ## Current Position
 
-Phase: 999.1 — UI needs a project selector, and default, as well as UI refinements around project specifics ( constitution, etc ) (BACKLOG)
-Plan: Not started
+Phase: 05 (ui-project-selector-and-refinements) — EXECUTING
+Plan: 2 of 13
 Status: Ready to execute
-Last activity: 2026-07-10 — Phase 4 complete, transitioned to Phase 999.1
+Last activity: 2026-07-12 — Phase 05 execution started
 
 Progress: [███████████████░░░░░] 75%
 
@@ -76,6 +76,7 @@ Progress: [███████████████░░░░░] 75%
 | Phase 03 P04 | 25 min | 2 tasks | 7 files |
 | Phase 04-verification-integration-reliability P01 | 4min | 3 tasks | 2 files |
 | Phase 04 P02 | 2 min | 1 tasks | 1 files |
+| Phase 05 P01 | ~10 min | 3 tasks | 115 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase 03]: RFC 8707 resource-URI audience check is additive and path-scoped — fires only when MCPRequestFromContext(ctx) AND mcpResourceURI set, so ConnectRPC/web-login aud==client_id semantics are untouched (OQ2, review HIGH #2, D-05.3)
 - [Phase 03]: Resolve dispatch is explicit — spgr_sk_/spgr_ws_ prefix guards run BEFORE the introspection branch so static API-key/session secrets are never POSTed to an external IdP (review HIGH #3, D-08)
 - [Phase 03]: Introspection fail-closed algebra — decisive inactive/wrong-aud → ErrUnauthenticated, all-non-decisive (5xx/timeout/rate-limited) → ErrTransient; bounded by client timeout + active-result cache + per-issuer rate limiter (D-06)
+- [Phase 05]: Manual-fallback shadcn install: init 1.4.1 blocks on an interactive preset prompt, so components.json/app.css/utils.ts authored by hand + primitives via 'shadcn-svelte add -y -o --no-deps'
+- [Phase 05]: Slate delivered via the verified OKLCH token block in app.css (CLI base-color enum has no 'slate'); components.json baseColor:slate is cosmetic metadata
 
 ### Pending Todos
 
@@ -130,6 +133,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-10T19:46:21.689Z
+Last session: 2026-07-12T13:40:26.968Z
 Stopped at: Phase 5 UI-SPEC approved
 Resume file: .planning/phases/05-ui-project-selector-and-refinements/05-UI-SPEC.md
