@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: API Key Lifecycle & Self-Service** - OIDC users self-provision MCP API keys; revoked roles can't survive on standing keys (completed 2026-07-10)
 - [x] **Phase 3: External Identity Provider Integration** - Add native GitHub OAuth2, MCP OAuth 2.1 resource-server delegation, and session-issuer audit data
 - [x] **Phase 4: Verification & Integration Reliability** - Drift detection gets a verified interface (INTG-01 descoped — Confluence poller not in this repo) (completed 2026-07-10)
-- [ ] **Phase 5: UI Project Selector & Refinements** - Web UI gains a project selector with a sensible default, plus project-specific UI refinements (constitution view, etc.) and a full shadcn-svelte + dark-mode migration — promoted from backlog 999.1 (13 plans, 3 waves)
+- [x] **Phase 5: UI Project Selector & Refinements** - Web UI gains a project selector with a sensible default, plus project-specific UI refinements (constitution view, etc.) and a full shadcn-svelte + dark-mode migration — promoted from backlog 999.1 (13 plans, 3 waves) (completed 2026-07-12)
 
 ## Phase Details
 
@@ -138,7 +138,7 @@ Plans:
   2. Project-scoped views (dashboard, graph, constitution, spec/decision detail) reflect the selected project with correct empty/error states and an active-project indicator; constitution badges re-derive across switches (D-09/D-10/D-11)
   3. The full web UI is migrated to shadcn-svelte (Tailwind v4, Slate theme) with light/dark mode (D-12/D-13/D-14)
 
-**Plans**: 12/13 plans executed
+**Plans**: 13/13 plans complete
 
 Plans:
 **Wave 1**
@@ -161,7 +161,7 @@ Plans:
 - [x] 05-10-PLAN.md — Wave 3: load-ify Dashboard + Graph pages with skeleton/empty/error states (D-01/02/09)
 - [x] 05-11-PLAN.md — Wave 3: load-ify Spec + Decision detail pages (D-01/02/09)
 - [x] 05-12-PLAN.md — Wave 3: Keys page shadcn restyle (user-scoped, no load refactor — D-09)
-- [ ] 05-13-PLAN.md — Wave 3: Constitution polish — load-ify, provenance-derived badges, empty state (D-10)
+- [x] 05-13-PLAN.md — Wave 3: Constitution polish — load-ify, provenance-derived badges, empty state (D-10)
 
 ## Backlog
 
@@ -186,7 +186,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. API Key Lifecycle & Self-Service | 8/8 | Complete    | 2026-07-10 |
 | 3. External Identity Provider Integration | 4/4 | Complete    | 2026-07-10 |
 | 4. Verification & Integration Reliability | 2/2 | Complete    | 2026-07-10 |
-| 5. UI Project Selector & Refinements | 12/13 | In Progress|  |
+| 5. UI Project Selector & Refinements | 13/13 | Complete   | 2026-07-12 |
 
 ---
 *Roadmap created: 2026-07-08*
