@@ -5,6 +5,7 @@ package server_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -29,6 +30,28 @@ type fakeProjectBackend struct {
 
 func (f *fakeProjectBackend) ListProjects(_ context.Context) ([]*storage.Project, error) {
 	return nil, nil
+}
+
+// serverFilterScoper returns a backend that lists both the internal "_server"
+// project and a real "alpha" project, so the handler's _server-exclusion filter
+// can be asserted end-to-end.
+type serverFilterScoper struct{}
+
+func (s *serverFilterScoper) Scoped(_ context.Context, _ string) (storage.ScopedBackend, error) {
+	return &serverFilterBackend{}, nil
+}
+
+func (s *serverFilterScoper) Subscribe(_ storage.ChangeSubscriber) {}
+
+type serverFilterBackend struct {
+	stubBackend
+}
+
+func (b *serverFilterBackend) ListProjects(_ context.Context) ([]*storage.Project, error) {
+	return []*storage.Project{
+		{Slug: "_server"},
+		{Slug: "alpha"},
+	}, nil
 }
 
 // apiTestResolver accepts exactly one valid token and rejects everything else.
@@ -122,5 +145,46 @@ func TestAPIHandler_NoKeys_Returns401(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("status = %d, want 401 (no auth bypass)", rec.Code)
+	}
+}
+
+func TestAPIHandler_ExcludesServerProject(t *testing.T) {
+	resolver := &apiTestResolver{ //nolint:gosec // G101: test fixture struct; validToken is a test placeholder, not a real credential
+		validToken: "spgr_sk_test",
+		identity: &auth.Identity{
+			Subject:       "apikey:k1",
+			Role:          auth.RoleAdmin,
+			EffectiveRole: auth.RoleAdmin,
+			Source:        "apikey",
+		},
+	}
+
+	mux := http.NewServeMux()
+	server.RegisterAPIHandlers(mux, &serverFilterScoper{}, auth.RequireAuth(resolver))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/projects", nil)
+	req.Header.Set("Authorization", "Bearer spgr_sk_test")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+
+	var body struct {
+		Projects []string `json:"projects"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+
+	want := []string{"alpha"}
+	if len(body.Projects) != len(want) {
+		t.Fatalf("projects = %v, want %v (\"_server\" must be filtered out)", body.Projects, want)
+	}
+	for i, slug := range want {
+		if body.Projects[i] != slug {
+			t.Errorf("projects[%d] = %q, want %q", i, body.Projects[i], slug)
+		}
 	}
 }
