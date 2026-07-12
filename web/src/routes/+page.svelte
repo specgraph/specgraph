@@ -1,11 +1,23 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { specClient, graphClient, decisionClient, lifecycleClient } from '$lib/api/client';
+  import { invalidateAll } from '$app/navigation';
   import type { Spec } from '$lib/api/gen/specgraph/v1/spec_pb';
-  import type { GraphNode, Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
-  import type { Decision } from '$lib/api/gen/specgraph/v1/decision_pb';
+  import type { Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
   import { DecisionStatus } from '$lib/api/gen/specgraph/v1/decision_pb';
   import { EdgeType } from '$lib/api/gen/specgraph/v1/graph_pb';
+  import StatsBar from '$lib/components/StatsBar.svelte';
+  import FunnelBar from '$lib/components/FunnelBar.svelte';
+  import GraphMini from '$lib/components/GraphMini.svelte';
+  import TabBar from '$lib/components/TabBar.svelte';
+  import SpecTable from '$lib/components/SpecTable.svelte';
+  import { Skeleton } from '$lib/components/ui/skeleton/index.js';
+  import * as Card from '$lib/components/ui/card/index.js';
+  import { Button } from '$lib/components/ui/button/index.js';
+  import type { PageData } from './$types';
+
+  let { data }: { data: PageData } = $props();
+
+  let activeTab = $state('All Specs');
+  const tabs = ['All Specs', 'Recent', 'By Priority', 'Decisions'];
 
   function statusLabel(status: DecisionStatus): string {
     switch (status) {
@@ -13,234 +25,144 @@
       case DecisionStatus.ACCEPTED: return 'accepted';
       case DecisionStatus.DEPRECATED: return 'deprecated';
       case DecisionStatus.SUPERSEDED: return 'superseded';
-      default: return '—';
+      default: return '\u2014';
     }
   }
-  import StatsBar from '$lib/components/StatsBar.svelte';
-  import FunnelBar from '$lib/components/FunnelBar.svelte';
-  import GraphMini from '$lib/components/GraphMini.svelte';
-  import TabBar from '$lib/components/TabBar.svelte';
-  import SpecTable from '$lib/components/SpecTable.svelte';
 
-  let totalSpecs = $state(0);
-  let readyCount = $state(0);
-  let driftCount = $state(0);
-  let decisionCount = $state(0);
-  let stageCounts = $state<Record<string, number>>({});
-  let graphNodes = $state<GraphNode[]>([]);
-  let graphEdges = $state<Edge[]>([]);
-  let specs = $state<Spec[]>([]);
-  let decisions = $state<Decision[]>([]);
-  let loading = $state(true);
-  let error = $state<string | null>(null);
+  function recentSpecs(specs: Spec[]): Spec[] {
+    return [...specs]
+      .sort((a, b) => Number(b.updatedAt?.seconds ?? 0n) - Number(a.updatedAt?.seconds ?? 0n))
+      .slice(0, 10);
+  }
 
-  let activeTab = $state('All Specs');
-  const tabs = ['All Specs', 'Recent', 'By Priority', 'Decisions'];
+  function priorityGroups(specs: Spec[]): { label: string; specs: Spec[] }[] {
+    return ['p0', 'p1', 'p2', 'p3']
+      .map((p) => ({ label: p.toUpperCase(), specs: specs.filter((s) => s.priority === p) }))
+      .filter((g) => g.specs.length > 0);
+  }
 
-  let recentSpecs = $derived(
-    [...specs].sort((a, b) => Number(b.updatedAt?.seconds ?? 0n) - Number(a.updatedAt?.seconds ?? 0n)).slice(0, 10)
-  );
-
-  let priorityGroups = $derived(
-    ['p0', 'p1', 'p2', 'p3'].map(p => ({
-      label: p.toUpperCase(),
-      specs: specs.filter(s => s.priority === p),
-    })).filter(g => g.specs.length > 0)
-  );
-
-  let decisionSpecCounts = $derived(
-    graphEdges
-      .filter(e => e.edgeType === EdgeType.DECIDED_IN)
+  function decisionSpecCounts(edges: Edge[]): Record<string, number> {
+    return edges
+      .filter((e) => e.edgeType === EdgeType.DECIDED_IN)
       .reduce((acc, e) => {
         acc[e.toId] = (acc[e.toId] ?? 0) + 1;
         return acc;
-      }, {} as Record<string, number>)
-  );
-
-  async function loadDashboard() {
-    try {
-      const [specsRes, readyRes, graphRes, decisionsRes, driftRes] = await Promise.all([
-        specClient.listSpecs({}),
-        graphClient.getReady({}),
-        graphClient.getFullGraph({}),
-        decisionClient.listDecisions({}),
-        lifecycleClient.checkDrift({ slug: '' }),
-      ]);
-
-      const specsList = specsRes.specs ?? [];
-      specs = specsList;
-      totalSpecs = specsList.length;
-
-      const counts: Record<string, number> = {};
-      for (const s of specsList) {
-        counts[s.stage] = (counts[s.stage] ?? 0) + 1;
-      }
-      stageCounts = counts;
-
-      readyCount = (readyRes.ready ?? []).length;
-      graphNodes = graphRes.nodes ?? [];
-      graphEdges = graphRes.edges ?? [];
-      decisions = decisionsRes.decisions ?? [];
-      decisionCount = decisions.length;
-
-      const reports = driftRes.reports ?? [];
-      driftCount = reports.filter((r) => (r.items?.length ?? 0) > 0).length;
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'Failed to load dashboard data';
-    } finally {
-      loading = false;
-    }
+      }, {} as Record<string, number>);
   }
-
-  onMount(() => { loadDashboard(); });
 </script>
 
-<h1>Dashboard</h1>
+<h1 class="mb-5 text-2xl font-semibold text-foreground">Dashboard</h1>
 
-{#if loading}
-  <p class="status">Loading...</p>
-{:else if error}
-  <p class="status error">Error: {error}</p>
-{:else}
-  <section class="dashboard">
-    <StatsBar {totalSpecs} {readyCount} {driftCount} {decisionCount}
-      amendedCount={stageCounts['amended'] ?? 0}
-      supersededCount={stageCounts['superseded'] ?? 0} />
-
-    <div class="row">
-      <div class="col-funnel">
-        <FunnelBar {stageCounts} />
-      </div>
-      <div class="col-graph">
-        <GraphMini nodes={graphNodes} edges={graphEdges} />
-      </div>
+{#await data.dashboard}
+  <!-- Loading: Skeleton stat cards + table rows (State Matrix). Streamed promise
+       re-suspends here on invalidateAll() so a switch returns to skeletons with
+       no stale previous-project data (Pitfall 3, T-05-05). -->
+  <section class="flex flex-col gap-5">
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      {#each Array(6) as _}
+        <Card.Root>
+          <Card.Content class="p-4">
+            <Skeleton class="mb-2 h-3 w-16" />
+            <Skeleton class="h-7 w-12" />
+          </Card.Content>
+        </Card.Root>
+      {/each}
+    </div>
+    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <Skeleton class="h-40 w-full" />
+      <Skeleton class="h-40 w-full" />
+    </div>
+    <div class="flex flex-col gap-2">
+      {#each Array(6) as _}
+        <Skeleton class="h-8 w-full" />
+      {/each}
     </div>
   </section>
+{:then d}
+  {#if d.loadError}
+    <!-- Error: inline Retry card (do not reach +error.svelte, T-05-15). -->
+    <Card.Root class="max-w-md">
+      <Card.Header>
+        <Card.Title>Couldn't load dashboard.</Card.Title>
+        <Card.Description>Check your connection and try again.</Card.Description>
+      </Card.Header>
+      <Card.Footer>
+        <Button variant="outline" onclick={() => invalidateAll()}>Retry</Button>
+      </Card.Footer>
+    </Card.Root>
+  {:else if d.totalSpecs === 0 && d.decisionCount === 0}
+    <!-- Empty: zero specs & decisions (UI-SPEC copy). -->
+    <Card.Root class="max-w-md">
+      <Card.Header>
+        <Card.Title>Nothing here yet</Card.Title>
+        <Card.Description>This project has no specs or decisions to show.</Card.Description>
+      </Card.Header>
+    </Card.Root>
+  {:else}
+    <section class="flex flex-col gap-5">
+      <StatsBar
+        totalSpecs={d.totalSpecs}
+        readyCount={d.readyCount}
+        driftCount={d.driftCount}
+        decisionCount={d.decisionCount}
+        amendedCount={d.stageCounts['amended'] ?? 0}
+        supersededCount={d.stageCounts['superseded'] ?? 0}
+      />
 
-  <section class="tabbed-content">
-    <TabBar {tabs} active={activeTab} onchange={(t) => activeTab = t} />
+      <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div>
+          <FunnelBar stageCounts={d.stageCounts} />
+        </div>
+        <div>
+          <GraphMini nodes={d.nodes} edges={d.edges} />
+        </div>
+      </div>
+    </section>
 
-    {#if activeTab === 'All Specs'}
-      <SpecTable {specs} />
-    {:else if activeTab === 'Recent'}
-      <SpecTable specs={recentSpecs} />
-    {:else if activeTab === 'By Priority'}
-      {#each priorityGroups as group}
-        <h3 class="priority-heading">{group.label} <span class="priority-count">({group.specs.length})</span></h3>
-        <SpecTable specs={group.specs} showConversations={false} />
-      {/each}
-    {:else if activeTab === 'Decisions'}
-      <table class="decision-table">
-        <thead>
-          <tr><th>Decision</th><th>Title</th><th>Status</th><th>Linked Specs</th></tr>
-        </thead>
-        <tbody>
-          {#each decisions as d}
+    <section class="mt-5">
+      <TabBar {tabs} active={activeTab} onchange={(t) => (activeTab = t)} />
+
+      {#if activeTab === 'All Specs'}
+        <SpecTable specs={d.specs} />
+      {:else if activeTab === 'Recent'}
+        <SpecTable specs={recentSpecs(d.specs)} />
+      {:else if activeTab === 'By Priority'}
+        {#each priorityGroups(d.specs) as group}
+          <h3 class="mt-4 mb-1 text-sm font-semibold text-muted-foreground">
+            {group.label}
+            <span class="font-normal text-muted-foreground/70">({group.specs.length})</span>
+          </h3>
+          <SpecTable specs={group.specs} showConversations={false} />
+        {/each}
+      {:else if activeTab === 'Decisions'}
+        {@const counts = decisionSpecCounts(d.edges)}
+        <table class="w-full border-collapse text-sm">
+          <thead>
             <tr>
-              <td><a href="/decision/{d.slug}">{d.slug}</a></td>
-              <td>{d.title || '—'}</td>
-              <td><span class="badge">{statusLabel(d.status)}</span></td>
-              <td class="count">{decisionSpecCounts[d.slug] ?? 0}</td>
+              <th class="border-b border-border bg-muted px-2 py-1.5 text-left font-semibold text-muted-foreground">Decision</th>
+              <th class="border-b border-border bg-muted px-2 py-1.5 text-left font-semibold text-muted-foreground">Title</th>
+              <th class="border-b border-border bg-muted px-2 py-1.5 text-left font-semibold text-muted-foreground">Status</th>
+              <th class="border-b border-border bg-muted px-2 py-1.5 text-left font-semibold text-muted-foreground">Linked Specs</th>
             </tr>
-          {/each}
-        </tbody>
-      </table>
-    {/if}
-  </section>
-{/if}
-
-<style>
-  h1 {
-    margin: 0 0 1.25rem;
-    font-size: 1.5rem;
-    color: #1a1a2e;
-  }
-
-  .status {
-    color: #64748b;
-    font-size: 0.95rem;
-  }
-
-  .status.error {
-    color: #dc2626;
-  }
-
-  .dashboard {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-  }
-
-  .row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
-  }
-
-  @media (max-width: 800px) {
-    .row {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .tabbed-content {
-    margin-top: 1.25rem;
-  }
-
-  .priority-heading {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #475569;
-    margin: 1rem 0 0.25rem;
-  }
-
-  .priority-count {
-    font-weight: 400;
-    color: #94a3b8;
-  }
-
-  .decision-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
-  }
-
-  .decision-table th {
-    text-align: left;
-    padding: 0.4rem 0.5rem;
-    background: #f8fafc;
-    color: #475569;
-    font-weight: 600;
-    border-bottom: 1px solid #e2e8f0;
-  }
-
-  .decision-table td {
-    padding: 0.4rem 0.5rem;
-    border-bottom: 1px solid #f1f5f9;
-  }
-
-  .decision-table a {
-    color: #2563eb;
-    text-decoration: none;
-    font-weight: 500;
-  }
-
-  .decision-table a:hover {
-    text-decoration: underline;
-  }
-
-  .decision-table .count {
-    text-align: center;
-    color: #64748b;
-  }
-
-  .badge {
-    display: inline-block;
-    padding: 0.1rem 0.4rem;
-    border-radius: 3px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    background: #f1f5f9;
-    color: #475569;
-  }
-</style>
+          </thead>
+          <tbody>
+            {#each d.decisions as dec}
+              <tr>
+                <td class="border-b border-border/50 px-2 py-1.5">
+                  <a href="/decision/{dec.slug}" class="font-medium text-primary hover:underline">{dec.slug}</a>
+                </td>
+                <td class="border-b border-border/50 px-2 py-1.5">{dec.title || '\u2014'}</td>
+                <td class="border-b border-border/50 px-2 py-1.5">
+                  <span class="inline-block rounded bg-muted px-1.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                    {statusLabel(dec.status)}
+                  </span>
+                </td>
+                <td class="border-b border-border/50 px-2 py-1.5 text-center text-muted-foreground">{counts[dec.slug] ?? 0}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+    </section>
+  {/if}
+{/await}
