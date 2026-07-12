@@ -1,12 +1,10 @@
 <script lang="ts">
-  import { page } from '$app/stores';
-  import { specClient, graphClient, analyticalPassClient, sliceClient } from '$lib/api/client';
+  import { invalidateAll } from '$app/navigation';
+  import { specClient } from '$lib/api/client';
   import type { Spec } from '$lib/api/gen/specgraph/v1/spec_pb';
   import type { Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
-  import type { AnalyticalFinding } from '$lib/api/gen/specgraph/v1/analytical_pass_pb';
-  import type { Slice } from '$lib/api/gen/specgraph/v1/slice_pb';
-  import { SliceStatus } from '$lib/api/gen/specgraph/v1/slice_pb';
   import { EdgeType } from '$lib/api/gen/specgraph/v1/graph_pb';
+  import { SliceStatus } from '$lib/api/gen/specgraph/v1/slice_pb';
   import { ScopeSniff, DecompositionStrategy } from '$lib/api/gen/specgraph/v1/authoring_pb';
   import type { ChangeLogEntry } from '$lib/api/gen/specgraph/v1/spec_pb';
   import AccordionSection from '$lib/components/AccordionSection.svelte';
@@ -14,74 +12,35 @@
   import FindingsSection from '$lib/components/FindingsSection.svelte';
   import ChangelogTimeline from '$lib/components/ChangelogTimeline.svelte';
   import VersionCompare from '$lib/components/VersionCompare.svelte';
+  import { Badge } from '$lib/components/ui/badge/index.js';
+  import { Skeleton } from '$lib/components/ui/skeleton/index.js';
+  import * as Card from '$lib/components/ui/card/index.js';
+  import { Button } from '$lib/components/ui/button/index.js';
+  import { stageBadgeClass } from '$lib/components/badge-variants';
+  import type { PageData } from './$types';
 
-  let spec = $state<Spec | null>(null);
-  let edges = $state<Edge[]>([]);
-  let findings = $state<AnalyticalFinding[]>([]);
-  let slices = $state<Slice[]>([]);
-  let loading = $state(true);
-  let error = $state<string | null>(null);
+  let { data }: { data: PageData } = $props();
+
+  // Changelog is lazy-loaded on demand (user-triggered), NOT part of the switch
+  // refetch. Reset the cache whenever the load re-runs — `data.detail` is a fresh
+  // promise on every slug change AND every invalidateAll(), so keying the reset on
+  // its reference clears stale changelog on both switches (T-05-05).
   let changelogEntries = $state<ChangeLogEntry[]>([]);
   let changelogLoading = $state(false);
   let changelogLoaded = $state(false);
 
-  let slug = $derived($page.params.slug);
-
-  // Guard against stale responses when slug changes mid-flight.
-  let activeSlug = $state('');
-
-  async function loadSpec(s: string) {
-    activeSlug = s;
-    loading = true;
-    error = null;
-    try {
-      const specResp = await specClient.getSpec({ slug: s });
-      if (activeSlug !== s) return; // slug changed — discard stale response
-      spec = specResp.spec ?? null;
-      // Non-critical fetches — failure doesn't lose spec data.
-      try {
-        const edgeResp = await graphClient.listEdges({ slug: s });
-        if (activeSlug === s) edges = edgeResp.edges;
-      } catch {
-        if (activeSlug === s) edges = [];
-      }
-      try {
-        const findingsResp = await analyticalPassClient.listFindings({ slug: s });
-        if (activeSlug === s) findings = findingsResp.findings;
-      } catch {
-        if (activeSlug === s) findings = [];
-      }
-      try {
-        if (specResp.spec?.decomposeOutput) {
-          const sliceResp = await sliceClient.listSlices({ parentSlug: s });
-          if (activeSlug === s) slices = sliceResp.slices;
-        } else {
-          if (activeSlug === s) slices = [];
-        }
-      } catch {
-        if (activeSlug === s) slices = [];
-      }
-    } catch (err) {
-      if (activeSlug === s) error = err instanceof Error ? err.message : 'Failed to load spec';
-    } finally {
-      if (activeSlug === s) loading = false;
-    }
-  }
-
-  // Reload when slug changes (SvelteKit reuses component on param-only navigation).
   $effect(() => {
-    if (slug) {
-      changelogLoaded = false;
-      changelogEntries = [];
-      loadSpec(slug);
-    }
+    data.detail; // track the streamed promise reference
+    changelogEntries = [];
+    changelogLoading = false;
+    changelogLoaded = false;
   });
 
-  async function loadChangelog() {
-    if (changelogLoaded || !spec) return;
+  async function loadChangelog(slug: string) {
+    if (changelogLoaded) return;
     changelogLoading = true;
     try {
-      const resp = await specClient.listChanges({ slug: spec.slug, limit: 0 });
+      const resp = await specClient.listChanges({ slug, limit: 0 });
       changelogEntries = resp.entries;
     } catch {
       changelogEntries = [];
@@ -91,8 +50,8 @@
     }
   }
 
-  function shouldExpand(stage: string): boolean {
-    return spec?.stage === stage;
+  function shouldExpand(spec: Spec, stage: string): boolean {
+    return spec.stage === stage;
   }
 
   function scopeSniffLabel(val: ScopeSniff): string {
@@ -143,8 +102,10 @@
     label: string; // direction-aware label
   }
 
-  let groupedEdges = $derived(
-    edges.reduce((acc, e) => {
+  // Direction-aware edge grouping. A plain function (not $derived) so it composes
+  // with the resolved load data inside {#await} — keyed on the spec's own slug.
+  function groupEdges(edges: Edge[], slug: string): Record<string, EdgeDisplay[]> {
+    return edges.reduce((acc, e) => {
       const isOutgoing = e.fromId === slug;
       const target = isOutgoing ? e.toId : e.fromId;
       // Decision edges link to /decision/, all others to /spec/
@@ -164,299 +125,301 @@
       if (!acc[label]) acc[label] = [];
       acc[label].push({ target, route, label });
       return acc;
-    }, {} as Record<string, EdgeDisplay[]>)
-  );
+    }, {} as Record<string, EdgeDisplay[]>);
+  }
 </script>
 
-{#if loading}
-  <p class="status">Loading...</p>
-{:else if error}
-  <p class="status error">{error}</p>
-{:else if spec}
-  <h1>{spec.slug}</h1>
-
-  <MetadataBar
-    createdAt={spec.createdAt}
-    updatedAt={spec.updatedAt}
-    provenanceType={spec.provenanceType}
-    contentHash={spec.contentHash}
-  />
-
-  <table class="meta">
-    <tbody>
-      <tr><td class="label">Intent</td><td>{spec.intent}</td></tr>
-      <tr><td class="label">Stage</td><td><span class="badge stage-{spec.stage}">{spec.stage}</span></td></tr>
-      <tr><td class="label">Priority</td><td>{spec.priority || '—'}</td></tr>
-      <tr><td class="label">Complexity</td><td>{spec.complexity || '—'}</td></tr>
-      <tr><td class="label">Version</td><td>{spec.version}</td></tr>
-    </tbody>
-  </table>
-
-  {#if spec.supersededBy}
-    <div class="lifecycle-banner superseded-banner">
-      This spec has been superseded by
-      <a href="/spec/{spec.supersededBy}">{spec.supersededBy}</a>
-    </div>
-  {/if}
-  {#if spec.supersedes}
-    <div class="lifecycle-banner supersedes-banner">
-      This spec supersedes
-      <a href="/spec/{spec.supersedes}">{spec.supersedes}</a>
-    </div>
-  {/if}
-
-  <div class="sections">
-    {#if spec.notes}
-      <AccordionSection title="Notes" expanded={true}>
-        <p class="notes">{spec.notes}</p>
-      </AccordionSection>
-    {/if}
-
-    {#if spec.sparkOutput}
-      <AccordionSection title="Spark" expanded={shouldExpand('spark')}>
-        {#if spec.sparkOutput.seed}
-          <blockquote><strong>Seed:</strong> {spec.sparkOutput.seed}</blockquote>
-        {/if}
-        {#if spec.sparkOutput.signal}
-          <blockquote><strong>Signal:</strong> {spec.sparkOutput.signal}</blockquote>
-        {/if}
-        {#if scopeSniffLabel(spec.sparkOutput.scopeSniff)}
-          <p><strong>Scope Sniff:</strong> {scopeSniffLabel(spec.sparkOutput.scopeSniff)}</p>
-        {/if}
-        {#if spec.sparkOutput.killTest}
-          <p><strong>Kill Test:</strong> {spec.sparkOutput.killTest}</p>
-        {/if}
-        {#if spec.sparkOutput.questions.length > 0}
-          <p><strong>Questions:</strong></p>
-          <ul>{#each spec.sparkOutput.questions as q}<li>{q}</li>{/each}</ul>
-        {/if}
-      </AccordionSection>
-    {/if}
-
-    {#if spec.shapeOutput}
-      <AccordionSection title="Shape" expanded={shouldExpand('shape')}>
-        {#if spec.shapeOutput.scopeIn.length > 0}
-          <p><strong>Scope In:</strong></p>
-          <ul>{#each spec.shapeOutput.scopeIn as s}<li>{s}</li>{/each}</ul>
-        {/if}
-        {#if spec.shapeOutput.scopeOut.length > 0}
-          <p><strong>Scope Out:</strong></p>
-          <ul>{#each spec.shapeOutput.scopeOut as s}<li>{s}</li>{/each}</ul>
-        {/if}
-        {#if spec.shapeOutput.approaches.length > 0}
-          <h3>Approaches</h3>
-          {#each spec.shapeOutput.approaches as approach}
-            <div class="approach" class:chosen={approach.name === spec.shapeOutput?.chosenApproach}>
-              <strong>{approach.name}</strong>
-              {#if approach.name === spec.shapeOutput?.chosenApproach}<span class="chosen-badge">chosen</span>{/if}
-              {#if approach.description}<p>{approach.description}</p>{/if}
-              {#if approach.tradeoffs.length > 0}
-                <ul class="tradeoffs">{#each approach.tradeoffs as t}<li>{t}</li>{/each}</ul>
-              {/if}
-            </div>
-          {/each}
-        {/if}
-        {#if spec.shapeOutput.risks.length > 0}
-          <h3>Risks</h3>
-          <ul>{#each spec.shapeOutput.risks as r}<li>{r}</li>{/each}</ul>
-        {/if}
-        {#if spec.shapeOutput.successMust.length > 0}
-          <h3>Success Criteria</h3>
-          <p><strong>Must:</strong></p>
-          <ul>{#each spec.shapeOutput.successMust as s}<li>{s}</li>{/each}</ul>
-        {/if}
-        {#if spec.shapeOutput.successShould.length > 0}
-          <p><strong>Should:</strong></p>
-          <ul>{#each spec.shapeOutput.successShould as s}<li>{s}</li>{/each}</ul>
-        {/if}
-        {#if spec.shapeOutput.successWont.length > 0}
-          <p><strong>Won't:</strong></p>
-          <ul>{#each spec.shapeOutput.successWont as s}<li>{s}</li>{/each}</ul>
-        {/if}
-        {#if spec.shapeOutput.decisions.length > 0}
-          <h3>Decisions</h3>
-          <ul>
-            {#each spec.shapeOutput.decisions as d}
-              <li>
-                {#if d.slug}<a href="/decision/{d.slug}">{d.title || d.slug}</a>{:else}{d.title}{/if}
-                {#if d.rationale} — {d.rationale}{/if}
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </AccordionSection>
-    {/if}
-
-    {#if spec.specifyOutput}
-      <AccordionSection title="Specify" expanded={shouldExpand('specify')}>
-        {#if spec.specifyOutput.interfaces.length > 0}
-          <h3>Interfaces</h3>
-          {#each spec.specifyOutput.interfaces as iface}
-            <div class="interface-section">
-              <strong>{iface.name}</strong>
-              <pre>{iface.body}</pre>
-            </div>
-          {/each}
-        {/if}
-        {#if spec.specifyOutput.verifyCriteria.length > 0}
-          <h3>Verify Criteria</h3>
-          <table class="detail-table">
-            <thead><tr><th>Category</th><th>Description</th></tr></thead>
-            <tbody>
-              {#each spec.specifyOutput.verifyCriteria as vc}
-                <tr><td>{vc.category}</td><td>{vc.description}</td></tr>
-              {/each}
-            </tbody>
-          </table>
-        {/if}
-        {#if spec.specifyOutput.invariants.length > 0}
-          <h3>Invariants</h3>
-          <ul>{#each spec.specifyOutput.invariants as inv}<li>{inv}</li>{/each}</ul>
-        {/if}
-        {#if spec.specifyOutput.touches.length > 0}
-          <h3>File Touches</h3>
-          <table class="detail-table">
-            <thead><tr><th>Path</th><th>Purpose</th><th>Action</th></tr></thead>
-            <tbody>
-              {#each spec.specifyOutput.touches as ft}
-                <tr><td><code>{ft.path}</code></td><td>{ft.purpose}</td><td>{ft.changeType}</td></tr>
-              {/each}
-            </tbody>
-          </table>
-        {/if}
-      </AccordionSection>
-    {/if}
-
-    {#if spec.decomposeOutput}
-      <AccordionSection title="Decompose" badge={slices.length ? slices.length + ' slices' : 'output'} expanded={shouldExpand('decompose')}>
-        {#if strategyLabel(spec.decomposeOutput.strategy)}
-          <p><strong>Strategy:</strong> {strategyLabel(spec.decomposeOutput.strategy)}</p>
-        {/if}
-        {#if slices.length > 0}
-          {#each slices as slice}
-            {@const badge = sliceStatusBadge(slice.status)}
-            <div class="slice-card">
-              <div class="slice-header">
-                <strong>{slice.sliceId}</strong>
-                <span class="slice-badge" style="background:{badge.color}">{badge.label}</span>
-              </div>
-              {#if slice.intent}<p>{slice.intent}</p>{/if}
-              {#if slice.assignedTo}
-                <p class="slice-label">Assigned to: {slice.assignedTo}</p>
-              {/if}
-              {#if slice.verify.length > 0}
-                <p class="slice-label">Verify:</p>
-                <ul>{#each slice.verify as v}<li>{v}</li>{/each}</ul>
-              {/if}
-              {#if slice.dependsOn.length > 0}
-                <p class="slice-label">Depends on: {slice.dependsOn.join(', ')}</p>
-              {/if}
-            </div>
-          {/each}
-        {:else if spec.decomposeOutput.slices.length > 0}
-          {#each spec.decomposeOutput.slices as slice}
-            <div class="slice-card">
-              <strong>{slice.id}</strong>
-              {#if slice.intent}<p>{slice.intent}</p>{/if}
-              {#if slice.verify.length > 0}
-                <p class="slice-label">Verify:</p>
-                <ul>{#each slice.verify as v}<li>{v}</li>{/each}</ul>
-              {/if}
-              {#if slice.dependsOn.length > 0}
-                <p class="slice-label">Depends on: {slice.dependsOn.join(', ')}</p>
-              {/if}
-            </div>
-          {/each}
-        {:else if spec.decomposeOutput.sliceSlugs.length > 0}
-          <p class="slice-label">{spec.decomposeOutput.sliceSlugs.length} slice(s) — loading details</p>
-        {/if}
-      </AccordionSection>
-    {/if}
-
-    {#if edges.length > 0}
-      <AccordionSection title="Edges" badge={String(edges.length)}>
-        {#each Object.entries(groupedEdges) as [label, items]}
-          <p><strong>{label}:</strong></p>
-          <ul>
-            {#each items as item}
-              <li><a href="{item.route}{item.target}">{item.target}</a></li>
-            {/each}
-          </ul>
-        {/each}
-      </AccordionSection>
-    {/if}
-
-    {#if findings.length > 0}
-      <AccordionSection title="Findings" badge={String(findings.length)}>
-        <FindingsSection {findings} />
-      </AccordionSection>
-    {/if}
-
-    {#if spec.conversationLogs.length > 0}
-      <AccordionSection title="Conversations" badge={String(spec.conversationLogs.length)}>
-        {#each spec.conversationLogs as log}
-          <div class="conversation-log">
-            <h4>{log.stage} (v{log.version}{log.isAmend ? ', amend' : ''})</h4>
-            {#each log.exchanges as ex}
-              <div class="exchange">
-                <span class="role" class:probe={ex.role === 'probe'} class:response={ex.role === 'response'}>
-                  {ex.role === 'probe' ? 'Probe' : ex.role === 'response' ? 'Response' : ex.role}:
-                </span>
-                <span>{ex.content}</span>
-                {#if ex.decisionPoint}<span class="decision-marker">decision</span>{/if}
-              </div>
-            {/each}
-          </div>
-        {/each}
-      </AccordionSection>
-    {/if}
-
-    <AccordionSection title="Changelog" badge={changelogLoaded ? String(changelogEntries.length) : '…'}>
-      {#if !changelogLoaded}
-        <button class="load-changelog-btn" onclick={loadChangelog}>Load changelog</button>
-      {:else}
-        <VersionCompare slug={spec.slug} entries={changelogEntries} />
-        <ChangelogTimeline entries={changelogEntries} loading={changelogLoading} />
-      {/if}
-    </AccordionSection>
+{#await data.detail}
+  <!-- Loading: Skeleton title + metadata + section rows. Streamed promise
+       re-suspends here on invalidateAll() so a switch returns to skeleton with no
+       stale previous-project spec (Pitfall 3, T-05-05). -->
+  <Skeleton class="mb-4 h-6 w-48" />
+  <Skeleton class="mb-2 h-4 w-full max-w-md" />
+  <Skeleton class="mb-6 h-4 w-40" />
+  <div class="space-y-2">
+    <Skeleton class="h-10 w-full" />
+    <Skeleton class="h-10 w-full" />
+    <Skeleton class="h-10 w-full" />
   </div>
-{/if}
+{:then d}
+  {#if d.loadError}
+    <!-- Error: inline Retry card (do not reach +error.svelte, T-05-15). -->
+    <Card.Root class="max-w-md">
+      <Card.Header>
+        <Card.Title>Couldn't load spec.</Card.Title>
+        <Card.Description>Check your connection and try again.</Card.Description>
+      </Card.Header>
+      <Card.Footer>
+        <Button variant="outline" onclick={() => invalidateAll()}>Retry</Button>
+      </Card.Footer>
+    </Card.Root>
+  {:else if !d.spec}
+    <!-- Empty: spec not present in the current project (UI-SPEC copy). -->
+    <Card.Root class="max-w-md">
+      <Card.Header>
+        <Card.Title>Nothing here yet</Card.Title>
+        <Card.Description>Spec not found in this project.</Card.Description>
+      </Card.Header>
+    </Card.Root>
+  {:else}
+    {@const spec = d.spec}
+    {@const groupedEdges = groupEdges(d.edges, spec.slug)}
+    <h1>{spec.slug}</h1>
+
+    <MetadataBar
+      createdAt={spec.createdAt}
+      updatedAt={spec.updatedAt}
+      provenanceType={spec.provenanceType}
+      contentHash={spec.contentHash}
+    />
+
+    <table class="meta">
+      <tbody>
+        <tr><td class="label">Intent</td><td>{spec.intent}</td></tr>
+        <tr><td class="label">Stage</td><td><Badge class={stageBadgeClass(spec.stage)}>{spec.stage}</Badge></td></tr>
+        <tr><td class="label">Priority</td><td>{spec.priority || '—'}</td></tr>
+        <tr><td class="label">Complexity</td><td>{spec.complexity || '—'}</td></tr>
+        <tr><td class="label">Version</td><td>{spec.version}</td></tr>
+      </tbody>
+    </table>
+
+    {#if spec.supersededBy}
+      <div class="lifecycle-banner superseded-banner">
+        This spec has been superseded by
+        <a href="/spec/{spec.supersededBy}">{spec.supersededBy}</a>
+      </div>
+    {/if}
+    {#if spec.supersedes}
+      <div class="lifecycle-banner supersedes-banner">
+        This spec supersedes
+        <a href="/spec/{spec.supersedes}">{spec.supersedes}</a>
+      </div>
+    {/if}
+
+    <div class="sections">
+      {#if spec.notes}
+        <AccordionSection title="Notes" expanded={true}>
+          <p class="notes">{spec.notes}</p>
+        </AccordionSection>
+      {/if}
+
+      {#if spec.sparkOutput}
+        <AccordionSection title="Spark" expanded={shouldExpand(spec, 'spark')}>
+          {#if spec.sparkOutput.seed}
+            <blockquote><strong>Seed:</strong> {spec.sparkOutput.seed}</blockquote>
+          {/if}
+          {#if spec.sparkOutput.signal}
+            <blockquote><strong>Signal:</strong> {spec.sparkOutput.signal}</blockquote>
+          {/if}
+          {#if scopeSniffLabel(spec.sparkOutput.scopeSniff)}
+            <p><strong>Scope Sniff:</strong> {scopeSniffLabel(spec.sparkOutput.scopeSniff)}</p>
+          {/if}
+          {#if spec.sparkOutput.killTest}
+            <p><strong>Kill Test:</strong> {spec.sparkOutput.killTest}</p>
+          {/if}
+          {#if spec.sparkOutput.questions.length > 0}
+            <p><strong>Questions:</strong></p>
+            <ul>{#each spec.sparkOutput.questions as q}<li>{q}</li>{/each}</ul>
+          {/if}
+        </AccordionSection>
+      {/if}
+
+      {#if spec.shapeOutput}
+        <AccordionSection title="Shape" expanded={shouldExpand(spec, 'shape')}>
+          {#if spec.shapeOutput.scopeIn.length > 0}
+            <p><strong>Scope In:</strong></p>
+            <ul>{#each spec.shapeOutput.scopeIn as s}<li>{s}</li>{/each}</ul>
+          {/if}
+          {#if spec.shapeOutput.scopeOut.length > 0}
+            <p><strong>Scope Out:</strong></p>
+            <ul>{#each spec.shapeOutput.scopeOut as s}<li>{s}</li>{/each}</ul>
+          {/if}
+          {#if spec.shapeOutput.approaches.length > 0}
+            <h3>Approaches</h3>
+            {#each spec.shapeOutput.approaches as approach}
+              <div class="approach" class:chosen={approach.name === spec.shapeOutput?.chosenApproach}>
+                <strong>{approach.name}</strong>
+                {#if approach.name === spec.shapeOutput?.chosenApproach}<span class="chosen-badge">chosen</span>{/if}
+                {#if approach.description}<p>{approach.description}</p>{/if}
+                {#if approach.tradeoffs.length > 0}
+                  <ul class="tradeoffs">{#each approach.tradeoffs as t}<li>{t}</li>{/each}</ul>
+                {/if}
+              </div>
+            {/each}
+          {/if}
+          {#if spec.shapeOutput.risks.length > 0}
+            <h3>Risks</h3>
+            <ul>{#each spec.shapeOutput.risks as r}<li>{r}</li>{/each}</ul>
+          {/if}
+          {#if spec.shapeOutput.successMust.length > 0}
+            <h3>Success Criteria</h3>
+            <p><strong>Must:</strong></p>
+            <ul>{#each spec.shapeOutput.successMust as s}<li>{s}</li>{/each}</ul>
+          {/if}
+          {#if spec.shapeOutput.successShould.length > 0}
+            <p><strong>Should:</strong></p>
+            <ul>{#each spec.shapeOutput.successShould as s}<li>{s}</li>{/each}</ul>
+          {/if}
+          {#if spec.shapeOutput.successWont.length > 0}
+            <p><strong>Won't:</strong></p>
+            <ul>{#each spec.shapeOutput.successWont as s}<li>{s}</li>{/each}</ul>
+          {/if}
+          {#if spec.shapeOutput.decisions.length > 0}
+            <h3>Decisions</h3>
+            <ul>
+              {#each spec.shapeOutput.decisions as dec}
+                <li>
+                  {#if dec.slug}<a href="/decision/{dec.slug}">{dec.title || dec.slug}</a>{:else}{dec.title}{/if}
+                  {#if dec.rationale} — {dec.rationale}{/if}
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </AccordionSection>
+      {/if}
+
+      {#if spec.specifyOutput}
+        <AccordionSection title="Specify" expanded={shouldExpand(spec, 'specify')}>
+          {#if spec.specifyOutput.interfaces.length > 0}
+            <h3>Interfaces</h3>
+            {#each spec.specifyOutput.interfaces as iface}
+              <div class="interface-section">
+                <strong>{iface.name}</strong>
+                <pre>{iface.body}</pre>
+              </div>
+            {/each}
+          {/if}
+          {#if spec.specifyOutput.verifyCriteria.length > 0}
+            <h3>Verify Criteria</h3>
+            <table class="detail-table">
+              <thead><tr><th>Category</th><th>Description</th></tr></thead>
+              <tbody>
+                {#each spec.specifyOutput.verifyCriteria as vc}
+                  <tr><td>{vc.category}</td><td>{vc.description}</td></tr>
+                {/each}
+              </tbody>
+            </table>
+          {/if}
+          {#if spec.specifyOutput.invariants.length > 0}
+            <h3>Invariants</h3>
+            <ul>{#each spec.specifyOutput.invariants as inv}<li>{inv}</li>{/each}</ul>
+          {/if}
+          {#if spec.specifyOutput.touches.length > 0}
+            <h3>File Touches</h3>
+            <table class="detail-table">
+              <thead><tr><th>Path</th><th>Purpose</th><th>Action</th></tr></thead>
+              <tbody>
+                {#each spec.specifyOutput.touches as ft}
+                  <tr><td><code>{ft.path}</code></td><td>{ft.purpose}</td><td>{ft.changeType}</td></tr>
+                {/each}
+              </tbody>
+            </table>
+          {/if}
+        </AccordionSection>
+      {/if}
+
+      {#if spec.decomposeOutput}
+        <AccordionSection title="Decompose" badge={d.slices.length ? d.slices.length + ' slices' : 'output'} expanded={shouldExpand(spec, 'decompose')}>
+          {#if strategyLabel(spec.decomposeOutput.strategy)}
+            <p><strong>Strategy:</strong> {strategyLabel(spec.decomposeOutput.strategy)}</p>
+          {/if}
+          {#if d.slices.length > 0}
+            {#each d.slices as slice}
+              {@const badge = sliceStatusBadge(slice.status)}
+              <div class="slice-card">
+                <div class="slice-header">
+                  <strong>{slice.sliceId}</strong>
+                  <span class="slice-badge" style="background:{badge.color}">{badge.label}</span>
+                </div>
+                {#if slice.intent}<p>{slice.intent}</p>{/if}
+                {#if slice.assignedTo}
+                  <p class="slice-label">Assigned to: {slice.assignedTo}</p>
+                {/if}
+                {#if slice.verify.length > 0}
+                  <p class="slice-label">Verify:</p>
+                  <ul>{#each slice.verify as v}<li>{v}</li>{/each}</ul>
+                {/if}
+                {#if slice.dependsOn.length > 0}
+                  <p class="slice-label">Depends on: {slice.dependsOn.join(', ')}</p>
+                {/if}
+              </div>
+            {/each}
+          {:else if spec.decomposeOutput.slices.length > 0}
+            {#each spec.decomposeOutput.slices as slice}
+              <div class="slice-card">
+                <strong>{slice.id}</strong>
+                {#if slice.intent}<p>{slice.intent}</p>{/if}
+                {#if slice.verify.length > 0}
+                  <p class="slice-label">Verify:</p>
+                  <ul>{#each slice.verify as v}<li>{v}</li>{/each}</ul>
+                {/if}
+                {#if slice.dependsOn.length > 0}
+                  <p class="slice-label">Depends on: {slice.dependsOn.join(', ')}</p>
+                {/if}
+              </div>
+            {/each}
+          {:else if spec.decomposeOutput.sliceSlugs.length > 0}
+            <p class="slice-label">{spec.decomposeOutput.sliceSlugs.length} slice(s) — loading details</p>
+          {/if}
+        </AccordionSection>
+      {/if}
+
+      {#if d.edges.length > 0}
+        <AccordionSection title="Edges" badge={String(d.edges.length)}>
+          {#each Object.entries(groupedEdges) as [label, items]}
+            <p><strong>{label}:</strong></p>
+            <ul>
+              {#each items as item}
+                <li><a href="{item.route}{item.target}">{item.target}</a></li>
+              {/each}
+            </ul>
+          {/each}
+        </AccordionSection>
+      {/if}
+
+      {#if d.findings.length > 0}
+        <AccordionSection title="Findings" badge={String(d.findings.length)}>
+          <FindingsSection findings={d.findings} />
+        </AccordionSection>
+      {/if}
+
+      {#if spec.conversationLogs.length > 0}
+        <AccordionSection title="Conversations" badge={String(spec.conversationLogs.length)}>
+          {#each spec.conversationLogs as log}
+            <div class="conversation-log">
+              <h4>{log.stage} (v{log.version}{log.isAmend ? ', amend' : ''})</h4>
+              {#each log.exchanges as ex}
+                <div class="exchange">
+                  <span class="role" class:probe={ex.role === 'probe'} class:response={ex.role === 'response'}>
+                    {ex.role === 'probe' ? 'Probe' : ex.role === 'response' ? 'Response' : ex.role}:
+                  </span>
+                  <span>{ex.content}</span>
+                  {#if ex.decisionPoint}<span class="decision-marker">decision</span>{/if}
+                </div>
+              {/each}
+            </div>
+          {/each}
+        </AccordionSection>
+      {/if}
+
+      <AccordionSection title="Changelog" badge={changelogLoaded ? String(changelogEntries.length) : '…'}>
+        {#if !changelogLoaded}
+          <button class="load-changelog-btn" onclick={() => loadChangelog(spec.slug)}>Load changelog</button>
+        {:else}
+          <VersionCompare slug={spec.slug} entries={changelogEntries} />
+          <ChangelogTimeline entries={changelogEntries} loading={changelogLoading} />
+        {/if}
+      </AccordionSection>
+    </div>
+  {/if}
+{/await}
 
 <style>
-  .breadcrumb {
-    font-size: 0.85rem;
-    color: #64748b;
-    margin-bottom: 1.25rem;
-  }
-
-  .breadcrumb a {
-    color: #2563eb;
-    text-decoration: none;
-  }
-
-  .breadcrumb a:hover {
-    text-decoration: underline;
-  }
-
-  .breadcrumb span {
-    color: #1a1a2e;
-    font-weight: 500;
-  }
-
   h1 {
     font-size: 1.25rem;
     font-weight: 600;
     margin: 0 0 1rem;
     color: #1a1a2e;
-  }
-
-  .status {
-    color: #64748b;
-    font-size: 0.95rem;
-  }
-
-  .status.error {
-    color: #dc2626;
   }
 
   .meta {
@@ -476,27 +439,6 @@
     white-space: nowrap;
     min-width: 8rem;
   }
-
-  .badge {
-    display: inline-block;
-    padding: 0.15rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    background: #f1f5f9;
-    color: #475569;
-  }
-
-  .badge.stage-spark { background: #ede9fe; color: #7c3aed; }
-  .badge.stage-shape { background: #dbeafe; color: #2563eb; }
-  .badge.stage-specify { background: #dcfce7; color: #16a34a; }
-  .badge.stage-decompose { background: #fef9c3; color: #ca8a04; }
-  .badge.stage-approved { background: #ccfbf1; color: #0d9488; }
-  .badge.stage-in_progress { background: #ffedd5; color: #ea580c; }
-  .badge.stage-done { background: #f1f5f9; color: #6b7280; }
-  .badge.stage-amended { background: #fef3c7; color: #92400e; }
-  .badge.stage-superseded { background: #f3f4f6; color: #6b7280; text-decoration: line-through; }
-  .badge.stage-abandoned { background: #fee2e2; color: #991b1b; }
 
   .notes {
     color: #374151;
