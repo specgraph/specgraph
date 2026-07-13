@@ -22,7 +22,7 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 env:
-  GO_VERSION: "1.26.4"
+  GO_VERSION: "1.26.5"
   NODE_VERSION: "22"
   # Local buf codegen plugins — pinned to match gen/ + go.mod. Kept local (not
   # remote buf.build/... plugins) so codegen never hits the BSR rate limit (spgr-3zs0).
