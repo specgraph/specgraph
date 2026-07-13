@@ -20,6 +20,7 @@ exclude = [
   ".worktrees",
   ".beads",
   ".claude",
+  ".planning", # GSD planning artifacts — not project documentation, not linted
   ".serena",
   "dist",
   "node_modules",

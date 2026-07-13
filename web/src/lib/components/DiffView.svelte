@@ -5,6 +5,7 @@
 <script lang="ts">
   import type { InlineDiff } from '$lib/api/gen/specgraph/v1/spec_pb';
   import { InlineDiff_Op } from '$lib/api/gen/specgraph/v1/spec_pb';
+  import * as Card from '$lib/components/ui/card/index.js';
 
   interface Props {
     field: string;
@@ -16,103 +17,62 @@
   let { field, oldValue, newValue, hunks = [] }: Props = $props();
 </script>
 
-<div class="diff-view">
-  <div class="diff-field-name">{field}</div>
-  <div class="diff-panels">
-    <div class="diff-panel diff-old">
-      <div class="diff-panel-header">Old</div>
-      <div class="diff-panel-content">
+<div class="mb-3" data-testid="diff-view">
+  <div
+    class="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+  >
+    {field}
+  </div>
+  <div class="grid grid-cols-2 gap-2">
+    <Card.Root class="overflow-hidden py-0">
+      <div
+        class="border-b border-border bg-red-50 px-2 py-1 text-[0.7rem] font-semibold uppercase text-red-800 dark:bg-red-950/40 dark:text-red-300"
+      >
+        Old
+      </div>
+      <div
+        class="max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words p-2 font-mono text-sm leading-relaxed"
+      >
         {#if hunks.length > 0}
           {#each hunks as hunk}
             {#if hunk.op === InlineDiff_Op.EQUAL}
               <span>{hunk.text}</span>
             {:else if hunk.op === InlineDiff_Op.DELETE}
-              <span class="diff-delete">{hunk.text}</span>
+              <span
+                class="rounded-sm bg-red-200 px-0.5 text-red-800 line-through dark:bg-red-900/60 dark:text-red-200"
+                >{hunk.text}</span
+              >
             {/if}
           {/each}
         {:else}
           <span>{oldValue}</span>
         {/if}
       </div>
-    </div>
-    <div class="diff-panel diff-new">
-      <div class="diff-panel-header">New</div>
-      <div class="diff-panel-content">
+    </Card.Root>
+    <Card.Root class="overflow-hidden py-0">
+      <div
+        class="border-b border-border bg-green-50 px-2 py-1 text-[0.7rem] font-semibold uppercase text-green-800 dark:bg-green-950/40 dark:text-green-300"
+      >
+        New
+      </div>
+      <div
+        class="max-h-[300px] overflow-y-auto whitespace-pre-wrap break-words p-2 font-mono text-sm leading-relaxed"
+      >
         {#if hunks.length > 0}
           {#each hunks as hunk}
             {#if hunk.op === InlineDiff_Op.EQUAL}
               <span>{hunk.text}</span>
             {:else if hunk.op === InlineDiff_Op.INSERT}
-              <span class="diff-insert">{hunk.text}</span>
+              <span
+                class="rounded-sm bg-green-200 px-0.5 text-green-800 dark:bg-green-900/60 dark:text-green-200"
+                >{hunk.text}</span
+              >
             {/if}
           {/each}
         {:else}
           <span>{newValue}</span>
         {/if}
       </div>
-    </div>
+    </Card.Root>
   </div>
 </div>
-
-<style>
-  .diff-view {
-    margin-bottom: 0.75rem;
-  }
-  .diff-field-name {
-    font-weight: 600;
-    font-size: 0.8rem;
-    color: var(--text-secondary, #6b7280);
-    margin-bottom: 0.25rem;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-  }
-  .diff-panels {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-  }
-  .diff-panel {
-    border: 1px solid var(--border-color, #e5e7eb);
-    border-radius: 0.375rem;
-    overflow: hidden;
-  }
-  .diff-panel-header {
-    background: var(--bg-subtle, #f9fafb);
-    padding: 0.25rem 0.5rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: var(--text-secondary, #6b7280);
-    text-transform: uppercase;
-    border-bottom: 1px solid var(--border-color, #e5e7eb);
-  }
-  .diff-panel-content {
-    padding: 0.5rem;
-    font-size: 0.85rem;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-word;
-    max-height: 300px;
-    overflow-y: auto;
-  }
-  .diff-old .diff-panel-header {
-    background: #fef2f2;
-    color: #991b1b;
-  }
-  .diff-new .diff-panel-header {
-    background: #f0fdf4;
-    color: #166534;
-  }
-  .diff-delete {
-    background: #fecaca;
-    text-decoration: line-through;
-    color: #991b1b;
-    border-radius: 2px;
-    padding: 0 2px;
-  }
-  .diff-insert {
-    background: #bbf7d0;
-    color: #166534;
-    border-radius: 2px;
-    padding: 0 2px;
-  }
-</style>

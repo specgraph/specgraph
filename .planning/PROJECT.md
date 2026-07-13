@@ -8,6 +8,17 @@ SpecGraph is a Live Spec-Driven Development Framework — specifications as a qu
 
 Specs stay live and queryable as a graph — with locked architectural decisions, drift detection, and a durable storage/query layer — so both humans and agent-based execution engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
+## Current State
+
+**Shipped:** v0.12.0 Identity & Self-Service (5 phases, 29 plans, 69 tasks — closed 2026-07-13). Rounded out the identity/auth surface (self-service MCP API keys, live role-revocation enforcement, native GitHub OAuth2 + MCP OAuth 2.1 resource server, session-issuer audit), hardened release/build tooling, added a verifiable drift-detection interface, and shipped a project-selector web UI on a full shadcn-svelte + dark-mode foundation. Archived under `.planning/milestones/v0.12.0-*`.
+
+**Open threads for the next milestone:**
+
+- INTG-01 (Confluence comment-polling pagination bug, `spgr-jwbj`) — descoped from v0.12.0; parked in backlog **Phase 999.2 (Confluence Integration)** alongside EXPL-02 (one-way Confluence export). First step on promotion: locate the repo that owns the poller.
+- Candidate v2 requirements are catalogued in `.planning/milestones/v0.12.0-REQUIREMENTS.md` (§ v2 Requirements): REL-02, CFG-03..05, DRFT-02, DEC-01..04, HRNS-01..03, DX-01..02, SCALE-01..03, EXPL-01..05, INTG-02, UI-01..02.
+
+Fresh requirements for the next milestone are defined via `/gsd-new-milestone`.
+
 ## Requirements
 
 ### Validated
@@ -21,21 +32,22 @@ Specs stay live and queryable as a graph — with locked architectural decisions
 - ✓ OIDC login (CLI `specgraph login`/`logout`, web UI), OIDC app-roles + login-sync
 - ✓ Storage backend migration: Memgraph+AGE → pure Postgres/pgx (Memgraph fully removed)
 - ✓ v0.12.0 released
+- ✓ Single-job goreleaser-owns-release model (`spgr-7r6g`) — merged PR #981; verified against `v0.12.0`'s actual GitHub Release (single publish, populated notes, signed/SBOM'd assets)
+- ✓ Koanf layered config loader (`spgr-5kd5`) — `internal/config/global.go` implements the full flag>env>file>default precedence, including the `SPECGRAPH_PG_URL` deprecation warning
+- ✓ Pin `task tools`' golangci-lint to match CI version (`spgr-vpmg`) — Phase 1: single `GOLANGCI_LINT_VERSION` var in `Taskfile.yml`, installed via `go install` (not unpinned `brew install`); `ci.yml` reads the same value via `$(task tools:golangci-lint-version)` command substitution instead of an independent env var
+- ✓ Self-service / auto MCP API-key provisioning for OIDC users (`spgr-g7st`, AUTH-03) — Phase 2: owner-scoped self-mint/list/rotate/revoke handlers with RoleMin floor (create+rotate), quota-safe mint, expiry clamp (90d/180d), CSRF double-submit, anti-key-chaining, plus CLI self-variants and a `/keys` web dashboard
+- ✓ Enforce app-role revocation on standing API/MCP keys (`spgr-c2lb`, AUTH-02) — Phase 2: operator `ResyncUserRole` RPC + `auth user resync` CLI writes the live DB role (clamping standing keys on next request) with optional `--revoke-keys` hard off-board; proven by live-floor integration tests
+- ✓ Native generic OAuth2 + userinfo login provider (GitHub-direct) (`spgr-1rq9`, AUTH-01) — Phase 3: `oauth2LoginProvider` (Exchange→userinfo→`*OIDCClaims`, verified-email fallback, stable numeric subject) reusing the OIDC binding/JIT/claims-mapping machinery via a single canonical `ProviderIssuer` helper; live GitHub browser login verified
+- ✓ MCP OAuth 2.1 resource server delegating auth to a real IdP (`spgr-tmqm`, AUTH-04) — Phase 3: RFC 9728 protected-resource metadata + `/mcp/`-scoped `WWW-Authenticate` challenge, RFC 8707 resource-URI audience binding (MCP-request-gated), RFC 7662 opaque-token introspection with multi-IdP trial and `spgr_sk_` guard-before-introspection; dev/prod https policy (RS disabled on http loopback)
+- ✓ Populate `web_sessions.issuer` for audit / future RP-logout (`spgr-bbp2`, AUTH-05) — Phase 3: `Identity.Issuer` threaded through `materializeIdentity`; callback resolves via `ResolveLogin` and stamps the session issuer before `CreateSession`; verified by Docker integration test (no backfill of pre-existing empty-issuer rows, D-10)
+- ✓ Interface and verify drift detection (`spgr-vch`, DRFT-01) — Phase 4: drift status reachable via a stable interface (`LifecycleService.CheckDrift`/`AcknowledgeDrift`, MCP `drift` tool), verified against real content-hash + DEPENDS_ON-edge scenarios by no-false-positive e2e, full-graph SkippedCount integration, and per-upstream ack round-trip tests (INTG-01 Confluence bug descoped — poller not in this repo)
+- ✓ Web UI project selector + shadcn-svelte/dark-mode migration (D-01..D-14) — Phase 5: active-project store with default precedence (last-used → `default` → alpha-first), skeleton-on-switch across every project-scoped view (dashboard/graph/spec/decision/constitution) with correct empty/error states and provenance-derived constitution badges; full UI migrated to shadcn-svelte (Tailwind v4, Slate OKLCH tokens) with light/dark mode
 
 ### Active
 
 <!-- v1 scope — see REQUIREMENTS.md for full detail with REQ-IDs. Sourced from currently open/in-progress beads issues, P1+P2 priority. -->
 
-- [ ] Adopt holomush single-job goreleaser-owns-release model (in progress — `spgr-7r6g`)
-- [ ] Native generic OAuth2 + userinfo login provider (GitHub-direct) (`spgr-1rq9`)
-- [ ] Adopt koanf for layered config + env provider (`spgr-5kd5`)
-- [ ] Populate `web_sessions.issuer` for audit / future RP-logout (`spgr-bbp2`)
-- [ ] Enforce app-role revocation on standing API/MCP keys (`spgr-c2lb`)
-- [ ] Self-service / auto MCP API-key provisioning for OIDC users (in progress — `spgr-g7st`)
-- [ ] Fix Confluence comment polling pagination bug (`spgr-jwbj`)
-- [ ] MCP OAuth 2.1 resource server delegating auth to a real IdP (`spgr-tmqm`)
-- [ ] Interface and verify drift detection (`spgr-vch`)
-- [ ] Pin task tools golangci-lint to match CI version (`spgr-vpmg`)
+- [ ] Fix Confluence comment polling pagination bug (`spgr-jwbj`) — deferred to backlog Phase 999.2; poller code is not in this repo (INTG-01 descoped from Phase 4), first step is to locate its owning repository
 
 ### Out of Scope
 
@@ -67,6 +79,9 @@ Full architectural history — locked ADRs, three-generation storage-backend lin
 | ADR-006: `SpecProvenance` replaces `SpecLifecycle` (task/living) | task/living distinction proved insufficient | ✓ Good |
 | Storage backend: pure Postgres/pgx (not Memgraph+AGE) | simplify ops, drop graph-DB dependency | ✓ Good |
 | Migrate issue tracking from `bd`/beads to GSD `.planning/` | consolidate on one planning/tracking system | — Pending |
+| CFG-02: Taskfile-as-source-of-truth for pinned tool versions (silent leaf task + CI command substitution, not a duplicated env var) | single declaration closes local/CI version drift structurally, not just for golangci-lint | ✓ Good — pattern flagged in code review (IN-01) as worth generalizing to `PROTOC_GEN_*` vars in a future phase |
+| Phase 5: manual-fallback shadcn install + Slate via OKLCH token block | shadcn-svelte CLI blocks on an interactive preset prompt and its base-color enum has no `slate`, so `components.json`/`app.css`/`utils.ts` are authored by hand and Slate is delivered as a verified OKLCH block | ✓ Good |
+| Phase 5: layout owns the single active-project breadcrumb; pages re-suspend to Skeleton via `+page.ts` load + `invalidateAll()` on project switch | prevents per-page breadcrumb duplication and gives end-to-end switch re-fetch without manual stale-guards | ✓ Good |
 
 ---
-*Last updated: 2026-07-08 after beads-to-GSD tracking migration ingest*
+*Last updated: 2026-07-13 after v0.12.0 Identity & Self-Service milestone — all five phases shipped and verified; milestone archived to `.planning/milestones/v0.12.0-*` (override_closeout: INTG-01 descoped to backlog 999.2). Next: `/gsd-new-milestone`.*

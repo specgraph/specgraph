@@ -49,6 +49,19 @@ type pgIdentityStore struct {
 	jitEmailAllowlist  map[string]bool // domain -> true; empty = no allowlist
 	loginSyncEnabled   bool
 
+	// mcpResourceURI is the canonical RFC 8707 resource identifier for the MCP
+	// resource server. When non-empty AND the request is marked WithMCPRequest,
+	// resolveJWT (and, in Task 2, resolveIntrospection) additionally requires
+	// the token's aud to contain this URI (D-05.3). Empty = OAuth-RS not
+	// configured; the extra audience assertion never fires (additive, D-08).
+	mcpResourceURI string
+
+	// introspectors are the RFC 7662 introspection-capable providers (those
+	// configured with an IntrospectionURL). When non-empty, an opaque bearer
+	// that is neither an API key, a session, nor JWT-shaped is validated by
+	// trial introspection (D-06). Empty = introspection disabled.
+	introspectors []*Introspector
+
 	now func() time.Time
 }
 
@@ -86,6 +99,18 @@ type IdentityStoreConfig struct {
 	// login (see loginsync.go). When true, claims-mapping roles are validated
 	// at startup even if JITEnabled is false.
 	LoginSyncEnabled bool
+
+	// MCPResourceURI is the canonical RFC 8707 resource identifier enforced as
+	// the required token audience on the /mcp/ boundary (D-05.3). It MUST be
+	// the SAME value advertised as `resource` in the RFC 9728 metadata (Plan
+	// 03's single hoisted mcpResourceURI). Empty = the resource-URI audience
+	// assertion is disabled (additive; ConnectRPC and web-login unaffected).
+	MCPResourceURI string
+
+	// Introspectors are the RFC 7662 introspection-capable providers used to
+	// validate opaque (non-JWT) bearer tokens on the MCP path (D-06). Empty =
+	// introspection disabled; opaque non-credential tokens reject as today.
+	Introspectors []*Introspector
 
 	Now func() time.Time // optional; defaults to time.Now
 }
@@ -158,12 +183,21 @@ func NewIdentityStore(cfg IdentityStoreConfig) (Resolver, error) { //nolint:gocr
 		jitRateRefillPerHr: burst,
 		jitEmailAllowlist:  allowlist,
 		loginSyncEnabled:   cfg.LoginSyncEnabled,
+		mcpResourceURI:     cfg.MCPResourceURI,
+		introspectors:      cfg.Introspectors,
 		now:                now,
 	}, nil
 }
 
 // Resolve dispatches on token shape and produces an Identity (or
 // returns ErrUnauthenticated / ErrTransient).
+//
+// Dispatch order is EXPLICIT (review HIGH #3, D-08): JWT-shaped → resolveJWT;
+// spgr_ws_ → resolveSession; spgr_sk_ → resolveAPIKey (an explicit prefix
+// guard, NOT a fallthrough); then, only for anything else, introspection when
+// configured; else the final resolveAPIKey reject. The spgr_sk_ guard runs
+// BEFORE the introspection branch so an API-key secret is never POSTed to an
+// external IdP introspection endpoint even when introspectors are configured.
 func (s *pgIdentityStore) Resolve(ctx context.Context, token string) (*Identity, error) {
 	if token == "" {
 		return nil, ErrUnauthenticated
@@ -174,7 +208,25 @@ func (s *pgIdentityStore) Resolve(ctx context.Context, token string) (*Identity,
 	if strings.HasPrefix(token, sessionTokenPrefix) {
 		return s.resolveSession(ctx, token)
 	}
+	// Explicit API-key guard (review HIGH #3): route spgr_sk_ to the API-key
+	// resolver BEFORE introspection so static credentials never reach the IdP.
+	if strings.HasPrefix(token, apiKeyPrefix) {
+		return s.resolveAPIKey(ctx, token)
+	}
+	// Opaque, non-credential bearer: try RFC 7662 introspection when any
+	// introspection-capable provider is configured (D-06).
+	if len(s.introspectors) > 0 {
+		return s.resolveIntrospection(ctx, token)
+	}
+	// Nothing matched — resolveAPIKey rejects (parseAPIKey fails on the
+	// missing prefix), preserving the pre-introspection reject behavior.
 	return s.resolveAPIKey(ctx, token)
+}
+
+// ResolveLogin materializes an Identity from already-verified interactive-login
+// claims (Task 2 replaces this bridge with the shared materializeIdentity path).
+func (s *pgIdentityStore) ResolveLogin(ctx context.Context, claims *OIDCClaims) (*Identity, error) {
+	return s.materializeIdentity(ctx, claims, true)
 }
 
 // isJWTShaped reports whether token looks like a JWS Compact Serialization
@@ -439,6 +491,35 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 			slog.String("peek", issuer), slog.String("verified", claims.Issuer))
 		return nil, ErrUnauthenticated
 	}
+	// RFC 8707 resource-URI audience binding (D-05.3), scoped to the /mcp/
+	// path. The verifier above already asserted aud==client_id (web-login
+	// semantics, unchanged). This ADDITIONAL check fires ONLY when the request
+	// arrived on the /mcp/ boundary (marked WithMCPRequest by Plan 03's
+	// challenge wrapper) AND an MCP resource URI is configured: the already-
+	// verified claims must carry the canonical resource URI in aud, else the
+	// token is a confused-deputy risk (bound to the client, not to this
+	// resource server) and is rejected. The MCPRequestFromContext gate is
+	// REQUIRED — without it every ConnectRPC JWT caller (aud=client_id) sharing
+	// this Resolve path would be regressed (review HIGH #2, D-08). No second
+	// verifier and no extra network round-trip: it reads claims.Raw directly.
+	if s.mcpResourceURI != "" && MCPRequestFromContext(ctx) && !audienceContains(claims.Raw, s.mcpResourceURI) {
+		slog.LogAttrs(ctx, slog.LevelWarn, "auth: MCP token rejected — aud missing canonical resource URI (confused-deputy signal)",
+			slog.String("issuer", claims.Issuer), slog.String("resource", s.mcpResourceURI))
+		return nil, ErrUnauthenticated
+	}
+	// The interactive flag is derived ONCE here (the SINGLE derivation point)
+	// and threaded by value through materializeIdentity into jitResolve, so no
+	// downstream helper re-reads the context for interactivity.
+	return s.materializeIdentity(ctx, claims, InteractiveLoginFromContext(ctx))
+}
+
+// materializeIdentity is the shared binding-lookup → JIT-on-miss → user load →
+// soft-delete check → login-sync → Identity tail. It is called by BOTH
+// resolveJWT (bearer-JWT path, interactive derived from context) and
+// ResolveLogin (interactive login callback, interactive == true). The
+// interactive flag drives both the jitResolve rate-limit bypass and the
+// login-sync gate; it is passed by value and never re-read from context here.
+func (s *pgIdentityStore) materializeIdentity(ctx context.Context, claims *OIDCClaims, interactive bool) (*Identity, error) {
 	// Binding lookup + user load. JIT path fires on binding miss (Task 18).
 	binding, err := s.users.LookupOIDCBinding(ctx, claims.Issuer, claims.Subject)
 	if err != nil {
@@ -449,7 +530,7 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 		if !s.jitEnabled {
 			return nil, ErrUnauthenticated
 		}
-		return s.jitResolve(ctx, claims)
+		return s.jitResolve(ctx, claims, interactive)
 	}
 	user, err := s.users.GetUserByID(ctx, binding.UserID)
 	if err != nil {
@@ -466,7 +547,7 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 			slog.String("user_id", user.ID), slog.String("subject", claims.Subject))
 		return nil, ErrUnauthenticated
 	}
-	if s.loginSyncEnabled && InteractiveLoginFromContext(ctx) {
+	if s.loginSyncEnabled && interactive {
 		synced, syncErr := s.applyLoginSync(ctx, claims, user)
 		if syncErr != nil {
 			return nil, syncErr // deny: allowlist miss or failed demotion
@@ -481,7 +562,67 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 		Role:          Role(user.Role),
 		EffectiveRole: Role(user.Role), // OIDC has no per-key downgrade
 		Source:        "oidc",
+		Issuer:        claims.Issuer,
 	}, nil
+}
+
+// resolveIntrospection validates an opaque (non-JWT, non-credential) bearer via
+// RFC 7662 introspection (D-06). It is reached only from Resolve's introspection
+// branch, AFTER the explicit spgr_sk_/spgr_ws_ prefix guards, so static
+// credentials never arrive here.
+//
+// Selection (multi-IdP): opaque tokens carry no verifiable issuer to peek, so
+// selection is by trial — each configured introspector is tried in config
+// order. The first introspector returning active==true AND (when an MCP
+// resource URI is configured) an aud containing that URI wins and materializes
+// identity via the shared helper. If any introspector answers DECISIVELY
+// (inactive, or active-but-wrong-audience) and none accepts → ErrUnauthenticated
+// (fail-closed). If every introspector failed non-decisively (5xx/timeout/rate-
+// limited) with no decisive answer → ErrTransient (retryable).
+func (s *pgIdentityStore) resolveIntrospection(ctx context.Context, token string) (*Identity, error) {
+	var sawDecisive, anyErrored bool
+	for _, c := range s.introspectors {
+		// Per-issuer rate limit (reuse the JIT limiter buckets). A denied
+		// call is non-decisive — it contributes to a transient outcome if
+		// nothing else answers.
+		if !s.rateLimiterFor(c.issuer).Allow() {
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: introspection rate-limit exceeded",
+				slog.String("issuer", c.issuer))
+			anyErrored = true
+			continue
+		}
+		res, err := c.Introspect(ctx, token)
+		if err != nil {
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: introspection call failed",
+				slog.String("issuer", c.issuer), slog.Any("error", err))
+			anyErrored = true
+			continue
+		}
+		sawDecisive = true
+		if !res.Active {
+			continue
+		}
+		// RFC 8707 audience binding: an active token must still be bound to
+		// this resource server. A confused-deputy token (active elsewhere but
+		// not aud'd to us) is not accepted.
+		if s.mcpResourceURI != "" && !audienceContains(res.Raw, s.mcpResourceURI) {
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: introspected token rejected — aud missing canonical resource URI",
+				slog.String("issuer", c.issuer), slog.String("resource", s.mcpResourceURI))
+			continue
+		}
+		claims := &OIDCClaims{
+			Issuer:  res.Issuer,
+			Subject: res.Subject,
+			Raw:     res.Raw,
+		}
+		// Opaque-token introspection is never an interactive login.
+		return s.materializeIdentity(ctx, claims, false)
+	}
+	if !sawDecisive && anyErrored {
+		// Every introspector failed non-decisively — fail closed, retryable.
+		return nil, ErrTransient
+	}
+	return nil, ErrUnauthenticated
 }
 
 // jitResolve creates a new Human + OIDC binding for an unknown subject.
@@ -493,7 +634,7 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 //  3. ClaimsMapping role derivation (Task 21) — only fires at JIT creation; not
 //     on subsequent sign-ins, which resolve via the stored binding.
 //  4. JITCreateHuman (Task 18) — atomic user + binding creation.
-func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims) (*Identity, error) {
+func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims, interactive bool) (*Identity, error) {
 	// (1) Allowlist gate — refused tokens never consume a rate-limit token.
 	if len(s.jitEmailAllowlist) > 0 {
 		domain := emailDomain(claims.Email)
@@ -517,8 +658,10 @@ func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims) (*
 	//
 	// Skipped for interactive logins (user-driven, IdP+PKCE+nonce verified);
 	// the limiter targets unsolicited bearer-JWT JIT. The email-domain
-	// allowlist (step 1, above) still applies.
-	if !InteractiveLoginFromContext(ctx) {
+	// allowlist (step 1, above) still applies. The interactive flag is passed
+	// by value from materializeIdentity (single source of truth); jitResolve
+	// no longer reads InteractiveLoginFromContext itself.
+	if !interactive {
 		limiter := s.rateLimiterFor(claims.Issuer)
 		if !limiter.Allow() {
 			slog.LogAttrs(ctx, slog.LevelWarn, "auth: JIT rate-limit exceeded",
@@ -563,6 +706,7 @@ func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims) (*
 		Role:          Role(user.Role),
 		EffectiveRole: Role(user.Role),
 		Source:        "oidc",
+		Issuer:        claims.Issuer,
 	}, nil
 }
 

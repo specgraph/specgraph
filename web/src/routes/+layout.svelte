@@ -1,16 +1,23 @@
-<script>
+<script lang="ts">
+  import '../app.css';
   import { page } from '$app/stores';
+  import { invalidateAll } from '$app/navigation';
   import { onMount } from 'svelte';
-  import { auth, checkAuth } from '$lib/auth.svelte';
-  import { project, loadProjects } from '$lib/project.svelte';
+  import { ModeWatcher } from 'mode-watcher';
+  import { project } from '$lib/project.svelte';
+  import { cn } from '$lib/utils.js';
   import LoginModal from '$lib/components/LoginModal.svelte';
+  import ModeToggle from '$lib/components/ModeToggle.svelte';
+  import * as Select from '$lib/components/ui/select/index.js';
+  import * as Breadcrumb from '$lib/components/ui/breadcrumb/index.js';
+  import type { LayoutData } from './$types';
 
-  let { children } = $props();
-  let ready = $state(false);
-  let authError = $state(null);
+  let { children, data }: { children: import('svelte').Snippet; data: LayoutData } = $props();
+  let authError = $state<string | null>(null);
 
-  onMount(async () => {
-    await checkAuth();
+  // Auth + project bootstrap now runs in +layout.ts load() (D-02). Only the
+  // window-dependent auth_error query cleanup stays here (needs history/window).
+  onMount(() => {
     const params = new URLSearchParams(window.location.search);
     const ae = params.get('auth_error');
     if (ae) {
@@ -19,107 +26,106 @@
       const qs = params.toString();
       history.replaceState({}, '', window.location.pathname + (qs ? '?' + qs : ''));
     }
-    if (auth.authenticated) {
-      await loadProjects();
-    }
-    ready = true;
   });
 
+  // On login the session cookie is set; re-run load() so data.authenticated and
+  // the resolved project default refresh reactively (D-02 seam).
   async function handleLoginSuccess() {
-    await loadProjects();
+    await invalidateAll();
   }
+
+  // D-03/D-01 switch seam: persist selection (setter writes localStorage) then
+  // invalidateAll() re-runs +layout.ts and every +page.ts load() with the new
+  // X-Specgraph-Project header. Wired via explicit onValueChange (not bind:value
+  // alone) so every user change guarantees the invalidation.
+  async function switchProject(slug: string | undefined) {
+    if (!slug) return;
+    project.current = slug;
+    await invalidateAll();
+  }
+
+  // D-11 active-project indicator: {View} is a static label derived from the
+  // pathname. Detail-route slugs stay in each page's <h1>, not the breadcrumb.
+  function viewLabel(pathname: string): string {
+    if (pathname === '/') return 'Dashboard';
+    if (pathname === '/graph') return 'Graph';
+    if (pathname === '/constitution') return 'Constitution';
+    if (pathname.startsWith('/spec')) return 'Spec';
+    if (pathname.startsWith('/decision')) return 'Decision';
+    return '';
+  }
+
+  const pathname = $derived($page.url.pathname);
+  const view = $derived(viewLabel(pathname));
+  // Suppress the project breadcrumb on the user-scoped /keys route (D-09) and
+  // when no project is resolved (zero-projects empty state owns the main area).
+  const showBreadcrumb = $derived(Boolean(project.current) && pathname !== '/keys');
 </script>
 
-{#if !ready}
-  <main><p class="loading">Connecting...</p></main>
-{:else if !auth.authenticated}
+{#snippet navLink(href: string, label: string)}
+  <a
+    {href}
+    class={cn(
+      'rounded-md px-2 py-1 text-sm hover:text-foreground',
+      pathname === href ? 'text-primary font-medium' : 'text-muted-foreground'
+    )}
+  >{label}</a>
+{/snippet}
+
+<ModeWatcher />
+
+{#if !data.authenticated}
   <LoginModal onSuccess={handleLoginSuccess} {authError} />
 {:else}
-  <nav>
-    <a href="/" class:active={$page.url.pathname === '/'}>Dashboard</a>
-    <a href="/graph" class:active={$page.url.pathname === '/graph'}>Graph</a>
-    <a href="/constitution" class:active={$page.url.pathname === '/constitution'}>Constitution</a>
-    <span class="spacer"></span>
+  <nav data-testid="primary-nav" class="flex items-center gap-4 border-b border-border px-6 py-3">
+    {@render navLink('/', 'Dashboard')}
+    {@render navLink('/graph', 'Graph')}
+    {@render navLink('/constitution', 'Constitution')}
+    {@render navLink('/keys', 'Keys')}
+    <span class="flex-1"></span>
     {#if project.available.length > 1}
-      <select bind:value={project.current} class="project-picker">
-        {#each project.available as slug}
-          <option value={slug}>{slug}</option>
-        {/each}
-      </select>
+      <Select.Root type="single" value={project.current} onValueChange={switchProject}>
+        <Select.Trigger class="w-[180px]" aria-label="Select project">
+          {project.current}
+        </Select.Trigger>
+        <Select.Content>
+          {#each project.available as slug (slug)}
+            <Select.Item value={slug} label={slug}>{slug}</Select.Item>
+          {/each}
+        </Select.Content>
+      </Select.Root>
     {:else if project.current}
-      <span class="project-name">{project.current}</span>
+      <span class="text-sm text-muted-foreground">{project.current}</span>
     {/if}
-    <span class="brand">SpecGraph</span>
+    <ModeToggle />
+    <span data-testid="brand" class="text-sm font-semibold text-muted-foreground">SpecGraph</span>
   </nav>
 
-  <main>
-    {#if project.loaded}
-      {@render children()}
+  <main class="mx-auto max-w-[1400px] p-6">
+    {#if project.available.length === 0}
+      <div class="py-16 text-center">
+        <h2 class="text-lg font-semibold text-foreground">No projects found</h2>
+        <p class="mt-2 text-sm text-muted-foreground">
+          Create a project with the SpecGraph CLI or authoring flow, then reload this page.
+        </p>
+      </div>
     {:else}
-      <p class="loading">Loading projects...</p>
+      {#if showBreadcrumb}
+        <Breadcrumb.Root class="mb-5">
+          <Breadcrumb.List>
+            <Breadcrumb.Item>
+              <span class="text-foreground font-semibold">{project.current}</span>
+            </Breadcrumb.Item>
+            {#if view}
+              <Breadcrumb.Separator />
+              <Breadcrumb.Item>
+                <Breadcrumb.Page class="text-muted-foreground">{view}</Breadcrumb.Page>
+              </Breadcrumb.Item>
+            {/if}
+          </Breadcrumb.List>
+        </Breadcrumb.Root>
+      {/if}
+      {@render children()}
     {/if}
   </main>
 {/if}
-
-<style>
-  :global(body) {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: #1a1a2e;
-    background: #f8f9fa;
-  }
-
-  nav {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.75rem 1.5rem;
-    background: #1a1a2e;
-    color: white;
-  }
-
-  nav a {
-    color: rgba(255, 255, 255, 0.7);
-    text-decoration: none;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.9rem;
-  }
-
-  nav a:hover, nav a.active {
-    color: white;
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .spacer { flex: 1; }
-
-  .project-picker {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.85rem;
-  }
-
-  .project-name {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 0.85rem;
-  }
-
-  .brand {
-    font-weight: 600;
-    font-size: 0.9rem;
-    opacity: 0.8;
-  }
-
-  main {
-    padding: 1.5rem;
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-
-  .loading {
-    color: #64748b;
-  }
-</style>

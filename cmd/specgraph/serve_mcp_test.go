@@ -26,6 +26,10 @@ func (r *stubResolver) Resolve(_ context.Context, token string) (*auth.Identity,
 	return nil, auth.ErrUnauthenticated
 }
 
+func (r *stubResolver) ResolveLogin(_ context.Context, _ *auth.OIDCClaims) (*auth.Identity, error) {
+	return r.identity, nil
+}
+
 func (r *stubResolver) HasAuth(_ context.Context) (bool, error) { return true, nil }
 
 // newMCPAuthResolver returns a Resolver pre-loaded with a single admin identity.

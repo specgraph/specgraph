@@ -12,21 +12,22 @@ test.describe('Detail Pages', () => {
   test('spec detail page shows metadata', async ({ page }) => {
     await page.goto('/spec/detail-spec');
     await expect(page.locator('h1')).toContainText('detail-spec');
-    await expect(page.locator('.meta')).toContainText('Detail test spec');
-    await expect(page.locator('.meta')).toContainText('p1');
-    await expect(page.locator('.breadcrumb')).toContainText('Dashboard');
-    await expect(page.locator('.breadcrumb')).toContainText('Graph');
+    await expect(page.getByTestId('meta')).toContainText('Detail test spec');
+    await expect(page.getByTestId('meta')).toContainText('p1');
+    // Dashboard/Graph live in the primary nav (shadcn breadcrumb shows project/view).
+    await expect(page.getByTestId('primary-nav')).toContainText('Dashboard');
+    await expect(page.getByTestId('primary-nav')).toContainText('Graph');
   });
 
   test('decision detail page shows metadata', async ({ page }) => {
     await page.goto('/decision/detail-dec');
     await expect(page.locator('h1')).toContainText('Detail test decision');
-    await expect(page.locator('.meta')).toContainText('detail-dec');
+    await expect(page.getByTestId('meta')).toContainText('detail-dec');
   });
 
   test('spec detail 404 shows error', async ({ page }) => {
     await page.goto('/spec/nonexistent-slug-xyz');
-    await expect(page.locator('.error')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('error')).toBeVisible({ timeout: 10_000 });
   });
 });
 
@@ -43,20 +44,22 @@ test.describe('Stage Data Accordions', () => {
     await page.goto('/spec/detail-stage-e2e');
     await page.waitForLoadState('networkidle');
 
-    const sparkHeader = page.locator('.accordion-header', { hasText: 'Spark' });
+    const sparkHeader = page.getByTestId('accordion-header').filter({ hasText: 'Spark' });
     await expect(sparkHeader).toBeVisible();
-    await expect(page.locator('.sections')).toContainText('E2E test seed idea');
+    await expect(page.getByTestId('sections')).toContainText('E2E test seed idea');
   });
 
   test('accordion expand/collapse works', async ({ page }) => {
     await page.goto('/spec/detail-stage-e2e');
     await page.waitForLoadState('networkidle');
 
-    const sparkHeader = page.locator('.accordion-header', { hasText: 'Spark' });
+    const sparkSection = page
+      .getByTestId('accordion-section')
+      .filter({ has: page.getByTestId('accordion-header').filter({ hasText: 'Spark' }) });
+    const sparkHeader = sparkSection.getByTestId('accordion-header');
     await expect(sparkHeader).toBeVisible();
 
-    // The accordion body contains the seed text when expanded
-    const sparkBody = sparkHeader.locator('..').locator('.accordion-body');
+    const sparkBody = sparkSection.getByTestId('accordion-body');
 
     // If the accordion is expanded (body visible), click to collapse
     if (await sparkBody.isVisible()) {
@@ -89,11 +92,14 @@ test.describe('Edges Section', () => {
     await page.goto('/spec/edge-source-e2e');
     await page.waitForLoadState('networkidle');
 
-    const edgesHeader = page.locator('.accordion-header', { hasText: 'Edges' });
+    const edgesSection = page
+      .getByTestId('accordion-section')
+      .filter({ has: page.getByTestId('accordion-header').filter({ hasText: 'Edges' }) });
+    const edgesHeader = edgesSection.getByTestId('accordion-header');
     await expect(edgesHeader).toBeVisible();
     // Edges accordion is collapsed by default — click to expand
     await edgesHeader.click();
-    const edgesBody = edgesHeader.locator('..').locator('.accordion-body');
+    const edgesBody = edgesSection.getByTestId('accordion-body');
     await expect(edgesBody).toBeVisible();
     await expect(edgesBody).toContainText('edge-target-e2e');
   });

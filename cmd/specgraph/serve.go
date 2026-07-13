@@ -159,6 +159,56 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 		}
 	}
 
+	// Canonical MCP resource URI — computed ONCE here and reused by both the RFC
+	// 9728 metadata mount below and Plan 04's NewIdentityStore audience config, so
+	// the advertised `resource` and the audience check are byte-identical. Base URL
+	// is the configured OIDC BaseURL or the loopback selfBaseURL fallback.
+	//
+	// Enablement policy (dev/prod URI, RESEARCH OQ1/A2): an explicit
+	// mcp_resource_uri MUST be https+no-fragment or boot aborts; a defaulted
+	// non-https loopback URI leaves MCP OAuth RS DISABLED (bare 401, metadata not
+	// mounted) rather than blocking local dev at boot.
+	mcpBaseURL := cfg.Auth.OIDC.BaseURL
+	if mcpBaseURL == "" {
+		mcpBaseURL = selfBaseURL(cfg.Server.Listen)
+	}
+	mcpResourceURI := cfg.Auth.OIDC.MCPResourceURI
+	mcpRSEnabled := false
+	if cfg.Auth.OIDC.MCPResourceURI != "" {
+		if verr := config.ValidateMCPResourceURI(cfg.Auth.OIDC.MCPResourceURI); verr != nil {
+			cleanup() // drain the tracker goroutine we just started
+			return appHandler{}, fmt.Errorf("mcp resource uri: %w", verr)
+		}
+		mcpRSEnabled = true
+	} else {
+		mcpResourceURI = strings.TrimRight(mcpBaseURL, "/") + "/mcp"
+		if config.ValidateMCPResourceURI(mcpResourceURI) == nil {
+			mcpRSEnabled = true
+		} else {
+			slog.LogAttrs(context.Background(), slog.LevelWarn, "auth: MCP OAuth resource server disabled",
+				slog.String("reason", "derived resource URI is not https"),
+				slog.String("derived", mcpResourceURI),
+				slog.String("hint", "set an explicit https mcp_resource_uri to enable MCP OAuth"))
+		}
+	}
+
+	// Audience config for the RFC 8707 resource-URI check reuses the SINGLE
+	// hoisted mcpResourceURI above (so metadata `resource` and the aud check
+	// agree byte-for-byte). Pass it only when the MCP OAuth RS is enabled;
+	// otherwise leave it empty so the audience assertion stays disabled.
+	mcpAudienceURI := ""
+	if mcpRSEnabled {
+		mcpAudienceURI = mcpResourceURI
+	}
+
+	// RFC 7662 introspection-capable providers (those with an IntrospectionURL).
+	// A configured endpoint with no resolvable client secret is startup-fatal.
+	introspectors, err := auth.BuildIntrospectors(cfg.Auth.OIDC.Providers)
+	if err != nil {
+		cleanup() // drain the tracker goroutine we just started
+		return appHandler{}, fmt.Errorf("introspection providers: %w", err)
+	}
+
 	resolver, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
 		Users:                   res.authStore,
 		WebAuth:                 res.authStore,
@@ -171,6 +221,8 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 		JITRateBurstPerHour:     cfg.Auth.OIDC.JITCreate.RateLimitPerHour,
 		JITEmailDomainAllowlist: cfg.Auth.OIDC.JITCreate.EmailDomainAllowlist,
 		LoginSyncEnabled:        cfg.Auth.OIDC.SyncOnLogin,
+		MCPResourceURI:          mcpAudienceURI,
+		Introspectors:           introspectors,
 	})
 	if err != nil {
 		cleanup() // drain the tracker goroutine we just started
@@ -200,7 +252,7 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 	server.RegisterAnalyticalPassService(mux, store, ".specgraph/templates", opts, maxBytes)
 	server.RegisterExecutionService(mux, store, deps.skillsSrc, opts, maxBytes)
 	server.RegisterSliceService(mux, store, opts, maxBytes)
-	server.RegisterIdentityService(mux, res.authStore, opts, maxBytes)
+	server.RegisterIdentityService(mux, res.authStore, cfg.Auth.SelfServiceKeys, opts, maxBytes)
 	server.RegisterExportService(mux, store, cfg.Export.SigningKey, buildVersion(), opts, maxBytes)
 	driftEngine := drift.NewEngine(store, nil)
 	lintEngine := linter.NewEngine(store, nil)
@@ -226,6 +278,9 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 
 	loopbackClient := newHTTPClient("")
 	loopbackClient.Transport = telemetry.LoopbackTransport(telState.enabled, loopbackClient.Transport)
+	// A3: mcpClient targets selfBaseURL — the loopback WithBearerToken re-forward is
+	// an internal same-audience hop to SpecGraph's own ConnectRPC, NOT an upstream
+	// third-party API, so it is not a forbidden OAuth token passthrough.
 	mcpClient := mcppkg.NewClient(loopbackClient, selfBaseURL(cfg.Server.Listen))
 	mcpSrv := mcppkg.NewServer(mcpClient)
 	mcpHTTPHandler := mcpSrv.HTTPHandler(
@@ -243,9 +298,23 @@ func buildAppHandler(_ context.Context, cfg *config.GlobalConfig, deps *appDeps,
 			return ctx
 		}),
 	)
-	mux.Handle("/mcp/", mcpHeaderLogger(auth.RequireAuth(resolver)(
-		http.StripPrefix("/mcp", mcpHTTPHandler),
-	)))
+	// MCP OAuth resource-server surface: when enabled (https canonical URI), mount
+	// the public RFC 9728 metadata endpoint and wrap /mcp/ with the
+	// WWW-Authenticate challenge (authorization_servers advertise the same
+	// ProviderIssuer values the binding + claims-mapping use — review HIGH #1).
+	// Only /mcp/ changes; /api/* and ConnectRPC keep auth.RequireAuth (D-08).
+	if mcpRSEnabled {
+		authServers := buildMCPAuthorizationServers(cfg.Auth.OIDC.Providers)
+		server.RegisterProtectedResourceMetadata(mux, mcpResourceURI, authServers)
+		metadataURL := strings.TrimRight(mcpBaseURL, "/") + "/.well-known/oauth-protected-resource"
+		mux.Handle("/mcp/", mcpHeaderLogger(server.RequireAuthWithChallenge(resolver, metadataURL)(
+			http.StripPrefix("/mcp", mcpHTTPHandler),
+		)))
+	} else {
+		mux.Handle("/mcp/", mcpHeaderLogger(auth.RequireAuth(resolver)(
+			http.StripPrefix("/mcp", mcpHTTPHandler),
+		)))
+	}
 
 	mux.Handle("/", server.StaticHandler(deps.webFS))
 
@@ -768,14 +837,42 @@ func mcpHeaderLogger(next http.Handler) http.Handler {
 }
 
 // buildClaimsMappingByIssuer converts a slice of OIDCProviderConfig into a
-// map keyed by issuer URL, where each value is the provider's ClaimsMapping
-// slice. Consumed by auth.IdentityStoreConfig.JITClaimsMapping at startup.
+// map keyed by the canonical issuer (config.ProviderIssuer), where each value
+// is the provider's ClaimsMapping slice. Consumed by
+// auth.IdentityStoreConfig.JITClaimsMapping at startup. Keying by ProviderIssuer
+// (not raw pc.Issuer) makes the startup map key equal the runtime claims.Issuer
+// for oauth2 providers, so a synthetic-issuer provider's claims_mapping resolves
+// a role instead of silently falling through (review HIGH #1, D-04).
 func buildClaimsMappingByIssuer(providers []config.OIDCProviderConfig) map[string][]config.ClaimMapping {
 	out := make(map[string][]config.ClaimMapping, len(providers))
 	for _, pc := range providers { //nolint:gocritic // rangeValCopy: provider list is small and startup-only
 		if len(pc.ClaimsMapping) > 0 {
-			out[pc.Issuer] = pc.ClaimsMapping
+			out[config.ProviderIssuer(pc)] = pc.ClaimsMapping
 		}
+	}
+	return out
+}
+
+// buildMCPAuthorizationServers returns the de-duplicated canonical issuers of
+// every interactive provider (both oidc and oauth2 kinds), for the RFC 9728
+// authorization_servers list. Uses config.ProviderIssuer so the advertised AS
+// equals the binding issuer and the claims-mapping key (review HIGH #1, D-07).
+func buildMCPAuthorizationServers(providers []config.OIDCProviderConfig) []string {
+	seen := make(map[string]struct{}, len(providers))
+	out := make([]string, 0, len(providers))
+	for _, pc := range providers { //nolint:gocritic // rangeValCopy: provider list is small and startup-only
+		if !pc.Interactive {
+			continue
+		}
+		iss := config.ProviderIssuer(pc)
+		if iss == "" {
+			continue
+		}
+		if _, ok := seen[iss]; ok {
+			continue
+		}
+		seen[iss] = struct{}{}
+		out = append(out, iss)
 	}
 	return out
 }

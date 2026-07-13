@@ -22,12 +22,22 @@ export async function loadProjects(): Promise<void> {
     const resp = await fetch('/api/projects');
     if (resp.ok) {
       const data = await resp.json();
-      available = data.projects ?? [];
-      // Use saved project if it's still valid, otherwise pick the first
+      // D-05: deterministic case-insensitive sort — single client-side source
+      // of truth; do not rely on server ordering.
+      available = (data.projects ?? [])
+        .slice()
+        .sort((a: string, b: string) => a.toLowerCase().localeCompare(b.toLowerCase()));
+      // D-04 precedence: (1) keep a valid saved project (D-06 falls out of the
+      // "in available" guard), (2) prefer one literally named 'default',
+      // (3) else the alphabetically-first, (4) else empty (D-07 zero-projects).
       if (current && available.includes(current)) {
-        // keep it
+        // tier 1: keep the valid saved project
+      } else if (available.includes('default')) {
+        project.current = 'default'; // tier 2
       } else if (available.length > 0) {
-        project.current = available[0]; // triggers localStorage save
+        project.current = available[0]; // tier 3: alpha-first after sort
+      } else {
+        project.current = ''; // tier 4: no projects available
       }
     }
   } catch {

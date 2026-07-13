@@ -24,4 +24,10 @@ type Identity struct {
 	DisplayName   string // human-friendly name
 	Role          Role   // role name (built-in or custom)
 	Source        string // "apikey" | "oidc"
+	// Issuer carries the verified iss claim (OIDC) or the synthetic provider
+	// id (oauth2) that authenticated this identity (D-09). Empty for static
+	// credentials (API keys, sessions resolved by token). Threaded into
+	// web_sessions.issuer at session-mint time (AUTH-05) and available for
+	// future RP-initiated logout to target the correct end_session_endpoint.
+	Issuer string
 }

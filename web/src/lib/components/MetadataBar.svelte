@@ -1,5 +1,7 @@
 <script lang="ts">
   import { SpecProvenance } from '$lib/api/gen/specgraph/v1/spec_pb';
+  import * as Card from '$lib/components/ui/card/index.js';
+  import { Badge } from '$lib/components/ui/badge/index.js';
 
   interface Props {
     createdAt?: { seconds: bigint };
@@ -40,52 +42,29 @@
   }
 </script>
 
-<div class="metadata-bar">
-  <span>Created: <strong>{formatDate(createdAt)}</strong></span>
-  <span class="sep">·</span>
-  <span>Updated: <strong>{relativeTime(updatedAt)}</strong></span>
-  {#if displayProvenance}
-    <span class="sep">·</span>
-    <span>Provenance: <span class="provenance-badge">{displayProvenance}</span></span>
-  {/if}
-  {#if contentHash}
-    <span class="sep">·</span>
-    <span class="hash" title={contentHash}>hash: {contentHash.slice(0, 8)}…</span>
-  {/if}
-</div>
-
-<style>
-  .metadata-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    align-items: center;
-    font-size: 0.8rem;
-    color: #64748b;
-    margin-bottom: 0.75rem;
-  }
-
-  .sep {
-    color: #cbd5e1;
-  }
-
-  strong {
-    color: #475569;
-    font-weight: 500;
-  }
-
-  .provenance-badge {
-    background: #dbeafe;
-    color: #2563eb;
-    padding: 0.05rem 0.3rem;
-    border-radius: 3px;
-    font-size: 0.7rem;
-    font-weight: 600;
-  }
-
-  .hash {
-    font-family: ui-monospace, monospace;
-    font-size: 0.7rem;
-    color: #94a3b8;
-  }
-</style>
+<Card.Root class="mb-3">
+  <Card.Content class="p-3">
+    <dl class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+      <div class="flex items-center gap-1.5">
+        <dt class="text-muted-foreground">Created</dt>
+        <dd class="font-medium text-foreground">{formatDate(createdAt)}</dd>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <dt class="text-muted-foreground">Updated</dt>
+        <dd class="font-medium text-foreground">{relativeTime(updatedAt)}</dd>
+      </div>
+      {#if displayProvenance}
+        <div class="flex items-center gap-1.5">
+          <dt class="text-muted-foreground">Provenance</dt>
+          <dd><Badge variant="secondary">{displayProvenance}</Badge></dd>
+        </div>
+      {/if}
+      {#if contentHash}
+        <div class="flex items-center gap-1.5">
+          <dt class="text-muted-foreground">Hash</dt>
+          <dd class="font-mono text-muted-foreground" title={contentHash}>{contentHash.slice(0, 8)}…</dd>
+        </div>
+      {/if}
+    </dl>
+  </Card.Content>
+</Card.Root>

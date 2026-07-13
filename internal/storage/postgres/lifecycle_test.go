@@ -10,6 +10,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
@@ -493,6 +494,67 @@ func TestLifecycle(t *testing.T) {
 		err := store.LifecycleAcknowledgeDrift(ctx, "nonexistent-spec", "", "should fail")
 		require.Error(t, err)
 		require.ErrorIs(t, err, storage.ErrSpecNotFound)
+	})
+
+	t.Run("CheckAllSpecs_MixedState_SkippedCount", func(t *testing.T) {
+		store := newStore(t)
+		clearDatabase(t, store)
+		ctx := context.Background()
+
+		doneStage := "done"
+
+		// (a) Drifted-done pair: downstream done, then upstream mutated so its
+		// content hash diverges from the edge's baselined content_hash_at_link.
+		_, err := store.CreateSpec(ctx, "mix-drift-up", "Upstream", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+		_, err = store.CreateSpec(ctx, "mix-drift-down", "Downstream", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+		_, err = store.AddEdge(ctx, "mix-drift-down", "mix-drift-up", storage.EdgeTypeDependsOn)
+		require.NoError(t, err)
+		_, err = store.UpdateSpec(ctx, "mix-drift-down", nil, &doneStage, nil, nil, nil)
+		require.NoError(t, err)
+		driftIntent := "Changed upstream intent to diverge the content hash"
+		_, err = store.UpdateSpec(ctx, "mix-drift-up", &driftIntent, nil, nil, nil, nil)
+		require.NoError(t, err)
+
+		// (b) Clean-done pair: downstream done, upstream left untouched (no drift).
+		_, err = store.CreateSpec(ctx, "mix-clean-up", "Upstream", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+		_, err = store.CreateSpec(ctx, "mix-clean-down", "Downstream", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+		_, err = store.AddEdge(ctx, "mix-clean-down", "mix-clean-up", storage.EdgeTypeDependsOn)
+		require.NoError(t, err)
+		_, err = store.UpdateSpec(ctx, "mix-clean-down", nil, &doneStage, nil, nil, nil)
+		require.NoError(t, err)
+
+		// (c) At least one NON-done spec left at spark → counted as skipped in
+		// all-specs mode.
+		_, err = store.CreateSpec(ctx, "mix-skipped", "Skipped", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+
+		// Full-graph check (empty slug): non-done specs are skipped; zero-item
+		// reports are filtered out, so only the drifted downstream should surface.
+		engine := drift.NewEngine(store, nil)
+		result, err := engine.Check(ctx, "", "deps")
+		require.NoError(t, err)
+		require.GreaterOrEqual(t, result.SkippedCount, int32(1),
+			"non-done specs (e.g. mix-skipped) must be counted as skipped")
+
+		reportsBySlug := map[string]storage.DriftReport{}
+		for _, r := range result.Reports {
+			reportsBySlug[r.SpecSlug] = r
+		}
+
+		driftReport, ok := reportsBySlug["mix-drift-down"]
+		require.True(t, ok, "the drifted downstream must appear in the reports")
+		require.NotEmpty(t, driftReport.Items, "mix-drift-down should have drift items")
+
+		// The clean-done spec has zero drift items, so it is filtered out of the
+		// response entirely.
+		cleanReport, ok := reportsBySlug["mix-clean-down"]
+		if ok {
+			require.Empty(t, cleanReport.Items, "mix-clean-down should have no drift items")
+		}
 	})
 }
 

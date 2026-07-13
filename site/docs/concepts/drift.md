@@ -88,6 +88,22 @@ Exactly one of `--upstream` or `--all` must be provided.
 
 ---
 
+## Accessing Drift via API / MCP
+
+The same drift check backing the CLI is reachable directly:
+
+- **API (ConnectRPC):** `LifecycleService.CheckDrift` (single spec via `slug`, or
+  all eligible specs when `slug` is empty) and `LifecycleService.AcknowledgeDrift`
+  (`upstream_slug` for one edge, or `all: true` to re-baseline every drifted edge).
+- **MCP:** the `drift` tool exposes the same operations via `check` and
+  `acknowledge` actions.
+
+All three surfaces (CLI, API, MCP) call the identical server-side detection —
+content-hash comparison on `DEPENDS_ON` edges — so results are consistent
+regardless of entry point.
+
+---
+
 ## Worked Example
 
 Two specs: `payment-service` depends on `auth-tokens`.

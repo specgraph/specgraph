@@ -2,6 +2,9 @@
   import type { AnalyticalFinding } from '$lib/api/gen/specgraph/v1/analytical_pass_pb';
   import { PassType } from '$lib/api/gen/specgraph/v1/analytical_pass_pb';
   import { FindingSeverity } from '$lib/api/gen/specgraph/v1/authoring_pb';
+  import * as Card from '$lib/components/ui/card/index.js';
+  import { Badge } from '$lib/components/ui/badge/index.js';
+  import { severityBadgeClass } from './badge-variants';
 
   interface Props {
     findings: AnalyticalFinding[];
@@ -19,12 +22,24 @@
     return labels[pt] ?? `Pass ${pt}`;
   }
 
-  function severityClass(s: FindingSeverity): string {
+  // Maps a finding severity to a categorical badge-palette key (D-10). These
+  // are CATEGORICAL data encodings pulled from the shared severity map, NOT the
+  // theme accent — see badge-variants.ts.
+  function severityKey(s: FindingSeverity): 'info' | 'warning' | 'error' {
     switch (s) {
       case FindingSeverity.NOTE: return 'info';
       case FindingSeverity.WARNING: return 'warning';
       case FindingSeverity.CRITICAL: return 'error';
       default: return 'info';
+    }
+  }
+
+  function severityLabel(s: FindingSeverity): string {
+    switch (s) {
+      case FindingSeverity.NOTE: return 'Note';
+      case FindingSeverity.WARNING: return 'Warning';
+      case FindingSeverity.CRITICAL: return 'Critical';
+      default: return 'Note';
     }
   }
 
@@ -57,101 +72,38 @@
 </script>
 
 {#each grouped as group}
-  <div class="pass-card {group.findings.length > 0 ? 'has-findings' : 'passed'}">
-    <div class="pass-header">
-      <strong>{group.label}</strong>
-      <span class="count-badge {group.findings.length > 0 ? 'amber' : 'green'}">
-        {group.findings.length > 0 ? `${group.findings.length} finding${group.findings.length > 1 ? 's' : ''}` : 'passed'}
-      </span>
-    </div>
+  <Card.Root
+    size="sm"
+    class="mb-2 rounded-md border-l-4 {group.findings.length > 0
+      ? 'border-l-amber-500'
+      : 'border-l-green-500'}"
+  >
+    <Card.Header class="flex-row items-center justify-between space-y-0">
+      <Card.Title class="text-sm font-semibold">{group.label}</Card.Title>
+      {#if group.findings.length > 0}
+        <Badge class={severityBadgeClass('warning')}>
+          {group.findings.length} finding{group.findings.length > 1 ? 's' : ''}
+        </Badge>
+      {:else}
+        <Badge class="bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300">
+          passed
+        </Badge>
+      {/if}
+    </Card.Header>
     {#if group.findings.length > 0}
-      <div class="findings-list">
+      <Card.Content class="space-y-1.5">
         {#each group.findings as finding}
-          <div class="finding {severityClass(finding.severity)}">
-            <span class="finding-summary">{finding.summary}</span>
+          <div class="flex flex-wrap items-baseline gap-2 text-[0.8rem]">
+            <Badge class={severityBadgeClass(severityKey(finding.severity))}>
+              {severityLabel(finding.severity)}
+            </Badge>
+            <span class="text-foreground">{finding.summary}</span>
             {#if finding.resolution}
-              <span class="finding-resolution">→ {finding.resolution}</span>
+              <span class="text-muted-foreground text-[0.75rem]">→ {finding.resolution}</span>
             {/if}
           </div>
         {/each}
-      </div>
+      </Card.Content>
     {/if}
-  </div>
+  </Card.Root>
 {/each}
-
-<style>
-  .pass-card {
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 0.5rem;
-    border-radius: 0 4px 4px 0;
-  }
-
-  .pass-card.has-findings {
-    border-left: 3px solid #f59e0b;
-    background: #fffbeb;
-  }
-
-  .pass-card.passed {
-    border-left: 3px solid #22c55e;
-    background: #f0fdf4;
-  }
-
-  .pass-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .count-badge {
-    font-size: 0.7rem;
-    padding: 0.05rem 0.35rem;
-    border-radius: 3px;
-    font-weight: 600;
-  }
-
-  .count-badge.amber {
-    background: #fef3c7;
-    color: #b45309;
-  }
-
-  .count-badge.green {
-    background: #dcfce7;
-    color: #16a34a;
-  }
-
-  .findings-list {
-    margin-top: 0.35rem;
-  }
-
-  .finding {
-    font-size: 0.8rem;
-    padding: 0.15rem 0;
-    color: #92400e;
-  }
-
-  .finding.error {
-    color: #dc2626;
-  }
-
-  .finding.info {
-    color: #475569;
-  }
-
-  .finding-summary::before {
-    content: '⚠ ';
-  }
-
-  .finding.error .finding-summary::before {
-    content: '✘ ';
-  }
-
-  .finding.info .finding-summary::before {
-    content: 'ℹ ';
-  }
-
-  .finding-resolution {
-    font-size: 0.75rem;
-    color: #64748b;
-    margin-left: 0.25rem;
-  }
-</style>

@@ -1,90 +1,50 @@
 # Roadmap: SpecGraph
 
-## Overview
+## Milestones
 
-This roadmap covers the current v1 slice of work migrated from `bd`/beads into GSD: closing
-out an in-flight release-pipeline fix, rounding out the identity/auth surface (API-key
-self-service, revocation enforcement, and external IdP integration), and two smaller
-reliability items (a verifiable drift-detection interface and a Confluence pagination bug).
-This is maintenance/hardening work on an already-shipped, mature product (through v0.12.0) —
-not a greenfield build. Two items are already underway per beads status (REL-01, AUTH-03) and
-their phases start "In progress" rather than "Not started."
+- ✅ **v0.12.0 Identity & Self-Service** — Phases 1-5 (shipped 2026-07-13)
 
-The four phases group by natural subsystem boundary: build/release tooling, MCP API-key
-lifecycle, external identity-provider integration, and detection/integration reliability.
-Phases 1, 2, and 4 have no dependencies on each other and could in principle be worked in any
-order; Phase 3 is sequenced after Phase 2 to avoid churning the identity subsystem twice.
+Full phase detail for shipped milestones is archived under `.planning/milestones/`.
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+<details>
+<summary>✅ v0.12.0 Identity & Self-Service (Phases 1-5) — SHIPPED 2026-07-13</summary>
 
-Decimal phases appear between their surrounding integers in numeric order.
+Maintenance/hardening slice migrated from `bd`/beads: closed an in-flight release-pipeline fix, rounded out the identity/auth surface (API-key self-service, revocation enforcement, external IdP integration), added a verifiable drift-detection interface, and shipped a project-selector web UI on a full shadcn-svelte + dark-mode foundation. INTG-01 (Confluence poller) descoped — code not in this repo; re-homed to backlog 999.2.
 
-- [ ] **Phase 1: Release & Build Tooling** - Ship the single-job goreleaser release pipeline and centralize config/lint tooling
-- [ ] **Phase 2: API Key Lifecycle & Self-Service** - OIDC users self-provision MCP API keys; revoked roles can't survive on standing keys
-- [ ] **Phase 3: External Identity Provider Integration** - Add native GitHub OAuth2, MCP OAuth 2.1 resource-server delegation, and session-issuer audit data
-- [ ] **Phase 4: Verification & Integration Reliability** - Drift detection gets a verified interface; Confluence comment polling stops dropping pages
+- [x] **Phase 1: Release & Build Tooling** (1/1 plans) — completed 2026-07-09 — REL-01, CFG-01, CFG-02
+- [x] **Phase 2: API Key Lifecycle & Self-Service** (8/8 plans) — completed 2026-07-10 — AUTH-02, AUTH-03
+- [x] **Phase 3: External Identity Provider Integration** (4/4 plans) — completed 2026-07-10 — AUTH-01, AUTH-04, AUTH-05
+- [x] **Phase 4: Verification & Integration Reliability** (2/2 plans) — completed 2026-07-10 — DRFT-01 (INTG-01 descoped)
+- [x] **Phase 5: UI Project Selector & Refinements** (14/14 plans) — completed 2026-07-12 — project selector + full shadcn-svelte + dark-mode migration (promoted from backlog 999.1)
 
-## Phase Details
+Details: `.planning/milestones/v0.12.0-ROADMAP.md` · Requirements: `.planning/milestones/v0.12.0-REQUIREMENTS.md` · Audit: `.planning/milestones/v0.12.0-MILESTONE-AUDIT.md`
 
-### Phase 1: Release & Build Tooling
-**Goal**: Maintainers can cut a tagged release and trust the build/lint tooling without manual intervention or double-published/broken artifacts
-**Depends on**: Nothing (first phase)
-**Requirements**: REL-01, CFG-01, CFG-02
-**Status**: In progress — REL-01 (`spgr-7r6g`) is already underway per beads; CFG-01 and CFG-02 have not started
-**Success Criteria** (what must be TRUE):
-  1. A pushed release tag produces exactly one coherent GitHub Release (correct changelog notes and artifacts) via a single goreleaser-owned job — no dual-path race, no empty release notes
-  2. All SpecGraph server/CLI config is sourced through one layered koanf loader (flag > env > file > default), with the legacy `SPECGRAPH_PG_URL` env var emitting a deprecation warning instead of silently breaking config
-  3. `task check`'s golangci-lint run uses the same pinned version as CI, so a clean local `task check` guarantees a clean CI lint run
-**Plans**: TBD
+</details>
 
-### Phase 2: API Key Lifecycle & Self-Service
-**Goal**: OIDC users can safely self-provision scoped MCP API keys, and a revoked app-role can no longer be exploited via an already-issued key
-**Depends on**: Nothing (independent of Phase 1; builds on already-shipped Identity Storage/Authn/Cedar/login-sync foundations — see `.planning/intel/decisions.md` and `constraints.md`)
-**Requirements**: AUTH-02, AUTH-03
-**Status**: In progress — AUTH-03 (`spgr-g7st`) is already underway per beads; AUTH-02 has not started
-**Success Criteria** (what must be TRUE):
-  1. An authenticated OIDC user can create, list, rotate, and revoke their own role-capped, expiring MCP API key without borrowing an admin's bootstrap key
-  2. A self-minted key's effective role is capped at the caller's own current role at mint/rotate time — no privilege-escalation "laundering" through a stale or elevated role
-  3. When a user's app role is revoked or downgraded upstream, their standing API/MCP keys stop carrying the old privilege on forced re-sync, not only on next interactive login
-**Plans**: TBD
+## Backlog
 
-### Phase 3: External Identity Provider Integration
-**Goal**: SpecGraph authenticates users and MCP clients against real external identity providers, with enough audit metadata to support session audit and future RP-initiated logout
-**Depends on**: Phase 2
-**Requirements**: AUTH-01, AUTH-04, AUTH-05
-**Success Criteria** (what must be TRUE):
-  1. A user can log in via a native GitHub OAuth2 + userinfo flow (no Entra/Okta broker required), using the same session model as existing OIDC providers
-  2. An MCP client can authenticate to SpecGraph's MCP server via a standard OAuth 2.1 resource-server flow, with token validation delegated to the configured external IdP rather than a SpecGraph-issued API key
-  3. Every web session record stores which issuer authenticated it, so an operator can audit login-provider usage per session and a future RP-initiated logout can target the correct issuer
-**Plans**: TBD
+### Phase 999.2: confluence integration (BACKLOG)
 
-### Phase 4: Verification & Integration Reliability
-**Goal**: Maintainers can trust that reported drift signals are correct and verifiable, and external polling integrations don't silently drop data
-**Depends on**: Nothing
-**Requirements**: DRFT-01, INTG-01
-**Success Criteria** (what must be TRUE):
-  1. Drift status for any spec (or the full graph) is queryable through a stable, documented interface (CLI/API/MCP), not only inferable by reading code
-  2. The drift interface is verified against real content-hash and DEPENDS_ON-edge scenarios — a test suite (or equivalent verification) confirms it flags true drift and doesn't false-positive on unrelated edits
-  3. Confluence comment polling walks every page of results — no comments are silently skipped when a thread's comment count spans multiple pages
-**Plans**: TBD
+**Goal:** [Captured for future planning] — Confluence integration surface for SpecGraph. Home for INTG-01 (`spgr-jwbj`, the Confluence comment-polling pagination bug descoped from Phase 4 because the poller code does not live in this repo) plus the broader Confluence↔SpecGraph bridge ideas: one-way export of specs/decisions (EXPL-02, `spgr-9f6`) and the design-bridge template (`docs/designs/2026-03-26-confluence-to-specgraph-design-bridge.md`). First step when promoting: locate/confirm which repo owns the Confluence comment poller.
+**Requirements:** TBD (candidates: INTG-01, EXPL-02)
+**Plans:** Not started
+
+Plans:
+
+- [ ] TBD (promote with /gsd-review-backlog when ready)
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Release & Build Tooling | 0/TBD | In progress | - |
-| 2. API Key Lifecycle & Self-Service | 0/TBD | In progress | - |
-| 3. External Identity Provider Integration | 0/TBD | Not started | - |
-| 4. Verification & Integration Reliability | 0/TBD | Not started | - |
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1. Release & Build Tooling | v0.12.0 | 1/1 | Complete | 2026-07-09 |
+| 2. API Key Lifecycle & Self-Service | v0.12.0 | 8/8 | Complete | 2026-07-10 |
+| 3. External Identity Provider Integration | v0.12.0 | 4/4 | Complete | 2026-07-10 |
+| 4. Verification & Integration Reliability | v0.12.0 | 2/2 | Complete | 2026-07-10 |
+| 5. UI Project Selector & Refinements | v0.12.0 | 14/14 | Complete | 2026-07-12 |
 
 ---
 *Roadmap created: 2026-07-08*
-*Granularity: Standard (4-6 phases) — no `.planning/config.json` present, defaults applied*
-*Phase ID convention: sequential — no `.planning/config.json` present, defaults applied*
+*v0.12.0 milestone archived: 2026-07-13*

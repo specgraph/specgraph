@@ -53,7 +53,7 @@ func init() {
 // stubAPIKeyToken builds a well-formed API-key token whose secret is
 // stubPHCSecret, so it verifies against stubPHCHash. Callers pass an
 // 8-char prefix.
-func stubAPIKeyToken(prefix string) string { //nolint:unparam // prefix varies by test; kept as parameter for clarity
+func stubAPIKeyToken(prefix string) string {
 	return "spgr_sk_" + prefix + "_" + stubPHCSecret
 }
 
@@ -152,6 +152,21 @@ func (s *usersBackendStub) RevokeAPIKey(_ context.Context, _ string) error {
 }
 func (s *usersBackendStub) RotateAPIKey(_ context.Context, _ string, _ *storage.APIKey) (*storage.APIKey, error) {
 	return nil, errUnexpectedCall("RotateAPIKey")
+}
+func (s *usersBackendStub) GetAPIKeyForUser(_ context.Context, _, _ string) (*storage.APIKey, error) {
+	return nil, errUnexpectedCall("GetAPIKeyForUser")
+}
+func (s *usersBackendStub) RevokeAPIKeyForUser(_ context.Context, _, _ string) error {
+	return errUnexpectedCall("RevokeAPIKeyForUser")
+}
+func (s *usersBackendStub) RotateAPIKeyForUser(_ context.Context, _, _ string, _ *storage.APIKey) (*storage.APIKey, error) {
+	return nil, errUnexpectedCall("RotateAPIKeyForUser")
+}
+func (s *usersBackendStub) CreateAPIKeyForUser(_ context.Context, _ *storage.APIKey, _ int) (*storage.APIKey, error) {
+	return nil, errUnexpectedCall("CreateAPIKeyForUser")
+}
+func (s *usersBackendStub) CountActiveAPIKeys(_ context.Context, _ string) (int, error) {
+	return 0, errUnexpectedCall("CountActiveAPIKeys")
 }
 func (s *usersBackendStub) ListAPIKeys(_ context.Context, _ storage.ListAPIKeysFilter) ([]*storage.APIKey, error) {
 	return nil, errUnexpectedCall("ListAPIKeys")

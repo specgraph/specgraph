@@ -54,6 +54,16 @@ func NewAuthInterceptor(resolver Resolver, authorizer Authorizer) connect.UnaryI
 	}
 }
 
+// Authenticate extracts the bearer token (Authorization header or session-cookie
+// fallback) from headers and resolves it via the resolver, applying the same
+// missing-token → ErrUnauthenticated discipline as RequireAuth. It is exported so
+// the server-package /mcp/ challenge wrapper (RequireAuthWithChallenge) reuses the
+// exact token-extraction + resolution path rather than duplicating it, keeping the
+// bare-401 and challenge-401 paths byte-identical in how they authenticate.
+func Authenticate(ctx context.Context, resolver Resolver, headers http.Header) (*Identity, error) {
+	return authenticate(ctx, resolver, headers)
+}
+
 // authenticate extracts the bearer token (Authorization header or cookie
 // fallback) and resolves it. Returns ErrUnauthenticated on missing token.
 func authenticate(ctx context.Context, resolver Resolver, headers http.Header) (*Identity, error) {

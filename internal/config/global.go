@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -221,6 +222,13 @@ type OIDCConfig struct {
 	// globalDefaults). MUST NOT be defaulted in applyPostLoad: a default-true
 	// bool cannot be distinguished there from an explicit `false`.
 	SyncOnLogin bool `yaml:"sync_on_login" koanf:"sync_on_login"`
+	// MCPResourceURI is the canonical RFC 8707 resource identifier for this
+	// MCP server, advertised in the RFC 9728 protected-resource metadata
+	// (`resource` field) and enforced as the required token audience for the
+	// /mcp/ boundary (AUTH-04, D-05.3). When empty the consumer defaults it to
+	// `<base_url>/mcp` (default applied in Plan 03 at the metadata mount, NOT
+	// here). Validate with ValidateMCPResourceURI at startup.
+	MCPResourceURI string `yaml:"mcp_resource_uri" koanf:"mcp_resource_uri"`
 }
 
 // JITCreateConfig parametrizes just-in-time Human creation on first
@@ -232,15 +240,39 @@ type JITCreateConfig struct {
 	EmailDomainAllowlist []string `yaml:"email_domain_allowlist" koanf:"email_domain_allowlist"`
 }
 
+// SelfServiceKeysConfig is the server-configurable policy for the self-service
+// API-key lifecycle (AUTH-03): the expiry ceiling, the per-user active-key
+// quota, and the per-identity self-mint rate limit. It is consumed by the
+// self-mint handlers (Plan 05) to clamp expiry, enforce the quota, and rate-limit
+// minting. This is a dedicated struct — the deprecated APIKeyConfig is NOT
+// extended for self-service policy (storage owns API keys after the Authn plan).
+type SelfServiceKeysConfig struct {
+	// DefaultTTLDays is the default key lifetime (days) applied when a
+	// self-mint request omits an explicit expiry. Default 90 (D-08).
+	DefaultTTLDays int `yaml:"default_ttl_days" koanf:"default_ttl_days"`
+	// MaxTTLDays is the hard ceiling (days) a self-minted key may live; a
+	// request over this cap is rejected. Default 180 (D-08).
+	MaxTTLDays int `yaml:"max_ttl_days" koanf:"max_ttl_days"`
+	// Quota is the maximum number of active (non-revoked, non-expired) keys a
+	// single user may hold. Default 10 (D-08).
+	Quota int `yaml:"quota" koanf:"quota"`
+	// RateLimitPerHour is the steady-state self-mint refill rate per identity
+	// (tokens per hour). Default 30.
+	RateLimitPerHour int `yaml:"rate_limit_per_hour" koanf:"rate_limit_per_hour"`
+	// RateLimitBurst is the per-identity self-mint burst allowance. Default 5.
+	RateLimitBurst int `yaml:"rate_limit_burst" koanf:"rate_limit_burst"`
+}
+
 // AuthConfig configures authentication and authorization.
 type AuthConfig struct {
-	Mode          string               `yaml:"mode" koanf:"mode"`                     // deprecated; ignored after Authn plan
-	DefaultRole   string               `yaml:"default_role" koanf:"default_role"`     // deprecated; ignored after Authn plan
-	APIKeys       []APIKeyConfig       `yaml:"api_keys" koanf:"api_keys"`             // ignored after Authn plan (storage owns)
-	OIDCProviders []OIDCProviderConfig `yaml:"oidc_providers" koanf:"oidc_providers"` // deprecated; superseded by OIDC.Providers
-	Roles         []string             `yaml:"roles" koanf:"roles"`
-	Policies      PolicyConfig         `yaml:"policies" koanf:"policies"`
-	OIDC          OIDCConfig           `yaml:"oidc" koanf:"oidc"`
+	Mode            string                `yaml:"mode" koanf:"mode"`                     // deprecated; ignored after Authn plan
+	DefaultRole     string                `yaml:"default_role" koanf:"default_role"`     // deprecated; ignored after Authn plan
+	APIKeys         []APIKeyConfig        `yaml:"api_keys" koanf:"api_keys"`             // ignored after Authn plan (storage owns)
+	OIDCProviders   []OIDCProviderConfig  `yaml:"oidc_providers" koanf:"oidc_providers"` // deprecated; superseded by OIDC.Providers
+	Roles           []string              `yaml:"roles" koanf:"roles"`
+	Policies        PolicyConfig          `yaml:"policies" koanf:"policies"`
+	OIDC            OIDCConfig            `yaml:"oidc" koanf:"oidc"`
+	SelfServiceKeys SelfServiceKeysConfig `yaml:"self_service_keys" koanf:"self_service_keys"`
 }
 
 // PolicyConfig configures the Cedar authorization engine's policy
@@ -261,7 +293,7 @@ type APIKeyConfig struct {
 // OIDCProviderConfig defines a single OIDC identity provider.
 type OIDCProviderConfig struct {
 	ID              string         `yaml:"id" koanf:"id"`
-	Kind            string         `yaml:"kind" koanf:"kind"`               // "oidc" (default); reserved for "oauth2"
+	Kind            string         `yaml:"kind" koanf:"kind"`               // "oidc" (default); "oauth2" for non-OIDC IdPs (GitHub)
 	Interactive     bool           `yaml:"interactive" koanf:"interactive"` // opt-in to the UI login flow
 	DisplayName     string         `yaml:"display_name" koanf:"display_name"`
 	Issuer          string         `yaml:"issuer" koanf:"issuer"`
@@ -271,6 +303,62 @@ type OIDCProviderConfig struct {
 	Audience        string         `yaml:"audience" koanf:"audience"`
 	Scopes          []string       `yaml:"scopes" koanf:"scopes"`
 	ClaimsMapping   []ClaimMapping `yaml:"claims_mapping" koanf:"claims_mapping"`
+
+	// oauth2-kind provider fields (used only when Kind=="oauth2"). The oauth2
+	// path skips OIDC discovery/id_token verification: it drives the
+	// Authorization-Code flow against AuthURL/TokenURL and materializes
+	// identity from the userinfo endpoint instead (D-01/D-02).
+	AuthURL      string `yaml:"auth_url" koanf:"auth_url"`           // authorization endpoint
+	TokenURL     string `yaml:"token_url" koanf:"token_url"`         // token endpoint
+	UserinfoURL  string `yaml:"userinfo_url" koanf:"userinfo_url"`   // userinfo endpoint (e.g. GitHub /user)
+	EmailsURL    string `yaml:"emails_url" koanf:"emails_url"`       // secondary verified-email endpoint (e.g. GitHub /user/emails)
+	SubjectField string `yaml:"subject_field" koanf:"subject_field"` // userinfo field selector for the stable subject (e.g. "id")
+	EmailField   string `yaml:"email_field" koanf:"email_field"`     // userinfo field selector for the email (e.g. "email")
+
+	// IntrospectionURL is the RFC 7662 introspection endpoint used to validate
+	// opaque (non-JWT) access tokens on the MCP resource-server path (D-06).
+	// Empty = introspection disabled for this provider.
+	IntrospectionURL string `yaml:"introspection_url" koanf:"introspection_url"`
+}
+
+// ProviderIssuer returns the SINGLE canonical issuer string for a provider —
+// the one value every issuer consumer must share so they cannot diverge
+// (review HIGH #1, D-09). For oidc providers (Kind empty or "oidc") it is the
+// verified/configured Issuer. For oauth2 providers (no verifiable `iss`) it is
+// the configured Issuer when set, else a stable synthetic issuer derived from
+// the provider ID. Every consumer — the oauth2 provider's claims.Issuer, the
+// startup claims-mapping key, the RFC 9728 authorization_servers list, and the
+// session-issuer audit — MUST call this helper rather than reading pc.Issuer
+// directly, so the synthetic and configured issuer can never split.
+func ProviderIssuer(pc OIDCProviderConfig) string { //nolint:gocritic // hugeParam: pc is read-only; matches NewOIDCVerifier convention
+	if pc.Kind == "oauth2" {
+		if pc.Issuer != "" {
+			return pc.Issuer
+		}
+		return "oauth2:" + pc.ID
+	}
+	return pc.Issuer
+}
+
+// ValidateMCPResourceURI checks that raw is a valid RFC 8707 canonical resource
+// identifier for the MCP resource server: it MUST use the https scheme and MUST
+// NOT carry a fragment (RFC 9728 §3.3, MCP "Canonical Server URI"). Returns an
+// error suitable for a startup-fatal abort (RESEARCH Open Question 1 / A2).
+func ValidateMCPResourceURI(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("mcp_resource_uri %q: %w", raw, err)
+	}
+	if u.Scheme != "https" {
+		return fmt.Errorf("mcp_resource_uri %q: scheme must be https", raw)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("mcp_resource_uri %q: missing host", raw)
+	}
+	if u.Fragment != "" || strings.Contains(raw, "#") {
+		return fmt.Errorf("mcp_resource_uri %q: must not contain a fragment", raw)
+	}
+	return nil
 }
 
 // ClaimMapping maps a JWT claim value to a SpecGraph role.
@@ -431,6 +519,13 @@ func globalDefaults() *GlobalConfig {
 		},
 		Auth: AuthConfig{
 			OIDC: OIDCConfig{CLILoginEnabled: true, SyncOnLogin: true},
+			SelfServiceKeys: SelfServiceKeysConfig{
+				DefaultTTLDays:   90,
+				MaxTTLDays:       180,
+				Quota:            10,
+				RateLimitPerHour: 30,
+				RateLimitBurst:   5,
+			},
 		},
 		Log: LogConfig{
 			Level:    "info",

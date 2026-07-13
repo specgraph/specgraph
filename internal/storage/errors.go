@@ -159,6 +159,11 @@ var ErrBootstrapExists = errors.New("bootstrap user already exists")
 // ErrAPIKeyPrefixExists is returned when an API key prefix collides with an existing key.
 var ErrAPIKeyPrefixExists = errors.New("api key prefix collision")
 
+// ErrQuotaExceeded is returned when a self-service key mint would exceed the
+// caller's active-key quota. Enforced under a parent-row lock so the count is
+// race-free (T-02-05). Handlers map this to CodeResourceExhausted.
+var ErrQuotaExceeded = errors.New("api key quota exceeded")
+
 // ErrSessionNotFound is returned when a web session does not exist (or is expired/revoked at lookup).
 var ErrSessionNotFound = errors.New("web session not found")
 

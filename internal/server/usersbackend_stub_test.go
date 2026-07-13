@@ -47,6 +47,11 @@ type usersBackendStub struct {
 	createAPIKey         func(ctx context.Context, k *storage.APIKey) (*storage.APIKey, error)
 	revokeAPIKey         func(ctx context.Context, keyID string) error
 	rotateAPIKey         func(ctx context.Context, oldKeyID string, newKey *storage.APIKey) (*storage.APIKey, error)
+	getAPIKeyForUser     func(ctx context.Context, userID, keyID string) (*storage.APIKey, error)
+	revokeAPIKeyForUser  func(ctx context.Context, userID, keyID string) error
+	rotateAPIKeyForUser  func(ctx context.Context, userID, keyID string, newKey *storage.APIKey) (*storage.APIKey, error)
+	createAPIKeyForUser  func(ctx context.Context, k *storage.APIKey, quota int) (*storage.APIKey, error)
+	countActiveAPIKeys   func(ctx context.Context, userID string) (int, error)
 	listAPIKeys          func(ctx context.Context, filter storage.ListAPIKeysFilter) ([]*storage.APIKey, error)
 	listOIDCBindings     func(ctx context.Context, userID string) ([]*storage.OIDCBinding, error)
 	unbindOIDC           func(ctx context.Context, bindingID string) error
@@ -125,6 +130,41 @@ func (s *usersBackendStub) RotateAPIKey(ctx context.Context, oldKeyID string, ne
 		return s.rotateAPIKey(ctx, oldKeyID, newKey)
 	}
 	return nil, errUnexpected("RotateAPIKey")
+}
+
+func (s *usersBackendStub) GetAPIKeyForUser(ctx context.Context, userID, keyID string) (*storage.APIKey, error) {
+	if s.getAPIKeyForUser != nil {
+		return s.getAPIKeyForUser(ctx, userID, keyID)
+	}
+	return nil, errUnexpected("GetAPIKeyForUser")
+}
+
+func (s *usersBackendStub) RevokeAPIKeyForUser(ctx context.Context, userID, keyID string) error {
+	if s.revokeAPIKeyForUser != nil {
+		return s.revokeAPIKeyForUser(ctx, userID, keyID)
+	}
+	return errUnexpected("RevokeAPIKeyForUser")
+}
+
+func (s *usersBackendStub) RotateAPIKeyForUser(ctx context.Context, userID, keyID string, newKey *storage.APIKey) (*storage.APIKey, error) {
+	if s.rotateAPIKeyForUser != nil {
+		return s.rotateAPIKeyForUser(ctx, userID, keyID, newKey)
+	}
+	return nil, errUnexpected("RotateAPIKeyForUser")
+}
+
+func (s *usersBackendStub) CreateAPIKeyForUser(ctx context.Context, k *storage.APIKey, quota int) (*storage.APIKey, error) {
+	if s.createAPIKeyForUser != nil {
+		return s.createAPIKeyForUser(ctx, k, quota)
+	}
+	return nil, errUnexpected("CreateAPIKeyForUser")
+}
+
+func (s *usersBackendStub) CountActiveAPIKeys(ctx context.Context, userID string) (int, error) {
+	if s.countActiveAPIKeys != nil {
+		return s.countActiveAPIKeys(ctx, userID)
+	}
+	return 0, errUnexpected("CountActiveAPIKeys")
 }
 
 func (s *usersBackendStub) ListAPIKeys(ctx context.Context, filter storage.ListAPIKeysFilter) ([]*storage.APIKey, error) {

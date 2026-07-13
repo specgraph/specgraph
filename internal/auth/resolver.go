@@ -17,6 +17,16 @@ type Resolver interface {
 	// context.Canceled / context.DeadlineExceeded unwrapped.
 	Resolve(ctx context.Context, token string) (*Identity, error)
 
+	// ResolveLogin materializes an Identity from already-verified OIDC/oauth2
+	// claims. It is the interactive-login entrypoint: the callback handler
+	// obtains *OIDCClaims from LoginProvider.Exchange and passes them here,
+	// bypassing Resolve's token-shape dispatch entirely. It is NEVER used for
+	// bearer-JWT, API-key, session, or MCP resolution — those keep flowing
+	// through Resolve unchanged (D-08). Error discipline matches Resolve:
+	// ErrUnauthenticated for credential failure, ErrTransient for backend
+	// failure.
+	ResolveLogin(ctx context.Context, claims *OIDCClaims) (*Identity, error)
+
 	// HasAuth reports whether any non-bootstrap, non-deleted user
 	// exists. Used by warnIfNoAuthOnPublicListen at startup.
 	HasAuth(ctx context.Context) (bool, error)

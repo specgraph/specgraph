@@ -1,64 +1,53 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { graphClient } from '$lib/api/client';
-  import type { GraphNode, Edge } from '$lib/api/gen/specgraph/v1/graph_pb';
+  import { invalidateAll } from '$app/navigation';
   import Graph from '$lib/components/Graph.svelte';
   import SearchFilter from '$lib/components/SearchFilter.svelte';
+  import { Skeleton } from '$lib/components/ui/skeleton/index.js';
+  import * as Card from '$lib/components/ui/card/index.js';
+  import { Button } from '$lib/components/ui/button/index.js';
+  import type { PageData } from './$types';
 
-  let nodes = $state<GraphNode[]>([]);
-  let edges = $state<Edge[]>([]);
+  let { data }: { data: PageData } = $props();
+
+  // Local UI state only — the fetch moved to +page.ts load().
   let filterText = $state('');
-  let loading = $state(true);
-  let error = $state<string | null>(null);
-  onMount(() => { loadGraph(); });
-
-  async function loadGraph() {
-    try {
-      const resp = await graphClient.getFullGraph({});
-      nodes = resp.nodes ?? [];
-      edges = resp.edges ?? [];
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to load graph';
-      console.error('Failed to load graph:', err);
-    } finally {
-      loading = false;
-    }
-  }
 </script>
 
-<h1>Dependency Graph</h1>
+<h1 class="mb-4 text-xl font-semibold text-foreground">Dependency Graph</h1>
 
-{#if loading}
-  <p class="status">Loading graph...</p>
-{:else if error}
-  <p class="status error">{error}</p>
-{:else if nodes.length === 0}
-  <p class="status">No specs or decisions found. Create some specs first.</p>
-{:else}
-  <SearchFilter value={filterText} onchange={(v) => (filterText = v)} />
-  <div class="graph-wrap">
-    <Graph {nodes} {edges} {filterText} />
-  </div>
-{/if}
-
-<style>
-  h1 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0 0 1rem;
-    color: #1a1a2e;
-  }
-
-  .status {
-    color: #64748b;
-    font-size: 0.95rem;
-  }
-
-  .status.error {
-    color: #dc2626;
-  }
-
-  .graph-wrap {
-    margin-top: 0.75rem;
-  }
-</style>
+{#await data.graph}
+  <!-- Loading: Skeleton Card block (graph canvas footprint). Streamed promise
+       re-suspends here on invalidateAll() so a switch returns to skeleton with no
+       stale previous-project graph (Pitfall 3, T-05-05). -->
+  <Card.Root>
+    <Card.Content class="p-4">
+      <Skeleton class="h-[480px] w-full" />
+    </Card.Content>
+  </Card.Root>
+{:then g}
+  {#if g.loadError}
+    <!-- Error: inline Retry card (do not reach +error.svelte, T-05-15). -->
+    <Card.Root class="max-w-md">
+      <Card.Header>
+        <Card.Title>Couldn't load graph.</Card.Title>
+        <Card.Description>Check your connection and try again.</Card.Description>
+      </Card.Header>
+      <Card.Footer>
+        <Button variant="outline" onclick={() => invalidateAll()}>Retry</Button>
+      </Card.Footer>
+    </Card.Root>
+  {:else if g.nodes.length === 0}
+    <!-- Empty: no graph nodes for this project (UI-SPEC copy). -->
+    <Card.Root class="max-w-md">
+      <Card.Header>
+        <Card.Title>Nothing here yet</Card.Title>
+        <Card.Description>Nothing here yet — no graph nodes for this project.</Card.Description>
+      </Card.Header>
+    </Card.Root>
+  {:else}
+    <SearchFilter value={filterText} onchange={(v) => (filterText = v)} />
+    <div class="mt-3">
+      <Graph nodes={g.nodes} edges={g.edges} {filterText} />
+    </div>
+  {/if}
+{/await}

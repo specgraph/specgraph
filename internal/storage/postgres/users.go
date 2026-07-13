@@ -516,6 +516,244 @@ func (s *AuthStore) RotateAPIKey(ctx context.Context, oldKeyID string, newKey *s
 	return nil, storage.ErrAPIKeyPrefixExists
 }
 
+// GetAPIKeyForUser returns the caller's own key, scoped by user_id so a
+// foreign or missing key is uniformly ErrAPIKeyNotFound (T-02-04). Includes
+// revoked keys — the caller (rotate at the handler) gates on IsActive.
+func (s *AuthStore) GetAPIKeyForUser(ctx context.Context, userID, keyID string) (*storage.APIKey, error) {
+	const q = `
+		SELECT id, user_id, prefix, phc_hash, role_downgrade, label,
+		       expires_at, last_used_at, revoked_at, created_at
+		FROM api_keys
+		WHERE id = $1::uuid AND user_id = $2::uuid`
+	row := s.pool.QueryRow(ctx, q, keyID, userID)
+
+	var k storage.APIKey
+	err := row.Scan(
+		&k.ID, &k.UserID, &k.Prefix, &k.PHCHash, &k.RoleDowngrade, &k.Label,
+		&k.ExpiresAt, &k.LastUsedAt, &k.RevokedAt, &k.CreatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, storage.ErrAPIKeyNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("scan api key: %w", err)
+	}
+	return &k, nil
+}
+
+// RevokeAPIKeyForUser marks the caller's own key revoked. Unlike the admin
+// RevokeAPIKey (which uses a `revoked_at IS NULL` guard and is silently
+// idempotent with no RowsAffected check), the owner-scoped variant scopes on
+// user_id and DROPS the `revoked_at IS NULL` guard so re-revoking your OWN key
+// is an idempotent no-op success (Finding F4). A RowsAffected()==0 result then
+// means the key is foreign or missing — returned as ErrAPIKeyNotFound so
+// "not yours"/"missing" are indistinguishable (T-02-04).
+func (s *AuthStore) RevokeAPIKeyForUser(ctx context.Context, userID, keyID string) error {
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE api_keys SET revoked_at = coalesce(revoked_at, $1)
+		WHERE id = $2::uuid AND user_id = $3::uuid`, s.now(), keyID, userID)
+	if err != nil {
+		return fmt.Errorf("revoke key for user: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return storage.ErrAPIKeyNotFound
+	}
+	return nil
+}
+
+// RotateAPIKeyForUser revokes the caller's own active key and inserts a new one
+// in one transaction, scoped by user_id. The new key is built ENTIRELY from the
+// explicit newKey argument — newKey.PHCHash, newKey.RoleDowngrade (floored by
+// the handler), and newKey.ExpiresAt (capped by the handler). It NEVER inherits
+// the old key's role_downgrade or expires_at, so a rotate can never re-pin a
+// stale higher ceiling (T-02-06). Owner is taken from the scoped userID. A
+// foreign/missing/already-revoked old key returns ErrAPIKeyNotFound.
+func (s *AuthStore) RotateAPIKeyForUser(ctx context.Context, userID, keyID string, newKey *storage.APIKey) (*storage.APIKey, error) {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // deferred rollback is a no-op after commit
+
+	// Scope the old-key read/revoke with AND user_id AND revoked_at IS NULL so
+	// a foreign, missing, or already-revoked key is uniformly NotFound. We do
+	// not read role_downgrade/expires_at — the new key uses ONLY the explicit
+	// newKey values (T-02-06).
+	tag, err := tx.Exec(ctx, `
+		UPDATE api_keys SET revoked_at = $1
+		WHERE id = $2::uuid AND user_id = $3::uuid AND revoked_at IS NULL`,
+		s.now(), keyID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("revoke old key: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return nil, storage.ErrAPIKeyNotFound
+	}
+
+	// Insert the new key inside the same tx with savepoint-guarded prefix
+	// collision retry, mirroring RotateAPIKey. Every attribute comes from the
+	// explicit newKey; owner is the scoped userID.
+	for attempt := 0; attempt < maxPrefixRetries; attempt++ {
+		prefix, genErr := s.genPrefix()
+		if genErr != nil {
+			return nil, fmt.Errorf("generate prefix: %w", genErr)
+		}
+		if _, spErr := tx.Exec(ctx, `SAVEPOINT rotate_self_insert`); spErr != nil {
+			return nil, fmt.Errorf("savepoint: %w", spErr)
+		}
+		var id string
+		var createdAt time.Time
+		insErr := tx.QueryRow(ctx, `
+			INSERT INTO api_keys (user_id, prefix, phc_hash, role_downgrade, label, expires_at)
+			VALUES ($1::uuid, $2, $3, $4, $5, $6)
+			RETURNING id, created_at`,
+			userID, prefix, newKey.PHCHash, newKey.RoleDowngrade,
+			newKey.Label, newKey.ExpiresAt).Scan(&id, &createdAt)
+		if insErr == nil {
+			if _, relErr := tx.Exec(ctx, `RELEASE SAVEPOINT rotate_self_insert`); relErr != nil {
+				return nil, fmt.Errorf("release savepoint: %w", relErr)
+			}
+			if commitErr := tx.Commit(ctx); commitErr != nil {
+				return nil, fmt.Errorf("commit tx: %w", commitErr)
+			}
+			return &storage.APIKey{
+				ID:            id,
+				UserID:        userID,
+				Prefix:        prefix,
+				PHCHash:       newKey.PHCHash,
+				RoleDowngrade: newKey.RoleDowngrade,
+				Label:         newKey.Label,
+				ExpiresAt:     newKey.ExpiresAt,
+				CreatedAt:     createdAt,
+			}, nil
+		}
+		if _, rbErr := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT rotate_self_insert`); rbErr != nil {
+			return nil, fmt.Errorf("rollback savepoint: %w", rbErr)
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(insErr, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "api_keys_prefix_key" {
+			continue
+		}
+		return nil, fmt.Errorf("insert new key: %w", insErr)
+	}
+	return nil, storage.ErrAPIKeyPrefixExists
+}
+
+// activeKeyCountQuery counts a user's keys that are neither revoked nor
+// expired (as of now()). Shared by CreateAPIKeyForUser (inside the quota tx)
+// and CountActiveAPIKeys (standalone) so the "active" definition is identical.
+const activeKeyCountQuery = `
+	SELECT count(*) FROM api_keys
+	WHERE user_id = $1::uuid AND revoked_at IS NULL
+	  AND (expires_at IS NULL OR expires_at > now())`
+
+// CreateAPIKeyForUser mints a key under a quota-safe transaction. It locks the
+// parent users row FOR UPDATE to serialize a single user's concurrent mints
+// (closing the quota TOCTOU race, T-02-05), counts the user's active keys, and
+// rejects with ErrQuotaExceeded when the active count is already >= quota. The
+// caller supplies key.PHCHash; storage assigns the prefix and inserts. Postgres
+// forbids a row-locking clause on an aggregate query, so the lock is taken on
+// the parent users row instead — the count then runs inside the serialized
+// window.
+func (s *AuthStore) CreateAPIKeyForUser(ctx context.Context, key *storage.APIKey, quota int) (*storage.APIKey, error) {
+	if key.UserID == "" {
+		return nil, errors.New("CreateAPIKeyForUser: UserID required")
+	}
+	if key.PHCHash == "" {
+		return nil, errors.New("CreateAPIKeyForUser: PHCHash required")
+	}
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // deferred rollback is a no-op after commit
+
+	// Lock the parent users row (active only) to serialize this user's mints.
+	// A missing/soft-deleted user matches zero rows → ErrUserNotFound.
+	var lockedID string
+	err = tx.QueryRow(ctx, `
+		SELECT id FROM users
+		WHERE id = $1::uuid AND deleted_at IS NULL
+		FOR UPDATE`, key.UserID).Scan(&lockedID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("lock user: %w", storage.ErrUserNotFound)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("lock user row: %w", err)
+	}
+
+	// Count active keys inside the serialized window. No concurrent mint for
+	// this user can commit between this count and our INSERT (they block on
+	// the users-row lock above), so the quota check is race-free.
+	var n int
+	if err := tx.QueryRow(ctx, activeKeyCountQuery, key.UserID).Scan(&n); err != nil {
+		return nil, fmt.Errorf("count active keys: %w", err)
+	}
+	if n >= quota {
+		return nil, storage.ErrQuotaExceeded
+	}
+
+	// Insert with a generated prefix + collision retry, reusing the
+	// CreateAPIKey INSERT…SELECT…WHERE EXISTS body inside the tx.
+	for attempt := 0; attempt < maxPrefixRetries; attempt++ {
+		prefix, genErr := s.genPrefix()
+		if genErr != nil {
+			return nil, fmt.Errorf("generate prefix: %w", genErr)
+		}
+		if _, spErr := tx.Exec(ctx, `SAVEPOINT create_self_insert`); spErr != nil {
+			return nil, fmt.Errorf("savepoint: %w", spErr)
+		}
+		var id string
+		var createdAt time.Time
+		insErr := tx.QueryRow(ctx, `
+			INSERT INTO api_keys (user_id, prefix, phc_hash, role_downgrade, label, expires_at)
+			SELECT $1::uuid, $2, $3, $4, $5, $6
+			WHERE EXISTS (
+				SELECT 1 FROM users WHERE id = $1::uuid AND deleted_at IS NULL
+			)
+			RETURNING id, created_at`,
+			key.UserID, prefix, key.PHCHash, key.RoleDowngrade, key.Label, key.ExpiresAt).
+			Scan(&id, &createdAt)
+		if insErr == nil {
+			if _, relErr := tx.Exec(ctx, `RELEASE SAVEPOINT create_self_insert`); relErr != nil {
+				return nil, fmt.Errorf("release savepoint: %w", relErr)
+			}
+			if commitErr := tx.Commit(ctx); commitErr != nil {
+				return nil, fmt.Errorf("commit tx: %w", commitErr)
+			}
+			key.ID = id
+			key.Prefix = prefix
+			key.CreatedAt = createdAt
+			return key, nil
+		}
+		if errors.Is(insErr, pgx.ErrNoRows) {
+			// The users row existed under the lock above, so a no-rows insert
+			// here would be a surprise; treat as user-not-found defensively.
+			return nil, fmt.Errorf("insert api key: %w", storage.ErrUserNotFound)
+		}
+		if _, rbErr := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT create_self_insert`); rbErr != nil {
+			return nil, fmt.Errorf("rollback savepoint: %w", rbErr)
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(insErr, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "api_keys_prefix_key" {
+			continue
+		}
+		return nil, fmt.Errorf("insert api key: %w", insErr)
+	}
+	return nil, storage.ErrAPIKeyPrefixExists
+}
+
+// CountActiveAPIKeys returns the number of the user's keys that are neither
+// revoked nor expired (as of now). Standalone read, outside any quota tx.
+func (s *AuthStore) CountActiveAPIKeys(ctx context.Context, userID string) (int, error) {
+	var n int
+	if err := s.pool.QueryRow(ctx, activeKeyCountQuery, userID).Scan(&n); err != nil {
+		return 0, fmt.Errorf("count active keys: %w", err)
+	}
+	return n, nil
+}
+
 // ListAPIKeys returns keys matching the filter. The limit is clamped to
 // [1, maxListLimit] with the same semantics as ListUsers.
 func (s *AuthStore) ListAPIKeys(ctx context.Context, f storage.ListAPIKeysFilter) ([]*storage.APIKey, error) {
