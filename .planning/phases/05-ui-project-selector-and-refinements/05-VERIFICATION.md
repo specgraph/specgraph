@@ -1,7 +1,7 @@
 ---
 phase: 05-ui-project-selector-and-refinements
 verified: 2026-07-12T17:00:58Z
-status: human_needed
+status: passed
 score: 3/3 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -9,16 +9,20 @@ re_verification:
   previous_status: gaps_found
   previous_score: 2/3
   gaps_closed:
+
     - "The full web UI is migrated to shadcn-svelte (Tailwind v4, Slate theme) with light/dark mode (D-12/D-13/D-14) — spec & decision detail pages migrated off the light-only #1a1a2e/#2563eb palette onto shadcn theme tokens (plan 05-14)."
   gaps_remaining: []
   regressions: []
 human_verification:
+
   - test: "In the running UI, toggle dark mode and open a Spec detail (/spec/[slug]) and a Decision detail (/decision/[slug]) page (post-migration)."
     expected: "All body content (headings, meta labels, body text, tables, blockquotes, approaches, lifecycle banners, conversation roles, spec chips, decision-status badge) is readable with proper contrast in BOTH light and dark mode."
     why_human: "Dark-mode contrast/readability is a perceptual judgment. Grep confirms the old light-only hex is gone and shadcn theme tokens (text-foreground/text-muted-foreground/bg-muted/border-border) are wired, but the on-screen contrast of the freshly-migrated markup needs a human eye."
+
   - test: "D-10 constitution switch UAT: switch between a project WITH a constitution and one WITHOUT."
     expected: "Merged/Layer badges and sections re-derive with no stale prior-project content; the 'No constitution found for this project' empty state appears; layer hues correct in light + dark."
     why_human: "Real-time project-switch re-derivation and badge hues are visual/runtime behavior; the loader wiring is verified in code but the on-screen result needs UAT."
+
   - test: "Project-switch skeleton-on-switch across dashboard/graph/spec/decision/constitution with >1 project available."
     expected: "Selecting a different project re-suspends each view to its Skeleton, then renders the new project's data with the correct X-Specgraph-Project scoping; no stale content."
     why_human: "invalidateAll() + streamed {#await} re-suspend is verified in code, but the live re-fetch/skeleton transition is runtime behavior best confirmed against a real server with multiple projects."

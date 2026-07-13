@@ -29,13 +29,14 @@ Specs stay live and queryable as a graph — with locked architectural decisions
 - ✓ Native generic OAuth2 + userinfo login provider (GitHub-direct) (`spgr-1rq9`, AUTH-01) — Phase 3: `oauth2LoginProvider` (Exchange→userinfo→`*OIDCClaims`, verified-email fallback, stable numeric subject) reusing the OIDC binding/JIT/claims-mapping machinery via a single canonical `ProviderIssuer` helper; live GitHub browser login verified
 - ✓ MCP OAuth 2.1 resource server delegating auth to a real IdP (`spgr-tmqm`, AUTH-04) — Phase 3: RFC 9728 protected-resource metadata + `/mcp/`-scoped `WWW-Authenticate` challenge, RFC 8707 resource-URI audience binding (MCP-request-gated), RFC 7662 opaque-token introspection with multi-IdP trial and `spgr_sk_` guard-before-introspection; dev/prod https policy (RS disabled on http loopback)
 - ✓ Populate `web_sessions.issuer` for audit / future RP-logout (`spgr-bbp2`, AUTH-05) — Phase 3: `Identity.Issuer` threaded through `materializeIdentity`; callback resolves via `ResolveLogin` and stamps the session issuer before `CreateSession`; verified by Docker integration test (no backfill of pre-existing empty-issuer rows, D-10)
+- ✓ Interface and verify drift detection (`spgr-vch`, DRFT-01) — Phase 4: drift status reachable via a stable interface (`LifecycleService.CheckDrift`/`AcknowledgeDrift`, MCP `drift` tool), verified against real content-hash + DEPENDS_ON-edge scenarios by no-false-positive e2e, full-graph SkippedCount integration, and per-upstream ack round-trip tests (INTG-01 Confluence bug descoped — poller not in this repo)
+- ✓ Web UI project selector + shadcn-svelte/dark-mode migration (D-01..D-14) — Phase 5: active-project store with default precedence (last-used → `default` → alpha-first), skeleton-on-switch across every project-scoped view (dashboard/graph/spec/decision/constitution) with correct empty/error states and provenance-derived constitution badges; full UI migrated to shadcn-svelte (Tailwind v4, Slate OKLCH tokens) with light/dark mode
 
 ### Active
 
 <!-- v1 scope — see REQUIREMENTS.md for full detail with REQ-IDs. Sourced from currently open/in-progress beads issues, P1+P2 priority. -->
 
-- [ ] Fix Confluence comment polling pagination bug (`spgr-jwbj`)
-- [ ] Interface and verify drift detection (`spgr-vch`)
+- [ ] Fix Confluence comment polling pagination bug (`spgr-jwbj`) — deferred to backlog Phase 999.2; poller code is not in this repo (INTG-01 descoped from Phase 4), first step is to locate its owning repository
 
 ### Out of Scope
 
@@ -68,6 +69,8 @@ Full architectural history — locked ADRs, three-generation storage-backend lin
 | Storage backend: pure Postgres/pgx (not Memgraph+AGE) | simplify ops, drop graph-DB dependency | ✓ Good |
 | Migrate issue tracking from `bd`/beads to GSD `.planning/` | consolidate on one planning/tracking system | — Pending |
 | CFG-02: Taskfile-as-source-of-truth for pinned tool versions (silent leaf task + CI command substitution, not a duplicated env var) | single declaration closes local/CI version drift structurally, not just for golangci-lint | ✓ Good — pattern flagged in code review (IN-01) as worth generalizing to `PROTOC_GEN_*` vars in a future phase |
+| Phase 5: manual-fallback shadcn install + Slate via OKLCH token block | shadcn-svelte CLI blocks on an interactive preset prompt and its base-color enum has no `slate`, so `components.json`/`app.css`/`utils.ts` are authored by hand and Slate is delivered as a verified OKLCH block | ✓ Good |
+| Phase 5: layout owns the single active-project breadcrumb; pages re-suspend to Skeleton via `+page.ts` load + `invalidateAll()` on project switch | prevents per-page breadcrumb duplication and gives end-to-end switch re-fetch without manual stale-guards | ✓ Good |
 
 ---
-*Last updated: 2026-07-10 after Phase 3 complete — AUTH-01 (`spgr-1rq9`, native GitHub OAuth2+userinfo login), AUTH-04 (`spgr-tmqm`, MCP OAuth 2.1 resource server: RFC 9728/8707/7662), and AUTH-05 (`spgr-bbp2`, session-issuer audit data) shipped and reclassified from Active to Validated; all Phase 3 requirements closed*
+*Last updated: 2026-07-13 after Phase 5 complete — UI project selector + shadcn/dark-mode migration (D-01..D-14) shipped and UAT-passed; also reconciled Phase 4 (DRFT-01 drift detection moved Active→Validated) and marked the Confluence pagination bug (`spgr-jwbj`) deferred to backlog Phase 999.2. All five v1 phases complete.*

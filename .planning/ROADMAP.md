@@ -173,7 +173,7 @@ Plans:
 
 **Goal:** [Captured for future planning] — Confluence integration surface for SpecGraph. Home for INTG-01 (`spgr-jwbj`, the Confluence comment-polling pagination bug descoped from Phase 4 because the poller code does not live in this repo) plus the broader Confluence↔SpecGraph bridge ideas: one-way export of specs/decisions (EXPL-02, `spgr-9f6`) and the design-bridge template (`docs/designs/2026-03-26-confluence-to-specgraph-design-bridge.md`). First step when promoting: locate/confirm which repo owns the Confluence comment poller.
 **Requirements:** TBD (candidates: INTG-01, EXPL-02)
-**Plans:** 0 plans
+**Plans:** Not started
 
 Plans:
 
@@ -190,7 +190,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. API Key Lifecycle & Self-Service | 8/8 | Complete    | 2026-07-10 |
 | 3. External Identity Provider Integration | 4/4 | Complete    | 2026-07-10 |
 | 4. Verification & Integration Reliability | 2/2 | Complete    | 2026-07-10 |
-| 5. UI Project Selector & Refinements | 14/14 | Complete   | 2026-07-12 |
+| 5. UI Project Selector & Refinements | 14/14 | Complete    | 2026-07-12 |
 
 ---
 *Roadmap created: 2026-07-08*
