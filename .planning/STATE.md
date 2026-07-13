@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
 milestone: v0.12.0
-milestone_name: milestone
-current_phase: 999.2
-current_phase_name: BACKLOG
-status: executing
-stopped_at: Completed 05-14-PLAN.md
-last_updated: "2026-07-13T16:52:41.888Z"
+milestone_name: Identity & Self-Service
+current_phase: null
+status: Awaiting next milestone
+stopped_at: Phase 05 complete (UAT passed, verification passed) — all five v1 phases done; only backlog Phase 999.2 remains
+last_updated: "2026-07-13T17:56:18.532Z"
 last_activity: 2026-07-13
-last_activity_desc: Phase 05 complete, transitioned to Phase 999.2
+last_activity_desc: Milestone v0.12.0 completed and archived
 progress:
   total_phases: 5
   completed_phases: 5
   total_plans: 29
   completed_plans: 29
   percent: 100
+current_phase_name: BACKLOG
 ---
 
 # Project State
@@ -31,12 +31,10 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 
 ## Current Position
 
-Phase: 999.2 — confluence integration (BACKLOG)
-Plan: Not started
-Status: Backlog — promote with /gsd-review-backlog when ready
-Last activity: 2026-07-13 — Phase 05 complete; all five v1 phases done
-
-Progress: [████████████████████] 100%
+Phase: Milestone v0.12.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-13 — Milestone v0.12.0 completed and archived
 
 ## Performance Metrics
 
@@ -149,10 +147,15 @@ Items acknowledged and carried forward from previous milestone close:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none — see REQUIREMENTS.md v2 Requirements for the full deferred backlog from the beads migration)* | | | |
+| requirement | INTG-01 — Confluence comment-polling pagination bug (`spgr-jwbj`) | descoped → backlog Phase 999.2 (code not in this repo) | 2026-07-13 (v0.12.0 close) |
+| *(see REQUIREMENTS.md v2 Requirements for the full deferred backlog from the beads migration)* | | | |
 
 ## Session Continuity
 
 Last session: 2026-07-13
 Stopped at: Phase 05 complete (UAT passed, verification passed) — all five v1 phases done; only backlog Phase 999.2 remains
 Resume file: None
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

@@ -8,6 +8,17 @@ SpecGraph is a Live Spec-Driven Development Framework — specifications as a qu
 
 Specs stay live and queryable as a graph — with locked architectural decisions, drift detection, and a durable storage/query layer — so both humans and agent-based execution engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
+## Current State
+
+**Shipped:** v0.12.0 Identity & Self-Service (5 phases, 29 plans, 69 tasks — closed 2026-07-13). Rounded out the identity/auth surface (self-service MCP API keys, live role-revocation enforcement, native GitHub OAuth2 + MCP OAuth 2.1 resource server, session-issuer audit), hardened release/build tooling, added a verifiable drift-detection interface, and shipped a project-selector web UI on a full shadcn-svelte + dark-mode foundation. Archived under `.planning/milestones/v0.12.0-*`.
+
+**Open threads for the next milestone:**
+
+- INTG-01 (Confluence comment-polling pagination bug, `spgr-jwbj`) — descoped from v0.12.0; parked in backlog **Phase 999.2 (Confluence Integration)** alongside EXPL-02 (one-way Confluence export). First step on promotion: locate the repo that owns the poller.
+- Candidate v2 requirements are catalogued in `.planning/milestones/v0.12.0-REQUIREMENTS.md` (§ v2 Requirements): REL-02, CFG-03..05, DRFT-02, DEC-01..04, HRNS-01..03, DX-01..02, SCALE-01..03, EXPL-01..05, INTG-02, UI-01..02.
+
+Fresh requirements for the next milestone are defined via `/gsd-new-milestone`.
+
 ## Requirements
 
 ### Validated
@@ -73,4 +84,4 @@ Full architectural history — locked ADRs, three-generation storage-backend lin
 | Phase 5: layout owns the single active-project breadcrumb; pages re-suspend to Skeleton via `+page.ts` load + `invalidateAll()` on project switch | prevents per-page breadcrumb duplication and gives end-to-end switch re-fetch without manual stale-guards | ✓ Good |
 
 ---
-*Last updated: 2026-07-13 after Phase 5 complete — UI project selector + shadcn/dark-mode migration (D-01..D-14) shipped and UAT-passed; also reconciled Phase 4 (DRFT-01 drift detection moved Active→Validated) and marked the Confluence pagination bug (`spgr-jwbj`) deferred to backlog Phase 999.2. All five v1 phases complete.*
+*Last updated: 2026-07-13 after v0.12.0 Identity & Self-Service milestone — all five phases shipped and verified; milestone archived to `.planning/milestones/v0.12.0-*` (override_closeout: INTG-01 descoped to backlog 999.2). Next: `/gsd-new-milestone`.*
