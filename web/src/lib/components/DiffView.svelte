@@ -17,7 +17,7 @@
   let { field, oldValue, newValue, hunks = [] }: Props = $props();
 </script>
 
-<div class="mb-3">
+<div class="mb-3" data-testid="diff-view">
   <div
     class="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
   >

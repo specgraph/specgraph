@@ -155,7 +155,7 @@
     </Card.Root>
   {:else if !d.spec}
     <!-- Empty: spec not present in the current project (UI-SPEC copy). -->
-    <Card.Root class="max-w-md">
+    <Card.Root class="max-w-md" data-testid="error">
       <Card.Header>
         <Card.Title>Nothing here yet</Card.Title>
         <Card.Description>Spec not found in this project.</Card.Description>
@@ -173,10 +173,10 @@
       contentHash={spec.contentHash}
     />
 
-    <table class="mb-5 border-collapse text-sm">
+    <table class="mb-5 border-collapse text-sm" data-testid="meta">
       <tbody>
         <tr><td class="min-w-32 whitespace-nowrap py-1.5 pr-4 align-top font-medium text-muted-foreground">Intent</td><td class="py-1.5 pr-4 align-top">{spec.intent}</td></tr>
-        <tr><td class="min-w-32 whitespace-nowrap py-1.5 pr-4 align-top font-medium text-muted-foreground">Stage</td><td class="py-1.5 pr-4 align-top"><Badge class={stageBadgeClass(spec.stage)}>{spec.stage}</Badge></td></tr>
+        <tr><td class="min-w-32 whitespace-nowrap py-1.5 pr-4 align-top font-medium text-muted-foreground">Stage</td><td class="py-1.5 pr-4 align-top"><Badge data-testid="stage-badge" class={stageBadgeClass(spec.stage)}>{spec.stage}</Badge></td></tr>
         <tr><td class="min-w-32 whitespace-nowrap py-1.5 pr-4 align-top font-medium text-muted-foreground">Priority</td><td class="py-1.5 pr-4 align-top">{spec.priority || '—'}</td></tr>
         <tr><td class="min-w-32 whitespace-nowrap py-1.5 pr-4 align-top font-medium text-muted-foreground">Complexity</td><td class="py-1.5 pr-4 align-top">{spec.complexity || '—'}</td></tr>
         <tr><td class="min-w-32 whitespace-nowrap py-1.5 pr-4 align-top font-medium text-muted-foreground">Version</td><td class="py-1.5 pr-4 align-top">{spec.version}</td></tr>
@@ -184,19 +184,19 @@
     </table>
 
     {#if spec.supersededBy}
-      <div class="mb-4 rounded-lg border border-amber-300 bg-amber-100 px-4 py-3 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+      <div data-testid="superseded-banner" class="mb-4 rounded-lg border border-amber-300 bg-amber-100 px-4 py-3 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
         This spec has been superseded by
         <a class="font-bold underline" href="/spec/{spec.supersededBy}">{spec.supersededBy}</a>
       </div>
     {/if}
     {#if spec.supersedes}
-      <div class="mb-4 rounded-lg border border-blue-300 bg-blue-100 px-4 py-3 text-sm font-medium text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+      <div data-testid="supersedes-banner" class="mb-4 rounded-lg border border-blue-300 bg-blue-100 px-4 py-3 text-sm font-medium text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
         This spec supersedes
         <a class="font-bold underline" href="/spec/{spec.supersedes}">{spec.supersedes}</a>
       </div>
     {/if}
 
-    <div class="mt-4">
+    <div class="mt-4" data-testid="sections">
       {#if spec.notes}
         <AccordionSection title="Notes" expanded={true}>
           <p class="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{spec.notes}</p>

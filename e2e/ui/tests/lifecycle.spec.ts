@@ -11,6 +11,21 @@ import {
   updateSpecIntent,
 } from './helpers';
 
+// Open the Changelog accordion and lazy-load its entries. Returns once at least
+// one timeline entry is visible.
+async function openChangelog(page: import('@playwright/test').Page): Promise<void> {
+  const changelogHeader = page.getByTestId('accordion-header').filter({ hasText: 'Changelog' });
+  await expect(changelogHeader).toBeVisible({ timeout: 10_000 });
+  await changelogHeader.click();
+
+  const loadBtn = page.getByRole('button', { name: 'Load changelog' });
+  if (await loadBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await loadBtn.click();
+  }
+
+  await expect(page.getByTestId('timeline-entry').first()).toBeVisible({ timeout: 10_000 });
+}
+
 // ---------------------------------------------------------------------------
 // Amendment tests
 // ---------------------------------------------------------------------------
@@ -30,51 +45,31 @@ test.describe('Amendment', () => {
     await page.goto(`/spec/${slug}`);
     await page.waitForLoadState('networkidle');
     // After amend with re-entry stage "shape", the spec lands at "spark" (one before shape).
-    await expect(page.locator('.badge.stage-spark')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('stage-badge')).toContainText('spark', { timeout: 10_000 });
   });
 
   test('changelog accordion shows entries', async ({ page }) => {
     await page.goto(`/spec/${slug}`);
     await page.waitForLoadState('networkidle');
 
-    // Open the changelog accordion via its "Load changelog" button.
-    const changelogHeader = page.locator('.accordion-header', { hasText: 'Changelog' });
-    await expect(changelogHeader).toBeVisible({ timeout: 10_000 });
-    await changelogHeader.click();
-
-    // The "Load changelog" button may appear inside the accordion body.
-    const loadBtn = page.getByRole('button', { name: 'Load changelog' });
-    if (await loadBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await loadBtn.click();
-    }
-
-    // At least one timeline entry should appear.
-    await expect(page.locator('.timeline-entry').first()).toBeVisible({ timeout: 10_000 });
+    // Opening the changelog surfaces at least one timeline entry.
+    await openChangelog(page);
+    await expect(page.getByTestId('timeline-entry').first()).toBeVisible();
   });
 
   test('clicking a changelog entry expands diff view', async ({ page }) => {
     await page.goto(`/spec/${slug}`);
     await page.waitForLoadState('networkidle');
 
-    const changelogHeader = page.locator('.accordion-header', { hasText: 'Changelog' });
-    await changelogHeader.click();
+    await openChangelog(page);
 
-    const loadBtn = page.getByRole('button', { name: 'Load changelog' });
-    if (await loadBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await loadBtn.click();
-    }
-
-    await expect(page.locator('.timeline-entry').first()).toBeVisible({ timeout: 10_000 });
-
-    // Click the first non-checkpoint entry (timeline-card) to expand a diff.
-    const firstCard = page.locator('.timeline-card').first();
+    // Click the first timeline card to expand its inline diff.
+    const firstCard = page.getByTestId('timeline-card').first();
     await expect(firstCard).toBeVisible({ timeout: 10_000 });
     await firstCard.click();
 
-    // A diff panel or inline diff should now be visible.
-    await expect(
-      page.locator('.compare-result, .diff-view, .version-diff').first(),
-    ).toBeVisible({ timeout: 10_000 });
+    // An inline diff panel should now be visible.
+    await expect(page.getByTestId('diff-view').first()).toBeVisible({ timeout: 10_000 });
   });
 });
 
@@ -101,7 +96,7 @@ test.describe('Supersede', () => {
     await page.goto(`/spec/${oldSlug}`);
     await page.waitForLoadState('networkidle');
 
-    const banner = page.locator('.superseded-banner');
+    const banner = page.getByTestId('superseded-banner');
     await expect(banner).toBeVisible({ timeout: 10_000 });
     await expect(banner).toContainText(newSlug);
 
@@ -116,7 +111,7 @@ test.describe('Supersede', () => {
     await page.goto(`/spec/${newSlug}`);
     await page.waitForLoadState('networkidle');
 
-    const banner = page.locator('.supersedes-banner');
+    const banner = page.getByTestId('supersedes-banner');
     await expect(banner).toBeVisible({ timeout: 10_000 });
     await expect(banner).toContainText(oldSlug);
 
@@ -146,27 +141,16 @@ test.describe('Version Compare', () => {
     await page.goto(`/spec/${slug}`);
     await page.waitForLoadState('networkidle');
 
-    // Open changelog accordion.
-    const changelogHeader = page.locator('.accordion-header', { hasText: 'Changelog' });
-    await expect(changelogHeader).toBeVisible({ timeout: 10_000 });
-    await changelogHeader.click();
+    // Open changelog accordion (VersionCompare renders alongside the timeline).
+    await openChangelog(page);
 
-    const loadBtn = page.getByRole('button', { name: 'Load changelog' });
-    if (await loadBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await loadBtn.click();
-    }
+    // Pick a concrete "From" version via the shadcn Select (not a native <select>).
+    await page.getByLabel('From version').click();
+    // Option index 0 is "auto (previous)"; index 1 is the first real version.
+    await page.getByRole('option').nth(1).click();
 
-    await expect(page.locator('.timeline-entry').first()).toBeVisible({ timeout: 10_000 });
-
-    // Select version 1 in the "From" dropdown to trigger a real comparison.
-    const fromSelect = page.locator('.compare-label select').first();
-    await expect(fromSelect).toBeVisible({ timeout: 5_000 });
-    await fromSelect.selectOption({ index: 1 }); // first real version after "auto"
-
-    const compareBtn = page.locator('.compare-btn').first();
-    await expect(compareBtn).toBeVisible({ timeout: 3_000 });
-    await compareBtn.click();
-    await expect(page.locator('.compare-result')).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('button', { name: 'Compare' }).click();
+    await expect(page.getByTestId('compare-result')).toBeVisible({ timeout: 10_000 });
   });
 });
 
@@ -180,7 +164,7 @@ test.describe('Dashboard lifecycle stats', () => {
     await page.waitForLoadState('networkidle');
 
     // The stats section should surface "Amended" and "Superseded" labels.
-    await expect(page.locator('text=Amended').first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator('text=Superseded').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Amended').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('Superseded').first()).toBeVisible({ timeout: 10_000 });
   });
 });

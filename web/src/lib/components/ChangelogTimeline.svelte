@@ -42,13 +42,14 @@
   <div class="relative pl-6">
     <Separator orientation="vertical" class="absolute left-1 top-0 h-full" />
     {#each entries as entry}
-      <div class="relative mb-4">
+      <div class="relative mb-4" data-testid="timeline-entry">
         <span
           class="absolute -left-5 top-3 z-10 size-2.5 rounded-full border-2 {entry.checkpoint
             ? 'border-primary bg-primary'
             : 'border-border bg-background'}"
         ></span>
         <button
+          data-testid="timeline-card"
           class="block w-full cursor-pointer rounded-lg border border-border bg-card p-3 text-left transition-colors hover:border-primary"
           onclick={() => toggleEntry(entry.version)}
         >

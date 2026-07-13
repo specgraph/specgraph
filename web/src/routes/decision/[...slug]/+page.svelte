@@ -43,7 +43,7 @@
     </Card.Root>
   {:else if !d.decision}
     <!-- Empty: decision not present in the current project (UI-SPEC copy). -->
-    <Card.Root class="max-w-md">
+    <Card.Root class="max-w-md" data-testid="error">
       <Card.Header>
         <Card.Title>Nothing here yet</Card.Title>
         <Card.Description>Decision not found in this project.</Card.Description>
@@ -53,7 +53,7 @@
     {@const decision = d.decision}
     <h1 class="mb-4 text-xl font-semibold text-foreground">{decision.title || decision.slug}</h1>
 
-    <table class="mb-5 border-collapse text-sm">
+    <table class="mb-5 border-collapse text-sm" data-testid="meta">
       <tbody>
         <tr><td class="min-w-32 whitespace-nowrap py-1.5 pr-4 align-top font-medium text-muted-foreground">Slug</td><td class="py-1.5 pr-4 align-top">{decision.slug}</td></tr>
         <tr>

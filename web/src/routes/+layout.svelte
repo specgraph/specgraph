@@ -77,7 +77,7 @@
 {#if !data.authenticated}
   <LoginModal onSuccess={handleLoginSuccess} {authError} />
 {:else}
-  <nav class="flex items-center gap-4 border-b border-border px-6 py-3">
+  <nav data-testid="primary-nav" class="flex items-center gap-4 border-b border-border px-6 py-3">
     {@render navLink('/', 'Dashboard')}
     {@render navLink('/graph', 'Graph')}
     {@render navLink('/constitution', 'Constitution')}
@@ -98,7 +98,7 @@
       <span class="text-sm text-muted-foreground">{project.current}</span>
     {/if}
     <ModeToggle />
-    <span class="text-sm font-semibold text-muted-foreground">SpecGraph</span>
+    <span data-testid="brand" class="text-sm font-semibold text-muted-foreground">SpecGraph</span>
   </nav>
 
   <main class="mx-auto max-w-[1400px] p-6">

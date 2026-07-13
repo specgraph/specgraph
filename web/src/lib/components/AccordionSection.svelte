@@ -18,14 +18,20 @@
   value={open ? 'section' : ''}
   onValueChange={(v) => (toggled = v === 'section')}
 >
-  <Accordion.Item value="section">
-    <Accordion.Trigger class="text-foreground hover:text-primary hover:no-underline text-[0.95rem] font-semibold">
+  <Accordion.Item value="section" data-testid="accordion-section">
+    <Accordion.Trigger
+      data-testid="accordion-header"
+      class="text-foreground hover:text-primary hover:no-underline text-[0.95rem] font-semibold"
+    >
       <span class="flex items-center gap-2">
         <span>{title}</span>
         {#if badge}<Badge variant="secondary">{badge}</Badge>{/if}
       </span>
     </Accordion.Trigger>
-    <Accordion.Content class="text-muted-foreground text-[0.9rem] leading-relaxed pl-5">
+    <Accordion.Content
+      data-testid="accordion-body"
+      class="text-muted-foreground text-[0.9rem] leading-relaxed pl-5"
+    >
       {@render children()}
     </Accordion.Content>
   </Accordion.Item>

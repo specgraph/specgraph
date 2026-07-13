@@ -98,7 +98,7 @@
   {/if}
 
   {#if result}
-    <Card.Root>
+    <Card.Root data-testid="compare-result">
       <Card.Header>
         <Card.Title class="text-sm font-bold">
           v{result.fromVersion} ({result.fromStage}) → v{result.toVersion} ({result.toStage})

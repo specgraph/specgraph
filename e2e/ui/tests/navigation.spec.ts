@@ -3,10 +3,10 @@ import { test, expect } from './fixtures';
 test.describe('Navigation', () => {
   test('loads the dashboard at /', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('nav')).toBeVisible();
-    await expect(page.locator('nav')).toContainText('Dashboard');
-    await expect(page.locator('nav')).toContainText('Graph');
-    await expect(page.locator('.brand')).toContainText('SpecGraph');
+    await expect(page.getByTestId('primary-nav')).toBeVisible();
+    await expect(page.getByTestId('primary-nav')).toContainText('Dashboard');
+    await expect(page.getByTestId('primary-nav')).toContainText('Graph');
+    await expect(page.getByTestId('brand')).toContainText('SpecGraph');
   });
 
   test('navigates from dashboard to graph view', async ({ page }) => {
