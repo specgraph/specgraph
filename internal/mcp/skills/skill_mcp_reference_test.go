@@ -124,17 +124,23 @@ func TestSkillMCPReference(t *testing.T) {
 
 	t.Run("MCPReference/authoring-snake-case-guard", func(t *testing.T) {
 		body := bodyOf(t, src, "specgraph-authoring")
-		// The friendly-YAML stage `output` the skill teaches MUST use the
-		// snake_case funnel keys the parser accepts — not their camelCase
+		// Scope the key guard to the taught ```yaml `output` blocks — not the
+		// surrounding prose (which legitimately names the camelCase forms as
+		// anti-examples). The friendly-YAML stage `output` MUST use the
+		// snake_case funnel keys the parser accepts, never their camelCase
 		// equivalents (the exact `chosenApproach` vs `chosen_approach` typo
 		// class that caused #1002).
+		yamlBlocks := strings.Join(allYAMLBlocks(body), "\n")
+		if yamlBlocks == "" {
+			t.Fatal("specgraph-authoring: no ```yaml output blocks found")
+		}
 		for _, key := range []string{"scope_in", "chosen_approach", "success_must", "verify_criteria", "strategy"} {
-			if !strings.Contains(body, key) {
+			if !strings.Contains(yamlBlocks, key) {
 				t.Errorf("specgraph-authoring: taught `output` must use snake_case key %q", key)
 			}
 		}
 		for _, bad := range []string{"scopeIn", "chosenApproach", "verifyCriteria"} {
-			if strings.Contains(body, bad) {
+			if strings.Contains(yamlBlocks, bad) {
 				t.Errorf("specgraph-authoring: taught `output` uses camelCase %q — the parser rejects it (#1002 class); use snake_case", bad)
 			}
 		}
@@ -155,28 +161,36 @@ func TestSkillMCPReference(t *testing.T) {
 // firstYAMLBlockContaining returns the inner content of the first fenced
 // ```yaml block whose body contains needle, or "" if none.
 func firstYAMLBlockContaining(body, needle string) string {
+	for _, block := range allYAMLBlocks(body) {
+		if strings.Contains(block, needle) {
+			return block
+		}
+	}
+	return ""
+}
+
+// allYAMLBlocks returns the inner content of every fenced ```yaml block in
+// body, in order.
+func allYAMLBlocks(body string) []string {
 	const open = "```yaml"
+	var out []string
 	rest := body
 	for {
 		i := strings.Index(rest, open)
 		if i < 0 {
-			return ""
+			return out
 		}
 		afterOpen := rest[i+len(open):]
-		// Skip to the end of the opening fence line.
 		nl := strings.IndexByte(afterOpen, '\n')
 		if nl < 0 {
-			return ""
+			return out
 		}
 		inner := afterOpen[nl+1:]
-		close := strings.Index(inner, "```")
-		if close < 0 {
-			return ""
+		closeIdx := strings.Index(inner, "```")
+		if closeIdx < 0 {
+			return out
 		}
-		block := inner[:close]
-		if strings.Contains(block, needle) {
-			return block
-		}
-		rest = inner[close+3:]
+		out = append(out, inner[:closeIdx])
+		rest = inner[closeIdx+3:]
 	}
 }
