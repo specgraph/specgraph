@@ -32,7 +32,7 @@ func decodeStrict(data []byte, out any) error {
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true)
 	if err := dec.Decode(out); err != nil && !errors.Is(err, io.EOF) {
-		return err
+		return fmt.Errorf("decode yaml: %w", err)
 	}
 	return nil
 }
