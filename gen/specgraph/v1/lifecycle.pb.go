@@ -649,9 +649,12 @@ func (x *TransitionAmendResponse) GetSpec() *Spec {
 }
 
 type TransitionSupersedeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	NewSlug       string                 `protobuf:"bytes,2,opt,name=new_slug,json=newSlug,proto3" json:"new_slug,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Slug    string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	NewSlug string                 `protobuf:"bytes,2,opt,name=new_slug,json=newSlug,proto3" json:"new_slug,omitempty"`
+	// Optional. Reason for superseding the spec, recorded in the superseded
+	// spec's changelog entry. When empty, a default note is used.
+	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -696,6 +699,13 @@ func (x *TransitionSupersedeRequest) GetSlug() string {
 func (x *TransitionSupersedeRequest) GetNewSlug() string {
 	if x != nil {
 		return x.NewSlug
+	}
+	return ""
+}
+
+func (x *TransitionSupersedeRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
 	}
 	return ""
 }
@@ -1206,10 +1216,11 @@ const file_specgraph_v1_lifecycle_proto_rawDesc = "" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12$\n" +
 	"\x0ere_entry_stage\x18\x03 \x01(\tR\freEntryStage\"A\n" +
 	"\x17TransitionAmendResponse\x12&\n" +
-	"\x04spec\x18\x01 \x01(\v2\x12.specgraph.v1.SpecR\x04spec\"K\n" +
+	"\x04spec\x18\x01 \x01(\v2\x12.specgraph.v1.SpecR\x04spec\"c\n" +
 	"\x1aTransitionSupersedeRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x19\n" +
-	"\bnew_slug\x18\x02 \x01(\tR\anewSlug\"{\n" +
+	"\bnew_slug\x18\x02 \x01(\tR\anewSlug\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"{\n" +
 	"\x1bTransitionSupersedeResponse\x12-\n" +
 	"\bold_spec\x18\x01 \x01(\v2\x12.specgraph.v1.SpecR\aoldSpec\x12-\n" +
 	"\bnew_spec\x18\x02 \x01(\v2\x12.specgraph.v1.SpecR\anewSpec\"F\n" +
