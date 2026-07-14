@@ -234,7 +234,7 @@ func skillsMCPClient(ctx context.Context) (*client.Client, func()) {
 3. `CallTool constitution action:update` with friendly YAML → assert persists (`action:get` round-trip).
 4. `CallTool author` spark→shape→specify→decompose→approve with friendly YAML → assert approved.
 
-**Build-tag + package:** `//go:build e2e` + `package api_test` (skills_test.go:4–6). Runs via `go test -tags e2e ./e2e/api/ -run MCPOnly` (Docker/testcontainers).
+**Build-tag + package:** `//go:build e2e` + `package api_test` (skills_test.go:4–6). Runs via `go test -tags e2e ./e2e/api/ --ginkgo.label-filter=MCPOnly` (Docker/testcontainers).
 
 **Pitfall 6:** `skills_test.go:106` "lists six skills" enumerates 6 of 7 (omits `specgraph-constitution`). Bodies changing won't break it; re-check only if names/summaries change.
 

@@ -32,7 +32,7 @@ created: 2026-07-14
 
 - **After every task commit:** Run `task test` (unit + content-drift reference assertions)
 - **After every plan wave:** Run `go test -tags e2e ./e2e/api/...`
-- **Before `/gsd-verify-work`:** Full suite + MCP-only e2e (`-run MCPOnly`) must be green. No CLI-path fallback permitted (D-08).
+- **Before `/gsd-verify-work`:** Full suite + MCP-only e2e (`--ginkgo.label-filter=MCPOnly`) must be green. No CLI-path fallback permitted (D-08).
 - **Max feedback latency:** 30s (quick loop) / ~3 min (wave/gate loop)
 
 ---
@@ -42,10 +42,10 @@ created: 2026-07-14
 | Ref | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |-----|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | #1 skills describe MCP round-trip | 1 | MCP-01 | — | N/A | unit (content assert) | `go test ./internal/mcp/skills/... ./internal/authoring/...` | ❌ W0 | ⬜ pending |
-| #2 full funnel MCP-only | 3 | MCP-01 | T-6-01 | Friendly-YAML parser rejects unknown enum/layer | e2e | `go test -tags e2e ./e2e/api/ -run MCPOnly` | ❌ W0 | ⬜ pending |
-| #3 constitution approved MCP-only | 2/3 | MCP-01 | T-6-01 | `*FromString` mappers error on UNSPECIFIED, no default-write | e2e | `go test -tags e2e ./e2e/api/ -run MCPOnly` | ❌ W0 | ⬜ pending |
+| #2 full funnel MCP-only | 3 | MCP-01 | T-6-01 | Friendly-YAML parser rejects unknown enum/layer | e2e | `go test -tags e2e ./e2e/api/ --ginkgo.label-filter=MCPOnly` | ❌ W0 | ⬜ pending |
+| #3 constitution approved MCP-only | 2/3 | MCP-01 | T-6-01 | `*FromString` mappers error on UNSPECIFIED, no default-write | e2e | `go test -tags e2e ./e2e/api/ --ginkgo.label-filter=MCPOnly` | ❌ W0 | ⬜ pending |
 | #4 skills_get/search reference MCP path | 1 | MCP-01 | — | N/A | unit (content-level, D-09) | `go test ./internal/mcp/skills/...` | ❌ W0 | ⬜ pending |
-| prime-reliability | 1/3 | MCP-01 | T-6-03 | Handler errors sanitized (no raw internals) | e2e (smoke) | `go test -tags e2e ./e2e/api/ -run MCPOnly` | ⚠️ partial | ⬜ pending |
+| prime-reliability | 1/3 | MCP-01 | T-6-03 | Handler errors sanitized (no raw internals) | e2e (smoke) | `go test -tags e2e ./e2e/api/ --ginkgo.label-filter=MCPOnly` | ⚠️ partial | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
