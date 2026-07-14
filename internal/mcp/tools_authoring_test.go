@@ -954,5 +954,8 @@ func TestAuthoringStageFromString(t *testing.T) {
 	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY, authoringStageFromString("specify"))
 	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE, authoringStageFromString("decompose"))
 	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, authoringStageFromString("approved"))
+	// The natural funnel verb "approve" is accepted as an alias for the
+	// terminal "approved" stage token (WR-01).
+	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, authoringStageFromString("approve"))
 	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED, authoringStageFromString("unknown"))
 }

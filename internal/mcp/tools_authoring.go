@@ -105,7 +105,13 @@ func postureFromString(s string) specv1.Posture {
 }
 
 // authoringStageFromString converts a friendly string (e.g. "spark") to an AuthoringStage enum.
+// The funnel action verb "approve" is accepted as an alias for the terminal
+// stage token "approved" so callers who follow the natural verb are not
+// rejected.
 func authoringStageFromString(s string) specv1.AuthoringStage {
+	if s == "approve" {
+		s = "approved"
+	}
 	key := "AUTHORING_STAGE_" + strings.ToUpper(s)
 	if v, ok := specv1.AuthoringStage_value[key]; ok {
 		return specv1.AuthoringStage(v)
@@ -157,9 +163,9 @@ func (t *authorTool) def() ToolDef {
 						`[{"role":"probe","content":"What is out of scope?","stage":"shape","sequence":1},` +
 						`{"role":"response","content":"Anything touching billing.","stage":"shape","sequence":2}]`,
 				),
-				"posture":      stringProp("AI collaboration posture: drive, partner, support"),
-				"reason":       stringProp("Reason for amend or supersede"),
-				"target_stage": stringProp("Target stage for amend: spark, shape, specify, decompose"),
+				"posture":       stringProp("AI collaboration posture: drive, partner, support"),
+				"reason":        stringProp("Reason for amend or supersede"),
+				"target_stage":  stringProp("Target stage for amend: spark, shape, specify, decompose, approved"),
 				"superseded_by": stringProp("Slug of the replacement spec (required for supersede)"),
 			},
 			"action", "slug",
