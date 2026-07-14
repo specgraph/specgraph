@@ -2,9 +2,13 @@
 gsd_state_version: 1.0
 milestone: v0.14.0
 milestone_name: Authoring Surface Correctness
+current_phase: 6
+current_phase_name: roadmap complete, Phases 6-9 defined
 status: roadmapped
-last_updated: "2026-07-14T00:25:07.907Z"
+stopped_at: Phase 6 context gathered
+last_updated: "2026-07-14T12:36:53.939Z"
 last_activity: 2026-07-14
+last_activity_desc: Roadmap created for v0.14.0 (Phases 6-9)
 progress:
   total_phases: 4
   completed_phases: 0
@@ -97,9 +101,11 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - Roadmap (v0.14.0): 5 requirements → 4 phases (6-9). MCP-01 gets its own phase (Phase 6) and
   is sequenced first — it is critical-priority and substantial (the MCP-only self-teaching
   authoring path), so it is not shared with CONV-01 despite both touching the embedded skills.
+
 - Roadmap (v0.14.0): LIFE-01 and LIFE-02 clustered into one "Authoring Lifecycle Semantics"
   phase (Phase 7) — both are amend/supersede lifecycle fixes touching
   `internal/storage/postgres/lifecycle.go` + stage-validation, natural cluster-mates.
+
 - Roadmap (v0.14.0): CONV-01 stands alone (Phase 8, conversation-recording protocol enforcement)
   and AUTH-06 stands alone (Phase 9, isolated JIT `display_name` reconciliation on the
   identity/auth path) — neither has a natural cluster-mate in this milestone.
@@ -158,9 +164,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13
-Stopped at: Phase 05 complete (UAT passed, verification passed) — all five v1 phases done; only backlog Phase 999.2 remains
-Resume file: None
+Last session: 2026-07-14T12:36:53.931Z
+Stopped at: Phase 6 context gathered
+Resume file: .planning/phases/06-mcp-authoring-self-teaching-path/06-CONTEXT.md
 
 ## Operator Next Steps
 
