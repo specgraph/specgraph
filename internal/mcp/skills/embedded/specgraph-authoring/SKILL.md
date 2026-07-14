@@ -176,6 +176,68 @@ spark conversation just to satisfy a non-existent requirement.
 **Approve** needs only the `slug` (and explicit user sign-off). It does not
 require an `output` or `exchanges` on a clean acceptance.
 
+## Amending and superseding a spec
+
+Two lifecycle actions on the `author` tool move a spec *backward* or retire it.
+They are distinct, and each has a strict precondition:
+
+| Action | When it's allowed | What it does | Required params |
+|---|---|---|---|
+| `amend` | while the spec is **in flight** (`approved`, `in_progress`, or `review`) | returns the spec to authoring so you can re-author a stage | `slug`, `re_entry_stage`, `reason` |
+| `supersede` | **only** on a `done` spec | retires it and points to a replacement (draws a `SUPERSEDES` edge) | `slug`, `new_slug` (`reason` optional) |
+
+Amending a `done` spec, or superseding a spec that is not `done`, is rejected
+server-side — the two are not interchangeable.
+
+### The land-one-before model (this is the #899 fix)
+
+`re_entry_stage` is **the stage you want to redo**, one of
+`spark | shape | specify | decompose`. On amend the spec does NOT land *at*
+that stage — it lands **one stage before** it, so re-running the stage is a
+valid forward transition instead of a same-stage no-op.
+
+Worked example — the canonical happy path:
+
+> `re_entry_stage: shape` means "redo shape". The spec lands at `spark`, and
+> `author action=shape` then succeeds (`spark → shape` is a valid transition).
+
+```yaml
+# 1. amend an in-flight spec, asking to redo shape
+author:
+  action: amend
+  slug: my-spec
+  re_entry_stage: shape      # "I want to redo shape"
+  reason: "scope changed after review"
+# → spec lands at `spark`; the tool result names the next step:
+#   "Next step: run author action=shape …"
+
+# 2. re-author the stage — now a valid transition, not a no-op
+author:
+  action: shape
+  slug: my-spec
+  output: { ... }
+  exchanges: [ ... ]
+```
+
+Always present `shape` (or `specify` / `decompose`) as the re-entry example.
+
+> **Caveat — don't lead with `re_entry_stage: spark`.** The stage before
+> `spark` is `spark` itself, so the spec lands at `spark` and re-running
+> `author action=spark` on a spec already at `spark` is a same-stage no-op. It
+> is API-allowed but degenerate — never present it as the happy path.
+
+### Superseding a done spec
+
+Once a spec is `done` you cannot amend it — retire it with a replacement:
+
+```yaml
+author:
+  action: supersede
+  slug: old-auth          # must be `done`
+  new_slug: new-auth      # the replacement spec (non-terminal)
+  reason: "rebuilt on the new lifecycle model"   # optional
+```
+
 ## Posture
 
 Three postures govern how much the agent leads:

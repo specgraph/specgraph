@@ -65,6 +65,18 @@ decompose. The funnel is one-way; see `specgraph-conventions`.
 
 **Fix:** run the missing stage first via the `author` tool.
 
+**Symptom:** "invalid stage transition" immediately after an `amend`.
+
+**Cause:** you tried to re-author the *same* stage the spec now sits at. After
+`amend` with `re_entry_stage: <stage>`, the spec lands **one stage before**
+`<stage>` — the land-one-before model. If you amended with
+`re_entry_stage: shape`, the spec is at `spark`, so the valid next call is
+`author action=shape`, not `author action=spark` (that would be a same-stage
+no-op).
+
+**Fix:** run `author action=<re_entry_stage>` — the stage named by the amend,
+not the stage the spec landed at. See `specgraph-authoring`.
+
 **Symptom:** "slug already in use."
 
 **Fix:** slugs are unique per project. Either pick a different slug or update
