@@ -15,7 +15,7 @@ Requirements for milestone v0.14.0. Each maps to a roadmap phase once `gsd-roadm
 
 ### Authoring Lifecycle
 
-- [ ] **LIFE-01**: A user can `amend` a spec while it is in flight (`>= approved` and `< done`) to send it back to authoring, and can `supersede` only a `done` spec — matching natural lifecycle semantics (#900)
+- [x] **LIFE-01**: A user can `amend` a spec while it is in flight (`>= approved` and `< done`) to send it back to authoring, and can `supersede` only a `done` spec — matching natural lifecycle semantics (#900)
 - [ ] **LIFE-02**: After a user amends a spec with `--re-entry <stage>`, they can immediately re-author at that stage (e.g. run `shape`) without hitting an `invalid stage transition` no-op (#899)
 
 ### Authoring Fidelity
