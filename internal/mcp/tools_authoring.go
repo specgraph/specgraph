@@ -104,21 +104,6 @@ func postureFromString(s string) specv1.Posture {
 	return specv1.Posture_POSTURE_UNSPECIFIED
 }
 
-// authoringStageFromString converts a friendly string (e.g. "spark") to an AuthoringStage enum.
-// The funnel action verb "approve" is accepted as an alias for the terminal
-// stage token "approved" so callers who follow the natural verb are not
-// rejected.
-func authoringStageFromString(s string) specv1.AuthoringStage {
-	if s == "approve" {
-		s = "approved"
-	}
-	key := "AUTHORING_STAGE_" + strings.ToUpper(s)
-	if v, ok := specv1.AuthoringStage_value[key]; ok {
-		return specv1.AuthoringStage(v)
-	}
-	return specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED
-}
-
 // ---------------------------------------------------------------------------
 // authorTool — authoring funnel: spark, shape, specify, decompose, approve, amend, supersede
 // ---------------------------------------------------------------------------
@@ -136,7 +121,12 @@ func (t *authorTool) def() ToolDef {
 			"friendly snake_case YAML (e.g. spark `scope_sniff: small`; shape " +
 			"`scope_in`/`chosen_approach`; decompose `strategy: vertical_slice`) — " +
 			"no protojson/enum names. shape/specify/decompose also require `exchanges` " +
-			"(a JSON array; see param doc).",
+			"(a JSON array; see param doc). " +
+			"amend returns an IN-FLIGHT spec (approved/in_progress/review) to an earlier " +
+			"authoring stage: it lands the spec ONE stage before `re_entry_stage` so that " +
+			"stage's authoring command is the valid next transition — requires `reason` and " +
+			"`re_entry_stage` (spark|shape|specify|decompose). supersede replaces a DONE spec " +
+			"with another via `new_slug` (optional `reason`).",
 		Profile: ProfileAuthoring,
 		Schema: objectSchema(
 			props{
@@ -163,10 +153,22 @@ func (t *authorTool) def() ToolDef {
 						`[{"role":"probe","content":"What is out of scope?","stage":"shape","sequence":1},` +
 						`{"role":"response","content":"Anything touching billing.","stage":"shape","sequence":2}]`,
 				),
-				"posture":       stringProp("AI collaboration posture: drive, partner, support"),
-				"reason":        stringProp("Reason for amend or supersede"),
-				"target_stage":  stringProp("Target stage for amend: spark, shape, specify, decompose, approved"),
-				"superseded_by": stringProp("Slug of the replacement spec (required for supersede)"),
+				"posture": stringProp("AI collaboration posture: drive, partner, support"),
+				"reason":  stringProp("Reason for amend (required) or supersede (optional)"),
+				"re_entry_stage": stringProp(
+					"Re-entry authoring stage for amend (required) — one of: spark, shape, specify, decompose. " +
+						"Name the stage you want to RE-DO. The spec is landed ONE stage before it, so that " +
+						"stage's own authoring command is a valid forward transition. " +
+						"For example re_entry_stage=shape lands the spec at spark, so you then run " +
+						"author action=shape (spark→shape) to re-author. " +
+						"approved/in_progress/review/done are rejected — use those only via the normal funnel, " +
+						"and use supersede (not amend) to replace a done spec.",
+				),
+				"new_slug": stringProp(
+					"Slug of the replacement spec for supersede (required). The old (done) spec is marked " +
+						"superseded and a SUPERSEDES edge is created from new_slug to the old slug. " +
+						"For example superseding old-auth with new-auth: slug=old-auth, new_slug=new-auth.",
+				),
 			},
 			"action", "slug",
 		),
@@ -346,23 +348,37 @@ func (t *authorTool) handleAmend(ctx context.Context, params map[string]any) (*T
 	if slug == "" {
 		return errResult("slug is required for amend"), nil
 	}
-	targetStageStr := stringParam(params, "target_stage")
-	targetStage := specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED
-	if targetStageStr != "" {
-		targetStage = authoringStageFromString(targetStageStr)
-		if targetStage == specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED {
-			return errResult("invalid target_stage (valid: spark, shape, specify, decompose, approved)"), nil
-		}
+	reEntryStage := stringParam(params, "re_entry_stage")
+	if reEntryStage == "" {
+		return errResult("re_entry_stage is required for amend (spark, shape, specify, decompose)"), nil
 	}
-	resp, err := t.client.Authoring.Amend(ctx, connect.NewRequest(&specv1.AmendRequest{
-		Slug:        slug,
-		Reason:      stringParam(params, "reason"),
-		TargetStage: targetStage,
+	reason := stringParam(params, "reason")
+	if reason == "" {
+		return errResult("reason is required for amend"), nil
+	}
+	// Pass re_entry_stage straight through: the TransitionAmend handler is the
+	// single source of truth for the re-entry allowlist (spark|shape|specify|
+	// decompose) and rejects approved/in_progress/review/done. Re-validating here
+	// would risk drifting from that gate.
+	resp, err := t.client.Lifecycle.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
+		Slug:         slug,
+		Reason:       reason,
+		ReEntryStage: reEntryStage,
 	}))
 	if err != nil {
 		return connectErrResult(err)
 	}
-	return jsonResult(resp.Msg), nil
+	res := jsonResult(resp.Msg)
+	if res.IsError {
+		return res, nil
+	}
+	// D-05: the spec lands one stage BEFORE re_entry_stage, so the author action
+	// for re_entry_stage is the valid next transition. Echo it so the agent does
+	// not reproduce the #899 no-op.
+	hint := fmt.Sprintf("Next step: run author action=%s for spec %q to re-author the %s stage.",
+		reEntryStage, slug, reEntryStage)
+	res.Content = append(res.Content, Content{Type: "text", Text: hint})
+	return res, nil
 }
 
 func (t *authorTool) handleSupersede(ctx context.Context, params map[string]any) (*ToolResult, error) {
@@ -370,14 +386,14 @@ func (t *authorTool) handleSupersede(ctx context.Context, params map[string]any)
 	if slug == "" {
 		return errResult("slug is required for supersede"), nil
 	}
-	supersededBy := stringParam(params, "superseded_by")
-	if supersededBy == "" {
-		return errResult("superseded_by is required for supersede"), nil
+	newSlug := stringParam(params, "new_slug")
+	if newSlug == "" {
+		return errResult("new_slug is required for supersede"), nil
 	}
-	resp, err := t.client.Authoring.Supersede(ctx, connect.NewRequest(&specv1.SupersedeRequest{
-		Slug:         slug,
-		SupersededBy: supersededBy,
-		Reason:       stringParam(params, "reason"),
+	resp, err := t.client.Lifecycle.TransitionSupersede(ctx, connect.NewRequest(&specv1.TransitionSupersedeRequest{
+		Slug:    slug,
+		NewSlug: newSlug,
+		Reason:  stringParam(params, "reason"),
 	}))
 	if err != nil {
 		return connectErrResult(err)
