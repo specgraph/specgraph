@@ -56,14 +56,14 @@ Fresh requirements for the next milestone are defined via `/gsd-new-milestone`.
 - ✓ Populate `web_sessions.issuer` for audit / future RP-logout (`spgr-bbp2`, AUTH-05) — Phase 3: `Identity.Issuer` threaded through `materializeIdentity`; callback resolves via `ResolveLogin` and stamps the session issuer before `CreateSession`; verified by Docker integration test (no backfill of pre-existing empty-issuer rows, D-10)
 - ✓ Interface and verify drift detection (`spgr-vch`, DRFT-01) — Phase 4: drift status reachable via a stable interface (`LifecycleService.CheckDrift`/`AcknowledgeDrift`, MCP `drift` tool), verified against real content-hash + DEPENDS_ON-edge scenarios by no-false-positive e2e, full-graph SkippedCount integration, and per-upstream ack round-trip tests (INTG-01 Confluence bug descoped — poller not in this repo)
 - ✓ Web UI project selector + shadcn-svelte/dark-mode migration (D-01..D-14) — Phase 5: active-project store with default precedence (last-used → `default` → alpha-first), skeleton-on-switch across every project-scoped view (dashboard/graph/spec/decision/constitution) with correct empty/error states and provenance-derived constitution badges; full UI migrated to shadcn-svelte (Tailwind v4, Slate OKLCH tokens) with light/dark mode
+- ✓ Amend/supersede lifecycle semantics corrected (LIFE-01, #900) — Phase 7: amend restricted to in-flight specs (`approved`/`in_progress`/`review`) returning to authoring, supersede permitted only from `done`; single-source-of-truth `IsValidReEntryStage` allowlist enforced at both handler and storage; active claim + CLAIMED_BY edge released inside the amend transaction (stale-lease fix); MCP `author` rerouted to `LifecycleService` and the divergent broken authoring amend/supersede path retired
+- ✓ Amend re-entry re-authors the target stage (LIFE-02, #899) — Phase 7: `amend --re-entry <stage>` lands the spec one stage before the target (`PrecedingAuthStage`) so the subsequent stage command is a valid transition, eliminating the same-stage no-op; proven by an MCP-only e2e that amends to `shape`, lands at `spark`, and re-runs `shape` successfully
 
 ### Active
 
 <!-- v0.14.0 scope — see REQUIREMENTS.md for full detail with REQ-IDs. Sourced from the open GitHub backlog (issue-first). -->
 
 - [ ] **MCP-01**: MCP-served skills teach the MCP authoring round-trip so an MCP-only project can author from scratch (#1002)
-- [ ] **LIFE-01**: amend/supersede lifecycle semantics corrected — amend in-flight, supersede only from done (#900)
-- [ ] **LIFE-02**: amend re-entry lets the target stage re-author instead of failing on a same-stage no-op (#899)
 - [ ] **CONV-01**: authoring stages reliably record conversations across the funnel (#906)
 - [ ] **AUTH-06**: JIT reconciles `display_name` against a usable name claim on each login (#994)
 
@@ -123,4 +123,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-13 — started milestone v0.14.0 Authoring Surface Correctness (aligns GSD tracking with the cog-managed v0.13.0 release line). Scope: five open-backlog correctness fixes (#1002, #900, #899, #906, #994). Next: define requirements → roadmap.*
+*Last updated: 2026-07-14 — Phase 7 (Authoring Lifecycle Semantics) complete: LIFE-01 + LIFE-02 validated (amend in-flight, supersede done-only, re-entry re-authors the target stage). Next: Phase 8 Authoring Conversation Fidelity (CONV-01).*
