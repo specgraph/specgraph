@@ -44,7 +44,12 @@ Details: `.planning/milestones/v0.12.0-ROADMAP.md` · Requirements: `.planning/m
   2. Starting from only `specgraph://prime` in a fresh `init`-only project, an agent can discover and complete every authoring stage (Spark → Shape → Specify → Decompose → Approve) without any CLI/YAML knowledge.
   3. The constitution reaches an approved/completed state via MCP tool calls alone (no shell/CLI fallback required).
   4. `specgraph_skills_get`/`specgraph_skills_search` return authoring guidance that references the MCP tool path, verified against the embedded skill canonicals.
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 06-01-PLAN.md — `internal/authoring/load` friendly funnel YAML→proto package (TDD)
+  - [ ] 06-02-PLAN.md — MCP-first rewrite of all 7 embedded skills + content-reference gate
+  - [ ] 06-03-PLAN.md — `specgraph://prime` entry-point routing + empty-state MCP hints
+  - [ ] 06-04-PLAN.md — MCP write-input handler shim (constitution + funnel friendly YAML)
+  - [ ] 06-05-PLAN.md — MCP-only authoring e2e verification gate
 
 ### Phase 7: Authoring Lifecycle Semantics
 **Goal**: amend and supersede match natural spec lifecycle semantics, and amend re-entry lets the target stage be re-authored immediately.
