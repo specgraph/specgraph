@@ -103,7 +103,7 @@ var _ = Describe("Skills via MCP", func() {
 		Expect(text).To(ContainSubstring("summary:"))
 	})
 
-	It("lists six skills via specgraph_skills_list", func() {
+	It("lists seven skills via specgraph_skills_list", func() {
 		res, err := mcpCli.CallTool(ctx, mcp.CallToolRequest{
 			Params: mcp.CallToolParams{Name: "specgraph_skills_list"},
 		})
@@ -111,6 +111,7 @@ var _ = Describe("Skills via MCP", func() {
 		out := toolText(res)
 		for _, name := range []string{
 			"specgraph-authoring",
+			"specgraph-constitution",
 			"specgraph-graph-query",
 			"specgraph-analytical-passes",
 			"specgraph-drift",
