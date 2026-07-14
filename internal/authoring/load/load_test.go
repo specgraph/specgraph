@@ -80,6 +80,28 @@ func TestSparkFromYAML_Malformed(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestSparkFromYAML_RejectsCamelCase(t *testing.T) {
+	// camelCase keys (the old protojson shape) must be rejected, not silently
+	// dropped — locking the doc claim ("camelCase ... will be rejected") to
+	// real behavior. See CR-01.
+	yaml := []byte(`seed: s
+scopeSniff: medium
+killTest: nobody uses it
+`)
+	out, err := load.SparkFromYAML(yaml)
+	require.Error(t, err)
+	assert.Nil(t, out)
+}
+
+func TestSparkFromYAML_RejectsUnknownKey(t *testing.T) {
+	yaml := []byte(`seed: s
+bogus_key: value
+`)
+	out, err := load.SparkFromYAML(yaml)
+	require.Error(t, err)
+	assert.Nil(t, out)
+}
+
 // --- Shape ---
 
 func TestShapeFromYAML_FullNested(t *testing.T) {
@@ -160,6 +182,18 @@ func TestShapeFromYAML_Malformed(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestShapeFromYAML_RejectsCamelCase(t *testing.T) {
+	// The camelCase forms called out in the tool description and SKILL.md
+	// (scopeIn, chosenApproach, verifyCriteria) must be rejected. See CR-01.
+	yaml := []byte(`scopeIn:
+  - a
+chosenApproach: only
+`)
+	out, err := load.ShapeFromYAML(yaml)
+	require.Error(t, err)
+	assert.Nil(t, out)
+}
+
 // --- Specify ---
 
 func TestSpecifyFromYAML_FullNested(t *testing.T) {
@@ -221,6 +255,29 @@ verify_criteria:
 func TestSpecifyFromYAML_Malformed(t *testing.T) {
 	_, err := load.SpecifyFromYAML([]byte(`interfaces: [unclosed`))
 	require.Error(t, err)
+}
+
+func TestSpecifyFromYAML_RejectsCamelCase(t *testing.T) {
+	yaml := []byte(`verifyCriteria:
+  - category: c
+    description: d
+`)
+	out, err := load.SpecifyFromYAML(yaml)
+	require.Error(t, err)
+	assert.Nil(t, out)
+}
+
+func TestSpecifyFromYAML_RejectsNestedCamelCase(t *testing.T) {
+	// KnownFields propagates into nested structs: change_type is the accepted
+	// tag; changeType must be rejected.
+	yaml := []byte(`touches:
+  - path: internal/x.go
+    purpose: p
+    changeType: new
+`)
+	out, err := load.SpecifyFromYAML(yaml)
+	require.Error(t, err)
+	assert.Nil(t, out)
 }
 
 // --- Decompose ---
@@ -307,4 +364,18 @@ func TestDecomposeFromYAML_InvalidStrategy(t *testing.T) {
 func TestDecomposeFromYAML_Malformed(t *testing.T) {
 	_, err := load.DecomposeFromYAML([]byte(`slices: [unclosed`))
 	require.Error(t, err)
+}
+
+func TestDecomposeFromYAML_RejectsCamelCase(t *testing.T) {
+	// depends_on is the accepted tag; the camelCase dependsOn must be rejected.
+	yaml := []byte(`strategy: single_unit
+slices:
+  - id: all
+    intent: ship it
+    dependsOn:
+      - other
+`)
+	out, err := load.DecomposeFromYAML(yaml)
+	require.Error(t, err)
+	assert.Nil(t, out)
 }

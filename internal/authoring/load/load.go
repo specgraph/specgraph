@@ -7,17 +7,35 @@
 // the internal/constitution/load pipeline so an MCP-only agent authors from
 // friendly YAML instead of raw protojson: the server stays the schema. Input
 // is unmarshalled into fixed typed structs (never map[string]any) to bound the
-// input shape, and unknown enum values are rejected with an error rather than
+// input shape, decoded strictly (yaml.Decoder with KnownFields(true)) so
+// unknown or camelCase keys are rejected with an error rather than silently
+// dropped, and unknown enum values are rejected with an error rather than
 // silently written as UNSPECIFIED.
 package load
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"gopkg.in/yaml.v3"
 )
+
+// decodeStrict decodes YAML into out with KnownFields(true) so unknown or
+// camelCase keys (e.g. scopeIn, chosenApproach, verifyCriteria) are rejected
+// with an error rather than silently dropped. An empty document (io.EOF) is
+// treated as an empty value, not an error.
+func decodeStrict(data []byte, out any) error {
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(out); err != nil && !errors.Is(err, io.EOF) {
+		return err
+	}
+	return nil
+}
 
 // --- Enum mappers ---
 
@@ -121,7 +139,7 @@ type decomposeYAML struct {
 // An unknown scope_sniff value is rejected with an error.
 func SparkFromYAML(data []byte) (*specv1.SparkOutput, error) {
 	var in sparkYAML
-	if err := yaml.Unmarshal(data, &in); err != nil {
+	if err := decodeStrict(data, &in); err != nil {
 		return nil, fmt.Errorf("parse spark yaml: %w", err)
 	}
 	out := &specv1.SparkOutput{
@@ -144,7 +162,7 @@ func SparkFromYAML(data []byte) (*specv1.SparkOutput, error) {
 // including nested approaches (with tradeoffs) and decisions.
 func ShapeFromYAML(data []byte) (*specv1.ShapeOutput, error) {
 	var in shapeYAML
-	if err := yaml.Unmarshal(data, &in); err != nil {
+	if err := decodeStrict(data, &in); err != nil {
 		return nil, fmt.Errorf("parse shape yaml: %w", err)
 	}
 	out := &specv1.ShapeOutput{
@@ -178,7 +196,7 @@ func ShapeFromYAML(data []byte) (*specv1.ShapeOutput, error) {
 // including nested interfaces, verify_criteria, and touches.
 func SpecifyFromYAML(data []byte) (*specv1.SpecifyOutput, error) {
 	var in specifyYAML
-	if err := yaml.Unmarshal(data, &in); err != nil {
+	if err := decodeStrict(data, &in); err != nil {
 		return nil, fmt.Errorf("parse specify yaml: %w", err)
 	}
 	out := &specv1.SpecifyOutput{
@@ -210,7 +228,7 @@ func SpecifyFromYAML(data []byte) (*specv1.SpecifyOutput, error) {
 // *specv1.DecomposeOutput. An unknown strategy value is rejected with an error.
 func DecomposeFromYAML(data []byte) (*specv1.DecomposeOutput, error) {
 	var in decomposeYAML
-	if err := yaml.Unmarshal(data, &in); err != nil {
+	if err := decodeStrict(data, &in); err != nil {
 		return nil, fmt.Errorf("parse decompose yaml: %w", err)
 	}
 	out := &specv1.DecomposeOutput{}
