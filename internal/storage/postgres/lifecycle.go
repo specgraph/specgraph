@@ -203,7 +203,12 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug, re
 			return fmt.Errorf("postgres: supersede: re-read new spec: %w", getErr)
 		}
 
-		// Changelog for old spec.
+		// Changelog for old spec. Use the caller-supplied reason when present,
+		// otherwise fall back to the default "Superseded by <newSlug>" note.
+		oldReason := reason
+		if oldReason == "" {
+			oldReason = fmt.Sprintf("Superseded by %s", newSlug)
+		}
 		oldDeltas := []storage.FieldChange{
 			{Field: "stage", OldValue: string(oldCheck.Stage), NewValue: string(storage.SpecStageSuperseded)},
 			{Field: "superseded_by", OldValue: "", NewValue: newSlug},
@@ -214,7 +219,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug, re
 			ContentHash: oldSpec.ContentHash,
 			Checkpoint:  true,
 			Summary:     "Spec superseded",
-			Reason:      fmt.Sprintf("Superseded by %s", newSlug),
+			Reason:      oldReason,
 			Date:        oldSpec.UpdatedAt,
 		}
 		if clErr := s.createChangeLog(txCtx, oldSlug, oldCLEntry, oldDeltas); clErr != nil {

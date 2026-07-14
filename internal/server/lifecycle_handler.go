@@ -92,7 +92,7 @@ func (h *LifecycleHandler) TransitionSupersede(ctx context.Context, req *connect
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a spec cannot supersede itself"))
 	}
 
-	oldSpec, newSpec, err := store.LifecycleSupersedeSpec(ctx, msg.Slug, msg.NewSlug, "")
+	oldSpec, newSpec, err := store.LifecycleSupersedeSpec(ctx, msg.Slug, msg.NewSlug, msg.Reason)
 	if err != nil {
 		return nil, h.lifecycleError("TransitionSupersede", msg.Slug, err)
 	}
