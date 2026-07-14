@@ -11,7 +11,7 @@ Requirements for milestone v0.14.0. Each maps to a roadmap phase once `gsd-roadm
 
 ### MCP Authoring Surface
 
-- [ ] **MCP-01**: An agent in a fresh MCP-only project (created by `specgraph init` — `.mcp.json` + managed files, no source, no local CLI) can author the project constitution to completion using only `specgraph://prime` and the MCP-served skills, with no out-of-band CLI/YAML knowledge (#1002)
+- [x] **MCP-01**: An agent in a fresh MCP-only project (created by `specgraph init` — `.mcp.json` + managed files, no source, no local CLI) can author the project constitution to completion using only `specgraph://prime` and the MCP-served skills, with no out-of-band CLI/YAML knowledge (#1002)
 
 ### Authoring Lifecycle
 
