@@ -52,7 +52,7 @@ Full at ` + "`specgraph://findings`" + `.
 
 ## Skills
 
-6 skills exposed via MCP. Use ` + "`specgraph_skills_list`" + ` to see the catalog, ` + "`specgraph_skills_search`" + ` to find one by keyword, and ` + "`specgraph_skills_get`" + ` / ` + "`specgraph://skills/<name>`" + ` to fetch a specific skill.
+7 skills exposed via MCP. Use ` + "`specgraph_skills_list`" + ` to see the catalog, ` + "`specgraph_skills_search`" + ` to find one by keyword, and ` + "`specgraph_skills_get`" + ` / ` + "`specgraph://skills/<name>`" + ` to fetch a specific skill. Start here: ` + "`specgraph_skills_list`" + ` the catalog, then ` + "`specgraph_skills_get name=specgraph-constitution`" + ` or ` + "`specgraph-authoring`" + ` to author the constitution or a spec.
 
 `
 
@@ -60,8 +60,26 @@ func TestRenderProjectMarkdown_EmptyConstitution(t *testing.T) {
 	v := &specv1.ProjectView{}
 	got := RenderProjectMarkdown(v, RenderOpts{})
 
-	require.Contains(t, got, "_No constitution configured. Run `specgraph constitution set` to define project ground truth._")
+	require.Contains(t, got, ConstitutionEmptyHint)
+	require.Contains(t, got, "`constitution` MCP tool")
+	require.Contains(t, got, "specgraph-constitution")
+	require.NotContains(t, got, "specgraph constitution set")
 	require.NotContains(t, got, "Top constraints:")
+}
+
+func TestRenderSpecMarkdown_EmptyConstitution(t *testing.T) {
+	v := &specv1.SpecView{
+		Spec: &specv1.Spec{Slug: "pay-flow", Stage: "spark"},
+	}
+	got := RenderSpecMarkdown(v, RenderOpts{})
+
+	require.Contains(t, got, ConstitutionEmptyHint)
+	require.Contains(t, got, "`constitution` MCP tool")
+	require.Contains(t, got, "specgraph-constitution")
+	// D-10: an MCP-only agent that sparks a spec first must not be routed to a
+	// CLI it may not have.
+	require.NotContains(t, got, "specgraph constitution set")
+	require.NotContains(t, got, "specgraph constitution")
 }
 
 func TestRenderProjectMarkdown_NoProvenance_MatchesExistingLayout(t *testing.T) {
@@ -240,7 +258,7 @@ func fixtureProjectView() *specv1.ProjectView {
 			int32(specv1.FindingSeverity_FINDING_SEVERITY_CRITICAL): 1,
 			int32(specv1.FindingSeverity_FINDING_SEVERITY_WARNING):  2,
 		},
-		SkillsCount: 6,
+		SkillsCount: 7,
 	}
 }
 

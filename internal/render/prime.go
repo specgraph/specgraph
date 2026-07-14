@@ -15,6 +15,17 @@ import (
 	"github.com/specgraph/specgraph/internal/authoring"
 )
 
+// ConstitutionEmptyHint is the shared empty-state routing message for the
+// three fresh-init constitution surfaces: the project-scope prime
+// (writeProjectConstitution), the spec-scope prime (writeSpecConstitution),
+// and the specgraph://constitution MCP resource (constitutionEmptyResource in
+// internal/mcp, which already imports internal/render). Defining it once here
+// keeps the routing text from drifting across those surfaces via copy-paste
+// (06-03 pass-2 review finding). It routes an MCP-only agent to the
+// constitution MCP tool and the specgraph-constitution skill instead of a CLI
+// command it may not have (D-10).
+const ConstitutionEmptyHint = "_No constitution configured. Use the `constitution` MCP tool (`action: update`) or read the `specgraph-constitution` skill (`specgraph_skills_get name=specgraph-constitution`) to define project ground truth._"
+
 // RenderOpts controls optional decoration of rendered output.
 //
 //nolint:revive // Public name spelled `RenderOpts` per the spgr-8ar Piece E task contract.
@@ -206,8 +217,10 @@ func RenderSpecJSON(v *specv1.SpecView, opts RenderOpts) ([]byte, error) {
 func writeProjectConstitution(b *strings.Builder, v *specv1.ProjectView, opts RenderOpts) {
 	con := v.GetConstitution()
 	if con == nil {
-		// Empty-state hint — matches today's primeResourceHandler exactly.
-		b.WriteString("## Constitution\n\n_No constitution configured. Run `specgraph constitution set` to define project ground truth._\n\n")
+		// Empty-state hint — routes an MCP-only agent to the constitution MCP
+		// tool / specgraph-constitution skill via the shared ConstitutionEmptyHint
+		// (D-10), never to a CLI it may not have.
+		b.WriteString("## Constitution\n\n" + ConstitutionEmptyHint + "\n\n")
 		return
 	}
 
@@ -311,7 +324,10 @@ func writeSkills(b *strings.Builder, count int32) {
 	b.WriteString("Use `specgraph_skills_list` to see the catalog, ")
 	b.WriteString("`specgraph_skills_search` to find one by keyword, ")
 	b.WriteString("and `specgraph_skills_get` / `specgraph://skills/<name>` ")
-	b.WriteString("to fetch a specific skill.\n\n")
+	b.WriteString("to fetch a specific skill. ")
+	b.WriteString("Start here: `specgraph_skills_list` the catalog, then ")
+	b.WriteString("`specgraph_skills_get name=specgraph-constitution` or ")
+	b.WriteString("`specgraph-authoring` to author the constitution or a spec.\n\n")
 }
 
 // ---------------------------------------------------------------------------
@@ -323,7 +339,10 @@ func writeSkills(b *strings.Builder, count int32) {
 func writeSpecConstitution(b *strings.Builder, v *specv1.SpecView, opts RenderOpts) {
 	con := v.GetConstitution()
 	if con == nil {
-		b.WriteString("## Constitution\n\n_No constitution configured. Run `specgraph constitution set` to define project ground truth._\n\n")
+		// Same MCP-first empty-state routing as the project surface (D-10): an
+		// agent that sparks a spec before authoring the constitution hits this
+		// branch and must not be sent to a CLI it may not have.
+		b.WriteString("## Constitution\n\n" + ConstitutionEmptyHint + "\n\n")
 		return
 	}
 	b.WriteString("## Constitution\n\n")
