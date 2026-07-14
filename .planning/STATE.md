@@ -6,14 +6,14 @@ current_phase: 07
 current_phase_name: authoring-lifecycle-semantics
 status: executing
 stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-07-14T21:43:22.492Z"
+last_updated: "2026-07-14T21:54:32.276Z"
 last_activity: 2026-07-14
 last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 25
 ---
 
@@ -32,7 +32,7 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 ## Current Position
 
 Phase: 07 (authoring-lifecycle-semantics) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-07-14 — Phase 07 execution started
 
@@ -92,6 +92,7 @@ Last activity: 2026-07-14 — Phase 07 execution started
 | Phase 05 P14 | 4 min | 2 tasks | 2 files |
 | Phase 07 P01 | 6min | 3 tasks | 9 files |
 | Phase 07-authoring-lifecycle-semantics P02 | 9min | 2 tasks | 4 files |
+| Phase 07-authoring-lifecycle-semantics P03 | 12min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase 05]: Keys page stays user-scoped (no load()/invalidateAll) per D-09 — Prevents cross-scope leakage of user key state (T-05-16)
 - [Phase 05]: Constitution load streams per-field promises off one RPC so component references data.provenance and {#await} re-suspends to Skeleton on invalidateAll() — Reconciles Task1 return shape with Task2 data.provenance derivation + streamed skeleton-on-switch (D-10)
 - [Phase ?]: Amend releases active claim + CLAIMED_BY edge inside amend tx (D-08) — Conditional on GetActiveClaim; unclaimed specs are a no-op; slices left intact (T-07-06 accept)
+- [Phase 07-authoring-lifecycle-semantics]: IsValidReEntryStage is the single amend re-entry allowlist (spark|shape|specify|decompose), enforced at handler + storage; approved/in_progress/review/done rejected.
+- [Phase 07-authoring-lifecycle-semantics]: MCP author amend/supersede route to LifecycleService (single gate); the tool does presence guards only.
 
 ### Pending Todos
 
@@ -168,7 +171,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-14T21:43:11.423Z
+Last session: 2026-07-14T21:54:14.076Z
 Stopped at: Completed 07-02-PLAN.md
 Resume file: None
 
