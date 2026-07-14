@@ -167,7 +167,9 @@ func TestConstitutionResource_NotFoundRendersHint(t *testing.T) {
 	require.Equal(t, "text/markdown", contents[0].MimeType)
 	require.Equal(t, "specgraph://constitution", contents[0].URI)
 	require.Contains(t, contents[0].Text, "No constitution configured")
-	require.Contains(t, contents[0].Text, "specgraph constitution set")
+	require.Contains(t, contents[0].Text, "`constitution` MCP tool")
+	require.Contains(t, contents[0].Text, "specgraph-constitution")
+	require.NotContains(t, contents[0].Text, "specgraph constitution set")
 }
 
 func TestConstitutionResource_SlugRequiredRendersHint(t *testing.T) {
@@ -184,7 +186,9 @@ func TestConstitutionResource_SlugRequiredRendersHint(t *testing.T) {
 	require.Equal(t, "text/markdown", contents[0].MimeType)
 	require.Equal(t, "specgraph://constitution", contents[0].URI)
 	require.Contains(t, contents[0].Text, "No constitution configured")
-	require.Contains(t, contents[0].Text, "specgraph constitution set")
+	require.Contains(t, contents[0].Text, "`constitution` MCP tool")
+	require.Contains(t, contents[0].Text, "specgraph-constitution")
+	require.NotContains(t, contents[0].Text, "specgraph constitution set")
 }
 
 func TestConstitutionResource_Error(t *testing.T) {
