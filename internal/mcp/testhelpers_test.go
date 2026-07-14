@@ -439,6 +439,36 @@ type mockLifecycleService struct {
 	checkDrift                                func(req *specv1.DriftCheckRequest) (*specv1.DriftCheckResponse, error)
 	acknowledgeDrift                          func(req *specv1.DriftAcknowledgeRequest) (*specv1.DriftAcknowledgeResponse, error)
 	lint                                      func(req *specv1.LintRequest) (*specv1.LintResponse, error)
+	transitionAmend                           func(req *specv1.TransitionAmendRequest) (*specv1.TransitionAmendResponse, error)
+	transitionSupersede                       func(req *specv1.TransitionSupersedeRequest) (*specv1.TransitionSupersedeResponse, error)
+
+	// Recorded requests for assertion.
+	amendReq     *specv1.TransitionAmendRequest
+	supersedeReq *specv1.TransitionSupersedeRequest
+}
+
+func (m *mockLifecycleService) TransitionAmend(_ context.Context, req *connect.Request[specv1.TransitionAmendRequest]) (*connect.Response[specv1.TransitionAmendResponse], error) {
+	if m.transitionAmend == nil {
+		panic("mockLifecycleService.TransitionAmend not configured")
+	}
+	m.amendReq = req.Msg
+	resp, err := m.transitionAmend(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockLifecycleService) TransitionSupersede(_ context.Context, req *connect.Request[specv1.TransitionSupersedeRequest]) (*connect.Response[specv1.TransitionSupersedeResponse], error) {
+	if m.transitionSupersede == nil {
+		panic("mockLifecycleService.TransitionSupersede not configured")
+	}
+	m.supersedeReq = req.Msg
+	resp, err := m.transitionSupersede(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
 }
 
 func (m *mockLifecycleService) CheckDrift(_ context.Context, req *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {
