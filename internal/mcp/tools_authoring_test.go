@@ -34,7 +34,7 @@ func TestAuthorTool_Spark(t *testing.T) {
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "spark",
 		"slug":   "my-spec",
-		"output": `{"seed":"initial idea","signal":"customer pain"}`,
+		"output": "seed: initial idea\nsignal: customer pain\n",
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
@@ -50,7 +50,7 @@ func TestAuthorTool_Spark_MissingSlug(t *testing.T) {
 
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "spark",
-		"output": `{"seed":"idea"}`,
+		"output": "seed: idea\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
@@ -73,21 +73,24 @@ func TestAuthorTool_Spark_MissingOutput(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "output")
 }
 
-func TestAuthorTool_Spark_InvalidJSON(t *testing.T) {
+func TestAuthorTool_Spark_InvalidScopeSniff(t *testing.T) {
 	c := &Client{Authoring: &mockAuthoringService{}}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("author")
 	require.True(t, ok)
 
+	// Invalid enum must be rejected, never silently written as UNSPECIFIED (T-06-01).
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "spark",
 		"slug":   "my-spec",
-		"output": `not valid json {{{`,
+		"output": "seed: idea\nscope_sniff: gigantic\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "invalid spark output JSON")
+	require.Contains(t, result.Content[0].Text, "invalid spark output")
+	// Sanitized: no raw parser internals leaked (T-06-03).
+	require.NotContains(t, result.Content[0].Text, "SCOPE_SNIFF")
 }
 
 func TestAuthorTool_Approve(t *testing.T) {
@@ -235,7 +238,7 @@ func TestAuthorTool_Shape(t *testing.T) {
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "shape",
 		"slug":   "my-spec",
-		"output": `{"scopeIn":["auth"],"chosenApproach":"oauth2"}`,
+		"output": "scope_in:\n  - auth\nchosen_approach: oauth2\n",
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
@@ -250,7 +253,7 @@ func TestAuthorTool_Shape_MissingSlug(t *testing.T) {
 
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "shape",
-		"output": `{"scopeIn":["auth"]}`,
+		"output": "scope_in:\n  - auth\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
@@ -273,21 +276,22 @@ func TestAuthorTool_Shape_MissingOutput(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "output")
 }
 
-func TestAuthorTool_Shape_InvalidJSON(t *testing.T) {
+func TestAuthorTool_Shape_InvalidYAML(t *testing.T) {
 	c := &Client{Authoring: &mockAuthoringService{}}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("author")
 	require.True(t, ok)
 
+	// scope_in must be a list; a scalar is a type mismatch the parser rejects.
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "shape",
 		"slug":   "my-spec",
-		"output": `{{{not valid`,
+		"output": "scope_in: not-a-list\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "invalid shape output JSON")
+	require.Contains(t, result.Content[0].Text, "invalid shape output")
 }
 
 func TestAuthorTool_Specify(t *testing.T) {
@@ -309,7 +313,7 @@ func TestAuthorTool_Specify(t *testing.T) {
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "specify",
 		"slug":   "my-spec",
-		"output": `{"invariants":["state is never negative"]}`,
+		"output": "invariants:\n  - state is never negative\n",
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
@@ -324,7 +328,7 @@ func TestAuthorTool_Specify_MissingSlug(t *testing.T) {
 
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "specify",
-		"output": `{"invariants":["x"]}`,
+		"output": "invariants:\n  - x\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
@@ -347,21 +351,22 @@ func TestAuthorTool_Specify_MissingOutput(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "output")
 }
 
-func TestAuthorTool_Specify_InvalidJSON(t *testing.T) {
+func TestAuthorTool_Specify_InvalidYAML(t *testing.T) {
 	c := &Client{Authoring: &mockAuthoringService{}}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("author")
 	require.True(t, ok)
 
+	// invariants must be a list; a scalar is a type mismatch the parser rejects.
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "specify",
 		"slug":   "my-spec",
-		"output": `not json at all`,
+		"output": "invariants: not-a-list\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "invalid specify output JSON")
+	require.Contains(t, result.Content[0].Text, "invalid specify output")
 }
 
 func TestAuthorTool_Decompose(t *testing.T) {
@@ -369,6 +374,7 @@ func TestAuthorTool_Decompose(t *testing.T) {
 		decompose: func(req *specv1.DecomposeRequest) (*specv1.DecomposeResponse, error) {
 			require.Equal(t, "my-spec", req.GetSlug())
 			require.NotNil(t, req.GetOutput())
+			require.Equal(t, specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE, req.GetOutput().GetStrategy())
 			return &specv1.DecomposeResponse{
 				Output: req.GetOutput(),
 			}, nil
@@ -382,7 +388,7 @@ func TestAuthorTool_Decompose(t *testing.T) {
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "decompose",
 		"slug":   "my-spec",
-		"output": `{"strategy":"DECOMPOSITION_STRATEGY_VERTICAL_SLICE"}`,
+		"output": "strategy: vertical_slice\n",
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
@@ -397,7 +403,7 @@ func TestAuthorTool_Decompose_MissingSlug(t *testing.T) {
 
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "decompose",
-		"output": `{"strategy":"DECOMPOSITION_STRATEGY_VERTICAL"}`,
+		"output": "strategy: vertical_slice\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
@@ -420,21 +426,44 @@ func TestAuthorTool_Decompose_MissingOutput(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "output")
 }
 
-func TestAuthorTool_Decompose_InvalidJSON(t *testing.T) {
+func TestAuthorTool_Decompose_InvalidStrategy(t *testing.T) {
 	c := &Client{Authoring: &mockAuthoringService{}}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("author")
 	require.True(t, ok)
 
+	// Invalid enum must be rejected, never silently written as UNSPECIFIED (T-06-01).
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "decompose",
 		"slug":   "my-spec",
-		"output": `[invalid`,
+		"output": "strategy: sideways_slice\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "invalid decompose output JSON")
+	require.Contains(t, result.Content[0].Text, "invalid decompose output")
+	// Sanitized: no raw parser internals leaked (T-06-03).
+	require.NotContains(t, result.Content[0].Text, "DECOMPOSITION_STRATEGY")
+}
+
+func TestAuthorTool_Shape_MalformedExchanges(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	// Valid output YAML, but a syntactically invalid exchanges JSON string must
+	// be rejected at the MCP boundary via parseOptionalExchanges (T-06-03).
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "shape",
+		"slug":      "my-spec",
+		"output":    "scope_in:\n  - auth\nchosen_approach: oauth2\n",
+		"exchanges": `not valid json {{{`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "invalid exchanges JSON")
 }
 
 func TestAuthorTool_Amend_MissingSlug(t *testing.T) {

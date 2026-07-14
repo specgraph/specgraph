@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/internal/authoring"
+	authload "github.com/specgraph/specgraph/internal/authoring/load"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -124,15 +125,38 @@ func (t *authorTool) def() ToolDef {
 	return ToolDef{
 		Name: "author",
 		Description: "Drive the SpecGraph authoring funnel for a spec. " +
-			"Actions: spark, shape, specify, decompose, approve, amend, supersede.",
+			"Actions: spark, shape, specify, decompose, approve, amend, supersede. " +
+			"For spark/shape/specify/decompose pass the stage result in `output` as " +
+			"friendly snake_case YAML (e.g. spark `scope_sniff: small`; shape " +
+			"`scope_in`/`chosen_approach`; decompose `strategy: vertical_slice`) — " +
+			"no protojson/enum names. shape/specify/decompose also require `exchanges` " +
+			"(a JSON array; see param doc).",
 		Profile: ProfileAuthoring,
 		Schema: objectSchema(
 			props{
 				"action": stringProp("Operation to perform",
 					"spark", "shape", "specify", "decompose", "approve", "amend", "supersede"),
-				"slug":         stringProp("Spec slug (required for all actions)"),
-				"output":       stringProp("Stage output as a JSON string (required for spark/shape/specify/decompose)"),
-				"exchanges":    stringProp("JSON array of ConversationExchange objects (required for shape/specify/decompose; optional for spark)"),
+				"slug": stringProp("Spec slug (required for all actions)"),
+				"output": stringProp(
+					"Stage output as friendly snake_case YAML (required for spark/shape/specify/decompose). " +
+						"Per stage — spark: seed, signal, questions[], scope_sniff (tiny|small|medium|large|epic), kill_test. " +
+						"shape: scope_in[], scope_out[], approaches[] (name/description/tradeoffs[]), chosen_approach, " +
+						"risks[], success_must[]/success_should[]/success_wont[], decisions[] (slug/title/decision/rationale). " +
+						"specify: interfaces[] (name/body), verify_criteria[] (category/description), invariants[], " +
+						"touches[] (path/purpose/change_type). decompose: strategy " +
+						"(vertical_slice|layer_cake|single_unit|steel_thread), slices[] (id/intent/verify[]/touches[]/depends_on[]). " +
+						"Use snake_case verbatim — camelCase (scopeIn, chosenApproach) is rejected.",
+				),
+				"exchanges": stringProp(
+					"Conversation log as a JSON array of ConversationExchange objects — " +
+						"required for shape/specify/decompose, optional for spark, not needed for approve. " +
+						"Each object has: role (\"probe\" = agent asks, \"response\" = user answers), " +
+						"content (the text), stage (the authoring stage, e.g. \"shape\"), and " +
+						"sequence (strictly increasing integer >= 1; same number pairs a probe with its response). " +
+						"Minimal shape example: " +
+						`[{"role":"probe","content":"What is out of scope?","stage":"shape","sequence":1},` +
+						`{"role":"response","content":"Anything touching billing.","stage":"shape","sequence":2}]`,
+				),
 				"posture":      stringProp("AI collaboration posture: drive, partner, support"),
 				"reason":       stringProp("Reason for amend or supersede"),
 				"target_stage": stringProp("Target stage for amend: spark, shape, specify, decompose"),
@@ -173,11 +197,12 @@ func (t *authorTool) handleSpark(ctx context.Context, params map[string]any) (*T
 	}
 	raw := stringParam(params, "output")
 	if raw == "" {
-		return errResult("output is required for spark (JSON-encoded SparkOutput)"), nil
+		return errResult("output is required for spark (friendly YAML SparkOutput)"), nil
 	}
-	var out specv1.SparkOutput
-	if err := protojson.Unmarshal([]byte(raw), &out); err != nil {
-		return errResult(fmt.Sprintf("invalid spark output JSON: %v", err)), nil
+	out, err := authload.SparkFromYAML([]byte(raw))
+	if err != nil {
+		// Sanitized: no raw parser internals leaked (T-06-03).
+		return errResult("invalid spark output (expected friendly snake_case YAML)"), nil //nolint:nilerr // raw parser error intentionally not surfaced (T-06-03)
 	}
 	posture, posErr := validateOptionalPosture(params)
 	if posErr != nil {
@@ -185,7 +210,7 @@ func (t *authorTool) handleSpark(ctx context.Context, params map[string]any) (*T
 	}
 	resp, err := t.client.Authoring.Spark(ctx, connect.NewRequest(&specv1.SparkRequest{
 		Slug:    slug,
-		Output:  &out,
+		Output:  out,
 		Posture: posture,
 	}))
 	if err != nil {
@@ -201,11 +226,12 @@ func (t *authorTool) handleShape(ctx context.Context, params map[string]any) (*T
 	}
 	raw := stringParam(params, "output")
 	if raw == "" {
-		return errResult("output is required for shape (JSON-encoded ShapeOutput)"), nil
+		return errResult("output is required for shape (friendly YAML ShapeOutput)"), nil
 	}
-	var out specv1.ShapeOutput
-	if err := protojson.Unmarshal([]byte(raw), &out); err != nil {
-		return errResult(fmt.Sprintf("invalid shape output JSON: %v", err)), nil
+	out, err := authload.ShapeFromYAML([]byte(raw))
+	if err != nil {
+		// Sanitized: no raw parser internals leaked (T-06-03).
+		return errResult("invalid shape output (expected friendly snake_case YAML)"), nil //nolint:nilerr // raw parser error intentionally not surfaced (T-06-03)
 	}
 	posture, posErr := validateOptionalPosture(params)
 	if posErr != nil {
@@ -217,7 +243,7 @@ func (t *authorTool) handleShape(ctx context.Context, params map[string]any) (*T
 	}
 	resp, err := t.client.Authoring.Shape(ctx, connect.NewRequest(&specv1.ShapeRequest{
 		Slug:                  slug,
-		Output:                &out,
+		Output:                out,
 		Posture:               posture,
 		ConversationExchanges: exchanges,
 	}))
@@ -234,11 +260,12 @@ func (t *authorTool) handleSpecify(ctx context.Context, params map[string]any) (
 	}
 	raw := stringParam(params, "output")
 	if raw == "" {
-		return errResult("output is required for specify (JSON-encoded SpecifyOutput)"), nil
+		return errResult("output is required for specify (friendly YAML SpecifyOutput)"), nil
 	}
-	var out specv1.SpecifyOutput
-	if err := protojson.Unmarshal([]byte(raw), &out); err != nil {
-		return errResult(fmt.Sprintf("invalid specify output JSON: %v", err)), nil
+	out, err := authload.SpecifyFromYAML([]byte(raw))
+	if err != nil {
+		// Sanitized: no raw parser internals leaked (T-06-03).
+		return errResult("invalid specify output (expected friendly snake_case YAML)"), nil //nolint:nilerr // raw parser error intentionally not surfaced (T-06-03)
 	}
 	posture, posErr := validateOptionalPosture(params)
 	if posErr != nil {
@@ -250,7 +277,7 @@ func (t *authorTool) handleSpecify(ctx context.Context, params map[string]any) (
 	}
 	resp, err := t.client.Authoring.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
 		Slug:                  slug,
-		Output:                &out,
+		Output:                out,
 		Posture:               posture,
 		ConversationExchanges: exchanges,
 	}))
@@ -267,11 +294,12 @@ func (t *authorTool) handleDecompose(ctx context.Context, params map[string]any)
 	}
 	raw := stringParam(params, "output")
 	if raw == "" {
-		return errResult("output is required for decompose (JSON-encoded DecomposeOutput)"), nil
+		return errResult("output is required for decompose (friendly YAML DecomposeOutput)"), nil
 	}
-	var out specv1.DecomposeOutput
-	if err := protojson.Unmarshal([]byte(raw), &out); err != nil {
-		return errResult(fmt.Sprintf("invalid decompose output JSON: %v", err)), nil
+	out, err := authload.DecomposeFromYAML([]byte(raw))
+	if err != nil {
+		// Sanitized: no raw parser internals leaked (T-06-03).
+		return errResult("invalid decompose output (expected friendly snake_case YAML)"), nil //nolint:nilerr // raw parser error intentionally not surfaced (T-06-03)
 	}
 	posture, posErr := validateOptionalPosture(params)
 	if posErr != nil {
@@ -283,7 +311,7 @@ func (t *authorTool) handleDecompose(ctx context.Context, params map[string]any)
 	}
 	resp, err := t.client.Authoring.Decompose(ctx, connect.NewRequest(&specv1.DecomposeRequest{
 		Slug:                  slug,
-		Output:                &out,
+		Output:                out,
 		Posture:               posture,
 		ConversationExchanges: exchanges,
 	}))
