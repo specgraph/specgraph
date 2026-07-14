@@ -93,45 +93,6 @@ the subcommand allow-list (`init`, `doctor`, `health`, etc.),
 | `e2e/` | End-to-end tests (Ginkgo/Gomega, require Docker) |
 | `docs/plans/` | Implementation plan documents |
 
-## Jujutsu Workspaces
-
-Use `jj workspace` commands instead of git worktrees. Workspaces share a single repo
-store but provide independent working-copy commits in the DAG.
-
-### Key Commands
-
-- `jj workspace add ../dir-name` — create a new workspace (no branch-lock issues)
-- `jj workspace list` — show all workspaces
-- `jj workspace forget <name>` — untrack a workspace (manually delete the dir after)
-- `jj workspace update-stale` — rebase working-copy commit if ancestry changed elsewhere
-- `jj workspace root` — print the workspace root path
-
-### When to Use
-
-- Need two changes **on disk simultaneously** (e.g., running tests in one, coding in another)
-- For simple context switching, prefer `jj edit <change-id>` or `jj new` — no workspace needed
-- Multiple workspaces can operate on the same bookmark lineage (no branch-locking)
-
-### Workflow
-
-```sh
-# create workspace for parallel work
-jj workspace add ../project-creds
-cd ../project-creds
-jj edit <change-id>        # point at existing work
-# ...work here, auto-snapshotted...
-
-# back in main workspace, sync if needed
-cd ../project-main
-jj workspace update-stale
-```
-
-### Notes
-
-- Conflicts from workspace updates are materialized (not blocked) — resolve at leisure
-- `jj workspace forget` does NOT delete the directory on disk
-- Workspaces are rarely needed for solo work; `jj edit` covers most context-switching
-
 ## Documentation
 
 - **Example spec** — `site/docs/concepts/example-spec.md` is the canonical example spec on the public site. When proto messages for authoring stages change (`SparkOutput`, `ShapeOutput`, `SpecifyOutput`, `DecomposeOutput`), check if the example spec needs updating.
@@ -142,17 +103,12 @@ jj workspace update-stale
 
 ## Gotchas
 
-- **jj-colocated repo** — This repo uses jj with git colocated. Key rules:
-  - Always use `jj --no-pager` for all jj commands
-  - Always use `-m` with `squash`, `describe`, `commit`, `new` (avoids opening editor)
-  - Never use `git push`; use `jj bookmark set <name> -r <rev>` then `jj git push --bookmark <name>`
-  - MUST use `jj workspace add` instead of `git worktree` (git worktrees break colocated state)
 - **`gen/` is committed** — generated proto code is checked in for Go module compatibility. Run `task proto:check` to verify staleness. Proto sources are in `proto/`, not `gen/`.
 - **Proto field removal** — When removing a proto field, use `reserved` for both field number and name in the `.proto` file. Then run `task proto`, update all callers (CLI, handlers, tests), and verify with `go build ./...`.
 - **`task proto` is incremental** — fingerprints `.proto` files and skips if unchanged
 - **Postgres integration tests require Docker** — `internal/storage/postgres/` uses testcontainers with `pgvector/pgvector:pg18`. Wait strategy: `ForLog("database system is ready").WithOccurrence(2)`
 - **Lefthook pre-commit hooks**: license headers (addlicense), golangci-lint, yamlfmt, dprint, rumdl, cog (conventional commits). All run in parallel.
-- **Lefthook commit-msg hooks**: `cog` (conventional commits) and DCO sign-off check. All commits require `Signed-off-by:` trailer — use `git commit -s` or `jj describe` with trailer.
+- **Lefthook commit-msg hooks**: `cog` (conventional commits) and DCO sign-off check. All commits require `Signed-off-by:` trailer — use `git commit -s`.
 - **Claude Code hooks**: `task lint` runs after Bash, edits to `gen/` are blocked via PreToolUse (edit `.proto` sources instead). Formatting is handled by pre-commit hooks, not Claude Code PostToolUse.
 - **ConnectRPC, not plain gRPC** — handlers are in `internal/server/`, proto services generate both `.pb.go` and `.connect.go` files
 - **Storage interfaces in `internal/storage/`** — implementations are in subdirectories (currently only `postgres/`). The interfaces use domain types, not protobuf types.
