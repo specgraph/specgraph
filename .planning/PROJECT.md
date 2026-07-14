@@ -8,6 +8,20 @@ SpecGraph is a Live Spec-Driven Development Framework — specifications as a qu
 
 Specs stay live and queryable as a graph — with locked architectural decisions, drift detection, and a durable storage/query layer — so both humans and agent-based execution engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
+## Current Milestone: v0.14.0 Authoring Surface Correctness
+
+**Goal:** Make the authoring funnel and MCP surface trustworthy end-to-end — an MCP-only agent can learn to author from the served skills, amend/supersede match natural lifecycle semantics with working re-entry, conversations record reliably, and JIT display names self-heal.
+
+**Target features (correctness fixes on existing surfaces, from the open GitHub backlog):**
+
+- MCP-served skills teach the MCP authoring round-trip, not just the CLI, so a fresh `init`-only project can author from scratch (#1002, critical)
+- amend/supersede lifecycle semantics corrected — amend in-flight, supersede only from done (#900, high)
+- amend re-entry allows re-authoring at the target stage (#899, high)
+- authoring stages reliably record conversations (#906, medium)
+- JIT reconciles `display_name` against a usable name claim on each login (#994, medium)
+
+Version aligns to the cog-managed release line (v0.13.0 released → v0.14.0 next). Phase numbering continues from v0.12.0's Phase 5 (next milestone starts at Phase 6).
+
 ## Current State
 
 **Shipped:** v0.12.0 Identity & Self-Service (5 phases, 29 plans, 69 tasks — closed 2026-07-13). Rounded out the identity/auth surface (self-service MCP API keys, live role-revocation enforcement, native GitHub OAuth2 + MCP OAuth 2.1 resource server, session-issuer audit), hardened release/build tooling, added a verifiable drift-detection interface, and shipped a project-selector web UI on a full shadcn-svelte + dark-mode foundation. Archived under `.planning/milestones/v0.12.0-*`.
@@ -45,9 +59,17 @@ Fresh requirements for the next milestone are defined via `/gsd-new-milestone`.
 
 ### Active
 
-<!-- v1 scope — see REQUIREMENTS.md for full detail with REQ-IDs. Sourced from currently open/in-progress beads issues, P1+P2 priority. -->
+<!-- v0.14.0 scope — see REQUIREMENTS.md for full detail with REQ-IDs. Sourced from the open GitHub backlog (issue-first). -->
 
-- [ ] Fix Confluence comment polling pagination bug (`spgr-jwbj`) — deferred to backlog Phase 999.2; poller code is not in this repo (INTG-01 descoped from Phase 4), first step is to locate its owning repository
+- [ ] **MCP-01**: MCP-served skills teach the MCP authoring round-trip so an MCP-only project can author from scratch (#1002)
+- [ ] **LIFE-01**: amend/supersede lifecycle semantics corrected — amend in-flight, supersede only from done (#900)
+- [ ] **LIFE-02**: amend re-entry lets the target stage re-author instead of failing on a same-stage no-op (#899)
+- [ ] **CONV-01**: authoring stages reliably record conversations across the funnel (#906)
+- [ ] **AUTH-06**: JIT reconciles `display_name` against a usable name claim on each login (#994)
+
+**Deferred (not in this milestone):**
+
+- Fix Confluence comment polling pagination bug (`spgr-jwbj` / #901) — backlog Phase 999.2; poller code is not in this repo (INTG-01 descoped from Phase 4), first step is to locate its owning repository
 
 ### Out of Scope
 
@@ -83,5 +105,22 @@ Full architectural history — locked ADRs, three-generation storage-backend lin
 | Phase 5: manual-fallback shadcn install + Slate via OKLCH token block | shadcn-svelte CLI blocks on an interactive preset prompt and its base-color enum has no `slate`, so `components.json`/`app.css`/`utils.ts` are authored by hand and Slate is delivered as a verified OKLCH block | ✓ Good |
 | Phase 5: layout owns the single active-project breadcrumb; pages re-suspend to Skeleton via `+page.ts` load + `invalidateAll()` on project switch | prevents per-page breadcrumb duplication and gives end-to-end switch re-fetch without manual stale-guards | ✓ Good |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-07-13 after v0.12.0 Identity & Self-Service milestone — all five phases shipped and verified; milestone archived to `.planning/milestones/v0.12.0-*` (override_closeout: INTG-01 descoped to backlog 999.2). Next: `/gsd-new-milestone`.*
+*Last updated: 2026-07-13 — started milestone v0.14.0 Authoring Surface Correctness (aligns GSD tracking with the cog-managed v0.13.0 release line). Scope: five open-backlog correctness fixes (#1002, #900, #899, #906, #994). Next: define requirements → roadmap.*

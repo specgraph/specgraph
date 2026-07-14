@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.12.0
-milestone_name: Identity & Self-Service
-current_phase: null
-status: Awaiting next milestone
-stopped_at: Phase 05 complete (UAT passed, verification passed) — all five v1 phases done; only backlog Phase 999.2 remains
-last_updated: "2026-07-13T17:56:18.532Z"
-last_activity: 2026-07-13
-last_activity_desc: Milestone v0.12.0 completed and archived
+milestone: v0.14.0
+milestone_name: Authoring Surface Correctness
+status: planning
+last_updated: "2026-07-14T00:25:07.907Z"
+last_activity: 2026-07-14
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 29
-  completed_plans: 29
-  percent: 100
-current_phase_name: BACKLOG
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -31,10 +27,10 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 
 ## Current Position
 
-Phase: Milestone v0.12.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-13 — Milestone v0.12.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-07-14 — Milestone v0.14.0 started
 
 ## Performance Metrics
 
