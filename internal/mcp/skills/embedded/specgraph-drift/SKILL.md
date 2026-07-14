@@ -15,7 +15,7 @@ done-transition time so drift can be detected later.
 
 ## When this skill applies
 
-- The user runs `specgraph drift` from the CLI or asks about a stale dep.
+- The user asks about a stale dependency or an out-of-date `done` spec.
 - A done spec needs re-baselining after an upstream change.
 - Findings show drift and the user wants to acknowledge or fix.
 
@@ -39,10 +39,11 @@ when those land). Default is dependency.
 
 ## Acknowledging drift
 
-`specgraph drift acknowledge <slug>` re-baselines the spec's edges. Use
-`--all` to baseline every DEPENDS_ON edge regardless of current hash. This
-is the correct fix when the upstream change is intentional and the spec
-text doesn't need revision.
+Use the `drift` tool, `action: acknowledge` — it re-baselines the spec's edges
+so current upstream hashes become the new baseline. Baselining every
+`DEPENDS_ON` edge (regardless of current hash) is the correct fix for
+unmigrated edges that always report drift. This is the right move when the
+upstream change is intentional and the spec text doesn't need revision.
 
 When the upstream change does require spec revision, instead transition the
 spec back through `specify` or `approve` — the done-transition path will
@@ -61,3 +62,24 @@ re-baseline naturally.
   needs to change, route through the funnel instead.
 - Don't expect drift to surface on never-done specs. Edges aren't baselined
   until the first done transition.
+
+---
+
+## Requires local CLI (source/CLI users only — MCP-only agents skip this)
+
+Drift detection and acknowledgment run over MCP with the `drift` tool above —
+an MCP-only agent needs nothing here. Source/CLI users running the `specgraph`
+binary have equivalent commands:
+
+- Detect drift (defaults to `--scope dependency`):
+
+  ```bash
+  specgraph drift
+  ```
+
+- Re-baseline a spec's edges (`--all` baselines every `DEPENDS_ON` edge,
+  clearing unmigrated-edge drift):
+
+  ```bash
+  specgraph drift acknowledge <slug> --all
+  ```

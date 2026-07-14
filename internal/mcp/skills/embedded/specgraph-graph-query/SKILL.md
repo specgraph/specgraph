@@ -75,3 +75,13 @@ specgraph://prime                   # session-priming digest
   resources; they enforce auth, edge semantics, and pagination.
 - Don't infer "ready" from stage alone. A spec is ready when its dependencies
   are satisfied — `specgraph://graph/ready` does the math.
+
+---
+
+## Requires local CLI (source/CLI users only — MCP-only agents skip this)
+
+The graph is fully queryable over MCP with the `spec` and `graph_query` tools
+and the `specgraph://` resources above — an MCP-only agent needs nothing here.
+Source/CLI users running the `specgraph` binary can list and inspect specs from
+the command line, but the MCP tools and resources are the supported route for
+agents and enforce the same auth, edge semantics, and pagination.

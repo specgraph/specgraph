@@ -77,3 +77,13 @@ default. Override paths are configured via the server's
   on a deliberately-rich spec is a discussion, not a stop.
 - Don't run all five passes on every transition. The registry is intentional;
   running off-stage passes wastes tokens and dilutes signal.
+
+---
+
+## Requires local CLI (source/CLI users only — MCP-only agents skip this)
+
+Analytical passes run entirely over MCP with the `analytical_pass` and
+`findings` tools, and results surface in `specgraph://findings` — an MCP-only
+agent needs nothing here. Source/CLI users running the `specgraph` binary can
+trigger passes from the command line, but the MCP tools are the supported route
+for agents.

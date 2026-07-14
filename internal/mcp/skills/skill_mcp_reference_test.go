@@ -88,12 +88,16 @@ func TestSkillMCPReference(t *testing.T) {
 			}
 
 			// (2b) CLI-appendix ordering guard: any `specgraph <cmd>` CLI
-			// invocation must appear AFTER the appendix header. Skills with no
-			// CLI commands pass trivially.
-			if loc := cliCommandRE.FindStringIndex(body); loc != nil {
-				if headerIdx < 0 || loc[0] < headerIdx {
+			// invocation must appear AFTER the appendix header. Scanned over
+			// the body AFTER the front-matter — the front-matter `description`
+			// legitimately names CLI trigger phrases. Skills with no CLI
+			// commands pass trivially.
+			content := stripFrontmatter(body)
+			contentHeaderIdx := strings.Index(content, cliAppendixHeader)
+			if loc := cliCommandRE.FindStringIndex(content); loc != nil {
+				if contentHeaderIdx < 0 || loc[0] < contentHeaderIdx {
 					t.Errorf("%s: CLI command %q appears at offset %d before the %q appendix (offset %d) — CLI must be gated in the appendix",
-						tc.name, body[loc[0]:min(loc[0]+30, len(body))], loc[0], cliAppendixHeader, headerIdx)
+						tc.name, content[loc[0]:min(loc[0]+30, len(content))], loc[0], cliAppendixHeader, contentHeaderIdx)
 				}
 			}
 
@@ -167,6 +171,23 @@ func firstYAMLBlockContaining(body, needle string) string {
 		}
 	}
 	return ""
+}
+
+// stripFrontmatter returns the SKILL.md content after the closing `---`
+// front-matter fence. If no front-matter is present, the whole body is
+// returned. Used so the CLI-ordering guard ignores CLI trigger phrases in the
+// front-matter `description`.
+func stripFrontmatter(body string) string {
+	const fence = "---\n"
+	if !strings.HasPrefix(body, fence) {
+		return body
+	}
+	rest := body[len(fence):]
+	end := strings.Index(rest, "\n"+fence[:len(fence)-1])
+	if end < 0 {
+		return body
+	}
+	return rest[end:]
 }
 
 // allYAMLBlocks returns the inner content of every fenced ```yaml block in
