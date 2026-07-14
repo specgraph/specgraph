@@ -2909,15 +2909,13 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\rApproveAction\x12\x1e\n" +
 	"\x1aAPPROVE_ACTION_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15APPROVE_ACTION_ACCEPT\x10\x01\x12\x19\n" +
-	"\x15APPROVE_ACTION_REJECT\x10\x022\xa4\x06\n" +
+	"\x15APPROVE_ACTION_REJECT\x10\x022\x94\x05\n" +
 	"\x10AuthoringService\x12@\n" +
 	"\x05Spark\x12\x1a.specgraph.v1.SparkRequest\x1a\x1b.specgraph.v1.SparkResponse\x12@\n" +
 	"\x05Shape\x12\x1a.specgraph.v1.ShapeRequest\x1a\x1b.specgraph.v1.ShapeResponse\x12F\n" +
 	"\aSpecify\x12\x1c.specgraph.v1.SpecifyRequest\x1a\x1d.specgraph.v1.SpecifyResponse\x12L\n" +
 	"\tDecompose\x12\x1e.specgraph.v1.DecomposeRequest\x1a\x1f.specgraph.v1.DecomposeResponse\x12F\n" +
-	"\aApprove\x12\x1c.specgraph.v1.ApproveRequest\x1a\x1d.specgraph.v1.ApproveResponse\x12@\n" +
-	"\x05Amend\x12\x1a.specgraph.v1.AmendRequest\x1a\x1b.specgraph.v1.AmendResponse\x12L\n" +
-	"\tSupersede\x12\x1e.specgraph.v1.SupersedeRequest\x1a\x1f.specgraph.v1.SupersedeResponse\x12O\n" +
+	"\aApprove\x12\x1c.specgraph.v1.ApproveRequest\x1a\x1d.specgraph.v1.ApproveResponse\x12O\n" +
 	"\n" +
 	"GetPrompts\x12\x1f.specgraph.v1.GetPromptsRequest\x1a .specgraph.v1.GetPromptsResponse\x12g\n" +
 	"\x12RecordConversation\x12'.specgraph.v1.RecordConversationRequest\x1a(.specgraph.v1.RecordConversationResponse\x12d\n" +
@@ -3035,23 +3033,19 @@ var file_specgraph_v1_authoring_proto_depIdxs = []int32{
 	23, // 50: specgraph.v1.AuthoringService.Specify:input_type -> specgraph.v1.SpecifyRequest
 	25, // 51: specgraph.v1.AuthoringService.Decompose:input_type -> specgraph.v1.DecomposeRequest
 	27, // 52: specgraph.v1.AuthoringService.Approve:input_type -> specgraph.v1.ApproveRequest
-	29, // 53: specgraph.v1.AuthoringService.Amend:input_type -> specgraph.v1.AmendRequest
-	31, // 54: specgraph.v1.AuthoringService.Supersede:input_type -> specgraph.v1.SupersedeRequest
-	33, // 55: specgraph.v1.AuthoringService.GetPrompts:input_type -> specgraph.v1.GetPromptsRequest
-	37, // 56: specgraph.v1.AuthoringService.RecordConversation:input_type -> specgraph.v1.RecordConversationRequest
-	39, // 57: specgraph.v1.AuthoringService.ListConversations:input_type -> specgraph.v1.ListConversationsRequest
-	20, // 58: specgraph.v1.AuthoringService.Spark:output_type -> specgraph.v1.SparkResponse
-	22, // 59: specgraph.v1.AuthoringService.Shape:output_type -> specgraph.v1.ShapeResponse
-	24, // 60: specgraph.v1.AuthoringService.Specify:output_type -> specgraph.v1.SpecifyResponse
-	26, // 61: specgraph.v1.AuthoringService.Decompose:output_type -> specgraph.v1.DecomposeResponse
-	28, // 62: specgraph.v1.AuthoringService.Approve:output_type -> specgraph.v1.ApproveResponse
-	30, // 63: specgraph.v1.AuthoringService.Amend:output_type -> specgraph.v1.AmendResponse
-	32, // 64: specgraph.v1.AuthoringService.Supersede:output_type -> specgraph.v1.SupersedeResponse
-	34, // 65: specgraph.v1.AuthoringService.GetPrompts:output_type -> specgraph.v1.GetPromptsResponse
-	38, // 66: specgraph.v1.AuthoringService.RecordConversation:output_type -> specgraph.v1.RecordConversationResponse
-	40, // 67: specgraph.v1.AuthoringService.ListConversations:output_type -> specgraph.v1.ListConversationsResponse
-	58, // [58:68] is the sub-list for method output_type
-	48, // [48:58] is the sub-list for method input_type
+	33, // 53: specgraph.v1.AuthoringService.GetPrompts:input_type -> specgraph.v1.GetPromptsRequest
+	37, // 54: specgraph.v1.AuthoringService.RecordConversation:input_type -> specgraph.v1.RecordConversationRequest
+	39, // 55: specgraph.v1.AuthoringService.ListConversations:input_type -> specgraph.v1.ListConversationsRequest
+	20, // 56: specgraph.v1.AuthoringService.Spark:output_type -> specgraph.v1.SparkResponse
+	22, // 57: specgraph.v1.AuthoringService.Shape:output_type -> specgraph.v1.ShapeResponse
+	24, // 58: specgraph.v1.AuthoringService.Specify:output_type -> specgraph.v1.SpecifyResponse
+	26, // 59: specgraph.v1.AuthoringService.Decompose:output_type -> specgraph.v1.DecomposeResponse
+	28, // 60: specgraph.v1.AuthoringService.Approve:output_type -> specgraph.v1.ApproveResponse
+	34, // 61: specgraph.v1.AuthoringService.GetPrompts:output_type -> specgraph.v1.GetPromptsResponse
+	38, // 62: specgraph.v1.AuthoringService.RecordConversation:output_type -> specgraph.v1.RecordConversationResponse
+	40, // 63: specgraph.v1.AuthoringService.ListConversations:output_type -> specgraph.v1.ListConversationsResponse
+	56, // [56:64] is the sub-list for method output_type
+	48, // [48:56] is the sub-list for method input_type
 	48, // [48:48] is the sub-list for extension type_name
 	48, // [48:48] is the sub-list for extension extendee
 	0,  // [0:48] is the sub-list for field type_name

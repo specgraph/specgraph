@@ -437,10 +437,6 @@ service AuthoringService {
   rpc Decompose(DecomposeRequest) returns (DecomposeResponse);
   // Approve transitions from decompose to approved.
   rpc Approve(ApproveRequest) returns (ApproveResponse);
-  // Amend rolls a spec back to an earlier stage.
-  rpc Amend(AmendRequest) returns (AmendResponse);
-  // Supersede marks a spec as replaced by another.
-  rpc Supersede(SupersedeRequest) returns (SupersedeResponse);
   // GetPrompts returns prompt templates for a given authoring stage.
   rpc GetPrompts(GetPromptsRequest) returns (GetPromptsResponse);
   // RecordConversation stores authoring conversation exchanges for a spec stage.

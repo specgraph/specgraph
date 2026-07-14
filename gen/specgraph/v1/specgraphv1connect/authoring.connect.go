@@ -49,11 +49,6 @@ const (
 	// AuthoringServiceApproveProcedure is the fully-qualified name of the AuthoringService's Approve
 	// RPC.
 	AuthoringServiceApproveProcedure = "/specgraph.v1.AuthoringService/Approve"
-	// AuthoringServiceAmendProcedure is the fully-qualified name of the AuthoringService's Amend RPC.
-	AuthoringServiceAmendProcedure = "/specgraph.v1.AuthoringService/Amend"
-	// AuthoringServiceSupersedeProcedure is the fully-qualified name of the AuthoringService's
-	// Supersede RPC.
-	AuthoringServiceSupersedeProcedure = "/specgraph.v1.AuthoringService/Supersede"
 	// AuthoringServiceGetPromptsProcedure is the fully-qualified name of the AuthoringService's
 	// GetPrompts RPC.
 	AuthoringServiceGetPromptsProcedure = "/specgraph.v1.AuthoringService/GetPrompts"
@@ -77,10 +72,6 @@ type AuthoringServiceClient interface {
 	Decompose(context.Context, *connect.Request[v1.DecomposeRequest]) (*connect.Response[v1.DecomposeResponse], error)
 	// Approve transitions from decompose to approved.
 	Approve(context.Context, *connect.Request[v1.ApproveRequest]) (*connect.Response[v1.ApproveResponse], error)
-	// Amend rolls a spec back to an earlier stage.
-	Amend(context.Context, *connect.Request[v1.AmendRequest]) (*connect.Response[v1.AmendResponse], error)
-	// Supersede marks a spec as replaced by another.
-	Supersede(context.Context, *connect.Request[v1.SupersedeRequest]) (*connect.Response[v1.SupersedeResponse], error)
 	// GetPrompts returns prompt templates for a given authoring stage.
 	GetPrompts(context.Context, *connect.Request[v1.GetPromptsRequest]) (*connect.Response[v1.GetPromptsResponse], error)
 	// RecordConversation stores authoring conversation exchanges for a spec stage.
@@ -130,18 +121,6 @@ func NewAuthoringServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(authoringServiceMethods.ByName("Approve")),
 			connect.WithClientOptions(opts...),
 		),
-		amend: connect.NewClient[v1.AmendRequest, v1.AmendResponse](
-			httpClient,
-			baseURL+AuthoringServiceAmendProcedure,
-			connect.WithSchema(authoringServiceMethods.ByName("Amend")),
-			connect.WithClientOptions(opts...),
-		),
-		supersede: connect.NewClient[v1.SupersedeRequest, v1.SupersedeResponse](
-			httpClient,
-			baseURL+AuthoringServiceSupersedeProcedure,
-			connect.WithSchema(authoringServiceMethods.ByName("Supersede")),
-			connect.WithClientOptions(opts...),
-		),
 		getPrompts: connect.NewClient[v1.GetPromptsRequest, v1.GetPromptsResponse](
 			httpClient,
 			baseURL+AuthoringServiceGetPromptsProcedure,
@@ -170,8 +149,6 @@ type authoringServiceClient struct {
 	specify            *connect.Client[v1.SpecifyRequest, v1.SpecifyResponse]
 	decompose          *connect.Client[v1.DecomposeRequest, v1.DecomposeResponse]
 	approve            *connect.Client[v1.ApproveRequest, v1.ApproveResponse]
-	amend              *connect.Client[v1.AmendRequest, v1.AmendResponse]
-	supersede          *connect.Client[v1.SupersedeRequest, v1.SupersedeResponse]
 	getPrompts         *connect.Client[v1.GetPromptsRequest, v1.GetPromptsResponse]
 	recordConversation *connect.Client[v1.RecordConversationRequest, v1.RecordConversationResponse]
 	listConversations  *connect.Client[v1.ListConversationsRequest, v1.ListConversationsResponse]
@@ -202,16 +179,6 @@ func (c *authoringServiceClient) Approve(ctx context.Context, req *connect.Reque
 	return c.approve.CallUnary(ctx, req)
 }
 
-// Amend calls specgraph.v1.AuthoringService.Amend.
-func (c *authoringServiceClient) Amend(ctx context.Context, req *connect.Request[v1.AmendRequest]) (*connect.Response[v1.AmendResponse], error) {
-	return c.amend.CallUnary(ctx, req)
-}
-
-// Supersede calls specgraph.v1.AuthoringService.Supersede.
-func (c *authoringServiceClient) Supersede(ctx context.Context, req *connect.Request[v1.SupersedeRequest]) (*connect.Response[v1.SupersedeResponse], error) {
-	return c.supersede.CallUnary(ctx, req)
-}
-
 // GetPrompts calls specgraph.v1.AuthoringService.GetPrompts.
 func (c *authoringServiceClient) GetPrompts(ctx context.Context, req *connect.Request[v1.GetPromptsRequest]) (*connect.Response[v1.GetPromptsResponse], error) {
 	return c.getPrompts.CallUnary(ctx, req)
@@ -239,10 +206,6 @@ type AuthoringServiceHandler interface {
 	Decompose(context.Context, *connect.Request[v1.DecomposeRequest]) (*connect.Response[v1.DecomposeResponse], error)
 	// Approve transitions from decompose to approved.
 	Approve(context.Context, *connect.Request[v1.ApproveRequest]) (*connect.Response[v1.ApproveResponse], error)
-	// Amend rolls a spec back to an earlier stage.
-	Amend(context.Context, *connect.Request[v1.AmendRequest]) (*connect.Response[v1.AmendResponse], error)
-	// Supersede marks a spec as replaced by another.
-	Supersede(context.Context, *connect.Request[v1.SupersedeRequest]) (*connect.Response[v1.SupersedeResponse], error)
 	// GetPrompts returns prompt templates for a given authoring stage.
 	GetPrompts(context.Context, *connect.Request[v1.GetPromptsRequest]) (*connect.Response[v1.GetPromptsResponse], error)
 	// RecordConversation stores authoring conversation exchanges for a spec stage.
@@ -288,18 +251,6 @@ func NewAuthoringServiceHandler(svc AuthoringServiceHandler, opts ...connect.Han
 		connect.WithSchema(authoringServiceMethods.ByName("Approve")),
 		connect.WithHandlerOptions(opts...),
 	)
-	authoringServiceAmendHandler := connect.NewUnaryHandler(
-		AuthoringServiceAmendProcedure,
-		svc.Amend,
-		connect.WithSchema(authoringServiceMethods.ByName("Amend")),
-		connect.WithHandlerOptions(opts...),
-	)
-	authoringServiceSupersedeHandler := connect.NewUnaryHandler(
-		AuthoringServiceSupersedeProcedure,
-		svc.Supersede,
-		connect.WithSchema(authoringServiceMethods.ByName("Supersede")),
-		connect.WithHandlerOptions(opts...),
-	)
 	authoringServiceGetPromptsHandler := connect.NewUnaryHandler(
 		AuthoringServiceGetPromptsProcedure,
 		svc.GetPrompts,
@@ -330,10 +281,6 @@ func NewAuthoringServiceHandler(svc AuthoringServiceHandler, opts ...connect.Han
 			authoringServiceDecomposeHandler.ServeHTTP(w, r)
 		case AuthoringServiceApproveProcedure:
 			authoringServiceApproveHandler.ServeHTTP(w, r)
-		case AuthoringServiceAmendProcedure:
-			authoringServiceAmendHandler.ServeHTTP(w, r)
-		case AuthoringServiceSupersedeProcedure:
-			authoringServiceSupersedeHandler.ServeHTTP(w, r)
 		case AuthoringServiceGetPromptsProcedure:
 			authoringServiceGetPromptsHandler.ServeHTTP(w, r)
 		case AuthoringServiceRecordConversationProcedure:
@@ -367,14 +314,6 @@ func (UnimplementedAuthoringServiceHandler) Decompose(context.Context, *connect.
 
 func (UnimplementedAuthoringServiceHandler) Approve(context.Context, *connect.Request[v1.ApproveRequest]) (*connect.Response[v1.ApproveResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.AuthoringService.Approve is not implemented"))
-}
-
-func (UnimplementedAuthoringServiceHandler) Amend(context.Context, *connect.Request[v1.AmendRequest]) (*connect.Response[v1.AmendResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.AuthoringService.Amend is not implemented"))
-}
-
-func (UnimplementedAuthoringServiceHandler) Supersede(context.Context, *connect.Request[v1.SupersedeRequest]) (*connect.Response[v1.SupersedeResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("specgraph.v1.AuthoringService.Supersede is not implemented"))
 }
 
 func (UnimplementedAuthoringServiceHandler) GetPrompts(context.Context, *connect.Request[v1.GetPromptsRequest]) (*connect.Response[v1.GetPromptsResponse], error) {

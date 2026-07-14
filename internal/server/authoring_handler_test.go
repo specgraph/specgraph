@@ -714,21 +714,6 @@ func TestAuthoringHandler_Approve_RejectRequiresDecomposeStage(t *testing.T) {
 	require.Contains(t, connErr.Message(), "reject requires decompose")
 }
 
-func TestAuthoringHandler_Amend_HappyPath(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{
-		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.SpecStageShape, Version: 2},
-	}, &fakeBackend{})
-	resp, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
-		Slug:        "my-spec",
-		Reason:      "scope changed",
-		TargetStage: specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
-	}))
-	require.NoError(t, err)
-	require.Equal(t, "my-spec", resp.Msg.Slug)
-	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SHAPE, resp.Msg.Stage)
-	require.Equal(t, int32(2), resp.Msg.Version)
-}
-
 func TestAuthoringHandler_Shape_EmptySlug(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
 	_, err := client.Shape(context.Background(), connect.NewRequest(&specv1.ShapeRequest{
@@ -774,54 +759,6 @@ func TestAuthoringHandler_Approve_EmptySlug(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
-}
-
-func TestAuthoringHandler_Amend_EmptySlug(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
-		Slug: "",
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
-}
-
-func TestAuthoringHandler_Supersede_EmptySlug(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
-	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.SupersedeRequest{
-		Slug: "",
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
-}
-
-func TestAuthoringHandler_Supersede_EmptySupersedeBy(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
-	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.SupersedeRequest{
-		Slug:         "my-spec",
-		SupersededBy: "",
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
-}
-
-func TestAuthoringHandler_Supersede_NotFound(t *testing.T) {
-	authoringStore := &fakeAuthoringBackend{supersedeErr: storage.ErrSpecNotFound}
-	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
-	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.SupersedeRequest{
-		Slug:         "missing-spec",
-		SupersededBy: "new-spec",
-		Reason:       "replaced",
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeNotFound, connErr.Code())
 }
 
 func TestAuthoringHandler_StageError_InvalidTransition(t *testing.T) {
@@ -996,18 +933,6 @@ func TestAuthoringHandler_StageError_AlreadyApproved(t *testing.T) {
 	require.Equal(t, connect.CodeFailedPrecondition, connErr.Code())
 }
 
-func TestAuthoringHandler_Supersede_InvalidSupersedeBy(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
-	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.SupersedeRequest{
-		Slug:         "my-spec",
-		SupersededBy: "../escape",
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
-}
-
 func TestAuthoringHandler_Spark_PathTraversalSlug(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
 	_, err := client.Spark(context.Background(), connect.NewRequest(&specv1.SparkRequest{
@@ -1102,49 +1027,6 @@ func TestAuthoringHandler_Spark_EmptySeed(t *testing.T) {
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
-func TestAuthoringHandler_Supersede_SelfSupersede(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
-	_, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.SupersedeRequest{
-		Slug:         "my-spec",
-		SupersededBy: "my-spec",
-		Reason:       "oops",
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
-}
-
-func TestAuthoringHandler_Amend_EmptyReason(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{
-		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.SpecStageShape, Version: 2},
-	}, &fakeBackend{})
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
-		Slug:        "my-spec",
-		Reason:      "",
-		TargetStage: specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
-}
-
-func TestAuthoringHandler_Amend_UnspecifiedTargetStage(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{
-		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.SpecStageShape, Version: 2},
-	}, &fakeBackend{})
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
-		Slug:        "my-spec",
-		Reason:      "scope changed",
-		TargetStage: specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED,
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
-}
-
 func TestAuthoringHandler_Spark_AlreadyExists(t *testing.T) {
 	backend := &fakeBackend{createSpecErr: storage.ErrSpecAlreadyExists}
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
@@ -1182,18 +1064,6 @@ func TestAuthoringHandler_Slug_ExceedsMaxLength(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
-}
-
-func TestAuthoringHandler_Supersede_HappyPath(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
-	resp, err := client.Supersede(context.Background(), connect.NewRequest(&specv1.SupersedeRequest{
-		Slug:         "old-spec",
-		SupersededBy: "new-spec",
-		Reason:       "design evolved",
-	}))
-	require.NoError(t, err)
-	require.Equal(t, "old-spec", resp.Msg.Slug)
-	require.Equal(t, "new-spec", resp.Msg.SupersededBy)
 }
 
 func TestAuthoringHandler_Spark_PostureAccepted(t *testing.T) {
@@ -1326,21 +1196,6 @@ func TestAuthoringHandler_Specify_StoreSafetyFlagsError(t *testing.T) {
 	require.Equal(t, connect.CodeInternal, connErr.Code())
 }
 
-func TestAuthoringHandler_Amend_StorageError(t *testing.T) {
-	// When AmendSpec returns a generic error the handler should return CodeInternal.
-	authoringStore := &fakeAuthoringBackend{amendErr: errors.New("db error")}
-	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
-		Slug:        "my-spec",
-		Reason:      "scope changed",
-		TargetStage: specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInternal, connErr.Code())
-}
-
 func TestAuthoringHandler_Decompose_EmptySlices(t *testing.T) {
 	// A DecomposeRequest with an empty Slices list produces an InvalidArgument error
 	// because SafetyInput.Validate() rejects inputs with no scannable content.
@@ -1381,22 +1236,6 @@ func TestAuthoringHandler_Shape_UnspecifiedPostureResolved(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	require.NotNil(t, resp.Msg.Output)
-}
-
-func TestAuthoringHandler_Amend_ApprovedTargetStageRejected(t *testing.T) {
-	// Amend with target_stage=APPROVED should return CodeInvalidArgument.
-	client := newAuthoringClient(t, &fakeAuthoringBackend{
-		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.SpecStageShape, Version: 2},
-	}, &fakeBackend{})
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
-		Slug:        "my-spec",
-		Reason:      "re-approve",
-		TargetStage: specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
 }
 
 func TestAuthoringHandler_Spark_UnrecognizedScopeSniff(t *testing.T) {
@@ -1624,24 +1463,6 @@ func TestAuthoringHandler_Shape_InvalidDecisionSlug(t *testing.T) {
 	var connErr *connect.Error
 	require.ErrorAs(t, err, &connErr)
 	require.Equal(t, connect.CodeInvalidArgument, connErr.Code())
-}
-
-func TestAuthoringHandler_Amend_UnknownStageFromStorage(t *testing.T) {
-	// When AmendSpec returns a stage unknown to stageToProto, handler returns CodeInternal.
-	authoringStore := &fakeAuthoringBackend{
-		amendResult: &storage.AmendResult{Slug: "my-spec", Stage: storage.SpecStage("bogus-stage"), Version: 3},
-	}
-	client := newAuthoringClient(t, authoringStore, &fakeBackend{})
-	_, err := client.Amend(context.Background(), connect.NewRequest(&specv1.AmendRequest{
-		Slug:        "my-spec",
-		Reason:      "scope changed",
-		TargetStage: specv1.AuthoringStage_AUTHORING_STAGE_SHAPE,
-	}))
-	require.Error(t, err)
-	var connErr *connect.Error
-	require.ErrorAs(t, err, &connErr)
-	require.Equal(t, connect.CodeInternal, connErr.Code())
-	require.Equal(t, "internal error", connErr.Message())
 }
 
 func TestAuthoringHandler_Specify_InterfacesMissingName(t *testing.T) {
