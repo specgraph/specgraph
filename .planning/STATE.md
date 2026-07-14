@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v0.14.0
 milestone_name: Authoring Surface Correctness
-status: planning
+status: roadmapped
 last_updated: "2026-07-14T00:25:07.907Z"
 last_activity: 2026-07-14
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -23,14 +23,14 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 drift detection, and a durable storage/query layer — so both humans and agent-based execution
 engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
-**Current focus:** Milestone v0.12.0 complete — backlog (Phase 999.2, Confluence integration) remains
+**Current focus:** Milestone v0.14.0 roadmapped — Phases 6-9 (authoring + MCP surface correctness). Next: plan Phase 6.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Not started (roadmap complete, Phases 6-9 defined)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-07-14 — Milestone v0.14.0 started
+Status: Roadmapped — ready to plan Phase 6
+Last activity: 2026-07-14 — Roadmap created for v0.14.0 (Phases 6-9)
 
 ## Performance Metrics
 
@@ -93,6 +93,16 @@ Last activity: 2026-07-14 — Milestone v0.14.0 started
 Decisions are logged in PROJECT.md Key Decisions table. Full architectural history (14 ADRs,
 63 constraint entries, 98 context entries from the 177-doc corpus ingest) lives in
 `.planning/intel/{decisions,constraints,context,SYNTHESIS}.md`.
+
+- Roadmap (v0.14.0): 5 requirements → 4 phases (6-9). MCP-01 gets its own phase (Phase 6) and
+  is sequenced first — it is critical-priority and substantial (the MCP-only self-teaching
+  authoring path), so it is not shared with CONV-01 despite both touching the embedded skills.
+- Roadmap (v0.14.0): LIFE-01 and LIFE-02 clustered into one "Authoring Lifecycle Semantics"
+  phase (Phase 7) — both are amend/supersede lifecycle fixes touching
+  `internal/storage/postgres/lifecycle.go` + stage-validation, natural cluster-mates.
+- Roadmap (v0.14.0): CONV-01 stands alone (Phase 8, conversation-recording protocol enforcement)
+  and AUTH-06 stands alone (Phase 9, isolated JIT `display_name` reconciliation on the
+  identity/auth path) — neither has a natural cluster-mate in this milestone.
 
 - Roadmap: Auth cluster split across two phases (Phase 2: API-key lifecycle; Phase 3: external
   IdP integration) rather than one, since AUTH-04's OAuth 2.1 resource-server direction is

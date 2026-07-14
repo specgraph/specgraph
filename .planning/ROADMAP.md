@@ -2,11 +2,21 @@
 
 ## Milestones
 
+- 🚧 **v0.14.0 Authoring Surface Correctness** — Phases 6-9 (in progress)
 - ✅ **v0.12.0 Identity & Self-Service** — Phases 1-5 (shipped 2026-07-13)
 
 Full phase detail for shipped milestones is archived under `.planning/milestones/`.
 
 ## Phases
+
+### v0.14.0 Authoring Surface Correctness (Phases 6-9)
+
+Correctness fixes on existing authoring + MCP surfaces, sourced from the open GitHub backlog. Makes the authoring funnel and MCP surface trustworthy end-to-end: an MCP-only agent can learn to author from the served skills, amend/supersede match natural lifecycle semantics with working re-entry, conversations record reliably, and JIT display names self-heal.
+
+- [ ] **Phase 6: MCP Authoring Self-Teaching Path** — An MCP-only project (fresh `init`, no source/CLI) can author a constitution to completion from the served skills alone — MCP-01 (#1002, critical)
+- [ ] **Phase 7: Authoring Lifecycle Semantics** — amend works in-flight, supersede only from done, and amend re-entry lets the target stage re-author — LIFE-01 (#900), LIFE-02 (#899)
+- [ ] **Phase 8: Authoring Conversation Fidelity** — every authoring stage records its conversation, enforced by the protocol — CONV-01 (#906)
+- [ ] **Phase 9: JIT Display Name Reconciliation** — each login reconciles a JIT user's `display_name` against a usable name claim — AUTH-06 (#994)
 
 <details>
 <summary>✅ v0.12.0 Identity & Self-Service (Phases 1-5) — SHIPPED 2026-07-13</summary>
@@ -22,6 +32,52 @@ Maintenance/hardening slice migrated from `bd`/beads: closed an in-flight releas
 Details: `.planning/milestones/v0.12.0-ROADMAP.md` · Requirements: `.planning/milestones/v0.12.0-REQUIREMENTS.md` · Audit: `.planning/milestones/v0.12.0-MILESTONE-AUDIT.md`
 
 </details>
+
+## Phase Details
+
+### Phase 6: MCP Authoring Self-Teaching Path
+**Goal**: An agent in a fresh MCP-only project (created by `specgraph init` — `.mcp.json` + managed files, no source, no local CLI) can author the project constitution to completion using only `specgraph://prime` and the MCP-served skills, with no out-of-band CLI/YAML knowledge.
+**Depends on**: Nothing (first phase of milestone)
+**Requirements**: MCP-01 (#1002)
+**Success Criteria** (what must be TRUE):
+  1. The MCP-served authoring skills describe the full MCP `author`-tool round-trip (per-stage tool calls and their inputs/outputs), not just the CLI equivalents.
+  2. Starting from only `specgraph://prime` in a fresh `init`-only project, an agent can discover and complete every authoring stage (Spark → Shape → Specify → Decompose → Approve) without any CLI/YAML knowledge.
+  3. The constitution reaches an approved/completed state via MCP tool calls alone (no shell/CLI fallback required).
+  4. `specgraph_skills_get`/`specgraph_skills_search` return authoring guidance that references the MCP tool path, verified against the embedded skill canonicals.
+**Plans**: TBD
+
+### Phase 7: Authoring Lifecycle Semantics
+**Goal**: amend and supersede match natural spec lifecycle semantics, and amend re-entry lets the target stage be re-authored immediately.
+**Depends on**: Nothing (independent of Phase 6; sequenced after it)
+**Requirements**: LIFE-01 (#900), LIFE-02 (#899)
+**Success Criteria** (what must be TRUE):
+  1. A user can `amend` a spec while it is in flight (`>= approved` and `< done`) and the spec returns to authoring.
+  2. `supersede` is permitted only on a `done` spec and is rejected for in-flight specs.
+  3. After `amend --re-entry <stage>`, the user can immediately run that stage (e.g. `shape`) without hitting an `invalid stage transition` no-op.
+  4. Re-entry lands the spec at the target stage so the subsequent stage command is a valid transition.
+**Plans**: TBD
+
+### Phase 8: Authoring Conversation Fidelity
+**Goal**: Every authoring stage reliably records its conversation, with recording enforced by the protocol rather than left to agent discretion.
+**Depends on**: Nothing (independent; sequenced after Phase 7)
+**Requirements**: CONV-01 (#906)
+**Success Criteria** (what must be TRUE):
+  1. Running a spec through the authoring funnel via skills (shape/specify/decompose/approve) records a conversation entry for every stage.
+  2. Conversation recording is enforced by the stage protocol/handler, not dependent on the agent choosing to record.
+  3. A stage that reaches completion has an associated, non-empty conversation record — a missing conversation cannot silently pass.
+  4. Recorded conversations are retrievable/queryable after the funnel completes.
+**Plans**: TBD
+
+### Phase 9: JIT Display Name Reconciliation
+**Goal**: On each successful login, a JIT-provisioned user's `display_name` is reconciled against a usable name claim, replacing a stale subject-hash fallback.
+**Depends on**: Nothing (isolated identity/auth fix; sequenced last)
+**Requirements**: AUTH-06 (#994)
+**Success Criteria** (what must be TRUE):
+  1. On login, a JIT user's `display_name` is updated when a usable `name`/`preferred_username` claim becomes available.
+  2. A stale subject-hash fallback `display_name` is replaced once a usable claim appears.
+  3. Reconciliation runs on every successful login, not only at first provisioning.
+  4. When no usable claim is present, the existing `display_name` is preserved (no regression back to a subject-hash value).
+**Plans**: TBD
 
 ## Backlog
 
@@ -39,6 +95,10 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
+| 6. MCP Authoring Self-Teaching Path | v0.14.0 | 0/? | Not started | - |
+| 7. Authoring Lifecycle Semantics | v0.14.0 | 0/? | Not started | - |
+| 8. Authoring Conversation Fidelity | v0.14.0 | 0/? | Not started | - |
+| 9. JIT Display Name Reconciliation | v0.14.0 | 0/? | Not started | - |
 | 1. Release & Build Tooling | v0.12.0 | 1/1 | Complete | 2026-07-09 |
 | 2. API Key Lifecycle & Self-Service | v0.12.0 | 8/8 | Complete | 2026-07-10 |
 | 3. External Identity Provider Integration | v0.12.0 | 4/4 | Complete | 2026-07-10 |
@@ -48,3 +108,4 @@ Plans:
 ---
 *Roadmap created: 2026-07-08*
 *v0.12.0 milestone archived: 2026-07-13*
+*v0.14.0 roadmap added: 2026-07-13 — Phases 6-9 (MCP-01, LIFE-01, LIFE-02, CONV-01, AUTH-06)*

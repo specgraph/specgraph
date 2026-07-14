@@ -46,17 +46,17 @@ detail (goals, success criteria, dependencies).
 
 | Requirement | Issue | Phase | Status |
 |-------------|-------|-------|--------|
-| MCP-01 | #1002 | TBD | Pending |
-| LIFE-01 | #900 | TBD | Pending |
-| LIFE-02 | #899 | TBD | Pending |
-| CONV-01 | #906 | TBD | Pending |
-| AUTH-06 | #994 | TBD | Pending |
+| MCP-01 | #1002 | Phase 6 | Pending |
+| LIFE-01 | #900 | Phase 7 | Pending |
+| LIFE-02 | #899 | Phase 7 | Pending |
+| CONV-01 | #906 | Phase 8 | Pending |
+| AUTH-06 | #994 | Phase 9 | Pending |
 
 **Coverage:**
 
 - v1 requirements: 5 total
-- Mapped to phases: 0/5 (pending roadmap)
-- Unmapped: 5 ⚠️ (roadmapper will map)
+- Mapped to phases: 5/5 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-07-13*
