@@ -713,6 +713,26 @@ func TestLifecycleHandler_Amend_ReEntryDone(t *testing.T) {
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
 
+// TestLifecycleHandler_Amend_NonAuthoringReEntryStage asserts that re-entry
+// stages OUTSIDE the spark|shape|specify|decompose allowlist — including the
+// non-terminal approved/in_progress/review stages that the prior
+// IsValid()+ExcludesReEntry() check wrongly ACCEPTED (the review HIGH bug) —
+// are rejected with CodeInvalidArgument (asserted by code, never message).
+func TestLifecycleHandler_Amend_NonAuthoringReEntryStage(t *testing.T) {
+	client := newLifecycleClient(t, defaultTestDeps())
+	for _, stage := range []string{"approved", "in_progress", "review", "done"} {
+		_, err := client.TransitionAmend(context.Background(), connect.NewRequest(&specv1.TransitionAmendRequest{
+			Slug:         "my-spec",
+			Reason:       "rework",
+			ReEntryStage: stage,
+		}))
+		require.Error(t, err, "stage %q should be rejected", stage)
+		var connErr *connect.Error
+		require.ErrorAs(t, err, &connErr)
+		require.Equal(t, connect.CodeInvalidArgument, connErr.Code(), "stage %q should return InvalidArgument", stage)
+	}
+}
+
 func TestLifecycleHandler_CheckDrift_Error(t *testing.T) {
 	deps := defaultTestDeps()
 	deps.drift.check = func(_ context.Context, _, _ string) (*drift.CheckResult, error) {
