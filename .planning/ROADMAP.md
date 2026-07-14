@@ -76,7 +76,7 @@ Details: `.planning/milestones/v0.12.0-ROADMAP.md` · Requirements: `.planning/m
   3. After `amend --re-entry <stage>`, the user can immediately run that stage (e.g. `shape`) without hitting an `invalid stage transition` no-op.
   4. Re-entry lands the spec at the target stage so the subsequent stage command is a valid transition.
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 
 Plans: *(linearized 1→2→3→4→5 during `--reviews` incorporation to close the claim-release-before-reroute ordering window; one plan per wave)*
 
@@ -94,7 +94,7 @@ Plans: *(linearized 1→2→3→4→5 during `--reviews` incorporation to close 
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 07-04-PLAN.md — Retire the divergent broken amend/supersede path; delete RPCs/handlers/storage + prune fakes (D-02)
+- [x] 07-04-PLAN.md — Retire the divergent broken amend/supersede path; delete RPCs/handlers/storage + prune fakes (D-02)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -145,7 +145,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 6. MCP Authoring Self-Teaching Path | v0.14.0 | 5/5 | Complete    | 2026-07-14 |
-| 7. Authoring Lifecycle Semantics | v0.14.0 | 3/5 | In Progress|  |
+| 7. Authoring Lifecycle Semantics | v0.14.0 | 4/5 | In Progress|  |
 | 8. Authoring Conversation Fidelity | v0.14.0 | 0/? | Not started | - |
 | 9. JIT Display Name Reconciliation | v0.14.0 | 0/? | Not started | - |
 | 1. Release & Build Tooling | v0.12.0 | 1/1 | Complete | 2026-07-09 |
