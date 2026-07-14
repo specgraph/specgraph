@@ -1,20 +1,23 @@
 ---
 phase: 06-mcp-authoring-self-teaching-path
 verified: 2026-07-14T16:36:13Z
-status: human_needed
+status: passed
 score: 2/4 must-haves verified
 behavior_unverified: 2 # criteria 2 & 3 — full MCP-only funnel-to-approved flow is present, wired, and unit-proven at every boundary; its end-to-end behavioral proof (the MCPOnly e2e) requires Docker and was not executed in this environment
 overrides_applied: 0
 behavior_unverified_items:
+
   - truth: "Starting from only specgraph://prime in a fresh init-only project, an agent can discover and complete every authoring stage (Spark → Shape → Specify → Decompose → Approve) without any CLI/YAML knowledge."
     test: "Run the MCP-only e2e under Docker: `go test -tags e2e ./e2e/api/ --ginkgo.label-filter=MCPOnly` (or `task pr-prep`)."
     expected: "The MCPOnly Describe passes: prime empty-state hint present, constitution persists via friendly YAML, spec walks spark→shape→specify→decompose→approve through mcpCli.CallTool only, spec get reflects `approved`."
     why_human: "This is a full multi-stage state-transition flow against a live Postgres-backed server. Unit tests prove each handler boundary and the e2e file is genuine and compiles, but the end-to-end persistence-to-approved transition can only be exercised with Docker (testcontainers), which is unavailable in this verification environment."
+
   - truth: "The constitution reaches an approved/completed state via MCP tool calls alone (no shell/CLI fallback required)."
     test: "Same MCPOnly e2e run under Docker; confirm `constitution action:get` round-trips the written constitution and `spec action:get` shows `approved`, with no specgraphv1connect service client constructed in the test body."
     expected: "Constitution round-trips (name/layer) and the spec reaches `approved` using only MCP ReadResource/CallTool."
     why_human: "Behavioral persistence + approval transition against the real ConnectRPC handler + DB; requires Docker to run."
 human_verification:
+
   - test: "Run `task pr-prep` (or `go test -tags e2e ./e2e/api/ --ginkgo.label-filter=MCPOnly`) with Docker running."
     expected: "The 4 MCPOnly specs in e2e/api/mcp_only_authoring_test.go pass, confirming the full MCP-only funnel-to-approved flow and the empty-state prime hint."
     why_human: "Live e2e requires Docker/testcontainers, unavailable in this verification run. All static + unit-level evidence is green."
@@ -89,6 +92,7 @@ None. Scan of all phase-modified files for `TODO/FIXME/XXX/PLACEHOLDER/not imple
 ### Human Verification Required
 
 **1. Run the Docker-gated MCP-only e2e (closes criteria 2 & 3 behaviorally)**
+
 - **Test:** With Docker running, `task pr-prep` — or `go test -tags e2e ./e2e/api/ --ginkgo.label-filter=MCPOnly`.
 - **Expected:** All 4 MCPOnly specs pass: (a) `specgraph://prime` returns the empty-state constitution hint on a fresh project; (b) constitution persists + round-trips and the spec walks spark→approve to `approved` via MCP only; (c)+(d) post-spark stages missing `exchanges` / missing `sequence` are rejected by the real server `ValidateExchanges`.
 - **Why human:** Live ConnectRPC + Postgres (testcontainers) required; not runnable in this verification environment. All static and unit-level evidence is green and the e2e is genuine and compiles.
@@ -101,3 +105,19 @@ No gaps. Every artifact exists, is substantive, and is wired; no stubs, no unwir
 
 _Verified: 2026-07-14T16:36:13Z_
 _Verifier: the agent (gsd-verifier)_
+
+## Human Verification Completed (UAT)
+
+The two behavior-unverified criteria were deferred by the automated verifier
+solely because its sandbox lacked Docker. They were executed live during
+`/gsd-verify-work` on 2026-07-14 with Docker/testcontainers available:
+
+- `go test -tags e2e ./e2e/api/ --ginkgo.label-filter=MCPOnly` → **4/4 Passed** (9.5s).
+  Server logs showed the full MCP-only funnel executing: `spark → shape →
+  specify → decompose → approve` via `mcpCli.CallTool` only (no ConnectRPC
+  service client), and the spec reached `approved`.
+- `go test -tags e2e ./e2e/api/` (full suite) → **205 Passed** (39s), no regressions.
+
+Both criteria (MCP-only funnel-to-approved flow; constitution persists + spec
+reaches approved via MCP tool calls alone) are confirmed. Status advanced to
+`passed`.
