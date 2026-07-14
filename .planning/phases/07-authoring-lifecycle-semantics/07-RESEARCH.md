@@ -219,8 +219,8 @@ After edits: run `task proto` (incremental; fingerprints `.proto`), then `go bui
 ## Common Pitfalls
 
 ### Pitfall 1: Deleting the broken path before the reroute compiles
-**What goes wrong:** removing `AmendSpec`/`SupersedeSpec` or the proto RPCs while `handleAmend`/`handleSupersede` still reference `t.client.Authoring.Amend` → build break.
-**How to avoid:** reroute FIRST (D-01), regenerate proto, then delete impls + fakes. Sequence: proto add-reason → reroute → delete.
+**What goes wrong:** removing `AmendSpec`/`SupersedeSpec` or the proto RPCs while `handleAmend`/`handleSupersede` still reference `t.client.Authoring.Amend` → build break. Within Plan 07-04, a second trap: `AuthoringHandler` carries a compile-time assertion `var _ specgraphv1connect.AuthoringServiceHandler = (*AuthoringHandler)(nil)` (no `Unimplemented` embed), so deleting the Go handler methods while the proto still declares `rpc Amend`/`rpc Supersede` breaks that assertion; but deleting the four messages first orphans surviving Go methods that reference `specv1.AmendRequest`/`SupersedeRequest`.
+**How to avoid:** phase-level — reroute FIRST (D-01, Plan 07-03), then retire (Plan 07-04). Within Plan 07-04, split the retirement into two green boundaries: (1) delete ONLY the `rpc Amend`/`rpc Supersede` service-method lines + `task proto` — this drops the methods from BOTH generated interfaces (`AuthoringServiceHandler` and `AuthoringServiceClient`), leaving the still-present Go handler/mock methods as harmless extras; (2) delete all Go impls/fakes/tests AND the four now-orphaned messages + `task proto`. Overall sequence: proto add-reason → reroute → RPC-method removal+regen → Go+message deletion+regen.
 
 ### Pitfall 2: Forgetting a fake backend
 **What goes wrong:** `AuthoringBackend`/`LifecycleBackend` are satisfied by multiple test doubles (`fakeAuthoringBackend`, `authoringTestBackend`, `stubBackend`, `errorBackend`, `fakeLifecycleBackend`, plus MCP `mockAuthoringService`). Removing an interface method or changing `LifecycleSupersedeSpec`'s signature breaks every unfixed double via the compile-time assertions (`var _ storage.AuthoringBackend = (*Store)(nil)` at `authoring.go:20`; `var _ storage.LifecycleBackend = (*Store)(nil)` at `lifecycle.go:19`).
@@ -287,16 +287,18 @@ CLI/ConnectRPC path (`e2e/api/helpers_test.go:88-201`): `advanceStage(ctx, slug,
 | A3 | No existing content-drift test gates the **skills** files. `TestContentProtoDrift` (`internal/authoring/drift_test.go:15`) only checks `internal/authoring/content/stage-*.md` against stage-output proto messages — NOT skills. CONTEXT D-09's "TestContentProtoDrift-style check that could catch backticked-token drift" for skills would be **new** if desired. | Skills & verification | Medium — if planner assumes an existing skills drift-gate, none exists; treat as optional new test, not a reuse. |
 | A4 | The MCP-only e2e can reach `done` via the `claim` + `report` MCP tools (no ConnectRPC). | Code Examples / Validation | Low — tools confirmed at `tools_execution.go:48,336,361`; exact arg names to verify when writing the test. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `AuthoringSpecLifecycle` be deleted or kept empty?**
    - What we know: it contains only `SupersedeSpec` + `AmendSpec` (`storage/authoring.go:158-161`).
    - What's unclear: whether to remove the named interface and its embed in `AuthoringBackend`, or keep a stub.
    - Recommendation: delete the interface and its embed; `revive` prefers no empty interfaces.
+   - RESOLVED: adopted — delete `AuthoringSpecLifecycle` and its `AuthoringBackend` embed in Plan 07-04 Task 2.
 
 2. **Exact placement of claim-release relative to `recomputeContentHash`/changelog in `LifecycleAmendSpec`.**
    - What we know: must be same tx (`lifecycle.go:55-107`).
    - Recommendation: after the stage `UPDATE` guard passes (`:71`), before `recomputeContentHash` (`:83`) — ordering is not semantically load-bearing; keep it adjacent to the stage mutation for readability.
+   - RESOLVED: adopted — claim-release placed after the stage `UPDATE` guard, before `recomputeContentHash`, in Plan 07-02 Task 1.
 
 ## Environment Availability
 
