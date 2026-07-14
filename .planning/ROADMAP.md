@@ -98,7 +98,7 @@ Plans: *(linearized 1→2→3→4→5 during `--reviews` incorporation to close 
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 07-05-PLAN.md — Skills teaching + MCP-only done→amend→re-author→supersede e2e (D-09/D-10)
+- [x] 07-05-PLAN.md — Skills teaching + MCP-only done→amend→re-author→supersede e2e (D-09/D-10)
 
 ### Phase 8: Authoring Conversation Fidelity
 
