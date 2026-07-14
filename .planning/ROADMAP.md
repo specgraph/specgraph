@@ -36,52 +36,72 @@ Details: `.planning/milestones/v0.12.0-ROADMAP.md` · Requirements: `.planning/m
 ## Phase Details
 
 ### Phase 6: MCP Authoring Self-Teaching Path
+
 **Goal**: An agent in a fresh MCP-only project (created by `specgraph init` — `.mcp.json` + managed files, no source, no local CLI) can author the project constitution to completion using only `specgraph://prime` and the MCP-served skills, with no out-of-band CLI/YAML knowledge.
 **Depends on**: Nothing (first phase of milestone)
 **Requirements**: MCP-01 (#1002)
 **Success Criteria** (what must be TRUE):
+
   1. The MCP-served authoring skills describe the full MCP `author`-tool round-trip (per-stage tool calls and their inputs/outputs), not just the CLI equivalents.
   2. Starting from only `specgraph://prime` in a fresh `init`-only project, an agent can discover and complete every authoring stage (Spark → Shape → Specify → Decompose → Approve) without any CLI/YAML knowledge.
   3. The constitution reaches an approved/completed state via MCP tool calls alone (no shell/CLI fallback required).
   4. `specgraph_skills_get`/`specgraph_skills_search` return authoring guidance that references the MCP tool path, verified against the embedded skill canonicals.
+
 **Plans**: 5 plans
+**Wave 1**
+
   - [ ] 06-01-PLAN.md — `internal/authoring/load` friendly funnel YAML→proto package (TDD)
   - [ ] 06-02-PLAN.md — MCP-first rewrite of all 7 embedded skills + content-reference gate
   - [ ] 06-03-PLAN.md — `specgraph://prime` entry-point routing + empty-state MCP hints
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
   - [ ] 06-04-PLAN.md — MCP write-input handler shim (constitution + funnel friendly YAML)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
   - [ ] 06-05-PLAN.md — MCP-only authoring e2e verification gate
 
 ### Phase 7: Authoring Lifecycle Semantics
+
 **Goal**: amend and supersede match natural spec lifecycle semantics, and amend re-entry lets the target stage be re-authored immediately.
 **Depends on**: Nothing (independent of Phase 6; sequenced after it)
 **Requirements**: LIFE-01 (#900), LIFE-02 (#899)
 **Success Criteria** (what must be TRUE):
+
   1. A user can `amend` a spec while it is in flight (`>= approved` and `< done`) and the spec returns to authoring.
   2. `supersede` is permitted only on a `done` spec and is rejected for in-flight specs.
   3. After `amend --re-entry <stage>`, the user can immediately run that stage (e.g. `shape`) without hitting an `invalid stage transition` no-op.
   4. Re-entry lands the spec at the target stage so the subsequent stage command is a valid transition.
+
 **Plans**: TBD
 
 ### Phase 8: Authoring Conversation Fidelity
+
 **Goal**: Every authoring stage reliably records its conversation, with recording enforced by the protocol rather than left to agent discretion.
 **Depends on**: Nothing (independent; sequenced after Phase 7)
 **Requirements**: CONV-01 (#906)
 **Success Criteria** (what must be TRUE):
+
   1. Running a spec through the authoring funnel via skills (shape/specify/decompose/approve) records a conversation entry for every stage.
   2. Conversation recording is enforced by the stage protocol/handler, not dependent on the agent choosing to record.
   3. A stage that reaches completion has an associated, non-empty conversation record — a missing conversation cannot silently pass.
   4. Recorded conversations are retrievable/queryable after the funnel completes.
+
 **Plans**: TBD
 
 ### Phase 9: JIT Display Name Reconciliation
+
 **Goal**: On each successful login, a JIT-provisioned user's `display_name` is reconciled against a usable name claim, replacing a stale subject-hash fallback.
 **Depends on**: Nothing (isolated identity/auth fix; sequenced last)
 **Requirements**: AUTH-06 (#994)
 **Success Criteria** (what must be TRUE):
+
   1. On login, a JIT user's `display_name` is updated when a usable `name`/`preferred_username` claim becomes available.
   2. A stale subject-hash fallback `display_name` is replaced once a usable claim appears.
   3. Reconciliation runs on every successful login, not only at first provisioning.
   4. When no usable claim is present, the existing `display_name` is preserved (no regression back to a subject-hash value).
+
 **Plans**: TBD
 
 ## Backlog

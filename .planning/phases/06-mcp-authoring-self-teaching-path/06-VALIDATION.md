@@ -1,8 +1,8 @@
 ---
 phase: 6
 slug: mcp-authoring-self-teaching-path
-status: draft
-nyquist_compliant: false
+status: locked
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-07-14
 ---
@@ -41,11 +41,11 @@ created: 2026-07-14
 
 | Ref | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |-----|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| #1 skills describe MCP round-trip | TBD | MCP-01 | — | N/A | unit (content assert) | `go test ./internal/mcp/skills/... ./internal/authoring/...` | ❌ W0 | ⬜ pending |
-| #2 full funnel MCP-only | TBD | MCP-01 | T-6-01 | Friendly-YAML parser rejects unknown enum/layer | e2e | `go test -tags e2e ./e2e/api/ -run MCPOnly` | ❌ W0 | ⬜ pending |
-| #3 constitution approved MCP-only | TBD | MCP-01 | T-6-01 | `*FromString` mappers error on UNSPECIFIED, no default-write | e2e | `go test -tags e2e ./e2e/api/ -run MCPOnly` | ❌ W0 | ⬜ pending |
-| #4 skills_get/search reference MCP path | TBD | MCP-01 | — | N/A | unit (content-level, D-09) | `go test ./internal/mcp/skills/...` | ❌ W0 | ⬜ pending |
-| prime-reliability | TBD | MCP-01 | T-6-03 | Handler errors sanitized (no raw internals) | e2e (smoke) | `go test -tags e2e ./e2e/api/ -run MCPOnly` | ⚠️ partial | ⬜ pending |
+| #1 skills describe MCP round-trip | 1 | MCP-01 | — | N/A | unit (content assert) | `go test ./internal/mcp/skills/... ./internal/authoring/...` | ❌ W0 | ⬜ pending |
+| #2 full funnel MCP-only | 3 | MCP-01 | T-6-01 | Friendly-YAML parser rejects unknown enum/layer | e2e | `go test -tags e2e ./e2e/api/ -run MCPOnly` | ❌ W0 | ⬜ pending |
+| #3 constitution approved MCP-only | 2/3 | MCP-01 | T-6-01 | `*FromString` mappers error on UNSPECIFIED, no default-write | e2e | `go test -tags e2e ./e2e/api/ -run MCPOnly` | ❌ W0 | ⬜ pending |
+| #4 skills_get/search reference MCP path | 1 | MCP-01 | — | N/A | unit (content-level, D-09) | `go test ./internal/mcp/skills/...` | ❌ W0 | ⬜ pending |
+| prime-reliability | 1/3 | MCP-01 | T-6-03 | Handler errors sanitized (no raw internals) | e2e (smoke) | `go test -tags e2e ./e2e/api/ -run MCPOnly` | ⚠️ partial | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
