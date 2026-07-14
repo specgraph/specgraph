@@ -79,18 +79,18 @@ func TestConstitutionTool_Update_RoundTrip(t *testing.T) {
 	tool, ok := r.LookupTool("constitution")
 	require.True(t, ok)
 
-	// Simulate round-trip: pass full JSON as returned by get
-	constitutionJSON := `{"layer":"CONSTITUTION_LAYER_PROJECT","name":"my-project","constraints":["no vendor lock-in"]}`
+	// Simulate round-trip: pass friendly YAML (as the skills teach)
+	constitutionYAML := "layer: project\nname: my-project\nconstraints:\n  - \"no vendor lock-in\"\n"
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action":       "update",
-		"constitution": constitutionJSON,
+		"constitution": constitutionYAML,
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
 	require.Contains(t, result.Content[0].Text, "my-project")
 }
 
-func TestConstitutionTool_Update_InvalidJSON(t *testing.T) {
+func TestConstitutionTool_Update_InvalidInput(t *testing.T) {
 	c := &Client{Constitution: &mockConstitutionService{}}
 	r := NewRegistry()
 	RegisterCoreTools(r, c)
@@ -99,11 +99,30 @@ func TestConstitutionTool_Update_InvalidJSON(t *testing.T) {
 
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action":       "update",
-		"constitution": "not valid json {{{",
+		"constitution": "layer: bogus-layer\nname: x\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "invalid constitution JSON")
+	require.Contains(t, result.Content[0].Text, "invalid constitution input")
+	// Sanitized: no raw parser internals leaked (T-06-03).
+	require.NotContains(t, result.Content[0].Text, "unknown constitution layer")
+}
+
+func TestConstitutionTool_Update_EmptyLayer(t *testing.T) {
+	c := &Client{Constitution: &mockConstitutionService{}}
+	r := NewRegistry()
+	RegisterCoreTools(r, c)
+	tool, ok := r.LookupTool("constitution")
+	require.True(t, ok)
+
+	// Valid YAML but no `layer:` — explicit-layer guard must reject it.
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":       "update",
+		"constitution": "name: my-project\nconstraints:\n  - \"no vendor lock-in\"\n",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "layer is required")
 }
 
 func TestConstitutionTool_UnknownAction(t *testing.T) {
