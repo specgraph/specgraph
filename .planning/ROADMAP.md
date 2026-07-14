@@ -78,7 +78,8 @@ Details: `.planning/milestones/v0.12.0-ROADMAP.md` · Requirements: `.planning/m
 
 **Plans**: 5 plans
 
-Plans:
+Plans: *(linearized 1→2→3→4→5 during `--reviews` incorporation to close the claim-release-before-reroute ordering window; one plan per wave)*
+
 **Wave 1**
 
 - [ ] 07-01-PLAN.md — Supersede reason: proto field + storage/handler threading + CLI --reason (D-06/D-07)
@@ -86,13 +87,16 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [ ] 07-02-PLAN.md — Release active claim on amend + storage integration tests (D-08/D-10)
-- [ ] 07-03-PLAN.md — Reroute MCP author tool to LifecycleService; re_entry_stage/new_slug params + next-step hint (D-01/D-03/D-04/D-05/D-07)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 07-04-PLAN.md — Retire the divergent broken amend/supersede path; delete RPCs/handlers/storage + prune fakes (D-02)
+- [ ] 07-03-PLAN.md — Reroute MCP author tool to LifecycleService; re_entry_stage allowlist (IsValidReEntryStage) + new_slug params + next-step hint (D-01/D-03/D-04/D-05/D-07)
 
 **Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 07-04-PLAN.md — Retire the divergent broken amend/supersede path; delete RPCs/handlers/storage + prune fakes (D-02)
+
+**Wave 5** *(blocked on Wave 4 completion)*
 
 - [ ] 07-05-PLAN.md — Skills teaching + MCP-only done→amend→re-author→supersede e2e (D-09/D-10)
 
