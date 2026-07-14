@@ -14,7 +14,7 @@ Full phase detail for shipped milestones is archived under `.planning/milestones
 Correctness fixes on existing authoring + MCP surfaces, sourced from the open GitHub backlog. Makes the authoring funnel and MCP surface trustworthy end-to-end: an MCP-only agent can learn to author from the served skills, amend/supersede match natural lifecycle semantics with working re-entry, conversations record reliably, and JIT display names self-heal.
 
 - [x] **Phase 6: MCP Authoring Self-Teaching Path** — An MCP-only project (fresh `init`, no source/CLI) can author a constitution to completion from the served skills alone — MCP-01 (#1002, critical) (completed 2026-07-14)
-- [ ] **Phase 7: Authoring Lifecycle Semantics** — amend works in-flight, supersede only from done, and amend re-entry lets the target stage re-author — LIFE-01 (#900), LIFE-02 (#899)
+- [x] **Phase 7: Authoring Lifecycle Semantics** — amend works in-flight, supersede only from done, and amend re-entry lets the target stage re-author — LIFE-01 (#900), LIFE-02 (#899) (completed 2026-07-14)
 - [ ] **Phase 8: Authoring Conversation Fidelity** — every authoring stage records its conversation, enforced by the protocol — CONV-01 (#906)
 - [ ] **Phase 9: JIT Display Name Reconciliation** — each login reconciles a JIT user's `display_name` against a usable name claim — AUTH-06 (#994)
 
@@ -145,7 +145,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 6. MCP Authoring Self-Teaching Path | v0.14.0 | 5/5 | Complete    | 2026-07-14 |
-| 7. Authoring Lifecycle Semantics | v0.14.0 | 4/5 | In Progress|  |
+| 7. Authoring Lifecycle Semantics | v0.14.0 | 5/5 | Complete    | 2026-07-14 |
 | 8. Authoring Conversation Fidelity | v0.14.0 | 0/? | Not started | - |
 | 9. JIT Display Name Reconciliation | v0.14.0 | 0/? | Not started | - |
 | 1. Release & Build Tooling | v0.12.0 | 1/1 | Complete | 2026-07-09 |
