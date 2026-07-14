@@ -344,7 +344,7 @@ The agent PROPOSES test assertions for each success criterion from Shape.
 Present to the user: "For each must-have, here's how I'd test it: [assertions].
 Anything to add?"
 
-- Map each `successMust` and `successShould` from Shape to one or more concrete
+- Map each `success_must` and `success_should` from Shape to one or more concrete
   test assertions.
 - Each assertion should be automatable -- no "manually verify" language.
 - Include both happy-path and error-path assertions.
@@ -405,41 +405,58 @@ results.
 
 ## Persistence Contract
 
-When the specify conversation is complete, synthesize the conversation into a
-`SpecifyOutput` structure:
+When the specify conversation is complete, persist the Specify output with the
+`author` tool (`action: specify`). The `output` argument is **friendly
+snake_case YAML** — the same shape you show the user, no translation step. Use
+these keys verbatim; do NOT camelCase them (`verifyCriteria`, `changeType` are
+rejected by the parser):
 
-```json
-{
-  "interfaces": [
-    {
-      "name": "ClaimService proto",
-      "body": "POST /api/v1/specs/{slug}/claim\n  Input: { agent_id: string, ttl_seconds: int }\n  Output: { lease_id: string, expires_at: timestamp }\n  Errors:\n    404 - Spec not found\n    409 - Already claimed\n    422 - Invalid TTL"
-    }
-  ],
-  "verifyCriteria": [
-    {"category": "happy-path", "description": "POST /claim with valid agent_id returns 200 and a lease_id"},
-    {"category": "conflict", "description": "POST /claim on already-claimed spec returns 409"},
-    {"category": "expiry", "description": "Lease expires after TTL seconds and spec becomes claimable again"}
-  ],
-  "invariants": [
-    "A spec may have at most one active lease at any time",
-    "Lease expiry is monotonically increasing (no backdating)"
-  ],
-  "touches": [
-    {"path": "internal/server/claim_handler.go", "purpose": "new claim handler", "changeType": "new"},
-    {"path": "internal/storage/lease.go", "purpose": "lease domain types", "changeType": "new"},
-    {"path": "internal/server/claim_handler_test.go", "purpose": "handler tests", "changeType": "new"}
-  ]
-}
+```yaml
+interfaces:
+  - name: "ClaimService proto"
+    body: |
+      POST /api/v1/specs/{slug}/claim
+        Input: { agent_id: string, ttl_seconds: int }
+        Output: { lease_id: string, expires_at: timestamp }
+        Errors:
+          404 - Spec not found
+          409 - Already claimed
+          422 - Invalid TTL
+verify_criteria:
+  - category: "happy-path"
+    description: "POST /claim with valid agent_id returns 200 and a lease_id"
+  - category: "conflict"
+    description: "POST /claim on already-claimed spec returns 409"
+  - category: "expiry"
+    description: "Lease expires after TTL seconds and spec becomes claimable again"
+invariants:
+  - "A spec may have at most one active lease at any time"
+  - "Lease expiry is monotonically increasing (no backdating)"
+touches:
+  - path: "internal/server/claim_handler.go"
+    purpose: "new claim handler"
+    change_type: "new"        # new | modify | delete
+  - path: "internal/storage/lease.go"
+    purpose: "lease domain types"
+    change_type: "new"
 ```
 
 Show the user a human-readable summary and wait for their confirmation before
 persisting.
 
-Persist the Specify output with the accumulated conversation exchanges — they
-commit atomically with the stage output. Exchanges are REQUIRED for this
-stage: include the full probe/response history from the specify conversation.
-Conversation recording is part of this step, not an optional follow-up.
+Pass the accumulated conversation `exchanges` alongside the `output` on the
+same `author` call — they commit atomically with the stage output. `exchanges`
+is a **JSON array** and is REQUIRED for this stage (the server enforces at
+least one exchange for specify). Include the full probe/response history from
+the specify conversation; conversation recording is part of this step, not an
+optional follow-up:
+
+```json
+[
+  { "role": "probe",    "content": "What are the error conditions?", "stage": "specify", "sequence": 1 },
+  { "role": "response", "content": "404, 409, and 422.",             "stage": "specify", "sequence": 2 }
+]
+```
 
 After persisting, confirm: "Specify is saved. Want to continue to Decompose? I
 can propose how to break this into slices."

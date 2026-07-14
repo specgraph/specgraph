@@ -359,11 +359,33 @@ in the current context.
 
 ## Persistence Contract
 
-When elicitation is complete, persist the Spark output. The required fields
-are `seed`, `signal`, `scopeSniff`, and `killTest`. If you recorded the
-elicitation conversation, pass the accumulated exchange list alongside the
-output on the same persistence call — exchanges commit atomically with the
-stage output.
+When elicitation is complete, persist the Spark output with the `author` tool
+(`action: spark`). The `output` argument is **friendly snake_case YAML** — the
+same shape you show the user, no translation step. Use these keys verbatim; do
+NOT camelCase them (`scopeSniff`, `killTest` are rejected by the parser):
+
+```yaml
+seed: "one-line idea or problem statement"
+signal: "why this matters now"
+questions:
+  - "clarifying question to sharpen scope"
+scope_sniff: small        # tiny | small | medium | large | epic
+kill_test: "condition that would make this not worth pursuing"
+```
+
+The required fields are `seed`, `signal`, `scope_sniff`, and `kill_test`.
+
+If you recorded the elicitation conversation, pass the accumulated `exchanges`
+alongside the `output` on the same `author` call — exchanges commit atomically
+with the stage output. `exchanges` is a **JSON array** and is OPTIONAL for
+spark (a seed-only spark with no back-and-forth is valid without it):
+
+```json
+[
+  { "role": "probe",    "content": "How big, roughly?", "stage": "spark", "sequence": 1 },
+  { "role": "response", "content": "A few days.",       "stage": "spark", "sequence": 2 }
+]
+```
 
 After persisting, show the user what was saved and offer to continue to Shape:
 "Spark is saved. Want to continue to Shape? I can help scope the boundaries."

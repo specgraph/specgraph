@@ -332,7 +332,7 @@ Propose 2-5 slices. Each slice has:
 | **intent** | What this slice delivers |
 | **verify** | How you know it is done |
 | **touches** | Files/packages this slice creates or modifies |
-| **dependsOn** | Which other slices must complete first |
+| **depends_on** | Which other slices must complete first |
 
 ### 3. Dependency Ordering
 
@@ -388,21 +388,41 @@ both depend only on the thread, not on each other.
 
 ## Persistence Contract
 
-When the decompose conversation is complete, synthesize the conversation into a
-`DecomposeOutput` structure containing:
+When the decompose conversation is complete, persist the Decompose output with
+the `author` tool (`action: decompose`). The `output` argument is **friendly
+snake_case YAML** — the same shape you show the user, no translation step. Use
+these keys verbatim; do NOT camelCase them (`dependsOn` is rejected by the
+parser):
 
-- `strategy` -- the chosen decomposition strategy
-- `slices` -- array of objects with `id`, `intent`, `verify`, `touches`,
-  `dependsOn`
+```yaml
+strategy: vertical_slice     # vertical_slice | layer_cake | single_unit | steel_thread
+slices:
+  - id: "slice-1"
+    intent: "what this slice accomplishes"
+    verify:
+      - "condition that must hold for this slice to be done"
+    touches:
+      - "internal/foo/"
+    depends_on:
+      - "slice-0"
+```
 
 Show the user: "Here's the decomposition I'm going to save: [summary]. Look
 right?" Wait for confirmation before persisting.
 
-Persist the Decompose output with the accumulated conversation exchanges —
-they commit atomically with the stage output. Exchanges are REQUIRED for this
-stage: include the full probe/response history from the decompose
-conversation. Conversation recording is part of this step, not an optional
-follow-up.
+Pass the accumulated conversation `exchanges` alongside the `output` on the
+same `author` call — they commit atomically with the stage output. `exchanges`
+is a **JSON array** and is REQUIRED for this stage (the server enforces at
+least one exchange for decompose). Include the full probe/response history from
+the decompose conversation; conversation recording is part of this step, not an
+optional follow-up:
+
+```json
+[
+  { "role": "probe",    "content": "Which strategy fits best?", "stage": "decompose", "sequence": 1 },
+  { "role": "response", "content": "Vertical slice.",           "stage": "decompose", "sequence": 2 }
+]
+```
 
 After persisting, confirm: "Decompose is saved. Want to continue to Approve?
 I'll run through a review checklist."

@@ -425,43 +425,54 @@ approval of the current step.
 
 ## Persistence Contract
 
-When the shaping conversation is complete, synthesize the conversation into a
-`ShapeOutput` structure:
+When the shaping conversation is complete, persist the Shape output with the
+`author` tool (`action: shape`). The `output` argument is **friendly
+snake_case YAML** — the same shape you show the user, no translation step. Use
+these keys verbatim; do NOT camelCase them (`scopeIn`, `chosenApproach`,
+`successMust` are rejected by the parser):
 
-```json
-{
-  "scopeIn": ["item 1", "item 2"],
-  "scopeOut": ["item 1", "item 2"],
-  "approaches": [
-    {
-      "name": "approach-a",
-      "description": "...",
-      "tradeoffs": ["Pro or con as a string"]
-    }
-  ],
-  "chosenApproach": "approach-a",
-  "risks": ["Risk description as string"],
-  "successMust": ["criterion 1"],
-  "successShould": ["criterion 2"],
-  "successWont": ["criterion 3"],
-  "decisions": [
-    {
-      "slug": "decision-slug",
-      "title": "Decision Title",
-      "decision": "What was chosen",
-      "rationale": "Why"
-    }
-  ]
-}
+```yaml
+scope_in:
+  - "capability explicitly included"
+scope_out:
+  - "capability explicitly excluded"
+approaches:
+  - name: "approach-a"
+    description: "how it would work"
+    tradeoffs:
+      - "what you gain / what you lose"
+chosen_approach: "approach-a"
+risks:
+  - "risk that could affect delivery"
+success_must:
+  - "non-negotiable outcome"
+success_should:
+  - "expected but not strictly required outcome"
+success_wont:
+  - "explicitly excluded outcome"
+decisions:
+  - slug: "decision-slug"
+    title: "Decision Title"
+    decision: "what was chosen"
+    rationale: "why"
 ```
 
 Show the user a human-readable summary and wait for their confirmation before
 persisting.
 
-Persist the Shape output with the accumulated conversation exchanges — they
-commit atomically with the stage output. Exchanges are REQUIRED for this
-stage: include the full probe/response history from the shaping conversation.
-Conversation recording is part of this step, not an optional follow-up.
+Pass the accumulated conversation `exchanges` alongside the `output` on the
+same `author` call — they commit atomically with the stage output. `exchanges`
+is a **JSON array** and is REQUIRED for this stage (the server enforces at
+least one exchange for shape). Include the full probe/response history from the
+shaping conversation; conversation recording is part of this step, not an
+optional follow-up:
+
+```json
+[
+  { "role": "probe",    "content": "What is explicitly out of scope?", "stage": "shape", "sequence": 1 },
+  { "role": "response", "content": "Anything touching billing.",       "stage": "shape", "sequence": 2 }
+]
+```
 
 After persisting, confirm: "Shape is saved. Want to continue to Specify? I can
 draft the interface contract based on what we just shaped."
