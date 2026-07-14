@@ -80,6 +80,30 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 			})
 		}
 
+		// D-08: a spec returning to authoring is no longer executable, so its
+		// active lease must not linger. Release the claim row and its CLAIMED_BY
+		// edge inside this same transaction. An unclaimed (approved) spec holds no
+		// claim — GetActiveClaim returns nil and this is a harmless no-op. Slices
+		// (re-authored decompose output) are intentionally left intact.
+		claim, claimErr := s.GetActiveClaim(txCtx, slug)
+		if claimErr != nil {
+			return fmt.Errorf("postgres: amend spec: get active claim: %w", claimErr)
+		}
+		if claim != nil {
+			if _, delErr := s.exec(txCtx,
+				`DELETE FROM claims WHERE project_slug = $1 AND spec_slug = $2 AND agent = $3`,
+				s.project, slug, claim.Agent,
+			); delErr != nil {
+				return fmt.Errorf("postgres: amend spec: delete claim: %w", delErr)
+			}
+			if _, delErr := s.exec(txCtx,
+				`DELETE FROM edges WHERE project_slug = $1 AND from_slug = $2 AND to_slug = $3 AND edge_type = 'CLAIMED_BY'`,
+				s.project, slug, claim.Agent,
+			); delErr != nil {
+				return fmt.Errorf("postgres: amend spec: delete CLAIMED_BY edge: %w", delErr)
+			}
+		}
+
 		if hashErr := s.recomputeContentHash(txCtx, slug); hashErr != nil {
 			return hashErr
 		}
