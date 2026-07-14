@@ -121,7 +121,7 @@ func (t *constitutionTool) handleUpdate(ctx context.Context, params map[string]a
 	con, err := constload.FromYAML([]byte(raw))
 	if err != nil {
 		// Sanitized: never surface raw yaml/protojson parser internals (T-06-03).
-		return errResult("invalid constitution input (expected friendly YAML with fields like `layer: project`, `name: ...`)"), nil
+		return errResult("invalid constitution input (expected friendly YAML with fields like `layer: project`, `name: ...`)"), nil //nolint:nilerr // raw parser error intentionally not surfaced (T-06-03)
 	}
 	// Explicit-layer guard: FromYAML permits an empty layer, but a project
 	// bootstrap update needs a real one — reject rather than persist an
