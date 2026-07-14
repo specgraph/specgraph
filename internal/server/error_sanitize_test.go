@@ -193,7 +193,7 @@ func (errorBackend) LifecycleAmendSpec(context.Context, string, string, string) 
 	return nil, errRawDB
 }
 
-func (errorBackend) LifecycleSupersedeSpec(context.Context, string, string) (*storage.Spec, *storage.Spec, error) {
+func (errorBackend) LifecycleSupersedeSpec(context.Context, string, string, string) (*storage.Spec, *storage.Spec, error) {
 	return nil, nil, errRawDB
 }
 

@@ -243,7 +243,7 @@ func (stubBackend) LifecycleAmendSpec(context.Context, string, string, string) (
 	return nil, errNotImplemented
 }
 
-func (stubBackend) LifecycleSupersedeSpec(context.Context, string, string) (*storage.Spec, *storage.Spec, error) {
+func (stubBackend) LifecycleSupersedeSpec(context.Context, string, string, string) (*storage.Spec, *storage.Spec, error) {
 	return nil, nil, errNotImplemented
 }
 

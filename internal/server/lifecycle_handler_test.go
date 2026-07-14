@@ -26,7 +26,7 @@ type fakeLifecycleBackend struct {
 	stubBackend
 	getSpec          func(ctx context.Context, slug string) (*storage.Spec, error)
 	amendSpec        func(ctx context.Context, slug, reason, reEntryStage string) (*storage.Spec, error)
-	supersedeSpec    func(ctx context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error)
+	supersedeSpec    func(ctx context.Context, oldSlug, newSlug, reason string) (*storage.Spec, *storage.Spec, error)
 	abandonSpec      func(ctx context.Context, slug, reason string) (*storage.Spec, error)
 	acknowledgeDrift func(ctx context.Context, slug, upstreamSlug, note string) error
 }
@@ -45,11 +45,11 @@ func (f *fakeLifecycleBackend) LifecycleAmendSpec(ctx context.Context, slug, rea
 	return f.amendSpec(ctx, slug, reason, reEntryStage)
 }
 
-func (f *fakeLifecycleBackend) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error) {
+func (f *fakeLifecycleBackend) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug, reason string) (*storage.Spec, *storage.Spec, error) {
 	if f.supersedeSpec == nil {
 		return nil, nil, errors.New("fakeLifecycleBackend.supersedeSpec not configured")
 	}
-	return f.supersedeSpec(ctx, oldSlug, newSlug)
+	return f.supersedeSpec(ctx, oldSlug, newSlug, reason)
 }
 
 func (f *fakeLifecycleBackend) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (*storage.Spec, error) {
@@ -210,7 +210,7 @@ func TestLifecycleHandler_Amend_InvalidReEntryStage(t *testing.T) {
 
 func TestLifecycleHandler_Supersede(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.supersedeSpec = func(_ context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error) {
+	deps.store.supersedeSpec = func(_ context.Context, oldSlug, newSlug, _ string) (*storage.Spec, *storage.Spec, error) {
 		return &storage.Spec{
 				Slug:         oldSlug,
 				Stage:        storage.SpecStageSuperseded,
@@ -239,6 +239,38 @@ func TestLifecycleHandler_Supersede(t *testing.T) {
 	require.Equal(t, "new-spec", resp.Msg.OldSpec.SupersededBy)
 	require.Equal(t, "new-spec", resp.Msg.NewSpec.Slug)
 	require.Equal(t, "old-spec", resp.Msg.NewSpec.Supersedes)
+}
+
+func TestLifecycleHandler_Supersede_ThreadsReason(t *testing.T) {
+	deps := defaultTestDeps()
+	var capturedReason string
+	deps.store.supersedeSpec = func(_ context.Context, oldSlug, newSlug, reason string) (*storage.Spec, *storage.Spec, error) {
+		capturedReason = reason
+		return &storage.Spec{
+				Slug:         oldSlug,
+				Stage:        storage.SpecStageSuperseded,
+				Provenance:   storage.SpecProvenanceAuthored,
+				SupersededBy: newSlug,
+				Version:      3,
+				ContentHash:  strings.Repeat("a", 32),
+			}, &storage.Spec{
+				Slug:        newSlug,
+				Stage:       storage.SpecStageSpark,
+				Provenance:  storage.SpecProvenanceAuthored,
+				Supersedes:  oldSlug,
+				Version:     1,
+				ContentHash: strings.Repeat("a", 32),
+			}, nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.TransitionSupersede(context.Background(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
+		Slug:    "old-spec",
+		NewSlug: "new-spec",
+		Reason:  "replaced by clearer design",
+	}))
+	require.NoError(t, err)
+	require.Equal(t, "replaced by clearer design", capturedReason)
 }
 
 func TestLifecycleHandler_Abandon(t *testing.T) {
@@ -496,7 +528,7 @@ func TestLifecycleHandler_Supersede_EmptyNewSlug(t *testing.T) {
 
 func TestLifecycleHandler_Supersede_NewSpecNotFound(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+	deps.store.supersedeSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, *storage.Spec, error) {
 		return nil, nil, storage.ErrNewSpecNotFound
 	}
 	client := newLifecycleClient(t, deps)
@@ -512,7 +544,7 @@ func TestLifecycleHandler_Supersede_NewSpecNotFound(t *testing.T) {
 
 func TestLifecycleHandler_Supersede_NewSpecTerminal(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+	deps.store.supersedeSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, *storage.Spec, error) {
 		return nil, nil, storage.ErrNewSpecTerminal
 	}
 	client := newLifecycleClient(t, deps)
@@ -602,7 +634,7 @@ func TestLifecycleHandler_Abandon_Terminal(t *testing.T) {
 
 func TestLifecycleHandler_Supersede_Terminal(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+	deps.store.supersedeSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, *storage.Spec, error) {
 		return nil, nil, storage.ErrSpecTerminal
 	}
 	client := newLifecycleClient(t, deps)
@@ -916,7 +948,7 @@ func TestLifecycleHandler_Abandon_ConcurrentModification(t *testing.T) {
 
 func TestLifecycleHandler_Supersede_ConcurrentModification(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+	deps.store.supersedeSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, *storage.Spec, error) {
 		return nil, nil, storage.ErrConcurrentModification
 	}
 	client := newLifecycleClient(t, deps)
@@ -985,7 +1017,7 @@ func TestLifecycleHandler_Abandon_NotFound(t *testing.T) {
 
 func TestLifecycleHandler_Supersede_OldNotFound(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+	deps.store.supersedeSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, *storage.Spec, error) {
 		return nil, nil, storage.ErrSpecNotFound
 	}
 	client := newLifecycleClient(t, deps)
@@ -1004,7 +1036,7 @@ func TestLifecycleHandler_Supersede_PreconditionGetSpecFails(t *testing.T) {
 	deps := defaultTestDeps()
 	// Simulate preconditionError's double-failure path: atomic guard fails,
 	// and the subsequent GetSpec re-read also fails with a non-NotFound error.
-	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+	deps.store.supersedeSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, *storage.Spec, error) {
 		return nil, nil, fmt.Errorf("supersede spec %q: atomic guard failed and precondition re-read also failed: %w",
 			"old-spec", errors.New("connection reset"))
 	}
@@ -1145,7 +1177,7 @@ func TestLifecycleHandler_AcknowledgeDrift_RecheckSlugNotFound(t *testing.T) {
 
 func TestLifecycleHandler_Supersede_OldSpecTerminal(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+	deps.store.supersedeSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, *storage.Spec, error) {
 		return nil, nil, storage.ErrSpecTerminal
 	}
 	client := newLifecycleClient(t, deps)
@@ -1180,7 +1212,7 @@ func TestLifecycleHandler_Amend_StorageErrInvalidReEntryStage(t *testing.T) {
 
 func TestLifecycleHandler_Supersede_StorageErrSameSlugs(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.supersedeSpec = func(_ context.Context, _, _ string) (*storage.Spec, *storage.Spec, error) {
+	deps.store.supersedeSpec = func(_ context.Context, _, _, _ string) (*storage.Spec, *storage.Spec, error) {
 		return nil, nil, storage.ErrSameSlugs
 	}
 	client := newLifecycleClient(t, deps)
@@ -1199,7 +1231,7 @@ func TestLifecycleHandler_Supersede_StorageErrSameSlugs(t *testing.T) {
 
 func TestLifecycleHandler_Supersede_InvalidOldSpecProvenanceReturnsInternal(t *testing.T) {
 	deps := defaultTestDeps()
-	deps.store.supersedeSpec = func(_ context.Context, oldSlug, newSlug string) (*storage.Spec, *storage.Spec, error) {
+	deps.store.supersedeSpec = func(_ context.Context, oldSlug, newSlug, _ string) (*storage.Spec, *storage.Spec, error) {
 		return &storage.Spec{
 				Slug:        oldSlug,
 				Stage:       storage.SpecStageSuperseded,

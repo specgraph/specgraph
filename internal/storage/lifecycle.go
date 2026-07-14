@@ -111,7 +111,9 @@ type LifecycleBackend interface {
 	LifecycleAmendSpec(ctx context.Context, slug, reason, reEntryStage string) (*Spec, error)
 
 	// LifecycleSupersedeSpec marks old spec superseded and links to new.
-	LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug string) (*Spec, *Spec, error)
+	// When reason is non-empty, it is recorded on the superseded spec's
+	// changelog entry; otherwise a default "Superseded by <newSlug>" note is used.
+	LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug, reason string) (*Spec, *Spec, error)
 
 	// LifecycleAbandonSpec transitions a spec to abandoned (terminal).
 	LifecycleAbandonSpec(ctx context.Context, slug, reason string) (*Spec, error)

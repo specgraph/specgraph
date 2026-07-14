@@ -110,7 +110,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 
 // LifecycleSupersedeSpec marks the old spec as superseded and links it to the new spec
 // via a SUPERSEDES edge. Both specs are returned with updated fields.
-func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug string) (oldSpec, newSpec *storage.Spec, err error) {
+func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug, reason string) (oldSpec, newSpec *storage.Spec, err error) {
 	if oldSlug == newSlug {
 		return nil, nil, fmt.Errorf("supersede spec (%q): %w", oldSlug, storage.ErrSameSlugs)
 	}
