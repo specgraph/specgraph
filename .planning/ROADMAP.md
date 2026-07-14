@@ -47,22 +47,22 @@ Details: `.planning/milestones/v0.12.0-ROADMAP.md` · Requirements: `.planning/m
   3. The constitution reaches an approved/completed state via MCP tool calls alone (no shell/CLI fallback required).
   4. `specgraph_skills_get`/`specgraph_skills_search` return authoring guidance that references the MCP tool path, verified against the embedded skill canonicals.
 
-**Plans**: 5 plans
+**Plans**: 5/5 plans complete
 **Wave 1**
 
-  - [ ] 06-01-PLAN.md — `internal/authoring/load` friendly funnel YAML→proto package (TDD)
-  - [ ] 06-02-PLAN.md — MCP-first rewrite of all 7 embedded skills + content-reference gate
-  - [ ] 06-03-PLAN.md — `specgraph://prime` entry-point routing + empty-state MCP hints
+  - [x] 06-01-PLAN.md — `internal/authoring/load` friendly funnel YAML→proto package (TDD)
+  - [x] 06-02-PLAN.md — MCP-first rewrite of all 7 embedded skills + content-reference gate
+  - [x] 06-03-PLAN.md — `specgraph://prime` entry-point routing + empty-state MCP hints
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-  - [ ] 06-04-PLAN.md — MCP write-input handler shim (constitution + funnel friendly YAML)
+  - [x] 06-04-PLAN.md — MCP write-input handler shim (constitution + funnel friendly YAML)
 
 > **Atomic-release constraint (pass-3 review, HIGH):** 06-02 (skills teach friendly-YAML `output`/`exchanges`) and 06-04 (handlers accept that friendly YAML) MUST land in the same merge window (single PR or stacked merge, no intermediate deploy). Shipping 06-02 without 06-04 leaves a window where a live MCP-only agent hits the still-protojson handlers and reproduces #1002. This is a merge/release constraint only — it does not change the wave graph.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-  - [ ] 06-05-PLAN.md — MCP-only authoring e2e verification gate
+  - [x] 06-05-PLAN.md — MCP-only authoring e2e verification gate
 
 ### Phase 7: Authoring Lifecycle Semantics
 
@@ -122,7 +122,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 6. MCP Authoring Self-Teaching Path | v0.14.0 | 0/? | Not started | - |
+| 6. MCP Authoring Self-Teaching Path | v0.14.0 | 5/5 | Complete   | 2026-07-14 |
 | 7. Authoring Lifecycle Semantics | v0.14.0 | 0/? | Not started | - |
 | 8. Authoring Conversation Fidelity | v0.14.0 | 0/? | Not started | - |
 | 9. JIT Display Name Reconciliation | v0.14.0 | 0/? | Not started | - |

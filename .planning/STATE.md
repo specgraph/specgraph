@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v0.14.0
 milestone_name: Authoring Surface Correctness
-current_phase: 6
-current_phase_name: roadmap complete, Phases 6-9 defined
-status: roadmapped
+current_phase: 06
+status: completed
 stopped_at: Phase 6 context gathered
-last_updated: "2026-07-14T12:36:53.939Z"
+last_updated: "2026-07-14T16:38:19.137Z"
 last_activity: 2026-07-14
-last_activity_desc: Roadmap created for v0.14.0 (Phases 6-9)
+last_activity_desc: Phase 06 marked complete
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 5
+  completed_plans: 5
+  percent: 25
+current_phase_name: mcp-authoring-self-teaching-path
 ---
 
 # Project State
@@ -27,14 +27,14 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 drift detection, and a durable storage/query layer — so both humans and agent-based execution
 engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
-**Current focus:** Milestone v0.14.0 roadmapped — Phases 6-9 (authoring + MCP surface correctness). Next: plan Phase 6.
+**Current focus:** Phase null
 
 ## Current Position
 
-Phase: Not started (roadmap complete, Phases 6-9 defined)
-Plan: —
-Status: Roadmapped — ready to plan Phase 6
-Last activity: 2026-07-14 — Roadmap created for v0.14.0 (Phases 6-9)
+Phase: 06 — COMPLETE
+Plan: 1 of ?
+Status: Phase 06 complete
+Last activity: 2026-07-14 — Phase 06 marked complete
 
 ## Performance Metrics
 
