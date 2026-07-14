@@ -76,7 +76,14 @@ Details: `.planning/milestones/v0.12.0-ROADMAP.md` · Requirements: `.planning/m
   3. After `amend --re-entry <stage>`, the user can immediately run that stage (e.g. `shape`) without hitting an `invalid stage transition` no-op.
   4. Re-entry lands the spec at the target stage so the subsequent stage command is a valid transition.
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Supersede reason: proto field + storage/handler threading + CLI --reason (D-06/D-07)
+- [ ] 07-02-PLAN.md — Release active claim on amend + storage integration tests (D-08/D-10)
+- [ ] 07-03-PLAN.md — Reroute MCP author tool to LifecycleService; re_entry_stage/new_slug params + next-step hint (D-01/D-03/D-04/D-05/D-07)
+- [ ] 07-04-PLAN.md — Retire the divergent broken amend/supersede path; delete RPCs/handlers/storage + prune fakes (D-02)
+- [ ] 07-05-PLAN.md — Skills teaching + MCP-only done→amend→re-author→supersede e2e (D-09/D-10)
 
 ### Phase 8: Authoring Conversation Fidelity
 
