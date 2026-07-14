@@ -1,255 +1,173 @@
 ---
 phase: 6
 reviewers: [cursor]
-reviewed_at: 2026-07-14T13:31:21Z
+reviewed_at: 2026-07-14T14:06:58Z
+review_pass: 2
 plans_reviewed: [06-01-PLAN.md, 06-02-PLAN.md, 06-03-PLAN.md, 06-04-PLAN.md, 06-05-PLAN.md]
+note: "Second review pass, run after the --reviews replan (commit b9f566c5) that incorporated pass-1 findings. Confirms all four pass-1 findings landed; surfaces new execution-fidelity concerns concentrated in 06-05."
 ---
 
-# Cross-AI Plan Review — Phase 6
+# Cross-AI Plan Review — Phase 6 (Pass 2)
 
 ## Cursor Review
 
-# Phase 6 Plan Review: MCP Authoring Self-Teaching Path
+# Phase 6 Plan Review (Second Pass): MCP Authoring Self-Teaching Path
 
 **Reviewed against:** live repo at `/Volumes/Code/github.com/specgraph`  
-**Plans:** 06-01 through 06-05  
-**Requirement:** MCP-01 (#1002)
+**Plans:** 06-01 through 06-05 (post-revision)  
+**Requirement:** MCP-01 (#1002)  
+**Method:** Plan claims verified against source (`internal/mcp`, `internal/render`, `internal/authoring`, `internal/constitution/load`, `e2e/api`, embedded skills)
+
+---
+
+## Prior Review Fix Verification
+
+| # | Original finding | Incorporated? | Evidence in revised plans |
+|---|------------------|---------------|---------------------------|
+| 1 | **`exchanges` teaching gap** — post-spark stages require `ConversationExchanges` server-side (`internal/authoring/validate.go:43-44`, enforced at `internal/server/authoring_handler.go:136-138`) while MCP param remains protojson (`internal/mcp/tools_authoring.go:70-78`, `:135`) | **Yes** | 06-02 Task 1(c) exchanges/sequence gate; Task 2 explicit JSON examples; 06-04 `exchanges` param doc rewrite + malformed-JSON negative test; 06-05 canonical fixtures + pre-flight `It` for missing exchanges |
+| 2 | **06-03 golden-test error** — `expectedProjectMatchLegacy` embeds `## Skills` verbatim (`internal/render/prime_test.go:53-55`, asserted at `:67-71`) | **Yes** | 06-03 `must_haves`, Task 1 `read_first`, action, and acceptance criteria all require updating `expectedProjectMatchLegacy` in lockstep with `writeSkills` |
+| 3 | **06-01 nested-message coverage underspecified** | **Yes** | 06-01 `must_haves` truths, Task 1 behavior blocks, and acceptance criteria require full nested fixtures per stage plus `vertical_slice`/`layer_cake`/`steel_thread` enum cases |
+| 4 | **`skills_test.go` omits `specgraph-constitution`** (`e2e/api/skills_test.go:106-121`) | **Yes (routed)** | Fix assigned to 06-05 Task 1 with explicit six→seven update; 06-02 documents routing rationale (e2e-only assertion belongs in e2e plan) |
+
+All four prior findings are addressed in the revised plan text. The remaining work is execution fidelity and a few gaps the revision did not close.
 
 ---
 
 ## Overall Phase Assessment
 
-The five-plan wave structure is sound: extract a reusable funnel YAML parser (06-01), rewrite teaching surfaces in parallel (06-02/06-03), wire handlers (06-04), then gate with MCP-only e2e (06-05). The plans correctly anchor on verified defects — `handleUpdate` and the four funnel handlers all `protojson.Unmarshal` agent input today (`internal/mcp/tools_core.go:111`, `internal/mcp/tools_authoring.go:179/207/240/273`), while skills and prime still route agents to CLI (`internal/mcp/skills/embedded/specgraph-constitution/SKILL.md:24-26`, `internal/render/prime.go:210`). Reusing `internal/constitution/load.FromYAML` for the constitution path is well-grounded (`internal/constitution/load/load.go:22-33`).
+The five-plan wave structure remains sound and the revision materially closes the first-pass holes. Root-cause analysis still matches the repo: constitution `update` and all four funnel `output` handlers use `protojson.Unmarshal` today (`internal/mcp/tools_core.go:111-112`, `internal/mcp/tools_authoring.go:178-179` and analogous lines for shape/specify/decompose), while `specgraph-constitution` still teaches CLI import (`internal/mcp/skills/embedded/specgraph-constitution/SKILL.md:24-26`, `129-135`) and prime empty-states still emit `specgraph constitution set` (`internal/render/prime.go:210`, `:326`; `internal/mcp/resources.go:40`).
 
-Two gaps threaten full-funnel MCP-only success despite fixing `output` YAML: **(1)** `exchanges` remain protojson with server-side required validation for shape/specify/decompose (`internal/authoring/validate.go:43-44`, `internal/server/authoring_handler.go:137-138`), and plans do not teach or friendly-format that param; **(2)** plan 03 misidentifies which golden test breaks when `writeSkills` changes (`internal/render/prime_test.go:53-55` embeds the Skills section in `expectedProjectMatchLegacy`). Constitution-only MCP authoring is well-covered; the full spark→approve path needs sharper exchanges guidance in 02/05.
+The revised plans should deliver constitution MCP-only authoring and a full funnel path **if** the e2e gate handles shared-database state and the Ginkgo filter command is corrected. Two new concerns (e2e ordering/pollution, wrong `-run` incantation) could block or silently weaken the phase gate despite the prior fixes landing in plan text.
 
-**Overall phase risk: MEDIUM** — architecture is right, but incomplete input-surface coverage and one test-planning error could stall wave 1 or produce a false-negative e2e gate.
+**Overall phase risk: MEDIUM** — architecture and revision quality are strong; execution hazards concentrate in 06-05.
 
 ---
 
 ## Plan 06-01: `internal/authoring/load` (TDD)
 
 ### Summary
-Creates the missing friendly-YAML→proto layer for Spark/Shape/Specify/Decompose, mirroring the constitution pipeline. Correctly scoped as a standalone package with enum-rejection tests before handler wiring. Verified: `internal/authoring/load/` does not exist today; proto shapes are in `proto/specgraph/v1/authoring.proto`.
+Well-scoped foundation package mirroring `internal/constitution/load/load.go:22-33`. Correctly targets the verified gap (`internal/authoring/load/` does not exist). Revision adequately addresses nested-message and multi-token enum coverage that the first pass flagged.
 
 ### Strengths
-- **Correct layering.** Parser at MCP boundary, no proto regen — matches research and existing `internal/constitution/load` pattern.
-- **Security-aligned enum handling.** UNSPECIFIED→error mirrors `constitutionLayerFromString` behavior in `internal/mcp/tools_core.go:29-34`.
-- **TDD contract is concrete.** Tests cover all four stages plus both enums (`scope_sniff`, `strategy`) with invalid cases.
-- **TestContentProtoDrift awareness.** Snake_case yaml tags matching proto field names (`scope_in`, `chosen_approach`, etc.) align with `internal/authoring/drift_test.go:54-64`.
+- **Correct layering** — parser at MCP boundary, no proto regen; matches proven constitution pipeline.
+- **Security-aligned enum handling** — UNSPECIFIED→error pattern matches `constitutionLayerFromString` at `internal/mcp/tools_core.go:29-34`.
+- **Revision closes nested coverage gap** — explicit requirements for `approaches[].tradeoffs`, `decisions[]`, `verify_criteria[]`, `touches[]`, `slices[].depends_on` align with `proto/specgraph/v1/authoring.proto` message shapes.
+- **Multi-token enum cases** — `vertical_slice`, `layer_cake`, `steel_thread` are now mandatory positive tests.
 
 ### Concerns
-- **MEDIUM — Nested message mapping complexity understated.** `ShapeOutput` includes `repeated Approach` and `repeated DecisionInput` with nested fields (`proto/specgraph/v1/authoring.proto:119-153`). Plan lists them in behavior but doesn't call out `tradeoffs`, `verify_criteria.category`, or `touches.change_type` as explicit test cases; implementation bugs here would only surface in 04/05.
-- **LOW — Enum mapper edge cases.** Proto has `steel_thread`, `layer_cake`, `vertical_slice` (`authoring.proto:49-59`). Plan tests `single_unit` and `bogus` but not multi-token enum values; mapper spec (`ReplaceAll("-","_")` + `ToUpper`) should be tested for `vertical_slice` and `steel_thread`.
-- **LOW — No `ToYAML`/round-trip.** Acceptable for phase scope, but means get→edit→update for funnel stages stays protojson on read path.
+- **LOW — No `InterfaceSection` nested assertion called out separately.** Specify stage lists `interfaces (name/body)` in behavior but acceptance criteria emphasize `verify_criteria` and `touches` only; a parser that drops `interfaces` could slip through.
+- **LOW — RED verify uses brittle `grep` on test output** — acceptable for automation but may false-positive on unrelated "FAIL" strings.
 
 ### Suggestions
-- Add table-driven cases for at least one nested `approaches` block and one `decisions` block in `load_test.go`.
-- Add enum cases for `vertical_slice` and `steel_thread`, not only `single_unit`.
-- Document expected yaml shape for `DecompositionSlice.depends_on` (repeated field) in plan task behavior block.
+- Add one positive fixture asserting `interfaces[].name` and `interfaces[].body` round-trip for Specify.
+- Export thin `ToProto` helpers per stage (mirror constitution `ToProto`) to keep 06-04 handlers minimal.
 
 ### Risk Assessment
-**LOW** — Isolated package, clear template (`internal/constitution/load/load.go`), no cross-plan runtime dependency until 06-04.
+**LOW** — Isolated package, clear template, no runtime dependency until 06-04.
 
 ---
 
 ## Plan 06-02: MCP-First Skill Rewrite + Content Gate
 
 ### Summary
-Rewrites all seven embedded skills and adds `skill_mcp_reference_test.go` to gate MCP-first posture and parser binding. Directly addresses the verified root cause: constitution skill Step 1/4 are CLI-first (`specgraph constitution show` / `import` at `SKILL.md:24-26`, `129-136`) while friendly YAML schema is already correct (`SKILL.md:51-101`).
+Strong content plan. Revision correctly treats `exchanges` as a first-class teaching surface while scoping wire format to JSON for this milestone. Parser-binding design preserves wave-1 parallelism.
 
 ### Strengths
-- **Clever wave-1 decoupling.** Parser-binding for authoring uses snake_case key presence checks without importing `internal/authoring/load`, so 06-02 can run parallel to 06-01 (`plan task 1 action (b)`).
-- **Constitution binding is real.** `load.FromYAML` already exists and is the same path CLI import uses — binding test is executable today.
-- **D-07 is operationalized.** Uniform "Requires local CLI" appendix with automated substring gate.
-- **Covers criteria #1 and #4** with content-level tests, matching D-09 precedent.
+- **Targets verified #1002 symptom** — constitution skill is CLI-first today (`SKILL.md:22-26`, `129-135`); rewrite to `constitution` `update` is correct.
+- **Exchanges gate added** — Task 1(c) substring gate for `exchanges` + `sequence` closes the first-pass HIGH finding.
+- **Clever wave-1 decoupling** — authoring parser binding via snake_case key guard avoids compile dependency on 06-01.
+- **Constitution binding is executable today** — `internal/constitution/load.FromYAML` already exists and is production-used.
+- **D-07 appendix pattern** — uniform `"Requires local CLI"` gate is concrete and testable.
 
 ### Concerns
-- **HIGH — `exchanges` teaching gap for full funnel.** `author` tool param docs say exchanges are "required for shape/specify/decompose" (`internal/mcp/tools_authoring.go:135`) and server enforces `ValidateExchanges` with "at least one exchange required" (`internal/authoring/validate.go:43-44`). Plan 02 rewrites `specgraph-authoring` to teach friendly `output` YAML but does not require teaching a minimal valid `exchanges` JSON array (needs `role`, `content`, `sequence` per `authoring.proto:455-463`). An MCP-only agent fixing `output` can still fail shape+ with opaque protojson errors from `parseOptionalExchanges` (`tools_authoring.go:77-78`). This undermines success criterion #2.
-- **MEDIUM — Wave-1 skills/handler skew.** Skills can land teaching friendly YAML before 06-04 wires handlers; any agent using MCP between plans gets worse failures. Acceptable if waves are merged atomically, risky if plans land independently.
-- **LOW — `specgraph-authoring` references `author_start_stage`.** Tool exists (`internal/mcp/tools_authoring.go:29`) — good — but rewrite should preserve/verify this path explicitly; plan doesn't mention it in Task 2 acceptance criteria.
-- **LOW — `e2e/api/skills_test.go` still omits `specgraph-constitution`.** Listed in research pitfall 6 (`skills_test.go:106-121`); no plan task fixes it.
+- **MEDIUM — Wave-1 skills/handler skew persists.** Skills can land teaching friendly YAML before 06-04 wires handlers; agents hitting MCP mid-wave still get protojson failures (`tools_authoring.go:178-179`). Acceptable only if waves merge atomically.
+- **LOW — Task 2 `read_first` calls specgraph-authoring "already MCP-first."** It routes via `author` / `author_start_stage` (`specgraph-authoring/SKILL.md:38-49`) but teaches neither friendly `output` YAML nor `exchanges`; the label is misleading for executors, not a functional gap.
+- **LOW — Authoring parser binding is key-presence only until 06-05.** Semantically empty YAML with correct keys passes 06-02 gate; full round-trip deferred to e2e.
 
 ### Suggestions
-- In `specgraph-authoring` rewrite, add a **canonical minimal `exchanges` example** per stage (copy structure from `e2e/api/helpers_test.go:117-119`: `role`, `content`, `stage`, `sequence`). Gate it in `skill_mcp_reference_test.go` with a substring check for `exchanges` + `sequence`.
-- Add explicit acceptance criterion: `specgraph-authoring` documents `author_start_stage` as an alternative entry path (already in current skill at line 43).
-- Optionally extend `skills_test.go` "lists six skills" to include `specgraph-constitution` while touching skill bodies.
+- Add explicit acceptance criterion preserving `author_start_stage` as documented entry path (already in current skill; cheap regression guard).
+- Note in plan metadata that 06-02 + 06-04 should land in the same merge window to avoid interim agent confusion.
 
 ### Risk Assessment
-**MEDIUM** — Content work is thorough, but incomplete round-trip teaching for required non-YAML params leaves a verified server requirement unaddressed.
+**MEDIUM** — Content work is thorough post-revision; sequencing hazard is the main residual risk.
 
 ---
 
 ## Plan 06-03: Prime Entry-Point Routing
 
 ### Summary
-Updates prime render and constitution empty-resource hints from CLI (`specgraph constitution set`) to MCP skill/tool routing. Targets verified strings at `internal/render/prime.go:210,326` and `internal/mcp/resources.go:40`.
+Minimal, correct scope. Revision fully fixes the first-pass golden-test error. Targets all three verified CLI hint sites.
 
 ### Strengths
-- **Correct defect identification.** Both ProjectView and SpecView empty-states share the same CLI hint (`prime.go:210` vs `326`) — plan catches both; research initially under-emphasized SpecView.
-- **Minimal scope.** No composer/DB logic changes; aligns with D-10 and prime reliability finding.
-- **Adds missing SpecView test.** `TestRenderSpecMarkdown_EmptyConstitution` fills a real gap (plan notes no existing spec empty-state test).
+- **Golden correction landed** — Task 1 explicitly requires updating `expectedProjectMatchLegacy` (`internal/render/prime_test.go:21-57`) when `writeSkills` changes.
+- **SpecView gap closed** — new `TestRenderSpecMarkdown_EmptyConstitution` addresses duplicate CLI hint at `prime.go:326` (project hint at `:210` was the only tested surface today: `prime_test.go:59-65`).
+- **D-10 discipline** — routing text only; skills carry depth.
 
 ### Concerns
-- **HIGH — Wrong golden-test impact analysis.** Plan Task 1 claims `TestRenderProjectMarkdown_NoProvenance_MatchesExistingLayout` "will NOT break" when changing `writeSkills`, but `expectedProjectMatchLegacy` includes the Skills section verbatim (`internal/render/prime_test.go:53-55`). Adding a "start here" routing line to `writeSkills# Phase 6 Plan Review: MCP Authoring Self-Teaching Path
-
-**Reviewed:** 2026-07-14  
-**Scope:** Plans 06-01 through 06-05 against repo state and MCP-01 / ROADMAP success criteria  
-**Method:** Plan claims verified against source (`internal/mcp`, `internal/render`, `internal/authoring`, `e2e/api`, embedded skills)
-
----
-
-## Phase-Level Assessment
-
-The five-plan wave structure is sound and maps cleanly to the research recommendation (friendly YAML at the MCP write boundary, skills rewrite, prime routing, handler shim, MCP-only e2e gate). The root-cause analysis is accurate: today’s defect is real protojson at the write boundary (`internal/mcp/tools_core.go:111-112`, `internal/mcp/tools_authoring.go:178-179`), while the constitution skill already teaches friendly YAML but routes writes through CLI import (`internal/mcp/skills/embedded/specgraph-constitution/SKILL.md:129-135`). Reusing `internal/constitution/load` for constitution updates is the right minimal fix.
-
-The plans will close #1002 for constitution authoring and stage `output` payloads, but **the full funnel MCP-only path is not fully closed** unless `exchanges` (still protojson-only at `internal/mcp/tools_authoring.go:70-78`) is taught and exercised. Server-side validation requires at least one exchange for shape/specify/decompose (`internal/authoring/validate.go:43-44`, enforced in `internal/server/authoring_handler.go:136-138`). Plan 05 mentions exchanges in passing; plans 02 and 04 do not address them. That gap threatens success criterion #2.
-
-**Overall phase risk: MEDIUM** — architecture and sequencing are strong; two concrete plan errors/gaps (golden-test claim, exchanges teaching) could block the e2e gate or leave agents stuck mid-funnel.
-
----
-
-## Plan 06-01: `internal/authoring/load` (TDD)
-
-### Summary
-Well-scoped foundation plan. Correctly mirrors `internal/constitution/load/load.go:22-32`, targets the verified gap (no `internal/authoring/load` package exists), and uses TDD with enum-rejection tests aligned to D-04 and ASVS V5.
-
-### Strengths
-- **Correct dependency anchor for plan 04** — funnel handlers need a parser before the handler shim can land.
-- **Enum handling matches existing patterns** — `constitutionLayerFromString` at `internal/mcp/tools_core.go:29-34` is the right template; proto enums at `proto/specgraph/v1/authoring.proto:49-81` confirm `scope_sniff` and `strategy` are the only friendly enum fields.
-- **TestContentProtoDrift awareness** — snake_case yaml tags matching proto field names (`scope_in`, `chosen_approach`, etc. in `authoring.proto:119-143`) is correct given `internal/authoring/drift_test.go:54-64`.
-- **Security posture is explicit** — fixed structs, UNSPECIFIED→error; consistent with research threat model.
-
-### Concerns
-| Severity | Issue |
-|----------|-------|
-| **MEDIUM** | Nested message mapping complexity (`Approach`, `DecisionInput`, `InterfaceSection`, `VerifyCriterion`, `FileTouch`, `DecompositionSlice` in `authoring.proto:111-190`) is underspecified in task behavior blocks. Task 1 lists shapes/decisions but not all nested types; implementer may ship incomplete parsers that pass minimal tests but fail real skill examples. |
-| **LOW** | Enum mapper spec (`DECOMPOSITION_STRATEGY_` + `ToUpper`) must accept values like `vertical_slice` and `steel_thread` (proto lines 52-59). Tests cover `single_unit` and `bogus` but not all enum variants. |
-| **LOW** | RED verify uses `grep` on test output — brittle but acceptable for plan automation. |
+- **MEDIUM — Stale `SkillsCount: 6` in golden fixture while repo serves 7 skills.** `fixtureProjectView()` sets `SkillsCount: 6` (`internal/render/prime_test.go:243`) and `expectedProjectMatchLegacy` says "6 skills" (`:53-55`), but embedded catalog has 7 skills (`internal/mcp/skills/embedded_test.go:14-22`; live composer sets `view.SkillsCount = len(metas)` at `internal/prime/composer.go:108`). Plan 03 updates golden for routing prose but does not mention correcting skill count. Touching the golden without fixing count leaves a pre-existing drift (or forces an incidental fix without guidance).
+- **LOW — `constitutionEmptyResource` still has no dedicated unit test** (`internal/mcp/resources.go:36-41`); consistency relies on manual review and 06-05 smoke.
 
 ### Suggestions
-- Add one table-driven fixture per stage that mirrors the YAML blocks plan 02 will embed in `specgraph-authoring` (full nested structures, not scalars only).
-- Add positive tests for `vertical_slice`, `layer_cake`, `steel_thread` enum strings.
-- Export a small `ToProto` helper per stage (mirror `constitution/load.ToProto`) so plan 04 handlers stay thin.
+- When updating `expectedProjectMatchLegacy`, also change `SkillsCount` fixture and literal from 6→7 to match `embedded_test.go`.
+- Extract shared empty-state wording constant used by `writeProjectConstitution`, `writeSpecConstitution`, and `constitutionEmptyResource` to prevent drift.
+- Add a small `resources_test.go` assertion for `constitutionEmptyResource` MCP wording.
 
 ### Risk Assessment
-**LOW** — Isolated package, clear template, no proto regen. Main risk is incomplete nested-field coverage.
-
----
-
-## Plan 06-02: MCP-First Skills Rewrite + Content Gate
-
-### Summary
-Strong content plan and the best guard against regression. Parser-binding test design (constitution → `load.FromYAML`, authoring → snake_case key guard without importing plan 01) is clever and keeps wave-1 parallelism valid.
-
-### Strengths
-- **Targets the actual #1002 symptom** — `specgraph-constitution` is CLI-first today (`SKILL.md:22-26`, `129-135`); rewrite to `constitution` tool `update` is correct.
-- **D-07 appendix pattern** is concrete and testable via `"Requires local CLI"` substring gate.
-- **Constitution parser binding uses existing code** — `internal/constitution/load/load.go:22-32` is already production-used; no cross-plan compile dependency for that assertion.
-- **Preserves friendly YAML schema** the load pipeline already accepts (`layer: "project"`, `type: "adr"` at `SKILL.md:52-100`).
-
-### Concerns
-| Severity | Issue |
-|----------|-------|
-| **HIGH** | **`exchanges` not in scope.** Shape/specify/decompose require `ConversationExchanges` server-side (`authoring_handler.go:136-138`). MCP param docs still say protojson (`tools_authoring.go:135`). Rewritten `specgraph-authoring` must teach a minimal valid `exchanges` JSON array (role/content/stage/sequence per `authoring.proto:455-463`), or plan 05 e2e will fail even after friendly `output` lands. Current skill has zero exchange guidance (`specgraph-authoring/SKILL.md:47-49`). |
-| **MEDIUM** | **Wave-1 skills land before wave-2 handlers (06-04).** Agents hitting MCP between plans get friendly-YAML docs against protojson-only handlers. Acceptable if waves are merged atomically; risky if plans ship independently. |
-| **LOW** | `e2e/api/skills_test.go:112-119` lists 6 of 7 skills (omits `specgraph-constitution`). Plans note this (pitfall 6) but no task fixes it — minor coverage gap. |
-| **LOW** | Parser-binding for authoring is key-presence only until plan 05; a syntactically valid but semantically empty YAML block could pass the gate. |
-
-### Suggestions
-- Add explicit task content in Task 2: document minimal `exchanges` JSON for shape/specify/decompose, with a copy-paste example matching `e2e/api/helpers_test.go:117-119` field shape.
-- Extend `skill_mcp_reference_test.go` to assert `specgraph-authoring` mentions `exchanges` for post-spark stages.
-- Optionally add `depends_on: [06-04]` soft note in plan metadata for release ordering documentation (not a hard blocker for wave-1 test authoring).
-
-### Risk Assessment
-**MEDIUM** — Content rewrite is thorough for `output`/constitution, but incomplete for the other half of the author tool contract (`exchanges`).
-
----
-
-## Plan 06-03: Prime Entry Point + Empty-State Routing
-
-### Summary
-Correctly identifies all three CLI-first empty-state sites (`internal/render/prime.go:210`, `326`; `internal/mcp/resources.go:40`) and the skills section that needs stronger routing (`prime.go:306-314`). SpecView empty-state test addition is a good catch — `writeSpecConstitution` duplicates the CLI hint at line 326 and has no test today (`prime_test.go:59-65` only covers ProjectView).
-
-### Strengths
-- **Accurate prime-failure diagnosis** — environmental DB failure vs. code bug; consistent with soft-empty constitution in composer (research claim holds).
-- **Minimal D-10 scope** — routing text only, no duplicate teaching in prime.
-- **SpecView coverage** — closes a real hole for “spark before constitution” flows.
-
-### Concerns
-| Severity | Issue |
-|----------|-------|
-| **HIGH** | **Incorrect claim about golden layout test.** Plan states `TestRenderProjectMarkdown_NoProvenance_MatchesExistingLayout` “will NOT break” when `writeSkills` changes. That test is byte-for-byte against `expectedProjectMatchLegacy`, which **includes the Skills section verbatim** (`internal/render/prime_test.go:53-55`, asserted at `67-71`). Adding a “start here” routing line to `writeSkills` **will break this test** unless `expectedProjectMatchLegacy` is updated. Plan only mentions updating `TestRenderProjectMarkdown_EmptyConstitution`. |
-| **LOW** | Task 2 done-text says “golden test updated” but no golden update task exists for the populated-layout test. |
-| **LOW** | `constitutionEmptyResource` has no dedicated unit test; consistency relies on manual review. |
-
-### Suggestions
-- Add explicit task step: update `expectedProjectMatchLegacy` in `internal/render/prime_test.go:21-57` after `writeSkills` change.
-- Add a small test for `constitutionEmptyResource` output (or assert via existing `internal/mcp` resource tests) matching project/spec empty-state wording.
-- Keep the three surfaces (project prime, spec prime, constitution resource) on one shared constant or helper to prevent wording drift.
-
-### Risk Assessment
-**MEDIUM** — Small code change, but the wrong golden-test assumption will cause a surprise `task check` failure during implementation.
+**LOW–MEDIUM** — Small code change; golden update is now correctly specified; skill-count drift is a secondary `task check` surprise.
 
 ---
 
 ## Plan 06-04: MCP Write-Input Handler Shim
 
 ### Summary
-The core #1002 fix. Correctly wires constitution through existing load pipeline and funnel stages through plan-01 parsers. Tool description rewrites align with criterion #4. Test migration scope (`tools_core_test.go:83-87` protojson today) is identified.
+Core #1002 fix. Constitution path is low-risk reuse; funnel `output` path correctly depends on 06-01. Revision adds `exchanges` param documentation without expanding wire format scope.
 
 ### Strengths
-- **Minimal handler change for constitution** — replace `protojson.Unmarshal` at `tools_core.go:111-112` with `load.FromYAML` → `load.ToProto` is ~10 lines as research predicted.
+- **Minimal constitution change** — replace `protojson.Unmarshal` at `tools_core.go:111-112` with `load.FromYAML` → `load.ToProto` (~10 lines).
 - **Correct wave dependency** — `depends_on: [06-01]` is necessary.
-- **Leaves RPC layer untouched** — no storage/proto change; matches architectural map.
-- **Invalid-input tests** — aligns with `TestConstitutionTool_Update_InvalidJSON` pattern at `tools_core_test.go:93-106`.
+- **Exchanges doc revision** — Task 2 explicitly rewrites `exchanges` `stringProp` with worked example; malformed-JSON negative test at MCP boundary.
+- **Honest test boundary note** — plan correctly states mock backend cannot exercise `ValidateExchanges`; defers semantic rejection to 06-05 e2e.
 
 ### Concerns
-| Severity | Issue |
-|----------|-------|
-| **HIGH** | **`exchanges` left protojson** (`parseOptionalExchanges` at `tools_authoring.go:70-78`). For MCP-only self-teaching, this is the remaining protojson surface on the critical path. Tool description still says “JSON array of ConversationExchange objects” (`tools_authoring.go:135`). Skills + descriptions should document the exact JSON shape (proto field names: `role`, `content`, `stage`, `sequence`). |
-| **MEDIUM** | **No back-compat fallback.** Research recommended optional protojson fallback for belt-and-suspenders; plan removes protojson entirely. Fine for MCP-only goal, but all MCP tool callers must migrate (plan acknowledges Pitfall 1; `helpers_test.go:advanceStage` uses ConnectRPC not MCP tools — unaffected). |
-| **MEDIUM** | **`constitution.get` still returns protojson** via `jsonResult` (`tools_core.go:102`). Less blocking for fresh-init (author from template), but get→edit→update round-trips still expose proto enums. Research nicety omitted. |
-| **LOW** | `referenceType` invalid values map to UNSPECIFIED in `load/referenceTypeToProto` (`load.go:94-106`) without error — pre-existing; not introduced by plan but weakens “impossible to get wrong” for constitution references. |
+- **MEDIUM — `exchanges` remains protojson on the wire** (`parseOptionalExchanges` at `tools_authoring.go:70-78`). Acceptable for MCP-01 given explicit teaching in 02/04/05, but still the second half of the author tool contract agents must learn.
+- **MEDIUM — No protojson fallback.** Plan removes protojson entirely from `output`; fine for MCP-only goal, but any external MCP caller sending camelCase JSON (`tools_authoring_test.go:238` today) must migrate.
+- **LOW — `constitution.get` still returns protojson** via `jsonResult` (`tools_core.go:102`). Fresh-init path is unaffected; get→edit→update round-trips still expose proto enums.
+- **LOW — Pre-existing `referenceTypeToProto` silent UNSPECIFIED** (`internal/constitution/load/load.go:94-106`) — not introduced by plan but weakens "impossible to get wrong" for reference blocks.
 
 ### Suggestions
-- In Task 2, rewrite `exchanges` param documentation with a minimal worked example (two-exchange probe/response pair with `sequence: 1` and `sequence: 2`, matching `helpers_test.go:117-119`).
-- Consider accepting YAML for `exchanges` in a follow-up, or defer explicitly to Phase 8 (CONV-01) with a note in skills that exchanges remain JSON for v0.14.0.
-- Add one negative test: `exchanges` with missing `sequence` returns `errResult` through the real handler path.
-- Optionally emit friendly YAML from `constitution.get` (research enhancement) — out of scope is fine if documented as known limitation.
+- Document `constitution.get` protojson read path as known v0.14.0 limitation in 06-02 constitution skill (agents authoring from template, not from get).
+- Consider a second 06-05 pre-flight `It` for `exchanges` with missing `sequence` (server rejects at `internal/authoring/validate.go:74-75`) — plan only covers wholly absent exchanges.
 
 ### Risk Assessment
-**MEDIUM** — Constitution path is low-risk and well-proven. Funnel path is correct for `output` but incomplete for mandatory `exchanges`.
+**MEDIUM** — Constitution path is proven; funnel `output` path is well-specified; `exchanges` JSON remains a teaching burden but is now planned end-to-end.
 
 ---
 
 ## Plan 06-05: MCP-Only Authoring E2E Gate
 
 ### Summary
-Appropriate phase gate (D-08). Reuses the proven harness (`e2e/api/skills_test.go:35-57`) and correctly forbids ConnectRPC service clients in the spec itself. Dependencies `[06-02, 06-03, 06-04]` are correct.
+Appropriate phase gate (D-08). Revision adds canonical `exchanges` fixtures, pre-flight rejection test, and `skills_test.go` fix. Harness reuse (`skillsMCPClient` at `e2e/api/skills_test.go:35-57`) is sound.
 
 ### Strengths
-- **Real MCP server path** — `skillsMCPClient` spins in-process `mcp.NewServer` against e2e Postgres; not a stub.
-- **Prime smoke extends partial coverage** — `prime_cross_surface_test.go:156-162` proves prime works with data; plan adds empty-state assertion (gap today).
-- **Constitution + full funnel in one spec** — matches MCP-01 end-to-end intent.
-- **`mcpResourceText` reuse** — `prime_cross_surface_test.go:203-211` avoids duplication.
+- **Real MCP server path** — in-process `mcp.NewServer` against e2e Postgres, not a stub.
+- **Exchanges fixtures specified** — mirrors `e2e/api/helpers_test.go:117-119`, `137-139`, `156-158`.
+- **Approve path verified** — MCP `handleApprove` sends slug only (`tools_authoring.go:296-303`); server ACCEPT path does not validate exchanges (`authoring_handler.go:453-485`; REJECT path does at `:488`).
+- **Spark without exchanges correct** — server treats spark exchanges as optional (`authoring_handler.go:57-64`).
+- **Pre-flight `It`** — missing `exchanges` on shape exercises real `ValidateExchanges` the mock unit tests cannot.
 
 ### Concerns
-| Severity | Issue |
-|----------|-------|
-| **HIGH** | **E2E will require protojson `exchanges` on shape/specify/decompose** unless server validation is bypassed (it isn’t). Plan says “plus required exchanges where the funnel demands them” but does not specify the JSON payload. Implementer must derive from `helpers_test.go:117-159` — should be explicit in the plan to avoid gate flakiness. |
-| **MEDIUM** | **Approve may need exchanges** — server validates exchanges on approve in some paths (`authoring_handler.go:488`). Plan only lists `approve` with slug; verify approve path doesn’t require exchanges (spark-only approve might be OK if prior stages recorded conversations). Trace before e2e authoring. |
-| **MEDIUM** | **“Fresh/empty constitution project” setup unclear** — prime smoke needs a project with no constitution. Harness must use a clean project scope or assert substring resilient to populated state. |
-| **LOW** | `-run MCPOnly` label dependency — Ginkgo `Describe` label must match exactly or gate command silently skips. |
+- **HIGH — Empty-state prime assertion likely flaky against shared e2e DB.** Suite clears once in `BeforeSuite` (`e2e/api/api_suite_test.go:47-48`), single project `e2e-test` (`e2e/testutil/server.go:39`). `constitution_test.go` creates a constitution (`:40+`) and does not clear afterward. If `MCPOnly` runs after constitution tests (alphabetical file order: `constitution_test.go` before `mcp_only_authoring_test.go`), step 1's empty-state hint assertion will fail. Plan says "fresh/empty constitution project" but does not require `BeforeAll(ClearAll)` or isolated project scope.
+- **MEDIUM — Wrong Ginkgo filter command.** Plan verify uses `go test -tags e2e ./e2e/api/ -run MCPOnly`. Repo pattern for labels is `--ginkgo.label-filter` (see `e2e/api/auth_test.go:89` and `docs/plans/2026-03-18-auth-interceptor-plan.md:1343`). `-run MCPOnly` does not filter on `Label("MCPOnly")` unless the Describe *title* contains that substring; label-only filtering will not work as documented.
+- **LOW — Step order within spec is good** (prime read before constitution `update` in the same `It`), but cross-spec pollution remains the issue.
+- **LOW — Full suite regression** — acceptance criteria mention full `e2e/api` run; good, but not wired into plan `verify` block (only `-run MCPOnly`).
 
 ### Suggestions
-- Embed canonical minimal `exchanges` fixtures in the test file (copy structure from `helpers_test.go:117-119`, `137-139`, `156-158`) as string constants for MCP `CallTool` args.
-- Add a pre-flight `It` that asserts `author` shape with friendly `output` but **no** `exchanges` fails — documents the contract the skill must teach.
-- Document project isolation strategy (unique project name / fresh test DB) for empty-state prime assertion.
-- After green, run full `go test -tags e2e ./e2e/api/...` not just `-run MCPOnly` to catch regressions in `prime_cross_surface_test.go` after golden/layout changes from plan 03.
+- Add `BeforeAll(func() { Expect(serverInfo.Store.ClearAll(ctx)).To(Succeed()) })` to the `MCPOnly` Describe (or `Ordered` + `BeforeAll` ClearAll) so empty-state prime assertion is deterministic.
+- Change verify to `go test -tags e2e ./e2e/api/ --ginkgo.label-filter=MCPOnly` (or name the Describe `"MCPOnly …"` *and* document which mechanism is used).
+- Add optional pre-flight `It` for malformed `exchanges` JSON (missing `sequence`) to complement 06-04's syntax-only negative test.
 
 ### Risk Assessment
-**MEDIUM-HIGH** — Right gate design, but underspecified on the mandatory `exchanges` input that current plans don’t fully self-teach.
+**MEDIUM–HIGH** — Right gate design post-revision, but DB isolation and filter command errors could block or neuter the gate.
 
 ---
 
@@ -261,35 +179,35 @@ Wave 1 (parallel): 06-01, 06-02, 06-03
 Wave 2: 06-04 → depends on 06-01
 Wave 3: 06-05 → depends on 06-02, 06-03, 06-04
 ```
-Ordering is logically sound. The only sequencing hazard is **06-02 landing before 06-04** during development.
+Ordering is logically sound. Residual hazard: 06-02 landing before 06-04 during development.
+
+### Phase goal coverage (post-revision)
+
+| Success criterion | Status | Notes |
+|-------------------|--------|-------|
+| #1 Skills describe MCP round-trip | **Yes** | 06-02 + 06-04; `exchanges` explicitly included |
+| #2 Full funnel MCP-only | **Yes, with e2e caveats** | 06-05; blocked if DB isolation / Ginkgo filter wrong |
+| #3 Constitution MCP-only | **Yes** | 06-02 + 06-04 + 06-05 |
+| #4 skills_get/search reference MCP path | **Yes** | 06-02 content gate |
+| Prime reliability | **Yes** | 06-03 + 06-05 smoke (if DB empty) |
 
 ### Security
-Plans adequately address V5 for new YAML parsers (typed structs, enum rejection). No new auth surface. Error sanitization via `errResult` is consistent with existing handlers.
+Typed structs, enum rejection, `errResult` sanitization — adequate. No new auth surface.
 
 ### Performance
-Negligible — YAML parse at MCP boundary is cheap relative to Postgres RPC. No concerns.
+Negligible — YAML parse at MCP boundary vs Postgres RPC.
 
 ### Scope creep
-Appropriate for MCP-01. Seven-skill rewrite is large but required by D-05. No obvious over-engineering (section-by-section tools correctly rejected in research).
-
-### Phase goal coverage
-
-| Success criterion | Plans cover? | Evidence / gap |
-|-------------------|--------------|----------------|
-| #1 Skills describe MCP round-trip | **Partial** | 06-02 covers `output`/constitution; **gap: `exchanges`** |
-| #2 Full funnel MCP-only | **At risk** | 06-05 plans it; blocked by exchanges teaching + protojson param |
-| #3 Constitution MCP-only | **Yes** | 06-04 + 06-02 + 06-05 |
-| #4 skills_get/search reference MCP path | **Yes** | 06-02 content gate |
-| Prime reliability | **Yes** | 06-03 + 06-05 smoke |
+Appropriate for MCP-01. Seven-skill rewrite is required by D-05.
 
 ---
 
 ## Priority Fixes Before Execution
 
-1. **Fix plan 06-03** — Acknowledge `TestRenderProjectMarkdown_NoProvenance_MatchesExistingLayout` / `expectedProjectMatchLegacy` must be updated when `writeSkills` changes (`prime_test.go:53-71`).
-2. **Extend plans 06-02, 06-04, 06-05** — Treat `exchanges` as a first-class self-teaching surface: skill docs, tool param examples, e2e fixtures (even if format stays protojson for this milestone).
-3. **Strengthen plan 06-01** — Full nested-message test fixtures aligned with skill YAML examples.
-4. **Optional** — Fix `skills_test.go` “lists six skills” omission of `specgraph-constitution` while touching skill tests.
+1. **06-05 — Add deterministic DB reset** (`ClearAll` in `MCPOnly` Describe `BeforeAll`) so empty-state prime assertion is reliable against `e2e/api` suite ordering.
+2. **06-05 — Fix Ginkgo filter command** to `--ginkgo.label-filter=MCPOnly` (or document Describe-title-based `-run` matching explicitly).
+3. **06-03 — When touching golden, fix skill count 6→7** in `fixtureProjectView` and `expectedProjectMatchLegacy` to match `embedded_test.go` (7 canonical skills).
+4. **Optional — 06-05** add pre-flight `It` for `exchanges` missing `sequence` (semantic validation at `validate.go:74-75`).
 
 ---
 
@@ -299,33 +217,37 @@ Appropriate for MCP-01. Seven-skill rewrite is large but required by D-05. No ob
 |------|------|
 | 06-01 | LOW |
 | 06-02 | MEDIUM |
-| 06-03 | MEDIUM |
+| 06-03 | LOW–MEDIUM |
 | 06-04 | MEDIUM |
-| 06-05 | MEDIUM-HIGH |
+| 06-05 | MEDIUM–HIGH |
 | **Phase overall** | **MEDIUM** |
 
-**Justification:** The plans are well-researched, correctly identify the protojson defect, reuse proven constitution load code, and install the right verification gates. They will likely ship constitution MCP-only authoring cleanly. The full-funnel MCP-only promise is at risk because mandatory `exchanges` remain protojson (`tools_authoring.go:70-78`, `validate.go:43-44`) without a teaching or testing plan commensurate with the `output`/constitution work, and plan 06-03 contains a factual error about the prime golden layout test that will break `task check` if unaddressed.
+**Justification:** The revision successfully incorporates all four first-pass findings with concrete plan text and source-grounded mechanisms. Constitution MCP-only authoring and friendly funnel `output` are well-planned. Residual risk concentrates in 06-05: shared e2e database state can falsify the empty-state prime smoke, and the documented `-run MCPOnly` command does not match the repo's Ginkgo label-filter pattern. Addressing those two items before execution should move phase risk to **LOW–MEDIUM**.
 
 ---
 
 ## Consensus Summary
 
-Only one external reviewer (Cursor) was invoked, so "consensus" here reflects Cursor's source-grounded findings rather than agreement across multiple models. Cursor read the live repo and cited `file:line` evidence throughout; its two highest-severity findings are actionable and were not raised by the internal plan-checker.
+Single external reviewer (Cursor), second pass, run against the revised plans (commit `b9f566c5`) with the prior REVIEWS.md supplied as context. Cursor read the live repo and cited `file:line` evidence throughout.
 
-### Agreed Strengths
-- Wave structure and sequencing are sound: reusable funnel YAML parser (06-01) → parallel skills/prime rewrites (06-02/06-03) → handler shim (06-04) → MCP-only e2e gate (06-05).
-- Root-cause anchoring is accurate and verified against source: real `protojson.Unmarshal` at the write boundary (`internal/mcp/tools_core.go:111`, `internal/mcp/tools_authoring.go:178-273`), CLI-first constitution skill (`SKILL.md:24-26,129-135`), and CLI hints in prime (`internal/render/prime.go:210,326`).
-- Reuse of `internal/constitution/load.FromYAML` for the constitution path is the correct minimal fix (~10 lines, no proto regen).
-- Security posture (typed structs, UNSPECIFIED→error enum rejection, `errResult` sanitization) is consistent with existing patterns.
+**Headline:** All four pass-1 findings are confirmed correctly incorporated (exchanges teaching, 06-03 golden-test correction, 06-01 nested/enum coverage, skills_test.go skill-list fix). Overall phase risk **MEDIUM**; residual risk concentrates in the 06-05 e2e gate.
 
-### Agreed Concerns (highest priority)
-1. **[HIGH] `exchanges` self-teaching gap threatens success criterion #2 (full funnel MCP-only).** Shape/specify/decompose require a `ConversationExchanges` payload server-side (`internal/authoring/validate.go:43-44`, enforced at `internal/server/authoring_handler.go:136-138`), and that param is still protojson-only (`internal/mcp/tools_authoring.go:70-78`, param docs at `:135`). The plans make the stage `output` friendly YAML but never teach or friendly-format `exchanges` (role/content/stage/sequence per `authoring.proto:455-463`). An MCP-only agent that fixes `output` can still hit opaque protojson errors on the first post-spark stage — the exact #1002 failure class, unclosed. Raised against 06-02 (teaching), 06-04 (handler/param docs), and 06-05 (e2e fixtures).
-2. **[HIGH] 06-03 golden-test impact analysis is wrong and will surprise-fail `task check`.** The plan claims `TestRenderProjectMarkdown_NoProvenance_MatchesExistingLayout` will NOT break when `writeSkills` changes, but `expectedProjectMatchLegacy` embeds the Skills section verbatim (`internal/render/prime_test.go:53-55`, asserted at `:67-71`). Adding a "start here" routing line to `writeSkills` WILL break the byte-for-byte golden unless `expectedProjectMatchLegacy` is updated. The plan only mentions updating `TestRenderProjectMarkdown_EmptyConstitution`.
-3. **[MEDIUM] 06-01 nested-message mapping underspecified.** `ShapeOutput`/`DecomposeOutput` carry nested `repeated Approach`, `DecisionInput`, `VerifyCriterion`, `FileTouch`, `DecompositionSlice` (`authoring.proto:111-190`). Task behavior blocks list top-level shapes but don't force test coverage of nested fields or all enum variants (`vertical_slice`, `steel_thread`, `layer_cake`) — incomplete parsers could pass minimal tests yet fail real skill YAML in 06-04/06-05.
-4. **[LOW] `e2e/api/skills_test.go` "lists six skills" omits `specgraph-constitution`** (`skills_test.go:112-119`); noted in research pitfall 6 but no plan task fixes it while skill tests are being touched.
+### Confirmed Fixed (pass-1 findings)
+- **Exchanges teaching gap** → 06-02 (content gate + JSON examples), 06-04 (param-doc rewrite + malformed negative test), 06-05 (canonical fixtures + no-exchanges pre-flight). ✅
+- **06-03 golden-test error** → 06-03 now updates `expectedProjectMatchLegacy` in lockstep with `writeSkills`. ✅
+- **06-01 nested-message/enum coverage** → full nested fixtures + multi-token enum cases mandated. ✅
+- **skills_test.go skill-list omission** → routed to 06-05 (six→seven). ✅
 
-### Divergent Views
-None — single reviewer. Note that findings #1 and #2 are new relative to the internal plan-checker's pass (which returned 0 blockers / 3 now-resolved warnings), so they warrant independent verification before execution.
+### New Agreed Concerns (highest priority — for a potential second `--reviews` pass)
+1. **[HIGH] 06-05 empty-state prime assertion is likely flaky against the shared e2e DB.** The suite clears once in `BeforeSuite` (`e2e/api/api_suite_test.go:47-48`) against a single project `e2e-test` (`e2e/testutil/server.go:39`). `constitution_test.go` creates a constitution and never clears it; if `mcp_only_authoring_test.go` runs after it (alphabetical file order), the "empty-state constitution hint" prime assertion fails. The plan says "fresh/empty constitution project" but does not require a `BeforeAll(ClearAll)` or an isolated project scope. Fix: add `Ordered` + `BeforeAll(func(){ Expect(serverInfo.Store.ClearAll(ctx)).To(Succeed()) })` to the `MCPOnly` Describe, or use a uniquely-named project.
+2. **[MEDIUM] 06-05 Ginkgo filter command is wrong.** The plan's verify uses `go test -tags e2e ./e2e/api/ -run MCPOnly`, but `-run` matches Go test / Ginkgo Describe *titles*, not `Label("MCPOnly")`. The repo's label pattern is `--ginkgo.label-filter=MCPOnly` (`e2e/api/auth_test.go:89`). As written, the phase-gate command may silently select nothing (green vacuous pass) or not filter as intended. Fix: use `--ginkgo.label-filter=MCPOnly`, or name the Describe so `-run` matches — and state which.
+3. **[MEDIUM] 06-03 stale `SkillsCount: 6` vs 7 served skills.** `fixtureProjectView()` sets `SkillsCount: 6` and `expectedProjectMatchLegacy` says "6 skills" (`internal/render/prime_test.go:243,53-55`), but the embedded catalog serves 7 (`internal/mcp/skills/embedded_test.go:14-22`; composer sets `len(metas)` at `internal/prime/composer.go:108`). Since 06-03 already edits that golden, it should also correct 6→7 to avoid an incidental/surprise `task check` fix without guidance.
+
+### Divergent Views / Lower Priority
+- **[LOW] `constitution.get` still returns protojson** (`tools_core.go:102`) — fresh-init authoring unaffected; get→edit→update round-trips still expose proto enums. Reviewer suggests documenting as a known v0.14.0 limitation, not fixing this milestone.
+- **[LOW] 06-01 `interfaces[].name/body` (Specify) not called out in acceptance criteria** — a parser dropping `interfaces` could slip through; add one positive fixture.
+- **[LOW] Optional extra 06-05 pre-flight** for `exchanges` present-but-missing-`sequence` (`validate.go:74-75`) to complement 06-04's syntax-only negative test.
+- **[MEDIUM, known/accepted] Wave-1 skills/handler skew** — 06-02 teaching can land before 06-04 wires handlers; acceptable only if the wave merges atomically. Reviewer suggests a merge-window note.
 
 ### Recommended Action
-Findings #1 and #2 are concrete and cheap to fold in. Consider running `/gsd-plan-phase 6 --reviews` to incorporate them — specifically: (a) add `exchanges` as a first-class self-teaching surface in 06-02 skill docs + 06-04 param docs + 06-05 e2e fixtures (even if the wire format stays JSON for this milestone), and (b) correct 06-03 to update `expectedProjectMatchLegacy` when `writeSkills` changes.
+The three top concerns are all concrete and cheap, and two of them (#1 DB isolation, #2 Ginkgo filter) directly affect whether the D-08 phase gate actually gates. Worth a second `/gsd-plan-phase 6 --reviews` pass to fold them into 06-05 (and the 6→7 skill-count fix into 06-03) before execution. None are architectural — the plans remain fundamentally sound and MEDIUM risk overall.
