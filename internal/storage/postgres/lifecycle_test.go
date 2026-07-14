@@ -10,8 +10,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/specgraph/specgraph/internal/drift"
 	"github.com/specgraph/specgraph/internal/storage"
+	"github.com/specgraph/specgraph/internal/storage/postgres"
 	"github.com/stretchr/testify/require"
 )
 
@@ -194,7 +196,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "new-lifecycle", "New spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
-		old, newSpec, err := store.LifecycleSupersedeSpec(ctx, "old-lifecycle", "new-lifecycle")
+		old, newSpec, err := store.LifecycleSupersedeSpec(ctx, "old-lifecycle", "new-lifecycle", "")
 		require.NoError(t, err)
 		require.Equal(t, storage.SpecStageSuperseded, old.Stage)
 		require.Equal(t, "new-lifecycle", old.SupersededBy)
@@ -214,7 +216,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.CreateSpec(ctx, "edge-new", "New spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
-		_, _, err = store.LifecycleSupersedeSpec(ctx, "edge-old", "edge-new")
+		_, _, err = store.LifecycleSupersedeSpec(ctx, "edge-old", "edge-new", "")
 		require.NoError(t, err)
 
 		// Verify SUPERSEDES edge was written.
@@ -233,7 +235,7 @@ func TestLifecycle(t *testing.T) {
 		_, err := store.CreateSpec(ctx, "exists-new", "New spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
-		_, _, err = store.LifecycleSupersedeSpec(ctx, "nonexistent-old", "exists-new")
+		_, _, err = store.LifecycleSupersedeSpec(ctx, "nonexistent-old", "exists-new", "")
 		require.ErrorIs(t, err, storage.ErrSpecNotFound)
 	})
 
@@ -248,7 +250,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.UpdateSpec(ctx, "exists-old", nil, &doneStage, nil, nil, nil)
 		require.NoError(t, err)
 
-		_, _, err = store.LifecycleSupersedeSpec(ctx, "exists-old", "nonexistent-new")
+		_, _, err = store.LifecycleSupersedeSpec(ctx, "exists-old", "nonexistent-new", "")
 		require.ErrorIs(t, err, storage.ErrNewSpecNotFound)
 	})
 
@@ -263,7 +265,7 @@ func TestLifecycle(t *testing.T) {
 		require.NoError(t, err)
 
 		// Old spec is at spark -- not done, supersede should fail.
-		_, _, err = store.LifecycleSupersedeSpec(ctx, "not-done-old", "not-done-new")
+		_, _, err = store.LifecycleSupersedeSpec(ctx, "not-done-old", "not-done-new", "")
 		require.ErrorIs(t, err, storage.ErrSpecNotDone)
 	})
 
@@ -282,7 +284,7 @@ func TestLifecycle(t *testing.T) {
 		require.NoError(t, err)
 
 		// Supersede should fail because old spec is not done.
-		_, _, err = store.LifecycleSupersedeSpec(ctx, "terminal-old", "replacement")
+		_, _, err = store.LifecycleSupersedeSpec(ctx, "terminal-old", "replacement", "")
 		require.ErrorIs(t, err, storage.ErrSpecNotDone)
 	})
 
@@ -301,7 +303,7 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.LifecycleAbandonSpec(ctx, "new-sup-aband", "no longer needed")
 		require.NoError(t, err)
 
-		_, _, err = store.LifecycleSupersedeSpec(ctx, "old-sup-aband", "new-sup-aband")
+		_, _, err = store.LifecycleSupersedeSpec(ctx, "old-sup-aband", "new-sup-aband", "")
 		require.ErrorIs(t, err, storage.ErrNewSpecTerminal)
 	})
 
@@ -313,8 +315,41 @@ func TestLifecycle(t *testing.T) {
 		_, err := store.CreateSpec(ctx, "same-slug", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 		require.NoError(t, err)
 
-		_, _, err = store.LifecycleSupersedeSpec(ctx, "same-slug", "same-slug")
+		_, _, err = store.LifecycleSupersedeSpec(ctx, "same-slug", "same-slug", "")
 		require.ErrorIs(t, err, storage.ErrSameSlugs)
+	})
+
+	t.Run("SupersedeSpec_ReasonThreaded", func(t *testing.T) {
+		store := newStore(t)
+		clearDatabase(t, store)
+		ctx := context.Background()
+
+		doneStage := "done"
+
+		// Supplied reason lands verbatim on the old spec's changelog entry.
+		_, err := store.CreateSpec(ctx, "reason-old", "Old spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+		_, err = store.UpdateSpec(ctx, "reason-old", nil, &doneStage, nil, nil, nil)
+		require.NoError(t, err)
+		_, err = store.CreateSpec(ctx, "reason-new", "New spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+
+		const suppliedReason = "replaced by clearer design"
+		_, _, err = store.LifecycleSupersedeSpec(ctx, "reason-old", "reason-new", suppliedReason)
+		require.NoError(t, err)
+		require.Equal(t, suppliedReason, latestSupersededReason(t, store, ctx, "reason-old"))
+
+		// Empty reason falls back to the default "Superseded by <new>" note.
+		_, err = store.CreateSpec(ctx, "default-old", "Old spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+		_, err = store.UpdateSpec(ctx, "default-old", nil, &doneStage, nil, nil, nil)
+		require.NoError(t, err)
+		_, err = store.CreateSpec(ctx, "default-new", "New spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+
+		_, _, err = store.LifecycleSupersedeSpec(ctx, "default-old", "default-new", "")
+		require.NoError(t, err)
+		require.Equal(t, "Superseded by default-new", latestSupersededReason(t, store, ctx, "default-old"))
 	})
 
 	t.Run("AbandonSpec_HappyPath", func(t *testing.T) {
@@ -609,4 +644,110 @@ func TestLifecycle_AmendRefreshesEdgeHash(t *testing.T) {
 	require.Len(t, refreshedDeps, 1)
 	require.NotEqual(t, initialHashAtLink, refreshedDeps[0].ContentHashAtLink,
 		"ContentHashAtLink should be refreshed after upstream is re-completed")
+}
+
+// latestSupersededReason returns the Reason on the most recent "superseded"
+// changelog entry for slug. Fails the test if no such entry exists.
+func latestSupersededReason(t *testing.T, store *postgres.Store, ctx context.Context, slug string) string {
+	t.Helper()
+	entries, err := store.ListChanges(ctx, slug, storage.ChangeLogFilter{})
+	require.NoError(t, err)
+	for i := len(entries) - 1; i >= 0; i-- {
+		if entries[i].Stage == string(storage.SpecStageSuperseded) {
+			return entries[i].Reason
+		}
+	}
+	require.Fail(t, "no superseded changelog entry found", "slug=%s", slug)
+	return ""
+}
+
+// countClaimedByEdges returns the number of CLAIMED_BY edges from spec `slug`
+// in the default test project, queried directly against the database.
+func countClaimedByEdges(t *testing.T, ctx context.Context, slug string) int {
+	t.Helper()
+	pool, err := pgxpool.New(ctx, connString)
+	require.NoError(t, err)
+	defer pool.Close()
+
+	var count int
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT count(*) FROM edges
+		 WHERE project_slug = 'test' AND from_slug = $1 AND edge_type = 'CLAIMED_BY'`,
+		slug,
+	).Scan(&count))
+	return count
+}
+
+// TestLifecycleAmend_ReleasesClaim pins D-08: amending a claimed spec back to
+// authoring deletes both the claims row and the CLAIMED_BY edge inside the amend
+// transaction, and lands the spec one stage before the re-entry target. Amending
+// an unclaimed spec is a harmless no-op with respect to claims.
+func TestLifecycleAmend_ReleasesClaim(t *testing.T) {
+	t.Run("ClaimedSpec_ReleasesClaimAndEdge", func(t *testing.T) {
+		store := newStore(t)
+		clearDatabase(t, store)
+		ctx := context.Background()
+
+		_, err := store.CreateSpec(ctx, "claimed-amend", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+		inProgress := "in_progress"
+		_, err = store.UpdateSpec(ctx, "claimed-amend", nil, &inProgress, nil, nil, nil)
+		require.NoError(t, err)
+
+		// Seed an active claim.
+		_, err = store.ClaimSpec(ctx, "claimed-amend", "agent-1", 0)
+		require.NoError(t, err)
+		claim, err := store.GetActiveClaim(ctx, "claimed-amend")
+		require.NoError(t, err)
+		require.NotNil(t, claim, "precondition: spec must hold an active claim before amend")
+		require.Equal(t, 1, countClaimedByEdges(t, ctx, "claimed-amend"), "precondition: CLAIMED_BY edge present")
+
+		// Amend back to authoring at re-entry "shape" (lands at "spark").
+		amended, err := store.LifecycleAmendSpec(ctx, "claimed-amend", "needs rework", "shape")
+		require.NoError(t, err)
+
+		// (a) Claim row gone.
+		after, err := store.GetActiveClaim(ctx, "claimed-amend")
+		require.NoError(t, err)
+		require.Nil(t, after, "amend must release the active claim")
+
+		// (b) CLAIMED_BY edge gone.
+		require.Equal(t, 0, countClaimedByEdges(t, ctx, "claimed-amend"), "amend must delete the CLAIMED_BY edge")
+
+		// (c) Spec landed one stage before the re-entry target.
+		expected := storage.SpecStage("shape").PrecedingAuthStage()
+		require.Equal(t, expected, amended.Stage)
+		require.Equal(t, storage.SpecStageSpark, amended.Stage)
+	})
+
+	t.Run("UnclaimedSpec_NoErrorNoClaim", func(t *testing.T) {
+		store := newStore(t)
+		clearDatabase(t, store)
+		ctx := context.Background()
+
+		_, err := store.CreateSpec(ctx, "unclaimed-amend", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+		approved := "approved"
+		_, err = store.UpdateSpec(ctx, "unclaimed-amend", nil, &approved, nil, nil, nil)
+		require.NoError(t, err)
+
+		// No claim seeded — amend must be a harmless no-op w.r.t. claims.
+		require.Nil(t, mustGetActiveClaim(t, store, ctx, "unclaimed-amend"))
+
+		amended, err := store.LifecycleAmendSpec(ctx, "unclaimed-amend", "revisit approach", "specify")
+		require.NoError(t, err)
+		require.Equal(t, storage.SpecStage("specify").PrecedingAuthStage(), amended.Stage)
+
+		// Still no claim and no CLAIMED_BY edge.
+		require.Nil(t, mustGetActiveClaim(t, store, ctx, "unclaimed-amend"))
+		require.Equal(t, 0, countClaimedByEdges(t, ctx, "unclaimed-amend"))
+	})
+}
+
+// mustGetActiveClaim fetches the active claim for slug, failing on error.
+func mustGetActiveClaim(t *testing.T, store *postgres.Store, ctx context.Context, slug string) *storage.Claim {
+	t.Helper()
+	claim, err := store.GetActiveClaim(ctx, slug)
+	require.NoError(t, err)
+	return claim
 }
