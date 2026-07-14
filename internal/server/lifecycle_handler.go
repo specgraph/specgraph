@@ -52,16 +52,10 @@ func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Req
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if msg.ReEntryStage == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("re_entry_stage is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("re_entry_stage is required — one of: spark, shape, specify, decompose"))
 	}
-	if msg.ReEntryStage != "" {
-		stage := storage.SpecStage(msg.ReEntryStage)
-		if !stage.IsValid() {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid re_entry_stage %q", msg.ReEntryStage))
-		}
-		if stage.ExcludesReEntry() {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("re_entry_stage %q cannot be used as a re-entry point", msg.ReEntryStage))
-		}
+	if !storage.SpecStage(msg.ReEntryStage).IsValidReEntryStage() {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid re_entry_stage %q — must be one of: spark, shape, specify, decompose", msg.ReEntryStage))
 	}
 
 	spec, err := store.LifecycleAmendSpec(ctx, msg.Slug, msg.Reason, msg.ReEntryStage)

@@ -170,7 +170,11 @@ func TestLifecycle(t *testing.T) {
 		clearDatabase(t, store)
 		ctx := context.Background()
 
-		for _, stage := range []string{"done", "superseded", "abandoned"} {
+		// Beyond the terminal stages (done/superseded/abandoned), the D-03
+		// allowlist also rejects the non-terminal approved/in_progress/review
+		// stages — defense-in-depth against a storage-only revert to the weak
+		// ExcludesReEntry guard.
+		for _, stage := range []string{"done", "superseded", "abandoned", "approved", "in_progress", "review"} {
 			slug := "amend-reentry-" + stage
 			_, err := store.CreateSpec(ctx, slug, "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 			require.NoError(t, err)

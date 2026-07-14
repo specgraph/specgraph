@@ -40,7 +40,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		return nil, fmt.Errorf("amend spec %q: %w", slug, storage.ErrReEntryStageRequired)
 	}
 	targetStage := storage.SpecStage(reEntryStage)
-	if targetStage.ExcludesReEntry() {
+	if !targetStage.IsValidReEntryStage() {
 		return nil, fmt.Errorf("amend spec %q: re_entry_stage %q: %w", slug, reEntryStage, storage.ErrInvalidReEntryStage)
 	}
 
