@@ -58,6 +58,8 @@ Details: `.planning/milestones/v0.12.0-ROADMAP.md` · Requirements: `.planning/m
 
   - [ ] 06-04-PLAN.md — MCP write-input handler shim (constitution + funnel friendly YAML)
 
+> **Atomic-release constraint (pass-3 review, HIGH):** 06-02 (skills teach friendly-YAML `output`/`exchanges`) and 06-04 (handlers accept that friendly YAML) MUST land in the same merge window (single PR or stacked merge, no intermediate deploy). Shipping 06-02 without 06-04 leaves a window where a live MCP-only agent hits the still-protojson handlers and reproduces #1002. This is a merge/release constraint only — it does not change the wave graph.
+
 **Wave 3** *(blocked on Wave 2 completion)*
 
   - [ ] 06-05-PLAN.md — MCP-only authoring e2e verification gate
