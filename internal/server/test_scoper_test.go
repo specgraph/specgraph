@@ -189,14 +189,6 @@ func (stubBackend) StoreSafetyFlags(context.Context, string, []storage.SafetyFla
 	return errNotImplemented
 }
 
-func (stubBackend) SupersedeSpec(context.Context, string, string, string) error {
-	return errNotImplemented
-}
-
-func (stubBackend) AmendSpec(context.Context, string, string, storage.SpecStage) (*storage.AmendResult, error) {
-	return nil, errNotImplemented
-}
-
 // --- FindingsBackend ---
 
 func (stubBackend) StoreFindings(context.Context, string, storage.PassType, []storage.AnalyticalFindingInput) ([]string, error) {

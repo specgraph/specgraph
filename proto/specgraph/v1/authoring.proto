@@ -372,45 +372,6 @@ message ApproveResponse {
   google.protobuf.Timestamp approved_at = 3;
 }
 
-// AmendRequest rolls a non-approved spec back to an earlier stage for rework.
-// Approved specs cannot be amended; use Supersede to replace them instead.
-message AmendRequest {
-  // Spec slug identifying the spec to amend.
-  string slug = 1;
-  // Human-readable explanation of why the spec is being amended.
-  string reason = 2;
-  // Stage the spec should be returned to for rework.
-  AuthoringStage target_stage = 3;
-}
-
-// AmendResponse confirms the amendment and reports the spec's new state.
-message AmendResponse {
-  // Spec slug of the amended spec.
-  string slug = 1;
-  // Authoring stage the spec now occupies after amendment.
-  AuthoringStage stage = 2;
-  // Monotonically increasing amendment count for this spec.
-  int32 version = 3;
-}
-
-// SupersedeRequest marks a spec as replaced by a newer spec.
-message SupersedeRequest {
-  // Spec slug of the spec being superseded.
-  string slug = 1;
-  // Spec slug of the spec that replaces the one being superseded.
-  string superseded_by = 2;
-  // Human-readable explanation of why this spec is being superseded.
-  string reason = 3;
-}
-
-// SupersedeResponse confirms the supersession relationship.
-message SupersedeResponse {
-  // Spec slug of the spec that was superseded.
-  string slug = 1;
-  // Spec slug of the spec that now supersedes it.
-  string superseded_by = 2;
-}
-
 // GetPromptsRequest retrieves available prompt templates for a given authoring stage.
 // The APPROVED stage has no prompts; requesting it returns INVALID_ARGUMENT.
 message GetPromptsRequest {

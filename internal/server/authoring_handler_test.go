@@ -27,9 +27,6 @@ type fakeAuthoringBackend struct {
 	storeShapeOutputErr     error
 	storeSpecifyOutputErr   error
 	storeDecomposeOutputErr error
-	supersedeErr            error
-	amendErr                error
-	amendResult             *storage.AmendResult
 	storeSafetyFlagsErr     error
 }
 
@@ -62,14 +59,6 @@ func (f *fakeAuthoringBackend) StoreDecomposeOutput(_ context.Context, slug stri
 
 func (f *fakeAuthoringBackend) StoreSafetyFlags(_ context.Context, _ string, _ []storage.SafetyFlag) error {
 	return f.storeSafetyFlagsErr
-}
-
-func (f *fakeAuthoringBackend) SupersedeSpec(_ context.Context, _, _, _ string) error {
-	return f.supersedeErr
-}
-
-func (f *fakeAuthoringBackend) AmendSpec(_ context.Context, _, _ string, _ storage.SpecStage) (*storage.AmendResult, error) {
-	return f.amendResult, f.amendErr
 }
 
 // fakeBackend is a minimal fake implementation of storage.Backend for testing.
@@ -186,14 +175,6 @@ func (a *authoringTestBackend) StoreDecomposeOutput(ctx context.Context, slug st
 
 func (a *authoringTestBackend) StoreSafetyFlags(ctx context.Context, slug string, flags []storage.SafetyFlag) error {
 	return a.authoring.StoreSafetyFlags(ctx, slug, flags)
-}
-
-func (a *authoringTestBackend) SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error {
-	return a.authoring.SupersedeSpec(ctx, slug, supersededBy, reason)
-}
-
-func (a *authoringTestBackend) AmendSpec(ctx context.Context, slug, reason string, targetStage storage.SpecStage) (*storage.AmendResult, error) {
-	return a.authoring.AmendSpec(ctx, slug, reason, targetStage)
 }
 
 // fakeConversationBackend implements storage.ConversationBackend for handler tests.

@@ -313,8 +313,6 @@ type mockAuthoringService struct {
 	specify                                   func(req *specv1.SpecifyRequest) (*specv1.SpecifyResponse, error)
 	decompose                                 func(req *specv1.DecomposeRequest) (*specv1.DecomposeResponse, error)
 	approve                                   func(slug string) (*specv1.ApproveResponse, error)
-	amend                                     func(req *specv1.AmendRequest) (*specv1.AmendResponse, error)
-	supersede                                 func(req *specv1.SupersedeRequest) (*specv1.SupersedeResponse, error)
 	recordConversation                        func(req *specv1.RecordConversationRequest) (*specv1.RecordConversationResponse, error)
 	listConversations                         func(req *specv1.ListConversationsRequest) (*specv1.ListConversationsResponse, error)
 	getPrompts                                func(req *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error)
@@ -369,28 +367,6 @@ func (m *mockAuthoringService) Approve(_ context.Context, req *connect.Request[s
 		panic("mockAuthoringService.Approve not configured")
 	}
 	resp, err := m.approve(req.Msg.GetSlug())
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(resp), nil
-}
-
-func (m *mockAuthoringService) Amend(_ context.Context, req *connect.Request[specv1.AmendRequest]) (*connect.Response[specv1.AmendResponse], error) {
-	if m.amend == nil {
-		panic("mockAuthoringService.Amend not configured")
-	}
-	resp, err := m.amend(req.Msg)
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(resp), nil
-}
-
-func (m *mockAuthoringService) Supersede(_ context.Context, req *connect.Request[specv1.SupersedeRequest]) (*connect.Response[specv1.SupersedeResponse], error) {
-	if m.supersede == nil {
-		panic("mockAuthoringService.Supersede not configured")
-	}
-	resp, err := m.supersede(req.Msg)
 	if err != nil {
 		return nil, err
 	}

@@ -71,23 +71,3 @@ func ValidateTransition(from, to SpecStage) error {
 
 	return fmt.Errorf("invalid transition from %q to %q", from, to)
 }
-
-// ValidateAmendTransition checks whether an amend (backward) transition is valid.
-// It only allows moving to an earlier stage — forward transitions and same-to-same
-// are rejected. This is distinct from ValidateTransition which allows both directions.
-func ValidateAmendTransition(from, to SpecStage) error {
-	if from == to {
-		return fmt.Errorf("amend transition from %q to %q is a no-op", from, to)
-	}
-	fromIdx, toIdx, err := validateStageNames(from, to, false)
-	if err != nil {
-		return err
-	}
-
-	// Only backward transitions are allowed for amend.
-	if toIdx < fromIdx {
-		return nil
-	}
-
-	return fmt.Errorf("amend requires backward transition: %q to %q is not backward", from, to)
-}
