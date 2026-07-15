@@ -295,6 +295,13 @@ func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is in a terminal state")))
 	}
 	if errors.Is(err, storage.ErrSpecIneligibleForDrift) {
+		// Reachable via the CheckDrift RPC: driftChecker.Check() returns this
+		// sentinel at the top level when a caller drift-checks a specific
+		// non-done spec (internal/drift/drift.go — the eligibility guard). It is
+		// NOT emitted by the AcknowledgeDrift path, which uses
+		// ErrSpecIneligibleStage instead. Keep this branch so a non-done
+		// drift-check surfaces as CodeFailedPrecondition rather than an opaque
+		// internal error.
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is not eligible for drift checking (must be done)")))
 	}
 	if errors.Is(err, storage.ErrNewSpecNotFound) {
