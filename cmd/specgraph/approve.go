@@ -19,7 +19,10 @@ var approveCmd = &cobra.Command{
 	RunE:  runApprove,
 }
 
+var approveConversation string
+
 func init() {
+	registerConversationFlag(approveCmd, &approveConversation, true)
 	rootCmd.AddCommand(approveCmd)
 }
 
@@ -28,8 +31,13 @@ func runApprove(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	exchanges, err := loadConversationFlag(approveConversation)
+	if err != nil {
+		return fmt.Errorf("approve: %w", err)
+	}
 	resp, err := client.Approve(cmd.Context(), connect.NewRequest(&specv1.ApproveRequest{
-		Slug: args[0],
+		Slug:                  args[0],
+		ConversationExchanges: exchanges,
 	}))
 	if err != nil {
 		return fmt.Errorf("approve: %w", err)
