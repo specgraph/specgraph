@@ -721,10 +721,18 @@ func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims, in
 		}
 	}
 
-	// (4) Atomically create user + binding.
+	// (4) Atomically create user + binding. Prefer claims.Name so a provider
+	// that supplies a display name at first login doesn't seed the
+	// stale-fallback value that 09-01's reconciliation would otherwise need
+	// to self-heal later (D-07); fall back to claims.Subject when the
+	// provider has none. An operator can still rename later either way.
+	seedName := claims.Subject
+	if claims.Name != "" {
+		seedName = claims.Name
+	}
 	u := &storage.User{
 		Kind:        storage.KindHuman,
-		DisplayName: claims.Subject, // operator can rename later
+		DisplayName: seedName,
 		Email:       claims.Email,
 		Role:        string(role),
 	}

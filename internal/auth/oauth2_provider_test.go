@@ -97,6 +97,23 @@ func TestOAuth2Provider_Exchange_UnverifiedEmailBlank(t *testing.T) {
 	require.Empty(t, claims.Email, "an unverified email must be treated as blank")
 }
 
+// TestOAuth2Provider_Exchange_PopulatesName is a regression guard for D-05's
+// "already correct" research finding: Exchange must populate OIDCClaims.Name
+// from the userinfo "name" field via displayNameFromUserinfo, with no
+// production change required in this plan.
+func TestOAuth2Provider_Exchange_PopulatesName(t *testing.T) {
+	srv := oauth2StubServer(t,
+		`{"id":583231,"login":"octocat","name":"The Octocat","email":null}`,
+		`[{"email":"octo@example.com","primary":true,"verified":true}]`,
+	)
+	p := newOAuth2TestProvider(srv)
+
+	claims, err := p.Exchange(context.Background(), "code-xyz", "verifier-abc", "", srv.URL+"/callback")
+	require.NoError(t, err)
+	require.NotEmpty(t, claims.Name, "Exchange must populate Name from userinfo")
+	require.Equal(t, "The Octocat", claims.Name)
+}
+
 // TestOAuth2Provider_AuthCodeURL proves the authorize URL carries state + PKCE
 // S256 but NO nonce (there is no id_token to bind a nonce to).
 func TestOAuth2Provider_AuthCodeURL(t *testing.T) {
