@@ -849,8 +849,11 @@ export type ApproveRequest = Message<"specgraph.v1.ApproveRequest"> & {
   action: ApproveAction;
 
   /**
-   * REQUIRED when action == APPROVE_ACTION_REJECT. Conversation exchanges
-   * capturing the rejection rationale.
+   * REQUIRED for BOTH approve dispositions — accept AND reject. For accept this
+   * covers APPROVE_ACTION_ACCEPT AND the default APPROVE_ACTION_UNSPECIFIED,
+   * which falls through to accept: an unspecified/default accept still requires
+   * exchanges. Conversation exchanges capture the approval (or rejection)
+   * rationale and are validated via authoring.ValidateExchanges before persist.
    *
    * @generated from field: repeated specgraph.v1.ConversationExchange conversation_exchanges = 3;
    */

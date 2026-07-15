@@ -355,8 +355,11 @@ message ApproveRequest {
   string slug = 1;
   // Approval action. Default (UNSPECIFIED) behaves as ACCEPT.
   ApproveAction action = 2;
-  // REQUIRED when action == APPROVE_ACTION_REJECT. Conversation exchanges
-  // capturing the rejection rationale.
+  // REQUIRED for BOTH approve dispositions — accept AND reject. For accept this
+  // covers APPROVE_ACTION_ACCEPT AND the default APPROVE_ACTION_UNSPECIFIED,
+  // which falls through to accept: an unspecified/default accept still requires
+  // exchanges. Conversation exchanges capture the approval (or rejection)
+  // rationale and are validated via authoring.ValidateExchanges before persist.
   repeated ConversationExchange conversation_exchanges = 3;
 }
 

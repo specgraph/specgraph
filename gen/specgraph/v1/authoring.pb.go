@@ -1858,8 +1858,11 @@ type ApproveRequest struct {
 	Slug string `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
 	// Approval action. Default (UNSPECIFIED) behaves as ACCEPT.
 	Action ApproveAction `protobuf:"varint,2,opt,name=action,proto3,enum=specgraph.v1.ApproveAction" json:"action,omitempty"`
-	// REQUIRED when action == APPROVE_ACTION_REJECT. Conversation exchanges
-	// capturing the rejection rationale.
+	// REQUIRED for BOTH approve dispositions — accept AND reject. For accept this
+	// covers APPROVE_ACTION_ACCEPT AND the default APPROVE_ACTION_UNSPECIFIED,
+	// which falls through to accept: an unspecified/default accept still requires
+	// exchanges. Conversation exchanges capture the approval (or rejection)
+	// rationale and are validated via authoring.ValidateExchanges before persist.
 	ConversationExchanges []*ConversationExchange `protobuf:"bytes,3,rep,name=conversation_exchanges,json=conversationExchanges,proto3" json:"conversation_exchanges,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
