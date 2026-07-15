@@ -48,13 +48,18 @@ func isPromotion(current, next string) bool {
 	return roleLessThan(Role(current), Role(next))
 }
 
-// applyLoginSync re-enforces the email allowlist, refreshes profile metadata,
-// and re-derives the role from the issuer just authenticated for an existing
-// OIDC user on interactive login. Returns the user to surface as the resolved
-// Identity. On a successful change it mutates the passed-in user in place AND
-// returns it; callers must pass a non-shared instance (resolveJWT passes the
-// freshly-scanned struct from GetUserByID). Returns an error that DENIES the
-// login on an allowlist miss or a failed demotion.
+// applyLoginSync re-enforces the email allowlist, refreshes the email
+// metadata, and re-derives the role from the issuer just authenticated for an
+// existing OIDC user on interactive login. display_name is NOT computed or
+// reconciled here (it is passed through unchanged) — that responsibility
+// moved unconditionally upstream to reconcileDisplayName in
+// materializeIdentity (AUTH-06, D-01/D-06), so this function stays gated on
+// loginSyncEnabled && interactive for role/email/allowlist only. Returns the
+// user to surface as the resolved Identity. On a successful change it mutates
+// the passed-in user in place AND returns it; callers must pass a non-shared
+// instance (resolveJWT passes the freshly-scanned struct from GetUserByID).
+// Returns an error that DENIES the login on an allowlist miss or a failed
+// demotion.
 //
 // Error model (classification is gated on `changed` FIRST):
 //   - allowlist domain miss (present email)   -> deny (ErrUnauthenticated)
@@ -77,25 +82,25 @@ func (s *pgIdentityStore) applyLoginSync(ctx context.Context, claims *OIDCClaims
 		}
 	}
 
-	// 2. Compute the new role and metadata.
+	// 2. Compute the new role and metadata. display_name is NOT computed here
+	// — it is reconciled unconditionally upstream in materializeIdentity (via
+	// reconcileDisplayName) before this gate runs, so user.DisplayName is
+	// already the reconciled value by the time applyLoginSync sees it. Pass
+	// it through unchanged (D-06).
 	newRole, changed := resolveLoginRole(s.jitClaimsMapping[claims.Issuer], claims.Raw, user.Role, string(s.jitDefaultRole))
 
-	newDisplay := user.DisplayName
-	if user.DisplayName == claims.Subject && claims.Name != "" {
-		newDisplay = claims.Name // update only if never renamed by an operator
-	}
 	newEmail := user.Email
 	if claims.Email != "" {
 		newEmail = claims.Email
 	}
 
 	// 3. No-op skip: nothing to persist.
-	if newDisplay == user.DisplayName && newEmail == user.Email && newRole == user.Role {
+	if newEmail == user.Email && newRole == user.Role {
 		return user, nil
 	}
 
 	// 4. Persist (single atomic UPDATE).
-	if err := s.users.UpdateUserOnLogin(ctx, user.ID, newDisplay, newEmail, newRole); err != nil {
+	if err := s.users.UpdateUserOnLogin(ctx, user.ID, user.DisplayName, newEmail, newRole); err != nil {
 		// ErrUserNotFound means the active-row guard (deleted_at IS NULL) matched
 		// nothing: the user was concurrently soft-deleted between the load in
 		// resolveJWT and this write. Fail closed regardless of changed/promotion —
@@ -128,7 +133,6 @@ func (s *pgIdentityStore) applyLoginSync(ctx context.Context, claims *OIDCClaims
 			slog.Bool("audit", true), slog.String("user_id", user.ID), slog.String("subject", claims.Subject),
 			slog.String("issuer", claims.Issuer), slog.String("old", user.Role), slog.String("new", newRole))
 	}
-	user.DisplayName = newDisplay
 	user.Email = newEmail
 	user.Role = newRole
 	return user, nil

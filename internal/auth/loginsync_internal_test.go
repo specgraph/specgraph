@@ -120,13 +120,20 @@ func TestApplyLoginSync_PromotesAndRefreshesMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "admin", out.Role)
 	require.Equal(t, "admin", gotRole)
-	require.Equal(t, "Ada", gotName) // DisplayName updated (stored was == subject)
+	// display_name is passed through unchanged — reconciliation now lives in
+	// reconcileDisplayName (materializeIdentity), not here. The stored value
+	// ("sub-1") is untouched even though claims.Name ("Ada") is present.
+	require.Equal(t, "sub-1", gotName)
 	require.Equal(t, "new@x.io", gotEmail)
 }
 
 func TestApplyLoginSync_PreservesOperatorRename(t *testing.T) {
 	fake := loginSyncFakeBackend{updateUserOnLogin: func(_ context.Context, _, dn, _, _ string) error {
-		require.Equal(t, "Operator Set Name", dn) // unchanged because stored != subject
+		// applyLoginSync now passes DisplayName through unchanged unconditionally
+		// (the staleness heuristic no longer lives in this function — it's
+		// reconcileDisplayName's job upstream). This still exercises a real
+		// UpdateUserOnLogin call because the role change below drives `changed`.
+		require.Equal(t, "Operator Set Name", dn)
 		return nil
 	}}
 	s := newSyncStore(t, fake, map[string][]config.ClaimMapping{"iss": {{Claim: "roles", Value: "x", Role: "admin"}}}, nil)
