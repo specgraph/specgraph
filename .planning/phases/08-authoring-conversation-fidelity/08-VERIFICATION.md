@@ -1,14 +1,16 @@
 ---
 phase: 08-authoring-conversation-fidelity
 verified: 2026-07-15T17:25:33Z
-status: human_needed
+status: passed
 score: 4/4 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Run `task pr-prep` (Docker) and confirm the storage integration test `TestListConversations_ApprovedStageRetrievable` (internal/storage/postgres/conversation_test.go) passes green."
     expected: "A conversation recorded under storage.SpecStageApproved is retrievable via ListConversations filtered on the stored value \"approved\" — proving SC4 runtime retrieval and the approve-gate stage-string discipline."
     why_human: "Requires Docker (testcontainers pgvector/pgvector:pg18), unavailable in this verification environment. Source + compile verified (go vet -tags integration clean); runtime deferred to CI per the phase's Docker-gated tier."
+
   - test: "Run the e2e tier (`go test -tags e2e ./e2e/api/...` under Docker, via `task pr-prep`) and confirm the MCP-only conversation-fidelity specs pass: the positive full-funnel spec (`records a non-empty retrievable conversation at every required stage`) and the negative spec (`rejects approve without exchanges`), plus the updated `mcp_only_authoring_test.go` funnel."
     expected: "Positive: every required stage (shape/specify/decompose/approve) has a non-empty retrievable conversation (approve filtered on \"approved\"). Negative: approve with no exchanges returns res.IsError (client guard or server InvalidArgument) — a missing conversation cannot silently pass. This is the D-10 regression backstop that would have caught #906."
     why_human: "Docker-gated Ginkgo e2e (testcontainers). Compile-verified via `go vet -tags e2e ./e2e/api/...` (exit 0) in this environment; runtime execution deferred to CI."
