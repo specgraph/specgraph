@@ -4,11 +4,10 @@ milestone: v0.14.0
 milestone_name: Authoring Surface Correctness
 current_phase: 9
 current_phase_name: JIT Display Name Reconciliation
-status: verifying
+status: "Phase 08 shipped — PR #1004"
 stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-07-15T19:46:12.865Z"
+last_updated: "2026-07-15T20:42:51.854Z"
 last_activity: 2026-07-15
-last_activity_desc: Phase 8 complete, transitioned to Phase 9
 progress:
   total_phases: 4
   completed_phases: 3
@@ -33,8 +32,8 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 
 Phase: 9 — JIT Display Name Reconciliation
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-15 — Phase 8 complete, transitioned to Phase 9
+Status: Phase 08 shipped — PR #1004
+Last activity: 2026-07-15
 
 ## Performance Metrics
 
