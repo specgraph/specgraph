@@ -143,3 +143,7 @@ None - no external service configuration required.
 ## Next Phase Readiness
 
 Plan 09-02 (introspection path, `jitResolve` seed-time fix, oauth2 regression test, and the Postgres integration test) depends on this plan and can proceed: `reconcileDisplayName` is a stable, reusable choke point that 09-02's introspection call site will also invoke, and the JWT/interactive-callback paths covered here are fully green (`go test -short -race ./internal/auth/...` and `task check` both pass).
+
+## Self-Check: PASSED
+
+All modified files present on disk; both task commits (`d9b2bb93`, `25c9fd65`) and the summary commit (`fb2725ca`) confirmed in `git log`.

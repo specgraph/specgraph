@@ -24,7 +24,7 @@ Requirements for milestone v0.14.0. Each maps to a roadmap phase once `gsd-roadm
 
 ### Identity
 
-- [ ] **AUTH-06**: On each successful login, a JIT-provisioned user's `display_name` is reconciled against a usable `name`/`preferred_username` claim and updated when a better value becomes available, replacing a stale subject-hash fallback (#994)
+- [x] **AUTH-06**: On each successful login, a JIT-provisioned user's `display_name` is reconciled against a usable `name`/`preferred_username` claim and updated when a better value becomes available, replacing a stale subject-hash fallback (#994)
 
 ## v2 Requirements
 

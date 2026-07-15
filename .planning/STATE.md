@@ -4,16 +4,16 @@ milestone: v0.14.0
 milestone_name: Authoring Surface Correctness
 current_phase: 9
 current_phase_name: JIT Display Name Reconciliation
-status: "Phase 08 shipped — PR #1004"
+status: executing
 stopped_at: Phase 9 context gathered
-last_updated: "2026-07-15T21:59:25.451Z"
+last_updated: "2026-07-15T22:18:49.988Z"
 last_activity: 2026-07-15
-last_activity_desc: Phase 9 planning complete
+last_activity_desc: Phase 9 execution started
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 16
+  completed_plans: 15
   percent: 75
 ---
 
@@ -27,14 +27,14 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 drift detection, and a durable storage/query layer — so both humans and agent-based execution
 engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
-**Current focus:** Phase 08 — authoring-conversation-fidelity
+**Current focus:** Phase 9 — JIT Display Name Reconciliation
 
 ## Current Position
 
-Phase: 9 — JIT Display Name Reconciliation
-Plan: Not started
-Status: Phase 08 shipped — PR #1004
-Last activity: 2026-07-15 — Phase 9 planning complete
+Phase: 9 (JIT Display Name Reconciliation) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-07-15 — Phase 9 execution started
 
 ## Performance Metrics
 
@@ -100,6 +100,7 @@ Last activity: 2026-07-15 — Phase 9 planning complete
 | Phase 08 P01 | 14min | 3 tasks | 6 files |
 | Phase 08 P02 | 12min | 3 tasks | 4 files |
 | Phase 08 P04 | 12min | 2 tasks | 2 files |
+| Phase 09 P01 | 16min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -158,6 +159,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase 08]: MCP inline-with-save is the only agent recording path — standalone conversation record action removed (#906 root-cause)
 - [Phase 08]: 08-04: approve-gate conversation list filters on stored stage "approved" not exchange stage "approve" (ListConversations exact SQL match)
 - [Phase 08]: 08-04: MCP-only conversation-fidelity negative case asserts res.IsError + error text (client guard or server InvalidArgument), not a specific Connect code (review R2 #6)
+- [Phase ?]: reconcileDisplayName does not accept or read the interactive flag (D-01) — reconciliation is unconditional by construction
+- [Phase ?]: Reconciliation write is guarded by the changed boolean and best-effort on persist failure (never denies login), since UpdateUserOnLogin is not SQL-level no-op-safe
+- [Phase ?]: In-memory user.DisplayName is updated before the loginSyncEnabled && interactive gate so applyLoginSync never re-derives stale state (Pitfall 2, no double-write)
 
 ### Pending Todos
 
@@ -183,7 +187,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T21:26:56.062Z
+Last session: 2026-07-15T22:16:22.983Z
 Stopped at: Phase 9 context gathered
 Resume file: .planning/phases/09-jit-display-name-reconciliation/09-CONTEXT.md
 
