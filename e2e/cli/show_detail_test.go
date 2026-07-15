@@ -27,7 +27,7 @@ var _ = Describe("Show Stage Detail", Ordered, func() {
 	})
 
 	It("shapes the spec", func() {
-		result := cli.RunInDir(workDir, "shape", slug, "--json-file", testdataPath("shape-output.json"))
+		result := cli.RunInDir(workDir, "shape", slug, "--json-file", testdataPath("shape-output.json"), "--conversation", testdataPath("conversation-input.json"))
 		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)
 		Expect(result.Stdout).To(ContainSubstring("Shaped: " + slug))
 	})

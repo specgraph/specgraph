@@ -106,7 +106,7 @@ var _ = Describe("MCP-only lifecycle (amend/supersede/re-entry)", Ordered, Label
 		author(slug, map[string]any{"action": "shape", "output": mcpOnlyShapeYAML, "exchanges": mcpOnlyShapeExchanges})
 		author(slug, map[string]any{"action": "specify", "output": mcpOnlySpecifyYAML, "exchanges": mcpOnlySpecifyExchanges})
 		author(slug, map[string]any{"action": "decompose", "output": mcpOnlyDecomposeYAML, "exchanges": mcpOnlyDecomposeExchanges})
-		author(slug, map[string]any{"action": "approve"})
+		author(slug, map[string]any{"action": "approve", "exchanges": mcpOnlyApproveExchanges})
 	}
 
 	// driveToDone advances an approved spec to done via the claim + report MCP

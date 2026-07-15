@@ -166,7 +166,13 @@ func advanceStage(ctx context.Context, slug, target string, httpClients ...*http
 	}
 
 	// approved
-	_, err = ac.Approve(ctx, connect.NewRequest(&specv1.ApproveRequest{Slug: slug}))
+	_, err = ac.Approve(ctx, connect.NewRequest(&specv1.ApproveRequest{
+		Slug: slug,
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "ready to approve?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "approved", Stage: "approve", Sequence: 2},
+		},
+	}))
 	if err != nil {
 		return fmt.Errorf("advanceStage approve: %w", err)
 	}

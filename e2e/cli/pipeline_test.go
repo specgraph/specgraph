@@ -28,25 +28,25 @@ var _ = Describe("CLI Pipeline", Ordered, func() {
 	})
 
 	It("shapes the spec", func() {
-		result := cli.RunInDir(workDir, "shape", slug, "--json-file", testdataPath("shape-output.json"))
+		result := cli.RunInDir(workDir, "shape", slug, "--json-file", testdataPath("shape-output.json"), "--conversation", testdataPath("conversation-input.json"))
 		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)
 		Expect(result.Stdout).To(ContainSubstring("Shaped: " + slug))
 	})
 
 	It("specifies the spec", func() {
-		result := cli.RunInDir(workDir, "specify", slug, "--json-file", testdataPath("specify-output.json"))
+		result := cli.RunInDir(workDir, "specify", slug, "--json-file", testdataPath("specify-output.json"), "--conversation", testdataPath("conversation-input.json"))
 		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)
 		Expect(result.Stdout).To(ContainSubstring("Specified: " + slug))
 	})
 
 	It("decomposes the spec", func() {
-		result := cli.RunInDir(workDir, "decompose", slug, "--json-file", testdataPath("decompose-output.json"))
+		result := cli.RunInDir(workDir, "decompose", slug, "--json-file", testdataPath("decompose-output.json"), "--conversation", testdataPath("conversation-input.json"))
 		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)
 		Expect(result.Stdout).To(ContainSubstring("Decomposed: " + slug))
 	})
 
 	It("approves the spec", func() {
-		result := cli.RunInDir(workDir, "approve", slug)
+		result := cli.RunInDir(workDir, "approve", slug, "--conversation", testdataPath("conversation-input.json"))
 		Expect(result.ExitCode).To(Equal(0), "stderr: %s", result.Stderr)
 		Expect(result.Stdout).To(ContainSubstring("Approved: " + slug))
 	})

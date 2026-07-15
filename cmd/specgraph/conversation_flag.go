@@ -76,11 +76,11 @@ func loadConversationFlag(path string) ([]*specv1.ConversationExchange, error) {
 			return nil, fmt.Errorf("parse stdin: %w", err)
 		}
 	} else {
-		f, err := os.Open(path) //nolint:gosec // path is CLI-supplied local value (see security note)
+		f, err := os.Open(path)
 		if err != nil {
 			return nil, fmt.Errorf("read %s: %w", path, err)
 		}
-		defer func() { _ = f.Close() }()
+		defer func() { _ = f.Close() }() //nolint:errcheck // best-effort cleanup
 		data, err := readBoundedConversation(f, path)
 		if err != nil {
 			return nil, err
