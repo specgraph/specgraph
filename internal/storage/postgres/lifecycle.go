@@ -140,6 +140,14 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug, re
 			return fmt.Errorf("postgres: supersede spec: pre-read %q: %w", oldSlug, preErr)
 		}
 		if oldCheck.Stage != storage.SpecStageDone {
+			// A terminal old spec (superseded/abandoned) is distinct from a
+			// merely in-flight one: amend also rejects terminal specs, so the
+			// ErrSpecNotDone "use amend for in-flight specs" hint would misdirect
+			// the caller (IN-01). Surface ErrSpecTerminal so the message names
+			// the actual precondition.
+			if terminalStages[oldCheck.Stage] {
+				return fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecTerminal)
+			}
 			return fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecNotDone)
 		}
 		newCheck, newErr := s.GetSpec(txCtx, newSlug)

@@ -287,9 +287,10 @@ func TestLifecycle(t *testing.T) {
 		_, err = store.LifecycleAbandonSpec(ctx, "terminal-old", "abandoned")
 		require.NoError(t, err)
 
-		// Supersede should fail because old spec is not done.
+		// Supersede should fail because old spec is terminal (abandoned), not
+		// merely non-done — surfaced as ErrSpecTerminal, not ErrSpecNotDone (IN-01).
 		_, _, err = store.LifecycleSupersedeSpec(ctx, "terminal-old", "replacement", "")
-		require.ErrorIs(t, err, storage.ErrSpecNotDone)
+		require.ErrorIs(t, err, storage.ErrSpecTerminal)
 	})
 
 	t.Run("SupersedeSpec_NewTerminal", func(t *testing.T) {
