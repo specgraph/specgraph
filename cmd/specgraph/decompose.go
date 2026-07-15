@@ -18,10 +18,14 @@ var decomposeCmd = &cobra.Command{
 	RunE:  runDecompose,
 }
 
-var decomposeJSONFile string
+var (
+	decomposeJSONFile     string
+	decomposeConversation string
+)
 
 func init() {
 	decomposeCmd.Flags().StringVar(&decomposeJSONFile, "json-file", "", "path to JSON file containing DecomposeOutput")
+	registerConversationFlag(decomposeCmd, &decomposeConversation, true)
 	rootCmd.AddCommand(decomposeCmd)
 }
 
@@ -36,10 +40,14 @@ func runDecompose(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("decompose: %w", loadErr)
 		}
 	}
+	exchanges, err := loadConversationFlag(decomposeConversation)
+	if err != nil {
+		return fmt.Errorf("decompose: %w", err)
+	}
 	resp, err := client.Decompose(cmd.Context(), connect.NewRequest(&specv1.DecomposeRequest{
 		Slug:                  args[0],
 		Output:                output,
-		ConversationExchanges: cliSyntheticExchanges("decompose"),
+		ConversationExchanges: exchanges,
 	}))
 	if err != nil {
 		return fmt.Errorf("decompose: %w", err)

@@ -18,10 +18,14 @@ var sparkCmd = &cobra.Command{
 	RunE:  runSpark,
 }
 
-var sparkSeed string
+var (
+	sparkSeed         string
+	sparkConversation string
+)
 
 func init() {
 	sparkCmd.Flags().StringVar(&sparkSeed, "seed", "", "seed idea (one sentence)")
+	registerConversationFlag(sparkCmd, &sparkConversation, false)
 	rootCmd.AddCommand(sparkCmd)
 }
 
@@ -30,9 +34,17 @@ func runSpark(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	var exchanges []*specv1.ConversationExchange
+	if sparkConversation != "" {
+		exchanges, err = loadConversationFlag(sparkConversation)
+		if err != nil {
+			return fmt.Errorf("spark: %w", err)
+		}
+	}
 	resp, err := client.Spark(cmd.Context(), connect.NewRequest(&specv1.SparkRequest{
-		Slug:   args[0],
-		Output: &specv1.SparkOutput{Seed: sparkSeed},
+		Slug:                  args[0],
+		Output:                &specv1.SparkOutput{Seed: sparkSeed},
+		ConversationExchanges: exchanges,
 	}))
 	if err != nil {
 		return fmt.Errorf("spark: %w", err)

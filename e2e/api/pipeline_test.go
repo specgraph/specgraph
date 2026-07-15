@@ -189,6 +189,10 @@ var _ = Describe("Full pipeline", Ordered, func() {
 	It("approves the spec", func() {
 		resp, err := authoringClient.Approve(ctx, connect.NewRequest(&specv1.ApproveRequest{
 			Slug: pipelineSlug,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "ready to approve?", Stage: "approve", Sequence: 1},
+				{Role: "response", Content: "approved", Stage: "approve", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Stage).To(Equal(specv1.AuthoringStage_AUTHORING_STAGE_APPROVED))

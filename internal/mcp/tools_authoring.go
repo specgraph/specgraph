@@ -120,8 +120,8 @@ func (t *authorTool) def() ToolDef {
 			"For spark/shape/specify/decompose pass the stage result in `output` as " +
 			"friendly snake_case YAML (e.g. spark `scope_sniff: small`; shape " +
 			"`scope_in`/`chosen_approach`; decompose `strategy: vertical_slice`) — " +
-			"no protojson/enum names. shape/specify/decompose also require `exchanges` " +
-			"(a JSON array; see param doc). " +
+			"no protojson/enum names. shape/specify/decompose/approve also require " +
+			"`exchanges` (a JSON array; see param doc). " +
 			"amend returns an IN-FLIGHT spec (approved/in_progress/review) to an earlier " +
 			"authoring stage: it lands the spec ONE stage before `re_entry_stage` so that " +
 			"stage's authoring command is the valid next transition — requires `reason` and " +
@@ -145,7 +145,7 @@ func (t *authorTool) def() ToolDef {
 				),
 				"exchanges": stringProp(
 					"Conversation log as a JSON array of ConversationExchange objects — " +
-						"required for shape/specify/decompose, optional for spark, not needed for approve. " +
+						"required for shape/specify/decompose/approve, optional for spark. " +
 						"Each object has: role (\"probe\" = agent asks, \"response\" = user answers), " +
 						"content (the text), stage (the authoring stage, e.g. \"shape\"), and " +
 						"sequence (strictly increasing integer >= 1; same number pairs a probe with its response). " +
@@ -216,11 +216,23 @@ func (t *authorTool) handleSpark(ctx context.Context, params map[string]any) (*T
 	if posErr != nil {
 		return posErr, nil
 	}
-	resp, err := t.client.Authoring.Spark(ctx, connect.NewRequest(&specv1.SparkRequest{
+	exchanges, exErr := parseOptionalExchanges(params)
+	if exErr != nil {
+		return exErr, nil
+	}
+	req := &specv1.SparkRequest{
 		Slug:    slug,
 		Output:  out,
 		Posture: posture,
-	}))
+	}
+	// Spark exchanges are OPTIONAL, but must NOT be dropped when the agent
+	// supplies them (D-01 parity with the server, which records spark exchanges
+	// when present — authoring_handler.go). Set only when non-empty; an absent
+	// slice stays absent (do not reject, unlike approve).
+	if len(exchanges) > 0 {
+		req.ConversationExchanges = exchanges
+	}
+	resp, err := t.client.Authoring.Spark(ctx, connect.NewRequest(req))
 	if err != nil {
 		return connectErrResult(err)
 	}
@@ -334,8 +346,20 @@ func (t *authorTool) handleApprove(ctx context.Context, params map[string]any) (
 	if slug == "" {
 		return errResult("slug is required for approve"), nil
 	}
+	exchanges, exErr := parseOptionalExchanges(params)
+	if exErr != nil {
+		return exErr, nil
+	}
+	// Approve REQUIRES exchanges (D-02): they capture the accept/reject
+	// rationale and the server (08-01) enforces this. Reject empty client-side
+	// with a friendlier message than the server's validation error. Unlike
+	// spark, an absent slice is NOT tolerated here.
+	if len(exchanges) == 0 {
+		return errResult("exchanges is required for approve (JSON array of ConversationExchange)"), nil
+	}
 	resp, err := t.client.Authoring.Approve(ctx, connect.NewRequest(&specv1.ApproveRequest{
-		Slug: slug,
+		Slug:                  slug,
+		ConversationExchanges: exchanges,
 	}))
 	if err != nil {
 		return connectErrResult(err)
@@ -414,7 +438,7 @@ func (t *authorTool) handleSupersede(ctx context.Context, params map[string]any)
 }
 
 // ---------------------------------------------------------------------------
-// conversationTool — record and list authoring conversation logs
+// conversationTool — list authoring conversation logs
 // ---------------------------------------------------------------------------
 
 type conversationTool struct {
@@ -424,16 +448,14 @@ type conversationTool struct {
 func (t *conversationTool) def() ToolDef {
 	return ToolDef{
 		Name: "conversation",
-		Description: "Record and list authoring conversation logs for a spec. " +
-			"Actions: record, list.",
+		Description: "List authoring conversation logs for a spec. " +
+			"Actions: list.",
 		Profile: ProfileAuthoring,
 		Schema: objectSchema(
 			props{
-				"action":    stringProp("Operation to perform", "record", "list"),
-				"slug":      stringProp("Spec slug (required)"),
-				"stage":     stringProp("Authoring stage (required for record; optional filter for list)"),
-				"exchanges": stringProp("JSON array of ConversationExchange objects (required for record)"),
-				"is_amend":  boolProp("Whether this conversation is part of an amendment"),
+				"action": stringProp("Operation to perform", "list"),
+				"slug":   stringProp("Spec slug (required)"),
+				"stage":  stringProp("Authoring stage (optional filter for list)"),
 			},
 			"action", "slug",
 		),
@@ -444,44 +466,11 @@ func (t *conversationTool) def() ToolDef {
 func (t *conversationTool) handle(ctx context.Context, params map[string]any) (*ToolResult, error) {
 	action := stringParam(params, "action")
 	switch action {
-	case "record":
-		return t.handleRecord(ctx, params)
 	case "list":
 		return t.handleList(ctx, params)
 	default:
-		return errResult(fmt.Sprintf("unknown action %q — valid: record, list", action)), nil
+		return errResult(fmt.Sprintf("unknown action %q — valid: list", action)), nil
 	}
-}
-
-func (t *conversationTool) handleRecord(ctx context.Context, params map[string]any) (*ToolResult, error) {
-	slug := stringParam(params, "slug")
-	if slug == "" {
-		return errResult("slug is required for record"), nil
-	}
-	stage := stringParam(params, "stage")
-	if stage == "" {
-		return errResult("stage is required for record"), nil
-	}
-	exchangesRaw := stringParam(params, "exchanges")
-	if exchangesRaw == "" {
-		return errResult("exchanges is required for record (JSON array of ConversationExchange)"), nil
-	}
-	// Parse exchanges array in isolation to prevent JSON injection.
-	var exchanges specv1.RecordConversationRequest
-	if err := protojson.Unmarshal([]byte(`{"exchanges":`+exchangesRaw+`}`), &exchanges); err != nil {
-		return errResult(fmt.Sprintf("invalid exchanges JSON: %v", err)), nil
-	}
-	req := &specv1.RecordConversationRequest{
-		Slug:      slug,
-		Stage:     stage,
-		Exchanges: exchanges.Exchanges,
-		IsAmend:   boolParam(params, "is_amend"),
-	}
-	resp, err := t.client.Authoring.RecordConversation(ctx, connect.NewRequest(req))
-	if err != nil {
-		return connectErrResult(err)
-	}
-	return jsonResult(resp.Msg), nil
 }
 
 func (t *conversationTool) handleList(ctx context.Context, params map[string]any) (*ToolResult, error) {

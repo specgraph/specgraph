@@ -141,6 +141,10 @@ var _ = Describe("Authoring funnel", Ordered, func() {
 	It("approves a decomposed spec", func() {
 		resp, err := authoringClient.Approve(ctx, connect.NewRequest(&specv1.ApproveRequest{
 			Slug: authoringSlug,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "ready to approve?", Stage: "approve", Sequence: 1},
+				{Role: "response", Content: "approved", Stage: "approve", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Stage).To(Equal(specv1.AuthoringStage_AUTHORING_STAGE_APPROVED))
@@ -255,6 +259,10 @@ var _ = Describe("Authoring funnel — steel thread", Ordered, func() {
 	It("approves the steel thread spec", func() {
 		resp, err := authoringClient.Approve(ctx, connect.NewRequest(&specv1.ApproveRequest{
 			Slug: steelThreadSlug,
+			ConversationExchanges: []*specv1.ConversationExchange{
+				{Role: "probe", Content: "ready to approve?", Stage: "approve", Sequence: 1},
+				{Role: "response", Content: "approved", Stage: "approve", Sequence: 2},
+			},
 		}))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Msg.Stage).To(Equal(specv1.AuthoringStage_AUTHORING_STAGE_APPROVED))

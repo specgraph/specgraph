@@ -18,10 +18,14 @@ var specifyCmd = &cobra.Command{
 	RunE:  runSpecify,
 }
 
-var specifyJSONFile string
+var (
+	specifyJSONFile     string
+	specifyConversation string
+)
 
 func init() {
 	specifyCmd.Flags().StringVar(&specifyJSONFile, "json-file", "", "path to JSON file containing SpecifyOutput")
+	registerConversationFlag(specifyCmd, &specifyConversation, true)
 	rootCmd.AddCommand(specifyCmd)
 }
 
@@ -36,10 +40,14 @@ func runSpecify(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("specify: %w", loadErr)
 		}
 	}
+	exchanges, err := loadConversationFlag(specifyConversation)
+	if err != nil {
+		return fmt.Errorf("specify: %w", err)
+	}
 	resp, err := client.Specify(cmd.Context(), connect.NewRequest(&specv1.SpecifyRequest{
 		Slug:                  args[0],
 		Output:                output,
-		ConversationExchanges: cliSyntheticExchanges("specify"),
+		ConversationExchanges: exchanges,
 	}))
 	if err != nil {
 		return fmt.Errorf("specify: %w", err)

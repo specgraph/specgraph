@@ -20,7 +20,7 @@ Requirements for milestone v0.14.0. Each maps to a roadmap phase once `gsd-roadm
 
 ### Authoring Fidelity
 
-- [ ] **CONV-01**: When a user runs a spec through the authoring funnel via skills (shape/specify/decompose/approve), the conversation is recorded for every stage — recording is enforced by the protocol, not left to agent discretion (#906)
+- [x] **CONV-01**: When a user runs a spec through the authoring funnel via skills (shape/specify/decompose/approve), the conversation is recorded for every stage — recording is enforced by the protocol, not left to agent discretion (#906)
 
 ### Identity
 

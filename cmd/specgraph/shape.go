@@ -18,10 +18,14 @@ var shapeCmd = &cobra.Command{
 	RunE:  runShape,
 }
 
-var shapeJSONFile string
+var (
+	shapeJSONFile     string
+	shapeConversation string
+)
 
 func init() {
 	shapeCmd.Flags().StringVar(&shapeJSONFile, "json-file", "", "path to JSON file containing ShapeOutput")
+	registerConversationFlag(shapeCmd, &shapeConversation, true)
 	rootCmd.AddCommand(shapeCmd)
 }
 
@@ -36,10 +40,14 @@ func runShape(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("shape: %w", loadErr)
 		}
 	}
+	exchanges, err := loadConversationFlag(shapeConversation)
+	if err != nil {
+		return fmt.Errorf("shape: %w", err)
+	}
 	resp, err := client.Shape(cmd.Context(), connect.NewRequest(&specv1.ShapeRequest{
 		Slug:                  args[0],
 		Output:                output,
-		ConversationExchanges: cliSyntheticExchanges("shape"),
+		ConversationExchanges: exchanges,
 	}))
 	if err != nil {
 		return fmt.Errorf("shape: %w", err)

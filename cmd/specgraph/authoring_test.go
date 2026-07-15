@@ -5,15 +5,113 @@ package main
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/gen/specgraph/v1/specgraphv1connect"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+// NOTE: The command tests in this file mutate package-level flag globals
+// (shapeConversation, shapeJSONFile, specifyConversation, sparkSeed, …) via a
+// save-old/restore-in-cleanup pattern (see withConversation and the per-test
+// save/restore blocks). This shared mutable state is NOT parallel-safe: these
+// tests must never call t.Parallel(), and their ordering must not be assumed to
+// be independent. Prefer constructing fresh cobra.Command instances with local
+// flag bindings per test (as TestConversationFlag_RequiredBeforeDispatch does)
+// when adding new coverage (IN-03).
+
+// withConversation points target at a valid bare-array --conversation file for
+// the duration of the test. Required stage commands (shape/specify/decompose/
+// approve) now load real exchanges, so their happy-path tests must supply one.
+func withConversation(t *testing.T, target *string) {
+	t.Helper()
+	path := writeJSONFile(t, `[{"role":"probe","content":"cli","stage":"stage","sequence":1}]`)
+	old := *target
+	*target = path
+	t.Cleanup(func() { *target = old })
+}
+
+// ---------------------------------------------------------------------------
+// loadConversationFlag (shared loader)
+// ---------------------------------------------------------------------------
+
+func TestLoadConversationFlag_ValidArray(t *testing.T) {
+	path := writeJSONFile(t, `[{"role":"probe","content":"hi","stage":"shape","sequence":1,"decision_point":true},{"role":"response","content":"ok","stage":"shape","sequence":2}]`)
+	got, err := loadConversationFlag(path)
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+	assert.Equal(t, "probe", got[0].Role)
+	assert.Equal(t, "hi", got[0].Content)
+	assert.Equal(t, "shape", got[0].Stage)
+	assert.Equal(t, int32(1), got[0].Sequence)
+	assert.True(t, got[0].DecisionPoint)
+	assert.Equal(t, "response", got[1].Role)
+	assert.Equal(t, int32(2), got[1].Sequence)
+	assert.False(t, got[1].DecisionPoint)
+}
+
+func TestLoadConversationFlag_Stdin(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "stdin.json")
+	require.NoError(t, os.WriteFile(p, []byte(`[{"role":"response","content":"c","stage":"approve","sequence":2}]`), 0o600))
+	f, err := os.Open(p)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = f.Close() })
+
+	old := os.Stdin
+	os.Stdin = f
+	t.Cleanup(func() { os.Stdin = old })
+
+	got, err := loadConversationFlag("-")
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "response", got[0].Role)
+	assert.Equal(t, int32(2), got[0].Sequence)
+}
+
+// TestLoadConversationFlag_RejectsObjectShape proves the array-only contract
+// (A2/Pitfall #3): the `conversation record` object shape is not accepted.
+func TestLoadConversationFlag_RejectsObjectShape(t *testing.T) {
+	path := writeJSONFile(t, `{"exchanges":[{"role":"probe","content":"c","stage":"shape","sequence":1}]}`)
+	_, err := loadConversationFlag(path)
+	require.Error(t, err)
+}
+
+func TestLoadConversationFlag_MissingFile(t *testing.T) {
+	_, err := loadConversationFlag(t.TempDir() + "/no-such-file.json")
+	require.Error(t, err)
+}
+
+// TestConversationFlag_RequiredBeforeDispatch proves a required stage command
+// errors from Cobra's required-flag validation BEFORE RunE runs, so no RPC is
+// dispatched when --conversation is absent (review R2 #4).
+func TestConversationFlag_RequiredBeforeDispatch(t *testing.T) {
+	var conv string
+	cmd := &cobra.Command{
+		Use:           "shape <slug>",
+		Args:          cobra.ExactArgs(1),
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		RunE: func(*cobra.Command, []string) error {
+			t.Fatal("RunE must not run when required --conversation is missing")
+			return nil
+		},
+	}
+	registerConversationFlag(cmd, &conv, true)
+	cmd.SetArgs([]string{"my-spec"})
+	cmd.SetContext(context.Background())
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "conversation")
+}
 
 // ---------------------------------------------------------------------------
 // Spark
@@ -106,12 +204,14 @@ func (fakeShapeHandler) Shape(_ context.Context, _ *connect.Request[specv1.Shape
 
 func TestRunShape_HappyPath(t *testing.T) {
 	startFakeAuthoringServer(t, fakeShapeHandler{})
+	withConversation(t, &shapeConversation)
 	err := runShape(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
 func TestRunShape_WithJSONFile(t *testing.T) {
 	startFakeAuthoringServer(t, fakeShapeHandler{})
+	withConversation(t, &shapeConversation)
 
 	path := writeJSONFile(t, `{"scopeIn":["feature A"],"risks":["tight deadline"]}`)
 	old := shapeJSONFile
@@ -157,6 +257,7 @@ func (fakeShapeErrorHandler) Shape(context.Context, *connect.Request[specv1.Shap
 
 func TestRunShape_RPCError(t *testing.T) {
 	startFakeAuthoringServer(t, fakeShapeErrorHandler{})
+	withConversation(t, &shapeConversation)
 	err := runShape(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "shape:")
@@ -187,12 +288,14 @@ func (fakeSpecifyHandler) Specify(_ context.Context, _ *connect.Request[specv1.S
 
 func TestRunSpecify_HappyPath(t *testing.T) {
 	startFakeAuthoringServer(t, fakeSpecifyHandler{})
+	withConversation(t, &specifyConversation)
 	err := runSpecify(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
 
 func TestRunSpecify_WithJSONFile(t *testing.T) {
 	startFakeAuthoringServer(t, fakeSpecifyHandler{})
+	withConversation(t, &specifyConversation)
 
 	path := writeJSONFile(t, `{"invariants":["no data loss"]}`)
 	old := specifyJSONFile
@@ -241,6 +344,7 @@ func (fakeDecomposeHandler) Decompose(_ context.Context, _ *connect.Request[spec
 
 func TestRunDecompose_HappyPath(t *testing.T) {
 	startFakeAuthoringServer(t, fakeDecomposeHandler{})
+	withConversation(t, &decomposeConversation)
 	err := runDecompose(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
@@ -263,6 +367,7 @@ func (fakeDecomposeWithSlicesHandler) Decompose(_ context.Context, _ *connect.Re
 
 func TestRunDecompose_WithSlices(t *testing.T) {
 	startFakeAuthoringServer(t, fakeDecomposeWithSlicesHandler{})
+	withConversation(t, &decomposeConversation)
 	err := runDecompose(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
 }
@@ -297,9 +402,11 @@ func TestDecomposeCmd_RequiresSlug(t *testing.T) {
 
 type fakeApproveHandler struct {
 	specgraphv1connect.UnimplementedAuthoringServiceHandler
+	gotExchanges int
 }
 
-func (fakeApproveHandler) Approve(_ context.Context, req *connect.Request[specv1.ApproveRequest]) (*connect.Response[specv1.ApproveResponse], error) {
+func (h *fakeApproveHandler) Approve(_ context.Context, req *connect.Request[specv1.ApproveRequest]) (*connect.Response[specv1.ApproveResponse], error) {
+	h.gotExchanges = len(req.Msg.GetConversationExchanges())
 	return connect.NewResponse(&specv1.ApproveResponse{
 		Slug:       req.Msg.GetSlug(),
 		ApprovedAt: timestamppb.Now(),
@@ -307,9 +414,12 @@ func (fakeApproveHandler) Approve(_ context.Context, req *connect.Request[specv1
 }
 
 func TestRunApprove_HappyPath(t *testing.T) {
-	startFakeAuthoringServer(t, fakeApproveHandler{})
+	h := &fakeApproveHandler{}
+	startFakeAuthoringServer(t, h)
+	withConversation(t, &approveConversation)
 	err := runApprove(newCmdWithCtx(), []string{"my-spec"})
 	require.NoError(t, err)
+	assert.Equal(t, 1, h.gotExchanges, "CLI approve must thread the loaded --conversation exchanges into ApproveRequest")
 }
 
 type fakeApproveErrorHandler struct {
@@ -322,6 +432,7 @@ func (fakeApproveErrorHandler) Approve(context.Context, *connect.Request[specv1.
 
 func TestRunApprove_RPCError(t *testing.T) {
 	startFakeAuthoringServer(t, fakeApproveErrorHandler{})
+	withConversation(t, &approveConversation)
 	err := runApprove(newCmdWithCtx(), []string{"my-spec"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "approve:")

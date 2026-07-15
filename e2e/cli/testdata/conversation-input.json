@@ -1,0 +1,4 @@
+[
+  { "role": "probe", "content": "What should this stage capture?", "sequence": 1 },
+  { "role": "response", "content": "The decisions and rationale for this stage.", "sequence": 2 }
+]

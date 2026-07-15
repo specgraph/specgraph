@@ -94,12 +94,85 @@ func TestAuthorTool_Spark_InvalidScopeSniff(t *testing.T) {
 	require.NotContains(t, result.Content[0].Text, "SCOPE_SNIFF")
 }
 
+// TestAuthorTool_Spark_ForwardsExchanges verifies that agent-supplied spark
+// exchanges are threaded into the SparkRequest rather than silently dropped
+// (D-01 parity with the server; review R2 #3). Spark exchanges stay optional,
+// but when provided they must be forwarded.
+func TestAuthorTool_Spark_ForwardsExchanges(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{
+		spark: func(req *specv1.SparkRequest) (*specv1.SparkResponse, error) {
+			require.Equal(t, "my-spec", req.GetSlug())
+			require.NotEmpty(t, req.GetConversationExchanges())
+			return &specv1.SparkResponse{Output: req.GetOutput()}, nil
+		},
+	}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "spark",
+		"slug":      "my-spec",
+		"output":    "seed: initial idea\n",
+		"exchanges": `[{"role":"probe","content":"what problem?","stage":"spark","sequence":1}]`,
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+}
+
+// TestAuthorTool_Spark_NoExchangesStillSucceeds verifies spark exchanges remain
+// OPTIONAL: a seed-only spark with no exchanges must not be rejected (D-01).
+func TestAuthorTool_Spark_NoExchangesStillSucceeds(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{
+		spark: func(req *specv1.SparkRequest) (*specv1.SparkResponse, error) {
+			require.Empty(t, req.GetConversationExchanges())
+			return &specv1.SparkResponse{Output: req.GetOutput()}, nil
+		},
+	}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "spark",
+		"slug":   "my-spec",
+		"output": "seed: initial idea\n",
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+}
+
+// TestAuthorTool_Spark_MalformedExchanges verifies a malformed spark exchanges
+// string is rejected at the MCP boundary (T-08-05).
+func TestAuthorTool_Spark_MalformedExchanges(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "spark",
+		"slug":      "my-spec",
+		"output":    "seed: initial idea\n",
+		"exchanges": `not valid json {{{`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "invalid exchanges JSON")
+}
+
 func TestAuthorTool_Approve(t *testing.T) {
 	c := &Client{Authoring: &mockAuthoringService{
-		approve: func(slug string) (*specv1.ApproveResponse, error) {
-			require.Equal(t, "my-spec", slug)
+		approve: func(req *specv1.ApproveRequest) (*specv1.ApproveResponse, error) {
+			require.Equal(t, "my-spec", req.GetSlug())
+			// The exchanges the agent supplied must be threaded into the
+			// ApproveRequest — not merely the slug (review R2 #2, D-02).
+			require.NotEmpty(t, req.GetConversationExchanges())
 			return &specv1.ApproveResponse{
-				Slug:  slug,
+				Slug:  req.GetSlug(),
 				Stage: specv1.AuthoringStage_AUTHORING_STAGE_APPROVED,
 			}, nil
 		},
@@ -110,12 +183,52 @@ func TestAuthorTool_Approve(t *testing.T) {
 	require.True(t, ok)
 
 	result, err := tool.Handler(context.Background(), map[string]any{
-		"action": "approve",
-		"slug":   "my-spec",
+		"action":    "approve",
+		"slug":      "my-spec",
+		"exchanges": `[{"role":"response","content":"approved, ship it","stage":"approve","sequence":1}]`,
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
 	require.Contains(t, result.Content[0].Text, "my-spec")
+}
+
+// TestAuthorTool_Approve_MissingExchanges verifies approve now REQUIRES
+// exchanges (D-02): an approve with no exchanges is rejected client-side with a
+// friendly message, mirroring the server enforcement from 08-01.
+func TestAuthorTool_Approve_MissingExchanges(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "approve",
+		"slug":   "my-spec",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "exchanges is required for approve")
+}
+
+// TestAuthorTool_Approve_MalformedExchanges verifies a syntactically invalid
+// exchanges JSON string is rejected at the MCP boundary via
+// parseOptionalExchanges (T-08-05 JSON-injection control).
+func TestAuthorTool_Approve_MalformedExchanges(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "approve",
+		"slug":      "my-spec",
+		"exchanges": `not valid json {{{`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "invalid exchanges JSON")
 }
 
 func TestAuthorTool_Approve_MissingSlug(t *testing.T) {
@@ -673,100 +786,25 @@ func TestConversationTool_List_MissingSlug(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "slug")
 }
 
-func TestConversationTool_Record(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{
-		recordConversation: func(req *specv1.RecordConversationRequest) (*specv1.RecordConversationResponse, error) {
-			require.Equal(t, "my-spec", req.GetSlug())
-			require.Equal(t, "spark", req.GetStage())
-			require.Len(t, req.GetExchanges(), 1)
-			return &specv1.RecordConversationResponse{
-				ConversationLog: &specv1.ConversationLog{Id: "log-1"},
-			}, nil
-		},
-	}}
-	r := NewRegistry()
-	RegisterAuthoringTools(r, c)
-	tool, ok := r.LookupTool("conversation")
-	require.True(t, ok)
-
-	result, err := tool.Handler(context.Background(), map[string]any{
-		"action":    "record",
-		"slug":      "my-spec",
-		"stage":     "spark",
-		"exchanges": `[{"role":"probe","content":"what is this?"}]`,
-	})
-	require.NoError(t, err)
-	require.False(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "log-1")
-}
-
-func TestConversationTool_Record_InvalidJSON(t *testing.T) {
+func TestConversationTool_Record_RemovedReturnsUnknownAction(t *testing.T) {
 	c := &Client{Authoring: &mockAuthoringService{}}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("conversation")
 	require.True(t, ok)
 
+	// The standalone record action was removed (D-06): inline-with-save is the
+	// only recording path. `record` must now fall through to unknown-action.
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action":    "record",
 		"slug":      "my-spec",
-		"stage":     "spark",
-		"exchanges": `not valid`,
-	})
-	require.NoError(t, err)
-	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "invalid exchanges JSON")
-}
-
-func TestConversationTool_Record_MissingSlug(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{}}
-	r := NewRegistry()
-	RegisterAuthoringTools(r, c)
-	tool, ok := r.LookupTool("conversation")
-	require.True(t, ok)
-
-	result, err := tool.Handler(context.Background(), map[string]any{
-		"action":    "record",
 		"stage":     "spark",
 		"exchanges": `[{"role":"probe","content":"what?"}]`,
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "slug")
-}
-
-func TestConversationTool_Record_MissingStage(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{}}
-	r := NewRegistry()
-	RegisterAuthoringTools(r, c)
-	tool, ok := r.LookupTool("conversation")
-	require.True(t, ok)
-
-	result, err := tool.Handler(context.Background(), map[string]any{
-		"action":    "record",
-		"slug":      "my-spec",
-		"exchanges": `[{"role":"probe","content":"what?"}]`,
-	})
-	require.NoError(t, err)
-	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "stage")
-}
-
-func TestConversationTool_Record_MissingExchanges(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{}}
-	r := NewRegistry()
-	RegisterAuthoringTools(r, c)
-	tool, ok := r.LookupTool("conversation")
-	require.True(t, ok)
-
-	result, err := tool.Handler(context.Background(), map[string]any{
-		"action": "record",
-		"slug":   "my-spec",
-		"stage":  "spark",
-	})
-	require.NoError(t, err)
-	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "exchanges")
+	require.Contains(t, result.Content[0].Text, "unknown action")
+	require.Contains(t, result.Content[0].Text, "record")
 }
 
 func TestConversationTool_UnknownAction(t *testing.T) {
