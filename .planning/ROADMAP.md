@@ -138,7 +138,15 @@ Plans: *(linearized 1→2→3→4→5 during `--reviews` incorporation to close 
   3. Reconciliation runs on every successful login, not only at first provisioning.
   4. When no usable claim is present, the existing `display_name` is preserved (no regression back to a subject-hash value).
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+**Wave 1**
+
+- [ ] 09-01-PLAN.md — Extract display-name reconciliation into an unconditional `reconcileDisplayName` helper wired into `materializeIdentity`; remove the redundant block from `applyLoginSync` + update its two white-box tests (D-01/D-03/D-06)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 09-02-PLAN.md — Introspection-path `claims.Name` parity fix + `jitResolve` seed-from-`claims.Name` + per-path unit tests (introspection/JIT/oauth2) + real-Postgres reconciliation integration test (D-02/D-04/D-05/D-07)
 
 ## Backlog
 
@@ -159,7 +167,7 @@ Plans:
 | 6. MCP Authoring Self-Teaching Path | v0.14.0 | 5/5 | Complete    | 2026-07-14 |
 | 7. Authoring Lifecycle Semantics | v0.14.0 | 5/5 | Complete    | 2026-07-14 |
 | 8. Authoring Conversation Fidelity | v0.14.0 | 4/4 | Complete    | 2026-07-15 |
-| 9. JIT Display Name Reconciliation | v0.14.0 | 0/? | Not started | - |
+| 9. JIT Display Name Reconciliation | v0.14.0 | 0/2 | Not started | - |
 | 1. Release & Build Tooling | v0.12.0 | 1/1 | Complete | 2026-07-09 |
 | 2. API Key Lifecycle & Self-Service | v0.12.0 | 8/8 | Complete | 2026-07-10 |
 | 3. External Identity Provider Integration | v0.12.0 | 4/4 | Complete | 2026-07-10 |
