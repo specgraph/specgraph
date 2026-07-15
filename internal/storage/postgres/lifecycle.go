@@ -135,6 +135,29 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug, re
 	}
 
 	txErr := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Acquire row locks on both specs up front, in a deterministic
+		// (lexicographic) order. Two concurrent mutually-superseding operations
+		// (A→B and B→A) would otherwise lock the two rows in opposite orders and
+		// deadlock; Postgres aborts one with SQLSTATE 40P01, which no sentinel
+		// matches, so it surfaces as an opaque CodeInternal instead of the
+		// retryable CodeAborted used for the version-guard path (IN-03). Locking
+		// the smaller slug first makes both orderings agree, so the operations
+		// serialize (the loser then fails the version guard with
+		// ErrConcurrentModification) rather than deadlocking. oldSlug != newSlug
+		// is already guaranteed above.
+		lockOrder := []string{oldSlug, newSlug}
+		if lockOrder[1] < lockOrder[0] {
+			lockOrder[0], lockOrder[1] = lockOrder[1], lockOrder[0]
+		}
+		for _, lockSlug := range lockOrder {
+			if _, lockErr := s.exec(txCtx,
+				`SELECT 1 FROM specs WHERE project_slug = $1 AND slug = $2 FOR UPDATE`,
+				s.project, lockSlug,
+			); lockErr != nil {
+				return fmt.Errorf("postgres: supersede spec: lock row %q: %w", lockSlug, lockErr)
+			}
+		}
+
 		oldCheck, preErr := s.GetSpec(txCtx, oldSlug)
 		if preErr != nil {
 			return fmt.Errorf("postgres: supersede spec: pre-read %q: %w", oldSlug, preErr)

@@ -312,6 +312,57 @@ func TestLifecycle(t *testing.T) {
 		require.ErrorIs(t, err, storage.ErrNewSpecTerminal)
 	})
 
+	t.Run("SupersedeSpec_ConcurrentMutual_NoDeadlock", func(t *testing.T) {
+		// IN-03: two concurrent, mutually-superseding done specs (A→B and B→A)
+		// must not deadlock into an opaque CodeInternal. Deterministic lock
+		// ordering serializes them, so the loser fails with a retryable sentinel
+		// (ErrConcurrentModification) or a precondition sentinel — never an
+		// internal guard failure / deadlock error.
+		store := newStore(t)
+		clearDatabase(t, store)
+		ctx := context.Background()
+
+		doneStage := "done"
+		_, err := store.CreateSpec(ctx, "mutual-a", "Spec A", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+		_, err = store.UpdateSpec(ctx, "mutual-a", nil, &doneStage, nil, nil, nil)
+		require.NoError(t, err)
+		_, err = store.CreateSpec(ctx, "mutual-b", "Spec B", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+		_, err = store.UpdateSpec(ctx, "mutual-b", nil, &doneStage, nil, nil, nil)
+		require.NoError(t, err)
+
+		const n = 2
+		errs := make(chan error, n)
+		go func() {
+			_, _, e := store.LifecycleSupersedeSpec(ctx, "mutual-a", "mutual-b", "a superseded by b")
+			errs <- e
+		}()
+		go func() {
+			_, _, e := store.LifecycleSupersedeSpec(ctx, "mutual-b", "mutual-a", "b superseded by a")
+			errs <- e
+		}()
+
+		for i := 0; i < n; i++ {
+			e := <-errs
+			if e == nil {
+				continue
+			}
+			// The loser must fail with a recognized, retryable/precondition
+			// sentinel — never ErrInternalGuardFailure and never a raw deadlock.
+			require.False(t, errors.Is(e, storage.ErrInternalGuardFailure),
+				"supersede must not surface an internal guard failure: %v", e)
+			require.NotContains(t, e.Error(), "deadlock",
+				"supersede must not surface a raw deadlock error: %v", e)
+			require.True(t,
+				errors.Is(e, storage.ErrConcurrentModification) ||
+					errors.Is(e, storage.ErrSpecNotDone) ||
+					errors.Is(e, storage.ErrSpecTerminal) ||
+					errors.Is(e, storage.ErrNewSpecTerminal),
+				"unexpected supersede error: %v", e)
+		}
+	})
+
 	t.Run("SupersedeSpec_SameSlug", func(t *testing.T) {
 		store := newStore(t)
 		clearDatabase(t, store)
