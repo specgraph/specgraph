@@ -169,6 +169,44 @@ func TestAuthorTool_Amend(t *testing.T) {
 	require.Contains(t, combined, "action=shape")
 }
 
+// TestAuthorTool_Amend_SparkReEntry verifies that amending with
+// re_entry_stage=spark does NOT emit an `author action=spark` next-step hint,
+// which would route to CreateSpec and fail with ALREADY_EXISTS (WR-01). The
+// spec lands AT spark, so a terminal-stage hint is surfaced instead.
+func TestAuthorTool_Amend_SparkReEntry(t *testing.T) {
+	mock := &mockLifecycleService{
+		transitionAmend: func(req *specv1.TransitionAmendRequest) (*specv1.TransitionAmendResponse, error) {
+			return &specv1.TransitionAmendResponse{
+				Spec: &specv1.Spec{Slug: req.GetSlug(), Version: 2},
+			}, nil
+		},
+	}
+	c := &Client{Lifecycle: mock}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":         "amend",
+		"slug":           "my-spec",
+		"reason":         "start over",
+		"re_entry_stage": "spark",
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+	require.Equal(t, "spark", mock.amendReq.GetReEntryStage())
+	var combined string
+	for _, ct := range result.Content {
+		combined += ct.Text
+	}
+	// Must NOT tell the agent to run the failing `author action=spark` command.
+	require.NotContains(t, combined, "action=spark")
+	// Must surface a terminal-stage explanation instead.
+	require.Contains(t, combined, "spark")
+	require.Contains(t, combined, "my-spec")
+}
+
 func TestAuthorTool_Amend_MissingReEntryStage(t *testing.T) {
 	c := &Client{Lifecycle: &mockLifecycleService{}}
 	r := NewRegistry()

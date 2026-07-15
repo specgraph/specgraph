@@ -375,6 +375,18 @@ func (t *authorTool) handleAmend(ctx context.Context, params map[string]any) (*T
 	// D-05: the spec lands one stage BEFORE re_entry_stage, so the author action
 	// for re_entry_stage is the valid next transition. Echo it so the agent does
 	// not reproduce the #899 no-op.
+	//
+	// Exception: re_entry_stage=spark lands the spec AT spark
+	// (PrecedingAuthStage(spark)==spark). There is no forward re-author command
+	// for spark — `author action=spark` routes to CreateSpec and fails with
+	// ALREADY_EXISTS. Emitting that hint would instruct the agent to run a call
+	// guaranteed to error (WR-01), contradicting the specgraph-authoring skill.
+	// Surface a terminal-stage hint instead.
+	if reEntryStage == "spark" {
+		hint := fmt.Sprintf("Spec %q is now at spark. There is no forward re-author command for spark; edit the seed via the normal flow.", slug)
+		res.Content = append(res.Content, Content{Type: "text", Text: hint})
+		return res, nil
+	}
 	hint := fmt.Sprintf("Next step: run author action=%s for spec %q to re-author the %s stage.",
 		reEntryStage, slug, reEntryStage)
 	res.Content = append(res.Content, Content{Type: "text", Text: hint})
