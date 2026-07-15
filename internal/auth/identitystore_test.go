@@ -675,6 +675,224 @@ func TestResolveJWT_SoftDeletedUserUnauthenticated(t *testing.T) {
 	require.ErrorIs(t, err, auth.ErrUnauthenticated)
 }
 
+// --- Phase 9 Plan 1: display-name reconciliation (AUTH-06) ---
+
+// TestResolveJWT_ReconcilesStaleDisplayName: an existing binding whose stored
+// display_name equals the token subject (the JIT-fallback heuristic, D-03)
+// self-heals to the token's `name` claim on a bearer-JWT login, with role and
+// email passed through unchanged (Pitfall 1).
+func TestResolveJWT_ReconcilesStaleDisplayName(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	var gotName, gotEmail, gotRole string
+	var calls int
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: issuer, Subject: subject}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			return &storage.User{
+				ID: id, Kind: storage.KindHuman, Role: "writer",
+				DisplayName: "user-123", // == token sub: stale JIT-fallback value
+				Email:       "alice@example.com",
+				CreatedAt:   time.Now(),
+			}, nil
+		},
+		updateUserOnLogin: func(_ context.Context, _, displayName, email, role string) error {
+			calls++
+			gotName, gotEmail, gotRole = displayName, email, role
+			return nil
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+	})
+	require.NoError(t, err)
+	token := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "user-123", "aud": "aud-1",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+		"name": "Ada Lovelace",
+	})
+
+	id, err := store.Resolve(context.Background(), token)
+	require.NoError(t, err)
+	require.Equal(t, 1, calls, "UpdateUserOnLogin must be called exactly once")
+	require.Equal(t, "Ada Lovelace", gotName)
+	require.Equal(t, "alice@example.com", gotEmail, "email passed through unchanged")
+	require.Equal(t, "writer", gotRole, "role passed through unchanged")
+	require.Equal(t, "Ada Lovelace", id.DisplayName)
+}
+
+// TestResolveJWT_ReconciliationRunsWithoutLoginSync proves D-01: reconciliation
+// fires even when LoginSyncEnabled is false and the login is the
+// non-interactive bearer-JWT path — decoupled from BOTH gates.
+func TestResolveJWT_ReconciliationRunsWithoutLoginSync(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	var gotName string
+	var calls int
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: issuer, Subject: subject}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			return &storage.User{
+				ID: id, Kind: storage.KindHuman, Role: "writer",
+				DisplayName: "user-456", // == token sub
+				Email:       "bob@example.com",
+				CreatedAt:   time.Now(),
+			}, nil
+		},
+		updateUserOnLogin: func(_ context.Context, _, displayName, _, _ string) error {
+			calls++
+			gotName = displayName
+			return nil
+		},
+	}
+	// LoginSyncEnabled deliberately omitted (false) — this must not gate reconciliation.
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+	})
+	require.NoError(t, err)
+	token := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "user-456", "aud": "aud-1",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+		"name": "Bob Ross",
+	})
+
+	// store.Resolve uses a bare context.Background() — never marked interactive.
+	id, err := store.Resolve(context.Background(), token)
+	require.NoError(t, err)
+	require.Equal(t, 1, calls, "UpdateUserOnLogin must be called even with LoginSyncEnabled=false and non-interactive")
+	require.Equal(t, "Bob Ross", gotName)
+	require.Equal(t, "Bob Ross", id.DisplayName)
+}
+
+// TestResolveJWT_PreservesDisplayNameWhenNoUsableClaim covers both halves of
+// AUTH-06 SC4: an operator-set name (!= subject) must never be touched, and a
+// stale (== subject) name with no usable claim on the token must be left
+// alone too — in neither case may UpdateUserOnLogin be invoked.
+func TestResolveJWT_PreservesDisplayNameWhenNoUsableClaim(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	cases := []struct {
+		name        string
+		sub         string
+		displayName string
+		tokenClaims map[string]any
+	}{
+		{
+			name:        "operator-set name with usable claim present",
+			sub:         "user-op",
+			displayName: "Operator Set Name", // != sub
+			tokenClaims: map[string]any{"name": "Claimed Name"},
+		},
+		{
+			name:        "stale but no usable claim on token",
+			sub:         "user-nc",
+			displayName: "user-nc", // == sub
+			tokenClaims: map[string]any{},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stub := &usersBackendStub{
+				lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
+					return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: issuer, Subject: subject}, nil
+				},
+				getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+					return &storage.User{
+						ID: id, Kind: storage.KindHuman, Role: "writer",
+						DisplayName: tc.displayName,
+						Email:       "e@example.com",
+						CreatedAt:   time.Now(),
+					}, nil
+				},
+				updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
+					t.Fatal("UpdateUserOnLogin must not be called")
+					return nil
+				},
+			}
+			store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+				Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+			})
+			require.NoError(t, err)
+			claims := map[string]any{
+				"iss": p.server.URL, "sub": tc.sub, "aud": "aud-1",
+				"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+			}
+			for k, val := range tc.tokenClaims {
+				claims[k] = val
+			}
+			token := p.mintToken(t, claims)
+
+			id, err := store.Resolve(context.Background(), token)
+			require.NoError(t, err)
+			require.Equal(t, tc.displayName, id.DisplayName)
+		})
+	}
+}
+
+// TestResolveJWT_ReconciliationPreservesRoleAndEmail is the Pitfall 1 guard:
+// the reconciliation write must always pass the user's existing DB role/email,
+// never a claims-derived value, even when the token carries claims that would
+// otherwise imply a role/email change (that's applyLoginSync's job, not this
+// path's).
+func TestResolveJWT_ReconciliationPreservesRoleAndEmail(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	var gotEmail, gotRole string
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: issuer, Subject: subject}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			return &storage.User{
+				ID: id, Kind: storage.KindHuman, Role: "admin",
+				DisplayName: "user-789", // == token sub
+				Email:       "existing@example.com",
+				CreatedAt:   time.Now(),
+			}, nil
+		},
+		updateUserOnLogin: func(_ context.Context, _, _, email, role string) error {
+			gotEmail, gotRole = email, role
+			return nil
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+	})
+	require.NoError(t, err)
+	token := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "user-789", "aud": "aud-1",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+		"name":  "New Name",
+		"email": "claimed@example.com", // must NOT flow into the reconciliation write
+	})
+
+	_, err = store.Resolve(context.Background(), token)
+	require.NoError(t, err)
+	require.Equal(t, "existing@example.com", gotEmail, "must be the existing DB email, never claims-derived")
+	require.Equal(t, "admin", gotRole, "must be the existing DB role, never claims-derived")
+}
+
 // --- Task 22: HasAuth ---
 
 func TestHasAuth_OnlyBootstrapReturnsFalse(t *testing.T) {
