@@ -189,8 +189,13 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	if msg.UpstreamSlug != "" && msg.All {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("cannot specify both upstream_slug and all=true"))
 	}
-	if len(msg.Note) > maxFieldLen {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("note exceeds maximum of %d characters", maxFieldLen))
+	// note is documented as Required in lifecycle.proto: an acknowledgment must
+	// carry a rationale so the ack-changelog audit trail is never empty. Enforce
+	// it here (not just in the CLI) so direct RPC callers can't persist a
+	// no-rationale acknowledgment. validateRequiredField covers both the
+	// empty-string and max-length checks.
+	if err := validateRequiredField("note", msg.Note); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	if err := store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.UpstreamSlug, msg.Note); err != nil {

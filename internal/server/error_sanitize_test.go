@@ -607,7 +607,7 @@ func TestLifecycleHandler_ErrorSanitization(t *testing.T) {
 
 	t.Run("AcknowledgeDrift", func(t *testing.T) {
 		_, err := client.AcknowledgeDrift(ctx, connect.NewRequest(&specv1.DriftAcknowledgeRequest{
-			Slug: "test-spec", All: true,
+			Slug: "test-spec", All: true, Note: "intentional",
 		}))
 		require.Equal(t, connect.CodeInternal, connect.CodeOf(err))
 		assertSanitized(t, err)

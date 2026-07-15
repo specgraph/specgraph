@@ -1335,3 +1335,22 @@ func TestLifecycleHandler_AcknowledgeDrift_InvalidSlug(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
 }
+
+func TestLifecycleHandler_AcknowledgeDrift_MissingNote(t *testing.T) {
+	deps := defaultTestDeps()
+	// The store must not be reached: an empty required note is rejected before
+	// any persistence happens.
+	deps.store.acknowledgeDrift = func(_ context.Context, _, _, _ string) error {
+		t.Fatalf("store should not be called when note is empty")
+		return nil
+	}
+	client := newLifecycleClient(t, deps)
+
+	_, err := client.AcknowledgeDrift(context.Background(), connect.NewRequest(&specv1.DriftAcknowledgeRequest{
+		Slug:         "my-spec",
+		UpstreamSlug: "upstream-spec",
+		Note:         "",
+	}))
+	require.Error(t, err)
+	require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
+}
