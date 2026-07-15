@@ -313,8 +313,6 @@ type mockAuthoringService struct {
 	specify                                   func(req *specv1.SpecifyRequest) (*specv1.SpecifyResponse, error)
 	decompose                                 func(req *specv1.DecomposeRequest) (*specv1.DecomposeResponse, error)
 	approve                                   func(slug string) (*specv1.ApproveResponse, error)
-	amend                                     func(req *specv1.AmendRequest) (*specv1.AmendResponse, error)
-	supersede                                 func(req *specv1.SupersedeRequest) (*specv1.SupersedeResponse, error)
 	recordConversation                        func(req *specv1.RecordConversationRequest) (*specv1.RecordConversationResponse, error)
 	listConversations                         func(req *specv1.ListConversationsRequest) (*specv1.ListConversationsResponse, error)
 	getPrompts                                func(req *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error)
@@ -375,28 +373,6 @@ func (m *mockAuthoringService) Approve(_ context.Context, req *connect.Request[s
 	return connect.NewResponse(resp), nil
 }
 
-func (m *mockAuthoringService) Amend(_ context.Context, req *connect.Request[specv1.AmendRequest]) (*connect.Response[specv1.AmendResponse], error) {
-	if m.amend == nil {
-		panic("mockAuthoringService.Amend not configured")
-	}
-	resp, err := m.amend(req.Msg)
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(resp), nil
-}
-
-func (m *mockAuthoringService) Supersede(_ context.Context, req *connect.Request[specv1.SupersedeRequest]) (*connect.Response[specv1.SupersedeResponse], error) {
-	if m.supersede == nil {
-		panic("mockAuthoringService.Supersede not configured")
-	}
-	resp, err := m.supersede(req.Msg)
-	if err != nil {
-		return nil, err
-	}
-	return connect.NewResponse(resp), nil
-}
-
 func (m *mockAuthoringService) RecordConversation(_ context.Context, req *connect.Request[specv1.RecordConversationRequest]) (*connect.Response[specv1.RecordConversationResponse], error) {
 	if m.recordConversation == nil {
 		panic("mockAuthoringService.RecordConversation not configured")
@@ -439,6 +415,36 @@ type mockLifecycleService struct {
 	checkDrift                                func(req *specv1.DriftCheckRequest) (*specv1.DriftCheckResponse, error)
 	acknowledgeDrift                          func(req *specv1.DriftAcknowledgeRequest) (*specv1.DriftAcknowledgeResponse, error)
 	lint                                      func(req *specv1.LintRequest) (*specv1.LintResponse, error)
+	transitionAmend                           func(req *specv1.TransitionAmendRequest) (*specv1.TransitionAmendResponse, error)
+	transitionSupersede                       func(req *specv1.TransitionSupersedeRequest) (*specv1.TransitionSupersedeResponse, error)
+
+	// Recorded requests for assertion.
+	amendReq     *specv1.TransitionAmendRequest
+	supersedeReq *specv1.TransitionSupersedeRequest
+}
+
+func (m *mockLifecycleService) TransitionAmend(_ context.Context, req *connect.Request[specv1.TransitionAmendRequest]) (*connect.Response[specv1.TransitionAmendResponse], error) {
+	if m.transitionAmend == nil {
+		panic("mockLifecycleService.TransitionAmend not configured")
+	}
+	m.amendReq = req.Msg
+	resp, err := m.transitionAmend(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (m *mockLifecycleService) TransitionSupersede(_ context.Context, req *connect.Request[specv1.TransitionSupersedeRequest]) (*connect.Response[specv1.TransitionSupersedeResponse], error) {
+	if m.transitionSupersede == nil {
+		panic("mockLifecycleService.TransitionSupersede not configured")
+	}
+	m.supersedeReq = req.Msg
+	resp, err := m.transitionSupersede(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(resp), nil
 }
 
 func (m *mockLifecycleService) CheckDrift(_ context.Context, req *connect.Request[specv1.DriftCheckRequest]) (*connect.Response[specv1.DriftCheckResponse], error) {

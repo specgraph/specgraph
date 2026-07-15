@@ -1982,254 +1982,6 @@ func (x *ApproveResponse) GetApprovedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-// AmendRequest rolls a non-approved spec back to an earlier stage for rework.
-// Approved specs cannot be amended; use Supersede to replace them instead.
-type AmendRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Spec slug identifying the spec to amend.
-	Slug string `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	// Human-readable explanation of why the spec is being amended.
-	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
-	// Stage the spec should be returned to for rework.
-	TargetStage   AuthoringStage `protobuf:"varint,3,opt,name=target_stage,json=targetStage,proto3,enum=specgraph.v1.AuthoringStage" json:"target_stage,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AmendRequest) Reset() {
-	*x = AmendRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[22]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AmendRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AmendRequest) ProtoMessage() {}
-
-func (x *AmendRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[22]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AmendRequest.ProtoReflect.Descriptor instead.
-func (*AmendRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{22}
-}
-
-func (x *AmendRequest) GetSlug() string {
-	if x != nil {
-		return x.Slug
-	}
-	return ""
-}
-
-func (x *AmendRequest) GetReason() string {
-	if x != nil {
-		return x.Reason
-	}
-	return ""
-}
-
-func (x *AmendRequest) GetTargetStage() AuthoringStage {
-	if x != nil {
-		return x.TargetStage
-	}
-	return AuthoringStage_AUTHORING_STAGE_UNSPECIFIED
-}
-
-// AmendResponse confirms the amendment and reports the spec's new state.
-type AmendResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Spec slug of the amended spec.
-	Slug string `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	// Authoring stage the spec now occupies after amendment.
-	Stage AuthoringStage `protobuf:"varint,2,opt,name=stage,proto3,enum=specgraph.v1.AuthoringStage" json:"stage,omitempty"`
-	// Monotonically increasing amendment count for this spec.
-	Version       int32 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AmendResponse) Reset() {
-	*x = AmendResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[23]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AmendResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AmendResponse) ProtoMessage() {}
-
-func (x *AmendResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[23]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AmendResponse.ProtoReflect.Descriptor instead.
-func (*AmendResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{23}
-}
-
-func (x *AmendResponse) GetSlug() string {
-	if x != nil {
-		return x.Slug
-	}
-	return ""
-}
-
-func (x *AmendResponse) GetStage() AuthoringStage {
-	if x != nil {
-		return x.Stage
-	}
-	return AuthoringStage_AUTHORING_STAGE_UNSPECIFIED
-}
-
-func (x *AmendResponse) GetVersion() int32 {
-	if x != nil {
-		return x.Version
-	}
-	return 0
-}
-
-// SupersedeRequest marks a spec as replaced by a newer spec.
-type SupersedeRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Spec slug of the spec being superseded.
-	Slug string `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	// Spec slug of the spec that replaces the one being superseded.
-	SupersededBy string `protobuf:"bytes,2,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"`
-	// Human-readable explanation of why this spec is being superseded.
-	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SupersedeRequest) Reset() {
-	*x = SupersedeRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[24]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SupersedeRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SupersedeRequest) ProtoMessage() {}
-
-func (x *SupersedeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[24]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SupersedeRequest.ProtoReflect.Descriptor instead.
-func (*SupersedeRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{24}
-}
-
-func (x *SupersedeRequest) GetSlug() string {
-	if x != nil {
-		return x.Slug
-	}
-	return ""
-}
-
-func (x *SupersedeRequest) GetSupersededBy() string {
-	if x != nil {
-		return x.SupersededBy
-	}
-	return ""
-}
-
-func (x *SupersedeRequest) GetReason() string {
-	if x != nil {
-		return x.Reason
-	}
-	return ""
-}
-
-// SupersedeResponse confirms the supersession relationship.
-type SupersedeResponse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Spec slug of the spec that was superseded.
-	Slug string `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
-	// Spec slug of the spec that now supersedes it.
-	SupersededBy  string `protobuf:"bytes,2,opt,name=superseded_by,json=supersededBy,proto3" json:"superseded_by,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *SupersedeResponse) Reset() {
-	*x = SupersedeResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[25]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *SupersedeResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*SupersedeResponse) ProtoMessage() {}
-
-func (x *SupersedeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[25]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use SupersedeResponse.ProtoReflect.Descriptor instead.
-func (*SupersedeResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{25}
-}
-
-func (x *SupersedeResponse) GetSlug() string {
-	if x != nil {
-		return x.Slug
-	}
-	return ""
-}
-
-func (x *SupersedeResponse) GetSupersededBy() string {
-	if x != nil {
-		return x.SupersededBy
-	}
-	return ""
-}
-
 // GetPromptsRequest retrieves available prompt templates for a given authoring stage.
 // The APPROVED stage has no prompts; requesting it returns INVALID_ARGUMENT.
 type GetPromptsRequest struct {
@@ -2242,7 +1994,7 @@ type GetPromptsRequest struct {
 
 func (x *GetPromptsRequest) Reset() {
 	*x = GetPromptsRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[26]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2254,7 +2006,7 @@ func (x *GetPromptsRequest) String() string {
 func (*GetPromptsRequest) ProtoMessage() {}
 
 func (x *GetPromptsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[26]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2267,7 +2019,7 @@ func (x *GetPromptsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPromptsRequest.ProtoReflect.Descriptor instead.
 func (*GetPromptsRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{26}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *GetPromptsRequest) GetStage() AuthoringStage {
@@ -2288,7 +2040,7 @@ type GetPromptsResponse struct {
 
 func (x *GetPromptsResponse) Reset() {
 	*x = GetPromptsResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[27]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2300,7 +2052,7 @@ func (x *GetPromptsResponse) String() string {
 func (*GetPromptsResponse) ProtoMessage() {}
 
 func (x *GetPromptsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[27]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2313,7 +2065,7 @@ func (x *GetPromptsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPromptsResponse.ProtoReflect.Descriptor instead.
 func (*GetPromptsResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{27}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GetPromptsResponse) GetPrompts() []*PromptTemplate {
@@ -2340,7 +2092,7 @@ type ConversationExchange struct {
 
 func (x *ConversationExchange) Reset() {
 	*x = ConversationExchange{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[28]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2352,7 +2104,7 @@ func (x *ConversationExchange) String() string {
 func (*ConversationExchange) ProtoMessage() {}
 
 func (x *ConversationExchange) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[28]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2365,7 +2117,7 @@ func (x *ConversationExchange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConversationExchange.ProtoReflect.Descriptor instead.
 func (*ConversationExchange) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{28}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ConversationExchange) GetRole() string {
@@ -2419,7 +2171,7 @@ type ConversationLog struct {
 
 func (x *ConversationLog) Reset() {
 	*x = ConversationLog{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[29]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2431,7 +2183,7 @@ func (x *ConversationLog) String() string {
 func (*ConversationLog) ProtoMessage() {}
 
 func (x *ConversationLog) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[29]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2444,7 +2196,7 @@ func (x *ConversationLog) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConversationLog.ProtoReflect.Descriptor instead.
 func (*ConversationLog) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{29}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ConversationLog) GetId() string {
@@ -2508,7 +2260,7 @@ type RecordConversationRequest struct {
 
 func (x *RecordConversationRequest) Reset() {
 	*x = RecordConversationRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[30]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2520,7 +2272,7 @@ func (x *RecordConversationRequest) String() string {
 func (*RecordConversationRequest) ProtoMessage() {}
 
 func (x *RecordConversationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[30]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2533,7 +2285,7 @@ func (x *RecordConversationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecordConversationRequest.ProtoReflect.Descriptor instead.
 func (*RecordConversationRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{30}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *RecordConversationRequest) GetSlug() string {
@@ -2573,7 +2325,7 @@ type RecordConversationResponse struct {
 
 func (x *RecordConversationResponse) Reset() {
 	*x = RecordConversationResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[31]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2585,7 +2337,7 @@ func (x *RecordConversationResponse) String() string {
 func (*RecordConversationResponse) ProtoMessage() {}
 
 func (x *RecordConversationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[31]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2598,7 +2350,7 @@ func (x *RecordConversationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecordConversationResponse.ProtoReflect.Descriptor instead.
 func (*RecordConversationResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{31}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *RecordConversationResponse) GetConversationLog() *ConversationLog {
@@ -2618,7 +2370,7 @@ type ListConversationsRequest struct {
 
 func (x *ListConversationsRequest) Reset() {
 	*x = ListConversationsRequest{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[32]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2630,7 +2382,7 @@ func (x *ListConversationsRequest) String() string {
 func (*ListConversationsRequest) ProtoMessage() {}
 
 func (x *ListConversationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[32]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2643,7 +2395,7 @@ func (x *ListConversationsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListConversationsRequest.ProtoReflect.Descriptor instead.
 func (*ListConversationsRequest) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{32}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ListConversationsRequest) GetSlug() string {
@@ -2669,7 +2421,7 @@ type ListConversationsResponse struct {
 
 func (x *ListConversationsResponse) Reset() {
 	*x = ListConversationsResponse{}
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[33]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2681,7 +2433,7 @@ func (x *ListConversationsResponse) String() string {
 func (*ListConversationsResponse) ProtoMessage() {}
 
 func (x *ListConversationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_specgraph_v1_authoring_proto_msgTypes[33]
+	mi := &file_specgraph_v1_authoring_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2694,7 +2446,7 @@ func (x *ListConversationsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListConversationsResponse.ProtoReflect.Descriptor instead.
 func (*ListConversationsResponse) Descriptor() ([]byte, []int) {
-	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{33}
+	return file_specgraph_v1_authoring_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListConversationsResponse) GetConversationLogs() []*ConversationLog {
@@ -2825,22 +2577,7 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x122\n" +
 	"\x05stage\x18\x02 \x01(\x0e2\x1c.specgraph.v1.AuthoringStageR\x05stage\x12;\n" +
 	"\vapproved_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"approvedAt\"{\n" +
-	"\fAmendRequest\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\x12?\n" +
-	"\ftarget_stage\x18\x03 \x01(\x0e2\x1c.specgraph.v1.AuthoringStageR\vtargetStage\"q\n" +
-	"\rAmendResponse\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\x122\n" +
-	"\x05stage\x18\x02 \x01(\x0e2\x1c.specgraph.v1.AuthoringStageR\x05stage\x12\x18\n" +
-	"\aversion\x18\x03 \x01(\x05R\aversion\"c\n" +
-	"\x10SupersedeRequest\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\x12#\n" +
-	"\rsuperseded_by\x18\x02 \x01(\tR\fsupersededBy\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\"L\n" +
-	"\x11SupersedeResponse\x12\x12\n" +
-	"\x04slug\x18\x01 \x01(\tR\x04slug\x12#\n" +
-	"\rsuperseded_by\x18\x02 \x01(\tR\fsupersededBy\"G\n" +
+	"approvedAt\"G\n" +
 	"\x11GetPromptsRequest\x122\n" +
 	"\x05stage\x18\x01 \x01(\x0e2\x1c.specgraph.v1.AuthoringStageR\x05stage\"L\n" +
 	"\x12GetPromptsResponse\x126\n" +
@@ -2909,15 +2646,13 @@ const file_specgraph_v1_authoring_proto_rawDesc = "" +
 	"\rApproveAction\x12\x1e\n" +
 	"\x1aAPPROVE_ACTION_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15APPROVE_ACTION_ACCEPT\x10\x01\x12\x19\n" +
-	"\x15APPROVE_ACTION_REJECT\x10\x022\xa4\x06\n" +
+	"\x15APPROVE_ACTION_REJECT\x10\x022\x94\x05\n" +
 	"\x10AuthoringService\x12@\n" +
 	"\x05Spark\x12\x1a.specgraph.v1.SparkRequest\x1a\x1b.specgraph.v1.SparkResponse\x12@\n" +
 	"\x05Shape\x12\x1a.specgraph.v1.ShapeRequest\x1a\x1b.specgraph.v1.ShapeResponse\x12F\n" +
 	"\aSpecify\x12\x1c.specgraph.v1.SpecifyRequest\x1a\x1d.specgraph.v1.SpecifyResponse\x12L\n" +
 	"\tDecompose\x12\x1e.specgraph.v1.DecomposeRequest\x1a\x1f.specgraph.v1.DecomposeResponse\x12F\n" +
-	"\aApprove\x12\x1c.specgraph.v1.ApproveRequest\x1a\x1d.specgraph.v1.ApproveResponse\x12@\n" +
-	"\x05Amend\x12\x1a.specgraph.v1.AmendRequest\x1a\x1b.specgraph.v1.AmendResponse\x12L\n" +
-	"\tSupersede\x12\x1e.specgraph.v1.SupersedeRequest\x1a\x1f.specgraph.v1.SupersedeResponse\x12O\n" +
+	"\aApprove\x12\x1c.specgraph.v1.ApproveRequest\x1a\x1d.specgraph.v1.ApproveResponse\x12O\n" +
 	"\n" +
 	"GetPrompts\x12\x1f.specgraph.v1.GetPromptsRequest\x1a .specgraph.v1.GetPromptsResponse\x12g\n" +
 	"\x12RecordConversation\x12'.specgraph.v1.RecordConversationRequest\x1a(.specgraph.v1.RecordConversationResponse\x12d\n" +
@@ -2936,7 +2671,7 @@ func file_specgraph_v1_authoring_proto_rawDescGZIP() []byte {
 }
 
 var file_specgraph_v1_authoring_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_specgraph_v1_authoring_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
+var file_specgraph_v1_authoring_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_specgraph_v1_authoring_proto_goTypes = []any{
 	(AuthoringStage)(0),                // 0: specgraph.v1.AuthoringStage
 	(Posture)(0),                       // 1: specgraph.v1.Posture
@@ -2967,19 +2702,15 @@ var file_specgraph_v1_authoring_proto_goTypes = []any{
 	(*DecomposeResponse)(nil),          // 26: specgraph.v1.DecomposeResponse
 	(*ApproveRequest)(nil),             // 27: specgraph.v1.ApproveRequest
 	(*ApproveResponse)(nil),            // 28: specgraph.v1.ApproveResponse
-	(*AmendRequest)(nil),               // 29: specgraph.v1.AmendRequest
-	(*AmendResponse)(nil),              // 30: specgraph.v1.AmendResponse
-	(*SupersedeRequest)(nil),           // 31: specgraph.v1.SupersedeRequest
-	(*SupersedeResponse)(nil),          // 32: specgraph.v1.SupersedeResponse
-	(*GetPromptsRequest)(nil),          // 33: specgraph.v1.GetPromptsRequest
-	(*GetPromptsResponse)(nil),         // 34: specgraph.v1.GetPromptsResponse
-	(*ConversationExchange)(nil),       // 35: specgraph.v1.ConversationExchange
-	(*ConversationLog)(nil),            // 36: specgraph.v1.ConversationLog
-	(*RecordConversationRequest)(nil),  // 37: specgraph.v1.RecordConversationRequest
-	(*RecordConversationResponse)(nil), // 38: specgraph.v1.RecordConversationResponse
-	(*ListConversationsRequest)(nil),   // 39: specgraph.v1.ListConversationsRequest
-	(*ListConversationsResponse)(nil),  // 40: specgraph.v1.ListConversationsResponse
-	(*timestamppb.Timestamp)(nil),      // 41: google.protobuf.Timestamp
+	(*GetPromptsRequest)(nil),          // 29: specgraph.v1.GetPromptsRequest
+	(*GetPromptsResponse)(nil),         // 30: specgraph.v1.GetPromptsResponse
+	(*ConversationExchange)(nil),       // 31: specgraph.v1.ConversationExchange
+	(*ConversationLog)(nil),            // 32: specgraph.v1.ConversationLog
+	(*RecordConversationRequest)(nil),  // 33: specgraph.v1.RecordConversationRequest
+	(*RecordConversationResponse)(nil), // 34: specgraph.v1.RecordConversationResponse
+	(*ListConversationsRequest)(nil),   // 35: specgraph.v1.ListConversationsRequest
+	(*ListConversationsResponse)(nil),  // 36: specgraph.v1.ListConversationsResponse
+	(*timestamppb.Timestamp)(nil),      // 37: google.protobuf.Timestamp
 }
 var file_specgraph_v1_authoring_proto_depIdxs = []int32{
 	5,  // 0: specgraph.v1.SparkOutput.scope_sniff:type_name -> specgraph.v1.ScopeSniff
@@ -2995,66 +2726,60 @@ var file_specgraph_v1_authoring_proto_depIdxs = []int32{
 	0,  // 10: specgraph.v1.PromptTemplate.stage:type_name -> specgraph.v1.AuthoringStage
 	7,  // 11: specgraph.v1.SparkRequest.output:type_name -> specgraph.v1.SparkOutput
 	1,  // 12: specgraph.v1.SparkRequest.posture:type_name -> specgraph.v1.Posture
-	35, // 13: specgraph.v1.SparkRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
+	31, // 13: specgraph.v1.SparkRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
 	7,  // 14: specgraph.v1.SparkResponse.output:type_name -> specgraph.v1.SparkOutput
 	17, // 15: specgraph.v1.SparkResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
 	18, // 16: specgraph.v1.SparkResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
 	9,  // 17: specgraph.v1.ShapeRequest.output:type_name -> specgraph.v1.ShapeOutput
 	1,  // 18: specgraph.v1.ShapeRequest.posture:type_name -> specgraph.v1.Posture
-	35, // 19: specgraph.v1.ShapeRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
+	31, // 19: specgraph.v1.ShapeRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
 	9,  // 20: specgraph.v1.ShapeResponse.output:type_name -> specgraph.v1.ShapeOutput
 	17, // 21: specgraph.v1.ShapeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
 	18, // 22: specgraph.v1.ShapeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
 	14, // 23: specgraph.v1.SpecifyRequest.output:type_name -> specgraph.v1.SpecifyOutput
 	1,  // 24: specgraph.v1.SpecifyRequest.posture:type_name -> specgraph.v1.Posture
-	35, // 25: specgraph.v1.SpecifyRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
+	31, // 25: specgraph.v1.SpecifyRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
 	14, // 26: specgraph.v1.SpecifyResponse.output:type_name -> specgraph.v1.SpecifyOutput
 	17, // 27: specgraph.v1.SpecifyResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
 	18, // 28: specgraph.v1.SpecifyResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
 	15, // 29: specgraph.v1.DecomposeRequest.output:type_name -> specgraph.v1.DecomposeOutput
 	1,  // 30: specgraph.v1.DecomposeRequest.posture:type_name -> specgraph.v1.Posture
-	35, // 31: specgraph.v1.DecomposeRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
+	31, // 31: specgraph.v1.DecomposeRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
 	15, // 32: specgraph.v1.DecomposeResponse.output:type_name -> specgraph.v1.DecomposeOutput
 	17, // 33: specgraph.v1.DecomposeResponse.safety_flags:type_name -> specgraph.v1.SafetyFlag
 	18, // 34: specgraph.v1.DecomposeResponse.next_prompts:type_name -> specgraph.v1.PromptTemplate
 	6,  // 35: specgraph.v1.ApproveRequest.action:type_name -> specgraph.v1.ApproveAction
-	35, // 36: specgraph.v1.ApproveRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
+	31, // 36: specgraph.v1.ApproveRequest.conversation_exchanges:type_name -> specgraph.v1.ConversationExchange
 	0,  // 37: specgraph.v1.ApproveResponse.stage:type_name -> specgraph.v1.AuthoringStage
-	41, // 38: specgraph.v1.ApproveResponse.approved_at:type_name -> google.protobuf.Timestamp
-	0,  // 39: specgraph.v1.AmendRequest.target_stage:type_name -> specgraph.v1.AuthoringStage
-	0,  // 40: specgraph.v1.AmendResponse.stage:type_name -> specgraph.v1.AuthoringStage
-	0,  // 41: specgraph.v1.GetPromptsRequest.stage:type_name -> specgraph.v1.AuthoringStage
-	18, // 42: specgraph.v1.GetPromptsResponse.prompts:type_name -> specgraph.v1.PromptTemplate
-	35, // 43: specgraph.v1.ConversationLog.exchanges:type_name -> specgraph.v1.ConversationExchange
-	41, // 44: specgraph.v1.ConversationLog.date:type_name -> google.protobuf.Timestamp
-	35, // 45: specgraph.v1.RecordConversationRequest.exchanges:type_name -> specgraph.v1.ConversationExchange
-	36, // 46: specgraph.v1.RecordConversationResponse.conversation_log:type_name -> specgraph.v1.ConversationLog
-	36, // 47: specgraph.v1.ListConversationsResponse.conversation_logs:type_name -> specgraph.v1.ConversationLog
-	19, // 48: specgraph.v1.AuthoringService.Spark:input_type -> specgraph.v1.SparkRequest
-	21, // 49: specgraph.v1.AuthoringService.Shape:input_type -> specgraph.v1.ShapeRequest
-	23, // 50: specgraph.v1.AuthoringService.Specify:input_type -> specgraph.v1.SpecifyRequest
-	25, // 51: specgraph.v1.AuthoringService.Decompose:input_type -> specgraph.v1.DecomposeRequest
-	27, // 52: specgraph.v1.AuthoringService.Approve:input_type -> specgraph.v1.ApproveRequest
-	29, // 53: specgraph.v1.AuthoringService.Amend:input_type -> specgraph.v1.AmendRequest
-	31, // 54: specgraph.v1.AuthoringService.Supersede:input_type -> specgraph.v1.SupersedeRequest
-	33, // 55: specgraph.v1.AuthoringService.GetPrompts:input_type -> specgraph.v1.GetPromptsRequest
-	37, // 56: specgraph.v1.AuthoringService.RecordConversation:input_type -> specgraph.v1.RecordConversationRequest
-	39, // 57: specgraph.v1.AuthoringService.ListConversations:input_type -> specgraph.v1.ListConversationsRequest
-	20, // 58: specgraph.v1.AuthoringService.Spark:output_type -> specgraph.v1.SparkResponse
-	22, // 59: specgraph.v1.AuthoringService.Shape:output_type -> specgraph.v1.ShapeResponse
-	24, // 60: specgraph.v1.AuthoringService.Specify:output_type -> specgraph.v1.SpecifyResponse
-	26, // 61: specgraph.v1.AuthoringService.Decompose:output_type -> specgraph.v1.DecomposeResponse
-	28, // 62: specgraph.v1.AuthoringService.Approve:output_type -> specgraph.v1.ApproveResponse
-	30, // 63: specgraph.v1.AuthoringService.Amend:output_type -> specgraph.v1.AmendResponse
-	32, // 64: specgraph.v1.AuthoringService.Supersede:output_type -> specgraph.v1.SupersedeResponse
-	34, // 65: specgraph.v1.AuthoringService.GetPrompts:output_type -> specgraph.v1.GetPromptsResponse
-	38, // 66: specgraph.v1.AuthoringService.RecordConversation:output_type -> specgraph.v1.RecordConversationResponse
-	40, // 67: specgraph.v1.AuthoringService.ListConversations:output_type -> specgraph.v1.ListConversationsResponse
-	58, // [58:68] is the sub-list for method output_type
-	48, // [48:58] is the sub-list for method input_type
-	48, // [48:48] is the sub-list for extension type_name
-	48, // [48:48] is the sub-list for extension extendee
-	0,  // [0:48] is the sub-list for field type_name
+	37, // 38: specgraph.v1.ApproveResponse.approved_at:type_name -> google.protobuf.Timestamp
+	0,  // 39: specgraph.v1.GetPromptsRequest.stage:type_name -> specgraph.v1.AuthoringStage
+	18, // 40: specgraph.v1.GetPromptsResponse.prompts:type_name -> specgraph.v1.PromptTemplate
+	31, // 41: specgraph.v1.ConversationLog.exchanges:type_name -> specgraph.v1.ConversationExchange
+	37, // 42: specgraph.v1.ConversationLog.date:type_name -> google.protobuf.Timestamp
+	31, // 43: specgraph.v1.RecordConversationRequest.exchanges:type_name -> specgraph.v1.ConversationExchange
+	32, // 44: specgraph.v1.RecordConversationResponse.conversation_log:type_name -> specgraph.v1.ConversationLog
+	32, // 45: specgraph.v1.ListConversationsResponse.conversation_logs:type_name -> specgraph.v1.ConversationLog
+	19, // 46: specgraph.v1.AuthoringService.Spark:input_type -> specgraph.v1.SparkRequest
+	21, // 47: specgraph.v1.AuthoringService.Shape:input_type -> specgraph.v1.ShapeRequest
+	23, // 48: specgraph.v1.AuthoringService.Specify:input_type -> specgraph.v1.SpecifyRequest
+	25, // 49: specgraph.v1.AuthoringService.Decompose:input_type -> specgraph.v1.DecomposeRequest
+	27, // 50: specgraph.v1.AuthoringService.Approve:input_type -> specgraph.v1.ApproveRequest
+	29, // 51: specgraph.v1.AuthoringService.GetPrompts:input_type -> specgraph.v1.GetPromptsRequest
+	33, // 52: specgraph.v1.AuthoringService.RecordConversation:input_type -> specgraph.v1.RecordConversationRequest
+	35, // 53: specgraph.v1.AuthoringService.ListConversations:input_type -> specgraph.v1.ListConversationsRequest
+	20, // 54: specgraph.v1.AuthoringService.Spark:output_type -> specgraph.v1.SparkResponse
+	22, // 55: specgraph.v1.AuthoringService.Shape:output_type -> specgraph.v1.ShapeResponse
+	24, // 56: specgraph.v1.AuthoringService.Specify:output_type -> specgraph.v1.SpecifyResponse
+	26, // 57: specgraph.v1.AuthoringService.Decompose:output_type -> specgraph.v1.DecomposeResponse
+	28, // 58: specgraph.v1.AuthoringService.Approve:output_type -> specgraph.v1.ApproveResponse
+	30, // 59: specgraph.v1.AuthoringService.GetPrompts:output_type -> specgraph.v1.GetPromptsResponse
+	34, // 60: specgraph.v1.AuthoringService.RecordConversation:output_type -> specgraph.v1.RecordConversationResponse
+	36, // 61: specgraph.v1.AuthoringService.ListConversations:output_type -> specgraph.v1.ListConversationsResponse
+	54, // [54:62] is the sub-list for method output_type
+	46, // [46:54] is the sub-list for method input_type
+	46, // [46:46] is the sub-list for extension type_name
+	46, // [46:46] is the sub-list for extension extendee
+	0,  // [0:46] is the sub-list for field type_name
 }
 
 func init() { file_specgraph_v1_authoring_proto_init() }
@@ -3068,7 +2793,7 @@ func file_specgraph_v1_authoring_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_specgraph_v1_authoring_proto_rawDesc), len(file_specgraph_v1_authoring_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   34,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

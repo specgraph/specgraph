@@ -13,6 +13,11 @@ Quick reference for the rules that govern what goes in the graph. The server
 enforces these; this skill helps you anticipate them so you don't suggest
 inputs that will fail validation.
 
+These rules are enforced on every MCP write (the `spec`, `edge`, `decision`,
+and `author` tools) and reflected in the read resources (`specgraph://specs`,
+`specgraph://spec/{slug}`, `specgraph://constitution`). Reload this guidance any
+time with the `specgraph_skills_get` tool.
+
 ## Slugs
 
 - Format: `kebab-case`. Lowercase letters, digits, hyphens. No leading or
@@ -79,3 +84,11 @@ to the relevant specs.
 - Don't promote `HAS_CHANGE` or `HAS_FINDING` to user-facing edge calls.
   Storage owns them.
 - Don't use snake_case slugs. The validator will reject them.
+
+---
+
+## Requires local CLI (source/CLI users only — MCP-only agents skip this)
+
+These conventions are enforced identically over MCP (the tools and resources
+above) and by the `specgraph` binary — an MCP-only agent needs nothing here.
+Source/CLI users get the same validation errors from the command line.

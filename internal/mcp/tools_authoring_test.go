@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
+	"github.com/specgraph/specgraph/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,7 +35,7 @@ func TestAuthorTool_Spark(t *testing.T) {
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "spark",
 		"slug":   "my-spec",
-		"output": `{"seed":"initial idea","signal":"customer pain"}`,
+		"output": "seed: initial idea\nsignal: customer pain\n",
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
@@ -50,7 +51,7 @@ func TestAuthorTool_Spark_MissingSlug(t *testing.T) {
 
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "spark",
-		"output": `{"seed":"idea"}`,
+		"output": "seed: idea\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
@@ -73,21 +74,24 @@ func TestAuthorTool_Spark_MissingOutput(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "output")
 }
 
-func TestAuthorTool_Spark_InvalidJSON(t *testing.T) {
+func TestAuthorTool_Spark_InvalidScopeSniff(t *testing.T) {
 	c := &Client{Authoring: &mockAuthoringService{}}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("author")
 	require.True(t, ok)
 
+	// Invalid enum must be rejected, never silently written as UNSPECIFIED (T-06-01).
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "spark",
 		"slug":   "my-spec",
-		"output": `not valid json {{{`,
+		"output": "seed: idea\nscope_sniff: gigantic\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "invalid spark output JSON")
+	require.Contains(t, result.Content[0].Text, "invalid spark output")
+	// Sanitized: no raw parser internals leaked (T-06-03).
+	require.NotContains(t, result.Content[0].Text, "SCOPE_SNIFF")
 }
 
 func TestAuthorTool_Approve(t *testing.T) {
@@ -130,63 +134,170 @@ func TestAuthorTool_Approve_MissingSlug(t *testing.T) {
 }
 
 func TestAuthorTool_Amend(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{
-		amend: func(req *specv1.AmendRequest) (*specv1.AmendResponse, error) {
-			require.Equal(t, "my-spec", req.GetSlug())
-			require.Equal(t, "needs rework", req.GetReason())
-			require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SPARK, req.GetTargetStage())
-			return &specv1.AmendResponse{
-				Slug:    req.GetSlug(),
-				Stage:   specv1.AuthoringStage_AUTHORING_STAGE_SPARK,
-				Version: 2,
+	mock := &mockLifecycleService{
+		transitionAmend: func(req *specv1.TransitionAmendRequest) (*specv1.TransitionAmendResponse, error) {
+			return &specv1.TransitionAmendResponse{
+				Spec: &specv1.Spec{Slug: req.GetSlug(), Version: 2},
 			}, nil
 		},
-	}}
+	}
+	c := &Client{Lifecycle: mock}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("author")
 	require.True(t, ok)
 
 	result, err := tool.Handler(context.Background(), map[string]any{
-		"action":       "amend",
-		"slug":         "my-spec",
-		"reason":       "needs rework",
-		"target_stage": "spark",
+		"action":         "amend",
+		"slug":           "my-spec",
+		"reason":         "needs rework",
+		"re_entry_stage": "shape",
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "my-spec")
+	// The tool routes to Lifecycle.TransitionAmend with the passed fields.
+	require.NotNil(t, mock.amendReq)
+	require.Equal(t, "my-spec", mock.amendReq.GetSlug())
+	require.Equal(t, "needs rework", mock.amendReq.GetReason())
+	require.Equal(t, "shape", mock.amendReq.GetReEntryStage())
+	// A next-step hint referencing the re_entry_stage is emitted (D-05).
+	var combined string
+	for _, ct := range result.Content {
+		combined += ct.Text
+	}
+	require.Contains(t, combined, "my-spec")
+	require.Contains(t, combined, "action=shape")
+}
+
+// TestAuthorTool_Amend_SparkReEntry verifies that amending with
+// re_entry_stage=spark does NOT emit an `author action=spark` next-step hint,
+// which would route to CreateSpec and fail with ALREADY_EXISTS (WR-01). The
+// spec lands AT spark, so a terminal-stage hint is surfaced instead.
+func TestAuthorTool_Amend_SparkReEntry(t *testing.T) {
+	mock := &mockLifecycleService{
+		transitionAmend: func(req *specv1.TransitionAmendRequest) (*specv1.TransitionAmendResponse, error) {
+			return &specv1.TransitionAmendResponse{
+				Spec: &specv1.Spec{Slug: req.GetSlug(), Version: 2},
+			}, nil
+		},
+	}
+	c := &Client{Lifecycle: mock}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":         "amend",
+		"slug":           "my-spec",
+		"reason":         "start over",
+		"re_entry_stage": "spark",
+	})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+	require.Equal(t, "spark", mock.amendReq.GetReEntryStage())
+	var combined string
+	for _, ct := range result.Content {
+		combined += ct.Text
+	}
+	// Must NOT tell the agent to run the failing `author action=spark` command.
+	require.NotContains(t, combined, "action=spark")
+	// Must surface a terminal-stage explanation instead.
+	require.Contains(t, combined, "spark")
+	require.Contains(t, combined, "my-spec")
+}
+
+func TestAuthorTool_Amend_MissingReEntryStage(t *testing.T) {
+	c := &Client{Lifecycle: &mockLifecycleService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action": "amend",
+		"slug":   "my-spec",
+		"reason": "rework",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "re_entry_stage")
+}
+
+func TestAuthorTool_Amend_MissingReason(t *testing.T) {
+	c := &Client{Lifecycle: &mockLifecycleService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":         "amend",
+		"slug":           "my-spec",
+		"re_entry_stage": "shape",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "reason")
+}
+
+func TestAuthorTool_Amend_SurfacesHandlerError(t *testing.T) {
+	// The handler rejects an invalid re-entry stage; the tool surfaces the
+	// connect error (via connectErrResult) rather than re-validating itself.
+	// Mock returns a sentinel error (not fmt.Errorf) per AGENTS.md.
+	mock := &mockLifecycleService{
+		transitionAmend: func(_ *specv1.TransitionAmendRequest) (*specv1.TransitionAmendResponse, error) {
+			return nil, storage.ErrSpecNotAmendable
+		},
+	}
+	c := &Client{Lifecycle: mock}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":         "amend",
+		"slug":           "my-spec",
+		"reason":         "rework",
+		"re_entry_stage": "approved",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
 }
 
 func TestAuthorTool_Supersede(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{
-		supersede: func(req *specv1.SupersedeRequest) (*specv1.SupersedeResponse, error) {
-			require.Equal(t, "old-spec", req.GetSlug())
-			require.Equal(t, "new-spec", req.GetSupersededBy())
-			return &specv1.SupersedeResponse{
-				Slug:         req.GetSlug(),
-				SupersededBy: req.GetSupersededBy(),
+	mock := &mockLifecycleService{
+		transitionSupersede: func(req *specv1.TransitionSupersedeRequest) (*specv1.TransitionSupersedeResponse, error) {
+			return &specv1.TransitionSupersedeResponse{
+				OldSpec: &specv1.Spec{Slug: req.GetSlug()},
+				NewSpec: &specv1.Spec{Slug: req.GetNewSlug()},
 			}, nil
 		},
-	}}
+	}
+	c := &Client{Lifecycle: mock}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("author")
 	require.True(t, ok)
 
 	result, err := tool.Handler(context.Background(), map[string]any{
-		"action":        "supersede",
-		"slug":          "old-spec",
-		"superseded_by": "new-spec",
-		"reason":        "replaced",
+		"action":   "supersede",
+		"slug":     "old-spec",
+		"new_slug": "new-spec",
+		"reason":   "replaced",
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
+	require.NotNil(t, mock.supersedeReq)
+	require.Equal(t, "old-spec", mock.supersedeReq.GetSlug())
+	require.Equal(t, "new-spec", mock.supersedeReq.GetNewSlug())
+	require.Equal(t, "replaced", mock.supersedeReq.GetReason())
 	require.Contains(t, result.Content[0].Text, "old-spec")
 }
 
-func TestAuthorTool_Supersede_MissingSupersededBy(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{}}
+func TestAuthorTool_Supersede_MissingNewSlug(t *testing.T) {
+	c := &Client{Lifecycle: &mockLifecycleService{}}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("author")
@@ -198,7 +309,30 @@ func TestAuthorTool_Supersede_MissingSupersededBy(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "superseded_by")
+	require.Contains(t, result.Content[0].Text, "new_slug")
+}
+
+func TestAuthorTool_Supersede_SurfacesHandlerError(t *testing.T) {
+	// Mock returns a sentinel error (not fmt.Errorf) per AGENTS.md; the tool
+	// surfaces it as an error result, asserted via res.IsError not a message.
+	mock := &mockLifecycleService{
+		transitionSupersede: func(_ *specv1.TransitionSupersedeRequest) (*specv1.TransitionSupersedeResponse, error) {
+			return nil, storage.ErrSpecNotDone
+		},
+	}
+	c := &Client{Lifecycle: mock}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":   "supersede",
+		"slug":     "old-spec",
+		"new_slug": "new-spec",
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
 }
 
 func TestAuthorTool_UnknownAction(t *testing.T) {
@@ -235,7 +369,7 @@ func TestAuthorTool_Shape(t *testing.T) {
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "shape",
 		"slug":   "my-spec",
-		"output": `{"scopeIn":["auth"],"chosenApproach":"oauth2"}`,
+		"output": "scope_in:\n  - auth\nchosen_approach: oauth2\n",
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
@@ -250,7 +384,7 @@ func TestAuthorTool_Shape_MissingSlug(t *testing.T) {
 
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "shape",
-		"output": `{"scopeIn":["auth"]}`,
+		"output": "scope_in:\n  - auth\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
@@ -273,21 +407,22 @@ func TestAuthorTool_Shape_MissingOutput(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "output")
 }
 
-func TestAuthorTool_Shape_InvalidJSON(t *testing.T) {
+func TestAuthorTool_Shape_InvalidYAML(t *testing.T) {
 	c := &Client{Authoring: &mockAuthoringService{}}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("author")
 	require.True(t, ok)
 
+	// scope_in must be a list; a scalar is a type mismatch the parser rejects.
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "shape",
 		"slug":   "my-spec",
-		"output": `{{{not valid`,
+		"output": "scope_in: not-a-list\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "invalid shape output JSON")
+	require.Contains(t, result.Content[0].Text, "invalid shape output")
 }
 
 func TestAuthorTool_Specify(t *testing.T) {
@@ -309,7 +444,7 @@ func TestAuthorTool_Specify(t *testing.T) {
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "specify",
 		"slug":   "my-spec",
-		"output": `{"invariants":["state is never negative"]}`,
+		"output": "invariants:\n  - state is never negative\n",
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
@@ -324,7 +459,7 @@ func TestAuthorTool_Specify_MissingSlug(t *testing.T) {
 
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "specify",
-		"output": `{"invariants":["x"]}`,
+		"output": "invariants:\n  - x\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
@@ -347,21 +482,22 @@ func TestAuthorTool_Specify_MissingOutput(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "output")
 }
 
-func TestAuthorTool_Specify_InvalidJSON(t *testing.T) {
+func TestAuthorTool_Specify_InvalidYAML(t *testing.T) {
 	c := &Client{Authoring: &mockAuthoringService{}}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("author")
 	require.True(t, ok)
 
+	// invariants must be a list; a scalar is a type mismatch the parser rejects.
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "specify",
 		"slug":   "my-spec",
-		"output": `not json at all`,
+		"output": "invariants: not-a-list\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "invalid specify output JSON")
+	require.Contains(t, result.Content[0].Text, "invalid specify output")
 }
 
 func TestAuthorTool_Decompose(t *testing.T) {
@@ -369,6 +505,7 @@ func TestAuthorTool_Decompose(t *testing.T) {
 		decompose: func(req *specv1.DecomposeRequest) (*specv1.DecomposeResponse, error) {
 			require.Equal(t, "my-spec", req.GetSlug())
 			require.NotNil(t, req.GetOutput())
+			require.Equal(t, specv1.DecompositionStrategy_DECOMPOSITION_STRATEGY_VERTICAL_SLICE, req.GetOutput().GetStrategy())
 			return &specv1.DecomposeResponse{
 				Output: req.GetOutput(),
 			}, nil
@@ -382,7 +519,7 @@ func TestAuthorTool_Decompose(t *testing.T) {
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "decompose",
 		"slug":   "my-spec",
-		"output": `{"strategy":"DECOMPOSITION_STRATEGY_VERTICAL_SLICE"}`,
+		"output": "strategy: vertical_slice\n",
 	})
 	require.NoError(t, err)
 	require.False(t, result.IsError)
@@ -397,7 +534,7 @@ func TestAuthorTool_Decompose_MissingSlug(t *testing.T) {
 
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "decompose",
-		"output": `{"strategy":"DECOMPOSITION_STRATEGY_VERTICAL"}`,
+		"output": "strategy: vertical_slice\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
@@ -420,21 +557,44 @@ func TestAuthorTool_Decompose_MissingOutput(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "output")
 }
 
-func TestAuthorTool_Decompose_InvalidJSON(t *testing.T) {
+func TestAuthorTool_Decompose_InvalidStrategy(t *testing.T) {
 	c := &Client{Authoring: &mockAuthoringService{}}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("author")
 	require.True(t, ok)
 
+	// Invalid enum must be rejected, never silently written as UNSPECIFIED (T-06-01).
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action": "decompose",
 		"slug":   "my-spec",
-		"output": `[invalid`,
+		"output": "strategy: sideways_slice\n",
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "invalid decompose output JSON")
+	require.Contains(t, result.Content[0].Text, "invalid decompose output")
+	// Sanitized: no raw parser internals leaked (T-06-03).
+	require.NotContains(t, result.Content[0].Text, "DECOMPOSITION_STRATEGY")
+}
+
+func TestAuthorTool_Shape_MalformedExchanges(t *testing.T) {
+	c := &Client{Authoring: &mockAuthoringService{}}
+	r := NewRegistry()
+	RegisterAuthoringTools(r, c)
+	tool, ok := r.LookupTool("author")
+	require.True(t, ok)
+
+	// Valid output YAML, but a syntactically invalid exchanges JSON string must
+	// be rejected at the MCP boundary via parseOptionalExchanges (T-06-03).
+	result, err := tool.Handler(context.Background(), map[string]any{
+		"action":    "shape",
+		"slug":      "my-spec",
+		"output":    "scope_in:\n  - auth\nchosen_approach: oauth2\n",
+		"exchanges": `not valid json {{{`,
+	})
+	require.NoError(t, err)
+	require.True(t, result.IsError)
+	require.Contains(t, result.Content[0].Text, "invalid exchanges JSON")
 }
 
 func TestAuthorTool_Amend_MissingSlug(t *testing.T) {
@@ -917,13 +1077,4 @@ func TestPostureFromString(t *testing.T) {
 	require.Equal(t, specv1.Posture_POSTURE_SUPPORT, postureFromString("support"))
 	require.Equal(t, specv1.Posture_POSTURE_UNSPECIFIED, postureFromString("unknown"))
 	require.Equal(t, specv1.Posture_POSTURE_UNSPECIFIED, postureFromString(""))
-}
-
-func TestAuthoringStageFromString(t *testing.T) {
-	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SPARK, authoringStageFromString("spark"))
-	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SHAPE, authoringStageFromString("shape"))
-	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_SPECIFY, authoringStageFromString("specify"))
-	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_DECOMPOSE, authoringStageFromString("decompose"))
-	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, authoringStageFromString("approved"))
-	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED, authoringStageFromString("unknown"))
 }

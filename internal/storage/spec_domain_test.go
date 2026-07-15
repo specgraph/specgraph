@@ -36,6 +36,40 @@ func TestSpecStage_ExcludesReEntry(t *testing.T) {
 	}
 }
 
+func TestSpecStage_IsValidReEntryStage(t *testing.T) {
+	// Only the four authoring stages before approval are valid re-entry targets.
+	valid := []storage.SpecStage{
+		storage.SpecStageSpark,
+		storage.SpecStageShape,
+		storage.SpecStageSpecify,
+		storage.SpecStageDecompose,
+	}
+	for _, s := range valid {
+		t.Run("valid_"+string(s), func(t *testing.T) {
+			assert.True(t, s.IsValidReEntryStage(), "stage %q should be a valid re-entry stage", s)
+		})
+	}
+
+	// approved is the footgun: it is the 5th element of authoringStages, so a
+	// membership check over that slice would wrongly accept it. Assert false
+	// explicitly to catch a future edit that reuses authoringStages.
+	invalid := []storage.SpecStage{
+		storage.SpecStageApproved,
+		storage.SpecStageInProgress,
+		storage.SpecStageReview,
+		storage.SpecStageDone,
+		storage.SpecStageSuperseded,
+		storage.SpecStageAbandoned,
+		storage.SpecStage("bogus"),
+		storage.SpecStage(""),
+	}
+	for _, s := range invalid {
+		t.Run("invalid_"+string(s), func(t *testing.T) {
+			assert.False(t, s.IsValidReEntryStage(), "stage %q should NOT be a valid re-entry stage", s)
+		})
+	}
+}
+
 func TestSpecStage_IsFullyTerminal(t *testing.T) {
 	tests := []struct {
 		stage    storage.SpecStage

@@ -10,7 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
-	"google.golang.org/protobuf/encoding/protojson"
+	constload "github.com/specgraph/specgraph/internal/constitution/load"
 )
 
 // RegisterCoreTools registers the constitution, findings, and health tools into the registry.
@@ -55,7 +55,10 @@ func (t *constitutionTool) def() ToolDef {
 	return ToolDef{
 		Name: "constitution",
 		Description: "Read and write the SpecGraph project constitution (layered ground truth). " +
-			"Actions: get, update.",
+			"Actions: get, update. For update, pass friendly YAML in the `constitution` " +
+			"param — e.g. `layer: project`, `name: my-project`, plus optional `tech`, " +
+			"`principles`, `constraints`, `antipatterns`, `process`, and `references` " +
+			"(reference `type: adr`). No protojson/enum names required.",
 		Profile: ProfileCore,
 		Schema: objectSchema(
 			props{
@@ -64,7 +67,15 @@ func (t *constitutionTool) def() ToolDef {
 					"Constitution layer filter for get: user, org, project, domain",
 					"user", "org", "project", "domain",
 				),
-				"constitution": stringProp("Full constitution JSON for update (output from get, modified as needed)"),
+				"constitution": stringProp(
+					"Constitution as friendly YAML for update. Set an explicit `layer:` " +
+						"(user|org|project|domain — required) and `name:`. Optional sections: " +
+						"`tech` (languages/frameworks/infrastructure/api_standards/data), " +
+						"`principles[]` (id/statement/rationale/exceptions), `constraints[]`, " +
+						"`antipatterns[]` (pattern/why/instead), `process`, `references[]` " +
+						"(type: adr|spec|doc|url, path). Example: `layer: project` + " +
+						"`name: my-project` + `constraints: [\"no vendor lock-in\"]`.",
+				),
 			},
 			"action",
 		),
@@ -105,14 +116,21 @@ func (t *constitutionTool) handleGet(ctx context.Context, params map[string]any)
 func (t *constitutionTool) handleUpdate(ctx context.Context, params map[string]any) (*ToolResult, error) {
 	raw := stringParam(params, "constitution")
 	if raw == "" {
-		return errResult("constitution is required for update (pass the full JSON from get, modified as needed)"), nil
+		return errResult("constitution is required for update (pass friendly YAML with an explicit layer, e.g. `layer: project`)"), nil
 	}
-	var c specv1.Constitution
-	if err := protojson.Unmarshal([]byte(raw), &c); err != nil {
-		return errResult(fmt.Sprintf("invalid constitution JSON: %v", err)), nil
+	con, err := constload.FromYAML([]byte(raw))
+	if err != nil {
+		// Sanitized: never surface raw yaml/protojson parser internals (T-06-03).
+		return errResult("invalid constitution input (expected friendly YAML with fields like `layer: project`, `name: ...`)"), nil //nolint:nilerr // raw parser error intentionally not surfaced (T-06-03)
+	}
+	// Explicit-layer guard: FromYAML permits an empty layer, but a project
+	// bootstrap update needs a real one — reject rather than persist an
+	// empty-layer constitution.
+	if con.Layer == "" {
+		return errResult("constitution layer is required (set `layer:` to one of user, org, project, domain)"), nil
 	}
 	resp, err := t.client.Constitution.UpdateConstitution(ctx, connect.NewRequest(&specv1.UpdateConstitutionRequest{
-		Constitution: &c,
+		Constitution: constload.ToProto(con),
 	}))
 	if err != nil {
 		return connectErrResult(err)

@@ -1,20 +1,19 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.12.0
-milestone_name: Identity & Self-Service
-current_phase: null
-status: Awaiting next milestone
-stopped_at: Phase 05 complete (UAT passed, verification passed) — all five v1 phases done; only backlog Phase 999.2 remains
-last_updated: "2026-07-13T17:56:18.532Z"
-last_activity: 2026-07-13
-last_activity_desc: Milestone v0.12.0 completed and archived
+milestone: v0.14.0
+milestone_name: Authoring Surface Correctness
+current_phase: 8
+current_phase_name: Authoring Conversation Fidelity
+status: "Phase 07 shipped — PR #1003"
+stopped_at: Completed 07-05-PLAN.md
+last_updated: "2026-07-15T14:06:33.879Z"
+last_activity: 2026-07-15
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 29
-  completed_plans: 29
-  percent: 100
-current_phase_name: BACKLOG
+  total_phases: 4
+  completed_phases: 2
+  total_plans: 10
+  completed_plans: 10
+  percent: 50
 ---
 
 # Project State
@@ -27,20 +26,20 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 drift detection, and a durable storage/query layer — so both humans and agent-based execution
 engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
-**Current focus:** Milestone v0.12.0 complete — backlog (Phase 999.2, Confluence integration) remains
+**Current focus:** Phase 07 — authoring-lifecycle-semantics
 
 ## Current Position
 
-Phase: Milestone v0.12.0 complete
-Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-13 — Milestone v0.12.0 completed and archived
+Phase: 8 — Authoring Conversation Fidelity
+Plan: Not started
+Status: Phase 07 shipped — PR #1003
+Last activity: 2026-07-15
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 29
+- Total plans completed: 39
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -53,6 +52,8 @@ Last activity: 2026-07-13 — Milestone v0.12.0 completed and archived
 | 03 | 4 | - | - |
 | 4 | 2 | - | - |
 | 05 | 14 | - | - |
+| 06 | 5 | - | - |
+| 07 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -89,6 +90,11 @@ Last activity: 2026-07-13 — Milestone v0.12.0 completed and archived
 | Phase 05 P12 | 8 min | 1 tasks | 1 files |
 | Phase 05 P13 | 13 min | 3 tasks | 3 files |
 | Phase 05 P14 | 4 min | 2 tasks | 2 files |
+| Phase 07 P01 | 6min | 3 tasks | 9 files |
+| Phase 07-authoring-lifecycle-semantics P02 | 9min | 2 tasks | 4 files |
+| Phase 07-authoring-lifecycle-semantics P03 | 12min | 3 tasks | 9 files |
+| Phase 07 P04 | 13min | 2 tasks | 14 files |
+| Phase 07-authoring-lifecycle-semantics P05 | 16min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -97,6 +103,18 @@ Last activity: 2026-07-13 — Milestone v0.12.0 completed and archived
 Decisions are logged in PROJECT.md Key Decisions table. Full architectural history (14 ADRs,
 63 constraint entries, 98 context entries from the 177-doc corpus ingest) lives in
 `.planning/intel/{decisions,constraints,context,SYNTHESIS}.md`.
+
+- Roadmap (v0.14.0): 5 requirements → 4 phases (6-9). MCP-01 gets its own phase (Phase 6) and
+  is sequenced first — it is critical-priority and substantial (the MCP-only self-teaching
+  authoring path), so it is not shared with CONV-01 despite both touching the embedded skills.
+
+- Roadmap (v0.14.0): LIFE-01 and LIFE-02 clustered into one "Authoring Lifecycle Semantics"
+  phase (Phase 7) — both are amend/supersede lifecycle fixes touching
+  `internal/storage/postgres/lifecycle.go` + stage-validation, natural cluster-mates.
+
+- Roadmap (v0.14.0): CONV-01 stands alone (Phase 8, conversation-recording protocol enforcement)
+  and AUTH-06 stands alone (Phase 9, isolated JIT `display_name` reconciliation on the
+  identity/auth path) — neither has a natural cluster-mate in this milestone.
 
 - Roadmap: Auth cluster split across two phases (Phase 2: API-key lifecycle; Phase 3: external
   IdP integration) rather than one, since AUTH-04's OAuth 2.1 resource-server direction is
@@ -127,6 +145,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase ?]: 05-11: Spec/decision detail load-ified via streamed +page.ts detail promise + {#await}; activeSlug stale-guard removed (T-05-05) — SvelteKit load re-run on params.slug + invalidateAll replaces manual stale-guard
 - [Phase 05]: Keys page stays user-scoped (no load()/invalidateAll) per D-09 — Prevents cross-scope leakage of user key state (T-05-16)
 - [Phase 05]: Constitution load streams per-field promises off one RPC so component references data.provenance and {#await} re-suspends to Skeleton on invalidateAll() — Reconciles Task1 return shape with Task2 data.provenance derivation + streamed skeleton-on-switch (D-10)
+- [Phase ?]: Amend releases active claim + CLAIMED_BY edge inside amend tx (D-08) — Conditional on GetActiveClaim; unclaimed specs are a no-op; slices left intact (T-07-06 accept)
+- [Phase 07-authoring-lifecycle-semantics]: IsValidReEntryStage is the single amend re-entry allowlist (spark|shape|specify|decompose), enforced at handler + storage; approved/in_progress/review/done rejected.
+- [Phase 07-authoring-lifecycle-semantics]: MCP author amend/supersede route to LifecycleService (single gate); the tool does presence guards only.
 
 ### Pending Todos
 
@@ -152,8 +173,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13
-Stopped at: Phase 05 complete (UAT passed, verification passed) — all five v1 phases done; only backlog Phase 999.2 remains
+Last session: 2026-07-14T22:18:57.323Z
+Stopped at: Completed 07-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -69,7 +69,10 @@ var supersedeCmd = &cobra.Command{
 	RunE:  runSupersede,
 }
 
-var supersedeWith string
+var (
+	supersedeWith   string
+	supersedeReason string
+)
 
 func runSupersede(cmd *cobra.Command, args []string) error {
 	client, err := lifecycleClient()
@@ -79,6 +82,7 @@ func runSupersede(cmd *cobra.Command, args []string) error {
 	resp, err := client.TransitionSupersede(cmd.Context(), connect.NewRequest(&specv1.TransitionSupersedeRequest{
 		Slug:    args[0],
 		NewSlug: supersedeWith,
+		Reason:  supersedeReason,
 	}))
 	if err != nil {
 		return fmt.Errorf("supersede: %w", err)
@@ -313,6 +317,7 @@ func init() {
 
 	supersedeCmd.Flags().StringVar(&supersedeWith, "with", "", "slug for the replacement spec (required)")
 	cobra.CheckErr(supersedeCmd.MarkFlagRequired("with"))
+	supersedeCmd.Flags().StringVar(&supersedeReason, "reason", "", "reason for supersession (optional)")
 	rootCmd.AddCommand(supersedeCmd)
 
 	abandonCmd.Flags().StringVar(&abandonReason, "reason", "", "reason for abandonment (required)")

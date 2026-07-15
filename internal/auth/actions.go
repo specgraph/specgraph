@@ -53,8 +53,6 @@ var procedureActions = map[string]string{
 	specgraphv1connect.AuthoringServiceSpecifyProcedure:            "authoring.write",
 	specgraphv1connect.AuthoringServiceDecomposeProcedure:          "authoring.write",
 	specgraphv1connect.AuthoringServiceApproveProcedure:            "authoring.write",
-	specgraphv1connect.AuthoringServiceAmendProcedure:              "authoring.write",
-	specgraphv1connect.AuthoringServiceSupersedeProcedure:          "authoring.write",
 	specgraphv1connect.AuthoringServiceRecordConversationProcedure: "authoring.write",
 	specgraphv1connect.AuthoringServiceListConversationsProcedure:  "authoring.read",
 	// ExecutionService

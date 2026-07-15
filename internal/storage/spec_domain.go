@@ -24,11 +24,35 @@ const (
 	SpecStageAbandoned  SpecStage = "abandoned"
 )
 
-// ExcludesReEntry reports whether s is a stage that cannot be used as a re-entry
-// target. Done, superseded, and abandoned specs cannot be re-entry targets.
+// ExcludesReEntry reports whether s is a terminal stage that cannot be used as a
+// re-entry target. It excludes ONLY the terminal stages (done, superseded,
+// abandoned). It is deliberately distinct from IsValidReEntryStage: ExcludesReEntry
+// is a terminal-only exclusion and would wrongly accept approved/in_progress/review
+// as re-entry targets, so it must NOT be used as the amend re-entry gate — use
+// IsValidReEntryStage (the D-03 allowlist) for that.
 func (s SpecStage) ExcludesReEntry() bool {
 	switch s {
 	case SpecStageDone, SpecStageSuperseded, SpecStageAbandoned:
+		return true
+	default:
+		return false
+	}
+}
+
+// IsValidReEntryStage reports whether s is a valid amend re-entry target. It is
+// the single source of truth for the D-03 re-entry allowlist and returns true for
+// EXACTLY the four authoring stages before approval: spark, shape, specify,
+// decompose. All other stages — including approved, in_progress, review, and the
+// terminal stages — return false.
+//
+// This is intentionally implemented as an explicit four-value switch rather than a
+// membership test over authoringStages: authoringStages includes SpecStageApproved
+// as its 5th element, so ranging over it would make IsValidReEntryStage(approved)
+// return true and reintroduce the review HIGH bug. It is also distinct from the
+// terminal-only ExcludesReEntry, which wrongly accepts approved/in_progress/review.
+func (s SpecStage) IsValidReEntryStage() bool {
+	switch s {
+	case SpecStageSpark, SpecStageShape, SpecStageSpecify, SpecStageDecompose:
 		return true
 	default:
 		return false

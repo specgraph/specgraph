@@ -332,6 +332,107 @@ func TestStoreDecomposeOutput_Idempotent(t *testing.T) {
 	require.Equal(t, children1[1], children2[1])
 }
 
+// TestStoreDecomposeOutput_ReconcilesOnReauthor pins CR-01: re-running
+// StoreDecomposeOutput (the amend → re-decompose flow) must reconcile the
+// existing child Slice nodes rather than treating them as immutable — updating
+// changed slice bodies, creating new slices, and pruning removed slices along
+// with their edges. Also exercises the amend → re-author round trip (WR-02).
+func TestStoreDecomposeOutput_ReconcilesOnReauthor(t *testing.T) {
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.CreateSpec(ctx, "reauth-parent", "Parent spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	// Original decomposition: slice-a, slice-b, slice-c (c depends on a).
+	_, err = store.StoreDecomposeOutput(ctx, "reauth-parent", &storage.DecomposeOutput{
+		Strategy: storage.StrategyVerticalSlice,
+		Slices: []storage.DecomposeSlice{
+			{ID: "slice-a", Intent: "Original A", Verify: []string{"a v1"}, Touches: []string{"a.go"}},
+			{ID: "slice-b", Intent: "Original B", Verify: []string{"b v1"}, Touches: []string{"b.go"}},
+			{ID: "slice-c", Intent: "Original C", Verify: []string{"c v1"}, Touches: []string{"c.go"}, DependsOn: []string{"slice-a"}},
+		},
+	})
+	require.NoError(t, err)
+
+	// Move the spec to an amend-eligible stage and amend it back to re-enter at
+	// decompose (lands one stage earlier, at specify), retaining the slices.
+	approved := "approved"
+	_, err = store.UpdateSpec(ctx, "reauth-parent", nil, &approved, nil, nil, nil)
+	require.NoError(t, err)
+	amended, err := store.LifecycleAmendSpec(ctx, "reauth-parent", "revisit slices", "decompose")
+	require.NoError(t, err)
+	require.Equal(t, storage.SpecStage("decompose").PrecedingAuthStage(), amended.Stage)
+
+	// Re-author the decomposition:
+	//   - slice-a: changed body (intent/verify/touches)
+	//   - slice-b: REMOVED
+	//   - slice-c: changed dependency (now depends on nothing) + new body
+	//   - slice-d: NEW slice depending on slice-c
+	children, err := store.StoreDecomposeOutput(ctx, "reauth-parent", &storage.DecomposeOutput{
+		Strategy: storage.StrategyVerticalSlice,
+		Slices: []storage.DecomposeSlice{
+			{ID: "slice-a", Intent: "Updated A", Verify: []string{"a v2"}, Touches: []string{"a2.go"}},
+			{ID: "slice-c", Intent: "Updated C", Verify: []string{"c v2"}, Touches: []string{"c.go"}},
+			{ID: "slice-d", Intent: "New D", Verify: []string{"d v1"}, Touches: []string{"d.go"}, DependsOn: []string{"slice-c"}},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"reauth-parent/slice-a", "reauth-parent/slice-c", "reauth-parent/slice-d"}, children)
+
+	// slice-a body was updated (not dropped).
+	slA, err := store.GetSlice(ctx, "reauth-parent/slice-a")
+	require.NoError(t, err)
+	require.Equal(t, "Updated A", slA.Intent)
+	require.Equal(t, []string{"a v2"}, slA.Verify)
+	require.Equal(t, []string{"a2.go"}, slA.Touches)
+
+	// slice-c body updated and its stale DEPENDS_ON edge removed.
+	slC, err := store.GetSlice(ctx, "reauth-parent/slice-c")
+	require.NoError(t, err)
+	require.Equal(t, "Updated C", slC.Intent)
+	require.Empty(t, slC.DependsOn, "slice-c no longer depends on slice-a")
+
+	// slice-d created.
+	slD, err := store.GetSlice(ctx, "reauth-parent/slice-d")
+	require.NoError(t, err)
+	require.Equal(t, "New D", slD.Intent)
+	require.Equal(t, []string{"reauth-parent/slice-c"}, slD.DependsOn)
+
+	// slice-b was pruned (node gone).
+	_, err = store.GetSlice(ctx, "reauth-parent/slice-b")
+	require.ErrorIs(t, err, storage.ErrSliceNotFound)
+
+	// Verify the graph reflects the new decomposition with no orphans.
+	graph, err := store.GetFullGraph(ctx)
+	require.NoError(t, err)
+	nodeSlugs := make(map[string]bool)
+	for _, n := range graph.Nodes {
+		nodeSlugs[n.Slug] = true
+	}
+	require.False(t, nodeSlugs["reauth-parent/slice-b"], "pruned slice-b must not remain as a node")
+	require.True(t, nodeSlugs["reauth-parent/slice-a"])
+	require.True(t, nodeSlugs["reauth-parent/slice-c"])
+	require.True(t, nodeSlugs["reauth-parent/slice-d"])
+
+	edgeSet := make(map[string]storage.EdgeType)
+	for _, e := range graph.Edges {
+		if e.FromID == "reauth-parent/slice-b" || e.ToID == "reauth-parent/slice-b" {
+			t.Fatalf("orphaned edge referencing pruned slice-b: %s->%s", e.FromID, e.ToID)
+		}
+		edgeSet[e.FromID+"->"+e.ToID] = e.EdgeType
+	}
+	// Stale c->a DEPENDS_ON edge is gone; new d->c edge exists.
+	_, hasStale := edgeSet["reauth-parent/slice-c->reauth-parent/slice-a"]
+	require.False(t, hasStale, "stale DEPENDS_ON edge slice-c->slice-a must be removed")
+	require.Equal(t, storage.EdgeTypeDependsOn, edgeSet["reauth-parent/slice-d->reauth-parent/slice-c"])
+	// COMPOSES edges for surviving slices intact.
+	require.Equal(t, storage.EdgeTypeComposes, edgeSet["reauth-parent/slice-a->reauth-parent"])
+	require.Equal(t, storage.EdgeTypeComposes, edgeSet["reauth-parent/slice-c->reauth-parent"])
+	require.Equal(t, storage.EdgeTypeComposes, edgeSet["reauth-parent/slice-d->reauth-parent"])
+}
+
 func TestStoreDecomposeOutput_MissingParent(t *testing.T) {
 	store := newStore(t)
 	clearDatabase(t, store)
@@ -420,156 +521,3 @@ func TestStoreSafetyFlags_SpecNotFound(t *testing.T) {
 	require.ErrorIs(t, err, storage.ErrSpecNotFound)
 }
 
-func TestSupersedeSpec_Authoring(t *testing.T) {
-	store := newStore(t)
-	clearDatabase(t, store)
-	ctx := context.Background()
-
-	_, err := store.CreateSpec(ctx, "old-spec", "Original spec", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
-	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "new-spec", "Replacement spec", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
-	require.NoError(t, err)
-
-	err = store.SupersedeSpec(ctx, "old-spec", "new-spec", "better approach found")
-	require.NoError(t, err)
-
-	// Verify the old spec is now at stage "superseded".
-	old, err := store.GetSpec(ctx, "old-spec")
-	require.NoError(t, err)
-	require.Equal(t, storage.SpecStageSuperseded, old.Stage)
-}
-
-func TestSupersedeSpec_NotFound(t *testing.T) {
-	store := newStore(t)
-	clearDatabase(t, store)
-	ctx := context.Background()
-
-	_, err := store.CreateSpec(ctx, "existing-spec", "Exists", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
-	require.NoError(t, err)
-
-	// Non-existent old spec.
-	err = store.SupersedeSpec(ctx, "nonexistent", "existing-spec", "reason")
-	require.ErrorIs(t, err, storage.ErrSpecNotFound)
-
-	// Non-existent new spec.
-	err = store.SupersedeSpec(ctx, "existing-spec", "nonexistent", "reason")
-	require.ErrorIs(t, err, storage.ErrSpecNotFound)
-}
-
-func TestAmendSpec(t *testing.T) {
-	store := newStore(t)
-	clearDatabase(t, store)
-	ctx := context.Background()
-
-	_, err := store.CreateSpec(ctx, "amend-test", "Amend test", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
-	require.NoError(t, err)
-	require.NoError(t, store.TransitionStage(ctx, "amend-test", storage.SpecStageSpark, storage.SpecStageShape))
-	require.NoError(t, store.TransitionStage(ctx, "amend-test", storage.SpecStageShape, storage.SpecStageSpecify))
-
-	// Amend back to shape (valid backward transition).
-	result, err := store.AmendSpec(ctx, "amend-test", "need to reconsider scope", storage.SpecStageShape)
-	require.NoError(t, err)
-	require.Equal(t, storage.SpecStageShape, result.Stage)
-	require.Equal(t, int32(4), result.Version, "version should increment after amendment (1 create + 2 transitions + 1 amend = 4)")
-}
-
-func TestAmendSpec_AlreadyApproved(t *testing.T) {
-	store := newStore(t)
-	clearDatabase(t, store)
-	ctx := context.Background()
-
-	_, err := store.CreateSpec(ctx, "approved-spec", "Will be approved", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
-	require.NoError(t, err)
-	require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.SpecStageSpark, storage.SpecStageShape))
-	require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.SpecStageShape, storage.SpecStageSpecify))
-	require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.SpecStageSpecify, storage.SpecStageDecompose))
-	require.NoError(t, store.TransitionStage(ctx, "approved-spec", storage.SpecStageDecompose, storage.SpecStageApproved))
-
-	_, err = store.AmendSpec(ctx, "approved-spec", "too late", storage.SpecStageShape)
-	require.ErrorIs(t, err, storage.ErrSpecAlreadyApproved)
-}
-
-func TestAmendSpec_InvalidTransition(t *testing.T) {
-	store := newStore(t)
-	clearDatabase(t, store)
-	ctx := context.Background()
-
-	_, err := store.CreateSpec(ctx, "amend-invalid", "Invalid amend", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
-	require.NoError(t, err)
-	require.NoError(t, store.TransitionStage(ctx, "amend-invalid", storage.SpecStageSpark, storage.SpecStageShape))
-
-	// Amend forward (shape → specify) should fail — amend only allows backward.
-	_, err = store.AmendSpec(ctx, "amend-invalid", "forward not allowed", storage.SpecStageSpecify)
-	require.ErrorIs(t, err, storage.ErrInvalidStageTransition)
-}
-
-func TestAmendSpec_NotFound(t *testing.T) {
-	store := newStore(t)
-	clearDatabase(t, store)
-	ctx := context.Background()
-
-	_, err := store.AmendSpec(ctx, "nonexistent-spec", "reason", storage.SpecStageShape)
-	require.ErrorIs(t, err, storage.ErrSpecNotFound)
-}
-
-func TestAmendSpec_UpdatesContentHash(t *testing.T) {
-	store := newStore(t)
-	clearDatabase(t, store)
-	ctx := context.Background()
-
-	_, err := store.CreateSpec(ctx, "amend-hash", "Test", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
-	require.NoError(t, err)
-
-	err = store.TransitionStage(ctx, "amend-hash", storage.SpecStageSpark, storage.SpecStageShape)
-	require.NoError(t, err)
-
-	preAmend, err := store.GetSpec(ctx, "amend-hash")
-	require.NoError(t, err)
-
-	_, err = store.AmendSpec(ctx, "amend-hash", "rework needed", storage.SpecStageSpark)
-	require.NoError(t, err)
-
-	updated, err := store.GetSpec(ctx, "amend-hash")
-	require.NoError(t, err)
-	require.NotEqual(t, preAmend.ContentHash, updated.ContentHash)
-	require.NotEmpty(t, updated.ContentHash)
-}
-
-func TestTransitionStage_BackwardViaAmend(t *testing.T) {
-	store := newStore(t)
-	clearDatabase(t, store)
-	ctx := context.Background()
-
-	_, err := store.CreateSpec(ctx, "backward-test", "Backward transition", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
-	require.NoError(t, err)
-
-	// Advance spark → shape → specify.
-	require.NoError(t, store.TransitionStage(ctx, "backward-test", storage.SpecStageSpark, storage.SpecStageShape))
-	require.NoError(t, store.TransitionStage(ctx, "backward-test", storage.SpecStageShape, storage.SpecStageSpecify))
-
-	// AmendSpec back to spark (two stages back).
-	result, err := store.AmendSpec(ctx, "backward-test", "starting over", storage.SpecStageSpark)
-	require.NoError(t, err)
-	require.Equal(t, storage.SpecStageSpark, result.Stage)
-
-	// After amend, can transition forward again from spark.
-	require.NoError(t, store.TransitionStage(ctx, "backward-test", storage.SpecStageSpark, storage.SpecStageShape))
-}
-
-func TestTransitionStage_SupersededGuard(t *testing.T) {
-	store := newStore(t)
-	clearDatabase(t, store)
-	ctx := context.Background()
-
-	_, err := store.CreateSpec(ctx, "superseded-old", "Will be superseded", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
-	require.NoError(t, err)
-	_, err = store.CreateSpec(ctx, "superseded-new", "Replacement", "p1", "low", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
-	require.NoError(t, err)
-
-	err = store.SupersedeSpec(ctx, "superseded-old", "superseded-new", "better approach")
-	require.NoError(t, err)
-
-	// Attempting TransitionStage on a superseded spec should fail.
-	err = store.TransitionStage(ctx, "superseded-old", storage.SpecStageSuperseded, storage.SpecStageShape)
-	require.ErrorIs(t, err, storage.ErrInvalidStageTransition)
-}

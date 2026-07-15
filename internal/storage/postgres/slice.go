@@ -77,6 +77,75 @@ func (s *Store) CreateSlice(ctx context.Context, sl *storage.Slice) error {
 	})
 }
 
+// UpdateSlice overwrites the mutable body of an existing slice — Intent,
+// Verify, Touches, and DependsOn — leaving status/assigned_to and identity
+// columns untouched. It is used by StoreDecomposeOutput to reconcile a
+// re-authored decomposition (amend → re-decompose) against pre-existing
+// Slice nodes. Returns ErrSliceNotFound if no slice row matches.
+func (s *Store) UpdateSlice(ctx context.Context, sl *storage.Slice) error {
+	if sl == nil {
+		return fmt.Errorf("postgres: UpdateSlice: slice must not be nil")
+	}
+
+	// Coerce nil slices to empty arrays: columns are NOT NULL TEXT[].
+	verify := sl.Verify
+	if verify == nil {
+		verify = []string{}
+	}
+	touches := sl.Touches
+	if touches == nil {
+		touches = []string{}
+	}
+	dependsOn := sl.DependsOn
+	if dependsOn == nil {
+		dependsOn = []string{}
+	}
+
+	now := s.now()
+	tag, err := s.exec(ctx,
+		`UPDATE slices
+		 SET intent = $1, verify = $2, touches = $3, depends_on = $4, updated_at = $5
+		 WHERE slug = $6 AND project_slug = $7`,
+		sl.Intent, verify, touches, dependsOn, now, sl.Slug, s.project,
+	)
+	if err != nil {
+		return fmt.Errorf("postgres: update slice %q: %w", sl.Slug, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("postgres: update slice %q: %w", sl.Slug, storage.ErrSliceNotFound)
+	}
+	return nil
+}
+
+// DeleteSlice removes a slice node and every edge incident to it (BELONGS_TO,
+// COMPOSES, and DEPENDS_ON in either direction). It is used by
+// StoreDecomposeOutput to prune slices that a re-authored decomposition no
+// longer includes. Returns ErrSliceNotFound if no slice row matches.
+func (s *Store) DeleteSlice(ctx context.Context, slug string) error {
+	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Remove all edges incident to the slice first (both directions) so no
+		// dangling BELONGS_TO/COMPOSES/DEPENDS_ON edges outlive the node.
+		if _, err := s.exec(txCtx,
+			`DELETE FROM edges
+			 WHERE project_slug = $1 AND (from_slug = $2 OR to_slug = $2)`,
+			s.project, slug,
+		); err != nil {
+			return fmt.Errorf("postgres: delete slice edges %q: %w", slug, err)
+		}
+		tag, err := s.exec(txCtx,
+			`DELETE FROM slices WHERE slug = $1 AND project_slug = $2`,
+			slug, s.project,
+		)
+		if err != nil {
+			return fmt.Errorf("postgres: delete slice %q: %w", slug, err)
+		}
+		if tag.RowsAffected() == 0 {
+			return fmt.Errorf("postgres: delete slice %q: %w", slug, storage.ErrSliceNotFound)
+		}
+		return nil
+	})
+}
+
 // ListSlices returns all slices for a parent spec, ordered by creation time.
 func (s *Store) ListSlices(ctx context.Context, parentSlug string) ([]*storage.Slice, error) {
 	rows, err := s.query(ctx,

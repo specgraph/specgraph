@@ -52,16 +52,10 @@ func (h *LifecycleHandler) TransitionAmend(ctx context.Context, req *connect.Req
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if msg.ReEntryStage == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("re_entry_stage is required"))
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("re_entry_stage is required — one of: spark, shape, specify, decompose"))
 	}
-	if msg.ReEntryStage != "" {
-		stage := storage.SpecStage(msg.ReEntryStage)
-		if !stage.IsValid() {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid re_entry_stage %q", msg.ReEntryStage))
-		}
-		if stage.ExcludesReEntry() {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("re_entry_stage %q cannot be used as a re-entry point", msg.ReEntryStage))
-		}
+	if !storage.SpecStage(msg.ReEntryStage).IsValidReEntryStage() {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid re_entry_stage %q — must be one of: spark, shape, specify, decompose", msg.ReEntryStage))
 	}
 
 	spec, err := store.LifecycleAmendSpec(ctx, msg.Slug, msg.Reason, msg.ReEntryStage)
@@ -92,7 +86,7 @@ func (h *LifecycleHandler) TransitionSupersede(ctx context.Context, req *connect
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a spec cannot supersede itself"))
 	}
 
-	oldSpec, newSpec, err := store.LifecycleSupersedeSpec(ctx, msg.Slug, msg.NewSlug)
+	oldSpec, newSpec, err := store.LifecycleSupersedeSpec(ctx, msg.Slug, msg.NewSlug, msg.Reason)
 	if err != nil {
 		return nil, h.lifecycleError("TransitionSupersede", msg.Slug, err)
 	}
@@ -195,8 +189,13 @@ func (h *LifecycleHandler) AcknowledgeDrift(ctx context.Context, req *connect.Re
 	if msg.UpstreamSlug != "" && msg.All {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("cannot specify both upstream_slug and all=true"))
 	}
-	if len(msg.Note) > maxFieldLen {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("note exceeds maximum of %d characters", maxFieldLen))
+	// note is documented as Required in lifecycle.proto: an acknowledgment must
+	// carry a rationale so the ack-changelog audit trail is never empty. Enforce
+	// it here (not just in the CLI) so direct RPC callers can't persist a
+	// no-rationale acknowledgment. validateRequiredField covers both the
+	// empty-string and max-length checks.
+	if err := validateRequiredField("note", msg.Note); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	if err := store.LifecycleAcknowledgeDrift(ctx, msg.Slug, msg.UpstreamSlug, msg.Note); err != nil {
@@ -296,6 +295,13 @@ func (h *LifecycleHandler) lifecycleError(op, slug string, err error) error {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is in a terminal state")))
 	}
 	if errors.Is(err, storage.ErrSpecIneligibleForDrift) {
+		// Reachable via the CheckDrift RPC: driftChecker.Check() returns this
+		// sentinel at the top level when a caller drift-checks a specific
+		// non-done spec (internal/drift/drift.go — the eligibility guard). It is
+		// NOT emitted by the AcknowledgeDrift path, which uses
+		// ErrSpecIneligibleStage instead. Keep this branch so a non-done
+		// drift-check surfaces as CodeFailedPrecondition rather than an opaque
+		// internal error.
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New(specMsg(slug, "is not eligible for drift checking (must be done)")))
 	}
 	if errors.Is(err, storage.ErrNewSpecNotFound) {

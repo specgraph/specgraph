@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
 	"github.com/specgraph/specgraph/internal/authoring"
+	authload "github.com/specgraph/specgraph/internal/authoring/load"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -103,15 +104,6 @@ func postureFromString(s string) specv1.Posture {
 	return specv1.Posture_POSTURE_UNSPECIFIED
 }
 
-// authoringStageFromString converts a friendly string (e.g. "spark") to an AuthoringStage enum.
-func authoringStageFromString(s string) specv1.AuthoringStage {
-	key := "AUTHORING_STAGE_" + strings.ToUpper(s)
-	if v, ok := specv1.AuthoringStage_value[key]; ok {
-		return specv1.AuthoringStage(v)
-	}
-	return specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED
-}
-
 // ---------------------------------------------------------------------------
 // authorTool — authoring funnel: spark, shape, specify, decompose, approve, amend, supersede
 // ---------------------------------------------------------------------------
@@ -124,19 +116,59 @@ func (t *authorTool) def() ToolDef {
 	return ToolDef{
 		Name: "author",
 		Description: "Drive the SpecGraph authoring funnel for a spec. " +
-			"Actions: spark, shape, specify, decompose, approve, amend, supersede.",
+			"Actions: spark, shape, specify, decompose, approve, amend, supersede. " +
+			"For spark/shape/specify/decompose pass the stage result in `output` as " +
+			"friendly snake_case YAML (e.g. spark `scope_sniff: small`; shape " +
+			"`scope_in`/`chosen_approach`; decompose `strategy: vertical_slice`) — " +
+			"no protojson/enum names. shape/specify/decompose also require `exchanges` " +
+			"(a JSON array; see param doc). " +
+			"amend returns an IN-FLIGHT spec (approved/in_progress/review) to an earlier " +
+			"authoring stage: it lands the spec ONE stage before `re_entry_stage` so that " +
+			"stage's authoring command is the valid next transition — requires `reason` and " +
+			"`re_entry_stage` (spark|shape|specify|decompose). supersede replaces a DONE spec " +
+			"with another via `new_slug` (optional `reason`).",
 		Profile: ProfileAuthoring,
 		Schema: objectSchema(
 			props{
 				"action": stringProp("Operation to perform",
 					"spark", "shape", "specify", "decompose", "approve", "amend", "supersede"),
-				"slug":         stringProp("Spec slug (required for all actions)"),
-				"output":       stringProp("Stage output as a JSON string (required for spark/shape/specify/decompose)"),
-				"exchanges":    stringProp("JSON array of ConversationExchange objects (required for shape/specify/decompose; optional for spark)"),
-				"posture":      stringProp("AI collaboration posture: drive, partner, support"),
-				"reason":       stringProp("Reason for amend or supersede"),
-				"target_stage": stringProp("Target stage for amend: spark, shape, specify, decompose"),
-				"superseded_by": stringProp("Slug of the replacement spec (required for supersede)"),
+				"slug": stringProp("Spec slug (required for all actions)"),
+				"output": stringProp(
+					"Stage output as friendly snake_case YAML (required for spark/shape/specify/decompose). " +
+						"Per stage — spark: seed, signal, questions[], scope_sniff (tiny|small|medium|large|epic), kill_test. " +
+						"shape: scope_in[], scope_out[], approaches[] (name/description/tradeoffs[]), chosen_approach, " +
+						"risks[], success_must[]/success_should[]/success_wont[], decisions[] (slug/title/decision/rationale). " +
+						"specify: interfaces[] (name/body), verify_criteria[] (category/description), invariants[], " +
+						"touches[] (path/purpose/change_type). decompose: strategy " +
+						"(vertical_slice|layer_cake|single_unit|steel_thread), slices[] (id/intent/verify[]/touches[]/depends_on[]). " +
+						"Use snake_case verbatim — camelCase (scopeIn, chosenApproach) is rejected.",
+				),
+				"exchanges": stringProp(
+					"Conversation log as a JSON array of ConversationExchange objects — " +
+						"required for shape/specify/decompose, optional for spark, not needed for approve. " +
+						"Each object has: role (\"probe\" = agent asks, \"response\" = user answers), " +
+						"content (the text), stage (the authoring stage, e.g. \"shape\"), and " +
+						"sequence (strictly increasing integer >= 1; same number pairs a probe with its response). " +
+						"Minimal shape example: " +
+						`[{"role":"probe","content":"What is out of scope?","stage":"shape","sequence":1},` +
+						`{"role":"response","content":"Anything touching billing.","stage":"shape","sequence":2}]`,
+				),
+				"posture": stringProp("AI collaboration posture: drive, partner, support"),
+				"reason":  stringProp("Reason for amend (required) or supersede (optional)"),
+				"re_entry_stage": stringProp(
+					"Re-entry authoring stage for amend (required) — one of: spark, shape, specify, decompose. " +
+						"Name the stage you want to RE-DO. The spec is landed ONE stage before it, so that " +
+						"stage's own authoring command is a valid forward transition. " +
+						"For example re_entry_stage=shape lands the spec at spark, so you then run " +
+						"author action=shape (spark→shape) to re-author. " +
+						"approved/in_progress/review/done are rejected — use those only via the normal funnel, " +
+						"and use supersede (not amend) to replace a done spec.",
+				),
+				"new_slug": stringProp(
+					"Slug of the replacement spec for supersede (required). The old (done) spec is marked " +
+						"superseded and a SUPERSEDES edge is created from new_slug to the old slug. " +
+						"For example superseding old-auth with new-auth: slug=old-auth, new_slug=new-auth.",
+				),
 			},
 			"action", "slug",
 		),
@@ -173,11 +205,12 @@ func (t *authorTool) handleSpark(ctx context.Context, params map[string]any) (*T
 	}
 	raw := stringParam(params, "output")
 	if raw == "" {
-		return errResult("output is required for spark (JSON-encoded SparkOutput)"), nil
+		return errResult("output is required for spark (friendly YAML SparkOutput)"), nil
 	}
-	var out specv1.SparkOutput
-	if err := protojson.Unmarshal([]byte(raw), &out); err != nil {
-		return errResult(fmt.Sprintf("invalid spark output JSON: %v", err)), nil
+	out, err := authload.SparkFromYAML([]byte(raw))
+	if err != nil {
+		// Sanitized: no raw parser internals leaked (T-06-03).
+		return errResult("invalid spark output (expected friendly snake_case YAML)"), nil //nolint:nilerr // raw parser error intentionally not surfaced (T-06-03)
 	}
 	posture, posErr := validateOptionalPosture(params)
 	if posErr != nil {
@@ -185,7 +218,7 @@ func (t *authorTool) handleSpark(ctx context.Context, params map[string]any) (*T
 	}
 	resp, err := t.client.Authoring.Spark(ctx, connect.NewRequest(&specv1.SparkRequest{
 		Slug:    slug,
-		Output:  &out,
+		Output:  out,
 		Posture: posture,
 	}))
 	if err != nil {
@@ -201,11 +234,12 @@ func (t *authorTool) handleShape(ctx context.Context, params map[string]any) (*T
 	}
 	raw := stringParam(params, "output")
 	if raw == "" {
-		return errResult("output is required for shape (JSON-encoded ShapeOutput)"), nil
+		return errResult("output is required for shape (friendly YAML ShapeOutput)"), nil
 	}
-	var out specv1.ShapeOutput
-	if err := protojson.Unmarshal([]byte(raw), &out); err != nil {
-		return errResult(fmt.Sprintf("invalid shape output JSON: %v", err)), nil
+	out, err := authload.ShapeFromYAML([]byte(raw))
+	if err != nil {
+		// Sanitized: no raw parser internals leaked (T-06-03).
+		return errResult("invalid shape output (expected friendly snake_case YAML)"), nil //nolint:nilerr // raw parser error intentionally not surfaced (T-06-03)
 	}
 	posture, posErr := validateOptionalPosture(params)
 	if posErr != nil {
@@ -217,7 +251,7 @@ func (t *authorTool) handleShape(ctx context.Context, params map[string]any) (*T
 	}
 	resp, err := t.client.Authoring.Shape(ctx, connect.NewRequest(&specv1.ShapeRequest{
 		Slug:                  slug,
-		Output:                &out,
+		Output:                out,
 		Posture:               posture,
 		ConversationExchanges: exchanges,
 	}))
@@ -234,11 +268,12 @@ func (t *authorTool) handleSpecify(ctx context.Context, params map[string]any) (
 	}
 	raw := stringParam(params, "output")
 	if raw == "" {
-		return errResult("output is required for specify (JSON-encoded SpecifyOutput)"), nil
+		return errResult("output is required for specify (friendly YAML SpecifyOutput)"), nil
 	}
-	var out specv1.SpecifyOutput
-	if err := protojson.Unmarshal([]byte(raw), &out); err != nil {
-		return errResult(fmt.Sprintf("invalid specify output JSON: %v", err)), nil
+	out, err := authload.SpecifyFromYAML([]byte(raw))
+	if err != nil {
+		// Sanitized: no raw parser internals leaked (T-06-03).
+		return errResult("invalid specify output (expected friendly snake_case YAML)"), nil //nolint:nilerr // raw parser error intentionally not surfaced (T-06-03)
 	}
 	posture, posErr := validateOptionalPosture(params)
 	if posErr != nil {
@@ -250,7 +285,7 @@ func (t *authorTool) handleSpecify(ctx context.Context, params map[string]any) (
 	}
 	resp, err := t.client.Authoring.Specify(ctx, connect.NewRequest(&specv1.SpecifyRequest{
 		Slug:                  slug,
-		Output:                &out,
+		Output:                out,
 		Posture:               posture,
 		ConversationExchanges: exchanges,
 	}))
@@ -267,11 +302,12 @@ func (t *authorTool) handleDecompose(ctx context.Context, params map[string]any)
 	}
 	raw := stringParam(params, "output")
 	if raw == "" {
-		return errResult("output is required for decompose (JSON-encoded DecomposeOutput)"), nil
+		return errResult("output is required for decompose (friendly YAML DecomposeOutput)"), nil
 	}
-	var out specv1.DecomposeOutput
-	if err := protojson.Unmarshal([]byte(raw), &out); err != nil {
-		return errResult(fmt.Sprintf("invalid decompose output JSON: %v", err)), nil
+	out, err := authload.DecomposeFromYAML([]byte(raw))
+	if err != nil {
+		// Sanitized: no raw parser internals leaked (T-06-03).
+		return errResult("invalid decompose output (expected friendly snake_case YAML)"), nil //nolint:nilerr // raw parser error intentionally not surfaced (T-06-03)
 	}
 	posture, posErr := validateOptionalPosture(params)
 	if posErr != nil {
@@ -283,7 +319,7 @@ func (t *authorTool) handleDecompose(ctx context.Context, params map[string]any)
 	}
 	resp, err := t.client.Authoring.Decompose(ctx, connect.NewRequest(&specv1.DecomposeRequest{
 		Slug:                  slug,
-		Output:                &out,
+		Output:                out,
 		Posture:               posture,
 		ConversationExchanges: exchanges,
 	}))
@@ -312,23 +348,49 @@ func (t *authorTool) handleAmend(ctx context.Context, params map[string]any) (*T
 	if slug == "" {
 		return errResult("slug is required for amend"), nil
 	}
-	targetStageStr := stringParam(params, "target_stage")
-	targetStage := specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED
-	if targetStageStr != "" {
-		targetStage = authoringStageFromString(targetStageStr)
-		if targetStage == specv1.AuthoringStage_AUTHORING_STAGE_UNSPECIFIED {
-			return errResult("invalid target_stage (valid: spark, shape, specify, decompose, approved)"), nil
-		}
+	reEntryStage := stringParam(params, "re_entry_stage")
+	if reEntryStage == "" {
+		return errResult("re_entry_stage is required for amend (spark, shape, specify, decompose)"), nil
 	}
-	resp, err := t.client.Authoring.Amend(ctx, connect.NewRequest(&specv1.AmendRequest{
-		Slug:        slug,
-		Reason:      stringParam(params, "reason"),
-		TargetStage: targetStage,
+	reason := stringParam(params, "reason")
+	if reason == "" {
+		return errResult("reason is required for amend"), nil
+	}
+	// Pass re_entry_stage straight through: the TransitionAmend handler is the
+	// single source of truth for the re-entry allowlist (spark|shape|specify|
+	// decompose) and rejects approved/in_progress/review/done. Re-validating here
+	// would risk drifting from that gate.
+	resp, err := t.client.Lifecycle.TransitionAmend(ctx, connect.NewRequest(&specv1.TransitionAmendRequest{
+		Slug:         slug,
+		Reason:       reason,
+		ReEntryStage: reEntryStage,
 	}))
 	if err != nil {
 		return connectErrResult(err)
 	}
-	return jsonResult(resp.Msg), nil
+	res := jsonResult(resp.Msg)
+	if res.IsError {
+		return res, nil
+	}
+	// D-05: the spec lands one stage BEFORE re_entry_stage, so the author action
+	// for re_entry_stage is the valid next transition. Echo it so the agent does
+	// not reproduce the #899 no-op.
+	//
+	// Exception: re_entry_stage=spark lands the spec AT spark
+	// (PrecedingAuthStage(spark)==spark). There is no forward re-author command
+	// for spark — `author action=spark` routes to CreateSpec and fails with
+	// ALREADY_EXISTS. Emitting that hint would instruct the agent to run a call
+	// guaranteed to error (WR-01), contradicting the specgraph-authoring skill.
+	// Surface a terminal-stage hint instead.
+	if reEntryStage == "spark" {
+		hint := fmt.Sprintf("Spec %q is now at spark. There is no forward re-author command for spark; edit the seed via the normal flow.", slug)
+		res.Content = append(res.Content, Content{Type: "text", Text: hint})
+		return res, nil
+	}
+	hint := fmt.Sprintf("Next step: run author action=%s for spec %q to re-author the %s stage.",
+		reEntryStage, slug, reEntryStage)
+	res.Content = append(res.Content, Content{Type: "text", Text: hint})
+	return res, nil
 }
 
 func (t *authorTool) handleSupersede(ctx context.Context, params map[string]any) (*ToolResult, error) {
@@ -336,14 +398,14 @@ func (t *authorTool) handleSupersede(ctx context.Context, params map[string]any)
 	if slug == "" {
 		return errResult("slug is required for supersede"), nil
 	}
-	supersededBy := stringParam(params, "superseded_by")
-	if supersededBy == "" {
-		return errResult("superseded_by is required for supersede"), nil
+	newSlug := stringParam(params, "new_slug")
+	if newSlug == "" {
+		return errResult("new_slug is required for supersede"), nil
 	}
-	resp, err := t.client.Authoring.Supersede(ctx, connect.NewRequest(&specv1.SupersedeRequest{
-		Slug:         slug,
-		SupersededBy: supersededBy,
-		Reason:       stringParam(params, "reason"),
+	resp, err := t.client.Lifecycle.TransitionSupersede(ctx, connect.NewRequest(&specv1.TransitionSupersedeRequest{
+		Slug:    slug,
+		NewSlug: newSlug,
+		Reason:  stringParam(params, "reason"),
 	}))
 	if err != nil {
 		return connectErrResult(err)

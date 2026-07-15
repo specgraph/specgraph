@@ -17,13 +17,23 @@ etc.) evaluate every spec against it.
 The constitution is layered: `user` → `org` → `project` → `domain`. More
 specific layers override general ones. Most users start at the `project` layer.
 
+Everything below runs over MCP — the `constitution` tool and the
+`specgraph://constitution` resource. No local CLI is required. (Source/CLI
+users have an equivalent path in the gated appendix at the end; MCP-only
+agents skip it.)
+
 ---
 
 ## Step 1: Check Current State
 
-```bash
-specgraph constitution show
-```
+Read the current constitution with the `constitution` tool:
+
+- `constitution` tool, `action: get` — returns the full constitution (pass an
+  optional `layer` to read a single layer).
+- Or read the `specgraph://constitution` resource for the whole thing, or
+  `specgraph://constitution/{layer}` for one layer.
+
+Then:
 
 - If a constitution exists, show a summary and ask what they want to change.
 - If none exists, proceed to creation.
@@ -126,32 +136,34 @@ What's the deployment strategy? This section is often sparse for new projects
 **References** — Link to ADRs, specs, or docs that inform the constitution.
 Scan for `docs/adr/` or similar directories.
 
-## Step 4: Write and Import
+## Step 4: Write It Over MCP
 
-1. Write the YAML to `constitution.yaml` (or the user's preferred filename)
-2. Import it:
+Persist the constitution with the `constitution` tool — pass the **same
+friendly YAML block from Step 3 inline** as the write payload:
 
-   ```bash
-   specgraph constitution import constitution.yaml
-   ```
+- `constitution` tool, `action: update` — send the friendly YAML above
+  (the exact `layer: "project"` schema you drafted). No file, no import step,
+  no format conversion. The block you showed the user is the block you write.
 
-3. Verify:
+Then verify:
 
-   ```bash
-   specgraph constitution show
-   ```
+- `constitution` tool, `action: get` — read it back and confirm it looks right.
+- Or re-read the `specgraph://constitution` resource.
 
-4. Show the result and confirm it looks right.
+Show the result and confirm it looks right with the user.
+
+> The friendly YAML you draft in Step 3 IS the write payload. Do not translate
+> it into another shape before calling `update` — the tool accepts this schema
+> directly. (This is the whole point: what you teach the user is what the tool
+> ingests.)
 
 ## Step 5: Emit Tool Files (Optional)
 
-Ask if they want to generate tool-specific files:
-
-```bash
-specgraph constitution emit --format claude-md --output CONSTITUTION.md
-```
-
-Available formats: `claude-md`, `cursorrules`, `agents-md`
+If the user wants tool-specific files (a `CONSTITUTION.md`, cursor rules, or an
+`AGENTS.md` block) generated from the constitution, that generation currently
+runs through the local CLI — see the gated appendix below. MCP-only agents can
+skip this; the constitution itself is fully readable via
+`specgraph://constitution`.
 
 ---
 
@@ -165,3 +177,32 @@ Available formats: `claude-md`, `cursorrules`, `agents-md`
   can't tell whether it's violated, it's not a constraint.
 - **No antipatterns?** Every project has them. If the user can't think of any,
   ask about past incidents or code review feedback.
+
+---
+
+## Requires local CLI (source/CLI users only — MCP-only agents skip this)
+
+These steps need the `specgraph` binary on a local machine. MCP-only agents do
+not use them — the `constitution` tool and `specgraph://constitution` resource
+above cover the same ground.
+
+- Inspect the current constitution:
+
+  ```bash
+  specgraph constitution show
+  ```
+
+- Write a constitution from a YAML file (the CLI equivalent of
+  `constitution` tool `action: update`):
+
+  ```bash
+  specgraph constitution import constitution.yaml
+  ```
+
+- Emit tool-specific files:
+
+  ```bash
+  specgraph constitution emit --format claude-md --output CONSTITUTION.md
+  ```
+
+  Available formats: `claude-md`, `cursorrules`, `agents-md`

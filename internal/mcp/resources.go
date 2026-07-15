@@ -37,7 +37,7 @@ func constitutionEmptyResource(uri string) []ResourceContent {
 	return []ResourceContent{{
 		URI:      uri,
 		MimeType: "text/markdown",
-		Text:     "# SpecGraph Constitution\n\n_No constitution configured. Run `specgraph constitution set` to define project ground truth._\n",
+		Text:     "# SpecGraph Constitution\n\n" + render.ConstitutionEmptyHint + "\n",
 	}}
 }
 

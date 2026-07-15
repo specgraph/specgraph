@@ -216,7 +216,7 @@ func TestListChanges_AfterSupersede(t *testing.T) {
 	_, err = store.CreateSpec(ctx, "new-spec", "new intent", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	_, _, err = store.LifecycleSupersedeSpec(ctx, "old-spec", "new-spec")
+	_, _, err = store.LifecycleSupersedeSpec(ctx, "old-spec", "new-spec", "")
 	require.NoError(t, err)
 
 	// Verify old spec changelog contains supersede entry.

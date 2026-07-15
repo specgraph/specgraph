@@ -114,6 +114,9 @@ message TransitionAmendResponse {
 message TransitionSupersedeRequest {
   string slug = 1;
   string new_slug = 2;
+  // Optional. Reason for superseding the spec, recorded in the superseded
+  // spec's changelog entry. When empty, a default note is used.
+  string reason = 3;
 }
 
 message TransitionSupersedeResponse {

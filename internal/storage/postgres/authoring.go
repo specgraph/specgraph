@@ -202,7 +202,29 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 		// Resolve the slice backend — use self if sliceOps is nil.
 		sliceBackend := s.resolveSliceOps()
 
-		// Pass 1: create all Slice nodes (with BELONGS_TO + COMPOSES edges).
+		// Reconcile against the previously-stored decomposition so a re-author
+		// (amend → re-decompose) does not silently drop updated slice bodies or
+		// orphan removed slices (CR-01). Load the prior slice set and prune any
+		// slice — plus its BELONGS_TO/COMPOSES/DEPENDS_ON edges — that the
+		// incoming decomposition no longer includes.
+		existingSlugs, exErr := s.readStoredSliceSlugs(txCtx, slug)
+		if exErr != nil {
+			return exErr
+		}
+		incoming := make(map[string]bool, len(output.Slices))
+		for _, sl := range output.Slices {
+			incoming[fmt.Sprintf("%s/%s", slug, sl.ID)] = true
+		}
+		for _, oldSlug := range existingSlugs {
+			if !incoming[oldSlug] {
+				if delErr := s.DeleteSlice(txCtx, oldSlug); delErr != nil {
+					return fmt.Errorf("postgres: prune stale slice %q: %w", oldSlug, delErr)
+				}
+			}
+		}
+
+		// Pass 1: create new Slice nodes (with BELONGS_TO + COMPOSES edges), or
+		// update the body of slices that already exist (the re-author case).
 		var slugs []string
 		for _, sl := range output.Slices {
 			childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
@@ -210,29 +232,47 @@ func (s *Store) StoreDecomposeOutput(ctx context.Context, slug string, output *s
 			for i, dep := range sl.DependsOn {
 				resolvedDeps[i] = fmt.Sprintf("%s/%s", slug, dep)
 			}
-			// Check if slice already exists (idempotency for retries).
+			sliceDomain := &storage.Slice{
+				Slug:       childSlug,
+				ParentSlug: slug,
+				SliceID:    sl.ID,
+				Intent:     sl.Intent,
+				Verify:     sl.Verify,
+				Touches:    sl.Touches,
+				DependsOn:  resolvedDeps,
+			}
 			_, getErr := sliceBackend.GetSlice(txCtx, childSlug)
 			if getErr != nil {
 				if !errors.Is(getErr, storage.ErrSliceNotFound) {
 					return fmt.Errorf("postgres: check slice %q: %w", childSlug, getErr)
 				}
-				sliceDomain := &storage.Slice{
-					Slug:       childSlug,
-					ParentSlug: slug,
-					SliceID:    sl.ID,
-					Intent:     sl.Intent,
-					Verify:     sl.Verify,
-					Touches:    sl.Touches,
-					DependsOn:  resolvedDeps,
-				}
 				if createErr := sliceBackend.CreateSlice(txCtx, sliceDomain); createErr != nil {
 					return fmt.Errorf("postgres: create slice %q: %w", childSlug, createErr)
+				}
+			} else {
+				// Slice already exists (re-author): overwrite its body so the
+				// corrected decomposition persists instead of being dropped.
+				if updErr := s.UpdateSlice(txCtx, sliceDomain); updErr != nil {
+					return fmt.Errorf("postgres: update slice %q: %w", childSlug, updErr)
 				}
 			}
 			slugs = append(slugs, childSlug)
 		}
 
-		// Pass 2: create DEPENDS_ON edges between slices.
+		// Pass 2: reconcile DEPENDS_ON edges between slices. Clear each incoming
+		// slice's outgoing DEPENDS_ON edges first so a re-authored slice whose
+		// dependency set changed does not retain stale edges, then recreate from
+		// the current decomposition.
+		for _, sl := range output.Slices {
+			childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
+			if _, delErr := s.exec(txCtx,
+				`DELETE FROM edges
+				 WHERE project_slug = $1 AND from_slug = $2 AND edge_type = 'DEPENDS_ON'`,
+				s.project, childSlug,
+			); delErr != nil {
+				return fmt.Errorf("postgres: clear DEPENDS_ON edges for %q: %w", childSlug, delErr)
+			}
+		}
 		for _, sl := range output.Slices {
 			childSlug := fmt.Sprintf("%s/%s", slug, sl.ID)
 			for _, dep := range sl.DependsOn {
@@ -292,127 +332,6 @@ func (s *Store) StoreSafetyFlags(ctx context.Context, slug string, flags []stora
 	return nil
 }
 
-// SupersedeSpec marks a spec as superseded and creates a SUPERSEDES edge to the replacement.
-// This is the authoring-level supersession; for lifecycle-level see LifecycleSupersedeSpec.
-func (s *Store) SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error {
-	// Validate both specs exist before the combined operation.
-	if _, err := s.GetSpec(ctx, slug); err != nil {
-		return fmt.Errorf("postgres: supersede spec: old spec %q: %w", slug, err)
-	}
-	if _, err := s.GetSpec(ctx, supersededBy); err != nil {
-		return fmt.Errorf("postgres: supersede spec: new spec %q: %w", supersededBy, err)
-	}
-
-	return s.RunInTransaction(ctx, func(txCtx context.Context) error {
-		// Read old spec for changelog delta.
-		oldSpec, getErr := s.GetSpec(txCtx, slug)
-		if getErr != nil {
-			return fmt.Errorf("postgres: supersede spec: pre-read %q: %w", slug, getErr)
-		}
-
-		now := s.now()
-		tag, err := s.exec(txCtx,
-			`UPDATE specs SET stage = 'superseded', version = version + 1, updated_at = $1
-			 WHERE slug = $2 AND project_slug = $3`,
-			now, slug, s.project,
-		)
-		if err != nil {
-			return fmt.Errorf("postgres: supersede spec: %w", err)
-		}
-		if tag.RowsAffected() == 0 {
-			return fmt.Errorf("postgres: supersede spec %q: %w", slug, storage.ErrSpecNotFound)
-		}
-
-		// Create SUPERSEDES edge: supersededBy → slug.
-		_, err = s.exec(txCtx,
-			`INSERT INTO edges (from_slug, to_slug, edge_type, project_slug)
-			 VALUES ($1, $2, 'SUPERSEDES', $3)
-			 ON CONFLICT (project_slug, from_slug, to_slug, edge_type) DO NOTHING`,
-			supersededBy, slug, s.project,
-		)
-		if err != nil {
-			return fmt.Errorf("postgres: supersede spec: create edge: %w", err)
-		}
-
-		// Recompute content hash and create checkpoint changelog.
-		if hashErr := s.recomputeContentHash(txCtx, slug); hashErr != nil {
-			return hashErr
-		}
-		updatedSpec, getErr := s.GetSpec(txCtx, slug)
-		if getErr != nil {
-			return getErr
-		}
-		deltas := []storage.FieldChange{
-			{Field: "stage", OldValue: string(oldSpec.Stage), NewValue: string(storage.SpecStageSuperseded)},
-		}
-		clEntry := &storage.ChangeLogEntry{
-			Version:     updatedSpec.Version,
-			Stage:       string(storage.SpecStageSuperseded),
-			ContentHash: updatedSpec.ContentHash,
-			Checkpoint:  true,
-			Summary:     "Spec superseded (authoring)",
-			Reason:      reason,
-			Date:        now,
-		}
-		return s.createChangeLog(txCtx, slug, clEntry, deltas)
-	})
-}
-
-// AmendSpec moves a spec backward to an earlier stage, bumping its version.
-// This is the authoring-level amendment; for lifecycle-level see LifecycleAmendSpec.
-func (s *Store) AmendSpec(ctx context.Context, slug, reason string, targetStage storage.SpecStage) (*storage.AmendResult, error) { //nolint:revive // reason is part of the storage.AuthoringBackend interface
-	spec, err := s.GetSpec(ctx, slug)
-	if err != nil {
-		return nil, fmt.Errorf("amend spec %q: get current: %w", slug, err)
-	}
-	if spec.Stage == storage.SpecStageApproved {
-		return nil, storage.ErrSpecAlreadyApproved
-	}
-	if spec.Stage == storage.SpecStageSuperseded {
-		return nil, fmt.Errorf("amend spec %q: %w", slug, storage.ErrSpecSuperseded)
-	}
-	if vErr := storage.ValidateAmendTransition(spec.Stage, targetStage); vErr != nil {
-		return nil, fmt.Errorf("postgres: amend: %w: %w", storage.ErrInvalidStageTransition, vErr)
-	}
-
-	var result *storage.AmendResult
-	txErr := s.RunInTransaction(ctx, func(txCtx context.Context) error {
-		now := s.now()
-		tag, execErr := s.exec(txCtx,
-			`UPDATE specs SET stage = $1, version = version + 1, updated_at = $2
-			 WHERE slug = $3 AND project_slug = $4 AND version = $5`,
-			string(targetStage), now, slug, s.project, spec.Version,
-		)
-		if execErr != nil {
-			return fmt.Errorf("postgres: amend spec: %w", execErr)
-		}
-		if tag.RowsAffected() == 0 {
-			// Version guard failed — either not found or concurrent modification.
-			if _, getErr := s.GetSpec(txCtx, slug); getErr != nil {
-				return fmt.Errorf("postgres: amend spec %q: %w", slug, storage.ErrSpecNotFound)
-			}
-			return fmt.Errorf("postgres: amend spec %q: %w", slug, storage.ErrConcurrentModification)
-		}
-
-		if hashErr := s.recomputeContentHash(txCtx, slug); hashErr != nil {
-			return hashErr
-		}
-
-		updatedSpec, getErr := s.GetSpec(txCtx, slug)
-		if getErr != nil {
-			return getErr
-		}
-
-		result = &storage.AmendResult{
-			Slug:    updatedSpec.Slug,
-			Stage:   updatedSpec.Stage,
-			Version: updatedSpec.Version,
-		}
-		return nil
-	})
-	return result, txErr
-}
-
 // hashInputColumns lists the spec JSONB columns that affect the content hash.
 var hashInputColumns = map[string]bool{
 	"spark_output":     true,
@@ -464,6 +383,29 @@ func (s *Store) storeJSONColumn(ctx context.Context, slug, column string, data a
 		}
 	}
 	return nil
+}
+
+// readStoredSliceSlugs returns the child slice slugs recorded on the parent
+// spec's decompose_output.SliceSlugs. Used by StoreDecomposeOutput to reconcile
+// a re-authored decomposition against the previously-stored slice set. Returns
+// nil (no slices) when the spec has never been decomposed; returns
+// ErrSpecNotFound if the spec does not exist.
+func (s *Store) readStoredSliceSlugs(ctx context.Context, slug string) ([]string, error) {
+	var decomposeOutput *storage.DecomposeOutput
+	err := s.queryRow(ctx,
+		`SELECT decompose_output FROM specs WHERE slug = $1 AND project_slug = $2`,
+		slug, s.project,
+	).Scan(&decomposeOutput)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("postgres: read stored slice slugs %q: %w", slug, storage.ErrSpecNotFound)
+		}
+		return nil, fmt.Errorf("postgres: read stored slice slugs: %w", err)
+	}
+	if decomposeOutput == nil {
+		return nil, nil
+	}
+	return decomposeOutput.SliceSlugs, nil
 }
 
 // readSpecFields reads the spec's substantive fields and content hash

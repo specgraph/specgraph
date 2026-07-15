@@ -133,13 +133,6 @@ type SafetyFlag struct {
 	Description string          `json:"description,omitempty"`
 }
 
-// AmendResult holds the minimal fields returned after amending a spec.
-type AmendResult struct {
-	Slug    string
-	Stage   SpecStage
-	Version int32
-}
-
 // StageWriter handles stage transitions and output storage.
 type StageWriter interface {
 	TransitionStage(ctx context.Context, slug string, from, to SpecStage) error
@@ -152,20 +145,11 @@ type StageWriter interface {
 	StoreSafetyFlags(ctx context.Context, slug string, flags []SafetyFlag) error
 }
 
-// AuthoringSpecLifecycle handles authoring-level spec amendments and supersession.
-// For lifecycle-level operations (done→amended, superseded edges, abandon),
-// see LifecycleBackend in lifecycle.go.
-type AuthoringSpecLifecycle interface {
-	SupersedeSpec(ctx context.Context, slug, supersededBy, reason string) error
-	AmendSpec(ctx context.Context, slug, reason string, targetStage SpecStage) (*AmendResult, error)
-}
-
 // AuthoringBackend composes all authoring storage operations.
 // Implementations satisfy all sub-interfaces.
 // All methods accept domain types defined in this package, not protobuf types.
 type AuthoringBackend interface {
 	StageWriter
-	AuthoringSpecLifecycle
 	ConversationBackend
 	FindingsWriter
 }

@@ -77,7 +77,7 @@ func TestGetReady_ProvenanceAndStageFilters(t *testing.T) {
 	_, err = store.CreateSpec(ctx, "e-authored-superseded-new", "superseding spec", "p1", "medium",
 		storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
 	require.NoError(t, err)
-	_, _, err = store.LifecycleSupersedeSpec(ctx, "e-authored-superseded-old", "e-authored-superseded-new")
+	_, _, err = store.LifecycleSupersedeSpec(ctx, "e-authored-superseded-old", "e-authored-superseded-new", "")
 	require.NoError(t, err)
 
 	// 6. AUTHORED + abandoned — not ready (fully terminal).

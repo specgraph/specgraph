@@ -40,7 +40,7 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		return nil, fmt.Errorf("amend spec %q: %w", slug, storage.ErrReEntryStageRequired)
 	}
 	targetStage := storage.SpecStage(reEntryStage)
-	if targetStage.ExcludesReEntry() {
+	if !targetStage.IsValidReEntryStage() {
 		return nil, fmt.Errorf("amend spec %q: re_entry_stage %q: %w", slug, reEntryStage, storage.ErrInvalidReEntryStage)
 	}
 
@@ -80,6 +80,25 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 			})
 		}
 
+		// D-08: a spec returning to authoring is no longer executable, so its
+		// active lease must not linger. Release the claim row and its CLAIMED_BY
+		// edge inside this same transaction. An unclaimed (approved) spec holds no
+		// claim — GetActiveClaim returns nil and this is a harmless no-op.
+		//
+		// Stage outputs are intentionally left intact (IN-03): amend rewinds
+		// `stage` to landingStage and recomputes the content hash, but does NOT
+		// clear shape_output / specify_output / decompose_output (nor the slices
+		// derived from decompose output). Each pre-existing stage output is
+		// retained and overwritten only when that stage is re-authored, so the
+		// agent re-enters authoring with its prior work as the starting point
+		// rather than a blank slate. A spec that stops mid-re-author therefore
+		// still carries the outputs of stages at or beyond landingStage; readers
+		// must treat stage as the authoritative contract boundary, not the mere
+		// presence of a downstream output blob.
+		if relErr := s.releaseActiveClaim(txCtx, slug, "amend spec"); relErr != nil {
+			return relErr
+		}
+
 		if hashErr := s.recomputeContentHash(txCtx, slug); hashErr != nil {
 			return hashErr
 		}
@@ -110,17 +129,48 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 
 // LifecycleSupersedeSpec marks the old spec as superseded and links it to the new spec
 // via a SUPERSEDES edge. Both specs are returned with updated fields.
-func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug string) (oldSpec, newSpec *storage.Spec, err error) {
+func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug, reason string) (oldSpec, newSpec *storage.Spec, err error) {
 	if oldSlug == newSlug {
 		return nil, nil, fmt.Errorf("supersede spec (%q): %w", oldSlug, storage.ErrSameSlugs)
 	}
 
 	txErr := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		// Acquire row locks on both specs up front, in a deterministic
+		// (lexicographic) order. Two concurrent mutually-superseding operations
+		// (A→B and B→A) would otherwise lock the two rows in opposite orders and
+		// deadlock; Postgres aborts one with SQLSTATE 40P01, which no sentinel
+		// matches, so it surfaces as an opaque CodeInternal instead of the
+		// retryable CodeAborted used for the version-guard path (IN-03). Locking
+		// the smaller slug first makes both orderings agree, so the operations
+		// serialize (the loser then fails the version guard with
+		// ErrConcurrentModification) rather than deadlocking. oldSlug != newSlug
+		// is already guaranteed above.
+		lockOrder := []string{oldSlug, newSlug}
+		if lockOrder[1] < lockOrder[0] {
+			lockOrder[0], lockOrder[1] = lockOrder[1], lockOrder[0]
+		}
+		for _, lockSlug := range lockOrder {
+			if _, lockErr := s.exec(txCtx,
+				`SELECT 1 FROM specs WHERE project_slug = $1 AND slug = $2 FOR UPDATE`,
+				s.project, lockSlug,
+			); lockErr != nil {
+				return fmt.Errorf("postgres: supersede spec: lock row %q: %w", lockSlug, lockErr)
+			}
+		}
+
 		oldCheck, preErr := s.GetSpec(txCtx, oldSlug)
 		if preErr != nil {
 			return fmt.Errorf("postgres: supersede spec: pre-read %q: %w", oldSlug, preErr)
 		}
 		if oldCheck.Stage != storage.SpecStageDone {
+			// A terminal old spec (superseded/abandoned) is distinct from a
+			// merely in-flight one: amend also rejects terminal specs, so the
+			// ErrSpecNotDone "use amend for in-flight specs" hint would misdirect
+			// the caller (IN-01). Surface ErrSpecTerminal so the message names
+			// the actual precondition.
+			if terminalStages[oldCheck.Stage] {
+				return fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecTerminal)
+			}
 			return fmt.Errorf("supersede spec %q (stage=%s): %w", oldSlug, oldCheck.Stage, storage.ErrSpecNotDone)
 		}
 		newCheck, newErr := s.GetSpec(txCtx, newSlug)
@@ -168,12 +218,29 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 			return fmt.Errorf("postgres: supersede spec (new): %w", newExecErr)
 		}
 		if newTag.RowsAffected() == 0 {
-			return s.preconditionError(txCtx, newSlug, "supersede spec (new)", func(current *storage.Spec) error {
-				if current.Version != newCheck.Version {
-					return fmt.Errorf("supersede spec (new) %q: %w", newSlug, storage.ErrConcurrentModification)
+			// Classify the new-spec guard failure locally rather than delegating
+			// to preconditionError. preconditionError's generic terminal branch
+			// returns ErrSpecTerminal, which lifecycleError then formats against
+			// the OLD slug (msg.Slug) — so a client would be told the spec being
+			// superseded is terminal when in fact the REPLACEMENT transitioned to
+			// superseded/abandoned between the pre-read and this guarded UPDATE
+			// (IN-02). Surface ErrNewSpecTerminal so the diagnostic names the
+			// replacement, not the old spec.
+			current, reErr := s.GetSpec(txCtx, newSlug)
+			if reErr != nil {
+				if errors.Is(reErr, storage.ErrSpecNotFound) {
+					return fmt.Errorf("supersede spec (new) %q: %w", newSlug, storage.ErrNewSpecNotFound)
 				}
-				return nil
-			})
+				return fmt.Errorf("supersede spec (new) %q: %w (re-read failed: %w)", newSlug, storage.ErrConcurrentModification, reErr)
+			}
+			if current.Version != newCheck.Version {
+				return fmt.Errorf("supersede spec (new) %q: %w", newSlug, storage.ErrConcurrentModification)
+			}
+			if terminalStages[current.Stage] {
+				return fmt.Errorf("supersede spec (new) %q (stage=%s): %w", newSlug, current.Stage, storage.ErrNewSpecTerminal)
+			}
+			return fmt.Errorf("supersede spec (new) %q (stage=%s, version=%d): unexplained guard failure: %w",
+				newSlug, current.Stage, current.Version, storage.ErrInternalGuardFailure)
 		}
 
 		// Recompute content hash for old spec (stage changed to superseded).
@@ -203,7 +270,12 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 			return fmt.Errorf("postgres: supersede: re-read new spec: %w", getErr)
 		}
 
-		// Changelog for old spec.
+		// Changelog for old spec. Use the caller-supplied reason when present,
+		// otherwise fall back to the default "Superseded by <newSlug>" note.
+		oldReason := reason
+		if oldReason == "" {
+			oldReason = fmt.Sprintf("Superseded by %s", newSlug)
+		}
 		oldDeltas := []storage.FieldChange{
 			{Field: "stage", OldValue: string(oldCheck.Stage), NewValue: string(storage.SpecStageSuperseded)},
 			{Field: "superseded_by", OldValue: "", NewValue: newSlug},
@@ -214,7 +286,7 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug str
 			ContentHash: oldSpec.ContentHash,
 			Checkpoint:  true,
 			Summary:     "Spec superseded",
-			Reason:      fmt.Sprintf("Superseded by %s", newSlug),
+			Reason:      oldReason,
 			Date:        oldSpec.UpdatedAt,
 		}
 		if clErr := s.createChangeLog(txCtx, oldSlug, oldCLEntry, oldDeltas); clErr != nil {
@@ -272,6 +344,14 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 				}
 				return nil
 			})
+		}
+
+		// D-08: an abandoned spec transitions to a terminal, non-executable
+		// state, so any active lease must be released — mirroring amend and
+		// RecordCompletion. Otherwise a dangling CLAIMED_BY edge would point at a
+		// terminal node until the lease expires. Unclaimed specs are a no-op.
+		if relErr := s.releaseActiveClaim(txCtx, slug, "abandon spec"); relErr != nil {
+			return relErr
 		}
 
 		if hashErr := s.recomputeContentHash(txCtx, slug); hashErr != nil {
@@ -385,6 +465,34 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlu
 
 		return nil
 	})
+}
+
+// releaseActiveClaim deletes the active claim row and its CLAIMED_BY edge for
+// slug inside the current transaction. A spec leaving the executable set —
+// amend back to authoring, or abandon — must not retain a live lease (D-08). An
+// unclaimed spec holds no active claim, so this is a harmless no-op. The op
+// string is used only to prefix wrapped error messages.
+func (s *Store) releaseActiveClaim(ctx context.Context, slug, op string) error {
+	claim, claimErr := s.GetActiveClaim(ctx, slug)
+	if claimErr != nil {
+		return fmt.Errorf("postgres: %s: get active claim: %w", op, claimErr)
+	}
+	if claim == nil {
+		return nil
+	}
+	if _, delErr := s.exec(ctx,
+		`DELETE FROM claims WHERE project_slug = $1 AND spec_slug = $2 AND agent = $3`,
+		s.project, slug, claim.Agent,
+	); delErr != nil {
+		return fmt.Errorf("postgres: %s: delete claim: %w", op, delErr)
+	}
+	if _, delErr := s.exec(ctx,
+		`DELETE FROM edges WHERE project_slug = $1 AND from_slug = $2 AND to_slug = $3 AND edge_type = 'CLAIMED_BY'`,
+		s.project, slug, claim.Agent,
+	); delErr != nil {
+		return fmt.Errorf("postgres: %s: delete CLAIMED_BY edge: %w", op, delErr)
+	}
+	return nil
 }
 
 // preconditionError re-reads the spec after an atomic WHERE guard failed
