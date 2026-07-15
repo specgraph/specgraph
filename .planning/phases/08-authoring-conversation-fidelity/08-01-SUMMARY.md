@@ -163,3 +163,8 @@ None - no external service configuration required.
 ---
 *Phase: 08-authoring-conversation-fidelity*
 *Completed: 2026-07-15*
+
+## Self-Check: PASSED
+- Files verified on disk: 08-01-SUMMARY.md, authoring_handler.go, conversation_test.go — all FOUND.
+- Commits verified in git: 09c461f9 (docs/proto), b95d2c12 (feat), c949c6e5 (test), 4969aeaf (docs/metadata) — all FOUND.
+- Unit tier `go test ./...` green (exit 0). Integration tier compiles; deferred to CI/Docker (see Issues Encountered).
