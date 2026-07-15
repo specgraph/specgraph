@@ -673,6 +673,27 @@ func (h *AuthoringHandler) RecordConversation(
 	if len(req.Msg.Exchanges) > maxElements {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("exchanges exceed maximum of %d", maxElements))
 	}
+	// Harden this standalone RPC against the lower-integrity side door it would
+	// otherwise be (WR-01): reject bogus stages and unbounded/empty exchange
+	// content that would enable unbounded JSONB writes. The strictly-increasing
+	// sequence check enforced by authoring.ValidateExchanges is intentionally NOT
+	// applied here — this RPC's existing callers/tests use paired or unset
+	// sequences, a looser contract than the stage handlers.
+	if !storage.SpecStage(stage).IsValid() {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("stage %q is not a known spec stage", stage))
+	}
+	for i, ex := range req.Msg.Exchanges {
+		if ex == nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("exchange[%d] is nil", i))
+		}
+		if ex.GetContent() == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("exchange[%d] missing content", i))
+		}
+		if len(ex.GetContent()) > authoring.MaxExchangeContentLen {
+			return nil, connect.NewError(connect.CodeInvalidArgument,
+				fmt.Errorf("exchange[%d] content exceeds maximum length of %d characters", i, authoring.MaxExchangeContentLen))
+		}
+	}
 
 	store, err := scopeStore(ctx, h.scoper)
 	if err != nil {
