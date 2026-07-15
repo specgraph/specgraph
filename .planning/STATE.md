@@ -4,17 +4,17 @@ milestone: v0.14.0
 milestone_name: Authoring Surface Correctness
 current_phase: 08
 current_phase_name: authoring-conversation-fidelity
-status: executing
+status: verifying
 stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-07-15T17:10:26.073Z"
+last_updated: "2026-07-15T17:19:28.852Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 14
-  completed_plans: 13
-  percent: 50
+  completed_plans: 14
+  percent: 75
 ---
 
 # Project State
@@ -33,7 +33,7 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 
 Phase: 08 (authoring-conversation-fidelity) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-15 — Phase 08 execution started
 
 ## Performance Metrics
@@ -98,6 +98,7 @@ Last activity: 2026-07-15 — Phase 08 execution started
 | Phase 07-authoring-lifecycle-semantics P05 | 16min | 2 tasks | 3 files |
 | Phase 08 P01 | 14min | 3 tasks | 6 files |
 | Phase 08 P02 | 12min | 3 tasks | 4 files |
+| Phase 08 P04 | 12min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -154,6 +155,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase 08]: Approve accept records conversations under SpecStageApproved (value 'approved'); exchange-level stage validates against 'approve' (A1)
 - [Phase 08]: RecordConversation op placed last in the accept runInTxOrSequential block (atomicity-neutral) to preserve GetSpecError test semantics
 - [Phase 08]: MCP inline-with-save is the only agent recording path — standalone conversation record action removed (#906 root-cause)
+- [Phase 08]: 08-04: approve-gate conversation list filters on stored stage "approved" not exchange stage "approve" (ListConversations exact SQL match)
+- [Phase 08]: 08-04: MCP-only conversation-fidelity negative case asserts res.IsError + error text (client guard or server InvalidArgument), not a specific Connect code (review R2 #6)
 
 ### Pending Todos
 
@@ -179,7 +182,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T17:00:03.897Z
+Last session: 2026-07-15T17:19:15.631Z
 Stopped at: Completed 08-01-PLAN.md
 Resume file: None
 

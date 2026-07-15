@@ -112,7 +112,7 @@ Plans: *(linearized 1→2→3→4→5 during `--reviews` incorporation to close 
   3. A stage that reaches completion has an associated, non-empty conversation record — a missing conversation cannot silently pass.
   4. Recorded conversations are retrievable/queryable after the funnel completes.
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 
 **Wave 1** *(parallel — no file overlap)*
 
@@ -122,7 +122,7 @@ Plans: *(linearized 1→2→3→4→5 during `--reviews` incorporation to close 
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 08-04-PLAN.md — MCP-only funnel conversation-fidelity e2e (positive + negative) + update existing funnel e2e (D-10)
+- [x] 08-04-PLAN.md — MCP-only funnel conversation-fidelity e2e (positive + negative) + update existing funnel e2e (D-10)
 
 > **Atomic-release note:** Wave-1 plans land in one merge window — the server (08-01) starts hard-rejecting approve-accept without exchanges, so the MCP (08-02) and CLI (08-03) exchange-supplying paths must ship together to avoid a broken approve path.
 
@@ -158,7 +158,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 6. MCP Authoring Self-Teaching Path | v0.14.0 | 5/5 | Complete    | 2026-07-14 |
 | 7. Authoring Lifecycle Semantics | v0.14.0 | 5/5 | Complete    | 2026-07-14 |
-| 8. Authoring Conversation Fidelity | v0.14.0 | 3/4 | In Progress|  |
+| 8. Authoring Conversation Fidelity | v0.14.0 | 4/4 | Complete   | 2026-07-15 |
 | 9. JIT Display Name Reconciliation | v0.14.0 | 0/? | Not started | - |
 | 1. Release & Build Tooling | v0.12.0 | 1/1 | Complete | 2026-07-09 |
 | 2. API Key Lifecycle & Self-Service | v0.12.0 | 8/8 | Complete | 2026-07-10 |
