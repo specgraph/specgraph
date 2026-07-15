@@ -73,6 +73,11 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	safetyInput := &authoring.SafetyInput{Text: msg.Output.GetSeed()}
+	// Validate safety input before opening the transaction (ADR-004: pure
+	// structural checks stay outside the tx).
+	if err := safetyInput.Validate(); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	var safetyFlags []authoring.SafetyFlagResult
 	ops := []func(context.Context) error{
 		func(c context.Context) error {
@@ -169,6 +174,11 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	safetyInput := &authoring.SafetyInput{
 		Text:  strings.Join(msg.Output.GetRisks(), " "),
 		Scope: scope,
+	}
+	// Validate safety input before opening the transaction (ADR-004: pure
+	// structural checks stay outside the tx).
+	if err := safetyInput.Validate(); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	var safetyFlags []authoring.SafetyFlagResult
 	exchanges := exchangesFromProto(msg.GetConversationExchanges())
@@ -289,6 +299,11 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 		Text:       contractText.String(),
 		Invariants: msg.Output.GetInvariants(),
 	}
+	// Validate safety input before opening the transaction (ADR-004: pure
+	// structural checks stay outside the tx).
+	if err := safetyInput.Validate(); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	var safetyFlags []authoring.SafetyFlagResult
 	exchanges := exchangesFromProto(msg.GetConversationExchanges())
 	entry := buildConversationEntry(ctx, storage.SpecStageSpecify, msg.GetPosture(), exchanges)
@@ -378,6 +393,11 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	}
 	safetyInput := &authoring.SafetyInput{
 		Text: intentBuilder.String(),
+	}
+	// Validate safety input before opening the transaction (ADR-004: pure
+	// structural checks stay outside the tx).
+	if err := safetyInput.Validate(); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	var safetyFlags []authoring.SafetyFlagResult
 	var childSlugs []string
@@ -1059,10 +1079,11 @@ var categoryToStorageMap = map[authoring.SafetyCategory]storage.SafetyCategory{
 
 // persistSafetyFlags runs the safety net, stores any resulting flags, and
 // returns the domain-level results for inclusion in the RPC response.
+//
+// The caller MUST have already validated input via input.Validate() BEFORE
+// entering the transaction (ADR-004: pure structural checks stay outside the tx
+// to avoid opening and rolling back a transaction solely to reject bad input).
 func persistSafetyFlags(ctx context.Context, store storage.AuthoringBackend, slug string, input *authoring.SafetyInput) ([]authoring.SafetyFlagResult, error) {
-	if err := input.Validate(); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
 	flags := authoring.RunSafetyNet(input)
 	if len(flags) > 0 {
 		storageFlags, err := safetyFlagsToStorage(flags)
