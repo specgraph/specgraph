@@ -786,100 +786,25 @@ func TestConversationTool_List_MissingSlug(t *testing.T) {
 	require.Contains(t, result.Content[0].Text, "slug")
 }
 
-func TestConversationTool_Record(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{
-		recordConversation: func(req *specv1.RecordConversationRequest) (*specv1.RecordConversationResponse, error) {
-			require.Equal(t, "my-spec", req.GetSlug())
-			require.Equal(t, "spark", req.GetStage())
-			require.Len(t, req.GetExchanges(), 1)
-			return &specv1.RecordConversationResponse{
-				ConversationLog: &specv1.ConversationLog{Id: "log-1"},
-			}, nil
-		},
-	}}
-	r := NewRegistry()
-	RegisterAuthoringTools(r, c)
-	tool, ok := r.LookupTool("conversation")
-	require.True(t, ok)
-
-	result, err := tool.Handler(context.Background(), map[string]any{
-		"action":    "record",
-		"slug":      "my-spec",
-		"stage":     "spark",
-		"exchanges": `[{"role":"probe","content":"what is this?"}]`,
-	})
-	require.NoError(t, err)
-	require.False(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "log-1")
-}
-
-func TestConversationTool_Record_InvalidJSON(t *testing.T) {
+func TestConversationTool_Record_RemovedReturnsUnknownAction(t *testing.T) {
 	c := &Client{Authoring: &mockAuthoringService{}}
 	r := NewRegistry()
 	RegisterAuthoringTools(r, c)
 	tool, ok := r.LookupTool("conversation")
 	require.True(t, ok)
 
+	// The standalone record action was removed (D-06): inline-with-save is the
+	// only recording path. `record` must now fall through to unknown-action.
 	result, err := tool.Handler(context.Background(), map[string]any{
 		"action":    "record",
 		"slug":      "my-spec",
-		"stage":     "spark",
-		"exchanges": `not valid`,
-	})
-	require.NoError(t, err)
-	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "invalid exchanges JSON")
-}
-
-func TestConversationTool_Record_MissingSlug(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{}}
-	r := NewRegistry()
-	RegisterAuthoringTools(r, c)
-	tool, ok := r.LookupTool("conversation")
-	require.True(t, ok)
-
-	result, err := tool.Handler(context.Background(), map[string]any{
-		"action":    "record",
 		"stage":     "spark",
 		"exchanges": `[{"role":"probe","content":"what?"}]`,
 	})
 	require.NoError(t, err)
 	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "slug")
-}
-
-func TestConversationTool_Record_MissingStage(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{}}
-	r := NewRegistry()
-	RegisterAuthoringTools(r, c)
-	tool, ok := r.LookupTool("conversation")
-	require.True(t, ok)
-
-	result, err := tool.Handler(context.Background(), map[string]any{
-		"action":    "record",
-		"slug":      "my-spec",
-		"exchanges": `[{"role":"probe","content":"what?"}]`,
-	})
-	require.NoError(t, err)
-	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "stage")
-}
-
-func TestConversationTool_Record_MissingExchanges(t *testing.T) {
-	c := &Client{Authoring: &mockAuthoringService{}}
-	r := NewRegistry()
-	RegisterAuthoringTools(r, c)
-	tool, ok := r.LookupTool("conversation")
-	require.True(t, ok)
-
-	result, err := tool.Handler(context.Background(), map[string]any{
-		"action": "record",
-		"slug":   "my-spec",
-		"stage":  "spark",
-	})
-	require.NoError(t, err)
-	require.True(t, result.IsError)
-	require.Contains(t, result.Content[0].Text, "exchanges")
+	require.Contains(t, result.Content[0].Text, "unknown action")
+	require.Contains(t, result.Content[0].Text, "record")
 }
 
 func TestConversationTool_UnknownAction(t *testing.T) {

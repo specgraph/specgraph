@@ -438,7 +438,7 @@ func (t *authorTool) handleSupersede(ctx context.Context, params map[string]any)
 }
 
 // ---------------------------------------------------------------------------
-// conversationTool — record and list authoring conversation logs
+// conversationTool — list authoring conversation logs
 // ---------------------------------------------------------------------------
 
 type conversationTool struct {
@@ -448,16 +448,14 @@ type conversationTool struct {
 func (t *conversationTool) def() ToolDef {
 	return ToolDef{
 		Name: "conversation",
-		Description: "Record and list authoring conversation logs for a spec. " +
-			"Actions: record, list.",
+		Description: "List authoring conversation logs for a spec. " +
+			"Actions: list.",
 		Profile: ProfileAuthoring,
 		Schema: objectSchema(
 			props{
-				"action":    stringProp("Operation to perform", "record", "list"),
-				"slug":      stringProp("Spec slug (required)"),
-				"stage":     stringProp("Authoring stage (required for record; optional filter for list)"),
-				"exchanges": stringProp("JSON array of ConversationExchange objects (required for record)"),
-				"is_amend":  boolProp("Whether this conversation is part of an amendment"),
+				"action": stringProp("Operation to perform", "list"),
+				"slug":   stringProp("Spec slug (required)"),
+				"stage":  stringProp("Authoring stage (optional filter for list)"),
 			},
 			"action", "slug",
 		),
@@ -468,44 +466,11 @@ func (t *conversationTool) def() ToolDef {
 func (t *conversationTool) handle(ctx context.Context, params map[string]any) (*ToolResult, error) {
 	action := stringParam(params, "action")
 	switch action {
-	case "record":
-		return t.handleRecord(ctx, params)
 	case "list":
 		return t.handleList(ctx, params)
 	default:
-		return errResult(fmt.Sprintf("unknown action %q — valid: record, list", action)), nil
+		return errResult(fmt.Sprintf("unknown action %q — valid: list", action)), nil
 	}
-}
-
-func (t *conversationTool) handleRecord(ctx context.Context, params map[string]any) (*ToolResult, error) {
-	slug := stringParam(params, "slug")
-	if slug == "" {
-		return errResult("slug is required for record"), nil
-	}
-	stage := stringParam(params, "stage")
-	if stage == "" {
-		return errResult("stage is required for record"), nil
-	}
-	exchangesRaw := stringParam(params, "exchanges")
-	if exchangesRaw == "" {
-		return errResult("exchanges is required for record (JSON array of ConversationExchange)"), nil
-	}
-	// Parse exchanges array in isolation to prevent JSON injection.
-	var exchanges specv1.RecordConversationRequest
-	if err := protojson.Unmarshal([]byte(`{"exchanges":`+exchangesRaw+`}`), &exchanges); err != nil {
-		return errResult(fmt.Sprintf("invalid exchanges JSON: %v", err)), nil
-	}
-	req := &specv1.RecordConversationRequest{
-		Slug:      slug,
-		Stage:     stage,
-		Exchanges: exchanges.Exchanges,
-		IsAmend:   boolParam(params, "is_amend"),
-	}
-	resp, err := t.client.Authoring.RecordConversation(ctx, connect.NewRequest(req))
-	if err != nil {
-		return connectErrResult(err)
-	}
-	return jsonResult(resp.Msg), nil
 }
 
 func (t *conversationTool) handleList(ctx context.Context, params map[string]any) (*ToolResult, error) {
