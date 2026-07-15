@@ -192,12 +192,29 @@ func (s *Store) LifecycleSupersedeSpec(ctx context.Context, oldSlug, newSlug, re
 			return fmt.Errorf("postgres: supersede spec (new): %w", newExecErr)
 		}
 		if newTag.RowsAffected() == 0 {
-			return s.preconditionError(txCtx, newSlug, "supersede spec (new)", func(current *storage.Spec) error {
-				if current.Version != newCheck.Version {
-					return fmt.Errorf("supersede spec (new) %q: %w", newSlug, storage.ErrConcurrentModification)
+			// Classify the new-spec guard failure locally rather than delegating
+			// to preconditionError. preconditionError's generic terminal branch
+			// returns ErrSpecTerminal, which lifecycleError then formats against
+			// the OLD slug (msg.Slug) — so a client would be told the spec being
+			// superseded is terminal when in fact the REPLACEMENT transitioned to
+			// superseded/abandoned between the pre-read and this guarded UPDATE
+			// (IN-02). Surface ErrNewSpecTerminal so the diagnostic names the
+			// replacement, not the old spec.
+			current, reErr := s.GetSpec(txCtx, newSlug)
+			if reErr != nil {
+				if errors.Is(reErr, storage.ErrSpecNotFound) {
+					return fmt.Errorf("supersede spec (new) %q: %w", newSlug, storage.ErrNewSpecNotFound)
 				}
-				return nil
-			})
+				return fmt.Errorf("supersede spec (new) %q: %w (re-read failed: %w)", newSlug, storage.ErrConcurrentModification, reErr)
+			}
+			if current.Version != newCheck.Version {
+				return fmt.Errorf("supersede spec (new) %q: %w", newSlug, storage.ErrConcurrentModification)
+			}
+			if terminalStages[current.Stage] {
+				return fmt.Errorf("supersede spec (new) %q (stage=%s): %w", newSlug, current.Stage, storage.ErrNewSpecTerminal)
+			}
+			return fmt.Errorf("supersede spec (new) %q (stage=%s, version=%d): unexplained guard failure: %w",
+				newSlug, current.Stage, current.Version, storage.ErrInternalGuardFailure)
 		}
 
 		// Recompute content hash for old spec (stage changed to superseded).
