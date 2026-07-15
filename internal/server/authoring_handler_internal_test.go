@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"testing"
 
 	specv1 "github.com/specgraph/specgraph/gen/specgraph/v1"
@@ -24,7 +25,7 @@ func TestPostureToString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := postureToString(tt.in)
+			got := postureToString(context.Background(), tt.in)
 			require.Equal(t, tt.want, got)
 		})
 	}

@@ -94,7 +94,7 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 		},
 	}
 	if len(exchanges) > 0 {
-		entry := buildConversationEntry(storage.SpecStageSpark, msg.GetPosture(), exchanges)
+		entry := buildConversationEntry(ctx, storage.SpecStageSpark, msg.GetPosture(), exchanges)
 		ops = append(ops, func(c context.Context) error {
 			if _, err := store.RecordConversation(c, msg.Slug, entry); err != nil {
 				return fmt.Errorf("record conversation: %w", err)
@@ -106,7 +106,7 @@ func (h *AuthoringHandler) Spark(ctx context.Context, req *connect.Request[specv
 		if errors.Is(err, storage.ErrSpecAlreadyExists) {
 			return nil, connect.NewError(connect.CodeAlreadyExists, errors.New("spec with this slug already exists"))
 		}
-		return nil, h.stageError(err)
+		return nil, h.stageError(ctx, err)
 	}
 	// Output is echoed from the client request, NOT read back from storage. The
 	// storage layer stores domain-typed outputs (via StoreSparkOutput) but does not
@@ -172,7 +172,7 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 	}
 	var safetyFlags []authoring.SafetyFlagResult
 	exchanges := exchangesFromProto(msg.GetConversationExchanges())
-	entry := buildConversationEntry(storage.SpecStageShape, msg.GetPosture(), exchanges)
+	entry := buildConversationEntry(ctx, storage.SpecStageShape, msg.GetPosture(), exchanges)
 
 	// Posture-absent warning (design §Posture).
 	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
@@ -201,7 +201,7 @@ func (h *AuthoringHandler) Shape(ctx context.Context, req *connect.Request[specv
 			return nil
 		},
 	); err != nil {
-		return nil, h.stageError(err)
+		return nil, h.stageError(ctx, err)
 	}
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.ShapeResponse{
@@ -291,7 +291,7 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 	}
 	var safetyFlags []authoring.SafetyFlagResult
 	exchanges := exchangesFromProto(msg.GetConversationExchanges())
-	entry := buildConversationEntry(storage.SpecStageSpecify, msg.GetPosture(), exchanges)
+	entry := buildConversationEntry(ctx, storage.SpecStageSpecify, msg.GetPosture(), exchanges)
 
 	// Posture-absent warning (design §Posture).
 	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
@@ -320,7 +320,7 @@ func (h *AuthoringHandler) Specify(ctx context.Context, req *connect.Request[spe
 			return nil
 		},
 	); err != nil {
-		return nil, h.stageError(err)
+		return nil, h.stageError(ctx, err)
 	}
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.SpecifyResponse{
@@ -382,7 +382,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 	var safetyFlags []authoring.SafetyFlagResult
 	var childSlugs []string
 	exchanges := exchangesFromProto(msg.GetConversationExchanges())
-	entry := buildConversationEntry(storage.SpecStageDecompose, msg.GetPosture(), exchanges)
+	entry := buildConversationEntry(ctx, storage.SpecStageDecompose, msg.GetPosture(), exchanges)
 
 	// Posture-absent warning (design §Posture).
 	if msg.GetPosture() == specv1.Posture_POSTURE_UNSPECIFIED {
@@ -417,7 +417,7 @@ func (h *AuthoringHandler) Decompose(ctx context.Context, req *connect.Request[s
 			return nil
 		},
 	); err != nil {
-		return nil, h.stageError(err)
+		return nil, h.stageError(ctx, err)
 	}
 	// Output is returned as-is from the client request. See Spark handler comment.
 	return connect.NewResponse(&specv1.DecomposeResponse{
@@ -495,7 +495,7 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 				return nil
 			},
 		); err != nil {
-			return nil, h.stageError(err)
+			return nil, h.stageError(ctx, err)
 		}
 		if spec.UpdatedAt.IsZero() {
 			slog.LogAttrs(ctx, slog.LevelError, "spec.UpdatedAt is zero after TransitionStage",
@@ -555,7 +555,7 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 				return nil
 			},
 		); err != nil {
-			return nil, h.stageError(err)
+			return nil, h.stageError(ctx, err)
 		}
 		if currentStage == "" {
 			slog.LogAttrs(ctx, slog.LevelError, "reject path: currentStage not populated after successful tx",
@@ -671,7 +671,7 @@ func (h *AuthoringHandler) RecordConversation(
 
 	result, recErr := store.RecordConversation(ctx, slug, entry)
 	if recErr != nil {
-		return nil, h.stageError(recErr)
+		return nil, h.stageError(ctx, recErr)
 	}
 
 	return connect.NewResponse(&specv1.RecordConversationResponse{
@@ -695,7 +695,7 @@ func (h *AuthoringHandler) ListConversations(
 	}
 	entries, listErr := store.ListConversations(ctx, slug, req.Msg.Stage)
 	if listErr != nil {
-		return nil, h.stageError(listErr)
+		return nil, h.stageError(ctx, listErr)
 	}
 
 	logs := make([]*specv1.ConversationLog, len(entries))
@@ -850,12 +850,12 @@ func exchangesFromProto(ps []*specv1.ConversationExchange) []storage.Conversatio
 // buildConversationEntry constructs a ConversationLogEntry for RecordConversation.
 // The posture enum is converted to its string form and stored alongside the
 // exchanges for future drift detection per design §Posture.
-func buildConversationEntry(stage storage.SpecStage, posture specv1.Posture, exchanges []storage.ConversationExchange) storage.ConversationLogEntry {
+func buildConversationEntry(ctx context.Context, stage storage.SpecStage, posture specv1.Posture, exchanges []storage.ConversationExchange) storage.ConversationLogEntry {
 	return storage.ConversationLogEntry{
 		Stage:         stage,
 		Exchanges:     exchanges,
 		ExchangeCount: safeInt32(len(exchanges)),
-		Posture:       postureToString(posture),
+		Posture:       postureToString(ctx, posture),
 		// IsAmend defaults to false; amend-originated entries use a separate code path.
 	}
 }
@@ -864,7 +864,7 @@ func buildConversationEntry(stage storage.SpecStage, posture specv1.Posture, exc
 // POSTURE_UNSPECIFIED maps to "" (the storage layer's "no posture" sentinel).
 // Any unrecognized enum value also maps to "" but logs a warning so future
 // proto additions are surfaced at runtime rather than silently dropped.
-func postureToString(p specv1.Posture) string {
+func postureToString(ctx context.Context, p specv1.Posture) string {
 	switch p {
 	case specv1.Posture_POSTURE_UNSPECIFIED:
 		return ""
@@ -875,7 +875,7 @@ func postureToString(p specv1.Posture) string {
 	case specv1.Posture_POSTURE_SUPPORT:
 		return "support"
 	default:
-		slog.LogAttrs(context.Background(), slog.LevelWarn, "postureToString: unrecognized posture enum, storing empty string",
+		slog.LogAttrs(ctx, slog.LevelWarn, "postureToString: unrecognized posture enum, storing empty string",
 			slog.Int("posture_int", int(p)))
 		return ""
 	}
@@ -1024,7 +1024,7 @@ func runInTxOrSequential(ctx context.Context, backend storage.TransactionalBacke
 	return nil
 }
 
-func (h *AuthoringHandler) stageError(err error) error {
+func (h *AuthoringHandler) stageError(ctx context.Context, err error) error {
 	// If the error is already a connect.Error (e.g. from a safety validation
 	// op inside runInTxOrSequential), unwrap and return it as-is so the
 	// original code is preserved rather than re-wrapped as CodeInternal.
@@ -1047,7 +1047,7 @@ func (h *AuthoringHandler) stageError(err error) error {
 	if errors.Is(err, storage.ErrSpecSuperseded) {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("spec has been superseded"))
 	}
-	slog.LogAttrs(context.Background(), slog.LevelError, "stageError: internal error", slog.Any("error", err))
+	slog.LogAttrs(ctx, slog.LevelError, "stageError: internal error", slog.Any("error", err))
 	return connect.NewError(connect.CodeInternal, errors.New("internal error"))
 }
 
