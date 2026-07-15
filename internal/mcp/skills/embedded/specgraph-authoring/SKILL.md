@@ -222,9 +222,9 @@ author:
 Always present `shape` (or `specify` / `decompose`) as the re-entry example.
 
 > **Caveat — don't lead with `re_entry_stage: spark`.** The stage before
-> `spark` is `spark` itself, so the spec lands at `spark` and re-running
-> `author action=spark` on a spec already at `spark` is a same-stage no-op. It
-> is API-allowed but degenerate — never present it as the happy path.
+> `spark` is `spark` itself, so the spec lands at `spark`. Re-running
+> `author action=spark` on an existing spec returns `ALREADY_EXISTS` — there is
+> no spark re-author path. Never present it as a next step.
 
 ### Superseding a done spec
 
