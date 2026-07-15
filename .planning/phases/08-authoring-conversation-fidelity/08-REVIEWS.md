@@ -1,202 +1,246 @@
 ---
 phase: 8
 reviewers: [cursor]
-reviewed_at: 2026-07-15T15:27:17Z
+reviewed_at: 2026-07-15T15:55:34Z
+review_round: 2
 plans_reviewed: [08-01-PLAN.md, 08-02-PLAN.md, 08-03-PLAN.md, 08-04-PLAN.md]
+prior_round_incorporated: true
 ---
 
-# Cross-AI Plan Review — Phase 8
+# Cross-AI Plan Review — Phase 8 (Round 2, post-revision)
+
+> Round 1 (reviewers: cursor) produced 7 findings; all 7 were incorporated via `/gsd-plan-phase 8 --reviews` (commit d7f1f9b1). This round re-reviews the revised plans and confirms incorporation + surfaces remaining gaps.
 
 ## Cursor Review
 
-# Phase 8 Plan Review — Authoring Conversation Fidelity
+# Phase 8 Cross-AI Plan Review — Authoring Conversation Fidelity
 
-Verified against the current tree at `/Volumes/Code/github.com/specgraph` (2026-07-15). Claims below cite on-disk source.
-
----
-
-## 1. Summary
-
-The four plans correctly describe a **close-the-holes refactor**, not greenfield work. Research is largely accurate: shape/specify/decompose already enforce non-empty exchanges and record atomically in `runInTxOrSequential`; the approve **accept** path, MCP `handleApprove`, CLI synthetic placeholder, and MCP `conversation record` action are the real gaps. Plan decomposition (server → MCP → CLI → e2e), wave-1 file isolation, and the reject-branch template for accept are sound. **Overall risk is MEDIUM**: execution is straightforward, but wave-1 must merge atomically, several existing tests will break unless updated alongside 08-01, and e2e conversation assertions must use the stored stage string `"approved"` (not `"approve"`).
+**Reviewed:** 2026-07-15  
+**Scope:** `.planning/phases/08-authoring-conversation-fidelity/08-01` through `08-04` (post-revision)  
+**Method:** Claims checked against the current working tree at `/Volumes/Code/github.com/specgraph` (plans are not yet implemented).
 
 ---
 
-## 2. Strengths
+## Executive Summary
 
-- **Accurate baseline diagnosis.** Shape unconditionally validates and records in one transaction:
+The revised plans accurately describe the current codebase: shape/specify/decompose already enforce and record conversations inline; the approve **accept** path, MCP `handleApprove`, CLI `approve`, synthetic CLI placeholder, standalone MCP `conversation record`, and teaching surfaces are the real remaining holes. Prior review findings (#1–#7) are incorporated with concrete tasks and line-level references. The plans are implementable and should achieve CONV-01 if Wave 1 merges atomically.
 
-```136:201:internal/server/authoring_handler.go
-	// Required conversation_exchanges per design §Conversation Recording Coupling.
-	if err := authoring.ValidateExchanges(msg.GetConversationExchanges(), "shape"); err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	// ...
-	if err := runInTxOrSequential(ctx, store,
-		// ... TransitionStage, StoreShapeOutput, persistSafetyFlags ...
-		func(c context.Context) error {
-			if _, err := store.RecordConversation(c, msg.Slug, entry); err != nil {
-				return fmt.Errorf("record conversation: %w", err)
-			}
-			return nil
-		},
-	); err != nil {
-```
+Remaining risks are mostly execution gaps: MCP `handleSpark` silently drops optional exchanges (pre-existing, not scheduled), the MCP unit mock for approve cannot verify threaded exchanges without a signature change, and there is no explicit approve-accept rollback test mirroring the shape atomicity test.
 
-- **Reject branch is a verified template for accept.** Reject validates, records under `SpecStageApproved`, and runs inside `runInTxOrSequential`:
-
-```487:524:internal/server/authoring_handler.go
-	case specv1.ApproveAction_APPROVE_ACTION_REJECT:
-		if err := authoring.ValidateExchanges(req.Msg.GetConversationExchanges(), "approve"); err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
-		// ...
-				entry.Stage = storage.SpecStageApproved
-		// ...
-				if _, err := store.RecordConversation(txCtx, slug, entry); err != nil {
-					return fmt.Errorf("record conversation: %w", err)
-				}
-```
-
-- **Proto scope reduction is correct.** `conversation_exchanges` is already field 3; only the comment needs widening:
-
-```352:361:proto/specgraph/v1/authoring.proto
-message ApproveRequest {
-  string slug = 1;
-  ApproveAction action = 2;
-  // REQUIRED when action == APPROVE_ACTION_REJECT. Conversation exchanges
-  // capturing the rejection rationale.
-  repeated ConversationExchange conversation_exchanges = 3;
-}
-```
-
-- **Root-cause surfaces are correctly identified.** MCP approve sends slug only (`internal/mcp/tools_authoring.go:332-339`); author Description says approve does not need exchanges (`:146-148`); `conversationTool` still exposes `record` (`:444-454`, `handleRecord` `:456-485`); CLI stamps `cliSyntheticExchanges` in shape/specify/decompose (`cmd/specgraph/shape.go:42`, etc.) and approve sends no exchanges (`cmd/specgraph/approve.go:31-33`).
-
-- **Wave-1 parallelism is real.** 08-01 / 08-02 / 08-03 touch disjoint paths (`internal/server/`, `internal/mcp/`, `cmd/specgraph/`). Atomic-release warning is justified (see Concerns).
-
-- **D-01 (spark optional) matches code.** Spark validates and records only when exchanges are present (`internal/server/authoring_handler.go:57-104`); spark CLI has no conversation input (`cmd/specgraph/spark.go:33-36`).
-
-- **Reusable primitives exist as claimed.** `ValidateExchanges` at `internal/authoring/validate.go:42-48` with caps at `:12-17`; `parseOptionalExchanges` at `internal/mcp/tools_authoring.go:71-82`; `loadJSONFileRaw` at `cmd/specgraph/util.go:37-45`; export keeps `RecordConversation` at `internal/export/engine.go:588`.
-
-- **08-04 correctly flags the breaking e2e.** Funnel test approves without exchanges and documents that as current behavior:
-
-```222:242:e2e/api/mcp_only_authoring_test.go
-		// decompose pass friendly YAML output PLUS explicit JSON exchanges; approve
-		// passes slug only (the ACCEPT path does not require exchanges).
-		// ...
-		author(map[string]any{"action": "approve"})
-```
+**Overall risk:** **MEDIUM** — technically sound, coordination-sensitive (Wave 1 merge gate is real).
 
 ---
 
-## 3. Concerns
+## Baseline Verification (Current Code vs Plan Claims)
 
-### HIGH
-
-- **Wave-1 partial merge breaks approve for all clients.** Accept today succeeds with zero exchanges (`internal/server/authoring_handler.go:453-485`). If 08-01 lands alone, MCP (`handleApprove` at `tools_authoring.go:337-339`) and CLI (`approve.go:31-33`) still send no exchanges → `InvalidArgument`. Plans note this; treat it as a **hard merge gate**, not advisory.
-
-- **Existing approve unit tests will fail on 08-01 and are not listed for update.** These pass today without `ConversationExchanges`:
-  - `TestAuthoringHandler_Approve_HappyPath` (`authoring_handler_test.go:614-623`)
-  - `TestAuthoringHandler_Approve_AcceptUnchangedWithoutAction` (`:625-634`)
-  - `TestAuthoringHandler_Approve_ExplicitAcceptSucceeds` (`:1999-2010`)  
-  08-01 Task 3 adds new cases but does not call out fixing these. Task 2’s verify (`go test ./internal/server/...`) will fail until they are updated. Even with exchanges added, happy-path backends use `&fakeBackend{}` whose embedded `stubBackend.RecordConversation` returns `errNotImplemented` (`test_scoper_test.go:324-326`) — accept recording tests need `fakeConvBackend` / `rejectAuthoringTestBackend`-style wiring.
-
-### MEDIUM
-
-- **E2e stage filter likely wrong for approve.** Plans say list conversations filtered by stage including `"approve"`, but accept/reject recordings set `entry.Stage = storage.SpecStageApproved` (`authoring_handler.go:517`), and the domain constant is `"approved"` (`internal/storage/spec_domain.go:19`). `ListConversations` filters with exact SQL match (`internal/storage/postgres/conversation.go:218-224`). Filtering `stage="approve"` will return empty; use `"approved"` or assert via unfiltered list + count.
-
-- **08-01 Task 3 mislabels test tier.** `internal/server/authoring_handler_test.go` has no `//go:build integration` tag (unit + fakes). `internal/storage/postgres/conversation_test.go` is integration (`conversation_test.go:4`). Mixing them under “handler integration test” is fine for coverage but verify commands should not imply Docker is required for handler package unit tests.
-
-- **Residual out-of-band recording path (in scope by design, but weakens “only path”).** Removing MCP `conversation record` does not remove `AuthoringHandler.RecordConversation` RPC (`authoring_handler.go:612-652`) or CLI `conversation record` (`cmd/specgraph/conversation.go:70-98`). D-07/D-08 justify this; worth noting CONV-01 is “MCP/skills funnel” enforcement, not a global ban on standalone writes.
-
-- **CLI `--conversation` shape divergence (Pitfall #3).** Stage `--conversation` is specified as bare JSON array (D-05/A2), but `conversation record` uses `{"exchanges":[...]}` (`conversation.go:60-67`). Plan acknowledges it; operators will confuse the two formats without prominent flag help.
-
-- **D-09 “conversation record” framing may be stale in SKILL.md.** Research cites standalone-record teaching; current `specgraph-authoring` SKILL already says persist via `author` inline (`SKILL.md:55-57`) and does not mention the `conversation` tool. D-09 is still required for the approve exchanges flip (`SKILL.md:66-67`, `:176-177`) and author Description parity — not for removing record-step prose that may already be gone.
-
-### LOW
-
-- **Line-number drift in research/plans.** Examples: `conversationTool` def is at `tools_authoring.go:424`, not ~416; proto field is at `authoring.proto:360`, not always cited consistently. Plans use `read_first` ranges — harmless if implementers search by symbol.
-
-- **`TestContentProtoDrift` location.** Plan 08-02 verify runs it under `./internal/mcp/...`; the test lives in `internal/authoring/drift_test.go:15`. Still runnable via `go test ./internal/authoring/... -run TestContentProtoDrift` or `task check`.
-
-- **`mcp_only_conversation_test.go` does not exist yet.** Expected for 08-04 (Wave 0 gap); not a plan error.
+| Claim | Verified? | Evidence |
+|-------|-----------|----------|
+| Approve accept records nothing today | ✓ | Accept branch `runInTxOrSequential` only transitions, promotes decisions, and `GetSpec` — no `ValidateExchanges` / `RecordConversation` at `internal/server/authoring_handler.go:453-485` |
+| Reject validates + records under `"approved"` | ✓ | `ValidateExchanges(..., "approve")` at `:488-490`; `entry.Stage = storage.SpecStageApproved` at `:517-521` |
+| Proto field 3 already exists | ✓ | `conversation_exchanges = 3` at `proto/specgraph/v1/authoring.proto:358-360`; `GetConversationExchanges()` at `gen/specgraph/v1/authoring.pb.go:1912` |
+| `SpecStageApproved` value is `"approved"` | ✓ | `internal/storage/spec_domain.go:19` |
+| `ListConversations` exact stage match | ✓ | `WHERE ... AND stage = $3` at `internal/storage/postgres/conversation.go:218-224` |
+| MCP approve sends no exchanges | ✓ | `ApproveRequest{Slug: slug}` only at `internal/mcp/tools_authoring.go:337-339` |
+| Author tool teaches approve as exchange-free | ✓ | Top-level Description at `:123-124`; `exchanges` prop at `:146-148` |
+| MCP `conversation record` still exists | ✓ | `case "record"` at `:447-448`; `handleRecord` at `:456-485` |
+| CLI synthetic placeholder in use | ✓ | `cliSyntheticExchanges` in `shape.go:42`, `specify.go:42`, `decompose.go:42`; helper at `authoring_cli_exchanges.go:16-20` |
+| CLI approve sends no exchanges | ✓ | `ApproveRequest{Slug: args[0]}` at `cmd/specgraph/approve.go:31-33` |
+| Three accept unit tests break under enforcement | ✓ | `_Approve_HappyPath` `:614-623`, `_AcceptUnchangedWithoutAction` `:625-634`, `_ExplicitAcceptSucceeds` `:1999-2010` — none pass `ConversationExchanges` |
+| Default fake backend cannot record | ✓ | `authoringTestBackend` embeds `stubBackend`; `RecordConversation` → `errNotImplemented` at `internal/server/test_scoper_test.go:324-326` |
+| E2e approve omits exchanges | ✓ | Comment at `e2e/api/mcp_only_authoring_test.go:224-225`; call at `:242` |
+| SKILL.md says approve needs no exchanges | ✓ | `internal/mcp/skills/embedded/specgraph-authoring/SKILL.md:176-177` |
+| No standalone `conversation record` in SKILL | ✓ | Grep finds no `conversation record` in skill; inline persist at `:55-57` |
 
 ---
 
-## 4. Suggestions
+## Plan 08-01 — Server Approve-Accept Enforcement
 
-- **08-01 Task 2:** Add an explicit subtask to update `TestAuthoringHandler_Approve_HappyPath`, `_AcceptUnchangedWithoutAction`, and `_ExplicitAcceptSucceeds` to supply valid approve exchanges and use a backend that implements `RecordConversation` (mirror `newFakeRejectBackend` / `fakeConvBackend` at `authoring_handler_test.go:259-296`).
+### Summary
 
-- **08-04 Tasks 1–2:** Pin e2e list filter for approve conversations to `stage: "approved"` (stored value), while exchange JSON uses `stage: "approve"` for `ValidateExchanges` — document both strings in test comments to avoid A1 confusion.
+Correctly scoped as wiring + comment edit, not a new proto field. The reject branch is a faithful template. Task 2 explicitly fixes the three breaking accept tests and the `stubBackend` recording gap — this addresses prior review finding #1.
 
-- **08-02 Task 1:** Update the top-level author `Description` sentence at `tools_authoring.go:123-124` (currently lists only shape/specify/decompose), not only the `exchanges` prop at `:146-148`.
+### Strengths
 
-- **08-03 Task 1:** In `--conversation` help text, state explicitly: “bare JSON array; not the `conversation record` object shape.”
+- **Reject-branch mirror is accurate** — same validate → `exchangesFromProto` → `RecordConversation` pattern as `:487-525`.
+- **Stage label pinned correctly** — `storage.SpecStageApproved` (`"approved"`) matches reject behavior (`authoring_handler_test.go:669`).
+- **Test tier split** (finding #5) — handler unit tests vs postgres integration in Task 3 matches package build tags.
+- **Wave 1 merge gate** (finding #6) — justified: accept currently succeeds with zero exchanges at `:453-485`.
 
-- **08-01 Task 3:** Split verify commands: `go test ./internal/server/...` (unit, no Docker) vs `go test -tags integration ./internal/storage/postgres/...` (Docker).
+### Concerns
 
-- **Merge checklist:** Single PR or coordinated merge for 08-01 + 08-02 + 08-03; run `task check` after all three; run `task pr-prep` after 08-04.
+- **MEDIUM — No approve-accept rollback test.** `TestAuthoringHandler_Shape_RecordConversationFailureRollsBack` at `authoring_handler_test.go:1952-1976` proves atomicity for shape; Task 3 behavior claims rollback on `RecordConversation` failure but does not task an equivalent approve-accept test using `newTxConvAuthoringClient`.
+- **LOW — Proto comment wording.** Task 1 says “non-default approve action”; `APPROVE_ACTION_UNSPECIFIED` falls through to accept at `:449-453`. Comment should explicitly include UNSPECIFIED/default-accept, not only `APPROVE_ACTION_ACCEPT`.
+- **LOW — `buildConversationEntry` vs literal entry.** `08-PATTERNS.md` notes posture absence on `ApproveRequest`; plan should pick one approach (literal entry like reject is fine).
 
----
+### Suggestions
 
-## 5. Risk Assessment
+- Add `TestAuthoringHandler_Approve_AcceptRecordConversationFailureRollsBack` mirroring `:1952-1976` with `newTxConvAuthoringClient` and valid approve exchanges.
+- Clarify proto comment: required for accept (including UNSPECIFIED) and reject.
 
-**Overall: MEDIUM**
+### Risk Assessment
 
-| Factor | Level | Evidence |
-|--------|-------|----------|
-| Technical approach | Low | Reject branch + shape handler patterns are in-repo templates; no schema migration |
-| Coordination | **High** | Accept enforcement without MCP/CLI updates breaks approve (`authoring_handler.go:453-485` vs `tools_authoring.go:337-339`, `approve.go:31-33`) |
-| Test churn | **Medium** | Existing approve happy-path tests and e2e funnel test (`mcp_only_authoring_test.go:242`) must change with 08-01 |
-| E2e correctness | **Medium** | Stage string `"approved"` vs `"approve"` mismatch risks false-negative fidelity assertions |
-| Security | Low | Reuses `ValidateExchanges` caps and `parseOptionalExchanges` isolation; ADR-004 tx pattern preserved |
-| Scope creep | Low | Plans stay deletion + wiring; no new features |
-
-**Phase goal achievability:** **Yes**, if wave-1 ships together and tests are updated for the new accept contract. The plans map cleanly to CONV-01’s four success criteria; 08-04 is the right backstop once 08-01/02 land.
+**MEDIUM** — Implementation is straightforward; main risk is merging without 08-02/08-03.
 
 ---
 
-## Per-Plan Notes
+## Plan 08-02 — MCP Surface + Skills
 
-### 08-01 (Server / proto)
-- **Verified gap:** Accept path has no `ValidateExchanges` and no `RecordConversation` (`authoring_handler.go:453-485` vs reject at `:487-524`).
-- **Proto plan:** Comment-only change on field 3 is correct (`authoring.proto:358-360`).
-- **Gap:** Existing unit tests at `authoring_handler_test.go:614-634` and `:1999-2010` not in task list.
+### Summary
 
-### 08-02 (MCP + skill)
-- **Verified gaps:** `handleApprove` slug-only (`tools_authoring.go:332-339`); `record` action present (`:447-448`); Description/skill say approve needs no exchanges (`tools_authoring.go:148`, `SKILL.md:176-177`).
-- **Sound:** Mirror `handleShape` exchange threading (`:248-256`); prune `TestConversationTool_Record*` (`tools_authoring_test.go:676+`).
+Correctly targets the #906 skip surface (standalone `record`) and threads exchanges into `handleApprove`. Prior findings #4 (top-level Description) and #7 (SKILL scope) are addressed.
 
-### 08-03 (CLI)
-- **Verified gaps:** `cliSyntheticExchanges` (`authoring_cli_exchanges.go:16-20`) used by shape/specify/decompose; approve has no conversation input.
-- **Sound:** New `conversation_flag.go` + delete placeholder in one commit; bare-array contract distinct from `conversationRecordInput` object shape (`conversation.go:60-67`).
+### Strengths
 
-### 08-04 (E2e)
-- **Verified:** Funnel e2e will break post-08-01 (`mcp_only_authoring_test.go:242`); negative shape-without-exchanges test already exists (`:261-276`).
-- **Add:** Approve-without-exchanges negative case and per-stage retrieval; fix stage filter to `"approved"` for approve gate conversations.
+- **`handleShape` template is correct** — `parseOptionalExchanges` + `ConversationExchanges` at `tools_authoring.go:248-257`.
+- **Security control preserved** — reuses isolated JSON parse at `:71-81` (V5).
+- **List-only switch pattern exists** — `findingsTool.handle` at `internal/mcp/tools_core.go:170-178`.
+- **Test pruning list is accurate** — `TestConversationTool_Record*` at `tools_authoring_test.go:676-755`.
+- **SKILL.md scope trimmed correctly** (finding #7) — no `conversation record` prose to remove; approve flip at `:66-67`, `:176-177` is the real work.
+
+### Concerns
+
+- **MEDIUM — `mockAuthoringService.Approve` cannot verify threading.** Callback only receives `slug` at `internal/mcp/testhelpers_test.go:365-369`; `TestAuthorTool_Approve` at `tools_authoring_test.go:97-119` cannot assert `ConversationExchanges` without changing the mock to pass `req.Msg` or exchanges.
+- **MEDIUM — `handleSpark` exchange gap not scheduled.** Server records spark exchanges when present (`authoring_handler.go:57-103`), but MCP `handleSpark` omits `ConversationExchanges` at `:219-223`. Plan 08-03 adds optional CLI `--conversation` for spark; MCP parity is missing. Optional ≠ drop-when-provided.
+- **LOW — `TestConversationTool_UnknownAction` already exists** at `:772-785`; Task 2’s new “record → unknown action” test overlaps — extend existing test or assert `record` specifically.
+
+### Suggestions
+
+- Extend `mockAuthoringService.approve` to `func(req *specv1.ApproveRequest)` (or assert on `req.Msg.GetConversationExchanges()`).
+- Add a one-line Task 1 follow-up: thread optional spark exchanges in `handleSpark` when `parseOptionalExchanges` returns non-nil (D-01 parity with server).
+
+### Risk Assessment
+
+**MEDIUM** — Correct direction; mock and spark gaps could let regressions slip through unit tests.
+
+---
+
+## Plan 08-03 — CLI `--conversation` Loader
+
+### Summary
+
+Accurately targets the synthetic escape hatch and pins the bare-array contract (A2). `conversation record` object shape vs `--conversation` array is correctly flagged (Pitfall #3).
+
+### Strengths
+
+- **Deletion target verified** — `authoring_cli_exchanges.go` exists; used only from shape/specify/decompose (not approve).
+- **Loader analog exists** — `conversationRecordInput` + `loadJSONFileRaw` at `conversation.go:59-68`, `util.go:37-45`.
+- **Flag help requirement** (finding #3) — explicit distinction from `{"exchanges":[...]}` is necessary.
+- **Atomic commit** — helper + rewire + delete in one task prevents dangling references.
+- **Spark optional pattern** — matches server conditional at `authoring_handler.go:57-64`.
+
+### Concerns
+
+- **MEDIUM — Required-flag enforcement unspecified.** Plan mentions `registerConversationFlag(..., required bool)` but Cobra needs `MarkFlagRequired("conversation")` (see `conversation.go:48-49`). Implementers should mirror that pattern per command.
+- **LOW — No synthetic-placeholder tests to remove.** `authoring_test.go` has spark/shape tests but no `cliSyntheticExchanges` assertions; “remove placeholder tests” is precautionary only.
+- **LOW — Approve CLI currently has no JSON/output flags** — adding required `--conversation` is a breaking CLI change (intentional per D-04).
+
+### Suggestions
+
+- Task 1: explicitly `cobra.CheckErr(cmd.MarkFlagRequired("conversation"))` for shape/specify/decompose/approve after `StringVar`.
+- Task 2(d): use `runShape` with a cobra command built in-test (existing `authoring_test.go` pattern) to assert missing-flag error before RPC.
+
+### Risk Assessment
+
+**LOW–MEDIUM** — Straightforward; operator confusion between array vs object formats is the main footgun (mitigated by help text + Task 2(c)).
+
+---
+
+## Plan 08-04 — MCP-Only E2E Gate
+
+### Summary
+
+Correctly identifies the breaking e2e line and stage-string discipline. Prior finding #2 (`"approved"` vs `"approve"`) is well documented.
+
+### Strengths
+
+- **Breaking call verified** — `author(map[string]any{"action": "approve"})` at `mcp_only_authoring_test.go:242`.
+- **Stage filter discipline is critical and correct** — exchange JSON uses `"approve"` (`ValidateExchanges` target at `validate.go:70-71`); stored/list filter must use `"approved"` (`spec_domain.go:19`, `conversation.go:222`).
+- **Harness reuse** — `mcpProjectClient` at `:49`; per-Describe project isolation at `:24-31`.
+- **Negative case template exists** — shape-without-exchanges rejection at `:261-276`.
+
+### Concerns
+
+- **LOW — Overlap between Task 1 and Task 2.** Both add full-funnel + per-stage conversation assertions; Task 2 may duplicate Task 1 unless scoped (Task 1 = extend existing spec; Task 2 = dedicated fidelity + negative-only file).
+- **LOW — Negative approve case timing.** After 08-02 client-side reject, e2e may see MCP tool error before server `InvalidArgument`; assert on `res.IsError` (as `:275`) rather than only Connect code.
+
+### Suggestions
+
+- Task 2 negative spec: assert `res.IsError` **or** error text containing `exchanges`/`InvalidArgument` — don’t require server round-trip if 08-02 client guard fires first.
+- Task 1: update stale comment at `:224-225` when adding approve exchanges.
+
+### Risk Assessment
+
+**LOW** — Depends on Wave 1 landing first; stage-string mistake would cause false-negative fidelity assertions (plans guard against this).
+
+---
+
+## Cross-Cutting Findings
+
+### Prior review fixes — incorporation status
+
+| Finding | Status in revised plans |
+|---------|-------------------------|
+| #1 Three accept tests + recording backend | ✓ `08-01` Task 2 |
+| #2 `"approved"` vs `"approve"` in e2e/list filters | ✓ `08-04` Tasks 1–2, `08-01` Task 3 |
+| #3 `--conversation` help vs object shape | ✓ `08-03` Task 1 |
+| #4 Top-level `author` Description, not just prop | ✓ `08-02` Task 1 |
+| #5 Handler unit vs storage integration tiers | ✓ `08-01` Task 3 |
+| #6 Wave 1 atomic merge gate | ✓ All Wave 1 plans |
+| #7 SKILL edits = approve flip only | ✓ `08-02` Task 3 |
+
+### New / remaining issues not fully covered
+
+1. **HIGH (operational):** Wave 1 must merge together — verified by current accept path accepting empty exchanges while MCP/CLI send none.
+2. **MEDIUM:** MCP `handleSpark` does not forward exchanges (`tools_authoring.go:219-223`) while server supports them (`authoring_handler.go:96-103`).
+3. **MEDIUM:** No explicit approve-accept transaction rollback test (shape has one at `authoring_handler_test.go:1952`).
+4. **MEDIUM:** MCP approve unit test cannot verify `ConversationExchanges` without mock change (`testhelpers_test.go:369`).
+5. **LOW (intentional):** Standalone `RecordConversation` RPC (`authoring_handler.go:612-655`) and CLI `conversation record` remain bypass paths for humans/backfill (D-07/D-08) — not CONV-01 agent-funnel violations.
+
+### Security / performance
+
+- Reusing `ValidateExchanges` caps (`validate.go:12-17`, `:46-48`) and `parseOptionalExchanges` isolation is correct; no new attack surface.
+- Validation-before-tx on accept matches ADR-004 guidance; fourth op inside existing `runInTxOrSequential` is appropriate.
+
+### Phase goal attainment
+
+If executed as written (plus Wave 1 atomic merge), the plans close the documented holes and satisfy CONV-01 criteria #1–#4. The MCP-only e2e at `08-04` would have caught #906’s skip pattern.
+
+---
+
+## Overall Risk Assessment
+
+| Dimension | Level | Justification |
+|-----------|-------|---------------|
+| Technical correctness | **LOW** | Claims match source; templates exist in-tree |
+| Coordination / release | **HIGH** | Partial Wave 1 merge breaks all approve clients |
+| Test completeness | **MEDIUM** | Rollback + mock threading + spark MCP gaps |
+| Scope creep | **LOW** | Focused refactor; no new dependencies |
+
+**Composite: MEDIUM** — Plans are ready to execute with the suggestions above; treat Wave 1 as a single release unit and add the missing approve rollback + MCP mock/spark items before calling the phase done.
 
 ---
 
 ## Consensus Summary
 
-One external reviewer (Cursor agent, source-grounded against the working tree at `/Volumes/Code/github.com/specgraph`). Findings below are single-reviewer but carry concrete `file:line` evidence, so they are weighted as verified observations rather than impressions.
+One external reviewer (Cursor agent, source-grounded against the working tree). Round-2 verdict: **MEDIUM risk, execution-ready.** All 7 Round-1 findings confirmed incorporated with correct line-level references. Remaining items are new lower-severity gaps, not regressions.
 
 ### Agreed Strengths
-- Accurate "close-the-holes" diagnosis: shape/specify/decompose already validate + record atomically in `runInTxOrSequential`; the real gaps are the approve **accept** path, MCP `handleApprove`, CLI synthetic placeholder, and the MCP `conversation record` action.
-- Reject branch (`internal/server/authoring_handler.go:487-524`) is a verified in-repo template for the accept branch; proto `conversation_exchanges` is already field 3 (`authoring.proto:352-361`) so 08-01 is comment + wiring, not a new field.
-- Wave-1 file isolation is real (`internal/server/` vs `internal/mcp/` vs `cmd/specgraph/`); reusable primitives (`ValidateExchanges`, `parseOptionalExchanges`, `loadJSONFileRaw`) exist as claimed.
+- Revised plans accurately match current code; reject branch is a faithful template for accept; A1 (`storage.SpecStageApproved`="approved") and A2 (bare-array `--conversation`) pins are correct.
+- All 7 prior findings verified incorporated (#1 three accept tests + recording backend → 08-01 T2; #2 "approved" vs "approve" filters → 08-04 + 08-01 T3; #3 flag-help shape → 08-03 T1; #4 top-level author Description → 08-02 T1; #5 unit/integration tier split → 08-01 T3; #6 wave-1 merge gate → all wave-1 plans; #7 SKILL approve-flip scope → 08-02 T3).
 
-### Agreed Concerns (highest priority)
-- **[HIGH] Wave-1 must merge atomically.** Accept succeeds today with zero exchanges; if 08-01 lands alone, MCP + CLI still send none → `InvalidArgument` breaks approve for all clients. Treat as a hard merge gate, not advisory.
-- **[HIGH] Existing approve unit tests will break and are not listed for update.** `TestAuthoringHandler_Approve_HappyPath` (`authoring_handler_test.go:614-623`), `_AcceptUnchangedWithoutAction` (`:625-634`), `_ExplicitAcceptSucceeds` (`:1999-2010`) pass today without exchanges; 08-01 Task 2's `go test ./internal/server/...` verify will fail until they supply exchanges AND use a backend that implements `RecordConversation` (the default `&fakeBackend{}` / `stubBackend.RecordConversation` returns `errNotImplemented`).
-- **[MEDIUM] E2e stage-filter string mismatch.** Accept/reject store `entry.Stage = storage.SpecStageApproved` = `"approved"` (`spec_domain.go:19`), but exchange validation + plan text use `"approve"`. `ListConversations` does exact SQL match — filtering `stage="approve"` returns empty. 08-04 must filter/assert on `"approved"`.
-- **[MEDIUM] CLI `--conversation` shape divergence.** Stage flag is a bare JSON array (A2/D-05) while `conversation record` uses `{"exchanges":[...]}`; flag help must call out the difference.
+### Agreed Concerns (new/remaining — none are BLOCKERs)
+- **[HIGH, operational — already in plans] Wave-1 atomic merge.** 08-01+08-02+08-03 must ship as one release unit or approve breaks for all clients. Already framed as a hard-merge-gate in the plans; no plan change needed, honor at merge time.
+- **[MEDIUM] MCP `handleSpark` drops optional exchanges** (`tools_authoring.go:219-223`) while the server records them when present (`authoring_handler.go:96-103`). D-01 optional-spark parity is missing on the MCP path (08-03 adds it for CLI only). Consider a one-line 08-02 follow-up: thread optional spark exchanges when `parseOptionalExchanges` returns non-nil.
+- **[MEDIUM] No approve-accept transaction rollback test.** Shape has `TestAuthoringHandler_Shape_RecordConversationFailureRollsBack` (`authoring_handler_test.go:1952-1976`); 08-01 Task 3 claims rollback behavior but doesn't task an equivalent approve-accept test via `newTxConvAuthoringClient`.
+- **[MEDIUM] MCP approve unit test can't verify threaded exchanges** without a mock change — `mockAuthoringService.Approve` only receives `slug` (`testhelpers_test.go:365-369`); 08-02's `TestAuthorTool_Approve` can't assert `ConversationExchanges` unless the mock passes `req.Msg`.
+- **[LOW] 08-03 required-flag enforcement** needs `MarkFlagRequired("conversation")` (Cobra) per command, mirroring `conversation.go:48-49` — plan mentions a `required bool` param but not the Cobra call.
+- **[LOW] 08-01 proto comment** should include `APPROVE_ACTION_UNSPECIFIED`/default-accept, not only `APPROVE_ACTION_ACCEPT`.
+
+### Confirmed Out-of-Scope (intentional, no change)
+- Standalone `AuthoringHandler.RecordConversation` RPC + CLI `conversation record` remain (D-07/D-08) — human/backfill paths, not CONV-01 agent-funnel violations.
 
 ### Divergent Views
 - None (single reviewer).
 
-### Recommended Actions Before Execution
-1. Add an explicit 08-01 subtask to update the three existing approve unit tests (supply exchanges + a `RecordConversation`-implementing backend, mirroring `newFakeRejectBackend`/`fakeConvBackend` at `authoring_handler_test.go:259-296`).
-2. Pin all 08-04 approve conversation list filters/assertions to the stored stage value `"approved"` (document that exchange JSON still uses `"approve"` for `ValidateExchanges`).
-3. Split 08-01 Task 3 verify: `go test ./internal/server/...` (unit, no Docker) vs `go test -tags integration ./internal/storage/postgres/...` (Docker).
-4. 08-02 Task 1: also update the top-level author `Description` sentence (`tools_authoring.go:123-124`), not just the `exchanges` prop.
-5. 08-03 Task 1: `--conversation` help text must state "bare JSON array; not the `conversation record` object shape."
+### Recommendation
+Plans are execution-ready. The remaining MEDIUM items are test-completeness/parity gaps best folded in during execution (or a light `--reviews` pass): add the approve-accept rollback test + MCP approve-mock exchange assertion (08-01/08-02), and decide on MCP spark-exchange parity (08-02). None block starting execution; treat wave-1 as a single release unit.
