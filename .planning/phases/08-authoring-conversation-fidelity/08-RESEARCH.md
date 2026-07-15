@@ -277,16 +277,18 @@ func (s *Store) RecordConversation(ctx context.Context, slug string, entry stora
 
 **If any assumption is wrong:** these are the items the planner/discuss should confirm before locking tasks. A1 and A2 are the two that materially affect task shape.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does criterion #1 "records a conversation entry for every stage" require a literal per-stage `stage` string of "approve", or is "approved" (the enum/stage used by the reject branch) acceptable?**
    - What we know: reject records under `storage.SpecStageApproved`; `ValidateExchanges(..., "approve")` uses "approve" as the exchange-level `stage` match target.
    - What's unclear: whether the stored `conversation_logs.stage` should be "approve" or "approved" for the accept path.
    - Recommendation: Match the reject branch exactly (`SpecStageApproved`) for consistency; note the exchange-level `stage` field validates against "approve". Confirm during planning if e2e assertions need a specific value.
+   - **RESOLVED (Plan 01):** Accept path records under `storage.SpecStageApproved` (value "approved"), matching the reject branch; the exchange-level `stage` string validates against "approve" via `ValidateExchanges(..., "approve")`. Pinned in 08-01 Task 2 (`entry.Stage = storage.SpecStageApproved`) and asserted in 08-01 Task 3 storage retrieval.
 
 2. **Should `handleApprove` reject empty exchanges client-side, or rely solely on the server's `InvalidArgument`?**
    - What we know: server will reject via `ValidateExchanges`; shape/specify use `parseOptionalExchanges` (which returns nil on absent, letting the server enforce).
    - Recommendation: Add a client-side friendly error for approve (required stage) for a better MCP agent message, but the server remains the authority. Low-risk either way.
+   - **RESOLVED (Plan 02):** Server remains the enforcement authority (08-01 validates + rejects). 08-02 Task 1 adds a friendly client-side empty-exchanges reject in `handleApprove` ("exchanges is required for approve") for a better MCP agent message ahead of the server round-trip.
 
 ## Environment Availability
 
