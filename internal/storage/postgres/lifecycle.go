@@ -95,23 +95,8 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		// still carries the outputs of stages at or beyond landingStage; readers
 		// must treat stage as the authoritative contract boundary, not the mere
 		// presence of a downstream output blob.
-		claim, claimErr := s.GetActiveClaim(txCtx, slug)
-		if claimErr != nil {
-			return fmt.Errorf("postgres: amend spec: get active claim: %w", claimErr)
-		}
-		if claim != nil {
-			if _, delErr := s.exec(txCtx,
-				`DELETE FROM claims WHERE project_slug = $1 AND spec_slug = $2 AND agent = $3`,
-				s.project, slug, claim.Agent,
-			); delErr != nil {
-				return fmt.Errorf("postgres: amend spec: delete claim: %w", delErr)
-			}
-			if _, delErr := s.exec(txCtx,
-				`DELETE FROM edges WHERE project_slug = $1 AND from_slug = $2 AND to_slug = $3 AND edge_type = 'CLAIMED_BY'`,
-				s.project, slug, claim.Agent,
-			); delErr != nil {
-				return fmt.Errorf("postgres: amend spec: delete CLAIMED_BY edge: %w", delErr)
-			}
+		if relErr := s.releaseActiveClaim(txCtx, slug, "amend spec"); relErr != nil {
+			return relErr
 		}
 
 		if hashErr := s.recomputeContentHash(txCtx, slug); hashErr != nil {
@@ -330,6 +315,14 @@ func (s *Store) LifecycleAbandonSpec(ctx context.Context, slug, reason string) (
 			})
 		}
 
+		// D-08: an abandoned spec transitions to a terminal, non-executable
+		// state, so any active lease must be released — mirroring amend and
+		// RecordCompletion. Otherwise a dangling CLAIMED_BY edge would point at a
+		// terminal node until the lease expires. Unclaimed specs are a no-op.
+		if relErr := s.releaseActiveClaim(txCtx, slug, "abandon spec"); relErr != nil {
+			return relErr
+		}
+
 		if hashErr := s.recomputeContentHash(txCtx, slug); hashErr != nil {
 			return hashErr
 		}
@@ -441,6 +434,34 @@ func (s *Store) LifecycleAcknowledgeDrift(ctx context.Context, slug, upstreamSlu
 
 		return nil
 	})
+}
+
+// releaseActiveClaim deletes the active claim row and its CLAIMED_BY edge for
+// slug inside the current transaction. A spec leaving the executable set —
+// amend back to authoring, or abandon — must not retain a live lease (D-08). An
+// unclaimed spec holds no active claim, so this is a harmless no-op. The op
+// string is used only to prefix wrapped error messages.
+func (s *Store) releaseActiveClaim(ctx context.Context, slug, op string) error {
+	claim, claimErr := s.GetActiveClaim(ctx, slug)
+	if claimErr != nil {
+		return fmt.Errorf("postgres: %s: get active claim: %w", op, claimErr)
+	}
+	if claim == nil {
+		return nil
+	}
+	if _, delErr := s.exec(ctx,
+		`DELETE FROM claims WHERE project_slug = $1 AND spec_slug = $2 AND agent = $3`,
+		s.project, slug, claim.Agent,
+	); delErr != nil {
+		return fmt.Errorf("postgres: %s: delete claim: %w", op, delErr)
+	}
+	if _, delErr := s.exec(ctx,
+		`DELETE FROM edges WHERE project_slug = $1 AND from_slug = $2 AND to_slug = $3 AND edge_type = 'CLAIMED_BY'`,
+		s.project, slug, claim.Agent,
+	); delErr != nil {
+		return fmt.Errorf("postgres: %s: delete CLAIMED_BY edge: %w", op, delErr)
+	}
+	return nil
 }
 
 // preconditionError re-reads the spec after an atomic WHERE guard failed

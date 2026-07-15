@@ -748,6 +748,67 @@ func TestLifecycleAmend_ReleasesClaim(t *testing.T) {
 	})
 }
 
+// TestLifecycleAbandon_ReleasesClaim pins WR-01: abandoning a claimed spec
+// transitions it to the terminal `abandoned` state and, like amend and
+// RecordCompletion, releases the active lease — deleting both the claims row and
+// the CLAIMED_BY edge inside the abandon transaction.
+func TestLifecycleAbandon_ReleasesClaim(t *testing.T) {
+	t.Run("ClaimedSpec_ReleasesClaimAndEdge", func(t *testing.T) {
+		store := newStore(t)
+		clearDatabase(t, store)
+		ctx := context.Background()
+
+		_, err := store.CreateSpec(ctx, "claimed-abandon", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+		inProgress := "in_progress"
+		_, err = store.UpdateSpec(ctx, "claimed-abandon", nil, &inProgress, nil, nil, nil)
+		require.NoError(t, err)
+
+		// Seed an active claim.
+		_, err = store.ClaimSpec(ctx, "claimed-abandon", "agent-1", 0)
+		require.NoError(t, err)
+		claim, err := store.GetActiveClaim(ctx, "claimed-abandon")
+		require.NoError(t, err)
+		require.NotNil(t, claim, "precondition: spec must hold an active claim before abandon")
+		require.Equal(t, 1, countClaimedByEdges(t, ctx, "claimed-abandon"), "precondition: CLAIMED_BY edge present")
+
+		// Abandon the claimed spec.
+		abandoned, err := store.LifecycleAbandonSpec(ctx, "claimed-abandon", "no longer needed")
+		require.NoError(t, err)
+		require.Equal(t, storage.SpecStageAbandoned, abandoned.Stage)
+
+		// (a) Claim row gone.
+		after, err := store.GetActiveClaim(ctx, "claimed-abandon")
+		require.NoError(t, err)
+		require.Nil(t, after, "abandon must release the active claim")
+
+		// (b) CLAIMED_BY edge gone.
+		require.Equal(t, 0, countClaimedByEdges(t, ctx, "claimed-abandon"), "abandon must delete the CLAIMED_BY edge")
+	})
+
+	t.Run("UnclaimedSpec_NoErrorNoClaim", func(t *testing.T) {
+		store := newStore(t)
+		clearDatabase(t, store)
+		ctx := context.Background()
+
+		_, err := store.CreateSpec(ctx, "unclaimed-abandon", "Test spec", "p1", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+		require.NoError(t, err)
+		approved := "approved"
+		_, err = store.UpdateSpec(ctx, "unclaimed-abandon", nil, &approved, nil, nil, nil)
+		require.NoError(t, err)
+
+		// No claim seeded — abandon must be a harmless no-op w.r.t. claims.
+		require.Nil(t, mustGetActiveClaim(t, store, ctx, "unclaimed-abandon"))
+
+		abandoned, err := store.LifecycleAbandonSpec(ctx, "unclaimed-abandon", "revisit approach")
+		require.NoError(t, err)
+		require.Equal(t, storage.SpecStageAbandoned, abandoned.Stage)
+
+		require.Nil(t, mustGetActiveClaim(t, store, ctx, "unclaimed-abandon"))
+		require.Equal(t, 0, countClaimedByEdges(t, ctx, "unclaimed-abandon"))
+	})
+}
+
 // mustGetActiveClaim fetches the active claim for slug, failing on error.
 func mustGetActiveClaim(t *testing.T, store *postgres.Store, ctx context.Context, slug string) *storage.Claim {
 	t.Helper()
