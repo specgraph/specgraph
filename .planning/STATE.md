@@ -4,11 +4,10 @@ milestone: v0.14.0
 milestone_name: Authoring Surface Correctness
 current_phase: 8
 current_phase_name: Authoring Conversation Fidelity
-status: verifying
+status: "Phase 07 shipped — PR #1003"
 stopped_at: Completed 07-05-PLAN.md
-last_updated: "2026-07-14T22:27:38.165Z"
-last_activity: 2026-07-14
-last_activity_desc: Phase 07 complete, transitioned to Phase 8
+last_updated: "2026-07-15T14:06:33.879Z"
+last_activity: 2026-07-15
 progress:
   total_phases: 4
   completed_phases: 2
@@ -33,8 +32,8 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 
 Phase: 8 — Authoring Conversation Fidelity
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-14 — Phase 07 complete, transitioned to Phase 8
+Status: Phase 07 shipped — PR #1003
+Last activity: 2026-07-15
 
 ## Performance Metrics
 
