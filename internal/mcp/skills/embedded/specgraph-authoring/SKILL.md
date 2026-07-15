@@ -151,7 +151,7 @@ friendly YAML). Pass the accumulated probe/response history alongside the
 
 - `role` — `"probe"` (agent asks) or `"response"` (user answers)
 - `content` — the substantive text
-- `stage` — the authoring stage (`shape`, `specify`, `decompose`)
+- `stage` — the authoring stage (`shape`, `specify`, `decompose`, `approve`)
 - `sequence` — strictly increasing integer ≥ 1; same number pairs a probe
   with its response
 
