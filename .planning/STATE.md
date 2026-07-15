@@ -4,17 +4,17 @@ milestone: v0.14.0
 milestone_name: Authoring Surface Correctness
 current_phase: 9
 current_phase_name: JIT Display Name Reconciliation
-status: executing
-stopped_at: Phase 9 context gathered
-last_updated: "2026-07-15T22:18:49.988Z"
+status: verifying
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-07-15T22:36:41.349Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 9 execution started
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 16
-  completed_plans: 15
-  percent: 75
+  completed_plans: 16
+  percent: 100
 ---
 
 # Project State
@@ -33,7 +33,7 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 
 Phase: 9 (JIT Display Name Reconciliation) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-15 — Phase 9 execution started
 
 ## Performance Metrics
@@ -101,6 +101,7 @@ Last activity: 2026-07-15 — Phase 9 execution started
 | Phase 08 P02 | 12min | 3 tasks | 4 files |
 | Phase 08 P04 | 12min | 2 tasks | 2 files |
 | Phase 09 P01 | 16min | 2 tasks | 4 files |
+| Phase 09 P02 | 11min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -162,6 +163,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase ?]: reconcileDisplayName does not accept or read the interactive flag (D-01) — reconciliation is unconditional by construction
 - [Phase ?]: Reconciliation write is guarded by the changed boolean and best-effort on persist failure (never denies login), since UpdateUserOnLogin is not SQL-level no-op-safe
 - [Phase ?]: In-memory user.DisplayName is updated before the loginSyncEnabled && interactive gate so applyLoginSync never re-derives stale state (Pitfall 2, no double-write)
+- [Phase ?]: resolveIntrospection populates OIDCClaims.Name via nameFromClaims(res.Raw) — a one-line D-04 fix closing the third AUTH-06 resolution path (opaque-token introspection was silently skipping reconciliation)
+- [Phase ?]: jitResolve seeds DisplayName from claims.Name (falling back to claims.Subject) at first JIT provisioning, per D-07 — role derivation remains solely from claims-mapping, unaffected by the name seed
+- [Phase ?]: D-05 reconfirmed: oauth2LoginProvider.Exchange already populates OIDCClaims.Name via displayNameFromUserinfo; no production change, only a dedicated TestOAuth2Provider_Exchange_PopulatesName regression guard added
 
 ### Pending Todos
 
@@ -187,9 +191,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T22:16:22.983Z
-Stopped at: Phase 9 context gathered
-Resume file: .planning/phases/09-jit-display-name-reconciliation/09-CONTEXT.md
+Last session: 2026-07-15T22:36:41.342Z
+Stopped at: Completed 09-02-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
