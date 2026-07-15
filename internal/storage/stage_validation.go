@@ -47,6 +47,18 @@ func validateStageNames(from, to SpecStage, allowEmptyFrom bool) (fromIdx, toIdx
 // Forward transitions must follow the defined order (no skipping).
 // Backward (amend) transitions are allowed to any earlier stage.
 // Same-to-same transitions are not allowed.
+//
+// IN-04: this is a low-level *structural* validator (pure funnel-order check)
+// shared by the general TransitionStage path — including export/import restore,
+// which steps specs through the funnel to reconstruct their persisted stage. It
+// deliberately does NOT enforce the Phase-7 amend semantics (re-entry allowlist,
+// amend-eligibility, claim release). Those live in LifecycleAmendSpec, which is
+// the only supported way to rewind a spec through authoring in production. The
+// permissive backward branch below is intentionally retained so restore and
+// other structural callers are not forced through the amend business logic;
+// tightening it here would break the export path and the stage_validation suite
+// without closing any real hole, since no in-scope caller performs a backward
+// TransitionStage.
 func ValidateTransition(from, to SpecStage) error {
 	if from == to {
 		return fmt.Errorf("transition from %q to %q is a no-op", from, to)
@@ -64,7 +76,10 @@ func ValidateTransition(from, to SpecStage) error {
 		return nil
 	}
 
-	// Backward (amend): to must be at a lower index than from.
+	// Backward (amend): to must be at a lower index than from. Intentionally
+	// permissive — see the IN-04 note on the function doc comment. Business-rule
+	// enforcement of backward movement is LifecycleAmendSpec's responsibility,
+	// not this structural validator's.
 	if fromIdx >= 0 && toIdx >= 0 && toIdx < fromIdx {
 		return nil
 	}
