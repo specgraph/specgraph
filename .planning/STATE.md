@@ -5,8 +5,8 @@ milestone_name: Authoring Surface Correctness
 current_phase: 8
 current_phase_name: Authoring Conversation Fidelity
 status: "Phase 07 shipped — PR #1003"
-stopped_at: Completed 07-05-PLAN.md
-last_updated: "2026-07-15T14:06:33.879Z"
+stopped_at: Phase 8 context gathered
+last_updated: "2026-07-15T14:38:31.652Z"
 last_activity: 2026-07-15
 progress:
   total_phases: 4
@@ -173,9 +173,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-14T22:18:57.323Z
-Stopped at: Completed 07-05-PLAN.md
-Resume file: None
+Last session: 2026-07-15T14:38:31.644Z
+Stopped at: Phase 8 context gathered
+Resume file: .planning/phases/08-authoring-conversation-fidelity/08-CONTEXT.md
 
 ## Operator Next Steps
 
