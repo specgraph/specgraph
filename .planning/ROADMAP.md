@@ -112,12 +112,12 @@ Plans: *(linearized 1→2→3→4→5 during `--reviews` incorporation to close 
   3. A stage that reaches completion has an associated, non-empty conversation record — a missing conversation cannot silently pass.
   4. Recorded conversations are retrievable/queryable after the funnel completes.
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 **Wave 1** *(parallel — no file overlap)*
 
 - [x] 08-01-PLAN.md — Proto field-3 comment + server approve-accept enforcement (validate+record under `approved`) + handler/storage integration tests (D-02/D-03)
-- [ ] 08-02-PLAN.md — MCP: thread required exchanges into `handleApprove`, remove `conversation` record action (keep `list`), flip author Description + SKILL.md (D-02/D-06/D-09)
+- [x] 08-02-PLAN.md — MCP: thread required exchanges into `handleApprove`, remove `conversation` record action (keep `list`), flip author Description + SKILL.md (D-02/D-06/D-09)
 - [ ] 08-03-PLAN.md — CLI: shared `loadConversationFlag` (`--conversation` bare-array/stdin), rewire 5 stage commands, delete `cliSyntheticExchanges` (D-01/D-04/D-05)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -158,7 +158,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 6. MCP Authoring Self-Teaching Path | v0.14.0 | 5/5 | Complete    | 2026-07-14 |
 | 7. Authoring Lifecycle Semantics | v0.14.0 | 5/5 | Complete    | 2026-07-14 |
-| 8. Authoring Conversation Fidelity | v0.14.0 | 1/4 | In Progress|  |
+| 8. Authoring Conversation Fidelity | v0.14.0 | 2/4 | In Progress|  |
 | 9. JIT Display Name Reconciliation | v0.14.0 | 0/? | Not started | - |
 | 1. Release & Build Tooling | v0.12.0 | 1/1 | Complete | 2026-07-09 |
 | 2. API Key Lifecycle & Self-Service | v0.12.0 | 8/8 | Complete | 2026-07-10 |
