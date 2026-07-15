@@ -83,8 +83,18 @@ func (s *Store) LifecycleAmendSpec(ctx context.Context, slug, reason, reEntrySta
 		// D-08: a spec returning to authoring is no longer executable, so its
 		// active lease must not linger. Release the claim row and its CLAIMED_BY
 		// edge inside this same transaction. An unclaimed (approved) spec holds no
-		// claim — GetActiveClaim returns nil and this is a harmless no-op. Slices
-		// (re-authored decompose output) are intentionally left intact.
+		// claim — GetActiveClaim returns nil and this is a harmless no-op.
+		//
+		// Stage outputs are intentionally left intact (IN-03): amend rewinds
+		// `stage` to landingStage and recomputes the content hash, but does NOT
+		// clear shape_output / specify_output / decompose_output (nor the slices
+		// derived from decompose output). Each pre-existing stage output is
+		// retained and overwritten only when that stage is re-authored, so the
+		// agent re-enters authoring with its prior work as the starting point
+		// rather than a blank slate. A spec that stops mid-re-author therefore
+		// still carries the outputs of stages at or beyond landingStage; readers
+		// must treat stage as the authoritative contract boundary, not the mere
+		// presence of a downstream output blob.
 		claim, claimErr := s.GetActiveClaim(txCtx, slug)
 		if claimErr != nil {
 			return fmt.Errorf("postgres: amend spec: get active claim: %w", claimErr)
