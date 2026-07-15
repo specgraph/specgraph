@@ -1,6 +1,6 @@
 ---
 phase: 07-authoring-lifecycle-semantics
-fixed_at: 2026-07-15T00:00:00Z
+fixed_at: 2026-07-15T13:02:25Z
 review_path: .planning/phases/07-authoring-lifecycle-semantics/07-REVIEW.md
 iteration: 1
 findings_in_scope: 6
@@ -9,122 +9,171 @@ skipped: 0
 status: all_fixed
 ---
 
-# Phase 7: Code Review Fix Report
+# Phase 07: Code Review Fix Report
 
-**Fixed at:** 2026-07-15
+**Fixed at:** 2026-07-15T13:02:25Z
 **Source review:** .planning/phases/07-authoring-lifecycle-semantics/07-REVIEW.md
 **Iteration:** 1
 
 **Summary:**
-- Findings in scope: 6 (fix_scope: all — WR-01, WR-02, IN-01, IN-02, IN-03, IN-04)
+- Findings in scope: 6 (CR-01, WR-01, WR-02, IN-01, IN-02, IN-03)
 - Fixed: 6
 - Skipped: 0
-- `task check`: **green (exit 0)** after all fixes — fmt:check → license:check → lint → build → unit tests → skills:validate.
+
+**Quality gates:** `task check` → exit 0 (after clearing a stale golangci-lint
+cache that was surfacing 70 phantom issues from a prior worktree; a fresh
+`task lint` reports 0 issues). Integration suite (`-tags integration`,
+Docker) and MCP-only e2e (`-tags e2e`) both pass. See "Verification" below.
 
 ## Fixed Issues
 
-### WR-01: MCP `author` amend hint tells the agent to run a command that errors for `re_entry_stage=spark`
+### CR-01: Amend → re-decompose silently discarded re-authored slice content and orphaned removed slices
 
-**Files modified:** `internal/mcp/tools_authoring.go`, `internal/mcp/tools_authoring_test.go`
-**Commit:** 17b3423c
-**Applied fix:** `handleAmend` now branches on `reEntryStage == "spark"`. When the spec
-lands at `spark` (PrecedingAuthStage(spark)==spark), it emits a terminal-stage hint
-("There is no forward re-author command for spark; edit the seed via the normal flow.")
-instead of the failing `Next step: run author action=spark …` guidance that would route
-to CreateSpec → ALREADY_EXISTS. All non-spark re-entry stages keep the original
-next-step hint. Added `TestAuthorTool_Amend_SparkReEntry` asserting the emitted content
-does NOT contain `action=spark` and does surface a spark terminal-stage explanation.
+**Files modified:** `internal/storage/postgres/authoring.go`, `internal/storage/postgres/slice.go`, `internal/storage/postgres/authoring_test.go`
+**Commit:** 6b77eda6
+**Applied fix:**
+`StoreDecomposeOutput` now reconciles the incoming decomposition against the
+previously-stored slice set instead of treating existing child Slice nodes as
+immutable:
+- Added `readStoredSliceSlugs` to read the parent's prior
+  `decompose_output.SliceSlugs`.
+- **Prune:** slices absent from the incoming set are deleted via the new
+  `DeleteSlice`, which cascades every incident edge (BELONGS_TO, COMPOSES, and
+  DEPENDS_ON in both directions) so no orphaned nodes/edges remain.
+- **Update:** slices that already exist have their body overwritten via the new
+  `UpdateSlice` (Intent/Verify/Touches/DependsOn), so a re-authored
+  decomposition persists instead of being silently dropped.
+- **Create:** genuinely new slices are created as before.
+- **DEPENDS_ON reconciliation:** each incoming slice's outgoing DEPENDS_ON edges
+  are cleared before recreation, so a re-authored slice whose dependency set
+  changed does not retain stale edges.
+All work stays inside the existing transaction. `UpdateSlice`/`DeleteSlice` were
+added as concrete `*Store` methods (not added to the `SliceBackend` interface,
+to avoid churn in three unrelated fakes; reconciliation is postgres-specific and
+already manipulates the `edges` table directly, consistent with the existing
+Pass-2 edge code). Cross-cutting invariants preserved: COMPOSES direction and
+`content_hash_at_link` on DEPENDS_ON are untouched by the update path; the
+parent content hash is recomputed by `storeJSONColumn` as before.
 
-### WR-02: `AcknowledgeDrift` handler does not enforce the proto-required `note`
+**Note (logic-heavy change — recommend human confirmation of semantics):**
+`UpdateSlice` intentionally overwrites only the slice body and leaves
+`status`/`assigned_to` intact (a re-author does not reset an in-progress
+slice's claim). This matches the review's stated scope
+("UPDATE existing slices' Intent/Verify/Touches/DependsOn"), but the desired
+behaviour for re-decomposing a spec with *already-claimed* slices is a product
+decision worth a human glance.
 
-**Files modified:** `internal/server/lifecycle_handler.go`, `internal/server/lifecycle_handler_test.go`, `internal/server/error_sanitize_test.go`
-**Commit:** c7ef6920
-**Applied fix:** Replaced the length-only check with
-`validateRequiredField("note", msg.Note)` (the same helper used for the required
-`reason` field), which rejects both empty and over-length notes with
-`connect.CodeInvalidArgument` before any store write. Added
-`TestLifecycleHandler_AcknowledgeDrift_MissingNote` (asserts CodeInvalidArgument and
-that the store is never reached for an empty note). Updated the existing
-`error_sanitize_test.go` AcknowledgeDrift subtest to pass a non-empty `Note` so it still
-reaches the errorBackend and exercises CodeInternal sanitization as intended. Test
-assertions use connect error codes, not message strings, per project convention.
+### WR-01: Abandon did not release the active claim / CLAIMED_BY edge
 
-### IN-01: Skill doc mislabels the spark re-entry failure mode as a "no-op"
+**Files modified:** `internal/storage/postgres/lifecycle.go`, `internal/storage/postgres/lifecycle_test.go`
+**Commit:** e6c17616
+**Applied fix:**
+Extracted a shared `releaseActiveClaim(ctx, slug, op)` helper (gets the active
+claim; deletes the `claims` row and the `CLAIMED_BY` edge; no-op when
+unclaimed) and used it in both `LifecycleAmendSpec` (replacing its inline block)
+and `LifecycleAbandonSpec` (new call inside the abandon transaction). This
+restores the D-08 invariant for the terminal `abandoned` transition and ensures
+amend and abandon cannot drift. Added `TestLifecycleAbandon_ReleasesClaim`
+(claimed spec → claim + CLAIMED_BY edge gone; unclaimed spec → harmless no-op).
+`RecordCompletion` was left as-is (it already deletes the claim using the
+known completer `agent`; folding it into the helper was out of scope and would
+have widened the diff into `execution.go`).
 
-**Files modified:** `internal/mcp/skills/embedded/specgraph-authoring/SKILL.md`
-**Commit:** 847979ee
-**Applied fix:** Reworded the caveat from "…is a same-stage no-op. It is API-allowed but
-degenerate — never present it as the happy path." to "Re-running `author action=spark` on
-an existing spec returns `ALREADY_EXISTS` — there is no spark re-author path. Never
-present it as a next step." Now consistent with WR-01's tool behavior and the actual
-`CreateSpec` → ALREADY_EXISTS semantics. `task skills:validate` passes.
+### WR-02: No test covered the amend → re-author round trip
 
-### IN-02: Concurrent supersede race mislabels *which* spec is terminal
+**Files modified:** (covered by CR-01) `internal/storage/postgres/authoring_test.go`
+**Commit:** 6b77eda6 (same as CR-01)
+**Applied fix:**
+Satisfied by CR-01's `TestStoreDecomposeOutput_ReconcilesOnReauthor`, which
+walks the full round trip: decompose → move to an amend-eligible stage →
+`LifecycleAmendSpec(re_entry_stage=decompose)` (asserts landing at
+`PrecedingAuthStage(decompose)` = specify) → re-run `StoreDecomposeOutput` with
+(a) changed slice bodies, (b) a removed slice, (c) a changed dependency, and
+(d) a new slice — then asserts the persisted graph reflects the new
+decomposition with no orphans. This is exactly the test the review said "would
+have caught CR-01". The amend error paths (amend-on-done → `ErrSpecNotAmendable`,
+re-entry validation) remain covered by the pre-existing
+`TestLifecycleAmend_ReleasesClaim` and lifecycle handler tests.
 
-**Files modified:** `internal/storage/postgres/lifecycle.go`
-**Commit:** 793c5666
-**Status:** fixed — **requires human verification** (rare concurrent-only path; not
-covered by a deterministic unit test; postgres integration test is Docker-gated and did
-not run in `task check`).
-**Applied fix:** In `LifecycleSupersedeSpec`, the new-spec `RowsAffected()==0` branch no
-longer delegates to the shared `preconditionError` (whose generic terminal check returns
-`ErrSpecTerminal`, which `lifecycleError` then formats against the OLD slug). It now
-classifies the new-spec guard failure locally: not-found → `ErrNewSpecNotFound`, version
-mismatch → `ErrConcurrentModification`, terminal → `ErrNewSpecTerminal`, else
-`ErrInternalGuardFailure`. This surfaces the replacement spec as the terminal one instead
-of misattributing terminality to the spec being superseded. The change is isolated to the
-supersede path — it deliberately does NOT reorder the shared `preconditionError` (which
-would have changed the amend/abandon diagnostics), so there is no blast radius to the
-amend or abandon flows. Build + `go vet` pass; full `task check` green.
+### IN-01: Supersede-on-terminal error message misdirected the caller to amend
 
-### IN-03: Amend does not clear stale downstream stage outputs
+**Files modified:** `internal/storage/postgres/lifecycle.go`, `internal/storage/postgres/lifecycle_test.go`
+**Commit:** f73d6a7e
+**Applied fix:**
+`LifecycleSupersedeSpec` now distinguishes a genuinely terminal old spec
+(`superseded`/`abandoned`) from a merely non-done one: terminal old specs return
+`ErrSpecTerminal` ("is in a terminal state"), while in-flight specs keep the
+`ErrSpecNotDone` "use amend for in-flight specs" hint (which is correct advice
+for them). Updated `SupersedeSpec_TerminalState` to assert `ErrSpecTerminal`.
+Chose the "distinguish terminal" option over softening the message so the
+helpful amend hint is preserved for the cases where amend genuinely applies.
 
-**Files modified:** `internal/storage/postgres/lifecycle.go`
-**Commit:** 639cf793
-**Applied fix:** Documented (rather than changed behavior). Extended the D-08 comment in
-`LifecycleAmendSpec` to state explicitly that shape/specify/decompose stage outputs (and
-the slices derived from decompose output) are **intentionally retained** on amend and
-overwritten only when their stage is re-authored — so the agent re-enters authoring with
-prior work as the starting point, and readers must treat `stage` (not the presence of a
-downstream output blob) as the authoritative contract boundary.
-**Why documented rather than nulled:** Nulling downstream outputs would change the
-recomputed content hash and the re-author starting state, a behavior change beyond the
-finding's scope that risks destabilizing the passing amend/e2e suite. The finding
-explicitly offered documentation as an acceptable resolution.
+### IN-02: `ErrSpecIneligibleForDrift` branch in `lifecycleError`
 
-### IN-04: `ValidateTransition` still permits arbitrary backward transitions
+**Files modified:** `internal/server/lifecycle_handler.go`
+**Commit:** 34a0b54c
+**Applied fix (reviewer's second option — with a correction to the premise):**
+The finding's premise that the branch is "effectively dead" is **incorrect**.
+The reviewer traced only the `AcknowledgeDrift` path (which returns
+`ErrSpecIneligibleStage`), but the branch is live via the **`CheckDrift` RPC**:
+`CheckDrift` routes `driftChecker.Check()` errors through `lifecycleError`, and
+`Check()` returns `ErrSpecIneligibleForDrift` at the top level when a specific
+**non-done** spec is drift-checked (`internal/drift/drift.go` eligibility
+guard). Removing the branch would regress a non-done drift-check from
+`CodeFailedPrecondition` to an opaque `CodeInternal` **and** break the existing
+`TestLifecycleError` case at `error_mapper_internal_test.go:168`. Therefore I
+applied the review's *second* offered option — a comment pinning exactly where
+the branch fires — rather than deleting it. (The separate `sanitizeDriftError`
+branch in `drift.go:181` remains genuinely unreachable and already carries its
+own note; it was not in scope for this finding.)
 
-**Files modified:** `internal/storage/stage_validation.go`
-**Commit:** 4c9e8069
-**Applied fix:** Documented (rather than tightened). Added a doc-comment note and an
-inline note explaining that `ValidateTransition` is a low-level *structural* validator
-shared by the general `TransitionStage` path (including export/import restore), and that
-Phase-7 amend semantics (re-entry allowlist, amend-eligibility, claim release) are
-enforced by `LifecycleAmendSpec`, not by this validator. The permissive backward branch is
-intentionally retained.
-**Why documented rather than tightened:** (1) The existing `stage_validation_test.go`
-suite explicitly asserts backward (amend) transitions such as `shape→spark`,
-`approved→decompose`, and `approved→spark` are valid; forward-only would flip those and
-destabilize the passing suite. (2) `internal/export/engine.go` uses `TransitionStage` to
-reconstruct persisted stages during restore. (3) No in-scope caller performs a backward
-`TransitionStage` (authoring handlers only transition forward; the `done→terminal`
-restore transition already fails structural validation and is handled as a warning), so
-the escape hatch is latent, not an active bug. The finding explicitly offered "add a
-comment documenting why the permissive backward branch must remain" as an acceptable fix.
+### IN-03: Concurrent mutually-superseding done specs could surface as CodeInternal (lock-order inversion)
 
-## Notes
+**Files modified:** `internal/storage/postgres/lifecycle.go`, `internal/storage/postgres/lifecycle_test.go`
+**Commit:** 9c5a9fc2
+**Applied fix (concurrency — verified by reasoning + integration test):**
+`LifecycleSupersedeSpec` now acquires row locks on **both** spec rows up front
+via `SELECT 1 ... FOR UPDATE`, iterating in deterministic lexicographic slug
+order (smaller slug first). Two concurrent mutually-superseding operations
+(A→B and B→A) previously locked the old-then-new rows in opposite orders,
+deadlocking; Postgres aborted one with SQLSTATE `40P01`, which no sentinel
+matched, surfacing as an opaque `CodeInternal`. With a shared deterministic
+order the two operations now agree on lock acquisition and serialize — the loser
+proceeds to the version guard and fails with `ErrConcurrentModification`
+(retryable `CodeAborted`). Preferred fixing the inversion at the source over
+mapping `40P01` in `lifecycleError`, per the review. Added
+`SupersedeSpec_ConcurrentMutual_NoDeadlock`, which runs both directions
+concurrently and asserts neither surfaces `ErrInternalGuardFailure` nor a raw
+deadlock, only recognized retryable/precondition sentinels.
 
-- **Docker-gated tests:** The IN-02 change touches postgres code whose behavior is
-  exercised by `//go:build integration` tests (Docker/testcontainers), which are NOT part
-  of `task check`. `task check` compiled and unit-tested the package (green), but the
-  concurrent-supersede race diagnostic itself is best confirmed via
-  `task test:integration` with Docker available, or by manual review. Flagged as
-  "requires human verification" above.
-- **No proto changes** were required for any finding (WR-02 was enforced handler-side, as
-  the project guidance anticipated). `gen/` was not touched.
+## Verification
+
+**`task check`:** exit 0. Note: the first run reported 70 lint issues that all
+referenced a *different, non-existent* worktree path
+(`../sv-07-reviewfix-SIJkSh/`) and none of the files I changed — stale
+golangci-lint cache entries (including `nolintlint` "directive unused" errors
+indicative of a version/cache mismatch) left by a prior run. After
+`golangci-lint cache clean`, a fresh `task lint` reported **0 issues** and the
+full `task check` passed exit 0.
+
+**Integration tests** (`go test -tags integration ./internal/storage/postgres/...`, Docker):
+- `TestStoreDecomposeOutput_ReconcilesOnReauthor` — PASS (CR-01 / WR-02)
+- `TestLifecycleAbandon_ReleasesClaim` (Claimed + Unclaimed subtests) — PASS (WR-01)
+- `TestLifecycle/SupersedeSpec_TerminalState` — PASS (IN-01)
+- `TestLifecycle/SupersedeSpec_ConcurrentMutual_NoDeadlock` — PASS (IN-03)
+- Full `TestLifecycle`, `TestStoreDecomposeOutput*`, `TestSlice*`,
+  `TestCreateSlice`, amend/abandon suites — PASS (no regressions).
+
+**E2E** (`go test -tags e2e ./e2e/api/...`, Docker): PASS — the phase's primary
+MCP-only gate, exercised because CR-01 changes amend/decompose round-trip
+behavior.
+
+## Skipped Issues
+
+None — all 6 in-scope findings were fixed.
 
 ---
 
-_Fixed: 2026-07-15_
+_Fixed: 2026-07-15T13:02:25Z_
 _Fixer: the agent (gsd-code-fixer)_
 _Iteration: 1_
