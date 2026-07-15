@@ -140,6 +140,44 @@ func TestListConversations_FilterByStage(t *testing.T) {
 	assert.Equal(t, storage.SpecStageShape, entries[0].Stage)
 }
 
+func TestListConversations_ApprovedStageRetrievable(t *testing.T) {
+	// A conversation recorded under the approved stage (the approval gate, value
+	// "approved") is persisted and retrievable via ListConversations filtered on
+	// the STORED stage value "approved" — not "approve" (A1; ListConversations does
+	// an exact SQL match). Backstops "a missing conversation cannot silently pass"
+	// for the approve-accept path (D-02).
+	store := newStore(t)
+	clearDatabase(t, store)
+	ctx := context.Background()
+
+	_, err := store.CreateSpec(ctx, "conv-approved", "test intent", "p2", "medium", storage.SpecProvenanceAuthored, storage.SpecProvenanceDetail{}, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	recorded, err := store.RecordConversation(ctx, "conv-approved", storage.ConversationLogEntry{
+		Stage: storage.SpecStageApproved,
+		Exchanges: []storage.ConversationExchange{
+			{Role: storage.ConversationRoleProbe, Content: "approve?", Stage: "approve", Sequence: 1},
+			{Role: storage.ConversationRoleResponse, Content: "yes, approved", Stage: "approve", Sequence: 2},
+		},
+		ExchangeCount: 2,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, recorded.ID)
+	assert.Equal(t, storage.SpecStageApproved, recorded.Stage)
+
+	// Retrieve filtered on the stored stage value "approved".
+	entries, err := store.ListConversations(ctx, "conv-approved", string(storage.SpecStageApproved))
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	assert.Equal(t, storage.SpecStageApproved, entries[0].Stage)
+	require.Len(t, entries[0].Exchanges, 2)
+
+	// The wrong filter value "approve" must NOT match (exact SQL match).
+	none, err := store.ListConversations(ctx, "conv-approved", "approve")
+	require.NoError(t, err)
+	assert.Empty(t, none)
+}
+
 func TestListConversations_OrderByDate(t *testing.T) {
 	store := newStore(t)
 	clearDatabase(t, store)
