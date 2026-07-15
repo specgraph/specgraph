@@ -49,7 +49,7 @@ export async function seedSparkOutput(request: APIRequestContext, slug: string):
 
 // syntheticExchanges returns a minimal probe/response pair marking that the
 // stage was advanced by the e2e UI harness (no LLM dialogue). The server
-// requires conversation_exchanges on shape/specify/decompose.
+// requires conversation_exchanges on shape/specify/decompose/approve.
 function syntheticExchanges(stage: string): Array<Record<string, unknown>> {
   return [
     { role: 'probe', content: 'e2e ui harness invocation', stage, sequence: 1 },
@@ -92,6 +92,7 @@ export async function advanceToApproved(request: APIRequestContext, slug: string
 
   await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Approve`, {
     slug,
+    conversationExchanges: syntheticExchanges('approve'),
   }, `advanceToApproved approve(${slug})`);
 }
 
@@ -129,6 +130,7 @@ export async function advanceToDone(request: APIRequestContext, slug: string): P
 
   await postWithRetry(request, `${BASE_URL}/specgraph.v1.AuthoringService/Approve`, {
     slug,
+    conversationExchanges: syntheticExchanges('approve'),
   }, `advanceToDone approve(${slug})`);
 
   // Claim + complete to reach "done".
