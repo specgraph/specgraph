@@ -136,6 +136,17 @@ slices:
 
 	mcpOnlyDecomposeExchanges = `[{"role":"probe","content":"how to decompose?","stage":"decompose","sequence":1},` +
 		`{"role":"response","content":"single unit","stage":"decompose","sequence":2}]`
+
+	// Stage-string discipline (review finding #2): the approve exchange JSON
+	// carries the exchange-level stage "approve" — the value ValidateExchanges
+	// checks. The conversation the accept path records, however, is STORED under
+	// storage.SpecStageApproved = "approved" (internal/storage/spec_domain.go:19),
+	// and ListConversations matches the stage string EXACTLY. So any list/assert
+	// against the approve-gate conversation must filter on "approved", not
+	// "approve" (the latter returns an empty list — a false-negative fidelity
+	// assertion).
+	mcpOnlyApproveExchanges = `[{"role":"probe","content":"ready to approve?","stage":"approve","sequence":1},` +
+		`{"role":"response","content":"yes, approved","stage":"approve","sequence":2}]`
 )
 
 var _ = Describe("MCP-only authoring", Ordered, Label("MCPOnly"), func() {
@@ -222,7 +233,10 @@ var _ = Describe("MCP-only authoring", Ordered, Label("MCPOnly"), func() {
 		// (4) Drive the authoring funnel spark→shape→specify→decompose→approve.
 		// spark passes friendly YAML output (and creates the spec); shape/specify/
 		// decompose pass friendly YAML output PLUS explicit JSON exchanges; approve
-		// passes slug only (the ACCEPT path does not require exchanges).
+		// now also supplies exchanges — under the Plan 01 server enforcement + Plan
+		// 02 MCP threading, the ACCEPT path requires a non-empty conversation, so an
+		// exchange-less approve is rejected (this comment was updated per review
+		// R2 #6; it previously claimed approve needs no exchanges).
 		slug := fmt.Sprintf("mcp-only-spec-%d", time.Now().UnixNano())
 
 		author := func(args map[string]any) {
@@ -239,7 +253,7 @@ var _ = Describe("MCP-only authoring", Ordered, Label("MCPOnly"), func() {
 		author(map[string]any{"action": "shape", "output": mcpOnlyShapeYAML, "exchanges": mcpOnlyShapeExchanges})
 		author(map[string]any{"action": "specify", "output": mcpOnlySpecifyYAML, "exchanges": mcpOnlySpecifyExchanges})
 		author(map[string]any{"action": "decompose", "output": mcpOnlyDecomposeYAML, "exchanges": mcpOnlyDecomposeExchanges})
-		author(map[string]any{"action": "approve"})
+		author(map[string]any{"action": "approve", "exchanges": mcpOnlyApproveExchanges})
 
 		// Prove the approved state through a real READ path (`spec action:get`),
 		// not just the approve tool's echoed result (Cursor review 06-05 #2).
@@ -256,6 +270,47 @@ var _ = Describe("MCP-only authoring", Ordered, Label("MCPOnly"), func() {
 		specText := toolText(specRes)
 		Expect(specText).To(ContainSubstring(slug))
 		Expect(specText).To(ContainSubstring("approved"), "spec get must reflect the approved stage")
+
+		// (5) Conversation fidelity: every required stage recorded a non-empty,
+		// retrievable conversation (criteria #1/#3/#4). Query the `conversation`
+		// tool (action:list) filtered per-stage and assert the returned log is
+		// non-empty and its exchange content round-trips.
+		//
+		// Stage-string discipline (review finding #2): the exchange JSON uses the
+		// exchange-level stage ("shape"/"specify"/"decompose"/"approve", validated
+		// by ValidateExchanges), but the STORED + queried conversation stage for
+		// the approve gate is "approved" (storage.SpecStageApproved,
+		// spec_domain.go:19). ListConversations matches the stage string EXACTLY,
+		// so the approve filter MUST be "approved" — "approve" returns an empty
+		// list (false negative). shape/specify/decompose exchange and stored
+		// stages coincide.
+		listConversation := func(filterStage string) string {
+			res, callErr := mcpCli.CallTool(ctx, mcp.CallToolRequest{
+				Params: mcp.CallToolParams{
+					Name: "conversation",
+					Arguments: map[string]any{
+						"action": "list",
+						"slug":   slug,
+						"stage":  filterStage,
+					},
+				},
+			})
+			Expect(callErr).NotTo(HaveOccurred())
+			return toolText(res)
+		}
+
+		for _, sc := range []struct{ filterStage, wantContent string }{
+			{"shape", "in-scope only"},
+			{"specify", "API with test body"},
+			{"decompose", "single unit"},
+			{"approved", "yes, approved"}, // stored stage, NOT the exchange stage "approve"
+		} {
+			listText := listConversation(sc.filterStage)
+			Expect(listText).To(ContainSubstring("conversationLogs"),
+				"stage %q must have a recorded conversation", sc.filterStage)
+			Expect(listText).To(ContainSubstring(sc.wantContent),
+				"stage %q conversation content must round-trip", sc.filterStage)
+		}
 	})
 
 	It("rejects a post-spark stage with valid output but no exchanges", func() {
