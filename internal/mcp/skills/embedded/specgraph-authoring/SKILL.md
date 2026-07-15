@@ -64,7 +64,7 @@ Two arguments carry the work into the `author` tool:
   names (below). This is what you show the user AND what you send — no
   translation step.
 - `exchanges` — the conversation log as a **JSON array** (below). Required for
-  shape/specify/decompose, optional for spark, not needed for approve.
+  shape/specify/decompose/approve, optional for spark.
 
 ### `output` per stage (friendly YAML, snake_case)
 
@@ -143,7 +143,7 @@ slices:
 > `chosenApproach`, `verifyCriteria` will be rejected) — the snake_case
 > field-name typo is the exact class that produced #1002.
 
-### `exchanges` (JSON array — required for shape/specify/decompose)
+### `exchanges` (JSON array — required for shape/specify/decompose/approve)
 
 `exchanges` stays a **JSON array** for this milestone (it is NOT converted to
 friendly YAML). Pass the accumulated probe/response history alongside the
@@ -164,17 +164,19 @@ Minimal valid example for a shape call:
 ]
 ```
 
-**Required for shape / specify / decompose** — the server enforces at least
-one exchange for these stages; omitting them fails the call. Set `stage` to
-match the call.
+**Required for shape / specify / decompose / approve** — the server enforces at
+least one exchange for these stages; omitting them fails the call. Set `stage`
+to match the call.
 
 **Spark `exchanges` are OPTIONAL** — the server validates spark exchanges only
 when they are present (a seed-only spark from a single idea, with no
 back-and-forth, is valid without any `exchanges` array). Do not fabricate a
 spark conversation just to satisfy a non-existent requirement.
 
-**Approve** needs only the `slug` (and explicit user sign-off). It does not
-require an `output` or `exchanges` on a clean acceptance.
+**Approve** now REQUIRES `exchanges` on a clean acceptance (alongside the
+`slug` and explicit user sign-off), recorded inline with the approve call — the
+exchanges capture the approval rationale and are enforced server-side. It still
+does not require an `output`. Set `stage` to `approve` on the exchange entries.
 
 ## Amending and superseding a spec
 
