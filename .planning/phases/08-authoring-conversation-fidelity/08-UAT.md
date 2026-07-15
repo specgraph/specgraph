@@ -34,31 +34,14 @@ blocked: 0
 ## Gaps
 
 - truth: "Full e2e tier (`task pr-prep` / `go test -tags e2e ./e2e/api/...`) is green after Phase 8"
-  status: failed
-  reason: "Cross-phase regression: running the full e2e suite yields 10 failures. All are pre-existing specs that advance a spec to 'approved'. Phase 8 made conversation_exchanges REQUIRED on Approve, but these older tests call Approve with only a Slug (no exchanges), so they now hard-reject with InvalidArgument. The Phase-8 executors ran only the unit tier (Docker-gated e2e was never run), so the regression slipped through. The Phase-8-specific fidelity specs themselves pass."
+  status: resolved
+  reason: "Cross-phase regression: running the full e2e suite yielded 10 e2e/api failures (+ CLI-pipeline specs). All were pre-existing specs that advance a spec to 'approved'. Phase 8 made conversation_exchanges REQUIRED on Approve (server + MCP) and --conversation required on CLI stage commands, but these older tests did not supply them, so they hard-rejected with InvalidArgument / non-zero exit. The Phase-8-specific fidelity specs themselves passed. RESOLVED in commit 6aaf477a."
+  resolution: "Threaded a minimal valid ConversationExchanges into every e2e/api Approve call site (shared advanceStage helper + authoring/lifecycle/pipeline specs + MCP-only lifecycle walkToApproved); added --conversation testdata/conversation-input.json to the e2e/cli shape/specify/decompose/approve invocations; fixed a golangci lint issue in conversation_flag.go. Verified green: task check (exit 0), task test:integration, go test -tags e2e ./e2e/api/... (211 specs), task test:e2e:cli (19 specs)."
   severity: major
   test: 2
-  root_cause: "Approve now enforces non-empty conversation_exchanges (internal/server/authoring_handler.go:478). Pre-existing e2e Approve call sites do not supply exchanges and were not updated by Phase 8."
-  artifacts:
-    - path: "e2e/api/helpers_test.go"
-      issue: "line 169 — shared helper `ac.Approve(ctx, {Slug: slug})` (drives most pipeline/claim/graph/lifecycle/errors/skills specs) omits conversation_exchanges"
-    - path: "e2e/api/authoring_test.go"
-      issue: "lines 142, 256 — Approve without exchanges"
-    - path: "e2e/api/lifecycle_pipeline_test.go"
-      issue: "line 140 — Approve without exchanges"
-    - path: "e2e/api/pipeline_test.go"
-      issue: "line 190 — Approve without exchanges"
-  missing:
-    - "Update the 5 e2e Approve call sites to supply a minimal valid ConversationExchanges (matching the fixture shape used by the Phase-8 mcp_only_* specs), then re-run `go test -tags e2e ./e2e/api/...` to confirm 0 failures"
+  root_cause: "Approve now enforces non-empty conversation_exchanges (internal/server/authoring_handler.go:478); CLI stage commands now require --conversation (08-03). Pre-existing e2e call sites were not updated by Phase 8."
+  fixed_in: "6aaf477a"
+  residual_note: "task pr-prep's test:e2e:ui step still fails, but only on an environmental Docker-build TLS error (proxy.golang.org: x509 certificate signed by unknown authority) while fetching Go modules inside the container. Phase 8 changed no UI/web code, so this is unrelated to this phase and pre-exists in this environment."
+  artifacts: []
+  missing: []
   debug_session: ""
-  failing_specs:
-    - "Full pipeline — approves the spec (pipeline_test.go:193)"
-    - "graph queries [BeforeAll] shows dependencies (graph_test.go:64)"
-    - "Claim protocol — advances to approved (claim_test.go:49)"
-    - "Authoring funnel — steel thread — approves (authoring_test.go:259)"
-    - "Authoring funnel — approves a decomposed spec (authoring_test.go:145)"
-    - "Constitution pipeline — advances to approved and claims (constitution_pipeline_test.go:148)"
-    - "error handling — rejects double claim (errors_test.go:68)"
-    - "Lifecycle Pipeline — advances to approved (lifecycle_pipeline_test.go:48)"
-    - "MCP-only lifecycle amend/supersede (skills_test.go:65)"
-    - "Lifecycle Amend flow — advances to approved (lifecycle_test.go:52)"
