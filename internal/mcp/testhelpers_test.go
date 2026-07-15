@@ -312,7 +312,7 @@ type mockAuthoringService struct {
 	shape                                     func(req *specv1.ShapeRequest) (*specv1.ShapeResponse, error)
 	specify                                   func(req *specv1.SpecifyRequest) (*specv1.SpecifyResponse, error)
 	decompose                                 func(req *specv1.DecomposeRequest) (*specv1.DecomposeResponse, error)
-	approve                                   func(slug string) (*specv1.ApproveResponse, error)
+	approve                                   func(req *specv1.ApproveRequest) (*specv1.ApproveResponse, error)
 	recordConversation                        func(req *specv1.RecordConversationRequest) (*specv1.RecordConversationResponse, error)
 	listConversations                         func(req *specv1.ListConversationsRequest) (*specv1.ListConversationsResponse, error)
 	getPrompts                                func(req *specv1.GetPromptsRequest) (*specv1.GetPromptsResponse, error)
@@ -366,7 +366,7 @@ func (m *mockAuthoringService) Approve(_ context.Context, req *connect.Request[s
 	if m.approve == nil {
 		panic("mockAuthoringService.Approve not configured")
 	}
-	resp, err := m.approve(req.Msg.GetSlug())
+	resp, err := m.approve(req.Msg)
 	if err != nil {
 		return nil, err
 	}
