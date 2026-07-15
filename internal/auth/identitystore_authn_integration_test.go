@@ -212,3 +212,91 @@ func TestIdentityStore_JWT_LoginSync_GateRunsOnlyInteractive(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "admin", persisted.Role, "interactive login must persist the re-derived role")
 }
+
+// TestIdentityStore_DisplayNameReconciliation proves the D-01 decoupling
+// end-to-end against real Postgres: a stale (display_name == subject)
+// JIT-fallback display name self-heals to a usable "name" claim on BOTH the
+// interactive resolve path (ResolveLogin) and the non-interactive bearer
+// resolve path (Resolve) — reconciliation is unconditional, not gated by
+// LoginSyncEnabled or the interactive/non-interactive distinction (AUTH-06
+// SC2/SC3). It also covers the SC4 no-regression direction: a resolve with no
+// usable name claim leaves an operator-set display_name unchanged.
+func TestIdentityStore_DisplayNameReconciliation(t *testing.T) {
+	ctx := context.Background()
+	issuer := newOIDCTestIssuer(t)
+	store, resolver := authnTestStore(t, issuer, "aud-1")
+
+	t.Run("interactive resolve (ResolveLogin) reconciles a stale display_name", func(t *testing.T) {
+		const subject = "oidc-subject-reconcile-interactive"
+		user, err := store.CreateHuman(ctx, &storage.User{
+			Kind: storage.KindHuman, DisplayName: subject, Email: "dana@example.com", Role: "reader",
+		}, &storage.OIDCBinding{
+			Issuer: issuer.server.URL, Subject: subject, EmailAtBind: "dana@example.com",
+		})
+		require.NoError(t, err)
+
+		id, err := resolver.ResolveLogin(ctx, &auth.OIDCClaims{
+			Issuer: issuer.server.URL, Subject: subject, Email: "dana@example.com", Name: "Dana Scully",
+		})
+		require.NoError(t, err)
+		require.Equal(t, user.ID, id.UserID)
+		require.Equal(t, "Dana Scully", id.DisplayName)
+
+		persisted, err := store.GetUserByID(ctx, user.ID)
+		require.NoError(t, err)
+		require.Equal(t, "Dana Scully", persisted.DisplayName,
+			"interactive resolve must persist the reconciled display_name")
+		require.Equal(t, "reader", persisted.Role, "reconciliation must not touch role")
+	})
+
+	t.Run("non-interactive bearer resolve (Resolve) reconciles a stale display_name", func(t *testing.T) {
+		const subject = "oidc-subject-reconcile-noninteractive"
+		user, err := store.CreateHuman(ctx, &storage.User{
+			Kind: storage.KindHuman, DisplayName: subject, Email: "fox@example.com", Role: "reader",
+		}, &storage.OIDCBinding{
+			Issuer: issuer.server.URL, Subject: subject, EmailAtBind: "fox@example.com",
+		})
+		require.NoError(t, err)
+
+		token := issuer.mintToken(t, map[string]any{
+			"iss": issuer.server.URL, "sub": subject, "aud": "aud-1",
+			"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+			"email": "fox@example.com", "name": "Fox Mulder",
+		})
+
+		id, err := resolver.Resolve(ctx, token)
+		require.NoError(t, err)
+		require.Equal(t, user.ID, id.UserID)
+
+		persisted, err := store.GetUserByID(ctx, user.ID)
+		require.NoError(t, err)
+		require.Equal(t, "Fox Mulder", persisted.DisplayName,
+			"non-interactive bearer resolve must ALSO persist the reconciled display_name — "+
+				"reconciliation is unconditional, not gated by interactive/LoginSyncEnabled")
+		require.Equal(t, "reader", persisted.Role, "reconciliation must not touch role")
+	})
+
+	t.Run("no usable name claim leaves an operator-set display_name unchanged (SC4)", func(t *testing.T) {
+		const subject = "oidc-subject-reconcile-operator-set"
+		user, err := store.CreateHuman(ctx, &storage.User{
+			Kind: storage.KindHuman, DisplayName: "Operator Renamed", Email: "walter@example.com", Role: "reader",
+		}, &storage.OIDCBinding{
+			Issuer: issuer.server.URL, Subject: subject, EmailAtBind: "walter@example.com",
+		})
+		require.NoError(t, err)
+
+		token := issuer.mintToken(t, map[string]any{
+			"iss": issuer.server.URL, "sub": subject, "aud": "aud-1",
+			"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+			"email": "walter@example.com", // no "name" / "preferred_username" claim
+		})
+
+		_, err = resolver.Resolve(ctx, token)
+		require.NoError(t, err)
+
+		persisted, err := store.GetUserByID(ctx, user.ID)
+		require.NoError(t, err)
+		require.Equal(t, "Operator Renamed", persisted.DisplayName,
+			"an operator-set display_name must survive a resolve with no usable name claim")
+	})
+}
