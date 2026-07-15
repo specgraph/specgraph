@@ -18,6 +18,15 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// NOTE: The command tests in this file mutate package-level flag globals
+// (shapeConversation, shapeJSONFile, specifyConversation, sparkSeed, …) via a
+// save-old/restore-in-cleanup pattern (see withConversation and the per-test
+// save/restore blocks). This shared mutable state is NOT parallel-safe: these
+// tests must never call t.Parallel(), and their ordering must not be assumed to
+// be independent. Prefer constructing fresh cobra.Command instances with local
+// flag bindings per test (as TestConversationFlag_RequiredBeforeDispatch does)
+// when adding new coverage (IN-03).
+
 // withConversation points target at a valid bare-array --conversation file for
 // the duration of the test. Required stage commands (shape/specify/decompose/
 // approve) now load real exchanges, so their happy-path tests must supply one.
