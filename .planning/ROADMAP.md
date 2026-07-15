@@ -112,7 +112,19 @@ Plans: *(linearized 1→2→3→4→5 during `--reviews` incorporation to close 
   3. A stage that reaches completion has an associated, non-empty conversation record — a missing conversation cannot silently pass.
   4. Recorded conversations are retrievable/queryable after the funnel completes.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+**Wave 1** *(parallel — no file overlap)*
+
+- [ ] 08-01-PLAN.md — Proto field-3 comment + server approve-accept enforcement (validate+record under `approved`) + handler/storage integration tests (D-02/D-03)
+- [ ] 08-02-PLAN.md — MCP: thread required exchanges into `handleApprove`, remove `conversation` record action (keep `list`), flip author Description + SKILL.md (D-02/D-06/D-09)
+- [ ] 08-03-PLAN.md — CLI: shared `loadConversationFlag` (`--conversation` bare-array/stdin), rewire 5 stage commands, delete `cliSyntheticExchanges` (D-01/D-04/D-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 08-04-PLAN.md — MCP-only funnel conversation-fidelity e2e (positive + negative) + update existing funnel e2e (D-10)
+
+> **Atomic-release note:** Wave-1 plans land in one merge window — the server (08-01) starts hard-rejecting approve-accept without exchanges, so the MCP (08-02) and CLI (08-03) exchange-supplying paths must ship together to avoid a broken approve path.
 
 ### Phase 9: JIT Display Name Reconciliation
 
