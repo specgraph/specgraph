@@ -48,7 +48,7 @@ created: 2026-07-15
 | 08-01-T3 | 01 | 1 | CONV-01 | T-08-02/03/04 | Empty→InvalidArgument; approved-stage conversation retrievable | integration | `task test:integration` | ❌ W0 | ⬜ pending |
 | 08-02-T1 | 02 | 1 | CONV-01 | T-08-05 | MCP approve threads required exchanges; JSON-injection-safe parse | unit (tdd) | `go build ./... && go test ./internal/mcp/...` | ✅ existing | ⬜ pending |
 | 08-02-T2 | 02 | 1 | CONV-01 | T-08-06 | Standalone record action removed; list retained | unit | `go build ./... && go test ./internal/mcp/...` | ✅ existing | ⬜ pending |
-| 08-02-T3 | 02 | 1 | CONV-01 | — | Skill teaches approve-requires-exchanges; no token drift | unit | `task skills:validate && go test ./internal/mcp/... -run TestContentProtoDrift` | ✅ existing | ⬜ pending |
+| 08-02-T3 | 02 | 1 | CONV-01 | — | Skill teaches approve-requires-exchanges; no token drift | unit | `task skills:validate && go test ./internal/authoring/... -run TestContentProtoDrift` | ✅ existing | ⬜ pending |
 | 08-03-T1 | 03 | 1 | CONV-01 | T-08-08/10 | Shared `--conversation` loader; synthetic placeholder deleted | unit | `test ! -f cmd/specgraph/authoring_cli_exchanges.go && task license:check && go build ./... && go vet ./cmd/specgraph/...` | ✅ existing | ⬜ pending |
 | 08-03-T2 | 03 | 1 | CONV-01 | T-08-10 | Loader array/stdin/missing-flag error paths | unit | `go test ./cmd/specgraph/...` | ✅ existing | ⬜ pending |
 | 08-04-T1 | 04 | 2 | CONV-01 | T-08-11 | MCP-only funnel supplies approve exchanges; per-stage non-empty | e2e | `go test -tags e2e ./e2e/api/... -run "MCP-only authoring"` | ❌ W0 | ⬜ pending |
