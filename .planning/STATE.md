@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v0.14.0
 milestone_name: Authoring Surface Correctness
-current_phase: 8
-current_phase_name: Authoring Conversation Fidelity
-status: "Phase 07 shipped — PR #1003"
-stopped_at: Phase 8 context gathered
-last_updated: "2026-07-15T15:14:22.148Z"
+current_phase: 08
+current_phase_name: authoring-conversation-fidelity
+status: executing
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-07-15T16:49:42.485Z"
 last_activity: 2026-07-15
-last_activity_desc: Phase 08 planning complete
+last_activity_desc: Phase 08 execution started
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 14
+  completed_plans: 11
   percent: 50
 ---
 
@@ -27,14 +27,14 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 drift detection, and a durable storage/query layer — so both humans and agent-based execution
 engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
-**Current focus:** Phase 07 — authoring-lifecycle-semantics
+**Current focus:** Phase 08 — authoring-conversation-fidelity
 
 ## Current Position
 
-Phase: 8 — Authoring Conversation Fidelity
-Plan: Not started
-Status: Phase 07 shipped — PR #1003
-Last activity: 2026-07-15 — Phase 08 planning complete
+Phase: 08 (authoring-conversation-fidelity) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-07-15 — Phase 08 execution started
 
 ## Performance Metrics
 
@@ -96,6 +96,7 @@ Last activity: 2026-07-15 — Phase 08 planning complete
 | Phase 07-authoring-lifecycle-semantics P03 | 12min | 3 tasks | 9 files |
 | Phase 07 P04 | 13min | 2 tasks | 14 files |
 | Phase 07-authoring-lifecycle-semantics P05 | 16min | 2 tasks | 3 files |
+| Phase 08 P01 | 14min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase ?]: Amend releases active claim + CLAIMED_BY edge inside amend tx (D-08) — Conditional on GetActiveClaim; unclaimed specs are a no-op; slices left intact (T-07-06 accept)
 - [Phase 07-authoring-lifecycle-semantics]: IsValidReEntryStage is the single amend re-entry allowlist (spark|shape|specify|decompose), enforced at handler + storage; approved/in_progress/review/done rejected.
 - [Phase 07-authoring-lifecycle-semantics]: MCP author amend/supersede route to LifecycleService (single gate); the tool does presence guards only.
+- [Phase 08]: Approve accept records conversations under SpecStageApproved (value 'approved'); exchange-level stage validates against 'approve' (A1)
+- [Phase 08]: RecordConversation op placed last in the accept runInTxOrSequential block (atomicity-neutral) to preserve GetSpecError test semantics
 
 ### Pending Todos
 
@@ -174,9 +177,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T14:38:31.644Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-authoring-conversation-fidelity/08-CONTEXT.md
+Last session: 2026-07-15T16:49:33.236Z
+Stopped at: Completed 08-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
