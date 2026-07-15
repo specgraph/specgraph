@@ -651,6 +651,7 @@ func (s *pgIdentityStore) resolveIntrospection(ctx context.Context, token string
 		claims := &OIDCClaims{
 			Issuer:  res.Issuer,
 			Subject: res.Subject,
+			Name:    nameFromClaims(res.Raw),
 			Raw:     res.Raw,
 		}
 		// Opaque-token introspection is never an interactive login.

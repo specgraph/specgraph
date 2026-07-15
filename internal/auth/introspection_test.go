@@ -180,6 +180,58 @@ func TestIntrospection_MultiIntrospector_FirstMatchWins(t *testing.T) {
 	require.Equal(t, int64(0), second.calls.Load(), "second introspector must not be consulted after first match")
 }
 
+// TestIntrospection_ReconcilesStaleDisplayName proves the introspection
+// (opaque-token) path participates in the unconditional display-name
+// reconciliation added in 09-01: the bound user's stored display_name equals
+// the token subject (the JIT-fallback heuristic, D-03), and a "name" claim on
+// the introspection response self-heals it via UpdateUserOnLogin, with role
+// and email passed through unchanged (AUTH-06 SC2/SC3, D-04, Pitfall 3).
+func TestIntrospection_ReconcilesStaleDisplayName(t *testing.T) {
+	stub := newIntrospectionStub(t, func(_ string) (int, map[string]any) {
+		return http.StatusOK, map[string]any{
+			"active": true, "sub": "sub-1", "iss": "https://idp.example.com",
+			"name": "Grace Hopper",
+			"exp":  time.Now().Add(time.Hour).Unix(),
+		}
+	})
+	intro := auth.NewIntrospector("https://idp.example.com", stub.url(), "rs-client", "rs-secret")
+
+	var gotName, gotEmail, gotRole string
+	var calls int
+	usersStub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, iss, sub string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: iss, Subject: sub}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			return &storage.User{
+				ID: id, Kind: storage.KindHuman, Role: "writer",
+				DisplayName: "sub-1", // == introspected sub: stale JIT-fallback value
+				Email:       "grace@example.com",
+			}, nil
+		},
+		updateUserOnLogin: func(_ context.Context, _, displayName, email, role string) error {
+			calls++
+			gotName, gotEmail, gotRole = displayName, email, role
+			return nil
+		},
+	}
+	// Built WITHOUT MCPResourceURI — the aud check is skipped so the test
+	// stays focused on reconciliation, per the plan's read-first guidance.
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users:         usersStub,
+		Tracker:       &noopTracker{},
+		Introspectors: []*auth.Introspector{intro},
+	})
+	require.NoError(t, err)
+
+	_, err = store.Resolve(context.Background(), "opaque-access-token")
+	require.NoError(t, err)
+	require.Equal(t, 1, calls, "UpdateUserOnLogin must be called exactly once")
+	require.Equal(t, "Grace Hopper", gotName)
+	require.Equal(t, "grace@example.com", gotEmail, "email must be passed through unchanged")
+	require.Equal(t, "writer", gotRole, "role must be passed through unchanged")
+}
+
 // TestIntrospection_APIKeyNeverIntrospected is the HIGH #3 / D-08 guard: an
 // spgr_sk_-prefixed API key is routed to resolveAPIKey by the explicit prefix
 // guard and must NEVER be POSTed to the introspection endpoint, even when
