@@ -451,8 +451,27 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 			slog.String("slug", slug))
 		fallthrough
 	case specv1.ApproveAction_APPROVE_ACTION_ACCEPT:
-		// Wrap TransitionStage and acceptLinkedDecisions in a transaction so that
-		// if decision promotion fails, the spec approval is rolled back.
+		// Accept, like reject, REQUIRES a non-empty conversation capturing the
+		// approval rationale (D-02/D-03). Validate before the tx to minimize lock
+		// time (ADR-004); the exchange-level stage string validates against
+		// "approve" while the recorded entry is stored under the approved stage.
+		if err := authoring.ValidateExchanges(req.Msg.GetConversationExchanges(), "approve"); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		exchanges := exchangesFromProto(req.Msg.GetConversationExchanges())
+		// Record under the approved stage (value "approved") so the conversation
+		// is associated with the approval gate being accepted, not the current
+		// (decompose) stage.
+		entry := storage.ConversationLogEntry{
+			Exchanges:     exchanges,
+			ExchangeCount: safeInt32(len(exchanges)),
+			IsAmend:       false,
+			Stage:         storage.SpecStageApproved,
+		}
+		// Wrap TransitionStage, acceptLinkedDecisions, and RecordConversation in a
+		// transaction so that if any op fails, the spec approval is rolled back and
+		// a partial approval (stage advanced but no conversation recorded) cannot
+		// silently pass (T-08-04).
 		var spec *storage.Spec
 		if err := runInTxOrSequential(ctx, store,
 			func(txCtx context.Context) error {
@@ -466,6 +485,12 @@ func (h *AuthoringHandler) Approve(ctx context.Context, req *connect.Request[spe
 				spec, err = store.GetSpec(txCtx, slug)
 				if err != nil {
 					return fmt.Errorf("get spec %q: %w", slug, err)
+				}
+				return nil
+			},
+			func(txCtx context.Context) error {
+				if _, err := store.RecordConversation(txCtx, slug, entry); err != nil {
+					return fmt.Errorf("record conversation: %w", err)
 				}
 				return nil
 			},

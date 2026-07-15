@@ -324,6 +324,23 @@ func (f *fullAuthoringTestBackend) UpdateDecision(ctx context.Context, slug stri
 		question, rejectedAlts, confidence, tags, scope, originSpec, originStage)
 }
 
+// RecordConversation routes to the fakeFullBackend's conversation fake so the
+// accept path can record a conversation inside the approval tx. The conv fake is
+// lazily created for tests that do not set it explicitly.
+func (f *fullAuthoringTestBackend) RecordConversation(ctx context.Context, slug string, entry storage.ConversationLogEntry) (*storage.ConversationLogEntry, error) {
+	if f.full.conv == nil {
+		f.full.conv = &fakeConversationBackend{}
+	}
+	return f.full.conv.RecordConversation(ctx, slug, entry)
+}
+
+func (f *fullAuthoringTestBackend) ListConversations(ctx context.Context, slug string, stage string) ([]*storage.ConversationLogEntry, error) {
+	if f.full.conv == nil {
+		f.full.conv = &fakeConversationBackend{}
+	}
+	return f.full.conv.ListConversations(ctx, slug, stage)
+}
+
 func newAuthoringClient(t *testing.T, authoringStore *fakeAuthoringBackend, backend any) specgraphv1connect.AuthoringServiceClient {
 	t.Helper()
 	var scopedBackend storage.ScopedBackend
@@ -612,9 +629,13 @@ func TestAuthoringHandler_Decompose_SteelThread_DuplicateSliceID(t *testing.T) {
 }
 
 func TestAuthoringHandler_Approve_HappyPath(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{conv: &fakeConversationBackend{}})
 	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug: "my-spec",
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "approve?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "yes, approved", Stage: "approve", Sequence: 2},
+		},
 	}))
 	require.NoError(t, err)
 	require.Equal(t, "my-spec", resp.Msg.Slug)
@@ -623,10 +644,14 @@ func TestAuthoringHandler_Approve_HappyPath(t *testing.T) {
 }
 
 func TestAuthoringHandler_Approve_AcceptUnchangedWithoutAction(t *testing.T) {
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{conv: &fakeConversationBackend{}})
 	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug:   "my-spec",
 		Action: specv1.ApproveAction_APPROVE_ACTION_UNSPECIFIED,
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "approve?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "yes, approved", Stage: "approve", Sequence: 2},
+		},
 	}))
 	require.NoError(t, err)
 	require.Equal(t, "my-spec", resp.Msg.Slug)
@@ -1270,6 +1295,7 @@ type fakeFullBackend struct {
 	getDecisionErr    error
 	getDecisionResult *storage.Decision
 	updateDecisionErr error
+	conv              *fakeConversationBackend
 }
 
 func (f *fakeFullBackend) AddEdge(_ context.Context, _, _ string, _ storage.EdgeType) (*storage.Edge, error) {
@@ -1342,6 +1368,10 @@ func TestAuthoringHandler_Approve_GetSpecError(t *testing.T) {
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
 	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug: "my-spec",
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "approve?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "yes", Stage: "approve", Sequence: 2},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -1358,6 +1388,10 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_EdgeListError(t *testing
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
 	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug: "my-spec",
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "approve?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "yes", Stage: "approve", Sequence: 2},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -1380,6 +1414,10 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_HappyPath(t *testing.T) 
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
 	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug: "my-spec",
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "approve?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "yes", Stage: "approve", Sequence: 2},
+		},
 	}))
 	require.NoError(t, err)
 	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
@@ -1400,6 +1438,10 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_SpecToDecisionDirection(
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
 	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug: "my-spec",
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "approve?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "yes", Stage: "approve", Sequence: 2},
+		},
 	}))
 	require.NoError(t, err)
 	require.Equal(t, specv1.AuthoringStage_AUTHORING_STAGE_APPROVED, resp.Msg.Stage)
@@ -1421,6 +1463,10 @@ func TestAuthoringHandler_Approve_AcceptLinkedDecisions_UpdateError(t *testing.T
 	client := newAuthoringClient(t, &fakeAuthoringBackend{}, backend)
 	_, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug: "my-spec",
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "approve?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "yes", Stage: "approve", Sequence: 2},
+		},
 	}))
 	require.Error(t, err)
 	var connErr *connect.Error
@@ -1998,10 +2044,14 @@ func TestAuthoringHandler_Approve_RejectOfAlreadyApprovedFails(t *testing.T) {
 
 func TestAuthoringHandler_Approve_ExplicitAcceptSucceeds(t *testing.T) {
 	// Explicit APPROVE_ACTION_ACCEPT behaves identically to UNSPECIFIED.
-	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeBackend{})
+	client := newAuthoringClient(t, &fakeAuthoringBackend{}, &fakeConvBackend{conv: &fakeConversationBackend{}})
 	resp, err := client.Approve(context.Background(), connect.NewRequest(&specv1.ApproveRequest{
 		Slug:   "my-spec",
 		Action: specv1.ApproveAction_APPROVE_ACTION_ACCEPT,
+		ConversationExchanges: []*specv1.ConversationExchange{
+			{Role: "probe", Content: "approve?", Stage: "approve", Sequence: 1},
+			{Role: "response", Content: "yes, approved", Stage: "approve", Sequence: 2},
+		},
 	}))
 	require.NoError(t, err)
 	require.Equal(t, "my-spec", resp.Msg.Slug)
