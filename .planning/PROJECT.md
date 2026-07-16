@@ -58,6 +58,7 @@ Fresh requirements for the next milestone are defined via `/gsd-new-milestone`.
 - ✓ Web UI project selector + shadcn-svelte/dark-mode migration (D-01..D-14) — Phase 5: active-project store with default precedence (last-used → `default` → alpha-first), skeleton-on-switch across every project-scoped view (dashboard/graph/spec/decision/constitution) with correct empty/error states and provenance-derived constitution badges; full UI migrated to shadcn-svelte (Tailwind v4, Slate OKLCH tokens) with light/dark mode
 - ✓ Amend/supersede lifecycle semantics corrected (LIFE-01, #900) — Phase 7: amend restricted to in-flight specs (`approved`/`in_progress`/`review`) returning to authoring, supersede permitted only from `done`; single-source-of-truth `IsValidReEntryStage` allowlist enforced at both handler and storage; active claim + CLAIMED_BY edge released inside the amend transaction (stale-lease fix); MCP `author` rerouted to `LifecycleService` and the divergent broken authoring amend/supersede path retired
 - ✓ Amend re-entry re-authors the target stage (LIFE-02, #899) — Phase 7: `amend --re-entry <stage>` lands the spec one stage before the target (`PrecedingAuthStage`) so the subsequent stage command is a valid transition, eliminating the same-stage no-op; proven by an MCP-only e2e that amends to `shape`, lands at `spark`, and re-runs `shape` successfully
+- ✓ JIT reconciles `display_name` against a usable name claim on each login (AUTH-06, #994) — Phase 9: `reconcileDisplayName` runs unconditionally in `materializeIdentity`'s existing-user branch (decoupled from `LoginSyncEnabled`/`interactive`) across all three resolution paths (bearer JWT, opaque-token introspection, interactive OIDC callback); `jitResolve` now seeds `DisplayName` from `claims.Name` when available at first provisioning; proven by unit + real-Postgres integration tests, `TestIdentityStore_JWT_LoginSync_GateRunsOnlyInteractive` unmodified
 
 ### Active
 
@@ -65,7 +66,8 @@ Fresh requirements for the next milestone are defined via `/gsd-new-milestone`.
 
 - [ ] **MCP-01**: MCP-served skills teach the MCP authoring round-trip so an MCP-only project can author from scratch (#1002)
 - [ ] **CONV-01**: authoring stages reliably record conversations across the funnel (#906)
-- [ ] **AUTH-06**: JIT reconciles `display_name` against a usable name claim on each login (#994)
+
+**v0.14.0 milestone scope is now fully executed (Phases 6-9 all complete)** — MCP-01/CONV-01 remain checked `[ ]` here pending a `/gsd-complete-milestone` pass to reconcile this section against the shipped Phase 6/8 work; not re-validated in this edit to stay scoped to Phase 9.
 
 **Deferred (not in this milestone):**
 
@@ -123,4 +125,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-14 — Phase 7 (Authoring Lifecycle Semantics) complete: LIFE-01 + LIFE-02 validated (amend in-flight, supersede done-only, re-entry re-authors the target stage). Next: Phase 8 Authoring Conversation Fidelity (CONV-01).*
+*Last updated: 2026-07-15 — Phase 9 (JIT Display Name Reconciliation) complete: AUTH-06 validated (unconditional display_name reconciliation across all three OIDC resolution paths, JIT seed-time fix). This was the last active phase in v0.14.0 (Phases 6-9) — milestone scope is fully executed; run `/gsd-complete-milestone` to close it out.*

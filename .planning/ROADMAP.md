@@ -16,7 +16,7 @@ Correctness fixes on existing authoring + MCP surfaces, sourced from the open Gi
 - [x] **Phase 6: MCP Authoring Self-Teaching Path** — An MCP-only project (fresh `init`, no source/CLI) can author a constitution to completion from the served skills alone — MCP-01 (#1002, critical) (completed 2026-07-14)
 - [x] **Phase 7: Authoring Lifecycle Semantics** — amend works in-flight, supersede only from done, and amend re-entry lets the target stage re-author — LIFE-01 (#900), LIFE-02 (#899) (completed 2026-07-14)
 - [x] **Phase 8: Authoring Conversation Fidelity** — every authoring stage records its conversation, enforced by the protocol — CONV-01 (#906) (completed 2026-07-15)
-- [ ] **Phase 9: JIT Display Name Reconciliation** — each login reconciles a JIT user's `display_name` against a usable name claim — AUTH-06 (#994)
+- [x] **Phase 9: JIT Display Name Reconciliation** — each login reconciles a JIT user's `display_name` against a usable name claim — AUTH-06 (#994) (completed 2026-07-15)
 
 <details>
 <summary>✅ v0.12.0 Identity & Self-Service (Phases 1-5) — SHIPPED 2026-07-13</summary>
@@ -138,7 +138,15 @@ Plans: *(linearized 1→2→3→4→5 during `--reviews` incorporation to close 
   3. Reconciliation runs on every successful login, not only at first provisioning.
   4. When no usable claim is present, the existing `display_name` is preserved (no regression back to a subject-hash value).
 
-**Plans**: TBD
+**Plans**: 2/2 plans complete
+
+**Wave 1**
+
+- [x] 09-01-PLAN.md — Extract display-name reconciliation into an unconditional `reconcileDisplayName` helper wired into `materializeIdentity`; remove the redundant block from `applyLoginSync` + update its two white-box tests (D-01/D-03/D-06)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 09-02-PLAN.md — Introspection-path `claims.Name` parity fix + `jitResolve` seed-from-`claims.Name` + per-path unit tests (introspection/JIT/oauth2) + real-Postgres reconciliation integration test (D-02/D-04/D-05/D-07)
 
 ## Backlog
 
@@ -146,7 +154,7 @@ Plans: *(linearized 1→2→3→4→5 during `--reviews` incorporation to close 
 
 **Goal:** [Captured for future planning] — Confluence integration surface for SpecGraph. Home for INTG-01 (`spgr-jwbj`, the Confluence comment-polling pagination bug descoped from Phase 4 because the poller code does not live in this repo) plus the broader Confluence↔SpecGraph bridge ideas: one-way export of specs/decisions (EXPL-02, `spgr-9f6`) and the design-bridge template (`docs/designs/2026-03-26-confluence-to-specgraph-design-bridge.md`). First step when promoting: locate/confirm which repo owns the Confluence comment poller.
 **Requirements:** TBD (candidates: INTG-01, EXPL-02)
-**Plans:** 4/4 plans complete
+**Plans:** 2/2 plans complete
 
 Plans:
 
@@ -159,7 +167,7 @@ Plans:
 | 6. MCP Authoring Self-Teaching Path | v0.14.0 | 5/5 | Complete    | 2026-07-14 |
 | 7. Authoring Lifecycle Semantics | v0.14.0 | 5/5 | Complete    | 2026-07-14 |
 | 8. Authoring Conversation Fidelity | v0.14.0 | 4/4 | Complete    | 2026-07-15 |
-| 9. JIT Display Name Reconciliation | v0.14.0 | 0/? | Not started | - |
+| 9. JIT Display Name Reconciliation | v0.14.0 | 2/2 | Complete    | 2026-07-15 |
 | 1. Release & Build Tooling | v0.12.0 | 1/1 | Complete | 2026-07-09 |
 | 2. API Key Lifecycle & Self-Service | v0.12.0 | 8/8 | Complete | 2026-07-10 |
 | 3. External Identity Provider Integration | v0.12.0 | 4/4 | Complete | 2026-07-10 |

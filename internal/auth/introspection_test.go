@@ -180,6 +180,103 @@ func TestIntrospection_MultiIntrospector_FirstMatchWins(t *testing.T) {
 	require.Equal(t, int64(0), second.calls.Load(), "second introspector must not be consulted after first match")
 }
 
+// TestIntrospection_ReconcilesStaleDisplayName proves the introspection
+// (opaque-token) path participates in the unconditional display-name
+// reconciliation added in 09-01: the bound user's stored display_name equals
+// the token subject (the JIT-fallback heuristic, D-03), and a "name" claim on
+// the introspection response self-heals it via the narrower
+// UpdateDisplayNameOnLogin write (CR-01), which structurally cannot touch
+// role or email — asserted here via the returned Identity, since the write
+// itself no longer carries those fields (AUTH-06 SC2/SC3, D-04).
+func TestIntrospection_ReconcilesStaleDisplayName(t *testing.T) {
+	stub := newIntrospectionStub(t, func(_ string) (int, map[string]any) {
+		return http.StatusOK, map[string]any{
+			"active": true, "sub": "sub-1", "iss": "https://idp.example.com",
+			"name": "Grace Hopper",
+			"exp":  time.Now().Add(time.Hour).Unix(),
+		}
+	})
+	intro := auth.NewIntrospector("https://idp.example.com", stub.url(), "rs-client", "rs-secret")
+
+	var gotName string
+	var calls int
+	usersStub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, iss, sub string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: iss, Subject: sub}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			return &storage.User{
+				ID: id, Kind: storage.KindHuman, Role: "writer",
+				DisplayName: "sub-1", // == introspected sub: stale JIT-fallback value
+				Email:       "grace@example.com",
+			}, nil
+		},
+		updateDisplayNameOnLogin: func(_ context.Context, _, displayName string) error {
+			calls++
+			gotName = displayName
+			return nil
+		},
+	}
+	// Built WITHOUT MCPResourceURI — the aud check is skipped so the test
+	// stays focused on reconciliation, per the plan's read-first guidance.
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users:         usersStub,
+		Tracker:       &noopTracker{},
+		Introspectors: []*auth.Introspector{intro},
+	})
+	require.NoError(t, err)
+
+	id, err := store.Resolve(context.Background(), "opaque-access-token")
+	require.NoError(t, err)
+	require.Equal(t, 1, calls, "UpdateDisplayNameOnLogin must be called exactly once")
+	require.Equal(t, "Grace Hopper", gotName)
+	require.Equal(t, "grace@example.com", id.Email, "email must be passed through unchanged")
+	require.Equal(t, "writer", string(id.Role), "role must be passed through unchanged")
+}
+
+// TestIntrospection_ReconciliationUserNotFound_Denies mirrors
+// TestResolveJWT_ReconciliationUserNotFound_Denies for the introspection
+// (opaque-token) entry point: when the standalone reconciliation write's
+// UpdateDisplayNameOnLogin call returns storage.ErrUserNotFound (the user was
+// concurrently soft-deleted between the GetUserByID load and this write),
+// the login must fail closed rather than proceed as a best-effort no-op
+// (IN-01, AUTH-06 deep review).
+func TestIntrospection_ReconciliationUserNotFound_Denies(t *testing.T) {
+	stub := newIntrospectionStub(t, func(_ string) (int, map[string]any) {
+		return http.StatusOK, map[string]any{
+			"active": true, "sub": "sub-del", "iss": "https://idp.example.com",
+			"name": "New Name",
+			"exp":  time.Now().Add(time.Hour).Unix(),
+		}
+	})
+	intro := auth.NewIntrospector("https://idp.example.com", stub.url(), "rs-client", "rs-secret")
+
+	usersStub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, iss, sub string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: iss, Subject: sub}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			return &storage.User{
+				ID: id, Kind: storage.KindHuman, Role: "writer",
+				DisplayName: "sub-del", // == introspected sub: triggers reconciliation write
+				Email:       "e@example.com",
+			}, nil
+		},
+		updateDisplayNameOnLogin: func(_ context.Context, _, _ string) error {
+			return storage.ErrUserNotFound
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users:         usersStub,
+		Tracker:       &noopTracker{},
+		Introspectors: []*auth.Introspector{intro},
+	})
+	require.NoError(t, err)
+
+	_, err = store.Resolve(context.Background(), "opaque-access-token")
+	require.ErrorIs(t, err, auth.ErrUnauthenticated)
+}
+
 // TestIntrospection_APIKeyNeverIntrospected is the HIGH #3 / D-08 guard: an
 // spgr_sk_-prefixed API key is routed to resolveAPIKey by the explicit prefix
 // guard and must NEVER be POSTed to the introspection endpoint, even when

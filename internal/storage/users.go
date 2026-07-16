@@ -51,10 +51,25 @@ type UsersBackend interface {
 	UpdateUserRole(ctx context.Context, userID, role string) error
 
 	// UpdateUserOnLogin sets display_name, email, AND role on an active user in
-	// a single UPDATE (deleted_at IS NULL guard, like UpdateUserRole). Used by
-	// the OIDC login-sync path. Returns ErrUserNotFound if no active row matched.
-	// Role validation is the caller's responsibility.
+	// a single UPDATE (deleted_at IS NULL guard, like UpdateUserRole). Used ONLY
+	// by applyLoginSync, which legitimately needs to write all three fields
+	// together after re-deriving role from the current claims mapping. Returns
+	// ErrUserNotFound if no active row matched. Role validation is the
+	// caller's responsibility.
+	//
+	// Do NOT call this from any path that only intends to touch display_name —
+	// use UpdateDisplayNameOnLogin instead. A second caller of this method that
+	// derives role/email differently than applyLoginSync would reintroduce the
+	// lost-update race fixed by CR-01 (AUTH-06 deep review, iteration 3).
 	UpdateUserOnLogin(ctx context.Context, userID, displayName, email, role string) error
+
+	// UpdateDisplayNameOnLogin sets ONLY display_name on an active user
+	// (deleted_at IS NULL guard). Used by materializeIdentity's standalone
+	// display-name reconciliation branch (the one that fires when the
+	// login-sync gate does NOT — i.e. login-sync disabled, or a non-interactive
+	// resolve) so that path structurally cannot write role or email. Returns
+	// ErrUserNotFound if no active row matched.
+	UpdateDisplayNameOnLogin(ctx context.Context, userID, displayName string) error
 
 	// SoftDeleteUser sets deleted_at and revokes all active keys in one tx.
 	// Idempotent (re-deleting already-deleted user is a no-op). An

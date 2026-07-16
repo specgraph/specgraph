@@ -513,12 +513,40 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 	return s.materializeIdentity(ctx, claims, InteractiveLoginFromContext(ctx))
 }
 
+// reconcileDisplayName implements the D-03 staleness heuristic: a display_name
+// that is still exactly equal to the OIDC subject is the JIT-fallback value
+// (JITCreateHuman seeds it that way when no usable name claim was available at
+// creation time), never an operator's deliberate choice. If a usable name claim
+// is now present, self-heal it. Any OTHER stored value — including one an
+// operator deliberately set equal to the subject — is left untouched; per D-03
+// this is an accepted tradeoff (no provenance column), so that edge case is
+// re-reconciled on next login rather than distinguished.
+//
+// This helper deliberately does NOT accept, thread, or read the `interactive`
+// flag (D-01): reconciliation must run on every successful login regardless of
+// LoginSyncEnabled or the interactive/non-interactive distinction — unlike
+// applyLoginSync, which stays gated for role/email/allowlist behavior.
+//
+// Running unconditionally still widens the read-then-write window against the
+// user row, but the standalone write this feeds (materializeIdentity's
+// `else if nameChanged` branch) persists via UpdateDisplayNameOnLogin, which
+// touches only display_name — so a race against applyLoginSync's role/email
+// write can no longer clobber either field (CR-01, AUTH-06 deep review
+// iteration 3).
+func reconcileDisplayName(user *storage.User, claims *OIDCClaims) (newName string, changed bool) {
+	if user.DisplayName == claims.Subject && claims.Name != "" && claims.Name != user.DisplayName {
+		return claims.Name, true
+	}
+	return user.DisplayName, false
+}
+
 // materializeIdentity is the shared binding-lookup → JIT-on-miss → user load →
-// soft-delete check → login-sync → Identity tail. It is called by BOTH
-// resolveJWT (bearer-JWT path, interactive derived from context) and
-// ResolveLogin (interactive login callback, interactive == true). The
-// interactive flag drives both the jitResolve rate-limit bypass and the
-// login-sync gate; it is passed by value and never re-read from context here.
+// soft-delete check → display-name reconciliation → login-sync → Identity
+// tail. It is called by BOTH resolveJWT (bearer-JWT path, interactive derived
+// from context) and ResolveLogin (interactive login callback, interactive ==
+// true). The interactive flag drives both the jitResolve rate-limit bypass and
+// the login-sync gate; it is passed by value and never re-read from context
+// here.
 func (s *pgIdentityStore) materializeIdentity(ctx context.Context, claims *OIDCClaims, interactive bool) (*Identity, error) {
 	// Binding lookup + user load. JIT path fires on binding miss (Task 18).
 	binding, err := s.users.LookupOIDCBinding(ctx, claims.Issuer, claims.Subject)
@@ -547,12 +575,52 @@ func (s *pgIdentityStore) materializeIdentity(ctx context.Context, claims *OIDCC
 			slog.String("user_id", user.ID), slog.String("subject", claims.Subject))
 		return nil, ErrUnauthenticated
 	}
+	// Display-name reconciliation is computed unconditionally — regardless of
+	// LoginSyncEnabled or interactive — so a stale subject-hash fallback
+	// self-heals to a usable name claim on every login (AUTH-06, D-01). The
+	// COMPUTATION happens here, before the login-sync gate below, but the
+	// WRITE is deferred: when the gate fires, newName/nameChanged are threaded
+	// into applyLoginSync so the name change is folded into that function's
+	// single UpdateUserOnLogin call alongside the role/email decision (WR-02
+	// fix, spgr re-review). This closes the non-atomicity gap the prior
+	// (documentation-only) fix left open: a denied login (allowlist miss, or a
+	// demotion whose persist fails) now performs NO write at all, so the
+	// display-name change is never committed ahead of a denial. When the gate
+	// does NOT fire (login-sync disabled, or a non-interactive resolve), there
+	// is no combined write to fold into, so the reconciliation write happens
+	// here on its own via UpdateDisplayNameOnLogin — a narrower write that
+	// touches ONLY display_name (CR-01, AUTH-06 deep review iteration 3), so
+	// it structurally cannot race applyLoginSync's role/email write and
+	// silently revert a concurrent role change. This preserves D-01
+	// (reconciliation is independent of the gate) for the case where
+	// login-sync isn't in play at all.
+	newName, nameChanged := reconcileDisplayName(user, claims)
 	if s.loginSyncEnabled && interactive {
-		synced, syncErr := s.applyLoginSync(ctx, claims, user)
+		synced, syncErr := s.applyLoginSync(ctx, claims, user, newName, nameChanged)
 		if syncErr != nil {
-			return nil, syncErr // deny: allowlist miss or failed demotion
+			return nil, syncErr // deny: allowlist miss or failed write; no partial write occurred
 		}
 		user = synced
+	} else if nameChanged {
+		if err := s.users.UpdateDisplayNameOnLogin(ctx, user.ID, newName); err != nil {
+			// ErrUserNotFound means the active-row guard (deleted_at IS NULL)
+			// matched nothing: the user was concurrently soft-deleted between
+			// the GetUserByID load above and this write. Mirror
+			// applyLoginSync's classification and fail closed rather than
+			// treating this like an ordinary best-effort write failure.
+			if errors.Is(err, storage.ErrUserNotFound) {
+				slog.LogAttrs(ctx, slog.LevelWarn, "auth: display-name reconciliation target user not active — denying login",
+					slog.String("user_id", user.ID))
+				return nil, ErrUnauthenticated
+			}
+			// Best-effort: never deny a login over a display-name write failure.
+			slog.LogAttrs(ctx, slog.LevelWarn, "auth: display-name reconciliation persist failed (proceeding)",
+				slog.String("user_id", user.ID), slog.Any("error", err))
+		} else {
+			slog.LogAttrs(ctx, slog.LevelInfo, "auth: display-name reconciled",
+				slog.String("user_id", user.ID), slog.String("old", user.DisplayName), slog.String("new", newName))
+			user.DisplayName = newName
+		}
 	}
 	return &Identity{
 		UserID:        user.ID,
@@ -613,6 +681,7 @@ func (s *pgIdentityStore) resolveIntrospection(ctx context.Context, token string
 		claims := &OIDCClaims{
 			Issuer:  res.Issuer,
 			Subject: res.Subject,
+			Name:    nameFromClaims(res.Raw),
 			Raw:     res.Raw,
 		}
 		// Opaque-token introspection is never an interactive login.
@@ -682,10 +751,18 @@ func (s *pgIdentityStore) jitResolve(ctx context.Context, claims *OIDCClaims, in
 		}
 	}
 
-	// (4) Atomically create user + binding.
+	// (4) Atomically create user + binding. Prefer claims.Name so a provider
+	// that supplies a display name at first login doesn't seed the
+	// stale-fallback value that 09-01's reconciliation would otherwise need
+	// to self-heal later (D-07); fall back to claims.Subject when the
+	// provider has none. An operator can still rename later either way.
+	seedName := claims.Subject
+	if claims.Name != "" {
+		seedName = claims.Name
+	}
 	u := &storage.User{
 		Kind:        storage.KindHuman,
-		DisplayName: claims.Subject, // operator can rename later
+		DisplayName: seedName,
 		Email:       claims.Email,
 		Role:        string(role),
 	}

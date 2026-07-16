@@ -116,17 +116,28 @@ func TestApplyLoginSync_PromotesAndRefreshesMetadata(t *testing.T) {
 		Raw: map[string]json.RawMessage{"roles": rawArr("app.admin")},
 	}
 
-	out, err := s.applyLoginSync(context.Background(), claims, user)
+	// nameChanged=false: this test exercises role/email sync only, not a
+	// display-name reconciliation fold-in (that's covered by the
+	// TestApplyLoginSync_NameChangeFolded* tests below).
+	out, err := s.applyLoginSync(context.Background(), claims, user, user.DisplayName, false)
 	require.NoError(t, err)
 	require.Equal(t, "admin", out.Role)
 	require.Equal(t, "admin", gotRole)
-	require.Equal(t, "Ada", gotName) // DisplayName updated (stored was == subject)
+	// display_name is passed through unchanged when nameChanged is false —
+	// reconciliation lives in reconcileDisplayName (materializeIdentity); it is
+	// threaded in as an argument rather than recomputed here. The stored value
+	// ("sub-1") is untouched even though claims.Name ("Ada") is present.
+	require.Equal(t, "sub-1", gotName)
 	require.Equal(t, "new@x.io", gotEmail)
 }
 
 func TestApplyLoginSync_PreservesOperatorRename(t *testing.T) {
 	fake := loginSyncFakeBackend{updateUserOnLogin: func(_ context.Context, _, dn, _, _ string) error {
-		require.Equal(t, "Operator Set Name", dn) // unchanged because stored != subject
+		// nameChanged=false: applyLoginSync passes DisplayName through
+		// unchanged (the staleness heuristic lives in reconcileDisplayName
+		// upstream, not here). This still exercises a real UpdateUserOnLogin
+		// call because the role change below drives `changed`.
+		require.Equal(t, "Operator Set Name", dn)
 		return nil
 	}}
 	s := newSyncStore(t, fake, map[string][]config.ClaimMapping{"iss": {{Claim: "roles", Value: "x", Role: "admin"}}}, nil)
@@ -135,7 +146,7 @@ func TestApplyLoginSync_PreservesOperatorRename(t *testing.T) {
 		Issuer: "iss", Subject: "sub-1", Email: "e@x.io", Name: "Token Name",
 		Raw: map[string]json.RawMessage{"roles": rawArr("x")},
 	}
-	_, err := s.applyLoginSync(context.Background(), claims, user)
+	_, err := s.applyLoginSync(context.Background(), claims, user, user.DisplayName, false)
 	require.NoError(t, err)
 }
 
@@ -147,7 +158,7 @@ func TestApplyLoginSync_NoOpSkipsWrite(t *testing.T) {
 	s := newSyncStore(t, fake, nil, nil) // no mappings -> rule 1 unchanged
 	user := &storage.User{ID: "u1", DisplayName: "sub-1", Email: "e@x.io", Role: "admin"}
 	claims := &OIDCClaims{Issuer: "iss", Subject: "sub-1", Email: "e@x.io", Name: "", Raw: map[string]json.RawMessage{}}
-	out, err := s.applyLoginSync(context.Background(), claims, user)
+	out, err := s.applyLoginSync(context.Background(), claims, user, user.DisplayName, false)
 	require.NoError(t, err)
 	require.Equal(t, "admin", out.Role)
 }
@@ -163,7 +174,7 @@ func TestApplyLoginSync_DemotionPersistFailure_Denies(t *testing.T) {
 		Issuer: "iss", Subject: "sub-1", Email: "e@x.io",
 		Raw: map[string]json.RawMessage{"roles": rawArr("app.other")},
 	}
-	out, err := s.applyLoginSync(context.Background(), claims, user)
+	out, err := s.applyLoginSync(context.Background(), claims, user, user.DisplayName, false)
 	require.Error(t, err)
 	require.Nil(t, out)
 	require.ErrorIs(t, err, ErrTransient)
@@ -182,7 +193,7 @@ func TestApplyLoginSync_UserNotFound_Denies(t *testing.T) {
 		Issuer: "iss", Subject: "sub-1", Email: "new@x.io", // metadata-only change
 		Raw: map[string]json.RawMessage{},
 	}
-	out, err := s.applyLoginSync(context.Background(), claims, user)
+	out, err := s.applyLoginSync(context.Background(), claims, user, user.DisplayName, false)
 	require.Error(t, err)
 	require.Nil(t, out)
 	require.ErrorIs(t, err, ErrUnauthenticated)
@@ -201,7 +212,7 @@ func TestApplyLoginSync_DemotionSucceeds(t *testing.T) {
 		Issuer: "iss", Subject: "sub-1", Email: "e@x.io",
 		Raw: map[string]json.RawMessage{"roles": rawArr("app.other")},
 	}
-	out, err := s.applyLoginSync(context.Background(), claims, user)
+	out, err := s.applyLoginSync(context.Background(), claims, user, user.DisplayName, false)
 	require.NoError(t, err)
 	require.Equal(t, "reader", out.Role)
 	require.Equal(t, "reader", gotRole)
@@ -217,7 +228,7 @@ func TestApplyLoginSync_PromotionPersistFailure_BestEffort(t *testing.T) {
 		Issuer: "iss", Subject: "sub-1", Email: "e@x.io",
 		Raw: map[string]json.RawMessage{"roles": rawArr("app.admin")},
 	}
-	out, err := s.applyLoginSync(context.Background(), claims, user)
+	out, err := s.applyLoginSync(context.Background(), claims, user, user.DisplayName, false)
 	require.NoError(t, err)              // login proceeds
 	require.Equal(t, "reader", out.Role) // at the OLD lower role
 }
@@ -230,7 +241,7 @@ func TestApplyLoginSync_MetadataOnlyFailure_BestEffort(t *testing.T) {
 	user := &storage.User{ID: "u1", DisplayName: "sub-1", Email: "old@x.io", Role: "admin"}
 	claims := &OIDCClaims{Issuer: "iss", Subject: "sub-1", Email: "new@x.io", // email changed, role not
 		Raw: map[string]json.RawMessage{}}
-	out, err := s.applyLoginSync(context.Background(), claims, user)
+	out, err := s.applyLoginSync(context.Background(), claims, user, user.DisplayName, false)
 	require.NoError(t, err) // metadata-only write failure must NOT deny
 	require.Equal(t, "admin", out.Role)
 }
@@ -239,7 +250,7 @@ func TestApplyLoginSync_AllowlistMiss_Denies(t *testing.T) {
 	s := newSyncStore(t, loginSyncFakeBackend{}, nil, []string{"allowed.io"})
 	user := &storage.User{ID: "u1", DisplayName: "sub-1", Email: "e@blocked.io", Role: "reader"}
 	claims := &OIDCClaims{Issuer: "iss", Subject: "sub-1", Email: "e@blocked.io", Raw: map[string]json.RawMessage{}}
-	out, err := s.applyLoginSync(context.Background(), claims, user)
+	out, err := s.applyLoginSync(context.Background(), claims, user, user.DisplayName, false)
 	require.ErrorIs(t, err, ErrUnauthenticated)
 	require.Nil(t, out)
 }
@@ -249,7 +260,101 @@ func TestApplyLoginSync_AllowlistSkippedOnAbsentEmail(t *testing.T) {
 	s := newSyncStore(t, loginSyncFakeBackend{}, nil, []string{"allowed.io"})
 	user := &storage.User{ID: "u1", DisplayName: "sub-1", Email: "e@allowed.io", Role: "reader"}
 	claims := &OIDCClaims{Issuer: "iss", Subject: "sub-1", Email: "", Raw: map[string]json.RawMessage{}} // no email claim
-	out, err := s.applyLoginSync(context.Background(), claims, user)
+	out, err := s.applyLoginSync(context.Background(), claims, user, user.DisplayName, false)
 	require.NoError(t, err) // absent email skips the allowlist re-check
 	require.Equal(t, "reader", out.Role)
+}
+
+// --- WR-02 fix: display-name reconciliation folded into the single
+// applyLoginSync write (spgr re-review iteration 2) ---
+
+// TestApplyLoginSync_NameChangeFoldedIntoRoleWrite proves that when BOTH a
+// pending name reconciliation AND a role/email change are in play, exactly
+// ONE UpdateUserOnLogin call persists all three fields together.
+func TestApplyLoginSync_NameChangeFoldedIntoRoleWrite(t *testing.T) {
+	var gotName, gotRole string
+	var calls int
+	fake := loginSyncFakeBackend{updateUserOnLogin: func(_ context.Context, _, dn, _, role string) error {
+		calls++
+		gotName, gotRole = dn, role
+		return nil
+	}}
+	s := newSyncStore(t, fake, map[string][]config.ClaimMapping{
+		"iss": {{Claim: "roles", Value: "app.admin", Role: "admin"}},
+	}, nil)
+	user := &storage.User{ID: "u1", DisplayName: "sub-1", Email: "e@x.io", Role: "reader"}
+	claims := &OIDCClaims{
+		Issuer: "iss", Subject: "sub-1", Email: "e@x.io", Name: "Ada Lovelace",
+		Raw: map[string]json.RawMessage{"roles": rawArr("app.admin")},
+	}
+	out, err := s.applyLoginSync(context.Background(), claims, user, "Ada Lovelace", true)
+	require.NoError(t, err)
+	require.Equal(t, 1, calls, "UpdateUserOnLogin must be called exactly once for the combined write")
+	require.Equal(t, "Ada Lovelace", gotName)
+	require.Equal(t, "admin", gotRole)
+	require.Equal(t, "Ada Lovelace", out.DisplayName)
+	require.Equal(t, "admin", out.Role)
+}
+
+// TestApplyLoginSync_NameChangeAlonePersists proves the no-op-skip guard now
+// also fires (persists) a name-only reconciliation even when role/email are
+// unchanged — previously this case was handled entirely outside
+// applyLoginSync.
+func TestApplyLoginSync_NameChangeAlonePersists(t *testing.T) {
+	var gotName string
+	var calls int
+	fake := loginSyncFakeBackend{updateUserOnLogin: func(_ context.Context, _, dn, _, _ string) error {
+		calls++
+		gotName = dn
+		return nil
+	}}
+	s := newSyncStore(t, fake, nil, nil) // no mappings -> role unchanged
+	user := &storage.User{ID: "u1", DisplayName: "sub-1", Email: "e@x.io", Role: "reader"}
+	claims := &OIDCClaims{Issuer: "iss", Subject: "sub-1", Email: "e@x.io", Name: "Ada Lovelace", Raw: map[string]json.RawMessage{}}
+	out, err := s.applyLoginSync(context.Background(), claims, user, "Ada Lovelace", true)
+	require.NoError(t, err)
+	require.Equal(t, 1, calls, "a name-only change must still trigger a write")
+	require.Equal(t, "Ada Lovelace", gotName)
+	require.Equal(t, "Ada Lovelace", out.DisplayName)
+}
+
+// TestApplyLoginSync_AllowlistMiss_NameChangeNotPersisted is the direct WR-02
+// regression guard: when the login is denied on the allowlist gate, the
+// pending name reconciliation must NOT be persisted — UpdateUserOnLogin must
+// never be called at all.
+func TestApplyLoginSync_AllowlistMiss_NameChangeNotPersisted(t *testing.T) {
+	fake := loginSyncFakeBackend{updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
+		t.Fatal("UpdateUserOnLogin must not be called when the allowlist gate denies the login")
+		return nil
+	}}
+	s := newSyncStore(t, fake, nil, []string{"allowed.io"})
+	user := &storage.User{ID: "u1", DisplayName: "sub-1", Email: "e@blocked.io", Role: "reader"}
+	claims := &OIDCClaims{Issuer: "iss", Subject: "sub-1", Email: "e@blocked.io", Name: "Ada Lovelace", Raw: map[string]json.RawMessage{}}
+	out, err := s.applyLoginSync(context.Background(), claims, user, "Ada Lovelace", true)
+	require.ErrorIs(t, err, ErrUnauthenticated)
+	require.Nil(t, out)
+}
+
+// TestApplyLoginSync_DemotionPersistFailure_NameChangeNotPersisted is the
+// second WR-02 regression guard: when the combined write itself fails and is
+// classified as a demotion (deny), the name change is part of that same
+// failed atomic write — it is not separately committed.
+func TestApplyLoginSync_DemotionPersistFailure_NameChangeNotPersisted(t *testing.T) {
+	var calls int
+	fake := loginSyncFakeBackend{updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
+		calls++
+		return errors.New("db down")
+	}}
+	s := newSyncStore(t, fake, map[string][]config.ClaimMapping{"iss": {{Claim: "roles", Value: "app.admin", Role: "admin"}}}, nil)
+	user := &storage.User{ID: "u1", DisplayName: "sub-1", Email: "e@x.io", Role: "admin"}
+	claims := &OIDCClaims{
+		Issuer: "iss", Subject: "sub-1", Email: "e@x.io", Name: "Ada Lovelace",
+		Raw: map[string]json.RawMessage{"roles": rawArr("app.other")},
+	}
+	out, err := s.applyLoginSync(context.Background(), claims, user, "Ada Lovelace", true)
+	require.Error(t, err)
+	require.Nil(t, out)
+	require.ErrorIs(t, err, ErrTransient)
+	require.Equal(t, 1, calls, "the single combined write is attempted once and fails atomically")
+	require.Equal(t, "sub-1", user.DisplayName, "the name change must not be applied to the in-memory user when the write fails")
 }

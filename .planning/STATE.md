@@ -2,18 +2,19 @@
 gsd_state_version: 1.0
 milestone: v0.14.0
 milestone_name: Authoring Surface Correctness
-current_phase: 9
-current_phase_name: JIT Display Name Reconciliation
-status: "Phase 08 shipped — PR #1004"
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-07-15T20:42:51.854Z"
+current_phase: 999.2
+current_phase_name: BACKLOG
+status: verifying
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-07-15T22:56:52.455Z"
 last_activity: 2026-07-15
+last_activity_desc: Phase 9 complete, transitioned to Phase 999.2
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 14
-  completed_plans: 14
-  percent: 75
+  completed_phases: 4
+  total_plans: 16
+  completed_plans: 16
+  percent: 100
 ---
 
 # Project State
@@ -26,20 +27,20 @@ See: .planning/PROJECT.md (updated 2026-07-13)
 drift detection, and a durable storage/query layer — so both humans and agent-based execution
 engines can trust the spec graph as ground truth instead of static, decaying markdown.
 
-**Current focus:** Phase 08 — authoring-conversation-fidelity
+**Current focus:** Phase 9 — JIT Display Name Reconciliation
 
 ## Current Position
 
-Phase: 9 — JIT Display Name Reconciliation
+Phase: 999.2 — confluence integration (BACKLOG)
 Plan: Not started
-Status: Phase 08 shipped — PR #1004
-Last activity: 2026-07-15
+Status: Phase complete — ready for verification
+Last activity: 2026-07-15 — Phase 9 complete, transitioned to Phase 999.2
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 43
+- Total plans completed: 45
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -55,6 +56,7 @@ Last activity: 2026-07-15
 | 06 | 5 | - | - |
 | 07 | 5 | - | - |
 | 8 | 4 | - | - |
+| 9 | 2 | - | - |
 
 **Recent Trend:**
 
@@ -99,6 +101,8 @@ Last activity: 2026-07-15
 | Phase 08 P01 | 14min | 3 tasks | 6 files |
 | Phase 08 P02 | 12min | 3 tasks | 4 files |
 | Phase 08 P04 | 12min | 2 tasks | 2 files |
+| Phase 09 P01 | 16min | 2 tasks | 4 files |
+| Phase 09 P02 | 11min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -157,6 +161,12 @@ Decisions are logged in PROJECT.md Key Decisions table. Full architectural histo
 - [Phase 08]: MCP inline-with-save is the only agent recording path — standalone conversation record action removed (#906 root-cause)
 - [Phase 08]: 08-04: approve-gate conversation list filters on stored stage "approved" not exchange stage "approve" (ListConversations exact SQL match)
 - [Phase 08]: 08-04: MCP-only conversation-fidelity negative case asserts res.IsError + error text (client guard or server InvalidArgument), not a specific Connect code (review R2 #6)
+- [Phase ?]: reconcileDisplayName does not accept or read the interactive flag (D-01) — reconciliation is unconditional by construction
+- [Phase ?]: Reconciliation write is guarded by the changed boolean and best-effort on persist failure (never denies login), since UpdateUserOnLogin is not SQL-level no-op-safe
+- [Phase ?]: In-memory user.DisplayName is updated before the loginSyncEnabled && interactive gate so applyLoginSync never re-derives stale state (Pitfall 2, no double-write)
+- [Phase ?]: resolveIntrospection populates OIDCClaims.Name via nameFromClaims(res.Raw) — a one-line D-04 fix closing the third AUTH-06 resolution path (opaque-token introspection was silently skipping reconciliation)
+- [Phase ?]: jitResolve seeds DisplayName from claims.Name (falling back to claims.Subject) at first JIT provisioning, per D-07 — role derivation remains solely from claims-mapping, unaffected by the name seed
+- [Phase ?]: D-05 reconfirmed: oauth2LoginProvider.Exchange already populates OIDCClaims.Name via displayNameFromUserinfo; no production change, only a dedicated TestOAuth2Provider_Exchange_PopulatesName regression guard added
 
 ### Pending Todos
 
@@ -182,8 +192,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T17:19:15.631Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-07-15T22:36:41.342Z
+Stopped at: Completed 09-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

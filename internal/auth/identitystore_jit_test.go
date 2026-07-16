@@ -175,6 +175,73 @@ func TestJIT_RateLimitIsolation_TwoIssuers(t *testing.T) {
 	require.NoError(t, err, "issuer B first JIT must succeed despite A being exhausted")
 }
 
+// TestJIT_SeedsDisplayNameFromClaimsName proves jitResolve seeds the new
+// user's DisplayName from claims.Name when present (D-07), falling back to
+// claims.Subject when the provider supplies no name — eliminating the
+// stale-fallback window that 09-01's reconciliation would otherwise need to
+// self-heal on a later login.
+func TestJIT_SeedsDisplayNameFromClaimsName(t *testing.T) {
+	const issuer = "https://idp.example.com"
+
+	t.Run("seeds from claims.Name when present", func(t *testing.T) {
+		var captured *storage.User
+		stub := &usersBackendStub{
+			lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
+				return nil, storage.ErrOIDCBindingNotFound
+			},
+			jitCreateHuman: func(_ context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, *storage.OIDCBinding, error) {
+				captured = u
+				u.ID = "u-new"
+				b.ID = "b-new"
+				b.UserID = "u-new"
+				return u, b, nil
+			},
+		}
+		store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+			Users: stub, Tracker: &noopTracker{},
+			JITEnabled: true, JITDefaultRole: auth.RoleReader,
+		})
+		require.NoError(t, err)
+
+		id, err := store.ResolveLogin(context.Background(), &auth.OIDCClaims{
+			Issuer: issuer, Subject: "sub-new", Name: "Ada Lovelace",
+		})
+		require.NoError(t, err)
+		require.NotNil(t, captured, "JITCreateHuman must be called")
+		require.Equal(t, "Ada Lovelace", captured.DisplayName, "seed must prefer claims.Name over claims.Subject")
+		require.Equal(t, "Ada Lovelace", id.DisplayName)
+	})
+
+	t.Run("falls back to claims.Subject when Name is empty", func(t *testing.T) {
+		var captured *storage.User
+		stub := &usersBackendStub{
+			lookupOIDCBinding: func(_ context.Context, _, _ string) (*storage.OIDCBinding, error) {
+				return nil, storage.ErrOIDCBindingNotFound
+			},
+			jitCreateHuman: func(_ context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, *storage.OIDCBinding, error) {
+				captured = u
+				u.ID = "u-new-2"
+				b.ID = "b-new-2"
+				b.UserID = "u-new-2"
+				return u, b, nil
+			},
+		}
+		store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+			Users: stub, Tracker: &noopTracker{},
+			JITEnabled: true, JITDefaultRole: auth.RoleReader,
+		})
+		require.NoError(t, err)
+
+		id, err := store.ResolveLogin(context.Background(), &auth.OIDCClaims{
+			Issuer: issuer, Subject: "sub-no-name",
+		})
+		require.NoError(t, err)
+		require.NotNil(t, captured, "JITCreateHuman must be called")
+		require.Equal(t, "sub-no-name", captured.DisplayName, "seed must fall back to claims.Subject")
+		require.Equal(t, "sub-no-name", id.DisplayName)
+	})
+}
+
 // --- Task 20: email-domain allowlist ---
 
 func TestJIT_EmailAllowlist_Match(t *testing.T) {
