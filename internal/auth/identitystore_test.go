@@ -910,6 +910,64 @@ func TestResolveJWT_ReconciliationNoOpWhenClaimNameEqualsSubject(t *testing.T) {
 // (IN-02, same review), which asserts the stub's 3-field hook is never
 // invoked from this branch while its display-name-only hook is.
 
+// TestMaterializeIdentity_StandaloneReconciliationNeverCallsUpdateUserOnLogin
+// is the IN-02 contract test: since CR-01's true concurrent-write race isn't
+// easily expressed as a deterministic unit test against a synchronously
+// executing stub, this instead asserts the structural invariant that
+// eliminates the race — the standalone reconciliation branch (login-sync
+// gate not firing) must invoke ONLY UpdateDisplayNameOnLogin and must NEVER
+// invoke the role/email-carrying UpdateUserOnLogin, which is reserved for
+// applyLoginSync's combined write. This turns "the standalone path cannot
+// touch role/email" from an implicit code-review observation into an
+// explicit, enforced one.
+func TestMaterializeIdentity_StandaloneReconciliationNeverCallsUpdateUserOnLogin(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	var displayNameCalls, userOnLoginCalls int
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: issuer, Subject: subject}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			return &storage.User{
+				ID: id, Kind: storage.KindHuman, Role: "admin",
+				DisplayName: "user-contract", // == token sub: triggers reconciliation write
+				Email:       "existing@example.com",
+				CreatedAt:   time.Now(),
+			}, nil
+		},
+		updateDisplayNameOnLogin: func(_ context.Context, _, _ string) error {
+			displayNameCalls++
+			return nil
+		},
+		updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
+			userOnLoginCalls++
+			return nil
+		},
+	}
+	// LoginSyncEnabled deliberately omitted (false): a non-interactive
+	// bearer-JWT resolve reaches the standalone reconciliation branch, not
+	// applyLoginSync's login-sync-gated one.
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+	})
+	require.NoError(t, err)
+	token := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "user-contract", "aud": "aud-1",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+		"name": "New Name", // != stored display_name (== sub): triggers reconciliation
+	})
+
+	_, err = store.Resolve(context.Background(), token)
+	require.NoError(t, err)
+	require.Equal(t, 1, displayNameCalls, "UpdateDisplayNameOnLogin must be called exactly once")
+	require.Equal(t, 0, userOnLoginCalls, "UpdateUserOnLogin must never be called from the standalone reconciliation branch")
+}
+
 // TestResolveJWT_ReconciliationUserNotFound_Denies mirrors
 // TestApplyLoginSync_UserNotFound_Denies: when the reconciliation write's
 // UpdateDisplayNameOnLogin call returns storage.ErrUserNotFound (the user was
