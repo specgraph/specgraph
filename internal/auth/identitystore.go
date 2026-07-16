@@ -527,7 +527,7 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 // LoginSyncEnabled or the interactive/non-interactive distinction — unlike
 // applyLoginSync, which stays gated for role/email/allowlist behavior.
 func reconcileDisplayName(user *storage.User, claims *OIDCClaims) (newName string, changed bool) {
-	if user.DisplayName == claims.Subject && claims.Name != "" {
+	if user.DisplayName == claims.Subject && claims.Name != "" && claims.Name != user.DisplayName {
 		return claims.Name, true
 	}
 	return user.DisplayName, false

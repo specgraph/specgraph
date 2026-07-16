@@ -846,6 +846,55 @@ func TestResolveJWT_PreservesDisplayNameWhenNoUsableClaim(t *testing.T) {
 	}
 }
 
+// TestResolveJWT_ReconciliationNoOpWhenClaimNameEqualsSubject is the deep-pass
+// WR-01 regression test: an IdP whose `name` claim happens to equal its `sub`
+// claim (some enterprise IdPs seed `name` from an employee/subject ID) must
+// NOT trigger a reconciliation write forever. Once `user.DisplayName` equals
+// both `claims.Subject` and `claims.Name`, the computed new value is
+// identical to what's already stored, so `reconcileDisplayName` must report
+// `changed=false` and UpdateUserOnLogin must never be called.
+func TestResolveJWT_ReconciliationNoOpWhenClaimNameEqualsSubject(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: issuer, Subject: subject}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			return &storage.User{
+				ID: id, Kind: storage.KindHuman, Role: "writer",
+				// DisplayName == claims.Subject == claims.Name below: the
+				// JIT-fallback heuristic still matches (D-03), but the
+				// computed new value is identical to what's stored.
+				DisplayName: "same-value",
+				Email:       "e@example.com",
+				CreatedAt:   time.Now(),
+			}, nil
+		},
+		updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
+			t.Fatal("UpdateUserOnLogin must not be called when the reconciled name is unchanged")
+			return nil
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+	})
+	require.NoError(t, err)
+	token := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "same-value", "aud": "aud-1",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+		"name": "same-value", // == sub == stored DisplayName: true no-op
+	})
+
+	id, err := store.Resolve(context.Background(), token)
+	require.NoError(t, err)
+	require.Equal(t, "same-value", id.DisplayName)
+}
+
 // TestResolveJWT_ReconciliationPreservesRoleAndEmail is the Pitfall 1 guard:
 // the reconciliation write must always pass the user's existing DB role/email,
 // never a claims-derived value, even when the token carries claims that would
