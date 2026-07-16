@@ -87,6 +87,13 @@ func (s *pgIdentityStore) applyLoginSync(ctx context.Context, claims *OIDCClaims
 	// reconcileDisplayName) before this gate runs, so user.DisplayName is
 	// already the reconciled value by the time applyLoginSync sees it. Pass
 	// it through unchanged (D-06).
+	//
+	// Non-atomicity note: the upstream reconciliation write and this
+	// function's write are two independent, sequential, non-transactional
+	// UpdateUserOnLogin calls against the same row (see the accepted-tradeoff
+	// comment at the reconciliation call site in materializeIdentity). If this
+	// function denies the login below (allowlist miss or failed demotion),
+	// the display-name write already committed upstream is NOT rolled back.
 	newRole, changed := resolveLoginRole(s.jitClaimsMapping[claims.Issuer], claims.Raw, user.Role, string(s.jitDefaultRole))
 
 	newEmail := user.Email

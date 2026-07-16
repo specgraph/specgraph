@@ -574,6 +574,20 @@ func (s *pgIdentityStore) materializeIdentity(ctx context.Context, claims *OIDCC
 	// Written to memory BEFORE the login-sync gate below so applyLoginSync
 	// (which no longer computes display_name itself) passes the reconciled
 	// value through unchanged rather than re-deriving stale in-memory state.
+	//
+	// Accepted tradeoff (non-atomicity): this write and applyLoginSync's write
+	// below are two independent, sequential, non-transactional
+	// UpdateUserOnLogin calls against the same row. If this write succeeds but
+	// applyLoginSync subsequently denies the login (allowlist miss, or a
+	// demotion whose persist fails), the display-name change is already
+	// committed even though the overall auth attempt returns an error to the
+	// caller. This is judged low-risk — only the display name moves, and only
+	// toward a value the token holder is already asserting via a verified
+	// claim — but it means "denied login = no DB effect" no longer holds for
+	// this one field. Folding both writes into a single UpdateUserOnLogin call
+	// would close this gap (and the redundant round-trip when both change in
+	// the same request) but requires threading the reconciled name into
+	// applyLoginSync as an input rather than persisting it separately here.
 	if newName, changed := reconcileDisplayName(user, claims); changed {
 		if err := s.users.UpdateUserOnLogin(ctx, user.ID, newName, user.Email, user.Role); err != nil {
 			// ErrUserNotFound means the active-row guard (deleted_at IS NULL)
