@@ -13,14 +13,14 @@ files_reviewed_list:
   - internal/auth/loginsync_internal_test.go
   - internal/auth/oauth2_provider_test.go
 findings:
-  critical: 0
-  warning: 2
+  critical: 1
+  warning: 0
   info: 1
-  total: 3
+  total: 2
 status: issues_found
 ---
 
-# Phase 09: Code Review Report (deep re-review)
+# Phase 09: Code Review Report (deep re-review, iteration 3 — final)
 
 **Reviewed:** 2026-07-16T00:00:00Z
 **Depth:** deep
@@ -29,159 +29,198 @@ status: issues_found
 
 ## Summary
 
-This is a deep, cross-file re-review of AUTH-06 (#994) after two standard-depth
-rounds already fixed WR-01 (fail-closed on concurrent soft-delete) and WR-02
-(folding the display-name write into `applyLoginSync`'s single
-`UpdateUserOnLogin` call). I traced every caller of `applyLoginSync` (1
-production call site, `identitystore.go:588`; 14 test call sites in
-`loginsync_internal_test.go`, all matching the current 5-arg signature) and
-the single caller of `reconcileDisplayName` (`identitystore.go:586`),
-confirmed the full call chain from all three entry points (`resolveJWT`,
-`resolveIntrospection`, `ResolveLogin`) through `materializeIdentity` to the
-two production `UpdateUserOnLogin` call sites (`identitystore.go:594` and
-`loginsync.go:114` — no others exist anywhere in the codebase, confirmed via
-grep), and checked for dead imports/helpers left behind by the extraction. No
-unused imports, no dead code, no signature-drift bugs, and no path where
-role/email is derived from claims outside the gated `applyLoginSync` were
-found — the two previously-fixed issues stayed fixed and the refactor is
-internally consistent across all 8 files.
+This is the third and final deep-review iteration for the display-name
+reconciliation phase (AUTH-06, #994). The prior deep pass found WR-01, WR-02,
+and IN-01; a fixer addressed all three. This round verifies each fix and
+performs a fresh full pass.
 
-The deep pass did surface one real logic defect in the reconciliation
-heuristic itself (not a call-chain/wiring bug, so a standard per-file pass
-reading each function in isolation could plausibly miss it):
-`reconcileDisplayName` treats "a usable name claim is present" as sufficient
-to report `changed=true`, without checking whether the computed value
-actually differs from what's already stored. For any IdP where the `name`
-claim happens to equal `sub` (not exotic — some enterprise IdPs seed `name`
-from an employee/subject ID, and `jitResolve` will happily seed
-`DisplayName` from such a claim at creation), this fires on every login
-forever instead of self-healing once, because after the first write
-`user.DisplayName` is still `== claims.Subject` on every subsequent load. It
-also amplifies a pre-existing, low-severity concurrency characteristic:
-because reconciliation now runs unconditionally (not gated by
-`LoginSyncEnabled`/interactive), the read-then-write window against
-`UpdateUserOnLogin` (which has no optimistic-concurrency/version guard,
-unlike other multi-writer paths per project convention) is now open on every
-successful authentication rather than only on interactive logins.
+**WR-01 (`reconcileDisplayName` false-positive `changed=true` when
+`claims.Name == claims.Subject`) — verified correctly closed.** The new
+guard (`claims.Name != user.DisplayName`, `identitystore.go:535`) is only
+reachable once the outer `user.DisplayName == claims.Subject` condition
+already holds, so it cannot suppress a legitimate reconciliation: an
+operator-chosen display name that differs from the subject never enters
+this branch at all, with or without the added clause. I traced the
+specific hypothesized regression (an operator renaming a user to a value
+that happens to equal the *current* `claims.Name`) and confirmed it
+cannot occur — that scenario requires `user.DisplayName != claims.Subject`,
+which already short-circuits the whole function before the new guard is
+even evaluated. `TestResolveJWT_ReconciliationNoOpWhenClaimNameEqualsSubject`
+correctly exercises the fixed case. No new edge case introduced.
 
-## Warnings
+**IN-01 (fail-closed regression coverage across all three entry points) —
+verified correct.** `TestResolveJWT_ReconciliationUserNotFound_Denies`,
+`TestResolveLogin_ReconciliationUserNotFound_Denies`, and
+`TestIntrospection_ReconciliationUserNotFound_Denies` were each read in
+full. Each stubs `UpdateUserOnLogin` to return `storage.ErrUserNotFound`,
+drives the matching entry point (`Resolve` w/ JWT, `ResolveLogin`,
+`Resolve` w/ opaque token + introspector), and asserts
+`ErrUnauthenticated`. All three genuinely reach and exercise the
+standalone-reconciliation branch in `materializeIdentity` (not
+`applyLoginSync`'s already-covered classification path) — confirmed by
+constructing each user/binding so `DisplayName == subject` at load time,
+which is the precondition for `nameChanged=true` to hold.
 
-### WR-01: `reconcileDisplayName` reports `changed=true` even when the new value is identical to the old one
+**WR-02 (documentation-only resolution of the missing optimistic-
+concurrency guard on `UpdateUserOnLogin`) — NOT acceptable; reopened as
+CR-01 below.** The rationale written into the code ("the only two
+callers... both derive every field from the same claims-vs-DB-row
+comparison, so two racing writes... converge on the same eventual value")
+does not survive independent verification: the two callers derive
+`role`/`email` through materially different logic, which means a race
+between them is not "benign convergent" — it can silently revert a role
+change made moments earlier by an interactive login-sync (a security-
+relevant regression, not a rounding/formatting nondeterminism). See CR-01
+for the concrete trace and a proportionate fix that doesn't require the
+full version/CAS machinery the fixer correctly judged as overkill last
+round — it only needs to stop the standalone write from touching
+`role`/`email` at all.
 
-**File:** `internal/auth/identitystore.go:529-534`
+A fresh full pass across all 8 files (dispatch order in `Resolve`,
+`jitResolve`'s gate ordering, `applyLoginSync`'s classification table,
+`clampedRole`/`isPromotion`, the introspection multi-provider trial logic,
+and all test helper wiring) found no other correctness, security, or
+quality defects beyond CR-01 and the one INFO item below. This should be
+treated as the final iteration of this deep-review/fix loop.
 
-**Issue:** The staleness heuristic only checks `user.DisplayName ==
-claims.Subject && claims.Name != ""`; it never checks whether `claims.Name`
-actually differs from `user.DisplayName`. For an IdP whose `name` claim
-happens to equal its `sub` claim (plausible for enterprise IdPs that seed
-`name` from an employee/subject ID), the JIT-seeded `DisplayName` equals both
-`claims.Subject` **and** `claims.Name` at creation time (`jitResolve` seeds
-`DisplayName` from `claims.Name` when present, per D-07,
-`identitystore.go:748-751`). On every subsequent login,
-`reconcileDisplayName` sees `user.DisplayName == claims.Subject` still true
-(it can never become anything other than that value for such a user) and
-reports `changed=true`, triggering an `UpdateUserOnLogin` write on **every
-single login** for that user — forever — instead of self-healing once, as
-the function's own doc comment claims ("If a usable name claim is now
-present, self-heal it"). This is not a security issue, but it:
-- defeats `applyLoginSync`'s no-op-skip optimization (`newEmail == user.Email
-  && newRole == user.Role && !nameChanged`, `loginsync.go:104`) on every
-  login for affected users, forcing the combined write path every time;
-- emits a misleading `"auth: display-name reconciled"` info log with `old ==
-  new` on every login (`identitystore.go:609-610`, `loginsync.go:147-150`),
-  polluting audit trails with false "change" events;
-- performs an unnecessary DB write on every authenticated request for such
-  users through the unconditional standalone path
-  (`identitystore.go:593-613`) when login-sync is off or the resolve is
-  non-interactive.
+## Critical Issues
 
-No existing test exercises this: every test fixture's `DisplayName`
-("test-u1", "sub-1", etc. — see `activeUser` in
-`usersbackend_stub_test.go:186-191`) is deliberately either always-equal or
-always-different from the token's `sub`/`Name` pair by construction, so the
-"no functional change but the heuristic still fires" case (`claims.Name ==
-claims.Subject == user.DisplayName`) is untested.
+### CR-01: WR-02's "benign convergent write" rationale is false — a concurrent standalone reconciliation write can silently revert a role change
 
-**Fix:**
+**File:** `internal/auth/identitystore.go:591-618` (standalone reconciliation write, `materializeIdentity`)
+**File:** `internal/auth/loginsync.go:80-155` (`applyLoginSync`)
+**File:** `internal/storage/postgres/users.go:239-265` (`UpdateUserOnLogin`, carrying the accepted-tradeoff comment)
+
+**Issue:**
+
+The comment accepting the missing optimistic-concurrency guard (added by
+the WR-02 fix, mirrored on both `UpdateUserOnLogin` and
+`reconcileDisplayName`) reasons:
+
+> "the only two callers (applyLoginSync and materializeIdentity's
+> standalone reconciliation write) both derive every field from the same
+> claims-vs-DB-row comparison, so two racing writes for the same user
+> converge on the same eventual value (last-writer-wins is benign here,
+> not a lost-update)."
+
+This is factually wrong for `role` and `email`. The two call sites do not
+derive those fields the same way:
+
+- `applyLoginSync` (`loginsync.go:94`, via `resolveLoginRole`)
+  **freshly re-derives** the role from the issuer's current
+  `claims_mapping` plus the currently-authenticated token — it can
+  legitimately compute a *different* role than what's stored (a
+  promotion or a demotion).
+- The standalone reconciliation write in `materializeIdentity`
+  (`identitystore.go:599`) issues
+  `s.users.UpdateUserOnLogin(ctx, user.ID, newName, user.Email, user.Role)`
+  — `user.Email`/`user.Role` here are nothing more than the values this
+  particular request happened to read via `GetUserByID` a few lines
+  earlier. It is a blind passthrough of a point-in-time read, not a
+  "comparison" of any kind.
+
+Because `UpdateUserOnLogin` is one unconditional 3-column `UPDATE` with
+no version guard, these two call sites racing on the same user is a real
+lost-update on a security-relevant field, not a harmless convergence:
+
+1. User U is `role=admin`. `display_name` is still `== sub` (the
+   JIT-fallback value, not yet reconciled — a window this very phase
+   introduces via commit `d9b2bb93`, "reconcile stale display_name
+   unconditionally on OIDC login").
+2. An operator revokes U's admin access. This is processed via an
+   **interactive** login (`LoginSyncEnabled && interactive`, so
+   `applyLoginSync` runs): it reads `role=admin`, computes
+   `newRole=reader`, and is about to persist
+   `UpdateUserOnLogin(id, name, email, "reader")`.
+3. Concurrently, a **non-interactive** bearer-JWT request for the same
+   user (any live client session, MCP tool call, or ConnectRPC call
+   using a cached token — `interactive=false` here since it isn't a
+   login flow) reaches `materializeIdentity`'s `else if nameChanged`
+   branch. It reads the user **before** step 2's write commits
+   (`role=admin` still), computes `nameChanged=true` (the fallback name
+   is still stale relative to the token's `name` claim), and issues its
+   own `UpdateUserOnLogin(id, name, email, "admin")`.
+4. If this second write commits **after** step 2's, the demotion is
+   silently undone. There is no error, no audit log (the standalone
+   branch has no concept of role change — from its perspective `role`
+   never changed, since it copied the value it read), and no signal to
+   the operator that the revocation didn't stick. A revoked admin
+   regains admin.
+
+The same comment states the tradeoff should be revisited "the moment a
+distinct write path... starts calling this method" — but that condition
+is already true today: `applyLoginSync` and the standalone reconciliation
+write are two call sites with divergent field-derivation semantics, not
+one code path invoked twice with identical logic. The "only two callers"
+premise (verified accurate — confirmed via grep, exactly `loginsync.go:114`
+and `identitystore.go:599` in production code) does not make the race
+benign; only identical derivation logic would, and that isn't what exists.
+This should be reopened rather than accepted as documentation.
+
+**Fix:** A full CAS/version column (the fixer's previously-rejected,
+disproportionate fix) is not required. The narrower, proportionate fix is
+to stop the standalone reconciliation write from touching `role`/`email`
+at all, since it never legitimately changes them:
+
 ```go
-func reconcileDisplayName(user *storage.User, claims *OIDCClaims) (newName string, changed bool) {
-	if user.DisplayName == claims.Subject && claims.Name != "" && claims.Name != user.DisplayName {
-		return claims.Name, true
+// internal/storage/users.go — add a narrower method used ONLY by the
+// standalone reconciliation path, so it structurally cannot race-clobber
+// role/email.
+UpdateDisplayNameOnLogin(ctx context.Context, userID, displayName string) error
+```
+
+```go
+// internal/storage/postgres/users.go
+func (s *AuthStore) UpdateDisplayNameOnLogin(ctx context.Context, userID, displayName string) error {
+	const q = `UPDATE users SET display_name = $1 WHERE id = $2::uuid AND deleted_at IS NULL`
+	tag, err := s.pool.Exec(ctx, q, displayName, userID)
+	if err != nil {
+		return fmt.Errorf("update display name on login: %w", err)
 	}
-	return user.DisplayName, false
+	if tag.RowsAffected() == 0 {
+		return storage.ErrUserNotFound
+	}
+	return nil
 }
 ```
-Add a regression test with `claims.Name == claims.Subject == user.DisplayName` asserting `UpdateUserOnLogin` is NOT called.
 
-### WR-02: Unconditional reconciliation widens the `UpdateUserOnLogin` TOCTOU window; the write has no optimistic-concurrency guard
-
-**File:** `internal/auth/identitystore.go:586-613`, `internal/storage/postgres/users.go:241-253`
-
-**Issue:** Prior to this phase, the display-name write only happened inside
-the `LoginSyncEnabled && interactive` gate (a narrow window: interactive
-logins with login-sync explicitly turned on). After this phase,
-`reconcileDisplayName` is computed and — when it fires — written on *every*
-successful `materializeIdentity` call: bearer JWTs, introspected opaque
-tokens, and interactive logins alike, regardless of `LoginSyncEnabled`. The
-read (`GetUserByID`) and the write (`UpdateUserOnLogin`) are two separate
-round-trips with no version/CAS guard between them:
-```sql
-UPDATE users SET display_name = $1, email = $2, role = $3
-WHERE id = $4::uuid AND deleted_at IS NULL
+```go
+// internal/auth/identitystore.go — materializeIdentity's standalone
+// branch: call the narrower method instead of UpdateUserOnLogin.
+} else if nameChanged {
+	if err := s.users.UpdateDisplayNameOnLogin(ctx, user.ID, newName); err != nil {
+		...
+	}
+}
 ```
-This statement guards only `deleted_at IS NULL` (correctly, per WR-01's prior
-fix), not a row version — unlike the project's documented convention for
-multi-writer paths (CLAUDE.md: "Version guards in WHERE clauses detect
-conflicts... First writer wins; second fails fast"). Two concurrent requests
-for the same user (e.g., two browser tabs, or a bearer-JWT request racing an
-interactive login) now race on this write far more often than before, and
-whichever request's claims-derived reconciliation lands last silently wins
-with no conflict signal. I checked `internal/storage/postgres/users.go` for
-any other RPC that mutates an existing user row (`UpdateUserRole`,
-`UpdateUserOnLogin`, `SoftDeleteUser`, `PurgeUser` are the only ones) — there
-is currently no separate admin "rename display name" endpoint, so today's
-practical blast radius is limited to two reconciliation writes racing each
-other (benign, same eventual value) rather than clobbering an unrelated
-operator edit. But the widened window is a direct, provable consequence of
-this phase's "run unconditionally" change, and will become a real lost-update
-risk the moment any future profile-edit RPC is added.
 
-**Fix:** Either document this as an accepted tradeoff near
-`reconcileDisplayName`/`UpdateUserOnLogin` (a one-line comment noting the
-missing version guard and why it's acceptable today), or add an
-optimistic-concurrency check to `UpdateUserOnLogin` consistent with the rest
-of the write paths described in CLAUDE.md, e.g.:
-```sql
-UPDATE users SET display_name = $1, email = $2, role = $3, version = version + 1
-WHERE id = $4::uuid AND deleted_at IS NULL AND version = $5
-```
+This removes the race by construction — the standalone path no longer
+writes `role`/`email` at all, so it has nothing left to clobber — without
+introducing version columns, CAS loops, or transactions. It keeps the fix
+proportionate (narrowing the write's blast radius to the one field this
+path is actually responsible for) rather than accepting a security-
+relevant lost-update as a documented tradeoff.
 
 ## Info
 
-### IN-01: No test covers the `ErrUserNotFound` fail-closed branch of the standalone reconciliation write outside the `resolveJWT` path
+### IN-02: No contract test guards against CR-01 recurring
 
-**File:** `internal/auth/identitystore_test.go:901` (only existing coverage),
-`internal/auth/introspection_test.go`, `internal/auth/identitystore_jit_test.go`
+**File:** `internal/auth/identitystore_test.go`, `internal/auth/loginsync_internal_test.go`
 
-**Issue:** `TestResolveJWT_ReconciliationUserNotFound_Denies` proves the
-standalone reconciliation branch (`materializeIdentity`'s `else if
-nameChanged` path, `identitystore.go:593-607`) fails closed when
-`UpdateUserOnLogin` returns `storage.ErrUserNotFound` (concurrent
-soft-delete). Because this branch is shared code reached from all three
-entry points (`resolveJWT`, `resolveIntrospection`, `ResolveLogin`), the risk
-of an actual regression is low, but there is no equivalent test proving the
-same fail-closed behavior when reached via `resolveIntrospection` (opaque
-token, whose `OIDCClaims` is hand-built with no `Email` — see
-`resolveIntrospection`, `identitystore.go:670-675`) or `ResolveLogin`
-(interactive, login-sync disabled). A future refactor that special-cases one
-entry point's error handling could silently regress the other two without
-any test catching it.
+**Issue:** The CR-01 race has no test coverage (reasonably — a true
+concurrent-write race isn't easily expressed as a deterministic unit test
+against a synchronously-executing stub backend). Once CR-01 is fixed via
+the narrower `UpdateDisplayNameOnLogin` method, the *contract* that
+prevents recurrence can still be asserted without needing real
+concurrency: the standalone reconciliation branch should provably never
+invoke a role/email-carrying persistence call.
 
-**Fix:** Add `TestIntrospection_ReconciliationUserNotFound_Denies` (mirroring
-`TestIntrospection_ReconcilesStaleDisplayName`) and
-`TestResolveLogin_ReconciliationUserNotFound_Denies`, each asserting
-`ErrUnauthenticated` when the standalone write returns
-`storage.ErrUserNotFound`.
+**Fix:** After applying CR-01's fix, add a test asserting the standalone
+reconciliation branch calls only a display-name-only stub hook (e.g. a
+new `updateDisplayNameOnLogin` field on `usersBackendStub`) and that the
+stub's `updateUserOnLogin` (3-field) hook is never invoked from that
+branch. This turns "the standalone path cannot touch role/email" from an
+implicit code-review invariant into an explicit, enforced one.
 
 ---
 
