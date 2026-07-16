@@ -238,6 +238,18 @@ func (s *AuthStore) UpdateUserRole(ctx context.Context, userID, role string) err
 
 // UpdateUserOnLogin sets display_name, email, and role on an active user in a
 // single statement. Returns ErrUserNotFound if no active user has the given ID.
+//
+// No optimistic-concurrency (version) guard: this WHERE clause only checks
+// deleted_at IS NULL, unlike the version-guarded pattern CLAUDE.md documents
+// for multi-writer paths. This is a deliberate, accepted tradeoff (AUTH-06
+// deep review, WR-02): the only two callers (applyLoginSync and
+// materializeIdentity's standalone reconciliation write) both derive every
+// field from the same claims-vs-DB-row comparison, so two racing writes for
+// the same user converge on the same eventual value (last-writer-wins is
+// benign here, not a lost-update). Revisit and add a version column/CAS
+// check the moment a distinct write path (e.g., an admin profile-edit RPC)
+// starts calling this method, since that would introduce a real
+// clobber-an-unrelated-edit risk.
 func (s *AuthStore) UpdateUserOnLogin(ctx context.Context, userID, displayName, email, role string) error {
 	const q = `
 		UPDATE users SET display_name = $1, email = $2, role = $3

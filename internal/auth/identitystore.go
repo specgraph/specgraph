@@ -526,6 +526,11 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 // flag (D-01): reconciliation must run on every successful login regardless of
 // LoginSyncEnabled or the interactive/non-interactive distinction — unlike
 // applyLoginSync, which stays gated for role/email/allowlist behavior.
+//
+// Running unconditionally widens the read-then-write window against
+// UpdateUserOnLogin, which has no version guard (see the accepted tradeoff
+// documented on storage.UsersBackend's UpdateUserOnLogin implementation,
+// AUTH-06 deep review WR-02).
 func reconcileDisplayName(user *storage.User, claims *OIDCClaims) (newName string, changed bool) {
 	if user.DisplayName == claims.Subject && claims.Name != "" && claims.Name != user.DisplayName {
 		return claims.Name, true
