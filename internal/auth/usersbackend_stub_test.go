@@ -62,14 +62,15 @@ func stubAPIKeyToken(prefix string) string {
 // control behavior. Unset functions return a default that flags an
 // unexpected-call test bug.
 type usersBackendStub struct {
-	lookupAPIKey      func(ctx context.Context, prefix string) (*storage.APIKey, error)
-	lookupOIDCBinding func(ctx context.Context, issuer, subject string) (*storage.OIDCBinding, error)
-	getUserByID       func(ctx context.Context, id string) (*storage.User, error)
-	getBootstrap      func(ctx context.Context) (*storage.User, error)
-	jitCreateHuman    func(ctx context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, *storage.OIDCBinding, error)
-	touchLastUsed     func(ctx context.Context, keyID string) error
-	listUsers         func(ctx context.Context, f storage.ListUsersFilter) ([]*storage.User, error)
-	updateUserOnLogin func(ctx context.Context, userID, displayName, email, role string) error
+	lookupAPIKey             func(ctx context.Context, prefix string) (*storage.APIKey, error)
+	lookupOIDCBinding        func(ctx context.Context, issuer, subject string) (*storage.OIDCBinding, error)
+	getUserByID              func(ctx context.Context, id string) (*storage.User, error)
+	getBootstrap             func(ctx context.Context) (*storage.User, error)
+	jitCreateHuman           func(ctx context.Context, u *storage.User, b *storage.OIDCBinding) (*storage.User, *storage.OIDCBinding, error)
+	touchLastUsed            func(ctx context.Context, keyID string) error
+	listUsers                func(ctx context.Context, f storage.ListUsersFilter) ([]*storage.User, error)
+	updateUserOnLogin        func(ctx context.Context, userID, displayName, email, role string) error
+	updateDisplayNameOnLogin func(ctx context.Context, userID, displayName string) error
 }
 
 func (s *usersBackendStub) LookupAPIKeyByPrefix(ctx context.Context, prefix string) (*storage.APIKey, error) {
@@ -137,6 +138,12 @@ func (s *usersBackendStub) UpdateUserOnLogin(ctx context.Context, userID, displa
 		return s.updateUserOnLogin(ctx, userID, displayName, email, role)
 	}
 	return errUnexpectedCall("UpdateUserOnLogin")
+}
+func (s *usersBackendStub) UpdateDisplayNameOnLogin(ctx context.Context, userID, displayName string) error {
+	if s.updateDisplayNameOnLogin != nil {
+		return s.updateDisplayNameOnLogin(ctx, userID, displayName)
+	}
+	return errUnexpectedCall("UpdateDisplayNameOnLogin")
 }
 func (s *usersBackendStub) SoftDeleteUser(_ context.Context, _ string) error {
 	return errUnexpectedCall("SoftDeleteUser")

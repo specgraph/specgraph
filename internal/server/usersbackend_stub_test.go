@@ -37,24 +37,25 @@ func errUnexpected(method string) error {
 // GetBootstrap, CreateHuman, JITCreateHuman, TouchLastUsed) are not exercised
 // by the IdentityHandler; their guard stubs always return errUnexpected.
 type usersBackendStub struct {
-	listUsers            func(ctx context.Context, filter storage.ListUsersFilter) ([]*storage.User, error)
-	getUserByID          func(ctx context.Context, id string) (*storage.User, error)
-	createServiceAccount func(ctx context.Context, u *storage.User) (*storage.User, error)
-	updateUserRole       func(ctx context.Context, userID, role string) error
-	updateUserOnLogin    func(ctx context.Context, userID, displayName, email, role string) error
-	softDeleteUser       func(ctx context.Context, userID string) error
-	purgeUser            func(ctx context.Context, userID string) error
-	createAPIKey         func(ctx context.Context, k *storage.APIKey) (*storage.APIKey, error)
-	revokeAPIKey         func(ctx context.Context, keyID string) error
-	rotateAPIKey         func(ctx context.Context, oldKeyID string, newKey *storage.APIKey) (*storage.APIKey, error)
-	getAPIKeyForUser     func(ctx context.Context, userID, keyID string) (*storage.APIKey, error)
-	revokeAPIKeyForUser  func(ctx context.Context, userID, keyID string) error
-	rotateAPIKeyForUser  func(ctx context.Context, userID, keyID string, newKey *storage.APIKey) (*storage.APIKey, error)
-	createAPIKeyForUser  func(ctx context.Context, k *storage.APIKey, quota int) (*storage.APIKey, error)
-	countActiveAPIKeys   func(ctx context.Context, userID string) (int, error)
-	listAPIKeys          func(ctx context.Context, filter storage.ListAPIKeysFilter) ([]*storage.APIKey, error)
-	listOIDCBindings     func(ctx context.Context, userID string) ([]*storage.OIDCBinding, error)
-	unbindOIDC           func(ctx context.Context, bindingID string) error
+	listUsers                func(ctx context.Context, filter storage.ListUsersFilter) ([]*storage.User, error)
+	getUserByID              func(ctx context.Context, id string) (*storage.User, error)
+	createServiceAccount     func(ctx context.Context, u *storage.User) (*storage.User, error)
+	updateUserRole           func(ctx context.Context, userID, role string) error
+	updateUserOnLogin        func(ctx context.Context, userID, displayName, email, role string) error
+	updateDisplayNameOnLogin func(ctx context.Context, userID, displayName string) error
+	softDeleteUser           func(ctx context.Context, userID string) error
+	purgeUser                func(ctx context.Context, userID string) error
+	createAPIKey             func(ctx context.Context, k *storage.APIKey) (*storage.APIKey, error)
+	revokeAPIKey             func(ctx context.Context, keyID string) error
+	rotateAPIKey             func(ctx context.Context, oldKeyID string, newKey *storage.APIKey) (*storage.APIKey, error)
+	getAPIKeyForUser         func(ctx context.Context, userID, keyID string) (*storage.APIKey, error)
+	revokeAPIKeyForUser      func(ctx context.Context, userID, keyID string) error
+	rotateAPIKeyForUser      func(ctx context.Context, userID, keyID string, newKey *storage.APIKey) (*storage.APIKey, error)
+	createAPIKeyForUser      func(ctx context.Context, k *storage.APIKey, quota int) (*storage.APIKey, error)
+	countActiveAPIKeys       func(ctx context.Context, userID string) (int, error)
+	listAPIKeys              func(ctx context.Context, filter storage.ListAPIKeysFilter) ([]*storage.APIKey, error)
+	listOIDCBindings         func(ctx context.Context, userID string) ([]*storage.OIDCBinding, error)
+	unbindOIDC               func(ctx context.Context, bindingID string) error
 }
 
 // compile-time assertion: usersBackendStub must implement the full interface.
@@ -95,6 +96,13 @@ func (s *usersBackendStub) UpdateUserOnLogin(ctx context.Context, userID, displa
 		return s.updateUserOnLogin(ctx, userID, displayName, email, role)
 	}
 	return errUnexpected("UpdateUserOnLogin")
+}
+
+func (s *usersBackendStub) UpdateDisplayNameOnLogin(ctx context.Context, userID, displayName string) error {
+	if s.updateDisplayNameOnLogin != nil {
+		return s.updateDisplayNameOnLogin(ctx, userID, displayName)
+	}
+	return errUnexpected("UpdateDisplayNameOnLogin")
 }
 
 func (s *usersBackendStub) SoftDeleteUser(ctx context.Context, userID string) error {

@@ -679,8 +679,10 @@ func TestResolveJWT_SoftDeletedUserUnauthenticated(t *testing.T) {
 
 // TestResolveJWT_ReconcilesStaleDisplayName: an existing binding whose stored
 // display_name equals the token subject (the JIT-fallback heuristic, D-03)
-// self-heals to the token's `name` claim on a bearer-JWT login, with role and
-// email passed through unchanged (Pitfall 1).
+// self-heals to the token's `name` claim on a bearer-JWT login via the
+// narrower UpdateDisplayNameOnLogin write (CR-01), which structurally cannot
+// touch role or email — asserted here via the returned Identity, since the
+// write itself no longer carries those fields.
 func TestResolveJWT_ReconcilesStaleDisplayName(t *testing.T) {
 	p := newOIDCTestIssuer(t)
 	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
@@ -688,7 +690,7 @@ func TestResolveJWT_ReconcilesStaleDisplayName(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	var gotName, gotEmail, gotRole string
+	var gotName string
 	var calls int
 	stub := &usersBackendStub{
 		lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
@@ -702,9 +704,9 @@ func TestResolveJWT_ReconcilesStaleDisplayName(t *testing.T) {
 				CreatedAt:   time.Now(),
 			}, nil
 		},
-		updateUserOnLogin: func(_ context.Context, _, displayName, email, role string) error {
+		updateDisplayNameOnLogin: func(_ context.Context, _, displayName string) error {
 			calls++
-			gotName, gotEmail, gotRole = displayName, email, role
+			gotName = displayName
 			return nil
 		},
 	}
@@ -720,10 +722,10 @@ func TestResolveJWT_ReconcilesStaleDisplayName(t *testing.T) {
 
 	id, err := store.Resolve(context.Background(), token)
 	require.NoError(t, err)
-	require.Equal(t, 1, calls, "UpdateUserOnLogin must be called exactly once")
+	require.Equal(t, 1, calls, "UpdateDisplayNameOnLogin must be called exactly once")
 	require.Equal(t, "Ada Lovelace", gotName)
-	require.Equal(t, "alice@example.com", gotEmail, "email passed through unchanged")
-	require.Equal(t, "writer", gotRole, "role passed through unchanged")
+	require.Equal(t, "alice@example.com", id.Email, "email passed through unchanged")
+	require.Equal(t, "writer", string(id.Role), "role passed through unchanged")
 	require.Equal(t, "Ada Lovelace", id.DisplayName)
 }
 
@@ -751,7 +753,7 @@ func TestResolveJWT_ReconciliationRunsWithoutLoginSync(t *testing.T) {
 				CreatedAt:   time.Now(),
 			}, nil
 		},
-		updateUserOnLogin: func(_ context.Context, _, displayName, _, _ string) error {
+		updateDisplayNameOnLogin: func(_ context.Context, _, displayName string) error {
 			calls++
 			gotName = displayName
 			return nil
@@ -771,7 +773,7 @@ func TestResolveJWT_ReconciliationRunsWithoutLoginSync(t *testing.T) {
 	// store.Resolve uses a bare context.Background() — never marked interactive.
 	id, err := store.Resolve(context.Background(), token)
 	require.NoError(t, err)
-	require.Equal(t, 1, calls, "UpdateUserOnLogin must be called even with LoginSyncEnabled=false and non-interactive")
+	require.Equal(t, 1, calls, "UpdateDisplayNameOnLogin must be called even with LoginSyncEnabled=false and non-interactive")
 	require.Equal(t, "Bob Ross", gotName)
 	require.Equal(t, "Bob Ross", id.DisplayName)
 }
@@ -779,7 +781,7 @@ func TestResolveJWT_ReconciliationRunsWithoutLoginSync(t *testing.T) {
 // TestResolveJWT_PreservesDisplayNameWhenNoUsableClaim covers both halves of
 // AUTH-06 SC4: an operator-set name (!= subject) must never be touched, and a
 // stale (== subject) name with no usable claim on the token must be left
-// alone too — in neither case may UpdateUserOnLogin be invoked.
+// alone too — in neither case may UpdateDisplayNameOnLogin be invoked.
 func TestResolveJWT_PreservesDisplayNameWhenNoUsableClaim(t *testing.T) {
 	p := newOIDCTestIssuer(t)
 	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
@@ -821,8 +823,8 @@ func TestResolveJWT_PreservesDisplayNameWhenNoUsableClaim(t *testing.T) {
 						CreatedAt:   time.Now(),
 					}, nil
 				},
-				updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
-					t.Fatal("UpdateUserOnLogin must not be called")
+				updateDisplayNameOnLogin: func(_ context.Context, _, _ string) error {
+					t.Fatal("UpdateDisplayNameOnLogin must not be called")
 					return nil
 				},
 			}
@@ -852,7 +854,7 @@ func TestResolveJWT_PreservesDisplayNameWhenNoUsableClaim(t *testing.T) {
 // NOT trigger a reconciliation write forever. Once `user.DisplayName` equals
 // both `claims.Subject` and `claims.Name`, the computed new value is
 // identical to what's already stored, so `reconcileDisplayName` must report
-// `changed=false` and UpdateUserOnLogin must never be called.
+// `changed=false` and UpdateDisplayNameOnLogin must never be called.
 func TestResolveJWT_ReconciliationNoOpWhenClaimNameEqualsSubject(t *testing.T) {
 	p := newOIDCTestIssuer(t)
 	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
@@ -875,8 +877,8 @@ func TestResolveJWT_ReconciliationNoOpWhenClaimNameEqualsSubject(t *testing.T) {
 				CreatedAt:   time.Now(),
 			}, nil
 		},
-		updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
-			t.Fatal("UpdateUserOnLogin must not be called when the reconciled name is unchanged")
+		updateDisplayNameOnLogin: func(_ context.Context, _, _ string) error {
+			t.Fatal("UpdateDisplayNameOnLogin must not be called when the reconciled name is unchanged")
 			return nil
 		},
 	}
@@ -895,56 +897,22 @@ func TestResolveJWT_ReconciliationNoOpWhenClaimNameEqualsSubject(t *testing.T) {
 	require.Equal(t, "same-value", id.DisplayName)
 }
 
-// TestResolveJWT_ReconciliationPreservesRoleAndEmail is the Pitfall 1 guard:
-// the reconciliation write must always pass the user's existing DB role/email,
-// never a claims-derived value, even when the token carries claims that would
-// otherwise imply a role/email change (that's applyLoginSync's job, not this
-// path's).
-func TestResolveJWT_ReconciliationPreservesRoleAndEmail(t *testing.T) {
-	p := newOIDCTestIssuer(t)
-	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
-		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
-	})
-	require.NoError(t, err)
-
-	var gotEmail, gotRole string
-	stub := &usersBackendStub{
-		lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
-			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: issuer, Subject: subject}, nil
-		},
-		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
-			return &storage.User{
-				ID: id, Kind: storage.KindHuman, Role: "admin",
-				DisplayName: "user-789", // == token sub
-				Email:       "existing@example.com",
-				CreatedAt:   time.Now(),
-			}, nil
-		},
-		updateUserOnLogin: func(_ context.Context, _, _, email, role string) error {
-			gotEmail, gotRole = email, role
-			return nil
-		},
-	}
-	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
-		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
-	})
-	require.NoError(t, err)
-	token := p.mintToken(t, map[string]any{
-		"iss": p.server.URL, "sub": "user-789", "aud": "aud-1",
-		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
-		"name":  "New Name",
-		"email": "claimed@example.com", // must NOT flow into the reconciliation write
-	})
-
-	_, err = store.Resolve(context.Background(), token)
-	require.NoError(t, err)
-	require.Equal(t, "existing@example.com", gotEmail, "must be the existing DB email, never claims-derived")
-	require.Equal(t, "admin", gotRole, "must be the existing DB role, never claims-derived")
-}
+// TestResolveJWT_ReconciliationPreservesRoleAndEmail is REMOVED (CR-01,
+// AUTH-06 deep review iteration 3). Its premise — asserting that a 3-arg
+// UpdateUserOnLogin call made by the standalone reconciliation branch passes
+// through role/email unchanged — is now structurally impossible to express:
+// that branch no longer calls UpdateUserOnLogin at all, only the narrower
+// UpdateDisplayNameOnLogin(ctx, userID, displayName), which has no role/email
+// parameters to assert on. The invariant this test protected (the standalone
+// path cannot touch role/email) is now enforced at the type level rather than
+// by assertion, and is additionally guarded by an explicit contract test,
+// TestMaterializeIdentity_StandaloneReconciliationNeverCallsUpdateUserOnLogin
+// (IN-02, same review), which asserts the stub's 3-field hook is never
+// invoked from this branch while its display-name-only hook is.
 
 // TestResolveJWT_ReconciliationUserNotFound_Denies mirrors
 // TestApplyLoginSync_UserNotFound_Denies: when the reconciliation write's
-// UpdateUserOnLogin call returns storage.ErrUserNotFound (the user was
+// UpdateDisplayNameOnLogin call returns storage.ErrUserNotFound (the user was
 // concurrently soft-deleted between the GetUserByID load and this write),
 // the login must fail closed rather than proceed as a best-effort no-op.
 func TestResolveJWT_ReconciliationUserNotFound_Denies(t *testing.T) {
@@ -966,7 +934,7 @@ func TestResolveJWT_ReconciliationUserNotFound_Denies(t *testing.T) {
 				CreatedAt:   time.Now(),
 			}, nil
 		},
-		updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
+		updateDisplayNameOnLogin: func(_ context.Context, _, _ string) error {
 			return storage.ErrUserNotFound
 		},
 	}
@@ -988,7 +956,7 @@ func TestResolveJWT_ReconciliationUserNotFound_Denies(t *testing.T) {
 // TestResolveJWT_ReconciliationUserNotFound_Denies for the interactive
 // ResolveLogin entry point with login-sync disabled: the standalone
 // reconciliation write (the same branch resolveJWT and resolveIntrospection
-// share) must also fail closed here when UpdateUserOnLogin returns
+// share) must also fail closed here when UpdateDisplayNameOnLogin returns
 // storage.ErrUserNotFound, rather than proceeding as a best-effort no-op
 // (IN-01, AUTH-06 deep review).
 func TestResolveLogin_ReconciliationUserNotFound_Denies(t *testing.T) {
@@ -1004,7 +972,7 @@ func TestResolveLogin_ReconciliationUserNotFound_Denies(t *testing.T) {
 				CreatedAt:   time.Now(),
 			}, nil
 		},
-		updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
+		updateDisplayNameOnLogin: func(_ context.Context, _, _ string) error {
 			return storage.ErrUserNotFound
 		},
 	}

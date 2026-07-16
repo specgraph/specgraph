@@ -239,17 +239,13 @@ func (s *AuthStore) UpdateUserRole(ctx context.Context, userID, role string) err
 // UpdateUserOnLogin sets display_name, email, and role on an active user in a
 // single statement. Returns ErrUserNotFound if no active user has the given ID.
 //
-// No optimistic-concurrency (version) guard: this WHERE clause only checks
-// deleted_at IS NULL, unlike the version-guarded pattern CLAUDE.md documents
-// for multi-writer paths. This is a deliberate, accepted tradeoff (AUTH-06
-// deep review, WR-02): the only two callers (applyLoginSync and
-// materializeIdentity's standalone reconciliation write) both derive every
-// field from the same claims-vs-DB-row comparison, so two racing writes for
-// the same user converge on the same eventual value (last-writer-wins is
-// benign here, not a lost-update). Revisit and add a version column/CAS
-// check the moment a distinct write path (e.g., an admin profile-edit RPC)
-// starts calling this method, since that would introduce a real
-// clobber-an-unrelated-edit risk.
+// This is called ONLY from applyLoginSync (the login-sync-gated write), which
+// legitimately re-derives role from the current claims mapping. The
+// standalone display-name reconciliation branch in materializeIdentity uses
+// the narrower UpdateDisplayNameOnLogin instead (CR-01, AUTH-06 deep review
+// iteration 3) precisely so it cannot race this write and silently revert a
+// role change: with only one caller of this 3-field UPDATE remaining, there
+// is nothing left to race against on role/email.
 func (s *AuthStore) UpdateUserOnLogin(ctx context.Context, userID, displayName, email, role string) error {
 	const q = `
 		UPDATE users SET display_name = $1, email = $2, role = $3
@@ -257,6 +253,27 @@ func (s *AuthStore) UpdateUserOnLogin(ctx context.Context, userID, displayName, 
 	tag, err := s.pool.Exec(ctx, q, displayName, email, role, userID)
 	if err != nil {
 		return fmt.Errorf("update user on login: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return storage.ErrUserNotFound
+	}
+	return nil
+}
+
+// UpdateDisplayNameOnLogin sets ONLY display_name on an active user. Returns
+// ErrUserNotFound if no active user has the given ID.
+//
+// This narrower write exists so materializeIdentity's standalone
+// reconciliation branch (fires when the login-sync gate does not) cannot
+// touch role or email at all — removing by construction the lost-update race
+// that existed when that branch called the 3-field UpdateUserOnLogin with a
+// blind passthrough of a point-in-time role/email read (CR-01, AUTH-06 deep
+// review iteration 3).
+func (s *AuthStore) UpdateDisplayNameOnLogin(ctx context.Context, userID, displayName string) error {
+	const q = `UPDATE users SET display_name = $1 WHERE id = $2::uuid AND deleted_at IS NULL`
+	tag, err := s.pool.Exec(ctx, q, displayName, userID)
+	if err != nil {
+		return fmt.Errorf("update display name on login: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return storage.ErrUserNotFound

@@ -184,8 +184,10 @@ func TestIntrospection_MultiIntrospector_FirstMatchWins(t *testing.T) {
 // (opaque-token) path participates in the unconditional display-name
 // reconciliation added in 09-01: the bound user's stored display_name equals
 // the token subject (the JIT-fallback heuristic, D-03), and a "name" claim on
-// the introspection response self-heals it via UpdateUserOnLogin, with role
-// and email passed through unchanged (AUTH-06 SC2/SC3, D-04, Pitfall 3).
+// the introspection response self-heals it via the narrower
+// UpdateDisplayNameOnLogin write (CR-01), which structurally cannot touch
+// role or email — asserted here via the returned Identity, since the write
+// itself no longer carries those fields (AUTH-06 SC2/SC3, D-04).
 func TestIntrospection_ReconcilesStaleDisplayName(t *testing.T) {
 	stub := newIntrospectionStub(t, func(_ string) (int, map[string]any) {
 		return http.StatusOK, map[string]any{
@@ -196,7 +198,7 @@ func TestIntrospection_ReconcilesStaleDisplayName(t *testing.T) {
 	})
 	intro := auth.NewIntrospector("https://idp.example.com", stub.url(), "rs-client", "rs-secret")
 
-	var gotName, gotEmail, gotRole string
+	var gotName string
 	var calls int
 	usersStub := &usersBackendStub{
 		lookupOIDCBinding: func(_ context.Context, iss, sub string) (*storage.OIDCBinding, error) {
@@ -209,9 +211,9 @@ func TestIntrospection_ReconcilesStaleDisplayName(t *testing.T) {
 				Email:       "grace@example.com",
 			}, nil
 		},
-		updateUserOnLogin: func(_ context.Context, _, displayName, email, role string) error {
+		updateDisplayNameOnLogin: func(_ context.Context, _, displayName string) error {
 			calls++
-			gotName, gotEmail, gotRole = displayName, email, role
+			gotName = displayName
 			return nil
 		},
 	}
@@ -224,18 +226,18 @@ func TestIntrospection_ReconcilesStaleDisplayName(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = store.Resolve(context.Background(), "opaque-access-token")
+	id, err := store.Resolve(context.Background(), "opaque-access-token")
 	require.NoError(t, err)
-	require.Equal(t, 1, calls, "UpdateUserOnLogin must be called exactly once")
+	require.Equal(t, 1, calls, "UpdateDisplayNameOnLogin must be called exactly once")
 	require.Equal(t, "Grace Hopper", gotName)
-	require.Equal(t, "grace@example.com", gotEmail, "email must be passed through unchanged")
-	require.Equal(t, "writer", gotRole, "role must be passed through unchanged")
+	require.Equal(t, "grace@example.com", id.Email, "email must be passed through unchanged")
+	require.Equal(t, "writer", string(id.Role), "role must be passed through unchanged")
 }
 
 // TestIntrospection_ReconciliationUserNotFound_Denies mirrors
 // TestResolveJWT_ReconciliationUserNotFound_Denies for the introspection
 // (opaque-token) entry point: when the standalone reconciliation write's
-// UpdateUserOnLogin call returns storage.ErrUserNotFound (the user was
+// UpdateDisplayNameOnLogin call returns storage.ErrUserNotFound (the user was
 // concurrently soft-deleted between the GetUserByID load and this write),
 // the login must fail closed rather than proceed as a best-effort no-op
 // (IN-01, AUTH-06 deep review).
@@ -260,7 +262,7 @@ func TestIntrospection_ReconciliationUserNotFound_Denies(t *testing.T) {
 				Email:       "e@example.com",
 			}, nil
 		},
-		updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
+		updateDisplayNameOnLogin: func(_ context.Context, _, _ string) error {
 			return storage.ErrUserNotFound
 		},
 	}

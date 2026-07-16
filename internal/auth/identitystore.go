@@ -527,10 +527,12 @@ func (s *pgIdentityStore) resolveJWT(ctx context.Context, token string) (*Identi
 // LoginSyncEnabled or the interactive/non-interactive distinction — unlike
 // applyLoginSync, which stays gated for role/email/allowlist behavior.
 //
-// Running unconditionally widens the read-then-write window against
-// UpdateUserOnLogin, which has no version guard (see the accepted tradeoff
-// documented on storage.UsersBackend's UpdateUserOnLogin implementation,
-// AUTH-06 deep review WR-02).
+// Running unconditionally still widens the read-then-write window against the
+// user row, but the standalone write this feeds (materializeIdentity's
+// `else if nameChanged` branch) persists via UpdateDisplayNameOnLogin, which
+// touches only display_name — so a race against applyLoginSync's role/email
+// write can no longer clobber either field (CR-01, AUTH-06 deep review
+// iteration 3).
 func reconcileDisplayName(user *storage.User, claims *OIDCClaims) (newName string, changed bool) {
 	if user.DisplayName == claims.Subject && claims.Name != "" && claims.Name != user.DisplayName {
 		return claims.Name, true
@@ -586,8 +588,12 @@ func (s *pgIdentityStore) materializeIdentity(ctx context.Context, claims *OIDCC
 	// display-name change is never committed ahead of a denial. When the gate
 	// does NOT fire (login-sync disabled, or a non-interactive resolve), there
 	// is no combined write to fold into, so the reconciliation write happens
-	// here on its own — this preserves D-01 (reconciliation is independent of
-	// the gate) for the case where login-sync isn't in play at all.
+	// here on its own via UpdateDisplayNameOnLogin — a narrower write that
+	// touches ONLY display_name (CR-01, AUTH-06 deep review iteration 3), so
+	// it structurally cannot race applyLoginSync's role/email write and
+	// silently revert a concurrent role change. This preserves D-01
+	// (reconciliation is independent of the gate) for the case where
+	// login-sync isn't in play at all.
 	newName, nameChanged := reconcileDisplayName(user, claims)
 	if s.loginSyncEnabled && interactive {
 		synced, syncErr := s.applyLoginSync(ctx, claims, user, newName, nameChanged)
@@ -596,7 +602,7 @@ func (s *pgIdentityStore) materializeIdentity(ctx context.Context, claims *OIDCC
 		}
 		user = synced
 	} else if nameChanged {
-		if err := s.users.UpdateUserOnLogin(ctx, user.ID, newName, user.Email, user.Role); err != nil {
+		if err := s.users.UpdateDisplayNameOnLogin(ctx, user.ID, newName); err != nil {
 			// ErrUserNotFound means the active-row guard (deleted_at IS NULL)
 			// matched nothing: the user was concurrently soft-deleted between
 			// the GetUserByID load above and this write. Mirror
