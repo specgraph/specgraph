@@ -232,6 +232,49 @@ func TestIntrospection_ReconcilesStaleDisplayName(t *testing.T) {
 	require.Equal(t, "writer", gotRole, "role must be passed through unchanged")
 }
 
+// TestIntrospection_ReconciliationUserNotFound_Denies mirrors
+// TestResolveJWT_ReconciliationUserNotFound_Denies for the introspection
+// (opaque-token) entry point: when the standalone reconciliation write's
+// UpdateUserOnLogin call returns storage.ErrUserNotFound (the user was
+// concurrently soft-deleted between the GetUserByID load and this write),
+// the login must fail closed rather than proceed as a best-effort no-op
+// (IN-01, AUTH-06 deep review).
+func TestIntrospection_ReconciliationUserNotFound_Denies(t *testing.T) {
+	stub := newIntrospectionStub(t, func(_ string) (int, map[string]any) {
+		return http.StatusOK, map[string]any{
+			"active": true, "sub": "sub-del", "iss": "https://idp.example.com",
+			"name": "New Name",
+			"exp":  time.Now().Add(time.Hour).Unix(),
+		}
+	})
+	intro := auth.NewIntrospector("https://idp.example.com", stub.url(), "rs-client", "rs-secret")
+
+	usersStub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, iss, sub string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: iss, Subject: sub}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			return &storage.User{
+				ID: id, Kind: storage.KindHuman, Role: "writer",
+				DisplayName: "sub-del", // == introspected sub: triggers reconciliation write
+				Email:       "e@example.com",
+			}, nil
+		},
+		updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
+			return storage.ErrUserNotFound
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users:         usersStub,
+		Tracker:       &noopTracker{},
+		Introspectors: []*auth.Introspector{intro},
+	})
+	require.NoError(t, err)
+
+	_, err = store.Resolve(context.Background(), "opaque-access-token")
+	require.ErrorIs(t, err, auth.ErrUnauthenticated)
+}
+
 // TestIntrospection_APIKeyNeverIntrospected is the HIGH #3 / D-08 guard: an
 // spgr_sk_-prefixed API key is routed to resolveAPIKey by the explicit prefix
 // guard and must NEVER be POSTed to the introspection endpoint, even when

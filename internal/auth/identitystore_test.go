@@ -984,6 +984,44 @@ func TestResolveJWT_ReconciliationUserNotFound_Denies(t *testing.T) {
 	require.ErrorIs(t, err, auth.ErrUnauthenticated)
 }
 
+// TestResolveLogin_ReconciliationUserNotFound_Denies mirrors
+// TestResolveJWT_ReconciliationUserNotFound_Denies for the interactive
+// ResolveLogin entry point with login-sync disabled: the standalone
+// reconciliation write (the same branch resolveJWT and resolveIntrospection
+// share) must also fail closed here when UpdateUserOnLogin returns
+// storage.ErrUserNotFound, rather than proceeding as a best-effort no-op
+// (IN-01, AUTH-06 deep review).
+func TestResolveLogin_ReconciliationUserNotFound_Denies(t *testing.T) {
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: issuer, Subject: subject}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			return &storage.User{
+				ID: id, Kind: storage.KindHuman, Role: "writer",
+				DisplayName: "user-del-login", // == claims sub: triggers reconciliation write
+				Email:       "e@example.com",
+				CreatedAt:   time.Now(),
+			}, nil
+		},
+		updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
+			return storage.ErrUserNotFound
+		},
+	}
+	// LoginSyncEnabled deliberately omitted (false): interactive ResolveLogin
+	// with login-sync off must still reach the standalone reconciliation
+	// write branch, not the applyLoginSync-gated one.
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Tracker: &noopTracker{},
+	})
+	require.NoError(t, err)
+
+	_, err = store.ResolveLogin(context.Background(), &auth.OIDCClaims{
+		Issuer: "https://idp.example.com", Subject: "user-del-login", Name: "New Name",
+	})
+	require.ErrorIs(t, err, auth.ErrUnauthenticated)
+}
+
 // --- Task 22: HasAuth ---
 
 func TestHasAuth_OnlyBootstrapReturnsFalse(t *testing.T) {
