@@ -43,6 +43,17 @@ user.DisplayName`.
 
 ### WR-02: Unconditional reconciliation widens the `UpdateUserOnLogin` TOCTOU window; the write has no optimistic-concurrency guard
 
+> ⚠️ **SUPERSEDED (2026-07-16):** This point-in-time audit-trail snapshot recorded a
+> documentation-only resolution below. A later deep-review iteration correctly rejected
+> this resolution as invalid — the "both derive every written field from the same
+> claims-vs-DB-row comparison" premise is false for `role` (`applyLoginSync` freshly
+> re-derives it from claims-mapping; the standalone write blindly passes through a
+> point-in-time read), making the race a real lost-update, not a benign convergence. See
+> **CR-01** in `09-REVIEW.md`, fixed in commit `f28f8aa1` (added a narrower
+> `UpdateDisplayNameOnLogin` method so the standalone path can no longer touch
+> `role`/`email` at all). This snapshot is preserved for history; do not treat the
+> "accepted tradeoff" conclusion below as current.
+
 **Files modified:** `internal/auth/identitystore.go`, `internal/storage/postgres/users.go`
 **Commit:** `16a833fe`
 **Applied fix:** Evaluated the review's two suggested options (comment-only

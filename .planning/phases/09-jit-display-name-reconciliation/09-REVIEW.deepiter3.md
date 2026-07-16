@@ -27,6 +27,13 @@ status: issues_found
 **Files Reviewed:** 8
 **Status:** issues_found
 
+> **Note on the `reviewed`/`Reviewed` timestamp:** `2026-07-16T00:00:00Z` is a nominal
+> placeholder date stamped by the reviewing subagent, not a precise wall-clock capture —
+> it is identical across all of this phase's review iterations and does not reflect true
+> chronological ordering between review passes. The authoritative ordering is the git
+> commit history: this iteration verifies the fix committed as `f28f8aa1`/`99a333a7`
+> (CR-01/IN-02), which lands after `09-REVIEW-FIX.deepiter2.md`'s `16a833fe` in `git log`.
+
 ## Summary
 
 This is the third and final deep-review iteration for the display-name

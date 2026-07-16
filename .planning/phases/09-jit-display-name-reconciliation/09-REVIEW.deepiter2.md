@@ -27,6 +27,14 @@ status: issues_found
 **Files Reviewed:** 8
 **Status:** issues_found
 
+> ⚠️ **SUPERSEDED (2026-07-16):** This is a point-in-time audit-trail snapshot, preserved
+> for post-mortem history — not an active finding. WR-02's conclusion below ("two racing
+> writes... converge on the same eventual value... benign here, not a lost-update") was
+> **incorrect** and was subsequently reopened and corrected as **CR-01** in the next
+> review iteration (`09-REVIEW.md`, then fixed in commit `f28f8aa1`). Do not read the
+> "benign convergent write" analysis in this snapshot as an accepted security tradeoff —
+> it was a documentation-only fix that a later deep-review pass correctly rejected.
+
 ## Summary
 
 This is a deep, cross-file re-review of AUTH-06 (#994) after two standard-depth
