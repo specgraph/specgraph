@@ -1,8 +1,8 @@
 ---
 phase: 09-jit-display-name-reconciliation
-reviewed: 2026-07-16T00:00:00Z
+reviewed: 2026-07-16T18:34:39Z
 depth: deep
-files_reviewed: 8
+files_reviewed: 12
 files_reviewed_list:
   - internal/auth/identitystore.go
   - internal/auth/identitystore_authn_integration_test.go
@@ -12,218 +12,178 @@ files_reviewed_list:
   - internal/auth/loginsync.go
   - internal/auth/loginsync_internal_test.go
   - internal/auth/oauth2_provider_test.go
+  - internal/storage/users.go
+  - internal/storage/postgres/users.go
+  - internal/auth/usersbackend_stub_test.go
+  - internal/server/usersbackend_stub_test.go
 findings:
-  critical: 1
-  warning: 0
+  critical: 0
+  warning: 2
   info: 1
-  total: 2
+  total: 3
 status: issues_found
 ---
 
 # Phase 09: Code Review Report (deep re-review, iteration 3 — final)
 
-**Reviewed:** 2026-07-16T00:00:00Z
+**Reviewed:** 2026-07-16T18:34:39Z
 **Depth:** deep
-**Files Reviewed:** 8
+**Files Reviewed:** 12
 **Status:** issues_found
 
 ## Summary
 
-This is the third and final deep-review iteration for the display-name
-reconciliation phase (AUTH-06, #994). The prior deep pass found WR-01, WR-02,
-and IN-01; a fixer addressed all three. This round verifies each fix and
-performs a fresh full pass.
+This is the third and final deep-review iteration for AUTH-06 (#994), cap reached. This
+round verifies the CR-01 fix from the previous iteration, re-derives its correctness
+independently rather than trusting the fixer's changelog, traces the full call graph for
+`UpdateUserOnLogin` / `UpdateDisplayNameOnLogin` across the entire repository (not just the
+files in scope), and adds the two storage files (`internal/storage/users.go`,
+`internal/storage/postgres/users.go`) newly in scope this round. I ran `go build
+./internal/...`, `go vet ./internal/auth/... ./internal/storage/...`, and `go test
+./internal/auth/... ./internal/storage/...` — all green — and diffed the exact CR-01 commit
+(`f28f8aa1`) directly rather than relying on its commit message.
 
-**WR-01 (`reconcileDisplayName` false-positive `changed=true` when
-`claims.Name == claims.Subject`) — verified correctly closed.** The new
-guard (`claims.Name != user.DisplayName`, `identitystore.go:535`) is only
-reachable once the outer `user.DisplayName == claims.Subject` condition
-already holds, so it cannot suppress a legitimate reconciliation: an
-operator-chosen display name that differs from the subject never enters
-this branch at all, with or without the added clause. I traced the
-specific hypothesized regression (an operator renaming a user to a value
-that happens to equal the *current* `claims.Name`) and confirmed it
-cannot occur — that scenario requires `user.DisplayName != claims.Subject`,
-which already short-circuits the whole function before the new guard is
-even evaluated. `TestResolveJWT_ReconciliationNoOpWhenClaimNameEqualsSubject`
-correctly exercises the fixed case. No new edge case introduced.
+**CR-01 verdict: the fix is correct and structurally sound. No BLOCKER findings this round.**
 
-**IN-01 (fail-closed regression coverage across all three entry points) —
-verified correct.** `TestResolveJWT_ReconciliationUserNotFound_Denies`,
-`TestResolveLogin_ReconciliationUserNotFound_Denies`, and
-`TestIntrospection_ReconciliationUserNotFound_Denies` were each read in
-full. Each stubs `UpdateUserOnLogin` to return `storage.ErrUserNotFound`,
-drives the matching entry point (`Resolve` w/ JWT, `ResolveLogin`,
-`Resolve` w/ opaque token + introspector), and asserts
-`ErrUnauthenticated`. All three genuinely reach and exercise the
-standalone-reconciliation branch in `materializeIdentity` (not
-`applyLoginSync`'s already-covered classification path) — confirmed by
-constructing each user/binding so `DisplayName == subject` at load time,
-which is the precondition for `nameChanged=true` to hold.
+1. **Genuinely narrower write, confirmed at the SQL level.**
+   `storage.UsersBackend.UpdateDisplayNameOnLogin(ctx, userID, displayName)` is implemented
+   in `internal/storage/postgres/users.go:272-282` as `UPDATE users SET display_name = $1
+   WHERE id = $2::uuid AND deleted_at IS NULL` — it has no `email`/`role` parameters and no
+   code path can make it touch either column. This is not merely "documented narrower"; it
+   is structurally narrower — there is nothing to pass in that would let it write those
+   fields even if a caller wanted to.
+2. **No remaining path back to `UpdateUserOnLogin` from the standalone branch.** A
+   repo-wide grep for `UpdateUserOnLogin` call sites (across `internal/bootstrap`,
+   `internal/server`, `internal/auth/usagetracker`, and all of `internal/auth`) confirms
+   exactly one production caller remains: `applyLoginSync` in
+   `internal/auth/loginsync.go:114`. `materializeIdentity`'s standalone reconciliation
+   branch (`internal/auth/identitystore.go:605`) calls only `UpdateDisplayNameOnLogin`. The
+   lost-update race identified in the prior round (a concurrent non-interactive resolve
+   silently reverting a role revocation processed moments earlier by an interactive
+   login-sync write) is eliminated by construction: the two write paths now touch disjoint
+   column sets, so there is nothing left to race on `role`/`email`.
+3. **Both `usersBackendStub` test doubles implement the new method consistently.**
+   `internal/auth/usersbackend_stub_test.go:142-147` and
+   `internal/server/usersbackend_stub_test.go:101-106` both add
+   `UpdateDisplayNameOnLogin` following the exact same fail-loud-by-default pattern already
+   used for `UpdateUserOnLogin` in each file (a nil func field returns
+   `errUnexpectedCall`/`errUnexpected`). No divergence in default behavior between the two
+   stubs. Both retain their compile-time `var _ storage.UsersBackend = (*...)(nil)`
+   assertions, and the build is clean.
+4. **IN-02's regression test is a real guard, not a placebo.**
+   `TestMaterializeIdentity_StandaloneReconciliationNeverCallsUpdateUserOnLogin`
+   (`internal/auth/identitystore_test.go:923-969`) wires both `updateDisplayNameOnLogin`
+   and `updateUserOnLogin` hooks on the same stub instance and asserts call counts (1 vs.
+   0). A future refactor that reintroduced the old 3-field call under the standalone branch
+   — even under a different code path or helper name — would increment `userOnLoginCalls`
+   and fail the `require.Equal(t, 0, userOnLoginCalls, ...)` assertion. This is not
+   trivially defeated: the interface's method set is fixed, both stubs' unconfigured
+   mutating methods fail loud by default, and the two hooks are independently observable in
+   this test.
 
-**WR-02 (documentation-only resolution of the missing optimistic-
-concurrency guard on `UpdateUserOnLogin`) — NOT acceptable; reopened as
-CR-01 below.** The rationale written into the code ("the only two
-callers... both derive every field from the same claims-vs-DB-row
-comparison, so two racing writes... converge on the same eventual value")
-does not survive independent verification: the two callers derive
-`role`/`email` through materially different logic, which means a race
-between them is not "benign convergent" — it can silently revert a role
-change made moments earlier by an interactive login-sync (a security-
-relevant regression, not a rounding/formatting nondeterminism). See CR-01
-for the concrete trace and a proportionate fix that doesn't require the
-full version/CAS machinery the fixer correctly judged as overkill last
-round — it only needs to stop the standalone write from touching
-`role`/`email` at all.
+Two residual gaps remain — both coverage gaps, not behavioral defects in the shipped code —
+plus one bookkeeping note about a file in scope with no phase-relevant content. Since this
+is the final iteration in the deep-review/fix loop (cap reached), these are recorded below
+as WARNING-level backlog items for a follow-up pass rather than blocking closure; neither
+represents a functional defect in the CR-01 fix itself.
 
-A fresh full pass across all 8 files (dispatch order in `Resolve`,
-`jitResolve`'s gate ordering, `applyLoginSync`'s classification table,
-`clampedRole`/`isPromotion`, the introspection multi-provider trial logic,
-and all test helper wiring) found no other correctness, security, or
-quality defects beyond CR-01 and the one INFO item below. This should be
-treated as the final iteration of this deep-review/fix loop.
+## Warnings
 
-## Critical Issues
+### WR-01: No integration test for the new `AuthStore.UpdateDisplayNameOnLogin` SQL method
 
-### CR-01: WR-02's "benign convergent write" rationale is false — a concurrent standalone reconciliation write can silently revert a role change
+**File:** `internal/storage/postgres/users.go:272-282` (implementation); no corresponding
+test exists in `internal/storage/postgres/users_test.go`
 
-**File:** `internal/auth/identitystore.go:591-618` (standalone reconciliation write, `materializeIdentity`)
-**File:** `internal/auth/loginsync.go:80-155` (`applyLoginSync`)
-**File:** `internal/storage/postgres/users.go:239-265` (`UpdateUserOnLogin`, carrying the accepted-tradeoff comment)
+**Issue:** The sibling method `UpdateUserOnLogin` has direct Postgres-backed coverage
+(`TestAuthStore_UpdateUserOnLogin`, `internal/storage/postgres/users_test.go:301`),
+exercising the success path, the `deleted_at IS NULL` guard (→ `ErrUserNotFound`), and a
+second successful update. `UpdateDisplayNameOnLogin` — the new method that structurally
+carries the entire CR-01 fix — has zero direct test coverage against a real database. It is
+only exercised indirectly through mocked `usersBackendStub` hooks in the `internal/auth`
+package tests, which prove the *auth* package calls it correctly but say nothing about
+whether the SQL itself behaves as documented: that it truly leaves `email`/`role` untouched,
+that the `deleted_at IS NULL` guard rejects soft-deleted rows as expected, and that
+`RowsAffected() == 0` correctly maps to `ErrUserNotFound` against the real driver.
+`internal/storage/postgres/users.go` and `internal/storage/users.go` were newly added to
+this iteration's scope; this gap was not visible to the prior two rounds, which never had
+these files in scope.
 
-**Issue:**
+**Fix:** Add a `TestAuthStore_UpdateDisplayNameOnLogin` to
+`internal/storage/postgres/users_test.go` mirroring `TestAuthStore_UpdateUserOnLogin`:
+create a user, call `UpdateDisplayNameOnLogin`, read the row back and assert `email`/`role`
+are unchanged while `display_name` updated; assert `ErrUserNotFound` on a missing or
+soft-deleted user ID.
 
-The comment accepting the missing optimistic-concurrency guard (added by
-the WR-02 fix, mirrored on both `UpdateUserOnLogin` and
-`reconcileDisplayName`) reasons:
+### WR-02: No full-pipeline test proving the combined write correctly threads a reconciled display name through when the login-sync gate fires
 
-> "the only two callers (applyLoginSync and materializeIdentity's
-> standalone reconciliation write) both derive every field from the same
-> claims-vs-DB-row comparison, so two racing writes for the same user
-> converge on the same eventual value (last-writer-wins is benign here,
-> not a lost-update)."
+**File:** `internal/auth/identitystore.go:597-603` (the `materializeIdentity` →
+`applyLoginSync` call site); closest existing coverage is
+`TestApplyLoginSync_NameChangeFoldedIntoRoleWrite`
+(`internal/auth/loginsync_internal_test.go:274-297`) and
+`TestIdentityStore_JWT_LoginSync_GateRunsOnlyInteractive`
+(`internal/auth/identitystore_authn_integration_test.go:148-214`)
 
-This is factually wrong for `role` and `email`. The two call sites do not
-derive those fields the same way:
+**Issue:** The task asked me to check whether removing
+`TestResolveJWT_ReconciliationPreservesRoleAndEmail` opened a coverage gap for "the case
+this test didn't cover" — the combined-write path when the login-sync gate DOES fire. It
+did, partially:
 
-- `applyLoginSync` (`loginsync.go:94`, via `resolveLoginRole`)
-  **freshly re-derives** the role from the issuer's current
-  `claims_mapping` plus the currently-authenticated token — it can
-  legitimately compute a *different* role than what's stored (a
-  promotion or a demotion).
-- The standalone reconciliation write in `materializeIdentity`
-  (`identitystore.go:599`) issues
-  `s.users.UpdateUserOnLogin(ctx, user.ID, newName, user.Email, user.Role)`
-  — `user.Email`/`user.Role` here are nothing more than the values this
-  particular request happened to read via `GetUserByID` a few lines
-  earlier. It is a blind passthrough of a point-in-time read, not a
-  "comparison" of any kind.
+- `TestApplyLoginSync_NameChangeFoldedIntoRoleWrite` calls `s.applyLoginSync(...)` directly
+  (white-box, same package) with hand-constructed `newName`/`nameChanged` arguments. It
+  proves `applyLoginSync` folds a *given* name change into the combined write correctly,
+  but does not exercise `materializeIdentity`'s computation of those two values via
+  `reconcileDisplayName`, nor their threading into the call at the real call site
+  (`identitystore.go:599`).
+- `TestIdentityStore_JWT_LoginSync_GateRunsOnlyInteractive` (integration-tagged, real
+  Postgres) exercises the full pipeline with `LoginSyncEnabled: true` end-to-end, but the
+  seeded user's `DisplayName` is `"Carol"` — never equal to the OIDC subject — so
+  `reconcileDisplayName` never fires and no name change is ever folded in; only the role
+  change is asserted.
+- `TestIdentityStore_DisplayNameReconciliation` (same integration file) exercises name
+  reconciliation end-to-end via `ResolveLogin`/`Resolve`, but its `authnTestStore` helper
+  (`identitystore_authn_integration_test.go:28-57`) never sets `LoginSyncEnabled: true`, so
+  every sub-test there takes the *standalone* `UpdateDisplayNameOnLogin` branch, never
+  `applyLoginSync`'s combined-write branch, even for the sub-test explicitly labeled
+  "interactive resolve".
 
-Because `UpdateUserOnLogin` is one unconditional 3-column `UPDATE` with
-no version guard, these two call sites racing on the same user is a real
-lost-update on a security-relevant field, not a harmless convergence:
+No test in the suite exercises the full call chain (`resolveJWT`/`ResolveLogin` →
+`materializeIdentity` → `applyLoginSync`) with `LoginSyncEnabled: true`, an interactive
+login, a role change taking effect, AND a genuinely stale display name (`== subject`) with a
+`name` claim present, asserting that the single combined write persists all three fields
+together. The wiring between `reconcileDisplayName`'s output and `applyLoginSync`'s
+parameters is two lines of trivial pass-through code today, so the immediate risk is low —
+but it is exactly the kind of code a future refactor (e.g., reordering the
+`newName, nameChanged := reconcileDisplayName(...)` call relative to the login-sync gate, or
+changing what gets passed) could silently break without any test catching it.
 
-1. User U is `role=admin`. `display_name` is still `== sub` (the
-   JIT-fallback value, not yet reconciled — a window this very phase
-   introduces via commit `d9b2bb93`, "reconcile stale display_name
-   unconditionally on OIDC login").
-2. An operator revokes U's admin access. This is processed via an
-   **interactive** login (`LoginSyncEnabled && interactive`, so
-   `applyLoginSync` runs): it reads `role=admin`, computes
-   `newRole=reader`, and is about to persist
-   `UpdateUserOnLogin(id, name, email, "reader")`.
-3. Concurrently, a **non-interactive** bearer-JWT request for the same
-   user (any live client session, MCP tool call, or ConnectRPC call
-   using a cached token — `interactive=false` here since it isn't a
-   login flow) reaches `materializeIdentity`'s `else if nameChanged`
-   branch. It reads the user **before** step 2's write commits
-   (`role=admin` still), computes `nameChanged=true` (the fallback name
-   is still stale relative to the token's `name` claim), and issues its
-   own `UpdateUserOnLogin(id, name, email, "admin")`.
-4. If this second write commits **after** step 2's, the demotion is
-   silently undone. There is no error, no audit log (the standalone
-   branch has no concept of role change — from its perspective `role`
-   never changed, since it copied the value it read), and no signal to
-   the operator that the revocation didn't stick. A revoked admin
-   regains admin.
-
-The same comment states the tradeoff should be revisited "the moment a
-distinct write path... starts calling this method" — but that condition
-is already true today: `applyLoginSync` and the standalone reconciliation
-write are two call sites with divergent field-derivation semantics, not
-one code path invoked twice with identical logic. The "only two callers"
-premise (verified accurate — confirmed via grep, exactly `loginsync.go:114`
-and `identitystore.go:599` in production code) does not make the race
-benign; only identical derivation logic would, and that isn't what exists.
-This should be reopened rather than accepted as documentation.
-
-**Fix:** A full CAS/version column (the fixer's previously-rejected,
-disproportionate fix) is not required. The narrower, proportionate fix is
-to stop the standalone reconciliation write from touching `role`/`email`
-at all, since it never legitimately changes them:
-
-```go
-// internal/storage/users.go — add a narrower method used ONLY by the
-// standalone reconciliation path, so it structurally cannot race-clobber
-// role/email.
-UpdateDisplayNameOnLogin(ctx context.Context, userID, displayName string) error
-```
-
-```go
-// internal/storage/postgres/users.go
-func (s *AuthStore) UpdateDisplayNameOnLogin(ctx context.Context, userID, displayName string) error {
-	const q = `UPDATE users SET display_name = $1 WHERE id = $2::uuid AND deleted_at IS NULL`
-	tag, err := s.pool.Exec(ctx, q, displayName, userID)
-	if err != nil {
-		return fmt.Errorf("update display name on login: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return storage.ErrUserNotFound
-	}
-	return nil
-}
-```
-
-```go
-// internal/auth/identitystore.go — materializeIdentity's standalone
-// branch: call the narrower method instead of UpdateUserOnLogin.
-} else if nameChanged {
-	if err := s.users.UpdateDisplayNameOnLogin(ctx, user.ID, newName); err != nil {
-		...
-	}
-}
-```
-
-This removes the race by construction — the standalone path no longer
-writes `role`/`email` at all, so it has nothing left to clobber — without
-introducing version columns, CAS loops, or transactions. It keeps the fix
-proportionate (narrowing the write's blast radius to the one field this
-path is actually responsible for) rather than accepting a security-
-relevant lost-update as a documented tradeoff.
+**Fix:** Add a black-box test — either an addition to
+`identitystore_authn_integration_test.go`'s existing suite, or a new stub-based test in
+`identitystore_test.go` alongside
+`TestMaterializeIdentity_StandaloneReconciliationNeverCallsUpdateUserOnLogin` — that: seeds
+a user with `DisplayName == subject` (stale/JIT-fallback), enables `LoginSyncEnabled` with a
+claims mapping that changes the role, resolves via `ResolveLogin` (or `Resolve` +
+`WithInteractiveLogin`) with a `name` claim present, and asserts the single
+`UpdateUserOnLogin` call (or persisted row, for the integration variant) carries both the
+new role AND the reconciled display name together.
 
 ## Info
 
-### IN-02: No contract test guards against CR-01 recurring
+### IN-01: `oauth2_provider_test.go` is in scope but unrelated to AUTH-06's reconciliation fix chain
 
-**File:** `internal/auth/identitystore_test.go`, `internal/auth/loginsync_internal_test.go`
+**File:** `internal/auth/oauth2_provider_test.go`
 
-**Issue:** The CR-01 race has no test coverage (reasonably — a true
-concurrent-write race isn't easily expressed as a deterministic unit test
-against a synchronously-executing stub backend). Once CR-01 is fixed via
-the narrower `UpdateDisplayNameOnLogin` method, the *contract* that
-prevents recurrence can still be asserted without needing real
-concurrency: the standalone reconciliation branch should provably never
-invoke a role/email-carrying persistence call.
+**Issue:** Not a defect — recorded for the record since the file was included in this
+iteration's explicit file list. It tests `oauth2LoginProvider.Exchange`/`AuthCodeURL`
+(GitHub-style OAuth2 login, email verification fallback, name population) and has no code
+path touching `reconcileDisplayName`, `applyLoginSync`, `UpdateUserOnLogin`, or
+`UpdateDisplayNameOnLogin`. It was read in full and is correct as written; it simply does
+not exercise anything specific to CR-01/WR-01/WR-02/IN-02.
 
-**Fix:** After applying CR-01's fix, add a test asserting the standalone
-reconciliation branch calls only a display-name-only stub hook (e.g. a
-new `updateDisplayNameOnLogin` field on `usersBackendStub`) and that the
-stub's `updateUserOnLogin` (3-field) hook is never invoked from that
-branch. This turns "the standalone path cannot touch role/email" from an
-implicit code-review invariant into an explicit, enforced one.
+**Fix:** None needed — informational only, confirming this file was read and considered
+during the final pass.
 
 ---
 
-_Reviewed: 2026-07-16T00:00:00Z_
+_Reviewed: 2026-07-16T18:34:39Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: deep_
