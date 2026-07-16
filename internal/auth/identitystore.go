@@ -576,6 +576,16 @@ func (s *pgIdentityStore) materializeIdentity(ctx context.Context, claims *OIDCC
 	// value through unchanged rather than re-deriving stale in-memory state.
 	if newName, changed := reconcileDisplayName(user, claims); changed {
 		if err := s.users.UpdateUserOnLogin(ctx, user.ID, newName, user.Email, user.Role); err != nil {
+			// ErrUserNotFound means the active-row guard (deleted_at IS NULL)
+			// matched nothing: the user was concurrently soft-deleted between
+			// the GetUserByID load above and this write. Mirror
+			// applyLoginSync's classification and fail closed rather than
+			// treating this like an ordinary best-effort write failure.
+			if errors.Is(err, storage.ErrUserNotFound) {
+				slog.LogAttrs(ctx, slog.LevelWarn, "auth: display-name reconciliation target user not active — denying login",
+					slog.String("user_id", user.ID))
+				return nil, ErrUnauthenticated
+			}
 			// Best-effort: never deny a login over a display-name write failure.
 			slog.LogAttrs(ctx, slog.LevelWarn, "auth: display-name reconciliation persist failed (proceeding)",
 				slog.String("user_id", user.ID), slog.Any("error", err))

@@ -893,6 +893,48 @@ func TestResolveJWT_ReconciliationPreservesRoleAndEmail(t *testing.T) {
 	require.Equal(t, "admin", gotRole, "must be the existing DB role, never claims-derived")
 }
 
+// TestResolveJWT_ReconciliationUserNotFound_Denies mirrors
+// TestApplyLoginSync_UserNotFound_Denies: when the reconciliation write's
+// UpdateUserOnLogin call returns storage.ErrUserNotFound (the user was
+// concurrently soft-deleted between the GetUserByID load and this write),
+// the login must fail closed rather than proceed as a best-effort no-op.
+func TestResolveJWT_ReconciliationUserNotFound_Denies(t *testing.T) {
+	p := newOIDCTestIssuer(t)
+	v, err := auth.NewOIDCVerifier(context.Background(), config.OIDCProviderConfig{
+		ID: "test", Issuer: p.server.URL, ClientID: "aud-1",
+	})
+	require.NoError(t, err)
+
+	stub := &usersBackendStub{
+		lookupOIDCBinding: func(_ context.Context, issuer, subject string) (*storage.OIDCBinding, error) {
+			return &storage.OIDCBinding{ID: "b1", UserID: "u1", Issuer: issuer, Subject: subject}, nil
+		},
+		getUserByID: func(_ context.Context, id string) (*storage.User, error) {
+			return &storage.User{
+				ID: id, Kind: storage.KindHuman, Role: "writer",
+				DisplayName: "user-del", // == token sub: triggers reconciliation write
+				Email:       "e@example.com",
+				CreatedAt:   time.Now(),
+			}, nil
+		},
+		updateUserOnLogin: func(_ context.Context, _, _, _, _ string) error {
+			return storage.ErrUserNotFound
+		},
+	}
+	store, err := auth.NewIdentityStore(auth.IdentityStoreConfig{
+		Users: stub, Verifiers: []*auth.OIDCVerifier{v}, Tracker: &noopTracker{},
+	})
+	require.NoError(t, err)
+	token := p.mintToken(t, map[string]any{
+		"iss": p.server.URL, "sub": "user-del", "aud": "aud-1",
+		"exp": time.Now().Add(time.Hour).Unix(), "iat": time.Now().Unix(),
+		"name": "New Name",
+	})
+
+	_, err = store.Resolve(context.Background(), token)
+	require.ErrorIs(t, err, auth.ErrUnauthenticated)
+}
+
 // --- Task 22: HasAuth ---
 
 func TestHasAuth_OnlyBootstrapReturnsFalse(t *testing.T) {
