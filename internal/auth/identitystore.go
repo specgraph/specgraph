@@ -568,27 +568,29 @@ func (s *pgIdentityStore) materializeIdentity(ctx context.Context, claims *OIDCC
 			slog.String("user_id", user.ID), slog.String("subject", claims.Subject))
 		return nil, ErrUnauthenticated
 	}
-	// Display-name reconciliation runs unconditionally — regardless of
+	// Display-name reconciliation is computed unconditionally — regardless of
 	// LoginSyncEnabled or interactive — so a stale subject-hash fallback
-	// self-heals to a usable name claim on every login (AUTH-06, D-01).
-	// Written to memory BEFORE the login-sync gate below so applyLoginSync
-	// (which no longer computes display_name itself) passes the reconciled
-	// value through unchanged rather than re-deriving stale in-memory state.
-	//
-	// Accepted tradeoff (non-atomicity): this write and applyLoginSync's write
-	// below are two independent, sequential, non-transactional
-	// UpdateUserOnLogin calls against the same row. If this write succeeds but
-	// applyLoginSync subsequently denies the login (allowlist miss, or a
-	// demotion whose persist fails), the display-name change is already
-	// committed even though the overall auth attempt returns an error to the
-	// caller. This is judged low-risk — only the display name moves, and only
-	// toward a value the token holder is already asserting via a verified
-	// claim — but it means "denied login = no DB effect" no longer holds for
-	// this one field. Folding both writes into a single UpdateUserOnLogin call
-	// would close this gap (and the redundant round-trip when both change in
-	// the same request) but requires threading the reconciled name into
-	// applyLoginSync as an input rather than persisting it separately here.
-	if newName, changed := reconcileDisplayName(user, claims); changed {
+	// self-heals to a usable name claim on every login (AUTH-06, D-01). The
+	// COMPUTATION happens here, before the login-sync gate below, but the
+	// WRITE is deferred: when the gate fires, newName/nameChanged are threaded
+	// into applyLoginSync so the name change is folded into that function's
+	// single UpdateUserOnLogin call alongside the role/email decision (WR-02
+	// fix, spgr re-review). This closes the non-atomicity gap the prior
+	// (documentation-only) fix left open: a denied login (allowlist miss, or a
+	// demotion whose persist fails) now performs NO write at all, so the
+	// display-name change is never committed ahead of a denial. When the gate
+	// does NOT fire (login-sync disabled, or a non-interactive resolve), there
+	// is no combined write to fold into, so the reconciliation write happens
+	// here on its own — this preserves D-01 (reconciliation is independent of
+	// the gate) for the case where login-sync isn't in play at all.
+	newName, nameChanged := reconcileDisplayName(user, claims)
+	if s.loginSyncEnabled && interactive {
+		synced, syncErr := s.applyLoginSync(ctx, claims, user, newName, nameChanged)
+		if syncErr != nil {
+			return nil, syncErr // deny: allowlist miss or failed write; no partial write occurred
+		}
+		user = synced
+	} else if nameChanged {
 		if err := s.users.UpdateUserOnLogin(ctx, user.ID, newName, user.Email, user.Role); err != nil {
 			// ErrUserNotFound means the active-row guard (deleted_at IS NULL)
 			// matched nothing: the user was concurrently soft-deleted between
@@ -608,13 +610,6 @@ func (s *pgIdentityStore) materializeIdentity(ctx context.Context, claims *OIDCC
 				slog.String("user_id", user.ID), slog.String("old", user.DisplayName), slog.String("new", newName))
 			user.DisplayName = newName
 		}
-	}
-	if s.loginSyncEnabled && interactive {
-		synced, syncErr := s.applyLoginSync(ctx, claims, user)
-		if syncErr != nil {
-			return nil, syncErr // deny: allowlist miss or failed demotion
-		}
-		user = synced
 	}
 	return &Identity{
 		UserID:        user.ID,

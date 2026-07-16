@@ -50,26 +50,34 @@ func isPromotion(current, next string) bool {
 
 // applyLoginSync re-enforces the email allowlist, refreshes the email
 // metadata, and re-derives the role from the issuer just authenticated for an
-// existing OIDC user on interactive login. display_name is NOT computed or
-// reconciled here (it is passed through unchanged) — that responsibility
-// moved unconditionally upstream to reconcileDisplayName in
-// materializeIdentity (AUTH-06, D-01/D-06), so this function stays gated on
-// loginSyncEnabled && interactive for role/email/allowlist only. Returns the
-// user to surface as the resolved Identity. On a successful change it mutates
-// the passed-in user in place AND returns it; callers must pass a non-shared
-// instance (resolveJWT passes the freshly-scanned struct from GetUserByID).
-// Returns an error that DENIES the login on an allowlist miss or a failed
-// demotion.
+// existing OIDC user on interactive login. It also accepts the
+// already-computed display-name reconciliation outcome (newName, nameChanged)
+// from reconcileDisplayName in materializeIdentity so that — when this gate
+// fires — BOTH concerns are folded into at most ONE UpdateUserOnLogin call
+// (WR-02 fix, spgr re-review): a denied login (allowlist miss, or a failed
+// write) performs NO write at all, so the display-name change is never
+// committed ahead of a denial. Returns the user to surface as the resolved
+// Identity. On a successful change it mutates the passed-in user in place AND
+// returns it; callers must pass a non-shared instance (resolveJWT passes the
+// freshly-scanned struct from GetUserByID). Returns an error that DENIES the
+// login on an allowlist miss or a failed demotion.
 //
-// Error model (classification is gated on `changed` FIRST):
-//   - allowlist domain miss (present email)   -> deny (ErrUnauthenticated)
+// Error model (classification is gated on `changed` (role/email) FIRST; a
+// pending name-only reconciliation never escalates the classification —
+// nameChanged only affects whether a write is attempted and, on success, what
+// gets persisted):
+//   - allowlist domain miss (present email)   -> deny (ErrUnauthenticated);
+//     no write is attempted, so a pending name change is not persisted either
 //   - persist returns ErrUserNotFound         -> deny (ErrUnauthenticated): the
 //     user was concurrently soft-deleted between load and write; fail closed
-//     regardless of changed/promotion
-//   - changed && !isPromotion, persist fails  -> deny (ErrTransient), fail closed
-//   - changed && isPromotion, persist fails   -> best-effort, old role
-//   - !changed (metadata-only), persist fails -> best-effort
-func (s *pgIdentityStore) applyLoginSync(ctx context.Context, claims *OIDCClaims, user *storage.User) (*storage.User, error) {
+//     regardless of changed/promotion/nameChanged
+//   - changed && !isPromotion, persist fails  -> deny (ErrTransient), fail closed;
+//     the combined write (including any name change) did not commit
+//   - changed && isPromotion, persist fails   -> best-effort, old role AND old
+//     name (the combined write failed atomically; reconciliation retries next login)
+//   - !changed (metadata-only or name-only), persist fails -> best-effort, old
+//     name/email/role all unchanged (same reasoning: one write, all-or-nothing)
+func (s *pgIdentityStore) applyLoginSync(ctx context.Context, claims *OIDCClaims, user *storage.User, newName string, nameChanged bool) (*storage.User, error) {
 	// 1. Re-enforce the email-domain allowlist. Skip when the token carries no
 	// email claim — an existing binding already passed at bind time, and some
 	// providers intermittently omit email.
@@ -82,18 +90,7 @@ func (s *pgIdentityStore) applyLoginSync(ctx context.Context, claims *OIDCClaims
 		}
 	}
 
-	// 2. Compute the new role and metadata. display_name is NOT computed here
-	// — it is reconciled unconditionally upstream in materializeIdentity (via
-	// reconcileDisplayName) before this gate runs, so user.DisplayName is
-	// already the reconciled value by the time applyLoginSync sees it. Pass
-	// it through unchanged (D-06).
-	//
-	// Non-atomicity note: the upstream reconciliation write and this
-	// function's write are two independent, sequential, non-transactional
-	// UpdateUserOnLogin calls against the same row (see the accepted-tradeoff
-	// comment at the reconciliation call site in materializeIdentity). If this
-	// function denies the login below (allowlist miss or failed demotion),
-	// the display-name write already committed upstream is NOT rolled back.
+	// 2. Compute the new role and metadata.
 	newRole, changed := resolveLoginRole(s.jitClaimsMapping[claims.Issuer], claims.Raw, user.Role, string(s.jitDefaultRole))
 
 	newEmail := user.Email
@@ -101,13 +98,20 @@ func (s *pgIdentityStore) applyLoginSync(ctx context.Context, claims *OIDCClaims
 		newEmail = claims.Email
 	}
 
-	// 3. No-op skip: nothing to persist.
-	if newEmail == user.Email && newRole == user.Role {
+	// 3. No-op skip: nothing to persist. Must also check nameChanged now —
+	// a display-name-only reconciliation with no role/email delta still needs
+	// the single combined write below.
+	if newEmail == user.Email && newRole == user.Role && !nameChanged {
 		return user, nil
 	}
 
-	// 4. Persist (single atomic UPDATE).
-	if err := s.users.UpdateUserOnLogin(ctx, user.ID, user.DisplayName, newEmail, newRole); err != nil {
+	persistName := user.DisplayName
+	if nameChanged {
+		persistName = newName
+	}
+
+	// 4. Persist (single atomic UPDATE covering name + role + email together).
+	if err := s.users.UpdateUserOnLogin(ctx, user.ID, persistName, newEmail, newRole); err != nil {
 		// ErrUserNotFound means the active-row guard (deleted_at IS NULL) matched
 		// nothing: the user was concurrently soft-deleted between the load in
 		// resolveJWT and this write. Fail closed regardless of changed/promotion —
@@ -121,12 +125,12 @@ func (s *pgIdentityStore) applyLoginSync(ctx context.Context, claims *OIDCClaims
 		if !changed {
 			slog.LogAttrs(ctx, slog.LevelWarn, "auth: login-sync metadata update failed (proceeding)",
 				slog.String("user_id", user.ID), slog.Any("error", err))
-			return user, nil // best-effort
+			return user, nil // best-effort; name reconciliation (if any) retries next login
 		}
 		if isPromotion(user.Role, newRole) {
 			slog.LogAttrs(ctx, slog.LevelWarn, "auth: login-sync promotion persist failed (proceeding at old role)",
 				slog.String("user_id", user.ID), slog.String("old", user.Role), slog.String("new", newRole), slog.Any("error", err))
-			return user, nil // best-effort, OLD (lower) role
+			return user, nil // best-effort, OLD (lower) role; name reconciliation retries next login
 		}
 		slog.LogAttrs(ctx, slog.LevelError, "auth: login-sync demotion persist failed — denying login",
 			slog.Bool("audit", true), slog.String("user_id", user.ID), slog.String("subject", claims.Subject),
@@ -139,6 +143,11 @@ func (s *pgIdentityStore) applyLoginSync(ctx context.Context, claims *OIDCClaims
 		slog.LogAttrs(ctx, slog.LevelInfo, "auth: login-sync role change",
 			slog.Bool("audit", true), slog.String("user_id", user.ID), slog.String("subject", claims.Subject),
 			slog.String("issuer", claims.Issuer), slog.String("old", user.Role), slog.String("new", newRole))
+	}
+	if nameChanged {
+		slog.LogAttrs(ctx, slog.LevelInfo, "auth: display-name reconciled",
+			slog.String("user_id", user.ID), slog.String("old", user.DisplayName), slog.String("new", newName))
+		user.DisplayName = newName
 	}
 	user.Email = newEmail
 	user.Role = newRole
