@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Sean Brandt
+name: PR Title
+# Lints the pull-request title as a Conventional Commit. On squash-merge the PR
+# title becomes the commit subject on main that release-please parses, so this is
+# the authoritative Conventional-Commit gate for the release pipeline.
+#
+# Kept in its OWN workflow (deliberately NOT a job in ci.yml) so that:
+#   - it has NO paths-ignore — every PR is linted, including docs-only PRs whose
+#     titles still land on main and are parsed by release-please;
+#   - it triggers on `edited` — retitling a PR re-runs the check;
+#   - `synchronize` re-runs it on each new head commit so a required-check
+#     configuration attaches to the latest SHA.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+permissions:
+  contents: read
+concurrency:
+  group: pr-title-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  pr-title:
+    name: commit-lint
+    runs-on: namespace-profile-linux-amd64-4x8
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

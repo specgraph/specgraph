@@ -35,6 +35,14 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          # The App token is scoped to contents+packages+pull-requests only (no
+          # issues:write). release-please's default autorelease:* PR labels are
+          # written via the issues API and would 403 without issues:write, crashing
+          # the step on the first release. Release detection here is manifest- and
+          # branch-based (not label-based), so skipping labels is functionally safe.
+          # To restore the labels: grant the release App Issues:write, add
+          # `permission-issues: write` to the app-token step above, and remove this.
+          skip-labeling: true
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         if: ${{ steps.release.outputs.release_created }}
         with:

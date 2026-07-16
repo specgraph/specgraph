@@ -25,6 +25,13 @@ single action:
 4. Ordinary pushes/merges to `main` that do not create a release
    (`release_created` is falsy) run none of the build/publish steps.
 
+> **Release PR labels:** the release App token is scoped without `issues:write`,
+> so release-please runs with `skip-labeling: true` — release PRs won't carry the
+> `autorelease: pending` / `autorelease: tagged` labels. This is cosmetic;
+> release detection is manifest/branch-based, not label-based. To restore the
+> labels, grant the release App `Issues: write` and follow the inline comment on
+> the release-please step in `.github/workflows/release.yml`.
+
 ## Version bump cadence
 
 `release-please-config.json` sets `bump-minor-pre-major: true` and omits
@@ -34,10 +41,13 @@ history. Breaking changes also bump minor pre-1.0 (release-please semantics).
 
 ## Commit-message linting
 
-- **PR titles** are linted as Conventional Commits in CI
-  (`amannn/action-semantic-pull-request`) on every pull request. On
-  squash-merge, the PR title becomes the commit message on `main` that
-  release-please parses — this is the authoritative gate.
+- **PR titles** are linted as Conventional Commits by a dedicated workflow
+  (`.github/workflows/pr-title.yml`, `amannn/action-semantic-pull-request`)
+  that runs on every pull request — including docs-only PRs, and again on
+  retitle. It is kept out of `ci.yml` on purpose: `ci.yml`'s `paths-ignore`
+  would otherwise skip title-linting for docs-only PRs whose titles still land
+  on `main`. On squash-merge, the PR title becomes the commit message on `main`
+  that release-please parses — this is the authoritative gate.
 - **Local commits** are validated by `cog verify` via the lefthook
   `commit-msg` hook. `cog` (cocogitto) no longer drives releases — it is
   commit-message validation only.
