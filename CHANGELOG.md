@@ -9,6 +9,13 @@
 > release.
 
 All notable changes to this project will be documented in this file.
+## [0.14.2](https://github.com/specgraph/specgraph/compare/v0.14.1...v0.14.2) (2026-07-17)
+
+
+### Bug Fixes
+
+* **release:** correct Homebrew cask license to Apache-2.0 ([#1013](https://github.com/specgraph/specgraph/issues/1013)) ([bd13518](https://github.com/specgraph/specgraph/commit/bd13518e0e956f7a57cfd454ca54092dba21cadf))
+
 ## [0.14.1](https://github.com/specgraph/specgraph/compare/v0.14.0...v0.14.1) (2026-07-17)
 
 
