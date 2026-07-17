@@ -9,6 +9,13 @@
 > release.
 
 All notable changes to this project will be documented in this file.
+## [0.14.1](https://github.com/specgraph/specgraph/compare/v0.14.0...v0.14.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* approve-stage teaching content drift (v0.14.0 audit gap) ([#1011](https://github.com/specgraph/specgraph/issues/1011)) ([6640aa7](https://github.com/specgraph/specgraph/commit/6640aa76cc572ac313b1ef5e64b4d2443ef7f1ad))
+
 ## [0.14.0](https://github.com/specgraph/specgraph/compare/v0.13.0...v0.14.0) (2026-07-17)
 
 
