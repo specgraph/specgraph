@@ -9,6 +9,13 @@
 > release.
 
 All notable changes to this project will be documented in this file.
+## [0.14.0](https://github.com/specgraph/specgraph/compare/v0.13.0...v0.14.0) (2026-07-17)
+
+
+### Continuous Integration
+
+* **release:** grant issues:write and restore autorelease labels ([#1007](https://github.com/specgraph/specgraph/issues/1007)) ([60c2374](https://github.com/specgraph/specgraph/commit/60c237498fdf0fb124e47a16bac33169bba98f53))
+
 ## [0.7.0](https://github.com/specgraph/specgraph/compare/v0.6.0...v0.7.0) - 2026-06-05
 
 ### Bug Fixes
@@ -210,5 +217,3 @@ All notable changes to this project will be documented in this file.
 - **integration:** Add DISTINCT regression test for GetExecutionEvents (#37) ([ca716b5](https://github.com/specgraph/specgraph/commit/ca716b593c223df5cee8379030653cd63c4c7785))
 - **e2e:** Implement 3-tier E2E test suite (#32) ([b12e1f7](https://github.com/specgraph/specgraph/commit/b12e1f7e3d3ec45daf67b4dcfd984d630bcda754))
 - Add comprehensive E2E test system (#19) ([7e99d69](https://github.com/specgraph/specgraph/commit/7e99d69be913325efac891a9d4d4a4b007aaaeef))
-
-
