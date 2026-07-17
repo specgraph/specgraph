@@ -387,8 +387,11 @@ confirmed each one, present the final approval summary and ask: "All checkpoints
 reviewed. When you're ready, confirm approval and I'll record it."
 
 When the human confirms, persist the approval with the accept disposition.
-Record provenance: who reviewed, that the review was agent-facilitated, and
-any overrides noted.
+Exchanges capturing the approval rationale and the checklist discussion are
+REQUIRED on the accept path — they commit atomically with the accept
+disposition and are load-bearing for audit. Do NOT omit exchanges on a clean
+acceptance. Record provenance: who reviewed, that the review was
+agent-facilitated, and any overrides noted.
 
 ### Reject path
 
