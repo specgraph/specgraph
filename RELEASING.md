@@ -25,12 +25,18 @@ single action:
 4. Ordinary pushes/merges to `main` that do not create a release
    (`release_created` is falsy) run none of the build/publish steps.
 
-> **Release PR labels:** the release App token is scoped without `issues:write`,
-> so release-please runs with `skip-labeling: true` — release PRs won't carry the
-> `autorelease: pending` / `autorelease: tagged` labels. This is cosmetic;
-> release detection is manifest/branch-based, not label-based. To restore the
-> labels, grant the release App `Issues: write` and follow the inline comment on
-> the release-please step in `.github/workflows/release.yml`.
+The App token is granted `contents` + `packages` + `pull-requests` + `issues`
+write, so release-please applies its `autorelease: pending` / `autorelease: tagged`
+labels to the release PR.
+
+### Forcing a specific version (`Release-As`)
+
+release-please only opens a release PR when it finds releasable Conventional
+Commits since the last tag. To cut a release regardless (e.g. for work whose
+merge commits weren't conventional), land a commit on `main` whose message body
+contains a `Release-As: X.Y.Z` footer — on squash-merge, put that footer in the
+squash commit body. release-please's next run then opens a release PR for that
+exact version.
 
 ## Version bump cadence
 
