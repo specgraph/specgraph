@@ -48,7 +48,10 @@ coverage:
         ref: "grep gates (no 'only on rejection', no 'self-evident', no 'standalone conversation-record tool'; presence of 'accept' and 'REQUIRED') + go build ./..."
         status: pass
       - kind: unit
-        ref: "go test ./internal/authoring/... (TestComposeGolden, TestEmbeddedContent_Present, TestContentPersistenceContractSnakeCase)"
+        ref: "go test ./internal/authoring/... (TestComposeGolden — snapshots the composed prose these edits change, regenerated via -update; TestEmbeddedContent_Present; TestContentPersistenceContractSnakeCase)"
+        status: pass
+      - kind: unit
+        ref: "task check (fmt:check, license:check, lint, build, unit tests) — run on the PR branch after CodeRabbit review"
         status: pass
     human_judgment: false
   - id: D2
@@ -59,7 +62,10 @@ coverage:
         ref: "grep gates (>=2 REQUIRED occurrences; Accept-path-scoped awk/grep for 'exchange' and 'REQUIRED') + go build ./..."
         status: pass
       - kind: unit
-        ref: "go test ./internal/authoring/... (TestComposeGolden approve subtest)"
+        ref: "go test ./internal/authoring/... (TestComposeGolden approve subtest — snapshots composed approve-stage prose, regenerated via -update)"
+        status: pass
+      - kind: unit
+        ref: "task check (fmt:check, license:check, lint, build, unit tests) — run on the PR branch after CodeRabbit review"
         status: pass
     human_judgment: false
 
@@ -126,6 +132,18 @@ Each task was committed atomically:
 
 ## Issues Encountered
 None beyond the golden-fixture regeneration documented above.
+
+## Post-Review Follow-up (PR #1011, CodeRabbit)
+
+CodeRabbit flagged 4 items on the PR: two documentation-accuracy issues in this
+PLAN.md/SUMMARY.md (the "no test changes" scope statement and the "no existing
+test snapshots approve wording" claim, both corrected in PLAN.md and above),
+one request to record `task check` (added above and confirmed passing on this
+branch), and one content-correctness item — `conversation-recording.md`'s
+Approve Special Case didn't state that Approve has no `output` payload at all
+(unlike Shape/Specify/Decompose), which the original plan's task action had
+specified but the executed edit omitted. Fixed in commit `0611d9b7`, with
+golden fixtures regenerated again.
 
 ## User Setup Required
 None - no external service configuration required.
