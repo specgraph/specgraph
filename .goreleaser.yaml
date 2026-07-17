@@ -40,7 +40,7 @@ homebrew_casks:
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: https://specgraph.io
     description: Live spec-driven development framework
-    license: MIT
+    license: Apache-2.0
 dockers_v2:
   - ids: [specgraph]
     images:
