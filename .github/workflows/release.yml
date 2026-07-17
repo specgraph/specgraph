@@ -2,133 +2,90 @@
 # Copyright 2026 Sean Brandt
 name: Release
 on:
-  workflow_dispatch:
-    inputs:
-      expected_increment:
-        description: "Guard: fail if cog computes a different bump (auto = no guard)"
-        required: false
-        default: "auto"
-        type: choice
-        options:
-          - auto
-          - major
-          - minor
-          - patch
+  push:
+    branches: [main]
 permissions:
   contents: read
 concurrency:
-  group: release
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   goreleaser:
     name: Build, Sign, and Release
     runs-on: namespace-profile-linux-amd64-4x8
     permissions:
-      contents: write
+      contents: read
       packages: write
       id-token: write
       attestations: write
-    outputs:
-      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
       - name: Generate release app token
         id: app-token
-        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           permission-contents: write
           permission-packages: write
-      - name: Install cog
-        run: |
-          set -euo pipefail
-          COG_VERSION="7.0.0"
-          COG_TARBALL="cocogitto-${COG_VERSION}-x86_64-unknown-linux-musl.tar.gz"
-          COG_URL="https://github.com/cocogitto/cocogitto/releases/download/${COG_VERSION}/${COG_TARBALL}"
-          COG_SHA256="e03938ff2c4c86d71c00c0f3284dbbe95c5ca76fe34a51f33e945c23010d59bb"
-          curl -LsSfO "${COG_URL}"
-          echo "${COG_SHA256}  ${COG_TARBALL}" | sha256sum -c -
-          sudo tar xzf "${COG_TARBALL}" --overwrite --strip-components=1 \
-            -C /usr/local/bin x86_64-unknown-linux-musl/cog
-          rm "${COG_TARBALL}"
-          cog --version
-      - name: Configure git identity for tagging
-        run: |
-          git config user.name "specgraph-release-bot[bot]"
-          git config user.email "specgraph-release-bot[bot]@users.noreply.github.com"
-      - name: Preview + guard version bump
-        env:
-          EXPECTED: ${{ inputs.expected_increment }}
-        run: |
-          set -euo pipefail
-          echo "Computed next version (dry-run):"
-          cog bump --auto --dry-run
-          if [ "${EXPECTED}" != "auto" ]; then
-            CURRENT="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)"
-            TARGET="$(cog bump --auto --dry-run 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | tail -n1 || true)"
-            if [ -z "${CURRENT}" ] || [ -z "${TARGET}" ]; then
-              echo "::error::could not determine version (current='${CURRENT}' target='${TARGET}'); cannot validate expected_increment=${EXPECTED}"
-              exit 1
-            fi
-            IFS=. read -r cmaj cmin cpat <<< "${CURRENT}"
-            IFS=. read -r tmaj tmin tpat <<< "${TARGET}"
-            if   [ "${tmaj}" -gt "${cmaj}" ]; then KIND="major"
-            elif [ "${tmin}" -gt "${cmin}" ]; then KIND="minor"
-            elif [ "${tpat}" -gt "${cpat}" ]; then KIND="patch"
-            else KIND="none"; fi
-            if [ "${KIND}" != "${EXPECTED}" ]; then
-              echo "::error::expected ${EXPECTED} bump but cog computed ${KIND} (${CURRENT} -> ${TARGET})"
-              exit 1
-            fi
-          fi
-      - name: Cut tag (cog bump, tag-only)
-        run: |
-          set -euo pipefail
-          cog bump --auto --disable-bump-commit
-          git describe --tags --abbrev=0
-      - name: Get version
-        id: version
-        run: |
-          set -euo pipefail
-          TAG="$(git describe --tags --abbrev=0)"
-          if ! printf '%s' "${TAG}" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::resolved tag '${TAG}' is not a v-prefixed semver; refusing to build a malformed release"
-            exit 1
-          fi
-          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
-          echo "new_tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "Building version: ${TAG#v}"
+          permission-pull-requests: write
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          # The App token is scoped to contents+packages+pull-requests only (no
+          # issues:write). release-please's default autorelease:* PR labels are
+          # written via the issues API and would 403 without issues:write, crashing
+          # the step on the first release. Release detection here is manifest- and
+          # branch-based (not label-based), so skipping labels is functionally safe.
+          # To restore the labels: grant the release App Issues:write, add
+          # `permission-issues: write` to the app-token step above, and remove this.
+          skip-labeling: true
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          ref: ${{ steps.release.outputs.tag_name }}
+          fetch-depth: 0
+          persist-credentials: false
       - uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
+        if: ${{ steps.release.outputs.release_created }}
       - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        if: ${{ steps.release.outputs.release_created }}
       - uses: namespacelabs/nscloud-setup-buildx-action@d059ed7184f0bc7c8b27e8810cea153d02bcc6dd # v0.0.23
+        if: ${{ steps.release.outputs.release_created }}
       - uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
+        if: ${{ steps.release.outputs.release_created }}
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        if: ${{ steps.release.outputs.release_created }}
         with:
           node-version: "22"
       - uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
+        if: ${{ steps.release.outputs.release_created }}
         with:
           version: 10
           run_install: false
       - name: Build web UI
+        if: ${{ steps.release.outputs.release_created }}
         working-directory: web
         run: pnpm install --frozen-lockfile && pnpm build
       - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6
+        if: ${{ steps.release.outputs.release_created }}
         with:
           go-version-file: go.mod
           cache: false
       - name: Configure Namespace cache
         uses: namespacelabs/nscloud-cache-action@a90bb5d4b27522ce881c6e98eebd7d7e6d1653f9 # v1.4.2
+        if: ${{ steps.release.outputs.release_created }}
         with:
           cache: go
       - uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7
+        if: ${{ steps.release.outputs.release_created }}
         with:
           version: "~> v2"
           args: release --clean
@@ -137,17 +94,20 @@ jobs:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
       - name: Scan Docker image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        if: ${{ steps.release.outputs.release_created }}
         with:
-          image-ref: "ghcr.io/specgraph/specgraph:${{ steps.version.outputs.version }}"
+          image-ref: "ghcr.io/specgraph/specgraph:${{ steps.release.outputs.version }}"
           format: table
           exit-code: "1"
           ignore-unfixed: true
           severity: CRITICAL,HIGH
       - name: Attest binary provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
+        if: ${{ steps.release.outputs.release_created }}
         with:
           subject-checksums: ./dist/checksums.txt
       - name: Attest Docker image provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
+        if: ${{ steps.release.outputs.release_created }}
         with:
           subject-checksums: ./dist/digests.txt

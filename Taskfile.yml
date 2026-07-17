@@ -410,7 +410,3 @@ tasks:
     desc: Build snapshot locally (no publish, local arch only)
     cmds:
       - goreleaser build --snapshot --clean --single-target
-  release:cut:
-    desc: "Cut a release via GitHub Actions (cog derives version + tag). Args: increment=auto|major|minor|patch"
-    cmds:
-      - gh workflow run release.yml -f expected_increment={{.increment | default "auto"}}

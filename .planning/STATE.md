@@ -6,9 +6,9 @@ current_phase: 999.2
 current_phase_name: BACKLOG
 status: verifying
 stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-07-15T22:56:52.455Z"
-last_activity: 2026-07-15
-last_activity_desc: Phase 9 complete, transitioned to Phase 999.2
+last_updated: "2026-07-16T20:50:56.638Z"
+last_activity: 2026-07-16
+last_activity_desc: "Quick task 260716-neg — switched releases to release-please"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -34,7 +34,7 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 Phase: 999.2 — confluence integration (BACKLOG)
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-15 — Phase 9 complete, transitioned to Phase 999.2
+Last activity: 2026-07-16 — Quick task 260716-neg: switched releases to release-please (branch `release-please-migration`, PR pending)
 
 ## Performance Metrics
 
@@ -180,6 +180,12 @@ None yet.
 
 - DRFT-01 and INTG-01 (Phase 4) are not covered by the 177-doc intel corpus (both are newer/
   smaller items) — plan-phase should scope these from current code, not from `.planning/intel/`.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260716-neg | Switch releases to release-please (reverses cog+goreleaser decision) | 2026-07-16 | 1df1ccc8 | Needs Review (code verified 17/17; 2 out-of-band repo settings pending) | [260716-neg-switch-releases-to-release-please-revers](./quick/260716-neg-switch-releases-to-release-please-revers/) |
 
 ## Deferred Items
 
