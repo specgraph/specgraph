@@ -223,6 +223,10 @@ rejection-reason exchanges alongside the rejection on the same persistence
 call — the coupling is atomic, same as the other stages. In both cases, set
 `stage` to `approve` on the exchange entries.
 
+Approve is otherwise unlike Shape, Specify, and Decompose: it does not accept
+or require a stage `output` payload. Exchanges are the only required input
+beyond the disposition itself.
+
 
 # Quality Heuristics
 
