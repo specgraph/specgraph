@@ -7,8 +7,8 @@ current_phase_name: BACKLOG
 status: verifying
 stopped_at: Completed 09-02-PLAN.md
 last_updated: "2026-07-16T20:50:56.638Z"
-last_activity: 2026-07-16
-last_activity_desc: "Quick task 260716-neg — switched releases to release-please"
+last_activity: 2026-07-17
+last_activity_desc: "Quick task 260717-i4b — fixed approve-stage teaching content drift (v0.14.0 audit gap)"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -34,7 +34,7 @@ engines can trust the spec graph as ground truth instead of static, decaying mar
 Phase: 999.2 — confluence integration (BACKLOG)
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-16 — Quick task 260716-neg: switched releases to release-please (branch `release-please-migration`, PR pending)
+Last activity: 2026-07-17 — Quick task 260717-i4b: fixed approve-stage teaching content drift found by the v0.14.0 milestone audit
 
 ## Performance Metrics
 
@@ -186,6 +186,7 @@ None yet.
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
 | 260716-neg | Switch releases to release-please (reverses cog+goreleaser decision) | 2026-07-16 | 1df1ccc8 | Needs Review (code verified 17/17; 2 out-of-band repo settings pending) | [260716-neg-switch-releases-to-release-please-revers](./quick/260716-neg-switch-releases-to-release-please-revers/) |
+| 260717-i4b | Fix approve-stage teaching content drift (v0.14.0 milestone-audit gap: conversation-recording.md + stage-approve.md taught clean approvals need no exchanges, contradicting Phase 8 enforcement) | 2026-07-17 | 8fd8151e | — | [260717-i4b-fix-approve-stage-teaching-content-drift](./quick/260717-i4b-fix-approve-stage-teaching-content-drift/) |
 
 ## Deferred Items
 
